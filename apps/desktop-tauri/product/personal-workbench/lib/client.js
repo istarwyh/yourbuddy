@@ -88,6 +88,281 @@ function createPersonalBrandName(name) {
 // src/client/BrandSettingsRow.tsx
 var import_react = require("react");
 
+// src/client/desktop-external-links.ts
+var DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
+var DESKTOP_EXTERNAL_LINK_VERSION = 1;
+var MAX_EXTERNAL_URL_LENGTH = 4096;
+var RESPONSE_TIMEOUT_MS = 5e3;
+var REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+function resolveDesktopExternalHttpUrl(value, currentOrigin) {
+  if (value.length === 0 || value.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol) || url.hostname === "" || url.username !== "" || url.password !== "" || url.origin === currentOrigin || url.href.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
+    return url.href;
+  } catch {
+    return void 0;
+  }
+}
+function readDesktopExternalLinkResponse(value, requestId) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return void 0;
+  const response = value;
+  if (response.channel !== DESKTOP_EXTERNAL_LINK_CHANNEL || response.version !== DESKTOP_EXTERNAL_LINK_VERSION || response.type !== "open-response" || response.requestId !== requestId || typeof response.ok !== "boolean") return void 0;
+  const expectedKeys = response.ok ? "channel,ok,requestId,type,version" : "channel,error,ok,requestId,type,version";
+  if (Object.keys(response).sort().join(",") !== expectedKeys) return void 0;
+  if (!response.ok && (typeof response.error !== "string" || response.error.length > 2048)) {
+    return void 0;
+  }
+  return response;
+}
+function createRequestId() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+function requestDesktopExternalLinkOpen(url, options = {}) {
+  const target = options.target ?? window;
+  if (target.parent === target) return Promise.reject(new Error("desktop-shell-unavailable"));
+  const requestId = options.requestId ?? createRequestId();
+  if (!REQUEST_ID_PATTERN.test(requestId)) return Promise.reject(new Error("invalid-request-id"));
+  return new Promise((resolve, reject) => {
+    const parent = target.parent;
+    const onMessage = (event) => {
+      if (event.source !== parent) return;
+      const response = readDesktopExternalLinkResponse(event.data, requestId);
+      if (response === void 0) return;
+      cleanup();
+      if (response.ok) resolve();
+      else reject(new Error(response.error));
+    };
+    const timeout = target.setTimeout(() => {
+      cleanup();
+      reject(new Error("desktop-shell-unavailable"));
+    }, options.timeoutMs ?? RESPONSE_TIMEOUT_MS);
+    const cleanup = () => {
+      target.clearTimeout(timeout);
+      target.removeEventListener("message", onMessage);
+    };
+    target.addEventListener("message", onMessage);
+    parent.postMessage({
+      channel: DESKTOP_EXTERNAL_LINK_CHANNEL,
+      version: DESKTOP_EXTERNAL_LINK_VERSION,
+      type: "open-request",
+      requestId,
+      url
+    }, "*");
+  });
+}
+function anchorFromEventTarget(target) {
+  if (target instanceof Element) return target.closest("a[href]");
+  if (target instanceof Node) return target.parentElement?.closest("a[href]") ?? null;
+  return null;
+}
+function externalUrlFromAnchor(anchor) {
+  if (anchor === null || anchor.target !== "_blank" || !anchor.relList.contains("noopener") || anchor.hasAttribute("download")) return void 0;
+  const href = anchor.getAttribute("href");
+  return href === null ? void 0 : resolveDesktopExternalHttpUrl(href, window.location.origin);
+}
+async function copyLinkAddress(value) {
+  try {
+    if (navigator.clipboard?.writeText !== void 0) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+  } catch {
+  }
+  const field = document.createElement("textarea");
+  field.value = value;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  document.body.append(field);
+  field.select();
+  const copied = document.execCommand("copy");
+  field.remove();
+  if (!copied) throw new Error("clipboard-unavailable");
+}
+function installDesktopExternalLinks(ctx, t) {
+  ctx.effect(() => {
+    if (typeof window === "undefined" || window.parent === window) return () => {
+    };
+    const menu = document.createElement("div");
+    menu.className = "dpw-link-menu";
+    menu.hidden = true;
+    menu.setAttribute("role", "menu");
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.className = "dpw-link-menu-item";
+    openButton.setAttribute("role", "menuitem");
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "dpw-link-menu-item";
+    copyButton.setAttribute("role", "menuitem");
+    const status = document.createElement("div");
+    status.className = "dpw-link-menu-status";
+    status.hidden = true;
+    menu.append(openButton, copyButton, status);
+    document.body.append(menu);
+    let selectedUrl;
+    const markedAnchors = /* @__PURE__ */ new Set();
+    let statusTimer;
+    const clearStatusTimer = () => {
+      if (statusTimer !== void 0) window.clearTimeout(statusTimer);
+      statusTimer = void 0;
+    };
+    const hideMenu = () => {
+      clearStatusTimer();
+      selectedUrl = void 0;
+      menu.hidden = true;
+    };
+    const positionMenu = (x, y) => {
+      menu.style.left = `${Math.max(8, x)}px`;
+      menu.style.top = `${Math.max(8, y)}px`;
+      const bounds = menu.getBoundingClientRect();
+      menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8))}px`;
+      menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8))}px`;
+    };
+    const showStatus = (message, x, y) => {
+      selectedUrl = void 0;
+      openButton.hidden = true;
+      copyButton.hidden = true;
+      status.hidden = false;
+      status.textContent = message;
+      menu.hidden = false;
+      positionMenu(x, y);
+      clearStatusTimer();
+      statusTimer = window.setTimeout(hideMenu, 2500);
+    };
+    const openUrl = (url, x, y) => {
+      void requestDesktopExternalLinkOpen(url).catch((error) => {
+        const detail = error instanceof Error ? error.message : String(error);
+        showStatus(`${t("link.error.open")} ${detail}`, x, y);
+      });
+    };
+    const onClick = (event) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      const url = externalUrlFromAnchor(anchorFromEventTarget(event.target));
+      if (url === void 0) return;
+      event.preventDefault();
+      hideMenu();
+      openUrl(url, event.clientX, event.clientY);
+    };
+    const onContextMenu = (event) => {
+      const url = externalUrlFromAnchor(anchorFromEventTarget(event.target));
+      if (url === void 0) {
+        hideMenu();
+        return;
+      }
+      event.preventDefault();
+      clearStatusTimer();
+      selectedUrl = url;
+      openButton.hidden = false;
+      copyButton.hidden = false;
+      status.hidden = true;
+      openButton.textContent = t("link.menu.open");
+      copyButton.textContent = t("link.menu.copy");
+      menu.hidden = false;
+      positionMenu(event.clientX, event.clientY);
+      openButton.focus();
+    };
+    const onMouseOver = (event) => {
+      const anchor = anchorFromEventTarget(event.target);
+      const url = externalUrlFromAnchor(anchor);
+      if (anchor === null || url === void 0) return;
+      markedAnchors.add(anchor);
+      anchor.classList.add("dpw-desktop-external-link");
+      if (!anchor.hasAttribute("title")) {
+        anchor.title = url;
+        anchor.dataset.yourbuddyExternalLinkTitle = "true";
+      }
+    };
+    const onDocumentPointer = (event) => {
+      if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) hideMenu();
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") hideMenu();
+    };
+    const onOpen = () => {
+      const url = selectedUrl;
+      const bounds = menu.getBoundingClientRect();
+      hideMenu();
+      if (url !== void 0) openUrl(url, bounds.left, bounds.top);
+    };
+    const onCopy = () => {
+      const url = selectedUrl;
+      const bounds = menu.getBoundingClientRect();
+      if (url === void 0) return;
+      void copyLinkAddress(url).then(
+        () => {
+          showStatus(t("link.copy.done"), bounds.left, bounds.top);
+        },
+        () => {
+          showStatus(t("link.error.copy"), bounds.left, bounds.top);
+        }
+      );
+    };
+    document.addEventListener("click", onClick);
+    document.addEventListener("contextmenu", onContextMenu);
+    document.addEventListener("mouseover", onMouseOver);
+    document.addEventListener("pointerdown", onDocumentPointer);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("blur", hideMenu);
+    window.addEventListener("resize", hideMenu);
+    window.addEventListener("scroll", hideMenu, true);
+    openButton.addEventListener("click", onOpen);
+    copyButton.addEventListener("click", onCopy);
+    return () => {
+      hideMenu();
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("contextmenu", onContextMenu);
+      document.removeEventListener("mouseover", onMouseOver);
+      document.removeEventListener("pointerdown", onDocumentPointer);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("blur", hideMenu);
+      window.removeEventListener("resize", hideMenu);
+      window.removeEventListener("scroll", hideMenu, true);
+      openButton.removeEventListener("click", onOpen);
+      copyButton.removeEventListener("click", onCopy);
+      markedAnchors.forEach((anchor) => {
+        anchor.classList.remove("dpw-desktop-external-link");
+        if (anchor.dataset.yourbuddyExternalLinkTitle === "true") {
+          anchor.removeAttribute("title");
+          delete anchor.dataset.yourbuddyExternalLinkTitle;
+        }
+      });
+      menu.remove();
+    };
+  }, "personal-workbench: desktop external links");
+}
+
+// src/client/help-links.ts
+var HELP_SITE_URL = "https://istarwyh.github.io/yourbuddy/";
+var HELP_ROUTES = {
+  start: "docs/start/",
+  plugins: "plugins/",
+  develop: "docs/develop/",
+  troubleshooting: "docs/troubleshooting/",
+  feedback: "https://github.com/istarwyh/yourbuddy/issues",
+  settings: "docs/settings/"
+};
+function helpUrl(destination, locale) {
+  const route = HELP_ROUTES[destination];
+  const prefix = /^zh(?:-|$)/i.test(locale) ? "" : "en/";
+  return new URL(route, `${HELP_SITE_URL}${prefix}`).href;
+}
+async function openHelpUrl(value) {
+  const url = resolveDesktopExternalHttpUrl(value, window.location.origin);
+  if (url === void 0) throw new Error("invalid-help-url");
+  if (window.parent !== window) {
+    await requestDesktopExternalLinkOpen(url);
+    return;
+  }
+  const opened = window.open("about:blank", "_blank");
+  if (opened === null) throw new Error("browser-popup-blocked");
+  opened.opener = null;
+  opened.location.replace(url);
+}
+
 // ../../app-icon.svg
 var app_icon_default = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">%0A  <defs>%0A    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">%0A      <stop offset="0" stop-color="%23111827"/>%0A      <stop offset="1" stop-color="%232563eb"/>%0A    </linearGradient>%0A  </defs>%0A  <rect width="1024" height="1024" rx="220" fill="url(%23bg)"/>%0A  <path d="M164 286h116l88 160 88-160h116L420 548v190H316V548L164 286Z" fill="%23f8fafc"/>%0A  <path d="M712 286c98 0 154 45 154 115 0 43-23 76-62 96 48 21 74 59 74 110 0 82-60 131-166 131S546 689 546 607c0-51 26-89 74-110-39-20-62-53-62-96 0-70 56-115 154-115Z M712 365c-40 0-61 17-61 43s21 43 61 43 61-17 61-43-21-43-61-43Z M712 532c-45 0-70 21-70 59s25 59 70 59 70-21 70-59-25-59-70-59Z" fill="%23bfdbfe" fill-rule="evenodd"/>%0A</svg>%0A';
 
@@ -105,7 +380,7 @@ function readDataUrl(file) {
     reader.readAsDataURL(file);
   });
 }
-function BrandSettingsRow({ scope, t }) {
+function BrandSettingsRow({ scope, readLocale, t }) {
   const snapshot = (0, import_react.useSyncExternalStore)(
     (listener) => scope.subscribe(listener),
     () => scope.getSnapshot(),
@@ -263,7 +538,8 @@ function BrandSettingsRow({ scope, t }) {
           children: t("reset")
         }
       )
-    ] })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("a", { className: "dpw-hint", href: helpUrl("settings", readLocale()), target: "_blank", rel: "noopener noreferrer", children: t("help.settings") })
   ] });
 }
 
@@ -273,9 +549,9 @@ var import_react2 = require("react");
 // src/client/desktop-lifecycle.ts
 var DESKTOP_LIFECYCLE_CHANNEL = "yourbuddy.desktop.lifecycle";
 var DESKTOP_LIFECYCLE_VERSION = 1;
-var REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+var REQUEST_ID_PATTERN2 = /^[A-Za-z0-9_-]{1,64}$/;
 var DEFAULT_HANDSHAKE_TIMEOUT_MS = 5e3;
-function createRequestId() {
+function createRequestId2() {
   const bytes = new Uint8Array(16);
   globalThis.crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -305,8 +581,8 @@ function requestDesktopLifecycle(action, options = {}) {
   if (!isDesktopLifecycleAvailable(target)) {
     return Promise.reject(new Error("desktop-shell-unavailable"));
   }
-  const requestId = options.requestId ?? createRequestId();
-  if (!REQUEST_ID_PATTERN.test(requestId)) {
+  const requestId = options.requestId ?? createRequestId2();
+  if (!REQUEST_ID_PATTERN2.test(requestId)) {
     return Promise.reject(new Error("desktop-lifecycle-request-id-invalid"));
   }
   return new Promise((resolve, reject) => {
@@ -428,12 +704,12 @@ var import_react3 = require("react");
 // src/client/desktop-network-proxy.ts
 var DESKTOP_NETWORK_PROXY_CHANNEL = "yourbuddy.desktop.network-proxy";
 var DESKTOP_NETWORK_PROXY_VERSION = 3;
-var REQUEST_ID_PATTERN2 = /^[A-Za-z0-9_-]{1,64}$/;
+var REQUEST_ID_PATTERN3 = /^[A-Za-z0-9_-]{1,64}$/;
 var DEFAULT_HANDSHAKE_TIMEOUT_MS2 = 5e3;
 var MAX_PROXY_URL_LENGTH = 2048;
 var MAX_NO_PROXY_LENGTH = 4096;
 var MAX_CA_CERTIFICATE_PATH_LENGTH = 4096;
-function createRequestId2() {
+function createRequestId3() {
   const bytes = new Uint8Array(16);
   globalThis.crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -503,8 +779,8 @@ function requestDesktopNetworkProxy(action, settings, options) {
   if (!isDesktopNetworkProxyAvailable(target)) {
     return Promise.reject(new Error("desktop-shell-unavailable"));
   }
-  const requestId = options.requestId ?? createRequestId2();
-  if (!REQUEST_ID_PATTERN2.test(requestId)) {
+  const requestId = options.requestId ?? createRequestId3();
+  if (!REQUEST_ID_PATTERN3.test(requestId)) {
     return Promise.reject(new Error("desktop-network-proxy-request-id-invalid"));
   }
   if (!["get", "select-ca"].includes(action) && readNetworkProxySettings(settings) === void 0) {
@@ -888,255 +1164,157 @@ function localizedProxyError(error, t) {
   return `${t("proxy.error.generic")} ${error}`;
 }
 
-// src/client/desktop-external-links.ts
-var DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
-var DESKTOP_EXTERNAL_LINK_VERSION = 1;
-var MAX_EXTERNAL_URL_LENGTH = 4096;
-var RESPONSE_TIMEOUT_MS = 5e3;
-var REQUEST_ID_PATTERN3 = /^[A-Za-z0-9_-]{1,64}$/;
-function resolveDesktopExternalHttpUrl(value, currentOrigin) {
-  if (value.length === 0 || value.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
-  try {
-    const url = new URL(value);
-    if (!["http:", "https:"].includes(url.protocol) || url.hostname === "" || url.username !== "" || url.password !== "" || url.origin === currentOrigin || url.href.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
-    return url.href;
-  } catch {
-    return void 0;
-  }
-}
-function readDesktopExternalLinkResponse(value, requestId) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return void 0;
-  const response = value;
-  if (response.channel !== DESKTOP_EXTERNAL_LINK_CHANNEL || response.version !== DESKTOP_EXTERNAL_LINK_VERSION || response.type !== "open-response" || response.requestId !== requestId || typeof response.ok !== "boolean") return void 0;
-  const expectedKeys = response.ok ? "channel,ok,requestId,type,version" : "channel,error,ok,requestId,type,version";
-  if (Object.keys(response).sort().join(",") !== expectedKeys) return void 0;
-  if (!response.ok && (typeof response.error !== "string" || response.error.length > 2048)) {
-    return void 0;
-  }
-  return response;
-}
-function createRequestId3() {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-function requestDesktopExternalLinkOpen(url, options = {}) {
-  const target = options.target ?? window;
-  if (target.parent === target) return Promise.reject(new Error("desktop-shell-unavailable"));
-  const requestId = options.requestId ?? createRequestId3();
-  if (!REQUEST_ID_PATTERN3.test(requestId)) return Promise.reject(new Error("invalid-request-id"));
-  return new Promise((resolve, reject) => {
-    const parent = target.parent;
-    const onMessage = (event) => {
-      if (event.source !== parent) return;
-      const response = readDesktopExternalLinkResponse(event.data, requestId);
-      if (response === void 0) return;
-      cleanup();
-      if (response.ok) resolve();
-      else reject(new Error(response.error));
+// src/client/HelpMenu.tsx
+var import_react4 = require("react");
+var import_jsx_runtime5 = require("react/jsx-runtime");
+var DESTINATIONS = ["start", "plugins", "develop", "troubleshooting", "feedback"];
+function HelpMenu({ wide, readLocale, t }) {
+  const [position, setPosition] = (0, import_react4.useState)();
+  const [failedUrl, setFailedUrl] = (0, import_react4.useState)("");
+  const [busy, setBusy] = (0, import_react4.useState)(false);
+  const [copyStatus, setCopyStatus] = (0, import_react4.useState)("idle");
+  const root = (0, import_react4.useRef)(null);
+  const trigger = (0, import_react4.useRef)(null);
+  const firstItem = (0, import_react4.useRef)(null);
+  const attempt = (0, import_react4.useRef)(0);
+  const id = (0, import_react4.useId)();
+  const open = position !== void 0;
+  const close = (restoreFocus = true) => {
+    attempt.current += 1;
+    setPosition(void 0);
+    setBusy(false);
+    if (restoreFocus) trigger.current?.focus();
+  };
+  (0, import_react4.useEffect)(() => () => {
+    attempt.current += 1;
+  }, []);
+  (0, import_react4.useEffect)(() => {
+    if (!open) return;
+    firstItem.current?.focus();
+    const outside = (event) => {
+      if (event.target instanceof Node && !root.current?.contains(event.target)) close(false);
     };
-    const timeout = target.setTimeout(() => {
-      cleanup();
-      reject(new Error("desktop-shell-unavailable"));
-    }, options.timeoutMs ?? RESPONSE_TIMEOUT_MS);
-    const cleanup = () => {
-      target.clearTimeout(timeout);
-      target.removeEventListener("message", onMessage);
+    const resize = () => {
+      close();
     };
-    target.addEventListener("message", onMessage);
-    parent.postMessage({
-      channel: DESKTOP_EXTERNAL_LINK_CHANNEL,
-      version: DESKTOP_EXTERNAL_LINK_VERSION,
-      type: "open-request",
-      requestId,
-      url
-    }, "*");
-  });
-}
-function anchorFromEventTarget(target) {
-  if (target instanceof Element) return target.closest("a[href]");
-  if (target instanceof Node) return target.parentElement?.closest("a[href]") ?? null;
-  return null;
-}
-function externalUrlFromAnchor(anchor) {
-  if (anchor === null || anchor.target !== "_blank" || !anchor.relList.contains("noopener") || anchor.hasAttribute("download")) return void 0;
-  const href = anchor.getAttribute("href");
-  return href === null ? void 0 : resolveDesktopExternalHttpUrl(href, window.location.origin);
-}
-async function copyLinkAddress(value) {
-  try {
-    if (navigator.clipboard?.writeText !== void 0) {
-      await navigator.clipboard.writeText(value);
+    document.addEventListener("pointerdown", outside);
+    window.addEventListener("resize", resize);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      window.removeEventListener("resize", resize);
+    };
+  }, [open]);
+  const toggle = () => {
+    if (open) {
+      close();
       return;
     }
-  } catch {
-  }
-  const field = document.createElement("textarea");
-  field.value = value;
-  field.setAttribute("readonly", "");
-  field.style.position = "fixed";
-  field.style.opacity = "0";
-  document.body.append(field);
-  field.select();
-  const copied = document.execCommand("copy");
-  field.remove();
-  if (!copied) throw new Error("clipboard-unavailable");
-}
-function installDesktopExternalLinks(ctx, t) {
-  ctx.effect(() => {
-    if (typeof window === "undefined" || window.parent === window) return () => {
-    };
-    const menu = document.createElement("div");
-    menu.className = "dpw-link-menu";
-    menu.hidden = true;
-    menu.setAttribute("role", "menu");
-    const openButton = document.createElement("button");
-    openButton.type = "button";
-    openButton.className = "dpw-link-menu-item";
-    openButton.setAttribute("role", "menuitem");
-    const copyButton = document.createElement("button");
-    copyButton.type = "button";
-    copyButton.className = "dpw-link-menu-item";
-    copyButton.setAttribute("role", "menuitem");
-    const status = document.createElement("div");
-    status.className = "dpw-link-menu-status";
-    status.hidden = true;
-    menu.append(openButton, copyButton, status);
-    document.body.append(menu);
-    let selectedUrl;
-    const markedAnchors = /* @__PURE__ */ new Set();
-    let statusTimer;
-    const clearStatusTimer = () => {
-      if (statusTimer !== void 0) window.clearTimeout(statusTimer);
-      statusTimer = void 0;
-    };
-    const hideMenu = () => {
-      clearStatusTimer();
-      selectedUrl = void 0;
-      menu.hidden = true;
-    };
-    const positionMenu = (x, y) => {
-      menu.style.left = `${Math.max(8, x)}px`;
-      menu.style.top = `${Math.max(8, y)}px`;
-      const bounds = menu.getBoundingClientRect();
-      menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8))}px`;
-      menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8))}px`;
-    };
-    const showStatus = (message, x, y) => {
-      selectedUrl = void 0;
-      openButton.hidden = true;
-      copyButton.hidden = true;
-      status.hidden = false;
-      status.textContent = message;
-      menu.hidden = false;
-      positionMenu(x, y);
-      clearStatusTimer();
-      statusTimer = window.setTimeout(hideMenu, 2500);
-    };
-    const openUrl = (url, x, y) => {
-      void requestDesktopExternalLinkOpen(url).catch((error) => {
-        const detail = error instanceof Error ? error.message : String(error);
-        showStatus(`${t("link.error.open")} ${detail}`, x, y);
-      });
-    };
-    const onClick = (event) => {
-      if (event.defaultPrevented || event.button !== 0) return;
-      const url = externalUrlFromAnchor(anchorFromEventTarget(event.target));
-      if (url === void 0) return;
+    const rect = trigger.current.getBoundingClientRect();
+    setFailedUrl("");
+    setCopyStatus("idle");
+    setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 296)), bottom: Math.max(8, window.innerHeight - rect.top + 8) });
+  };
+  const visit = async (destination) => {
+    const current = ++attempt.current;
+    const url = helpUrl(destination, readLocale());
+    setBusy(true);
+    setFailedUrl("");
+    setCopyStatus("idle");
+    try {
+      await openHelpUrl(url);
+      if (attempt.current === current) close();
+    } catch {
+      if (attempt.current === current) setFailedUrl(url);
+    } finally {
+      if (attempt.current === current) setBusy(false);
+    }
+  };
+  const copy = async () => {
+    const current = attempt.current;
+    try {
+      await copyLinkAddress(failedUrl);
+      if (attempt.current === current) setCopyStatus("done");
+    } catch {
+      if (attempt.current === current) setCopyStatus("error");
+    }
+  };
+  const navigate = (event) => {
+    if (event.key === "Escape") {
       event.preventDefault();
-      hideMenu();
-      openUrl(url, event.clientX, event.clientY);
-    };
-    const onContextMenu = (event) => {
-      const url = externalUrlFromAnchor(anchorFromEventTarget(event.target));
-      if (url === void 0) {
-        hideMenu();
-        return;
-      }
+      close();
+      return;
+    }
+    if (!(event.target instanceof HTMLButtonElement) || event.target.role !== "menuitem") return;
+    const items = Array.from(root.current.querySelectorAll('[role="menuitem"]:not(:disabled)'));
+    const index = items.indexOf(event.target);
+    const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : event.key === "ArrowDown" ? (index + 1) % items.length : event.key === "ArrowUp" ? (index + items.length - 1) % items.length : void 0;
+    if (next !== void 0) {
       event.preventDefault();
-      clearStatusTimer();
-      selectedUrl = url;
-      openButton.hidden = false;
-      copyButton.hidden = false;
-      status.hidden = true;
-      openButton.textContent = t("link.menu.open");
-      copyButton.textContent = t("link.menu.copy");
-      menu.hidden = false;
-      positionMenu(event.clientX, event.clientY);
-      openButton.focus();
-    };
-    const onMouseOver = (event) => {
-      const anchor = anchorFromEventTarget(event.target);
-      const url = externalUrlFromAnchor(anchor);
-      if (anchor === null || url === void 0) return;
-      markedAnchors.add(anchor);
-      anchor.classList.add("dpw-desktop-external-link");
-      if (!anchor.hasAttribute("title")) {
-        anchor.title = url;
-        anchor.dataset.yourbuddyExternalLinkTitle = "true";
+      items[next]?.focus();
+    }
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { ref: root, className: "dpw-help", onKeyDown: navigate, onBlur: (event) => {
+    if (open && event.relatedTarget instanceof Node && !root.current?.contains(event.relatedTarget)) close(false);
+  }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+      "button",
+      {
+        ref: trigger,
+        type: "button",
+        className: "dpw-help-trigger",
+        "aria-label": t("help.title"),
+        title: t("help.title"),
+        "aria-haspopup": "menu",
+        "aria-expanded": open,
+        "aria-controls": open ? id : void 0,
+        onClick: toggle,
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dpw-help-icon", "aria-hidden": "true", children: "?" }),
+          wide && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: t("help.title") })
+        ]
       }
-    };
-    const onDocumentPointer = (event) => {
-      if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) hideMenu();
-    };
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") hideMenu();
-    };
-    const onOpen = () => {
-      const url = selectedUrl;
-      const bounds = menu.getBoundingClientRect();
-      hideMenu();
-      if (url !== void 0) openUrl(url, bounds.left, bounds.top);
-    };
-    const onCopy = () => {
-      const url = selectedUrl;
-      const bounds = menu.getBoundingClientRect();
-      if (url === void 0) return;
-      void copyLinkAddress(url).then(
-        () => {
-          showStatus(t("link.copy.done"), bounds.left, bounds.top);
+    ),
+    position !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-help-panel", style: position, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { id, role: "menu", "aria-label": t("help.title"), "aria-busy": busy, children: DESTINATIONS.map((destination, index) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+        "button",
+        {
+          ref: index === 0 ? firstItem : void 0,
+          type: "button",
+          role: "menuitem",
+          className: "dpw-link-menu-item",
+          disabled: busy,
+          onClick: () => {
+            void visit(destination);
+          },
+          children: t(`help.${destination}`)
         },
-        () => {
-          showStatus(t("link.error.copy"), bounds.left, bounds.top);
-        }
-      );
-    };
-    document.addEventListener("click", onClick);
-    document.addEventListener("contextmenu", onContextMenu);
-    document.addEventListener("mouseover", onMouseOver);
-    document.addEventListener("pointerdown", onDocumentPointer);
-    document.addEventListener("keydown", onKeyDown);
-    window.addEventListener("blur", hideMenu);
-    window.addEventListener("resize", hideMenu);
-    window.addEventListener("scroll", hideMenu, true);
-    openButton.addEventListener("click", onOpen);
-    copyButton.addEventListener("click", onCopy);
-    return () => {
-      hideMenu();
-      document.removeEventListener("click", onClick);
-      document.removeEventListener("contextmenu", onContextMenu);
-      document.removeEventListener("mouseover", onMouseOver);
-      document.removeEventListener("pointerdown", onDocumentPointer);
-      document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("blur", hideMenu);
-      window.removeEventListener("resize", hideMenu);
-      window.removeEventListener("scroll", hideMenu, true);
-      openButton.removeEventListener("click", onOpen);
-      copyButton.removeEventListener("click", onCopy);
-      markedAnchors.forEach((anchor) => {
-        anchor.classList.remove("dpw-desktop-external-link");
-        if (anchor.dataset.yourbuddyExternalLinkTitle === "true") {
-          anchor.removeAttribute("title");
-          delete anchor.dataset.yourbuddyExternalLinkTitle;
-        }
-      });
-      menu.remove();
-    };
-  }, "personal-workbench: desktop external links");
+        destination
+      )) }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "dpw-hint", children: t("help.external") }),
+      failedUrl !== "" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-help-recovery", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "dpw-error", role: "alert", children: t("help.error") }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("input", { className: "dpw-input", "aria-label": t("help.address"), value: failedUrl, readOnly: true, onFocus: (event) => event.currentTarget.select() }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "dpw-button", onClick: () => {
+          void copy();
+        }, children: t("link.menu.copy") }),
+        copyStatus !== "idle" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { role: "status", className: "dpw-hint", children: t(copyStatus === "done" ? "link.copy.done" : "link.error.copy") })
+      ] })
+    ] })
+  ] });
 }
 
 // src/client/locales.ts
 var zh = {
+  "help.title": "\u5E2E\u52A9\u4E0E\u6307\u5357",
+  "help.settings": "\u67E5\u770B\u4F7F\u7528\u8BF4\u660E",
+  "help.start": "\u5FEB\u901F\u5F00\u59CB",
+  "help.plugins": "\u9ED8\u8BA4\u63D2\u4EF6",
+  "help.develop": "\u6269\u5C55 Y8",
+  "help.troubleshooting": "\u6545\u969C\u6392\u67E5",
+  "help.feedback": "\u53CD\u9988\u95EE\u9898",
+  "help.external": "\u4F7F\u7528\u6307\u5357\u5728\u6D4F\u89C8\u5668\u4E2D\u6253\u5F00\u3002",
+  "help.error": "\u65E0\u6CD5\u6253\u5F00\u6D4F\u89C8\u5668\uFF0C\u8BF7\u590D\u5236\u5730\u5740\u540E\u624B\u52A8\u6253\u5F00\u3002",
+  "help.address": "\u5E2E\u52A9\u9875\u9762\u5730\u5740",
   "title": "\u6211\u7684\u5DE5\u4F5C\u53F0",
   "description": "\u8BBE\u7F6E\u4FA7\u8FB9\u680F\u540D\u79F0\u548C Logo\uFF0C\u6253\u9020\u5C5E\u4E8E\u4F60\u7684 Agent \u5DE5\u4F5C\u53F0\u3002",
   "preview": "\u5B9E\u65F6\u9884\u89C8",
@@ -1234,6 +1412,16 @@ var zh = {
   "lifecycle.restart.error": "\u91CD\u542F\u5931\u8D25\uFF1A"
 };
 var en = {
+  "help.title": "Help and guides",
+  "help.settings": "View usage guide",
+  "help.start": "Getting started",
+  "help.plugins": "Default plugins",
+  "help.develop": "Extend Y8",
+  "help.troubleshooting": "Troubleshooting",
+  "help.feedback": "Report a problem",
+  "help.external": "Guides open in your browser.",
+  "help.error": "Could not open the browser. Copy the address and open it manually.",
+  "help.address": "Help page address",
   "title": "My Workbench",
   "description": "Choose a sidebar name and logo for your personal Agent workbench.",
   "preview": "Live preview",
@@ -1353,6 +1541,12 @@ var PERSONAL_WORKBENCH_CSS = `
 .dpw-link-menu{position:fixed;z-index:2147483647;display:grid;min-width:180px;padding:6px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 30px rgb(0 0 0 / .24)}
 .dpw-link-menu[hidden]{display:none}.dpw-link-menu-item{padding:8px 10px;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;text-align:left;cursor:pointer}
 .dpw-link-menu-item:hover,.dpw-link-menu-item:focus-visible{outline:0;background:var(--dsw-alias-bg-layer-2)}.dpw-link-menu-status{max-width:320px;padding:8px 10px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.dpw-help{width:100%}.dpw-help-trigger{display:flex;align-items:center;gap:10px;min-height:36px;width:100%;padding:8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}
+.dpw-help-trigger:hover,.dpw-help-trigger:focus-visible{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
+.dpw-help-trigger:focus-visible,.dpw-help-panel button:focus-visible{outline:2px solid var(--dsw-alias-label-primary);outline-offset:2px}
+.dpw-help-icon{display:grid;place-items:center;flex:none;width:18px;height:18px;border:1.5px solid currentColor;border-radius:50%;font-size:12px;font-weight:650}
+.dpw-help-panel{position:fixed;z-index:1100;box-sizing:border-box;width:288px;max-width:calc(100vw - 16px);max-height:calc(100vh - 100px);overflow:auto;padding:8px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 8px 24px rgb(0 0 0 / .16)}
+.dpw-help-panel [role=menu]{display:grid}.dpw-help-panel p{margin:8px}.dpw-help-panel .dpw-hint{font-size:12px}.dpw-help-recovery{display:grid;gap:8px;border-top:1px solid var(--dsw-alias-border-l1);padding-top:8px}.dpw-help-recovery .dpw-input{font-size:12px}
 @media (max-width:720px){.dpw-fields{grid-template-columns:1fr}}
 `;
 function installPersonalWorkbenchStyles(ctx) {
@@ -1431,12 +1625,19 @@ function apply(ctx) {
   );
   installDesktopExternalLinks(ctx, ctx.locale.bind(SETTINGS_LOCALE_NAMESPACE));
   installPersonalBrandOccupants(ctx, scope);
+  ctx.slots.inject("sidebar.footer.action", () => ctx.slots.register({
+    name: "sidebar.footer.action",
+    id: "yourbuddy-help",
+    order: 20,
+    locale: SETTINGS_LOCALE_NAMESPACE,
+    inject: () => ({ readLocale: () => ctx.locale.getLocale().active })
+  }, HelpMenu));
   ctx.slots.inject("settings.general.item", () => ctx.slots.register({
     name: "settings.general.item",
     id: "personal-workbench",
     order: 20,
     locale: SETTINGS_LOCALE_NAMESPACE,
-    inject: () => ({ scope })
+    inject: () => ({ scope, readLocale: () => ctx.locale.getLocale().active })
   }, BrandSettingsRow));
   ctx.slots.inject("settings.general.item", () => ctx.slots.register({
     name: "settings.general.item",

@@ -58,10 +58,14 @@ export function apply(ctx: Context) {
 使用该覆盖层启动 Web UI：
 
 ```sh
-pnpm dsh web --patch ./scratch-plugin/cordis.yml
+pnpm dsh web --patch ./scratch-plugin/cordis.yml --no-open --port 0
 ```
 
-打开 `http://127.0.0.1:3080`。启动期间，终端会打印 `[hello-plugin] plugin loaded!`。
+打开终端打印的启动地址，包括其中的认证片段。启动期间，终端会打印 `[hello-plugin] plugin loaded!`。
+
+## 修改与停止
+
+修改插件中的问候语，使用 Ctrl+C 停止开发命令，再运行同一条命令。检查终端是否打印新的问候语。每次重启使用新打印的启动地址；端口 `0` 表示由系统分配可用端口。完成后停止开发命令。
 
 ## 自动清理
 

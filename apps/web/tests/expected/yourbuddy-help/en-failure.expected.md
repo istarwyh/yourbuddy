@@ -1,0 +1,11 @@
+- button "Help and guides" [expanded]
+- menu "Help and guides":
+  - menuitem "Getting started"
+  - menuitem "Default plugins"
+  - menuitem "Extend Y8"
+  - menuitem "Troubleshooting"
+  - menuitem "Report a problem"
+- paragraph: Guides open in your browser.
+- alert: Could not open the browser. Copy the address and open it manually.
+- textbox "Help page address": https://istarwyh.github.io/yourbuddy/en/docs/start/
+- button "Copy link address"

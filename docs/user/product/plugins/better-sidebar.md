@@ -2,7 +2,7 @@
 
 English | [中文](better-sidebar.zh.md)
 
-Application snapshot version: `0.17.1`. Source: [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar).
+Application snapshot version: `0.18.0`. Source: [omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar).
 
 ## Problem addressed
 

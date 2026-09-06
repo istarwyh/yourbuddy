@@ -2,7 +2,7 @@
 
 English | [中文](harbor-evolution.zh.md)
 
-Application snapshot version: `0.8.1`. Source: [istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving).
+Application snapshot version: `0.9.2`. Source: [istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving).
 
 ## Problem addressed
 
@@ -10,7 +10,7 @@ Users facing inconsistent Agent results can investigate completed sessions or us
 
 ## Usage
 
-Invoke the `evolve-agent-with-harbor` Skill from a conversation. Without a supplied dataset, preview recent completed sessions in the current directory and confirm before evaluation. With explicit tasks, identify four things: Dataset, Generator, Evaluator and criteria, and Optimizer. The workbench presents results, evidence, coverage, and comparisons; evaluation starts through explicit Agent / Skill operations.
+Without a dataset, open the Harbor tab and choose `Evaluate recent Sessions`. Review the preview of recent completed business sessions, the Evaluator and Judge, and estimated model requests. Confirm to start the background diagnosis and open its completed Job. The `evolve-agent-with-harbor` Skill provides the conversational entry; for explicit tasks, specify the Dataset, Generator, Evaluator and criteria, and Optimizer.
 
 ## Reason for default inclusion
 
@@ -27,3 +27,16 @@ Historical session diagnosis observes existing records without rerunning a Candi
 ## Credentials
 
 A Candidate can invoke the frozen Host model through a temporary Job capability. Reusable Codex OAuth or upstream API credentials are not copied into the Candidate. This does not mean model requests avoid the network.
+
+<a id="development-example"></a>
+## Development example: from a specialized need to a plugin
+
+Harbor Self Evolving is an independent project developed extensively and maintained by the Y8 maintainer. It brings task diagnosis and controlled evaluation into the everyday workbench, avoiding the need for every user to assemble evaluation commands and reports manually.
+
+| Component | Responsibility | Where users inspect it |
+|---|---|---|
+| DSH plugin | Register evaluation capabilities and workbench views | Results, evidence, and comparison reports |
+| Companion Skill | Guide task selection, prerequisite collection, and evaluation operations | Task descriptions and confirmation steps in the conversation |
+| Python Adapter | Connect the evaluation environment and the DSH Candidate | Runtime diagnostics, task output, and failure records |
+
+An extension can use this division of responsibilities: instructions guide the work, a plugin supplies runtime operations and UI, and an external program handles necessary specialized execution. A small plugin needs neither Python nor containers. Start with [your first plugin](../../develop/basic/index.md), then use the source link at the top of this page to explore Harbor. This page owns usage guidance rather than copying its development API.

@@ -15,6 +15,8 @@ Start with the failing operation and keep its diagnostic message.
 | A proxy test succeeds but requests still fail | Inspect both desktop and Host results; save, restart, and retest changed settings |
 | Harbor has no history | Use the exact directory containing completed business sessions, or supply explicit tasks |
 | An evaluation is unscored | Read evidence and coverage; insufficient evidence can cause legitimate abstention |
+| A help page does not open | Copy the address from Help and open it in a browser; check networking, since Help has no offline guide copy |
+| A development tutorial cannot find the plugin | Use the tutorial's absolute path and run the command from a prepared DSH source checkout |
 
 ## Startup and system prompts
 

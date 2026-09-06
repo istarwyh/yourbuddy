@@ -17,7 +17,7 @@ Open `http://localhost:4174/`. Prose edits trigger projection; Hugo refreshes ho
 
 ## Edit content
 
-Public prose lives in [docs/user/product/](user/product/index.md); each page maintains English, Chinese, and a translation record. Homepage blocks read [home-data/zh.json](user/product/home-data/zh.json) and [home-data/en.json](user/product/home-data/en.json) in that directory; these own the short homepage copy. Register new pages in [product-pages.json](../website/product-pages.json), keeping repository-relative links in prose. Theme configuration and styles live in [website/product/](../website/product/); build output is not committed.
+Product prose lives in [docs/user/product/](user/product/index.md); existing development tutorials remain under [docs/user/develop/](user/develop/basic/index.md). The publication manifest selects canonical pages within `docs/user/`, each with English, Chinese, and a translation record. Homepage blocks read [home-data/zh.json](user/product/home-data/zh.json) and [home-data/en.json](user/product/home-data/en.json) in that directory; these own the short homepage copy. Register new pages in [product-pages.json](../website/product-pages.json), keeping repository-relative links in prose. Theme configuration and styles live in [website/product/](../website/product/); build output is not committed.
 
 Homepage presentation uses [project partials](../website/product/layouts/_partials/yourbuddy/) and [project styles](../website/product/assets/scss/_styles_project.scss). Section data supplies homepage HTML; searchable guides and their Markdown exports come from canonical repository prose. Maintain both languages together. Keep examples labeled, align their instructions with the getting-started guide, and preserve light and dark readability. Do not edit the cached theme module.
 
@@ -30,7 +30,7 @@ pnpm doc-sync
 pnpm lint
 ```
 
-Website checks cover projection tests, a strict Hugo build, internal artifact links, page fragments, and assets. Run `pnpm docs:check` when the SDK's published sources or adapter also change. Product output lives in `website/product/.dist/`, including bilingual HTML, per-page Markdown, search indexes, `llms.txt`, full sections, and navigation JSON. The [website workflow](../.github/workflows/product-site.yml) uploads reviewable artifacts and publishes successful `master` builds to GitHub Pages.
+Website checks cover projection tests, a strict Hugo build, internal artifact links, page fragments, and assets. Run `pnpm docs:check` when the SDK's published sources or adapter also change. Nested sections publish HTML, Markdown, and print; the top-level section owns the full-text bundle including its descendants. Product output lives in `website/product/.dist/`, including bilingual HTML, per-page Markdown, search indexes, `llms.txt`, full sections, and navigation JSON. The [website workflow](../.github/workflows/product-site.yml) uploads reviewable artifacts and publishes successful `master` builds to GitHub Pages.
 
 Set `PRODUCT_SITE_BASE_URL` to the full deployment URL ending in a slash; subpaths participate in prose, navigation, and asset URLs. The default is local, so rebuild before publishing. The theme is pinned by [go.mod](../website/product/go.mod) and [go.sum](../website/product/go.sum); do not track the theme's main branch directly.
 

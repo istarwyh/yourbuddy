@@ -14,7 +14,7 @@ function parseManifest(input: unknown): ProductPage[] {
   }
   return input.pages.map((entry: unknown) => {
     if (typeof entry !== 'object' || entry === null
-      || !('source' in entry) || typeof entry.source !== 'string' || !/^docs\/user\/product\/(?:[a-z-]+\/)*[a-z-]+\.md$/.test(entry.source)
+      || !('source' in entry) || typeof entry.source !== 'string' || !/^docs\/user\/(?:[a-z-]+\/)*[a-z-]+\.md$/.test(entry.source)
       || !('route' in entry) || typeof entry.route !== 'string' || !/^(?:[a-z-]+(?:\/[a-z-]+)*)?$/.test(entry.route)
       || !('weight' in entry) || typeof entry.weight !== 'number' || !Number.isInteger(entry.weight) || entry.weight < 0
       || !('section' in entry) || typeof entry.section !== 'boolean') throw new Error('Invalid product page')
@@ -84,6 +84,8 @@ export function projectProductSite(repoRoot: string, baseURL: string): number {
         github_branch: ref,
         description: projected.split('\n\n')[0],
         ...(entry.route === '' ? {} : { type: 'docs', ...(entry.section ? { cascade: { type: 'docs' } } : {}) }),
+        // OINK reserves LLMSFULL for top-level sections; their bundle includes descendants.
+        ...(entry.section && entry.route.includes('/') ? { outputs: ['HTML', 'markdown', 'print'] } : {}),
         path_base_for_github_subdir: { from: '^.*\\.generated/content/.*$', to: page.source },
       }
       const remaining = projected.slice((metadata.description?.length ?? 0) + 2)
@@ -108,7 +110,7 @@ async function main(): Promise<void> {
   else args.push('--minify')
   const child = spawn(hugo, args, { cwd: resolve(root, 'website/product'), stdio: 'inherit' })
   const watchers = mode === 'dev' ? [
-    watch(resolve(root, 'docs/user/product'), { recursive: true }, changed),
+    watch(resolve(root, 'docs/user'), { recursive: true }, changed),
     watch(resolve(root, 'website/product-pages.json'), changed),
   ] : []
   let timer: ReturnType<typeof setTimeout> | undefined
