@@ -5,7 +5,7 @@
 - 发布标识：`yourbuddy-v0.3.0`
 - 产品渠道：YourBuddy 桌面应用
 - 归档状态：发布前验证已完成；公开产物验证待完成
-- 证据 Commit：源码验证在 `b48af1c4378e03bf0fe90e4d7bcaddb7f2e612ae` 上执行；发布后的 Commit 固定链接将在不移动 Tag 的前提下补充
+- 证据 Commit：最终发布准备在 `f619699d110db0c66f78f40d7c7ec14d099330b1` 上执行；发布后的 Commit 固定链接将在不移动 Tag 的前提下补充
 - 证据图集：不适用；本次执行未声称完成安装包 UI 旅程，也未制作截图
 - 证据下载：公开产物验证完成后，将附加独立的 `yourbuddy-v0.3.0-verification.zip`
 
@@ -45,15 +45,15 @@ YourBuddy 0.3.0 启用 YourBuddy 名称和 Y8 图标，把内置 Harness 更新�
 
 | 场景 | 状态 | 受测构建 | 环境 | 证据 |
 |---|---|---|---|---|
-| 发布准备与完整产品 Smoke | passed | `b48af1c4378e03bf0fe90e4d7bcaddb7f2e612ae` 的源码 Checkout | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地验证记录](evidence/local-validation.txt) |
+| 发布准备与完整产品 Smoke | passed | `f619699d110db0c66f78f40d7c7ec14d099330b1` 的源码 Checkout | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地验证记录](evidence/local-validation.txt) |
 | 静态、脚本与原生检查 | passed | 源码 Checkout | macOS 15.6.1 arm64、Rust 1.98.0 | [本地验证记录](evidence/local-validation.txt) |
 | GitHub Release 与安装后产物 | not verified | 正式发布产品 | GitHub Release 与干净的 macOS 安装环境 | 等待 Tag 流水线和独立下载 |
 
 ## 场景：发布准备与完整产品 Smoke
 
 - 状态：passed
-- 日期与时间：2026-09-06 13:15-13:20 UTC+08:00，Asia/Shanghai
-- 发布版本与 Commit：`yourbuddy-v0.3.0`、版本 `0.3.0`、源码 Commit `b48af1c4378e03bf0fe90e4d7bcaddb7f2e612ae`
+- 日期与时间：2026-09-06 13:15-13:40 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：`yourbuddy-v0.3.0`、版本 `0.3.0`、源码 Commit `f619699d110db0c66f78f40d7c7ec14d099330b1`
 - 受测构建：源码 Checkout，以及本地生成的内置 Harness、冻结离线 pnpm Store、受管理工具链与 Python Runtime
 - 环境：macOS 15.6.1 arm64；Node 22.22.2；pnpm 11.7.0；DSH 0.1.2-rc.1；为产品 Runtime 生成的 CPython 3.12.14；可访问 GitHub 和 npm
 - 证据来源：本次发布实测
@@ -62,7 +62,7 @@ YourBuddy 0.3.0 启用 YourBuddy 名称和 Y8 图标，把内置 Harness 更新�
 
 ### 操作步骤
 
-1. 在干净的隔离发布 Worktree 中运行 `pnpm --dir apps/desktop-tauri run prepare:release`。
+1. 在干净的隔离发布 Worktree 中运行 `pnpm --dir apps/desktop-tauri run prepare:release`；修正内置 Harbor 译文后，又在最终产品与 Release Note Commit 上重复执行。
 2. 让命令解析当前 DSH 与产品来源、构建 DSH、重新生成冻结产品 Lockfile 与离线 Store、装配 Python Runtime，并运行产品 Smoke。
 3. 提交重新生成的 Lockfile，并针对 `yourbuddy-v0.3.0` 重新运行发布版本检查。
 

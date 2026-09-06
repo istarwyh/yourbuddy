@@ -5,7 +5,7 @@ English | [中文](README.zh.md)
 - Release identifier: `yourbuddy-v0.3.0`
 - Product channel: YourBuddy desktop
 - Archive state: pre-publication validation complete; public artifact verification pending
-- Evidence commit: source validation ran at `b48af1c4378e03bf0fe90e4d7bcaddb7f2e612ae`; the post-publication commit permalink will be added without moving the tag
+- Evidence commit: final release preparation ran at `f619699d110db0c66f78f40d7c7ec14d099330b1`; the post-publication commit permalink will be added without moving the tag
 - Evidence gallery: not applicable; this run did not claim a packaged UI journey and did not create screenshots
 - Evidence download: a dedicated `yourbuddy-v0.3.0-verification.zip` will be attached after public artifact verification
 
@@ -45,15 +45,15 @@ The release target is macOS on Apple Silicon. YourBuddy uses its own application
 
 | Scenario | Status | Build under test | Environment | Evidence |
 |---|---|---|---|---|
-| Release preparation and assembled product smoke | passed | source checkout at `b48af1c4378e03bf0fe90e4d7bcaddb7f2e612ae` | macOS 15.6.1 arm64, Node 22.22.2, pnpm 11.7.0 | [Local validation record](evidence/local-validation.txt) |
+| Release preparation and assembled product smoke | passed | source checkout at `f619699d110db0c66f78f40d7c7ec14d099330b1` | macOS 15.6.1 arm64, Node 22.22.2, pnpm 11.7.0 | [Local validation record](evidence/local-validation.txt) |
 | Static, script, and native checks | passed | source checkout | macOS 15.6.1 arm64, Rust 1.98.0 | [Local validation record](evidence/local-validation.txt) |
 | GitHub Release and installed artifact | not verified | formally published product | GitHub Release and clean macOS installation | Pending tag workflow and independent download |
 
 ## Scenario: Release preparation and assembled product smoke
 
 - Status: passed
-- Date and time: 2026-09-06 13:15-13:20 UTC+08:00, Asia/Shanghai
-- Release and commit: `yourbuddy-v0.3.0`, version `0.3.0`, source commit `b48af1c4378e03bf0fe90e4d7bcaddb7f2e612ae`
+- Date and time: 2026-09-06 13:15-13:40 UTC+08:00, Asia/Shanghai
+- Release and commit: `yourbuddy-v0.3.0`, version `0.3.0`, source commit `f619699d110db0c66f78f40d7c7ec14d099330b1`
 - Build under test: source checkout with locally generated bundled Harness, frozen offline pnpm Store, managed toolchain, and Python runtime
 - Environment: macOS 15.6.1 arm64; Node 22.22.2; pnpm 11.7.0; DSH 0.1.2-rc.1; CPython 3.12.14 generated for the product runtime; network access to GitHub and npm
 - Evidence origin: this release run
@@ -62,7 +62,7 @@ The release target is macOS on Apple Silicon. YourBuddy uses its own application
 
 ### Steps
 
-1. Ran `pnpm --dir apps/desktop-tauri run prepare:release` from a clean isolated release worktree.
+1. Ran `pnpm --dir apps/desktop-tauri run prepare:release` from a clean isolated release worktree, then repeated it at the final product and release-note commit after correcting the bundled Harbor translations.
 2. Allowed the command to resolve current DSH and product sources, build DSH, regenerate the frozen product lockfile and offline Store, assemble the Python runtime, and run the product smoke.
 3. Committed the regenerated lockfile and reran the release version check for `yourbuddy-v0.3.0`.
 
