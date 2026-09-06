@@ -82,6 +82,12 @@ test('workspace install cleanup preserves the standalone offline Store', () => {
   }
 })
 
+test('workspace install cleanup accepts an absent bundle after an earlier preparation failure', () => {
+  const root = join(tmpdir(), `yourharness-missing-install-state-${process.pid}`)
+  rmSync(root, { recursive: true, force: true })
+  assert.doesNotThrow(() => { removeWorkspaceInstallState(root) })
+})
+
 test('offline install stays on the reviewed pnpm and committed lockfile', () => {
   assert.deepEqual(pinPnpmInvocationArgs(['install']), ['--pm-on-fail=ignore', 'install'])
   assert.deepEqual(frozenOfflineInstallArgs(), [

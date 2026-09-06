@@ -54,6 +54,7 @@ function runPnpm(args) {
 
 /** Remove pnpm install links while preserving the standalone offline Store. */
 export function removeWorkspaceInstallState(root = harnessRoot) {
+  if (!existsSync(root)) return
   const walk = current => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue

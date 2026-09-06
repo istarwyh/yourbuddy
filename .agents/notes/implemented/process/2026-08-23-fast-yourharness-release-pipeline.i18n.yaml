@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-08-23-fast-yourharness-release-pipeline.md
-2026-08-23-fast-yourharness-release-pipeline.md: db907d25fa41440a09536ecb93133c7d158f81a7
-2026-08-23-fast-yourharness-release-pipeline.zh.md: 6c0a76f3a821c6cb394db68b1a7dfb2c5c489f0a
+2026-08-23-fast-yourharness-release-pipeline.md: e064ac6e8d4aa140f57c2b05865419de34b2daa4
+2026-08-23-fast-yourharness-release-pipeline.zh.md: 60fdb94a0e0b3afc1e755b436472f6a7d2bb094a
