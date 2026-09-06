@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.2`
 - Product channel: YourBuddy desktop
-- Archive state: public product verification complete; verification download and live website verification pending
+- Archive state: public product verification and website deployment complete; verification download and live browser verification pending
 - Validated source commit: [`b1e9d36fca62e064526689a412727f6c5dcbeb06`](https://github.com/istarwyh/yourbuddy/commit/b1e9d36fca62e064526689a412727f6c5dcbeb06)
 - Evidence gallery: [source Web Help screenshots](screenshots/)
 - Evidence download: planned `yourbuddy-v0.3.2-verification.zip` on the public release after the post-publication record is complete
@@ -45,7 +45,7 @@ The desktop supports Apple Silicon on macOS 11 or later. Existing YourBuddy data
 | Desktop release helpers and Personal Workbench | passed after dependency-layout recovery | source checkout | macOS 15.6.1 arm64, synthetic fixtures | [Local record](evidence/local-validation.txt) |
 | Documentation and product website build | passed | source checkout | local Hugo Extended 0.165.0 | [Local record](evidence/local-validation.txt) |
 | Public DMG, updater, checksums, and stable channel | passed with known signing limitation | formally published product `yourbuddy-v0.3.2` | GitHub Release plus independent download, extraction, and DMG mount on macOS 15.6.1 arm64 | [Public artifact record](evidence/public-artifacts.txt) |
-| Live product website | not verified | deployed website | GitHub Pages | Pending publication |
+| Product website deployment | passed; live browser not verified | website source `0a6f32e70c...` | local Hugo Extended 0.165.0 plus GitHub Pages build/deploy; Chrome policy check unavailable | [Website deployment record](evidence/website-deployment.txt) |
 
 ## Scenario: Published macOS artifacts and updater
 
@@ -237,7 +237,7 @@ This verifies local source output only. It does not prove the GitHub Pages workf
 
 - Product publication status: published and independently verified at [YourBuddy 0.3.2](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2); the DMG, app updater archive, signature, checksums, immutable updater manifest, and stable updater channel are downloadable and match the recorded metadata.
 - Verification archive status: partial until the post-publication archive is committed and its downloadable verification ZIP is uploaded and extracted; source notes, two reviewed screenshots, local validation, and public artifact evidence are present.
-- Website synchronization status: local build verified; public content update, deployment, and live URL verification pending.
+- Website synchronization status: deployed from `0a6f32e70c9237b1fb245a738d0fa8406ff590fb` by [workflow 34030189025](https://github.com/istarwyh/yourbuddy/actions/runs/34030189025); local and CI site checks passed, but live browser verification is pending because the browser's admin-enforced policy check was unavailable twice.
 - Unverified scope: installed interactive Help, real browser launch from the installed app, automatic in-app update installation, copied-app private Host startup, real OAuth/model calls, enterprise proxy/CA, Windows, macOS Intel, Linux, Apple Developer signing, and notarization. Gatekeeper rejection is confirmed for the ad-hoc-signed build.
 
 ## Delivery checklist
@@ -254,6 +254,6 @@ This verifies local source output only. It does not prove the GitHub Pages workf
 - [ ] The downloadable evidence archive has been extracted and inspected.
 - [ ] The public release page links to the immutable evidence commit, gallery, and download.
 - [x] The actual DMG, updater files, checksums, metadata, and a copied installation bundle have been checked independently of CI; interactive launch remains explicitly unverified.
-- [ ] The product website has been synchronized and its bilingual live destinations verified.
+- [ ] The product website content has been synchronized and deployed; bilingual live destinations remain unverified because the browser security policy check was unavailable.
 - [x] Product publication, archive, website, and unverified scope are reported separately.
 - [x] Existing public tags and installers have not been moved or overwritten.

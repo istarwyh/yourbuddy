@@ -1,0 +1,50 @@
+YourBuddy 0.3.2 product website synchronization
+Date: 2026-09-06 19:22-19:27 UTC+08:00 (Asia/Shanghai)
+Release: yourbuddy-v0.3.2
+Website source commit: 0a6f32e70c9237b1fb245a738d0fa8406ff590fb
+Environment: macOS 15.6.1 arm64 local source build; GitHub-hosted GitHub Pages build and deploy jobs; Chrome browser verification attempt
+Build under test: local product-site projection and the GitHub Pages deployment workflow for the website source commit
+Evidence origin: this release run
+Data: public documentation only
+Model or service: GitHub Pages; no model provider
+
+Content synchronized
+- English and Chinese home pages report YourBuddy 0.3.2 availability for macOS Apple Silicon.
+- English and Chinese download pages link the exact 0.3.2 DMG, SHA256SUMS.txt, release page, and immutable public-artifact evidence commit.
+- English and Chinese release pages summarize 0.3.2 behavior, publication, known signing limitation, and unverified scope.
+- English and Chinese roadmap pages distinguish public installer availability from the unfinished real-account first-use journey.
+- English and Chinese Context Doctor pages report the bundled 0.7.2 snapshot.
+
+Local verification
+- `pnpm run doc-sync`: 32 passed, 0 failed, 0 skipped.
+- `HUGO_BIN=/private/tmp/yourbuddy-hugo-0.165.0/expanded/Payload/hugo PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/ pnpm run website:check`: 2 test files and 70 tests passed.
+- The product-site build projected 48 source pages and generated 59 Chinese and 57 English pages.
+- The verifier accepted links, assets, fragments, and source actions in 57 product HTML pages.
+
+Deployment
+- Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/34030189025
+- Build job: https://github.com/istarwyh/yourbuddy/actions/runs/34030189025/job/101478157917
+- Deploy job: https://github.com/istarwyh/yourbuddy/actions/runs/34030189025/job/101478312746
+- Workflow source: 0a6f32e70c9237b1fb245a738d0fa8406ff590fb
+- Build result: success; completed 2026-09-06T11:26:13Z.
+- Deploy result: success; completed 2026-09-06T11:26:25Z.
+- Expected public root: https://istarwyh.github.io/yourbuddy/
+
+Live-browser verification attempt
+1. Selected the configured Chrome browser through the approved browser-control path.
+2. Attempted to open https://istarwyh.github.io/yourbuddy/ after the Pages deploy job completed.
+3. Browser access was denied because its admin-enforced policy check was unavailable.
+4. Retried the same direct URL once; the same browser security failure occurred.
+5. Did not bypass the browser security control or substitute an indirect page fetch.
+
+Expected result
+- The deployed Chinese and English home, download, release, getting-started, plugin, development, troubleshooting, and feedback destinations are reachable and show the synchronized content.
+
+Actual result
+- Local source and GitHub Pages build/deploy checks passed.
+- Live page content was not observed because the browser security policy check was unavailable on both attempts.
+
+Status and unverified scope
+- Website synchronization status: deployed but live browser verification not completed.
+- The GitHub Pages workflow proves artifact deployment, not live content reachability from an end-user browser.
+- Every intended public URL and the external download links remain unverified in a live browser for this release run.
