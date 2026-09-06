@@ -4,10 +4,10 @@
 
 - 发布标识：`yourbuddy-v0.3.3`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：公开产物、Updater 元数据、认证启动与双语线上官网已独立核验；验证 ZIP 待完成
+- 归档状态：公开产物、Updater 元数据、认证启动、双语线上官网与可下载验证资料包已独立核验；正式窗口截图不可用
 - Release Tag Commit：[`06c56e060c6f255a1c49c8943f86b43311d730cd`](https://github.com/istarwyh/yourbuddy/commit/06c56e060c6f255a1c49c8943f86b43311d730cd)
 - 证据图集：正式安装包运行期间原生 UI 自动化失败，因此没有发布图片；下文保留该限制
-- 证据下载：等待发布 `yourbuddy-v0.3.3-verification.zip`
+- 证据下载：[`yourbuddy-v0.3.3-verification.zip`](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.3/yourbuddy-v0.3.3-verification.zip)
 
 ## 面向用户的发布说明
 
@@ -45,7 +45,7 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 | 打包 Runtime 与 CI 发布阻断项 | passed；保留一次 Windows 时序失败后，重跑时 18 个 CI Job 全部成功 | 源码 `86b620cd76...`、Node 24 原生可执行文件、安装后 Wheel、Chromium 与 PowerShell 7.6.5 | macOS 15.6.1 arm64 与 CI 载体矩阵 | [本地记录](evidence/local-validation.txt)与[公开产物记录](evidence/published-artifacts.txt) |
 | 公开安装包与更新通道 | 在声明限制内 passed；已检查公开字节、元数据、DMG 内容与认证启动 | 正式 `yourbuddy-v0.3.3` GitHub Release | macOS 15.6.1 arm64、GitHub Release、原生 Tauri App | [公开产物记录](evidence/published-artifacts.txt) |
 | 更新后的双语官网 | passed | 站点 Commit `14f254b0d5...` | GitHub Pages 与五个线上路由 | [公开产物记录](evidence/published-artifacts.txt) |
-| 验证 ZIP | not verified | 发布后交付 | GitHub Release | 待完成 |
+| 验证 ZIP | passed；已下载、解压并打开公开资产 | Commit `b216ee5850...` 的归档 | GitHub Release 与 macOS 兼容 ZIP | [公开产物记录](evidence/published-artifacts.txt) |
 
 ## 场景：安装版桌面认证
 
@@ -235,12 +235,49 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 本场景验证了已部署文案、HTTP 可用性、版本标识与 Release 目的地，不代表完成可视化浏览器验收、无障碍检查或通过官网 UI 下载并启动安装包。
 
+## 场景：可下载验证资料归档
+
+- 状态：passed
+- 日期与时间：2026-09-07 04:12-04:14 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：`yourbuddy-v0.3.3`；资料包内容来自 Commit `b216ee585024f229d8f36d5a376939f6a5ca1c9a`
+- 受测构建：从公开 GitHub Release 下载的 `yourbuddy-v0.3.3-verification.zip`，不是本地预检文件
+- 环境：公开 GitHub Release、macOS 15.6.1 arm64、Info-ZIP `unzip`
+- 证据来源：本次发布对公开资产的下载与解压
+- 数据：经过脱敏的发布说明与文本证据；不包含凭据、个人信息、私有业务内容或截图
+- 模型或服务：GitHub Release；未使用模型供应商
+
+### 操作步骤
+
+1. 从已提交的 `docs/releases/yourbuddy-v0.3.3/` 归档创建 ZIP，并在全新临时目录中预先解压。
+2. 把 ZIP 作为新增 Release 资产上传一次，不替换 Tag 或任何安装包资产。
+3. 把公开资产下载到另一个全新目录，运行完整压缩数据检查，解压并打开两种语言的入口文件。
+4. 查询公开 Release 资产列表，把六个摘要与上传前的安装包和 Updater 记录比较。
+
+### 预期结果
+
+公开 ZIP 可读取，包含双语发布说明与两份证据记录，并且此前发布的每个资产字节都保持不变。
+
+### 实际结果
+
+公开 ZIP 大小为 28,949 字节，SHA-256 为 `0f0269833ac2e24523375395210eeedcd3c4e8c84cbcf33daae1ff44b6b15043`。七个条目全部通过 `unzip -t`；双语发布说明和两份证据文件均已解压并读取。原有五个公开资产的摘要保持不变。
+
+### 证据
+
+- 操作前：Release 包含上文记录的五个安装与 Updater 资产，没有验证 ZIP。
+- 执行中：本地预检归档与独立下载的公开文件得到相同 SHA-256。
+- 结果：公开 URL、大小、摘要、包含路径与解压结果保留在[公开产物记录](evidence/published-artifacts.txt)中。
+- 失败与恢复：上传、下载、完整性检查与解压均未失败。
+
+### 范围限制
+
+ZIP 打包的是 Commit `b216ee585024f229d8f36d5a376939f6a5ca1c9a` 时的归档；按设计，它无法包含随后写入的这段自验证说明。仓库中的发布归档仍是当前权威记录。
+
 ## 交付状态
 
 - 产品发布状态：已发布并完成独立检查；`yourbuddy-v0.3.3` 提供 macOS arm64 DMG、带签名的 Updater 归档与签名、校验和及版本 Manifest，稳定通道提供相同的 0.3.3 Manifest。
-- 验证资料归档状态：部分完成；已有本地、CI、公开产物、DMG、认证启动与线上官网证据。验证 ZIP、重新解压检查与正式窗口截图待完成；截图被失败的原生 UI 自动化服务阻断。
+- 验证资料归档状态：在已记录的证据范围内完成；公开 ZIP 已下载、完成完整性检查、解压并打开。原生 UI 自动化服务失败导致正式窗口截图仍不可用，该项如实保留为未验证的可视化范围，没有用合成图片替代。
 - 站点同步状态：已部署并检查；工作流 `34057017123` 发布 Commit `14f254b0d57905f399cc39d649dee3d128081eca`，五个双语公开路由返回 HTTP 200 并提供 0.3.3 发布旅程。
-- 未验证范围：正式二进制可见渲染、Finder 安装、从旧版本执行 Updater 安装、托盘正常退出、验证 ZIP、官网可视化验收、Windows 桌面、WSL、Intel macOS、OAuth、真实模型调用、企业代理/CA 流量、Apple Developer 签名与公证。
+- 未验证范围：正式二进制可见渲染、Finder 安装、从旧版本执行 Updater 安装、托盘正常退出、官网可视化验收、Windows 桌面、WSL、Intel macOS、OAuth、真实模型调用、企业代理/CA 流量、Apple Developer 签名与公证。
 
 ## 交付清单
 
@@ -253,7 +290,7 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 - [x] 发布形态 macOS Runtime 与全新环境安装后 Wheel 黑盒路径已在本地通过；四个载体目标均在最终 CI 中通过。
 - [x] 只跟踪经过脱敏的文本证据；未包含凭据、个人信息、私有内容或敏感原图。
 - [x] 已在双语版本索引添加发布条目，并在本地检查相对链接。
-- [ ] 已下载、解压并成功打开公开验证 ZIP。
+- [x] 已下载公开验证 ZIP，完成完整性检查、解压并成功打开。
 - [ ] 公开发布页固定链接到不可变证据 Commit、图集和下载地址。
 - [x] 已独立于 CI 与临时工作流产物检查真实 0.3.3 产品目的地。
 - [x] 已记录发布文件名、版本、Hash、Updater 元数据和安装后行为。

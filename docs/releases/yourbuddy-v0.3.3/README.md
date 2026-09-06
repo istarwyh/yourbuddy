@@ -4,10 +4,10 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.3`
 - Product channel: YourBuddy desktop
-- Archive state: public assets, updater metadata, authenticated boot, and live bilingual website independently verified; verification ZIP pending
+- Archive state: public assets, updater metadata, authenticated boot, live bilingual website, and downloadable verification bundle independently verified; formal-window screenshot unavailable
 - Release tag commit: [`06c56e060c6f255a1c49c8943f86b43311d730cd`](https://github.com/istarwyh/yourbuddy/commit/06c56e060c6f255a1c49c8943f86b43311d730cd)
 - Evidence gallery: no image is published because native UI automation failed during the formal installer run; the limitation is retained below
-- Evidence download: pending publication of `yourbuddy-v0.3.3-verification.zip`
+- Evidence download: [`yourbuddy-v0.3.3-verification.zip`](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.3/yourbuddy-v0.3.3-verification.zip)
 
 ## User release notes
 
@@ -45,7 +45,7 @@ This release targets Apple Silicon on macOS 11 or later and requires no data mig
 | Packaged Runtime and CI release blockers | passed; 18 CI jobs succeeded after one retained Windows timing-failure attempt and clean rerun | source `86b620cd76...`, Node 24 native executables, installed wheels, Chromium, PowerShell 7.6.5 | macOS 15.6.1 arm64 plus CI carrier matrix | [Local record](evidence/local-validation.txt) and [published record](evidence/published-artifacts.txt) |
 | Public installer and updater channel | passed within stated limits; public bytes, metadata, DMG contents, and authenticated boot checked | formal `yourbuddy-v0.3.3` GitHub Release | macOS 15.6.1 arm64, GitHub Release, native Tauri app | [Published record](evidence/published-artifacts.txt) |
 | Updated bilingual website | passed | site commit `14f254b0d5...` | GitHub Pages and five live routes | [Published record](evidence/published-artifacts.txt) |
-| Verification ZIP | not verified | post-publication delivery | GitHub Release | pending |
+| Verification ZIP | passed; public asset downloaded, extracted, and opened | archive at `b216ee5850...` | GitHub Release and macOS Archive Utility-compatible ZIP | [Published record](evidence/published-artifacts.txt) |
 
 ## Scenario: Installed desktop authentication
 
@@ -235,12 +235,49 @@ Workflow `34057017123` completed its build and deployment jobs successfully. All
 
 This verifies deployed text, HTTP availability, version markers, and release destinations. It does not constitute visual browser acceptance, accessibility testing, or installer download and launch through the website UI.
 
+## Scenario: Downloadable verification archive
+
+- Status: passed
+- Date and time: 2026-09-07 04:12-04:14 UTC+08:00, Asia/Shanghai
+- Release and commit: `yourbuddy-v0.3.3`; bundled archive content from commit `b216ee585024f229d8f36d5a376939f6a5ca1c9a`
+- Build under test: `yourbuddy-v0.3.3-verification.zip` downloaded from the public GitHub Release, not the local preflight file
+- Environment: public GitHub Release, macOS 15.6.1 arm64, Info-ZIP `unzip`
+- Evidence origin: this release run's public asset download and extraction
+- Data: sanitized release notes and text evidence; no credentials, personal information, private business content, or screenshots
+- Model or service: GitHub Release; no model provider
+
+### Steps
+
+1. Created a ZIP from the committed `docs/releases/yourbuddy-v0.3.3/` archive and preflight-extracted it into a new temporary directory.
+2. Uploaded the ZIP once as a new Release asset without replacing the tag or any installer asset.
+3. Downloaded the public asset into another new directory, ran a full compressed-data test, extracted it, and opened both language entry files.
+4. Queried the public Release asset list and compared the six digests with the pre-upload installer and updater record.
+
+### Expected
+
+The public ZIP is readable, contains both release-note languages and the two evidence records, and leaves every previously published asset byte unchanged.
+
+### Actual
+
+The public ZIP is 28,949 bytes with SHA-256 `0f0269833ac2e24523375395210eeedcd3c4e8c84cbcf33daae1ff44b6b15043`. Its seven entries passed `unzip -t`; both release-note files and both evidence files were extracted and read. The five existing public asset digests remained unchanged.
+
+### Evidence
+
+- Before: the Release contained the five installer and updater assets recorded above and no verification ZIP.
+- In progress: the local preflight archive and the independently downloaded public file produced the same SHA-256.
+- Result: the public URL, size, digest, contained paths, and extraction result are retained in the [published record](evidence/published-artifacts.txt).
+- Failure and recovery: no upload, download, integrity, or extraction failure occurred.
+
+### Scope limits
+
+The ZIP packages the archive at commit `b216ee585024f229d8f36d5a376939f6a5ca1c9a`; by design it cannot contain this later self-verification paragraph. The repository archive remains the authoritative current record.
+
 ## Delivery status
 
 - Product publication status: published and independently checked; `yourbuddy-v0.3.3` provides the macOS arm64 DMG, signed updater archive and signature, checksum list, and versioned manifest, while the stable channel advertises the same 0.3.3 manifest.
-- Verification archive status: partial; local, CI, public-asset, DMG, authenticated-boot, and live-website evidence are present. The verification ZIP, re-extraction check, and published-window screenshot remain pending; the screenshot is blocked by the failed native UI automation service.
+- Verification archive status: complete within the recorded evidence limits; the public ZIP was downloaded, integrity-tested, extracted, and opened. A formal-window screenshot remains unavailable because the native UI automation service failed, and this is retained as an unverified visual scope rather than replaced with a synthetic image.
 - Website synchronization status: deployed and checked; workflow `34057017123` published commit `14f254b0d57905f399cc39d649dee3d128081eca`, and five bilingual public routes returned HTTP 200 with the 0.3.3 release journey.
-- Unverified scope: visible rendering of the formal binary, Finder installation, updater installation from an older version, normal tray shutdown, verification ZIP, visual website acceptance, Windows desktop, WSL, Intel macOS, OAuth, real model calls, enterprise proxy/CA traffic, Apple Developer signing, and notarization.
+- Unverified scope: visible rendering of the formal binary, Finder installation, updater installation from an older version, normal tray shutdown, visual website acceptance, Windows desktop, WSL, Intel macOS, OAuth, real model calls, enterprise proxy/CA traffic, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -253,7 +290,7 @@ This verifies deployed text, HTTP availability, version markers, and release des
 - [x] The release-shaped macOS Runtime and clean installed-wheel black-box path passed locally; all four carrier targets passed in final CI.
 - [x] Only sanitized text evidence is tracked; credentials, personal information, private content, and sensitive originals are absent.
 - [x] The release entry was added to the bilingual version index and relative links were checked locally.
-- [ ] A public verification ZIP has been downloaded, extracted, and opened successfully.
+- [x] A public verification ZIP has been downloaded, integrity-tested, extracted, and opened successfully.
 - [ ] The public release page links to the immutable evidence commit, gallery, and download.
 - [x] The actual 0.3.3 product destination has been checked independently of CI and temporary workflow artifacts.
 - [x] Published filenames, versions, hashes, updater metadata, and installed behavior have been recorded.

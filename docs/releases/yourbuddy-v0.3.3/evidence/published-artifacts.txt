@@ -60,3 +60,14 @@ Post-publication website
 - https://istarwyh.github.io/yourbuddy/en/download/ returned HTTP 200, displayed 0.3.3, and linked to https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3.
 - An initial shell probe stopped before requesting a page because it assigned zsh's read-only status variable. The corrected probe used http_code and completed all five public requests.
 - These requests checked deployed text and link destinations, not visual browser rendering, accessibility, or installer download and launch through the website UI.
+
+Public verification bundle
+
+- Date: 2026-09-07 04:12-04:14 UTC+08:00 (Asia/Shanghai).
+- Bundle source commit: b216ee585024f229d8f36d5a376939f6a5ca1c9a.
+- yourbuddy-v0.3.3-verification.zip: 28,949 bytes; SHA-256 0f0269833ac2e24523375395210eeedcd3c4e8c84cbcf33daae1ff44b6b15043.
+- The bundle was preflight-extracted before upload, then uploaded once as a new asset without clobbering the tag or an existing file.
+- The public Release asset was downloaded into a separate temporary directory. Its SHA-256 matched the preflight file, all seven archive entries passed unzip -t, and both language entry files were read from a separate extracted directory.
+- The bundle contains README.md, README.zh.md, README.i18n.yaml, evidence/local-validation.txt, and evidence/published-artifacts.txt beneath docs/releases/yourbuddy-v0.3.3/.
+- After upload, the five existing Release asset sizes and SHA-256 digests were unchanged from the record above.
+- The bundle packages the archive at b216ee585024f229d8f36d5a376939f6a5ca1c9a and therefore does not recursively include this later public-bundle verification result. The repository archive is the current record.
