@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing yourharness-v* tag to rebuild and publish
+        description: Existing unpublished yourharness-v* tag to build after a failed run
         required: true
         default: yourharness-v0.3.0
 
@@ -33,6 +33,16 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Refuse to replace a published version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "GitHub Release $RELEASE_TAG already exists; publish a new version instead of replacing its assets." >&2
+            exit 1
+          fi
 
       - uses: pnpm/action-setup@v4
         with:
@@ -159,12 +169,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" release-assets/* --clobber
-            gh release edit "$RELEASE_TAG" --title "YourHarness ${RELEASE_TAG#yourharness-v}" --notes-file apps/desktop-tauri/release-notes.md --latest
-          else
-            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "YourHarness ${RELEASE_TAG#yourharness-v}" --notes-file apps/desktop-tauri/release-notes.md --latest
-          fi
+          gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "YourHarness ${RELEASE_TAG#yourharness-v}" --notes-file apps/desktop-tauri/release-notes.md --latest
 
           if gh release view yourharness-updater >/dev/null 2>&1; then
             gh release upload yourharness-updater release-assets/latest.json --clobber

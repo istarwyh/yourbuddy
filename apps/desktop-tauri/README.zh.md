@@ -53,7 +53,7 @@ DSH 策略选择最高的官方正式 Release；仅在没有正式 Release 时�
 
 默认要求受管理的产品路径保持干净。只有开发者已经检查准备由事务保留或替换的本地产品修改时，才显式使用 `pnpm --dir apps/desktop-tauri run prepare:release -- --allow-dirty`；它绝不会允许在脏 Worktree 中合并上游 DSH。成功后，DSH Merge、刷新的快照与 Lockfile 会留给人工检查并提交；`DSH_UPSTREAM.json` 记录官方 DSH Tag 与 Commit，每个 `YOURHARNESS_UPSTREAM.json` 记录外部组件的精确 Revision、归档 Hash 与 Tree Hash，生成的 `.bundle-manifest.json` 则记录这些输入与整个 Bundle 的 Hash。后续任何准备步骤失败都会中止由该流程创建的 DSH Merge，并还原受管理的产品输入。
 
-Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改上游输入。新推送的 Tag 会解析 DSH 策略；已提交的源码、来源记录或祖先关系过期时拒绝发布。针对已有 Tag 的手工 Workflow Dispatch 会跳过这项实时新鲜度检查，只消费该 Tag 已提交的快照与冻结 Lockfile，因此后续 npm 或 GitHub 变化不会破坏旧 Release 的可复现构建。
+Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改上游输入。新推送的 Tag 会解析 DSH 策略；已提交的源码、来源记录或祖先关系过期时拒绝发布。手工 Workflow Dispatch 只用于在失败后重试尚未发布的已有 Tag；它会跳过实时新鲜度检查，并只消费该 Tag 已提交的快照与冻结 Lockfile。若该 Tag 已经存在 GitHub Release，流水线会拒绝继续，因此修正已发布字节时必须发布新版本，不能替换安装包。
 
 ## 命令
 
