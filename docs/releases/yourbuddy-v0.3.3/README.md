@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.3`
 - Product channel: YourBuddy desktop
-- Archive state: public assets, updater metadata, and authenticated boot independently verified; website publication and verification ZIP pending
+- Archive state: public assets, updater metadata, authenticated boot, and live bilingual website independently verified; verification ZIP pending
 - Release tag commit: [`06c56e060c6f255a1c49c8943f86b43311d730cd`](https://github.com/istarwyh/yourbuddy/commit/06c56e060c6f255a1c49c8943f86b43311d730cd)
 - Evidence gallery: no image is published because native UI automation failed during the formal installer run; the limitation is retained below
 - Evidence download: pending publication of `yourbuddy-v0.3.3-verification.zip`
@@ -44,7 +44,8 @@ This release targets Apple Silicon on macOS 11 or later and requires no data mig
 | Version, updater, Rust, desktop, documentation, and website checks | passed | source `07b2440f5d...` | macOS 15.6.1 arm64, Rust 1.98.0, Hugo Extended 0.165.0 | [Local record](evidence/local-validation.txt) |
 | Packaged Runtime and CI release blockers | passed; 18 CI jobs succeeded after one retained Windows timing-failure attempt and clean rerun | source `86b620cd76...`, Node 24 native executables, installed wheels, Chromium, PowerShell 7.6.5 | macOS 15.6.1 arm64 plus CI carrier matrix | [Local record](evidence/local-validation.txt) and [published record](evidence/published-artifacts.txt) |
 | Public installer and updater channel | passed within stated limits; public bytes, metadata, DMG contents, and authenticated boot checked | formal `yourbuddy-v0.3.3` GitHub Release | macOS 15.6.1 arm64, GitHub Release, native Tauri app | [Published record](evidence/published-artifacts.txt) |
-| Verification ZIP and updated website | not verified | post-publication delivery | GitHub Release and Pages | pending |
+| Updated bilingual website | passed | site commit `14f254b0d5...` | GitHub Pages and five live routes | [Published record](evidence/published-artifacts.txt) |
+| Verification ZIP | not verified | post-publication delivery | GitHub Release | pending |
 
 ## Scenario: Installed desktop authentication
 
@@ -198,12 +199,48 @@ The public Release contains the DMG, updater archive, updater signature, checksu
 
 The checks do not validate visual rendering for the formal binary, Finder copy into Applications, a signed update from an older installation, normal tray shutdown, OAuth, real model traffic, enterprise proxy/CA traffic, Windows, Linux, Intel macOS, Apple Developer signing, or notarization. The post-publication website and verification ZIP are completed separately.
 
+## Scenario: Post-publication website
+
+- Status: passed
+- Date and time: 2026-09-07 04:09-04:10 UTC+08:00, Asia/Shanghai
+- Release and commit: `yourbuddy-v0.3.3`; website content commit `14f254b0d57905f399cc39d649dee3d128081eca`
+- Build under test: GitHub Pages deployment from the public `master` branch, not the local Hugo output
+- Environment: GitHub Pages workflow and public HTTPS routes
+- Evidence origin: workflow run `34057017123` and this release run's direct requests to the deployed site
+- Data: public release copy and links; no account or user data
+- Model or service: GitHub Pages and the public GitHub Release; no model provider
+
+### Steps
+
+1. Waited for the `YourBuddy website` workflow to build and deploy commit `14f254b0d57905f399cc39d649dee3d128081eca`.
+2. Opened the Chinese and English home pages, both download pages, and the Chinese release-status page over public HTTPS.
+3. Checked every response status, the displayed 0.3.3 version, and the release destination on the download and release-status pages.
+
+### Expected
+
+The live bilingual website advertises 0.3.3, exposes the public release journey, and links to the immutable `yourbuddy-v0.3.3` release rather than candidate copy.
+
+### Actual
+
+Workflow `34057017123` completed its build and deployment jobs successfully. All five inspected routes returned HTTP 200; the home and download pages displayed 0.3.3, and the download and release-status pages linked to the public 0.3.3 release.
+
+### Evidence
+
+- Before: the previous Pages deployment still described 0.3.3 as a candidate.
+- In progress: the build ran the repository website check before uploading its Pages artifact; deployment completed without replacing the release tag or installer.
+- Result: workflow and route details are retained in the [published record](evidence/published-artifacts.txt).
+- Failure and recovery: an initial local shell probe used zsh's read-only `status` variable and stopped before requesting a page; the corrected probe used a non-reserved variable and completed all five public requests.
+
+### Scope limits
+
+This verifies deployed text, HTTP availability, version markers, and release destinations. It does not constitute visual browser acceptance, accessibility testing, or installer download and launch through the website UI.
+
 ## Delivery status
 
 - Product publication status: published and independently checked; `yourbuddy-v0.3.3` provides the macOS arm64 DMG, signed updater archive and signature, checksum list, and versioned manifest, while the stable channel advertises the same 0.3.3 manifest.
-- Verification archive status: partial; local, CI, public-asset, DMG, and authenticated-boot evidence are present. The verification ZIP, re-extraction check, and published-window screenshot remain pending; the screenshot is blocked by the failed native UI automation service.
-- Website synchronization status: pending; the prior master deployment succeeded with candidate copy, and the post-publication 0.3.3 availability update is prepared but not yet deployed or opened.
-- Unverified scope: visible rendering of the formal binary, Finder installation, updater installation from an older version, normal tray shutdown, verification ZIP, updated live website, Windows desktop, WSL, Intel macOS, OAuth, real model calls, enterprise proxy/CA traffic, Apple Developer signing, and notarization.
+- Verification archive status: partial; local, CI, public-asset, DMG, authenticated-boot, and live-website evidence are present. The verification ZIP, re-extraction check, and published-window screenshot remain pending; the screenshot is blocked by the failed native UI automation service.
+- Website synchronization status: deployed and checked; workflow `34057017123` published commit `14f254b0d57905f399cc39d649dee3d128081eca`, and five bilingual public routes returned HTTP 200 with the 0.3.3 release journey.
+- Unverified scope: visible rendering of the formal binary, Finder installation, updater installation from an older version, normal tray shutdown, verification ZIP, visual website acceptance, Windows desktop, WSL, Intel macOS, OAuth, real model calls, enterprise proxy/CA traffic, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -220,6 +257,6 @@ The checks do not validate visual rendering for the formal binary, Finder copy i
 - [ ] The public release page links to the immutable evidence commit, gallery, and download.
 - [x] The actual 0.3.3 product destination has been checked independently of CI and temporary workflow artifacts.
 - [x] Published filenames, versions, hashes, updater metadata, and installed behavior have been recorded.
-- [ ] The bilingual product website has been deployed and its live download journey verified.
+- [x] The bilingual product website has been deployed and its live version and release-link journey verified.
 - [x] Product publication, archive, website, and unverified scope are reported separately.
 - [x] Existing public tags and installers have not been moved or overwritten.

@@ -4,7 +4,7 @@
 
 - 发布标识：`yourbuddy-v0.3.3`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：公开产物、Updater 元数据与认证启动已独立核验；官网发布与验证 ZIP 待完成
+- 归档状态：公开产物、Updater 元数据、认证启动与双语线上官网已独立核验；验证 ZIP 待完成
 - Release Tag Commit：[`06c56e060c6f255a1c49c8943f86b43311d730cd`](https://github.com/istarwyh/yourbuddy/commit/06c56e060c6f255a1c49c8943f86b43311d730cd)
 - 证据图集：正式安装包运行期间原生 UI 自动化失败，因此没有发布图片；下文保留该限制
 - 证据下载：等待发布 `yourbuddy-v0.3.3-verification.zip`
@@ -44,7 +44,8 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 | 版本、Updater、Rust、桌面、文档与官网检查 | passed | 源码 `07b2440f5d...` | macOS 15.6.1 arm64、Rust 1.98.0、Hugo Extended 0.165.0 | [本地记录](evidence/local-validation.txt) |
 | 打包 Runtime 与 CI 发布阻断项 | passed；保留一次 Windows 时序失败后，重跑时 18 个 CI Job 全部成功 | 源码 `86b620cd76...`、Node 24 原生可执行文件、安装后 Wheel、Chromium 与 PowerShell 7.6.5 | macOS 15.6.1 arm64 与 CI 载体矩阵 | [本地记录](evidence/local-validation.txt)与[公开产物记录](evidence/published-artifacts.txt) |
 | 公开安装包与更新通道 | 在声明限制内 passed；已检查公开字节、元数据、DMG 内容与认证启动 | 正式 `yourbuddy-v0.3.3` GitHub Release | macOS 15.6.1 arm64、GitHub Release、原生 Tauri App | [公开产物记录](evidence/published-artifacts.txt) |
-| 验证 ZIP 与更新后的官网 | not verified | 发布后交付 | GitHub Release 与 Pages | 待完成 |
+| 更新后的双语官网 | passed | 站点 Commit `14f254b0d5...` | GitHub Pages 与五个线上路由 | [公开产物记录](evidence/published-artifacts.txt) |
+| 验证 ZIP | not verified | 发布后交付 | GitHub Release | 待完成 |
 
 ## 场景：安装版桌面认证
 
@@ -198,12 +199,48 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 这些检查不验证正式二进制的可见渲染、Finder 复制到 Applications、从旧安装版执行带签名更新、托盘正常退出、OAuth、真实模型流量、企业代理/CA 流量、Windows、Linux、Intel macOS、Apple Developer 签名或公证。发布后官网与验证 ZIP 单独完成。
 
+## 场景：发布后官网
+
+- 状态：passed
+- 日期与时间：2026-09-07 04:09-04:10 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：`yourbuddy-v0.3.3`；站点内容 Commit `14f254b0d57905f399cc39d649dee3d128081eca`
+- 受测构建：从公开 `master` 分支部署的 GitHub Pages，而不是本地 Hugo 输出
+- 环境：GitHub Pages 工作流与公开 HTTPS 路由
+- 证据来源：工作流 `34057017123` 与本次发布对已部署站点的直接请求
+- 数据：公开发布文案与链接；不包含账号或用户数据
+- 模型或服务：GitHub Pages 与公开 GitHub Release；未使用模型供应商
+
+### 操作步骤
+
+1. 等待 `YourBuddy website` 工作流构建并部署 Commit `14f254b0d57905f399cc39d649dee3d128081eca`。
+2. 通过公开 HTTPS 打开中文与英文首页、两种语言的下载页以及中文发行状态页。
+3. 检查每个响应状态、展示的 0.3.3 版本，以及下载页和发行状态页的 Release 目的地。
+
+### 预期结果
+
+线上双语官网展示 0.3.3，提供公开发布旅程，并链接到不可变的 `yourbuddy-v0.3.3` Release，而不是候选文案。
+
+### 实际结果
+
+工作流 `34057017123` 的构建与部署 Job 均成功。检查的五个路由全部返回 HTTP 200；首页与下载页展示 0.3.3，下载页与发行状态页链接到公开的 0.3.3 Release。
+
+### 证据
+
+- 操作前：此前 Pages 部署仍把 0.3.3 描述为候选版本。
+- 执行中：工作流在上传 Pages 制品前运行仓库官网检查；部署过程没有覆盖 Release Tag 或安装包。
+- 结果：工作流与路由详情保留在[公开产物记录](evidence/published-artifacts.txt)中。
+- 失败与恢复：第一次本地 Shell 探针误用了 zsh 的只读变量 `status`，在发出页面请求前停止；改用非保留变量后完成全部五个公开请求。
+
+### 范围限制
+
+本场景验证了已部署文案、HTTP 可用性、版本标识与 Release 目的地，不代表完成可视化浏览器验收、无障碍检查或通过官网 UI 下载并启动安装包。
+
 ## 交付状态
 
 - 产品发布状态：已发布并完成独立检查；`yourbuddy-v0.3.3` 提供 macOS arm64 DMG、带签名的 Updater 归档与签名、校验和及版本 Manifest，稳定通道提供相同的 0.3.3 Manifest。
-- 验证资料归档状态：部分完成；已有本地、CI、公开产物、DMG 与认证启动证据。验证 ZIP、重新解压检查与正式窗口截图待完成；截图被失败的原生 UI 自动化服务阻断。
-- 站点同步状态：待同步；此前 master 部署成功但仍是候选说明，发布后的 0.3.3 可用性更新已准备，尚未部署和打开检查。
-- 未验证范围：正式二进制可见渲染、Finder 安装、从旧版本执行 Updater 安装、托盘正常退出、验证 ZIP、更新后的线上官网、Windows 桌面、WSL、Intel macOS、OAuth、真实模型调用、企业代理/CA 流量、Apple Developer 签名与公证。
+- 验证资料归档状态：部分完成；已有本地、CI、公开产物、DMG、认证启动与线上官网证据。验证 ZIP、重新解压检查与正式窗口截图待完成；截图被失败的原生 UI 自动化服务阻断。
+- 站点同步状态：已部署并检查；工作流 `34057017123` 发布 Commit `14f254b0d57905f399cc39d649dee3d128081eca`，五个双语公开路由返回 HTTP 200 并提供 0.3.3 发布旅程。
+- 未验证范围：正式二进制可见渲染、Finder 安装、从旧版本执行 Updater 安装、托盘正常退出、验证 ZIP、官网可视化验收、Windows 桌面、WSL、Intel macOS、OAuth、真实模型调用、企业代理/CA 流量、Apple Developer 签名与公证。
 
 ## 交付清单
 
@@ -220,6 +257,6 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 - [ ] 公开发布页固定链接到不可变证据 Commit、图集和下载地址。
 - [x] 已独立于 CI 与临时工作流产物检查真实 0.3.3 产品目的地。
 - [x] 已记录发布文件名、版本、Hash、Updater 元数据和安装后行为。
-- [ ] 双语产品官网已经部署并完成线上下载旅程核验。
+- [x] 双语产品官网已经部署并完成线上版本与 Release 链接旅程核验。
 - [x] 分别报告产品发布、归档、官网与未验证范围。
 - [x] 未移动或覆盖现有公开 Tag 与安装包。

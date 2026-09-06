@@ -46,4 +46,17 @@ Publication boundary
 
 - These checks validate the publicly downloadable macOS arm64 files, their hashes and metadata, and native authenticated startup through boot completion.
 - They do not validate a visual screenshot of the published window, installation through Finder into Applications, signed-updater installation from an older version, OAuth, a real model provider, enterprise proxy/CA traffic, Windows, Linux, Intel macOS, Apple Developer signing, or notarization.
-- Website availability is recorded separately after the post-publication content commit deploys and its live links are opened.
+- Website availability is recorded separately below.
+
+Post-publication website
+
+- Date: 2026-09-07 04:09-04:10 UTC+08:00 (Asia/Shanghai).
+- Website content commit: 14f254b0d57905f399cc39d649dee3d128081eca.
+- YourBuddy website workflow 34057017123 completed successfully: the build job ran the repository website check, and the deploy job published the Pages artifact.
+- https://istarwyh.github.io/yourbuddy/ returned HTTP 200 and displayed 0.3.3.
+- https://istarwyh.github.io/yourbuddy/download/ returned HTTP 200, displayed 0.3.3, and linked to https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3.
+- https://istarwyh.github.io/yourbuddy/releases/ returned HTTP 200, displayed 0.3.3, and linked to https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3.
+- https://istarwyh.github.io/yourbuddy/en/ returned HTTP 200 and displayed 0.3.3.
+- https://istarwyh.github.io/yourbuddy/en/download/ returned HTTP 200, displayed 0.3.3, and linked to https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3.
+- An initial shell probe stopped before requesting a page because it assigned zsh's read-only status variable. The corrected probe used http_code and completed all five public requests.
+- These requests checked deployed text and link destinations, not visual browser rendering, accessibility, or installer download and launch through the website UI.
