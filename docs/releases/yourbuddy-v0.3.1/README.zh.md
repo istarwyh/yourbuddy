@@ -5,7 +5,7 @@
 - 发布标识：`yourbuddy-v0.3.1`
 - 产品渠道：YourBuddy 桌面应用
 - 归档状态：发布前验证完成；公开产物验证待完成
-- 证据 Commit：发布准备已在 `ba1738fe9a03f7d277c95a7dd2b4b42a826815ca` 通过；发布完成后会补充公开证据 Commit 的固定链接，同时不移动 Tag
+- 证据 Commit：最终发布准备已在 `de17171f970e43bd8c42d84a1cfeb386f5bc17c3` 通过；发布完成后会补充公开证据 Commit 的固定链接，同时不移动 Tag
 - 证据图集：不适用；没有声称完成安装包 UI 旅程，也没有制作截图
 - 证据下载：只有在独立验证公开产物后，才会附加 `yourbuddy-v0.3.1-verification.zip`
 
@@ -46,7 +46,7 @@ YourBuddy 0.3.1 启用 YourBuddy 名称与 Y8 图标，把内置 Harness 更新�
 | 场景 | 状态 | 受测构建 | 环境 | 证据 |
 |---|---|---|---|---|
 | 0.3.0 发布失败与恢复 | passed | 0.3.0 Tag 与 0.3.1 源码 Commit | GitHub Actions macOS 15 与本地 macOS 15.6.1 arm64 | [0.3.0 归档](../yourbuddy-v0.3.0/README.zh.md)与[本地记录](evidence/local-validation.txt) |
-| 0.3.1 发布准备与产品 Smoke | passed | `ba1738fe9a03f7d277c95a7dd2b4b42a826815ca` 的源码 Checkout | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地验证记录](evidence/local-validation.txt) |
+| 0.3.1 发布准备与产品 Smoke | passed | `de17171f970e43bd8c42d84a1cfeb386f5bc17c3` 的源码 Checkout | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地验证记录](evidence/local-validation.txt) |
 | 桌面脚本与文档 | passed | 源码 Checkout | macOS 15.6.1 arm64 | [本地验证记录](evidence/local-validation.txt) |
 | 公开发布与安装包产物 | not verified | 正式发布产品 | GitHub Release 与独立本地检查 | 等待 Tag 工作流与下载 |
 
@@ -79,8 +79,8 @@ YourBuddy 0.3.1 启用 YourBuddy 名称与 Y8 图标，把内置 Harness 更新�
 ## 场景：0.3.1 发布准备与产品 Smoke
 
 - 状态：passed
-- 日期与时间：2026-09-06 13:58-14:04 UTC+08:00，Asia/Shanghai
-- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.1`，源码 Commit `ba1738fe9a03f7d277c95a7dd2b4b42a826815ca`
+- 日期与时间：2026-09-06 13:58-14:18 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.1`，源码 Commit `de17171f970e43bd8c42d84a1cfeb386f5bc17c3`
 - 受测构建：源码 Checkout，以及生成的内置 Harness、冻结离线 pnpm Store、受管理工具链与 Python Runtime
 - 环境：macOS 15.6.1 arm64；Node 22.22.2；pnpm 11.7.0；DSH 0.1.2-rc.1；CPython 3.12.14
 - 证据来源：本次发布实测
@@ -129,7 +129,7 @@ YourBuddy 0.3.1 启用 YourBuddy 名称与 Y8 图标，把内置 Harness 更新�
 ## 场景：公开发布与安装包产物
 
 - 状态：not verified
-- 日期与时间：2026-09-06 14:04 UTC+08:00，Asia/Shanghai
+- 日期与时间：2026-09-06 14:18 UTC+08:00，Asia/Shanghai
 - 发布版本与 Commit：计划发布 `yourbuddy-v0.3.1`；Tag Commit 待产生
 - 受测构建：尚无正式发布的 0.3.1 产品
 - 环境：计划使用 GitHub Release macOS 15 arm64 工作流；独立下载待执行

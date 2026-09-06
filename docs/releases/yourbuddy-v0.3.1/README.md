@@ -5,7 +5,7 @@ English | [中文](README.zh.md)
 - Release identifier: `yourbuddy-v0.3.1`
 - Product channel: YourBuddy desktop
 - Archive state: pre-publication validation complete; public artifact verification pending
-- Evidence commit: release preparation passed at `ba1738fe9a03f7d277c95a7dd2b4b42a826815ca`; the public evidence commit will be linked after publication without moving the tag
+- Evidence commit: final release preparation passed at `de17171f970e43bd8c42d84a1cfeb386f5bc17c3`; the public evidence commit will be linked after publication without moving the tag
 - Evidence gallery: not applicable; no packaged UI journey or screenshot is claimed
 - Evidence download: `yourbuddy-v0.3.1-verification.zip` will be attached only after public artifacts are independently verified
 
@@ -46,7 +46,7 @@ The release target is macOS on Apple Silicon. The application is not signed or n
 | Scenario | Status | Build under test | Environment | Evidence |
 |---|---|---|---|---|
 | Failed 0.3.0 publication and recovery | passed | 0.3.0 tag plus 0.3.1 source commit | GitHub Actions macOS 15 and local macOS 15.6.1 arm64 | [0.3.0 archive](../yourbuddy-v0.3.0/README.md) and [local record](evidence/local-validation.txt) |
-| 0.3.1 release preparation and product smoke | passed | source checkout at `ba1738fe9a03f7d277c95a7dd2b4b42a826815ca` | macOS 15.6.1 arm64, Node 22.22.2, pnpm 11.7.0 | [Local validation record](evidence/local-validation.txt) |
+| 0.3.1 release preparation and product smoke | passed | source checkout at `de17171f970e43bd8c42d84a1cfeb386f5bc17c3` | macOS 15.6.1 arm64, Node 22.22.2, pnpm 11.7.0 | [Local validation record](evidence/local-validation.txt) |
 | Desktop scripts and documentation | passed | source checkout | macOS 15.6.1 arm64 | [Local validation record](evidence/local-validation.txt) |
 | Public release and packaged artifact | not verified | formally published product | GitHub Release and independent local inspection | Pending tag workflow and download |
 
@@ -79,8 +79,8 @@ The [0.3.0 archive](../yourbuddy-v0.3.0/README.md) retains the failed workflow a
 ## Scenario: 0.3.1 release preparation and product smoke
 
 - Status: passed
-- Date and time: 2026-09-06 13:58-14:04 UTC+08:00, Asia/Shanghai
-- Release and commit: intended `yourbuddy-v0.3.1`, source commit `ba1738fe9a03f7d277c95a7dd2b4b42a826815ca`
+- Date and time: 2026-09-06 13:58-14:18 UTC+08:00, Asia/Shanghai
+- Release and commit: intended `yourbuddy-v0.3.1`, source commit `de17171f970e43bd8c42d84a1cfeb386f5bc17c3`
 - Build under test: source checkout with generated bundled Harness, frozen offline pnpm Store, managed toolchain, and Python runtime
 - Environment: macOS 15.6.1 arm64; Node 22.22.2; pnpm 11.7.0; DSH 0.1.2-rc.1; CPython 3.12.14
 - Evidence origin: this release run
@@ -129,7 +129,7 @@ See the [local validation record](evidence/local-validation.txt). These are sour
 ## Scenario: Public release and packaged artifact
 
 - Status: not verified
-- Date and time: 2026-09-06 14:04 UTC+08:00, Asia/Shanghai
+- Date and time: 2026-09-06 14:18 UTC+08:00, Asia/Shanghai
 - Release and commit: intended `yourbuddy-v0.3.1`; tag commit pending
 - Build under test: no formally published 0.3.1 product yet
 - Environment: intended GitHub Release macOS 15 arm64 workflow; independent download pending

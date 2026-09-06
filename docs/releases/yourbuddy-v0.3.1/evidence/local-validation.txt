@@ -1,6 +1,7 @@
 YourBuddy 0.3.1 local release validation
-Date and time: 2026-09-06 13:43-14:04 UTC+08:00, Asia/Shanghai
+Date and time: 2026-09-06 13:43-14:18 UTC+08:00, Asia/Shanghai
 Recovery commit: ba1738fe9a03f7d277c95a7dd2b4b42a826815ca
+Final archived candidate commit: de17171f970e43bd8c42d84a1cfeb386f5bc17c3
 Environment: macOS 15.6.1 arm64; Node 22.22.2; pnpm 11.7.0; rustc 1.98.0
 Data and services: public package metadata, synthetic fixtures, GitHub Actions, and npm downloads; no credentials, user data, or real model provider request
 
@@ -37,11 +38,12 @@ Version:
 
 Full release preparation:
 - Command: pnpm --dir apps/desktop-tauri run prepare:release
-- Source bundle digest before Store attachment: 2a668fea3c4e1796d58fc25364bb456e659af8497e8594bd95f09a1ea5f86a7f
-- A transient @openai/codex macOS arm64 download error retried and recovered within pnpm's bounded retry policy.
-- Frozen Store: 587 packages, 38708 files, digest 033272c9092fefdc4830c24702c3681231c8b0cacd4b41f84640e8d5f29ce11d
-- Store archive digest: c0c49f2e44f5eecef677b82e07b7fea7b27df1d5fb0ac1ab1e370295b1b831eb
-- Final bundle digest: e443f7fa4fac2cce52e90b1e32a0c600fa928f7f4d098e93c5c9ee61bda22229
+- Final command ran from clean commit de17171f970e43bd8c42d84a1cfeb386f5bc17c3.
+- Source bundle digest before Store attachment: 06fd89505889356a76edfe10553f207aeab992c002b487aaec2bdd70e15cb1ec
+- Transient @anthropic-ai/claude-agent-sdk and @openai/codex macOS arm64 download errors retried and recovered within pnpm's bounded retry policy.
+- Frozen Store: 587 packages, 38708 files, digest ca8656b65cc309452285664e55cf914025562579c5431ceff4f6100a51790d18
+- Store archive digest: 3e9513627d8838b17af721dddf83750a8039e525144be1ae56e00bb8c1094a60
+- Final bundle digest: f0351db66f2e99b53b8f758e67a3b71b57f150081b5d90f62d28adf7e030337e
 - Branding result: default, customization, persistence, and reset snapshot passed.
 - Product result: 54 bundled runtime peer links, 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed.
 - Final result: compatible product sources and frozen lockfile are ready for review and commit.

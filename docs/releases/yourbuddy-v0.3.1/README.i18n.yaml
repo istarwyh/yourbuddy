@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.1/README.md
-README.md: 586f713dc007122093c4ebe20946734038193400
-README.zh.md: 1b73f5febac5111a724bc5069c516cefd3732d55
+README.md: 6202e046d257bef35edaf72587827c25dd9586f8
+README.zh.md: e83766bfbba2cbb59e8849ac384ada3049fcfeb5
