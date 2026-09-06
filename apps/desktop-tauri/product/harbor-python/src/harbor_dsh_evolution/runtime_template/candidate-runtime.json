@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "transport": "acp",
+  "entrypoint": "run-acp.mjs",
+  "config_path": "cordis.yml",
+  "agent_entry_id": "wiring-agent",
+  "node_version": "22.22.2"
+}

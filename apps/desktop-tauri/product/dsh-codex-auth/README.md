@@ -5,7 +5,7 @@
 
 English | [中文](README.zh.md)
 
-Current npm release: **v0.3.1**
+Current npm release: **v0.3.2**
 
 A self-contained [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Codex Capability Bundle**. It reuses the ChatGPT login maintained by the
@@ -51,6 +51,168 @@ pressure and compaction decisions; no request parameter negotiates capacity
 with the backend. Requests beyond 272K may consume account quota faster, backend
 availability remains account-dependent, and enabling the switch does not expand
 history that DSH already compacted.
+
+### Experimental Dual Checkpoint compaction Adapter
+
+The package exports `dsh-codex-auth/compaction` for an explicitly selected,
+user/deployer-authored **custom agent preset**. `CodexCompactionEngine`
+subclasses DSH's `BasicCompactionEngine` and wraps its manual, step-pressure,
+and provider-confirmed context-overflow entries. Every path first completes
+Basic's normal provider-neutral Portable summary, captures that call's final
+marker-free Codex payload and already resolved Login State in Host-only memory,
+then sends one dedicated Responses v2 request ending in a transient
+`compaction_trigger`. A valid opaque result is appended beside the Portable
+summary, and Basic commits the resulting **Dual Checkpoint** in its one inherited
+transaction. Range selection, pruning, balanced tool pairs, retry caps, durable
+markers, surface replacement, and cancellation remain Basic-owned.
+
+Portable success always comes first. A route/model mismatch, image or empty
+prefix, unsupported payload, timeout, rate limit, HTTP/protocol error, oversized
+state, or conservative shrink failure commits the valid Portable Checkpoint
+alone. Portable failure commits no checkpoint. The native request is not
+retried. A process-local account/model/endpoint/codec breaker opens for ten
+minutes after three transient failures in five minutes, for one hour after a
+protocol or unsupported final-payload shape failure, and for a capped
+`Retry-After` after HTTP 429. Its half-open state admits one probe. HTTP 401/403
+does not count; oversize-state and strict-shrink fallbacks do not count either.
+The breaker never disables ordinary inference or Portable compaction. Disposal
+aborts active native work and releases request-scoped credentials, payloads,
+markers, canonical items, and continuation state.
+
+Debug diagnostics contain only compaction ID, trigger, codec generation, model,
+eligibility/status/fallback class, breaker state, duration, item/byte counts,
+replay estimate, and usage availability; an authentication rejection recommends
+`codex login`. They never include prompts, tools, headers, tokens, turn state,
+canonical items, encrypted content, or provider-reported token counts. Reported
+native usage may be retained inside the sensitive checkpoint as diagnostic
+metadata, but rc.2 aggregate token accounting continues to use only the Portable
+summarization call.
+
+After a successful **inline automatic** native compaction, a nonempty provider
+`x-codex-turn-state` response header becomes one process-local **Codex Turn
+Continuation**. A read-only `llm/stream` waterfall observes the original
+Agent-loop request before Runtime cloning. The continuation is sent only on the
+next request with the same session, route, model, Codex account, and Adapter
+generation; it expires after 60 seconds and is erased by the first mismatching
+eligible request, cancellation/error, route replacement, or plugin disposal.
+Portable summaries, session-title/auxiliary calls, direct maintenance,
+`compactRegion()`, and manual `/compact` neither consume nor arm it. It never
+enters a Session event, checkpoint, UI state, log, error, or telemetry value.
+
+Native generation remains limited to head-anchored current-surface prefixes
+whose Portable call uses the same exact `openai-codex` model. Explicit-region
+compaction and image-bearing selected prefixes remain Portable-only; images and
+other messages after the selected prefix stay in the later DSH tail. Retained
+canonical text-only user groups are selected newest-first under the versioned
+64,000-token JSON estimate, with one Unicode-safe boundary prefix. Replay
+estimation applies Codex's pinned opaque rule—decoded base64 length minus the
+650-byte envelope allowance—separately from DSH's provider-neutral pressure
+price. The complete custom block is capped at 2 MiB, and Basic still performs
+the authoritative strict-shrink check. The extra v2 request adds latency and
+consumes Codex quota; its credential-free opaque state is still sensitive
+conversation data and is duplicated by rc.2 in the summary event and replacement
+message.
+
+Installing the normal Codex Capability Bundle does not activate this Adapter.
+`cordis.patch.yml` and DSH's shipped presets continue to select stock Basic
+compaction. To opt in, copy the complete `compaction` group from the packaged
+minimal example into a custom preset:
+
+```text
+node_modules/dsh-codex-auth/examples/agent-presets/codex-portable/
+├── preset.yml
+└── agent.cordis.yml
+```
+
+That group selects exactly one `dsh-codex-auth/compaction` row at
+`ctx.compaction` and retains `@deepseek-ai/dsh-command-compact` plus
+`@deepseek-ai/dsh-compaction-tool-result-pruner`. Do not add
+`@deepseek-ai/dsh-compaction-basic` beside it. The example intentionally
+contains no persona or tools; merge the group into a deployer-owned full preset
+rather than treating it as a replacement for DSH's standard capabilities.
+
+This experimental export supports exactly DSH / Basic compaction
+`0.1.1-rc.2` and pi-ai `0.82.1`; mounting it on another pair fails with an
+actionable compatibility error. Long Context Mode may change when pressure
+compaction runs, but does not change native activation, codec, retention, v2
+payload, replay compatibility, or the one-shot turn-continuation contract.
+Roll back by selecting a shipped DSH preset. Existing sessions continue through
+their Portable text; no profile or conversation migration is required. When DSH
+provides a supported provider-native checkpoint Seam, migrate through that Seam
+and delete this package's carrier, request side channel, direct transport,
+compatibility pin, and custom Basic replacement; keep Portable Checkpoints as
+the recovery path.
+
+The repository includes a quota-consuming live harness, but normal tests,
+`pnpm run check`, and CI cannot run it. It refuses `CI` and requires both an
+existing Codex Login State and an explicit two-variable confirmation:
+
+```sh
+DSH_CODEX_NATIVE_LIVE=1 \
+DSH_CODEX_NATIVE_LIVE_CONFIRM=I_UNDERSTAND_CODEX_LIVE_QUOTA \
+pnpm run test:live:native-compaction
+```
+
+It performs real v2 creation, same-process one-shot turn continuation and Native
+replay, restart/resume replay, repeated compaction, and redacted-diagnostic checks. Do not run it without
+separate authorization to consume live Codex quota; implementation and normal
+verification do not execute this boundary.
+
+### Codex Native Checkpoint replay
+
+Ordinary `openai-codex` inference restores a compatible durable **Dual
+Checkpoint**. Before pi-ai converts DSH messages, the Host replaces each valid
+complete checkpoint message with a request-local marker. The provider payload
+hook then replaces that whole marker item at the same position with either the
+canonical Codex Native Checkpoint items or one ordinary user item containing
+the Portable Checkpoint. Native and Portable representations are never sent
+together. The durable block survives JSON persistence, `Session.fromRestore()`,
+and `SessionStore.fork()`; replay and later compaction work after restart and in
+a fork without rewriting the Session. Before a new trigger, every earlier
+compatible checkpoint in the selected prefix expands at its original item
+position; an incompatible checkpoint contributes only its Portable message, so
+a fresh valid Native checkpoint can still replace that prefix. Basic preserves
+all later tail messages and owns repeated-pressure convergence or its bounded
+failure.
+
+Native replay requires the checkpoint's schema/codec/retention generations,
+provider, exact model, hashed Codex account identity, instructions, tools,
+parallel/tool-choice controls, reasoning, text configuration, and service tier
+to match the **final effective** Responses request. A composed payload callback
+may change those controls: replay is re-evaluated after the callback and selects
+Native or Portable accordingly. Request IDs, prompt-cache keys, transient
+headers, turn state, and Long Context Mode do not affect compatibility. Unknown,
+malformed, oversized (over 2 MiB), secret-bearing, mixed, or incompatible state
+degrades to Portable text. Generated markers are Host-only and any missing,
+duplicate, embedded, leaked, or unconsumed marker fails before network I/O. The
+replay converter is pinned to DSH LLM / pi-ai Adapter `0.1.1-rc.2` and pi-ai
+`0.82.1`; another runtime pair uses Portable text instead. Adapter generation
+replacement or HMR invalidates process-local replay and turn-continuation state,
+while the durable Dual Checkpoint remains unchanged for a later request.
+
+The versioned Host-only codec is exported as
+`dsh-codex-auth/native-checkpoint`. It preserves canonical text-only retained-
+user Responses items followed by one terminal opaque compaction item as
+lossless JSON, but rejects credentials, namespaced account/routing identifiers,
+headers, raw turn state, and request-scoped metadata. Only the domain-separated
+account hash is durable. The block carries an empty generic-presentation sentinel
+so stock conversation and trajectory views display/copy the sibling Portable
+text without stringifying opaque state. The credential-free opaque block is
+still sensitive ordinary Session data in rc.2 and may be present in Session RPC
+and exports; treat those surfaces accordingly. Experimental blocks emitted by
+pre-issue-18 worktree builds did not carry the presentation sentinel. They stay
+Host-decodable for replay compatibility, but their generic Trajectory rendering
+is not covered; migrate or remove those never-released fixtures before viewing
+an imported Session.
+
+The shipped PiAiAdapter and direct DeepSeek Adapter put only Portable text on
+their provider wire. Because conversion uses detached request copies, switching
+back to a compatible Codex route before another compaction still replays the
+retained Native state. Selecting a stock Basic preset likewise needs no Session
+migration; incompatible state simply continues through Portable text. Arbitrary
+third-party adapters that reject declaration-merged unknown blocks remain an
+experimental limitation. Native creation still requires the explicit custom
+preset and does not change `cordis.patch.yml`.
 
 ### Web Search
 
@@ -201,7 +363,7 @@ again. Only grant this permission after reviewing the source.
 For a reproducible install, pin a release tag or commit:
 
 ```sh
-dsh plugin --profile web add github:suntianc/dsh-codex-auth#v0.2.2
+dsh plugin --profile web add github:suntianc/dsh-codex-auth#v0.3.2
 ```
 
 ## Install a tarball
@@ -211,7 +373,7 @@ git clone https://github.com/suntianc/dsh-codex-auth.git
 cd dsh-codex-auth
 pnpm install
 pnpm pack
-dsh plugin --profile web add ./dsh-codex-auth-0.3.1.tgz
+dsh plugin --profile web add ./dsh-codex-auth-0.3.2.tgz
 ```
 
 ## Upgrade
@@ -220,11 +382,11 @@ Stop the running `dsh web` process and update the Web profile to the current
 release:
 
 ```sh
-dsh plugin --profile web add dsh-codex-auth@0.3.1
+dsh plugin --profile web add dsh-codex-auth@0.3.2
 dsh plugin --profile web list
 ```
 
-After the list reports `dsh-codex-auth@0.3.1`, restart `dsh web` and refresh the
+After the list reports `dsh-codex-auth@0.3.2`, restart `dsh web` and refresh the
 browser.
 
 ## Host configuration
@@ -286,6 +448,8 @@ pnpm run check
 - `lib/index.js` — Auth / LLM Host plugin;
 - `lib/search.js` — Search Host plugin;
 - `lib/image.js` — Image Host plugin;
+- `lib/compaction.js` — experimental custom-preset Dual Checkpoint compaction Adapter;
+- `lib/native-checkpoint.js` — versioned Host codec and replay compatibility contract;
 - `lib/invariant.js` — invariant companion;
 - `lib/client.js` — loader-compatible browser plugin with inline CSS Modules;
 - `lib/types/**` — declarations.

@@ -1,0 +1,7 @@
+- id: wiring-agent
+  name: ./owned-acp-composition.mjs
+  config:
+    provider: candidate-placeholder
+    model: candidate-placeholder
+    persona: You are an evidence-driven research assistant. Complete the user's task using the available tools and report only verifiable results.
+    persistenceRoot: !!js process.env.DSH_SESSION_ROOT

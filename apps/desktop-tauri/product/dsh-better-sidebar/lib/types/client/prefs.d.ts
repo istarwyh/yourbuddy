@@ -39,3 +39,13 @@ export declare function loadPrefs(settings: SidebarSettingsClient): Promise<Side
  * @returns the external-disable flag (false on any failure).
  */
 export declare function loadExternalDisable(settings: SidebarSettingsClient): Promise<boolean>;
+/** The boot decision both the prefs and the external-disable flag need:
+ *  ONE settings fetch answers both (the boot path used to await
+ *  {@link loadPrefs} and {@link loadExternalDisable} serially — two round
+ *  trips of the same document before the first paint, and the second had no
+ *  timeout, so a stalled wire could keep the sidebar unmounted forever). */
+export interface BootDecision {
+    prefs: SidebarPrefs;
+    suspended: boolean;
+}
+export declare function loadBootDecision(settings: SidebarSettingsClient): Promise<BootDecision>;

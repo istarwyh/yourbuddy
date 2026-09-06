@@ -1,11 +1,22 @@
 import type { LastActivity } from '../subagent-activity.ts';
-import type { SidechatThreadInfo } from '../sidechat-core.ts';
+import type { SidechatLogEvent, SidechatThreadInfo } from '../sidechat-core.ts';
+import type { SidebarSessionEvent } from '../context-types.ts';
 import type { BrowserProbeResult } from './browser.ts';
 /** One wire failure. */
 export declare class SidebarApiError extends Error {
     readonly code: string;
     constructor(code: string, message: string);
 }
+/**
+ * Whether a wire failure is the workspace fence refusing a path outside the
+ * session workspace (the host message reads `path "..." is outside
+ * workspace`). The request-trust fence answers code `forbidden` with the
+ * bare message 'forbidden', so the message fragment — not the code alone —
+ * identifies this case.
+ */
+export declare function isOutsideWorkspaceError(error: unknown): boolean;
+/** Message-level variant for surfaces that stored the raw text (file-tree level errors). */
+export declare function isOutsideWorkspaceMessage(message: string): boolean;
 /** Explorer row (host fs-tree shape). */
 export interface FsEntry {
     name: string;
@@ -107,6 +118,25 @@ export interface SessionScope {
     /** Selected Git repository when cwd is a workspace container. */
     repoRoot?: string;
 }
+/** One external-open request from the file tree. */
+type OpenExternalPayload = {
+    action: 'reveal';
+    path: string;
+} | {
+    action: 'url';
+    url: string;
+};
+/** The host route's success shape. */
+type OpenExternalResult = {
+    started: boolean;
+};
+/**
+ * Dispatch an external-open request to the correct machine. SSH remote-editor
+ * URLs stay in the synchronous user-click chain and navigate the client so
+ * its registered vscode:// / cursor:// handler can launch. Everything else
+ * keeps using the DSH host route.
+ */
+declare function openExternal(payload: OpenExternalPayload): Promise<OpenExternalResult>;
 /** The sidebar API surface (session scope threaded through every call). */
 export declare const api: {
     sessionCwd: (scope: SessionScope, signal?: AbortSignal) => Promise<{
@@ -162,6 +192,14 @@ export declare const api: {
     /** Full patch text of one commit (diff display for the history rows). */
     gitCommitDiff: (scope: SessionScope, hash: string, worktree?: string, signal?: AbortSignal) => Promise<{
         diff: string;
+    }>;
+    /** The session's file-tool events for the changes tab's session lens: the
+     *  `tool/call` + `tool/result` rows past `afterSeq` (0 = whole window),
+     *  capped to the recent window host-side. The client runtime exposes no
+     *  event-log face, so the lens polls this delta route. */
+    changesOps: (scope: SessionScope, afterSeq?: number, signal?: AbortSignal) => Promise<{
+        events: SidebarSessionEvent[];
+        lastSeq: number;
     }>;
     /** Discard the worktree changes of one file (the index is untouched). */
     gitDiscard: (scope: SessionScope, path: string, worktree?: string) => Promise<{
@@ -226,6 +264,12 @@ export declare const api: {
     }>;
     /** Live state + agent identity (provider/model/preset) of a thread. */
     sidechatInfo: (childId: string) => Promise<SidechatThreadInfo>;
+    /** One transcript pull of a Side Chat thread: the thread's OWN events
+     *  (the inherited seed is cut host-side and never crosses the wire).
+     *  `afterSeq` narrows the response to the delta beyond it (poll tail). */
+    sidechatEvents: (childId: string, afterSeq?: number, signal?: AbortSignal) => Promise<{
+        events: SidechatLogEvent[];
+    }>;
     /** The effective terminal shell and its display name (plugin-global). */
     shellGet: () => Promise<{
         shell: string;
@@ -245,19 +289,10 @@ export declare const api: {
     /** Probe a URL's response headers (the sidebar browser's embeddability
      *  check; see the host's browser.probe route). */
     browserProbe: (url: string, signal?: AbortSignal) => Promise<BrowserProbeResult>;
-    /** External open for the file tree's "open with" menu: reveal a path in
-     *  the OS file manager, or hand a custom-scheme URL (vscode://, cursor://,
-     *  zed://, custom editors) to its registered handler. The host launches
-     *  the platform opener (argv, no shell). */
-    openExternal: (payload: {
-        action: "reveal";
-        path: string;
-    } | {
-        action: "url";
-        url: string;
-    }) => Promise<{
-        started: boolean;
-    }>;
+    /** External open for the file tree's "open with" menu. Remote SSH editor
+     *  URLs are launched on the browser/client machine; reveal and local URLs
+     *  keep using the host's platform opener. */
+    openExternal: typeof openExternal;
 };
 /** Absolute URL of the media route for one path (images only). */
 export declare function mediaUrl(scope: SessionScope, path: string): string;
@@ -273,3 +308,4 @@ export declare function downloadUrl(scope: SessionScope, path: string): string;
  * client-side platform signal is needed.
  */
 export declare function htmlUrl(scope: SessionScope, path: string): string;
+export {};

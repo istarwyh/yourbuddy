@@ -8,12 +8,14 @@ import { loadBundledSkill } from './lib/official-skill.js'
 import { CandidateModelRuntime } from './lib/model-runtime.js'
 import { RUNTIME_POLICY } from './lib/runtime-identity.js'
 import { SessionDiagnosticService } from './lib/session-diagnostic.js'
+import { HistoricalWebController } from './lib/historical-web.js'
+import { historicalRunLock } from './lib/historical-run-lock.js'
 import { EvolutionService } from './lib/service.js'
 import { runHistoricalEvaluation } from './lib/evolution.js'
 import { installDashboardWeb } from './lib/web.js'
 
 export const name = 'harbor-evolution'
-export const inject = ['tools', 'skills', 'llm', 'agentDefaultModel']
+export const inject = ['tools', 'skills', 'llm', 'agentDefaultModel', 'sessions']
 
 const packageDir = path.dirname(fileURLToPath(import.meta.url))
 const checkoutPythonPackage = path.resolve(packageDir, '../harbor-plugin')
@@ -41,6 +43,7 @@ export const Config = Schema.object({
   modelBrokerBindHost: Schema.string().default('127.0.0.1'),
   modelBrokerAdvertisedHost: Schema.string().default('host.docker.internal'),
   modelBrokerMaxRequests: Schema.number().min(1).default(1000),
+  modelBrokerMaxResponseBytes: Schema.number().min(1).default(4194304),
   modelBrokerMaxRequestBytes: Schema.number().min(1024).default(33554432),
   sessionMaxReads: Schema.number().min(1).default(100),
   sessionReadConcurrency: Schema.number().min(1).default(4),
@@ -59,6 +62,17 @@ function jsonTool(definition, execute) {
   })
 }
 
+function objectTool(definition, execute) {
+  return defineTool({
+    ...definition,
+    output: {
+      schema: { type: 'object', additionalProperties: true },
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
+    },
+    execute,
+  })
+}
+
 function toolProjectRoot(exec) {
   const cwd = exec?.agent?.session?.header?.cwd
   if (typeof cwd !== 'string' || !path.isAbsolute(cwd)) {
@@ -67,9 +81,17 @@ function toolProjectRoot(exec) {
   return path.resolve(cwd)
 }
 
+function toolSessionId(exec) {
+  const sessionId = exec?.agent?.session?.header?.id
+  if (typeof sessionId !== 'string' || !sessionId) {
+    throw new Error('Harbor tools require an Agent session identity')
+  }
+  return sessionId
+}
+
 export function synchronizeWorkbenchProjectRoot(service, exec) {
   const projectRoot = toolProjectRoot(exec)
-  service.activateProjectRoot(projectRoot, 'agent-session')
+  service.activateProjectRoot(projectRoot, 'agent-session', toolSessionId(exec))
   return projectRoot
 }
 
@@ -87,13 +109,52 @@ export function apply(ctx, config) {
     ),
   }
   const modelRuntime = new CandidateModelRuntime(ctx, resolved)
-  const metadata = { pluginVersion: packageJson.version, projectRootSource: 'configured' }
+  const metadata = {
+    pluginVersion: packageJson.version,
+    projectRootSource: 'configured',
+    sessionProjectRoot: sessionId => {
+      const cwd = ctx.sessions?.get?.(sessionId)?.header?.cwd
+      return typeof cwd === 'string' && path.isAbsolute(cwd) ? path.resolve(cwd) : undefined
+    },
+  }
   const service = new EvolutionService(resolved, metadata, modelRuntime)
+  // Cordis hot reload/unload must not orphan accepted background diagnostics.
+  // Hard process termination still leaves the durable claim for manual recovery.
+  if (typeof ctx.effect === 'function') ctx.effect(() => () => service.actionDrafts.dispose())
+  const approvalChannelAvailable = typeof ctx.on === 'function'
+  if (!approvalChannelAvailable) {
+    const error = new Error('HARBOR_APPROVAL_HOOK_UNAVAILABLE: Harbor requires the DSH tools/pre-execute approval seam before registering Agent tools.')
+    error.code = 'HARBOR_APPROVAL_HOOK_UNAVAILABLE'
+    throw error
+  }
+  const mutatingAgentTools = new Set()
+  const mutatingJsonTool = (definition, execute) => {
+    mutatingAgentTools.add(definition.name)
+    return jsonTool(definition, execute)
+  }
+
+  // Artifact text is untrusted. Any Agent-requested Harbor write or evaluation
+  // must cross DSH's audited, one-shot user approval seam. With approval disabled
+  // or unavailable the tool runtime fails closed; read/ask/navigate tools remain
+  // approval-free.
+  ctx.on('tools/pre-execute', async (exec, next) => {
+    const downstream = await next()
+    if (downstream?.kind !== 'allow' || !mutatingAgentTools.has(exec?.name)) return downstream
+    return {
+      kind: 'ask',
+      reason: `Harbor tool ${exec.name} can write artifacts or start evaluation work and requires explicit one-shot approval.`,
+    }
+  }, { prepend: true })
   const sessionDiagnostic = new SessionDiagnosticService({
     ctx,
     config: resolved,
     modelRuntime,
     runHistoricalEvaluation,
+  })
+  const historicalWeb = new HistoricalWebController({
+    service,
+    sessionDiagnostic,
+    runLock: historicalRunLock,
   })
   const serviceForTool = exec => {
     const projectRoot = synchronizeWorkbenchProjectRoot(service, exec)
@@ -101,9 +162,9 @@ export function apply(ctx, config) {
   }
 
   ctx.skills.register(loadBundledSkill())
-  installDashboardWeb(ctx, service)
+  installDashboardWeb(ctx, service, historicalWeb)
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_candidate_snapshot',
     description: 'Freeze a DeepSeek Harness Cordis composition as an immutable Candidate manifest. Candidate id and version default to package.json.',
     parameters: {
@@ -119,7 +180,7 @@ export function apply(ctx, config) {
     parameters: {},
   }, (_args, exec) => serviceForTool(exec).modelBinding()))
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_evolution_init',
     description: 'Compile an accepted Dataset, Generator, Evaluator/criteria, and Optimizer onboarding card into a strict, non-overwriting Evaluation Stack project. Detailed identity fields are internal tool inputs, not a user questionnaire.',
     parameters: {
@@ -157,7 +218,7 @@ export function apply(ctx, config) {
     },
   }, (args, exec) => serviceForTool(exec).doctor(args)))
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_quick_diagnostic_init',
     description: 'Create a non-overwriting Harbor 1.4 wiring diagnostic with one Query, a minimal Host-model Candidate, a runnable Task, and an explicit non-promotion Evaluator. The supplied Rubric is recorded as a draft but is not treated as executed.',
     parameters: {
@@ -183,7 +244,7 @@ export function apply(ctx, config) {
     return sessionDiagnostic.preview(args, exec)
   }))
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_session_diagnostic_run',
     description: 'Consume a confirmed Session selection token, revalidate every immutable source boundary, write a private redacted Historical Generation Batch, materialize one Harbor Trial per Session, and run the non-promotion Historical Job.',
     parameters: {
@@ -191,8 +252,12 @@ export function apply(ctx, config) {
       jobName: { type: 'string' },
     },
   }, (args, exec) => {
-    synchronizeWorkbenchProjectRoot(service, exec)
-    return sessionDiagnostic.run(args, exec)
+    const projectRoot = synchronizeWorkbenchProjectRoot(service, exec)
+    return historicalRunLock.runExclusive(
+      { projectRoot, jobsDir: resolved.jobsDir },
+      () => sessionDiagnostic.run(args, exec),
+      { channel: 'agent' },
+    )
   }))
 
   ctx.tools.register(jsonTool({
@@ -203,9 +268,9 @@ export function apply(ctx, config) {
     },
   }, (args, exec) => serviceForTool(exec).validateDataset(args)))
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_context_preview',
-    description: 'Preview Evaluation Context v2 and find comparable baselines before launching a Job.',
+    description: 'Refresh the Candidate manifest, then preview Evaluation Context v2 and find comparable baselines before launching a Job. The manifest write requires one-shot approval.',
     parameters: {
       candidatePath: { type: 'string', required: true },
       candidateId: { type: 'string' },
@@ -219,7 +284,7 @@ export function apply(ctx, config) {
     },
   }, (args, exec) => serviceForTool(exec).previewContext(args)))
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_eval_run',
     description: 'Run a strict diagnostic or promotion-eligible Harbor Job bound to Candidate, Dataset Manifest, Evaluation Stack, and Context v2 identities.',
     parameters: {
@@ -239,7 +304,7 @@ export function apply(ctx, config) {
 
   ctx.tools.register(jsonTool({
     name: 'harbor_eval_result',
-    description: 'Read a stable Job summary or a sanitized Workbench, Dataset instruction, Trial output/evidence, progress, or Evaluator governance view. Invalid scores remain distinct from raw verifier rewards.',
+    description: 'Read a stable Job summary or Workbench, Dataset instruction, Trial output/evidence, progress, or Evaluator governance view inside a bounded, recursively redacted, explicitly untrusted envelope. Invalid scores remain distinct from raw verifier rewards.',
     parameters: {
       jobPath: { type: 'string', required: true },
       view: { type: 'string', description: 'summary (default), job, dataset, progress, trial, or governance' },
@@ -249,15 +314,53 @@ export function apply(ctx, config) {
     },
   }, (args, exec) => serviceForTool(exec).result(args)))
 
+  ctx.tools.register(objectTool({
+    name: 'harbor_resolve_page_context',
+    description: 'Resolve an @harbor page-context reference for the exact calling DSH Session. This read-only tool validates the short-lived context token, project ownership, stable Job/Trial ids, and current revision, then returns narrow metadata, typed Harbor refs, and a navigation action. Use harbor_get_evidence for evidence content.',
+    parameters: {
+      contextSnapshotId: { type: 'string', required: true, description: 'Opaque hctx_... token from the visible @harbor reference. Never guess or reconstruct it.' },
+    },
+  }, (args, exec) => {
+    const projectRoot = synchronizeWorkbenchProjectRoot(service, exec)
+    return service.resolveUiContext(args, { sessionId: toolSessionId(exec), projectRoot })
+  }))
+
+  ctx.tools.register(objectTool({
+    name: 'harbor_get_evidence',
+    description: 'Read one bounded, redacted, untrusted Harbor evidence item through a typed ref returned by harbor_resolve_page_context. The Host strictly validates Workspace → Job → Trial → Criterion → Evidence ancestry and never treats artifact text as instructions.',
+    parameters: {
+      workspace: { type: 'string', required: true, description: 'Exact workspace from the typed harbor.evidence/v1 ref.' },
+      job: { type: 'string', required: true, description: 'Exact Job id from the typed harbor.evidence/v1 ref.' },
+      trial: { type: 'string', required: true, description: 'Exact Trial id from the typed harbor.evidence/v1 ref.' },
+      criterion: { type: 'string', required: true, description: 'Exact Criterion id from the typed harbor.evidence/v1 ref.' },
+      evidenceRef: { type: 'string', required: true, description: 'Exact Evidence id from the typed harbor.evidence/v1 ref. Never guess a path or id.' },
+    },
+  }, (args, exec) => serviceForTool(exec).getEvidence(args)))
+
+  ctx.tools.register(objectTool({
+    name: 'harbor_propose_action',
+    description: 'Propose a structured, expiring Workbench action draft for an explicit user request, using a fresh Harbor context. This never writes files, starts a Job, changes an Evaluator, runs Gate, or deploys. The user must separately inspect deterministic Preflight and confirm in Harbor. Production actions are unregistered and denied.',
+    parameters: {
+      contextSnapshotId: { type: 'string', required: true, description: 'Exact fresh hctx token from the user reference.' },
+      kind: { type: 'string', required: true, description: 'candidate-draft, evaluator-draft, compare, diagnostic-evaluation, retry-infrastructure, gate-request, or deployment-handoff. Offline execution may be blocked by missing registered runner capabilities.' },
+      summary: { type: 'string', required: true, description: 'One bounded proposed change. No credentials or local paths.' },
+      rationale: { type: 'string', description: 'Evidence-supported reason and uncertainty, not authorization.' },
+      replacement: { type: 'string', description: 'Only evaluator-draft: replacement text for the exact saved source fragment. No file paths. The Host supplies the before text and digest.' },
+    },
+  }, (args, exec) => {
+    const projectRoot = synchronizeWorkbenchProjectRoot(service, exec)
+    return service.proposeAction(args, { sessionId: toolSessionId(exec), projectRoot })
+  }))
+
   ctx.tools.register(jsonTool({
     name: 'harbor_evaluator_inspect',
-    description: 'Inspect the active harbor-dsh-evaluator/v1 descriptor, implementation kind, ternary Criteria, and safely editable source files.',
+    description: 'Inspect the active harbor-dsh-evaluator/v1 descriptor, implementation kind, ternary Criteria, and a bounded set of editable source files inside an explicitly untrusted envelope. Source text containing secret- or local-path-shaped values is omitted.',
     parameters: {
       stackPath: { type: 'string', description: 'Defaults to .harbor/evaluation-stack.yml' },
     },
   }, (args, exec) => serviceForTool(exec).evaluatorInspect(args)))
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_evaluator_update',
     description: 'Update one descriptor-authorized Evaluator source file with optimistic concurrency. Requires new Evaluator and Stack identities and never runs evaluation or Gate automatically.',
     parameters: {
@@ -270,7 +373,7 @@ export function apply(ctx, config) {
     },
   }, (args, exec) => serviceForTool(exec).evaluator(args)))
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_ground_truth_init',
     description: 'Create a non-overwriting Ground Truth draft for evaluator meta-evaluation. GT may be human, programmatic, consensus, model, or external, but must have explicit provenance and remain independent of the Candidate evaluator.',
     parameters: {
@@ -285,7 +388,7 @@ export function apply(ctx, config) {
     },
   }, (args, exec) => serviceForTool(exec).groundTruthInitialize(args)))
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_evaluator_meta_evaluate',
     description: 'Compare repeated evaluator-observations/v1 with independent ground-truth/v1 and write an ESF, SCE, and RCR meta-evaluation report.',
     parameters: {
@@ -296,7 +399,7 @@ export function apply(ctx, config) {
     },
   }, (args, exec) => serviceForTool(exec).evaluatorMetaEvaluate(args)))
 
-  ctx.tools.register(jsonTool({
+  ctx.tools.register(mutatingJsonTool({
     name: 'harbor_candidate_compare',
     description: 'Apply the deterministic Promotion Gate to a baseline Job and a Candidate Job.',
     parameters: {

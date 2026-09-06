@@ -28,6 +28,16 @@ function executionIdentity(exec) {
   return { projectRoot: path.resolve(header.cwd), ownerSessionId: header.id }
 }
 
+function normalizedIdentity(identity) {
+  if (typeof identity?.projectRoot !== 'string' || !path.isAbsolute(identity.projectRoot)) {
+    throw new Error('HISTORICAL_EXECUTION_IDENTITY_INVALID: projectRoot must be an absolute directory')
+  }
+  if (typeof identity.ownerSessionId !== 'string' || !identity.ownerSessionId) {
+    throw new Error('HISTORICAL_EXECUTION_IDENTITY_INVALID: ownerSessionId is required')
+  }
+  return { projectRoot: path.resolve(identity.projectRoot), ownerSessionId: identity.ownerSessionId }
+}
+
 function feedbackItems(result) {
   return result?.ok === true && Array.isArray(result.value?.items) ? result.value.items : []
 }
@@ -147,7 +157,11 @@ export class SessionDiagnosticService {
   }
 
   async preview(args = {}, exec) {
-    const identity = executionIdentity(exec)
+    return this.previewWithIdentity(args, executionIdentity(exec), { signal: exec?.signal })
+  }
+
+  async previewWithIdentity(args = {}, requestedIdentity, { signal, config = this.config } = {}) {
+    const identity = normalizedIdentity(requestedIdentity)
     const sessionQuery = capability(this.ctx, 'sessionQuery')
     const limit = args.limit ?? 10
     const createdAfter = parseCreatedAfter(args.createdAfter)
@@ -156,10 +170,10 @@ export class SessionDiagnosticService {
       projectRoot: identity.projectRoot,
       currentSessionId: identity.ownerSessionId,
       limit,
-      maxSessionReads: this.config.sessionMaxReads ?? 100,
-      concurrency: this.config.sessionReadConcurrency ?? 4,
+      maxSessionReads: config.sessionMaxReads ?? 100,
+      concurrency: config.sessionReadConcurrency ?? 4,
       createdAfter,
-      signal: exec?.signal,
+      signal,
     })
     if (!result.selected.length) {
       throw new Error('NO_ELIGIBLE_SESSIONS: no completed top-level DSH Sessions with direct human input and assistant output were found in this workspace')
@@ -201,7 +215,6 @@ export class SessionDiagnosticService {
       schema_version: 1,
       capability: 'historical-generation-evaluation',
       jobKind: 'historical-generation-evaluation',
-      projectRoot: identity.projectRoot,
       scope: 'exact-cwd',
       order: 'last-activity-desc',
       ...(createdAfter === undefined ? {} : { createdAfter: new Date(createdAfter).toISOString() }),
@@ -218,7 +231,7 @@ export class SessionDiagnosticService {
       evaluation,
       retention: {
         privateEvidence: '.harbor/private/session-batches',
-        jobEvidence: this.config.jobsDir ?? 'jobs',
+        jobEvidence: config.jobsDir ?? 'jobs',
         vcsPolicy: 'an ignore-all file is created only when .harbor/private/.gitignore is absent; existing private rules and jobs retention/VCS policy remain project-owned',
       },
       confirmation: `Run 1 historical-generation-evaluation Job with ${selected.length} immutable Trial(s) using ${evaluation.evaluator.id}@${evaluation.evaluator.version} and Judge ${evaluation.judge.provider}/${evaluation.judge.model} (${evaluation.coupling}); no Candidate will be executed or promoted.`,
@@ -226,7 +239,11 @@ export class SessionDiagnosticService {
   }
 
   async run(args = {}, exec) {
-    const identity = executionIdentity(exec)
+    return this.runWithIdentity(args, executionIdentity(exec))
+  }
+
+  async runWithIdentity(args = {}, requestedIdentity, { config = this.config } = {}) {
+    const identity = normalizedIdentity(requestedIdentity)
     if (args.stackPath !== undefined) {
       throw new Error('HISTORICAL_CUSTOM_STACK_UNSUPPORTED: the first release binds the materialized Broker Evaluator and Stack as one immutable unit')
     }
@@ -294,7 +311,7 @@ export class SessionDiagnosticService {
       observations,
     })
     const result = await this.runHistoricalEvaluation(
-      { ...this.config, projectRoot: identity.projectRoot },
+      { ...config, projectRoot: identity.projectRoot },
       {
         batchPath: written.batchPath,
         batchDir: written.batchDir,

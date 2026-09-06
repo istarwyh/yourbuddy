@@ -89,8 +89,6 @@ export declare function hasDanglingToolCall(events: readonly SidechatLogEvent[],
  * up to the click moment, honestly closed when it ends inside an open turn.
  */
 export declare function buildSidechatInheritance(events: readonly SidechatLogEvent[]): SidechatInheritance;
-/** The seed half of {@link buildSidechatInheritance} (test convenience). */
-export declare function sidechatSeed(events: readonly SidechatLogEvent[]): SeedEvent[];
 /**
  * Structured text snapshot of the parent's OPEN turn (from its `turn/start`
  * to the log tail): the accumulated assistant/reasoning output verbatim
@@ -149,7 +147,10 @@ export interface SidechatThreadInfo {
     preset?: string;
 }
 /** The events a thread produced itself: everything after the LAST
- *  `session/end-seed` marker (the fork-seed boundary). */
+ *  `session/end-seed` marker (the fork-seed boundary). A log with no marker
+ *  (a thread created before seeding existed) is returned whole. */
+export declare function threadOwnLogEvents(events: readonly SidechatLogEvent[]): SidechatLogEvent[];
+/** {@link threadOwnLogEvents} over history rows (the client cache shape). */
 export declare function threadOwnEvents(entries: readonly SidebarHistoryEntry[]): SidechatLogEvent[];
 /**
  * Whether the thread has at least one completed turn — the save-as-new-

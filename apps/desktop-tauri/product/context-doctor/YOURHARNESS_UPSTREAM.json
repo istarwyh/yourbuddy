@@ -1,16 +1,16 @@
 {
   "package": "dsh-context-doctor",
-  "version": "0.6.1",
-  "source": "https://codeload.github.com/Zhenyu98/dsh-context-doctor/tar.gz/f45096dc7a7ad52cfa7cf32cdaccae717faa662d",
-  "commit": "f45096dc7a7ad52cfa7cf32cdaccae717faa662d",
-  "integrity": "sha512-cnKLE6Bm6cu/zBhleEocHM1NKRNtPytOcc3pHEtCuDysn1PWG8UG9IcAOWyiEmBdYhxQ92mvIPJbarKtuK90Rw==",
-  "archiveSha256": "f5aeaad6be5346fe2c636c0b3d4f29794a1048211192b24fe4d9572a00bf09d6",
-  "snapshotMethod": "npm pack file selection from the pinned GitHub commit",
-  "upstreamTreeSha256": "9edab5dfebff3914b7bb57533a0aedad3a9de8bf567b69313f7f77fdbc5c42ee",
-  "treeSha256": "062b6dff203aab9d490d94e0ac5051a45ae08f28ad24170fd6650f6f20d048f8",
-  "patches": [
-    "Set @deepseek-ai/dsh-tools peer range from 0.1.1-rc.1 to 0.1.1-rc.2."
-  ],
+  "version": "0.7.0",
+  "sourceKind": "github-branch",
+  "channel": "main",
+  "source": "https://codeload.github.com/Zhenyu98/dsh-context-doctor/tar.gz/c236325021ed77fdcdb8eb02d764c79f4af52055",
+  "commit": "c236325021ed77fdcdb8eb02d764c79f4af52055",
+  "integrity": "sha512-WSjuyFGHbt0P3yK8Zwd9vVRfL+HtAO/IsizYQvw032hwEgL7Mvq+VoVBHVrr2xIc0M5R12ns281YoP7OJq92IQ==",
+  "archiveSha256": "68e8430579f764dc4b8ddc077b70175ae981f56ba152da56dcdbe27650a55c01",
+  "snapshotMethod": "npm pack file selection from the pinned GitHub commit with lifecycle scripts disabled",
+  "upstreamTreeSha256": "e9a1d7738b90ffec33002e118d0c02a647bebe6584f022d1bc9363f52c18032b",
+  "patches": [],
   "repository": "https://github.com/Zhenyu98/dsh-context-doctor",
-  "license": "BSD-3-Clause"
+  "license": "BSD-3-Clause",
+  "treeSha256": "e9a1d7738b90ffec33002e118d0c02a647bebe6584f022d1bc9363f52c18032b"
 }

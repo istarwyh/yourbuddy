@@ -1,5 +1,5 @@
-"""Latest-following Candidate runtime defaults for direct Python/CLI callers."""
+"""Host version discovery is separate from a Candidate's frozen runtime."""
 
-RUNTIME_POLICY = "follow-latest"
+RUNTIME_POLICY = "candidate-locked"
 DEFAULT_DSH_RUNTIME_VERSION = "latest"
-DEFAULT_CANDIDATE_ACP_PACKAGE = "@deepseek-ai/dsh-acp-demo@latest"
+ACP_RUNNER_SDK_VERSION = "0.12.1"

@@ -9,7 +9,9 @@
  * Everything provider-specific — the chatgpt.com/backend-api Responses
  * protocol, tool calls, SSE/WebSocket transports, the model catalog — is the
  * installed pi-ai `openai-codex` provider, wrapped by the harness's own
- * `PiAiAdapter`; this package only supplies the credential and the route.
+ * `PiAiAdapter`; this package supplies the credential, route, and a narrow
+ * request-scoped replay, Portable-call capture, and one-shot automatic
+ * compaction turn continuity for Native Checkpoints.
  *
  * The route streams over SSE by default: pi-ai prefers a WebSocket connection
  * (`wss://chatgpt.com/backend-api/codex/responses`) with a 15-second connect
@@ -25,9 +27,11 @@
 import type { AuthContext, CredentialStore } from '@earendil-works/pi-ai';
 import type { Context } from '@deepseek-ai/cordis';
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials';
+import type { GenerateOptions, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm';
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai';
 import type { CodexAuthService } from './codex-auth-service.ts';
 import type { CodexLlmSettings } from './codex-context.ts';
+import type { CodexProviderPayloadCallback } from './native-checkpoint-replay.ts';
 /** The provider route this adapter registers. */
 export declare const CODEX_ROUTE = "openai-codex";
 /** Streaming transports pi-ai's codex provider accepts; `sse` is the default here. */
@@ -81,6 +85,8 @@ export interface CodexAuthAdapterOptions {
     websocketConnectTimeoutMs: number;
     /** Request timeout in milliseconds (SSE response-header phase and WebSocket message idle). */
     timeoutMs: number;
+    /** Existing provider payload hook composed after Native marker restoration. */
+    onPayload?: CodexProviderPayloadCallback;
 }
 /**
  * The codex-auth LLM adapter: one fixed `openai-codex` profile over the
@@ -88,7 +94,14 @@ export interface CodexAuthAdapterOptions {
  * file per request.
  */
 export declare class CodexAuthAdapter extends PiAiAdapter {
+    private readonly nativeReplay;
+    private adapterGeneration;
     constructor(ctx: Context, options: CodexAuthAdapterOptions);
+    private retireProcessLocalState;
+    /** Discard prepared continuation and Native replay plans on route replacement. */
+    replaceRouteGeneration(): void;
+    prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall>;
+    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;
 }
 /**
  * Resolve the live access token from the codex auth file, refreshing it

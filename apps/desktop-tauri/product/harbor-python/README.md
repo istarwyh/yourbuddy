@@ -16,7 +16,7 @@ Install it into the same Python environment as Harbor so the plugin entry point 
 
 ```bash
 uv venv .venv
-uv pip install --python .venv/bin/python harbor-dsh-evolution==0.8.1
+uv pip install --python .venv/bin/python harbor-dsh-evolution==0.9.2
 source .venv/bin/activate
 harbor plugins list
 harbor-dsh --help

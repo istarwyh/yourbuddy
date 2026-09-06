@@ -19,7 +19,7 @@ from harbor_dsh_evolution.dataset import (
     load_validated_dataset,
 )
 from harbor_dsh_evolution.doctor import architecture_doctor
-from harbor_dsh_evolution.lifecycle import TrialLifecycleStore, terminal_phase
+from harbor_dsh_evolution.lifecycle import TrialLifecycleStore, bind_lifecycle_task_names, terminal_phase
 from harbor_dsh_evolution.stack import (
     STACK_MANIFEST_NAME,
     STACK_SOURCES_NAME,
@@ -136,7 +136,7 @@ class EvolutionPlugin(BaseJobPlugin):
         self._lifecycle = TrialLifecycleStore(
             self._job_dir,
             job=self._job_dir.name,
-            tasks=dataset_manifest["tasks"],
+            tasks=bind_lifecycle_task_names(dataset_path, dataset_manifest["tasks"]),
         )
         self._lifecycle.initialize()
         job.on_trial_started(self._on_trial_started)

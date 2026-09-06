@@ -1,6 +1,6 @@
 {
   "name": "dsh-harbor-evolution",
-  "version": "0.8.1",
+  "version": "0.9.2",
   "description": "DeepSeek Harness plugin and Skill for Harbor Candidate and Historical Session evaluation workflows.",
   "type": "module",
   "main": "index.js",
@@ -44,9 +44,9 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-input-trigger",
         "@deepseek-ai/dsh-client-ui-tool",
         "@deepseek-ai/dsh-client-ui-settings"
       ],
@@ -54,13 +54,12 @@
     }
   },
   "harborEvolution": {
-    "runtimePolicy": "follow-latest",
-    "dshRuntimeVersion": "latest",
-    "candidateAcpPackage": "@deepseek-ai/dsh-acp-demo@latest"
+    "runtimePolicy": "candidate-locked",
+    "dshRuntimeVersion": "latest"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-skill": "0.1.1-rc.2",
-    "@deepseek-ai/dsh-tools": "0.1.1-rc.2"
+    "@deepseek-ai/dsh-skill": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.1.2-rc.1"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.1"

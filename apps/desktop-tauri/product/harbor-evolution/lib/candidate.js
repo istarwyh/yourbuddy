@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { CANDIDATE_ACP_PACKAGE, DSH_RUNTIME_VERSION, RUNTIME_POLICY } from './runtime-identity.js'
+import { loadCandidateRuntime } from './candidate-runtime.js'
 
 export const MANIFEST_NAME = 'candidate-manifest.json'
 export const MODEL_BINDING_NAME = 'model-binding.json'
@@ -11,6 +11,7 @@ const EXCLUDED_DIRS = new Set(['.git', 'node_modules', '__pycache__', '.harbor-r
 const EXCLUDED_FILES = new Set([MANIFEST_NAME, '.DS_Store'])
 const LOCKFILES = ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb']
 const CREDENTIAL_FILES = new Set([
+  '.npmrc',
   'credentials.json',
   'service-account.json',
   'secrets.json',
@@ -99,14 +100,14 @@ export async function computeCandidate(candidateDir) {
   return { digest: `sha256:${digest.digest('hex')}`, files }
 }
 
-async function validateCandidateContract(root) {
+async function validateCandidateContract(root, runtime) {
   try {
     await stat(path.join(root, '.harbor-runtime'))
     throw new Error('Candidate must not contain the reserved .harbor-runtime path')
   } catch (error) {
     if (error.code !== 'ENOENT') throw error
   }
-  for (const required of ['cordis.yml', 'package.json']) {
+  for (const required of [runtime.config_path ?? 'cordis.yml', 'package.json']) {
     try {
       if (!(await stat(path.join(root, required))).isFile()) throw new Error()
     } catch {
@@ -131,7 +132,8 @@ async function validateCandidateContract(root) {
 
 export async function snapshotCandidate(candidateDir, options = {}) {
   const root = path.resolve(candidateDir)
-  await validateCandidateContract(root)
+  const runtime = await loadCandidateRuntime(root)
+  await validateCandidateContract(root, runtime)
   let packageJson
   try {
     packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))
@@ -158,13 +160,7 @@ export async function snapshotCandidate(candidateDir, options = {}) {
     version: String(version),
     digest: computed.digest,
     created_at: new Date().toISOString(),
-    runtime: {
-      kind: 'deepseek-harness',
-      policy: RUNTIME_POLICY,
-      version: DSH_RUNTIME_VERSION,
-      package: CANDIDATE_ACP_PACKAGE,
-      transport: 'acp',
-    },
+    runtime,
     files: computed.files,
     metadata,
   }

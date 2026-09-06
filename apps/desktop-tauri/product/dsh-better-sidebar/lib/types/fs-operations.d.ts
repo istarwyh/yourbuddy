@@ -10,6 +10,8 @@ export interface WorkspaceUploadInput {
     chunks: AsyncIterable<string | Uint8Array>;
     /** Byte cap; an oversized upload is refused without touching the target. */
     limit: number;
+    /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
+    fence?: boolean;
 }
 /**
  * Stream `chunks` into `dir/relativePath` atomically: a uniquely named temp

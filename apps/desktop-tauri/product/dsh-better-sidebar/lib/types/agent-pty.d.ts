@@ -16,6 +16,20 @@ export declare function clampDims(cols: number, rows: number): {
     rows: number;
 };
 /**
+ * Arm the Windows pre-ready resize gate for one freshly spawned pty.
+ * No-op on POSIX and for injected ptys without `onData`.
+ */
+export declare function armPtyResizeGate(pty: IPty): void;
+/**
+ * Best-effort resize for WebSocket-driven terminal views. Layout animation
+ * can briefly produce unusable dimensions, and node-pty can reject a resize
+ * after the socket setup's outer try/catch has returned. Ignore that one
+ * frame so the host stays alive and a later valid measurement can retry.
+ * Returns whether node-pty accepted the resize (or parked it for replay on
+ * the first output — the Windows pre-ready window).
+ */
+export declare function tryResizePty(pty: Pick<IPty, 'resize'>, cols: number, rows: number): boolean;
+/**
  * Serializable snapshot of one agent terminal — the shape the model sees
  * through `terminal_list` and the sidebar sees through the push endpoint.
  * Carries no pty reference and no transcript (those are reached through

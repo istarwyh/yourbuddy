@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import path from 'node:path'
 
+import { containsCredentialText, containsLocalPath, containsOpaqueSecretText } from './credential-redaction.js'
 import { foldSessionDiagnosticIndex } from './session-projection.js'
 
 function canonicalize(value) {
@@ -45,9 +46,10 @@ function safeIdentity(value, rawSessionId) {
   const text = typeof value === 'string' ? value : ''
   if (rawSessionId && text.includes(rawSessionId)) return '[redacted-identity]'
   if (
-    /(?:api[_-]?key|token|secret|password|authorization|bearer\s+)/i.test(text)
-    || /(?:^|[\\/])(?:Users|home|private|tmp|var|etc|opt|Volumes)(?:[\\/]|$)/.test(text)
-    || /\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b/.test(text)
+    containsCredentialText(text)
+    || containsOpaqueSecretText(text)
+    || containsLocalPath(text)
+    || /(?:api[_-]?key|token|secret|password|authorization)/i.test(text)
   ) return '[redacted-identity]'
   return text.slice(0, 160)
 }

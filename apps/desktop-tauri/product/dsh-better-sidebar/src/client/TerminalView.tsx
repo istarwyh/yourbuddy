@@ -268,13 +268,23 @@ export function TerminalView(props: { scope: SessionScope; tabId: string; store:
     const inputSub = term.onData((data) => {
       if (socket !== null && socket.readyState === WebSocket.OPEN) socket.send(data)
     })
+    // Resize streams fire per layout frame during panel open/close
+    // animations; fit() measures glyphs, so coalesce to one fit per
+    // animation frame (same pattern as the core's frame-batcher, kept
+    // local — this view lives in the lazy terminal chunk and does not
+    // import core-bundle modules).
+    let resizeFrame: number | null = null
     const observer = new ResizeObserver(() => {
-      try {
-        fit.fit()
-        sendResize()
-      } catch {
-        // The terminal may be mid-dispose; ignore.
-      }
+      if (resizeFrame !== null) return
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = null
+        try {
+          fit.fit()
+          sendResize()
+        } catch {
+          // The terminal may be mid-dispose; ignore.
+        }
+      })
     })
     observer.observe(host)
 
@@ -323,6 +333,7 @@ export function TerminalView(props: { scope: SessionScope; tabId: string; store:
       cancelOpen()
       window.clearTimeout(retry)
       observer.disconnect()
+      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
       fontSub()
       schemeSub()
       inputSub.dispose()

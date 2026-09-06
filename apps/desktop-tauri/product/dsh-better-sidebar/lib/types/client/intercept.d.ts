@@ -32,13 +32,21 @@ export declare function SidebarProducedFiles(props: {
  */
 export declare function registerTurnTailInterception(ctx: Context, store: SidebarStore): () => void;
 /**
- * Register the chat file-open interception: wraps `ctx.workspaces.openPath`
- * — the single funnel every chat-side file open goes through (tool-row path
- * links, the produced-files row, prose mentions) — so opens land in the
- * sidebar editor instead of the Host OS. The folder-reveal gesture ("Show in
- * folder" passes `'.'`) is the one exception: it is routed to the explorer.
- * Gated by BOTH the `interceptOpenPath` pref and the editor tab's enable
- * switch; declined opens fall through to the original method. Returns the
- * disposer restoring the original (HMR-safe).
+ * Register the chat file-open interception: shadows
+ * `remote.session.openWorkspacePath` — the single funnel every chat-side
+ * file open goes through on alpha hosts (tool-row path links, the
+ * produced-files row, prose mentions, inline-code paths) — so opens land in
+ * the sidebar editor instead of the Host OS. The folder-reveal gesture
+ * ("Show in folder" passes `'.'`) is the one exception: it is routed to the
+ * explorer. Gated by BOTH the `interceptOpenPath` pref and the editor tab's
+ * enable switch; declined opens fall through to the original remote call.
+ *
+ * The `remote.session` namespace service mounts asynchronously (the gateway
+ * client creates it when the session-controller contribution arrives) and
+ * is recreated on contribution remounts, so the wrapper installs through
+ * `ctx.inject`: the callback runs once the service exists and re-runs after
+ * every remount, re-applying the shadow on the fresh instance. Returns the
+ * disposer (disposes the inject fiber, which restores the original method
+ * descriptor — HMR-safe).
  */
 export declare function registerOpenPathInterception(ctx: Context, store: SidebarStore): () => void;

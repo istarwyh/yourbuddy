@@ -13,11 +13,89 @@ from jsonschema import Draft202012Validator
 from harbor_dsh_evolution.evaluator import validate_evaluation_result
 
 SENSITIVE_KEY = re.compile(
-    r"authorization|cookie|token|api[_-]?key|secret|password|request[_-]?headers",
+    r"authorization|cookie|token|api[_-]?key|access[_-]?key|secret|password|"
+    r"passwd|private[_-]?key|request[_-]?headers",
     re.I,
 )
-LOCAL_PATH = re.compile(r"(?:/[A-Za-z0-9._ -]+){2,}")
+SENSITIVE_CONTAINER_SUFFIXES = (
+    "header",
+    "headers",
+    "headermap",
+    "headermaps",
+    "env",
+    "envvar",
+    "envvars",
+    "envmap",
+    "envmaps",
+    "environment",
+    "environmentvariable",
+    "environmentvariables",
+    "environmentvar",
+    "environmentvars",
+    "environmentmap",
+    "environmentmaps",
+    "credential",
+    "credentials",
+    "credentialmap",
+    "credentialmaps",
+    "credentialstore",
+    "credentialstores",
+    "credentialvalue",
+    "credentialvalues",
+)
 MAX_TEXT = 8_000
+MAX_DIAGNOSTIC_SCAN = 64_000
+
+SENSITIVE_ASSIGNMENT_NAMES = (
+    r"authorization|cookie|cookies|token|auth[_-]?token|access[_-]?token|"
+    r"refresh[_-]?token|session[_-]?token|api[_-]?key|access[_-]?key|"
+    r"client[_-]?secret|secret|secret[_-]?key|secret[_-]?access[_-]?key|"
+    r"private[_-]?key|password|passwd"
+)
+# Keep the namespace repetition bounded. Besides making the accepted key shape
+# explicit, this avoids pathological backtracking on long, ordinary hyphenated
+# diagnostic lines.
+SENSITIVE_ASSIGNMENT_KEY = (
+    rf"(?:[A-Za-z][A-Za-z0-9]*[_-]){{0,16}}(?:{SENSITIVE_ASSIGNMENT_NAMES})"
+)
+SECRET_ASSIGNMENT = re.compile(
+    rf"(^|[^A-Za-z0-9_])(?P<quote>[\"'`]?)"
+    rf"(?P<key>{SENSITIVE_ASSIGNMENT_KEY})(?P=quote)\s*[:=][^\r\n]*",
+    re.I | re.M,
+)
+QUOTED_AUTH_VALUE = re.compile(r"([\"'`])(Bearer|Basic)\s+[^\r\n]*", re.I)
+AUTH_VALUE = re.compile(r"\b(Bearer|Basic)\s+[^\s,;\"'`<>]+", re.I)
+URL_USERINFO_VALUE = re.compile(
+    r"\b([A-Za-z][A-Za-z0-9+.-]{0,31}://)"
+    r"(?!\[REDACTED[^\]]*\]@)([^/\s?#@\"'`<>]+)@",
+    re.I,
+)
+POSIX_LOCAL_PATH = re.compile(
+    r"(?<![A-Za-z0-9:/])/(?:[^/\r\n\"'`<>,;]+/)+[^/\r\n\"'`<>,;]*"
+    r"|(?<![A-Za-z0-9:/])/[A-Za-z0-9._~+-]+(?=$|[\s\"'`<>,;])"
+)
+WINDOWS_LOCAL_PATH = re.compile(r"(?:\b[A-Za-z]:\\|\\\\)[^\r\n\"'`<>,;]*")
+OPAQUE_SECRET_RULES = (
+    (
+        "pem",
+        re.compile(
+            r"-----BEGIN [^-\r\n]{1,80}-----[\s\S]*?"
+            r"(?:-----END [^-\r\n]{1,80}-----|$)",
+            re.I,
+        ),
+    ),
+    (
+        "token",
+        re.compile(
+            r"\b(?:sk|rk|pk)-(?:proj-)?[A-Za-z0-9_-]{12,}\b|"
+            r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b|"
+            r"\bxox[a-z]?-[A-Za-z0-9-]{10,}\b",
+            re.I,
+        ),
+    ),
+    ("jwt", re.compile(r"\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b")),
+    ("aws", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
+)
 
 VALIDITY_REQUIREMENTS = (
     "input_integrity",
@@ -181,19 +259,131 @@ def _schema_errors(name: str, value: Any) -> list[str]:
     return [error.message for error in Draft202012Validator(_SCHEMAS[name]).iter_errors(value)]
 
 
+def _redact_text(value: str, *, max_text: int = MAX_TEXT) -> str:
+    text = str(value)
+    for kind, pattern in OPAQUE_SECRET_RULES:
+        text = pattern.sub(f"[REDACTED {kind}]", text)
+    text = SECRET_ASSIGNMENT.sub(
+        lambda match: (
+            f"{match.group(1)}{match.group('quote')}{match.group('key')}"
+            f"{match.group('quote')}=[REDACTED]"
+        ),
+        text,
+    )
+    text = QUOTED_AUTH_VALUE.sub(
+        lambda match: f"{match.group(1)}{match.group(2)} [REDACTED]{match.group(1)}",
+        text,
+    )
+    text = AUTH_VALUE.sub(lambda match: f"{match.group(1)} [REDACTED]", text)
+    text = URL_USERINFO_VALUE.sub(lambda match: f"{match.group(1)}[REDACTED]@", text)
+    text = POSIX_LOCAL_PATH.sub("[local path]", text)
+    text = WINDOWS_LOCAL_PATH.sub("[local path]", text)
+    if len(text) > max_text:
+        return f"{text[:max_text]}\n[TRUNCATED {len(text) - max_text} chars]"
+    return text
+
+
+def _sensitive_container_key(value: Any) -> bool:
+    key = str(value)
+    if SENSITIVE_KEY.search(key):
+        return True
+    canonical = re.sub(r"[^A-Za-z0-9]", "", key).casefold()
+    return (
+        any(canonical.endswith(suffix) for suffix in SENSITIVE_CONTAINER_SUFFIXES)
+        or re.search(r"credentials?(?:maps?|stores?|values?)$", canonical) is not None
+    )
+
+
 def redact(value: Any) -> Any:
     if isinstance(value, dict):
         return {
-            str(key): "[REDACTED]" if SENSITIVE_KEY.search(str(key)) else redact(item)
+            str(key): "[REDACTED]" if _sensitive_container_key(key) else redact(item)
             for key, item in value.items()
         }
     if isinstance(value, list):
         return [redact(item) for item in value[:200]]
     if isinstance(value, str):
-        value = LOCAL_PATH.sub("[local path]", value)
-        if len(value) > MAX_TEXT:
-            return f"{value[:MAX_TEXT]}\n[TRUNCATED {len(value) - MAX_TEXT} chars]"
+        return _redact_text(value)
     return value
+
+
+DOCKER_CREDENTIAL_ERROR = re.compile(
+    r"(?im)^.*(?:error getting credentials|docker-credential-[A-Za-z0-9_-]+|exec:\s*[\"']docker-credential-[A-Za-z0-9_-]+).*$"
+)
+DOCKER_DAEMON_ERROR = re.compile(
+    r"(?im)^.*(?:cannot connect to the docker daemon|error during connect).*$"
+)
+def _first_causal_error(message: str, traceback_text: str = "") -> str:
+    """Extract the first infrastructure error line from an exception payload.
+
+    Harbor wraps Docker build failures as ``RuntimeError("Failed to build Docker
+    image ..., output: <log>")``, so the human-relevant cause is a line inside
+    the message, not the wrapper. Prefer the known credential/daemon markers,
+    then fall back to the first non-empty line.
+    """
+    def diagnostic_window(part: str) -> str:
+        if len(part) <= MAX_DIAGNOSTIC_SCAN:
+            return part
+        half = MAX_DIAGNOSTIC_SCAN // 2
+        return f"{part[:half]}\n[DIAGNOSTIC WINDOW TRUNCATED]\n{part[-half:]}"
+
+    combined = "\n".join(
+        diagnostic_window(part.strip())
+        for part in (message, traceback_text)
+        if part and part.strip()
+    )
+    for pattern in (DOCKER_CREDENTIAL_ERROR, DOCKER_DAEMON_ERROR):
+        match = pattern.search(combined)
+        if match:
+            return match.group(0).strip()[:2000]
+    for line in combined.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped[:2000]
+    return ""
+
+
+def infrastructure_fix(detail: str) -> str | None:
+    """Return a concrete repair hint for a recognized infrastructure error."""
+    lowered = detail.casefold()
+    if "docker-credential-" in lowered or "error getting credentials" in lowered:
+        return (
+            "Docker cannot resolve its configured credential helper. On macOS Docker Desktop, "
+            "add the Docker Desktop Resources/bin directory to PATH (or set `credsStore` "
+            "to `osxkeychain`), then rerun Doctor and retry the Job."
+        )
+    if "cannot connect to the docker daemon" in lowered or "error during connect" in lowered:
+        return "Start Docker Desktop and confirm `docker version` reaches the daemon, then retry the Job."
+    return None
+
+
+def exception_summary(value: Any) -> dict[str, str] | None:
+    """Surface the first causal infrastructure error (not a generic wrapper).
+
+    Kept redaction-safe: local paths and ``key=secret`` assignments are masked
+    before the message is recorded, so a Trial can retain the real failure as
+    evidence without leaking authorized-only diagnostics.
+    """
+    if not isinstance(value, dict):
+        return None
+    exception_type = _redact_text(
+        str(value.get("exception_type") or "Exception"),
+        max_text=256,
+    ).strip() or "Exception"
+    detail = _first_causal_error(
+        str(value.get("exception_message") or ""),
+        str(value.get("exception_traceback") or ""),
+    )
+    detail = _redact_text(detail, max_text=2_000).strip() if detail else ""
+    summary = {
+        "type": exception_type,
+        "classification": "infrastructure",
+        "message": detail or "Execution failed. Inspect the local Harbor Trial log for authorized diagnostics.",
+    }
+    fix = infrastructure_fix(detail)
+    if fix:
+        summary["recommendation"] = fix
+    return summary
 
 
 def _numbers(value: Any) -> dict[str, float]:
@@ -544,15 +734,7 @@ def trial_assessment(
             "raw_rewards": rewards,
             "output": output,
             "evidence_provenance": evidence_provenance,
-            "exception": (
-                {
-                    "type": str(exception.get("exception_type") or "Exception"),
-                    "classification": "infrastructure",
-                    "message": "Execution failed. Inspect the local Harbor Trial log for authorized diagnostics.",
-                }
-                if exception
-                else None
-            ),
+            "exception": exception_summary(exception),
             "process": process,
         }
     )

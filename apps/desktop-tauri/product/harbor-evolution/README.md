@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 Installable DeepSeek Harness Plugin + Skill for running stable Harbor evaluation and controlled Agent evolution loops, with a native DSH Web dashboard.
 
-The package gives DSH sixteen strict Harbor tools, dedicated Tool cards, a nine-stage Evaluation Workbench, an installation Doctor, and the model- and user-invocable `evolve-agent-with-harbor` Skill. The Skill starts with four user-facing concepts—Dataset (what to test), Generator (who answers), Evaluator plus criteria (what good means), and Optimizer (who improves it)—then compiles accepted choices into the strict Evaluation Stack. When no Dataset is supplied, it can instead preview recent completed DSH Sessions and evaluate each immutable Session as one Historical Trial without rerunning a Candidate. A DSH Generator may explicitly pin the current default model as a non-secret Candidate identity while retaining the per-Job Host Broker credential boundary. The Plugin validates Dataset identity, checks Trial Lifecycle and Score Validity, governs independent Ground Truth meta-evaluation, diagnoses evidence provenance, limits each iteration to one controlled Candidate change, and invokes the Promotion Gate only as an explicit action.
+The package gives DSH nineteen strict Harbor tools, dedicated Tool cards, an object-first Evaluation Workbench, a same-session Copilot Dock, an installation Doctor, and the model- and user-invocable `evolve-agent-with-harbor` Skill. The Skill starts with four user-facing concepts—Dataset (what to test), Generator (who answers), Evaluator plus criteria (what good means), and Optimizer (who improves it)—then compiles accepted choices into the strict Evaluation Stack. When no Dataset is supplied, it can instead preview recent completed DSH Sessions and evaluate each immutable Session as one Historical Trial without rerunning a Candidate. A DSH Generator may explicitly pin the current default model as a non-secret Candidate identity while retaining the per-Job Host Broker credential boundary. The Plugin validates Dataset identity, checks Trial Lifecycle and Score Validity, governs independent Ground Truth meta-evaluation, diagnoses evidence provenance, limits each iteration to one controlled Candidate change, and invokes the Promotion Gate only as an explicit action.
 
 ## Install
 
@@ -16,8 +16,8 @@ npx --yes dsh-harbor-evolution@latest setup --project-root "$PWD"
 
 The setup command installs both required runtimes:
 
-- `harbor-dsh-evolution==0.8.1` in a managed Python environment.
-- `dsh-harbor-evolution@0.8.1` in the selected DSH profile.
+- `harbor-dsh-evolution==0.9.2` in a managed Python environment.
+- `dsh-harbor-evolution@0.9.2` in the selected DSH profile.
 
 It then stores the absolute Harbor executable paths and a fallback `projectRoot` in the profile's `harbor-evolution` block and verifies the integration. Agent Tool calls always use the calling session's absolute working directory as their project root; the configured value remains the Web Workbench and non-Agent fallback. Existing unrelated profile entries are preserved, and rerunning setup updates the same block.
 
@@ -48,9 +48,12 @@ The Plugin registers:
 - `harbor_session_diagnostic_preview`
 - `harbor_session_diagnostic_run`
 - `harbor_dataset_validate`
-- `harbor_context_preview`
+- `harbor_context_preview` (refreshes `candidate-manifest.json` under one-shot approval before returning the preview)
 - `harbor_eval_run`
 - `harbor_eval_result`
+- `harbor_resolve_page_context`
+- `harbor_get_evidence`
+- `harbor_propose_action` (proposal only; never confirms or executes a mutation)
 - `harbor_evaluator_inspect`
 - `harbor_evaluator_update`
 - `harbor_ground_truth_init`
@@ -59,19 +62,35 @@ The Plugin registers:
 
 In the `web` profile, the same package also registers:
 
-- a localized nine-stage Workbench that directly exposes fixed experiment identities, Agent-visible Dataset queries/instructions, safe business-artifact previews, Ground Truth meta-evaluation, paginated per-Trial evidence and recommendations, Population validity/coverage, controlled optimization hypotheses, and Baseline/Gate deltas; raw JSON remains in the audit drawer;
+- a localized object-first Workbench (Summary, Trials, Pipeline, Optimization, Compare/Gate, Evaluator/Rubric, Artifacts, Audit) that directly exposes fixed experiment identities, Agent-visible Dataset queries/instructions, safe business-artifact previews, Ground Truth meta-evaluation, paginated per-Trial evidence and recommendations, Population validity/coverage, controlled optimization hypotheses, and Baseline/Gate deltas; raw JSON remains in the audit drawer;
+- a Composer Context Capsule that freezes a Job, Trial, Criterion, or Evidence selection only after an explicit `Ask AI` / `Ask about this` action or `@harbor` selection; ordinary sends never inherit the visible Harbor page, and the one-shot reference clears after its turn is sent;
+- a same-session Harbor Copilot Dock that renders the real Chat Session's running state, Tool progress, final answer, failure, and Stop action without copying conversation history; a typed `harbor.navigate` result performs only an allowlisted, read-only Harbor location change when its object, page-Session, and generation preconditions still match, while Back restores the prior workspace, page, stage, Trial filters/sort/focus, Compare Baseline, and scroll position;
+- a first-class `Evaluate recent Sessions` action that previews up to ten safe Session records, shows the frozen Evaluator/Judge and diagnostic boundaries, requires explicit confirmation, runs in the background, and opens the completed Job;
 - descriptor-authorized Evaluator/Rubric source editing for `script` and `llm-as-judge` implementations, with optimistic concurrency and mandatory new identities;
 - a `harbor-dsh-evaluator/v1` interface shared by deterministic scripts and LLM-as-Judge implementations;
 - compact result cards for all Harbor Tool calls;
+- explicit local-object selection and frozen Trial-set selectors (fixed IDs/revisions or a query snapshot, at most 1000 members), independently removable context chips, and source fragment Ask;
+- AI proposal cards with deterministic Preflight, explicit review, idempotent confirmation and append-only local operation journals; Candidate/Gate/handoff output is a saved draft, not an applied resource change. Evaluator source proposals can be opened in the reviewed version editor. Selected Compare executes a read only;
 - a `Harbor Evolution` Settings section that checks the configured project, Evaluation Stack, Jobs directory, and CLI paths, supports process-local `projectRoot` reload, and checks npm for a newer formal release without silently installing it.
 
-The Web UI is intentionally read-only. Starting an evaluation or deciding promotion remains an explicit Agent + Skill workflow, so a page refresh can never launch an expensive Job.
+### Start with an object, not a command
+
+1. Open an evaluation result. Select a task, score, evidence item, or saved source fragment.
+2. Choose **Ask AI** or a suggested question. Harbor prepares a visible reference in the existing Composer; review, add your question, and send.
+3. Continue chatting in the same Session. The Copilot shows ordinary follow-ups and recent discussion history. An ordinary answer does not inherit the old answer's evidence-validity badge. Reattach the original object when you need fresh evidence or a modification.
+4. For scoring rules, select saved lines and choose **Suggest a change**. **Review and edit** opens the matching file directly. The AI may populate an unchanged editor, but never replaces your manual edits. Review the diff and explicitly save to create new identities; this does not run an evaluation or Gate.
+
+Unsaved source edits are isolated by Session, workspace, Job, and file and retained in this browser tab's `sessionStorage`. File/view switches and refresh can recover them; closing the tab may discard them. Storage failures are shown, with an in-memory fallback and a leave-page warning for unpersisted edits. Source conflicts preserve the original base and edited text; review the latest source before accepting a new base. Saving or explicitly discarding clears only that file's draft. Expired authorizations never erase suggestion text or human edits; changed source or expired task subsets require an explicit new selection, not an automatically widened scope.
+
+The complete AI Workbench PRD is **not** implemented yet. Bounded diagnostic/retry operations currently fail closed without a registered runner; long-running operations, replayable events/outbox and full Phase 1 audit identity are pending. Message-scoped automatic context/cross-view opening require public DSH contracts; production RBAC, approvals and rollout remain later-phase work. See the repository's `docs/ai-workbench-acceptance.md` for actual journey evidence and remaining acceptance work.
+
+The Web UI writes only through three narrow, explicit workflows: descriptor-authorized Evaluator source updates, the confirmed Historical Session launcher, and confirmed local draft/operation journals. The launcher follows `Preview → confirm → background run → open Job`; its private selection token never enters browser state. AI-native questions call the same Chat Session only after the user explicitly binds an object and sends the message. Page refreshes, ordinary sends, ordinary reads, and workspace switches never auto-attach Harbor context, auto-send a prompt, or start an Agent or Job. Candidate evaluation, Gate, promotion, deployment, publishing, and every production mutation remain explicit Agent + Skill workflows, and each Agent-requested Harbor write or evaluation tool is forced through DSH's audited one-shot user approval. If no approval channel is available, the call fails closed.
 
 A direct evaluation requires `candidatePath`, `datasetPath`, `stackPath`, and explicit `mode`; `promotion-eligible` additionally requires `policyPath`. Prefer the Skill because it will not run or compare Jobs until the material identities and evaluation contract are resolved.
 
 ## Historical Session cold start
 
-When the user does not provide a Dataset, the Skill first calls `harbor_session_diagnostic_preview` for up to ten recent completed business Sessions from the Agent's exact working directory. Preview returns only safe metadata and a short-lived confirmation token. Its confirmation card identifies the Evaluator and Judge, discloses same-model coupling and estimated requests, and warns that redacted evidence will remain under `.harbor/private` and `jobs`; it never exposes raw Session ids or transcripts.
+When the user does not provide a Dataset, the simplest entry is the `Evaluate recent Sessions` button in the Harbor tab. It previews up to ten recent completed business Sessions, shows only safe metadata plus the Evaluator, Judge, same-model coupling, estimated requests, expiry and local retention boundaries, and starts nothing until the user confirms. The Host keeps the short-lived selection token in memory; the browser receives only an opaque Preview id. The bundled Skill remains the conversational entry and uses the same Preview/Run services from the Agent's exact working directory.
 
 After explicit confirmation, `harbor_session_diagnostic_run` receives only the `selectionToken` and an optional Job name. It revalidates the frozen Session and Feedback digests, materializes an immutable Historical Batch plus matching Dataset and Stack, and evaluates one Session Observation per Harbor Trial. The Job does not rerun a Candidate, cannot enter Promotion Gate, and records Evaluator Meta-Evaluation as `not-run` because evaluator reliability requires a separate independent Ground Truth workflow.
 
@@ -88,6 +107,10 @@ Before each Job, the Plugin snapshots the current DSH Agent selection—provider
 When Settings opens, the Host performs a bounded npm registry check and caches successful results. An available release is shown with its exact installer command and release link. The browser never installs, rewrites a DSH profile, or restarts DSH; registry failures are non-blocking.
 
 `harbor_eval_result` defaults to the stable Summary. Use `view=job`, `view=dataset`, `view=progress`, `view=trial` plus a returned `trialId`, or `view=governance` to inspect sanitized instructions, generated output, evidence, and evaluator source without coupling the Agent to artifact file paths.
+
+`harbor_eval_result` and `harbor_evaluator_inspect` return a `harbor-agent-read/v1` envelope. Read the actual payload only from `data`, preserve `artifactTrust=untrusted-evidence`, and obey `policy.treatAsInstructions=false`; old top-level payload fields are not part of this contract. Both responses are recursively redacted and have an aggregate byte limit. Evaluator inspection also caps the file set and aggregate source size; when source text looks like a secret or local path, the Agent receives its safe metadata plus `sourceAccess.included=false`, not the source body. The Web Workbench keeps its separate, same-origin editing flow.
+
+`harbor_resolve_page_context` accepts only the opaque, short-lived Context Snapshot id carried by an explicit `@harbor` reference. It resolves that id inside the exact calling DSH Session and workspace, revalidates stable object ancestry and the current Host revision, and returns narrow metadata, typed Harbor refs, and an allowlisted read-only navigation action. For explicit local objects it also returns bounded, redacted `selectedEvidence` (Metric, Hypothesis, Gate reason, Finding, Attempt, or saved source fragment); these remain untrusted data, and unavailable content must not be treated as evidence. Trial sets expose only frozen membership/revision metadata, never all Trial bodies. To inspect one Trial criterion, pass the exact typed ref to `harbor_get_evidence`; the Host revalidates Workspace → Job → Trial → Criterion → Evidence ancestry, bounds and redacts the content, and marks it as untrusted evidence rather than Agent instructions.
 
 ## What setup writes
 

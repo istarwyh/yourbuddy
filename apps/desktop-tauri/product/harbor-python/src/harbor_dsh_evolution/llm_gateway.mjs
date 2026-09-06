@@ -49,30 +49,47 @@ class GatewayAdapter {
     return Promise.resolve({ ...this.modelInfo, provider, id: model })
   }
 
+  async prepareCall(provider, model, signal) {
+    signal?.throwIfAborted()
+    const resolved = await this.resolveModel(provider, model)
+    signal?.throwIfAborted()
+    return { model: resolved, stream: options => this.stream(options) }
+  }
+
   async * stream(options) {
+    if (process.env.HSE_MODEL_GATEWAY_PREFLIGHT === '1') {
+      throw new Error('harbor-model-gateway: model requests are disabled during ACP readiness checks')
+    }
     if (options.provider !== this.config.provider || options.model !== this.config.model) {
       throw new Error(`harbor-model-gateway: lease does not allow ${options.provider}/${options.model}`)
     }
     const { signal, ...body } = options
-    const response = await fetch(this.config.endpoint, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${this.token}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal,
-    })
-    if (!response.ok) {
-      throw new Error(`harbor-model-gateway: Host returned ${response.status}: ${await boundedText(response)}`)
-    }
-    if (response.body === null) throw new Error('harbor-model-gateway: Host returned no stream body')
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let pending = ''
-    let finished = false
+    // fetch may attach an Error stack to signal.reason. DSH persists its
+    // structured cancellation reason in turn/end, so never hand it to Undici.
+    const request = new AbortController()
+    const abort = () => request.abort(new DOMException('Candidate model request cancelled', 'AbortError'))
+    signal?.addEventListener('abort', abort, { once: true })
+    if (signal?.aborted) abort()
+    let reader
     try {
+      const response = await fetch(this.config.endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${this.token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: request.signal,
+      })
+      if (!response.ok) {
+        throw new Error(`harbor-model-gateway: Host returned ${response.status}: ${await boundedText(response)}`)
+      }
+      if (response.body === null) throw new Error('harbor-model-gateway: Host returned no stream body')
+
+      reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let pending = ''
+      let finished = false
       while (true) {
         const next = await reader.read()
         pending += decoder.decode(next.value ?? new Uint8Array(), { stream: !next.done })
@@ -96,7 +113,9 @@ class GatewayAdapter {
       }
       if (!finished) throw new Error('harbor-model-gateway: Host stream ended before a terminal finish')
     } finally {
-      reader.releaseLock()
+      signal?.removeEventListener('abort', abort)
+      abort()
+      reader?.releaseLock()
     }
   }
 }

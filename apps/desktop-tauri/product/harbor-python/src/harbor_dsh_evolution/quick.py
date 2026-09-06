@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
@@ -12,14 +13,8 @@ from harbor_dsh_evolution.dataset import snapshot_dataset
 from harbor_dsh_evolution.initialize import initialize_project
 
 
-ACP_READY_DOCKERFILE = """FROM redis@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065
-
-RUN apk add --no-cache bash ca-certificates coreutils curl nodejs npm py3-pip py3-virtualenv python3 \\
-    && python3 -m venv /opt/harbor-acp-venv \\
-    && /opt/harbor-acp-venv/bin/pip install --no-cache-dir agent-client-protocol
-
-WORKDIR /app
-"""
+_RUNTIME_TEMPLATE = files("harbor_dsh_evolution").joinpath("runtime_template")
+ACP_READY_DOCKERFILE = _RUNTIME_TEMPLATE.joinpath("Dockerfile").read_text()
 
 
 def _slug(value: str) -> str:
@@ -54,35 +49,17 @@ def initialize_quick_diagnostic(
     dataset = workspace / "dataset"
     task = dataset / "wiring-check"
 
-    package = {
-        "name": f"{identity}-candidate",
-        "version": "1.0.0",
-        "private": True,
-        "type": "module",
-    }
-    lock = {
-        "name": package["name"],
-        "version": package["version"],
-        "lockfileVersion": 3,
-        "requires": True,
-        "packages": {"": {"name": package["name"], "version": package["version"]}},
-    }
+    # The shipped composition and complete lock are one reviewed template.
+    # Generation never discovers or installs an npm application at latest.
+    package = json.loads(_RUNTIME_TEMPLATE.joinpath("package.json").read_text())
+    lock = json.loads(_RUNTIME_TEMPLATE.joinpath("package-lock.json").read_text())
+    package["name"] = f"{identity}-candidate"
+    lock["name"] = package["name"]
+    lock["packages"][""]["name"] = package["name"]
     _write_new(candidate / "package.json", json.dumps(package, indent=2) + "\n")
     _write_new(candidate / "package-lock.json", json.dumps(lock, indent=2) + "\n")
-    _write_new(
-        candidate / "cordis.yml",
-        """- id: acp-agent
-  name: '@deepseek-ai/dsh-acp-demo'
-  config:
-    provider: diagnostic-placeholder
-    model: diagnostic-placeholder
-    persistenceRoot: /tmp/dsh-sessions
-    persistenceCompression: none
-    workspaceContext: false
-    persona: |
-      Answer the evaluation query directly. This Candidate is only for Harbor wiring diagnostics.
-""",
-    )
+    for name in ("candidate-runtime.json", "cordis.yml", "run-acp.mjs", "owned-acp-composition.mjs"):
+        _write_new(candidate / name, _RUNTIME_TEMPLATE.joinpath(name).read_text())
     candidate_manifest = snapshot_candidate(candidate)
 
     _write_new(

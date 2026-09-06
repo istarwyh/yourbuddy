@@ -5,7 +5,7 @@
 
 [English](README.md) | 中文
 
-当前 npm 版本：**v0.3.1**
+当前 npm 版本：**v0.3.2**
 
 这是一个自包含的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Codex 能力包**。它复用官方 **Codex CLI** 维护的 ChatGPT 登录态
@@ -42,6 +42,128 @@ GPT Auth 设置在登录卡片与能力卡片之间提供实时生效、默认�
 上下文窗口从保守的 272,000 Token 提升到 1,000,000 Token。DSH 会据此计算 Token
 压力和压缩时机；插件不会在请求里发送用于和后端协商容量的参数。超过 272K 的请求可能
 更快消耗账户配额，后端是否支持仍取决于账户，而且启用开关不会展开 DSH 已经压缩的历史。
+
+### 实验性 Dual Checkpoint 压缩 Adapter
+
+包额外导出 `dsh-codex-auth/compaction`，仅供用户或部署者在**自定义 Agent preset**
+中显式选择。`CodexCompactionEngine` 继承 DSH 的 `BasicCompactionEngine`，并包装手动、
+step pressure 与 provider 已确认的 context-overflow 入口。每条路径都会先完成 Basic 原有、
+provider-neutral 的 Portable 摘要；Host 随后只在内存中捕获该调用最终且不含 marker 的
+Codex payload 与已经解析好的登录态，再发送一次末尾带临时 `compaction_trigger` 的独立
+Responses v2 请求。若得到有效 opaque 结果，就把它追加在 Portable 摘要旁，由 Basic 的
+同一个继承事务原子提交 **Dual Checkpoint**。选区、pruning、tool pair 平衡、重试上限、
+持久 marker、surface replacement 与取消语义仍全部由 Basic 拥有。
+
+Portable 成功永远先发生。路由或模型不一致、前缀为空或含图片、payload 不受支持、超时、
+限流、HTTP/协议错误、状态过大或保守 shrink 预检失败时，都会只提交已经有效的 Portable
+Checkpoint；Portable 失败则不提交 checkpoint。Native 请求不会重试。进程局部、按
+account/model/endpoint/codec 隔离的 circuit breaker 会在五分钟内三次 transient 失败后
+打开十分钟，在 protocol 或最终 payload shape 不受支持时打开一小时，并按设有上限的
+HTTP 429 `Retry-After` 打开；half-open 只允许一个探测。HTTP 401/403、oversize-state 与
+strict-shrink fallback 都不计数。它不会禁用普通推理或 Portable 压缩。插件卸载会中止活跃
+Native 工作，并释放请求局部的 credential、payload、marker、canonical item 与 continuation。
+
+Debug 诊断只包含 compaction ID、trigger、codec generation、model、eligibility/status/fallback
+class、breaker state、耗时、item/byte 数、回放估算与 usage 是否可用；认证被拒绝时会提示执行
+`codex login`。诊断绝不会包含 prompt、tool、header、token、turn state、canonical item、
+encrypted content 或 provider 报告的 Token 数值。Native usage 数值可以作为诊断 metadata
+保存在敏感 checkpoint 内，但 rc.2 的聚合 Token 记账仍只使用 Portable 摘要调用。
+
+一次**内联自动** Native 压缩成功后，provider 响应中非空的 `x-codex-turn-state` 会成为
+进程局部的 **Codex Turn Continuation**。只读 `llm/stream` waterfall 会在 Runtime 克隆前
+观察 Agent-loop 原始请求；continuation 只会发送给 session、route、model、Codex account
+与 Adapter generation 都相同的下一次请求。它在 60 秒后过期，并在首个不匹配的 eligible
+请求、取消/错误、route replacement 或插件卸载时清除。Portable 摘要、session-title/辅助
+调用、直接 maintenance、`compactRegion()` 与手动 `/compact` 都不会消费或 arm 它；它也
+绝不会进入 Session event、checkpoint、UI state、日志、错误或 telemetry。
+
+Native 生成仍只支持从当前 surface 头部开始、且 Portable 调用使用同一个精确
+`openai-codex` 模型的前缀；显式 region 与选区内含图片的压缩仍只产生 Portable
+Checkpoint，选定前缀之后的图片和其他消息继续留在 DSH tail。canonical 纯文本 user group
+按从新到旧顺序在版本化的 64,000 Token JSON 预算内保留，边界处最多保留一个 Unicode-safe
+文本前缀。回放估算对 opaque 内容单独采用固定 Codex 规则：base64 解码长度减去 650-byte
+envelope allowance；该值不冒充 DSH 的 provider-neutral pressure price。完整 custom block
+上限为 2 MiB，最终仍由 Basic 执行权威 strict-shrink 校验。额外 v2 请求会增加延迟并消耗
+Codex 配额；其 opaque 状态不含 credential，但仍是敏感会话数据，而且 rc.2 会在 summary
+event 与 replacement message 中各保存一份。
+
+正常安装 Codex 能力包不会启用这个 Adapter。`cordis.patch.yml` 与 DSH 内置 preset
+仍然使用 stock Basic 压缩。要显式启用，可把 npm 包内最小示例的完整 `compaction`
+group 复制到自定义 preset：
+
+```text
+node_modules/dsh-codex-auth/examples/agent-presets/codex-portable/
+├── preset.yml
+└── agent.cordis.yml
+```
+
+该 group 在 `ctx.compaction` 只选择一个 `dsh-codex-auth/compaction` 行，并保留
+`@deepseek-ai/dsh-command-compact` 与
+`@deepseek-ai/dsh-compaction-tool-result-pruner`。不要在旁边再添加
+`@deepseek-ai/dsh-compaction-basic`。示例刻意不含 persona 或工具；应把这个 group
+合并进部署者维护的完整 preset，而不是用它替代 DSH 的标准能力。
+
+该实验性导出只支持 DSH / Basic compaction `0.1.1-rc.2` 与 pi-ai `0.82.1`；
+在其他版本组合上挂载会给出可操作的兼容性错误并失败。长上下文模式可以改变 pressure
+压缩的触发时机，但不会改变 Native activation、codec、retention、v2 payload、回放兼容性
+或一次性 turn-continuation 契约。回滚时只需重新选择 DSH 内置 preset；已有会话仍可通过
+同级 Portable 文本继续，不需要迁移 profile 或会话。当 DSH 提供受支持的 provider-native
+checkpoint Seam 时，应迁移到该 Seam，并删除本包的 carrier、请求 side channel、直接
+transport、兼容性固定与自定义 Basic replacement；Portable Checkpoint 继续作为恢复路径。
+
+仓库包含会消耗真实 Codex 配额的 live harness，但普通测试、`pnpm run check` 与 CI 都不会
+运行它。它会拒绝 `CI`，并要求已有 Codex Login State 以及两个显式确认变量：
+
+```sh
+DSH_CODEX_NATIVE_LIVE=1 \
+DSH_CODEX_NATIVE_LIVE_CONFIRM=I_UNDERSTAND_CODEX_LIVE_QUOTA \
+pnpm run test:live:native-compaction
+```
+
+它验证真实 v2 创建、同进程一次性 turn continuation 与 Native 回放、重启/恢复回放、重复压缩
+和诊断脱敏。没有另行授权
+消耗 live Codex 配额时不要运行；实现过程和普通验证不会触达这一边界。
+
+### Codex Native Checkpoint 回放
+
+普通 `openai-codex` 推理会恢复兼容且已持久化的 **Dual Checkpoint**。在 pi-ai
+转换 DSH 消息之前，Host 会把每条完整且有效的 checkpoint 消息替换成请求局部 marker；
+provider payload hook 再在原位置把整条 marker item 替换为 canonical Codex Native
+Checkpoint items，或替换为一条只含 Portable Checkpoint 的普通 user item。Native 与
+Portable 两种表示绝不会同时发给 provider。持久化 block 可安全经过 JSON 存储、
+`Session.fromRestore()` 与 `SessionStore.fork()`；重启恢复及 fork 后都能继续回放和再次压缩，
+不需要改写 Session。追加新 trigger 之前，选定前缀中的每个兼容 checkpoint 都会在原 item
+位置展开；不兼容 checkpoint 只贡献自己的 Portable message，因此仍可生成新的有效 Native
+checkpoint 来替换该前缀。所有后续 tail message 与重复 pressure 的收敛或有界失败继续由
+Basic 负责。
+
+只有当 checkpoint 的 schema/codec/retention generation、provider、精确 model、哈希后的
+Codex account identity、instructions、tools、parallel/tool-choice controls、reasoning、text
+配置与 service tier 都匹配**最终生效**的 Responses 请求时，才会执行 Native 回放。组合的
+payload callback 可以改变这些控制项；callback 完成后会重新判定并选择 Native 或 Portable。
+Request ID、prompt-cache key、临时 header、turn state 与 Long Context Mode 不参与兼容性。
+未知、损坏、超过 2 MiB、含 secret、混合格式或不兼容的状态会退化为 Portable 文本。生成的
+marker 只存在于 Host；marker 缺失、重复、嵌入、泄漏或未消费时会在网络请求之前失败。
+回放 converter 精确固定在 DSH LLM / pi-ai Adapter `0.1.1-rc.2` 与 pi-ai `0.82.1`；其他
+runtime 组合只使用 Portable 文本。Adapter generation 替换或 HMR 会使进程内 replay 与
+turn-continuation 状态失效，但不会修改持久化 Dual Checkpoint。
+
+版本化 Host codec 通过 `dsh-codex-auth/native-checkpoint` 导出。它以 lossless JSON 保留
+canonical 的纯文本 retained-user Responses items，并要求最后恰有一个 opaque compaction
+item；credential、带命名空间的原始账号/路由标识、header、原始 turn state 与请求局部元数据
+都会被拒绝，持久化的账号信息只有带 domain separation 的 hash。block 还带有空的通用展示
+sentinel，因此 stock conversation 与 trajectory 只显示/复制同级 Portable 文本，不会把
+opaque state JSON 化展示。该无凭据 opaque block 在 rc.2 中仍是敏感的普通 Session 数据，
+可能存在于 Session RPC 与导出中，使用这些表面时仍须按敏感数据处理。issue 18 之前的
+worktree 实验版本曾生成不含展示 sentinel 的 block；codec 为回放兼容仍可在 Host 解码它们，
+但不保证通用 Trajectory 对这些从未发布的 fixture 隐藏内容。查看导入 Session 前应先迁移或
+删除此类 fixture。
+
+随 DSH 发布的 PiAiAdapter 与 direct DeepSeek Adapter 在 provider wire 上只发送 Portable
+文本。转换使用脱离 Session 的请求副本，因此在下一次压缩前切回兼容 Codex route，仍可回放
+保留的 Native 状态。切回 stock Basic preset 同样不需要迁移 Session；不兼容状态会继续走
+Portable 文本。任意第三方 Adapter 若拒绝 declaration-merged 未知 block，仍属于该实验方案
+的限制。Native 创建仍要求显式选择自定义 preset，也不会修改 `cordis.patch.yml`。
 
 ### 网页搜索
 
@@ -175,7 +297,7 @@ Git 依赖会通过包内 `prepare` 脚本从源码构建。pnpm 10+ 默认阻�
 需要可复现安装时，固定 release tag 或 commit：
 
 ```sh
-dsh plugin --profile web add github:suntianc/dsh-codex-auth#v0.2.2
+dsh plugin --profile web add github:suntianc/dsh-codex-auth#v0.3.2
 ```
 
 ## 从 tarball 安装
@@ -185,7 +307,7 @@ git clone https://github.com/suntianc/dsh-codex-auth.git
 cd dsh-codex-auth
 pnpm install
 pnpm pack
-dsh plugin --profile web add ./dsh-codex-auth-0.3.1.tgz
+dsh plugin --profile web add ./dsh-codex-auth-0.3.2.tgz
 ```
 
 ## 升级
@@ -193,11 +315,11 @@ dsh plugin --profile web add ./dsh-codex-auth-0.3.1.tgz
 先停止正在运行的 `dsh web`，再将 Web Profile 更新到当前版本：
 
 ```sh
-dsh plugin --profile web add dsh-codex-auth@0.3.1
+dsh plugin --profile web add dsh-codex-auth@0.3.2
 dsh plugin --profile web list
 ```
 
-列表显示 `dsh-codex-auth@0.3.1` 后，重新启动 `dsh web` 并刷新浏览器。
+列表显示 `dsh-codex-auth@0.3.2` 后，重新启动 `dsh web` 并刷新浏览器。
 
 ## Host 配置
 
@@ -254,6 +376,8 @@ pnpm run check
 - `lib/index.js`：认证 / LLM Host 插件；
 - `lib/search.js`：搜索 Host 插件；
 - `lib/image.js`：图片 Host 插件；
+- `lib/compaction.js`：供自定义 preset 使用的实验性 Dual Checkpoint 压缩 Adapter；
+- `lib/native-checkpoint.js`：版本化 Host codec 与回放兼容性契约；
 - `lib/invariant.js`：invariant companion；
 - `lib/client.js`：兼容 Loader、内联 CSS Modules 的浏览器插件；
 - `lib/types/**`：类型声明。

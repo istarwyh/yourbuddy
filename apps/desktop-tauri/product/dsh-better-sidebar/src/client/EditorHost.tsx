@@ -27,8 +27,9 @@ import { createElement } from 'react'
 import clsx from 'clsx'
 import { IconCheckOutline16, IconFolderOpen16, IconRefreshOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '../context-types.ts'
-import { api, mediaUrl, type SessionScope } from './api.ts'
+import { api, isOutsideWorkspaceMessage, mediaUrl, type SessionScope } from './api.ts'
 import { BinaryDownload } from './binary-download.tsx'
+import { FenceErrorNotice } from './FenceErrorNotice.tsx'
 import { planFirstMatch, planFsReadOutcome, type EditorLoadAction } from './editor-load.ts'
 import { baseName } from './FileTree.tsx'
 import { createFrameBatcher } from './frame-batcher.ts'
@@ -99,7 +100,7 @@ export function EditorHost(props: {
   expanded: string[]
   revealed: string[]
   onToggleDir: (path: string) => void
-  onReferenceFile: (path: string) => void
+  onReferenceFile: (path: string, isDir: boolean) => void
 }) {
   const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile } = props
   const path = tab.path ?? ''
@@ -191,10 +192,11 @@ export function EditorHost(props: {
   }
 
   /** The context menu's "open with" action: reveal the path in the OS file
-   *  manager, or hand the target's URL (a local `file` URL, or the SSH-remote
-   *  form for VSCode-family editors in remote mode) to the host's external
-   *  opener. Failures are logged only — a missing handler is the OS's
-   *  dialog, not a sidebar error. */
+   *  manager, or hand the target's URL to its opener — local `file` URLs go
+   *  to the host's external opener, while the SSH-remote form for
+   *  VSCode-family editors launches on the browser/client machine (see
+   *  api.openExternal). Failures are logged only — a missing handler is the
+   *  OS's/browser's dialog, not a sidebar error. */
   const openWith = (targetId: string, absolute: string): void => {
     const target = openWithTargets.find(item => item.id === targetId)
     if (target === undefined) return
@@ -369,6 +371,7 @@ export function EditorHost(props: {
       <div className={css.editor}>
         <TreePanel
           full
+          store={store}
           sessionId={scope.sessionId}
           cwd={folderRoot ?? scope.cwd}
           expanded={expanded}
@@ -460,7 +463,9 @@ export function EditorHost(props: {
         <div className={css.editorMain}>
           {showEmpty && <div className={css.editorPlaceholder}>{t('editorEmptyHint')}</div>}
           {!showEmpty && load.status === 'loading' && <div className={css.editorPlaceholder}>{t('loading')}</div>}
-          {!showEmpty && load.status === 'error' && <div className={css.editorError}>{load.message}</div>}
+          {!showEmpty && load.status === 'error' && (isOutsideWorkspaceMessage(load.message)
+            ? <FenceErrorNotice store={store} onDisabled={() => { setReloadSeq(sequence => sequence + 1) }} />
+            : <div className={css.editorError}>{load.message}</div>)}
           {!showEmpty && load.status === 'binary' && <BinaryDownload scope={scope} path={path} />}
           {!showEmpty && load.status === 'ready' && createElement(load.viewer.component, {
             ctx, store, scope, path, title,
@@ -488,6 +493,7 @@ export function EditorHost(props: {
               onPointerCancel={onResizeEnd}
             />
             <TreePanel
+              store={store}
               sessionId={scope.sessionId}
               cwd={scope.cwd}
               expanded={expanded}

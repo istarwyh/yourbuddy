@@ -1,6 +1,6 @@
 import type { Context } from './context-types.ts';
-import { type SidechatThreadInfo } from './sidechat-core.ts';
-/** The five Side Chat routes of the sidebar API (wire method names). */
+import { type SidechatLogEvent, type SidechatThreadInfo } from './sidechat-core.ts';
+/** The six Side Chat routes of the sidebar API (wire method names). */
 export interface SidechatRoutes {
     /** Create a side thread child seeded with the parent's log up to now.
      *  `question` is optional: empty creates an EMPTY thread (Codex-style
@@ -23,6 +23,12 @@ export interface SidechatRoutes {
     }>;
     /** Live state + agent identity for the thread header. */
     'sidechat.info'(payload: unknown): Promise<SidechatThreadInfo>;
+    /** The thread's OWN transcript events, seed-cut host-side (the inherited
+     *  parent log never crosses the wire); `afterSeq` narrows the response to
+     *  the delta beyond it (poll tail). */
+    'sidechat.events'(payload: unknown): Promise<{
+        events: SidechatLogEvent[];
+    }>;
 }
 /** Build the Side Chat routes (all optional services degrade to a wire
  *  error the tab surfaces inline). The record keys are the FULL wire method

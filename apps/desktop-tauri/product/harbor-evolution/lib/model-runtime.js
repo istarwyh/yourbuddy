@@ -9,6 +9,14 @@ function nonBlank(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }
 
+function leaseLimit(value, fallback, label) {
+  const selected = value ?? fallback
+  if (!Number.isSafeInteger(selected) || selected < 1) {
+    throw Object.assign(new Error(`HARBOR_MODEL_LIMIT_INVALID: ${label} must be a positive integer.`), { code: 'HARBOR_MODEL_LIMIT_INVALID' })
+  }
+  return selected
+}
+
 function sameSecret(expected, actual) {
   const left = Buffer.from(expected)
   const right = Buffer.from(actual)
@@ -165,7 +173,27 @@ export class CandidateModelRuntime {
     }
   }
 
-  async openLease(binding, scope) {
+  /** Read-only budget validation, shared by Preflight and the execution boundary. */
+  async assertLeaseLimits(binding, scope = {}) {
+    const globalRequests = leaseLimit(this.config.modelBrokerMaxRequests, 1000, 'modelBrokerMaxRequests')
+    const maxRequests = Math.min(globalRequests, leaseLimit(scope.maxRequests, globalRequests, 'maxRequests'))
+    let maxResponseBytes
+    if (scope.maxResponseBytes !== undefined) {
+      const globalBytes = leaseLimit(this.config.modelBrokerMaxResponseBytes, 4 * 1024 * 1024, 'modelBrokerMaxResponseBytes')
+      maxResponseBytes = Math.min(globalBytes, leaseLimit(scope.maxResponseBytes, globalBytes, 'maxResponseBytes'))
+    }
+    if (scope.maxOutputTokens !== undefined) {
+      leaseLimit(scope.maxOutputTokens, undefined, 'maxOutputTokens')
+      // The current public DSH model metadata does not prove provider-wire
+      // enforcement. In particular its Codex adapter can ignore maxTokens.
+      // Do not silently treat an API option as an actual billing/token cap.
+      throw Object.assign(new Error('HARBOR_MODEL_OUTPUT_LIMIT_UNSUPPORTED: This Host does not expose verified provider output-token enforcement. Use explicit request, time and response-byte budgets; these are not token or billing limits.'), { code: 'HARBOR_MODEL_OUTPUT_LIMIT_UNSUPPORTED' })
+    }
+    return { maxRequests, ...(maxResponseBytes === undefined ? {} : { maxResponseBytes }) }
+  }
+
+  async openLease(binding, scope = {}) {
+    const limits = await this.assertLeaseLimits(binding, scope)
     const token = randomBytes(32).toString('base64url')
     const route = `/harbor-model-gateway/v1/${randomBytes(18).toString('base64url')}`
     const controllers = new Set()
@@ -180,6 +208,7 @@ export class CandidateModelRuntime {
           protocol: MODEL_GATEWAY_PROTOCOL,
           candidate_digest: scope.candidateDigest,
           job: scope.jobName,
+          limits,
           binding: {
             provider: binding.provider,
             model: binding.model,
@@ -192,7 +221,7 @@ export class CandidateModelRuntime {
         sendJson(response, 405, { error: 'method not allowed' })
         return
       }
-      if (requestCount >= this.config.modelBrokerMaxRequests) {
+      if (requestCount >= limits.maxRequests) {
         sendJson(response, 429, { error: 'model gateway request budget exhausted' })
         return
       }
@@ -209,8 +238,12 @@ export class CandidateModelRuntime {
           model: _model,
           reasoningEffort: _reasoningEffort,
           signal: _signal,
+          maxRequests: _maxRequests,
+          maxResponseBytes: _maxResponseBytes,
+          maxOutputTokens: _maxOutputTokens,
           ...requestOptions
         } = body
+        if (controller.signal.aborted) throw new Error('Candidate disconnected before model execution')
         response.writeHead(200, {
           'content-type': 'application/x-ndjson; charset=utf-8',
           'cache-control': 'no-store',
@@ -222,8 +255,17 @@ export class CandidateModelRuntime {
           ...(binding.reasoning_effort === undefined ? {} : { reasoningEffort: binding.reasoning_effort }),
           signal: controller.signal,
         })
+        let responseBytes = 0
         for await (const chunk of stream) {
-          if (!response.write(`${JSON.stringify(chunk)}\n`)) await once(response, 'drain')
+          const line = `${JSON.stringify(chunk)}\n`
+          responseBytes += Buffer.byteLength(line, 'utf8')
+          if (limits.maxResponseBytes !== undefined && responseBytes > limits.maxResponseBytes) {
+            const error = new Error('model gateway response byte budget exhausted; this is not a provider token or billing limit')
+            controller.abort(error)
+            // Never publish the overflowing chunk or a successful finish.
+            throw error
+          }
+          if (!response.write(line)) await once(response, 'drain', { signal: controller.signal })
         }
         response.end()
       } catch (error) {
@@ -248,6 +290,9 @@ export class CandidateModelRuntime {
       token,
       candidateProvider: CANDIDATE_GATEWAY_PROVIDER,
       modelInfo: binding.model_info,
+      limits: { ...limits },
+      // Host-only observation: no gateway URL, token or request content escapes.
+      usage: () => ({ modelRequests: requestCount, maxModelRequests: limits.maxRequests }),
       async close() {
         if (closed) return
         closed = true

@@ -1,4 +1,4 @@
-import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, o as CODEX_LLM_SETTINGS_NAMESPACE, p as mergeRefreshed, r as CodexAuthAdapter, s as CodexLlmSettingsConfig, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-Dd2z-Dj2.js";
+import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, o as CODEX_LLM_SETTINGS_NAMESPACE, p as mergeRefreshed, r as CodexAuthAdapter, s as CodexLlmSettingsConfig, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-CutNZ8kw.js";
 import z from "@deepseek-ai/schemastery";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { installSettingsSection } from "@deepseek-ai/dsh-settings";
@@ -897,7 +897,7 @@ function apply(ctx, config) {
 	let announceModelPolicyChange = () => {};
 	if (config.llmEnabled) {
 		if (ctx.llm.listProviders().some((provider) => provider.id === "openai-codex")) throw new Error("dsh-codex-auth cannot own the \"openai-codex\" route because another plugin already registered it; dsh-codex-auth and dsh-codex are mutually exclusive, so uninstall or disable one bundle");
-		const registration = ctx.llm.registerAdapter([CODEX_ROUTE], new CodexAuthAdapter(ctx, {
+		const adapter = new CodexAuthAdapter(ctx, {
 			auth: service,
 			authJsonPath,
 			credentialRef: credentialReference,
@@ -908,8 +908,10 @@ function apply(ctx, config) {
 			transport: config.transport,
 			websocketConnectTimeoutMs: config.websocketConnectTimeoutMs,
 			timeoutMs: config.timeoutMs
-		}));
+		});
+		const registration = ctx.llm.registerAdapter([CODEX_ROUTE], adapter);
 		announceModelPolicyChange = () => {
+			adapter.replaceRouteGeneration();
 			registration.replace([CODEX_ROUTE]);
 		};
 	}

@@ -8,7 +8,7 @@ from pathlib import Path
 from harbor_dsh_evolution.candidate import load_manifest, snapshot_candidate, verify_candidate
 from harbor_dsh_evolution.context import context_preview
 from harbor_dsh_evolution.dataset import snapshot_dataset, validate_dataset
-from harbor_dsh_evolution.doctor import architecture_doctor
+from harbor_dsh_evolution.doctor import architecture_doctor, docker_runtime_check
 from harbor_dsh_evolution.evaluator import inspect_evaluator, update_evaluator_source
 from harbor_dsh_evolution.initialize import initialize_project
 from harbor_dsh_evolution.historical_context import build_historical_context
@@ -30,6 +30,9 @@ from harbor_dsh_evolution.summary import load_or_create_summary
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="harbor-dsh")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    diagnostic_subset = commands.add_parser("diagnostic-subset", help="Plan or materialize a frozen, bounded diagnostic Dataset; never starts a Job")
+    diagnostic_subset.add_argument("subset_command", choices=("plan", "materialize"))
 
     snapshot = commands.add_parser("snapshot", help="Freeze a Candidate directory")
     snapshot.add_argument("candidate_dir", type=Path)
@@ -175,6 +178,11 @@ def _parser() -> argparse.ArgumentParser:
     doctor.add_argument("--policy", type=Path)
     doctor.add_argument("--runtime", action="store_true")
 
+    commands.add_parser(
+        "docker-check",
+        help="Preflight Docker CLI, daemon, and credential helper resolution",
+    )
+
     promote = commands.add_parser("promote", help="Apply a Promotion Gate")
     promote.add_argument("baseline_job", type=Path)
     promote.add_argument("candidate_job", type=Path)
@@ -185,6 +193,9 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _parser().parse_args()
+    if args.command == "diagnostic-subset":
+        from harbor_dsh_evolution.bounded_diagnostic import run_command
+        return run_command(args.subset_command)
     exit_code = 0
     if args.command == "snapshot":
         result = snapshot_candidate(
@@ -340,6 +351,9 @@ def main() -> int:
             runtime_checks=args.runtime,
         )
         exit_code = 0 if result["promotion_ready"] else 2
+    elif args.command == "docker-check":
+        result = docker_runtime_check()
+        exit_code = 0 if result["valid"] else 2
     else:
         report = compare_jobs(args.baseline_job, args.candidate_job, args.policy)
         output = args.output or args.candidate_job / "promotion-report.json"

@@ -8,11 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from harbor_dsh_evolution.runtime_identity import (
-    DEFAULT_CANDIDATE_ACP_PACKAGE,
-    DEFAULT_DSH_RUNTIME_VERSION,
-    RUNTIME_POLICY,
-)
+from harbor_dsh_evolution.candidate_runtime import load_candidate_runtime
 
 MANIFEST_NAME = "candidate-manifest.json"
 MODEL_BINDING_NAME = "model-binding.json"
@@ -22,6 +18,7 @@ _EXCLUDED_FILES = {MANIFEST_NAME, ".DS_Store"}
 _DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 _LOCKFILES = ("package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb")
 _CREDENTIAL_FILES = {
+    ".npmrc",
     "credentials.json",
     "service-account.json",
     "secrets.json",
@@ -173,9 +170,11 @@ def compute_candidate(candidate_dir: Path) -> tuple[str, list[CandidateFile]]:
 def _validate_candidate_contract(candidate_dir: Path) -> None:
     if (candidate_dir / ".harbor-runtime").exists():
         raise ValueError("Candidate must not contain the reserved .harbor-runtime path")
+    runtime = load_candidate_runtime(candidate_dir)
+    config_path = runtime.get("config_path", "cordis.yml")
     missing = [
         name
-        for name in ("cordis.yml", "package.json")
+        for name in (config_path, "package.json")
         if not (candidate_dir / name).is_file()
     ]
     if missing:
@@ -186,9 +185,8 @@ def _validate_candidate_contract(candidate_dir: Path) -> None:
         )
     credential_paths = sorted(
         path.relative_to(candidate_dir).as_posix()
-        for path in candidate_dir.rglob("*")
-        if path.is_file()
-        and (path.name.casefold().startswith(".env") or path.name.casefold() in _CREDENTIAL_FILES)
+        for path in _candidate_files(candidate_dir)
+        if path.name.casefold().startswith(".env") or path.name.casefold() in _CREDENTIAL_FILES
     )
     if credential_paths:
         raise ValueError(
@@ -239,13 +237,7 @@ def snapshot_candidate(
         version=version,
         digest=digest,
         created_at=datetime.now(timezone.utc).isoformat(),
-        runtime={
-            "kind": "deepseek-harness",
-            "policy": RUNTIME_POLICY,
-            "version": DEFAULT_DSH_RUNTIME_VERSION,
-            "package": DEFAULT_CANDIDATE_ACP_PACKAGE,
-            "transport": "acp",
-        },
+        runtime=load_candidate_runtime(candidate_dir),
         files=files,
         metadata=resolved_metadata,
     )
@@ -281,4 +273,7 @@ def verify_candidate(
         )
     if actual_files != manifest.files:
         raise ValueError("Candidate file inventory does not match its manifest")
+    runtime = load_candidate_runtime(candidate_dir)
+    if runtime["policy"] != "unbound" and manifest.runtime != runtime:
+        raise ValueError("CANDIDATE_RUNTIME_INVALID: manifest runtime must match its content-addressed Candidate descriptor")
     return manifest

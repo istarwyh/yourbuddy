@@ -1,19 +1,16 @@
 import { canonicalDigest } from './session-selection.js'
+import {
+  containsCredentialText,
+  containsLocalPath,
+  containsOpaqueSecretText,
+  redactCredentialTextWithCount,
+  redactLocalPathsWithCount,
+  redactOpaqueSecretTextWithCount,
+} from './credential-redaction.js'
 
 const MAX_MESSAGE_CHARS = 4_000
 const MAX_TRANSCRIPT_MESSAGES = 80
 const MAX_OBSERVATION_BYTES = 512 * 1024
-
-const SECRET_PATTERNS = [
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gi,
-  /\b(?:authorization\s*[:=]\s*(?:bearer\s+)?|bearer\s+)[A-Za-z0-9._~+/=-]{8,}/gi,
-  /\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|secret|password|passwd)\s*[:=]\s*["']?[^\s,"'}\]]{4,}/gi,
-  /\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b/g,
-  /\bgh[opusr]_[A-Za-z0-9]{20,}\b/g,
-  /\bAKIA[0-9A-Z]{16}\b/g,
-]
-
-const ABSOLUTE_PATH = /(?:[A-Za-z]:\\(?:[^\s<>:"|?*]+\\)+[^\s<>:"|?*]*|\/(?:Users|home|private|tmp|var|etc|opt|Volumes|workspace)(?:\/[A-Za-z0-9._ @+-]+)+)/g
 
 function replaceCanaries(value, canaries) {
   let text = value
@@ -29,20 +26,13 @@ function replaceCanaries(value, canaries) {
 
 function replaceSecrets(value, canaries = []) {
   const canaryResult = replaceCanaries(value, canaries)
-  value = canaryResult.text
-  let text = value
-  let replacements = canaryResult.replacements
-  for (const pattern of SECRET_PATTERNS) {
-    text = text.replace(pattern, () => {
-      replacements += 1
-      return '[REDACTED_SECRET]'
-    })
+  const credentials = redactCredentialTextWithCount(canaryResult.text, '[REDACTED_SECRET]', false)
+  const opaque = redactOpaqueSecretTextWithCount(credentials.text, '[REDACTED_SECRET]')
+  const paths = redactLocalPathsWithCount(opaque.text, '[REDACTED_PATH]')
+  return {
+    text: paths.text,
+    replacements: canaryResult.replacements + credentials.replacements + opaque.replacements + paths.replacements,
   }
-  text = text.replace(ABSOLUTE_PATH, () => {
-    replacements += 1
-    return '[REDACTED_PATH]'
-  })
-  return { text, replacements }
 }
 
 function sanitizeText(value, maxChars = MAX_MESSAGE_CHARS, canaries = []) {
@@ -181,14 +171,10 @@ function assertNoSecret(value, canaries = []) {
       throw new Error('SESSION_REDACTION_FAILED: a raw Session id survived the redaction pipeline')
     }
   }
-  for (const pattern of SECRET_PATTERNS) {
-    pattern.lastIndex = 0
-    if (pattern.test(serialized)) {
-      throw new Error('SESSION_REDACTION_FAILED: a credential-shaped value survived the redaction pipeline')
-    }
+  if (containsCredentialText(serialized) || containsOpaqueSecretText(serialized)) {
+    throw new Error('SESSION_REDACTION_FAILED: a credential-shaped value survived the redaction pipeline')
   }
-  ABSOLUTE_PATH.lastIndex = 0
-  if (ABSOLUTE_PATH.test(serialized)) {
+  if (containsLocalPath(serialized)) {
     throw new Error('SESSION_REDACTION_FAILED: an absolute local path survived the redaction pipeline')
   }
   if (Buffer.byteLength(serialized) > MAX_OBSERVATION_BYTES) {

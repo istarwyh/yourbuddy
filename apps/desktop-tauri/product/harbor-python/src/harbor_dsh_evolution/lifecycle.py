@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import tomllib
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
 from typing import Any
+
+from harbor_dsh_evolution.identity import resolve_inside
 
 LIFECYCLE_NAME = "trial-lifecycle.json"
 EVENTS_NAME = "trial-events.jsonl"
@@ -57,7 +60,7 @@ def terminal_phase(result: Any) -> str:
 def _task_aliases(task: dict[str, Any]) -> list[str]:
     """Return stable Harbor/Dataset aliases without depending on callback order."""
     metadata = task.get("metadata") if isinstance(task.get("metadata"), dict) else {}
-    values = (task.get("id"), task.get("path"), metadata.get("task_name"))
+    values = (task.get("id"), task.get("path"), task.get("harbor_task_name"), metadata.get("task_name"))
     aliases: set[str] = set()
     for value in values:
         normalized = str(value or "").strip().strip("/")
@@ -71,6 +74,26 @@ def _task_aliases(task: dict[str, Any]) -> list[str]:
 def _event_aliases(task_name: str) -> set[str]:
     normalized = str(task_name).strip().strip("/")
     return {normalized, normalized.rsplit("/", 1)[-1]} if normalized else set()
+
+
+def bind_lifecycle_task_names(dataset_path: Path, tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Bind runtime aliases in memory, without changing a Dataset identity.
+
+    Harbor callbacks use [task].name, which need not resemble the Task directory
+    or manifest id. Only the already validated Dataset's exact TOML entries are
+    authoritative; guessing from callback order would bind unrelated tasks.
+    """
+    bound = []
+    names = set()
+    for task in tasks:
+        task_path = resolve_inside(dataset_path, task["path"], label="lifecycle task")
+        configuration = tomllib.loads((task_path / "task.toml").read_text())
+        name = (configuration.get("task") or {}).get("name")
+        if not isinstance(name, str) or not name.strip() or name in names:
+            raise ValueError("HARBOR_TASK_NAME_AMBIGUOUS: Each planned Task requires one unique Harbor task name.")
+        names.add(name)
+        bound.append({**task, "harbor_task_name": name})
+    return bound
 
 
 class TrialLifecycleStore:
@@ -115,6 +138,16 @@ class TrialLifecycleStore:
                 self._append_event(record, timestamp=record["updated_at"])
             self._write_snapshot()
 
+    def _matching_task_records(self, task_name: str) -> list[dict[str, Any]]:
+        exact = str(task_name).strip().strip("/")
+        matches = [record for record in self._records if exact in (record.get("_task_aliases") or [])]
+        if not matches:
+            aliases = _event_aliases(task_name)
+            matches = [record for record in self._records if aliases.intersection(record.get("_task_aliases") or [])]
+        if len({record["dataset_order"] for record in matches}) > 1:
+            raise ValueError("HARBOR_TASK_NAME_AMBIGUOUS: Runtime Task aliases match more than one Dataset item.")
+        return matches
+
     def _find(self, event: Any) -> dict[str, Any]:
         result = event.result
         execution_id = str(result.id)
@@ -123,15 +156,15 @@ class TrialLifecycleStore:
         for record in self._records:
             if record.get("execution_id") == execution_id:
                 return record
-        for record in self._records:
-            if task_aliases.intersection(record.get("_task_aliases", ()) or ()) and not record.get("execution_id"):
+        matches = self._matching_task_records(task_name)
+        for record in matches:
+            if not record.get("execution_id"):
                 return record
         # A Harbor retry/repetition is a new immutable attempt, never an overwrite.
         previous = next(
             (
                 item
-                for item in reversed(self._records)
-                if task_aliases.intersection(item.get("_task_aliases", ()) or ())
+                for item in reversed(matches)
             ),
             None,
         )
@@ -196,13 +229,11 @@ class TrialLifecycleStore:
                 None,
             )
             if record is None and task_name:
-                aliases = _event_aliases(task_name)
                 record = next(
                     (
                         item
-                        for item in self._records
+                        for item in self._matching_task_records(task_name)
                         if not item.get("execution_id")
-                        and aliases.intersection(item.get("_task_aliases", ()) or ())
                     ),
                     None,
                 )

@@ -132,7 +132,7 @@ export interface TabComponentProps {
     /** The explorer's reveal-highlight set (ExplorerView; "Show in folder" targets). */
     revealed?: string[];
     onToggleDir?: (path: string) => void;
-    onReferenceFile?: (path: string) => void;
+    onReferenceFile?: (path: string, isDir: boolean) => void;
     onOpenFile?: (path: string) => void;
     onOpenDiff?: (tab: SidebarTab) => void;
     onSubagentJump?: (childSessionId: string) => void;
@@ -418,7 +418,7 @@ export declare function matchUrlTarget(tabs: readonly TabDescriptor[], url: URL)
  * The plugin version this service instance reports. Keep in lockstep with
  * `package.json`'s version — `tests/service.spec.ts` asserts the pair.
  */
-export declare const SIDEBAR_SERVICE_VERSION = "0.17.1";
+export declare const SIDEBAR_SERVICE_VERSION = "0.18.0";
 /**
  * Monotonic capability list consumers use to gate new API usage (features
  * are never removed). Each string names a v0.12.0+ capability:

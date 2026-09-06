@@ -2,7 +2,14 @@ import { access, constants, lstat, readdir, readFile, stat } from 'node:fs/promi
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 
+import {
+  isSensitiveCredentialContainerKey,
+  redactCredentialText,
+  redactLocalPaths,
+  redactOpaqueSecretText,
+} from './credential-redaction.js'
 import { resolveWithin } from './evolution.js'
+import { ATTENTION_FILTERS, attentionCounts, jobAttention, matchesJobFilter } from './workbench-health.js'
 
 const SUMMARY_NAME = 'evaluation-summary.json'
 const HISTORICAL_COMPLETION_NAME = 'historical-evaluation-complete.json'
@@ -13,8 +20,7 @@ const MAX_SOURCE_BYTES = 128 * 1024
 const MAX_PREVIEW_BYTES = 512 * 1024
 const MAX_TRIAL_LIMIT = 100
 const jsonCache = new Map()
-const SENSITIVE_KEY = /authorization|cookie|token|api[_-]?key|secret|password|request[_-]?headers/i
-const SENSITIVE_SOURCE_VALUE = /(authorization|cookie|token|api[_-]?key|secret|password)\s*[:=]\s*([^\s,;]+)/gi
+const authoritativeRevisions = new WeakMap()
 const WORKSPACE_SKIP_DIRECTORIES = new Set([
   '.cache', '.git', '.harbor', '.next', '.venv', '__pycache__',
   'build', 'candidates', 'coverage', 'datasets', 'dist', 'jobs', 'node_modules', 'public', 'vendor', 'venv',
@@ -30,26 +36,83 @@ function redact(value, depth = 0, maxText = 8_000) {
   if (depth > 10) return '[TRUNCATED depth]'
   if (Array.isArray(value)) return value.slice(0, 10_000).map(item => redact(item, depth + 1, maxText))
   if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, SENSITIVE_KEY.test(key) ? '[REDACTED]' : redact(item, depth + 1, maxText)]))
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, isSensitiveCredentialContainerKey(key) ? '[REDACTED]' : redact(item, depth + 1, maxText)]))
   }
-  if (typeof value === 'string' && value.length > maxText) return `${value.slice(0, maxText)}\n[TRUNCATED ${value.length - maxText} chars]`
+  if (typeof value === 'string') {
+    const safe = redactSourceText(value)
+    return safe.length > maxText ? `${safe.slice(0, maxText)}\n[TRUNCATED ${safe.length - maxText} chars]` : safe
+  }
   return value
 }
 
-async function readJson(file, { maxBytes = MAX_JSON_BYTES, maxText = 8_000 } = {}) {
+function redactSourceText(value) {
+  return redactOpaqueSecretText(redactCredentialText(value))
+}
+
+function rawContentRevision(value) {
+  return `sha256:${createHash('sha256').update(value).digest('hex')}`
+}
+
+function rememberAuthoritativeRevision(value, ...sources) {
+  if (!value || typeof value !== 'object') return value
+  const revisions = sources
+    .map(source => typeof source === 'string' ? source : authoritativeRevisions.get(source))
+    .filter(Boolean)
+  if (revisions.length) authoritativeRevisions.set(value, rawContentRevision(JSON.stringify(revisions)))
+  return value
+}
+
+/** Return a non-serialized digest of the full artifact bytes used to build a bounded dashboard value. */
+export function authoritativeArtifactRevision(value) {
+  return value && typeof value === 'object' ? authoritativeRevisions.get(value) : undefined
+}
+
+async function safePathDetails(target, root) {
+  const resolvedTarget = path.resolve(target)
+  if (!root) return lstat(resolvedTarget)
+  const resolvedRoot = path.resolve(root)
+  const relative = path.relative(resolvedRoot, resolvedTarget)
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    const error = new Error('path is outside trusted project root')
+    error.code = 'HARBOR_UNSAFE_PATH'
+    throw error
+  }
+  let current = resolvedRoot
+  let details = await lstat(current)
+  if (details.isSymbolicLink()) {
+    const error = new Error('trusted project root may not be a symlink')
+    error.code = 'HARBOR_UNSAFE_PATH'
+    throw error
+  }
+  for (const segment of relative.split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment)
+    details = await lstat(current)
+    if (details.isSymbolicLink()) {
+      const error = new Error('symlinked path component is not allowed')
+      error.code = 'HARBOR_UNSAFE_PATH'
+      throw error
+    }
+  }
+  return details
+}
+
+async function readJson(file, { maxBytes = MAX_JSON_BYTES, maxText = 8_000, root } = {}) {
   try {
-    const details = await lstat(file)
+    const details = await safePathDetails(file, root)
     if (details.isSymbolicLink()) return { __readError: `${path.basename(file)} may not be a symlink` }
     if (!details.isFile()) return { __readError: `${path.basename(file)} is not a file` }
     if (details.size > maxBytes) return { __readError: `${path.basename(file)} exceeds ${maxBytes} bytes` }
     const cached = jsonCache.get(file)
-    const identity = `${details.mtimeMs}:${details.size}:${maxText}`
+    const identity = `${details.dev}:${details.ino}:${details.ctimeMs}:${details.mtimeMs}:${details.size}:${maxText}`
     if (cached?.identity === identity) return cached.value
-    const value = redact(JSON.parse(await readFile(file, 'utf8')), 0, maxText)
+    const source = await readFile(file, 'utf8')
+    const value = redact(JSON.parse(source), 0, maxText)
+    if (value && typeof value === 'object') authoritativeRevisions.set(value, rawContentRevision(source))
     jsonCache.set(file, { identity, value })
     return value
   } catch (error) {
     if (error.code === 'ENOENT') return undefined
+    if (error.code === 'HARBOR_UNSAFE_PATH') return { __readError: `${path.basename(file)} is not a safe file` }
     if (error instanceof SyntaxError) return { __readError: `invalid JSON in ${path.basename(file)}` }
     throw error
   }
@@ -60,19 +123,19 @@ async function readSafeText(file, projectRoot) {
   const root = path.resolve(projectRoot)
   if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) return { error: 'source is outside projectRoot' }
   try {
-    const details = await lstat(resolved)
+    const details = await safePathDetails(resolved, root)
     if (!details.isFile() || details.isSymbolicLink()) return { error: 'source is not a safe file' }
     if (details.size > MAX_SOURCE_BYTES) return { error: `source exceeds ${MAX_SOURCE_BYTES} bytes` }
-    const text = (await readFile(resolved, 'utf8')).replace(SENSITIVE_SOURCE_VALUE, '$1=[REDACTED]')
+    const text = redactLocalPaths(redactSourceText(await readFile(resolved, 'utf8')))
     return { text: redact(text) }
   } catch (error) {
     return { error: error.code === 'ENOENT' ? 'source is unavailable' : 'source is unreadable' }
   }
 }
 
-async function directoryCheck(directory, { optional = false } = {}) {
+async function directoryCheck(directory, { optional = false, root } = {}) {
   try {
-    const details = await lstat(directory)
+    const details = await safePathDetails(directory, root)
     if (details.isSymbolicLink() || !details.isDirectory()) return { status: 'error', detail: 'not a safe directory' }
     await access(directory, constants.R_OK)
     return { status: 'ok', detail: 'readable' }
@@ -82,9 +145,9 @@ async function directoryCheck(directory, { optional = false } = {}) {
   }
 }
 
-async function fileCheck(file) {
+async function fileCheck(file, { root } = {}) {
   try {
-    const details = await lstat(file)
+    const details = await safePathDetails(file, root)
     return details.isFile() && !details.isSymbolicLink()
       ? { status: 'ok', detail: path.basename(file) }
       : { status: 'error', detail: 'not a safe file' }
@@ -242,17 +305,17 @@ function jobStatus(summary, lifecycle, progress, jobKind, completion, jobName) {
   return 'completed'
 }
 
-async function readJob(jobsDir, entry, details) {
+async function readJob(jobsDir, entry, details, projectRoot) {
   const directory = path.join(jobsDir, entry.name)
   const [summary, contextFile, promotion, contract, lifecycle, registry, stack, completion] = await Promise.all([
-    readJson(path.join(directory, SUMMARY_NAME)),
-    readJson(path.join(directory, 'evaluation-context.json')),
-    readJson(path.join(directory, 'promotion-report.json')),
-    readJson(path.join(directory, 'evaluation-contract.json')),
-    readJson(path.join(directory, 'trial-lifecycle.json')),
-    readJson(path.join(directory, 'artifact-registry.json')),
-    readJson(path.join(directory, 'evaluation-stack-manifest.json')),
-    readJson(path.join(directory, HISTORICAL_COMPLETION_NAME)),
+    readJson(path.join(directory, SUMMARY_NAME), { root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-context.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'promotion-report.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-contract.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'trial-lifecycle.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'artifact-registry.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-stack-manifest.json'), { root: projectRoot }),
+    readJson(path.join(directory, HISTORICAL_COMPLETION_NAME), { root: projectRoot }),
   ])
   const evaluationContext = summary?.evaluation_context ?? contextFile
   if (!evaluationContext && !summary && !lifecycle) return undefined
@@ -276,6 +339,8 @@ async function readJob(jobsDir, entry, details) {
     nInvalidScores: summary?.n_invalid_scores,
     nUnscoredTrials: Number(coverage.unscored_trials ?? 0),
     nExceptions: Number(summary?.n_exceptions ?? 0),
+    nInfrastructureExceptions: Number(summary?.n_infrastructure_exceptions ?? 0),
+    nEvaluationExceptions: Number(summary?.n_evaluation_exceptions ?? 0),
     primaryMetric: primaryMetric(summary, contract),
     metrics: summary?.metrics ?? {},
     candidate: summary?.candidate ?? evaluationContext?.candidate,
@@ -289,12 +354,16 @@ async function readJob(jobsDir, entry, details) {
     progress,
     capabilities,
     artifactValidation: summary?.artifact_validation,
-    promotion: promotion ? { decision: promotion.decision, reasons: promotion.reasons ?? [], baselineJob: promotion.baseline_job } : undefined,
+    promotion: promotion ? { decision: promotion.decision, reasons: promotion.reasons ?? [], baselineJob: promotion.baseline_job, regressions: promotion.regressed_trials?.length ?? 0 } : undefined,
     readError: summary?.__readError,
   }
 }
 
-async function listJobs(jobsDir, { offset = 0, limit = DEFAULT_JOB_PAGE_SIZE } = {}) {
+async function listJobs(jobsDir, { offset = 0, limit = DEFAULT_JOB_PAGE_SIZE, root, attention = 'all' } = {}) {
+  if (!ATTENTION_FILTERS.includes(attention)) throw new Error('HARBOR_FILTER_INVALID: Unknown attention filter')
+  const check = await directoryCheck(jobsDir, { optional: true, root })
+  if (check.status === 'warning') return { items: [], total: 0, offset, limit, hasMore: false }
+  if (check.status !== 'ok') throw new Error('Jobs directory is not safe')
   let entries
   try {
     entries = await readdir(jobsDir, { withFileTypes: true })
@@ -305,9 +374,18 @@ async function listJobs(jobsDir, { offset = 0, limit = DEFAULT_JOB_PAGE_SIZE } =
   const directories = entries.filter(entry => entry.isDirectory() && !entry.isSymbolicLink())
   const recent = await Promise.all(directories.map(async entry => ({ entry, details: await stat(path.join(jobsDir, entry.name)) })))
   recent.sort((left, right) => right.details.mtimeMs - left.details.mtimeMs)
-  const page = recent.slice(offset, offset + limit)
-  const jobs = await Promise.all(page.map(({ entry, details }) => readJob(jobsDir, entry, details)))
-  return { items: jobs.filter(Boolean), total: recent.length, offset, limit, hasMore: offset + limit < recent.length }
+  const allJobs = []
+  let cursor = 0
+  await Promise.all(Array.from({ length: Math.min(8, recent.length) }, async () => {
+    while (cursor < recent.length) {
+      const { entry, details } = recent[cursor++]
+      const job = await readJob(jobsDir, entry, details, root)
+      if (job) allJobs.push(job)
+    }
+  }))
+  allJobs.sort((a, b) => jobAttention(a).rank - jobAttention(b).rank || Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || a.name.localeCompare(b.name))
+  const jobs = allJobs.filter(job => matchesJobFilter(job, attention))
+  return { items: jobs.slice(offset, offset + limit), allJobs, attentionCounts: attentionCounts(allJobs), total: jobs.length, offset, limit, hasMore: offset + limit < jobs.length }
 }
 
 function relativePath(root, value) {
@@ -320,9 +398,9 @@ function workspaceIdentity(projectRoot, workspaceRoot, jobsDir, preferred) {
   return `${label}-${digest}`
 }
 
-async function regularFile(pathname) {
+async function regularFile(pathname, root) {
   try {
-    const details = await lstat(pathname)
+    const details = await safePathDetails(pathname, root)
     return details.isFile() && !details.isSymbolicLink()
   } catch (error) {
     if (error.code === 'ENOENT') return false
@@ -338,7 +416,7 @@ export async function discoverWorkspaceConfigs(config) {
     const harborDirectory = path.join(directory, '.harbor')
     const descriptorPath = path.join(harborDirectory, 'workspace.json')
     const stackPath = path.join(harborDirectory, 'evaluation-stack.yml')
-    const descriptor = await readJson(descriptorPath)
+    const descriptor = await readJson(descriptorPath, { root: projectRoot })
     if (descriptor?.schema_version === 1 && descriptor.jobs && descriptor.stack) {
       const jobs = relativePath(projectRoot, resolveWithin(projectRoot, path.resolve(directory, descriptor.jobs), 'workspace.jobs'))
       const stack = relativePath(projectRoot, resolveWithin(projectRoot, path.resolve(directory, descriptor.stack), 'workspace.stack'))
@@ -351,7 +429,7 @@ export async function discoverWorkspaceConfigs(config) {
         workspaceLabel: descriptor.workspace_id ?? workspaceRoot,
         workspaceId: workspaceIdentity(projectRoot, directory, jobs, descriptor.workspace_id),
       })
-    } else if (await regularFile(stackPath)) {
+    } else if (await regularFile(stackPath, projectRoot)) {
       const workspaceRoot = relativePath(projectRoot, directory)
       const jobs = relativePath(projectRoot, path.join(directory, 'jobs'))
       found.push({
@@ -394,21 +472,32 @@ function jobDirectory(config, job) {
   return path.join(jobsDirectory(config), safeSegment(job, 'job'))
 }
 
+/** Read the stable Job Summary through the same bounded, redacting reader used by the Workbench. */
+export async function readEvaluationSummary(config, args) {
+  const projectRoot = path.resolve(config.projectRoot)
+  const directory = resolveWithin(projectRoot, args.jobPath, 'jobPath')
+  const check = await directoryCheck(directory, { root: projectRoot })
+  if (check.status !== 'ok') return { __readError: 'Job path is not a safe directory' }
+  const summary = await readJson(path.join(directory, SUMMARY_NAME), { root: projectRoot })
+  return summary ?? { __readError: `${SUMMARY_NAME} is unavailable` }
+}
+
 export async function readDashboardSnapshot(config, metadata = {}, args = {}) {
   const projectRoot = path.resolve(config.projectRoot)
   const jobsDir = jobsDirectory(config)
   const offset = Math.max(0, Number.parseInt(args.offset ?? 0, 10) || 0)
   const limit = Math.min(MAX_JOB_PAGE_SIZE, Math.max(1, Number.parseInt(args.limit ?? DEFAULT_JOB_PAGE_SIZE, 10) || DEFAULT_JOB_PAGE_SIZE))
   const [jobPage, projectRootCheck, jobsDirCheck, harborCheck, harborDshCheck, stackCheck] = await Promise.all([
-    listJobs(jobsDir, { offset, limit }),
+    listJobs(jobsDir, { offset, limit, root: projectRoot, attention: args.attention ?? 'all' }),
     directoryCheck(projectRoot),
-    directoryCheck(jobsDir, { optional: true }),
+    directoryCheck(jobsDir, { optional: true, root: projectRoot }),
     executableCheck(config.harborBin),
     executableCheck(config.harborDshBin),
-    fileCheck(resolveWithin(projectRoot, config.stackPath ?? '.harbor/evaluation-stack.yml', 'stackPath')),
+    fileCheck(resolveWithin(projectRoot, config.stackPath ?? '.harbor/evaluation-stack.yml', 'stackPath'), { root: projectRoot }),
   ])
   const jobs = jobPage.items
-  const counts = jobs.reduce((result, job) => ({ ...result, [job.status]: (result[job.status] ?? 0) + 1 }), {})
+  const allJobs = jobPage.allJobs ?? jobs
+  const counts = allJobs.reduce((result, job) => ({ ...result, [job.status]: (result[job.status] ?? 0) + 1 }), {})
   const latestMetric = jobs.find(job => job.primaryMetric)?.primaryMetric
   return {
     schemaVersion: 3,
@@ -416,10 +505,11 @@ export async function readDashboardSnapshot(config, metadata = {}, args = {}) {
     pluginVersion: metadata.pluginVersion ?? 'development',
     workspace: { id: config.workspaceId, label: config.workspaceLabel, root: config.workspaceRoot ?? '.', stackPath: config.stackPath },
     workspaces: metadata.workspaces ?? [],
-    config: { projectRoot, projectRootSource: metadata.projectRootSource ?? 'configured', jobsDir: config.jobsDir, runtimePolicy: config.runtimePolicy ?? 'follow-latest', agentImportPath: config.agentImportPath, pluginImportPath: config.pluginImportPath },
+    config: { projectRoot, projectRootSource: metadata.projectRootSource ?? 'configured', jobsDir: config.jobsDir, runtimePolicy: config.runtimePolicy ?? 'candidate-locked', agentImportPath: config.agentImportPath, pluginImportPath: config.pluginImportPath },
     checks: { projectRoot: projectRootCheck, jobsDir: jobsDirCheck, harbor: harborCheck, harborDsh: harborDshCheck, evaluationStack: stackCheck },
     overview: {
-      totalJobs: jobPage.total,
+      totalJobs: allJobs.length,
+      attention: jobPage.attentionCounts ?? attentionCounts(allJobs),
       visibleJobs: jobs.length,
       completedJobs: (counts.completed ?? 0) + (counts.partial ?? 0) + (counts.attention ?? 0),
       activeJobs: (counts.pending ?? 0) + (counts.running ?? 0),
@@ -476,13 +566,15 @@ function schemaIssue(key, value) {
 export async function readJobDetail(config, args) {
   const job = safeSegment(args.job, 'job')
   const directory = jobDirectory(config, job)
-  const check = await directoryCheck(directory)
+  const projectRoot = path.resolve(config.projectRoot)
+  const check = await directoryCheck(directory, { root: projectRoot })
   if (check.status !== 'ok') throw new Error('Job not found')
-  const values = await Promise.all(Object.values(DETAIL_ARTIFACTS).map(name => readJson(path.join(directory, name))))
+  const values = await Promise.all(Object.values(DETAIL_ARTIFACTS).map(name => readJson(path.join(directory, name), { root: projectRoot })))
   const artifacts = Object.fromEntries(Object.keys(DETAIL_ARTIFACTS).map((key, index) => [key, values[index]]))
   if (artifacts.summary && !artifacts.summary.__readError) {
-    const { trials: _trials, ...lightSummary } = artifacts.summary
-    artifacts.summary = lightSummary
+    const fullSummary = artifacts.summary
+    const { trials: _trials, ...lightSummary } = fullSummary
+    artifacts.summary = rememberAuthoritativeRevision(lightSummary, fullSummary)
   }
   const validation = Object.fromEntries(Object.entries(artifacts).map(([key, value]) => {
     const issue = schemaIssue(key, value)
@@ -554,9 +646,12 @@ function normalizeTrial(trial, order) {
 
 async function jobTrials(config, job) {
   const directory = jobDirectory(config, job)
+  const projectRoot = path.resolve(config.projectRoot)
+  const check = await directoryCheck(directory, { root: projectRoot })
+  if (check.status !== 'ok') throw new Error('Job not found')
   const [summary, lifecycle] = await Promise.all([
-    readJson(path.join(directory, SUMMARY_NAME)),
-    readJson(path.join(directory, 'trial-lifecycle.json')),
+    readJson(path.join(directory, SUMMARY_NAME), { root: projectRoot }),
+    readJson(path.join(directory, 'trial-lifecycle.json'), { root: projectRoot }),
   ])
   if ((!summary || summary.__readError) && (!lifecycle || lifecycle.__readError)) throw new Error('Job progress is unavailable')
   const summaryTrials = (summary?.trials ?? []).map(normalizeTrial)
@@ -625,6 +720,11 @@ export async function readTrialsPage(config, args) {
   const sort = String(args.sort ?? 'dataset-order')
   const source = await jobTrials(config, job)
   let trials = await enrichTrialsWithDataset(config, job, source.trials)
+  // Internal fixed-set reads must not expand to the entire (possibly large) Job.
+  if (Array.isArray(args.trialIds)) {
+    const selectedIds = new Set(args.trialIds)
+    trials = trials.filter(trial => selectedIds.has(trial.id))
+  }
   if (query) trials = trials.filter(trial => `${trial.id ?? ''} ${trial.displayName ?? ''} ${trial.name ?? ''} ${trial.datasetTrial ?? ''}`.toLowerCase().includes(query))
   if (status) trials = trials.filter(trial => trial.status === status)
   if (validity) trials = trials.filter(trial => String(Boolean(trial.score?.valid)) === validity)
@@ -656,13 +756,13 @@ function previewFromOutput(output, evidence = []) {
   return { kind: 'structured', format: 'json', title: output.title ?? 'Structured output', content: output, provenance: evidence }
 }
 
-async function previewFromTrialFiles(directory, lifecycle) {
+async function previewFromTrialFiles(directory, lifecycle, projectRoot) {
   let trialName
   try { trialName = safeSegment(lifecycle?.name, 'trial directory') } catch { return undefined }
   const trialDirectory = path.join(directory, trialName)
-  const check = await directoryCheck(trialDirectory)
+  const check = await directoryCheck(trialDirectory, { root: projectRoot })
   if (check.status !== 'ok') return undefined
-  const manifest = await readJson(path.join(trialDirectory, 'artifacts', 'manifest.json'), { maxBytes: MAX_PREVIEW_BYTES, maxText: 128_000 })
+  const manifest = await readJson(path.join(trialDirectory, 'artifacts', 'manifest.json'), { maxBytes: MAX_PREVIEW_BYTES, maxText: 128_000, root: projectRoot })
   const candidates = []
   for (const entry of Array.isArray(manifest) ? manifest : []) {
     if (!isObject(entry) || !['ok', 'collected', 'mounted'].includes(entry.status) || typeof entry.destination !== 'string' || !entry.destination.startsWith('artifacts/')) continue
@@ -674,31 +774,40 @@ async function previewFromTrialFiles(directory, lifecycle) {
   candidates.sort((a, b) => (priority.get(path.extname(a).toLowerCase()) ?? 99) - (priority.get(path.extname(b).toLowerCase()) ?? 99) || a.localeCompare(b))
   for (const candidate of candidates) {
     try {
-      const details = await lstat(candidate)
+      const details = await safePathDetails(candidate, projectRoot)
       if (!details.isFile() || details.isSymbolicLink() || details.size > MAX_PREVIEW_BYTES) continue
       const format = path.extname(candidate).toLowerCase()
-      const text = (await readFile(candidate, 'utf8')).replace(SENSITIVE_SOURCE_VALUE, '$1=[REDACTED]')
+      const source = await readFile(candidate, 'utf8')
+      const text = redactLocalPaths(redactSourceText(source))
       const content = format === '.json' ? redact(JSON.parse(text), 0, 128_000) : redact(text, 0, 128_000)
       const kind = ['.html', '.htm'].includes(format)
         ? 'page'
         : format === '.json' && !(isObject(content) && ['answer', 'content', 'report', 'markdown', 'text'].some(key => typeof content[key] === 'string'))
           ? 'structured'
           : 'document'
-      return { kind, format: format.replace('.', '') || 'text', title: path.basename(candidate), content, artifact_ref: path.relative(trialDirectory, candidate), provenance: [{ label: 'Agent Artifact', kind: 'agent-artifact', artifact_ref: path.relative(trialDirectory, candidate) }] }
+      return rememberAuthoritativeRevision(
+        { kind, format: format.replace('.', '') || 'text', title: path.basename(candidate), content, artifact_ref: path.relative(trialDirectory, candidate), provenance: [{ label: 'Agent Artifact', kind: 'agent-artifact', artifact_ref: path.relative(trialDirectory, candidate) }] },
+        rawContentRevision(source),
+      )
     } catch { /* try the next declared artifact */ }
   }
-  const trajectory = await readJson(path.join(trialDirectory, 'agent', 'trajectory.json'), { maxBytes: 2 * 1024 * 1024, maxText: 128_000 })
+  const trajectory = await readJson(path.join(trialDirectory, 'agent', 'trajectory.json'), { maxBytes: 2 * 1024 * 1024, maxText: 128_000, root: projectRoot })
   const messages = (trajectory?.steps ?? []).filter(step => step?.source === 'agent' && typeof step.message === 'string').map(step => step.message)
-  return messages.length ? { kind: 'document', format: 'text', title: 'Agent final response', content: messages.at(-1), artifact_ref: 'agent/trajectory.json', provenance: [{ label: 'ACP Final Response', kind: 'acp-final-response', artifact_ref: 'agent/trajectory.json' }] } : undefined
+  return messages.length
+    ? rememberAuthoritativeRevision(
+        { kind: 'document', format: 'text', title: 'Agent final response', content: messages.at(-1), artifact_ref: 'agent/trajectory.json', provenance: [{ label: 'ACP Final Response', kind: 'acp-final-response', artifact_ref: 'agent/trajectory.json' }] },
+        trajectory,
+      )
+    : undefined
 }
 
-async function evaluatorResultFromTrialFiles(directory, lifecycle) {
+async function evaluatorResultFromTrialFiles(directory, lifecycle, projectRoot) {
   let trialName
   try { trialName = safeSegment(lifecycle?.name, 'trial directory') } catch { return undefined }
   const trialDirectory = path.join(directory, trialName)
-  const check = await directoryCheck(trialDirectory)
+  const check = await directoryCheck(trialDirectory, { root: projectRoot })
   if (check.status !== 'ok') return undefined
-  const result = await readJson(path.join(trialDirectory, 'verifier', 'evaluation-result.json'), { maxBytes: 128_000, maxText: 32_000 })
+  const result = await readJson(path.join(trialDirectory, 'verifier', 'evaluation-result.json'), { maxBytes: 128_000, maxText: 32_000, root: projectRoot })
   return result && !result.__readError ? result : undefined
 }
 
@@ -710,19 +819,23 @@ function enrichAssessmentWithEvaluator(assessment, evaluatorResult) {
     return evaluator ? { ...item, reason: evaluator.reason ?? item.reason, recommendation: evaluator.recommendation ?? item.recommendation } : item
   })
   const evaluatorRecommendations = (evaluatorResult?.recommendations ?? []).map(item => isObject(item) ? item : { message: String(item) })
-  return { ...assessment, criteria, recommendations: [...(assessment.recommendations ?? []), ...evaluatorRecommendations] }
+  return rememberAuthoritativeRevision(
+    { ...assessment, criteria, recommendations: [...(assessment.recommendations ?? []), ...evaluatorRecommendations] },
+    assessment,
+    evaluatorResult,
+  )
 }
 
 async function datasetRoots(directory, projectRoot) {
   const entries = await readdir(directory, { withFileTypes: true })
   const roots = []
   for (const entry of entries.filter(item => item.isDirectory() && !item.isSymbolicLink()).sort((a, b) => a.name.localeCompare(b.name))) {
-    const result = await readJson(path.join(directory, entry.name, 'result.json'))
+    const result = await readJson(path.join(directory, entry.name, 'result.json'), { root: projectRoot })
     const candidate = result?.task_id?.path
     if (typeof candidate !== 'string') continue
     try {
       const resolved = resolveWithin(projectRoot, path.relative(projectRoot, candidate), 'task path')
-      const check = await directoryCheck(resolved)
+      const check = await directoryCheck(resolved, { root: projectRoot })
       if (check.status === 'ok') roots.push(resolved)
     } catch { /* ignore historical out-of-root task sources */ }
   }
@@ -732,17 +845,20 @@ async function datasetRoots(directory, projectRoot) {
 export async function readDatasetPreview(config, args) {
   const job = safeSegment(args.job, 'job')
   const directory = jobDirectory(config, job)
-  const snapshot = await readJson(path.join(directory, 'dataset-preview.json'), { maxBytes: MAX_JSON_BYTES, maxText: 128_000 })
-  if (snapshot && !snapshot.__readError) return { ...snapshot, source: 'job-snapshot' }
-  const manifest = await readJson(path.join(directory, 'dataset-manifest.json'))
+  const projectRoot = path.resolve(config.projectRoot)
+  const check = await directoryCheck(directory, { root: projectRoot })
+  if (check.status !== 'ok') throw new Error('Job not found')
+  const snapshot = await readJson(path.join(directory, 'dataset-preview.json'), { maxBytes: MAX_JSON_BYTES, maxText: 128_000, root: projectRoot })
+  if (snapshot && !snapshot.__readError) return rememberAuthoritativeRevision({ ...snapshot, source: 'job-snapshot' }, snapshot)
+  const manifest = await readJson(path.join(directory, 'dataset-manifest.json'), { root: projectRoot })
   if (!manifest || manifest.__readError) throw new Error('Dataset Manifest is unavailable')
-  const roots = await datasetRoots(directory, config.projectRoot)
+  const roots = await datasetRoots(directory, projectRoot)
   const tasks = []
   for (const [index, task] of (manifest.tasks ?? []).entries()) {
     const root = roots[Math.min(index, Math.max(0, roots.length - 1))]
     let instruction = { error: 'instruction source is unavailable for this historical Job' }
     if (root && typeof task?.instruction === 'string') {
-      try { instruction = await readSafeText(resolveWithin(root, task.instruction, 'task.instruction'), config.projectRoot) } catch { instruction = { error: 'instruction path is invalid' } }
+      try { instruction = await readSafeText(resolveWithin(root, task.instruction, 'task.instruction'), projectRoot) } catch { instruction = { error: 'instruction path is invalid' } }
     }
     tasks.push({ id: task?.id ?? `task-${index + 1}`, path: task?.path ?? '.', instruction_file: task?.instruction, instruction: instruction.text, instruction_error: instruction.error, instruction_truncated: Boolean(instruction.text?.includes('[TRUNCATED')) })
   }
@@ -753,18 +869,21 @@ export async function readTrialDetail(config, args) {
   const job = safeSegment(args.job, 'job')
   const trial = safeSegment(args.trial, 'trial')
   const directory = jobDirectory(config, job)
-  let assessment = await readJson(path.join(directory, 'trial-assessments', assessmentName(trial)))
+  const projectRoot = path.resolve(config.projectRoot)
+  const check = await directoryCheck(directory, { root: projectRoot })
+  if (check.status !== 'ok') throw new Error('Job not found')
+  let assessment = await readJson(path.join(directory, 'trial-assessments', assessmentName(trial)), { root: projectRoot })
   const source = await jobTrials(config, job)
   const lifecycle = source.trials.find(item => String(item.id) === trial || String(item.datasetTrial) === trial || String(item.name) === trial)
   if ((!assessment || assessment.__readError) && lifecycle?.id && String(lifecycle.id) !== trial) {
-    assessment = await readJson(path.join(directory, 'trial-assessments', assessmentName(lifecycle.id)))
+    assessment = await readJson(path.join(directory, 'trial-assessments', assessmentName(lifecycle.id)), { root: projectRoot })
   }
   if (assessment?.__readError) throw new Error('Trial assessment is invalid')
   if (!assessment && !lifecycle) throw new Error('Trial not found')
-  assessment = enrichAssessmentWithEvaluator(assessment, await evaluatorResultFromTrialFiles(directory, lifecycle))
+  assessment = enrichAssessmentWithEvaluator(assessment, await evaluatorResultFromTrialFiles(directory, lifecycle, projectRoot))
   const assessmentPreview = previewFromOutput(assessment?.output, assessment?.evidence_provenance)
   const realAssessmentOutput = assessment?.evidence_provenance?.some(item => item?.kind === 'real-renderer' || item?.kind === 'agent-artifact')
-  const filePreview = realAssessmentOutput ? undefined : await previewFromTrialFiles(directory, lifecycle)
+  const filePreview = realAssessmentOutput ? undefined : await previewFromTrialFiles(directory, lifecycle, projectRoot)
   const preview = realAssessmentOutput ? assessmentPreview : filePreview ?? assessmentPreview
   return {
     schemaVersion: 2, job, trial, lifecycle,
@@ -772,6 +891,116 @@ export async function readTrialDetail(config, args) {
     assessment,
     preview,
     capability: assessment ? 'assessment-available' : 'running-evidence-not-yet-available',
+  }
+}
+
+function historicalEvidenceSelection(record, evidenceRef) {
+  if (evidenceRef === 'generation_record') return record
+  if (!evidenceRef.startsWith('generation_record.')) return undefined
+  const selector = evidenceRef.slice('generation_record.'.length)
+  const segments = selector.split('/').filter(Boolean)
+  if (
+    segments.length === 0
+    || segments.length > 20
+    || segments.some(segment => !/^(?:[A-Za-z_][A-Za-z0-9_-]{0,127}|0|[1-9][0-9]{0,5})$/.test(segment))
+  ) return undefined
+  let selected = record
+  for (const segment of segments) {
+    if (Array.isArray(selected)) {
+      const index = Number(segment)
+      if (!Number.isSafeInteger(index) || index < 0 || index >= selected.length) return undefined
+      selected = selected[index]
+      continue
+    }
+    if (!isObject(selected) || !Object.hasOwn(selected, segment)) return undefined
+    selected = selected[segment]
+  }
+  return selected
+}
+
+/**
+ * Read the two immutable evidence containers produced by Historical Generation
+ * evaluation. Criterion evidence refs are semantic selectors (for example,
+ * generation_record.visible_transcript/1), not filesystem paths. Keep the
+ * filesystem mapping here so neither the browser nor the Agent can choose an
+ * arbitrary artifact path.
+ */
+export async function readHistoricalEvidence(config, args) {
+  const job = safeSegment(args.job, 'job')
+  const trial = safeSegment(args.trial, 'trial')
+  const criterion = String(args.criterion ?? '')
+  if (!criterion || criterion.length > 180 || /[\u0000-\u001f\u007f]/.test(criterion)) {
+    return { available: false, reason: 'The requested Historical Generation Criterion is invalid.' }
+  }
+  const evidenceRef = String(args.evidenceRef ?? '')
+  if (
+    evidenceRef !== 'judge-gateway'
+    && evidenceRef !== 'generation_record'
+    && !/^generation_record\.[A-Za-z_][A-Za-z0-9_-]{0,127}(?:\/(?:[A-Za-z_][A-Za-z0-9_-]{0,127}|0|[1-9][0-9]{0,5})){0,19}$/.test(evidenceRef)
+  ) return { available: false, reason: 'The requested ref is not a supported Historical Generation evidence selector.' }
+
+  const projectRoot = path.resolve(config.projectRoot)
+  const directory = jobDirectory(config, job)
+  const source = await jobTrials(config, job)
+  const lifecycle = source.trials.find(item => (
+    String(item.id) === trial || String(item.datasetTrial) === trial || String(item.name) === trial
+  ))
+  if (!lifecycle) return { available: false, reason: 'The Historical Generation Trial is unavailable.' }
+  let trialName
+  try { trialName = safeSegment(lifecycle.name ?? lifecycle.id, 'trial directory') } catch {
+    return { available: false, reason: 'The Historical Generation Trial directory is invalid.' }
+  }
+  const trialDirectory = path.join(directory, trialName)
+  const trialCheck = await directoryCheck(trialDirectory, { root: projectRoot })
+  if (trialCheck.status !== 'ok') return { available: false, reason: 'The Historical Generation Trial directory is unavailable.' }
+
+  if (evidenceRef === 'judge-gateway') {
+    const result = await readJson(path.join(trialDirectory, 'verifier', 'evaluation-result.json'), {
+      maxBytes: 128_000,
+      maxText: 32_000,
+      root: projectRoot,
+    })
+    if (!result || result.__readError) return { available: false, reason: 'The frozen evaluator result is unavailable.' }
+    const matches = (Array.isArray(result.criteria) ? result.criteria : [])
+      .filter(item => isObject(item) && String(item.id) === criterion)
+    if (matches.length !== 1) return { available: false, reason: 'The frozen evaluator result has no unique matching Criterion.' }
+    return {
+      available: true,
+      content: matches[0],
+      source: {
+        id: 'evaluator-result-v2',
+        kind: 'evaluator-result',
+        artifactRef: 'verifier/evaluation-result.json',
+        selector: `criteria[id=${criterion}]`,
+      },
+    }
+  }
+
+  const observationCandidates = [
+    path.join(trialDirectory, 'artifacts', 'logs', 'artifacts', 'session-observation.json'),
+    path.join(trialDirectory, 'artifacts', 'session-observation.json'),
+  ]
+  const observations = []
+  for (const candidate of observationCandidates) {
+    const value = await readJson(candidate, { maxBytes: MAX_PREVIEW_BYTES, maxText: 128_000, root: projectRoot })
+    if (value && !value.__readError) {
+      observations.push({ value, artifactRef: path.relative(trialDirectory, candidate) })
+    }
+  }
+  if (observations.length === 0) return { available: false, reason: 'The frozen Session Observation is unavailable.' }
+  if (observations.length > 1) return { available: false, reason: 'Multiple Session Observation containers are present; exact provenance is ambiguous.' }
+  const [{ value: observation, artifactRef }] = observations
+  const content = historicalEvidenceSelection(observation, evidenceRef)
+  if (content === undefined) return { available: false, reason: 'The requested field is absent from the frozen Session Observation.' }
+  return {
+    available: true,
+    content,
+    source: {
+      id: 'frozen-session-observation',
+      kind: 'historical-generation-record',
+      artifactRef,
+      selector: evidenceRef,
+    },
   }
 }
 
@@ -791,13 +1020,16 @@ export async function readJobProgress(config, args) {
 }
 
 export async function readMetaEvaluation(config, args = {}) {
-  const evaluationRoot = resolveWithin(config.projectRoot, args.evaluationRoot ?? '.', 'evaluationRoot')
-  const index = await readJson(path.join(evaluationRoot, '.harbor', 'meta-artifacts.json'))
+  const projectRoot = path.resolve(config.projectRoot)
+  const evaluationRoot = resolveWithin(projectRoot, args.evaluationRoot ?? '.', 'evaluationRoot')
+  const evaluationCheck = await directoryCheck(evaluationRoot, { root: projectRoot })
+  if (evaluationCheck.status !== 'ok') throw new Error('Evaluation root is not a safe directory')
+  const index = await readJson(path.join(evaluationRoot, '.harbor', 'meta-artifacts.json'), { root: projectRoot })
   const registered = index?.schema_version === 1 ? index.artifacts ?? {} : {}
   const groundTruthPath = resolveWithin(evaluationRoot, registered.ground_truth ?? '.harbor/ground-truth.json', 'groundTruthPath')
   const reportPath = resolveWithin(evaluationRoot, registered.meta_evaluation_report ?? '.harbor/meta-evaluation-report.json', 'metaEvaluationReportPath')
-  const groundTruth = await readJson(groundTruthPath, { maxText: 64_000 })
-  const report = await readJson(reportPath, { maxText: 64_000 })
+  const groundTruth = await readJson(groundTruthPath, { maxText: 64_000, root: projectRoot })
+  const report = await readJson(reportPath, { maxText: 64_000, root: projectRoot })
   const availableGroundTruth = groundTruth && !groundTruth.__readError
   const availableReport = report && !report.__readError
   const cases = availableGroundTruth && Array.isArray(groundTruth.cases) ? groundTruth.cases : []
@@ -810,7 +1042,7 @@ export async function readMetaEvaluation(config, args = {}) {
   } : undefined
   return {
     schemaVersion: 1,
-    evaluationRoot: path.relative(config.projectRoot, evaluationRoot) || '.',
+    evaluationRoot: path.relative(projectRoot, evaluationRoot) || '.',
     status: availableReport ? 'evaluated' : availableGroundTruth ? (cases.length ? 'ground-truth-ready' : 'ground-truth-draft') : 'ground-truth-required',
     groundTruth: availableGroundTruth ? {
       id: groundTruth.ground_truth_id,
@@ -847,22 +1079,71 @@ export async function readMetaEvaluation(config, args = {}) {
   }
 }
 
-function compareTrialMaps(summary) {
-  return new Map((summary?.trials ?? []).map(item => [String(item.datasetTrial ?? item.name ?? item.id), normalizeTrial(item, 0)]))
+function comparisonTrials(summary, lifecycle) {
+  const summaryTrials = (summary?.trials ?? []).map(normalizeTrial)
+  if (!Array.isArray(lifecycle?.trials)) return summaryTrials
+  const byExecution = new Map(summaryTrials.map(item => [String(item.id), item]))
+  const byDataset = new Map(summaryTrials.map(item => [String(item.datasetTrial ?? item.name), item]))
+  const matched = new Set()
+  const current = selectedLifecycleTrials(lifecycle).map((item, index) => {
+    const evaluated = byExecution.get(String(item.execution_id)) ?? byDataset.get(String(item.dataset_trial))
+    if (evaluated) matched.add(evaluated)
+    const lifecycleStatus = item.status ?? item.phase
+    return normalizeTrial({
+      ...evaluated,
+      ...item,
+      id: evaluated?.id ?? item.execution_id,
+      name: evaluated?.name ?? item.trial_name ?? item.dataset_trial,
+      datasetTrial: evaluated?.datasetTrial ?? item.dataset_trial,
+      status: lifecycleStatus ?? evaluated?.status,
+      score: item.score ?? evaluated?.score,
+      rewards: evaluated?.rewards ?? {},
+      exception: lifecycleStatus === 'infrastructure-error' ? evaluated?.exception : undefined,
+      terminal: item.terminal,
+    }, index)
+  })
+  return [...current, ...summaryTrials.filter(item => !matched.has(item))]
+}
+
+function compareTrialMaps(summary, lifecycle) {
+  return new Map(comparisonTrials(summary, lifecycle).map(item => [String(item.datasetTrial ?? item.name ?? item.id), item]))
+}
+
+function isInvalidComparisonTrial(trial) {
+  return trial?.terminal !== false
+    && trial?.score?.valid === false
+    && !['completed-unscored', 'cancelled'].includes(trial?.status)
+}
+
+function isInfrastructureComparisonTrial(trial) {
+  return trial?.terminal !== false && (
+    trial?.status === 'infrastructure-error'
+    || trial?.exception?.classification === 'infrastructure'
+  )
 }
 
 export async function readComparison(config, args) {
   const baselineJob = safeSegment(args.baseline, 'baseline')
   const candidateJob = safeSegment(args.candidate, 'candidate')
-  const [baseline, candidate, baselineContract, candidateContract] = await Promise.all([
-    readJson(path.join(jobDirectory(config, baselineJob), SUMMARY_NAME)),
-    readJson(path.join(jobDirectory(config, candidateJob), SUMMARY_NAME)),
-    readJson(path.join(jobDirectory(config, baselineJob), 'evaluation-contract.json')),
-    readJson(path.join(jobDirectory(config, candidateJob), 'evaluation-contract.json')),
+  const projectRoot = path.resolve(config.projectRoot)
+  const [baselineDirectoryCheck, candidateDirectoryCheck] = await Promise.all([
+    directoryCheck(jobDirectory(config, baselineJob), { root: projectRoot }),
+    directoryCheck(jobDirectory(config, candidateJob), { root: projectRoot }),
+  ])
+  if (baselineDirectoryCheck.status !== 'ok' || candidateDirectoryCheck.status !== 'ok') {
+    throw new Error('Both Job directories must be safe')
+  }
+  const [baseline, candidate, baselineContract, candidateContract, baselineLifecycle, candidateLifecycle] = await Promise.all([
+    readJson(path.join(jobDirectory(config, baselineJob), SUMMARY_NAME), { root: projectRoot }),
+    readJson(path.join(jobDirectory(config, candidateJob), SUMMARY_NAME), { root: projectRoot }),
+    readJson(path.join(jobDirectory(config, baselineJob), 'evaluation-contract.json'), { root: projectRoot }),
+    readJson(path.join(jobDirectory(config, candidateJob), 'evaluation-contract.json'), { root: projectRoot }),
+    readJson(path.join(jobDirectory(config, baselineJob), 'trial-lifecycle.json'), { root: projectRoot }),
+    readJson(path.join(jobDirectory(config, candidateJob), 'trial-lifecycle.json'), { root: projectRoot }),
   ])
   if (!baseline || baseline.__readError || !candidate || candidate.__readError) throw new Error('Both Job summaries are required')
-  const baselineContext = baseline.evaluation_context ?? await readJson(path.join(jobDirectory(config, baselineJob), 'evaluation-context.json'))
-  const candidateContext = candidate.evaluation_context ?? await readJson(path.join(jobDirectory(config, candidateJob), 'evaluation-context.json'))
+  const baselineContext = baseline.evaluation_context ?? await readJson(path.join(jobDirectory(config, baselineJob), 'evaluation-context.json'), { root: projectRoot })
+  const candidateContext = candidate.evaluation_context ?? await readJson(path.join(jobDirectory(config, candidateJob), 'evaluation-context.json'), { root: projectRoot })
   const baselineKind = normalizedJobKind(baseline, baselineContext)
   const candidateKind = normalizedJobKind(candidate, candidateContext)
   if (baselineKind !== CANDIDATE_JOB_KIND || candidateKind !== CANDIDATE_JOB_KIND) {
@@ -870,7 +1151,7 @@ export async function readComparison(config, args) {
       code: 'UNSUPPORTED_JOB_KIND_FOR_PROMOTION',
       message: 'Historical Generation Evaluation Jobs are diagnostic evidence and cannot be used as a Candidate baseline, comparison, or Promotion Gate input.',
     }
-    return {
+    return rememberAuthoritativeRevision({
       schemaVersion: 1,
       baselineJob,
       candidateJob,
@@ -882,12 +1163,14 @@ export async function readComparison(config, args) {
       population: {},
       improvedTrials: [],
       regressedTrials: [],
+      invalidTrials: [],
+      newInfrastructureExceptions: [],
       newExceptions: [],
       artifactRegressions: [],
       gateEligibility: 'not-applicable',
       error,
       note: 'Convert reviewed badcases into a fixed regression Dataset before running Candidate comparison or Gate.',
-    }
+    }, baseline, candidate, baselineContract, candidateContract, baselineLifecycle, candidateLifecycle, baselineContext, candidateContext)
   }
   const reasons = []
   if (baselineContext?.schema_version !== 2 || candidateContext?.schema_version !== 2) reasons.push('Context v2 is required')
@@ -902,39 +1185,67 @@ export async function readComparison(config, args) {
       ? (directions[key] === 'minimize' ? baseline.metrics[key] - candidate.metrics[key] : candidate.metrics[key] - baseline.metrics[key])
       : undefined,
   }]))
-  const oldTrials = compareTrialMaps(baseline)
-  const nextTrials = compareTrialMaps(candidate)
+  const oldTrials = compareTrialMaps(baseline, baselineLifecycle)
+  const nextTrials = compareTrialMaps(candidate, candidateLifecycle)
   const improved = []
   const regressed = []
   const primaryDirection = directions[candidateContract?.primary_metric] ?? 'maximize'
   for (const trial of [...oldTrials.keys()].filter(key => nextTrials.has(key)).sort()) {
-    const oldValue = oldTrials.get(trial).score?.value ?? oldTrials.get(trial).rewards?.reward
-    const newValue = nextTrials.get(trial).score?.value ?? nextTrials.get(trial).rewards?.reward
-    if (typeof oldValue !== 'number' || typeof newValue !== 'number' || oldValue === newValue) continue
+    const oldTrial = oldTrials.get(trial)
+    const newTrial = nextTrials.get(trial)
+    if (oldTrial.score?.valid !== true || newTrial.score?.valid !== true) continue
+    const oldValue = oldTrial.score.value ?? oldTrial.rewards?.reward
+    const newValue = newTrial.score.value ?? newTrial.rewards?.reward
+    if (!Number.isFinite(oldValue) || !Number.isFinite(newValue) || oldValue === newValue) continue
     const item = { trial, baseline: oldValue, candidate: newValue, delta: newValue - oldValue }
     const isImproved = primaryDirection === 'minimize' ? newValue < oldValue : newValue > oldValue
     ;(isImproved ? improved : regressed).push(item)
   }
+  const invalidTrials = [...nextTrials.entries()]
+    .filter(([, trial]) => isInvalidComparisonTrial(trial))
+    .map(([trial, candidateTrial]) => ({
+      trial,
+      status: candidateTrial.status,
+      invalidReasons: Array.isArray(candidateTrial.score?.invalid_reasons)
+        ? candidateTrial.score.invalid_reasons.slice(0, 20).map(String)
+        : [],
+      baselineValid: oldTrials.get(trial)?.score?.valid,
+      candidateValid: false,
+    }))
+  const newInfrastructureExceptions = [...nextTrials.entries()]
+    .filter(([trial, candidateTrial]) => (
+      isInfrastructureComparisonTrial(candidateTrial)
+      && !isInfrastructureComparisonTrial(oldTrials.get(trial))
+    ))
+    .map(([trial, candidateTrial]) => ({
+      trial,
+      baselineStatus: oldTrials.get(trial)?.status,
+      candidateStatus: candidateTrial.status,
+      ...(candidateTrial.exception ? { exception: candidateTrial.exception } : {}),
+    }))
   const baselineExceptions = new Set((baseline.exceptions ?? []).map(item => String(item.trial)))
   const newExceptions = (candidate.exceptions ?? []).filter(item => !baselineExceptions.has(String(item.trial)))
   const artifactRegressions = (baseline.artifact_validation?.valid && !candidate.artifact_validation?.valid) ? ['artifact-validation'] : []
-  return {
+  return rememberAuthoritativeRevision({
     schemaVersion: 1, baselineJob, candidateJob, comparable: reasons.length === 0, comparabilityReasons: reasons,
     metrics, population: { baseline: baseline.n_trials, candidate: candidate.n_trials, baselineValid: baseline.n_valid_scores, candidateValid: candidate.n_valid_scores },
-    improvedTrials: improved, regressedTrials: regressed, newExceptions, artifactRegressions,
+    improvedTrials: improved, regressedTrials: regressed, invalidTrials, newInfrastructureExceptions, newExceptions, artifactRegressions,
     gateEligibility: reasons.length ? 'not-comparable' : 'requires-explicit-gate',
     note: 'This read-only comparison never runs Gate, promotes a Candidate, deploys, or publishes.',
-  }
+  }, baseline, candidate, baselineContract, candidateContract, baselineLifecycle, candidateLifecycle, baselineContext, candidateContext)
 }
 
 export async function readEvaluatorGovernance(config, args) {
   const job = safeSegment(args.job, 'job')
   const directory = jobDirectory(config, job)
+  const projectRoot = path.resolve(config.projectRoot)
+  const check = await directoryCheck(directory, { root: projectRoot })
+  if (check.status !== 'ok') throw new Error('Job not found')
   const [stack, sources, contract, context] = await Promise.all([
-    readJson(path.join(directory, 'evaluation-stack-manifest.json')),
-    readJson(path.join(directory, 'evaluation-stack-sources.json'), { maxText: MAX_SOURCE_BYTES }),
-    readJson(path.join(directory, 'evaluation-contract.json')),
-    readJson(path.join(directory, 'evaluation-context.json')),
+    readJson(path.join(directory, 'evaluation-stack-manifest.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-stack-sources.json'), { maxText: MAX_SOURCE_BYTES, root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-contract.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-context.json'), { root: projectRoot }),
   ])
   if (!stack || stack.__readError) throw new Error('Evaluation Stack is unavailable')
   const historicalSources = sources?.schema_version === 1 && sources.stack_digest === stack.digest
@@ -944,18 +1255,26 @@ export async function readEvaluatorGovernance(config, args) {
   for (const [role, component] of Object.entries(stack.components ?? {})) {
     const entry = component?.entry
     const snapshot = historicalSources?.components?.[role]
-    const snapshotFile = snapshot?.files?.find(item => item.path === entry && item.text)
+    // The descriptor is identity/configuration, not the editable prompt. Prefer
+    // an authorized historical prompt/implementation without reading live text.
+    const editable = role === 'evaluator' ? component?.interface?.editable_files ?? [] : []
+    const preferred = editable.find(item => item.role === 'prompt') ?? editable.find(item => item.role === 'implementation')
+    const snapshotFile = snapshot?.files?.find(item => item.path === preferred?.path && item.text)
+      ?? snapshot?.files?.find(item => item.path === entry && item.text)
       ?? snapshot?.files?.find(item => item.text)
     const source = snapshotFile
       ? { ...snapshotFile, source: 'job-snapshot', readOnly: true }
       : entry
-        ? { ...(await readSafeText(resolveWithin(config.projectRoot, entry, `${role}.entry`), config.projectRoot)), source: 'historical-live-fallback', readOnly: true }
+        ? { ...(await readSafeText(resolveWithin(projectRoot, entry, `${role}.entry`), projectRoot)), source: 'historical-live-fallback', readOnly: true }
         : { error: 'entry unavailable', source: 'unavailable', readOnly: true }
     components[role] = { ...component, source }
   }
   let comparison
   if (args.compareJob) {
-    const other = await readJson(path.join(jobDirectory(config, safeSegment(args.compareJob, 'compareJob')), 'evaluation-stack-manifest.json'))
+    const compareDirectory = jobDirectory(config, safeSegment(args.compareJob, 'compareJob'))
+    const compareCheck = await directoryCheck(compareDirectory, { root: projectRoot })
+    if (compareCheck.status !== 'ok') throw new Error('Comparison Job not found')
+    const other = await readJson(path.join(compareDirectory, 'evaluation-stack-manifest.json'), { root: projectRoot })
     const changes = []
     for (const role of new Set([...Object.keys(stack.components ?? {}), ...Object.keys(other?.components ?? {})])) {
       const before = other?.components?.[role]

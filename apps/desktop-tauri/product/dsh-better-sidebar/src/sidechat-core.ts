@@ -245,11 +245,6 @@ export function buildSidechatInheritance(events: readonly SidechatLogEvent[]): S
   return { seed, snapshot: null }
 }
 
-/** The seed half of {@link buildSidechatInheritance} (test convenience). */
-export function sidechatSeed(events: readonly SidechatLogEvent[]): SeedEvent[] {
-  return buildSidechatInheritance(events).seed
-}
-
 /**
  * Structured text snapshot of the parent's OPEN turn (from its `turn/start`
  * to the log tail): the accumulated assistant/reasoning output verbatim
@@ -416,13 +411,18 @@ export interface SidechatThreadInfo {
 }
 
 /** The events a thread produced itself: everything after the LAST
- *  `session/end-seed` marker (the fork-seed boundary). */
-export function threadOwnEvents(entries: readonly SidebarHistoryEntry[]): SidechatLogEvent[] {
-  const events = entries.map(entry => entry.event)
+ *  `session/end-seed` marker (the fork-seed boundary). A log with no marker
+ *  (a thread created before seeding existed) is returned whole. */
+export function threadOwnLogEvents(events: readonly SidechatLogEvent[]): SidechatLogEvent[] {
   for (let index = events.length - 1; index >= 0; index--) {
     if (events[index]?.type === 'session/end-seed') return events.slice(index + 1)
   }
-  return events
+  return [...events]
+}
+
+/** {@link threadOwnLogEvents} over history rows (the client cache shape). */
+export function threadOwnEvents(entries: readonly SidebarHistoryEntry[]): SidechatLogEvent[] {
+  return threadOwnLogEvents(entries.map(entry => entry.event))
 }
 
 /**

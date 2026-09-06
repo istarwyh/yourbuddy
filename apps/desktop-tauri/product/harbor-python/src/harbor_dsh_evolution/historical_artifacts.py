@@ -9,7 +9,7 @@ from statistics import mean
 from typing import Any, Iterable
 from urllib.parse import unquote, urlparse
 
-from harbor_dsh_evolution.artifacts import redact
+from harbor_dsh_evolution.artifacts import exception_summary, redact
 from harbor_dsh_evolution.evaluator import validate_evaluation_result
 from harbor_dsh_evolution.session_batch import validate_session_observation
 
@@ -118,16 +118,6 @@ def _task_for(payload: dict[str, Any], lookup: dict[str, dict[str, Any]]) -> dic
     return {}
 
 
-def _exception(value: Any) -> dict[str, str] | None:
-    if not isinstance(value, dict):
-        return None
-    return {
-        "type": str(value.get("exception_type") or "Exception"),
-        "classification": "infrastructure",
-        "message": "Execution failed. Inspect the local Harbor Trial log for authorized diagnostics.",
-    }
-
-
 def historical_trial_assessment(
     payload: dict[str, Any],
     *,
@@ -137,32 +127,35 @@ def historical_trial_assessment(
 ) -> dict[str, Any]:
     metadata = task.get("metadata") if isinstance(task.get("metadata"), dict) else {}
     record_id = str(metadata.get("generation_record_id") or payload.get("task_name") or "unknown")
-    exception = _exception(payload.get("exception_info"))
+    exception = exception_summary(payload.get("exception_info"))
+    infrastructure_failed = exception is not None
     observation = _trial_observation(payload, job_dir)
     observation_error: str | None = None
-    try:
-        if observation is None:
-            raise ValueError("session-observation.json is missing")
-        validate_session_observation(observation, expected_trial_id=record_id)
-        expected_digest = metadata.get("observation_digest")
-        if expected_digest and observation.get("digest") != expected_digest:
-            raise ValueError("Session Observation does not match Dataset metadata")
-    except ValueError as error:
-        observation_error = str(error)
+    if not infrastructure_failed:
+        try:
+            if observation is None:
+                raise ValueError("session-observation.json is missing")
+            validate_session_observation(observation, expected_trial_id=record_id)
+            expected_digest = metadata.get("observation_digest")
+            if expected_digest and observation.get("digest") != expected_digest:
+                raise ValueError("Session Observation does not match Dataset metadata")
+        except ValueError as error:
+            observation_error = str(error)
 
     evaluator_result = _trial_evaluator_result(payload, job_dir)
     normalized: dict[str, Any] | None = None
     evaluator_error: str | None = None
-    try:
-        if evaluator_result is None:
-            raise ValueError("evaluation-result.json is missing")
-        normalized = validate_evaluation_result(
-            evaluator_result,
-            criteria=list(evaluator_interface.get("criteria") or []),
-            aggregate=evaluator_interface.get("aggregate"),
-        )
-    except ValueError as error:
-        evaluator_error = str(error)
+    if not infrastructure_failed:
+        try:
+            if evaluator_result is None:
+                raise ValueError("evaluation-result.json is missing")
+            normalized = validate_evaluation_result(
+                evaluator_result,
+                criteria=list(evaluator_interface.get("criteria") or []),
+                aggregate=evaluator_interface.get("aggregate"),
+            )
+        except ValueError as error:
+            evaluator_error = str(error)
 
     query = str(
         ((observation or {}).get("task") or {}).get("initial_user_goal")
@@ -171,37 +164,43 @@ def historical_trial_assessment(
     )
     requirements = {
         "input_integrity": bool(query.strip()),
-        "observation_integrity": observation_error is None,
+        "observation_integrity": exception is None and observation_error is None,
         "adapter_completed": exception is None
         and payload.get("agent_result") is not None
         and observation_error is None,
-        "renderer_valid": observation_error is None,
+        "renderer_valid": exception is None and observation_error is None,
         "judge_completed": exception is None
         and evaluator_error is None
         and not (normalized or {}).get("criterion_status_counts", {}).get(
             "evaluation-error", 0
         ),
-        "artifact_schema_valid": observation_error is None and evaluator_error is None,
+        "artifact_schema_valid": exception is None
+        and observation_error is None
+        and evaluator_error is None,
     }
     invalid_reasons: list[str] = []
     if exception:
+        # The environment never started, so the missing observation/evaluator
+        # files are downstream symptoms. Surface the infrastructure failure
+        # itself as the primary diagnostic instead of reporting those absences.
         invalid_reasons.append("infrastructure-error")
-    if observation_error:
-        invalid_reasons.append(f"observation-invalid:{observation_error}")
-    if evaluator_error:
-        invalid_reasons.append(f"evaluator-result-invalid:{evaluator_error}")
-    if normalized is not None and not normalized["score_valid"]:
-        if normalized["aggregate"]["scored_criteria"] == 0:
-            invalid_reasons.append("criteria-unscored")
-        if not normalized["required_criteria_scored"]:
-            invalid_reasons.append("required-criteria-unscored")
-        if not normalized["coverage_satisfied"]:
-            invalid_reasons.append("criterion-coverage-below-minimum")
-        if normalized["criterion_status_counts"].get("evaluation-error"):
-            invalid_reasons.append("criterion-evaluation-error")
-    for requirement, passed in requirements.items():
-        if not passed:
-            invalid_reasons.append(f"requirement-failed:{requirement}")
+    else:
+        if observation_error:
+            invalid_reasons.append(f"observation-invalid:{observation_error}")
+        if evaluator_error:
+            invalid_reasons.append(f"evaluator-result-invalid:{evaluator_error}")
+        if normalized is not None and not normalized["score_valid"]:
+            if normalized["aggregate"]["scored_criteria"] == 0:
+                invalid_reasons.append("criteria-unscored")
+            if not normalized["required_criteria_scored"]:
+                invalid_reasons.append("required-criteria-unscored")
+            if not normalized["coverage_satisfied"]:
+                invalid_reasons.append("criterion-coverage-below-minimum")
+            if normalized["criterion_status_counts"].get("evaluation-error"):
+                invalid_reasons.append("criterion-evaluation-error")
+        for requirement, passed in requirements.items():
+            if not passed:
+                invalid_reasons.append(f"requirement-failed:{requirement}")
     invalid_reasons = list(dict.fromkeys(invalid_reasons))
 
     if exception:
@@ -218,6 +217,13 @@ def historical_trial_assessment(
         status = "completed-unscored"
 
     details = (normalized or {}).get("details") or {}
+    fallback_reason = evaluator_error or "Evaluator result unavailable."
+    fallback_recommendation = "Repair the Evaluator result and rerun the frozen Generation Record."
+    if exception:
+        fallback_reason = exception["message"]
+        fallback_recommendation = exception.get("recommendation") or (
+            "Repair the infrastructure failure shown in the Trial exception, then rerun the frozen Generation Record."
+        )
     criteria = [
         {
             "id": identity,
@@ -225,8 +231,8 @@ def historical_trial_assessment(
             **details.get(identity, {
                 "status": "evaluation-error",
                 "score": None,
-                "reason": evaluator_error or "Evaluator result unavailable.",
-                "recommendation": "Repair the Evaluator result and rerun the frozen Generation Record.",
+                "reason": fallback_reason,
+                "recommendation": fallback_recommendation,
                 "evidence_refs": [],
                 "required": bool(criterion.get("required", False)),
             }),

@@ -715,7 +715,7 @@ export function SubagentView(props: {
     try {
       sessions.openSubagent?.(address)
     } catch (error) {
-      console.warn('[dsh-better-sidebar] openSubagent failed:', error)
+      console.error('[dsh-better-sidebar] openSubagent failed:', error)
     }
   }, [sessions, onOpenChild])
 
@@ -725,7 +725,7 @@ export function SubagentView(props: {
     try {
       sessions.open?.(rootId)
     } catch (error) {
-      console.warn('[dsh-better-sidebar] open session failed:', error)
+      console.error('[dsh-better-sidebar] open session failed:', error)
     }
   }, [sessions, rootId])
 

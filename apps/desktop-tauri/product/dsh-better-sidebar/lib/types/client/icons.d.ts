@@ -62,3 +62,9 @@ export declare const IconSaveOutline16: ({ size, className }: IconProps) => impo
  * rendered monochrome via currentColor to follow the active skin.
  */
 export declare const IconVscode16: ({ size, className }: IconProps) => import("react").JSX.Element;
+/**
+ * Free-window glyph in the app's outline style (1.5px stroke, currentColor):
+ * a background frame with a detached rounded mini-window floating over its
+ * top-right — the changes tab's "diff opens as a free window" setting.
+ */
+export declare const IconFloatWindowOutline16: ({ size, className }: IconProps) => import("react").JSX.Element;
