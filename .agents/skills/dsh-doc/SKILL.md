@@ -1,6 +1,6 @@
 ---
 name: dsh-doc
-description: Create, restructure, review, audit, or migrate DeepSeek Harness Markdown documentation, package READMEs, and the documentation website using audience-first hierarchy, kind-mapped YAML metadata, bilingual line alignment, summary/contents navigation, progressive user-to-developer detail, executed-operation fact-checking, and repository validation. Use for new or revised DSH docs, docs-tree organization, documentation-quality audits and budgets, website page publishing, and bilingual documentation structure changes.
+description: Create, restructure, review, audit, or migrate DeepSeek Harness and YourBuddy documentation, package READMEs, and documentation websites. Use for documentation hierarchy, bilingual consistency, quality audits, website page publishing, and release documentation with YourBuddy website synchronization.
 ---
 
 # DeepSeek Harness documentation
@@ -94,7 +94,9 @@ After the structural pass, hunt the slop checklist with the cheapest probes firs
 
 ## Website publication
 
-The website is a tested projection, never a second copy: [website/docs.ts](../../../website/docs.ts) is the explicit public allowlist mapping canonical `docs/` sources into route trees, [scripts/project-doc-site.ts](../../../scripts/project-doc-site.ts) rewrites them into the disposable `website/.generated/` tree, and VitePress builds that tree. Repository Markdown stays the only editable content source; translations stay sibling pairs (`foo.md`, `foo.zh.md`, `foo.i18n.yaml`), never locale directories. Edit an already published page in its canonical source only; add one manifest entry for a new page; update source, manifest entry, and inbound links atomically for a move or removal; never edit `website/.generated/`, `website/.cache/`, or `website/.dist/`. Set every `DocsPage` field deliberately and honor the projector's link rules; see [references/website-sync.md](references/website-sync.md) for the fields, sidebar collections, and preview commands. Synchronizing content into the build does not publish it: deployment stays a separate, explicitly requested step.
+Choose the website adapter first. The YourBuddy product site uses OINK, [product-pages.json](../../../website/product-pages.json), and [the product website guide](../../../docs/product-website.md). The SDK site uses VitePress and [website/docs.ts](../../../website/docs.ts). Keep canonical prose under `docs/` and translations as sibling pairs; the product homepage also has paired JSON data. Never edit either adapter's generated output. See [references/website-sync.md](references/website-sync.md) for the adapter-specific workflow.
+
+For a YourBuddy release, load that reference's product-release section and complete the [release synchronization procedure](../../../docs/product-website.md#release-synchronization). Verify public assets before promoting availability, synchronize the bilingual product pages, and record the website commit, deployment, and live checks in the [release archive](../../../docs/releases/README.md). Product publication, archive completeness, website synchronization, and unverified scope remain separate. A request limited to preparation or a draft stops before publication; an authorized release uses the existing website deployment without introducing another approval step.
 
 ## Detailed references
 
@@ -104,7 +106,7 @@ Load only the reference needed for the task. Each reference links directly from 
 - [Page structure and hierarchy](references/structure-hierarchy.md): mandatory section order, section summaries, user-to-developer progression, docs tree placement, small rule files, Further Exploration, and Dev Note ownership.
 - [Page style](references/style.md): short Summary, `-----` section separators, foldable content sections, and emphasis discipline.
 - [Review criteria](references/review.md): newcomer test, evidence checks, package README review, the reference example, and verification commands.
-- [Website publication](references/website-sync.md): manifest fields, projector link rules, preview and validation, and deployment separation.
+- [Website publication](references/website-sync.md): YourBuddy release synchronization, OINK and VitePress ownership, manifest fields, projector links, validation, and deployment.
 
 The four README templates in [`templates/`](templates/) are the working skeletons for the four `kind` labels; open the one your document's kind names before writing.
 

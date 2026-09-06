@@ -2,11 +2,12 @@
 
 ## Summary
 
-The documentation website is a tested projection of repository Markdown, never a second copy. [website/docs.ts](../../../../website/docs.ts) is the explicit public allowlist, [scripts/project-doc-site.ts](../../../../scripts/project-doc-site.ts) rewrites mapped sources into the disposable `website/.generated/` tree, and VitePress builds that tree. The build also emits a raw-Markdown twin of every route and a root `llms.txt` index from the same manifest. This reference owns the manifest fields, the projector's link rules, preview and validation commands, and the deployment boundary.
+Both websites project canonical repository prose. YourBuddy's OINK site follows [the product website guide](../../../../docs/product-website.md); the VitePress SDK site follows [website/docs.ts](../../../../website/docs.ts) and [scripts/project-doc-site.ts](../../../../scripts/project-doc-site.ts). Read only the matching adapter workflow below. Each publishes raw Markdown and machine-readable navigation in addition to HTML; a local build alone does not establish a public deployment.
 
 ## Table of Contents
 
-- [Manifest ownership](#manifest-ownership)
+- [YourBuddy product releases](#yourbuddy-product-releases)
+- [VitePress manifest ownership](#vitepress-manifest-ownership)
 - [Classify the change](#classify-the-change)
 - [DocsPage fields](#docspage-fields)
 - [Preserve link behavior](#preserve-link-behavior)
@@ -14,7 +15,19 @@ The documentation website is a tested projection of repository Markdown, never a
 - [Keep deployment separate](#keep-deployment-separate)
 - [Dev Note](#dev-note)
 
-## Manifest ownership
+## YourBuddy product releases
+
+Use this path for the YourBuddy homepage, download and release pages, product guides, or a desktop release. The VitePress fields below do not configure this site.
+
+1. Read the [release synchronization procedure](../../../../docs/product-website.md#release-synchronization), [release archive convention](../../../../docs/releases/README.md), and actual desktop release evidence. Classify the task as preparation, product publication, or a website follow-up, preserving the user's authorized scope.
+2. Use [product-pages.json](../../../../website/product-pages.json) for routes and [product-site.ts](../../../../scripts/product-site.ts) for projection. Edit canonical product Markdown pairs and both homepage JSON files; use the procedure's source table to check all release-dependent copy. Do not create a second version catalog or infer installed plugin versions from upstream latest.
+3. Before product assets are verified, retain the existing verified download and mark candidates pending. Once verified, update the exact release and asset links, evidence references, installation status, and affected product/plugin guides. Rerun pairing, `pnpm website:check` with the production base URL, `pnpm test:docs`, `pnpm doc-sync`, and `pnpm lint`. Use `pnpm website:dev` for visual checks; run VitePress checks only if its adapter or published sources changed too.
+4. For an authorized release, publish the website follow-up to `master` and inspect [product-site.yml](../../../../.github/workflows/product-site.yml) for the exact commit. A desktop tag or archive-only change does not trigger this workflow. Use its existing manual dispatch only when a rebuild is needed without a matching input change. Do not add another deploy workflow, hosting provider, or permission.
+5. Wait for build and deploy, then verify the live bilingual pages and their actual download/evidence links as the owning procedure specifies. Record website commit, run, URLs, date, and observed results in the version archive. Keep an unavailable browser check unverified and a failed site deployment outstanding; neither permits claiming full synchronization nor requires republishing desktop artifacts.
+
+Do not edit `website/product/.generated/`, `.cache/`, or `.dist/`. Release archives stay under `docs/releases/`; link them through canonical relative links instead of automatically adding internal evidence pages to the product allowlist. Newly observed post-publication evidence uses a new immutable evidence commit; public tags and installers remain unchanged.
+
+## VitePress manifest ownership
 
 Read [docs/AGENTS.md](../../../../docs/AGENTS.md) and the current `DocsPage` type and entries in [website/docs.ts](../../../../website/docs.ts) before changing the manifest; do not rely on a remembered field set. Read [website/.vitepress/config.ts](../../../../website/.vitepress/config.ts) before adding a new section, sidebar collection, locale, or top-level navigation item. For an edited bilingual source, follow the lightweight routine path in [docs/AGENTS.md](../../../../docs/AGENTS.md#writing-rules) and the [pairing contract](../../../../docs/i18n/README.md); never invoke the extended translation skill automatically.
 
@@ -88,7 +101,7 @@ Use [dsh-pre-push-checks](../../dsh-pre-push-checks/SKILL.md) before pushing. Re
 
 ## Keep deployment separate
 
-Synchronizing content into the VitePress build does not publish it to the internet. Do not add GitHub Pages permissions, deployment workflows, custom domains, or public hosting unless the user explicitly requests deployment and confirms the hosting policy.
+Synchronizing content into a local build does not publish it to the internet. Follow the release or deployment authorization already present in the task and use the selected adapter's existing workflow. Add GitHub Pages permissions, a deployment workflow, a custom domain, or another host only when the requested scope requires that change; ordinary release synchronization does not require new hosting approval.
 
 ## Dev Note
 

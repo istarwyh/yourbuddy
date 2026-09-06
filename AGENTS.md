@@ -94,7 +94,7 @@ Run checks before pushes via [dsh-pre-push-checks](.agents/skills/dsh-pre-push-c
 
 ## Release delivery
 
-Every published tag includes a user-facing release record and honest verification archive under [`docs/releases/<release-tag>/`](docs/releases/README.md), created from the [copyable version template](docs/releases/_template/README.md). Report product publication, verification-archive status, and unverified scope separately; CI success alone never proves a product release.
+Every published tag includes user-facing notes and an honest verification archive under [`docs/releases/<release-tag>/`](docs/releases/README.md), using the [version template](docs/releases/_template/README.md). YourBuddy releases also synchronize the [product website](docs/product-website.md#release-synchronization) through [dsh-doc](.agents/skills/dsh-doc/SKILL.md). Report product publication, archive status, website synchronization, and unverified scope separately; CI success alone never proves publication.
 
 ## Secrets / .env
 

@@ -20,7 +20,9 @@ Screenshots are optional. A useful UI journey retains relevant before, in-progre
 
 The tagged commit contains the archive and version index. A public release page links to that immutable evidence commit and to a downloadable archive supplied by the existing channel or the tag's source archive. Once public, tags and installers remain immutable; a correction that changes released bytes or user-visible claims uses a new version.
 
-Product publication, verification-archive completeness, and unverified scope are three independent statuses. Maintainers verify the actual GitHub Release, updater channel, npm registry, PyPI registry, or documentation URL involved in that release instead of inferring publication from a green workflow.
+Product publication, verification-archive completeness, website synchronization, and unverified scope are independent statuses. Maintainers verify the actual GitHub Release, updater channel, npm registry, PyPI registry, or documentation URL involved in that release instead of inferring publication from a green workflow.
+
+YourBuddy release delivery includes the [product website synchronization procedure](../../../../docs/product-website.md#release-synchronization), surfaced through the desktop guide and documentation skill. Public availability follows verified release assets; committed website content deploys through the existing `master` workflow. Recording the site commit and live observations prevents a published installer with stale download guidance from appearing fully delivered. A website failure remains separate from product publication, and follow-up evidence never moves the release tag.
 
 Existing channel documents and workflows continue to own version sources, release commands, registries, and credentials. This convention adds no custom script, CI requirement, approval, or publication path.
 

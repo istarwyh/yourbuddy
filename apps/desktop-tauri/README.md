@@ -55,6 +55,10 @@ Managed product paths must be clean by default. `pnpm --dir apps/desktop-tauri r
 
 Tagged CI and ordinary `prepare:dist` or `build` commands never mutate upstream inputs. A newly pushed tag resolves the DSH policy and refuses to publish when the committed source, provenance, or ancestry is stale. Manual workflow dispatch may retry an existing unpublished tag after a failed run; it skips the live freshness check and consumes only that tag's committed snapshots and frozen lockfile. The workflow refuses any tag that already has a GitHub Release, so correcting published bytes requires a new version instead of replacing an installer.
 
+## Release documentation and website
+
+Use [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md) to prepare the [version archive](../../docs/releases/README.md) with each release. After verifying the public desktop assets, complete [product website synchronization](../../docs/product-website.md#release-synchronization) and record its deployment and live checks separately from installer publication. A website failure leaves the desktop release intact and remains an outstanding delivery item.
+
 ## Commands
 
 Run from the repository root:

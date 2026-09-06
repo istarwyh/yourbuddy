@@ -29,6 +29,8 @@ The channel owners remain authoritative for versions, commands, and publication.
 
 A channel that is not part of a release is marked not applicable in that version page. Do not run unrelated release families to make the archive appear complete.
 
+Every YourBuddy desktop release includes [product website synchronization](../product-website.md#release-synchronization). Prepare content before tagging, then publish verified availability after checking the public assets. The product website and SDK documentation use separate workflows; neither is evidence that the desktop installer is available.
+
 ## Per-release archive
 
 Copy `docs/releases/_template/` to `docs/releases/<release-tag>/` before final validation. Keep `README.md`, `README.zh.md`, and their pairing record together; create `screenshots/` and `evidence/` only when they contain useful material.
@@ -90,6 +92,7 @@ Every version page and handoff reports these independently:
 
 - **Product publication status:** which channels and product files are actually downloadable or installable, failed, or not applicable.
 - **Verification archive status:** complete, partial, or missing, with the evidence commit and download location when available; a partial or missing archive lists each outstanding item and its next step when known.
+- **Website synchronization status:** for YourBuddy, pending, deployed but not verified, deployed and verified, or failed, with the site commit, workflow run, live URLs, and outstanding checks; mark unrelated channels not applicable.
 - **Unverified scope:** every skipped, failed, historical-only, source-only, platform-specific, mock-only, or otherwise untested claim.
 
 The checklist belongs to the copied version page. Keep the shared [_template](_template/README.md) unchecked so it never masquerades as evidence for a release.

@@ -82,6 +82,7 @@ Copy this directory to `docs/releases/<release-tag>/`, replace every placeholder
 
 - Product publication status: `<published channels and verified files / failed / not applicable>`
 - Verification archive status: `<complete / partial / missing, evidence commit, gallery, download, and itemized follow-ups>`
+- Website synchronization status: `<pending / deployed but not verified / deployed and verified / failed / not applicable; website commit, workflow run, checked URLs and date, and outstanding checks>`
 - Unverified scope: `<all failed, skipped, historical-only, source-only, platform-specific, mock-only, or otherwise untested claims>`
 
 ## Delivery checklist
@@ -101,5 +102,6 @@ Copy this directory to `docs/releases/<release-tag>/`, replace every placeholder
 - [ ] The public release page links to the evidence commit, gallery, and download without relying on a moving branch.
 - [ ] The actual product destination was checked independently of CI and temporary workflow artifacts.
 - [ ] Published filenames, versions, hashes, registry metadata, updater metadata, and installed behavior are recorded as applicable.
-- [ ] Product publication status, verification archive status, and unverified scope are reported separately.
+- [ ] For YourBuddy, [release website synchronization](../../product-website.md#release-synchronization) covers both languages, actual download links, affected guides and plugins, and the observed live deployment; unrelated channels are marked not applicable.
+- [ ] Product publication status, verification archive status, website synchronization, and unverified scope are reported separately.
 - [ ] Public tags and installers were not moved or overwritten; corrections use a new version.
