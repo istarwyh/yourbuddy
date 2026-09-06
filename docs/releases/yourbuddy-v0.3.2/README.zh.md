@@ -4,10 +4,10 @@
 
 - 发布标识：`yourbuddy-v0.3.2`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：本地发布前验证已完成；公开产品与官网验证待完成
+- 归档状态：公开产品验证已完成；验证资料下载包与在线官网验证待完成
 - 已验证源码 Commit：[`b1e9d36fca62e064526689a412727f6c5dcbeb06`](https://github.com/istarwyh/yourbuddy/commit/b1e9d36fca62e064526689a412727f6c5dcbeb06)
 - 证据图集：[源码 Web 帮助截图](screenshots/)
-- 证据下载：计划在公开 Release 提供 `yourbuddy-v0.3.2-verification.zip`
+- 证据下载：完成发布后记录后，计划在公开 Release 提供 `yourbuddy-v0.3.2-verification.zip`
 
 ## 面向用户的发布说明
 
@@ -44,8 +44,46 @@ YourBuddy 0.3.2 在应用内新增帮助菜单，扩充双语产品指南，强�
 | Host 认证启动与生命周期 | passed after fixture repair | Rust 源码测试目标 | macOS 15.6.1 arm64、本地回环 Fixture、无真实凭据 | [本地记录](evidence/local-validation.txt) |
 | 桌面发布辅助测试与 Personal Workbench | passed after dependency-layout recovery | 源码 Checkout | macOS 15.6.1 arm64、合成 Fixture | [本地记录](evidence/local-validation.txt) |
 | 文档与产品官网构建 | passed | 源码 Checkout | 本地 Hugo Extended 0.165.0 | [本地记录](evidence/local-validation.txt) |
-| 公开 DMG、Updater、校验和与稳定通道 | not verified | 正式公开产品 | GitHub Release 与独立下载 | 等待发布 |
+| 公开 DMG、Updater、校验和与稳定通道 | passed with known signing limitation | 正式公开产品 `yourbuddy-v0.3.2` | GitHub Release，以及 macOS 15.6.1 arm64 上的独立下载、解压与 DMG 挂载 | [公开产物记录](evidence/public-artifacts.txt) |
 | 在线产品官网 | not verified | 已部署网站 | GitHub Pages | 等待发布 |
+
+## 场景：已发布 macOS 产物与 Updater
+
+- 状态：passed with known signing limitation
+- 日期与时间：2026-09-06 19:10-19:17 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：`yourbuddy-v0.3.2`；Tag Commit `bfd9af598ebf24018f8d699cb83e0be23a8b3a05`
+- 被测构建：下载到全新本地目录的正式 GitHub Release 文件
+- 环境：GitHub 托管 macOS arm64 发布 Runner；macOS 15.6.1 arm64 独立验证机；GitHub Releases；本地 `hdiutil`、`tar`、`shasum`、`PlistBuddy`、`file`、`codesign` 与 `spctl`
+- 证据来源：本次发布运行
+- 数据：公开 Release 与本地文件系统元数据；无用户数据
+- 模型或服务：GitHub Releases 与 YourBuddy Updater 通道；无模型供应商
+
+### 操作步骤
+
+1. 等待 Tag 触发的发布工作流，确认构建、正式包 Host、搬移后运行时、校验和、Updater 与发布步骤全部完成。
+2. 把五个公开产物下载到全新目录，对比 GitHub Digest、`SHA256SUMS.txt` 与本地 SHA-256 计算结果。
+3. 分别检查不可变 Release 和 `yourbuddy-updater` 通道的 `latest.json`。
+4. 解压 App 包，检查版本、Bundle ID、架构、内置运行时与产品插件版本。
+5. 以只读方式挂载下载的 DMG，把 App 复制到全新临时安装目录，验证元数据与 ad-hoc 签名，检查 Gatekeeper，再卸载镜像。
+
+### 预期结果
+
+全部公开文件可下载且哈希一致；带签名的 Updater 通道选择 0.3.2 arm64 包；解压和从 DMG 复制的 App 均标识为 `io.github.istarwyh.yourbuddy` 0.3.2；镜像可以挂载和卸载。没有 Apple Developer 签名和公证时，不能把 Gatekeeper 报告为通过。
+
+### 实际结果
+
+Release 发布了全部五个预期产物。本地 SHA-256 全部一致，稳定 Updater Manifest 返回 0.3.2 且签名非空，App 为包含预期内置版本的 arm64 构建；DMG 通过镜像校验、挂载、复制、代码签名验证与卸载。`spctl` 拒绝 ad-hoc 签名 App，符合未签名和未公证的已知限制。
+
+### 证据
+
+- 操作前：Tag 内归档只包含源码与本地候选版证据。
+- 执行中：[工作流 34028686085](https://github.com/istarwyh/yourbuddy/actions/runs/34028686085)在发布前构建并测试 Tag Commit。
+- 结果：[公开产物记录](evidence/public-artifacts.txt)列出独立下载后观察到的准确文件、大小、哈希、元数据、内置版本与命令。
+- 失败与恢复：未发生发布或校验和失败。Gatekeeper 拒绝作为已知限制保留，未绕过。
+
+### 范围限制
+
+未交互启动复制后的 App。正式安装后的帮助点击、真实浏览器打开、应用内自动更新安装、复制 App 的私有 Host 启动、真实 OAuth/模型调用与企业代理/CA 行为仍未验证。
 
 ## 场景：应用内帮助与失败恢复
 
@@ -197,10 +235,10 @@ YourBuddy 0.3.2 在应用内新增帮助菜单，扩充双语产品指南，强�
 
 ## 交付状态
 
-- 产品发布状态：待发布；尚未宣称存在 0.3.2 Tag 或公开产物。
-- 验证资料归档状态：在补充公开产物证据和可解压验证下载前为部分完成；目前包含源码说明、两张已审查截图、校验和、失败与恢复记录。
+- 产品发布状态：已发布并完成独立验证；[YourBuddy 0.3.2](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2)的 DMG、App Updater 包、签名、校验和、不可变 Updater Manifest 与稳定 Updater 通道均可下载，并与记录的元数据一致。
+- 验证资料归档状态：在提交发布后归档并上传、解压验证资料 ZIP 前为部分完成；目前包含源码说明、两张已审查截图、本地验证和公开产物证据。
 - 官网同步状态：本地构建已验证；公开内容更新、部署与在线 URL 验证待完成。
-- 未验证范围：公开 DMG/Updater/稳定通道、安装后的交互式帮助、真实 OAuth/模型调用、企业代理/CA、Windows、macOS Intel、Linux、Apple Developer 签名与公证。
+- 未验证范围：安装后的交互式帮助、从安装 App 打开真实浏览器、应用内自动更新安装、复制 App 的私有 Host 启动、真实 OAuth/模型调用、企业代理/CA、Windows、macOS Intel、Linux、Apple Developer 签名与公证。已确认 Gatekeeper 会拒绝 ad-hoc 签名构建。
 
 ## 交付清单
 
@@ -215,7 +253,7 @@ YourBuddy 0.3.2 在应用内新增帮助菜单，扩充双语产品指南，强�
 - [x] 本地候选树上的版本索引、语言配对、文档与产品官网构建已通过；发布前仍会在 Tag Commit 上复核。
 - [ ] 可下载验证资料包已解压并检查。
 - [ ] 公开 Release 页面已链接不可变证据 Commit、图集与下载。
-- [ ] 已独立于 CI 检查实际 DMG、Updater、校验和、元数据与安装包。
+- [x] 已独立于 CI 检查实际 DMG、Updater、校验和、元数据与复制后的安装包；交互启动仍明确标记为未验证。
 - [ ] 产品官网已同步，并验证双语在线页面。
 - [x] 已分别报告产品发布、资料归档、官网与未验证范围。
 - [x] 未移动或覆盖任何既有公开 Tag 与安装包。

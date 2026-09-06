@@ -4,10 +4,10 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.2`
 - Product channel: YourBuddy desktop
-- Archive state: local pre-publication verification complete; public product and website verification pending
+- Archive state: public product verification complete; verification download and live website verification pending
 - Validated source commit: [`b1e9d36fca62e064526689a412727f6c5dcbeb06`](https://github.com/istarwyh/yourbuddy/commit/b1e9d36fca62e064526689a412727f6c5dcbeb06)
 - Evidence gallery: [source Web Help screenshots](screenshots/)
-- Evidence download: planned `yourbuddy-v0.3.2-verification.zip` on the public release
+- Evidence download: planned `yourbuddy-v0.3.2-verification.zip` on the public release after the post-publication record is complete
 
 ## User release notes
 
@@ -44,8 +44,46 @@ The desktop supports Apple Silicon on macOS 11 or later. Existing YourBuddy data
 | Authenticated Host startup and lifecycle | passed after fixture repair | source Rust test target | macOS 15.6.1 arm64, local loopback fixtures, no real credentials | [Local record](evidence/local-validation.txt) |
 | Desktop release helpers and Personal Workbench | passed after dependency-layout recovery | source checkout | macOS 15.6.1 arm64, synthetic fixtures | [Local record](evidence/local-validation.txt) |
 | Documentation and product website build | passed | source checkout | local Hugo Extended 0.165.0 | [Local record](evidence/local-validation.txt) |
-| Public DMG, updater, checksums, and stable channel | not verified | formally published product | GitHub Release and independent download | Pending publication |
+| Public DMG, updater, checksums, and stable channel | passed with known signing limitation | formally published product `yourbuddy-v0.3.2` | GitHub Release plus independent download, extraction, and DMG mount on macOS 15.6.1 arm64 | [Public artifact record](evidence/public-artifacts.txt) |
 | Live product website | not verified | deployed website | GitHub Pages | Pending publication |
+
+## Scenario: Published macOS artifacts and updater
+
+- Status: passed with known signing limitation
+- Date and time: 2026-09-06 19:10-19:17 UTC+08:00, Asia/Shanghai
+- Release and commit: `yourbuddy-v0.3.2`; tagged commit `bfd9af598ebf24018f8d699cb83e0be23a8b3a05`
+- Build under test: formally published GitHub Release files downloaded into a new local directory
+- Environment: GitHub-hosted macOS arm64 release runner; macOS 15.6.1 arm64 independent verification host; GitHub Releases; local `hdiutil`, `tar`, `shasum`, `PlistBuddy`, `file`, `codesign`, and `spctl`
+- Evidence origin: this release run
+- Data: public release and local filesystem metadata; no user data
+- Model or service: GitHub Releases and the YourBuddy updater channel; no model provider
+
+### Steps
+
+1. Waited for the tag-triggered release workflow and confirmed that every build, packaged-Host, relocated-runtime, checksum, updater, and publication step completed.
+2. Downloaded all five public assets into a new directory and compared their GitHub digests and `SHA256SUMS.txt` entries with local SHA-256 calculations.
+3. Inspected `latest.json` from both the immutable release and the `yourbuddy-updater` channel.
+4. Extracted the app archive and checked version, bundle identifier, architecture, bundled runtime, and product plugin versions.
+5. Attached the downloaded DMG read-only, copied the app into a new temporary installation directory, verified its metadata and ad-hoc signature, checked Gatekeeper, and detached the image.
+
+### Expected
+
+All public files are downloadable and match their hashes, the signed updater channel selects the 0.3.2 arm64 archive, the extracted and DMG-copied apps identify as version 0.3.2 for `io.github.istarwyh.yourbuddy`, and the image can be mounted and detached. Gatekeeper must not be reported as passing without Apple Developer signing and notarization.
+
+### Actual
+
+The release published all five expected assets. Every local SHA-256 matched, the stable updater manifest returned 0.3.2 with a non-empty signature, the app was an arm64 build with the expected embedded versions, and the DMG passed image verification, mount, copy, code-signature verification, and detach. `spctl` rejected the ad-hoc-signed app, as expected for the documented unsigned and unnotarized build.
+
+### Evidence
+
+- Before: the tag archive contained only source and local-candidate evidence.
+- In progress: [workflow run 34028686085](https://github.com/istarwyh/yourbuddy/actions/runs/34028686085) built and tested the tagged commit before publication.
+- Result: [public artifact record](evidence/public-artifacts.txt) lists exact files, sizes, hashes, metadata, embedded versions, and commands observed after independent download.
+- Failure and recovery: no publication or checksum failure occurred. Gatekeeper rejection is retained as a known limitation and was not bypassed.
+
+### Scope limits
+
+The copied app was not launched interactively. Installed-DMG Help clicks, a real browser launch, automatic in-app update installation, private Host startup from the copied app, real OAuth/model calls, and enterprise proxy/CA behavior remain unverified.
 
 ## Scenario: In-app Help and recovery
 
@@ -197,10 +235,10 @@ This verifies local source output only. It does not prove the GitHub Pages workf
 
 ## Delivery status
 
-- Product publication status: pending; no 0.3.2 tag or public asset is claimed yet.
-- Verification archive status: partial until public artifact evidence and an extracted verification download are added; source notes, two reviewed screenshots, checksums, failures, and recovery are present.
+- Product publication status: published and independently verified at [YourBuddy 0.3.2](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2); the DMG, app updater archive, signature, checksums, immutable updater manifest, and stable updater channel are downloadable and match the recorded metadata.
+- Verification archive status: partial until the post-publication archive is committed and its downloadable verification ZIP is uploaded and extracted; source notes, two reviewed screenshots, local validation, and public artifact evidence are present.
 - Website synchronization status: local build verified; public content update, deployment, and live URL verification pending.
-- Unverified scope: public DMG/updater/stable channel, installed interactive Help, real OAuth/model calls, enterprise proxy/CA, Windows, macOS Intel, Linux, Apple Developer signing, and notarization.
+- Unverified scope: installed interactive Help, real browser launch from the installed app, automatic in-app update installation, copied-app private Host startup, real OAuth/model calls, enterprise proxy/CA, Windows, macOS Intel, Linux, Apple Developer signing, and notarization. Gatekeeper rejection is confirmed for the ad-hoc-signed build.
 
 ## Delivery checklist
 
@@ -215,7 +253,7 @@ This verifies local source output only. It does not prove the GitHub Pages workf
 - [x] The release entry, language pairing, and documentation/product-site builds have passed on the local candidate tree; the tagged commit will be rechecked before publication.
 - [ ] The downloadable evidence archive has been extracted and inspected.
 - [ ] The public release page links to the immutable evidence commit, gallery, and download.
-- [ ] The actual DMG, updater files, checksums, metadata, and installed bundle have been checked independently of CI.
+- [x] The actual DMG, updater files, checksums, metadata, and a copied installation bundle have been checked independently of CI; interactive launch remains explicitly unverified.
 - [ ] The product website has been synchronized and its bilingual live destinations verified.
 - [x] Product publication, archive, website, and unverified scope are reported separately.
 - [x] Existing public tags and installers have not been moved or overwritten.

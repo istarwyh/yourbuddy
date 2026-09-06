@@ -1,0 +1,86 @@
+YourBuddy 0.3.2 public artifact verification
+Date: 2026-09-06 19:10-19:17 UTC+08:00 (Asia/Shanghai)
+Release: yourbuddy-v0.3.2
+Tagged commit: bfd9af598ebf24018f8d699cb83e0be23a8b3a05
+Environment: macOS 15.6.1 arm64; GitHub-hosted macOS arm64 release runner; GitHub Release; local hdiutil, tar, shasum, PlistBuddy, file, codesign, and spctl
+Build under test: formally published GitHub Release files downloaded into a new local directory
+Evidence origin: this release run
+Data: public release metadata and local filesystem metadata; no user data
+Model or service: GitHub Releases and the YourBuddy updater channel; no model provider
+
+Publication
+- Release: https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2
+- Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/34028686085
+- Job: https://github.com/istarwyh/yourbuddy/actions/runs/34028686085/job/101474154755
+- Workflow result: success
+- Workflow commit: bfd9af598ebf24018f8d699cb83e0be23a8b3a05
+- Workflow started: 2026-09-06T10:53:59Z
+- Workflow completed: 2026-09-06T11:11:31Z
+- Release published: 2026-09-06T11:10:40Z
+- Release is neither draft nor prerelease.
+- The workflow's Host startup contract, relocated product runtime, checksum verification, updater manifest generation, and publication steps all completed successfully.
+
+Downloaded files and locally computed SHA-256
+- SHA256SUMS.txt; 312 bytes; 2f24bcc0d337dffd744d0e527775f290cda466fc05e18709368d3bd3a59ca070
+- latest.json; 4,335 bytes; 8be78514adce5155eee90eb3f97042f26841ed88586d47349623c76b5c6d7fb3
+- yourbuddy-0.3.2-macos-arm64.app.tar.gz; 569,377,731 bytes; ab841d8ecbbe1fc67659c61a9e2b8185e8bb1666c6e0c73a5f46ee5473ef38f5
+- yourbuddy-0.3.2-macos-arm64.app.tar.gz.sig; 408 bytes; 5fba8cb0e50167dda516a8bf13e477e51383ff48a598149479abb1bd6220165c
+- yourbuddy-0.3.2-macos-arm64.dmg; 567,479,032 bytes; a00e9ed9b0f8ae0702692cb69b3ba773eb5f622a0f05c95df522f3d1c8dd466c
+- The GitHub asset digest for each file matched the locally computed SHA-256.
+- `shasum -a 256 --check SHA256SUMS.txt` reported OK for the app archive, updater signature, and DMG.
+
+Updater metadata
+- Version: 0.3.2
+- Platform: darwin-aarch64
+- URL: https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-0.3.2-macos-arm64.app.tar.gz
+- The updater signature field is present and non-empty.
+- The immutable release latest.json and moving `yourbuddy-updater` channel latest.json have the same SHA-256: 8be78514adce5155eee90eb3f97042f26841ed88586d47349623c76b5c6d7fb3.
+- The public `yourbuddy-updater` manifest returned version 0.3.2 and the same 0.3.2 archive URL.
+
+Extracted app archive
+- The archive extracted successfully into a new temporary directory.
+- CFBundleShortVersionString: 0.3.2
+- CFBundleVersion: 0.3.2
+- CFBundleIdentifier: io.github.istarwyh.yourbuddy
+- Main executable: Mach-O 64-bit executable arm64
+- `codesign --verify --deep --strict --verbose=2` passed.
+- Signature type: ad-hoc; no TeamIdentifier.
+- `spctl -a -vv` rejected the app, as expected for a build without Apple Developer signing and notarization.
+
+Bundled runtime and product versions observed in the extracted app
+- DSH desktop bundle: 0.1.2-rc.1
+- Node: 22.19.0
+- pnpm: 11.7.0
+- Python: 3.12.14
+- Harbor Integration: 0.9.2
+- dsh-better-sidebar: 0.18.0
+- dsh-codex-auth: 0.3.2
+- dsh-context-doctor: 0.7.2
+- dsh-harbor-evolution: 0.9.2
+- dsh-personal-workbench: 0.1.0
+- dsh-plugin-marketplace: 0.3.1
+
+DMG installation-media check
+1. Attached the downloaded DMG read-only to a new temporary mount point.
+2. hdiutil verified the image partition checksums and final CRC32.
+3. Confirmed the volume contains YourBuddy.app and the Applications link.
+4. Copied YourBuddy.app from the mounted image into a new temporary installation directory with `ditto`.
+5. Confirmed version 0.3.2 and bundle identifier io.github.istarwyh.yourbuddy on the copied app.
+6. `codesign --verify --deep --strict --verbose=2` passed for the copied app.
+7. `spctl -a -vv` rejected the copied app because it is not signed and notarized with an Apple Developer identity.
+8. Detached the mounted image successfully.
+
+Expected result
+- All published bytes are downloadable and match their public digests.
+- The updater channel selects the 0.3.2 arm64 archive and carries a signature.
+- The app archive and DMG contain version 0.3.2 for bundle io.github.istarwyh.yourbuddy on arm64.
+- The DMG mounts, its app can be copied, and the ad-hoc signature verifies.
+- Gatekeeper rejection remains visible instead of being reported as a pass.
+
+Actual result
+- All expected publication, checksum, updater, bundle metadata, extraction, mount, copy, signature-verification, and detach checks passed.
+- Gatekeeper rejected the app because Apple Developer signing and notarization are not configured. This is an expected known limitation, not a passed Gatekeeper assessment.
+
+Unverified scope
+- The copied app was not launched interactively, so installed-DMG Help clicks, a real browser launch, automatic in-app update installation, and private Host startup from this locally copied app remain unverified.
+- Real OAuth/model calls, enterprise proxy/CA chains, Windows, macOS Intel, Linux, Apple Developer signing, and notarization remain unverified.
