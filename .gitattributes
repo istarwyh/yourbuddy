@@ -8,9 +8,14 @@
 
 *.pdf binary
 
-# Product plugins are byte-identical upstream snapshots; preserve their own
-# whitespace instead of rewriting vendored build output during integration.
-apps/desktop-tauri/product/** -whitespace
+# External product plugins are byte-identical upstream snapshots. Keep their
+# original line endings so a clean checkout reproduces the reviewed tree hash.
+apps/desktop-tauri/product/context-doctor/** -text -whitespace
+apps/desktop-tauri/product/dsh-better-sidebar/** -text -whitespace
+apps/desktop-tauri/product/dsh-codex-auth/** -text -whitespace
+apps/desktop-tauri/product/harbor-evolution/** -text -whitespace
+apps/desktop-tauri/product/harbor-python/** -text -whitespace
+apps/desktop-tauri/product/plugin-marketplace/** -text -whitespace
 
 # Pairing records are generated from the three confirmed owner-blob pairs.
 # The worktree-local installer registers the fail-closed driver command.

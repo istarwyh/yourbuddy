@@ -4,10 +4,10 @@
 
 - 发布标识：`yourbuddy-v0.3.0`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：发布前验证已完成；公开产物验证待完成
-- 证据 Commit：最终发布准备在 `f619699d110db0c66f78f40d7c7ec14d099330b1` 上执行；发布后的 Commit 固定链接将在不移动 Tag 的前提下补充
+- 归档状态：发布失败；没有发布可安装产物
+- 证据 Commit：不可变 Tag 指向 `78c8f97319fe5ce813c161917fcfcac97c53921c`；失败工作流链接见下文
 - 证据图集：不适用；本次执行未声称完成安装包 UI 旅程，也未制作截图
-- 证据下载：公开产物验证完成后，将附加独立的 `yourbuddy-v0.3.0-verification.zip`
+- 证据下载：不可用，因为发布工作流没有创建 GitHub Release
 
 ## 面向用户的发布说明
 
@@ -47,7 +47,7 @@ YourBuddy 0.3.0 启用 YourBuddy 名称和 Y8 图标，把内置 Harness 更新�
 |---|---|---|---|---|
 | 发布准备与完整产品 Smoke | passed | `f619699d110db0c66f78f40d7c7ec14d099330b1` 的源码 Checkout | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地验证记录](evidence/local-validation.txt) |
 | 静态、脚本与原生检查 | passed | 源码 Checkout | macOS 15.6.1 arm64、Rust 1.98.0 | [本地验证记录](evidence/local-validation.txt) |
-| GitHub Release 与安装后产物 | not verified | 正式发布产品 | GitHub Release 与干净的 macOS 安装环境 | 等待 Tag 流水线和独立下载 |
+| GitHub Release 与安装后产物 | failed | `78c8f97319fe5ce813c161917fcfcac97c53921c` 的 Tag 源码 | GitHub Actions macOS 15 arm64 | [失败的发布工作流](https://github.com/istarwyh/yourbuddy/actions/runs/34014696409) |
 
 ## 场景：发布准备与完整产品 Smoke
 
@@ -123,20 +123,20 @@ YourBuddy 0.3.0 启用 YourBuddy 名称和 Y8 图标，把内置 Harness 更新�
 
 ## 场景：公开发布与安装后产物
 
-- 状态：not verified
-- 日期与时间：2026-09-06 13:26 UTC+08:00，Asia/Shanghai
-- 发布版本与 Commit：`yourbuddy-v0.3.0`、版本 `0.3.0`；Tag Commit 待产生
-- 受测构建：尚无正式发布产品
-- 环境：计划使用 GitHub Release macOS 15 arm64 工作流；独立下载环境待验证
-- 证据来源：本次发布执行，等待正式发布
+- 状态：failed
+- 日期与时间：2026-09-06 13:43-13:46 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：`yourbuddy-v0.3.0`、版本 `0.3.0`、Tag Commit `78c8f97319fe5ce813c161917fcfcac97c53921c`
+- 受测构建：GitHub Release 工作流中的 Tag 源码；没有生成安装包
+- 环境：GitHub Actions macOS 15 arm64、Node 24.20.0
+- 证据来源：本次发布实测
 - 数据：不适用
-- 模型或服务：GitHub Releases 与 YourBuddy 更新通道；发布后尚未查询
+- 模型或服务：GitHub Actions；未执行到 GitHub Releases 与更新通道
 
 ### 操作步骤
 
-1. 提交归档与发布前门禁后，发布准确的 `yourbuddy-v0.3.0` 注释 Tag。
-2. 等待 macOS 工作流发布 DMG、Updater 归档、签名、校验和与稳定更新 Manifest。
-3. 独立下载公开资产，验证校验和与 Manifest URL，检查 App 版本，并运行迁移后的 Harbor 入口。
+1. 在已提交的发布归档上发布准确的 `yourbuddy-v0.3.0` 注释 Tag。
+2. 跟踪 macOS 工作流完成版本、依赖、DSH 来源与 Harness 构建检查。
+3. 在任何发布资产或 Updater Manifest 产生前检查失败结果。
 
 ### 预期结果
 
@@ -144,23 +144,23 @@ YourBuddy 0.3.0 启用 YourBuddy 名称和 Y8 图标，把内置 Harness 更新�
 
 ### 实际结果
 
-打 Tag 前尚未验证。本节会在后续 Commit 中更新，同时不移动公开 Tag，也不替换版本专属资产。
+工作流在构建 App 与 DMG 时停止，因为干净 Checkout 为插件市场快照计算出 `4f0723a72f26c106ddc2310d6f4f7d55cec3fb8d15d00b81e9ff3e80501b8c43`，而不是已记录的 `c7555c06744ce9474da97a5048eb019935d4bd3e8b817b4ab0f4d66b22f9bdfa`。本地发布前检查完成后，Git 把上游 CRLF 文件规范化为了 LF。全部暂存、校验和、Manifest 与发布步骤均被跳过。
 
 ### 证据
 
 - 操作前：源码与本地发布准备证据已记录在上文。
-- 执行中：等待 Tag 工作流。
-- 结果：等待公开下载与检查。
-- 失败与恢复：目前不适用。
+- 执行中：[工作流 34014696409](https://github.com/istarwyh/yourbuddy/actions/runs/34014696409)记录已通过的构建前检查与 Harness 构建。
+- 结果：App 与 DMG 构建失败；不存在 `yourbuddy-v0.3.0` GitHub Release 或 Updater 资产。
+- 失败与恢复：Tag 保持不可变。外部产品快照目录现会保留经过审查的字节，修正后的候选版本递增为 `yourbuddy-v0.3.1`。
 
 ### 范围限制
 
-本打 Tag 前记录不声称产品已经发布。
+本归档不声称 0.3.0 已完成产品发布，也不存在可以验证的安装产物。
 
 ## 交付状态
 
-- 产品发布状态：尚未发布；本地候选发布版本的准备与检查已通过。
-- 验证资料归档状态：部分完成；发布前证据已提交，仍需补充不可变证据 Commit 固定链接、公开产物证据与可下载验证资料包。
+- 产品发布状态：失败；Tag 工作流在暂存或发布前停止，没有发布 0.3.0 资产。
+- 验证资料归档状态：部分完成；发布前证据与失败工作流已经保留；由于不存在产物，公开产物证据与下载不适用。
 - 未验证范围：正式安装 DMG 后的 UI 旅程；真实 GPT OAuth 或模型提供方响应；真实企业代理与 CA；macOS Intel、Windows 与 Linux；Apple Developer 签名与公证；XiaoHui 自动迁移。
 
 ## 交付清单

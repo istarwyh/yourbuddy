@@ -4,10 +4,10 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.0`
 - Product channel: YourBuddy desktop
-- Archive state: pre-publication validation complete; public artifact verification pending
-- Evidence commit: final release preparation ran at `f619699d110db0c66f78f40d7c7ec14d099330b1`; the post-publication commit permalink will be added without moving the tag
+- Archive state: publication failed; no installable artifact was published
+- Evidence commit: the immutable tag points to `78c8f97319fe5ce813c161917fcfcac97c53921c`; the failed workflow is linked below
 - Evidence gallery: not applicable; this run did not claim a packaged UI journey and did not create screenshots
-- Evidence download: a dedicated `yourbuddy-v0.3.0-verification.zip` will be attached after public artifact verification
+- Evidence download: not available because the release workflow did not publish a GitHub Release
 
 ## User release notes
 
@@ -47,7 +47,7 @@ The release target is macOS on Apple Silicon. YourBuddy uses its own application
 |---|---|---|---|---|
 | Release preparation and assembled product smoke | passed | source checkout at `f619699d110db0c66f78f40d7c7ec14d099330b1` | macOS 15.6.1 arm64, Node 22.22.2, pnpm 11.7.0 | [Local validation record](evidence/local-validation.txt) |
 | Static, script, and native checks | passed | source checkout | macOS 15.6.1 arm64, Rust 1.98.0 | [Local validation record](evidence/local-validation.txt) |
-| GitHub Release and installed artifact | not verified | formally published product | GitHub Release and clean macOS installation | Pending tag workflow and independent download |
+| GitHub Release and installed artifact | failed | tagged source at `78c8f97319fe5ce813c161917fcfcac97c53921c` | GitHub Actions macOS 15 arm64 | [Failed release workflow](https://github.com/istarwyh/yourbuddy/actions/runs/34014696409) |
 
 ## Scenario: Release preparation and assembled product smoke
 
@@ -123,20 +123,20 @@ These checks validate source and locally built test artifacts. They do not const
 
 ## Scenario: Public release and installed artifact
 
-- Status: not verified
-- Date and time: 2026-09-06 13:26 UTC+08:00, Asia/Shanghai
-- Release and commit: `yourbuddy-v0.3.0`, version `0.3.0`; tag commit pending
-- Build under test: no formally published product yet
-- Environment: intended GitHub Release workflow on macOS 15 arm64; independent download environment pending
-- Evidence origin: this release run, pending publication
+- Status: failed
+- Date and time: 2026-09-06 13:43-13:46 UTC+08:00, Asia/Shanghai
+- Release and commit: `yourbuddy-v0.3.0`, version `0.3.0`, tag commit `78c8f97319fe5ce813c161917fcfcac97c53921c`
+- Build under test: tagged source in the GitHub Release workflow; no installer was produced
+- Environment: GitHub Actions macOS 15 arm64, Node 24.20.0
+- Evidence origin: this release run
 - Data: not applicable
-- Model or service: GitHub Releases and the YourBuddy updater channel; not yet queried after publication
+- Model or service: GitHub Actions; GitHub Releases and the updater channel were not reached
 
 ### Steps
 
-1. Publish the exact annotated `yourbuddy-v0.3.0` tag after the archive and pre-release gates are committed.
-2. Wait for the macOS workflow to publish the DMG, updater archive, signature, checksums, and stable updater manifest.
-3. Download the public assets independently, verify checksums and manifest URLs, inspect the App version, and run the relocated Harbor entry points.
+1. Published the exact annotated `yourbuddy-v0.3.0` tag at the committed release archive.
+2. Followed the macOS workflow through version, dependency, DSH provenance, and Harness build checks.
+3. Inspected the failure before any release asset or updater manifest was published.
 
 ### Expected
 
@@ -144,23 +144,23 @@ Every documented asset is publicly downloadable, checksums match, updater metada
 
 ### Actual
 
-Not verified before tagging. This section will be updated in a later commit without moving the public tag or replacing versioned assets.
+The workflow stopped while building the App and DMG because the clean checkout calculated `4f0723a72f26c106ddc2310d6f4f7d55cec3fb8d15d00b81e9ff3e80501b8c43` for the Plugin Marketplace snapshot instead of the recorded `c7555c06744ce9474da97a5048eb019935d4bd3e8b817b4ab0f4d66b22f9bdfa`. Git had normalized upstream CRLF files to LF after the local pre-release check. Every staging, checksum, manifest, and publication step was skipped.
 
 ### Evidence
 
 - Before: source and local release preparation evidence is recorded above.
-- In progress: pending tag workflow.
-- Result: pending public download and inspection.
-- Failure and recovery: not applicable yet.
+- In progress: [workflow 34014696409](https://github.com/istarwyh/yourbuddy/actions/runs/34014696409) records the successful pre-build checks and Harness build.
+- Result: the App and DMG build failed; no `yourbuddy-v0.3.0` GitHub Release or updater asset exists.
+- Failure and recovery: the tag remains immutable. External product snapshot directories now preserve reviewed bytes, and the corrected candidate advances to `yourbuddy-v0.3.1`.
 
 ### Scope limits
 
-No product publication claim is made by this pre-tag record.
+No product publication claim is made for 0.3.0, and no installable artifact exists to validate.
 
 ## Delivery status
 
-- Product publication status: not yet published; local release candidate preparation and checks passed.
-- Verification archive status: partial; pre-publication evidence is committed here, while the immutable evidence commit permalink, public artifact evidence, and downloadable verification archive remain pending.
+- Product publication status: failed; the tagged workflow stopped before staging or publication, and no 0.3.0 assets were published.
+- Verification archive status: partial; pre-publication evidence and the failed workflow are retained, while public artifact evidence and a download are not applicable because no artifact exists.
 - Unverified scope: formally installed DMG UI journey; real GPT OAuth/provider response; real enterprise proxy and CA; macOS Intel, Windows, and Linux; Apple Developer signing and notarization; automatic XiaoHui migration.
 
 ## Delivery checklist

@@ -10,7 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.0](yourbuddy-v0.3.0/README.md) | YourBuddy desktop | Included | Pre-publication evidence complete; public artifact evidence pending | Release candidate verified; publication pending |
+| [yourbuddy-v0.3.0](yourbuddy-v0.3.0/README.md) | YourBuddy desktop | Included | Pre-publication and failure evidence retained | Failed before artifact publication; superseded by 0.3.1 |
 
 Use the [copyable release directory](_template/README.md) for the first entry.
 

@@ -1,6 +1,8 @@
-# YourBuddy 0.3.0
+# YourBuddy 0.3.1
 
 ## English
+
+YourBuddy 0.3.1 replaces the unpublished 0.3.0 candidate after correcting external product snapshot preservation. No installable 0.3.0 artifact was published.
 
 - Renames the product to YourBuddy with a new Y8 icon, application ID, private data home, runtime resources, release artifacts, and signed update channel. Existing XiaoHui data is neither imported nor deleted.
 - Adds a default **Codex** Agent Preset with the standard workbench tools plus one-shot Codex delegation, so a new installation has an immediately discoverable coding setup.
@@ -12,6 +14,8 @@
 Install the Apple Silicon DMG from this release. This is a breaking product-identity transition: install YourBuddy beside XiaoHui, then configure credentials and settings again if needed. The application is not yet signed or notarized with an Apple Developer identity, and automatic migration from XiaoHui is not provided.
 
 ## 中文
+
+YourBuddy 0.3.1 替代未公开的 0.3.0 候选版本，并修正外部产品快照的字节保留方式；0.3.0 未发布任何可安装产物。
 
 - 产品正式更名为 YourBuddy，采用新的 Y8 图标、应用 ID、独立数据目录、运行时资源、发布产物和带签名的更新通道；既不会导入，也不会删除原有 XiaoHui 数据。
 - 新增默认 **Codex** Agent 预设，在标准工作台能力之外直接提供一次性 Codex 委派，让新安装用户可以快速找到完整的编码工作方式。
