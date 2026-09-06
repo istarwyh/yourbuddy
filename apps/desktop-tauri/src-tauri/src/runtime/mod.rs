@@ -29,8 +29,6 @@ pub struct DesktopRuntime {
     pub host: HostHandle,
     /// Credential-free Host root used for origin checks and diagnostics.
     pub web_url: String,
-    /// Process-token URL used only for the WebView's first navigation.
-    pub launch_url: String,
     /// How tray `dsh plugin add` must reach the live Host profile.
     pub plugin_target: PluginRunTarget,
     /// Process-wide outbound proxy policy fixed at application startup.
@@ -38,6 +36,11 @@ pub struct DesktopRuntime {
 }
 
 impl DesktopRuntime {
+    /// Move the pending Host session cookie into the desktop WebView exactly once.
+    pub fn take_session_cookie(&mut self) -> String {
+        std::mem::take(&mut self.host.session_cookie)
+    }
+
     /// Start `dsh web` against an already provisioned Windows tree.
     ///
     /// Applies the Windows PATH bridge and profile repair, then spawns the
@@ -75,7 +78,6 @@ impl DesktopRuntime {
         Ok(Self {
             paths: paths.clone(),
             web_url: host.web_url.clone(),
-            launch_url: host.launch_url.clone(),
             plugin_target: PluginRunTarget::Windows {
                 node: paths.node_binary.clone(),
                 cli: paths.cli_entry.clone(),
@@ -110,7 +112,6 @@ impl DesktopRuntime {
                 dsh_home: PathBuf::new(),
             },
             web_url: host.web_url.clone(),
-            launch_url: host.launch_url.clone(),
             plugin_target: PluginRunTarget::Wsl(wsl_paths),
             network_proxy,
             host,

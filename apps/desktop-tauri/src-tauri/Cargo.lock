@@ -5911,6 +5911,7 @@ dependencies = [
 name = "yourbuddy"
 version = "0.3.2"
 dependencies = [
+ "cookie",
  "dirs",
  "flate2",
  "futures-util",

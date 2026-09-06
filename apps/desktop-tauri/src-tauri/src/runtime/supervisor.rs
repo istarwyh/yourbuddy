@@ -33,14 +33,15 @@ pub struct WslSession {
     pub linux_pid: u32,
 }
 
-/// Running `dsh web` child, bound port, clean root URL, and authenticated launch URL.
+/// Running `dsh web` child, bound port, clean root URL, and pending WebView session cookie.
 pub struct HostHandle {
     /// Selected loopback port owned by this Host process.
     pub port: u16,
     /// Credential-free root URL used for origin checks and diagnostics.
     pub web_url: String,
-    /// Process-token URL used only for the WebView's first navigation.
-    pub launch_url: String,
+    /// Authority cookie returned by the native readiness exchange and consumed
+    /// exactly once when the desktop WebView is created.
+    pub(super) session_cookie: String,
     /// Plugin entry ids whose load failure was bypassed through a rescue
     /// `--patch` this session; empty when the Host started clean.
     pub disabled_plugins: Vec<String>,
@@ -169,7 +170,7 @@ pub async fn spawn_web_host(
         };
         let ready_urls = drain_stdout_for_ready_url(stdout, port);
 
-        let launch_url = match wait_for_host_ready(
+        let session_cookie = match wait_for_host_ready(
             &web_url,
             ready_urls,
             &child_handle,
@@ -202,7 +203,7 @@ pub async fn spawn_web_host(
         return Ok(HostHandle {
             port,
             web_url,
-            launch_url,
+            session_cookie,
             disabled_plugins,
             wsl: Mutex::new(None),
             child: child_handle,
@@ -281,7 +282,7 @@ pub async fn spawn_wsl_web_host(
 
     let child_handle = Arc::new(Mutex::new(Some(child)));
     let wsl_timeout = i18n::t(Msg::WslWaitForwarding);
-    let launch_url = match wait_for_host_ready(
+    let session_cookie = match wait_for_host_ready(
         &web_url,
         ready_urls,
         &child_handle,
@@ -305,7 +306,7 @@ pub async fn spawn_wsl_web_host(
     Ok(HostHandle {
         port,
         web_url,
-        launch_url,
+        session_cookie,
         disabled_plugins: Vec::new(),
         wsl: Mutex::new(Some(session)),
         child: child_handle,
@@ -725,10 +726,15 @@ fn readiness_timeout(url: &str, timeout_detail: Option<&str>) -> String {
     }
 }
 
-fn authenticated_exchange_ready(status: StatusCode, headers: &HeaderMap) -> bool {
-    status == StatusCode::SEE_OTHER
-        && headers.get(LOCATION).is_some_and(|value| value == "/")
-        && headers.contains_key(SET_COOKIE)
+fn authenticated_exchange_cookie(status: StatusCode, headers: &HeaderMap) -> Option<String> {
+    if status != StatusCode::SEE_OTHER || !headers.get(LOCATION).is_some_and(|value| value == "/") {
+        return None;
+    }
+    headers
+        .get(SET_COOKIE)?
+        .to_str()
+        .ok()
+        .map(ToOwned::to_owned)
 }
 
 async fn wait_for_host_ready(
@@ -787,10 +793,12 @@ async fn wait_for_host_ready(
         }
 
         match client.get(&launch_url).send().await {
-            Ok(response) if authenticated_exchange_ready(response.status(), response.headers()) => {
-                return Ok(launch_url);
-            }
             Ok(response) => {
+                if let Some(session_cookie) =
+                    authenticated_exchange_cookie(response.status(), response.headers())
+                {
+                    return Ok(session_cookie);
+                }
                 return Err(format_readiness_failure(
                     stderr_lines,
                     &format!(
@@ -830,7 +838,7 @@ fn port_free(port: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        authenticated_exchange_ready, drain_lines, drain_stdout_for_ready_url,
+        authenticated_exchange_cookie, drain_lines, drain_stdout_for_ready_url,
         failing_loader_entry, format_child_failure, native_web_args, parse_linux_pid_from_stderr,
         parse_ready_url, read_linux_pid_handshake, read_ready_url_and_drain, reap_child_handle,
         rescue_patch_body, wait_for_host_ready, wsl_stop_args,
@@ -958,23 +966,28 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
     }
 
     #[test]
-    fn readiness_requires_the_token_exchange_response() {
+    fn readiness_extracts_only_the_token_exchange_cookie() {
         let mut headers = HeaderMap::new();
         headers.insert(LOCATION, HeaderValue::from_static("/"));
         headers.insert(SET_COOKIE, HeaderValue::from_static("dsh-auth=test"));
-        assert!(authenticated_exchange_ready(
-            StatusCode::SEE_OTHER,
-            &headers
-        ));
-        assert!(!authenticated_exchange_ready(
-            StatusCode::UNAUTHORIZED,
-            &headers
-        ));
+        assert_eq!(
+            authenticated_exchange_cookie(StatusCode::SEE_OTHER, &headers),
+            Some("dsh-auth=test".into())
+        );
+        assert_eq!(
+            authenticated_exchange_cookie(StatusCode::UNAUTHORIZED, &headers),
+            None
+        );
         headers.remove(SET_COOKIE);
-        assert!(!authenticated_exchange_ready(
-            StatusCode::SEE_OTHER,
-            &headers
-        ));
+        assert_eq!(
+            authenticated_exchange_cookie(StatusCode::SEE_OTHER, &headers),
+            None
+        );
+        headers.insert(SET_COOKIE, HeaderValue::from_bytes(&[0xff]).unwrap());
+        assert_eq!(
+            authenticated_exchange_cookie(StatusCode::SEE_OTHER, &headers),
+            None
+        );
     }
 
     #[test]
@@ -988,7 +1001,7 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
     }
 
     #[tokio::test]
-    async fn child_ready_url_drives_the_authenticated_exchange() {
+    async fn child_ready_url_returns_the_authenticated_cookie() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         listener.set_nonblocking(true).unwrap();
         let port = listener.local_addr().unwrap().port();
@@ -1061,7 +1074,7 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
         .await;
         reap_child_handle(&child);
         server.join().unwrap();
-        assert_eq!(result.unwrap(), launch_url);
+        assert_eq!(result.unwrap(), "dsh-auth=test; HttpOnly");
     }
 
     #[test]

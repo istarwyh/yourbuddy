@@ -527,10 +527,14 @@
       embeddedWindow.postMessage(response, embeddedOrigin)
     })
 
+    function openHost() {
+      const url = window.__DSH_WEB_URL__
+      if (url && appFrame.getAttribute('src') === null) appFrame.src = url
+    }
+    window.__DSH_OPEN_HOST__ = openHost
+
     async function boot() {
-      const url = window.__DSH_WEB_LAUNCH_URL__
-      window.__DSH_WEB_LAUNCH_URL__ = undefined
-      if (url) appFrame.src = url
+      if (window.__DSH_HOST_COOKIE_READY__) openHost()
       const layout = window.__DSH_CHROME__ || {
         os: 'windows',
         titlebar_height: 36,

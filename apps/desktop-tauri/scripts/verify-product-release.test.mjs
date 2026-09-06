@@ -13,6 +13,7 @@ import {
   assertProductClientBoot,
   buildProductSmokeOverlay,
   createReleaseChildEnvironment,
+  desktopWebviewCookie,
   recordProductClientResponse,
   stopChild,
 } from './verify-product-release.mjs'
@@ -49,6 +50,32 @@ test('release smoke exchanges the printed launch token for an authority cookie',
       })
     })
   }
+})
+
+test('release smoke preserves the strict cookie for the same-site desktop shell', () => {
+  const suffix = 'A'.repeat(43)
+  assert.deepEqual(
+    desktopWebviewCookie(
+      'http://127.0.0.1:17890/?token=release-secret',
+      `dsh-auth-${suffix}=v1.payload.signature`,
+    ),
+    {
+      name: `dsh-auth-${suffix}`,
+      value: 'v1.payload.signature',
+      domain: '127.0.0.1',
+      path: '/',
+      httpOnly: true,
+      secure: false,
+      sameSite: 'Strict',
+    },
+  )
+  assert.throws(
+    () => desktopWebviewCookie(
+      'http://localhost:17890/?token=release-secret',
+      `dsh-auth-${suffix}=v1.payload.signature`,
+    ),
+    /invalid desktop Host authentication result/,
+  )
 })
 
 class FakeChild extends EventEmitter {

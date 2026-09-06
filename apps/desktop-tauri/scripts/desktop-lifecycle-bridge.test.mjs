@@ -131,8 +131,10 @@ test('desktop shell accepts only fixed network proxy requests and bounded settin
 
 test('desktop shell binds lifecycle commands to the active Host iframe', () => {
   assert.match(shell, /embeddedOrigin = new URL\(window\.__DSH_WEB_URL__\)\.origin/u)
-  assert.match(shell, /const url = window\.__DSH_WEB_LAUNCH_URL__/u)
-  assert.match(shell, /window\.__DSH_WEB_LAUNCH_URL__ = undefined/u)
+  assert.match(shell, /const url = window\.__DSH_WEB_URL__/u)
+  assert.match(shell, /window\.__DSH_OPEN_HOST__ = openHost/u)
+  assert.match(shell, /if \(window\.__DSH_HOST_COOKIE_READY__\) openHost\(\)/u)
+  assert.doesNotMatch(shell, /__DSH_WEB_LAUNCH_URL__/u)
   assert.match(shell, /event\.source !== embeddedWindow \|\| event\.origin !== embeddedOrigin/u)
   assert.match(shell, /type: `\$\{lifecycleAction\}-accepted`/u)
   assert.match(shell, /await invoke\('check_for_updates'\)/u)

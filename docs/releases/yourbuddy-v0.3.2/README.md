@@ -4,10 +4,12 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.2`
 - Product channel: YourBuddy desktop
-- Archive state: complete; public product, evidence download, and website deployment recorded, with live browser verification retained as unverified
+- Archive state: original archive complete; a confirmed installed-app startup defect discovered after publication is recorded below but is not present in the immutable 0.3.2 evidence ZIP
 - Validated source commit: [`b1e9d36fca62e064526689a412727f6c5dcbeb06`](https://github.com/istarwyh/yourbuddy/commit/b1e9d36fca62e064526689a412727f6c5dcbeb06)
 - Evidence gallery: [source Web Help screenshots](screenshots/)
 - Evidence download: [yourbuddy-v0.3.2-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip), sourced from commit `62863db240023dcebf2097e7c70d5874a2b5b3b3`
+
+> Post-publication finding, 2026-09-06 UTC+08:00: the installed public 0.3.2 macOS application reaches authenticated native readiness but its WebView displays `dsh web authentication required`. The source smoke used a same-site loopback shell while the packaged Tauri shell was cross-site with the Host, so the original source result did not validate the installed startup journey. Version 0.3.2 remains downloadable but contains this defect; the fix belongs to a later release and the public tag and installer have not been changed.
 
 ## User release notes
 
@@ -17,7 +19,7 @@ YourBuddy 0.3.2 adds a Help menu inside the application, expands the bilingual p
 
 ### Problem solved
 
-Users can now reach the correct getting-started, plugin, extension-development, troubleshooting, settings, and feedback destinations without leaving the current workbench session. If the system browser cannot be opened, the address remains visible and copyable. The desktop also completes the Host token exchange before showing the workbench, avoiding a blank or unauthorized initial view while keeping credentials out of the stored root URL and logs.
+Users can now reach the correct getting-started, plugin, extension-development, troubleshooting, settings, and feedback destinations without leaving the current workbench session. If the system browser cannot be opened, the address remains visible and copyable. The desktop completes the Host token exchange before showing the workbench and keeps credentials out of the stored root URL and logs, but the later installed-app test found that macOS WebKit did not send that cookie from the packaged cross-site shell; 0.3.2 therefore does not reliably avoid the unauthorized initial view.
 
 ### Where to use it
 
@@ -41,7 +43,7 @@ The desktop supports Apple Silicon on macOS 11 or later. Existing YourBuddy data
 |---|---|---|---|---|
 | Version alignment and compatible product refresh | passed | source release candidate `b1e9d36f...` | macOS 15.6.1 arm64, Node 22.22.2, pnpm 11.7.0 | [Local record](evidence/local-validation.txt) |
 | In-app Help journeys in English and Chinese | passed | assembled source Web scaffold with shipped product Client | macOS 15.6.1 arm64, Chromium, controlled native-link bridge | [English fallback](screenshots/help-en.png), [Chinese fallback](screenshots/help-zh.png) |
-| Authenticated Host startup and lifecycle | passed after fixture repair | source Rust test target | macOS 15.6.1 arm64, local loopback fixtures, no real credentials | [Local record](evidence/local-validation.txt) |
+| Authenticated Host startup and lifecycle | source fixtures passed; installed app failed after publication | source Rust target and public 0.3.2 macOS app | macOS 15.6.1 arm64, local loopback fixtures, then real installed WebView | [Local record](evidence/local-validation.txt) and post-publication scenario below |
 | Desktop release helpers and Personal Workbench | passed after dependency-layout recovery | source checkout | macOS 15.6.1 arm64, synthetic fixtures | [Local record](evidence/local-validation.txt) |
 | Documentation and product website build | passed | source checkout | local Hugo Extended 0.165.0 | [Local record](evidence/local-validation.txt) |
 | Public DMG, updater, checksums, and stable channel | passed with known signing limitation | formally published product `yourbuddy-v0.3.2` | GitHub Release plus independent download, extraction, and DMG mount on macOS 15.6.1 arm64 | [Public artifact record](evidence/public-artifacts.txt) |
@@ -233,12 +235,41 @@ All 32 documentation gates and all 70 product-site/project-site tests passed. Hu
 
 This verifies local source output only. It does not prove the GitHub Pages workflow has deployed or that the public URLs are reachable.
 
+## Scenario: Post-publication installed-app startup
+
+- Status: failed; retained as a confirmed 0.3.2 product defect
+- Date and time: 2026-09-06 21:30-22:00 UTC+08:00, Asia/Shanghai
+- Release and commit: public `yourbuddy-v0.3.2`; tagged commit `bfd9af598ebf24018f8d699cb83e0be23a8b3a05`
+- Build under test: installed public `/Applications/YourBuddy.app`, version 0.3.2, followed by a controlled diagnosis against the same bundled resources
+- Environment: macOS 15.6.1 arm64, native Tauri WebView, private Node Host on loopback
+- Evidence origin: user report plus this post-publication local reproduction; not part of the original evidence ZIP
+- Data: real installed product and isolated diagnostic application data; no OAuth token or user content recorded
+- Model or service: no model request; local Host authentication only
+
+### Steps
+
+1. Launched the installed 0.3.2 application from Finder-equivalent GUI context and waited for the private Host readiness log.
+2. Observed the main WebView after native startup reported `authenticated readiness passed` and `boot complete`.
+3. Reproduced the shell/Host site relationship in a browser control: a `localhost` parent with the strict `127.0.0.1` Host cookie failed, while separate `127.0.0.1` ports succeeded.
+
+### Expected
+
+The installed application should exchange the launch token, open the clean Host root, and render the YourBuddy workspace without exposing the token to the renderer.
+
+### Actual
+
+Native readiness passed, but the installed WebView displayed `dsh web authentication required; reopen the URL printed by dsh web.` The packaged Tauri shell and Host were cross-site, so macOS WebKit withheld the strict cookie. This invalidates the earlier source-only claim that 0.3.2 avoided an unauthorized initial view. The public installer and tag remain unchanged; the [same-site fix](../../../.agents/notes/implemented/bug-fix/2026-09-06-yourbuddy-desktop-same-site-authentication.md) is pending a later release.
+
+### Scope limits
+
+The failure is confirmed for the public macOS arm64 application. Windows, WSL, Intel macOS, OAuth, model requests, and enterprise proxy/CA behavior were not part of this reproduction.
+
 ## Delivery status
 
-- Product publication status: published and independently verified at [YourBuddy 0.3.2](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2); the DMG, app updater archive, signature, checksums, immutable updater manifest, and stable updater channel are downloadable and match the recorded metadata.
-- Verification archive status: complete; the source record is fixed at `62863db240023dcebf2097e7c70d5874a2b5b3b3`, and the [downloadable archive](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip) was publicly downloaded, byte-compared, and extracted. Its size is 129,941 bytes and SHA-256 is `e562353aa609e488720cbdbc6a3de2dec48f538b60e4dd949a89fbc21c4bffcc`.
+- Product publication status: published with a confirmed macOS startup defect at [YourBuddy 0.3.2](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2); its files remain downloadable and match the recorded hashes, but the installed WebView can stop at the authentication-required response.
+- Verification archive status: the original immutable archive remains downloadable and byte-verified at source commit `62863db240023dcebf2097e7c70d5874a2b5b3b3`; its size is 129,941 bytes and SHA-256 is `e562353aa609e488720cbdbc6a3de2dec48f538b60e4dd949a89fbc21c4bffcc`. It predates and does not contain the post-publication installed-app failure, which is recorded on this maintained release page and must be carried into the next release archive.
 - Website synchronization status: deployed from `0a6f32e70c9237b1fb245a738d0fa8406ff590fb` by [workflow 34030189025](https://github.com/istarwyh/yourbuddy/actions/runs/34030189025); local and CI site checks passed, but live browser verification is pending because the browser's admin-enforced policy check was unavailable twice.
-- Unverified scope: installed interactive Help, real browser launch from the installed app, automatic in-app update installation, copied-app private Host startup, real OAuth/model calls, enterprise proxy/CA, Windows, macOS Intel, Linux, Apple Developer signing, and notarization. Gatekeeper rejection is confirmed for the ad-hoc-signed build.
+- Unverified scope: interactive Help and real browser launch after a successful installed startup, automatic in-app update installation, real OAuth/model calls, enterprise proxy/CA, Windows, macOS Intel, Linux, Apple Developer signing, and notarization. Installed private Host startup is verified as failing at the WebView authentication step; Gatekeeper rejection is confirmed for the ad-hoc-signed build.
 
 ## Delivery checklist
 
@@ -253,7 +284,7 @@ This verifies local source output only. It does not prove the GitHub Pages workf
 - [x] The release entry, language pairing, and documentation/product-site builds have passed on the local candidate tree; the tagged commit will be rechecked before publication.
 - [x] The downloadable evidence archive has been publicly downloaded, byte-compared, extracted, and inspected.
 - [x] The public release page links to the immutable evidence commit, gallery, and download.
-- [x] The actual DMG, updater files, checksums, metadata, and a copied installation bundle have been checked independently of CI; interactive launch remains explicitly unverified.
+- [x] The actual DMG, updater files, checksums, metadata, and a copied installation bundle were checked independently of CI; the later interactive launch failure is retained explicitly.
 - [ ] The product website content has been synchronized and deployed; bilingual live destinations remain unverified because the browser security policy check was unavailable.
 - [x] Product publication, archive, website, and unverified scope are reported separately.
 - [x] Existing public tags and installers have not been moved or overwritten.

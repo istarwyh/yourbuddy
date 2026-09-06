@@ -4,10 +4,12 @@
 
 - 发布标识：`yourbuddy-v0.3.2`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：已完成；公开产品、证据下载与官网部署均已记录，真实浏览器验证保留为未验证范围
+- 归档状态：原始归档已完成；发布后确认的安装应用启动缺陷已记录在下文，但不在不可变的 0.3.2 验证 ZIP 中
 - 已验证源码 Commit：[`b1e9d36fca62e064526689a412727f6c5dcbeb06`](https://github.com/istarwyh/yourbuddy/commit/b1e9d36fca62e064526689a412727f6c5dcbeb06)
 - 证据图集：[源码 Web 帮助截图](screenshots/)
 - 证据下载：[yourbuddy-v0.3.2-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip)，来源 Commit 为 `62863db240023dcebf2097e7c70d5874a2b5b3b3`
+
+> 发布后发现，2026-09-06 UTC+08:00：安装后的公开 0.3.2 macOS 应用可以通过原生带认证就绪检查，但 WebView 会显示 `dsh web authentication required`。源码 Smoke 使用与 Host 同站点的 Loopback Shell，而打包后的 Tauri Shell 与 Host 跨站，所以原始源码结果没有验收安装启动旅程。0.3.2 仍可下载但包含该缺陷；修复属于后续版本，公开 Tag 与安装包均未被修改。
 
 ## 面向用户的发布说明
 
@@ -17,7 +19,7 @@ YourBuddy 0.3.2 在应用内新增帮助菜单，扩充双语产品指南，强�
 
 ### 解决了什么问题
 
-用户现在可以从工作台直接打开正确的入门、插件、扩展开发、故障排查、设置和反馈页面，不会离开当前会话。若系统浏览器无法打开，地址仍会显示并可复制。桌面端也会在显示工作台前完成 Host Token 交换，避免首次出现空白或未授权页面，同时不在保存的根地址和日志中保留凭据。
+用户现在可以从工作台直接打开正确的入门、插件、扩展开发、故障排查、设置和反馈页面，不会离开当前会话。若系统浏览器无法打开，地址仍会显示并可复制。桌面端会在显示工作台前完成 Host Token 交换，并且不在保存的根地址和日志中保留凭据；但后续安装应用测试发现，macOS WebKit 不会从打包后的跨站 Shell 发送该 Cookie，因此 0.3.2 不能可靠避免未认证首屏。
 
 ### 在哪里使用
 
@@ -41,7 +43,7 @@ YourBuddy 0.3.2 在应用内新增帮助菜单，扩充双语产品指南，强�
 |---|---|---|---|---|
 | 版本一致性与兼容产品刷新 | passed | 源码候选版 `b1e9d36f...` | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地记录](evidence/local-validation.txt) |
 | 中英文应用内帮助流程 | passed | 组装后的源码 Web 脚手架与实际产品 Client | macOS 15.6.1 arm64、Chromium、受控原生外链桥 | [英文恢复状态](screenshots/help-en.png)、[中文恢复状态](screenshots/help-zh.png) |
-| Host 认证启动与生命周期 | passed after fixture repair | Rust 源码测试目标 | macOS 15.6.1 arm64、本地回环 Fixture、无真实凭据 | [本地记录](evidence/local-validation.txt) |
+| Host 认证启动与生命周期 | 源码 Fixture 通过；发布后安装应用失败 | Rust 源码目标与公开 0.3.2 macOS App | macOS 15.6.1 arm64、本地 Loopback Fixture，随后使用真实安装 WebView | [本地记录](evidence/local-validation.txt)与下方发布后场景 |
 | 桌面发布辅助测试与 Personal Workbench | passed after dependency-layout recovery | 源码 Checkout | macOS 15.6.1 arm64、合成 Fixture | [本地记录](evidence/local-validation.txt) |
 | 文档与产品官网构建 | passed | 源码 Checkout | 本地 Hugo Extended 0.165.0 | [本地记录](evidence/local-validation.txt) |
 | 公开 DMG、Updater、校验和与稳定通道 | passed with known signing limitation | 正式公开产品 `yourbuddy-v0.3.2` | GitHub Release，以及 macOS 15.6.1 arm64 上的独立下载、解压与 DMG 挂载 | [公开产物记录](evidence/public-artifacts.txt) |
@@ -233,12 +235,41 @@ Release 发布了全部五个预期产物。本地 SHA-256 全部一致，稳定
 
 这只验证本地源码输出，不证明 GitHub Pages 工作流已部署，也不证明公开 URL 可访问。
 
+## 场景：发布后的安装应用启动
+
+- 状态：failed；作为已确认的 0.3.2 产品缺陷保留
+- 日期与时间：2026-09-06 21:30-22:00 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：公开 `yourbuddy-v0.3.2`；Tag Commit `bfd9af598ebf24018f8d699cb83e0be23a8b3a05`
+- 被测构建：安装后的公开 `/Applications/YourBuddy.app` 0.3.2，随后使用相同内置资源进行受控诊断
+- 环境：macOS 15.6.1 arm64、原生 Tauri WebView、Loopback 私有 Node Host
+- 证据来源：用户报告与本次发布后本地复现；不属于原始验证 ZIP
+- 数据：真实安装产品与隔离的诊断应用数据；未记录 OAuth Token 或用户内容
+- 模型或服务：未发起模型请求；仅使用本地 Host 认证
+
+### 操作步骤
+
+1. 从等同 Finder 的 GUI 环境启动安装后的 0.3.2 应用，并等待私有 Host 就绪日志。
+2. 在原生启动报告 `authenticated readiness passed` 与 `boot complete` 后观察主 WebView。
+3. 在浏览器对照中复现 Shell/Host Site 关系：使用 `localhost` 父页面和 Strict `127.0.0.1` Host Cookie 时失败，两个不同 `127.0.0.1` Port 时成功。
+
+### 预期结果
+
+安装应用应交换启动 Token、打开不含凭据的 Host 根地址并渲染 YourBuddy 工作台，同时不把 Token 暴露给 Renderer。
+
+### 实际结果
+
+原生就绪检查通过，但安装后的 WebView 显示 `dsh web authentication required; reopen the URL printed by dsh web.`。打包后的 Tauri Shell 与 Host 跨站，macOS WebKit 因此拒绝发送 Strict Cookie。这推翻了先前仅凭源码得出的“0.3.2 避免未认证首屏”结论。公开安装包与 Tag 保持不变；[同站点修复](../../../.agents/notes/implemented/bug-fix/2026-09-06-yourbuddy-desktop-same-site-authentication.zh.md)等待后续版本发布。
+
+### 范围限制
+
+该失败已在公开 macOS arm64 应用中确认。本次复现没有覆盖 Windows、WSL、Intel macOS、OAuth、模型请求与企业代理/CA 行为。
+
 ## 交付状态
 
-- 产品发布状态：已发布并完成独立验证；[YourBuddy 0.3.2](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2)的 DMG、App Updater 包、签名、校验和、不可变 Updater Manifest 与稳定 Updater 通道均可下载，并与记录的元数据一致。
-- 验证资料归档状态：已完成；源码记录固定在 `62863db240023dcebf2097e7c70d5874a2b5b3b3`，[可下载归档](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip)已从公开页面下载、逐字节对比并解压。文件大小为 129,941 字节，SHA-256 为 `e562353aa609e488720cbdbc6a3de2dec48f538b60e4dd949a89fbc21c4bffcc`。
+- 产品发布状态：已发布但确认存在 macOS 启动缺陷；[YourBuddy 0.3.2](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2)的文件仍可下载且与记录 Hash 一致，但安装后的 WebView 可能停在需要认证的响应。
+- 验证资料归档状态：原始不可变归档仍可下载，并已在源码 Commit `62863db240023dcebf2097e7c70d5874a2b5b3b3` 完成逐字节校验；文件大小为 129,941 字节，SHA-256 为 `e562353aa609e488720cbdbc6a3de2dec48f538b60e4dd949a89fbc21c4bffcc`。它早于发布后安装应用失败，不包含该证据；当前维护的发布页已补记此事，下一版本归档必须继续保留。
 - 官网同步状态：已从 `0a6f32e70c9237b1fb245a738d0fa8406ff590fb` 通过[工作流 34030189025](https://github.com/istarwyh/yourbuddy/actions/runs/34030189025)完成部署；本地与 CI 站点检查通过，但浏览器的管理员策略检查连续两次不可用，因此真实浏览器验证待完成。
-- 未验证范围：安装后的交互式帮助、从安装 App 打开真实浏览器、应用内自动更新安装、复制 App 的私有 Host 启动、真实 OAuth/模型调用、企业代理/CA、Windows、macOS Intel、Linux、Apple Developer 签名与公证。已确认 Gatekeeper 会拒绝 ad-hoc 签名构建。
+- 未验证范围：成功完成安装启动后的交互式帮助与真实浏览器打开、应用内自动更新安装、真实 OAuth/模型调用、企业代理/CA、Windows、macOS Intel、Linux、Apple Developer 签名与公证。安装后的私有 Host 启动已确认在 WebView 认证步骤失败；Gatekeeper 拒绝 Ad-hoc 签名构建也已确认。
 
 ## 交付清单
 
@@ -253,7 +284,7 @@ Release 发布了全部五个预期产物。本地 SHA-256 全部一致，稳定
 - [x] 本地候选树上的版本索引、语言配对、文档与产品官网构建已通过；发布前仍会在 Tag Commit 上复核。
 - [x] 已从公开页面下载验证资料包，完成逐字节对比、解压与检查。
 - [x] 公开 Release 页面已链接不可变证据 Commit、图集与下载。
-- [x] 已独立于 CI 检查实际 DMG、Updater、校验和、元数据与复制后的安装包；交互启动仍明确标记为未验证。
+- [x] 已独立于 CI 检查实际 DMG、Updater、校验和、元数据与复制后的安装包；后续交互启动失败已明确保留。
 - [ ] 产品官网内容已同步并部署；浏览器安全策略检查不可用，因此双语在线页面仍未验证。
 - [x] 已分别报告产品发布、资料归档、官网与未验证范围。
 - [x] 未移动或覆盖任何既有公开 Tag 与安装包。
