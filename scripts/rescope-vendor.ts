@@ -427,10 +427,14 @@ const VENDORED_LIBRARY = /^@deepseek-ai\\/(cosmokit|schemastery)(\\/|$)/
   })),
 ]
 
+const EXTERNAL_DESKTOP_PRODUCT =
+  /^apps\/desktop-tauri\/product\/(?:context-doctor|dsh-better-sidebar|dsh-codex-auth|harbor-evolution|harbor-python|plugin-marketplace)\//
+
 /** Files the rescope must never rewrite. */
 function excluded(file: string): boolean {
   if (file === 'scripts/rescope-vendor.ts') return true // the mapping itself
   if (file.startsWith('.agents/notes/')) return true // notes record what was true when written
+  if (EXTERNAL_DESKTOP_PRODUCT.test(file)) return true // reviewed external snapshots retain upstream package names
   // Recorded model payloads quote documentation verbatim, so they must mirror the
   // sources on disk — including the notes this rescope leaves alone.
   if (file.startsWith('scripts/snapshots/')) return true

@@ -72,6 +72,12 @@ const SOURCE_EXCLUDES = [
   '**/lib/**',
   '**/dist/**',
   '**/coverage/**',
+  'apps/desktop-tauri/bundled/**',
+  'apps/desktop-tauri/product/context-doctor/**',
+  'apps/desktop-tauri/product/dsh-better-sidebar/**',
+  'apps/desktop-tauri/product/dsh-codex-auth/**',
+  'apps/desktop-tauri/product/harbor-evolution/**',
+  'apps/desktop-tauri/product/plugin-marketplace/**',
 ]
 
 /** Convert a host path from glob output to the repository's slash form. */

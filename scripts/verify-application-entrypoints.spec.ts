@@ -74,6 +74,23 @@ describe('application entrypoints', () => {
     ])
   })
 
+  it('ignores generated desktop bundles and reviewed external product snapshots', () => {
+    const root = fixture()
+    write(root, 'apps/desktop-tauri/bundled/harness/apps/cli/src/bin.ts', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/harbor-evolution/bin/dsh-harbor.mjs', '#!/usr/bin/env node\n')
+
+    expect(applicationEntrypointViolations(root)).toEqual([])
+  })
+
+  it('still rejects an unclassified executable in the first-party product source', () => {
+    const root = fixture()
+    write(root, 'apps/desktop-tauri/product/personal-workbench/rogue.mjs', '#!/usr/bin/env node\n')
+
+    expect(applicationEntrypointViolations(root)).toEqual([
+      'apps/desktop-tauri/product/personal-workbench/rogue.mjs: executable source has no application/build/test classification',
+    ])
+  })
+
   it('rejects a private Python application carrier outside dsh', () => {
     const root = fixture()
     write(root, 'packages/sdk/rogue-python-runtime/package.json', JSON.stringify({ private: true }))
