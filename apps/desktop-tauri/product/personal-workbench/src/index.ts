@@ -1,7 +1,7 @@
 /** Host half: registers the profile-persisted personal-workbench namespace. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-settings'
 import { createHostNetworkProxyRoute } from './host-network-proxy.ts'
 import {
   WorkbenchSettingsSchema, WORKBENCH_SETTINGS_NAMESPACE,
@@ -19,7 +19,7 @@ export const name = 'personal-workbench'
 export function apply(ctx: Context): void {
   ctx.inject(['settings'], (settingsCtx) => {
     settingsCtx.settings.register(
-      settingsNamespace(WORKBENCH_SETTINGS_NAMESPACE),
+      WORKBENCH_SETTINGS_NAMESPACE,
       WorkbenchSettingsSchema,
     )
   })

@@ -1,9 +1,8 @@
 /** General-settings card for editing and previewing the personal workbench identity. */
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { WorkbenchSettingsValue } from './brand.tsx'
 import { normalizeLogoSource, normalizeWorkbenchName } from './brand.tsx'
 import type { PersonalWorkbenchKey } from './locales.ts'

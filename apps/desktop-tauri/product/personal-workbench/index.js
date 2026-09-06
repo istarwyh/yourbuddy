@@ -1,6 +1,3 @@
-// src/index.ts
-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
-
 // src/host-network-proxy.ts
 var HOST_NETWORK_PROXY_TEST_PATH = "/api/yourharness/network-proxy/test";
 var CHATGPT_REACHABILITY_URL = "https://chatgpt.com/";
@@ -120,7 +117,7 @@ var name = "personal-workbench";
 function apply(ctx) {
   ctx.inject(["settings"], (settingsCtx) => {
     settingsCtx.settings.register(
-      settingsNamespace(WORKBENCH_SETTINGS_NAMESPACE),
+      WORKBENCH_SETTINGS_NAMESPACE,
       WorkbenchSettingsSchema
     );
   });

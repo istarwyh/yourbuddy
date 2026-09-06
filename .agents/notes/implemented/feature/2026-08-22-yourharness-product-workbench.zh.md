@@ -10,6 +10,8 @@ Status: implemented
 
 ## Decision
 
+第一方 Personal Workbench 必须针对产品选用的同一 DSH Release 编译。DSH 删除聚合 Client Package 时，插件会把 Import、Client Injection、TypeScript Reference 与 Peer 声明迁移到拥有相应能力的拆分 Package；发布准备必须一起验证迁移后的 Host、Client 与离线安装。
+
 YourHarness 保留 Sakana Tauri 发行版的上游 Git 历史并作为产品 fork 演进。可复用的桌面进程监管、Harness 首次预配、通知 Overlay 与 Updater 留在 `apps/desktop-tauri`；产品装配也只位于这个子树，不修改 Agent Loop 或 Service Package。
 
 提交到 `apps/desktop-tauri/product/harbor-evolution` 的快照包含经过检查的 Harbor Cordis 插件及其 `evolve-agent-with-harbor` Skill；相邻的 `product/harbor-python` 快照包含来自同一稳定 GitHub Release 的匹配 Python Adapter。`product/dsh-codex-auth`、`product/dsh-better-sidebar` 与 `product/plugin-marketplace` 保存经过检查的 npm 产物，`product/context-doctor` 保存从其 GitHub `main` 分支 Head 选定且经过检查的 Package，`product/personal-workbench` 保存第一方品牌插件。每个由外部来源刷新的快照都保留上游许可证，并在 `YOURHARNESS_UPSTREAM.json` 中记录精确版本或 Commit、不可变归档来源、Integrity 值、已提交 Tree Hash 与本地修改；生成的 `.bundle-manifest.json` 记录应用实际消费的选定 Package 版本与整个 Bundle 的 Hash。只有 `product/plugin-update-policy.json` 为上游精确版本声明的 Peer Metadata 修正才允许应用；功能兼容补丁必须明确写入来源记录，并保留完整发布 Smoke 覆盖。

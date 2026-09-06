@@ -1,13 +1,11 @@
 /** Browser half: settings cards plus live brand-slot occupants. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type {
-  ClientContext, SettingsScope,
-} from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   WORKBENCH_SETTINGS_NAMESPACE,
@@ -57,7 +55,7 @@ type SlotComponent =
  * Disabling customization restores YourHarness without changing stored values.
  */
 function installBrandSlot(
-  ctx: ClientContext,
+  ctx: Context,
   scope: SettingsScope<WorkbenchSettingsValue>,
   slot: BrandSlot,
   pick: (value: unknown) => SlotComponent | undefined,
@@ -85,7 +83,7 @@ function installBrandSlot(
 
 /** Install brand occupants whose lower priority intentionally shadows built-in occupants. */
 export function installPersonalBrandOccupants(
-  ctx: ClientContext,
+  ctx: Context,
   scope: SettingsScope<WorkbenchSettingsValue>,
 ): void {
   let markLogo: string | undefined
@@ -116,8 +114,8 @@ export function installPersonalBrandOccupants(
 }
 
 /** Register the settings cards and brand occupants. */
-export function apply(ctx: ClientContext): void {
-  installPersonalWorkbenchStyles(ctx as Context)
+export function apply(ctx: Context): void {
+  installPersonalWorkbenchStyles(ctx)
   const scope = ctx.settingsScope.bind<WorkbenchSettingsValue>({
     namespace: WORKBENCH_SETTINGS_NAMESPACE,
   })
@@ -125,7 +123,7 @@ export function apply(ctx: ClientContext): void {
     () => ctx.locale.register(SETTINGS_LOCALE_NAMESPACE, { zh, en }),
     'personal-workbench: settings dictionaries',
   )
-  installDesktopExternalLinks(ctx as Context, ctx.locale.bind(SETTINGS_LOCALE_NAMESPACE))
+  installDesktopExternalLinks(ctx, ctx.locale.bind(SETTINGS_LOCALE_NAMESPACE))
 
   installPersonalBrandOccupants(ctx, scope)
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
