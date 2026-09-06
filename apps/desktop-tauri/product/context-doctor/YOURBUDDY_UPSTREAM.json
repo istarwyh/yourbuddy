@@ -1,16 +1,16 @@
 {
   "package": "dsh-context-doctor",
-  "version": "0.7.0",
+  "version": "0.7.2",
   "sourceKind": "github-branch",
   "channel": "main",
-  "source": "https://codeload.github.com/Zhenyu98/dsh-context-doctor/tar.gz/c236325021ed77fdcdb8eb02d764c79f4af52055",
-  "commit": "c236325021ed77fdcdb8eb02d764c79f4af52055",
-  "integrity": "sha512-WSjuyFGHbt0P3yK8Zwd9vVRfL+HtAO/IsizYQvw032hwEgL7Mvq+VoVBHVrr2xIc0M5R12ns281YoP7OJq92IQ==",
-  "archiveSha256": "68e8430579f764dc4b8ddc077b70175ae981f56ba152da56dcdbe27650a55c01",
+  "source": "https://codeload.github.com/Zhenyu98/dsh-context-doctor/tar.gz/41d5c2e4bbe0611b7928c4007bb28545f7ace38f",
+  "commit": "41d5c2e4bbe0611b7928c4007bb28545f7ace38f",
+  "integrity": "sha512-j8YAFOBb+TR7IYJj64hh/F7bVdHJ4eR8XFyua3brwtUWK3aAxUaRipZfNU0LnLF1LfNa6Noq493H7TR7VR+3Sw==",
+  "archiveSha256": "e4b17da67538d78f14c69d60c9b459e8b5a9f3046ff9ac6beb090feaa987eecc",
   "snapshotMethod": "npm pack file selection from the pinned GitHub commit with lifecycle scripts disabled",
-  "upstreamTreeSha256": "e9a1d7738b90ffec33002e118d0c02a647bebe6584f022d1bc9363f52c18032b",
+  "upstreamTreeSha256": "84340f7aa0dcfa52859fd3e79c5d6c83c525a91ef4fad9d5daeb94178e401002",
   "patches": [],
   "repository": "https://github.com/Zhenyu98/dsh-context-doctor",
   "license": "BSD-3-Clause",
-  "treeSha256": "e9a1d7738b90ffec33002e118d0c02a647bebe6584f022d1bc9363f52c18032b"
+  "treeSha256": "84340f7aa0dcfa52859fd3e79c5d6c83c525a91ef4fad9d5daeb94178e401002"
 }
