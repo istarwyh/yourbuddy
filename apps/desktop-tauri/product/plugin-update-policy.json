@@ -47,7 +47,8 @@
       },
       "peerRemovals": {
         "0.3.2": [
-          "@deepseek-ai/dsh-client-runtime"
+          "@deepseek-ai/dsh-client-runtime",
+          "@deepseek-ai/dsh-host-apiproxy"
         ]
       },
       "clientInjectRemovals": {
