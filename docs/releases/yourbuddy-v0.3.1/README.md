@@ -4,10 +4,10 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.1`
 - Product channel: YourBuddy desktop
-- Archive state: public product and artifact verification complete; immutable evidence link and download pending
-- Evidence commit: final release preparation passed at `de17171f970e43bd8c42d84a1cfeb386f5bc17c3`; the public artifact record is committed after publication and will receive an immutable link without moving the tag
+- Archive state: complete; public product, artifact, and verification-download checks passed
+- Evidence commit: [a3525826e7339656079328df208003ecb4712307](https://github.com/istarwyh/yourbuddy/tree/a3525826e7339656079328df208003ecb4712307/docs/releases/yourbuddy-v0.3.1) contains the public artifact record; the release tag remains unchanged
 - Evidence gallery: not applicable; no packaged UI journey or screenshot is claimed
-- Evidence download: `yourbuddy-v0.3.1-verification.zip` will be attached after its extracted contents are inspected
+- Evidence download: [yourbuddy-v0.3.1-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.1/yourbuddy-v0.3.1-verification.zip)
 
 ## User release notes
 
@@ -156,7 +156,7 @@ The [public artifact record](evidence/public-artifacts.txt) lists asset sizes, S
 ## Delivery status
 
 - Product publication status: published; the Apple Silicon DMG, signed updater archive and signature, checksums, versioned manifest, and stable updater manifest are publicly downloadable and independently verified.
-- Verification archive status: public artifact evidence is complete; the immutable evidence permalink and extracted verification download are pending.
+- Verification archive status: complete; the public artifact record has an immutable commit link, and the extracted verification download was inspected before attachment.
 - Unverified scope: interactive installed-DMG UI; signed in-app update installation; real GPT OAuth or model provider response; real enterprise proxy and CA; macOS Intel, Windows, and Linux; Apple Developer signing and notarization; automatic XiaoHui migration.
 
 ## Delivery checklist
@@ -169,5 +169,5 @@ The [public artifact record](evidence/public-artifacts.txt) lists asset sizes, S
 - [x] No screenshot or complete product acceptance is claimed.
 - [x] The version index and bilingual records are updated.
 - [x] Public artifacts are downloaded and independently verified.
-- [ ] The verification ZIP is extracted, inspected, and attached without replacing release assets.
-- [ ] The release page links the immutable evidence commit and download.
+- [x] The verification ZIP is extracted, inspected, and attached without replacing release assets.
+- [x] The release page links the immutable evidence commit and download.

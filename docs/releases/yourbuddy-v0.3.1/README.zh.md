@@ -4,10 +4,10 @@
 
 - 发布标识：`yourbuddy-v0.3.1`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：公开产品与产物验证已完成；不可变证据链接与下载待补
-- 证据 Commit：最终发布准备已在 `de17171f970e43bd8c42d84a1cfeb386f5bc17c3` 通过；公开产物记录在发布后提交，并会补充不可变链接，同时不移动 Tag
+- 归档状态：已完成；公开产品、产物与验证资料下载检查均通过
+- 证据 Commit：[a3525826e7339656079328df208003ecb4712307](https://github.com/istarwyh/yourbuddy/tree/a3525826e7339656079328df208003ecb4712307/docs/releases/yourbuddy-v0.3.1)包含公开产物记录；发布 Tag 保持不变
 - 证据图集：不适用；没有声称完成安装包 UI 旅程，也没有制作截图
-- 证据下载：检查解压内容后附加 `yourbuddy-v0.3.1-verification.zip`
+- 证据下载：[yourbuddy-v0.3.1-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.1/yourbuddy-v0.3.1-verification.zip)
 
 ## 面向用户的发布说明
 
@@ -156,7 +156,7 @@ YourBuddy 0.3.1 启用 YourBuddy 名称与 Y8 图标，把内置 Harness 更新�
 ## 交付状态
 
 - 产品发布状态：已发布；Apple Silicon DMG、带签名的 Updater Archive 与签名、校验文件、版本专属 Manifest 和稳定 Updater Manifest 均可公开下载，并已独立验证。
-- 验证资料归档状态：公开产物证据已完成；不可变证据固定链接与解压验证后的资料下载待补。
+- 验证资料归档状态：已完成；公开产物记录已有不可变 Commit 链接，验证资料下载在附加前已经解压检查。
 - 未验证范围：安装 DMG 后的交互 UI；带签名的应用内更新安装；真实 GPT OAuth 或模型提供方响应；真实企业代理与 CA；macOS Intel、Windows 与 Linux；Apple Developer 签名与公证；XiaoHui 自动迁移。
 
 ## 交付清单
@@ -169,5 +169,5 @@ YourBuddy 0.3.1 启用 YourBuddy 名称与 Y8 图标，把内置 Harness 更新�
 - [x] 没有声称制作截图或完成完整产品验收。
 - [x] 版本索引与双语记录已更新。
 - [x] 公开产物已下载并独立验证。
-- [ ] 验证 ZIP 已解压检查，并在不替换发布资产的前提下附加。
-- [ ] Release 页面已链接不可变证据 Commit 与下载。
+- [x] 验证 ZIP 已解压检查，并在不替换发布资产的前提下附加。
+- [x] Release 页面已链接不可变证据 Commit 与下载。

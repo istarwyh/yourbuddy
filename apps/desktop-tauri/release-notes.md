@@ -25,3 +25,8 @@ YourBuddy 0.3.1 替代未公开的 0.3.0 候选版本，并修正外部产品快
 - 新增全局重启与签名更新控制，让插件市场安装状态与用户选择的 Package 保持关联；基于 DSH `0.1.2-rc.1` 内置 Harbor Evolution `0.9.2`、Codex Auth `0.3.2`、Better Sidebar `0.18.0`、Plugin Marketplace `0.3.1` 和 Context Doctor `0.7.0`。
 
 请从本 Release 下载 Apple Silicon DMG。本次是破坏性的产品身份迁移：请将 YourBuddy 与 XiaoHui 分开安装，并按需重新配置凭据与设置。当前应用尚未使用 Apple Developer 身份完成代码签名与公证，也不提供 XiaoHui 数据的自动迁移。
+
+## Verification / 验证资料
+
+- [Immutable verification archive / 不可变验证归档](https://github.com/istarwyh/yourbuddy/tree/a3525826e7339656079328df208003ecb4712307/docs/releases/yourbuddy-v0.3.1)
+- [Download verification bundle / 下载验证资料包](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.1/yourbuddy-v0.3.1-verification.zip)
