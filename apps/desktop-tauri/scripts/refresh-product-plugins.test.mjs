@@ -99,6 +99,9 @@ test('product update policy accepts every supported source kind', () => {
       peerOverrides: {
         '1.2.3': { '@deepseek-ai/dsh-*': '^0.1.1-rc.1' },
       },
+      peerRemovals: {
+        '1.2.3': ['@deepseek-ai/dsh-client-runtime'],
+      },
       clientInjectRemovals: {
         '1.2.3': ['@deepseek-ai/dsh-client-runtime'],
       },
@@ -278,7 +281,13 @@ test('product update policy validates required source metadata before refresh', 
         '1.2.3': ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-runtime'],
       },
     })]), '/tmp/product'),
-    /must not contain duplicate Client package names/,
+    /must not contain duplicate package names/,
+  )
+  assert.throws(
+    () => validateProductUpdatePolicy(updatePolicy([npmPolicy({
+      peerRemovals: { '1.2.3': [] },
+    })]), '/tmp/product'),
+    /must contain at least one peer package name/,
   )
 })
 

@@ -40,7 +40,20 @@
       "peerOverrides": {
         "0.3.1": {
           "@deepseek-ai/dsh-*": "0.1.2-rc.1"
+        },
+        "0.3.2": {
+          "@deepseek-ai/dsh-*": "0.1.2-rc.1"
         }
+      },
+      "peerRemovals": {
+        "0.3.2": [
+          "@deepseek-ai/dsh-client-runtime"
+        ]
+      },
+      "clientInjectRemovals": {
+        "0.3.2": [
+          "@deepseek-ai/dsh-client-runtime"
+        ]
       }
     },
     {

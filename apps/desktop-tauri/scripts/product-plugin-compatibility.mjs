@@ -83,6 +83,30 @@ export function applyApprovedPeerOverrides(manifest, policy) {
 }
 
 /**
+ * Apply a version-specific removal for a peer package deleted from the bundled runtime.
+ *
+ * @param {Record<string, unknown>} manifest
+ * @param {Record<string, unknown>} policy
+ * @returns {string[]}
+ */
+export function applyApprovedPeerRemovals(manifest, policy) {
+  const removals = policy.peerRemovals?.[manifest.version]
+  if (!removals) return []
+  const peers = manifest.peerDependencies
+  if (!peers || typeof peers !== 'object' || Array.isArray(peers)) {
+    throw new Error(`approved peer removal no longer matches ${manifest.name}@${manifest.version}`)
+  }
+
+  for (const name of removals) {
+    if (typeof peers[name] !== 'string') {
+      throw new Error(`approved peer removal no longer matches ${manifest.name}@${manifest.version}: ${name}`)
+    }
+  }
+  for (const name of removals) delete peers[name]
+  return removals.map(name => `Remove obsolete ${name} peer.`)
+}
+
+/**
  * Apply a version-specific removal for obsolete Client package injections.
  *
  * @param {Record<string, unknown>} manifest

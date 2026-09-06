@@ -7,6 +7,7 @@ import test from 'node:test'
 import {
   applyApprovedClientInjectRemovals,
   applyApprovedPeerOverrides,
+  applyApprovedPeerRemovals,
   assertBundledProductPeerLinks,
   readLockImporterVersions,
   validateProductPlugin,
@@ -76,6 +77,29 @@ test('approved Client injection removals are exact-version metadata changes', ()
   assert.throws(
     () => applyApprovedClientInjectRemovals(manifest, policy),
     /approved Client injection removal no longer matches fixture-plugin@1\.2\.3/,
+  )
+})
+
+test('approved peer removals are exact-version metadata changes', () => {
+  const manifest = {
+    name: 'fixture-plugin',
+    version: '1.2.3',
+    peerDependencies: {
+      '@deepseek-ai/dsh-client-runtime': '^0.1.1-rc.1',
+      react: '^18.0.0',
+    },
+  }
+  const policy = {
+    peerRemovals: { '1.2.3': ['@deepseek-ai/dsh-client-runtime'] },
+  }
+  assert.deepEqual(applyApprovedPeerRemovals(manifest, policy), [
+    'Remove obsolete @deepseek-ai/dsh-client-runtime peer.',
+  ])
+  assert.deepEqual(manifest.peerDependencies, { react: '^18.0.0' })
+  assert.deepEqual(applyApprovedPeerRemovals({ ...manifest, version: '1.2.4' }, policy), [])
+  assert.throws(
+    () => applyApprovedPeerRemovals(manifest, policy),
+    /approved peer removal no longer matches fixture-plugin@1\.2\.3/,
   )
 })
 

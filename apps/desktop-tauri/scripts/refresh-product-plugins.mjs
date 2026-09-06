@@ -22,6 +22,7 @@ import { hashExternalSnapshot, verifyExternalSnapshot } from './bundle-harness-s
 import {
   applyApprovedClientInjectRemovals,
   applyApprovedPeerOverrides,
+  applyApprovedPeerRemovals,
   readWorkspacePackageVersions,
   validateProductPlugin,
 } from './product-plugin-compatibility.mjs'
@@ -44,6 +45,7 @@ const commonPluginFields = new Set([
   'package',
   'destination',
   'peerOverrides',
+  'peerRemovals',
   'clientInjectRemovals',
 ])
 const kindPluginFields = {
@@ -185,21 +187,21 @@ function validatePeerOverrides(value, label) {
   }
 }
 
-function validateClientInjectRemovals(value, label) {
+function validateVersionedPackageLists(value, label, itemDescription) {
   if (value === undefined) return
   if (!isPlainObject(value)) throw new Error(`${label} must be an object keyed by exact package version`)
-  for (const [version, removals] of Object.entries(value)) {
+  for (const [version, names] of Object.entries(value)) {
     if (semver.valid(version) !== version) {
       throw new Error(`${label} key must be an exact semantic version: ${version}`)
     }
-    if (!Array.isArray(removals) || removals.length === 0) {
-      throw new Error(`${label}.${version} must contain at least one Client package name`)
+    if (!Array.isArray(names) || names.length === 0) {
+      throw new Error(`${label}.${version} must contain at least one ${itemDescription}`)
     }
-    const unique = new Set(removals)
-    if (unique.size !== removals.length) {
-      throw new Error(`${label}.${version} must not contain duplicate Client package names`)
+    const unique = new Set(names)
+    if (unique.size !== names.length) {
+      throw new Error(`${label}.${version} must not contain duplicate package names`)
     }
-    for (const [index, name] of removals.entries()) {
+    for (const [index, name] of names.entries()) {
       validateNpmPackageName(name, `${label}.${version}[${index}]`)
     }
   }
@@ -251,7 +253,12 @@ export function validateProductUpdatePolicy(
     if (packages.has(plugin.package)) throw new Error(`product update policy has duplicate package: ${plugin.package}`)
     packages.add(plugin.package)
     validatePeerOverrides(plugin.peerOverrides, `${label}.peerOverrides`)
-    validateClientInjectRemovals(plugin.clientInjectRemovals, `${label}.clientInjectRemovals`)
+    validateVersionedPackageLists(plugin.peerRemovals, `${label}.peerRemovals`, 'peer package name')
+    validateVersionedPackageLists(
+      plugin.clientInjectRemovals,
+      `${label}.clientInjectRemovals`,
+      'Client package name',
+    )
 
     const destination = validateSafeRelativePath(plugin.destination, `${label}.destination`, selectedProductRoot)
     if ([...reservedProductPaths].some(path => pathsOverlap(destination, path))) {
@@ -712,6 +719,7 @@ function writeProvenance(root, provenance) {
 
 function applyApprovedCompatibilityChanges(manifest, policy) {
   return [
+    ...applyApprovedPeerRemovals(manifest, policy),
     ...applyApprovedPeerOverrides(manifest, policy),
     ...applyApprovedClientInjectRemovals(manifest, policy),
   ]
