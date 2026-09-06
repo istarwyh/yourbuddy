@@ -4,9 +4,9 @@
 
 - 发布标识：`yourbuddy-v0.3.3`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：候选发布版本；本地源码、受控安装包与发布形态 macOS Runtime 验证已完成，公开产物待验证
-- 已验证源码 Commit：[`207d54af0f83366a299b270c9f75d7bca4e05d41`](https://github.com/istarwyh/yourbuddy/commit/207d54af0f83366a299b270c9f75d7bca4e05d41)
-- 证据图集：等待正式公开安装包成功启动后补充
+- 归档状态：公开产物、Updater 元数据与认证启动已独立核验；官网发布与验证 ZIP 待完成
+- Release Tag Commit：[`06c56e060c6f255a1c49c8943f86b43311d730cd`](https://github.com/istarwyh/yourbuddy/commit/06c56e060c6f255a1c49c8943f86b43311d730cd)
+- 证据图集：正式安装包运行期间原生 UI 自动化失败，因此没有发布图片；下文保留该限制
 - 证据下载：等待发布 `yourbuddy-v0.3.3-verification.zip`
 
 ## 面向用户的发布说明
@@ -29,7 +29,7 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 ### 安装或升级
 
-发布后可从 [YourBuddy 0.3.3 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3) 安装 Apple Silicon DMG，也可以在旧版本中使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。现有应用数据会保留。
+可从 [YourBuddy 0.3.3 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3) 安装 Apple Silicon DMG，也可以在旧版本中使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。现有应用数据会保留；本次发布验证没有从旧安装版实际走完带签名的更新旅程。
 
 ### 兼容性、迁移与限制
 
@@ -42,8 +42,9 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 | 公开 0.3.2 失败与修复后的安装包路径 | passed | 公开 0.3.2 资源与本地 Release-mode 修复 | macOS 15.6.1 arm64、原生 WebKit | [本地记录](evidence/local-validation.txt) |
 | 0.3.3 发布准备与产品 Smoke | passed | 源码 `07b2440f5d...` | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地记录](evidence/local-validation.txt) |
 | 版本、Updater、Rust、桌面、文档与官网检查 | passed | 源码 `07b2440f5d...` | macOS 15.6.1 arm64、Rust 1.98.0、Hugo Extended 0.165.0 | [本地记录](evidence/local-validation.txt) |
-| 打包 Runtime 与 CI 发布阻断项 | 全部 CI 载体 Smoke 通过；工作流持久化与 pwsh 提示符恢复已在本地通过，最终 CI 重跑待完成 | 源码 `207d54af0f...`、Node 24 原生可执行文件、安装后 Wheel、Chromium 与 PowerShell 7.6.5 | macOS 15.6.1 arm64 与 CI 载体矩阵 | [本地记录](evidence/local-validation.txt) |
-| 公开安装包、更新通道、验证 ZIP 与官网 | not verified | 尚未发布 | GitHub Release 与 Pages | 待补充 |
+| 打包 Runtime 与 CI 发布阻断项 | passed；保留一次 Windows 时序失败后，重跑时 18 个 CI Job 全部成功 | 源码 `86b620cd76...`、Node 24 原生可执行文件、安装后 Wheel、Chromium 与 PowerShell 7.6.5 | macOS 15.6.1 arm64 与 CI 载体矩阵 | [本地记录](evidence/local-validation.txt)与[公开产物记录](evidence/published-artifacts.txt) |
+| 公开安装包与更新通道 | 在声明限制内 passed；已检查公开字节、元数据、DMG 内容与认证启动 | 正式 `yourbuddy-v0.3.3` GitHub Release | macOS 15.6.1 arm64、GitHub Release、原生 Tauri App | [公开产物记录](evidence/published-artifacts.txt) |
+| 验证 ZIP 与更新后的官网 | not verified | 发布后交付 | GitHub Release 与 Pages | 待完成 |
 
 ## 场景：安装版桌面认证
 
@@ -120,9 +121,9 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 ## 场景：打包 Runtime 与 CI 发布阻断项
 
-- 状态：全部 CI 载体 Smoke 与聚焦本地恢复检查通过；最终跨平台 CI 重跑待完成
+- 状态：passed；保留一次 Windows 时序失败后，Attempt 2 的 18 个 CI Job 全部成功
 - 日期与时间：2026-09-06 23:35-2026-09-07 02:27 UTC+08:00，Asia/Shanghai
-- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.3`；发布阻断项修复截至 `207d54af0f83366a299b270c9f75d7bca4e05d41`
+- 发布版本与 Commit：`yourbuddy-v0.3.3`；发布分支 Head `86b620cd76c41a35e65b6f58129c83b9cf8a1b0c`，合并 Commit `06c56e060c6f255a1c49c8943f86b43311d730cd`
 - 受测构建：源码 Profile 遍历、生成的 Node 24.20.0 macOS arm64 单文件可执行程序，以及本地构建后安装到全新虚拟环境的 SDK 与 Runtime Wheel
 - 环境：macOS 15.6.1 arm64、构建宿主 Node 22.22.2、pnpm 11.7.0、目标 Node 24.20.0、Python 3.11.4、PowerShell 7.6.5；GitHub 托管原生载体矩阵
 - 证据来源：Pull Request 11 首轮 CI 与本次发布实测
@@ -147,61 +148,62 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 ### 实际结果
 
-四个 CI 载体都达到 `smoke-python-runtime: all passed`。连续几轮运行暴露了确定性的 ACP 激活顺序、真实 PowerShell 就绪与 Fixture 布局、依赖 Runner 的浏览器时区、跨载体 Inspector 初始化竞态、子会话持久化可见性，以及 pwsh 提示符发布。当前源码把这些假设都改成显式约束。ACP 验证通过 141 项测试，语句、分支、函数和行覆盖率均为 100%；其 15 场景回放连续通过两次。Inspector 集成文件通过 10 项测试并额外连续通过四次聚焦探针；此前失败的 12 个浏览器文件在 UTC 宿主时区下通过 65 项测试，另有两项场景按设计跳过。工作流文件的三个场景在六轮完整本地运行中全部通过。terminal-bash 包通过 77 项测试，另有一项按平台跳过；其真实 pwsh 启动场景又连续通过八次，并保留非空受控提示符。当前 Commit 的最终 CI 仍待完成。
+四个 CI 载体都达到 `smoke-python-runtime: all passed`。连续几轮运行暴露了确定性的 ACP 激活顺序、真实 PowerShell 就绪与 Fixture 布局、依赖 Runner 的浏览器时区、跨载体 Inspector 初始化竞态、子会话持久化可见性，以及 pwsh 提示符发布。当前源码把这些假设都改成显式约束。ACP 验证通过 141 项测试，语句、分支、函数和行覆盖率均为 100%；其 15 场景回放连续通过两次。Inspector 集成文件通过 10 项测试并额外连续通过四次聚焦探针；此前失败的 12 个浏览器文件在 UTC 宿主时区下通过 65 项测试，另有两项场景按设计跳过。工作流文件的三个场景在六轮完整本地运行中全部通过。terminal-bash 包通过 77 项测试，另有一项按平台跳过；其真实 pwsh 启动场景又连续通过八次，并保留非空受控提示符。CI 运行 `34052017963` 在 Attempt 2 成功完成全部 18 个 Job。
 
 ### 证据
 
 - 操作前：首轮 Pull Request CI 的四个打包 Python Runtime 目标都因未嵌入的可选 peer manifest 报 `ENOENT`。第二轮运行通过全部载体 Smoke，但暴露了付费提供方预检缺少仓库范围条件。运行 `34046132810` 通过全部四个载体，并暴露 ACP 顺序与覆盖率 Fixture 失败。运行 `34047565623` 再次通过全部四个载体，随后暴露持久化 Web 快照对宿主时区的依赖，以及覆盖率中的 Inspector Console 初始化竞态。运行 `34049354876` 证明了这些修复与四个载体，但工作流导航和真实 pwsh 启动竞态仍失败；其 Windows 原生测试 Worker 也在可见断言全部通过后退出，因此在干净重跑通过前仍记为失败的基础设施结果。
 - 执行中：pkg 构建在构造可执行文件时报告缺少可选 Client peer，实际覆盖了受影响的 Package 发现条件。
-- 结果：命令、目标版本、测试数量与安装后 Wheel 输出见[本地记录](evidence/local-validation.txt)。
+- 结果：命令、目标版本、测试数量、安装后 Wheel 输出与最终 CI 重跑见[本地记录](evidence/local-validation.txt)和[公开产物记录](evidence/published-artifacts.txt)。
 - 失败与恢复：第一次本地快照运行与覆盖率共享资源，并继承终端代理变量，Undici 警告污染了子进程 stderr；可靠的串行回放只清除了测试进程的终端代理变量。后续 PowerShell 刷新因测试过滤参数位置错误而一度修改无关的生成 Fixture；这些已知临时更改已逐文件恢复。ACP 激活现在会等待拓扑稳定的发现与持久化；PowerShell 检查断言已有文档说明的可用性，而不是某一个时序等级。Web 回放在创建浏览器 Context 时固定历史快照时区，Inspector 测试使用有序 Client carrier 作为初始化屏障，工作流导航也会等待持久化的子会话输入。pwsh 启动不再把提前到达的精确 stdin 等待当成充分条件，并且最终探针为空时也不会丢失此前的非空消息。当前宿主上的完整本地 Web CI 包装命令仍被 Node 22.22.2 的 `import-without-cache` HMR loader 错误阻断；该 HMR 文件已在运行 `34049354876` 中通过，受影响文件则采用直接运行，不把包装命令失败称为产品通过。
 
 ### 范围限制
 
-已完成的 CI 运行证明了四个载体目标的无密钥安装后 Wheel Smoke。`207d54af0f...` 的必需检查聚合结果仍待完成，聚焦本地检查不能替代该运行。真实 DeepSeek 提供方与公开桌面安装包也尚未验证。
+已完成的 CI 证明了四个载体目标的无密钥安装后 Wheel Smoke 与仓库聚合结果。真实 DeepSeek 提供方不在这些检查的验证范围内；公开桌面验证在下方单独记录。
 
 ## 场景：公开产品交付
 
-- 状态：not verified
-- 日期与时间：2026-09-06 23:30 UTC+08:00，Asia/Shanghai
-- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.3`；Tag Commit 待定
-- 受测构建：尚无正式公开的 0.3.3 产品
-- 环境：计划使用 GitHub Actions macOS 15 arm64 Runner 与 GitHub Pages
+- 状态：在声明限制内 passed；官网更新与验证 ZIP 待完成
+- 日期与时间：2026-09-07 03:31-03:58 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：`yourbuddy-v0.3.3`，Commit `06c56e060c6f255a1c49c8943f86b43311d730cd`
+- 受测构建：从正式 GitHub Release 下载的文件，以及从 DMG 复制到临时目录、使用隔离数据启动的 App
+- 环境：GitHub Actions macOS 15 arm64 Runner；本地 macOS 15.6.1 arm64；App 选用 Node 22.22.2；原生 Tauri WebView
 - 证据来源：本次发布实测
-- 数据：不适用
-- 模型或服务：GitHub Release、更新通道与 Pages；尚未执行
+- 数据：合成的隔离应用状态
+- 模型或服务：GitHub Release、Updater 通道与本地私有 Host；未使用 OAuth 或真实模型提供方
 
 ### 操作步骤
 
-1. 通过现有桌面发布工作流发布不可变 Tag。
-2. 独立于 CI 下载并检查 DMG、Updater Archive、签名、校验和、Updater Manifest、验证 ZIP 和安装版应用。
-3. 发布并打开双语官网页面及其真实下载链接。
+1. 合并 Pull Request 11，为合并 Commit 打 Tag，并等待桌面发布工作流 `34055168580` 完成。
+2. 下载全部版本 Release 资产而不使用工作流产物，检查随包校验和，并比较稳定通道与版本 Manifest。
+3. 以只读方式挂载 DMG，检查 App 版本、架构与代码签名元数据，再使用全新隔离数据目录启动公开 App 的副本。
+4. 确认 Host 认证就绪、`boot complete` 与 0.3.3 更新检查结果，并三次尝试捕获原生窗口。
 
 ### 预期结果
 
-公开产物标识 0.3.3，与 Hash 及签名元数据一致，更新稳定通道，并能启动到已经认证的工作区。
+公开产物标识 0.3.3，与 Hash 及签名元数据一致，更新稳定通道，并在不出现 0.3.2 错误的情况下完成应用认证启动。
 
 ### 实际结果
 
-Tag 发布前尚未验证。本节必须根据观察到的公开产物和安装行为更新，不得移动 Tag 或替换安装包字节。
+公开 Release 包含 DMG、Updater 归档、Updater 签名、校验和与 Manifest。校验和列出的三个文件全部通过 SHA-256 检查。DMG 中是 0.3.3 arm64 App；其 Ad-hoc 签名结构校验通过，Gatekeeper 拒绝结果符合尚未使用 Apple Developer 身份签名和公证的已知限制。公开 App 使用隔离数据启动后达到认证就绪与 Boot 完成，日志未出现用户报告的认证提示。UI 自动化服务三次都在返回窗口状态前退出，因此正式版本的可见工作区渲染与截图仍未验证。
 
 ### 证据
 
 - 操作前：0.3.2 Release 仍然公开，其安装版认证缺陷已记录在持续维护的归档中。
-- 执行中：等待桌面发布工作流。
-- 结果：等待公开产物与官网记录。
-- 失败与恢复：尚不适用。
+- 执行中：桌面工作流在发布前验证 Host 启动与迁移 Runtime；独立检查随后只使用公开 Release 下载。
+- 结果：准确的公开文件名、大小、Hash、Manifest 字段、App 元数据与有界启动观察见[公开产物记录](evidence/published-artifacts.txt)。
+- 失败与恢复：原生 UI 自动化三次都在返回状态前退出，因此没有制造或保留图片。直接启动的测试 App 收到终端中断后，隔离 Host 进程仍在运行；该准确临时进程已终止并确认退出，这一结果不用于描述托盘正常退出或重启行为。
 
 ### 范围限制
 
-本候选版本场景不声明任何公开产品或官网已经可用。
+这些检查不验证正式二进制的可见渲染、Finder 复制到 Applications、从旧安装版执行带签名更新、托盘正常退出、OAuth、真实模型流量、企业代理/CA 流量、Windows、Linux、Intel macOS、Apple Developer 签名或公证。发布后官网与验证 ZIP 单独完成。
 
 ## 交付状态
 
-- 产品发布状态：待发布；尚未验证 `yourbuddy-v0.3.3` Release 或稳定 Updater 条目。
-- 验证资料归档状态：部分完成；已有本地认证与发布形态 macOS Runtime 证据，公开产物记录、安装产品截图、验证资料下载与重新解压仍待补充。
-- 站点同步状态：待同步；已经准备候选版本与 0.3.2 缺陷说明，但必须在公开产物通过独立验证后才能宣传 0.3.3 可用。
-- 未验证范围：最终公开 DMG 安装、Updater 安装、验证 ZIP、线上官网、Windows、WSL、Intel macOS、OAuth、真实模型调用、企业代理/CA、Apple Developer 签名与公证。
+- 产品发布状态：已发布并完成独立检查；`yourbuddy-v0.3.3` 提供 macOS arm64 DMG、带签名的 Updater 归档与签名、校验和及版本 Manifest，稳定通道提供相同的 0.3.3 Manifest。
+- 验证资料归档状态：部分完成；已有本地、CI、公开产物、DMG 与认证启动证据。验证 ZIP、重新解压检查与正式窗口截图待完成；截图被失败的原生 UI 自动化服务阻断。
+- 站点同步状态：待同步；此前 master 部署成功但仍是候选说明，发布后的 0.3.3 可用性更新已准备，尚未部署和打开检查。
+- 未验证范围：正式二进制可见渲染、Finder 安装、从旧版本执行 Updater 安装、托盘正常退出、验证 ZIP、更新后的线上官网、Windows 桌面、WSL、Intel macOS、OAuth、真实模型调用、企业代理/CA 流量、Apple Developer 签名与公证。
 
 ## 交付清单
 
@@ -211,13 +213,13 @@ Tag 发布前尚未验证。本节必须根据观察到的公开产物和安装�
 - [x] 每个已完成场景记录日期、时区、Commit、环境、受测构建、证据来源、数据类型及模型或服务类型。
 - [x] 操作步骤、预期结果、实际结果、状态和范围限制符合实际观察。
 - [x] 明确标记仅测源码、受控副本、失败、恢复与未验证证据。
-- [x] 发布形态 macOS Runtime 与全新环境安装后 Wheel 黑盒路径已在本地通过；其他目标平台仍由 CI 验证。
+- [x] 发布形态 macOS Runtime 与全新环境安装后 Wheel 黑盒路径已在本地通过；四个载体目标均在最终 CI 中通过。
 - [x] 只跟踪经过脱敏的文本证据；未包含凭据、个人信息、私有内容或敏感原图。
 - [x] 已在双语版本索引添加发布条目，并在本地检查相对链接。
 - [ ] 已下载、解压并成功打开公开验证 ZIP。
 - [ ] 公开发布页固定链接到不可变证据 Commit、图集和下载地址。
-- [ ] 已独立于 CI 与临时工作流产物检查真实 0.3.3 产品目的地。
-- [ ] 已记录发布文件名、版本、Hash、Updater 元数据和安装后行为。
+- [x] 已独立于 CI 与临时工作流产物检查真实 0.3.3 产品目的地。
+- [x] 已记录发布文件名、版本、Hash、Updater 元数据和安装后行为。
 - [ ] 双语产品官网已经部署并完成线上下载旅程核验。
 - [x] 分别报告产品发布、归档、官网与未验证范围。
 - [x] 未移动或覆盖现有公开 Tag 与安装包。

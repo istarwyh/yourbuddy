@@ -6,11 +6,11 @@
 
 ## YourBuddy
 
-### 0.3.3 — 候选发布版本
+### 0.3.3 — 2026-09-07
 
-YourBuddy 0.3.3 修复了已安装 macOS 应用的本地 Host 认证。原生启动在打开同 Site 工作台 Shell 前完成一次性交换，因此 macOS WebKit 可以使用严格的会话 Cookie，而无需向 Renderer 暴露进程 Token。本地源码与受控安装包检查已经通过；公开产物、Updater 元数据和正式安装包仍待验证，目前不作为可用版本展示。
+YourBuddy 0.3.3 修复了已安装 macOS 应用的本地 Host 认证。原生启动在打开同 Site 工作台 Shell 前完成一次性交换，因此 macOS WebKit 可以使用严格的会话 Cookie，而无需向 Renderer 暴露进程 Token。公开 DMG、Updater 归档、签名、校验和与稳定 Manifest 已独立下载检查；发布版应用已使用隔离数据完成 Host 认证就绪与启动。窗口可视化截图、从旧安装版执行更新、OAuth 与真实模型调用仍未验证。
 
-[候选版本验证记录](../../releases/yourbuddy-v0.3.3/README.zh.md) · [下载状态](download.zh.md)
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3) · [验证记录](../../releases/yourbuddy-v0.3.3/README.zh.md) · [下载页](download.zh.md)
 
 ### 0.3.2 — 2026-09-06
 

@@ -1,0 +1,49 @@
+YourBuddy 0.3.3 published artifact validation
+Date: 2026-09-07 03:31-03:58 UTC+08:00 (Asia/Shanghai)
+Release: yourbuddy-v0.3.3
+Tag commit: 06c56e060c6f255a1c49c8943f86b43311d730cd
+Environment: macOS 15.6.1 arm64; GitHub Release; native Tauri application; Node 22.22.2 selected by the application
+Build under test: assets downloaded from the public GitHub Release, not workflow artifacts
+Data: synthetic state in an isolated application-data directory
+Model/service: local private Host only; no OAuth login or real model request
+
+Publication and CI
+
+- Pull request 11 merged at 2026-09-07 03:31 UTC+08:00 as commit 06c56e060c6f255a1c49c8943f86b43311d730cd.
+- CI run 34052017963 completed 18 jobs successfully on attempt 2. Attempt 1 retained two Windows coverage timing failures after 15,436 tests passed: ACP failed-transport cleanup did not settle inside its polling window, and a projection-cache fixture still read its old title after five seconds.
+- The two affected test files passed 17 tests locally on the release source. The complete Windows coverage job then passed unchanged on attempt 2; the original failure remains part of the release record.
+- The PR-only Cloudflare preview job remained queued on its private self-hosted runner. The product website build passed separately; this preview is not claimed as verified.
+- Desktop release workflow 34055168580 completed successfully and published the GitHub Release at 2026-09-07 03:47 UTC+08:00.
+
+Public files downloaded and checked
+
+- latest.json: 4,036 bytes; SHA-256 3ed165385a548daed352191bd91f32afc1277598690da43be3fd12652e840e89.
+- SHA256SUMS.txt: 312 bytes; SHA-256 1563352c34c3cd4ae6d8c4b66a00ab4ff126ce3e27fe3989e8f802cd65f149c0.
+- yourbuddy-0.3.3-macos-arm64.app.tar.gz: 570,317,932 bytes; SHA-256 7c01b2fdd8bd6f8a87dda45895dcc46d8ab6c66aa7fe7e8e7a2a50ea086f0583.
+- yourbuddy-0.3.3-macos-arm64.app.tar.gz.sig: 408 bytes; SHA-256 69aade14f607d7f9db9f67ba2b7f1861bc32ccae1563aca98e3380cdd7addd76.
+- yourbuddy-0.3.3-macos-arm64.dmg: 568,343,774 bytes; SHA-256 9a8aca090f1ef78c414b51dcf5d61125fd0f26c03972c8e168480281529e2d11.
+- shasum -a 256 --check SHA256SUMS.txt reported OK for the updater archive, signature, and DMG.
+- The stable yourbuddy-updater channel served latest.json with the same SHA-256 as the versioned Release. Its manifest advertised version 0.3.3, the versioned updater URL, and a non-empty signature for darwin-aarch64.
+
+DMG and application inspection
+
+- hdiutil verified the image CRC and mounted it read-only.
+- The mounted application reported CFBundleShortVersionString 0.3.3 and CFBundleVersion 0.3.3.
+- file identified the main executable as Mach-O 64-bit arm64.
+- codesign --verify --deep --strict passed after copying the application into a temporary test directory.
+- codesign metadata identified an ad-hoc runtime signature with no TeamIdentifier. spctl rejected the application, matching the documented lack of Apple Developer signing and notarization.
+
+Installed-product startup
+
+- The copied public application was launched with a fresh isolated application-data directory.
+- Provisioning installed 587 frozen packages from the bundled offline store, selected Node 22.22.2, and reported the product runtime ready.
+- The private Host started on a loopback address. The bounded boot log then recorded, in order: authenticated readiness passed, dsh web ready, opening main window, boot complete, and desktop update current version=0.3.3.
+- The prior dsh web authentication required response did not appear in the process output or boot log.
+- The application window could not be captured: the native UI automation service exited before returning state on three independent attempts. No screenshot is presented, and visible workspace rendering for the formally published binary remains unverified. The same WebView journey passed earlier for the controlled release-mode application copy.
+- Sending an interrupt to the directly launched test application stopped the native process but left its isolated Host running. That exact temporary Host process was terminated and confirmed stopped; this does not test or characterize the normal tray Quit or Restart lifecycle.
+
+Publication boundary
+
+- These checks validate the publicly downloadable macOS arm64 files, their hashes and metadata, and native authenticated startup through boot completion.
+- They do not validate a visual screenshot of the published window, installation through Finder into Applications, signed-updater installation from an older version, OAuth, a real model provider, enterprise proxy/CA traffic, Windows, Linux, Intel macOS, Apple Developer signing, or notarization.
+- Website availability is recorded separately after the post-publication content commit deploys and its live links are opened.

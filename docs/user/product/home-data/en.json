@@ -30,8 +30,8 @@
       "right in your workspace."
     ],
     "lead": "Read documents, write files, and run tools. Choose your model, work on your own Mac, and inspect the files and changes along the way.",
-    "note": "YourBuddy 0.3.3 candidate · macOS · Apple Silicon",
-    "status_label": "Check release status",
+    "note": "YourBuddy 0.3.3 · macOS · Apple Silicon",
+    "status_label": "Download and verify",
     "actions": [
       {
         "label": "Start your first task",

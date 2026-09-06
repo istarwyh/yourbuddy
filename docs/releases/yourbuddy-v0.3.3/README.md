@@ -4,9 +4,9 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.3`
 - Product channel: YourBuddy desktop
-- Archive state: release candidate; local source, controlled installed-bundle, and release-shaped macOS Runtime verification complete, public artifacts pending
-- Validated source commit: [`207d54af0f83366a299b270c9f75d7bca4e05d41`](https://github.com/istarwyh/yourbuddy/commit/207d54af0f83366a299b270c9f75d7bca4e05d41)
-- Evidence gallery: pending a successful launch of the formally published installer
+- Archive state: public assets, updater metadata, and authenticated boot independently verified; website publication and verification ZIP pending
+- Release tag commit: [`06c56e060c6f255a1c49c8943f86b43311d730cd`](https://github.com/istarwyh/yourbuddy/commit/06c56e060c6f255a1c49c8943f86b43311d730cd)
+- Evidence gallery: no image is published because native UI automation failed during the formal installer run; the limitation is retained below
 - Evidence download: pending publication of `yourbuddy-v0.3.3-verification.zip`
 
 ## User release notes
@@ -29,7 +29,7 @@ Install or update to 0.3.3, launch YourBuddy from Finder, and wait for the main 
 
 ### Install or upgrade
 
-After publication, install the Apple Silicon DMG from the [YourBuddy 0.3.3 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3), or use **Settings → General → Application lifecycle → Check for updates** in an earlier installation. Existing application data is retained.
+Install the Apple Silicon DMG from the [YourBuddy 0.3.3 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3), or use **Settings → General → Application lifecycle → Check for updates** in an earlier installation. Existing application data is retained; the signed-update journey from an older installed version was not exercised during publication verification.
 
 ### Compatibility, migration, and limitations
 
@@ -42,8 +42,9 @@ This release targets Apple Silicon on macOS 11 or later and requires no data mig
 | Public 0.3.2 failure and fixed installed-bundle path | passed | public 0.3.2 resources plus local release-mode fix | macOS 15.6.1 arm64, native WebKit | [Local record](evidence/local-validation.txt) |
 | 0.3.3 release preparation and product smoke | passed | source `07b2440f5d...` | macOS 15.6.1 arm64, Node 22.22.2, pnpm 11.7.0 | [Local record](evidence/local-validation.txt) |
 | Version, updater, Rust, desktop, documentation, and website checks | passed | source `07b2440f5d...` | macOS 15.6.1 arm64, Rust 1.98.0, Hugo Extended 0.165.0 | [Local record](evidence/local-validation.txt) |
-| Packaged Runtime and CI release blockers | all CI carrier smokes passed; workflow persistence and pwsh prompt recovery passed locally, final CI rerun pending | source `207d54af0f...`, Node 24 native executables, installed wheels, Chromium, PowerShell 7.6.5 | macOS 15.6.1 arm64 plus CI carrier matrix | [Local record](evidence/local-validation.txt) |
-| Public installer, updater channel, verification ZIP, and website | not verified | not yet published | GitHub Release and Pages | pending |
+| Packaged Runtime and CI release blockers | passed; 18 CI jobs succeeded after one retained Windows timing-failure attempt and clean rerun | source `86b620cd76...`, Node 24 native executables, installed wheels, Chromium, PowerShell 7.6.5 | macOS 15.6.1 arm64 plus CI carrier matrix | [Local record](evidence/local-validation.txt) and [published record](evidence/published-artifacts.txt) |
+| Public installer and updater channel | passed within stated limits; public bytes, metadata, DMG contents, and authenticated boot checked | formal `yourbuddy-v0.3.3` GitHub Release | macOS 15.6.1 arm64, GitHub Release, native Tauri app | [Published record](evidence/published-artifacts.txt) |
+| Verification ZIP and updated website | not verified | post-publication delivery | GitHub Release and Pages | pending |
 
 ## Scenario: Installed desktop authentication
 
@@ -120,9 +121,9 @@ These are source, generated-resource, and controlled-browser checks. They do not
 
 ## Scenario: Packaged Runtime and CI release blockers
 
-- Status: all CI carrier smokes and focused local recovery checks passed; final cross-platform CI rerun pending
+- Status: passed; all 18 CI jobs completed successfully on attempt 2 after one retained Windows timing-failure attempt
 - Date and time: 2026-09-06 23:35-2026-09-07 02:27 UTC+08:00, Asia/Shanghai
-- Release and commit: intended `yourbuddy-v0.3.3`; release-blocker fixes through `207d54af0f83366a299b270c9f75d7bca4e05d41`
+- Release and commit: `yourbuddy-v0.3.3`; release branch head `86b620cd76c41a35e65b6f58129c83b9cf8a1b0c`, merged as `06c56e060c6f255a1c49c8943f86b43311d730cd`
 - Build under test: source profile traversal, generated Node 24.20.0 macOS arm64 single executable, and locally built SDK and Runtime wheels installed into a clean virtual environment
 - Environment: macOS 15.6.1 arm64, build host Node 22.22.2, pnpm 11.7.0, target Node 24.20.0, Python 3.11.4, PowerShell 7.6.5; GitHub-hosted native carrier matrix
 - Evidence origin: pull request 11's first CI run and this release run
@@ -147,61 +148,62 @@ Optional peers that are not embedded in a pkg executable remain unavailable with
 
 ### Actual
 
-All four CI carriers reached `smoke-python-runtime: all passed`. Successive runs exposed deterministic ACP activation ordering, real PowerShell readiness and fixture layout, a runner-dependent browser timezone, a cross-carrier Inspector setup race, child-session persistence visibility, and pwsh prompt publication. The current source makes each assumption explicit. ACP validation passed 141 tests at 100% statement, branch, function, and line coverage; its 15-scenario replay passed twice. The Inspector integration file passed 10 tests plus four repeated focused probes, and the 12 previously failing browser files passed 65 tests under a UTC host timezone with two scenario skips. The workflow file passed all three scenarios in six complete local runs. The terminal-bash package passed 77 tests with one platform skip, and its real pwsh startup scenario passed eight additional consecutive invocations while retaining a non-empty controlled prompt. A final CI run on the current commit remains pending.
+All four CI carriers reached `smoke-python-runtime: all passed`. Successive runs exposed deterministic ACP activation ordering, real PowerShell readiness and fixture layout, a runner-dependent browser timezone, a cross-carrier Inspector setup race, child-session persistence visibility, and pwsh prompt publication. The current source makes each assumption explicit. ACP validation passed 141 tests at 100% statement, branch, function, and line coverage; its 15-scenario replay passed twice. The Inspector integration file passed 10 tests plus four repeated focused probes, and the 12 previously failing browser files passed 65 tests under a UTC host timezone with two scenario skips. The workflow file passed all three scenarios in six complete local runs. The terminal-bash package passed 77 tests with one platform skip, and its real pwsh startup scenario passed eight additional consecutive invocations while retaining a non-empty controlled prompt. CI run `34052017963` completed all 18 jobs successfully on attempt 2.
 
 ### Evidence
 
 - Before: the first pull-request CI run failed all four packaged Python Runtime targets with `ENOENT` for an unembedded optional peer manifest. The second run passed every carrier smoke but exposed the missing repository-scope condition on the paid provider preflight. Run `34046132810` passed all four carriers and exposed ACP ordering and coverage-fixture failures. Run `34047565623` again passed all four carriers, then exposed host-timezone dependence in persisted Web snapshots and the Inspector Console setup race in coverage. Run `34049354876` proved those fixes and all four carriers, then failed the workflow navigation and real pwsh startup races; its Windows native-test worker also exited after its visible assertions passed, which remains a failed infrastructure result until a clean rerun.
 - In progress: the pkg build reported absent optional client peers while constructing the executable, exercising the affected package-discovery condition.
-- Result: commands, target versions, test counts, and installed-wheel output are in the [local record](evidence/local-validation.txt).
+- Result: commands, target versions, test counts, installed-wheel output, and the final CI rerun are in the [local record](evidence/local-validation.txt) and [published record](evidence/published-artifacts.txt).
 - Failure and recovery: an initial local snapshot run shared resources with coverage and inherited terminal proxy variables, so Undici warnings polluted subprocess stderr; the reliable serial replay cleared only the test process's terminal proxy variables. A later PowerShell refresh initially received a misplaced test filter and touched unrelated generated fixtures; those known temporary changes were restored individually. ACP activation now waits for topology-stable discovery and persistence, while the PowerShell check asserts documented usability rather than one timing tier. The Web replay fixes the historical snapshot timezone at browser-context creation, the Inspector test uses the ordered Client carrier as a setup barrier, and workflow navigation waits for durable child input. Pwsh startup no longer treats an early exact stdin wait as sufficient and does not lose a prior non-empty message when its final probe is empty. The complete local Web CI wrapper remains blocked on this host by a Node 22.22.2 `import-without-cache` HMR loader error; that HMR file passed in run `34049354876`, and the affected files were run directly rather than treating the wrapper failure as a product pass.
 
 ### Scope limits
 
-Completed CI runs prove the keyless installed-wheel smoke on all four carrier targets. The aggregate required verdict on `207d54af0f...` remains pending, and focused local checks do not substitute for that run. The real DeepSeek provider and public desktop installer also remain unverified.
+The completed CI proves the keyless installed-wheel smoke on all four carrier targets and the aggregate repository verdict. The real DeepSeek provider is not verified by these checks; public desktop validation is recorded separately below.
 
 ## Scenario: Public product delivery
 
-- Status: not verified
-- Date and time: 2026-09-06 23:30 UTC+08:00, Asia/Shanghai
-- Release and commit: intended `yourbuddy-v0.3.3`; tag commit pending
-- Build under test: no formally published 0.3.3 product exists yet
-- Environment: planned GitHub Actions macOS 15 arm64 runner and GitHub Pages
+- Status: passed within stated limits; website update and verification ZIP pending
+- Date and time: 2026-09-07 03:31-03:58 UTC+08:00, Asia/Shanghai
+- Release and commit: `yourbuddy-v0.3.3` at `06c56e060c6f255a1c49c8943f86b43311d730cd`
+- Build under test: files downloaded from the formal GitHub Release, then the DMG application copied to a temporary directory and launched with isolated data
+- Environment: GitHub Actions macOS 15 arm64 runner; local macOS 15.6.1 arm64; Node 22.22.2 selected by the application; native Tauri WebView
 - Evidence origin: this release run
-- Data: not applicable
-- Model or service: GitHub Release, updater channel, and Pages; not yet exercised
+- Data: synthetic isolated application state
+- Model or service: GitHub Release and updater channel plus the local private Host; no OAuth or real model provider
 
 ### Steps
 
-1. Publish the immutable tag through the existing desktop release workflow.
-2. Download and inspect the DMG, updater archive, signature, checksums, updater manifest, verification ZIP, and installed application independently of CI.
-3. Publish and open the bilingual website pages and their actual download links.
+1. Merged pull request 11, tagged the merge commit, and waited for desktop release workflow `34055168580` to complete.
+2. Downloaded every versioned Release asset rather than using workflow artifacts, checked the bundled checksum list, and compared the stable updater manifest with the versioned manifest.
+3. Mounted the DMG read-only, inspected the application version, architecture, and code-signing metadata, then copied and launched the public application with a fresh isolated data directory.
+4. Confirmed authenticated Host readiness, `boot complete`, and the 0.3.3 update-check result; attempted native window capture three times.
 
 ### Expected
 
-The public artifacts identify 0.3.3, match their hashes and signature metadata, update the stable channel, and launch to the authenticated workspace.
+The public artifacts identify 0.3.3, match their hashes and signature metadata, update the stable channel, and complete authenticated application boot without the 0.3.2 error.
 
 ### Actual
 
-Not verified before tag publication. This section must be updated from observed public assets and installed behavior without moving the tag or replacing installer bytes.
+The public Release contains the DMG, updater archive, updater signature, checksum list, and manifest. All three files named by the checksum list passed SHA-256 verification. The DMG contains a version 0.3.3 arm64 application whose ad-hoc signature verifies structurally and whose Gatekeeper rejection matches the documented lack of Apple Developer signing and notarization. The isolated public-application launch reached authenticated readiness and boot completion without the reported authentication-required text. The UI automation service exited on all three capture attempts, so visible workspace rendering and a formal screenshot remain unverified.
 
 ### Evidence
 
-- Before: the 0.3.2 release remains public and its installed authentication defect is recorded in its maintained archive.
-- In progress: pending the desktop release workflow.
-- Result: pending public artifact and website records.
-- Failure and recovery: not applicable yet.
+- Before: the 0.3.2 release remained public and its installed authentication defect was recorded in its maintained archive.
+- In progress: the desktop workflow verified Host startup and relocated Runtime execution before publication; independent checks then used only public Release downloads.
+- Result: exact public filenames, sizes, hashes, manifest fields, application metadata, and bounded startup observations are in the [published record](evidence/published-artifacts.txt).
+- Failure and recovery: native UI automation exited before returning state on three attempts, so no image was manufactured or retained. Interrupting the directly launched test application left its isolated Host process running; that exact temporary process was terminated and confirmed stopped without characterizing normal tray Quit or Restart behavior.
 
 ### Scope limits
 
-No public product or website claim is made by this candidate section.
+The checks do not validate visual rendering for the formal binary, Finder copy into Applications, a signed update from an older installation, normal tray shutdown, OAuth, real model traffic, enterprise proxy/CA traffic, Windows, Linux, Intel macOS, Apple Developer signing, or notarization. The post-publication website and verification ZIP are completed separately.
 
 ## Delivery status
 
-- Product publication status: pending; no `yourbuddy-v0.3.3` Release or stable updater entry has been verified.
-- Verification archive status: partial; local authentication and release-shaped macOS Runtime evidence are present, while the published artifact record, installed-product screenshot, verification download, and download re-extraction are pending.
-- Website synchronization status: pending; candidate and 0.3.2 defect copy is prepared, but 0.3.3 availability must not be promoted until public assets pass independent verification.
-- Unverified scope: final public DMG installation, updater installation, verification ZIP, live website, Windows, WSL, Intel macOS, OAuth, real model calls, enterprise proxy/CA, Apple Developer signing, and notarization.
+- Product publication status: published and independently checked; `yourbuddy-v0.3.3` provides the macOS arm64 DMG, signed updater archive and signature, checksum list, and versioned manifest, while the stable channel advertises the same 0.3.3 manifest.
+- Verification archive status: partial; local, CI, public-asset, DMG, and authenticated-boot evidence are present. The verification ZIP, re-extraction check, and published-window screenshot remain pending; the screenshot is blocked by the failed native UI automation service.
+- Website synchronization status: pending; the prior master deployment succeeded with candidate copy, and the post-publication 0.3.3 availability update is prepared but not yet deployed or opened.
+- Unverified scope: visible rendering of the formal binary, Finder installation, updater installation from an older version, normal tray shutdown, verification ZIP, updated live website, Windows desktop, WSL, Intel macOS, OAuth, real model calls, enterprise proxy/CA traffic, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -211,13 +213,13 @@ No public product or website claim is made by this candidate section.
 - [x] Every completed scenario records date, time zone, commit, environment, build under test, evidence origin, data type, and model or service type.
 - [x] Steps, expected result, actual result, status, and scope limits match what was observed.
 - [x] Source-only, controlled-copy, failed, recovered, and unverified evidence is labelled explicitly.
-- [x] The release-shaped macOS Runtime and clean installed-wheel black-box path passed locally; other target platforms remain assigned to CI.
+- [x] The release-shaped macOS Runtime and clean installed-wheel black-box path passed locally; all four carrier targets passed in final CI.
 - [x] Only sanitized text evidence is tracked; credentials, personal information, private content, and sensitive originals are absent.
 - [x] The release entry was added to the bilingual version index and relative links were checked locally.
 - [ ] A public verification ZIP has been downloaded, extracted, and opened successfully.
 - [ ] The public release page links to the immutable evidence commit, gallery, and download.
-- [ ] The actual 0.3.3 product destination has been checked independently of CI and temporary workflow artifacts.
-- [ ] Published filenames, versions, hashes, updater metadata, and installed behavior have been recorded.
+- [x] The actual 0.3.3 product destination has been checked independently of CI and temporary workflow artifacts.
+- [x] Published filenames, versions, hashes, updater metadata, and installed behavior have been recorded.
 - [ ] The bilingual product website has been deployed and its live download journey verified.
 - [x] Product publication, archive, website, and unverified scope are reported separately.
 - [x] Existing public tags and installers have not been moved or overwritten.
