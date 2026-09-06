@@ -20,6 +20,7 @@ import semver from 'semver'
 
 import { hashExternalSnapshot, verifyExternalSnapshot } from './bundle-harness-source.mjs'
 import {
+  applyApprovedClientInjectRemovals,
   applyApprovedPeerOverrides,
   readWorkspacePackageVersions,
   validateProductPlugin,
@@ -37,7 +38,14 @@ const requestAttempts = 3
 let cachedGitHubToken
 
 const productKinds = new Set(['npm-latest', 'github-branch', 'github-release-pair'])
-const commonPluginFields = new Set(['id', 'kind', 'package', 'destination', 'peerOverrides'])
+const commonPluginFields = new Set([
+  'id',
+  'kind',
+  'package',
+  'destination',
+  'peerOverrides',
+  'clientInjectRemovals',
+])
 const kindPluginFields = {
   'npm-latest': new Set(),
   'github-branch': new Set(['repository', 'branch']),
@@ -177,6 +185,26 @@ function validatePeerOverrides(value, label) {
   }
 }
 
+function validateClientInjectRemovals(value, label) {
+  if (value === undefined) return
+  if (!isPlainObject(value)) throw new Error(`${label} must be an object keyed by exact package version`)
+  for (const [version, removals] of Object.entries(value)) {
+    if (semver.valid(version) !== version) {
+      throw new Error(`${label} key must be an exact semantic version: ${version}`)
+    }
+    if (!Array.isArray(removals) || removals.length === 0) {
+      throw new Error(`${label}.${version} must contain at least one Client package name`)
+    }
+    const unique = new Set(removals)
+    if (unique.size !== removals.length) {
+      throw new Error(`${label}.${version} must not contain duplicate Client package names`)
+    }
+    for (const [index, name] of removals.entries()) {
+      validateNpmPackageName(name, `${label}.${version}[${index}]`)
+    }
+  }
+}
+
 function pathsOverlap(left, right) {
   return left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`)
 }
@@ -223,6 +251,7 @@ export function validateProductUpdatePolicy(
     if (packages.has(plugin.package)) throw new Error(`product update policy has duplicate package: ${plugin.package}`)
     packages.add(plugin.package)
     validatePeerOverrides(plugin.peerOverrides, `${label}.peerOverrides`)
+    validateClientInjectRemovals(plugin.clientInjectRemovals, `${label}.clientInjectRemovals`)
 
     const destination = validateSafeRelativePath(plugin.destination, `${label}.destination`, selectedProductRoot)
     if ([...reservedProductPaths].some(path => pathsOverlap(destination, path))) {
@@ -681,6 +710,13 @@ function writeProvenance(root, provenance) {
   return value
 }
 
+function applyApprovedCompatibilityChanges(manifest, policy) {
+  return [
+    ...applyApprovedPeerOverrides(manifest, policy),
+    ...applyApprovedClientInjectRemovals(manifest, policy),
+  ]
+}
+
 function archiveMetadata(bytes) {
   return {
     integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}`,
@@ -702,7 +738,7 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
     const staged = join(work, 'staged')
     copyDirectory(destination, staged)
     const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-    const patches = applyApprovedPeerOverrides(manifest, policy)
+    const patches = applyApprovedCompatibilityChanges(manifest, policy)
     if (patches.length > 0) {
       writeManifestIfChanged(staged, manifest, patches)
       validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
@@ -737,7 +773,7 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
   if (manifest.version !== latest.version) {
     throw new Error(`npm artifact version mismatch for ${policy.package}: expected ${latest.version}, found ${manifest.version}`)
   }
-  const patches = applyApprovedPeerOverrides(manifest, policy)
+  const patches = applyApprovedCompatibilityChanges(manifest, policy)
   writeManifestIfChanged(staged, manifest, patches)
   validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
   writeProvenance(staged, {
@@ -766,7 +802,7 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
     const staged = join(work, 'staged')
     copyDirectory(destination, staged)
     const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-    const patches = applyApprovedPeerOverrides(manifest, policy)
+    const patches = applyApprovedCompatibilityChanges(manifest, policy)
     if (patches.length > 0) {
       writeManifestIfChanged(staged, manifest, patches)
       validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
@@ -800,7 +836,7 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
   const upstreamTreeSha256 = hashExternalSnapshot(staged)
   const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
   assertNoDowngrade(policy.package, current.manifest.version, manifest.version)
-  const patches = applyApprovedPeerOverrides(manifest, policy)
+  const patches = applyApprovedCompatibilityChanges(manifest, policy)
   writeManifestIfChanged(staged, manifest, patches)
   validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
   writeProvenance(staged, {
@@ -839,13 +875,13 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
     const staged = join(work, 'staged-node')
     copyDirectory(destination, staged)
     const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-    const peerPatches = applyApprovedPeerOverrides(manifest, policy)
-    if (peerPatches.length > 0) {
+    const compatibilityPatches = applyApprovedCompatibilityChanges(manifest, policy)
+    if (compatibilityPatches.length > 0) {
       const patches = [
-        ...peerPatches,
+        ...compatibilityPatches,
         'Preserve the YourHarness bilingual README projection.',
       ]
-      writeManifestIfChanged(staged, manifest, peerPatches)
+      writeManifestIfChanged(staged, manifest, compatibilityPatches)
       validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
       writeProvenance(staged, {
         ...current.provenance,
@@ -891,12 +927,12 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
       `Harbor Release ${latest.tag} must contain ${policy.package}@${latest.version} and ${policy.pythonPackage}==${latest.version}; found ${manifest.version} and ${python.name}==${python.version}`,
     )
   }
-  const peerPatches = applyApprovedPeerOverrides(manifest, policy)
+  const compatibilityPatches = applyApprovedCompatibilityChanges(manifest, policy)
   const patches = [
-    ...peerPatches,
+    ...compatibilityPatches,
     'Preserve the YourHarness bilingual README projection.',
   ]
-  writeManifestIfChanged(staged, manifest, peerPatches)
+  writeManifestIfChanged(staged, manifest, compatibilityPatches)
   validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
   const common = {
     version: latest.version,

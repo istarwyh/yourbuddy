@@ -82,6 +82,30 @@ export function applyApprovedPeerOverrides(manifest, policy) {
   return changes
 }
 
+/**
+ * Apply a version-specific removal for obsolete Client package injections.
+ *
+ * @param {Record<string, unknown>} manifest
+ * @param {Record<string, unknown>} policy
+ * @returns {string[]}
+ */
+export function applyApprovedClientInjectRemovals(manifest, policy) {
+  const removals = policy.clientInjectRemovals?.[manifest.version]
+  if (!removals) return []
+  const inject = manifest.dsh?.client?.inject
+  if (!Array.isArray(inject)) {
+    throw new Error(`approved Client injection removal no longer matches ${manifest.name}@${manifest.version}`)
+  }
+
+  for (const name of removals) {
+    if (inject.filter(candidate => candidate === name).length !== 1) {
+      throw new Error(`approved Client injection removal no longer matches ${manifest.name}@${manifest.version}: ${name}`)
+    }
+  }
+  manifest.dsh.client.inject = inject.filter(name => !removals.includes(name))
+  return removals.map(name => `Remove obsolete ${name} Client injection.`)
+}
+
 function exportedPath(manifest, key) {
   const value = manifest.exports?.[key]
   if (typeof value === 'string') return value

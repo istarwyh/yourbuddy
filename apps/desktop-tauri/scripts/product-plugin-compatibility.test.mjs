@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import {
+  applyApprovedClientInjectRemovals,
   applyApprovedPeerOverrides,
   assertBundledProductPeerLinks,
   readLockImporterVersions,
@@ -52,6 +53,30 @@ test('approved peer overrides are exact-version metadata changes', () => {
   assert.deepEqual(applyApprovedPeerOverrides({ ...manifest, version: '1.2.4' }, {
     peerOverrides: { '1.2.3': { '@deepseek-ai/dsh-*': '0.1.1-rc.1' } },
   }), [])
+})
+
+test('approved Client injection removals are exact-version metadata changes', () => {
+  const manifest = {
+    name: 'fixture-plugin',
+    version: '1.2.3',
+    dsh: {
+      client: {
+        inject: ['@deepseek-ai/dsh-client-runtime', '@deepseek-ai/dsh-client-ui-tool'],
+      },
+    },
+  }
+  const policy = {
+    clientInjectRemovals: { '1.2.3': ['@deepseek-ai/dsh-client-runtime'] },
+  }
+  assert.deepEqual(applyApprovedClientInjectRemovals(manifest, policy), [
+    'Remove obsolete @deepseek-ai/dsh-client-runtime Client injection.',
+  ])
+  assert.deepEqual(manifest.dsh.client.inject, ['@deepseek-ai/dsh-client-ui-tool'])
+  assert.deepEqual(applyApprovedClientInjectRemovals({ ...manifest, version: '1.2.4' }, policy), [])
+  assert.throws(
+    () => applyApprovedClientInjectRemovals(manifest, policy),
+    /approved Client injection removal no longer matches fixture-plugin@1\.2\.3/,
+  )
 })
 
 test('product compatibility rejects a peer range that excludes the bundled prerelease', () => {
