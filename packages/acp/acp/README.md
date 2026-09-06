@@ -90,7 +90,7 @@ This section explains how the server realizes the behavior above and points at t
 The server is an automation transport with an intentionally standard public protocol. Three commitments shape it:
 
 - **Standard semantic updates only.** The wire carries committed messages and thoughts, generic tool lifecycle, configuration, and context usage; raw provider deltas, retry attempts, DSH presentation data, and unsupported content stay off the wire.
-- **Truthful capability and configuration state.** `initialize` advertises only mounted support, topology changes publish complete configuration options, and a prompt pins the exact route it admitted.
+- **Truthful capability and configuration state.** `initialize` advertises only mounted support, session activation returns a topology-stable option state, later topology changes publish complete configuration options, and a prompt pins the exact route it admitted.
 - **Quiescence before settlement.** Prompt and close operations settle only after their owned admission, Agent activity, ordered updates, descendants, persistence, and disposal have reached the required terminal state.
 
 The decision history lives in the [ACP as an automation-only protocol note](../../../.agents/notes/implemented/simplification/2026-07-23-acp-automation-only-protocol.md) and the [multi-session note](../../../.agents/notes/implemented/feature/2026-06-14-acp-multi-session.md).
