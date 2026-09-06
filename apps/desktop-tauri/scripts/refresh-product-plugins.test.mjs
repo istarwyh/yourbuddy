@@ -121,7 +121,7 @@ test('product update policy accepts every supported source kind', () => {
       pythonDestination: 'harbor-python',
     }),
   ])
-  assert.equal(validateProductUpdatePolicy(policy, '/tmp/yourharness-product'), policy)
+  assert.equal(validateProductUpdatePolicy(policy, '/tmp/yourbuddy-product'), policy)
 })
 
 test('product update policy rejects unsafe and duplicate ids', () => {
@@ -178,7 +178,7 @@ test('product update policy rejects escaped, duplicate, and overlapping destinat
 })
 
 test('product update policy rejects a destination that crosses an existing symlink', (t) => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-policy-symlink-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-policy-symlink-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const product = join(root, 'product')
   const outside = join(root, 'outside')
@@ -292,7 +292,7 @@ test('product update policy validates required source metadata before refresh', 
 })
 
 test('policy reader and refresh fail before network or an escaped path can be touched', async (t) => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-policy-test-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-policy-test-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const product = join(root, 'product')
   mkdirSync(product, { recursive: true })
@@ -341,7 +341,7 @@ test('archive extraction limits reject excessive entry count and expanded bytes'
 })
 
 test('archive listing rejects traversal paths and link entries before extraction', (t) => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-archive-test-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-archive-test-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const traversal = join(root, 'traversal.tgz')
   writeFileSync(traversal, tarGzip([{ name: '../escape', body: 'owned' }]))

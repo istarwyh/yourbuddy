@@ -1,4 +1,4 @@
-/** General-settings card for YourHarness application-wide network proxy policy. */
+/** General-settings card for YourBuddy application-wide network proxy policy. */
 
 import { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'

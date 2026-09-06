@@ -255,7 +255,7 @@ window.__ModuleLoader__.load({
       return promise;
     }
 
-    var marketplaceLinkChannel = "yourharness.desktop.marketplace-link";
+    var marketplaceLinkChannel = "yourbuddy.desktop.marketplace-link";
     var marketplaceLinkVersion = 1;
     var marketplaceLinkSequence = 0;
     function openMarketplaceLink(event, url) {

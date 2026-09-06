@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-23-harbor-host-model-bridge.md
-2026-08-23-harbor-host-model-bridge.md: 171c1b5b58c4dd3a7860a57b6d9453b241ec871b
-2026-08-23-harbor-host-model-bridge.zh.md: e62ca6ed5666a97291a67a34aed962b744aaa294
+2026-08-23-harbor-host-model-bridge.md: 8f3294035d3c6666be92b8a3f68d857c823dd473
+2026-08-23-harbor-host-model-bridge.zh.md: 86394897b195fd2fbdd9d4812977cfc371dc5913

@@ -1,4 +1,4 @@
-/** Resolve and validate the official DSH release selected for YourHarness. */
+/** Resolve and validate the official DSH release selected for YourBuddy. */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -60,7 +60,7 @@ export function validateDshUpdatePolicy(value) {
 }
 
 /**
- * Read YourHarness's DSH update policy.
+ * Read YourBuddy's DSH update policy.
  *
  * @param {string} productRoot
  * @returns {ReturnType<typeof validateDshUpdatePolicy>}
@@ -72,7 +72,7 @@ export function readDshUpdatePolicy(productRoot) {
 }
 
 /**
- * Validate the immutable DSH source recorded in a YourHarness release input.
+ * Validate the immutable DSH source recorded in a YourBuddy release input.
  *
  * @param {unknown} value
  * @returns {{repository: string, channel: 'stable-else-rc', tag: string, version: string, commit: string}}
@@ -95,7 +95,7 @@ export function validateDshProvenance(value) {
 }
 
 /**
- * Read the immutable DSH source recorded for the current YourHarness tree.
+ * Read the immutable DSH source recorded for the current YourBuddy tree.
  *
  * @param {string} productRoot
  * @returns {ReturnType<typeof validateDshProvenance>}
@@ -174,7 +174,7 @@ export function selectAllowedDshRelease(policy, releases) {
 function requestHeaders(url) {
   const headers = {
     accept: 'application/vnd.github+json',
-    'user-agent': 'yourharness-release-preparation',
+    'user-agent': 'yourbuddy-release-preparation',
   }
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
   if (token && new URL(url).hostname === 'api.github.com') headers.authorization = `Bearer ${token}`
@@ -222,7 +222,7 @@ async function resolveTagCommit(repository, tag, fetchImpl) {
 }
 
 /**
- * Resolve the current official DSH Release allowed by YourHarness's channel policy.
+ * Resolve the current official DSH Release allowed by YourBuddy's channel policy.
  *
  * @param {ReturnType<typeof validateDshUpdatePolicy>} policy
  * @param {typeof fetch} fetchImpl
@@ -271,6 +271,6 @@ export function assertCurrentDshRelease(state) {
     throw new Error(`DSH upstream provenance channel=${provenance.channel} does not match ${supportedChannel}`)
   }
   if (!isAncestor) {
-    throw new Error(`official DSH commit ${release.commit} is not an ancestor of the YourHarness release input`)
+    throw new Error(`official DSH commit ${release.commit} is not an ancestor of the YourBuddy release input`)
   }
 }

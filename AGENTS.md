@@ -1,6 +1,6 @@
 # AGENTS.md
 
-YourHarness packages DeepSeek Harness and Sakana in `apps/desktop-tauri/`. The runtime uses vendored Cordis: **everything is a plugin**. Preserve upstream package names and licenses. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
+YourBuddy packages DeepSeek Harness and Sakana in `apps/desktop-tauri/`. The runtime uses vendored Cordis: **everything is a plugin**. Preserve upstream package names and licenses. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
 
 ## Pre-release stance: foundation over blast radius
 
@@ -52,7 +52,7 @@ examples/    Runnable cordis.yml leaves over packages/examples bundles (see exam
 .agents/     Agent workflows and Agent Notes (`notes/`)
 docs/        architecture, generated catalogs, postmortems, cookbook (see docs/AGENTS.md)
 scripts/     repo gates and generators
-website/     VitePress projection of selected bilingual docs/ sources
+website/     VitePress SDK and OINK product projections of bilingual docs/ sources
 ```
 
 Package groups: [packages/README.md](packages/README.md).
@@ -74,7 +74,7 @@ pnpm run build          # tsc emits lib/types, tsdown bundles runtime
 pnpm run hygiene        # knip + publint + workspace constraints + NodeNext consumer check
 pnpm run check:windows-wine  # ONLY when diagnosing a known Windows failure (needs wine); CI owns this signal
 pnpm run doc-sync       # all documentation gates; leaf list in scripts/run-gates.ts
-pnpm run website:build  # VitePress build (doubles as dead-link check)
+pnpm run website:build  # OINK product build and link checks (Hugo + Go required)
 pnpm dsh --profile headless "task"  # run one task from source (needs DEEPSEEK_API_KEY)
 pnpm run demo:cordis    # the agent modifies its own runtime (needs key)
 pnpm run demo:acp       # ACP automation server (needs DEEPSEEK_API_KEY)

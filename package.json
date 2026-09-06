@@ -99,8 +99,8 @@
     "docs:build:mpa": "tsx website/build.ts --mpa && pnpm run verify-doc-site-fragments",
     "docs:preview": "pnpm --filter @deepseek-ai/website run preview",
     "docs:check": "pnpm exec vitest run scripts/project-doc-site.spec.ts scripts/verify-doc-site-fragments.spec.ts && pnpm run docs:build",
-    "website:dev": "pnpm run docs:dev",
-    "website:build": "pnpm run docs:build",
+    "website:dev": "tsx scripts/product-site.ts dev",
+    "website:build": "tsx scripts/product-site.ts build && tsx scripts/verify-product-site.ts",
     "verify-package-readme-limitations": "tsx scripts/verify-package-readme-limitations.ts",
     "verify-node-next-types": "tsx scripts/verify-node-next-types.ts",
     "verify-optional-dependency-imports": "tsx scripts/verify-optional-dependency-imports.ts",
@@ -155,7 +155,8 @@
     "demo:inspector": "node --import tsx/esm apps/cli/src/bin.ts web --patch ./packages/experimental/inspector/cordis.source.patch.yml",
     "mock:llm": "node --import tsx packages/test-support/llm-mock-server/src/bin.ts",
     "dev:web": "tsx scripts/dev-web.ts --poll",
-    "postinstall": "node scripts/install-lefthook.mjs"
+    "postinstall": "node scripts/install-lefthook.mjs",
+    "website:check": "vitest run scripts/product-site.spec.ts scripts/project-doc-site.spec.ts && pnpm run website:build"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-tool-session-query": "workspace:^",

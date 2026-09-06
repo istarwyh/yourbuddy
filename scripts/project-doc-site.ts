@@ -53,6 +53,10 @@ export interface RewriteMarkdownOptions {
   pages: DocsPage[]
   repoRoot: string
   repositoryRef: string
+  /** Source repository for unpublished links; defaults to the upstream SDK repository. */
+  repositoryUrl?: string
+  /** Format a published route for another static renderer, including its deployment base path. */
+  publishedUrl?: (route: string) => string
   /**
    * Place one referenced image beside the projected page and return the URL to
    * reach it from that page. A GitHub raw URL cannot serve this repository —
@@ -138,12 +142,13 @@ function githubTarget(
   repositoryRef: string,
   repoRoot: string,
   image: boolean,
+  repositoryUrl = REPOSITORY_URL,
 ): string {
   const path = repoPath(absPath, repoRoot)
-  if (image) return `https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/${repositoryRef}/${path}${suffix}`
+  if (image) return `${repositoryUrl.replace('https://github.com/', 'https://raw.githubusercontent.com/')}/${repositoryRef}/${path}${suffix}`
   const kind = lstatSync(absPath).isDirectory() ? 'tree' : 'blob'
   const lineSuffix = line === undefined ? suffix : `#L${line}`
-  return `${REPOSITORY_URL}/${kind}/${repositoryRef}/${path}${lineSuffix}`
+  return `${repositoryUrl}/${kind}/${repositoryRef}/${path}${lineSuffix}`
 }
 
 /**
@@ -171,12 +176,14 @@ export function rewriteMarkdown(source: string, options: RewriteMarkdownOptions)
       : options.locale
     const page = published.get(targetPath)?.get(targetLocale)
     const nextUrl = page !== undefined
-      ? routeTarget(options.route, page.route, suffix)
+      ? options.publishedUrl === undefined
+        ? routeTarget(options.route, page.route, suffix)
+        : `${options.publishedUrl(page.route)}${suffix}`
       : node.type === 'image' && options.placeImage !== undefined
         // The suffix rides along exactly as the GitHub branch keeps it: an SVG
         // view fragment or a Vite query changes what the reference means.
         ? `${options.placeImage(absPath)}${suffix}`
-        : githubTarget(absPath, line, suffix, options.repositoryRef, options.repoRoot, node.type === 'image')
+        : githubTarget(absPath, line, suffix, options.repositoryRef, options.repoRoot, node.type === 'image', options.repositoryUrl)
 
     const destination = markdownDestination(source, node)
     replacements.push({

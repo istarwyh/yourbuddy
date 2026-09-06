@@ -1,0 +1,139 @@
+{
+  "sections": [
+    {
+      "type": "hero",
+      "partial": "yourbuddy/hero.html"
+    },
+    {
+      "type": "cards",
+      "key": "example",
+      "partial": "yourbuddy/example.html"
+    },
+    {
+      "type": "cards",
+      "key": "workflow",
+      "partial": "yourbuddy/workflow.html"
+    },
+    {
+      "type": "cards",
+      "key": "plugins",
+      "partial": "yourbuddy/plugins.html"
+    },
+    {
+      "type": "cta",
+      "partial": "yourbuddy/cta.html"
+    }
+  ],
+  "hero": {
+    "title_lines": [
+      "Your AI buddy,",
+      "right in your workspace."
+    ],
+    "lead": "Read documents, write files, and run tools. Choose your model, work on your own Mac, and inspect the files and changes along the way.",
+    "note": "macOS · Apple Silicon · YourBuddy installer pending",
+    "status_label": "Check download status",
+    "actions": [
+      {
+        "label": "Start your first task",
+        "url": "docs/start/",
+        "style": "primary"
+      },
+      {
+        "label": "Meet YourBuddy",
+        "url": "docs/about/"
+      }
+    ]
+  },
+  "example": {
+    "title": "Start with something small.",
+    "desc": "Example task: write a plan in your workspace, then open the file to review it.",
+    "url": "docs/start/",
+    "link_label": "Read the full walkthrough",
+    "items": [
+      {
+        "title": "Try asking",
+        "desc": "Create hello-yourbuddy.md in the current directory with three tasks for this week and an acceptance criterion for each. Tell me where you saved it."
+      },
+      {
+        "title": "Choose a model and folder",
+        "desc": "Connect an available account or API and select a practice folder."
+      },
+      {
+        "title": "Give YourBuddy the task",
+        "desc": "Send your request and respond to any approval prompts in the app."
+      },
+      {
+        "title": "Open the file and check it",
+        "desc": "Read the result in the file panel. In a Git repository, you can also review the diff."
+      }
+    ]
+  },
+  "workflow": {
+    "title": "Work the way you choose.",
+    "items": [
+      {
+        "title": "Bring your model",
+        "desc": "Connect an account or provider and switch models for each task. Manage model settings separately from your workspace.",
+        "url": "docs/models/"
+      },
+      {
+        "title": "Keep your files close",
+        "desc": "Work in your own directory, with direct access to files, the editor, terminal, and Git panels.",
+        "url": "docs/workspace/"
+      },
+      {
+        "title": "Inspect, then improve",
+        "desc": "Review the files and task results first. Use session diagnostics, experiments, and evaluations when you need to compare changes.",
+        "url": "docs/evaluation/"
+      }
+    ]
+  },
+  "cta": {
+    "title": "Open a folder you know.",
+    "desc": "Choose a model and try a small task. The guide walks you through your first session.",
+    "actions": [
+      {
+        "label": "Read the getting-started guide",
+        "url": "docs/start/",
+        "style": "primary"
+      },
+      {
+        "label": "See what comes next",
+        "url": "roadmap/"
+      }
+    ]
+  },
+  "plugins": {
+    "title": "A few useful tools, included.",
+    "desc": "These five community plugins come with YourBuddy to help with model access, files, context, and extensions. Each is an independent project, with its source, selection rationale, and prerequisites documented.",
+    "url": "plugins/",
+    "link_label": "Read about the included plugins",
+    "items": [
+      {
+        "title": "Codex Auth",
+        "desc": "Connect an existing account for models, search, and image capabilities with less repeated setup.",
+        "url": "plugins/codex-auth/"
+      },
+      {
+        "title": "Better Sidebar",
+        "desc": "Keep files, the editor, terminal, and Git in the sidebar so you can inspect task results.",
+        "url": "plugins/better-sidebar/"
+      },
+      {
+        "title": "Context Doctor",
+        "desc": "Inspect context usage, duplicate content, and shadowed skills to help diagnose session issues.",
+        "url": "plugins/context-doctor/"
+      },
+      {
+        "title": "Plugin Marketplace",
+        "desc": "Explore available extensions and their sources before adding the tools you need.",
+        "url": "plugins/marketplace/"
+      },
+      {
+        "title": "Harbor Evolution",
+        "desc": "Diagnose sessions using task evidence and run controlled experiments and evaluations when needed.",
+        "url": "plugins/harbor-evolution/"
+      }
+    ]
+  }
+}

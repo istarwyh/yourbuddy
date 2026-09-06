@@ -1,4 +1,4 @@
-//! Restricted external links requested by embedded YourHarness Clients.
+//! Restricted external links requested by embedded YourBuddy Clients.
 
 use url::Url;
 

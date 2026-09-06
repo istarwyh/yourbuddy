@@ -711,7 +711,7 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
     #[test]
     fn native_desktop_host_orders_launcher_patches_before_web_arguments() {
         let args = native_web_args(
-            Path::new("/Applications/YourHarness.app/cli.js"),
+            Path::new("/Applications/YourBuddy.app/cli.js"),
             17890,
             Some(Path::new("/tmp/desktop-overlay.yml")),
             Some(Path::new("/tmp/rescue-overlay.yml")),
@@ -723,7 +723,7 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
         assert_eq!(
             values,
             [
-                "/Applications/YourHarness.app/cli.js",
+                "/Applications/YourBuddy.app/cli.js",
                 "web",
                 "--patch",
                 "/tmp/desktop-overlay.yml",

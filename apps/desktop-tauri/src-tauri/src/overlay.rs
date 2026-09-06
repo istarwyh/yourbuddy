@@ -54,7 +54,7 @@ pub fn notification_overlay_yaml(plugin_url: &str) -> String {
     format!("- insert:\n    - id: dsh-desktop-notify\n      name: {plugin_url}\n")
 }
 
-/// Render the YourHarness product and desktop-notification rows loaded after the web profile.
+/// Render the YourBuddy product and desktop-notification rows loaded after the web profile.
 ///
 /// The configured project root backs the global Web Workbench. Agent Tool
 /// calls resolve a separate request-local root from their calling session.
@@ -66,7 +66,7 @@ pub fn overlay_yaml(plugin_url: &str, product: &ProductRuntime) -> String {
     let harbor_dsh_bin = serde_json::to_string(&product.harbor_dsh_bin.display().to_string())
         .unwrap_or_else(|_| "\"\"".into());
     format!(
-        "{}- id: web\n  config:\n    searchProvider: codex\n\n- id: agent-presets\n  config:\n    default: codex\n\n- id: harbor-evolution\n  config:\n    projectRoot: {project_root}\n    jobsDir: \"jobs\"\n    harborBin: {harbor_bin}\n    harborDshBin: {harbor_dsh_bin}\n    pythonPath: \"\"\n\n- insert:\n    - id: yourharness-subagent-codex\n      name: '@deepseek-ai/dsh-subagent-codex'\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === '@deepseek-ai/dsh-subagent-codex' && e.options.id !== 'yourharness-subagent-codex' && !e.disabled)\"\n    - id: yourharness-llm-codex-auth\n      name: dsh-codex-auth\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth' && e.options.id !== 'yourharness-llm-codex-auth' && !e.disabled)\"\n    - id: yourharness-codex-search\n      name: dsh-codex-auth/search\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/search' && e.options.id !== 'yourharness-codex-search' && !e.disabled)\"\n    - id: yourharness-codex-image\n      name: dsh-codex-auth/image\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/image' && e.options.id !== 'yourharness-codex-image' && !e.disabled)\"\n    - id: yourharness-better-sidebar\n      name: dsh-better-sidebar\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'yourharness-better-sidebar' && !e.disabled)\"\n    - id: yourharness-context-doctor\n      name: dsh-context-doctor\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-context-doctor' && e.options.id !== 'yourharness-context-doctor' && !e.disabled)\"\n    - id: yourharness-plugin-marketplace\n      name: dsh-plugin-marketplace\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-plugin-marketplace' && e.options.id !== 'yourharness-plugin-marketplace' && !e.disabled)\"\n    - id: yourharness-personal-workbench\n      name: dsh-personal-workbench\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-personal-workbench' && e.options.id !== 'yourharness-personal-workbench' && !e.disabled)\"\n    - id: yourharness-harbor-evolution\n      name: dsh-harbor-evolution\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-harbor-evolution' && e.options.id !== 'yourharness-harbor-evolution' && !e.disabled)\"\n      config:\n        projectRoot: {project_root}\n        jobsDir: \"jobs\"\n        harborBin: {harbor_bin}\n        harborDshBin: {harbor_dsh_bin}\n        pythonPath: \"\"\n",
+        "{}- id: web\n  config:\n    searchProvider: codex\n\n- id: agent-presets\n  config:\n    default: codex\n\n- id: harbor-evolution\n  config:\n    projectRoot: {project_root}\n    jobsDir: \"jobs\"\n    harborBin: {harbor_bin}\n    harborDshBin: {harbor_dsh_bin}\n    pythonPath: \"\"\n\n- insert:\n    - id: yourbuddy-subagent-codex\n      name: '@deepseek-ai/dsh-subagent-codex'\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === '@deepseek-ai/dsh-subagent-codex' && e.options.id !== 'yourbuddy-subagent-codex' && !e.disabled)\"\n    - id: yourbuddy-llm-codex-auth\n      name: dsh-codex-auth\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth' && e.options.id !== 'yourbuddy-llm-codex-auth' && !e.disabled)\"\n    - id: yourbuddy-codex-search\n      name: dsh-codex-auth/search\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/search' && e.options.id !== 'yourbuddy-codex-search' && !e.disabled)\"\n    - id: yourbuddy-codex-image\n      name: dsh-codex-auth/image\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/image' && e.options.id !== 'yourbuddy-codex-image' && !e.disabled)\"\n    - id: yourbuddy-better-sidebar\n      name: dsh-better-sidebar\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'yourbuddy-better-sidebar' && !e.disabled)\"\n    - id: yourbuddy-context-doctor\n      name: dsh-context-doctor\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-context-doctor' && e.options.id !== 'yourbuddy-context-doctor' && !e.disabled)\"\n    - id: yourbuddy-plugin-marketplace\n      name: dsh-plugin-marketplace\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-plugin-marketplace' && e.options.id !== 'yourbuddy-plugin-marketplace' && !e.disabled)\"\n    - id: yourbuddy-personal-workbench\n      name: dsh-personal-workbench\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-personal-workbench' && e.options.id !== 'yourbuddy-personal-workbench' && !e.disabled)\"\n    - id: yourbuddy-harbor-evolution\n      name: dsh-harbor-evolution\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-harbor-evolution' && e.options.id !== 'yourbuddy-harbor-evolution' && !e.disabled)\"\n      config:\n        projectRoot: {project_root}\n        jobsDir: \"jobs\"\n        harborBin: {harbor_bin}\n        harborDshBin: {harbor_dsh_bin}\n        pythonPath: \"\"\n",
         notification_overlay_yaml(plugin_url)
     )
 }
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn overlay_yaml_names_linux_url() {
-        let root = std::path::PathBuf::from("/tmp/yourharness");
+        let root = std::path::PathBuf::from("/tmp/yourbuddy");
         let yaml = overlay_yaml(
             "file:///home/u/.dsh/desktop-overlay/index.mjs",
             &product(&root),
@@ -236,25 +236,25 @@ mod tests {
         assert!(!yaml.contains("file:///C:"));
         assert!(yaml.contains("searchProvider: codex"));
         assert!(yaml.contains("id: agent-presets\n  config:\n    default: codex"));
-        assert!(yaml.contains("id: yourharness-subagent-codex"));
+        assert!(yaml.contains("id: yourbuddy-subagent-codex"));
         assert!(yaml.contains("name: '@deepseek-ai/dsh-subagent-codex'"));
-        assert!(yaml.contains("e.options.id !== 'yourharness-subagent-codex' && !e.disabled"));
-        assert!(yaml.contains("id: yourharness-llm-codex-auth"));
+        assert!(yaml.contains("e.options.id !== 'yourbuddy-subagent-codex' && !e.disabled"));
+        assert!(yaml.contains("id: yourbuddy-llm-codex-auth"));
         assert!(yaml.contains("name: dsh-codex-auth/search"));
         assert!(yaml.contains("name: dsh-codex-auth/image"));
-        assert!(yaml.contains("id: yourharness-better-sidebar"));
+        assert!(yaml.contains("id: yourbuddy-better-sidebar"));
         assert!(yaml.contains("name: dsh-better-sidebar"));
-        assert!(yaml.contains("id: yourharness-context-doctor"));
+        assert!(yaml.contains("id: yourbuddy-context-doctor"));
         assert!(yaml.contains("name: dsh-context-doctor"));
-        assert!(yaml.contains("id: yourharness-plugin-marketplace"));
+        assert!(yaml.contains("id: yourbuddy-plugin-marketplace"));
         assert!(yaml.contains("name: dsh-plugin-marketplace"));
-        assert!(yaml.contains("id: yourharness-personal-workbench"));
+        assert!(yaml.contains("id: yourbuddy-personal-workbench"));
         assert!(yaml.contains("name: dsh-personal-workbench"));
         assert!(yaml.contains("id: harbor-evolution"));
-        assert!(yaml.contains("id: yourharness-harbor-evolution"));
+        assert!(yaml.contains("id: yourbuddy-harbor-evolution"));
         assert!(yaml.contains("name: dsh-harbor-evolution"));
         assert!(yaml.contains("ctx.loader.entries()"));
-        assert!(yaml.contains("projectRoot: \"/tmp/yourharness/workspace\""));
+        assert!(yaml.contains("projectRoot: \"/tmp/yourbuddy/workspace\""));
     }
 
     #[test]
@@ -294,18 +294,18 @@ mod tests {
         assert!(plugin_url.contains("%20"), "{plugin_url}");
         assert!(!plugin_url.contains('\\'), "{plugin_url}");
         assert!(yaml.contains("id: dsh-desktop-notify"));
-        assert!(yaml.contains("id: yourharness-subagent-codex"));
+        assert!(yaml.contains("id: yourbuddy-subagent-codex"));
         assert!(yaml.contains("name: '@deepseek-ai/dsh-subagent-codex'"));
-        assert!(yaml.contains("id: yourharness-plugin-marketplace"));
+        assert!(yaml.contains("id: yourbuddy-plugin-marketplace"));
         assert!(yaml.contains("name: dsh-plugin-marketplace"));
-        assert!(yaml.contains("id: yourharness-llm-codex-auth"));
-        assert!(yaml.contains("id: yourharness-codex-search"));
-        assert!(yaml.contains("id: yourharness-codex-image"));
-        assert!(yaml.contains("id: yourharness-better-sidebar"));
-        assert!(yaml.contains("id: yourharness-context-doctor"));
-        assert!(yaml.contains("id: yourharness-personal-workbench"));
+        assert!(yaml.contains("id: yourbuddy-llm-codex-auth"));
+        assert!(yaml.contains("id: yourbuddy-codex-search"));
+        assert!(yaml.contains("id: yourbuddy-codex-image"));
+        assert!(yaml.contains("id: yourbuddy-better-sidebar"));
+        assert!(yaml.contains("id: yourbuddy-context-doctor"));
+        assert!(yaml.contains("id: yourbuddy-personal-workbench"));
         assert!(yaml.contains("id: harbor-evolution"));
-        assert!(yaml.contains("id: yourharness-harbor-evolution"));
+        assert!(yaml.contains("id: yourbuddy-harbor-evolution"));
         assert!(yaml.contains(&format!("name: \"{plugin_url}\"")), "{yaml}");
         let _ = fs::remove_dir_all(&root);
     }

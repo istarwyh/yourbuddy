@@ -110,7 +110,7 @@ test('approved peer removals are exact-version metadata changes', () => {
 })
 
 test('product compatibility rejects a peer range that excludes the bundled prerelease', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-plugin-compat-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-plugin-compat-'))
   try {
     fixturePlugin(root, {
       peerDependencies: { '@deepseek-ai/dsh-tools': '>=0.1.0-rc.6' },
@@ -130,7 +130,7 @@ test('product compatibility rejects a peer range that excludes the bundled prere
 })
 
 test('product compatibility accepts matching peers and rejects bundled DSH dependencies', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-plugin-compat-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-plugin-compat-'))
   try {
     fixturePlugin(root)
     const workspace = new Map([
@@ -153,7 +153,7 @@ test('product compatibility accepts matching peers and rejects bundled DSH depen
 })
 
 test('product compatibility rejects manifest entries outside the plugin snapshot', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-plugin-compat-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-plugin-compat-'))
   try {
     fixturePlugin(root, { main: join(root, 'lib', 'index.js') })
     const workspace = new Map([
@@ -171,7 +171,7 @@ test('product compatibility rejects manifest entries outside the plugin snapshot
 })
 
 test('lock importer parsing and peer-link gate reject a registry DSH copy', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-product-lock-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-product-lock-'))
   const product = join(root, 'packages', 'product', 'fixture')
   const tools = join(root, 'packages', 'core', 'tools')
   try {

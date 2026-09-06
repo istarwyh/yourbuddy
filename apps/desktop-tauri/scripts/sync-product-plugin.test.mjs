@@ -47,8 +47,8 @@ function createDestination(root, label) {
   writeFileSync(join(root, 'README.i18n.yaml'), `source: ${label}\n`)
 }
 
-test('syncProductPlugin replaces a matching pair and preserves YourHarness translations', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-harbor-sync-'))
+test('syncProductPlugin replaces a matching pair and preserves YourBuddy translations', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-harbor-sync-'))
   const source = join(root, 'source', 'dsh-plugin')
   const pythonSource = join(root, 'source', 'harbor-plugin')
   const nodeDestination = join(root, 'product', 'harbor-evolution')
@@ -80,7 +80,7 @@ test('syncProductPlugin replaces a matching pair and preserves YourHarness trans
 })
 
 test('syncProductPlugin validates both package names and their shared version', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-harbor-pair-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-harbor-pair-'))
   const source = join(root, 'source', 'dsh-plugin')
   const pythonSource = join(root, 'source', 'harbor-plugin')
   const nodeDestination = join(root, 'product', 'harbor-evolution')
@@ -112,7 +112,7 @@ test('syncProductPlugin validates both package names and their shared version', 
 })
 
 test('syncProductPlugin rejects a missing artifact', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-harbor-missing-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-harbor-missing-'))
   const source = join(root, 'source', 'dsh-plugin')
   const pythonSource = join(root, 'source', 'harbor-plugin')
   try {
@@ -135,7 +135,7 @@ test('syncProductPlugin rejects a missing artifact', () => {
 })
 
 test('syncProductPlugin leaves both destinations untouched when validation fails', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-harbor-atomic-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-harbor-atomic-'))
   const source = join(root, 'source', 'dsh-plugin')
   const pythonSource = join(root, 'source', 'harbor-plugin')
   const productRoot = join(root, 'product')

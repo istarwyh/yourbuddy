@@ -20,7 +20,7 @@ The channel owners remain authoritative for versions, commands, and publication.
 
 | Channel | Release identifier | Existing procedure | Publication to verify |
 |---|---|---|---|
-| YourHarness desktop | `yourharness-vX.Y.Z` | [Desktop release guide](../../apps/desktop-tauri/README.md) and [macOS workflow](../../.github/workflows/desktop-release.yml) | GitHub Release DMG, signed updater archive and signature, `SHA256SUMS.txt`, and the stable updater manifest |
+| YourBuddy desktop | `yourbuddy-vX.Y.Z` | [Desktop release guide](../../apps/desktop-tauri/README.md) and [macOS workflow](../../.github/workflows/desktop-release.yml) | GitHub Release DMG, signed updater archive and signature, `SHA256SUMS.txt`, and the stable updater manifest |
 | DSH packages and documentation | `dsh-vX.Y.Z` | [npm pack workflow](../../.github/workflows/release.yml), [manual npm publication](../../.github/workflows/release-publish.yml), and [documentation deployment](../../.github/workflows/docs-pages.yml) | Published npm versions and files, an installed-package smoke, and the reachable documentation site |
 | Vendored Cordis packages | `vendor-<package>-vX.Y.Z` | [Vendor pack workflow](../../.github/workflows/release-vendor.yml) and [manual npm publication](../../.github/workflows/release-vendor-publish.yml) | Each intended npm package version and its registry integrity |
 | Landlock launcher packages | `landlock-run-vX.Y.Z` | [Landlock release guide](../../native/landlock-run/docs/release.md) and [release workflow](../../.github/workflows/landlock-run-release.yml) | Every intended platform and entry package on npm, including the expected dist-tag |

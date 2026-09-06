@@ -103,7 +103,7 @@ pub async fn ensure_runtime(
     progress(ProvisionEvent::Progress(8));
     let dsh_home = isolated_home;
     fs::create_dir_all(&dsh_home)
-        .map_err(|e| format!("cannot create YourHarness home {}: {e}", dsh_home.display()))?;
+        .map_err(|e| format!("cannot create YourBuddy home {}: {e}", dsh_home.display()))?;
     progress(ProvisionEvent::Status(i18n::t(Msg::StatusHomeNone).into()));
 
     if manifest_ready(&manifest_path, &bundled, &harness_root, &cli_entry) {
@@ -342,7 +342,7 @@ fn resolve_local_repo() -> Result<RuntimePaths, String> {
 
     let dsh_home = app_data_root()?.join("dsh-home");
     fs::create_dir_all(&dsh_home)
-        .map_err(|e| format!("cannot create YourHarness home {}: {e}", dsh_home.display()))?;
+        .map_err(|e| format!("cannot create YourBuddy home {}: {e}", dsh_home.display()))?;
 
     Ok(RuntimePaths {
         node_binary,
@@ -1239,7 +1239,7 @@ mod tests {
     fn offline_install_uses_only_the_pinned_manager_and_reviewed_lockfile() {
         let dir = std::env::temp_dir().join(format!("dsh-pnpm-args-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(dir.join(".yourharness-pnpm-store")).unwrap();
+        fs::create_dir_all(dir.join(".yourbuddy-pnpm-store")).unwrap();
         let mut command = Command::new("pnpm");
         configure_pnpm_install(&mut command, Path::new("node"), &dir).unwrap();
         let args: Vec<String> = command
@@ -1258,7 +1258,7 @@ mod tests {
             ]
         );
         assert_eq!(args[6], "--store-dir");
-        assert_eq!(Path::new(&args[7]), dir.join(".yourharness-pnpm-store"));
+        assert_eq!(Path::new(&args[7]), dir.join(".yourbuddy-pnpm-store"));
         let _ = fs::remove_dir_all(&dir);
     }
 

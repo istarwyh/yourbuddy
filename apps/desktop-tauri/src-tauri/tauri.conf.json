@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "YourHarness",
+  "productName": "YourBuddy",
   "version": "0.3.0",
-  "identifier": "io.github.istarwyh.yourharness",
+  "identifier": "io.github.istarwyh.yourbuddy",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://127.0.0.1:1430",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "splash",
-        "title": "YourHarness",
+        "title": "YourBuddy",
         "width": 520,
         "height": 480,
         "resizable": false,
@@ -35,7 +35,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IERCREZDNUUyOEVGNTgxRUIKUldUcmdmV080c1hmMjJUck9DMm4wUnE2OWo3b3EwWHQzYlpSWWZXd3Jvdy9uZGprcW54dUxLQU0K",
       "endpoints": [
-        "https://github.com/istarwyh/yourharness/releases/download/yourharness-updater/latest.json"
+        "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-updater/latest.json"
       ],
       "windows": {
         "installMode": "passive"
@@ -59,10 +59,10 @@
     "resources": {
       "../bundled/harness": "harness-source",
       "../bundled/toolchain": "toolchain",
-      "../bundled/yourharness-runtime": "yourharness-runtime",
+      "../bundled/yourbuddy-runtime": "yourbuddy-runtime",
       "../overlay/desktop-notify": "desktop-overlay",
       "../sounds/complete.wav": "complete.wav",
-      "icons/icon.ico": "yourharness-icon-0.3.0.ico"
+      "icons/icon.ico": "yourbuddy-icon-0.3.0.ico"
     },
     "windows": {
       "nsis": {

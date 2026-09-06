@@ -17,7 +17,7 @@ import {
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 test('product web identity replaces upstream branding and preserves manifest behavior', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-web-identity-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-web-identity-'))
   try {
     assert.throws(() => installProductWebIdentity(root), /ENOENT/)
     const web = join(root, 'apps', 'web', 'dist')
@@ -26,7 +26,7 @@ test('product web identity replaces upstream branding and preserves manifest beh
     writeFileSync(join(web, 'manifest.webmanifest'), JSON.stringify(upstream))
     installProductWebIdentity(root)
     assert.deepEqual(JSON.parse(readFileSync(join(web, 'manifest.webmanifest'), 'utf8')), {
-      ...upstream, name: 'YourHarness', short_name: 'YourHarness',
+      ...upstream, name: 'YourBuddy', short_name: 'YourBuddy',
     })
     assert.equal(readFileSync(join(web, 'favicon.svg'), 'utf8'), readFileSync(join(desktopRoot, 'app-icon.svg'), 'utf8'))
   } finally {
@@ -93,12 +93,12 @@ test('buildTrimmedWorkspaceYaml rejects a workspace without a packages block', (
   assert.throws(() => buildTrimmedWorkspaceYaml('linkWorkspacePackages: true\n'), /packages/)
 })
 
-test('hashExternalSnapshot ignores only the YourHarness provenance sidecar', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-external-plugin-'))
+test('hashExternalSnapshot ignores only the YourBuddy provenance sidecar', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-external-plugin-'))
   try {
     writeFileSync(join(root, 'package.json'), '{"name":"example"}\n')
     const before = hashExternalSnapshot(root)
-    writeFileSync(join(root, 'YOURHARNESS_UPSTREAM.json'), '{"treeSha256":"recorded"}\n')
+    writeFileSync(join(root, 'YOURBUDDY_UPSTREAM.json'), '{"treeSha256":"recorded"}\n')
     assert.equal(hashExternalSnapshot(root), before)
     writeFileSync(join(root, 'package.json'), '{"name":"changed"}\n')
     assert.notEqual(hashExternalSnapshot(root), before)
@@ -109,7 +109,7 @@ test('hashExternalSnapshot ignores only the YourHarness provenance sidecar', () 
 })
 
 test('installDefaultAgentPreset creates the Codex preset without changing standard', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-codex-preset-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-codex-preset-'))
   const presetsRoot = join(root, 'packages', 'preset', 'agent-presets', 'presets')
   const standard = join(presetsRoot, 'standard')
   mkdirSync(standard, { recursive: true })
@@ -145,7 +145,7 @@ test('installDefaultAgentPreset creates the Codex preset without changing standa
     assert.match(composition, /tool-subagent-claude-code[\s\S]*disabled: true/)
     assert.equal(
       readFileSync(join(codexRoot, 'preset.yml'), 'utf8'),
-      'name: Codex\ndescription: YourHarness 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。\norder: 0\n',
+      'name: Codex\ndescription: YourBuddy 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。\norder: 0\n',
     )
     assert.equal(readFileSync(join(standard, 'agent.cordis.yml'), 'utf8'), source)
   }
@@ -154,8 +154,8 @@ test('installDefaultAgentPreset creates the Codex preset without changing standa
   }
 })
 
-test('installProductPlugins makes every YourHarness plugin an in-box CLI dependency', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-product-plugin-'))
+test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependency', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-product-plugin-'))
   const cli = join(root, 'apps', 'cli')
   mkdirSync(cli, { recursive: true })
   writeFileSync(join(cli, 'package.json'), '{"dependencies":{"kept":"1.0.0"}}\n')

@@ -1,4 +1,4 @@
-/** Refresh YourHarness's external product snapshots from their declared latest channels. */
+/** Refresh YourBuddy's external product snapshots from their declared latest channels. */
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import {
@@ -26,7 +26,7 @@ import {
   readWorkspacePackageVersions,
   validateProductPlugin,
 } from './product-plugin-compatibility.mjs'
-import { readPythonProjectMetadata } from './prepare-yourharness-runtime.mjs'
+import { readPythonProjectMetadata } from './prepare-yourbuddy-runtime.mjs'
 import { syncProductPlugin } from './sync-product-plugin.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -224,14 +224,14 @@ export function validateProductUpdatePolicy(
   selectedProductRoot = productRoot,
   policyPath = join(selectedProductRoot, 'plugin-update-policy.json'),
 ) {
-  if (!isPlainObject(value)) throw new Error(`unsupported YourHarness product update policy: ${policyPath}`)
+  if (!isPlainObject(value)) throw new Error(`unsupported YourBuddy product update policy: ${policyPath}`)
   assertOnlyFields(value, new Set(['formatVersion', 'managedNodeVersion', 'plugins']), 'product update policy')
   if (value.formatVersion !== 1
     || typeof value.managedNodeVersion !== 'string'
     || semver.valid(value.managedNodeVersion) !== value.managedNodeVersion
     || !Array.isArray(value.plugins)
     || value.plugins.length === 0) {
-    throw new Error(`unsupported YourHarness product update policy: ${policyPath}`)
+    throw new Error(`unsupported YourBuddy product update policy: ${policyPath}`)
   }
 
   const ids = new Set()
@@ -310,7 +310,7 @@ export function validateProductUpdatePolicy(
 }
 
 /**
- * Read and fully validate YourHarness's product update policy.
+ * Read and fully validate YourBuddy's product update policy.
  *
  * @param {string} selectedProductRoot
  * @returns {Record<string, unknown>}
@@ -322,7 +322,7 @@ export function readProductUpdatePolicy(selectedProductRoot = productRoot) {
     value = JSON.parse(readFileSync(selectedPolicyPath, 'utf8'))
   }
   catch (error) {
-    throw new Error(`cannot read YourHarness product update policy ${selectedPolicyPath}: ${error.message}`)
+    throw new Error(`cannot read YourBuddy product update policy ${selectedPolicyPath}: ${error.message}`)
   }
   return validateProductUpdatePolicy(value, selectedProductRoot, selectedPolicyPath)
 }
@@ -349,7 +349,7 @@ function githubToken() {
 }
 
 function requestHeaders(url) {
-  const headers = { 'user-agent': 'yourharness-release-preparation' }
+  const headers = { 'user-agent': 'yourbuddy-release-preparation' }
   if (new URL(url).hostname === 'api.github.com') {
     headers.accept = 'application/vnd.github+json'
     const token = githubToken()
@@ -691,7 +691,7 @@ function npmPackSnapshot(source, workRoot) {
 
 function readCurrent(destination) {
   const manifest = JSON.parse(readFileSync(join(destination, 'package.json'), 'utf8'))
-  const provenancePath = join(destination, 'YOURHARNESS_UPSTREAM.json')
+  const provenancePath = join(destination, 'YOURBUDDY_UPSTREAM.json')
   const provenance = existsSync(provenancePath)
     ? JSON.parse(readFileSync(provenancePath, 'utf8'))
     : undefined
@@ -699,8 +699,8 @@ function readCurrent(destination) {
 }
 
 function verifyManagedSnapshot(root, manifest) {
-  if (!existsSync(join(root, 'YOURHARNESS_UPSTREAM.json'))) {
-    throw new Error(`YourHarness product provenance is missing: ${manifest.name}@${manifest.version}`)
+  if (!existsSync(join(root, 'YOURBUDDY_UPSTREAM.json'))) {
+    throw new Error(`YourBuddy product provenance is missing: ${manifest.name}@${manifest.version}`)
   }
   verifyExternalSnapshot(root, manifest)
 }
@@ -713,7 +713,7 @@ function writeManifestIfChanged(root, manifest, changes) {
 
 function writeProvenance(root, provenance) {
   const value = { ...provenance, treeSha256: hashExternalSnapshot(root) }
-  writeFileSync(join(root, 'YOURHARNESS_UPSTREAM.json'), `${JSON.stringify(value, null, 2)}\n`)
+  writeFileSync(join(root, 'YOURBUDDY_UPSTREAM.json'), `${JSON.stringify(value, null, 2)}\n`)
   return value
 }
 
@@ -902,7 +902,7 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
     if (compatibilityPatches.length > 0) {
       const patches = [
         ...compatibilityPatches,
-        'Preserve the YourHarness bilingual README projection.',
+        'Preserve the YourBuddy bilingual README projection.',
       ]
       writeManifestIfChanged(staged, manifest, compatibilityPatches)
       validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
@@ -953,7 +953,7 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
   const compatibilityPatches = applyApprovedCompatibilityChanges(manifest, policy)
   const patches = [
     ...compatibilityPatches,
-    'Preserve the YourHarness bilingual README projection.',
+    'Preserve the YourBuddy bilingual README projection.',
   ]
   writeManifestIfChanged(staged, manifest, compatibilityPatches)
   validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
@@ -979,7 +979,7 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
     ...common,
     package: python.name,
     sourcePath: policy.pythonSourcePath,
-    patches: ['Preserve the YourHarness bilingual README projection.'],
+    patches: ['Preserve the YourBuddy bilingual README projection.'],
     license: manifest.license,
   })
   return [
@@ -1007,7 +1007,7 @@ function assertManagedPathsClean(policy) {
 }
 
 function applyUpdates(updates) {
-  const transaction = mkdtempSync(join(tmpdir(), 'yourharness-product-rollback-'))
+  const transaction = mkdtempSync(join(tmpdir(), 'yourbuddy-product-rollback-'))
   const backups = []
   try {
     for (const [index, update] of updates.entries()) {
@@ -1035,7 +1035,7 @@ function applyUpdates(updates) {
 }
 
 /**
- * Refresh every external YourHarness product source, applying only an all-valid set.
+ * Refresh every external YourBuddy product source, applying only an all-valid set.
  *
  * @param {{allowDirty?: boolean, dryRun?: boolean, fetchImpl?: typeof fetch, desktop?: string, repository?: string}} options
  */
@@ -1046,7 +1046,7 @@ export async function refreshProductPlugins(options = {}) {
   const policy = readProductUpdatePolicy(selectedProductRoot)
   if (!options.allowDirty && selectedDesktopRoot === desktopRoot) assertManagedPathsClean(policy)
 
-  const stagingRoot = mkdtempSync(join(tmpdir(), 'yourharness-product-refresh-'))
+  const stagingRoot = mkdtempSync(join(tmpdir(), 'yourbuddy-product-refresh-'))
   const roots = {
     productRoot: selectedProductRoot,
     stagingRoot,
@@ -1068,7 +1068,7 @@ export async function refreshProductPlugins(options = {}) {
         updates.push(...await stageGitHubReleasePair(plugin, roots, options.fetchImpl ?? globalThis.fetch))
       }
       else {
-        throw new Error(`unsupported YourHarness product update kind: ${plugin.kind}`)
+        throw new Error(`unsupported YourBuddy product update kind: ${plugin.kind}`)
       }
     }
     if (!options.dryRun) applyUpdates(updates)

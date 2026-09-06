@@ -78,7 +78,7 @@ test('release environments remove credentials and reproduce tagged Client brandi
   }
 
   const build = releaseBuildEnvironment(ambient)
-  assert.equal(build.DSH_CLIENT_TITLE, 'YourHarness')
+  assert.equal(build.DSH_CLIENT_TITLE, 'YourBuddy')
   assert.equal(build.DSH_CLIENT_FAVICON, undefined)
   assert.deepEqual(
     Object.keys(build).filter(name => name.startsWith('DSH_CLIENT_')),
@@ -107,7 +107,7 @@ test('releaseFetch confines GitHub credentials to GitHub API requests', async ()
 })
 
 test('isolatedReleaseEnvironment replaces ambient homes, DSH state, and temporary paths', () => {
-  const parent = mkdtempSync(join(tmpdir(), 'yourharness-release-environment-test-'))
+  const parent = mkdtempSync(join(tmpdir(), 'yourbuddy-release-environment-test-'))
   const isolated = isolatedReleaseEnvironment({
     HOME: '/Users/example',
     XDG_CONFIG_HOME: '/Users/example/.config',
@@ -125,7 +125,7 @@ test('isolatedReleaseEnvironment replaces ambient homes, DSH state, and temporar
     assert.equal(isolated.env.PATH, '/managed/bin')
     assert.equal(isolated.env.DSH_PROFILE, undefined)
     assert.equal(isolated.env.DSH_CLIENT_FAVICON, undefined)
-    assert.equal(isolated.env.DSH_CLIENT_TITLE, 'YourHarness')
+    assert.equal(isolated.env.DSH_CLIENT_TITLE, 'YourBuddy')
     for (const name of [
       'HOME',
       'XDG_CONFIG_HOME',
@@ -153,8 +153,8 @@ test('isolatedReleaseEnvironment replaces ambient homes, DSH state, and temporar
 })
 
 test('withProcessEnvironment restores the ambient environment after failure', async () => {
-  const ambientName = 'YOURHARNESS_PREPARE_RELEASE_AMBIENT_TEST'
-  const candidateName = 'YOURHARNESS_PREPARE_RELEASE_CANDIDATE_TEST'
+  const ambientName = 'YOURBUDDY_PREPARE_RELEASE_AMBIENT_TEST'
+  const candidateName = 'YOURBUDDY_PREPARE_RELEASE_CANDIDATE_TEST'
   const previousAmbient = process.env[ambientName]
   const previousCandidate = process.env[candidateName]
   process.env[ambientName] = 'ambient'

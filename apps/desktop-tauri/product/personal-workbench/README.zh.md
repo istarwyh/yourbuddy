@@ -2,9 +2,9 @@
 
 [English](README.md) | 中文
 
-这个第一方 YourHarness 产品插件负责三个通用设置卡片。用户可以在**设置 → 通用设置 → 我的工作台**中替换侧边栏工作台名称和 Logo、预览草稿并恢复 YourHarness 默认值。**设置 → 通用设置 → 网络代理**用于配置应用全局的直连、跟随 macOS 系统代理或自定义代理策略，通过 ChatGPT 分别测试桌面草稿链路与当前 Node Host 链路，并在保存后重启 YourHarness。**设置 → 通用设置 → 应用生命周期**会请求受信任的桌面 Shell 运行带签名的应用更新器，或在停止私有 Host 后重启整个应用。重启会加载通过 Plugin Marketplace 安装的插件。桌面操作在独立的 `dsh web` 中保持可见但不可用；浏览器请求不能选择任意 Tauri Command，代理配置不接受凭据，更新操作也不会在最终用户机器上刷新插件源码，因为内置产品插件会随带签名的应用 Release 一起升级。
+这个第一方 YourBuddy 产品插件负责三个通用设置卡片。用户可以在**设置 → 通用设置 → 我的工作台**中替换侧边栏工作台名称和 Logo、预览草稿并恢复 YourBuddy 默认值。**设置 → 通用设置 → 网络代理**用于配置应用全局的直连、跟随 macOS 系统代理或自定义代理策略，通过 ChatGPT 分别测试桌面草稿链路与当前 Node Host 链路，并在保存后重启 YourBuddy。**设置 → 通用设置 → 应用生命周期**会请求受信任的桌面 Shell 运行带签名的应用更新器，或在停止私有 Host 后重启整个应用。重启会加载通过 Plugin Marketplace 安装的插件。桌面操作在独立的 `dsh web` 中保持可见但不可用；浏览器请求不能选择任意 Tauri Command，代理配置不接受凭据，更新操作也不会在最终用户机器上刷新插件源码，因为内置产品插件会随带签名的应用 Release 一起升级。
 
-在 YourHarness 桌面应用中，助手 Markdown 渲染出的安全外链会使用操作系统默认浏览器打开。Client 只处理共享 Markdown Renderer 标记为新浏览上下文的绝对、不含凭据的 HTTP 与 HTTPS Anchor；同源与相对链接仍保留既有 Web 行为。悬停会显示规范化后的目标地址，自定义右键菜单可打开或复制链接。iframe 协议、Shell Validator 与 Rust Command 会分别拒绝其他协议和意外消息字段。独立 `dsh web` 仍使用浏览器的普通链接行为。
+在 YourBuddy 桌面应用中，助手 Markdown 渲染出的安全外链会使用操作系统默认浏览器打开。Client 只处理共享 Markdown Renderer 标记为新浏览上下文的绝对、不含凭据的 HTTP 与 HTTPS Anchor；同源与相对链接仍保留既有 Web 行为。悬停会显示规范化后的目标地址，自定义右键菜单可打开或复制链接。iframe 协议、Shell Validator 与 Rust Command 会分别拒绝其他协议和意外消息字段。独立 `dsh web` 仍使用浏览器的普通链接行为。
 
 工作台身份保存在当前 DSH Profile 的 `personal-workbench` 命名空间：
 
@@ -17,9 +17,9 @@ personal-workbench:
 
 浏览器会把上传图片保存为当前 Profile 中的 data URL。修改名称与 Logo 不会改变浏览器标题、可执行文件名、应用图标、主题或其他 UI 文案。
 
-网络代理保存在 YourHarness 原生桌面设置中，不属于 DSH Profile。直连模式会从应用进程树中移除继承的代理变量。跟随系统模式通过 `/usr/sbin/scutil` 读取 macOS 固定的 HTTP 与 HTTPS 代理 Endpoint；PAC、自动发现与只有 HTTP 的配置会被拒绝，因为把这些设置转换给 Node 子进程后无法保持相同的路由语义。自定义模式要求分别填写不含凭据的 HTTP 与 HTTPS URL，并可补充绕过主机；YourHarness 始终绕过自己的 Loopback Host。DSH CLI 会在加载启动环境后、导入 Profile Boot 前安装 Undici 环境代理 Dispatcher，使内置 Node 22.19 Host 的全局 `fetch` 路由不依赖后续 Node Flag 或已配置插件。YourHarness 会启用 Node 的系统 CA Store，原生 reqwest Client 则使用平台验证器。同一张设置卡可以通过原生对话框选择一个 PEM 编码的 `.pem` 或 `.crt` 企业 CA Bundle。YourHarness 会校验并规范化文件，只持久化其路径，把证书加入原生平台信任，移除环境中原有的 `NODE_EXTRA_CA_CERTS`，并在创建每个应用自有 Node 进程前设置所选路径；WSL 会收到对应的挂载路径。证书校验始终开启。设置测试会分别标注桌面草稿与运行中 Host 的结果，并且只返回可达性、HTTP 状态、是否使用代理、当前代理模式、CA 来源以及 `UNKNOWN_ISSUER`、`UNABLE_TO_VERIFY_LEAF_SIGNATURE` 等有界错误码；它不会返回请求错误、代理 URL、凭据或 CA 路径。所选策略会在用户确认的应用重启后生效；重启会先终止并等待当前私有 Host 退出，然后统一覆盖新 Host、插件子进程、Profile 安装、Runtime 预配与签名应用更新。
+网络代理保存在 YourBuddy 原生桌面设置中，不属于 DSH Profile。直连模式会从应用进程树中移除继承的代理变量。跟随系统模式通过 `/usr/sbin/scutil` 读取 macOS 固定的 HTTP 与 HTTPS 代理 Endpoint；PAC、自动发现与只有 HTTP 的配置会被拒绝，因为把这些设置转换给 Node 子进程后无法保持相同的路由语义。自定义模式要求分别填写不含凭据的 HTTP 与 HTTPS URL，并可补充绕过主机；YourBuddy 始终绕过自己的 Loopback Host。DSH CLI 会在加载启动环境后、导入 Profile Boot 前安装 Undici 环境代理 Dispatcher，使内置 Node 22.19 Host 的全局 `fetch` 路由不依赖后续 Node Flag 或已配置插件。YourBuddy 会启用 Node 的系统 CA Store，原生 reqwest Client 则使用平台验证器。同一张设置卡可以通过原生对话框选择一个 PEM 编码的 `.pem` 或 `.crt` 企业 CA Bundle。YourBuddy 会校验并规范化文件，只持久化其路径，把证书加入原生平台信任，移除环境中原有的 `NODE_EXTRA_CA_CERTS`，并在创建每个应用自有 Node 进程前设置所选路径；WSL 会收到对应的挂载路径。证书校验始终开启。设置测试会分别标注桌面草稿与运行中 Host 的结果，并且只返回可达性、HTTP 状态、是否使用代理、当前代理模式、CA 来源以及 `UNKNOWN_ISSUER`、`UNABLE_TO_VERIFY_LEAF_SIGNATURE` 等有界错误码；它不会返回请求错误、代理 URL、凭据或 CA 路径。所选策略会在用户确认的应用重启后生效；重启会先终止并等待当前私有 Host 退出，然后统一覆盖新 Host、插件子进程、Profile 安装、Runtime 预配与签名应用更新。
 
-默认名称为 YourHarness，默认 Logo 为随附的 YH 图标。自定义值缺失或停用时恢复该产品身份；卸载插件后才恢复上游 Shell 的默认呈现。
+默认名称为 YourBuddy，默认 Logo 为随附的 Y8 图标。自定义值缺失或停用时恢复该产品身份；卸载插件后才恢复上游 Shell 的默认呈现。
 
 ## 模型体验
 

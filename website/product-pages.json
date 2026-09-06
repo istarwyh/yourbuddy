@@ -1,0 +1,118 @@
+{
+  "pages": [
+    {
+      "source": "docs/user/product/home.md",
+      "route": "",
+      "weight": 0,
+      "section": true
+    },
+    {
+      "source": "docs/user/product/index.md",
+      "route": "docs",
+      "weight": 0,
+      "section": true
+    },
+    {
+      "source": "docs/user/product/about.md",
+      "route": "docs/about",
+      "weight": 5,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/start.md",
+      "route": "docs/start",
+      "weight": 10,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/models.md",
+      "route": "docs/models",
+      "weight": 20,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/workspace.md",
+      "route": "docs/workspace",
+      "weight": 30,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/settings.md",
+      "route": "docs/settings",
+      "weight": 40,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/evaluation.md",
+      "route": "docs/evaluation",
+      "weight": 50,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/troubleshooting.md",
+      "route": "docs/troubleshooting",
+      "weight": 60,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/develop.md",
+      "route": "docs/develop",
+      "weight": 70,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/download.md",
+      "route": "download",
+      "weight": 0,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/releases.md",
+      "route": "releases",
+      "weight": 0,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/roadmap.md",
+      "route": "roadmap",
+      "weight": 0,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/plugins/index.md",
+      "route": "plugins",
+      "weight": 0,
+      "section": true
+    },
+    {
+      "source": "docs/user/product/plugins/codex-auth.md",
+      "route": "plugins/codex-auth",
+      "weight": 10,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/plugins/better-sidebar.md",
+      "route": "plugins/better-sidebar",
+      "weight": 20,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/plugins/context-doctor.md",
+      "route": "plugins/context-doctor",
+      "weight": 30,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/plugins/marketplace.md",
+      "route": "plugins/marketplace",
+      "weight": 40,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/plugins/harbor-evolution.md",
+      "route": "plugins/harbor-evolution",
+      "weight": 50,
+      "section": false
+    }
+  ]
+}

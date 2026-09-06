@@ -267,7 +267,7 @@ describe('Node Host network proxy diagnostic client', () => {
       }
     })
     expect(calls).toEqual([{
-      input: '/api/yourharness/network-proxy/test',
+      input: '/api/yourbuddy/network-proxy/test',
       init: { method: 'POST', headers: { 'Content-Type': 'application/json' } },
     }])
     expect(result).toEqual({

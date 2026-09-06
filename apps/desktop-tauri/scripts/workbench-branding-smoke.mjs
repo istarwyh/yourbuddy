@@ -14,8 +14,8 @@ const uploadedLogo = new URL('../app-icon.png', import.meta.url)
  */
 export async function verifyWorkbenchBranding(page) {
   const manifest = await (await page.request.get(new URL('/manifest.webmanifest', page.url()).href)).json()
-  assert.equal(manifest.name, 'YourHarness')
-  assert.equal(manifest.short_name, 'YourHarness')
+  assert.equal(manifest.name, 'YourBuddy')
+  assert.equal(manifest.short_name, 'YourBuddy')
   const favicon = await (await page.request.get(new URL('/favicon.svg', page.url()).href)).text()
   assert.equal(favicon.trim(), artwork)
   const observed = []
@@ -26,7 +26,7 @@ export async function verifyWorkbenchBranding(page) {
     await image.waitFor({ timeout: 10_000 })
     await image.evaluate(image => image.decode())
     const source = await image.getAttribute('src')
-    if (logo === 'YH') {
+    if (logo === 'Y8') {
       const comma = source.indexOf(',')
       const svg = source.slice(0, comma).includes(';base64')
         ? Buffer.from(source.slice(comma + 1), 'base64').toString('utf8')
@@ -44,7 +44,7 @@ export async function verifyWorkbenchBranding(page) {
     return settings
   }
 
-  await capture('default', 'YourHarness', 'YH')
+  await capture('default', 'YourBuddy', 'Y8')
   let settings = await openSettings()
   await settings.getByRole('textbox', { name: 'Workbench name', exact: true }).fill('Research Lab')
   await settings.locator('input[type="file"]').setInputFiles(fileURLToPath(uploadedLogo))
@@ -55,11 +55,11 @@ export async function verifyWorkbenchBranding(page) {
   await page.reload({ waitUntil: 'load' })
   await capture('reloaded', 'Research Lab', 'uploaded')
   settings = await openSettings()
-  await settings.getByRole('button', { name: 'Restore YourHarness default', exact: true }).click()
+  await settings.getByRole('button', { name: 'Restore YourBuddy default', exact: true }).click()
   await settings.getByText('Default restored', { exact: true }).waitFor()
-  await capture('reset', 'YourHarness', 'YH')
+  await capture('reset', 'YourBuddy', 'Y8')
   await page.reload({ waitUntil: 'load' })
-  await capture('reset-reloaded', 'YourHarness', 'YH')
+  await capture('reset-reloaded', 'YourBuddy', 'Y8')
   assert.deepEqual(observed, expected)
   console.log('workbench-branding: default, customization, persistence, and reset snapshot passed')
 }

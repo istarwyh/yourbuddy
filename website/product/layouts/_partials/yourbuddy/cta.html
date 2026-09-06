@@ -1,0 +1,9 @@
+<section class="yb-cta yb-container" id="{{ .id }}" aria-labelledby="{{ .id }}-title">
+  <h2 id="{{ .id }}-title">{{ .data.title }}</h2>
+  <p>{{ .data.desc }}</p>
+  <div class="yb-actions">
+    {{ range .data.actions }}
+    <a class="yb-button{{ if eq .style "primary" }} yb-button--primary{{ end }}" href="{{ .url | relLangURL }}">{{ .label }}</a>
+    {{ end }}
+  </div>
+</section>

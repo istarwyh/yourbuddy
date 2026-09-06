@@ -1,0 +1,10 @@
+<section class="yb-hero yb-container" aria-labelledby="{{ .id }}-title">
+  <h1 id="{{ .id }}-title">{{ range .data.title_lines }}<span>{{ . }}</span>{{ end }}</h1>
+  <p class="yb-lead">{{ .data.lead }}</p>
+  <div class="yb-actions">
+    {{ range .data.actions }}
+    <a class="yb-button{{ if eq .style "primary" }} yb-button--primary{{ end }}" href="{{ .url | relLangURL }}">{{ .label }}</a>
+    {{ end }}
+  </div>
+  <p class="yb-availability">{{ .data.note }} <a href="{{ "download/" | relLangURL }}">{{ .data.status_label }}</a></p>
+</section>

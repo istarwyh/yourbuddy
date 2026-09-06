@@ -1,6 +1,6 @@
 {
-  "name": "yourharness-desktop",
-  "productName": "YourHarness",
+  "name": "yourbuddy-desktop",
+  "productName": "YourBuddy",
   "description": "A macOS AI workbench with DeepSeek Harness, Harbor Evolution, Codex Auth, Better Sidebar, Context Doctor, Plugin Marketplace, Personal Workbench branding, and bundled Skills",
   "version": "0.3.0",
   "private": true,
@@ -21,11 +21,11 @@
     "test:bundle": "node --test scripts/bundle-harness-source.test.mjs",
     "test:product-refresh": "node --test scripts/codex-auth-settings-section.test.mjs scripts/desktop-lifecycle-bridge.test.mjs scripts/node-extra-ca.test.mjs scripts/product-plugin-compatibility.test.mjs scripts/refresh-product-plugins.test.mjs scripts/sync-product-plugin.test.mjs scripts/verify-product-release.test.mjs",
     "test:prepare-release": "node --test scripts/dsh-release-policy.test.mjs scripts/prepare-release.test.mjs scripts/sync-dsh-upstream.test.mjs",
-    "test:offline": "node --test scripts/prepare-harness-offline-store.test.mjs scripts/prepare-managed-toolchain.test.mjs scripts/prepare-yourharness-runtime.test.mjs",
+    "test:offline": "node --test scripts/prepare-harness-offline-store.test.mjs scripts/prepare-managed-toolchain.test.mjs scripts/prepare-yourbuddy-runtime.test.mjs",
     "test:overlay": "node --test overlay/desktop-notify/index.test.mjs",
     "verify:release-version": "node scripts/verify-release-version.mjs",
     "build": "tauri build --target aarch64-apple-darwin --bundles app && tauri bundle --target aarch64-apple-darwin --bundles dmg --ci",
-    "prepare:product-runtime": "node scripts/prepare-yourharness-runtime.mjs",
+    "prepare:product-runtime": "node scripts/prepare-yourbuddy-runtime.mjs",
     "build:win": "tauri build --bundles nsis"
   },
   "devDependencies": {

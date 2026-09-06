@@ -6,15 +6,15 @@ Status: implemented
 
 ## Problem
 
-YourHarness 以一套明确的工作台形态发布，但发行版仍固定了可见身份。用户把它作为自己的 Agent 工作空间后，需要一种小而易懂的命名方式，而不应为了换名称和 Logo 重新构建 Web Client 或替换大范围 UI。
+YourBuddy 以一套明确的工作台形态发布，但发行版仍固定了可见身份。用户把它作为自己的 Agent 工作空间后，需要一种小而易懂的命名方式，而不应为了换名称和 Logo 重新构建 Web Client 或替换大范围 UI。
 
 ## Decision
 
-发行版内置产品插件 `dsh-personal-workbench`，并在通用设置中提供一张卡片。卡片允许编辑工作台名称、上传 Logo、预览草稿、把结果应用到侧边栏和空会话标记，也允许恢复 YourHarness 默认。配置持久化在当前 Profile 的 `personal-workbench` 设置命名空间。
+发行版内置产品插件 `dsh-personal-workbench`，并在通用设置中提供一张卡片。卡片允许编辑工作台名称、上传 Logo、预览草稿、把结果应用到侧边栏和空会话标记，也允许恢复 YourBuddy 默认。配置持久化在当前 Profile 的 `personal-workbench` 设置命名空间。
 
 卡片遵循共享主题的主按钮配方：`--dsw-alias-button-primary-fill` 提供背景，`--dsw-alias-label-primary-foreground` 提供与之配对的文字颜色。它不会硬编码浅色前景，因为主按钮背景在暗色模式中变浅、在亮色模式中变深。
 
-自定义呈现只占用 `sidebar.brand.name`、`sidebar.brand.mark` 和 `conversation.hero.brand.mark`。某个字段停用或缺失时，插件会使用 YourHarness 名称与随附的 YH 图标，详见[产品身份](2026-09-06-yourharness-product-identity.zh.md)。个人 occupant 使用 `-10` 优先级覆盖已有品牌 occupant，而不修改对方 Package。
+自定义呈现只占用 `sidebar.brand.name`、`sidebar.brand.mark` 和 `conversation.hero.brand.mark`。某个字段停用或缺失时，插件会使用 YourBuddy 名称与随附的 Y8 图标，详见[产品身份](2026-09-06-yourbuddy-product-identity.zh.md)。个人 occupant 使用 `-10` 优先级覆盖已有品牌 occupant，而不修改对方 Package。
 
 ## Alternatives considered
 
@@ -22,7 +22,7 @@ YourHarness 以一套明确的工作台形态发布，但发行版仍固定了�
 
 **构建完整主题或白标系统。** 否决，因为当前需求只是可辨识的名称和 Logo。浏览器标题、桌面图标、主题、字体、壁纸和全局文案仍由原有模块负责。
 
-**替换生成产物中的 YourHarness 默认资源。** 否决，因为每次个性化都将要求重新构建，也不能让配置在普通 DSH Profile 变更中自然延续。
+**替换生成产物中的 YourBuddy 默认资源。** 否决，因为每次个性化都将要求重新构建，也不能让配置在普通 DSH Profile 变更中自然延续。
 
 ## Consequences
 

@@ -24,7 +24,7 @@ export function normalizedAssets(version) {
   return Object.fromEntries(
     Object.entries(PLATFORM_ASSET_SUFFIXES).map(([platform, suffix]) => [
       platform,
-      `yourharness-${version}-${suffix}`,
+      `yourbuddy-${version}-${suffix}`,
     ]),
   )
 }

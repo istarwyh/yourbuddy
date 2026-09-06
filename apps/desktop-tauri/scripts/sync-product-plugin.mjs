@@ -1,4 +1,4 @@
-/** Sync an allowlisted Harbor plugin snapshot into the YourHarness product source. */
+/** Sync an allowlisted Harbor plugin snapshot into the YourBuddy product source. */
 import {
   cpSync,
   existsSync,
@@ -12,7 +12,7 @@ import {
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readPythonProjectMetadata } from './prepare-yourharness-runtime.mjs'
+import { readPythonProjectMetadata } from './prepare-yourbuddy-runtime.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const defaultNodeDestination = join(desktopRoot, 'product', 'harbor-evolution')
@@ -209,7 +209,7 @@ function installReplacements(replacements) {
 
 /**
  * Sync matching Harbor Node and Python snapshots into explicit destinations.
- * Existing YourHarness translations survive the replacement.
+ * Existing YourBuddy translations survive the replacement.
  *
  * @param {object} options
  * @param {string} options.source
@@ -275,14 +275,14 @@ export function syncProductPlugin({
 
 function main() {
   const args = process.argv.slice(2).filter(value => value !== '--')
-  const sourceArg = args[0] || process.env.YOURHARNESS_HARBOR_PLUGIN_SOURCE
+  const sourceArg = args[0] || process.env.YOURBUDDY_HARBOR_PLUGIN_SOURCE
   if (!sourceArg) {
     throw new Error('usage: node scripts/sync-product-plugin.mjs <packages/dsh-plugin>')
   }
   const nodeSource = resolve(sourceArg)
   const pythonSource = resolve(
     args[1]
-      || process.env.YOURHARNESS_HARBOR_PYTHON_SOURCE_DIR
+      || process.env.YOURBUDDY_HARBOR_PYTHON_SOURCE_DIR
       || join(dirname(nodeSource), 'harbor-plugin'),
   )
   const result = syncProductPlugin({

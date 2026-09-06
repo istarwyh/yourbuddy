@@ -62,7 +62,7 @@ describe('Personal Workbench Host network proxy diagnostic', () => {
       fetcher,
       {
         HTTPS_PROXY: 'http://proxy-user:proxy-password@127.0.0.1:7890',
-        YOURHARNESS_NETWORK_PROXY_MODE: 'custom',
+        YOURBUDDY_NETWORK_PROXY_MODE: 'custom',
         NODE_EXTRA_CA_CERTS: '/private/company-root.pem',
       },
       true,

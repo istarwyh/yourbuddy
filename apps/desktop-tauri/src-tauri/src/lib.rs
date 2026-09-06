@@ -174,7 +174,7 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     if !runtime.host.disabled_plugins.is_empty() {
         let names = runtime.host.disabled_plugins.join("、");
         boot_log::error(&format!("plugins disabled by rescue patch: {names}"));
-        notify::toast(&app, "YourHarness", &i18n::tf(Msg::PluginsDisabled, &names));
+        notify::toast(&app, "YourBuddy", &i18n::tf(Msg::PluginsDisabled, &names));
     }
     app.manage(runtime);
     if let Some(notify) = notify {
@@ -232,7 +232,7 @@ async fn boot_windows_runtime(
     let resource_dir = app.path().resource_dir().ok();
     let product = product::resolve(resource_dir.as_deref())?;
     boot_log::info(&format!(
-        "YourHarness product runtime ready harbor={} integration={}",
+        "YourBuddy product runtime ready harbor={} integration={}",
         product.harbor_bin.display(),
         product.integration_version
     ));

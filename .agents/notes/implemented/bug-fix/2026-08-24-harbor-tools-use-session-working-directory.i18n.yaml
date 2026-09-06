@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-24-harbor-tools-use-session-working-directory.md
-2026-08-24-harbor-tools-use-session-working-directory.md: bf0198cd229c31ed0077eb8c6c5c79dad6d48af6
-2026-08-24-harbor-tools-use-session-working-directory.zh.md: bf9ffbdbd421fbb79a0988a152d7526ec588aaaf
+2026-08-24-harbor-tools-use-session-working-directory.md: 3b26acc5fb02ef75f2beebb9037aa16194a4c77e
+2026-08-24-harbor-tools-use-session-working-directory.zh.md: dfa1039c23d00598b483e384694a69cb6fb2b161
