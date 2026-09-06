@@ -28,7 +28,7 @@ renderer 为每一层分配不同视觉职责。运行使用 32 像素 module-pl
 
 ## 验证
 
-包测试覆盖顶层与嵌套准入、零成员与并发运行、先 dispose 后写终点的顺序、四个 append 失败前缀，以及冷／实时 invariant 拒绝。Conversation 测试比较完整 replace、只有 update 的 prepend 和实时 append，并覆盖精确阶段身份、终态与中断状态、disclosure 状态、列表事实导航、HMR 移除与重新注册。shipped Web replay 复用现有工作流父／子模型 fixture，驱动真实 worker、spawn provider、Session 持久化、浏览器 bundle、运行中子级导航、终态保留、原工具行并存、暗色窄列 token 与刷新重建。
+包测试覆盖顶层与嵌套准入、零成员与并发运行、先 dispose 后写终点的顺序、四个 append 失败前缀，以及冷／实时 invariant 拒绝。Conversation 测试比较完整 replace、只有 update 的 prepend 和实时 append，并覆盖精确阶段身份、终态与中断状态、disclosure 状态、列表事实导航、HMR 移除与重新注册。shipped Web replay 复用现有工作流父／子模型 fixture，驱动真实 worker、spawn provider、Session 持久化、浏览器 bundle、运行中子级导航、终态保留、原工具行并存、暗色窄列 token 与刷新重建。实时导航探针会等待子级用户提示词通过 Session 持久化检查点，再打开由独立载体传输的 Client 视图。
 
 ## 曾考虑的替代方案
 
