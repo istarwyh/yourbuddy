@@ -26,9 +26,6 @@ import css from './SidebarRoot.module.css'
 /** Wide-content unmount delay; matches the 150ms wide-content fade-out. */
 const COLLAPSE_SETTLE_MS = 150
 
-/** Build-selected product name; local framework builds retain the generic fallback. */
-const PRODUCT_NAME = process.env.DSH_CLIENT_TITLE ?? 'DSH Local Build'
-
 /**
  * How long the column's scrollbars stay drawn after the pointer leaves it.
  * The bar is a pointer affordance here, and hiding it on the leave event
@@ -36,6 +33,16 @@ const PRODUCT_NAME = process.env.DSH_CLIENT_TITLE ?? 'DSH Local Build'
  * edge — on the way to the conversation, or around a portalled menu.
  */
 const SCROLLBAR_LINGER_MS = 2000
+
+/** Format complete-build metadata for the local brand badge. */
+function localBuildVersion(): string | undefined {
+  const version = process.env.DSH_CLIENT_VERSION
+  if (version === undefined) return undefined
+  const commit = process.env.DSH_CLIENT_COMMIT_HASH
+  return version
+    + (commit === undefined ? '' : `-${commit}`)
+    + (process.env.DSH_CLIENT_GIT_DIRTY === 'true' ? '-dirty' : '')
+}
 
 /**
  * Render the sidebar column shell.
@@ -114,6 +121,8 @@ export function SidebarRoot({
     }
   }, [pointerInside])
 
+  const buildVersion = localBuildVersion()
+
   return (
     <div
       ref={column}
@@ -144,14 +153,14 @@ export function SidebarRoot({
               </span>
               <span className={css.brandName}>
                 {renderSlot('sidebar.brand.name', {}, {
-                  fallback: (
-                    <>
-                      <span className={css.fallbackBrandName}>{PRODUCT_NAME}</span>
-                      {process.env.DSH_CLIENT_COMMIT_HASH
-                        ? <span className={css.buildRevision}>{process.env.DSH_CLIENT_COMMIT_HASH}</span>
-                        : null}
-                    </>
-                  ),
+                  fallback: buildVersion === undefined
+                    ? <span className={css.fallbackBrandName}>{t('brand.localBuild')}</span>
+                    : (
+                      <span className={css.localBuildBrand}>
+                        <span className={css.localBuildTitle}>{t('brand.localBuild')}</span>
+                        <span className={css.buildVersion}>{buildVersion}</span>
+                      </span>
+                    ),
                 })}
               </span>
             </span>
