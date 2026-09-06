@@ -12,7 +12,7 @@
 | [Plugin Marketplace](marketplace.zh.md) | 安装前发现并了解扩展 |
 | [Harbor Evolution](harbor-evolution.zh.md) | 用任务证据支持诊断与受控改进 |
 
-这些是 YourBuddy 选择的独立外部项目，不属于 DeepSeek Harness 官方默认发行组合。Harbor 有关联维护者，但仍是独立项目。预装不代表已登录、服务可用或全部可选功能已经开启。
+这些是 YourBuddy 选择的独立外部项目，不属于 DeepSeek Harness 官方默认发行组合。Harbor Self Evolving 是 Y8 维护者本人深度开发的独立项目。预装不代表已登录、服务可用或全部可选功能已经开启。
 
 ## 自有与上游贡献
 
@@ -21,3 +21,7 @@ YourBuddy 自有 Personal Workbench 提供[品牌、网络、更新与重启设�
 ## 更新与权限
 
 内置快照随 YourBuddy 发行升级，用户新增包分别维护。市场 Topic 与 Star 不代表安全审查，安装代码拥有 Host 权限。使用前阅读各插件前提与[产品声明](../../../../YOURBUDDY_NOTICES.md)。
+
+## 下一步
+
+已安装的能力仍可能需要账号、工作目录或评测环境。先阅读对应插件的使用前提；默认组合不够时，按[扩展 Y8](../develop.zh.md)选择已有扩展、Skill 或插件开发。

@@ -1,0 +1,11 @@
+- button "帮助与指南" [expanded]
+- menu "帮助与指南":
+  - menuitem "快速开始"
+  - menuitem "默认插件"
+  - menuitem "扩展 Y8"
+  - menuitem "故障排查"
+  - menuitem "反馈问题"
+- paragraph: 使用指南在浏览器中打开。
+- alert: 无法打开浏览器，请复制地址后手动打开。
+- textbox "帮助页面地址": https://istarwyh.github.io/yourbuddy/docs/start/
+- button "复制链接地址"

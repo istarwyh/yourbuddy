@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/codex-auth.md
-codex-auth.md: a8c6379d45815d268af664bbc0096ccb21ea5b22
-codex-auth.zh.md: deaa65a2957860bed68c4c0e8f3710b778d716ae
+codex-auth.md: e8199e4fadf5532cf1deec60736e7f8b826a74e0
+codex-auth.zh.md: c1d535480b5a9c7c1df9ab3b4c13b75fcb6a0f79

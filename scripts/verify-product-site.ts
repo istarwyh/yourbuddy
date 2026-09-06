@@ -49,7 +49,7 @@ export function verifyProductSite(output: string, baseURL: string): { pages: num
       errors.push(`${pageURL.pathname}: missing raw Markdown`)
     }
     for (const link of document.querySelectorAll('a[href*="/edit/"]')) {
-      if (!/^https:\/\/github\.com\/istarwyh\/yourbuddy\/edit\/.+\/docs\/user\/product\/.+\.md$/.test(link.getAttribute('href') ?? '')) {
+      if (!/^https:\/\/github\.com\/istarwyh\/yourbuddy\/edit\/.+\/docs\/user\/(?:[a-z-]+\/)*[a-z-]+(?:\.zh)?\.md$/.test(link.getAttribute('href') ?? '')) {
         errors.push(`${pageURL.pathname}: incorrect canonical edit URL`)
       }
     }

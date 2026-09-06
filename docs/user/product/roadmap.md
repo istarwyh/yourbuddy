@@ -11,6 +11,8 @@ Improve the work people can complete and verify. These are candidate directions,
 | Repeatable improvement | Candidate | A sanitized real case links historical diagnosis to reviewed failures, a fixed baseline, and a comparable regression report |
 | Wider platform support | Exploring | Real installation, runtime, plugin, update, and uninstall journeys pass on each advertised platform |
 | Richer personalization and team use | Exploring | Concrete users and repeatable tasks justify each feature and its maintenance cost |
+| Plugin development guidance | In progress | Professionals complete a small plugin with explicit environment prerequisites and find the tutorial through Help |
+| Team reuse examples | Candidate | A non-author uses the same plugin version and acceptance example without the author's account or directory |
 
 ## Existing foundations
 
@@ -21,3 +23,5 @@ Model choice, workspace tasks, output inspection, context audits, and controlled
 No delivery dates are committed for Windows, Linux, mobile clients, cloud synchronization, team permissions, full themes, or unattended self-deployment. Apple signing and notarization need separate distribution work. Image workspace export also depends on policy-aware binary file support.
 
 [Share a concrete task or obstacle](https://github.com/istarwyh/yourbuddy/issues) to help prioritize. Completed directions will link to a release and verifiable user outcome.
+
+Further development tools depend on observed blockers: improve guidance and examples first, then decide whether a tool is needed. Separate development instances, project managers, and automatic packaging are not default commitments. See [Extend Y8](develop.md) for the current path.

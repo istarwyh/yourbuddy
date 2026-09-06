@@ -53,6 +53,7 @@
     "tests/replay-round-trip.e2e.ts",
     "tests/hmr-live.e2e.ts",
     "tests/preview-boot.e2e.ts",
+    "tests/yourbuddy-help.e2e.ts",
     "tests/seeded-history.e2e.ts",
     "tests/cold-blank-session.e2e.ts",
     "tests/stats-paged-history.e2e.ts",

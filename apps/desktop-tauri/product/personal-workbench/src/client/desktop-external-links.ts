@@ -147,7 +147,12 @@ function externalUrlFromAnchor(anchor: HTMLAnchorElement | null): string | undef
   return href === null ? undefined : resolveDesktopExternalHttpUrl(href, window.location.origin)
 }
 
-async function copyLinkAddress(value: string): Promise<void> {
+/**
+ * Copy an address, retaining a selectable-field fallback for older WebViews.
+ * @param value - Address selected by the user.
+ * @returns Clipboard completion; rejects when neither clipboard method succeeds.
+ */
+export async function copyLinkAddress(value: string): Promise<void> {
   try {
     if (navigator.clipboard?.writeText !== undefined) {
       await navigator.clipboard.writeText(value)

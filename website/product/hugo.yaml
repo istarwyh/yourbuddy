@@ -21,6 +21,7 @@ languages:
     menus:
       main:
         - {name: 使用文档, pageRef: /docs, weight: 10}
+        - {name: 扩展 Y8, pageRef: /docs/develop, weight: 25}
         - {name: 默认插件, pageRef: /plugins, weight: 20}
         - {name: 路线图, pageRef: /roadmap, weight: 30}
         - {name: 下载, pageRef: /download, weight: 40}
@@ -34,6 +35,7 @@ languages:
     menus:
       main:
         - {name: Docs, pageRef: /docs, weight: 10}
+        - {name: Extend Y8, pageRef: /docs/develop, weight: 25}
         - {name: Plugins, pageRef: /plugins, weight: 20}
         - {name: Roadmap, pageRef: /roadmap, weight: 30}
         - {name: Download, pageRef: /download, weight: 40}

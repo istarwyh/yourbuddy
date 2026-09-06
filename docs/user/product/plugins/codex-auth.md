@@ -2,7 +2,7 @@
 
 English | [中文](codex-auth.zh.md)
 
-Application snapshot version: `0.3.1`. Source: [suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth).
+Application snapshot version: `0.3.2`. Source: [suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth).
 
 ## Problem addressed
 

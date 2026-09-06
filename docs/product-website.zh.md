@@ -17,7 +17,7 @@ pnpm website:dev
 
 ## 编辑内容
 
-公开正文位于 [docs/user/product/](user/product/index.zh.md)，每页维护英文、中文和翻译记录。首页区块由同目录下的 [home-data/zh.json](user/product/home-data/zh.json) 与 [home-data/en.json](user/product/home-data/en.json) 提供；这是首页短文案的来源。新增页面登记到 [product-pages.json](../website/product-pages.json)，正文继续使用仓库相对链接。主题配置与样式位于 [website/product/](../website/product/)，构建生成物不入库。
+产品正文位于 [docs/user/product/](user/product/index.zh.md)，已有开发教程保留在 [docs/user/develop/](user/develop/basic/index.zh.md)。发布清单从 `docs/user/` 选择正文，每篇维护英文、中文和翻译记录。首页区块由同目录下的 [home-data/zh.json](user/product/home-data/zh.json) 与 [home-data/en.json](user/product/home-data/en.json) 提供；这是首页短文案的来源。新增页面登记到 [product-pages.json](../website/product-pages.json)，正文继续使用仓库相对链接。主题配置与样式位于 [website/product/](../website/product/)，构建生成物不入库。
 
 首页呈现由[项目模板](../website/product/layouts/_partials/yourbuddy/)与[项目样式](../website/product/assets/scss/_styles_project.scss)负责。区块数据供应首页 HTML，可搜索的指南及其 Markdown 导出来自仓库正文。双语内容一起维护；任务示例须明确标注，并与入门指南保持一致；浅色和深色均须清晰可读。不要编辑缓存中的主题模块。
 
@@ -30,7 +30,7 @@ pnpm doc-sync
 pnpm lint
 ```
 
-官网检查包括投影测试、严格 Hugo 构建、产物内部链接、页面锚点与资源检查。SDK 的公开来源或适配器也有变化时，运行 `pnpm docs:check`。官网产物位于 `website/product/.dist/`，含双语 HTML、逐页 Markdown、搜索索引、`llms.txt`、章节全文和导航 JSON。[官网工作流](../.github/workflows/product-site.yml)上传可审查产物，并将检查通过的 `master` 构建发布到 GitHub Pages。
+官网检查包括投影测试、严格 Hugo 构建、产物内部链接、页面锚点与资源检查。SDK 的公开来源或适配器也有变化时，运行 `pnpm docs:check`。嵌套栏目发布 HTML、Markdown 和打印版，包含子页的全文汇编由顶层栏目负责。官网产物位于 `website/product/.dist/`，含双语 HTML、逐页 Markdown、搜索索引、`llms.txt`、章节全文和导航 JSON。[官网工作流](../.github/workflows/product-site.yml)上传可审查产物，并将检查通过的 `master` 构建发布到 GitHub Pages。
 
 用完整且以斜杠结尾的 `PRODUCT_SITE_BASE_URL` 设置部署地址；子路径同时参与正文、导航与资源 URL 的构建。未指定时使用本地地址，发布前必须重建。主题由 [go.mod](../website/product/go.mod) 与 [go.sum](../website/product/go.sum) 固定；不要直接跟随主题主分支。
 

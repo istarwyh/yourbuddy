@@ -4,6 +4,8 @@
 
 让你的插件接受用户在 `cordis.yml` 中传入的配置。
 
+先完成[第一个插件](index.zh.md)。和该教程一样，将下方绝对路径替换为自己的仓库路径；patch 不会改变插件模块的解析目录。
+
 ## 定义 Config 类型
 
 在插件中导出一个 `Config` 类型和同名的 Schemastery schema；默认值直接写在 schema 中：
@@ -36,7 +38,7 @@ export function apply(ctx: Context, config: Config) {
 ```yaml
 - insert:
     - id: hello
-      name: './src/my-plugin.ts'
+      name: '/absolute/path/to/deepseek-harness/scratch-plugin/src/my-plugin.ts'
       config:
         greeting: 'Hi there'
         maxRetries: 5
@@ -95,9 +97,9 @@ export interface Config {
 
 在 schema 中表达自身完备的约束，使无效配置在插件加载时失败。对服务或已注册资源的引用需要依赖注入；[服务教程](../framework/service.zh.md) 会介绍这项约定。
 
-## 配合 HMR
+## 应用并验证
 
-配置变更会触发插件热替换：修改 `cordis.yml` 中某个插件的 `config` 后，框架会卸载旧实例并加载新实例。由于注册都属于 effect 并会自动清理，替换后不会保留旧实例的注册。
+修改源码或 patch 后，停止并重启教程命令。使用上面的配置时，终端会打印 `Hi there`。把 `maxRetries: 5` 改为 `maxRetries: wrong-type`，重启后检查插件加载时的校验错误；继续前恢复有效值。这条路径不依赖源码或 overlay 自动重载。
 
 ## 下一步
 

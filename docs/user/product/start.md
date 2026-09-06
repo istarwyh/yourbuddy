@@ -20,6 +20,16 @@ You need a supported Mac, a usable model account or API credentials, and a pract
 
 Respond to approvals when the interface requests them. After completion, open the file in Better Sidebar and inspect its contents. In a Git repository, also check the difference. A completion message alone does not establish that a file exists.
 
+## Continue when a step blocks you
+
+| Blocker | Guidance |
+|---|---|
+| Unsure how to sign in or choose a model | [Model setup](models.md) |
+| Input is unavailable or files appear in the wrong directory | [Workspace](workspace.md) |
+| A preinstalled plugin is not usable | [Default plugins and prerequisites](plugins/index.md) |
+
+The sidebar Help and guides entry opens this page and [troubleshooting](troubleshooting.md) while you work. Complete the file task first, then learn how to [extend Y8](develop.md) as needed.
+
 ## Continue
 
 Keep working in this session, explore the [file and terminal panels](workspace.md), or [personalize the workbench](settings.md). If a step fails, use [troubleshooting](troubleshooting.md) rather than reinstalling all plugins.

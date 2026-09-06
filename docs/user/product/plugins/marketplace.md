@@ -2,7 +2,7 @@
 
 English | [中文](marketplace.zh.md)
 
-Application snapshot version: `0.2.8`. Source: [Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace).
+Application snapshot version: `0.3.1`. Source: [Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace).
 
 ## Problem addressed
 

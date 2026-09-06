@@ -58,7 +58,7 @@
       "source": "docs/user/product/develop.md",
       "route": "docs/develop",
       "weight": 70,
-      "section": false
+      "section": true
     },
     {
       "source": "docs/user/product/download.md",
@@ -111,6 +111,36 @@
     {
       "source": "docs/user/product/plugins/harbor-evolution.md",
       "route": "plugins/harbor-evolution",
+      "weight": 50,
+      "section": false
+    },
+    {
+      "source": "docs/user/product/creator.md",
+      "route": "docs/develop/creator",
+      "weight": 10,
+      "section": false
+    },
+    {
+      "source": "docs/user/develop/basic/index.md",
+      "route": "docs/develop/first-plugin",
+      "weight": 20,
+      "section": false
+    },
+    {
+      "source": "docs/user/develop/basic/tool.md",
+      "route": "docs/develop/tool",
+      "weight": 30,
+      "section": false
+    },
+    {
+      "source": "docs/user/develop/basic/config.md",
+      "route": "docs/develop/config",
+      "weight": 40,
+      "section": false
+    },
+    {
+      "source": "docs/user/develop/basic/publish.md",
+      "route": "docs/develop/publish",
       "weight": 50,
       "section": false
     }

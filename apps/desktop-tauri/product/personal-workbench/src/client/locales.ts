@@ -5,6 +5,16 @@ export type PersonalWorkbenchKey = keyof typeof zh
 
 /** Simplified Chinese settings copy. */
 export const zh = {
+  'help.title': '帮助与指南',
+  'help.settings': '查看使用说明',
+  'help.start': '快速开始',
+  'help.plugins': '默认插件',
+  'help.develop': '扩展 Y8',
+  'help.troubleshooting': '故障排查',
+  'help.feedback': '反馈问题',
+  'help.external': '使用指南在浏览器中打开。',
+  'help.error': '无法打开浏览器，请复制地址后手动打开。',
+  'help.address': '帮助页面地址',
   'title': '我的工作台',
   'description': '设置侧边栏名称和 Logo，打造属于你的 Agent 工作台。',
   'preview': '实时预览',
@@ -104,6 +114,16 @@ export const zh = {
 
 /** English settings copy. */
 export const en: Record<PersonalWorkbenchKey, string> = {
+  'help.title': 'Help and guides',
+  'help.settings': 'View usage guide',
+  'help.start': 'Getting started',
+  'help.plugins': 'Default plugins',
+  'help.develop': 'Extend Y8',
+  'help.troubleshooting': 'Troubleshooting',
+  'help.feedback': 'Report a problem',
+  'help.external': 'Guides open in your browser.',
+  'help.error': 'Could not open the browser. Copy the address and open it manually.',
+  'help.address': 'Help page address',
   'title': 'My Workbench',
   'description': 'Choose a sidebar name and logo for your personal Agent workbench.',
   'preview': 'Live preview',

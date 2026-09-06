@@ -1,0 +1,8 @@
+- button "Help and guides" [expanded]
+- menu "Help and guides":
+  - menuitem "Getting started"
+  - menuitem "Default plugins"
+  - menuitem "Extend Y8"
+  - menuitem "Troubleshooting"
+  - menuitem "Report a problem"
+- paragraph: Guides open in your browser.

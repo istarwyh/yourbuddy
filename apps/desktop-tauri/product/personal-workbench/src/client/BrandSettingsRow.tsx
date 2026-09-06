@@ -6,10 +6,12 @@ import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { WorkbenchSettingsValue } from './brand.tsx'
 import { normalizeLogoSource, normalizeWorkbenchName } from './brand.tsx'
 import type { PersonalWorkbenchKey } from './locales.ts'
+import { helpUrl } from './help-links.ts'
+import type { HelpMenuInjected } from './HelpMenu.tsx'
 import productLogo from '../../../../app-icon.svg'
 
 /** Settings capability injected into the card. */
-export interface BrandSettingsRowInjected {
+export interface BrandSettingsRowInjected extends HelpMenuInjected {
   /** Durable namespace scope owned by this plugin. */
   scope: SettingsScope<WorkbenchSettingsValue>
 }
@@ -33,7 +35,7 @@ function readDataUrl(file: File): Promise<string> {
 }
 
 /** Render the editable branding card with a local preview and explicit persistence. */
-export function BrandSettingsRow({ scope, t }: BrandSettingsRowProps) {
+export function BrandSettingsRow({ scope, readLocale, t }: BrandSettingsRowProps) {
   const snapshot = useSyncExternalStore(
     (listener: () => void) => scope.subscribe(listener),
     () => scope.getSnapshot(),
@@ -193,6 +195,7 @@ export function BrandSettingsRow({ scope, t }: BrandSettingsRowProps) {
           {t('reset')}
         </button>
       </div>
+      <a className="dpw-hint" href={helpUrl('settings', readLocale())} target="_blank" rel="noopener noreferrer">{t('help.settings')}</a>
     </section>
   )
 }

@@ -24,6 +24,12 @@ export const PERSONAL_WORKBENCH_CSS = `
 .dpw-link-menu{position:fixed;z-index:2147483647;display:grid;min-width:180px;padding:6px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 30px rgb(0 0 0 / .24)}
 .dpw-link-menu[hidden]{display:none}.dpw-link-menu-item{padding:8px 10px;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;text-align:left;cursor:pointer}
 .dpw-link-menu-item:hover,.dpw-link-menu-item:focus-visible{outline:0;background:var(--dsw-alias-bg-layer-2)}.dpw-link-menu-status{max-width:320px;padding:8px 10px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.dpw-help{width:100%}.dpw-help-trigger{display:flex;align-items:center;gap:10px;min-height:36px;width:100%;padding:8px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}
+.dpw-help-trigger:hover,.dpw-help-trigger:focus-visible{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
+.dpw-help-trigger:focus-visible,.dpw-help-panel button:focus-visible{outline:2px solid var(--dsw-alias-label-primary);outline-offset:2px}
+.dpw-help-icon{display:grid;place-items:center;flex:none;width:18px;height:18px;border:1.5px solid currentColor;border-radius:50%;font-size:12px;font-weight:650}
+.dpw-help-panel{position:fixed;z-index:1100;box-sizing:border-box;width:288px;max-width:calc(100vw - 16px);max-height:calc(100vh - 100px);overflow:auto;padding:8px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 8px 24px rgb(0 0 0 / .16)}
+.dpw-help-panel [role=menu]{display:grid}.dpw-help-panel p{margin:8px}.dpw-help-panel .dpw-hint{font-size:12px}.dpw-help-recovery{display:grid;gap:8px;border-top:1px solid var(--dsw-alias-border-l1);padding-top:8px}.dpw-help-recovery .dpw-input{font-size:12px}
 @media (max-width:720px){.dpw-fields{grid-template-columns:1fr}}
 `
 

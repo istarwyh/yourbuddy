@@ -2,7 +2,7 @@
 
 [English](better-sidebar.md) | 中文
 
-随应用集成的快照版本：`0.17.1`。来源：[omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)。
+随应用集成的快照版本：`0.18.0`。来源：[omdsh-dev/DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)。
 
 ## 解决的问题
 

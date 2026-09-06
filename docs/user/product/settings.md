@@ -21,3 +21,7 @@ Use Settings → General → Application lifecycle to check for updates or resta
 These controls come from the first-party Personal Workbench plugin. Native restart, proxy, and updater operations require the desktop shell and are unavailable in standalone DSH Web.
 
 See [downloads](download.md) for release availability and [troubleshooting](troubleshooting.md) for failures.
+
+## Help and guides
+
+The bottom of the sidebar offers getting started, default plugins, Extend Y8, troubleshooting, and feedback. A question-mark icon remains when the sidebar is collapsed. Guides open in an external browser while the session stays in place. If opening fails, copy the displayed address; guide content requires network access.
