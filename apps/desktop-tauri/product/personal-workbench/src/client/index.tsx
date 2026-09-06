@@ -19,6 +19,7 @@ import {
 } from './BrandSettingsRow.tsx'
 import { ApplicationLifecycleRow } from './ApplicationLifecycleRow.tsx'
 import { NetworkProxyRow } from './NetworkProxyRow.tsx'
+import { HelpMenu, type HelpMenuInjected } from './HelpMenu.tsx'
 import { installDesktopExternalLinks } from './desktop-external-links.ts'
 import { en, zh, type PersonalWorkbenchKey } from './locales.ts'
 import { installPersonalWorkbenchStyles } from './styles.ts'
@@ -126,12 +127,19 @@ export function apply(ctx: Context): void {
   installDesktopExternalLinks(ctx, ctx.locale.bind(SETTINGS_LOCALE_NAMESPACE))
 
   installPersonalBrandOccupants(ctx, scope)
+  ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+    name: 'sidebar.footer.action',
+    id: 'yourbuddy-help',
+    order: 20,
+    locale: SETTINGS_LOCALE_NAMESPACE,
+    inject: (): HelpMenuInjected => ({ readLocale: () => ctx.locale.getLocale().active }),
+  }, HelpMenu))
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item',
     id: 'personal-workbench',
     order: 20,
     locale: SETTINGS_LOCALE_NAMESPACE,
-    inject: (): BrandSettingsRowInjected => ({ scope }),
+    inject: (): BrandSettingsRowInjected => ({ scope, readLocale: () => ctx.locale.getLocale().active }),
   }, BrandSettingsRow))
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item',
@@ -150,4 +158,5 @@ export function apply(ctx: Context): void {
 export type { ApplicationLifecycleRowProps } from './ApplicationLifecycleRow.tsx'
 export type { BrandSettingsRowProps } from './BrandSettingsRow.tsx'
 export type { NetworkProxyRowProps } from './NetworkProxyRow.tsx'
+export type { HelpMenuProps } from './HelpMenu.tsx'
 export type PersonalBrandSettingsLocaleProps = PropsLocale<'settings.personal-workbench'>

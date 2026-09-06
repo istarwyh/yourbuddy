@@ -1,0 +1,8 @@
+- button "帮助与指南" [expanded]
+- menu "帮助与指南":
+  - menuitem "快速开始"
+  - menuitem "默认插件"
+  - menuitem "扩展 Y8"
+  - menuitem "故障排查"
+  - menuitem "反馈问题"
+- paragraph: 使用指南在浏览器中打开。

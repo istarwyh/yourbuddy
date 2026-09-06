@@ -2,7 +2,7 @@
 
 [English](codex-auth.md) | 中文
 
-随应用集成的快照版本：`0.3.1`。来源：[suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth)。
+随应用集成的快照版本：`0.3.2`。来源：[suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth)。
 
 ## 解决的问题
 

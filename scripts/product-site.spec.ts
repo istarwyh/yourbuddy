@@ -50,6 +50,32 @@ describe('YourBuddy publication', () => {
     expect(() => projectProductSite(root, 'https://example.org/')).toThrow('Missing product source')
   })
 
+  it('publishes an existing user tutorial in both languages without copying its source', () => {
+    const root = fixture()
+    const manifest = resolve(root, 'website/product-pages.json')
+    const source = 'docs/user/develop/basic/index.md'
+    writeFileSync(manifest, JSON.stringify({ pages: [
+      { source: 'docs/user/product/home.md', route: 'docs', weight: 0, section: true },
+      { source: 'docs/user/product/start.md', route: 'docs/develop', weight: 10, section: true },
+      { source, route: 'docs/develop/first-plugin', weight: 20, section: false },
+    ] }))
+    mkdirSync(dirname(resolve(root, source)), { recursive: true })
+    writeFileSync(resolve(root, source), '# First plugin\n\nEnglish | [中文](index.zh.md)\n\nCreate a plugin.\n')
+    writeFileSync(resolve(root, source.replace('.md', '.zh.md')), '# 第一个插件\n\n[English](index.md) | 中文\n\n创建插件。\n')
+    expect(projectProductSite(root, 'https://example.org/y8/')).toBe(6)
+    for (const language of ['en', 'zh']) {
+      const output = readFileSync(resolve(root, `website/product/.generated/content/docs/develop/first-plugin.${language}.md`), 'utf8')
+      expect(output).toContain(language === 'en' ? source : source.replace('.md', '.zh.md'))
+      const section = readFileSync(resolve(root, `website/product/.generated/content/docs/develop/_index.${language}.md`), 'utf8')
+      const metadata: unknown = JSON.parse(section.split('---')[1]!)
+      expect(metadata).toMatchObject({ outputs: ['HTML', 'markdown', 'print'] })
+    }
+    for (const invalid of ['docs/architecture.md', 'docs/user/../architecture.md', '/docs/user/start.md']) {
+      writeFileSync(manifest, JSON.stringify({ pages: [{ source: invalid, route: 'docs/start', weight: 1, section: false }] }))
+      expect(() => projectProductSite(root, 'https://example.org/')).toThrow('Invalid product page')
+    }
+  })
+
   it('refuses ambiguous or escaping routes', () => {
     const root = fixture()
     const path = resolve(root, 'website/product-pages.json')
@@ -84,7 +110,7 @@ describe('product artifacts', () => {
 
   it('accepts local fragments and ignores external hosts while checking source actions', () => {
     const root = fixture()
-    writeFileSync(resolve(root, 'index.html'), '<main id="valid"><a href="#valid">Here</a><a href="https://other.example/">External</a><a href="https://github.com/wrong/repo/edit/master/temp.md">Edit</a></main>')
+    writeFileSync(resolve(root, 'index.html'), '<main id="valid"><a href="#valid">Here</a><a href="https://other.example/">External</a><a href="https://github.com/wrong/repo/edit/master/temp.md">Edit</a><a href="https://github.com/istarwyh/yourbuddy/edit/master/docs/user/develop/basic/index.md">Tutorial source</a><a href="https://github.com/istarwyh/yourbuddy/edit/master/docs/user/develop/basic/index.zh.md">中文源文件</a></main>')
     writeFileSync(resolve(root, 'index.md'), '# Home\n')
     const report = verifyProductSite(root, 'https://example.org/')
     expect(report.errors.filter(error => error.startsWith('/:'))).toEqual(['/: incorrect canonical edit URL'])

@@ -39,8 +39,8 @@
         "style": "primary"
       },
       {
-        "label": "了解 YourBuddy",
-        "url": "docs/about/"
+        "label": "按你的需要扩展",
+        "url": "docs/develop/"
       }
     ]
   },
@@ -105,7 +105,7 @@
   },
   "plugins": {
     "title": "常用工具，已经选好。",
-    "desc": "这五个社区插件随 YourBuddy 集成，分别解决模型接入、文件操作、上下文检查和扩展等问题。它们来自独立项目；文档列明来源、选择理由和使用前提。",
+    "desc": "DSH 已提供带 WebUI 的 AI 运行时。Y8 先装好常用插件；专业工作台需要的领域分析引擎和操作面板，也可以继续通过插件补上。",
     "url": "plugins/",
     "link_label": "了解默认插件与来源",
     "items": [
@@ -131,7 +131,7 @@
       },
       {
         "title": "Harbor Evolution",
-        "desc": "基于任务证据诊断会话，并在需要时开展受控实验与评测。",
+        "desc": "由 Y8 维护者深度开发的独立项目，用任务证据诊断会话，并按需进行受控评测。",
         "url": "plugins/harbor-evolution/"
       }
     ]

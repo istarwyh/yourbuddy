@@ -1,10 +1,10 @@
 name: YourBuddy website
 on:
   pull_request:
-    paths: ['docs/user/product/**', 'docs/product-website*', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'apps/desktop-tauri/app-icon.svg', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
+    paths: ['docs/user/**', 'docs/product-website*', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'apps/desktop-tauri/app-icon.svg', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
   push:
     branches: [master]
-    paths: ['docs/user/product/**', 'docs/product-website*', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'apps/desktop-tauri/app-icon.svg', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
+    paths: ['docs/user/**', 'docs/product-website*', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'apps/desktop-tauri/app-icon.svg', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
   workflow_dispatch:
 permissions:
   contents: read

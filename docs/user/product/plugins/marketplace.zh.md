@@ -2,7 +2,7 @@
 
 [English](marketplace.md) | 中文
 
-随应用集成的快照版本：`0.2.8`。来源：[Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace)。
+随应用集成的快照版本：`0.3.1`。来源：[Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace)。
 
 ## 解决的问题
 

@@ -58,10 +58,14 @@ The plugin path must be absolute. A patch file contributes configuration but doe
 Start the Web UI with that overlay:
 
 ```sh
-pnpm dsh web --patch ./scratch-plugin/cordis.yml
+pnpm dsh web --patch ./scratch-plugin/cordis.yml --no-open --port 0
 ```
 
-Open `http://127.0.0.1:3080`. The terminal prints `[hello-plugin] plugin loaded!` during startup.
+Open the launch URL printed in the terminal, including its authentication fragment. The terminal prints `[hello-plugin] plugin loaded!` during startup.
+
+## Edit and stop
+
+Change the greeting in the plugin, stop the development command with Ctrl+C, and run the same command again. Verify the new greeting in the terminal. Use the newly printed launch URL after each restart; port `0` requests an available port from the OS. Stop the command when finished.
 
 ## Automatic cleanup
 

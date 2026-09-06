@@ -4,6 +4,8 @@ English | [中文](config.zh.md)
 
 Accept configuration supplied through `cordis.yml`.
 
+Complete [your first plugin](index.md) first. Replace the absolute path below with your checkout path, as in that tutorial; a patch does not change the directory used to resolve plugin modules.
+
 ## Define the Config type
 
 Export a `Config` type and a same-named Schemastery schema. Put defaults directly on the schema fields:
@@ -36,7 +38,7 @@ Add the configuration to the inserted local plugin row in `scratch-plugin/cordis
 ```yaml
 - insert:
     - id: hello
-      name: './src/my-plugin.ts'
+      name: '/absolute/path/to/deepseek-harness/scratch-plugin/src/my-plugin.ts'
       config:
         greeting: 'Hi there'
         maxRetries: 5
@@ -95,9 +97,9 @@ The test is whether `cordis.yml` can change the value without a code edit.
 
 Express self-contained constraints in the schema so invalid configuration fails while the plugin loads. References to services or registered resources require dependency injection; the [services tutorial](../framework/service.md) introduces that contract.
 
-## Work with HMR
+## Apply and verify
 
-A configuration edit hot-replaces the plugin: the framework unloads the old instance and loads a new one. Because registrations are effects and clean themselves up, replacement does not retain the old instance's registrations.
+Stop the tutorial command and restart it after changing the source or patch. With the example above, the terminal prints `Hi there`. Replace `maxRetries: 5` with `maxRetries: wrong-type`, restart, and inspect the plugin-load validation error. Restore the valid value before continuing. This workflow does not rely on automatic source or overlay reloading.
 
 ## Next steps
 

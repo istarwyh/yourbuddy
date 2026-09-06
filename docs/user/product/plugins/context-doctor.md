@@ -2,7 +2,7 @@
 
 English | [中文](context-doctor.zh.md)
 
-Application snapshot version: `0.6.1`. Source: [Zhenyu98/dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor).
+Application snapshot version: `0.7.0`. Source: [Zhenyu98/dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor).
 
 ## Problem addressed
 

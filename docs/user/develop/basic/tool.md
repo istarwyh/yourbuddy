@@ -40,10 +40,10 @@ export function apply(ctx: Context) {
 Restart the development command if it is not running:
 
 ```sh
-pnpm dsh web --patch ./scratch-plugin/cordis.yml
+pnpm dsh web --patch ./scratch-plugin/cordis.yml --no-open --port 0
 ```
 
-Open `http://127.0.0.1:3080` and ask: `Use the greet tool to greet Ada.` The model can call `greet` and receives `Hello, Ada!` as the tool result.
+Open the launch URL printed in the terminal, including its authentication fragment, and ask: `Use the greet tool to greet Ada.` The model can call `greet` and receives `Hello, Ada!` as the tool result.
 
 ## Next steps
 

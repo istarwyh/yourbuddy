@@ -39,8 +39,8 @@
         "style": "primary"
       },
       {
-        "label": "Meet YourBuddy",
-        "url": "docs/about/"
+        "label": "Extend it for your needs",
+        "url": "docs/develop/"
       }
     ]
   },
@@ -105,7 +105,7 @@
   },
   "plugins": {
     "title": "A few useful tools, included.",
-    "desc": "These five community plugins come with YourBuddy to help with model access, files, context, and extensions. Each is an independent project, with its source, selection rationale, and prerequisites documented.",
+    "desc": "DSH provides the AI runtime and Web UI. Y8 includes useful plugins to get started; further plugins can add the domain analysis engine and control panel for specialized work.",
     "url": "plugins/",
     "link_label": "Read about the included plugins",
     "items": [
@@ -131,7 +131,7 @@
       },
       {
         "title": "Harbor Evolution",
-        "desc": "Diagnose sessions using task evidence and run controlled experiments and evaluations when needed.",
+        "desc": "An independent project developed by the Y8 maintainer for evidence-based diagnosis and controlled evaluation.",
         "url": "plugins/harbor-evolution/"
       }
     ]
