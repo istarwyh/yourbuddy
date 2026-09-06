@@ -288,10 +288,31 @@ export function assertCleanChildExit(outcome, stdout = '', stderr = '') {
   throw new Error(`YourHarness product Host did not dispose cleanly (${status})\nstdout:\n${stdout}\nstderr:\n${stderr}`)
 }
 
-async function fetchOk(url) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+async function fetchOk(url, init = {}) {
+  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) })
   if (!response.ok) throw new Error(`release smoke request failed: ${url} returned ${response.status}`)
   return response
+}
+
+/**
+ * Exchange the one-time URL printed by `dsh web` for its authority-bound browser cookie.
+ * @param {string} launchUrl
+ * @returns {Promise<{baseUrl: string, cookie: string}>}
+ */
+export async function authenticateHost(launchUrl) {
+  const response = await fetch(launchUrl, {
+    redirect: 'manual',
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (response.status !== 303 || response.headers.get('location') !== '/') {
+    throw new Error(`release smoke Host authentication returned ${response.status}`)
+  }
+  const setCookie = response.headers.get('set-cookie')
+  if (setCookie === null) throw new Error('release smoke Host authentication did not issue a cookie')
+  return {
+    baseUrl: new URL(launchUrl).origin,
+    cookie: setCookie.split(';', 1)[0],
+  }
 }
 
 /**
@@ -999,7 +1020,7 @@ export async function apply() {
         rejectReady(new Error(`YourHarness product Host did not become ready within 60s\nstdout:\n${stdout}\nstderr:\n${stderr}`))
       }, 60_000)
       const inspect = () => {
-        const match = stdout.match(/dsh web: (http:\/\/127\.0\.0\.1:\d+)/u)
+        const match = stdout.match(/dsh web: (http:\/\/[^\s]+)/u)
         if (!match) return
         clearTimeout(deadline)
         resolveReady(match[1])
@@ -1017,8 +1038,13 @@ export async function apply() {
       })
     })
 
-    await fetchOk(baseUrl)
-    const audit = await (await fetchOk(`${baseUrl}/api/context-doctor/audit?detail=developer`)).json()
+    const authenticated = await authenticateHost(baseUrl)
+    const headers = { cookie: authenticated.cookie }
+    await fetchOk(authenticated.baseUrl, { headers })
+    const audit = await (await fetchOk(
+      `${authenticated.baseUrl}/api/context-doctor/audit?detail=developer`,
+      { headers },
+    )).json()
     if (audit?.ok !== true) throw new Error('Context Doctor release smoke returned an invalid response')
     await runBrowserSmoke(baseUrl, env)
   }

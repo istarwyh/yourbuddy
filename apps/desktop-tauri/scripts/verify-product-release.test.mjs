@@ -1,18 +1,54 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
 import {
   PRODUCT_CLIENT_IDS,
+  authenticateHost,
   assertCleanChildExit,
   assertProductClientBoot,
   buildProductSmokeOverlay,
   createReleaseChildEnvironment,
   stopChild,
 } from './verify-product-release.mjs'
+
+test('release smoke exchanges the printed launch token for an authority cookie', async () => {
+  const server = createServer((request, response) => {
+    assert.equal(request.url, '/?token=release-secret')
+    response.writeHead(303, {
+      location: '/',
+      'set-cookie': 'dsh_session=test-cookie; Path=/; HttpOnly; SameSite=Strict',
+    })
+    response.end()
+  })
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  try {
+    const address = server.address()
+    if (address === null || typeof address === 'string') throw new Error('test server did not bind')
+    assert.deepEqual(
+      await authenticateHost(`http://127.0.0.1:${address.port}/?token=release-secret`),
+      {
+        baseUrl: `http://127.0.0.1:${address.port}`,
+        cookie: 'dsh_session=test-cookie',
+      },
+    )
+  }
+  finally {
+    await new Promise((resolve, reject) => {
+      server.close(error => {
+        if (error) reject(error)
+        else resolve()
+      })
+    })
+  }
+})
 
 class FakeChild extends EventEmitter {
   exitCode = null
