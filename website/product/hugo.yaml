@@ -1,4 +1,4 @@
-title: YourHarness
+title: YourBuddy
 baseURL: http://localhost:4174/
 defaultContentLanguage: zh
 enableRobotsTXT: true
@@ -17,36 +17,36 @@ languages:
     hasCJKLanguage: true
     weight: 1
     params:
-      description: 选择模型，在自己的工作区完成任务，用证据改进。YourHarness 是可扩展的 AI 桌面工作台。
+      description: 选择模型，在自己的工作区完成任务，用证据改进。YourBuddy 是可扩展的 AI 桌面工作台。
     menus:
       main:
         - {name: 使用文档, pageRef: /docs, weight: 10}
         - {name: 默认插件, pageRef: /plugins, weight: 20}
         - {name: 路线图, pageRef: /roadmap, weight: 30}
         - {name: 下载, pageRef: /download, weight: 40}
-        - {name: GitHub, url: 'https://github.com/istarwyh/yourharness', weight: 50}
+        - {name: GitHub, url: 'https://github.com/istarwyh/yourbuddy', weight: 50}
   en:
     label: English
     locale: en-US
     weight: 2
     params:
-      description: Choose your model, work in your own workspace, and improve with evidence. YourHarness is an extensible AI desktop workbench.
+      description: Choose your model, work in your own workspace, and improve with evidence. YourBuddy is an extensible AI desktop workbench.
     menus:
       main:
         - {name: Docs, pageRef: /docs, weight: 10}
         - {name: Plugins, pageRef: /plugins, weight: 20}
         - {name: Roadmap, pageRef: /roadmap, weight: 30}
         - {name: Download, pageRef: /download, weight: 40}
-        - {name: GitHub, url: 'https://github.com/istarwyh/yourharness', weight: 50}
+        - {name: GitHub, url: 'https://github.com/istarwyh/yourbuddy', weight: 50}
 params:
-  github_repo: https://github.com/istarwyh/yourharness
-  github_project_repo: https://github.com/istarwyh/yourharness
+  github_repo: https://github.com/istarwyh/yourbuddy
+  github_project_repo: https://github.com/istarwyh/yourbuddy
   github_branch: master
   offline_search: true
   offline_search_index: content
   offline_search_max_results: 12
   copyright:
-    authors: YourHarness contributors
+    authors: YourBuddy contributors
     from_year: 2026
   footer_center_info: ''
   ui:

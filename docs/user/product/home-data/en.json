@@ -9,14 +9,14 @@
     "cta"
   ],
   "hero": {
-    "eyebrow": "YourHarness · macOS / Apple Silicon",
+    "eyebrow": "YourBuddy · macOS / Apple Silicon",
     "title_lines": [
       "Your models. Your tools.",
       "Your way."
     ],
     "title_size": "3.6rem",
     "lead": "Start with a task. Work in your own files, inspect the result, and shape an extensible AI workbench around the way you work.",
-    "note": "Open-source desktop app · YourHarness installer pending",
+    "note": "Open-source desktop app · YourBuddy installer pending",
     "note_icon": "fa-solid fa-code-branch",
     "actions": [
       {
@@ -26,7 +26,7 @@
         "icon": "fa-solid fa-arrow-right"
       },
       {
-        "label": "Explore YourHarness",
+        "label": "Explore YourBuddy",
         "url": "docs/about/",
         "style": "ghost"
       }
@@ -34,7 +34,7 @@
     "image": {
       "light": "favicon.svg",
       "dark": "favicon.svg",
-      "alt": "YourHarness YH"
+      "alt": "YourBuddy Y8"
     },
     "media": {
       "ratio": "1fr 260px",

@@ -2,7 +2,7 @@
 
 English | [中文](site-plan.zh.md)
 
-This page maps content drafts to proposed YourHarness website pages. Routes below are design targets, not created or deployed pages. This task does not change existing VitePress navigation.
+This page maps content drafts to proposed YourBuddy website pages. Routes below are design targets, not created or deployed pages. This task does not change existing VitePress navigation.
 
 ## Top-level navigation
 
@@ -36,13 +36,13 @@ Put Personal Workbench operations in Settings while retaining its ownership in t
 
 Tutorials follow prerequisites, actions, success signals, common failures, and next steps. Plugin details cover the problem, reason for inclusion, entry point, example, limits, and source. Reference pages answer one lookup question; the internal package tree does not directly become user navigation.
 
-Use the [YH artwork](../../../apps/desktop-tauri/app-icon.svg) and current product copy on the homepage, with a screenshot of conversation and work outputs. Internal hashes, Loader IDs, evaluation Stack fields, and test counts belong in provenance or developer material; include them in user steps only when they affect a decision.
+Use the [Y8 artwork](../../../apps/desktop-tauri/app-icon.svg) and current product copy on the homepage, with a screenshot of conversation and work outputs. Internal hashes, Loader IDs, evaluation Stack fields, and test counts belong in provenance or developer material; include them in user steps only when they affect a decision.
 
 ## Materials still needed
 
 | Material | What it establishes | Capture or verification requirements |
 |---|---|---|
-| Hero workbench screenshot | Users can converse while inspecting results | Show a real file from the same session and retain the default YourHarness identity |
+| Hero workbench screenshot | Users can converse while inspecting results | Show a real file from the same session and retain the default YourBuddy identity |
 | Short first-use demonstration | Basic work can be completed after installation | Record version, model path, and continuous steps from workspace selection to opening output |
 | GPT Auth and model settings | Model setup has clear entry points | Hide accounts and credentials; establish model availability through actual requests |
 | Context Doctor report | Context sources can be located | Use practice instructions, show estimates and duplicate sources, and avoid unmeasured savings claims |
@@ -51,7 +51,7 @@ Use the [YH artwork](../../../apps/desktop-tauri/app-icon.svg) and current produ
 | Formal evaluation case | One improvement has comparable evidence | Fix task, model, and evaluator identities; preserve baseline, regression, and unverified areas |
 | Downloads and release information | Pages correspond to available artifacts | Check the actual Release, installer, checksums, and update channel |
 
-These are material requirements, not already captured or verified evidence. Upstream screenshots may be labeled as references but cannot establish the integrated YourHarness interface.
+These are material requirements, not already captured or verified evidence. Upstream screenshots may be labeled as references but cannot establish the integrated YourBuddy interface.
 
 ## Content handling with OINK
 

@@ -173,7 +173,7 @@ export const TRANSLATION_SCOPE_GLOB_EXCLUDES = [
   // tree whose out-of-context relative links have no corpus counterparts.
   'apps/desktop-tauri/bundled/**',
   // Exact external plugin snapshots retain their upstream documentation and are
-  // protected by YOURHARNESS_UPSTREAM.json rather than YourHarness translation records.
+  // protected by YOURBUDDY_UPSTREAM.json rather than YourBuddy translation records.
   'apps/desktop-tauri/product/dsh-better-sidebar/**',
   'apps/desktop-tauri/product/dsh-codex-auth/**',
   'apps/desktop-tauri/product/context-doctor/**',

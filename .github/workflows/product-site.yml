@@ -1,4 +1,4 @@
-name: YourHarness website
+name: YourBuddy website
 on:
   pull_request:
     paths: ['docs/user/product/**', 'docs/product-website*', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
@@ -35,10 +35,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm website:check
         env:
-          PRODUCT_SITE_BASE_URL: https://example.invalid/yourharness/
+          PRODUCT_SITE_BASE_URL: https://example.invalid/yourbuddy/
       - uses: actions/upload-artifact@v4
         with:
-          name: yourharness-website-preview
+          name: yourbuddy-website-preview
           path: website/product/.dist
           include-hidden-files: true
           if-no-files-found: error

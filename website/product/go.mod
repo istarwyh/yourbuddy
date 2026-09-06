@@ -1,4 +1,4 @@
-module github.com/istarwyh/yourharness/website/product
+module github.com/istarwyh/yourbuddy/website/product
 
 go 1.27.0
 

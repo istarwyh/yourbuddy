@@ -6,7 +6,7 @@ English | [中文](2026-08-24-desktop-host-does-not-open-default-browser.zh.md)
 
 ## Problem
 
-The YourHarness desktop shell starts a private `dsh web` Host and loads its loopback URL inside the Tauri WebView. The launcher passed the bind address and port but retained the CLI's local-launch default of opening the same URL in the operating system browser. Every desktop start therefore created an unrelated browser tab even though the application already owned the visible surface.
+The YourBuddy desktop shell starts a private `dsh web` Host and loads its loopback URL inside the Tauri WebView. The launcher passed the bind address and port but retained the CLI's local-launch default of opening the same URL in the operating system browser. Every desktop start therefore created an unrelated browser tab even though the application already owned the visible surface.
 
 The loopback server is not redundant: it carries the Host API and Web assets used by the embedded WebView. Only the browser handoff is redundant.
 
@@ -28,4 +28,4 @@ The native argument test pins the complete launch vector, including both Patch l
 
 ## Consequences
 
-Starting YourHarness still binds a private `127.0.0.1` URL and displays it inside the desktop window, but no longer opens a separate browser tab. Developers who intentionally run `dsh web` outside the desktop retain its existing default-browser behavior unless they pass `--no-open` themselves.
+Starting YourBuddy still binds a private `127.0.0.1` URL and displays it inside the desktop window, but no longer opens a separate browser tab. Developers who intentionally run `dsh web` outside the desktop retain its existing default-browser behavior unless they pass `--no-open` themselves.

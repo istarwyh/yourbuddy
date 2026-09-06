@@ -20,7 +20,7 @@
 
 | 渠道 | 发布标识 | 现有流程 | 需要核验的发布结果 |
 |---|---|---|---|
-| YourHarness 桌面应用 | `yourharness-vX.Y.Z` | [桌面发布指南](../../apps/desktop-tauri/README.zh.md)与 [macOS 工作流](../../.github/workflows/desktop-release.yml) | GitHub Release 中的 DMG、带签名的更新归档及签名、`SHA256SUMS.txt` 和稳定更新 Manifest |
+| YourBuddy 桌面应用 | `yourbuddy-vX.Y.Z` | [桌面发布指南](../../apps/desktop-tauri/README.zh.md)与 [macOS 工作流](../../.github/workflows/desktop-release.yml) | GitHub Release 中的 DMG、带签名的更新归档及签名、`SHA256SUMS.txt` 和稳定更新 Manifest |
 | DSH 包与文档 | `dsh-vX.Y.Z` | [npm 打包工作流](../../.github/workflows/release.yml)、[手动 npm 发布](../../.github/workflows/release-publish.yml)和[文档部署](../../.github/workflows/docs-pages.yml) | npm 上已发布的版本与文件、安装后 Smoke，以及可以访问的文档站点 |
 | Vendored Cordis 包 | `vendor-<package>-vX.Y.Z` | [Vendor 打包工作流](../../.github/workflows/release-vendor.yml)和[手动 npm 发布](../../.github/workflows/release-vendor-publish.yml) | npm 上每个计划发布的包版本及其注册表完整性 |
 | Landlock Launcher 包 | `landlock-run-vX.Y.Z` | [Landlock 发布指南](../../native/landlock-run/docs/release.md)和[发布工作流](../../.github/workflows/landlock-run-release.yml) | npm 上计划发布的每个平台包与入口包，包括预期 Dist Tag |

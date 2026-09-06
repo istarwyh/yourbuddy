@@ -14,8 +14,8 @@ import {
 } from './prepare-harness-offline-store.mjs'
 
 test('hashTree is stable across directory creation order and changes with bytes', () => {
-  const left = mkdtempSync(join(tmpdir(), 'yourharness-store-left-'))
-  const right = mkdtempSync(join(tmpdir(), 'yourharness-store-right-'))
+  const left = mkdtempSync(join(tmpdir(), 'yourbuddy-store-left-'))
+  const right = mkdtempSync(join(tmpdir(), 'yourbuddy-store-right-'))
   try {
     mkdirSync(join(left, 'b'))
     writeFileSync(join(left, 'b', 'two'), '2')
@@ -66,16 +66,16 @@ test('validateOfflineStoreCache rejects stale or corrupted release caches', () =
 })
 
 test('workspace install cleanup preserves the standalone offline Store', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-install-state-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-install-state-'))
   try {
     mkdirSync(join(root, 'node_modules', '.pnpm'), { recursive: true })
     mkdirSync(join(root, 'packages', 'product', 'plugin', 'node_modules', 'dependency'), { recursive: true })
-    mkdirSync(join(root, '.yourharness-pnpm-store', 'v10', 'files'), { recursive: true })
-    writeFileSync(join(root, '.yourharness-pnpm-store', 'v10', 'files', 'kept'), 'store')
+    mkdirSync(join(root, '.yourbuddy-pnpm-store', 'v10', 'files'), { recursive: true })
+    writeFileSync(join(root, '.yourbuddy-pnpm-store', 'v10', 'files', 'kept'), 'store')
     removeWorkspaceInstallState(root)
     assert.equal(existsSync(join(root, 'node_modules')), false)
     assert.equal(existsSync(join(root, 'packages', 'product', 'plugin', 'node_modules')), false)
-    assert.equal(existsSync(join(root, '.yourharness-pnpm-store', 'v10', 'files', 'kept')), true)
+    assert.equal(existsSync(join(root, '.yourbuddy-pnpm-store', 'v10', 'files', 'kept')), true)
   }
   finally {
     rmSync(root, { recursive: true, force: true })
@@ -86,6 +86,6 @@ test('offline install stays on the reviewed pnpm and committed lockfile', () => 
   assert.deepEqual(pinPnpmInvocationArgs(['install']), ['--pm-on-fail=ignore', 'install'])
   assert.deepEqual(frozenOfflineInstallArgs(), [
     'install', '--prod', '--frozen-lockfile', '--offline', '--trust-lockfile',
-    '--store-dir', '.yourharness-pnpm-store',
+    '--store-dir', '.yourbuddy-pnpm-store',
   ])
 })

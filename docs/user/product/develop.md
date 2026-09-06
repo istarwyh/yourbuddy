@@ -6,7 +6,7 @@ Extend the workbench through plugins and keep user instructions close to the imp
 
 ## Build the desktop
 
-The [desktop source guide](../../../apps/desktop-tauri/README.md) owns prerequisites and build commands. YourHarness's product layer assembles the upstream runtime, external snapshots, and first-party settings. Do not confuse a source build with a published installer.
+The [desktop source guide](../../../apps/desktop-tauri/README.md) owns prerequisites and build commands. YourBuddy's product layer assembles the upstream runtime, external snapshots, and first-party settings. Do not confuse a source build with a published installer.
 
 ## Build a plugin
 
@@ -16,4 +16,4 @@ Start with the [first plugin tutorial](../develop/basic/index.md), then follow t
 
 English and Chinese pages share one canonical source pair in this repository. The product site projects those pages into OINK. The existing SDK documentation remains available from its repository sources and developer build.
 
-See the [site maintenance guide](../../../docs/product-website.md) for building and verifying this website, and [product notices](../../../YOURHARNESS_NOTICES.md) for component attribution.
+See the [site maintenance guide](../../../docs/product-website.md) for building and verifying this website, and [product notices](../../../YOURBUDDY_NOTICES.md) for component attribution.

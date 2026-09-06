@@ -1,4 +1,4 @@
-# Using YourHarness
+# Using YourBuddy
 
 English | [中文](index.zh.md)
 

@@ -18,7 +18,7 @@ Status: implemented
 
 **一个 tag 发布一套完整桌面矩阵和一份签名更新 manifest。** `desktop-v*` tag 构建 Windows x64/x86 NSIS 安装包、macOS Intel/Apple Silicon DMG，以及 Linux x64 AppImage/deb。每个矩阵任务为其 Tauri 更新产物签名并上传带操作系统和架构标识的文件；下游 release 任务先验证集合完整，再创建或更新一个 GitHub 预发布版本，并替换稳定 `desktop-updater` Release 通道中的 `latest.json`。更新公钥内置于应用，私钥和密码只存在于 Release Secrets 和维护者受保护的备份中。更新签名用于验证下载，但可执行文件仍没有操作系统代码签名，也未经过 notarization。
 
-[YourHarness 产品化 AI 工作台发行](2026-08-22-yourharness-product-workbench.zh.md)把产品发布收窄为 macOS arm64 与独立的 `yourharness-updater` 通道，同时保留本记录中的预配机制。
+[YourBuddy 产品化 AI 工作台发行](2026-08-22-yourbuddy-product-workbench.zh.md)把产品发布收窄为 macOS arm64 与独立的 `yourbuddy-updater` 通道，同时保留本记录中的预配机制。
 
 **Release 构建在主窗口打开后再检查并安装更新。** 自动检查或托盘触发的检查一次只运行一项，manifest 请求带有 15 秒期限，因此失败或缓慢的网络不会拖住启动页或正在使用的工作台。官方 Tauri updater 会比较内置应用版本与稳定 manifest，只接受更高的语义版本，再验证产物签名、安装更新、停止私有 Host 并重启应用。托盘显示内置版本；手动检查在应用已是最新版本时报告该版本，存在更新时则在下载前展示当前版本和目标版本。检查或下载失败会写入日志，但不会关闭工作台。开发构建跳过网络更新检查。运行时 manifest 已就绪且仍指向可用的 Node / pnpm 时，跳过主机工具链扫描、源码释放和 `pnpm install`，并用文件大小比对 Node，不再对 `node.exe` 做 SHA256（[重复启动跳过](../bug-fix/2026-08-17-desktop-repeat-boot-host-toolchain.zh.md)）。
 

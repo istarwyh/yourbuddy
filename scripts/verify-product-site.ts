@@ -1,4 +1,4 @@
-/** Validate local URLs and canonical source actions in the built YourHarness website. */
+/** Validate local URLs and canonical source actions in the built YourBuddy website. */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -49,7 +49,7 @@ export function verifyProductSite(output: string, baseURL: string): { pages: num
       errors.push(`${pageURL.pathname}: missing raw Markdown`)
     }
     for (const link of document.querySelectorAll('a[href*="/edit/"]')) {
-      if (!/^https:\/\/github\.com\/istarwyh\/yourharness\/edit\/.+\/docs\/user\/product\/.+\.md$/.test(link.getAttribute('href') ?? '')) {
+      if (!/^https:\/\/github\.com\/istarwyh\/yourbuddy\/edit\/.+\/docs\/user\/product\/.+\.md$/.test(link.getAttribute('href') ?? '')) {
         errors.push(`${pageURL.pathname}: incorrect canonical edit URL`)
       }
     }

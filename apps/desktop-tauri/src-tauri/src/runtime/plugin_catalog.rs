@@ -48,25 +48,25 @@ pub fn begin_from_tray(app: &AppHandle) {
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_err()
     {
-        notify::toast(app, "YourHarness", i18n::t(Msg::CatalogBusy));
+        notify::toast(app, "YourBuddy", i18n::t(Msg::CatalogBusy));
         return;
     }
 
     let Some(runtime) = app.try_state::<DesktopRuntime>() else {
         INSTALLING.store(false, Ordering::SeqCst);
-        notify::toast(app, "YourHarness", i18n::t(Msg::CatalogNotReady));
+        notify::toast(app, "YourBuddy", i18n::t(Msg::CatalogNotReady));
         return;
     };
     let target = runtime.plugin_target.clone();
     let network_proxy = runtime.network_proxy.clone();
-    notify::toast(app, "YourHarness", i18n::t(Msg::CatalogInstalling));
+    notify::toast(app, "YourBuddy", i18n::t(Msg::CatalogInstalling));
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let result =
             tokio::task::spawn_blocking(move || install_catalog(&target, &network_proxy)).await;
         match result {
             Ok(Ok(())) => {
-                notify::toast(&app, "YourHarness", i18n::t(Msg::CatalogRestarting));
+                notify::toast(&app, "YourBuddy", i18n::t(Msg::CatalogRestarting));
                 chrome::request_restart(&app);
             }
             Ok(Err(error)) => {

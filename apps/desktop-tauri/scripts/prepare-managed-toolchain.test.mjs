@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { artifactMatches, TOOLCHAIN_ARTIFACTS } from './prepare-managed-toolchain.mjs'
 
 test('artifactMatches accepts only the pinned digest', () => {
-  const bytes = Buffer.from('yourharness')
+  const bytes = Buffer.from('yourbuddy')
   const artifact = {
     algorithm: 'sha256',
     encoding: 'hex',

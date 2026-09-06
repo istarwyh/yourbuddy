@@ -1,7 +1,7 @@
 [
-  { "step": "default", "title": "YourHarness", "name": "YourHarness", "logo": "YH" },
-  { "step": "custom", "title": "YourHarness", "name": "Research Lab", "logo": "uploaded" },
-  { "step": "reloaded", "title": "YourHarness", "name": "Research Lab", "logo": "uploaded" },
-  { "step": "reset", "title": "YourHarness", "name": "YourHarness", "logo": "YH" },
-  { "step": "reset-reloaded", "title": "YourHarness", "name": "YourHarness", "logo": "YH" }
+  { "step": "default", "title": "YourBuddy", "name": "YourBuddy", "logo": "Y8" },
+  { "step": "custom", "title": "YourBuddy", "name": "Research Lab", "logo": "uploaded" },
+  { "step": "reloaded", "title": "YourBuddy", "name": "Research Lab", "logo": "uploaded" },
+  { "step": "reset", "title": "YourBuddy", "name": "YourBuddy", "logo": "Y8" },
+  { "step": "reset-reloaded", "title": "YourBuddy", "name": "YourBuddy", "logo": "Y8" }
 ]

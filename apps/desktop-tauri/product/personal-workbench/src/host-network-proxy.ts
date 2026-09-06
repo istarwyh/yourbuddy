@@ -3,7 +3,7 @@
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 
 /** Same-origin endpoint used by the Personal Workbench settings card. */
-export const HOST_NETWORK_PROXY_TEST_PATH = '/api/yourharness/network-proxy/test'
+export const HOST_NETWORK_PROXY_TEST_PATH = '/api/yourbuddy/network-proxy/test'
 
 const CHATGPT_REACHABILITY_URL = 'https://chatgpt.com/'
 const HOST_PROXY_TEST_TIMEOUT_MS = 15_000
@@ -45,9 +45,9 @@ function activePolicy(environment: NodeJS.ProcessEnv): Pick<
   'proxyMode' | 'caSource'
 > {
   const proxyMode = ['direct', 'system', 'custom'].includes(
-    environment.YOURHARNESS_NETWORK_PROXY_MODE ?? '',
+    environment.YOURBUDDY_NETWORK_PROXY_MODE ?? '',
   )
-    ? environment.YOURHARNESS_NETWORK_PROXY_MODE as HostNetworkProxyTestResult['proxyMode']
+    ? environment.YOURBUDDY_NETWORK_PROXY_MODE as HostNetworkProxyTestResult['proxyMode']
     : 'unknown'
   const caSource = environment.NODE_EXTRA_CA_CERTS
     ? 'custom'

@@ -14,12 +14,12 @@ import {
 } from './generate-updater-manifest.mjs'
 
 const version = '0.1.0'
-const repository = 'istarwyh/yourharness'
-const releaseTag = `yourharness-v${version}`
+const repository = 'istarwyh/yourbuddy'
+const releaseTag = `yourbuddy-v${version}`
 const pubDate = '2026-08-14T00:00:00.000Z'
 
 const expectedAssets = {
-  'darwin-aarch64': `yourharness-${version}-macos-arm64.app.tar.gz`,
+  'darwin-aarch64': `yourbuddy-${version}-macos-arm64.app.tar.gz`,
 }
 
 async function withTempDir(run) {

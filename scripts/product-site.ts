@@ -1,4 +1,4 @@
-/** Project canonical YourHarness pages and run the pinned Hugo product-site builder. */
+/** Project canonical YourBuddy pages and run the pinned Hugo product-site builder. */
 import { spawn, spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, watch, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -21,7 +21,7 @@ function parseManifest(input: unknown): ProductPage[] {
     return { source: entry.source, route: entry.route, weight: entry.weight, section: entry.section }
   })
 }
-const repository = 'https://github.com/istarwyh/yourharness'
+const repository = 'https://github.com/istarwyh/yourbuddy'
 const root = resolve(import.meta.dirname, '..')
 
 /**
@@ -102,7 +102,7 @@ async function main(): Promise<void> {
   if (version.error !== undefined || version.status !== 0 || !/v0\.165\.0(?:-[\da-f]+)?\+extended\b/.test(version.stdout)) {
     throw new Error('Install Hugo Extended 0.165.0 and Go 1.27.x; HUGO_BIN may select the Hugo executable.')
   }
-  console.log(`Projected ${projectProductSite(root, baseURL)} YourHarness pages`)
+  console.log(`Projected ${projectProductSite(root, baseURL)} YourBuddy pages`)
   const args = ['--baseURL', baseURL, '--panicOnWarning', '--cleanDestinationDir']
   if (mode === 'dev') args.unshift('server', '--bind', '127.0.0.1', '--port', '4174', '--disableFastRender')
   else args.push('--minify')

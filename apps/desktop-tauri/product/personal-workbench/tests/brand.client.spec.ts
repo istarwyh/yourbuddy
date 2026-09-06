@@ -76,7 +76,7 @@ describe('personal workbench browser behavior', () => {
       return Component().props.children
     }
     for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(1)
-    expect(visibleName()).toBe('YourHarness')
+    expect(visibleName()).toBe('YourBuddy')
 
     scope.replace({ enabled: true, name: 'My Lab', logo: 'data:image/png;base64,YQ==' })
     expect(visibleName()).toBe('My Lab')
@@ -87,7 +87,7 @@ describe('personal workbench browser behavior', () => {
 
     scope.replace({ enabled: false, name: '', logo: '' })
     for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(1)
-    expect(visibleName()).toBe('YourHarness')
+    expect(visibleName()).toBe('YourBuddy')
     await fiber.dispose()
     for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(0)
   })

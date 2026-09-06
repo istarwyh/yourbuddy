@@ -2,7 +2,7 @@
 
 [English](plugins.md) | 中文
 
-YourHarness 的默认体验由上游能力、独立插件项目和自有产品插件共同组成。本页按 2026-09-06 工作区内实际打包清单编写；“默认集成”指安装包携带并通过桌面配置装配，不等于用户已经登录、服务已经可用或所有可选功能都已开启。
+YourBuddy 的默认体验由上游能力、独立插件项目和自有产品插件共同组成。本页按 2026-09-06 工作区内实际打包清单编写；“默认集成”指安装包携带并通过桌面配置装配，不等于用户已经登录、服务已经可用或所有可选功能都已开启。
 
 ## 外部插件快照
 
@@ -14,7 +14,7 @@ YourHarness 的默认体验由上游能力、独立插件项目和自有产品�
 | Plugin Marketplace | 0.2.8 | [Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace) | 为用户继续扩展工作台提供发现、了解和安装入口 |
 | Harbor Evolution | 0.8.1 | [istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving) | 用已有会话或固定评测任务，为 Agent 改进提供证据 |
 
-这些项目不属于 DeepSeek Harness 官方默认发行组合。Harbor 与 YourHarness 的维护者有关联，但仍是独立上游项目。版本来自本地快照，不代表在线最新版本；其中 Context Doctor 固定到具体 Git Commit。选择理由是本次产品梳理，不冒充各插件作者的设计声明。
+这些项目不属于 DeepSeek Harness 官方默认发行组合。Harbor 与 YourBuddy 的维护者有关联，但仍是独立上游项目。版本来自本地快照，不代表在线最新版本；其中 Context Doctor 固定到具体 Git Commit。选择理由是本次产品梳理，不冒充各插件作者的设计声明。
 
 ## Codex Auth：让已有账号进入工作流
 
@@ -56,7 +56,7 @@ YourHarness 的默认体验由上游能力、独立插件项目和自有产品�
 
 **解决的问题。** 用户可以从设置中发现社区插件，查看 README、来源、安装方式，并按需要增加能力。
 
-**使用方式。** 打开设置 → 插件市场，搜索插件并查看详情。符合条件的包提供确认安装入口；确认后查看安装状态，再通过应用生命周期入口重启 YourHarness。AI 解释功能使用当前配置的默认模型。
+**使用方式。** 打开设置 → 插件市场，搜索插件并查看详情。符合条件的包提供确认安装入口；确认后查看安装状态，再通过应用生命周期入口重启 YourBuddy。AI 解释功能使用当前配置的默认模型。
 
 **默认集成的理由。** 默认组合只是起点。发现入口让用户能够继续选择工具，并在安装前理解它的来源和用途。
 
@@ -80,17 +80,17 @@ YourHarness 的默认体验由上游能力、独立插件项目和自有产品�
 
 **官网演示。** 优先展示“预览历史会话 → 确认 → 阅读证据与缺失项”；正式基线比较作为独立进阶教程，不能用历史诊断截图替代。
 
-## YourHarness 自有与上游配套能力
+## YourBuddy 自有与上游配套能力
 
 | 能力 | 归属 | 使用与选择理由 | 限制 |
 |---|---|---|---|
-| Personal Workbench `0.1.0` | YourHarness 自有插件 | 通用设置中的名称／Logo、全局代理、更新和重启；给桌面用户一个集中的产品设置入口 | 自定义身份按 Profile 保存；不修改桌面图标或完整主题；原生生命周期能力仅在桌面有效 |
+| Personal Workbench `0.1.0` | YourBuddy 自有插件 | 通用设置中的名称／Logo、全局代理、更新和重启；给桌面用户一个集中的产品设置入口 | 自定义身份按 Profile 保存；不修改桌面图标或完整主题；原生生命周期能力仅在桌面有效 |
 | Codex Subagent | 仓库内的 `@deepseek-ai/dsh-subagent-codex` | 默认 Codex Agent Preset 可把自包含任务委派给官方 Codex 运行时，在同一工作目录中返回结果 | 与 Codex Auth 的主模型接入不同；不继承完整父会话，权限与登录遵循原生 Codex 配置；加载插件不会立即启动子进程 |
 | Harbor Python Adapter 与 Skill | Harbor 的配套组成 | 连接桌面工具、评测任务与结果呈现，无需把它们作为两个额外产品介绍 | 版本需与 Harbor 插件匹配；托管运行时不等于已安装 Docker 或已获得模型额度 |
 
 ## 默认组合的维护原则
 
-官网先呈现用户要完成的工作，再说明各插件的贡献。默认集合保持有明确用途和可验证入口；实验能力以其实际成熟度描述。用户安装的额外包与应用内置快照区分维护，内置插件随 YourHarness 发布更新，不把上游版本提示当成应用已更新。
+官网先呈现用户要完成的工作，再说明各插件的贡献。默认集合保持有明确用途和可验证入口；实验能力以其实际成熟度描述。用户安装的额外包与应用内置快照区分维护，内置插件随 YourBuddy 发布更新，不把上游版本提示当成应用已更新。
 
 ## 实现与来源记录
 
@@ -98,10 +98,10 @@ YourHarness 的默认体验由上游能力、独立插件项目和自有产品�
 
 | 组件 | 功能依据 | 快照依据 |
 |---|---|---|
-| Codex Auth | [随包说明](../../../apps/desktop-tauri/product/dsh-codex-auth/README.zh.md) | [来源记录](../../../apps/desktop-tauri/product/dsh-codex-auth/YOURHARNESS_UPSTREAM.json) |
-| Better Sidebar | [随包实现](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/index.ts)；[默认开关](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/config.ts) | [来源记录](../../../apps/desktop-tauri/product/dsh-better-sidebar/YOURHARNESS_UPSTREAM.json) |
-| Context Doctor | [随包实现](../../../apps/desktop-tauri/product/context-doctor/lib/index.js) | [来源记录](../../../apps/desktop-tauri/product/context-doctor/YOURHARNESS_UPSTREAM.json) |
-| Plugin Marketplace | [随包说明](../../../apps/desktop-tauri/product/plugin-marketplace/README.zh.md) | [来源记录](../../../apps/desktop-tauri/product/plugin-marketplace/YOURHARNESS_UPSTREAM.json) |
-| Harbor Evolution | [随包说明](../../../apps/desktop-tauri/product/harbor-evolution/README.zh.md) | [来源记录](../../../apps/desktop-tauri/product/harbor-evolution/YOURHARNESS_UPSTREAM.json) |
+| Codex Auth | [随包说明](../../../apps/desktop-tauri/product/dsh-codex-auth/README.zh.md) | [来源记录](../../../apps/desktop-tauri/product/dsh-codex-auth/YOURBUDDY_UPSTREAM.json) |
+| Better Sidebar | [随包实现](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/index.ts)；[默认开关](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/config.ts) | [来源记录](../../../apps/desktop-tauri/product/dsh-better-sidebar/YOURBUDDY_UPSTREAM.json) |
+| Context Doctor | [随包实现](../../../apps/desktop-tauri/product/context-doctor/lib/index.js) | [来源记录](../../../apps/desktop-tauri/product/context-doctor/YOURBUDDY_UPSTREAM.json) |
+| Plugin Marketplace | [随包说明](../../../apps/desktop-tauri/product/plugin-marketplace/README.zh.md) | [来源记录](../../../apps/desktop-tauri/product/plugin-marketplace/YOURBUDDY_UPSTREAM.json) |
+| Harbor Evolution | [随包说明](../../../apps/desktop-tauri/product/harbor-evolution/README.zh.md) | [来源记录](../../../apps/desktop-tauri/product/harbor-evolution/YOURBUDDY_UPSTREAM.json) |
 | Personal Workbench | [产品说明](../../../apps/desktop-tauri/product/personal-workbench/README.zh.md) | [包版本](../../../apps/desktop-tauri/product/personal-workbench/package.json) |
 | Codex Subagent | [包说明](../../../packages/subagent/subagent-codex/README.zh.md) | [包版本](../../../packages/subagent/subagent-codex/package.json) |

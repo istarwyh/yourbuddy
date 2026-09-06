@@ -8,12 +8,12 @@
 
 | 能力 | 源码状态与对外表述 |
 |---|---|
-| YourHarness 品牌与桌面装配 | 已有独立应用身份、YH 图标、托管运行时、默认插件、更新与重启入口；发行可用性需对应实际安装包 |
+| YourBuddy 品牌与桌面装配 | 已有独立应用身份、Y8 图标、托管运行时、默认插件、更新与重启入口；发行可用性需对应实际安装包 |
 | 模型与工作目录 | 已有多提供方配置、Codex 登录接入和基于工作区的会话 |
 | 任务成果查看 | 已集成文件、终端、Git 与后台任务界面，便于检查实际结果 |
 | 上下文诊断 | 已集成只读审计和可定位的占用／重复报告，不承诺精确计费或自动优化效果 |
 | Agent 评测与受控改进 | 已有历史会话诊断、Candidate 评测、比较与独立元评测能力，各流程的适用条件不同 |
-| 文档基础设施 | 已有 DeepSeek Harness 定位的 VitePress 文档站和双语校验；YourHarness 官网内容已在本目录整理，OINK 建站尚未实施 |
+| 文档基础设施 | 已有 DeepSeek Harness 定位的 VitePress 文档站和双语校验；YourBuddy 官网内容已在本目录整理，OINK 建站尚未实施 |
 
 实现依据见[桌面说明](../../../apps/desktop-tauri/README.zh.md)、[默认插件](plugins.zh.md)和[现有站点配置](../../../website/.vitepress/config.ts)。本表不把源码功能数或通过的单元测试数转换为用户可用性结论。
 
@@ -22,7 +22,7 @@
 | 项目 | 当前依据 | 路线处理 |
 |---|---|---|
 | Apple 应用签名与公证 | [根说明](../../../README.zh.md)明确暂缓 | 列为桌面发行体验的候选改进；需要真实证书、构建和安装验收 |
-| Windows、Linux 与其他架构的 YourHarness 安装包 | [产品运行时](../../../apps/desktop-tauri/src-tauri/src/product.rs)只接受当前目标；桌面源码中有跨平台基础 | 作为需求探索，不发布“已支持”或确定日期 |
+| Windows、Linux 与其他架构的 YourBuddy 安装包 | [产品运行时](../../../apps/desktop-tauri/src-tauri/src/product.rs)只接受当前目标；桌面源码中有跨平台基础 | 作为需求探索，不发布“已支持”或确定日期 |
 | 图片直接导出工作区 | [Codex Auth 说明](../../../apps/desktop-tauri/product/dsh-codex-auth/README.zh.md)记录当前缺少该操作 | 依赖支持权限策略的二进制写入能力，不能用绕过策略的导出代替 |
 | 全主题与按工作区个性化 | [Personal Workbench 说明](../../../apps/desktop-tauri/product/personal-workbench/README.zh.md)限定为 Profile 名称与 Logo | 先验证真实使用需求，再决定是否扩展 |
 

@@ -46,4 +46,4 @@ Completion means a conclusion supported by comparable evidence, with known regre
 
 ## Demonstration materials
 
-Prioritize two short demonstrations for the first website: first output and historical session diagnosis, covering everyday work and quality improvement. Use the current YourHarness installer, practice data, and real visible controls. Record version, prerequisites, and actual verification scope for each. Store full release acceptance evidence in [release records](../../releases/README.md) rather than filling promotional pages with internal logs.
+Prioritize two short demonstrations for the first website: first output and historical session diagnosis, covering everyday work and quality improvement. Use the current YourBuddy installer, practice data, and real visible controls. Record version, prerequisites, and actual verification scope for each. Store full release acceptance evidence in [release records](../../releases/README.md) rather than filling promotional pages with internal logs.

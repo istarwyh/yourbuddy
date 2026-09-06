@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/marketplace.md
-marketplace.md: 809855e30ed141c46b60feb5839af10ef052cf4a
-marketplace.zh.md: da350af90e0d5c86a6fdf8d98e13b9a24f69ed3b
+marketplace.md: ac0a0a3ffe87c9b30969bae324f9d0597abf187e
+marketplace.zh.md: 9bf7294ea5462246016c7d3e022212fed2a05686

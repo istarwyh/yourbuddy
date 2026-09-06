@@ -2,11 +2,11 @@
 
 English | [中文](quickstart.zh.md)
 
-This tutorial helps a new user complete a task in an explicit working directory and locate its actual output. It targets the macOS Apple Silicon desktop release of YourHarness. Before publishing the page, follow these steps with the corresponding installer and add screenshots.
+This tutorial helps a new user complete a task in an explicit working directory and locate its actual output. It targets the macOS Apple Silicon desktop release of YourBuddy. Before publishing the page, follow these steps with the corresponding installer and add screenshots.
 
 ## 1. Install and launch
 
-Choose an installer from [YourHarness Releases](https://github.com/istarwyh/yourharness/releases) that explicitly supports your system, mount the DMG, and install the application. The download page also shows the version, architecture, checksums, and known limitations. Do not derive an availability promise from the source version when the corresponding artifact does not exist.
+Choose an installer from [YourBuddy Releases](https://github.com/istarwyh/yourbuddy/releases) that explicitly supports your system, mount the DMG, and install the application. The download page also shows the version, architecture, checksums, and known limitations. Do not derive an availability promise from the source version when the corresponding artifact does not exist.
 
 The desktop package carries default plugins, required managed runtimes, and offline dependency resources. Ordinary desktop users do not need to clone and build the repository first. Wait for runtime preparation to finish at startup; preserve startup diagnostics and consult troubleshooting if it fails. Apple application signing and notarization remain deferred, so release pages must explain system blocking messages according to the actual release state. Tauri update signatures are a separate mechanism.
 
@@ -20,7 +20,7 @@ Choose a path that fits your setup, then check the model selected for the curren
 | Model service API | Open Settings → Model and add a provider or save credentials for a service such as DeepSeek | The provider can be selected and a simple text request succeeds; its own credentials and quota apply |
 | Company gateway or self-hosted compatible service | Add a custom provider with its protocol, base address, and model | Requests succeed against the actual endpoint; declared modalities and tools must match the service |
 
-See [Default plugins](plugins.md) for GPT Auth prerequisites and limits, and the [model configuration guide](../../user/guide/providers.md) for APIs and custom models. Do not paste full credentials or login files into a conversation. Credentials configured in a separate DSH environment do not establish that YourHarness is configured.
+See [Default plugins](plugins.md) for GPT Auth prerequisites and limits, and the [model configuration guide](../../user/guide/providers.md) for APIs and custom models. Do not paste full credentials or login files into a conversation. Credentials configured in a separate DSH environment do not establish that YourBuddy is configured.
 
 ## 3. Select a working directory
 
@@ -30,7 +30,7 @@ Add and select a dedicated practice folder through the workspace selector, then 
 
 Send the following example in the conversation. It is a usage demonstration, not a performance or quality benchmark.
 
-> Create hello-yourharness.md in the current working directory, with three things to complete this week and acceptance criteria for each. When finished, tell me the file location and summarize what you wrote.
+> Create hello-yourbuddy.md in the current working directory, with three things to complete this week and acceptance criteria for each. When finished, tell me the file location and summarize what you wrote.
 
 Respond to any operation approvals shown by the interface. When the task ends, open the file through Better Sidebar and verify that the three tasks and their acceptance criteria exist. If the workspace is a Git repository, inspect the difference as well. An assistant completion message alone does not establish that the file was written.
 
@@ -47,7 +47,7 @@ Respond to any operation approvals shown by the interface. When the task ends, o
 
 If networking is restricted, open Settings → General → Network proxy and choose direct, system, or custom fixed proxy settings. Check the desktop draft route and the running Host route separately. Save, restart, and test again to confirm activation. Custom proxy settings require HTTP and HTTPS addresses; PAC and proxy credential storage are not supported. Use the settings card's PEM certificate control for enterprise certificate issues.
 
-Use Settings → General → Application lifecycle to check for updates or restart. After installing a plugin through the marketplace, restart here so its new Client can be discovered. Default bundled plugins update with YourHarness application releases; an upstream update notification on a plugin page does not mean the local installation has updated.
+Use Settings → General → Application lifecycle to check for updates or restart. After installing a plugin through the marketplace, restart here so its new Client can be discovered. Default bundled plugins update with YourBuddy application releases; an upstream update notification on a plugin page does not mean the local installation has updated.
 
 ## Troubleshooting
 
@@ -56,13 +56,13 @@ Use Settings → General → Application lifecycle to check for updates or resta
 | Input is unavailable | Confirm that a workspace is selected |
 | A model is unavailable or a request fails | Check the selected model, account or credentials, quota, and network tests; a failure is not necessarily an application startup problem |
 | The new file cannot be found | Check the current working directory, tool results, and actual write location |
-| A newly installed plugin has no interface | Confirm installation into YourHarness's Web Profile, restart, and check whether the plugin loaded |
+| A newly installed plugin has no interface | Confirm installation into YourBuddy's Web Profile, restart, and check whether the plugin loaded |
 | Context Doctor is absent | Establish an existing session first; a new session without an identifier has no session-level control |
 | Harbor has no history to diagnose | Complete business sessions in that directory first, or explicitly provide a Query / Dataset |
 
 ## Data and further learning
 
-The macOS application data root is `~/Library/Application Support/YourHarness`; its `dsh-home` manages application sessions, configuration, and credentials. Project files remain in the working directories selected by the user. Codex Auth reuses native Codex login storage. Remove credentials and sensitive task content from shared troubleshooting materials.
+The macOS application data root is `~/Library/Application Support/YourBuddy`; its `dsh-home` manages application sessions, configuration, and credentials. Project files remain in the working directories selected by the user. Codex Auth reuses native Codex login storage. Remove credentials and sensitive task content from shared troubleshooting materials.
 
 Next, choose a [typical workflow](workflows.md). Task environments and cost prerequisites for advanced features such as Harbor are explained in those flows rather than being prerequisites for a first ordinary task.
 

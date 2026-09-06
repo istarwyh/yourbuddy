@@ -31,7 +31,7 @@ const defaultAgentPreset = {
   id: 'codex',
   name: 'Codex',
   source: 'standard',
-  description: 'YourHarness 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。',
+  description: 'YourBuddy 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。',
 }
 const productPlugins = [
   {
@@ -167,7 +167,7 @@ function hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstrea
   hasher.update(productLock)
   hasher.update('DSH_UPSTREAM.json')
   hasher.update(JSON.stringify(dshUpstream))
-  hasher.update('YourHarness')
+  hasher.update('YourBuddy')
   hasher.update(readFileSync(join(desktopRoot, 'app-icon.svg')))
 
   for (const rel of ['patches', 'vendor', join('native', 'landlock-run'), join('apps', 'cli'), join('apps', 'web')]) {
@@ -203,7 +203,7 @@ function hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstrea
   return hasher.digest('hex')
 }
 
-/** Hash an external plugin snapshot without its YourHarness provenance sidecar. */
+/** Hash an external plugin snapshot without its YourBuddy provenance sidecar. */
 export function hashExternalSnapshot(root) {
   const hasher = createHash('sha256')
 
@@ -212,7 +212,7 @@ export function hashExternalSnapshot(root) {
     const entries = readdirSync(current, { withFileTypes: true })
       .sort((left, right) => left.name.localeCompare(right.name))
     for (const entry of entries) {
-      if (prefix === '' && entry.name === 'YOURHARNESS_UPSTREAM.json') continue
+      if (prefix === '' && entry.name === 'YOURBUDDY_UPSTREAM.json') continue
       const path = join(current, entry.name)
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name
       if (entry.isSymbolicLink()) {
@@ -236,21 +236,21 @@ export function hashExternalSnapshot(root) {
 
 /** Verify the committed package still matches its reviewed external snapshot. */
 export function verifyExternalSnapshot(root, manifest) {
-  const provenancePath = join(root, 'YOURHARNESS_UPSTREAM.json')
+  const provenancePath = join(root, 'YOURBUDDY_UPSTREAM.json')
   if (!existsSync(provenancePath)) return
   const provenance = JSON.parse(readFileSync(provenancePath, 'utf8'))
   if (provenance.package !== manifest.name || provenance.version !== manifest.version) {
     throw new Error(
-      `YourHarness product provenance mismatch for ${manifest.name}@${manifest.version}`,
+      `YourBuddy product provenance mismatch for ${manifest.name}@${manifest.version}`,
     )
   }
   if (!/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(provenance.integrity ?? '')) {
-    throw new Error(`YourHarness product integrity is invalid: ${manifest.name}`)
+    throw new Error(`YourBuddy product integrity is invalid: ${manifest.name}`)
   }
   const actual = hashExternalSnapshot(root)
   if (actual !== provenance.treeSha256) {
     throw new Error(
-      `YourHarness product snapshot hash mismatch for ${manifest.name}: expected ${provenance.treeSha256}, found ${actual}`,
+      `YourBuddy product snapshot hash mismatch for ${manifest.name}: expected ${provenance.treeSha256}, found ${actual}`,
     )
   }
 }
@@ -293,7 +293,7 @@ function bundledWorkspacePackageNames(bundleRoot) {
   return names
 }
 
-/** Install YourHarness's product plugins and default Harness plugins into the CLI closure. */
+/** Install YourBuddy's product plugins and default Harness plugins into the CLI closure. */
 export function installProductPlugins(bundleRoot) {
   const cliManifestPath = join(bundleRoot, 'apps', 'cli', 'package.json')
   const cliManifest = JSON.parse(readFileSync(cliManifestPath, 'utf8'))
@@ -302,16 +302,16 @@ export function installProductPlugins(bundleRoot) {
   for (const plugin of productPlugins) {
     const productManifest = join(plugin.root, 'package.json')
     if (!existsSync(productManifest)) {
-      throw new Error(`YourHarness product plugin missing: ${productManifest}`)
+      throw new Error(`YourBuddy product plugin missing: ${productManifest}`)
     }
     const manifest = JSON.parse(readFileSync(productManifest, 'utf8'))
     if (manifest.name !== plugin.name) {
       throw new Error(
-        `YourHarness product plugin name mismatch: expected ${plugin.name}, found ${manifest.name ?? '<missing>'}`,
+        `YourBuddy product plugin name mismatch: expected ${plugin.name}, found ${manifest.name ?? '<missing>'}`,
       )
     }
     if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') {
-      throw new Error(`YourHarness product plugin has no DSH bundle patch: ${plugin.name}`)
+      throw new Error(`YourBuddy product plugin has no DSH bundle patch: ${plugin.name}`)
     }
     verifyExternalSnapshot(plugin.root, manifest)
 
@@ -326,7 +326,7 @@ export function installProductPlugins(bundleRoot) {
   const workspaceNames = bundledWorkspacePackageNames(bundleRoot)
   for (const plugin of defaultHarnessPlugins) {
     if (!workspaceNames.has(plugin.name)) {
-      throw new Error(`YourHarness default Harness plugin is missing from the bundled workspace: ${plugin.name}`)
+      throw new Error(`YourBuddy default Harness plugin is missing from the bundled workspace: ${plugin.name}`)
     }
     cliManifest.dependencies[plugin.name] = 'workspace:*'
   }
@@ -339,17 +339,17 @@ export function installProductPlugins(bundleRoot) {
   writeFileSync(cliManifestPath, `${JSON.stringify(cliManifest, null, 2)}\n`)
 }
 
-/** Create YourHarness's default Codex preset from the shipped standard composition. */
+/** Create YourBuddy's default Codex preset from the shipped standard composition. */
 export function installDefaultAgentPreset(bundleRoot) {
   const presetsRoot = join(bundleRoot, 'apps', 'cli', 'config', 'agent-presets')
   const sourceRoot = join(presetsRoot, defaultAgentPreset.source)
   const destinationRoot = join(presetsRoot, defaultAgentPreset.id)
   const sourceComposition = join(sourceRoot, 'agent.cordis.yml')
   if (!existsSync(sourceComposition)) {
-    throw new Error(`YourHarness default Agent Preset source is missing: ${sourceComposition}`)
+    throw new Error(`YourBuddy default Agent Preset source is missing: ${sourceComposition}`)
   }
   if (existsSync(destinationRoot)) {
-    throw new Error(`YourHarness default Agent Preset id already exists: ${defaultAgentPreset.id}`)
+    throw new Error(`YourBuddy default Agent Preset id already exists: ${defaultAgentPreset.id}`)
   }
 
   copyTree(sourceRoot, destinationRoot)
@@ -359,7 +359,7 @@ export function installDefaultAgentPreset(bundleRoot) {
     .map((line, index) => line === '    - id: tool-subagent-codex' ? index : -1)
     .filter(index => index !== -1)
   if (rowIndexes.length !== 1) {
-    throw new Error(`YourHarness default Agent Preset expected one Codex tool row, found ${rowIndexes.length}`)
+    throw new Error(`YourBuddy default Agent Preset expected one Codex tool row, found ${rowIndexes.length}`)
   }
   const rowStart = rowIndexes[0]
   const nextRow = lines.findIndex((line, index) => index > rowStart && line.startsWith('    - id: '))
@@ -368,7 +368,7 @@ export function installDefaultAgentPreset(bundleRoot) {
     .map((line, index) => index >= rowStart && index < rowEnd && line === '      disabled: true' ? index : -1)
     .filter(index => index !== -1)
   if (disabledIndexes.length !== 1) {
-    throw new Error(`YourHarness default Agent Preset expected one disabled Codex tool flag, found ${disabledIndexes.length}`)
+    throw new Error(`YourBuddy default Agent Preset expected one disabled Codex tool flag, found ${disabledIndexes.length}`)
   }
   lines.splice(disabledIndexes[0], 1)
 
@@ -377,7 +377,7 @@ export function installDefaultAgentPreset(bundleRoot) {
   lines.splice(
     commentStart,
     rowStart - commentStart,
-    '    # YourHarness bundles the Codex provider on the Host and exposes this',
+    '    # YourBuddy bundles the Codex provider on the Host and exposes this',
     '    # one-shot delegation tool in the default product preset.',
   )
   writeFileSync(compositionPath, lines.join('\n'))
@@ -417,8 +417,8 @@ export function installProductWebIdentity(root) {
   const web = join(root, 'apps', 'web', 'dist')
   const manifestPath = join(web, 'manifest.webmanifest')
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-  manifest.name = 'YourHarness'
-  manifest.short_name = 'YourHarness'
+  manifest.name = 'YourBuddy'
+  manifest.short_name = 'YourBuddy'
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   copyFileSync(join(desktopRoot, 'app-icon.svg'), join(web, 'favicon.svg'))
 }
@@ -439,16 +439,16 @@ function assertBuiltArtifacts() {
   }
   const buildRecordPath = join(repoRoot, '.dsh-build', 'client-build-environment.json')
   if (!existsSync(buildRecordPath)) {
-    throw new Error('Harness client build record missing. Run the YourHarness-branded root build first.')
+    throw new Error('Harness client build record missing. Run the YourBuddy-branded root build first.')
   }
   const buildRecord = JSON.parse(readFileSync(buildRecordPath, 'utf8'))
-  if (buildRecord.environment?.DSH_CLIENT_TITLE !== 'YourHarness') {
+  if (buildRecord.environment?.DSH_CLIENT_TITLE !== 'YourBuddy') {
     throw new Error(
-      'Harness client artifacts are not branded for YourHarness. Run: DSH_CLIENT_TITLE="YourHarness" pnpm run build',
+      'Harness client artifacts are not branded for YourBuddy. Run: DSH_CLIENT_TITLE="YourBuddy" pnpm run build',
     )
   }
   if (!existsSync(productLockPath)) {
-    throw new Error(`YourHarness frozen Harness lockfile missing: ${productLockPath}`)
+    throw new Error(`YourBuddy frozen Harness lockfile missing: ${productLockPath}`)
   }
 }
 
@@ -544,7 +544,7 @@ stripDevDependencies(outRoot)
 const manifest = {
   harnessVersion: rootPkg.version,
   dshUpstream,
-  product: 'YourHarness',
+  product: 'YourBuddy',
   productPlugins: productPlugins.map(plugin => {
     const pkg = JSON.parse(readFileSync(join(plugin.root, 'package.json'), 'utf8'))
     return `${plugin.name}@${pkg.version}`

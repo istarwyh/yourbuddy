@@ -1,10 +1,10 @@
-# 为什么做 YourHarness
+# 为什么做 YourBuddy
 
 [English](about.md) | 中文
 
 Your models. Your tools. Your way.
 
-YourHarness 将 DeepSeek Harness 与社区插件装配为桌面工作台。模型负责理解和生成；Harness 提供完成工作所需的工具、上下文、权限、会话与反馈。
+YourBuddy 将 DeepSeek Harness 与社区插件装配为桌面工作台。模型负责理解和生成；Harness 提供完成工作所需的工具、上下文、权限、会话与反馈。
 
 ## 选择适合自己的组合
 

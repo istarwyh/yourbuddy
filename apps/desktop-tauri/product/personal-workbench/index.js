@@ -2,7 +2,7 @@
 import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 
 // src/host-network-proxy.ts
-var HOST_NETWORK_PROXY_TEST_PATH = "/api/yourharness/network-proxy/test";
+var HOST_NETWORK_PROXY_TEST_PATH = "/api/yourbuddy/network-proxy/test";
 var CHATGPT_REACHABILITY_URL = "https://chatgpt.com/";
 var HOST_PROXY_TEST_TIMEOUT_MS = 15e3;
 var ENVIRONMENT_PROXY_DISPATCHER_MARK = /* @__PURE__ */ Symbol.for(
@@ -21,8 +21,8 @@ function hasEnvironmentProxyDispatcher() {
 }
 function activePolicy(environment) {
   const proxyMode = ["direct", "system", "custom"].includes(
-    environment.YOURHARNESS_NETWORK_PROXY_MODE ?? ""
-  ) ? environment.YOURHARNESS_NETWORK_PROXY_MODE : "unknown";
+    environment.YOURBUDDY_NETWORK_PROXY_MODE ?? ""
+  ) ? environment.YOURBUDDY_NETWORK_PROXY_MODE : "unknown";
   const caSource = environment.NODE_EXTRA_CA_CERTS ? "custom" : environment.NODE_OPTIONS?.split(/\s+/u).includes("--use-system-ca") === true ? "system" : "unknown";
   return { proxyMode, caSource };
 }

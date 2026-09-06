@@ -1,4 +1,4 @@
-# Maintaining the YourHarness website
+# Maintaining the YourBuddy website
 
 English | [中文](product-website.zh.md)
 
@@ -34,6 +34,6 @@ Set `PRODUCT_SITE_BASE_URL` to the full deployment URL ending in a slash; subpat
 
 ## Download information and publication
 
-The [download page](user/product/download.md) and [release page](user/product/releases.md) describe verified public releases only. Verification record: on 2026-09-06, public GitHub releases still carry the XiaoHui brand; YourHarness 0.3.0 has no public installer. After publishing YourHarness, verify release assets, checksums, architecture, and update metadata, then update both languages and the homepage installation status. A source version number alone cannot establish a download URL.
+The [download page](user/product/download.md) and [release page](user/product/releases.md) describe verified public releases only. Verification record: on 2026-09-06, public GitHub releases still carry the XiaoHui brand; YourBuddy 0.3.0 has no public installer. After publishing YourBuddy, verify release assets, checksums, architecture, and update metadata, then update both languages and the homepage installation status. A source version number alone cannot establish a download URL.
 
 Public hosting, domain configuration, and deployment credentials require separate setup. The current build uses no online fonts, CDN, or analytics scripts; model and plugin network access belongs to the desktop application.

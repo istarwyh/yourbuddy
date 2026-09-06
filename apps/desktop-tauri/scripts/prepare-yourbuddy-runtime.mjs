@@ -1,5 +1,5 @@
 /**
- * Build the self-contained Harbor Python runtime bundled by YourHarness.
+ * Build the self-contained Harbor Python runtime bundled by YourBuddy.
  *
  * The committed product plugin already contains its Skill. This script adds
  * portable CPython and the matching Harbor adapter so end users do not need
@@ -26,7 +26,7 @@ import { parse as parseToml } from 'smol-toml'
 import { verifyExternalSnapshot } from './bundle-harness-source.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const outRoot = join(desktopRoot, 'bundled', 'yourharness-runtime')
+const outRoot = join(desktopRoot, 'bundled', 'yourbuddy-runtime')
 const manifestPath = join(outRoot, 'manifest.json')
 const pythonVersion = '3.12.14'
 const vendoredPythonSource = join(desktopRoot, 'product', 'harbor-python')
@@ -71,7 +71,7 @@ export function readPythonProjectMetadata(source, sourceLabel = 'pyproject.toml'
 }
 
 /**
- * Read the paired YourHarness Harbor snapshots and return their shared version.
+ * Read the paired YourBuddy Harbor snapshots and return their shared version.
  *
  * @param {object} [paths]
  * @param {string} [paths.nodeManifestPath]
@@ -187,10 +187,10 @@ export function makePythonEntryPointRelocatable(entryPoint, runtimeRoot, pythonH
 
 function main() {
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
-    throw new Error(`YourHarness supports macOS arm64 only; received ${process.platform}-${process.arch}`)
+    throw new Error(`YourBuddy supports macOS arm64 only; received ${process.platform}-${process.arch}`)
   }
 
-  const override = process.env.YOURHARNESS_HARBOR_PYTHON_SOURCE
+  const override = process.env.YOURBUDDY_HARBOR_PYTHON_SOURCE
   const pythonSpec = override || vendoredPythonSource
   if (!override && !existsSync(join(vendoredPythonSource, 'pyproject.toml'))) {
     throw new Error(`vendored Harbor Python source missing: ${vendoredPythonSource}`)
@@ -205,7 +205,7 @@ function main() {
   const integrationVersion = overrideMetadata?.version
     || (override ? 'override' : deriveHarborIntegrationVersion())
   if (!override) {
-    const provenancePath = join(vendoredPythonSource, 'YOURHARNESS_UPSTREAM.json')
+    const provenancePath = join(vendoredPythonSource, 'YOURBUDDY_UPSTREAM.json')
     if (!existsSync(provenancePath)) {
       throw new Error(`vendored Harbor Python provenance missing: ${provenancePath}`)
     }
@@ -220,7 +220,7 @@ function main() {
   if (current?.runtimeId === id
     && existsSync(join(outRoot, 'venv', 'bin', 'harbor'))
     && existsSync(join(outRoot, 'venv', 'bin', 'harbor-dsh'))) {
-    console.log(`prepare-yourharness-runtime: reuse ${outRoot}`)
+    console.log(`prepare-yourbuddy-runtime: reuse ${outRoot}`)
     return
   }
 
@@ -239,7 +239,7 @@ function main() {
   removeAbsolutePythonAlias(pythonInstallRoot)
 
   const manifest = {
-    product: 'YourHarness',
+    product: 'YourBuddy',
     runtimeId: id,
     platform: process.platform,
     arch: process.arch,
@@ -251,7 +251,7 @@ function main() {
     harborDshBin: 'venv/bin/harbor-dsh',
   }
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-  console.log(`prepare-yourharness-runtime: wrote ${outRoot}`)
+  console.log(`prepare-yourbuddy-runtime: wrote ${outRoot}`)
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

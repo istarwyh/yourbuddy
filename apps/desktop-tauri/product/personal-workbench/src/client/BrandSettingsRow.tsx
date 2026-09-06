@@ -52,7 +52,7 @@ export function BrandSettingsRow({ scope, t }: BrandSettingsRowProps) {
     setLogo(persisted.enabled ? persisted.logo : '')
   }, [persisted])
 
-  const displayName = normalizeWorkbenchName(name) ?? 'YourHarness'
+  const displayName = normalizeWorkbenchName(name) ?? 'YourBuddy'
   const displayLogo = normalizeLogoSource(logo) ?? productLogo
   const writable = snapshot.writable
   const busy = status === 'saving'

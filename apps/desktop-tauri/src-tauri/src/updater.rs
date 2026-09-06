@@ -74,7 +74,7 @@ pub async fn check_now(app: &AppHandle) -> Result<String, String> {
     let current = current_version(app);
     notify::toast(
         app,
-        "YourHarness",
+        "YourBuddy",
         &i18n::tf(Msg::UpdaterChecking, &current),
     );
     check_and_install(app)
@@ -127,7 +127,7 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
     ));
     notify::toast(
         app,
-        "YourHarness",
+        "YourBuddy",
         &i18n::tf2(Msg::UpdaterAvailable, &current, &target),
     );
 
@@ -153,7 +153,7 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
     boot_log::info(&format!("desktop update installed target={target}"));
     notify::toast(
         app,
-        "YourHarness",
+        "YourBuddy",
         &i18n::tf(Msg::UpdaterRestarting, &target),
     );
     chrome::request_restart(app)

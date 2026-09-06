@@ -54,7 +54,7 @@ type SlotComponent =
 
 /**
  * Keep the product identity synchronized with the durable customization.
- * Disabling customization restores YourHarness without changing stored values.
+ * Disabling customization restores YourBuddy without changing stored values.
  */
 function installBrandSlot(
   ctx: ClientContext,
@@ -102,7 +102,7 @@ export function installPersonalBrandOccupants(
   let selectedName: string | undefined
   let nameComponent: SlotComponent | undefined
   const pickName = (value: unknown): SlotComponent | undefined => {
-    const name = resolveWorkbenchBrand(value).name ?? 'YourHarness'
+    const name = resolveWorkbenchBrand(value).name ?? 'YourBuddy'
     if (name !== selectedName) {
       selectedName = name
       nameComponent = createPersonalBrandName(name)

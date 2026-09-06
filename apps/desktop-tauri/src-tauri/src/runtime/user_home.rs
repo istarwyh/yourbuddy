@@ -698,7 +698,7 @@ mod tests {
         let resolved = adopt_homes(&isolated, Vec::new()).unwrap();
         assert_eq!(resolved.path, isolated);
         assert_eq!(resolved.imported, 0);
-        assert!(user_home_status(&resolved, &isolated).contains("YourHarness 独立主目录"));
+        assert!(user_home_status(&resolved, &isolated).contains("YourBuddy 独立主目录"));
         let _ = fs::remove_dir_all(&root);
     }
 

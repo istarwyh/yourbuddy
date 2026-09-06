@@ -1,21 +1,21 @@
-name: YourHarness macOS Release
+name: YourBuddy macOS Release
 
 on:
   push:
     tags:
-      - yourharness-v*
+      - yourbuddy-v*
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing yourharness-v* tag to rebuild and publish
+        description: Existing yourbuddy-v* tag to rebuild and publish
         required: true
-        default: yourharness-v0.3.0
+        default: yourbuddy-v0.3.0
 
 permissions:
   contents: write
 
 concurrency:
-  group: yourharness-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  group: yourbuddy-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 env:
@@ -46,8 +46,8 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/yourharness-offline-store-cache
-          key: ${{ runner.os }}-${{ runner.arch }}-yourharness-pnpm-store-v1-${{ hashFiles('apps/desktop-tauri/product/harness-pnpm-lock.yaml') }}
+          path: ${{ runner.temp }}/yourbuddy-offline-store-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-yourbuddy-pnpm-store-v1-${{ hashFiles('apps/desktop-tauri/product/harness-pnpm-lock.yaml') }}
 
       - name: Verify release tag and desktop versions
         run: node apps/desktop-tauri/scripts/verify-release-version.mjs --tag "$RELEASE_TAG"
@@ -68,9 +68,9 @@ jobs:
             apps/desktop-tauri/src-tauri/target/aarch64-apple-darwin/release/.fingerprint
             apps/desktop-tauri/src-tauri/target/aarch64-apple-darwin/release/build
             apps/desktop-tauri/src-tauri/target/aarch64-apple-darwin/release/deps
-          key: ${{ runner.os }}-${{ runner.arch }}-yourharness-cargo-${{ hashFiles('apps/desktop-tauri/src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-yourbuddy-cargo-${{ hashFiles('apps/desktop-tauri/src-tauri/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-yourharness-cargo-
+            ${{ runner.os }}-${{ runner.arch }}-yourbuddy-cargo-
 
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
@@ -83,12 +83,12 @@ jobs:
 
       - name: Build Harness
         env:
-          DSH_CLIENT_TITLE: YourHarness
+          DSH_CLIENT_TITLE: YourBuddy
         run: pnpm run build
 
       - name: Build app and DMG
         env:
-          YOURHARNESS_OFFLINE_STORE_CACHE_DIR: ${{ runner.temp }}/yourharness-offline-store-cache
+          YOURBUDDY_OFFLINE_STORE_CACHE_DIR: ${{ runner.temp }}/yourbuddy-offline-store-cache
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm --dir apps/desktop-tauri run build
@@ -98,21 +98,21 @@ jobs:
           pnpm exec vitest run apps/cli/tests/args.spec.ts
           cargo test --locked --release --target "$RUST_TARGET" --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml launcher_patches_before_web_arguments
 
-      - name: Test relocated YourHarness product runtime
+      - name: Test relocated YourBuddy product runtime
         run: |
           updater="$(find "apps/desktop-tauri/src-tauri/target/$RUST_TARGET/release/bundle/macos" -maxdepth 1 -type f -name '*.app.tar.gz' -print -quit)"
           test -n "$updater"
-          extracted="$RUNNER_TEMP/yourharness-updater"
+          extracted="$RUNNER_TEMP/yourbuddy-updater"
           mkdir -p "$extracted"
           tar -xzf "$updater" -C "$extracted"
-          bundled="$extracted/YourHarness.app/Contents/Resources/yourharness-runtime"
-          relocated="$RUNNER_TEMP/yourharness-runtime-relocated"
+          bundled="$extracted/YourBuddy.app/Contents/Resources/yourbuddy-runtime"
+          relocated="$RUNNER_TEMP/yourbuddy-runtime-relocated"
           ditto "$bundled" "$relocated"
-          cp -L "$relocated/venv/bin/python" "$RUNNER_TEMP/yourharness-python-bundle-copy"
+          cp -L "$relocated/venv/bin/python" "$RUNNER_TEMP/yourbuddy-python-bundle-copy"
           rm "$relocated/venv/bin/python"
-          mv "$RUNNER_TEMP/yourharness-python-bundle-copy" "$relocated/venv/bin/python"
+          mv "$RUNNER_TEMP/yourbuddy-python-bundle-copy" "$relocated/venv/bin/python"
           test ! -L "$relocated/venv/bin/python"
-          sed -i '' 's|^home = .*|home = /private/nonexistent/yourharness-python/bin|' "$relocated/venv/pyvenv.cfg"
+          sed -i '' 's|^home = .*|home = /private/nonexistent/yourbuddy-python/bin|' "$relocated/venv/pyvenv.cfg"
           env -u PYTHONHOME "$relocated/venv/bin/harbor" --version
           env -u PYTHONHOME "$relocated/venv/bin/harbor-dsh" --help >/dev/null
 
@@ -128,8 +128,8 @@ jobs:
           if (-not $dmg -or -not $updater) { throw "DMG or updater archive not found under $bundleRoot" }
           $signature = Get-Item "$($updater.FullName).sig" -ErrorAction Stop
 
-          Copy-Item $dmg.FullName "release-assets/yourharness-$version-macos-arm64.dmg"
-          $updaterDestination = "release-assets/yourharness-$version-macos-arm64.app.tar.gz"
+          Copy-Item $dmg.FullName "release-assets/yourbuddy-$version-macos-arm64.dmg"
+          $updaterDestination = "release-assets/yourbuddy-$version-macos-arm64.app.tar.gz"
           Copy-Item $updater.FullName $updaterDestination
           Copy-Item $signature.FullName "$updaterDestination.sig"
           Get-ChildItem release-assets -File | Sort-Object Name | ForEach-Object {
@@ -161,13 +161,13 @@ jobs:
         run: |
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" release-assets/* --clobber
-            gh release edit "$RELEASE_TAG" --title "YourHarness ${RELEASE_TAG#yourharness-v}" --notes-file apps/desktop-tauri/release-notes.md --latest
+            gh release edit "$RELEASE_TAG" --title "YourBuddy ${RELEASE_TAG#yourbuddy-v}" --notes-file apps/desktop-tauri/release-notes.md --latest
           else
-            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "YourHarness ${RELEASE_TAG#yourharness-v}" --notes-file apps/desktop-tauri/release-notes.md --latest
+            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "YourBuddy ${RELEASE_TAG#yourbuddy-v}" --notes-file apps/desktop-tauri/release-notes.md --latest
           fi
 
-          if gh release view yourharness-updater >/dev/null 2>&1; then
-            gh release upload yourharness-updater release-assets/latest.json --clobber
+          if gh release view yourbuddy-updater >/dev/null 2>&1; then
+            gh release upload yourbuddy-updater release-assets/latest.json --clobber
           else
-            gh release create yourharness-updater release-assets/latest.json --target "$(git rev-parse HEAD)" --title "YourHarness update channel" --notes "Signed macOS arm64 update manifest." --prerelease
+            gh release create yourbuddy-updater release-assets/latest.json --target "$(git rev-parse HEAD)" --title "YourBuddy update channel" --notes "Signed macOS arm64 update manifest." --prerelease
           fi

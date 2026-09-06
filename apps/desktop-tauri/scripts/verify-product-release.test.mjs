@@ -38,7 +38,7 @@ class FakeChild extends EventEmitter {
 }
 
 test('release candidate children receive only an isolated allowlisted environment', () => {
-  const root = mkdtempSync(join(tmpdir(), 'yourharness-release-env-test-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-release-env-test-'))
   try {
     const environment = createReleaseChildEnvironment(root, '/product-runtime', {
       PATH: '/credential-wrapper/bin',
@@ -59,7 +59,7 @@ test('release candidate children receive only an isolated allowlisted environmen
     assert.equal(environment.USERPROFILE, join(root, 'home'))
     assert.equal(environment.DSH_HOME, join(root, 'dsh-home'))
     assert.equal(environment.DSH_AGENTS_HOME, join(root, 'agents'))
-    assert.equal(environment.DEEPSEEK_API_KEY, 'yourharness-release-smoke-no-model-call')
+    assert.equal(environment.DEEPSEEK_API_KEY, 'yourbuddy-release-smoke-no-model-call')
     assert.ok(environment.PATH.includes('/product-runtime/venv/bin'))
     assert.ok(!environment.PATH.includes('/credential-wrapper/bin'))
     for (const name of [
@@ -157,11 +157,11 @@ test('assembled Client boot requires every product response, mounted UI, and qui
 
 test('product smoke overlay mounts the Plugin Marketplace and proxy verifier', () => {
   const overlay = buildProductSmokeOverlay('/tmp/workspace', '/tmp/runtime', '/tmp/proxy-verifier.mjs')
-  assert.match(overlay, /id: yourharness-release-plugin-marketplace/)
+  assert.match(overlay, /id: yourbuddy-release-plugin-marketplace/)
   assert.match(overlay, /name: dsh-plugin-marketplace/)
-  assert.match(overlay, /id: yourharness-release-subagent-codex/)
+  assert.match(overlay, /id: yourbuddy-release-subagent-codex/)
   assert.match(overlay, /name: '@deepseek-ai\/dsh-subagent-codex'/)
   assert.match(overlay, /id: agent-presets\n  config:\n    default: codex/)
-  assert.match(overlay, /id: yourharness-release-proxy-verifier/)
+  assert.match(overlay, /id: yourbuddy-release-proxy-verifier/)
   assert.match(overlay, /name: "\/tmp\/proxy-verifier\.mjs"/)
 })

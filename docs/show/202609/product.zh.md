@@ -6,7 +6,7 @@
 
 ## 产品定义
 
-YourHarness 是一个可选择模型、组合工具并检查任务结果的 AI 工作台。它把 DeepSeek Harness 的插件能力装配为桌面应用，让用户在自己的工作目录中开展任务，查看产生的文件、命令输出与评测证据，并逐步形成适合自己的工作方式。
+YourBuddy 是一个可选择模型、组合工具并检查任务结果的 AI 工作台。它把 DeepSeek Harness 的插件能力装配为桌面应用，让用户在自己的工作目录中开展任务，查看产生的文件、命令输出与评测证据，并逐步形成适合自己的工作方式。
 
 产品目前首先服务使用 macOS Apple Silicon 的开发者、技术创作者，以及需要反复验证 Agent 工作质量的实践者。入门文档面向能选择本地文件夹、完成模型登录或密钥配置的用户；插件开发、评测器编写和运行时装配放在进阶入口。
 
@@ -34,7 +34,7 @@ Context Doctor 帮助发现上下文负担，Harbor Evolution 帮助分析完成
 
 ## 首页建议文案
 
-**产品名：** YourHarness
+**产品名：** YourBuddy
 
 **主标题：** 按你的方式工作的 AI 工作台
 
@@ -42,11 +42,11 @@ Context Doctor 帮助发现上下文负担，Harbor Evolution 帮助分析完成
 
 **简介：** 选择适合任务的模型，在自己的工作目录中处理文件、运行工具、检查结果。通过默认集成的插件，把日常任务、上下文诊断和评测改进放进同一个工作台。
 
-**主要按钮：** 下载 macOS 版本；开始使用。下载按钮只在对应 YourHarness 安装包实际可用后展示。
+**主要按钮：** 下载 macOS 版本；开始使用。下载按钮只在对应 YourBuddy 安装包实际可用后展示。
 
 **三个功能卡片：** 选择你的模型；检查每一步成果；用证据改进工作方式。每张卡片链接到真实操作页，并配一张当前发行版截图。
 
-**生态说明：** 基于 DeepSeek Harness，集成社区插件，由 YourHarness 完成桌面装配、默认体验与发行验证。插件页面保留各自项目名称、作者来源和许可证。
+**生态说明：** 基于 DeepSeek Harness，集成社区插件，由 YourBuddy 完成桌面装配、默认体验与发行验证。插件页面保留各自项目名称、作者来源和许可证。
 
 ## 需要说清的边界
 
@@ -54,10 +54,10 @@ Context Doctor 帮助发现上下文负担，Harbor Evolution 帮助分析完成
 |---|---|
 | 本地工作台意味着所有计算都在本地 | 会话与设置在应用本地目录中管理；使用云端模型、搜索或评测器时，相应输入会发送给所选服务 |
 | 安装后就能免费使用任意模型 | 需要可用账号、额度或提供方凭据；接入方式不改变提供方的收费和可用性 |
-| 所有插件都是 YourHarness 原创 | 明确区分上游基础能力、外部集成和自有插件 |
+| 所有插件都是 YourBuddy 原创 | 明确区分上游基础能力、外部集成和自有插件 |
 | 自演进意味着自动修改并发布自己 | 现有能力是显式发起的诊断、评测和受控优化；生产部署仍属于独立流程 |
 | 默认插件已经覆盖完整办公套件 | 首批案例围绕代码、文本资料和可验证的 Agent 任务，其他格式按实际插件能力说明 |
 
 ## 事实依据
 
-产品装配与本地运行方式见[桌面说明](../../../apps/desktop-tauri/README.zh.md)；模型入口见[模型配置](../../user/guide/providers.zh.md)；名称与 Logo 的范围见[Personal Workbench](../../../apps/desktop-tauri/product/personal-workbench/README.zh.md)；上游归属见[产品声明](../../../YOURHARNESS_NOTICES.md)。
+产品装配与本地运行方式见[桌面说明](../../../apps/desktop-tauri/README.zh.md)；模型入口见[模型配置](../../user/guide/providers.zh.md)；名称与 Logo 的范围见[Personal Workbench](../../../apps/desktop-tauri/product/personal-workbench/README.zh.md)；上游归属见[产品声明](../../../YOURBUDDY_NOTICES.md)。

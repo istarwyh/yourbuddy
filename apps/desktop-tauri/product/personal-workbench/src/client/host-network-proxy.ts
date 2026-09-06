@@ -1,6 +1,6 @@
 /** Same-origin browser client for the active Node Host proxy diagnostic. */
 
-const HOST_NETWORK_PROXY_TEST_PATH = '/api/yourharness/network-proxy/test'
+const HOST_NETWORK_PROXY_TEST_PATH = '/api/yourbuddy/network-proxy/test'
 
 /** Credential-free result from the active Node Host process. */
 export interface HostNetworkProxyTestResult {

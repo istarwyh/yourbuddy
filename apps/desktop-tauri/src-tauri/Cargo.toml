@@ -1,12 +1,12 @@
 [package]
-name = "yourharness"
+name = "yourbuddy"
 version = "0.3.0"
-description = "YourHarness desktop AI workbench (Tauri)"
+description = "YourBuddy desktop AI workbench (Tauri)"
 authors = ["XIAOHUI", "DeepSeek"]
 edition = "2021"
 
 [lib]
-name = "yourharness_lib"
+name = "yourbuddy_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

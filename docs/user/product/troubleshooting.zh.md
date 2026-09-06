@@ -10,7 +10,7 @@
 | 模型请求失败 | 检查当前模型、登录或密钥、额度与网络状态 |
 | 找不到生成的文件 | 检查会话目录与真实工具结果，不只看助手概述 |
 | 没有 Context Doctor | 先建立已有会话；尚无标识的新会话不显示会话级审计控件 |
-| 插件安装后没有界面 | 确认目标是 YourHarness Web Profile，再通过应用生命周期重启 |
+| 插件安装后没有界面 | 确认目标是 YourBuddy Web Profile，再通过应用生命周期重启 |
 | 插件市场无法安装 | npm 包可能缺少明确的 Bundle 元数据，GitHub Topic 本身不足以证明可安装 |
 | 代理测试成功但请求失败 | 同时查看桌面与 Host 结果；修改后保存、重启并重新测试 |
 | Harbor 找不到历史 | 使用有已完成业务会话的精确目录，或提供明确任务 |
@@ -22,6 +22,6 @@
 
 ## 提供有用的问题信息
 
-附上应用版本、系统与架构、失败操作和可见错误。去掉凭据、私有任务内容与敏感文件路径。macOS 应用根目录为 `~/Library/Application Support/YourHarness`，项目产物保存在选定工作区。
+附上应用版本、系统与架构、失败操作和可见错误。去掉凭据、私有任务内容与敏感文件路径。macOS 应用根目录为 `~/Library/Application Support/YourBuddy`，项目产物保存在选定工作区。
 
-详细前提见[模型配置](models.zh.md)、[设置](settings.zh.md)或对应[插件页](plugins/index.zh.md)。[反馈问题](https://github.com/istarwyh/yourharness/issues)。
+详细前提见[模型配置](models.zh.md)、[设置](settings.zh.md)或对应[插件页](plugins/index.zh.md)。[反馈问题](https://github.com/istarwyh/yourbuddy/issues)。

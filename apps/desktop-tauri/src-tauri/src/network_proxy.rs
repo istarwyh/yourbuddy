@@ -40,7 +40,7 @@ const CHILD_NETWORK_ENV_NAMES: [&str; 12] = [
     "NODE_USE_ENV_PROXY",
     "NODE_OPTIONS",
     "NODE_EXTRA_CA_CERTS",
-    "YOURHARNESS_NETWORK_PROXY_MODE",
+    "YOURBUDDY_NETWORK_PROXY_MODE",
 ];
 const NODE_SYSTEM_CA_OPTION: &str = "--use-system-ca";
 
@@ -356,7 +356,7 @@ pub fn apply_to_command(command: &mut Command, proxy: &ResolvedNetworkProxy) {
         command.env_remove(name);
     }
     command.env("NODE_OPTIONS", NODE_SYSTEM_CA_OPTION);
-    command.env("YOURHARNESS_NETWORK_PROXY_MODE", proxy.mode.as_env());
+    command.env("YOURBUDDY_NETWORK_PROXY_MODE", proxy.mode.as_env());
     if let Some(path) = proxy.ca_certificate_path() {
         command.env("NODE_EXTRA_CA_CERTS", path);
     }
@@ -388,7 +388,7 @@ pub fn env_arguments(
     }
     assignments.push(format!("NODE_OPTIONS={NODE_SYSTEM_CA_OPTION}"));
     assignments.push(format!(
-        "YOURHARNESS_NETWORK_PROXY_MODE={}",
+        "YOURBUDDY_NETWORK_PROXY_MODE={}",
         proxy.mode.as_env()
     ));
     if let Some(path) = node_ca_certificate_path {
@@ -529,7 +529,7 @@ pub async fn test_network_proxy_settings(
     let proxy = resolve(&settings)?;
     let client = match apply_to_client(
         reqwest::Client::builder()
-            .user_agent("YourHarness-Harness/proxy-test")
+            .user_agent("YourBuddy-Harness/proxy-test")
             .timeout(PROXY_TEST_TIMEOUT)
             .redirect(reqwest::redirect::Policy::limited(3)),
         &proxy,
@@ -833,7 +833,7 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
             .unwrap()
             .as_nanos();
         let path = std::env::temp_dir().join(format!(
-            "yourharness-network-proxy-{}-{nonce}.{extension}",
+            "yourbuddy-network-proxy-{}-{nonce}.{extension}",
             std::process::id()
         ));
         fs::write(&path, contents).unwrap();
@@ -948,7 +948,7 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
             .iter()
             .any(|(name, value)| *name == "NODE_EXTRA_CA_CERTS" && value.is_none()));
         assert!(direct_env.iter().any(|(name, value)| {
-            *name == "YOURHARNESS_NETWORK_PROXY_MODE"
+            *name == "YOURBUDDY_NETWORK_PROXY_MODE"
                 && value.is_some_and(|value| value == "direct")
         }));
 
@@ -991,7 +991,7 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
                 && value.is_some_and(|value| value == canonical_ca_path.as_os_str())
         }));
         assert!(environment.iter().any(|(name, value)| {
-            *name == "YOURHARNESS_NETWORK_PROXY_MODE"
+            *name == "YOURBUDDY_NETWORK_PROXY_MODE"
                 && value.is_some_and(|value| value == "custom")
         }));
         apply_to_client(reqwest::Client::builder(), &resolved)

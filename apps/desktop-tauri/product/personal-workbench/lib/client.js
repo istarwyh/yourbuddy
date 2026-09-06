@@ -89,7 +89,7 @@ function createPersonalBrandName(name) {
 var import_react = require("react");
 
 // ../../app-icon.svg
-var app_icon_default = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">%0A  <defs>%0A    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">%0A      <stop offset="0" stop-color="%23111827"/>%0A      <stop offset="1" stop-color="%232563eb"/>%0A    </linearGradient>%0A  </defs>%0A  <rect width="1024" height="1024" rx="220" fill="url(%23bg)"/>%0A  <path d="M164 286h116l88 160 88-160h116L420 548v190H316V548L164 286Z" fill="%23f8fafc"/>%0A  <path d="M562 286h94v168h112V286h94v452h-94V550H656v188h-94V286Z" fill="%23bfdbfe"/>%0A</svg>%0A';
+var app_icon_default = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">%0A  <defs>%0A    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">%0A      <stop offset="0" stop-color="%23111827"/>%0A      <stop offset="1" stop-color="%232563eb"/>%0A    </linearGradient>%0A  </defs>%0A  <rect width="1024" height="1024" rx="220" fill="url(%23bg)"/>%0A  <path d="M164 286h116l88 160 88-160h116L420 548v190H316V548L164 286Z" fill="%23f8fafc"/>%0A  <path d="M712 286c98 0 154 45 154 115 0 43-23 76-62 96 48 21 74 59 74 110 0 82-60 131-166 131S546 689 546 607c0-51 26-89 74-110-39-20-62-53-62-96 0-70 56-115 154-115Z M712 365c-40 0-61 17-61 43s21 43 61 43 61-17 61-43-21-43-61-43Z M712 532c-45 0-70 21-70 59s25 59 70 59 70-21 70-59-25-59-70-59Z" fill="%23bfdbfe" fill-rule="evenodd"/>%0A</svg>%0A';
 
 // src/client/BrandSettingsRow.tsx
 var import_jsx_runtime2 = require("react/jsx-runtime");
@@ -121,7 +121,7 @@ function BrandSettingsRow({ scope, t }) {
     setName(persisted.enabled ? persisted.name : "");
     setLogo(persisted.enabled ? persisted.logo : "");
   }, [persisted]);
-  const displayName = normalizeWorkbenchName(name) ?? "YourHarness";
+  const displayName = normalizeWorkbenchName(name) ?? "YourBuddy";
   const displayLogo = normalizeLogoSource(logo) ?? app_icon_default;
   const writable = snapshot.writable;
   const busy = status === "saving";
@@ -271,7 +271,7 @@ function BrandSettingsRow({ scope, t }) {
 var import_react2 = require("react");
 
 // src/client/desktop-lifecycle.ts
-var DESKTOP_LIFECYCLE_CHANNEL = "yourharness.desktop.lifecycle";
+var DESKTOP_LIFECYCLE_CHANNEL = "yourbuddy.desktop.lifecycle";
 var DESKTOP_LIFECYCLE_VERSION = 1;
 var REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 var DEFAULT_HANDSHAKE_TIMEOUT_MS = 5e3;
@@ -426,7 +426,7 @@ function ApplicationLifecycleRow({ t }) {
 var import_react3 = require("react");
 
 // src/client/desktop-network-proxy.ts
-var DESKTOP_NETWORK_PROXY_CHANNEL = "yourharness.desktop.network-proxy";
+var DESKTOP_NETWORK_PROXY_CHANNEL = "yourbuddy.desktop.network-proxy";
 var DESKTOP_NETWORK_PROXY_VERSION = 3;
 var REQUEST_ID_PATTERN2 = /^[A-Za-z0-9_-]{1,64}$/;
 var DEFAULT_HANDSHAKE_TIMEOUT_MS2 = 5e3;
@@ -561,7 +561,7 @@ async function requestDesktopCaCertificateSelection(options = {}) {
 }
 
 // src/client/host-network-proxy.ts
-var HOST_NETWORK_PROXY_TEST_PATH = "/api/yourharness/network-proxy/test";
+var HOST_NETWORK_PROXY_TEST_PATH = "/api/yourbuddy/network-proxy/test";
 function hasExactKeys2(value, expected) {
   return Object.keys(value).sort().join(",") === expected;
 }
@@ -889,7 +889,7 @@ function localizedProxyError(error, t) {
 }
 
 // src/client/desktop-external-links.ts
-var DESKTOP_EXTERNAL_LINK_CHANNEL = "yourharness.desktop.external-link";
+var DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
 var DESKTOP_EXTERNAL_LINK_VERSION = 1;
 var MAX_EXTERNAL_URL_LENGTH = 4096;
 var RESPONSE_TIMEOUT_MS = 5e3;
@@ -1073,7 +1073,7 @@ function installDesktopExternalLinks(ctx, t) {
       anchor.classList.add("dpw-desktop-external-link");
       if (!anchor.hasAttribute("title")) {
         anchor.title = url;
-        anchor.dataset.yourharnessExternalLinkTitle = "true";
+        anchor.dataset.yourbuddyExternalLinkTitle = "true";
       }
     };
     const onDocumentPointer = (event) => {
@@ -1125,9 +1125,9 @@ function installDesktopExternalLinks(ctx, t) {
       copyButton.removeEventListener("click", onCopy);
       markedAnchors.forEach((anchor) => {
         anchor.classList.remove("dpw-desktop-external-link");
-        if (anchor.dataset.yourharnessExternalLinkTitle === "true") {
+        if (anchor.dataset.yourbuddyExternalLinkTitle === "true") {
           anchor.removeAttribute("title");
-          delete anchor.dataset.yourharnessExternalLinkTitle;
+          delete anchor.dataset.yourbuddyExternalLinkTitle;
         }
       });
       menu.remove();
@@ -1148,7 +1148,7 @@ var zh = {
   "logo.remove": "\u79FB\u9664 Logo",
   "logo.hint": "\u9009\u62E9\u4E00\u5F20\u4F60\u559C\u6B22\u7684\u56FE\u7247\u3002",
   "save": "\u5E94\u7528\u5230\u5DE5\u4F5C\u53F0",
-  "reset": "\u6062\u590D YourHarness \u9ED8\u8BA4",
+  "reset": "\u6062\u590D YourBuddy \u9ED8\u8BA4",
   "saved": "\u5DF2\u5E94\u7528",
   "reset.done": "\u5DF2\u6062\u590D\u9ED8\u8BA4",
   "status.readonly": "\u5F53\u524D Profile \u7684\u8BBE\u7F6E\u6587\u4EF6\u4E0D\u53EF\u5199\u3002",
@@ -1161,9 +1161,9 @@ var zh = {
   "link.error.open": "\u65E0\u6CD5\u6253\u5F00\u94FE\u63A5\uFF1A",
   "link.error.copy": "\u65E0\u6CD5\u590D\u5236\u94FE\u63A5\u5730\u5740\u3002",
   "proxy.title": "\u7F51\u7EDC\u4EE3\u7406",
-  "proxy.description": "\u4E3A YourHarness\u3001\u79C1\u6709 Host\u3001\u63D2\u4EF6\u548C\u5E94\u7528\u66F4\u65B0\u7EDF\u4E00\u8BBE\u7F6E\u7F51\u7EDC\u4EE3\u7406\u3002\u4FDD\u5B58\u540E\u4F1A\u91CD\u542F\u5E94\u7528\u3002",
-  "proxy.desktop-only": "\u8BF7\u5728 YourHarness \u684C\u9762\u5E94\u7528\u4E2D\u914D\u7F6E\u7F51\u7EDC\u4EE3\u7406\u3002",
-  "proxy.shell-unavailable": "\u684C\u9762\u7F51\u7EDC\u4EE3\u7406\u670D\u52A1\u672A\u54CD\u5E94\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourHarness \u540E\u91CD\u8BD5\u3002",
+  "proxy.description": "\u4E3A YourBuddy\u3001\u79C1\u6709 Host\u3001\u63D2\u4EF6\u548C\u5E94\u7528\u66F4\u65B0\u7EDF\u4E00\u8BBE\u7F6E\u7F51\u7EDC\u4EE3\u7406\u3002\u4FDD\u5B58\u540E\u4F1A\u91CD\u542F\u5E94\u7528\u3002",
+  "proxy.desktop-only": "\u8BF7\u5728 YourBuddy \u684C\u9762\u5E94\u7528\u4E2D\u914D\u7F6E\u7F51\u7EDC\u4EE3\u7406\u3002",
+  "proxy.shell-unavailable": "\u684C\u9762\u7F51\u7EDC\u4EE3\u7406\u670D\u52A1\u672A\u54CD\u5E94\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourBuddy \u540E\u91CD\u8BD5\u3002",
   "proxy.mode.label": "\u8FDE\u63A5\u65B9\u5F0F",
   "proxy.mode.system": "\u8DDF\u968F macOS \u7CFB\u7EDF\u4EE3\u7406",
   "proxy.mode.custom": "\u81EA\u5B9A\u4E49\u4EE3\u7406",
@@ -1177,7 +1177,7 @@ var zh = {
   "proxy.https.label": "HTTPS \u4EE3\u7406",
   "proxy.no-proxy.label": "\u4E0D\u4F7F\u7528\u4EE3\u7406\u7684\u5730\u5740",
   "proxy.custom.hint": "\u9700\u8981\u540C\u65F6\u586B\u5199 HTTP \u4E0E HTTPS \u4EE3\u7406\u3002\u4EC5\u652F\u6301\u65E0\u8D26\u53F7\u5BC6\u7801\u7684 http:// \u6216 https:// \u5730\u5740\uFF1B\u672C\u673A Host \u5730\u5740\u59CB\u7EC8\u76F4\u8FDE\u3002",
-  "proxy.direct.hint": "\u5FFD\u7565\u542F\u52A8\u73AF\u5883\u4E2D\u7684\u4EE3\u7406\u53D8\u91CF\uFF0C\u7531 YourHarness \u76F4\u63A5\u8FDE\u63A5\u5916\u90E8\u7F51\u7EDC\u3002",
+  "proxy.direct.hint": "\u5FFD\u7565\u542F\u52A8\u73AF\u5883\u4E2D\u7684\u4EE3\u7406\u53D8\u91CF\uFF0C\u7531 YourBuddy \u76F4\u63A5\u8FDE\u63A5\u5916\u90E8\u7F51\u7EDC\u3002",
   "proxy.ca.label": "\u989D\u5916 CA \u8BC1\u4E66",
   "proxy.ca.system-only": "\u672A\u9009\u62E9\uFF08\u4EC5\u4F7F\u7528 macOS \u94A5\u5319\u4E32\u4E0E Node \u7CFB\u7EDF CA\uFF09",
   "proxy.ca.hint": "\u53EF\u9009\u62E9 PEM \u683C\u5F0F\u7684 .pem \u6216 .crt \u4F01\u4E1A\u6839\u8BC1\u4E66\u3002\u5B83\u4F1A\u8865\u5145\u7CFB\u7EDF\u4FE1\u4EFB\uFF0C\u5E76\u5728\u91CD\u542F\u524D\u663E\u5F0F\u4F20\u7ED9\u684C\u9762\u5BA2\u6237\u7AEF\u3001Node Host\u3001\u63D2\u4EF6\u4E0E\u5E94\u7528\u66F4\u65B0\uFF1B\u8BC1\u4E66\u6821\u9A8C\u59CB\u7EC8\u4FDD\u6301\u5F00\u542F\u3002",
@@ -1195,16 +1195,16 @@ var zh = {
   "proxy.test.mode.direct": "\u76F4\u8FDE",
   "proxy.test.mode.system": "macOS \u7CFB\u7EDF\u4EE3\u7406",
   "proxy.test.mode.custom": "\u81EA\u5B9A\u4E49\u4EE3\u7406",
-  "proxy.test.mode.unknown": "\u975E YourHarness \u7BA1\u7406\u7684\u4EE3\u7406\u6A21\u5F0F",
+  "proxy.test.mode.unknown": "\u975E YourBuddy \u7BA1\u7406\u7684\u4EE3\u7406\u6A21\u5F0F",
   "proxy.test.ca.system": "\u7CFB\u7EDF CA",
   "proxy.test.ca.custom": "\u7CFB\u7EDF CA + \u81EA\u5B9A\u4E49 CA",
   "proxy.test.ca.unknown": "CA \u6765\u6E90\u672A\u77E5",
   "proxy.test.pending-restart": "Node Host \u7684\u4EE3\u7406\u6A21\u5F0F\u6216 CA \u6765\u6E90\u4ECD\u662F\u4E0A\u6B21\u542F\u52A8\u65F6\u7684\u8BBE\u7F6E\uFF1B\u4FDD\u5B58\u5E76\u91CD\u542F\u540E\u8BF7\u518D\u6B21\u6D4B\u8BD5\u3002",
-  "proxy.test.certificate-hint": "\u68C0\u6D4B\u5230 TLS \u8BC1\u4E66\u4FE1\u4EFB\u9519\u8BEF\u3002\u8BF7\u786E\u8BA4\u4F01\u4E1A\u6839\u8BC1\u4E66\u5DF2\u5728 macOS \u94A5\u5319\u4E32\u4E2D\u53D7\u4FE1\u4EFB\uFF0C\u6216\u9009\u62E9\u5BF9\u5E94\u7684 PEM CA\uFF1BYourHarness \u4E0D\u4F1A\u5173\u95ED\u8BC1\u4E66\u6821\u9A8C\u3002",
-  "proxy.save.action": "\u4FDD\u5B58\u5E76\u91CD\u542F YourHarness",
+  "proxy.test.certificate-hint": "\u68C0\u6D4B\u5230 TLS \u8BC1\u4E66\u4FE1\u4EFB\u9519\u8BEF\u3002\u8BF7\u786E\u8BA4\u4F01\u4E1A\u6839\u8BC1\u4E66\u5DF2\u5728 macOS \u94A5\u5319\u4E32\u4E2D\u53D7\u4FE1\u4EFB\uFF0C\u6216\u9009\u62E9\u5BF9\u5E94\u7684 PEM CA\uFF1BYourBuddy \u4E0D\u4F1A\u5173\u95ED\u8BC1\u4E66\u6821\u9A8C\u3002",
+  "proxy.save.action": "\u4FDD\u5B58\u5E76\u91CD\u542F YourBuddy",
   "proxy.save.saving": "\u6B63\u5728\u4FDD\u5B58\u7F51\u7EDC\u4EE3\u7406\u8BBE\u7F6E\u2026",
   "proxy.save.restarting-action": "\u6B63\u5728\u91CD\u542F\u2026",
-  "proxy.save.restarting": "\u8BBE\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F YourHarness\u2026",
+  "proxy.save.restarting": "\u8BBE\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F YourBuddy\u2026",
   "proxy.error.pac": "\u68C0\u6D4B\u5230 PAC \u6216\u81EA\u52A8\u4EE3\u7406\u53D1\u73B0\u3002\u5F53\u524D\u7248\u672C\u65E0\u6CD5\u628A\u52A8\u6001\u4EE3\u7406\u89C4\u5219\u8F6C\u6362\u7ED9 Node\uFF0C\u8BF7\u6539\u7528\u81EA\u5B9A\u4E49\u4EE3\u7406\u3002",
   "proxy.error.http-only": "\u7CFB\u7EDF\u53EA\u542F\u7528\u4E86 HTTP \u4EE3\u7406\uFF0C\u65E0\u6CD5\u5FE0\u5B9E\u5E94\u7528\u5230\u6240\u6709 Node \u8BF7\u6C42\uFF1B\u8BF7\u540C\u65F6\u542F\u7528 HTTPS \u4EE3\u7406\u6216\u6539\u7528\u81EA\u5B9A\u4E49\u4EE3\u7406\u3002",
   "proxy.error.platform": "\u5F53\u524D\u5E73\u53F0\u4E0D\u652F\u6301\u81EA\u52A8\u8BFB\u53D6\u7CFB\u7EDF\u4EE3\u7406\uFF0C\u8BF7\u4F7F\u7528\u81EA\u5B9A\u4E49\u4EE3\u7406\u3002",
@@ -1218,19 +1218,19 @@ var zh = {
   "proxy.error.ca-size": "CA \u8BC1\u4E66\u5FC5\u987B\u662F 1 MiB \u4EE5\u5185\u7684\u975E\u7A7A\u666E\u901A\u6587\u4EF6\u3002",
   "proxy.error.ca-pem": ".pem \u6216 .crt \u6587\u4EF6\u5FC5\u987B\u5305\u542B PEM \u683C\u5F0F\u7684 CERTIFICATE \u533A\u5757\u3002",
   "proxy.error.test": "\u684C\u9762\u8FDE\u901A\u6027\u6D4B\u8BD5\u672A\u5B8C\u6210\uFF0C\u8BF7\u68C0\u67E5\u663E\u793A\u7684\u9519\u8BEF\u4FE1\u606F\u540E\u91CD\u8BD5\u3002",
-  "proxy.error.host-response": "Node Host \u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4EE3\u7406\u8BCA\u65AD\u7ED3\u679C\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourHarness \u540E\u91CD\u8BD5\u3002",
+  "proxy.error.host-response": "Node Host \u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4EE3\u7406\u8BCA\u65AD\u7ED3\u679C\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourBuddy \u540E\u91CD\u8BD5\u3002",
   "proxy.error.generic": "\u7F51\u7EDC\u4EE3\u7406\u64CD\u4F5C\u5931\u8D25\uFF1A",
   "lifecycle.title": "\u5E94\u7528\u751F\u547D\u5468\u671F",
-  "lifecycle.description": "\u7BA1\u7406 YourHarness \u7684\u66F4\u65B0\u4E0E\u91CD\u542F\u3002\u91CD\u542F\u4F1A\u505C\u6B62\u5F53\u524D\u79C1\u6709 Host\uFF0C\u5E76\u5728\u91CD\u65B0\u6253\u5F00\u65F6\u52A0\u8F7D\u65B0\u5B89\u88C5\u7684\u63D2\u4EF6\u3002",
-  "lifecycle.desktop-only": "\u8BF7\u5728 YourHarness \u684C\u9762\u5E94\u7528\u4E2D\u4F7F\u7528\u8FD9\u4E9B\u529F\u80FD\u3002",
-  "lifecycle.shell-unavailable": "\u684C\u9762\u751F\u547D\u5468\u671F\u670D\u52A1\u672A\u54CD\u5E94\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourHarness \u540E\u91CD\u8BD5\u3002",
+  "lifecycle.description": "\u7BA1\u7406 YourBuddy \u7684\u66F4\u65B0\u4E0E\u91CD\u542F\u3002\u91CD\u542F\u4F1A\u505C\u6B62\u5F53\u524D\u79C1\u6709 Host\uFF0C\u5E76\u5728\u91CD\u65B0\u6253\u5F00\u65F6\u52A0\u8F7D\u65B0\u5B89\u88C5\u7684\u63D2\u4EF6\u3002",
+  "lifecycle.desktop-only": "\u8BF7\u5728 YourBuddy \u684C\u9762\u5E94\u7528\u4E2D\u4F7F\u7528\u8FD9\u4E9B\u529F\u80FD\u3002",
+  "lifecycle.shell-unavailable": "\u684C\u9762\u751F\u547D\u5468\u671F\u670D\u52A1\u672A\u54CD\u5E94\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourBuddy \u540E\u91CD\u8BD5\u3002",
   "lifecycle.update.action": "\u68C0\u67E5\u5E76\u66F4\u65B0",
   "lifecycle.update.checking-action": "\u6B63\u5728\u68C0\u67E5\u2026",
   "lifecycle.update.checking": "\u6B63\u5728\u68C0\u67E5\u66F4\u65B0\uFF1B\u5982\u6709\u65B0\u7248\u672C\uFF0C\u5C06\u81EA\u52A8\u4E0B\u8F7D\u5E76\u5B89\u88C5\u3002",
   "lifecycle.update.error": "\u68C0\u67E5\u66F4\u65B0\u5931\u8D25\uFF1A",
-  "lifecycle.restart.action": "\u91CD\u542F YourHarness",
+  "lifecycle.restart.action": "\u91CD\u542F YourBuddy",
   "lifecycle.restart.restarting-action": "\u6B63\u5728\u91CD\u542F\u2026",
-  "lifecycle.restart.restarting": "\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F YourHarness\u2026",
+  "lifecycle.restart.restarting": "\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F YourBuddy\u2026",
   "lifecycle.restart.error": "\u91CD\u542F\u5931\u8D25\uFF1A"
 };
 var en = {
@@ -1245,7 +1245,7 @@ var en = {
   "logo.remove": "Remove logo",
   "logo.hint": "Choose an image you like.",
   "save": "Apply to workbench",
-  "reset": "Restore YourHarness default",
+  "reset": "Restore YourBuddy default",
   "saved": "Applied",
   "reset.done": "Default restored",
   "status.readonly": "This Profile settings document is read-only.",
@@ -1258,9 +1258,9 @@ var en = {
   "link.error.open": "Could not open link:",
   "link.error.copy": "Could not copy the link address.",
   "proxy.title": "Network proxy",
-  "proxy.description": "Configure one network proxy for YourHarness, its private Host, plugins, and application updates. Saving restarts the app.",
-  "proxy.desktop-only": "Configure the network proxy in the YourHarness desktop application.",
-  "proxy.shell-unavailable": "The desktop network proxy service did not respond. Reopen YourHarness and try again.",
+  "proxy.description": "Configure one network proxy for YourBuddy, its private Host, plugins, and application updates. Saving restarts the app.",
+  "proxy.desktop-only": "Configure the network proxy in the YourBuddy desktop application.",
+  "proxy.shell-unavailable": "The desktop network proxy service did not respond. Reopen YourBuddy and try again.",
   "proxy.mode.label": "Connection mode",
   "proxy.mode.system": "Follow macOS system proxy",
   "proxy.mode.custom": "Custom proxy",
@@ -1292,16 +1292,16 @@ var en = {
   "proxy.test.mode.direct": "direct",
   "proxy.test.mode.system": "macOS system proxy",
   "proxy.test.mode.custom": "custom proxy",
-  "proxy.test.mode.unknown": "proxy mode not managed by YourHarness",
+  "proxy.test.mode.unknown": "proxy mode not managed by YourBuddy",
   "proxy.test.ca.system": "system CAs",
   "proxy.test.ca.custom": "system CAs + custom CA",
   "proxy.test.ca.unknown": "unknown CA source",
   "proxy.test.pending-restart": "The Node Host proxy mode or CA source still reflects the previous launch. Save, restart, and test again.",
-  "proxy.test.certificate-hint": "A TLS certificate trust error was detected. Trust the enterprise root in the macOS Keychain or select its PEM CA; YourHarness does not disable certificate verification.",
-  "proxy.save.action": "Save and restart YourHarness",
+  "proxy.test.certificate-hint": "A TLS certificate trust error was detected. Trust the enterprise root in the macOS Keychain or select its PEM CA; YourBuddy does not disable certificate verification.",
+  "proxy.save.action": "Save and restart YourBuddy",
   "proxy.save.saving": "Saving network proxy settings\u2026",
   "proxy.save.restarting-action": "Restarting\u2026",
-  "proxy.save.restarting": "Settings saved. Stopping the private Host and restarting YourHarness\u2026",
+  "proxy.save.restarting": "Settings saved. Stopping the private Host and restarting YourBuddy\u2026",
   "proxy.error.pac": "A PAC URL or automatic proxy discovery is enabled. This version cannot translate dynamic rules for Node; use a custom proxy.",
   "proxy.error.http-only": "Only the system HTTP proxy is enabled, so it cannot be applied faithfully to every Node request. Enable HTTPS proxy too or use a custom proxy.",
   "proxy.error.platform": "Automatic system proxy detection is unavailable on this platform. Use a custom proxy.",
@@ -1315,19 +1315,19 @@ var en = {
   "proxy.error.ca-size": "The CA certificate must be a non-empty regular file no larger than 1 MiB.",
   "proxy.error.ca-pem": "The .pem or .crt file must contain PEM CERTIFICATE blocks.",
   "proxy.error.test": "The desktop connectivity test did not complete. Check the reported error and try again.",
-  "proxy.error.host-response": "The Node Host returned an invalid proxy diagnostic result. Reopen YourHarness and try again.",
+  "proxy.error.host-response": "The Node Host returned an invalid proxy diagnostic result. Reopen YourBuddy and try again.",
   "proxy.error.generic": "Network proxy operation failed:",
   "lifecycle.title": "Application lifecycle",
-  "lifecycle.description": "Manage YourHarness updates and restarts. Restart stops the private Host and loads newly installed plugins when the app opens again.",
-  "lifecycle.desktop-only": "Use these actions in the YourHarness desktop application.",
-  "lifecycle.shell-unavailable": "The desktop lifecycle service did not respond. Reopen YourHarness and try again.",
+  "lifecycle.description": "Manage YourBuddy updates and restarts. Restart stops the private Host and loads newly installed plugins when the app opens again.",
+  "lifecycle.desktop-only": "Use these actions in the YourBuddy desktop application.",
+  "lifecycle.shell-unavailable": "The desktop lifecycle service did not respond. Reopen YourBuddy and try again.",
   "lifecycle.update.action": "Check and update",
   "lifecycle.update.checking-action": "Checking\u2026",
   "lifecycle.update.checking": "Checking for updates. A new release will download and install automatically.",
   "lifecycle.update.error": "Update check failed:",
-  "lifecycle.restart.action": "Restart YourHarness",
+  "lifecycle.restart.action": "Restart YourBuddy",
   "lifecycle.restart.restarting-action": "Restarting\u2026",
-  "lifecycle.restart.restarting": "Stopping the private Host and restarting YourHarness\u2026",
+  "lifecycle.restart.restarting": "Stopping the private Host and restarting YourBuddy\u2026",
   "lifecycle.restart.error": "Restart failed:"
 };
 
@@ -1409,7 +1409,7 @@ function installPersonalBrandOccupants(ctx, scope) {
   let selectedName;
   let nameComponent;
   const pickName = (value) => {
-    const name = resolveWorkbenchBrand(value).name ?? "YourHarness";
+    const name = resolveWorkbenchBrand(value).name ?? "YourBuddy";
     if (name !== selectedName) {
       selectedName = name;
       nameComponent = createPersonalBrandName(name);

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-YourHarness packages DeepSeek Harness and Sakana in `apps/desktop-tauri/`. The runtime uses vendored Cordis: **everything is a plugin**. Preserve upstream package names and licenses. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
+YourBuddy packages DeepSeek Harness and Sakana in `apps/desktop-tauri/`. The runtime uses vendored Cordis: **everything is a plugin**. Preserve upstream package names and licenses. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
 
 ## Pre-release stance: foundation over blast radius
 

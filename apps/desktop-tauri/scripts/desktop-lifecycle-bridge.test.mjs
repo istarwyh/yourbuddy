@@ -22,11 +22,11 @@ const validators = Function(
   'marketplaceLinkChannel',
   'marketplaceLinkVersion',
   `${validatorSource}; return { readDesktopLifecycleAction, readNetworkProxyAction, isExternalLinkRequest, isMarketplaceLinkRequest }`,
-)('yourharness.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/, 'yourharness.desktop.network-proxy', 3, 'yourharness.desktop.external-link', 1, 'yourharness.desktop.marketplace-link', 1)
+)('yourbuddy.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/, 'yourbuddy.desktop.network-proxy', 3, 'yourbuddy.desktop.external-link', 1, 'yourbuddy.desktop.marketplace-link', 1)
 
 test('desktop shell accepts only fixed lifecycle request fields and actions', () => {
   const request = {
-    channel: 'yourharness.desktop.lifecycle',
+    channel: 'yourbuddy.desktop.lifecycle',
     version: 1,
     type: 'check-update-request',
     requestId: 'request_1',
@@ -41,7 +41,7 @@ test('desktop shell accepts only fixed lifecycle request fields and actions', ()
 
 test('desktop shell accepts only restricted Marketplace repository and npm links', () => {
   const request = {
-    channel: 'yourharness.desktop.marketplace-link',
+    channel: 'yourbuddy.desktop.marketplace-link',
     version: 1,
     type: 'open-request',
     requestId: 'link_1',
@@ -67,7 +67,7 @@ test('desktop shell accepts only restricted Marketplace repository and npm links
 
 test('desktop shell accepts only credential-free HTTP and HTTPS external links', () => {
   const request = {
-    channel: 'yourharness.desktop.external-link',
+    channel: 'yourbuddy.desktop.external-link',
     version: 1,
     type: 'open-request',
     requestId: 'link_1',
@@ -103,7 +103,7 @@ test('desktop shell accepts only fixed network proxy requests and bounded settin
     caCertificatePath: '/Users/example/company-root.pem',
   }
   const request = {
-    channel: 'yourharness.desktop.network-proxy',
+    channel: 'yourbuddy.desktop.network-proxy',
     version: 3,
     type: 'test-request',
     requestId: 'proxy_1',

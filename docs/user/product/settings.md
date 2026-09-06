@@ -6,7 +6,7 @@ Personalize the interface and manage the desktop from one place.
 
 ## Name and Logo
 
-Open Settings → General → My workbench. Preview and save a new name or image, or restore YourHarness defaults. Identity is stored per Profile and survives reloads. It does not change the desktop icon, application name, or complete theme.
+Open Settings → General → My workbench. Preview and save a new name or image, or restore YourBuddy defaults. Identity is stored per Profile and survives reloads. It does not change the desktop icon, application name, or complete theme.
 
 ## Networking
 
@@ -16,7 +16,7 @@ Test the desktop draft route and running Host route separately. Save and restart
 
 ## Updates and restart
 
-Use Settings → General → Application lifecycle to check for updates or restart. Restart after installing a new plugin so its Client can be discovered. Bundled plugins update with YourHarness releases, while upstream version notices do not install anything automatically.
+Use Settings → General → Application lifecycle to check for updates or restart. Restart after installing a new plugin so its Client can be discovered. Bundled plugins update with YourBuddy releases, while upstream version notices do not install anything automatically.
 
 These controls come from the first-party Personal Workbench plugin. Native restart, proxy, and updater operations require the desktop shell and are unavailable in standalone DSH Web.
 

@@ -6,7 +6,7 @@ This page defines the website's product explanation and proposed copy. See [Firs
 
 ## Product definition
 
-YourHarness is an AI workbench for choosing models, composing tools, and checking task results. It assembles DeepSeek Harness plugins into a desktop application, letting users work in their own directories, inspect generated files, command output, and evaluation evidence, and gradually develop a workflow that fits their needs.
+YourBuddy is an AI workbench for choosing models, composing tools, and checking task results. It assembles DeepSeek Harness plugins into a desktop application, letting users work in their own directories, inspect generated files, command output, and evaluation evidence, and gradually develop a workflow that fits their needs.
 
 The initial audience is developers, technical creators, and practitioners who repeatedly assess Agent work quality on macOS Apple Silicon. Entry-level documentation assumes users can select a local folder and complete model login or credential setup. Plugin development, evaluator authoring, and runtime assembly belong in advanced sections.
 
@@ -34,7 +34,7 @@ Users can replace the workbench name and Logo and choose directories, models, an
 
 ## Proposed homepage copy
 
-**Product name:** YourHarness
+**Product name:** YourBuddy
 
 **Headline:** An AI workbench that works your way
 
@@ -42,11 +42,11 @@ Users can replace the workbench name and Logo and choose directories, models, an
 
 **Introduction:** Choose a model for your task, work with files in your own directory, run tools, and inspect results. Default plugins bring everyday tasks, context diagnosis, and evaluation-driven improvement into one workbench.
 
-**Primary actions:** Download for macOS; Get started. Show the download action only when the corresponding YourHarness installer is actually available.
+**Primary actions:** Download for macOS; Get started. Show the download action only when the corresponding YourBuddy installer is actually available.
 
 **Three feature cards:** Choose your models; Inspect each result; Improve your workflow with evidence. Link each card to a real usage page and accompany it with a screenshot from the current release.
 
-**Ecosystem statement:** Built on DeepSeek Harness and community plugins, with desktop assembly, default experience, and release verification provided by YourHarness. Plugin pages retain their project names, author sources, and licenses.
+**Ecosystem statement:** Built on DeepSeek Harness and community plugins, with desktop assembly, default experience, and release verification provided by YourBuddy. Plugin pages retain their project names, author sources, and licenses.
 
 ## Limits to communicate
 
@@ -54,10 +54,10 @@ Users can replace the workbench name and Logo and choose directories, models, an
 |---|---|
 | A local workbench means all computation stays local | Sessions and settings are managed in the application's local directory; cloud models, search, and evaluators receive the inputs needed for their operations |
 | Installing the application gives free access to every model | A usable account, quota, or provider credentials are required; integration does not change provider pricing or availability |
-| Every plugin was created by YourHarness | Distinguish upstream foundations, external integrations, and first-party plugins |
+| Every plugin was created by YourBuddy | Distinguish upstream foundations, external integrations, and first-party plugins |
 | Self-evolution means automatically editing and publishing itself | Existing capabilities are explicitly initiated diagnosis, evaluation, and controlled optimization; production deployment remains a separate workflow |
 | Default plugins provide a complete office suite | Initial examples focus on code, text materials, and verifiable Agent tasks; describe other formats according to actual plugin support |
 
 ## Evidence
 
-See the [desktop documentation](../../../apps/desktop-tauri/README.md) for assembly and local operation, [model configuration](../../user/guide/providers.md) for model entry points, [Personal Workbench](../../../apps/desktop-tauri/product/personal-workbench/README.md) for name and Logo scope, and [product notices](../../../YOURHARNESS_NOTICES.md) for upstream attribution.
+See the [desktop documentation](../../../apps/desktop-tauri/README.md) for assembly and local operation, [model configuration](../../user/guide/providers.md) for model entry points, [Personal Workbench](../../../apps/desktop-tauri/product/personal-workbench/README.md) for name and Logo scope, and [product notices](../../../YOURBUDDY_NOTICES.md) for upstream attribution.

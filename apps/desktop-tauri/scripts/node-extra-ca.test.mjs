@@ -117,7 +117,7 @@ function runNode(url, caPath) {
 }
 
 test('NODE_EXTRA_CA_CERTS is effective only when supplied before Node Host startup', async t => {
-  const workspace = mkdtempSync(join(tmpdir(), 'yourharness-node-extra-ca-'))
+  const workspace = mkdtempSync(join(tmpdir(), 'yourbuddy-node-extra-ca-'))
   const caPath = join(workspace, 'company-root.pem')
   writeFileSync(caPath, TEST_CA_PEM)
   const server = createServer({ cert: TEST_SERVER_CERTIFICATE, key: TEST_SERVER_KEY }, (_request, response) => {

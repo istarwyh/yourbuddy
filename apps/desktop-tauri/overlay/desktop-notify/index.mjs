@@ -50,7 +50,7 @@ export function apply(ctx) {
 
     const payload = JSON.stringify({
       title: '任务完成',
-      body: 'YourHarness 已完成本轮任务',
+      body: 'YourBuddy 已完成本轮任务',
       sessionId: session?.id ?? '',
       reason: 'completed',
     })

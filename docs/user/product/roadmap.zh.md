@@ -20,4 +20,4 @@
 
 Windows、Linux、移动端、云同步、团队权限、完整主题与无人值守自动部署均未承诺交付日期。Apple 签名和公证需要独立的发行工作，图片工作区导出也依赖支持权限策略的二进制写入能力。
 
-欢迎[反馈具体任务或阻碍](https://github.com/istarwyh/yourharness/issues)，帮助确定优先级。完成项会链接到对应发行与可验证的用户成果。
+欢迎[反馈具体任务或阻碍](https://github.com/istarwyh/yourbuddy/issues)，帮助确定优先级。完成项会链接到对应发行与可验证的用户成果。

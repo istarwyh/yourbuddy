@@ -1,12 +1,12 @@
-# Agent Note: YourHarness 桌面外链
+# Agent Note: YourBuddy 桌面外链
 
 Status: implemented
 
-[English](2026-09-02-yourharness-desktop-external-links.md) | 中文
+[English](2026-09-02-yourbuddy-desktop-external-links.md) | 中文
 
 ## 问题
 
-共享 Markdown Renderer 会创建带新浏览上下文的安全 HTTP(S) Anchor，在普通浏览器中可以正常工作。YourHarness 把同一个 Client 嵌入跨 Origin 的 Tauri iframe；此时新的 WebView 窗口不是用户的系统浏览器，也可能完全无法打开。如果把 iframe 中的所有导航都当作外链，还会破坏 Host 路由与本地文件交互。
+共享 Markdown Renderer 会创建带新浏览上下文的安全 HTTP(S) Anchor，在普通浏览器中可以正常工作。YourBuddy 把同一个 Client 嵌入跨 Origin 的 Tauri iframe；此时新的 WebView 窗口不是用户的系统浏览器，也可能完全无法打开。如果把 iframe 中的所有导航都当作外链，还会破坏 Host 路由与本地文件交互。
 
 ## 决策
 

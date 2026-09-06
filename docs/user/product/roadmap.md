@@ -20,4 +20,4 @@ Model choice, workspace tasks, output inspection, context audits, and controlled
 
 No delivery dates are committed for Windows, Linux, mobile clients, cloud synchronization, team permissions, full themes, or unattended self-deployment. Apple signing and notarization need separate distribution work. Image workspace export also depends on policy-aware binary file support.
 
-[Share a concrete task or obstacle](https://github.com/istarwyh/yourharness/issues) to help prioritize. Completed directions will link to a release and verifiable user outcome.
+[Share a concrete task or obstacle](https://github.com/istarwyh/yourbuddy/issues) to help prioritize. Completed directions will link to a release and verifiable user outcome.

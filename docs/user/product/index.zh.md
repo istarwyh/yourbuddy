@@ -1,4 +1,4 @@
-# 使用 YourHarness
+# 使用 YourBuddy
 
 [English](index.md) | 中文
 

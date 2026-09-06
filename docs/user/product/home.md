@@ -1,4 +1,4 @@
-# YourHarness
+# YourBuddy
 
 English | [中文](home.zh.md)
 

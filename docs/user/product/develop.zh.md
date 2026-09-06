@@ -6,7 +6,7 @@
 
 ## 构建桌面应用
 
-[桌面源码指南](../../../apps/desktop-tauri/README.zh.md)维护环境要求和构建命令。YourHarness 产品层装配上游运行时、外部快照与自有设置。源码构建不等于已发布安装包。
+[桌面源码指南](../../../apps/desktop-tauri/README.zh.md)维护环境要求和构建命令。YourBuddy 产品层装配上游运行时、外部快照与自有设置。源码构建不等于已发布安装包。
 
 ## 开发插件
 
@@ -16,4 +16,4 @@
 
 中英文页面在仓库中成对维护一个正文来源，产品站将这些页面投影到 OINK。已有 SDK 文档继续通过仓库源文件和开发构建提供。
 
-网站构建与验证见[维护指南](../../../docs/product-website.zh.md)，组件归属见[产品声明](../../../YOURHARNESS_NOTICES.md)。
+网站构建与验证见[维护指南](../../../docs/product-website.zh.md)，组件归属见[产品声明](../../../YOURBUDDY_NOTICES.md)。

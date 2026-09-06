@@ -1,7 +1,7 @@
 /** Fixed browser-to-desktop protocol for application-wide network proxy settings. */
 
-/** Message channel accepted by the YourHarness desktop shell. */
-export const DESKTOP_NETWORK_PROXY_CHANNEL = 'yourharness.desktop.network-proxy'
+/** Message channel accepted by the YourBuddy desktop shell. */
+export const DESKTOP_NETWORK_PROXY_CHANNEL = 'yourbuddy.desktop.network-proxy'
 
 /** Current browser-to-shell protocol version. */
 export const DESKTOP_NETWORK_PROXY_VERSION = 3

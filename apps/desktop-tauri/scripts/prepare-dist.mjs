@@ -32,7 +32,7 @@ if (toolchain.status !== 0) {
   process.exit(toolchain.status ?? 1)
 }
 
-const productRuntimeScript = join(root, 'scripts', 'prepare-yourharness-runtime.mjs')
+const productRuntimeScript = join(root, 'scripts', 'prepare-yourbuddy-runtime.mjs')
 const productRuntime = spawnSync(process.execPath, [productRuntimeScript], { stdio: 'inherit', cwd: root })
 if (productRuntime.status !== 0) {
   process.exit(productRuntime.status ?? 1)
@@ -41,10 +41,10 @@ if (productRuntime.status !== 0) {
 if (!existsSync(join(root, 'bundled', 'harness', '.bundle-manifest.json'))) {
   throw new Error('bundled harness manifest missing after bundle-harness-source.mjs')
 }
-if (!existsSync(join(root, 'bundled', 'yourharness-runtime', 'manifest.json'))) {
-  throw new Error('YourHarness runtime manifest missing after prepare-yourharness-runtime.mjs')
+if (!existsSync(join(root, 'bundled', 'yourbuddy-runtime', 'manifest.json'))) {
+  throw new Error('YourBuddy runtime manifest missing after prepare-yourbuddy-runtime.mjs')
 }
-if (!existsSync(join(root, 'bundled', 'harness', 'yourharness-pnpm-store.tar.gz'))) {
+if (!existsSync(join(root, 'bundled', 'harness', 'yourbuddy-pnpm-store.tar.gz'))) {
   throw new Error('offline pnpm store archive missing after prepare-harness-offline-store.mjs')
 }
 if (!existsSync(join(root, 'bundled', 'toolchain', 'manifest.json'))) {

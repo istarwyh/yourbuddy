@@ -8,7 +8,7 @@ import { verifyProductSite } from './verify-product-site.ts'
 
 const roots: string[] = []
 function fixture(): string {
-  const root = mkdtempSync(resolve(tmpdir(), 'yourharness-site-'))
+  const root = mkdtempSync(resolve(tmpdir(), 'yourbuddy-site-'))
   roots.push(root)
   const files = {
     'website/product-pages.json': JSON.stringify({ pages: [
@@ -17,8 +17,8 @@ function fixture(): string {
     ] }),
     'apps/desktop-tauri/app-icon.svg': '<svg xmlns="http://www.w3.org/2000/svg"/>',
     'README.md': '# Source\n',
-    'docs/user/product/home.md': '# YourHarness\n\nEnglish | [中文](home.zh.md)\n\n[Start](start.md) and [source](../../../README.md).\n',
-    'docs/user/product/home.zh.md': '# YourHarness\n\n[English](home.md) | 中文\n\n[开始](start.zh.md)与[源码](../../../README.md)。\n',
+    'docs/user/product/home.md': '# YourBuddy\n\nEnglish | [中文](home.zh.md)\n\n[Start](start.md) and [source](../../../README.md).\n',
+    'docs/user/product/home.zh.md': '# YourBuddy\n\n[English](home.md) | 中文\n\n[开始](start.zh.md)与[源码](../../../README.md)。\n',
     'docs/user/product/start.md': '# Start\n\nEnglish | [中文](start.zh.md)\n\nA task.\n',
     'docs/user/product/start.zh.md': '# 开始\n\n[English](start.md) | 中文\n\n完成任务。\n',
   }
@@ -30,7 +30,7 @@ function fixture(): string {
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
 
-describe('YourHarness publication', () => {
+describe('YourBuddy publication', () => {
   it('maps both languages below a deployment subpath and preserves canonical source ownership', () => {
     const root = fixture()
     expect(projectProductSite(root, 'https://example.org/workbench/')).toBe(4)
@@ -38,7 +38,7 @@ describe('YourHarness publication', () => {
     const english = readFileSync(resolve(root, 'website/product/.generated/content/_index.en.md'), 'utf8')
     expect(chinese).toContain('[开始](/workbench/docs/start/)')
     expect(english).toContain('[Start](/workbench/en/docs/start/)')
-    expect(english).toContain('https://github.com/istarwyh/yourharness/blob/master/README.md')
+    expect(english).toContain('https://github.com/istarwyh/yourbuddy/blob/master/README.md')
     expect(chinese).toContain('docs/user/product/home.zh.md')
     expect(chinese).not.toContain('[English]')
     expect(english).not.toContain('[中文]')

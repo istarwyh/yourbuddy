@@ -130,9 +130,9 @@ pub fn boot_kind(settings: &DesktopSettings) -> AgentEnvironment {
     effective_agent_environment(settings)
 }
 
-/// Resolve the isolated YourHarness data directory, with an explicit test/developer override.
+/// Resolve the isolated YourBuddy data directory, with an explicit test/developer override.
 pub fn app_data_root() -> Result<PathBuf, String> {
-    let override_path = std::env::var_os("YOURHARNESS_APP_DATA_DIR").map(PathBuf::from);
+    let override_path = std::env::var_os("YOURBUDDY_APP_DATA_DIR").map(PathBuf::from);
     resolve_app_data_root(override_path, dirs::data_dir())
 }
 
@@ -142,12 +142,12 @@ fn resolve_app_data_root(
 ) -> Result<PathBuf, String> {
     if let Some(path) = override_path {
         if !path.is_absolute() {
-            return Err("YOURHARNESS_APP_DATA_DIR must be an absolute path".into());
+            return Err("YOURBUDDY_APP_DATA_DIR must be an absolute path".into());
         }
         return Ok(path);
     }
     platform_data_dir
-        .map(|d| d.join("YourHarness"))
+        .map(|d| d.join("YourBuddy"))
         .ok_or_else(|| "cannot resolve application data directory".into())
 }
 
@@ -181,13 +181,13 @@ mod boot_kind_tests {
     fn app_data_override_must_be_absolute() {
         assert_eq!(
             resolve_app_data_root(Some(PathBuf::from("relative")), None).unwrap_err(),
-            "YOURHARNESS_APP_DATA_DIR must be an absolute path"
+            "YOURBUDDY_APP_DATA_DIR must be an absolute path"
         );
     }
 
     #[test]
     fn absolute_app_data_override_wins() {
-        let override_path = PathBuf::from("/tmp/yourharness-test-data");
+        let override_path = PathBuf::from("/tmp/yourbuddy-test-data");
         assert_eq!(
             resolve_app_data_root(
                 Some(override_path.clone()),
@@ -203,7 +203,7 @@ mod boot_kind_tests {
         let parent = std::env::temp_dir();
         assert_eq!(
             resolve_app_data_root(None, Some(parent.clone())).unwrap(),
-            parent.join("YourHarness")
+            parent.join("YourBuddy")
         );
         assert!(resolve_app_data_root(None, None).is_err());
     }

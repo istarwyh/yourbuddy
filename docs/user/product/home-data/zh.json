@@ -9,7 +9,7 @@
     "cta"
   ],
   "hero": {
-    "eyebrow": "YourHarness · macOS / Apple Silicon",
+    "eyebrow": "YourBuddy · macOS / Apple Silicon",
     "title_lines": [
       "你的模型。你的工具。",
       "按你的方式工作。"
@@ -34,7 +34,7 @@
     "image": {
       "light": "favicon.svg",
       "dark": "favicon.svg",
-      "alt": "YourHarness YH"
+      "alt": "YourBuddy Y8"
     },
     "media": {
       "ratio": "1fr 260px",

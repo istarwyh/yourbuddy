@@ -8,12 +8,12 @@ This is a product roadmap assessment dated 2026-09-06, not a release-date commit
 
 | Capability | Source state and public wording |
 |---|---|
-| YourHarness identity and desktop assembly | Independent application identity, YH artwork, managed runtimes, default plugins, updates, and restart controls exist; release availability must match an actual installer |
+| YourBuddy identity and desktop assembly | Independent application identity, Y8 artwork, managed runtimes, default plugins, updates, and restart controls exist; release availability must match an actual installer |
 | Models and working directories | Provider configuration, Codex login integration, and workspace-based sessions exist |
 | Task result inspection | File, terminal, Git, and background-task interfaces are integrated for checking actual results |
 | Context diagnosis | Read-only audits locate costs and duplication; they do not promise precise billing or automatic optimization gains |
 | Agent evaluation and controlled improvement | Historical diagnosis, Candidate evaluation, comparison, and independent meta-evaluation exist with different prerequisites |
-| Documentation infrastructure | A DeepSeek Harness-oriented VitePress site and bilingual checks exist; this directory contains YourHarness website content, while OINK implementation has not started |
+| Documentation infrastructure | A DeepSeek Harness-oriented VitePress site and bilingual checks exist; this directory contains YourBuddy website content, while OINK implementation has not started |
 
 See the [desktop documentation](../../../apps/desktop-tauri/README.md), [Default plugins](plugins.md), and [existing site configuration](../../../website/.vitepress/config.ts). This table does not turn source feature counts or passing unit-test counts into user-availability claims.
 
@@ -22,7 +22,7 @@ See the [desktop documentation](../../../apps/desktop-tauri/README.md), [Default
 | Item | Current evidence | Roadmap treatment |
 |---|---|---|
 | Apple application signing and notarization | Explicitly deferred in the [root documentation](../../../README.md) | Candidate improvement to desktop distribution, requiring real certificates, builds, and installation verification |
-| YourHarness installers for Windows, Linux, and other architectures | The [product runtime](../../../apps/desktop-tauri/src-tauri/src/product.rs) accepts only the current target; desktop source contains cross-platform foundations | Explore demand without claiming support or a delivery date |
+| YourBuddy installers for Windows, Linux, and other architectures | The [product runtime](../../../apps/desktop-tauri/src-tauri/src/product.rs) accepts only the current target; desktop source contains cross-platform foundations | Explore demand without claiming support or a delivery date |
 | Exporting images directly to the workspace | [Codex Auth documentation](../../../apps/desktop-tauri/product/dsh-codex-auth/README.md) records the missing operation | Requires policy-aware binary writes; do not substitute export that bypasses policy |
 | Full themes and per-workspace personalization | [Personal Workbench documentation](../../../apps/desktop-tauri/product/personal-workbench/README.md) limits customization to Profile name and Logo | Validate actual demand before expanding scope |
 

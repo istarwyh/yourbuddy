@@ -1,10 +1,10 @@
-# Why YourHarness
+# Why YourBuddy
 
 English | [中文](about.zh.md)
 
 Your models. Your tools. Your way.
 
-YourHarness assembles DeepSeek Harness and community plugins into a desktop workbench. A model understands and generates; a Harness supplies the tools, context, permissions, sessions, and feedback needed to carry out work.
+YourBuddy assembles DeepSeek Harness and community plugins into a desktop workbench. A model understands and generates; a Harness supplies the tools, context, permissions, sessions, and feedback needed to carry out work.
 
 ## Choose what fits
 

@@ -10,7 +10,7 @@ Open Settings → GPT Auth, inspect login state, and follow the login flow. Choo
 
 ## API providers
 
-Open Settings → Model, select Add provider, or enter DeepSeek credentials in its card. Select the provider and model, then send a simple text request. Credentials configured in another DSH environment are not automatically YourHarness credentials.
+Open Settings → Model, select Add provider, or enter DeepSeek credentials in its card. Select the provider and model, then send a simple text request. Credentials configured in another DSH environment are not automatically YourBuddy credentials.
 
 ## Custom endpoints
 

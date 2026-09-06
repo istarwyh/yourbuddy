@@ -43,12 +43,12 @@ pub fn prepare_host_path(
             return Ok(merge_path(Some(discovery_path()), &[]));
         }
     };
-    if user_cli_persistence_enabled(std::env::var_os("YOURHARNESS_PERSIST_DSH_CLI").as_deref()) {
+    if user_cli_persistence_enabled(std::env::var_os("YOURBUDDY_PERSIST_DSH_CLI").as_deref()) {
         if let Err(error) = persist_user_path(&bridge) {
             boot_log::info(&format!("user PATH persist skipped: {error}"));
         }
     } else {
-        boot_log::info("user PATH persist disabled for isolated YourHarness product");
+        boot_log::info("user PATH persist disabled for isolated YourBuddy product");
     }
     let merged = merge_path(Some(discovery_path()), &bridge.prepend);
     std::env::set_var("PATH", &merged);
@@ -642,9 +642,9 @@ mod tests {
         #[cfg(windows)]
         let system = PathBuf::from("C:\\Windows\\System32");
         #[cfg(not(windows))]
-        let first = PathBuf::from("/opt/yourharness/bin");
+        let first = PathBuf::from("/opt/yourbuddy/bin");
         #[cfg(not(windows))]
-        let second = PathBuf::from("/opt/yourharness/runtime/node");
+        let second = PathBuf::from("/opt/yourbuddy/runtime/node");
         #[cfg(not(windows))]
         let system = PathBuf::from("/usr/bin");
         let existing = std::env::join_paths([&second, &system]).unwrap();

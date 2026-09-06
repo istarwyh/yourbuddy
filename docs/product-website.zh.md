@@ -1,4 +1,4 @@
-# YourHarness 官网维护
+# YourBuddy 官网维护
 
 [English](product-website.md) | 中文
 
@@ -34,6 +34,6 @@ pnpm lint
 
 ## 下载信息与发布
 
-[下载页](user/product/download.zh.md)与[版本页](user/product/releases.zh.md)只描述已核验的公开发行。核验记录：2026-09-06，GitHub 公开发行仍为 XiaoHui 品牌，YourHarness 0.3.0 尚无公开安装包。发布 YourHarness 后，核验发行资产、校验和、架构与更新元数据，再同步双语正文和首页安装状态。不能仅根据源码版本号构造下载链接。
+[下载页](user/product/download.zh.md)与[版本页](user/product/releases.zh.md)只描述已核验的公开发行。核验记录：2026-09-06，GitHub 公开发行仍为 XiaoHui 品牌，YourBuddy 0.3.0 尚无公开安装包。发布 YourBuddy 后，核验发行资产、校验和、架构与更新元数据，再同步双语正文和首页安装状态。不能仅根据源码版本号构造下载链接。
 
 公网托管、域名和部署凭据需要另行配置。当前构建不依赖在线字体、CDN 或分析脚本；模型服务与插件的网络访问属于桌面应用。

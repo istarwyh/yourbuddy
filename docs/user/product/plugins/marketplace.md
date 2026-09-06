@@ -10,7 +10,7 @@ Users can discover community plugins in Settings, inspect their README, source, 
 
 ## Usage
 
-Open Settings → Plugin Marketplace, search, and inspect a plugin. Eligible packages expose an installation confirmation. Check the resulting status and restart YourHarness through Application lifecycle. The AI explanation feature uses the configured default model.
+Open Settings → Plugin Marketplace, search, and inspect a plugin. Eligible packages expose an installation confirmation. Check the resulting status and restart YourBuddy through Application lifecycle. The AI explanation feature uses the configured default model.
 
 ## Reason for default inclusion
 
