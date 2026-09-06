@@ -341,7 +341,7 @@ export function installProductPlugins(bundleRoot) {
 
 /** Create YourHarness's default Codex preset from the shipped standard composition. */
 export function installDefaultAgentPreset(bundleRoot) {
-  const presetsRoot = join(bundleRoot, 'apps', 'cli', 'config', 'agent-presets')
+  const presetsRoot = join(bundleRoot, 'packages', 'preset', 'agent-presets', 'presets')
   const sourceRoot = join(presetsRoot, defaultAgentPreset.source)
   const destinationRoot = join(presetsRoot, defaultAgentPreset.id)
   const sourceComposition = join(sourceRoot, 'agent.cordis.yml')

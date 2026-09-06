@@ -110,7 +110,8 @@ test('hashExternalSnapshot ignores only the YourHarness provenance sidecar', () 
 
 test('installDefaultAgentPreset creates the Codex preset without changing standard', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourharness-codex-preset-'))
-  const standard = join(root, 'apps', 'cli', 'config', 'agent-presets', 'standard')
+  const presetsRoot = join(root, 'packages', 'preset', 'agent-presets', 'presets')
+  const standard = join(presetsRoot, 'standard')
   mkdirSync(standard, { recursive: true })
   const source = `- id: delegation
   name: cordis:group
@@ -133,7 +134,7 @@ test('installDefaultAgentPreset creates the Codex preset without changing standa
 
   try {
     installDefaultAgentPreset(root)
-    const codexRoot = join(root, 'apps', 'cli', 'config', 'agent-presets', 'codex')
+    const codexRoot = join(presetsRoot, 'codex')
     const composition = readFileSync(join(codexRoot, 'agent.cordis.yml'), 'utf8')
     const codexRow = composition.slice(
       composition.indexOf('    - id: tool-subagent-codex'),
