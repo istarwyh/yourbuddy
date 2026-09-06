@@ -1,9 +1,10 @@
 YourBuddy 0.3.3 local validation record
-Date: 2026-09-06 21:30-2026-09-07 00:06 UTC+08:00 (Asia/Shanghai)
+Date: 2026-09-06 21:30-2026-09-07 00:34 UTC+08:00 (Asia/Shanghai)
 Release: intended yourbuddy-v0.3.3
 Fix commit: be8abfaedeb25f01632f1d50727be54e69d26d7e
 Version-preparation commit: 07b2440f5dd4b3c8fb5c02d44d4c52ed983c54a0
 Release-blocker fix commit: 6b47dfd95ebd852d922fb5f915a3b00bf1b05aff
+Carrier and PowerShell fixture fix commit: 7fbbd8223ad2225a27ba029d982dbf37cce4acbe
 Environment: macOS 15.6.1 (24G90) arm64; Node 22.22.2; pnpm 11.7.0; Rust 1.98.0
 Data: synthetic temporary workspaces and isolated application data
 Model/service: local dsh web Host and controlled browser only; no real model provider
@@ -108,6 +109,16 @@ Local failure and recovery boundaries
 - A first full snapshot run was launched concurrently with coverage and inherited this terminal's proxy variables. Undici experimental-proxy warnings polluted subprocess stderr, and shared execution produced non-product mismatches. A serial run with the test process's terminal proxy variables cleared passed the Headless suite; the focused ACP replay passed after refreshing its seven expected outputs.
 - The pkg builder deliberately deployed a production/hoisted dependency closure. The first subsequent doc-sync and lint invocations stopped before their gates because pnpm refused to purge that layout without a TTY. CI=true pnpm install --frozen-lockfile restored the development dependency layout; doc-sync and lint then passed.
 - Local packaged execution covers macOS arm64 only. Linux and Windows packaged runtimes plus real pwsh execution remain pending the new pull-request CI run.
+
+Second pull-request run and PowerShell recovery
+
+- GitHub Actions run 34044513110 built and installed the Runtime wheels on Linux x64, Linux arm64, macOS arm64, and Windows x64. Every carrier reached `smoke-python-runtime: all passed` before entering a paid-provider preflight.
+- The carrier workflow omitted the official-repository condition already owned by the real-API design. In this independent YourBuddy repository, the optional `DEEPSEEK_API_KEY_EXTERNAL` secret was empty and the four otherwise-passing carrier jobs failed at that preflight.
+- Commit 7fbbd8223ad2225a27ba029d982dbf37cce4acbe restricts both preflight and live provider steps to `deepseek-harness/deepseek-harness`; that official repository still fails loud if its expected secret is absent. Other repositories continue to run the complete keyless carrier smoke without requiring a billable secret.
+- Homebrew PowerShell 7.6.5 was installed on the local macOS host. A focused refresh and a separate replay of `pwsh-tool-turn|persistent-pwsh-tool-turn`, with terminal proxy variables removed from the test process, each reported 2 passed and 113 skipped by the explicit filter.
+- The first focused command placed its test filter after an extra argument separator, so it launched all snapshot scenarios and generated unrelated fixture edits before stderr assertions failed on inherited proxy warnings. Those known generated changes were restored individually; only the two focused PowerShell scenario files remain in commit 7fbbd8223a.
+- `pnpm run doc-sync` initially rejected the intentionally changed bilingual Agent Note until its reviewed pair record was refreshed. The second complete run reported 32 passed, 0 failed, and 0 skipped.
+- Pull-request run 34044513110 also had an unrelated Coverage timing failure in `terminal-bash` (`stdin_read` expected, `inferred_idle` observed) after 16,397 tests passed. It is retained as a failed result; the next run determines whether the nondeterministic symptom repeats.
 
 Publication boundary
 
