@@ -10,6 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
+| [yourbuddy-v0.3.1](yourbuddy-v0.3.1/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 发布前与恢复证据完成；公开产物待补 | 候选发布版本已验证；等待发布 |
 | [yourbuddy-v0.3.0](yourbuddy-v0.3.0/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已保留发布前与失败证据 | 在产物发布前失败；由 0.3.1 取代 |
 
 首个条目使用[可复制的发布目录](_template/README.zh.md)。
