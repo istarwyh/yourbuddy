@@ -5,7 +5,7 @@
 - 发布标识：`yourbuddy-v0.3.3`
 - 产品渠道：YourBuddy 桌面应用
 - 归档状态：候选发布版本；本地源码、受控安装包与发布形态 macOS Runtime 验证已完成，公开产物待验证
-- 已验证源码 Commit：[`42560389464df9243ead52b81c6552a16f5675b7`](https://github.com/istarwyh/yourbuddy/commit/42560389464df9243ead52b81c6552a16f5675b7)
+- 已验证源码 Commit：[`11fea67aaf9f799290b2f01a524388d35d3ef6c2`](https://github.com/istarwyh/yourbuddy/commit/11fea67aaf9f799290b2f01a524388d35d3ef6c2)
 - 证据图集：等待正式公开安装包成功启动后补充
 - 证据下载：等待发布 `yourbuddy-v0.3.3-verification.zip`
 
@@ -42,7 +42,7 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 | 公开 0.3.2 失败与修复后的安装包路径 | passed | 公开 0.3.2 资源与本地 Release-mode 修复 | macOS 15.6.1 arm64、原生 WebKit | [本地记录](evidence/local-validation.txt) |
 | 0.3.3 发布准备与产品 Smoke | passed | 源码 `07b2440f5d...` | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地记录](evidence/local-validation.txt) |
 | 版本、Updater、Rust、桌面、文档与官网检查 | passed | 源码 `07b2440f5d...` | macOS 15.6.1 arm64、Rust 1.98.0、Hugo Extended 0.165.0 | [本地记录](evidence/local-validation.txt) |
-| 打包 Runtime 与快照发布阻断项 | 全部 CI 载体 Smoke 通过；确定性 ACP 与覆盖率 Fixture 修复后的最终 CI 重跑待完成 | 源码 `4256038946...`、Node 24 原生可执行文件与安装后 Wheel | macOS 15.6.1 arm64 与 CI 载体矩阵 | [本地记录](evidence/local-validation.txt) |
+| 打包 Runtime 与 CI 发布阻断项 | 全部 CI 载体 Smoke 通过；浏览器时区与 Inspector 初始化修复已在本地通过，最终 CI 重跑待完成 | 源码 `11fea67aaf...`、Node 24 原生可执行文件、安装后 Wheel 与 Chromium | macOS 15.6.1 arm64 与 CI 载体矩阵 | [本地记录](evidence/local-validation.txt) |
 | 公开安装包、更新通道、验证 ZIP 与官网 | not verified | 尚未发布 | GitHub Release 与 Pages | 待补充 |
 
 ## 场景：安装版桌面认证
@@ -118,11 +118,11 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 这些是源码、生成资源和受控浏览器检查，不能证明 GitHub 已构建或发布最终 DMG 与 Updater 文件。
 
-## 场景：打包 Runtime 与快照发布阻断项
+## 场景：打包 Runtime 与 CI 发布阻断项
 
 - 状态：全部 CI 载体 Smoke 与聚焦本地恢复检查通过；最终跨平台 CI 重跑待完成
-- 日期与时间：2026-09-06 23:35-2026-09-07 01:03 UTC+08:00，Asia/Shanghai
-- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.3`；发布阻断项修复截至 `42560389464df9243ead52b81c6552a16f5675b7`
+- 日期与时间：2026-09-06 23:35-2026-09-07 01:38 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.3`；发布阻断项修复截至 `11fea67aaf9f799290b2f01a524388d35d3ef6c2`
 - 受测构建：源码 Profile 遍历、生成的 Node 24.20.0 macOS arm64 单文件可执行程序，以及本地构建后安装到全新虚拟环境的 SDK 与 Runtime Wheel
 - 环境：macOS 15.6.1 arm64、构建宿主 Node 22.22.2、pnpm 11.7.0、目标 Node 24.20.0、Python 3.11.4、PowerShell 7.6.5；GitHub 托管原生载体矩阵
 - 证据来源：Pull Request 11 首轮 CI 与本次发布实测
@@ -137,6 +137,7 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 4. 构建 SDK 与 Runtime Wheel，把两者安装进全新虚拟环境，并运行全部安装后 Wheel 无密钥黑盒场景。
 5. 在本地安装 PowerShell，针对真实可执行程序刷新并回放两个 PowerShell 场景，同时把付费提供方步骤限定到其所属的官方仓库。
 6. 复现剩余的 CI 专属 ACP 顺序与 PowerShell 就绪失败，使会话激活基于稳定拓扑，并规范迁移两项 PowerShell 录制，再运行对应聚焦检查。
+7. 检查下一轮 CI，固定共享浏览器页面的快照语料时区，并在跨载体 Console 探针前增加有序的 Client Runtime 往返。
 
 ### 预期结果
 
@@ -144,18 +145,18 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 ### 实际结果
 
-四个 CI 载体都达到 `smoke-python-runtime: all passed`。最近完成的运行随后暴露两个彼此独立的确定性发布阻断项：ACP 初始化通知的位置受提供方激活时机影响，真实 PowerShell 就绪断言则要求一个特定的就绪等级，即使会话已经可用。当前源码会在拓扑稳定的发现与持久化完成前保持 ACP 会话私有，接受两种已有文档说明的真实 Shell 就绪等级，并规范重新打包两项变化的 PowerShell 录制。ACP 验证通过 141 项测试，语句、分支、函数和行覆盖率均为 100%；其 15 场景回放连续通过两次。聚焦真实 PowerShell 场景通过三次，Fixture 布局套件通过八项测试。当前 Commit 的最终 CI 仍待完成。
+四个 CI 载体都达到 `smoke-python-runtime: all passed`。连续几轮运行暴露了确定性的 ACP 激活顺序、真实 PowerShell 就绪与 Fixture 布局、依赖 Runner 的浏览器时区，以及跨载体 Inspector 初始化竞态。当前源码把这些假设都改成显式约束。ACP 验证通过 141 项测试，语句、分支、函数和行覆盖率均为 100%；其 15 场景回放连续通过两次。聚焦真实 PowerShell 场景通过三次，Fixture 布局套件通过八项测试，Inspector 集成文件通过 10 项测试并额外连续通过四次聚焦探针；此前失败的 12 个浏览器文件在 UTC 宿主时区下通过 65 项测试，另有两项场景按设计跳过。当前 Commit 的最终 CI 仍待完成。
 
 ### 证据
 
-- 操作前：首轮 Pull Request CI 的四个打包 Python Runtime 目标都因未嵌入的可选 peer manifest 报 `ENOENT`。第二轮运行通过全部载体 Smoke，但暴露了付费提供方预检缺少仓库范围条件。运行 `34046132810` 通过全部四个载体，并暴露剩余的 ACP 顺序与覆盖率 Fixture 失败。
+- 操作前：首轮 Pull Request CI 的四个打包 Python Runtime 目标都因未嵌入的可选 peer manifest 报 `ENOENT`。第二轮运行通过全部载体 Smoke，但暴露了付费提供方预检缺少仓库范围条件。运行 `34046132810` 通过全部四个载体，并暴露 ACP 顺序与覆盖率 Fixture 失败。运行 `34047565623` 再次通过全部四个载体，随后暴露持久化 Web 快照对宿主时区的依赖，以及覆盖率中的 Inspector Console 初始化竞态。
 - 执行中：pkg 构建在构造可执行文件时报告缺少可选 Client peer，实际覆盖了受影响的 Package 发现条件。
 - 结果：命令、目标版本、测试数量与安装后 Wheel 输出见[本地记录](evidence/local-validation.txt)。
-- 失败与恢复：第一次本地快照运行与覆盖率共享资源，并继承终端代理变量，Undici 警告污染了子进程 stderr；可靠的串行回放只清除了测试进程的终端代理变量。后续 PowerShell 刷新因测试过滤参数位置错误而一度修改无关的生成 Fixture；这些已知临时更改已逐文件恢复。最终 CI 证据说明，仅删除受时机影响的 ACP 通知仍不充分，因此会话激活现在会等待拓扑稳定的发现与持久化。重复出现的 PowerShell 就绪结果改为断言已有文档说明的可用性，而不是某一个时序等级，并且只有两项对应录制通过规范的打包会话迁移。
+- 失败与恢复：第一次本地快照运行与覆盖率共享资源，并继承终端代理变量，Undici 警告污染了子进程 stderr；可靠的串行回放只清除了测试进程的终端代理变量。后续 PowerShell 刷新因测试过滤参数位置错误而一度修改无关的生成 Fixture；这些已知临时更改已逐文件恢复。ACP 激活现在会等待拓扑稳定的发现与持久化；PowerShell 检查断言已有文档说明的可用性，而不是某一个时序等级。Web 回放在创建浏览器 Context 时固定历史快照时区；Inspector 测试使用有序 Client carrier 作为初始化屏障，不再依赖调度时机。当前宿主上的完整本地 Web CI 包装命令仍被 Node 22.22.2 的 `import-without-cache` HMR loader 错误阻断；该 HMR 文件已在运行 `34047565623` 中通过，12 个时区敏感文件则在 `TZ=UTC` 下直接完成验证。
 
 ### 范围限制
 
-已完成的 CI 运行证明了四个载体目标的无密钥安装后 Wheel Smoke。`4256038946...` 的必需检查聚合结果仍待完成，聚焦本地检查不能替代该运行。真实 DeepSeek 提供方与公开桌面安装包也尚未验证。
+已完成的 CI 运行证明了四个载体目标的无密钥安装后 Wheel Smoke。`11fea67aaf...` 的必需检查聚合结果仍待完成，聚焦本地检查不能替代该运行。真实 DeepSeek 提供方与公开桌面安装包也尚未验证。
 
 ## 场景：公开产品交付
 

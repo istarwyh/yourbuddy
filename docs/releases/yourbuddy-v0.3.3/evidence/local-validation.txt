@@ -1,5 +1,5 @@
 YourBuddy 0.3.3 local validation record
-Date: 2026-09-06 21:30-2026-09-07 01:03 UTC+08:00 (Asia/Shanghai)
+Date: 2026-09-06 21:30-2026-09-07 01:38 UTC+08:00 (Asia/Shanghai)
 Release: intended yourbuddy-v0.3.3
 Fix commit: be8abfaedeb25f01632f1d50727be54e69d26d7e
 Version-preparation commit: 07b2440f5dd4b3c8fb5c02d44d4c52ed983c54a0
@@ -7,6 +7,7 @@ Release-blocker fix commit: 6b47dfd95ebd852d922fb5f915a3b00bf1b05aff
 Carrier and PowerShell fixture fix commit: 7fbbd8223ad2225a27ba029d982dbf37cce4acbe
 ACP activation-order fix commit: 31cc5b26f9db3885b487c7343b4c9df0a710bf41
 Coverage fixture fix commit: 42560389464df9243ead52b81c6552a16f5675b7
+Browser timezone and Inspector setup fix commit: 11fea67aaf9f799290b2f01a524388d35d3ef6c2
 Environment: macOS 15.6.1 (24G90) arm64; Node 22.22.2; pnpm 11.7.0; Rust 1.98.0
 Data: synthetic temporary workspaces and isolated application data
 Model/service: local dsh web Host and controlled browser only; no real model provider
@@ -131,6 +132,16 @@ Third pull-request run and deterministic protocol recovery
 - The Coverage lane repeated the real-shell readiness classification race: a usable PowerShell session settled through the documented inferred_idle fallback before Linux published exact stdin_read evidence. The same lane also rejected the two refreshed PowerShell recordings because their sourceEventSeqs had not passed through the canonical fixture migration.
 - Commit 42560389464df9243ead52b81c6552a16f5675b7 asserts the real-shell usability result rather than one timing-dependent readiness tier and applies the repository's packed-session migration to exactly those two recordings.
 - The focused real PowerShell scenario passed three times after the assertion change. The canonical fixture-layout suite passed 8 tests. Typecheck, lint, and the 32 documentation gates passed after the ACP fix.
+
+Fourth pull-request run and cross-host test recovery
+
+- GitHub Actions run 34047565623 again completed all four release-shaped Runtime carrier smokes. Static, Node 22.19, Node 24.9, Node 26, Python SDK, Windows native/build/Wine/observational, and the carrier plan also passed before the remaining jobs completed.
+- The snapshot job persisted `clientTimeZone: UTC` on the Linux runner while 12 established Web recordings expect `Asia/Shanghai`. The shared English browser context now pins the historical snapshot timezone, leaving explicitly zoned scenarios to own their own context.
+- The Coverage job passed 16,399 tests before the Client Console integration probe ran ahead of one DevTools session's asynchronous enable frame. A Client Runtime roundtrip on each ordered WebSocket now proves those enable frames were processed before the independently carried log probe.
+- Under `TZ=UTC`, the 12 browser files that failed in CI passed 65 tests with 2 scenario skips and no expected-output edits.
+- The complete Inspector integration file passed 10 tests. The formerly racing Console scenario then passed four additional focused invocations without retries.
+- `pnpm run typecheck`, `pnpm run lint:contracts-ready`, the 1,181-pair translation check, and `pnpm run doc-sync` all passed; doc-sync reported 32 passed, 0 failed, and 0 skipped.
+- The complete local `test:web:ci` wrapper could not reach the timezone-sensitive files because its HMR preflight hit a Node 22.22.2 `import-without-cache` loader error. This failed local result is retained. The same HMR scenario passed under CI's Node 24 in run 34047565623; the affected 12 files were therefore run directly under UTC rather than treating the wrapper failure as a product pass.
 
 Publication boundary
 
