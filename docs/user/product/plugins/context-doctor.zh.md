@@ -2,7 +2,7 @@
 
 [English](context-doctor.md) | 中文
 
-随应用集成的快照版本：`0.7.0`。来源：[Zhenyu98/dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor)。
+随应用集成的快照版本：`0.7.2`。来源：[Zhenyu98/dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor)。
 
 ## 解决的问题
 

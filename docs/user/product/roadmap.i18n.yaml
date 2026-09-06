@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/roadmap.md
-roadmap.md: a3ddeb1f7c25a39d382e4d9966d8c2cb66d968b6
-roadmap.zh.md: adea94466d49069478df857c90d8e3f33ea395af
+roadmap.md: 7644feb492752c099e0e68fee45b621fbeb1bb20
+roadmap.zh.md: da35de181c9592cf675a0752bbe22b73dda2b450

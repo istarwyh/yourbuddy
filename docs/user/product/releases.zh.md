@@ -6,7 +6,11 @@
 
 ## YourBuddy
 
-本站已核验的发行记录中尚未加入 YourBuddy 品牌安装包，首个版本正在准备。支持的目标与当前使用方式见[下载页](download.zh.md)。
+### 0.3.2 — 2026-09-06
+
+YourBuddy 0.3.2 新增应用内帮助，并强化私有 Host 的认证启动。macOS Apple Silicon DMG、带签名 Updater 包、Updater 签名、校验和与更新 Manifest 均已公开，并完成独立下载和检查。App 使用 ad-hoc 签名，尚未使用 Apple Developer 身份完成签名和公证；安装后的交互式帮助、真实 OAuth/模型调用与企业代理/CA 路径仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2) · [不可变验证记录](https://github.com/istarwyh/yourbuddy/tree/27183fd9c14ae5c10fb86694a045358428569756/docs/releases/yourbuddy-v0.3.2) · [下载页](download.zh.md)
 
 ## 每个版本会说明什么
 

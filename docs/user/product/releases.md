@@ -6,7 +6,11 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
-No YourBuddy-branded installer has been added to this site's verified release record. The initial release is being prepared. Use the [download page](download.md) to check supported targets and available paths.
+### 0.3.2 — 2026-09-06
+
+YourBuddy 0.3.2 adds in-app Help and hardens authenticated private-Host startup. The macOS Apple Silicon DMG, signed updater archive, updater signature, checksums, and updater manifest are publicly available and were independently downloaded and inspected. The app is ad-hoc signed but not signed or notarized with an Apple Developer identity; interactive installed-app Help, real OAuth/model calls, and enterprise proxy/CA paths remain unverified.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2) · [immutable verification record](https://github.com/istarwyh/yourbuddy/tree/27183fd9c14ae5c10fb86694a045358428569756/docs/releases/yourbuddy-v0.3.2) · [download page](download.md)
 
 ## What a release entry includes
 

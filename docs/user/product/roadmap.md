@@ -16,7 +16,7 @@ Improve the work people can complete and verify. These are candidate directions,
 
 ## Existing foundations
 
-Model choice, workspace tasks, output inspection, context audits, and controlled Harbor evaluation are already represented in the source composition. Public availability still follows the [release record](releases.md).
+The verified 0.3.2 Apple Silicon installer now establishes public availability. Model choice, workspace tasks, output inspection, context audits, and controlled Harbor evaluation are represented in the product, while the complete real-account first-use journey remains in progress. Current availability and verification scope follow the [release record](releases.md).
 
 ## What is not promised
 

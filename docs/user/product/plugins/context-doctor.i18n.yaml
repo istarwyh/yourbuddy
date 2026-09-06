@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/context-doctor.md
-context-doctor.md: 4ff65fa90684e86e86939e7631b39fc70d2bfebd
-context-doctor.zh.md: befef40d2a53868c2e977a48ee90b98ba41862ac
+context-doctor.md: c53b7d4bc9ae11aa7be1d3b3261e980bdf4b015f
+context-doctor.zh.md: ccfca6c4ab21289b4426a38d601891cb6fad98e6
