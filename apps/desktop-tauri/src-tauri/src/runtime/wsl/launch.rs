@@ -1,7 +1,9 @@
 //! Build `wsl.exe` argv for `dsh web` without executing Windows `node.exe`.
 
 use crate::i18n::{self, Msg};
-use crate::network_proxy::{env_arguments, ResolvedNetworkProxy};
+use crate::network_proxy::ResolvedNetworkProxy;
+
+use super::network_env_arguments;
 
 fn err_windows_node() -> &'static str {
     i18n::t(Msg::WslNoWindowsNode)
@@ -51,7 +53,7 @@ pub fn build_wsl_web_command(
         "--exec".into(),
         "/usr/bin/env".into(),
     ];
-    args.extend(env_arguments(network_proxy));
+    args.extend(network_env_arguments(network_proxy)?);
     args.extend([
         format!("PATH={}", spec.linux_path),
         format!("DSH_HOME={}", spec.linux_dsh_home),
@@ -142,7 +144,12 @@ mod tests {
             "NODE_USE_ENV_PROXY".to_string(),
             "-u".to_string(),
             "NODE_OPTIONS".to_string(),
+            "-u".to_string(),
+            "NODE_EXTRA_CA_CERTS".to_string(),
+            "-u".to_string(),
+            "YOURHARNESS_NETWORK_PROXY_MODE".to_string(),
             "NODE_OPTIONS=--use-system-ca".to_string(),
+            "YOURHARNESS_NETWORK_PROXY_MODE=direct".to_string(),
             "PATH=/home/u/.local/share/dsh-desktop/runtime/node/bin:/usr/bin".to_string(),
             "DSH_HOME=/home/u/.dsh".to_string(),
             "NODE_ENV=production".to_string(),

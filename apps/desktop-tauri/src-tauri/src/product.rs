@@ -1,4 +1,4 @@
-//! Resolve the product-owned Harbor runtime and workspace bundled with XiaoHui.
+//! Resolve the product-owned Harbor runtime and workspace bundled with YourHarness.
 
 use serde::Deserialize;
 use std::fs;
@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::runtime::app_data_root;
 
 /// Tauri resource directory containing portable CPython and Harbor.
-pub const PRODUCT_RUNTIME_RESOURCE: &str = "xiaohui-runtime";
+pub const PRODUCT_RUNTIME_RESOURCE: &str = "yourharness-runtime";
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,26 +28,26 @@ pub struct ProductRuntime {
     pub integration_version: String,
 }
 
-/// Resolve the bundled macOS arm64 runtime and create XiaoHui's workspace.
+/// Resolve the bundled macOS arm64 runtime and create YourHarness's workspace.
 pub fn resolve(resource_dir: Option<&Path>) -> Result<ProductRuntime, String> {
     let root = resolve_source(resource_dir);
     let manifest_path = root.join("manifest.json");
     let raw = fs::read_to_string(&manifest_path).map_err(|e| {
         format!(
-            "XiaoHui runtime manifest missing at {}: {e}",
+            "YourHarness runtime manifest missing at {}: {e}",
             manifest_path.display()
         )
     })?;
     let manifest: ProductManifest = serde_json::from_str(&raw).map_err(|e| {
         format!(
-            "XiaoHui runtime manifest invalid at {}: {e}",
+            "YourHarness runtime manifest invalid at {}: {e}",
             manifest_path.display()
         )
     })?;
 
     if manifest.platform != "darwin" || manifest.arch != "arm64" {
         return Err(format!(
-            "XiaoHui runtime targets darwin-arm64, found {}-{}",
+            "YourHarness runtime targets darwin-arm64, found {}-{}",
             manifest.platform, manifest.arch
         ));
     }
@@ -57,7 +57,7 @@ pub fn resolve(resource_dir: Option<&Path>) -> Result<ProductRuntime, String> {
     for executable in [&harbor_bin, &harbor_dsh_bin] {
         if !executable.is_file() {
             return Err(format!(
-                "XiaoHui bundled executable missing: {}",
+                "YourHarness bundled executable missing: {}",
                 executable.display()
             ));
         }
@@ -66,7 +66,7 @@ pub fn resolve(resource_dir: Option<&Path>) -> Result<ProductRuntime, String> {
     let project_root = app_data_root()?.join("workspace");
     fs::create_dir_all(project_root.join("jobs")).map_err(|e| {
         format!(
-            "cannot create XiaoHui workspace {}: {e}",
+            "cannot create YourHarness workspace {}: {e}",
             project_root.display()
         )
     })?;
@@ -100,10 +100,12 @@ mod tests {
 
     #[test]
     fn rejects_a_runtime_for_another_platform() {
-        let root =
-            std::env::temp_dir().join(format!("xiaohui-product-runtime-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "yourharness-product-runtime-{}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&root);
-        let runtime = root.join("xiaohui-runtime");
+        let runtime = root.join("yourharness-runtime");
         fs::create_dir_all(&runtime).unwrap();
         fs::write(
             runtime.join("manifest.json"),

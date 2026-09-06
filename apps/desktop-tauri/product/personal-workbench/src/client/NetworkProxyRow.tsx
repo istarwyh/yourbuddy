@@ -1,4 +1,4 @@
-/** General-settings card for XiaoHui application-wide network proxy policy. */
+/** General-settings card for YourHarness application-wide network proxy policy. */
 
 import { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
@@ -6,6 +6,7 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
   isDesktopNetworkProxyAvailable,
+  requestDesktopCaCertificateSelection,
   requestDesktopNetworkProxySave,
   requestDesktopNetworkProxySnapshot,
   requestDesktopNetworkProxyTest,
@@ -21,13 +22,14 @@ import { requestHostNetworkProxyTest } from './host-network-proxy.ts'
 export type NetworkProxyRowProps =
   PropsRuntime<'settings.general.item'> & PropsLocale<'settings.personal-workbench'>
 
-type ProxyStatus = 'loading' | 'idle' | 'refreshing' | 'testing' | 'tested' | 'test-failed' | 'saving' | 'restarting' | 'error'
+type ProxyStatus = 'loading' | 'idle' | 'refreshing' | 'selecting-ca' | 'testing' | 'tested' | 'test-failed' | 'saving' | 'restarting' | 'error'
 
 const EMPTY_SETTINGS: NetworkProxySettings = {
   mode: 'direct',
   httpProxy: '',
   httpsProxy: '',
   noProxy: '',
+  caCertificatePath: '',
 }
 
 /** Render and operate the desktop-owned global proxy preferences. */
@@ -77,7 +79,9 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
         requestDesktopNetworkProxyTest(draft),
         requestHostNetworkProxyTest(),
       ])
-      const pending = native.proxied === host.proxied ? '' : ` ${t('proxy.test.pending-restart')}`
+      const pending = native.proxyMode === host.proxyMode && native.caSource === host.caSource
+        ? ''
+        : ` ${t('proxy.test.pending-restart')}`
       const certificateHint = [native.errorCode, host.errorCode].some(isCertificateErrorCode)
         ? ` ${t('proxy.test.certificate-hint')}`
         : ''
@@ -107,7 +111,21 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
     }
   }
 
-  const busy = ['loading', 'refreshing', 'testing', 'saving', 'restarting'].includes(status)
+  const selectCaCertificate = async (): Promise<void> => {
+    setStatus('selecting-ca')
+    setDetail('')
+    try {
+      const path = await requestDesktopCaCertificateSelection()
+      if (path !== undefined) setDraft(value => ({ ...value, caCertificatePath: path }))
+      setStatus('idle')
+    }
+    catch (error) {
+      setDetail(errorMessage(error))
+      setStatus('error')
+    }
+  }
+
+  const busy = ['loading', 'refreshing', 'selecting-ca', 'testing', 'saving', 'restarting'].includes(status)
   const systemBlocked = draft.mode === 'system' && snapshot?.system.supported === false
   const setField = (field: keyof NetworkProxySettings) => (event: ChangeEvent<HTMLInputElement>): void => {
     setDraft(value => ({ ...value, [field]: event.target.value }))
@@ -215,6 +233,36 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
           {draft.mode === 'direct' && (
             <div className="dpw-hint dpw-field-wide">{t('proxy.direct.hint')}</div>
           )}
+
+          <div className="dpw-proxy-panel dpw-field-wide">
+            <div className="dpw-label">{t('proxy.ca.label')}</div>
+            <div className="dpw-code dpw-ca-path">
+              {draft.caCertificatePath || t('proxy.ca.system-only')}
+            </div>
+            <div className="dpw-hint">{t('proxy.ca.hint')}</div>
+            <div className="dpw-actions">
+              <button
+                type="button"
+                className="dpw-button"
+                disabled={busy}
+                onClick={() => { void selectCaCertificate() }}
+              >
+                {status === 'selecting-ca' ? t('proxy.ca.selecting') : t('proxy.ca.select')}
+              </button>
+              <button
+                type="button"
+                className="dpw-button"
+                disabled={busy || draft.caCertificatePath === ''}
+                onClick={() => {
+                  setDraft(value => ({ ...value, caCertificatePath: '' }))
+                  setStatus('idle')
+                  setDetail('')
+                }}
+              >
+                {t('proxy.ca.remove')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -267,10 +315,23 @@ function describeTestResult(
   const outcome = result.ok
     ? t('proxy.test.outcome.http').replace('{status}', String(result.status))
     : t('proxy.test.outcome.error').replace('{code}', result.errorCode)
-  const route = result.proxied ? t('proxy.test.route.proxy') : t('proxy.test.route.direct')
+  const routeKeys: Record<NetworkProxyTestResult['proxyMode'], Parameters<typeof t>[0]> = {
+    direct: 'proxy.test.mode.direct',
+    system: 'proxy.test.mode.system',
+    custom: 'proxy.test.mode.custom',
+    unknown: 'proxy.test.mode.unknown',
+  }
+  const caKeys: Record<NetworkProxyTestResult['caSource'], Parameters<typeof t>[0]> = {
+    system: 'proxy.test.ca.system',
+    custom: 'proxy.test.ca.custom',
+    unknown: 'proxy.test.ca.unknown',
+  }
+  const route = t(routeKeys[result.proxyMode])
+  const caSource = t(caKeys[result.caSource])
   return t('proxy.test.outcome.routed')
     .replace('{outcome}', outcome)
     .replace('{route}', route)
+    .replace('{ca}', caSource)
 }
 
 function isCertificateErrorCode(code: string): boolean {
@@ -289,6 +350,13 @@ function localizedProxyError(error: string, t: NetworkProxyRowProps['t']): strin
   if (error.includes('network-proxy-scheme-unsupported')) return t('proxy.error.scheme')
   if (error.includes('network-proxy-url-invalid')) return t('proxy.error.url')
   if (error.includes('network-proxy-no-proxy-invalid')) return t('proxy.error.no-proxy')
+  if (error.includes('network-proxy-ca-path')) return t('proxy.error.ca-path')
+  if (error.includes('network-proxy-ca-file-missing')) return t('proxy.error.ca-missing')
+  if (error.includes('network-proxy-ca-extension')) return t('proxy.error.ca-extension')
+  if (error.includes('network-proxy-ca-file-size')
+    || error.includes('network-proxy-ca-file-not-regular')) return t('proxy.error.ca-size')
+  if (error.includes('network-proxy-ca-pem')
+    || error.includes('network-proxy-ca-file-unreadable')) return t('proxy.error.ca-pem')
   if (error.includes('host-network-proxy-response-invalid')) return t('proxy.error.host-response')
   if (error.includes('network-proxy-test')) return t('proxy.error.test')
   return `${t('proxy.error.generic')} ${error}`

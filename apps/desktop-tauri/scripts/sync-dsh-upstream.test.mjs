@@ -19,7 +19,7 @@ function writeJson(path, value) {
 }
 
 function makeFixture(t) {
-  const root = mkdtempSync(join(tmpdir(), 'xiaohui-dsh-sync-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourharness-dsh-sync-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const product = join(root, 'apps', 'desktop-tauri', 'product')
   const personal = join(product, 'personal-workbench')

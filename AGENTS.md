@@ -1,6 +1,6 @@
 # AGENTS.md
 
-DeepSeek Harness is a plugin-based agent harness on vendored Cordis: **everything is a plugin**. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
+YourHarness packages DeepSeek Harness and Sakana in `apps/desktop-tauri/`. The runtime uses vendored Cordis: **everything is a plugin**. Preserve upstream package names and licenses. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
 
 ## Pre-release stance: foundation over blast radius
 
@@ -91,6 +91,10 @@ Run checks before pushes via [dsh-pre-push-checks](.agents/skills/dsh-pre-push-c
 - Match evidence to the surface: focused tests for behavior, snapshots for model or user output, `doc-sync` for docs, build/hygiene and built smokes for published paths, and real-API e2e for provider behavior.
 - Never default to the full suite or repeat a passing check for commit or push. CI owns exhaustive coverage and the platform matrix; rehearse all locally only by explicit request, for CI diagnosis, or for an irreducibly repository-wide change.
 - `test:coverage`, not `test`, is the CI coverage gate ([why](docs/testing.md)).
+
+## Release delivery
+
+Every published tag includes a user-facing release record and honest verification archive under [`docs/releases/<release-tag>/`](docs/releases/README.md), created from the [copyable version template](docs/releases/_template/README.md). Report product publication, verification-archive status, and unverified scope separately; CI success alone never proves a product release.
 
 ## Secrets / .env
 

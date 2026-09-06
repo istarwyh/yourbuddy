@@ -17,7 +17,7 @@ use super::wsl::{reject_windows_node, WslCommand, WslRuntimePaths};
 use super::DesktopRuntime;
 use crate::chrome;
 use crate::i18n::{self, Msg};
-use crate::network_proxy::{apply_to_command, env_arguments, ResolvedNetworkProxy};
+use crate::network_proxy::{apply_to_command, ResolvedNetworkProxy};
 use crate::notify;
 
 /// pnpm git spec for https://github.com/Sakana-yuyu/dsh-plugins.
@@ -48,25 +48,25 @@ pub fn begin_from_tray(app: &AppHandle) {
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_err()
     {
-        notify::toast(app, "XiaoHui Harness", i18n::t(Msg::CatalogBusy));
+        notify::toast(app, "YourHarness", i18n::t(Msg::CatalogBusy));
         return;
     }
 
     let Some(runtime) = app.try_state::<DesktopRuntime>() else {
         INSTALLING.store(false, Ordering::SeqCst);
-        notify::toast(app, "XiaoHui Harness", i18n::t(Msg::CatalogNotReady));
+        notify::toast(app, "YourHarness", i18n::t(Msg::CatalogNotReady));
         return;
     };
     let target = runtime.plugin_target.clone();
     let network_proxy = runtime.network_proxy.clone();
-    notify::toast(app, "XiaoHui Harness", i18n::t(Msg::CatalogInstalling));
+    notify::toast(app, "YourHarness", i18n::t(Msg::CatalogInstalling));
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let result =
             tokio::task::spawn_blocking(move || install_catalog(&target, &network_proxy)).await;
         match result {
             Ok(Ok(())) => {
-                notify::toast(&app, "XiaoHui Harness", i18n::t(Msg::CatalogRestarting));
+                notify::toast(&app, "YourHarness", i18n::t(Msg::CatalogRestarting));
                 chrome::request_restart(&app);
             }
             Ok(Err(error)) => {
@@ -138,7 +138,7 @@ fn wsl_plugin_add_command(
         "--exec".into(),
         "/usr/bin/env".into(),
     ];
-    args.extend(env_arguments(network_proxy));
+    args.extend(super::wsl::network_env_arguments(network_proxy)?);
     args.extend([
         format!("PATH={}", paths.linux_path),
         format!("DSH_HOME={}", paths.linux_dsh_home),

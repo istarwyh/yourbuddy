@@ -12,9 +12,9 @@ const aligned = {
 }
 
 test('validateReleaseVersions accepts one aligned desktop version and tag', () => {
-  assert.deepEqual(validateReleaseVersions({ ...aligned, tag: 'xiaohui-v0.2.7' }), {
+  assert.deepEqual(validateReleaseVersions({ ...aligned, tag: 'yourharness-v0.2.7' }), {
     version: '0.2.7',
-    expectedTag: 'xiaohui-v0.2.7',
+    expectedTag: 'yourharness-v0.2.7',
   })
 })
 
@@ -24,11 +24,15 @@ test('validateReleaseVersions rejects source and tag drift', () => {
     /Cargo\.toml=0\.1\.0/,
   )
   assert.throws(
-    () => validateReleaseVersions({ ...aligned, tag: 'xiaohui-v0.2.0' }),
+    () => validateReleaseVersions({ ...aligned, tag: 'yourharness-v0.2.0' }),
+    /release tag mismatch/,
+  )
+  assert.throws(
+    () => validateReleaseVersions({ ...aligned, tag: 'xiaohui-v0.2.7' }),
     /release tag mismatch/,
   )
 })
 
 test('repository desktop version sources are aligned', () => {
-  assert.equal(verifyReleaseVersion('xiaohui-v0.2.11').version, '0.2.11')
+  assert.equal(verifyReleaseVersion('yourharness-v0.3.0').version, '0.3.0')
 })

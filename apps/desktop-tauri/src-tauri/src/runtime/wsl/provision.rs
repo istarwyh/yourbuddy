@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::i18n::{self, Msg};
-use crate::network_proxy::{env_arguments, ResolvedNetworkProxy};
+use crate::network_proxy::ResolvedNetworkProxy;
 use crate::overlay::{linux_plugin_file_url, notification_overlay_yaml};
 use crate::runtime::config::{npm_registry, DEFAULT_NODE_VERSION, DEFAULT_PNPM_VERSION};
 use crate::runtime::host_env::node_version_compatible;
@@ -325,7 +325,7 @@ fn run_pnpm_install(
         "-u".to_string(),
         "CI".to_string(),
     ];
-    args.extend(env_arguments(network_proxy));
+    args.extend(super::network_env_arguments(network_proxy)?);
     args.extend([
         path_env,
         "/bin/sh".to_string(),

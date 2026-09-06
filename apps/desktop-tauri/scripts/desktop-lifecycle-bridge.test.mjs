@@ -22,11 +22,11 @@ const validators = Function(
   'marketplaceLinkChannel',
   'marketplaceLinkVersion',
   `${validatorSource}; return { readDesktopLifecycleAction, readNetworkProxyAction, isExternalLinkRequest, isMarketplaceLinkRequest }`,
-)('xiaohui.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/, 'xiaohui.desktop.network-proxy', 2, 'xiaohui.desktop.external-link', 1, 'xiaohui.desktop.marketplace-link', 1)
+)('yourharness.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/, 'yourharness.desktop.network-proxy', 3, 'yourharness.desktop.external-link', 1, 'yourharness.desktop.marketplace-link', 1)
 
 test('desktop shell accepts only fixed lifecycle request fields and actions', () => {
   const request = {
-    channel: 'xiaohui.desktop.lifecycle',
+    channel: 'yourharness.desktop.lifecycle',
     version: 1,
     type: 'check-update-request',
     requestId: 'request_1',
@@ -41,7 +41,7 @@ test('desktop shell accepts only fixed lifecycle request fields and actions', ()
 
 test('desktop shell accepts only restricted Marketplace repository and npm links', () => {
   const request = {
-    channel: 'xiaohui.desktop.marketplace-link',
+    channel: 'yourharness.desktop.marketplace-link',
     version: 1,
     type: 'open-request',
     requestId: 'link_1',
@@ -67,7 +67,7 @@ test('desktop shell accepts only restricted Marketplace repository and npm links
 
 test('desktop shell accepts only credential-free HTTP and HTTPS external links', () => {
   const request = {
-    channel: 'xiaohui.desktop.external-link',
+    channel: 'yourharness.desktop.external-link',
     version: 1,
     type: 'open-request',
     requestId: 'link_1',
@@ -100,10 +100,11 @@ test('desktop shell accepts only fixed network proxy requests and bounded settin
     httpProxy: 'http://127.0.0.1:7890',
     httpsProxy: 'http://127.0.0.1:7890',
     noProxy: 'localhost,127.0.0.1',
+    caCertificatePath: '/Users/example/company-root.pem',
   }
   const request = {
-    channel: 'xiaohui.desktop.network-proxy',
-    version: 2,
+    channel: 'yourharness.desktop.network-proxy',
+    version: 3,
     type: 'test-request',
     requestId: 'proxy_1',
     settings,
@@ -112,10 +113,16 @@ test('desktop shell accepts only fixed network proxy requests and bounded settin
   assert.equal(validators.readNetworkProxyAction({ ...request, type: 'save-request' }), 'save')
   assert.equal(validators.readNetworkProxyAction({
     channel: request.channel,
-    version: 2,
+    version: 3,
     type: 'get-request',
     requestId: request.requestId,
   }), 'get')
+  assert.equal(validators.readNetworkProxyAction({
+    channel: request.channel,
+    version: 3,
+    type: 'select-ca-request',
+    requestId: request.requestId,
+  }), 'select-ca')
   assert.equal(validators.readNetworkProxyAction({ ...request, command: 'restart_app' }), false)
   assert.equal(validators.readNetworkProxyAction({ ...request, settings: { ...settings, token: 'secret' } }), false)
   assert.equal(validators.readNetworkProxyAction({ ...request, settings: { ...settings, mode: 'ambient' } }), false)
@@ -128,6 +135,7 @@ test('desktop shell binds lifecycle commands to the active Host iframe', () => {
   assert.match(shell, /await invoke\('check_for_updates'\)/u)
   assert.match(shell, /await invoke\('restart_app'\)/u)
   assert.match(shell, /await invoke\('get_network_proxy_settings'\)/u)
+  assert.match(shell, /await invoke\('select_ca_certificate'\)/u)
   assert.match(shell, /await invoke\('test_network_proxy_settings', \{ settings: event\.data\.settings \}\)/u)
   assert.match(shell, /await invoke\('save_network_proxy_settings', \{ settings: event\.data\.settings \}\)/u)
   assert.match(shell, /await invoke\('open_external_url', \{ url: event\.data\.url \}\)/u)

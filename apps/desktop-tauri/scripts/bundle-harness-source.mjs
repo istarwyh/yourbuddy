@@ -21,6 +21,18 @@ const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const repoRoot = join(desktopRoot, '..', '..')
 const outRoot = join(desktopRoot, 'bundled', 'harness')
 const productLockPath = join(desktopRoot, 'product', 'harness-pnpm-lock.yaml')
+const defaultHarnessPlugins = [
+  {
+    name: '@deepseek-ai/dsh-subagent-codex',
+    root: join(repoRoot, 'packages', 'subagent', 'subagent-codex'),
+  },
+]
+const defaultAgentPreset = {
+  id: 'codex',
+  name: 'Codex',
+  source: 'standard',
+  description: 'YourHarness 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。',
+}
 const productPlugins = [
   {
     name: 'dsh-harbor-evolution',
@@ -155,6 +167,8 @@ function hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstrea
   hasher.update(productLock)
   hasher.update('DSH_UPSTREAM.json')
   hasher.update(JSON.stringify(dshUpstream))
+  hasher.update('YourHarness')
+  hasher.update(readFileSync(join(desktopRoot, 'app-icon.svg')))
 
   for (const rel of ['patches', 'vendor', join('native', 'landlock-run'), join('apps', 'cli'), join('apps', 'web')]) {
     const path = join(repoRoot, rel)
@@ -179,12 +193,17 @@ function hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstrea
     hasher.update(plugin.name)
     hasher.update('workspace:*')
   }
+  for (const plugin of defaultHarnessPlugins) {
+    hasher.update(plugin.name)
+    hasher.update('workspace:*')
+  }
+  hasher.update(JSON.stringify(defaultAgentPreset))
 
   hasher.update(trimmedWorkspace)
   return hasher.digest('hex')
 }
 
-/** Hash an external plugin snapshot without its XiaoHui provenance sidecar. */
+/** Hash an external plugin snapshot without its YourHarness provenance sidecar. */
 export function hashExternalSnapshot(root) {
   const hasher = createHash('sha256')
 
@@ -193,7 +212,7 @@ export function hashExternalSnapshot(root) {
     const entries = readdirSync(current, { withFileTypes: true })
       .sort((left, right) => left.name.localeCompare(right.name))
     for (const entry of entries) {
-      if (prefix === '' && entry.name === 'XIAOHUI_UPSTREAM.json') continue
+      if (prefix === '' && entry.name === 'YOURHARNESS_UPSTREAM.json') continue
       const path = join(current, entry.name)
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name
       if (entry.isSymbolicLink()) {
@@ -217,21 +236,21 @@ export function hashExternalSnapshot(root) {
 
 /** Verify the committed package still matches its reviewed external snapshot. */
 export function verifyExternalSnapshot(root, manifest) {
-  const provenancePath = join(root, 'XIAOHUI_UPSTREAM.json')
+  const provenancePath = join(root, 'YOURHARNESS_UPSTREAM.json')
   if (!existsSync(provenancePath)) return
   const provenance = JSON.parse(readFileSync(provenancePath, 'utf8'))
   if (provenance.package !== manifest.name || provenance.version !== manifest.version) {
     throw new Error(
-      `XiaoHui product provenance mismatch for ${manifest.name}@${manifest.version}`,
+      `YourHarness product provenance mismatch for ${manifest.name}@${manifest.version}`,
     )
   }
   if (!/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(provenance.integrity ?? '')) {
-    throw new Error(`XiaoHui product integrity is invalid: ${manifest.name}`)
+    throw new Error(`YourHarness product integrity is invalid: ${manifest.name}`)
   }
   const actual = hashExternalSnapshot(root)
   if (actual !== provenance.treeSha256) {
     throw new Error(
-      `XiaoHui product snapshot hash mismatch for ${manifest.name}: expected ${provenance.treeSha256}, found ${actual}`,
+      `YourHarness product snapshot hash mismatch for ${manifest.name}: expected ${provenance.treeSha256}, found ${actual}`,
     )
   }
 }
@@ -274,7 +293,7 @@ function bundledWorkspacePackageNames(bundleRoot) {
   return names
 }
 
-/** Install XiaoHui's product plugins into the trimmed workspace closure. */
+/** Install YourHarness's product plugins and default Harness plugins into the CLI closure. */
 export function installProductPlugins(bundleRoot) {
   const cliManifestPath = join(bundleRoot, 'apps', 'cli', 'package.json')
   const cliManifest = JSON.parse(readFileSync(cliManifestPath, 'utf8'))
@@ -283,16 +302,16 @@ export function installProductPlugins(bundleRoot) {
   for (const plugin of productPlugins) {
     const productManifest = join(plugin.root, 'package.json')
     if (!existsSync(productManifest)) {
-      throw new Error(`XiaoHui product plugin missing: ${productManifest}`)
+      throw new Error(`YourHarness product plugin missing: ${productManifest}`)
     }
     const manifest = JSON.parse(readFileSync(productManifest, 'utf8'))
     if (manifest.name !== plugin.name) {
       throw new Error(
-        `XiaoHui product plugin name mismatch: expected ${plugin.name}, found ${manifest.name ?? '<missing>'}`,
+        `YourHarness product plugin name mismatch: expected ${plugin.name}, found ${manifest.name ?? '<missing>'}`,
       )
     }
     if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') {
-      throw new Error(`XiaoHui product plugin has no DSH bundle patch: ${plugin.name}`)
+      throw new Error(`YourHarness product plugin has no DSH bundle patch: ${plugin.name}`)
     }
     verifyExternalSnapshot(plugin.root, manifest)
 
@@ -305,6 +324,12 @@ export function installProductPlugins(bundleRoot) {
   }
 
   const workspaceNames = bundledWorkspacePackageNames(bundleRoot)
+  for (const plugin of defaultHarnessPlugins) {
+    if (!workspaceNames.has(plugin.name)) {
+      throw new Error(`YourHarness default Harness plugin is missing from the bundled workspace: ${plugin.name}`)
+    }
+    cliManifest.dependencies[plugin.name] = 'workspace:*'
+  }
   for (const manifest of manifests) {
     for (const peerName of Object.keys(manifest.peerDependencies ?? {})) {
       if (workspaceNames.has(peerName)) cliManifest.dependencies[peerName] = 'workspace:*'
@@ -312,6 +337,56 @@ export function installProductPlugins(bundleRoot) {
   }
 
   writeFileSync(cliManifestPath, `${JSON.stringify(cliManifest, null, 2)}\n`)
+}
+
+/** Create YourHarness's default Codex preset from the shipped standard composition. */
+export function installDefaultAgentPreset(bundleRoot) {
+  const presetsRoot = join(bundleRoot, 'apps', 'cli', 'config', 'agent-presets')
+  const sourceRoot = join(presetsRoot, defaultAgentPreset.source)
+  const destinationRoot = join(presetsRoot, defaultAgentPreset.id)
+  const sourceComposition = join(sourceRoot, 'agent.cordis.yml')
+  if (!existsSync(sourceComposition)) {
+    throw new Error(`YourHarness default Agent Preset source is missing: ${sourceComposition}`)
+  }
+  if (existsSync(destinationRoot)) {
+    throw new Error(`YourHarness default Agent Preset id already exists: ${defaultAgentPreset.id}`)
+  }
+
+  copyTree(sourceRoot, destinationRoot)
+  const compositionPath = join(destinationRoot, 'agent.cordis.yml')
+  const lines = readFileSync(compositionPath, 'utf8').split('\n')
+  const rowIndexes = lines
+    .map((line, index) => line === '    - id: tool-subagent-codex' ? index : -1)
+    .filter(index => index !== -1)
+  if (rowIndexes.length !== 1) {
+    throw new Error(`YourHarness default Agent Preset expected one Codex tool row, found ${rowIndexes.length}`)
+  }
+  const rowStart = rowIndexes[0]
+  const nextRow = lines.findIndex((line, index) => index > rowStart && line.startsWith('    - id: '))
+  const rowEnd = nextRow === -1 ? lines.length : nextRow
+  const disabledIndexes = lines
+    .map((line, index) => index >= rowStart && index < rowEnd && line === '      disabled: true' ? index : -1)
+    .filter(index => index !== -1)
+  if (disabledIndexes.length !== 1) {
+    throw new Error(`YourHarness default Agent Preset expected one disabled Codex tool flag, found ${disabledIndexes.length}`)
+  }
+  lines.splice(disabledIndexes[0], 1)
+
+  let commentStart = rowStart
+  while (commentStart > 0 && lines[commentStart - 1]?.startsWith('    #')) commentStart -= 1
+  lines.splice(
+    commentStart,
+    rowStart - commentStart,
+    '    # YourHarness bundles the Codex provider on the Host and exposes this',
+    '    # one-shot delegation tool in the default product preset.',
+  )
+  writeFileSync(compositionPath, lines.join('\n'))
+  writeFileSync(join(destinationRoot, 'preset.yml'), [
+    `name: ${defaultAgentPreset.name}`,
+    `description: ${defaultAgentPreset.description}`,
+    'order: 0',
+    '',
+  ].join('\n'))
 }
 
 /**
@@ -333,6 +408,21 @@ function copyTree(src, dest) {
   })
 }
 
+/**
+ * Apply product-owned web identity after copying the upstream client artifacts.
+ * @param {string} root - destination of the trimmed Harness bundle.
+ * @returns {void}
+ */
+export function installProductWebIdentity(root) {
+  const web = join(root, 'apps', 'web', 'dist')
+  const manifestPath = join(web, 'manifest.webmanifest')
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  manifest.name = 'YourHarness'
+  manifest.short_name = 'YourHarness'
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+  copyFileSync(join(desktopRoot, 'app-icon.svg'), join(web, 'favicon.svg'))
+}
+
 function assertBuiltArtifacts() {
   const cliBin = join(repoRoot, 'apps', 'cli', 'lib', 'bin.js')
   const webIndex = join(repoRoot, 'apps', 'web', 'dist', 'index.html')
@@ -349,16 +439,16 @@ function assertBuiltArtifacts() {
   }
   const buildRecordPath = join(repoRoot, '.dsh-build', 'client-build-environment.json')
   if (!existsSync(buildRecordPath)) {
-    throw new Error('Harness client build record missing. Run the XiaoHui-branded root build first.')
+    throw new Error('Harness client build record missing. Run the YourHarness-branded root build first.')
   }
   const buildRecord = JSON.parse(readFileSync(buildRecordPath, 'utf8'))
-  if (buildRecord.environment?.DSH_CLIENT_TITLE !== 'XiaoHui Harness') {
+  if (buildRecord.environment?.DSH_CLIENT_TITLE !== 'YourHarness') {
     throw new Error(
-      'Harness client artifacts are not branded for XiaoHui. Run: DSH_CLIENT_TITLE="XiaoHui Harness" pnpm run build',
+      'Harness client artifacts are not branded for YourHarness. Run: DSH_CLIENT_TITLE="YourHarness" pnpm run build',
     )
   }
   if (!existsSync(productLockPath)) {
-    throw new Error(`XiaoHui frozen Harness lockfile missing: ${productLockPath}`)
+    throw new Error(`YourHarness frozen Harness lockfile missing: ${productLockPath}`)
   }
 }
 
@@ -416,6 +506,7 @@ copyTree(join(repoRoot, 'vendor'), join(outRoot, 'vendor'))
 copyTree(join(repoRoot, 'native', 'landlock-run'), join(outRoot, 'native', 'landlock-run'))
 copyTree(join(repoRoot, 'apps', 'cli'), join(outRoot, 'apps', 'cli'))
 copyTree(join(repoRoot, 'apps', 'web'), join(outRoot, 'apps', 'web'))
+installProductWebIdentity(outRoot)
 
 const packagesRoot = join(repoRoot, 'packages')
 for (const group of readdirSync(packagesRoot, { withFileTypes: true })) {
@@ -428,6 +519,7 @@ for (const group of readdirSync(packagesRoot, { withFileTypes: true })) {
   }
 }
 installProductPlugins(outRoot)
+installDefaultAgentPreset(outRoot)
 
 const trimmedWorkspace = buildTrimmedWorkspaceYaml(
   readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8'),
@@ -452,11 +544,16 @@ stripDevDependencies(outRoot)
 const manifest = {
   harnessVersion: rootPkg.version,
   dshUpstream,
-  product: 'XiaoHui Harness',
+  product: 'YourHarness',
   productPlugins: productPlugins.map(plugin => {
     const pkg = JSON.parse(readFileSync(join(plugin.root, 'package.json'), 'utf8'))
     return `${plugin.name}@${pkg.version}`
   }),
+  defaultHarnessPlugins: defaultHarnessPlugins.map(plugin => {
+    const pkg = JSON.parse(readFileSync(join(plugin.root, 'package.json'), 'utf8'))
+    return `${plugin.name}@${pkg.version}`
+  }),
+  defaultAgentPreset,
   bundledAt: new Date().toISOString(),
   contentSha256: hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstream),
   method: 'trimmed-monorepo-source-frozen-lock',

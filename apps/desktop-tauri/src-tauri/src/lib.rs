@@ -39,6 +39,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             chrome::show_main(app);
         }))
@@ -48,6 +49,7 @@ pub fn run() {
             external_links::open_external_url,
             external_links::open_marketplace_url,
             network_proxy::get_network_proxy_settings,
+            network_proxy::select_ca_certificate,
             network_proxy::save_network_proxy_settings,
             network_proxy::test_network_proxy_settings,
             updater::check_for_updates
@@ -172,11 +174,7 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     if !runtime.host.disabled_plugins.is_empty() {
         let names = runtime.host.disabled_plugins.join("、");
         boot_log::error(&format!("plugins disabled by rescue patch: {names}"));
-        notify::toast(
-            &app,
-            "XiaoHui Harness",
-            &i18n::tf(Msg::PluginsDisabled, &names),
-        );
+        notify::toast(&app, "YourHarness", &i18n::tf(Msg::PluginsDisabled, &names));
     }
     app.manage(runtime);
     if let Some(notify) = notify {
@@ -234,7 +232,7 @@ async fn boot_windows_runtime(
     let resource_dir = app.path().resource_dir().ok();
     let product = product::resolve(resource_dir.as_deref())?;
     boot_log::info(&format!(
-        "XiaoHui product runtime ready harbor={} integration={}",
+        "YourHarness product runtime ready harbor={} integration={}",
         product.harbor_bin.display(),
         product.integration_version
     ));

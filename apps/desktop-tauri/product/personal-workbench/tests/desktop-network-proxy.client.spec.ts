@@ -4,6 +4,7 @@ import {
   DESKTOP_NETWORK_PROXY_VERSION,
   readDesktopNetworkProxyResponse,
   readNetworkProxySettings,
+  requestDesktopCaCertificateSelection,
   requestDesktopNetworkProxySave,
   requestDesktopNetworkProxySnapshot,
   requestDesktopNetworkProxyTest,
@@ -49,6 +50,7 @@ const settings: NetworkProxySettings = {
   httpProxy: 'http://127.0.0.1:7890',
   httpsProxy: 'http://127.0.0.1:7890',
   noProxy: '*.local',
+  caCertificatePath: '/Users/example/company-root.pem',
 }
 
 const snapshot = {
@@ -66,7 +68,7 @@ const snapshot = {
   effectiveError: '',
 }
 
-function accepted(action: 'get' | 'test' | 'save', requestId: string) {
+function accepted(action: 'get' | 'test' | 'save' | 'select-ca', requestId: string) {
   return {
     channel: DESKTOP_NETWORK_PROXY_CHANNEL,
     version: DESKTOP_NETWORK_PROXY_VERSION,
@@ -75,7 +77,7 @@ function accepted(action: 'get' | 'test' | 'save', requestId: string) {
   }
 }
 
-function response(action: 'get' | 'test' | 'save', requestId: string, value: unknown) {
+function response(action: 'get' | 'test' | 'save' | 'select-ca', requestId: string, value: unknown) {
   return {
     channel: DESKTOP_NETWORK_PROXY_CHANNEL,
     version: DESKTOP_NETWORK_PROXY_VERSION,
@@ -92,6 +94,7 @@ describe('desktop network proxy browser bridge', () => {
     expect(readNetworkProxySettings({ ...settings, token: 'secret' })).toBeUndefined()
     expect(readNetworkProxySettings({ ...settings, mode: 'ambient' })).toBeUndefined()
     expect(readNetworkProxySettings({ ...settings, noProxy: 'x'.repeat(4097) })).toBeUndefined()
+    expect(readNetworkProxySettings({ ...settings, caCertificatePath: 'x'.repeat(4097) })).toBeUndefined()
   })
 
   it('loads a correlated desktop snapshot', async () => {
@@ -128,7 +131,14 @@ describe('desktop network proxy browser bridge', () => {
       settings,
     })
     target.emit(accepted('test', 'proxy_test_1'))
-    const nativeResult = { ok: true, status: 200, proxied: true, errorCode: '' }
+    const nativeResult = {
+      ok: true,
+      status: 200,
+      proxied: true,
+      errorCode: '',
+      proxyMode: 'custom',
+      caSource: 'custom',
+    }
     target.emit(response('test', 'proxy_test_1', nativeResult))
     await expect(testResult).resolves.toEqual(nativeResult)
 
@@ -155,13 +165,22 @@ describe('desktop network proxy browser bridge', () => {
       status: 999,
       proxied: true,
       errorCode: 'UNKNOWN_ISSUER',
+      proxyMode: 'custom',
+      caSource: 'custom',
     }))
     await expect(result).rejects.toThrow('desktop-shell-unavailable')
   })
 
   it('accepts only a response with the action-specific value', () => {
     expect(readDesktopNetworkProxyResponse(
-      response('test', 'proxy_1', { ok: true, status: 204, proxied: true, errorCode: '' }),
+      response('test', 'proxy_1', {
+        ok: true,
+        status: 204,
+        proxied: true,
+        errorCode: '',
+        proxyMode: 'custom',
+        caSource: 'custom',
+      }),
       'proxy_1',
       'test',
     )).toMatchObject({ ok: true })
@@ -171,6 +190,8 @@ describe('desktop network proxy browser bridge', () => {
         status: 0,
         proxied: true,
         errorCode: 'UNKNOWN_ISSUER',
+        proxyMode: 'custom',
+        caSource: 'custom',
       }),
       'proxy_1',
       'test',
@@ -181,6 +202,8 @@ describe('desktop network proxy browser bridge', () => {
         status: 0,
         proxied: true,
         errorCode: 'private certificate detail',
+        proxyMode: 'custom',
+        caSource: 'custom',
       }),
       'proxy_1',
       'test',
@@ -191,6 +214,40 @@ describe('desktop network proxy browser bridge', () => {
       'test',
     )).toBeUndefined()
   })
+
+  it('selects only a bounded native CA path and treats cancel as no selection', async () => {
+    const selectedTarget = new FakeWindow()
+    const selected = requestDesktopCaCertificateSelection({
+      target: selectedTarget as unknown as Window,
+      requestId: 'proxy_ca_1',
+      handshakeTimeoutMs: 1_000,
+    })
+    expect(selectedTarget.parent.messages[0]?.message).toEqual({
+      channel: DESKTOP_NETWORK_PROXY_CHANNEL,
+      version: DESKTOP_NETWORK_PROXY_VERSION,
+      type: 'select-ca-request',
+      requestId: 'proxy_ca_1',
+    })
+    selectedTarget.emit(accepted('select-ca', 'proxy_ca_1'))
+    selectedTarget.emit(response('select-ca', 'proxy_ca_1', '/Users/example/company-root.pem'))
+    await expect(selected).resolves.toBe('/Users/example/company-root.pem')
+
+    const cancelledTarget = new FakeWindow()
+    const cancelled = requestDesktopCaCertificateSelection({
+      target: cancelledTarget as unknown as Window,
+      requestId: 'proxy_ca_2',
+      handshakeTimeoutMs: 1_000,
+    })
+    cancelledTarget.emit(accepted('select-ca', 'proxy_ca_2'))
+    cancelledTarget.emit(response('select-ca', 'proxy_ca_2', null))
+    await expect(cancelled).resolves.toBeUndefined()
+
+    expect(readDesktopNetworkProxyResponse(
+      response('select-ca', 'proxy_ca_3', ''),
+      'proxy_ca_3',
+      'select-ca',
+    )).toBeUndefined()
+  })
 })
 
 describe('Node Host network proxy diagnostic client', () => {
@@ -199,14 +256,28 @@ describe('Node Host network proxy diagnostic client', () => {
     const result = await requestHostNetworkProxyTest(async (input, init) => {
       calls.push({ input, init })
       return {
-        json: async () => ({ ok: true, status: 200, proxied: true, errorCode: '' }),
+        json: async () => ({
+          ok: true,
+          status: 200,
+          proxied: true,
+          errorCode: '',
+          proxyMode: 'custom',
+          caSource: 'custom',
+        }),
       }
     })
     expect(calls).toEqual([{
-      input: '/api/xiaohui/network-proxy/test',
+      input: '/api/yourharness/network-proxy/test',
       init: { method: 'POST', headers: { 'Content-Type': 'application/json' } },
     }])
-    expect(result).toEqual({ ok: true, status: 200, proxied: true, errorCode: '' })
+    expect(result).toEqual({
+      ok: true,
+      status: 200,
+      proxied: true,
+      errorCode: '',
+      proxyMode: 'custom',
+      caSource: 'custom',
+    })
   })
 
   it('rejects extra fields and unbounded transport details', async () => {
@@ -216,11 +287,20 @@ describe('Node Host network proxy diagnostic client', () => {
         status: 0,
         proxied: true,
         errorCode: 'UND_ERR_CONNECT_TIMEOUT',
+        proxyMode: 'custom',
+        caSource: 'custom',
         proxyUrl: 'http://secret@127.0.0.1:7890',
       }),
     }))).rejects.toThrow('host-network-proxy-response-invalid')
     await expect(requestHostNetworkProxyTest(async () => ({
-      json: async () => ({ ok: false, status: 0, proxied: true, errorCode: 'x'.repeat(65) }),
+      json: async () => ({
+        ok: false,
+        status: 0,
+        proxied: true,
+        errorCode: 'x'.repeat(65),
+        proxyMode: 'custom',
+        caSource: 'custom',
+      }),
     }))).rejects.toThrow('host-network-proxy-response-invalid')
   })
 })

@@ -3,7 +3,7 @@
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 
 /** Same-origin endpoint used by the Personal Workbench settings card. */
-export const HOST_NETWORK_PROXY_TEST_PATH = '/api/xiaohui/network-proxy/test'
+export const HOST_NETWORK_PROXY_TEST_PATH = '/api/yourharness/network-proxy/test'
 
 const CHATGPT_REACHABILITY_URL = 'https://chatgpt.com/'
 const HOST_PROXY_TEST_TIMEOUT_MS = 15_000
@@ -17,6 +17,8 @@ export interface HostNetworkProxyTestResult {
   status: number
   proxied: boolean
   errorCode: string
+  proxyMode: 'direct' | 'system' | 'custom' | 'unknown'
+  caSource: 'system' | 'custom' | 'unknown'
 }
 
 /** Minimal fetch operation accepted by the deterministic Host tests. */
@@ -36,6 +38,23 @@ function hasProxyEnvironment(environment: NodeJS.ProcessEnv): boolean {
 
 function hasEnvironmentProxyDispatcher(): boolean {
   return Reflect.get(globalThis, ENVIRONMENT_PROXY_DISPATCHER_MARK) === true
+}
+
+function activePolicy(environment: NodeJS.ProcessEnv): Pick<
+  HostNetworkProxyTestResult,
+  'proxyMode' | 'caSource'
+> {
+  const proxyMode = ['direct', 'system', 'custom'].includes(
+    environment.YOURHARNESS_NETWORK_PROXY_MODE ?? '',
+  )
+    ? environment.YOURHARNESS_NETWORK_PROXY_MODE as HostNetworkProxyTestResult['proxyMode']
+    : 'unknown'
+  const caSource = environment.NODE_EXTRA_CA_CERTS
+    ? 'custom'
+    : environment.NODE_OPTIONS?.split(/\s+/u).includes('--use-system-ca') === true
+      ? 'system'
+      : 'unknown'
+  return { proxyMode, caSource }
 }
 
 function safeErrorCode(error: unknown): string {
@@ -71,19 +90,32 @@ export async function testHostNetworkProxy(
 ): Promise<HostNetworkProxyTestResult> {
   const proxyConfigured = hasProxyEnvironment(environment)
   const proxied = proxyConfigured && dispatcherInstalled
+  const policy = activePolicy(environment)
   if (proxyConfigured && !dispatcherInstalled) {
-    return { ok: false, status: 0, proxied, errorCode: 'ENV_PROXY_DISPATCHER_MISSING' }
+    return {
+      ok: false,
+      status: 0,
+      proxied,
+      errorCode: 'ENV_PROXY_DISPATCHER_MISSING',
+      ...policy,
+    }
   }
   try {
     const response = await fetcher(CHATGPT_REACHABILITY_URL, {
       signal: AbortSignal.timeout(HOST_PROXY_TEST_TIMEOUT_MS),
     })
     if (response.status === 407 || response.status >= 500) {
-      return { ok: false, status: response.status, proxied, errorCode: `HTTP_${response.status}` }
+      return {
+        ok: false,
+        status: response.status,
+        proxied,
+        errorCode: `HTTP_${response.status}`,
+        ...policy,
+      }
     }
-    return { ok: true, status: response.status, proxied, errorCode: '' }
+    return { ok: true, status: response.status, proxied, errorCode: '', ...policy }
   } catch (error) {
-    return { ok: false, status: 0, proxied, errorCode: safeErrorCode(error) }
+    return { ok: false, status: 0, proxied, errorCode: safeErrorCode(error), ...policy }
   }
 }
 

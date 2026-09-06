@@ -1,18 +1,22 @@
 /** Fixed browser-to-desktop protocol for application-wide network proxy settings. */
 
-/** Message channel accepted by the XiaoHui desktop shell. */
-export const DESKTOP_NETWORK_PROXY_CHANNEL = 'xiaohui.desktop.network-proxy'
+/** Message channel accepted by the YourHarness desktop shell. */
+export const DESKTOP_NETWORK_PROXY_CHANNEL = 'yourharness.desktop.network-proxy'
 
 /** Current browser-to-shell protocol version. */
-export const DESKTOP_NETWORK_PROXY_VERSION = 2
+export const DESKTOP_NETWORK_PROXY_VERSION = 3
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 const DEFAULT_HANDSHAKE_TIMEOUT_MS = 5_000
 const MAX_PROXY_URL_LENGTH = 2_048
 const MAX_NO_PROXY_LENGTH = 4_096
+const MAX_CA_CERTIFICATE_PATH_LENGTH = 4_096
 
 /** User-selectable proxy source. */
 export type NetworkProxyMode = 'direct' | 'system' | 'custom'
+
+/** Trust source reported by a native or Host reachability test. */
+export type NetworkCaSource = 'system' | 'custom' | 'unknown'
 
 /** Persisted desktop proxy preferences. */
 export interface NetworkProxySettings {
@@ -20,6 +24,7 @@ export interface NetworkProxySettings {
   httpProxy: string
   httpsProxy: string
   noProxy: string
+  caCertificatePath: string
 }
 
 /** Browser-safe effective proxy state. */
@@ -50,10 +55,12 @@ export interface NetworkProxyTestResult {
   status: number
   proxied: boolean
   errorCode: string
+  proxyMode: NetworkProxyMode | 'unknown'
+  caSource: NetworkCaSource
 }
 
-type DesktopNetworkProxyAction = 'get' | 'test' | 'save'
-type DesktopNetworkProxyValue = NetworkProxySnapshot | NetworkProxyTestResult
+type DesktopNetworkProxyAction = 'get' | 'test' | 'save' | 'select-ca'
+type DesktopNetworkProxyValue = NetworkProxySnapshot | NetworkProxyTestResult | string | null
 
 interface DesktopNetworkProxyAccepted {
   channel: typeof DESKTOP_NETWORK_PROXY_CHANNEL
@@ -108,14 +115,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Validate a settings value received from the native shell. */
 export function readNetworkProxySettings(value: unknown): NetworkProxySettings | undefined {
   if (!isRecord(value)
-    || !hasExactKeys(value, 'httpProxy,httpsProxy,mode,noProxy')
+    || !hasExactKeys(value, 'caCertificatePath,httpProxy,httpsProxy,mode,noProxy')
     || !['direct', 'system', 'custom'].includes(String(value.mode))
     || typeof value.httpProxy !== 'string'
     || value.httpProxy.length > MAX_PROXY_URL_LENGTH
     || typeof value.httpsProxy !== 'string'
     || value.httpsProxy.length > MAX_PROXY_URL_LENGTH
     || typeof value.noProxy !== 'string'
-    || value.noProxy.length > MAX_NO_PROXY_LENGTH) return undefined
+    || value.noProxy.length > MAX_NO_PROXY_LENGTH
+    || typeof value.caCertificatePath !== 'string'
+    || value.caCertificatePath.length > MAX_CA_CERTIFICATE_PATH_LENGTH) return undefined
   return value as unknown as NetworkProxySettings
 }
 
@@ -169,7 +178,7 @@ function readSnapshot(value: unknown): NetworkProxySnapshot | undefined {
 
 function readTestResult(value: unknown): NetworkProxyTestResult | undefined {
   if (!isRecord(value)
-    || !hasExactKeys(value, 'errorCode,ok,proxied,status')
+    || !hasExactKeys(value, 'caSource,errorCode,ok,proxied,proxyMode,status')
     || typeof value.ok !== 'boolean'
     || typeof value.proxied !== 'boolean'
     || !Number.isSafeInteger(value.status)
@@ -177,6 +186,8 @@ function readTestResult(value: unknown): NetworkProxyTestResult | undefined {
     || Number(value.status) > 599
     || typeof value.errorCode !== 'string'
     || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode)
+    || !['direct', 'system', 'custom', 'unknown'].includes(String(value.proxyMode))
+    || !['system', 'custom', 'unknown'].includes(String(value.caSource))
     || (value.ok && (Number(value.status) < 100 || value.errorCode !== ''))
     || (!value.ok && value.errorCode === '')) return undefined
   return value as unknown as NetworkProxyTestResult
@@ -200,8 +211,16 @@ export function readDesktopNetworkProxyResponse(
   if (value.type !== `${action}-response` || typeof value.ok !== 'boolean') return undefined
   if (value.ok) {
     if (!hasExactKeys(value, 'channel,ok,requestId,type,value,version')) return undefined
-    const parsed = action === 'test' ? readTestResult(value.value) : readSnapshot(value.value)
-    if (parsed === undefined) return undefined
+    if (action === 'select-ca') {
+      if (value.value !== null
+        && (typeof value.value !== 'string'
+          || value.value.length === 0
+          || value.value.length > MAX_CA_CERTIFICATE_PATH_LENGTH)) return undefined
+    }
+    else {
+      const parsed = action === 'test' ? readTestResult(value.value) : readSnapshot(value.value)
+      if (parsed === undefined) return undefined
+    }
   }
   else if (!hasExactKeys(value, 'channel,error,ok,requestId,type,version')
     || typeof value.error !== 'string'
@@ -222,7 +241,7 @@ function requestDesktopNetworkProxy(
   if (!REQUEST_ID_PATTERN.test(requestId)) {
     return Promise.reject(new Error('desktop-network-proxy-request-id-invalid'))
   }
-  if (action !== 'get' && readNetworkProxySettings(settings) === undefined) {
+  if (!['get', 'select-ca'].includes(action) && readNetworkProxySettings(settings) === undefined) {
     return Promise.reject(new Error('desktop-network-proxy-settings-invalid'))
   }
 
@@ -284,4 +303,12 @@ export async function requestDesktopNetworkProxySave(
   options: DesktopNetworkProxyRequestOptions = {},
 ): Promise<NetworkProxySnapshot> {
   return await requestDesktopNetworkProxy('save', settings, options) as NetworkProxySnapshot
+}
+
+/** Open the native CA certificate picker and return the validated absolute path. */
+export async function requestDesktopCaCertificateSelection(
+  options: DesktopNetworkProxyRequestOptions = {},
+): Promise<string | undefined> {
+  const value = await requestDesktopNetworkProxy('select-ca', undefined, options)
+  return value === null ? undefined : value as string
 }

@@ -15,7 +15,7 @@ from the settings page — no terminal needed.
 - **Search** the topic by keyword, **sort** by stars or last update
 - **Plugin cards** with description, stars, language, and update date
 - **Detail panel**: GitHub README summary, install command, repo/npm links; the
-  XiaoHui desktop opens these links through a restricted system-browser bridge
+  YourHarness desktop opens these links through a restricted system-browser bridge
 - **One-click eligibility**: enabled only after npm package metadata links a
   package with `dsh.bundle.patch` to the repository through its Repository
   field or owner-scoped DSH upstream metadata; differently named scoped

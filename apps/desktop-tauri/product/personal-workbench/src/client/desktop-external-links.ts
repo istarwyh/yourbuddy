@@ -3,8 +3,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { PersonalWorkbenchKey } from './locales.ts'
 
-/** Versioned channel shared with the XiaoHui desktop shell. */
-export const DESKTOP_EXTERNAL_LINK_CHANNEL = 'xiaohui.desktop.external-link'
+/** Versioned channel shared with the YourHarness desktop shell. */
+export const DESKTOP_EXTERNAL_LINK_CHANNEL = 'yourharness.desktop.external-link'
 /** Protocol version for desktop external-link requests. */
 export const DESKTOP_EXTERNAL_LINK_VERSION = 1
 
@@ -263,7 +263,7 @@ export function installDesktopExternalLinks(ctx: Context, t: Translate): void {
       anchor.classList.add('dpw-desktop-external-link')
       if (!anchor.hasAttribute('title')) {
         anchor.title = url
-        anchor.dataset.xiaohuiExternalLinkTitle = 'true'
+        anchor.dataset.yourharnessExternalLinkTitle = 'true'
       }
     }
     const onDocumentPointer = (event: Event): void => {
@@ -313,9 +313,9 @@ export function installDesktopExternalLinks(ctx: Context, t: Translate): void {
       copyButton.removeEventListener('click', onCopy)
       markedAnchors.forEach((anchor) => {
         anchor.classList.remove('dpw-desktop-external-link')
-        if (anchor.dataset.xiaohuiExternalLinkTitle === 'true') {
+        if (anchor.dataset.yourharnessExternalLinkTitle === 'true') {
           anchor.removeAttribute('title')
-          delete anchor.dataset.xiaohuiExternalLinkTitle
+          delete anchor.dataset.yourharnessExternalLinkTitle
         }
       })
       menu.remove()

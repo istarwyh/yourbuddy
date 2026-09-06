@@ -91,7 +91,7 @@ pub async fn ensure_profile_installs(
     Ok(())
 }
 
-/// Move only XiaoHui-owned product `link:` dependencies from an older
+/// Move only YourHarness-owned product `link:` dependencies from an older
 /// content-addressed Harness tree to the active one. Registry packages and
 /// links outside this application's `harness-versions` directory remain
 /// user-owned and untouched.
@@ -151,7 +151,7 @@ fn rebind_managed_product_links(paths: &RuntimePaths) -> Result<Vec<String>, Str
             }
             if !current.join("package.json").is_file() {
                 return Err(format!(
-                    "XiaoHui product dependency is missing from the active Harness tree: {}",
+                    "YourHarness product dependency is missing from the active Harness tree: {}",
                     current.display()
                 ));
             }
@@ -168,7 +168,9 @@ fn rebind_managed_product_links(paths: &RuntimePaths) -> Result<Vec<String>, Str
         let Some(name) = entry.file_name().into_string().ok() else {
             continue;
         };
-        boot_log::info(&format!("rebound XiaoHui product links in profile {name}"));
+        boot_log::info(&format!(
+            "rebound YourHarness product links in profile {name}"
+        ));
         rebound.push(name);
     }
     Ok(rebound)
@@ -351,7 +353,7 @@ mod tests {
     }
 
     #[test]
-    fn rebinds_only_product_links_owned_by_an_old_xiaohui_tree() {
+    fn rebinds_only_product_links_owned_by_an_old_yourharness_tree() {
         let root = temp_root();
         let dsh_home = root.join("dsh-home");
         let profile = dsh_home.join("profiles").join("web");

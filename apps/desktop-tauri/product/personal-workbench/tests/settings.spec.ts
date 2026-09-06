@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { WorkbenchSettingsSchema } from '../src/settings.ts'
 
 describe('personal-workbench settings schema', () => {
-  it('defaults to the shell fallback', () => {
+  it('defaults to the product identity without saved customization', () => {
     expect(WorkbenchSettingsSchema()).toEqual({ enabled: false, name: '', logo: '' })
   })
 

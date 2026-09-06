@@ -74,7 +74,7 @@ pub async fn check_now(app: &AppHandle) -> Result<String, String> {
     let current = current_version(app);
     notify::toast(
         app,
-        "XiaoHui Harness",
+        "YourHarness",
         &i18n::tf(Msg::UpdaterChecking, &current),
     );
     check_and_install(app)
@@ -109,7 +109,7 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
         .unwrap_or_else(|| network_proxy::resolve(&desktop_settings::load().network_proxy))?;
 
     boot_log::info(&format!("desktop update check current={current}"));
-    let Some(update) = network_proxy::apply_to_updater(app.updater_builder(), &proxy)
+    let Some(update) = network_proxy::apply_to_updater(app.updater_builder(), &proxy)?
         .timeout(UPDATE_CHECK_TIMEOUT)
         .build()
         .map_err(|error| error.to_string())?
@@ -127,7 +127,7 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
     ));
     notify::toast(
         app,
-        "XiaoHui Harness",
+        "YourHarness",
         &i18n::tf2(Msg::UpdaterAvailable, &current, &target),
     );
 
@@ -153,7 +153,7 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
     boot_log::info(&format!("desktop update installed target={target}"));
     notify::toast(
         app,
-        "XiaoHui Harness",
+        "YourHarness",
         &i18n::tf(Msg::UpdaterRestarting, &target),
     );
     chrome::request_restart(app)

@@ -1,0 +1,7 @@
+[
+  { "step": "default", "title": "YourHarness", "name": "YourHarness", "logo": "YH" },
+  { "step": "custom", "title": "YourHarness", "name": "Research Lab", "logo": "uploaded" },
+  { "step": "reloaded", "title": "YourHarness", "name": "Research Lab", "logo": "uploaded" },
+  { "step": "reset", "title": "YourHarness", "name": "YourHarness", "logo": "YH" },
+  { "step": "reset-reloaded", "title": "YourHarness", "name": "YourHarness", "logo": "YH" }
+]

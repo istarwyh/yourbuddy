@@ -7,6 +7,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { WorkbenchSettingsValue } from './brand.tsx'
 import { normalizeLogoSource, normalizeWorkbenchName } from './brand.tsx'
 import type { PersonalWorkbenchKey } from './locales.ts'
+import productLogo from '../../../../app-icon.svg'
 
 /** Settings capability injected into the card. */
 export interface BrandSettingsRowInjected {
@@ -51,8 +52,8 @@ export function BrandSettingsRow({ scope, t }: BrandSettingsRowProps) {
     setLogo(persisted.enabled ? persisted.logo : '')
   }, [persisted])
 
-  const displayName = normalizeWorkbenchName(name) ?? t('title')
-  const displayLogo = normalizeLogoSource(logo)
+  const displayName = normalizeWorkbenchName(name) ?? 'YourHarness'
+  const displayLogo = normalizeLogoSource(logo) ?? productLogo
   const writable = snapshot.writable
   const busy = status === 'saving'
 
@@ -115,7 +116,7 @@ export function BrandSettingsRow({ scope, t }: BrandSettingsRowProps) {
 
       <div className="dpw-preview" aria-label={t('preview')}>
         <div className="dpw-preview-mark" aria-hidden="true">
-          {displayLogo === undefined ? '🐳' : <img src={displayLogo} alt="" />}
+          <img src={displayLogo} alt="" />
         </div>
         <div className="dpw-preview-copy">
           <span className="dpw-preview-label">{t('preview')}</span>

@@ -87,6 +87,11 @@ function createPersonalBrandName(name) {
 
 // src/client/BrandSettingsRow.tsx
 var import_react = require("react");
+
+// ../../app-icon.svg
+var app_icon_default = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">%0A  <defs>%0A    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">%0A      <stop offset="0" stop-color="%23111827"/>%0A      <stop offset="1" stop-color="%232563eb"/>%0A    </linearGradient>%0A  </defs>%0A  <rect width="1024" height="1024" rx="220" fill="url(%23bg)"/>%0A  <path d="M164 286h116l88 160 88-160h116L420 548v190H316V548L164 286Z" fill="%23f8fafc"/>%0A  <path d="M562 286h94v168h112V286h94v452h-94V550H656v188h-94V286Z" fill="%23bfdbfe"/>%0A</svg>%0A';
+
+// src/client/BrandSettingsRow.tsx
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function readDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -116,8 +121,8 @@ function BrandSettingsRow({ scope, t }) {
     setName(persisted.enabled ? persisted.name : "");
     setLogo(persisted.enabled ? persisted.logo : "");
   }, [persisted]);
-  const displayName = normalizeWorkbenchName(name) ?? t("title");
-  const displayLogo = normalizeLogoSource(logo);
+  const displayName = normalizeWorkbenchName(name) ?? "YourHarness";
+  const displayLogo = normalizeLogoSource(logo) ?? app_icon_default;
   const writable = snapshot.writable;
   const busy = status === "saving";
   const chooseLogo = async (file) => {
@@ -170,7 +175,7 @@ function BrandSettingsRow({ scope, t }) {
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "dpw-description", children: t("description") })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "dpw-preview", "aria-label": t("preview"), children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "dpw-preview-mark", "aria-hidden": "true", children: displayLogo === void 0 ? "\u{1F433}" : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("img", { src: displayLogo, alt: "" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "dpw-preview-mark", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("img", { src: displayLogo, alt: "" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "dpw-preview-copy", children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "dpw-preview-label", children: t("preview") }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "dpw-preview-name", children: displayName })
@@ -266,7 +271,7 @@ function BrandSettingsRow({ scope, t }) {
 var import_react2 = require("react");
 
 // src/client/desktop-lifecycle.ts
-var DESKTOP_LIFECYCLE_CHANNEL = "xiaohui.desktop.lifecycle";
+var DESKTOP_LIFECYCLE_CHANNEL = "yourharness.desktop.lifecycle";
 var DESKTOP_LIFECYCLE_VERSION = 1;
 var REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 var DEFAULT_HANDSHAKE_TIMEOUT_MS = 5e3;
@@ -421,12 +426,13 @@ function ApplicationLifecycleRow({ t }) {
 var import_react3 = require("react");
 
 // src/client/desktop-network-proxy.ts
-var DESKTOP_NETWORK_PROXY_CHANNEL = "xiaohui.desktop.network-proxy";
-var DESKTOP_NETWORK_PROXY_VERSION = 2;
+var DESKTOP_NETWORK_PROXY_CHANNEL = "yourharness.desktop.network-proxy";
+var DESKTOP_NETWORK_PROXY_VERSION = 3;
 var REQUEST_ID_PATTERN2 = /^[A-Za-z0-9_-]{1,64}$/;
 var DEFAULT_HANDSHAKE_TIMEOUT_MS2 = 5e3;
 var MAX_PROXY_URL_LENGTH = 2048;
 var MAX_NO_PROXY_LENGTH = 4096;
+var MAX_CA_CERTIFICATE_PATH_LENGTH = 4096;
 function createRequestId2() {
   const bytes = new Uint8Array(16);
   globalThis.crypto.getRandomValues(bytes);
@@ -442,7 +448,7 @@ function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function readNetworkProxySettings(value) {
-  if (!isRecord(value) || !hasExactKeys(value, "httpProxy,httpsProxy,mode,noProxy") || !["direct", "system", "custom"].includes(String(value.mode)) || typeof value.httpProxy !== "string" || value.httpProxy.length > MAX_PROXY_URL_LENGTH || typeof value.httpsProxy !== "string" || value.httpsProxy.length > MAX_PROXY_URL_LENGTH || typeof value.noProxy !== "string" || value.noProxy.length > MAX_NO_PROXY_LENGTH) return void 0;
+  if (!isRecord(value) || !hasExactKeys(value, "caCertificatePath,httpProxy,httpsProxy,mode,noProxy") || !["direct", "system", "custom"].includes(String(value.mode)) || typeof value.httpProxy !== "string" || value.httpProxy.length > MAX_PROXY_URL_LENGTH || typeof value.httpsProxy !== "string" || value.httpsProxy.length > MAX_PROXY_URL_LENGTH || typeof value.noProxy !== "string" || value.noProxy.length > MAX_NO_PROXY_LENGTH || typeof value.caCertificatePath !== "string" || value.caCertificatePath.length > MAX_CA_CERTIFICATE_PATH_LENGTH) return void 0;
   return value;
 }
 function readEffectiveProxy(value) {
@@ -472,7 +478,7 @@ function readSnapshot(value) {
   };
 }
 function readTestResult(value) {
-  if (!isRecord(value) || !hasExactKeys(value, "errorCode,ok,proxied,status") || typeof value.ok !== "boolean" || typeof value.proxied !== "boolean" || !Number.isSafeInteger(value.status) || Number(value.status) < 0 || Number(value.status) > 599 || typeof value.errorCode !== "string" || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode) || value.ok && (Number(value.status) < 100 || value.errorCode !== "") || !value.ok && value.errorCode === "") return void 0;
+  if (!isRecord(value) || !hasExactKeys(value, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof value.ok !== "boolean" || typeof value.proxied !== "boolean" || !Number.isSafeInteger(value.status) || Number(value.status) < 0 || Number(value.status) > 599 || typeof value.errorCode !== "string" || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode) || !["direct", "system", "custom", "unknown"].includes(String(value.proxyMode)) || !["system", "custom", "unknown"].includes(String(value.caSource)) || value.ok && (Number(value.status) < 100 || value.errorCode !== "") || !value.ok && value.errorCode === "") return void 0;
   return value;
 }
 function readDesktopNetworkProxyResponse(value, requestId, action) {
@@ -483,8 +489,12 @@ function readDesktopNetworkProxyResponse(value, requestId, action) {
   if (value.type !== `${action}-response` || typeof value.ok !== "boolean") return void 0;
   if (value.ok) {
     if (!hasExactKeys(value, "channel,ok,requestId,type,value,version")) return void 0;
-    const parsed = action === "test" ? readTestResult(value.value) : readSnapshot(value.value);
-    if (parsed === void 0) return void 0;
+    if (action === "select-ca") {
+      if (value.value !== null && (typeof value.value !== "string" || value.value.length === 0 || value.value.length > MAX_CA_CERTIFICATE_PATH_LENGTH)) return void 0;
+    } else {
+      const parsed = action === "test" ? readTestResult(value.value) : readSnapshot(value.value);
+      if (parsed === void 0) return void 0;
+    }
   } else if (!hasExactKeys(value, "channel,error,ok,requestId,type,version") || typeof value.error !== "string" || value.error.length > MAX_PROXY_URL_LENGTH) return void 0;
   return value;
 }
@@ -497,7 +507,7 @@ function requestDesktopNetworkProxy(action, settings, options) {
   if (!REQUEST_ID_PATTERN2.test(requestId)) {
     return Promise.reject(new Error("desktop-network-proxy-request-id-invalid"));
   }
-  if (action !== "get" && readNetworkProxySettings(settings) === void 0) {
+  if (!["get", "select-ca"].includes(action) && readNetworkProxySettings(settings) === void 0) {
     return Promise.reject(new Error("desktop-network-proxy-settings-invalid"));
   }
   return new Promise((resolve, reject) => {
@@ -545,16 +555,20 @@ async function requestDesktopNetworkProxyTest(settings, options = {}) {
 async function requestDesktopNetworkProxySave(settings, options = {}) {
   return await requestDesktopNetworkProxy("save", settings, options);
 }
+async function requestDesktopCaCertificateSelection(options = {}) {
+  const value = await requestDesktopNetworkProxy("select-ca", void 0, options);
+  return value === null ? void 0 : value;
+}
 
 // src/client/host-network-proxy.ts
-var HOST_NETWORK_PROXY_TEST_PATH = "/api/xiaohui/network-proxy/test";
+var HOST_NETWORK_PROXY_TEST_PATH = "/api/yourharness/network-proxy/test";
 function hasExactKeys2(value, expected) {
   return Object.keys(value).sort().join(",") === expected;
 }
 function readResult(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return void 0;
   const result = value;
-  if (!hasExactKeys2(result, "errorCode,ok,proxied,status") || typeof result.ok !== "boolean" || typeof result.status !== "number" || !Number.isInteger(result.status) || result.status < 0 || result.status > 599 || typeof result.proxied !== "boolean" || typeof result.errorCode !== "string" || result.errorCode.length > 64) return void 0;
+  if (!hasExactKeys2(result, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof result.ok !== "boolean" || typeof result.status !== "number" || !Number.isInteger(result.status) || result.status < 0 || result.status > 599 || typeof result.proxied !== "boolean" || typeof result.errorCode !== "string" || !["direct", "system", "custom", "unknown"].includes(String(result.proxyMode)) || !["system", "custom", "unknown"].includes(String(result.caSource)) || result.errorCode.length > 64) return void 0;
   return result;
 }
 async function requestHostNetworkProxyTest(fetcher = globalThis.fetch) {
@@ -573,7 +587,8 @@ var EMPTY_SETTINGS = {
   mode: "direct",
   httpProxy: "",
   httpsProxy: "",
-  noProxy: ""
+  noProxy: "",
+  caCertificatePath: ""
 };
 function NetworkProxyRow({ t }) {
   const [available] = (0, import_react3.useState)(() => isDesktopNetworkProxyAvailable());
@@ -617,7 +632,7 @@ function NetworkProxyRow({ t }) {
         requestDesktopNetworkProxyTest(draft),
         requestHostNetworkProxyTest()
       ]);
-      const pending = native.proxied === host.proxied ? "" : ` ${t("proxy.test.pending-restart")}`;
+      const pending = native.proxyMode === host.proxyMode && native.caSource === host.caSource ? "" : ` ${t("proxy.test.pending-restart")}`;
       const certificateHint = [native.errorCode, host.errorCode].some(isCertificateErrorCode) ? ` ${t("proxy.test.certificate-hint")}` : "";
       setDetail(t("proxy.test.result").replace("{native}", describeTestResult(native, t)).replace("{host}", describeTestResult(host, t)) + pending + certificateHint);
       setStatus(native.ok && host.ok ? "tested" : "test-failed");
@@ -639,7 +654,19 @@ function NetworkProxyRow({ t }) {
       setStatus("error");
     }
   };
-  const busy = ["loading", "refreshing", "testing", "saving", "restarting"].includes(status);
+  const selectCaCertificate = async () => {
+    setStatus("selecting-ca");
+    setDetail("");
+    try {
+      const path = await requestDesktopCaCertificateSelection();
+      if (path !== void 0) setDraft((value) => ({ ...value, caCertificatePath: path }));
+      setStatus("idle");
+    } catch (error) {
+      setDetail(errorMessage(error));
+      setStatus("error");
+    }
+  };
+  const busy = ["loading", "refreshing", "selecting-ca", "testing", "saving", "restarting"].includes(status);
   const systemBlocked = draft.mode === "system" && snapshot?.system.supported === false;
   const setField = (field) => (event) => {
     setDraft((value) => ({ ...value, [field]: event.target.value }));
@@ -749,7 +776,40 @@ function NetworkProxyRow({ t }) {
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "dpw-hint", children: t("proxy.custom.hint") })
         ] })
       ] }),
-      draft.mode === "direct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-hint dpw-field-wide", children: t("proxy.direct.hint") })
+      draft.mode === "direct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-hint dpw-field-wide", children: t("proxy.direct.hint") }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-proxy-panel dpw-field-wide", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-label", children: t("proxy.ca.label") }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-code dpw-ca-path", children: draft.caCertificatePath || t("proxy.ca.system-only") }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-hint", children: t("proxy.ca.hint") }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-actions", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            "button",
+            {
+              type: "button",
+              className: "dpw-button",
+              disabled: busy,
+              onClick: () => {
+                void selectCaCertificate();
+              },
+              children: status === "selecting-ca" ? t("proxy.ca.selecting") : t("proxy.ca.select")
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            "button",
+            {
+              type: "button",
+              className: "dpw-button",
+              disabled: busy || draft.caCertificatePath === "",
+              onClick: () => {
+                setDraft((value) => ({ ...value, caCertificatePath: "" }));
+                setStatus("idle");
+                setDetail("");
+              },
+              children: t("proxy.ca.remove")
+            }
+          )
+        ] })
+      ] })
     ] }),
     status === "loading" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.loading") }),
     status === "testing" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.test.testing") }),
@@ -791,8 +851,20 @@ function errorMessage(error) {
 }
 function describeTestResult(result, t) {
   const outcome = result.ok ? t("proxy.test.outcome.http").replace("{status}", String(result.status)) : t("proxy.test.outcome.error").replace("{code}", result.errorCode);
-  const route = result.proxied ? t("proxy.test.route.proxy") : t("proxy.test.route.direct");
-  return t("proxy.test.outcome.routed").replace("{outcome}", outcome).replace("{route}", route);
+  const routeKeys = {
+    direct: "proxy.test.mode.direct",
+    system: "proxy.test.mode.system",
+    custom: "proxy.test.mode.custom",
+    unknown: "proxy.test.mode.unknown"
+  };
+  const caKeys = {
+    system: "proxy.test.ca.system",
+    custom: "proxy.test.ca.custom",
+    unknown: "proxy.test.ca.unknown"
+  };
+  const route = t(routeKeys[result.proxyMode]);
+  const caSource = t(caKeys[result.caSource]);
+  return t("proxy.test.outcome.routed").replace("{outcome}", outcome).replace("{route}", route).replace("{ca}", caSource);
 }
 function isCertificateErrorCode(code) {
   return code.includes("CERT") || code.includes("ISSUER") || code.includes("SIGNATURE") || code.includes("VERIFY");
@@ -806,13 +878,18 @@ function localizedProxyError(error, t) {
   if (error.includes("network-proxy-scheme-unsupported")) return t("proxy.error.scheme");
   if (error.includes("network-proxy-url-invalid")) return t("proxy.error.url");
   if (error.includes("network-proxy-no-proxy-invalid")) return t("proxy.error.no-proxy");
+  if (error.includes("network-proxy-ca-path")) return t("proxy.error.ca-path");
+  if (error.includes("network-proxy-ca-file-missing")) return t("proxy.error.ca-missing");
+  if (error.includes("network-proxy-ca-extension")) return t("proxy.error.ca-extension");
+  if (error.includes("network-proxy-ca-file-size") || error.includes("network-proxy-ca-file-not-regular")) return t("proxy.error.ca-size");
+  if (error.includes("network-proxy-ca-pem") || error.includes("network-proxy-ca-file-unreadable")) return t("proxy.error.ca-pem");
   if (error.includes("host-network-proxy-response-invalid")) return t("proxy.error.host-response");
   if (error.includes("network-proxy-test")) return t("proxy.error.test");
   return `${t("proxy.error.generic")} ${error}`;
 }
 
 // src/client/desktop-external-links.ts
-var DESKTOP_EXTERNAL_LINK_CHANNEL = "xiaohui.desktop.external-link";
+var DESKTOP_EXTERNAL_LINK_CHANNEL = "yourharness.desktop.external-link";
 var DESKTOP_EXTERNAL_LINK_VERSION = 1;
 var MAX_EXTERNAL_URL_LENGTH = 4096;
 var RESPONSE_TIMEOUT_MS = 5e3;
@@ -996,7 +1073,7 @@ function installDesktopExternalLinks(ctx, t) {
       anchor.classList.add("dpw-desktop-external-link");
       if (!anchor.hasAttribute("title")) {
         anchor.title = url;
-        anchor.dataset.xiaohuiExternalLinkTitle = "true";
+        anchor.dataset.yourharnessExternalLinkTitle = "true";
       }
     };
     const onDocumentPointer = (event) => {
@@ -1048,9 +1125,9 @@ function installDesktopExternalLinks(ctx, t) {
       copyButton.removeEventListener("click", onCopy);
       markedAnchors.forEach((anchor) => {
         anchor.classList.remove("dpw-desktop-external-link");
-        if (anchor.dataset.xiaohuiExternalLinkTitle === "true") {
+        if (anchor.dataset.yourharnessExternalLinkTitle === "true") {
           anchor.removeAttribute("title");
-          delete anchor.dataset.xiaohuiExternalLinkTitle;
+          delete anchor.dataset.yourharnessExternalLinkTitle;
         }
       });
       menu.remove();
@@ -1064,14 +1141,14 @@ var zh = {
   "description": "\u8BBE\u7F6E\u4FA7\u8FB9\u680F\u540D\u79F0\u548C Logo\uFF0C\u6253\u9020\u5C5E\u4E8E\u4F60\u7684 Agent \u5DE5\u4F5C\u53F0\u3002",
   "preview": "\u5B9E\u65F6\u9884\u89C8",
   "name.label": "\u5DE5\u4F5C\u53F0\u540D\u79F0",
-  "name.placeholder": "\u4F8B\u5982\uFF1A\u5C0F\u8F89\u7684\u5DE5\u4F5C\u53F0",
+  "name.placeholder": "\u4F8B\u5982\uFF1A\u6211\u7684\u7814\u7A76\u5BA4",
   "logo.label": "\u5DE5\u4F5C\u53F0 Logo",
   "logo.choose": "\u9009\u62E9\u56FE\u7247",
   "logo.replace": "\u66F4\u6362\u56FE\u7247",
   "logo.remove": "\u79FB\u9664 Logo",
   "logo.hint": "\u9009\u62E9\u4E00\u5F20\u4F60\u559C\u6B22\u7684\u56FE\u7247\u3002",
   "save": "\u5E94\u7528\u5230\u5DE5\u4F5C\u53F0",
-  "reset": "\u6062\u590D XiaoHui \u9ED8\u8BA4",
+  "reset": "\u6062\u590D YourHarness \u9ED8\u8BA4",
   "saved": "\u5DF2\u5E94\u7528",
   "reset.done": "\u5DF2\u6062\u590D\u9ED8\u8BA4",
   "status.readonly": "\u5F53\u524D Profile \u7684\u8BBE\u7F6E\u6587\u4EF6\u4E0D\u53EF\u5199\u3002",
@@ -1084,9 +1161,9 @@ var zh = {
   "link.error.open": "\u65E0\u6CD5\u6253\u5F00\u94FE\u63A5\uFF1A",
   "link.error.copy": "\u65E0\u6CD5\u590D\u5236\u94FE\u63A5\u5730\u5740\u3002",
   "proxy.title": "\u7F51\u7EDC\u4EE3\u7406",
-  "proxy.description": "\u4E3A XiaoHui Harness\u3001\u79C1\u6709 Host\u3001\u63D2\u4EF6\u548C\u5E94\u7528\u66F4\u65B0\u7EDF\u4E00\u8BBE\u7F6E\u7F51\u7EDC\u4EE3\u7406\u3002\u4FDD\u5B58\u540E\u4F1A\u91CD\u542F\u5E94\u7528\u3002",
-  "proxy.desktop-only": "\u8BF7\u5728 XiaoHui Harness \u684C\u9762\u5E94\u7528\u4E2D\u914D\u7F6E\u7F51\u7EDC\u4EE3\u7406\u3002",
-  "proxy.shell-unavailable": "\u684C\u9762\u7F51\u7EDC\u4EE3\u7406\u670D\u52A1\u672A\u54CD\u5E94\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 XiaoHui Harness \u540E\u91CD\u8BD5\u3002",
+  "proxy.description": "\u4E3A YourHarness\u3001\u79C1\u6709 Host\u3001\u63D2\u4EF6\u548C\u5E94\u7528\u66F4\u65B0\u7EDF\u4E00\u8BBE\u7F6E\u7F51\u7EDC\u4EE3\u7406\u3002\u4FDD\u5B58\u540E\u4F1A\u91CD\u542F\u5E94\u7528\u3002",
+  "proxy.desktop-only": "\u8BF7\u5728 YourHarness \u684C\u9762\u5E94\u7528\u4E2D\u914D\u7F6E\u7F51\u7EDC\u4EE3\u7406\u3002",
+  "proxy.shell-unavailable": "\u684C\u9762\u7F51\u7EDC\u4EE3\u7406\u670D\u52A1\u672A\u54CD\u5E94\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourHarness \u540E\u91CD\u8BD5\u3002",
   "proxy.mode.label": "\u8FDE\u63A5\u65B9\u5F0F",
   "proxy.mode.system": "\u8DDF\u968F macOS \u7CFB\u7EDF\u4EE3\u7406",
   "proxy.mode.custom": "\u81EA\u5B9A\u4E49\u4EE3\u7406",
@@ -1100,7 +1177,13 @@ var zh = {
   "proxy.https.label": "HTTPS \u4EE3\u7406",
   "proxy.no-proxy.label": "\u4E0D\u4F7F\u7528\u4EE3\u7406\u7684\u5730\u5740",
   "proxy.custom.hint": "\u9700\u8981\u540C\u65F6\u586B\u5199 HTTP \u4E0E HTTPS \u4EE3\u7406\u3002\u4EC5\u652F\u6301\u65E0\u8D26\u53F7\u5BC6\u7801\u7684 http:// \u6216 https:// \u5730\u5740\uFF1B\u672C\u673A Host \u5730\u5740\u59CB\u7EC8\u76F4\u8FDE\u3002",
-  "proxy.direct.hint": "\u5FFD\u7565\u542F\u52A8\u73AF\u5883\u4E2D\u7684\u4EE3\u7406\u53D8\u91CF\uFF0C\u7531 XiaoHui \u76F4\u63A5\u8FDE\u63A5\u5916\u90E8\u7F51\u7EDC\u3002",
+  "proxy.direct.hint": "\u5FFD\u7565\u542F\u52A8\u73AF\u5883\u4E2D\u7684\u4EE3\u7406\u53D8\u91CF\uFF0C\u7531 YourHarness \u76F4\u63A5\u8FDE\u63A5\u5916\u90E8\u7F51\u7EDC\u3002",
+  "proxy.ca.label": "\u989D\u5916 CA \u8BC1\u4E66",
+  "proxy.ca.system-only": "\u672A\u9009\u62E9\uFF08\u4EC5\u4F7F\u7528 macOS \u94A5\u5319\u4E32\u4E0E Node \u7CFB\u7EDF CA\uFF09",
+  "proxy.ca.hint": "\u53EF\u9009\u62E9 PEM \u683C\u5F0F\u7684 .pem \u6216 .crt \u4F01\u4E1A\u6839\u8BC1\u4E66\u3002\u5B83\u4F1A\u8865\u5145\u7CFB\u7EDF\u4FE1\u4EFB\uFF0C\u5E76\u5728\u91CD\u542F\u524D\u663E\u5F0F\u4F20\u7ED9\u684C\u9762\u5BA2\u6237\u7AEF\u3001Node Host\u3001\u63D2\u4EF6\u4E0E\u5E94\u7528\u66F4\u65B0\uFF1B\u8BC1\u4E66\u6821\u9A8C\u59CB\u7EC8\u4FDD\u6301\u5F00\u542F\u3002",
+  "proxy.ca.select": "\u9009\u62E9 .pem / .crt",
+  "proxy.ca.selecting": "\u6B63\u5728\u9009\u62E9\u2026",
+  "proxy.ca.remove": "\u79FB\u9664\u989D\u5916 CA",
   "proxy.loading": "\u6B63\u5728\u8BFB\u53D6\u7F51\u7EDC\u4EE3\u7406\u8BBE\u7F6E\u2026",
   "proxy.test.action": "\u6D4B\u8BD5 ChatGPT \u8FDE\u63A5",
   "proxy.test.testing-action": "\u6B63\u5728\u6D4B\u8BD5\u2026",
@@ -1108,15 +1191,20 @@ var zh = {
   "proxy.test.result": "\u684C\u9762\u8349\u7A3F\uFF1A{native}\uFF1B\u5F53\u524D Node Host\uFF1A{host}\u3002",
   "proxy.test.outcome.http": "HTTP {status}",
   "proxy.test.outcome.error": "\u5931\u8D25\uFF1A{code}",
-  "proxy.test.outcome.routed": "{outcome}\uFF08{route}\uFF09",
-  "proxy.test.route.proxy": "\u73AF\u5883\u4EE3\u7406",
-  "proxy.test.route.direct": "\u76F4\u8FDE",
-  "proxy.test.pending-restart": "Node Host \u4ECD\u5728\u4F7F\u7528\u4E0A\u6B21\u91CD\u542F\u65F6\u7684\u7B56\u7565\uFF1B\u4FDD\u5B58\u5E76\u91CD\u542F\u540E\u8BF7\u518D\u6B21\u6D4B\u8BD5\u3002",
-  "proxy.test.certificate-hint": "\u68C0\u6D4B\u5230 TLS \u8BC1\u4E66\u4FE1\u4EFB\u9519\u8BEF\u3002\u8BF7\u786E\u8BA4\u4F01\u4E1A\u6839\u8BC1\u4E66\u5DF2\u5728 macOS \u94A5\u5319\u4E32\u4E2D\u8BBE\u4E3A\u53D7\u4FE1\u4EFB\uFF1BXiaoHui \u4E0D\u4F1A\u5173\u95ED\u8BC1\u4E66\u6821\u9A8C\u3002",
-  "proxy.save.action": "\u4FDD\u5B58\u5E76\u91CD\u542F XiaoHui",
+  "proxy.test.outcome.routed": "{outcome}\uFF08{route}\uFF1B{ca}\uFF09",
+  "proxy.test.mode.direct": "\u76F4\u8FDE",
+  "proxy.test.mode.system": "macOS \u7CFB\u7EDF\u4EE3\u7406",
+  "proxy.test.mode.custom": "\u81EA\u5B9A\u4E49\u4EE3\u7406",
+  "proxy.test.mode.unknown": "\u975E YourHarness \u7BA1\u7406\u7684\u4EE3\u7406\u6A21\u5F0F",
+  "proxy.test.ca.system": "\u7CFB\u7EDF CA",
+  "proxy.test.ca.custom": "\u7CFB\u7EDF CA + \u81EA\u5B9A\u4E49 CA",
+  "proxy.test.ca.unknown": "CA \u6765\u6E90\u672A\u77E5",
+  "proxy.test.pending-restart": "Node Host \u7684\u4EE3\u7406\u6A21\u5F0F\u6216 CA \u6765\u6E90\u4ECD\u662F\u4E0A\u6B21\u542F\u52A8\u65F6\u7684\u8BBE\u7F6E\uFF1B\u4FDD\u5B58\u5E76\u91CD\u542F\u540E\u8BF7\u518D\u6B21\u6D4B\u8BD5\u3002",
+  "proxy.test.certificate-hint": "\u68C0\u6D4B\u5230 TLS \u8BC1\u4E66\u4FE1\u4EFB\u9519\u8BEF\u3002\u8BF7\u786E\u8BA4\u4F01\u4E1A\u6839\u8BC1\u4E66\u5DF2\u5728 macOS \u94A5\u5319\u4E32\u4E2D\u53D7\u4FE1\u4EFB\uFF0C\u6216\u9009\u62E9\u5BF9\u5E94\u7684 PEM CA\uFF1BYourHarness \u4E0D\u4F1A\u5173\u95ED\u8BC1\u4E66\u6821\u9A8C\u3002",
+  "proxy.save.action": "\u4FDD\u5B58\u5E76\u91CD\u542F YourHarness",
   "proxy.save.saving": "\u6B63\u5728\u4FDD\u5B58\u7F51\u7EDC\u4EE3\u7406\u8BBE\u7F6E\u2026",
   "proxy.save.restarting-action": "\u6B63\u5728\u91CD\u542F\u2026",
-  "proxy.save.restarting": "\u8BBE\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F XiaoHui\u2026",
+  "proxy.save.restarting": "\u8BBE\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F YourHarness\u2026",
   "proxy.error.pac": "\u68C0\u6D4B\u5230 PAC \u6216\u81EA\u52A8\u4EE3\u7406\u53D1\u73B0\u3002\u5F53\u524D\u7248\u672C\u65E0\u6CD5\u628A\u52A8\u6001\u4EE3\u7406\u89C4\u5219\u8F6C\u6362\u7ED9 Node\uFF0C\u8BF7\u6539\u7528\u81EA\u5B9A\u4E49\u4EE3\u7406\u3002",
   "proxy.error.http-only": "\u7CFB\u7EDF\u53EA\u542F\u7528\u4E86 HTTP \u4EE3\u7406\uFF0C\u65E0\u6CD5\u5FE0\u5B9E\u5E94\u7528\u5230\u6240\u6709 Node \u8BF7\u6C42\uFF1B\u8BF7\u540C\u65F6\u542F\u7528 HTTPS \u4EE3\u7406\u6216\u6539\u7528\u81EA\u5B9A\u4E49\u4EE3\u7406\u3002",
   "proxy.error.platform": "\u5F53\u524D\u5E73\u53F0\u4E0D\u652F\u6301\u81EA\u52A8\u8BFB\u53D6\u7CFB\u7EDF\u4EE3\u7406\uFF0C\u8BF7\u4F7F\u7528\u81EA\u5B9A\u4E49\u4EE3\u7406\u3002",
@@ -1124,20 +1212,25 @@ var zh = {
   "proxy.error.scheme": "\u4EE3\u7406\u5730\u5740\u4EC5\u652F\u6301 http:// \u6216 https://\u3002",
   "proxy.error.url": "\u4EE3\u7406\u5730\u5740\u65E0\u6548\uFF0C\u4E14\u4E0D\u80FD\u5305\u542B\u8D26\u53F7\u3001\u5BC6\u7801\u3001\u8DEF\u5F84\u3001\u67E5\u8BE2\u53C2\u6570\u6216\u7247\u6BB5\u3002",
   "proxy.error.no-proxy": "\u4E0D\u4F7F\u7528\u4EE3\u7406\u7684\u5730\u5740\u5217\u8868\u65E0\u6548\u3002",
+  "proxy.error.ca-path": "CA \u8BC1\u4E66\u8DEF\u5F84\u65E0\u6548\uFF1B\u8BF7\u901A\u8FC7\u9009\u62E9\u6309\u94AE\u91CD\u65B0\u9009\u62E9\u3002",
+  "proxy.error.ca-missing": "\u627E\u4E0D\u5230\u5DF2\u9009\u62E9\u7684 CA \u8BC1\u4E66\uFF1B\u8BF7\u91CD\u65B0\u9009\u62E9\u3002",
+  "proxy.error.ca-extension": "CA \u8BC1\u4E66\u4EC5\u652F\u6301 .pem \u6216 .crt \u6587\u4EF6\u3002",
+  "proxy.error.ca-size": "CA \u8BC1\u4E66\u5FC5\u987B\u662F 1 MiB \u4EE5\u5185\u7684\u975E\u7A7A\u666E\u901A\u6587\u4EF6\u3002",
+  "proxy.error.ca-pem": ".pem \u6216 .crt \u6587\u4EF6\u5FC5\u987B\u5305\u542B PEM \u683C\u5F0F\u7684 CERTIFICATE \u533A\u5757\u3002",
   "proxy.error.test": "\u684C\u9762\u8FDE\u901A\u6027\u6D4B\u8BD5\u672A\u5B8C\u6210\uFF0C\u8BF7\u68C0\u67E5\u663E\u793A\u7684\u9519\u8BEF\u4FE1\u606F\u540E\u91CD\u8BD5\u3002",
-  "proxy.error.host-response": "Node Host \u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4EE3\u7406\u8BCA\u65AD\u7ED3\u679C\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 XiaoHui \u540E\u91CD\u8BD5\u3002",
+  "proxy.error.host-response": "Node Host \u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4EE3\u7406\u8BCA\u65AD\u7ED3\u679C\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourHarness \u540E\u91CD\u8BD5\u3002",
   "proxy.error.generic": "\u7F51\u7EDC\u4EE3\u7406\u64CD\u4F5C\u5931\u8D25\uFF1A",
   "lifecycle.title": "\u5E94\u7528\u751F\u547D\u5468\u671F",
-  "lifecycle.description": "\u7BA1\u7406 XiaoHui Harness \u7684\u66F4\u65B0\u4E0E\u91CD\u542F\u3002\u91CD\u542F\u4F1A\u505C\u6B62\u5F53\u524D\u79C1\u6709 Host\uFF0C\u5E76\u5728\u91CD\u65B0\u6253\u5F00\u65F6\u52A0\u8F7D\u65B0\u5B89\u88C5\u7684\u63D2\u4EF6\u3002",
-  "lifecycle.desktop-only": "\u8BF7\u5728 XiaoHui Harness \u684C\u9762\u5E94\u7528\u4E2D\u4F7F\u7528\u8FD9\u4E9B\u529F\u80FD\u3002",
-  "lifecycle.shell-unavailable": "\u684C\u9762\u751F\u547D\u5468\u671F\u670D\u52A1\u672A\u54CD\u5E94\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 XiaoHui Harness \u540E\u91CD\u8BD5\u3002",
+  "lifecycle.description": "\u7BA1\u7406 YourHarness \u7684\u66F4\u65B0\u4E0E\u91CD\u542F\u3002\u91CD\u542F\u4F1A\u505C\u6B62\u5F53\u524D\u79C1\u6709 Host\uFF0C\u5E76\u5728\u91CD\u65B0\u6253\u5F00\u65F6\u52A0\u8F7D\u65B0\u5B89\u88C5\u7684\u63D2\u4EF6\u3002",
+  "lifecycle.desktop-only": "\u8BF7\u5728 YourHarness \u684C\u9762\u5E94\u7528\u4E2D\u4F7F\u7528\u8FD9\u4E9B\u529F\u80FD\u3002",
+  "lifecycle.shell-unavailable": "\u684C\u9762\u751F\u547D\u5468\u671F\u670D\u52A1\u672A\u54CD\u5E94\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourHarness \u540E\u91CD\u8BD5\u3002",
   "lifecycle.update.action": "\u68C0\u67E5\u5E76\u66F4\u65B0",
   "lifecycle.update.checking-action": "\u6B63\u5728\u68C0\u67E5\u2026",
   "lifecycle.update.checking": "\u6B63\u5728\u68C0\u67E5\u66F4\u65B0\uFF1B\u5982\u6709\u65B0\u7248\u672C\uFF0C\u5C06\u81EA\u52A8\u4E0B\u8F7D\u5E76\u5B89\u88C5\u3002",
   "lifecycle.update.error": "\u68C0\u67E5\u66F4\u65B0\u5931\u8D25\uFF1A",
-  "lifecycle.restart.action": "\u91CD\u542F XiaoHui",
+  "lifecycle.restart.action": "\u91CD\u542F YourHarness",
   "lifecycle.restart.restarting-action": "\u6B63\u5728\u91CD\u542F\u2026",
-  "lifecycle.restart.restarting": "\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F XiaoHui\u2026",
+  "lifecycle.restart.restarting": "\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F YourHarness\u2026",
   "lifecycle.restart.error": "\u91CD\u542F\u5931\u8D25\uFF1A"
 };
 var en = {
@@ -1152,7 +1245,7 @@ var en = {
   "logo.remove": "Remove logo",
   "logo.hint": "Choose an image you like.",
   "save": "Apply to workbench",
-  "reset": "Restore XiaoHui default",
+  "reset": "Restore YourHarness default",
   "saved": "Applied",
   "reset.done": "Default restored",
   "status.readonly": "This Profile settings document is read-only.",
@@ -1165,9 +1258,9 @@ var en = {
   "link.error.open": "Could not open link:",
   "link.error.copy": "Could not copy the link address.",
   "proxy.title": "Network proxy",
-  "proxy.description": "Configure one network proxy for XiaoHui Harness, its private Host, plugins, and application updates. Saving restarts the app.",
-  "proxy.desktop-only": "Configure the network proxy in the XiaoHui Harness desktop application.",
-  "proxy.shell-unavailable": "The desktop network proxy service did not respond. Reopen XiaoHui Harness and try again.",
+  "proxy.description": "Configure one network proxy for YourHarness, its private Host, plugins, and application updates. Saving restarts the app.",
+  "proxy.desktop-only": "Configure the network proxy in the YourHarness desktop application.",
+  "proxy.shell-unavailable": "The desktop network proxy service did not respond. Reopen YourHarness and try again.",
   "proxy.mode.label": "Connection mode",
   "proxy.mode.system": "Follow macOS system proxy",
   "proxy.mode.custom": "Custom proxy",
@@ -1182,6 +1275,12 @@ var en = {
   "proxy.no-proxy.label": "Addresses that bypass the proxy",
   "proxy.custom.hint": "Both HTTP and HTTPS proxies are required. Only credential-free http:// or https:// URLs are accepted; the local Host always connects directly.",
   "proxy.direct.hint": "Ignore proxy variables from the launch environment and connect to external networks directly.",
+  "proxy.ca.label": "Additional CA certificate",
+  "proxy.ca.system-only": "None selected (macOS Keychain and Node system CAs only)",
+  "proxy.ca.hint": "Select a PEM-encoded .pem or .crt enterprise root certificate. It supplements system trust and is explicitly applied to desktop clients, the Node Host, plugins, and application updates before restart; certificate verification remains enabled.",
+  "proxy.ca.select": "Choose .pem / .crt",
+  "proxy.ca.selecting": "Choosing\u2026",
+  "proxy.ca.remove": "Remove additional CA",
   "proxy.loading": "Loading network proxy settings\u2026",
   "proxy.test.action": "Test ChatGPT connection",
   "proxy.test.testing-action": "Testing\u2026",
@@ -1189,15 +1288,20 @@ var en = {
   "proxy.test.result": "Desktop draft: {native}; current Node Host: {host}.",
   "proxy.test.outcome.http": "HTTP {status}",
   "proxy.test.outcome.error": "failed: {code}",
-  "proxy.test.outcome.routed": "{outcome} ({route})",
-  "proxy.test.route.proxy": "environment proxy",
-  "proxy.test.route.direct": "direct",
-  "proxy.test.pending-restart": "The Node Host is still using the policy from the last restart. Save, restart, and test again.",
-  "proxy.test.certificate-hint": "A TLS certificate trust error was detected. Confirm that the enterprise root certificate is trusted in the macOS Keychain; XiaoHui does not disable certificate verification.",
-  "proxy.save.action": "Save and restart XiaoHui",
+  "proxy.test.outcome.routed": "{outcome} ({route}; {ca})",
+  "proxy.test.mode.direct": "direct",
+  "proxy.test.mode.system": "macOS system proxy",
+  "proxy.test.mode.custom": "custom proxy",
+  "proxy.test.mode.unknown": "proxy mode not managed by YourHarness",
+  "proxy.test.ca.system": "system CAs",
+  "proxy.test.ca.custom": "system CAs + custom CA",
+  "proxy.test.ca.unknown": "unknown CA source",
+  "proxy.test.pending-restart": "The Node Host proxy mode or CA source still reflects the previous launch. Save, restart, and test again.",
+  "proxy.test.certificate-hint": "A TLS certificate trust error was detected. Trust the enterprise root in the macOS Keychain or select its PEM CA; YourHarness does not disable certificate verification.",
+  "proxy.save.action": "Save and restart YourHarness",
   "proxy.save.saving": "Saving network proxy settings\u2026",
   "proxy.save.restarting-action": "Restarting\u2026",
-  "proxy.save.restarting": "Settings saved. Stopping the private Host and restarting XiaoHui\u2026",
+  "proxy.save.restarting": "Settings saved. Stopping the private Host and restarting YourHarness\u2026",
   "proxy.error.pac": "A PAC URL or automatic proxy discovery is enabled. This version cannot translate dynamic rules for Node; use a custom proxy.",
   "proxy.error.http-only": "Only the system HTTP proxy is enabled, so it cannot be applied faithfully to every Node request. Enable HTTPS proxy too or use a custom proxy.",
   "proxy.error.platform": "Automatic system proxy detection is unavailable on this platform. Use a custom proxy.",
@@ -1205,20 +1309,25 @@ var en = {
   "proxy.error.scheme": "Proxy URLs support only http:// or https://.",
   "proxy.error.url": "The proxy URL is invalid and cannot contain a username, password, path, query, or fragment.",
   "proxy.error.no-proxy": "The proxy bypass list is invalid.",
+  "proxy.error.ca-path": "The CA certificate path is invalid. Choose the file again.",
+  "proxy.error.ca-missing": "The selected CA certificate is missing. Choose it again.",
+  "proxy.error.ca-extension": "The CA certificate must be a .pem or .crt file.",
+  "proxy.error.ca-size": "The CA certificate must be a non-empty regular file no larger than 1 MiB.",
+  "proxy.error.ca-pem": "The .pem or .crt file must contain PEM CERTIFICATE blocks.",
   "proxy.error.test": "The desktop connectivity test did not complete. Check the reported error and try again.",
-  "proxy.error.host-response": "The Node Host returned an invalid proxy diagnostic result. Reopen XiaoHui and try again.",
+  "proxy.error.host-response": "The Node Host returned an invalid proxy diagnostic result. Reopen YourHarness and try again.",
   "proxy.error.generic": "Network proxy operation failed:",
   "lifecycle.title": "Application lifecycle",
-  "lifecycle.description": "Manage XiaoHui Harness updates and restarts. Restart stops the private Host and loads newly installed plugins when the app opens again.",
-  "lifecycle.desktop-only": "Use these actions in the XiaoHui Harness desktop application.",
-  "lifecycle.shell-unavailable": "The desktop lifecycle service did not respond. Reopen XiaoHui Harness and try again.",
+  "lifecycle.description": "Manage YourHarness updates and restarts. Restart stops the private Host and loads newly installed plugins when the app opens again.",
+  "lifecycle.desktop-only": "Use these actions in the YourHarness desktop application.",
+  "lifecycle.shell-unavailable": "The desktop lifecycle service did not respond. Reopen YourHarness and try again.",
   "lifecycle.update.action": "Check and update",
   "lifecycle.update.checking-action": "Checking\u2026",
   "lifecycle.update.checking": "Checking for updates. A new release will download and install automatically.",
   "lifecycle.update.error": "Update check failed:",
-  "lifecycle.restart.action": "Restart XiaoHui",
+  "lifecycle.restart.action": "Restart YourHarness",
   "lifecycle.restart.restarting-action": "Restarting\u2026",
-  "lifecycle.restart.restarting": "Stopping the private Host and restarting XiaoHui\u2026",
+  "lifecycle.restart.restarting": "Stopping the private Host and restarting YourHarness\u2026",
   "lifecycle.restart.error": "Restart failed:"
 };
 
@@ -1290,12 +1399,7 @@ function installPersonalBrandOccupants(ctx, scope) {
   let markLogo;
   let mark;
   const pickMark = (value) => {
-    const logo = resolveWorkbenchBrand(value).logo;
-    if (logo === void 0) {
-      markLogo = void 0;
-      mark = void 0;
-      return void 0;
-    }
+    const logo = resolveWorkbenchBrand(value).logo ?? app_icon_default;
     if (logo !== markLogo) {
       markLogo = logo;
       mark = createPersonalBrandMark(logo);
@@ -1305,12 +1409,7 @@ function installPersonalBrandOccupants(ctx, scope) {
   let selectedName;
   let nameComponent;
   const pickName = (value) => {
-    const name = resolveWorkbenchBrand(value).name;
-    if (name === void 0) {
-      selectedName = void 0;
-      nameComponent = void 0;
-      return void 0;
-    }
+    const name = resolveWorkbenchBrand(value).name ?? "YourHarness";
     if (name !== selectedName) {
       selectedName = name;
       nameComponent = createPersonalBrandName(name);

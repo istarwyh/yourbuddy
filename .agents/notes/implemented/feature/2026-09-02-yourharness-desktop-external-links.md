@@ -1,12 +1,12 @@
-# Agent Note: XiaoHui desktop external links
+# Agent Note: YourHarness desktop external links
 
 Status: implemented
 
-English | [中文](2026-09-02-xiaohui-desktop-external-links.zh.md)
+English | [中文](2026-09-02-yourharness-desktop-external-links.zh.md)
 
 ## Problem
 
-The shared Markdown renderer creates safe HTTP(S) anchors with a new browsing context, which works in an ordinary browser. XiaoHui embeds the same Client in a cross-origin Tauri iframe, where a new WebView window is not the user's system browser and may not open at all. Treating every iframe navigation as external would also break Host routes and local file interactions.
+The shared Markdown renderer creates safe HTTP(S) anchors with a new browsing context, which works in an ordinary browser. YourHarness embeds the same Client in a cross-origin Tauri iframe, where a new WebView window is not the user's system browser and may not open at all. Treating every iframe navigation as external would also break Host routes and local file interactions.
 
 ## Decision
 

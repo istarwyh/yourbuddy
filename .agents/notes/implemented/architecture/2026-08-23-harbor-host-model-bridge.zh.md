@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-XiaoHui 的控制 Agent 可以通过 Codex Auth 使用 `openai-codex`，但 Harbor Candidate 会在隔离的任务容器中运行第二个 DeepSeek Harness 进程。该进程拥有自己的 Cordis 上下文，原本会沿用 Candidate 配置的 `deepseek-official` 模型。父级模型选择与仅存在于 Host 的 OAuth 状态不会穿过这条运行时边界，因此已经登录 GPT Auth 的用户仍会在 Candidate 启动时遇到缺少 DeepSeek 凭据的错误。
+YourHarness 的控制 Agent 可以通过 Codex Auth 使用 `openai-codex`，但 Harbor Candidate 会在隔离的任务容器中运行第二个 DeepSeek Harness 进程。该进程拥有自己的 Cordis 上下文，原本会沿用 Candidate 配置的 `deepseek-official` 模型。父级模型选择与仅存在于 Host 的 OAuth 状态不会穿过这条运行时边界，因此已经登录 GPT Auth 的用户仍会在 Candidate 启动时遇到缺少 DeepSeek 凭据的错误。
 
 把可复用的 Codex 凭据复制进 Candidate 虽然能让评测运行，却会把凭据暴露面扩大到 Candidate 文件、NPM 依赖、任务镜像与 Harbor 产物。静默改写 Candidate 的磁盘配置还会破坏不可变的 Candidate 身份，使评测无法复现。
 
@@ -18,7 +18,7 @@ Harbor Cordis 插件会在 Doctor、上下文预览或 Job 执行前解析 Candi
 
 Host 会为每个 Job 在仅限 Loopback 的地址上打开 HTTP 模型网关，使用随机路由与随机的 256 位 Bearer 能力。无论 Candidate 请求什么模型提供方、模型或推理路由，网关都会忽略这些字段，并通过冻结的绑定调用 Host LLM 注册表。它只传输模型事件与非敏感模型元数据，可复用的 OAuth 或 API 凭据始终留在已注册的 Host 适配器内。Job Lease 会限制请求数量与请求体大小，在资源释放时中止活动流，并在 Harbor 子进程完成或失败后关闭。
 
-Python Candidate 适配器通过 Harbor 进程接收短期 Job 能力，把它写入 `/run/secrets` 下仅所有者可读的文件，并在安装 Candidate 依赖前从任务容器内检查模型网关。随后它生成 `.harbor-runtime/cordis.yml`，引入不可变 Candidate 配置，只把 `acp-agent` 的模型路由修正为合成的 `xiaohui-host` 提供方，并从 Python 包中加载零依赖的网关适配器。Candidate 快照与验证会拒绝源码中的 `.harbor-runtime` 目录，避免生成的运行时状态进入 Candidate 摘要。
+Python Candidate 适配器通过 Harbor 进程接收短期 Job 能力，把它写入 `/run/secrets` 下仅所有者可读的文件，并在安装 Candidate 依赖前从任务容器内检查模型网关。随后它生成 `.harbor-runtime/cordis.yml`，引入不可变 Candidate 配置，只把 `acp-agent` 的模型路由修正为合成的 `yourharness-host` 提供方，并从 Python 包中加载零依赖的网关适配器。Candidate 快照与验证会拒绝源码中的 `.harbor-runtime` 目录，避免生成的运行时状态进入 Candidate 摘要。
 
 macOS Docker 路径会把 Loopback 模型网关公布为 `host.docker.internal`，同时让监听 Socket 保持在 `127.0.0.1`。如果部署的任务网络无法解析该地址，就必须配置 `modelBrokerAdvertisedHost`；Host 绑定地址仍是另一项独立的显式配置。
 

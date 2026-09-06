@@ -25,7 +25,7 @@ export function validateReleaseVersions(input) {
   if (mismatches.length > 0) {
     throw new Error(`desktop version mismatch: ${mismatches.map(([source, version]) => `${source}=${version}`).join(', ')}`)
   }
-  const expectedTag = `xiaohui-v${input.packageVersion}`
+  const expectedTag = `yourharness-v${input.packageVersion}`
   if (input.tag !== undefined && input.tag !== expectedTag) {
     throw new Error(`release tag mismatch: expected ${expectedTag}, found ${input.tag}`)
   }
@@ -48,8 +48,8 @@ export function verifyReleaseVersion(tag) {
     packageVersion: manifest.version,
     tauriVersion: tauri.version,
     cargoVersion: capture(cargo, /^version\s*=\s*"([^"]+)"/m, 'Cargo.toml'),
-    notesVersion: capture(notes, /^# XiaoHui Harness ([^\s]+)$/m, 'release-notes.md'),
-    iconVersion: capture(iconDestination, /xiaohui-harness-icon-([^.]+\.[^.]+\.[^.]+)\.ico$/, 'icon resource'),
+    notesVersion: capture(notes, /^# YourHarness ([^\s]+)$/m, 'release-notes.md'),
+    iconVersion: capture(iconDestination, /yourharness-icon-([^.]+\.[^.]+\.[^.]+)\.ico$/, 'icon resource'),
     ...(tag === undefined ? {} : { tag }),
   })
 }
@@ -58,7 +58,7 @@ function parseTag(argv) {
   if (argv[0] === '--') argv = argv.slice(1)
   if (argv.length === 0) return undefined
   if (argv.length === 2 && argv[0] === '--tag') return argv[1]
-  throw new Error('usage: node verify-release-version.mjs [--tag xiaohui-vX.Y.Z]')
+  throw new Error('usage: node verify-release-version.mjs [--tag yourharness-vX.Y.Z]')
 }
 
 const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href

@@ -22,10 +22,10 @@ pub const BUNDLED_HARNESS_DIR: &str = "harness-source";
 pub const BUNDLED_TOOLCHAIN_DIR: &str = "toolchain";
 
 /// Production-only pnpm content-addressable store copied with each Harness tree.
-pub const OFFLINE_PNPM_STORE_DIR: &str = ".xiaohui-pnpm-store";
+pub const OFFLINE_PNPM_STORE_DIR: &str = ".yourharness-pnpm-store";
 
 /// Compressed production store shipped in the application resource.
-pub const OFFLINE_PNPM_STORE_ARCHIVE: &str = "xiaohui-pnpm-store.tar.gz";
+pub const OFFLINE_PNPM_STORE_ARCHIVE: &str = "yourharness-pnpm-store.tar.gz";
 
 /// Pinned macOS arm64 Node archive and its official SHA-256 digest.
 pub const BUNDLED_NODE_ARCHIVE: &str = "node-v22.19.0-darwin-arm64.tar.gz";

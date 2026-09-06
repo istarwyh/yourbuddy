@@ -1,8 +1,8 @@
 {
-  "name": "xiaohui-harness-desktop",
-  "productName": "XiaoHui Harness",
+  "name": "yourharness-desktop",
+  "productName": "YourHarness",
   "description": "A macOS AI workbench with DeepSeek Harness, Harbor Evolution, Codex Auth, Better Sidebar, Context Doctor, Plugin Marketplace, Personal Workbench branding, and bundled Skills",
-  "version": "0.2.11",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,13 +19,13 @@
     "test:update-manifest": "node --test scripts/generate-updater-manifest.test.mjs",
     "test:release-version": "node --test scripts/verify-release-version.test.mjs",
     "test:bundle": "node --test scripts/bundle-harness-source.test.mjs",
-    "test:product-refresh": "node --test scripts/desktop-lifecycle-bridge.test.mjs scripts/product-plugin-compatibility.test.mjs scripts/refresh-product-plugins.test.mjs scripts/sync-product-plugin.test.mjs scripts/verify-product-release.test.mjs",
+    "test:product-refresh": "node --test scripts/desktop-lifecycle-bridge.test.mjs scripts/node-extra-ca.test.mjs scripts/product-plugin-compatibility.test.mjs scripts/refresh-product-plugins.test.mjs scripts/sync-product-plugin.test.mjs scripts/verify-product-release.test.mjs",
     "test:prepare-release": "node --test scripts/dsh-release-policy.test.mjs scripts/prepare-release.test.mjs scripts/sync-dsh-upstream.test.mjs",
-    "test:offline": "node --test scripts/prepare-harness-offline-store.test.mjs scripts/prepare-managed-toolchain.test.mjs scripts/prepare-xiaohui-runtime.test.mjs",
+    "test:offline": "node --test scripts/prepare-harness-offline-store.test.mjs scripts/prepare-managed-toolchain.test.mjs scripts/prepare-yourharness-runtime.test.mjs",
     "test:overlay": "node --test overlay/desktop-notify/index.test.mjs",
     "verify:release-version": "node scripts/verify-release-version.mjs",
     "build": "tauri build --target aarch64-apple-darwin --bundles app && tauri bundle --target aarch64-apple-darwin --bundles dmg --ci",
-    "prepare:product-runtime": "node scripts/prepare-xiaohui-runtime.mjs",
+    "prepare:product-runtime": "node scripts/prepare-yourharness-runtime.mjs",
     "build:win": "tauri build --bundles nsis"
   },
   "devDependencies": {

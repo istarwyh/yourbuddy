@@ -1,6 +1,6 @@
 /** Same-origin browser client for the active Node Host proxy diagnostic. */
 
-const HOST_NETWORK_PROXY_TEST_PATH = '/api/xiaohui/network-proxy/test'
+const HOST_NETWORK_PROXY_TEST_PATH = '/api/yourharness/network-proxy/test'
 
 /** Credential-free result from the active Node Host process. */
 export interface HostNetworkProxyTestResult {
@@ -8,6 +8,8 @@ export interface HostNetworkProxyTestResult {
   status: number
   proxied: boolean
   errorCode: string
+  proxyMode: 'direct' | 'system' | 'custom' | 'unknown'
+  caSource: 'system' | 'custom' | 'unknown'
 }
 
 /** Minimal fetch implementation accepted by deterministic browser tests. */
@@ -23,7 +25,7 @@ function hasExactKeys(value: Record<string, unknown>, expected: string): boolean
 function readResult(value: unknown): HostNetworkProxyTestResult | undefined {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined
   const result = value as Record<string, unknown>
-  if (!hasExactKeys(result, 'errorCode,ok,proxied,status')
+  if (!hasExactKeys(result, 'caSource,errorCode,ok,proxied,proxyMode,status')
     || typeof result.ok !== 'boolean'
     || typeof result.status !== 'number'
     || !Number.isInteger(result.status)
@@ -31,6 +33,8 @@ function readResult(value: unknown): HostNetworkProxyTestResult | undefined {
     || result.status > 599
     || typeof result.proxied !== 'boolean'
     || typeof result.errorCode !== 'string'
+    || !['direct', 'system', 'custom', 'unknown'].includes(String(result.proxyMode))
+    || !['system', 'custom', 'unknown'].includes(String(result.caSource))
     || result.errorCode.length > 64) return undefined
   return result as unknown as HostNetworkProxyTestResult
 }

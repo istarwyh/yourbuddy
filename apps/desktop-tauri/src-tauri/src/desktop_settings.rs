@@ -186,6 +186,7 @@ mod tests {
             http_proxy: "http://127.0.0.1:7890".into(),
             https_proxy: "http://127.0.0.1:7890".into(),
             no_proxy: "*.local".into(),
+            ca_certificate_path: "/tmp/company-root.pem".into(),
         };
         save_to(
             &path,
@@ -198,6 +199,7 @@ mod tests {
         assert_eq!(load_from(&path).network_proxy, settings);
         let raw = fs::read_to_string(&path).unwrap();
         assert!(raw.contains("networkProxy"));
+        assert!(raw.contains("company-root.pem"));
         assert!(!raw.contains("password"));
         let _ = fs::remove_file(&path);
     }

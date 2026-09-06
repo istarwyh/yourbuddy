@@ -1,4 +1,4 @@
-/** General-settings card for XiaoHui application lifecycle actions. */
+/** General-settings card for YourHarness application lifecycle actions. */
 
 import { useState } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'

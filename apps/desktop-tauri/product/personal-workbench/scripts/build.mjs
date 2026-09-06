@@ -27,6 +27,7 @@ await build({
   outfile: temporaryClient,
   bundle: true,
   platform: 'browser',
+  loader: { '.svg': 'dataurl' },
   format: 'cjs',
   jsx: 'automatic',
   jsxImportSource: 'react',

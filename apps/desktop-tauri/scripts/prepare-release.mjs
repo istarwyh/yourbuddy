@@ -1,4 +1,4 @@
-/** Refresh, lock, bundle, and smoke-test a reproducible local XiaoHui release input. */
+/** Refresh, lock, bundle, and smoke-test a reproducible local YourHarness release input. */
 import { spawnSync } from 'node:child_process'
 import {
   copyFileSync,
@@ -124,7 +124,7 @@ function managedProductPaths(policy) {
 }
 
 function snapshotManagedProduct(policy) {
-  const root = mkdtempSync(join(tmpdir(), 'xiaohui-release-rollback-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourharness-release-rollback-'))
   let records
   try {
     records = managedProductPaths(policy).map((path, index) => {
@@ -187,7 +187,7 @@ function isRejectedEnvironmentVariable(name) {
 }
 
 /**
- * Reproduce the tagged workflow's XiaoHui Client branding without ambient overrides.
+ * Reproduce the tagged workflow's YourHarness Client branding without ambient overrides.
  *
  * @param {NodeJS.ProcessEnv} source
  * @returns {NodeJS.ProcessEnv}
@@ -197,7 +197,7 @@ export function releaseBuildEnvironment(source = process.env) {
   for (const name of Object.keys(env)) {
     if (name.startsWith('DSH_CLIENT_')) delete env[name]
   }
-  env.DSH_CLIENT_TITLE = 'XiaoHui Harness'
+  env.DSH_CLIENT_TITLE = 'YourHarness'
   return env
 }
 
@@ -235,7 +235,7 @@ export function releaseFetch(source = process.env, fetchImpl = globalThis.fetch)
  * @returns {{env: NodeJS.ProcessEnv, root: string, discard: () => void}}
  */
 export function isolatedReleaseEnvironment(source = process.env, temporaryRoot = tmpdir()) {
-  const root = mkdtempSync(join(temporaryRoot, 'xiaohui-release-environment-'))
+  const root = mkdtempSync(join(temporaryRoot, 'yourharness-release-environment-'))
   try {
     const env = releaseBuildEnvironment(source)
     for (const name of Object.keys(env)) {
@@ -256,7 +256,7 @@ export function isolatedReleaseEnvironment(source = process.env, temporaryRoot =
     }
     for (const path of Object.values(paths)) mkdirSync(path, { recursive: true })
     Object.assign(env, paths, {
-      DSH_CLIENT_TITLE: 'XiaoHui Harness',
+      DSH_CLIENT_TITLE: 'YourHarness',
       TMP: paths.TMPDIR,
       TEMP: paths.TMPDIR,
     })
@@ -363,7 +363,7 @@ function regenerateProductLock(env) {
 }
 
 /**
- * Prepare committed inputs for a later reproducible tagged XiaoHui build.
+ * Prepare committed inputs for a later reproducible tagged YourHarness build.
  * A dry run resolves latest candidates and runs static checks only.
  *
  * @param {{allowDirty?: boolean, dryRun?: boolean}} options
@@ -422,8 +422,8 @@ export async function prepareRelease(options = {}) {
       regenerateProductLock(isolated.env)
       runNode('prepare-dist.mjs', {
         ...isolated.env,
-        XIAOHUI_KEEP_PREPARED_HARNESS_INSTALL: '1',
-        XIAOHUI_OFFLINE_STORE_CACHE_DIR: '',
+        YOURHARNESS_KEEP_PREPARED_HARNESS_INSTALL: '1',
+        YOURHARNESS_OFFLINE_STORE_CACHE_DIR: '',
       })
       await verifyPreparedProduct()
       return [...dsh.updates, ...refreshed]

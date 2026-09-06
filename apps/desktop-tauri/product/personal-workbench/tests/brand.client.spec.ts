@@ -2,6 +2,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import { describe, expect, it } from 'vitest'
+import type { ReactElement } from 'react'
 import {
   installPersonalBrandOccupants, resolveWorkbenchBrand,
   type WorkbenchSettingsValue,
@@ -59,7 +60,7 @@ describe('personal workbench browser behavior', () => {
       .toEqual({ name: 'A', logo: 'https://example.com/a.svg' })
   })
 
-  it('adds lower-priority occupants while enabled and removes them on reset', async () => {
+  it('restores product occupants on reset and removes them when disposed', async () => {
     const ctx = new Context()
     await ctx.plugin(SlotRegistry).await()
     const slots = ctx.get('slots') as SlotRegistry
@@ -70,16 +71,24 @@ describe('personal workbench browser behavior', () => {
       apply(clientCtx) { installPersonalBrandOccupants(clientCtx as never, scope) },
     })
     await fiber.await()
-    for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(0)
+    const visibleName = () => {
+      const Component = slots.entries('sidebar.brand.name')[0]!.component as () => ReactElement<{ children: string }>
+      return Component().props.children
+    }
+    for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(1)
+    expect(visibleName()).toBe('YourHarness')
 
     scope.replace({ enabled: true, name: 'My Lab', logo: 'data:image/png;base64,YQ==' })
+    expect(visibleName()).toBe('My Lab')
     for (const hole of HOLES) {
       expect(slots.entries(hole)).toHaveLength(1)
       expect(slots.entries(hole)[0]?.options.priority).toBe(-10)
     }
 
     scope.replace({ enabled: false, name: '', logo: '' })
-    for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(0)
+    for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(1)
+    expect(visibleName()).toBe('YourHarness')
     await fiber.dispose()
+    for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(0)
   })
 })

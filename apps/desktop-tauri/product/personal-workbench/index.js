@@ -2,7 +2,7 @@
 import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 
 // src/host-network-proxy.ts
-var HOST_NETWORK_PROXY_TEST_PATH = "/api/xiaohui/network-proxy/test";
+var HOST_NETWORK_PROXY_TEST_PATH = "/api/yourharness/network-proxy/test";
 var CHATGPT_REACHABILITY_URL = "https://chatgpt.com/";
 var HOST_PROXY_TEST_TIMEOUT_MS = 15e3;
 var ENVIRONMENT_PROXY_DISPATCHER_MARK = /* @__PURE__ */ Symbol.for(
@@ -18,6 +18,13 @@ function hasProxyEnvironment(environment) {
 }
 function hasEnvironmentProxyDispatcher() {
   return Reflect.get(globalThis, ENVIRONMENT_PROXY_DISPATCHER_MARK) === true;
+}
+function activePolicy(environment) {
+  const proxyMode = ["direct", "system", "custom"].includes(
+    environment.YOURHARNESS_NETWORK_PROXY_MODE ?? ""
+  ) ? environment.YOURHARNESS_NETWORK_PROXY_MODE : "unknown";
+  const caSource = environment.NODE_EXTRA_CA_CERTS ? "custom" : environment.NODE_OPTIONS?.split(/\s+/u).includes("--use-system-ca") === true ? "system" : "unknown";
+  return { proxyMode, caSource };
 }
 function safeErrorCode(error) {
   let current = error;
@@ -40,19 +47,32 @@ function safeErrorCode(error) {
 async function testHostNetworkProxy(fetcher = globalThis.fetch, environment = process.env, dispatcherInstalled = hasEnvironmentProxyDispatcher()) {
   const proxyConfigured = hasProxyEnvironment(environment);
   const proxied = proxyConfigured && dispatcherInstalled;
+  const policy = activePolicy(environment);
   if (proxyConfigured && !dispatcherInstalled) {
-    return { ok: false, status: 0, proxied, errorCode: "ENV_PROXY_DISPATCHER_MISSING" };
+    return {
+      ok: false,
+      status: 0,
+      proxied,
+      errorCode: "ENV_PROXY_DISPATCHER_MISSING",
+      ...policy
+    };
   }
   try {
     const response = await fetcher(CHATGPT_REACHABILITY_URL, {
       signal: AbortSignal.timeout(HOST_PROXY_TEST_TIMEOUT_MS)
     });
     if (response.status === 407 || response.status >= 500) {
-      return { ok: false, status: response.status, proxied, errorCode: `HTTP_${response.status}` };
+      return {
+        ok: false,
+        status: response.status,
+        proxied,
+        errorCode: `HTTP_${response.status}`,
+        ...policy
+      };
     }
-    return { ok: true, status: response.status, proxied, errorCode: "" };
+    return { ok: true, status: response.status, proxied, errorCode: "", ...policy };
   } catch (error) {
-    return { ok: false, status: 0, proxied, errorCode: safeErrorCode(error) };
+    return { ok: false, status: 0, proxied, errorCode: safeErrorCode(error), ...policy };
   }
 }
 function writeJson(response, status, value) {

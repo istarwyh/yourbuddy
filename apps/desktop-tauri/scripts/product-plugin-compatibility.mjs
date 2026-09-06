@@ -1,4 +1,4 @@
-/** Compatibility checks shared by XiaoHui product refresh and release preparation. */
+/** Compatibility checks shared by YourHarness product refresh and release preparation. */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import semver from 'semver'
@@ -11,7 +11,7 @@ export function isBundledRuntimePackage(name) {
 }
 
 /**
- * Read package versions available in the trimmed XiaoHui workspace.
+ * Read package versions available in the trimmed YourHarness workspace.
  *
  * @param {string} repositoryRoot
  * @returns {Map<string, {version: string, root: string}>}
@@ -110,7 +110,7 @@ function resolvePackageEntry(root, entry) {
 }
 
 /**
- * Reject a product snapshot that cannot share XiaoHui's bundled runtime.
+ * Reject a product snapshot that cannot share YourHarness's bundled runtime.
  *
  * @param {string} root
  * @param {Record<string, unknown>} policy
@@ -131,7 +131,7 @@ export function validateProductPlugin(root, policy, workspacePackages, managedNo
   if (manifest.engines?.node
     && !semver.satisfies(managedNodeVersion, manifest.engines.node, { includePrerelease: true })) {
     throw new Error(
-      `${manifest.name}@${manifest.version} requires Node ${manifest.engines.node}; XiaoHui bundles ${managedNodeVersion}`,
+      `${manifest.name}@${manifest.version} requires Node ${manifest.engines.node}; YourHarness bundles ${managedNodeVersion}`,
     )
   }
   if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml'
@@ -164,7 +164,7 @@ export function validateProductPlugin(root, policy, workspacePackages, managedNo
     if (!workspace) throw new Error(`${manifest.name}@${manifest.version} requires missing bundled peer ${name}`)
     if (!semver.validRange(range) || !semver.satisfies(workspace.version, range)) {
       throw new Error(
-        `${manifest.name}@${manifest.version} requires ${name}@${range}; XiaoHui bundles ${workspace.version}`,
+        `${manifest.name}@${manifest.version} requires ${name}@${range}; YourHarness bundles ${workspace.version}`,
       )
     }
   }
@@ -250,6 +250,6 @@ export function assertBundledProductPeerLinks(bundleRoot) {
       checked += 1
     }
   }
-  if (checked === 0) throw new Error('no XiaoHui product runtime peer links were checked')
+  if (checked === 0) throw new Error('no YourHarness product runtime peer links were checked')
   return checked
 }

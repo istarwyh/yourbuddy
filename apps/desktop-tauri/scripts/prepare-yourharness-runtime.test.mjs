@@ -19,7 +19,7 @@ import {
   makePythonEntryPointRelocatable,
   readPythonProjectMetadata,
   sourceDigest,
-} from './prepare-xiaohui-runtime.mjs'
+} from './prepare-yourharness-runtime.mjs'
 
 test('readPythonProjectMetadata reads only the project table', () => {
   const metadata = readPythonProjectMetadata(`
@@ -46,7 +46,7 @@ test('readPythonProjectMetadata rejects incomplete project metadata', () => {
 })
 
 test('deriveHarborIntegrationVersion requires matching Node and Python snapshots', () => {
-  const root = mkdtempSync(join(tmpdir(), 'xiaohui-harbor-version-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourharness-harbor-version-'))
   const nodeManifestPath = join(root, 'package.json')
   const pythonProjectPath = join(root, 'pyproject.toml')
   try {
@@ -80,9 +80,9 @@ test('deriveHarborIntegrationVersion requires matching Node and Python snapshots
 test('Python entry points resolve PYTHONHOME after the runtime moves', {
   skip: process.platform === 'win32',
 }, () => {
-  const root = mkdtempSync(join(tmpdir(), 'xiaohui-runtime-wrapper-'))
-  const original = join(root, 'build location', 'xiaohui-runtime')
-  const relocated = join(root, 'installed location', 'xiaohui-runtime')
+  const root = mkdtempSync(join(tmpdir(), 'yourharness-runtime-wrapper-'))
+  const original = join(root, 'build location', 'yourharness-runtime')
+  const relocated = join(root, 'installed location', 'yourharness-runtime')
   const pythonHomeRelative = join('python', 'cpython-3.12.14-macos-aarch64-none')
   const pythonHome = join(original, pythonHomeRelative)
   const bin = join(original, 'venv', 'bin')
@@ -121,7 +121,7 @@ test('Python entry points resolve PYTHONHOME after the runtime moves', {
 })
 
 test('Python product digest ignores local build and virtual-environment artifacts', () => {
-  const root = mkdtempSync(join(tmpdir(), 'xiaohui-python-source-'))
+  const root = mkdtempSync(join(tmpdir(), 'yourharness-python-source-'))
   try {
     mkdirSync(join(root, 'src'), { recursive: true })
     writeFileSync(join(root, 'src', 'agent.py'), 'value = 1\n')

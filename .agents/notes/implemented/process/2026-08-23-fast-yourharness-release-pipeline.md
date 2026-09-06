@@ -1,8 +1,8 @@
-# Agent Note: Fast XiaoHui release pipeline
+# Agent Note: Fast YourHarness release pipeline
 
 Status: implemented
 
-English | [中文](2026-08-23-fast-xiaohui-release-pipeline.zh.md)
+English | [中文](2026-08-23-fast-yourharness-release-pipeline.zh.md)
 
 ## Problem
 
@@ -10,7 +10,7 @@ The macOS tag workflow repeated the Node, Python, and Rust test suites after the
 
 ## Decision
 
-An exact `xiaohui-vX.Y.Z` tag remains the only release trigger and builds the macOS arm64 artifact from that tag. A new tag also resolves DeepSeek Harness Releases using the committed `stable-else-rc` policy: the highest official stable version wins, or the highest RC when no stable version exists; alpha, beta, other prereleases, and the `master` branch are ineligible. The workflow requires the committed DSH version, tag, commit, and Git ancestry to match that selection. Manual dispatch can rebuild an existing immutable tag without applying today's freshness policy. The tag workflow keeps the version/tag consistency check, frozen dependency installation, full Harness build, Tauri App and DMG build, Tauri updater signing, a smoke test against the runtime extracted from the updater archive, SHA-256 verification, updater manifest generation, and direct GitHub Release publication.
+An exact `yourharness-vX.Y.Z` tag remains the only release trigger and builds the macOS arm64 artifact from that tag. A new tag also resolves DeepSeek Harness Releases using the committed `stable-else-rc` policy: the highest official stable version wins, or the highest RC when no stable version exists; alpha, beta, other prereleases, and the `master` branch are ineligible. The workflow requires the committed DSH version, tag, commit, and Git ancestry to match that selection. Manual dispatch can rebuild an existing immutable tag without applying today's freshness policy. The tag workflow keeps the version/tag consistency check, frozen dependency installation, full Harness build, Tauri App and DMG build, Tauri updater signing, a smoke test against the runtime extracted from the updater archive, SHA-256 verification, updater manifest generation, and direct GitHub Release publication.
 
 Node, Python, and Rust unit suites are pre-release responsibilities and do not run again in the tag workflow. Local release preparation resolves the same DSH policy, verifies the selected tag commit, prepares an uncommitted upstream merge in a clean worktree, retargets approved product peer metadata, refreshes external products, and requires the assembled Host and Client compatibility smoke to pass. A later failure aborts the owned DSH merge and restores managed product inputs. The Tauri App is built once; the DMG is bundled from that App and the updater archive is used directly for relocated-runtime verification, removing the third App rebundle. Cargo registry, Git, fingerprints, build scripts, and dependency objects are cached by the Rust lockfile. The checksum-bound compressed offline pnpm Store is cached separately by its frozen product lockfile; its metadata and archive digest are verified before reuse, while a miss still performs the complete fetch and packaging path. Publishing happens in the macOS build job, so the large DMG and updater archive no longer make a round trip through workflow artifact storage. Release upload uses `--clobber`, making a rerun idempotent for an existing tag.
 
@@ -22,7 +22,7 @@ Node, Python, and Rust unit suites are pre-release responsibilities and do not r
 
 **Promote a previously built artifact without rebuilding.** This is the fastest tag path, but it requires a durable, SHA-addressed prebuild and attestation pipeline that the repository does not yet have.
 
-**Follow the newest prerelease or `master`.** This minimizes delay between upstream development and XiaoHui adoption, but it makes alpha APIs and untagged changes ordinary release inputs. The stable-first, RC-fallback channel keeps a bounded preview path without adopting alpha or branch heads.
+**Follow the newest prerelease or `master`.** This minimizes delay between upstream development and YourHarness adoption, but it makes alpha APIs and untagged changes ordinary release inputs. The stable-first, RC-fallback channel keeps a bounded preview path without adopting alpha or branch heads.
 
 **Resolve and merge DSH inside the tag build.** This makes the build use the newest upstream at execution time, but the tag no longer identifies all source inputs and an old release cannot be rebuilt independently of later GitHub state. Release preparation owns mutation; tag CI only verifies a new tag and preserves old-tag rebuilds.
 

@@ -17,6 +17,14 @@ fn parse_windows_path(text: &str) -> Result<String, String> {
         return Err("路径为空。".into());
     }
 
+    let text = text
+        .strip_prefix(r"\\?\")
+        .or_else(|| text.strip_prefix("//?/"))
+        .unwrap_or(text);
+    if text.starts_with("UNC\\") || text.starts_with("UNC/") {
+        return Err("不支持的 UNC 路径。".into());
+    }
+
     if is_unc_path(text) {
         return parse_unc_path(text);
     }
@@ -111,6 +119,10 @@ mod tests {
             windows_to_wsl_mount(Path::new(r"C:\Users\me\AppData\Roaming\DeepSeek Harness"))
                 .unwrap(),
             "/mnt/c/Users/me/AppData/Roaming/DeepSeek Harness"
+        );
+        assert_eq!(
+            windows_to_wsl_mount(Path::new(r"\\?\C:\Users\me\company-root.pem")).unwrap(),
+            "/mnt/c/Users/me/company-root.pem"
         );
     }
 

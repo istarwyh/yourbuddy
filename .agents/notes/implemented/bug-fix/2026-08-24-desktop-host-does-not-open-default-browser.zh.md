@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-XiaoHui 桌面壳会启动一个私有 `dsh web` Host，并在 Tauri WebView 内加载它的 Loopback URL。启动器传入了绑定地址与端口，却保留了 CLI 本地启动时用操作系统浏览器打开同一 URL 的默认行为。因此每次启动桌面应用都会额外创建一个无关浏览器标签页，尽管应用本身已经拥有可见界面。
+YourHarness 桌面壳会启动一个私有 `dsh web` Host，并在 Tauri WebView 内加载它的 Loopback URL。启动器传入了绑定地址与端口，却保留了 CLI 本地启动时用操作系统浏览器打开同一 URL 的默认行为。因此每次启动桌面应用都会额外创建一个无关浏览器标签页，尽管应用本身已经拥有可见界面。
 
 Loopback Server 并非多余组件：嵌入式 WebView 依靠它获取 Host API 与 Web 资源。多余的只有浏览器交接动作。
 
@@ -28,4 +28,4 @@ Loopback Server 并非多余组件：嵌入式 WebView 依靠它获取 Host API 
 
 ## Consequences
 
-启动 XiaoHui 时仍会绑定一个私有 `127.0.0.1` URL，并在桌面窗口内显示它，但不再额外打开浏览器标签页。开发者在桌面应用之外主动运行 `dsh web` 时仍保留现有的默认浏览器行为，除非自行传入 `--no-open`。
+启动 YourHarness 时仍会绑定一个私有 `127.0.0.1` URL，并在桌面窗口内显示它，但不再额外打开浏览器标签页。开发者在桌面应用之外主动运行 `dsh web` 时仍保留现有的默认浏览器行为，除非自行传入 `--no-open`。

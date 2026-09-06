@@ -1,7 +1,7 @@
 /** Fixed browser-to-desktop protocol for application lifecycle actions. */
 
-/** Message channel accepted by the XiaoHui desktop shell. */
-export const DESKTOP_LIFECYCLE_CHANNEL = 'xiaohui.desktop.lifecycle'
+/** Message channel accepted by the YourHarness desktop shell. */
+export const DESKTOP_LIFECYCLE_CHANNEL = 'yourharness.desktop.lifecycle'
 
 /** Current browser-to-shell protocol version. */
 export const DESKTOP_LIFECYCLE_VERSION = 1
@@ -163,7 +163,7 @@ export function requestDesktopUpdate(options: DesktopLifecycleRequestOptions = {
   return requestDesktopLifecycle('check-update', options)
 }
 
-/** Request a full XiaoHui process and private Host restart. */
+/** Request a full YourHarness process and private Host restart. */
 export function requestDesktopRestart(options: DesktopLifecycleRequestOptions = {}): Promise<string> {
   return requestDesktopLifecycle('restart', options)
 }

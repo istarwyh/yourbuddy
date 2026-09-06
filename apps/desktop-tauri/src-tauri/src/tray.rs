@@ -92,7 +92,7 @@ pub fn install(app: &AppHandle) -> Result<(), String> {
     TrayIconBuilder::new()
         .icon(icon)
         .menu(&menu)
-        .tooltip("XiaoHui Harness")
+        .tooltip("YourHarness")
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => chrome::show_main(app),
             "close-minimize" => {
@@ -109,7 +109,7 @@ pub fn install(app: &AppHandle) -> Result<(), String> {
                 let app = app.clone();
                 tauri::async_runtime::spawn(async move {
                     match updater::check_now(&app).await {
-                        Ok(message) => notify::toast(&app, "XiaoHui Harness", &message),
+                        Ok(message) => notify::toast(&app, "YourHarness", &message),
                         Err(error) => {
                             boot_log::error(&format!("tray update failed: {error}"));
                             notify::toast(&app, i18n::t(Msg::TrayUpdateFailed), &error);

@@ -80,7 +80,7 @@ pub fn open_main_window(app: &AppHandle, url: &str) -> Result<(), String> {
     );
 
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("shell.html".into()))
-        .title("XiaoHui Harness")
+        .title("YourHarness")
         .inner_size(1280.0, 860.0)
         .center()
         .decorations(false)
@@ -161,7 +161,7 @@ pub fn remember_close_action(app: &AppHandle, action: Option<CloseAction>) -> Re
         Some(CloseAction::Exit) => i18n::t(Msg::ToastCloseExit),
         None => i18n::t(Msg::ToastCloseAsk),
     };
-    notify::toast(app, "XiaoHui Harness", message);
+    notify::toast(app, "YourHarness", message);
     Ok(())
 }
 
@@ -217,7 +217,7 @@ pub fn apply_agent_environment(value: AgentEnvironment) -> Result<(), String> {
 /// Persist the agent runtime target from the tray and toast success or failure.
 pub fn remember_agent_environment(app: &AppHandle, value: AgentEnvironment) {
     match apply_agent_environment(value) {
-        Ok(()) => notify::toast(app, "XiaoHui Harness", environment_changed_message()),
+        Ok(()) => notify::toast(app, "YourHarness", environment_changed_message()),
         Err(error) => {
             boot_log::error(&format!("tray agent environment save failed: {error}"));
             notify::toast(app, i18n::t(Msg::EnvSaveFailed), &error);

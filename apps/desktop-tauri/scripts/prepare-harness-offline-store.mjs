@@ -16,12 +16,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const harnessRoot = join(desktopRoot, 'bundled', 'harness')
-const storeRoot = join(harnessRoot, '.xiaohui-pnpm-store')
-const storeArchiveName = 'xiaohui-pnpm-store.tar.gz'
+const storeRoot = join(harnessRoot, '.yourharness-pnpm-store')
+const storeArchiveName = 'yourharness-pnpm-store.tar.gz'
 const storeArchivePath = join(harnessRoot, storeArchiveName)
 const MIN_PRODUCT_STORE_FILES = 1_000
-const cacheRoot = process.env.XIAOHUI_OFFLINE_STORE_CACHE_DIR?.trim()
-const cacheMetadataName = 'xiaohui-pnpm-store-cache-v1.json'
+const cacheRoot = process.env.YOURHARNESS_OFFLINE_STORE_CACHE_DIR?.trim()
+const cacheMetadataName = 'yourharness-pnpm-store-cache-v1.json'
 
 /** Keep the release command on the reviewed pnpm binary instead of auto-downloading another version. */
 export function pinPnpmInvocationArgs(args) {
@@ -32,7 +32,7 @@ export function pinPnpmInvocationArgs(args) {
 export function frozenOfflineInstallArgs() {
   return [
     'install', '--prod', '--frozen-lockfile', '--offline', '--trust-lockfile',
-    '--store-dir', '.xiaohui-pnpm-store',
+    '--store-dir', '.yourharness-pnpm-store',
   ]
 }
 
@@ -61,7 +61,7 @@ export function removeWorkspaceInstallState(root = harnessRoot) {
       if (entry.name === 'node_modules') {
         rmSync(path, { recursive: true, force: true })
       }
-      else if (entry.name !== '.xiaohui-pnpm-store') {
+      else if (entry.name !== '.yourharness-pnpm-store') {
         walk(path)
       }
     }
@@ -119,7 +119,7 @@ export function finalizeOfflineManifest(manifest, storeDigest, archiveSha256) {
     sourceSha256,
     offlineStore: {
       path: storeArchiveName,
-      expandedPath: '.xiaohui-pnpm-store',
+      expandedPath: '.yourharness-pnpm-store',
       files: storeDigest.files,
       sha256: storeDigest.sha256,
       archiveSha256,
@@ -192,7 +192,7 @@ export function packageExistingOfflineStore() {
   }
 
   rmSync(storeArchivePath, { force: true })
-  const archive = spawnSync('tar', ['--no-mac-metadata', '-czf', storeArchivePath, '-C', harnessRoot, '.xiaohui-pnpm-store'], {
+  const archive = spawnSync('tar', ['--no-mac-metadata', '-czf', storeArchivePath, '-C', harnessRoot, '.yourharness-pnpm-store'], {
     env: { ...process.env, COPYFILE_DISABLE: '1' },
     stdio: 'inherit',
   })
@@ -228,7 +228,7 @@ export function prepareHarnessOfflineStore() {
   rmSync(join(harnessRoot, 'node_modules'), { recursive: true, force: true })
   rmSync(storeRoot, { recursive: true, force: true })
   runPnpm([
-    'fetch', '--prod', '--frozen-lockfile', '--store-dir', '.xiaohui-pnpm-store',
+    'fetch', '--prod', '--frozen-lockfile', '--store-dir', '.yourharness-pnpm-store',
     '--network-concurrency', '4', '--fetch-retries', '5', '--fetch-retry-maxtimeout', '60000',
   ])
   // `pnpm fetch` materializes a virtual store under node_modules as a working
@@ -236,7 +236,7 @@ export function prepareHarnessOfflineStore() {
   // the exact frozen install performed on first launch.
   removeWorkspaceInstallState()
   runPnpm(frozenOfflineInstallArgs())
-  if (process.env.XIAOHUI_KEEP_PREPARED_HARNESS_INSTALL !== '1') {
+  if (process.env.YOURHARNESS_KEEP_PREPARED_HARNESS_INSTALL !== '1') {
     removeWorkspaceInstallState()
   }
 

@@ -60,10 +60,21 @@ describe('Personal Workbench Host network proxy diagnostic', () => {
     }
     const result = await testHostNetworkProxy(
       fetcher,
-      { HTTPS_PROXY: 'http://proxy-user:proxy-password@127.0.0.1:7890' },
+      {
+        HTTPS_PROXY: 'http://proxy-user:proxy-password@127.0.0.1:7890',
+        YOURHARNESS_NETWORK_PROXY_MODE: 'custom',
+        NODE_EXTRA_CA_CERTS: '/private/company-root.pem',
+      },
       true,
     )
-    expect(result).toEqual({ ok: true, status: 204, proxied: true, errorCode: '' })
+    expect(result).toEqual({
+      ok: true,
+      status: 204,
+      proxied: true,
+      errorCode: '',
+      proxyMode: 'custom',
+      caSource: 'custom',
+    })
     expect(JSON.stringify(result)).not.toContain('proxy-user')
     expect(JSON.stringify(result)).not.toContain('7890')
   })
@@ -84,6 +95,8 @@ describe('Personal Workbench Host network proxy diagnostic', () => {
       status: 0,
       proxied: true,
       errorCode: 'UND_ERR_CONNECT_TIMEOUT',
+      proxyMode: 'unknown',
+      caSource: 'unknown',
     })
     expect(JSON.stringify(result)).not.toContain('proxy-password')
   })
@@ -106,6 +119,8 @@ describe('Personal Workbench Host network proxy diagnostic', () => {
       status: 0,
       proxied: true,
       errorCode: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+      proxyMode: 'unknown',
+      caSource: 'unknown',
     })
     expect(JSON.stringify(result)).not.toContain('account-specific')
     expect(JSON.stringify(result)).not.toContain('private details')
@@ -124,6 +139,8 @@ describe('Personal Workbench Host network proxy diagnostic', () => {
       status: 0,
       proxied: false,
       errorCode: 'ENV_PROXY_DISPATCHER_MISSING',
+      proxyMode: 'unknown',
+      caSource: 'unknown',
     })
   })
 
@@ -138,7 +155,14 @@ describe('Personal Workbench Host network proxy diagnostic', () => {
       status: 415,
     })
     await expect(invokeRoute(route, 'POST', 'application/json; charset=utf-8')).resolves.toEqual({
-      body: { ok: true, status: 200, proxied: false, errorCode: '' },
+      body: {
+        ok: true,
+        status: 200,
+        proxied: false,
+        errorCode: '',
+        proxyMode: 'unknown',
+        caSource: 'unknown',
+      },
       status: 200,
     })
   })
@@ -155,6 +179,8 @@ describe('Personal Workbench Host network proxy diagnostic', () => {
         status: 0,
         proxied: true,
         errorCode: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+        proxyMode: 'unknown',
+        caSource: 'unknown',
       },
       status: 200,
     })

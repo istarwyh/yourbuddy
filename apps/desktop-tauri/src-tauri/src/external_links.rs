@@ -1,4 +1,4 @@
-//! Restricted external links requested by embedded XiaoHui Clients.
+//! Restricted external links requested by embedded YourHarness Clients.
 
 use url::Url;
 

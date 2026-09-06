@@ -1,4 +1,4 @@
-/** Merge the selected official DSH Release into a reproducible XiaoHui release input. */
+/** Merge the selected official DSH Release into a reproducible YourHarness release input. */
 import { spawnSync } from 'node:child_process'
 import {
   existsSync,

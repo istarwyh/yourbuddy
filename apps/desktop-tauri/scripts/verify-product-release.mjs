@@ -1,4 +1,4 @@
-/** Verify the prepared XiaoHui product graph through its installed runtime and Web Host. */
+/** Verify the prepared YourHarness product graph through its installed runtime and Web Host. */
 import { createHash } from 'node:crypto'
 import { spawn, spawnSync } from 'node:child_process'
 import { createServer } from 'node:http'
@@ -22,10 +22,11 @@ import {
   readWorkspacePackageVersions,
 } from './product-plugin-compatibility.mjs'
 import { removeWorkspaceInstallState } from './prepare-harness-offline-store.mjs'
+import { verifyWorkbenchBranding } from './workbench-branding-smoke.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const harnessRoot = join(desktopRoot, 'bundled', 'harness')
-const runtimeRoot = join(desktopRoot, 'bundled', 'xiaohui-runtime')
+const runtimeRoot = join(desktopRoot, 'bundled', 'yourharness-runtime')
 const installedChromiumExecutable = chromium.executablePath()
 const desktopShellSource = readFileSync(join(desktopRoot, 'shell.html'), 'utf8')
 const desktopI18nSource = readFileSync(join(desktopRoot, 'desktop-i18n.js'), 'utf8')
@@ -36,9 +37,10 @@ const desktopProxySystemSettings = {
   httpProxy: '',
   httpsProxy: '',
   noProxy: '',
+  caCertificatePath: '/Users/example/company-root.pem',
 }
 const desktopProxySnapshot = {
-  settings: { ...desktopProxySystemSettings, mode: 'direct' },
+  settings: { ...desktopProxySystemSettings, mode: 'direct', caCertificatePath: '' },
   system: {
     supported: true,
     configured: true,
@@ -53,14 +55,15 @@ const desktopProxySnapshot = {
     httpProxy: '',
     httpsProxy: '',
     noProxy: 'localhost,127.0.0.1,::1',
+    caCertificatePath: '',
   },
   effectiveError: '',
 }
 const missingMarketplaceRepository = 'missing-npm-package'
 const validMarketplaceRepository = 'verified-plugin-repository'
-const validMarketplacePackage = '@xiaohui-test/verified-plugin'
-const missingMarketplacePackage = '@xiaohui-test/repository-sdk'
-const validMarketplaceNonPluginPackage = '@xiaohui-test/verified-sdk'
+const validMarketplacePackage = '@yourharness-test/verified-plugin'
+const missingMarketplacePackage = '@yourharness-test/repository-sdk'
+const validMarketplaceNonPluginPackage = '@yourharness-test/verified-sdk'
 const desktopExternalLinkSmokeUrl = 'https://github.com/gitroomhq/postiz-app'
 const syntheticInstallFailure = 'synthetic install failure'
 const syntheticHostProxy = 'http://127.0.0.1:9'
@@ -124,7 +127,7 @@ export function createReleaseChildEnvironment(
     ...inherited,
     ...directories,
     PATH: [...new Set(systemPath)].join(delimiter),
-    DEEPSEEK_API_KEY: 'xiaohui-release-smoke-no-model-call',
+    DEEPSEEK_API_KEY: 'yourharness-release-smoke-no-model-call',
     PYTHONUTF8: '1',
   }
 }
@@ -167,7 +170,7 @@ export function assertInstalledProductPeerLinks(root) {
       checked += 1
     }
   }
-  if (checked === 0) throw new Error('no installed XiaoHui product peer links were checked')
+  if (checked === 0) throw new Error('no installed YourHarness product peer links were checked')
   return checked
 }
 
@@ -181,25 +184,31 @@ export function assertInstalledProductPeerLinks(root) {
  */
 export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVerifier) {
   const value = path => JSON.stringify(path)
-  const proxyVerifierRow = proxyVerifier === undefined ? '' : `    - id: xiaohui-release-proxy-verifier
+  const proxyVerifierRow = proxyVerifier === undefined ? '' : `    - id: yourharness-release-proxy-verifier
       name: ${value(proxyVerifier)}
 `
   return `- id: web
   config:
     searchProvider: codex
 
+- id: agent-presets
+  config:
+    default: codex
+
 - insert:
-    - id: xiaohui-release-codex-auth
+    - id: yourharness-release-subagent-codex
+      name: '@deepseek-ai/dsh-subagent-codex'
+    - id: yourharness-release-codex-auth
       name: dsh-codex-auth
-    - id: xiaohui-release-better-sidebar
+    - id: yourharness-release-better-sidebar
       name: dsh-better-sidebar
-    - id: xiaohui-release-context-doctor
+    - id: yourharness-release-context-doctor
       name: dsh-context-doctor
-    - id: xiaohui-release-plugin-marketplace
+    - id: yourharness-release-plugin-marketplace
       name: dsh-plugin-marketplace
-    - id: xiaohui-release-personal-workbench
+    - id: yourharness-release-personal-workbench
       name: dsh-personal-workbench
-${proxyVerifierRow}    - id: xiaohui-release-harbor-evolution
+${proxyVerifierRow}    - id: yourharness-release-harbor-evolution
       name: dsh-harbor-evolution
       config:
         projectRoot: ${value(workspace)}
@@ -276,7 +285,7 @@ export function assertCleanChildExit(outcome, stdout = '', stderr = '') {
     `timedOut=${String(outcome.timedOut)}`,
     `forced=${String(outcome.forced)}`,
   ].join(', ')
-  throw new Error(`XiaoHui product Host did not dispose cleanly (${status})\nstdout:\n${stdout}\nstderr:\n${stderr}`)
+  throw new Error(`YourHarness product Host did not dispose cleanly (${status})\nstdout:\n${stdout}\nstderr:\n${stderr}`)
 }
 
 async function fetchOk(url) {
@@ -308,12 +317,12 @@ export function assertProductClientBoot(result) {
   for (const error of result.pageErrors) failures.push(`pageerror: ${error}`)
   for (const error of result.consoleErrors) failures.push(`console error: ${error}`)
   if (failures.length > 0) {
-    throw new Error(`XiaoHui product Client boot failed:\n${failures.map(failure => `- ${failure}`).join('\n')}`)
+    throw new Error(`YourHarness product Client boot failed:\n${failures.map(failure => `- ${failure}`).join('\n')}`)
   }
 }
 
 async function exerciseMarketplace(settings, { openExternalLinks = false } = {}) {
-  await settings.getByText(`XiaoHui-test/${missingMarketplaceRepository}`, { exact: true }).click()
+  await settings.getByText(`YourHarness-test/${missingMarketplaceRepository}`, { exact: true }).click()
   await settings.getByText(
     'No npm package both links to this repository and declares dsh.bundle.patch. Follow the repository README instead.',
     { exact: true },
@@ -325,7 +334,7 @@ async function exerciseMarketplace(settings, { openExternalLinks = false } = {})
     throw new Error('Marketplace enabled one-click install for a repository without an npm package')
   }
 
-  await settings.getByText(`XiaoHui-test/${validMarketplaceRepository}`, { exact: true }).click()
+  await settings.getByText(`YourHarness-test/${validMarketplaceRepository}`, { exact: true }).click()
   await settings.getByText(
     `Installable npm package: ${validMarketplacePackage}@1.2.3`,
     { exact: true },
@@ -378,17 +387,25 @@ function buildDesktopBridgeSmokeShell(baseUrl) {
     window.__DSH_WEB_URL__ = ${encodedBaseUrl}
     window.__DSH_LOCALE__ = 'en'
     window.__DSH_CHROME__ = { os: 'macos', titlebar_height: 32, left: [], right: [] }
-    window.__XIAOHUI_DESKTOP_COMMANDS__ = []
-    window.__XIAOHUI_NATIVE_PROXY_TEST_RESULT__ = { ok: true, status: 204, proxied: true, errorCode: '' }
+    window.__YOURHARNESS_DESKTOP_COMMANDS__ = []
+    window.__YOURHARNESS_NATIVE_PROXY_TEST_RESULT__ = {
+      ok: true,
+      status: 204,
+      proxied: true,
+      errorCode: '',
+      proxyMode: 'system',
+      caSource: 'custom',
+    }
     window.__TAURI__ = {
       core: {
         invoke: async (command, args) => {
-          window.__XIAOHUI_DESKTOP_COMMANDS__.push({ command, args })
+          window.__YOURHARNESS_DESKTOP_COMMANDS__.push({ command, args })
           if (command === 'open_external_url') return
           if (command === 'open_marketplace_url') return
           if (command === 'check_for_updates') return ${JSON.stringify(desktopUpdateSmokeResult)}
           if (command === 'get_network_proxy_settings') return ${JSON.stringify(desktopProxySnapshot)}
-          if (command === 'test_network_proxy_settings') return window.__XIAOHUI_NATIVE_PROXY_TEST_RESULT__
+          if (command === 'select_ca_certificate') return ${JSON.stringify(desktopProxySystemSettings.caCertificatePath)}
+          if (command === 'test_network_proxy_settings') return window.__YOURHARNESS_NATIVE_PROXY_TEST_RESULT__
           if (command === 'save_network_proxy_settings') return {
             ...${JSON.stringify(desktopProxySnapshot)},
             settings: args.settings,
@@ -472,11 +489,11 @@ async function runBrowserSmoke(baseUrl, env) {
     })
     const page = await browser.newPage({ viewport: { width: 1680, height: 1000 }, locale: 'en-US' })
     await page.addInitScript(() => {
-      window.__XIAOHUI_COPIED_LINKS__ = []
+      window.__YOURHARNESS_COPIED_LINKS__ = []
       Object.defineProperty(navigator, 'clipboard', {
         configurable: true,
         value: {
-          writeText: async value => { window.__XIAOHUI_COPIED_LINKS__.push(value) },
+          writeText: async value => { window.__YOURHARNESS_COPIED_LINKS__.push(value) },
         },
       })
     })
@@ -502,12 +519,12 @@ async function runBrowserSmoke(baseUrl, env) {
           body: JSON.stringify({
             total_count: 2,
             items: [missingMarketplaceRepository, validMarketplaceRepository].map((name, index) => ({
-              full_name: `XiaoHui-test/${name}`,
+              full_name: `YourHarness-test/${name}`,
               description: `Release smoke repository ${name}`,
               stargazers_count: 2 - index,
               updated_at: '2026-08-30T00:00:00Z',
               language: 'JavaScript',
-              html_url: `https://github.com/XiaoHui-test/${name}`,
+              html_url: `https://github.com/YourHarness-test/${name}`,
             })),
           }),
         })
@@ -531,7 +548,7 @@ async function runBrowserSmoke(baseUrl, env) {
         const objects = names.map(name => ({
           package: {
             name,
-            links: { repository: `git+https://github.com/XiaoHui-test/${repository}.git` },
+            links: { repository: `git+https://github.com/YourHarness-test/${repository}.git` },
           },
         }))
         return route.fulfill({
@@ -556,7 +573,7 @@ async function runBrowserSmoke(baseUrl, env) {
             version: '1.2.3',
             dsh: {
               bundle: { patch: './cordis.patch.yml' },
-              smoke: { upstreamRepository: `https://github.com/XiaoHui-test/${validMarketplaceRepository}` },
+              smoke: { upstreamRepository: `https://github.com/YourHarness-test/${validMarketplaceRepository}` },
             },
           }),
         })
@@ -571,7 +588,7 @@ async function runBrowserSmoke(baseUrl, env) {
           body: JSON.stringify({
             name,
             version: '1.2.3',
-            repository: `git+https://github.com/XiaoHui-test/${repository}.git`,
+            repository: `git+https://github.com/YourHarness-test/${repository}.git`,
           }),
         })
       }
@@ -580,7 +597,7 @@ async function runBrowserSmoke(baseUrl, env) {
 
     const navigation = await page.goto(baseUrl, { waitUntil: 'load', timeout: 30_000 })
     if (navigation === null || navigation.status() !== 200) {
-      throw new Error(`XiaoHui Web navigation returned HTTP ${navigation?.status() ?? 'no response'}`)
+      throw new Error(`YourHarness Web navigation returned HTTP ${navigation?.status() ?? 'no response'}`)
     }
     await page.waitForFunction(
       () => document.querySelector('[class*="frame"]') !== null
@@ -602,28 +619,30 @@ async function runBrowserSmoke(baseUrl, env) {
       frameCount,
     })
     await completeProductOnboarding(page)
+    await verifyWorkbenchBranding(page)
+    await page.getByRole('button', { name: 'Codex', exact: true }).waitFor({ timeout: 10_000 })
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     const settings = page.getByRole('dialog', { name: 'Settings' })
     await settings.waitFor({ timeout: 10_000 })
     const update = settings.getByRole('button', { name: 'Check and update', exact: true })
     await update.waitFor({ timeout: 10_000 })
     if (await update.isEnabled()) {
-      throw new Error('standalone XiaoHui Web exposed the desktop-only update action as enabled')
+      throw new Error('standalone YourHarness Web exposed the desktop-only update action as enabled')
     }
-    const restart = settings.getByRole('button', { name: 'Restart XiaoHui', exact: true })
+    const restart = settings.getByRole('button', { name: 'Restart YourHarness', exact: true })
     await restart.waitFor({ timeout: 10_000 })
     if (await restart.isEnabled()) {
-      throw new Error('standalone XiaoHui Web exposed the desktop-only restart action as enabled')
+      throw new Error('standalone YourHarness Web exposed the desktop-only restart action as enabled')
     }
     const proxyTest = settings.getByRole('button', { name: 'Test ChatGPT connection', exact: true })
     await proxyTest.waitFor({ timeout: 10_000 })
     if (await proxyTest.isEnabled()) {
-      throw new Error('standalone XiaoHui Web exposed desktop network proxy testing as enabled')
+      throw new Error('standalone YourHarness Web exposed desktop network proxy testing as enabled')
     }
-    const proxySave = settings.getByRole('button', { name: 'Save and restart XiaoHui', exact: true })
+    const proxySave = settings.getByRole('button', { name: 'Save and restart YourHarness', exact: true })
     await proxySave.waitFor({ timeout: 10_000 })
     if (await proxySave.isEnabled()) {
-      throw new Error('standalone XiaoHui Web exposed desktop network proxy persistence as enabled')
+      throw new Error('standalone YourHarness Web exposed desktop network proxy persistence as enabled')
     }
     await settings.getByRole('button', { name: 'Plugin Marketplace', exact: true }).click()
     await settings.getByPlaceholder('Search plugins (keyword, or empty to browse all)…', { exact: true }).waitFor({ timeout: 10_000 })
@@ -641,7 +660,7 @@ async function runBrowserSmoke(baseUrl, env) {
     desktopBridgeServer = desktopBridge.server
     const shellNavigation = await page.goto(desktopBridge.url, { waitUntil: 'load', timeout: 30_000 })
     if (shellNavigation === null || shellNavigation.status() !== 200) {
-      throw new Error(`XiaoHui desktop shell navigation returned HTTP ${shellNavigation?.status() ?? 'no response'}`)
+      throw new Error(`YourHarness desktop shell navigation returned HTTP ${shellNavigation?.status() ?? 'no response'}`)
     }
     const embedded = page.frameLocator('#app')
     try {
@@ -655,10 +674,10 @@ async function runBrowserSmoke(baseUrl, env) {
       )
     }
     await completeProductOnboarding(embedded)
-    const externalLink = embedded.locator('#xiaohui-external-link-smoke')
+    const externalLink = embedded.locator('#yourharness-external-link-smoke')
     await embedded.locator('body').evaluate((body, url) => {
       const anchor = document.createElement('a')
-      anchor.id = 'xiaohui-external-link-smoke'
+      anchor.id = 'yourharness-external-link-smoke'
       anchor.href = url
       anchor.target = '_blank'
       anchor.rel = 'noopener noreferrer'
@@ -673,14 +692,14 @@ async function runBrowserSmoke(baseUrl, env) {
     await externalLink.click({ button: 'right' })
     await embedded.getByRole('menuitem', { name: 'Copy link address', exact: true }).click()
     await embedded.getByText('Link address copied', { exact: true }).waitFor({ timeout: 10_000 })
-    const copiedLinks = await embedded.locator('body').evaluate(() => window.__XIAOHUI_COPIED_LINKS__)
+    const copiedLinks = await embedded.locator('body').evaluate(() => window.__YOURHARNESS_COPIED_LINKS__)
     if (JSON.stringify(copiedLinks) !== JSON.stringify([desktopExternalLinkSmokeUrl])) {
       throw new Error(`desktop link menu copied unexpected destinations: ${JSON.stringify(copiedLinks)}`)
     }
     await page.keyboard.press('Escape')
     await externalLink.click()
     await page.waitForFunction(
-      url => window.__XIAOHUI_DESKTOP_COMMANDS__?.some(
+      url => window.__YOURHARNESS_DESKTOP_COMMANDS__?.some(
         entry => entry.command === 'open_external_url' && entry.args?.url === url,
       ) === true,
       desktopExternalLinkSmokeUrl,
@@ -696,26 +715,26 @@ async function runBrowserSmoke(baseUrl, env) {
     const embeddedUpdate = embeddedSettings.getByRole('button', { name: 'Check and update', exact: true })
     await embeddedUpdate.waitFor({ timeout: 10_000 })
     if (!await embeddedUpdate.isEnabled()) {
-      throw new Error('desktop XiaoHui shell did not enable the application update action')
+      throw new Error('desktop YourHarness shell did not enable the application update action')
     }
     await embeddedUpdate.click()
     await embeddedSettings.getByText(desktopUpdateSmokeResult, { exact: true }).waitFor({ timeout: 10_000 })
-    const embeddedRestart = embeddedSettings.getByRole('button', { name: 'Restart XiaoHui', exact: true })
+    const embeddedRestart = embeddedSettings.getByRole('button', { name: 'Restart YourHarness', exact: true })
     await embeddedRestart.waitFor({ timeout: 10_000 })
     if (!await embeddedRestart.isEnabled()) {
-      throw new Error('desktop XiaoHui shell did not enable the application restart action')
+      throw new Error('desktop YourHarness shell did not enable the application restart action')
     }
     await embeddedRestart.click()
     await embeddedSettings.getByText(
-      'Stopping the private Host and restarting XiaoHui…',
+      'Stopping the private Host and restarting YourHarness…',
       { exact: true },
     ).waitFor({ timeout: 10_000 })
     await page.waitForFunction(
-      () => window.__XIAOHUI_DESKTOP_COMMANDS__?.some(entry => entry.command === 'restart_app') === true,
+      () => window.__YOURHARNESS_DESKTOP_COMMANDS__?.some(entry => entry.command === 'restart_app') === true,
       undefined,
       { timeout: 10_000 },
     )
-    const lifecycleCommands = await page.evaluate(() => window.__XIAOHUI_DESKTOP_COMMANDS__)
+    const lifecycleCommands = await page.evaluate(() => window.__YOURHARNESS_DESKTOP_COMMANDS__)
     const expectedLifecycleCommands = [
       {
         command: 'open_external_url',
@@ -724,7 +743,7 @@ async function runBrowserSmoke(baseUrl, env) {
       { command: 'get_network_proxy_settings' },
       {
         command: 'open_marketplace_url',
-        args: { url: `https://github.com/XiaoHui-test/${validMarketplaceRepository}` },
+        args: { url: `https://github.com/YourHarness-test/${validMarketplaceRepository}` },
       },
       {
         command: 'open_marketplace_url',
@@ -748,7 +767,14 @@ async function runBrowserSmoke(baseUrl, env) {
     const proxyPage = await browser.newPage({ viewport: { width: 1680, height: 1000 }, locale: 'en-US' })
     const proxyClientResponses = {}
     let hostProxyDiagnosticRequests = 0
-    let hostProxyDiagnosticResult = { ok: true, status: 200, proxied: true, errorCode: '' }
+    let hostProxyDiagnosticResult = {
+      ok: true,
+      status: 200,
+      proxied: false,
+      errorCode: '',
+      proxyMode: 'direct',
+      caSource: 'system',
+    }
     proxyPage.on('pageerror', error => { pageErrors.push(String(error)) })
     proxyPage.on('console', message => {
       if (message.type() === 'error') consoleErrors.push(message.text())
@@ -759,7 +785,7 @@ async function runBrowserSmoke(baseUrl, env) {
         if (pathname === `/plugins/${id}/client.js`) proxyClientResponses[id] = response.status()
       }
     })
-    await proxyPage.route('**/api/xiaohui/network-proxy/test', route => {
+    await proxyPage.route('**/api/yourharness/network-proxy/test', route => {
       const request = route.request()
       if (request.method() !== 'POST'
         || request.headers()['content-type'] !== 'application/json') {
@@ -774,7 +800,7 @@ async function runBrowserSmoke(baseUrl, env) {
     })
     const proxyShellNavigation = await proxyPage.goto(desktopBridge.url, { waitUntil: 'load', timeout: 30_000 })
     if (proxyShellNavigation === null || proxyShellNavigation.status() !== 200) {
-      throw new Error(`XiaoHui proxy shell navigation returned HTTP ${proxyShellNavigation?.status() ?? 'no response'}`)
+      throw new Error(`YourHarness proxy shell navigation returned HTTP ${proxyShellNavigation?.status() ?? 'no response'}`)
     }
     const proxyEmbedded = proxyPage.frameLocator('#app')
     await proxyEmbedded.locator('[class*="frame"]').first().waitFor({ timeout: 30_000 })
@@ -792,21 +818,25 @@ async function runBrowserSmoke(baseUrl, env) {
     }
     await proxyMode.selectOption('system')
     await proxySettings.getByText('HTTP_PROXY=http://127.0.0.1:7890', { exact: true }).waitFor({ timeout: 10_000 })
+    await proxySettings.getByRole('button', { name: 'Choose .pem / .crt', exact: true }).click()
+    await proxySettings.getByText('/Users/example/company-root.pem', { exact: true }).waitFor({ timeout: 10_000 })
     const embeddedProxyTest = proxySettings.getByRole('button', { name: 'Test ChatGPT connection', exact: true })
     await embeddedProxyTest.click()
     await proxySettings.getByText(
-      'Desktop draft: HTTP 204 (environment proxy); current Node Host: HTTP 200 (environment proxy).',
+      'Desktop draft: HTTP 204 (macOS system proxy; system CAs + custom CA); current Node Host: HTTP 200 (direct; system CAs). The Node Host proxy mode or CA source still reflects the previous launch. Save, restart, and test again.',
       { exact: true },
     ).waitFor({ timeout: 10_000 })
     if (hostProxyDiagnosticRequests !== 1) {
       throw new Error(`desktop proxy test sent ${hostProxyDiagnosticRequests} Node Host diagnostic requests`)
     }
     await proxyPage.evaluate(() => {
-      window.__XIAOHUI_NATIVE_PROXY_TEST_RESULT__ = {
+      window.__YOURHARNESS_NATIVE_PROXY_TEST_RESULT__ = {
         ok: false,
         status: 0,
         proxied: true,
         errorCode: 'UNKNOWN_ISSUER',
+        proxyMode: 'system',
+        caSource: 'custom',
       }
     })
     hostProxyDiagnosticResult = {
@@ -814,24 +844,27 @@ async function runBrowserSmoke(baseUrl, env) {
       status: 0,
       proxied: true,
       errorCode: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+      proxyMode: 'direct',
+      caSource: 'system',
     }
     await embeddedProxyTest.click()
     await proxySettings.getByText(
-      'Desktop draft: failed: UNKNOWN_ISSUER (environment proxy); current Node Host: failed: UNABLE_TO_VERIFY_LEAF_SIGNATURE (environment proxy). A TLS certificate trust error was detected. Confirm that the enterprise root certificate is trusted in the macOS Keychain; XiaoHui does not disable certificate verification.',
+      'Desktop draft: failed: UNKNOWN_ISSUER (macOS system proxy; system CAs + custom CA); current Node Host: failed: UNABLE_TO_VERIFY_LEAF_SIGNATURE (direct; system CAs). The Node Host proxy mode or CA source still reflects the previous launch. Save, restart, and test again. A TLS certificate trust error was detected. Trust the enterprise root in the macOS Keychain or select its PEM CA; YourHarness does not disable certificate verification.',
       { exact: true },
     ).waitFor({ timeout: 10_000 })
     if (hostProxyDiagnosticRequests !== 2) {
       throw new Error(`desktop proxy tests sent ${hostProxyDiagnosticRequests} Node Host diagnostic requests`)
     }
-    const embeddedProxySave = proxySettings.getByRole('button', { name: 'Save and restart XiaoHui', exact: true })
+    const embeddedProxySave = proxySettings.getByRole('button', { name: 'Save and restart YourHarness', exact: true })
     await embeddedProxySave.click()
     await proxySettings.getByText(
-      'Settings saved. Stopping the private Host and restarting XiaoHui…',
+      'Settings saved. Stopping the private Host and restarting YourHarness…',
       { exact: true },
     ).waitFor({ timeout: 10_000 })
-    const proxyCommands = await proxyPage.evaluate(() => window.__XIAOHUI_DESKTOP_COMMANDS__)
+    const proxyCommands = await proxyPage.evaluate(() => window.__YOURHARNESS_DESKTOP_COMMANDS__)
     const expectedProxyCommands = [
       { command: 'get_network_proxy_settings' },
+      { command: 'select_ca_certificate' },
       {
         command: 'test_network_proxy_settings',
         args: { settings: desktopProxySystemSettings },
@@ -877,17 +910,17 @@ async function runBrowserSmoke(baseUrl, env) {
     closeFailures.push(error)
   }
   const closeFailure = closeFailures.length > 1
-    ? new AggregateError(closeFailures, 'XiaoHui desktop shell and browser teardown both failed')
+    ? new AggregateError(closeFailures, 'YourHarness desktop shell and browser teardown both failed')
     : closeFailures[0]
   if (failure && closeFailure) {
-    throw new AggregateError([failure, closeFailure], 'XiaoHui product browser smoke and teardown both failed')
+    throw new AggregateError([failure, closeFailure], 'YourHarness product browser smoke and teardown both failed')
   }
   if (failure) throw failure
   if (closeFailure) throw closeFailure
 }
 
 async function runHostSmoke(root, productRuntimeRoot) {
-  const world = mkdtempSync(join(tmpdir(), 'xiaohui-release-smoke-'))
+  const world = mkdtempSync(join(tmpdir(), 'yourharness-release-smoke-'))
   const overlay = join(world, 'product.overlay.yml')
   const proxyVerifier = join(world, 'proxy-dispatcher-verifier.mjs')
   const proxyPackage = pathToFileURL(join(
@@ -901,7 +934,7 @@ async function runHostSmoke(root, productRuntimeRoot) {
 const require = createRequire(${JSON.stringify(proxyPackage)})
 const { EnvHttpProxyAgent, getGlobalDispatcher } = require('undici')
 
-export const name = 'xiaohui-release-proxy-verifier'
+export const name = 'yourharness-release-proxy-verifier'
 
 export async function apply() {
   const deadline = Date.now() + 1_000
@@ -963,7 +996,7 @@ export async function apply() {
   try {
     const baseUrl = await new Promise((resolveReady, rejectReady) => {
       const deadline = setTimeout(() => {
-        rejectReady(new Error(`XiaoHui product Host did not become ready within 60s\nstdout:\n${stdout}\nstderr:\n${stderr}`))
+        rejectReady(new Error(`YourHarness product Host did not become ready within 60s\nstdout:\n${stdout}\nstderr:\n${stderr}`))
       }, 60_000)
       const inspect = () => {
         const match = stdout.match(/dsh web: (http:\/\/127\.0\.0\.1:\d+)/u)
@@ -979,7 +1012,7 @@ export async function apply() {
       child.once('close', (code, signal) => {
         clearTimeout(deadline)
         rejectReady(new Error(
-          `XiaoHui product Host exited before readiness (code=${code ?? 'null'}, signal=${signal ?? 'null'})\nstdout:\n${stdout}\nstderr:\n${stderr}`,
+          `YourHarness product Host exited before readiness (code=${code ?? 'null'}, signal=${signal ?? 'null'})\nstdout:\n${stdout}\nstderr:\n${stderr}`,
         ))
       })
     })
@@ -1009,7 +1042,7 @@ export async function apply() {
     exitFailure = new Error(`${exitFailure.message}\nrelease smoke state preserved at ${world}`, { cause: exitFailure })
   }
   if (failure && exitFailure) {
-    throw new AggregateError([failure, exitFailure], 'XiaoHui product smoke and Host teardown both failed')
+    throw new AggregateError([failure, exitFailure], 'YourHarness product smoke and Host teardown both failed')
   }
   if (failure) throw failure
   if (exitFailure) throw exitFailure
@@ -1051,7 +1084,7 @@ async function verifyMarketplaceHostContract(root) {
 
 /** Run the complete local release compatibility smoke. */
 export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRoot = runtimeRoot) {
-  const commandWorld = mkdtempSync(join(tmpdir(), 'xiaohui-release-command-'))
+  const commandWorld = mkdtempSync(join(tmpdir(), 'yourharness-release-command-'))
   const env = createReleaseChildEnvironment(commandWorld, productRuntimeRoot)
   try {
     verifyOfflineArchive(root)

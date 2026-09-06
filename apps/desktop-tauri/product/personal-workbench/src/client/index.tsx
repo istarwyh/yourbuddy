@@ -24,6 +24,7 @@ import { NetworkProxyRow } from './NetworkProxyRow.tsx'
 import { installDesktopExternalLinks } from './desktop-external-links.ts'
 import { en, zh, type PersonalWorkbenchKey } from './locales.ts'
 import { installPersonalWorkbenchStyles } from './styles.ts'
+import productLogo from '../../../../app-icon.svg'
 
 export {
   normalizeLogoSource, normalizeWorkbenchName, resolveWorkbenchBrand,
@@ -52,9 +53,8 @@ type SlotComponent =
   | ReturnType<typeof createPersonalBrandName>
 
 /**
- * Keep one custom occupant synchronized with the durable namespace. The
- * registration disappears while disabled, so the shell's own fallback is
- * restored instead of being copied into this plugin.
+ * Keep the product identity synchronized with the durable customization.
+ * Disabling customization restores YourHarness without changing stored values.
  */
 function installBrandSlot(
   ctx: ClientContext,
@@ -91,12 +91,7 @@ export function installPersonalBrandOccupants(
   let markLogo: string | undefined
   let mark: SlotComponent | undefined
   const pickMark = (value: unknown): SlotComponent | undefined => {
-    const logo = resolveWorkbenchBrand(value).logo
-    if (logo === undefined) {
-      markLogo = undefined
-      mark = undefined
-      return undefined
-    }
+    const logo = resolveWorkbenchBrand(value).logo ?? productLogo
     if (logo !== markLogo) {
       markLogo = logo
       mark = createPersonalBrandMark(logo)
@@ -107,12 +102,7 @@ export function installPersonalBrandOccupants(
   let selectedName: string | undefined
   let nameComponent: SlotComponent | undefined
   const pickName = (value: unknown): SlotComponent | undefined => {
-    const name = resolveWorkbenchBrand(value).name
-    if (name === undefined) {
-      selectedName = undefined
-      nameComponent = undefined
-      return undefined
-    }
+    const name = resolveWorkbenchBrand(value).name ?? 'YourHarness'
     if (name !== selectedName) {
       selectedName = name
       nameComponent = createPersonalBrandName(name)
