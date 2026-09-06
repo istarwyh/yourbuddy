@@ -5,7 +5,7 @@
 - 发布标识：`yourbuddy-v0.3.3`
 - 产品渠道：YourBuddy 桌面应用
 - 归档状态：候选发布版本；本地源码、受控安装包与发布形态 macOS Runtime 验证已完成，公开产物待验证
-- 已验证源码 Commit：[`7fbbd8223ad2225a27ba029d982dbf37cce4acbe`](https://github.com/istarwyh/yourbuddy/commit/7fbbd8223ad2225a27ba029d982dbf37cce4acbe)
+- 已验证源码 Commit：[`42560389464df9243ead52b81c6552a16f5675b7`](https://github.com/istarwyh/yourbuddy/commit/42560389464df9243ead52b81c6552a16f5675b7)
 - 证据图集：等待正式公开安装包成功启动后补充
 - 证据下载：等待发布 `yourbuddy-v0.3.3-verification.zip`
 
@@ -42,7 +42,7 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 | 公开 0.3.2 失败与修复后的安装包路径 | passed | 公开 0.3.2 资源与本地 Release-mode 修复 | macOS 15.6.1 arm64、原生 WebKit | [本地记录](evidence/local-validation.txt) |
 | 0.3.3 发布准备与产品 Smoke | passed | 源码 `07b2440f5d...` | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地记录](evidence/local-validation.txt) |
 | 版本、Updater、Rust、桌面、文档与官网检查 | passed | 源码 `07b2440f5d...` | macOS 15.6.1 arm64、Rust 1.98.0、Hugo Extended 0.165.0 | [本地记录](evidence/local-validation.txt) |
-| 打包 Runtime 与快照发布阻断项 | 本地检查与首轮 CI 载体 Smoke 通过；最终 CI 重跑待完成 | 源码 `7fbbd8223a...`、Node 24 原生可执行文件与安装后 Wheel | macOS 15.6.1 arm64 与首轮 CI 载体矩阵 | [本地记录](evidence/local-validation.txt) |
+| 打包 Runtime 与快照发布阻断项 | 全部 CI 载体 Smoke 通过；确定性 ACP 与覆盖率 Fixture 修复后的最终 CI 重跑待完成 | 源码 `4256038946...`、Node 24 原生可执行文件与安装后 Wheel | macOS 15.6.1 arm64 与 CI 载体矩阵 | [本地记录](evidence/local-validation.txt) |
 | 公开安装包、更新通道、验证 ZIP 与官网 | not verified | 尚未发布 | GitHub Release 与 Pages | 待补充 |
 
 ## 场景：安装版桌面认证
@@ -120,9 +120,9 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 ## 场景：打包 Runtime 与快照发布阻断项
 
-- 状态：本地检查与首轮 CI 载体 Smoke 通过；最终跨平台 CI 重跑待完成
-- 日期与时间：2026-09-06 23:35-2026-09-07 00:06 UTC+08:00，Asia/Shanghai
-- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.3`；发布阻断项修复 `6b47dfd95ebd852d922fb5f915a3b00bf1b05aff` 与 `7fbbd8223ad2225a27ba029d982dbf37cce4acbe`
+- 状态：全部 CI 载体 Smoke 与聚焦本地恢复检查通过；最终跨平台 CI 重跑待完成
+- 日期与时间：2026-09-06 23:35-2026-09-07 01:03 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.3`；发布阻断项修复截至 `42560389464df9243ead52b81c6552a16f5675b7`
 - 受测构建：源码 Profile 遍历、生成的 Node 24.20.0 macOS arm64 单文件可执行程序，以及本地构建后安装到全新虚拟环境的 SDK 与 Runtime Wheel
 - 环境：macOS 15.6.1 arm64、构建宿主 Node 22.22.2、pnpm 11.7.0、目标 Node 24.20.0、Python 3.11.4、PowerShell 7.6.5；GitHub 托管原生载体矩阵
 - 证据来源：Pull Request 11 首轮 CI 与本次发布实测
@@ -136,6 +136,7 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 3. 运行带覆盖率的聚焦 Profile 测试、无密钥快照回放、双语文档门禁、Lint 与 Node 24 macOS 单文件可执行程序构建。
 4. 构建 SDK 与 Runtime Wheel，把两者安装进全新虚拟环境，并运行全部安装后 Wheel 无密钥黑盒场景。
 5. 在本地安装 PowerShell，针对真实可执行程序刷新并回放两个 PowerShell 场景，同时把付费提供方步骤限定到其所属的官方仓库。
+6. 复现剩余的 CI 专属 ACP 顺序与 PowerShell 就绪失败，使会话激活基于稳定拓扑，并规范迁移两项 PowerShell 录制，再运行对应聚焦检查。
 
 ### 预期结果
 
@@ -143,18 +144,18 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 ### 实际结果
 
-40 项聚焦 Profile 测试全部通过，语句、分支、函数和行覆盖率均为 100%。ACP 回放通过 15 项测试。完整无密钥运行通过 113 项非 PowerShell 测试，随后两项 PowerShell 场景使用 PowerShell 7.6.5 完成定向刷新与回放。生成的 macOS arm64 可执行程序为 249.6 MB，随后成功生成可安装 Wheel，`smoke-python-runtime.py --scenario all --installed-wheel` 报告全部通过。首轮 CI 重跑在 Linux x64、Linux arm64、macOS arm64 与 Windows x64 上也都达到 `smoke-python-runtime: all passed`，随后非官方仓库被错误导向官方仓库的密钥预检；`7fbbd8223a...` 恢复了仓库判断，且不会放宽官方门禁。
+四个 CI 载体都达到 `smoke-python-runtime: all passed`。最近完成的运行随后暴露两个彼此独立的确定性发布阻断项：ACP 初始化通知的位置受提供方激活时机影响，真实 PowerShell 就绪断言则要求一个特定的就绪等级，即使会话已经可用。当前源码会在拓扑稳定的发现与持久化完成前保持 ACP 会话私有，接受两种已有文档说明的真实 Shell 就绪等级，并规范重新打包两项变化的 PowerShell 录制。ACP 验证通过 141 项测试，语句、分支、函数和行覆盖率均为 100%；其 15 场景回放连续通过两次。聚焦真实 PowerShell 场景通过三次，Fixture 布局套件通过八项测试。当前 Commit 的最终 CI 仍待完成。
 
 ### 证据
 
-- 操作前：首轮 Pull Request CI 的四个打包 Python Runtime 目标都因未嵌入的可选 peer manifest 报 `ENOENT`；Windows 还暴露两项过期 PowerShell 录制。下一轮运行通过所有载体 Smoke，但暴露了付费提供方预检缺少仓库范围条件。
+- 操作前：首轮 Pull Request CI 的四个打包 Python Runtime 目标都因未嵌入的可选 peer manifest 报 `ENOENT`。第二轮运行通过全部载体 Smoke，但暴露了付费提供方预检缺少仓库范围条件。运行 `34046132810` 通过全部四个载体，并暴露剩余的 ACP 顺序与覆盖率 Fixture 失败。
 - 执行中：pkg 构建在构造可执行文件时报告缺少可选 Client peer，实际覆盖了受影响的 Package 发现条件。
 - 结果：命令、目标版本、测试数量与安装后 Wheel 输出见[本地记录](evidence/local-validation.txt)。
-- 失败与恢复：第一次本地快照运行与覆盖率共享资源，并继承终端代理变量，Undici 警告污染了子进程 stderr；可靠的串行回放只清除了测试进程的终端代理变量。后续 PowerShell 刷新因测试过滤参数位置错误而一度修改无关的生成 Fixture；这些已知临时更改逐文件恢复后，两场景定向运行通过。pkg 构建还留下生产形态依赖链接，第一次 Lint 与文档运行停在 pnpm 无 TTY 清理保护；通过 Frozen Lockfile 恢复开发依赖后，两项检查均通过。
+- 失败与恢复：第一次本地快照运行与覆盖率共享资源，并继承终端代理变量，Undici 警告污染了子进程 stderr；可靠的串行回放只清除了测试进程的终端代理变量。后续 PowerShell 刷新因测试过滤参数位置错误而一度修改无关的生成 Fixture；这些已知临时更改已逐文件恢复。最终 CI 证据说明，仅删除受时机影响的 ACP 通知仍不充分，因此会话激活现在会等待拓扑稳定的发现与持久化。重复出现的 PowerShell 就绪结果改为断言已有文档说明的可用性，而不是某一个时序等级，并且只有两项对应录制通过规范的打包会话迁移。
 
 ### 范围限制
 
-首轮 CI 重跑已证明四个载体目标的无密钥安装后 Wheel Smoke，付费提供方步骤则要在仓库范围修复后才会于本仓库跳过。最终运行、必需检查聚合结果、真实 DeepSeek 提供方与公开桌面安装包仍然待完成；本地 PowerShell 回放不代替最终 Windows CI 结果。
+已完成的 CI 运行证明了四个载体目标的无密钥安装后 Wheel Smoke。`4256038946...` 的必需检查聚合结果仍待完成，聚焦本地检查不能替代该运行。真实 DeepSeek 提供方与公开桌面安装包也尚未验证。
 
 ## 场景：公开产品交付
 

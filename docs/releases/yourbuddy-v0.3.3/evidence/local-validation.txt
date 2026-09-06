@@ -1,10 +1,12 @@
 YourBuddy 0.3.3 local validation record
-Date: 2026-09-06 21:30-2026-09-07 00:34 UTC+08:00 (Asia/Shanghai)
+Date: 2026-09-06 21:30-2026-09-07 01:03 UTC+08:00 (Asia/Shanghai)
 Release: intended yourbuddy-v0.3.3
 Fix commit: be8abfaedeb25f01632f1d50727be54e69d26d7e
 Version-preparation commit: 07b2440f5dd4b3c8fb5c02d44d4c52ed983c54a0
 Release-blocker fix commit: 6b47dfd95ebd852d922fb5f915a3b00bf1b05aff
 Carrier and PowerShell fixture fix commit: 7fbbd8223ad2225a27ba029d982dbf37cce4acbe
+ACP activation-order fix commit: 31cc5b26f9db3885b487c7343b4c9df0a710bf41
+Coverage fixture fix commit: 42560389464df9243ead52b81c6552a16f5675b7
 Environment: macOS 15.6.1 (24G90) arm64; Node 22.22.2; pnpm 11.7.0; Rust 1.98.0
 Data: synthetic temporary workspaces and isolated application data
 Model/service: local dsh web Host and controlled browser only; no real model provider
@@ -76,7 +78,7 @@ Pull-request release-blocker recovery
 - Cause: pkg exposed an optional peer candidate path in its virtual filesystem without embedding the package.json bytes. The traversal recorded the candidate before proving the manifest readable.
 - Fix: read each resolved dependency manifest before recording it; skip only ENOENT at the optional dependency read and preserve all other errors.
 - Windows snapshot recovery: pwsh-tool-turn and persistent-pwsh-tool-turn now include the current permission preset, sandbox mode, approval policy, and runtime-context snapshot observed by Windows CI.
-- ACP snapshot recovery: seven expected stdout streams now retain the current model config_option_update emitted during ACP session setup.
+- ACP snapshot investigation: seven stdout streams initially retained a setup-time config_option_update observed locally; the next CI host did not emit it, exposing a session-activation ordering race rather than a stable protocol event.
 
 Focused release-blocker checks
 
@@ -119,6 +121,16 @@ Second pull-request run and PowerShell recovery
 - The first focused command placed its test filter after an extra argument separator, so it launched all snapshot scenarios and generated unrelated fixture edits before stderr assertions failed on inherited proxy warnings. Those known generated changes were restored individually; only the two focused PowerShell scenario files remain in commit 7fbbd8223a.
 - `pnpm run doc-sync` initially rejected the intentionally changed bilingual Agent Note until its reviewed pair record was refreshed. The second complete run reported 32 passed, 0 failed, and 0 skipped.
 - Pull-request run 34044513110 also had an unrelated Coverage timing failure in `terminal-bash` (`stdin_read` expected, `inferred_idle` observed) after 16,397 tests passed. It is retained as a failed result; the next run determines whether the nondeterministic symptom repeats.
+
+Third pull-request run and deterministic protocol recovery
+
+- GitHub Actions run 34046132810 completed all four release-shaped Runtime carriers successfully after the repository-scope fix. Static, Windows build and observational gates, Wine, Python SDK, Node 22.19, Node 24.9, Node 26, and the carrier plan also passed.
+- The snapshot lane failed because the seven ACP recordings did not emit the locally observed config_option_update before the session/new response. The active-session map exposed a session before option discovery and persistence completed, so provider activation timing decided whether the redundant notification preceded the response.
+- Commit 31cc5b26f9db3885b487c7343b4c9df0a710bf41 keeps new and resumed sessions private until a topology-stable option state is ready. Topology changes during discovery or initial persistence force another read; changes after activation still publish complete updates.
+- ACP package validation passed 141 tests with 100% statements, branches, functions, and lines. The bridge suite passed 55 tests, and the 15-scenario ACP replay passed twice after a refresh removed only the seven pre-response notifications.
+- The Coverage lane repeated the real-shell readiness classification race: a usable PowerShell session settled through the documented inferred_idle fallback before Linux published exact stdin_read evidence. The same lane also rejected the two refreshed PowerShell recordings because their sourceEventSeqs had not passed through the canonical fixture migration.
+- Commit 42560389464df9243ead52b81c6552a16f5675b7 asserts the real-shell usability result rather than one timing-dependent readiness tier and applies the repository's packed-session migration to exactly those two recordings.
+- The focused real PowerShell scenario passed three times after the assertion change. The canonical fixture-layout suite passed 8 tests. Typecheck, lint, and the 32 documentation gates passed after the ACP fix.
 
 Publication boundary
 
