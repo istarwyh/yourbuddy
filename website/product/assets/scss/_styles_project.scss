@@ -1,0 +1,6 @@
+.td-navbar .navbar-brand svg { width: 2rem; height: 2rem; }
+.td-content { line-height: 1.85; }
+.td-content h2 { margin-top: 2rem; }
+@media (max-width: 575px) {
+  .td-content { overflow-wrap: anywhere; }
+}

@@ -1,0 +1,44 @@
+name: YourHarness website
+on:
+  pull_request:
+    paths: ['docs/user/product/**', 'docs/product-website*', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
+  push:
+    branches: [master]
+    paths: ['docs/user/product/**', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with: {persist-credentials: false}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with: {node-version: '24'}
+      - uses: actions/setup-go@v6
+        with: {go-version: '1.27.1', cache-dependency-path: website/product/go.sum}
+      - name: Install Hugo Extended
+        env:
+          HUGO_VERSION: 0.165.0
+        run: |
+          archive="hugo_extended_${HUGO_VERSION}_linux-amd64.tar.gz"
+          release="https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}"
+          curl --fail --location "$release/$archive" --output "$RUNNER_TEMP/$archive"
+          curl --fail --location "$release/hugo_${HUGO_VERSION}_checksums.txt" --output "$RUNNER_TEMP/checksums.txt"
+          cd "$RUNNER_TEMP"
+          grep " $archive$" checksums.txt | sha256sum --check --strict
+          mkdir -p hugo-bin
+          tar -xzf "$archive" -C hugo-bin hugo
+          echo "$RUNNER_TEMP/hugo-bin" >> "$GITHUB_PATH"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm website:check
+        env:
+          PRODUCT_SITE_BASE_URL: https://example.invalid/yourharness/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yourharness-website-preview
+          path: website/product/.dist
+          include-hidden-files: true
+          if-no-files-found: error

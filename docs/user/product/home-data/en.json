@@ -1,0 +1,117 @@
+{
+  "sections": [
+    "hero",
+    "cards",
+    {
+      "type": "cards",
+      "key": "plugins"
+    },
+    "cta"
+  ],
+  "hero": {
+    "eyebrow": "YourHarness · macOS / Apple Silicon",
+    "title_lines": [
+      "Your models. Your tools.",
+      "Your way."
+    ],
+    "title_size": "3.6rem",
+    "lead": "Start with a task. Work in your own files, inspect the result, and shape an extensible AI workbench around the way you work.",
+    "note": "Open-source desktop app · YourHarness installer pending",
+    "note_icon": "fa-solid fa-code-branch",
+    "actions": [
+      {
+        "label": "Get started",
+        "url": "docs/start/",
+        "style": "primary",
+        "icon": "fa-solid fa-arrow-right"
+      },
+      {
+        "label": "Explore YourHarness",
+        "url": "docs/about/",
+        "style": "ghost"
+      }
+    ],
+    "image": {
+      "light": "favicon.svg",
+      "dark": "favicon.svg",
+      "alt": "YourHarness YH"
+    },
+    "media": {
+      "ratio": "1fr 260px",
+      "max_width": "260px",
+      "hide_below": "md"
+    }
+  },
+  "cards": {
+    "eyebrow": "THE WORKFLOW",
+    "title": "From a task to a result you can inspect",
+    "columns": 3,
+    "link_label": "Read the guide",
+    "items": [
+      {
+        "title": "Choose your model",
+        "desc": "Connect an account or provider and select a model for the task.",
+        "url": "docs/models/",
+        "icon": "fa-solid fa-sliders"
+      },
+      {
+        "title": "Work in your own workspace",
+        "desc": "Keep files, the terminal, and Git review in the same workflow.",
+        "url": "docs/workspace/",
+        "icon": "fa-solid fa-folder-open"
+      },
+      {
+        "title": "Improve with evidence",
+        "desc": "Inspect results, then build evaluations and repeatable comparisons.",
+        "url": "docs/evaluation/",
+        "icon": "fa-solid fa-chart-line"
+      }
+    ]
+  },
+  "plugins": {
+    "eyebrow": "INCLUDED PLUGINS",
+    "title": "Useful capabilities, clear reasons",
+    "desc": "Community plugins bring common capabilities into the workbench. Each has a documented source, purpose, and limits.",
+    "columns": 3,
+    "link_label": "Explore the plugin",
+    "items": [
+      {
+        "title": "Codex Auth",
+        "desc": "Account and model setup, plus search and image capabilities.",
+        "url": "plugins/codex-auth/",
+        "icon": "fa-solid fa-key"
+      },
+      {
+        "title": "Better Sidebar",
+        "desc": "Files, editor, terminal, and Git workspace.",
+        "url": "plugins/better-sidebar/",
+        "icon": "fa-solid fa-table-columns"
+      },
+      {
+        "title": "Context Doctor",
+        "desc": "Inspect context usage and duplicate loading.",
+        "url": "plugins/context-doctor/",
+        "icon": "fa-solid fa-stethoscope"
+      },
+      {
+        "title": "Plugin Marketplace",
+        "desc": "Discover plugins and inspect their sources before installing.",
+        "url": "plugins/marketplace/",
+        "icon": "fa-solid fa-plug"
+      },
+      {
+        "title": "Harbor Evolution",
+        "desc": "Move from historical-session diagnostics to experiments and evaluations.",
+        "url": "plugins/harbor-evolution/",
+        "icon": "fa-solid fa-flask"
+      }
+    ]
+  },
+  "cta": {
+    "title": "Start in a folder you know.",
+    "desc": "Choose a model, finish your first task, then decide which extensions you need.",
+    "label": "Get started",
+    "url": "docs/start/",
+    "style": "primary"
+  }
+}

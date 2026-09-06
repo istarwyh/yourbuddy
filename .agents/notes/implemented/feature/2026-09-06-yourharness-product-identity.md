@@ -16,6 +16,10 @@ This is an intentionally breaking rebrand. The data home is `YourHarness` under 
 
 The [product assembly decision](2026-08-22-yourharness-product-workbench.md) continues to own bundling and credential isolation. The [personal branding decision](2026-08-23-personal-workbench-branding.md) continues to own Profile customization; this note defines its product defaults. Upstream DeepSeek package names, author credits, licenses, and frozen archived decisions retain their original identity.
 
+The [September website content plan](../../../../docs/show/202609/README.md) connects this identity to the product explanation, first-use journey, default-plugin rationale, and proposed roadmap. It distinguishes source-backed capabilities from release evidence and recommendations; it does not publish a site or commit to future features.
+
+The [OINK product website](../../../../docs/product-website.md) publishes a bilingual product allowlist from canonical repository prose. It keeps the SDK VitePress projection independently usable, pins the theme and compiler, and treats public installer availability as verified release evidence rather than a source-version inference. The product site emits local search and machine-readable pages from the same content.
+
 ## Alternatives considered
 
 **Rename only the visible application title.** Rejected because resources, release artifacts, and reset behavior would continue to expose inconsistent product names.

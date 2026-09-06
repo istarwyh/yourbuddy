@@ -10,6 +10,8 @@ English | [中文](README.zh.md)
 
 An AI workbench that works your way.
 
+[User guide](docs/user/product/index.md) · [Default plugins](docs/user/product/plugins/index.md) · [Website development](docs/product-website.md)
+
 YourHarness is a macOS AI workbench built from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) and the mature [Sakana desktop distribution](https://github.com/Sakana-yuyu/deepseek-harness-desktop). It packages Harbor Evolution and its Skill, [dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth), [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar), [dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor), [dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace), a personal-workbench branding plugin, and a portable Harbor Python runtime as one application.
 
 The desktop release targets Apple Silicon only. The application keeps its sessions, profiles, workspace, and jobs under `~/Library/Application Support/YourHarness`; it does not read or modify the user's existing `~/.dsh` home.

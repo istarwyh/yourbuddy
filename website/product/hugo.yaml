@@ -1,0 +1,79 @@
+title: YourHarness
+baseURL: http://localhost:4174/
+defaultContentLanguage: zh
+enableRobotsTXT: true
+disableKinds: [taxonomy, term, RSS]
+contentDir: .generated/content
+publishDir: .dist
+resourceDir: .cache/resources
+outputs:
+  home: [HTML, markdown, LLMS, NAVJSON]
+  page: [HTML, markdown]
+  section: [HTML, markdown, print, LLMSFULL]
+languages:
+  zh:
+    label: 简体中文
+    locale: zh-CN
+    hasCJKLanguage: true
+    weight: 1
+    params:
+      description: 选择模型，在自己的工作区完成任务，用证据改进。YourHarness 是可扩展的 AI 桌面工作台。
+    menus:
+      main:
+        - {name: 使用文档, pageRef: /docs, weight: 10}
+        - {name: 默认插件, pageRef: /plugins, weight: 20}
+        - {name: 路线图, pageRef: /roadmap, weight: 30}
+        - {name: 下载, pageRef: /download, weight: 40}
+        - {name: GitHub, url: 'https://github.com/istarwyh/yourharness', weight: 50}
+  en:
+    label: English
+    locale: en-US
+    weight: 2
+    params:
+      description: Choose your model, work in your own workspace, and improve with evidence. YourHarness is an extensible AI desktop workbench.
+    menus:
+      main:
+        - {name: Docs, pageRef: /docs, weight: 10}
+        - {name: Plugins, pageRef: /plugins, weight: 20}
+        - {name: Roadmap, pageRef: /roadmap, weight: 30}
+        - {name: Download, pageRef: /download, weight: 40}
+        - {name: GitHub, url: 'https://github.com/istarwyh/yourharness', weight: 50}
+params:
+  github_repo: https://github.com/istarwyh/yourharness
+  github_project_repo: https://github.com/istarwyh/yourharness
+  github_branch: master
+  offline_search: true
+  offline_search_index: content
+  offline_search_max_results: 12
+  copyright:
+    authors: YourHarness contributors
+    from_year: 2026
+  footer_center_info: ''
+  ui:
+    theme_color: '#1e6858'
+    theme_color_dark: '#85c9b1'
+    typography: system
+    logo: icons/logo.svg
+    footer_style: slim
+    dark_mode: {show_menu: true}
+    sidebar_menu_foldable: true
+    sidebar_headings: 2
+    section_index: cards
+    feedback: false
+markup:
+  goldmark:
+    renderer: {unsafe: true}
+    parser:
+      attribute: {block: true}
+      wrapStandAloneImageWithinParagraph: false
+  highlight: {noClasses: false}
+module:
+  hugoVersion: {extended: true, min: 0.165.0}
+  imports:
+    - path: github.com/pgsty/oink
+  mounts:
+    - {source: .generated/content, target: content}
+    - {source: .generated/assets, target: assets}
+    - {source: assets, target: assets}
+    - {source: .generated/static, target: static}
+    - {source: ../../docs/user/product/home-data, target: data/home}

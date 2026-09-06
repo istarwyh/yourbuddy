@@ -1,0 +1,117 @@
+{
+  "sections": [
+    "hero",
+    "cards",
+    {
+      "type": "cards",
+      "key": "plugins"
+    },
+    "cta"
+  ],
+  "hero": {
+    "eyebrow": "YourHarness · macOS / Apple Silicon",
+    "title_lines": [
+      "你的模型。你的工具。",
+      "按你的方式工作。"
+    ],
+    "title_size": "3.6rem",
+    "lead": "从一次任务开始，在自己的工作区读写文件、检查结果，让可扩展的 AI 工作台适应你的习惯。",
+    "note": "开源桌面应用 · 新品牌安装包待发布",
+    "note_icon": "fa-solid fa-code-branch",
+    "actions": [
+      {
+        "label": "开始使用",
+        "url": "docs/start/",
+        "style": "primary",
+        "icon": "fa-solid fa-arrow-right"
+      },
+      {
+        "label": "了解产品",
+        "url": "docs/about/",
+        "style": "ghost"
+      }
+    ],
+    "image": {
+      "light": "favicon.svg",
+      "dark": "favicon.svg",
+      "alt": "YourHarness YH"
+    },
+    "media": {
+      "ratio": "1fr 260px",
+      "max_width": "260px",
+      "hide_below": "md"
+    }
+  },
+  "cards": {
+    "eyebrow": "工作方式",
+    "title": "从任务到可以检查的成果",
+    "columns": 3,
+    "link_label": "阅读指南",
+    "items": [
+      {
+        "title": "选择适合的模型",
+        "desc": "连接可用账号或提供方，按任务切换。",
+        "url": "docs/models/",
+        "icon": "fa-solid fa-sliders"
+      },
+      {
+        "title": "在自己的工作区完成任务",
+        "desc": "把文件、终端与 Git 检查放在同一条工作路径中。",
+        "url": "docs/workspace/",
+        "icon": "fa-solid fa-folder-open"
+      },
+      {
+        "title": "用证据改进",
+        "desc": "先检查结果，再逐步建立评测和可重复的比较。",
+        "url": "docs/evaluation/",
+        "icon": "fa-solid fa-chart-line"
+      }
+    ]
+  },
+  "plugins": {
+    "eyebrow": "默认插件",
+    "title": "有用的能力，清楚的来由",
+    "desc": "默认集成社区插件，让常用能力开箱可用。每项都说明来源、用途和限制。",
+    "columns": 3,
+    "link_label": "了解插件",
+    "items": [
+      {
+        "title": "Codex Auth",
+        "desc": "账号与模型入口，连接搜索和图片能力。",
+        "url": "plugins/codex-auth/",
+        "icon": "fa-solid fa-key"
+      },
+      {
+        "title": "Better Sidebar",
+        "desc": "文件、编辑器、终端与 Git 工作区。",
+        "url": "plugins/better-sidebar/",
+        "icon": "fa-solid fa-table-columns"
+      },
+      {
+        "title": "Context Doctor",
+        "desc": "检查上下文占用和重复加载。",
+        "url": "plugins/context-doctor/",
+        "icon": "fa-solid fa-stethoscope"
+      },
+      {
+        "title": "Plugin Marketplace",
+        "desc": "发现插件，确认来源后安装扩展。",
+        "url": "plugins/marketplace/",
+        "icon": "fa-solid fa-plug"
+      },
+      {
+        "title": "Harbor Evolution",
+        "desc": "从历史会话诊断走向实验与评测。",
+        "url": "plugins/harbor-evolution/",
+        "icon": "fa-solid fa-flask"
+      }
+    ]
+  },
+  "cta": {
+    "title": "从一个熟悉的目录开始。",
+    "desc": "选好模型，完成第一项任务，再决定需要哪些扩展。",
+    "label": "开始使用",
+    "url": "docs/start/",
+    "style": "primary"
+  }
+}
