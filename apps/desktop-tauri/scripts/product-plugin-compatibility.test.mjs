@@ -74,6 +74,9 @@ test('approved Client injection removals are exact-version metadata changes', ()
   ])
   assert.deepEqual(manifest.dsh.client.inject, ['@deepseek-ai/dsh-client-ui-tool'])
   assert.deepEqual(applyApprovedClientInjectRemovals({ ...manifest, version: '1.2.4' }, policy), [])
+  assert.deepEqual(applyApprovedClientInjectRemovals(manifest, policy, [
+    'Remove obsolete @deepseek-ai/dsh-client-runtime Client injection.',
+  ]), [])
   assert.throws(
     () => applyApprovedClientInjectRemovals(manifest, policy),
     /approved Client injection removal no longer matches fixture-plugin@1\.2\.3/,
@@ -97,6 +100,9 @@ test('approved peer removals are exact-version metadata changes', () => {
   ])
   assert.deepEqual(manifest.peerDependencies, { react: '^18.0.0' })
   assert.deepEqual(applyApprovedPeerRemovals({ ...manifest, version: '1.2.4' }, policy), [])
+  assert.deepEqual(applyApprovedPeerRemovals(manifest, policy, [
+    'Remove obsolete @deepseek-ai/dsh-client-runtime peer.',
+  ]), [])
   assert.throws(
     () => applyApprovedPeerRemovals(manifest, policy),
     /approved peer removal no longer matches fixture-plugin@1\.2\.3/,

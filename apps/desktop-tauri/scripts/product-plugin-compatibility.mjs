@@ -87,23 +87,24 @@ export function applyApprovedPeerOverrides(manifest, policy) {
  *
  * @param {Record<string, unknown>} manifest
  * @param {Record<string, unknown>} policy
+ * @param {string[]} recordedPatches
  * @returns {string[]}
  */
-export function applyApprovedPeerRemovals(manifest, policy) {
+export function applyApprovedPeerRemovals(manifest, policy, recordedPatches = []) {
   const removals = policy.peerRemovals?.[manifest.version]
   if (!removals) return []
   const peers = manifest.peerDependencies
-  if (!peers || typeof peers !== 'object' || Array.isArray(peers)) {
-    throw new Error(`approved peer removal no longer matches ${manifest.name}@${manifest.version}`)
-  }
-
+  const changes = []
   for (const name of removals) {
-    if (typeof peers[name] !== 'string') {
+    const description = `Remove obsolete ${name} peer.`
+    if (!peers || typeof peers !== 'object' || Array.isArray(peers) || typeof peers[name] !== 'string') {
+      if (recordedPatches.includes(description)) continue
       throw new Error(`approved peer removal no longer matches ${manifest.name}@${manifest.version}: ${name}`)
     }
+    delete peers[name]
+    changes.push(description)
   }
-  for (const name of removals) delete peers[name]
-  return removals.map(name => `Remove obsolete ${name} peer.`)
+  return changes
 }
 
 /**
@@ -111,23 +112,30 @@ export function applyApprovedPeerRemovals(manifest, policy) {
  *
  * @param {Record<string, unknown>} manifest
  * @param {Record<string, unknown>} policy
+ * @param {string[]} recordedPatches
  * @returns {string[]}
  */
-export function applyApprovedClientInjectRemovals(manifest, policy) {
+export function applyApprovedClientInjectRemovals(manifest, policy, recordedPatches = []) {
   const removals = policy.clientInjectRemovals?.[manifest.version]
   if (!removals) return []
   const inject = manifest.dsh?.client?.inject
-  if (!Array.isArray(inject)) {
-    throw new Error(`approved Client injection removal no longer matches ${manifest.name}@${manifest.version}`)
-  }
-
+  const changes = []
+  const removedNames = []
   for (const name of removals) {
-    if (inject.filter(candidate => candidate === name).length !== 1) {
+    const description = `Remove obsolete ${name} Client injection.`
+    const matches = Array.isArray(inject) ? inject.filter(candidate => candidate === name).length : 0
+    if (matches === 0 && recordedPatches.includes(description)) continue
+    if (matches !== 1) {
       throw new Error(`approved Client injection removal no longer matches ${manifest.name}@${manifest.version}: ${name}`)
     }
+    changes.push(description)
+    removedNames.push(name)
   }
-  manifest.dsh.client.inject = inject.filter(name => !removals.includes(name))
-  return removals.map(name => `Remove obsolete ${name} Client injection.`)
+  if (changes.length > 0) {
+    const removed = new Set(removedNames)
+    manifest.dsh.client.inject = inject.filter(name => !removed.has(name))
+  }
+  return changes
 }
 
 function exportedPath(manifest, key) {

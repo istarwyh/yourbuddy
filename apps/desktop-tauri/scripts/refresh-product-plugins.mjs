@@ -717,12 +717,24 @@ function writeProvenance(root, provenance) {
   return value
 }
 
-function applyApprovedCompatibilityChanges(manifest, policy) {
+function applyApprovedCompatibilityChanges(manifest, policy, recordedPatches = []) {
   return [
-    ...applyApprovedPeerRemovals(manifest, policy),
+    ...applyApprovedPeerRemovals(manifest, policy, recordedPatches),
     ...applyApprovedPeerOverrides(manifest, policy),
-    ...applyApprovedClientInjectRemovals(manifest, policy),
+    ...applyApprovedClientInjectRemovals(manifest, policy, recordedPatches),
   ]
+}
+
+function mergeRecordedPatches(recordedPatches, changes) {
+  const replacedPeers = new Set(changes.flatMap(change => {
+    const match = /^Set (\S+) peer range from /.exec(change)
+    return match ? [match[1]] : []
+  }))
+  const retained = recordedPatches.filter((patch) => {
+    const match = /^Set (\S+) peer range from /.exec(patch)
+    return !match || !replacedPeers.has(match[1])
+  })
+  return [...new Set([...retained, ...changes])]
 }
 
 function archiveMetadata(bytes) {
@@ -746,7 +758,8 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
     const staged = join(work, 'staged')
     copyDirectory(destination, staged)
     const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-    const patches = applyApprovedCompatibilityChanges(manifest, policy)
+    const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+    const patches = applyApprovedCompatibilityChanges(manifest, policy, recordedPatches)
     if (patches.length > 0) {
       writeManifestIfChanged(staged, manifest, patches)
       validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
@@ -754,7 +767,7 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
         ...current.provenance,
         package: manifest.name,
         version: manifest.version,
-        patches,
+        patches: mergeRecordedPatches(recordedPatches, patches),
       })
       return {
         destination,
@@ -810,7 +823,8 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
     const staged = join(work, 'staged')
     copyDirectory(destination, staged)
     const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-    const patches = applyApprovedCompatibilityChanges(manifest, policy)
+    const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+    const patches = applyApprovedCompatibilityChanges(manifest, policy, recordedPatches)
     if (patches.length > 0) {
       writeManifestIfChanged(staged, manifest, patches)
       validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
@@ -818,7 +832,7 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
         ...current.provenance,
         package: manifest.name,
         version: manifest.version,
-        patches,
+        patches: mergeRecordedPatches(recordedPatches, patches),
       })
       return {
         destination,
@@ -883,7 +897,8 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
     const staged = join(work, 'staged-node')
     copyDirectory(destination, staged)
     const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-    const compatibilityPatches = applyApprovedCompatibilityChanges(manifest, policy)
+    const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+    const compatibilityPatches = applyApprovedCompatibilityChanges(manifest, policy, recordedPatches)
     if (compatibilityPatches.length > 0) {
       const patches = [
         ...compatibilityPatches,
@@ -895,7 +910,7 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
         ...current.provenance,
         package: manifest.name,
         version: manifest.version,
-        patches,
+        patches: mergeRecordedPatches(recordedPatches, patches),
       })
       return [{
         destination,
