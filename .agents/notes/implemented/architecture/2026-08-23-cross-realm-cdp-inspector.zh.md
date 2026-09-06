@@ -81,6 +81,7 @@ wrapper 把标准化 Request 交给原 fetch，通过独立采集任务读取 re
 - Console 在 Host context 求值并接收 Host console event。
 - Console 列出 Host 与 Client context；Client 求值、属性、函数调用、Promise await 与释放操作维持 RemoteObject 身份，且不在 realm 或 DevTools 连接之间共享对象。
 - Host 与 Client Console event 使用相同 projector；Client argument 按 DevTools 连接隔离，Cordis argument 可以解析到 Elements node。
+- Host 集成在启用每个 DevTools session 后等待一次 Client Runtime 往返，再发出 Console 探针，使用有序的 Client carrier 作为初始化屏障。
 - Sources 接收 Host script 与构建后的 Client bundle；Client source 读取采用分块传输，active debugging 明确失败，而 Host 仍可被断点暂停、求值 call frame 并 resume。
 - Host paused scope 与 call-frame result 使用和 Runtime 求值相同的 connection-local RemoteObject table。
 - Network 回放 `Network.enable` 前的请求，并无遗漏、无重复地推送后续请求。

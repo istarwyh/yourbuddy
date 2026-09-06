@@ -370,6 +370,19 @@ describe('experimental Inspector real Worker', () => {
     await Promise.all([cdp.call('Runtime.enable'), secondCdp.call('Runtime.enable')])
     const firstContext = await clientContext(cdp)
     const secondContext = await clientContext(secondCdp)
+    // Same-carrier Runtime roundtrips prove the preceding Console enable frames reached the Client.
+    await Promise.all([
+      cdp.call('Runtime.evaluate', {
+        expression: 'undefined',
+        contextId: firstContext,
+        returnByValue: true,
+      }),
+      secondCdp.call('Runtime.evaluate', {
+        expression: 'undefined',
+        contextId: secondContext,
+        returnByValue: true,
+      }),
+    ])
     const value = { owner: 'client-console' }
     const marker = 'client-console-event'
     await client.log(value, marker)

@@ -17,10 +17,14 @@ export const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
  */
 export const ZH_BROWSER_LOCALE = 'zh-CN'
 
+/** Browser timezone pinned by the persisted web snapshot corpus. */
+export const SNAPSHOT_BROWSER_TIME_ZONE = 'Asia/Shanghai'
+
 /**
- * Open the standard browser-test page advertising English before client boot.
- * This keeps role locators and goldens deterministic while leaving the Host
- * settings document free to override the provisional browser-derived locale;
+ * Open the standard browser-test page advertising English and the snapshot
+ * timezone before client boot. This keeps role locators, persisted client
+ * metadata, and goldens deterministic while leaving the Host settings document
+ * free to override the provisional browser-derived locale;
  * scenarios asserting the Chinese surface advertise
  * {@link ZH_BROWSER_LOCALE} instead.
  * @param browser - Playwright browser owning the page.
@@ -28,7 +32,11 @@ export const ZH_BROWSER_LOCALE = 'zh-CN'
  * @returns the initialized page.
  */
 export async function newEnglishPage(browser: Browser, height = 1000): Promise<Page> {
-  return await browser.newPage({ viewport: { width: 1680, height }, locale: 'en-US' })
+  return await browser.newPage({
+    viewport: { width: 1680, height },
+    locale: 'en-US',
+    timezoneId: SNAPSHOT_BROWSER_TIME_ZONE,
+  })
 }
 
 /**

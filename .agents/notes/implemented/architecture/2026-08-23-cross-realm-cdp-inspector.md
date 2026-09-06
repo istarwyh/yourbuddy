@@ -81,6 +81,7 @@ The wrapper passes a normalized Request to the original fetch, reads request and
 - Console evaluates in the Host context and receives Host console events.
 - Console lists Host and Client contexts; Client evaluation, properties, function calls, promise awaiting, and release operations preserve RemoteObject identity without sharing objects across realms or DevTools connections.
 - Host and Client Console events use the same projector; Client arguments remain isolated by DevTools connection and Cordis arguments resolve to Elements nodes.
+- Host integration waits for one Client Runtime roundtrip after enabling each DevTools session before emitting the Console probe, using the ordered Client carrier as the setup barrier.
 - Sources receives Host scripts and the built Client bundle; Client source reads are chunked and active debugging fails explicitly, while a breakpoint can pause the Host, evaluate a call frame, and resume.
 - Host paused scopes and call-frame results use the same connection-local RemoteObject table as Runtime evaluation.
 - Network replays requests that predate `Network.enable` and streams later requests without loss or duplication.
