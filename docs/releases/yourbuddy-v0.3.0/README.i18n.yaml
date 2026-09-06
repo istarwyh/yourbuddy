@@ -1,6 +1,6 @@
 # Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write apps/desktop-tauri/product/harbor-python/README.md
-README.md: 55781f0a9ee7ed3fa8d47ce91ac893f626529393
-README.zh.md: ec2a7217d1f95cc43bdbf8d2f79eeeee68b5693c
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.0/README.md
+README.md: 5afcf05de5a1db12f22aaf2c80f2db2ce6e94999
+README.zh.md: d4ec88ad7057d6287763e0ff2b456355c07cd5ef
