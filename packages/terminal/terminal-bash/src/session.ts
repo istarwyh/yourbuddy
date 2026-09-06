@@ -248,7 +248,21 @@ export class LocalPtySession implements TerminalBackendSession {
     }
   }
 
-  startSend(request: TerminalSendRequest): TerminalSendOperation {
+  /**
+   * Report whether the most recently settled send observed the complete owned prompt.
+   * @returns True only after both the private marker and exact printable prompt arrived.
+   */
+  hasControlledPromptReadiness(): boolean {
+    return this.promptSeen && this.promptTextSeen
+  }
+
+  /**
+   * Start one bounded terminal send operation.
+   * @param request - Text, submission, and cancellation settings for the send.
+   * @param preserveReadinessEvidence - Keep partial prompt evidence across a pwsh startup probe.
+   * @returns The cancellable operation and its eventual terminal result.
+   */
+  startSend(request: TerminalSendRequest, preserveReadinessEvidence = false): TerminalSendOperation {
     if (this.closing) throw new Error('PTY session is closing')
     if (this.statusValue.kind === 'exited') throw new Error('PTY session has exited')
     if (this.active !== undefined) {
@@ -267,7 +281,8 @@ export class LocalPtySession implements TerminalBackendSession {
       () => { this.interrupt(operation) },
     )
     this.active = operation
-    this.resetReadinessEvidence()
+    if (preserveReadinessEvidence) this.lastOutputAt = Date.now()
+    else this.resetReadinessEvidence()
 
     if (request.signal !== undefined) {
       const onAbort = (): void => { operation.cancel() }
