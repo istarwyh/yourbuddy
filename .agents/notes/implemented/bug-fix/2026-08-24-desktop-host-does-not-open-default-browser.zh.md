@@ -12,7 +12,7 @@ Loopback Server 并非多余组件：嵌入式 WebView 依靠它获取 Host API 
 
 ## Decision
 
-所有由桌面端持有的 Host 启动都会传入 `--no-open`。原生 macOS／Windows 命令构造器和 WSL 命令构造器都会把启动器拥有的全部 `--patch` 参数放在 `--no-open` 和其他 Web 应用参数之前，因为 DSH CLI 从第一个应用参数开始会把余下 Token 全部交给 Web 命令行 Provider。Host 启动、健康检查、Loopback 绑定、Tauri WebView 导航、通知 Overlay 与 Rescue Patch 均保持不变。
+所有由桌面端持有的 Host 启动都会传入 `--no-open`。原生 macOS／Windows 命令构造器和 WSL 命令构造器都会把启动器拥有的全部 `--patch` 参数放在 `--no-open` 和其他 Web 应用参数之前，因为 DSH CLI 从第一个应用参数开始会把余下 Token 全部交给 Web 命令行 Provider。Shell 按[浏览器启动令牌认证决策](../architecture/2026-08-24-browser-token-authentication.zh.md)消费带认证的启动 URL，而操作系统始终不会收到它。Loopback 绑定、通知 Overlay 与 Rescue Patch 仍由桌面端持有。
 
 ## Testing
 

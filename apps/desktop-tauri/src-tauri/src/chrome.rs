@@ -56,8 +56,9 @@ pub fn stop_host(app: &AppHandle) {
     }
 }
 
-/// Create the frameless shell window that embeds `dsh web`.
-pub fn open_main_window(app: &AppHandle, url: &str) -> Result<(), String> {
+/// Create the frameless shell window and give its Host iframe one authenticated
+/// first-navigation URL without using that credential for origin checks.
+pub fn open_main_window(app: &AppHandle, web_url: &str, launch_url: &str) -> Result<(), String> {
     if let Some(existing) = app.get_webview_window("main") {
         let _ = existing.show();
         let _ = existing.set_focus();
@@ -73,8 +74,9 @@ pub fn open_main_window(app: &AppHandle, url: &str) -> Result<(), String> {
         i18n::Locale::En => "en",
     };
     let init = format!(
-        "window.__DSH_WEB_URL__ = {}; window.__DSH_CHROME__ = {}; window.__DSH_LOCALE__ = {};",
-        serde_json::to_string(url).unwrap_or_else(|_| "\"\"".into()),
+        "window.__DSH_WEB_URL__ = {}; window.__DSH_WEB_LAUNCH_URL__ = {}; window.__DSH_CHROME__ = {}; window.__DSH_LOCALE__ = {};",
+        serde_json::to_string(web_url).unwrap_or_else(|_| "\"\"".into()),
+        serde_json::to_string(launch_url).unwrap_or_else(|_| "\"\"".into()),
         serde_json::to_string(&resolve_controls_layout()).unwrap_or_else(|_| "{}".into()),
         serde_json::to_string(locale).unwrap_or_else(|_| "\"en\"".into()),
     );

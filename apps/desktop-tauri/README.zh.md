@@ -29,7 +29,7 @@ Harbor 会在 Job 启动前通过 Host 的 `agentDefaultModel` 与 LLM Service �
 
 Plugin Marketplace 只把公开 GitHub `dsh-plugin` Topic 用于发现仓库。打开结果时会搜索 npm；仅当 Package 声明 `dsh.bundle.patch`，且 Metadata 通过 Repository 字段或与 GitHub Owner 同 Scope 的 DSH 上游元数据关联该仓库时才启用一键确认，因此能从同时发布 SDK、CLI 与其他 npm Package 的仓库中选出 DSH Bundle，也能解析 npm 名称不同于仓库 Basename 的 Scoped Package。Metadata 缺失、歧义或不完整时，一键确认保持禁用。用户确认后，安装流程会针对隔离的 Web Profile 执行 `dsh plugin add`，把进度或可操作的 pnpm 失败持续关联到该 Package，并授予安装代码与手动安装 DSH 插件相同的 Host 权限。仓库与 npm 链接使用固定的 iframe 消息协议；Shell 与 Rust Validator 只允许 HTTPS GitHub 仓库、npm 搜索或 npm Package 页面，再由系统浏览器打开。
 
-桌面壳会通过 `dsh web --no-open` 启动私有 Host。Loopback URL 仍然是 Tauri WebView 加载的内部传输地址，但启动过程不会再把这个 URL 交给操作系统默认浏览器。
+桌面壳会通过 `dsh web --no-open` 启动私有 Host，并把 Loader 结算后打印且经过严格校验的进程 token URL 作为就绪信号。它会在不跟随重定向的情况下验证 token 交换，保留不含凭据的根 URL 用于 iframe Origin 校验与诊断，并仅在 Tauri WebView 第一次导航时使用 token URL。启动 URL 不会进入 `boot.log` 或面向用户的失败信息，操作系统默认浏览器也不会收到它。
 
 助手 Markdown 继续使用共享 Renderer 的 HTTP(S) 白名单。在桌面产品中，Personal Workbench Client 只拦截其中指向外部的 `_blank` Anchor，并请求父级 Shell 使用操作系统默认浏览器打开。悬停会显示目标地址，链接右键菜单可以打开或复制地址。Shell 只接受当前 Host iframe 从其精确 Origin 发出的固定版本请求；Shell 与 Rust Command 都要求有长度上限、不含凭据的 HTTP(S) URL。相对链接、同源路由、下载、文件引用以及 `javascript:`、`file:`、`data:` 等协议不会进入原生 Opener。
 
@@ -79,4 +79,4 @@ pnpm --dir apps/desktop-tauri run build
 
 当前目标固定为 `aarch64-apple-darwin`；发布流水线有意不包含 Windows、Intel macOS 或 Linux 矩阵。
 
-macOS arm64 发布门禁会校验 Tag 与所有桌面版本真源的一致性，并在新 Tag 上要求已提交内容使用策略选中的 DSH Release。它不会刷新产品插件 Channel，而是直接构建已提交的 Harness 和带签名的更新产物，并通过 DSH 参数解析器以及原生、WSL 桌面启动器执行聚焦的 Host 启动参数契约测试。随后，流水线会把便携式 Runtime 移出应用 Bundle，故意破坏原始 Python Home 引用，并要求 `harbor --version` 与 `harbor-dsh --help` 都成功，之后才计算校验和并发布产物。该门禁有意保持小于仓库完整测试矩阵，避免桌面 Patch Release 等待无关平台或 Package。
+macOS arm64 发布门禁会校验 Tag 与所有桌面版本真源的一致性，并在新 Tag 上要求已提交内容使用策略选中的 DSH Release。它不会刷新产品插件 Channel，而是直接构建已提交的 Harness 和带签名的更新产物，并通过 DSH 参数解析器与原生 supervisor 执行聚焦的 Host 启动约定测试，包括原生与 WSL 参数向量、带认证的就绪校验、stdout 持续排空、token 脱敏和 token 交换。随后，流水线会把便携式 Runtime 移出应用 Bundle，故意破坏原始 Python Home 引用，并要求 `harbor --version` 与 `harbor-dsh --help` 都成功，之后才计算校验和并发布产物。该门禁有意保持小于仓库完整测试矩阵，避免桌面 Patch Release 等待无关平台或 Package。
