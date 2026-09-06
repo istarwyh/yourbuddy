@@ -342,6 +342,35 @@ export async function authenticateHost(launchUrl) {
 }
 
 /**
+ * Project the Host's authority cookie into the same-site desktop WebView form.
+ * @param {string} launchUrl
+ * @param {string} cookiePair
+ * @returns {{name: string, value: string, domain: string, path: string, httpOnly: true, secure: false, sameSite: 'Strict'}}
+ */
+export function desktopWebviewCookie(launchUrl, cookiePair) {
+  const url = new URL(launchUrl)
+  const separator = cookiePair.indexOf('=')
+  const name = cookiePair.slice(0, separator)
+  const value = cookiePair.slice(separator + 1)
+  const suffix = name.startsWith('dsh-auth-') ? name.slice('dsh-auth-'.length) : ''
+  if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.port === ''
+    || url.pathname !== '/' || url.searchParams.size !== 1 || !url.searchParams.has('token')
+    || separator <= 0 || suffix.length !== 43 || !/^[A-Za-z0-9_-]+$/u.test(suffix)
+    || value === '' || value.length > 4096) {
+    throw new Error('release smoke received an invalid desktop Host authentication result')
+  }
+  return {
+    name,
+    value,
+    domain: url.hostname,
+    path: '/',
+    httpOnly: true,
+    secure: false,
+    sameSite: 'Strict',
+  }
+}
+
+/**
  * Reject an assembled page that did not execute every product Client cleanly.
  *
  * @param {{
@@ -421,7 +450,7 @@ async function completeProductOnboarding(page) {
   await clickOnboardingAction(page, 'Configure later', 5_000)
 }
 
-function buildDesktopBridgeSmokeShell(launchUrl) {
+function buildDesktopBridgeSmokeShell(webUrl) {
   const externalI18n = '<script src="desktop-i18n.js"></script>'
   if (desktopShellSource.split(externalI18n).length !== 2) {
     throw new Error('desktop shell must contain exactly one desktop-i18n.js script')
@@ -429,11 +458,10 @@ function buildDesktopBridgeSmokeShell(launchUrl) {
   if (/<\/script/iu.test(desktopI18nSource)) {
     throw new Error('desktop-i18n.js cannot be embedded safely in the release smoke')
   }
-  const encodedBaseUrl = JSON.stringify(`${new URL(launchUrl).origin}/`).replaceAll('<', '\\u003c')
-  const encodedLaunchUrl = JSON.stringify(launchUrl).replaceAll('<', '\\u003c')
+  const encodedBaseUrl = JSON.stringify(`${new URL(webUrl).origin}/`).replaceAll('<', '\\u003c')
   const bootstrap = `<script>
     window.__DSH_WEB_URL__ = ${encodedBaseUrl}
-    window.__DSH_WEB_LAUNCH_URL__ = ${encodedLaunchUrl}
+    window.__DSH_HOST_COOKIE_READY__ = true
     window.__DSH_LOCALE__ = 'en'
     window.__DSH_CHROME__ = { os: 'macos', titlebar_height: 32, left: [], right: [] }
     window.__YOURBUDDY_DESKTOP_COMMANDS__ = []
@@ -475,8 +503,8 @@ function buildDesktopBridgeSmokeShell(launchUrl) {
   return desktopShellSource.replace(externalI18n, bootstrap)
 }
 
-async function startDesktopBridgeSmokeServer(launchUrl) {
-  const html = buildDesktopBridgeSmokeShell(launchUrl)
+async function startDesktopBridgeSmokeServer(webUrl) {
+  const html = buildDesktopBridgeSmokeShell(webUrl)
   const server = createServer((request, response) => {
     if (request.url === '/app-icon.png' || request.url === '/favicon.ico') {
       response.writeHead(200, {
@@ -536,7 +564,8 @@ async function runBrowserSmoke(baseUrl, env) {
       env,
       executablePath: installedChromiumExecutable,
     })
-    const page = await browser.newPage({ viewport: { width: 1680, height: 1000 }, locale: 'en-US' })
+    const context = await browser.newContext({ viewport: { width: 1680, height: 1000 }, locale: 'en-US' })
+    const page = await context.newPage()
     await page.addInitScript(() => {
       window.__YOURBUDDY_COPIED_LINKS__ = []
       Object.defineProperty(navigator, 'clipboard', {
@@ -703,7 +732,11 @@ async function runBrowserSmoke(baseUrl, env) {
     })
 
     await page.context().clearCookies()
-    const desktopBridge = await startDesktopBridgeSmokeServer(baseUrl)
+    const desktopAuthentication = await authenticateHost(baseUrl)
+    await page.context().addCookies([
+      desktopWebviewCookie(baseUrl, desktopAuthentication.cookie),
+    ])
+    const desktopBridge = await startDesktopBridgeSmokeServer(desktopAuthentication.baseUrl)
     desktopBridgeServer = desktopBridge.server
     const shellNavigation = await page.goto(desktopBridge.url, { waitUntil: 'load', timeout: 30_000 })
     if (shellNavigation === null || shellNavigation.status() !== 200) {
@@ -816,7 +849,7 @@ async function runBrowserSmoke(baseUrl, env) {
       frameCount: await embedded.locator('[class*="frame"]').count(),
     })
 
-    const proxyPage = await browser.newPage({ viewport: { width: 1680, height: 1000 }, locale: 'en-US' })
+    const proxyPage = await page.context().newPage()
     const proxyClientResponses = {}
     let hostProxyDiagnosticRequests = 0
     let hostProxyDiagnosticResult = {

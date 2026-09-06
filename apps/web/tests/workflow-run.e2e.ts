@@ -46,6 +46,17 @@ describe.skipIf(MODE === 'record')('web e2e: durable workflow run in Chat', () =
     })
   })
 
+  const waitForChildPromptPersistence = (): Promise<SessionId> => new Promise((resolve, reject) => {
+    let dispose = (): void => {}
+    dispose = scaffold.ctx.on('session/event', (session: Session, event: SessionEvent) => {
+      if (session.header.origin !== 'subagent'
+        || event.type !== 'user/message'
+        || event.data.source.kind !== 'user') return
+      dispose()
+      void scaffold.ctx.sessions.flush(session).then(() => { resolve(session.id) }, reject)
+    })
+  })
+
   beforeAll(async () => {
     const prompts = fixtureUserPrompts(await readFile(PARENT_FIXTURE, 'utf8'))
     expect(prompts).toHaveLength(1)
@@ -72,6 +83,7 @@ describe.skipIf(MODE === 'record')('web e2e: durable workflow run in Chat', () =
   it('shows the live member, opens its local child, then retains the settled record beside the tool row', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-workflow-run-live'))
     const settled = waitForParentSettlement()
+    const childPromptPersisted = waitForChildPromptPersistence()
     const input = page.locator('[data-composer-input]').first()
     await input.fill(prompt)
     await input.press('Enter')
@@ -155,6 +167,7 @@ describe.skipIf(MODE === 'record')('web e2e: durable workflow run in Chat', () =
     })
     await page.setViewportSize({ width: 1280, height: 800 })
 
+    await childPromptPersisted
     await member.click()
     await page.getByText(CHILD_PROMPT, { exact: true }).waitFor({ timeout: 15_000 })
 

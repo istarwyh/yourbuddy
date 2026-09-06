@@ -29,7 +29,7 @@ Harbor 会在 Job 启动前通过 Host 的 `agentDefaultModel` 与 LLM Service �
 
 Plugin Marketplace 只把公开 GitHub `dsh-plugin` Topic 用于发现仓库。打开结果时会搜索 npm；仅当 Package 声明 `dsh.bundle.patch`，且 Metadata 通过 Repository 字段或与 GitHub Owner 同 Scope 的 DSH 上游元数据关联该仓库时才启用一键确认，因此能从同时发布 SDK、CLI 与其他 npm Package 的仓库中选出 DSH Bundle，也能解析 npm 名称不同于仓库 Basename 的 Scoped Package。Metadata 缺失、歧义或不完整时，一键确认保持禁用。用户确认后，安装流程会针对隔离的 Web Profile 执行 `dsh plugin add`，把进度或可操作的 pnpm 失败持续关联到该 Package，并授予安装代码与手动安装 DSH 插件相同的 Host 权限。仓库与 npm 链接使用固定的 iframe 消息协议；Shell 与 Rust Validator 只允许 HTTPS GitHub 仓库、npm 搜索或 npm Package 页面，再由系统浏览器打开。
 
-桌面壳会通过 `dsh web --no-open` 启动私有 Host，并把 Loader 结算后打印且经过严格校验的进程 token URL 作为就绪信号。它会在不跟随重定向的情况下验证 token 交换，保留不含凭据的根 URL 用于 iframe Origin 校验与诊断，并仅在 Tauri WebView 第一次导航时使用 token URL。启动 URL 不会进入 `boot.log` 或面向用户的失败信息，操作系统默认浏览器也不会收到它。
+桌面壳会通过 `dsh web --no-open` 启动私有 Host，并把 Loader 结算后打印且经过严格校验的进程 Token URL 作为就绪信号。原生代码在不跟随重定向的情况下完成交换，校验返回的 Authority Cookie，并在创建主 WebView 前丢弃 Token URL。具有原生权限的 Shell 由应用自有的随机 `127.0.0.1` 端口提供，运行时 Capability 只授权该精确 Origin；其中的 Host iframe 使用同一 HTTP Site 下的另一个端口，因此原有 `HttpOnly; SameSite=Strict` Cookie 在 macOS WebKit 中仍然生效。Host iframe 与 Shell 仍是不同 Origin，且不会获得 Tauri Capability。启动 URL 不会进入 Renderer、`boot.log`、面向用户的失败信息或操作系统默认浏览器。详见[桌面同站点认证说明](../../.agents/notes/implemented/bug-fix/2026-09-06-yourbuddy-desktop-same-site-authentication.zh.md)。
 
 助手 Markdown 继续使用共享 Renderer 的 HTTP(S) 白名单。在桌面产品中，Personal Workbench Client 只拦截其中指向外部的 `_blank` Anchor，并请求父级 Shell 使用操作系统默认浏览器打开。悬停会显示目标地址，链接右键菜单可以打开或复制地址。Shell 只接受当前 Host iframe 从其精确 Origin 发出的固定版本请求；Shell 与 Rust Command 都要求有长度上限、不含凭据的 HTTP(S) URL。相对链接、同源路由、下载、文件引用以及 `javascript:`、`file:`、`data:` 等协议不会进入原生 Opener。
 
@@ -37,7 +37,7 @@ Release 构建读取 Tauri 内置的应用语义版本，并在主窗口打开�
 
 **设置 → 通用设置 → 网络代理**提供应用全局策略，而不是 Codex 专用的 Transport 开关。直连模式会移除环境中原有的代理变量；跟随系统模式通过 `/usr/sbin/scutil` 读取 macOS 固定的 HTTP 与 HTTPS Endpoint；自定义模式要求分别填写不含凭据的 HTTP 与 HTTPS URL，并可补充绕过主机。PAC、自动代理发现与只有 HTTP 的 macOS 配置会返回可操作的错误，因为它们无法被完整 Node 进程树准确复现。原生 reqwest Client 与签名更新器会让 rustls 使用平台验证器，所有应用自有 Node 进程都会收到 `--use-system-ca`。用户还可以通过原生文件选择器选择一个 PEM 编码的 `.pem` 或 `.crt` 企业 CA Bundle；YourBuddy 会校验并规范化该文件、保存其路径、把证书加入原生平台信任，并在创建 Node Host 与插件进程前设置 `NODE_EXTRA_CA_CERTS`。显式 CA Bundle 只补充系统信任，不会关闭证书校验。测试会分别检查桌面草稿链路与正在运行的 Node Host 全局 `fetch`，并独立标注两侧的 HTTP 状态或有界的证书与 Transport 错误码、代理模式及 CA 来源，避免一条链路成功掩盖另一条链路失败；草稿与 Host 当前策略不同时，结果会要求保存、重启并再次测试。保存操作只会调用固定的网络设置 Command，再调用固定的应用重启 Command；重启会先终止并等待私有 Host 退出，重新启动后的 Host、插件、Package 安装、Runtime 预配与签名更新器都会使用同一份解析结果。Loopback 地址始终绕过代理，已经运行的进程则保留上次激活的策略，直到应用重启。
 
-桌面 Overlay 会给工作台页面注入 Content Security Policy 与 `no-referrer` 策略；Tauri 自有的启动页与 Shell 也配置了 CSP。Cordis 客户端插件需要动态求值，因此工作台保留 `unsafe-eval`，同时禁用 Object 与 Base URL 修改。
+桌面 Overlay 会给工作台页面注入 Content Security Policy 与 `no-referrer` 策略；Tauri 自有的启动页与 Loopback Shell 也配置了 CSP。Shell Server 只接受精确的 Loopback `Host`，以禁止缓存的方式提供三个内嵌资源，并随应用停止。Cordis 客户端插件需要动态求值，因此工作台保留 `unsafe-eval`，同时禁用 Object 与 Base URL 修改。
 
 ## 本地发布准备
 

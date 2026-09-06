@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-06-yourbuddy-desktop-same-site-authentication.md
+2026-09-06-yourbuddy-desktop-same-site-authentication.md: 595a5dc178c21f85c8e9f4032e0c857ce6b40b0e
+2026-09-06-yourbuddy-desktop-same-site-authentication.zh.md: caee684d9954baf2063e3d216f75d4fe2c59062b

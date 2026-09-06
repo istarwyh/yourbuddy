@@ -8,6 +8,6 @@ Read documents, write files, and run tools. Choose your model, work on your own 
 
 DSH supplies the AI runtime and Web UI; Y8 supplies a ready-to-use default composition. Plugins can add the domain analysis engine and control panel needed for specialized work. Read the [product philosophy](about.md).
 
-YourBuddy 0.3.2 is available for macOS on Apple Silicon. Check the download page for the installer, checksums, and known signing limitation before getting started.
+YourBuddy 0.3.3 is being prepared for macOS on Apple Silicon to fix installed-app startup authentication. Version 0.3.2 remains downloadable for historical testing but has a confirmed startup defect; check current status before installing.
 
 [Get started](start.md) · [Extend Y8](develop.md) · [Default plugins](plugins/index.md) · [Download status](download.md)

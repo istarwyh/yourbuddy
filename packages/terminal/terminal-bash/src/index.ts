@@ -125,24 +125,30 @@ async function startupSession(
     }
     // pwsh cannot install its prompt from the environment. Write the prompt
     // function through the session, pin UTF-8 output before user input, and
-    // accept only backend stdin_read evidence; echoed setup source containing
-    // the printable prompt is not readiness. Follow-up sends bridge silence
-    // settlements during startup, while one absolute deadline bounds them.
-    let viewport = ''
+    // accept stdin_read only after the startup loop has also observed the
+    // owned prompt; exact stdin-wait evidence can race ahead of prompt output,
+    // while echoed setup source containing the printable prompt is not readiness.
+    // Follow-up sends bridge those settlements during startup, while one
+    // absolute deadline bounds them.
+    let previousViewport = ''
+    let motd = ''
+    let controlledPromptObserved = false
     for (;;) {
-      const first = viewport.length === 0
+      const bootstrap = previousViewport.length === 0
       startupOperation = session.startSend({
-        text: first ? ENCODING_PREAMBLE + PWSH_PROMPT_SETUP : '',
-        submit: first,
+        text: bootstrap ? ENCODING_PREAMBLE + PWSH_PROMPT_SETUP : '',
+        submit: bootstrap,
         ...signal !== undefined ? { signal } : {},
-      })
+      }, !bootstrap)
       const result = await startupOperation.done
       if (result.waitReason === 'session_exit') throw new Error('PTY shell exited during startup')
       if (result.waitReason === 'timeout') throw new Error('PTY shell did not reach readiness before startup timeout')
-      viewport = result.viewport
-      if (result.waitReason === 'stdin_read') break
+      previousViewport = result.viewport
+      if (result.viewport.length > 0) motd = result.viewport
+      controlledPromptObserved ||= session.hasControlledPromptReadiness()
+      if (result.waitReason === 'stdin_read' && controlledPromptObserved) break
     }
-    session.motd = viewport
+    session.motd = motd
   }
   const races: Promise<void>[] = []
   let onAbort: (() => void) | undefined

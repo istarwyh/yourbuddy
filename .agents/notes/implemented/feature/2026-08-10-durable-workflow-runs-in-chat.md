@@ -28,7 +28,7 @@ The [seven-state Figma reference](https://www.figma.com/design/tguwzZRmHCjbq58mf
 
 ## Verification
 
-Package tests cover top-level and nested eligibility, zero-member and concurrent runs, disposal-before-ending order, all four append-failure prefixes, and cold/live invariant rejection. Conversation tests compare complete replace, update-only prepend, and live append; they cover exact phase identity, terminal and interrupted status, disclosure state, list-fact navigation, and HMR removal and re-registration. The shipped Web replay uses the existing workflow parent and child model fixtures to exercise the real worker, spawn provider, Session persistence, browser bundle, running child navigation, terminal retention, original tool-row coexistence, narrow dark tokens, and refresh reconstruction.
+Package tests cover top-level and nested eligibility, zero-member and concurrent runs, disposal-before-ending order, all four append-failure prefixes, and cold/live invariant rejection. Conversation tests compare complete replace, update-only prepend, and live append; they cover exact phase identity, terminal and interrupted status, disclosure state, list-fact navigation, and HMR removal and re-registration. The shipped Web replay uses the existing workflow parent and child model fixtures to exercise the real worker, spawn provider, Session persistence, browser bundle, running child navigation, terminal retention, original tool-row coexistence, narrow dark tokens, and refresh reconstruction. Its live-navigation probe waits for the child user prompt to pass the Session durability checkpoint before opening that independently transported Client view.
 
 ## Alternatives considered
 

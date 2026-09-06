@@ -1,6 +1,7 @@
 mod chrome;
 mod cli_shim;
 mod desktop_settings;
+mod desktop_shell;
 mod external_links;
 mod i18n;
 mod network_proxy;
@@ -146,7 +147,7 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     let settings = desktop_settings::load();
     let network_proxy = network_proxy::resolve(&settings.network_proxy)?;
     network_proxy::log_active(&network_proxy);
-    let runtime = match boot_kind(&settings) {
+    let mut runtime = match boot_kind(&settings) {
         AgentEnvironment::Windows => {
             boot_windows_runtime(
                 app.clone(),
@@ -171,7 +172,7 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     };
 
     let web_url = runtime.web_url.clone();
-    let launch_url = runtime.launch_url.clone();
+    let session_cookie = runtime.take_session_cookie();
     if !runtime.host.disabled_plugins.is_empty() {
         let names = runtime.host.disabled_plugins.join("、");
         boot_log::error(&format!("plugins disabled by rescue patch: {names}"));
@@ -181,8 +182,11 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     if let Some(notify) = notify {
         app.manage(notify);
     }
+    let shell = desktop_shell::start(&app)?;
+    let shell_url = shell.url.clone();
+    app.manage(shell);
     boot_log::info(&format!("opening main window url={web_url}"));
-    chrome::open_main_window(&app, &web_url, &launch_url)?;
+    chrome::open_main_window(&app, &shell_url, &web_url, &session_cookie)?;
     if let Some(splash) = app.get_webview_window("splash") {
         let _ = splash.close();
     }

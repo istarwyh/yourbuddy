@@ -529,6 +529,67 @@ describe('automation-only ACP bridge', () => {
     expect(harness.sessionUpdates.at(-1)?.sessionId).toBe(created.sessionId)
   })
 
+  it('returns topology changes observed during activation without an early session update', async () => {
+    harness = await makeBridgeHarness()
+    await harness.client.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities: {} })
+    const original = harness.ctx.llm.listModels.bind(harness.ctx.llm)
+    const entered: PromiseWithResolvers<void> = Promise.withResolvers()
+    const release: PromiseWithResolvers<void> = Promise.withResolvers()
+    const listModels = vi.spyOn(harness.ctx.llm, 'listModels').mockImplementationOnce(async (provider: string) => {
+      entered.resolve()
+      await release.promise
+      return original(provider)
+    })
+
+    try {
+      const creating = harness.client.newSession({ cwd: process.cwd(), mcpServers: [] })
+      await entered.promise
+      harness.registerCatalogProvider('other')
+      expect(harness.updates).toEqual([])
+      release.resolve()
+
+      const created = await creating
+      const model = created.configOptions?.find(option => option.id === 'model')
+      if (model?.type !== 'select') throw new Error('expected a model select option')
+      expect(model.options.some(option => 'group' in option && option.group === 'other')).toBe(true)
+      expect(harness.updates).toEqual([])
+    } finally {
+      release.resolve()
+      listModels.mockRestore()
+    }
+  })
+
+  it('refreshes activation options when topology changes during initial persistence', async () => {
+    harness = await makeBridgeHarness()
+    await harness.client.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities: {} })
+    const original = harness.ctx.sessionPersistence.ensureMaterialized.bind(harness.ctx.sessionPersistence)
+    const entered: PromiseWithResolvers<void> = Promise.withResolvers()
+    const release: PromiseWithResolvers<void> = Promise.withResolvers()
+    const ensureMaterialized = vi.spyOn(harness.ctx.sessionPersistence, 'ensureMaterialized')
+      .mockImplementationOnce(async (session) => {
+        entered.resolve()
+        await release.promise
+        await original(session)
+      })
+
+    try {
+      const creating = harness.client.newSession({ cwd: process.cwd(), mcpServers: [] })
+      await entered.promise
+      harness.registerCatalogProvider('other')
+      expect(harness.updates).toEqual([])
+      release.resolve()
+
+      const created = await creating
+      const model = created.configOptions?.find(option => option.id === 'model')
+      if (model?.type !== 'select') throw new Error('expected a model select option')
+      expect(model.options.some(option => 'group' in option && option.group === 'other')).toBe(true)
+      expect(harness.updates).toEqual([])
+    } finally {
+      release.resolve()
+      ensureMaterialized.mockRestore()
+    }
+  })
+
   it('does not let hung topology discovery block prompt completion or close', async () => {
     harness = await makeBridgeHarness({ script: [textResponse('still responsive')] })
     await harness.client.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities: {} })

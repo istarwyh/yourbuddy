@@ -330,6 +330,13 @@ describe('healProfilesModuleFallback', () => {
     expect(before).toContain('dep-of-a')
   })
 
+  it('fails loud when a resolved dependency manifest is malformed', async () => {
+    const anchor = stageInstallation({ 'broken-dependency': {} })
+    writeFileSync(join(anchor, '..', 'node_modules', 'broken-dependency', 'package.json'), '{')
+
+    await expect(healProfilesModuleFallback({ installAnchor: anchor, home: tmp() })).rejects.toThrow(SyntaxError)
+  })
+
   it('throws when a fallback entry is a foreign file or directory', async () => {
     const anchor = stageInstallation({})
     for (const kind of ['file', 'directory']) {

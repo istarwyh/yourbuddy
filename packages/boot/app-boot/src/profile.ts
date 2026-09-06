@@ -488,6 +488,17 @@ function readModuleFallbackManifest(anchor: string): ProfileManifest {
   return JSON.parse(readFileSync(anchor, 'utf8')) as ProfileManifest
 }
 
+/** Read a dependency manifest, or omit a candidate whose bytes are unavailable. */
+function readOptionalModuleFallbackManifest(anchor: string): ProfileManifest | undefined {
+  try {
+    return readModuleFallbackManifest(anchor)
+  } catch (error) {
+    /* v8 ignore next -- release-shaped pkg smoke owns the missing-manifest case */
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    throw error
+  }
+}
+
 /** Return dependency names that may be imported by a loader-visible plugin. */
 function profileDependencyNames(manifest: ProfileManifest): string[] {
   return [...Object.keys(manifest.dependencies ?? {}), ...Object.keys(manifest.peerDependencies ?? {})]
@@ -515,9 +526,11 @@ function resolveModuleFallbackEntries(
       // A declared-but-uninstalled dependency cannot be a loader-visible
       // plugin; skip it rather than fail the whole boot.
       if (dir === undefined) continue
-      links.set(dep, dir)
       const manifestPath = join(dir, 'package.json')
-      queue.push({ anchor: manifestPath, manifest: readModuleFallbackManifest(manifestPath) })
+      const manifest = readOptionalModuleFallbackManifest(manifestPath)
+      if (manifest === undefined) continue
+      links.set(dep, dir)
+      queue.push({ anchor: manifestPath, manifest })
     }
   }
   const entries = !isPackagedExecutable()
@@ -629,10 +642,12 @@ function dependencyClosure(
         const dir = packageDirFromAnchor(next.anchor, dep, exclude)
         // A declared-but-uninstalled dependency cannot be loader-visible.
         if (dir === undefined) continue
+        const manifestPath = join(dir, 'package.json')
+        const childManifest = readOptionalModuleFallbackManifest(manifestPath)
+        if (childManifest === undefined) continue
         visited.add(dep)
         links.set(dep, dir)
-        const manifestPath = join(dir, 'package.json')
-        queue.push({ anchor: manifestPath, manifest: readModuleFallbackManifest(manifestPath) })
+        queue.push({ anchor: manifestPath, manifest: childManifest })
       }
     }
   }

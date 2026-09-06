@@ -1,0 +1,183 @@
+YourBuddy 0.3.3 local validation record
+Date: 2026-09-06 21:30-2026-09-07 01:38 UTC+08:00 (Asia/Shanghai)
+Release: intended yourbuddy-v0.3.3
+Fix commit: be8abfaedeb25f01632f1d50727be54e69d26d7e
+Version-preparation commit: 07b2440f5dd4b3c8fb5c02d44d4c52ed983c54a0
+Release-blocker fix commit: 6b47dfd95ebd852d922fb5f915a3b00bf1b05aff
+Carrier and PowerShell fixture fix commit: 7fbbd8223ad2225a27ba029d982dbf37cce4acbe
+ACP activation-order fix commit: 31cc5b26f9db3885b487c7343b4c9df0a710bf41
+Coverage fixture fix commit: 42560389464df9243ead52b81c6552a16f5675b7
+Browser timezone and Inspector setup fix commit: 11fea67aaf9f799290b2f01a524388d35d3ef6c2
+Environment: macOS 15.6.1 (24G90) arm64; Node 22.22.2; pnpm 11.7.0; Rust 1.98.0
+Data: synthetic temporary workspaces and isolated application data
+Model/service: local dsh web Host and controlled browser only; no real model provider
+
+Installed application diagnosis
+
+- Public /Applications/YourBuddy.app 0.3.2 reproduced: dsh web authentication required; reopen the URL printed by dsh web.
+- Native boot.log still reported authenticated readiness passed and boot complete.
+- A localhost-parent negative control reproduced HTTP 401 while separate 127.0.0.1 ports passed with the strict cookie.
+- A release-mode arm64 binary with Tauri custom-protocol support was placed in a copy of the public 0.3.2 resources and ad-hoc signed.
+- The copied app used an isolated YOURBUDDY_APP_DATA_DIR, reported authenticated readiness and boot complete, and rendered the visible workspace in the native macOS WebView.
+- The temporary application, isolated data, and temporary screenshot were removed after inspection. No credential-bearing artifact was retained.
+- An intermediate SameSite=None; Secure cookie-copy trial still failed in macOS WebKit and was replaced by the same-site loopback shell design.
+
+Focused fix checks
+
+- cargo test --locked desktop_shell::tests
+  Result: 2 passed, 0 failed.
+- cargo test --locked chrome::tests
+  Result: 4 passed, 0 failed.
+- cargo test --locked runtime::supervisor::tests
+  Result: 13 passed, 0 failed.
+- pnpm --dir apps/desktop-tauri run test:product-refresh
+  Result: 41 passed, 0 failed.
+- pnpm run test:docs
+  Result: 15 passed, 0 failed, 0 skipped.
+- pnpm run doc-sync
+  Result: 32 passed, 0 failed, 0 skipped.
+- pnpm run lint
+  Result: exit 0.
+- HUGO_BIN=/private/tmp/yourbuddy-hugo-0.165.0/expanded/Payload/hugo PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/ pnpm website:check
+  Result: 70 projection tests passed; Hugo built 59 Chinese and 57 English pages; 57 product HTML pages passed local link, asset, fragment, and source-action checks.
+- git diff --check
+  Result: exit 0.
+
+Website check recovery
+
+- The first website check passed all 70 projection tests, then stopped because Hugo was absent from the default PATH.
+- The same command was rerun with the previously checksum-verified official Hugo Extended 0.165.0 macOS arm64 binary through the documented HUGO_BIN setting; the strict build and validation passed.
+
+0.3.3 version checks
+
+- pnpm --dir apps/desktop-tauri run test:release-version
+  Result: 3 passed, 0 failed.
+- pnpm --dir apps/desktop-tauri run test:update-manifest
+  Result: 10 passed, 0 failed.
+- node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.3.3
+  Result: verify-release-version: yourbuddy-v0.3.3.
+- cargo check --locked --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml
+  Result: exit 0 with pre-existing platform/dead-code warnings; no error.
+
+Final release preparation
+
+- git status --short --branch
+  Result before preparation: clean; branch two commits ahead of origin/master.
+- pnpm --dir apps/desktop-tauri run prepare:release
+  Result: compatible product sources and frozen lockfile ready for review and commit.
+- Product versions: DSH 0.1.2-rc.1; Harbor Evolution 0.9.2; Codex Auth 0.3.2; Better Sidebar 0.18.0; Context Doctor 0.7.2; Plugin Marketplace 0.3.1.
+- Upgrade result: no compatible DSH or product-plugin source update produced a tracked change.
+- Offline Store: 587 packages installed from the frozen lock; 54 product runtime peer links resolved to the bundled workspace.
+- Product smoke: 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed.
+- In-progress warnings: npm downloads were slow. @openai/codex and @anthropic-ai/claude-agent-sdk-darwin-arm64 each returned pnpm download error 23 once; bounded retries succeeded.
+- Final status: the complete second 0.3.3 preparation exited 0. Generated bundled resources remain ignored and are not release-source changes.
+
+Pull-request release-blocker recovery
+
+- Initial pull-request run: GitHub Actions run 34042773360.
+- Packaged Python Runtime failure: node24-linux-x64, node24-linux-arm64, node24-macos-arm64, and node24-win-x64 stopped at profile fallback discovery with ENOENT for /yourbuddy/node_modules/react/package.json.
+- Cause: pkg exposed an optional peer candidate path in its virtual filesystem without embedding the package.json bytes. The traversal recorded the candidate before proving the manifest readable.
+- Fix: read each resolved dependency manifest before recording it; skip only ENOENT at the optional dependency read and preserve all other errors.
+- Windows snapshot recovery: pwsh-tool-turn and persistent-pwsh-tool-turn now include the current permission preset, sandbox mode, approval policy, and runtime-context snapshot observed by Windows CI.
+- ACP snapshot investigation: seven stdout streams initially retained a setup-time config_option_update observed locally; the next CI host did not emit it, exposing a session-activation ordering race rather than a stable protocol event.
+
+Focused release-blocker checks
+
+- pnpm exec vitest run --coverage --coverage.include=packages/boot/app-boot/src/profile.ts packages/boot/app-boot/tests/profile.spec.ts
+  Result: 40 passed; 100% statements, branches, functions, and lines for profile.ts.
+- pnpm exec vitest run --config vitest.snapshot.config.ts snapshots/acp/acp.snapshot.ts
+  Result: 15 passed.
+- Complete keyless refresh/replay evidence
+  Result: 113 passed, 2 skipped. The two skipped scenarios require pwsh, which is absent on this macOS host; their expected logs came from the Windows CI diff and remain pending the new Windows run.
+- pnpm run doc-sync
+  Result: 32 passed, 0 failed, 0 skipped.
+- pnpm run lint
+  Result: exit 0.
+
+Release-shaped Python Runtime smoke
+
+- DSH_BUILD_CLIENT_PROFILE=official pnpm exec tsx scripts/build-exe-for-python-sdk.ts --targets=node24-macos-arm64
+  Result: generated Node 24.20.0 macOS arm64 executable (249.6 MB), rg helper (4.3 MB), and spawn helper.
+- python3 scripts/build-python-release.py --package sdk --output-dir dist-python
+  Result: deepseek_harness_sdk-0.1.2rc1-py3-none-any.whl.
+- python3 scripts/build-python-release.py --package runtime --platform macos-arm64 --runtime-exe <generated executable> --output-dir dist-python
+  Result: deepseek_harness_runtime_bin-0.1.2rc1-py3-none-macosx_14_0_arm64.whl (71 MB).
+- Clean virtual-environment installation of both wheels
+  Result: installed with runtime and SDK dependencies resolved.
+- smoke-python-runtime.py --scenario all --installed-wheel
+  Result: smoke-python-runtime: all passed.
+
+Local failure and recovery boundaries
+
+- A first full snapshot run was launched concurrently with coverage and inherited this terminal's proxy variables. Undici experimental-proxy warnings polluted subprocess stderr, and shared execution produced non-product mismatches. A serial run with the test process's terminal proxy variables cleared passed the Headless suite; the focused ACP replay passed after refreshing its seven expected outputs.
+- The pkg builder deliberately deployed a production/hoisted dependency closure. The first subsequent doc-sync and lint invocations stopped before their gates because pnpm refused to purge that layout without a TTY. CI=true pnpm install --frozen-lockfile restored the development dependency layout; doc-sync and lint then passed.
+- Local packaged execution covers macOS arm64 only. Linux and Windows packaged runtimes plus real pwsh execution remain pending the new pull-request CI run.
+
+Second pull-request run and PowerShell recovery
+
+- GitHub Actions run 34044513110 built and installed the Runtime wheels on Linux x64, Linux arm64, macOS arm64, and Windows x64. Every carrier reached `smoke-python-runtime: all passed` before entering a paid-provider preflight.
+- The carrier workflow omitted the official-repository condition already owned by the real-API design. In this independent YourBuddy repository, the optional `DEEPSEEK_API_KEY_EXTERNAL` secret was empty and the four otherwise-passing carrier jobs failed at that preflight.
+- Commit 7fbbd8223ad2225a27ba029d982dbf37cce4acbe restricts both preflight and live provider steps to `deepseek-harness/deepseek-harness`; that official repository still fails loud if its expected secret is absent. Other repositories continue to run the complete keyless carrier smoke without requiring a billable secret.
+- Homebrew PowerShell 7.6.5 was installed on the local macOS host. A focused refresh and a separate replay of `pwsh-tool-turn|persistent-pwsh-tool-turn`, with terminal proxy variables removed from the test process, each reported 2 passed and 113 skipped by the explicit filter.
+- The first focused command placed its test filter after an extra argument separator, so it launched all snapshot scenarios and generated unrelated fixture edits before stderr assertions failed on inherited proxy warnings. Those known generated changes were restored individually; only the two focused PowerShell scenario files remain in commit 7fbbd8223a.
+- `pnpm run doc-sync` initially rejected the intentionally changed bilingual Agent Note until its reviewed pair record was refreshed. The second complete run reported 32 passed, 0 failed, and 0 skipped.
+- Pull-request run 34044513110 also had an unrelated Coverage timing failure in `terminal-bash` (`stdin_read` expected, `inferred_idle` observed) after 16,397 tests passed. It is retained as a failed result; the next run determines whether the nondeterministic symptom repeats.
+
+Third pull-request run and deterministic protocol recovery
+
+- GitHub Actions run 34046132810 completed all four release-shaped Runtime carriers successfully after the repository-scope fix. Static, Windows build and observational gates, Wine, Python SDK, Node 22.19, Node 24.9, Node 26, and the carrier plan also passed.
+- The snapshot lane failed because the seven ACP recordings did not emit the locally observed config_option_update before the session/new response. The active-session map exposed a session before option discovery and persistence completed, so provider activation timing decided whether the redundant notification preceded the response.
+- Commit 31cc5b26f9db3885b487c7343b4c9df0a710bf41 keeps new and resumed sessions private until a topology-stable option state is ready. Topology changes during discovery or initial persistence force another read; changes after activation still publish complete updates.
+- ACP package validation passed 141 tests with 100% statements, branches, functions, and lines. The bridge suite passed 55 tests, and the 15-scenario ACP replay passed twice after a refresh removed only the seven pre-response notifications.
+- The Coverage lane repeated the real-shell readiness classification race: a usable PowerShell session settled through the documented inferred_idle fallback before Linux published exact stdin_read evidence. The same lane also rejected the two refreshed PowerShell recordings because their sourceEventSeqs had not passed through the canonical fixture migration.
+- Commit 42560389464df9243ead52b81c6552a16f5675b7 asserts the real-shell usability result rather than one timing-dependent readiness tier and applies the repository's packed-session migration to exactly those two recordings.
+- The focused real PowerShell scenario passed three times after the assertion change. The canonical fixture-layout suite passed 8 tests. Typecheck, lint, and the 32 documentation gates passed after the ACP fix.
+
+Fourth pull-request run and cross-host test recovery
+
+- GitHub Actions run 34047565623 again completed all four release-shaped Runtime carrier smokes. Static, Node 22.19, Node 24.9, Node 26, Python SDK, Windows native/build/Wine/observational, and the carrier plan also passed before the remaining jobs completed.
+- The snapshot job persisted `clientTimeZone: UTC` on the Linux runner while 12 established Web recordings expect `Asia/Shanghai`. The shared English browser context now pins the historical snapshot timezone, leaving explicitly zoned scenarios to own their own context.
+- The Coverage job passed 16,399 tests before the Client Console integration probe ran ahead of one DevTools session's asynchronous enable frame. A Client Runtime roundtrip on each ordered WebSocket now proves those enable frames were processed before the independently carried log probe.
+- Under `TZ=UTC`, the 12 browser files that failed in CI passed 65 tests with 2 scenario skips and no expected-output edits.
+- The complete Inspector integration file passed 10 tests. The formerly racing Console scenario then passed four additional focused invocations without retries.
+- `pnpm run typecheck`, `pnpm run lint:contracts-ready`, the 1,181-pair translation check, and `pnpm run doc-sync` all passed; doc-sync reported 32 passed, 0 failed, and 0 skipped.
+- The complete local `test:web:ci` wrapper could not reach the timezone-sensitive files because its HMR preflight hit a Node 22.22.2 `import-without-cache` loader error. This failed local result is retained. The same HMR scenario passed under CI's Node 24 in run 34047565623; the affected 12 files were therefore run directly under UTC rather than treating the wrapper failure as a product pass.
+
+Publication boundary
+
+- No 0.3.3 tag, GitHub Release, installer, updater channel, verification ZIP, or website deployment had been created when this record was written.
+- Final public artifacts, their hashes, installed behavior, website deployment, and live download journey require separate post-publication evidence.
+
+Fifth pull-request run and final local recovery
+
+- GitHub Actions run 34049354876 completed all four release-shaped Runtime carrier smokes, static checks, Node 22.19, Node 24.9, Node 26, Python SDK, Windows build, Windows coverage, Wine, and Windows observational checks successfully.
+- The browser-timezone and Inspector Console paths fixed after run 34047565623 passed in their owning lanes.
+- The snapshot lane then failed two cascading workflow tests because the live member became navigable before the child prompt persistence flush completed. Commit 48f1bee6a602a57357780a767ae4d97940c1bac4 waits for that durability checkpoint before opening the child through an independently transported Client view.
+- The coverage lane passed 16,399 tests before a real PowerShell startup returned an empty MOTD: Linux published exact stdin-wait evidence before the controlled prompt arrived. Commit 207d54af0f83366a299b270c9f75d7bca4e05d41 requires both observations, preserves split prompt evidence across empty follow-up sends, and retains the latest non-empty startup message.
+- The Windows native-test job reported 38 passed and 1 skipped across its visible files, then a Vitest worker exited unexpectedly. The job remains recorded as failed; the next clean run is required rather than relabelling its visible assertions as a pass.
+
+Final focused validation at 207d54af0f83366a299b270c9f75d7bca4e05d41
+
+- pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/workflow-run.e2e.ts
+  Result: 3 passed. Together with five preceding complete-file passes, the durable workflow file passed six complete local runs.
+- pnpm exec vitest run --config vitest.config.ts packages/terminal/terminal-bash/tests/index.spec.ts packages/terminal/terminal-bash/tests/session.spec.ts packages/terminal/terminal-bash/tests/local.spec.ts
+  Result: 77 passed, 1 skipped.
+- Eight consecutive focused invocations of the real `bootstraps a persistent pwsh` scenario
+  Result: every invocation passed; each opened a real PowerShell 7.6.5 PTY and required a non-empty `dsh> ` startup message.
+- pnpm exec vitest run --config vitest.config.ts packages/terminal/terminal-bash/tests/index.spec.ts
+  Result after the final deterministic race fixture: 18 passed.
+- pnpm run typecheck
+  Result: exit 0.
+- pnpm run lint
+  Result: exit 0.
+- pnpm run doc-sync
+  Result after the added exported-method parameter documentation: 32 passed, 0 failed, 0 skipped.
+- git diff --check
+  Result: exit 0 before both commits.
+
+Startup-test failure and recovery boundary
+
+- The first strict pwsh attempt required stdin readiness and the controlled prompt in the same send; it timed out when the prompt marker and printable tail crossed follow-up sends.
+- The next attempt retained prompt evidence but also retained the old silence timestamp, causing immediate inferred-idle retries that starved actual shell output. Resetting the silence clock while retaining only prompt evidence restored the bounded wait.
+- A detached baseline at 887745e9af4e267c343e7f996e2a68213d15cb99 confirmed that the existing idempotent bootstrap must retry after an empty settlement. The final implementation preserves that behavior while separating the last non-empty MOTD from the latest probe viewport.
+- These failed local iterations are not counted as passing evidence. Only the final unit, complete-package, and repeated real-pwsh results above validate the committed behavior.

@@ -362,6 +362,7 @@ describe('BashTerminalBackend startup rollback', () => {
     let sent: TerminalSendRequest | undefined
     const session = {
       motd: '',
+      hasControlledPromptReadiness: () => true,
       startSend: (request: TerminalSendRequest) => {
         sent = request
         return {
@@ -391,7 +392,7 @@ describe('BashTerminalBackend startup rollback', () => {
     expect(spawned?.env?.PROMPT_COMMAND).toBeUndefined()
   })
 
-  it('keeps waiting for stdin_read when the first settled output only echoes the prompt literal', async () => {
+  it('keeps waiting when stdin readiness and an echoed literal precede the controlled pwsh prompt', async () => {
     const ctx = new Context()
     await ctx.plugin(EmptySandbox)
     await ctx.plugin(SessionProjectionRegistry)
@@ -399,13 +400,13 @@ describe('BashTerminalBackend startup rollback', () => {
     const sends: TerminalSendRequest[] = []
     const session = {
       motd: '',
+      hasControlledPromptReadiness: () => sends.length === 3,
       startSend: (request: TerminalSendRequest) => {
         sends.push(request)
-        const second = sends.length > 1
         return {
           done: Promise.resolve({
-            viewport: second ? 'dsh> ' : "function prompt { 'dsh> ' }\n",
-            waitReason: second ? 'stdin_read' as const : 'inferred_idle' as const,
+            viewport: sends.length === 2 ? "function prompt { 'dsh> ' }\n" : sends.length === 3 ? 'dsh> ' : '',
+            waitReason: sends.length === 2 || sends.length === 3 ? 'inferred_idle' as const : 'stdin_read' as const,
             sessionStatus: { kind: 'running' as const }, truncated: false,
           }),
           readOutput: () => ({ delta: '', truncated: false }),
@@ -421,8 +422,11 @@ describe('BashTerminalBackend startup rollback', () => {
       () => session,
     )
     await backend.spawn(spec(agent(ctx)))
-    expect(sends).toHaveLength(2)
-    expect(sends[1]).toMatchObject({ text: '', submit: false })
+    expect(sends).toHaveLength(4)
+    expect(sends[0]).toMatchObject({ text: ENCODING_PREAMBLE + PWSH_PROMPT_SETUP, submit: true })
+    expect(sends[1]).toMatchObject({ text: ENCODING_PREAMBLE + PWSH_PROMPT_SETUP, submit: true })
+    expect(sends[2]).toMatchObject({ text: '', submit: false })
+    expect(sends[3]).toMatchObject({ text: '', submit: false })
     expect(session.motd).toBe('dsh> ')
   })
 
@@ -467,6 +471,7 @@ describe('BashTerminalBackend startup rollback', () => {
       let closes = 0
       const session = {
         motd: '',
+        hasControlledPromptReadiness: () => false,
         startSend: () => {
           sends += 1
           return {
@@ -512,6 +517,7 @@ describe('BashTerminalBackend startup rollback', () => {
     const sends: TerminalSendRequest[] = []
     const session = {
       motd: '',
+      hasControlledPromptReadiness: () => true,
       startSend: (request: TerminalSendRequest) => {
         sends.push(request)
         return {

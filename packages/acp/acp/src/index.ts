@@ -102,6 +102,7 @@ export function apply(ctx: Context, config: AcpConfig): void {
   const sessionListPageSize = resolveSessionListPageSize(config.sessionListPageSize)
   const sessions = new Map<SessionId, AcpSession>()
   const activating = new Set<SessionId>()
+  let topologyRevision = 0
   let closed = false
   let imagePromptEnabled = false
 
@@ -146,8 +147,24 @@ export function apply(ctx: Context, config: AcpConfig): void {
   })
 
   ctx.on('llm/adapters-updated', () => {
+    topologyRevision += 1
     for (const record of sessions.values()) record.topologyChanged()
   })
+
+  /** Read one option state that includes every topology commit observed during discovery. */
+  const stableConfigOptions = async (
+    record: AcpSession,
+    signal: AbortSignal,
+  ): Promise<{
+    configOptions: NonNullable<NewSessionResponse['configOptions']>
+    revision: number
+  }> => {
+    while (true) {
+      const revision = topologyRevision
+      const configOptions = await record.configOptions(signal)
+      if (revision === topologyRevision) return { configOptions, revision }
+    }
+  }
 
   // Permission requests are a machine policy channel for ACP clients such as
   // dsh-subagent-acp. The bridge offers one-shot choices only and never infers a
@@ -221,13 +238,16 @@ export function apply(ctx: Context, config: AcpConfig): void {
         await record.close('connection closed during session/new')
         throw internalError('connection closed during session/new')
       }
-      sessions.set(sessionId, record)
       try {
-        const configOptions = await record.configOptions(signal)
-        assertOpen()
+        let discovered = await stableConfigOptions(record, signal)
         await persistence.ensureMaterialized(record.agent.session)
         assertOpen()
-        return { sessionId, configOptions }
+        if (discovered.revision !== topologyRevision) {
+          discovered = await stableConfigOptions(record, signal)
+        }
+        assertOpen()
+        sessions.set(sessionId, record)
+        return { sessionId, configOptions: discovered.configOptions }
       } catch (error: unknown) {
         sessions.delete(sessionId)
         await record.close('session/new activation failed')
@@ -277,9 +297,11 @@ export function apply(ctx: Context, config: AcpConfig): void {
           await record.close('connection closed during session/resume')
           throw internalError('connection closed during session/resume')
         }
-        sessions.set(sessionId, record)
         try {
-          return { configOptions: await record.configOptions(signal) }
+          const { configOptions } = await stableConfigOptions(record, signal)
+          assertOpen()
+          sessions.set(sessionId, record)
+          return { configOptions }
         } catch (error: unknown) {
           sessions.delete(sessionId)
           await record.close('session/resume option discovery failed')
