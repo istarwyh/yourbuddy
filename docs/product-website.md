@@ -19,6 +19,8 @@ Open `http://localhost:4174/`. Prose edits trigger projection; Hugo refreshes ho
 
 Public prose lives in [docs/user/product/](user/product/index.md); each page maintains English, Chinese, and a translation record. Homepage blocks read [home-data/zh.json](user/product/home-data/zh.json) and [home-data/en.json](user/product/home-data/en.json) in that directory; these own the short homepage copy. Register new pages in [product-pages.json](../website/product-pages.json), keeping repository-relative links in prose. Theme configuration and styles live in [website/product/](../website/product/); build output is not committed.
 
+Homepage presentation uses [project partials](../website/product/layouts/_partials/yourbuddy/) and [project styles](../website/product/assets/scss/_styles_project.scss). Section data supplies homepage HTML; searchable guides and their Markdown exports come from canonical repository prose. Maintain both languages together. Keep examples labeled, align their instructions with the getting-started guide, and preserve light and dark readability. Do not edit the cached theme module.
+
 ## Build and verify
 
 ```sh

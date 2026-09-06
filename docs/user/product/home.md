@@ -2,8 +2,10 @@
 
 English | [中文](home.zh.md)
 
-An AI workbench that works your way.
+Your AI buddy, right in your workspace.
 
-Choose a model, work in your own directory, inspect the results, and improve with evidence.
+Read documents, write files, and run tools. Choose your model, work on your own Mac, and inspect the files and changes along the way.
+
+macOS on Apple Silicon. The YourBuddy installer is pending; check download status before getting started.
 
 [Get started](start.md) · [Default plugins](plugins/index.md) · [Download status](download.md)

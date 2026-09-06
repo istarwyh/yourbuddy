@@ -50,8 +50,8 @@ params:
     from_year: 2026
   footer_center_info: ''
   ui:
-    theme_color: '#1e6858'
-    theme_color_dark: '#85c9b1'
+    theme_color: '#2563eb'
+    theme_color_dark: '#bfdbfe'
     typography: system
     logo: icons/logo.svg
     footer_style: slim

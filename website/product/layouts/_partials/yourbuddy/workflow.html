@@ -1,0 +1,11 @@
+<section class="yb-workflow yb-container" id="{{ .id }}" aria-labelledby="{{ .id }}-title">
+  <h2 id="{{ .id }}-title">{{ .data.title }}</h2>
+  <div class="yb-workflow-items">
+    {{ range .data.items }}
+    <article>
+      <h3><a href="{{ .url | relLangURL }}">{{ .title }} <span aria-hidden="true">↗</span></a></h3>
+      <p>{{ .desc }}</p>
+    </article>
+    {{ end }}
+  </div>
+</section>

@@ -20,6 +20,8 @@ The [September website content plan](../../../../docs/show/202609/README.md) con
 
 The [OINK product website](../../../../docs/product-website.md) publishes a bilingual product allowlist from canonical repository prose. It keeps the SDK VitePress projection independently usable, pins the theme and compiler, and treats public installer availability as verified release evidence rather than a source-version inference. The product site emits local search and machine-readable pages from the same content.
 
+The homepage explains the product through a labeled file-creation example from the getting-started guide. Neutral surfaces, readable system typography, and the Y8 blue keep attention on tasks and results. Community plugins appear as a list with selection reasons. Project-owned partials render homepage data; canonical guides retain the searchable instructions and text exports. Examples do not claim to be executed sessions.
+
 GitHub Pages hosts the product website so publication follows the same reviewed source as the repository. The [website workflow](../../../../.github/workflows/product-site.yml) builds with the Pages-provided base URL and checks the artifact before a separate, narrowly permissioned job deploys it from `master`. Pull requests produce previews; branch-level serialization prevents overlapping deployments. Source and artifact checks cover the project subpath, and live browser acceptance covers bilingual navigation, search, and assets.
 
 ## Alternatives considered

@@ -19,6 +19,8 @@ pnpm website:dev
 
 公开正文位于 [docs/user/product/](user/product/index.zh.md)，每页维护英文、中文和翻译记录。首页区块由同目录下的 [home-data/zh.json](user/product/home-data/zh.json) 与 [home-data/en.json](user/product/home-data/en.json) 提供；这是首页短文案的来源。新增页面登记到 [product-pages.json](../website/product-pages.json)，正文继续使用仓库相对链接。主题配置与样式位于 [website/product/](../website/product/)，构建生成物不入库。
 
+首页呈现由[项目模板](../website/product/layouts/_partials/yourbuddy/)与[项目样式](../website/product/assets/scss/_styles_project.scss)负责。区块数据供应首页 HTML，可搜索的指南及其 Markdown 导出来自仓库正文。双语内容一起维护；任务示例须明确标注，并与入门指南保持一致；浅色和深色均须清晰可读。不要编辑缓存中的主题模块。
+
 ## 构建与验证
 
 ```sh

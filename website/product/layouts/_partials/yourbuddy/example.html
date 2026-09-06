@@ -1,0 +1,20 @@
+<section class="yb-example yb-container" id="{{ .id }}" aria-labelledby="{{ .id }}-title">
+  <div class="yb-section-intro">
+    <h2 id="{{ .id }}-title">{{ .data.title }}</h2>
+    <p>{{ .data.desc }}</p>
+  </div>
+  <div class="yb-example-content">
+    {{ with index .data.items 0 }}
+    <div class="yb-request">
+      <h3>{{ .title }}</h3>
+      <blockquote><p>{{ .desc }}</p></blockquote>
+    </div>
+    {{ end }}
+    <ol class="yb-steps">
+      {{ range after 1 .data.items }}
+      <li><h3>{{ .title }}</h3><p>{{ .desc }}</p></li>
+      {{ end }}
+    </ol>
+  </div>
+  <a class="yb-text-link" href="{{ .data.url | relLangURL }}">{{ .data.link_label }} <span aria-hidden="true">↗</span></a>
+</section>

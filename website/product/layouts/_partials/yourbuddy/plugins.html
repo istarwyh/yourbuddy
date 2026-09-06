@@ -1,0 +1,12 @@
+<section class="yb-plugins yb-container" id="{{ .id }}" aria-labelledby="{{ .id }}-title">
+  <div class="yb-section-intro">
+    <h2 id="{{ .id }}-title">{{ .data.title }}</h2>
+    <p>{{ .data.desc }}</p>
+    <a class="yb-text-link" href="{{ .data.url | relLangURL }}">{{ .data.link_label }} <span aria-hidden="true">↗</span></a>
+  </div>
+  <ul class="yb-plugin-list">
+    {{ range .data.items }}
+    <li><a href="{{ .url | relLangURL }}"><h3>{{ .title }}</h3><p>{{ .desc }}</p><span aria-hidden="true">↗</span></a></li>
+    {{ end }}
+  </ul>
+</section>
