@@ -1,7 +1,6 @@
 import { d as decodeCodexNativeCheckpoint, g as isPlainJsonTree, m as isCodexNativeReplayRuntimeCompatible, p as hashCodexAccountIdentity, t as CODEX_NATIVE_CHECKPOINT_BLOCK_TYPE, u as codexNativeCheckpointCompatibilityDigest } from "./native-checkpoint-BGT6whVM.js";
 import { n as codexTurnStateContinuity, t as codexNativeCompactionCoordinator } from "./native-compaction-DO9ObxWA.js";
 import z from "@deepseek-ai/schemastery";
-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { open, readFile, stat } from "node:fs/promises";
@@ -204,7 +203,7 @@ async function writeAuthFile(path, file) {
 //#endregion
 //#region src/codex-context.ts
 /** Durable settings namespace for Codex LLM route preferences. */
-const CODEX_LLM_SETTINGS_NAMESPACE = settingsNamespace("codex-llm");
+const CODEX_LLM_SETTINGS_NAMESPACE = "codex-llm";
 /** Explicit opt-in budget matching Codex's documented one-million-token configuration. */
 const CODEX_LONG_CONTEXT_WINDOW = 1e6;
 const LONG_CONTEXT_MODEL_IDS = /* @__PURE__ */ new Set([

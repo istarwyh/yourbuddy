@@ -19,7 +19,7 @@
     "test:update-manifest": "node --test scripts/generate-updater-manifest.test.mjs",
     "test:release-version": "node --test scripts/verify-release-version.test.mjs",
     "test:bundle": "node --test scripts/bundle-harness-source.test.mjs",
-    "test:product-refresh": "node --test scripts/desktop-lifecycle-bridge.test.mjs scripts/node-extra-ca.test.mjs scripts/product-plugin-compatibility.test.mjs scripts/refresh-product-plugins.test.mjs scripts/sync-product-plugin.test.mjs scripts/verify-product-release.test.mjs",
+    "test:product-refresh": "node --test scripts/codex-auth-settings-section.test.mjs scripts/desktop-lifecycle-bridge.test.mjs scripts/node-extra-ca.test.mjs scripts/product-plugin-compatibility.test.mjs scripts/refresh-product-plugins.test.mjs scripts/sync-product-plugin.test.mjs scripts/verify-product-release.test.mjs",
     "test:prepare-release": "node --test scripts/dsh-release-policy.test.mjs scripts/prepare-release.test.mjs scripts/sync-dsh-upstream.test.mjs",
     "test:offline": "node --test scripts/prepare-harness-offline-store.test.mjs scripts/prepare-managed-toolchain.test.mjs scripts/prepare-yourharness-runtime.test.mjs",
     "test:overlay": "node --test overlay/desktop-notify/index.test.mjs",

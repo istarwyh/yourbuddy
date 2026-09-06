@@ -32,9 +32,10 @@
     "Set @deepseek-ai/dsh-token-meter peer range from 0.1.1-rc.2 to 0.1.2-rc.1.",
     "Set @deepseek-ai/dsh-tools peer range from ^0.1.1-rc.1 to 0.1.2-rc.1.",
     "Set @deepseek-ai/dsh-web peer range from ^0.1.1-rc.1 to 0.1.2-rc.1.",
-    "Remove obsolete @deepseek-ai/dsh-client-runtime Client injection."
+    "Remove obsolete @deepseek-ai/dsh-client-runtime Client injection.",
+    "Register Codex LLM, Search, and Image settings through the DSH 0.1.2 settings service and use literal namespace ids."
   ],
   "repository": "https://github.com/suntianc/dsh-codex-auth",
   "license": "MIT",
-  "treeSha256": "04612a746911e98079544482e535c6e261ba649d32360a6b65755fb84af7e60b"
+  "treeSha256": "9f39cc5b2ee726af1da125cbd1d96e7c863919d4778d7d1754b0ad52e945d357"
 }

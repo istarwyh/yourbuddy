@@ -1,6 +1,6 @@
 import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
 import z from "@deepseek-ai/schemastery";
-import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
+import { installSettingsSection } from "./settings-section.js";
 import { basename } from "node:path";
 import { HarnessError } from "@deepseek-ai/dsh-llm";
 //#region src/image.ts
@@ -9,7 +9,7 @@ const GENERATE_IMAGE_TOOL_NAME = "generate_image";
 const LIST_IMAGES_TOOL_NAME = "list_images";
 const CODEX_IMAGE_GENERATION_ENDPOINT = "https://chatgpt.com/backend-api/codex/images/generations";
 const CODEX_IMAGE_EDIT_ENDPOINT = "https://chatgpt.com/backend-api/codex/images/edits";
-const CODEX_IMAGE_SETTINGS_NAMESPACE = settingsNamespace("codex-image");
+const CODEX_IMAGE_SETTINGS_NAMESPACE = "codex-image";
 const IMAGE_ORIGINS = [
 	"all",
 	"generated",

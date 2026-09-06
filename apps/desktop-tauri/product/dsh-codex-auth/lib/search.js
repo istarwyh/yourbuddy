@@ -1,6 +1,6 @@
 import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
 import z from "@deepseek-ai/schemastery";
-import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
+import { installSettingsSection } from "./settings-section.js";
 import { randomUUID } from "node:crypto";
 import { WebError } from "@deepseek-ai/dsh-web";
 //#region src/search.ts
@@ -9,7 +9,7 @@ import { WebError } from "@deepseek-ai/dsh-web";
 const CODEX_SEARCH_PROVIDER_ID = "codex";
 /** Official standalone search endpoint used by Codex 0.147.0. */
 const CODEX_SEARCH_ENDPOINT = "https://chatgpt.com/backend-api/codex/alpha/search";
-const CODEX_SEARCH_SETTINGS_NAMESPACE = settingsNamespace("codex-search");
+const CODEX_SEARCH_SETTINGS_NAMESPACE = "codex-search";
 const MAX_SEARCH_ATTEMPTS = 5;
 const MAX_SEARCH_RESPONSE_BYTES = 2097152;
 const DEFAULT_RETRY_BASE_DELAY_MS = 100;
