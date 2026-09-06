@@ -1,0 +1,73 @@
+YourBuddy 0.3.3 local validation record
+Date: 2026-09-06 21:30-23:34 UTC+08:00 (Asia/Shanghai)
+Release: intended yourbuddy-v0.3.3
+Fix commit: be8abfaedeb25f01632f1d50727be54e69d26d7e
+Version-preparation commit: 07b2440f5dd4b3c8fb5c02d44d4c52ed983c54a0
+Environment: macOS 15.6.1 (24G90) arm64; Node 22.22.2; pnpm 11.7.0; Rust 1.98.0
+Data: synthetic temporary workspaces and isolated application data
+Model/service: local dsh web Host and controlled browser only; no real model provider
+
+Installed application diagnosis
+
+- Public /Applications/YourBuddy.app 0.3.2 reproduced: dsh web authentication required; reopen the URL printed by dsh web.
+- Native boot.log still reported authenticated readiness passed and boot complete.
+- A localhost-parent negative control reproduced HTTP 401 while separate 127.0.0.1 ports passed with the strict cookie.
+- A release-mode arm64 binary with Tauri custom-protocol support was placed in a copy of the public 0.3.2 resources and ad-hoc signed.
+- The copied app used an isolated YOURBUDDY_APP_DATA_DIR, reported authenticated readiness and boot complete, and rendered the visible workspace in the native macOS WebView.
+- The temporary application, isolated data, and temporary screenshot were removed after inspection. No credential-bearing artifact was retained.
+- An intermediate SameSite=None; Secure cookie-copy trial still failed in macOS WebKit and was replaced by the same-site loopback shell design.
+
+Focused fix checks
+
+- cargo test --locked desktop_shell::tests
+  Result: 2 passed, 0 failed.
+- cargo test --locked chrome::tests
+  Result: 4 passed, 0 failed.
+- cargo test --locked runtime::supervisor::tests
+  Result: 13 passed, 0 failed.
+- pnpm --dir apps/desktop-tauri run test:product-refresh
+  Result: 41 passed, 0 failed.
+- pnpm run test:docs
+  Result: 15 passed, 0 failed, 0 skipped.
+- pnpm run doc-sync
+  Result: 32 passed, 0 failed, 0 skipped.
+- pnpm run lint
+  Result: exit 0.
+- HUGO_BIN=/private/tmp/yourbuddy-hugo-0.165.0/expanded/Payload/hugo PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/ pnpm website:check
+  Result: 70 projection tests passed; Hugo built 59 Chinese and 57 English pages; 57 product HTML pages passed local link, asset, fragment, and source-action checks.
+- git diff --check
+  Result: exit 0.
+
+Website check recovery
+
+- The first website check passed all 70 projection tests, then stopped because Hugo was absent from the default PATH.
+- The same command was rerun with the previously checksum-verified official Hugo Extended 0.165.0 macOS arm64 binary through the documented HUGO_BIN setting; the strict build and validation passed.
+
+0.3.3 version checks
+
+- pnpm --dir apps/desktop-tauri run test:release-version
+  Result: 3 passed, 0 failed.
+- pnpm --dir apps/desktop-tauri run test:update-manifest
+  Result: 10 passed, 0 failed.
+- node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.3.3
+  Result: verify-release-version: yourbuddy-v0.3.3.
+- cargo check --locked --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml
+  Result: exit 0 with pre-existing platform/dead-code warnings; no error.
+
+Final release preparation
+
+- git status --short --branch
+  Result before preparation: clean; branch two commits ahead of origin/master.
+- pnpm --dir apps/desktop-tauri run prepare:release
+  Result: compatible product sources and frozen lockfile ready for review and commit.
+- Product versions: DSH 0.1.2-rc.1; Harbor Evolution 0.9.2; Codex Auth 0.3.2; Better Sidebar 0.18.0; Context Doctor 0.7.2; Plugin Marketplace 0.3.1.
+- Upgrade result: no compatible DSH or product-plugin source update produced a tracked change.
+- Offline Store: 587 packages installed from the frozen lock; 54 product runtime peer links resolved to the bundled workspace.
+- Product smoke: 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed.
+- In-progress warnings: npm downloads were slow. @openai/codex and @anthropic-ai/claude-agent-sdk-darwin-arm64 each returned pnpm download error 23 once; bounded retries succeeded.
+- Final status: the complete second 0.3.3 preparation exited 0. Generated bundled resources remain ignored and are not release-source changes.
+
+Publication boundary
+
+- No 0.3.3 tag, GitHub Release, installer, updater channel, verification ZIP, or website deployment had been created when this record was written.
+- Final public artifacts, their hashes, installed behavior, website deployment, and live download journey require separate post-publication evidence.
