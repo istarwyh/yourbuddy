@@ -4,8 +4,8 @@
 
 - 发布标识：`yourbuddy-v0.3.3`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：候选发布版本；本地源码与受控安装包验证已完成，公开产物待验证
-- 已验证源码 Commit：[`07b2440f5dd4b3c8fb5c02d44d4c52ed983c54a0`](https://github.com/istarwyh/yourbuddy/commit/07b2440f5dd4b3c8fb5c02d44d4c52ed983c54a0)
+- 归档状态：候选发布版本；本地源码、受控安装包与发布形态 macOS Runtime 验证已完成，公开产物待验证
+- 已验证源码 Commit：[`6b47dfd95ebd852d922fb5f915a3b00bf1b05aff`](https://github.com/istarwyh/yourbuddy/commit/6b47dfd95ebd852d922fb5f915a3b00bf1b05aff)
 - 证据图集：等待正式公开安装包成功启动后补充
 - 证据下载：等待发布 `yourbuddy-v0.3.3-verification.zip`
 
@@ -42,6 +42,7 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 | 公开 0.3.2 失败与修复后的安装包路径 | passed | 公开 0.3.2 资源与本地 Release-mode 修复 | macOS 15.6.1 arm64、原生 WebKit | [本地记录](evidence/local-validation.txt) |
 | 0.3.3 发布准备与产品 Smoke | passed | 源码 `07b2440f5d...` | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地记录](evidence/local-validation.txt) |
 | 版本、Updater、Rust、桌面、文档与官网检查 | passed | 源码 `07b2440f5d...` | macOS 15.6.1 arm64、Rust 1.98.0、Hugo Extended 0.165.0 | [本地记录](evidence/local-validation.txt) |
+| 打包 Runtime 与快照发布阻断项 | 本地 passed；CI 重跑待完成 | 源码 `6b47dfd95e...`、Node 24 macOS 可执行文件与安装后 Wheel | macOS 15.6.1 arm64、Python 3.11.4 | [本地记录](evidence/local-validation.txt) |
 | 公开安装包、更新通道、验证 ZIP 与官网 | not verified | 尚未发布 | GitHub Release 与 Pages | 待补充 |
 
 ## 场景：安装版桌面认证
@@ -117,6 +118,43 @@ YourBuddy 启动时会自动应用本修复。它不会增加设置项，也不�
 
 这些是源码、生成资源和受控浏览器检查，不能证明 GitHub 已构建或发布最终 DMG 与 Updater 文件。
 
+## 场景：打包 Runtime 与快照发布阻断项
+
+- 状态：本地 passed；跨平台 CI 重跑待完成
+- 日期与时间：2026-09-06 23:35-2026-09-07 00:06 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.3`；发布阻断项修复 `6b47dfd95ebd852d922fb5f915a3b00bf1b05aff`
+- 受测构建：源码 Profile 遍历、生成的 Node 24.20.0 macOS arm64 单文件可执行程序，以及本地构建后安装到全新虚拟环境的 SDK 与 Runtime Wheel
+- 环境：macOS 15.6.1 arm64、构建宿主 Node 22.22.2、pnpm 11.7.0、目标 Node 24.20.0、Python 3.11.4
+- 证据来源：Pull Request 11 首轮 CI 与本次发布实测
+- 数据：合成快照 Fixture 与临时 Python SDK 工作区
+- 模型或服务：录制的无密钥模型响应与本地 Host 进程；未使用真实模型供应商
+
+### 操作步骤
+
+1. 检查首轮 Pull Request CI 失败，把发布形态 Python Runtime 崩溃定位到 pkg 暴露了虚拟依赖路径、但可选 peer manifest 字节并未嵌入的情况。
+2. 调整后备遍历：只有读取 manifest 后才记录已解析依赖，同时保持错误元数据为致命失败；更新过期的 PowerShell 策略录制与 ACP 模型配置选项输出。
+3. 运行带覆盖率的聚焦 Profile 测试、无密钥快照回放、双语文档门禁、Lint 与 Node 24 macOS 单文件可执行程序构建。
+4. 构建 SDK 与 Runtime Wheel，把两者安装进全新虚拟环境，并运行全部安装后 Wheel 无密钥黑盒场景。
+
+### 预期结果
+
+未嵌入 pkg 可执行文件的可选 peer 保持不可用，但不会阻止启动；错误的已安装 manifest 仍会失败；录制的协议输出与当前权限及模型选择事件一致。
+
+### 实际结果
+
+40 项聚焦 Profile 测试全部通过，语句、分支、函数和行覆盖率均为 100%。ACP 回放通过 15 项测试。完整无密钥刷新通过 113 项测试；由于本机没有 `pwsh`，两项 PowerShell 场景跳过，其期望录制依据 Windows CI 输出更新。生成的 macOS arm64 可执行程序为 249.6 MB，随后成功生成可安装 Wheel，`smoke-python-runtime.py --scenario all --installed-wheel` 报告全部通过。
+
+### 证据
+
+- 操作前：首轮 Pull Request CI 的四个打包 Python Runtime 目标都因未嵌入的可选 peer manifest 报 `ENOENT`；Windows 还暴露两项过期 PowerShell 录制。
+- 执行中：pkg 构建在构造可执行文件时报告缺少可选 Client peer，实际覆盖了受影响的 Package 发现条件。
+- 结果：命令、目标版本、测试数量与安装后 Wheel 输出见[本地记录](evidence/local-validation.txt)。
+- 失败与恢复：第一次本地快照运行与覆盖率共享资源，并继承终端代理变量，Undici 警告污染了子进程 stderr；可靠的串行回放只清除了测试进程的终端代理变量。pkg 构建还留下生产形态依赖链接，第一次 Lint 与文档运行停在 pnpm 无 TTY 清理保护；通过 Frozen Lockfile 恢复开发依赖后，两项检查均通过。
+
+### 范围限制
+
+本地打包 Smoke 只覆盖 macOS arm64。Linux x64、Linux arm64、Windows x64 与两项 PowerShell 录制需要由新一轮 CI 验证，不能根据本地结果宣称通过。
+
 ## 场景：公开产品交付
 
 - 状态：not verified
@@ -156,7 +194,7 @@ Tag 发布前尚未验证。本节必须根据观察到的公开产物和安装�
 ## 交付状态
 
 - 产品发布状态：待发布；尚未验证 `yourbuddy-v0.3.3` Release 或稳定 Updater 条目。
-- 验证资料归档状态：部分完成；已有本地证据，公开产物记录、安装产品截图、验证资料下载与重新解压仍待补充。
+- 验证资料归档状态：部分完成；已有本地认证与发布形态 macOS Runtime 证据，公开产物记录、安装产品截图、验证资料下载与重新解压仍待补充。
 - 站点同步状态：待同步；已经准备候选版本与 0.3.2 缺陷说明，但必须在公开产物通过独立验证后才能宣传 0.3.3 可用。
 - 未验证范围：最终公开 DMG 安装、Updater 安装、验证 ZIP、线上官网、Windows、WSL、Intel macOS、OAuth、真实模型调用、企业代理/CA、Apple Developer 签名与公证。
 
@@ -168,6 +206,7 @@ Tag 发布前尚未验证。本节必须根据观察到的公开产物和安装�
 - [x] 每个已完成场景记录日期、时区、Commit、环境、受测构建、证据来源、数据类型及模型或服务类型。
 - [x] 操作步骤、预期结果、实际结果、状态和范围限制符合实际观察。
 - [x] 明确标记仅测源码、受控副本、失败、恢复与未验证证据。
+- [x] 发布形态 macOS Runtime 与全新环境安装后 Wheel 黑盒路径已在本地通过；其他目标平台仍由 CI 验证。
 - [x] 只跟踪经过脱敏的文本证据；未包含凭据、个人信息、私有内容或敏感原图。
 - [x] 已在双语版本索引添加发布条目，并在本地检查相对链接。
 - [ ] 已下载、解压并成功打开公开验证 ZIP。

@@ -1,8 +1,9 @@
 YourBuddy 0.3.3 local validation record
-Date: 2026-09-06 21:30-23:34 UTC+08:00 (Asia/Shanghai)
+Date: 2026-09-06 21:30-2026-09-07 00:06 UTC+08:00 (Asia/Shanghai)
 Release: intended yourbuddy-v0.3.3
 Fix commit: be8abfaedeb25f01632f1d50727be54e69d26d7e
 Version-preparation commit: 07b2440f5dd4b3c8fb5c02d44d4c52ed983c54a0
+Release-blocker fix commit: 6b47dfd95ebd852d922fb5f915a3b00bf1b05aff
 Environment: macOS 15.6.1 (24G90) arm64; Node 22.22.2; pnpm 11.7.0; Rust 1.98.0
 Data: synthetic temporary workspaces and isolated application data
 Model/service: local dsh web Host and controlled browser only; no real model provider
@@ -66,6 +67,47 @@ Final release preparation
 - Product smoke: 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed.
 - In-progress warnings: npm downloads were slow. @openai/codex and @anthropic-ai/claude-agent-sdk-darwin-arm64 each returned pnpm download error 23 once; bounded retries succeeded.
 - Final status: the complete second 0.3.3 preparation exited 0. Generated bundled resources remain ignored and are not release-source changes.
+
+Pull-request release-blocker recovery
+
+- Initial pull-request run: GitHub Actions run 34042773360.
+- Packaged Python Runtime failure: node24-linux-x64, node24-linux-arm64, node24-macos-arm64, and node24-win-x64 stopped at profile fallback discovery with ENOENT for /yourbuddy/node_modules/react/package.json.
+- Cause: pkg exposed an optional peer candidate path in its virtual filesystem without embedding the package.json bytes. The traversal recorded the candidate before proving the manifest readable.
+- Fix: read each resolved dependency manifest before recording it; skip only ENOENT at the optional dependency read and preserve all other errors.
+- Windows snapshot recovery: pwsh-tool-turn and persistent-pwsh-tool-turn now include the current permission preset, sandbox mode, approval policy, and runtime-context snapshot observed by Windows CI.
+- ACP snapshot recovery: seven expected stdout streams now retain the current model config_option_update emitted during ACP session setup.
+
+Focused release-blocker checks
+
+- pnpm exec vitest run --coverage --coverage.include=packages/boot/app-boot/src/profile.ts packages/boot/app-boot/tests/profile.spec.ts
+  Result: 40 passed; 100% statements, branches, functions, and lines for profile.ts.
+- pnpm exec vitest run --config vitest.snapshot.config.ts snapshots/acp/acp.snapshot.ts
+  Result: 15 passed.
+- Complete keyless refresh/replay evidence
+  Result: 113 passed, 2 skipped. The two skipped scenarios require pwsh, which is absent on this macOS host; their expected logs came from the Windows CI diff and remain pending the new Windows run.
+- pnpm run doc-sync
+  Result: 32 passed, 0 failed, 0 skipped.
+- pnpm run lint
+  Result: exit 0.
+
+Release-shaped Python Runtime smoke
+
+- DSH_BUILD_CLIENT_PROFILE=official pnpm exec tsx scripts/build-exe-for-python-sdk.ts --targets=node24-macos-arm64
+  Result: generated Node 24.20.0 macOS arm64 executable (249.6 MB), rg helper (4.3 MB), and spawn helper.
+- python3 scripts/build-python-release.py --package sdk --output-dir dist-python
+  Result: deepseek_harness_sdk-0.1.2rc1-py3-none-any.whl.
+- python3 scripts/build-python-release.py --package runtime --platform macos-arm64 --runtime-exe <generated executable> --output-dir dist-python
+  Result: deepseek_harness_runtime_bin-0.1.2rc1-py3-none-macosx_14_0_arm64.whl (71 MB).
+- Clean virtual-environment installation of both wheels
+  Result: installed with runtime and SDK dependencies resolved.
+- smoke-python-runtime.py --scenario all --installed-wheel
+  Result: smoke-python-runtime: all passed.
+
+Local failure and recovery boundaries
+
+- A first full snapshot run was launched concurrently with coverage and inherited this terminal's proxy variables. Undici experimental-proxy warnings polluted subprocess stderr, and shared execution produced non-product mismatches. A serial run with the test process's terminal proxy variables cleared passed the Headless suite; the focused ACP replay passed after refreshing its seven expected outputs.
+- The pkg builder deliberately deployed a production/hoisted dependency closure. The first subsequent doc-sync and lint invocations stopped before their gates because pnpm refused to purge that layout without a TTY. CI=true pnpm install --frozen-lockfile restored the development dependency layout; doc-sync and lint then passed.
+- Local packaged execution covers macOS arm64 only. Linux and Windows packaged runtimes plus real pwsh execution remain pending the new pull-request CI run.
 
 Publication boundary
 
