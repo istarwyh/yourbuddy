@@ -1,0 +1,66 @@
+YourBuddy 0.3.2 local release validation
+Date and time: 2026-09-06 18:23-18:38 UTC+08:00, Asia/Shanghai
+Validated source commit: b1e9d36fca62e064526689a412727f6c5dcbeb06
+Environment: macOS 15.6.1 arm64; Node 22.22.2; pnpm 11.7.0; Python 3.12.14 release runtime
+Data and services: public npm/GitHub package metadata and synthetic fixtures; no credentials, user data, private content, or real model-provider request
+
+Isolated preparation:
+- Root install: pnpm install --frozen-lockfile
+- Release preparation: pnpm --dir apps/desktop-tauri run prepare:release
+- Selected product refresh: dsh-context-doctor 0.7.0 -> 0.7.2, upstream commit 41d5c2e4bbe0611b7928c4007bb28545f7ace38f
+- Other product versions remained pinned: Harbor Evolution 0.9.2; Codex Auth 0.3.2; Better Sidebar 0.18.0; Plugin Marketplace 0.3.1; Personal Workbench 0.1.0; DSH 0.1.2-rc.1
+- Source bundle digest before Store attachment: 14813c477b525b8d0a3c9d794d8c1ddd928b0c9a70e992c69f0931f472f5f5c6
+- Frozen Store: 587 packages, 38708 files, digest f148fbfd07ede5e647fa6d1c6463899cd3a301dd1402fdc7d586348aa0209481
+- Store archive digest: f078fef4a6b80a31ff18cbbd16569ce881420c4be3ec02ff40011a5bb45b5691
+- Final bundle digest: dff403a69c4fe1fdca21418e8945a0d387239b3424aa4d09d4b2c4b4e46be893
+- Branding result: default, customization, persistence, and reset snapshot passed.
+- Product result: 54 bundled runtime peer links, 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed.
+- Final result: compatible product sources and frozen lockfile ready for review and commit.
+
+Version and desktop helper tests:
+- node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.3.2
+- Result: verify-release-version: yourbuddy-v0.3.2
+- Update manifest: 10 passed
+- Release version: 3 passed
+- Source bundle: 7 passed
+- Product refresh and product smoke helpers: 40 passed
+- Release preparation helpers: 13 passed
+- Offline assembly helpers: 13 passed
+- Desktop overlay: 2 passed
+- Final desktop helper total: 88 passed, 0 failed
+
+Help acceptance:
+- Command: pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/yourbuddy-help.e2e.ts
+- Result: 2 passed, 0 failed, using the real built Web roster and shipped Personal Workbench Client.
+- Screenshot command repeated the same two journeys with DSH_HELP_SCREENSHOT_DIR set to this release's screenshots directory.
+- help-en.png: 1280x900, sha256 54317d3ce8dee01b2a0a7ba2c891e5f2a6de9dc96b916e79632248fda14020df
+- help-zh.png: 1280x900, sha256 f664059219dc9213b0e222d94a6ddbe757da66e2363a9a81590dc551ba43f4a8
+- Images were opened and visually inspected. They show the controlled browser-open failure and copy-address recovery in English/light and Chinese/dark source Web environments.
+
+Personal Workbench failure and recovery:
+- First isolated `pnpm --dir apps/desktop-tauri/product/personal-workbench run check`: typecheck and 40 tests passed; build failed because this reviewed product snapshot is excluded from the root workspace and therefore lacked a local esbuild link.
+- A package-local install was attempted but created a second React copy; the Help component tests then failed with React's invalid-hook-call diagnostic. This was test-environment contamination, not used as passing evidence.
+- Recovery moved that package-local node_modules outside the checkout, restored the root React resolver, and linked the root lockfile's esbuild 0.28.1 into the ignored root node_modules for the build only.
+- Final result: typecheck passed; 7 files and 40 tests passed; build passed. No tracked source or lockfile changed during recovery.
+
+Rust Host fixture failure and recovery:
+- First full module run occurred concurrently with three other heavy release checks.
+- Result: 12 passed, 1 failed. `child_ready_url_drives_the_authenticated_exchange` accepted its isolated loopback connection, then the blocking header reader received `WouldBlock` because the accepted socket retained nonblocking mode.
+- Repair: explicitly set the accepted test socket to blocking mode before applying its read timeout. Product runtime behavior and assertions were unchanged.
+- Stress: four independent Cargo processes ran the affected test; all four passed.
+- Final serial command: cargo test --locked --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml runtime::supervisor::tests
+- Final result: 13 passed, 0 failed; 107 filtered out. Existing compiler warnings remain and are not reported as new failures.
+
+Documentation and website:
+- pnpm run doc-sync
+- Result: 32 passed, 0 failed, 0 skipped.
+- Hugo was absent from the default PATH. The official Hugo Extended 0.165.0 macOS arm64 package was downloaded from its GitHub release and verified before use.
+- Hugo package sha256: 538be8435ded71e561cdc0bc42b9c9822c855b768e7028bc3f7f624b6e2c5185
+- HUGO_BIN=/private/tmp/yourbuddy-hugo-0.165.0/expanded/Payload/hugo PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/ pnpm run website:check
+- Result: 70 tests passed; 48 YourBuddy source pages projected; Hugo generated 59 Chinese and 57 English pages; local links, assets, fragments, and source actions passed for 57 product HTML pages.
+
+Not verified in this pre-publication record:
+- Public 0.3.2 assets, stable updater channel, formally installed DMG, or interactive packaged Help UI
+- Real GPT OAuth or model-provider response
+- Real enterprise proxy and CA chain
+- macOS Intel, Windows, Linux, Apple Developer signing, or notarization
