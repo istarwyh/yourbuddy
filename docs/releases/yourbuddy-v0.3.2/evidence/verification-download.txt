@@ -1,0 +1,35 @@
+YourBuddy 0.3.2 verification archive publication
+Date: 2026-09-06 19:28-19:30 UTC+08:00 (Asia/Shanghai)
+Release: yourbuddy-v0.3.2
+Archive source commit: 62863db240023dcebf2097e7c70d5874a2b5b3b3
+Environment: macOS 15.6.1 arm64; local ditto, shasum, cmp; GitHub Releases
+Build under test: public yourbuddy-v0.3.2-verification.zip
+Evidence origin: this release run
+Data: release documentation, sanitized text evidence, and reviewed source-Web screenshots; no credentials or private user data
+Model or service: GitHub Releases; no model provider
+
+Preparation and upload
+1. Confirmed the source worktree was clean at commit 62863db240023dcebf2097e7c70d5874a2b5b3b3.
+2. Created the ZIP from docs/releases/yourbuddy-v0.3.2 with the release directory retained as its root.
+3. Extracted the local ZIP into a new temporary directory.
+4. Confirmed the expected bilingual README files, pairing record, three evidence text files, and two screenshots were present.
+5. Confirmed the public release did not already contain an asset with this name.
+6. Uploaded the new verification ZIP without replacing any installer or versioned asset.
+
+Public download verification
+- URL: https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip
+- Size: 129,941 bytes
+- SHA-256: e562353aa609e488720cbdbc6a3de2dec48f538b60e4dd949a89fbc21c4bffcc
+- GitHub asset digest: sha256:e562353aa609e488720cbdbc6a3de2dec48f538b60e4dd949a89fbc21c4bffcc
+- Downloaded the public asset into another new directory.
+- `cmp` reported no difference from the locally verified upload source.
+- Extracted the downloaded file into another new directory and observed eight expected files.
+
+Expected result
+- The dedicated evidence bundle is downloadable, byte-identical to the inspected source ZIP, and usable after extraction.
+
+Actual result
+- Upload, public download, digest comparison, byte comparison, and extraction all passed.
+
+Scope limit
+- The ZIP is an evidence convenience copy of commit 62863db240023dcebf2097e7c70d5874a2b5b3b3. This post-upload record is intentionally not embedded in the ZIP whose checksum it records.

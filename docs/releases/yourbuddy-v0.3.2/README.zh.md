@@ -4,10 +4,10 @@
 
 - 发布标识：`yourbuddy-v0.3.2`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：公开产品验证与官网部署已完成；验证资料下载包与真实浏览器验证待完成
+- 归档状态：已完成；公开产品、证据下载与官网部署均已记录，真实浏览器验证保留为未验证范围
 - 已验证源码 Commit：[`b1e9d36fca62e064526689a412727f6c5dcbeb06`](https://github.com/istarwyh/yourbuddy/commit/b1e9d36fca62e064526689a412727f6c5dcbeb06)
 - 证据图集：[源码 Web 帮助截图](screenshots/)
-- 证据下载：完成发布后记录后，计划在公开 Release 提供 `yourbuddy-v0.3.2-verification.zip`
+- 证据下载：[yourbuddy-v0.3.2-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip)，来源 Commit 为 `62863db240023dcebf2097e7c70d5874a2b5b3b3`
 
 ## 面向用户的发布说明
 
@@ -236,7 +236,7 @@ Release 发布了全部五个预期产物。本地 SHA-256 全部一致，稳定
 ## 交付状态
 
 - 产品发布状态：已发布并完成独立验证；[YourBuddy 0.3.2](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2)的 DMG、App Updater 包、签名、校验和、不可变 Updater Manifest 与稳定 Updater 通道均可下载，并与记录的元数据一致。
-- 验证资料归档状态：在提交发布后归档并上传、解压验证资料 ZIP 前为部分完成；目前包含源码说明、两张已审查截图、本地验证和公开产物证据。
+- 验证资料归档状态：已完成；源码记录固定在 `62863db240023dcebf2097e7c70d5874a2b5b3b3`，[可下载归档](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip)已从公开页面下载、逐字节对比并解压。文件大小为 129,941 字节，SHA-256 为 `e562353aa609e488720cbdbc6a3de2dec48f538b60e4dd949a89fbc21c4bffcc`。
 - 官网同步状态：已从 `0a6f32e70c9237b1fb245a738d0fa8406ff590fb` 通过[工作流 34030189025](https://github.com/istarwyh/yourbuddy/actions/runs/34030189025)完成部署；本地与 CI 站点检查通过，但浏览器的管理员策略检查连续两次不可用，因此真实浏览器验证待完成。
 - 未验证范围：安装后的交互式帮助、从安装 App 打开真实浏览器、应用内自动更新安装、复制 App 的私有 Host 启动、真实 OAuth/模型调用、企业代理/CA、Windows、macOS Intel、Linux、Apple Developer 签名与公证。已确认 Gatekeeper 会拒绝 ad-hoc 签名构建。
 
@@ -251,8 +251,8 @@ Release 发布了全部五个预期产物。本地 SHA-256 全部一致，稳定
 - [x] 已明确标注源码、合成数据、受控服务、待完成与未验证证据。
 - [x] 截图清晰、有说明、使用相对链接，且不含凭据或个人信息。
 - [x] 本地候选树上的版本索引、语言配对、文档与产品官网构建已通过；发布前仍会在 Tag Commit 上复核。
-- [ ] 可下载验证资料包已解压并检查。
-- [ ] 公开 Release 页面已链接不可变证据 Commit、图集与下载。
+- [x] 已从公开页面下载验证资料包，完成逐字节对比、解压与检查。
+- [x] 公开 Release 页面已链接不可变证据 Commit、图集与下载。
 - [x] 已独立于 CI 检查实际 DMG、Updater、校验和、元数据与复制后的安装包；交互启动仍明确标记为未验证。
 - [ ] 产品官网内容已同步并部署；浏览器安全策略检查不可用，因此双语在线页面仍未验证。
 - [x] 已分别报告产品发布、资料归档、官网与未验证范围。

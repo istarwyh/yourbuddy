@@ -4,10 +4,10 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.2`
 - Product channel: YourBuddy desktop
-- Archive state: public product verification and website deployment complete; verification download and live browser verification pending
+- Archive state: complete; public product, evidence download, and website deployment recorded, with live browser verification retained as unverified
 - Validated source commit: [`b1e9d36fca62e064526689a412727f6c5dcbeb06`](https://github.com/istarwyh/yourbuddy/commit/b1e9d36fca62e064526689a412727f6c5dcbeb06)
 - Evidence gallery: [source Web Help screenshots](screenshots/)
-- Evidence download: planned `yourbuddy-v0.3.2-verification.zip` on the public release after the post-publication record is complete
+- Evidence download: [yourbuddy-v0.3.2-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip), sourced from commit `62863db240023dcebf2097e7c70d5874a2b5b3b3`
 
 ## User release notes
 
@@ -236,7 +236,7 @@ This verifies local source output only. It does not prove the GitHub Pages workf
 ## Delivery status
 
 - Product publication status: published and independently verified at [YourBuddy 0.3.2](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2); the DMG, app updater archive, signature, checksums, immutable updater manifest, and stable updater channel are downloadable and match the recorded metadata.
-- Verification archive status: partial until the post-publication archive is committed and its downloadable verification ZIP is uploaded and extracted; source notes, two reviewed screenshots, local validation, and public artifact evidence are present.
+- Verification archive status: complete; the source record is fixed at `62863db240023dcebf2097e7c70d5874a2b5b3b3`, and the [downloadable archive](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip) was publicly downloaded, byte-compared, and extracted. Its size is 129,941 bytes and SHA-256 is `e562353aa609e488720cbdbc6a3de2dec48f538b60e4dd949a89fbc21c4bffcc`.
 - Website synchronization status: deployed from `0a6f32e70c9237b1fb245a738d0fa8406ff590fb` by [workflow 34030189025](https://github.com/istarwyh/yourbuddy/actions/runs/34030189025); local and CI site checks passed, but live browser verification is pending because the browser's admin-enforced policy check was unavailable twice.
 - Unverified scope: installed interactive Help, real browser launch from the installed app, automatic in-app update installation, copied-app private Host startup, real OAuth/model calls, enterprise proxy/CA, Windows, macOS Intel, Linux, Apple Developer signing, and notarization. Gatekeeper rejection is confirmed for the ad-hoc-signed build.
 
@@ -251,8 +251,8 @@ This verifies local source output only. It does not prove the GitHub Pages workf
 - [x] Source-only, synthetic-data, controlled-service, pending, and unverified evidence is labelled explicitly.
 - [x] Screenshots are readable, captioned, linked relatively, and contain no credentials or personal information.
 - [x] The release entry, language pairing, and documentation/product-site builds have passed on the local candidate tree; the tagged commit will be rechecked before publication.
-- [ ] The downloadable evidence archive has been extracted and inspected.
-- [ ] The public release page links to the immutable evidence commit, gallery, and download.
+- [x] The downloadable evidence archive has been publicly downloaded, byte-compared, extracted, and inspected.
+- [x] The public release page links to the immutable evidence commit, gallery, and download.
 - [x] The actual DMG, updater files, checksums, metadata, and a copied installation bundle have been checked independently of CI; interactive launch remains explicitly unverified.
 - [ ] The product website content has been synchronized and deployed; bilingual live destinations remain unverified because the browser security policy check was unavailable.
 - [x] Product publication, archive, website, and unverified scope are reported separately.

@@ -28,5 +28,5 @@ YourBuddy 0.3.2 新增应用内帮助菜单，并强化私有 Node Host 的认�
 
 ## Verification / 验证资料
 
-- [Tagged verification archive / Tag 内验证归档](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.2/docs/releases/yourbuddy-v0.3.2)
+- [Immutable post-publication archive / 不可变发布后归档](https://github.com/istarwyh/yourbuddy/tree/62863db240023dcebf2097e7c70d5874a2b5b3b3/docs/releases/yourbuddy-v0.3.2)
 - [Download verification bundle / 下载验证资料包](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.2/yourbuddy-v0.3.2-verification.zip)
