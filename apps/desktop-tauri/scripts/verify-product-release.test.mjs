@@ -13,6 +13,7 @@ import {
   assertProductClientBoot,
   buildProductSmokeOverlay,
   createReleaseChildEnvironment,
+  recordProductClientResponse,
   stopChild,
 } from './verify-product-release.mjs'
 
@@ -189,6 +190,26 @@ test('assembled Client boot requires every product response, mounted UI, and qui
     () => assertProductClientBoot({ ...clean, clientResponses: missing, frameCount: 0 }),
     /assembled Web application frame never mounted[\s\S]*dsh-harbor-evolution Client bundle was not requested/,
   )
+})
+
+test('release smoke observes product Clients inside a DSH combo response', () => {
+  const responses = {}
+  recordProductClientResponse(
+    responses,
+    'http://127.0.0.1:3080/plugins/??yourharness-release-codex-auth/client.js,yourharness-release-context-doctor/client.js&rev=abc123',
+    200,
+  )
+  assert.deepEqual(responses, {
+    'dsh-codex-auth': 200,
+    'dsh-context-doctor': 200,
+  })
+
+  recordProductClientResponse(
+    responses,
+    'http://127.0.0.1:3080/plugins/dsh-harbor-evolution/client.js?rev=legacy',
+    503,
+  )
+  assert.equal(responses['dsh-harbor-evolution'], 503)
 })
 
 test('product smoke overlay mounts the Plugin Marketplace and proxy verifier', () => {

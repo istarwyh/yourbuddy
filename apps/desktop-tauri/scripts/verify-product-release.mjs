@@ -78,6 +78,32 @@ export const PRODUCT_CLIENT_IDS = [
   'dsh-harbor-evolution',
 ]
 
+const PRODUCT_CLIENT_ENTRY_IDS = {
+  'dsh-codex-auth': 'yourharness-release-codex-auth',
+  'dsh-better-sidebar': 'yourharness-release-better-sidebar',
+  'dsh-context-doctor': 'yourharness-release-context-doctor',
+  'dsh-plugin-marketplace': 'yourharness-release-plugin-marketplace',
+  'dsh-personal-workbench': 'yourharness-release-personal-workbench',
+  'dsh-harbor-evolution': 'yourharness-release-harbor-evolution',
+}
+
+/**
+ * Record product Client artifacts from individual or DSH combo resource URLs.
+ * @param {Record<string, number>} target
+ * @param {string} responseUrl
+ * @param {number} status
+ */
+export function recordProductClientResponse(target, responseUrl, status) {
+  const url = new URL(responseUrl)
+  const resource = `${url.pathname}${url.search}`
+  for (const id of PRODUCT_CLIENT_IDS) {
+    const entryId = PRODUCT_CLIENT_ENTRY_IDS[id]
+    if (resource.includes(`${id}/client.js`) || resource.includes(`${entryId}/client.js`)) {
+      target[id] = status
+    }
+  }
+}
+
 /**
  * Build the isolated environment used to execute unreviewed release candidates.
  *
@@ -526,10 +552,7 @@ async function runBrowserSmoke(baseUrl, env) {
       if (message.type() === 'error') consoleErrors.push(message.text())
     })
     page.on('response', response => {
-      const pathname = new URL(response.url()).pathname
-      for (const id of PRODUCT_CLIENT_IDS) {
-        if (pathname === `/plugins/${id}/client.js`) clientResponses[id] = response.status()
-      }
+      recordProductClientResponse(clientResponses, response.url(), response.status())
     })
     await page.route('https://api.github.com/**', route => {
       const pathname = new URL(route.request().url()).pathname
@@ -801,10 +824,7 @@ async function runBrowserSmoke(baseUrl, env) {
       if (message.type() === 'error') consoleErrors.push(message.text())
     })
     proxyPage.on('response', response => {
-      const pathname = new URL(response.url()).pathname
-      for (const id of PRODUCT_CLIENT_IDS) {
-        if (pathname === `/plugins/${id}/client.js`) proxyClientResponses[id] = response.status()
-      }
+      recordProductClientResponse(proxyClientResponses, response.url(), response.status())
     })
     await proxyPage.route('**/api/yourharness/network-proxy/test', route => {
       const request = route.request()
