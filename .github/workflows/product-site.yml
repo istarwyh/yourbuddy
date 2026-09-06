@@ -1,19 +1,28 @@
 name: YourBuddy website
 on:
   pull_request:
-    paths: ['docs/user/product/**', 'docs/product-website*', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
+    paths: ['docs/user/product/**', 'docs/product-website*', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'apps/desktop-tauri/app-icon.svg', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
   push:
     branches: [master]
-    paths: ['docs/user/product/**', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
+    paths: ['docs/user/product/**', 'docs/product-website*', 'website/**', 'scripts/*product-site*', 'scripts/project-doc-site*', 'apps/desktop-tauri/app-icon.svg', 'package.json', 'pnpm-lock.yaml', '.github/workflows/product-site.yml']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: yourbuddy-website-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
     steps:
       - uses: actions/checkout@v6
         with: {persist-credentials: false}
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with: {node-version: '24'}
@@ -35,10 +44,29 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm website:check
         env:
-          PRODUCT_SITE_BASE_URL: https://example.invalid/yourbuddy/
+          PRODUCT_SITE_BASE_URL: ${{ steps.pages.outputs.base_url }}/
       - uses: actions/upload-artifact@v4
         with:
           name: yourbuddy-website-preview
           path: website/product/.dist
           include-hidden-files: true
           if-no-files-found: error
+      - name: Upload GitHub Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: website/product/.dist
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

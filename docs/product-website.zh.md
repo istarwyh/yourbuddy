@@ -28,12 +28,18 @@ pnpm doc-sync
 pnpm lint
 ```
 
-官网检查包括投影测试、严格 Hugo 构建、产物内部链接、页面锚点与资源检查。SDK 的独立构建检查保留。官网产物位于 `website/product/.dist/`，含双语 HTML、逐页 Markdown、搜索索引、`llms.txt`、章节全文和导航 JSON。[构建工作流](../.github/workflows/product-site.yml)上传可审查产物，不发布网站。
+官网检查包括投影测试、严格 Hugo 构建、产物内部链接、页面锚点与资源检查。SDK 的独立构建检查保留。官网产物位于 `website/product/.dist/`，含双语 HTML、逐页 Markdown、搜索索引、`llms.txt`、章节全文和导航 JSON。[官网工作流](../.github/workflows/product-site.yml)上传可审查产物，并将检查通过的 `master` 构建发布到 GitHub Pages。
 
 用完整且以斜杠结尾的 `PRODUCT_SITE_BASE_URL` 设置部署地址；子路径同时参与正文、导航与资源 URL 的构建。未指定时使用本地地址，发布前必须重建。主题由 [go.mod](../website/product/go.mod) 与 [go.sum](../website/product/go.sum) 固定；不要直接跟随主题主分支。
+
+## GitHub Pages
+
+官网地址为 [istarwyh.github.io/yourbuddy](https://istarwyh.github.io/yourbuddy/)。仓库 Pages 设置使用 **GitHub Actions** 作为构建来源。工作流读取 Pages 基础 URL，带上该前缀构建并检查网站，再通过 `github-pages` 环境部署已验证的产物。仅部署 Job 获得 `pages: write` 和 `id-token: write`；工作流不保存个人访问令牌。
+
+`master` 上的网站输入变更会触发发布。如需在不改源码时重新发布，可在 GitHub Actions 中选择 `master` 手动运行 **YourBuddy website**。PR 和其他分支上的手动运行只生成预览产物。同一分支的更新串行运行，构建失败时线上网站保持不变。
 
 ## 下载信息与发布
 
 [下载页](user/product/download.zh.md)与[版本页](user/product/releases.zh.md)只描述已核验的公开发行。核验记录：2026-09-06，GitHub 公开发行仍为 XiaoHui 品牌，YourBuddy 0.3.0 尚无公开安装包。发布 YourBuddy 后，核验发行资产、校验和、架构与更新元数据，再同步双语正文和首页安装状态。不能仅根据源码版本号构造下载链接。
 
-公网托管、域名和部署凭据需要另行配置。当前构建不依赖在线字体、CDN 或分析脚本；模型服务与插件的网络访问属于桌面应用。
+网站部署不发布桌面安装包。网站使用 GitHub Pages 域名，不依赖在线字体、CDN 或分析脚本；模型服务与插件的网络访问属于桌面应用。

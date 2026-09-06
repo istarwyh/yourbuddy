@@ -10,7 +10,7 @@
 
 模型由你选择，工具按需组合，工作台由你定义。
 
-[使用文档](docs/user/product/index.zh.md) · [默认插件](docs/user/product/plugins/index.zh.md) · [官网开发](docs/product-website.zh.md)
+[官网](https://istarwyh.github.io/yourbuddy/) · [使用文档](docs/user/product/index.zh.md) · [默认插件](docs/user/product/plugins/index.zh.md) · [官网开发](docs/product-website.zh.md)
 
 YourBuddy 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 和成熟的 [Sakana 桌面发行版](https://github.com/Sakana-yuyu/deepseek-harness-desktop)构建的 macOS AI 工作台。它把 Harbor Evolution 及其 Skill、[dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth)、[dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)、[dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor)、[dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace)、个人工作台品牌插件和便携式 Harbor Python 运行时封装成一个应用。
 
