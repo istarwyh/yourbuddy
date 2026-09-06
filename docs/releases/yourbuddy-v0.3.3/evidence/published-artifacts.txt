@@ -71,3 +71,10 @@ Public verification bundle
 - The bundle contains README.md, README.zh.md, README.i18n.yaml, evidence/local-validation.txt, and evidence/published-artifacts.txt beneath docs/releases/yourbuddy-v0.3.3/.
 - After upload, the five existing Release asset sizes and SHA-256 digests were unchanged from the record above.
 - The bundle packages the archive at b216ee585024f229d8f36d5a376939f6a5ca1c9a and therefore does not recursively include this later public-bundle verification result. The repository archive is the current record.
+
+Release page finalization
+
+- Date: 2026-09-07 04:17 UTC+08:00 (Asia/Shanghai).
+- The public Release body links to immutable evidence commit 1078e7a6690ce2a9f745832c64ecf93d3ef6c474, the public verification bundle, and both language websites.
+- A follow-up Release query confirmed all six asset names and all three destinations in the published body.
+- No gallery is linked because native UI automation did not produce a trustworthy formal-window screenshot; the release body states that visual limitation.

@@ -275,7 +275,7 @@ The ZIP packages the archive at commit `b216ee585024f229d8f36d5a376939f6a5ca1c9a
 ## Delivery status
 
 - Product publication status: published and independently checked; `yourbuddy-v0.3.3` provides the macOS arm64 DMG, signed updater archive and signature, checksum list, and versioned manifest, while the stable channel advertises the same 0.3.3 manifest.
-- Verification archive status: complete within the recorded evidence limits; the public ZIP was downloaded, integrity-tested, extracted, and opened. A formal-window screenshot remains unavailable because the native UI automation service failed, and this is retained as an unverified visual scope rather than replaced with a synthetic image.
+- Verification archive status: complete within the recorded evidence limits; the public ZIP was downloaded, integrity-tested, extracted, and opened, and the Release page links to immutable evidence commit `1078e7a6690ce2a9f745832c64ecf93d3ef6c474`. A formal-window screenshot remains unavailable because the native UI automation service failed, and this is retained as an unverified visual scope rather than replaced with a synthetic image.
 - Website synchronization status: deployed and checked; workflow `34057017123` published commit `14f254b0d57905f399cc39d649dee3d128081eca`, and five bilingual public routes returned HTTP 200 with the 0.3.3 release journey.
 - Unverified scope: visible rendering of the formal binary, Finder installation, updater installation from an older version, normal tray shutdown, visual website acceptance, Windows desktop, WSL, Intel macOS, OAuth, real model calls, enterprise proxy/CA traffic, Apple Developer signing, and notarization.
 
@@ -291,7 +291,7 @@ The ZIP packages the archive at commit `b216ee585024f229d8f36d5a376939f6a5ca1c9a
 - [x] Only sanitized text evidence is tracked; credentials, personal information, private content, and sensitive originals are absent.
 - [x] The release entry was added to the bilingual version index and relative links were checked locally.
 - [x] A public verification ZIP has been downloaded, integrity-tested, extracted, and opened successfully.
-- [ ] The public release page links to the immutable evidence commit, gallery, and download.
+- [x] The public release page links to the immutable evidence commit and download; no gallery is claimed because no trustworthy formal-window screenshot was captured.
 - [x] The actual 0.3.3 product destination has been checked independently of CI and temporary workflow artifacts.
 - [x] Published filenames, versions, hashes, updater metadata, and installed behavior have been recorded.
 - [x] The bilingual product website has been deployed and its live version and release-link journey verified.
