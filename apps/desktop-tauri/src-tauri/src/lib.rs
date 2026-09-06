@@ -171,6 +171,7 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     };
 
     let web_url = runtime.web_url.clone();
+    let launch_url = runtime.launch_url.clone();
     if !runtime.host.disabled_plugins.is_empty() {
         let names = runtime.host.disabled_plugins.join("、");
         boot_log::error(&format!("plugins disabled by rescue patch: {names}"));
@@ -181,7 +182,7 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
         app.manage(notify);
     }
     boot_log::info(&format!("opening main window url={web_url}"));
-    chrome::open_main_window(&app, &web_url)?;
+    chrome::open_main_window(&app, &web_url, &launch_url)?;
     if let Some(splash) = app.get_webview_window("splash") {
         let _ = splash.close();
     }

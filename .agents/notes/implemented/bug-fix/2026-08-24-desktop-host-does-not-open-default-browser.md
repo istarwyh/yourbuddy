@@ -12,7 +12,7 @@ The loopback server is not redundant: it carries the Host API and Web assets use
 
 ## Decision
 
-Every desktop-owned Host launch passes `--no-open`. The native macOS/Windows command builder and the WSL command builder place all launcher-owned `--patch` options before `--no-open` and the other Web application options because the DSH CLI hands every token from the first application option to the Web command-line provider. Host startup, health probing, loopback binding, Tauri WebView navigation, notification Overlay, and rescue patches remain unchanged.
+Every desktop-owned Host launch passes `--no-open`. The native macOS/Windows command builder and the WSL command builder place all launcher-owned `--patch` options before `--no-open` and the other Web application options because the DSH CLI hands every token from the first application option to the Web command-line provider. The shell consumes the authenticated startup URL under the [browser launch-token authentication decision](../architecture/2026-08-24-browser-token-authentication.md), while the operating system never receives it. Loopback binding, notification Overlay, and rescue patches remain desktop-owned.
 
 ## Testing
 

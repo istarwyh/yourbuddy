@@ -528,7 +528,8 @@
     })
 
     async function boot() {
-      const url = window.__DSH_WEB_URL__
+      const url = window.__DSH_WEB_LAUNCH_URL__
+      window.__DSH_WEB_LAUNCH_URL__ = undefined
       if (url) appFrame.src = url
       const layout = window.__DSH_CHROME__ || {
         os: 'windows',

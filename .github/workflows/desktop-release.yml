@@ -103,10 +103,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm --dir apps/desktop-tauri run build
 
-      - name: Test desktop Host startup argument contract
+      - name: Test desktop Host startup contract
         run: |
           pnpm exec vitest run apps/cli/tests/args.spec.ts
-          cargo test --locked --release --target "$RUST_TARGET" --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml launcher_patches_before_web_arguments
+          cargo test --locked --release --target "$RUST_TARGET" --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml runtime::supervisor::tests
 
       - name: Test relocated YourBuddy product runtime
         run: |

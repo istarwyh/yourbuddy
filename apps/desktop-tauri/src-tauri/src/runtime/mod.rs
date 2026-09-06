@@ -27,7 +27,10 @@ use wsl::WslRuntimePaths;
 pub struct DesktopRuntime {
     pub paths: RuntimePaths,
     pub host: HostHandle,
+    /// Credential-free Host root used for origin checks and diagnostics.
     pub web_url: String,
+    /// Process-token URL used only for the WebView's first navigation.
+    pub launch_url: String,
     /// How tray `dsh plugin add` must reach the live Host profile.
     pub plugin_target: PluginRunTarget,
     /// Process-wide outbound proxy policy fixed at application startup.
@@ -72,6 +75,7 @@ impl DesktopRuntime {
         Ok(Self {
             paths: paths.clone(),
             web_url: host.web_url.clone(),
+            launch_url: host.launch_url.clone(),
             plugin_target: PluginRunTarget::Windows {
                 node: paths.node_binary.clone(),
                 cli: paths.cli_entry.clone(),
@@ -84,11 +88,6 @@ impl DesktopRuntime {
         })
     }
 
-    /// Wrap a Host already spawned inside WSL.
-    ///
-    /// Skips the Windows PATH bridge and Windows profile repair. `paths` is a
-    /// documented placeholder: the live Linux tree lives on WSL runtime paths
-    /// inside the supervisor session, not on Windows `RuntimePaths`.
     /// Wrap a Host already spawned inside WSL.
     ///
     /// Skips the Windows PATH bridge and Windows profile repair. `paths` is a
@@ -111,6 +110,7 @@ impl DesktopRuntime {
                 dsh_home: PathBuf::new(),
             },
             web_url: host.web_url.clone(),
+            launch_url: host.launch_url.clone(),
             plugin_target: PluginRunTarget::Wsl(wsl_paths),
             network_proxy,
             host,
