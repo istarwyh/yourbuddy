@@ -5,7 +5,7 @@ English | [中文](README.zh.md)
 - Release identifier: `yourbuddy-v0.3.3`
 - Product channel: YourBuddy desktop
 - Archive state: release candidate; local source, controlled installed-bundle, and release-shaped macOS Runtime verification complete, public artifacts pending
-- Validated source commit: [`11fea67aaf9f799290b2f01a524388d35d3ef6c2`](https://github.com/istarwyh/yourbuddy/commit/11fea67aaf9f799290b2f01a524388d35d3ef6c2)
+- Validated source commit: [`207d54af0f83366a299b270c9f75d7bca4e05d41`](https://github.com/istarwyh/yourbuddy/commit/207d54af0f83366a299b270c9f75d7bca4e05d41)
 - Evidence gallery: pending a successful launch of the formally published installer
 - Evidence download: pending publication of `yourbuddy-v0.3.3-verification.zip`
 
@@ -42,7 +42,7 @@ This release targets Apple Silicon on macOS 11 or later and requires no data mig
 | Public 0.3.2 failure and fixed installed-bundle path | passed | public 0.3.2 resources plus local release-mode fix | macOS 15.6.1 arm64, native WebKit | [Local record](evidence/local-validation.txt) |
 | 0.3.3 release preparation and product smoke | passed | source `07b2440f5d...` | macOS 15.6.1 arm64, Node 22.22.2, pnpm 11.7.0 | [Local record](evidence/local-validation.txt) |
 | Version, updater, Rust, desktop, documentation, and website checks | passed | source `07b2440f5d...` | macOS 15.6.1 arm64, Rust 1.98.0, Hugo Extended 0.165.0 | [Local record](evidence/local-validation.txt) |
-| Packaged Runtime and CI release blockers | all CI carrier smokes passed; browser-timezone and Inspector setup fixes passed locally, final CI rerun pending | source `11fea67aaf...`, Node 24 native executables, installed wheels, Chromium | macOS 15.6.1 arm64 plus CI carrier matrix | [Local record](evidence/local-validation.txt) |
+| Packaged Runtime and CI release blockers | all CI carrier smokes passed; workflow persistence and pwsh prompt recovery passed locally, final CI rerun pending | source `207d54af0f...`, Node 24 native executables, installed wheels, Chromium, PowerShell 7.6.5 | macOS 15.6.1 arm64 plus CI carrier matrix | [Local record](evidence/local-validation.txt) |
 | Public installer, updater channel, verification ZIP, and website | not verified | not yet published | GitHub Release and Pages | pending |
 
 ## Scenario: Installed desktop authentication
@@ -121,8 +121,8 @@ These are source, generated-resource, and controlled-browser checks. They do not
 ## Scenario: Packaged Runtime and CI release blockers
 
 - Status: all CI carrier smokes and focused local recovery checks passed; final cross-platform CI rerun pending
-- Date and time: 2026-09-06 23:35-2026-09-07 01:38 UTC+08:00, Asia/Shanghai
-- Release and commit: intended `yourbuddy-v0.3.3`; release-blocker fixes through `11fea67aaf9f799290b2f01a524388d35d3ef6c2`
+- Date and time: 2026-09-06 23:35-2026-09-07 02:27 UTC+08:00, Asia/Shanghai
+- Release and commit: intended `yourbuddy-v0.3.3`; release-blocker fixes through `207d54af0f83366a299b270c9f75d7bca4e05d41`
 - Build under test: source profile traversal, generated Node 24.20.0 macOS arm64 single executable, and locally built SDK and Runtime wheels installed into a clean virtual environment
 - Environment: macOS 15.6.1 arm64, build host Node 22.22.2, pnpm 11.7.0, target Node 24.20.0, Python 3.11.4, PowerShell 7.6.5; GitHub-hosted native carrier matrix
 - Evidence origin: pull request 11's first CI run and this release run
@@ -138,6 +138,8 @@ These are source, generated-resource, and controlled-browser checks. They do not
 5. Installed PowerShell locally, refreshed and replayed both PowerShell scenarios against the real executable, and restricted the paid provider steps to their owning official repository.
 6. Reproduced the remaining CI-only ACP ordering and PowerShell readiness failures, made session activation topology-stable, canonically migrated the two PowerShell recordings, and reran their focused checks.
 7. Examined the next CI run, pinned the shared browser page to the snapshot corpus timezone, and added an ordered Client Runtime roundtrip before the cross-carrier Console probe.
+8. Inspected run `34049354876`: all four Runtime carriers and the corrected browser-timezone and Inspector paths passed, while the workflow navigation test opened a newly listed child before its prompt flush completed and real pwsh startup accepted stdin-wait evidence before its controlled prompt arrived.
+9. Made workflow navigation wait for the child prompt persistence checkpoint, and made pwsh startup retain prompt evidence and the latest non-empty startup output until both the controlled prompt and stdin readiness have been observed.
 
 ### Expected
 
@@ -145,18 +147,18 @@ Optional peers that are not embedded in a pkg executable remain unavailable with
 
 ### Actual
 
-All four CI carriers reached `smoke-python-runtime: all passed`. Successive runs exposed deterministic ACP activation ordering, real PowerShell readiness and fixture layout, a runner-dependent browser timezone, and a cross-carrier Inspector setup race. The current source makes each assumption explicit. ACP validation passed 141 tests at 100% statement, branch, function, and line coverage; its 15-scenario replay passed twice. The focused real PowerShell scenario passed three times, the fixture-layout suite passed eight tests, the Inspector integration file passed 10 tests plus four repeated focused probes, and the 12 previously failing browser files passed 65 tests under a UTC host timezone with two scenario skips. A final CI run on the current commit remains pending.
+All four CI carriers reached `smoke-python-runtime: all passed`. Successive runs exposed deterministic ACP activation ordering, real PowerShell readiness and fixture layout, a runner-dependent browser timezone, a cross-carrier Inspector setup race, child-session persistence visibility, and pwsh prompt publication. The current source makes each assumption explicit. ACP validation passed 141 tests at 100% statement, branch, function, and line coverage; its 15-scenario replay passed twice. The Inspector integration file passed 10 tests plus four repeated focused probes, and the 12 previously failing browser files passed 65 tests under a UTC host timezone with two scenario skips. The workflow file passed all three scenarios in six complete local runs. The terminal-bash package passed 77 tests with one platform skip, and its real pwsh startup scenario passed eight additional consecutive invocations while retaining a non-empty controlled prompt. A final CI run on the current commit remains pending.
 
 ### Evidence
 
-- Before: the first pull-request CI run failed all four packaged Python Runtime targets with `ENOENT` for an unembedded optional peer manifest. The second run passed every carrier smoke but exposed the missing repository-scope condition on the paid provider preflight. Run `34046132810` passed all four carriers and exposed ACP ordering and coverage-fixture failures. Run `34047565623` again passed all four carriers, then exposed host-timezone dependence in persisted Web snapshots and the Inspector Console setup race in coverage.
+- Before: the first pull-request CI run failed all four packaged Python Runtime targets with `ENOENT` for an unembedded optional peer manifest. The second run passed every carrier smoke but exposed the missing repository-scope condition on the paid provider preflight. Run `34046132810` passed all four carriers and exposed ACP ordering and coverage-fixture failures. Run `34047565623` again passed all four carriers, then exposed host-timezone dependence in persisted Web snapshots and the Inspector Console setup race in coverage. Run `34049354876` proved those fixes and all four carriers, then failed the workflow navigation and real pwsh startup races; its Windows native-test worker also exited after its visible assertions passed, which remains a failed infrastructure result until a clean rerun.
 - In progress: the pkg build reported absent optional client peers while constructing the executable, exercising the affected package-discovery condition.
 - Result: commands, target versions, test counts, and installed-wheel output are in the [local record](evidence/local-validation.txt).
-- Failure and recovery: an initial local snapshot run shared resources with coverage and inherited terminal proxy variables, so Undici warnings polluted subprocess stderr; the reliable serial replay cleared only the test process's terminal proxy variables. A later PowerShell refresh initially received a misplaced test filter and touched unrelated generated fixtures; those known temporary changes were restored individually. ACP activation now waits for topology-stable discovery and persistence, while the PowerShell check asserts documented usability rather than one timing tier. The Web replay now fixes the historical snapshot timezone at browser-context creation, and the Inspector test uses the ordered Client carrier as a setup barrier instead of relying on scheduler timing. The complete local Web CI wrapper remains blocked on this host by a Node 22.22.2 `import-without-cache` HMR loader error; that HMR file passed in run `34047565623`, and the 12 timezone-sensitive files were run directly under `TZ=UTC`.
+- Failure and recovery: an initial local snapshot run shared resources with coverage and inherited terminal proxy variables, so Undici warnings polluted subprocess stderr; the reliable serial replay cleared only the test process's terminal proxy variables. A later PowerShell refresh initially received a misplaced test filter and touched unrelated generated fixtures; those known temporary changes were restored individually. ACP activation now waits for topology-stable discovery and persistence, while the PowerShell check asserts documented usability rather than one timing tier. The Web replay fixes the historical snapshot timezone at browser-context creation, the Inspector test uses the ordered Client carrier as a setup barrier, and workflow navigation waits for durable child input. Pwsh startup no longer treats an early exact stdin wait as sufficient and does not lose a prior non-empty message when its final probe is empty. The complete local Web CI wrapper remains blocked on this host by a Node 22.22.2 `import-without-cache` HMR loader error; that HMR file passed in run `34049354876`, and the affected files were run directly rather than treating the wrapper failure as a product pass.
 
 ### Scope limits
 
-Completed CI runs prove the keyless installed-wheel smoke on all four carrier targets. The aggregate required verdict on `11fea67aaf...` remains pending, and focused local checks do not substitute for that run. The real DeepSeek provider and public desktop installer also remain unverified.
+Completed CI runs prove the keyless installed-wheel smoke on all four carrier targets. The aggregate required verdict on `207d54af0f...` remains pending, and focused local checks do not substitute for that run. The real DeepSeek provider and public desktop installer also remain unverified.
 
 ## Scenario: Public product delivery
 

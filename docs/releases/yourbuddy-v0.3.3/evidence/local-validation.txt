@@ -147,3 +147,37 @@ Publication boundary
 
 - No 0.3.3 tag, GitHub Release, installer, updater channel, verification ZIP, or website deployment had been created when this record was written.
 - Final public artifacts, their hashes, installed behavior, website deployment, and live download journey require separate post-publication evidence.
+
+Fifth pull-request run and final local recovery
+
+- GitHub Actions run 34049354876 completed all four release-shaped Runtime carrier smokes, static checks, Node 22.19, Node 24.9, Node 26, Python SDK, Windows build, Windows coverage, Wine, and Windows observational checks successfully.
+- The browser-timezone and Inspector Console paths fixed after run 34047565623 passed in their owning lanes.
+- The snapshot lane then failed two cascading workflow tests because the live member became navigable before the child prompt persistence flush completed. Commit 48f1bee6a602a57357780a767ae4d97940c1bac4 waits for that durability checkpoint before opening the child through an independently transported Client view.
+- The coverage lane passed 16,399 tests before a real PowerShell startup returned an empty MOTD: Linux published exact stdin-wait evidence before the controlled prompt arrived. Commit 207d54af0f83366a299b270c9f75d7bca4e05d41 requires both observations, preserves split prompt evidence across empty follow-up sends, and retains the latest non-empty startup message.
+- The Windows native-test job reported 38 passed and 1 skipped across its visible files, then a Vitest worker exited unexpectedly. The job remains recorded as failed; the next clean run is required rather than relabelling its visible assertions as a pass.
+
+Final focused validation at 207d54af0f83366a299b270c9f75d7bca4e05d41
+
+- pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/workflow-run.e2e.ts
+  Result: 3 passed. Together with five preceding complete-file passes, the durable workflow file passed six complete local runs.
+- pnpm exec vitest run --config vitest.config.ts packages/terminal/terminal-bash/tests/index.spec.ts packages/terminal/terminal-bash/tests/session.spec.ts packages/terminal/terminal-bash/tests/local.spec.ts
+  Result: 77 passed, 1 skipped.
+- Eight consecutive focused invocations of the real `bootstraps a persistent pwsh` scenario
+  Result: every invocation passed; each opened a real PowerShell 7.6.5 PTY and required a non-empty `dsh> ` startup message.
+- pnpm exec vitest run --config vitest.config.ts packages/terminal/terminal-bash/tests/index.spec.ts
+  Result after the final deterministic race fixture: 18 passed.
+- pnpm run typecheck
+  Result: exit 0.
+- pnpm run lint
+  Result: exit 0.
+- pnpm run doc-sync
+  Result after the added exported-method parameter documentation: 32 passed, 0 failed, 0 skipped.
+- git diff --check
+  Result: exit 0 before both commits.
+
+Startup-test failure and recovery boundary
+
+- The first strict pwsh attempt required stdin readiness and the controlled prompt in the same send; it timed out when the prompt marker and printable tail crossed follow-up sends.
+- The next attempt retained prompt evidence but also retained the old silence timestamp, causing immediate inferred-idle retries that starved actual shell output. Resetting the silence clock while retaining only prompt evidence restored the bounded wait.
+- A detached baseline at 887745e9af4e267c343e7f996e2a68213d15cb99 confirmed that the existing idempotent bootstrap must retry after an empty settlement. The final implementation preserves that behavior while separating the last non-empty MOTD from the latest probe viewport.
+- These failed local iterations are not counted as passing evidence. Only the final unit, complete-package, and repeated real-pwsh results above validate the committed behavior.
