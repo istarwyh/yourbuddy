@@ -4,10 +4,10 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.3.1`
 - Product channel: YourBuddy desktop
-- Archive state: pre-publication validation complete; public artifact verification pending
-- Evidence commit: final release preparation passed at `de17171f970e43bd8c42d84a1cfeb386f5bc17c3`; the public evidence commit will be linked after publication without moving the tag
+- Archive state: public product and artifact verification complete; immutable evidence link and download pending
+- Evidence commit: final release preparation passed at `de17171f970e43bd8c42d84a1cfeb386f5bc17c3`; the public artifact record is committed after publication and will receive an immutable link without moving the tag
 - Evidence gallery: not applicable; no packaged UI journey or screenshot is claimed
-- Evidence download: `yourbuddy-v0.3.1-verification.zip` will be attached only after public artifacts are independently verified
+- Evidence download: `yourbuddy-v0.3.1-verification.zip` will be attached after its extracted contents are inspected
 
 ## User release notes
 
@@ -39,7 +39,7 @@ Download the Apple Silicon DMG from this GitHub Release after publication. YourB
 
 ### Compatibility, migration, and limitations
 
-The release target is macOS on Apple Silicon. The application is not signed or notarized with an Apple Developer identity. Automatic XiaoHui migration and macOS Intel, Windows, or Linux installers are not provided. Harbor flows retain their documented Docker and provider prerequisites. Real GPT OAuth traffic, a real enterprise proxy and CA, and the interactive installed-DMG UI remain unverified by the pre-publication run.
+The release target is macOS on Apple Silicon. The application has an ad-hoc signature but is not signed or notarized with an Apple Developer identity, so Gatekeeper rejects the downloaded App. Automatic XiaoHui migration and macOS Intel, Windows, or Linux installers are not provided. Harbor flows retain their documented Docker and provider prerequisites. Real GPT OAuth traffic, a real enterprise proxy and CA, signed in-app update installation, and the interactive installed-DMG UI remain unverified.
 
 ## Verification summary
 
@@ -48,7 +48,7 @@ The release target is macOS on Apple Silicon. The application is not signed or n
 | Failed 0.3.0 publication and recovery | passed | 0.3.0 tag plus 0.3.1 source commit | GitHub Actions macOS 15 and local macOS 15.6.1 arm64 | [0.3.0 archive](../yourbuddy-v0.3.0/README.md) and [local record](evidence/local-validation.txt) |
 | 0.3.1 release preparation and product smoke | passed | source checkout at `de17171f970e43bd8c42d84a1cfeb386f5bc17c3` | macOS 15.6.1 arm64, Node 22.22.2, pnpm 11.7.0 | [Local validation record](evidence/local-validation.txt) |
 | Desktop scripts and documentation | passed | source checkout | macOS 15.6.1 arm64 | [Local validation record](evidence/local-validation.txt) |
-| Public release and packaged artifact | not verified | formally published product | GitHub Release and independent local inspection | Pending tag workflow and download |
+| Public release and packaged artifact | passed | `yourbuddy-v0.3.1` public DMG and updater archive | GitHub Actions macOS 15; independent macOS 15.6.1 arm64 download | [Public artifact record](evidence/public-artifacts.txt) |
 
 ## Scenario: Failed 0.3.0 publication and recovery
 
@@ -128,28 +128,36 @@ See the [local validation record](evidence/local-validation.txt). These are sour
 
 ## Scenario: Public release and packaged artifact
 
-- Status: not verified
-- Date and time: 2026-09-06 14:18 UTC+08:00, Asia/Shanghai
-- Release and commit: intended `yourbuddy-v0.3.1`; tag commit pending
-- Build under test: no formally published 0.3.1 product yet
-- Environment: intended GitHub Release macOS 15 arm64 workflow; independent download pending
-- Evidence origin: this release run, pending publication
-- Data: not applicable
-- Model or service: GitHub Releases and YourBuddy updater channel; not yet queried after publication
+- Status: passed
+- Date and time: 2026-09-06 14:20-14:42 UTC+08:00, Asia/Shanghai
+- Release and commit: `yourbuddy-v0.3.1`, tag commit `c4e316253959ddd71cb842775ef44ed5c9b6b292`
+- Build under test: formally published GitHub Release DMG, updater archive, signature, checksum file, and updater manifests
+- Environment: GitHub Actions macOS 15 arm64; independent macOS 15.6.1 arm64 download and inspection
+- Evidence origin: this release run after publication
+- Data: public release files and package metadata; no user data
+- Model or service: GitHub Releases and YourBuddy updater channel; no model provider request
 
-### Steps, expected, and actual
+### Steps
 
-The next step is to publish the exact annotated tag, wait for the workflow, then independently download and verify the DMG, updater archive, signature, checksums, App version, relocated Harbor entry points, and stable updater manifest. No such public claim is made before those observations exist.
+1. Waited for [release workflow 34016228532](https://github.com/istarwyh/yourbuddy/actions/runs/34016228532) to finish every build, relocated-runtime, checksum, manifest, and publication step.
+2. Queried the public [YourBuddy 0.3.1 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.1), then downloaded all five assets into a new temporary directory.
+3. Verified the three entries in `SHA256SUMS.txt`, parsed `latest.json`, and compared it byte for byte with the separately downloaded stable-channel manifest.
+4. Mounted the downloaded DMG read-only, inspected the App identity, and ran the packaged Harbor entry points.
+5. Extracted a fresh updater archive, inspected the same identity and entry points, and verified its pristine ad-hoc signature before execution.
+
+### Expected and actual
+
+The public files were expected to carry version 0.3.1, match their checksums, expose a signed `darwin-aarch64` updater entry, contain `YourBuddy.app` with bundle id `io.github.istarwyh.yourbuddy`, and run the packaged Harbor commands. All checks passed. The versioned and stable updater manifests were identical. The pristine App passed strict ad-hoc signature verification, while Gatekeeper rejected it because it has no Apple Developer identity; that result matches the stated distribution limitation.
 
 ### Evidence and scope limits
 
-Public evidence and the verification download remain pending. The tag will not be moved and versioned installers will not be replaced.
+The [public artifact record](evidence/public-artifacts.txt) lists asset sizes, SHA-256 values, App metadata, commands, failure recovery, and observed limits. This scenario does not claim an interactive installed-DMG UI journey, signed in-app update installation, real provider or enterprise-network behavior, notarization, migration, or another platform.
 
 ## Delivery status
 
-- Product publication status: not yet published; 0.3.1 source preparation and assembled product smoke passed.
-- Verification archive status: partial; pre-publication and failure-recovery evidence is committed, while public artifact evidence, an immutable evidence permalink, and the verification download remain pending.
-- Unverified scope: installed-DMG UI; real GPT OAuth or model provider response; real enterprise proxy and CA; macOS Intel, Windows, and Linux; Apple Developer signing and notarization; automatic XiaoHui migration.
+- Product publication status: published; the Apple Silicon DMG, signed updater archive and signature, checksums, versioned manifest, and stable updater manifest are publicly downloadable and independently verified.
+- Verification archive status: public artifact evidence is complete; the immutable evidence permalink and extracted verification download are pending.
+- Unverified scope: interactive installed-DMG UI; signed in-app update installation; real GPT OAuth or model provider response; real enterprise proxy and CA; macOS Intel, Windows, and Linux; Apple Developer signing and notarization; automatic XiaoHui migration.
 
 ## Delivery checklist
 
@@ -160,6 +168,6 @@ Public evidence and the verification download remain pending. The tag will not b
 - [x] Evidence is sanitized and uses relative or immutable links.
 - [x] No screenshot or complete product acceptance is claimed.
 - [x] The version index and bilingual records are updated.
-- [ ] Public artifacts are downloaded and independently verified.
+- [x] Public artifacts are downloaded and independently verified.
 - [ ] The verification ZIP is extracted, inspected, and attached without replacing release assets.
 - [ ] The release page links the immutable evidence commit and download.

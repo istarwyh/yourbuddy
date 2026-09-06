@@ -4,10 +4,10 @@
 
 - 发布标识：`yourbuddy-v0.3.1`
 - 产品渠道：YourBuddy 桌面应用
-- 归档状态：发布前验证完成；公开产物验证待完成
-- 证据 Commit：最终发布准备已在 `de17171f970e43bd8c42d84a1cfeb386f5bc17c3` 通过；发布完成后会补充公开证据 Commit 的固定链接，同时不移动 Tag
+- 归档状态：公开产品与产物验证已完成；不可变证据链接与下载待补
+- 证据 Commit：最终发布准备已在 `de17171f970e43bd8c42d84a1cfeb386f5bc17c3` 通过；公开产物记录在发布后提交，并会补充不可变链接，同时不移动 Tag
 - 证据图集：不适用；没有声称完成安装包 UI 旅程，也没有制作截图
-- 证据下载：只有在独立验证公开产物后，才会附加 `yourbuddy-v0.3.1-verification.zip`
+- 证据下载：检查解压内容后附加 `yourbuddy-v0.3.1-verification.zip`
 
 ## 面向用户的发布说明
 
@@ -39,7 +39,7 @@ YourBuddy 0.3.1 启用 YourBuddy 名称与 Y8 图标，把内置 Harness 更新�
 
 ### 兼容性、迁移与限制
 
-本版本的发布目标是 Apple Silicon macOS。应用尚未使用 Apple Developer 身份完成签名与公证。不提供 XiaoHui 自动迁移，也不提供 macOS Intel、Windows 或 Linux 安装包。Harbor 流程仍需满足文档中的 Docker 与模型提供方前提条件。发布前执行未实测真实 GPT OAuth 流量、真实企业代理与 CA，也未实测安装 DMG 后的交互 UI。
+本版本的发布目标是 Apple Silicon macOS。应用带有 ad-hoc 签名，但尚未使用 Apple Developer 身份完成签名与公证，因此 Gatekeeper 会拒绝下载的 App。不提供 XiaoHui 自动迁移，也不提供 macOS Intel、Windows 或 Linux 安装包。Harbor 流程仍需满足文档中的 Docker 与模型提供方前提条件。真实 GPT OAuth 流量、真实企业代理与 CA、带签名的应用内更新安装，以及安装 DMG 后的交互 UI 仍未验证。
 
 ## 验证概览
 
@@ -48,7 +48,7 @@ YourBuddy 0.3.1 启用 YourBuddy 名称与 Y8 图标，把内置 Harness 更新�
 | 0.3.0 发布失败与恢复 | passed | 0.3.0 Tag 与 0.3.1 源码 Commit | GitHub Actions macOS 15 与本地 macOS 15.6.1 arm64 | [0.3.0 归档](../yourbuddy-v0.3.0/README.zh.md)与[本地记录](evidence/local-validation.txt) |
 | 0.3.1 发布准备与产品 Smoke | passed | `de17171f970e43bd8c42d84a1cfeb386f5bc17c3` 的源码 Checkout | macOS 15.6.1 arm64、Node 22.22.2、pnpm 11.7.0 | [本地验证记录](evidence/local-validation.txt) |
 | 桌面脚本与文档 | passed | 源码 Checkout | macOS 15.6.1 arm64 | [本地验证记录](evidence/local-validation.txt) |
-| 公开发布与安装包产物 | not verified | 正式发布产品 | GitHub Release 与独立本地检查 | 等待 Tag 工作流与下载 |
+| 公开发布与安装包产物 | passed | `yourbuddy-v0.3.1` 公开 DMG 与 Updater Archive | GitHub Actions macOS 15；独立 macOS 15.6.1 arm64 下载 | [公开产物记录](evidence/public-artifacts.txt) |
 
 ## 场景：0.3.0 发布失败与恢复
 
@@ -128,28 +128,36 @@ YourBuddy 0.3.1 启用 YourBuddy 名称与 Y8 图标，把内置 Harness 更新�
 
 ## 场景：公开发布与安装包产物
 
-- 状态：not verified
-- 日期与时间：2026-09-06 14:18 UTC+08:00，Asia/Shanghai
-- 发布版本与 Commit：计划发布 `yourbuddy-v0.3.1`；Tag Commit 待产生
-- 受测构建：尚无正式发布的 0.3.1 产品
-- 环境：计划使用 GitHub Release macOS 15 arm64 工作流；独立下载待执行
-- 证据来源：本次发布执行，等待正式发布
-- 数据：不适用
-- 模型或服务：GitHub Releases 与 YourBuddy 更新通道；发布后尚未查询
+- 状态：passed
+- 日期与时间：2026-09-06 14:20-14:42 UTC+08:00，Asia/Shanghai
+- 发布版本与 Commit：`yourbuddy-v0.3.1`，Tag Commit `c4e316253959ddd71cb842775ef44ed5c9b6b292`
+- 受测构建：正式发布的 GitHub Release DMG、Updater Archive、签名、校验文件与 Updater Manifest
+- 环境：GitHub Actions macOS 15 arm64；独立 macOS 15.6.1 arm64 下载与检查
+- 证据来源：本次发布完成后的实测
+- 数据：公开发布文件与 Package Metadata；不含用户数据
+- 模型或服务：GitHub Releases 与 YourBuddy 更新通道；未请求模型提供方
 
-### 操作步骤、预期与实际结果
+### 操作步骤
 
-下一步是发布准确的注释 Tag，等待工作流结束，再独立下载并验证 DMG、Updater Archive、签名、校验和、App 版本、迁移后的 Harbor 入口与稳定 Updater Manifest。在这些观察产生前，本归档不作公开产物声明。
+1. 等待[发布工作流 34016228532](https://github.com/istarwyh/yourbuddy/actions/runs/34016228532)完成全部构建、迁移后 Runtime、校验和、Manifest 与发布步骤。
+2. 查询公开的 [YourBuddy 0.3.1 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.1)，再把全部 5 个产物下载到新的临时目录。
+3. 验证 `SHA256SUMS.txt` 的 3 个条目，解析 `latest.json`，并与单独下载的稳定通道 Manifest 逐字节比较。
+4. 以只读方式挂载下载的 DMG，检查 App 身份，并运行打包的 Harbor 入口。
+5. 全新解压 Updater Archive，检查相同的身份与入口，并在执行前验证其原始 ad-hoc 签名。
+
+### 预期与实际结果
+
+公开文件应该携带 0.3.1 版本、匹配校验和、提供带签名的 `darwin-aarch64` Updater 条目、包含 bundle id 为 `io.github.istarwyh.yourbuddy` 的 `YourBuddy.app`，并能运行打包的 Harbor 命令。以上检查全部通过；版本专属与稳定通道 Updater Manifest 完全一致。原始 App 通过严格 ad-hoc 签名验证；由于没有 Apple Developer 身份，Gatekeeper 拒绝该 App，这与已说明的分发限制一致。
 
 ### 证据与范围限制
 
-公开证据与验证资料下载仍待补。Tag 不会移动，也不会替换版本专属安装包。
+[公开产物记录](evidence/public-artifacts.txt)列出产物大小、SHA-256、App Metadata、命令、失败恢复与观察到的限制。本场景不声称完成安装 DMG 后的交互 UI、带签名的应用内更新安装、真实提供方或企业网络行为、公证、迁移或其他平台验证。
 
 ## 交付状态
 
-- 产品发布状态：尚未发布；0.3.1 源码准备与完整产品 Smoke 已通过。
-- 验证资料归档状态：部分完成；发布前与失败恢复证据已经提交，仍需补充公开产物证据、不可变证据 Commit 固定链接与验证资料下载。
-- 未验证范围：安装 DMG 后的 UI；真实 GPT OAuth 或模型提供方响应；真实企业代理与 CA；macOS Intel、Windows 与 Linux；Apple Developer 签名与公证；XiaoHui 自动迁移。
+- 产品发布状态：已发布；Apple Silicon DMG、带签名的 Updater Archive 与签名、校验文件、版本专属 Manifest 和稳定 Updater Manifest 均可公开下载，并已独立验证。
+- 验证资料归档状态：公开产物证据已完成；不可变证据固定链接与解压验证后的资料下载待补。
+- 未验证范围：安装 DMG 后的交互 UI；带签名的应用内更新安装；真实 GPT OAuth 或模型提供方响应；真实企业代理与 CA；macOS Intel、Windows 与 Linux；Apple Developer 签名与公证；XiaoHui 自动迁移。
 
 ## 交付清单
 
@@ -160,6 +168,6 @@ YourBuddy 0.3.1 启用 YourBuddy 名称与 Y8 图标，把内置 Harness 更新�
 - [x] 证据已脱敏，并使用相对链接或不可变链接。
 - [x] 没有声称制作截图或完成完整产品验收。
 - [x] 版本索引与双语记录已更新。
-- [ ] 公开产物已下载并独立验证。
+- [x] 公开产物已下载并独立验证。
 - [ ] 验证 ZIP 已解压检查，并在不替换发布资产的前提下附加。
 - [ ] Release 页面已链接不可变证据 Commit 与下载。

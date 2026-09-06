@@ -1,0 +1,117 @@
+YourBuddy 0.3.1 public artifact verification
+================================================
+
+Date and time
+-------------
+2026-09-06 14:35-14:42 UTC+08:00, Asia/Shanghai
+
+Release under test
+------------------
+Tag: yourbuddy-v0.3.1
+Tag commit: c4e316253959ddd71cb842775ef44ed5c9b6b292
+Release URL: https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.1
+Workflow URL: https://github.com/istarwyh/yourbuddy/actions/runs/34016228532
+Workflow result: success; Build macOS arm64 completed in 14m50s
+Published at: 2026-09-06T06:34:36Z
+
+Build under test
+----------------
+Formally published GitHub Release assets downloaded again after publication.
+The verification used the downloaded DMG and updater archive, not the workflow build directory.
+
+Environment
+-----------
+macOS 15.6.1 (24G90), arm64
+GitHub CLI authenticated to the public repository
+No model provider, OAuth credential, enterprise proxy, enterprise CA, or user data was used.
+
+Public assets
+-------------
+latest.json
+  size: 4330 bytes
+  sha256: f73b8e7fefa48d08309be053e981bd00556729f159212ee44cbc286be0ef6f9b
+
+SHA256SUMS.txt
+  size: 312 bytes
+  sha256: 7acf931f219be72c78726d54dc85cd26f9859835d1a8ec560d44069e7bd1063c
+
+yourbuddy-0.3.1-macos-arm64.app.tar.gz
+  size: 569396184 bytes
+  sha256: 2110a98f377ded9c232e2d37b17952cbe0e64ad23ac738d088864508b7380c89
+
+yourbuddy-0.3.1-macos-arm64.app.tar.gz.sig
+  size: 408 bytes
+  sha256: a62e2b726c85f06de9d06c15d35416ae7ff1b38066ff379420bc116059295888
+
+yourbuddy-0.3.1-macos-arm64.dmg
+  size: 567558306 bytes
+  sha256: 33fd398342ed1c1090828b761043722442692585c1a18727d268179c7e51ef40
+
+Checksum and updater observations
+---------------------------------
+`shasum -a 256 --check SHA256SUMS.txt` accepted the updater archive,
+signature, and DMG. The release API digests matched the independently
+downloaded files.
+
+`latest.json` reported version 0.3.1, platform darwin-aarch64, the versioned
+0.3.1 updater archive URL, and a non-empty 408-character signature. The
+versioned Release manifest and the separately downloaded `yourbuddy-updater`
+stable-channel manifest were byte-for-byte identical with SHA-256
+f73b8e7fefa48d08309be053e981bd00556729f159212ee44cbc286be0ef6f9b.
+
+DMG observations
+----------------
+`hdiutil attach -nobrowse -readonly` verified the image CRC and mounted it.
+The mounted volume contained `YourBuddy.app` and an Applications link.
+
+Info.plist:
+  CFBundleShortVersionString: 0.3.1
+  CFBundleVersion: 0.3.1
+  CFBundleIdentifier: io.github.istarwyh.yourbuddy
+  CFBundleName: YourBuddy
+
+From the mounted App, `harbor --version` printed 0.21.0 and `harbor-dsh
+--help` exited successfully with its command list. The packaged Python
+metadata also contains harbor-dsh-evolution 0.9.2. The disk image was then
+detached successfully.
+
+Updater archive observations
+----------------------------
+The updater archive extracted successfully and contained `YourBuddy.app`.
+Its Info.plist values matched the DMG values above. A pristine extraction
+passed `codesign --verify --deep --strict`; `codesign -dv` identified an
+arm64 app with an ad-hoc hardened-runtime signature and no TeamIdentifier.
+Gatekeeper `spctl --assess` rejected the app, as expected for the documented
+absence of Apple Developer signing and notarization.
+
+With `PYTHONDONTWRITEBYTECODE=1`, the updater App's packaged `harbor
+--version` printed 0.21.0, `harbor-dsh --help` exited successfully, and a
+second strict code-signature verification still passed.
+
+Failures and recovery retained
+------------------------------
+The first stable-channel download attempt ran outside a Git checkout without
+an explicit repository and failed with `fatal: not a git repository`. Retrying
+with `-R istarwyh/yourbuddy` succeeded, and the manifests matched.
+
+An initial updater extraction ran the Python entry points before checking its
+ad-hoc signature. Python created bytecode cache files inside that writable
+copy, so the subsequent signature check correctly reported added sealed
+resources. A fresh extraction passed the signature check before execution;
+running the same entry points with bytecode writes disabled preserved it.
+This operator-induced writable-copy result is not presented as a defect in
+the downloaded archive or as proof of an installed application lifecycle.
+
+A direct invocation of the bundled raw `venv/bin/python` was not relocatable
+without the launcher's runtime setup. The supported packaged `harbor` and
+`harbor-dsh` entry points both passed, and no raw-interpreter compatibility
+claim is made.
+
+Scope limits
+------------
+This verification proves publication, file integrity, manifest consistency,
+App identity, pristine ad-hoc signature integrity, and the two packaged Harbor
+entry points. It does not prove an interactive installed-DMG UI journey,
+signed in-app update installation, real GPT OAuth or model-provider traffic,
+a real enterprise proxy or CA, Apple Developer signing or notarization,
+automatic XiaoHui migration, macOS Intel, Windows, or Linux behavior.
