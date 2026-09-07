@@ -48,7 +48,7 @@ The Host plugin injects `webServer` and accepts these fields:
 | Field | Default | Meaning |
 |---|---:|---|
 | `host` | `127.0.0.1` | Worker endpoint bind address; only loopback is accepted |
-| `port` | `9230` | First Worker endpoint port; occupied ports advance upward, while `0` requests an OS-assigned port |
+| `port` | `9230` | First Worker endpoint port; occupied or OS-reserved ports advance upward, while `0` requests an OS-assigned port |
 | `clientOrigins` | `[]` | Additional exact browser origins accepted by `/ingest`; loopback origins remain accepted |
 | `captureFetch` | `true` | Wrap `globalThis.fetch` and publish every later call |
 | `maxRequestBodyBytes` | 8 MiB | Per-request captured request-body prefix |

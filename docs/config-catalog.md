@@ -621,7 +621,7 @@ export interface Config extends Omit<InspectorOptions, 'clientOrigins'> {
 export interface InspectorOptions {
   /** Loopback address used by the Worker HTTP and WebSocket endpoint. */
   readonly host?: '127.0.0.1'
-  /** First port to bind; occupied ports advance until one is available. */
+  /** First port to bind; unavailable ports advance until one can bind. */
   readonly port?: number
   /** Additional exact browser origins admitted to the Client ingest socket. */
   readonly clientOrigins?: readonly string[]
