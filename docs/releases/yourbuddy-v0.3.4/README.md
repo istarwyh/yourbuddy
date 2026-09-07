@@ -2,12 +2,12 @@
 
 English | [中文](README.zh.md)
 
-This archive prepares the desktop release. Its source-validation images are historical evidence, not captures of a published 0.3.4 application.
+This archive records the YourBuddy 0.3.4 desktop release. Its seven source-validation images are historical evidence, not captures of the published application. Public-file integrity, updater signatures, relocated runtime checks, and isolated native startup passed independent verification; visual window acceptance remains unverified.
 
-- Release identifier: intended `yourbuddy-v0.3.4`; final product commit pending.
+- Release identifier: `yourbuddy-v0.3.4`; product commit [`d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d`](https://github.com/istarwyh/yourbuddy/commit/d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d).
 - Product channel: YourBuddy desktop, macOS Apple Silicon; unrelated npm, Python, and SDK release channels are not applicable.
-- Archive state: partial; historical source evidence is included, product and website verification are pending.
-- Evidence commit: pending the final archive commit; the feature is carried by `d5e200d4415f5d951374dd7794762b542057d0f9`.
+- Archive state: product verification is complete within the limits below; website deployment and the downloadable verification ZIP are pending.
+- Evidence identity: the immutable gallery link on the [Release page](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) identifies the documentation commit. That evidence commit is separate from the product commit above; this file does not contain its own commit hash.
 - Evidence gallery: seven historical images in [screenshots](screenshots/).
 - Evidence download: not published; the release operator will attach the final verification archive after checking its extracted contents.
 
@@ -15,7 +15,7 @@ This archive prepares the desktop release. Its source-validation images are hist
 
 ### What changed
 
-The release candidate lets a supporting plugin attach the page you are viewing to an ordinary message. In Harbor, open a Trial or check several rows, type a question in the existing Composer, and send. A compact, expandable attachment shows the captured object or selection. Failed messages remain recoverable without replacing a newer draft.
+YourBuddy 0.3.4 lets a supporting plugin attach the page you are viewing to an ordinary message. In Harbor, open a Trial or check several rows, type a question in the existing Composer, and send. A compact, expandable attachment shows the captured object or selection. Failed messages remain recoverable without replacing a newer draft.
 
 ### Problem solved
 
@@ -27,18 +27,18 @@ Use the Harbor tab in the conversation. **Attach current page on send** controls
 
 ### How to try it
 
-1. On the prepared build, open an existing Harbor result and select a Trial or check several Trial rows.
+1. In YourBuddy 0.3.4, open an existing Harbor result and select a Trial or check several Trial rows.
 2. Type a question and send without choosing **Ask AI**. Expand the message's page attachment to inspect its captured identity, selection, filters, and observation time.
 3. Switch to another Trial and ask again. The earlier attachment must retain its original target.
 4. If preparation fails, keep the newer draft or clear it before restoring the failed message. Restoring does not send; sending again captures the page then in view.
 
 ### Install or upgrade
 
-No 0.3.4 installer or updater is claimed available yet. The official download pages ([English](https://istarwyh.github.io/yourbuddy/en/download/) / [中文](https://istarwyh.github.io/yourbuddy/download/)) retain the independently verified 0.3.3 release and remain accessible from the standalone verification archive. The release operator must verify the public DMG, updater archive, signature, checksums, and stable manifest before changing availability or recommending an upgrade.
+The [0.3.4 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) is public. Complete installer/updater downloads, checksums, the updater signature, relocated runtime checks, and isolated native startup are independently verified. The official download pages ([English](https://istarwyh.github.io/yourbuddy/en/download/) / [中文](https://istarwyh.github.io/yourbuddy/download/)) remain accessible from the standalone verification archive; their 0.3.4 update is prepared but not yet deployed. Signature verification and isolated startup do not establish a successful update from an older installation.
 
 ### Compatibility, migration, and limitations
 
-The desktop release targets macOS Apple Silicon; formal 0.3.4 installation and update behavior remain unverified. Automatic Harbor context requires both the Host contribution API and a compatible Harbor plugin; upgrading the independent npm plugin cannot add that API to an older Host. Local preparation pairs Harbor JavaScript and Python adapter 0.9.4 from source `8264804dfd23186d030703580020b941a1bcc306`, with Python 3.12.14 and Harbor 0.21.0. The [local candidate record](evidence/local-candidate-validation.txt) contains the final documentation-aware snapshot and bundle hashes.
+The desktop release targets macOS Apple Silicon. An unchanged copy of the public DMG's App passed isolated native startup, but visual window inspection and an update from an existing installation remain unverified. Automatic Harbor context requires both the Host contribution API and a compatible Harbor plugin; upgrading the independent npm plugin cannot add that API to an older Host. The public App contains Harbor JavaScript and Python adapter 0.9.4, Python 3.12.14, and Harbor 0.21.0. The [local candidate record](evidence/local-candidate-validation.txt) contains local snapshot/bundle hashes; public bundle hashes are recorded separately below and are not byte-identical to that local candidate.
 
 New Harbor references persist identity and revision metadata under the original project's private, Session-isolated directory, not evidence bodies or credentials. They can be read after cache expiry or Host restart; moved projects, another Session, old memory-only tokens, and missing or damaged records are not recovered. Changed evidence remains explicit, and changed Trial sets are rejected rather than expanded. Records are not automatically deleted. Unsent-message recovery lasts only for the current browser session, not a persistent outbox. Capturing context does not start evaluation, Gate, promotion, or deployment.
 
@@ -52,7 +52,11 @@ New Harbor references persist identity and revision metadata under the original 
 | Node 24 focused unit and browser checks | unit checks passed; browser run partially failed; isolated DNS-assisted remote check passed | current source candidate, not an installed desktop | Node 24.20.0, pnpm 11.7.0, macOS arm64 | [Local candidate record](evidence/local-candidate-validation.txt): 9 unit files / 214 cases; 3 browser files / 6 cases; remote failure and isolated 1-case pass |
 | `user-text.tsx` coverage check | passed after correction; earlier failure retained | corrected source candidate | Node 24.20.0, local coverage run | 28 files / 573 cases passed; exact-file statements, branches, functions, and lines all 100% |
 | 0.3.4 release preparation, corrected-source replay, and bundled identity | passed | final local release candidate, not a published installer | Node 24.20.0, macOS Apple Silicon target | [Local candidate record](evidence/local-candidate-validation.txt): 220 Client artifacts, 2 replay files / 5 cases, offline installation, runtime assembly, and controls |
-| Public installer, updater, and installed journey | not verified | formally published product | GitHub Release and macOS Apple Silicon target | Public files, hashes, signatures, metadata, and installed observations pending |
+| Main CI | passed: 19 of 19 jobs | merged product source, same file tree as the tested candidate | repository CI matrix | [Main CI run](https://github.com/istarwyh/yourbuddy/actions/runs/34085409542) |
+| Upstream Cloudflare preview | cancelled without running; not passed | PR source | required self-hosted runner unavailable | [Cancelled preview run](https://github.com/istarwyh/yourbuddy/actions/runs/34085409407) |
+| Desktop release publication | passed; latest formal release is 0.3.4 | product commit `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d` | GitHub Release / macOS Apple Silicon | [Desktop workflow](https://github.com/istarwyh/yourbuddy/actions/runs/34087526138) and [public release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) |
+| Public files and updater signature | passed | complete downloaded release assets | five public assets; pinned release public key | [Independent artifact record](evidence/public-artifact-stage.json): sizes/digests, 3/3 checksums, stable manifest, and cryptographic Minisign verification |
+| Public App identity, relocated runtime, and isolated native startup | passed within stated limits | unchanged copy of the published DMG App | macOS arm64, bundled Node 22.19.0 / pnpm 11.7.0; isolated data | [App/runtime stage record](evidence/public-runtime-stage.json) and native-startup observations below; visual window not verified |
 | Bilingual website and downloadable verification archive | not verified | public deployment and downloadable archive | GitHub Pages and GitHub Release | Final commit, workflow, live pages, and extracted archive checks pending |
 
 ## Scenario: Historical automatic-context source validation
@@ -124,7 +128,7 @@ These captures do not validate the YourBuddy 0.3.4 installer, native WebView, si
 
 - Status: focused unit checks, corrected-source replay, and local release preparation/rebuild passed; the earlier browser invocation remained partially failed, with a separate DNS-assisted remote check passing.
 - Date and time: 2026-09-07 12:00–12:04 UTC+08:00 for focused tests; initial preparation completed at 12:42, final source build at 12:53, replay at 12:54, and runtime rebuild at 12:55 UTC+08:00, Asia/Shanghai.
-- Release and commit: intended `yourbuddy-v0.3.4`; feature `d5e200d4415f5d951374dd7794762b542057d0f9` plus uncommitted release preparation; paired Harbor source `8264804dfd23186d030703580020b941a1bcc306`.
+- Release and commit: pre-tag source run for `yourbuddy-v0.3.4`, based on feature `d5e200d4415f5d951374dd7794762b542057d0f9` plus then-uncommitted release preparation, finalized as candidate `eed670338df5f265189c797e37e66bdcdaa04aa5`; paired Harbor source `8264804dfd23186d030703580020b941a1bcc306`. The product commit has the same file tree, as recorded below.
 - Build under test: corrected source and locally assembled candidate runtime, not a DMG, native WebView, or public updater. Final snapshot hashes include the bilingual README updates and a successful rebuild.
 - Environment: macOS arm64, Node 24.20.0, pnpm 11.7.0, Python 3.12.14, Harbor 0.21.0, Harbor JavaScript/Python adapter 0.9.4.
 - Evidence origin: this release run's operator logs, summarized with local paths removed in the [candidate record](evidence/local-candidate-validation.txt); no additional screenshots were captured.
@@ -148,7 +152,7 @@ Earlier preparation attempts encountered macOS Unix-socket path length limits an
 
 - Status: passed for local documentation and generated website checks, not public deployment.
 - Date and time: 2026-09-07 12:04–12:06 UTC+08:00, Asia/Shanghai.
-- Release and commit: intended `yourbuddy-v0.3.4`; feature commit `d5e200d4415f5d951374dd7794762b542057d0f9` plus uncommitted release preparation.
+- Release and commit: pre-tag documentation run for `yourbuddy-v0.3.4`; feature commit `d5e200d4415f5d951374dd7794762b542057d0f9` plus then-uncommitted release preparation. These timed observations do not include subsequent publication updates to this archive.
 - Build under test: source documentation and the locally generated product website with the production URL prefix.
 - Environment: macOS arm64, Node 22.22.2, pnpm 11.7.0, existing Hugo Extended 0.165.0 arm64 and cached Go 1.27.0 amd64; Go module networking disabled.
 - Evidence origin: this release-preparation run; no model, real account, or business data was used.
@@ -163,12 +167,62 @@ After the two bundled Harbor README translations and the local-candidate record 
 
 These checks validate local source consistency and generated website content. They do not publish the website, verify live external links, or establish a 0.3.4 desktop download. The release operator still owns final product, archive-download, and live website verification.
 
+## Product source and publication progress
+
+[PR #12](https://github.com/istarwyh/yourbuddy/pull/12) merged as product commit `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d`. The release operator confirmed that its complete file tree equals tested candidate `eed670338df5f265189c797e37e66bdcdaa04aa5`; the merge does not turn historical source screenshots into installed-product evidence. The [main CI run](https://github.com/istarwyh/yourbuddy/actions/runs/34085409542) completed all 19 jobs successfully.
+
+The separate [upstream Cloudflare preview](https://github.com/istarwyh/yourbuddy/actions/runs/34085409407) required the `dsh-ubuntu-24-04-16core` self-hosted runner. This repository had zero self-hosted runners, so the workflow remained queued and the release operator cancelled it with an explanation in the PR. It did not run or pass; its cancellation is not included in the main CI's 19 successful jobs.
+
+The [formal GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) was published at 2026-09-07 14:01:40 UTC+08:00 (`2026-09-07T06:01:40Z`), with neither draft nor prerelease status and five public assets. [Desktop workflow 34087526138](https://github.com/istarwyh/yourbuddy/actions/runs/34087526138) completed successfully, and GitHub's latest formal Release is 0.3.4. Independent complete downloads, cryptographic updater verification, public runtime checks, and isolated native startup passed as recorded below.
+
+The verification ZIP has not been uploaded and the 0.3.4 website update has not been deployed. Bilingual promotion content is prepared in the uncommitted working tree. Archive extraction and website deployment/live checks remain outstanding and do not change the completed product checks. The live website still shows 0.3.3 until the documentation follow-up is deployed and verified.
+
+## Scenario: Independent public-artifact verification
+
+- Status: passed for complete-file integrity, checksum consistency, updater metadata, cryptographic updater verification, and anonymous access to all five public URLs. Installed runtime and startup are recorded separately below.
+- Date and time: 2026-09-07 14:17:13.068 UTC+08:00, Asia/Shanghai (`2026-09-07T06:17:13.068Z`).
+- Release and build: downloaded assets from `yourbuddy-v0.3.4`, product commit `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d`; this is public-file evidence, not a local bundle substitution.
+- Method: the independent auditor downloaded all five assets, checked their byte lengths and SHA-256 against GitHub's API digests, and verified all three entries in `SHA256SUMS.txt`. The stable and versioned `latest.json` files are byte-identical; the manifest signature equals the signature asset.
+- Cryptographic check: `minisign-verify` 0.2.5 used the public key from the tagged release configuration to verify the updater archive's prehashed signature and trusted comment. This was an actual signature check, not only string equality.
+- Evidence: [unaltered sanitized stage record](evidence/public-artifact-stage.json). Its pending native-startup and anonymous-visibility fields preserve the scope at that time; no model request was involved.
+
+| Public asset | Bytes | Independently observed SHA-256 |
+|---|---|---|
+| `latest.json` | 3,954 | `e0d5aeb27b83a2463c1da83769ad0b4b823c6880ab538d44e8a20c0dd6f8eeb9` |
+| `SHA256SUMS.txt` | 312 | `fdacdcf11bbb9971392434960b92dbb1f7a058d368c2094d965be72cbd164da0` |
+| `yourbuddy-0.3.4-macos-arm64.app.tar.gz` | 570,358,486 | `d826075d26fe325dbc1278d9a2b69575290ae13cdb6da9d9ead8c18011d09fd5` |
+| `yourbuddy-0.3.4-macos-arm64.app.tar.gz.sig` | 408 | `042eb3e911883a255da27046ee4c9cf9ae9c13d8a96abbdacc957eb1c044008c` |
+| `yourbuddy-0.3.4-macos-arm64.dmg` | 568,345,182 | `3a8eeaf70602836280a48fe09f587f7ebf50c19366f9b209c0ede7054f0b4270` |
+
+Passing these checks does not prove native startup, a completed update from an older installation, Apple signing/notarization, real model quality, or the full Harbor PRD. Those outcomes require their own observations.
+
+## Scenario: Public App inspection and isolated native startup
+
+- Status: App identity, code-signature integrity, relocated Python CLI/imports, and isolated native startup passed; Gatekeeper rejected the ad-hoc App, and visual window inspection/capture remains unverified.
+- Date and time: App/runtime inspection at 2026-09-07 14:19 UTC+08:00; native startup at 14:20:30 UTC+08:00, Asia/Shanghai.
+- Build under test: the App copied unchanged from the downloaded public DMG; no identifier, executable, resource, or signature changes. The DMG and updater archive contain identical App trees according to `diff -qr`.
+- Data and services: isolated owned directories, no inherited real profile or credentials, telemetry disabled, and no paid-model requests. The public installer used bundled Node 22.19.0 and pnpm 11.7.0 for its offline runtime preparation.
+- Evidence: [sanitized App/runtime record](evidence/public-runtime-stage.json), with local audit paths replaced by `{{auditRoot}}`, and the [native startup/cleanup record](evidence/public-native-startup.txt); the public artifact stage above remains a separate earlier observation.
+
+`hdiutil verify`, read-only mount, copy, and detach passed. The App reports version/build 0.3.4, identifier `io.github.istarwyh.yourbuddy`, and an arm64 executable. `codesign --deep --strict` exited 0, but the signature is ad-hoc with no TeamIdentifier; `spctl` exited 3 and rejected it. This is not Apple Developer signing or notarization.
+
+All 17 changed source/CSS files checked inside the public bundle matched the formal tag byte for byte. The copied runtime passed four CLI/import checks and loaded all three integration entry points, reporting Python 3.12.14, Harbor 0.21.0, and adapter 0.9.4. The public bundle and offline-store digests below differ from the local candidate's digests, so whole-bundle byte reproducibility is not claimed. A scoped comparison found only checkout-path/CSS-hash differences in two compiled clients across 1,183 related files; both stores indexed the same 587 package integrity keys, with generated timestamps and archive owner/mtime metadata accounting for the examined store differences. It did not compare every expanded store byte.
+
+| Public bundle field | Observed SHA-256 |
+|---|---|
+| Harness source | `aa4b10f1695e96b3eb0815aa0b7d6565cb68042cc55c0b0d042f055c31fb84cb` |
+| Harness content | `102787b7b9359a1c247a9f5632256699405b9bf127102f84d0035e4bc9210096` |
+| Offline store, 38,708 files | `9652e85978d477bed2c5caf21a21ba4e6d3148ee4ab7a6ae87c505445a7744c6` |
+| Offline-store archive | `9020f06ead6f87e16193c3880150e503ee38dff3e4307a3f51aa2401b5a9b40a` |
+
+The unchanged public App started with isolated data. Its boot log recorded authenticated readiness, DSH Web readiness, opening the main window, boot completion, and the desktop update service reporting current version 0.3.4. The native-window inspection attempt for that exact App path failed with `-10005: codex app-server exited before returning a response`. The log's window-opening marker is not visual confirmation; no formal native screenshot was created. This isolated launch does not verify Finder installation, updating an existing installation, OAuth, real-provider behavior, or the historical synthetic AI journey inside the published WebView.
+
 ## Delivery status
 
-- Product publication status: pending; no public 0.3.4 files, hashes, updater metadata, or installed behavior verified here. Public 0.3.3 remains the website download.
-- Verification archive status: partial; seven historical source images, their sanitized machine record, final local build/replay/preparation results, and documentation-aware snapshot hashes are present. Final product and evidence commits, public-product evidence, and an extracted downloadable archive remain outstanding.
-- Website synchronization status: pending; candidate notes are prepared in both languages, while the homepage and download retain 0.3.3. After product verification, record the site commit, deployment run, and observed Chinese and English home, download, and release pages.
-- Unverified scope: historical/source-only and controlled-model evidence above; all formal 0.3.4 product and website delivery checks pending.
+- Product publication status: published and independently verified within the recorded scope: all five assets, 3/3 checksums, updater signature, public App identity, relocated runtime, and isolated native startup passed. Visual window inspection and an actual installed-version upgrade remain unverified.
+- Verification archive status: partial; seven historical source images, source/preparation evidence, public artifact/runtime observations, and separate product/evidence identities are recorded. The Release's immutable gallery link and an extracted downloadable archive remain outstanding.
+- Website synchronization status: pending; 0.3.4 content is prepared in both languages in the working tree, while the live homepage and download retain 0.3.3. After product verification, record the site commit, deployment run, and observed Chinese and English home, download, and release pages.
+- Unverified scope: historical/source-only and controlled-model limits above; visual native-window inspection, Finder installation, actual in-app updating, real providers, archive ZIP, and live 0.3.4 website checks remain pending. Apple Developer signing/notarization is absent, not a passed check.
 
 ## Delivery checklist
 

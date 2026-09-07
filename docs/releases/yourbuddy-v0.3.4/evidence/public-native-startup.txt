@@ -1,0 +1,36 @@
+YourBuddy 0.3.4 public native-startup observation
+Observed: 2026-09-07 14:20-14:24 UTC+08:00
+Release: yourbuddy-v0.3.4
+Product commit: d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d
+Artifact workflow: https://github.com/istarwyh/yourbuddy/actions/runs/34087526138 (success)
+
+Setup
+- Started the unchanged executable copied from the publicly downloaded DMG.
+- Used owned temporary home, app-data, DSH, agent, XDG, cache, and workspace directories.
+- Inherited no real DSH Profile, model credentials, OAuth state, or user curl configuration.
+- Set DSH_TELEMETRY_DISABLED=1 and disabled persistent DSH CLI path changes.
+- Made no model call, paid run, or Docker evaluation.
+
+Observed result
+- Provisioning selected bundled Node 22.19.0 and pnpm 11.7.0 and installed frozen production dependencies from the bundled offline store.
+- The owned Host listened on loopback 127.0.0.1:17890.
+- Boot markers appeared in order: authenticated readiness passed; dsh web ready; opening main window; boot complete; desktop update current version=0.3.4.
+- Readiness and boot completed at 14:20:51 UTC+08:00; the version check completed at 14:20:55.
+
+Single-instance boundary
+- Immediately before launch, no YourBuddy or XiaoHui process and no holder of the exact singleton socket were found.
+- A stale global /tmp singleton socket existed. It was not contacted, deleted, or changed before launch.
+- Ordinary startup replaced it with a socket owned by this test process. HOME and TMPDIR do not isolate this global socket, so the launch was not fully confined to the temporary directory.
+
+Visual limit
+- Native inspection of the exact temporary App path failed with error -10005: the Codex app server exited before returning a response.
+- No window state or formal installed-binary screenshot was obtained. No alternate native UI-control mechanism was used.
+- Log evidence for opening a window is not visual confirmation.
+
+Cleanup
+- After the visual attempt, only the verified owned App and Host processes were sent SIGTERM; both stopped without SIGKILL.
+- The loopback listener was gone. After reconfirming no holder or YourBuddy/XiaoHui process, only the exact singleton socket created by this launch was removed.
+- No user application was terminated. The App passed strict code-signature verification again after cleanup.
+
+Limits
+- This verifies isolated authentication readiness and boot, not visual WebView behavior, normal GUI Quit/Restart, Finder installation, updating an existing installation, OAuth, real-provider quality, Apple Developer signing/notarization, or full Harbor PRD acceptance.

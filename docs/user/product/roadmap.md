@@ -16,7 +16,7 @@ Improve the work people can complete and verify. These are candidate directions,
 
 ## Existing foundations
 
-The verified 0.3.3 Apple Silicon installer establishes current public availability and repairs the installed-app startup authentication failure in 0.3.2. Model choice, workspace tasks, output inspection, context audits, and controlled Harbor evaluation are represented in the product, while the complete real-account first-use journey remains in progress. Current availability and verification scope follow the [release record](releases.md).
+YourBuddy 0.3.4 is public for Apple Silicon, with independently verified file integrity, updater signatures, relocated CLI/imports, and isolated native startup. Its source and assembled-runtime checks cover ordinary-message Harbor page attachments and recoverable unsent messages. Model choice, workspace tasks, output inspection, context audits, and controlled Harbor evaluation are represented in the product, while visual window acceptance and the complete real-account first-use journey remain unverified. Current availability and verification scope follow the [release record](releases.md).
 
 ## What is not promised
 

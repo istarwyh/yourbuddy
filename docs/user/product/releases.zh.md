@@ -6,9 +6,11 @@
 
 ## YourBuddy
 
-### 0.3.4 — 准备中，尚未提供下载
+### 0.3.4 — 2026-09-07
 
-候选版本支持普通消息附带页面，以及找回未发送消息。在兼容的 Harbor 视图中，无需手动附加引用，就能询问当前 Trial 或勾选行；显式引用仍然优先。[候选版本验证记录](../../releases/yourbuddy-v0.3.4/README.zh.md)包含历史源码截图与受控模型结果，不是正式 0.3.4 安装包的证据。公开产品与官网检查待完成；[已核验下载仍为 0.3.3](download.zh.md)。
+YourBuddy 0.3.4 新增普通消息附带页面，以及找回未发送消息。在 Harbor 中，无需手动附加引用，就能询问当前 Trial 或勾选行；显式引用优先。公开 App 内含配套 Harbor JavaScript／Python 适配器 0.9.4。五个附件均已独立完整下载检查，更新签名已通过密码学验证，原样 App 副本已使用隔离数据完成 Host 认证就绪与启动。窗口可视化检查／截图、从已有安装执行更新、OAuth 与真实模型调用仍未验证。图集中的七张图是使用合成数据的历史源码截图，不是正式安装后应用截图。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) · [验证记录](../../releases/yourbuddy-v0.3.4/README.zh.md) · [下载页](download.zh.md)
 
 ### 0.3.3 — 2026-09-07
 

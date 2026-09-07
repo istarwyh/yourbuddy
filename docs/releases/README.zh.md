@@ -10,7 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.4](yourbuddy-v0.3.4/README.zh.md) | YourBuddy 桌面应用 | 已准备 | 七张历史源码图与受控模型观察；正式产品验证待完成 | 待发布；已核验下载仍为 0.3.3 |
+| [yourbuddy-v0.3.4](yourbuddy-v0.3.4/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 七张历史源码图、公开文件摘要、更新签名、迁移运行时与隔离原生启动；保留可视窗口限制 | 已发布并在声明范围内完成独立核验；官网同步待完成 |
 | [yourbuddy-v0.3.3](yourbuddy-v0.3.3/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录公开产物、校验和、Updater 元数据与认证启动；保留窗口截图和 Updater 安装限制 | 已发布并在声明范围内完成独立验证 |
 | [yourbuddy-v0.3.2](yourbuddy-v0.3.2/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；提供不可变证据与已核验下载；保留真实浏览器限制 | 已发布并完成独立验证 |
 | [yourbuddy-v0.3.1](yourbuddy-v0.3.1/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；提供不可变证据与验证资料下载 | 已发布并独立验证 |

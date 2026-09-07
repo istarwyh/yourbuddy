@@ -2,12 +2,12 @@
 
 [English](README.md) | 中文
 
-本归档用于准备桌面发布。其中的源码验证图片是历史证据，不是正式发布的 0.3.4 应用截图。
+本归档记录 YourBuddy 0.3.4 桌面发布。其中七张源码验证图片是历史证据，不是正式发布应用的截图。公开文件完整性、更新签名、迁移运行时和隔离原生启动已独立核验通过；可视窗口验收仍未验证。
 
-- 发布标识：计划使用 `yourbuddy-v0.3.4`；最终产品 Commit 待补。
+- 发布标识：`yourbuddy-v0.3.4`；产品 Commit 为 [`d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d`](https://github.com/istarwyh/yourbuddy/commit/d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d)。
 - 产品渠道：YourBuddy 桌面应用，macOS Apple Silicon；无关 npm、Python 与 SDK 发布渠道不适用。
-- 归档状态：部分完成；已包含历史源码证据，产品与官网验证待完成。
-- 证据 Commit：等待最终归档提交；功能由 `d5e200d4415f5d951374dd7794762b542057d0f9` 携带。
+- 归档状态：产品已在下述范围内完成核验；官网部署与可下载验证 ZIP 待完成。
+- 证据身份：以 [Release 页面](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4)上的不可变图集链接所指文档 Commit 为准。该证据 Commit 与上方产品 Commit 分开记录；本文件不包含自身的 Commit Hash。
 - 证据图集：[screenshots](screenshots/) 中的七张历史图片。
 - 证据下载：尚未发布；发布人员检查最终资料包的解压内容后再上传附件。
 
@@ -15,7 +15,7 @@
 
 ### 改了什么
 
-候选版本允许支持此功能的插件把当前页面附到普通消息中。在 Harbor 打开一个 Trial 或勾选多行，直接在现有输入框提问并发送。紧凑、可展开的附件显示捕获的对象或选区。发送失败的消息仍可找回，不会替换正在写的新草稿。
+YourBuddy 0.3.4 允许支持此功能的插件把当前页面附到普通消息中。在 Harbor 打开一个 Trial 或勾选多行，直接在现有输入框提问并发送。紧凑、可展开的附件显示捕获的对象或选区。发送失败的消息仍可找回，不会替换正在写的新草稿。
 
 ### 解决了什么问题
 
@@ -27,18 +27,18 @@
 
 ### 如何体验
 
-1. 在准备好的构建中打开已有 Harbor 结果，选择一个 Trial 或勾选多个 Trial。
+1. 在 YourBuddy 0.3.4 中打开已有 Harbor 结果，选择一个 Trial 或勾选多个 Trial。
 2. 不点“问 AI”，直接输入问题并发送。展开消息的页面附件，检查捕获的身份、选区、筛选和观测时间。
 3. 切换到另一个 Trial 再提问。之前的附件应保留原始目标。
 4. 准备失败时，先保留或清空正在编辑的新草稿，再恢复失败消息。恢复不会发送；再次发送时捕获当时正在查看的页面。
 
 ### 安装或升级
 
-目前不声称 0.3.4 安装包或更新包已经可用。正式下载页（[English](https://istarwyh.github.io/yourbuddy/en/download/) / [中文](https://istarwyh.github.io/yourbuddy/download/)）继续保留已独立核验的 0.3.3，单独打开验证资料包时也可访问。发布人员必须核验公开 DMG、更新归档、签名、校验和及稳定更新清单，才能更改可用状态或建议升级。
+[0.3.4 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) 已公开。安装包／更新包完整下载、校验和、更新签名、迁移运行时检查和隔离原生启动已独立核验。正式下载页（[English](https://istarwyh.github.io/yourbuddy/en/download/) / [中文](https://istarwyh.github.io/yourbuddy/download/)）在独立资料包中也可访问；其 0.3.4 更新已准备但尚未部署。验签与隔离启动成功不能证明从旧安装版更新成功。
 
 ### 兼容性、迁移与限制
 
-桌面发布面向 macOS Apple Silicon；正式 0.3.4 的安装与更新行为仍未验证。Harbor 自动上下文需要宿主贡献 API 与兼容的 Harbor 插件同时具备；单独升级 npm 插件不能给旧宿主增加该 API。本地准备配套使用源码 `8264804dfd23186d030703580020b941a1bcc306` 的 Harbor JavaScript 与 Python 适配器 0.9.4，以及 Python 3.12.14 和 Harbor 0.21.0。[本地候选记录](evidence/local-candidate-validation.txt)包含最终纳入文档更新的快照与组合包 Hash。
+桌面发布面向 macOS Apple Silicon。从公开 DMG 原样复制的 App 通过隔离原生启动，但可视窗口检查和从已有安装执行更新仍未验证。Harbor 自动上下文需要宿主贡献 API 与兼容的 Harbor 插件同时具备；单独升级 npm 插件不能给旧宿主增加该 API。公开 App 内含 Harbor JavaScript 与 Python 适配器 0.9.4、Python 3.12.14 和 Harbor 0.21.0。[本地候选记录](evidence/local-candidate-validation.txt)包含本地快照／组合包 Hash；公开组合包 Hash 在下方单独记录，与本地候选并非字节相同。
 
 新的 Harbor 引用在原项目的私有、会话隔离目录中保存身份和修订元数据，不保存证据正文或凭据。内存缓存到期或宿主重启后仍可读取；移动项目、切换会话、旧版仅内存 Token、缺失或损坏的记录不能恢复。证据变化仍明确报告，Trial 集合变化会被拒绝，不会扩大选区。记录不会自动删除。未发送消息找回仅持续于当前浏览器会话，不是持久化发件箱。捕获上下文不会启动评测、Gate、晋级或部署。
 
@@ -52,7 +52,11 @@
 | Node 24 定向单元与浏览器检查 | 单元检查 passed；浏览器运行部分 failed；独立 DNS 辅助远程检查 passed | 当前源码候选，不是已安装桌面应用 | Node 24.20.0、pnpm 11.7.0、macOS arm64 | [本地候选记录](evidence/local-candidate-validation.txt)：9 个单元文件 / 214 个用例；3 个浏览器文件 / 6 个用例；保留远程失败与独立 1 个用例通过 |
 | `user-text.tsx` 覆盖率检查 | 修正后 passed；保留此前失败 | 已修正源码候选 | Node 24.20.0、本地覆盖率运行 | 28 个文件 / 573 个用例通过；该精确文件的语句、分支、函数和行覆盖率均为 100% |
 | 0.3.4 发布准备、修正源码回放与内置身份 | passed | 最终本地候选发布版本，不是公开安装包 | Node 24.20.0、macOS Apple Silicon 目标 | [本地候选记录](evidence/local-candidate-validation.txt)：220 个 Client 产物、2 个回放文件 / 5 个用例、离线安装、运行时组装与控制区 |
-| 公开安装包、更新渠道与安装后使用 | not verified | 正式发布产品 | GitHub Release 与 macOS Apple Silicon 目标 | 公开文件、Hash、签名、元数据与安装后观察待补 |
+| 主 CI | passed：19 项作业全部成功 | 合并后的产品源码，文件树与受测候选一致 | 仓库 CI 矩阵 | [主 CI 运行](https://github.com/istarwyh/yourbuddy/actions/runs/34085409542) |
+| 上游 Cloudflare 预览 | 未执行即取消；不是 passed | PR 源码 | 缺少所需自托管 runner | [已取消的预览运行](https://github.com/istarwyh/yourbuddy/actions/runs/34085409407) |
+| 桌面版本发布 | passed；最新正式 Release 为 0.3.4 | 产品 Commit `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d` | GitHub Release / macOS Apple Silicon | [桌面工作流](https://github.com/istarwyh/yourbuddy/actions/runs/34087526138)与[公开 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) |
+| 公开文件与更新签名 | passed | 完整下载的发布附件 | 五个公开附件；固定的发布公钥 | [独立产物记录](evidence/public-artifact-stage.json)：大小／摘要、3/3 校验和、稳定清单与 Minisign 密码学验证 |
+| 公开 App 身份、迁移运行时与隔离原生启动 | 在声明范围内 passed | 公开 DMG 中 App 的原样副本 | macOS arm64、内置 Node 22.19.0 / pnpm 11.7.0；隔离数据 | [App／运行时阶段记录](evidence/public-runtime-stage.json)与下方原生启动观察；可视窗口未验证 |
 | 双语官网与可下载验证归档 | not verified | 公开部署与可下载归档 | GitHub Pages 与 GitHub Release | 最终 Commit、工作流、线上页面与解压检查待补 |
 
 ## 场景：历史自动上下文源码验证
@@ -124,7 +128,7 @@
 
 - 状态：定向单元检查、修正源码回放与本地发布准备／重建 passed；较早的浏览器调用仍有部分失败，另一次 DNS 辅助远程检查通过。
 - 日期与时间：定向测试为 2026-09-07 12:00–12:04 UTC+08:00；首次完整准备于 12:42、最终源码构建于 12:53、回放于 12:54、运行时重建于 12:55 UTC+08:00 完成，Asia/Shanghai。
-- 发布版本与 Commit：计划使用 `yourbuddy-v0.3.4`；功能 `d5e200d4415f5d951374dd7794762b542057d0f9` 加未提交发布准备；配套 Harbor 源码 `8264804dfd23186d030703580020b941a1bcc306`。
+- 发布版本与 Commit：`yourbuddy-v0.3.4` 打 Tag 前的源码运行，基于功能 `d5e200d4415f5d951374dd7794762b542057d0f9` 加当时未提交的发布准备，最终形成候选 `eed670338df5f265189c797e37e66bdcdaa04aa5`；配套 Harbor 源码 `8264804dfd23186d030703580020b941a1bcc306`。产品 Commit 文件树相同，见下方记录。
 - 受测构建：修正后源码与本地组装的候选运行时，不是 DMG、原生 WebView 或公开更新包。最终快照 Hash 已包含双语 README 更新，并完成重新构建。
 - 环境：macOS arm64、Node 24.20.0、pnpm 11.7.0、Python 3.12.14、Harbor 0.21.0、Harbor JavaScript／Python 适配器 0.9.4。
 - 证据来源：本轮发布操作日志，[候选记录](evidence/local-candidate-validation.txt)去除本地路径后汇总；没有新增截图。
@@ -148,7 +152,7 @@
 
 - 状态：本地文档与生成官网检查 passed，不代表公开部署。
 - 日期与时间：2026-09-07 12:04–12:06 UTC+08:00，Asia/Shanghai。
-- 发布版本与 Commit：计划使用 `yourbuddy-v0.3.4`；功能 Commit `d5e200d4415f5d951374dd7794762b542057d0f9` 加未提交的发布准备。
+- 发布版本与 Commit：`yourbuddy-v0.3.4` 打 Tag 前的文档运行；功能 Commit `d5e200d4415f5d951374dd7794762b542057d0f9` 加当时未提交的发布准备。这些带时间的观察不包含本归档后续的发布更新。
 - 受测构建：源码文档与使用正式网址前缀生成的本地产品官网。
 - 环境：macOS arm64、Node 22.22.2、pnpm 11.7.0、现有 Hugo Extended 0.165.0 arm64 与缓存 Go 1.27.0 amd64；Go 模块联网已关闭。
 - 证据来源：本次发布准备运行；未使用模型、真实账号或业务数据。
@@ -163,12 +167,62 @@
 
 这些检查验证本地源码一致性与生成的官网内容，不发布官网、不核验线上外部链接，也不能证明 0.3.4 桌面下载可用。最终产品、归档下载与线上官网核验仍由发布人员负责。
 
+## 产品源码与发布进度
+
+[PR #12](https://github.com/istarwyh/yourbuddy/pull/12) 已合并为产品 Commit `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d`。发布人员确认其完整文件树与受测候选 `eed670338df5f265189c797e37e66bdcdaa04aa5` 一致；合并不会把历史源码截图变成安装后产品证据。[主 CI 运行](https://github.com/istarwyh/yourbuddy/actions/runs/34085409542) 的 19 项作业全部成功完成。
+
+独立的[上游 Cloudflare 预览](https://github.com/istarwyh/yourbuddy/actions/runs/34085409407)需要 `dsh-ubuntu-24-04-16core` 自托管 runner。本仓库没有自托管 runner，因此该工作流一直排队，发布人员取消后已在 PR 说明。它未执行、未通过；该取消不计入主 CI 的 19 项成功作业。
+
+[正式 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) 于 2026-09-07 14:01:40 UTC+08:00（`2026-09-07T06:01:40Z`）发布，既非 Draft 也非 Prerelease，含五个公开附件。[桌面工作流 34087526138](https://github.com/istarwyh/yourbuddy/actions/runs/34087526138) 已成功完成，GitHub 最新正式 Release 为 0.3.4。下方记录的独立完整下载、更新包密码学验签、公开运行时检查与隔离原生启动均已通过。
+
+验证 ZIP 尚未上传，0.3.4 官网更新尚未部署。双语更新内容已在未提交工作树中准备。资料包解压与官网部署／线上核验仍待完成，不改变已经完成的产品检查。文档后续提交完成部署与验证前，线上官网仍显示 0.3.3。
+
+## 场景：公开产物独立核验
+
+- 状态：完整文件、校验和一致性、更新元数据、密码学验签，以及五个公开网址的匿名访问均 passed；安装后运行时与启动在下方单独记录。
+- 日期与时间：2026-09-07 14:17:13.068 UTC+08:00，Asia/Shanghai（`2026-09-07T06:17:13.068Z`）。
+- 发布版本与构建：从 `yourbuddy-v0.3.4` 下载的附件，产品 Commit 为 `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d`；这是公开文件证据，不是本地组合包替代品。
+- 方法：独立审计完整下载五个附件，对照 GitHub API 摘要检查字节长度与 SHA-256，并通过 `SHA256SUMS.txt` 中全部三条校验。稳定与版本化 `latest.json` 字节相同；清单中的签名与签名附件一致。
+- 密码学检查：`minisign-verify` 0.2.5 使用正式 Tag 配置中的公钥，验证了更新归档的预哈希签名和受信注释。这是真实验签，不仅是字符串相等。
+- 证据：[原样脱敏阶段记录](evidence/public-artifact-stage.json)。其中启动和匿名可见性 pending 字段保留当时范围；没有模型请求。
+
+| 公开附件 | 字节数 | 独立观测的 SHA-256 |
+|---|---|---|
+| `latest.json` | 3,954 | `e0d5aeb27b83a2463c1da83769ad0b4b823c6880ab538d44e8a20c0dd6f8eeb9` |
+| `SHA256SUMS.txt` | 312 | `fdacdcf11bbb9971392434960b92dbb1f7a058d368c2094d965be72cbd164da0` |
+| `yourbuddy-0.3.4-macos-arm64.app.tar.gz` | 570,358,486 | `d826075d26fe325dbc1278d9a2b69575290ae13cdb6da9d9ead8c18011d09fd5` |
+| `yourbuddy-0.3.4-macos-arm64.app.tar.gz.sig` | 408 | `042eb3e911883a255da27046ee4c9cf9ae9c13d8a96abbdacc957eb1c044008c` |
+| `yourbuddy-0.3.4-macos-arm64.dmg` | 568,345,182 | `3a8eeaf70602836280a48fe09f587f7ebf50c19366f9b209c0ede7054f0b4270` |
+
+这些检查通过，不代表原生启动、从旧安装版实际更新、Apple 签名／公证、真实模型质量或完整 Harbor PRD 已验收。上述结果需要各自的实际观察。
+
+## 场景：公开 App 检查与隔离原生启动
+
+- 状态：App 身份、代码签名完整性、迁移 Python CLI／导入及隔离原生启动 passed；Gatekeeper 拒绝 ad-hoc App，可视窗口检查／截图仍未验证。
+- 日期与时间：App／运行时检查为 2026-09-07 14:19 UTC+08:00；原生启动为 14:20:30 UTC+08:00，Asia/Shanghai。
+- 受测构建：从完整下载的公开 DMG 原样复制的 App；未修改标识、可执行文件、资源或签名。`diff -qr` 确认 DMG 与更新归档中的 App 文件树完全相同。
+- 数据与服务：使用自有隔离目录，不继承真实 Profile 或凭据，关闭遥测，没有付费模型请求。公开安装器使用内置 Node 22.19.0 与 pnpm 11.7.0 完成离线运行时准备。
+- 证据：[脱敏 App／运行时记录](evidence/public-runtime-stage.json)，本地审计路径替换为 `{{auditRoot}}`，以及[原生启动／清理记录](evidence/public-native-startup.txt)；上方公开产物阶段仍作为较早的独立观察保留。
+
+`hdiutil verify`、只读挂载、复制和卸载均通过。App 报告版本／构建号 0.3.4、标识 `io.github.istarwyh.yourbuddy`，可执行文件为 arm64。`codesign --deep --strict` 退出 0，但签名为 ad-hoc、没有 TeamIdentifier；`spctl` 退出 3 并拒绝。它未完成 Apple Developer 签名或公证。
+
+公开组合包中检查的 17 个修改源码／CSS 文件均与正式 Tag 逐字节一致。复制后的运行时通过四项 CLI／导入检查，三个集成入口均可加载，报告 Python 3.12.14、Harbor 0.21.0 与适配器 0.9.4。下方公开组合包和离线存储摘要与本地候选不同，因此不宣称整个组合包逐字节可复现。有限比较在 1,183 个相关文件中只发现两个编译 Client 的 checkout 路径／CSS Hash 差异；两份存储索引包含相同的 587 个包与 integrity key，已检查的存储差异来自生成时间与归档属主／mtime 元数据。该比较没有逐字节检查全部展开后的存储文件。
+
+| 公开组合包字段 | 观测到的 SHA-256 |
+|---|---|
+| Harness 源码 | `aa4b10f1695e96b3eb0815aa0b7d6565cb68042cc55c0b0d042f055c31fb84cb` |
+| Harness 内容 | `102787b7b9359a1c247a9f5632256699405b9bf127102f84d0035e4bc9210096` |
+| 离线存储，38,708 个文件 | `9652e85978d477bed2c5caf21a21ba4e6d3148ee4ab7a6ae87c505445a7744c6` |
+| 离线存储归档 | `9020f06ead6f87e16193c3880150e503ee38dff3e4307a3f51aa2401b5a9b40a` |
+
+原样公开 App 使用隔离数据启动。启动日志记录认证就绪、DSH Web 就绪、打开主窗口、启动完成，以及桌面更新服务报告当前版本 0.3.4。对该准确 App 路径执行原生窗口检查时，工具以 `-10005: codex app-server exited before returning a response` 失败。日志中的打开窗口标记不是可视确认；没有生成正式原生截图。此次隔离启动不验证 Finder 安装、更新已有安装、OAuth、真实提供方行为，或在已发布 WebView 中执行历史合成 AI 旅程。
+
 ## 交付状态
 
-- 产品发布状态：待发布；此处未核验公开 0.3.4 文件、Hash、更新元数据或安装后行为。官网继续提供公开 0.3.3 下载。
-- 验证资料归档状态：部分完成；已有七张历史源码图、脱敏机器记录、最终本地构建／回放／准备结果，以及包含文档更新的快照 Hash。最终产品和证据 Commit、公开产品证据与可下载归档的解压检查仍待补。
-- 站点同步状态：待同步；双语候选版本说明已准备，首页与下载继续保留 0.3.3。产品核验后记录站点 Commit、部署运行，以及中英文首页、下载页和发布页的实际观察。
-- 未验证范围：上述历史、仅源码与受控模型证据；全部正式 0.3.4 产品与官网交付检查待完成。
+- 产品发布状态：已发布并在记录范围内完成独立核验：五个附件、3/3 校验和、更新签名、公开 App 身份、迁移运行时和隔离原生启动均通过。可视窗口检查与实际已有安装升级仍未验证。
+- 验证资料归档状态：部分完成；已记录七张历史源码图、源码／准备证据、公开产物／运行时观察，以及分离的产品／证据身份。Release 的不可变图集链接与可下载归档的解压检查仍待补。
+- 站点同步状态：待同步；工作树中已准备双语 0.3.4 内容，线上首页与下载继续保留 0.3.3。产品核验后记录站点 Commit、部署运行，以及中英文首页、下载页和发布页的实际观察。
+- 未验证范围：上述历史、仅源码与受控模型限制；原生可视窗口检查、Finder 安装、实际应用内更新、真实提供方、资料 ZIP 和线上 0.3.4 官网检查仍待完成。Apple Developer 签名／公证尚不存在，不是通过的检查。
 
 ## 交付清单
 

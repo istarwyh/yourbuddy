@@ -6,9 +6,11 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
-### 0.3.4 — preparation, not available for download
+### 0.3.4 — 2026-09-07
 
-The candidate supports ordinary-message page attachments and recoverable unsent messages. In a compatible Harbor view, ask about the current Trial or checked rows without attaching a reference manually; explicit references still take priority. The [candidate verification record](../../releases/yourbuddy-v0.3.4/README.md) contains historical source screenshots and controlled-model results, not evidence of a formal 0.3.4 installer. Public product and website checks are pending; [0.3.3 remains the verified download](download.md).
+YourBuddy 0.3.4 adds ordinary-message page attachments and recoverable unsent messages. In Harbor, ask about the current Trial or checked rows without attaching a reference manually; explicit references take priority. The public App contains paired Harbor JavaScript/Python adapter 0.9.4. All five assets were independently downloaded and checked, the updater signature was cryptographically verified, and an unchanged App copy completed authenticated Host readiness and boot with isolated data. Visual window inspection/capture, an update from an existing installation, OAuth, and real model calls remain unverified. The seven gallery images are historical source captures with synthetic data, not formal installed-app screenshots.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) · [verification record](../../releases/yourbuddy-v0.3.4/README.md) · [download page](download.md)
 
 ### 0.3.3 — 2026-09-07
 

@@ -10,7 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.4](yourbuddy-v0.3.4/README.md) | YourBuddy desktop | Prepared | Seven historical source images and controlled-model observations; formal product verification pending | Pending; 0.3.3 remains the verified download |
+| [yourbuddy-v0.3.4](yourbuddy-v0.3.4/README.md) | YourBuddy desktop | Included | Seven historical source images, public-file digests, updater signature, relocated runtime, and isolated native startup; visual-window limits retained | Published and independently verified within stated limits; website synchronization pending |
 | [yourbuddy-v0.3.3](yourbuddy-v0.3.3/README.md) | YourBuddy desktop | Included | Public assets, checksums, updater metadata, and authenticated boot recorded; visual window and updater-install limits retained | Published and independently verified within stated limits |
 | [yourbuddy-v0.3.2](yourbuddy-v0.3.2/README.md) | YourBuddy desktop | Included | Complete; immutable evidence and verified download available; live-browser limitation retained | Published and independently verified |
 | [yourbuddy-v0.3.1](yourbuddy-v0.3.1/README.md) | YourBuddy desktop | Included | Complete; immutable evidence and verification download available | Published and independently verified |

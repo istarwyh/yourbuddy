@@ -1,0 +1,217 @@
+{
+  "source": "Independent audit stage; local audit directory replaced with {{auditRoot}}.",
+  "app": {
+    "verifiedAt": "2026-09-07T06:19:00.001Z",
+    "app": "{{auditRoot}}/installed/YourBuddy.app",
+    "executable": "{{auditRoot}}/installed/YourBuddy.app/Contents/MacOS/yourbuddy",
+    "info": {
+      "version": "0.3.4",
+      "build": "0.3.4",
+      "identifier": "io.github.istarwyh.yourbuddy"
+    },
+    "executableType": "{{auditRoot}}/installed/YourBuddy.app/Contents/MacOS/yourbuddy: Mach-O 64-bit executable arm64",
+    "codesignDeepStrict": 0,
+    "signatureMetadata": "Executable={{auditRoot}}/installed/YourBuddy.app/Contents/MacOS/yourbuddy\nIdentifier=io.github.istarwyh.yourbuddy\nFormat=app bundle with Mach-O thin (arm64)\nCodeDirectory v=20500 size=87325 flags=0x10002(adhoc,runtime) hashes=2722+3 location=embedded\nVersionPlatform=1\nVersionMin=720896\nVersionSDK=984320\nHash type=sha256 size=32\nCandidateCDHash sha256=35ba28ccb0f55c06b268f40c24335ecb67f3b699\nCandidateCDHashFull sha256=35ba28ccb0f55c06b268f40c24335ecb67f3b6995f84424030e457984cf3cf2a\nHash choices=sha256\nCMSDigest=35ba28ccb0f55c06b268f40c24335ecb67f3b6995f84424030e457984cf3cf2a\nCMSDigestType=2\nExecutable Segment base=0\nExecutable Segment limit=10715136\nExecutable Segment flags=0x1\nPage size=4096\nCDHash=35ba28ccb0f55c06b268f40c24335ecb67f3b699\nSignature=adhoc\nInfo.plist entries=15\nTeamIdentifier=not set\nRuntime Version=15.5.0\nSealed Resources version=2 rules=13 files=22770\nInternal requirements count=0 size=12",
+    "gatekeeper": {
+      "exitCode": 3,
+      "result": "{{auditRoot}}/installed/YourBuddy.app: rejected"
+    },
+    "bundle": {
+      "harnessVersion": "0.1.2-rc.1",
+      "dshUpstream": {
+        "repository": "deepseek-ai/deepseek-harness",
+        "channel": "stable-else-rc",
+        "tag": "dsh-v0.1.2-rc.1",
+        "version": "0.1.2-rc.1",
+        "commit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d"
+      },
+      "product": "YourBuddy",
+      "productPlugins": [
+        "dsh-harbor-evolution@0.9.4",
+        "dsh-codex-auth@0.3.2",
+        "dsh-better-sidebar@0.18.0",
+        "dsh-context-doctor@0.7.2",
+        "dsh-plugin-marketplace@0.3.1",
+        "dsh-personal-workbench@0.1.0"
+      ],
+      "defaultHarnessPlugins": [
+        "@deepseek-ai/dsh-subagent-codex@0.1.2-rc.1"
+      ],
+      "defaultAgentPreset": {
+        "id": "codex",
+        "name": "Codex",
+        "source": "standard",
+        "description": "YourBuddy 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。"
+      },
+      "bundledAt": "2026-09-07T05:42:24.073Z",
+      "contentSha256": "102787b7b9359a1c247a9f5632256699405b9bf127102f84d0035e4bc9210096",
+      "method": "trimmed-monorepo-source-frozen-lock+offline-pnpm-store",
+      "sourceSha256": "aa4b10f1695e96b3eb0815aa0b7d6565cb68042cc55c0b0d042f055c31fb84cb",
+      "offlineStore": {
+        "path": "yourbuddy-pnpm-store.tar.gz",
+        "expandedPath": ".yourbuddy-pnpm-store",
+        "files": 38708,
+        "sha256": "9652e85978d477bed2c5caf21a21ba4e6d3148ee4ab7a6ae87c505445a7744c6",
+        "archiveSha256": "9020f06ead6f87e16193c3880150e503ee38dff3e4307a3f51aa2401b5a9b40a"
+      }
+    },
+    "runtime": {
+      "product": "YourBuddy",
+      "runtimeId": "200944e63f783da490e9d348845ab6ee3bf85ceee6c290c91c29d12f33f8999c",
+      "platform": "darwin",
+      "arch": "arm64",
+      "pythonVersion": "3.12.14",
+      "integrationVersion": "0.9.4",
+      "integrationSource": "vendored-source",
+      "pythonDirectory": "python/cpython-3.12.14-macos-aarch64-none",
+      "harborBin": "venv/bin/harbor",
+      "harborDshBin": "venv/bin/harbor-dsh"
+    },
+    "changedSourceChecks": [
+      {
+        "path": "packages/client/ui-chat/src/client/chat/MessageItem.tsx",
+        "sha256": "1fe97138b9954a15f6c1e058b749acb8bb4046ceba62b7cd379a6320e60dbd71",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/apply.ts",
+        "sha256": "8cbda51b38ad060858658831df1e61752d5696e24da7b25095a74907df4017b3",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/contract/input.ts",
+        "sha256": "f932089a889c39a3e4a97f969cc3f11f32e9d66e7ed34116e530e743cc6df53d",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/contract/slots.ts",
+        "sha256": "e6dafa9febf64192b0b93f615ae4e53bb555744c524af205f988e4f26fb26104",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/contract/submission-context.ts",
+        "sha256": "4f2008fc6ca156f4662ecd4ec4364cccc67702ae4127e5b0408d33d55442ee30",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/index.ts",
+        "sha256": "de17b8d5677e406873b275032606b55e7664bd0a270df09796bdd29998cd6ab0",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/input/facade.ts",
+        "sha256": "065152d52d18ed0707b4095673fbb0d3dee857440c408a2f38d747b448fdbd00",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/input/hub.ts",
+        "sha256": "ff98c7983fbdede88ff71b18c523ef6ec11fdc69fb739ca495bfc1ed5c0066d0",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/locales.ts",
+        "sha256": "f2176f45eeeb4d5461f712934a297d7bcff06b820e4641a225a474013c69c03c",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/queue/QueueDock.module.css",
+        "sha256": "1f5e17aab6805528b90ddedf6e01811999578c3bd2657d0022c0bc26b3f7cad1",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/queue/QueueDock.tsx",
+        "sha256": "736f2b13767510e602817499ed5c30e3bac3a041fe29f45d28347f54b5bc18b5",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/service.ts",
+        "sha256": "b14089d2f066473efe75024527598ab829bacb8dad6f750710b9b15821c74fbf",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/skeleton/InputBar.module.css",
+        "sha256": "55db3c45964d76f0627a7d30c579014f66a9fbd5cb5b03d0747369e2079931ac",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/skeleton/InputBar.tsx",
+        "sha256": "6c5051ad80c2c550dd94ab063176c35cd1aa98b650f055b7eb382227f0ff1279",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-conversation/src/client/submission-context.ts",
+        "sha256": "134222d7b369fa13c4525283e004880243de9155851b43ca6a338622d7bae8ad",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-primitives/src/user-text.module.css",
+        "sha256": "71ab6594e989e6fd1fce04597c671a6e02f890f0952a69cb95f447763a426ec9",
+        "matchesTag": true
+      },
+      {
+        "path": "packages/client/ui-primitives/src/user-text.tsx",
+        "sha256": "52eb9b9e77167ce3b9ee5a5c15662dfbec4e4b46bccbbcabe3910ad6e5774adb",
+        "matchesTag": true
+      }
+    ],
+    "boundary": "Copied official DMG app inspected without changing its identifier, executable, resources or signature. Apple Developer signing/notarization and native GUI startup are not inferred from an ad-hoc code-signature check."
+  },
+  "relocatedCli": {
+    "verifiedAt": "2026-09-07T06:19:02.087Z",
+    "runtime": "{{auditRoot}}/relocated-runtime",
+    "environmentKeys": [
+      "APPDATA",
+      "DSH_AGENTS_HOME",
+      "DSH_HOME",
+      "DSH_TELEMETRY_DISABLED",
+      "HOME",
+      "LANG",
+      "LC_CTYPE",
+      "LOCALAPPDATA",
+      "PATH",
+      "PYTHONDONTWRITEBYTECODE",
+      "PYTHONUTF8",
+      "TEMP",
+      "TMP",
+      "TMPDIR",
+      "USERPROFILE",
+      "UV_CACHE_DIR",
+      "XDG_CACHE_HOME",
+      "XDG_CONFIG_HOME",
+      "XDG_DATA_HOME",
+      "XDG_STATE_HOME",
+      "YOURBUDDY_APP_DATA_DIR",
+      "YOURBUDDY_PERSIST_DSH_CLI"
+    ],
+    "credentialEnvironmentInherited": false,
+    "realProfileUsed": false,
+    "modelCalls": false,
+    "results": [
+      {
+        "name": "harbor-version",
+        "exitCode": 0,
+        "stdout": "0.21.0",
+        "stderr": ""
+      },
+      {
+        "name": "harbor-dsh-help",
+        "exitCode": 0,
+        "stdout": "usage: harbor-dsh [-h]\n                  {diagnostic-subset,snapshot,verify,summarize,init,quick,dataset,stack,evaluator,ground-truth,meta-evaluate,historical,context,doctor,docker-check,promote}\n                  ...\n\npositional arguments:\n  {diagnostic-subset,snapshot,verify,summarize,init,quick,dataset,stack,evaluator,ground-truth,meta-evaluate,historical,context,doctor,docker-check,promote}\n    diagnostic-subset   Plan or materialize a frozen, bounded diagnostic\n                        Dataset; never starts a Job\n    snapshot            Freeze a Candidate directory\n    verify              Verify a Candidate digest\n    summarize           Summarize a Harbor Job\n    init                Initialize a strict Evaluation Stack project\n    quick               Create an explicitly non-promotable wiring diagnostic\n    dataset             Manage Dataset manifests\n    stack               Manage Evaluation Stack manifests\n    evaluator           Inspect or update an Evaluator Interface\n    ground-truth        Initialize or validate independent Ground Truth\n    meta-evaluate       Compare repeated Evaluator observations with Ground\n                        Truth\n    historical          Materialize and validate Historical Generation\n                        Evaluation inputs\n    context             Preview Evaluation Context v2\n    doctor              Validate evaluation architecture\n    docker-check        Preflight Docker CLI, daemon, and credential helper\n                        resolution\n    promote             Apply a Promotion Gate\n\noptions:\n  -h, --help            show this help message and exit",
+        "stderr": ""
+      },
+      {
+        "name": "harbor-plugins",
+        "exitCode": 0,
+        "stdout": "Harbor Plugins                                 \n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n┃ Name                      ┃ Import path                                      ┃\n┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩\n│ dsh-evolution             │ harbor_dsh_evolution.plugin:EvolutionPlugin      │\n│ dsh-historical-evaluation │ harbor_dsh_evolution.historical_plugin:Historic… │\n└───────────────────────────┴──────────────────────────────────────────────────┘",
+        "stderr": ""
+      },
+      {
+        "name": "python-entrypoints",
+        "exitCode": 0,
+        "stdout": "{\"python\": \"3.12.14\", \"adapter\": \"0.9.4\", \"harbor\": \"0.21.0\", \"module\": \"{{auditRoot}}/relocated-runtime/venv/lib/python3.12/site-packages/harbor_dsh_evolution/__init__.py\", \"entrypoints\": [{\"group\": \"console_scripts\", \"name\": \"harbor-dsh\", \"value\": \"harbor_dsh_evolution.cli:main\", \"loaded\": true}, {\"group\": \"harbor.plugins\", \"name\": \"dsh-evolution\", \"value\": \"harbor_dsh_evolution.plugin:EvolutionPlugin\", \"loaded\": true}, {\"group\": \"harbor.plugins\", \"name\": \"dsh-historical-evaluation\", \"value\": \"harbor_dsh_evolution.historical_plugin:HistoricalGenerationEvaluationPlugin\", \"loaded\": true}]}",
+        "stderr": ""
+      }
+    ],
+    "boundary": "Public app runtime copied to a fresh owned location; this validates CLI/import relocation, not Finder installation, OAuth, paid-model behavior, or updater installation."
+  }
+}

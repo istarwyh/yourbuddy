@@ -1,0 +1,41 @@
+{
+  "verifiedAt": "2026-09-07T06:17:13.068Z",
+  "assets": [
+    {
+      "name": "latest.json",
+      "bytes": 3954,
+      "sha256": "e0d5aeb27b83a2463c1da83769ad0b4b823c6880ab538d44e8a20c0dd6f8eeb9",
+      "githubDigestMatch": true
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 312,
+      "sha256": "fdacdcf11bbb9971392434960b92dbb1f7a058d368c2094d965be72cbd164da0",
+      "githubDigestMatch": true
+    },
+    {
+      "name": "yourbuddy-0.3.4-macos-arm64.app.tar.gz",
+      "bytes": 570358486,
+      "sha256": "d826075d26fe325dbc1278d9a2b69575290ae13cdb6da9d9ead8c18011d09fd5",
+      "githubDigestMatch": true
+    },
+    {
+      "name": "yourbuddy-0.3.4-macos-arm64.app.tar.gz.sig",
+      "bytes": 408,
+      "sha256": "042eb3e911883a255da27046ee4c9cf9ae9c13d8a96abbdacc957eb1c044008c",
+      "githubDigestMatch": true
+    },
+    {
+      "name": "yourbuddy-0.3.4-macos-arm64.dmg",
+      "bytes": 568345182,
+      "sha256": "3a8eeaf70602836280a48fe09f587f7ebf50c19366f9b209c0ede7054f0b4270",
+      "githubDigestMatch": true
+    }
+  ],
+  "checksumsPassed": true,
+  "stableManifestByteIdentical": true,
+  "updaterVersion": "0.3.4",
+  "minisignResult": "PASS: minisign prehashed signature and trusted comment verified",
+  "publicAnonymousVisibility": "pending",
+  "nativeStartup": "pending"
+}
