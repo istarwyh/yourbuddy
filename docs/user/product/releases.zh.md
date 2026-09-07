@@ -6,6 +6,12 @@
 
 ## YourBuddy
 
+### 0.3.5 — 2026-09-08
+
+YourBuddy 0.3.5 恢复了被桌面权限层拒绝的网络、生命周期、更新、外部链接与插件市场控制项。即使存在冲突的全局 `codexhost-delegation` Skill，Codex Preset 委派也会使用内置 `subagent_codex` 路径。五个公开附件均已匿名完整下载检查，更新签名通过密码学验证，公开 App 的标识、内置修复与迁移运行时通过检查。由于已有用户持有的旧版实例妨碍隔离启动，原生启动、安装包 WebView 控制项、从 0.3.4 升级、OAuth 与真实供应商调用仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.5) · [验证记录](../../releases/yourbuddy-v0.3.5/README.zh.md) · [下载页](download.zh.md)
+
 ### 0.3.4 — 2026-09-07
 
 YourBuddy 0.3.4 新增普通消息附带页面，以及找回未发送消息。在 Harbor 中，无需手动附加引用，就能询问当前 Trial 或勾选行；显式引用优先。公开 App 内含配套 Harbor JavaScript／Python 适配器 0.9.4。五个附件均已独立完整下载检查，更新签名已通过密码学验证，原样 App 副本已使用隔离数据完成 Host 认证就绪与启动。窗口可视化检查／截图、从已有安装执行更新、OAuth 与真实模型调用仍未验证。图集中的七张图是使用合成数据的历史源码截图，不是正式安装后应用截图。

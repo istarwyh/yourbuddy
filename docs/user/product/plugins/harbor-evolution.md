@@ -2,9 +2,9 @@
 
 English | [中文](harbor-evolution.zh.md)
 
-YourBuddy 0.3.4 bundled snapshot version: `0.9.4`. Source: [istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving).
+YourBuddy 0.3.5 bundled snapshot version: `0.9.4`. Source: [istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving).
 
-The [0.3.4 verification archive](../../../releases/yourbuddy-v0.3.4/README.md) records automatic page-context questions and unsent-message recovery. The public App's plugin versions, relocated Python CLI/imports, and isolated native startup are verified; visual window inspection and real model use remain unverified. Older Hosts without page attachments still require explicit **Ask AI** or `@harbor` references. Updating only the independent plugin cannot add missing Host capabilities.
+The [0.3.5 verification archive](../../../releases/yourbuddy-v0.3.5/README.md) records the unchanged plugin snapshot alongside the current public App and relocated Python CLI/import checks. Native startup, visual window inspection, and real model use remain unverified for 0.3.5. Older Hosts without page attachments still require explicit **Ask AI** or `@harbor` references. Updating only the independent plugin cannot add missing Host capabilities.
 
 ## Problem addressed
 

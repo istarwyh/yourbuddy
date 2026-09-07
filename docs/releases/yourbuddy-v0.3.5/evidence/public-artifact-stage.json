@@ -1,0 +1,64 @@
+{
+  "verifiedAt": "2026-09-07T19:54:45.372Z",
+  "timeZone": "Asia/Shanghai",
+  "release": {
+    "tag": "yourbuddy-v0.3.5",
+    "tagCommit": "9491b9ddbeda08f97183387e91d00d86af3e4701",
+    "workflow": "https://github.com/istarwyh/yourbuddy/actions/runs/34155089709",
+    "releaseUrl": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.5",
+    "publishedAt": "2026-09-07T19:38:44Z",
+    "draft": false,
+    "prerelease": false,
+    "latestFormalRelease": true
+  },
+  "download": {
+    "authentication": "none",
+    "complete": true,
+    "assets": [
+      {
+        "name": "latest.json",
+        "bytes": 3818,
+        "sha256": "8ecf24c5a328bdd5f1bf284ac4bdff0d396237cf9e33ff91c3e787f67e287c00",
+        "githubDigestMatch": true
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "bytes": 312,
+        "sha256": "ef0d49caadb5012f08082ecf560192472733373d9bfda2f8bad51c92474d9bc5",
+        "githubDigestMatch": true
+      },
+      {
+        "name": "yourbuddy-0.3.5-macos-arm64.app.tar.gz",
+        "bytes": 570327072,
+        "sha256": "194e77ce6ec6f14191c9cf3abfead9034a28d4e85d60cb853115ebca1f7901fd",
+        "githubDigestMatch": true
+      },
+      {
+        "name": "yourbuddy-0.3.5-macos-arm64.app.tar.gz.sig",
+        "bytes": 408,
+        "sha256": "7bc5c4974b906cd0921bb9051432496eba789f133d444ac6da6caf1300660806",
+        "githubDigestMatch": true
+      },
+      {
+        "name": "yourbuddy-0.3.5-macos-arm64.dmg",
+        "bytes": 568339607,
+        "sha256": "609a26786c301794ae2464723a3338438e8086627c3919a94b476ede8181fca7",
+        "githubDigestMatch": true
+      }
+    ]
+  },
+  "checks": {
+    "sha256SumsEntries": 3,
+    "sha256SumsPassed": 3,
+    "stableManifestByteIdentical": true,
+    "updaterVersion": "0.3.5",
+    "updaterPlatform": "darwin-aarch64",
+    "updaterUrlMatchesReleaseAsset": true,
+    "manifestSignatureEqualsSignatureAsset": true,
+    "minisignVerifier": "minisign-verify 0.2.5",
+    "minisignResult": "PASS: minisign prehashed signature and trusted comment verified",
+    "publicKeySource": "apps/desktop-tauri/src-tauri/tauri.conf.json at yourbuddy-v0.3.5"
+  },
+  "discardedObservation": "The first Minisign command ran git show from a non-repository directory, wrote an empty public-key file, and returned InvalidEncoding. It was an audit setup error. The public key was then extracted from the immutable tag and the actual verification passed.",
+  "boundary": "This record proves anonymous public availability, complete-file digests, published checksums, updater metadata consistency, and the updater cryptographic signature. It does not prove native startup, WebView interaction, installation over an existing App, OAuth, real-provider behavior, or Apple Developer signing and notarization."
+}

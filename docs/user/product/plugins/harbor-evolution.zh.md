@@ -2,9 +2,9 @@
 
 [English](harbor-evolution.md) | 中文
 
-YourBuddy 0.3.4 内置快照版本：`0.9.4`。来源：[istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving)。
+YourBuddy 0.3.5 内置快照版本：`0.9.4`。来源：[istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving)。
 
-[0.3.4 验证归档](../../../releases/yourbuddy-v0.3.4/README.zh.md)记录自动附带页面的提问与未发送消息恢复。公开 App 中的插件版本、迁移复制后的 Python CLI／导入和隔离原生启动已核验；窗口可视化检查和真实模型使用仍未验证。不支持页面附件的旧宿主仍需使用“问 AI”或 `@harbor` 显式引用。仅更新独立插件不能增加缺失的宿主能力。
+[0.3.5 验证归档](../../../releases/yourbuddy-v0.3.5/README.zh.md)记录未变的插件快照，以及当前公开 App 与迁移 Python CLI／导入检查。本版本原生启动、窗口可视化检查与真实模型使用仍未验证。不支持页面附件的旧宿主仍需使用“问 AI”或 `@harbor` 显式引用。仅更新独立插件不能增加缺失的宿主能力。
 
 ## 解决的问题
 

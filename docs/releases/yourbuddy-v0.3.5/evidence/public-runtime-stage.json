@@ -1,0 +1,72 @@
+{
+  "verifiedAt": "2026-09-07T19:54:45.372Z",
+  "timeZone": "Asia/Shanghai",
+  "source": "Unchanged App copied from the anonymously downloaded public DMG; local audit paths are represented as {{auditRoot}}.",
+  "app": {
+    "path": "{{auditRoot}}/dmg-app/YourBuddy.app",
+    "version": "0.3.5",
+    "build": "0.3.5",
+    "identifier": "io.github.istarwyh.yourbuddy",
+    "executable": "yourbuddy",
+    "executableType": "Mach-O 64-bit executable arm64",
+    "dmgChecksumValid": true,
+    "dmgUpdaterAppTreesIdentical": true,
+    "codesignDeepStrict": 0,
+    "signature": "adhoc",
+    "teamIdentifier": null,
+    "gatekeeperExitCode": 3,
+    "gatekeeperResult": "rejected"
+  },
+  "bundle": {
+    "harnessVersion": "0.1.2-rc.1",
+    "dshUpstream": {
+      "tag": "dsh-v0.1.2-rc.1",
+      "version": "0.1.2-rc.1",
+      "commit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d"
+    },
+    "productPlugins": [
+      "dsh-harbor-evolution@0.9.4",
+      "dsh-codex-auth@0.3.2",
+      "dsh-better-sidebar@0.18.0",
+      "dsh-context-doctor@0.7.2",
+      "dsh-plugin-marketplace@0.3.1",
+      "dsh-personal-workbench@0.1.0"
+    ],
+    "defaultHarnessPlugins": [
+      "@deepseek-ai/dsh-subagent-codex@0.1.2-rc.1"
+    ],
+    "defaultAgentPreset": "codex",
+    "sourceSha256": "0546e2c41efe6268a251ed14c153cc48bf6015bd048a04949101c805270978e9",
+    "contentSha256": "91db181d2f358da115f0ad904781816dde16fa831c33ebae0fb8cf54d3bf153e",
+    "offlineStoreFiles": 38708,
+    "offlineStoreSha256": "8b592ea16f63a2cc5427f698c5520c65220d98f22f71462d0585124913e7d99b",
+    "offlineStoreArchiveSha256": "10e08bf4895f2dceeb5cfdb205887d047454107c097fd3361ab2daa8359d4576",
+    "tagMatchedChangedSourceFiles": [
+      "packages/skill/tool-skill/README.i18n.yaml",
+      "packages/skill/tool-skill/README.md",
+      "packages/skill/tool-skill/README.zh.md",
+      "packages/skill/tool-skill/src/index.ts"
+    ],
+    "expectedBundleRewrite": "The root package.json is generated for the trimmed release source and is not claimed byte-identical to the monorepo root.",
+    "compiledToolSkillContainsModelExclusion": true,
+    "nativeBinaryContainsCodexhostExclusion": true,
+    "nativeBinaryContainsDesktopShellPermission": true
+  },
+  "toolchain": {
+    "platform": "darwin-arm64",
+    "nodeVersion": "22.19.0",
+    "pnpmVersion": "11.7.0"
+  },
+  "relocatedRuntime": {
+    "path": "{{auditRoot}}/relocated-runtime",
+    "pythonVersion": "3.12.14",
+    "harborVersion": "0.21.0",
+    "integrationVersion": "0.9.4",
+    "pythonIsRegularFile": true,
+    "harborVersionExitCode": 0,
+    "harborDshHelpExitCode": 0,
+    "pythonImportsExitCode": 0
+  },
+  "discardedObservation": "Direct execution of the copied venv Python without the product wrapper omitted the required bundled PYTHONHOME and failed to import encodings from its build-time prefix. The published harbor and harbor-dsh launchers inject the bundled PYTHONHOME; both passed, and explicit relocated Python imports passed with that same environment.",
+  "boundary": "This record proves public App identity, DMG integrity, updater/DMG App-tree equality, strict ad-hoc signature integrity, bundled routing/configuration presence, and relocated CLI/import behavior. Gatekeeper rejected the App because it has no Apple Developer identity. Native startup and visual WebView interaction are recorded separately as skipped."
+}
