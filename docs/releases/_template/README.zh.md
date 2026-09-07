@@ -101,6 +101,7 @@
 - [ ] 已解压可下载的验证资料归档，并成功打开文档列出的内容。
 - [ ] 公开发布页固定链接到证据 Commit、图集和下载地址，不依赖移动分支。
 - [ ] 已独立于 CI 和临时工作流产物检查真实产品目的地。
+- [ ] 桌面 Shell Origin、Capability、Permission 或 Command 变更包含真实 Tauri Runtime Authority 证据，以及对每个受影响 Control 的打包后 WebView 操作；JavaScript Invoke Stub 已标为仅验证 Bridge。
 - [ ] 适用时记录已发布文件名、版本、Hash、注册表元数据、更新元数据及安装后行为。
 - [ ] YourBuddy 的[发布官网同步](../../product-website.zh.md#release-synchronization)覆盖双语、真实下载链接、受影响指南和插件，以及观察到的线上部署；无关渠道标为不适用。
 - [ ] 分别报告产品发布状态、验证资料归档状态、站点同步与未验证范围。

@@ -4,6 +4,7 @@ import { LOADER_SMOKE_TEST_TIMEOUT_MS, runLoaderSmoke } from '@deepseek-ai/dsh-l
 const binScript = fileURLToPath(new URL('./fixtures/dsh-badge/snapshot.ts', import.meta.url))
 const configPath = fileURLToPath(new URL('./fixtures/dsh-badge/cordis.yml', import.meta.url))
 const defaultConfigPath = fileURLToPath(new URL('./fixtures/dsh-badge/default.cordis.yml', import.meta.url))
+const excludedConfigPath = fileURLToPath(new URL('./fixtures/dsh-badge/excluded.cordis.yml', import.meta.url))
 const tsconfigPath = fileURLToPath(new URL('../../../tsconfig.json', import.meta.url))
 const badgeAssetsPath = fileURLToPath(new URL('../../../packages/skill/skill-badge/assets/', import.meta.url))
 
@@ -25,13 +26,25 @@ describe('dsh badge assembled snapshot', () => {
       configPath,
       tsconfigPath,
     })
+    const excluded = await runLoaderSmoke({
+      label: 'model-excluded dsh badge skill snapshot',
+      tempDirPrefix: 'headless-snapshot-dsh-badge-excluded-',
+      binScript,
+      libBinScript: binScript,
+      configPath: excludedConfigPath,
+      tsconfigPath,
+    })
     const disabledSnapshot = JSON.parse(disabled.stdout) as unknown
     const enabledSnapshot = JSON.parse(
       enabled.stdout.replaceAll(badgeAssetsPath, '{{badgeAssetsPath}}'),
     ) as unknown
+    const excludedSnapshot = JSON.parse(
+      excluded.stdout.replaceAll(badgeAssetsPath, '{{badgeAssetsPath}}'),
+    ) as unknown
 
     expect(disabled.stderr).toBe('')
     expect(enabled.stderr).toBe('')
+    expect(excluded.stderr).toBe('')
     expect(disabledSnapshot).toMatchInlineSnapshot(`
       {
         "catalog": null,
@@ -172,5 +185,36 @@ describe('dsh badge assembled snapshot', () => {
         },
       }
     `)
-  }, LOADER_SMOKE_TEST_TIMEOUT_MS * 2)
+    expect(excludedSnapshot).toMatchInlineSnapshot(`
+      {
+        "catalog": null,
+        "result": {
+          "content": [
+            {
+              "text": "Error: skill \"dsh-badge\" is not available for model invocation",
+              "type": "text",
+            },
+          ],
+          "error": {
+            "message": "skill \"dsh-badge\" is not available for model invocation",
+          },
+          "isError": true,
+        },
+        "summary": {
+          "description": "Add the official “powered by dsh” badge to documents, pull requests, merge requests, and other content produced with DeepSeek Harness. Use whenever creating a pull request or merge request. Also use when the user asks for a dsh badge, powered-by-dsh attribution, or a reusable dsh badge asset or snippet.",
+          "invocation": {
+            "modelInvocable": true,
+            "userInvocable": true,
+          },
+          "name": "dsh-badge",
+          "provider": "dsh-badge",
+          "resourceBase": {
+            "kind": "directory",
+            "path": "{{badgeAssetsPath}}",
+          },
+          "source": "bundled",
+        },
+      }
+    `)
+  }, LOADER_SMOKE_TEST_TIMEOUT_MS * 3)
 })

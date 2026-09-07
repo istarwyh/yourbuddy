@@ -61,7 +61,7 @@ export class InspectorEndpoint {
         return { host: this.config.host, port: address.port, targetId: this.config.targetId }
       } catch (error) {
         this.server = undefined
-        if (!isAddressInUse(error) || candidate === 0) throw error
+        if (!isUnavailableAddress(error) || candidate === 0) throw error
         if (candidate === 65_535) {
           throw new Error(`inspector: no available port from ${String(this.config.startPort)} through 65535`, {
             cause: error,
@@ -286,8 +286,15 @@ function listen(server: Server, port: number, host: string): Promise<AddressInfo
   })
 }
 
-function isAddressInUse(error: unknown): boolean {
-  return error instanceof Error && (error as NodeJS.ErrnoException).code === 'EADDRINUSE'
+/**
+ * Whether a loopback listen candidate cannot be claimed but a later port may bind.
+ * @param error - Error reported by `Server.listen()`.
+ * @returns Whether sequential port selection may continue.
+ */
+export function isUnavailableAddress(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  const code = (error as NodeJS.ErrnoException).code
+  return code === 'EADDRINUSE' || code === 'EACCES'
 }
 
 function rawText(data: RawData): string {

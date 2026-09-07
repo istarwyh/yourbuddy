@@ -9,7 +9,7 @@ on:
       tag:
         description: Existing unpublished yourbuddy-v* tag to build after a failed run
         required: true
-        default: yourbuddy-v0.3.4
+        default: yourbuddy-v0.3.5
 
 permissions:
   contents: write
@@ -103,10 +103,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm --dir apps/desktop-tauri run build
 
-      - name: Test desktop Host startup contract
+      - name: Test desktop Host and shell command contracts
         run: |
           pnpm exec vitest run apps/cli/tests/args.spec.ts
+          pnpm run verify-desktop-shell-permissions
           cargo test --locked --release --target "$RUST_TARGET" --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml runtime::supervisor::tests
+          cargo test --locked --release --target "$RUST_TARGET" --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml desktop_shell::tests::
 
       - name: Test relocated YourBuddy product runtime
         run: |

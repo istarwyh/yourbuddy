@@ -184,8 +184,8 @@ describe('gate graph validation', () => {
     expect(ids).toEqual([
       'rescope-vendor', 'publint', 'constraints', 'package-dependencies', 'application-entrypoints',
       'dsh-package-licenses', 'package-invariants', 'built-package-invariants', 'node-next-types',
-      'optional-dependency-imports', 'client-packages', 'client-ui-i18n', 'cordis-config',
-      'runtime-closure', 'vendored-links',
+      'optional-dependency-imports', 'client-packages', 'client-ui-i18n',
+      'desktop-shell-permissions', 'cordis-config', 'runtime-closure', 'vendored-links',
     ])
     expect(defaultConcurrency('hygiene', ids.length, 8)).toEqual({
       workers: 4,
@@ -254,6 +254,15 @@ describe('gate graph validation', () => {
       const ids = withPnpmEntrypoint(() => gatesForMode(mode).map(subject => subject.id))
 
       expect(ids).toContain('application-entrypoints')
+    },
+  )
+
+  it.each(['ci-primary', 'ci-static', 'check-all', 'hygiene'] as const)(
+    'keeps desktop shell permission parity in %s',
+    (mode) => {
+      const ids = withPnpmEntrypoint(() => gatesForMode(mode).map(subject => subject.id))
+
+      expect(ids).toContain('desktop-shell-permissions')
     },
   )
 

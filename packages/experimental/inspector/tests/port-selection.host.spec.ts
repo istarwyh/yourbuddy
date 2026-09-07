@@ -3,6 +3,7 @@
 import { createServer, type Server } from 'node:http'
 import { afterEach, describe, expect, it } from 'vitest'
 import { startInspector, type InspectorHandle } from '../src/host/bridge/controller.ts'
+import { isUnavailableAddress } from '../src/worker/bridge/endpoint.ts'
 
 describe('Inspector endpoint port selection', () => {
   let blocker: Server | undefined
@@ -38,5 +39,14 @@ describe('Inspector endpoint port selection', () => {
     expect(new URL(inspector.endpoint.webSocketDebuggerUrl).port).toBe(String(selectedPort))
     expect(new URL(inspector.endpoint.client.endpoint).port).toBe(String(selectedPort))
     await expect(fetch(new URL('json', inspector.endpoint.httpUrl)).then(response => response.status)).resolves.toBe(200)
+  })
+
+  it.each(['EADDRINUSE', 'EACCES'] as const)('advances after %s rejects a candidate', (code) => {
+    expect(isUnavailableAddress(Object.assign(new Error('unavailable'), { code }))).toBe(true)
+  })
+
+  it('does not hide a listen error that another candidate cannot resolve', () => {
+    expect(isUnavailableAddress(Object.assign(new Error('unreachable'), { code: 'EADDRNOTAVAIL' }))).toBe(false)
+    expect(isUnavailableAddress('EACCES')).toBe(false)
   })
 })

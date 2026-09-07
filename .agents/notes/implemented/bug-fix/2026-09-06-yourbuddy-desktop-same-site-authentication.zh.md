@@ -10,17 +10,19 @@ YourBuddy 0.3.2 会在打开窗口前完成私有 Host 的启动 Token 交换，
 
 把 WebView 中的副本改为 `SameSite=None; Secure` 仍不能修复安装应用，因为 macOS WebKit 继续拦截该第三方 Cookie。弱化共享 Host Cookie 还会改变普通 `dsh web` 的浏览器认证，却无法解决 WebKit 的存储策略。
 
+通过 `WebviewUrl::External` 提供具有原生权限的 Shell，也会使其成为 Tauri Remote Origin。在 `generate_handler!` 中注册应用 Command 并不会授权该 Origin：运行时 Capability 必须引用允许该 Command 的应用 Permission，同时内嵌 Host Origin 必须继续保持未授权。
+
 ## 决策
 
 原生启动链路完成 Token 交换，校验返回 Cookie 的名称、值长度、过期时间、`Path=/`、`HttpOnly` 与 `SameSite=Strict` 属性，并只保留该 Cookie，直到创建主 WebView。Token URL 会在 Renderer 创建前丢弃，绝不进入 Initialization Script。
 
-具有原生权限的桌面 Shell 由最小化的应用自有 HTTP Server 从随机 `127.0.0.1` 端口提供。Tauri 只为该精确 Origin 添加运行时 Capability。Server 要求精确的 Loopback `Host`，只接受有界 `GET` 请求，以 No-store 和限制性响应 Header 提供内嵌 Shell、Locale Script 与图标，并在应用退出或重启前停止。
+具有原生权限的桌面 Shell 由最小化的应用自有 HTTP Server 从随机 `127.0.0.1` 端口提供。Tauri 只为该精确 Origin 与 `main` Window 添加运行时 Capability。该 Capability 保留既有 Shell Permission，并加入 `allow-desktop-shell-commands` 应用 Permission；这项 Permission 的 Command 清单与 `shell.html` 中的字面量 Invoke 精确相同，不包含插件提供或动态计算的 Command。Server 要求精确的 Loopback `Host`，只接受有界 `GET` 请求，以 No-store 和限制性响应 Header 提供内嵌 Shell、Locale Script 与图标，并在应用退出或重启前停止。
 
 Shell 与 Host 现在共享 HTTP `127.0.0.1` Site，同时因为端口不同而保持不同 Origin。原生代码会安装经过校验的 Strict Host Cookie，确认保存的值和属性，再允许 Shell 在 iframe 中打开不含凭据的 Host 根地址。因此 Cookie 可以按同站点规则发送，不需要第三方 Cookie 例外。Host iframe 无法读取 Shell Document，也不匹配 Shell 的精确 Tauri Capability Origin，所以产品 Client 代码仍只能使用既有的允许列表 `postMessage` Bridge。
 
 ## 验证
 
-负向对照只把发布 Smoke 的父页面从 `127.0.0.1` 改为 `localhost`；完整产品随后停在与安装应用报告一致的 401 响应。单元测试覆盖 Token 交换提取 Cookie、Strict 属性校验、精确 Loopback Shell URL、精确 Origin 运行时 Capability 与有界 HTTP Header Reader。产品 Smoke 会清除既有 Cookie、安装交换所得的 Strict Cookie、从不同 Loopback Port 提供 Shell 与 Host、加载干净 Host 根地址、执行产品 Client 与桌面 Bridge，并要求 Host 正常退出。
+负向对照只把发布 Smoke 的父页面从 `127.0.0.1` 改为 `localhost`；完整产品随后停在与安装应用报告一致的 401 响应。单元测试覆盖 Token 交换提取 Cookie、Strict 属性校验、精确 Loopback Shell URL、精确 Origin 运行时 Capability 与有界 HTTP Header Reader。顶层静态门禁会提取每个字面量 Shell Invoke，要求它们与应用 Permission 精确相同，并确认每个名称已经注册。Rust 测试把生成的应用 Manifest 加载进 Tauri Runtime Authority，添加动态 Capability，为精确 Remote Origin 与 `main` Window 解析每个允许的 Command，同时拒绝其他 Origin 与 Window。macOS 发布工作流在构建应用后运行这两项检查。产品 Browser Smoke 会清除既有 Cookie、安装交换所得的 Strict Cookie、从不同 Loopback Port 提供 Shell 与 Host、加载干净 Host 根地址、执行产品 Client 与桌面 Bridge，并要求 Host 正常退出；其中的 JavaScript Invoke Stub 只能作为 Bridge 证据，不能作为 ACL 证据。
 
 2026-09-06 UTC+08:00，从 `/Applications` 启动公开 0.3.2 应用复现了 401。随后把包含本变更的 Release-mode arm64 二进制放进同一 0.3.2 应用资源的副本，执行 Ad-hoc 签名，并使用隔离的应用数据目录在真实 macOS WebView 中启动。私有 Host 通过带认证的就绪检查，可见窗口渲染 YourBuddy 工作台而不再显示认证错误。该安装 Bundle 测试没有覆盖 Windows、WSL、Intel macOS、OAuth 或真实模型请求。
 
@@ -36,6 +38,6 @@ Shell 与 Host 现在共享 HTTP `127.0.0.1` Site，同时因为端口不同而�
 
 ## 后果
 
-主窗口存续期间，桌面进程会多持有一个临时 Loopback Listener 与一个精确 Origin 运行时 Capability。绑定、授权或提供 Shell 失败时，启动会明确失败，不会回退到未认证的 Host 页面。既有 Host Cookie 继续保持 Strict，HTTP Loopback 继续采用此前已说明的未加密方式，Renderer 可见的 Host 地址仍只有不含凭据的 URL。
+主窗口存续期间，桌面进程会多持有一个临时 Loopback Listener 与一个精确 Origin 运行时 Capability。绑定、授权或提供 Shell 失败时，启动会明确失败，不会回退到未认证的 Host 页面。新增 Shell 应用 Command 时必须同时提供一个字面量 Invoke、一个已注册 Handler 与一个显式 Permission Entry；它们不一致时，常规静态 CI 门禁会失败，发布工作流还会执行 Tauri Resolver。既有 Host Cookie 继续保持 Strict，HTTP Loopback 继续采用此前已说明的未加密方式，Renderer 可见的 Host 地址仍只有不含凭据的 URL。
 
-源码浏览器 Smoke 现在必须显式模拟安装 Shell 的同站点关系。仅有同站点 Smoke 结果不构成安装产品证据，因此发布验证仍须在每个声称支持的桌面平台启动已打包应用。
+源码 Browser Smoke 必须显式模拟安装 Shell 的同站点关系。仅有同站点或使用 Invoke Stub 的 Smoke 结果不构成安装产品证据，因此发布验证仍须在每个声称支持的桌面平台启动已打包应用，并操作受影响的 Control。

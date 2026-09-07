@@ -32,6 +32,10 @@ use tauri::{AppHandle, Manager, RunEvent};
 
 const SPLASH_BG: Color = Color(0, 0, 0, 0);
 
+fn app_context() -> tauri::Context<tauri::Wry> {
+    tauri::generate_context!()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     if cli_shim::should_run_as_cli() {
@@ -85,7 +89,7 @@ pub fn run() {
             });
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(app_context())
         .expect("error while building tauri application")
         .run(|app, event| match event {
             RunEvent::ExitRequested { api, .. } => {

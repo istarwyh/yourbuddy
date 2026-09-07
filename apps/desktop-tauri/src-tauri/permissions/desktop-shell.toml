@@ -1,0 +1,14 @@
+[[permission]]
+identifier = "allow-desktop-shell-commands"
+description = "Allows the runtime-owned desktop shell to invoke YourBuddy application commands."
+commands.allow = [
+  "set_close_action",
+  "open_external_url",
+  "open_marketplace_url",
+  "get_network_proxy_settings",
+  "select_ca_certificate",
+  "test_network_proxy_settings",
+  "save_network_proxy_settings",
+  "check_for_updates",
+  "restart_app",
+]

@@ -318,6 +318,49 @@ describe('dsh-tool-skill', () => {
     expect(await composePrefixForAgent(ctx, agent)).toEqual([])
   })
 
+  it('keeps deployment-excluded skills out of model routing while preserving explicit user invocation', async () => {
+    const home = await tempDir('tool-model-excluded')
+    const ctx = await setup(home, { modelExcludedSkills: ['codexhost-delegation'] })
+    ctx.skills.register({
+      name: 'codexhost-delegation',
+      description: 'Delegate work through an external executable.',
+      source: 'runtime',
+      content: 'Run the external delegation command.',
+    })
+    ctx.skills.register({
+      name: 'ordinary-skill',
+      description: 'Ordinary skill.',
+      source: 'runtime',
+      content: 'Ordinary instructions.',
+    })
+    const agent = agentForCwd('/workspace')
+
+    const prefix = JSON.stringify(await composePrefixForAgent(ctx, agent))
+    expect(prefix).not.toContain('codexhost-delegation')
+    expect(prefix).toContain('ordinary-skill')
+
+    const blocked = await ctx.tools.execute({
+      signal: testToolSignal,
+      callId: ToolCallId('model-excluded-load'),
+      name: 'skill',
+      arguments: { name: 'codexhost-delegation' },
+      agent,
+    })
+    expect(blocked.isError).toBe(true)
+    expect(JSON.stringify(blocked.content)).toContain('is not available for model invocation')
+    expect(JSON.stringify(blocked.content)).not.toContain('Run the external delegation command.')
+
+    const decision = await proposeStep(ctx, agent, [createUserMessage({
+      content: [{ type: 'text', text: '/codexhost-delegation use the external path' }],
+      source: { kind: 'user' },
+    })])
+    if (decision.kind !== 'enter') throw new Error('expected explicit skill invocation')
+    const invocation = decision.messages.find(message =>
+      (message.source as { kind?: string }).kind === 'skill-invocation')
+    expect(invocation?.source).toMatchObject({ kind: 'skill-invocation', name: 'codexhost-delegation' })
+    expect(JSON.stringify(invocation?.content)).toContain('Run the external delegation command.')
+  })
+
   it('omits an incomplete initial catalog and retries on a later request boundary', async () => {
     const home = await tempDir('tool-incomplete-prefix')
     const ctx = await setup(home)
@@ -767,6 +810,16 @@ describe('dsh-tool-skill', () => {
     await ctx.plugin(SkillFileSystem, { dshHome: join(home, '.dsh'), agentsHome: join(home, '.agents'), watch: false })
 
     await expect(ctx.plugin(toolSkill, { catalogDescriptionMaxLength: 2 })).rejects.toThrow('greater than or equal to 3')
+  })
+
+  it('validates model-excluded skill names and duplicates', async () => {
+    const invalidHome = await tempDir('tool-invalid-model-exclusion')
+    await expect(setup(invalidHome, { modelExcludedSkills: ['Bad_Name'] }))
+      .rejects.toThrow('modelExcludedSkills contains invalid skill name "Bad_Name"')
+
+    const duplicateHome = await tempDir('tool-duplicate-model-exclusion')
+    await expect(setup(duplicateHome, { modelExcludedSkills: ['same-skill', 'same-skill'] }))
+      .rejects.toThrow('modelExcludedSkills repeats skill name "same-skill"')
   })
 
   it('loads a skill for the calling agent cwd', async () => {

@@ -221,6 +221,11 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
   config:
     default: codex
 
+- id: tool-skill
+  config:
+    modelExcludedSkills:
+      - codexhost-delegation
+
 - insert:
     - id: yourbuddy-release-subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'

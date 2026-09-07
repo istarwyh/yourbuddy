@@ -42,6 +42,7 @@ const codexPackage = JSON.parse(readFileSync(
 )) as { version: string; bin: { codex: string } }
 const codexEntry = resolve(dirname(codexPackageJson), codexPackage.bin.codex)
 const codexPackageRoot = dirname(dirname(codexEntry))
+const REAL_PRODUCT_LIFECYCLE_TIMEOUT_MS = 60_000
 
 const roots: string[] = []
 const fixtures: ResponsesFixture[] = []
@@ -53,7 +54,7 @@ afterEach(async () => {
   for (const root of roots.splice(0)) {
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }
-})
+}, REAL_PRODUCT_LIFECYCLE_TIMEOUT_MS)
 
 interface RealHarness {
   readonly ctx: Context
@@ -274,7 +275,7 @@ describe('real @openai/codex 0.149.1 product', () => {
     expect(recorded.body.model).toBe('fixture-model')
     expect(responseInputTexts(recorded.body)).toContain(task)
     await expectQuiescent(harness.handles)
-  }, 60_000)
+  }, REAL_PRODUCT_LIFECYCLE_TIMEOUT_MS)
 
   it('fails a missing platform payload without falling back to a host codex', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-codex-missing-payload-'))
@@ -369,7 +370,7 @@ describe('real @openai/codex 0.149.1 product', () => {
     await expectQuiescent(handles)
     await bypassFiber.dispose()
     expect(ctx.subagents.list()).toEqual([])
-  }, 60_000)
+  }, REAL_PRODUCT_LIFECYCLE_TIMEOUT_MS)
 
   it('overrides on-request with never and reports a denied command safely', async () => {
     const command = process.platform === 'win32'
@@ -432,7 +433,7 @@ describe('real @openai/codex 0.149.1 product', () => {
       requestEntry.headers.authorization === 'Bearer dsh-fake-openai-key',
     )).toBe(true)
     await expectQuiescent(harness.handles)
-  }, 60_000)
+  }, REAL_PRODUCT_LIFECYCLE_TIMEOUT_MS)
 
   it('reports a real service failure and an early app-server exit safely', async () => {
     {
@@ -475,7 +476,7 @@ describe('real @openai/codex 0.149.1 product', () => {
       await run.dispose()
       await expectQuiescent(harness.handles)
     }
-  }, 60_000)
+  }, REAL_PRODUCT_LIFECYCLE_TIMEOUT_MS)
 
   it('executes an explicitly selected dangerous bypass write in the isolated workspace', async () => {
     const sideEffect = 'bypass-side-effect'
@@ -517,7 +518,7 @@ describe('real @openai/codex 0.149.1 product', () => {
     expect(readFileSync(target, 'utf8').trim()).toBe('bypass')
     await run.dispose()
     await expectQuiescent(harness.handles)
-  }, 60_000)
+  }, REAL_PRODUCT_LIFECYCLE_TIMEOUT_MS)
 
   it('settles cancellation locally and leaves the real app-server tree quiescent', async () => {
     const { harness, fixture } = await realHarness([{ kind: 'hold' }])
@@ -532,5 +533,5 @@ describe('real @openai/codex 0.149.1 product', () => {
     await expect(run.result).resolves.toMatchObject({ stopReason: 'aborted' })
     await run.dispose()
     await expectQuiescent(harness.handles)
-  }, 60_000)
+  }, REAL_PRODUCT_LIFECYCLE_TIMEOUT_MS)
 })

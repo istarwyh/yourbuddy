@@ -5909,7 +5909,7 @@ dependencies = [
 
 [[package]]
 name = "yourbuddy"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "cookie",
  "dirs",
@@ -5934,6 +5934,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "tokio",
+ "toml 0.9.12+spec-1.1.0",
  "url",
  "which",
  "windows",

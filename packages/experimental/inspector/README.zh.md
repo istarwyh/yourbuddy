@@ -48,7 +48,7 @@ Host 插件注入 `webServer`，接受以下字段：
 | 字段 | 默认值 | 含义 |
 |---|---:|---|
 | `host` | `127.0.0.1` | Worker endpoint 监听地址；只接受 loopback |
-| `port` | `9230` | Worker endpoint 起始端口；端口占用时向上递增，`0` 表示由操作系统分配 |
+| `port` | `9230` | Worker endpoint 起始端口；端口占用或被操作系统保留时向上递增，`0` 表示由操作系统分配 |
 | `clientOrigins` | `[]` | `/ingest` 额外接受的精确浏览器 origin；loopback origin 始终允许 |
 | `captureFetch` | `true` | 包装 `globalThis.fetch` 并发布之后的每次调用 |
 | `maxRequestBodyBytes` | 8 MiB | 每次请求保留的 request body 前缀 |

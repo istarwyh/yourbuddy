@@ -71,6 +71,8 @@ docs/releases/<release-tag>/
 
 场景状态使用 `passed`、`failed`、`skipped` 或 `not verified`。源码测试不能验证正式安装包，Mock 不能验证真实供应商，组件测试不能验证完整产品旅程。只能陈述记录中的观察直接支持的结论。
 
+若桌面 Release 改动 `WebviewUrl::External` Shell、运行时 Capability、Permission 或应用 Command，JavaScript `invoke` Stub 只能作为 Bridge 证据。资料必须记录真实 Tauri Runtime Authority 结果，并从打包后的 WebView 操作每个受影响 Control；缺失的安装包覆盖必须保留在未验证范围内，且不能支撑“这些 Control 已通过”的结论。
+
 ## 截图、日志与敏感数据
 
 当相关状态有助于他人评估产品旅程时，记录操作前、执行中、结果和失败恢复等状态。截图没有数量指标：非 UI 改动可以改用命令输出、日志、校验和、包元数据或可下载产物证据。

@@ -246,6 +246,7 @@ test('product smoke overlay mounts the Plugin Marketplace and proxy verifier', (
   assert.match(overlay, /id: yourbuddy-release-subagent-codex/)
   assert.match(overlay, /name: '@deepseek-ai\/dsh-subagent-codex'/)
   assert.match(overlay, /id: agent-presets\n  config:\n    default: codex/)
+  assert.match(overlay, /id: tool-skill\n  config:\n    modelExcludedSkills:\n      - codexhost-delegation/)
   assert.match(overlay, /id: yourbuddy-release-proxy-verifier/)
   assert.match(overlay, /name: "\/tmp\/proxy-verifier\.mjs"/)
 })
