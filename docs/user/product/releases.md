@@ -6,6 +6,10 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.4 — preparation, not available for download
+
+The candidate supports ordinary-message page attachments and recoverable unsent messages. In a compatible Harbor view, ask about the current Trial or checked rows without attaching a reference manually; explicit references still take priority. The [candidate verification record](../../releases/yourbuddy-v0.3.4/README.md) contains historical source screenshots and controlled-model results, not evidence of a formal 0.3.4 installer. Public product and website checks are pending; [0.3.3 remains the verified download](download.md).
+
 ### 0.3.3 — 2026-09-07
 
 YourBuddy 0.3.3 fixes the installed macOS application's local Host authentication. Native startup completes the one-time exchange before opening a same-site workbench shell, so macOS WebKit can use the strict session cookie without exposing the process token to the renderer. The public DMG, updater archive, signature, checksums, and stable manifest were independently downloaded and inspected; the published application completed authenticated Host readiness and boot with isolated data. Visual window capture, an update from an older installed version, OAuth, and real model calls remain unverified.

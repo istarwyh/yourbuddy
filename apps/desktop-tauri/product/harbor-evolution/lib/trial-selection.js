@@ -3,6 +3,30 @@ import { localObjectDigest } from './interaction-objects.js'
 
 export const MAX_SELECTED_TRIALS = 1000
 
+/** Validate persisted membership without renewing it or rerunning its original query. */
+export function frozenTrialSelection(entry, ref, owner) {
+  const denied = () => { throw new Error('HARBOR_SELECTION_DENIED: Selection does not belong to this Session and Job.') }
+  if (!entry || entry.sessionId !== String(owner.sessionId) || entry.projectRoot !== owner.projectRoot || entry.workspace !== owner.workspace || entry.job !== ref.job || JSON.stringify(entry.ref) !== JSON.stringify(ref)) denied()
+  if (!['explicit', 'query-snapshot'].includes(entry.mode) || !/^sha256:[a-f0-9]{64}$/.test(entry.filterDigest ?? '') || !Array.isArray(entry.members) || !entry.members.length || entry.members.length > MAX_SELECTED_TRIALS || entry.members.length !== ref.selectionCount) denied()
+  const members = entry.members.map(member => {
+    if (typeof member.id !== 'string' || member.id.length > 240 || !/^(?:@?[\p{L}\p{N}][\p{L}\p{N}._:@+-]*|@[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)$/u.test(member.id) || !/^sha256:[a-f0-9]{64}$/.test(member.revision ?? '')) denied()
+    return { id: member.id, revision: member.revision }
+  })
+  if (new Set(members.map(member => member.id)).size !== members.length || localObjectDigest({ mode: entry.mode, filterDigest: entry.filterDigest, members }) !== ref.sourceDigest) denied()
+  return { ...entry, members }
+}
+
+/** Resolve the exact frozen members against current evidence; changes stay explicit. */
+export function resolveFrozenTrialSelection(entry, ref, owner, currentTrials) {
+  const frozen = frozenTrialSelection(entry, ref, owner)
+  const byId = new Map(currentTrials.map(trial => [trial.id, trial]))
+  for (const member of frozen.members) {
+    const current = byId.get(member.id)
+    if (!current || localObjectDigest(current) !== member.revision) throw new Error('HARBOR_CONTEXT_STALE_SELECTION: Selected Trials changed. Reselect before continuing.')
+  }
+  return { ref: { ...frozen.ref }, value: { mode: frozen.mode, filterDigest: frozen.filterDigest, count: frozen.members.length, members: frozen.members, trials: frozen.members.map(member => byId.get(member.id)) } }
+}
+
 /** Server-owned, frozen IDs/revisions; a query can never silently expand later. */
 export class TrialSelectionRegistry {
   constructor({ now = Date.now, ttlMs = 15 * 60_000, maxEntries = 256 } = {}) {
@@ -36,11 +60,6 @@ export class TrialSelectionRegistry {
   }
   resolve(ref, owner, currentTrials) {
     const entry = this.owned(ref, owner)
-    const byId = new Map(currentTrials.map(trial => [trial.id, trial]))
-    for (const member of entry.members) {
-      const current = byId.get(member.id)
-      if (!current || localObjectDigest(current) !== member.revision) throw new Error('HARBOR_CONTEXT_STALE_SELECTION: Selected Trials changed. Reselect before continuing.')
-    }
-    return { ref: { ...entry.ref }, value: { mode: entry.mode, filterDigest: entry.filterDigest, count: entry.members.length, members: entry.members, trials: entry.members.map(member => byId.get(member.id)) } }
+    return resolveFrozenTrialSelection(entry, ref, owner, currentTrials)
   }
 }

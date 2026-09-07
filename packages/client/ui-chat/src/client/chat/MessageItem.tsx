@@ -13,7 +13,7 @@ import css from './MessageItem.module.css'
 type UserImage = Extract<UserMessageNode['content'][number], { type: 'image' }>
 
 function contentParts(content: readonly unknown[]): {
-  text: string
+  texts: string[]
   images: { attachment: UserImage['attachment'] }[]
   rest: unknown[]
 } {
@@ -28,7 +28,7 @@ function contentParts(content: readonly unknown[]): {
     }
     else rest.push(block)
   }
-  return { text: texts.join(''), images, rest }
+  return { texts, images, rest }
 }
 
 function retrySeconds(milliseconds: number): number {
@@ -152,7 +152,7 @@ function UserStyleBubble({
 }: {
   content: readonly unknown[]
   renderMessageImages: ChatNodeOwnerProps['renderMessageImages']
-  /** Optional IconActions (or similar) below the bubble; receives the joined text. */
+  /** Optional actions below the bubble; receive authored text without automatic page context. */
   actions?: (text: string) => ReactNode
   /** Whether this is the Host-authoritative pre-admission steering projection. */
   pending?: boolean
@@ -164,10 +164,11 @@ function UserStyleBubble({
   previewImages?: readonly MessageImageSource[]
   t: ChatViewSlotProps['t']
 }): ReactNode {
-  const { text, images: contentImages, rest } = contentParts(content)
+  const { texts, images: contentImages, rest } = contentParts(content)
+  const text = projectUserText(texts, referenceLabels, 'editable')
   const images = previewImages ?? contentImages
   const truncated = (total: number): string => t('json.truncated', { total })
-  const showBubble = text !== '' || rest.length > 0
+  const showBubble = texts.some(value => value !== '') || rest.length > 0
   return (
     <div
       className={css.userRow}
@@ -177,7 +178,7 @@ function UserStyleBubble({
       <div className={css.userStack}>
         {renderMessageImages({ images, align: 'end' })}
         {showBubble && <div className={css.bubble}>
-          {projectUserText(text, referenceLabels)}
+          {projectUserText(texts, referenceLabels)}
           {rest.map((block, i) => <JsonBlock key={i} label={t('message.extraBlock')} payload={block} truncatedLabel={truncated} />)}
         </div>}
         {referenceLabels.length > 0 && (

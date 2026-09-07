@@ -12,7 +12,40 @@ function routeName(route) {
   return `${route.provider}/${route.model}`
 }
 
-export function buildHistoricalGenerationBatch({ projectRoot, selections, observations, limit = 10, createdAfter, now = new Date() }) {
+function materializeScan(scan, scope) {
+  if (scan === undefined) return undefined
+  if (
+    !scan || scan.scope !== scope
+    || ![scan.listedCount, scan.candidateCount, scan.readCount, scan.unscannedCount]
+      .every(value => Number.isSafeInteger(value) && value >= 0)
+    || scan.candidateCount > scan.listedCount
+    || scan.readCount + scan.unscannedCount !== scan.candidateCount
+    || scan.partial !== (scan.unscannedCount > 0)
+    || scan.windowOrder !== (scope === 'exact-cwd' ? 'all-candidates' : 'created-at-desc')
+    || scan.selectionOrder !== 'last-activity-desc'
+  ) {
+    throw new Error('HISTORICAL_BATCH_SCAN_INVALID')
+  }
+  return {
+    scope,
+    listed_count: scan.listedCount,
+    candidate_count: scan.candidateCount,
+    read_count: scan.readCount,
+    unscanned_count: scan.unscannedCount,
+    partial: scan.partial,
+    window_order: scan.windowOrder,
+    selection_order: scan.selectionOrder,
+  }
+}
+
+export function buildHistoricalGenerationBatch({
+  projectRoot, selections, observations, limit = 10, createdAfter,
+  scope = 'exact-cwd', scan, now = new Date(),
+}) {
+  if (!['exact-cwd', 'dsh-history'].includes(scope)) {
+    throw new Error('HISTORICAL_BATCH_SCOPE_INVALID')
+  }
+  const selectionScan = materializeScan(scan, scope)
   if (!Array.isArray(selections) || !selections.length || selections.length > 10) {
     throw new Error('HISTORICAL_BATCH_SIZE_INVALID: a batch requires 1 to 10 Session observations')
   }
@@ -35,6 +68,11 @@ export function buildHistoricalGenerationBatch({ projectRoot, selections, observ
       source_ref: selection.sourceRef,
       captured_through_seq: selection.capturedThroughSeq,
       source_digest: selection.sourceDigest,
+      ...(typeof selection.header?.cwd === 'string' && path.isAbsolute(selection.header.cwd)
+        ? { source_project_digest: canonicalDigest(
+            { cwd: path.resolve(selection.header.cwd) }, 'harbor-dsh-project-cwd-v1',
+          ) }
+        : {}),
       observation_digest: observation.digest,
       last_activity_at: observation.source.last_activity_at,
       generator: {
@@ -60,15 +98,17 @@ export function buildHistoricalGenerationBatch({ projectRoot, selections, observ
     batch_id: batchId,
     created_at: now.toISOString(),
     project: {
+      // This identifies the output workspace, not the projects the sessions came from.
       cwd_digest: canonicalDigest({ cwd: path.resolve(projectRoot) }, 'harbor-dsh-project-cwd-v1'),
     },
     selection: {
-      scope: 'exact-cwd',
+      scope,
       order: 'last-activity-desc',
       requested_limit: limit,
       selected_count: records.length,
       current_session_excluded: true,
       ...(createdAfter === undefined ? {} : { created_after: new Date(createdAfter).toISOString() }),
+      ...(selectionScan === undefined ? {} : { scan: selectionScan }),
     },
     source: {
       kind: 'dsh-session',

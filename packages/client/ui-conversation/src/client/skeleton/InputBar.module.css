@@ -29,6 +29,65 @@
   line-height: 18px;
 }
 
+.failures {
+  width: 100%;
+  max-width: var(--dsh-composer-card-max-width);
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.failure {
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  padding: 6px 8px;
+}
+
+.failureSummary {
+  cursor: pointer;
+}
+
+.failurePreview {
+  display: inline-block;
+  vertical-align: bottom;
+  max-width: 65%;
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.failureBody p {
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+
+.failureDraft {
+  white-space: pre-wrap;
+  color: var(--dsw-alias-label-primary);
+}
+
+.failureActions {
+  display: flex;
+  gap: 12px;
+}
+
+.failureActions button {
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--dsw-alias-state-business-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.failureActions button:disabled {
+  color: var(--dsw-alias-label-tertiary);
+  cursor: not-allowed;
+}
+
 .card {
   box-sizing: border-box;
   position: relative; /* overlay anchor positioning context */

@@ -4,6 +4,8 @@
 
 随应用集成的快照版本：`0.9.2`。来源：[istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving)。
 
+此版本说明对应已核验的 0.3.3 桌面下载。[0.3.4 候选归档](../../../releases/yourbuddy-v0.3.4/README.zh.md)记录自动附带页面的提问与未发送消息恢复，Harbor 0.9.4 快照已在本地核验；正式桌面安装包仍未核验。宿主不支持页面附件时，继续使用“问 AI”或 `@harbor` 显式引用。仅更新独立插件不能增加缺失的宿主能力。
+
 ## 解决的问题
 
 面对不稳定的 Agent 结果，用户可以从已完成会话寻找问题，也可以用固定任务比较一次受控修改前后的表现。

@@ -1,0 +1,59 @@
+YourBuddy 0.3.4 local candidate validation
+Observed: 2026-09-07, Asia/Shanghai (UTC+08:00)
+Source: feature d5e200d4415f5d951374dd7794762b542057d0f9 plus uncommitted release preparation.
+Scope: operator-reported runs corroborated against their local result logs. This is a sanitized summary, not raw logs or public installer evidence. Temporary paths, socket addresses, and process identifiers are omitted.
+
+Focused source checks: Node 24.20.0, pnpm 11.7.0, macOS arm64
+- 12:01:10 unit invocation: 4 files, 134 cases passed.
+- 12:03:38 submission unit invocation: 5 files, 80 cases passed.
+- Combined unit scope: 9 files, 214 cases passed; not the full repository suite.
+- 12:00:47 browser invocation: 3 files, 6 cases passed; remote-welcome suite failed before its one case ran (1 skipped), so the whole invocation did not pass.
+- 12:02:30 direct remote-welcome retry: 1 suite failed, 1 case skipped; TypeError: fetch failed / UND_ERR_SOCKET, other side closed.
+- 12:04:42 process-only DNS shim remote-welcome run: 1 file, 1 case passed. The shim was an isolated diagnostic accommodation; no committed source or system DNS change. The original proxy/DNS environment did not pass.
+- Historical Node 22 full Web failures remain separately recorded in README; no full-suite green claim follows from these focused checks.
+
+Owning-package coverage
+- 59 files / 962 cases passed, but the invocation failed the required branch threshold: user-text.tsx reached 93.22%.
+- The correction removed four unreachable fallbacks after fixed-regex matches, without changing regexes, behavior, or coverage thresholds. Two added regressions cover empty captures and unknown entities retained verbatim with decode-once behavior.
+- 12:52:50 rerun: 28 files / 573 cases passed. Exact user-text.tsx coverage: statements 59/59, branches 51/51, functions 13/13, lines 45/45; all 100%. This narrower run did not rerun all 59 files from the earlier invocation.
+- Final source build and runtime rebuild passed as recorded below; final lint is recorded separately in local-docs-validation.txt. The initial complete preparation below predates this source correction.
+
+Initial complete release preparation
+- Invocation: pnpm run prepare:release (desktop application package); operator reported exit 0. Successful log completed at 12:42 UTC+08:00.
+- Paired Harbor JavaScript and Python adapter: 0.9.4, source 8264804dfd23186d030703580020b941a1bcc306.
+- Download phase: 587 production packages downloaded and added.
+- Offline reinstall: 587 packages reused, 0 downloaded, 587 added; completed with pnpm 11.7.0.
+- Offline store: 38,708 files. Store/archive/bundle hashes from this initial preparation are intentionally not final hashes because the paired README translations must be included before the final rebuild.
+- Runtime: Python 3.12.14, Harbor 0.21.0, harbor-dsh-evolution 0.9.4.
+- workbench-branding: default, customization, persistence, and reset snapshot passed.
+- verify-product-release: 54 bundled runtime peer links, 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed.
+- prepare-release: compatible product sources and frozen lockfile are ready for review and commit.
+- Other product snapshots and frozen lockfiles remained unchanged, as checked by the release operator.
+- Final documentation-aware snapshot hashes, rebuild, and repeated assembled-runtime verification are recorded below.
+
+Final corrected-source build, replay, and runtime rebuild
+Observed: 2026-09-07 12:53–12:55 UTC+08:00 (Asia/Shanghai)
+- Source user-text.tsx SHA-256: 52eb9b9e77167ce3b9ee5a5c15662dfbec4e4b46bccbbcabe3910ad6e5774adb.
+- Source build exited 0 and recorded 220 Client artifacts with 4 public values.
+- Real application page-context replay: 2 files / 5 cases passed, start 12:54:45, duration 7.95s, exit 0. Controlled synthetic provider; no paid-model or installed native WebView claim.
+- Final rebuild verified cached digests and restored all 38,708 offline-store files, then performed a real frozen offline installation: 587 reused, 0 downloaded, 587 added.
+- Final branding default/customization/persistence/reset snapshot and assembled Host/Chromium verification passed: 54 runtime peer links, 6 Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls.
+- Release operator verified both official snapshot trees and the Client build record. DSH provenance and frozen lockfiles had no diff. Owned verification processes were stopped.
+- These hashes describe the final local candidate, not public DMG or updater bytes:
+  Harbor JavaScript snapshot treeSha256: a39c73a4a695fda9338df65de1997d703c07ec4ebb22ac12c94b3c99821273cb
+  Harbor Python snapshot treeSha256: 61f564ff16349f393530db42abab88a07349e38e6470c891ac7240290e6d8a1a
+  Harness bundle sourceSha256: 35469da4e97e4bd5e3536b49ae4e9fb37978cb561b30880edd3ca01e2d107d9f
+  Harness bundle contentSha256: e34b699dd20c93b59c4f08640e0bb380c2b0cb5477a7ffcb218dee38c711721a
+  Offline store sha256: 88f70522c07879321bbbda7baa3bcb1ab533d341e56a7da7afd2848513949661
+  Offline store archiveSha256: 23835b0fb421d5d6f8cbfe05fd07d8e2a98da2541ccd38bc2beb7c2d597b844f
+
+Corrected environment attempts and warnings
+- An earlier preparation failed at a macOS Unix-socket path length limit; a shorter temporary directory avoided that environment failure.
+- Large-package fetches exceeded the initial 60-second timeout. Correct process-local pnpm configuration used 300 seconds for the successful complete attempt; this did not change dependency versions or frozen locks.
+- Cache population required the network. Only the subsequent installation was offline.
+- Existing proxy-agent experimental and Vite path-resolution recommendation warnings were non-blocking. Runtime preparation also reported a repaired upstream Python version specifier. No zero-warning claim is made.
+- The final Client build retained the advisory for minified chunks larger than 500 kB; the build completed successfully without changing the warning limit.
+
+Not established
+- No public DMG, updater archive/signature/manifest, installed native WebView, website deployment, real-provider quality, or full Harbor PRD acceptance is established by these runs.
+- The seven images in this archive retain their earlier historical source identity; none is relabelled as a formal 0.3.4 application capture.

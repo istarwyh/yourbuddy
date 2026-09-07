@@ -28,6 +28,8 @@ async function bench() {
   const fiber = runtime.ctx.plugin(ConversationController, {
     input: hub,
     blocks: new ComposerBlockRegistry(),
+    activeView: () => 'page',
+    contextFailure: reason => `context ${reason}`,
   })
   await fiber.await()
   const root = runtime.ctx.get('conversation') as ConversationController
@@ -37,6 +39,93 @@ async function bench() {
 }
 
 describe('ConversationController', () => {
+  it('adds View context to scoped send as one prompt and removes contributions with their plugin fiber', async () => {
+    const b = await bench()
+    const prepare = vi.fn(() => 'frozen page')
+    const plugin = b.runtime.ctx.plugin({
+      inject: ['conversation'],
+      apply(ctx: Context) {
+        ctx.effect(() => ctx.conversation.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare }))
+      },
+    })
+    await plugin.await()
+    const sending = b.scoped.send('ordinary message')
+    expect(prepare).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 's1', draft: 'ordinary message', occurrences: [] }))
+    await sending
+    expect(b.prompt).toHaveBeenLastCalledWith([
+      { type: 'text', text: 'ordinary message' }, { type: 'text', text: '<dsh-page-context source="page" label="Page">\nfrozen page\n</dsh-page-context>' },
+    ], 'queue', expect.any(AbortSignal), expect.any(String))
+    await plugin.dispose()
+    await b.scoped.send('after unload')
+    expect(b.prompt).toHaveBeenLastCalledWith([{ type: 'text', text: 'after unload' }], 'queue')
+    expect(prepare).toHaveBeenCalledOnce()
+    await b.runtime.dispose()
+  })
+
+  it('captures a plain composer send synchronously and admits context through the original queue/steer request', async () => {
+    const b = await bench()
+    const session = b.runtime.sessions.binding('s1')!.session
+    const beginSubmission = vi.spyOn(session, 'beginSubmission')
+    let page = 'original'
+    const prepare = vi.fn(() => { const captured = page; return Promise.resolve(captured) })
+    b.root.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare })
+    b.shell.setDraft('why?')
+    b.shell.submit('steer')
+    expect(prepare).toHaveBeenCalledOnce()
+    expect(b.shell.snapshot.draft).toBe('')
+    page = 'new page'
+    await vi.waitFor(() => { expect(b.prompt).toHaveBeenCalledOnce() })
+    expect(beginSubmission).toHaveBeenCalledWith(expect.objectContaining({ text: 'why?', mode: 'steer' }))
+    expect(b.prompt).toHaveBeenCalledWith([
+      { type: 'text', text: 'why?' }, { type: 'text', text: '<dsh-page-context source="page" label="Page">\noriginal\n</dsh-page-context>' },
+    ], 'steer', expect.any(AbortSignal), expect.any(String))
+    await b.runtime.dispose()
+  })
+
+  it('restores a failed context preparation without sending and permits an ordinary retry', async () => {
+    const b = await bench()
+    const prepare = vi.fn(() => Promise.resolve('page')).mockRejectedValueOnce(new Error('page unavailable'))
+    b.root.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare })
+    b.shell.setDraft('retry this')
+    b.shell.submit()
+    await vi.waitFor(() => { expect(b.shell.snapshot.draft).toBe('retry this') })
+    expect(b.prompt).not.toHaveBeenCalled()
+    expect(b.shell.notices.getSnapshot()).toMatchObject({ text: 'page unavailable', level: 'error' })
+    b.shell.submit()
+    await vi.waitFor(() => { expect(b.prompt).toHaveBeenCalledOnce() })
+    expect(b.shell.snapshot.draft).toBe('')
+    await b.runtime.dispose()
+  })
+
+  it('cancels a direct send when its Session binding is disposed during page preparation', async () => {
+    const b = await bench()
+    b.root.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare: () => new Promise(() => {}) })
+    const rejected = expect(b.scoped.send('pending')).rejects.toThrow('cancelled')
+    await b.runtime.sessions.remove('s1')
+    await rejected
+    expect(b.prompt).not.toHaveBeenCalled()
+    await b.runtime.dispose()
+  })
+
+  it('stops pending context preparation and restores its draft without a later prompt', async () => {
+    const b = await bench()
+    let signal: AbortSignal | undefined
+    let complete: (text: string) => void = () => {}
+    b.root.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare: (request) => {
+      signal = request.signal
+      return new Promise((resolve) => { complete = resolve })
+    } })
+    b.shell.setDraft('still preparing')
+    b.shell.submit()
+    await b.scoped.cancel()
+    expect(signal?.aborted).toBe(true)
+    await vi.waitFor(() => { expect(b.shell.snapshot.draft).toBe('still preparing') })
+    complete('late page')
+    await Promise.resolve()
+    expect(b.prompt).not.toHaveBeenCalled()
+    await b.runtime.dispose()
+  })
+
   it('routes operations through the public Session binding', async () => {
     const b = await bench()
     await b.scoped.send('hello')
@@ -147,6 +236,8 @@ describe('ConversationController', () => {
     await bare.plugin(ConversationController, {
       input: new InputHub(bare, makeTranslate(zh, {})),
       blocks: new ComposerBlockRegistry(),
+      activeView: () => undefined,
+      contextFailure: reason => `context ${reason}`,
     }).await()
     const orphan = bare.get('conversation') as ConversationController
     await expect(orphan.send('x')).rejects.toThrow(/sessions service unavailable/)
@@ -174,6 +265,111 @@ describe('sendSession submission echo', () => {
     }
     return { ...b, beginSubmission, abandon, retire, revoked, restore }
   }
+
+  it.each(['stop', 'unload'] as const)('keeps public send admitted when %s arrives before its acknowledgement', async (action) => {
+    const b = await echoBench()
+    try {
+      const removeContext = b.root.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare: () => 'page' })
+      let acknowledge: () => void = () => {}
+      let signal: AbortSignal | undefined
+      b.prompt.mockImplementationOnce((...args: unknown[]) => new Promise((resolve) => {
+        signal = args[2] as AbortSignal
+        signal.addEventListener('abort', () => {
+          resolve({ ok: false, error: new RemoteError('gateway/internal', 'receipt cancelled', {}) } as never)
+        }, { once: true })
+        acknowledge = () => { resolve({ ok: true, value: { accepted: true } }) }
+      }))
+      const sending = b.scoped.send('public message')
+      expect(b.beginSubmission).toHaveBeenCalledWith(expect.objectContaining({ text: 'public message', mode: 'queue' }))
+      await vi.waitFor(() => { expect(b.prompt).toHaveBeenCalledOnce() })
+      expect(b.prompt).toHaveBeenCalledWith(expect.any(Array), 'queue', expect.any(AbortSignal), 'req-echo')
+      b.retire.onRetire?.({ reason: 'observed', attachments: [] })
+      if (action === 'stop') await b.scoped.cancel()
+      else removeContext()
+      expect(signal?.aborted).toBe(false)
+      acknowledge()
+      await expect(sending).resolves.toBeUndefined()
+      expect(b.abandon).not.toHaveBeenCalled()
+    } finally { b.restore(); await b.runtime.dispose() }
+  })
+
+  it('abandons a public-send echo if context preparation fails before admission', async () => {
+    const b = await echoBench()
+    try {
+      b.root.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare: () => Promise.reject(new Error('page failed')) })
+      await expect(b.scoped.send('not admitted')).rejects.toThrow('page failed')
+      expect(b.abandon).toHaveBeenCalledOnce()
+      expect(b.prompt).not.toHaveBeenCalled()
+    } finally { b.restore(); await b.runtime.dispose() }
+  })
+
+  it('keeps an image-only user text position before its automatic context', async () => {
+    const b = await echoBench()
+    try {
+      b.root.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare: () => 'image context' })
+      const [attachment] = b.root.createDraftImages([new File([Uint8Array.of(1)], 'a.png', { type: 'image/png' })])
+      const session = b.runtime.sessions.binding('s1')!.session
+      const controller = new AbortController()
+      const prepared = b.root.prepareContext(session.sessionId, '', [], controller.signal)!
+      const sending = b.root.sendSession(session, '', [attachment!.id], 'queue', controller.signal, prepared)
+      await vi.waitFor(() => { expect(b.prompt).toHaveBeenCalledOnce() })
+      expect(b.prompt).toHaveBeenCalledWith([
+        expect.objectContaining({ type: 'image' }),
+        { type: 'text', text: '' },
+        { type: 'text', text: '<dsh-page-context source="page" label="Page">\nimage context\n</dsh-page-context>' },
+      ], 'queue', prepared.signal, 'req-echo')
+      b.retire.onRetire?.({ reason: 'observed', attachments: [] })
+      await sending
+      prepared.dispose()
+    } finally { b.restore(); await b.runtime.dispose() }
+  })
+
+  it.each(['stop', 'unload'] as const)('cancels a resolved context on %s before admission and abandons its unsent echo', async (action) => {
+    const b = await echoBench()
+    try {
+      const removeContext = b.root.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare: () => 'resolved page' })
+      const session = b.runtime.sessions.binding('s1')!.session
+      const prepared = b.root.prepareContext(session.sessionId, 'question', [], new AbortController().signal)!
+      await prepared.content
+      const sending = b.root.sendSession(session, 'question', [], 'queue', undefined, prepared)
+      const rejected = expect(sending).rejects.toThrow('cancelled')
+      if (action === 'stop') await b.scoped.cancel()
+      else removeContext()
+      await rejected
+      expect(b.abandon).toHaveBeenCalledOnce()
+      expect(b.prompt).not.toHaveBeenCalled()
+      prepared.dispose()
+    } finally { b.restore(); await b.runtime.dispose() }
+  })
+
+  it.each(['stop', 'unload', 'scope'] as const)('keeps an observed admission successful when %s precedes its RPC acknowledgement', async (action) => {
+    const b = await echoBench()
+    try {
+      const removeContext = b.root.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare: () => 'page' })
+      const controller = new AbortController()
+      const session = b.runtime.sessions.binding('s1')!.session
+      const prepared = b.root.prepareContext(session.sessionId, 'already admitted', [], controller.signal)!
+      let acknowledge: () => void = () => {}
+      b.prompt.mockImplementationOnce((...args: unknown[]) => new Promise((resolve) => {
+        const signal = args[2] as AbortSignal
+        signal.addEventListener('abort', () => {
+          resolve({ ok: false, error: new RemoteError('gateway/internal', 'receipt cancelled', {}) } as never)
+        }, { once: true })
+        acknowledge = () => { resolve({ ok: true, value: { accepted: true } }) }
+      }))
+      const sending = b.root.sendSession(session, 'already admitted', [], 'queue', controller.signal, prepared)
+      await vi.waitFor(() => { expect(b.prompt).toHaveBeenCalledOnce() })
+      b.retire.onRetire?.({ reason: 'observed', attachments: [] })
+      if (action === 'stop') await b.scoped.cancel()
+      else if (action === 'unload') removeContext()
+      else controller.abort()
+      expect(prepared.signal.aborted).toBe(false)
+      acknowledge()
+      await expect(sending).resolves.toEqual({ kind: 'success' })
+      expect(b.abandon).not.toHaveBeenCalled()
+      prepared.dispose()
+    } finally { b.restore(); await b.runtime.dispose() }
+  })
 
   it('registers the echo before serialization and prompts with its identity', async () => {
     const b = await echoBench()

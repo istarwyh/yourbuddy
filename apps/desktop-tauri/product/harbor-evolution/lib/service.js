@@ -4,7 +4,8 @@ import path from 'node:path'
 
 import { loadModelBinding } from './candidate.js'
 import { LOCAL_OBJECT_KINDS, interactionObjectCatalog, resolveCatalogSelection } from './interaction-objects.js'
-import { TrialSelectionRegistry, MAX_SELECTED_TRIALS } from './trial-selection.js'
+import { TrialSelectionRegistry, MAX_SELECTED_TRIALS, frozenTrialSelection, resolveFrozenTrialSelection } from './trial-selection.js'
+import { readContextSnapshot, writeContextSnapshot } from './context-snapshots.js'
 import { ActionDraftController } from './action-drafts.js'
 import { DiagnosticRunner } from './diagnostic-runner.js'
 import { prepareEvaluatorSaveHistory, readEvaluatorSave, recordEvaluatorSave } from './evaluator-saves.js'
@@ -1202,7 +1203,8 @@ export class EvolutionService {
       if (!job) throw new Error('HARBOR_CONTEXT_INVALID: a Trial context requires a Job')
       trialState = await readTrialDetail(config, { job, trial })
     }
-    const objectState = await interactionObjectState(config, normalized, job, jobState, trialState, await this._selectionEntries(normalized, config))
+    const selections = await this._selectionEntries(normalized, config)
+    const objectState = await interactionObjectState(config, normalized, job, jobState, trialState, selections)
     validateInteractionFocus(normalized, trialState)
     validateInteractionObjects(normalized, job, jobState, trialState, objectState)
     // artifactRevision is Host-owned. A browser-supplied value is only an
@@ -1213,11 +1215,14 @@ export class EvolutionService {
       flags: interactionContextSummary(normalized, job, jobState, trialState, objectState).flags,
       artifactRevision: interactionRevision(jobState, trialState, objectState),
     }
-    return this.uiContexts.issue({
+    const issued = this.uiContexts.issue({
       sessionId,
       context,
       projectRoot: config.projectRoot,
     })
+    const entry = this.uiContexts.resolve({ contextSnapshotId: issued.contextSnapshotId, sessionId, projectRoot: config.projectRoot })
+    await writeContextSnapshot(config.projectRoot, sessionId, issued.contextSnapshotId, entry)
+    return { ...issued, durable: true, selectedTrials: selections.flatMap(entry => entry.value.members.map(member => member.id)) }
   }
 
   async resolveUiContext(args, owner) {
@@ -1229,7 +1234,7 @@ export class EvolutionService {
   }
 
   async _resolveUiContext(args, owner) {
-    const entry = this.uiContexts.resolve({
+    const entry = await this._pageContextEntry({
       contextSnapshotId: args?.contextSnapshotId,
       sessionId: owner.sessionId,
       projectRoot: owner.projectRoot,
@@ -1307,6 +1312,19 @@ export class EvolutionService {
         expectedGeneration: context.generation,
       } } : {}),
     }
+  }
+
+  async _pageContextEntry(args) {
+    try { return this.uiContexts.resolve(args) }
+    catch (error) {
+      if (error.code !== 'HARBOR_CONTEXT_EXPIRED') throw error
+    }
+    const saved = await readContextSnapshot(args.projectRoot, String(args.sessionId), args.contextSnapshotId)
+    if (!saved) throw new Error('HARBOR_CONTEXT_EXPIRED: The original page snapshot is unavailable. Open the intended page and send again.')
+    const context = normalizeHarborUiContext(saved.context, String(args.sessionId))
+    const contextDigest = `sha256:${createHash('sha256').update(JSON.stringify(context)).digest('hex')}`
+    if (saved.token !== args.contextSnapshotId || saved.sessionId !== String(args.sessionId) || saved.projectRoot !== path.resolve(args.projectRoot) || saved.digest !== contextDigest) throw new Error('HARBOR_CONTEXT_INVALID: Saved page context failed identity verification.')
+    return { ...saved, context }
   }
 
   async resolveBrowserUiContext(args = {}) {
@@ -1537,7 +1555,18 @@ export class EvolutionService {
     if (!Array.isArray(ids) || new Set(ids).size !== ids.length || ids.some(id => typeof id !== 'string')) throw new Error('HARBOR_SELECTION_INVALID: Fixed Trial IDs are required.')
     const selected = trials.filter(trial => ids.includes(trial.id))
     if (selected.length !== ids.length) throw new Error('HARBOR_SELECTION_DENIED: A selected Trial is missing or outside this Job/filter.')
-    return this.trialSelections.issue({ sessionId, projectRoot: path.resolve(config.projectRoot), workspace: config.workspaceId, job: args.job, mode: args.mode, filters, trials: selected })
+    const owner = { sessionId, projectRoot: path.resolve(config.projectRoot), workspace: config.workspaceId }
+    const issued = this.trialSelections.issue({ ...owner, job: args.job, mode: args.mode, filters, trials: selected })
+    await writeContextSnapshot(owner.projectRoot, String(sessionId), issued.ref.id, this.trialSelections.owned(issued.ref, owner))
+    return { ...issued, durable: true }
+  }
+
+  async _ownedTrialSelection(ref, owner) {
+    try { return this.trialSelections.owned(ref, owner) }
+    catch (error) { if (!error.message.startsWith('HARBOR_SELECTION_EXPIRED:')) throw error }
+    const saved = await readContextSnapshot(owner.projectRoot, String(owner.sessionId), ref.id)
+    if (!saved) throw new Error('HARBOR_SELECTION_EXPIRED: The original Trial selection is unavailable. Select the intended Trials and send again.')
+    return frozenTrialSelection(saved, ref, owner)
   }
 
   async _selectionEntries(context, config) {
@@ -1545,9 +1574,10 @@ export class EvolutionService {
     if (!refs.length) return []
     const owner = { sessionId: context.sessionId, projectRoot: path.resolve(config.projectRoot), workspace: context.workspace }
     return Promise.all(refs.map(async ref => {
-      const trialIds = this.trialSelections.memberIds(ref, owner)
+      const entry = await this._ownedTrialSelection(ref, owner)
+      const trialIds = entry.members.map(member => member.id)
       const trials = await this._allSelectionTrials(config, { job: context.route.params.job, trialIds })
-      return this.trialSelections.resolve(ref, owner, trials)
+      return resolveFrozenTrialSelection(entry, ref, owner, trials)
     }))
   }
 
@@ -1557,8 +1587,9 @@ export class EvolutionService {
     if (owner.projectRoot !== path.resolve(config.projectRoot)) throw new Error('HARBOR_SELECTION_DENIED: Session project changed.')
     const ref = { kind: 'trial-set', id: args.id, job: args.job, stage: 'judge', sourceDigest: args.sourceDigest, selectionCount: Number(args.selectionCount) }
     const selectionOwner = { ...owner, workspace: config.workspaceId }
-    const trialIds = this.trialSelections.memberIds(ref, selectionOwner)
-    const value = this.trialSelections.resolve(ref, selectionOwner, await this._allSelectionTrials(config, { job: args.job, trialIds }))
+    const entry = await this._ownedTrialSelection(ref, selectionOwner)
+    const trialIds = entry.members.map(member => member.id)
+    const value = resolveFrozenTrialSelection(entry, ref, selectionOwner, await this._allSelectionTrials(config, { job: args.job, trialIds }))
     return { ref: value.ref, count: value.value.count, mode: value.value.mode, members: value.value.members }
   }
 
@@ -1606,7 +1637,7 @@ export class EvolutionService {
     try {
       // The bounded model-facing evidence reader is NOT execution authority.
       // Resolve the Host-owned token and every frozen member independently.
-      const { context } = this.uiContexts.resolve({ contextSnapshotId: draft.contextSnapshotId, ...owner })
+      const { context } = await this._pageContextEntry({ contextSnapshotId: draft.contextSnapshotId, ...owner })
       const { config } = await this._webContext({ workspace: context.workspace, sessionId: owner.sessionId })
       if (path.resolve(config.projectRoot) !== owner.projectRoot) throw new Error('HARBOR_ACTION_DENIED: Session project changed.')
       const job = context.route.params.job ?? context.object?.job

@@ -157,10 +157,12 @@ export class SessionDiagnosticService {
   }
 
   async preview(args = {}, exec) {
-    return this.previewWithIdentity(args, executionIdentity(exec), { signal: exec?.signal })
+    // Tool argument schemas may allow undeclared fields. Never let model-supplied
+    // arguments widen the public tool's exact-workspace history boundary.
+    return this.previewWithIdentity(args, executionIdentity(exec), { signal: exec?.signal, scope: 'exact-cwd' })
   }
 
-  async previewWithIdentity(args = {}, requestedIdentity, { signal, config = this.config } = {}) {
+  async previewWithIdentity(args = {}, requestedIdentity, { signal, config = this.config, currentSessionId, scope = 'exact-cwd' } = {}) {
     const identity = normalizedIdentity(requestedIdentity)
     const sessionQuery = capability(this.ctx, 'sessionQuery')
     const limit = args.limit ?? 10
@@ -168,7 +170,8 @@ export class SessionDiagnosticService {
     const result = await selectRecentSessions({
       sessionQuery,
       projectRoot: identity.projectRoot,
-      currentSessionId: identity.ownerSessionId,
+      currentSessionId: currentSessionId ?? identity.ownerSessionId,
+      scope,
       limit,
       maxSessionReads: config.sessionMaxReads ?? 100,
       concurrency: config.sessionReadConcurrency ?? 4,
@@ -176,7 +179,13 @@ export class SessionDiagnosticService {
       signal,
     })
     if (!result.selected.length) {
-      throw new Error('NO_ELIGIBLE_SESSIONS: no completed top-level DSH Sessions with direct human input and assistant output were found in this workspace')
+      if (result.excludedCounts.unreadable > 0 || result.excludedCounts.invalidHeader > 0) {
+        throw new Error('SESSION_HISTORY_READ_FAILED: historical conversations could not be read; retry without changing the working directory')
+      }
+      if (result.scan?.partial) {
+        throw new Error('SESSION_HISTORY_WINDOW_EXHAUSTED: no completed conversations were available in the recent sample; older history was not evaluated')
+      }
+      throw new Error('NO_ELIGIBLE_SESSIONS: no completed conversations with direct human input and assistant output were available in the selected history')
     }
     const judgeBinding = await resolveJudge(this.modelRuntime, args)
     const includeFeedback = args.includeFeedback !== false
@@ -204,7 +213,7 @@ export class SessionDiagnosticService {
       feedbackSnapshots,
       judgeBinding,
       evaluation,
-      parameters: { limit, includeFeedback, createdAfter, scope: 'exact-cwd', order: 'last-activity-desc' },
+      parameters: { limit, includeFeedback, createdAfter, scope, order: 'last-activity-desc', ...(result.scan ? { scan: result.scan } : {}) },
     })
     const warnings = [...result.warnings]
     if (feedbackObservations.some(item => item.failed)) {
@@ -215,8 +224,9 @@ export class SessionDiagnosticService {
       schema_version: 1,
       capability: 'historical-generation-evaluation',
       jobKind: 'historical-generation-evaluation',
-      scope: 'exact-cwd',
+      scope,
       order: 'last-activity-desc',
+      ...(result.scan ? { scan: result.scan } : {}),
       ...(createdAfter === undefined ? {} : { createdAfter: new Date(createdAfter).toISOString() }),
       executionMode: 'observe-existing',
       promotionEligible: false,
@@ -269,7 +279,10 @@ export class SessionDiagnosticService {
     }
     const snapshots = reads.map(item => item.value)
     if (snapshots.some((snapshot, index) => (
-      !verifySessionSnapshot(selectedState.selection[index], snapshot, identity.projectRoot)
+      !verifySessionSnapshot(selectedState.selection[index], snapshot,
+        selectedState.parameters.scope === 'dsh-history'
+          ? selectedState.selection[index].header.cwd
+          : identity.projectRoot)
     ))) {
       throw new Error('SESSION_SAMPLE_CHANGED: at least one selected Session changed after Preview; no Batch was written, preview again')
     }
@@ -303,6 +316,8 @@ export class SessionDiagnosticService {
       observations,
       limit: selectedState.parameters.limit,
       createdAfter: selectedState.parameters.createdAfter,
+      scope: selectedState.parameters.scope,
+      scan: selectedState.parameters.scan,
       now: this.now(),
     })
     const written = await writePrivateHistoricalBatch({
