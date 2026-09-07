@@ -37,7 +37,7 @@ The three tools return `{ text, job }`, `PublicJobSnapshot[]`, and `{ outcome: '
 
 ### Completion notices
 
-When a job finishes, the owning agent receives `background job <id> (<kind>: <label>) finished [status: ...]. Read its output with job_output.` as an in-session message. A busy agent has the notice injected into its next step — the turn cannot close while the inbox holds it, so several jobs settling together cost one step rather than one turn each. An idle agent is instead woken with a follow-up turn, because an unclaimed notice is a completion the model never learns about. A kill or a terminal read/wait marks the completion reported and suppresses the redundant notice, as does the teardown cancel that drains an owner or the service.
+When a job finishes, the owning agent receives `background job <id> (<kind>: <label>) finished [status: ...]. Read its output with job_output.` as an in-session message. A busy agent has the notice injected into its next step — the turn cannot close while the inbox holds it, so several jobs settling together cost one step rather than one turn each. An idle agent is instead woken with a follow-up turn, because an unclaimed notice is a completion the model never learns about. A kill or a terminal read/wait marks the completion reported and suppresses the redundant notice, as does the teardown cancel that drains an owner or the service. If completion races with an active `job_output` call before its registry wait begins, delivery is deferred through that call's final result: a terminal read suppresses the duplicate, while a denied or failed call releases the notice.
 
 Waking is bounded: each owner may be woken `maxConsecutiveWakes` times before further notices degrade to injection, and claiming any user-authored message restores the budget. The bound exists because the chain is self-exciting — a woken turn may start the background job whose completion wakes it again. `completionDelivery: quiet` keeps even idle owners on the injection lane, which deterministic transcripts need.
 
@@ -91,7 +91,7 @@ This section explains the design decisions behind the tools and points at the co
 
 ### Notice delivery lanes
 
-`onJobDone` skips jobs already reported or unowned. A `wakeup` delivery opens a turn on an idle owner while the budget lasts, tracked per exact `Agent` in a `WeakMap`; claiming a user-authored message (`agent/inbox/claimed`) resets that owner's budget. A busy owner — or any notice past the budget, or `quiet` delivery — is injected into the next-step inbox instead. Teardown settlements arrive already `reported`, so disposal never spends a model request announcing a notice nobody can read.
+`onJobDone` skips jobs already reported or unowned. It defers an unreported completion while the exact owner has an active `job_output` execution for that job, then consults the registry after the last matching `tools/result`: a terminal read has set `reported`, while policy denial or failure leaves the notice deliverable. A `wakeup` delivery opens a turn on an idle owner while the budget lasts, tracked per exact `Agent` in a `WeakMap`; claiming a user-authored message (`agent/inbox/claimed`) resets that owner's budget. A busy owner — or any notice past the budget, or `quiet` delivery — is injected into the next-step inbox instead. Teardown settlements arrive already `reported`, so disposal never spends a model request announcing a notice nobody can read.
 
 </details>
 

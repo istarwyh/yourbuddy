@@ -6,6 +6,12 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.5 — 2026-09-08
+
+YourBuddy 0.3.5 restores network, lifecycle, update, external-link, and Marketplace controls rejected by the desktop permission layer. Codex Preset delegation now uses the bundled `subagent_codex` route even when the conflicting global `codexhost-delegation` skill exists. All five public assets were anonymously downloaded and checked, the updater signature was cryptographically verified, and the public App's identity, bundled correction, and relocated runtime passed inspection. Native startup, packaged-WebView controls, an update from 0.3.4, OAuth, and real provider calls remain unverified because a user-owned older instance prevented an isolated launch.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.5) · [verification record](../../releases/yourbuddy-v0.3.5/README.md) · [download page](download.md)
+
 ### 0.3.4 — 2026-09-07
 
 YourBuddy 0.3.4 adds ordinary-message page attachments and recoverable unsent messages. In Harbor, ask about the current Trial or checked rows without attaching a reference manually; explicit references take priority. The public App contains paired Harbor JavaScript/Python adapter 0.9.4. All five assets were independently downloaded and checked, the updater signature was cryptographically verified, and an unchanged App copy completed authenticated Host readiness and boot with isolated data. Visual window inspection/capture, an update from an existing installation, OAuth, and real model calls remain unverified. The seven gallery images are historical source captures with synthetic data, not formal installed-app screenshots.

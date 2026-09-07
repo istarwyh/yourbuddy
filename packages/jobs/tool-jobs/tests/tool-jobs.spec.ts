@@ -241,7 +241,7 @@ describe('job_output', () => {
     }).spec)
     ctx.on('tools/post-execute', (exec, _result, next) => {
       if (exec.name !== 'job_output') return next()
-      return Promise.resolve({ kind: 'accept', content: [{ type: 'text', text: 'p'.repeat(1_000) }] })
+      return Promise.resolve({ kind: 'accept', content: [{ type: 'text', text: `${'p'.repeat(1_000)}[result truncated]` }] })
     })
 
     const result = await call(ctx, 'job_output', { job_id: 'bash-1' })
@@ -824,6 +824,149 @@ describe('completion notices', () => {
     const pending = call(ctx, 'job_output', { job_id: 'subagent-1', wait: true }, owner)
     p.settle({ status: 'completed', output: 'answer' })
     expect(text(await pending)).toContain('answer')
+    expect(inject).not.toHaveBeenCalled()
+  })
+
+  it('suppresses a completion that settles after job_output starts but before its wait registers', async () => {
+    const { ctx } = await setup()
+    const inject = vi.fn()
+    const owner = fakeAgent(ctx, 'sess-1', { inject })
+    const p = producer({ owner, kind: 'subagent' })
+    ctx.jobs.start(p.spec)
+    const entered = Promise.withResolvers<undefined>()
+    const resume = Promise.withResolvers<undefined>()
+    ctx.on('tools/pre-execute', async (exec, next) => {
+      if (exec.name !== 'job_output') return next()
+      entered.resolve(undefined)
+      await resume.promise
+      return next()
+    })
+
+    const pending = call(ctx, 'job_output', { job_id: 'subagent-1', wait: true }, owner)
+    await entered.promise
+    p.settle({ status: 'completed', output: 'answer' })
+    await tick()
+    resume.resolve(undefined)
+
+    expect(text(await pending)).toContain('answer')
+    expect(inject).not.toHaveBeenCalled()
+  })
+
+  it('delivers a deferred completion when policy rejects the active job_output call', async () => {
+    const { ctx } = await setup()
+    const inject = vi.fn()
+    const owner = fakeAgent(ctx, 'sess-1', { inject })
+    const p = producer({ owner, kind: 'subagent' })
+    ctx.jobs.start(p.spec)
+    const entered = Promise.withResolvers<undefined>()
+    const resume = Promise.withResolvers<undefined>()
+    ctx.on('tools/pre-execute', async (exec, next) => {
+      if (exec.name !== 'job_output') return next()
+      entered.resolve(undefined)
+      await resume.promise
+      return { kind: 'deny', reason: 'blocked by test policy' }
+    })
+
+    const pending = call(ctx, 'job_output', { job_id: 'subagent-1', wait: true }, owner)
+    await entered.promise
+    p.settle({ status: 'completed', output: 'answer' })
+    await tick()
+    expect(inject).not.toHaveBeenCalled()
+    resume.resolve(undefined)
+
+    expect((await pending).isError).toBe(true)
+    expect(inject).toHaveBeenCalledOnce()
+  })
+
+  it('waits for every concurrent job_output execution before resolving a deferred completion', async () => {
+    const { ctx } = await setup()
+    const inject = vi.fn()
+    const owner = fakeAgent(ctx, 'sess-1', { inject })
+    const p = producer({ owner, kind: 'subagent' })
+    ctx.jobs.start(p.spec)
+    const bothEntered = Promise.withResolvers<undefined>()
+    const resume = Promise.withResolvers<undefined>()
+    let entered = 0
+    ctx.on('tools/pre-execute', async (exec, next) => {
+      if (exec.name !== 'job_output') return next()
+      entered += 1
+      if (entered === 2) bothEntered.resolve(undefined)
+      await resume.promise
+      return next()
+    })
+
+    const first = call(ctx, 'job_output', { job_id: 'subagent-1', wait: true }, owner)
+    const second = call(ctx, 'job_output', { job_id: 'subagent-1', wait: true }, owner)
+    await bothEntered.promise
+    p.settle({ status: 'completed', output: 'answer' })
+    await tick()
+    resume.resolve(undefined)
+
+    expect(text(await first)).toContain('answer')
+    expect(text(await second)).toContain('answer')
+    expect(inject).not.toHaveBeenCalled()
+  })
+
+  it('tracks simultaneous job_output executions for different jobs independently', async () => {
+    const { ctx } = await setup()
+    const inject = vi.fn()
+    const owner = fakeAgent(ctx, 'sess-1', { inject })
+    const firstProducer = producer({ owner, kind: 'subagent' })
+    const secondProducer = producer({ owner, kind: 'subagent' })
+    ctx.jobs.start(firstProducer.spec)
+    ctx.jobs.start(secondProducer.spec)
+    const bothEntered = Promise.withResolvers<undefined>()
+    const resumeFirst = Promise.withResolvers<undefined>()
+    const resumeSecond = Promise.withResolvers<undefined>()
+    let entered = 0
+    ctx.on('tools/pre-execute', async (exec, next) => {
+      if (exec.name !== 'job_output') return next()
+      entered += 1
+      if (entered === 2) bothEntered.resolve(undefined)
+      const jobId = (exec.arguments as { job_id: string }).job_id
+      await (jobId === 'subagent-1' ? resumeFirst.promise : resumeSecond.promise)
+      return next()
+    })
+
+    const first = call(ctx, 'job_output', { job_id: 'subagent-1', wait: true }, owner)
+    const second = call(ctx, 'job_output', { job_id: 'subagent-2', wait: true }, owner)
+    await bothEntered.promise
+    firstProducer.settle({ status: 'completed', output: 'first answer' })
+    await tick()
+    resumeFirst.resolve(undefined)
+    expect(text(await first)).toContain('first answer')
+    expect(inject).not.toHaveBeenCalled()
+
+    secondProducer.settle({ status: 'completed', output: 'second answer' })
+    await tick()
+    resumeSecond.resolve(undefined)
+    expect(text(await second)).toContain('second answer')
+    expect(inject).not.toHaveBeenCalled()
+  })
+
+  it('discards a deferred completion when owner disposal removes the settled job', async () => {
+    const { ctx } = await setup()
+    const inject = vi.fn()
+    const owner = fakeAgent(ctx, 'sess-1', { inject })
+    const p = producer({ owner, kind: 'subagent' })
+    ctx.jobs.start(p.spec)
+    const entered = Promise.withResolvers<undefined>()
+    const resume = Promise.withResolvers<undefined>()
+    ctx.on('tools/pre-execute', async (exec, next) => {
+      if (exec.name !== 'job_output') return next()
+      entered.resolve(undefined)
+      await resume.promise
+      return next()
+    })
+
+    const pending = call(ctx, 'job_output', { job_id: 'subagent-1', wait: true }, owner)
+    await entered.promise
+    p.settle({ status: 'completed', output: 'answer' })
+    await tick()
+    await disposeAgentScope(owner)
+    resume.resolve(undefined)
+
+    expect((await pending).isError).toBe(true)
     expect(inject).not.toHaveBeenCalled()
   })
 

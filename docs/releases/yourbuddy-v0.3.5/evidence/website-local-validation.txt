@@ -1,0 +1,27 @@
+YourBuddy 0.3.5 website source validation
+==========================================
+
+Observed: 2026-09-08 04:07–04:10 UTC+08:00, Asia/Shanghai
+Source: codex/publish-yourbuddy-0.3.5 based on tag commit 9491b9ddbeda08f97183387e91d00d86af3e4701, with public audit and website updates not yet committed.
+Environment: macOS 15.6.1 arm64; Node 22.22.2; pnpm 11.7.0; Hugo Extended 0.165.0 arm64; Go 1.27.1 arm64; Go module networking disabled.
+
+Passing observations
+--------------------
+
+1. pnpm run doc-sync
+   Process PATH excluded a faulty optional local PowerShell executable.
+   Result: exit 0; 32 gates passed, 0 failed, 0 skipped in 36.88 seconds.
+
+2. PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/ pnpm website:check
+   HUGO_BIN selected the cached official Extended 0.165.0 binary. PATH selected cached Go 1.27.1. GOTOOLCHAIN=local, GOPROXY=off, and GOSUMDB=off prevented toolchain or module downloads.
+   Result: exit 0; 2 files and 70 tests passed; 48 canonical YourBuddy pages projected; Hugo produced 59 Chinese and 57 English pages; 57 product HTML pages passed local link, asset, fragment, and source-action verification.
+
+Failure and recovery
+--------------------
+
+The first website:check used the deliberately reduced documentation PATH. Its 70 structure tests passed, but the build rejected the missing Hugo executable. This did not verify the product site. The documented HUGO_BIN and cached Go paths were then supplied explicitly, and the complete command passed. No generated output from the incomplete attempt is used as deployment evidence.
+
+Evidence boundary
+-----------------
+
+These are source projection and local static-site checks. They do not establish GitHub Pages deployment, public HTTP behavior, search-index propagation, native application behavior, OAuth, or real-provider execution.
