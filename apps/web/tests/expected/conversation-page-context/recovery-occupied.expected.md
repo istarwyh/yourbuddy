@@ -1,0 +1,37 @@
+- banner:
+  - navigation "Session hierarchy":
+    - button "Start the synthetic acceptance session." [disabled]
+  - img
+  - text: Standard mode
+  - button "Session log":
+    - text: Session log
+    - img
+  - tablist:
+    - tab "Chat"
+    - tab "Trajectory"
+    - tab "Synthetic context" [selected]
+- region "Synthetic page context":
+  - heading "Synthetic page context acceptance" [level=2]
+  - paragraph: Isolated fixture. No account, provider, or business data.
+  - paragraph: "Selected trial: B"
+  - button "Open trial A"
+  - button "Open trial B"
+  - button "Hold next preparation"
+  - button "Fail next preparation"
+- group:
+  - text: Not sent Question A failed while I wrote question B.
+  - paragraph: Question A failed while I wrote question B.
+  - paragraph: Synthetic delayed context preparation failed.
+  - paragraph: Send or move the current draft before restoring this message. Images stay with their own message.
+  - button "Restore to composer" [disabled]
+  - button "Discard"
+- textbox "Message or run a task... / commands, @ files or sessions":
+  - paragraph: Question B was written during preparation.
+- button "Commands":
+  - img
+- 'button "Access mode, current: Workspace Write"': Workspace Write
+- button "Select model, current synthetic-page-context/keyless":
+  - text: synthetic-page-context/keyless
+  - img
+- button "Send message"
+- text: 5 turns · 5 steps LLM {{duration}}

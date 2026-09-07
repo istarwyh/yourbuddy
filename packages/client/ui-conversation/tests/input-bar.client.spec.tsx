@@ -187,6 +187,7 @@ function bench(over?: BenchOptions) {
     },
     toggleCommandMenu: over?.toggleCommandMenu ?? vi.fn(),
     useNotices: bindSnapshotSelector(shell.notices),
+    useFailedSubmissions: bindSnapshotSelector(shell.failedSubmissions),
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(menuLauncher),
     stop,
@@ -1236,6 +1237,42 @@ describe('insertText (scoped event body)', () => {
 })
 
 describe('strips and variants', () => {
+  it('offers explicit recovery for a failed prior message without replacing the next draft', async () => {
+    const b = bench({ draft: 'Question A' })
+    let reject!: (error: Error) => void
+    b.sink.mockImplementationOnce(() => new Promise((_resolve, rejectPromise) => { reject = rejectPromise }))
+    act(() => { b.shell.submit() })
+    act(() => { b.shell.setDraft('Question B') })
+    await act(async () => { reject(new Error('Page unavailable')) })
+    expect(b.shell.snapshot.draft).toBe('Question B')
+    const failure = b.view.container.querySelector<HTMLDetailsElement>('[data-failed-submission]')!
+    expect(failure.open).toBe(false)
+    fireEvent.click(failure.querySelector('summary')!)
+    const restore = b.view.getByRole('button', { name: '恢复到输入框' }) as HTMLButtonElement
+    expect(restore.disabled).toBe(true)
+    expect(b.view.getByText('先发送或移走当前草稿，再恢复这条消息。图片会随各自消息保留。')).toBeDefined()
+    await act(async () => { b.shell.submit() })
+    expect(b.shell.snapshot.draft).toBe('')
+    expect(restore.disabled).toBe(false)
+    fireEvent.click(restore)
+    expect(b.sink).toHaveBeenCalledTimes(2)
+    expect(b.shell.snapshot.draft).toBe('Question A')
+    expect(b.view.container.querySelector('[data-failed-submission]')).toBeNull()
+    expect(b.view.getByRole('status').textContent).toBe('消息已恢复，尚未发送。再次发送时，将读取当时打开的页面。')
+  })
+
+  it('discards only the failed entry while the current draft remains editable', async () => {
+    const b = bench({ draft: 'Question A' })
+    let reject!: (error: Error) => void
+    b.sink.mockImplementationOnce(() => new Promise((_resolve, rejectPromise) => { reject = rejectPromise }))
+    act(() => { b.shell.submit(); b.shell.setDraft('Question B') })
+    await act(async () => { reject(new Error('Page unavailable')) })
+    fireEvent.click(b.view.container.querySelector('[data-failed-submission] summary')!)
+    fireEvent.click(b.view.getByRole('button', { name: '丢弃' }))
+    expect(b.view.container.querySelector('[data-failed-submission]')).toBeNull()
+    expect(b.shell.snapshot.draft).toBe('Question B')
+    expect(b.sink).toHaveBeenCalledTimes(1)
+  })
   it('announces promptError as a fading toast (ordinary failure — no transaction UI, no Retry)', () => {
     vi.useFakeTimers()
     try {

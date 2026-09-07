@@ -26,6 +26,8 @@ Each Session keeps a monotonic set of active targets. Creating or reading a targ
 
 The shell owns View selection and resolves the registered preferred View or Chat fallback before rendering when a binding is created or selected as current, and after View-roster changes. The assembler receives only the resolved target id and does not select Chat or another default target. A third-party View participates through the same selection and activation operations.
 
+The selected View can contribute [page context at the ordinary submit lock](../../packages/client/ui-conversation/README.md#page-context-on-send). This uses the same Session prompt and durable user message, not the assembler's business Context registry or a second model turn. The consumer freezes its page identity; the shell owns selected-View eligibility, cancellation, and atomic admission.
+
 ## Replayable event families
 
 Choose one stable business id before writing the Definition. Every event that contributes to the same Node must carry that id or derive it independently from its own payload; the client must never assign an update to “the latest unfinished” Context.

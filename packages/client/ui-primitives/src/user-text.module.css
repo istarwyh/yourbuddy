@@ -1,5 +1,4 @@
-/* Inline projection of sent user text: plain runs and reference chips flow in
-   the consumer's own line box (bubble or queue row); nothing here is block.
+/* Plain runs and reference chips flow in the consumer's own line box.
    White-space policy stays with the consumer: the bubble wraps with pre-wrap,
    the queue preview keeps its single nowrap/ellipsis line. */
 
@@ -32,4 +31,33 @@
   /* Optical centering against the text: drops the glyph below the baseline by
      a font-relative amount, so it holds across the font axis. */
   vertical-align: -0.125em;
+}
+
+.pageContext {
+  margin-top: 6px;
+  font: var(--dsw-font-xs-13);
+  white-space: normal;
+}
+
+.contextLabel {
+  width: fit-content;
+  max-width: 100%;
+  color: var(--dsw-alias-state-business-primary);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.contextLabel:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+.contextText {
+  max-height: 240px;
+  margin: 6px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: inherit;
+  line-height: inherit;
 }

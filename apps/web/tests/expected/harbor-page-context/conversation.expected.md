@@ -1,0 +1,101 @@
+- banner:
+  - navigation "Session hierarchy":
+    - button "Synthetic Harbor acceptance session." [disabled]
+  - img
+  - text: Standard mode
+  - button "Session log":
+    - text: Session log
+    - img
+  - tablist:
+    - tab "Chat" [selected]
+    - tab "Trajectory"
+    - tab "Harbor"
+- navigation "Turn navigation":
+  - button "Jump to turn 1"
+  - button "Jump to turn 2"
+  - button "Jump to turn 3"
+  - button "Jump to turn 4"
+- button "System prompt":
+  - img
+  - img
+  - text: System prompt
+- text: Synthetic Harbor acceptance session. {{clock}}
+- button "Copy":
+  - img
+- button "Thought for a while":
+  - text: Thought for a while
+  - img
+- paragraph: Synthetic transport response. No evaluation or external model was run.
+- button "Copy":
+  - img
+- button "Good response":
+  - img
+- button "Bad response":
+  - img
+- button "Branch into a new conversation":
+  - img
+- button "Ran for {{duration}}":
+  - img
+  - text: Ran for {{duration}}
+- text: {{clock}} Why did this trial lose points?
+- group: Harbor · hfq-021
+- text: {{clock}}
+- button "Copy":
+  - img
+- button "1 tool call":
+  - text: 1 tool call
+  - img
+- paragraph: Synthetic transport response. No evaluation or external model was run.
+- button "Copy":
+  - img
+- button "Good response":
+  - img
+- button "Bad response":
+  - img
+- button "Branch into a new conversation":
+  - img
+- button "Ran for {{duration}}":
+  - img
+  - text: Ran for {{duration}}
+- text: {{clock}} Explain the trial currently open now.
+- group: Harbor · hfq-034
+- text: {{clock}}
+- button "Copy":
+  - img
+- paragraph: Synthetic transport response. No evaluation or external model was run.
+- button "Copy":
+  - img
+- button "Good response":
+  - img
+- button "Bad response":
+  - img
+- button "Branch into a new conversation":
+  - img
+- button "Ran for {{duration}}":
+  - img
+  - text: Ran for {{duration}}
+- text: {{clock}} This question is outside Harbor. {{clock}}
+- button "Copy":
+  - img
+- paragraph: Synthetic transport response. No evaluation or external model was run.
+- button "Copy":
+  - img
+- button "Good response":
+  - img
+- button "Bad response":
+  - img
+- button "Branch into a new conversation":
+  - img
+- button "Ran for {{duration}}":
+  - img
+  - text: Ran for {{duration}}
+- text: {{clock}}
+- textbox "Message or run a task... / commands, @ files or sessions"
+- button "Commands":
+  - img
+- 'button "Access mode, current: Workspace Write"': Workspace Write
+- button "Select model, current synthetic-harbor-context/keyless":
+  - text: synthetic-harbor-context/keyless
+  - img
+- button "Send message" [disabled]
+- text: 4 turns · 5 steps LLM {{duration}} · Tool call {{duration}} TTFT avg {{duration}}

@@ -22,11 +22,12 @@ import { createEmptyHistoryState, registerHistory } from '@lexical/history'
 import { mergeRegister } from '@lexical/utils'
 import type {
   ArbitrateKey, ArbitrateOutcome, CommandClaim, ConsumeTokenRequest, DraftAttachmentId,
-  InputActions, InputEffect, InputNotice, InputState, InputTriggerController, PickOutcome,
+  FailedSubmission, InputActions, InputEffect, InputNotice, InputState, InputTriggerController, PickOutcome,
   Occurrence, QueuedMessage, ReferenceInsert, SessionInput, SubmitAttempt, SubmitImageAttachment,
   SubmitOutcome, TokenSpan,
 } from '../contract/input.ts'
 import type { InputSubmitMode } from '../contract/composer-submission.ts'
+import type { PreparedConversationContext } from '../contract/submission-context.ts'
 import { SubmitMachine } from './machine.ts'
 import { ReferenceChipNode, $createReferenceChipNode } from './editor/chip-node.tsx'
 import { refreshClaimDecoration, registerClaimDecoration } from './editor/claim-decor.ts'
@@ -60,12 +61,17 @@ export interface SessionInputDeps {
    * order (the empty-draft accelerated-Enter gesture); absent = unsupported.
    */
   steerQueue?: (() => void) | undefined
+  /** Capture the selected View synchronously before reference or image serialization. */
+  prepareContext?: ((
+    draft: string, occurrences: readonly Occurrence[], signal: AbortSignal,
+  ) => PreparedConversationContext | undefined) | undefined
   /** The plain-message sink (send choreography / materialize fork — the hub owns it). */
   defaultSink(
     text: string,
     imageIds: readonly DraftAttachmentId[],
     mode: InputSubmitMode,
     signal: AbortSignal,
+    prepared?: PreparedConversationContext,
   ): Promise<SubmitOutcome>
   /** Command-plane image plumbing (the hub owns the conversation face and the copy). */
   commandImages: {
@@ -115,9 +121,11 @@ const HISTORY_MERGE_DELAY_MS = 1000
 
 /** Editor and attachment snapshot owned by one detached default send. */
 interface DetachedDraft {
+  readonly id: number
   readonly draft: string
   readonly occurrences: readonly Occurrence[]
   readonly imageIds: readonly DraftAttachmentId[]
+  readonly message?: string
 }
 
 /**
@@ -130,6 +138,8 @@ export class SessionInputShell implements SessionInput {
   readonly state: SnapshotStore<InputState>
   /** Latest surfaced notice (null after clear); the bar renders errors as banners and information inline. */
   readonly notices: SnapshotStore<InputNotice | null> = createSnapshotStore<InputNotice | null>(null)
+  /** Failed sends that cannot return to the occupied composer; images remain separately owned. */
+  readonly failedSubmissions: SnapshotStore<readonly FailedSubmission[]> = createSnapshotStore<readonly FailedSubmission[]>([])
   /** The shell-owned editor (text + chip truth); the composer binds its contenteditable to it. */
   readonly editor: LexicalEditor
   /** The public provide-channel action face (one stable identity per session). */
@@ -158,11 +168,9 @@ export class SessionInputShell implements SessionInput {
   private lexiconOff: (() => void) | undefined
   /** Default sends retained until admission settles or scope disposal releases their images. */
   private readonly detachedDrafts = new Map<number, DetachedDraft>()
-  /** Failed default sends waiting to be restored together in submission order. */
+  /** Failed default sends that the user can recover independently. */
   private readonly failedDetached = new Map<number, DetachedDraft>()
-  /** Revision of the last automatic failure restoration. */
-  private failedRestoreRev: number | undefined
-  private restoringFailures = false
+  private detachedSeq = 0
   private imageFlightSeq = 0
   /** Image-only sends retained until admission settles or scope disposal releases their images. */
   private readonly imageFlights = new Map<number, {
@@ -236,10 +244,6 @@ export class SessionInputShell implements SessionInput {
     // caret motion and subscribers do not re-render per caret move.
     if (projectionContentChanged(prev, this.projection)) {
       this.rev += 1
-      if (!this.restoringFailures && this.failedRestoreRev !== undefined) {
-        this.failedDetached.clear()
-        this.failedRestoreRev = undefined
-      }
       this.dispatchRun(({ type: 'draft-changed', draft: this.projection.clipboardText }))
     }
     const caret = this.projection.caret
@@ -361,20 +365,27 @@ export class SessionInputShell implements SessionInput {
     if (this.snapshot.draft.trim() === '' && this.imageIds.length > 0) {
       if (this.snapshot.phase === 'plain') {
         const imageIds = [...this.imageIds]
+        const record: DetachedDraft = { id: ++this.detachedSeq, draft: '', occurrences: [], imageIds }
         const controller = new AbortController()
         this.imageFlightSeq += 1
         const flight = this.imageFlightSeq
         this.imageFlights.set(flight, { controller, imageIds })
+        const prepared = this.deps.prepareContext?.('', [], controller.signal)
         this.commitSend(imageIds)
-        void this.deps.defaultSink('', imageIds, mode, controller.signal).then((outcome) => {
+        const sending = prepared === undefined
+          ? this.deps.defaultSink('', imageIds, mode, controller.signal)
+          : this.deps.defaultSink('', imageIds, mode, controller.signal, prepared)
+        const pending = prepared === undefined ? sending : sending.finally(() => { prepared.dispose() })
+        void pending.then((outcome) => {
           if (this.disposed || !this.imageFlights.delete(flight)) return
           if (outcome.kind === 'success') return
-          this.restoreImages(imageIds)
+          this.retainFailedDraft(record, outcome.text)
           if (outcome.text !== undefined) this.notify('error', outcome.text)
         }, (error: unknown) => {
           if (this.disposed || !this.imageFlights.delete(flight)) return
-          this.restoreImages(imageIds)
-          this.notify('error', error instanceof Error ? error.message : String(error))
+          const message = error instanceof Error ? error.message : String(error)
+          this.retainFailedDraft(record, message)
+          this.notify('error', message)
         })
       }
       return
@@ -572,6 +583,9 @@ export class SessionInputShell implements SessionInput {
     for (const record of this.detachedDrafts.values()) {
       for (const imageId of record.imageIds) retained.add(imageId)
     }
+    for (const record of this.failedDetached.values()) {
+      for (const imageId of record.imageIds) retained.add(imageId)
+    }
     for (const flight of this.imageFlights.values()) {
       for (const imageId of flight.imageIds) retained.add(imageId)
       flight.controller.abort()
@@ -582,6 +596,7 @@ export class SessionInputShell implements SessionInput {
     this.editor.setRootElement(null)
     this.detachedDrafts.clear()
     this.failedDetached.clear()
+    this.publishFailures()
     this.imageFlights.clear()
     return [...retained]
   }
@@ -690,14 +705,17 @@ export class SessionInputShell implements SessionInput {
     const imageIds = [...this.imageIds]
     this.imageIds = []
     const occurrences = this.projection.occurrences
-    const record = { draft, occurrences, imageIds }
-    this.detachedDrafts.set(attempt.seq, record)
-    if (this.failedRestoreRev === this.rev) {
-      this.failedDetached.clear()
-      this.failedRestoreRev = undefined
+    const prepared = this.deps.prepareContext?.(draft, occurrences, attempt.signal)
+    const send = (text: string): Promise<SubmitOutcome> => {
+      const pending = prepared === undefined
+        ? this.deps.defaultSink(text, imageIds, mode, attempt.signal)
+        : this.deps.defaultSink(text, imageIds, mode, attempt.signal, prepared)
+      return prepared === undefined ? pending : pending.finally(() => { prepared.dispose() })
     }
+    const record = { id: ++this.detachedSeq, draft, occurrences, imageIds }
+    this.detachedDrafts.set(attempt.seq, record)
     if (occurrences.length === 0) {
-      this.settleSink(attempt, this.deps.defaultSink(draft.trim(), imageIds, mode, attempt.signal))
+      this.settleSink(attempt, send(draft.trim()))
       return
     }
     const inputTriggers = this.deps.inputTriggers?.()
@@ -706,11 +724,11 @@ export class SessionInputShell implements SessionInput {
       return {
         offset: o.offset,
         length: o.length,
-        text: await inputTriggers.serializeReference(o.source, o.ref, attempt.signal),
+        text: await inputTriggers.serializeReference(o.source, o.ref, prepared?.signal ?? attempt.signal),
       }
     })).then(
       (parts) => {
-        if (this.disposed) return
+        if (this.dead(attempt)) { prepared?.dispose(); return }
         // Splice model forms over their clipboard ranges (offsets are
         // clipboard-projection; parts arrive offset-sorted since chips walk in
         // document order).
@@ -721,9 +739,10 @@ export class SessionInputShell implements SessionInput {
           cursor = part.offset + part.length
         }
         out += draft.slice(cursor)
-        this.settleSink(attempt, this.deps.defaultSink(out.trim(), imageIds, mode, attempt.signal))
+        this.settleSink(attempt, send(out.trim()))
       },
       (error: unknown) => {
+        prepared?.dispose()
         if (this.dead(attempt)) return
         const message = error instanceof Error ? error.message : String(error)
         this.settleDetachedFailure(attempt, message)
@@ -758,77 +777,83 @@ export class SessionInputShell implements SessionInput {
     const record = this.detachedDrafts.get(attempt.seq)
     if (record === undefined) return
     this.detachedDrafts.delete(attempt.seq)
-    this.restoreImages(record.imageIds)
-    this.failedDetached.set(attempt.seq, record)
-    if (this.projection.clipboardText === '' || this.failedRestoreRev === this.rev) {
-      this.restoreFailedDrafts()
-    }
+    this.retainFailedDraft(record, message)
     this.dispatchRun(({ type: 'sink-settled', attempt, ok: false, ...(message === undefined ? {} : { message }) }))
   }
 
-  /** Rebuild all currently failed snapshots in submission order. */
-  private restoreFailedDrafts(): void {
-    const records = [...this.failedDetached.entries()].sort(([a], [b]) => a - b).map(([, record]) => record)
-    if (records.length === 0) return
-    const separator = '\n\n'
-    let draft = ''
-    const occurrences: Occurrence[] = []
-    for (const record of records) {
-      const base = draft.length + (draft === '' ? 0 : separator.length)
-      if (draft !== '') draft += separator
-      draft += record.draft
-      for (const occurrence of record.occurrences) {
-        occurrences.push({ ...occurrence, offset: base + occurrence.offset })
-      }
-    }
-    this.restoringFailures = true
-    try {
-      this.editor.update(() => {
-        const root = $getRoot()
-        root.clear()
-        let paragraph = $createParagraphNode()
-        root.append(paragraph)
-        const appendText = (text: string): void => {
-          const lines = text.split('\n')
-          for (let i = 0; i < lines.length; i += 1) {
-            const line = lines[i]
-            if (line !== '') paragraph.append($createTextNode(line))
-            if (i < lines.length - 1) {
-              paragraph = $createParagraphNode()
-              root.append(paragraph)
-            }
-          }
-        }
-        let cursor = 0
-        for (const occurrence of occurrences) {
-          appendText(draft.slice(cursor, occurrence.offset))
-          paragraph.append(new ReferenceChipNode({
-            source: occurrence.source,
-            ref: occurrence.ref,
-            label: occurrence.label,
-            ...(occurrence.appearance === undefined ? {} : { appearance: occurrence.appearance }),
-            clipboardText: occurrence.clipboardText,
-          }, occurrence.invalid === true))
-          cursor = occurrence.offset + occurrence.length
-        }
-        appendText(draft.slice(cursor))
-        root.selectEnd()
-      }, { discrete: true, tag: HISTORY_MERGE_TAG })
-      this.editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined)
-      this.failedRestoreRev = this.rev
-    } finally {
-      this.restoringFailures = false
-    }
+  private retainFailedDraft(record: DetachedDraft, message?: string): void {
+    this.failedDetached.set(record.id, { ...record, ...(message === undefined ? {} : { message }) })
+    if (!this.restoreFailedSubmission(record.id)) this.publishFailures()
   }
 
-  /** Return failed-send images to the head of the rail (ids still resolve — release happens only after success). */
-  private restoreImages(imageIds: readonly DraftAttachmentId[]): void {
-    if (imageIds.length === 0) return
-    const current = new Set(this.imageIds)
-    const restored = imageIds.filter(id => !current.has(id))
-    if (restored.length === 0) return
-    this.imageIds = [...restored, ...this.imageIds]
+  private publishFailures(): void {
+    this.failedSubmissions.set([...this.failedDetached.values()].sort((a, b) => a.id - b.id).map(record => ({
+      id: record.id, draft: record.draft, imageCount: record.imageIds.length,
+      ...(record.message === undefined ? {} : { message: record.message }),
+    })))
+  }
+
+  /**
+   * Return one failure to an empty editor without sending or reusing prepared page context.
+   * @param id - recovery entry in this shell.
+   * @param notice - localized guidance for an explicit user recovery.
+   * @returns false when the entry is absent or the composer contains another draft or images.
+   */
+  restoreFailedSubmission(id: number, notice?: string): boolean {
+    const record = this.failedDetached.get(id)
+    if (this.disposed || record === undefined || this.snapshot.phase !== 'plain'
+      || this.projection.clipboardText !== '' || this.imageIds.length > 0) return false
+    const { draft, occurrences } = record
+    this.failedDetached.delete(id)
+    this.imageIds = record.imageIds
+    this.editor.update(() => {
+      const root = $getRoot()
+      root.clear()
+      let paragraph = $createParagraphNode()
+      root.append(paragraph)
+      const appendText = (text: string): void => {
+        const lines = text.split('\n')
+        for (let i = 0; i < lines.length; i += 1) {
+          const line = lines[i]
+          if (line !== '') paragraph.append($createTextNode(line))
+          if (i < lines.length - 1) {
+            paragraph = $createParagraphNode()
+            root.append(paragraph)
+          }
+        }
+      }
+      let cursor = 0
+      for (const occurrence of occurrences) {
+        appendText(draft.slice(cursor, occurrence.offset))
+        paragraph.append(new ReferenceChipNode({
+          source: occurrence.source,
+          ref: occurrence.ref,
+          label: occurrence.label,
+          ...(occurrence.appearance === undefined ? {} : { appearance: occurrence.appearance }),
+          clipboardText: occurrence.clipboardText,
+        }, occurrence.invalid === true))
+        cursor = occurrence.offset + occurrence.length
+      }
+      appendText(draft.slice(cursor))
+      root.selectEnd()
+    }, { discrete: true, tag: HISTORY_MERGE_TAG })
+    this.editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined)
     this.publish()
+    this.publishFailures()
+    if (notice !== undefined) this.notify('info', notice)
+    return true
+  }
+
+  /**
+   * Discard one retained message without changing the active editor or its image ownership.
+   * @param id - recovery entry in this shell; an absent entry is already discarded or restored.
+   */
+  discardFailedSubmission(id: number): void {
+    const record = this.failedDetached.get(id)
+    if (this.disposed || record === undefined) return
+    this.failedDetached.delete(id)
+    this.deps.commandImages.release(record.imageIds)
+    this.publishFailures()
   }
 
   /** Enter adjudication: poll the session controller; failure = notice + draft retained (never a silent downgrade). */

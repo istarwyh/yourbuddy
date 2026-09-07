@@ -109,6 +109,57 @@ function imageRow(id: string, refId: string, text = ''): QueuedMessage {
 }
 
 describe('QueueDock', () => {
+  it('edits only authored text while keeping the queued context frozen and inspectable', async () => {
+    const context = '<dsh-page-context source="research" label="排队时的资料">\n<page>saved selection</page>\n</dsh-page-context>'
+    const queued = { ...row('with-context', `请检查${context}`, 'truncated protocol preview'), content: [
+      { type: 'text' as const, text: '请检查' }, { type: 'text' as const, text: context },
+    ] }
+    const snap = snapshotWith([queued])
+    const source = liveSession(snap)
+    const updateQueue = vi.fn(() => Promise.resolve())
+    const view = render(<QueueDock {...kitFor(snap, { updateQueue })} useSession={source.useSession} />)
+    expect(view.getByText('请检查')).toBeTruthy()
+    expect(view.queryByText('truncated protocol preview')).toBeNull()
+    const details = view.container.querySelector('details')!
+    expect(details.open).toBe(false)
+    fireEvent.click(view.getByText('排队时的资料'))
+    expect(details.open).toBe(true)
+    expect(view.container.querySelector('pre')?.textContent).toBe('<page>saved selection</page>')
+    fireEvent.click(view.getByLabelText('编辑排队消息'))
+    const editor = view.getByRole('textbox', { name: '编辑排队消息' })
+    expect(editor).toHaveProperty('value', '请检查')
+    fireEvent.change(editor, { target: { value: '请说明原因' } })
+    fireEvent.click(view.getByLabelText('保存排队消息'))
+    await waitFor(() => {
+      expect(updateQueue).toHaveBeenCalledWith(iid('with-context'), { kind: 'edit', content: [
+        { type: 'text', text: '请说明原因' }, { type: 'text', text: context },
+      ] })
+    })
+  })
+
+  it('keeps authored envelope examples editable and does not drop other text fragments', async () => {
+    const example = '<dsh-page-context source="example" label="Example">\nauthored\n</dsh-page-context>'
+    const queued = { ...row('literal-context', example), content: [
+      { type: 'text' as const, text: example }, { type: 'text' as const, text: '\n解释这个例子' },
+    ] }
+    const snap = snapshotWith([queued])
+    const source = liveSession(snap)
+    const updateQueue = vi.fn(() => Promise.resolve())
+    const view = render(<QueueDock {...kitFor(snap, { updateQueue })} useSession={source.useSession} />)
+    expect(view.container.querySelector('details')).toBeNull()
+    fireEvent.click(view.getByLabelText('编辑排队消息'))
+    expect(view.getByRole('textbox')).toHaveProperty('value', `${example}\n解释这个例子`)
+    fireEvent.keyDown(view.getByRole('textbox'), { key: 'Enter', shiftKey: true })
+    expect(updateQueue).not.toHaveBeenCalled()
+    fireEvent.change(view.getByRole('textbox'), { target: { value: 'edited example' } })
+    fireEvent.click(view.getByLabelText('保存排队消息'))
+    await waitFor(() => {
+      expect(updateQueue).toHaveBeenCalledWith(iid('literal-context'), {
+        kind: 'edit', content: [{ type: 'text', text: 'edited example' }],
+      })
+    })
+  })
+
   it('renders null while the queue is empty', () => {
     const snap = snapshotWith([])
     const source = liveSession(snap)

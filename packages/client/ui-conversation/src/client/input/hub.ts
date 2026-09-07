@@ -16,8 +16,9 @@ import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import { queueReadFaceOf } from './queue-store.ts'
 import type {
   ComposerKeyboard, DraftAttachmentId, InputTriggerController, SessionInputResolver, SessionInput,
-  SubmitImageAttachment, SubmitOutcome,
+  Occurrence, SubmitImageAttachment, SubmitOutcome,
 } from '../contract/input.ts'
+import type { PreparedConversationContext } from '../contract/submission-context.ts'
 import type { InputSubmitMode } from '../contract/composer-submission.ts'
 import type { PopupDismissFace } from './facade.ts'
 import { SessionInputShell } from './facade.ts'
@@ -35,12 +36,16 @@ interface InputTriggerServiceFace {
 
 /** Attachment-send face resolved lazily to keep hub/service construction acyclic. */
 interface ConversationAttachmentFace {
+  prepareContext(
+    sessionId: SessionId, draft: string, occurrences: readonly Occurrence[], signal: AbortSignal,
+  ): PreparedConversationContext | undefined
   sendSession(
     session: SessionFace,
     text: string,
     imageIds: readonly DraftAttachmentId[],
     mode: InputSubmitMode,
     signal?: AbortSignal,
+    prepared?: PreparedConversationContext,
   ): Promise<SubmitOutcome>
   serializeDraftImages(imageIds: readonly DraftAttachmentId[]): Promise<readonly SubmitImageAttachment[]>
   releaseDraftImage(id: DraftAttachmentId): void
@@ -88,7 +93,8 @@ export class InputHub implements SessionInputResolver {
       inputTriggers: () => this.controller(actx),
       popup: () => this.popup(actx),
       queue: queueReadFaceOf(session),
-      defaultSink: (text, imageIds, mode, signal) => this.sink(session, text, imageIds, mode, signal),
+      prepareContext: (draft, occurrences, signal) => this.conversation().prepareContext(id, draft, occurrences, signal),
+      defaultSink: (text, imageIds, mode, signal, prepared) => this.sink(session, text, imageIds, mode, signal, prepared),
       steerQueue: () => { void this.steerQueue(session, shell) },
       commandImages: {
         serialize: ids => this.conversation().serializeDraftImages(ids),
@@ -178,9 +184,10 @@ export class InputHub implements SessionInputResolver {
     imageIds: readonly DraftAttachmentId[],
     mode: InputSubmitMode,
     signal: AbortSignal,
+    prepared?: PreparedConversationContext,
   ): Promise<SubmitOutcome> {
     if (text === '' && imageIds.length === 0) return Promise.resolve({ kind: 'success' })
-    return this.conversation().sendSession(session, text, imageIds, mode, signal)
+    return this.conversation().sendSession(session, text, imageIds, mode, signal, prepared)
   }
 
   /**

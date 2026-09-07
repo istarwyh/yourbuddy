@@ -34,6 +34,10 @@ function queueImageRefs(content: QueueRow['content']): ImageAttachmentRef[] {
   })
 }
 
+function queueTextParts(content: QueueRow['content']): string[] {
+  return content.flatMap(block => block.type === 'text' ? [block.text] : [])
+}
+
 /** One durable queued image as a fixed-size thumbnail; a load failure keeps the empty placeholder. */
 function QueueThumb({ attachment, loadImage, label }: {
   attachment: ImageAttachmentRef
@@ -109,9 +113,17 @@ export function QueueDock({ useSession, updateQueue, notify, loadImage, t }: Que
 
   const saveEdit = async (): Promise<void> => {
     if (editing === null || editing.text.trim() === '') return
+    const current = queue.find(row => row.id === editing.id)
+    if (current === undefined) return
+    const contexts = queueTextParts(current.content).slice(1).filter(text => (
+      text !== '' && projectUserText(['', text], [], 'editable') === ''
+    ))
     if (await applyAction(
       editing.id,
-      { kind: 'edit', content: [{ type: 'text', text: editing.text }] },
+      { kind: 'edit', content: [
+        { type: 'text', text: editing.text },
+        ...contexts.map(text => ({ type: 'text' as const, text })),
+      ] },
       t('queue.editFailed'),
     )) setEditing(null)
   }
@@ -138,16 +150,18 @@ export function QueueDock({ useSession, updateQueue, notify, loadImage, t }: Que
         <ul id={listId} className={css.list} hidden={!listVisible}>
           {listVisible && queue.map((row) => {
             const imageRefs = queueImageRefs(row.content)
+            const texts = queueTextParts(row.content)
             return (
               <li key={row.id} className={css.row}>
                 {/* Single-item strip has no count header, so the row itself carries the queue glyph. */}
                 {rowCount === 1 && <span className={css.lead} aria-hidden><IconQueueOutline14 /></span>}
                 {editing?.id === row.id
                   ? (
-                    <input
+                    <textarea
                       autoFocus
                       className={css.editor}
                       aria-label={t('queue.edit')}
+                      rows={Math.min(4, editing.text.split('\n').length)}
                       value={editing.text}
                       onChange={(event) => { setEditing({ id: row.id, text: event.currentTarget.value }) }}
                       onKeyDown={(event) => {
@@ -155,7 +169,7 @@ export function QueueDock({ useSession, updateQueue, notify, loadImage, t }: Que
                           setEditing(null)
                           return
                         }
-                        if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                        if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                           event.preventDefault()
                           void saveEdit()
                         }
@@ -176,7 +190,7 @@ export function QueueDock({ useSession, updateQueue, notify, loadImage, t }: Que
                           ))}
                         </span>
                       )}
-                      <span className={css.preview}>{projectUserText(row.preview, [])}</span>
+                      <div className={css.preview}>{projectUserText(texts.length === 0 ? row.preview : texts, [])}</div>
                     </>
                   )}
                 {queueMutable && <div className={css.actions}>
@@ -219,7 +233,7 @@ export function QueueDock({ useSession, updateQueue, notify, loadImage, t }: Que
                             title={row.text === null ? t('queue.edit.unsupported') : undefined}
                             disabled={busy !== null || row.text === null}
                             onClick={() => {
-                              if (row.text !== null) setEditing({ id: row.id, text: row.text })
+                              if (row.text !== null) setEditing({ id: row.id, text: projectUserText(texts, [], 'editable') })
                             }}
                           >
                             <IconEditOutline16 size={14} />

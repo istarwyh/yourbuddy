@@ -92,6 +92,34 @@ async function bench() {
 }
 
 describe('Conversation inject API', () => {
+  it('contributes context only for the authoritative current Session and selected registered View', async () => {
+    const b = await bench()
+    const removeChat = b.slots.register({ name: 'conversation.view', id: 'chat', order: 0 }, (() => null) as never)
+    const removePage = b.slots.register({ name: 'conversation.view', id: 'page', order: 1 }, (() => null) as never)
+    await b.runtime.flush()
+    b.runtime.ctx.uiSession.adapter.resolve(ROOT)
+    const prepare = vi.fn(() => 'page context')
+    b.runtime.ctx.conversation.contexts.register({ id: 'page', label: 'Page', viewId: 'page', timeoutMs: 100, prepare })
+    const scoped = b.runtime.sessions.scope(ROOT)!.get('conversation')!
+    b.headerApi(ROOT).injected.selectView('page')
+    await scoped.send('background Session')
+    expect(prepare).not.toHaveBeenCalled()
+    await b.runtime.sessions.setCurrent(ROOT)
+    b.headerApi(ROOT).injected.selectView('page')
+    await scoped.send('visible page')
+    expect(prepare).toHaveBeenCalledOnce()
+    b.headerApi(ROOT).injected.selectView('chat')
+    await scoped.send('chat')
+    expect(prepare).toHaveBeenCalledOnce()
+    b.headerApi(ROOT).injected.selectView('page')
+    removePage()
+    await b.runtime.flush()
+    await scoped.send('removed page')
+    expect(prepare).toHaveBeenCalledOnce()
+    removeChat()
+    await b.runtime.dispose()
+  })
+
   it('assembles the target-neutral read face without Session side effects', async () => {
     const b = await bench()
     const { injected } = b.conversationApi(ROOT)
@@ -226,6 +254,8 @@ describe('Conversation inject API', () => {
     expect(absent.toggleCommandMenu).toBeUndefined()
     expect(absent.stop).toBeUndefined()
     expect(absent.hooks.notices.getSnapshot()).toBeNull()
+    expect(absent.hooks.failedSubmissions.getSnapshot()).toEqual([])
+    expect(injectBar(ROOT).hooks.failedSubmissions.getSnapshot()).toEqual([])
     expect(absent.hooks.lexicon.getSnapshot().size).toBe(0)
     expect(absent.hooks.menuLauncher.getSnapshot()).toBeNull()
 

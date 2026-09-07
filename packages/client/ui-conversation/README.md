@@ -15,6 +15,7 @@ English | [中文](README.zh.md)
 
 - [Conversation assembly](#conversation-assembly)
 - [Shell and standard props](#shell-and-standard-props)
+- [Page context on send](#page-context-on-send)
 - [Temporary composer entries](#temporary-composer-entries)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
@@ -44,9 +45,20 @@ The shell reads the persisted View preference before rendering when a Session fi
 
 The resident composer survives no-Session and Session transitions. The no-Session state keeps the same composer surface mounted but inert while the Workspace picker connects a blank Session. The surface is a shell-owned Lexical editor: reference chips are atomic decorator nodes carrying the owner's serialization identity (submission expands them through the owner codec), claimed slash commands stay styled leading text, folder text references carry the folder glyph as an icon prefix, and the draft's clipboard projection is mirrored into the per-Session Conversation store. Queue operations address exact queue occurrences through the scoped `ctx.conversation` service; queue previews render sent text through the shared inline reference projection from `ui-primitives` (wire session forms fold to their label) and show local image previews or durable image parts as thumbnails, while an edit exposes the literal sent text. Durable thumbnails resolve through the session image URL cache. Busy Enter behavior is stored in the Host-backed `ui-conversation` settings namespace.
 
-Default sends commit optimistically: Enter clears the draft, occurrence table, and undo history in the same transaction, keeps the composer in `plain`, and runs the send as a detached attempt, so typing and further sends continue during the flight. `sendSession` registers a Session submission echo (`session.beginSubmission`) with the delivery mode before serializing; Session derives the placement from that mode and its current running state, so idle sends use the transcript, busy Queue sends use QueueDock, and busy Steer sends use the pending-steering surface. It then yields one paint and encodes images through the browser's native `FileReader` data-URL path. Concurrent failures are restored together in submission order until the user edits the restored content; command submissions keep the frozen `submitting` phase. Detached attempts retain their image ids through admission and Session scope disposal. When an echo retires as observed, the durable image cache exposes its preview immediately, fetches the admitted attachment, replaces the preview with the canonical URL, and revokes each URL after its use ends. Direct subagent continuations skip local echoes because their transport does not preserve the browser request id.
+Default sends commit optimistically: Enter clears the draft, occurrence table, and undo history in the same transaction, keeps the composer in `plain`, and runs the send as a detached attempt, so typing and further sends continue during the flight. `sendSession` registers a Session submission echo (`session.beginSubmission`) with the delivery mode before serializing; Session derives the placement from that mode and its current running state, so idle sends use the transcript, busy Queue sends use QueueDock, and busy Steer sends use the pending-steering surface. It then yields one paint and encodes images through the browser's native `FileReader` data-URL path. A failure returns to an empty composer or stays in a separate recovery entry when another draft or images occupy it; messages and their images never merge. Command submissions keep the frozen `submitting` phase. Detached attempts retain their image ids through admission and Session scope disposal. When an echo retires as observed, the durable image cache exposes its preview immediately, fetches the admitted attachment, replaces the preview with the canonical URL, and revokes each URL after its use ends. Direct subagent continuations skip local echoes because their transport does not preserve the browser request id.
 
 While a normal composer is running, its primary pointer action remains Stop when the draft is empty or input is unavailable. Actionable text or attachments switch the same seat to Queue Send; clearing or successfully submitting the draft restores Stop. The busy-Enter setting continues to select the Queue or Steer keyboard action. Continuable subagents keep separate Send and Stop actions ([decision](../../../.agents/notes/implemented/bug-fix/2026-08-20-running-draft-primary-send.md)).
+
+<a id="page-context-on-send"></a>
+## Page context on send
+
+View plugins attach page context through `ctx.conversation.contexts.register()`. Register a stable `id`, the exact `conversation.view` entry `viewId`, a translated `label`, an explicit `timeoutMs`, and `prepare`. Return its disposer from a Cordis effect. The [submission context contract](src/client/contract/submission-context.ts) defines the request and lifetime.
+
+Only the current Session's selected View contributes. `prepare` runs at the submit lock, before reference serialization, image encoding, or asynchronous Session preparation. Copy the current page and selection synchronously; later work must resolve that copy and observe `signal`. Return model text, `{ text, label, description? }` for a captured title and readable summary, or `undefined` to opt out. The consumer owns selection semantics, explicit-reference precedence, content budgets, redaction, and its opt-out control. Slash commands do not request page context.
+
+Failure, timeout, cancellation, or provider unload rejects admission and preserves the draft. If you are writing another message, expand the **Not sent** entry beside the composer to inspect the failed text, image count, and reason. Send or move the current draft before choosing **Restore to composer**; restoration never sends. Sending again captures the page open at that time. **Discard** releases only that entry's images. Recovery entries stay within their Session and browser lifetime.
+
+Successful context joins the original text and images in one `session.prompt`, retaining Queue/Steer mode and request id. The generic envelope stores model text and display metadata in the same durable `user/message`, not a separate injection or turn. Chat and Queue show a compact attachment: expand it to read `description` when supplied, otherwise the literal provider text. Queue editing preserves its frozen attachment; copying a message copies user text without context markup.
 
 <a id="temporary-composer-entries"></a>
 ## Temporary composer entries
@@ -99,17 +111,26 @@ The selector must be a pure function of the owner currency. Its non-null return 
 <a id="model-experience"></a>
 ## Model Experience
 
-None, as this package renders browser state and sends user-admitted inputs through Session Controller APIs without constructing model requests.
+### Selected-View page context
+
+#### What the model sees
+
+User-admitted messages can include text prepared by the selected View's context contributor, wrapped in `<dsh-page-context source="..." label="...">`. It is part of the same durable `user/message`, not a system instruction or an unlogged prompt mutation. Registration, navigation, and page refresh alone never send a prompt.
+
+#### Token effect
+
+Each nonempty contribution adds its text and a source/label envelope, including optional description metadata, to that user message. Consumers own content budgets; there is no fixed token count or extra model call for context preparation itself.
 
 #### KV Cache effect
 
-None; Conversation assembly and browser input state do not alter provider-side prompt caching.
+Page context adds text to a new user message. Conversation assembly does not rewrite earlier model messages or provider-side cache settings.
 
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
 
 - **Only registered targets can render** — the shell deliberately has no implicit fallback target beyond the registered `chat` preference.
+- **Context resolution remains consumer-owned** — logged text survives replay, but a consumer's short-lived reference may expire or become stale. The host never silently replaces it with a newer page.
 
 
 <a id="dev-note"></a>

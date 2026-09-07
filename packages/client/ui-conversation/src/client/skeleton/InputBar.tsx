@@ -42,13 +42,14 @@ export type InputBarProps = ComposerBarProps
 export const InputBar = memo(function InputBar({
   useSession, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
   resolveSubmitMode, toggleCommandMenu, stop, command, t,
-  renderSlot, useNotices, useLexicon, useMenuLauncher,
+  renderSlot, useNotices, useFailedSubmissions, useLexicon, useMenuLauncher,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
   placeholder, accessory,
 }: InputBarProps) {
   const input = useInput(s => s)
   const notice = useNotices(s => s)
+  const failedSubmissions = useFailedSubmissions(s => s)
   void useLexicon // hook seat stays bound by the inject compartment; text-ref decoration rides the shell's editor transforms
   const commandMenuOpen = useMenuLauncher(source => source === 'command')
   const promptError = useSession(s => s.promptError) ?? null
@@ -377,6 +378,35 @@ export const InputBar = memo(function InputBar({
       {notice?.level === 'info' && (
         <div className={css.notice} role="status">
           {notice.text}
+        </div>
+      )}
+      {failedSubmissions.length > 0 && (
+        <div className={css.failures} aria-label={t('input.failedMessages')}>
+          {failedSubmissions.map(failure => (
+            <details key={failure.id} className={css.failure} data-failed-submission={failure.id}>
+              <summary className={css.failureSummary}>
+                <span>{t('input.failedMessage')}</span>
+                <span className={css.failurePreview}>{failure.draft || t('input.failedImages', { count: failure.imageCount })}</span>
+              </summary>
+              <div className={css.failureBody}>
+                {failure.draft !== '' && <p className={css.failureDraft}>{failure.draft}</p>}
+                {failure.imageCount > 0 && <p>{t('input.failedImages', { count: failure.imageCount })}</p>}
+                {failure.message !== undefined && <p>{failure.message}</p>}
+                <p>{draft !== '' || attachments.length > 0 ? t('input.failedOccupied') : t('input.failedRecoveryHint')}</p>
+                <div className={css.failureActions}>
+                  <button type="button" disabled={!editable || draft !== '' || attachments.length > 0}
+                    onClick={() => {
+                      if (keyboard?.restoreFailedSubmission(failure.id, t('input.failedRestored'))) editor?.focus()
+                    }}>
+                    {t('input.failedRestore')}
+                  </button>
+                  <button type="button" onClick={() => { keyboard?.discardFailedSubmission(failure.id) }}>
+                    {t('input.failedDiscard')}
+                  </button>
+                </div>
+              </div>
+            </details>
+          ))}
         </div>
       )}
       {/* Trigger clicks land on the card, not the editor: the toolbar row's
