@@ -22,6 +22,8 @@ The package regression registers both a reserved `codexhost-delegation` skill an
 
 Desktop Rust and JavaScript tests require both the installed overlay and the assembled release-smoke overlay to contain the same exclusion. Release preparation boots the complete product with that overlay and the bundled native Codex provider. Evidence from the reported installed session was used only to identify the competing routes; its private paths, conversation content, and session archive are not copied into the repository.
 
+The first pull-request Windows coverage run exposed a separate test-lifecycle defect after the real Codex app-server assertion passed: the file's `afterEach` still used Vitest's 10-second default while waiting for Context disposal, fixture closure, child-process exit, and Windows handle release, even though the coverage command supplied the lane's 90-second hook budget. The real-product lifecycle hook now takes the same explicit 60-second budget as the process-owning cases and continues to await quiescence; the original failure remains the negative control, and the same Windows coverage topology must pass before merge.
+
 ## Alternatives considered
 
 **Remove or rewrite the user-level skill.** The skill is installed outside YourBuddy and may be valid for another environment. Product startup must not mutate user-owned agent configuration to resolve an application composition conflict.

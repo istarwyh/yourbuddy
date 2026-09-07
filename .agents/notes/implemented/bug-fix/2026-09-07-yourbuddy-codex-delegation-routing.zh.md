@@ -22,6 +22,8 @@ Package 回归测试同时注册一个保留的 `codexhost-delegation` skill 与
 
 桌面 Rust 与 JavaScript 测试要求安装 Overlay 和装配发布 Smoke Overlay 包含相同的排除配置。发布准备会使用该 Overlay 与内置原生 Codex Provider 启动完整产品。报告中已安装 Session 的证据只用于识别互相竞争的路由；其私有路径、会话内容和 Session 归档不会复制进仓库。
 
+第一次 Pull Request Windows Coverage 还在真实 Codex app-server 断言通过后暴露了另一个测试生命周期缺陷：虽然 Coverage 命令已传入该 Lane 的 90 秒 Hook Budget，但本文件的 `afterEach` 在等待 Context Dispose、Fixture Close、子进程退出与 Windows Handle 释放时仍使用 Vitest 的 10 秒默认值。真实产品生命周期 Hook 现在显式采用与持有进程的用例相同的 60 秒 Budget，并继续等待系统静止；原始失败保留为负例，同一 Windows Coverage 拓扑必须在合并前通过。
+
 ## 考虑过的替代方案
 
 **删除或改写用户级 skill。** 该 skill 安装在 YourBuddy 之外，并且可能对其他环境有效。产品启动流程不应为了处理应用装配冲突而修改用户自有的 Agent 配置。
