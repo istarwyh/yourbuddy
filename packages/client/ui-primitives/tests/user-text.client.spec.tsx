@@ -110,6 +110,30 @@ describe('projectUserText', () => {
     expect(projectUserText(context, [], 'editable')).toBe(context)
   })
 
+  it('preserves unknown entities literally while decoding known attribute entities once', () => {
+    const context = '<dsh-page-context source="page&unknown;&amp;" label="&copy; &amp;quot;" description="Keep &#65; &bogus; &amp;">\nbody\n</dsh-page-context>'
+    const blocks = ['Question', context]
+    const view = render(<div>{projectUserText(blocks, [])}</div>)
+    const details = view.container.querySelector('details')!
+    expect(details.dataset.pageContext).toBe('page&unknown;&')
+    expect(details.querySelector('summary')?.textContent).toBe('&copy; &quot;')
+    expect(details.querySelector('pre')?.textContent).toBe('Keep &#65; &bogus; &')
+    expect(projectUserText(blocks, [], 'editable')).toBe('Question')
+    expect(blocks[1]).toBe(context)
+  })
+
+  it('accepts empty mandatory source, label, and body captures', () => {
+    const context = '<dsh-page-context source="" label="">\n\n</dsh-page-context>'
+    const blocks = ['Question', context]
+    const view = render(<div>{projectUserText(blocks, [])}</div>)
+    const details = view.container.querySelector('details')!
+    expect(details.dataset.pageContext).toBe('')
+    expect(details.querySelector('summary')?.textContent).toBe('')
+    expect(details.querySelector('pre')?.textContent).toBe('')
+    expect(projectUserText(blocks, [], 'editable')).toBe('Question')
+    expect(blocks[1]).toBe(context)
+  })
+
   it('shows a frozen description instead of protocol text without concealing authored envelopes', () => {
     const context = '<dsh-page-context source="page" label="Trial &quot;A&quot;" description="Score &lt; 1 &amp; &gt; 0\n&lt;script&gt;literal&lt;/script&gt;">\n<protocol token="private-reference"/>\n</dsh-page-context>'
     const blocks = ['Question', context]

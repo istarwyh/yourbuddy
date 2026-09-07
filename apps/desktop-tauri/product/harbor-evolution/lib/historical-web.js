@@ -97,10 +97,10 @@ export class HistoricalWebController {
       ownerSessionId: `web-historical:${ownerSessionId}:${this.randomId()}`,
     }
     const preview = await this.sessionDiagnostic.previewWithIdentity({
-      limit: args.limit === undefined ? 10 : args.limit,
+      limit: args.limit === undefined ? 3 : args.limit,
       createdAfter: args.createdAfter,
       includeFeedback: args.includeFeedback !== false,
-    }, identity, { config: resolved.config })
+    }, identity, { config: resolved.config, currentSessionId: ownerSessionId, scope: 'dsh-history' })
     const { selectionToken, ...visible } = preview
     this.previews.set(previewId, {
       previewId,

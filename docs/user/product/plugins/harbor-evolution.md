@@ -4,6 +4,8 @@ English | [中文](harbor-evolution.zh.md)
 
 Application snapshot version: `0.9.2`. Source: [istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving).
 
+This version describes the verified 0.3.3 desktop download. The [0.3.4 candidate archive](../../../releases/yourbuddy-v0.3.4/README.md) records automatic page-context questions and unsent-message recovery with locally verified Harbor 0.9.4 snapshots; the formal desktop installer remains unverified. Continue using explicit **Ask AI** or `@harbor` references when the Host does not support page attachments. Updating only the independent plugin cannot add missing Host capabilities.
+
 ## Problem addressed
 
 Users facing inconsistent Agent results can investigate completed sessions or use fixed tasks to compare behavior before and after one controlled change.

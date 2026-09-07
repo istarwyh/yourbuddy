@@ -1,0 +1,60 @@
+YourBuddy 0.3.4 release-documentation preparation
+Observed: 2026-09-07 12:04–12:06 UTC+08:00 (Asia/Shanghai)
+Source: d5e200d4415f5d951374dd7794762b542057d0f9 plus uncommitted release preparation.
+No product publication, tag operation, profile installation, model request, or website deployment was performed by this documentation task.
+
+Historical evidence inspection
+- Inspected all seven source PNGs and the complete sanitized acceptance JSON.
+- All seven copied PNGs and historical-source-acceptance.json matched their original files byte for byte.
+- The original JSON identifies generatedAt=2026-09-07T03:23:28.612Z, pluginVersion=0.9.3, synthetic=true, realProviderUsed=false.
+- No image was visually edited or relabelled as a formal 0.3.4 application capture.
+
+Commands and results
+- pnpm run verify-translation-pairing --write docs/releases/README.md docs/releases/yourbuddy-v0.3.4/README.md docs/user/product/releases.md docs/user/product/plugins/harbor-evolution.md
+  Four pairing records written. pnpm first reconciled an already-current dependency tree and ran existing postinstall hooks; no dependency version was edited by this task.
+- node_modules/.bin/tsx scripts/verify-translation-pairing.ts docs/releases/README.md docs/releases/yourbuddy-v0.3.4/README.md docs/user/product/releases.md docs/user/product/plugins/harbor-evolution.md
+  Four named pairs consistent.
+- pnpm run test:docs
+  Exit 0: 15 passed, 0 failed, 0 skipped.
+- pnpm run doc-sync
+  Exit 0: 32 passed, 0 failed, 0 skipped.
+- pnpm run lint
+  Exit 0, including its required Host build.
+- pnpm run website:check
+  Process-only environment: HUGO_BIN selected the existing official Extended 0.165.0 arm64 executable; PATH selected cached Go 1.27.0 darwin/amd64; GOTOOLCHAIN=local, GOPROXY=off, GOSUMDB=off, PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/.
+  Exit 0: 2 files / 70 tests passed; 48 YourBuddy pages projected; Hugo build completed; 57 product HTML pages passed local link, asset, fragment, and source-action checks.
+- git diff --check -- docs/releases docs/user/product
+  Exit 0.
+
+Generated-content inspection
+- Chinese and English home/download outputs retained 0.3.3 availability.
+- Chinese and English release outputs described 0.3.4 as pending and unavailable for download.
+- No 0.3.4 installer URL was introduced into the home or download output.
+
+Warnings and corrected invocation
+- A direct tsx invocation of run-gates.ts doc-quick was rejected because npm_execpath was unavailable. The documented pnpm run test:docs invocation then passed; the rejected invocation is not a product failure or a passing check.
+- Existing EnvHttpProxyAgent experimental warnings, non-host Landlock platform notices, workspace-cycle notices, tsdown plugin-timing notices, and the Vite native-tsconfig-paths recommendation were non-blocking.
+- These checks do not establish public installer or updater availability, a deployed website, live links, native WebView behavior, real model quality, or complete PRD acceptance.
+
+Follow-up after bundled README translation and local-candidate evidence
+Observed: 2026-09-07 12:46–12:51 UTC+08:00 (Asia/Shanghai)
+- Recorded and checked apps/desktop-tauri/product/harbor-evolution/README.md and apps/desktop-tauri/product/harbor-python/README.md with their Chinese counterparts; two named pairs consistent.
+- Product README writes stopped before the release operator recalculates snapshot hashes and rebuilds the runtime. This documentation task did not edit provenance.
+- Re-recorded docs/releases/yourbuddy-v0.3.4/README.md after adding candidate test/preparation evidence.
+- pnpm run test:docs: exit 0, 15 passed, 0 failed, 0 skipped (13.95s).
+- pnpm run doc-sync: exit 0, 32 passed, 0 failed, 0 skipped (37.56s).
+- pnpm run website:check: exit 0, 2 files / 70 tests passed; 48 canonical pages projected, 57 HTML pages verified. The same cached Hugo/Go selection and network-disabled Go configuration were used.
+- git diff --check on owned documentation: exit 0.
+- Final lint was deferred until the release operator finished rebuilding the corrected source. The exact-file coverage correction and passing rerun are recorded in local-candidate-validation.txt.
+
+Final source and archive documentation checks
+- Observed: 2026-09-07 12:58–13:01 UTC+08:00 (Asia/Shanghai); documentation/lint used Node 22.22.2, while the separately recorded final product build/replay/rebundle used Node 24.20.0.
+- pnpm run lint completed after the corrected-source build/replay/rebundle: exit 0, including the required Host build and lint:contracts-ready.
+- Final pnpm run test:docs: 15 passed, 0 failed, 0 skipped (13.54s).
+- Final pnpm run doc-sync: 32 passed, 0 failed, 0 skipped (37.13s).
+- Final pnpm run website:check: 2 files / 70 tests passed; 48 pages projected and 57 HTML pages verified. The existing Hugo/Go selection, production URL prefix, and network-disabled Go settings remained unchanged.
+- Standalone archive download links use the configured product site's English /yourbuddy/en/download/ and Chinese /yourbuddy/download/ routes. The source manifest, locale configuration, and generated canonical URLs were checked; no relative link escapes the version directory.
+- Read-only standalone-archive inspection found all 36 local Markdown/image links in the two READMEs present inside the version directory. This is not an extracted ZIP check; the release operator still verifies the actual uploaded archive.
+- The candidate evidence matched all 7 current source/provenance/bundle/store hashes. Generated English and Chinese home/download pages retained 0.3.3 and contained no 0.3.4 DMG link.
+- Final owned-document diff check passed. Product README and provenance files were not changed during this final documentation pass.
+- These are document/link and local-candidate checks, not new live website or installer observations.

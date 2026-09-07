@@ -184,6 +184,35 @@ def load_generation_batch(
     selection = value.get("selection")
     if not isinstance(selection, dict) or selection.get("selected_count") != len(records):
         raise ValueError("Generation Batch selection.selected_count must match records")
+    if selection.get("scope") not in ("exact-cwd", "dsh-history"):
+        raise ValueError("Generation Batch selection.scope must be exact-cwd or dsh-history")
+    if "scan" in selection:
+        scan = selection["scan"]
+        if not isinstance(scan, dict):
+            raise ValueError("Generation Batch selection.scan must be an object")
+        counts = [
+            scan.get(key)
+            for key in ("listed_count", "candidate_count", "read_count", "unscanned_count")
+        ]
+        if (
+            any(
+                not isinstance(count, int) or isinstance(count, bool) or count < 0
+                for count in counts
+            )
+            or scan.get("scope") != selection["scope"]
+            or scan.get("window_order") != (
+                "all-candidates" if selection["scope"] == "exact-cwd" else "created-at-desc"
+            )
+            or scan.get("selection_order") != "last-activity-desc"
+        ):
+            raise ValueError("Generation Batch selection.scan is invalid")
+        listed, candidates, read, unscanned = counts
+        if (
+            candidates > listed
+            or read + unscanned != candidates
+            or scan.get("partial") is not (unscanned > 0)
+        ):
+            raise ValueError("Generation Batch selection.scan counts are inconsistent")
     if value.get("generator_population") is not None and not isinstance(
         value.get("generator_population"), dict
     ):
@@ -202,6 +231,11 @@ def load_generation_batch(
             raise ValueError(f"Generation Record {trial_id} must be dsh-session")
         _digest(record.get("source_ref"), f"Generation Record {trial_id} source_ref")
         _digest(record.get("source_digest"), f"Generation Record {trial_id} source_digest")
+        if "source_project_digest" in record:
+            _digest(
+                record["source_project_digest"],
+                f"Generation Record {trial_id} source_project_digest",
+            )
         expected_observation_digest = _digest(
             record.get("observation_digest"),
             f"Generation Record {trial_id} observation_digest",

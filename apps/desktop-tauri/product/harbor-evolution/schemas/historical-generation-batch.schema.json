@@ -14,6 +14,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["cwd_digest"],
+      "description": "Output workspace identity; source projects are recorded per Generation Record.",
       "properties": { "cwd_digest": { "$ref": "#/$defs/digest" } }
     },
     "selection": {
@@ -21,12 +22,31 @@
       "additionalProperties": false,
       "required": ["scope", "order", "requested_limit", "selected_count", "current_session_excluded"],
       "properties": {
-        "scope": { "const": "exact-cwd" },
+        "scope": { "enum": ["exact-cwd", "dsh-history"] },
         "order": { "const": "last-activity-desc" },
         "requested_limit": { "type": "integer", "minimum": 1, "maximum": 10 },
         "selected_count": { "type": "integer", "minimum": 1, "maximum": 10 },
         "current_session_excluded": { "const": true },
-        "created_after": { "type": "string", "format": "date-time" }
+        "created_after": { "type": "string", "format": "date-time" },
+        "scan": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Discovery window metadata. Activity ordering only applies to records read within this window, not unscanned history.",
+          "required": ["scope", "listed_count", "candidate_count", "read_count", "unscanned_count", "partial", "window_order", "selection_order"],
+          "properties": {
+            "scope": { "enum": ["exact-cwd", "dsh-history"] },
+            "listed_count": { "type": "integer", "minimum": 0 },
+            "candidate_count": { "type": "integer", "minimum": 0 },
+            "read_count": { "type": "integer", "minimum": 0 },
+            "unscanned_count": { "type": "integer", "minimum": 0 },
+            "partial": { "type": "boolean" },
+            "window_order": { "enum": ["all-candidates", "created-at-desc"] },
+            "selection_order": { "const": "last-activity-desc" }
+          },
+          "if": { "properties": { "scope": { "const": "exact-cwd" } } },
+          "then": { "properties": { "window_order": { "const": "all-candidates" } } },
+          "else": { "properties": { "window_order": { "const": "created-at-desc" } } }
+        }
       }
     },
     "source": {
@@ -62,6 +82,7 @@
           "source_ref": { "$ref": "#/$defs/digest" },
           "captured_through_seq": { "type": "integer", "minimum": 0 },
           "source_digest": { "$ref": "#/$defs/digest" },
+          "source_project_digest": { "$ref": "#/$defs/digest", "description": "Digest of the source Session project, when known; never inferred from the output workspace." },
           "observation_digest": { "$ref": "#/$defs/digest" },
           "last_activity_at": { "type": "string", "format": "date-time" },
           "generator": { "type": "object" },

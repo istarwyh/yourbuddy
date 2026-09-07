@@ -24,8 +24,9 @@ interface PageContext {
 }
 
 function attributeText(value: string): string {
-  const entities: Record<string, string> = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' }
-  return value.replace(/&(amp|quot|apos|lt|gt);/gu, (entity: string, name: string) => entities[name] ?? entity)
+  const entities = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' }
+  // The fixed alternation captures only these entity names.
+  return value.replace(/&(amp|quot|apos|lt|gt);/gu, (_entity: string, name: keyof typeof entities) => entities[name])
 }
 
 function pageContext(text: string): PageContext | undefined {
@@ -33,7 +34,8 @@ function pageContext(text: string): PageContext | undefined {
   const match = pattern.exec(text)
   if (match === null || match[0].length !== text.length) return undefined
   return {
-    source: attributeText(match[1] ?? ''), label: attributeText(match[2] ?? ''), text: match[4] ?? '',
+    // Source, label, and body are mandatory captures, including when empty.
+    source: attributeText(match[1] as string), label: attributeText(match[2] as string), text: match[4] as string,
     ...(match[3] === undefined ? {} : { description: attributeText(match[3]) }),
   }
 }

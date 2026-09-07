@@ -16,7 +16,7 @@
 
 ```bash
 uv venv .venv
-uv pip install --python .venv/bin/python harbor-dsh-evolution==0.9.2
+uv pip install --python .venv/bin/python harbor-dsh-evolution==0.9.4
 source .venv/bin/activate
 harbor plugins list
 harbor-dsh --help
