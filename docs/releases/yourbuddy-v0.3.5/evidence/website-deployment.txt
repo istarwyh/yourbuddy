@@ -1,0 +1,79 @@
+YourBuddy 0.3.5 product website deployment and live verification
+
+Status: passed within the recorded website scope
+Observed: 2026-09-08 06:28-06:39 UTC+08:00, Asia/Shanghai
+Release: yourbuddy-v0.3.5
+Release tag target: 9491b9ddbeda08f97183387e91d00d86af3e4701
+Website source commit: aaa47c6757cd8258932a68ffa559d12e3d5b91e5
+Website source PR: https://github.com/istarwyh/yourbuddy/pull/16
+Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/34166789739
+GitHub Pages deployment: 6317145352
+Deployment status: success at 2026-09-07T22:29:39Z
+Deployment URL: https://istarwyh.github.io/yourbuddy/
+
+Build under test
+----------------
+
+The public GitHub Pages deployment from the website source commit above. This
+is not the desktop installer or a source preview.
+
+Environment and method
+----------------------
+
+- GitHub Pages and GitHub Releases, accessed without repository credentials.
+- macOS 15.6.1 arm64.
+- Chrome loaded each public page through a fresh background tab controlled by
+  CDP. DOM checks read the effective URL, title, h1, document language, version
+  text, and rendered download-link targets.
+- curl independently fetched the same HTML and followed public link redirects.
+- No account, OAuth token, proxy credential, certificate, personal data, or
+  private application path was recorded.
+
+Steps and observations
+----------------------
+
+1. Queried the master website workflow. Its build and deploy jobs both
+   completed successfully for commit aaa47c6757cd8258932a68ffa559d12e3d5b91e5.
+2. Queried the GitHub deployment API. Deployment 6317145352 reported success
+   and the expected public environment URL.
+3. Loaded the six release-facing pages in Chrome and fetched their public HTML.
+   Every page returned HTTP 200, rendered the expected language and heading,
+   and contained 0.3.5:
+
+   - https://istarwyh.github.io/yourbuddy/ — YourBuddy; Chinese home.
+   - https://istarwyh.github.io/yourbuddy/en/ — YourBuddy; English home.
+   - https://istarwyh.github.io/yourbuddy/download/ — 获取 YourBuddy.
+   - https://istarwyh.github.io/yourbuddy/en/download/ — Get YourBuddy.
+   - https://istarwyh.github.io/yourbuddy/releases/ — 发行状态.
+   - https://istarwyh.github.io/yourbuddy/en/releases/ — Release status.
+
+4. Inspected the rendered English download-page anchors. They resolved to the
+   0.3.5 DMG, 0.3.5 GitHub Release, SHA256SUMS.txt, the repository verification
+   record, and the source build instructions.
+5. Followed the public Release, DMG, checksum, verification-record, Chinese
+   Markdown, and English Markdown URLs with unauthenticated HTTP requests. Each
+   returned HTTP 200. The DMG was not downloaded a second time in this stage;
+   its earlier complete anonymous download and SHA-256 check are recorded in
+   public-artifact-stage.json.
+
+Expected and actual
+-------------------
+
+Expected: the deployed bilingual pages describe 0.3.5, preserve the stated
+unverified product limits, and route users to the published installer,
+checksums, Release, evidence, and raw Markdown.
+
+Actual: all six rendered pages and all followed public targets met that scope.
+This establishes website publication and link availability, not desktop App
+startup, installation, WebView behavior, updater installation, OAuth, or a
+real-provider Codex delegation.
+
+Failure and recovery
+--------------------
+
+The structured fetch service accepted the linked homepage but rejected direct
+nested github.io URLs under its URL-safety rule. A separate computer-use bridge
+also exited before returning a browser state. Neither result was counted as a
+site failure or a pass. The configured web-access Chrome CDP path then rendered
+all six pages, and direct unauthenticated HTTP checks independently confirmed
+their responses and targets.
