@@ -86,6 +86,24 @@ function MessageItem({ node, t: translate, referenceLabels }: MessageItemProps) 
 }
 
 describe('MessageItem arms', () => {
+  it('shows generated page context as a collapsed attachment while copying only the authored message', async () => {
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const body = '<selection>row-3</selection>\nFull source context'
+    const context = `<dsh-page-context source="research" label="当前资料">\n${body}\n</dsh-page-context>`
+    const content = [{ type: 'text', text: '检查这一项' }, { type: 'text', text: context }]
+    const view = render(<MessageItem t={t} node={{ kind: 'user', seq: 1, time: 1_000, content: content as never, source: null }} />)
+    expect(view.getByText('检查这一项')).toBeTruthy()
+    const disclosure = view.container.querySelector('details')!
+    expect(disclosure.open).toBe(false)
+    fireEvent.click(view.getByText('当前资料'))
+    expect(disclosure.open).toBe(true)
+    expect(view.container.querySelector('pre')?.textContent).toBe(body)
+    await act(async () => { fireEvent.click(view.getByRole('button', { name: '复制' })) })
+    expect(writeText).toHaveBeenCalledWith('检查这一项')
+    expect(content[1]?.text).toBe(context)
+  })
+
   it('renders an adjacent session mention as a chip even without trailing whitespace', () => {
     const view = render(
       <MessageItem

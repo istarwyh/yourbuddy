@@ -212,6 +212,15 @@ export interface SessionInputResolver {
   for(actx: Context): SessionInput
 }
 
+/** A failed message retained separately from the current draft in its Session. */
+export interface FailedSubmission {
+  /** Per-shell submission order; valid only while this recovery entry exists. */
+  readonly id: number
+  readonly draft: string
+  readonly imageCount: number
+  readonly message?: string
+}
+
 /**
  * The public input action face provided to every session-scope slot
  * component: stable-identity void callbacks, mirroring the
@@ -254,6 +263,10 @@ export interface ComposerKeyboard {
   readonly editor: LexicalEditor
   /** Submit with an explicit delivery mode resolved by the keyboard policy. */
   submit(mode: InputSubmitMode): void
+  /** Restore one failed message only into an empty, idle composer; never sends it. */
+  restoreFailedSubmission(id: number, notice?: string): boolean
+  /** Discard one retained failed message and release only its images. */
+  discardFailedSubmission(id: number): void
   /**
    * Steer every still-pending queued message into the running turn (the
    * empty-draft accelerated-Enter gesture; the queue dock's per-row steer

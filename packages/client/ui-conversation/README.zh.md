@@ -15,6 +15,7 @@ kind: "package-reference"
 
 - [Conversation 组装](#conversation-assembly)
 - [Shell 与标准 props](#shell-and-standard-props)
+- [发送时附带页面上下文](#page-context-on-send)
 - [临时 composer entry](#temporary-composer-entries)
 - [模型体验](#model-experience)
 - [已知限制与暂缓事项](#known-limitations-and-deferred-work)
@@ -44,9 +45,20 @@ Session 首次绑定或缓存的 Session 成为 current 时，shell 会在渲染
 
 常驻 composer 在无 Session 与有 Session 之间保持挂载。无 Session 时，同一个编辑器表面保持 inert，Workspace picker 连接 blank Session。该表面是 shell 所有的 Lexical 编辑器：引用 chip 是携带 owner 序列化身份的原子 decorator 节点（提交时经 owner codec 展开），已认领的 slash command 保持为带样式的行首文本，文件夹文本引用以图标前缀携带文件夹图形，草稿的剪贴板投影镜像到逐 Session Conversation store。Queue 操作通过 scoped `ctx.conversation` service 寻址准确的 queue occurrence；queue 预览经 `ui-primitives` 的共享行内引用投影渲染已发送文本（wire 会话形式折叠为其标签），并把本地图片预览或持久化图片部分显示为缩略图，编辑态则展示字面发送文本。持久化缩略图通过会话图片 URL 缓存解析。繁忙时 Enter 行为保存在 Host-backed `ui-conversation` settings namespace。
 
-默认发送采用乐观提交：Enter 在同一事务里清空草稿、occurrence 表和撤销历史，composer 保持 `plain`，发送作为 detached attempt 运行，发送期间可以继续输入和提交。`sendSession` 在序列化之前用投递模式注册 Session 提交回显（`session.beginSubmission`）；Session 根据该模式与当前运行状态推导位置，因此空闲发送进入 transcript，繁忙时 Queue 进入 QueueDock，繁忙时 Steer 进入 pending-steering 区域。随后让出一帧，图片经浏览器原生 `FileReader` data-URL 路径编码。多个并发发送失败时，在用户编辑还原内容之前按提交顺序合并还原；命令提交保持冻结的 `submitting` 阶段。Detached attempt 持有图片 id，直到 admission 完成或 Session scope 销毁。回显以 observed 退休时，durable 图片缓存立即公开预览 URL，同时读取 admitted 附件，随后用规范化 URL 替换预览，并在两个 URL 各自停止使用后撤销。直接 subagent continuation 不创建本地回显，因为其 transport 不保留浏览器 request id。
+默认发送采用乐观提交：Enter 在同一事务里清空草稿、occurrence 表和撤销历史，composer 保持 `plain`，发送作为 detached attempt 运行，发送期间可以继续输入和提交。`sendSession` 在序列化之前用投递模式注册 Session 提交回显（`session.beginSubmission`）；Session 根据该模式与当前运行状态推导位置，因此空闲发送进入 transcript，繁忙时 Queue 进入 QueueDock，繁忙时 Steer 进入 pending-steering 区域。随后让出一帧，图片经浏览器原生 `FileReader` data-URL 路径编码。失败消息返回空 composer；若已有另一份草稿或图片，则保留在独立恢复条目中，各条消息及其图片绝不合并。命令提交保持冻结的 `submitting` 阶段。Detached attempt 持有图片 id，直到 admission 完成或 Session scope 销毁。回显以 observed 退休时，durable 图片缓存立即公开预览 URL，同时读取 admitted 附件，随后用规范化 URL 替换预览，并在两个 URL 各自停止使用后撤销。直接 subagent continuation 不创建本地回显，因为其 transport 不保留浏览器 request id。
 
 普通 composer 运行时，如果草稿为空或输入不可用，主指针操作保持为 Stop。可提交的文字或附件会把同一位置切换为 Queue Send；清空或成功提交草稿后恢复 Stop。繁忙态 Enter 设置继续选择 Queue 或 Steer 键盘操作。可继续 subagent 保留独立的 Send 与 Stop 操作（[决策](../../../.agents/notes/implemented/bug-fix/2026-08-20-running-draft-primary-send.zh.md)）。
+
+<a id="page-context-on-send"></a>
+## 发送时附带页面上下文
+
+View 插件通过 `ctx.conversation.contexts.register()` 附带页面上下文。注册稳定的 `id`、准确的 `conversation.view` entry `viewId`、已翻译的 `label`、明确的 `timeoutMs` 和 `prepare`。通过 Cordis effect 返回 disposer。[提交上下文约定](src/client/contract/submission-context.ts) 定义请求和生命周期。
+
+只有当前 Session 所选的 View 可以提供上下文。`prepare` 在提交锁定时运行，早于引用序列化、图片编码和异步 Session 准备。同步复制当前页面和选择；后续工作必须解析这份副本并响应 `signal`。返回模型文本，返回 `{ text, label, description? }` 携带已捕获的标题和可读摘要，或返回 `undefined` 跳过。消费方负责选择语义、显式引用优先级、内容预算、脱敏和关闭开关。斜杠命令不请求页面上下文。
+
+失败、超时、取消或提供方卸载会拒绝接纳并保留草稿。如果正在写另一条消息，展开 composer 旁的**未发送**条目，即可查看失败原文、图片数量和原因。先发送或移走当前草稿，再选择**恢复到输入框**；恢复绝不会发送。再次发送会捕获当时打开的页面。**丢弃**只释放该条目的图片。恢复条目仅在所属 Session 和当前浏览器生命周期内保留。
+
+成功结果与原文及图片进入同一次 `session.prompt`，保留 Queue/Steer 模式和 request id。通用封装将模型文本及展示元数据存入同一条持久化 `user/message`，不是独立注入或轮次。Chat 与 Queue 显示紧凑附件：展开后显示提供方给出的 `description`，未提供时显示提供方的字面正文。编辑队列保留已冻结附件；复制消息只复制用户原文，不包含上下文标记。
 
 <a id="temporary-composer-entries"></a>
 ## 临时 composer entry
@@ -99,17 +111,26 @@ selector 必须是 owner currency 的纯函数。非 null 返回值作为 `match
 <a id="model-experience"></a>
 ## 模型体验
 
-无，因为本包渲染浏览器状态，并通过 Session Controller API 发送用户确认提交的输入，而不构造模型请求。
+### 所选 View 的页面上下文
+
+#### 模型看到什么
+
+用户确认提交的消息可以包含所选 View 的上下文提供方准备的文本，以 `<dsh-page-context source="..." label="...">` 封装。它属于同一条持久化 `user/message`，不是系统指令或未记录的提示词修改。单纯注册、导航和刷新页面绝不发送提示词。
+
+#### Token 影响
+
+每项非空贡献都会为该用户消息增加其文本和 source/label 封装，包括可选 description 元数据。消费方负责内容预算；上下文准备本身没有固定 token 数，也不额外调用模型。
 
 #### KV Cache 影响
 
-无；Conversation 组装和浏览器输入状态不会改变提供方侧的 prompt cache。
+页面上下文为一条新用户消息增加文本。Conversation 组装不重写更早的模型消息或提供方侧的缓存设置。
 
 ## 已知限制与暂缓事项
 
 <a id="known-limitations-and-deferred-work"></a>
 
 - **只有已注册 target 可以渲染**——除已注册的 `chat` 偏好外，shell 刻意不提供隐式 fallback target。
+- **上下文解析仍由消费方负责**——已记录文本可以回放，但消费方的短期引用可能过期或陈旧。宿主绝不悄悄用更新的页面替代。
 
 
 <a id="dev-note"></a>

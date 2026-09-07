@@ -42,6 +42,8 @@
     "tests/settings-chrome.e2e.ts",
     "tests/models-settings.e2e.ts",
     "tests/default-model.e2e.ts",
+    "tests/conversation-page-context.e2e.ts",
+    "tests/harbor-page-context.e2e.ts",
     "tests/github-ready-review.e2e.ts",
     "tests/streaming-fence-highlight.e2e.ts",
     "tests/declared-reasoning.e2e.ts",

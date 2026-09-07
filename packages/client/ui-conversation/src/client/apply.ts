@@ -15,7 +15,7 @@ import type {
   ComposerBarInjected, ConversationInjected, ConversationSessionHeaderInjected,
   ConversationSessionInjected,
 } from './contract/slots.ts'
-import type { InputNotice } from './contract/input.ts'
+import type { FailedSubmission, InputNotice } from './contract/input.ts'
 import { createConversationStore, readConversationViewPreference } from './stores.ts'
 import { ConversationController, UnsupportedImageMediaTypeError } from './service.ts'
 import type { IConversation } from './service.ts'
@@ -50,6 +50,11 @@ export const inject = [
 // hook order unchanged across current-Session transitions.
 const ABSENT_NOTICES = {
   getSnapshot: (): InputNotice | null => null,
+  subscribe: () => () => {},
+}
+const EMPTY_FAILURES: readonly FailedSubmission[] = []
+const ABSENT_FAILURES = {
+  getSnapshot: () => EMPTY_FAILURES,
   subscribe: () => () => {},
 }
 const ABSENT_BLOCK = {
@@ -103,6 +108,7 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-conversation: dictionaries')
   const t = ctx.locale.bind(NS)
   const conversationStore = createConversationStore()
+  const selectedViews = new Map<SessionId, string>()
   const submissionPolicy = new ComposerSubmissionPolicy(
     ctx.settingsScope.bind<ConversationSettings>({ namespace: CONVERSATION_SETTINGS_NAMESPACE }),
   )
@@ -132,7 +138,11 @@ export function apply(ctx: Context): void {
   }
   const activateView = (sessionId: SessionId, preferred: string | null): void => {
     const active = resolveActiveView(viewTabs(), preferred)
-    if (active !== undefined) uiConversation.binding(sessionId).activate(active.id)
+    if (active === undefined) selectedViews.delete(sessionId)
+    else {
+      uiConversation.binding(sessionId).activate(active.id)
+      selectedViews.set(sessionId, active.id)
+    }
   }
   const restoreView = (sessionId: SessionId): void => {
     activateView(sessionId, readConversationViewPreference(sessionId))
@@ -183,6 +193,7 @@ export function apply(ctx: Context): void {
     resolve: (binding) => {
       const shell = inputHub.shellFor(binding)
       const conversation = uiConversation.binding(binding)
+      binding.ctx.effect(() => () => { selectedViews.delete(binding.sessionId) }, 'conversation selected View')
       restoreView(binding.sessionId)
       return {
         hooks: {
@@ -294,6 +305,7 @@ export function apply(ctx: Context): void {
           command: undefined,
           hooks: {
             notices: ABSENT_NOTICES,
+            failedSubmissions: ABSENT_FAILURES,
             lexicon: ABSENT_LEXICON,
             menuLauncher: ABSENT_MENU_LAUNCHER,
           },
@@ -349,6 +361,7 @@ export function apply(ctx: Context): void {
         },
         hooks: {
           notices: shell.notices,
+          failedSubmissions: shell.failedSubmissions,
           lexicon: shell.lexicon,
           menuLauncher: inputTriggers?.launcher ?? ABSENT_MENU_LAUNCHER,
         },
@@ -363,7 +376,12 @@ export function apply(ctx: Context): void {
     yield registerComposerBar()
   })
 
-  ctx.plugin(ConversationController, { input: inputHub, blocks: composerBlocks })
+  ctx.plugin(ConversationController, {
+    input: inputHub,
+    blocks: composerBlocks,
+    activeView: sessionId => sessions.list.getSnapshot().current === sessionId ? selectedViews.get(sessionId) : undefined,
+    contextFailure: reason => t(reason === 'timeout' ? 'context.timeout' : 'context.cancelled'),
+  })
   ctx.plugin(todoDockEntry)
   ctx.plugin(queueDockEntry)
 }

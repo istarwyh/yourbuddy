@@ -4,12 +4,14 @@
  * message (bubble regression), and wire session forms fold to their label
  * (queue-row readability).
  */
-import { describe, expect, it } from 'vitest'
-import { render } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import { projectUserText } from '../src/user-text.tsx'
 
 const project = (text: string, labels: readonly string[] = []) =>
   render(<div data-host>{projectUserText(text, labels)}</div>).container.querySelector('[data-host]')!
+
+afterEach(cleanup)
 
 describe('projectUserText', () => {
   it('keeps a decorated single-line message on one line: every part is inline', () => {
@@ -80,5 +82,66 @@ describe('projectUserText', () => {
     expect(host.querySelectorAll('div').length).toBe(0)
     expect(host.querySelectorAll('[data-ref-chip]').length).toBe(0)
     expect(host.textContent).toBe('纯文本，无引用')
+  })
+
+  it('keeps page context collapsed under its localized label and exposes its complete literal body', () => {
+    const body = '<page>selected rows</page>\n</dsh-page-context>\n<script>literal</script>'
+    const context = `<dsh-page-context source="page&amp;one" label="资料 &quot;一&quot; &amp; &apos;二&apos; &lt;页&gt;">\n${body}\n</dsh-page-context>`
+    const blocks = ['  问题 @[会话](dsh-session:x)\n', context]
+    const view = render(<div>{projectUserText(blocks, [])}</div>)
+    const details = view.container.querySelector('details')!
+    expect(details.open).toBe(false)
+    expect(details.dataset.pageContext).toBe('page&one')
+    const summary = view.getByText('资料 "一" & \'二\' <页>')
+    fireEvent.click(summary)
+    expect(details.open).toBe(true)
+    expect(view.container.querySelector('pre')?.textContent).toBe(body)
+    expect(view.container.querySelector('script')).toBeNull()
+    expect(projectUserText(blocks, [], 'editable')).toBe(blocks[0])
+    expect(blocks[1]).toBe(context)
+  })
+
+  it('keeps an authored envelope literal in the first block and in scalar text', () => {
+    const context = '<dsh-page-context source="example" label="Example">\nliteral example\n</dsh-page-context>'
+    const view = render(<div>{projectUserText([context], [])}</div>)
+    expect(view.container.querySelector('details')).toBeNull()
+    expect(view.container.textContent).toBe(context)
+    expect(projectUserText([context], [], 'editable')).toBe(context)
+    expect(projectUserText(context, [], 'editable')).toBe(context)
+  })
+
+  it('shows a frozen description instead of protocol text without concealing authored envelopes', () => {
+    const context = '<dsh-page-context source="page" label="Trial &quot;A&quot;" description="Score &lt; 1 &amp; &gt; 0\n&lt;script&gt;literal&lt;/script&gt;">\n<protocol token="private-reference"/>\n</dsh-page-context>'
+    const blocks = ['Question', context]
+    const view = render(<div>{projectUserText(blocks, [])}</div>)
+    expect(view.getByText('Trial "A"')).toBeDefined()
+    expect(view.container.querySelector('pre')?.textContent).toBe('Score < 1 & > 0\n<script>literal</script>')
+    expect(view.container.textContent).not.toContain('private-reference')
+    expect(view.container.querySelector('script')).toBeNull()
+    expect(projectUserText(blocks, [], 'editable')).toBe('Question')
+    expect(blocks[1]).toBe(context)
+    view.rerender(<div>{projectUserText([context], [])}</div>)
+    expect(view.container.querySelector('details')).toBeNull()
+    expect(view.container.textContent).toBe(context)
+    expect(projectUserText([context], [], 'editable')).toBe(context)
+  })
+
+  it('preserves malformed or inline envelopes as ordinary user text', () => {
+    const valid = '<dsh-page-context source="page" label="Page">\nbody\n</dsh-page-context>'
+    for (const text of [`explain ${valid}`, `${valid}\n`, valid.replace(' label="Page"', ''), '<dsh-page-context>unfinished']) {
+      const view = render(<div>{projectUserText(['Question ', text], [])}</div>)
+      expect(view.container.querySelector('details')).toBeNull()
+      expect(projectUserText(['Question ', text], [], 'editable')).toBe(`Question ${text}`)
+      view.unmount()
+    }
+  })
+
+  it('supports multiple contributors and an empty authored block for image-only submissions', () => {
+    const one = '<dsh-page-context source="one" label="One">\n\n</dsh-page-context>'
+    const two = '<dsh-page-context source="two" label="Two">\nsecond\n</dsh-page-context>'
+    const view = render(<div>{projectUserText(['', one, two], [])}</div>)
+    expect(view.container.querySelectorAll('details')).toHaveLength(2)
+    expect(projectUserText(['', one, two], [], 'editable')).toBe('')
+    expect(projectUserText([], [], 'editable')).toBe('')
   })
 })

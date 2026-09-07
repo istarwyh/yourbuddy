@@ -35,6 +35,8 @@ kind: "package-library"
 
 `MarkdownText` 渲染不可信的 GFM 与 TeX 公式、阻止不安全的链接与图片，并可把已解析的文件提及转换为显式控件。回复流式输出时，它冻结已完成的块、按已完成行推进顶层未闭合 fence，并从保存的 Shiki grammar state 为该 fence 增量高亮。已完成的 token 行进入固定大小的 React 分组，后续分片只 reconcile 正在增长的分组；最终全量解析解决跨文档语法时，未变化的 fence 会保留该 DOM（[增量渲染器](../../../.agents/notes/implemented/architecture/2026-08-06-web-markdown-incremental-ast-renderer.zh.md)、[流式 fence 高亮](../../../.agents/notes/implemented/feature/2026-08-20-web-streaming-fence-highlight.zh.md)）。`TerminalBlock`、`ReadBlock`、`DiffBlock`、`SearchBlock` 与 `WebBlock` 把对应的工具结果意图渲染为带复制控件、溢出处理及适用时 ANSI 处理的卡片。`JsonTree` 与 `JsonBlock` 以只读方式检查 JSON 值；`MessageText` 仍是用户创作内容的字面文本原语。
 
+`projectUserText(text, sessionLabels)` 为已发送的用户引用添加展示样式。传入独立文本块时，自动页面上下文显示为折叠附件，使用提供方给出的 label。展开后显示已冻结的 `description`（若有），否则显示字面正文；元数据始终按文本而非 HTML 渲染。首个块始终是用户原话（纯图片发送时为空）；只有后续完整的 `dsh-page-context` 包装块才会成为附件。单个字符串、行内包装和格式不完整的包装仍按用户文本处理。`projectUserText(text, sessionLabels, 'editable')` 仅返回供复制或编辑的用户原话，保留空白和引用的协议格式。两种展示投影都不改变模型输入或持久日志。
+
 ### 本地化文案
 
 这些原子组件无法读取应用 locale，因此每段面向用户的文案都必须通过 label prop 提供。`HoverCard`、`TerminalBlock`、`JsonTree`、`CodeBlock`、`MarkdownText`、`JsonBlock`、`ConnectionIndicator`、`Modal`、`DiffBlock`、`ReadBlock`、`SearchBlock` 与 `WebBlock` 接收完整的本地化 label。本包不拥有语言回退；遗漏会导致类型检查失败，各功能会把带类型的 `t` 席位映射到 primitive 的 label 接口。

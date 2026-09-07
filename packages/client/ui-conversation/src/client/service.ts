@@ -22,9 +22,11 @@ import type { ComposerAttachment } from './contract/slots.ts'
 import type { QueueAction, QueueItemId } from './contract/queue.ts'
 import type { ComposerBlocks } from './contract/composer-blocks.ts'
 import type {
-  DraftAttachmentId, SessionInputResolver, SubmitImageAttachment, SubmitOutcome,
+  DraftAttachmentId, Occurrence, SessionInputResolver, SubmitImageAttachment, SubmitOutcome,
 } from './contract/input.ts'
 import type { InputSubmitMode } from './contract/composer-submission.ts'
+import type { ConversationContexts, PreparedConversationContext } from './contract/submission-context.ts'
+import { ConversationContextRegistry } from './submission-context.ts'
 
 /**
  * The outward conversation face (`ctx.conversation`): the scope-addressed
@@ -39,9 +41,11 @@ export interface IConversation {
    * cannot import makes a session's input inert with its own reason.
    */
   readonly blocks: ComposerBlocks
+  /** View-owned, send-time context contributions; registration disposal belongs to the caller. */
+  readonly contexts: ConversationContexts
   /**
    * Send a prompt into the caller scope's session (queued turn).
-   * @param text - prompt text, sent verbatim as one text block.
+   * @param text - prompt text, preserved as one text block beside captured page context.
    * @returns completion; business failures reject (and land in promptError).
    */
   send(text: string): Promise<void>
@@ -149,6 +153,9 @@ export class ConversationController extends Service implements IConversation {
   readonly input: SessionInputResolver
   /** The per-session composer-block registry. */
   readonly blocks: ComposerBlocks
+  /** Public registration-only context face. */
+  readonly contexts: ConversationContexts
+  private readonly contextRegistry: ConversationContextRegistry
   private readonly draftAttachments = new Map<DraftAttachmentId, ComposerAttachment>()
 
   /**
@@ -158,11 +165,19 @@ export class ConversationController extends Service implements IConversation {
    * constructed by the plugin apply (the same instances the slot inject
    * factories close over).
    */
-  constructor(ctx: Context, config: { input: SessionInputResolver; blocks: ComposerBlocks }) {
+  constructor(ctx: Context, config: {
+    input: SessionInputResolver
+    blocks: ComposerBlocks
+    activeView: (sessionId: SessionId) => string | undefined
+    contextFailure: (reason: 'cancelled' | 'timeout') => string
+  }) {
     super(ctx, 'conversation')
     this.input = config.input
     this.blocks = config.blocks
+    this.contextRegistry = new ConversationContextRegistry(config.activeView, config.contextFailure)
+    this.contexts = this.contextRegistry
     ctx.effect(() => () => {
+      this.contextRegistry.dispose()
       for (const attachment of this.draftAttachments.values()) {
         revokePreview(attachment.previewUrl)
       }
@@ -174,12 +189,52 @@ export class ConversationController extends Service implements IConversation {
    * Send a prompt into the scoped session. Business failures also land in the
    * session snapshot's promptError (object-layer state); the rejection here
    * exists for caller choreography (the composer restores the draft on it).
-   * @param text - prompt text, sent verbatim as one text block.
+   * @param text - prompt text, preserved beside any selected-View context.
    */
   async send(text: string): Promise<void> {
     const session = this.scopedSession('send')
-    const result = await session.prompt([{ type: 'text', text }], 'queue')
-    if (!result.ok) throw new Error(`conversation.send failed: ${result.error.code}: ${result.error.message}`)
+    const controller = new AbortController()
+    const dispose = this.ctx.effect(() => () => { controller.abort() }, 'conversation.send context')
+    const prepared = this.prepareContext(session.sessionId, text, [], controller.signal)
+    const submission = prepared !== undefined && session.getSnapshot().subagent === null
+      ? session.beginSubmission({
+        mode: 'queue', text, images: [],
+        onRetire: (retirement) => { if (retirement.reason === 'observed') prepared.admitted() },
+      })
+      : undefined
+    try {
+      const extra = prepared === undefined ? [] : await prepared.content
+      const signal = prepared?.signal ?? controller.signal
+      signal.throwIfAborted()
+      const content = [{ type: 'text' as const, text }, ...extra.map(value => ({ type: 'text' as const, text: value }))]
+      const result = prepared === undefined
+        ? await session.prompt(content, 'queue')
+        : await session.prompt(content, 'queue', signal, submission?.requestId)
+      if (!result.ok) throw new Error(`conversation.send failed: ${result.error.code}: ${result.error.message}`)
+    } catch (error) {
+      submission?.abandon()
+      throw error
+    } finally {
+      prepared?.dispose()
+      await dispose()
+    }
+  }
+
+  /**
+   * Capture View context at the composer lock, before async chip serialization.
+   * @param sessionId - submitting Session identity.
+   * @param draft - original composer text.
+   * @param occurrences - original reference chips.
+   * @param signal - owning submission cancellation.
+   * @returns the preparation retained by this submission only.
+   */
+  prepareContext(
+    sessionId: SessionId,
+    draft: string,
+    occurrences: readonly Occurrence[],
+    signal: AbortSignal,
+  ): PreparedConversationContext | undefined {
+    return this.contextRegistry.capture({ sessionId, draft, occurrences, signal })
   }
 
   /**
@@ -194,6 +249,7 @@ export class ConversationController extends Service implements IConversation {
    * @param imageIds - ordered draft-local attachment ids.
    * @param mode - queue or steer delivery selected by composer policy.
    * @param signal - optional cancellation for the complete Host admission.
+   * @param prepared - page context frozen before reference serialization.
    * @returns the Host admission outcome; local attachment preparation failures reject.
    */
   async sendSession(
@@ -202,16 +258,21 @@ export class ConversationController extends Service implements IConversation {
     imageIds: readonly DraftAttachmentId[],
     mode: InputSubmitMode,
     signal?: AbortSignal,
+    prepared?: PreparedConversationContext,
   ): Promise<SubmitOutcome> {
+    const submissionSignal = prepared?.signal ?? signal
     const attachments = this.draftImages(imageIds)
     if (attachments.length !== imageIds.length) {
       throw new Error('conversation.sendSession: one or more draft images are no longer available')
     }
     const snapshot = session.getSnapshot()
     if (snapshot.subagent !== null) {
+      const extra = prepared === undefined ? [] : await prepared.content
+      submissionSignal?.throwIfAborted()
       const uploaded = await this.serializeImages(attachments.map(attachment => attachment.file))
-      const content = [...uploaded, ...(text === '' ? [] : [{ type: 'text' as const, text }])]
-      const result = await session.prompt(content, mode, signal)
+      const content = [...uploaded, ...(text === '' && extra.length === 0 ? [] : [{ type: 'text' as const, text }]), ...extra.map(value => ({ type: 'text' as const, text: value }))]
+      submissionSignal?.throwIfAborted()
+      const result = await session.prompt(content, mode, submissionSignal)
       return result.ok ? { kind: 'success' } : { kind: 'error' }
     }
     let finishRetirement: ((retirement: PendingSubmissionRetirement) => void) | undefined
@@ -228,6 +289,7 @@ export class ConversationController extends Service implements IConversation {
         ...(attachment.height === undefined ? {} : { height: attachment.height }),
       })),
       onRetire: (settlement) => {
+        if (settlement.reason === 'observed') prepared?.admitted()
         this.settleSubmittedImages(session.sessionId, attachments, settlement)
         finishRetirement?.(settlement)
       },
@@ -235,13 +297,16 @@ export class ConversationController extends Service implements IConversation {
     let content: Parameters<SessionFace['prompt']>[0]
     try {
       await nextPaint()
+      const extra = prepared === undefined ? [] : await prepared.content
+      submissionSignal?.throwIfAborted()
       const uploaded = await this.serializeImages(attachments.map(attachment => attachment.file))
-      content = [...uploaded, ...(text === '' ? [] : [{ type: 'text' as const, text }])]
+      submissionSignal?.throwIfAborted()
+      content = [...uploaded, ...(text === '' && extra.length === 0 ? [] : [{ type: 'text' as const, text }]), ...extra.map(value => ({ type: 'text' as const, text: value }))]
     } catch (error) {
       submission.abandon()
       throw error
     }
-    const result = await session.prompt(content, mode, signal, submission.requestId)
+    const result = await session.prompt(content, mode, submissionSignal, submission.requestId)
     if (!result.ok) return { kind: 'error' }
     if (retirement !== undefined && (await retirement).reason !== 'observed') return { kind: 'error' }
     return { kind: 'success' }
@@ -326,6 +391,7 @@ export class ConversationController extends Service implements IConversation {
   /** Cancel the scoped session's in-flight turn while preserving Queue (failures land in promptError and reject, as in send). */
   async cancel(): Promise<void> {
     const session = this.scopedSession('cancel')
+    this.contextRegistry.cancelSession(session.sessionId)
     const result = await session.cancel()
     if (!result.ok) throw new Error(`conversation.cancel failed: ${result.error.code}: ${result.error.message}`)
   }
