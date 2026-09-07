@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Agents can discover and load skills during a session: before the first request they receive a durable catalog of every available skill's name and capped description, and they can load any listed skill's full instructions by name through the `skill` loader tool. A user can also invoke a skill directly with a `/name` token, which injects that skill's instructions into the step. The catalog stays current: membership, description, or visibility changes append a complete replacement catalog, and a deleted skill is explicitly retired. Mount it alongside the skill registry (and at least one provider) when agents should load skills; its only configuration caps catalog description length.
+Agents can discover and load skills during a session: before the first request they receive a durable catalog of every available skill's name and capped description, and they can load any listed skill's full instructions by name through the `skill` loader tool. A user can also invoke a skill directly with a `/name` token, which injects that skill's instructions into the step. The catalog stays current: membership, description, or visibility changes append a complete replacement catalog, and a deleted skill is explicitly retired. Deployment configuration can cap catalog descriptions and reserve selected skill names for explicit user invocation when an application has a more authoritative model-facing route for the same intent.
 
 ## Table of Contents
 
@@ -33,7 +33,7 @@ Use it when agents should discover and load skills during a session. Skip it whe
 
 ### Mount and configure
 
-Load the plugin together with the skill registry and at least one provider. The only configuration caps the normalized description length rendered in the catalog.
+Load the plugin together with the skill registry and at least one provider. Configuration can cap the normalized description length and keep selected skills out of autonomous model routing.
 
 ```yaml
 - name: '@deepseek-ai/dsh-skill'
@@ -44,6 +44,7 @@ Load the plugin together with the skill registry and at least one provider. The 
 | Field | Default | Meaning |
 |---|---|---|
 | `catalogDescriptionMaxLength` | `500` | Maximum normalized description length rendered in the session catalog; minimum 3 |
+| `modelExcludedSkills` | `[]` | Exact skill names omitted from the model catalog and loader while remaining available through an explicit user `/name` invocation |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-tool-skill) is the exhaustive source for every accepted field.
 
@@ -52,11 +53,12 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 - **A session catalog.** When model-invocable skills exist and the `skill` tool is visible, the agent receives a durable user-role message before its first request, listing each skill's name and a capped description; the message tells the model to load a skill with the tool before acting on it, and never to infer instructions from the summary alone.
 - **A loader tool.** The model calls `skill` with the exact skill name and receives the full instruction body plus resource guidance in a canonical `<skill_content>` block; the result is retained as ordinary tool history.
 - **Explicit user invocation.** A `/name` token in direct user input that names a user-invocable skill injects that skill's instructions into the step, without the model having to load it.
+- **Deployment exclusions.** Names in `modelExcludedSkills` cannot be selected or loaded by the model, but remain available when the user explicitly enters `/name` and the skill allows user invocation.
 - **Live catalog updates.** Later membership, description, or visibility changes append a complete replacement catalog; removing every skill appends an empty catalog that retires older names.
 
 ### Observable success and failures
 
-Loading a listed skill returns its full instructions; the model sees one canonical shape whether the load came from the tool or from a user's explicit invocation. An invalid name reports `Error: invalid skill name "<name>"`, an unknown name reports the skill is unknown or no longer available, and a skill disabled for model invocation reports it is not available for model invocation. The catalog is omitted entirely only when no model-invocable skills exist and none was ever published; a later visibility loss — the `skill` tool hidden or shadowed by a same-name scoped tool — instead appends an empty retirement catalog, as when every skill is removed.
+Loading a listed skill returns its full instructions; the model sees one canonical shape whether the load came from the tool or from a user's explicit invocation. An invalid name reports `Error: invalid skill name "<name>"`, an unknown name reports the skill is unknown or no longer available, and a skill disabled or excluded for model invocation reports it is not available for model invocation. Invalid or repeated `modelExcludedSkills` names fail during plugin load. The catalog is omitted entirely only when no model-invocable skills exist and none was ever published; a later visibility loss — the `skill` tool hidden or shadowed by a same-name scoped tool — instead appends an empty retirement catalog, as when every skill is removed.
 
 -----
 
@@ -81,11 +83,11 @@ The package is built on two ideas. First, the catalog is a durable projection, d
 
 ### Catalog lifecycle
 
-At each eligible `agent/pre-step`, the plugin snapshots the calling session's skill catalog, applies exact `skill` tool visibility, filters to model-invocable skills, and compares a digest of the entries against the newest visible `skill-catalog` message in the session log. When the digest changed, it hands the `enter` decision a durable user-role message containing the complete replacement catalog; an empty replacement explicitly retires earlier names. An incomplete provider snapshot emits nothing and preserves the last-good view for the next pre-step. The visibility check compares against the exact tool definition this plugin registered, so a scoped same-name shadow removes both the schema and its guidance; the plugin works mounted globally or inside one agent's composition.
+At each eligible `agent/pre-step`, the plugin snapshots the calling session's skill catalog, applies exact `skill` tool visibility, filters to model-invocable and deployment-allowed skills, and compares a digest of the entries against the newest visible `skill-catalog` message in the session log. When the digest changed, it hands the `enter` decision a durable user-role message containing the complete replacement catalog; an empty replacement explicitly retires earlier names. An incomplete provider snapshot emits nothing and preserves the last-good view for the next pre-step. The visibility check compares against the exact tool definition this plugin registered, so a scoped same-name shadow removes both the schema and its guidance; the plugin works mounted globally or inside one agent's composition.
 
 ### Invocation boundary
 
-The `/name` gesture listener scans only claimed user messages: a whitespace-bounded token naming a user-invocable skill in the workspace catalog injects the same `<skill_content>` rendering as a `user`-role instructions context appended after every other injection. Unknown names and user-disabled skills stay ordinary prose. This is the only entry point for `disable-model-invocation` skills, which the catalog and the `skill` tool never expose.
+The `/name` gesture listener scans only claimed user messages: a whitespace-bounded token naming a user-invocable skill in the workspace catalog injects the same `<skill_content>` rendering as a `user`-role instructions context appended after every other injection. Unknown names and user-disabled skills stay ordinary prose. This remains the explicit entry point for both `disable-model-invocation` skills and names reserved by `modelExcludedSkills`, which the catalog and the `skill` tool never expose.
 
 </details>
 

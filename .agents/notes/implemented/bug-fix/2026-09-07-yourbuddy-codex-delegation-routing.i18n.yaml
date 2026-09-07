@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-07-yourbuddy-codex-delegation-routing.md
+2026-09-07-yourbuddy-codex-delegation-routing.md: 95656f1c6b8414a34660e4b8c66c36076faec373
+2026-09-07-yourbuddy-codex-delegation-routing.zh.md: b3bdfe59f93c598ddb4c7d988936180afdd2d3b4

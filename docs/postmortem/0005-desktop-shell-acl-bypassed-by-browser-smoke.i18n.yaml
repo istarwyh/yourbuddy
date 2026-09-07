@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/postmortem/0005-desktop-shell-acl-bypassed-by-browser-smoke.md
+0005-desktop-shell-acl-bypassed-by-browser-smoke.md: b0afb2a06a96adcbdbc2ef8b1da9a3662ed30764
+0005-desktop-shell-acl-bypassed-by-browser-smoke.zh.md: 91f462a355a5094a77be4bb874d3c278111afd8d

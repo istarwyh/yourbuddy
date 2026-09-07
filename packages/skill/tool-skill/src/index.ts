@@ -61,11 +61,14 @@ function catalogSourceEntries(
 export interface Config {
   /** Maximum normalized description length rendered in the session catalog; minimum 3. */
   catalogDescriptionMaxLength?: number
+  /** Skill names omitted from model catalogs and model-initiated loads. */
+  modelExcludedSkills?: string[]
 }
 
 /** Validate and default the model-facing skill catalog configuration. */
 export const Config: z<Config> = z.object({
   catalogDescriptionMaxLength: z.number().default(DEFAULT_CATALOG_DESCRIPTION_MAX_LENGTH),
+  modelExcludedSkills: z.array(z.string()).default([]),
 })
 
 /**
@@ -77,6 +80,19 @@ export const Config: z<Config> = z.object({
 export function apply(ctx: Context, config: Config = {}): void {
   const catalogDescriptionMaxLength = config.catalogDescriptionMaxLength ?? DEFAULT_CATALOG_DESCRIPTION_MAX_LENGTH
   assertPositiveInteger('catalogDescriptionMaxLength', catalogDescriptionMaxLength, 3)
+  const excludedModelSkillNames = new Set<string>()
+  for (const skillName of config.modelExcludedSkills ?? []) {
+    if (!isSkillName(skillName)) {
+      throw new Error(`tool-skill: modelExcludedSkills contains invalid skill name "${skillName}"`)
+    }
+    if (excludedModelSkillNames.has(skillName)) {
+      throw new Error(`tool-skill: modelExcludedSkills repeats skill name "${skillName}"`)
+    }
+    excludedModelSkillNames.add(skillName)
+  }
+  const isAvailableToModel = (skill: SkillSummary): boolean => (
+    isModelInvocable(skill) && !excludedModelSkillNames.has(skill.name)
+  )
 
   const skillTool = defineTool({
     name: 'skill',
@@ -135,14 +151,14 @@ export function apply(ctx: Context, config: Config = {}): void {
       if (!summary) {
         throw new Error(`skill "${args.name}" is unknown or no longer available`)
       }
-      if (!isModelInvocable(summary)) {
+      if (!isAvailableToModel(summary)) {
         throw new Error(`skill "${args.name}" is not available for model invocation`)
       }
       const skill = await ctx.skills.get(args.name, lookup)
       if (!skill) {
         throw new Error(`skill "${args.name}" is unknown or no longer available`)
       }
-      if (!isModelInvocable(skill)) {
+      if (!isAvailableToModel(skill)) {
         throw new Error(`skill "${args.name}" is not available for model invocation`)
       }
       return {
@@ -223,7 +239,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       : { skills: [], complete: true }
     signal.throwIfAborted()
     if (!snapshot.complete) return decision
-    const skills = snapshot.skills.filter(isModelInvocable)
+    const skills = snapshot.skills.filter(isAvailableToModel)
     const entries = catalogSourceEntries(skills, catalogDescriptionMaxLength)
     const digest = digestCatalogEntries(entries)
     const history = catalogHistory(agent)

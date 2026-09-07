@@ -2870,6 +2870,8 @@ export interface Config {
 export interface Config {
   /** Maximum normalized description length rendered in the session catalog; minimum 3. */
   catalogDescriptionMaxLength?: number
+  /** Skill names omitted from model catalogs and model-initiated loads. */
+  modelExcludedSkills?: string[]
 }
 ```
 

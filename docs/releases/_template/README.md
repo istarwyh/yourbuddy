@@ -101,6 +101,7 @@ Copy this directory to `docs/releases/<release-tag>/`, replace every placeholder
 - [ ] The downloadable evidence archive was extracted and its documented contents were opened successfully.
 - [ ] The public release page links to the evidence commit, gallery, and download without relying on a moving branch.
 - [ ] The actual product destination was checked independently of CI and temporary workflow artifacts.
+- [ ] Desktop shell origin, capability, permission, or command changes include real Tauri Runtime Authority evidence and packaged WebView exercise of every affected control; JavaScript invoke stubs are labelled bridge-only.
 - [ ] Published filenames, versions, hashes, registry metadata, updater metadata, and installed behavior are recorded as applicable.
 - [ ] For YourBuddy, [release website synchronization](../../product-website.md#release-synchronization) covers both languages, actual download links, affected guides and plugins, and the observed live deployment; unrelated channels are marked not applicable.
 - [ ] Product publication status, verification archive status, website synchronization, and unverified scope are reported separately.

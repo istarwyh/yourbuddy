@@ -15,6 +15,7 @@ const DESKTOP_I18N: &[u8] = include_bytes!("../../desktop-i18n.js");
 const APP_ICON: &[u8] = include_bytes!("../../app-icon.png");
 const MAX_REQUEST_BYTES: usize = 8 * 1024;
 const READ_TIMEOUT: Duration = Duration::from_secs(2);
+const COMMAND_PERMISSION: &str = "allow-desktop-shell-commands";
 
 /// Bound loopback server whose HTTP origin is same-site with `dsh web`.
 pub struct DesktopShellServer {
@@ -44,7 +45,7 @@ impl Drop for DesktopShellServer {
     }
 }
 
-/// Bind a random loopback port, grant that exact origin the existing shell
+/// Bind a random loopback port, grant that exact origin the desktop shell
 /// permissions, and serve the three embedded desktop assets.
 pub fn start(app: &AppHandle) -> Result<DesktopShellServer, String> {
     let listener =
@@ -87,6 +88,11 @@ fn remote_capability(url: &str) -> Result<String, String> {
     let mut capability: serde_json::Value =
         serde_json::from_str(include_str!("../capabilities/default.json"))
             .map_err(|error| format!("桌面壳权限模板无效: {error}"))?;
+    let permissions = capability
+        .get_mut("permissions")
+        .and_then(serde_json::Value::as_array_mut)
+        .ok_or_else(|| "桌面壳权限模板缺少 permissions 数组".to_string())?;
+    permissions.push(json!(COMMAND_PERMISSION));
     capability["identifier"] = json!("desktop-shell-loopback");
     capability["description"] = json!("Exact runtime-owned loopback origin for the desktop shell");
     capability["local"] = json!(false);
@@ -207,8 +213,20 @@ fn write_response(stream: &mut TcpStream, status: u16, content_type: &str, body:
 
 #[cfg(test)]
 mod tests {
-    use super::{read_request, remote_capability};
+    use super::{read_request, remote_capability, COMMAND_PERMISSION};
     use std::io::Cursor;
+    use tauri::ipc::Origin;
+
+    fn allowed_shell_commands() -> Vec<String> {
+        let value: toml::Value =
+            toml::from_str(include_str!("../permissions/desktop-shell.toml")).unwrap();
+        value["permission"][0]["commands"]["allow"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|command| command.as_str().unwrap().to_string())
+            .collect()
+    }
 
     #[test]
     fn remote_capability_grants_only_the_runtime_shell_origin() {
@@ -216,10 +234,51 @@ mod tests {
             serde_json::from_str(&remote_capability("http://127.0.0.1:45678/").unwrap()).unwrap();
         assert_eq!(value["local"], false);
         assert_eq!(value["windows"], serde_json::json!(["main"]));
+        assert!(value["permissions"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!(COMMAND_PERMISSION)));
         assert_eq!(
             value["remote"]["urls"],
             serde_json::json!(["http://127.0.0.1:45678/*"])
         );
+    }
+
+    #[test]
+    fn tauri_authority_allows_shell_commands_only_on_the_exact_remote_origin() {
+        let shell_url = "http://127.0.0.1:45678/";
+        let shell_origin = Origin::Remote {
+            url: shell_url.parse().unwrap(),
+        };
+        let other_origin = Origin::Remote {
+            url: "http://127.0.0.1:45679/".parse().unwrap(),
+        };
+        let mut context = crate::app_context();
+        let authority = context.runtime_authority_mut();
+        authority
+            .add_capability(remote_capability(shell_url).unwrap())
+            .unwrap();
+
+        for command in allowed_shell_commands() {
+            assert!(
+                authority
+                    .resolve_access(&command, "main", "main", &shell_origin)
+                    .is_some(),
+                "{command} must be authorized for the runtime-owned shell"
+            );
+            assert!(
+                authority
+                    .resolve_access(&command, "main", "main", &other_origin)
+                    .is_none(),
+                "{command} must reject another loopback origin"
+            );
+            assert!(
+                authority
+                    .resolve_access(&command, "splash", "splash", &shell_origin)
+                    .is_none(),
+                "{command} must reject another window"
+            );
+        }
     }
 
     #[test]

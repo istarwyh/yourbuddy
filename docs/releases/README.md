@@ -71,6 +71,8 @@ Each verification scenario records:
 
 Use `passed`, `failed`, `skipped`, or `not verified` as scenario status. A source test does not validate a formal installer, a mock does not validate a real provider, and a component test does not validate the complete product journey. State only the claim directly supported by the recorded observation.
 
+For a desktop release that changes a `WebviewUrl::External` shell, runtime capability, permission, or application command, a JavaScript `invoke` stub is bridge evidence only. Record the real Tauri Runtime Authority result and exercise every affected control from the packaged WebView; missing packaged coverage stays in unverified scope and cannot support a claim that those controls passed.
+
 ## Screenshots, logs, and sensitive data
 
 Capture useful states such as before the action, in progress, the result, and failure recovery when they help another person assess the journey. There is no screenshot quota: non-UI changes may rely on command output, logs, checksums, package metadata, or downloadable artifact evidence instead.
