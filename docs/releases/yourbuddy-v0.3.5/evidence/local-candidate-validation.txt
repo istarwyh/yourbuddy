@@ -1,0 +1,97 @@
+YourBuddy 0.3.5 local candidate validation
+==========================================
+
+Evidence window: 2026-09-07 23:52 through 2026-09-08 00:41 UTC+08:00, Asia/Shanghai
+Tested product commit: 7db4fbfbc11d802ca81768498d0474427c207f97
+Test lifecycle correction commit: 077b96c9e704d45a82048c07fcb165d68a9a338d
+Windows resource-test correction commit: fbe8b947cdfce30275bdf2cb5af68677d060725a
+Merged product commit: 9dcaca57512fb628705a37181792c6861591078e
+Baseline before changes: d92d9bbfbe7603f32488f7bb030ea6739a4fd190
+Environment: macOS 15.6.1 (24G90), arm64; Node 22.22.2; pnpm 11.7.0; rustc/cargo 1.98.0
+Data and services: synthetic/isolated; no OAuth token, real model request, account data, proxy credential, or CA content
+
+Passing observations
+--------------------
+
+1. pnpm exec vitest run packages/skill/tool-skill/tests/tool-skill.spec.ts
+   Result: exit 0; 1 file, 34 tests passed.
+
+2. pnpm exec vitest run --config vitest.expected.config.ts -t "dsh badge assembled snapshot"
+   Environment: HTTP_PROXY, HTTPS_PROXY, ALL_PROXY and lowercase variants removed for this child.
+   Result: exit 0; 1 selected file/test passed; 9 files and 26 tests skipped by the explicit filter.
+
+3. pnpm --dir apps/desktop-tauri run test:product-refresh
+   Result: exit 0; 43 tests passed, including exact shell-permission parity and the product smoke overlay.
+
+4. cargo test --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml overlay::tests::
+   Result: exit 0; 6 tests passed.
+
+5. cargo test --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml desktop_shell::tests::tauri_authority_allows_shell_commands_only_on_the_exact_remote_origin -- --exact
+   Result: exit 0; 1 test passed. All nine application commands resolve for the exact remote origin/main window and reject another port and window.
+
+6. pnpm --dir apps/desktop-tauri run prepare:release -- --allow-dirty
+   Result: exit 0 after recovery described below.
+   Client build: 220 artifacts.
+   Harness source SHA-256: 4ea0befd28fd243c2570f66fe527901955a481fc0db181170166db9e79e9d1a0
+   Production dependency tree: 587 packages; offline reinstall reused 587 and downloaded 0.
+   Runtime peer links: 54.
+   Assembled Client plugins: 6.
+   Offline store: 38,708 files; SHA-256 8f22bf180342d4de2acb697e8f349bfd8e001ac9397b1d0123314570cee62079.
+   Offline-store archive SHA-256: a38cfc99965e8a2505852cd9cfb8ac8a5960198db77e941a72171d85edbedd66.
+   Harness bundle SHA-256: 3297a377f1d179124d79980416e979e7bbdc31df0d9ed7dd0884c3a27e5c69bf.
+   Product smoke: external links, Plugin Marketplace, network proxy, lifecycle controls, assembled Clients, and normal Host shutdown passed.
+
+7. pnpm run doc-sync
+   Environment: process PATH selected Node 22.22.2 and excluded a faulty optional local PowerShell executable.
+   Result: exit 0; 32 gates passed in 38.79 seconds.
+
+8. pnpm run typecheck
+   Result: exit 0 in the pre-push hook after the tested commit; Host build and Client contract typecheck passed.
+
+9. git diff --check; rustfmt --check --edition 2021 --config skip_children=true on desktop_shell.rs, lib.rs, and overlay.rs
+   Result: exit 0. A crate-wide cargo fmt check is not claimed because Rust 1.98 reformats unchanged baseline files network_proxy.rs, product.rs, and updater.rs.
+
+10. Complete prepare:release product identity
+    The assembled overlay contains modelExcludedSkills: [codexhost-delegation] and the bundled @deepseek-ai/dsh-subagent-codex provider.
+
+11. pnpm exec vitest run packages/subagent/subagent-codex/tests/real-product.spec.ts --maxWorkers=1 --hookTimeout=90000
+    Commit: 077b96c9e704d45a82048c07fcb165d68a9a338d.
+    Result: exit 0; 1 file, 7 tests passed in 28.03 seconds. The process-owning afterEach used the explicit 60-second lifecycle budget.
+
+12. Focused Windows-resource regressions at fbe8b947cdfce30275bdf2cb5af68677d060725a
+    Command: pnpm exec vitest run packages/experimental/inspector/tests/port-selection.host.spec.ts packages/session/session-projection-cache/tests/fixtures.spec.ts --maxWorkers=1 --testTimeout=90000 --expect.poll.timeout=90000 --hookTimeout=90000
+    Result: exit 0; 2 files, 10 tests passed in 980 ms.
+    Concurrent topology: four independent Inspector Vitest processes ran together; every process passed 1 file and 4 tests in 571-601 ms.
+    Cache ownership check: cache.spec.ts plus fixtures.spec.ts passed 2 files and 27 tests in 1.63 seconds.
+
+13. pnpm run doc-sync
+    Commit: fbe8b947cdfce30275bdf2cb5af68677d060725a candidate tree.
+    Result: exit 0; 32 gates passed in 36.59 seconds after regenerating and pairing the changed Inspector config catalog.
+
+14. Pull-request CI run 34149979672
+    Commit: fbe8b947cdfce30275bdf2cb5af68677d060725a.
+    Result: exit success; all 19 jobs passed, including Node 24 exhaustive Linux and Windows coverage, snapshots and artifacts, compatibility lanes, Windows native/build/Wine/observational lanes, the four-platform release-shaped Python runtime matrix, and Python SDK checks.
+    Merge: PR 14 merged the tested commits as 9dcaca57512fb628705a37181792c6861591078e at 2026-09-08 02:33:56 UTC+08:00.
+    Non-result: Cloudflare Pages preview run 34149979539 was cancelled because the repository reported zero self-hosted runners for its required label. It did not run and is not counted as passed.
+
+15. pnpm run doc-sync for the rebased release archive
+    Environment: an independent offline-installed dependency tree in the release worktree; process PATH selected Node 22.22.2 and excluded the faulty optional local PowerShell executable.
+    Result: exit 0; 32 gates passed, 0 failed, and 0 skipped in 44.53 seconds.
+    Discarded setup: a prior attempt reused another worktree's node_modules through a symlink and failed module resolution. It is not counted as a document failure or passing evidence; the independent offline install and complete rerun are the recorded result.
+
+Failures, discarded invocations, and recovery
+---------------------------------------------
+
+- The first prepare:release invocation was interrupted while downloading @openai/codex. It left bundled node_modules incomplete. A subsequent Rust build failed before tests because @openai/codex-darwin-arm64 was absent. The complete prepare:release rerun restored the package, repeated the offline reinstall and all product smokes, and exited 0. Only the complete rerun supports the passing claim.
+- `pnpm exec vitest run apps/cli/tests/dsh-badge.expected.e2e.ts` used the default configuration and selected no files. It is not evidence.
+- `pnpm run test:snapshot -- -t ...` passed the filter through the wrong script path and ran the broader Session snapshot corpus. Seventy-four cases included ambient UNDICI-EHPA stderr warnings and failed snapshot comparison. No snapshots were updated. The exact expected-output configuration with proxy variables removed passed one selected test and is the result recorded above.
+- A mistyped Rust test filter ran zero tests. The exact fully qualified Runtime Authority test then passed one test.
+- Two doc-sync attempts stalled while probing an optional local `/usr/local/bin/pwsh` installation. The successful run excluded that executable from the child PATH, treated optional PowerShell as unavailable, changed no product code, and passed all 32 gates.
+- Three attempts to inspect the locally built native window through automation failed with `-10005: codex app-server exited before returning a response`. No screenshot was captured, and packaged-WebView control behavior remains unverified.
+- Pull-request CI run 34144640990 failed only in Windows coverage after the real Codex product assertion completed: `packages/subagent/subagent-codex/tests/real-product.spec.ts` timed out in `afterEach` at Vitest's 10-second default while awaiting process-tree cleanup. Commit 077b96c9e704d45a82048c07fcb165d68a9a338d assigns that lifecycle hook the explicit 60-second budget used by its process-owning cases. The failed run is retained as the negative control and is not described as a passing retry.
+- Pull-request CI run 34147385017 confirmed that the Codex real-product teardown no longer failed, but Windows coverage still failed two independent baseline cases after 15,437 tests passed. Inspector encountered `EACCES` on an OS-reserved adjacent port, while the archived projection fixture observed its old `null` title after a five-second poll. Commit fbe8b947cdfce30275bdf2cb5af68677d060725a makes sequential Inspector selection cross only candidate-local `EADDRINUSE` and `EACCES` failures, and makes the fixture await the cache's durable-write promise before one read. This second run remains failed evidence. The required same-topology verification, CI run 34149979672, later passed all 19 jobs including Windows coverage.
+
+Evidence boundaries
+-------------------
+
+This record covers source, controlled browser, real Runtime Authority, assembled keyless output, and local release-candidate preparation. It does not cover a published DMG or updater, complete public downloads, Apple signing/notarization, a Finder installation, an actual update, visual packaged-WebView controls, enterprise proxy/CA traffic, OAuth, a real Codex provider request, or non-macOS products.
