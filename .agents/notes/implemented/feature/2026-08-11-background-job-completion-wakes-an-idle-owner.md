@@ -44,6 +44,12 @@ The bound exists because this chain is self-exciting in a way subagent settlemen
 
 `settle()` released waiters, marked the record settled, and published the visible-set change *after* running completion listeners. A reporter that opens a turn does so synchronously, so that order let a woken turn's `turn/start` land before the settlement it was reacting to was committed, and before any `onJobsChanged` observer had seen it. Announcing completion last makes the reporter the final observer of a settlement every other observer has already seen.
 
+### An active collection owns a racing completion
+
+`job_output` announces that it is collecting an exact owner and job at `tools/pre-execute`, before policy or the registry wait begins, and clears that claim at `tools/result`. A completion in that interval is deferred rather than injected immediately. After the last matching execution finishes, the reporter reads the registry's authoritative `reported` bit: a successful terminal read has claimed the result and needs no duplicate notice, while every denial or failure leaves the notice deliverable. This closes the scheduling window where settlement could run after the tool call became model-visible but before `JobRegistry.wait()` registered its waiter.
+
+The claim is counted per exact owner and job because two concurrent reads must not release a notice while either can still report the terminal state. A disappeared record means owner disposal already removed its reader, so the deferred notice is discarded with it.
+
 ## Alternatives considered
 
 **A producer-declared wake bit on `JobStart`,** matching Codex's `trigger_turn` and Kimi's `admission` enum. It is the better long-run shape — a `tail -f` stream and a two-hour build want different answers — but no current producer distinguishes them, and the repository requires a current owner and need for public surface. The natural trigger to add it is the first producer that wants one task to wake and another not to.
@@ -63,7 +69,7 @@ The bound exists because this chain is self-exciting in a way subagent settlemen
 - `JobSnapshot.reported` gains teardown as a fourth setter, documented at the Service Definition and in [the subsystem reference](../../../../docs/subsystems/jobs.md).
 - `settle()` announces completion after committing the record and publishing the visible-set change. Any listener relying on running before waiters were released or before `onJobsChanged` now runs after both.
 - The `tool-bash` real-composition test dropped its second user message: settlement alone carries the notice into a turn that collects the output. It asserts the durable outcome rather than a turn boundary, because whether the command outlives its turn is a race; the lane choice is pinned in `tool-jobs` unit tests instead.
-- Unit coverage pins idle wake, busy injection, quiet delivery, budget exhaustion, budget restore on user input, non-restore on plugin notices, and teardown silence.
+- Unit coverage pins idle wake, busy injection, quiet delivery, budget exhaustion, budget restore on user input, non-restore on plugin notices, teardown silence, and completion in the pre-execute-to-wait gap for both successful and denied reads.
 
 ### Accepted risks
 

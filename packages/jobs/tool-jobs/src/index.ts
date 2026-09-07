@@ -229,11 +229,84 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   const outputLimits = new WeakMap<ToolExecution, number>()
+  const activeOutputReads = new WeakMap<Agent, Map<JobId, number>>()
+  const outputReadByExecution = new WeakMap<ToolExecution, { id: JobId; owner: Agent }>()
+  const deferredCompletions = new WeakMap<Agent, Map<JobId, JobSnapshot>>()
+
+  const activeReadCount = (owner: Agent, id: JobId): number => activeOutputReads.get(owner)?.get(id) ?? 0
+
+  const beginOutputRead = (exec: ToolExecution): void => {
+    if (exec.name !== 'job_output' || exec.agent === undefined) return
+    const rawId = (exec.arguments as { job_id?: unknown } | null | undefined)?.job_id
+    if (typeof rawId !== 'string' || rawId.length === 0) return
+    const id = JobId(rawId)
+    const owner = exec.agent
+    const reads = activeOutputReads.get(owner) ?? new Map<JobId, number>()
+    reads.set(id, (reads.get(id) ?? 0) + 1)
+    activeOutputReads.set(owner, reads)
+    outputReadByExecution.set(exec, { id, owner })
+  }
+
+  const deliverCompletion = (snapshot: JobSnapshot, owner: Agent): void => {
+    const message = createUserMessage({
+      content: [{
+        type: 'text',
+        text: fitCompletionNotice(snapshot),
+      }],
+      source: {
+        kind: 'plugin',
+        plugin: 'tool-jobs',
+        form: 'notice',
+        summary: completionSummary(snapshot),
+      },
+    })
+    const spent = spentWakes.get(owner) ?? 0
+    if (delivery === 'wakeup' && owner.status === 'idle' && spent < wakeBudget) {
+      spentWakes.set(owner, spent + 1)
+      owner.followup(message)
+      return
+    }
+    owner.inject(message)
+  }
+
+  const finishOutputRead = (exec: ToolExecution): void => {
+    const read = outputReadByExecution.get(exec)
+    if (read === undefined) return
+    outputReadByExecution.delete(exec)
+    const reads = activeOutputReads.get(read.owner)
+    const remaining = (reads?.get(read.id) ?? 1) - 1
+    if (remaining > 0) {
+      reads?.set(read.id, remaining)
+      return
+    }
+    reads?.delete(read.id)
+    if (reads?.size === 0) activeOutputReads.delete(read.owner)
+
+    const completions = deferredCompletions.get(read.owner)
+    const completion = completions?.get(read.id)
+    if (completion === undefined) return
+    completions?.delete(read.id)
+    if (completions?.size === 0) deferredCompletions.delete(read.owner)
+
+    try {
+      if (ctx.jobs.get(read.id, read.owner).reported) return
+    } catch {
+      // Owner disposal removes the settled record and its unread notice.
+      return
+    }
+    deliverCompletion(completion, read.owner)
+  }
+
   ctx.on('tools/pre-execute', (exec, next) => {
     const maxBytes = visibleOutputLimit(ctx, exec)
     if (maxBytes !== undefined) outputLimits.set(exec, maxBytes)
+    beginOutputRead(exec)
     return next()
   }, { prepend: true })
+  ctx.on('tools/result', (exec) => {
+    finishOutputRead(exec)
+    return undefined
+  })
   const finalizeTaskContent: NonNullable<ToolDefinition['finalizeContent']> = (exec, result) => {
     const maxBytes = outputLimits.get(exec) ?? visibleOutputLimit(ctx, exec)
     outputLimits.delete(exec)
@@ -277,25 +350,13 @@ export function apply(ctx: Context, config: Config): void {
   // agents; this listener owns delivery, not the choice of whom to deliver to.
   ctx.jobs.onJobDone((snapshot, owner) => {
     if (snapshot.reported || owner === undefined) return
-    const message = createUserMessage({
-      content: [{
-        type: 'text',
-        text: fitCompletionNotice(snapshot),
-      }],
-      source: {
-        kind: 'plugin',
-        plugin: 'tool-jobs',
-        form: 'notice',
-        summary: completionSummary(snapshot),
-      },
-    })
-    const spent = spentWakes.get(owner) ?? 0
-    if (delivery === 'wakeup' && owner.status === 'idle' && spent < wakeBudget) {
-      spentWakes.set(owner, spent + 1)
-      owner.followup(message)
+    if (activeReadCount(owner, snapshot.id) > 0) {
+      const completions = deferredCompletions.get(owner) ?? new Map<JobId, JobSnapshot>()
+      completions.set(snapshot.id, snapshot)
+      deferredCompletions.set(owner, completions)
       return
     }
-    owner.inject(message)
+    deliverCompletion(snapshot, owner)
   })
 
   ctx.tools.register(defineTool({

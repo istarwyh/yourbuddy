@@ -37,7 +37,7 @@ kind: "package-reference"
 
 ### 完成通知
 
-任务完成时，拥有它的 agent 会收到会话内消息 `background job <id> (<kind>: <label>) finished [status: ...]. Read its output with job_output.`。繁忙的 agent 会在下一步收到注入的通知——inbox 尚有内容时轮次无法结束，因此同时结算的多个任务只花掉一步，而不是各占一轮。空闲的 agent 则被一个 follow-up 轮次唤醒，因为无人领取的通知等于模型永远不会知道的完成。kill 或针对终止任务的 read/wait 会把完成标为已报告并抑制重复通知；排空 owner 或服务的 teardown 取消同样如此。
+任务完成时，拥有它的 agent 会收到会话内消息 `background job <id> (<kind>: <label>) finished [status: ...]. Read its output with job_output.`。繁忙的 agent 会在下一步收到注入的通知——inbox 尚有内容时轮次无法结束，因此同时结算的多个任务只花掉一步，而不是各占一轮。空闲的 agent 则被一个 follow-up 轮次唤醒，因为无人领取的通知等于模型永远不会知道的完成。kill 或针对终止任务的 read/wait 会把完成标为已报告并抑制重复通知；排空 owner 或服务的 teardown 取消同样如此。如果任务完成与已经开始的 `job_output` 调用发生竞态，且此时注册表等待尚未开始，通知会延迟到该调用的最终结果：终态读取抑制重复通知，被拒绝或失败的调用则释放通知。
 
 唤醒是有界的：每个所有者最多可被唤醒 `maxConsecutiveWakes` 次，此后的通知降级为注入；领取任何用户撰写的消息都会恢复预算。设界是因为这条链会自激——被唤醒的一轮可能启动某个后台任务，而它的完成又会唤醒同一个所有者。`completionDelivery: quiet` 让空闲所有者也在注入通道上，确定性 transcript 需要的正是这一点。
 
@@ -91,7 +91,7 @@ kind: "package-reference"
 
 ### 通知投递通道
 
-`onJobDone` 跳过已报告或无所有者的任务。`wakeup` 投递在预算内为空闲所有者开启一轮，按确切 `Agent` 记录在 `WeakMap` 中；领取用户撰写的消息（`agent/inbox/claimed`）会重置该所有者的预算。繁忙的所有者——或超出预算的任何通知，以及 `quiet` 投递——改为注入 next-step inbox。teardown 结算抵达时已标记为 `reported`，因此释放永远不会花一次模型请求来宣布无人能读的通知。
+`onJobDone` 跳过已报告或无所有者的任务。当确切所有者正在对该任务执行 `job_output` 时，它会延迟未报告的完成，并在最后一个匹配的 `tools/result` 之后查询注册表：终态读取已经设置 `reported`，而策略拒绝或失败仍让通知可投递。`wakeup` 投递在预算内为空闲所有者开启一轮，按确切 `Agent` 记录在 `WeakMap` 中；领取用户撰写的消息（`agent/inbox/claimed`）会重置该所有者的预算。繁忙的所有者——或超出预算的任何通知，以及 `quiet` 投递——改为注入 next-step inbox。teardown 结算抵达时已标记为 `reported`，因此释放永远不会花一次模型请求来宣布无人能读的通知。
 
 </details>
 
