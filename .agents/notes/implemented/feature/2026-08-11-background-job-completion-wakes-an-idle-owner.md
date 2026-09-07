@@ -69,7 +69,7 @@ The claim is counted per exact owner and job because two concurrent reads must n
 - `JobSnapshot.reported` gains teardown as a fourth setter, documented at the Service Definition and in [the subsystem reference](../../../../docs/subsystems/jobs.md).
 - `settle()` announces completion after committing the record and publishing the visible-set change. Any listener relying on running before waiters were released or before `onJobsChanged` now runs after both.
 - The `tool-bash` real-composition test dropped its second user message: settlement alone carries the notice into a turn that collects the output. It asserts the durable outcome rather than a turn boundary, because whether the command outlives its turn is a race; the lane choice is pinned in `tool-jobs` unit tests instead.
-- Unit coverage pins idle wake, busy injection, quiet delivery, budget exhaustion, budget restore on user input, non-restore on plugin notices, teardown silence, and completion in the pre-execute-to-wait gap for both successful and denied reads.
+- Unit coverage pins idle wake, busy injection, quiet delivery, budget exhaustion, budget restore on user input, non-restore on plugin notices, teardown silence, completion in the pre-execute-to-wait gap for successful and denied reads, same-job and distinct-job concurrent reads, and owner disposal during a deferred completion.
 
 ### Accepted risks
 

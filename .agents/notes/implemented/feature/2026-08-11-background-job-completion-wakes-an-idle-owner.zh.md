@@ -69,7 +69,7 @@ Status: implemented
 - `JobSnapshot.reported` 新增 teardown 作为第四个置位方，记录在 Service Definition 与[子系统参考](../../../../docs/subsystems/jobs.zh.md)中。
 - `settle()` 在提交记录并发布可见集变更之后才宣布完成。任何依赖「在释放等待方之前或在 `onJobsChanged` 之前运行」的监听器现在都排在两者之后。
 - `tool-bash` 的 real-composition 测试去掉了第二条用户消息：仅靠结算就能把通知带入一个收集输出的轮次。它断言持久结果而非轮次边界，因为命令是否活得比它的轮次久是一场竞态；通道选择改由 `tool-jobs` 单元测试钉住。
-- 单元覆盖钉住：空闲唤醒、繁忙注入、quiet 交付、预算耗尽、用户输入恢复预算、插件通知不恢复预算、teardown 静默，以及成功与被拒读取在 pre-execute 到 wait 间隙内遇到完成时的行为。
+- 单元覆盖钉住：空闲唤醒、繁忙注入、quiet 交付、预算耗尽、用户输入恢复预算、插件通知不恢复预算、teardown 静默，以及成功读取、被拒读取、同一任务和不同任务的并发读取，以及所有者在延迟完成期间释放时的行为。
 
 ### 已接受的风险
 

@@ -229,22 +229,27 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   const outputLimits = new WeakMap<ToolExecution, number>()
-  const activeOutputReads = new WeakMap<Agent, Map<JobId, number>>()
-  const outputReadByExecution = new WeakMap<ToolExecution, { id: JobId; owner: Agent }>()
+  const activeOutputReads = new WeakMap<Agent, Map<JobId, Set<ToolExecution>>>()
+  const outputReadByExecution = new WeakMap<ToolExecution, {
+    executions: Set<ToolExecution>
+    id: JobId
+    owner: Agent
+    reads: Map<JobId, Set<ToolExecution>>
+  }>()
   const deferredCompletions = new WeakMap<Agent, Map<JobId, JobSnapshot>>()
 
-  const activeReadCount = (owner: Agent, id: JobId): number => activeOutputReads.get(owner)?.get(id) ?? 0
+  const activeReadCount = (owner: Agent, id: JobId): number => activeOutputReads.get(owner)?.get(id)?.size ?? 0
 
   const beginOutputRead = (exec: ToolExecution): void => {
     if (exec.name !== 'job_output' || exec.agent === undefined) return
-    const rawId = (exec.arguments as { job_id?: unknown } | null | undefined)?.job_id
-    if (typeof rawId !== 'string' || rawId.length === 0) return
-    const id = JobId(rawId)
+    const id = JobId((exec.arguments as { job_id: string }).job_id)
     const owner = exec.agent
-    const reads = activeOutputReads.get(owner) ?? new Map<JobId, number>()
-    reads.set(id, (reads.get(id) ?? 0) + 1)
+    const reads = activeOutputReads.get(owner) ?? new Map<JobId, Set<ToolExecution>>()
+    const executions = reads.get(id) ?? new Set<ToolExecution>()
+    executions.add(exec)
+    reads.set(id, executions)
     activeOutputReads.set(owner, reads)
-    outputReadByExecution.set(exec, { id, owner })
+    outputReadByExecution.set(exec, { executions, id, owner, reads })
   }
 
   const deliverCompletion = (snapshot: JobSnapshot, owner: Agent): void => {
@@ -273,14 +278,10 @@ export function apply(ctx: Context, config: Config): void {
     const read = outputReadByExecution.get(exec)
     if (read === undefined) return
     outputReadByExecution.delete(exec)
-    const reads = activeOutputReads.get(read.owner)
-    const remaining = (reads?.get(read.id) ?? 1) - 1
-    if (remaining > 0) {
-      reads?.set(read.id, remaining)
-      return
-    }
-    reads?.delete(read.id)
-    if (reads?.size === 0) activeOutputReads.delete(read.owner)
+    read.executions.delete(exec)
+    if (read.executions.size > 0) return
+    read.reads.delete(read.id)
+    if (read.reads.size === 0) activeOutputReads.delete(read.owner)
 
     const completions = deferredCompletions.get(read.owner)
     const completion = completions?.get(read.id)
