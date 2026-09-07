@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.3.4`；产品 Commit 为 [`d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d`](https://github.com/istarwyh/yourbuddy/commit/d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d)。
 - 产品渠道：YourBuddy 桌面应用，macOS Apple Silicon；无关 npm、Python 与 SDK 发布渠道不适用。
-- 归档状态：产品已在下述范围内完成核验；官网部署与可下载验证 ZIP 待完成。
+- 归档状态：在声明范围内完成；产品文件、官网交付、历史图片、运行时观察和可下载验证归档分别记录。
 - 证据身份：以 [Release 页面](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4)上的不可变图集链接所指文档 Commit 为准。该证据 Commit 与上方产品 Commit 分开记录；本文件不包含自身的 Commit Hash。
 - 证据图集：[screenshots](screenshots/) 中的七张历史图片。
-- 证据下载：尚未发布；发布人员检查最终资料包的解压内容后再上传附件。
+- 证据下载：[yourbuddy-v0.3.4-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.4/yourbuddy-v0.3.4-verification.zip)。
 
 ## 面向用户的发布说明
 
@@ -57,7 +57,7 @@ YourBuddy 0.3.4 允许支持此功能的插件把当前页面附到普通消息�
 | 桌面版本发布 | passed；最新正式 Release 为 0.3.4 | 产品 Commit `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d` | GitHub Release / macOS Apple Silicon | [桌面工作流](https://github.com/istarwyh/yourbuddy/actions/runs/34087526138)与[公开 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) |
 | 公开文件与更新签名 | passed | 完整下载的发布附件 | 五个公开附件；固定的发布公钥 | [独立产物记录](evidence/public-artifact-stage.json)：大小／摘要、3/3 校验和、稳定清单与 Minisign 密码学验证 |
 | 公开 App 身份、迁移运行时与隔离原生启动 | 在声明范围内 passed | 公开 DMG 中 App 的原样副本 | macOS arm64、内置 Node 22.19.0 / pnpm 11.7.0；隔离数据 | [App／运行时阶段记录](evidence/public-runtime-stage.json)与下方原生启动观察；可视窗口未验证 |
-| 双语官网与可下载验证归档 | not verified | 公开部署与可下载归档 | GitHub Pages 与 GitHub Release | 最终 Commit、工作流、线上页面与解压检查待补 |
+| 双语官网与可下载验证归档 | passed | 官网 Commit `e4514ce2d31d1481925c407e58dd220441c7ce42`；公开验证 ZIP | GitHub Pages 与 GitHub Release | [官网工作流 34129035171](https://github.com/istarwyh/yourbuddy/actions/runs/34129035171)、线上页面、Markdown／导航／搜索与本地／公开归档解压检查 |
 
 ## 场景：历史自动上下文源码验证
 
@@ -175,7 +175,7 @@ YourBuddy 0.3.4 允许支持此功能的插件把当前页面附到普通消息�
 
 [正式 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) 于 2026-09-07 14:01:40 UTC+08:00（`2026-09-07T06:01:40Z`）发布，既非 Draft 也非 Prerelease，含五个公开附件。[桌面工作流 34087526138](https://github.com/istarwyh/yourbuddy/actions/runs/34087526138) 已成功完成，GitHub 最新正式 Release 为 0.3.4。下方记录的独立完整下载、更新包密码学验签、公开运行时检查与隔离原生启动均已通过。
 
-验证 ZIP 尚未上传，0.3.4 官网更新尚未部署。双语更新内容已在未提交工作树中准备。资料包解压与官网部署／线上核验仍待完成，不改变已经完成的产品检查。文档后续提交完成部署与验证前，线上官网仍显示 0.3.3。
+双语 0.3.4 官网更新作为不可变产品 Tag 之后的独立文档提交发布，部署已成功。验证 ZIP 已附到正式 Release，保留发布记录、公开审计摘要和七张历史图片，没有替换安装包或移动 Tag。
 
 ## 场景：公开产物独立核验
 
@@ -194,7 +194,7 @@ YourBuddy 0.3.4 允许支持此功能的插件把当前页面附到普通消息�
 | `yourbuddy-0.3.4-macos-arm64.app.tar.gz.sig` | 408 | `042eb3e911883a255da27046ee4c9cf9ae9c13d8a96abbdacc957eb1c044008c` |
 | `yourbuddy-0.3.4-macos-arm64.dmg` | 568,345,182 | `3a8eeaf70602836280a48fe09f587f7ebf50c19366f9b209c0ede7054f0b4270` |
 
-这些检查通过，不代表原生启动、从旧安装版实际更新、Apple 签名／公证、真实模型质量或完整 Harbor PRD 已验收。上述结果需要各自的实际观察。
+这些产物检查本身不能证明原生启动；下方单独观察已经覆盖隔离启动。它们仍不能证明从旧安装版实际更新、Apple 签名／公证、真实模型质量或完整 Harbor PRD 已验收。
 
 ## 场景：公开 App 检查与隔离原生启动
 
@@ -217,22 +217,32 @@ YourBuddy 0.3.4 允许支持此功能的插件把当前页面附到普通消息�
 
 原样公开 App 使用隔离数据启动。启动日志记录认证就绪、DSH Web 就绪、打开主窗口、启动完成，以及桌面更新服务报告当前版本 0.3.4。对该准确 App 路径执行原生窗口检查时，工具以 `-10005: codex app-server exited before returning a response` 失败。日志中的打开窗口标记不是可视确认；没有生成正式原生截图。此次隔离启动不验证 Finder 安装、更新已有安装、OAuth、真实提供方行为，或在已发布 WebView 中执行历史合成 AI 旅程。
 
+## 场景：官网与验证归档交付
+
+- 状态：部署及 HTTP／内容检查 passed；不据此推断原生可视验收。
+- 日期与时间：2026-09-07 21:49 UTC+08:00，Asia/Shanghai。
+- 官网源码：文档 Commit `e4514ce2d31d1481925c407e58dd220441c7ce42`，与产品 Commit `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d` 及不可变产品 Tag 分开。
+- 部署：[YourBuddy 官网运行 34129035171](https://github.com/istarwyh/yourbuddy/actions/runs/34129035171) 的构建与部署均成功。
+- 实际观察：公开的[中文首页](https://istarwyh.github.io/yourbuddy/)、[英文首页](https://istarwyh.github.io/yourbuddy/en/)、[中文下载](https://istarwyh.github.io/yourbuddy/download/)、[英文下载](https://istarwyh.github.io/yourbuddy/en/download/)、[中文发布页](https://istarwyh.github.io/yourbuddy/releases/)和[英文发布页](https://istarwyh.github.io/yourbuddy/en/releases/)均返回 HTTP 200 并显示 0.3.4。两种语言的下载页包含准确 DMG 摘要和 Release 链接。中英文原始 Markdown、导航 JSON 和两个带 Hash 的搜索索引均返回 HTTP 200；JSON 可解析，搜索索引包含新版本与 Harbor 内容。
+- 归档：版本目录使用相对路径打包为 ZIP，在新目录中解压并检查 PNG 文件头、JSON 语法和 Markdown 本地链接。Release 附件上传后再匿名下载，与本地 ZIP 比较一致，并重复解压检查。
+- 边界：这些 HTTP 与静态内容检查不能替代原生 WebView 渲染、Finder 安装、更新包安装、OAuth 或真实提供方执行。
+
 ## 交付状态
 
 - 产品发布状态：已发布并在记录范围内完成独立核验：五个附件、3/3 校验和、更新签名、公开 App 身份、迁移运行时和隔离原生启动均通过。可视窗口检查与实际已有安装升级仍未验证。
-- 验证资料归档状态：部分完成；已记录七张历史源码图、源码／准备证据、公开产物／运行时观察，以及分离的产品／证据身份。Release 的不可变图集链接与可下载归档的解压检查仍待补。
-- 站点同步状态：待同步；工作树中已准备双语 0.3.4 内容，线上首页与下载继续保留 0.3.3。产品核验后记录站点 Commit、部署运行，以及中英文首页、下载页和发布页的实际观察。
-- 未验证范围：上述历史、仅源码与受控模型限制；原生可视窗口检查、Finder 安装、实际应用内更新、真实提供方、资料 ZIP 和线上 0.3.4 官网检查仍待完成。Apple Developer 签名／公证尚不存在，不是通过的检查。
+- 验证资料归档状态：完成；七张历史源码图、源码／准备证据、公开产物／运行时／原生观察及分离的产品／证据身份都在上方链接的可下载 ZIP 中。
+- 站点同步状态：已部署并核验上方六个双语公开页面、原始 Markdown、导航、搜索索引及发布／下载链接。
+- 未验证范围：上述历史、仅源码与受控模型限制；原生可视窗口检查、Finder 安装、实际应用内更新和真实提供方仍未验证。Apple Developer 签名／公证尚不存在，不是通过的检查。
 
 ## 交付清单
 
-- [ ] 发布标识与版本源符合既有桌面流程。
+- [x] 发布标识与版本源符合既有桌面流程。
 - [x] 用户说明回答改动、问题、使用位置与最短体验路径。
-- [x] 已说明兼容性、私有存储影响、恢复限制与安装待验证状态。
+- [x] 已说明兼容性、私有存储影响、恢复限制与安装验证边界。
 - [x] 历史证据记录日期、源码版本、环境、模型类型、步骤、结果与限制。
 - [x] 已检查七张截图和复制的机器记录，并区分历史证据与通用插件证据。
 - [x] 双语配对、相对链接、图片及本地文档和官网检查通过。
-- [ ] 公开发布页链接不可变证据 Commit 与已检查的可下载归档。
-- [ ] 已独立记录公开安装包、校验和、更新归档/签名/清单及安装后行为。
-- [ ] 两种语言的官网只展示已核验的可用状态，并完成线上下载与证据检查。
+- [x] 公开发布页链接不可变证据 Commit 与已检查的可下载归档。
+- [x] 已独立记录公开安装包、校验和、更新归档／签名／清单及隔离启动行为。
+- [x] 两种语言的官网只展示已核验的可用状态，并完成线上下载与证据检查。
 - [x] 分别报告产品、归档、官网与未验证范围，不移动公开 Tag 或替换安装包。

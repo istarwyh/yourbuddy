@@ -6,10 +6,10 @@ This archive records the YourBuddy 0.3.4 desktop release. Its seven source-valid
 
 - Release identifier: `yourbuddy-v0.3.4`; product commit [`d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d`](https://github.com/istarwyh/yourbuddy/commit/d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d).
 - Product channel: YourBuddy desktop, macOS Apple Silicon; unrelated npm, Python, and SDK release channels are not applicable.
-- Archive state: product verification is complete within the limits below; website deployment and the downloadable verification ZIP are pending.
+- Archive state: complete within the stated limits; product files, website delivery, historical images, runtime observations, and the downloadable verification archive are recorded separately.
 - Evidence identity: the immutable gallery link on the [Release page](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) identifies the documentation commit. That evidence commit is separate from the product commit above; this file does not contain its own commit hash.
 - Evidence gallery: seven historical images in [screenshots](screenshots/).
-- Evidence download: not published; the release operator will attach the final verification archive after checking its extracted contents.
+- Evidence download: [yourbuddy-v0.3.4-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.4/yourbuddy-v0.3.4-verification.zip).
 
 ## User release notes
 
@@ -57,7 +57,7 @@ New Harbor references persist identity and revision metadata under the original 
 | Desktop release publication | passed; latest formal release is 0.3.4 | product commit `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d` | GitHub Release / macOS Apple Silicon | [Desktop workflow](https://github.com/istarwyh/yourbuddy/actions/runs/34087526138) and [public release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) |
 | Public files and updater signature | passed | complete downloaded release assets | five public assets; pinned release public key | [Independent artifact record](evidence/public-artifact-stage.json): sizes/digests, 3/3 checksums, stable manifest, and cryptographic Minisign verification |
 | Public App identity, relocated runtime, and isolated native startup | passed within stated limits | unchanged copy of the published DMG App | macOS arm64, bundled Node 22.19.0 / pnpm 11.7.0; isolated data | [App/runtime stage record](evidence/public-runtime-stage.json) and native-startup observations below; visual window not verified |
-| Bilingual website and downloadable verification archive | not verified | public deployment and downloadable archive | GitHub Pages and GitHub Release | Final commit, workflow, live pages, and extracted archive checks pending |
+| Bilingual website and downloadable verification archive | passed | website commit `e4514ce2d31d1481925c407e58dd220441c7ce42`; public verification ZIP | GitHub Pages and GitHub Release | [Website workflow 34129035171](https://github.com/istarwyh/yourbuddy/actions/runs/34129035171), live pages, Markdown/navigation/search checks, and local/public archive extraction checks |
 
 ## Scenario: Historical automatic-context source validation
 
@@ -175,7 +175,7 @@ The separate [upstream Cloudflare preview](https://github.com/istarwyh/yourbuddy
 
 The [formal GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) was published at 2026-09-07 14:01:40 UTC+08:00 (`2026-09-07T06:01:40Z`), with neither draft nor prerelease status and five public assets. [Desktop workflow 34087526138](https://github.com/istarwyh/yourbuddy/actions/runs/34087526138) completed successfully, and GitHub's latest formal Release is 0.3.4. Independent complete downloads, cryptographic updater verification, public runtime checks, and isolated native startup passed as recorded below.
 
-The verification ZIP has not been uploaded and the 0.3.4 website update has not been deployed. Bilingual promotion content is prepared in the uncommitted working tree. Archive extraction and website deployment/live checks remain outstanding and do not change the completed product checks. The live website still shows 0.3.3 until the documentation follow-up is deployed and verified.
+The bilingual 0.3.4 website update was committed separately from the immutable product tag and deployed successfully. The verification ZIP is attached to the formal Release and preserves the release record, public-audit summaries, and seven historical images without replacing any installer or moving the tag.
 
 ## Scenario: Independent public-artifact verification
 
@@ -194,7 +194,7 @@ The verification ZIP has not been uploaded and the 0.3.4 website update has not 
 | `yourbuddy-0.3.4-macos-arm64.app.tar.gz.sig` | 408 | `042eb3e911883a255da27046ee4c9cf9ae9c13d8a96abbdacc957eb1c044008c` |
 | `yourbuddy-0.3.4-macos-arm64.dmg` | 568,345,182 | `3a8eeaf70602836280a48fe09f587f7ebf50c19366f9b209c0ede7054f0b4270` |
 
-Passing these checks does not prove native startup, a completed update from an older installation, Apple signing/notarization, real model quality, or the full Harbor PRD. Those outcomes require their own observations.
+These artifact checks alone did not prove native startup; the separate observation below did. They still do not prove a completed update from an older installation, Apple signing/notarization, real model quality, or the full Harbor PRD.
 
 ## Scenario: Public App inspection and isolated native startup
 
@@ -217,22 +217,32 @@ All 17 changed source/CSS files checked inside the public bundle matched the for
 
 The unchanged public App started with isolated data. Its boot log recorded authenticated readiness, DSH Web readiness, opening the main window, boot completion, and the desktop update service reporting current version 0.3.4. The native-window inspection attempt for that exact App path failed with `-10005: codex app-server exited before returning a response`. The log's window-opening marker is not visual confirmation; no formal native screenshot was created. This isolated launch does not verify Finder installation, updating an existing installation, OAuth, real-provider behavior, or the historical synthetic AI journey inside the published WebView.
 
+## Scenario: Website and evidence-archive delivery
+
+- Status: passed for deployment and HTTP/content checks; no native visual acceptance is inferred.
+- Date and time: 2026-09-07 21:49 UTC+08:00, Asia/Shanghai.
+- Website source: documentation commit `e4514ce2d31d1481925c407e58dd220441c7ce42`, separate from product commit `d4c3b8f08d4fb55ed0a3bf9d3930d60cf759813d` and the immutable product tag.
+- Deployment: [YourBuddy website run 34129035171](https://github.com/istarwyh/yourbuddy/actions/runs/34129035171) completed both build and deploy successfully.
+- Observed result: the public [Chinese home](https://istarwyh.github.io/yourbuddy/), [English home](https://istarwyh.github.io/yourbuddy/en/), [Chinese download](https://istarwyh.github.io/yourbuddy/download/), [English download](https://istarwyh.github.io/yourbuddy/en/download/), [Chinese releases](https://istarwyh.github.io/yourbuddy/releases/), and [English releases](https://istarwyh.github.io/yourbuddy/en/releases/) returned HTTP 200 and displayed 0.3.4. Both download pages exposed the exact DMG digest and Release link. Chinese/English raw Markdown, navigation JSON, and both hashed search indexes returned HTTP 200; JSON parsed and the search indexes contained the new version and Harbor material.
+- Archive: the version directory was zipped with relative paths, extracted into a fresh directory, and checked for readable PNG headers, JSON syntax, and local Markdown links. The uploaded Release asset was then downloaded anonymously and checked against the local ZIP before extraction checks were repeated.
+- Boundary: these HTTP and static-content checks do not substitute for native WebView rendering, Finder installation, updater installation, OAuth, or real-provider execution.
+
 ## Delivery status
 
 - Product publication status: published and independently verified within the recorded scope: all five assets, 3/3 checksums, updater signature, public App identity, relocated runtime, and isolated native startup passed. Visual window inspection and an actual installed-version upgrade remain unverified.
-- Verification archive status: partial; seven historical source images, source/preparation evidence, public artifact/runtime observations, and separate product/evidence identities are recorded. The Release's immutable gallery link and an extracted downloadable archive remain outstanding.
-- Website synchronization status: pending; 0.3.4 content is prepared in both languages in the working tree, while the live homepage and download retain 0.3.3. After product verification, record the site commit, deployment run, and observed Chinese and English home, download, and release pages.
-- Unverified scope: historical/source-only and controlled-model limits above; visual native-window inspection, Finder installation, actual in-app updating, real providers, archive ZIP, and live 0.3.4 website checks remain pending. Apple Developer signing/notarization is absent, not a passed check.
+- Verification archive status: complete; seven historical source images, source/preparation evidence, public artifact/runtime/native observations, and separate product/evidence identities are recorded in the downloadable ZIP linked above.
+- Website synchronization status: deployed and verified for the six bilingual public pages, raw Markdown, navigation, search indexes, and release/download links recorded above.
+- Unverified scope: historical/source-only and controlled-model limits above; visual native-window inspection, Finder installation, actual in-app updating, and real providers remain unverified. Apple Developer signing/notarization is absent, not a passed check.
 
 ## Delivery checklist
 
-- [ ] Release identifier and version sources match the existing desktop procedure.
+- [x] Release identifier and version sources match the existing desktop procedure.
 - [x] User notes explain the change, problem, location, and shortest journey.
-- [x] Compatibility, private-storage effects, recovery limits, and pending installation are stated.
+- [x] Compatibility, private-storage effects, recovery limits, and installation limits are stated.
 - [x] Historical evidence records its date, source versions, environment, model type, steps, results, and limits.
 - [x] The seven screenshots and copied machine record were inspected; historical and generic-plugin evidence are distinguished.
 - [x] Bilingual pairs, relative links, images, and local documentation and website checks pass.
-- [ ] The public release links the immutable evidence commit and an inspected downloadable archive.
-- [ ] Public installer, checksums, updater archive/signature/manifest, and installed behavior are independently recorded.
-- [ ] Both language versions of the website show only verified availability and pass live download/evidence checks.
+- [x] The public release links the immutable evidence commit and an inspected downloadable archive.
+- [x] Public installer, checksums, updater archive/signature/manifest, and isolated startup behavior are independently recorded.
+- [x] Both language versions of the website show only verified availability and pass live download/evidence checks.
 - [x] Product, archive, website, and unverified scope are reported separately without moving public tags or replacing installers.
