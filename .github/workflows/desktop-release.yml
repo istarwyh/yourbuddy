@@ -107,6 +107,12 @@ jobs:
         run: |
           pnpm exec vitest run apps/cli/tests/args.spec.ts
           pnpm run verify-desktop-shell-permissions
+          node_archive="$(find apps/desktop-tauri/bundled/toolchain -maxdepth 1 -type f -name 'node-*-darwin-arm64.tar.gz' -print -quit)"
+          test -n "$node_archive"
+          node_root="$RUNNER_TEMP/yourbuddy-node-preflight"
+          mkdir -p "$node_root"
+          tar -xzf "$node_archive" -C "$node_root" --strip-components=1
+          YOURBUDDY_NODE_BINARY="$node_root/bin/node" node --test apps/desktop-tauri/scripts/node-extra-ca.test.mjs
           cargo test --locked --release --target "$RUST_TARGET" --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml runtime::supervisor::tests
           cargo test --locked --release --target "$RUST_TARGET" --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml desktop_shell::tests::
 

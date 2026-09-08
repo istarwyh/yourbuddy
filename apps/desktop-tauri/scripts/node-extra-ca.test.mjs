@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs'
+import { createServer as createProxyServer } from 'node:http'
 import { createServer } from 'node:https'
+import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 const TEST_CA_PEM = `-----BEGIN CERTIFICATE-----
 MIIDHzCCAgegAwIBAgIUdxu5JjZXYXvUW+LuCAd0wISut78wDQYJKoZIhvcNAQEL
@@ -78,10 +81,20 @@ xoIyRXsekY4JRZF4LNfgZO0=
 -----END PRIVATE KEY-----
 `
 
-const CHILD_SOURCE = `
+const REPOSITORY_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
+const HARNESS_ROOT = process.env.YOURBUDDY_HARNESS_ROOT || REPOSITORY_ROOT
+const CLI_BIN = join(HARNESS_ROOT, 'apps', 'cli', 'lib', 'bin.js')
+const NODE_BINARY = process.env.YOURBUDDY_NODE_BINARY || process.execPath
+const RESULT_PREFIX = 'YOURBUDDY_PROXY_TEST_RESULT '
+
+const HOST_PROBE_SOURCE = `
+export const name = 'yourbuddy-enterprise-ca-host-probe'
+
+export async function apply() {
+  let result
 try {
-  const response = await fetch(process.argv[1])
-  console.log(response.status)
+    const response = await fetch(process.env.YOURBUDDY_PROXY_TEST_URL)
+    result = { ok: true, status: response.status, errorCodes: [] }
 } catch (error) {
   let current = error
   const codes = []
@@ -89,59 +102,132 @@ try {
     if (typeof current.code === 'string') codes.push(current.code)
     current = current.cause
   }
-  console.error(codes.join(','))
-  process.exitCode = 1
+    result = { ok: false, status: 0, errorCodes: codes }
+}
+  process.stdout.write(${JSON.stringify(RESULT_PREFIX)} + JSON.stringify(result) + '\\n')
 }
 `
 
-function runNode(url, caPath) {
+function runHost(url, proxyUrl, caPath, workspace, suffix) {
   return new Promise((resolve, reject) => {
-    const environment = { ...process.env, NODE_OPTIONS: '--use-system-ca' }
+    const plugin = join(workspace, 'host-probe.mjs')
+    const overlay = join(workspace, 'host-probe.patch.yml')
+    writeFileSync(plugin, HOST_PROBE_SOURCE)
+    writeFileSync(overlay, `- insert:\n    - id: yourbuddy-enterprise-ca-host-probe\n      name: ${JSON.stringify(plugin)}\n`)
+    const environment = {
+      ...process.env,
+      DSH_HOME: join(workspace, `dsh-home-${suffix}`),
+      DSH_TELEMETRY_DISABLED: '1',
+      HTTP_PROXY: proxyUrl,
+      HTTPS_PROXY: proxyUrl,
+      http_proxy: proxyUrl,
+      https_proxy: proxyUrl,
+      NO_PROXY: '127.0.0.1',
+      no_proxy: '127.0.0.1',
+      NODE_OPTIONS: '--use-system-ca',
+      NODE_USE_ENV_PROXY: '1',
+      YOURBUDDY_PROXY_TEST_URL: url,
+    }
     for (const name of [
-      'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY',
-      'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy',
-      'NODE_USE_ENV_PROXY', 'NODE_EXTRA_CA_CERTS',
+      'ALL_PROXY', 'all_proxy', 'NODE_EXTRA_CA_CERTS',
     ]) delete environment[name]
     if (caPath !== undefined) environment.NODE_EXTRA_CA_CERTS = caPath
-    const child = spawn(process.execPath, ['--input-type=module', '--eval', CHILD_SOURCE, url], {
+    const child = spawn(NODE_BINARY, [CLI_BIN, 'web', '--patch', overlay,
+      '--no-open', '--host', '127.0.0.1', '--port', '0'], {
       env: environment,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     let stdout = ''
     let stderr = ''
-    child.stdout.setEncoding('utf8').on('data', chunk => { stdout += chunk })
-    child.stderr.setEncoding('utf8').on('data', chunk => { stderr += chunk })
-    child.once('error', reject)
-    child.once('close', code => { resolve({ code, stderr, stdout }) })
+    let result
+    const timeout = setTimeout(() => {
+      child.kill('SIGKILL')
+      reject(new Error(`Node Host probe timed out\nstdout:\n${stdout}\nstderr:\n${stderr}`))
+    }, 60_000)
+    child.stdout.setEncoding('utf8').on('data', chunk => {
+      stdout = `${stdout}${chunk}`.slice(-64_000)
+      const line = stdout.split('\n').find(value => value.startsWith(RESULT_PREFIX))
+      if (line === undefined || result !== undefined) return
+      result = JSON.parse(line.slice(RESULT_PREFIX.length))
+      child.kill('SIGTERM')
+    })
+    child.stderr.setEncoding('utf8').on('data', chunk => {
+      stderr = `${stderr}${chunk}`.slice(-64_000)
+    })
+    child.once('error', error => {
+      clearTimeout(timeout)
+      reject(error)
+    })
+    child.once('close', code => {
+      clearTimeout(timeout)
+      if (result === undefined) {
+        reject(new Error(`Node Host exited before its probe completed (code=${code})\nstdout:\n${stdout}\nstderr:\n${stderr}`))
+        return
+      }
+      resolve({ code, result, stderr, stdout })
+    })
   })
 }
 
-test('NODE_EXTRA_CA_CERTS is effective only when supplied before Node Host startup', async t => {
+function closeServer(server) {
+  return new Promise((resolve, reject) => {
+    server.close(error => error === undefined ? resolve() : reject(error))
+  })
+}
+
+test('actual Node Host uses HTTP CONNECT and startup CA injection together', async t => {
   const workspace = mkdtempSync(join(tmpdir(), 'yourbuddy-node-extra-ca-'))
   const caPath = join(workspace, 'company-root.pem')
   writeFileSync(caPath, TEST_CA_PEM)
-  const server = createServer({ cert: TEST_SERVER_CERTIFICATE, key: TEST_SERVER_KEY }, (_request, response) => {
+  const target = createServer({ cert: TEST_SERVER_CERTIFICATE, key: TEST_SERVER_KEY }, (_request, response) => {
     response.writeHead(204)
     response.end()
   })
-  t.after(() => {
-    server.close()
+  const authorities = []
+  let targetPort = 0
+  const proxy = createProxyServer()
+  proxy.on('connect', (request, client, head) => {
+    authorities.push(request.url ?? '')
+    const upstream = connect(targetPort, '127.0.0.1', () => {
+      client.write('HTTP/1.1 200 Connection Established\r\n\r\n')
+      if (head.length > 0) upstream.write(head)
+      client.pipe(upstream)
+      upstream.pipe(client)
+    })
+    upstream.once('error', () => { client.destroy() })
+  })
+  t.after(async () => {
+    await Promise.all([closeServer(proxy), closeServer(target)])
     rmSync(workspace, { force: true, recursive: true })
   })
   await new Promise((resolve, reject) => {
-    server.once('error', reject)
-    server.listen(0, '127.0.0.1', resolve)
+    target.once('error', reject)
+    target.listen(0, '127.0.0.1', resolve)
   })
-  const address = server.address()
+  await new Promise((resolve, reject) => {
+    proxy.once('error', reject)
+    proxy.listen(0, '127.0.0.1', resolve)
+  })
+  const address = target.address()
   assert.notEqual(address, null)
   assert.equal(typeof address, 'object')
+  targetPort = address.port
   const url = `https://localhost:${address.port}/`
+  const proxyAddress = proxy.address()
+  assert.notEqual(proxyAddress, null)
+  assert.equal(typeof proxyAddress, 'object')
+  const proxyUrl = `http://127.0.0.1:${proxyAddress.port}`
 
-  const withoutCa = await runNode(url)
-  assert.notEqual(withoutCa.code, 0)
-  assert.match(withoutCa.stderr, /UNABLE_TO_VERIFY_LEAF_SIGNATURE|SELF_SIGNED_CERT_IN_CHAIN/u)
+  const withoutCa = await runHost(url, proxyUrl, undefined, workspace, 'without-ca')
+  assert.equal(withoutCa.code, 0, withoutCa.stderr)
+  assert.equal(withoutCa.result.ok, false)
+  assert.match(withoutCa.result.errorCodes.join(','), /UNABLE_TO_VERIFY_LEAF_SIGNATURE|SELF_SIGNED_CERT_IN_CHAIN/u)
 
-  const withCa = await runNode(url, caPath)
+  const withCa = await runHost(url, proxyUrl, caPath, workspace, 'with-ca')
   assert.equal(withCa.code, 0, withCa.stderr)
-  assert.equal(withCa.stdout.trim(), '204')
+  assert.deepEqual(withCa.result, { ok: true, status: 204, errorCodes: [] })
+  assert.deepEqual(authorities, [
+    `localhost:${address.port}`,
+    `localhost:${address.port}`,
+  ])
 })

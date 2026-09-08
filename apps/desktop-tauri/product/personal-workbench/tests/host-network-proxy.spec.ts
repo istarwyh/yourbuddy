@@ -63,6 +63,7 @@ describe('Personal Workbench Host network proxy diagnostic', () => {
       {
         HTTPS_PROXY: 'http://proxy-user:proxy-password@127.0.0.1:7890',
         YOURBUDDY_NETWORK_PROXY_MODE: 'custom',
+        YOURBUDDY_NETWORK_CA_SOURCE: 'environment',
         NODE_EXTRA_CA_CERTS: '/private/company-root.pem',
       },
       true,
@@ -73,7 +74,7 @@ describe('Personal Workbench Host network proxy diagnostic', () => {
       proxied: true,
       errorCode: '',
       proxyMode: 'custom',
-      caSource: 'custom',
+      caSource: 'environment',
     })
     expect(JSON.stringify(result)).not.toContain('proxy-user')
     expect(JSON.stringify(result)).not.toContain('7890')

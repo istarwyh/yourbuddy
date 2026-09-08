@@ -20,7 +20,8 @@ function activePolicy(environment) {
   const proxyMode = ["direct", "system", "custom"].includes(
     environment.YOURBUDDY_NETWORK_PROXY_MODE ?? ""
   ) ? environment.YOURBUDDY_NETWORK_PROXY_MODE : "unknown";
-  const caSource = environment.NODE_EXTRA_CA_CERTS ? "custom" : environment.NODE_OPTIONS?.split(/\s+/u).includes("--use-system-ca") === true ? "system" : "unknown";
+  const managedCaSource = environment.YOURBUDDY_NETWORK_CA_SOURCE;
+  const caSource = ["system", "environment", "custom"].includes(managedCaSource ?? "") ? managedCaSource : environment.NODE_EXTRA_CA_CERTS ? "custom" : environment.NODE_OPTIONS?.split(/\s+/u).includes("--use-system-ca") === true ? "system" : "unknown";
   return { proxyMode, caSource };
 }
 function safeErrorCode(error) {

@@ -4,7 +4,7 @@
 export const DESKTOP_NETWORK_PROXY_CHANNEL = 'yourbuddy.desktop.network-proxy'
 
 /** Current browser-to-shell protocol version. */
-export const DESKTOP_NETWORK_PROXY_VERSION = 3
+export const DESKTOP_NETWORK_PROXY_VERSION = 4
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 const DEFAULT_HANDSHAKE_TIMEOUT_MS = 5_000
@@ -16,7 +16,7 @@ const MAX_CA_CERTIFICATE_PATH_LENGTH = 4_096
 export type NetworkProxyMode = 'direct' | 'system' | 'custom'
 
 /** Trust source reported by a native or Host reachability test. */
-export type NetworkCaSource = 'system' | 'custom' | 'unknown'
+export type NetworkCaSource = 'system' | 'environment' | 'custom' | 'unknown'
 
 /** Persisted desktop proxy preferences. */
 export interface NetworkProxySettings {
@@ -28,7 +28,9 @@ export interface NetworkProxySettings {
 }
 
 /** Browser-safe effective proxy state. */
-export interface EffectiveNetworkProxy extends NetworkProxySettings {}
+export interface EffectiveNetworkProxy extends NetworkProxySettings {
+  caSource: Exclude<NetworkCaSource, 'unknown'>
+}
 
 /** Current macOS System Configuration detection. */
 export interface SystemNetworkProxy {
@@ -59,8 +61,21 @@ export interface NetworkProxyTestResult {
   caSource: NetworkCaSource
 }
 
+/** Native and fresh managed-Node results for one unsaved selection. */
+export interface NetworkProxyPreflightResult {
+  native: NetworkProxyTestResult
+  node: NetworkProxyTestResult
+}
+
+/** Save result that persists only when both candidate paths are reachable. */
+export interface NetworkProxySaveResult {
+  saved: boolean
+  snapshot?: NetworkProxySnapshot
+  preflight: NetworkProxyPreflightResult
+}
+
 type DesktopNetworkProxyAction = 'get' | 'test' | 'save' | 'select-ca'
-type DesktopNetworkProxyValue = NetworkProxySnapshot | NetworkProxyTestResult | string | null
+type DesktopNetworkProxyValue = NetworkProxySnapshot | NetworkProxyPreflightResult | NetworkProxySaveResult | string | null
 
 interface DesktopNetworkProxyAccepted {
   channel: typeof DESKTOP_NETWORK_PROXY_CHANNEL
@@ -129,7 +144,18 @@ export function readNetworkProxySettings(value: unknown): NetworkProxySettings |
 }
 
 function readEffectiveProxy(value: unknown): EffectiveNetworkProxy | undefined {
-  return readNetworkProxySettings(value)
+  if (!isRecord(value)
+    || !hasExactKeys(value, 'caCertificatePath,caSource,httpProxy,httpsProxy,mode,noProxy')
+    || !['system', 'environment', 'custom'].includes(String(value.caSource))) return undefined
+  const settings = {
+    mode: value.mode,
+    httpProxy: value.httpProxy,
+    httpsProxy: value.httpsProxy,
+    noProxy: value.noProxy,
+    caCertificatePath: value.caCertificatePath,
+  }
+  if (readNetworkProxySettings(settings) === undefined) return undefined
+  return value as unknown as EffectiveNetworkProxy
 }
 
 function readSystemProxy(value: unknown): SystemNetworkProxy | undefined {
@@ -187,10 +213,32 @@ function readTestResult(value: unknown): NetworkProxyTestResult | undefined {
     || typeof value.errorCode !== 'string'
     || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode)
     || !['direct', 'system', 'custom', 'unknown'].includes(String(value.proxyMode))
-    || !['system', 'custom', 'unknown'].includes(String(value.caSource))
+    || !['system', 'environment', 'custom', 'unknown'].includes(String(value.caSource))
     || (value.ok && (Number(value.status) < 100 || value.errorCode !== ''))
     || (!value.ok && value.errorCode === '')) return undefined
   return value as unknown as NetworkProxyTestResult
+}
+
+function readPreflightResult(value: unknown): NetworkProxyPreflightResult | undefined {
+  if (!isRecord(value)
+    || !hasExactKeys(value, 'native,node')) return undefined
+  const native = readTestResult(value.native)
+  const node = readTestResult(value.node)
+  if (native === undefined || node === undefined) return undefined
+  return { native, node }
+}
+
+function readSaveResult(value: unknown): NetworkProxySaveResult | undefined {
+  if (!isRecord(value)) return undefined
+  const keys = Object.keys(value).sort().join(',')
+  if (keys !== 'preflight,saved,snapshot' && keys !== 'preflight,saved') return undefined
+  if (typeof value.saved !== 'boolean') return undefined
+  const preflight = readPreflightResult(value.preflight)
+  if (preflight === undefined) return undefined
+  const snapshot = value.snapshot === undefined ? undefined : readSnapshot(value.snapshot)
+  if (value.saved !== (snapshot !== undefined)
+    || value.saved !== (preflight.native.ok && preflight.node.ok)) return undefined
+  return { saved: value.saved, ...(snapshot === undefined ? {} : { snapshot }), preflight }
 }
 
 /** Validate and correlate one network-proxy response. */
@@ -218,7 +266,11 @@ export function readDesktopNetworkProxyResponse(
           || value.value.length > MAX_CA_CERTIFICATE_PATH_LENGTH)) return undefined
     }
     else {
-      const parsed = action === 'test' ? readTestResult(value.value) : readSnapshot(value.value)
+      const parsed = action === 'test'
+        ? readPreflightResult(value.value)
+        : action === 'save'
+          ? readSaveResult(value.value)
+          : readSnapshot(value.value)
       if (parsed === undefined) return undefined
     }
   }
@@ -293,16 +345,16 @@ export async function requestDesktopNetworkProxySnapshot(
 export async function requestDesktopNetworkProxyTest(
   settings: NetworkProxySettings,
   options: DesktopNetworkProxyRequestOptions = {},
-): Promise<NetworkProxyTestResult> {
-  return await requestDesktopNetworkProxy('test', settings, options) as NetworkProxyTestResult
+): Promise<NetworkProxyPreflightResult> {
+  return await requestDesktopNetworkProxy('test', settings, options) as NetworkProxyPreflightResult
 }
 
 /** Persist one candidate selection for the next application process. */
 export async function requestDesktopNetworkProxySave(
   settings: NetworkProxySettings,
   options: DesktopNetworkProxyRequestOptions = {},
-): Promise<NetworkProxySnapshot> {
-  return await requestDesktopNetworkProxy('save', settings, options) as NetworkProxySnapshot
+): Promise<NetworkProxySaveResult> {
+  return await requestDesktopNetworkProxy('save', settings, options) as NetworkProxySaveResult
 }
 
 /** Open the native CA certificate picker and return the validated absolute path. */

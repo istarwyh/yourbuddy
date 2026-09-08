@@ -13,6 +13,7 @@ import {
   type NetworkProxyMode,
   type NetworkProxySettings,
   type NetworkProxySnapshot,
+  type NetworkProxyPreflightResult,
   type NetworkProxyTestResult,
 } from './desktop-network-proxy.ts'
 import { requestDesktopRestart } from './desktop-lifecycle.ts'
@@ -75,20 +76,26 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
     setStatus('testing')
     setDetail('')
     try {
-      const [native, host] = await Promise.all([
+      const [preflight, host] = await Promise.all([
         requestDesktopNetworkProxyTest(draft),
         requestHostNetworkProxyTest(),
       ])
-      const pending = native.proxyMode === host.proxyMode && native.caSource === host.caSource
+      const pending = preflight.node.proxyMode === host.proxyMode
+        && preflight.node.caSource === host.caSource
         ? ''
         : ` ${t('proxy.test.pending-restart')}`
-      const certificateHint = [native.errorCode, host.errorCode].some(isCertificateErrorCode)
+      const certificateHint = [
+        preflight.native.errorCode,
+        preflight.node.errorCode,
+        host.errorCode,
+      ].some(isCertificateErrorCode)
         ? ` ${t('proxy.test.certificate-hint')}`
         : ''
       setDetail(t('proxy.test.result')
-        .replace('{native}', describeTestResult(native, t))
+        .replace('{native}', describeTestResult(preflight.native, t))
+        .replace('{node}', describeTestResult(preflight.node, t))
         .replace('{host}', describeTestResult(host, t)) + pending + certificateHint)
-      setStatus(native.ok && host.ok ? 'tested' : 'test-failed')
+      setStatus(preflight.native.ok && preflight.node.ok && host.ok ? 'tested' : 'test-failed')
     }
     catch (error) {
       setDetail(errorMessage(error))
@@ -100,8 +107,13 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
     setStatus('saving')
     setDetail('')
     try {
-      const saved = await requestDesktopNetworkProxySave(draft)
-      setSnapshot(saved)
+      const result = await requestDesktopNetworkProxySave(draft)
+      if (!result.saved || result.snapshot === undefined) {
+        setDetail(describeFailedPreflight(result.preflight, t))
+        setStatus('test-failed')
+        return
+      }
+      setSnapshot(result.snapshot)
       setStatus('restarting')
       await requestDesktopRestart()
     }
@@ -237,7 +249,12 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
           <div className="dpw-proxy-panel dpw-field-wide">
             <div className="dpw-label">{t('proxy.ca.label')}</div>
             <div className="dpw-code dpw-ca-path">
-              {draft.caCertificatePath || t('proxy.ca.system-only')}
+              {draft.caCertificatePath || (
+                snapshot?.settings.caCertificatePath === ''
+                  && snapshot.effective?.caSource === 'environment'
+                  ? t('proxy.ca.environment')
+                  : t('proxy.ca.system-only')
+              )}
             </div>
             <div className="dpw-hint">{t('proxy.ca.hint')}</div>
             <div className="dpw-actions">
@@ -304,6 +321,19 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
   )
 }
 
+function describeFailedPreflight(
+  result: NetworkProxyPreflightResult,
+  t: NetworkProxyRowProps['t'],
+): string {
+  const certificateHint = [result.native.errorCode, result.node.errorCode]
+    .some(isCertificateErrorCode)
+    ? ` ${t('proxy.test.certificate-hint')}`
+    : ''
+  return t('proxy.save.preflight-failed')
+    .replace('{native}', describeTestResult(result.native, t))
+    .replace('{node}', describeTestResult(result.node, t)) + certificateHint
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -323,6 +353,7 @@ function describeTestResult(
   }
   const caKeys: Record<NetworkProxyTestResult['caSource'], Parameters<typeof t>[0]> = {
     system: 'proxy.test.ca.system',
+    environment: 'proxy.test.ca.environment',
     custom: 'proxy.test.ca.custom',
     unknown: 'proxy.test.ca.unknown',
   }
@@ -355,6 +386,9 @@ function localizedProxyError(error: string, t: NetworkProxyRowProps['t']): strin
   if (error.includes('network-proxy-ca-extension')) return t('proxy.error.ca-extension')
   if (error.includes('network-proxy-ca-file-size')
     || error.includes('network-proxy-ca-file-not-regular')) return t('proxy.error.ca-size')
+  if (error.includes('network-proxy-ca-certificate-expired')) return t('proxy.error.ca-expired')
+  if (error.includes('network-proxy-ca-certificate-not-yet-valid')) return t('proxy.error.ca-not-yet-valid')
+  if (error.includes('network-proxy-ca-certificate-invalid')) return t('proxy.error.ca-invalid')
   if (error.includes('network-proxy-ca-pem')
     || error.includes('network-proxy-ca-file-unreadable')) return t('proxy.error.ca-pem')
   if (error.includes('host-network-proxy-response-invalid')) return t('proxy.error.host-response')
