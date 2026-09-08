@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { mkdir, open, opendir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, open, opendir, readFile, readdir, realpath, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep, win32 } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 import z from "schemastery";
@@ -13,6 +13,7 @@ import { homedir, userInfo } from "node:os";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { snapshotSubagentDescriptor } from "@deepseek-ai/dsh-subagent";
+import { SessionLogOffset } from "@deepseek-ai/dsh-session";
 //#region src/prefs-shared.ts
 /**
 * Shared "Side card" preference vocabulary (types + constants), consumed by
@@ -430,6 +431,13 @@ async function ensureWorkspaceWritePath(cwd, target, fence = true) {
 * to a uniquely named temp sibling
 * and are renamed into place, so a failed, aborted, or oversized upload never
 * leaves a partial file at the target path.
+*
+* The tree's rename/delete (below) are link-aware: existence and containment
+* are verified against the fully resolved target (a symlink pointing outside
+* the workspace is refused while the fence is armed), but the operation
+* itself addresses the lexical row path — renaming or deleting a symlink
+* row renames/unlinks the LINK, never its target, matching what the tree
+* row visually names (VS Code semantics).
 */
 /**
 * Stream `chunks` into `dir/relativePath` atomically: a uniquely named temp
@@ -485,6 +493,82 @@ async function writeWorkspaceUpload(input) {
 		await rm(tmp, { force: true }).catch(() => {});
 		throw error;
 	}
+}
+/** Resolve one existing entry for a link-aware mutation: the lexical row path
+* plus its fully resolved real target (fence-checked). ENOENT becomes an
+* fs-error, mirroring path-security's resolveRealPath semantics. */
+async function resolveEntry(cwd, target, fence) {
+	const absolute = requireAbsolute(resolveSessionPath(cwd, target));
+	let real;
+	let realCwd;
+	try {
+		[realCwd, real] = await Promise.all([realpath(cwd), realpath(absolute)]);
+	} catch (error) {
+		throw new SidebarError("fs-error", `cannot resolve "${target}": ${error instanceof Error ? error.message : String(error)}`, 400);
+	}
+	if (fence && !isWithin(realCwd, real)) throw new SidebarError("forbidden", `path "${target}" is outside workspace`, 403);
+	return {
+		absolute,
+		real,
+		realCwd
+	};
+}
+/** Whether a path exists (ENOENT → false; other failures propagate). */
+async function pathExists(target) {
+	try {
+		await access(target);
+		return true;
+	} catch (error) {
+		if (error.code === "ENOENT") return false;
+		throw error;
+	}
+}
+/**
+* Rename one tree row within its directory: `path` → `<parent>/<name>`.
+* The new name must be a single path segment (this is rename, not move);
+* an existing destination is refused (POSIX rename would clobber it
+* silently); the workspace root itself is never renamable; a symlink row
+* renames the link, not its target. A no-op rename (same name) succeeds
+* without touching the filesystem.
+*
+* @throws SidebarError with a wire code for shape, containment, existence
+* and root failures.
+*/
+async function renameWorkspaceEntry(input) {
+	const { cwd, path, name, fence = true } = input;
+	if (name === "" || name === "." || name === ".." || name.includes("/") || name.includes("\\")) throw new SidebarError("bad-request", "name must be a single path segment", 400);
+	const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence);
+	if (real === realCwd) throw new SidebarError("fs-error", "cannot rename the workspace root", 400);
+	if (basename(absolute) === name) return { path: absolute };
+	const safeDestination = await ensureWorkspaceWritePath(cwd, join(dirname(absolute), name), fence);
+	if (await pathExists(safeDestination)) throw new SidebarError("fs-error", `"${name}" already exists`, 409);
+	try {
+		await rename(absolute, safeDestination);
+	} catch (error) {
+		throw new SidebarError("fs-error", `cannot rename "${path}" to "${name}": ${error instanceof Error ? error.message : String(error)}`, 400);
+	}
+	return { path: safeDestination };
+}
+/**
+* Delete one tree row permanently (there is no trash on the host): files are
+* unlinked, directories removed recursively, a symlink row unlinks the LINK
+* only (lstat decides, so a link to a directory does not recurse into its
+* target). The workspace root itself is never removable.
+*
+* @throws SidebarError with a wire code for containment, existence and
+* root failures.
+*/
+async function removeWorkspaceEntry(input) {
+	const { cwd, path, fence = true } = input;
+	const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence);
+	if (real === realCwd) throw new SidebarError("fs-error", "cannot remove the workspace root", 400);
+	try {
+		if ((await lstat(absolute)).isDirectory()) await rm(absolute, { recursive: true });
+		else await unlink(absolute);
+	} catch (error) {
+		throw new SidebarError("fs-error", `cannot remove "${path}": ${error instanceof Error ? error.message : String(error)}`, 400);
+	}
+	return { path: absolute };
 }
 //#endregion
 //#region src/fs-search.ts
@@ -2951,9 +3035,9 @@ async function classifyTarget(raw, cwd) {
 		info = await stat(target);
 	} catch (error) {
 		const code = error.code;
-		if (code === "ENOENT") throw new Error(`"${raw}" does not exist (resolved to "${target}")`);
-		if (code === "EACCES" || code === "EPERM") throw new Error(`"${target}" is not readable`);
-		throw new Error(`cannot open "${target}": ${error instanceof Error ? error.message : String(error)}`);
+		if (code === "ENOENT") throw new Error(`"${raw}" does not exist (resolved to "${target}")`, { cause: error });
+		if (code === "EACCES" || code === "EPERM") throw new Error(`"${target}" is not readable`, { cause: error });
+		throw new Error(`cannot open "${target}": ${error instanceof Error ? error.message : String(error)}`, { cause: error });
 	}
 	const title = basenameOf(target);
 	return {
@@ -3411,7 +3495,6 @@ function buildOpenTurnSnapshot(events) {
 	let reasoning = "";
 	const tools = [];
 	const pendingCalls = /* @__PURE__ */ new Map();
-	let total = 0;
 	for (let index = boundary + 1; index < events.length; index++) {
 		const event = events[index];
 		if (event === void 0) continue;
@@ -3445,13 +3528,11 @@ function buildOpenTurnSnapshot(events) {
 			const failed = data.error !== void 0;
 			const line = [`- \`${name ?? "tool"}\`${failed ? " (failed)" : ""}` + (args !== void 0 && args !== "" ? ` — arguments: \`${args}\`` : ""), ...result === "" ? [] : [`  Result: ${result}`]].join("\n");
 			tools.push(line);
-			total += line.length;
 		}
 	}
 	for (const [, call] of pendingCalls) {
 		const line = `- \`${call.name}\` (executing) — arguments: \`${call.args}\``;
 		tools.push(line);
-		total += line.length;
 	}
 	const sections = [];
 	if (text.trim() !== "") sections.push(`Assistant output so far:\n\n${text}`);
@@ -3766,11 +3847,13 @@ function buildSidechatApi(ctx) {
 				meta: {
 					...parentSession.header.cwd === void 0 ? {} : { cwd: parentSession.header.cwd },
 					parentSession: parentSession.id,
+					isSeeded: true,
 					origin: "subagent",
 					delegationDepth: (parentSession.header.delegationDepth ?? 0) + 1,
 					...agentPreset === void 0 ? {} : { agentPreset }
 				},
 				seed,
+				inheritedEventCount: SessionLogOffset(seed.length),
 				agentOptions: { ...parent.options },
 				setup,
 				signal: AbortSignal.timeout(CREATE_TIMEOUT_MS)
@@ -4135,6 +4218,23 @@ function buildApi(ctx, ptyManager, agentPtyRegistry, resolved, terminalShell, ge
 			}
 			return { ok: true };
 		},
+		"fs.rename": async (payload) => {
+			const { cwd } = await cwdOf(payload);
+			return renameWorkspaceEntry({
+				cwd,
+				path: requireString(payload, "path"),
+				name: requireString(payload, "name"),
+				fence: fenceEnabledOf(getSettings)
+			});
+		},
+		"fs.remove": async (payload) => {
+			const { cwd } = await cwdOf(payload);
+			return removeWorkspaceEntry({
+				cwd,
+				path: requireString(payload, "path"),
+				fence: fenceEnabledOf(getSettings)
+			});
+		},
 		"git.worktrees": async (payload) => {
 			const { cwd } = await gitCwdOf(payload);
 			const selected = selectedRepoOf(payload);
@@ -4202,7 +4302,7 @@ function buildApi(ctx, ptyManager, agentPtyRegistry, resolved, terminalShell, ge
 		"git.show": async (payload) => {
 			const { cwd } = await gitCwdOf(payload);
 			const repoRoot = selectedRepoOf(payload);
-			const path = await resolveGitPath(cwd, requireString(payload, "path"), repoRoot);
+			const path = requireString(payload, "path");
 			return { content: await show(cwd, requireString(payload, "rev"), path, repoRoot) };
 		},
 		"changes.ops": async (payload) => {

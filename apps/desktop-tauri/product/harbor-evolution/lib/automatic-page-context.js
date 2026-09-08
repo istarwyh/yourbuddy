@@ -37,7 +37,6 @@ export function registerHarborPageContext(conversation, bridge, t) {
     timeoutMs: 10_000,
     prepare({ sessionId, draft, occurrences = [], signal }) {
       const state = bridge.getSnapshot(sessionId)
-      if (state.automaticContext === false) return undefined
       if (occurrences.some(item => item.source === 'harbor') || rawHarborReferenceRanges(draft, occurrences).length) return undefined
       if (!state.current) throw new Error(t('automaticContextNotReady'))
       // The bridge captures page and checked IDs synchronously at the send lock.

@@ -32,6 +32,10 @@ export declare function FileTree(props: {
     onToggleOpenWithPin?: (targetId: string) => void;
     /** Insert `@<relative path>` into the composer draft (file vs directory). */
     onReferenceFile: (path: string, isDir: boolean) => void;
+    /** A rename landed (old row path → new path): the caller retargets open tabs. */
+    onPathRenamed?: (oldPath: string, newPath: string) => void;
+    /** A delete landed: the caller closes tabs at or under the removed path. */
+    onPathDeleted?: (path: string, isDir: boolean) => void;
     /** Bump to wipe the level cache and reload the visible set. */
     refreshTick: number;
     /** Upload into `dir` (absolute, inside the workspace); runs in the caller. */

@@ -499,6 +499,11 @@ export async function readDashboardSnapshot(config, metadata = {}, args = {}) {
   const allJobs = jobPage.allJobs ?? jobs
   const counts = allJobs.reduce((result, job) => ({ ...result, [job.status]: (result[job.status] ?? 0) + 1 }), {})
   const latestMetric = jobs.find(job => job.primaryMetric)?.primaryMetric
+  const totalTrials = allJobs.reduce((total, job) => total + Number(job.nTrials ?? 0), 0)
+  const totalExceptions = allJobs.reduce((total, job) => total + Math.max(
+    Number(job.nExceptions ?? 0),
+    Number(job.nInfrastructureExceptions ?? 0) + Number(job.nEvaluationExceptions ?? 0),
+  ), 0)
   return {
     schemaVersion: 3,
     generatedAt: new Date().toISOString(),
@@ -511,6 +516,8 @@ export async function readDashboardSnapshot(config, metadata = {}, args = {}) {
       totalJobs: allJobs.length,
       attention: jobPage.attentionCounts ?? attentionCounts(allJobs),
       visibleJobs: jobs.length,
+      totalTrials,
+      totalExceptions,
       completedJobs: (counts.completed ?? 0) + (counts.partial ?? 0) + (counts.attention ?? 0),
       activeJobs: (counts.pending ?? 0) + (counts.running ?? 0),
       failedJobs: counts.failed ?? 0,

@@ -28,6 +28,10 @@
         "0.9.4": {
           "@deepseek-ai/dsh-skill": "0.1.2-rc.1",
           "@deepseek-ai/dsh-tools": "0.1.2-rc.1"
+        },
+        "0.9.5": {
+          "@deepseek-ai/dsh-skill": "0.1.2-rc.1",
+          "@deepseek-ai/dsh-tools": "0.1.2-rc.1"
         }
       },
       "clientInjectRemovals": {
@@ -35,6 +39,9 @@
           "@deepseek-ai/dsh-client-runtime"
         ],
         "0.9.4": [
+          "@deepseek-ai/dsh-client-runtime"
+        ],
+        "0.9.5": [
           "@deepseek-ai/dsh-client-runtime"
         ]
       }

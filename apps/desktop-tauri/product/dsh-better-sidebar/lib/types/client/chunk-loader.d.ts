@@ -23,8 +23,9 @@
  *    arbitrary file names, so the plugin's own host route serves the chunks),
  * 2. read the factory from the global registry,
  * 3. call it with a require that resolves the platform externals through
- *    `__DSH_MODULES__.import(spec)` — the seed-word branch, the one part of
- *    the module system that is stable across versions.
+ *    the injected module system's `import(spec)` (the `ctx.modules` service)
+ *    — the seed-word branch, the one part of the module system that is
+ *    stable across versions.
  *
  * Caching contract (three layers, each with a failure path):
  * - In-memory: one in-flight promise per chunk, memoized until
@@ -68,8 +69,7 @@ export declare const CHUNK_EXTERNALS: readonly string[];
  * The client module system surface this loader needs to resolve externals.
  * DSH 0.1.0-rc.8 provides it as the `ctx.modules` service (no page global
  * anymore); the plugin injects it at activation via
- * {@link setChunkModuleSystem}. The rc.7-era `window.__DSH_MODULES__` global
- * remains as a fallback so older hosts and the test harness keep working.
+ * {@link setChunkModuleSystem}.
  */
 export interface ChunkModuleSystem {
     import(specifier: string): Promise<unknown>;
