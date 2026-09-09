@@ -51,7 +51,7 @@ YourBuddy 0.3.6 对原生桌面客户端以及应用启动的 Host、插件、WS
 | 产品发布与 Updater | 通过 | 五个匿名下载的 Release 附件 | GitHub Release 与稳定更新渠道 | 3/3 校验和、五个 API 摘要、字节相同的 Manifest 与 Minisign 验证；[产物记录](evidence/public-artifact-stage.json) |
 | 公开 App 与迁移运行时 | 在记录范围内通过 | 公开 DMG 中原样 App | macOS 15.6.1 arm64 | DMG／Updater 树相同；标识、严格 ad-hoc 签名、CLI 与导入通过；[运行时记录](evidence/public-runtime-stage.json) |
 | 产品官网 | 在记录的部署与 HTTP 范围内通过 | `5fa67b477...` 的公开部署 | GitHub Pages 与匿名 HTTP | 构建和部署通过；六个双语页面及其发布相关目标均返回 200；[本地记录](evidence/website-local-validation.txt)与[部署记录](evidence/website-deployment.txt) |
-| 证据收尾 CI | 保留两次失败并完成限定测试修正后通过 | `9ffaa3e98e...` 源码，合并为 `6376122238...` | GitHub 托管 Linux、macOS 与 Windows 矩阵 | [Run 34398269274](https://github.com/istarwyh/yourbuddy/actions/runs/34398269274) 的 23 个实际检查全部通过；[收尾记录](evidence/verification-finalization-ci.txt) |
+| 证据收尾 CI | 保留两次失败并完成限定测试修正后通过 | `9ffaa3e98e...` 源码，合并为 `6376122238...` | GitHub 托管 Linux、macOS 与 Windows 矩阵 | 19 个 CI Job 加四个 DSH、vendor 与 lifecycle 检查通过；[Run 34398269274](https://github.com/istarwyh/yourbuddy/actions/runs/34398269274)与[收尾记录](evidence/verification-finalization-ci.txt) |
 | 可下载验证资料 | 通过 | 不可变来源 Commit `6376122238...` 的文档 | GitHub Release 与匿名 HTTPS | 上传元数据、SHA-256、全新下载、逐字节比较与解压均通过；[归档记录](evidence/verification-archive.txt) |
 | 安装包原生启动与 WebView 路径 | 未验证 | 未启动公开 0.3.6 App | 已有用户持有的 YourBuddy 实例，无法隔离 | 没有截图或已安装产品声明；[跳过记录](evidence/public-native-startup.txt) |
 | 真实企业代理与 CA | 未验证 | 仅使用合成本地网络 | 本地隔离服务 | 未使用组织证书、凭据或外部企业端点 |
@@ -261,7 +261,7 @@ PR CI [Run 34384125128](https://github.com/istarwyh/yourbuddy/actions/runs/34384
 - 环境：GitHub 托管 Linux、macOS 与 Windows Runner；没有 Runner 的 Cloudflare Preview 已取消且未计为成功。
 - 证据：[收尾 CI 记录](evidence/verification-finalization-ci.txt)与成功的 [Run 34398269274](https://github.com/istarwyh/yourbuddy/actions/runs/34398269274)。
 
-首次 Run 在 16,461 个测试通过后保留 Linux PowerShell 输出归属失败。测试现在轮询其拥有的持久 Session 输出以查找预期命令结果，并单独证明 Secret 不存在。第二次 Run 通过 Linux Coverage，但在 15,499 个测试通过后保留 Windows Coverage 失败，原因是 10 秒 npm Resolution 测试挂起保护在 Coverage 负载下到期。三个行为测试现在使用 30 秒保护；正式 Benchmark 独立的 300 秒默认值与显式性能阈值均未改变。每次修正后的限定测试与 Typecheck 均通过。替代 Run 的 23 个实际检查全部通过，包括 Linux 与 Windows Coverage、Snapshot、产物、静态 Gate、原生测试、Python SDK 与发布形态运行时 Job。
+首次 Run 在 16,461 个测试通过后保留 Linux PowerShell 输出归属失败。测试现在轮询其拥有的持久 Session 输出以查找预期命令结果，并单独证明 Secret 不存在。第二次 Run 通过 Linux Coverage，但在 15,499 个测试通过后保留 Windows Coverage 失败，原因是 10 秒 npm Resolution 测试挂起保护在 Coverage 负载下到期。三个行为测试现在使用 30 秒保护；正式 Benchmark 独立的 300 秒默认值与显式性能阈值均未改变。每次修正后的限定测试与 Typecheck 均通过。替代 CI Run 的 19 个 Job 全部通过，包括 Linux 与 Windows Coverage、Snapshot、产物、静态 Gate、原生测试、Python SDK 与发布形态运行时 Job。DSH 依赖与 Tarball 检查、vendor Tarball 检查及 Issue lifecycle 检查也通过，因此 PR 共有 23 个真实检查成功。
 
 ## 场景：可下载验证资料
 

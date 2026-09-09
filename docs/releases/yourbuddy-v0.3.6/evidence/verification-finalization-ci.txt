@@ -25,7 +25,8 @@ Retained failure 2:
 Passing replacement:
 - Run: https://github.com/istarwyh/yourbuddy/actions/runs/34398269274
 - Head: 9ffaa3e98ef18be52cd1092c2f66c53d945ac10a
-- All 23 actual checks passed, including Linux and Windows coverage, snapshots and artifacts, static gates, Node engine lanes, native tests, Python SDK, and release-shaped runtime jobs.
+- All 19 CI jobs passed, including Linux and Windows coverage, snapshots and artifacts, static gates, Node engine lanes, native tests, Python SDK, and release-shaped runtime jobs.
+- The DSH dependency and tarball checks, vendor tarball check, and Issue lifecycle check also passed, for 23 successful real PR checks in total.
 - Linux coverage completed in 21 minutes 46 seconds, Windows coverage in 26 minutes 41 seconds, and snapshots and artifacts in 19 minutes 33 seconds.
 - Cloudflare preview run 34398268901 had no matching self-hosted runner, was cancelled, and was not counted as success. The repository runner API reported zero configured runners.
 
