@@ -703,7 +703,7 @@ var import_react3 = require("react");
 
 // src/client/desktop-network-proxy.ts
 var DESKTOP_NETWORK_PROXY_CHANNEL = "yourbuddy.desktop.network-proxy";
-var DESKTOP_NETWORK_PROXY_VERSION = 3;
+var DESKTOP_NETWORK_PROXY_VERSION = 4;
 var REQUEST_ID_PATTERN3 = /^[A-Za-z0-9_-]{1,64}$/;
 var DEFAULT_HANDSHAKE_TIMEOUT_MS2 = 5e3;
 var MAX_PROXY_URL_LENGTH = 2048;
@@ -728,7 +728,16 @@ function readNetworkProxySettings(value) {
   return value;
 }
 function readEffectiveProxy(value) {
-  return readNetworkProxySettings(value);
+  if (!isRecord(value) || !hasExactKeys(value, "caCertificatePath,caSource,httpProxy,httpsProxy,mode,noProxy") || !["system", "environment", "custom"].includes(String(value.caSource))) return void 0;
+  const settings = {
+    mode: value.mode,
+    httpProxy: value.httpProxy,
+    httpsProxy: value.httpsProxy,
+    noProxy: value.noProxy,
+    caCertificatePath: value.caCertificatePath
+  };
+  if (readNetworkProxySettings(settings) === void 0) return void 0;
+  return value;
 }
 function readSystemProxy(value) {
   if (!isRecord(value) || !hasExactKeys(
@@ -754,8 +763,26 @@ function readSnapshot(value) {
   };
 }
 function readTestResult(value) {
-  if (!isRecord(value) || !hasExactKeys(value, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof value.ok !== "boolean" || typeof value.proxied !== "boolean" || !Number.isSafeInteger(value.status) || Number(value.status) < 0 || Number(value.status) > 599 || typeof value.errorCode !== "string" || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode) || !["direct", "system", "custom", "unknown"].includes(String(value.proxyMode)) || !["system", "custom", "unknown"].includes(String(value.caSource)) || value.ok && (Number(value.status) < 100 || value.errorCode !== "") || !value.ok && value.errorCode === "") return void 0;
+  if (!isRecord(value) || !hasExactKeys(value, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof value.ok !== "boolean" || typeof value.proxied !== "boolean" || !Number.isSafeInteger(value.status) || Number(value.status) < 0 || Number(value.status) > 599 || typeof value.errorCode !== "string" || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode) || !["direct", "system", "custom", "unknown"].includes(String(value.proxyMode)) || !["system", "environment", "custom", "unknown"].includes(String(value.caSource)) || value.ok && (Number(value.status) < 100 || value.errorCode !== "") || !value.ok && value.errorCode === "") return void 0;
   return value;
+}
+function readPreflightResult(value) {
+  if (!isRecord(value) || !hasExactKeys(value, "native,node")) return void 0;
+  const native = readTestResult(value.native);
+  const node = readTestResult(value.node);
+  if (native === void 0 || node === void 0) return void 0;
+  return { native, node };
+}
+function readSaveResult(value) {
+  if (!isRecord(value)) return void 0;
+  const keys = Object.keys(value).sort().join(",");
+  if (keys !== "preflight,saved,snapshot" && keys !== "preflight,saved") return void 0;
+  if (typeof value.saved !== "boolean") return void 0;
+  const preflight = readPreflightResult(value.preflight);
+  if (preflight === void 0) return void 0;
+  const snapshot = value.snapshot === void 0 ? void 0 : readSnapshot(value.snapshot);
+  if (value.saved !== (snapshot !== void 0) || value.saved !== (preflight.native.ok && preflight.node.ok)) return void 0;
+  return { saved: value.saved, ...snapshot === void 0 ? {} : { snapshot }, preflight };
 }
 function readDesktopNetworkProxyResponse(value, requestId, action) {
   if (!isRecord(value) || value.channel !== DESKTOP_NETWORK_PROXY_CHANNEL || value.version !== DESKTOP_NETWORK_PROXY_VERSION || value.requestId !== requestId) return void 0;
@@ -768,7 +795,7 @@ function readDesktopNetworkProxyResponse(value, requestId, action) {
     if (action === "select-ca") {
       if (value.value !== null && (typeof value.value !== "string" || value.value.length === 0 || value.value.length > MAX_CA_CERTIFICATE_PATH_LENGTH)) return void 0;
     } else {
-      const parsed = action === "test" ? readTestResult(value.value) : readSnapshot(value.value);
+      const parsed = action === "test" ? readPreflightResult(value.value) : action === "save" ? readSaveResult(value.value) : readSnapshot(value.value);
       if (parsed === void 0) return void 0;
     }
   } else if (!hasExactKeys(value, "channel,error,ok,requestId,type,version") || typeof value.error !== "string" || value.error.length > MAX_PROXY_URL_LENGTH) return void 0;
@@ -844,7 +871,7 @@ function hasExactKeys2(value, expected) {
 function readResult(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return void 0;
   const result = value;
-  if (!hasExactKeys2(result, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof result.ok !== "boolean" || typeof result.status !== "number" || !Number.isInteger(result.status) || result.status < 0 || result.status > 599 || typeof result.proxied !== "boolean" || typeof result.errorCode !== "string" || !["direct", "system", "custom", "unknown"].includes(String(result.proxyMode)) || !["system", "custom", "unknown"].includes(String(result.caSource)) || result.errorCode.length > 64) return void 0;
+  if (!hasExactKeys2(result, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof result.ok !== "boolean" || typeof result.status !== "number" || !Number.isInteger(result.status) || result.status < 0 || result.status > 599 || typeof result.proxied !== "boolean" || typeof result.errorCode !== "string" || !["direct", "system", "custom", "unknown"].includes(String(result.proxyMode)) || !["system", "environment", "custom", "unknown"].includes(String(result.caSource)) || result.errorCode.length > 64) return void 0;
   return result;
 }
 async function requestHostNetworkProxyTest(fetcher = globalThis.fetch) {
@@ -904,14 +931,18 @@ function NetworkProxyRow({ t }) {
     setStatus("testing");
     setDetail("");
     try {
-      const [native, host] = await Promise.all([
+      const [preflight, host] = await Promise.all([
         requestDesktopNetworkProxyTest(draft),
         requestHostNetworkProxyTest()
       ]);
-      const pending = native.proxyMode === host.proxyMode && native.caSource === host.caSource ? "" : ` ${t("proxy.test.pending-restart")}`;
-      const certificateHint = [native.errorCode, host.errorCode].some(isCertificateErrorCode) ? ` ${t("proxy.test.certificate-hint")}` : "";
-      setDetail(t("proxy.test.result").replace("{native}", describeTestResult(native, t)).replace("{host}", describeTestResult(host, t)) + pending + certificateHint);
-      setStatus(native.ok && host.ok ? "tested" : "test-failed");
+      const pending = preflight.node.proxyMode === host.proxyMode && preflight.node.caSource === host.caSource ? "" : ` ${t("proxy.test.pending-restart")}`;
+      const certificateHint = [
+        preflight.native.errorCode,
+        preflight.node.errorCode,
+        host.errorCode
+      ].some(isCertificateErrorCode) ? ` ${t("proxy.test.certificate-hint")}` : "";
+      setDetail(t("proxy.test.result").replace("{native}", describeTestResult(preflight.native, t)).replace("{node}", describeTestResult(preflight.node, t)).replace("{host}", describeTestResult(host, t)) + pending + certificateHint);
+      setStatus(preflight.native.ok && preflight.node.ok && host.ok ? "tested" : "test-failed");
     } catch (error) {
       setDetail(errorMessage(error));
       setStatus("error");
@@ -921,8 +952,13 @@ function NetworkProxyRow({ t }) {
     setStatus("saving");
     setDetail("");
     try {
-      const saved = await requestDesktopNetworkProxySave(draft);
-      setSnapshot(saved);
+      const result = await requestDesktopNetworkProxySave(draft);
+      if (!result.saved || result.snapshot === void 0) {
+        setDetail(describeFailedPreflight(result.preflight, t));
+        setStatus("test-failed");
+        return;
+      }
+      setSnapshot(result.snapshot);
       setStatus("restarting");
       await requestDesktopRestart();
     } catch (error) {
@@ -1055,7 +1091,7 @@ function NetworkProxyRow({ t }) {
       draft.mode === "direct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-hint dpw-field-wide", children: t("proxy.direct.hint") }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-proxy-panel dpw-field-wide", children: [
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-label", children: t("proxy.ca.label") }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-code dpw-ca-path", children: draft.caCertificatePath || t("proxy.ca.system-only") }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-code dpw-ca-path", children: draft.caCertificatePath || (snapshot?.settings.caCertificatePath === "" && snapshot.effective?.caSource === "environment" ? t("proxy.ca.environment") : t("proxy.ca.system-only")) }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-hint", children: t("proxy.ca.hint") }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-actions", children: [
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
@@ -1122,6 +1158,10 @@ function NetworkProxyRow({ t }) {
     ] })
   ] });
 }
+function describeFailedPreflight(result, t) {
+  const certificateHint = [result.native.errorCode, result.node.errorCode].some(isCertificateErrorCode) ? ` ${t("proxy.test.certificate-hint")}` : "";
+  return t("proxy.save.preflight-failed").replace("{native}", describeTestResult(result.native, t)).replace("{node}", describeTestResult(result.node, t)) + certificateHint;
+}
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -1135,6 +1175,7 @@ function describeTestResult(result, t) {
   };
   const caKeys = {
     system: "proxy.test.ca.system",
+    environment: "proxy.test.ca.environment",
     custom: "proxy.test.ca.custom",
     unknown: "proxy.test.ca.unknown"
   };
@@ -1158,6 +1199,9 @@ function localizedProxyError(error, t) {
   if (error.includes("network-proxy-ca-file-missing")) return t("proxy.error.ca-missing");
   if (error.includes("network-proxy-ca-extension")) return t("proxy.error.ca-extension");
   if (error.includes("network-proxy-ca-file-size") || error.includes("network-proxy-ca-file-not-regular")) return t("proxy.error.ca-size");
+  if (error.includes("network-proxy-ca-certificate-expired")) return t("proxy.error.ca-expired");
+  if (error.includes("network-proxy-ca-certificate-not-yet-valid")) return t("proxy.error.ca-not-yet-valid");
+  if (error.includes("network-proxy-ca-certificate-invalid")) return t("proxy.error.ca-invalid");
   if (error.includes("network-proxy-ca-pem") || error.includes("network-proxy-ca-file-unreadable")) return t("proxy.error.ca-pem");
   if (error.includes("host-network-proxy-response-invalid")) return t("proxy.error.host-response");
   if (error.includes("network-proxy-test")) return t("proxy.error.test");
@@ -1354,10 +1398,11 @@ var zh = {
   "proxy.http.label": "HTTP \u4EE3\u7406",
   "proxy.https.label": "HTTPS \u4EE3\u7406",
   "proxy.no-proxy.label": "\u4E0D\u4F7F\u7528\u4EE3\u7406\u7684\u5730\u5740",
-  "proxy.custom.hint": "\u9700\u8981\u540C\u65F6\u586B\u5199 HTTP \u4E0E HTTPS \u4EE3\u7406\u3002\u4EC5\u652F\u6301\u65E0\u8D26\u53F7\u5BC6\u7801\u7684 http:// \u6216 https:// \u5730\u5740\uFF1B\u672C\u673A Host \u5730\u5740\u59CB\u7EC8\u76F4\u8FDE\u3002",
+  "proxy.custom.hint": "\u9700\u8981\u540C\u65F6\u586B\u5199 HTTP \u4E0E HTTPS \u76EE\u6807\u4F7F\u7528\u7684\u4EE3\u7406\u3002\u4E24\u9879\u901A\u5E38\u586B\u5199\u540C\u4E00\u4E2A http:// \u5730\u5740\uFF1B\u540C\u4E00\u56DE\u73AF\u7AEF\u53E3\u8BEF\u5199\u6210 https:// \u65F6\u4F1A\u81EA\u52A8\u6539\u4E3A\u660E\u6587 HTTP CONNECT\u3002\u672C\u673A Host \u5730\u5740\u59CB\u7EC8\u76F4\u8FDE\u3002",
   "proxy.direct.hint": "\u5FFD\u7565\u542F\u52A8\u73AF\u5883\u4E2D\u7684\u4EE3\u7406\u53D8\u91CF\uFF0C\u7531 YourBuddy \u76F4\u63A5\u8FDE\u63A5\u5916\u90E8\u7F51\u7EDC\u3002",
   "proxy.ca.label": "\u989D\u5916 CA \u8BC1\u4E66",
   "proxy.ca.system-only": "\u672A\u9009\u62E9\uFF08\u4EC5\u4F7F\u7528 macOS \u94A5\u5319\u4E32\u4E0E Node \u7CFB\u7EDF CA\uFF09",
+  "proxy.ca.environment": "\u5DF2\u91C7\u7528\u5E76\u9A8C\u8BC1\u542F\u52A8\u73AF\u5883\u4E2D\u7684 NODE_EXTRA_CA_CERTS",
   "proxy.ca.hint": "\u53EF\u9009\u62E9 PEM \u683C\u5F0F\u7684 .pem \u6216 .crt \u4F01\u4E1A\u6839\u8BC1\u4E66\u3002\u5B83\u4F1A\u8865\u5145\u7CFB\u7EDF\u4FE1\u4EFB\uFF0C\u5E76\u5728\u91CD\u542F\u524D\u663E\u5F0F\u4F20\u7ED9\u684C\u9762\u5BA2\u6237\u7AEF\u3001Node Host\u3001\u63D2\u4EF6\u4E0E\u5E94\u7528\u66F4\u65B0\uFF1B\u8BC1\u4E66\u6821\u9A8C\u59CB\u7EC8\u4FDD\u6301\u5F00\u542F\u3002",
   "proxy.ca.select": "\u9009\u62E9 .pem / .crt",
   "proxy.ca.selecting": "\u6B63\u5728\u9009\u62E9\u2026",
@@ -1365,8 +1410,8 @@ var zh = {
   "proxy.loading": "\u6B63\u5728\u8BFB\u53D6\u7F51\u7EDC\u4EE3\u7406\u8BBE\u7F6E\u2026",
   "proxy.test.action": "\u6D4B\u8BD5 ChatGPT \u8FDE\u63A5",
   "proxy.test.testing-action": "\u6B63\u5728\u6D4B\u8BD5\u2026",
-  "proxy.test.testing": "\u6B63\u5728\u5206\u522B\u6D4B\u8BD5\u5F53\u524D\u8349\u7A3F\u7684\u684C\u9762\u94FE\u8DEF\u4E0E\u6B63\u5728\u8FD0\u884C\u7684 Node Host\u2026",
-  "proxy.test.result": "\u684C\u9762\u8349\u7A3F\uFF1A{native}\uFF1B\u5F53\u524D Node Host\uFF1A{host}\u3002",
+  "proxy.test.testing": "\u6B63\u5728\u6D4B\u8BD5\u5F53\u524D\u8349\u7A3F\u7684\u684C\u9762\u94FE\u8DEF\u3001\u5168\u65B0\u968F\u5305 Node \u94FE\u8DEF\u4E0E\u6B63\u5728\u8FD0\u884C\u7684 Node Host\u2026",
+  "proxy.test.result": "\u684C\u9762\u8349\u7A3F\uFF1A{native}\uFF1B\u968F\u5305 Node \u8349\u7A3F\uFF1A{node}\uFF1B\u5F53\u524D Node Host\uFF1A{host}\u3002",
   "proxy.test.outcome.http": "HTTP {status}",
   "proxy.test.outcome.error": "\u5931\u8D25\uFF1A{code}",
   "proxy.test.outcome.routed": "{outcome}\uFF08{route}\uFF1B{ca}\uFF09",
@@ -1375,6 +1420,7 @@ var zh = {
   "proxy.test.mode.custom": "\u81EA\u5B9A\u4E49\u4EE3\u7406",
   "proxy.test.mode.unknown": "\u975E YourBuddy \u7BA1\u7406\u7684\u4EE3\u7406\u6A21\u5F0F",
   "proxy.test.ca.system": "\u7CFB\u7EDF CA",
+  "proxy.test.ca.environment": "\u7CFB\u7EDF CA + \u5DF2\u9A8C\u8BC1\u7684\u73AF\u5883 CA",
   "proxy.test.ca.custom": "\u7CFB\u7EDF CA + \u81EA\u5B9A\u4E49 CA",
   "proxy.test.ca.unknown": "CA \u6765\u6E90\u672A\u77E5",
   "proxy.test.pending-restart": "Node Host \u7684\u4EE3\u7406\u6A21\u5F0F\u6216 CA \u6765\u6E90\u4ECD\u662F\u4E0A\u6B21\u542F\u52A8\u65F6\u7684\u8BBE\u7F6E\uFF1B\u4FDD\u5B58\u5E76\u91CD\u542F\u540E\u8BF7\u518D\u6B21\u6D4B\u8BD5\u3002",
@@ -1383,6 +1429,7 @@ var zh = {
   "proxy.save.saving": "\u6B63\u5728\u4FDD\u5B58\u7F51\u7EDC\u4EE3\u7406\u8BBE\u7F6E\u2026",
   "proxy.save.restarting-action": "\u6B63\u5728\u91CD\u542F\u2026",
   "proxy.save.restarting": "\u8BBE\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F YourBuddy\u2026",
+  "proxy.save.preflight-failed": "\u672A\u4FDD\u5B58\uFF1A\u684C\u9762\u8349\u7A3F\u4E3A {native}\uFF1B\u968F\u5305 Node \u8349\u7A3F\u4E3A {node}\u3002",
   "proxy.error.pac": "\u68C0\u6D4B\u5230 PAC \u6216\u81EA\u52A8\u4EE3\u7406\u53D1\u73B0\u3002\u5F53\u524D\u7248\u672C\u65E0\u6CD5\u628A\u52A8\u6001\u4EE3\u7406\u89C4\u5219\u8F6C\u6362\u7ED9 Node\uFF0C\u8BF7\u6539\u7528\u81EA\u5B9A\u4E49\u4EE3\u7406\u3002",
   "proxy.error.http-only": "\u7CFB\u7EDF\u53EA\u542F\u7528\u4E86 HTTP \u4EE3\u7406\uFF0C\u65E0\u6CD5\u5FE0\u5B9E\u5E94\u7528\u5230\u6240\u6709 Node \u8BF7\u6C42\uFF1B\u8BF7\u540C\u65F6\u542F\u7528 HTTPS \u4EE3\u7406\u6216\u6539\u7528\u81EA\u5B9A\u4E49\u4EE3\u7406\u3002",
   "proxy.error.platform": "\u5F53\u524D\u5E73\u53F0\u4E0D\u652F\u6301\u81EA\u52A8\u8BFB\u53D6\u7CFB\u7EDF\u4EE3\u7406\uFF0C\u8BF7\u4F7F\u7528\u81EA\u5B9A\u4E49\u4EE3\u7406\u3002",
@@ -1394,6 +1441,9 @@ var zh = {
   "proxy.error.ca-missing": "\u627E\u4E0D\u5230\u5DF2\u9009\u62E9\u7684 CA \u8BC1\u4E66\uFF1B\u8BF7\u91CD\u65B0\u9009\u62E9\u3002",
   "proxy.error.ca-extension": "CA \u8BC1\u4E66\u4EC5\u652F\u6301 .pem \u6216 .crt \u6587\u4EF6\u3002",
   "proxy.error.ca-size": "CA \u8BC1\u4E66\u5FC5\u987B\u662F 1 MiB \u4EE5\u5185\u7684\u975E\u7A7A\u666E\u901A\u6587\u4EF6\u3002",
+  "proxy.error.ca-expired": "CA \u8BC1\u4E66\u5DF2\u7ECF\u8FC7\u671F\uFF0C\u8BF7\u9009\u62E9\u6709\u6548\u8BC1\u4E66\u3002",
+  "proxy.error.ca-not-yet-valid": "CA \u8BC1\u4E66\u5C1A\u672A\u751F\u6548\uFF0C\u8BF7\u68C0\u67E5\u7CFB\u7EDF\u65F6\u95F4\u6216\u9009\u62E9\u6709\u6548\u8BC1\u4E66\u3002",
+  "proxy.error.ca-invalid": "\u6587\u4EF6\u4E2D\u7684\u8BC1\u4E66\u65E0\u6CD5\u89E3\u6790\u4E3A\u6709\u6548\u7684 X.509 \u8BC1\u4E66\u3002",
   "proxy.error.ca-pem": ".pem \u6216 .crt \u6587\u4EF6\u5FC5\u987B\u5305\u542B PEM \u683C\u5F0F\u7684 CERTIFICATE \u533A\u5757\u3002",
   "proxy.error.test": "\u684C\u9762\u8FDE\u901A\u6027\u6D4B\u8BD5\u672A\u5B8C\u6210\uFF0C\u8BF7\u68C0\u67E5\u663E\u793A\u7684\u9519\u8BEF\u4FE1\u606F\u540E\u91CD\u8BD5\u3002",
   "proxy.error.host-response": "Node Host \u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4EE3\u7406\u8BCA\u65AD\u7ED3\u679C\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourBuddy \u540E\u91CD\u8BD5\u3002",
@@ -1461,10 +1511,11 @@ var en = {
   "proxy.http.label": "HTTP proxy",
   "proxy.https.label": "HTTPS proxy",
   "proxy.no-proxy.label": "Addresses that bypass the proxy",
-  "proxy.custom.hint": "Both HTTP and HTTPS proxies are required. Only credential-free http:// or https:// URLs are accepted; the local Host always connects directly.",
+  "proxy.custom.hint": "Enter the proxy used for HTTP and HTTPS targets. Both fields usually use the same http:// URL; YourBuddy corrects https:// to plain HTTP CONNECT when both fields name the same loopback endpoint. The local Host always connects directly.",
   "proxy.direct.hint": "Ignore proxy variables from the launch environment and connect to external networks directly.",
   "proxy.ca.label": "Additional CA certificate",
   "proxy.ca.system-only": "None selected (macOS Keychain and Node system CAs only)",
+  "proxy.ca.environment": "Using the validated NODE_EXTRA_CA_CERTS from the launch environment",
   "proxy.ca.hint": "Select a PEM-encoded .pem or .crt enterprise root certificate. It supplements system trust and is explicitly applied to desktop clients, the Node Host, plugins, and application updates before restart; certificate verification remains enabled.",
   "proxy.ca.select": "Choose .pem / .crt",
   "proxy.ca.selecting": "Choosing\u2026",
@@ -1472,8 +1523,8 @@ var en = {
   "proxy.loading": "Loading network proxy settings\u2026",
   "proxy.test.action": "Test ChatGPT connection",
   "proxy.test.testing-action": "Testing\u2026",
-  "proxy.test.testing": "Testing the desktop draft route and the running Node Host separately\u2026",
-  "proxy.test.result": "Desktop draft: {native}; current Node Host: {host}.",
+  "proxy.test.testing": "Testing the desktop draft, a fresh bundled Node process, and the running Node Host\u2026",
+  "proxy.test.result": "Desktop draft: {native}; bundled Node draft: {node}; current Node Host: {host}.",
   "proxy.test.outcome.http": "HTTP {status}",
   "proxy.test.outcome.error": "failed: {code}",
   "proxy.test.outcome.routed": "{outcome} ({route}; {ca})",
@@ -1482,6 +1533,7 @@ var en = {
   "proxy.test.mode.custom": "custom proxy",
   "proxy.test.mode.unknown": "proxy mode not managed by YourBuddy",
   "proxy.test.ca.system": "system CAs",
+  "proxy.test.ca.environment": "system CAs + validated environment CA",
   "proxy.test.ca.custom": "system CAs + custom CA",
   "proxy.test.ca.unknown": "unknown CA source",
   "proxy.test.pending-restart": "The Node Host proxy mode or CA source still reflects the previous launch. Save, restart, and test again.",
@@ -1490,6 +1542,7 @@ var en = {
   "proxy.save.saving": "Saving network proxy settings\u2026",
   "proxy.save.restarting-action": "Restarting\u2026",
   "proxy.save.restarting": "Settings saved. Stopping the private Host and restarting YourBuddy\u2026",
+  "proxy.save.preflight-failed": "Not saved: desktop draft: {native}; bundled Node draft: {node}.",
   "proxy.error.pac": "A PAC URL or automatic proxy discovery is enabled. This version cannot translate dynamic rules for Node; use a custom proxy.",
   "proxy.error.http-only": "Only the system HTTP proxy is enabled, so it cannot be applied faithfully to every Node request. Enable HTTPS proxy too or use a custom proxy.",
   "proxy.error.platform": "Automatic system proxy detection is unavailable on this platform. Use a custom proxy.",
@@ -1501,6 +1554,9 @@ var en = {
   "proxy.error.ca-missing": "The selected CA certificate is missing. Choose it again.",
   "proxy.error.ca-extension": "The CA certificate must be a .pem or .crt file.",
   "proxy.error.ca-size": "The CA certificate must be a non-empty regular file no larger than 1 MiB.",
+  "proxy.error.ca-expired": "The CA certificate has expired. Choose a currently valid certificate.",
+  "proxy.error.ca-not-yet-valid": "The CA certificate is not valid yet. Check the system clock or choose a current certificate.",
+  "proxy.error.ca-invalid": "The file does not contain a valid X.509 certificate.",
   "proxy.error.ca-pem": "The .pem or .crt file must contain PEM CERTIFICATE blocks.",
   "proxy.error.test": "The desktop connectivity test did not complete. Check the reported error and try again.",
   "proxy.error.host-response": "The Node Host returned an invalid proxy diagnostic result. Reopen YourBuddy and try again.",

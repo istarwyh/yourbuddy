@@ -21,6 +21,10 @@ export declare function TreePanel(props: {
     onOpenWith?: (targetId: string, path: string) => void;
     onToggleOpenWithPin?: (targetId: string) => void;
     onReferenceFile: (path: string, isDir: boolean) => void;
+    /** A tree rename landed (passed through to FileTree for tab retargeting). */
+    onPathRenamed?: (oldPath: string, newPath: string) => void;
+    /** A tree delete landed (passed through to FileTree for tab closing). */
+    onPathDeleted?: (path: string, isDir: boolean) => void;
     /** Full-window presentation: the panel fills its host instead of docking
      *  at a fixed width. */
     full?: boolean;

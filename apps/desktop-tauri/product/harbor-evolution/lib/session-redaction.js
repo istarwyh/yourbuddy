@@ -1,10 +1,8 @@
 import { canonicalDigest } from './session-selection.js'
 import {
   containsCredentialText,
-  containsLocalPath,
   containsOpaqueSecretText,
   redactCredentialTextWithCount,
-  redactLocalPathsWithCount,
   redactOpaqueSecretTextWithCount,
 } from './credential-redaction.js'
 
@@ -28,10 +26,9 @@ function replaceSecrets(value, canaries = []) {
   const canaryResult = replaceCanaries(value, canaries)
   const credentials = redactCredentialTextWithCount(canaryResult.text, '[REDACTED_SECRET]', false)
   const opaque = redactOpaqueSecretTextWithCount(credentials.text, '[REDACTED_SECRET]')
-  const paths = redactLocalPathsWithCount(opaque.text, '[REDACTED_PATH]')
   return {
-    text: paths.text,
-    replacements: canaryResult.replacements + credentials.replacements + opaque.replacements + paths.replacements,
+    text: opaque.text,
+    replacements: canaryResult.replacements + credentials.replacements + opaque.replacements,
   }
 }
 
@@ -174,9 +171,6 @@ function assertNoSecret(value, canaries = []) {
   if (containsCredentialText(serialized) || containsOpaqueSecretText(serialized)) {
     throw new Error('SESSION_REDACTION_FAILED: a credential-shaped value survived the redaction pipeline')
   }
-  if (containsLocalPath(serialized)) {
-    throw new Error('SESSION_REDACTION_FAILED: an absolute local path survived the redaction pipeline')
-  }
   if (Buffer.byteLength(serialized) > MAX_OBSERVATION_BYTES) {
     throw new Error(`SESSION_OBSERVATION_TOO_LARGE: redacted observation exceeds ${MAX_OBSERVATION_BYTES} bytes`)
   }
@@ -184,8 +178,10 @@ function assertNoSecret(value, canaries = []) {
 
 const policyWithoutDigest = {
   id: 'dsh-session-default-redaction',
-  version: '1.0.0',
+  version: '1.1.0',
   projection: 'direct-human-and-assembled-assistant-text',
+  visible_text: 'preserve-except-credentials-and-session-identifiers',
+  local_paths: 'preserve',
   tool_payloads: 'omit',
   reasoning: 'omit',
   attachments: 'omit',

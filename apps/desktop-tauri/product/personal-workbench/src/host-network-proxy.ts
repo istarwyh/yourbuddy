@@ -18,7 +18,7 @@ export interface HostNetworkProxyTestResult {
   proxied: boolean
   errorCode: string
   proxyMode: 'direct' | 'system' | 'custom' | 'unknown'
-  caSource: 'system' | 'custom' | 'unknown'
+  caSource: 'system' | 'environment' | 'custom' | 'unknown'
 }
 
 /** Minimal fetch operation accepted by the deterministic Host tests. */
@@ -49,11 +49,14 @@ function activePolicy(environment: NodeJS.ProcessEnv): Pick<
   )
     ? environment.YOURBUDDY_NETWORK_PROXY_MODE as HostNetworkProxyTestResult['proxyMode']
     : 'unknown'
-  const caSource = environment.NODE_EXTRA_CA_CERTS
-    ? 'custom'
-    : environment.NODE_OPTIONS?.split(/\s+/u).includes('--use-system-ca') === true
-      ? 'system'
-      : 'unknown'
+  const managedCaSource = environment.YOURBUDDY_NETWORK_CA_SOURCE
+  const caSource = ['system', 'environment', 'custom'].includes(managedCaSource ?? '')
+    ? managedCaSource as HostNetworkProxyTestResult['caSource']
+    : environment.NODE_EXTRA_CA_CERTS
+      ? 'custom'
+      : environment.NODE_OPTIONS?.split(/\s+/u).includes('--use-system-ca') === true
+        ? 'system'
+        : 'unknown'
   return { proxyMode, caSource }
 }
 

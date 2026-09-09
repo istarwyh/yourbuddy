@@ -5,7 +5,7 @@ pub mod host_env;
 pub mod io_fallback;
 pub mod path_bridge;
 pub mod plugin_catalog;
-mod process;
+pub(crate) mod process;
 pub mod profile_repair;
 pub mod provision;
 pub mod supervisor;

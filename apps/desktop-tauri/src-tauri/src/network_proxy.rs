@@ -2,10 +2,11 @@
 
 use std::collections::HashSet;
 use std::error::Error as StdError;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -13,22 +14,30 @@ use reqwest::{ClientBuilder, NoProxy, Proxy};
 use rustls::{CertificateError, ClientConfig};
 use rustls_platform_verifier::Verifier;
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
+use tauri::{AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_updater::UpdaterBuilder;
-use url::Url;
+use tokio::io::AsyncReadExt;
+use url::{Host, Url};
+use x509_parser::parse_x509_certificate;
+use x509_parser::time::ASN1Time;
 
 use crate::desktop_settings;
 use crate::runtime::boot_log;
+use crate::runtime::plugin_catalog::PluginRunTarget;
+use crate::runtime::process::hide_console;
+use crate::runtime::DesktopRuntime;
 
 const PROXY_TEST_URL: &str = "https://chatgpt.com/";
 const PROXY_TEST_TIMEOUT: Duration = Duration::from_secs(15);
+const NODE_PREFLIGHT_TIMEOUT: Duration = Duration::from_secs(20);
+const MAX_NODE_PREFLIGHT_OUTPUT_BYTES: u64 = 4_096;
 const MAX_PROXY_URL_LENGTH: usize = 2_048;
 const MAX_NO_PROXY_LENGTH: usize = 4_096;
 const MAX_CA_CERTIFICATE_PATH_LENGTH: usize = 4_096;
 const MAX_CA_CERTIFICATE_BYTES: u64 = 1_048_576;
 const LOCAL_BYPASS: [&str; 3] = ["localhost", "127.0.0.1", "::1"];
-const CHILD_NETWORK_ENV_NAMES: [&str; 12] = [
+const CHILD_NETWORK_ENV_NAMES: [&str; 13] = [
     "HTTP_PROXY",
     "HTTPS_PROXY",
     "ALL_PROXY",
@@ -41,8 +50,60 @@ const CHILD_NETWORK_ENV_NAMES: [&str; 12] = [
     "NODE_OPTIONS",
     "NODE_EXTRA_CA_CERTS",
     "YOURBUDDY_NETWORK_PROXY_MODE",
+    "YOURBUDDY_NETWORK_CA_SOURCE",
 ];
 const NODE_SYSTEM_CA_OPTION: &str = "--use-system-ca";
+const NODE_PREFLIGHT_SOURCE: &str = r#"
+import { createRequire } from 'node:module'
+
+function safeErrorCode(error) {
+  let current = error
+  for (let depth = 0; depth < 5 && current !== undefined; depth += 1) {
+    if (current !== null && typeof current === 'object') {
+      if (typeof current.code === 'string' && /^[A-Z0-9_]{1,64}$/.test(current.code)) return current.code
+      if (typeof current.name === 'string' && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(current.name)
+        && current.name !== 'Error' && current.name !== 'TypeError') return current.name.toUpperCase()
+      current = current.cause
+      continue
+    }
+    break
+  }
+  return 'UNKNOWN'
+}
+
+let dispatcher
+let result
+try {
+  const require = createRequire(process.argv[1])
+  const { EnvHttpProxyAgent, setGlobalDispatcher } = require('undici')
+  const httpProxy = process.env.http_proxy ?? process.env.HTTP_PROXY
+  const httpsProxy = process.env.https_proxy ?? process.env.HTTPS_PROXY
+  const noProxy = process.env.no_proxy ?? process.env.NO_PROXY
+  if (httpProxy !== undefined || httpsProxy !== undefined) {
+    dispatcher = new EnvHttpProxyAgent({
+      ...(httpProxy === undefined ? {} : { httpProxy }),
+      ...(httpsProxy === undefined ? {} : { httpsProxy }),
+      ...(noProxy === undefined ? {} : { noProxy }),
+    })
+    setGlobalDispatcher(dispatcher)
+  }
+  const response = await fetch(process.argv[2], { signal: AbortSignal.timeout(15_000) })
+  const ok = response.status !== 407 && response.status < 500
+  result = { ok, status: response.status, errorCode: ok ? '' : `HTTP_${response.status}` }
+}
+catch (error) {
+  result = { ok: false, status: 0, errorCode: safeErrorCode(error) }
+}
+finally {
+  try {
+    await dispatcher?.close()
+  }
+  catch (closeError) {
+    void closeError
+  }
+}
+process.stdout.write(`${JSON.stringify(result)}\n`)
+"#;
 
 /// User-selected source of the application's outbound proxy configuration.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -74,8 +135,20 @@ pub enum NetworkCaSource {
     /// Use the operating system trust store.
     #[default]
     System,
+    /// Supplement system trust with a validated `NODE_EXTRA_CA_CERTS` value.
+    Environment,
     /// Use the operating system trust store plus one selected PEM bundle.
     Custom,
+}
+
+impl NetworkCaSource {
+    fn as_env(self) -> &'static str {
+        match self {
+            Self::System => "system",
+            Self::Environment => "environment",
+            Self::Custom => "custom",
+        }
+    }
 }
 
 /// Persisted application-wide network proxy preferences.
@@ -102,6 +175,7 @@ pub struct ResolvedNetworkProxy {
     https_proxy: Option<Url>,
     no_proxy: String,
     ca_certificate_path: Option<PathBuf>,
+    ca_source: NetworkCaSource,
 }
 
 /// Browser-safe proxy values with credentials structurally excluded.
@@ -113,6 +187,7 @@ pub struct EffectiveNetworkProxy {
     pub https_proxy: String,
     pub no_proxy: String,
     pub ca_certificate_path: String,
+    pub ca_source: NetworkCaSource,
 }
 
 /// Current macOS fixed proxy detection result.
@@ -150,14 +225,41 @@ pub struct NetworkProxyTestResult {
     pub ca_source: NetworkCaSource,
 }
 
+/// Candidate native and Node results produced from the same resolved policy.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkProxyPreflightResult {
+    pub native: NetworkProxyTestResult,
+    pub node: NetworkProxyTestResult,
+}
+
+/// Save outcome that persists only after both candidate paths are reachable.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkProxySaveResult {
+    pub saved: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snapshot: Option<NetworkProxySnapshot>,
+    pub preflight: NetworkProxyPreflightResult,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct NodePreflightOutput {
+    ok: bool,
+    status: u16,
+    error_code: String,
+}
+
 impl ResolvedNetworkProxy {
-    fn direct() -> Self {
+    fn direct(ca_certificate_path: Option<PathBuf>, ca_source: NetworkCaSource) -> Self {
         Self {
             mode: NetworkProxyMode::Direct,
             http_proxy: None,
             https_proxy: None,
             no_proxy: normalize_no_proxy("").expect("fixed local bypass list is valid"),
-            ca_certificate_path: None,
+            ca_certificate_path,
+            ca_source,
         }
     }
 
@@ -170,6 +272,7 @@ impl ResolvedNetworkProxy {
                 .map(Url::as_str)
                 .unwrap_or_default()
                 .to_string(),
+            ca_source: self.ca_source,
             https_proxy: self
                 .https_proxy
                 .as_ref()
@@ -197,24 +300,38 @@ impl ResolvedNetworkProxy {
     }
 
     fn ca_source(&self) -> NetworkCaSource {
-        if self.ca_certificate_path.is_some() {
-            NetworkCaSource::Custom
-        } else {
-            NetworkCaSource::System
-        }
+        self.ca_source
     }
 }
 
-/// Resolve and validate one persisted or candidate proxy selection.
+/// Resolve one selection with an explicit CA before validated launch-environment trust.
 pub fn resolve(settings: &NetworkProxySettings) -> Result<ResolvedNetworkProxy, String> {
+    let inherited_ca = if settings.ca_certificate_path.trim().is_empty() {
+        detect_environment_ca_certificate()?
+    } else {
+        None
+    };
+    resolve_with_environment_ca(settings, inherited_ca.as_deref())
+}
+
+#[cfg(test)]
+pub(crate) fn resolve_without_environment_ca(
+    settings: &NetworkProxySettings,
+) -> Result<ResolvedNetworkProxy, String> {
+    resolve_with_environment_ca(settings, None)
+}
+
+fn resolve_with_environment_ca(
+    settings: &NetworkProxySettings,
+    inherited_ca: Option<&OsStr>,
+) -> Result<ResolvedNetworkProxy, String> {
     validate_inactive_custom_fields(settings)?;
-    let ca_certificate_path = resolve_ca_certificate(&settings.ca_certificate_path)?;
+    let (ca_certificate_path, ca_source) = resolve_ca_source(settings, inherited_ca)?;
     match settings.mode {
-        NetworkProxyMode::Direct => Ok(ResolvedNetworkProxy {
-            ca_certificate_path,
-            ..ResolvedNetworkProxy::direct()
-        }),
-        NetworkProxyMode::Custom => resolve_custom(settings, ca_certificate_path),
+        NetworkProxyMode::Direct => {
+            Ok(ResolvedNetworkProxy::direct(ca_certificate_path, ca_source))
+        }
+        NetworkProxyMode::Custom => resolve_custom(settings, ca_certificate_path, ca_source),
         NetworkProxyMode::System => {
             let detected = detect_system_proxy();
             if !detected.supported {
@@ -226,6 +343,7 @@ pub fn resolve(settings: &NetworkProxySettings) -> Result<ResolvedNetworkProxy, 
                 https_proxy: parse_optional_proxy_url("httpsProxy", &detected.https_proxy)?,
                 no_proxy: normalize_no_proxy(&detected.no_proxy)?,
                 ca_certificate_path,
+                ca_source,
             })
         }
     }
@@ -234,19 +352,60 @@ pub fn resolve(settings: &NetworkProxySettings) -> Result<ResolvedNetworkProxy, 
 fn resolve_custom(
     settings: &NetworkProxySettings,
     ca_certificate_path: Option<PathBuf>,
+    ca_source: NetworkCaSource,
 ) -> Result<ResolvedNetworkProxy, String> {
     let http_proxy = parse_optional_proxy_url("httpProxy", &settings.http_proxy)?;
     let https_proxy = parse_optional_proxy_url("httpsProxy", &settings.https_proxy)?;
     if http_proxy.is_none() || https_proxy.is_none() {
         return Err("network-proxy-custom-http-and-https-required".into());
     }
+    let (http_proxy, https_proxy) = normalize_loopback_proxy_pair(http_proxy, https_proxy);
     Ok(ResolvedNetworkProxy {
         mode: NetworkProxyMode::Custom,
         http_proxy,
         https_proxy,
         no_proxy: normalize_no_proxy(&settings.no_proxy)?,
         ca_certificate_path,
+        ca_source,
     })
+}
+
+fn normalize_loopback_proxy_pair(
+    http_proxy: Option<Url>,
+    mut https_proxy: Option<Url>,
+) -> (Option<Url>, Option<Url>) {
+    let Some(http) = http_proxy.as_ref() else {
+        return (http_proxy, https_proxy);
+    };
+    let Some(https) = https_proxy.as_mut() else {
+        return (http_proxy, https_proxy);
+    };
+    let same_endpoint = http
+        .host_str()
+        .zip(https.host_str())
+        .is_some_and(|(left, right)| {
+            left.eq_ignore_ascii_case(right)
+                && http.port_or_known_default() == https.port_or_known_default()
+        });
+    if http.scheme() == "http"
+        && https.scheme() == "https"
+        && same_endpoint
+        && is_loopback_host(http.host())
+    {
+        https
+            .set_scheme("http")
+            .expect("http is an accepted proxy URL scheme");
+    }
+    (http_proxy, https_proxy)
+}
+
+fn is_loopback_host(host: Option<Host<&str>>) -> bool {
+    match host {
+        Some(Host::Domain(value)) => value.eq_ignore_ascii_case("localhost"),
+        Some(Host::Ipv4(value)) => value.is_loopback(),
+        Some(Host::Ipv6(value)) => value.is_loopback(),
+        None => false,
+    }
 }
 
 fn validate_inactive_custom_fields(settings: &NetworkProxySettings) -> Result<(), String> {
@@ -301,6 +460,49 @@ fn normalize_no_proxy(raw: &str) -> Result<String, String> {
     Ok(values.join(","))
 }
 
+fn resolve_ca_source(
+    settings: &NetworkProxySettings,
+    inherited_ca: Option<&OsStr>,
+) -> Result<(Option<PathBuf>, NetworkCaSource), String> {
+    if !settings.ca_certificate_path.trim().is_empty() {
+        return resolve_ca_certificate(&settings.ca_certificate_path)
+            .map(|path| (path, NetworkCaSource::Custom));
+    }
+    let Some(raw) = inherited_ca else {
+        return Ok((None, NetworkCaSource::System));
+    };
+    let raw = raw
+        .to_str()
+        .ok_or_else(|| "network-proxy-ca-path-invalid".to_string())?;
+    if raw.trim().is_empty() {
+        return Ok((None, NetworkCaSource::System));
+    }
+    resolve_ca_certificate(raw).map(|path| (path, NetworkCaSource::Environment))
+}
+
+fn detect_environment_ca_certificate() -> Result<Option<OsString>, String> {
+    if let Some(value) = std::env::var_os("NODE_EXTRA_CA_CERTS") {
+        return Ok(Some(value));
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let output = match Command::new("/bin/launchctl")
+            .args(["getenv", "NODE_EXTRA_CA_CERTS"])
+            .output()
+        {
+            Ok(output) if output.status.success() => output,
+            Ok(_) | Err(_) => return Ok(None),
+        };
+        let value = String::from_utf8(output.stdout)
+            .map_err(|_| "network-proxy-ca-path-invalid".to_string())?;
+        let value = value.trim();
+        if !value.is_empty() {
+            return Ok(Some(OsString::from(value)));
+        }
+    }
+    Ok(None)
+}
+
 fn resolve_ca_certificate(raw: &str) -> Result<Option<PathBuf>, String> {
     let raw = raw.trim();
     if raw.is_empty() {
@@ -319,6 +521,10 @@ fn resolve_ca_certificate(raw: &str) -> Result<Option<PathBuf>, String> {
 }
 
 fn validate_ca_certificate_file(path: &Path) -> Result<(), String> {
+    validate_ca_certificate_file_at(path, ASN1Time::now())
+}
+
+fn validate_ca_certificate_file_at(path: &Path, now: ASN1Time) -> Result<(), String> {
     let extension = path
         .extension()
         .and_then(|value| value.to_str())
@@ -334,10 +540,31 @@ fn validate_ca_certificate_file(path: &Path) -> Result<(), String> {
     if metadata.len() == 0 || metadata.len() > MAX_CA_CERTIFICATE_BYTES {
         return Err("network-proxy-ca-file-size-invalid".into());
     }
-    load_ca_certificates(path).map(|_| ())
+    let certificates = load_ca_certificates_unchecked(path)?;
+    for certificate in certificates {
+        let (remainder, parsed) = parse_x509_certificate(certificate.as_ref())
+            .map_err(|_| "network-proxy-ca-certificate-invalid")?;
+        if !remainder.is_empty() {
+            return Err("network-proxy-ca-certificate-invalid".into());
+        }
+        if now < parsed.validity().not_before {
+            return Err("network-proxy-ca-certificate-not-yet-valid".into());
+        }
+        if now > parsed.validity().not_after {
+            return Err("network-proxy-ca-certificate-expired".into());
+        }
+    }
+    Ok(())
 }
 
 fn load_ca_certificates(
+    path: &Path,
+) -> Result<Vec<rustls::pki_types::CertificateDer<'static>>, String> {
+    validate_ca_certificate_file(path)?;
+    load_ca_certificates_unchecked(path)
+}
+
+fn load_ca_certificates_unchecked(
     path: &Path,
 ) -> Result<Vec<rustls::pki_types::CertificateDer<'static>>, String> {
     let file = fs::File::open(path).map_err(|_| "network-proxy-ca-file-unreadable")?;
@@ -357,6 +584,7 @@ pub fn apply_to_command(command: &mut Command, proxy: &ResolvedNetworkProxy) {
     }
     command.env("NODE_OPTIONS", NODE_SYSTEM_CA_OPTION);
     command.env("YOURBUDDY_NETWORK_PROXY_MODE", proxy.mode.as_env());
+    command.env("YOURBUDDY_NETWORK_CA_SOURCE", proxy.ca_source.as_env());
     if let Some(path) = proxy.ca_certificate_path() {
         command.env("NODE_EXTRA_CA_CERTS", path);
     }
@@ -390,6 +618,10 @@ pub fn env_arguments(
     assignments.push(format!(
         "YOURBUDDY_NETWORK_PROXY_MODE={}",
         proxy.mode.as_env()
+    ));
+    assignments.push(format!(
+        "YOURBUDDY_NETWORK_CA_SOURCE={}",
+        proxy.ca_source.as_env()
     ));
     if let Some(path) = node_ca_certificate_path {
         assignments.push(format!("NODE_EXTRA_CA_CERTS={path}"));
@@ -504,29 +736,51 @@ pub async fn select_ca_certificate(app: AppHandle) -> Result<Option<String>, Str
     ))
 }
 
-/// Validate and persist one selection; the running process keeps its old policy until restart.
+/// Preflight and persist one selection; the running process keeps its old policy until restart.
 #[tauri::command]
-pub fn save_network_proxy_settings(
+pub async fn save_network_proxy_settings(
     mut settings: NetworkProxySettings,
-) -> Result<NetworkProxySnapshot, String> {
+    runtime: State<'_, DesktopRuntime>,
+) -> Result<NetworkProxySaveResult, String> {
     let resolved = resolve(&settings)?;
-    settings.ca_certificate_path = resolved
-        .ca_certificate_path()
-        .and_then(Path::to_str)
-        .unwrap_or_default()
-        .to_string();
+    let preflight = preflight_proxy(&resolved, &runtime.plugin_target).await;
+    if !preflight.native.ok || !preflight.node.ok {
+        return Ok(NetworkProxySaveResult {
+            saved: false,
+            snapshot: None,
+            preflight,
+        });
+    }
+    normalize_persisted_settings(&mut settings, &resolved)?;
     let mut desktop = desktop_settings::load();
     desktop.network_proxy = settings.clone();
     desktop_settings::save(&desktop)?;
-    Ok(snapshot(settings))
+    Ok(NetworkProxySaveResult {
+        saved: true,
+        snapshot: Some(snapshot(settings)),
+        preflight,
+    })
 }
 
-/// Connect to ChatGPT with one candidate selection without mutating the active policy.
+/// Test the native client and a fresh managed Node process with one candidate selection.
 #[tauri::command]
 pub async fn test_network_proxy_settings(
     settings: NetworkProxySettings,
-) -> Result<NetworkProxyTestResult, String> {
+    runtime: State<'_, DesktopRuntime>,
+) -> Result<NetworkProxyPreflightResult, String> {
     let proxy = resolve(&settings)?;
+    Ok(preflight_proxy(&proxy, &runtime.plugin_target).await)
+}
+
+async fn preflight_proxy(
+    proxy: &ResolvedNetworkProxy,
+    target: &PluginRunTarget,
+) -> NetworkProxyPreflightResult {
+    let (native, node) = tokio::join!(test_native_proxy(proxy), test_node_proxy(proxy, target));
+    NetworkProxyPreflightResult { native, node }
+}
+
+async fn test_native_proxy(proxy: &ResolvedNetworkProxy) -> NetworkProxyTestResult {
     let client = match apply_to_client(
         reqwest::Client::builder()
             .user_agent("YourBuddy-Harness/proxy-test")
@@ -536,30 +790,190 @@ pub async fn test_network_proxy_settings(
     ) {
         Ok(builder) => match builder.build() {
             Ok(client) => client,
-            Err(_) => return Ok(failed_test_result(&proxy, 0, "CLIENT_BUILD_FAILED")),
+            Err(_) => return failed_test_result(proxy, 0, "CLIENT_BUILD_FAILED"),
         },
-        Err(_) => return Ok(failed_test_result(&proxy, 0, "PLATFORM_TRUST_INIT_FAILED")),
+        Err(_) => return failed_test_result(proxy, 0, "PLATFORM_TRUST_INIT_FAILED"),
     };
     let response = match client.get(PROXY_TEST_URL).send().await {
         Ok(response) => response,
-        Err(error) => return Ok(failed_test_result(&proxy, 0, reqwest_error_code(&error))),
+        Err(error) => return failed_test_result(proxy, 0, reqwest_error_code(&error)),
     };
     let status = response.status();
     if status.as_u16() == 407 || status.is_server_error() {
-        return Ok(failed_test_result(
-            &proxy,
-            status.as_u16(),
-            &format!("HTTP_{}", status.as_u16()),
-        ));
+        return failed_test_result(proxy, status.as_u16(), &format!("HTTP_{}", status.as_u16()));
     }
-    Ok(NetworkProxyTestResult {
+    successful_test_result(proxy, status.as_u16())
+}
+
+async fn test_node_proxy(
+    proxy: &ResolvedNetworkProxy,
+    target: &PluginRunTarget,
+) -> NetworkProxyTestResult {
+    let mut command = match node_preflight_command(proxy, target) {
+        Ok(command) => command,
+        Err(error_code) => return failed_test_result(proxy, 0, error_code),
+    };
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    hide_console(&mut command);
+    let mut command = tokio::process::Command::from(command);
+    command.kill_on_drop(true);
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(_) => return failed_test_result(proxy, 0, "NODE_PREFLIGHT_SPAWN_FAILED"),
+    };
+    let Some(stdout) = child.stdout.take() else {
+        let _ = child.kill().await;
+        return failed_test_result(proxy, 0, "NODE_PREFLIGHT_OUTPUT_FAILED");
+    };
+    let output = tokio::spawn(async move {
+        let mut bytes = Vec::new();
+        stdout
+            .take(MAX_NODE_PREFLIGHT_OUTPUT_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .await
+            .map(|_| bytes)
+    });
+    let status = match tokio::time::timeout(NODE_PREFLIGHT_TIMEOUT, child.wait()).await {
+        Ok(Ok(status)) => status,
+        Ok(Err(_)) => {
+            let _ = child.kill().await;
+            let _ = output.await;
+            return failed_test_result(proxy, 0, "NODE_PREFLIGHT_WAIT_FAILED");
+        }
+        Err(_) => {
+            let _ = child.kill().await;
+            let _ = output.await;
+            return failed_test_result(proxy, 0, "NODE_PREFLIGHT_TIMEOUT");
+        }
+    };
+    let bytes = match output.await {
+        Ok(Ok(bytes)) if bytes.len() <= MAX_NODE_PREFLIGHT_OUTPUT_BYTES as usize => bytes,
+        _ => return failed_test_result(proxy, 0, "NODE_PREFLIGHT_OUTPUT_FAILED"),
+    };
+    if !status.success() {
+        return failed_test_result(proxy, 0, "NODE_PREFLIGHT_EXIT_FAILED");
+    }
+    let parsed: NodePreflightOutput = match serde_json::from_slice(&bytes) {
+        Ok(parsed) => parsed,
+        Err(_) => return failed_test_result(proxy, 0, "NODE_PREFLIGHT_OUTPUT_INVALID"),
+    };
+    if !valid_node_preflight_output(&parsed) {
+        return failed_test_result(proxy, 0, "NODE_PREFLIGHT_OUTPUT_INVALID");
+    }
+    if parsed.ok {
+        successful_test_result(proxy, parsed.status)
+    } else {
+        failed_test_result(proxy, parsed.status, &parsed.error_code)
+    }
+}
+
+fn node_preflight_command(
+    proxy: &ResolvedNetworkProxy,
+    target: &PluginRunTarget,
+) -> Result<Command, &'static str> {
+    match target {
+        PluginRunTarget::Windows {
+            node, harness_root, ..
+        } => {
+            let cli_package = harness_root.join("apps").join("cli").join("package.json");
+            if !node.is_file() || !cli_package.is_file() {
+                return Err("NODE_RUNTIME_UNAVAILABLE");
+            }
+            let mut command = Command::new(node);
+            command
+                .current_dir(harness_root)
+                .args(["--input-type=module", "--eval", NODE_PREFLIGHT_SOURCE])
+                .arg(cli_package)
+                .arg(PROXY_TEST_URL);
+            apply_to_command(&mut command, proxy);
+            Ok(command)
+        }
+        PluginRunTarget::Wsl(paths) => {
+            let cli_package = format!("{}/apps/cli/package.json", paths.linux_harness_root);
+            let mut command = Command::new("wsl.exe");
+            for name in CHILD_NETWORK_ENV_NAMES {
+                command.env_remove(name);
+            }
+            command.args([
+                "-d",
+                &paths.distro,
+                "--cd",
+                &paths.linux_harness_root,
+                "--exec",
+                "/usr/bin/env",
+            ]);
+            command.args(
+                crate::runtime::wsl::network_env_arguments(proxy)
+                    .map_err(|_| "NODE_PREFLIGHT_CONFIG_INVALID")?,
+            );
+            command
+                .arg(&paths.linux_node)
+                .args(["--input-type=module", "--eval", NODE_PREFLIGHT_SOURCE])
+                .arg(cli_package)
+                .arg(PROXY_TEST_URL);
+            Ok(command)
+        }
+    }
+}
+
+fn valid_node_preflight_output(output: &NodePreflightOutput) -> bool {
+    let status_valid = output.status <= 599;
+    let code_valid = output.error_code.len() <= 64
+        && output
+            .error_code
+            .chars()
+            .all(|value| value.is_ascii_uppercase() || value.is_ascii_digit() || value == '_');
+    status_valid
+        && code_valid
+        && if output.ok {
+            output.status >= 100 && output.error_code.is_empty()
+        } else {
+            !output.error_code.is_empty()
+        }
+}
+
+fn normalize_persisted_settings(
+    settings: &mut NetworkProxySettings,
+    resolved: &ResolvedNetworkProxy,
+) -> Result<(), String> {
+    if settings.mode == NetworkProxyMode::Custom {
+        settings.http_proxy = resolved
+            .http_proxy
+            .as_ref()
+            .map(Url::as_str)
+            .unwrap_or_default()
+            .to_string();
+        settings.https_proxy = resolved
+            .https_proxy
+            .as_ref()
+            .map(Url::as_str)
+            .unwrap_or_default()
+            .to_string();
+    }
+    settings.ca_certificate_path = if settings.ca_certificate_path.trim().is_empty() {
+        String::new()
+    } else {
+        resolved
+            .ca_certificate_path()
+            .and_then(Path::to_str)
+            .ok_or_else(|| "network-proxy-ca-path-invalid".to_string())?
+            .to_string()
+    };
+    Ok(())
+}
+
+fn successful_test_result(proxy: &ResolvedNetworkProxy, status: u16) -> NetworkProxyTestResult {
+    NetworkProxyTestResult {
         ok: true,
-        status: status.as_u16(),
+        status,
         proxied: proxy.is_proxied(),
         error_code: String::new(),
         proxy_mode: proxy.mode,
         ca_source: proxy.ca_source(),
-    })
+    }
 }
 
 fn failed_test_result(
@@ -797,13 +1211,17 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
     use std::process::Command;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use rustls::CertificateError;
+    use url::Url;
+    use x509_parser::time::ASN1Time;
 
     use super::{
-        apply_to_client, apply_to_command, parse_scutil_proxy, resolve, rustls_error_code,
-        NetworkCaSource, NetworkProxyMode, NetworkProxySettings,
+        apply_to_client, apply_to_command, normalize_persisted_settings, parse_scutil_proxy,
+        resolve_with_environment_ca, resolve_without_environment_ca as resolve, rustls_error_code,
+        validate_ca_certificate_file_at, NetworkCaSource, NetworkProxyMode, NetworkProxySettings,
     };
 
     const TEST_CA_PEM: &str = r#"-----BEGIN CERTIFICATE-----
@@ -827,14 +1245,17 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
 -----END CERTIFICATE-----
 "#;
 
+    static NEXT_TEMP_FILE: AtomicU64 = AtomicU64::new(0);
+
     fn temp_file(extension: &str, contents: &str) -> PathBuf {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
         let path = std::env::temp_dir().join(format!(
-            "yourbuddy-network-proxy-{}-{nonce}.{extension}",
-            std::process::id()
+            "yourbuddy-network-proxy-{}-{nonce}-{}.{extension}",
+            std::process::id(),
+            NEXT_TEMP_FILE.fetch_add(1, Ordering::Relaxed)
         ));
         fs::write(&path, contents).unwrap();
         path
@@ -924,6 +1345,70 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
     }
 
     #[test]
+    fn normalizes_a_loopback_https_target_proxy_to_plain_http_connect() {
+        let mut settings = custom();
+        settings.https_proxy = "https://127.0.0.1:7890".into();
+        let resolved = resolve(&settings).unwrap();
+        assert_eq!(
+            resolved.https_proxy.as_ref().map(Url::as_str),
+            Some("http://127.0.0.1:7890/")
+        );
+        normalize_persisted_settings(&mut settings, &resolved).unwrap();
+        assert_eq!(settings.http_proxy, "http://127.0.0.1:7890/");
+        assert_eq!(settings.https_proxy, "http://127.0.0.1:7890/");
+
+        let mut remote = custom();
+        remote.http_proxy = "http://proxy.example:7890".into();
+        remote.https_proxy = "https://proxy.example:7890".into();
+        let resolved = resolve(&remote).unwrap();
+        assert_eq!(
+            resolved.https_proxy.as_ref().map(Url::as_str),
+            Some("https://proxy.example:7890/")
+        );
+    }
+
+    #[test]
+    fn explicit_ca_precedes_a_validated_environment_ca() {
+        let environment_ca = temp_file("crt", TEST_CA_PEM);
+        let selected_ca = temp_file("pem", TEST_CA_PEM);
+        let inherited = resolve_with_environment_ca(
+            &NetworkProxySettings::default(),
+            Some(environment_ca.as_os_str()),
+        )
+        .unwrap();
+        assert_eq!(inherited.ca_source(), NetworkCaSource::Environment);
+        assert_eq!(
+            inherited.ca_certificate_path(),
+            Some(fs::canonicalize(&environment_ca).unwrap().as_path())
+        );
+        let mut inherited_command = Command::new("node");
+        apply_to_command(&mut inherited_command, &inherited);
+        let inherited_environment: Vec<_> = inherited_command.get_envs().collect();
+        assert!(inherited_environment.iter().any(|(name, value)| {
+            *name == "NODE_EXTRA_CA_CERTS"
+                && value.is_some_and(|value| value == fs::canonicalize(&environment_ca).unwrap())
+        }));
+        assert!(inherited_environment.iter().any(|(name, value)| {
+            *name == "YOURBUDDY_NETWORK_CA_SOURCE"
+                && value.is_some_and(|value| value == "environment")
+        }));
+
+        let settings = NetworkProxySettings {
+            ca_certificate_path: selected_ca.to_string_lossy().into_owned(),
+            ..NetworkProxySettings::default()
+        };
+        let selected =
+            resolve_with_environment_ca(&settings, Some(environment_ca.as_os_str())).unwrap();
+        assert_eq!(selected.ca_source(), NetworkCaSource::Custom);
+        assert_eq!(
+            selected.ca_certificate_path(),
+            Some(fs::canonicalize(&selected_ca).unwrap().as_path())
+        );
+        fs::remove_file(environment_ca).unwrap();
+        fs::remove_file(selected_ca).unwrap();
+    }
+
+    #[test]
     fn command_policy_replaces_ambient_proxy_variables_in_both_cases() {
         let mut direct_command = Command::new("node");
         direct_command.env("HTTP_PROXY", "http://ambient.invalid:1");
@@ -948,8 +1433,10 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
             .iter()
             .any(|(name, value)| *name == "NODE_EXTRA_CA_CERTS" && value.is_none()));
         assert!(direct_env.iter().any(|(name, value)| {
-            *name == "YOURBUDDY_NETWORK_PROXY_MODE"
-                && value.is_some_and(|value| value == "direct")
+            *name == "YOURBUDDY_NETWORK_PROXY_MODE" && value.is_some_and(|value| value == "direct")
+        }));
+        assert!(direct_env.iter().any(|(name, value)| {
+            *name == "YOURBUDDY_NETWORK_CA_SOURCE" && value.is_some_and(|value| value == "system")
         }));
 
         let mut proxied_command = Command::new("node");
@@ -991,8 +1478,10 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
                 && value.is_some_and(|value| value == canonical_ca_path.as_os_str())
         }));
         assert!(environment.iter().any(|(name, value)| {
-            *name == "YOURBUDDY_NETWORK_PROXY_MODE"
-                && value.is_some_and(|value| value == "custom")
+            *name == "YOURBUDDY_NETWORK_PROXY_MODE" && value.is_some_and(|value| value == "custom")
+        }));
+        assert!(environment.iter().any(|(name, value)| {
+            *name == "YOURBUDDY_NETWORK_CA_SOURCE" && value.is_some_and(|value| value == "custom")
         }));
         apply_to_client(reqwest::Client::builder(), &resolved)
             .unwrap()
@@ -1004,6 +1493,10 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
     #[test]
     fn custom_ca_rejects_untrusted_file_inputs() {
         let invalid_pem = temp_file("pem", "not a certificate\n");
+        let invalid_certificate = temp_file(
+            "pem",
+            "-----BEGIN CERTIFICATE-----\naGVsbG8=\n-----END CERTIFICATE-----\n",
+        );
         let invalid_extension = temp_file("der", TEST_CA_PEM);
         for (path, expected) in [
             (
@@ -1015,6 +1508,10 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
                 "network-proxy-ca-pem-invalid",
             ),
             (
+                invalid_certificate.to_string_lossy().into_owned(),
+                "network-proxy-ca-certificate-invalid",
+            ),
+            (
                 invalid_extension.to_string_lossy().into_owned(),
                 "network-proxy-ca-extension-unsupported",
             ),
@@ -1024,7 +1521,24 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
             assert_eq!(resolve(&settings).unwrap_err(), expected);
         }
         fs::remove_file(invalid_pem).unwrap();
+        fs::remove_file(invalid_certificate).unwrap();
         fs::remove_file(invalid_extension).unwrap();
+    }
+
+    #[test]
+    fn ca_validation_rejects_certificates_outside_their_validity_period() {
+        let ca_path = temp_file("pem", TEST_CA_PEM);
+        let before_validity = ASN1Time::from_timestamp(1_700_000_000).unwrap();
+        assert_eq!(
+            validate_ca_certificate_file_at(&ca_path, before_validity).unwrap_err(),
+            "network-proxy-ca-certificate-not-yet-valid"
+        );
+        let after_expiry = ASN1Time::from_timestamp(2_200_000_000).unwrap();
+        assert_eq!(
+            validate_ca_certificate_file_at(&ca_path, after_expiry).unwrap_err(),
+            "network-proxy-ca-certificate-expired"
+        );
+        fs::remove_file(ca_path).unwrap();
     }
 
     #[test]

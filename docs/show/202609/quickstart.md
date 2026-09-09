@@ -45,7 +45,7 @@ Respond to any operation approvals shown by the interface. When the task ends, o
 
 ## 6. Configure networking and updates when needed
 
-If networking is restricted, open Settings → General → Network proxy and choose direct, system, or custom fixed proxy settings. Check the desktop draft route and the running Host route separately. Save, restart, and test again to confirm activation. Custom proxy settings require HTTP and HTTPS addresses; PAC and proxy credential storage are not supported. Use the settings card's PEM certificate control for enterprise certificate issues.
+If networking is restricted, open Settings → General → Network proxy and choose direct, system, or custom fixed proxy settings. Check the native draft, fresh managed Node draft, and running Host separately; save leaves settings unchanged after a failed native or managed Node preflight, then restart and test again to confirm activation. Custom proxy settings require addresses for HTTP-target and HTTPS-target requests; PAC and proxy credential storage are not supported. A valid launch `NODE_EXTRA_CA_CERTS` is adopted automatically, while the settings card's PEM control explicitly overrides it for enterprise certificate issues.
 
 Use Settings → General → Application lifecycle to check for updates or restart. After installing a plugin through the marketplace, restart here so its new Client can be discovered. Default bundled plugins update with YourBuddy application releases; an upstream update notification on a plugin page does not mean the local installation has updated.
 

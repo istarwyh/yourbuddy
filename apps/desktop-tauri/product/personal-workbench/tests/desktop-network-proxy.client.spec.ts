@@ -64,7 +64,7 @@ const snapshot = {
     autoConfigUrl: '',
     error: '',
   },
-  effective: settings,
+  effective: { ...settings, caSource: 'custom' },
   effectiveError: '',
 }
 
@@ -139,8 +139,9 @@ describe('desktop network proxy browser bridge', () => {
       proxyMode: 'custom',
       caSource: 'custom',
     }
-    target.emit(response('test', 'proxy_test_1', nativeResult))
-    await expect(testResult).resolves.toEqual(nativeResult)
+    const preflight = { native: nativeResult, node: nativeResult }
+    target.emit(response('test', 'proxy_test_1', preflight))
+    await expect(testResult).resolves.toEqual(preflight)
 
     const saved = requestDesktopNetworkProxySave(settings, {
       target: target as unknown as Window,
@@ -148,8 +149,32 @@ describe('desktop network proxy browser bridge', () => {
       handshakeTimeoutMs: 1_000,
     })
     target.emit(accepted('save', 'proxy_save_1'))
-    target.emit(response('save', 'proxy_save_1', snapshot))
-    await expect(saved).resolves.toEqual(snapshot)
+    const saveResult = { saved: true, snapshot, preflight }
+    target.emit(response('save', 'proxy_save_1', saveResult))
+    await expect(saved).resolves.toEqual(saveResult)
+
+    const failedTarget = new FakeWindow()
+    const failedSave = requestDesktopNetworkProxySave(settings, {
+      target: failedTarget as unknown as Window,
+      requestId: 'proxy_save_2',
+      handshakeTimeoutMs: 1_000,
+    })
+    const failedPreflight = {
+      native: { ...nativeResult, ok: false, status: 0, errorCode: 'UNKNOWN_ISSUER' },
+      node: nativeResult,
+    }
+    failedTarget.emit(accepted('save', 'proxy_save_2'))
+    failedTarget.emit(response('save', 'proxy_save_2', {
+      saved: false,
+      preflight: failedPreflight,
+    }))
+    await expect(failedSave).resolves.toEqual({ saved: false, preflight: failedPreflight })
+
+    expect(readDesktopNetworkProxyResponse(
+      response('save', 'proxy_save_3', { saved: true, preflight: failedPreflight, snapshot }),
+      'proxy_save_3',
+      'save',
+    )).toBeUndefined()
   })
 
   it('ignores malformed success values and the wrong parent source', async () => {
@@ -161,12 +186,22 @@ describe('desktop network proxy browser bridge', () => {
     })
     target.emit(accepted('test', 'proxy_test_1'), {})
     target.emit(response('test', 'proxy_test_1', {
-      ok: false,
-      status: 999,
-      proxied: true,
-      errorCode: 'UNKNOWN_ISSUER',
-      proxyMode: 'custom',
-      caSource: 'custom',
+      native: {
+        ok: false,
+        status: 999,
+        proxied: true,
+        errorCode: 'UNKNOWN_ISSUER',
+        proxyMode: 'custom',
+        caSource: 'custom',
+      },
+      node: {
+        ok: false,
+        status: 0,
+        proxied: true,
+        errorCode: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+        proxyMode: 'custom',
+        caSource: 'custom',
+      },
     }))
     await expect(result).rejects.toThrow('desktop-shell-unavailable')
   })
@@ -174,36 +209,66 @@ describe('desktop network proxy browser bridge', () => {
   it('accepts only a response with the action-specific value', () => {
     expect(readDesktopNetworkProxyResponse(
       response('test', 'proxy_1', {
-        ok: true,
-        status: 204,
-        proxied: true,
-        errorCode: '',
-        proxyMode: 'custom',
-        caSource: 'custom',
+        native: {
+          ok: true,
+          status: 204,
+          proxied: true,
+          errorCode: '',
+          proxyMode: 'custom',
+          caSource: 'environment',
+        },
+        node: {
+          ok: true,
+          status: 403,
+          proxied: true,
+          errorCode: '',
+          proxyMode: 'custom',
+          caSource: 'environment',
+        },
       }),
       'proxy_1',
       'test',
     )).toMatchObject({ ok: true })
     expect(readDesktopNetworkProxyResponse(
       response('test', 'proxy_1', {
-        ok: false,
-        status: 0,
-        proxied: true,
-        errorCode: 'UNKNOWN_ISSUER',
-        proxyMode: 'custom',
-        caSource: 'custom',
+        native: {
+          ok: false,
+          status: 0,
+          proxied: true,
+          errorCode: 'UNKNOWN_ISSUER',
+          proxyMode: 'custom',
+          caSource: 'custom',
+        },
+        node: {
+          ok: false,
+          status: 0,
+          proxied: true,
+          errorCode: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+          proxyMode: 'custom',
+          caSource: 'custom',
+        },
       }),
       'proxy_1',
       'test',
     )).toMatchObject({ ok: true })
     expect(readDesktopNetworkProxyResponse(
       response('test', 'proxy_1', {
-        ok: false,
-        status: 0,
-        proxied: true,
-        errorCode: 'private certificate detail',
-        proxyMode: 'custom',
-        caSource: 'custom',
+        native: {
+          ok: false,
+          status: 0,
+          proxied: true,
+          errorCode: 'private certificate detail',
+          proxyMode: 'custom',
+          caSource: 'custom',
+        },
+        node: {
+          ok: false,
+          status: 0,
+          proxied: true,
+          errorCode: 'UNKNOWN',
+          proxyMode: 'custom',
+          caSource: 'custom',
+        },
       }),
       'proxy_1',
       'test',

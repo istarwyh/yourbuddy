@@ -1,6 +1,6 @@
 {
   "name": "dsh-harbor-evolution",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "DeepSeek Harness plugin and Skill for Harbor Candidate and Historical Session evaluation workflows.",
   "type": "module",
   "main": "index.js",

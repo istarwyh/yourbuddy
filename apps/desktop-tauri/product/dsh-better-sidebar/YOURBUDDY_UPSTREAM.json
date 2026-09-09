@@ -1,14 +1,14 @@
 {
   "package": "dsh-better-sidebar",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "sourceKind": "npm-latest",
   "channel": "latest",
-  "source": "https://registry.npmjs.org/dsh-better-sidebar/-/dsh-better-sidebar-0.18.0.tgz",
-  "integrity": "sha512-6sGUIpgrFLXikACKBXLSiyngULceZCIr5M4bLw2IdCJ3KWHcbNsJJl+TLHJw0lM9voRw0etbr5fC16VQ9YvshQ==",
-  "archiveSha256": "ed721de536421841ecf48bddccd7249aed85473a2cff81c436038f593a4b873b",
-  "upstreamTreeSha256": "4cfa9fcd6081e180f37be6d2f68ef5adc97de42568546496a05f5b004a82725e",
+  "source": "https://registry.npmjs.org/dsh-better-sidebar/-/dsh-better-sidebar-0.18.1.tgz",
+  "integrity": "sha512-9gKJfodHmBmP/WL6DXiC4KU4enRcRfAESiWsrFrAjDC9fK9KAjtYSxJ7vw+lWMkDBVvDZ5BBUfUL3gqbX6r53A==",
+  "archiveSha256": "955de491b46c23f99666430ded7a6bcad0769fa942b13c0bcf7386a073e645f7",
+  "upstreamTreeSha256": "a2b7c5f93bb90be893684c9ce2050c4f738b7306ea7be8791bffdadf959c29cd",
   "patches": [],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "4cfa9fcd6081e180f37be6d2f68ef5adc97de42568546496a05f5b004a82725e"
+  "treeSha256": "a2b7c5f93bb90be893684c9ce2050c4f738b7306ea7be8791bffdadf959c29cd"
 }

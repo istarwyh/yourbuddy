@@ -9,7 +9,7 @@ export interface HostNetworkProxyTestResult {
   proxied: boolean
   errorCode: string
   proxyMode: 'direct' | 'system' | 'custom' | 'unknown'
-  caSource: 'system' | 'custom' | 'unknown'
+  caSource: 'system' | 'environment' | 'custom' | 'unknown'
 }
 
 /** Minimal fetch implementation accepted by deterministic browser tests. */
@@ -34,7 +34,7 @@ function readResult(value: unknown): HostNetworkProxyTestResult | undefined {
     || typeof result.proxied !== 'boolean'
     || typeof result.errorCode !== 'string'
     || !['direct', 'system', 'custom', 'unknown'].includes(String(result.proxyMode))
-    || !['system', 'custom', 'unknown'].includes(String(result.caSource))
+    || !['system', 'environment', 'custom', 'unknown'].includes(String(result.caSource))
     || result.errorCode.length > 64) return undefined
   return result as unknown as HostNetworkProxyTestResult
 }

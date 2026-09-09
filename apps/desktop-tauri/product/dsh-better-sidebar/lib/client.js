@@ -1571,7 +1571,7 @@ window.__ModuleLoader__.load({
 		function matchUrlTarget(tabs, url) {
 			for (const tab of tabs) {
 				if (tab.urlTarget === void 0) continue;
-				let claimed = false;
+				let claimed;
 				try {
 					claimed = tab.urlTarget(url) === true;
 				} catch (error) {
@@ -1585,7 +1585,7 @@ window.__ModuleLoader__.load({
 		* The plugin version this service instance reports. Keep in lockstep with
 		* `package.json`'s version — `tests/service.spec.ts` asserts the pair.
 		*/
-		const SIDEBAR_SERVICE_VERSION = "0.18.0";
+		const SIDEBAR_SERVICE_VERSION = "0.18.1";
 		/**
 		* Monotonic capability list consumers use to gate new API usage (features
 		* are never removed). Each string names a v0.12.0+ capability:
@@ -1918,10 +1918,9 @@ window.__ModuleLoader__.load({
 			else g[MODULE_SYSTEM_GLOBAL] = system;
 		}
 		/** Resolve the shell-installed module system (injected, then the plugin
-		*  global shared with chunk-bundle copies, then the rc.7 page global). */
+		*  global shared with chunk-bundle copies). */
 		function moduleSystem() {
-			const g = globalThis;
-			return injectedModuleSystem ?? g[MODULE_SYSTEM_GLOBAL] ?? g.__DSH_MODULES__;
+			return injectedModuleSystem ?? globalThis[MODULE_SYSTEM_GLOBAL];
 		}
 		function chunkRegistry() {
 			const g = globalThis;
@@ -1999,8 +1998,7 @@ window.__ModuleLoader__.load({
 			if (revalidation !== null) await revalidation;
 			const cached = cache.get(name);
 			if (cached !== void 0) return cached;
-			let task;
-			task = (async () => {
+			const task = (async () => {
 				const test = testLoaders.get(name);
 				if (test !== void 0) return test();
 				const modules = moduleSystem();
@@ -2098,11 +2096,24 @@ window.__ModuleLoader__.load({
 			files: "文件",
 			changesSessionEmpty: "本会话还没有文件操作",
 			changesRead: "读取",
+			changesMdReading: "阅读",
+			changesMdRaw: "原文",
+			changesHtmlRender: "渲染",
+			changesHtmlRaw: "原文",
+			changesPdfRender: "渲染",
+			changesPdfRaw: "原文",
 			changesWrite: "写入",
 			changesEdit: "编辑",
 			changesRunning: "执行中",
 			changesError: "出错",
+			changesRedactOn: "已开启脱敏：敏感内容以 [REDACTED] 显示；点击关闭（自担风险）",
+			changesRedactOff: "脱敏已关闭：将原样显示文件内容；点击开启",
+			changesRedactOnLabel: "脱敏中",
+			changesRedactOffLabel: "脱敏关",
+			changesRedactBanner: "已脱敏",
 			changesFold: "{count} 行…点击展开",
+			changesFoldLoading: "展开中…",
+			changesFoldUnavailable: "上下文未加载",
 			changesContext: "上下文",
 			changesPriorUnknown: "变更前的内容不在窗口内，显示为全新增",
 			explorer: "资源管理器",
@@ -2277,6 +2288,13 @@ window.__ModuleLoader__.load({
 			addToConversation: "添加到对话",
 			copyRelative: "复制相对地址",
 			copyAbsolute: "复制绝对地址",
+			rename: "重命名",
+			renameInvalid: "名称不能为空，且不能包含路径分隔符。",
+			delete: "删除",
+			deleteTitle: "删除「{name}」？",
+			deleteDescFile: "将永久删除该文件，此操作不可撤销。",
+			deleteDescDir: "将永久删除该目录及其全部内容，此操作不可撤销。",
+			dismiss: "关闭",
 			download: "下载",
 			uploadFiles: "上传文件",
 			uploadFolder: "上传文件夹",
@@ -2499,18 +2517,51 @@ window.__ModuleLoader__.load({
 			pluginCodeNavDesc: "代码预览导航：按文件类型自动识别语言并高亮语法，符号大纲（类/方法/变量筛选 + 一键跳转），文件内查找（全部匹配高亮、上/下一处、区分大小写），接管 better-sidebar 的代码文件预览",
 			pluginDocsPanelDesc: "DSH 侧边栏里的「全局文档」：全局 Markdown 笔记，任何工作区随时可读——列表点选阅读、悬浮大纲跳转、Chrome / VS Code 外部打开、代码复制，目录可配置（默认 ~/.dsh/docs）",
 			pluginEgoBrowserDesc: "把 CitroLabs/ego-lite 接进 DeepSeek Harness 的 agent 浏览器：32 个 ego_* 工具驱动真实 Chromium，侧边栏原生「ego 浏览器」Tab 实时观察 agent 逛的每个页面，可直接点击/拖拽/输入接管；装 better-sidebar 时自动注册 Tab，没装则退回浮动浮窗",
-			pluginBilingualReaderDesc: "在 DSH 侧边栏读论文 PDF：原生 PDF 显示，选中一段文字即用大模型划词翻译，结合上下文、完全隔离主对话，只作阅读辅助"
+			pluginBilingualReaderDesc: "在 DSH 侧边栏读论文 PDF：原生 PDF 显示，选中一段文字即用大模型划词翻译，结合上下文、完全隔离主对话，只作阅读辅助",
+			pluginSentinelName: "dsh-sentinel 唤醒系统",
+			pluginEgoBrowserName: "ego-browser Agent 浏览器",
+			pluginBetterOverleafName: "dsh-better-overleaf Overleaf 标签页",
+			pluginDocsPanelName: "dsh-docs-panel 全局文档",
+			pluginFlowglassName: "dsh-flowglass 流镜",
+			pluginGitForgeName: "dsh-git-forge Git 凭据",
+			pluginGitRemotesName: "dsh-git-remotes Git 远程",
+			pluginGithubWorkbenchName: "dsh-github-workbench GitHub 工作台",
+			pluginSidebarQaName: "dsh-sidebar-qa 划选追问",
+			pluginSidenoteName: "dsh-sidenote 侧边聊天",
+			pluginServerDeckName: "dsh-server-deck 服务器甲板",
+			pluginSuhuangScrollName: "dsh-suhuang-scroll 苏黄共阅",
+			pluginSshTunnelName: "dsh-ssh-tunnel SSH 隧道",
+			pluginTurnReviewName: "dsh-turn-review 本轮审查",
+			pluginBilingualReaderName: "dsh-bilingual-reader 双语阅读",
+			pluginOfficeName: "Office 预览插件",
+			pluginMdExportName: "Markdown 导出插件",
+			pluginCodeNavName: "代码预览导航",
+			pluginVideoPreviewName: "视频预览插件",
+			presetDshDesktopDesc: "Electron 高级模式（无边框）：macOS 顶栏 20px、Windows 无 WCO 时 32px 标题栏让位"
 		};
 		/** The en dictionary (key-set-equal to zh, enforced by the type annotation). */
 		const en = {
 			files: "Files",
 			changesSessionEmpty: "No file operations in this session yet",
 			changesRead: "Read",
+			changesMdReading: "Reading",
+			changesMdRaw: "Raw",
+			changesHtmlRender: "Render",
+			changesHtmlRaw: "Raw",
+			changesPdfRender: "Render",
+			changesPdfRaw: "Raw",
 			changesWrite: "Write",
 			changesEdit: "Edit",
 			changesRunning: "running",
 			changesError: "error",
+			changesRedactOn: "Redaction on: secrets render as [REDACTED]; click to disable (at your own risk)",
+			changesRedactOff: "Redaction off: file content renders verbatim; click to enable",
+			changesRedactOnLabel: "Redacting",
+			changesRedactOffLabel: "Redaction off",
+			changesRedactBanner: "Redacted",
 			changesFold: "{count} lines…click to expand",
+			changesFoldLoading: "Expanding…",
+			changesFoldUnavailable: "Context unavailable",
 			changesContext: "context",
 			changesPriorUnknown: "Prior content is outside the loaded window; shown as all-added",
 			explorer: "Explorer",
@@ -2685,6 +2736,13 @@ window.__ModuleLoader__.load({
 			addToConversation: "Add to conversation",
 			copyRelative: "Copy relative path",
 			copyAbsolute: "Copy absolute path",
+			rename: "Rename",
+			renameInvalid: "The name cannot be empty or contain path separators.",
+			delete: "Delete",
+			deleteTitle: "Delete \"{name}\"?",
+			deleteDescFile: "This permanently deletes the file. This cannot be undone.",
+			deleteDescDir: "This permanently deletes the directory and everything inside it. This cannot be undone.",
+			dismiss: "Dismiss",
 			download: "Download",
 			uploadFiles: "Upload files",
 			uploadFolder: "Upload folder",
@@ -2907,7 +2965,27 @@ window.__ModuleLoader__.load({
 			pluginDocsPanelDesc: "Global docs in the DSH sidebar: read your own Markdown notes from any workspace — a file list, an outline, open in Chrome / VS Code, and copy buttons; the docs directory is configurable (default ~/.dsh/docs)",
 			pluginEgoBrowserDesc: "The agent browser for DeepSeek Harness: 32 ego_* tools drive a real Chromium, with a native sidebar \"ego browser\" tab giving a live view of every page the agent visits — you can click, drag, and type to take over. Registers the tab automatically when better-sidebar is present, otherwise falls back to a floating bubble",
 			pluginBetterOverleafDesc: "Overleaf tab for better-sidebar: direct-CDP browser login (third-party Chromium supported), project list/switch, local git mirrors under <workspace>/overleaf/, two-way git sync with read-only API fallback, and file preview through the sidebar workbench",
-			pluginBilingualReaderDesc: "Read paper PDFs in the DSH sidebar: native PDF rendering, select text to translate it with the LLM, using context while staying fully isolated from the main conversation — a reading aid only"
+			pluginBilingualReaderDesc: "Read paper PDFs in the DSH sidebar: native PDF rendering, select text to translate it with the LLM, using context while staying fully isolated from the main conversation — a reading aid only",
+			pluginSentinelName: "dsh-sentinel Wake-up System",
+			pluginEgoBrowserName: "ego-browser Agent Browser",
+			pluginBetterOverleafName: "dsh-better-overleaf Overleaf Tab",
+			pluginDocsPanelName: "dsh-docs-panel Global Docs",
+			pluginFlowglassName: "dsh-flowglass Flowglass",
+			pluginGitForgeName: "dsh-git-forge Git Credentials",
+			pluginGitRemotesName: "dsh-git-remotes Git Remotes",
+			pluginGithubWorkbenchName: "dsh-github-workbench GitHub Workbench",
+			pluginSidebarQaName: "dsh-sidebar-qa Select & Ask",
+			pluginSidenoteName: "dsh-sidenote Side Chat",
+			pluginServerDeckName: "dsh-server-deck Server Deck",
+			pluginSuhuangScrollName: "dsh-suhuang-scroll Suhuang Scroll",
+			pluginSshTunnelName: "dsh-ssh-tunnel SSH Tunnel",
+			pluginTurnReviewName: "dsh-turn-review Turn Review",
+			pluginBilingualReaderName: "dsh-bilingual-reader Bilingual Reader",
+			pluginOfficeName: "Office Preview",
+			pluginMdExportName: "Markdown Export",
+			pluginCodeNavName: "Code Preview Navigator",
+			pluginVideoPreviewName: "Video Preview",
+			presetDshDesktopDesc: "Electron advanced (frameless) mode: macOS reserves a 20px top strip; Windows reserves a 32px title bar when WCO is unavailable"
 		};
 		/**
 		* The dictionary namespace this plugin owns in the DSH locale registry
@@ -3157,7 +3235,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/DSH-better-sidebar/DSH-better-sidebar/src/client/sidebar.module.css.mjs
-		const css$6 = "[data-dsh-panel-host]{z-index:25;pointer-events:none;position:fixed;inset:0;overflow:clip}[data-dsh-panel-host][data-dsh-panel-host-degraded]{position:absolute;top:0;left:0}.nArs4W_toggleCluster{top:calc(3px + env(safe-area-inset-top));z-index:45;pointer-events:auto;transition:top var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:row;gap:4px;display:flex;position:absolute;right:10px}.nArs4W_panel:not(.nArs4W_panelHidden) .nArs4W_tabBar{padding-right:72px}.nArs4W_toggleButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out), color var(--ds-transition-duration-slow) var(--ds-ease-in-out);background:0 0;border:none;border-radius:50%;justify-content:center;align-items:center;display:flex}.nArs4W_toggleButton:hover:not(:disabled):not([aria-disabled=true]){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_toggleButton:disabled,.nArs4W_toggleButton[aria-disabled=true]{opacity:.4;cursor:default}.nArs4W_panel{box-sizing:border-box;z-index:40;pointer-events:auto;background:var(--dsw-alias-bg-layer-1);border-left:1px solid var(--dsw-alias-border-l2);padding-bottom:env(safe-area-inset-bottom);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), width var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:column;display:flex;position:absolute;top:0;bottom:0;right:0}.nArs4W_panelHidden{pointer-events:none;visibility:hidden;transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), width var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear var(--ds-transition-duration-slow);transform:translate(102%)}.nArs4W_panel[data-dragging]{transition:none}.nArs4W_panelResize{cursor:col-resize;z-index:2;touch-action:none;width:8px;position:absolute;top:0;bottom:0;left:-4px}.nArs4W_panelResizeActive{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_panelBody{flex:1;min-width:0;min-height:0;display:flex}.nArs4W_bottomPanel{z-index:40;background:var(--dsw-alias-bg-layer-1);border-top:1px solid var(--dsw-alias-border-l2);pointer-events:auto;padding-bottom:env(safe-area-inset-bottom);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), height var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:column;display:flex;position:absolute;bottom:0}.nArs4W_bottomPanelHidden{pointer-events:none;visibility:hidden;transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), height var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear var(--ds-transition-duration-slow);transform:translateY(102%)}.nArs4W_bottomPanel[data-dragging]{transition:none}.nArs4W_panel,.nArs4W_bottomPanel{contain:layout style}body[data-dsh-sidebar-dragging] .nArs4W_panel,body[data-dsh-sidebar-dragging] .nArs4W_bottomPanel{will-change:transform}.nArs4W_bottomResize{cursor:row-resize;z-index:2;touch-action:none;height:8px;position:absolute;top:-4px;left:0;right:0}.nArs4W_bottomResizeActive{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_bottomClose{z-index:4;width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex;position:absolute;top:3px;right:6px}.nArs4W_bottomClose:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_bottomPanel .nArs4W_tabBar{padding-right:40px}.nArs4W_floatWindow{z-index:42;pointer-events:auto;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);box-shadow:var(--dsw-shadow-lv3);contain:layout style;border-radius:8px;flex-direction:column;display:flex;position:absolute;overflow:hidden}.nArs4W_floatWindowDragging{will-change:left, top, width, height}.nArs4W_floatHeader{height:34px;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border-bottom:1px solid var(--dsw-alias-border-l1);cursor:grab;user-select:none;flex:none;align-items:center;gap:4px;padding:0 4px 0 10px;display:flex}.nArs4W_floatWindowDragging .nArs4W_floatHeader{cursor:grabbing}.nArs4W_floatTitle{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.nArs4W_floatClose{width:18px;height:18px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.nArs4W_floatClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_floatContent{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden}.nArs4W_floatResize{z-index:2;cursor:nwse-resize;touch-action:none;width:14px;height:14px;position:absolute;bottom:0;right:0}.nArs4W_floatResize:hover{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_pane[data-dsh-float-dock-over]{outline:2px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-2px}.nArs4W_floatDropHint{z-index:46;pointer-events:none;border:2px dashed var(--dsw-alias-interactive-bg-hover-accent);background:color-mix(in srgb, var(--dsw-alias-interactive-bg-hover-accent) 12%, transparent);border-radius:8px;justify-content:center;align-items:center;display:flex;position:absolute}.nArs4W_floatDropHintLabel{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:999px;padding:4px 12px}.nArs4W_toggleCluster,.nArs4W_toggleButton,.nArs4W_tabBar,.nArs4W_floatHeader{-webkit-app-region:no-drag}body[data-dsh-title-bar-compat] .nArs4W_toggleCluster{top:calc(var(--dsh-title-bar-strip,40px) + 3px)}body[data-dsh-title-bar-compat] .nArs4W_panel{padding-top:var(--dsh-title-bar-strip,40px)}body[data-dsh-sidebar-collapsed] .nArs4W_toggleCluster{top:calc(14px + env(safe-area-inset-top))}body[data-dsh-sidebar-collapsed][data-dsh-title-bar-compat] .nArs4W_toggleCluster{top:calc(var(--dsh-title-bar-strip,40px) + 14px)}.nArs4W_cornerHandle{left:-6px;bottom:calc(var(--dsh-sidebar-height,0px) + 6px);z-index:2;cursor:nwse-resize;touch-action:none;width:12px;height:12px;position:absolute}.nArs4W_cornerHandle:hover,.nArs4W_cornerHandle[data-dragging]{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.nArs4W_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_iconButton:disabled{opacity:.4;cursor:default}.nArs4W_workbench,.nArs4W_split{flex:1;min-width:0;min-height:0;display:flex}.nArs4W_splitRow{flex-direction:row}.nArs4W_splitCol{flex-direction:column}.nArs4W_splitChild{display:flex;position:relative;overflow:hidden}.nArs4W_divider{z-index:3;touch-action:none;flex:none;position:relative}.nArs4W_dividerRow:after,.nArs4W_dividerCol:after{content:\"\";background:var(--dsw-alias-border-l2);transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out);position:absolute}.nArs4W_dividerRow{cursor:col-resize;width:7px;margin:0 -2px}.nArs4W_dividerRow:after{width:1px;top:0;bottom:0;left:50%;transform:translate(-50%)}.nArs4W_dividerCol{cursor:row-resize;height:7px;margin:-2px 0}.nArs4W_dividerCol:after{height:1px;top:50%;left:0;right:0;transform:translateY(-50%)}.nArs4W_divider:hover:after,.nArs4W_dividerActive:after{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_pane{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;position:relative}.nArs4W_paneDrop{outline:1px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}.nArs4W_dropOverlay{z-index:6;pointer-events:none;background:var(--dsw-alias-interactive-bg-hover-accent);opacity:.5;position:absolute}.nArs4W_dropLeft{width:25%;top:0;bottom:0;left:0}.nArs4W_dropRight{width:25%;top:0;bottom:0;right:0}.nArs4W_dropUp{height:25%;top:0;left:0;right:0}.nArs4W_dropDown{height:25%;bottom:0;left:0;right:0}.nArs4W_dropCenter{outline:2px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-2px;background:0 0;inset:25%}.nArs4W_paneContent{flex-direction:column;flex:1;min-height:0;display:flex;overflow:hidden}.nArs4W_paneTab{flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_paneTabHidden{display:none}.nArs4W_paneEmptyCards{flex:1;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));align-content:start;gap:8px;min-height:0;padding:12px;display:grid;overflow:hidden}.nArs4W_paneCard{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;text-align:center;border-radius:8px;flex-direction:column;justify-content:center;align-items:center;gap:6px;padding:12px 8px;display:flex}.nArs4W_paneCard:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2)}.nArs4W_paneCard:disabled{opacity:.45;cursor:default}.nArs4W_tabBar{border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);flex:none;align-items:stretch;height:34px;display:flex}.nArs4W_tabBarDrop{outline:1px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}.nArs4W_tabList{scrollbar-width:none;flex:1;min-width:0;display:flex;overflow-x:auto}.nArs4W_tabList::-webkit-scrollbar{display:none}.nArs4W_tab{min-width:64px;max-width:160px;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);border-right:1px solid var(--dsw-alias-border-l1);cursor:pointer;user-select:none;background:0 0;flex:none;align-items:center;gap:4px;padding:0 4px 0 10px;display:flex}.nArs4W_tab:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_tabActive{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-active)}.nArs4W_tabTitle{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.nArs4W_tabBadge{min-width:16px;height:15px;font:var(--dsw-font-xxxs-strong-11);background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-brand-primary);border-radius:8px;flex:none;justify-content:center;align-items:center;padding:0 4px;display:inline-flex}.nArs4W_tabClose{width:18px;height:18px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.nArs4W_tabClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_tabBarPlus{background:var(--dsw-alias-bg-layer-1);width:22px;height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border:none;border-radius:5px;flex:none;justify-content:center;align-self:center;align-items:center;margin:0 6px;padding:0;display:inline-flex;position:sticky;right:0}.nArs4W_tabBarPlus:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_pinnedTab{color:var(--dsw-alias-label-tertiary);font-style:italic}.nArs4W_pinnedTab:hover{color:var(--dsw-alias-label-secondary)}.nArs4W_explorer{flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_explorerHeader{flex:none;justify-content:space-between;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.nArs4W_explorerRoot{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.nArs4W_explorerBody{flex:1;min-height:0;padding:4px 8px 8px;overflow:hidden auto}.nArs4W_explorerRow{box-sizing:border-box;width:100%;max-width:100%;height:34px;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);text-align:left;cursor:pointer;white-space:nowrap;animation:nArs4W_dsh-row-in .15s var(--ds-ease-in-out);background:0 0;border:none;border-radius:8px;align-items:center;gap:6px;padding:0 8px;display:flex}.nArs4W_explorerRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_explorerRowRevealed{background:var(--dsw-alias-state-business-tertiary)}.nArs4W_explorerRowRevealed+.nArs4W_explorerRowRevealed{border-top-left-radius:0;border-top-right-radius:0}.nArs4W_explorerRowRevealed:has(+.nArs4W_explorerRowRevealed){border-bottom-right-radius:0;border-bottom-left-radius:0}.nArs4W_explorerDir{font:var(--dsw-font-s-strong-14)}.nArs4W_explorerHidden{opacity:.45}.nArs4W_explorerSymlink{color:var(--dsw-alias-label-tertiary);flex:none}.nArs4W_explorerBroken .nArs4W_explorerName{color:var(--dsw-alias-state-error-primary)}.nArs4W_explorerName{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.nArs4W_explorerRef,.nArs4W_explorerCopied{margin-left:auto}.nArs4W_explorerRef{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);height:20px;color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;border-radius:999px;flex:none;align-items:center;padding:0 8px;display:none}.nArs4W_explorerRef:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_explorerRow:hover .nArs4W_explorerRef,.nArs4W_explorerRow:focus-within .nArs4W_explorerRef{display:inline-flex}.nArs4W_explorerCopied{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.nArs4W_explorerError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);cursor:default}@keyframes nArs4W_dsh-row-in{0%{opacity:0}}.nArs4W_explorerEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}.nArs4W_explorerRowDropTarget{background:var(--dsw-alias-interactive-bg-hover);outline:1px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}.nArs4W_uploadDropZone{z-index:1001;pointer-events:none;border:2px dashed var(--dsw-alias-interactive-bg-hover-accent);box-shadow:0 0 0 200vmax var(--dsw-alias-bg-mask-drop);animation:nArs4W_dsh-row-in .15s var(--ds-ease-in-out);border-radius:10px;justify-content:center;align-items:flex-start;padding:12px;display:flex;position:fixed}.nArs4W_uploadDropHero{flex-direction:column;align-items:center;gap:10px;max-width:100%;padding-top:8px;display:flex}.nArs4W_uploadDropZonePill{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);max-width:100%;box-shadow:var(--dsw-shadow-lv2);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);border-radius:999px;align-items:center;gap:6px;padding:6px 12px;display:flex}.nArs4W_uploadDropZoneText{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.nArs4W_uploadDropChatHint{z-index:1002;pointer-events:none;animation:nArs4W_dsh-row-in .15s var(--ds-ease-in-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;top:0;bottom:0;left:0}.nArs4W_uploadDropChatCard{text-align:center;max-width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-s-strong-14);flex-direction:column;align-items:center;gap:12px;display:flex}.nArs4W_uploadOverlay{z-index:30;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);animation:nArs4W_dsh-row-in .15s var(--ds-ease-in-out);justify-content:center;align-items:center;display:flex;position:absolute;inset:0}.nArs4W_uploadOverlayCard{border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-alias-bg-layer-2);min-width:280px;max-width:min(420px,100% - 48px);box-shadow:var(--dsw-shadow-lv3);border-radius:24px;flex-direction:column;gap:12px;padding:20px 24px;display:flex}.nArs4W_uploadOverlayTitle{font:var(--dsw-font-s-strong-14);color:var(--dsw-alias-label-primary);align-items:center;gap:8px;display:flex}.nArs4W_uploadOverlayTitle>svg{flex:none}.nArs4W_uploadOverlayTitle>span{white-space:nowrap;text-overflow:ellipsis;min-width:0;overflow:hidden}.nArs4W_uploadOverlayProgress{background:var(--dsw-alias-border-l2);border-radius:3px;height:6px;overflow:hidden}.nArs4W_uploadOverlayProgressFill{background:var(--dsw-alias-interactive-bg-hover-accent);height:100%;transition:width .15s var(--ds-ease-in-out);border-radius:3px}.nArs4W_uploadOverlayStatus{min-height:1em;font:var(--dsw-font-xxs-12);font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary);white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.nArs4W_uploadOverlayCancel{border:1px solid var(--dsw-alias-border-l2);height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;background:0 0;border-radius:8px;align-self:flex-end;padding:0 14px}.nArs4W_uploadOverlayCancel:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}.nArs4W_uploadOverlayCancel:disabled{opacity:.4;cursor:default}.nArs4W_editor{flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_editorHeader{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:6px;padding:6px 8px;display:flex}.nArs4W_editorTitle{min-width:0;font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}.nArs4W_editorPathInput{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}.nArs4W_editorPathInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}.nArs4W_editorTreeToggleActive{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-active)}.nArs4W_editorBody{flex:1;min-height:0;display:flex}.nArs4W_editorMain{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex}.nArs4W_editorTreeDock{border-left:1px solid var(--dsw-alias-border-l1);flex:none;min-height:0;display:flex;position:relative}.nArs4W_editorTreeResize{cursor:col-resize;touch-action:none;z-index:3;width:6px;position:absolute;top:0;bottom:0;left:0}.nArs4W_editorTreeResize:hover{background:var(--dsw-alias-border-l2)}.nArs4W_editorTreePanel{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;position:relative}.nArs4W_editorTreePanelFull{flex:1}.nArs4W_editorTreeSearch{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:6px;padding:6px 8px;display:flex}.nArs4W_editorSearchInput{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:26px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}.nArs4W_editorSearchInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}.nArs4W_editorSearchHint{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:8px 12px}.nArs4W_editorSearchResult{width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);text-align:left;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;background:0 0;border:none;border-radius:6px;padding:4px 8px;display:block;overflow:hidden}.nArs4W_editorSearchResult:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_editorStatus{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}.nArs4W_editorStatusError{color:var(--dsw-alias-state-error-primary)}.nArs4W_dirtyDot{background:var(--dsw-alias-state-warn-primary);border-radius:50%;flex:none;width:7px;height:7px}.nArs4W_editorPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;flex:1;justify-content:center;align-items:center;padding:16px;display:flex}.nArs4W_orphanedType{opacity:.7;overflow-wrap:anywhere;margin-top:8px;font-size:12px;display:block}.nArs4W_editorBinary{text-align:center;flex-direction:column;flex:1;justify-content:center;align-items:center;gap:12px;padding:24px 16px;display:flex}.nArs4W_editorBinaryNotice{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}.nArs4W_editorDownloadLink{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out), border-color var(--ds-transition-duration-slow) var(--ds-ease-in-out);border-radius:6px;align-items:center;gap:6px;padding:6px 14px;text-decoration:none;display:inline-flex}.nArs4W_editorDownloadLink:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}.nArs4W_editorError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);padding:12px 16px}.nArs4W_fenceError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-wrap:wrap;align-items:center;gap:8px;padding:8px 16px;display:flex}.nArs4W_editorBanner{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex:none;padding:4px 8px}.nArs4W_sandboxStatus{font:var(--dsw-font-xxxs-11);flex:none;align-items:center;gap:8px;padding:4px 10px;display:flex}.nArs4W_sandboxStatusOn{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border-bottom:1px solid var(--dsw-alias-border-l1)}.nArs4W_sandboxStatusOff{color:var(--dsw-alias-state-error-primary);background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);border-bottom:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, transparent)}.nArs4W_sandboxDot{background:var(--dsw-alias-state-success-primary);border-radius:50%;flex:none;width:6px;height:6px}.nArs4W_sandboxStatusOff .nArs4W_sandboxDot{background:var(--dsw-alias-state-error-primary)}.nArs4W_sandboxStatusText{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.nArs4W_sandboxAction{border:1px solid var(--dsw-alias-border-l2);font:inherit;color:inherit;cursor:pointer;background:0 0;border-radius:6px;flex:none;padding:2px 8px}.nArs4W_sandboxAction:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_editorHtml{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}.nArs4W_browser{flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_browserBar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:4px;padding:6px 8px;display:flex}.nArs4W_browserInput{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}.nArs4W_browserInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}.nArs4W_browserMessage{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex:none;padding:4px 12px}.nArs4W_browserFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}.nArs4W_browserStart{text-align:center;min-height:0;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);flex:1;justify-content:center;align-items:center;padding:20px;display:flex}.nArs4W_browserBlocked{text-align:center;min-height:0;color:var(--dsw-alias-state-warn-primary);flex-direction:column;flex:1;justify-content:center;align-items:center;gap:6px;padding:24px;display:flex}.nArs4W_browserBlockedTitle{font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-primary)}.nArs4W_browserBlockedDesc{max-width:280px;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-secondary)}.nArs4W_browserBlockedActions{gap:8px;margin-top:6px;display:flex}.nArs4W_browserBlockedButton{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxxs-11);cursor:pointer;border-radius:6px;padding:4px 12px}.nArs4W_browserBlockedButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_editorCm{background:0 0;flex:1;min-height:0;overflow:hidden}.nArs4W_editorCmHidden{display:none}.nArs4W_editorCm .cm-editor{height:100%}.nArs4W_editorCm .cm-scroller{padding:12px 16px}.nArs4W_editorCm .cm-editor.cm-focused{outline:none}.nArs4W_editorModeToggle{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:6px;flex:none;align-items:center;gap:2px;padding:2px;display:inline-flex}.nArs4W_editorModeButton{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border:none;border-radius:4px;padding:2px 8px}.nArs4W_editorModeButton:hover{color:var(--dsw-alias-label-primary)}.nArs4W_editorModeActive{background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.nArs4W_editorImageWrap{flex:1;justify-content:center;align-items:center;min-height:0;padding:12px;display:flex;overflow:auto}.nArs4W_editorImage{object-fit:contain;max-width:100%;max-height:100%}.nArs4W_editorMd{min-height:0;font:var(--dsw-font-xs-13);flex:1;padding:12px 16px;overflow-y:auto}.nArs4W_editorMd .md-code-block:not([data-mermaid-processed])>div:first-child{z-index:auto;position:static}.nArs4W_mermaidWrap{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:6px;margin:6px 0;overflow:hidden}.nArs4W_mermaidHeader{border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);justify-content:space-between;align-items:center;gap:6px;padding:4px 8px;display:flex}.nArs4W_mermaidInfo{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary)}.nArs4W_mermaidCopy{height:20px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border:none;border-radius:4px;align-items:center;gap:4px;padding:0 6px;display:inline-flex}.nArs4W_mermaidCopy:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_mermaidBody{cursor:zoom-in;justify-content:center;padding:10px;display:flex;overflow:auto}.nArs4W_mermaidBody svg{max-width:100%;height:auto}.nArs4W_mermaidError{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-state-error-primary);font:var(--dsw-font-xxxs-11);padding:6px 10px}.nArs4W_mermaidCode{font:var(--dsw-font-xxxs-11);margin:0;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto}.nArs4W_mermaidMarkdown .md-code-block[data-mermaid-processed]{display:contents}.nArs4W_mermaidModal{z-index:1000;background:var(--dsw-alias-bg-mask-1);backdrop-filter:blur(2px);flex-direction:column;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.nArs4W_mermaidModalToolbar{z-index:10;gap:8px;display:flex;position:absolute;top:16px;right:16px}.nArs4W_mermaidModalButton{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);width:36px;height:36px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xs-strong-13);cursor:pointer;border-radius:8px;justify-content:center;align-items:center;display:inline-flex}.nArs4W_mermaidModalButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_mermaidModalStage{justify-content:center;align-items:center;width:90vw;height:80vh;display:flex;position:relative;overflow:hidden}.nArs4W_mermaidModalStage svg{cursor:grab;transform-origin:50%;user-select:none;-webkit-user-drag:none;background:var(--dsw-alias-bg-layer-1);border-radius:12px;max-width:none;max-height:none;padding:16px}.nArs4W_mermaidModalStage svg:active{cursor:grabbing}.nArs4W_mermaidModalHint{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);pointer-events:none;position:absolute;bottom:16px;left:50%;transform:translate(-50%)}.nArs4W_selectionPopup{z-index:60;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxxs-strong-11);white-space:nowrap;cursor:pointer;border-radius:6px;align-items:center;padding:0 10px;display:inline-flex;position:fixed;transform:translate(-50%,calc(-100% - 8px))}.nArs4W_selectionPopup:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_editorPdf{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_editorPdfToolbar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;justify-content:flex-end;padding:6px 8px;display:flex}.nArs4W_editorPdfStage{flex:1;min-height:0;display:flex;position:relative}.nArs4W_editorPdfFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}.nArs4W_editorPdfFrameBlocked{pointer-events:none}.nArs4W_editorPdfDragShield{z-index:4;pointer-events:none;background:0 0;position:absolute;inset:0}.nArs4W_editorPdfDragShieldActive{pointer-events:auto}body[data-dsh-tab-dragging] .nArs4W_editorPdfFrame{pointer-events:none!important}body[data-dsh-tab-dragging] .nArs4W_editorPdfDragShield{pointer-events:auto!important}.nArs4W_terminalWrap{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-height:0;display:flex;position:relative}.nArs4W_terminal{flex:1;min-height:0;padding:6px 4px 6px 8px}.nArs4W_terminal .xterm{height:100%}.nArs4W_terminalBanner{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex-wrap:wrap;flex:none;align-items:center;gap:8px;padding:3px 10px;display:flex}.nArs4W_terminalBannerUrl{word-break:break-all;opacity:.85;flex-basis:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.nArs4W_boundaryError{z-index:50;background:var(--dsw-alias-bg-layer-1);border-left:1px solid var(--dsw-alias-border-l2);font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-direction:column;align-items:flex-start;gap:8px;padding:16px;display:flex;position:fixed;top:0;bottom:0;right:0;overflow:auto}.nArs4W_terminalRetry{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;border-radius:999px;flex:none;padding:1px 8px}.nArs4W_terminalRetry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_terminalDepsBanner{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex-direction:column;flex:none;gap:6px;padding:10px;display:flex}.nArs4W_terminalDepsTitle{font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-state-warn-primary)}.nArs4W_terminalDepsHint{opacity:.9}.nArs4W_terminalDepsCommandRow{align-items:flex-start;gap:8px;display:flex}.nArs4W_terminalRepairCommand{white-space:pre-wrap;word-break:break-all;user-select:text;min-width:0;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:4px;flex:1;max-height:160px;margin:0;padding:6px 8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.5;overflow:auto}.nArs4W_terminalDepsNote{opacity:.85}.nArs4W_terminalDepsActions{align-items:center;gap:8px;display:flex}.nArs4W_tabBoundaryError{min-height:0;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-direction:column;flex:1;align-items:flex-start;gap:8px;padding:12px 16px;display:flex;overflow:auto}.nArs4W_gitEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:4px 12px 8px}.nArs4W_gitPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}.nArs4W_gitError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);white-space:pre-wrap;padding:8px 12px}.nArs4W_gitDiffTab{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden auto}.nArs4W_gitDiffTabHeader{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.nArs4W_gitDiffTabTitle{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.nArs4W_producedRow{flex-wrap:wrap;align-items:center;gap:8px;padding:4px 0;display:flex}.nArs4W_producedLabel{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}.nArs4W_producedChip{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);max-width:200px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);cursor:pointer;border-radius:999px;align-items:center;gap:4px;padding:2px 8px;display:inline-flex;overflow:hidden}.nArs4W_producedChip:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_producedChip span{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.nArs4W_producedMore{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}.nArs4W_toggleButton:focus-visible,.nArs4W_bottomClose:focus-visible,.nArs4W_iconButton:focus-visible,.nArs4W_tab:focus-visible,.nArs4W_tabClose:focus-visible,.nArs4W_tabBarPlus:focus-visible,.nArs4W_paneCard:focus-visible,.nArs4W_explorerRow:focus-visible,.nArs4W_explorerRef:focus-visible,.nArs4W_terminalRetry:focus-visible,.nArs4W_editorModeButton:focus-visible,.nArs4W_editorDownloadLink:focus-visible,.nArs4W_editorPptxButton:focus-visible,.nArs4W_editorDocxZoomRange:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){.nArs4W_panel,.nArs4W_panelHidden,.nArs4W_bottomPanel,.nArs4W_bottomPanelHidden,.nArs4W_toggleCluster,.nArs4W_toggleButton,.nArs4W_tab,.nArs4W_tabBarPlus,.nArs4W_paneCard,.nArs4W_explorerRow,.nArs4W_divider,.nArs4W_dividerRow:after,.nArs4W_dividerCol:after{transition:none;animation:none}}@media (width<=767px){.nArs4W_panel:not(.nArs4W_panelHidden) .nArs4W_tabBar{padding-right:40px}.nArs4W_tab{min-width:48px;max-width:128px}}.nArs4W_openWithLabel{align-items:center;gap:8px;width:100%;min-width:0;display:flex}.nArs4W_openWithName{text-overflow:ellipsis;white-space:nowrap;flex:auto;min-width:0;overflow:hidden}.nArs4W_openWithChevron{color:var(--dsw-alias-label-tertiary);flex:none}.nArs4W_openWithPin{width:20px;height:20px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-radius:6px;flex:none;justify-content:center;align-items:center;display:inline-flex}.nArs4W_openWithPin:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_openWithPinActive{color:var(--dsw-alias-state-business-primary)}.nArs4W_editorHtmlBlock{margin:8px 0}.nArs4W_editorHtmlBlock img,.nArs4W_editorHtmlBlock video{max-width:100%}.nArs4W_editorHtmlBlock details{margin:4px 0;padding:4px 0}.nArs4W_editorHtmlBlock summary{cursor:pointer}.nArs4W_tocBar{z-index:7;pointer-events:none;justify-content:flex-end;height:0;display:flex;position:sticky;top:0}.nArs4W_tocButton{pointer-events:auto;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;border-radius:6px;justify-content:center;align-items:center;margin:4px 2px 0 0;padding:0;display:inline-flex}.nArs4W_tocButton:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_tocPanel{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);width:min(300px,82%);max-height:60vh;box-shadow:var(--dsw-shadow-lv2);pointer-events:auto;border-radius:8px;flex-direction:column;padding:4px;display:flex;position:absolute;top:32px;right:2px;overflow-y:auto}.nArs4W_tocItem{min-width:0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:6px;align-items:baseline;gap:8px;padding:4px 8px;display:flex}.nArs4W_tocItem:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_tocItem[data-level=\"2\"]{padding-left:18px}.nArs4W_tocItem[data-level=\"3\"]{padding-left:28px}.nArs4W_tocItem[data-level=\"4\"]{padding-left:38px}.nArs4W_tocItem[data-level=\"5\"]{padding-left:48px}.nArs4W_tocItem[data-level=\"6\"]{padding-left:58px}.nArs4W_tocItemLevel{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.nArs4W_tocItemText{text-overflow:ellipsis;white-space:nowrap;flex:auto;min-width:0;overflow:hidden}@keyframes nArs4W_dsh-toc-flash{0%,60%{background:var(--dsw-alias-interactive-bg-hover)}to{background:0 0}}.nArs4W_tocFlash{border-radius:4px;animation:1.2s ease-out nArs4W_dsh-toc-flash}";
+		const css$6 = "[data-dsh-panel-host]{z-index:25;pointer-events:none;position:fixed;inset:0;overflow:clip}[data-dsh-panel-host][data-dsh-panel-host-degraded]{position:absolute;top:0;left:0}.nArs4W_toggleCluster{top:calc(3px + env(safe-area-inset-top));z-index:45;pointer-events:auto;transition:top var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:row;gap:4px;display:flex;position:absolute;right:10px}.nArs4W_panel:not(.nArs4W_panelHidden) .nArs4W_tabBar{padding-right:72px}.nArs4W_toggleButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out), color var(--ds-transition-duration-slow) var(--ds-ease-in-out);background:0 0;border:none;border-radius:50%;justify-content:center;align-items:center;display:flex}.nArs4W_toggleButton:hover:not(:disabled):not([aria-disabled=true]){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_toggleButton:disabled,.nArs4W_toggleButton[aria-disabled=true]{opacity:.4;cursor:default}.nArs4W_panel{box-sizing:border-box;z-index:40;pointer-events:auto;background:var(--dsw-alias-bg-layer-1);border-left:1px solid var(--dsw-alias-border-l2);padding-bottom:env(safe-area-inset-bottom);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), width var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:column;display:flex;position:absolute;top:0;bottom:0;right:0}.nArs4W_panelHidden{pointer-events:none;visibility:hidden;transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), width var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear var(--ds-transition-duration-slow);transform:translate(102%)}.nArs4W_panel[data-dragging]{transition:none}.nArs4W_panelResize{cursor:col-resize;z-index:2;touch-action:none;width:8px;position:absolute;top:0;bottom:0;left:-4px}.nArs4W_panelResizeActive{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_panelBody{flex:1;min-width:0;min-height:0;display:flex}.nArs4W_bottomPanel{z-index:40;background:var(--dsw-alias-bg-layer-1);border-top:1px solid var(--dsw-alias-border-l2);pointer-events:auto;padding-bottom:env(safe-area-inset-bottom);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), height var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:column;display:flex;position:absolute;bottom:0}.nArs4W_bottomPanelHidden{pointer-events:none;visibility:hidden;transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), height var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear var(--ds-transition-duration-slow);transform:translateY(102%)}.nArs4W_bottomPanel[data-dragging]{transition:none}.nArs4W_panel,.nArs4W_bottomPanel{contain:layout style}body[data-dsh-sidebar-dragging] .nArs4W_panel,body[data-dsh-sidebar-dragging] .nArs4W_bottomPanel{will-change:transform}.nArs4W_bottomResize{cursor:row-resize;z-index:2;touch-action:none;height:8px;position:absolute;top:-4px;left:0;right:0}.nArs4W_bottomResizeActive{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_bottomClose{z-index:4;width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex;position:absolute;top:3px;right:6px}.nArs4W_bottomClose:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_bottomPanel .nArs4W_tabBar{padding-right:40px}.nArs4W_floatWindow{z-index:42;pointer-events:auto;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);box-shadow:var(--dsw-shadow-lv3);contain:layout style;border-radius:8px;flex-direction:column;display:flex;position:absolute;overflow:hidden}.nArs4W_floatWindowDragging{will-change:left, top, width, height}.nArs4W_floatHeader{height:34px;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border-bottom:1px solid var(--dsw-alias-border-l1);cursor:grab;user-select:none;flex:none;align-items:center;gap:4px;padding:0 4px 0 10px;display:flex}.nArs4W_floatWindowDragging .nArs4W_floatHeader{cursor:grabbing}.nArs4W_floatTitle{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.nArs4W_floatClose{width:18px;height:18px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.nArs4W_floatClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_floatContent{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden}.nArs4W_floatResize{z-index:2;cursor:nwse-resize;touch-action:none;width:14px;height:14px;position:absolute;bottom:0;right:0}.nArs4W_floatResize:hover{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_pane[data-dsh-float-dock-over]{outline:2px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-2px}.nArs4W_floatDropHint{z-index:46;pointer-events:none;border:2px dashed var(--dsw-alias-interactive-bg-hover-accent);background:color-mix(in srgb, var(--dsw-alias-interactive-bg-hover-accent) 12%, transparent);border-radius:8px;justify-content:center;align-items:center;display:flex;position:absolute}.nArs4W_floatDropHintLabel{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:999px;padding:4px 12px}.nArs4W_toggleCluster,.nArs4W_toggleButton,.nArs4W_tabBar,.nArs4W_floatHeader{-webkit-app-region:no-drag}body[data-dsh-title-bar-compat] .nArs4W_toggleCluster{top:calc(var(--dsh-title-bar-strip,40px) + 3px)}body[data-dsh-title-bar-compat] .nArs4W_panel{padding-top:var(--dsh-title-bar-strip,40px)}body[data-dsh-sidebar-collapsed] .nArs4W_toggleCluster{top:calc(14px + env(safe-area-inset-top))}body[data-dsh-sidebar-collapsed][data-dsh-title-bar-compat] .nArs4W_toggleCluster{top:calc(var(--dsh-title-bar-strip,40px) + 14px)}.nArs4W_cornerHandle{left:-6px;bottom:calc(var(--dsh-sidebar-height,0px) + 6px);z-index:2;cursor:nwse-resize;touch-action:none;width:12px;height:12px;position:absolute}.nArs4W_cornerHandle:hover,.nArs4W_cornerHandle[data-dragging]{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.nArs4W_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_iconButton:disabled{opacity:.4;cursor:default}.nArs4W_workbench,.nArs4W_split{flex:1;min-width:0;min-height:0;display:flex}.nArs4W_splitRow{flex-direction:row}.nArs4W_splitCol{flex-direction:column}.nArs4W_splitChild{display:flex;position:relative;overflow:hidden}.nArs4W_divider{z-index:3;touch-action:none;flex:none;position:relative}.nArs4W_dividerRow:after,.nArs4W_dividerCol:after{content:\"\";background:var(--dsw-alias-border-l2);transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out);position:absolute}.nArs4W_dividerRow{cursor:col-resize;width:7px;margin:0 -2px}.nArs4W_dividerRow:after{width:1px;top:0;bottom:0;left:50%;transform:translate(-50%)}.nArs4W_dividerCol{cursor:row-resize;height:7px;margin:-2px 0}.nArs4W_dividerCol:after{height:1px;top:50%;left:0;right:0;transform:translateY(-50%)}.nArs4W_divider:hover:after,.nArs4W_dividerActive:after{background:var(--dsw-alias-interactive-bg-hover-accent)}.nArs4W_pane{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;position:relative}.nArs4W_paneDrop{outline:1px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}.nArs4W_dropOverlay{z-index:6;pointer-events:none;background:var(--dsw-alias-interactive-bg-hover-accent);opacity:.5;position:absolute}.nArs4W_dropLeft{width:25%;top:0;bottom:0;left:0}.nArs4W_dropRight{width:25%;top:0;bottom:0;right:0}.nArs4W_dropUp{height:25%;top:0;left:0;right:0}.nArs4W_dropDown{height:25%;bottom:0;left:0;right:0}.nArs4W_dropCenter{outline:2px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-2px;background:0 0;inset:25%}.nArs4W_paneContent{flex-direction:column;flex:1;min-height:0;display:flex;overflow:hidden}.nArs4W_paneTab{flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_paneTabHidden{display:none}.nArs4W_paneEmptyCards{flex:1;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));align-content:start;gap:8px;min-height:0;padding:12px;display:grid;overflow:hidden}.nArs4W_paneCard{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;text-align:center;border-radius:8px;flex-direction:column;justify-content:center;align-items:center;gap:6px;padding:12px 8px;display:flex}.nArs4W_paneCard:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2)}.nArs4W_paneCard:disabled{opacity:.45;cursor:default}.nArs4W_tabBar{border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);flex:none;align-items:stretch;height:34px;display:flex}.nArs4W_tabBarDrop{outline:1px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}.nArs4W_tabList{scrollbar-width:none;flex:1;min-width:0;display:flex;overflow-x:auto}.nArs4W_tabList::-webkit-scrollbar{display:none}.nArs4W_tab{min-width:64px;max-width:160px;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);border-right:1px solid var(--dsw-alias-border-l1);cursor:pointer;user-select:none;background:0 0;flex:none;align-items:center;gap:4px;padding:0 4px 0 10px;display:flex}.nArs4W_tab:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_tabActive{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-active)}.nArs4W_tabTitle{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.nArs4W_tabBadge{min-width:16px;height:15px;font:var(--dsw-font-xxxs-strong-11);background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-brand-primary);border-radius:8px;flex:none;justify-content:center;align-items:center;padding:0 4px;display:inline-flex}.nArs4W_tabClose{width:18px;height:18px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.nArs4W_tabClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_tabBarPlus{background:var(--dsw-alias-bg-layer-1);width:22px;height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border:none;border-radius:5px;flex:none;justify-content:center;align-self:center;align-items:center;margin:0 6px;padding:0;display:inline-flex;position:sticky;right:0}.nArs4W_tabBarPlus:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_pinnedTab{color:var(--dsw-alias-label-tertiary);font-style:italic}.nArs4W_pinnedTab:hover{color:var(--dsw-alias-label-secondary)}.nArs4W_explorer{flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_explorerHeader{flex:none;justify-content:space-between;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.nArs4W_explorerRoot{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.nArs4W_explorerBody{flex:1;min-height:0;padding:4px 8px 8px;overflow:hidden auto}.nArs4W_explorerRow{box-sizing:border-box;width:100%;max-width:100%;height:34px;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);text-align:left;cursor:pointer;white-space:nowrap;animation:nArs4W_dsh-row-in .15s var(--ds-ease-in-out);background:0 0;border:none;border-radius:8px;align-items:center;gap:6px;padding:0 8px;display:flex}.nArs4W_explorerRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_explorerRowRevealed{background:var(--dsw-alias-state-business-tertiary)}.nArs4W_explorerRowRevealed+.nArs4W_explorerRowRevealed{border-top-left-radius:0;border-top-right-radius:0}.nArs4W_explorerRowRevealed:has(+.nArs4W_explorerRowRevealed){border-bottom-right-radius:0;border-bottom-left-radius:0}.nArs4W_explorerDir{font:var(--dsw-font-s-strong-14)}.nArs4W_explorerHidden{opacity:.45}.nArs4W_explorerSymlink{color:var(--dsw-alias-label-tertiary);flex:none}.nArs4W_explorerBroken .nArs4W_explorerName{color:var(--dsw-alias-state-error-primary)}.nArs4W_explorerName{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.nArs4W_explorerRenaming{cursor:text}.nArs4W_explorerRenameInput{box-sizing:border-box;border:1px solid var(--dsw-alias-state-business-primary);background:var(--dsw-alias-bg-layer-1);min-width:0;height:24px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:auto;padding:0 6px}.nArs4W_explorerRenameInput:focus{border-color:var(--dsw-alias-state-business-primary);outline:none}.nArs4W_explorerActionError{box-sizing:border-box;border:1px solid var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-1);border-radius:8px;align-items:flex-start;gap:6px;width:100%;margin-bottom:4px;padding:6px 8px;display:flex}.nArs4W_explorerActionErrorText{overflow-wrap:anywhere;min-width:0;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex:auto}.nArs4W_explorerActionErrorClose{width:20px;height:20px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:5px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.nArs4W_explorerActionErrorClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_explorerConfirmDesc{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;margin:0}.nArs4W_explorerRef,.nArs4W_explorerCopied{margin-left:auto}.nArs4W_explorerRef{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);height:20px;color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;border-radius:999px;flex:none;align-items:center;padding:0 8px;display:none}.nArs4W_explorerRef:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_explorerRow:hover .nArs4W_explorerRef,.nArs4W_explorerRow:focus-within .nArs4W_explorerRef{display:inline-flex}.nArs4W_explorerCopied{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.nArs4W_explorerError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);cursor:default}@keyframes nArs4W_dsh-row-in{0%{opacity:0}}.nArs4W_explorerEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}.nArs4W_explorerRowDropTarget{background:var(--dsw-alias-interactive-bg-hover);outline:1px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}.nArs4W_uploadDropZone{z-index:1001;pointer-events:none;border:2px dashed var(--dsw-alias-interactive-bg-hover-accent);box-shadow:0 0 0 200vmax var(--dsw-alias-bg-mask-drop);animation:nArs4W_dsh-row-in .15s var(--ds-ease-in-out);border-radius:10px;justify-content:center;align-items:flex-start;padding:12px;display:flex;position:fixed}.nArs4W_uploadDropHero{flex-direction:column;align-items:center;gap:10px;max-width:100%;padding-top:8px;display:flex}.nArs4W_uploadDropZonePill{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);max-width:100%;box-shadow:var(--dsw-shadow-lv2);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);border-radius:999px;align-items:center;gap:6px;padding:6px 12px;display:flex}.nArs4W_uploadDropZoneText{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.nArs4W_uploadDropChatHint{z-index:1002;pointer-events:none;animation:nArs4W_dsh-row-in .15s var(--ds-ease-in-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;top:0;bottom:0;left:0}.nArs4W_uploadDropChatCard{text-align:center;max-width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-s-strong-14);flex-direction:column;align-items:center;gap:12px;display:flex}.nArs4W_uploadOverlay{z-index:30;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);animation:nArs4W_dsh-row-in .15s var(--ds-ease-in-out);justify-content:center;align-items:center;display:flex;position:absolute;inset:0}.nArs4W_uploadOverlayCard{border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-alias-bg-layer-2);min-width:280px;max-width:min(420px,100% - 48px);box-shadow:var(--dsw-shadow-lv3);border-radius:24px;flex-direction:column;gap:12px;padding:20px 24px;display:flex}.nArs4W_uploadOverlayTitle{font:var(--dsw-font-s-strong-14);color:var(--dsw-alias-label-primary);align-items:center;gap:8px;display:flex}.nArs4W_uploadOverlayTitle>svg{flex:none}.nArs4W_uploadOverlayTitle>span{white-space:nowrap;text-overflow:ellipsis;min-width:0;overflow:hidden}.nArs4W_uploadOverlayProgress{background:var(--dsw-alias-border-l2);border-radius:3px;height:6px;overflow:hidden}.nArs4W_uploadOverlayProgressFill{background:var(--dsw-alias-interactive-bg-hover-accent);height:100%;transition:width .15s var(--ds-ease-in-out);border-radius:3px}.nArs4W_uploadOverlayStatus{min-height:1em;font:var(--dsw-font-xxs-12);font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary);white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.nArs4W_uploadOverlayCancel{border:1px solid var(--dsw-alias-border-l2);height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;background:0 0;border-radius:8px;align-self:flex-end;padding:0 14px}.nArs4W_uploadOverlayCancel:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}.nArs4W_uploadOverlayCancel:disabled{opacity:.4;cursor:default}.nArs4W_editor{flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_editorHeader{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:6px;padding:6px 8px;display:flex}.nArs4W_editorTitle{min-width:0;font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}.nArs4W_editorPathInput{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}.nArs4W_editorPathInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}.nArs4W_editorTreeToggleActive{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-active)}.nArs4W_editorBody{flex:1;min-height:0;display:flex}.nArs4W_editorMain{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex}.nArs4W_editorTreeDock{border-left:1px solid var(--dsw-alias-border-l1);flex:none;min-height:0;display:flex;position:relative}.nArs4W_editorTreeResize{cursor:col-resize;touch-action:none;z-index:3;width:6px;position:absolute;top:0;bottom:0;left:0}.nArs4W_editorTreeResize:hover{background:var(--dsw-alias-border-l2)}.nArs4W_editorTreePanel{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;position:relative}.nArs4W_editorTreePanelFull{flex:1}.nArs4W_editorTreeSearch{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:6px;padding:6px 8px;display:flex}.nArs4W_editorSearchInput{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:26px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}.nArs4W_editorSearchInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}.nArs4W_editorSearchHint{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:8px 12px}.nArs4W_editorSearchResult{width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);text-align:left;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;background:0 0;border:none;border-radius:6px;padding:4px 8px;display:block;overflow:hidden}.nArs4W_editorSearchResult:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_editorStatus{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}.nArs4W_editorStatusError{color:var(--dsw-alias-state-error-primary)}.nArs4W_dirtyDot{background:var(--dsw-alias-state-warn-primary);border-radius:50%;flex:none;width:7px;height:7px}.nArs4W_editorPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;flex:1;justify-content:center;align-items:center;padding:16px;display:flex}.nArs4W_orphanedType{opacity:.7;overflow-wrap:anywhere;margin-top:8px;font-size:12px;display:block}.nArs4W_editorBinary{text-align:center;flex-direction:column;flex:1;justify-content:center;align-items:center;gap:12px;padding:24px 16px;display:flex}.nArs4W_editorBinaryNotice{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}.nArs4W_editorDownloadLink{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out), border-color var(--ds-transition-duration-slow) var(--ds-ease-in-out);border-radius:6px;align-items:center;gap:6px;padding:6px 14px;text-decoration:none;display:inline-flex}.nArs4W_editorDownloadLink:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}.nArs4W_editorError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);padding:12px 16px}.nArs4W_fenceError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-wrap:wrap;align-items:center;gap:8px;padding:8px 16px;display:flex}.nArs4W_editorBanner{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex:none;padding:4px 8px}.nArs4W_sandboxStatus{font:var(--dsw-font-xxxs-11);flex:none;align-items:center;gap:8px;padding:4px 10px;display:flex}.nArs4W_sandboxStatusOn{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border-bottom:1px solid var(--dsw-alias-border-l1)}.nArs4W_sandboxStatusOff{color:var(--dsw-alias-state-error-primary);background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);border-bottom:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, transparent)}.nArs4W_sandboxDot{background:var(--dsw-alias-state-success-primary);border-radius:50%;flex:none;width:6px;height:6px}.nArs4W_sandboxStatusOff .nArs4W_sandboxDot{background:var(--dsw-alias-state-error-primary)}.nArs4W_sandboxStatusText{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.nArs4W_sandboxAction{border:1px solid var(--dsw-alias-border-l2);font:inherit;color:inherit;cursor:pointer;background:0 0;border-radius:6px;flex:none;padding:2px 8px}.nArs4W_sandboxAction:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_editorHtml{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}.nArs4W_browser{flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_browserBar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:4px;padding:6px 8px;display:flex}.nArs4W_browserInput{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}.nArs4W_browserInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}.nArs4W_browserMessage{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex:none;padding:4px 12px}.nArs4W_browserFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}.nArs4W_browserStart{text-align:center;min-height:0;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);flex:1;justify-content:center;align-items:center;padding:20px;display:flex}.nArs4W_browserBlocked{text-align:center;min-height:0;color:var(--dsw-alias-state-warn-primary);flex-direction:column;flex:1;justify-content:center;align-items:center;gap:6px;padding:24px;display:flex}.nArs4W_browserBlockedTitle{font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-primary)}.nArs4W_browserBlockedDesc{max-width:280px;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-secondary)}.nArs4W_browserBlockedActions{gap:8px;margin-top:6px;display:flex}.nArs4W_browserBlockedButton{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxxs-11);cursor:pointer;border-radius:6px;padding:4px 12px}.nArs4W_browserBlockedButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_editorCm{background:0 0;flex:1;min-height:0;overflow:hidden}.nArs4W_editorCmHidden{display:none}.nArs4W_editorCm .cm-editor{height:100%}.nArs4W_editorCm .cm-scroller{padding:12px 16px}.nArs4W_editorCm .cm-editor.cm-focused{outline:none}.nArs4W_editorModeToggle{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:6px;flex:none;align-items:center;gap:2px;padding:2px;display:inline-flex}.nArs4W_editorModeButton{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border:none;border-radius:4px;padding:2px 8px}.nArs4W_editorModeButton:hover{color:var(--dsw-alias-label-primary)}.nArs4W_editorModeActive{background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.nArs4W_editorImageWrap{flex:1;justify-content:center;align-items:center;min-height:0;padding:12px;display:flex;overflow:auto}.nArs4W_editorImage{object-fit:contain;max-width:100%;max-height:100%}.nArs4W_editorMd{min-height:0;font:var(--dsw-font-xs-13);flex:1;padding:12px 16px;overflow-y:auto}.nArs4W_editorMd .md-code-block:not([data-mermaid-processed])>div:first-child{z-index:auto;position:static}.nArs4W_mermaidWrap{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:6px;margin:6px 0;overflow:hidden}.nArs4W_mermaidHeader{border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);justify-content:space-between;align-items:center;gap:6px;padding:4px 8px;display:flex}.nArs4W_mermaidInfo{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary)}.nArs4W_mermaidCopy{height:20px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border:none;border-radius:4px;align-items:center;gap:4px;padding:0 6px;display:inline-flex}.nArs4W_mermaidCopy:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_mermaidBody{cursor:zoom-in;justify-content:center;padding:10px;display:flex;overflow:auto}.nArs4W_mermaidBody svg{max-width:100%;height:auto}.nArs4W_mermaidError{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-state-error-primary);font:var(--dsw-font-xxxs-11);padding:6px 10px}.nArs4W_mermaidCode{font:var(--dsw-font-xxxs-11);margin:0;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto}.nArs4W_mermaidMarkdown .md-code-block[data-mermaid-processed]{display:contents}.nArs4W_mermaidModal{z-index:1000;background:var(--dsw-alias-bg-mask-1);backdrop-filter:blur(2px);flex-direction:column;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.nArs4W_mermaidModalToolbar{z-index:10;gap:8px;display:flex;position:absolute;top:16px;right:16px}.nArs4W_mermaidModalButton{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);width:36px;height:36px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xs-strong-13);cursor:pointer;border-radius:8px;justify-content:center;align-items:center;display:inline-flex}.nArs4W_mermaidModalButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_mermaidModalStage{justify-content:center;align-items:center;width:90vw;height:80vh;display:flex;position:relative;overflow:hidden}.nArs4W_mermaidModalStage svg{cursor:grab;transform-origin:50%;user-select:none;-webkit-user-drag:none;background:var(--dsw-alias-bg-layer-1);border-radius:12px;max-width:none;max-height:none;padding:16px}.nArs4W_mermaidModalStage svg:active{cursor:grabbing}.nArs4W_mermaidModalHint{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);pointer-events:none;position:absolute;bottom:16px;left:50%;transform:translate(-50%)}.nArs4W_selectionPopup{z-index:60;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxxs-strong-11);white-space:nowrap;cursor:pointer;border-radius:6px;align-items:center;padding:0 10px;display:inline-flex;position:fixed;transform:translate(-50%,calc(-100% - 8px))}.nArs4W_selectionPopup:hover{background:var(--dsw-alias-interactive-bg-hover)}.nArs4W_editorPdf{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-height:0;display:flex}.nArs4W_editorPdfToolbar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;justify-content:flex-end;padding:6px 8px;display:flex}.nArs4W_editorPdfStage{flex:1;min-height:0;display:flex;position:relative}.nArs4W_editorPdfFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}.nArs4W_editorPdfFrameBlocked{pointer-events:none}.nArs4W_editorPdfDragShield{z-index:4;pointer-events:none;background:0 0;position:absolute;inset:0}.nArs4W_editorPdfDragShieldActive{pointer-events:auto}body[data-dsh-tab-dragging] .nArs4W_editorPdfFrame{pointer-events:none!important}body[data-dsh-tab-dragging] .nArs4W_editorPdfDragShield{pointer-events:auto!important}.nArs4W_terminalWrap{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-height:0;display:flex;position:relative}.nArs4W_terminal{flex:1;min-height:0;padding:6px 4px 6px 8px}.nArs4W_terminal .xterm{height:100%}.nArs4W_terminalBanner{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex-wrap:wrap;flex:none;align-items:center;gap:8px;padding:3px 10px;display:flex}.nArs4W_terminalBannerUrl{word-break:break-all;opacity:.85;flex-basis:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.nArs4W_boundaryError{z-index:50;background:var(--dsw-alias-bg-layer-1);border-left:1px solid var(--dsw-alias-border-l2);font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-direction:column;align-items:flex-start;gap:8px;padding:16px;display:flex;position:fixed;top:0;bottom:0;right:0;overflow:auto}.nArs4W_terminalRetry{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;border-radius:999px;flex:none;padding:1px 8px}.nArs4W_terminalRetry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_terminalDepsBanner{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex-direction:column;flex:none;gap:6px;padding:10px;display:flex}.nArs4W_terminalDepsTitle{font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-state-warn-primary)}.nArs4W_terminalDepsHint{opacity:.9}.nArs4W_terminalDepsCommandRow{align-items:flex-start;gap:8px;display:flex}.nArs4W_terminalRepairCommand{white-space:pre-wrap;word-break:break-all;user-select:text;min-width:0;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:4px;flex:1;max-height:160px;margin:0;padding:6px 8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.5;overflow:auto}.nArs4W_terminalDepsNote{opacity:.85}.nArs4W_terminalDepsActions{align-items:center;gap:8px;display:flex}.nArs4W_tabBoundaryError{min-height:0;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-direction:column;flex:1;align-items:flex-start;gap:8px;padding:12px 16px;display:flex;overflow:auto}.nArs4W_gitEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:4px 12px 8px}.nArs4W_gitPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}.nArs4W_gitError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);white-space:pre-wrap;padding:8px 12px}.nArs4W_gitDiffTab{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden auto}.nArs4W_gitDiffTabHeader{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.nArs4W_gitDiffTabTitle{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.nArs4W_producedRow{flex-wrap:wrap;align-items:center;gap:8px;padding:4px 0;display:flex}.nArs4W_producedLabel{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}.nArs4W_producedChip{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);max-width:200px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);cursor:pointer;border-radius:999px;align-items:center;gap:4px;padding:2px 8px;display:inline-flex;overflow:hidden}.nArs4W_producedChip:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_producedChip span{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.nArs4W_producedMore{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}.nArs4W_toggleButton:focus-visible,.nArs4W_bottomClose:focus-visible,.nArs4W_iconButton:focus-visible,.nArs4W_tab:focus-visible,.nArs4W_tabClose:focus-visible,.nArs4W_tabBarPlus:focus-visible,.nArs4W_paneCard:focus-visible,.nArs4W_explorerRow:focus-visible,.nArs4W_explorerRef:focus-visible,.nArs4W_terminalRetry:focus-visible,.nArs4W_editorModeButton:focus-visible,.nArs4W_editorDownloadLink:focus-visible,.nArs4W_editorPptxButton:focus-visible,.nArs4W_editorDocxZoomRange:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){.nArs4W_panel,.nArs4W_panelHidden,.nArs4W_bottomPanel,.nArs4W_bottomPanelHidden,.nArs4W_toggleCluster,.nArs4W_toggleButton,.nArs4W_tab,.nArs4W_tabBarPlus,.nArs4W_paneCard,.nArs4W_explorerRow,.nArs4W_divider,.nArs4W_dividerRow:after,.nArs4W_dividerCol:after{transition:none;animation:none}}@media (width<=767px){.nArs4W_panel:not(.nArs4W_panelHidden) .nArs4W_tabBar{padding-right:40px}.nArs4W_tab{min-width:48px;max-width:128px}}.nArs4W_openWithLabel{align-items:center;gap:8px;width:100%;min-width:0;display:flex}.nArs4W_openWithName{text-overflow:ellipsis;white-space:nowrap;flex:auto;min-width:0;overflow:hidden}.nArs4W_openWithChevron{color:var(--dsw-alias-label-tertiary);flex:none}.nArs4W_openWithPin{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-radius:5px;flex:none;justify-content:center;align-items:center;display:inline-flex}.nArs4W_openWithPin:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_openWithPinActive{color:var(--dsw-alias-state-business-primary)}.nArs4W_editorHtmlBlock{margin:8px 0}.nArs4W_editorHtmlBlock img,.nArs4W_editorHtmlBlock video{max-width:100%}.nArs4W_editorHtmlBlock details{margin:4px 0;padding:4px 0}.nArs4W_editorHtmlBlock summary{cursor:pointer}.nArs4W_tocBar{z-index:7;pointer-events:none;justify-content:flex-end;height:0;display:flex;position:sticky;top:0}.nArs4W_tocButton{pointer-events:auto;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;border-radius:6px;justify-content:center;align-items:center;margin:4px 2px 0 0;padding:0;display:inline-flex}.nArs4W_tocButton:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_tocPanel{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);width:min(300px,82%);max-height:60vh;box-shadow:var(--dsw-shadow-lv2);pointer-events:auto;border-radius:8px;flex-direction:column;padding:4px;display:flex;position:absolute;top:32px;right:2px;overflow-y:auto}.nArs4W_tocItem{min-width:0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:6px;align-items:baseline;gap:8px;padding:4px 8px;display:flex}.nArs4W_tocItem:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nArs4W_tocItem[data-level=\"2\"]{padding-left:18px}.nArs4W_tocItem[data-level=\"3\"]{padding-left:28px}.nArs4W_tocItem[data-level=\"4\"]{padding-left:38px}.nArs4W_tocItem[data-level=\"5\"]{padding-left:48px}.nArs4W_tocItem[data-level=\"6\"]{padding-left:58px}.nArs4W_tocItemLevel{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.nArs4W_tocItemText{text-overflow:ellipsis;white-space:nowrap;flex:auto;min-width:0;overflow:hidden}@keyframes nArs4W_dsh-toc-flash{0%,60%{background:var(--dsw-alias-interactive-bg-hover)}to{background:0 0}}.nArs4W_tocFlash{border-radius:4px;animation:1.2s ease-out nArs4W_dsh-toc-flash}";
 		const tagId$6 = "dsh-better-sidebar/sidebar.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
 			const tag = document.createElement("style");
@@ -3167,204 +3245,210 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var sidebar_module_css_default = {
-			"explorerRoot": "nArs4W_explorerRoot",
-			"floatWindow": "nArs4W_floatWindow",
-			"uploadDropHero": "nArs4W_uploadDropHero",
-			"editorPathInput": "nArs4W_editorPathInput",
-			"paneDrop": "nArs4W_paneDrop",
-			"gitDiffTabHeader": "nArs4W_gitDiffTabHeader",
-			"mermaidWrap": "nArs4W_mermaidWrap",
-			"mermaidModalStage": "nArs4W_mermaidModalStage",
-			"uploadOverlayTitle": "nArs4W_uploadOverlayTitle",
-			"paneCard": "nArs4W_paneCard",
-			"editorBinary": "nArs4W_editorBinary",
-			"explorerName": "nArs4W_explorerName",
-			"editorStatus": "nArs4W_editorStatus",
-			"tocItem": "nArs4W_tocItem",
-			"pinnedTab": "nArs4W_pinnedTab",
-			"mermaidModalHint": "nArs4W_mermaidModalHint",
-			"editorTreeSearch": "nArs4W_editorTreeSearch",
-			"gitEmpty": "nArs4W_gitEmpty",
-			"tabBar": "nArs4W_tabBar",
-			"explorerBroken": "nArs4W_explorerBroken",
-			"browserBlockedDesc": "nArs4W_browserBlockedDesc",
-			"mermaidModalButton": "nArs4W_mermaidModalButton",
-			"panelResizeActive": "nArs4W_panelResizeActive",
-			"mermaidError": "nArs4W_mermaidError",
-			"dropUp": "nArs4W_dropUp",
-			"editorMain": "nArs4W_editorMain",
-			"split": "nArs4W_split",
-			"explorerCopied": "nArs4W_explorerCopied",
-			"dirtyDot": "nArs4W_dirtyDot",
-			"editorBody": "nArs4W_editorBody",
-			"browserBar": "nArs4W_browserBar",
-			"mermaidCode": "nArs4W_mermaidCode",
-			"mermaidHeader": "nArs4W_mermaidHeader",
-			"browserBlockedButton": "nArs4W_browserBlockedButton",
-			"cornerHandle": "nArs4W_cornerHandle",
-			"editorPdfFrameBlocked": "nArs4W_editorPdfFrameBlocked",
-			"editorPdfDragShield": "nArs4W_editorPdfDragShield",
-			"dividerActive": "nArs4W_dividerActive",
-			"editorTreeToggleActive": "nArs4W_editorTreeToggleActive",
-			"sandboxStatusOff": "nArs4W_sandboxStatusOff",
-			"terminalDepsActions": "nArs4W_terminalDepsActions",
-			"tab": "nArs4W_tab",
-			"producedRow": "nArs4W_producedRow",
-			"producedLabel": "nArs4W_producedLabel",
-			"producedMore": "nArs4W_producedMore",
-			"floatHeader": "nArs4W_floatHeader",
-			"tabList": "nArs4W_tabList",
-			"bottomPanel": "nArs4W_bottomPanel",
-			"openWithChevron": "nArs4W_openWithChevron",
-			"tocBar": "nArs4W_tocBar",
-			"openWithPinActive": "nArs4W_openWithPinActive",
-			"editorMd": "nArs4W_editorMd",
-			"toggleCluster": "nArs4W_toggleCluster",
-			"splitCol": "nArs4W_splitCol",
-			"pane": "nArs4W_pane",
-			"dividerCol": "nArs4W_dividerCol",
-			"sandboxStatusOn": "nArs4W_sandboxStatusOn",
-			"paneTabHidden": "nArs4W_paneTabHidden",
-			"browser": "nArs4W_browser",
-			"browserStart": "nArs4W_browserStart",
-			"tabActive": "nArs4W_tabActive",
-			"sandboxStatusText": "nArs4W_sandboxStatusText",
-			"mermaidInfo": "nArs4W_mermaidInfo",
-			"explorerHidden": "nArs4W_explorerHidden",
-			"editorHtml": "nArs4W_editorHtml",
-			"terminalDepsNote": "nArs4W_terminalDepsNote",
-			"bottomPanelHidden": "nArs4W_bottomPanelHidden",
-			"iconButton": "nArs4W_iconButton",
-			"sandboxDot": "nArs4W_sandboxDot",
-			"editorPdfStage": "nArs4W_editorPdfStage",
-			"editorSearchResult": "nArs4W_editorSearchResult",
-			"divider": "nArs4W_divider",
-			"explorerRow": "nArs4W_explorerRow",
-			"floatResize": "nArs4W_floatResize",
-			"toggleButton": "nArs4W_toggleButton",
-			"explorerError": "nArs4W_explorerError",
-			"paneEmptyCards": "nArs4W_paneEmptyCards",
-			"tabBadge": "nArs4W_tabBadge",
-			"editorTreeResize": "nArs4W_editorTreeResize",
-			"explorer": "nArs4W_explorer",
-			"dropOverlay": "nArs4W_dropOverlay",
-			"explorerHeader": "nArs4W_explorerHeader",
-			"editor": "nArs4W_editor",
-			"editorHeader": "nArs4W_editorHeader",
-			"editorCmHidden": "nArs4W_editorCmHidden",
-			"terminalBanner": "nArs4W_terminalBanner",
-			"boundaryError": "nArs4W_boundaryError",
-			"tocItemText": "nArs4W_tocItemText",
-			"tabBarPlus": "nArs4W_tabBarPlus",
-			"dropCenter": "nArs4W_dropCenter",
-			"editorPdfFrame": "nArs4W_editorPdfFrame",
-			"terminalDepsBanner": "nArs4W_terminalDepsBanner",
-			"orphanedType": "nArs4W_orphanedType",
-			"editorDownloadLink": "nArs4W_editorDownloadLink",
-			"editorBanner": "nArs4W_editorBanner",
-			"mermaidBody": "nArs4W_mermaidBody",
-			"explorerRowDropTarget": "nArs4W_explorerRowDropTarget",
-			"dropLeft": "nArs4W_dropLeft",
-			"mermaidModal": "nArs4W_mermaidModal",
-			"floatClose": "nArs4W_floatClose",
-			"explorerBody": "nArs4W_explorerBody",
-			"openWithLabel": "nArs4W_openWithLabel",
-			"producedChip": "nArs4W_producedChip",
-			"uploadDropChatHint": "nArs4W_uploadDropChatHint",
-			"editorPlaceholder": "nArs4W_editorPlaceholder",
-			"uploadOverlay": "nArs4W_uploadOverlay",
-			"editorError": "nArs4W_editorError",
-			"editorStatusError": "nArs4W_editorStatusError",
-			"gitDiffTabTitle": "nArs4W_gitDiffTabTitle",
-			"gitPlaceholder": "nArs4W_gitPlaceholder",
-			"workbench": "nArs4W_workbench",
-			"explorerRowRevealed": "nArs4W_explorerRowRevealed",
-			"uploadDropZoneText": "nArs4W_uploadDropZoneText",
-			"editorBinaryNotice": "nArs4W_editorBinaryNotice",
-			"explorerSymlink": "nArs4W_explorerSymlink",
-			"explorerDir": "nArs4W_explorerDir",
-			"browserBlockedActions": "nArs4W_browserBlockedActions",
-			"openWithPin": "nArs4W_openWithPin",
-			"panel": "nArs4W_panel",
-			"terminalBannerUrl": "nArs4W_terminalBannerUrl",
-			"panelResize": "nArs4W_panelResize",
-			"panelHidden": "nArs4W_panelHidden",
-			"editorHtmlBlock": "nArs4W_editorHtmlBlock",
-			"tabBoundaryError": "nArs4W_tabBoundaryError",
-			"terminalWrap": "nArs4W_terminalWrap",
-			"tabBarDrop": "nArs4W_tabBarDrop",
-			"paneContent": "nArs4W_paneContent",
-			"explorerRef": "nArs4W_explorerRef",
-			"uploadDropZone": "nArs4W_uploadDropZone",
-			"editorModeButton": "nArs4W_editorModeButton",
-			"browserBlockedTitle": "nArs4W_browserBlockedTitle",
-			"editorDocxZoomRange": "nArs4W_editorDocxZoomRange",
+			"browserFrame": "nArs4W_browserFrame",
+			"tabTitle": "nArs4W_tabTitle",
 			"tocFlash": "nArs4W_tocFlash",
-			"dropDown": "nArs4W_dropDown",
-			"terminalDepsHint": "nArs4W_terminalDepsHint",
+			"pinnedTab": "nArs4W_pinnedTab",
+			"paneTabHidden": "nArs4W_paneTabHidden",
+			"mermaidModalStage": "nArs4W_mermaidModalStage",
 			"uploadDropZonePill": "nArs4W_uploadDropZonePill",
-			"bottomResizeActive": "nArs4W_bottomResizeActive",
-			"paneTab": "nArs4W_paneTab",
-			"dsh-row-in": "nArs4W_dsh-row-in",
-			"editorTreePanel": "nArs4W_editorTreePanel",
-			"floatTitle": "nArs4W_floatTitle",
-			"mermaidModalToolbar": "nArs4W_mermaidModalToolbar",
-			"terminal": "nArs4W_terminal",
-			"floatWindowDragging": "nArs4W_floatWindowDragging",
-			"mermaidMarkdown": "nArs4W_mermaidMarkdown",
-			"openWithName": "nArs4W_openWithName",
-			"uploadOverlayProgressFill": "nArs4W_uploadOverlayProgressFill",
-			"fenceError": "nArs4W_fenceError",
-			"editorSearchHint": "nArs4W_editorSearchHint",
+			"panel": "nArs4W_panel",
+			"uploadDropChatCard": "nArs4W_uploadDropChatCard",
+			"explorerSymlink": "nArs4W_explorerSymlink",
+			"panelResize": "nArs4W_panelResize",
+			"mermaidModalHint": "nArs4W_mermaidModalHint",
+			"sandboxDot": "nArs4W_sandboxDot",
+			"mermaidError": "nArs4W_mermaidError",
+			"editorPdfDragShieldActive": "nArs4W_editorPdfDragShieldActive",
+			"gitPlaceholder": "nArs4W_gitPlaceholder",
+			"toggleButton": "nArs4W_toggleButton",
+			"uploadDropZoneText": "nArs4W_uploadDropZoneText",
+			"panelHidden": "nArs4W_panelHidden",
+			"mermaidBody": "nArs4W_mermaidBody",
+			"mermaidWrap": "nArs4W_mermaidWrap",
+			"mermaidModal": "nArs4W_mermaidModal",
+			"uploadOverlay": "nArs4W_uploadOverlay",
+			"editorDownloadLink": "nArs4W_editorDownloadLink",
+			"explorerBody": "nArs4W_explorerBody",
+			"splitRow": "nArs4W_splitRow",
+			"floatContent": "nArs4W_floatContent",
+			"pane": "nArs4W_pane",
+			"cornerHandle": "nArs4W_cornerHandle",
+			"explorerCopied": "nArs4W_explorerCopied",
+			"dropCenter": "nArs4W_dropCenter",
+			"editorTreeToggleActive": "nArs4W_editorTreeToggleActive",
+			"editorPlaceholder": "nArs4W_editorPlaceholder",
+			"mermaidHeader": "nArs4W_mermaidHeader",
+			"editorSearchResult": "nArs4W_editorSearchResult",
 			"selectionPopup": "nArs4W_selectionPopup",
-			"terminalDepsTitle": "nArs4W_terminalDepsTitle",
+			"terminalWrap": "nArs4W_terminalWrap",
+			"terminalRetry": "nArs4W_terminalRetry",
+			"terminalDepsActions": "nArs4W_terminalDepsActions",
+			"editorCmHidden": "nArs4W_editorCmHidden",
+			"gitDiffTab": "nArs4W_gitDiffTab",
+			"gitDiffTabTitle": "nArs4W_gitDiffTabTitle",
+			"terminal": "nArs4W_terminal",
+			"producedLabel": "nArs4W_producedLabel",
 			"tocButton": "nArs4W_tocButton",
 			"tocPanel": "nArs4W_tocPanel",
-			"uploadDropChatCard": "nArs4W_uploadDropChatCard",
-			"uploadOverlayCard": "nArs4W_uploadOverlayCard",
-			"uploadOverlayCancel": "nArs4W_uploadOverlayCancel",
+			"bottomResizeActive": "nArs4W_bottomResizeActive",
+			"uploadDropHero": "nArs4W_uploadDropHero",
+			"paneDrop": "nArs4W_paneDrop",
+			"paneTab": "nArs4W_paneTab",
+			"explorerRow": "nArs4W_explorerRow",
+			"uploadOverlayProgress": "nArs4W_uploadOverlayProgress",
+			"tabActive": "nArs4W_tabActive",
+			"explorerActionError": "nArs4W_explorerActionError",
+			"editorTreePanel": "nArs4W_editorTreePanel",
+			"explorerName": "nArs4W_explorerName",
+			"sandboxStatusOn": "nArs4W_sandboxStatusOn",
+			"floatWindowDragging": "nArs4W_floatWindowDragging",
+			"dropUp": "nArs4W_dropUp",
+			"editorCm": "nArs4W_editorCm",
+			"mermaidModalToolbar": "nArs4W_mermaidModalToolbar",
+			"browserMessage": "nArs4W_browserMessage",
+			"mermaidModalButton": "nArs4W_mermaidModalButton",
+			"terminalRepairCommand": "nArs4W_terminalRepairCommand",
+			"bottomClose": "nArs4W_bottomClose",
+			"dropDown": "nArs4W_dropDown",
+			"paneCard": "nArs4W_paneCard",
+			"editorBinaryNotice": "nArs4W_editorBinaryNotice",
+			"sandboxStatusText": "nArs4W_sandboxStatusText",
+			"terminalDepsNote": "nArs4W_terminalDepsNote",
+			"editorSearchInput": "nArs4W_editorSearchInput",
+			"browserStart": "nArs4W_browserStart",
+			"floatClose": "nArs4W_floatClose",
+			"explorerRenaming": "nArs4W_explorerRenaming",
+			"editorTreeResize": "nArs4W_editorTreeResize",
+			"editorMd": "nArs4W_editorMd",
+			"producedChip": "nArs4W_producedChip",
+			"editorPptxButton": "nArs4W_editorPptxButton",
+			"editorTreeDock": "nArs4W_editorTreeDock",
+			"openWithLabel": "nArs4W_openWithLabel",
+			"mermaidCode": "nArs4W_mermaidCode",
 			"tocItemLevel": "nArs4W_tocItemLevel",
-			"editorModeToggle": "nArs4W_editorModeToggle",
+			"dividerActive": "nArs4W_dividerActive",
+			"tabBarDrop": "nArs4W_tabBarDrop",
+			"explorerConfirmDesc": "nArs4W_explorerConfirmDesc",
+			"editorPdfStage": "nArs4W_editorPdfStage",
+			"gitEmpty": "nArs4W_gitEmpty",
+			"explorerHeader": "nArs4W_explorerHeader",
+			"terminalDepsTitle": "nArs4W_terminalDepsTitle",
+			"uploadOverlayCancel": "nArs4W_uploadOverlayCancel",
+			"floatDropHintLabel": "nArs4W_floatDropHintLabel",
+			"terminalDepsHint": "nArs4W_terminalDepsHint",
+			"editorStatusError": "nArs4W_editorStatusError",
+			"editorDocxZoomRange": "nArs4W_editorDocxZoomRange",
+			"explorerRowDropTarget": "nArs4W_explorerRowDropTarget",
+			"tabList": "nArs4W_tabList",
+			"mermaidMarkdown": "nArs4W_mermaidMarkdown",
+			"explorerActionErrorClose": "nArs4W_explorerActionErrorClose",
+			"editorTreeSearch": "nArs4W_editorTreeSearch",
+			"tocItem": "nArs4W_tocItem",
 			"dsh-toc-flash": "nArs4W_dsh-toc-flash",
-			"browserFrame": "nArs4W_browserFrame",
-			"editorPdfToolbar": "nArs4W_editorPdfToolbar",
+			"editorPdfFrameBlocked": "nArs4W_editorPdfFrameBlocked",
+			"toggleCluster": "nArs4W_toggleCluster",
+			"producedMore": "nArs4W_producedMore",
+			"floatHeader": "nArs4W_floatHeader",
+			"uploadOverlayCard": "nArs4W_uploadOverlayCard",
+			"uploadOverlayStatus": "nArs4W_uploadOverlayStatus",
+			"bottomPanel": "nArs4W_bottomPanel",
+			"dirtyDot": "nArs4W_dirtyDot",
+			"editorBinary": "nArs4W_editorBinary",
+			"editorStatus": "nArs4W_editorStatus",
+			"editorError": "nArs4W_editorError",
+			"sandboxAction": "nArs4W_sandboxAction",
+			"browserBlockedButton": "nArs4W_browserBlockedButton",
+			"mermaidInfo": "nArs4W_mermaidInfo",
+			"tabBarPlus": "nArs4W_tabBarPlus",
+			"mermaidCopy": "nArs4W_mermaidCopy",
+			"terminalDepsCommandRow": "nArs4W_terminalDepsCommandRow",
+			"gitDiffTabHeader": "nArs4W_gitDiffTabHeader",
+			"uploadOverlayTitle": "nArs4W_uploadOverlayTitle",
+			"editor": "nArs4W_editor",
+			"iconButton": "nArs4W_iconButton",
+			"orphanedType": "nArs4W_orphanedType",
+			"dropOverlay": "nArs4W_dropOverlay",
+			"divider": "nArs4W_divider",
+			"explorerRef": "nArs4W_explorerRef",
+			"editorMain": "nArs4W_editorMain",
+			"browserBlockedActions": "nArs4W_browserBlockedActions",
+			"browserBar": "nArs4W_browserBar",
 			"editorTreePanelFull": "nArs4W_editorTreePanelFull",
 			"editorImage": "nArs4W_editorImage",
-			"gitDiffTab": "nArs4W_gitDiffTab",
-			"panelBody": "nArs4W_panelBody",
+			"editorPathInput": "nArs4W_editorPathInput",
 			"tabClose": "nArs4W_tabClose",
-			"tabTitle": "nArs4W_tabTitle",
-			"sandboxAction": "nArs4W_sandboxAction",
-			"splitChild": "nArs4W_splitChild",
-			"editorTitle": "nArs4W_editorTitle",
-			"browserMessage": "nArs4W_browserMessage",
-			"editorModeActive": "nArs4W_editorModeActive",
-			"editorImageWrap": "nArs4W_editorImageWrap",
-			"editorPdfDragShieldActive": "nArs4W_editorPdfDragShieldActive",
-			"terminalRetry": "nArs4W_terminalRetry",
-			"mermaidCopy": "nArs4W_mermaidCopy",
-			"browserInput": "nArs4W_browserInput",
-			"editorPdf": "nArs4W_editorPdf",
-			"splitRow": "nArs4W_splitRow",
-			"editorSearchInput": "nArs4W_editorSearchInput",
-			"editorCm": "nArs4W_editorCm",
-			"gitError": "nArs4W_gitError",
-			"editorPptxButton": "nArs4W_editorPptxButton",
-			"bottomClose": "nArs4W_bottomClose",
-			"explorerEmpty": "nArs4W_explorerEmpty",
-			"editorTreeDock": "nArs4W_editorTreeDock",
-			"browserBlocked": "nArs4W_browserBlocked",
-			"uploadOverlayProgress": "nArs4W_uploadOverlayProgress",
-			"terminalDepsCommandRow": "nArs4W_terminalDepsCommandRow",
-			"terminalRepairCommand": "nArs4W_terminalRepairCommand",
-			"sandboxStatus": "nArs4W_sandboxStatus",
-			"floatDropHintLabel": "nArs4W_floatDropHintLabel",
-			"dividerRow": "nArs4W_dividerRow",
-			"bottomResize": "nArs4W_bottomResize",
+			"editorSearchHint": "nArs4W_editorSearchHint",
+			"paneContent": "nArs4W_paneContent",
+			"explorerDir": "nArs4W_explorerDir",
+			"editorModeToggle": "nArs4W_editorModeToggle",
 			"floatDropHint": "nArs4W_floatDropHint",
+			"editorModeActive": "nArs4W_editorModeActive",
+			"gitError": "nArs4W_gitError",
+			"tocItemText": "nArs4W_tocItemText",
+			"bottomPanelHidden": "nArs4W_bottomPanelHidden",
+			"explorerRenameInput": "nArs4W_explorerRenameInput",
+			"uploadDropChatHint": "nArs4W_uploadDropChatHint",
+			"explorerError": "nArs4W_explorerError",
+			"floatResize": "nArs4W_floatResize",
+			"terminalBanner": "nArs4W_terminalBanner",
+			"panelBody": "nArs4W_panelBody",
+			"split": "nArs4W_split",
+			"dividerRow": "nArs4W_dividerRow",
+			"sandboxStatus": "nArs4W_sandboxStatus",
+			"terminalDepsBanner": "nArs4W_terminalDepsBanner",
+			"tocBar": "nArs4W_tocBar",
+			"editorPdfDragShield": "nArs4W_editorPdfDragShield",
+			"openWithChevron": "nArs4W_openWithChevron",
+			"bottomResize": "nArs4W_bottomResize",
+			"tab": "nArs4W_tab",
+			"editorImageWrap": "nArs4W_editorImageWrap",
+			"explorerBroken": "nArs4W_explorerBroken",
+			"editorBody": "nArs4W_editorBody",
+			"terminalBannerUrl": "nArs4W_terminalBannerUrl",
+			"editorTitle": "nArs4W_editorTitle",
+			"tabBar": "nArs4W_tabBar",
+			"explorerRoot": "nArs4W_explorerRoot",
+			"browserBlocked": "nArs4W_browserBlocked",
+			"editorPdfFrame": "nArs4W_editorPdfFrame",
+			"floatTitle": "nArs4W_floatTitle",
+			"sandboxStatusOff": "nArs4W_sandboxStatusOff",
+			"boundaryError": "nArs4W_boundaryError",
+			"dropLeft": "nArs4W_dropLeft",
+			"openWithPin": "nArs4W_openWithPin",
+			"explorerActionErrorText": "nArs4W_explorerActionErrorText",
+			"splitCol": "nArs4W_splitCol",
+			"tabBoundaryError": "nArs4W_tabBoundaryError",
+			"explorerHidden": "nArs4W_explorerHidden",
+			"uploadDropZone": "nArs4W_uploadDropZone",
 			"dropRight": "nArs4W_dropRight",
-			"floatContent": "nArs4W_floatContent",
-			"uploadOverlayStatus": "nArs4W_uploadOverlayStatus"
+			"explorerRowRevealed": "nArs4W_explorerRowRevealed",
+			"openWithPinActive": "nArs4W_openWithPinActive",
+			"browserInput": "nArs4W_browserInput",
+			"paneEmptyCards": "nArs4W_paneEmptyCards",
+			"explorer": "nArs4W_explorer",
+			"explorerEmpty": "nArs4W_explorerEmpty",
+			"panelResizeActive": "nArs4W_panelResizeActive",
+			"dsh-row-in": "nArs4W_dsh-row-in",
+			"browserBlockedDesc": "nArs4W_browserBlockedDesc",
+			"editorModeButton": "nArs4W_editorModeButton",
+			"openWithName": "nArs4W_openWithName",
+			"editorHtmlBlock": "nArs4W_editorHtmlBlock",
+			"editorBanner": "nArs4W_editorBanner",
+			"editorHtml": "nArs4W_editorHtml",
+			"workbench": "nArs4W_workbench",
+			"editorHeader": "nArs4W_editorHeader",
+			"editorPdf": "nArs4W_editorPdf",
+			"splitChild": "nArs4W_splitChild",
+			"floatWindow": "nArs4W_floatWindow",
+			"dividerCol": "nArs4W_dividerCol",
+			"browser": "nArs4W_browser",
+			"editorPdfToolbar": "nArs4W_editorPdfToolbar",
+			"browserBlockedTitle": "nArs4W_browserBlockedTitle",
+			"tabBadge": "nArs4W_tabBadge",
+			"producedRow": "nArs4W_producedRow",
+			"fenceError": "nArs4W_fenceError",
+			"uploadOverlayProgressFill": "nArs4W_uploadOverlayProgressFill"
 		};
 		//#endregion
 		//#region src/client/intercept.tsx
@@ -3549,7 +3633,25 @@ window.__ModuleLoader__.load({
 			return n;
 		}
 		//#endregion
+		//#region src/html-route.ts
+		/** The route prefix both encoders/decoders agree on. */
+		const HTML_ROUTE_PREFIX = "/sidebar/html/";
+		/** Build the route URL for one absolute file path (client + tests). */
+		function encodeHtmlUrl(sessionId, path) {
+			const unc = /^[\\/]{2}[^\\/]/.test(path);
+			const segments = path.split(/[\\/]+/).filter((segment) => segment !== "");
+			return `${HTML_ROUTE_PREFIX}${encodeURIComponent(sessionId)}/${unc ? "/" : ""}${segments.map(encodeURIComponent).join("/")}`;
+		}
+		//#endregion
 		//#region src/client/api.ts
+		/**
+		* Typed fetch wrapper over the /sidebar JSON API. Every call posts to
+		* `/sidebar/api/<method>` with the sessionId and — when known — the session's
+		* cwd from the client's own list summary. The host prefers its attached
+		* session header and uses the summary cwd only while the session is still
+		* hydrating at page load (a detached session would otherwise fail the
+		* request). Failures surface as {@link SidebarApiError} with the wire code.
+		*/
 		/** One wire failure. */
 		var SidebarApiError = class extends Error {
 			code;
@@ -3675,6 +3777,16 @@ window.__ModuleLoader__.load({
 				path,
 				content
 			})),
+			/** Rename one tree row within its directory (single-segment name; the
+			*  server refuses existing destinations, the workspace root, and — while
+			*  the fence is armed — anything resolving outside the workspace). */
+			fsRename: (scope, path, name) => call("fs.rename", scopePayload(scope, {
+				path,
+				name
+			})),
+			/** Permanently delete one tree row (recursive for directories; a symlink
+			*  row unlinks the link only). The UI confirms before calling this. */
+			fsRemove: (scope, path) => call("fs.remove", scopePayload(scope, { path })),
 			/** Upload one file's raw bytes into `dir` (keeps the folder tree via
 			*  `relativePath`); the host streams it under the session workspace. */
 			uploadFile: (scope, dir, relativePath, body, signal) => fetchUpload(scope, dir, relativePath, body, signal),
@@ -3696,6 +3808,13 @@ window.__ModuleLoader__.load({
 			}), signal),
 			/** Full patch text of one commit (diff display for the history rows). */
 			gitCommitDiff: (scope, hash, worktree, signal) => call("git.commit-diff", gitPayload(scope, worktree, { hash }), signal),
+			/** One file's content at a revision (`git show <rev>:<path>`); null when the
+			*  revision has no such path. The diff views' on-demand hunk-fold expansion
+			*  reads both sides' full contents through this. */
+			gitShow: (scope, rev, path, worktree, signal) => call("git.show", gitPayload(scope, worktree, {
+				rev,
+				path
+			}), signal),
 			/** The session's file-tool events for the changes tab's session lens: the
 			*  `tool/call` + `tool/result` rows past `afterSeq` (0 = whole window),
 			*  capped to the recent window host-side. The client runtime exposes no
@@ -3794,6 +3913,17 @@ window.__ModuleLoader__.load({
 			if (scope.cwd !== void 0 && scope.cwd !== "") params.set("cwd", scope.cwd);
 			if (download) params.set("download", "1");
 			return `/sidebar/file?${params.toString()}`;
+		}
+		/**
+		* Absolute URL of the HTML preview route (see html-route.ts): the path is
+		* fully encoded so the previewed page's relative assets resolve back into
+		* the same route with the session scope intact. The UNC marker is
+		* platform-neutral — the host's requireAbsolute resolves the decoded
+		* forward-slash `//server/share/...` form on both win32 and POSIX — so no
+		* client-side platform signal is needed.
+		*/
+		function htmlUrl(scope, path) {
+			return encodeHtmlUrl(scope.sessionId, path);
 		}
 		//#endregion
 		//#region src/client/binary-download.tsx
@@ -4696,6 +4826,121 @@ window.__ModuleLoader__.load({
 			})]
 		});
 		//#endregion
+		//#region src/client/ime-guard.ts
+		/**
+		* IME-composition key guard.
+		*
+		* While a Chinese/Japanese/Korean input method is composing (the user is
+		* picking a candidate from the IME window), every pressed key BELONGS to the
+		* input method: arrows move the candidate highlight, Enter/Space confirm the
+		* composition, Escape cancels it. Page code must not process those keys —
+		* a component that does (a number stepper calling preventDefault() on
+		* ArrowUp/ArrowDown, a submit handler reacting to Enter, ...) silently
+		* breaks the IME: candidates stop responding, the composition gets torn
+		* apart, and only bare letters come out.
+		*
+		* This guard enforces that rule at the document boundary: a capture-phase
+		* keydown/keyup listener that stops the event from propagating further
+		* whenever a composition is in progress. Because it runs in the capture
+		* phase on `document` — the outermost node — it fires BEFORE React's
+		* delegated handlers (attached at the root container) and before any native
+		* target/bubble listener, so an inlined third-party component (e.g. the
+		* Univer office UI bundled into this plugin) can never intercept
+		* composition keys. The browser's native IME processing is untouched:
+		* stopPropagation only silences page JS, not the default action.
+		*
+		* The composition signal follows the DSH core convention (InputBar's IME
+		* guard, issue #535): `isComposing` for modern engines, keyCode 229 as the
+		* legacy signal engines emit without isComposing.
+		*/
+		/** The pure decision: is this keyboard event part of an IME composition?
+		*  `isComposing` is optional on the input: React's synthetic KeyboardEvent
+		*  type does not declare it (the DOM event always carries it), and the
+		*  keyCode 229 fallback covers exactly those callers. */
+		function isImeComposition(event) {
+			return event.isComposing === true || event.keyCode === 229;
+		}
+		/**
+		* Register the document-level capture guard. Returns the disposer
+		* (HMR-safe; call through `ctx.effect`).
+		*/
+		function registerImeGuard() {
+			const onKey = (event) => {
+				if (isImeComposition(event)) event.stopPropagation();
+			};
+			document.addEventListener("keydown", onKey, true);
+			document.addEventListener("keyup", onKey, true);
+			return () => {
+				document.removeEventListener("keydown", onKey, true);
+				document.removeEventListener("keyup", onKey, true);
+			};
+		}
+		//#endregion
+		//#region src/client/menu-flip.ts
+		/**
+		* Submenu flip geometry for the portaled context menus.
+		*
+		* The primitives `Menu` clamps its main list into the viewport (portal mode,
+		* 12px margin) but positions nested submenus with pure CSS — `bottom: -4px`
+		* (grow UP from the parent row) and `left: calc(100% + 10px)` (open RIGHT of
+		* the card) — with no viewport clamp at all. This sidebar lives docked on the
+		* RIGHT edge of the window, so both defaults are the worst case here: a tall
+		* "open with" submenu pokes past the viewport top when the row menu opens
+		* near the top, and past the right edge whenever the panel is narrow.
+		*
+		* The host primitive is not ours to patch, so the fix is a body attribute
+		* written while one of OUR submenu-bearing menus is open: layout.css flips
+		* the submenu's growth direction per token. The attribute's lifetime IS the
+		* scope — only our menus set it, and layout.css rules for
+		* `div[role="menu"] div[role="menu"]` only apply while it exists, so
+		* host-owned menus are never touched.
+		*/
+		/** body attribute carrying the flip tokens (whitespace-separated words). */
+		const SUBMENU_FLIP_ATTR = "data-dsh-sidebar-submenu";
+		/**
+		* Mirror of the primitive's submenu geometry (Menu.module.css): card
+		* min-width 218 + card-to-submenu gap 10 + submenu min-width 163..165 +
+		* viewport margin 12 ≈ 400px of right-hand room a right-growing submenu
+		* needs. If the cursor is within that of the right edge, open left instead.
+		* The estimate is conservative (the primitive's own clamp can only move the
+		* card further left), so a wrong guess flips left unnecessarily — never into
+		* a new overflow — and drifting from future host metrics degrades the same
+		* way, back to today's behavior at worst.
+		*/
+		const SUBMENU_RIGHT_ROOM = 400;
+		/** Below the vertical midpoint the parent row usually has more room above. */
+		function isUpperHalf(y, vh) {
+			return y < vh / 2;
+		}
+		/**
+		* The flip tokens for a menu opened at viewport coordinates (x, y):
+		* `down` — open the submenu downward from the parent row (cursor in the
+		* upper half; the sidebar's tab strip is always up there);
+		* `left` — open the submenu leftward of the card (not enough right-hand
+		* room). Empty string when the primitive's defaults already fit.
+		*/
+		function submenuFlipTokens(x, y, vw, vh) {
+			const tokens = [];
+			if (isUpperHalf(y, vh)) tokens.push("down");
+			if (x + SUBMENU_RIGHT_ROOM > vw) tokens.push("left");
+			return tokens.join(" ");
+		}
+		/**
+		* Publish the flip tokens on <body> while the given cursor-anchored menu
+		* state is open; clear them on close and on unmount (a menu left open by an
+		* unmounting panel must not leave stale geometry on the shared body).
+		* `menu` only needs the viewport coordinates the Menu anchored to.
+		*/
+		function useSubmenuFlip(menu) {
+			(0, react.useEffect)(() => {
+				if (menu === null) return;
+				document.body.setAttribute(SUBMENU_FLIP_ATTR, submenuFlipTokens(menu.x, menu.y, window.innerWidth, window.innerHeight));
+				return () => {
+					document.body.removeAttribute(SUBMENU_FLIP_ATTR);
+				};
+			}, [menu]);
+		}
+		//#endregion
 		//#region src/client/upload.ts
 		/**
 		* File-upload plumbing for the files window: turn a file picker or a drag-drop
@@ -4979,13 +5224,20 @@ window.__ModuleLoader__.load({
 			})]
 		});
 		function FileTree(props) {
-			const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, refreshTick, onUploadRequest, busy } = props;
+			const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, onPathRenamed, onPathDeleted, refreshTick, onUploadRequest, busy } = props;
 			const [data, setData] = (0, react.useState)({});
 			const dataRef = (0, react.useRef)(data);
 			/** The row whose path was just copied ("copied" label replaces its button). */
 			const [copiedPath, setCopiedPath] = (0, react.useState)(null);
 			/** Open context menu: the row path (and whether it is a directory) plus the cursor position. */
 			const [rowMenu, setRowMenu] = (0, react.useState)(null);
+			useSubmenuFlip(rowMenu);
+			/** The row being renamed inline: its path plus the edit buffer. */
+			const [renaming, setRenaming] = (0, react.useState)(null);
+			/** The delete awaiting the confirmation modal's yes. */
+			const [confirmDelete, setConfirmDelete] = (0, react.useState)(null);
+			/** The last mutation failure (dismissable strip above the tree). */
+			const [actionError, setActionError] = (0, react.useState)(null);
 			/** Whether a file drag hovers the tree (drives the portaled drop zone). */
 			const [dropOver, setDropOver] = (0, react.useState)(false);
 			/** The directory a drag is hovering right now (null = body, drop to root). */
@@ -5111,6 +5363,56 @@ window.__ModuleLoader__.load({
 				setData({ ...dataRef.current });
 				loadDir(dir);
 			}, [loadDir]);
+			/**
+			* Settle the tree after one rename/delete landed at `prefix`: drop every
+			* cached level at or under the old path, collapse the now-stale expanded
+			* directories below it, and reload the immediate parent so the new shape
+			* shows without a full refresh tick.
+			*/
+			const pruneTree = (prefix) => {
+				const parent = parentOf(prefix);
+				const under = (key) => key === prefix || key.startsWith(`${prefix}/`) || key.startsWith(`${prefix}\\`);
+				for (const key of Object.keys(dataRef.current)) if (under(key)) delete dataRef.current[key];
+				if (parent !== prefix) delete dataRef.current[parent];
+				setData({ ...dataRef.current });
+				for (const dir of expanded) if (under(dir)) onToggle(dir);
+				if (parent !== prefix) retryDir(parent);
+			};
+			/** Client-side twin of the server's name rule (the server re-validates). */
+			const validRename = (name) => name !== "" && name !== "." && name !== ".." && !name.includes("/") && !name.includes("\\");
+			/** Commit the inline rename: trim, no-op guard, then fs.rename + settle. */
+			const commitRename = (path, raw) => {
+				setRenaming(null);
+				const name = raw.trim();
+				if (cwd === void 0 || name === baseName(path) || !validRename(name)) {
+					if (name !== baseName(path) && !validRename(name)) setActionError(t("renameInvalid"));
+					return;
+				}
+				api.fsRename({
+					sessionId,
+					cwd
+				}, path, name).then((result) => {
+					setActionError(null);
+					pruneTree(path);
+					onPathRenamed?.(path, result.path);
+				}).catch((error) => {
+					setActionError(error instanceof Error ? error.message : String(error));
+				});
+			};
+			/** Run the confirmed delete: fs.remove + settle + close affected tabs. */
+			const performDelete = (target) => {
+				if (cwd === void 0) return;
+				api.fsRemove({
+					sessionId,
+					cwd
+				}, target.path).then(() => {
+					setActionError(null);
+					pruneTree(target.path);
+					onPathDeleted?.(target.path, target.isDir);
+				}).catch((error) => {
+					setActionError(error instanceof Error ? error.message : String(error));
+				});
+			};
 			const lastTick = (0, react.useRef)(refreshTick);
 			(0, react.useEffect)(() => {
 				if (lastTick.current === refreshTick) return;
@@ -5210,13 +5512,14 @@ window.__ModuleLoader__.load({
 				if (openWithTargets === void 0 || onOpenWith === void 0 || openWithTargets.length === 0) return [];
 				const pinnedIds = openWithPinned ?? [];
 				/** Brand marks for the built-ins (monochrome silhouettes, currentColor);
-				*  reveal gets the folder glyph, custom editors a generic code mark. */
+				*  reveal gets the folder glyph, custom editors a generic code mark.
+				*  The compact menu's icon slot is 14px, so every mark renders at 14. */
 				const itemIcon = (target) => {
-					if (target.kind === "reveal") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 16 });
-					if (target.id === "vscode") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconVscode16, { size: 16 });
-					if (target.id === "cursor") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SiCursor, { size: 16 });
-					if (target.id === "zed") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SiZedindustries, { size: 16 });
-					return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutline16, { size: 16 });
+					if (target.kind === "reveal") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 14 });
+					if (target.id === "vscode") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconVscode16, { size: 14 });
+					if (target.id === "cursor") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SiCursor, { size: 14 });
+					if (target.id === "zed") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SiZedindustries, { size: 14 });
+					return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutline16, { size: 14 });
 				};
 				const pinned = openWithTargets.filter((target) => pinnedIds.includes(target.id)).map((target) => ({
 					id: `open-with:${target.id}`,
@@ -5243,7 +5546,7 @@ window.__ModuleLoader__.load({
 									event.stopPropagation();
 									onToggleOpenWithPin?.(target.id);
 								},
-								children: pinnedNow ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscPinned, { size: 14 }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscPin, { size: 14 })
+								children: pinnedNow ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscPinned, { size: 12 }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscPin, { size: 12 })
 							})]
 						}),
 						icon: itemIcon(target)
@@ -5268,7 +5571,7 @@ window.__ModuleLoader__.load({
 								"aria-hidden": true
 							})]
 						}),
-						icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscLinkExternal, { size: 16 }),
+						icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscLinkExternal, { size: 14 }),
 						submenu
 					}
 				];
@@ -5276,6 +5579,54 @@ window.__ModuleLoader__.load({
 			const root = cwd;
 			const expandedSet = (0, react.useMemo)(() => new Set(expanded), [expanded]);
 			const revealedSet = (0, react.useMemo)(() => new Set(revealed), [revealed]);
+			/**
+			* Focus + select the rename editor once, on mount. The callback identity
+			* must stay STABLE (useCallback []): an inline arrow re-runs on every
+			* render (detach null → attach el), and focus()/select() mid-keystroke
+			* would reselect the whole buffer while typing. A plain <input>, not the
+			* primitives Input — that one forwards no ref, and focus+select is the
+			* entire point here.
+			*/
+			const renameInputRef = (0, react.useCallback)((el) => {
+				if (el !== null) {
+					el.focus();
+					el.select();
+				}
+			}, []);
+			/** The inline rename editor replacing one row (dirs and files alike):
+			*  same indent/icon/height for a seamless swap, Enter/blur commits,
+			*  Escape cancels, IME composition keys never reach the handlers (the
+			*  shared isImeComposition guard). */
+			const renderRenameRow = (entry, depth) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: clsx(sidebar_module_css_default.explorerRow, sidebar_module_css_default.explorerRenaming),
+				style: { paddingLeft: depth * 22 + 6 },
+				children: [entry.isDir ? expandedSet.has(entry.path) ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 14 }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolder, { size: 14 }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFile, { size: 14 }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+					ref: renameInputRef,
+					className: sidebar_module_css_default.explorerRenameInput,
+					value: renaming?.value ?? "",
+					"aria-label": t("rename"),
+					spellCheck: false,
+					onChange: (event) => {
+						setRenaming((prev) => prev === null ? prev : {
+							...prev,
+							value: event.target.value
+						});
+					},
+					onKeyDown: (event) => {
+						if (isImeComposition(event)) return;
+						if (event.key === "Enter") {
+							event.preventDefault();
+							commitRename(entry.path, renaming?.value ?? "");
+						} else if (event.key === "Escape") {
+							event.preventDefault();
+							setRenaming(null);
+						}
+					},
+					onBlur: () => {
+						commitRename(entry.path, renaming?.value ?? "");
+					}
+				})]
+			}, entry.path);
 			const renderLevel = (dir, depth) => {
 				const level = data[dir];
 				if (level === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -5300,6 +5651,7 @@ window.__ModuleLoader__.load({
 					});
 				}
 				return (level.entries ?? []).map((entry) => {
+					if (renaming?.path === entry.path) return renderRenameRow(entry, depth);
 					if (entry.isDir) {
 						const isOpen = expandedSet.has(entry.path);
 						return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -5391,40 +5743,59 @@ window.__ModuleLoader__.load({
 					root === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: sidebar_module_css_default.explorerEmpty,
 						children: t("noSession")
-					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: clsx(sidebar_module_css_default.explorerRow, dropTarget === root && sidebar_module_css_default.explorerRowDropTarget),
-						style: { paddingLeft: 6 },
-						onDragOver: (event) => {
-							handleRowDragOver(event, root);
-						},
-						onDrop: (event) => {
-							handleDirDrop(event, root);
-						},
-						onContextMenu: (event) => {
-							openRowMenu(event, root, true);
-						},
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 14 }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: sidebar_module_css_default.explorerName,
-								children: baseName(root)
-							}),
-							copiedPath === root ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: sidebar_module_css_default.explorerCopied,
-								children: t("copied")
-							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+						actionError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: sidebar_module_css_default.explorerActionError,
+							role: "alert",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: sidebar_module_css_default.explorerActionErrorText,
+								children: actionError
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: sidebar_module_css_default.explorerRef,
-								"aria-label": t("referenceFile"),
-								title: t("referenceFile"),
-								onClick: (event) => {
-									event.stopPropagation();
-									onReferenceFile(root, true);
+								className: sidebar_module_css_default.explorerActionErrorClose,
+								"aria-label": t("dismiss"),
+								onClick: () => {
+									setActionError(null);
 								},
-								children: t("referenceFile")
-							})
-						]
-					}), data[root] !== void 0 && renderLevel(root, 1)] }),
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseFill14, {})
+							})]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: clsx(sidebar_module_css_default.explorerRow, dropTarget === root && sidebar_module_css_default.explorerRowDropTarget),
+							style: { paddingLeft: 6 },
+							onDragOver: (event) => {
+								handleRowDragOver(event, root);
+							},
+							onDrop: (event) => {
+								handleDirDrop(event, root);
+							},
+							onContextMenu: (event) => {
+								openRowMenu(event, root, true);
+							},
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 14 }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: sidebar_module_css_default.explorerName,
+									children: baseName(root)
+								}),
+								copiedPath === root ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: sidebar_module_css_default.explorerCopied,
+									children: t("copied")
+								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: sidebar_module_css_default.explorerRef,
+									"aria-label": t("referenceFile"),
+									title: t("referenceFile"),
+									onClick: (event) => {
+										event.stopPropagation();
+										onReferenceFile(root, true);
+									},
+									children: t("referenceFile")
+								})
+							]
+						}),
+						data[root] !== void 0 && renderLevel(root, 1)
+					] }),
 					dropOver && dropRect !== null && (0, react_dom.createPortal)(/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: sidebar_module_css_default.uploadDropZone,
 						style: {
@@ -5472,34 +5843,51 @@ window.__ModuleLoader__.load({
 							...rowMenu?.isDir === false && onOpenFileNewTab !== void 0 ? [{
 								id: "open-new-tab",
 								label: t("openFileNewTab"),
-								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutline16, { size: 16 })
+								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutline16, { size: 14 })
 							}] : [],
 							...rowMenu?.isDir === false && onOpenFileSide !== void 0 ? [{
 								id: "open-side",
 								label: t("openFileSide"),
-								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 16 })
+								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 14 })
 							}] : [],
 							...openWithEntries(),
 							...rowMenu?.isDir === false ? [{
 								id: "download",
 								label: t("download"),
-								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDownloadOutline16, { size: 16 })
+								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconDownloadOutline16, { size: 14 })
 							}] : [],
 							...rowMenu?.isDir === true ? [{
 								id: "upload-here",
 								label: t("uploadHere"),
-								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconUploadOutline16, { size: 16 })
+								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconUploadOutline16, { size: 14 })
 							}] : [],
 							{
 								id: "relative",
 								label: t("copyRelative"),
-								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCopyOutline16, { size: 16 })
+								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCopyOutline16, { size: 14 })
 							},
 							{
 								id: "absolute",
 								label: t("copyAbsolute"),
-								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCopyOutline16, { size: 16 })
-							}
+								icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCopyOutline16, { size: 14 })
+							},
+							...rowMenu !== null && rowMenu.path !== cwd ? [
+								{
+									id: "mutate-sep",
+									type: "separator"
+								},
+								{
+									id: "rename",
+									label: t("rename"),
+									icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconEditOutline16, { size: 14 })
+								},
+								{
+									id: "delete",
+									label: t("delete"),
+									icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutline16, { size: 14 }),
+									danger: true
+								}
+							] : []
 						],
 						onSelect: (id) => {
 							const target = rowMenu;
@@ -5526,12 +5914,56 @@ window.__ModuleLoader__.load({
 								fileInputRef.current?.click();
 								return;
 							}
+							if (id === "rename") {
+								setRenaming({
+									path: target.path,
+									value: baseName(target.path)
+								});
+								return;
+							}
+							if (id === "delete") {
+								setConfirmDelete({
+									path: target.path,
+									isDir: target.isDir,
+									name: baseName(target.path)
+								});
+								return;
+							}
 							copyPath(id === "relative" ? relativeTo(cwd ?? "", target.path) : target.path, target.path);
 						},
 						portal: true,
+						compact: true,
 						align: "start",
 						getAnchorRect: () => rowMenu === null ? null : new DOMRect(rowMenu.x, rowMenu.y, 0, 0),
 						anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {})
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+						open: confirmDelete !== null,
+						onClose: () => {
+							setConfirmDelete(null);
+						},
+						title: confirmDelete === null ? "" : t("deleteTitle", { name: confirmDelete.name }),
+						closeLabel: t("cancel"),
+						footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							variant: "outline",
+							onClick: () => {
+								setConfirmDelete(null);
+							},
+							children: t("cancel")
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							variant: "primary",
+							onClick: () => {
+								const pending = confirmDelete;
+								if (pending === null) return;
+								setConfirmDelete(null);
+								performDelete(pending);
+							},
+							children: t("delete")
+						})] }),
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							className: sidebar_module_css_default.explorerConfirmDesc,
+							children: confirmDelete === null ? "" : t(confirmDelete.isDir ? "deleteDescDir" : "deleteDescFile")
+						})
 					})
 				]
 			});
@@ -5826,7 +6258,7 @@ window.__ModuleLoader__.load({
 		* intake.
 		*/
 		function TreePanel(props) {
-			const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, full } = props;
+			const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, onPathRenamed, onPathDeleted, full } = props;
 			const [query, setQuery] = (0, react.useState)("");
 			const [results, setResults] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
@@ -6027,6 +6459,8 @@ window.__ModuleLoader__.load({
 						onOpenWith,
 						onToggleOpenWithPin,
 						onReferenceFile,
+						onPathRenamed,
+						onPathDeleted,
 						refreshTick,
 						onUploadRequest: startUpload,
 						busy
@@ -6070,6 +6504,39 @@ window.__ModuleLoader__.load({
 					})
 				]
 			});
+		}
+		//#endregion
+		//#region src/client/tree-mutations.ts
+		/** Every open tab that carries a file path (either split tree, the bottom
+		*  panel, and free windows — a floating tab is as open as a docked one). */
+		function pathTabsOf(snapshot) {
+			const state = snapshot.state;
+			if (state === void 0) return [];
+			const tabs = [];
+			for (const leaf of allLeaves(state.splits)) tabs.push(...leaf.tabs);
+			for (const leaf of allLeaves(state.bottomSplits)) tabs.push(...leaf.tabs);
+			for (const float of state.floats) tabs.push(float.tab);
+			return tabs.filter((tab) => tab.path !== void 0);
+		}
+		/** Retarget tabs after `oldPath` became `newPath` (title follows the new
+		*  base name, matching how openFile titles editor tabs). */
+		function retargetPathTabs(ctx, store, oldPath, newPath) {
+			const service = ctx.get("betterSidebar");
+			if (service === void 0) return;
+			for (const tab of pathTabsOf(store.getSnapshot())) if (tab.path === oldPath) service.updateTab(tab.id, {
+				path: newPath,
+				title: baseName(newPath)
+			});
+		}
+		/** Close tabs at or under the removed `target` (a directory takes its whole
+		*  subtree of open files with it). */
+		function closePathTabs(ctx, store, target) {
+			const service = ctx.get("betterSidebar");
+			if (service === void 0) return;
+			for (const tab of pathTabsOf(store.getSnapshot())) {
+				const path = tab.path;
+				if (path !== void 0 && (path === target || isWithinWorkspace(target, path))) service.closeTab(tab.id);
+			}
 		}
 		//#endregion
 		//#region src/client/EditorHost.tsx
@@ -6233,6 +6700,12 @@ window.__ModuleLoader__.load({
 					};
 				});
 			};
+			const onPathRenamed = (oldPath, newPath) => {
+				retargetPathTabs(ctx, store, oldPath, newPath);
+			};
+			const onPathDeleted = (path) => {
+				closePathTabs(ctx, store, path);
+			};
 			const [toolbar, setToolbar] = (0, react.useState)(null);
 			const controlsRef = (0, react.useRef)(null);
 			const onToolbarState = (0, react.useCallback)((next) => {
@@ -6373,7 +6846,9 @@ window.__ModuleLoader__.load({
 					openWithSsh: openWithSshActive(openWithConfig),
 					onOpenWith: openWith,
 					onToggleOpenWithPin: toggleOpenWithPin,
-					onReferenceFile
+					onReferenceFile,
+					onPathRenamed,
+					onPathDeleted
 				})
 			});
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -6510,7 +6985,9 @@ window.__ModuleLoader__.load({
 							openWithSsh: openWithSshActive(openWithConfig),
 							onOpenWith: openWith,
 							onToggleOpenWithPin: toggleOpenWithPin,
-							onReferenceFile
+							onReferenceFile,
+							onPathRenamed,
+							onPathDeleted
 						})]
 					})]
 				})]
@@ -6569,75 +7046,75 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var SideCardSection_module_css_default = {
-			"pluginEntry": "_2vuxea_pluginEntry",
-			"pluginTopicBtn": "_2vuxea_pluginTopicBtn",
-			"grid": "_2vuxea_grid",
-			"pluginCopyBtn": "_2vuxea_pluginCopyBtn",
-			"pluginGroupHeading": "_2vuxea_pluginGroupHeading",
-			"pluginEntries": "_2vuxea_pluginEntries",
-			"cardSwitch": "_2vuxea_cardSwitch",
-			"popupRow": "_2vuxea_popupRow",
-			"pluginList": "_2vuxea_pluginList",
-			"switchThumb": "_2vuxea_switchThumb",
-			"cardDesc": "_2vuxea_cardDesc",
-			"versionBadge": "_2vuxea_versionBadge",
-			"openWithEditorInput": "_2vuxea_openWithEditorInput",
-			"typedInput": "_2vuxea_typedInput",
-			"selectAnchor": "_2vuxea_selectAnchor",
-			"cardSwitchThumb": "_2vuxea_cardSwitchThumb",
-			"selectAnchorText": "_2vuxea_selectAnchorText",
-			"pluginGroup": "_2vuxea_pluginGroup",
-			"openWithEditorRow": "_2vuxea_openWithEditorRow",
-			"cardMain": "_2vuxea_cardMain",
-			"rowGear": "_2vuxea_rowGear",
-			"selectOptionIcon": "_2vuxea_selectOptionIcon",
-			"pluginEntryActions": "_2vuxea_pluginEntryActions",
-			"title": "_2vuxea_title",
-			"groupHeading": "_2vuxea_groupHeading",
-			"openWithHint": "_2vuxea_openWithHint",
-			"pluginModal": "_2vuxea_pluginModal",
-			"pluginJumpBtn": "_2vuxea_pluginJumpBtn",
-			"pluginDesc": "_2vuxea_pluginDesc",
-			"desc": "_2vuxea_desc",
-			"error": "_2vuxea_error",
-			"row": "_2vuxea_row",
-			"percentInput": "_2vuxea_percentInput",
-			"openWithRemove": "_2vuxea_openWithRemove",
-			"section": "_2vuxea_section",
-			"versionBadgeName": "_2vuxea_versionBadgeName",
-			"cardTitle": "_2vuxea_cardTitle",
-			"popupDialog": "_2vuxea_popupDialog",
-			"cardTop": "_2vuxea_cardTop",
-			"switch": "_2vuxea_switch",
-			"count": "_2vuxea_count",
-			"pluginEntryHead": "_2vuxea_pluginEntryHead",
-			"pluginEmpty": "_2vuxea_pluginEmpty",
-			"intro": "_2vuxea_intro",
-			"switchInput": "_2vuxea_switchInput",
-			"rowText": "_2vuxea_rowText",
-			"openWithFamily": "_2vuxea_openWithFamily",
-			"selectOption": "_2vuxea_selectOption",
-			"pluginSearch": "_2vuxea_pluginSearch",
-			"cardIconChip": "_2vuxea_cardIconChip",
 			"group": "_2vuxea_group",
-			"selectOptionText": "_2vuxea_selectOptionText",
-			"cardSettings": "_2vuxea_cardSettings",
-			"selectAnchorIcon": "_2vuxea_selectAnchorIcon",
-			"switchTrack": "_2vuxea_switchTrack",
+			"pluginSearch": "_2vuxea_pluginSearch",
+			"pluginCopyBtn": "_2vuxea_pluginCopyBtn",
+			"switch": "_2vuxea_switch",
 			"done": "_2vuxea_done",
-			"suffix": "_2vuxea_suffix",
-			"cssTextArea": "_2vuxea_cssTextArea",
-			"openWithEditorTemplate": "_2vuxea_openWithEditorTemplate",
-			"typedInputNumber": "_2vuxea_typedInputNumber",
-			"versionBadgeTag": "_2vuxea_versionBadgeTag",
-			"control": "_2vuxea_control",
 			"pluginName": "_2vuxea_pluginName",
-			"pluginInstall": "_2vuxea_pluginInstall",
-			"addCard": "_2vuxea_addCard",
+			"title": "_2vuxea_title",
+			"cardDesc": "_2vuxea_cardDesc",
 			"cardSwitchTrack": "_2vuxea_cardSwitchTrack",
-			"card": "_2vuxea_card",
+			"section": "_2vuxea_section",
+			"typedInput": "_2vuxea_typedInput",
+			"pluginEntryActions": "_2vuxea_pluginEntryActions",
+			"versionBadgeTag": "_2vuxea_versionBadgeTag",
+			"pluginEntryHead": "_2vuxea_pluginEntryHead",
+			"rowText": "_2vuxea_rowText",
+			"error": "_2vuxea_error",
+			"selectOptionText": "_2vuxea_selectOptionText",
+			"openWithEditorTemplate": "_2vuxea_openWithEditorTemplate",
+			"switchInput": "_2vuxea_switchInput",
+			"pluginList": "_2vuxea_pluginList",
+			"cardSettings": "_2vuxea_cardSettings",
+			"control": "_2vuxea_control",
+			"cardMain": "_2vuxea_cardMain",
+			"suffix": "_2vuxea_suffix",
 			"popupRows": "_2vuxea_popupRows",
-			"cardOn": "_2vuxea_cardOn"
+			"groupHeading": "_2vuxea_groupHeading",
+			"selectOptionIcon": "_2vuxea_selectOptionIcon",
+			"popupDialog": "_2vuxea_popupDialog",
+			"pluginModal": "_2vuxea_pluginModal",
+			"selectAnchorIcon": "_2vuxea_selectAnchorIcon",
+			"pluginJumpBtn": "_2vuxea_pluginJumpBtn",
+			"versionBadgeName": "_2vuxea_versionBadgeName",
+			"cssTextArea": "_2vuxea_cssTextArea",
+			"cardSwitchThumb": "_2vuxea_cardSwitchThumb",
+			"intro": "_2vuxea_intro",
+			"cardOn": "_2vuxea_cardOn",
+			"popupRow": "_2vuxea_popupRow",
+			"openWithHint": "_2vuxea_openWithHint",
+			"versionBadge": "_2vuxea_versionBadge",
+			"selectOption": "_2vuxea_selectOption",
+			"openWithEditorInput": "_2vuxea_openWithEditorInput",
+			"pluginTopicBtn": "_2vuxea_pluginTopicBtn",
+			"pluginGroupHeading": "_2vuxea_pluginGroupHeading",
+			"switchThumb": "_2vuxea_switchThumb",
+			"row": "_2vuxea_row",
+			"typedInputNumber": "_2vuxea_typedInputNumber",
+			"pluginInstall": "_2vuxea_pluginInstall",
+			"percentInput": "_2vuxea_percentInput",
+			"selectAnchorText": "_2vuxea_selectAnchorText",
+			"pluginEntries": "_2vuxea_pluginEntries",
+			"grid": "_2vuxea_grid",
+			"cardTitle": "_2vuxea_cardTitle",
+			"pluginDesc": "_2vuxea_pluginDesc",
+			"openWithEditorRow": "_2vuxea_openWithEditorRow",
+			"selectAnchor": "_2vuxea_selectAnchor",
+			"openWithRemove": "_2vuxea_openWithRemove",
+			"addCard": "_2vuxea_addCard",
+			"cardSwitch": "_2vuxea_cardSwitch",
+			"card": "_2vuxea_card",
+			"openWithFamily": "_2vuxea_openWithFamily",
+			"rowGear": "_2vuxea_rowGear",
+			"cardTop": "_2vuxea_cardTop",
+			"desc": "_2vuxea_desc",
+			"cardIconChip": "_2vuxea_cardIconChip",
+			"switchTrack": "_2vuxea_switchTrack",
+			"count": "_2vuxea_count",
+			"pluginEmpty": "_2vuxea_pluginEmpty",
+			"pluginEntry": "_2vuxea_pluginEntry",
+			"pluginGroup": "_2vuxea_pluginGroup"
 		};
 		//#endregion
 		//#region src/client/open-with-settings.tsx
@@ -6872,8 +7349,73 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/client/use-polling.ts
+		/**
+		* The sidebar's ONE polling loop: every timed client fetch — subagent live
+		* previews, side-chat transcript deltas, git status, session ops — funnels
+		* here so the cancellation-safety rules are written once instead of four
+		* times. The contract every poller gets:
+		*
+		* - While `enabled`, the task runs on the chosen cadence; the loop restarts
+		*   (and the old one is torn down) whenever `enabled`, the task identity, or
+		*   any option primitive changes — callers express "scope changed" through
+		*   the task's `useCallback` deps, exactly like an effect's dep array.
+		* - Each enabled run owns ONE AbortSignal for its whole lifetime; teardown
+		*   (unmount, `enabled` flip, identity change) aborts it AND stops all
+		*   scheduling. A task whose fetch settles late must check the signal
+		*   before writing state: an aborted fetch is NOT guaranteed to reject
+		*   (the transport may deliver the response anyway), so the signal is the
+		*   only reliable staleness guard.
+		* - A rejected task never breaks the loop — the scheduler swallows it and
+		*   the next tick retries. Sites that surface errors (setError banners and
+		*   friends) do so inside the task body; the scheduler always stays silent.
+		*/
+		function usePolling(enabled, task, { intervalMs, mode = "fixed-interval", immediate = false }) {
+			(0, react.useEffect)(() => {
+				if (!enabled) return;
+				const controller = new AbortController();
+				if (mode === "self-scheduling") {
+					let disposed = false;
+					let timer;
+					const tick = async () => {
+						if (disposed) return;
+						try {
+							await task(controller.signal);
+						} catch {}
+						if (!disposed) timer = window.setTimeout(() => {
+							tick();
+						}, intervalMs);
+					};
+					if (immediate) tick();
+					else timer = window.setTimeout(() => {
+						tick();
+					}, intervalMs);
+					return () => {
+						disposed = true;
+						if (timer !== void 0) window.clearTimeout(timer);
+						controller.abort();
+					};
+				}
+				const run = () => {
+					task(controller.signal).catch(() => {});
+				};
+				if (immediate) run();
+				const timer = window.setInterval(run, intervalMs);
+				return () => {
+					window.clearInterval(timer);
+					controller.abort();
+				};
+			}, [
+				enabled,
+				task,
+				intervalMs,
+				mode,
+				immediate
+			]);
+		}
+		//#endregion
 		//#region \0dsh-css:/home/runner/work/DSH-better-sidebar/DSH-better-sidebar/src/client/changes/changes.module.css.mjs
-		const css$4 = ".bdiHEa_root{background:var(--dsw-alias-bg-base);height:100%;min-height:0;color:var(--dsw-alias-label-primary);flex-direction:column;font-size:12px;display:flex}.bdiHEa_lensBar{flex:none;align-items:center;padding:8px 8px 4px 12px;display:flex}.bdiHEa_lensSwitch{border:1px solid var(--dsw-alias-border-l2);border-radius:8px;gap:2px;padding:2px;display:inline-flex}.bdiHEa_lensButton{color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;background:0 0;border:0;border-radius:6px;padding:2px 10px}.bdiHEa_lensButton:hover{color:var(--dsw-alias-label-primary)}.bdiHEa_lensButton[data-active=true]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary)}.bdiHEa_git{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden auto}.bdiHEa_gitHeader{flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.bdiHEa_gitWorktreeRow{flex:none;align-items:center;gap:8px;padding:6px 8px 0 12px;display:flex}.bdiHEa_gitWorktreeLabel{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);flex:none}.bdiHEa_gitBranchSelect{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);min-width:0;height:26px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 6px}.bdiHEa_gitSection{border-top:1px solid var(--dsw-alias-border-l1)}.bdiHEa_gitSectionHeader{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary);text-transform:uppercase;justify-content:space-between;align-items:center;padding:6px 12px 4px;display:flex}.bdiHEa_gitLink{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-brand-primary);cursor:pointer;background:0 0;border:none;padding:0}.bdiHEa_gitLink:hover:not(:disabled){text-decoration:underline}.bdiHEa_gitLink:disabled{opacity:.4;cursor:default}.bdiHEa_gitRow{min-height:34px;animation:bdiHEa_dsh-row-in .15s var(--ds-ease-in-out);border-radius:8px;align-items:center;gap:6px;margin:0 6px;padding:0 8px;display:flex}.bdiHEa_gitRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.bdiHEa_gitRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}.bdiHEa_gitRowMain{cursor:pointer;text-align:left;background:0 0;border:none;flex:1;align-items:center;gap:8px;min-width:0;padding:3px 0;display:flex}.bdiHEa_gitBadge{width:20px;height:16px;font:var(--dsw-font-xxxs-strong-11);background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;justify-content:center;align-items:center;display:inline-flex}.bdiHEa_gitBadge[data-letter=A],.bdiHEa_gitBadge[data-letter=\\?]{color:var(--dsw-alias-state-success-primary)}.bdiHEa_gitBadge[data-letter=D]{color:var(--dsw-alias-state-error-primary)}.bdiHEa_gitBadge[data-letter=M],.bdiHEa_gitBadge[data-letter=R]{color:var(--dsw-alias-state-business-primary)}.bdiHEa_gitBadge[data-letter=C],.bdiHEa_gitBadge[data-letter=U]{color:var(--dsw-alias-state-warn-primary)}.bdiHEa_gitName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.bdiHEa_gitEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:4px 12px 8px}.bdiHEa_gitPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}.bdiHEa_gitError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);white-space:pre-wrap;padding:8px 12px}.bdiHEa_gitConfirmDesc{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);white-space:pre-wrap;margin:0}.bdiHEa_gitCommit{border-top:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;padding:8px 12px;display:flex}.bdiHEa_gitCommitInput{flex:1;min-width:0}.bdiHEa_gitCommitButton{background:var(--dsw-alias-button-primary-fill);height:26px;color:var(--dsw-alias-label-primary-inverted);font:var(--dsw-font-xxs-strong-12);cursor:pointer;border:none;border-radius:6px;flex:none;padding:0 12px}.bdiHEa_gitCommitButton:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}.bdiHEa_gitCommitButton:disabled{opacity:.45;cursor:default}.bdiHEa_gitLogRow{cursor:pointer;border-radius:8px;flex-direction:column;gap:2px;padding:5px 12px;display:flex}.bdiHEa_gitLogRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.bdiHEa_gitLogRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}.bdiHEa_gitLogLine1{align-items:baseline;gap:8px;min-width:0;display:flex}.bdiHEa_gitLogHash{font:var(--dsw-font-markdown-code-block-small);color:var(--dsw-alias-label-tertiary);flex:none}.bdiHEa_gitLogLine2{flex-wrap:wrap;align-items:center;gap:6px;min-width:0;display:flex}.bdiHEa_gitLogRef{border:1px solid var(--dsw-alias-border-l2);font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-brand-primary);white-space:nowrap;border-radius:999px;flex:none;padding:0 5px}.bdiHEa_gitLogSubject{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.bdiHEa_gitLogMeta{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}.bdiHEa_gitLogMore{border:1px solid var(--dsw-alias-border-l2);width:calc(100% - 24px);font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:6px;margin:4px 12px 8px;padding:6px 0;display:block}.bdiHEa_gitLogMore:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.bdiHEa_gitLogMore:disabled{opacity:.5;cursor:default}.bdiHEa_session{flex-direction:column;flex:1;min-height:0;display:flex}.bdiHEa_filterRow{flex-wrap:wrap;flex:none;gap:4px;padding:2px 8px 6px 12px;display:flex}.bdiHEa_filterChip{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border-radius:999px;padding:1px 8px}.bdiHEa_filterChip:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}.bdiHEa_filterChip[data-active=true]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary);border-color:#0000}.bdiHEa_sessionList{flex:1;min-height:0;padding:0 6px 10px;overflow-y:auto}.bdiHEa_empty{color:var(--dsw-alias-label-tertiary);text-align:center;padding:24px 8px}.bdiHEa_loadError{border-left:3px solid var(--dsw-alias-state-warn-primary);color:var(--dsw-alias-label-secondary);border-radius:0 6px 6px 0;margin:4px 8px;padding:6px 10px;font-size:11px}.bdiHEa_fileGroup{margin-bottom:6px}.bdiHEa_filePath{color:var(--dsw-alias-label-tertiary);font-family:var(--ds-font-family-code,monospace);word-break:break-all;padding:6px 4px 2px;font-size:11px;display:block}.bdiHEa_fileGroup:first-child .bdiHEa_filePath{padding-top:2px}.bdiHEa_opRow{width:100%;color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer;text-align:left;background:0 0;border:0;border-radius:6px;align-items:center;gap:6px;padding:3px 5px;font-size:11px;display:flex}.bdiHEa_opRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.bdiHEa_opRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}.bdiHEa_opRow[data-op-error=true]{box-shadow:inset 2px 0 0 var(--dsw-alias-state-error-primary)}.bdiHEa_opKind{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}.bdiHEa_opKind[data-kind=write]{color:var(--dsw-alias-state-success-primary)}.bdiHEa_opKind[data-kind=edit]{color:var(--dsw-alias-state-business-primary)}.bdiHEa_opMeta{flex:none;align-items:baseline;gap:8px;min-width:0;margin-left:auto;display:inline-flex}.bdiHEa_opTime{color:var(--dsw-alias-label-tertiary);flex:none;font-size:10px}.bdiHEa_opFlag{color:var(--dsw-alias-state-business-primary);flex:none;font-size:10px}.bdiHEa_opFlagError{color:var(--dsw-alias-state-error-primary);flex:none;font-size:10px}.bdiHEa_opSize{color:var(--dsw-alias-label-tertiary);font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none}.bdiHEa_diffPane{border-top:1px solid var(--dsw-alias-border-l1);flex-direction:column;flex:none;min-height:0;display:flex}.bdiHEa_dragHandle{cursor:ns-resize;background:var(--dsw-alias-bg-base);flex:none;height:8px;position:relative}.bdiHEa_dragHandle:after{content:\"\";background:var(--dsw-alias-border-l2);border-radius:1px;width:36px;height:2px;position:absolute;top:3px;left:calc(50% - 18px)}.bdiHEa_dragHandle:hover:after,.bdiHEa_dragHandle:focus-visible:after{background:var(--dsw-alias-state-business-primary)}.bdiHEa_diffHead{border-bottom:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;padding:3px 8px 3px 10px;display:flex}.bdiHEa_diffKind{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}.bdiHEa_diffKind[data-kind=git]{color:var(--dsw-alias-brand-primary)}.bdiHEa_diffKind[data-kind=write]{color:var(--dsw-alias-state-success-primary)}.bdiHEa_diffKind[data-kind=edit]{color:var(--dsw-alias-state-business-primary)}.bdiHEa_diffPath{font-family:var(--ds-font-family-code,monospace);white-space:nowrap;text-overflow:ellipsis;color:var(--dsw-alias-label-primary);direction:rtl;flex:1;min-width:0;font-size:11px;overflow:hidden}.bdiHEa_diffStats{font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none;gap:5px;display:inline-flex}.bdiHEa_iconButton{width:24px;height:24px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bdiHEa_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.bdiHEa_iconButton:disabled{opacity:.4;cursor:default}.bdiHEa_paneBody{flex:1;min-height:0;overflow-y:auto}.bdiHEa_readError{color:var(--dsw-alias-state-error-primary);border-left:3px solid var(--dsw-alias-state-error-primary);white-space:pre-wrap;word-break:break-word;border-radius:0 6px 6px 0;margin:6px 8px;padding:6px 10px}.bdiHEa_priorUnknown{color:var(--dsw-alias-label-tertiary);padding:3px 10px;font-size:10px}@keyframes bdiHEa_dsh-row-in{0%{opacity:0}}.bdiHEa_gitLink:focus-visible,.bdiHEa_gitRowMain:focus-visible,.bdiHEa_gitLogRow:focus-visible,.bdiHEa_gitCommitButton:focus-visible,.bdiHEa_gitLogMore:focus-visible,.bdiHEa_gitBranchSelect:focus-visible,.bdiHEa_lensButton:focus-visible,.bdiHEa_filterChip:focus-visible,.bdiHEa_iconButton:focus-visible,.bdiHEa_dragHandle:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){.bdiHEa_gitRow{animation:none}}";
+		const css$4 = ".bdiHEa_root{background:var(--dsw-alias-bg-base);height:100%;min-height:0;color:var(--dsw-alias-label-primary);flex-direction:column;font-size:12px;display:flex}.bdiHEa_lensBar{flex:none;align-items:center;padding:8px 8px 4px 12px;display:flex}.bdiHEa_lensSwitch{border:1px solid var(--dsw-alias-border-l2);border-radius:8px;gap:2px;padding:2px;display:inline-flex}.bdiHEa_lensButton{color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;background:0 0;border:0;border-radius:6px;padding:2px 10px}.bdiHEa_lensButton:hover{color:var(--dsw-alias-label-primary)}.bdiHEa_lensButton[data-active=true]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary)}.bdiHEa_git{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden auto}.bdiHEa_gitHeader{flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.bdiHEa_gitWorktreeRow{flex:none;align-items:center;gap:8px;padding:6px 8px 0 12px;display:flex}.bdiHEa_gitWorktreeLabel{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);flex:none}.bdiHEa_gitBranchSelect{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);min-width:0;height:26px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 6px}.bdiHEa_gitSection{border-top:1px solid var(--dsw-alias-border-l1)}.bdiHEa_gitSectionHeader{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary);text-transform:uppercase;justify-content:space-between;align-items:center;padding:6px 12px 4px;display:flex}.bdiHEa_gitLink{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-brand-primary);cursor:pointer;background:0 0;border:none;padding:0}.bdiHEa_gitLink:hover:not(:disabled){text-decoration:underline}.bdiHEa_gitLink:disabled{opacity:.4;cursor:default}.bdiHEa_gitRow{min-height:34px;animation:bdiHEa_dsh-row-in .15s var(--ds-ease-in-out);border-radius:8px;align-items:center;gap:6px;margin:0 6px;padding:0 8px;display:flex}.bdiHEa_gitRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.bdiHEa_gitRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}.bdiHEa_gitRowMain{cursor:pointer;text-align:left;background:0 0;border:none;flex:1;align-items:center;gap:8px;min-width:0;padding:3px 0;display:flex}.bdiHEa_gitBadge{width:20px;height:16px;font:var(--dsw-font-xxxs-strong-11);background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;justify-content:center;align-items:center;display:inline-flex}.bdiHEa_gitBadge[data-letter=A],.bdiHEa_gitBadge[data-letter=\\?]{color:var(--dsw-alias-state-success-primary)}.bdiHEa_gitBadge[data-letter=D]{color:var(--dsw-alias-state-error-primary)}.bdiHEa_gitBadge[data-letter=M],.bdiHEa_gitBadge[data-letter=R]{color:var(--dsw-alias-state-business-primary)}.bdiHEa_gitBadge[data-letter=C],.bdiHEa_gitBadge[data-letter=U]{color:var(--dsw-alias-state-warn-primary)}.bdiHEa_gitName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.bdiHEa_gitEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:4px 12px 8px}.bdiHEa_gitPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}.bdiHEa_gitError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);white-space:pre-wrap;padding:8px 12px}.bdiHEa_gitConfirmDesc{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);white-space:pre-wrap;margin:0}.bdiHEa_gitCommit{border-top:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;padding:8px 12px;display:flex}.bdiHEa_gitCommitInput{flex:1;min-width:0}.bdiHEa_gitCommitButton{background:var(--dsw-alias-button-primary-fill);height:26px;color:var(--dsw-alias-label-primary-inverted);font:var(--dsw-font-xxs-strong-12);cursor:pointer;border:none;border-radius:6px;flex:none;padding:0 12px}.bdiHEa_gitCommitButton:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}.bdiHEa_gitCommitButton:disabled{opacity:.45;cursor:default}.bdiHEa_gitLogRow{cursor:pointer;border-radius:8px;flex-direction:column;gap:2px;padding:5px 12px;display:flex}.bdiHEa_gitLogRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.bdiHEa_gitLogRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}.bdiHEa_gitLogLine1{align-items:baseline;gap:8px;min-width:0;display:flex}.bdiHEa_gitLogHash{font:var(--dsw-font-markdown-code-block-small);color:var(--dsw-alias-label-tertiary);flex:none}.bdiHEa_gitLogLine2{flex-wrap:wrap;align-items:center;gap:6px;min-width:0;display:flex}.bdiHEa_gitLogRef{border:1px solid var(--dsw-alias-border-l2);font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-brand-primary);white-space:nowrap;border-radius:999px;flex:none;padding:0 5px}.bdiHEa_gitLogSubject{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.bdiHEa_gitLogMeta{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}.bdiHEa_gitLogMore{border:1px solid var(--dsw-alias-border-l2);width:calc(100% - 24px);font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:6px;margin:4px 12px 8px;padding:6px 0;display:block}.bdiHEa_gitLogMore:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.bdiHEa_gitLogMore:disabled{opacity:.5;cursor:default}.bdiHEa_session{flex-direction:column;flex:1;min-height:0;display:flex}.bdiHEa_filterRow{flex-wrap:wrap;flex:none;gap:4px;padding:2px 8px 6px 12px;display:flex}.bdiHEa_filterChip{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border-radius:999px;padding:1px 8px}.bdiHEa_filterChip:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}.bdiHEa_filterChip[data-active=true]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary);border-color:#0000}.bdiHEa_sessionList{flex:1;min-height:0;padding:0 6px 10px;overflow-y:auto}.bdiHEa_empty{color:var(--dsw-alias-label-tertiary);text-align:center;padding:24px 8px}.bdiHEa_loadError{border-left:3px solid var(--dsw-alias-state-warn-primary);color:var(--dsw-alias-label-secondary);border-radius:0 6px 6px 0;margin:4px 8px;padding:6px 10px;font-size:11px}.bdiHEa_fileGroup{margin-bottom:6px}.bdiHEa_filePath{color:var(--dsw-alias-label-tertiary);font-family:var(--ds-font-family-code,monospace);word-break:break-all;padding:6px 4px 2px;font-size:11px;display:block}.bdiHEa_fileGroup:first-child .bdiHEa_filePath{padding-top:2px}.bdiHEa_opRow{width:100%;color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer;text-align:left;background:0 0;border:0;border-radius:6px;align-items:center;gap:6px;padding:3px 5px;font-size:11px;display:flex}.bdiHEa_opRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.bdiHEa_opRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}.bdiHEa_opRow[data-op-error=true]{box-shadow:inset 2px 0 0 var(--dsw-alias-state-error-primary)}.bdiHEa_opKind{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}.bdiHEa_opKind[data-kind=write]{color:var(--dsw-alias-state-success-primary)}.bdiHEa_opKind[data-kind=edit]{color:var(--dsw-alias-state-business-primary)}.bdiHEa_opMeta{flex:none;align-items:baseline;gap:8px;min-width:0;margin-left:auto;display:inline-flex}.bdiHEa_opTime{color:var(--dsw-alias-label-tertiary);flex:none;font-size:10px}.bdiHEa_opFlag{color:var(--dsw-alias-state-business-primary);flex:none;font-size:10px}.bdiHEa_opFlagError{color:var(--dsw-alias-state-error-primary);flex:none;font-size:10px}.bdiHEa_opSize{color:var(--dsw-alias-label-tertiary);font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none}.bdiHEa_redactBanner{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-state-warn-primary);background:var(--dsw-alias-interactive-bg-hover);white-space:nowrap;border-radius:7px;flex:none;padding:2px 8px}.bdiHEa_mdToggle{border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;background:0 0;border-radius:7px;flex:none;padding:2px 8px}.bdiHEa_mdToggle:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.bdiHEa_mdToggle[data-on=true]{border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}.bdiHEa_mdBody{font:var(--dsw-font-xs-regular-13);min-height:0;padding:12px 16px 20px;line-height:1.6;overflow-y:auto}.bdiHEa_htmlPane{flex:1;min-height:0;display:flex}.bdiHEa_htmlFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%}.bdiHEa_diffPane{border-top:1px solid var(--dsw-alias-border-l1);flex-direction:column;flex:none;min-height:0;display:flex}.bdiHEa_dragHandle{cursor:ns-resize;background:var(--dsw-alias-bg-base);flex:none;height:8px;position:relative}.bdiHEa_dragHandle:after{content:\"\";background:var(--dsw-alias-border-l2);border-radius:1px;width:36px;height:2px;position:absolute;top:3px;left:calc(50% - 18px)}.bdiHEa_dragHandle:hover:after,.bdiHEa_dragHandle:focus-visible:after{background:var(--dsw-alias-state-business-primary)}.bdiHEa_diffHead{border-bottom:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;padding:3px 8px 3px 10px;display:flex}.bdiHEa_diffKind{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}.bdiHEa_diffKind[data-kind=git]{color:var(--dsw-alias-brand-primary)}.bdiHEa_diffKind[data-kind=write]{color:var(--dsw-alias-state-success-primary)}.bdiHEa_diffKind[data-kind=edit]{color:var(--dsw-alias-state-business-primary)}.bdiHEa_diffPath{font-family:var(--ds-font-family-code,monospace);white-space:nowrap;text-overflow:ellipsis;color:var(--dsw-alias-label-primary);direction:rtl;flex:1;min-width:0;font-size:11px;overflow:hidden}.bdiHEa_diffStats{font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none;gap:5px;display:inline-flex}.bdiHEa_iconButton{width:24px;height:24px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.bdiHEa_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.bdiHEa_iconButton:disabled{opacity:.4;cursor:default}.bdiHEa_paneBody{flex:1;min-height:0;overflow-y:auto}.bdiHEa_readError{color:var(--dsw-alias-state-error-primary);border-left:3px solid var(--dsw-alias-state-error-primary);white-space:pre-wrap;word-break:break-word;border-radius:0 6px 6px 0;margin:6px 8px;padding:6px 10px}.bdiHEa_priorUnknown{color:var(--dsw-alias-label-tertiary);padding:3px 10px;font-size:10px}@keyframes bdiHEa_dsh-row-in{0%{opacity:0}}.bdiHEa_gitLink:focus-visible,.bdiHEa_gitRowMain:focus-visible,.bdiHEa_gitLogRow:focus-visible,.bdiHEa_gitCommitButton:focus-visible,.bdiHEa_gitLogMore:focus-visible,.bdiHEa_gitBranchSelect:focus-visible,.bdiHEa_lensButton:focus-visible,.bdiHEa_filterChip:focus-visible,.bdiHEa_iconButton:focus-visible,.bdiHEa_dragHandle:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){.bdiHEa_gitRow{animation:none}}";
 		const tagId$4 = "dsh-better-sidebar/changes.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
 			const tag = document.createElement("style");
@@ -6883,63 +7425,68 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var changes_module_css_default = {
+			"gitLogLine2": "bdiHEa_gitLogLine2",
+			"gitSectionHeader": "bdiHEa_gitSectionHeader",
+			"filePath": "bdiHEa_filePath",
+			"lensSwitch": "bdiHEa_lensSwitch",
+			"loadError": "bdiHEa_loadError",
+			"fileGroup": "bdiHEa_fileGroup",
+			"gitLogLine1": "bdiHEa_gitLogLine1",
+			"gitLink": "bdiHEa_gitLink",
+			"filterChip": "bdiHEa_filterChip",
+			"opKind": "bdiHEa_opKind",
+			"htmlFrame": "bdiHEa_htmlFrame",
+			"gitCommitInput": "bdiHEa_gitCommitInput",
 			"diffPath": "bdiHEa_diffPath",
 			"lensBar": "bdiHEa_lensBar",
-			"lensButton": "bdiHEa_lensButton",
-			"gitError": "bdiHEa_gitError",
-			"opTime": "bdiHEa_opTime",
-			"dragHandle": "bdiHEa_dragHandle",
-			"opFlag": "bdiHEa_opFlag",
-			"empty": "bdiHEa_empty",
-			"filterChip": "bdiHEa_filterChip",
-			"gitLogLine2": "bdiHEa_gitLogLine2",
-			"gitLogSubject": "bdiHEa_gitLogSubject",
-			"gitSection": "bdiHEa_gitSection",
-			"gitName": "bdiHEa_gitName",
-			"gitPlaceholder": "bdiHEa_gitPlaceholder",
-			"gitWorktreeRow": "bdiHEa_gitWorktreeRow",
-			"opKind": "bdiHEa_opKind",
-			"gitWorktreeLabel": "bdiHEa_gitWorktreeLabel",
-			"diffHead": "bdiHEa_diffHead",
-			"git": "bdiHEa_git",
-			"paneBody": "bdiHEa_paneBody",
-			"gitCommit": "bdiHEa_gitCommit",
-			"gitCommitInput": "bdiHEa_gitCommitInput",
 			"opSize": "bdiHEa_opSize",
-			"gitLogHash": "bdiHEa_gitLogHash",
-			"root": "bdiHEa_root",
-			"diffKind": "bdiHEa_diffKind",
-			"gitCommitButton": "bdiHEa_gitCommitButton",
-			"gitLogRef": "bdiHEa_gitLogRef",
-			"gitLogMore": "bdiHEa_gitLogMore",
-			"diffStats": "bdiHEa_diffStats",
-			"filePath": "bdiHEa_filePath",
-			"gitLogLine1": "bdiHEa_gitLogLine1",
-			"diffPane": "bdiHEa_diffPane",
-			"loadError": "bdiHEa_loadError",
-			"gitLogMeta": "bdiHEa_gitLogMeta",
-			"iconButton": "bdiHEa_iconButton",
-			"readError": "bdiHEa_readError",
-			"fileGroup": "bdiHEa_fileGroup",
-			"opFlagError": "bdiHEa_opFlagError",
-			"gitBadge": "bdiHEa_gitBadge",
 			"gitHeader": "bdiHEa_gitHeader",
-			"lensSwitch": "bdiHEa_lensSwitch",
-			"gitConfirmDesc": "bdiHEa_gitConfirmDesc",
-			"sessionList": "bdiHEa_sessionList",
-			"priorUnknown": "bdiHEa_priorUnknown",
-			"gitLink": "bdiHEa_gitLink",
-			"opRow": "bdiHEa_opRow",
-			"gitEmpty": "bdiHEa_gitEmpty",
-			"filterRow": "bdiHEa_filterRow",
+			"redactBanner": "bdiHEa_redactBanner",
+			"gitLogRef": "bdiHEa_gitLogRef",
 			"gitBranchSelect": "bdiHEa_gitBranchSelect",
-			"session": "bdiHEa_session",
-			"opMeta": "bdiHEa_opMeta",
+			"gitCommitButton": "bdiHEa_gitCommitButton",
+			"opTime": "bdiHEa_opTime",
+			"gitRowMain": "bdiHEa_gitRowMain",
+			"mdBody": "bdiHEa_mdBody",
+			"diffKind": "bdiHEa_diffKind",
+			"gitEmpty": "bdiHEa_gitEmpty",
+			"gitCommit": "bdiHEa_gitCommit",
+			"empty": "bdiHEa_empty",
+			"gitLogHash": "bdiHEa_gitLogHash",
+			"opFlag": "bdiHEa_opFlag",
+			"gitWorktreeLabel": "bdiHEa_gitWorktreeLabel",
+			"sessionList": "bdiHEa_sessionList",
+			"diffHead": "bdiHEa_diffHead",
+			"gitConfirmDesc": "bdiHEa_gitConfirmDesc",
+			"gitSection": "bdiHEa_gitSection",
 			"gitLogRow": "bdiHEa_gitLogRow",
-			"gitSectionHeader": "bdiHEa_gitSectionHeader",
+			"gitLogMore": "bdiHEa_gitLogMore",
+			"opRow": "bdiHEa_opRow",
+			"gitLogSubject": "bdiHEa_gitLogSubject",
+			"readError": "bdiHEa_readError",
+			"gitBadge": "bdiHEa_gitBadge",
+			"dragHandle": "bdiHEa_dragHandle",
+			"priorUnknown": "bdiHEa_priorUnknown",
+			"diffPane": "bdiHEa_diffPane",
+			"gitLogMeta": "bdiHEa_gitLogMeta",
+			"git": "bdiHEa_git",
+			"lensButton": "bdiHEa_lensButton",
+			"gitName": "bdiHEa_gitName",
+			"session": "bdiHEa_session",
+			"filterRow": "bdiHEa_filterRow",
+			"opMeta": "bdiHEa_opMeta",
 			"gitRow": "bdiHEa_gitRow",
+			"opFlagError": "bdiHEa_opFlagError",
+			"gitWorktreeRow": "bdiHEa_gitWorktreeRow",
+			"mdToggle": "bdiHEa_mdToggle",
+			"gitPlaceholder": "bdiHEa_gitPlaceholder",
+			"root": "bdiHEa_root",
+			"diffStats": "bdiHEa_diffStats",
+			"htmlPane": "bdiHEa_htmlPane",
+			"gitError": "bdiHEa_gitError",
+			"paneBody": "bdiHEa_paneBody",
 			"dsh-row-in": "bdiHEa_dsh-row-in",
-			"gitRowMain": "bdiHEa_gitRowMain"
+			"iconButton": "bdiHEa_iconButton"
 		};
 		//#endregion
 		//#region src/client/changes/GitLens.tsx
@@ -7165,15 +7712,7 @@ window.__ModuleLoader__.load({
 					generation
 				});
 			};
-			(0, react.useEffect)(() => {
-				if (!visible) return;
-				const timer = window.setInterval(() => {
-					refresh(true);
-				}, 2e3);
-				return () => {
-					window.clearInterval(timer);
-				};
-			}, [visible, refresh]);
+			usePolling(visible, (0, react.useCallback)(() => refresh(true), [refresh]), { intervalMs: 2e3 });
 			/** Append the next history page (lazy: only when the user asks for more). */
 			const loadMoreLog = async () => {
 				if (logLoadingMore || logEnded) return;
@@ -7643,6 +8182,7 @@ window.__ModuleLoader__.load({
 								if (id === "absolute") copy(resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, target.entry.path));
 							},
 							portal: true,
+							compact: true,
 							align: "start",
 							getAnchorRect: () => fileMenu === null ? null : new DOMRect(fileMenu.x, fileMenu.y, 0, 0),
 							anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {})
@@ -7724,6 +8264,7 @@ window.__ModuleLoader__.load({
 								});
 							},
 							portal: true,
+							compact: true,
 							align: "start",
 							getAnchorRect: () => historyMenu === null ? null : new DOMRect(historyMenu.x, historyMenu.y, 0, 0),
 							anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {})
@@ -7934,17 +8475,34 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/**
+		* The read-tool response's `<content>` body split into lines with the
+		* "(Showing lines …)" note dropped — the shared envelope core both read
+		* parsers consume: {@link parseReadLines} recovers line numbers from the
+		* "<n>: " prefixes, {@link parseReadContent} keeps the raw text.
+		*/
+		function contentLines(raw) {
+			const contentMatch = raw.match(/<content>([\s\S]*?)<\/content>/);
+			return (contentMatch ? contentMatch[1] : raw).split("\n").filter((line) => !/^\s*\(Showing lines .*\)\s*$/.test(line));
+		}
+		/**
+		* Strip the DSH read-tool response envelope down to the file's raw content,
+		* PRESERVING blank lines (unlike {@link parseReadLines}, which drops them):
+		* drops the <content> wrapper, the "(Showing lines ...)" note, and the
+		* per-line "<n>: " prefixes. The markdown reading mode needs the blank lines
+		* because markdown block structure depends on them.
+		*/
+		function parseReadContent(raw) {
+			return contentLines(raw).map((line) => line.replace(/^\s*\d+:\s/, "")).join("\n").replace(/^[\n]+/, "").replace(/\n+$/, "");
+		}
+		/**
 		* Parse a DSH read result into file lines with their real line numbers:
 		* drops the <content> envelope and "(Showing lines ...)" note; recovers the
 		* "<n>: " prefix as the line number, falling back to sequential counting.
 		*/
 		function parseReadLines(raw) {
-			const contentMatch = raw.match(/<content>([\s\S]*?)<\/content>/);
-			const body = contentMatch ? contentMatch[1] : raw;
 			const result = [];
 			let fallback = 1;
-			for (const line of body.split("\n")) {
-				if (/^\s*\(Showing lines .*\)\s*$/.test(line)) continue;
+			for (const line of contentLines(raw)) {
 				if (line.length === 0) continue;
 				const match = line.match(/^\s*(\d+):\s?(.*)$/);
 				if (match !== null) {
@@ -8403,6 +8961,45 @@ window.__ModuleLoader__.load({
 				}]
 			};
 		}
+		/**
+		* Materialize a git gap fold's hidden rows from the two sides' full file
+		* contents, by the fold's known line ranges: the old side drives context
+		* rows (each mapped onto the new side through the fold's offset — a gap is
+		* an unchanged run, so the sides align), and new-side lines the old range
+		* never reaches become pure additions. Line numbers clip to the actual
+		* content (a no-newline file's ranges can overrun by one); `\r` endings
+		* survive verbatim, like git's own context lines.
+		*/
+		function foldRowsFromContents(fold, oldContent, newContent) {
+			const oldLines = oldContent.length === 0 ? [] : oldContent.split("\n");
+			const newLines = newContent.length === 0 ? [] : newContent.split("\n");
+			const offset = fold.newStart - fold.oldStart;
+			const rows = [];
+			const oldFrom = Math.max(fold.oldStart, 1);
+			const oldTo = Math.min(fold.oldEnd, oldLines.length);
+			for (let oldLine = oldFrom; oldLine <= oldTo; oldLine += 1) {
+				const text = oldLines[oldLine - 1];
+				const newLine = oldLine + offset;
+				rows.push(newLine >= fold.newStart && newLine <= fold.newEnd && newLine <= newLines.length ? {
+					kind: "context",
+					oldLine,
+					newLine,
+					text
+				} : {
+					kind: "context",
+					oldLine,
+					text
+				});
+			}
+			const newFrom = Math.max(fold.newStart, 1);
+			const newTo = Math.min(fold.newEnd, newLines.length);
+			for (let newLine = Math.max(newFrom, oldTo + offset + 1); newLine <= newTo; newLine += 1) rows.push({
+				kind: "add",
+				newLine,
+				text: newLines[newLine - 1]
+			});
+			return rows;
+		}
 		/** Strip the `a/` / `b/` prefix git puts on diff paths (not on /dev/null). */
 		function displayPath(path) {
 			if (path === "/dev/null") return path;
@@ -8538,6 +9135,22 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/client/html-preview.ts
+		/**
+		* Shared vocabulary of the sidebar's HTML preview surfaces (the editor's
+		* html viewer and the changes tab's op render preview): the sandbox tokens
+		* both preview iframes load with.
+		*/
+		/**
+		* The sandbox tokens of an HTML preview iframe. NO allow-same-origin (the
+		* preview must stay in an opaque origin — with the route's own origin it
+		* could read session data) and NO allow-top-navigation (a previewed page
+		* must not hijack the GUI). The editor viewer can disable the sandbox
+		* per-feature in the side card settings (warned); the changes tab's op
+		* render preview always stays sandboxed.
+		*/
+		const HTML_IFRAME_SANDBOX = "allow-scripts allow-popups allow-downloads allow-modals";
+		//#endregion
 		//#region src/client/diff/highlight.ts
 		/** Token classes that imply their own color; `plain` inherits the row color. */
 		const COLORED = /* @__PURE__ */ new Set([
@@ -8631,28 +9244,73 @@ window.__ModuleLoader__.load({
 			wordStart: LETTER,
 			wordBody: WORD
 		};
+		/** JS keyword list, shared by js/jsx/mjs/cjs. */
+		const JS_WORDS = `async await break case catch class const continue debugger default delete do else
+  export extends false finally for from function get if implements import in instanceof interface
+  let new null of return set static super switch this throw true try typeof undefined var void
+  while with yield`;
+		/** TS keyword list, shared by ts/tsx/mts/cts. */
+		const TS_WORDS = `abstract any as asserts async await boolean break case catch class const constructor
+  continue debugger declare default delete do else enum export extends false finally for from
+  function get if implements import in infer instanceof interface is keyof let module namespace
+  never new null number object of override private protected public readonly return satisfies set
+  static string super switch symbol this throw true try type typeof undefined union unknown var
+  void while with yield`;
+		/** CSS family: block comments delimited by slash-star, hyphenated property words. */
+		const CSS_LANG = {
+			lineComments: [],
+			blockComment: ["/*", "*/"],
+			strings: ["\"", "'"],
+			keywords: kw(`media import charset keyframes font-face supports page namespace layer scope container
+    property value at-rule when and not only from to important
+    background background-color background-image background-position background-size
+    border border-radius border-color border-width border-style bottom box-shadow box-sizing
+    color content cursor clip clip-path clear display direction
+    flex flex-direction flex-wrap flex-flow flex-grow flex-shrink flex-basis
+    font font-family font-size font-style font-weight float fill
+    grid grid-area grid-template grid-template-columns grid-template-rows grid-gap gap
+    height left letter-spacing line-height list-style margin margin-top margin-right
+    margin-bottom margin-left max-height max-width min-height min-width opacity order
+    outline overflow padding padding-top padding-right padding-bottom padding-left
+    position pointer-events right rotate scale translate transform transform-origin
+    text-align text-decoration text-transform top transition transition-property
+    user-select vertical-align visibility white-space width word-break word-spacing z-index
+    align-items align-content align-self justify-content justify-items justify-self
+    aspect-ratio inset object-fit object-position resize scroll-behavior filter backdrop-filter
+    animation animation-name animation-duration animation-timing-function animation-delay
+    will-change
+    html body p a div span li ul ol table tr td th form input button label select textarea img
+    section header footer main nav article aside h1 h2 h3 h4 h5 h6 i b em strong small pre code
+    inherit initial unset auto none fixed absolute relative sticky static flex block inline
+    inline-block inline-flex grid hidden visible bold normal root var calc env`),
+			constants: /* @__PURE__ */ new Set(),
+			macro: false,
+			wordStart: /[A-Za-z-]/u,
+			wordBody: /[A-Za-z0-9-]/u
+		};
+		/** Markup family (HTML/XML/SVG/Vue): markup comments plus common tags. */
+		const MARKUP_LANG = {
+			lineComments: [],
+			blockComment: ["<!--", "-->"],
+			strings: ["\"", "'"],
+			keywords: kw(`html head body title meta link script style template slot
+    div span p a img ul ol li table thead tbody tr th td form input button label select
+    option textarea header footer main nav section article aside figure figcaption
+    h1 h2 h3 h4 h5 h6 strong em b i u s small br hr pre code blockquote
+    svg path circle rect line polyline polygon g defs use text symbol
+    xml doctype class id href src type value name content charset async defer
+    vue component props setup script-style export import v-if v-for v-bind v-on`),
+			constants: /* @__PURE__ */ new Set(),
+			macro: false,
+			wordStart: LETTER,
+			wordBody: WORD
+		};
 		/** Extension → language id, mirroring the read tool's hint table. */
 		const LANGS = {
-			ts: C_FAMILY(`abstract any as asserts async await boolean break case catch class const constructor
-    continue debugger declare default delete do else enum export extends false finally for from
-    function get if implements import in infer instanceof interface is keyof let module namespace
-    never new null number object of override private protected public readonly return satisfies set
-    static string super switch symbol this throw true try type typeof undefined union unknown var
-    void while with yield`),
-			tsx: C_FAMILY(`abstract any as asserts async await boolean break case catch class const constructor
-    continue declare default delete do else enum export extends false finally for from function get
-    if implements import in infer instanceof interface is keyof let module namespace never new null
-    number object of override private protected public readonly return satisfies set static string
-    super switch symbol this throw true try type typeof undefined union unknown var void while with
-    yield`),
-			js: C_FAMILY(`async await break case catch class const continue debugger default delete do else
-    export extends false finally for from function get if implements import in instanceof interface
-    let new null of return set static super switch this throw true try typeof undefined var void
-    while with yield`),
-			jsx: C_FAMILY(`async await break case catch class const continue debugger default delete do else
-    export extends false finally for from function get if implements import in instanceof interface
-    let new null of return set static super switch this throw true try typeof undefined var void
-    while with yield`),
+			ts: C_FAMILY(TS_WORDS),
+			tsx: C_FAMILY(TS_WORDS),
+			js: C_FAMILY(JS_WORDS),
+			jsx: C_FAMILY(JS_WORDS),
 			json: CONFIG_LANG,
 			py: HASH_FAMILY(`and as assert async await break class continue def del elif else except finally
     for from global if import in is lambda nonlocal not or pass raise return try while with yield
@@ -8724,11 +9382,22 @@ window.__ModuleLoader__.load({
 			md: MD_LANG,
 			markdown: MD_LANG,
 			mdx: MD_LANG,
-			html: CONFIG_LANG,
-			htm: CONFIG_LANG,
-			css: HASH_FAMILY(""),
-			scss: HASH_FAMILY(""),
-			less: HASH_FAMILY(""),
+			mjs: C_FAMILY(JS_WORDS),
+			cjs: C_FAMILY(JS_WORDS),
+			mts: C_FAMILY(TS_WORDS),
+			cts: C_FAMILY(TS_WORDS),
+			jsonc: CONFIG_LANG,
+			json5: CONFIG_LANG,
+			html: MARKUP_LANG,
+			htm: MARKUP_LANG,
+			xml: MARKUP_LANG,
+			svg: MARKUP_LANG,
+			vue: MARKUP_LANG,
+			css: CSS_LANG,
+			scss: CSS_LANG,
+			less: CSS_LANG,
+			graphql: HASH_FAMILY("query mutation fragment on directive enum input interface scalar schema type implements"),
+			gql: HASH_FAMILY("query mutation fragment on directive enum input interface scalar schema type implements"),
 			lua: HASH_FAMILY(`and break do else elseif end false for function goto if in local nil not or
     repeat return then true until while`)
 		};
@@ -8890,34 +9559,34 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var diff_module_css_default = {
-			"statAdd": "sstWLa_statAdd",
-			"metaText": "sstWLa_metaText",
-			"row": "sstWLa_row",
-			"tokType": "sstWLa_tokType",
-			"tokNumber": "sstWLa_tokNumber",
-			"expand": "sstWLa_expand",
-			"tokKeyword": "sstWLa_tokKeyword",
-			"files": "sstWLa_files",
-			"text": "sstWLa_text",
-			"fileBlock": "sstWLa_fileBlock",
-			"filePath": "sstWLa_filePath",
-			"tokFunction": "sstWLa_tokFunction",
-			"foldRow": "sstWLa_foldRow",
 			"tokString": "sstWLa_tokString",
-			"foldMarker": "sstWLa_foldMarker",
-			"file": "sstWLa_file",
+			"tokFunction": "sstWLa_tokFunction",
 			"lineNo": "sstWLa_lineNo",
-			"sign": "sstWLa_sign",
-			"tokComment": "sstWLa_tokComment",
-			"rows": "sstWLa_rows",
-			"inlineChange": "sstWLa_inlineChange",
-			"fileChevron": "sstWLa_fileChevron",
+			"text": "sstWLa_text",
+			"files": "sstWLa_files",
+			"filePath": "sstWLa_filePath",
+			"metaText": "sstWLa_metaText",
 			"fileOld": "sstWLa_fileOld",
+			"statAdd": "sstWLa_statAdd",
+			"row": "sstWLa_row",
+			"expand": "sstWLa_expand",
+			"tokType": "sstWLa_tokType",
+			"foldMarker": "sstWLa_foldMarker",
 			"tokMacro": "sstWLa_tokMacro",
-			"fileChevronExpanded": "sstWLa_fileChevronExpanded",
+			"fileChevron": "sstWLa_fileChevron",
 			"fileTag": "sstWLa_fileTag",
+			"fileStats": "sstWLa_fileStats",
+			"tokComment": "sstWLa_tokComment",
+			"file": "sstWLa_file",
 			"statDel": "sstWLa_statDel",
-			"fileStats": "sstWLa_fileStats"
+			"tokNumber": "sstWLa_tokNumber",
+			"inlineChange": "sstWLa_inlineChange",
+			"sign": "sstWLa_sign",
+			"foldRow": "sstWLa_foldRow",
+			"fileBlock": "sstWLa_fileBlock",
+			"fileChevronExpanded": "sstWLa_fileChevronExpanded",
+			"rows": "sstWLa_rows",
+			"tokKeyword": "sstWLa_tokKeyword"
 		};
 		//#endregion
 		//#region src/client/diff/DiffRows.tsx
@@ -8927,7 +9596,10 @@ window.__ModuleLoader__.load({
 		* line gutters, rewrite (mod) tinting with intra-line character highlights,
 		* lightweight syntax coloring, and long-line folding. Presentational — the
 		* segments arrive precomputed (session ops via buildDiffSegments, git diffs
-		* via unifiedSegments) so both producers render identically.
+		* via unifiedSegments) so both producers render identically; the one
+		* exception is git gap folds, whose rows git never emitted and a caller
+		* supplies on demand through resolveFold (first click fetches, then they
+		* toggle like any fold).
 		*/
 		/** Long diff lines fold to one ellipsized row; the threshold is the char count. */
 		const FOLD_THRESHOLD = 120;
@@ -9015,14 +9687,22 @@ window.__ModuleLoader__.load({
 			return entries;
 		}
 		/** One file's diff rows: fold chips between hunks, highlighted code rows. */
-		function DiffRows({ segments, lang }) {
+		function DiffRows({ segments, lang, resolveFold }) {
 			const [expandedLines, setExpandedLines] = (0, react.useState)(/* @__PURE__ */ new Set());
 			const [expandedFolds, setExpandedFolds] = (0, react.useState)(/* @__PURE__ */ new Set());
 			const [expandedAll, setExpandedAll] = (0, react.useState)(false);
+			const [foldData, setFoldData] = (0, react.useState)(/* @__PURE__ */ new Map());
+			const [foldLoading, setFoldLoading] = (0, react.useState)(/* @__PURE__ */ new Set());
+			const [foldFailed, setFoldFailed] = (0, react.useState)(/* @__PURE__ */ new Set());
+			const foldEpoch = (0, react.useRef)(0);
 			(0, react.useEffect)(() => {
 				setExpandedLines(/* @__PURE__ */ new Set());
 				setExpandedFolds(/* @__PURE__ */ new Set());
 				setExpandedAll(false);
+				setFoldData(/* @__PURE__ */ new Map());
+				setFoldLoading(/* @__PURE__ */ new Set());
+				setFoldFailed(/* @__PURE__ */ new Set());
+				foldEpoch.current += 1;
 			}, [segments]);
 			const inlineMap = (0, react.useMemo)(() => buildInlineMap(segments), [segments]);
 			const blockEntries = (0, react.useMemo)(() => diffBlockEntries(segments, lang), [segments, lang]);
@@ -9092,7 +9772,16 @@ window.__ModuleLoader__.load({
 					renderedRows += rows.length;
 					return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { children: rows.map((row, index) => renderDiffRow(row, `${segIndex}-${String(index)}`)) }, `hunk-${String(segIndex)}`);
 				}
-				if (!(segment.rows !== void 0 && segment.count >= 3)) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				if (foldFailed.has(segIndex)) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: diff_module_css_default.foldRow,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: diff_module_css_default.foldMarker,
+						title: t("changesContext"),
+						children: t("changesFoldUnavailable")
+					})
+				}, `fold-${String(segIndex)}`);
+				const resolvedRows = foldData.get(segIndex);
+				if (!((segment.rows !== void 0 || resolvedRows !== void 0 || resolveFold !== void 0) && segment.count >= 3)) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 					className: diff_module_css_default.foldRow,
 					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: diff_module_css_default.foldMarker,
@@ -9100,23 +9789,49 @@ window.__ModuleLoader__.load({
 						children: t("changesFold", { count: segment.count })
 					})
 				}, `fold-${String(segIndex)}`);
+				const loading = foldLoading.has(segIndex);
 				const isExpanded = expandedFolds.has(segIndex);
+				const revealed = segment.rows ?? resolvedRows;
 				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 					className: diff_module_css_default.foldRow,
-					"data-expandable": "true",
+					"data-expandable": loading ? void 0 : "true",
 					"data-expanded": isExpanded ? "true" : void 0,
-					onClick: () => {
-						setExpandedFolds((prev) => {
-							const next = new Set(prev);
-							if (next.has(segIndex)) next.delete(segIndex);
-							else next.add(segIndex);
-							return next;
+					onClick: loading ? void 0 : () => {
+						if (revealed !== void 0) {
+							setExpandedFolds((prev) => {
+								const next = new Set(prev);
+								if (next.has(segIndex)) next.delete(segIndex);
+								else next.add(segIndex);
+								return next;
+							});
+							return;
+						}
+						if (resolveFold === void 0) return;
+						const epoch = foldEpoch.current;
+						setFoldLoading((prev) => new Set(prev).add(segIndex));
+						resolveFold(segment).then((rows) => {
+							if (foldEpoch.current !== epoch) return;
+							setFoldData((prev) => new Map(prev).set(segIndex, rows));
+							setFoldLoading((prev) => {
+								const next = new Set(prev);
+								next.delete(segIndex);
+								return next;
+							});
+							setExpandedFolds((prev) => new Set(prev).add(segIndex));
+						}, () => {
+							if (foldEpoch.current !== epoch) return;
+							setFoldLoading((prev) => {
+								const next = new Set(prev);
+								next.delete(segIndex);
+								return next;
+							});
+							setFoldFailed((prev) => new Set(prev).add(segIndex));
 						});
 					},
-					children: isExpanded ? segment.rows.map((row, index) => renderDiffRow(row, `${segIndex}-${String(index)}`)) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					children: isExpanded && revealed !== void 0 ? revealed.map((row, index) => renderDiffRow(row, `${segIndex}-${String(index)}`)) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: diff_module_css_default.foldMarker,
 						title: t("changesContext"),
-						children: t("changesFold", { count: segment.count })
+						children: loading ? t("changesFoldLoading") : t("changesFold", { count: segment.count })
 					})
 				}, `fold-${String(segIndex)}`);
 			};
@@ -9162,6 +9877,115 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/client/PdfView.tsx
+		/** Browser-native PDF preview with an always-available download fallback. */
+		function PdfView(props) {
+			const { scope, path, title } = props;
+			const [load, setLoad] = (0, react.useState)({ status: "loading" });
+			const [interactionBlocked, setInteractionBlocked] = (0, react.useState)(false);
+			const frameRef = (0, react.useRef)(null);
+			const shieldRef = (0, react.useRef)(null);
+			(0, react.useEffect)(() => {
+				const controller = new AbortController();
+				let objectUrl;
+				setLoad({ status: "loading" });
+				(async () => {
+					try {
+						const response = await fetch(mediaUrl(scope, path), { signal: controller.signal });
+						if (!response.ok) throw new Error(`HTTP ${response.status}`);
+						const bytes = await response.arrayBuffer();
+						if (controller.signal.aborted) return;
+						objectUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+						setLoad({
+							status: "ready",
+							url: objectUrl
+						});
+					} catch (error) {
+						if (controller.signal.aborted) return;
+						setLoad({
+							status: "error",
+							message: error instanceof Error ? error.message : String(error)
+						});
+					}
+				})();
+				return () => {
+					controller.abort();
+					if (objectUrl !== void 0) URL.revokeObjectURL(objectUrl);
+				};
+			}, [
+				scope.sessionId,
+				scope.cwd,
+				path
+			]);
+			(0, react.useEffect)(() => {
+				const block = () => {
+					setInteractionBlocked(true);
+					if (frameRef.current !== null) frameRef.current.style.pointerEvents = "none";
+					if (shieldRef.current !== null) shieldRef.current.style.pointerEvents = "auto";
+				};
+				const unblock = () => {
+					setInteractionBlocked(false);
+					if (frameRef.current !== null) frameRef.current.style.pointerEvents = "";
+					if (shieldRef.current !== null) shieldRef.current.style.pointerEvents = "none";
+				};
+				const blockForResize = (event) => {
+					const target = event.target;
+					if (target instanceof Element && target.closest(`.${sidebar_module_css_default.panelResize}, .${sidebar_module_css_default.divider}`) !== null) block();
+				};
+				document.addEventListener("dragstart", block, true);
+				document.addEventListener("dragend", unblock, true);
+				document.addEventListener("drop", unblock, true);
+				window.addEventListener("pointerdown", blockForResize, true);
+				window.addEventListener("pointerup", unblock, true);
+				window.addEventListener("pointercancel", unblock, true);
+				window.addEventListener("blur", unblock);
+				return () => {
+					document.removeEventListener("dragstart", block, true);
+					document.removeEventListener("dragend", unblock, true);
+					document.removeEventListener("drop", unblock, true);
+					window.removeEventListener("pointerdown", blockForResize, true);
+					window.removeEventListener("pointerup", unblock, true);
+					window.removeEventListener("pointercancel", unblock, true);
+					window.removeEventListener("blur", unblock);
+				};
+			}, []);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: sidebar_module_css_default.editorPdf,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: sidebar_module_css_default.editorPdfToolbar,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
+						className: sidebar_module_css_default.editorDownloadLink,
+						href: downloadUrl(scope, path),
+						download: true,
+						children: t("downloadToView")
+					})
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: sidebar_module_css_default.editorPdfStage,
+					children: [
+						load.status === "loading" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: sidebar_module_css_default.editorPlaceholder,
+							children: t("loading")
+						}),
+						load.status === "error" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: sidebar_module_css_default.editorError,
+							children: load.message
+						}),
+						load.status === "ready" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("iframe", {
+							ref: frameRef,
+							className: clsx(sidebar_module_css_default.editorPdfFrame, interactionBlocked && sidebar_module_css_default.editorPdfFrameBlocked),
+							src: load.url,
+							title
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							ref: shieldRef,
+							className: clsx(sidebar_module_css_default.editorPdfDragShield, interactionBlocked && sidebar_module_css_default.editorPdfDragShieldActive),
+							"aria-hidden": "true"
+						})
+					]
+				})]
+			});
+		}
+		//#endregion
 		//#region src/client/diff/DiffFiles.tsx
 		/**
 		* A full unified-diff document (one changed file, or every file of a commit
@@ -9193,7 +10017,7 @@ window.__ModuleLoader__.load({
 			if (displayPath(file.oldPath) !== displayPath(file.newPath)) return t("diffRenamed");
 			return null;
 		}
-		function DiffFiles({ diff, untrackedPath, untrackedContent }) {
+		function DiffFiles({ diff, untrackedPath, untrackedContent, resolveFold }) {
 			const parsed = (0, react.useMemo)(() => {
 				if (untrackedPath !== void 0) return { files: [untrackedFile(untrackedPath, untrackedContent ?? "")] };
 				return parseUnifiedDiff(diff);
@@ -9206,6 +10030,23 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				setExpandedFiles(defaultExpandedFiles(parsed.files));
 			}, [parsed]);
+			const foldCache = (0, react.useRef)(/* @__PURE__ */ new Map());
+			(0, react.useEffect)(() => {
+				foldCache.current = /* @__PURE__ */ new Map();
+			}, [parsed]);
+			const loadFold = (file, segment) => {
+				if (resolveFold === void 0) return Promise.resolve([]);
+				const key = `${displayPath(file.newPath === "/dev/null" ? file.oldPath : file.newPath)}|${String(segment.oldStart)}|${String(segment.newStart)}`;
+				let promise = foldCache.current.get(key);
+				if (promise === void 0) {
+					promise = resolveFold(file, segment);
+					foldCache.current.set(key, promise);
+					promise.catch(() => {
+						foldCache.current.delete(key);
+					});
+				}
+				return promise;
+			};
 			const files = (0, react.useMemo)(() => parsed.files.map((file) => {
 				const segments = unifiedSegments(file);
 				return {
@@ -9267,7 +10108,8 @@ window.__ModuleLoader__.load({
 						]
 					}), expandable && fileExpanded && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffRows, {
 						segments,
-						lang: langOfPath(to)
+						lang: langOfPath(to),
+						resolveFold: resolveFold !== void 0 ? (segment) => loadFold(file, segment) : void 0
 					})]
 				}, `file-${String(fileIndex)}`);
 			};
@@ -9277,6 +10119,359 @@ window.__ModuleLoader__.load({
 				children: files.map(renderFile)
 			});
 		}
+		//#endregion
+		//#region src/client/redact.ts
+		/**
+		* Secret redaction for rendered file content. The tracer replays read/write
+		* tool results into the DOM (diff, read view, markdown mode) — when the
+		* model reads a credentials file, that plaintext must not land on screen or
+		* in inspectable DOM. Two layers, both pure and unit-tested:
+		*
+		* 1. Path layer: files whose NAME marks them as secrets (.env, *secret*,
+		*    *credential*, *token*, *api-key*, private keys, …) are masked whole —
+		*    every non-empty line becomes [REDACTED].
+		* 2. Content layer: for ordinary files, secret-SHAPED lines and tokens are
+		*    masked in place (api_key/access_token/password assignments, sk-/AKIA/
+		*    ghp_/xox prefixes, Bearer headers, PEM private-key block headers).
+		*
+		* Redaction is display-only: the session log and the tool results keep their
+		* original bytes; this layer guarantees only that this plugin never renders
+		* the secret. It is NOT a security boundary against a same-context malicious
+		* plugin (which can read anything on the page or call host APIs itself) —
+		* it removes the tracer's own contribution to secret exposure.
+		*/
+		/** Placeholder substituted for every secret found. */
+		const REDACTED = "[REDACTED]";
+		/**
+		* Filename substrings that mark a whole file as sensitive. Each pattern is
+		* matched case-insensitively against the full path with a RIGHT boundary
+		* (the pattern must not continue into `[a-z0-9]`) so `tokenizer.ts`,
+		* `dev.environment.ts`, and `style.keys.ts` stay ordinary files while
+		* `.env.local`, `credentials.json`, and `id_rsa` still mask whole. Plurals
+		* are listed only where the plural names a secret STORE (credentials /
+		* secrets / passwords); a bare `tokens` is usually documentation
+		* (api-tokens.md) and is deliberately absent.
+		*/
+		const SENSITIVE_PATH_RES = [
+			".env",
+			"secret",
+			"secrets",
+			"credential",
+			"credentials",
+			"token",
+			"api-key",
+			"apikey",
+			"password",
+			"passwords",
+			"passwd",
+			"private_key",
+			"privatekey",
+			"id_rsa",
+			"id_ed25519",
+			".pem",
+			".key",
+			".p12",
+			".pfx"
+		].map((pattern) => new RegExp(`${escapeRe(pattern)}(?![a-z0-9])`, "i"));
+		/** Escape literal text for embedding into a RegExp. */
+		function escapeRe(text) {
+			return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		}
+		/**
+		* Whether a path's own name marks the file as sensitive (case-insensitive,
+		* matched against the full path so .env in any directory counts).
+		*/
+		function isSensitivePath(path) {
+			return SENSITIVE_PATH_RES.some((re) => re.test(path));
+		}
+		/**
+		* Assignment-shaped secret lines: "api_key: …", "TOKEN = …", "password": ….
+		* The key name survives; the value is masked so the user still sees WHICH
+		* field was secret.
+		*/
+		const ASSIGNMENT_RE = /^(\s*["']?[A-Za-z0-9_.-]*["']?\s*[:=]\s*)(\S.*)$/;
+		/**
+		* Field names whose assigned value is a secret. Stored in NORMALIZED form
+		* (lower-case, separators stripped — see normalizeField) so api_key/API-KEY/
+		* "api-key" all match one entry. Generic bare words (key / token / auth /
+		* pass) are deliberately EXCLUDED: they label far more ordinary content
+		* (keyboard keys, CSS custom properties, lexical tokens) than secrets —
+		* Bearer-scheme headers stay covered by BEARER_RE below.
+		*/
+		const SECRET_FIELDS = /* @__PURE__ */ new Set([
+			"apikey",
+			"secret",
+			"secretkey",
+			"apitoken",
+			"accesstoken",
+			"refreshtoken",
+			"idtoken",
+			"password",
+			"passwd",
+			"pwd",
+			"clientsecret",
+			"privatekey",
+			"accesskey",
+			"accesskeyid",
+			"secretaccesskey",
+			"authorization"
+		]);
+		/** Bearer-scheme token in free text (covers HTTP headers in logs/configs). */
+		const BEARER_RE = /(\bBearer\s+)[A-Za-z0-9\-_.+/]{16,}/gi;
+		/** Well-known credential token prefixes (OpenAI/AWS/GitHub/Slack/Google). */
+		const TOKEN_RES = [
+			/\bsk-[A-Za-z0-9_-]{12,}/g,
+			/\bAKIA[0-9A-Z]{16}\b/g,
+			/\bghp_[A-Za-z0-9]{20,}\b/g,
+			/\bgho_[A-Za-z0-9]{20,}\b/g,
+			/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g,
+			/\bya29\.[A-Za-z0-9_-]{20,}\b/g
+		];
+		/** Mask an entire non-empty line, keeping whitespace shape. */
+		function maskLine(line) {
+			return line.trim().length === 0 ? line : REDACTED;
+		}
+		/** Normalize a field name for SECRET_FIELDS lookup. */
+		function normalizeField(raw) {
+			return raw.replace(/["'\s:=]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+		}
+		/** Redact one possibly-secret assignment line; undefined when not a secret field. */
+		function redactAssignment(line) {
+			const match = ASSIGNMENT_RE.exec(line);
+			const prefix = match?.[1];
+			if (prefix === void 0 || match?.[2] === void 0) return void 0;
+			if (!SECRET_FIELDS.has(normalizeField(prefix))) return void 0;
+			return prefix + REDACTED;
+		}
+		/** Whether a line is the header of a PEM private-key block. */
+		function isPemPrivateKeyHeader(line) {
+			return line.includes("-----BEGIN") && line.includes("PRIVATE KEY-----");
+		}
+		/**
+		* Redact secret-shaped content from an ordinary file's text. Only the secret
+		* itself is masked; surrounding code/config stays readable.
+		*/
+		function redactContentText(text) {
+			return text.split("\n").map((line) => {
+				if (isPemPrivateKeyHeader(line)) return REDACTED;
+				const assignment = redactAssignment(line);
+				if (assignment !== void 0) return assignment;
+				let masked = line.replace(BEARER_RE, (_m, prefix) => prefix + REDACTED);
+				for (const re of TOKEN_RES) masked = masked.replace(re, () => REDACTED);
+				return masked;
+			}).join("\n");
+		}
+		/**
+		* Apply the full two-layer redaction for one file's text. Sensitive paths
+		* mask whole lines; ordinary files mask only secret-shaped spans.
+		*/
+		function redactText(path, text) {
+			if (isSensitivePath(path)) return {
+				text: text.split("\n").map(maskLine).join("\n"),
+				hit: text.trim().length > 0
+			};
+			const masked = redactContentText(text);
+			return {
+				text: masked,
+				hit: masked !== text
+			};
+		}
+		//#endregion
+		//#region src/client/markdown-images.ts
+		/**
+		* True for a destination that is a remote URL — an absolute `scheme:` URL
+		* that is not a Windows drive path (`C:\...`). http/https/data/mailto etc.
+		* all match here and are handed back to `MarkdownText` untouched.
+		*/
+		function isRemoteUrl(dest) {
+			return /^[a-z][a-z0-9+.-]*:/i.test(dest) && !/^[A-Za-z]:[\\/]/.test(dest);
+		}
+		/**
+		* Collapse `.`/`..` segments of an absolute local path, preserving its root
+		* (POSIX `/`), its Windows drive (`C:\`), or its UNC `\\server\share`
+		* prefix. The host's `requireAbsolute` (`path.resolve`) normalizes anyway,
+		* but producing a canonical path here keeps the `/sidebar/file` URL clean.
+		*/
+		function normalizeLocalPath(path) {
+			const drive = /^([A-Za-z]:)[\\/]/.exec(path)?.[1];
+			const parts = (drive !== void 0 ? path.slice(drive.length) : path).split(/[\\/]+/).filter((segment) => segment !== "" && segment !== ".");
+			const out = [];
+			for (const part of parts) {
+				if (part === "..") {
+					out.pop();
+					continue;
+				}
+				out.push(part);
+			}
+			if (drive !== void 0) return `${drive}\\${out.join("\\")}`;
+			const separator = path.startsWith("\\") ? "\\" : "/";
+			return `${path.startsWith("/") ? "/" : path.startsWith("\\") ? "\\\\" : ""}${out.join(separator)}`;
+		}
+		/**
+		* Rewrite markdown image destinations that point at local files into
+		* absolute `/sidebar/file` media URLs. Relative destinations resolve against
+		* the opened file's directory (normalizing `.`/`..` segments); absolute
+		* local paths pass through. Remote (http/https/data/mailto) and `#`-anchor
+		* destinations are left untouched for `MarkdownText`. Reference-style images
+		* (`![x][id]` + `[id]: url`) are covered by rewriting their definition lines.
+		*
+		* Code spans (`` `...` ``) and fenced code blocks (``` ```...``` ```) are
+		* masked before rewriting so documentation that demonstrates `![alt](./img.png)`
+		* is not mutated into a `/sidebar/file` URL. Reference definitions are only
+		* rewritten when their label is actually referenced by an image (collapsed
+		* `[![][id]]`, full `![alt][id]`, or shortcut `![]` referencing the next
+		* definition) — a plain link `[text][id]` must not have its destination
+		* redirected to the media route.
+		* @param text - The raw markdown source (inline + reference images).
+		* @param scope - The session scope (sessionId + cwd) for the media route.
+		* @param filePath - The absolute path of the opened `.md` file.
+		* @param origin - The GUI's own origin (`window.location.origin`); injected
+		* so the core rewrite stays pure and unit-testable.
+		* @returns The markdown with local image destinations rewritten in place.
+		*/
+		/**
+		* Resolve one media destination against the session's media route: local
+		* (relative or absolute) paths become absolute `/sidebar/file` URLs (prefixed
+		* with the GUI's own origin so the shared MarkdownText http(s) allowlist
+		* accepts them), while remote URLs, `#`-anchors and empty destinations are
+		* returned untouched. Shared by the markdown image rewriter below and by the
+		* preview's raw-HTML sanitizer (`markdown-html.tsx`, which meets the same
+		* allowlist when rendering `<img src="./x.png">` inside HTML blocks).
+		*/
+		function resolveLocalMediaDest(dest, scope, filePath, origin) {
+			const trimmed = dest.trim();
+			if (trimmed === "" || trimmed.startsWith("#")) return dest;
+			if (isRemoteUrl(trimmed)) return dest;
+			const slash = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
+			const directory = slash === -1 ? "/" : filePath.slice(0, slash + 1);
+			const candidate = isAbsolutePath(trimmed) ? trimmed : directory + trimmed;
+			const params = new URLSearchParams({
+				sessionId: scope.sessionId,
+				path: normalizeLocalPath(candidate)
+			});
+			if (scope.cwd !== void 0 && scope.cwd !== "") params.set("cwd", scope.cwd);
+			return `${origin}/sidebar/file?${params.toString()}`;
+		}
+		function rewriteLocalImageUrls(text, scope, filePath, origin) {
+			const resolve = (dest) => resolveLocalMediaDest(dest, scope, filePath, origin);
+			const masks = [];
+			const inline = text.replace(/```[\s\S]*?```/g, (block) => {
+				masks.push(block);
+				return `\u0000${masks.length - 1}\u0000`;
+			}).replace(/`[^`\n]*`/g, (span) => {
+				masks.push(span);
+				return `\u0000${masks.length - 1}\u0000`;
+			}).replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_match, alt, dest) => {
+				return `![${alt}](${resolve(dest)})`;
+			});
+			const imageLabels = /* @__PURE__ */ new Set();
+			const labelRe = /!\[([^\]]*)\](?:\[((?:[^\][]|\[[^\]]*\])*)\])?/g;
+			let labelMatch;
+			while ((labelMatch = labelRe.exec(inline)) !== null) {
+				const alt = labelMatch[1] ?? "";
+				const ref = labelMatch[2];
+				imageLabels.add(ref !== void 0 && ref !== "" ? ref.toLowerCase() : alt.toLowerCase());
+			}
+			return inline.replace(/^(\s*\[([^\]]+)\]:\s*)(<[^>]+>|[^\s]+)/gm, (match, head, label, dest) => {
+				if (!imageLabels.has(label.toLowerCase())) return match;
+				return `${head}${resolve(dest.replace(/^<|>$/g, ""))}`;
+			}).replace(/\u0000(\d+)\u0000/g, (_m, index) => masks[Number(index)] ?? "");
+		}
+		//#endregion
+		//#region src/client/markdown-labels.tsx
+		/** MarkdownText props carrying the nested chrome labels. */
+		function markdownTextProps(text, labels) {
+			return {
+				text,
+				labels: {
+					code: {
+						copyLabel: labels.copyLabel,
+						copiedLabel: labels.copiedLabel
+					},
+					footnotes: ""
+				}
+			};
+		}
+		//#endregion
+		//#region src/client/mermaid-blocks.ts
+		/** CommonMark opening fence: 0-3 spaces indent + a run of 3+ backticks or tildes. */
+		const OPEN_FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
+		/** A closing-fence line: 0-3 spaces indent + 3+ backticks/tildes + trailing spaces only. */
+		const CLOSE_FENCE_RE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
+		/** Parse the info string from the line tail after the fence run; null when invalid. */
+		function fenceInfo(rest, fence) {
+			const info = rest.trimStart().split(/\s+/)[0] ?? "";
+			if (fence.charAt(0) === "`" && info.includes("`")) return null;
+			return info;
+		}
+		/** True when the fence info string names mermaid (bare or `mermaid{...}`). */
+		function isMermaidInfo(info) {
+			const word = info.toLowerCase();
+			return word === "mermaid" || word.startsWith("mermaid{");
+		}
+		/**
+		* Split markdown source into md/mermaid blocks for detection: only fences
+		* whose info string names mermaid are lifted; every other line stays in the
+		* markdown stream untouched. CommonMark fence rules are honored — opening
+		* fences of 3+ backticks OR tildes, and a closing fence must use the same
+		* character with at least as many characters as the opening fence. An
+		* unterminated mermaid fence swallows the rest of the file (the same
+		* recovery CommonMark applies to open fences).
+		*/
+		function splitMermaidBlocks(text) {
+			if (text === "") return [];
+			const lines = text.split("\n");
+			const blocks = [];
+			let markdown = [];
+			let index = 0;
+			const flushMarkdown = () => {
+				if (markdown.length === 0) return;
+				blocks.push({
+					kind: "markdown",
+					text: markdown.join("\n")
+				});
+				markdown = [];
+			};
+			while (index < lines.length) {
+				const line = lines[index] ?? "";
+				const fenceMatch = OPEN_FENCE_RE.exec(line);
+				if (fenceMatch === null) {
+					markdown.push(line);
+					index += 1;
+					continue;
+				}
+				const fence = fenceMatch[1];
+				const info = fenceInfo(line.slice(fenceMatch.index + fenceMatch[0].length), fence);
+				if (info === null || !isMermaidInfo(info)) {
+					markdown.push(line);
+					index += 1;
+					continue;
+				}
+				flushMarkdown();
+				const char = fence.charAt(0);
+				const length = fence.length;
+				const code = [];
+				index += 1;
+				while (index < lines.length) {
+					const candidate = lines[index] ?? "";
+					const close = CLOSE_FENCE_RE.exec(candidate);
+					if (close !== null && close[1].charAt(0) === char && close[1].length >= length) break;
+					code.push(candidate);
+					index += 1;
+				}
+				index += 1;
+				blocks.push({
+					kind: "mermaid",
+					code: code.join("\n")
+				});
+			}
+			flushMarkdown();
+			return blocks;
+		}
+		//#endregion
+		//#region src/client/mermaid-lazy.tsx
+		/** Shared with the legacy no-HTML preview path in TextEditor (re-exported). */
+		const LazyMermaidMarkdown = lazyChunkComponent("mermaid", (mod) => mod.MermaidMarkdown);
 		//#endregion
 		//#region src/client/changes/DiffPane.tsx
 		/**
@@ -9289,9 +10484,12 @@ window.__ModuleLoader__.load({
 		* meta on release) and by keyboard; git targets can expand into a dedicated
 		* diff tab via the shell.
 		*/
-		/** The drag handle height clamp (px) and keyboard-resize step. */
+		/** Drag handle height clamp (px) and keyboard-resize step. */
 		const HEIGHT_MIN = 140;
 		const HEIGHT_STEP = 24;
+		/** The redaction preference, persisted under the repo's sidebar storage
+		*  prefix (see state.ts's `dsh-sidebar:v1`). */
+		const REDACTION_KEY = "dsh-sidebar:v1:redaction";
 		/** Diff material for one op snapshot: an edit reconstructs the full file
 		*  from the window's known prior content when possible (hunk-style context);
 		*  a write with unknown prior content renders all-added. */
@@ -9307,6 +10505,58 @@ window.__ModuleLoader__.load({
 				return diffLines((prior !== void 0 && prior !== content ? prior : void 0) ?? "", content);
 			}
 			return [];
+		}
+		/** The render view of one html op target: the route-src iframe. Extracted
+		*  (and exported) so the always-sandboxed contract is pinned directly by the
+		*  sandbox spec — this surface has NO no-sandbox escape hatch. */
+		function HtmlRenderPreview(props) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: changes_module_css_default.htmlPane,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("iframe", {
+					className: changes_module_css_default.htmlFrame,
+					title: props.title,
+					src: props.src,
+					sandbox: HTML_IFRAME_SANDBOX,
+					referrerPolicy: "no-referrer",
+					allow: ""
+				})
+			});
+		}
+		/** One header pill toggle — the redaction / reading / render toggles share
+		*  the shape (on-state styling + aria-pressed). */
+		function PaneToggle(props) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+				type: "button",
+				className: changes_module_css_default.mdToggle,
+				"data-on": props.on ? "true" : void 0,
+				"aria-pressed": props.on,
+				title: props.title,
+				onClick: props.onClick,
+				children: props.label
+			});
+		}
+		/** The reading-mode body of one markdown op target: the shared MarkdownText
+		*  pass (local image destinations already rewritten to the media route by
+		*  the caller). Mermaid fences render through the same chunk-resident
+		*  renderer the editor preview uses (one MarkdownText pass with the fences
+		*  lifted out); the plain path stays byte-for-byte for documents without
+		*  any. */
+		function MdReadingView(props) {
+			const codeLabels = {
+				copyLabel: t("copy"),
+				copiedLabel: t("copied")
+			};
+			const hasMermaid = splitMermaidBlocks(props.text).some((block) => block.kind === "mermaid");
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: changes_module_css_default.paneBody,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: changes_module_css_default.mdBody,
+					children: hasMermaid ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LazyMermaidMarkdown, {
+						text: props.text,
+						codeLabels
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { ...markdownTextProps(props.text, codeLabels) })
+				})
+			});
 		}
 		/** The diff tab a git preview expands into (the shell owns placement). */
 		function diffTabOf(ref) {
@@ -9329,7 +10579,17 @@ window.__ModuleLoader__.load({
 			const [error, setError] = (0, react.useState)(null);
 			const [diffText, setDiffText] = (0, react.useState)(null);
 			const [untracked, setUntracked] = (0, react.useState)(void 0);
+			const [effectiveStaged, setEffectiveStaged] = (0, react.useState)(null);
 			const gitRef = target.kind === "git" ? target.ref : null;
+			const gitScope = (0, react.useMemo)(() => ({
+				sessionId: scope.sessionId,
+				cwd: scope.cwd,
+				...gitRef?.repoRoot !== void 0 ? { repoRoot: gitRef.repoRoot } : {}
+			}), [
+				scope.sessionId,
+				scope.cwd,
+				gitRef?.repoRoot
+			]);
 			(0, react.useEffect)(() => {
 				if (gitRef === null) return;
 				let cancelled = false;
@@ -9342,6 +10602,7 @@ window.__ModuleLoader__.load({
 				setError(null);
 				setDiffText(null);
 				setUntracked(void 0);
+				setEffectiveStaged(null);
 				const load = async () => {
 					try {
 						if (gitRef.kind === "commit") {
@@ -9352,7 +10613,10 @@ window.__ModuleLoader__.load({
 						let result = await api.gitDiff(paneScope, gitRef.path, gitRef.staged, gitRef.worktree);
 						if (result.diff === "") {
 							const other = await api.gitDiff(paneScope, gitRef.path, !gitRef.staged, gitRef.worktree);
-							if (other.diff !== "") result = other;
+							if (other.diff !== "") {
+								result = other;
+								if (!cancelled) setEffectiveStaged(!gitRef.staged);
+							}
 						}
 						if (result.diff !== "") {
 							if (!cancelled) setDiffText(result.diff);
@@ -9383,13 +10647,162 @@ window.__ModuleLoader__.load({
 				scope.cwd,
 				tick
 			]);
-			const op = target.kind === "op" ? target.op : null;
-			const prior = target.kind === "op" ? target.prior : void 0;
+			const foldContents = (0, react.useRef)(/* @__PURE__ */ new Map());
+			(0, react.useEffect)(() => {
+				foldContents.current = /* @__PURE__ */ new Map();
+			}, [gitRef, tick]);
+			const foldLoader = (0, react.useMemo)(() => {
+				if (gitRef === null) return void 0;
+				const sidesOf = (file) => {
+					const ofSides = (oldContent, newContent) => {
+						if ((oldContent ?? "") === "" && (newContent ?? "") === "") throw new Error("no content on either side");
+						return {
+							old: oldContent ?? "",
+							new: newContent ?? ""
+						};
+					};
+					const fetchSides = async () => {
+						if (gitRef.kind === "commit") {
+							const [oldSide, newSide] = await Promise.all([file.oldPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(gitScope, `${gitRef.hashFull}^`, displayPath(file.oldPath), gitRef.worktree), file.newPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(gitScope, gitRef.hashFull, displayPath(file.newPath), gitRef.worktree)]);
+							return ofSides(oldSide.content, newSide.content);
+						}
+						if (effectiveStaged ?? gitRef.staged) {
+							const [oldSide, newSide] = await Promise.all([file.oldPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(gitScope, "HEAD", displayPath(file.oldPath), gitRef.worktree), file.newPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(gitScope, ":0", displayPath(file.newPath), gitRef.worktree)]);
+							return ofSides(oldSide.content, newSide.content);
+						}
+						const [oldSide, worktree] = await Promise.all([file.oldPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(gitScope, ":0", displayPath(file.oldPath), gitRef.worktree), api.fsRead(gitScope, resolveSidebarPath(gitRef.repoRoot ?? gitRef.worktree ?? scope.cwd, displayPath(file.newPath))).catch(() => null)]);
+						return ofSides(oldSide.content, worktree !== null && worktree.kind === "text" ? worktree.content : null);
+					};
+					const path = displayPath(file.newPath === "/dev/null" ? file.oldPath : file.newPath);
+					let promise = foldContents.current.get(path);
+					if (promise === void 0) {
+						promise = fetchSides();
+						foldContents.current.set(path, promise);
+					}
+					return promise;
+				};
+				return (file, segment) => sidesOf(file).then((sides) => foldRowsFromContents(segment, sides.old, sides.new));
+			}, [
+				gitRef,
+				gitScope,
+				effectiveStaged,
+				scope
+			]);
+			const opRaw = target.kind === "op" ? target.op : null;
+			const priorRaw = target.kind === "op" ? target.prior : void 0;
+			const [redactionOn, setRedactionOn] = (0, react.useState)(() => {
+				try {
+					return localStorage.getItem(REDACTION_KEY) !== "0";
+				} catch {
+					return true;
+				}
+			});
+			const toggleRedaction = () => {
+				setRedactionOn((prev) => {
+					const next = !prev;
+					try {
+						localStorage.setItem(REDACTION_KEY, next ? "1" : "0");
+					} catch {}
+					return next;
+				});
+			};
+			const { op, prior, redactionHit } = (0, react.useMemo)(() => {
+				if (opRaw === null || !redactionOn) return {
+					op: opRaw,
+					prior: priorRaw,
+					redactionHit: false
+				};
+				const path = target.kind === "op" ? target.path : "";
+				const mask = (text) => {
+					if (text === void 0) return {
+						masked: void 0,
+						hit: false
+					};
+					const outcome = redactText(path, text);
+					return {
+						masked: outcome.text,
+						hit: outcome.hit
+					};
+				};
+				const read = mask(opRaw.read);
+				const content = mask(opRaw.content);
+				const editOld = mask(opRaw.edit?.oldString);
+				const editNew = mask(opRaw.edit?.newString);
+				const errorText = mask(opRaw.errorText);
+				const priorMasked = mask(priorRaw);
+				if (!(read.hit || content.hit || editOld.hit || editNew.hit || errorText.hit || priorMasked.hit)) return {
+					op: opRaw,
+					prior: priorRaw,
+					redactionHit: false
+				};
+				return {
+					op: {
+						...opRaw,
+						...read.masked !== void 0 ? { read: read.masked } : {},
+						...content.masked !== void 0 ? { content: content.masked } : {},
+						...opRaw.edit !== void 0 ? { edit: {
+							oldString: editOld.masked ?? opRaw.edit.oldString,
+							newString: editNew.masked ?? opRaw.edit.newString
+						} } : {},
+						...errorText.masked !== void 0 ? { errorText: errorText.masked } : {}
+					},
+					prior: priorMasked.masked,
+					redactionHit: true
+				};
+			}, [
+				opRaw,
+				priorRaw,
+				target,
+				redactionOn
+			]);
 			const opLang = (0, react.useMemo)(() => target.kind === "op" ? langOfPath(target.path) : void 0, [target]);
 			const opRows = (0, react.useMemo)(() => op === null ? [] : diffOf(op, prior), [op, prior]);
 			const opSegments = (0, react.useMemo)(() => buildDiffSegments(opRows), [opRows]);
 			const opStats = (0, react.useMemo)(() => diffStats(opSegments), [opSegments]);
 			const opReadLines = (0, react.useMemo)(() => op?.kind === "read" && op.read !== void 0 ? parseReadLines(op.read) : [], [op]);
+			const mdOp = target.kind === "op" && !target.op.isError && /\.(md|markdown|mdx)$/i.test(target.path);
+			const [reading, setReading] = (0, react.useState)(false);
+			const readingSrc = (0, react.useMemo)(() => {
+				if (!mdOp || op === null) return "";
+				if (op.kind === "read") return parseReadContent(op.read ?? "");
+				if (op.kind === "write") return op.content ?? "";
+				if (op.kind === "edit" && op.edit !== void 0) {
+					if (prior !== void 0 && prior.includes(op.edit.oldString)) return prior.replace(op.edit.oldString, op.edit.newString);
+					return op.edit.newString;
+				}
+				return "";
+			}, [
+				mdOp,
+				op,
+				prior
+			]);
+			const readingText = (0, react.useMemo)(() => mdOp && reading && readingSrc !== "" && target.kind === "op" ? rewriteLocalImageUrls(readingSrc, scope, target.path, window.location.origin) : "", [
+				mdOp,
+				reading,
+				readingSrc,
+				scope,
+				target
+			]);
+			const htmlOp = target.kind === "op" && !target.op.isError && /\.(html?)$/i.test(target.path);
+			const [rendering, setRendering] = (0, react.useState)(false);
+			const htmlRenderSrc = (0, react.useMemo)(() => {
+				if (!htmlOp || target.kind !== "op") return "";
+				return htmlUrl(scope, resolveSidebarPath(scope.cwd, target.path));
+			}, [
+				htmlOp,
+				scope,
+				target
+			]);
+			const pdfOp = target.kind === "op" && !target.op.isError && /\.pdf$/i.test(target.path);
+			const [renderingPdf, setRenderingPdf] = (0, react.useState)(false);
+			const pdfRenderPath = (0, react.useMemo)(() => {
+				if (!pdfOp || target.kind !== "op") return "";
+				return resolveSidebarPath(scope.cwd, target.path);
+			}, [
+				pdfOp,
+				scope,
+				target
+			]);
 			const gitStats = (0, react.useMemo)(() => {
 				if (target.kind !== "git" || diffText === null || diffText === "") return null;
 				let added = 0;
@@ -9511,6 +10924,38 @@ window.__ModuleLoader__.load({
 								onClick: onExpand,
 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRightUpOutline16, { size: 14 })
 							})] }),
+							redactionHit && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: changes_module_css_default.redactBanner,
+								role: "status",
+								children: t("changesRedactBanner")
+							}),
+							target.kind === "op" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(PaneToggle, {
+								on: redactionOn,
+								label: redactionOn ? t("changesRedactOnLabel") : t("changesRedactOffLabel"),
+								title: redactionOn ? t("changesRedactOff") : t("changesRedactOn"),
+								onClick: toggleRedaction
+							}),
+							mdOp && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(PaneToggle, {
+								on: reading,
+								label: t(reading ? "changesMdRaw" : "changesMdReading"),
+								onClick: () => {
+									setReading((value) => !value);
+								}
+							}),
+							htmlOp && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(PaneToggle, {
+								on: rendering,
+								label: t(rendering ? "changesHtmlRaw" : "changesHtmlRender"),
+								onClick: () => {
+									setRendering((value) => !value);
+								}
+							}),
+							pdfOp && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(PaneToggle, {
+								on: renderingPdf,
+								label: t(renderingPdf ? "changesPdfRaw" : "changesPdfRender"),
+								onClick: () => {
+									setRenderingPdf((value) => !value);
+								}
+							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: changes_module_css_default.iconButton,
@@ -9521,7 +10966,17 @@ window.__ModuleLoader__.load({
 							})
 						]
 					}),
-					target.kind === "op" && op !== null && op.isError ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					target.kind === "op" && htmlOp && rendering && htmlRenderSrc !== "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(HtmlRenderPreview, {
+						src: htmlRenderSrc,
+						title: target.path
+					}) : target.kind === "op" && pdfOp && renderingPdf && pdfRenderPath !== "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: changes_module_css_default.htmlPane,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(PdfView, {
+							scope,
+							path: pdfRenderPath,
+							title: target.path
+						})
+					}) : target.kind === "op" && mdOp && reading && readingText !== "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(MdReadingView, { text: readingText }) : target.kind === "op" && op !== null && op.isError ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: changes_module_css_default.paneBody,
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 							className: changes_module_css_default.readError,
@@ -9563,6 +11018,7 @@ window.__ModuleLoader__.load({
 						className: changes_module_css_default.paneBody,
 						children: [diffText !== null && diffText !== "" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffFiles, {
 							diff: diffText,
+							resolveFold: foldLoader,
 							untrackedPath: untracked !== void 0 && target.ref.kind === "worktree" ? target.ref.path : void 0,
 							untrackedContent: untracked
 						}), diffText === "" && untracked === void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -9642,14 +11098,8 @@ window.__ModuleLoader__.load({
 			}, [scope.sessionId]);
 			(0, react.useEffect)(() => {
 				pull();
-				if (!visible) return;
-				const timer = window.setInterval(() => {
-					pull();
-				}, 2500);
-				return () => {
-					window.clearInterval(timer);
-				};
 			}, [visible, pull]);
+			usePolling(visible, pull, { intervalMs: 2500 });
 			const ops = opsRef.current;
 			/** Persist a meta patch onto the tab (lens choice, pane height). */
 			const patchMeta = (patch) => {
@@ -9770,6 +11220,7 @@ window.__ModuleLoader__.load({
 			const [error, setError] = (0, react.useState)(null);
 			const [data, setData] = (0, react.useState)(null);
 			const [tick, setTick] = (0, react.useState)(0);
+			const [effectiveStaged, setEffectiveStaged] = (0, react.useState)(null);
 			const refresh = (0, react.useCallback)(() => {
 				setTick((value) => value + 1);
 			}, []);
@@ -9783,6 +11234,7 @@ window.__ModuleLoader__.load({
 				setLoading(true);
 				setError(null);
 				setData(null);
+				setEffectiveStaged(null);
 				const load = async () => {
 					try {
 						if (diff.kind === "commit") {
@@ -9793,7 +11245,10 @@ window.__ModuleLoader__.load({
 						let result = await api.gitDiff(scope, diff.path, diff.staged, diff.worktree);
 						if (result.diff === "") {
 							const other = await api.gitDiff(scope, diff.path, !diff.staged, diff.worktree);
-							if (other.diff !== "") result = other;
+							if (other.diff !== "") {
+								result = other;
+								if (!cancelled) setEffectiveStaged(!diff.staged);
+							}
 						}
 						if (result.diff !== "") {
 							if (!cancelled) setData({ diff: result.diff });
@@ -9823,6 +11278,51 @@ window.__ModuleLoader__.load({
 				cwd,
 				diff,
 				tick
+			]);
+			const foldContents = (0, react.useRef)(/* @__PURE__ */ new Map());
+			(0, react.useEffect)(() => {
+				foldContents.current = /* @__PURE__ */ new Map();
+			}, [diff, tick]);
+			const foldLoader = (0, react.useMemo)(() => {
+				const sidesOf = (file) => {
+					const ofSides = (oldContent, newContent) => {
+						if ((oldContent ?? "") === "" && (newContent ?? "") === "") throw new Error("no content on either side");
+						return {
+							old: oldContent ?? "",
+							new: newContent ?? ""
+						};
+					};
+					const fetchSides = async () => {
+						const scope = {
+							sessionId,
+							cwd,
+							...diff.repoRoot !== void 0 ? { repoRoot: diff.repoRoot } : {}
+						};
+						if (diff.kind === "commit") {
+							const [oldSide, newSide] = await Promise.all([file.oldPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(scope, `${diff.hashFull}^`, displayPath(file.oldPath), diff.worktree), file.newPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(scope, diff.hashFull, displayPath(file.newPath), diff.worktree)]);
+							return ofSides(oldSide.content, newSide.content);
+						}
+						if (effectiveStaged ?? diff.staged) {
+							const [oldSide, newSide] = await Promise.all([file.oldPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(scope, "HEAD", displayPath(file.oldPath), diff.worktree), file.newPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(scope, ":0", displayPath(file.newPath), diff.worktree)]);
+							return ofSides(oldSide.content, newSide.content);
+						}
+						const [oldSide, worktree] = await Promise.all([file.oldPath === "/dev/null" ? Promise.resolve({ content: null }) : api.gitShow(scope, ":0", displayPath(file.oldPath), diff.worktree), api.fsRead(scope, resolveSidebarPath(diff.repoRoot ?? diff.worktree ?? cwd, displayPath(file.newPath))).catch(() => null)]);
+						return ofSides(oldSide.content, worktree !== null && worktree.kind === "text" ? worktree.content : null);
+					};
+					const path = displayPath(file.newPath === "/dev/null" ? file.oldPath : file.newPath);
+					let promise = foldContents.current.get(path);
+					if (promise === void 0) {
+						promise = fetchSides();
+						foldContents.current.set(path, promise);
+					}
+					return promise;
+				};
+				return (file, segment) => sidesOf(file).then((sides) => foldRowsFromContents(segment, sides.old, sides.new));
+			}, [
+				sessionId,
+				cwd,
+				diff,
+				effectiveStaged
 			]);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: sidebar_module_css_default.gitDiffTab,
@@ -9858,7 +11358,10 @@ window.__ModuleLoader__.load({
 						diff: "",
 						untrackedPath: diff.kind === "worktree" ? diff.path : "",
 						untrackedContent: data.untracked
-					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffFiles, { diff: data.diff }), data.diff === "" && data.untracked === void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffFiles, {
+						diff: data.diff,
+						resolveFold: foldLoader
+					}), data.diff === "" && data.untracked === void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: sidebar_module_css_default.gitEmpty,
 						children: t("diffEmpty")
 					})] })
@@ -10183,57 +11686,57 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			document.head.appendChild(tag);
 		}
 		var SubagentView_module_css_default = {
-			"jobsKillError": "wxwsGW_jobsKillError",
 			"jobsList": "wxwsGW_jobsList",
-			"jobsTitle": "wxwsGW_jobsTitle",
-			"jobsPaneHeader": "wxwsGW_jobsPaneHeader",
-			"subagentEmpty": "wxwsGW_subagentEmpty",
-			"subagentChildren": "wxwsGW_subagentChildren",
-			"jobsPane": "wxwsGW_jobsPane",
-			"subagentCount": "wxwsGW_subagentCount",
-			"subagentRowActive": "wxwsGW_subagentRowActive",
-			"subagentRefresh": "wxwsGW_subagentRefresh",
-			"jobsPaneLabel": "wxwsGW_jobsPaneLabel",
-			"jobsPanePre": "wxwsGW_jobsPanePre",
-			"subagentRowLoading": "wxwsGW_subagentRowLoading",
-			"jobsPaneError": "wxwsGW_jobsPaneError",
-			"jobsCount": "wxwsGW_jobsCount",
-			"jobsDot": "wxwsGW_jobsDot",
-			"jobsSecondary": "wxwsGW_jobsSecondary",
-			"jobsPaneStatus": "wxwsGW_jobsPaneStatus",
-			"subagentTitle": "wxwsGW_subagentTitle",
-			"subagentBody": "wxwsGW_subagentBody",
-			"jobsKillArmed": "wxwsGW_jobsKillArmed",
-			"subagentLiveTool": "wxwsGW_subagentLiveTool",
-			"subagentLiveArgs": "wxwsGW_subagentLiveArgs",
-			"subagentEmptyHint": "wxwsGW_subagentEmptyHint",
-			"subagentRow": "wxwsGW_subagentRow",
-			"jobsRowSettled": "wxwsGW_jobsRowSettled",
-			"jobsLabelLine": "wxwsGW_jobsLabelLine",
-			"jobsPaneDot": "wxwsGW_jobsPaneDot",
-			"jobsPaneClose": "wxwsGW_jobsPaneClose",
-			"jobsPaneHint": "wxwsGW_jobsPaneHint",
-			"jobsLabel": "wxwsGW_jobsLabel",
-			"jobsContent": "wxwsGW_jobsContent",
-			"subagentErrorRetry": "wxwsGW_subagentErrorRetry",
-			"subagentError": "wxwsGW_subagentError",
-			"jobs": "wxwsGW_jobs",
-			"subagentHeader": "wxwsGW_subagentHeader",
-			"subagentRowDisabled": "wxwsGW_subagentRowDisabled",
-			"jobsRowMain": "wxwsGW_jobsRowMain",
-			"subagent": "wxwsGW_subagent",
 			"subagentLabel": "wxwsGW_subagentLabel",
-			"jobsKind": "wxwsGW_jobsKind",
-			"subagentNode": "wxwsGW_subagentNode",
+			"jobsContent": "wxwsGW_jobsContent",
+			"jobsTitle": "wxwsGW_jobsTitle",
+			"jobsCount": "wxwsGW_jobsCount",
+			"subagentRefresh": "wxwsGW_subagentRefresh",
+			"subagentChildren": "wxwsGW_subagentChildren",
 			"subagentLiveText": "wxwsGW_subagentLiveText",
-			"jobsHeader": "wxwsGW_jobsHeader",
-			"subagentLive": "wxwsGW_subagentLive",
-			"jobsKill": "wxwsGW_jobsKill",
-			"subagentSecondary": "wxwsGW_subagentSecondary",
-			"subagentContent": "wxwsGW_subagentContent",
+			"subagentNode": "wxwsGW_subagentNode",
+			"jobsPane": "wxwsGW_jobsPane",
+			"jobsPaneStatus": "wxwsGW_jobsPaneStatus",
 			"subagentDot": "wxwsGW_subagentDot",
+			"subagentLiveTool": "wxwsGW_subagentLiveTool",
+			"jobsPanePre": "wxwsGW_jobsPanePre",
+			"jobsRowSettled": "wxwsGW_jobsRowSettled",
+			"subagentRowDisabled": "wxwsGW_subagentRowDisabled",
+			"subagentError": "wxwsGW_subagentError",
+			"subagentBody": "wxwsGW_subagentBody",
+			"subagentRowLoading": "wxwsGW_subagentRowLoading",
+			"jobsHeader": "wxwsGW_jobsHeader",
+			"subagentContent": "wxwsGW_subagentContent",
+			"jobsPaneHeader": "wxwsGW_jobsPaneHeader",
+			"subagentErrorRetry": "wxwsGW_subagentErrorRetry",
+			"jobsKillError": "wxwsGW_jobsKillError",
+			"jobsKill": "wxwsGW_jobsKill",
+			"jobsRowMain": "wxwsGW_jobsRowMain",
+			"jobsRowSelected": "wxwsGW_jobsRowSelected",
+			"subagentLiveArgs": "wxwsGW_subagentLiveArgs",
+			"subagentRowActive": "wxwsGW_subagentRowActive",
+			"jobs": "wxwsGW_jobs",
+			"jobsPaneLabel": "wxwsGW_jobsPaneLabel",
+			"jobsPaneClose": "wxwsGW_jobsPaneClose",
+			"jobsLabel": "wxwsGW_jobsLabel",
+			"subagentSecondary": "wxwsGW_subagentSecondary",
+			"subagentLive": "wxwsGW_subagentLive",
+			"subagent": "wxwsGW_subagent",
+			"jobsLabelLine": "wxwsGW_jobsLabelLine",
 			"jobsRow": "wxwsGW_jobsRow",
-			"jobsRowSelected": "wxwsGW_jobsRowSelected"
+			"subagentHeader": "wxwsGW_subagentHeader",
+			"subagentEmpty": "wxwsGW_subagentEmpty",
+			"jobsSecondary": "wxwsGW_jobsSecondary",
+			"jobsPaneDot": "wxwsGW_jobsPaneDot",
+			"jobsPaneHint": "wxwsGW_jobsPaneHint",
+			"subagentRow": "wxwsGW_subagentRow",
+			"subagentEmptyHint": "wxwsGW_subagentEmptyHint",
+			"jobsPaneError": "wxwsGW_jobsPaneError",
+			"subagentTitle": "wxwsGW_subagentTitle",
+			"subagentCount": "wxwsGW_subagentCount",
+			"jobsDot": "wxwsGW_jobsDot",
+			"jobsKillArmed": "wxwsGW_jobsKillArmed",
+			"jobsKind": "wxwsGW_jobsKind"
 		};
 		//#endregion
 		//#region src/client/SubagentView.tsx
@@ -10354,46 +11857,26 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		/**
 		* One shared live-preview poller for the whole Subagent tree. Unlike the old
 		* per-card `subagents.history` timers, this sends at most ONE `subagents.live`
-		* request at a time: a recursive timeout starts only after the previous
-		* request settles, so a slow host never sees abort/restart storms.
+		* request at a time (the shared poller's self-scheduling mode arms the next
+		* tick only after the previous request settles, so a slow host never sees
+		* abort/restart storms); a response settling after the poller stopped (page
+		* hidden, tree re-rooted) is dropped via the aborted signal.
 		*/
 		function useSubagentLive(rootId, active) {
 			const [live, setLive] = (0, react.useState)({});
-			const controllerRef = (0, react.useRef)(void 0);
 			(0, react.useEffect)(() => {
 				setLive({});
 			}, [rootId]);
-			(0, react.useEffect)(() => {
-				if (rootId === void 0 || !active) return;
-				const targetRootId = rootId;
-				let disposed = false;
-				let timer;
-				const schedule = () => {
-					if (disposed) return;
-					timer = window.setTimeout(() => {
-						load();
-					}, POLL_MS$1);
-				};
-				async function load() {
-					if (disposed) return;
-					const controller = new AbortController();
-					controllerRef.current = controller;
-					try {
-						const result = await api.subagentsLive(targetRootId, controller.signal);
-						if (!disposed) setLive(result.live);
-					} catch {} finally {
-						if (controllerRef.current === controller) controllerRef.current = void 0;
-						if (!disposed) schedule();
-					}
-				}
-				load();
-				return () => {
-					disposed = true;
-					if (timer !== void 0) window.clearTimeout(timer);
-					controllerRef.current?.abort();
-					controllerRef.current = void 0;
-				};
-			}, [rootId, active]);
+			const poll = (0, react.useCallback)(async (signal) => {
+				if (rootId === void 0) return;
+				const result = await api.subagentsLive(rootId, signal);
+				if (!signal.aborted) setLive(result.live);
+			}, [rootId]);
+			usePolling(rootId !== void 0 && active, poll, {
+				intervalMs: POLL_MS$1,
+				mode: "self-scheduling",
+				immediate: true
+			});
 			return live;
 		}
 		/** Render one topology level; branches are always expanded (lazy catalogs). */
@@ -10788,7 +12271,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			const sessions = ctx.sessions;
 			const list = (0, react.useSyncExternalStore)((0, react.useMemo)(() => (callback) => sessions.list.subscribe(callback), [sessions]), (0, react.useCallback)(() => sessions.list.getSnapshot(), [sessions]));
 			const byId = list.byId;
-			const catalogs = list.subagentsByParent ?? {};
+			const catalogs = (0, react.useMemo)(() => list.subagentsByParent ?? {}, [list.subagentsByParent]);
 			const rootId = (0, react.useMemo)(() => rootAncestor(byId, sessionId), [byId, sessionId]);
 			const rootCatalog = rootId === void 0 ? void 0 : catalogs[rootId];
 			const rootSummary = rootId === void 0 ? void 0 : byId[rootId];
@@ -10979,21 +12462,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					})]
 				})]
 			});
-		}
-		//#endregion
-		//#region src/client/markdown-labels.tsx
-		/** MarkdownText props carrying the nested chrome labels. */
-		function markdownTextProps(text, labels) {
-			return {
-				text,
-				labels: {
-					code: {
-						copyLabel: labels.copyLabel,
-						copiedLabel: labels.copiedLabel
-					},
-					footnotes: ""
-				}
-			};
 		}
 		//#endregion
 		//#region src/client/sidechat-transcript.ts
@@ -11500,47 +12968,47 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			document.head.appendChild(tag);
 		}
 		var SideChatView_module_css_default = {
-			"sidechatRow": "_4BEzFa_sidechatRow",
-			"sidechatStatusText": "_4BEzFa_sidechatStatusText",
-			"sidechat": "_4BEzFa_sidechat",
-			"sidechatPrimaryBtn": "_4BEzFa_sidechatPrimaryBtn",
-			"sidechatRowMono": "_4BEzFa_sidechatRowMono",
-			"sidechatHeroDesc": "_4BEzFa_sidechatHeroDesc",
-			"sidechatRowCode": "_4BEzFa_sidechatRowCode",
-			"sidechatStatus": "_4BEzFa_sidechatStatus",
-			"sidechatComposerInput": "_4BEzFa_sidechatComposerInput",
-			"sidechatComposerBar": "_4BEzFa_sidechatComposerBar",
-			"sidechatRowBody": "_4BEzFa_sidechatRowBody",
-			"sidechatShimmerText": "_4BEzFa_sidechatShimmerText",
-			"sidechatRowSummary": "_4BEzFa_sidechatRowSummary",
-			"sidechatTurnSummary": "_4BEzFa_sidechatTurnSummary",
-			"sidechatIconBtn": "_4BEzFa_sidechatIconBtn",
-			"sidechatRowLabel": "_4BEzFa_sidechatRowLabel",
-			"sidechatRowMeta": "_4BEzFa_sidechatRowMeta",
-			"sidechatHeaderSpacer": "_4BEzFa_sidechatHeaderSpacer",
-			"sidechatAgentBadge": "_4BEzFa_sidechatAgentBadge",
-			"sidechatFadeIn": "_4BEzFa_sidechatFadeIn",
-			"sidechatError": "_4BEzFa_sidechatError",
-			"sidechatSweep": "_4BEzFa_sidechatSweep",
-			"sidechatHint": "_4BEzFa_sidechatHint",
-			"sidechatRowChevron": "_4BEzFa_sidechatRowChevron",
-			"sidechatComposerMeta": "_4BEzFa_sidechatComposerMeta",
-			"sidechatComposer": "_4BEzFa_sidechatComposer",
-			"sidechatHero": "_4BEzFa_sidechatHero",
-			"sidechatDetailHeader": "_4BEzFa_sidechatDetailHeader",
 			"sidechatScroll": "_4BEzFa_sidechatScroll",
-			"sidechatRowProse": "_4BEzFa_sidechatRowProse",
-			"sidechatRowLine": "_4BEzFa_sidechatRowLine",
-			"sidechatHeroTitle": "_4BEzFa_sidechatHeroTitle",
-			"sidechatRowFailed": "_4BEzFa_sidechatRowFailed",
-			"sidechatHeaderDot": "_4BEzFa_sidechatHeaderDot",
-			"sidechatRowIn": "_4BEzFa_sidechatRowIn",
-			"sidechatRowIcon": "_4BEzFa_sidechatRowIcon",
-			"sidechatUser": "_4BEzFa_sidechatUser",
-			"sidechatRowStatic": "_4BEzFa_sidechatRowStatic",
-			"sidechatBtnIn": "_4BEzFa_sidechatBtnIn",
 			"sidechatAssistant": "_4BEzFa_sidechatAssistant",
-			"sidechatSendBtn": "_4BEzFa_sidechatSendBtn"
+			"sidechatRowLine": "_4BEzFa_sidechatRowLine",
+			"sidechatDetailHeader": "_4BEzFa_sidechatDetailHeader",
+			"sidechatHeroDesc": "_4BEzFa_sidechatHeroDesc",
+			"sidechatComposerInput": "_4BEzFa_sidechatComposerInput",
+			"sidechatRowIn": "_4BEzFa_sidechatRowIn",
+			"sidechatRowProse": "_4BEzFa_sidechatRowProse",
+			"sidechatHeaderDot": "_4BEzFa_sidechatHeaderDot",
+			"sidechatRowChevron": "_4BEzFa_sidechatRowChevron",
+			"sidechatRowCode": "_4BEzFa_sidechatRowCode",
+			"sidechatIconBtn": "_4BEzFa_sidechatIconBtn",
+			"sidechatRowBody": "_4BEzFa_sidechatRowBody",
+			"sidechatRowStatic": "_4BEzFa_sidechatRowStatic",
+			"sidechatRowIcon": "_4BEzFa_sidechatRowIcon",
+			"sidechatRowLabel": "_4BEzFa_sidechatRowLabel",
+			"sidechatPrimaryBtn": "_4BEzFa_sidechatPrimaryBtn",
+			"sidechatFadeIn": "_4BEzFa_sidechatFadeIn",
+			"sidechatHeroTitle": "_4BEzFa_sidechatHeroTitle",
+			"sidechatRowMeta": "_4BEzFa_sidechatRowMeta",
+			"sidechatComposer": "_4BEzFa_sidechatComposer",
+			"sidechatBtnIn": "_4BEzFa_sidechatBtnIn",
+			"sidechatRowMono": "_4BEzFa_sidechatRowMono",
+			"sidechatRow": "_4BEzFa_sidechatRow",
+			"sidechatHint": "_4BEzFa_sidechatHint",
+			"sidechat": "_4BEzFa_sidechat",
+			"sidechatStatusText": "_4BEzFa_sidechatStatusText",
+			"sidechatHeaderSpacer": "_4BEzFa_sidechatHeaderSpacer",
+			"sidechatError": "_4BEzFa_sidechatError",
+			"sidechatRowFailed": "_4BEzFa_sidechatRowFailed",
+			"sidechatComposerBar": "_4BEzFa_sidechatComposerBar",
+			"sidechatHero": "_4BEzFa_sidechatHero",
+			"sidechatAgentBadge": "_4BEzFa_sidechatAgentBadge",
+			"sidechatUser": "_4BEzFa_sidechatUser",
+			"sidechatComposerMeta": "_4BEzFa_sidechatComposerMeta",
+			"sidechatSendBtn": "_4BEzFa_sidechatSendBtn",
+			"sidechatShimmerText": "_4BEzFa_sidechatShimmerText",
+			"sidechatStatus": "_4BEzFa_sidechatStatus",
+			"sidechatRowSummary": "_4BEzFa_sidechatRowSummary",
+			"sidechatSweep": "_4BEzFa_sidechatSweep",
+			"sidechatTurnSummary": "_4BEzFa_sidechatTurnSummary"
 		};
 		//#endregion
 		//#region src/client/SideChatView.tsx
@@ -11900,21 +13368,22 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			(0, react.useEffect)(() => {
 				if (!visible || threadId === void 0) return;
 				fetchThread(threadId);
-				if (!running) return;
-				const timer = window.setInterval(() => {
-					fetchThread(threadId);
-					fetchInfo(threadId);
-				}, POLL_MS);
-				return () => {
-					window.clearInterval(timer);
-				};
 			}, [
 				visible,
 				threadId,
 				running,
+				fetchThread
+			]);
+			const pollTick = (0, react.useCallback)(async () => {
+				if (threadId === void 0) return;
+				fetchThread(threadId);
+				fetchInfo(threadId);
+			}, [
+				threadId,
 				fetchThread,
 				fetchInfo
 			]);
+			usePolling(visible && running && threadId !== void 0, pollTick, { intervalMs: POLL_MS });
 			(0, react.useEffect)(() => () => {
 				controllerRef.current?.abort();
 			}, []);
@@ -12092,7 +13561,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 								items: menuItems,
 								selectedId: threadId,
 								onSelect: (id) => {
-									id === "$new" ? openNewThread() : openExistingThread(id);
+									if (id === "$new") openNewThread();
+									else openExistingThread(id);
 								},
 								onClose: () => {
 									setMenuOpen(false);
@@ -12778,7 +14248,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 							desc: () => t("changesDiffOpenPaneDesc")
 						}]
 					}] },
-					component: ({ ctx, store, scope, tab, visible, onOpenFile, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
+					component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
 						ctx,
 						store,
 						scope,
@@ -12969,115 +14439,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					})
 				}
 			];
-		}
-		//#endregion
-		//#region src/client/PdfView.tsx
-		/** Browser-native PDF preview with an always-available download fallback. */
-		function PdfView(props) {
-			const { scope, path, title } = props;
-			const [load, setLoad] = (0, react.useState)({ status: "loading" });
-			const [interactionBlocked, setInteractionBlocked] = (0, react.useState)(false);
-			const frameRef = (0, react.useRef)(null);
-			const shieldRef = (0, react.useRef)(null);
-			(0, react.useEffect)(() => {
-				const controller = new AbortController();
-				let objectUrl;
-				setLoad({ status: "loading" });
-				(async () => {
-					try {
-						const response = await fetch(mediaUrl(scope, path), { signal: controller.signal });
-						if (!response.ok) throw new Error(`HTTP ${response.status}`);
-						const bytes = await response.arrayBuffer();
-						if (controller.signal.aborted) return;
-						objectUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-						setLoad({
-							status: "ready",
-							url: objectUrl
-						});
-					} catch (error) {
-						if (controller.signal.aborted) return;
-						setLoad({
-							status: "error",
-							message: error instanceof Error ? error.message : String(error)
-						});
-					}
-				})();
-				return () => {
-					controller.abort();
-					if (objectUrl !== void 0) URL.revokeObjectURL(objectUrl);
-				};
-			}, [
-				scope.sessionId,
-				scope.cwd,
-				path
-			]);
-			(0, react.useEffect)(() => {
-				const block = () => {
-					setInteractionBlocked(true);
-					if (frameRef.current !== null) frameRef.current.style.pointerEvents = "none";
-					if (shieldRef.current !== null) shieldRef.current.style.pointerEvents = "auto";
-				};
-				const unblock = () => {
-					setInteractionBlocked(false);
-					if (frameRef.current !== null) frameRef.current.style.pointerEvents = "";
-					if (shieldRef.current !== null) shieldRef.current.style.pointerEvents = "none";
-				};
-				const blockForResize = (event) => {
-					const target = event.target;
-					if (target instanceof Element && target.closest(`.${sidebar_module_css_default.panelResize}, .${sidebar_module_css_default.divider}`) !== null) block();
-				};
-				document.addEventListener("dragstart", block, true);
-				document.addEventListener("dragend", unblock, true);
-				document.addEventListener("drop", unblock, true);
-				window.addEventListener("pointerdown", blockForResize, true);
-				window.addEventListener("pointerup", unblock, true);
-				window.addEventListener("pointercancel", unblock, true);
-				window.addEventListener("blur", unblock);
-				return () => {
-					document.removeEventListener("dragstart", block, true);
-					document.removeEventListener("dragend", unblock, true);
-					document.removeEventListener("drop", unblock, true);
-					window.removeEventListener("pointerdown", blockForResize, true);
-					window.removeEventListener("pointerup", unblock, true);
-					window.removeEventListener("pointercancel", unblock, true);
-					window.removeEventListener("blur", unblock);
-				};
-			}, []);
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: sidebar_module_css_default.editorPdf,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: sidebar_module_css_default.editorPdfToolbar,
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
-						className: sidebar_module_css_default.editorDownloadLink,
-						href: downloadUrl(scope, path),
-						download: true,
-						children: t("downloadToView")
-					})
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: sidebar_module_css_default.editorPdfStage,
-					children: [
-						load.status === "loading" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: sidebar_module_css_default.editorPlaceholder,
-							children: t("loading")
-						}),
-						load.status === "error" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: sidebar_module_css_default.editorError,
-							children: load.message
-						}),
-						load.status === "ready" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("iframe", {
-							ref: frameRef,
-							className: clsx(sidebar_module_css_default.editorPdfFrame, interactionBlocked && sidebar_module_css_default.editorPdfFrameBlocked),
-							src: load.url,
-							title
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							ref: shieldRef,
-							className: clsx(sidebar_module_css_default.editorPdfDragShield, interactionBlocked && sidebar_module_css_default.editorPdfDragShieldActive),
-							"aria-hidden": "true"
-						})
-					]
-				})]
-			});
 		}
 		//#endregion
 		//#region src/client/builtins/viewers.tsx
@@ -13557,6 +14918,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			const { paneId, tabs, active, onActivate, onClose, onNewTab, newTabOptions, onDropTab, onFloatTab, onPinTab, getTabIcon, getTabBadge } = props;
 			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
 			const [tabMenu, setTabMenu] = (0, react.useState)(null);
+			useSubmenuFlip(tabMenu);
 			const [dragOver, setDragOver] = (0, react.useState)(false);
 			const listRef = (0, react.useRef)(null);
 			const tabMenuIndex = tabMenu === null ? -1 : tabs.findIndex((tab) => tab.id === tabMenu.tabId);
@@ -13719,6 +15081,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 								setMenuOpen(false);
 							},
 							portal: true,
+							compact: true,
 							align: "end",
 							anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
@@ -13803,6 +15166,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 								else if (id === "closeRight") for (const tab of tabs.slice(index + 1)) onClose(tab.id);
 							},
 							portal: true,
+							compact: true,
 							align: "start",
 							getAnchorRect: () => tabMenu === null ? null : new DOMRect(tabMenu.x, tabMenu.y, 0, 0),
 							anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {})
@@ -14078,57 +15442,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			};
 		}
 		//#endregion
-		//#region src/client/center-column.ts
-		/** Stable selector for the DSH AppFrame conversation slot. */
-		const CENTER_COLUMN_SELECTOR = "#root [data-slot=\"conversation\"]";
-		/** Last full DOM validation for each center-column node. Weak keys avoid leaks. */
-		const validatedAt = /* @__PURE__ */ new WeakMap();
-		/**
-		* The html-style watcher is an HMR/layout resync signal. Remember the last
-		* fingerprint per document so a style change can bypass the connected-node
-		* fast path immediately, without requiring Sidebar to run a second locator.
-		*/
-		const documentStyleState = /* @__PURE__ */ new WeakMap();
-		/**
-		* Resolve the AppFrame center column while keeping streaming mutations cheap.
-		*
-		* Sidebar intentionally keeps both recovery mechanisms that predate #403:
-		* the `#root` subtree MutationObserver catches boot/HMR DOM swaps, and the
-		* 1.5s interval is a last-resort safety net for interleavings no observer is
-		* guaranteed to see (#248). The expensive part was letting every scheduled
-		* locate scan `#root` with querySelector at streaming-token cadence.
-		*
-		* Once a connected column is cached, normal calls therefore reuse it without
-		* a document query. A full query is still forced when either:
-		* - the cached node disconnects;
-		* - `<html style>` changes (the existing HMR/layout resync signal); or
-		* - 1.5s has elapsed since the last full validation (the safety-net cadence).
-		*
-		* This preserves recovery semantics while bounding whole-tree selector work
-		* to low-frequency validation instead of chat mutation frequency.
-		*/
-		function resolveCenterColumn(current, options = {}) {
-			const doc = options.document ?? current?.ownerDocument ?? document;
-			const now = (options.now ?? Date.now)();
-			const revalidateMs = options.revalidateMs ?? 1500;
-			const htmlStyle = (options.htmlStyle ?? (() => doc.documentElement.getAttribute("style")))();
-			const previousStyle = documentStyleState.get(doc);
-			const styleChanged = previousStyle !== void 0 && previousStyle !== htmlStyle;
-			documentStyleState.set(doc, htmlStyle);
-			if (current !== null && current.isConnected) {
-				const lastValidation = validatedAt.get(current);
-				if (lastValidation === void 0 && !styleChanged) {
-					validatedAt.set(current, now);
-					return current;
-				}
-				if (!styleChanged && lastValidation !== void 0 && now - lastValidation < revalidateMs) return current;
-			}
-			const col = (options.query ?? (() => doc.querySelector(CENTER_COLUMN_SELECTOR)))()?.parentElement;
-			if (col === null || col === void 0 || !col.isConnected) return void 0;
-			validatedAt.set(col, now);
-			return col;
-		}
-		//#endregion
 		//#region src/client/desktop-env.ts
 		let cached;
 		/** Read the shell's desktop stamps (memoized per page; SSR-safe). */
@@ -14234,10 +15547,22 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		}
 		//#endregion
 		//#region src/client/shell-presets.ts
+		/**
+		* Built-in desktop-shell presets for the "位置兼容模式" secondary setting
+		* (scheme `preset`). DATA-DRIVEN by design: each shell's adaptation lives
+		* in one entry (strip values / optional CSS), the core applies it through
+		* the SAME generic strip variable and CSS-injection mechanism — adding a
+		* shell is adding data, never a code path.
+		*
+		* Inclusion rule (maintained in docs/external-plugin-guide.md §12): only shells that (a) appear
+		* in this repo's issues/PRs (a user actually hit a problem) and (b) have
+		* 100+ GitHub stars (a real user base). The mechanism is opt-in: auto
+		* detection never applies a preset — the settings badge only SUGGESTS it.
+		*/
 		const PRESETS = [{
 			id: "dsh-desktop",
 			title: "DeepSeek Harness Desktop",
-			desc: "Electron 高级模式（无边框）：macOS 顶栏 20px、Windows 无 WCO 时 32px 标题栏让位",
+			desc: () => t("presetDshDesktopDesc"),
 			stripFor: (env) => {
 				if (env.mode !== "advanced") return void 0;
 				if (env.platform === "darwin") return 20;
@@ -14266,6 +15591,701 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			if (scheme === "preset") return presetStripFor(preset, env) ?? 0;
 			if (scheme === "custom") return customStripPx;
 			return 0;
+		}
+		//#endregion
+		//#region src/client/OrphanedTab.tsx
+		function OrphanedTab(props) {
+			const { tab } = props;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: sidebar_module_css_default.editor,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: sidebar_module_css_default.editorHeader,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: sidebar_module_css_default.editorTitle,
+						title: tab.type,
+						children: tab.title
+					})
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: sidebar_module_css_default.editorPlaceholder,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("pluginNotLoaded") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", {
+						className: sidebar_module_css_default.orphanedType,
+						children: tab.type
+					})]
+				})]
+			});
+		}
+		//#endregion
+		//#region src/client/RenderBoundary.tsx
+		/**
+		* The generic render error boundary for the sidebar tree: a render error in
+		* the wrapped subtree shows a dismissible error strip (retry re-renders the
+		* children) instead of blanking the shell. Used at two scopes:
+		*
+		* - ROOT (index.tsx, `css.boundaryError`): last-resort containment for
+		*   errors in the sidebar shell itself (Workbench, drag layout, …) — a full
+		*   swap keeps the page alive.
+		* - PER-TAB (Sidebar.tsx TabContent, `css.tabBoundaryError`): a crashing
+		*   viewer/editor shows a strip inside ITS OWN pane; the toggle cluster, the
+		*   other tabs, and the panel itself stay alive (issue #31 — a tab crash
+		*   must never take down the whole sidebar).
+		*
+		* The className prop selects the strip's geometry: the root's full-height
+		* fixed rail vs. the tab's pane-filling block.
+		*/
+		var RenderBoundary = class extends react.Component {
+			state = { error: null };
+			static getDerivedStateFromError(error) {
+				return { error: error instanceof Error ? error.message : String(error) };
+			}
+			componentDidCatch(error, info) {
+				console.error("[dsh-better-sidebar] render error:", error, info.componentStack);
+			}
+			render() {
+				if (this.state.error !== null) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: this.props.className,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["dsh-better-sidebar: ", this.state.error] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+						type: "button",
+						className: sidebar_module_css_default.terminalRetry,
+						onClick: () => {
+							this.setState({ error: null });
+						},
+						children: t("terminalRetry")
+					})]
+				});
+				return this.props.children;
+			}
+		};
+		//#endregion
+		//#region src/client/tab-content-memo.ts
+		/** True when the cell may skip a re-render (all render-affecting fields
+		*  unchanged). Callback/context identities are deliberately ignored: their
+		*  captured dependencies are stable or covered by the compared fields
+		*  (onReferenceFile → sessionId/cwd, onSubagentJump/onToggleDir → stable
+		*  refs/closures, onOpenDiff → paneId). */
+		function tabContentCompare(prev, next) {
+			return prev.tab === next.tab && prev.paneId === next.paneId && prev.sessionId === next.sessionId && prev.cwd === next.cwd && prev.visible === next.visible && prev.expanded === next.expanded && prev.revealed === next.revealed && prev.localeRevision === next.localeRevision && prev.tabsVersion === next.tabsVersion && prev.effectiveTabId === next.effectiveTabId;
+		}
+		//#endregion
+		//#region src/client/sidebar/TabContent.tsx
+		/**
+		* The tab-content cell + the + menu builder, extracted from Sidebar.tsx
+		* (behavior identical): one memoized cell dispatches a tab to its registry
+		* descriptor's component, and buildNewTabOptions derives the + menu rows
+		* from the same registry.
+		*/
+		/** Render the content of one tab (dispatched by type). */
+		const TabContent = (0, react.memo)(function TabContent(props) {
+			const { tab, effectiveTabId, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff } = props;
+			const scope = {
+				sessionId,
+				cwd
+			};
+			const descriptor = ctx.get("betterSidebar")?.getTab(tab.type);
+			if (descriptor === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OrphanedTab, {
+				ctx,
+				store,
+				scope,
+				tab,
+				visible
+			});
+			const componentTab = effectiveTabId !== void 0 ? {
+				...tab,
+				id: effectiveTabId
+			} : tab;
+			return (0, react.createElement)(RenderBoundary, { className: sidebar_module_css_default.tabBoundaryError }, (0, react.createElement)(descriptor.component, {
+				ctx,
+				store,
+				scope,
+				tab: componentTab,
+				visible,
+				expanded,
+				revealed,
+				onToggleDir,
+				onReferenceFile,
+				onOpenDiff,
+				onSubagentJump
+			}));
+		}, tabContentCompare);
+		/** The + menu options for the current state, driven by the tab registry.
+		* Hidden tabs (editor/diff) never show; `available` returning false shows
+		* a disabled row (e.g. terminal at capacity) instead of hiding the option.
+		* Tabs the user disabled in the side card settings are filtered out
+		* entirely — re-enabling them is the settings page's job. */
+		function buildNewTabOptions(state, ctx, scope) {
+			const service = ctx.get("betterSidebar");
+			if (service === void 0) return [];
+			return service.getTabs().filter((d) => !d.hidden && service.isTabEnabled(d.id)).sort((a, b) => (a.order ?? 100) - (b.order ?? 100)).map((d) => ({
+				id: d.id,
+				label: typeof d.title === "function" ? d.title() : d.title,
+				disabled: !(d.available?.(ctx, scope, state) ?? true),
+				icon: typeof d.icon === "function" ? d.icon(14) : d.icon
+			}));
+		}
+		//#endregion
+		//#region src/client/center-column.ts
+		/** Stable selector for the DSH AppFrame conversation slot. */
+		const CENTER_COLUMN_SELECTOR = "#root [data-slot=\"conversation\"]";
+		/** Last full DOM validation for each center-column node. Weak keys avoid leaks. */
+		const validatedAt = /* @__PURE__ */ new WeakMap();
+		/**
+		* The html-style watcher is an HMR/layout resync signal. Remember the last
+		* fingerprint per document so a style change can bypass the connected-node
+		* fast path immediately, without requiring Sidebar to run a second locator.
+		*/
+		const documentStyleState = /* @__PURE__ */ new WeakMap();
+		/**
+		* Resolve the AppFrame center column while keeping streaming mutations cheap.
+		*
+		* Sidebar intentionally keeps both recovery mechanisms that predate #403:
+		* the `#root` subtree MutationObserver catches boot/HMR DOM swaps, and the
+		* 1.5s interval is a last-resort safety net for interleavings no observer is
+		* guaranteed to see (#248). The expensive part was letting every scheduled
+		* locate scan `#root` with querySelector at streaming-token cadence.
+		*
+		* Once a connected column is cached, normal calls therefore reuse it without
+		* a document query. A full query is still forced when either:
+		* - the cached node disconnects;
+		* - `<html style>` changes (the existing HMR/layout resync signal); or
+		* - 1.5s has elapsed since the last full validation (the safety-net cadence).
+		*
+		* This preserves recovery semantics while bounding whole-tree selector work
+		* to low-frequency validation instead of chat mutation frequency.
+		*/
+		function resolveCenterColumn(current, options = {}) {
+			const doc = options.document ?? current?.ownerDocument ?? document;
+			const now = (options.now ?? Date.now)();
+			const revalidateMs = options.revalidateMs ?? 1500;
+			const htmlStyle = (options.htmlStyle ?? (() => doc.documentElement.getAttribute("style")))();
+			const previousStyle = documentStyleState.get(doc);
+			const styleChanged = previousStyle !== void 0 && previousStyle !== htmlStyle;
+			documentStyleState.set(doc, htmlStyle);
+			if (current !== null && current.isConnected) {
+				const lastValidation = validatedAt.get(current);
+				if (lastValidation === void 0 && !styleChanged) {
+					validatedAt.set(current, now);
+					return current;
+				}
+				if (!styleChanged && lastValidation !== void 0 && now - lastValidation < revalidateMs) return current;
+			}
+			const col = (options.query ?? (() => doc.querySelector(CENTER_COLUMN_SELECTOR)))()?.parentElement;
+			if (col === null || col === void 0 || !col.isConnected) return void 0;
+			validatedAt.set(col, now);
+			return col;
+		}
+		//#endregion
+		//#region src/client/sidebar/use-center-column.ts
+		/**
+		* Center-column tracking (extracted from Sidebar.tsx, behavior identical):
+		* the bottom panel spans ONLY the app shell's center column ("squeezes the
+		* agent output area") — it starts at the app sidebar's right edge and ends
+		* at the details column's left edge (the details column sits between the
+		* center and the right panel). Measured directly from the AppFrame's center
+		* column DOM (the parent of the [data-slot="conversation"] wrapper —
+		* layout.css's center column) so the bottom panel tracks the column's real
+		* horizontal edges — including the animated AppFrame padding reservation
+		* while the right panel opens/closes; a frame that never appears keeps the
+		* initial zero-size fallback (the panel renders at 0 width until measured).
+		* The rect lives in a REF (not state): the open/close transition resizes
+		* the center column EVERY frame for its duration, and reacting per frame
+		* with setState re-renders the whole Sidebar (every mounted tab) at
+		* animation cadence — the visible toggle jank (#315). measureCenter
+		* writes the bottom panel's edges directly (same DOM-write pattern as
+		* applyDrag), so the panel still tracks the column per frame with zero
+		* React work; `centerMeasured` flips ONCE to gate the hidden→visible
+		* first-paint fallback.
+		*/
+		function useCenterColumn(bottomRef, bottomOpen) {
+			const centerRectRef = (0, react.useRef)({
+				left: 0,
+				right: 0
+			});
+			const [centerMeasured, setCenterMeasured] = (0, react.useState)(false);
+			const centerColRef = (0, react.useRef)(null);
+			const draggingRef = (0, react.useRef)(false);
+			const measureCenter = (0, react.useCallback)(() => {
+				if (draggingRef.current) return;
+				const col = centerColRef.current;
+				if (col === null) return;
+				if (!col.isConnected) {
+					centerColRef.current = null;
+					return;
+				}
+				const rect = col.getBoundingClientRect();
+				centerRectRef.current = {
+					left: rect.left,
+					right: rect.right
+				};
+				const bottom = bottomRef.current;
+				if (bottom !== null) {
+					bottom.style.setProperty("left", `${rect.left}px`);
+					bottom.style.setProperty("right", `${window.innerWidth - rect.right}px`);
+				}
+				setCenterMeasured((prev) => prev ? prev : true);
+			}, [bottomRef]);
+			(0, react.useEffect)(() => {
+				let disposed = false;
+				let observer;
+				const locate = () => {
+					if (disposed) return;
+					const col = resolveCenterColumn(centerColRef.current);
+					if (col === void 0 || !col.isConnected) {
+						if (centerColRef.current !== null) {
+							centerColRef.current.removeAttribute("data-dsh-center-col");
+							centerColRef.current = null;
+							observer?.disconnect();
+							observer = void 0;
+						}
+						return;
+					}
+					if (centerColRef.current !== col) {
+						centerColRef.current?.removeAttribute("data-dsh-center-col");
+						centerColRef.current = col;
+						col.setAttribute("data-dsh-center-col", "");
+						observer?.disconnect();
+						observer = new ResizeObserver(measureCenter);
+						observer.observe(col);
+						measureCenter();
+					}
+				};
+				locate();
+				let locateFrame = null;
+				const scheduleLocate = () => {
+					if (locateFrame !== null) return;
+					if (draggingRef.current) return;
+					locateFrame = requestAnimationFrame(() => {
+						locateFrame = null;
+						locate();
+					});
+				};
+				const watcher = new MutationObserver(scheduleLocate);
+				const root = document.getElementById("root");
+				if (root !== null) watcher.observe(root, {
+					childList: true,
+					subtree: true
+				});
+				const htmlStyleWatcher = new MutationObserver(scheduleLocate);
+				htmlStyleWatcher.observe(document.documentElement, {
+					attributes: true,
+					attributeFilter: ["style"]
+				});
+				const retry = window.setInterval(locate, 1500);
+				return () => {
+					disposed = true;
+					if (locateFrame !== null) cancelAnimationFrame(locateFrame);
+					window.clearInterval(retry);
+					observer?.disconnect();
+					watcher.disconnect();
+					htmlStyleWatcher.disconnect();
+					centerColRef.current?.removeAttribute("data-dsh-center-col");
+					centerColRef.current = null;
+				};
+			}, [measureCenter, bottomOpen]);
+			return {
+				centerColRef,
+				centerRectRef,
+				centerMeasured,
+				measureCenter,
+				draggingRef
+			};
+		}
+		//#endregion
+		//#region src/client/sidebar/use-host-feeds.ts
+		/**
+		* Host-feed subscriptions (extracted from Sidebar.tsx, behavior identical):
+		* the WebSocket pushes (agent terminals, agent opens) and the session-list
+		* driven auto-activation triggers (subagent, background jobs, topology
+		* jump-back). All of it reacts to the host's live feeds for the CURRENT
+		* session; the sidebar shell only consumes the returned jump-back ref.
+		*/
+		/** How many consecutive reconnect failures stop the agent-terminals push loop
+		* (mirror of the terminal view's own cap; the loop restarts on session switch). */
+		const FAILURE_LIMIT = 3;
+		/**
+		* Subagent auto-open debounce (ms). The host delivers a new child's origin
+		* and its title in SEPARATE frames: a Side Chat thread's first visible
+		* frame still shows a fallback title (no 'Side: ' prefix), so an immediate
+		* 0→N decision mistakes it for a genuine subagent and pops the task page.
+		* The trigger therefore re-evaluates against the live snapshot once the
+		* title frame has had time to land.
+		*/
+		const AUTO_OPEN_DEBOUNCE_MS = 500;
+		function useHostFeeds(feeds) {
+			const { ctx, store, sessionList, sessionId } = feeds;
+			/**
+			* Agent terminals push: subscribe to the host's live list of agent-owned
+			* terminals for this session (created by the model through the
+			* `terminal_create` tool). The host pushes a JSON array on every
+			* create / close / exit; the sidebar reconciles the list into tabs
+			* (id `agent:<uuid>`, title from the agent). A disconnected socket
+			* retries with a short backoff so a refresh or transient drop reattaches
+			* the same shell without losing the agent's work — capped like the
+			* terminal view's own reconnect loop, so a refused endpoint never spins
+			* forever (the next session switch restarts the loop).
+			* While the terminal tab type is disabled in settings, pushes are
+			* ignored (no auto-added tabs); re-enabling makes the next push converge.
+			*/
+			(0, react.useEffect)(() => {
+				if (sessionId === void 0) return;
+				let socket = null;
+				let retry;
+				let closed = false;
+				let failures = 0;
+				const connect = () => {
+					if (closed) return;
+					const url = new URL("/sidebar/ws/agent-terminals", location.origin);
+					url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+					url.search = new URLSearchParams({ sessionId }).toString();
+					socket = new WebSocket(url.toString());
+					socket.onmessage = (event) => {
+						if (typeof event.data !== "string") return;
+						try {
+							const list = JSON.parse(event.data);
+							if (!Array.isArray(list)) return;
+							store.reduce((s) => ctx.get("betterSidebar")?.isTabEnabled("terminal") === false ? s : reconcileAgentTerminals(s, list));
+						} catch {}
+					};
+					socket.onclose = () => {
+						if (closed) return;
+						failures += 1;
+						if (failures >= FAILURE_LIMIT) {
+							console.error("[dsh-better-sidebar] agent-terminals connection failed; stopping reconnect loop", sessionId);
+							return;
+						}
+						retry = window.setTimeout(connect, 2e3);
+					};
+					socket.onerror = () => {
+						socket?.close();
+					};
+				};
+				connect();
+				return () => {
+					closed = true;
+					window.clearTimeout(retry);
+					socket?.close();
+				};
+			}, [
+				sessionId,
+				ctx,
+				store
+			]);
+			/**
+			* Agent opens push: subscribe to the host's `sidebar_open` requests for
+			* this session (the model actively opens a file / folder / HTTP(S) page).
+			* The host pushes one JSON request per open; the sidebar routes it to the
+			* matching built-in tab: a file opens in the editor (per-path dedupe), a
+			* folder opens a file window whose tree is rooted at the folder
+			* (`meta.dir`), and a URL opens in the browser tab. A disconnected socket
+			* retries with a short backoff (mirror of the agent-terminals loop): the
+			* host queue keeps undelivered requests and replays them on the first
+			* attach, so a refresh or a session switch lands the opens the model
+			* queued while no view was connected.
+			* While the side-card setting is off, pushes are ignored as a defensive
+			* gate — the host already unregisters the tool and drains the queue.
+			*/
+			(0, react.useEffect)(() => {
+				if (sessionId === void 0) return;
+				let socket = null;
+				let retry;
+				let closed = false;
+				let failures = 0;
+				const connect = () => {
+					if (closed) return;
+					const url = new URL("/sidebar/ws/agent-opens", location.origin);
+					url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+					url.search = new URLSearchParams({ sessionId }).toString();
+					socket = new WebSocket(url.toString());
+					socket.onmessage = (event) => {
+						if (typeof event.data !== "string") return;
+						try {
+							const request = JSON.parse(event.data);
+							if (request === null || typeof request !== "object") return;
+							if (request.kind !== "file" && request.kind !== "folder" && request.kind !== "url") return;
+							if (typeof request.target !== "string" || request.target === "") return;
+							if (store.getPrefs().agentOpenTools !== true) return;
+							const scope = { sessionId };
+							const title = typeof request.title === "string" && request.title !== "" ? request.title : void 0;
+							if (request.kind === "url") ctx.get("betterSidebar")?.openTab({
+								type: "browser",
+								url: request.target,
+								title
+							}, scope);
+							else if (request.kind === "folder") ctx.get("betterSidebar")?.openTab({
+								type: "editor",
+								title,
+								path: request.target,
+								id: `editor:${request.target}`,
+								meta: { dir: true }
+							}, scope);
+							else ctx.get("betterSidebar")?.openFile(scope, request.target, title);
+						} catch {}
+					};
+					socket.onclose = () => {
+						if (closed) return;
+						failures += 1;
+						if (failures >= FAILURE_LIMIT) {
+							console.error("[dsh-better-sidebar] agent-opens connection failed; stopping reconnect loop", sessionId);
+							return;
+						}
+						retry = window.setTimeout(connect, 2e3);
+					};
+					socket.onerror = () => {
+						socket?.close();
+					};
+				};
+				connect();
+				return () => {
+					closed = true;
+					window.clearTimeout(retry);
+					socket?.close();
+				};
+			}, [
+				sessionId,
+				ctx,
+				store
+			]);
+			/**
+			* Subagent auto-activation: the moment the current conversation spawns its
+			* FIRST direct subagent (a 0 → N transition on the list feed), the "auto
+			* open" pref is on, and the Tasks tab type is enabled in settings, activate
+			* the Tasks page. Single-instance semantics focus an existing pane tab in
+			* place or raise an existing free window; a new tab lands in the right pane
+			* and is never duplicated. On wide viewports the right panel also expands;
+			* on narrow viewports background activity never forces the full-screen
+			* drawer open over the chat.
+			* Switching to a session that already has subagents never triggers — its
+			* baseline starts at the current count — so a deliberate layout is never
+			* fought.
+			*
+			* The decision is DEBOUNCED (AUTO_OPEN_DEBOUNCE_MS): a Side Chat thread
+			* is also a subagent-origin child, and its 'Side: ' title lands one frame
+			* after its origin — an immediate check would misread that first frame as
+			* a new subagent and pop this page on every thread creation. The timer
+			* re-evaluates the ORIGINAL baseline against the live snapshot; by then
+			* the title filter (isSideThreadSummary) sees the settled label.
+			*/
+			const listBaselineRef = (0, react.useRef)(void 0);
+			const autoOpenPendingRef = (0, react.useRef)(null);
+			(0, react.useEffect)(() => {
+				const prev = listBaselineRef.current;
+				listBaselineRef.current = sessionList;
+				if (sessionId === void 0 || prev === void 0) return;
+				if (autoOpenPendingRef.current !== null) return;
+				if (!detectNewDirectSubagent(prev, sessionList, sessionId)) return;
+				const baseline = prev;
+				const timer = window.setTimeout(() => {
+					autoOpenPendingRef.current = null;
+					if (!detectNewDirectSubagent(baseline, ctx.sessions.list.getSnapshot(), sessionId)) return;
+					if (!store.getPrefs().autoOpenSubagent) return;
+					if (ctx.get("betterSidebar")?.isTabEnabled("subagent") === false) return;
+					if (!isNarrowWidth(window.innerWidth)) store.reduce((s) => s.panelOpen ? s : togglePanel(s));
+					store.reduce((s) => ({
+						...s,
+						activePane: firstLeaf(s.splits).id
+					}));
+					ctx.get("betterSidebar")?.openTab({
+						type: "subagent",
+						title: t("subagent")
+					});
+				}, AUTO_OPEN_DEBOUNCE_MS);
+				autoOpenPendingRef.current = {
+					baseline,
+					timer
+				};
+			}, [
+				sessionList,
+				sessionId,
+				store,
+				ctx
+			]);
+			(0, react.useEffect)(() => () => {
+				const pending = autoOpenPendingRef.current;
+				if (pending !== null) window.clearTimeout(pending.timer);
+				autoOpenPendingRef.current = null;
+			}, [sessionId]);
+			/**
+			* Job auto-activation: the moment a NEW background job appears for the
+			* current conversation (a job id the previous snapshot lacked), the
+			* auto-open pref is on, and the Tasks tab type is enabled, activate the Tasks
+			* page that contains the background-jobs section. The right panel expands
+			* only on wide viewports. Unlike the subagent trigger (0 → N only), ANY
+			* new job id triggers: the agent may start several jobs in one session, and
+			* each should surface. A fresh page load never triggers — its baseline starts
+			* at the current snapshot.
+			*/
+			const jobBaselineRef = (0, react.useRef)(void 0);
+			(0, react.useEffect)(() => {
+				const prev = jobBaselineRef.current;
+				jobBaselineRef.current = sessionList;
+				if (sessionId === void 0 || prev === void 0) return;
+				if (!detectNewJob(prev, sessionList, sessionId)) return;
+				if (!store.getPrefs().autoOpenJobs) return;
+				if (ctx.get("betterSidebar")?.isTabEnabled("subagent") === false) return;
+				if (!isNarrowWidth(window.innerWidth)) store.reduce((s) => s.panelOpen ? s : togglePanel(s));
+				store.reduce((s) => ({
+					...s,
+					activePane: firstLeaf(s.splits).id
+				}));
+				ctx.get("betterSidebar")?.openTab({
+					type: "subagent",
+					title: t("subagent")
+				});
+			}, [
+				sessionList,
+				sessionId,
+				store,
+				ctx
+			]);
+			/**
+			* Topology jump-back: clicking a subagent node on the Subagent page calls
+			* the official `openSubagent`, which switches the sidebar to that child
+			* session's OWN layout (a fresh child session defaults to the explorer).
+			* The README contract says the Subagent page must stay open with the jumped
+			* node highlighted — so once the current session becomes the recorded jump
+			* target, re-open the Subagent page on top of the child's layout (expanding
+			* the panel first if it is collapsed). Only this explicit node click arms
+			* the flag, so switching to a subagent session by any other means keeps
+			* that session's own layout untouched.
+			*/
+			const subagentJumpRef = (0, react.useRef)(void 0);
+			(0, react.useEffect)(() => {
+				const pending = subagentJumpRef.current;
+				if (pending === void 0 || sessionId !== pending) return;
+				subagentJumpRef.current = void 0;
+				store.reduce((s) => s.panelOpen ? s : togglePanel(s));
+				store.reduce((s) => ({
+					...s,
+					activePane: firstLeaf(s.splits).id
+				}));
+				ctx.get("betterSidebar")?.openTab({
+					type: "subagent",
+					title: t("subagent")
+				});
+			}, [
+				sessionId,
+				store,
+				ctx
+			]);
+			return { subagentJumpRef };
+		}
+		//#endregion
+		//#region src/client/sidebar/use-pinned-tabs.ts
+		/**
+		* Inline pinned terminals (extracted from Sidebar.tsx, behavior identical):
+		* pinned tabs from OTHER sessions inject as VIRTUAL tabs into the first
+		* leaf of the right panel's split tree, and the workbench actions are
+		* wrapped so virtual ids route back to the HOME session. The shell only
+		* consumes the augmented tree and the wrapped actions.
+		*/
+		function usePinnedTabs(input) {
+			const { store, sessionId, cwd, snapshot, actions } = input;
+			const state = snapshot.state;
+			/**
+			* Inline pinned terminals (v0.17.0+): pinned tabs from OTHER sessions
+			* inject as VIRTUAL tabs into the first leaf of the right panel's split
+			* tree. The virtual tabs have unique ids (prefixed with the home session)
+			* and carry the home scope in meta. Clicking a virtual tab sets
+			* `activePinnedTabId` — the augmented tree overrides the leaf's `active`
+			* so the pinned tab's content renders in-place (TerminalView connects to
+			* the home session's PTY via WS, no session jump).
+			*
+			* Closing/unpinning a virtual tab targets the HOME session via reduceFor
+			* (which doesn't notify — targeted opens must not re-render the active
+			* session). The `pinnedRevision` state bump forces the pinnedEntries
+			* useMemo to recompute after such an action.
+			*/
+			const [activePinnedTabId, setActivePinnedTabId] = (0, react.useState)(null);
+			const [pinnedRevision, setPinnedRevision] = (0, react.useState)(0);
+			/**
+			* Cross-session pinned-tab collection. Recomputed on every store notify,
+			* session-list change, and pinned action (the revision bump covers
+			* reduceFor updates that don't notify). Only tabs from OTHER sessions —
+			* the viewer's own pinned tabs are already on its tab strip.
+			*/
+			const pinnedEntries = (0, react.useMemo)(() => {
+				if (sessionId === void 0) return [];
+				return collectPinnedTabs(store.getSessionStates(), {
+					sessionId,
+					cwd
+				});
+			}, [
+				store,
+				sessionId,
+				cwd,
+				snapshot,
+				pinnedRevision
+			]);
+			/** Virtual SidebarTab objects for the pinned entries (stable references
+			*  via useMemo so TabContent's memo comparator holds). */
+			const pinnedVirtualTabs = (0, react.useMemo)(() => pinnedEntries.map(createPinnedVirtualTab), [pinnedEntries]);
+			return {
+				augmentedTree: (0, react.useMemo)(() => state === void 0 ? void 0 : injectPinnedIntoTree(state.splits, pinnedVirtualTabs, activePinnedTabId), [
+					state,
+					pinnedVirtualTabs,
+					activePinnedTabId
+				]),
+				wrappedActions: (0, react.useMemo)(() => {
+					if (pinnedVirtualTabs.length === 0) return actions;
+					const closePinnedInHome = (virtualId) => {
+						const { homeSessionId, tabId: originalId } = parsePinnedVirtualId(virtualId);
+						const vtab = pinnedVirtualTabs.find((t) => t.id === virtualId);
+						const homeCwd = vtab !== void 0 ? getPinnedHomeScope(vtab)?.cwd : void 0;
+						store.reduceFor(homeSessionId, (s) => {
+							const leaf = leafWithTab(s.splits, originalId) ?? leafWithTab(s.bottomSplits, originalId);
+							if (leaf !== void 0) return closeTab(s, leaf.id, originalId);
+							if (s.floats.some((f) => f.tab.id === originalId)) return closeFloatByTab(s, originalId);
+							return s;
+						});
+						if (isAgentTabId(originalId)) api.agentPtyClose(agentUuidOf(originalId)).catch(() => {});
+						else api.ptyClose({
+							sessionId: homeSessionId,
+							...homeCwd !== void 0 ? { cwd: homeCwd } : {}
+						}, originalId).catch(() => {});
+						if (activePinnedTabId === virtualId) setActivePinnedTabId(null);
+						setPinnedRevision((v) => v + 1);
+					};
+					return {
+						...actions,
+						activateTab: (paneId, tabId) => {
+							if (isPinnedVirtualId(tabId)) setActivePinnedTabId(tabId);
+							else {
+								setActivePinnedTabId(null);
+								actions.activateTab(paneId, tabId);
+							}
+						},
+						closeTab: (paneId, tabId) => {
+							if (isPinnedVirtualId(tabId)) closePinnedInHome(tabId);
+							else actions.closeTab(paneId, tabId);
+						},
+						moveTabBefore: (payload, toPane, beforeTabId) => {
+							if (isPinnedVirtualId(payload.tabId)) return;
+							if (isPinnedVirtualId(beforeTabId)) actions.moveTabToEdge(payload, toPane, "center");
+							else actions.moveTabBefore(payload, toPane, beforeTabId);
+						},
+						moveTabToEdge: (payload, toPane, zone) => {
+							if (isPinnedVirtualId(payload.tabId)) return;
+							actions.moveTabToEdge(payload, toPane, zone);
+						},
+						floatTab: (tabId) => {
+							if (isPinnedVirtualId(tabId)) return;
+							actions.floatTab(tabId);
+						},
+						pinTab: (tabId, scope) => {
+							if (isPinnedVirtualId(tabId)) {
+								if (scope !== null) return;
+								const { homeSessionId, tabId: originalId } = parsePinnedVirtualId(tabId);
+								store.reduceFor(homeSessionId, (s) => setTabPin(s, originalId, null));
+								if (activePinnedTabId === tabId) setActivePinnedTabId(null);
+								setPinnedRevision((v) => v + 1);
+							} else actions.pinTab?.(tabId, scope);
+						}
+					};
+				}, [
+					actions,
+					pinnedVirtualTabs,
+					activePinnedTabId,
+					store
+				])
+			};
 		}
 		//#endregion
 		//#region src/client/FreeWindow.tsx
@@ -14512,6 +16532,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 									else if (id === "close") onClose();
 								},
 								portal: true,
+								compact: true,
 								align: "start",
 								getAnchorRect: () => menu === null ? null : new DOMRect(menu.x, menu.y, 0, 0),
 								anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {})
@@ -14573,77 +16594,145 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			});
 		}
 		//#endregion
-		//#region src/client/OrphanedTab.tsx
-		function OrphanedTab(props) {
-			const { tab } = props;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: sidebar_module_css_default.editor,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: sidebar_module_css_default.editorHeader,
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: sidebar_module_css_default.editorTitle,
-						title: tab.type,
-						children: tab.title
-					})
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: sidebar_module_css_default.editorPlaceholder,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("pluginNotLoaded") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", {
-						className: sidebar_module_css_default.orphanedType,
-						children: tab.type
-					})]
-				})]
-			});
-		}
-		//#endregion
-		//#region src/client/RenderBoundary.tsx
+		//#region src/client/sidebar/free-windows.tsx
 		/**
-		* The generic render error boundary for the sidebar tree: a render error in
-		* the wrapped subtree shows a dismissible error strip (retry re-renders the
-		* children) instead of blanking the shell. Used at two scopes:
-		*
-		* - ROOT (index.tsx, `css.boundaryError`): last-resort containment for
-		*   errors in the sidebar shell itself (Workbench, drag layout, …) — a full
-		*   swap keeps the page alive.
-		* - PER-TAB (Sidebar.tsx TabContent, `css.tabBoundaryError`): a crashing
-		*   viewer/editor shows a strip inside ITS OWN pane; the toggle cluster, the
-		*   other tabs, and the panel itself stay alive (issue #31 — a tab crash
-		*   must never take down the whole sidebar).
-		*
-		* The className prop selects the strip's geometry: the root's full-height
-		* fixed rail vs. the tab's pane-filling block.
+		* Free windows (extracted from Sidebar.tsx, behavior identical): the
+		* drag-out gesture that floats a tab onto the conversation column, plus the
+		* render layer for the floating windows and its drop-zone hint overlay.
 		*/
-		var RenderBoundary = class extends react.Component {
-			state = { error: null };
-			static getDerivedStateFromError(error) {
-				return { error: error instanceof Error ? error.message : String(error) };
-			}
-			componentDidCatch(error, info) {
-				console.error("[dsh-better-sidebar] render error:", error, info.componentStack);
-			}
-			render() {
-				if (this.state.error !== null) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: this.props.className,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["dsh-better-sidebar: ", this.state.error] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-						type: "button",
-						className: sidebar_module_css_default.terminalRetry,
-						onClick: () => {
-							this.setState({ error: null });
-						},
-						children: t("terminalRetry")
-					})]
-				});
-				return this.props.children;
-			}
-		};
-		//#endregion
-		//#region src/client/tab-content-memo.ts
-		/** True when the cell may skip a re-render (all render-affecting fields
-		*  unchanged). Callback/context identities are deliberately ignored: their
-		*  captured dependencies are stable or covered by the compared fields
-		*  (onReferenceFile → sessionId/cwd, onSubagentJump/onToggleDir → stable
-		*  refs/closures, onOpenDiff → paneId). */
-		function tabContentCompare(prev, next) {
-			return prev.tab === next.tab && prev.paneId === next.paneId && prev.sessionId === next.sessionId && prev.cwd === next.cwd && prev.visible === next.visible && prev.expanded === next.expanded && prev.revealed === next.revealed && prev.localeRevision === next.localeRevision && prev.tabsVersion === next.tabsVersion && prev.effectiveTabId === next.effectiveTabId;
+		/**
+		* Free windows — drag-out detection. The tab strips already drive HTML5
+		* DnD (payload application/x-dsh-tab) with drops owned by the panes
+		* (split/merge); this hook watches the DOCUMENT (capture) for the same
+		* drag hovering OUTSIDE the panel host: while the pointer is over the
+		* conversation column it arms the drop (preventDefault) and shows a hint
+		* overlay there, and the drop floats the tab at the release point. Targets
+		* inside the host are ignored here, so pane drops keep their behavior
+		* untouched. Only OUR tab drags count (the body flag is the tab strip's;
+		* OS file drags and any DSH drags pass through). Narrow viewports skip
+		* the gesture — the merged drawer covers the conversation, leaving
+		* nothing to drop onto (the tab context menu entry still floats tabs).
+		*/
+		function useFloatDragout(input) {
+			const { narrow, sessionId, store, centerColRef } = input;
+			const [floatHint, setFloatHint] = (0, react.useState)(null);
+			const floatHintRef = (0, react.useRef)(false);
+			(0, react.useEffect)(() => {
+				if (narrow || sessionId === void 0) return;
+				const inPanelHost = (target) => target instanceof Element && target.closest("[data-dsh-panel-host]") !== null;
+				/** The conversation column's rect when the pointer is over it (and not
+				*  over our own surfaces); null otherwise. */
+				const overConversation = (event) => {
+					if (inPanelHost(event.target)) return null;
+					const col = centerColRef.current;
+					if (col === null || !col.isConnected) return null;
+					const rect = col.getBoundingClientRect();
+					if (rect.width === 0 || rect.height === 0) return null;
+					const { clientX: x, clientY: y } = event;
+					if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
+					return rect;
+				};
+				const onDragOver = (event) => {
+					if (!document.body.hasAttribute("data-dsh-tab-dragging")) return;
+					const rect = overConversation(event);
+					if (rect !== null) {
+						event.preventDefault();
+						setFloatHint((prev) => {
+							const next = {
+								left: rect.left,
+								top: rect.top,
+								width: rect.width,
+								height: rect.height
+							};
+							if (prev !== null && prev.left === next.left && prev.top === next.top && prev.width === next.width && prev.height === next.height) return prev;
+							return next;
+						});
+						floatHintRef.current = true;
+					} else if (floatHintRef.current) {
+						floatHintRef.current = false;
+						setFloatHint(null);
+					}
+				};
+				const onDrop = (event) => {
+					if (!floatHintRef.current) return;
+					floatHintRef.current = false;
+					setFloatHint(null);
+					if (overConversation(event) === null) return;
+					event.preventDefault();
+					event.stopPropagation();
+					const payload = parseDrag(event.dataTransfer?.getData("application/x-dsh-tab") ?? "");
+					if (payload === null) return;
+					store.reduce((s) => floatTab(s, payload.tabId, event.clientX, event.clientY));
+				};
+				const clear = () => {
+					if (!floatHintRef.current) return;
+					floatHintRef.current = false;
+					setFloatHint(null);
+				};
+				document.addEventListener("dragover", onDragOver, true);
+				document.addEventListener("drop", onDrop, true);
+				window.addEventListener("dragend", clear, true);
+				window.addEventListener("blur", clear);
+				return () => {
+					document.removeEventListener("dragover", onDragOver, true);
+					document.removeEventListener("drop", onDrop, true);
+					window.removeEventListener("dragend", clear, true);
+					window.removeEventListener("blur", clear);
+				};
+			}, [
+				narrow,
+				sessionId,
+				store,
+				centerColRef
+			]);
+			return { floatHint };
+		}
+		/**
+		* The free-window render layer: tabs dragged out onto the conversation area
+		* (or floated from the tab context menu). They live in the panel host like
+		* the panels (viewport coordinates, immune to desktop-shell transforms) but
+		* are independent of panel state — a window stays up while panels collapse.
+		* The floats array's order is the stacking order; the content reuses the
+		* regular tab renderer, so every tab type floats unchanged. Renders a
+		* fragment so the DOM is exactly the floats followed by the drag-out hint.
+		*/
+		function FreeWindowLayer(props) {
+			const { floats, hint, renderTab, getTabIcon, store, ctx, sessionId, cwd } = props;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [floats.map((float) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FreeWindow, {
+				float,
+				renderTab: (tab, active, paneId) => renderTab(tab, active, paneId, "float"),
+				getTabIcon,
+				onRaise: () => {
+					store.reduce((s) => raiseFloat(s, float.id));
+				},
+				onMove: (x, y) => {
+					store.reduce((s) => moveFloat(s, float.id, x, y));
+				},
+				onResize: (w, h) => {
+					store.reduce((s) => resizeFloat(s, float.id, w, h));
+				},
+				onDock: (paneId) => {
+					store.reduce((s) => dockFloat(s, float.id, paneId ?? void 0));
+				},
+				onClose: () => {
+					ctx.get("betterSidebar")?.closeTab(float.tab.id, sessionId === void 0 ? void 0 : {
+						sessionId,
+						cwd
+					});
+				}
+			}, float.id)), hint !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: sidebar_module_css_default.floatDropHint,
+				style: {
+					left: hint.left,
+					top: hint.top,
+					width: hint.width,
+					height: hint.height
+				},
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					className: sidebar_module_css_default.floatDropHintLabel,
+					children: t("floatDropHint")
+				})
+			})] });
 		}
 		//#endregion
 		//#region src/client/Sidebar.tsx
@@ -14677,18 +16766,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* drawer floats). Widening does not migrate back: the tabs keep living in
 		* the right tree.
 		*/
-		/** How many consecutive reconnect failures stop the agent-terminals push loop
-		* (mirror of the terminal view's own cap; the loop restarts on session switch). */
-		const FAILURE_LIMIT = 3;
-		/**
-		* Subagent auto-open debounce (ms). The host delivers a new child's origin
-		* and its title in SEPARATE frames: a Side Chat thread's first visible
-		* frame still shows a fallback title (no 'Side: ' prefix), so an immediate
-		* 0→N decision mistakes it for a genuine subagent and pops the task page.
-		* The trigger therefore re-evaluates against the live snapshot once the
-		* title frame has had time to land.
-		*/
-		const AUTO_OPEN_DEBOUNCE_MS = 500;
 		/**
 		* OS file drags over the sidebar belong to the sidebar, not to the chat:
 		* DSH's composer (InputBar) listens for file drags on the DOCUMENT and
@@ -14726,54 +16803,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			tag.textContent = cssText;
 			document.head.appendChild(tag);
 			return tag;
-		}
-		/** Render the content of one tab (dispatched by type). */
-		const TabContent = (0, react.memo)(function TabContent(props) {
-			const { tab, effectiveTabId, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff } = props;
-			const scope = {
-				sessionId,
-				cwd
-			};
-			const descriptor = ctx.get("betterSidebar")?.getTab(tab.type);
-			if (descriptor === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OrphanedTab, {
-				ctx,
-				store,
-				scope,
-				tab,
-				visible
-			});
-			const componentTab = effectiveTabId !== void 0 ? {
-				...tab,
-				id: effectiveTabId
-			} : tab;
-			return (0, react.createElement)(RenderBoundary, { className: sidebar_module_css_default.tabBoundaryError }, (0, react.createElement)(descriptor.component, {
-				ctx,
-				store,
-				scope,
-				tab: componentTab,
-				visible,
-				expanded,
-				revealed,
-				onToggleDir,
-				onReferenceFile,
-				onOpenDiff,
-				onSubagentJump
-			}));
-		}, tabContentCompare);
-		/** The + menu options for the current state, driven by the tab registry.
-		* Hidden tabs (editor/diff) never show; `available` returning false shows
-		* a disabled row (e.g. terminal at capacity) instead of hiding the option.
-		* Tabs the user disabled in the side card settings are filtered out
-		* entirely — re-enabling them is the settings page's job. */
-		function buildNewTabOptions(state, ctx, scope) {
-			const service = ctx.get("betterSidebar");
-			if (service === void 0) return [];
-			return service.getTabs().filter((d) => !d.hidden && service.isTabEnabled(d.id)).sort((a, b) => (a.order ?? 100) - (b.order ?? 100)).map((d) => ({
-				id: d.id,
-				label: typeof d.title === "function" ? d.title() : d.title,
-				disabled: !(d.available?.(ctx, scope, state) ?? true),
-				icon: typeof d.icon === "function" ? d.icon(16) : d.icon
-			}));
 		}
 		function Sidebar(props) {
 			const { ctx, store } = props;
@@ -14918,466 +16947,20 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				sessionId,
 				cwd
 			]);
-			/**
-			* Agent terminals push: subscribe to the host's live list of agent-owned
-			* terminals for this session (created by the model through the
-			* `terminal_create` tool). The host pushes a JSON array on every
-			* create / close / exit; the sidebar reconciles the list into tabs
-			* (id `agent:<uuid>`, title from the agent). A disconnected socket
-			* retries with a short backoff so a refresh or transient drop reattaches
-			* the same shell without losing the agent's work — capped like the
-			* terminal view's own reconnect loop, so a refused endpoint never spins
-			* forever (the next session switch restarts the loop).
-			* While the terminal tab type is disabled in settings, pushes are
-			* ignored (no auto-added tabs); re-enabling makes the next push converge.
-			*/
-			(0, react.useEffect)(() => {
-				if (sessionId === void 0) return;
-				let socket = null;
-				let retry;
-				let closed = false;
-				let failures = 0;
-				const connect = () => {
-					if (closed) return;
-					const url = new URL("/sidebar/ws/agent-terminals", location.origin);
-					url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-					url.search = new URLSearchParams({ sessionId }).toString();
-					socket = new WebSocket(url.toString());
-					socket.onmessage = (event) => {
-						if (typeof event.data !== "string") return;
-						try {
-							const list = JSON.parse(event.data);
-							if (!Array.isArray(list)) return;
-							store.reduce((s) => ctx.get("betterSidebar")?.isTabEnabled("terminal") === false ? s : reconcileAgentTerminals(s, list));
-						} catch {}
-					};
-					socket.onclose = () => {
-						if (closed) return;
-						failures += 1;
-						if (failures >= FAILURE_LIMIT) {
-							console.error("[dsh-better-sidebar] agent-terminals connection failed; stopping reconnect loop", sessionId);
-							return;
-						}
-						retry = window.setTimeout(connect, 2e3);
-					};
-					socket.onerror = () => {
-						socket?.close();
-					};
-				};
-				connect();
-				return () => {
-					closed = true;
-					window.clearTimeout(retry);
-					socket?.close();
-				};
-			}, [sessionId, store]);
-			/**
-			* Agent opens push: subscribe to the host's `sidebar_open` requests for
-			* this session (the model actively opens a file / folder / HTTP(S) page).
-			* The host pushes one JSON request per open; the sidebar routes it to the
-			* matching built-in tab: a file opens in the editor (per-path dedupe), a
-			* folder opens a file window whose tree is rooted at the folder
-			* (`meta.dir`), and a URL opens in the browser tab. A disconnected socket
-			* retries with a short backoff (mirror of the agent-terminals loop): the
-			* host queue keeps undelivered requests and replays them on the first
-			* attach, so a refresh or a session switch lands the opens the model
-			* queued while no view was connected.
-			* While the side-card setting is off, pushes are ignored as a defensive
-			* gate — the host already unregisters the tool and drains the queue.
-			*/
-			(0, react.useEffect)(() => {
-				if (sessionId === void 0) return;
-				let socket = null;
-				let retry;
-				let closed = false;
-				let failures = 0;
-				const connect = () => {
-					if (closed) return;
-					const url = new URL("/sidebar/ws/agent-opens", location.origin);
-					url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-					url.search = new URLSearchParams({ sessionId }).toString();
-					socket = new WebSocket(url.toString());
-					socket.onmessage = (event) => {
-						if (typeof event.data !== "string") return;
-						try {
-							const request = JSON.parse(event.data);
-							if (request === null || typeof request !== "object") return;
-							if (request.kind !== "file" && request.kind !== "folder" && request.kind !== "url") return;
-							if (typeof request.target !== "string" || request.target === "") return;
-							if (store.getPrefs().agentOpenTools !== true) return;
-							const scope = { sessionId };
-							const title = typeof request.title === "string" && request.title !== "" ? request.title : void 0;
-							if (request.kind === "url") ctx.get("betterSidebar")?.openTab({
-								type: "browser",
-								url: request.target,
-								title
-							}, scope);
-							else if (request.kind === "folder") ctx.get("betterSidebar")?.openTab({
-								type: "editor",
-								title,
-								path: request.target,
-								id: `editor:${request.target}`,
-								meta: { dir: true }
-							}, scope);
-							else ctx.get("betterSidebar")?.openFile(scope, request.target, title);
-						} catch {}
-					};
-					socket.onclose = () => {
-						if (closed) return;
-						failures += 1;
-						if (failures >= FAILURE_LIMIT) {
-							console.error("[dsh-better-sidebar] agent-opens connection failed; stopping reconnect loop", sessionId);
-							return;
-						}
-						retry = window.setTimeout(connect, 2e3);
-					};
-					socket.onerror = () => {
-						socket?.close();
-					};
-				};
-				connect();
-				return () => {
-					closed = true;
-					window.clearTimeout(retry);
-					socket?.close();
-				};
-			}, [sessionId, store]);
-			/**
-			* Subagent auto-activation: the moment the current conversation spawns its
-			* FIRST direct subagent (a 0 → N transition on the list feed), the "auto
-			* open" pref is on, and the Tasks tab type is enabled in settings, activate
-			* the Tasks page. Single-instance semantics focus an existing pane tab in
-			* place or raise an existing free window; a new tab lands in the right pane
-			* and is never duplicated. On wide viewports the right panel also expands;
-			* on narrow viewports background activity never forces the full-screen
-			* drawer open over the chat.
-			* Switching to a session that already has subagents never triggers — its
-			* baseline starts at the current count — so a deliberate layout is never
-			* fought.
-			*
-			* The decision is DEBOUNCED (AUTO_OPEN_DEBOUNCE_MS): a Side Chat thread
-			* is also a subagent-origin child, and its 'Side: ' title lands one frame
-			* after its origin — an immediate check would misread that first frame as
-			* a new subagent and pop this page on every thread creation. The timer
-			* re-evaluates the ORIGINAL baseline against the live snapshot; by then
-			* the title filter (isSideThreadSummary) sees the settled label.
-			*/
-			const listBaselineRef = (0, react.useRef)(void 0);
-			const autoOpenPendingRef = (0, react.useRef)(null);
-			(0, react.useEffect)(() => {
-				const prev = listBaselineRef.current;
-				listBaselineRef.current = sessionList;
-				if (sessionId === void 0 || prev === void 0) return;
-				if (autoOpenPendingRef.current !== null) return;
-				if (!detectNewDirectSubagent(prev, sessionList, sessionId)) return;
-				const baseline = prev;
-				const timer = window.setTimeout(() => {
-					autoOpenPendingRef.current = null;
-					if (!detectNewDirectSubagent(baseline, ctx.sessions.list.getSnapshot(), sessionId)) return;
-					if (!store.getPrefs().autoOpenSubagent) return;
-					if (ctx.get("betterSidebar")?.isTabEnabled("subagent") === false) return;
-					if (!isNarrowWidth(window.innerWidth)) store.reduce((s) => s.panelOpen ? s : togglePanel(s));
-					store.reduce((s) => ({
-						...s,
-						activePane: firstLeaf(s.splits).id
-					}));
-					ctx.get("betterSidebar")?.openTab({
-						type: "subagent",
-						title: t("subagent")
-					});
-				}, AUTO_OPEN_DEBOUNCE_MS);
-				autoOpenPendingRef.current = {
-					baseline,
-					timer
-				};
-			}, [
+			const { subagentJumpRef } = useHostFeeds({
+				ctx,
+				store,
 				sessionList,
-				sessionId,
-				store,
-				ctx
-			]);
-			(0, react.useEffect)(() => () => {
-				const pending = autoOpenPendingRef.current;
-				if (pending !== null) window.clearTimeout(pending.timer);
-				autoOpenPendingRef.current = null;
-			}, [sessionId]);
-			/**
-			* Job auto-activation: the moment a NEW background job appears for the
-			* current conversation (a job id the previous snapshot lacked), the
-			* auto-open pref is on, and the Tasks tab type is enabled, activate the Tasks
-			* page that contains the background-jobs section. The right panel expands
-			* only on wide viewports. Unlike the subagent trigger (0 → N only), ANY
-			* new job id triggers: the agent may start several jobs in one session, and
-			* each should surface. A fresh page load never triggers — its baseline starts
-			* at the current snapshot.
-			*/
-			const jobBaselineRef = (0, react.useRef)(void 0);
-			(0, react.useEffect)(() => {
-				const prev = jobBaselineRef.current;
-				jobBaselineRef.current = sessionList;
-				if (sessionId === void 0 || prev === void 0) return;
-				if (!detectNewJob(prev, sessionList, sessionId)) return;
-				if (!store.getPrefs().autoOpenJobs) return;
-				if (ctx.get("betterSidebar")?.isTabEnabled("subagent") === false) return;
-				if (!isNarrowWidth(window.innerWidth)) store.reduce((s) => s.panelOpen ? s : togglePanel(s));
-				store.reduce((s) => ({
-					...s,
-					activePane: firstLeaf(s.splits).id
-				}));
-				ctx.get("betterSidebar")?.openTab({
-					type: "subagent",
-					title: t("subagent")
-				});
-			}, [
-				sessionList,
-				sessionId,
-				store,
-				ctx
-			]);
-			/**
-			* Topology jump-back: clicking a subagent node on the Subagent page calls
-			* the official `openSubagent`, which switches the sidebar to that child
-			* session's OWN layout (a fresh child session defaults to the explorer).
-			* The README contract says the Subagent page must stay open with the jumped
-			* node highlighted — so once the current session becomes the recorded jump
-			* target, re-open the Subagent page on top of the child's layout (expanding
-			* the panel first if it is collapsed). Only this explicit node click arms
-			* the flag, so switching to a subagent session by any other means keeps
-			* that session's own layout untouched.
-			*/
-			const subagentJumpRef = (0, react.useRef)(void 0);
-			(0, react.useEffect)(() => {
-				const pending = subagentJumpRef.current;
-				if (pending === void 0 || sessionId !== pending) return;
-				subagentJumpRef.current = void 0;
-				store.reduce((s) => s.panelOpen ? s : togglePanel(s));
-				store.reduce((s) => ({
-					...s,
-					activePane: firstLeaf(s.splits).id
-				}));
-				ctx.get("betterSidebar")?.openTab({
-					type: "subagent",
-					title: t("subagent")
-				});
-			}, [
-				sessionId,
-				store,
-				ctx
-			]);
-			/**
-			/**
-			* Inline pinned terminals (v0.17.0+): pinned tabs from OTHER sessions
-			* inject as VIRTUAL tabs into the first leaf of the right panel's split
-			* tree. The virtual tabs have unique ids (prefixed with the home session)
-			* and carry the home scope in meta. Clicking a virtual tab sets
-			* `activePinnedTabId` — the augmented tree overrides the leaf's `active`
-			* so the pinned tab's content renders in-place (TerminalView connects to
-			* the home session's PTY via WS, no session jump).
-			*
-			* Closing/unpinning a virtual tab targets the HOME session via reduceFor
-			* (which doesn't notify — targeted opens must not re-render the active
-			* session). The `pinnedRevision` state bump forces the pinnedEntries
-			* useMemo to recompute after such an action.
-			*/
-			const [activePinnedTabId, setActivePinnedTabId] = (0, react.useState)(null);
-			const [pinnedRevision, setPinnedRevision] = (0, react.useState)(0);
-			/**
-			* Cross-session pinned-tab collection. Recomputed on every store notify,
-			* session-list change, and pinned action (the revision bump covers
-			* reduceFor updates that don't notify). Only tabs from OTHER sessions —
-			* the viewer's own pinned tabs are already on its tab strip.
-			*/
-			const pinnedEntries = (0, react.useMemo)(() => {
-				if (sessionId === void 0) return [];
-				return collectPinnedTabs(store.getSessionStates(), {
-					sessionId,
-					cwd
-				});
-			}, [
-				store,
-				sessionId,
-				cwd,
-				snapshot,
-				pinnedRevision
-			]);
-			/** Virtual SidebarTab objects for the pinned entries (stable references
-			*  via useMemo so TabContent's memo comparator holds). */
-			const pinnedVirtualTabs = (0, react.useMemo)(() => pinnedEntries.map(createPinnedVirtualTab), [pinnedEntries]);
-			/** The right panel's split tree with pinned virtual tabs injected into the
-			*  first leaf. When `activePinnedTabId` is set, that leaf's `active` is
-			*  overridden so the pinned tab's content is visible. */
-			const augmentedTree = (0, react.useMemo)(() => state === void 0 ? void 0 : injectPinnedIntoTree(state.splits, pinnedVirtualTabs, activePinnedTabId), [
-				state,
-				pinnedVirtualTabs,
-				activePinnedTabId
-			]);
-			const centerRectRef = (0, react.useRef)({
-				left: 0,
-				right: 0
+				sessionId
 			});
-			const [centerMeasured, setCenterMeasured] = (0, react.useState)(false);
-			const centerColRef = (0, react.useRef)(null);
-			const draggingRef = (0, react.useRef)(false);
-			const measureCenter = (0, react.useCallback)(() => {
-				if (draggingRef.current) return;
-				const col = centerColRef.current;
-				if (col === null) return;
-				if (!col.isConnected) {
-					centerColRef.current = null;
-					return;
-				}
-				const rect = col.getBoundingClientRect();
-				centerRectRef.current = {
-					left: rect.left,
-					right: rect.right
-				};
-				const bottom = bottomRef.current;
-				if (bottom !== null) {
-					bottom.style.setProperty("left", `${rect.left}px`);
-					bottom.style.setProperty("right", `${window.innerWidth - rect.right}px`);
-				}
-				setCenterMeasured((prev) => prev ? prev : true);
-			}, []);
-			(0, react.useEffect)(() => {
-				let disposed = false;
-				let observer;
-				const locate = () => {
-					if (disposed) return;
-					const col = resolveCenterColumn(centerColRef.current);
-					if (col === void 0 || !col.isConnected) {
-						if (centerColRef.current !== null) {
-							centerColRef.current.removeAttribute("data-dsh-center-col");
-							centerColRef.current = null;
-							observer?.disconnect();
-							observer = void 0;
-						}
-						return;
-					}
-					if (centerColRef.current !== col) {
-						centerColRef.current?.removeAttribute("data-dsh-center-col");
-						centerColRef.current = col;
-						col.setAttribute("data-dsh-center-col", "");
-						observer?.disconnect();
-						observer = new ResizeObserver(measureCenter);
-						observer.observe(col);
-						measureCenter();
-					}
-				};
-				locate();
-				let locateFrame = null;
-				const scheduleLocate = () => {
-					if (locateFrame !== null) return;
-					if (draggingRef.current) return;
-					locateFrame = requestAnimationFrame(() => {
-						locateFrame = null;
-						locate();
-					});
-				};
-				const watcher = new MutationObserver(scheduleLocate);
-				const root = document.getElementById("root");
-				if (root !== null) watcher.observe(root, {
-					childList: true,
-					subtree: true
-				});
-				const htmlStyleWatcher = new MutationObserver(scheduleLocate);
-				htmlStyleWatcher.observe(document.documentElement, {
-					attributes: true,
-					attributeFilter: ["style"]
-				});
-				const retry = window.setInterval(locate, 1500);
-				return () => {
-					disposed = true;
-					if (locateFrame !== null) cancelAnimationFrame(locateFrame);
-					window.clearInterval(retry);
-					observer?.disconnect();
-					watcher.disconnect();
-					htmlStyleWatcher.disconnect();
-					centerColRef.current?.removeAttribute("data-dsh-center-col");
-					centerColRef.current = null;
-				};
-			}, [measureCenter, state?.bottomOpen]);
-			/**
-			* Free windows — drag-out detection. The tab strips already drive HTML5
-			* DnD (payload application/x-dsh-tab) with drops owned by the panes
-			* (split/merge); this shell watches the DOCUMENT (capture) for the same
-			* drag hovering OUTSIDE the panel host: while the pointer is over the
-			* conversation column it arms the drop (preventDefault) and shows a hint
-			* overlay there, and the drop floats the tab at the release point. Targets
-			* inside the host are ignored here, so pane drops keep their behavior
-			* untouched. Only OUR tab drags count (the body flag is the tab strip's;
-			* OS file drags and any DSH drags pass through). Narrow viewports skip
-			* the gesture — the merged drawer covers the conversation, leaving
-			* nothing to drop onto (the tab context menu entry still floats tabs).
-			*/
-			const [floatHint, setFloatHint] = (0, react.useState)(null);
-			const floatHintRef = (0, react.useRef)(false);
-			(0, react.useEffect)(() => {
-				if (narrow || sessionId === void 0) return;
-				const inPanelHost = (target) => target instanceof Element && target.closest("[data-dsh-panel-host]") !== null;
-				/** The conversation column's rect when the pointer is over it (and not
-				*  over our own surfaces); null otherwise. */
-				const overConversation = (event) => {
-					if (inPanelHost(event.target)) return null;
-					const col = centerColRef.current;
-					if (col === null || !col.isConnected) return null;
-					const rect = col.getBoundingClientRect();
-					if (rect.width === 0 || rect.height === 0) return null;
-					const { clientX: x, clientY: y } = event;
-					if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
-					return rect;
-				};
-				const onDragOver = (event) => {
-					if (!document.body.hasAttribute("data-dsh-tab-dragging")) return;
-					const rect = overConversation(event);
-					if (rect !== null) {
-						event.preventDefault();
-						setFloatHint((prev) => {
-							const next = {
-								left: rect.left,
-								top: rect.top,
-								width: rect.width,
-								height: rect.height
-							};
-							if (prev !== null && prev.left === next.left && prev.top === next.top && prev.width === next.width && prev.height === next.height) return prev;
-							return next;
-						});
-						floatHintRef.current = true;
-					} else if (floatHintRef.current) {
-						floatHintRef.current = false;
-						setFloatHint(null);
-					}
-				};
-				const onDrop = (event) => {
-					if (!floatHintRef.current) return;
-					floatHintRef.current = false;
-					setFloatHint(null);
-					if (overConversation(event) === null) return;
-					event.preventDefault();
-					event.stopPropagation();
-					const payload = parseDrag(event.dataTransfer?.getData("application/x-dsh-tab") ?? "");
-					if (payload === null) return;
-					store.reduce((s) => floatTab(s, payload.tabId, event.clientX, event.clientY));
-				};
-				const clear = () => {
-					if (!floatHintRef.current) return;
-					floatHintRef.current = false;
-					setFloatHint(null);
-				};
-				document.addEventListener("dragover", onDragOver, true);
-				document.addEventListener("drop", onDrop, true);
-				window.addEventListener("dragend", clear, true);
-				window.addEventListener("blur", clear);
-				return () => {
-					document.removeEventListener("dragover", onDragOver, true);
-					document.removeEventListener("drop", onDrop, true);
-					window.removeEventListener("dragend", clear, true);
-					window.removeEventListener("blur", clear);
-				};
-			}, [
+			const bottomRef = (0, react.useRef)(null);
+			const { centerColRef, centerRectRef, centerMeasured, measureCenter, draggingRef } = useCenterColumn(bottomRef, state?.bottomOpen);
+			const { floatHint } = useFloatDragout({
 				narrow,
 				sessionId,
-				store
-			]);
+				store,
+				centerColRef
+			});
 			/**
 			* Bottom-panel first-expansion auto terminal: the FIRST time the user
 			* expands the bottom panel in a session, try to open a fresh terminal tab
@@ -15412,7 +16995,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				narrow
 			]);
 			const panelRef = (0, react.useRef)(null);
-			const bottomRef = (0, react.useRef)(null);
 			const widthDrag = (0, react.useRef)({
 				startX: 0,
 				startWidth: 0
@@ -15434,7 +17016,11 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			(0, react.useEffect)(() => {
 				draggingRef.current = anyDragging;
 				if (!anyDragging) measureCenter();
-			}, [anyDragging, measureCenter]);
+			}, [
+				anyDragging,
+				measureCenter,
+				draggingRef
+			]);
 			const clampWidth = (width) => Math.min(Math.max(280, Math.round(width)), Math.max(280, window.innerWidth));
 			const clampHeight = (height) => Math.min(Math.max(120, Math.round(height)), Math.max(120, window.innerHeight - 280));
 			/** Single writer for the layout-push variables: the app shell gives up
@@ -15684,76 +17270,17 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			}), [
 				store,
 				sessionId,
-				cwd
+				cwd,
+				ctx,
+				centerColRef
 			]);
-			/**
-			* Wrap the base actions to intercept pinned VIRTUAL tab ids (injected from
-			* other sessions). Regular tab ids pass through unchanged. Virtual ids are
-			* detected by the `pinned:` prefix and routed to the HOME session via
-			* reduceFor (which doesn't notify — the revision bump is the local signal).
-			*/
-			const wrappedActions = (0, react.useMemo)(() => {
-				if (pinnedVirtualTabs.length === 0) return actions;
-				const closePinnedInHome = (virtualId) => {
-					const { homeSessionId, tabId: originalId } = parsePinnedVirtualId(virtualId);
-					const vtab = pinnedVirtualTabs.find((t) => t.id === virtualId);
-					const homeCwd = vtab !== void 0 ? getPinnedHomeScope(vtab)?.cwd : void 0;
-					store.reduceFor(homeSessionId, (s) => {
-						const leaf = leafWithTab(s.splits, originalId) ?? leafWithTab(s.bottomSplits, originalId);
-						if (leaf !== void 0) return closeTab(s, leaf.id, originalId);
-						if (s.floats.some((f) => f.tab.id === originalId)) return closeFloatByTab(s, originalId);
-						return s;
-					});
-					if (isAgentTabId(originalId)) api.agentPtyClose(agentUuidOf(originalId)).catch(() => {});
-					else api.ptyClose({
-						sessionId: homeSessionId,
-						...homeCwd !== void 0 ? { cwd: homeCwd } : {}
-					}, originalId).catch(() => {});
-					if (activePinnedTabId === virtualId) setActivePinnedTabId(null);
-					setPinnedRevision((v) => v + 1);
-				};
-				return {
-					...actions,
-					activateTab: (paneId, tabId) => {
-						if (isPinnedVirtualId(tabId)) setActivePinnedTabId(tabId);
-						else {
-							setActivePinnedTabId(null);
-							actions.activateTab(paneId, tabId);
-						}
-					},
-					closeTab: (paneId, tabId) => {
-						if (isPinnedVirtualId(tabId)) closePinnedInHome(tabId);
-						else actions.closeTab(paneId, tabId);
-					},
-					moveTabBefore: (payload, toPane, beforeTabId) => {
-						if (isPinnedVirtualId(payload.tabId)) return;
-						if (isPinnedVirtualId(beforeTabId)) actions.moveTabToEdge(payload, toPane, "center");
-						else actions.moveTabBefore(payload, toPane, beforeTabId);
-					},
-					moveTabToEdge: (payload, toPane, zone) => {
-						if (isPinnedVirtualId(payload.tabId)) return;
-						actions.moveTabToEdge(payload, toPane, zone);
-					},
-					floatTab: (tabId) => {
-						if (isPinnedVirtualId(tabId)) return;
-						actions.floatTab(tabId);
-					},
-					pinTab: (tabId, scope) => {
-						if (isPinnedVirtualId(tabId)) {
-							if (scope !== null) return;
-							const { homeSessionId, tabId: originalId } = parsePinnedVirtualId(tabId);
-							store.reduceFor(homeSessionId, (s) => setTabPin(s, originalId, null));
-							if (activePinnedTabId === tabId) setActivePinnedTabId(null);
-							setPinnedRevision((v) => v + 1);
-						} else actions.pinTab?.(tabId, scope);
-					}
-				};
-			}, [
-				actions,
-				pinnedVirtualTabs,
-				activePinnedTabId,
-				store
-			]);
+			const { augmentedTree, wrappedActions } = usePinnedTabs({
+				store,
+				sessionId,
+				cwd,
+				snapshot,
+				actions
+			});
 			/**
 			* The explorer's @-reference button. Directories append the folder mention
 			* (`@dir/`) as plain text so DSH's folder decoration and completion keep
@@ -16118,41 +17645,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 							})
 						]
 					}),
-					state.floats.map((float) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FreeWindow, {
-						float,
-						renderTab: (tab, active, paneId) => renderTab(tab, active, paneId, "float"),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(FreeWindowLayer, {
+						floats: state.floats,
+						hint: floatHint,
+						renderTab,
 						getTabIcon: tabIconOf,
-						onRaise: () => {
-							store.reduce((s) => raiseFloat(s, float.id));
-						},
-						onMove: (x, y) => {
-							store.reduce((s) => moveFloat(s, float.id, x, y));
-						},
-						onResize: (w, h) => {
-							store.reduce((s) => resizeFloat(s, float.id, w, h));
-						},
-						onDock: (paneId) => {
-							store.reduce((s) => dockFloat(s, float.id, paneId ?? void 0));
-						},
-						onClose: () => {
-							ctx.get("betterSidebar")?.closeTab(float.tab.id, sessionId === void 0 ? void 0 : {
-								sessionId,
-								cwd
-							});
-						}
-					}, float.id)),
-					floatHint !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: sidebar_module_css_default.floatDropHint,
-						style: {
-							left: floatHint.left,
-							top: floatHint.top,
-							width: floatHint.width,
-							height: floatHint.height
-						},
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: sidebar_module_css_default.floatDropHintLabel,
-							children: t("floatDropHint")
-						})
+						store,
+						ctx,
+						sessionId,
+						cwd
 					})
 				]
 			});
@@ -16220,53 +17721,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			};
 		}
 		//#endregion
-		//#region src/client/ime-guard.ts
-		/**
-		* IME-composition key guard.
-		*
-		* While a Chinese/Japanese/Korean input method is composing (the user is
-		* picking a candidate from the IME window), every pressed key BELONGS to the
-		* input method: arrows move the candidate highlight, Enter/Space confirm the
-		* composition, Escape cancels it. Page code must not process those keys —
-		* a component that does (a number stepper calling preventDefault() on
-		* ArrowUp/ArrowDown, a submit handler reacting to Enter, ...) silently
-		* breaks the IME: candidates stop responding, the composition gets torn
-		* apart, and only bare letters come out.
-		*
-		* This guard enforces that rule at the document boundary: a capture-phase
-		* keydown/keyup listener that stops the event from propagating further
-		* whenever a composition is in progress. Because it runs in the capture
-		* phase on `document` — the outermost node — it fires BEFORE React's
-		* delegated handlers (attached at the root container) and before any native
-		* target/bubble listener, so an inlined third-party component (e.g. the
-		* Univer office UI bundled into this plugin) can never intercept
-		* composition keys. The browser's native IME processing is untouched:
-		* stopPropagation only silences page JS, not the default action.
-		*
-		* The composition signal follows the DSH core convention (InputBar's IME
-		* guard, issue #535): `isComposing` for modern engines, keyCode 229 as the
-		* legacy signal engines emit without isComposing.
-		*/
-		/** The pure decision: is this keyboard event part of an IME composition? */
-		function isImeComposition(event) {
-			return event.isComposing || event.keyCode === 229;
-		}
-		/**
-		* Register the document-level capture guard. Returns the disposer
-		* (HMR-safe; call through `ctx.effect`).
-		*/
-		function registerImeGuard() {
-			const onKey = (event) => {
-				if (isImeComposition(event)) event.stopPropagation();
-			};
-			document.addEventListener("keydown", onKey, true);
-			document.addEventListener("keyup", onKey, true);
-			return () => {
-				document.removeEventListener("keydown", onKey, true);
-				document.removeEventListener("keyup", onKey, true);
-			};
-		}
-		//#endregion
 		//#region src/client/settings-nav-icon.ts
 		/**
 		* Mark this plugin's row in the DSH settings navigation so its bundled CSS
@@ -16328,115 +17782,115 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* The built-in catalog of TAB-registration plugins (sidebar pages),
 		* shown in the "add tab plugin" modal (Side card settings → 侧边栏内容 grid
 		* → the dashed card). Adding an entry: append one object here (unique
-		* `id` = npm package name, `url` = GitHub repo, `description` =
-		* i18n-friendly (add a `pluginXxxDesc` key in locales.ts), `install` = the
-		* full one-line install script — it starts with `cd ~/.dsh` so the install
-		* runs with the DSH home as the working directory). Data integrity is
-		* guarded by `tests/plugin-list.spec.ts`.
+		* `id` = npm package name, `name` / `description` = i18n-friendly (add a
+		* `pluginXxxName` / `pluginXxxDesc` key in locales.ts), `url` = GitHub repo,
+		* `install` = the full one-line install script — it starts with `cd ~/.dsh`
+		* so the install runs with the DSH home as the working directory). Data
+		* integrity is guarded by `tests/plugin-list.spec.ts`.
 		*/
 		/** Tab-registration plugins (alphabetical order). */
 		const builtinTabPlugins = [
 			{
 				id: "@dsh-external/dsh-sentinel",
-				name: "dsh-sentinel 唤醒系统",
+				name: () => t("pluginSentinelName"),
 				url: "https://github.com/fuhefei/dsh-sentinel",
 				description: () => t("pluginSentinelDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add \"github:fuhefei/dsh-sentinel#v0.7.0\""
 			},
 			{
 				id: "@dsh-external/ego-browser",
-				name: "ego-browser Agent 浏览器",
+				name: () => t("pluginEgoBrowserName"),
 				url: "https://github.com/Fisfzy/ego-browser",
 				description: () => t("pluginEgoBrowserDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add git+https://github.com/Fisfzy/ego-browser.git"
 			},
 			{
 				id: "dsh-better-overleaf",
-				name: "dsh-better-overleaf Overleaf 标签页",
+				name: () => t("pluginBetterOverleafName"),
 				url: "https://github.com/Hoemr/dsh-better-overleaf",
 				description: () => t("pluginBetterOverleafDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add dsh-better-overleaf"
 			},
 			{
 				id: "dsh-docs-panel",
-				name: "dsh-docs-panel 全局文档",
+				name: () => t("pluginDocsPanelName"),
 				url: "https://github.com/mlosun/dsh-docs-panel",
 				description: () => t("pluginDocsPanelDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add dsh-docs-panel"
 			},
 			{
 				id: "dsh-flowglass",
-				name: "dsh-flowglass 流镜",
+				name: () => t("pluginFlowglassName"),
 				url: "https://github.com/Iwctwbh/dsh-flowglass",
 				description: () => t("pluginFlowglassDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add dsh-flowglass"
 			},
 			{
 				id: "dsh-git-forge",
-				name: "dsh-git-forge Git 凭据",
+				name: () => t("pluginGitForgeName"),
 				url: "https://github.com/thirsty5034/dsh-git-forge",
 				description: () => t("pluginGitForgeDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add \"dsh-git-forge@github:thirsty5034/dsh-git-forge\""
 			},
 			{
 				id: "dsh-git-remotes",
-				name: "dsh-git-remotes Git 远程",
+				name: () => t("pluginGitRemotesName"),
 				url: "https://github.com/yq04/dsh-git-remotes",
 				description: () => t("pluginGitRemotesDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add git+https://github.com/yq04/dsh-git-remotes.git"
 			},
 			{
 				id: "dsh-github-workbench",
-				name: "dsh-github-workbench GitHub 工作台",
+				name: () => t("pluginGithubWorkbenchName"),
 				url: "https://github.com/meyaomiao/dsh-github-workbench",
 				description: () => t("pluginGithubWorkbenchDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add \"github:meyaomiao/dsh-github-workbench#v0.1.0\""
 			},
 			{
 				id: "dsh-sidebar-qa",
-				name: "dsh-sidebar-qa 划选追问",
+				name: () => t("pluginSidebarQaName"),
 				url: "https://github.com/ChenRuoT/dsh-sidebar-qa",
 				description: () => t("pluginSidebarQaDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add git+https://github.com/ChenRuoT/dsh-sidebar-qa.git"
 			},
 			{
 				id: "dsh-sidenote",
-				name: "dsh-sidenote 侧边聊天",
+				name: () => t("pluginSidenoteName"),
 				url: "https://github.com/g-yixuan/dsh-sidenote",
 				description: () => t("pluginSidenoteDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add dsh-sidenote"
 			},
 			{
 				id: "dsh-server-deck",
-				name: "dsh-server-deck 服务器甲板",
+				name: () => t("pluginServerDeckName"),
 				url: "https://github.com/meyaomiao/DSH-server-deck",
 				description: () => t("pluginServerDeckDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add dsh-server-deck@latest"
 			},
 			{
 				id: "dsh-suhuang-scroll",
-				name: "dsh-suhuang-scroll 苏黄共阅",
+				name: () => t("pluginSuhuangScrollName"),
 				url: "https://github.com/YZDame/dsh-suhuang-scroll",
 				description: () => t("pluginSuhuangScrollDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add dsh-suhuang-scroll"
 			},
 			{
 				id: "dsh-ssh-tunnel",
-				name: "dsh-ssh-tunnel SSH 隧道",
+				name: () => t("pluginSshTunnelName"),
 				url: "https://github.com/thirsty5034/dsh-ssh-tunnel",
 				description: () => t("pluginSshTunnelDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add \"dsh-ssh-tunnel@github:thirsty5034/dsh-ssh-tunnel\""
 			},
 			{
 				id: "dsh-turn-review",
-				name: "dsh-turn-review 本轮审查",
+				name: () => t("pluginTurnReviewName"),
 				url: "https://github.com/yq04/dsh-turn-review",
 				description: () => t("pluginTurnReviewDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add git+https://github.com/yq04/dsh-turn-review.git"
 			},
 			{
 				id: "dsh-bilingual-reader",
-				name: "dsh-bilingual-reader 双语阅读",
+				name: () => t("pluginBilingualReaderName"),
 				url: "https://github.com/Johnblur/dsh-bilingual-reader",
 				description: () => t("pluginBilingualReaderDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-better-sidebar && dsh plugin --profile web add github:Johnblur/dsh-bilingual-reader"
@@ -16448,8 +17902,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* The built-in catalog of FILE-PREVIEWER plugins (file-type previewers),
 		* shown in the "add preview plugin" modal (Side card settings → 文件预览
 		* grid → the dashed card). Adding an entry: append one object here (unique
-		* `id` = npm package name, `url` = GitHub repo, `description` =
-		* i18n-friendly, `install` = the full shell command pre-filled into the
+		* `id` = npm package name, `name` / `description` = i18n-friendly (add a
+		* `pluginXxxName` / `pluginXxxDesc` key in locales.ts), `url` = GitHub repo,
+		* `install` = the full shell command pre-filled into the
 		* install terminal — it starts with `cd ~/.dsh` so the install runs with
 		* the DSH home as the working directory). Data integrity is guarded by
 		* `tests/plugin-list.spec.ts`.
@@ -16458,28 +17913,28 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		const builtinViewerPlugins = [
 			{
 				id: "@huanlin/dsh-plugin-better-sidebar-plugin-office",
-				name: "Office 预览插件",
+				name: () => t("pluginOfficeName"),
 				url: "https://github.com/HuanLinOTO/dsh-plugin-better-sidebar-plugin-office",
 				description: () => t("pluginOfficeDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add @huanlin/dsh-plugin-better-sidebar-plugin-office"
 			},
 			{
 				id: "dsh-md-export",
-				name: "Markdown 导出插件",
+				name: () => t("pluginMdExportName"),
 				url: "https://github.com/AnakinCao/dsh-md-export",
 				description: () => t("pluginMdExportDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-md-export"
 			},
 			{
 				id: "dsh-code-nav",
-				name: "代码预览导航",
+				name: () => t("pluginCodeNavName"),
 				url: "https://github.com/AnakinCao/dsh-code-nav",
 				description: () => t("pluginCodeNavDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add https://github.com/AnakinCao/dsh-code-nav.git"
 			},
 			{
 				id: "dsh-video-preview",
-				name: "视频预览插件",
+				name: () => t("pluginVideoPreviewName"),
 				url: "https://github.com/zemul/dsh-video-preview",
 				description: () => t("pluginVideoPreviewDesc"),
 				install: "cd ~/.dsh && dsh plugin --profile web add dsh-video-preview"
@@ -16518,15 +17973,16 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		/** The modal body: the GitHub topic button + the recommended plugin list
 		*  with per-entry jump/copy buttons (extracted for direct testing). */
 		function PluginListBody(props) {
-			const { service, kind } = props;
+			const { kind } = props;
 			const [copiedId, setCopiedId] = (0, react.useState)(null);
 			const [query, setQuery] = (0, react.useState)("");
 			const catalog = catalogOf(kind);
 			const needle = query.trim().toLowerCase();
 			const matches = (entry) => {
 				if (needle === "") return true;
+				const name = typeof entry.name === "function" ? entry.name() : entry.name;
 				const description = typeof entry.description === "function" ? entry.description() : entry.description;
-				return entry.name.toLowerCase().includes(needle) || entry.id.toLowerCase().includes(needle) || description.toLowerCase().includes(needle);
+				return name.toLowerCase().includes(needle) || entry.id.toLowerCase().includes(needle) || description.toLowerCase().includes(needle);
 			};
 			const filtered = catalog.filter(matches);
 			const groups = /* @__PURE__ */ new Map();
@@ -16554,51 +18010,56 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			const jump = (entry) => {
 				window.open(entry.url, "_blank", "noopener");
 			};
-			/** One catalog row (extracted so the group render stays flat). */
-			const renderEntry = (entry) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: SideCardSection_module_css_default.pluginEntry,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: SideCardSection_module_css_default.pluginEntryHead,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							className: SideCardSection_module_css_default.pluginName,
-							"aria-label": `${t("openPlugin")}: ${entry.name}`,
-							onClick: () => {
-								jump(entry);
-							},
-							children: entry.name
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: SideCardSection_module_css_default.pluginEntryActions,
+			/** One catalog row (extracted so the group render stays flat). The name
+			*  resolves like the description (string or () => string) so it follows
+			*  the active locale; a plain-string entry keeps its raw name. */
+			const renderEntry = (entry) => {
+				const name = typeof entry.name === "function" ? entry.name() : entry.name;
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: SideCardSection_module_css_default.pluginEntry,
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: SideCardSection_module_css_default.pluginEntryHead,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: SideCardSection_module_css_default.pluginJumpBtn,
-								"aria-label": `${t("openPlugin")}: ${entry.name}`,
+								className: SideCardSection_module_css_default.pluginName,
+								"aria-label": `${t("openPlugin")}: ${name}`,
 								onClick: () => {
 									jump(entry);
 								},
-								children: t("openPlugin")
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: SideCardSection_module_css_default.pluginCopyBtn,
-								"aria-label": `${t("copyInstall")}: ${entry.name}`,
-								onClick: () => {
-									copy(entry);
-								},
-								children: copiedId === entry.id ? t("copied") : t("copy")
+								children: name
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: SideCardSection_module_css_default.pluginEntryActions,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: SideCardSection_module_css_default.pluginJumpBtn,
+									"aria-label": `${t("openPlugin")}: ${name}`,
+									onClick: () => {
+										jump(entry);
+									},
+									children: t("openPlugin")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: SideCardSection_module_css_default.pluginCopyBtn,
+									"aria-label": `${t("copyInstall")}: ${name}`,
+									onClick: () => {
+										copy(entry);
+									},
+									children: copiedId === entry.id ? t("copied") : t("copy")
+								})]
 							})]
-						})]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: SideCardSection_module_css_default.pluginDesc,
-						children: typeof entry.description === "function" ? entry.description() : entry.description
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", {
-						className: SideCardSection_module_css_default.pluginInstall,
-						children: entry.install
-					})
-				]
-			}, entry.id);
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: SideCardSection_module_css_default.pluginDesc,
+							children: typeof entry.description === "function" ? entry.description() : entry.description
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", {
+							className: SideCardSection_module_css_default.pluginInstall,
+							children: entry.install
+						})
+					]
+				}, entry.id);
+			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: SideCardSection_module_css_default.pluginList,
 				children: [
@@ -17501,7 +18962,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 											...getShellPresets().map((preset) => ({
 												value: `preset:${preset.id}`,
 												title: preset.title,
-												desc: preset.detect?.(detectedEnv) === true ? `${preset.desc}（${t("settingsSchemeDetectedSuffix")}）` : preset.desc
+												desc: preset.detect?.(detectedEnv) === true ? `${textOf(preset.desc)}（${t("settingsSchemeDetectedSuffix")}）` : textOf(preset.desc)
 											})),
 											{
 												value: "custom",
@@ -17707,7 +19168,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		}
 		//#endregion
 		//#region \0dsh-css:/home/runner/work/DSH-better-sidebar/DSH-better-sidebar/src/client/layout.css.mjs
-		const css = "/**\n * Layout push: an open panel occupies layout instead of floating over it.\n * The right panel reserves padding inside the AppFrame three-column grid,\n * so the app sidebar, conversation, and details column all remain to its\n * left while the frame's border-box stays viewport-wide. Harness measures\n * that border-box to choose desktop versus narrow presentation; preserving\n * it prevents a desktop window from entering narrow mode merely because the\n * plugin panel opened.\n *\n * AppFrame positions its details drag handle from the measured border-box.\n * Move that handle left by the same reserved width so it stays on the details\n * column edge. The ordinary sidebar handle remains at its native coordinate.\n *\n * The bottom panel squeezes only the conversation column. The anchor is the\n * [data-dsh-center-col] tag the Sidebar shell's locator writes on the\n * frame's measured center grid item (Sidebar.tsx locate — not a positional\n * path: the frame also contains an overlay layer and drag handles). A\n * stretched grid item shrinks by its bottom margin, so the conversation\n * output and composer lift without touching either sidebar.\n *\n * Sizes ride CSS variables updated by the Sidebar shell (0 while collapsed).\n * Expand/collapse uses the host theme duration; drags disable transitions so\n * every reserved edge tracks the pointer.\n */\n/* Current shells expose [data-dsh-frame]; rc.8-era shells expose the same\n   AppFrame only as the root slot's direct child. */\n#root [data-dsh-frame],\n#root > [data-slot=\"root\"] > div {\n  box-sizing: border-box;\n  padding-right: var(--dsh-sidebar-width, 0px);\n  transition: padding-right var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n#root [data-dsh-frame] > [data-side=\"details\"],\n#root > [data-slot=\"root\"] > div > [data-side=\"details\"] {\n  transform: translateX(calc(0px - var(--dsh-sidebar-width, 0px)));\n  transition:\n    left var(--ds-transition-duration-slow) var(--ds-ease-in-out),\n    transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n/* The AppFrame's center column. The Sidebar shell's locator (Sidebar.tsx\n   locate/measureCenter) tags the measured column node with\n   [data-dsh-center-col] — one attribute write per node lifetime. The rule\n   used to anchor on a structural has()-selector over the conversation slot\n   wrapper, whose match cache invalidates on every #root subtree mutation\n   (the streaming chat mutates it constantly), re-evaluating the selector\n   against the whole document; the tag is evaluated once per node instead.\n   A stretched grid item shrinks by its margins, so the conversation\n   content (output + input bar) lifts without touching the sidebars. */\n#root [data-dsh-center-col] {\n  margin-bottom: var(--dsh-sidebar-height, 0px);\n  /* Grid/flex items default to min-height:auto. A long unbreakable token\n     (OAuth URL) then grows this column past the viewport and clips the\n     composer + left-rail Settings row. min-height:0 lets the cell shrink;\n     overflow-wrap lets the token wrap instead of forcing its intrinsic\n     size. The host's own descendants remain responsible for scrolling. */\n  min-height: 0;\n  overflow-wrap: anywhere;\n  transition: margin-bottom var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n/* When the sidebar is collapsed, the toggle cluster reclaims the top-right\n   corner. Push the DSH session header's right padding out so its right-aligned\n   utilities (the \"Session log\" download capsule) yield the corner instead of\n   hiding under the cluster. The header default right-pads 28px; the 2-button\n   cluster spans right 10→70px, so 78px clears it with an 8px gap. Anchor on\n   the header's slot host wrapper ([data-slot=\"conversation.session.header\"])\n   rather than a positional path: DSH 0.1.x nests the header several levels\n   under the center column. The Sidebar shell toggles the body attribute with\n   the panel open state. */\nbody[data-dsh-sidebar-collapsed] [data-slot=\"conversation.session.header\"] > header {\n  padding-right: 78px;\n}\n\nbody[data-dsh-sidebar-dragging] #root [data-dsh-frame],\nbody[data-dsh-sidebar-dragging] #root > [data-slot=\"root\"] > div,\nbody[data-dsh-sidebar-dragging] #root [data-dsh-frame] > [data-side=\"details\"],\nbody[data-dsh-sidebar-dragging] #root > [data-slot=\"root\"] > div > [data-side=\"details\"],\nbody[data-dsh-sidebar-dragging] #root [data-dsh-center-col],\n#root [data-dsh-frame][data-dragging] > [data-side=\"details\"],\n#root > [data-slot=\"root\"] > div[data-dragging] > [data-side=\"details\"] {\n  transition: none;\n}\n\n/* DSH 0.1.x gives external settings sections a generic gear and exposes no\n   icon field in the settings.section contract. settings-nav-icon.ts marks\n   only this plugin's localized row; render the requested Lucide\n   gallery-horizontal-end SVG as a currentColor mask so it follows the native\n   nav hover/active colors without changing the shell's 16px icon rhythm. */\n[data-dsh-better-sidebar-settings-nav] > svg:first-child {\n  display: none;\n}\n\n[data-dsh-better-sidebar-settings-nav]::before {\n  content: '';\n  flex: none;\n  width: 16px;\n  height: 16px;\n  background: currentColor;\n  -webkit-mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n  mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  #root [data-dsh-frame],\n  #root > [data-slot=\"root\"] > div,\n  #root [data-dsh-frame] > [data-side=\"details\"],\n  #root > [data-slot=\"root\"] > div > [data-side=\"details\"],\n  #root [data-dsh-center-col] {\n    transition: none;\n  }\n}\n";
+		const css = "/**\n * Layout push: an open panel occupies layout instead of floating over it.\n * The right panel reserves padding inside the AppFrame three-column grid,\n * so the app sidebar, conversation, and details column all remain to its\n * left while the frame's border-box stays viewport-wide. Harness measures\n * that border-box to choose desktop versus narrow presentation; preserving\n * it prevents a desktop window from entering narrow mode merely because the\n * plugin panel opened.\n *\n * AppFrame positions its details drag handle from the measured border-box.\n * Move that handle left by the same reserved width so it stays on the details\n * column edge. The ordinary sidebar handle remains at its native coordinate.\n *\n * The bottom panel squeezes only the conversation column. The anchor is the\n * [data-dsh-center-col] tag the Sidebar shell's locator writes on the\n * frame's measured center grid item (Sidebar.tsx locate — not a positional\n * path: the frame also contains an overlay layer and drag handles). A\n * stretched grid item shrinks by its bottom margin, so the conversation\n * output and composer lift without touching either sidebar.\n *\n * Sizes ride CSS variables updated by the Sidebar shell (0 while collapsed).\n * Expand/collapse uses the host theme duration; drags disable transitions so\n * every reserved edge tracks the pointer.\n */\n/* Current shells expose [data-dsh-frame]; rc.8-era shells expose the same\n   AppFrame only as the root slot's direct child. */\n#root [data-dsh-frame],\n#root > [data-slot=\"root\"] > div {\n  box-sizing: border-box;\n  padding-right: var(--dsh-sidebar-width, 0px);\n  transition: padding-right var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n#root [data-dsh-frame] > [data-side=\"details\"],\n#root > [data-slot=\"root\"] > div > [data-side=\"details\"] {\n  transform: translateX(calc(0px - var(--dsh-sidebar-width, 0px)));\n  transition:\n    left var(--ds-transition-duration-slow) var(--ds-ease-in-out),\n    transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n/* The AppFrame's center column. The Sidebar shell's locator (Sidebar.tsx\n   locate/measureCenter) tags the measured column node with\n   [data-dsh-center-col] — one attribute write per node lifetime. The rule\n   used to anchor on a structural has()-selector over the conversation slot\n   wrapper, whose match cache invalidates on every #root subtree mutation\n   (the streaming chat mutates it constantly), re-evaluating the selector\n   against the whole document; the tag is evaluated once per node instead.\n   A stretched grid item shrinks by its margins, so the conversation\n   content (output + input bar) lifts without touching the sidebars. */\n#root [data-dsh-center-col] {\n  margin-bottom: var(--dsh-sidebar-height, 0px);\n  /* Grid/flex items default to min-height:auto. A long unbreakable token\n     (OAuth URL) then grows this column past the viewport and clips the\n     composer + left-rail Settings row. min-height:0 lets the cell shrink;\n     overflow-wrap lets the token wrap instead of forcing its intrinsic\n     size. The host's own descendants remain responsible for scrolling. */\n  min-height: 0;\n  overflow-wrap: anywhere;\n  transition: margin-bottom var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n/* When the sidebar is collapsed, the toggle cluster reclaims the top-right\n   corner. Push the DSH session header's right padding out so its right-aligned\n   utilities (the \"Session log\" download capsule) yield the corner instead of\n   hiding under the cluster. The header default right-pads 28px; the 2-button\n   cluster spans right 10→70px, so 78px clears it with an 8px gap. Anchor on\n   the header's slot host wrapper ([data-slot=\"conversation.session.header\"])\n   rather than a positional path: DSH 0.1.x nests the header several levels\n   under the center column. The Sidebar shell toggles the body attribute with\n   the panel open state. */\nbody[data-dsh-sidebar-collapsed] [data-slot=\"conversation.session.header\"] > header {\n  padding-right: 78px;\n}\n\nbody[data-dsh-sidebar-dragging] #root [data-dsh-frame],\nbody[data-dsh-sidebar-dragging] #root > [data-slot=\"root\"] > div,\nbody[data-dsh-sidebar-dragging] #root [data-dsh-frame] > [data-side=\"details\"],\nbody[data-dsh-sidebar-dragging] #root > [data-slot=\"root\"] > div > [data-side=\"details\"],\nbody[data-dsh-sidebar-dragging] #root [data-dsh-center-col],\n#root [data-dsh-frame][data-dragging] > [data-side=\"details\"],\n#root > [data-slot=\"root\"] > div[data-dragging] > [data-side=\"details\"] {\n  transition: none;\n}\n\n/* DSH 0.1.x gives external settings sections a generic gear and exposes no\n   icon field in the settings.section contract. settings-nav-icon.ts marks\n   only this plugin's localized row; render the requested Lucide\n   gallery-horizontal-end SVG as a currentColor mask so it follows the native\n   nav hover/active colors without changing the shell's 16px icon rhythm. */\n[data-dsh-better-sidebar-settings-nav] > svg:first-child {\n  display: none;\n}\n\n[data-dsh-better-sidebar-settings-nav]::before {\n  content: '';\n  flex: none;\n  width: 16px;\n  height: 16px;\n  background: currentColor;\n  -webkit-mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n  mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  #root [data-dsh-frame],\n  #root > [data-slot=\"root\"] > div,\n  #root [data-dsh-frame] > [data-side=\"details\"],\n  #root > [data-slot=\"root\"] > div > [data-side=\"details\"],\n  #root [data-dsh-center-col] {\n    transition: none;\n  }\n}\n\n/* Context-menu submenu flip (viewport clamping for the portaled menus).\n *\n * The ui-primitives Menu clamps its main portal list into the viewport but\n * positions nested submenus with static CSS only — anchored at the parent\n * row's bottom, growing UP and to the RIGHT — with no clamp whatsoever.\n * Docked on the window's right edge, both defaults are the worst case for\n * this panel: a tall \"open with\" submenu escapes past the viewport top when\n * the row menu opens near the top, and past the right edge on narrow panels\n * (PANEL_MIN 280 < card 218 + gap + submenu 165).\n *\n * menu-flip.ts publishes `data-dsh-sidebar-submenu` on <body> — with the\n * words \"down\" and/or \"left\" — for exactly the lifetime of one of OUR\n * submenu-bearing menus (FileTree row menu, TabBar tab menu). The tokens\n * flip the growth direction; the attribute's absence restores the\n * primitive's own geometry untouched, and host-owned menus are never\n * affected because they never open while the attribute exists (each side\n * closes on the other's outside pointerdown).\n *\n * No max-height/overflow scroll cap here on purpose: overflow clipping\n * would cut the submenu's ::before hover bridge (the corridor that keeps\n * itemWrap's mouseleave from closing the card mid-crossing). */\n\n/* Visual tether, part 1 — the parent row stays lit while its submenu is\n * open. The primitive only styles :hover, so once the pointer crossed into\n * the side card the parent row's fill cleared and the floating card read as\n * unrelated. The Menu marks the open parent row with aria-expanded=\"true\"\n * (host-rendered, stable), so the same hover token re-applies for the\n * submenu's whole lifetime. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] button[aria-expanded=\"true\"] {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n/* Visual tether, part 2 — the side card hugs its parent (10px → 4px gap),\n * with the ::before hover corridor narrowed to match. Ordered BEFORE the\n * flip overrides below so their left/right flips still win. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"] {\n  left: calc(100% + 4px);\n}\n\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: -4px;\n  width: 4px;\n}\n\nbody[data-dsh-sidebar-submenu~=\"down\"] div[role=\"menu\"] div[role=\"menu\"] {\n  top: -4px;\n  bottom: auto;\n}\n\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"] {\n  left: auto;\n  right: calc(100% + 4px);\n}\n\n/* The hover bridge follows the card to the left side of the parent row. */\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: auto;\n  right: -4px;\n}\n";
 		const tagId = "dsh-better-sidebar/layout.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -17807,7 +19268,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				console.error(`[dsh-better-sidebar] ${phase} error:`, error);
 				try {
 					const bar = document.createElement("div");
-					bar.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:2147483000;max-width:70vw;padding:8px 12px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#f2a1a1;background:#1b1b22;border:1px solid #f2a1a1;border-radius:8px;white-space:pre-wrap";
+					bar.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:2147483000;max-width:70vw;padding:8px 12px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dsw-alias-state-error-primary,#f2a1a1);background:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-base,#1b1b22));border:1px solid var(--dsw-alias-state-error-primary,#f2a1a1);border-radius:8px;white-space:pre-wrap";
 					bar.textContent = `[dsh-better-sidebar] ${phase} error: ${error instanceof Error ? error.message : String(error)}`;
 					document.body.appendChild(bar);
 				} catch {}

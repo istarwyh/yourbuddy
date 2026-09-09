@@ -1,12 +1,12 @@
 {
-  "version": "0.9.4",
+  "version": "0.9.5",
   "sourceKind": "github-release-pair",
   "channel": "latest-stable-release",
-  "source": "https://codeload.github.com/istarwyh/harbor-self-evolving/tar.gz/8264804dfd23186d030703580020b941a1bcc306",
-  "releaseTag": "v0.9.4",
-  "commit": "8264804dfd23186d030703580020b941a1bcc306",
-  "integrity": "sha512-bkoe51+W4nAf5uCy5tGO1fVl24rn52HO9ejtFR9aOsEVuJehTvpT9AZbnd2MLiOTRNIqXy3iRekxn5OWh6ZhWg==",
-  "archiveSha256": "0968ee286b97676af211693096a91020230cddd4fd29d6685419c541583a0be6",
+  "source": "https://codeload.github.com/istarwyh/harbor-self-evolving/tar.gz/97d01bf3ee9abaed9f2555135def7ab55d2b722d",
+  "releaseTag": "v0.9.5",
+  "commit": "97d01bf3ee9abaed9f2555135def7ab55d2b722d",
+  "integrity": "sha512-j8xAb7pA8uAmnDEuABkn7qMIqZBADcNT1sLMY3ZonScVa4TQaEVfjZJsy8bQ40oOcsjUwjrstJ1t7kVwc4QzWg==",
+  "archiveSha256": "22b77dbd0845d52a76231991463379219089c2154a3e97e329a19d6e98ce71f3",
   "repository": "https://github.com/istarwyh/harbor-self-evolving",
   "package": "dsh-harbor-evolution",
   "sourcePath": "packages/dsh-plugin",
@@ -17,5 +17,5 @@
     "Preserve the YourBuddy bilingual README projection."
   ],
   "license": "MIT",
-  "treeSha256": "a39c73a4a695fda9338df65de1997d703c07ec4ebb22ac12c94b3c99821273cb"
+  "treeSha256": "8e1186d5578514890701370bea6e796e2da397a780ea13c5282c7d1ffedb20cd"
 }

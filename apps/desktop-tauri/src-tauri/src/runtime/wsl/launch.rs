@@ -93,7 +93,7 @@ pub fn build_wsl_web_command(
 #[cfg(test)]
 mod tests {
     use super::{build_wsl_web_command, WslLaunchSpec};
-    use crate::network_proxy::{resolve, NetworkProxySettings};
+    use crate::network_proxy::{resolve_without_environment_ca as resolve, NetworkProxySettings};
 
     fn spec() -> WslLaunchSpec {
         WslLaunchSpec {
@@ -148,8 +148,11 @@ mod tests {
             "NODE_EXTRA_CA_CERTS".to_string(),
             "-u".to_string(),
             "YOURBUDDY_NETWORK_PROXY_MODE".to_string(),
+            "-u".to_string(),
+            "YOURBUDDY_NETWORK_CA_SOURCE".to_string(),
             "NODE_OPTIONS=--use-system-ca".to_string(),
             "YOURBUDDY_NETWORK_PROXY_MODE=direct".to_string(),
+            "YOURBUDDY_NETWORK_CA_SOURCE=system".to_string(),
             "PATH=/home/u/.local/share/dsh-desktop/runtime/node/bin:/usr/bin".to_string(),
             "DSH_HOME=/home/u/.dsh".to_string(),
             "NODE_ENV=production".to_string(),

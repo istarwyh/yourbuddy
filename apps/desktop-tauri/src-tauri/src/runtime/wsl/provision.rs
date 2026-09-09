@@ -458,7 +458,7 @@ fn require_success(out: &WslOutput, prefix: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{ensure_wsl_runtime, LINUX_PROBE_PATH};
-    use crate::network_proxy::{resolve, NetworkProxySettings};
+    use crate::network_proxy::{resolve_without_environment_ca as resolve, NetworkProxySettings};
     use crate::runtime::wsl::{WslOutput, WslRunner};
     use std::fs;
     use std::path::PathBuf;

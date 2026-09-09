@@ -259,7 +259,6 @@ export function buildOpenTurnSnapshot(events: readonly SidechatLogEvent[]): stri
   let reasoning = ''
   const tools: string[] = []
   const pendingCalls = new Map<string, { name: string; args: string }>()
-  let total = 0
   for (let index = boundary + 1; index < events.length; index++) {
     const event = events[index]
     if (event === undefined) continue
@@ -299,13 +298,11 @@ export function buildOpenTurnSnapshot(events: readonly SidechatLogEvent[]): stri
         ...(result === '' ? [] : [`  Result: ${result}`]),
       ].join('\n')
       tools.push(line)
-      total += line.length
     }
   }
   for (const [, call] of pendingCalls) {
     const line = `- \`${call.name}\` (executing) — arguments: \`${call.args}\``
     tools.push(line)
-    total += line.length
   }
   const sections: string[] = []
   if (text.trim() !== '') sections.push(`Assistant output so far:\n\n${text}`)

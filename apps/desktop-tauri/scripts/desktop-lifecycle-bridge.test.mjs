@@ -22,7 +22,7 @@ const validators = Function(
   'marketplaceLinkChannel',
   'marketplaceLinkVersion',
   `${validatorSource}; return { readDesktopLifecycleAction, readNetworkProxyAction, isExternalLinkRequest, isMarketplaceLinkRequest }`,
-)('yourbuddy.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/, 'yourbuddy.desktop.network-proxy', 3, 'yourbuddy.desktop.external-link', 1, 'yourbuddy.desktop.marketplace-link', 1)
+)('yourbuddy.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/, 'yourbuddy.desktop.network-proxy', 4, 'yourbuddy.desktop.external-link', 1, 'yourbuddy.desktop.marketplace-link', 1)
 
 test('desktop shell accepts only fixed lifecycle request fields and actions', () => {
   const request = {
@@ -104,7 +104,7 @@ test('desktop shell accepts only fixed network proxy requests and bounded settin
   }
   const request = {
     channel: 'yourbuddy.desktop.network-proxy',
-    version: 3,
+    version: 4,
     type: 'test-request',
     requestId: 'proxy_1',
     settings,
@@ -113,13 +113,13 @@ test('desktop shell accepts only fixed network proxy requests and bounded settin
   assert.equal(validators.readNetworkProxyAction({ ...request, type: 'save-request' }), 'save')
   assert.equal(validators.readNetworkProxyAction({
     channel: request.channel,
-    version: 3,
+    version: 4,
     type: 'get-request',
     requestId: request.requestId,
   }), 'get')
   assert.equal(validators.readNetworkProxyAction({
     channel: request.channel,
-    version: 3,
+    version: 4,
     type: 'select-ca-request',
     requestId: request.requestId,
   }), 'select-ca')

@@ -229,7 +229,7 @@ fn format_output_tail(tail: &Arc<Mutex<Vec<String>>>) -> String {
 #[cfg(test)]
 mod tests {
     use super::{plugin_add_argv, wsl_plugin_add_command, CATALOG_SPEC};
-    use crate::network_proxy::{resolve, NetworkProxySettings};
+    use crate::network_proxy::{resolve_without_environment_ca as resolve, NetworkProxySettings};
     use crate::runtime::wsl::WslRuntimePaths;
 
     fn wsl_paths() -> WslRuntimePaths {

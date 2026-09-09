@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import { buildHistoricalGenerationBatch, writePrivateHistoricalBatch } from './session-materializer.js'
-import { buildSessionObservation } from './session-redaction.js'
+import { buildSessionObservation, DEFAULT_REDACTION_POLICY } from './session-redaction.js'
 import {
   canonicalDigest,
   SessionSelectionTokenStore,
@@ -239,6 +239,19 @@ export class SessionDiagnosticService {
       estimatedJudgeRequests: selected.length,
       estimatedMaxBytes: selected.length * 512 * 1024,
       evaluation,
+      dataPolicy: {
+        mode: 'source-text-with-secret-redaction',
+        credentials: 'redacted',
+        sessionIdentifiers: 'redacted',
+        localPaths: 'preserved',
+        sentToJudge: 'bounded-session-observation',
+        omittedFromJudge: ['reasoning', 'tool-payloads', 'attachments'],
+        redactionPolicy: {
+          id: DEFAULT_REDACTION_POLICY.id,
+          version: DEFAULT_REDACTION_POLICY.version,
+          digest: DEFAULT_REDACTION_POLICY.digest,
+        },
+      },
       retention: {
         privateEvidence: '.harbor/private/session-batches',
         jobEvidence: config.jobsDir ?? 'jobs',

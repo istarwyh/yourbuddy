@@ -11,6 +11,13 @@ export type ChangesPreview = {
     op: FileOp;
     prior?: string;
 };
+/** The render view of one html op target: the route-src iframe. Extracted
+ *  (and exported) so the always-sandboxed contract is pinned directly by the
+ *  sandbox spec — this surface has NO no-sandbox escape hatch. */
+export declare function HtmlRenderPreview(props: {
+    src: string;
+    title: string;
+}): import("react").JSX.Element;
 /** The diff tab a git preview expands into (the shell owns placement). */
 export declare function diffTabOf(ref: SidebarDiffRef): SidebarTab;
 export interface DiffPaneProps {
