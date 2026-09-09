@@ -2,14 +2,14 @@
 
 English | [中文](README.zh.md)
 
-This archive currently records the 0.3.6 enterprise network correction, complete local release preparation, and pull-request CI. Public desktop artifacts, updater metadata, App inspection, website deployment, and the downloadable verification archive remain pending and must be recorded after publication.
+This archive records the 0.3.6 enterprise network correction, complete local release preparation, pull-request CI, formal publication, public-file integrity, updater signature, App identity, and relocated runtime. Native startup and packaged-WebView interaction remain unverified; website deployment and the downloadable verification archive remain pending.
 
 - Release identifier: `yourbuddy-v0.3.6`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon; npm, Python, SDK, and other release channels are not applicable.
-- Archive state: partial release candidate; source, local synthetic private-CA path, assembled runtime, documentation, and pull-request CI evidence are recorded.
-- Tested product commit: [`ae00df24539f07479a6d097cf0c06e86b493d86e`](https://github.com/istarwyh/yourbuddy/commit/ae00df24539f07479a6d097cf0c06e86b493d86e), merged by [PR #19](https://github.com/istarwyh/yourbuddy/pull/19) as [`d0b55a7fee27fc240b1ef68ad14d968d4b96c0db`](https://github.com/istarwyh/yourbuddy/commit/d0b55a7fee27fc240b1ef68ad14d968d4b96c0db).
-- Evidence gallery: not applicable at the candidate stage; no packaged application was launched.
-- Evidence download: pending public artifact verification.
+- Archive state: public product evidence complete within the stated scope; website and downloadable-archive stages remain pending.
+- Tested product commits: [`ae00df24539f07479a6d097cf0c06e86b493d86e`](https://github.com/istarwyh/yourbuddy/commit/ae00df24539f07479a6d097cf0c06e86b493d86e), merged by [PR #19](https://github.com/istarwyh/yourbuddy/pull/19) as [`d0b55a7fee27fc240b1ef68ad14d968d4b96c0db`](https://github.com/istarwyh/yourbuddy/commit/d0b55a7fee27fc240b1ef68ad14d968d4b96c0db); terminal correction [`2b409de193d9aad1da24ebbc46cbd277186ab623`](https://github.com/istarwyh/yourbuddy/commit/2b409de193d9aad1da24ebbc46cbd277186ab623), merged by [PR #20](https://github.com/istarwyh/yourbuddy/pull/20) as the immutable release commit [`2c523beca5965e057d9ea536d648b3f1458ee7ef`](https://github.com/istarwyh/yourbuddy/commit/2c523beca5965e057d9ea536d648b3f1458ee7ef).
+- Evidence gallery: not applicable; no current installed-application screenshots were captured.
+- Evidence download: pending the final immutable evidence commit.
 
 ## User release notes
 
@@ -34,7 +34,7 @@ Use **Settings → Network proxy** when YourBuddy must reach HTTPS services thro
 
 ### Install or upgrade
 
-After publication, install the Apple Silicon DMG from the [0.3.6 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.6), or use **Settings → General → Application lifecycle → Check for updates** from an earlier YourBuddy installation. Public assets and an actual updater installation are not yet verified at this candidate stage.
+Install the Apple Silicon DMG from the [0.3.6 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.6), or use **Settings → General → Application lifecycle → Check for updates** from an earlier YourBuddy installation. The public files and updater signature are independently verified; an actual updater installation remains unverified.
 
 ### Compatibility, migration, and limitations
 
@@ -47,12 +47,12 @@ The desktop targets macOS 11 or later on Apple Silicon. Existing application dat
 | Enterprise CA and proxy policy | passed within source and synthetic-network scope | source and actual CLI Host at `ae00df245...` | macOS 15.6.1 arm64; Rust 1.98.0; bundled Node 22.19.0; local private CA, HTTPS origin, and CONNECT proxy | [local candidate record](evidence/local-candidate-validation.txt) |
 | Complete local release preparation | passed | locally assembled candidate, not an installer | macOS arm64; pnpm 11.7.0; offline production reinstall | [local candidate record](evidence/local-candidate-validation.txt) |
 | Pull-request CI | passed after a scoped test-synchronization correction | source at `ae00df245...` | GitHub-hosted Linux, macOS, and Windows matrix | [run 34361867650](https://github.com/istarwyh/yourbuddy/actions/runs/34361867650); [local candidate record](evidence/local-candidate-validation.txt) |
-| Release pull-request correction | passed locally; replacement CI pending | PR #20 branch after `6b457268...` | GitHub-hosted failure evidence and macOS arm64 correction | [run 34367447468](https://github.com/istarwyh/yourbuddy/actions/runs/34367447468); [local candidate record](evidence/local-candidate-validation.txt) |
-| Product publication and updater | pending | no public 0.3.6 product bytes yet | GitHub Release and stable updater channel | to be recorded after the tag workflow |
-| Public App and relocated runtime | pending | no public 0.3.6 App yet | macOS arm64 | to be recorded after anonymous download |
-| Product website | pending | no deployed 0.3.6 website source yet | local site build and GitHub Pages | to be recorded after publication |
+| Release pull-request correction | passed after retaining the failed first run and failed native-test attempt | release source at `2b409de193...` | GitHub-hosted Linux, macOS, and Windows matrix | [run 34375335129](https://github.com/istarwyh/yourbuddy/actions/runs/34375335129); [local candidate record](evidence/local-candidate-validation.txt) |
+| Product publication and updater | passed | five anonymously downloaded release assets | GitHub Release and stable updater channel | 3/3 checksums, five API digests, byte-identical manifests, and Minisign verification; [artifact record](evidence/public-artifact-stage.json) |
+| Public App and relocated runtime | passed within recorded scope | unchanged App from the public DMG | macOS 15.6.1 arm64 | DMG/updater trees identical; identity, strict ad-hoc signature, CLI, and imports passed; [runtime record](evidence/public-runtime-stage.json) |
+| Product website | passed locally; deployment pending | current publication branch | Hugo Extended 0.165.0, Go 1.27.1, local link checks | 70 tests and 57 rendered HTML pages passed; [local record](evidence/website-local-validation.txt) |
 | Downloadable verification archive | pending | no 0.3.6 evidence ZIP yet | GitHub Release | to be recorded after the final archive commit |
-| Packaged native startup and WebView journey | not verified | no packaged 0.3.6 App launched | macOS arm64 | no screenshot or installed-product claim |
+| Packaged native startup and WebView journey | not verified | public 0.3.6 App was not launched | existing user-owned YourBuddy instance prevented isolation | no screenshot or installed-product claim; [skipped observation](evidence/public-native-startup.txt) |
 | Real enterprise proxy and CA | not verified | synthetic local network only | local isolated services | no organization certificate, credential, or external enterprise endpoint used |
 
 ## Scenario: Enterprise CA and proxy policy
@@ -168,9 +168,9 @@ CI establishes the tested source and matrix only. It does not prove product publ
 
 ## Scenario: Release PR terminal-output recovery
 
-- Status: owner correction and complete local release preparation passed; replacement pull-request CI is pending.
-- Date and time: 2026-09-09 23:01 through 2026-09-10 00:02 UTC+08:00, Asia/Shanghai.
-- Release and commit: PR #20 release-preparation commit `6b457268ac6c0b2251babcf9fbed29ec4810fa05` plus its corrective branch state.
+- Status: passed after the owner correction; both the failed first run and the failed Windows native-test attempt remain negative evidence.
+- Date and time: 2026-09-09 23:01 through 2026-09-10 00:45 UTC+08:00, Asia/Shanghai.
+- Release and commit: PR #20 release-preparation commit `6b457268ac6c0b2251babcf9fbed29ec4810fa05`, correction `2b409de193d9aad1da24ebbc46cbd277186ab623`, merged as release commit `2c523beca5965e057d9ea536d648b3f1458ee7ef`.
 - Build under test: source checkout and locally assembled candidate; no installer or public product bytes.
 - Environment: GitHub-hosted Linux and Windows runners for the failed CI run; macOS 15.6.1 arm64 with Node 22.22.2 and pnpm 11.7.0 for the correction.
 - Evidence origin: this release run.
@@ -184,6 +184,7 @@ CI establishes the tested source and matrix only. It does not prove product publ
 3. Restricted exact Linux stdin-wait readiness to a different foreground child process group. The remembered shell process group now requires its owned controlled prompt or a bounded fallback, so settlement cannot discard delayed command output.
 4. Ran the focused 51-case session suite and the complete terminal-bash package suite: 89 passed and three optional real-pwsh cases skipped because the faulty local PowerShell executable was deliberately absent from `PATH`.
 5. Re-recorded the two Harbor snapshot hashes after confirming their only drift came from the reviewed bilingual README synchronization, verified all six external snapshots, checked the latest product channels, and completed release preparation with a zero-download 587-package reinstall and all six assembled Client plugins.
+6. Retained attempt 1 of run 34375335129 when the Windows native-test Vitest worker exited before reporting a test result, then reran only the failed job. Attempt 2 passed the affected worker-thread package, all 67 native-test cases, and the complete 19-job aggregate.
 
 ### Expected
 
@@ -191,25 +192,58 @@ The shell's own input wait must not settle an operation before its controlled pr
 
 ### Actual
 
-The deterministic session tests now hold a shell-group stdin wait without settling, then return the delayed output after the controlled prompt. The changed-foreground-group case still settles at the exact-probe threshold. Complete local release preparation passed with Harness SHA-256 `5c765be554a75a8a3810281e8364d21b11792e83eb443366c05e10744794aed0`, Store SHA-256 `c4c733da80b6027aa6cd946b7a047db98338d82625cee72b72ad928e5379fe09`, Store archive SHA-256 `262405620e237043ad157e66f5a95b199920686df6f78bb244e11409b21d77e8`, and complete bundle SHA-256 `078ca9f07b7f46e8a5160bb7bafe2c5a41a8d8c86cb7f7fd376684cf7930f78e`. Replacement CI remains pending and is not claimed as passing.
+The deterministic session tests now hold a shell-group stdin wait without settling, then return the delayed output after the controlled prompt. The changed-foreground-group case still settles at the exact-probe threshold. Complete local release preparation passed with Harness SHA-256 `5c765be554a75a8a3810281e8364d21b11792e83eb443366c05e10744794aed0`, Store SHA-256 `c4c733da80b6027aa6cd946b7a047db98338d82625cee72b72ad928e5379fe09`, Store archive SHA-256 `262405620e237043ad157e66f5a95b199920686df6f78bb244e11409b21d77e8`, and complete bundle SHA-256 `078ca9f07b7f46e8a5160bb7bafe2c5a41a8d8c86cb7f7fd376684cf7930f78e`. [Run 34375335129](https://github.com/istarwyh/yourbuddy/actions/runs/34375335129), attempt 2, completed all 19 jobs successfully before PR #20 merged. Its first attempt had selected Node 24.20.0 for the Windows native lane and failed before the suite reported tests; the passing retry selected 24.19.0, so 24.20.0 remains unverified rather than being inferred from the retry.
 
 ### Evidence
 
 - Before: failed release PR [run 34367447468](https://github.com/istarwyh/yourbuddy/actions/runs/34367447468), retained without rerunning unchanged.
 - In progress: focused and package test results plus final assembly hashes in the [local candidate record](evidence/local-candidate-validation.txt).
-- Result: local correction and complete assembly passed; remote replacement CI pending.
-- Failure and recovery: the runtime readiness owner was corrected; no timeout was widened, no output assertion was weakened, and the failed run remains negative evidence.
+- Result: local correction, complete assembly, and replacement CI passed before merge.
+- Failure and recovery: the runtime readiness owner was corrected; no timeout was widened and no output assertion was weakened. Run 34367447468 and attempt 1 of run 34375335129 remain negative evidence rather than being described as passes.
 
 ### Scope limits
 
-Local tests and assembly do not substitute for the pending Linux coverage rerun, public installer validation, updater installation, App startup, or website deployment.
+Local tests and CI do not substitute for public installer validation, updater installation, App startup, or website deployment. The successful retry also does not establish Node 24.20.0 compatibility.
+
+## Scenario: Independent public artifact verification
+
+- Status: passed for anonymous availability, complete files, public checksums, stable updater metadata, and updater cryptographic signature.
+- Date and time: 2026-09-10 01:08–01:18 UTC+08:00, Asia/Shanghai.
+- Release and build: [`yourbuddy-v0.3.6`](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.6), immutable tag commit `2c523beca5965e057d9ea536d648b3f1458ee7ef`, built by [workflow 34379057672](https://github.com/istarwyh/yourbuddy/actions/runs/34379057672).
+- Method: downloaded all five assets without GitHub authentication; checked byte counts and SHA-256 against the public GitHub API; checked all three `SHA256SUMS.txt` entries; compared the stable and versioned updater manifests.
+- Cryptographic check: `minisign-verify` 0.2.5 used the public key from the immutable tag configuration and verified the updater archive's prehashed signature and trusted comment.
+- Evidence: [public artifact record](evidence/public-artifact-stage.json).
+
+| Public asset | Bytes | Independently observed SHA-256 |
+|---|---|---|
+| `latest.json` | 4,615 | `ad806fec61e87a2c2ac95bec14a50aedba6c3a10103037ca7b18d8f315ef440a` |
+| `SHA256SUMS.txt` | 312 | `a4a2081c9df8be6e67128fa27430232400f8af6618c44f00db8fdb351342c29e` |
+| `yourbuddy-0.3.6-macos-arm64.app.tar.gz` | 570,784,766 | `8db651f6cf45e935503b551b1dcc04061c2fa438132a45cfddfd5d8452349e56` |
+| `yourbuddy-0.3.6-macos-arm64.app.tar.gz.sig` | 408 | `f7c0cc86e0f2f584c0a950555b1f67c37e37dc18d31b40cb453f16afde670e5b` |
+| `yourbuddy-0.3.6-macos-arm64.dmg` | 568,866,355 | `ae1d459166dde9d54a4e8a48d88d546c9497aac19254a1808f25f838e8617a98` |
+
+The first signature-audit command treated Tauri's base64-encoded `.sig` asset as direct Minisign text and returned `InvalidEncoding`; it was discarded as an audit setup error. Decoding the asset before the actual verification passed. This check does not prove native startup, updater installation, Apple notarization, packaged-WebView behavior, or real enterprise traffic.
+
+## Scenario: Public App and relocated runtime
+
+- Status: DMG integrity, App identity, DMG/updater equality, strict ad-hoc code-signature integrity, bundled enterprise-CA metadata, and relocated Python/Harbor CLI and imports passed; native startup and visual interaction were skipped.
+- Date and time: 2026-09-10 01:10–01:18 UTC+08:00, Asia/Shanghai.
+- Build under test: unchanged App copied from the anonymously downloaded public DMG; no identity, executable, resource, or signature bytes were edited.
+- Environment: macOS 15.6.1 arm64; isolated runtime copy; no OAuth token, profile, model request, proxy credential, organization certificate, or private Session data.
+- Evidence: [public runtime record](evidence/public-runtime-stage.json) and [native-startup skip](evidence/public-native-startup.txt).
+
+`hdiutil verify`, read-only mount, copy, and detach passed. The DMG and updater archive contained byte-identical App trees. The App reports version/build 0.3.6, identifier `io.github.istarwyh.yourbuddy`, and an arm64 executable. `codesign --deep --strict` exited 0, but the signature is ad-hoc with no TeamIdentifier; Gatekeeper exited 3 and rejected it. It is not Apple Developer signed or notarized.
+
+The public bundle contains DSH 0.1.2-rc.1, Better Sidebar 0.18.1, Harbor Evolution 0.9.5, the other four recorded product plugins, Node 22.19.0, and pnpm 11.7.0. Its native binary contains the CA source metadata key and selected, inherited, and system source values. A relocated copy whose recorded build prefix was replaced with a nonexistent path passed `harbor --version`, `harbor-dsh --help`, and direct Python imports using the same bundled `PYTHONHOME` as the launchers; it reports Python 3.12.14, Harbor 0.21.0, and adapter 0.9.5.
+
+A user-owned YourBuddy process and managed Host were already running. Launching the public copy could interact with that global single-instance owner, so neither was stopped and the downloaded App was not launched. Native readiness, Finder installation, update from an older version, packaged-WebView network settings, screenshots, OAuth, and real enterprise traffic remain unverified.
 
 ## Delivery status
 
-- Product publication status: pending; `yourbuddy-v0.3.6` has not yet been tagged or published and no product asset is claimed.
-- Verification archive status: partial; source, synthetic network, local candidate, failure/recovery, and PR CI evidence are recorded. Public artifact, updater, App/runtime, website, and downloadable-ZIP evidence are pending.
-- Website synchronization status: pending; no 0.3.6 website deployment or live URL has been claimed.
-- Unverified scope: public DMG and updater bytes, checksums, updater signature and installation, App identity and native startup, packaged-WebView journey, Apple Developer signing and notarization, a real enterprise proxy or certificate, proxy authentication, website deployment, Intel macOS, and Windows and Linux desktop products.
+- Product publication status: passed; `yourbuddy-v0.3.6` is the Latest formal GitHub Release with five independently downloaded and checked product assets. Native startup and updater installation remain unverified.
+- Verification archive status: partial; source, synthetic network, local candidate, CI, public artifact, updater-signature, App/runtime, failure/recovery, and native-startup skip evidence are recorded. Website and downloadable-ZIP evidence remain pending.
+- Website synchronization status: local source projection and build passed; deployment and live URL checks remain pending.
+- Unverified scope: native App startup, updater installation, packaged-WebView journey, Apple Developer signing and notarization, a real enterprise proxy or certificate, proxy authentication, Node 24.20.0 compatibility, website deployment, Intel macOS, and Windows and Linux desktop products.
 
 ## Delivery checklist
 
@@ -220,9 +254,9 @@ Local tests and assembly do not substitute for the pending Linux coverage rerun,
 - [x] Synthetic, source-only, cancelled, failed, pending, and unverified observations are labelled explicitly.
 - [x] Credentials, private certificates, account data, and private Session content are absent.
 - [x] The release entry was added to both language indexes and the bilingual version pages are present.
-- [ ] The public tag, release commit, workflow, filenames, hashes, checksums, updater manifest, and signature are recorded.
-- [ ] The anonymously downloaded public App and relocated runtime are inspected.
-- [ ] The affected packaged-WebView settings journey is exercised or retained as an explicit limit.
+- [x] The public tag, release commit, workflow, filenames, hashes, checksums, updater manifest, and signature are recorded.
+- [x] The anonymously downloaded public App and relocated runtime are inspected.
+- [x] The affected packaged-WebView settings journey is retained as an explicit limit because an isolated launch was unsafe.
 - [ ] The bilingual product website is synchronized, deployed, and checked at live URLs.
 - [ ] The downloadable evidence archive is created from an immutable commit, uploaded, anonymously downloaded, compared, and extracted.
 - [x] Product publication, verification archive, website synchronization, and unverified scope are reported separately.
