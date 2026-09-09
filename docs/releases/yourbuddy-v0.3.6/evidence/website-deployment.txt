@@ -1,0 +1,90 @@
+YourBuddy 0.3.6 product website deployment and live verification
+
+Status: passed within the recorded website scope
+Observed: 2026-09-10 02:30-02:40 UTC+08:00, Asia/Shanghai
+Release: yourbuddy-v0.3.6
+Release tag target: 2c523beca5965e057d9ea536d648b3f1458ee7ef
+Website source commit: 5fa67b4771cc715736e10868b0884fa77a62bed3
+Website source PR: https://github.com/istarwyh/yourbuddy/pull/21
+PR CI: https://github.com/istarwyh/yourbuddy/actions/runs/34384125128
+Website workflow: https://github.com/istarwyh/yourbuddy/actions/runs/34389210312
+GitHub Pages deployment: 6356638242
+Deployment status: success at 2026-09-09T18:30:04Z
+Deployment URL: https://istarwyh.github.io/yourbuddy/
+
+Build under test
+----------------
+
+The public GitHub Pages deployment from the website source commit above. This
+is not the desktop installer or a source preview.
+
+Environment and method
+----------------------
+
+- GitHub Pages and GitHub Releases, accessed without repository credentials.
+- macOS 15.6.1 arm64.
+- curl fetched the deployed HTML, followed public redirects, and inspected the
+  rendered static DOM for the document language, title, version text, and link
+  targets.
+- Chrome CDP visual and interaction checks were attempted through the required
+  web-access path, but the host authorization did not complete before either
+  proxy attempt timed out. No browser-rendering claim is made.
+- No account, OAuth token, proxy credential, certificate, personal data, or
+  private application path was recorded.
+
+Steps and observations
+----------------------
+
+1. Retained attempt 1 of PR CI run 34384125128. All repository jobs except the
+   Snapshot / Artifacts lane passed; that lane stopped before repository tests
+   when Playwright's Google apt dependency source returned a Packages.gz hash
+   mismatch. Only the failed lane was rerun, and attempt 2 passed its actual
+   snapshot and artifact gates. The final aggregate passed. The separate
+   Cloudflare preview had no matching runner and was cancelled without being
+   counted as a pass.
+2. Queried the master website workflow. Its build and deploy jobs both passed
+   for commit 5fa67b4771cc715736e10868b0884fa77a62bed3.
+3. Queried the GitHub deployment API. Deployment 6356638242 reported success
+   with https://istarwyh.github.io/yourbuddy/ as its environment URL.
+4. Fetched the six release-facing pages without authentication. Every page
+   returned HTTP 200, declared the expected document language and title, and
+   contained the 0.3.6 release text:
+
+   - https://istarwyh.github.io/yourbuddy/ - YourBuddy; Chinese home.
+   - https://istarwyh.github.io/yourbuddy/en/ - YourBuddy; English home.
+   - https://istarwyh.github.io/yourbuddy/download/ - Get YourBuddy in Chinese.
+   - https://istarwyh.github.io/yourbuddy/en/download/ - Get YourBuddy.
+   - https://istarwyh.github.io/yourbuddy/releases/ - Release status in Chinese.
+   - https://istarwyh.github.io/yourbuddy/en/releases/ - Release status.
+
+5. Inspected both download-page DOMs. Their anchors resolve to the exact 0.3.6
+   DMG, SHA256SUMS.txt, GitHub Release, language-matched verification record,
+   and raw Markdown route.
+6. Followed the public Release, DMG, checksum, both verification records, and
+   all six raw Markdown routes without authentication. Every target returned
+   HTTP 200. The DMG was not downloaded again in this stage because its earlier
+   complete anonymous download and SHA-256 check are recorded in
+   public-artifact-stage.json.
+
+Expected and actual
+-------------------
+
+Expected: the deployed bilingual pages describe 0.3.6, preserve the stated
+unverified product limits, and route users to the published installer,
+checksums, Release, evidence, and raw Markdown.
+
+Actual: deployment status, all six public pages, and all followed public
+targets met that scope. This establishes website publication and link
+availability, not native App startup, installation, WebView behavior, updater
+installation, real enterprise traffic, or visual browser rendering.
+
+Failure and recovery
+--------------------
+
+The web-access dependency checker found a five-hour-old CDP proxy that no
+longer completed its Chrome WebSocket handshake. The exact proxy process was
+stopped and recreated without stopping Chrome or YourBuddy. Both the original
+and replacement proxy attempts then timed out waiting for host browser
+authorization. These attempts are retained as tool limitations and are not
+counted as either website success or failure. Deployment metadata, public HTTP,
+and static-DOM link inspection provide the passing observations above.

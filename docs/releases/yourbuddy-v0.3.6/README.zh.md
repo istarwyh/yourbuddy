@@ -2,11 +2,11 @@
 
 [English](README.md) | 中文
 
-本归档记录 0.3.6 企业网络修复、完整本地发布准备、PR CI、正式发布、公开文件完整性、Updater 签名、App 标识与迁移运行时。原生启动与安装包 WebView 操作仍未验证；官网部署与可下载验证资料仍待处理。
+本归档记录 0.3.6 企业网络修复、完整本地发布准备、PR CI、正式发布、公开文件完整性、Updater 签名、App 标识、迁移运行时与已部署的双语产品官网。原生启动、安装包 WebView 操作及官网浏览器可视渲染仍未验证；可下载验证资料仍待处理。
 
 - 发布标识：`yourbuddy-v0.3.6`。
 - 产品渠道：面向 macOS Apple Silicon 的 YourBuddy 桌面应用；npm、Python、SDK 及其他发布渠道不适用。
-- 归档状态：公开产品证据在声明范围内已完成；官网与可下载归档阶段仍待处理。
+- 归档状态：公开产品与官网证据在声明范围内已完成；可下载归档阶段仍待处理。
 - 受测产品 Commit：[`ae00df24539f07479a6d097cf0c06e86b493d86e`](https://github.com/istarwyh/yourbuddy/commit/ae00df24539f07479a6d097cf0c06e86b493d86e)，由 [PR #19](https://github.com/istarwyh/yourbuddy/pull/19) 合并为 [`d0b55a7fee27fc240b1ef68ad14d968d4b96c0db`](https://github.com/istarwyh/yourbuddy/commit/d0b55a7fee27fc240b1ef68ad14d968d4b96c0db)；终端修正 [`2b409de193d9aad1da24ebbc46cbd277186ab623`](https://github.com/istarwyh/yourbuddy/commit/2b409de193d9aad1da24ebbc46cbd277186ab623)，由 [PR #20](https://github.com/istarwyh/yourbuddy/pull/20) 合并为不可变发布 Commit [`2c523beca5965e057d9ea536d648b3f1458ee7ef`](https://github.com/istarwyh/yourbuddy/commit/2c523beca5965e057d9ea536d648b3f1458ee7ef)。
 - 证据图库：不适用；本次没有捕获当前安装版应用截图。
 - 证据下载：最终不可变证据 Commit 完成后补充。
@@ -50,7 +50,7 @@ YourBuddy 0.3.6 对原生桌面客户端以及应用启动的 Host、插件、WS
 | 发布 PR 修正 | 保留首次 Run 与原生测试首次 Attempt 失败后通过 | `2b409de193...` 的发布源码 | GitHub 托管 Linux、macOS 与 Windows 矩阵 | [Run 34375335129](https://github.com/istarwyh/yourbuddy/actions/runs/34375335129)；[本地候选记录](evidence/local-candidate-validation.txt) |
 | 产品发布与 Updater | 通过 | 五个匿名下载的 Release 附件 | GitHub Release 与稳定更新渠道 | 3/3 校验和、五个 API 摘要、字节相同的 Manifest 与 Minisign 验证；[产物记录](evidence/public-artifact-stage.json) |
 | 公开 App 与迁移运行时 | 在记录范围内通过 | 公开 DMG 中原样 App | macOS 15.6.1 arm64 | DMG／Updater 树相同；标识、严格 ad-hoc 签名、CLI 与导入通过；[运行时记录](evidence/public-runtime-stage.json) |
-| 产品官网 | 本地通过；部署待处理 | 当前发布分支 | Hugo Extended 0.165.0、Go 1.27.1、本地链接检查 | 70 个测试与 57 个渲染 HTML 页面通过；[本地记录](evidence/website-local-validation.txt) |
+| 产品官网 | 在记录的部署与 HTTP 范围内通过 | `5fa67b477...` 的公开部署 | GitHub Pages 与匿名 HTTP | 构建和部署通过；六个双语页面及其发布相关目标均返回 200；[本地记录](evidence/website-local-validation.txt)与[部署记录](evidence/website-deployment.txt) |
 | 可下载验证资料 | 待处理 | 尚无 0.3.6 证据 ZIP | GitHub Release | 最终归档 Commit 后记录 |
 | 安装包原生启动与 WebView 路径 | 未验证 | 未启动公开 0.3.6 App | 已有用户持有的 YourBuddy 实例，无法隔离 | 没有截图或已安装产品声明；[跳过记录](evidence/public-native-startup.txt) |
 | 真实企业代理与 CA | 未验证 | 仅使用合成本地网络 | 本地隔离服务 | 未使用组织证书、凭据或外部企业端点 |
@@ -238,12 +238,25 @@ shell 自身的输入等待不得在受控提示符与最终输出到达前结�
 
 电脑上已有用户持有的 YourBuddy 进程与托管 Host 运行。启动公开副本可能与全局 Single-instance 拥有方交互，因此没有停止现有进程，也没有启动下载的 App。原生就绪、Finder 安装、从旧版升级、安装包 WebView 网络设置、截图、OAuth 与真实企业流量仍未验证。
 
+## 场景：公开产品官网
+
+- 状态：官网部署、双语静态渲染、0.3.6 文案及公开 Release／下载链接可用性通过；浏览器可视渲染仍未验证。
+- 日期与时间：2026-09-10 02:30–02:40 UTC+08:00，Asia/Shanghai。
+- Release 与 Commit：`yourbuddy-v0.3.6`；官网来源为 [`5fa67b4771cc715736e10868b0884fa77a62bed3`](https://github.com/istarwyh/yourbuddy/commit/5fa67b4771cc715736e10868b0884fa77a62bed3)，来自 [PR #21](https://github.com/istarwyh/yourbuddy/pull/21)。
+- 受测构建：公开 GitHub Pages 部署，不是源码 Preview 或桌面安装包。
+- 环境：GitHub Pages、GitHub Releases，以及 macOS 15.6.1 arm64 上的匿名 HTTP。
+- 证据：[官网本地记录](evidence/website-local-validation.txt)、[部署与线上检查记录](evidence/website-deployment.txt)及 [Workflow 34389210312](https://github.com/istarwyh/yourbuddy/actions/runs/34389210312)。
+
+官网 Workflow 的 Build 与 Deploy Job 通过，GitHub Deployment `6356638242` 对准确来源 Commit 报告成功。中英文首页、下载页与发行页均返回 HTTP 200，声明预期语言与标题，并包含 0.3.6 发布文案。两个下载页的 DOM 均链接到准确 DMG、校验和文件、GitHub Release、对应语言验证记录与 Raw Markdown；这些目标及六个 Raw Markdown 路由均返回 HTTP 200。本阶段没有再次下载 DMG，因为此前匿名下载完整文件并检查 Hash 的步骤已经通过。
+
+PR CI [Run 34384125128](https://github.com/istarwyh/yourbuddy/actions/runs/34384125128) 保留了一次 Snapshot / Artifacts 初始化失败：Google apt 的 `Packages.gz` Hash 不匹配，仓库测试尚未执行。仅重跑该失败 Lane；Attempt 2 通过实际 Gate 与最终汇总。Cloudflare Preview 没有匹配 Runner，已取消且未计为通过。两次规定的 web-access CDP 尝试都因等待宿主 Chrome 授权超时，因此不声明像素级或交互式浏览器通过。部署元数据、公开 HTTP 与静态 DOM 检查证明记录的官网范围，但不能验证桌面 App、安装、WebView 行为、Updater 安装或真实企业流量。
+
 ## 交付状态
 
 - 产品发布状态：已通过；`yourbuddy-v0.3.6` 是 Latest 正式 GitHub Release，五个产品附件均已独立下载核验。原生启动与 Updater 安装仍未验证。
-- 验证资料归档状态：部分完成；已记录源码、合成网络、本地候选、CI、公开产物、Updater 签名、App／运行时、失败／恢复与原生启动跳过证据。官网与可下载 ZIP 证据仍待处理。
-- 官网同步状态：本地源码投影与构建通过；部署与线上 URL 检查仍待处理。
-- 未验证范围：原生 App 启动、Updater 安装、安装包 WebView 路径、Apple Developer 签名与公证、真实企业代理或证书、代理认证、Node 24.20.0 兼容性、官网部署、Intel macOS，以及 Windows 与 Linux 桌面产品。
+- 验证资料归档状态：部分完成；已记录源码、合成网络、本地候选、CI、公开产物、Updater 签名、App／运行时、官网、失败／恢复与原生启动跳过证据。可下载 ZIP 仍待处理。
+- 官网同步状态：在记录的 HTTP 范围内完成部署与核验；Commit [`5fa67b4771cc715736e10868b0884fa77a62bed3`](https://github.com/istarwyh/yourbuddy/commit/5fa67b4771cc715736e10868b0884fa77a62bed3) 通过 [Workflow 34389210312](https://github.com/istarwyh/yourbuddy/actions/runs/34389210312) 部署，六个双语发布相关页面及其公开目标均通过。由于 CDP 授权超时，浏览器可视渲染仍未验证。
+- 未验证范围：原生 App 启动、Updater 安装、安装包 WebView 路径、Apple Developer 签名与公证、真实企业代理或证书、代理认证、Node 24.20.0 兼容性、官网浏览器可视渲染、Intel macOS，以及 Windows 与 Linux 桌面产品。
 
 ## 交付清单
 
@@ -257,7 +270,7 @@ shell 自身的输入等待不得在受控提示符与最终输出到达前结�
 - [x] 记录公开 Tag、Release Commit、Workflow、文件名、Hash、校验和、Updater Manifest 与签名。
 - [x] 检查匿名下载的公开 App 与迁移运行时。
 - [x] 由于无法安全完成隔离启动，受影响的安装包 WebView 设置路径作为明确限制保留。
-- [ ] 同步并部署双语产品官网，并检查线上 URL。
+- [x] 在记录的 HTTP 范围内同步、部署双语产品官网，并检查线上 URL。
 - [ ] 从不可变 Commit 创建可下载证据归档，完成上传、匿名下载、比较与解压。
 - [x] 分别报告产品发布、验证资料归档、官网同步与未验证范围。
 - [x] 未移动或覆盖公开 Tag 和安装包。
