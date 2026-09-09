@@ -140,9 +140,10 @@ function runHost(url, proxyUrl, caPath, workspace, suffix) {
     let stdout = ''
     let stderr = ''
     let result
+    let timeoutError
     const timeout = setTimeout(() => {
+      timeoutError = new Error(`Node Host probe timed out\nstdout:\n${stdout}\nstderr:\n${stderr}`)
       child.kill('SIGKILL')
-      reject(new Error(`Node Host probe timed out\nstdout:\n${stdout}\nstderr:\n${stderr}`))
     }, 60_000)
     child.stdout.setEncoding('utf8').on('data', chunk => {
       stdout = `${stdout}${chunk}`.slice(-64_000)
@@ -160,6 +161,10 @@ function runHost(url, proxyUrl, caPath, workspace, suffix) {
     })
     child.once('close', code => {
       clearTimeout(timeout)
+      if (timeoutError !== undefined) {
+        reject(timeoutError)
+        return
+      }
       if (result === undefined) {
         reject(new Error(`Node Host exited before its probe completed (code=${code})\nstdout:\n${stdout}\nstderr:\n${stderr}`))
         return
@@ -171,6 +176,10 @@ function runHost(url, proxyUrl, caPath, workspace, suffix) {
 
 function closeServer(server) {
   return new Promise((resolve, reject) => {
+    if (!server.listening) {
+      resolve()
+      return
+    }
     server.close(error => error === undefined ? resolve() : reject(error))
   })
 }
@@ -197,8 +206,13 @@ test('actual Node Host uses HTTP CONNECT and startup CA injection together', asy
     upstream.once('error', () => { client.destroy() })
   })
   t.after(async () => {
-    await Promise.all([closeServer(proxy), closeServer(target)])
-    rmSync(workspace, { force: true, recursive: true })
+    const closures = await Promise.allSettled([closeServer(proxy), closeServer(target)])
+    try {
+      const failedClosure = closures.find(closure => closure.status === 'rejected')
+      if (failedClosure !== undefined) throw failedClosure.reason
+    } finally {
+      rmSync(workspace, { force: true, recursive: true })
+    }
   })
   await new Promise((resolve, reject) => {
     target.once('error', reject)
