@@ -47,6 +47,7 @@ YourBuddy 0.3.6 对原生桌面客户端以及应用启动的 Host、插件、WS
 | 企业 CA 与代理规则 | 在源码与合成网络范围内通过 | `ae00df245...` 的源码与真实 CLI Host | macOS 15.6.1 arm64；Rust 1.98.0；内置 Node 22.19.0；本地私有 CA、HTTPS Origin 与 CONNECT 代理 | [本地候选记录](evidence/local-candidate-validation.txt) |
 | 完整本地发布准备 | 通过 | 本地组装候选，不是安装包 | macOS arm64；pnpm 11.7.0；离线生产依赖重装 | [本地候选记录](evidence/local-candidate-validation.txt) |
 | PR CI | 在限定测试同步修复后通过 | `ae00df245...` 的源码 | GitHub 托管 Linux、macOS 与 Windows 矩阵 | [Run 34361867650](https://github.com/istarwyh/yourbuddy/actions/runs/34361867650)；[本地候选记录](evidence/local-candidate-validation.txt) |
+| 发布 PR 修正 | 本地通过；替代 CI 待处理 | `6b457268...` 之后的 PR #20 分支 | GitHub 托管失败证据与 macOS arm64 修正 | [Run 34367447468](https://github.com/istarwyh/yourbuddy/actions/runs/34367447468)；[本地候选记录](evidence/local-candidate-validation.txt) |
 | 产品发布与 Updater | 待处理 | 尚无公开 0.3.6 产品文件 | GitHub Release 与稳定更新渠道 | Tag 工作流完成后记录 |
 | 公开 App 与迁移运行时 | 待处理 | 尚无公开 0.3.6 App | macOS arm64 | 匿名下载后记录 |
 | 产品官网 | 待处理 | 尚无已部署的 0.3.6 官网源码 | 本地站点构建与 GitHub Pages | 发布后记录 |
@@ -164,6 +165,44 @@ YourBuddy 0.3.6 对原生桌面客户端以及应用启动的 Host、插件、WS
 ### 范围限制
 
 CI 仅证明受测源码与矩阵。它不能证明产品发布、匿名下载、官网部署、原生应用启动或真实企业流量。
+
+## 场景：发布 PR 终端输出恢复
+
+- 状态：拥有方修正与完整本地发布准备通过；替代 PR CI 待处理。
+- 日期与时间：2026-09-09 23:01 至 2026-09-10 00:02 UTC+08:00，Asia/Shanghai。
+- Release 与 Commit：PR #20 发布准备 Commit `6b457268ac6c0b2251babcf9fbed29ec4810fa05` 及其修正分支状态。
+- 受测构建：源码 Checkout 与本地组装候选；没有安装包或公开产品字节。
+- 环境：失败 CI Run 使用 GitHub 托管 Linux 与 Windows Runner；修正使用 macOS 15.6.1 arm64、Node 22.22.2 与 pnpm 11.7.0。
+- 证据来源：本次发布。
+- 数据：仓库 Fixture 与合成终端状态。
+- 模型或服务：无 Key 测试；没有供应商请求。
+
+### 步骤
+
+1. 保留失败的发布 PR [Run 34367447468](https://github.com/istarwyh/yourbuddy/actions/runs/34367447468)：16,461 个测试通过后，Linux Coverage 中一个持久 PowerShell shell 断言收到了空 viewport；Windows Coverage 与其他所有已完成 Job 均通过。
+2. 确认失败测试与终端会话源码相较成功的问题修复 CI 未发生变化，然后定位到空结果的原因：shell 进程组在 node-pty 投递命令最终输出 callback 之前，已重新进入内核 stdin 等待。
+3. 将 Linux 精确 stdin 等待就绪限制为不同的前台子进程组。已记住的 shell 进程组现在必须等待自有受控提示符或有界 fallback，因此结算不会丢弃延迟的命令输出。
+4. 运行限定的 51 用例会话套件与完整 terminal-bash 包套件：89 个通过；由于故障本地 PowerShell 可执行文件被有意排除在 `PATH` 之外，三个可选真实 pwsh 用例跳过。
+5. 确认两个 Harbor 快照的唯一漂移来自已审阅的双语 README 同步后，重录其哈希，验证全部六个外部快照，检查最新产品通道，并以 587 个包零下载重装及六个组装 Client 插件通过完整发布准备。
+
+### 预期
+
+shell 自身的输入等待不得在受控提示符与最终输出到达前结算 operation。前台子进程组仍可通过精确 stdin 等待证据结算。PR #20 合并前必须通过替代的完整 CI 矩阵。
+
+### 实际结果
+
+确定性会话测试现在会在 shell 进程组等待 stdin 时保持未结算，随后在受控提示符到达后返回延迟输出。前台进程组发生变化的用例仍在精确探测阈值结算。完整本地发布准备通过，Harness SHA-256 为 `5c765be554a75a8a3810281e8364d21b11792e83eb443366c05e10744794aed0`，Store SHA-256 为 `c4c733da80b6027aa6cd946b7a047db98338d82625cee72b72ad928e5379fe09`，Store 归档 SHA-256 为 `262405620e237043ad157e66f5a95b199920686df6f78bb244e11409b21d77e8`，完整 Bundle SHA-256 为 `078ca9f07b7f46e8a5160bb7bafe2c5a41a8d8c86cb7f7fd376684cf7930f78e`。替代 CI 仍待处理，不声明其通过。
+
+### 证据
+
+- 修复前：失败的发布 PR [Run 34367447468](https://github.com/istarwyh/yourbuddy/actions/runs/34367447468)，保留且没有原样重跑。
+- 过程中：限定测试、包测试结果与最终组装哈希见[本地候选记录](evidence/local-candidate-validation.txt)。
+- 结果：本地修正与完整组装通过；远端替代 CI 待处理。
+- 失败与恢复：修复运行时就绪拥有方；没有扩大超时，没有削弱输出断言，失败 Run 仍作为负例保留。
+
+### 范围限制
+
+本地测试与组装不能替代待处理的 Linux Coverage 重跑、公开安装包验证、Updater 安装、App 启动或官网部署。
 
 ## 交付状态
 

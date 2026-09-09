@@ -525,7 +525,7 @@ describe('LocalPtySession readiness and output', () => {
     expect(operation.cancel()).toBe(false)
   })
 
-  it('does not reuse a pre-write stdin wait as post-write readiness', async () => {
+  it('requires the owned prompt after a shell-group stdin-wait transition', async () => {
     vi.useFakeTimers()
     const terminal = new FakeTerminal()
     const inspector = new FakeInspector()
@@ -544,10 +544,14 @@ describe('LocalPtySession readiness and output', () => {
     expect(settled).toBe(false)
     inspector.waiting = true
     await vi.advanceTimersByTimeAsync(10)
-    expect((await operation.done).waitReason).toBe('stdin_read')
+    expect(settled).toBe(false)
+
+    terminal.emitData('ready\r\n\x1b]133;D;0\x07dsh> ')
+    await vi.advanceTimersByTimeAsync(10)
+    expect(await operation.done).toMatchObject({ waitReason: 'stdin_read', viewport: 'ready\ndsh> ' })
   })
 
-  it('tracks a pre-write wait exit before exact probing begins', async () => {
+  it('accepts a changed foreground process group at the exact-probe threshold', async () => {
     vi.useFakeTimers()
     const terminal = new FakeTerminal()
     const inspector = new FakeInspector()
@@ -558,14 +562,15 @@ describe('LocalPtySession readiness and output', () => {
     }))
     await initialize(session, terminal)
 
-    inspector.waiting = true
+    inspector.waiting = false
     const operation = session.startSend({ text: 'fast command', submit: true })
     let settled = false
     void operation.done.then(() => { settled = true })
-    inspector.waiting = false
-    await vi.advanceTimersByTimeAsync(10)
+    await Promise.resolve()
+    await Promise.resolve()
+    inspector.pgid = 789
     inspector.waiting = true
-    await vi.advanceTimersByTimeAsync(30)
+    await vi.advanceTimersByTimeAsync(40)
     expect(settled).toBe(false)
     await vi.advanceTimersByTimeAsync(10)
     expect(settled).toBe(true)

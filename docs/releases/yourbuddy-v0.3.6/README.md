@@ -47,6 +47,7 @@ The desktop targets macOS 11 or later on Apple Silicon. Existing application dat
 | Enterprise CA and proxy policy | passed within source and synthetic-network scope | source and actual CLI Host at `ae00df245...` | macOS 15.6.1 arm64; Rust 1.98.0; bundled Node 22.19.0; local private CA, HTTPS origin, and CONNECT proxy | [local candidate record](evidence/local-candidate-validation.txt) |
 | Complete local release preparation | passed | locally assembled candidate, not an installer | macOS arm64; pnpm 11.7.0; offline production reinstall | [local candidate record](evidence/local-candidate-validation.txt) |
 | Pull-request CI | passed after a scoped test-synchronization correction | source at `ae00df245...` | GitHub-hosted Linux, macOS, and Windows matrix | [run 34361867650](https://github.com/istarwyh/yourbuddy/actions/runs/34361867650); [local candidate record](evidence/local-candidate-validation.txt) |
+| Release pull-request correction | passed locally; replacement CI pending | PR #20 branch after `6b457268...` | GitHub-hosted failure evidence and macOS arm64 correction | [run 34367447468](https://github.com/istarwyh/yourbuddy/actions/runs/34367447468); [local candidate record](evidence/local-candidate-validation.txt) |
 | Product publication and updater | pending | no public 0.3.6 product bytes yet | GitHub Release and stable updater channel | to be recorded after the tag workflow |
 | Public App and relocated runtime | pending | no public 0.3.6 App yet | macOS arm64 | to be recorded after anonymous download |
 | Product website | pending | no deployed 0.3.6 website source yet | local site build and GitHub Pages | to be recorded after publication |
@@ -164,6 +165,44 @@ The durability assertion should wait for the owned post-write event rather than 
 ### Scope limits
 
 CI establishes the tested source and matrix only. It does not prove product publication, anonymous downloads, website deployment, native application startup, or real enterprise traffic.
+
+## Scenario: Release PR terminal-output recovery
+
+- Status: owner correction and complete local release preparation passed; replacement pull-request CI is pending.
+- Date and time: 2026-09-09 23:01 through 2026-09-10 00:02 UTC+08:00, Asia/Shanghai.
+- Release and commit: PR #20 release-preparation commit `6b457268ac6c0b2251babcf9fbed29ec4810fa05` plus its corrective branch state.
+- Build under test: source checkout and locally assembled candidate; no installer or public product bytes.
+- Environment: GitHub-hosted Linux and Windows runners for the failed CI run; macOS 15.6.1 arm64 with Node 22.22.2 and pnpm 11.7.0 for the correction.
+- Evidence origin: this release run.
+- Data: repository fixtures and synthetic terminal state.
+- Model or service: keyless tests; no provider request.
+
+### Steps
+
+1. Retained failed release PR [run 34367447468](https://github.com/istarwyh/yourbuddy/actions/runs/34367447468), where 16,461 tests passed before one Linux coverage assertion received an empty viewport from the persistent PowerShell shell; Windows coverage and every other completed job passed.
+2. Confirmed the failing test and terminal session source were unchanged from the successful issue-fix CI, then traced the empty result to the shell process group re-entering its kernel stdin wait before node-pty delivered the command's final output callback.
+3. Restricted exact Linux stdin-wait readiness to a different foreground child process group. The remembered shell process group now requires its owned controlled prompt or a bounded fallback, so settlement cannot discard delayed command output.
+4. Ran the focused 51-case session suite and the complete terminal-bash package suite: 89 passed and three optional real-pwsh cases skipped because the faulty local PowerShell executable was deliberately absent from `PATH`.
+5. Re-recorded the two Harbor snapshot hashes after confirming their only drift came from the reviewed bilingual README synchronization, verified all six external snapshots, checked the latest product channels, and completed release preparation with a zero-download 587-package reinstall and all six assembled Client plugins.
+
+### Expected
+
+The shell's own input wait must not settle an operation before its controlled prompt and final output arrive. A foreground child process group may still settle through exact stdin-wait evidence. The replacement complete CI matrix must pass before PR #20 merges.
+
+### Actual
+
+The deterministic session tests now hold a shell-group stdin wait without settling, then return the delayed output after the controlled prompt. The changed-foreground-group case still settles at the exact-probe threshold. Complete local release preparation passed with Harness SHA-256 `5c765be554a75a8a3810281e8364d21b11792e83eb443366c05e10744794aed0`, Store SHA-256 `c4c733da80b6027aa6cd946b7a047db98338d82625cee72b72ad928e5379fe09`, Store archive SHA-256 `262405620e237043ad157e66f5a95b199920686df6f78bb244e11409b21d77e8`, and complete bundle SHA-256 `078ca9f07b7f46e8a5160bb7bafe2c5a41a8d8c86cb7f7fd376684cf7930f78e`. Replacement CI remains pending and is not claimed as passing.
+
+### Evidence
+
+- Before: failed release PR [run 34367447468](https://github.com/istarwyh/yourbuddy/actions/runs/34367447468), retained without rerunning unchanged.
+- In progress: focused and package test results plus final assembly hashes in the [local candidate record](evidence/local-candidate-validation.txt).
+- Result: local correction and complete assembly passed; remote replacement CI pending.
+- Failure and recovery: the runtime readiness owner was corrected; no timeout was widened, no output assertion was weakened, and the failed run remains negative evidence.
+
+### Scope limits
+
+Local tests and assembly do not substitute for the pending Linux coverage rerun, public installer validation, updater installation, App startup, or website deployment.
 
 ## Delivery status
 

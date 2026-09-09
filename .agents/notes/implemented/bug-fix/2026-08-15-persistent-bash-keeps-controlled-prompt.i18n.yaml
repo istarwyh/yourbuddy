@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-15-persistent-bash-keeps-controlled-prompt.md
-2026-08-15-persistent-bash-keeps-controlled-prompt.md: 9ee71f2adc0d473c5490dbe2b29ce55c8377e275
-2026-08-15-persistent-bash-keeps-controlled-prompt.zh.md: 035d5b59b2f09ed0260be4cbd63f5bf46ca8a2d6
+2026-08-15-persistent-bash-keeps-controlled-prompt.md: f9409f640c4ac4de2543c328878ef6b772f542a3
+2026-08-15-persistent-bash-keeps-controlled-prompt.zh.md: b3fc46e3b7959a0d37a7bfd92f14c12329c7d629
