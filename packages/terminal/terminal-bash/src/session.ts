@@ -511,7 +511,13 @@ export class LocalPtySession implements TerminalBackendSession {
       }
       const elapsed = Date.now() - operation.startedAt
       const startupHasOutput = !this.initializing || this.scrollback.snapshot().text.length > 0
+      // The shell can re-enter its stdin wait before node-pty delivers the
+      // command's final output callback. Its owned prompt is the exact shell
+      // readiness signal; stdin-wait evidence remains exact for a foreground
+      // child process group.
+      const foregroundIsShell = foreground?.processGroupId === this.shellPgid
       const acceptsStdinWait = startupHasOutput && foreground !== undefined
+        && !foregroundIsShell
         && operation.acceptsStdinWait(foreground.processGroupId, foreground.inputWaiting)
       if (elapsed >= this.config.exactProbeAfterMs && acceptsStdinWait) {
         this.settleActive('stdin_read')

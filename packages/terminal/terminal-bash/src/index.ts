@@ -126,7 +126,7 @@ async function startupSession(
     // pwsh cannot install its prompt from the environment. Write the prompt
     // function through the session, pin UTF-8 output before user input, and
     // accept stdin_read only after the startup loop has also observed the
-    // owned prompt; exact stdin-wait evidence can race ahead of prompt output,
+    // owned prompt. Shell-group stdin-wait evidence is ignored by the session,
     // while echoed setup source containing the printable prompt is not readiness.
     // Follow-up sends bridge those settlements during startup, while one
     // absolute deadline bounds them.

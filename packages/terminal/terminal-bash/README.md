@@ -61,7 +61,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 ### Shell dialects and readiness
 
-Both dialects expose the same readiness contract, so consumers are dialect-agnostic. A send settles when the shell is ready again: after the controlled prompt is verified, after the foreground process group provably waits on stdin (Linux), after output silence (`inferred_idle`), or at the absolute `timeoutMs`. An `inferred_idle` or `timeout` result does not prove the foreground command exited.
+Both dialects expose the same readiness contract, so consumers are dialect-agnostic. A send settles when the shell is ready again: after the controlled prompt is verified, after a non-shell foreground process group provably waits on stdin (Linux), after output silence (`inferred_idle`), or at the absolute `timeoutMs`. An `inferred_idle` or `timeout` result does not prove the foreground command exited.
 
 ### Sandboxing and safe operation
 
@@ -96,7 +96,7 @@ One backend serves both dialects: bash and pwsh share the same session machinery
 
 ### Readiness model
 
-Three bounded tiers settle a send: exact stdin-wait evidence from the subprocess provider (Linux only), the verified private prompt marker with an exact printable tail, and output silence (`inferred_idle`); an absolute timeout always bounds the wait. Pwsh startup uses one deadline across its complete setup loop, retries the idempotent bootstrap only while no startup output has appeared, and then continues with empty sends until the loop has observed both a settling `stdin_read` and the complete controlled prompt. Evidence collected before the provider write is discarded at the write boundary, a stdin wait that predates the write is not post-write readiness, and unknown foreground state is never a positive exact-idle signal.
+Three bounded tiers settle a send: exact stdin-wait evidence for a foreground child process group from the subprocess provider (Linux only), the verified private prompt marker with an exact printable tail, and output silence (`inferred_idle`); an absolute timeout always bounds the wait. The shell process group's own stdin wait is not exact readiness because it can become observable before node-pty delivers the command's final output; the owned prompt is authoritative for shell completion. Pwsh startup uses one deadline across its complete setup loop, retries the idempotent bootstrap only while no startup output has appeared, and then continues with empty sends until the loop has observed both a settling `stdin_read` and the complete controlled prompt. Evidence collected before the provider write is discarded at the write boundary, a stdin wait that predates the write is not post-write readiness, and unknown foreground state is never a positive exact-idle signal.
 
 ### Send cancellation and teardown
 
