@@ -2,11 +2,11 @@
 
 English | [中文](README.zh.md)
 
-This archive records the 0.3.6 enterprise network correction, complete local release preparation, pull-request CI, formal publication, public-file integrity, updater signature, App identity, and relocated runtime. Native startup and packaged-WebView interaction remain unverified; website deployment and the downloadable verification archive remain pending.
+This archive records the 0.3.6 enterprise network correction, complete local release preparation, pull-request CI, formal publication, public-file integrity, updater signature, App identity, relocated runtime, and deployed bilingual product website. Native startup, packaged-WebView interaction, and visual-browser website rendering remain unverified; the downloadable verification archive remains pending.
 
 - Release identifier: `yourbuddy-v0.3.6`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon; npm, Python, SDK, and other release channels are not applicable.
-- Archive state: public product evidence complete within the stated scope; website and downloadable-archive stages remain pending.
+- Archive state: public product and website evidence complete within the stated scope; the downloadable-archive stage remains pending.
 - Tested product commits: [`ae00df24539f07479a6d097cf0c06e86b493d86e`](https://github.com/istarwyh/yourbuddy/commit/ae00df24539f07479a6d097cf0c06e86b493d86e), merged by [PR #19](https://github.com/istarwyh/yourbuddy/pull/19) as [`d0b55a7fee27fc240b1ef68ad14d968d4b96c0db`](https://github.com/istarwyh/yourbuddy/commit/d0b55a7fee27fc240b1ef68ad14d968d4b96c0db); terminal correction [`2b409de193d9aad1da24ebbc46cbd277186ab623`](https://github.com/istarwyh/yourbuddy/commit/2b409de193d9aad1da24ebbc46cbd277186ab623), merged by [PR #20](https://github.com/istarwyh/yourbuddy/pull/20) as the immutable release commit [`2c523beca5965e057d9ea536d648b3f1458ee7ef`](https://github.com/istarwyh/yourbuddy/commit/2c523beca5965e057d9ea536d648b3f1458ee7ef).
 - Evidence gallery: not applicable; no current installed-application screenshots were captured.
 - Evidence download: pending the final immutable evidence commit.
@@ -50,7 +50,7 @@ The desktop targets macOS 11 or later on Apple Silicon. Existing application dat
 | Release pull-request correction | passed after retaining the failed first run and failed native-test attempt | release source at `2b409de193...` | GitHub-hosted Linux, macOS, and Windows matrix | [run 34375335129](https://github.com/istarwyh/yourbuddy/actions/runs/34375335129); [local candidate record](evidence/local-candidate-validation.txt) |
 | Product publication and updater | passed | five anonymously downloaded release assets | GitHub Release and stable updater channel | 3/3 checksums, five API digests, byte-identical manifests, and Minisign verification; [artifact record](evidence/public-artifact-stage.json) |
 | Public App and relocated runtime | passed within recorded scope | unchanged App from the public DMG | macOS 15.6.1 arm64 | DMG/updater trees identical; identity, strict ad-hoc signature, CLI, and imports passed; [runtime record](evidence/public-runtime-stage.json) |
-| Product website | passed locally; deployment pending | current publication branch | Hugo Extended 0.165.0, Go 1.27.1, local link checks | 70 tests and 57 rendered HTML pages passed; [local record](evidence/website-local-validation.txt) |
+| Product website | passed within recorded deployment and HTTP scope | public deployment from `5fa67b477...` | GitHub Pages and unauthenticated HTTP | build and deploy passed; six bilingual pages and their release-facing targets returned 200; [local record](evidence/website-local-validation.txt) and [deployment record](evidence/website-deployment.txt) |
 | Downloadable verification archive | pending | no 0.3.6 evidence ZIP yet | GitHub Release | to be recorded after the final archive commit |
 | Packaged native startup and WebView journey | not verified | public 0.3.6 App was not launched | existing user-owned YourBuddy instance prevented isolation | no screenshot or installed-product claim; [skipped observation](evidence/public-native-startup.txt) |
 | Real enterprise proxy and CA | not verified | synthetic local network only | local isolated services | no organization certificate, credential, or external enterprise endpoint used |
@@ -238,12 +238,25 @@ The public bundle contains DSH 0.1.2-rc.1, Better Sidebar 0.18.1, Harbor Evoluti
 
 A user-owned YourBuddy process and managed Host were already running. Launching the public copy could interact with that global single-instance owner, so neither was stopped and the downloaded App was not launched. Native readiness, Finder installation, update from an older version, packaged-WebView network settings, screenshots, OAuth, and real enterprise traffic remain unverified.
 
+## Scenario: Public product website
+
+- Status: passed for deployment, bilingual static rendering, 0.3.6 copy, and public release/download link availability; visual browser rendering remains unverified.
+- Date and time: 2026-09-10 02:30–02:40 UTC+08:00, Asia/Shanghai.
+- Release and commit: `yourbuddy-v0.3.6`; website source commit [`5fa67b4771cc715736e10868b0884fa77a62bed3`](https://github.com/istarwyh/yourbuddy/commit/5fa67b4771cc715736e10868b0884fa77a62bed3) from [PR #21](https://github.com/istarwyh/yourbuddy/pull/21).
+- Build under test: public GitHub Pages deployment, not a source preview or desktop installer.
+- Environment: GitHub Pages, GitHub Releases, and unauthenticated HTTP on macOS 15.6.1 arm64.
+- Evidence: [local website record](evidence/website-local-validation.txt), [deployment and live-check record](evidence/website-deployment.txt), and [workflow 34389210312](https://github.com/istarwyh/yourbuddy/actions/runs/34389210312).
+
+The website workflow's build and deploy jobs passed, and GitHub deployment `6356638242` reported success for the exact source commit. Chinese and English home, download, and release pages all returned HTTP 200, declared the expected language and title, and contained the 0.3.6 release text. Both download-page DOMs linked the exact DMG, checksum file, GitHub Release, language-matched verification record, and raw Markdown; those targets and all six raw Markdown routes returned HTTP 200. The DMG was not downloaded again because its earlier complete anonymous download and hash check already passed.
+
+PR CI [run 34384125128](https://github.com/istarwyh/yourbuddy/actions/runs/34384125128) retained an initial Snapshot / Artifacts setup failure caused by a Google apt `Packages.gz` hash mismatch before repository tests. Only that failed lane was rerun; attempt 2 passed its actual gates and the aggregate. The Cloudflare preview found no matching runner and was cancelled without being counted as a pass. Two required web-access CDP attempts timed out waiting for host Chrome authorization, so no pixel-level or interactive browser claim is made. Deployment metadata, public HTTP, and static-DOM inspection establish the recorded website scope but do not validate the desktop App, installation, WebView behavior, updater installation, or real enterprise traffic.
+
 ## Delivery status
 
 - Product publication status: passed; `yourbuddy-v0.3.6` is the Latest formal GitHub Release with five independently downloaded and checked product assets. Native startup and updater installation remain unverified.
-- Verification archive status: partial; source, synthetic network, local candidate, CI, public artifact, updater-signature, App/runtime, failure/recovery, and native-startup skip evidence are recorded. Website and downloadable-ZIP evidence remain pending.
-- Website synchronization status: local source projection and build passed; deployment and live URL checks remain pending.
-- Unverified scope: native App startup, updater installation, packaged-WebView journey, Apple Developer signing and notarization, a real enterprise proxy or certificate, proxy authentication, Node 24.20.0 compatibility, website deployment, Intel macOS, and Windows and Linux desktop products.
+- Verification archive status: partial; source, synthetic network, local candidate, CI, public artifact, updater-signature, App/runtime, website, failure/recovery, and native-startup skip evidence are recorded. The downloadable ZIP remains pending.
+- Website synchronization status: deployed and verified within the recorded HTTP scope at commit [`5fa67b4771cc715736e10868b0884fa77a62bed3`](https://github.com/istarwyh/yourbuddy/commit/5fa67b4771cc715736e10868b0884fa77a62bed3) through [workflow 34389210312](https://github.com/istarwyh/yourbuddy/actions/runs/34389210312); all six bilingual release-facing pages and their public targets passed. Visual browser rendering remains unverified because CDP authorization timed out.
+- Unverified scope: native App startup, updater installation, packaged-WebView journey, Apple Developer signing and notarization, a real enterprise proxy or certificate, proxy authentication, Node 24.20.0 compatibility, visual browser rendering of the website, Intel macOS, and Windows and Linux desktop products.
 
 ## Delivery checklist
 
@@ -257,7 +270,7 @@ A user-owned YourBuddy process and managed Host were already running. Launching 
 - [x] The public tag, release commit, workflow, filenames, hashes, checksums, updater manifest, and signature are recorded.
 - [x] The anonymously downloaded public App and relocated runtime are inspected.
 - [x] The affected packaged-WebView settings journey is retained as an explicit limit because an isolated launch was unsafe.
-- [ ] The bilingual product website is synchronized, deployed, and checked at live URLs.
+- [x] The bilingual product website is synchronized, deployed, and checked at live URLs within the recorded HTTP scope.
 - [ ] The downloadable evidence archive is created from an immutable commit, uploaded, anonymously downloaded, compared, and extracted.
 - [x] Product publication, verification archive, website synchronization, and unverified scope are reported separately.
 - [x] No public tag or installer was moved or overwritten.
