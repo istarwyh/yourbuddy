@@ -95,6 +95,17 @@ async function waitForOutput(operation: TerminalSendOperation, expected: string,
   expect(output).toContain(expected)
 }
 
+async function waitForSessionOutput(read: () => string, expected: string, timeoutMs = 8_000): Promise<string> {
+  const deadline = Date.now() + timeoutMs
+  let output = read()
+  while (!output.includes(expected) && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+    output = read()
+  }
+  expect(output).toContain(expected)
+  return output
+}
+
 // A real shell can return to its prompt before the kernel publishes the
 // foreground handoff. `handoffGraceMs` widens the window that wins exact
 // attribution but cannot remove that host-load race, so follow-up behavior
@@ -339,11 +350,13 @@ describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
         submit: true,
       })
       const result = await second.done
-      expect(result.viewport).toContain('keep=ok')
-      expect(result.viewport).toContain('secret=')
-      expect(result.viewport).not.toContain('must-not-leak')
-
-      expect(ctx.terminals.read(agent, created.sessionId, { offset: 0, count: 40 }).text).toContain('keep=ok')
+      expectReadyForNextSend(result.waitReason)
+      const output = await waitForSessionOutput(
+        () => ctx.terminals.read(agent, created.sessionId, { offset: 0, count: 40 }).text,
+        'keep=ok',
+      )
+      expect(output).toContain('secret=')
+      expect(output).not.toContain('must-not-leak')
       expect(await ctx.terminals.kill(agent, created.sessionId)).toBe(true)
       expect(ctx.terminals.list(agent)).toEqual([])
     } finally {
