@@ -1,0 +1,37 @@
+YourBuddy 0.3.6 evidence-finalization CI
+
+Status: passed after two retained failures and scoped test corrections
+Observed: 2026-09-10, Asia/Shanghai, UTC+08:00
+Release: yourbuddy-v0.3.6
+Pull request: https://github.com/istarwyh/yourbuddy/pull/22
+Final source commit: 9ffaa3e98ef18be52cd1092c2f66c53d945ac10a
+Merge commit: 6376122238c32376b90dee4dc9442eeccccdfa48
+Environment: GitHub-hosted Linux, macOS, and Windows runners
+Data: repository fixtures and generated test data; no credentials, organization certificates, private Session content, or model requests
+Screenshots: none; this check uses CI job, test, and commit evidence
+
+Retained failure 1:
+- Run: https://github.com/istarwyh/yourbuddy/actions/runs/34391976745
+- Linux coverage failed after 16,461 passing tests because the persistent PowerShell assertion attributed an empty per-send viewport to the command even though the expected output remained in the owned session stream.
+- Commit bd932b0eede65ff03a1168b18fe1536981b58230 changed the test to poll the complete session output for `keep=ok` and separately assert that the secret was absent.
+- The focused terminal suite passed 57 tests and skipped three optional real-pwsh cases. Type checking passed.
+
+Retained failure 2:
+- Run: https://github.com/istarwyh/yourbuddy/actions/runs/34395293343
+- Linux coverage passed. Windows coverage failed after 15,499 passing tests when the npm-resolution behavior test's 10,000 ms hang guard expired under coverage load.
+- Commit 9ffaa3e98ef18be52cd1092c2f66c53d945ac10a changed the three npm-resolution behavior tests to use a 30,000 ms hang guard. The formal benchmark's 300,000 ms default and separate `max-ms` performance threshold were unchanged.
+- The focused benchmark spec passed all seven tests. Type checking passed.
+
+Passing replacement:
+- Run: https://github.com/istarwyh/yourbuddy/actions/runs/34398269274
+- Head: 9ffaa3e98ef18be52cd1092c2f66c53d945ac10a
+- All 23 actual checks passed, including Linux and Windows coverage, snapshots and artifacts, static gates, Node engine lanes, native tests, Python SDK, and release-shaped runtime jobs.
+- Linux coverage completed in 21 minutes 46 seconds, Windows coverage in 26 minutes 41 seconds, and snapshots and artifacts in 19 minutes 33 seconds.
+- Cloudflare preview run 34398268901 had no matching self-hosted runner, was cancelled, and was not counted as success. The repository runner API reported zero configured runners.
+
+Publication relationship:
+- PR #22 merged as 6376122238c32376b90dee4dc9442eeccccdfa48 only after the replacement run passed.
+- These test corrections and documentation records did not change the public 0.3.6 product files, release tag, or stable updater manifest.
+
+Scope limits:
+- CI establishes the tested repository source and platform jobs only. It does not prove native App startup, packaged WebView behavior, updater installation, Apple signing or notarization, real enterprise proxy/CA traffic, Node 24.20.0 compatibility, visual website rendering, or another desktop product platform.

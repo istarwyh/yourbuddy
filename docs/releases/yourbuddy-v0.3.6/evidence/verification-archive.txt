@@ -1,0 +1,43 @@
+YourBuddy 0.3.6 downloadable verification archive
+
+Status: passed
+Observed: 2026-09-10 04:26-04:28 UTC+08:00, Asia/Shanghai
+Release: yourbuddy-v0.3.6
+Archive source commit: 6376122238c32376b90dee4dc9442eeccccdfa48
+Environment: macOS 15.6.1 arm64, git archive, GitHub Release, unauthenticated HTTPS, Info-ZIP unzip 6.00
+Data: repository release documentation and sanitized evidence only; no credentials, personal data, private paths, proxy credentials, or certificate contents
+Screenshots: none; this non-UI check uses file, API, hash, byte-comparison, and extraction evidence
+
+Public URL:
+https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.6/yourbuddy-v0.3.6-verification.zip
+
+Expected:
+- The archive is attached to the formal 0.3.6 Release without moving the tag or replacing a product installer.
+- GitHub reports the expected filename, size, and SHA-256 digest.
+- A fresh unauthenticated download is byte-identical to the uploaded source archive.
+- Every member extracts successfully beneath one versioned directory and includes the bilingual release pages, pairing record, and evidence files present at the source commit.
+
+Actual:
+- GitHub asset id: 553517076
+- Created and updated: 2026-09-09T20:27:46Z
+- Size: 34,762 bytes
+- SHA-256: 380e4d7b3d5b11696bc6824f83f75aa86b23977fdb7b36ee684857b150d64373
+- GitHub API digest: sha256:380e4d7b3d5b11696bc6824f83f75aa86b23977fdb7b36ee684857b150d64373
+- The archive comment identifies source commit 6376122238c32376b90dee4dc9442eeccccdfa48.
+- A fresh unauthenticated download had the same size and SHA-256 value and passed a byte-for-byte comparison.
+- `unzip -t` passed for every member. The extracted tree contains `yourbuddy-v0.3.6-verification/docs/releases/yourbuddy-v0.3.6/README.md`, its Chinese pair, pairing record, and all evidence files present at the source commit.
+- This is a separate documentation asset. The five product assets, release tag, and updater channel were unchanged.
+
+Steps:
+1. Created the ZIP with `git archive`, using the versioned prefix `yourbuddy-v0.3.6-verification/` and only `docs/releases/yourbuddy-v0.3.6` from commit 6376122238c32376b90dee4dc9442eeccccdfa48.
+2. Uploaded it as a separate verification asset to the existing formal Release. No product asset or tag was changed.
+3. Queried the public Release API and compared its filename, byte count, and digest with the local source archive.
+4. Downloaded the asset without GitHub authentication into a new temporary directory.
+5. Compared the two files byte for byte, ran `unzip -t`, extracted the download, and checked the documented evidence paths.
+6. Prepared the public Release notes to link the immutable source record and this archive with its size and hash.
+
+Failure and recovery:
+- No archive validation step failed.
+
+Scope limits:
+- This proves availability and integrity of the documentation archive only. It does not extend the recorded product claims or validate native startup, packaged WebView controls, update installation, Finder installation, Apple signing or notarization, enterprise proxy/CA traffic, proxy authentication, OAuth, Node 24.20.0, visual browser rendering, Intel macOS, or Windows and Linux desktop products.
