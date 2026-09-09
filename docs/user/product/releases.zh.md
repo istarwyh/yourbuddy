@@ -6,6 +6,12 @@
 
 ## YourBuddy
 
+### 0.3.6 — 2026-09-10
+
+YourBuddy 0.3.6 让企业代理与自定义 CA 设置在原生桌面客户端和所有托管运行时中保持一致。设置中显式选择的 CA 优先于启动环境继承值与系统信任；保存或重启前，原生与新内置 Node 测试必须全部通过。五个公开附件均已匿名下载核验，Updater 签名通过密码学验证，公开 App 的标识、内置 CA 来源元数据与迁移运行时通过检查。由于已有用户持有的 YourBuddy 实例妨碍隔离启动，原生启动、安装包 WebView 控制项、从旧版升级与真实企业流量仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.6) · [验证记录](../../releases/yourbuddy-v0.3.6/README.zh.md) · [下载页](download.zh.md)
+
 ### 0.3.5 — 2026-09-08
 
 YourBuddy 0.3.5 恢复了被桌面权限层拒绝的网络、生命周期、更新、外部链接与插件市场控制项。即使存在冲突的全局 `codexhost-delegation` Skill，Codex Preset 委派也会使用内置 `subagent_codex` 路径。五个公开附件均已匿名完整下载检查，更新签名通过密码学验证，公开 App 的标识、内置修复与迁移运行时通过检查。由于已有用户持有的旧版实例妨碍隔离启动，原生启动、安装包 WebView 控制项、从 0.3.4 升级、OAuth 与真实供应商调用仍未验证。

@@ -1,0 +1,24 @@
+YourBuddy 0.3.6 website source validation
+==========================================
+
+Observed: 2026-09-10 01:34–01:35 UTC+08:00, Asia/Shanghai
+Source: codex/publish-yourbuddy-0.3.6 based on release commit 2c523beca5965e057d9ea536d648b3f1458ee7ef, with public audit and website updates not yet committed.
+Environment: macOS 15.6.1 arm64; Node 26.1.0; pnpm 11.7.0; Hugo Extended 0.165.0 arm64; Go 1.27.1 arm64; Go module networking disabled.
+
+Passing observations
+--------------------
+
+1. pnpm run test:docs
+   Result: exit 0; 15 documentation gates passed, 0 failed, 0 skipped.
+
+2. PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/ pnpm run website:check
+   HUGO_BIN selected a temporary copy extracted from the official Hugo Extended 0.165.0 package. PATH selected the official Go 1.27.1 runtime. GOTOOLCHAIN=local, GOPROXY=off, and GOSUMDB=off prevented toolchain or module downloads during the build.
+   Result: exit 0; two files and 70 tests passed; 48 canonical YourBuddy pages projected; Hugo produced 59 Chinese and 57 English pages; 57 product HTML pages passed local link, asset, fragment, and source-action verification.
+
+3. pnpm run doc-sync
+   Result: exit 0; 32 documentation gates passed, 0 failed, 0 skipped.
+
+Evidence boundary
+-----------------
+
+These are source projection and local static-site checks. They do not establish GitHub Pages deployment, public HTTP behavior, search-index propagation, native application behavior, enterprise traffic, OAuth, or real-provider execution.

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/harbor-evolution.md
-harbor-evolution.md: 1bc9880070e8915c354babde98e252e379c51af3
-harbor-evolution.zh.md: f303445af2bb094feb2b6f67f71062b212d85181
+harbor-evolution.md: 740a23cf4366f21e7cf1e60075780d008a790ae2
+harbor-evolution.zh.md: 4a783e3b0cb76504675a49b20711a115e3df6155

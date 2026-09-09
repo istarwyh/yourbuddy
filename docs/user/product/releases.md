@@ -6,6 +6,12 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.6 — 2026-09-10
+
+YourBuddy 0.3.6 makes enterprise proxy and custom-CA settings consistent across the native desktop client and every managed runtime. An explicit Settings CA overrides an inherited launch value and system trust; native and fresh bundled-Node tests must both pass before save or restart. All five public assets were anonymously downloaded and checked, the updater signature was cryptographically verified, and the public App's identity, bundled CA-source metadata, and relocated runtime passed inspection. Native startup, packaged-WebView controls, an update from an older version, and real enterprise traffic remain unverified because a user-owned YourBuddy instance prevented an isolated launch.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.6) · [verification record](../../releases/yourbuddy-v0.3.6/README.md) · [download page](download.md)
+
 ### 0.3.5 — 2026-09-08
 
 YourBuddy 0.3.5 restores network, lifecycle, update, external-link, and Marketplace controls rejected by the desktop permission layer. Codex Preset delegation now uses the bundled `subagent_codex` route even when the conflicting global `codexhost-delegation` skill exists. All five public assets were anonymously downloaded and checked, the updater signature was cryptographically verified, and the public App's identity, bundled correction, and relocated runtime passed inspection. Native startup, packaged-WebView controls, an update from 0.3.4, OAuth, and real provider calls remain unverified because a user-owned older instance prevented an isolated launch.
