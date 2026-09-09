@@ -16,8 +16,8 @@ npx --yes dsh-harbor-evolution@latest setup --project-root "$PWD"
 
 Setup 命令会安装两个必需的运行时：
 
-- 在托管的 Python 环境中安装 `harbor-dsh-evolution==0.9.4`。
-- 在所选 DSH Profile 中安装 `dsh-harbor-evolution@0.9.4`。
+- 在托管的 Python 环境中安装 `harbor-dsh-evolution==0.9.5`。
+- 在所选 DSH Profile 中安装 `dsh-harbor-evolution@0.9.5`。
 
 随后，它会把 Harbor 可执行文件的绝对路径与一个回退 `projectRoot` 写入 Profile 的 `harbor-evolution` 配置块，并验证集成。Agent Tool 每次调用都会以调用 Session 的绝对工作目录作为项目根目录；配置值仍供 Web Workbench 和非 Agent 场景回退使用。无关的现有 Profile 条目会被保留；重复执行 Setup 只会更新同一个配置块。
 
@@ -77,8 +77,8 @@ Inspect this workspace and help me clarify and initialize a stable Harbor self-e
 ### 从对象开始，而不是从命令开始
 
 1. 打开一项评测结果。选择 Task、Score、Evidence Item 或已保存的 Source Fragment。
-2. 在支持 `conversation.contexts.register` 的 Host 上，直接在现有 Composer 中输入问题并发送。Harbor 会在取得发送锁时冻结页面与选区。**Ask AI** 和原生 `@harbor` 优先于隐式上下文。在 Harbor 内关闭 **Attach current page on send**，即可不附加页面发送。较旧的 rc.8 Host 会显示升级提示，并要求显式引用；仅升级此插件不会增加 Host 能力。
-3. 在现有对话中阅读回答与提案卡片，没有第二个 Composer 或上下文面板。同一条持久化消息携带问题与页面引用；准备期间切换页面或 Session 不会改变其目标。勾选行会冻结准确的 Trial 成员集合；未打开单条 Trial 的列表也会提供 status／validity 筛选与排序，但不会发送自由文本搜索。附件显示捕获的对象、选区与观察时间。存在较新草稿时，失败消息会把文本与图片保留在原生未发送消息列表中，不会覆盖新草稿。恢复到 Composer 后重新发送，会重新捕获当前页面。离开 Harbor、使用斜杠命令或关闭自动附加时，都会跳过隐式上下文。
+2. 在支持 `conversation.contexts.register` 的 Host 上，直接在现有 Composer 中输入问题并发送。Harbor 会在取得发送锁时冻结页面与选区。**Ask AI** 和原生 `@harbor` 优先于隐式上下文。Harbor 页面不再提供可能静默移除当前对象的停用选项。较旧的 rc.8 Host 会显示升级提示，并要求显式引用；仅升级此插件不会增加 Host 能力。
+3. 在现有对话中阅读回答与提案卡片，没有第二个 Composer 或上下文面板。同一条持久化消息携带问题与页面引用；准备期间切换页面或 Session 不会改变其目标。勾选行会冻结准确的 Trial 成员集合；未打开单条 Trial 的列表也会提供 status／validity 筛选与排序，但不会发送自由文本搜索。附件显示捕获的对象、选区与观察时间。存在较新草稿时，失败消息会把文本与图片保留在原生未发送消息列表中，不会覆盖新草稿。恢复到 Composer 后重新发送，会重新捕获当前页面。离开 Harbor 或使用斜杠命令时，会跳过隐式上下文。
 4. 对于评分规则，请选择已保存的行，然后选择 **Suggest a change**。**Review and edit** 会直接打开匹配的文件。AI 可以填充尚未修改的编辑器，但绝不会覆盖你的手工修改。检查 Diff 并显式保存，以创建新身份；该操作不会运行评测或 Gate。
 
 未保存的源码修改按 Session、Workspace、Job 与文件隔离，并保留在当前浏览器 Tab 的 `sessionStorage` 中。切换文件或视图以及刷新页面后可以恢复修改；关闭 Tab 可能丢弃修改。存储失败会明确显示，同时使用内存回退，并针对尚未持久化的修改显示离开页面警告。源码冲突会保留原始 Base 与编辑文本；接受新 Base 前，请检查最新源码。保存或显式丢弃只会清除当前文件的草稿。授权到期绝不会删除建议文本或人工修改；源码发生变化或 Task 子集过期时，需要显式重新选择，不能自动扩大范围。
@@ -91,7 +91,7 @@ Web UI 只通过三条范围明确且显式的工作流修改业务资源：由 
 
 ## Historical Session 冷启动
 
-用户未提供 Dataset 时，最简单的入口是 Harbor Tab 中的 `Evaluate recent Sessions` 按钮。它通过当前 DSH Session Query 服务自动查找最多 3 个已完成对话，包括其他项目目录中的历史。它分小批读取近期候选，找到足够数量后停止，并记录扫描范围，不宣称提供全部历史的排名。当前对话、未完成对话与内部评测对话仍会被排除。用户会看到简短样本预览、审阅模型与脱敏数据／费用说明，确认一次即可启动，无需选择存储路径或项目。结果保存在选定的评测工作区；每个来源都会按其自身冻结的身份重新验证。Host 把短期 Selection Token 保留在内存中；浏览器只会收到不透明的 Preview id。内置 Skill 仍是对话入口，并为现有 Agent 工作流保留显式的准确工作目录选择模式（最多 10 个）。
+用户未提供 Dataset 时，最简单的入口是 Harbor Tab 中的 `Evaluate recent Sessions` 按钮。它通过当前 DSH Session Query 服务自动查找最多 3 个已完成对话，包括其他项目目录中的历史。它分小批读取近期候选，找到足够数量后停止，并记录扫描范围，不宣称提供全部历史的排名。当前对话、未完成对话与内部评测对话仍会被排除。用户会看到简短样本预览、审阅模型、当前数据策略、Judge 数据边界与费用说明，确认一次即可启动。Session 文本和普通绝对路径会保留；类似凭据的值与原始 Session 标识符会脱敏，而推理、工具 Payload 与附件仍会省略。无需选择存储路径或项目。结果保存在选定的评测工作区；每个来源都会按其自身冻结的身份重新验证。Host 把短期 Selection Token 保留在内存中；浏览器只会收到不透明的 Preview id。内置 Skill 仍是对话入口，并为现有 Agent 工作流保留显式的准确工作目录选择模式（最多 10 个）。
 
 用户明确确认后，`harbor_session_diagnostic_run` 只接收 `selectionToken` 与可选 Job 名称。它会重新验证冻结的 Session 与 Feedback Digest，物化不可变 Historical Batch 以及配套 Dataset 和 Stack，并把每个 Session Observation 作为一个 Harbor Trial 进行评测。该 Job 不会重新运行 Candidate，不能进入 Promotion Gate，并把 Evaluator Meta-Evaluation 记录为 `not-run`，因为 Evaluator 可靠性需要另行执行独立的 Ground Truth 工作流。
 
