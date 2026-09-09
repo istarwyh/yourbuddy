@@ -1,0 +1,80 @@
+YourBuddy 0.3.6 local candidate validation
+==========================================
+
+Evidence date: 2026-09-09, Asia/Shanghai (UTC+08:00)
+Issue correction commit: ae00df24539f07479a6d097cf0c06e86b493d86e
+Merged correction commit: d0b55a7fee27fc240b1ef68ad14d968d4b96c0db
+Baseline before release versioning: origin/master at d0b55a7fee27fc240b1ef68ad14d968d4b96c0db
+Environment: macOS 15.6.1 (24G90), arm64; Node 22.19.0 for the bundled-Node path; pnpm 11.7.0; rustc/cargo 1.98.0
+Data and services: locally generated private CA, leaf certificate, HTTPS origin, and HTTP CONNECT proxy; no credential, account data, real enterprise certificate, or external model request
+
+Passing observations
+--------------------
+
+1. pnpm --dir apps/desktop-tauri run test:personal-workbench
+   Result: exit 0; eight files and 42 tests passed, followed by the production build.
+
+2. pnpm --dir apps/desktop-tauri run test:product-refresh
+   Result: exit 0; 43 product tests passed, including the updated network settings bridge and assembled product smoke.
+
+3. Two independent concurrent invocations of node --test apps/desktop-tauri/scripts/node-extra-ca.test.mjs
+   Environment: YOURBUDDY_NODE_BINARY selected the extracted bundled Node 22.19.0 runtime.
+   Result: both invocations exited 0. Each started a local private-CA HTTPS endpoint and local HTTP CONNECT proxy, proved that the actual CLI Host failed without the CA, and received HTTP 204 with the CA.
+
+4. cargo test --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml network_proxy::tests::
+   Result: exit 0; 12 tests passed.
+
+5. Focused WSL launch and provisioning tests
+   Result: exit 0; five WSL launch tests and one WSL provisioning test passed.
+
+6. Focused plugin catalog tests
+   Result: exit 0; three tests passed.
+
+7. GITHUB_TOKEN supplied only to the child process: pnpm --dir apps/desktop-tauri run sync:dsh -- --dry-run
+   Result: exit 0; upstream DSH selection and desktop product inputs were current.
+
+8. GITHUB_TOKEN supplied only to the child process: pnpm --dir apps/desktop-tauri run prepare:release -- --allow-dirty
+   Result: exit 0 after the peer-policy correction described below.
+   Client build: 220 artifacts.
+   Harness source SHA-256: 97585a6dc206e35fb1bfd917cc0bea11c9762fa136574c7d2046a4c41bc9f829.
+   Runtime peer links: 54.
+   Offline store: 38,708 files; SHA-256 c14df64e2b8eba40df0fa861ab85c5439b2560d0f76897719faddaf683ea8a37.
+   Offline-store archive SHA-256: 798d5845119ab6b66c17525d006e8ffd7909397faf415c4a31c4356997fdd44d.
+   Harness bundle SHA-256: e37f95ede3de75600f2eb4e80449a0453f8a6ce821b1d9202d89a6ba9d4d01dc.
+   Offline reinstall: 587 packages reused, zero downloaded, and 587 installed.
+   Bundled Python: 3.12.14.
+   Bundled Harbor: 0.21.0; Harbor DSH Evolution adapter: 0.9.5.
+   Product smoke: all six assembled plugins passed.
+
+9. pnpm run test:docs
+   Result: exit 0; 15 tests passed.
+
+10. pnpm run doc-sync
+    Result: exit 0; 32 documentation gates passed.
+
+11. pnpm run lint; git diff --check; focused rustfmt --check
+    Result: exit 0.
+
+12. pnpm run typecheck
+    Result: exit 0 in the pre-push hook for the issue correction.
+
+13. Pull-request CI run 34361867650
+    Commit: ae00df24539f07479a6d097cf0c06e86b493d86e.
+    Window: 2026-09-09 22:10-22:39 UTC+08:00.
+    Result: success; all required jobs passed, including Linux and Windows exhaustive coverage, snapshots and artifacts, Windows native/build/Wine/observational lanes, Node compatibility, Python SDK, and the release-shaped Python runtime matrix.
+    Merge: PR 19 merged as d0b55a7fee27fc240b1ef68ad14d968d4b96c0db at 2026-09-09 22:41:45 UTC+08:00 and closed Issue 18.
+    Non-result: Cloudflare Pages preview run 34361867354 remained queued for the unavailable dsh-ubuntu-24-04-16core self-hosted label and was cancelled. It did not run and is not counted as passing.
+
+Failures, negative controls, and recovery
+----------------------------------------
+
+- The first complete prepare:release attempt rejected Harbor Evolution 0.9.5 because npm prerelease peer matching does not accept the current DSH 0.1.2-rc.1 through the ordinary semver range. The script rolled its transaction back. Exact Harbor 0.9.5 peer overrides were added for the bundled DSH version, the obsolete client-runtime injection was removed, and the complete prepare:release transaction then passed. No partially assembled tree supports the release claim.
+- The first pull-request CI run 34356938688 failed only in Windows coverage after session-projection-cache read durable sequence 2 while the expected sequence 4 fire-and-forget write was still pending. The affected product path was unchanged and byte-identical to recent successful Windows runs. The test now subscribes to the exact domain/changed event emitted after backend durability before reading the file. The focused file passed 21 tests once and then passed four additional independent sequential invocations. Final CI run 34361867650 passed Windows coverage. The failed run remains negative evidence and is not described as a passing retry.
+- The real Host CA test originally used timeout-driven child cleanup that could reject before the child close event and leave servers open. Cleanup now rejects only after child close, awaits both server closes, and removes the temporary directory even when close reports an error. Two concurrent complete invocations passed.
+- The first offline-store fill needed one external network retry. The completed transaction's zero-download reinstall and all product smokes passed; the interrupted observation is not used as product evidence.
+- Six optional local PowerShell probe processes entered a macOS uninterruptible exiting state during an earlier mistaken concurrent Vitest attempt. TERM and KILL could not reap them. Subsequent tests selected a PATH without that faulty optional executable and passed. This host-tool residue did not modify the repository or product candidate.
+
+Evidence boundaries
+-------------------
+
+This record proves the source behavior, synthetic private-CA path through the actual CLI Host, native policy tests, product composition, complete local release preparation, and pull-request CI. It does not prove public product bytes, updater signature or installation, DMG identity, native App startup, packaged-WebView interaction, Apple signing or notarization, the deployed website, a real enterprise proxy or certificate, Intel macOS, or Windows and Linux desktop products. Those claims remain pending or unverified until their dedicated release stages complete.

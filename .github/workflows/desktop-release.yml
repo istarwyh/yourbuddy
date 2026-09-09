@@ -9,7 +9,7 @@ on:
       tag:
         description: Existing unpublished yourbuddy-v* tag to build after a failed run
         required: true
-        default: yourbuddy-v0.3.5
+        default: yourbuddy-v0.3.6
 
 permissions:
   contents: write
