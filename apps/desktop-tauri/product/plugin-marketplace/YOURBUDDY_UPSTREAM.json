@@ -11,9 +11,10 @@
     "Preserve install result package identity and expose actionable pnpm diagnostics.",
     "Resolve only dsh.bundle.patch packages through Repository or owner-scoped DSH upstream metadata, request latest manifests as standard JSON, and ignore sibling SDK and CLI packages.",
     "Route repository and npm links through YourBuddy's restricted desktop marketplace-link bridge while preserving the ordinary browser fallback.",
+    "Show the packaged dsh-plugin-marketplace version in an identity badge at the top of its settings section.",
     "Document the YourBuddy product adaptations in the bilingual README projection."
   ],
   "repository": "https://github.com/Scorp1o117/dsh-plugin-marketplace",
   "license": "MIT",
-  "treeSha256": "c7555c06744ce9474da97a5048eb019935d4bd3e8b817b4ab0f4d66b22f9bdfa"
+  "treeSha256": "e9401353dd8647fcbcc07fba611d5b9cbbefe2642b2602874c26043f6ad74f99"
 }
