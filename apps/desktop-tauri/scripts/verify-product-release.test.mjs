@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -221,4 +221,14 @@ test('product smoke overlay mounts the Plugin Marketplace and proxy verifier', (
   assert.match(overlay, /id: agent-presets\n  config:\n    default: codex/)
   assert.match(overlay, /id: yourbuddy-release-proxy-verifier/)
   assert.match(overlay, /name: "\/tmp\/proxy-verifier\.mjs"/)
+})
+
+test('Plugin Marketplace displays its packaged version in Settings', () => {
+  const root = join(import.meta.dirname, '..', 'product', 'plugin-marketplace')
+  const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  const client = readFileSync(join(root, 'client.js'), 'utf8')
+
+  assert.match(client, new RegExp(`var PLUGIN_VERSION = ${JSON.stringify(manifest.version)};`))
+  assert.match(client, /className: "__mp_identityName" }, "dsh-plugin-marketplace"/)
+  assert.match(client, /className: "__mp_identityVersion" }, "v" \+ PLUGIN_VERSION/)
 })

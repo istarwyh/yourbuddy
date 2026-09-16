@@ -10,6 +10,7 @@
 [github.com/topics/dsh-plugin](https://github.com/topics/dsh-plugin)，无需打开终端。
 
 - **搜索**：按关键词搜索主题下的插件，按 Star 或更新时间**排序**
+- **Package 标识**：在设置分区顶部展示当前安装的 `dsh-plugin-marketplace` 版本
 - **插件卡片**：名称、简介、Star 数、语言、更新时间一目了然
 - **详情面板**：GitHub README 摘要、安装命令、仓库 / npm 链接；YourBuddy
   桌面通过受限桥在系统浏览器中打开这些链接

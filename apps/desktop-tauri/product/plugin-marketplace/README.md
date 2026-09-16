@@ -13,6 +13,7 @@ A **plugin marketplace** inside the DeepSeek Harness Web UI: browse
 from the settings page — no terminal needed.
 
 - **Search** the topic by keyword, **sort** by stars or last update
+- **Package identity** shows the installed `dsh-plugin-marketplace` version at the top of the settings section
 - **Plugin cards** with description, stars, language, and update date
 - **Detail panel**: GitHub README summary, install command, repo/npm links; the
   YourBuddy desktop opens these links through a restricted system-browser bridge

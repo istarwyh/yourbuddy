@@ -27,10 +27,9 @@ window.__ModuleLoader__.load({
       ".__mp_star{flex:none;font-size:12px;color:var(--dsw-alias-label-secondary)}" +
       ".__mp_desc{font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}" +
       ".__mp_meta{display:flex;gap:10px;font-size:11px;color:var(--dsw-alias-label-tertiary)}" +
-      ".__mp_versions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--dsw-alias-label-tertiary)}" +
-      ".__mp_version{border:1px solid var(--dsw-alias-border-l2);border-radius:999px;padding:1px 7px;background:var(--dsw-alias-bg-layer-3)}" +
-      ".__mp_versionCurrent{color:var(--dsw-alias-state-success-primary, #3fb950)}" +
-      ".__mp_versionDifferent{color:var(--dsw-alias-state-warn-primary, #d29922)}" +
+      ".__mp_identity{display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;padding:4px 12px 4px 14px;border:1px solid var(--dsw-alias-border-l2);border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-size:12px;line-height:18px}" +
+      ".__mp_identityName{color:var(--dsw-alias-label-primary);font-weight:600}" +
+      ".__mp_identityVersion{padding:1px 8px;border-radius:999px;background:var(--dsw-alias-accent-soft,var(--dsw-alias-border-l2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}" +
       ".__mp_toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}" +
       ".__mp_input{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:32px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 10px;font-size:13px;min-width:200px;flex:1}" +
       ".__mp_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:32px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 8px;font-size:13px}" +
@@ -56,6 +55,8 @@ window.__ModuleLoader__.load({
 
     // ── locale ────────────────────────────────────────────────────────────
     var NS = "marketplace";
+    // Kept in lockstep with package.json by the desktop product regression.
+    var PLUGIN_VERSION = "0.3.1";
     var inject = ["slots", "locale", "settingsScope", "connection"];
     var zh = {
       nav: "插件市场",
@@ -89,13 +90,6 @@ window.__ModuleLoader__.load({
       npmCheckFailed: "暂时无法核验该仓库对应的 npm Package，因此不会执行一键安装。请稍后重试。",
       npmAmbiguous: "多个可安装 DSH Bundle Package 声明与该仓库关联，无法安全选择；请按仓库 README 手动安装。",
       npmUnavailable: "无法一键安装",
-      latestVersion: "最新 {version}",
-      installedVersion: "已安装 {version}",
-      versionCurrent: "已是最新版",
-      versionDifferent: "非最新版",
-      versionNotInstalled: "未安装",
-      versionChecking: "版本查询中…",
-      versionUnavailable: "版本未知",
       aiExplain: "🤖 AI 解释",
       aiExplaining: "AI 解释中，请稍候…",
       aiExplainErr: "AI 解释失败：{msg}",
@@ -133,13 +127,6 @@ window.__ModuleLoader__.load({
       npmCheckFailed: "The npm package for this repository could not be verified, so one-click install will not run. Try again later.",
       npmAmbiguous: "Multiple installable DSH bundle packages claim this repository, so none can be selected safely. Follow the repository README instead.",
       npmUnavailable: "One-click unavailable",
-      latestVersion: "Latest {version}",
-      installedVersion: "Installed {version}",
-      versionCurrent: "Up to date",
-      versionDifferent: "Not latest",
-      versionNotInstalled: "Not installed",
-      versionChecking: "Checking version…",
-      versionUnavailable: "Version unavailable",
       aiExplain: "🤖 AI Explain",
       aiExplaining: "AI is explaining…",
       aiExplainErr: "AI explain failed: {msg}",
@@ -197,25 +184,6 @@ window.__ModuleLoader__.load({
     }
     // npm metadata gates one-click install and detects bundle packages; CORS-enabled, cached.
     var npmCache = new Map(); // GitHub owner/repo -> Promise<{status,isBundle,name?,version?}>
-    var npmQueue = [];
-    var npmActive = 0;
-    var NPM_LOOKUP_CONCURRENCY = 4;
-    function drainNpmQueue() {
-      while (npmActive < NPM_LOOKUP_CONCURRENCY && npmQueue.length > 0) {
-        var job = npmQueue.shift();
-        npmActive += 1;
-        Promise.resolve().then(job.task).then(job.resolve, job.reject).finally(function () {
-          npmActive -= 1;
-          drainNpmQueue();
-        });
-      }
-    }
-    function scheduleNpmLookup(task) {
-      return new Promise(function (resolve, reject) {
-        npmQueue.push({ task: task, resolve: resolve, reject: reject });
-        drainNpmQueue();
-      });
-    }
     function normalizeGitHubRepository(value) {
       if (value && typeof value === "object") value = value.url;
       if (typeof value !== "string") return "";
@@ -251,7 +219,7 @@ window.__ModuleLoader__.load({
     async function fetchNpmInfo(fullName) {
       if (npmCache.has(fullName)) return npmCache.get(fullName);
       var repositoryName = fullName.split("/")[1];
-      var promise = scheduleNpmLookup(function () { return fetch("https://registry.npmjs.org/-/v1/search?text=" + encodeURIComponent(repositoryName) + "&size=20", {
+      var promise = fetch("https://registry.npmjs.org/-/v1/search?text=" + encodeURIComponent(repositoryName) + "&size=20", {
         headers: { Accept: "application/json" }
       }).then(function (res) {
         if (!res.ok) throw new Error("npm search http " + res.status);
@@ -287,33 +255,9 @@ window.__ModuleLoader__.load({
         };
       }).catch(function () {
         return { status: "error", isBundle: false };
-      }); });
+      });
       npmCache.set(fullName, promise);
       return promise;
-    }
-
-    function marketplaceVersionState(npmInfo, installedVersions) {
-      if (!npmInfo || npmInfo.status === "loading") return { kind: "loading", latest: "", installed: "" };
-      if (npmInfo.status !== "available" || typeof npmInfo.name !== "string" || typeof npmInfo.version !== "string") {
-        return { kind: "unavailable", latest: "", installed: "" };
-      }
-      var installed = installedVersions && typeof installedVersions[npmInfo.name] === "string" ? installedVersions[npmInfo.name] : "";
-      return {
-        kind: installed === "" ? "not-installed" : installed === npmInfo.version ? "current" : "different",
-        latest: npmInfo.version,
-        installed: installed
-      };
-    }
-
-    function useNpmInfo(fullName) {
-      var state = react.useState({ status: "loading", isBundle: false });
-      var info = state[0], setInfo = state[1];
-      react.useEffect(function () {
-        var active = true;
-        fetchNpmInfo(fullName).then(function (result) { if (active) setInfo(result); });
-        return function () { active = false; };
-      }, [fullName]);
-      return info;
     }
 
     var marketplaceLinkChannel = "yourbuddy.desktop.marketplace-link";
@@ -369,25 +313,7 @@ window.__ModuleLoader__.load({
     }
 
     // ── components ────────────────────────────────────────────────────────
-    function VersionSummary(props) {
-      var state = marketplaceVersionState(props.npmInfo, props.installedVersions);
-      if (state.kind === "loading") return h("div", { className: "__mp_versions" }, props.t("versionChecking"));
-      if (state.kind === "unavailable") return h("div", { className: "__mp_versions" }, props.t("versionUnavailable"));
-      return h("div", { className: "__mp_versions" },
-        h("span", { className: "__mp_version" }, props.t("latestVersion").replace("{version}", state.latest)),
-        state.installed
-          ? h("span", { className: "__mp_version" }, props.t("installedVersion").replace("{version}", state.installed))
-          : h("span", { className: "__mp_version" }, props.t("versionNotInstalled")),
-        state.kind === "current"
-          ? h("span", { className: "__mp_versionCurrent" }, props.t("versionCurrent"))
-          : state.kind === "different"
-            ? h("span", { className: "__mp_versionDifferent" }, props.t("versionDifferent"))
-            : null
-      );
-    }
-
     function PluginCard(props) {
-      var npmInfo = useNpmInfo(props.plugin.fullName);
       return h("li", null,
         h("button", { type: "button", className: "__mp_card", onClick: props.onOpen },
           h("div", { className: "__mp_cardHead" },
@@ -395,7 +321,6 @@ window.__ModuleLoader__.load({
             h("span", { className: "__mp_star" }, "★ " + props.plugin.stars)
           ),
           props.plugin.desc ? h("div", { className: "__mp_desc" }, props.plugin.desc) : null,
-          h(VersionSummary, { npmInfo: npmInfo, installedVersions: props.installedVersions, t: props.t }),
           h("div", { className: "__mp_meta" },
             props.plugin.lang ? h("span", null, props.plugin.lang) : null,
             h("span", null, props.t("updated") + " " + fmtTime(props.plugin.updated))
@@ -451,7 +376,6 @@ window.__ModuleLoader__.load({
           h("span", null, props.t("updated") + " " + fmtTime(p.updated)),
           props.lang ? h("span", null, p.lang) : null
         ),
-        h(VersionSummary, { npmInfo: props.npmInfo, installedVersions: props.installedVersions, t: props.t }),
         h("div", null,
           h("a", { className: "__mp_link", href: repositoryUrl, target: "_blank", rel: "noopener noreferrer", onClick: function (event) { openMarketplaceLink(event, repositoryUrl); } }, props.t("openRepo")),
           "  ·  ",
@@ -515,8 +439,6 @@ window.__ModuleLoader__.load({
         var un = typeof scope.subscribe === "function" ? scope.subscribe(sync) : null;
         return function () { alive = false; if (un) un(); if (scope.dispose) scope.dispose(); };
       }, [scope]);
-      var settingsValue = installState && installState.status === "ready" ? installState.value : null;
-      var installedVersions = settingsValue && settingsValue.installedVersions || {};
       // Older hosts can still return settings-not-exposed. Recommend upgrading
       // instead of mutating the installed DSH package on disk.
       var mutateError = function (detail, fallback) {
@@ -590,6 +512,10 @@ window.__ModuleLoader__.load({
       };
       var more = function () { load(s.q, s.sort, s.page + 1, true); };
       return h("div", null,
+        h("div", { className: "__mp_identity" },
+          h("span", { className: "__mp_identityName" }, "dsh-plugin-marketplace"),
+          h("span", { className: "__mp_identityVersion" }, "v" + PLUGIN_VERSION)
+        ),
         h("form", { className: "__mp_toolbar", onSubmit: submit },
           h("input", { className: "__mp_input", type: "search", value: s.q, placeholder: t("search"), onChange: function (e) { set(function (prev) { return Object.assign({}, prev, { q: e.target.value }); }); } }),
           h("select", { className: "__mp_select", value: s.sort, onChange: function (e) { load(s.q, e.target.value, 1, false); } },
@@ -604,8 +530,8 @@ window.__ModuleLoader__.load({
             // no jumping around the page.
             var open = s.open && s.open.fullName === p.fullName;
             return h("div", { key: p.fullName, className: "__mp_item" },
-              h(PluginCard, { plugin: p, installedVersions: installedVersions, t: t, onOpen: function () { openDetail(p); } }),
-              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: settingsValue ? settingsValue.installState : null, installedVersions: installedVersions, onInstall: onInstall, ghError: t("ghError"), explainState: settingsValue ? settingsValue.aiExplainResult : null, explainError: s.explainError, onExplain: onExplain, npmInfo: s.npmInfo }) : null
+              h(PluginCard, { plugin: p, t: t, onOpen: function () { openDetail(p); } }),
+              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: installState && installState.status === "ready" ? installState.value.installState : null, onInstall: onInstall, ghError: t("ghError"), explainState: installState && installState.status === "ready" ? installState.value.aiExplainResult : null, explainError: s.explainError, onExplain: onExplain, npmInfo: s.npmInfo }) : null
             );
           })
         ),
