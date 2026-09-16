@@ -87,9 +87,10 @@ const skipFileSuffixes = ['.spec.ts', '.e2e.ts', '.snapshot.ts']
 /**
  * Derive the bundled pnpm-workspace.yaml from the repository's own file,
  * replacing only the `packages:` membership. Every other section —
- * `patchedDependencies`, `allowBuilds`, overrides — is copied verbatim so a
- * stale hardcoded copy can never disagree with the source tree the bundle
- * ships; pnpm treats a declared-but-unused patch as a hard install error.
+ * `patchedDependencies`, the dependency-build policy, overrides — is copied
+ * verbatim so a stale hardcoded copy can never disagree with the source tree
+ * the bundle ships; pnpm treats a declared-but-unused patch as a hard install
+ * error.
  *
  * @param {string} sourceYaml
  * @returns {string}

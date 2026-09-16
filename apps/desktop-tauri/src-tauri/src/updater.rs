@@ -72,11 +72,7 @@ pub async fn install_available(app: &AppHandle) -> Result<String, String> {
 /// workbench unchanged and returns the updater error to the tray handler.
 pub async fn check_now(app: &AppHandle) -> Result<String, String> {
     let current = current_version(app);
-    notify::toast(
-        app,
-        "YourBuddy",
-        &i18n::tf(Msg::UpdaterChecking, &current),
-    );
+    notify::toast(app, "YourBuddy", &i18n::tf(Msg::UpdaterChecking, &current));
     check_and_install(app)
         .await
         .map(|outcome| outcome.message())
@@ -151,11 +147,7 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
         .map_err(|error| error.to_string())?;
 
     boot_log::info(&format!("desktop update installed target={target}"));
-    notify::toast(
-        app,
-        "YourBuddy",
-        &i18n::tf(Msg::UpdaterRestarting, &target),
-    );
+    notify::toast(app, "YourBuddy", &i18n::tf(Msg::UpdaterRestarting, &target));
     chrome::request_restart(app)
 }
 

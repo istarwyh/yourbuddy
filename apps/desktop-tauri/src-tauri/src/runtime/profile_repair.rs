@@ -37,6 +37,15 @@ const MANAGED_PRODUCT_LINKS: &[(&str, &str)] = &[
 /// a boot error only for this one, other profiles defer to a later `dsh plugin`.
 pub const HOST_PROFILE: &str = "web";
 
+const PROFILE_WORKSPACE_FILE: &str = "pnpm-workspace.yaml";
+const YOURBUDDY_PROFILE_WORKSPACE: &str = r#"packages:
+  - .
+
+nodeLinker: hoisted
+autoInstallPeers: false
+dangerouslyAllowAllBuilds: true
+"#;
+
 /// Ensure every profile under `DSH_HOME` can resolve its declared dependencies
 /// before the Host starts: profiles needing install run `node …/pnpm.cjs
 /// install` in the profile directory when that entry exists, otherwise
@@ -51,6 +60,14 @@ pub async fn ensure_profile_installs(
     network_proxy: &ResolvedNetworkProxy,
 ) -> Result<(), String> {
     let mut pending = rebind_managed_product_links(paths)?;
+    if ensure_host_profile_build_policy(&paths.dsh_home)?
+        && profile_dir(&paths.dsh_home, HOST_PROFILE)
+            .join("package.json")
+            .is_file()
+        && !pending.iter().any(|name| name == HOST_PROFILE)
+    {
+        pending.push(HOST_PROFILE.into());
+    }
     for name in profiles_needing_install(&paths.dsh_home) {
         if !pending.contains(&name) {
             pending.push(name);
@@ -89,6 +106,73 @@ pub async fn ensure_profile_installs(
         }
     }
     Ok(())
+}
+
+/// Let packages explicitly installed into YourBuddy's isolated Web Profile run
+/// their lifecycle scripts without a second pnpm approval. Generic DSH
+/// Profiles retain their own build policies.
+///
+/// Returns `true` when startup changed the Profile policy. An existing Profile
+/// then receives one install pass so a dependency left half-installed by
+/// pnpm's previous approval error can finish before the Host starts.
+fn ensure_host_profile_build_policy(dsh_home: &Path) -> Result<bool, String> {
+    let profile = profile_dir(dsh_home, HOST_PROFILE);
+    fs::create_dir_all(&profile)
+        .map_err(|error| format!("cannot create {}: {error}", profile.display()))?;
+    let workspace = profile.join(PROFILE_WORKSPACE_FILE);
+    let raw = match fs::read_to_string(&workspace) {
+        Ok(raw) => raw,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            fs::write(&workspace, YOURBUDDY_PROFILE_WORKSPACE)
+                .map_err(|error| format!("cannot write {}: {error}", workspace.display()))?;
+            boot_log::info("enabled dependency build scripts for the YourBuddy web profile");
+            return Ok(true);
+        }
+        Err(error) => {
+            return Err(format!("cannot read {}: {error}", workspace.display()));
+        }
+    };
+    let (updated, changed) = enable_all_profile_builds(&raw);
+    if !changed {
+        return Ok(false);
+    }
+    fs::write(&workspace, updated)
+        .map_err(|error| format!("cannot update {}: {error}", workspace.display()))?;
+    boot_log::info("enabled dependency build scripts for the YourBuddy web profile");
+    Ok(true)
+}
+
+/// Set pnpm's top-level `dangerouslyAllowAllBuilds` key while retaining every
+/// other Profile setting, including a user's explicit `allowBuilds` entries.
+fn enable_all_profile_builds(raw: &str) -> (String, bool) {
+    let mut output = String::with_capacity(raw.len() + 40);
+    let mut found = false;
+    let mut changed = false;
+    for line in raw.split_inclusive('\n') {
+        let content = line.strip_suffix('\n').unwrap_or(line);
+        if content.starts_with("dangerouslyAllowAllBuilds:") {
+            found = true;
+            if content.trim() == "dangerouslyAllowAllBuilds: true" {
+                output.push_str(line);
+            } else {
+                output.push_str("dangerouslyAllowAllBuilds: true");
+                if line.ends_with('\n') {
+                    output.push('\n');
+                }
+                changed = true;
+            }
+        } else {
+            output.push_str(line);
+        }
+    }
+    if found {
+        return (output, changed);
+    }
+    if !output.is_empty() && !output.ends_with('\n') {
+        output.push('\n');
+    }
+    output.push_str("dangerouslyAllowAllBuilds: true\n");
+    (output, true)
 }
 
 /// Move only YourBuddy-owned product `link:` dependencies from an older
@@ -284,7 +368,9 @@ fn format_output_tail(tail: &Arc<Mutex<Vec<String>>>) -> String {
 #[cfg(test)]
 mod tests {
     use super::super::user_home::profiles_needing_install;
-    use super::rebind_managed_product_links;
+    use super::{
+        enable_all_profile_builds, ensure_host_profile_build_policy, rebind_managed_product_links,
+    };
     use crate::runtime::provision::RuntimePaths;
     use std::fs;
     use std::path::PathBuf;
@@ -350,6 +436,50 @@ mod tests {
         let root = temp_root();
         assert!(profiles_needing_install(&root.join("home")).is_empty());
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn creates_the_yourbuddy_web_profile_build_policy() {
+        let root = temp_root();
+        let home = root.join("dsh-home");
+
+        assert!(ensure_host_profile_build_policy(&home).unwrap());
+        let workspace = fs::read_to_string(
+            home.join("profiles")
+                .join("web")
+                .join("pnpm-workspace.yaml"),
+        )
+        .unwrap();
+        assert!(workspace.contains("packages:\n  - ."));
+        assert!(workspace.contains("nodeLinker: hoisted"));
+        assert!(workspace.contains("autoInstallPeers: false"));
+        assert!(workspace.contains("dangerouslyAllowAllBuilds: true"));
+        assert!(!ensure_host_profile_build_policy(&home).unwrap());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn enables_all_builds_without_removing_existing_profile_policy() {
+        let raw = "packages:\n  - .\nallowBuilds:\n  protobufjs: set this to true or false\ndangerouslyAllowAllBuilds: false\n";
+        let (updated, changed) = enable_all_profile_builds(raw);
+
+        assert!(changed);
+        assert!(updated.contains("allowBuilds:\n  protobufjs: set this to true or false"));
+        assert!(updated.contains("dangerouslyAllowAllBuilds: true"));
+        assert!(!updated.contains("dangerouslyAllowAllBuilds: false"));
+        assert_eq!(enable_all_profile_builds(&updated), (updated, false));
+    }
+
+    #[test]
+    fn appends_the_build_policy_to_an_existing_profile_workspace() {
+        let raw = "packages:\n  - .\nnodeLinker: hoisted";
+        let (updated, changed) = enable_all_profile_builds(raw);
+
+        assert!(changed);
+        assert_eq!(
+            updated,
+            "packages:\n  - .\nnodeLinker: hoisted\ndangerouslyAllowAllBuilds: true\n"
+        );
     }
 
     #[test]

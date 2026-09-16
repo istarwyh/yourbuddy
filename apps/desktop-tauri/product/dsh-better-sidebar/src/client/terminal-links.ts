@@ -8,9 +8,7 @@
  * Ctrl (Win/Linux) or Cmd (mac) — a plain click is left for xterm's
  * normal selection handling. Only http(s) URLs are dispatched to the
  * browser; other schemes (`file://`, `mailto:`, `javascript:`, …) are
- * underlined for visibility but rejected at activation, so a `file://`
- * URL printed by a tool stays inert instead of being handed to
- * `window.open`.
+ * underlined for visibility but rejected at activation.
  *
  * Kept as a pure module (no xterm import) so the regex, the line
  * scanner, the modifier gate and the scheme guard are unit-testable
@@ -20,6 +18,8 @@
  * event modifier check + `openTerminalUrl`) so this module never
  * imports xterm types.
  */
+
+import { openExternalHttpUrl } from './desktop-external-links.ts'
 
 /** Scheme allowlist for activation. Only http(s) is opened externally. */
 const OPENABLE_SCHEMES = new Set(['http:', 'https:'])
@@ -171,24 +171,14 @@ export function shouldActivateTerminalLink(event: MouseEvent): boolean {
 }
 
 /**
- * Open a URL matched in the terminal, with a scheme guard so a printed
- * `file://` or anything that slipped past the regex cannot reach
- * `window.open`. The URL is constructed via `new URL(...)` which throws
- * on malformed input; the catch makes the function total so the xterm
- * handler never throws into the terminal's event loop.
+ * Open a URL matched in the terminal. The shared dispatcher validates the
+ * URL and routes desktop requests without throwing into xterm's event loop.
  *
- * @returns `true` when the URL was dispatched to `window.open`, `false`
- *   when it was rejected (bad URL, disallowed scheme, no `window`).
+ * @returns True when the URL was dispatched, or false when it was rejected.
  */
 export function openTerminalUrl(uri: string): boolean {
-  if (typeof window === 'undefined') return false
-  let url: URL
-  try {
-    url = new URL(uri)
-  } catch {
-    return false
-  }
-  if (!OPENABLE_SCHEMES.has(url.protocol)) return false
-  window.open(url.toString(), '_blank', 'noopener,noreferrer')
-  return true
+  let protocol: string
+  try { protocol = new URL(uri).protocol } catch { return false }
+  if (!OPENABLE_SCHEMES.has(protocol)) return false
+  return openExternalHttpUrl(uri)
 }

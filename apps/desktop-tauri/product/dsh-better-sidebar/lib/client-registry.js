@@ -12584,7 +12584,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 								title: t("browserOpenExternal"),
 								disabled: url === void 0,
 								onClick: () => {
-									if (url !== void 0) window.open(url, "_blank", "noopener");
+									if (url !== void 0) openExternalHttpUrl(url);
 								},
 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscLinkExternal, { size: 15 })
 							})
@@ -12611,7 +12611,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					}) : embedBlocked !== null && !forceEmbed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BrowserEmbedBlocked, {
 						url: embedBlocked,
 						onOpenInBrowser: () => {
-							window.open(embedBlocked, "_blank", "noopener");
+							openExternalHttpUrl(embedBlocked);
 						},
 						onLoadAnyway: () => {
 							setForceEmbed(true);
@@ -16496,8 +16496,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* matching kind (name / url / description / install script).
 		*
 		* Per entry there are two actions:
-		* - 「跳转」opens the plugin's repo in a REAL new browser tab (window.open
-		*   — a button, so the sidebar link takeover cannot reroute it);
+		* - 「跳转」opens the plugin's repo outside the workbench. YourBuddy's
+		*   embedded Client sends the URL through the desktop external-link channel;
+		*   standalone Web falls back to a new browser tab;
 		* - 「安装」only COPIES the install script to the clipboard (writeClipboard)
 		*   with a transient "已复制" feedback on the button — the user pastes and
 		*   runs it wherever they manage their DSH profile. No terminal is opened,
@@ -16515,6 +16516,49 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		}
 		/** How long the "已复制" feedback stays on the copy button. */
 		const COPIED_FEEDBACK_MS = 1500;
+		const DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
+		const DESKTOP_EXTERNAL_LINK_VERSION = 1;
+		const MAX_EXTERNAL_URL_LENGTH = 4096;
+		let externalLinkSequence = 0;
+		/**
+		* Normalize an HTTP(S) destination accepted by the desktop shell.
+		* @param value - Candidate absolute URL.
+		* @returns The normalized URL, or undefined when the value is unsupported.
+		*/
+		function resolveExternalHttpUrl(value) {
+			if (value.length === 0 || value.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
+			try {
+				const url = new URL(value);
+				if (url.protocol !== "http:" && url.protocol !== "https:" || url.hostname === "" || url.username !== "" || url.password !== "" || url.href.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
+				return url.href;
+			} catch {
+				return;
+			}
+		}
+		/**
+		* Dispatch an HTTP(S) destination without navigating the workbench.
+		* @param value - Candidate absolute URL.
+		* @returns True when the URL was sent to the desktop shell or browser API.
+		*/
+		function openExternalHttpUrl(value) {
+			if (typeof window === "undefined") return false;
+			const url = resolveExternalHttpUrl(value);
+			if (url === void 0) return false;
+			if (window.parent !== window) {
+				externalLinkSequence += 1;
+				window.parent.postMessage({
+					channel: DESKTOP_EXTERNAL_LINK_CHANNEL,
+					version: DESKTOP_EXTERNAL_LINK_VERSION,
+					type: "open-request",
+					requestId: `${Date.now()}_${externalLinkSequence}`,
+					url
+				}, "*");
+				return true;
+			}
+			const opened = window.open(url, "_blank", "noopener,noreferrer");
+			if (opened !== null) opened.opener = null;
+			return true;
+		}
 		/** The modal body: the GitHub topic button + the recommended plugin list
 		*  with per-entry jump/copy buttons (extracted for direct testing). */
 		function PluginListBody(props) {
@@ -16549,11 +16593,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					setCopiedId((current) => current === entry.id ? null : current);
 				}, COPIED_FEEDBACK_MS);
 			};
-			/** Open the plugin's repo in a REAL new browser tab (window.open — a
-			*  button, so the sidebar link takeover cannot reroute it). */
-			const jump = (entry) => {
-				window.open(entry.url, "_blank", "noopener");
-			};
 			/** One catalog row (extracted so the group render stays flat). */
 			const renderEntry = (entry) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: SideCardSection_module_css_default.pluginEntry,
@@ -16565,7 +16604,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 							className: SideCardSection_module_css_default.pluginName,
 							"aria-label": `${t("openPlugin")}: ${entry.name}`,
 							onClick: () => {
-								jump(entry);
+								openExternalHttpUrl(entry.url);
 							},
 							children: entry.name
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
@@ -16575,7 +16614,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 								className: SideCardSection_module_css_default.pluginJumpBtn,
 								"aria-label": `${t("openPlugin")}: ${entry.name}`,
 								onClick: () => {
-									jump(entry);
+									openExternalHttpUrl(entry.url);
 								},
 								children: t("openPlugin")
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
@@ -16606,7 +16645,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						type: "button",
 						className: SideCardSection_module_css_default.pluginTopicBtn,
 						onClick: () => {
-							window.open(PLUGIN_TOPIC_URL, "_blank", "noopener");
+							openExternalHttpUrl(PLUGIN_TOPIC_URL);
 						},
 						children: t("addPluginsBrowseMore")
 					}),

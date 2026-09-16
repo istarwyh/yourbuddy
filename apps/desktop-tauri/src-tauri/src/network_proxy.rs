@@ -948,8 +948,7 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
             .iter()
             .any(|(name, value)| *name == "NODE_EXTRA_CA_CERTS" && value.is_none()));
         assert!(direct_env.iter().any(|(name, value)| {
-            *name == "YOURBUDDY_NETWORK_PROXY_MODE"
-                && value.is_some_and(|value| value == "direct")
+            *name == "YOURBUDDY_NETWORK_PROXY_MODE" && value.is_some_and(|value| value == "direct")
         }));
 
         let mut proxied_command = Command::new("node");
@@ -991,8 +990,7 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
                 && value.is_some_and(|value| value == canonical_ca_path.as_os_str())
         }));
         assert!(environment.iter().any(|(name, value)| {
-            *name == "YOURBUDDY_NETWORK_PROXY_MODE"
-                && value.is_some_and(|value| value == "custom")
+            *name == "YOURBUDDY_NETWORK_PROXY_MODE" && value.is_some_and(|value| value == "custom")
         }));
         apply_to_client(reqwest::Client::builder(), &resolved)
             .unwrap()

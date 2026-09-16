@@ -100,10 +100,8 @@ mod tests {
 
     #[test]
     fn rejects_a_runtime_for_another_platform() {
-        let root = std::env::temp_dir().join(format!(
-            "yourbuddy-product-runtime-{}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("yourbuddy-product-runtime-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         let runtime = root.join("yourbuddy-runtime");
         fs::create_dir_all(&runtime).unwrap();

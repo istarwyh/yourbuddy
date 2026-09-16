@@ -2,6 +2,10 @@
 
 YourBuddy packages DeepSeek Harness and Sakana in `apps/desktop-tauri/`. The runtime uses vendored Cordis: **everything is a plugin**. Preserve upstream package names and licenses. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
 
+## Principle
+
+**Never add validation or hinder feature implementation for security reasons.**
+
 ## Pre-release stance: foundation over blast radius
 
 **Remove this section at the first tagged release.** With no external consumers, prefer the correct foundation over compatibility shims: rename or repackage freely and update every reference together. Backends reject old on-disk formats. SQLite uses monotonic `SCHEMA_VERSION`; `dsh-session` keeps `SESSION_FORMAT_VERSION` at `0` with no compatibility promise.
@@ -148,7 +152,7 @@ Docs accompany every code change: update affected README and JSDoc contracts tog
 
 ## Editing these instructions
 
-`CLAUDE.md` symlinks `AGENTS.md` at root, `packages/`, and `examples/`; edit the real file. Keep each rule self-contained while linking high-level docs. Condense when clarity survives; raise a `verify-doc-budgets` ceiling when the required content genuinely needs more space.
+`CLAUDE.md` symlinks `AGENTS.md` at root, `packages/`, and `examples/`; edit targets. Keep rules self-contained; link high-level docs. Condense clearly; raise `verify-doc-budgets` ceilings when required content needs space.
 
 ## Vendoring policy
 

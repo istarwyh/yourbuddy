@@ -10,7 +10,7 @@ Users can inspect a file tree, editor, image and Markdown previews, real termina
 
 ## Usage
 
-Open the right sidebar or bottom panel in a session workspace and inspect Agent-produced files. For code tasks, use terminals and Git views to review changes. Sidebar cards can be adjusted in Settings.
+Open the right sidebar or bottom panel in a session workspace and inspect Agent-produced files. For code tasks, use terminals and Git views to review changes. Sidebar cards can be adjusted in Settings. Recommended-plugin destinations, the embedded browser's external-open actions, and terminal HTTP(S) links open in the system browser. In YourBuddy, copy and run a recommended plugin's install command once; its isolated Web Profile runs dependency build scripts without a separate `pnpm approve-builds` step.
 
 ## Reason for default inclusion
 

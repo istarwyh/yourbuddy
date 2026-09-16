@@ -7,8 +7,9 @@
  * matching kind (name / url / description / install script).
  *
  * Per entry there are two actions:
- * - 「跳转」opens the plugin's repo in a REAL new browser tab (window.open
- *   — a button, so the sidebar link takeover cannot reroute it);
+ * - 「跳转」opens the plugin's repo outside the workbench. YourBuddy's
+ *   embedded Client sends the URL through the desktop external-link channel;
+ *   standalone Web falls back to a new browser tab;
  * - 「安装」only COPIES the install script to the clipboard (writeClipboard)
  *   with a transient "已复制" feedback on the button — the user pastes and
  *   runs it wherever they manage their DSH profile. No terminal is opened,
@@ -25,6 +26,7 @@ import type { BetterSidebarService } from './service.ts'
 import { PLUGIN_TOPIC_URL, type PluginEntry } from './plugins-shared.ts'
 import { builtinTabPlugins } from './plugins-tabs.ts'
 import { builtinViewerPlugins } from './plugins-viewers.ts'
+import { openExternalHttpUrl } from './desktop-external-links.ts'
 import { t } from './locales.ts'
 import css from './SideCardSection.module.css'
 
@@ -87,25 +89,17 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
     }, COPIED_FEEDBACK_MS)
   }
 
-  /** Open the plugin's repo in a REAL new browser tab (window.open — a
-   *  button, so the sidebar link takeover cannot reroute it). */
-  const jump = (entry: PluginEntry): void => {
-    window.open(entry.url, '_blank', 'noopener')
-  }
-
   /** One catalog row (extracted so the group render stays flat). */
   const renderEntry = (entry: PluginEntry): ReactNode => (
     <div key={entry.id} className={css.pluginEntry}>
       <div className={css.pluginEntryHead}>
-        {/* The name is a BUTTON on the same window.open path as the
-            jump button: as an anchor it would be caught by the
-            document-capture link takeover (which ignores
-            target=_blank) and land in the sidebar browser. */}
+        {/* Keep the name a button so the sidebar's anchor takeover does not
+            route this explicit external action into its browser tab. */}
         <button
           type="button"
           className={css.pluginName}
           aria-label={`${t('openPlugin')}: ${entry.name}`}
-          onClick={() => { jump(entry) }}
+          onClick={() => { openExternalHttpUrl(entry.url) }}
         >
           {entry.name}
         </button>
@@ -114,7 +108,7 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
             type="button"
             className={css.pluginJumpBtn}
             aria-label={`${t('openPlugin')}: ${entry.name}`}
-            onClick={() => { jump(entry) }}
+            onClick={() => { openExternalHttpUrl(entry.url) }}
           >
             {t('openPlugin')}
           </button>
@@ -140,7 +134,7 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
       <button
         type="button"
         className={css.pluginTopicBtn}
-        onClick={() => { window.open(PLUGIN_TOPIC_URL, '_blank', 'noopener') }}
+        onClick={() => { openExternalHttpUrl(PLUGIN_TOPIC_URL) }}
       >
         {t('addPluginsBrowseMore')}
       </button>

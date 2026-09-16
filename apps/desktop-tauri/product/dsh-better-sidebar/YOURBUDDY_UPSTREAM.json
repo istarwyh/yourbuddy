@@ -7,8 +7,10 @@
   "integrity": "sha512-6sGUIpgrFLXikACKBXLSiyngULceZCIr5M4bLw2IdCJ3KWHcbNsJJl+TLHJw0lM9voRw0etbr5fC16VQ9YvshQ==",
   "archiveSha256": "ed721de536421841ecf48bddccd7249aed85473a2cff81c436038f593a4b873b",
   "upstreamTreeSha256": "4cfa9fcd6081e180f37be6d2f68ef5adc97de42568546496a05f5b004a82725e",
-  "patches": [],
+  "patches": [
+    "Route recommended-plugin, embedded-browser, and terminal HTTP(S) actions through YourBuddy's desktop external-link bridge while preserving the ordinary browser fallback."
+  ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "4cfa9fcd6081e180f37be6d2f68ef5adc97de42568546496a05f5b004a82725e"
+  "treeSha256": "f6018b2435baea8018f0649475753271e1cd5a292a9bc7eb258663d0a0dfd7c5"
 }

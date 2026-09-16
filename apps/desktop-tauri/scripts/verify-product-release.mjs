@@ -65,6 +65,7 @@ const validMarketplacePackage = '@yourbuddy-test/verified-plugin'
 const missingMarketplacePackage = '@yourbuddy-test/repository-sdk'
 const validMarketplaceNonPluginPackage = '@yourbuddy-test/verified-sdk'
 const desktopExternalLinkSmokeUrl = 'https://github.com/gitroomhq/postiz-app'
+const desktopBetterSidebarPluginUrl = 'https://github.com/HuanLinOTO/dsh-plugin-better-sidebar-plugin-office'
 const syntheticInstallFailure = 'synthetic install failure'
 const syntheticHostProxy = 'http://127.0.0.1:9'
 
@@ -400,6 +401,15 @@ async function exerciseMarketplace(settings, { openExternalLinks = false } = {})
     name: `Install ${validMarketplacePackage}?`,
     exact: true,
   }).waitFor({ timeout: 10_000 })
+}
+
+async function exerciseBetterSidebarExternalLink(settings) {
+  await settings.getByRole('button', { name: 'Side card', exact: true }).click()
+  await settings.getByRole('button', { name: 'Add preview plugins', exact: true }).click()
+  const plugins = settings.getByRole('dialog', { name: 'Add preview plugins', exact: true })
+  await plugins.waitFor({ timeout: 10_000 })
+  await plugins.getByRole('button', { name: 'Open: Office 预览插件', exact: true }).last().click()
+  await plugins.getByRole('button', { name: 'Done', exact: true }).click()
 }
 
 async function clickOnboardingAction(page, name, waitMilliseconds) {
@@ -763,6 +773,14 @@ async function runBrowserSmoke(baseUrl, env) {
     await embeddedSettings.getByRole('button', { name: 'Plugin Marketplace', exact: true }).click()
     await embeddedSettings.getByPlaceholder('Search plugins (keyword, or empty to browse all)…', { exact: true }).waitFor({ timeout: 10_000 })
     await exerciseMarketplace(embeddedSettings, { openExternalLinks: true })
+    await exerciseBetterSidebarExternalLink(embeddedSettings)
+    await page.waitForFunction(
+      url => window.__YOURBUDDY_DESKTOP_COMMANDS__?.some(
+        entry => entry.command === 'open_external_url' && entry.args?.url === url,
+      ) === true,
+      desktopBetterSidebarPluginUrl,
+      { timeout: 10_000 },
+    )
     await embeddedSettings.getByRole('button', { name: 'General', exact: true }).click()
     const embeddedUpdate = embeddedSettings.getByRole('button', { name: 'Check and update', exact: true })
     await embeddedUpdate.waitFor({ timeout: 10_000 })
@@ -800,6 +818,10 @@ async function runBrowserSmoke(baseUrl, env) {
       {
         command: 'open_marketplace_url',
         args: { url: `https://www.npmjs.com/package/${validMarketplacePackage}` },
+      },
+      {
+        command: 'open_external_url',
+        args: { url: desktopBetterSidebarPluginUrl },
       },
       { command: 'get_network_proxy_settings' },
       { command: 'check_for_updates' },

@@ -123,6 +123,10 @@ export function TerminalView(props: { scope: SessionScope; tabId: string; store:
     // The custom font prefs (side card settings, terminal card) resolve at
     // mount; store changes re-apply them live below.
     const font = resolveTerminalFont(store.getPrefs(), tokenValue('--ds-font-family-code'))
+    const activateTerminalLink = (event: MouseEvent, uri: string): void => {
+      if (!shouldActivateTerminalLink(event)) return
+      openTerminalUrl(uri)
+    }
     const term = new Terminal({
       cursorBlink: true,
       fontSize: font.fontSize,
@@ -131,6 +135,9 @@ export function TerminalView(props: { scope: SessionScope; tabId: string; store:
       convertEol: false,
       scrollback: 4000,
       theme: xtermTheme(),
+      linkHandler: {
+        activate: (event, uri) => { activateTerminalLink(event, uri) },
+      },
     })
     const fit = new FitAddon()
     term.loadAddon(fit)
@@ -162,10 +169,7 @@ export function TerminalView(props: { scope: SessionScope; tabId: string; store:
         callback(descriptors.map(descriptor => ({
           range: descriptor.range,
           text: descriptor.text,
-          activate: (event) => {
-            if (!shouldActivateTerminalLink(event)) return
-            openTerminalUrl(descriptor.text)
-          },
+          activate: event => { activateTerminalLink(event, descriptor.text) },
         })))
       },
     })
