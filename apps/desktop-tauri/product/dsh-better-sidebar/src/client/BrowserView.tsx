@@ -27,6 +27,7 @@ import {
 import { VscLinkExternal } from 'react-icons/vsc'
 import { api } from './api.ts'
 import { embeddabilityOf, isAllowedLoopbackUrl, normalizeBrowserUrl } from './browser.ts'
+import { openExternalHttpUrl } from './desktop-external-links.ts'
 import { patchTab } from './state.ts'
 import { SandboxStatusBar } from './SandboxStatusBar.tsx'
 import { t } from './locales.ts'
@@ -219,7 +220,7 @@ export function BrowserView(props: TabComponentProps) {
           title={t('browserOpenExternal')}
           disabled={url === undefined}
           onClick={() => {
-            if (url !== undefined) window.open(url, '_blank', 'noopener')
+            if (url !== undefined) openExternalHttpUrl(url)
           }}
         >
           <VscLinkExternal size={15} />
@@ -238,7 +239,7 @@ export function BrowserView(props: TabComponentProps) {
       ) : embedBlocked !== null && !forceEmbed ? (
         <BrowserEmbedBlocked
           url={embedBlocked}
-          onOpenInBrowser={() => { window.open(embedBlocked, '_blank', 'noopener') }}
+          onOpenInBrowser={() => { openExternalHttpUrl(embedBlocked) }}
           onLoadAnyway={() => { setForceEmbed(true) }}
         />
       ) : (

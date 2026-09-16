@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-第一方 Personal Workbench Client 负责桌面外链呈现。它只识别带 `target="_blank"` 与 `rel="noopener"` 标记的 Anchor，并要求目标是绝对、不含凭据的 HTTP 或 HTTPS URL，且与当前 Host 不同源。主键点击会通过专用的版本化父级消息通道发送规范化后的 URL。悬停会把 URL 加入 Anchor Title，自定义右键菜单提供“打开链接”和“复制链接地址”。独立 `dsh web` 不启用这项行为。
+第一方 Personal Workbench Client 负责 Anchor 的桌面外链呈现。它只识别带 `target="_blank"` 与 `rel="noopener"` 标记的 Anchor，并要求目标是绝对、不含凭据的 HTTP 或 HTTPS URL，且与当前 Host 不同源。主键点击会通过专用的版本化父级消息通道发送规范化后的 URL。悬停会把 URL 加入 Anchor Title，自定义右键菜单提供“打开链接”和“复制链接地址”。Better Sidebar 的所有显式 HTTP(S) 外部打开操作会经过同一个共享 Helper：推荐插件目标、内嵌浏览器工具栏与拦截页操作，以及终端纯文本与 OSC 8 链接。这些控件不会进入 Anchor Handler。两套集成在独立 `dsh web` 中都会回退为普通新标签页。
 
 Tauri Shell 只接受当前 Host iframe 从其精确 Origin 发出的完整固定请求字段。它会独立检查请求 ID、URL 长度上限、HTTP(S) 协议、Host 以及不存在凭据，再调用字面量 `open_external_url` Command。Rust 会重复 URL 检查，并委托给 Tauri 的跨平台 Opener。Client 不能选择 Command 或可执行文件；`javascript:`、`file:`、`data:`、`mailto:`、相对、同源、下载以及含凭据的链接都不会进入原生 Command。
 
@@ -26,4 +26,4 @@ Tauri Shell 只接受当前 Host iframe 从其精确 Origin 发出的完整固�
 
 ## 结果
 
-安全的助手 Markdown 链接会通过 Tauri 支持的 Opener，在 macOS、Windows 与 Linux 上使用操作系统默认浏览器打开。用户可以通过右键菜单打开或复制目标地址，悬停可查看规范化后的 URL。内部路由与本地链接保留既有行为。浏览器桥接测试与 Rust 测试覆盖关联消息和被拒绝的协议；完整产品 Smoke 会通过真实跨 Origin Shell 验收悬停、右键复制与字面量原生打开 Command。
+安全的助手 Markdown 链接与 Better Sidebar 的显式 HTTP(S) 外部打开操作会通过 Tauri 支持的 Opener，在 macOS、Windows 与 Linux 上使用操作系统默认浏览器打开。用户可以通过右键菜单打开或复制 Anchor 目标地址，悬停可查看规范化后的 URL。内部路由、内嵌导航、文件下载与本地链接保留既有行为。浏览器桥接、打包 Client 与 Rust 测试覆盖关联消息、Better Sidebar 的所有调用方、独立运行回退以及被拒绝的协议；完整产品 Smoke 会通过真实跨 Origin Shell 验收悬停、右键复制、推荐插件操作与字面量原生打开 Command。

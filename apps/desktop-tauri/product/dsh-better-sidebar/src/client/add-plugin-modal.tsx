@@ -7,8 +7,9 @@
  * matching kind (name / url / description / install script).
  *
  * Per entry there are two actions:
- * - 「跳转」opens the plugin's repo in a REAL new browser tab (window.open
- *   — a button, so the sidebar link takeover cannot reroute it);
+ * - 「跳转」opens the plugin's repo outside the workbench. YourBuddy's
+ *   embedded Client sends the URL through the desktop external-link channel;
+ *   standalone Web falls back to a new browser tab;
  * - 「安装」only COPIES the install script to the clipboard (writeClipboard)
  *   with a transient "已复制" feedback on the button — the user pastes and
  *   runs it wherever they manage their DSH profile. No terminal is opened,
@@ -25,6 +26,7 @@ import type { BetterSidebarService } from './service.ts'
 import { PLUGIN_TOPIC_URL, type PluginEntry } from './plugins-shared.ts'
 import { builtinTabPlugins } from './plugins-tabs.ts'
 import { builtinViewerPlugins } from './plugins-viewers.ts'
+import { openExternalHttpUrl } from './desktop-external-links.ts'
 import { t } from './locales.ts'
 import css from './SideCardSection.module.css'
 
@@ -43,7 +45,7 @@ const COPIED_FEEDBACK_MS = 1500
 /** The modal body: the GitHub topic button + the recommended plugin list
  *  with per-entry jump/copy buttons (extracted for direct testing). */
 export function PluginListBody(props: { service: BetterSidebarService; kind: PluginKind }) {
-  const { kind } = props
+  const { service, kind } = props
   // Which entry's copy button currently shows the "已复制" feedback.
   const [copiedId, setCopiedId] = useState<string | null>(null)
   // Live catalog filter (name / id / description). A free-text search keeps
@@ -56,9 +58,8 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
   const needle = query.trim().toLowerCase()
   const matches = (entry: PluginEntry): boolean => {
     if (needle === '') return true
-    const name = typeof entry.name === 'function' ? entry.name() : entry.name
     const description = typeof entry.description === 'function' ? entry.description() : entry.description
-    return name.toLowerCase().includes(needle)
+    return entry.name.toLowerCase().includes(needle)
       || entry.id.toLowerCase().includes(needle)
       || description.toLowerCase().includes(needle)
   }
@@ -88,45 +89,33 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
     }, COPIED_FEEDBACK_MS)
   }
 
-  /** Open the plugin's repo in a REAL new browser tab (window.open — a
-   *  button, so the sidebar link takeover cannot reroute it). */
-  const jump = (entry: PluginEntry): void => {
-    window.open(entry.url, '_blank', 'noopener')
-  }
-
-  /** One catalog row (extracted so the group render stays flat). The name
-   *  resolves like the description (string or () => string) so it follows
-   *  the active locale; a plain-string entry keeps its raw name. */
-  const renderEntry = (entry: PluginEntry): ReactNode => {
-    const name = typeof entry.name === 'function' ? entry.name() : entry.name
-    return (
+  /** One catalog row (extracted so the group render stays flat). */
+  const renderEntry = (entry: PluginEntry): ReactNode => (
     <div key={entry.id} className={css.pluginEntry}>
       <div className={css.pluginEntryHead}>
-        {/* The name is a BUTTON on the same window.open path as the
-            jump button: as an anchor it would be caught by the
-            document-capture link takeover (which ignores
-            target=_blank) and land in the sidebar browser. */}
+        {/* Keep the name a button so the sidebar's anchor takeover does not
+            route this explicit external action into its browser tab. */}
         <button
           type="button"
           className={css.pluginName}
-          aria-label={`${t('openPlugin')}: ${name}`}
-          onClick={() => { jump(entry) }}
+          aria-label={`${t('openPlugin')}: ${entry.name}`}
+          onClick={() => { openExternalHttpUrl(entry.url) }}
         >
-          {name}
+          {entry.name}
         </button>
         <span className={css.pluginEntryActions}>
           <button
             type="button"
             className={css.pluginJumpBtn}
-            aria-label={`${t('openPlugin')}: ${name}`}
-            onClick={() => { jump(entry) }}
+            aria-label={`${t('openPlugin')}: ${entry.name}`}
+            onClick={() => { openExternalHttpUrl(entry.url) }}
           >
             {t('openPlugin')}
           </button>
           <button
             type="button"
             className={css.pluginCopyBtn}
-            aria-label={`${t('copyInstall')}: ${name}`}
+            aria-label={`${t('copyInstall')}: ${entry.name}`}
             onClick={() => { copy(entry) }}
           >
             {copiedId === entry.id ? t('copied') : t('copy')}
@@ -138,15 +127,14 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
       </div>
       <code className={css.pluginInstall}>{entry.install}</code>
     </div>
-    )
-  }
+  )
 
   return (
     <div className={css.pluginList}>
       <button
         type="button"
         className={css.pluginTopicBtn}
-        onClick={() => { window.open(PLUGIN_TOPIC_URL, '_blank', 'noopener') }}
+        onClick={() => { openExternalHttpUrl(PLUGIN_TOPIC_URL) }}
       >
         {t('addPluginsBrowseMore')}
       </button>

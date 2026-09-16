@@ -38,7 +38,7 @@ function productVersion(directory) {
   return JSON.parse(readFileSync(join(desktopRoot, 'product', directory, 'package.json'), 'utf8')).version
 }
 
-test('buildTrimmedWorkspaceYaml keeps upstream patch and build declarations verbatim', () => {
+test('buildTrimmedWorkspaceYaml keeps upstream patch declarations verbatim', () => {
   const source = `packages:
   - vendor/*
   - packages/*/*
@@ -50,10 +50,6 @@ linkWorkspacePackages: true
 
 overrides:
   '@deepseek-ai/cosmokit': 'link:vendor/cosmokit'
-
-allowBuilds:
-  esbuild: true
-  node-pty: true
 
 patchedDependencies:
   node-pty@1.2.0-beta.15: patches/node-pty@1.2.0-beta.15.patch
@@ -71,7 +67,6 @@ patchedDependencies:
     trimmed.includes('  node-pty@1.2.0-beta.15: patches/node-pty@1.2.0-beta.15.patch\n'),
     'patchedDependencies must be copied from the source workspace, not hardcoded',
   )
-  assert.ok(trimmed.includes('allowBuilds:\n  esbuild: true\n  node-pty: true\n'))
   assert.ok(trimmed.includes('linkWorkspacePackages: true\n'))
 })
 

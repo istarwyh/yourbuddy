@@ -10,7 +10,7 @@ Users can inspect a file tree, editor, image and Markdown previews, real termina
 
 ## Usage
 
-At desktop width, use the main workbench to the left of the DSH conversation. Drag the divider to resize the two regions, open files and previews in tabs, and use terminals or Git views to review code changes. On a narrow window, the conversation remains primary and Better Sidebar opens through its drawer. Floating windows and the bottom workbench remain available.
+At desktop width, use the main workbench to the left of the DSH conversation. Drag the divider to resize the two regions, open files and previews in tabs, and use terminals or Git views to review code changes. On a narrow window, the conversation remains primary and Better Sidebar opens through its drawer. Floating windows and the bottom workbench remain available. Recommended-plugin destinations, embedded-browser external actions, and terminal HTTP(S) links open in the system browser. In YourBuddy, run a recommended plugin's install command once; its isolated Web Profile runs dependency build scripts without a separate `pnpm approve-builds` step.
 
 ## Reason for default inclusion
 

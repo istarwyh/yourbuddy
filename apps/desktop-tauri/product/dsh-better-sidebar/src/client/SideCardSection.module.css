@@ -638,9 +638,7 @@
   width: 100%;
 }
 
-/* The GitHub topic entry: a full-width secondary BUTTON (not a link — it
-   opens a real new browser tab via window.open, bypassing the sidebar
-   link takeover). */
+/* The GitHub topic entry: a full-width secondary button. */
 .pluginTopicBtn {
   width: 100%;
   appearance: none;
@@ -700,9 +698,7 @@
   flex: none;
 }
 
-/* The per-entry "jump" button: opens the plugin repo in a REAL new browser
-   tab (window.open — a button, so the sidebar link takeover cannot reroute
-   it). Secondary style, quieter than the Install button. */
+/* The per-entry "jump" button: secondary style, quieter than Install. */
 .pluginJumpBtn {
   flex: none;
   appearance: none;
@@ -728,9 +724,8 @@
   outline-offset: 1px;
 }
 
-/* The plugin name: a BUTTON (not an anchor — an anchor would be caught by
-   the sidebar link takeover at document capture, ignoring target=_blank)
-   styled like a link; opens the repo in a real new browser tab. */
+/* The plugin name is a button styled like a link so the document-level
+   anchor takeover cannot reroute this explicit external action. */
 .pluginName {
   appearance: none;
   min-width: 0;

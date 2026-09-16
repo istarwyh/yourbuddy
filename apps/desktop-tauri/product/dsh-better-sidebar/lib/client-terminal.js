@@ -8930,6 +8930,51 @@ globalThis.__dshChunks__["terminal"] = (require) => {
 		};
 	}
 	//#endregion
+	//#region src/client/desktop-external-links.ts
+	const DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
+	const DESKTOP_EXTERNAL_LINK_VERSION = 1;
+	const MAX_EXTERNAL_URL_LENGTH = 4096;
+	let externalLinkSequence = 0;
+	/**
+	* Normalize an HTTP(S) destination accepted by the desktop shell.
+	* @param value - Candidate absolute URL.
+	* @returns The normalized URL, or undefined when the value is unsupported.
+	*/
+	function resolveExternalHttpUrl(value) {
+		if (value.length === 0 || value.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
+		try {
+			const url = new URL(value);
+			if (url.protocol !== "http:" && url.protocol !== "https:" || url.hostname === "" || url.username !== "" || url.password !== "" || url.href.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
+			return url.href;
+		} catch {
+			return;
+		}
+	}
+	/**
+	* Dispatch an HTTP(S) destination without navigating the workbench.
+	* @param value - Candidate absolute URL.
+	* @returns True when the URL was sent to the desktop shell or browser API.
+	*/
+	function openExternalHttpUrl(value) {
+		if (typeof window === "undefined") return false;
+		const url = resolveExternalHttpUrl(value);
+		if (url === void 0) return false;
+		if (window.parent !== window) {
+			externalLinkSequence += 1;
+			window.parent.postMessage({
+				channel: DESKTOP_EXTERNAL_LINK_CHANNEL,
+				version: DESKTOP_EXTERNAL_LINK_VERSION,
+				type: "open-request",
+				requestId: `${Date.now()}_${externalLinkSequence}`,
+				url
+			}, "*");
+			return true;
+		}
+		const opened = window.open(url, "_blank", "noopener,noreferrer");
+		if (opened !== null) opened.opener = null;
+		return true;
+	}
+	//#endregion
 	//#region src/client/terminal-links.ts
 	/**
 	* Terminal URL hyperlinks: xterm's `registerLinkProvider` is fed per-line
@@ -9071,25 +9116,19 @@ globalThis.__dshChunks__["terminal"] = (require) => {
 	}
 	/**
 	* Open a URL matched in the terminal, with a scheme guard so a printed
-	* `file://` or anything that slipped past the regex cannot reach
-	* `window.open`. The URL is constructed via `new URL(...)` which throws
-	* on malformed input; the catch makes the function total so the xterm
-	* handler never throws into the terminal's event loop.
+	* `file://` or anything that slipped past the regex is rejected.
 	*
-	* @returns `true` when the URL was dispatched to `window.open`, `false`
-	*   when it was rejected (bad URL, disallowed scheme, no `window`).
+	* @returns `true` when the URL was dispatched, `false` when it was rejected.
 	*/
 	function openTerminalUrl(uri) {
-		if (typeof window === "undefined") return false;
-		let url;
+		let protocol;
 		try {
-			url = new URL(uri);
+			protocol = new URL(uri).protocol;
 		} catch {
 			return false;
 		}
-		if (!OPENABLE_SCHEMES.has(url.protocol)) return false;
-		window.open(url.toString(), "_blank", "noopener,noreferrer");
-		return true;
+		if (!OPENABLE_SCHEMES.has(protocol)) return false;
+		return openExternalHttpUrl(uri);
 	}
 	//#endregion
 	//#region \0dsh-css:/home/runner/work/DSH-better-sidebar/DSH-better-sidebar/src/client/sidebar.module.css.mjs
@@ -9422,6 +9461,10 @@ globalThis.__dshChunks__["terminal"] = (require) => {
 			const host = hostRef.current;
 			if (host === null) return;
 			const font = resolveTerminalFont(store.getPrefs(), tokenValue("--ds-font-family-code"));
+			const activateTerminalLink = (event, uri) => {
+				if (!shouldActivateTerminalLink(event)) return;
+				openTerminalUrl(uri);
+			};
 			const term = new import_xterm.Terminal({
 				cursorBlink: true,
 				fontSize: font.fontSize,
@@ -9429,7 +9472,10 @@ globalThis.__dshChunks__["terminal"] = (require) => {
 				allowTransparency: true,
 				convertEol: false,
 				scrollback: 4e3,
-				theme: xtermTheme()
+				theme: xtermTheme(),
+				linkHandler: { activate: (event, uri) => {
+					activateTerminalLink(event, uri);
+				} }
 			});
 			const fit = new import_addon_fit.FitAddon();
 			term.loadAddon(fit);
@@ -9448,8 +9494,7 @@ globalThis.__dshChunks__["terminal"] = (require) => {
 					range: descriptor.range,
 					text: descriptor.text,
 					activate: (event) => {
-						if (!shouldActivateTerminalLink(event)) return;
-						openTerminalUrl(descriptor.text);
+						activateTerminalLink(event, descriptor.text);
 					}
 				})));
 			} });
