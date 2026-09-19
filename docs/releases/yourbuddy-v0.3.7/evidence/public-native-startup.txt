@@ -1,0 +1,25 @@
+YourBuddy 0.3.7 public native-startup observation
+================================================
+
+Observed: 2026-09-19 16:25 UTC+08:00, Asia/Shanghai
+Release: yourbuddy-v0.3.7
+Tag commit: 9f5f194adc7dc514277aae0237a56a646fed99e1
+Artifact workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35430356160 (success)
+
+Status
+------
+
+Skipped. A user-owned /Applications/YourBuddy.app process and its managed Host were already running. The application uses a global single-instance owner, so launching the downloaded 0.3.7 copy could activate or otherwise interact with the existing process rather than prove an isolated 0.3.7 startup.
+
+Evidence boundary
+-----------------
+
+- The running user application was not terminated, restarted, or modified.
+- The public 0.3.7 copy was not launched under a changed bundle identifier because that would change the artifact under test and invalidate its signature identity.
+- Existing-process output was not substituted for 0.3.7 startup evidence.
+- Native authenticated readiness, packaged-WebView interaction, Finder installation, update from an older version, OAuth, and visual capture from the installed App therefore remain unverified in this release audit.
+
+Related passing evidence
+------------------------
+
+The public DMG and updater App trees were identical; App identity, strict ad-hoc code-signature integrity, updater signature, bundled layout-patch provenance, and relocated Python/Harbor runtime passed separate checks. The release screenshot comes from the real assembled desktop shell smoke and is not claimed as an installed-App capture.

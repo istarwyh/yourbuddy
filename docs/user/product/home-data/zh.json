@@ -30,7 +30,7 @@
       "就在你的工作区。"
     ],
     "lead": "读资料、写文件、运行工具。选择你习惯的模型，在自己的 Mac 上完成任务，也能随时查看文件和改动。",
-    "note": "YourBuddy 0.3.6 · macOS · Apple Silicon",
+    "note": "YourBuddy 0.3.7 · macOS · Apple Silicon",
     "status_label": "下载与核验",
     "actions": [
       {
@@ -116,7 +116,7 @@
       },
       {
         "title": "Better Sidebar",
-        "desc": "把文件、编辑器、终端和 Git 放在侧边栏，方便检查任务成果。",
+        "desc": "在对话旁的主工作区使用文件、编辑器、终端、Git、预览与插件页面。",
         "url": "plugins/better-sidebar/"
       },
       {

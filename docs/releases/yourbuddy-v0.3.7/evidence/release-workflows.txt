@@ -1,0 +1,19 @@
+YourBuddy 0.3.7 CI and publication workflows
+=============================================
+
+Feature PR: https://github.com/istarwyh/yourbuddy/pull/25
+Merged commit: 9f5f194adc7dc514277aae0237a56a646fed99e1
+
+Pull-request CI
+---------------
+
+- Run 35427158680 failed because the Ubuntu archive removed the pinned Bubblewrap 0.9.0-1ubuntu0.1 package. The pin was refreshed to 0.9.0-1ubuntu0.3 with its checked SHA-256.
+- Run 35428593279 reached repository tests and retained a strict lint failure in the new layout test. The assertion was changed to exact same-instance equality; unrelated long jobs were cancelled after the failure.
+- Run 35428836132 passed all 19 jobs, including Linux and Windows coverage, snapshots and artifacts, static checks, native tests, Python SDK, and the release-shaped runtime matrix.
+- The separate Cloudflare Preview check had no configured runner, was cancelled, and was not counted as a pass.
+
+Release workflow
+----------------
+
+- Tag-triggered run 35430254006 failed before build because the live release-channel selection had advanced from the committed DSH 0.1.2-rc.1 snapshot to 0.1.5-rc.2. It remains negative evidence.
+- Manual recovery run 35430356160 used the documented retry path for the same unpublished immutable tag. It consumed the tagged source and locks without refreshing channels, built and published all five assets, and completed successfully.

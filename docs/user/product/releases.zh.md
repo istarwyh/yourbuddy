@@ -6,6 +6,12 @@
 
 ## YourBuddy
 
+### 0.3.7 — 2026-09-19
+
+YourBuddy 0.3.7 把 Better Sidebar 设为可伸缩的桌面主工作区，同时保留 DSH 对话、导航、详情、标签页、文件、任务、终端、预览、浮动窗口与底部工作区。工作区与对话区之间可以拖动调整宽度；窄窗口仍以对话区为主，并使用原有抽屉。两处兼容修改均保存为可重放且带哈希的 provenance 补丁，而在 YourBuddy 之外 Better Sidebar 仍保持上游 Portal 默认方式。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、provenance 元数据和迁移运行时通过检查。由于用户自己的 YourBuddy 实例阻止隔离启动，原生启动、安装包 WebView 交互以及从旧版本实际更新仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.7) · [工作台截图](../../releases/yourbuddy-v0.3.7/screenshots/workbench-primary.png) · [验证记录](../../releases/yourbuddy-v0.3.7/README.zh.md) · [下载页](download.zh.md)
+
 ### 0.3.6 — 2026-09-10
 
 YourBuddy 0.3.6 让企业代理与自定义 CA 设置在原生桌面客户端和所有托管运行时中保持一致。设置中显式选择的 CA 优先于启动环境继承值与系统信任；保存或重启前，原生与新内置 Node 测试必须全部通过。五个公开附件均已匿名下载核验，Updater 签名通过密码学验证，公开 App 的标识、内置 CA 来源元数据与迁移运行时通过检查。由于已有用户持有的 YourBuddy 实例妨碍隔离启动，原生启动、安装包 WebView 控制项、从旧版升级与真实企业流量仍未验证。

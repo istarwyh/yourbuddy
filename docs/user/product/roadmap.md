@@ -16,7 +16,7 @@ Improve the work people can complete and verify. These are candidate directions,
 
 ## Existing foundations
 
-YourBuddy 0.3.6 is public for Apple Silicon, with independently verified file integrity, updater signature, App identity, bundled enterprise-CA source metadata, and relocated CLI/imports. Source, synthetic private-CA traffic through the actual CLI Host, and release workflow checks cover the enterprise proxy and CA policy. Model choice, workspace tasks, output inspection, context audits, and controlled Harbor evaluation are represented in the product, while native startup for this release, visual window acceptance, updater installation, real enterprise traffic, and the complete real-account first-use journey remain unverified. Current availability and verification scope follow the [release record](releases.md).
+YourBuddy 0.3.7 is public for Apple Silicon. Better Sidebar supplies the primary workbench beside a resizable DSH conversation, and its files, tasks, terminals, previews, floating windows, bottom workbench, and plugin pages remain available. The product records the DSH and Better Sidebar compatibility changes as replayable patches so later upstream refreshes do not silently erase them. Model choice, workspace tasks, output inspection, context audits, and controlled Harbor evaluation are represented in the product, while native startup for this release, updater installation, and the complete real-account first-use journey remain unverified. Current availability and verification scope follow the [release record](releases.md).
 
 ## What is not promised
 
