@@ -1,0 +1,27 @@
+YourBuddy 0.3.7 public website deployment
+==========================================
+
+Observed: 2026-09-19 16:45–16:48 UTC+08:00, Asia/Shanghai
+Source commit: adfed136696c7c9d89a30f8423cd7f3e390ea01e
+Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35432781851 (success)
+GitHub Pages deployment: 6539029843 (success)
+Environment URL: https://istarwyh.github.io/yourbuddy/
+
+Passing observations
+--------------------
+
+1. The workflow build and deploy jobs passed for the exact source commit.
+2. The Chinese and English home, download, and release pages returned HTTP 200 and contained 0.3.7 content:
+   - https://istarwyh.github.io/yourbuddy/
+   - https://istarwyh.github.io/yourbuddy/en/
+   - https://istarwyh.github.io/yourbuddy/download/
+   - https://istarwyh.github.io/yourbuddy/en/download/
+   - https://istarwyh.github.io/yourbuddy/releases/
+   - https://istarwyh.github.io/yourbuddy/en/releases/
+3. Both download pages linked the exact 0.3.7 DMG, checksum file, GitHub Release, and language-matched verification record.
+4. The public GitHub Release, checksum file, English and Chinese raw verification records, and screenshot returned HTTP 200. A one-byte range request to the DMG returned HTTP 206; the complete DMG had already passed the independent anonymous download and hash check recorded in public-artifact-stage.json.
+
+Evidence boundary
+-----------------
+
+Deployment metadata, public HTTP, and static HTML inspection establish the recorded website scope. They do not validate visual browser rendering, desktop installation, native startup, packaged-WebView behavior, updater installation, OAuth, or real-provider execution.

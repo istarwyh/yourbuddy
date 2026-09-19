@@ -1,0 +1,29 @@
+YourBuddy 0.3.7 downloadable verification archive
+==================================================
+
+Observed: 2026-09-19 16:50–16:52 UTC+08:00, Asia/Shanghai
+Release: https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.7
+Asset: https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.7/yourbuddy-v0.3.7-verification.zip
+Source commit: 5559c3ddc20b9b398d620cd837dccea694ea0b05
+
+Public asset
+------------
+
+- Name: yourbuddy-v0.3.7-verification.zip
+- Bytes: 70,800
+- SHA-256: f61102581cf578754d44c979290626c9e72c3073dc67b84e8294cd91aa8b65ec
+- GitHub API digest match: yes
+
+Passing observations
+--------------------
+
+1. Created the ZIP from the exact source commit's docs/releases/yourbuddy-v0.3.7 directory with git archive.
+2. Uploaded it as a new release asset without replacing any installer or updater file.
+3. Downloaded it without GitHub authentication.
+4. The public copy was byte-identical to the uploaded source, matched the GitHub API digest, and passed unzip integrity testing.
+5. The extracted listing includes the bilingual verification record, public artifact and runtime evidence, website deployment record, and workbench-primary.png screenshot.
+
+Evidence boundary
+-----------------
+
+The archive preserves the release evidence at its recorded source commit. This check does not repeat desktop installation, native startup, packaged-WebView interaction, updater installation, OAuth, or real-provider execution.
