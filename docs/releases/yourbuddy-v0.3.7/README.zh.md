@@ -2,14 +2,14 @@
 
 [English](README.md) | 中文
 
-本归档记录 0.3.7 工作台布局改动、PR CI、正式发布、公开文件完整性、Updater 签名、App 标识、provenance 补丁、迁移运行时与原生启动跳过。官网部署和可下载验证资料包仍待完成。
+本归档记录 0.3.7 工作台布局改动、PR CI、正式发布、公开文件完整性、Updater 签名、App 标识、provenance 补丁、迁移运行时、原生启动跳过、官网部署与可下载验证资料包。
 
 - 发布标识：`yourbuddy-v0.3.7`。
 - 产品渠道：面向 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：已发布；官网与可下载资料包待完成。
+- 归档状态：在声明的验证范围内已完成。
 - 发布源码：不可变 Tag Commit `9f5f194adc7dc514277aae0237a56a646fed99e1`。
 - 证据图库：[带标注的组装桌面 Shell](screenshots/workbench-primary.png)。
-- 证据下载：Tag 源码已包含本记录；独立验证 ZIP 等待最终收尾。
+- 证据下载：[yourbuddy-v0.3.7-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.7/yourbuddy-v0.3.7-verification.zip)，SHA-256 为 `f61102581cf578754d44c979290626c9e72c3073dc67b84e8294cd91aa8b65ec`。
 
 ## 用户发布说明
 
@@ -50,6 +50,7 @@ Better Sidebar 现在是桌面端可伸缩的主工作区。DSH 对话区移动�
 | 公开安装包与 Updater | 在记录范围内通过 | 五个公开产物 | GitHub Release；macOS 15.6.1 arm64 | [产物记录](evidence/public-artifact-stage.json) |
 | 公开 App 与迁移运行时 | 在记录范围内通过 | 原样公开 App | macOS 15.6.1 arm64 | [运行时记录](evidence/public-runtime-stage.json)与[原生启动跳过](evidence/public-native-startup.txt) |
 | 产品官网 | 在记录范围内通过 | Merge Commit `adfed13669` | GitHub Pages 与未认证 HTTP | [部署记录](evidence/website-deployment.txt) |
+| 可下载验证资料包 | 通过 | 源码 Commit `5559c3ddc2` | GitHub Release 与匿名下载 | [资料包记录](evidence/verification-archive.txt) |
 
 ## 场景：工作台布局与兼容补丁重放
 
@@ -140,9 +141,18 @@ YourBuddy 使用 Better Sidebar 作为桌面主工作区，保留对话区与插
 
 本检查可以证明已部署静态内容与链接可用，不能证明浏览器像素级渲染、桌面安装、原生启动、安装包 WebView 行为、Updater 安装、OAuth 或真实模型流量。
 
+## 场景：可下载验证资料包
+
+- 状态：公开可用性、完整性、字节一致性、解压及预期证据内容通过。
+- 日期与时间：2026-09-19 16:50–16:52 UTC+08:00，Asia/Shanghai。
+- Release 与源码：[yourbuddy-v0.3.7](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.7)；证据目录来自 Commit [`5559c3ddc20b9b398d620cd837dccea694ea0b05`](https://github.com/istarwyh/yourbuddy/commit/5559c3ddc20b9b398d620cd837dccea694ea0b05)。
+- 证据：[资料包记录](evidence/verification-archive.txt)。
+
+大小为 70,800 字节的[验证 ZIP](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.7/yourbuddy-v0.3.7-verification.zip) SHA-256 为 `f61102581cf578754d44c979290626c9e72c3073dc67b84e8294cd91aa8b65ec`。公开匿名下载副本与上传源字节一致，匹配 GitHub API Digest，通过解压检查，并包含中英文记录、公开产物／运行时证据、官网部署记录与工作台截图。它作为第六个附件新增，没有替换任何安装包或 Updater 字节。
+
 ## 交付状态
 
 - 产品发布状态：已发布；五个正式产物均可公开下载，并已在记录范围内完成独立核验。
-- 验证资料状态：部分完成；已包含 Tag 证据、公开检查和截图，独立可下载 ZIP 待完成。
+- 验证资料状态：已完成；公开 ZIP 已通过匿名下载、比较、哈希与解压检查。
 - 官网同步状态：中英文静态内容与公开链接已部署并核验；Merge Commit 为 `adfed136696c7c9d89a30f8423cd7f3e390ea01e`，工作流为 `35432781851`。
 - 未验证范围：原生启动、已安装 DMG WebView 交互、从旧版本安装 Updater、Apple Developer 签名与公证、浏览器视觉渲染、OAuth 与真实模型流量。

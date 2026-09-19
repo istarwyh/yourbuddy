@@ -2,14 +2,14 @@
 
 English | [中文](README.zh.md)
 
-This archive records the 0.3.7 workbench layout change, pull-request CI, formal publication, public-file integrity, updater signature, App identity, provenance patches, relocated runtime, and native-startup skip. Website deployment and the downloadable verification archive remain pending.
+This archive records the 0.3.7 workbench layout change, pull-request CI, formal publication, public-file integrity, updater signature, App identity, provenance patches, relocated runtime, native-startup skip, website deployment, and downloadable verification archive.
 
 - Release identifier: `yourbuddy-v0.3.7`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: published; website and downloadable archive pending.
+- Archive state: complete within the stated verification scope.
 - Release source: immutable tag commit `9f5f194adc7dc514277aae0237a56a646fed99e1`.
 - Evidence gallery: [annotated assembled desktop shell](screenshots/workbench-primary.png).
-- Evidence download: the tagged source contains this record; a dedicated verification ZIP is pending finalization.
+- Evidence download: [yourbuddy-v0.3.7-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.7/yourbuddy-v0.3.7-verification.zip), SHA-256 `f61102581cf578754d44c979290626c9e72c3073dc67b84e8294cd91aa8b65ec`.
 
 ## User release notes
 
@@ -50,6 +50,7 @@ Existing application data is retained and no migration is required. The desktop 
 | Public installer and updater | passed within recorded scope | five public assets | GitHub Release; macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json) |
 | Public App and relocated runtime | passed within recorded scope | unchanged public App | macOS 15.6.1 arm64 | [runtime record](evidence/public-runtime-stage.json) and [native-startup skip](evidence/public-native-startup.txt) |
 | Product website | passed within recorded scope | merge commit `adfed13669` | GitHub Pages and unauthenticated HTTP | [deployment record](evidence/website-deployment.txt) |
+| Downloadable verification archive | passed | source commit `5559c3ddc2` | GitHub Release and anonymous download | [archive record](evidence/verification-archive.txt) |
 
 ## Scenario: Workbench layout and compatibility replay
 
@@ -140,9 +141,18 @@ The workflow build and deploy jobs passed, and GitHub Pages deployment `65390298
 
 This check establishes deployed static content and link availability. It does not establish pixel-level browser rendering, desktop installation, native startup, packaged-WebView behavior, updater installation, OAuth, or real model traffic.
 
+## Scenario: Downloadable verification archive
+
+- Status: passed for public availability, integrity, byte equality, extraction, and expected evidence contents.
+- Date and time: 2026-09-19 16:50–16:52 UTC+08:00, Asia/Shanghai.
+- Release and source: [yourbuddy-v0.3.7](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.7); evidence directory from commit [`5559c3ddc20b9b398d620cd837dccea694ea0b05`](https://github.com/istarwyh/yourbuddy/commit/5559c3ddc20b9b398d620cd837dccea694ea0b05).
+- Evidence: [archive record](evidence/verification-archive.txt).
+
+The 70,800-byte [verification ZIP](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.7/yourbuddy-v0.3.7-verification.zip) has SHA-256 `f61102581cf578754d44c979290626c9e72c3073dc67b84e8294cd91aa8b65ec`. Its anonymous public download was byte-identical to the uploaded source, matched the GitHub API digest, passed extraction, and contained the bilingual record, public artifact/runtime evidence, website deployment record, and workbench screenshot. It was added as a sixth asset; no installer or updater byte was replaced.
+
 ## Delivery status
 
 - Product publication status: published; all five formal assets are publicly downloadable and independently verified within the recorded scope.
-- Verification archive status: partial; tagged evidence, public checks, and screenshot are included, while the dedicated downloadable ZIP is pending.
+- Verification archive status: complete; the public ZIP was anonymously downloaded, compared, hashed, and extracted successfully.
 - Website synchronization status: deployed and verified for bilingual static content and public links at merge commit `adfed136696c7c9d89a30f8423cd7f3e390ea01e` by workflow `35432781851`.
 - Unverified scope: native startup, installed DMG WebView interaction, updater installation from an older version, Apple Developer signing and notarization, visual browser rendering, OAuth, and real model traffic.
