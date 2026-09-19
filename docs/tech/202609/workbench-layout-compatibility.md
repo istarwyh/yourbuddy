@@ -8,7 +8,7 @@ English | [中文](workbench-layout-compatibility.zh.md)
 
 YourBuddy maintains the layout change on its own branch: the Better Sidebar workbench becomes the primary desktop surface and the DSH conversation moves to the auxiliary right column. DSH and Better Sidebar keep their existing defaults outside YourBuddy, and the product provenance records the upstream source plus the small downstream change set.
 
-Status: design only. The runtime and refresh changes described here are not implemented yet.
+Status: implemented for YourBuddy 0.3.7.
 
 ## Contents
 
@@ -17,7 +17,7 @@ Status: design only. The runtime and refresh changes described here are not impl
 - [Runtime design](#runtime-design)
 - [Downstream maintenance](#downstream-maintenance)
 - [Upgrade workflows](#upgrade-workflows)
-- [Implementation sequence](#implementation-sequence)
+- [Implementation](#implementation)
 - [Functional acceptance](#functional-acceptance)
 - [Rollback](#rollback)
 - [Further exploration](#further-exploration)
@@ -29,7 +29,7 @@ Status: design only. The runtime and refresh changes described here are not impl
 
 | Concern | Current owner | Required change |
 |---|---|---|
-| Shell tracks and handles | [`ui-layout/AppFrame.tsx`](../../../packages/client/ui-layout/src/client/AppFrame.tsx) owns `sidebar | center | details` | Add an optional workbench surface and primary/auxiliary placement. |
+| Shell tracks and handles | [`ui-layout/AppFrame.tsx`](../../../packages/client/ui-layout/src/client/AppFrame.tsx) owns `sidebar | conversation | details` and the optional `sidebar | workbench | details | conversation` desktop grid | Keep the outer widths and drag handles in the shell. |
 | Shell child surfaces | [`ui-layout/src/client/index.ts`](../../../packages/client/ui-layout/src/client/index.ts) declares `sidebar`, `conversation`, `details`, and `shell.overlay` | Declare an optional root-scoped `workbench` slot without replacing `conversation`. |
 | Better Sidebar presentation | [`dsh-better-sidebar/src/client/index.tsx`](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/client/index.tsx) mounts a body portal and loads frame compensation CSS | Keep Portal as the default and add a Slot presentation selected by YourBuddy. |
 | Better Sidebar behavior | The plugin service and store own tabs, viewers, terminals, interceptors, and workbench state | Reuse the same service and store in both presentation modes. |
@@ -41,7 +41,7 @@ Status: design only. The runtime and refresh changes described here are not impl
 ## Decisions
 
 1. YourBuddy continuously maintains the DSH layout change on its own branch; an official DSH Release is not a prerequisite.
-2. DSH adds a generic optional `workbench` slot and two placements. Its default remains `conversation-primary`; YourBuddy selects `workbench-primary`.
+2. DSH adds a generic optional `workbench` slot. An occupied slot becomes the desktop primary region; without an occupant DSH retains its existing conversation layout.
 3. Better Sidebar keeps `portal` as its default presentation and adds `slot` for YourBuddy.
 4. Both modified codebases are committed in the YourBuddy repository. DSH updates use Merge and comparison; Better Sidebar updates rebuild the product snapshot from upstream plus its compatibility patch.
 5. Provenance stays small: it records the upstream identity, patch file, patch hash, purpose, and affected paths. The implementation does not introduce a general patch platform or extensive policy engine.
@@ -52,12 +52,12 @@ Status: design only. The runtime and refresh changes described here are not impl
 
 ### Shell placement
 
-`@deepseek-ai/dsh-client-ui-layout` adds an optional single `workbench` slot with root scope. Without an occupant, AppFrame renders the current three-column layout.
+`@deepseek-ai/dsh-client-ui-layout` adds an optional single `workbench` slot with root scope. Without an occupant, AppFrame renders the current three-column layout. An occupant is an explicit runtime selection: AppFrame renders the workbench as the flexible desktop primary region and moves conversation into the right auxiliary column.
 
-| Placement | Primary surface | Auxiliary surface | Selected by |
+| Runtime state | Primary surface | Auxiliary surface | Selected by |
 |---|---|---|---|
-| `conversation-primary` | Conversation | Workbench, when present | DSH default |
-| `workbench-primary` | Workbench | Conversation | YourBuddy |
+| No workbench occupant | Conversation | None | DSH default |
+| Workbench occupant present | Workbench | Conversation | A plugin registered in the `workbench` slot |
 
 The desktop track order is navigation, primary surface, details, and auxiliary surface. The details column remains available instead of being replaced by the conversation or workbench.
 
@@ -67,7 +67,7 @@ Narrow windows keep the conversation as the full-width task surface and expose t
 
 DSH owns the outer grid, rendered widths, responsive layout, and drag handles. Better Sidebar owns the user's workbench preference and content state.
 
-The Better Sidebar store already keeps tab trees, panel state, and content per session while sharing the last dragged panel width across sessions. Slot mode keeps that behavior. A small registration on `ctx.layout` exposes the current open state and preferred width and accepts toggle and resize requests from AppFrame.
+The Better Sidebar store already keeps tab trees, panel state, and content per session while sharing the last dragged panel width across sessions. Slot mode keeps that behavior. A small registration on `ctx.layout` exposes the preferred auxiliary width and accepts resize requests from AppFrame.
 
 The layout registration is installed and removed with the plugin lifecycle. AppFrame falls back to the current conversation layout when the workbench registration or occupant is absent.
 
@@ -85,7 +85,7 @@ The existing compensation stylesheet remains one file, but its frame-level selec
 
 ### Product selection
 
-YourBuddy configures Better Sidebar with `presentation: 'slot'` and configures DSH layout with `workbench-primary`. No product plugin replaces `root`, `conversation`, or the `betterSidebar` service.
+YourBuddy configures Better Sidebar with `presentation: 'slot'`. The resulting workbench occupant activates DSH's optional desktop grid. No product plugin replaces `root`, `conversation`, or the `betterSidebar` service.
 
 <a id="downstream-maintenance"></a>
 
@@ -102,7 +102,7 @@ Both components are committed in their modified form. Their upstream update stra
 
 The DSH layout change remains a small normal commit restricted to `packages/client/ui-layout` and directly related documentation and tests. An official DSH update merges into the YourBuddy branch and therefore preserves the change or presents an ordinary Git conflict for review.
 
-The DSH patch file is a provenance artifact generated against the recorded official Commit. It is applied only to a clean temporary copy of that official source when checking that the committed downstream files still represent the recorded change. It is never applied again to the already modified YourBuddy working tree.
+The DSH patch file is a provenance artifact generated from the YourBuddy downstream base recorded in its patch entry. It documents the bounded DSH change and is never applied again to the already modified YourBuddy working tree.
 
 ### Better Sidebar downstream change
 
@@ -112,7 +112,7 @@ Refresh downloads the new pristine snapshot into a temporary directory, applies 
 
 ### Minimal provenance
 
-`DSH_UPSTREAM.json` continues to record the official repository, Tag, version, and Commit and adds a short `patches` list for materialized downstream changes. Each entry records `id`, `file`, `sha256`, `purpose`, and `paths`.
+`DSH_UPSTREAM.json` continues to record the official repository, Tag, version, and Commit and adds a short `patches` list for materialized downstream changes. Each entry records `id`, `file`, `sha256`, `baseCommit`, `purpose`, and `paths`.
 
 `dsh-better-sidebar/YOURBUDDY_UPSTREAM.json` keeps its current package, source, integrity, archive, upstream tree, and final tree fields. Its `patches` entries become structured references containing `id`, `file`, `sha256`, and `purpose`.
 
@@ -129,7 +129,7 @@ No separate patch registry, approval workflow, compatibility range solver, or ge
 1. Create an isolated upgrade worktree and fetch the selected official DSH Tag.
 2. Merge the official Commit through the existing DSH synchronization flow.
 3. Resolve any conflict in the small layout change and review upstream changes in the affected files.
-4. Regenerate the DSH provenance patch against the new official Commit.
+4. Regenerate the DSH provenance patch from the resulting downstream base.
 5. Run the focused layout tests, build, bundled-app smoke, and visible layout journey.
 6. Update `DSH_UPSTREAM.json` and commit the merge, downstream adjustment, patch, and provenance together.
 
@@ -142,34 +142,34 @@ No separate patch registry, approval workflow, compatibility range solver, or ge
 5. Update the patch reference and `YOURBUDDY_UPSTREAM.json`.
 6. Replace and commit the product snapshot, patch, lockfile, and provenance together.
 
-<a id="implementation-sequence"></a>
+<a id="implementation"></a>
 
-## Implementation sequence
+## Implementation
 
-### 1. Implement the DSH layout change
+### DSH layout
 
-- Add the optional `workbench` slot, placement setting, geometry registration, fourth track, and auxiliary drag handle.
+- The optional `workbench` slot, lifecycle-bound width registration, fourth track, and auxiliary drag handle live in `@deepseek-ai/dsh-client-ui-layout`.
 - Preserve the existing result when no workbench occupant exists.
-- Cover the two placements, details open and closed, resize, session switch, and narrow layout.
+- Focused tests cover the default grid, occupied grid, details behavior, resize, session switch, and lifecycle disposal.
 
-### 2. Adapt Better Sidebar
+### Better Sidebar presentation
 
-- Separate capability setup from Portal and Slot presentation mounting.
-- Add the Host `presentation` setting to the existing boot response.
-- Scope compensation CSS to Portal mode and register the workbench plus geometry callbacks in Slot mode.
-- Preserve the existing service, store, tabs, terminals, viewers, bottom workbench, floats, and integrations.
+- Capability setup is shared by Portal and Slot presentation mounting.
+- The Host `presentation` setting travels through the existing boot response.
+- Portal compensation CSS is presentation-scoped; Slot mode registers the workbench and shared width binding.
+- The service, store, tabs, terminals, viewers, bottom workbench, floats, and integrations remain shared.
 
-### 3. Record the downstream sources
+### Downstream records
 
-- Add one DSH layout patch artifact for provenance and one Better Sidebar compatibility patch covering source and runtime bundle output.
-- Extend the two existing provenance files with the minimal structured patch entries.
-- Update refresh and bundle scripts only as needed to reproduce the two declared change sets.
+- One DSH layout patch records the first-party downstream diff, and one Better Sidebar compatibility patch covers source and runtime bundle output.
+- The two existing provenance files contain the structured patch entries.
+- Better Sidebar refresh replays the declared materialized patch before compatibility adjustments and replaces the committed snapshot only after its existing checks pass.
 
-### 4. Activate YourBuddy
+### YourBuddy composition
 
-- Select Better Sidebar `slot` presentation and DSH `workbench-primary` placement in product composition.
-- Update the frozen product lockfile and bundled inputs.
-- Exercise the complete desktop and narrow-window user journey in the bundled app.
+- The native overlay selects Better Sidebar `slot` presentation.
+- The Better Sidebar product snapshot includes the matching source, runtime bundle, and type declarations.
+- Release verification exercises the desktop composition and records the visible result.
 
 <a id="functional-acceptance"></a>
 
@@ -191,7 +191,7 @@ No separate patch registry, approval workflow, compatibility range solver, or ge
 
 ## Rollback
 
-YourBuddy can restore `conversation-primary` and Better Sidebar `portal` presentation without downgrading either component. The workbench content store remains unchanged, so switching presentation does not discard tabs or terminal records.
+YourBuddy can restore the default conversation layout by selecting Better Sidebar `portal` presentation without downgrading either component. The workbench content store remains unchanged, so switching presentation does not discard tabs or terminal records.
 
 If a compatibility change must be removed, remove its product configuration first and delete the downstream code and provenance patch in the same follow-up change.
 
@@ -199,12 +199,11 @@ If a compatibility change must be removed, remove its product configuration firs
 
 ## Further exploration
 
-- Confirm the auxiliary conversation minimum width and details-column behavior in the first UI spike.
-- Decide whether the bottom workbench remains inside the primary workbench surface or becomes a separate future layout contribution.
+- Revisit the auxiliary conversation width or details-column interaction only when visible use shows a concrete problem.
 - Revisit the downstream patch only when upstream DSH or Better Sidebar later provides equivalent behavior.
 
 <a id="developer-note"></a>
 
 ## Developer note
 
-Owner: YourBuddy desktop product maintainers. Created: 2026-09-19. Review by: the first implementation PR or 2026-10-31, whichever comes first. Promotion target: implemented architecture and release documentation after the runtime and refresh changes merge. The plan deliberately favors the smallest feature-specific implementation over a general validation or patch-management framework.
+Owner: YourBuddy desktop product maintainers. Implemented: 2026-09-19 for YourBuddy 0.3.7. Review by: the first upstream refresh that touches either patched area, or 2026-10-31, whichever comes first. The implementation favors the smallest feature-specific mechanism over a general patch-management framework.

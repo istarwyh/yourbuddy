@@ -2,11 +2,13 @@ export declare function useCenterColumn(
 /** The bottom panel element: measureCenter writes its edges directly. */
 bottomRef: {
     readonly current: HTMLDivElement | null;
-}, 
+},
 /** Re-runs the whole locate/measure chain on change (opening the bottom
  *  panel re-runs the chain: a panel opened before the center column was
  *  ever found must not stay invisible forever). */
-bottomOpen: boolean | undefined): {
+bottomOpen: boolean | undefined,
+/** Keep the bottom panel inside its slot host instead of spanning the app center. */
+contained?: boolean): {
     centerColRef: import("react").MutableRefObject<HTMLElement | null>;
     centerRectRef: import("react").MutableRefObject<{
         left: number;

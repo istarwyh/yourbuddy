@@ -24,15 +24,15 @@
  */
 /* Current shells expose [data-dsh-frame]; rc.8-era shells expose the same
    AppFrame only as the root slot's direct child. */
-#root [data-dsh-frame],
-#root > [data-slot="root"] > div {
+body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame],
+body[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot="root"] > div {
   box-sizing: border-box;
   padding-right: var(--dsh-sidebar-width, 0px);
   transition: padding-right var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
-#root [data-dsh-frame] > [data-side="details"],
-#root > [data-slot="root"] > div > [data-side="details"] {
+body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame] > [data-side="details"],
+body[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot="root"] > div > [data-side="details"] {
   transform: translateX(calc(0px - var(--dsh-sidebar-width, 0px)));
   transition:
     left var(--ds-transition-duration-slow) var(--ds-ease-in-out),
@@ -48,7 +48,7 @@
    against the whole document; the tag is evaluated once per node instead.
    A stretched grid item shrinks by its margins, so the conversation
    content (output + input bar) lifts without touching the sidebars. */
-#root [data-dsh-center-col] {
+body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-center-col] {
   margin-bottom: var(--dsh-sidebar-height, 0px);
   /* Grid/flex items default to min-height:auto. A long unbreakable token
      (OAuth URL) then grows this column past the viewport and clips the
@@ -69,17 +69,17 @@
    rather than a positional path: DSH 0.1.x nests the header several levels
    under the center column. The Sidebar shell toggles the body attribute with
    the panel open state. */
-body[data-dsh-sidebar-collapsed] [data-slot="conversation.session.header"] > header {
+body[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-collapsed] [data-slot="conversation.session.header"] > header {
   padding-right: 78px;
 }
 
-body[data-dsh-sidebar-dragging] #root [data-dsh-frame],
-body[data-dsh-sidebar-dragging] #root > [data-slot="root"] > div,
-body[data-dsh-sidebar-dragging] #root [data-dsh-frame] > [data-side="details"],
-body[data-dsh-sidebar-dragging] #root > [data-slot="root"] > div > [data-side="details"],
-body[data-dsh-sidebar-dragging] #root [data-dsh-center-col],
-#root [data-dsh-frame][data-dragging] > [data-side="details"],
-#root > [data-slot="root"] > div[data-dragging] > [data-side="details"] {
+body[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root [data-dsh-frame],
+body[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root > [data-slot="root"] > div,
+body[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root [data-dsh-frame] > [data-side="details"],
+body[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root > [data-slot="root"] > div > [data-side="details"],
+body[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root [data-dsh-center-col],
+body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame][data-dragging] > [data-side="details"],
+body[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot="root"] > div[data-dragging] > [data-side="details"] {
   transition: none;
 }
 
@@ -103,11 +103,11 @@ body[data-dsh-sidebar-dragging] #root [data-dsh-center-col],
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #root [data-dsh-frame],
-  #root > [data-slot="root"] > div,
-  #root [data-dsh-frame] > [data-side="details"],
-  #root > [data-slot="root"] > div > [data-side="details"],
-  #root [data-dsh-center-col] {
+  body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame],
+  body[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot="root"] > div,
+  body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame] > [data-side="details"],
+  body[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot="root"] > div > [data-side="details"],
+  body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-center-col] {
     transition: none;
   }
 }

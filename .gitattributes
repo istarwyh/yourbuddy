@@ -16,6 +16,8 @@ apps/desktop-tauri/product/dsh-codex-auth/** -text -whitespace
 apps/desktop-tauri/product/harbor-evolution/** -text -whitespace
 apps/desktop-tauri/product/harbor-python/** -text -whitespace
 apps/desktop-tauri/product/plugin-marketplace/** -text -whitespace
+# Patch payloads preserve upstream bytes, including generated bundle whitespace.
+apps/desktop-tauri/product/patches/** -text -whitespace
 
 # Pairing records are generated from the three confirmed owner-blob pairs.
 # The worktree-local installer registers the fail-closed driver command.

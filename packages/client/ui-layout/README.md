@@ -1,5 +1,5 @@
 ---
-description: "Shell layout for the Web GUI: the three-column AppFrame with drag handles, concession behavior, the panel-geometry service, and theme presentation; for users and maintainers of the window chrome."
+description: "Shell layout for the Web GUI: AppFrame columns, optional workbench placement, drag handles, concession behavior, panel geometry, and theme presentation."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package provides the shell layout of the Web GUI: a three-column AppFrame with resizable sidebar and details panels, a concession chain that shrinks the details column and then auto-closes it when space runs out, and the `ctx.layout` panel-geometry service other plugins call to open or close the details column. It also seats the theme presenter, which projects the resolved color scheme, alias tokens, content font size, and `theme-color` metadata onto the document. Choose it for the standard window chrome; panel geometry is transient and resets on reload.
+This package provides the shell layout of the Web GUI. AppFrame normally renders sidebar, conversation, and details columns. An optional root-scoped `workbench` occupant becomes the flexible desktop primary surface and moves conversation into a resizable auxiliary column; below 768px, conversation remains primary and the workbench renders through the overlay as a drawer. The `ctx.layout` service coordinates the workbench width while preserving the existing sidebar and details actions. The package also projects the resolved theme onto the document.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ This package provides the shell layout of the Web GUI: a three-column AppFrame w
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount this plugin at the root slot; it then renders the app frame around whatever occupies the sidebar, conversation, and details columns. Users resize the sidebar by dragging its invisible hit strip and the details panel by dragging its floating pill; when the window narrows, only details shrinks, then auto-closes. A closed sidebar retains a 56px control rail; details closes to zero width.
+Mount this plugin at the root slot; it renders the app frame around the sidebar, conversation, details, optional workbench, and shell overlay slots. Without a workbench occupant, behavior remains the three-column DSH layout. A workbench plugin registers one shared width binding through `ctx.layout`; AppFrame then owns the outer auxiliary-conversation drag handle while the plugin owns width persistence.
 
 ### Theme presentation
 
@@ -39,7 +39,7 @@ The presenter consumes resolved theme snapshots and projects them onto the docum
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-One `register()` call contributes `AppFrame` into the runtime's built-in `'root'` slot and, in the same breath, declares the four child slots (`sidebar`, `conversation`, `details`, `shell.overlay`), seats the layout store (panel geometry), and wires the `ctx.layout` panel-action service. The transient layout store starts the sidebar at its default width and details closed, and never reads or writes `localStorage`. AppFrame always mounts the conversation and details columns; a connected Session renders through `SessionProvider`. It projects the selected Session title over the build-configured product title or the localized `common.brand.localBuild` fallback, so locale revisions update document metadata with the root entry. The theme presenter is a second effect: pure DOM writes from resolved snapshots — initial state through the getter once, then event-driven only, with no React path. It applies palette, font-size, and token variables before measuring the rendered background as the single color authority.
+One `register()` call contributes `AppFrame` into the runtime's built-in `'root'` slot and declares five child slots (`sidebar`, `conversation`, `workbench`, `details`, `shell.overlay`), seats the layout store, and wires `ctx.layout`. `registerWorkbench()` installs one lifecycle-bound width binding; its disposer restores the ordinary conversation layout. The transient DSH layout store still owns only sidebar and details geometry, while the workbench provider can persist the auxiliary width. AppFrame always mounts conversation and details, and mounts the workbench at either the primary desktop column or the narrow overlay. The theme presenter remains a separate pure DOM effect.
 
 </details>
 
@@ -52,6 +52,7 @@ Read these pages when the layout surface is not enough. They move from the frame
 
 - [ui-sidebar](../ui-sidebar/README.md) — occupies the `sidebar` column and its seats.
 - [ui-conversation](../ui-conversation/README.md) — occupies the `conversation` and `details` columns.
+- [YourBuddy workbench layout](../../../docs/tech/202609/workbench-layout-compatibility.md) — downstream composition and refresh provenance.
 - [ui-theme](../ui-theme/README.md) — the theme seam whose resolved snapshots the presenter consumes.
 - [Web client architecture](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.md) — how browser plugin rows load and register slots.
 

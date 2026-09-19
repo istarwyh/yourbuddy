@@ -8,7 +8,7 @@ description: "在 YourBuddy 中持续维护 DSH 与 Better Sidebar 下游改动�
 
 YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台成为桌面主区域，DSH 对话移入右侧辅助栏。DSH 和 Better Sidebar 在 YourBuddy 之外保持原有默认行为，产品来源记录保存上游来源和小范围下游改动集合。
 
-状态：仅有设计。本文所述运行时与刷新改动尚未实现。
+状态：已为 YourBuddy 0.3.7 实现。
 
 ## 目录
 
@@ -17,7 +17,7 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 - [运行时设计](#runtime-design)
 - [下游维护](#downstream-maintenance)
 - [升级流程](#upgrade-workflows)
-- [实施顺序](#implementation-sequence)
+- [实现](#implementation)
 - [功能验收](#functional-acceptance)
 - [回滚](#rollback)
 - [后续研究](#further-exploration)
@@ -29,7 +29,7 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 
 | 关注点 | 当前所有者 | 所需改动 |
 |---|---|---|
-| Shell 轨道与拖动柄 | [`ui-layout/AppFrame.tsx`](../../../packages/client/ui-layout/src/client/AppFrame.tsx) 管理 `sidebar | center | details` | 增加可选工作台区域和主/辅助区域布局。 |
+| Shell 轨道与拖动柄 | [`ui-layout/AppFrame.tsx`](../../../packages/client/ui-layout/src/client/AppFrame.tsx) 管理 `sidebar | conversation | details` 与可选的 `sidebar | workbench | details | conversation` 桌面 Grid | 外层宽度和拖动柄继续由 Shell 管理。 |
 | Shell 子区域 | [`ui-layout/src/client/index.ts`](../../../packages/client/ui-layout/src/client/index.ts) 声明 `sidebar`、`conversation`、`details` 和 `shell.overlay` | 声明可选、Root Scope 的 `workbench` Slot，不替换 `conversation`。 |
 | Better Sidebar 展现 | [`dsh-better-sidebar/src/client/index.tsx`](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/client/index.tsx) 挂载 Body Portal 并加载 Frame 补偿 CSS | 保留 Portal 默认值，并增加由 YourBuddy 选择的 Slot 展现。 |
 | Better Sidebar 行为 | 插件 Service 和 Store 管理标签、查看器、终端、拦截器和工作台状态 | 两种展现模式复用同一个 Service 和 Store。 |
@@ -41,7 +41,7 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 ## 已确定方案
 
 1. YourBuddy 在自己的分支持续维护 DSH 布局改动，不以进入官方 DSH Release 为前提。
-2. DSH 增加通用、可选的 `workbench` Slot 和两种布局。默认仍是 `conversation-primary`；YourBuddy 选择 `workbench-primary`。
+2. DSH 增加通用、可选的 `workbench` Slot。Slot 被占用时成为桌面主区域；没有 Occupant 时 DSH 保持原有对话布局。
 3. Better Sidebar 保留 `portal` 默认展现，并为 YourBuddy 增加 `slot`。
 4. 两个修改后的代码库都提交到 YourBuddy 仓库。DSH 更新使用 Merge 和比较；Better Sidebar 更新使用上游快照与兼容补丁重新生成产品快照。
 5. 来源记录保持精简：只记录上游身份、补丁文件、补丁 Hash、用途和受影响路径。实现不引入通用补丁平台或复杂策略引擎。
@@ -52,12 +52,12 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 
 ### Shell 布局
 
-`@deepseek-ai/dsh-client-ui-layout` 增加可选、Root Scope 的单一 `workbench` Slot。没有 Occupant 时，AppFrame 渲染当前三栏布局。
+`@deepseek-ai/dsh-client-ui-layout` 增加可选、Root Scope 的单一 `workbench` Slot。没有 Occupant 时，AppFrame 渲染当前三栏布局。Occupant 本身就是明确的运行时选择：AppFrame 把工作台渲染为可伸缩的桌面主区域，并把对话移入右侧辅助栏。
 
-| 布局 | 主区域 | 辅助区域 | 选择者 |
+| 运行时状态 | 主区域 | 辅助区域 | 选择者 |
 |---|---|---|---|
-| `conversation-primary` | 对话 | 工作台（如存在） | DSH 默认值 |
-| `workbench-primary` | 工作台 | 对话 | YourBuddy |
+| 没有 Workbench Occupant | 对话 | 无 | DSH 默认值 |
+| 存在 Workbench Occupant | 工作台 | 对话 | 注册到 `workbench` Slot 的插件 |
 
 桌面轨道顺序是导航、主区域、详情和辅助区域。详情栏继续可用，不会被对话或工作台替换。
 
@@ -67,7 +67,7 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 
 DSH 管理外层 Grid、实际宽度、响应式布局和拖动柄。Better Sidebar 管理用户的工作台偏好与内容状态。
 
-Better Sidebar Store 当前把标签树、面板状态和内容按会话保存，同时在会话之间共享最后一次拖动的面板宽度。Slot 模式保持这个行为。`ctx.layout` 上的小型注册项暴露当前打开状态和期望宽度，并接收 AppFrame 发出的切换和尺寸调整请求。
+Better Sidebar Store 当前把标签树、面板状态和内容按会话保存，同时在会话之间共享最后一次拖动的面板宽度。Slot 模式保持这个行为。`ctx.layout` 上的小型注册项暴露期望的辅助栏宽度，并接收 AppFrame 发出的尺寸调整请求。
 
 布局注册项跟随插件生命周期安装和移除。工作台注册项或 Occupant 缺席时，AppFrame 回退为当前对话布局。
 
@@ -85,7 +85,7 @@ Better Sidebar Host 配置增加 `presentation: 'portal' | 'slot'`，默认值�
 
 ### 产品选择
 
-YourBuddy 把 Better Sidebar 配置为 `presentation: 'slot'`，把 DSH Layout 配置为 `workbench-primary`。产品插件不替换 `root`、`conversation` 或 `betterSidebar` Service。
+YourBuddy 把 Better Sidebar 配置为 `presentation: 'slot'`。由此产生的 Workbench Occupant 会激活 DSH 的可选桌面 Grid。产品插件不替换 `root`、`conversation` 或 `betterSidebar` Service。
 
 <a id="downstream-maintenance"></a>
 
@@ -102,7 +102,7 @@ YourBuddy 把 Better Sidebar 配置为 `presentation: 'slot'`，把 DSH Layout �
 
 DSH 布局改动保持为小范围普通 Commit，只涉及 `packages/client/ui-layout` 及直接相关的文档和测试。官方 DSH 更新合并进 YourBuddy 分支，因此会保留该改动，或产生普通 Git 冲突供评审。
 
-DSH 补丁文件是针对已记录官方 Commit 生成的来源记录工件。检查已提交下游文件仍对应所记录改动时，只把它应用到该官方来源的干净临时副本，绝不再次应用到已经包含修改的 YourBuddy 工作树。
+DSH 补丁文件是由补丁条目记录的 YourBuddy 下游基线生成的来源记录工件。它记录边界清晰的 DSH 改动，绝不再次应用到已经包含修改的 YourBuddy 工作树。
 
 ### Better Sidebar 下游改动
 
@@ -112,7 +112,7 @@ Better Sidebar npm 归档是可替换快照。兼容补丁同时包含被修改�
 
 ### 最小来源记录
 
-`DSH_UPSTREAM.json` 继续记录官方仓库、Tag、版本和 Commit，并为已物化的下游改动增加简短 `patches` 列表。每项记录 `id`、`file`、`sha256`、`purpose` 和 `paths`。
+`DSH_UPSTREAM.json` 继续记录官方仓库、Tag、版本和 Commit，并为已物化的下游改动增加简短 `patches` 列表。每项记录 `id`、`file`、`sha256`、`baseCommit`、`purpose` 和 `paths`。
 
 `dsh-better-sidebar/YOURBUDDY_UPSTREAM.json` 保留当前包名、来源、Integrity、Archive、上游 Tree 和最终 Tree 字段。其 `patches` 条目改为包含 `id`、`file`、`sha256` 和 `purpose` 的结构化引用。
 
@@ -129,7 +129,7 @@ Bundle Manifest 包含这些来源记录和补丁 Hash。补丁内容只作为�
 1. 创建独立升级 Worktree，并获取选中的官方 DSH Tag。
 2. 通过现有 DSH 同步流程合并官方 Commit。
 3. 处理小范围布局改动中的冲突，并检查受影响文件的上游变化。
-4. 针对新的官方 Commit 重新生成 DSH 来源记录补丁。
+4. 从升级结果的下游基线重新生成 DSH 来源记录补丁。
 5. 运行聚焦布局测试、构建、Bundle 应用 Smoke 和可见布局旅程。
 6. 更新 `DSH_UPSTREAM.json`，把 Merge、下游调整、补丁和来源记录一起提交。
 
@@ -142,34 +142,34 @@ Bundle Manifest 包含这些来源记录和补丁 Hash。补丁内容只作为�
 5. 更新补丁引用和 `YOURBUDDY_UPSTREAM.json`。
 6. 一起替换并提交产品快照、补丁、Lockfile 和来源记录。
 
-<a id="implementation-sequence"></a>
+<a id="implementation"></a>
 
-## 实施顺序
+## 实现
 
-### 1. 实现 DSH 布局改动
+### DSH 布局
 
-- 增加可选 `workbench` Slot、布局设置、几何注册、第四轨道和辅助区域拖动柄。
+- 可选 `workbench` Slot、随生命周期释放的宽度注册、第四轨道和辅助区域拖动柄位于 `@deepseek-ai/dsh-client-ui-layout`。
 - 没有工作台 Occupant 时保持现有结果。
-- 覆盖两种布局、详情开关、尺寸调整、会话切换和窄屏布局。
+- 聚焦测试覆盖默认 Grid、占用后的 Grid、详情行为、尺寸调整、会话切换和生命周期释放。
 
-### 2. 适配 Better Sidebar
+### Better Sidebar 展现
 
-- 把能力初始化与 Portal、Slot 展现挂载分开。
-- 把 Host `presentation` 设置加入现有 Boot Response。
-- 把补偿 CSS 限定在 Portal 模式，并在 Slot 模式注册工作台和几何回调。
-- 保留现有 Service、Store、标签、终端、查看器、底部工作台、浮窗和集成。
+- Portal 与 Slot 展现挂载共享同一份能力初始化。
+- Host `presentation` 设置通过现有 Boot Response 传递。
+- Portal 补偿 CSS 按展现模式限定；Slot 模式注册 Workbench 与共享宽度 Binding。
+- Service、Store、标签、终端、查看器、底部工作台、浮窗和集成保持共享。
 
-### 3. 记录下游来源
+### 下游记录
 
-- 增加一个用于来源记录的 DSH 布局补丁工件，以及一个同时覆盖源码和运行时 Bundle 输出的 Better Sidebar 兼容补丁。
-- 使用最小结构化补丁条目扩展两个现有来源记录文件。
-- 只在复现这两项已声明改动所需的范围内更新刷新和 Bundle 脚本。
+- 一个 DSH 布局补丁记录第一方下游 Diff，一个 Better Sidebar 兼容补丁覆盖源码与运行时 Bundle 输出。
+- 两个现有来源文件包含结构化补丁条目。
+- Better Sidebar 刷新会先重放声明的 Materialized Patch，再执行兼容调整；现有检查通过后才替换已提交快照。
 
-### 4. 激活 YourBuddy
+### YourBuddy 组合
 
-- 在产品组合中选择 Better Sidebar `slot` 展现和 DSH `workbench-primary` 布局。
-- 更新冻结的产品 Lockfile 与 Bundle 输入。
-- 在 Bundle 应用中执行完整桌面和窄窗口用户旅程。
+- 原生 Overlay 选择 Better Sidebar `slot` 展现。
+- Better Sidebar 产品快照包含对应的源码、运行时 Bundle 和类型声明。
+- Release 验证执行桌面组合并记录可见结果。
 
 <a id="functional-acceptance"></a>
 
@@ -191,7 +191,7 @@ Bundle Manifest 包含这些来源记录和补丁 Hash。补丁内容只作为�
 
 ## 回滚
 
-YourBuddy 可以恢复 `conversation-primary` 和 Better Sidebar `portal` 展现，无需降级任一组件。工作台内容 Store 保持不变，因此切换展现不会丢弃标签或终端记录。
+YourBuddy 可以通过选择 Better Sidebar `portal` 展现恢复默认对话布局，无需降级任一组件。工作台内容 Store 保持不变，因此切换展现不会丢弃标签或终端记录。
 
 如果必须删除一项兼容改动，先删除其产品配置，再在同一个后续变更中删除下游代码和来源记录补丁。
 
@@ -199,12 +199,11 @@ YourBuddy 可以恢复 `conversation-primary` 和 Better Sidebar `portal` 展现
 
 ## 后续研究
 
-- 在第一个 UI Spike 中确认辅助对话区域最小宽度和详情栏行为。
-- 决定底部工作台继续放在主工作台区域内部，还是成为未来独立布局 Contribution。
+- 仅当可见使用暴露具体问题时，再调整辅助对话区域宽度或详情栏交互。
 - 只有上游 DSH 或 Better Sidebar 后来提供等价行为时，才重新讨论下游补丁。
 
 <a id="developer-note"></a>
 
 ## 开发说明
 
-所有者：YourBuddy 桌面产品维护者。创建时间：2026-09-19。复审期限：第一个实施 PR 或 2026-10-31，以较早者为准。转正目标：运行时与刷新改动合并后进入已实现架构和发布文档。本方案明确优先采用最小的功能专用实现，不建设通用校验或补丁管理框架。
+所有者：YourBuddy 桌面产品维护者。实现时间：2026-09-19，目标版本为 YourBuddy 0.3.7。复审期限：第一次触及任一补丁区域的上游刷新，或 2026-10-31，以较早者为准。实现优先采用最小的功能专用机制，不建设通用补丁管理框架。

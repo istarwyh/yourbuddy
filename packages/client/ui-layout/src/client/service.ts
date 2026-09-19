@@ -14,6 +14,28 @@ import type { createLayoutStore } from './stores.ts'
 /** The layout store's bound action set (framework-baked, draft params peeled). */
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 
+/** Live geometry supplied by the plugin occupying the workbench slot. */
+export interface WorkbenchLayoutSnapshot {
+  /** Preferred width of the auxiliary conversation column in pixels. */
+  width: number
+}
+
+/** One workbench occupant's shared width state. */
+export interface WorkbenchLayoutBinding {
+  /** Read the current auxiliary conversation width. */
+  getSnapshot(): WorkbenchLayoutSnapshot
+  /** Subscribe to width changes. */
+  subscribe(listener: () => void): () => void
+  /** Persist a width chosen through the AppFrame drag handle. */
+  setWidth(width: number): void
+}
+
+/** AppFrame-facing view of the optional workbench contribution. */
+export interface WorkbenchLayoutState extends WorkbenchLayoutSnapshot {
+  /** Whether a workbench contribution currently owns the primary region. */
+  present: boolean
+}
+
 /**
  * The outward layout face (`ctx.layout`): the panel transitions other
  * plugins may trigger — and exactly what a test fake must supply. The
@@ -27,11 +49,30 @@ export interface ILayout {
   openDetails(): void
   /** Close the details panel. */
   closeDetails(): void
+  /**
+   * Register the workbench width binding for the lifetime of its slot occupant.
+   * @param binding - Shared width state owned by the workbench provider.
+   * @returns Disposer that restores the ordinary conversation layout.
+   */
+  registerWorkbench(binding: WorkbenchLayoutBinding): () => void
 }
 
 /** Cross-plugin panel-action face (ctx.layout). */
 export class LayoutController implements ILayout {
   #panels: PanelActions | undefined
+  #workbench: WorkbenchLayoutBinding | undefined
+  #offWorkbench: (() => void) | undefined
+  #workbenchSnapshot: WorkbenchLayoutState = { present: false, width: 0 }
+  readonly #workbenchListeners = new Set<() => void>()
+
+  /** Subscribe to optional workbench geometry changes. */
+  readonly subscribeWorkbench = (listener: () => void): (() => void) => {
+    this.#workbenchListeners.add(listener)
+    return () => { this.#workbenchListeners.delete(listener) }
+  }
+
+  /** Read the AppFrame-facing workbench geometry. */
+  readonly getWorkbenchSnapshot = (): WorkbenchLayoutState => this.#workbenchSnapshot
 
   /**
    * Adopt the root entry's bound store actions. Called from the root
@@ -57,6 +98,44 @@ export class LayoutController implements ILayout {
   /** Close the details panel. */
   closeDetails(): void {
     this.#require().closeDetails()
+  }
+
+  /**
+   * Register one workbench occupant and its shared auxiliary width.
+   * @param binding - Shared width state owned by the workbench provider.
+   * @returns Disposer that restores the ordinary conversation layout.
+   */
+  registerWorkbench(binding: WorkbenchLayoutBinding): () => void {
+    if (this.#workbench !== undefined) throw new Error('layout: workbench already registered')
+    this.#workbench = binding
+    const sync = (): void => {
+      this.#workbenchSnapshot = { present: true, width: binding.getSnapshot().width }
+      this.#notifyWorkbench()
+    }
+    this.#offWorkbench = binding.subscribe(sync)
+    sync()
+    let disposed = false
+    return () => {
+      if (disposed) return
+      disposed = true
+      this.#offWorkbench?.()
+      this.#offWorkbench = undefined
+      this.#workbench = undefined
+      this.#workbenchSnapshot = { present: false, width: 0 }
+      this.#notifyWorkbench()
+    }
+  }
+
+  /**
+   * Persist an AppFrame drag through the registered workbench binding.
+   * @param width - Requested auxiliary conversation width in pixels.
+   */
+  setWorkbenchWidth(width: number): void {
+    this.#workbench?.setWidth(width)
+  }
+
+  #notifyWorkbench(): void {
+    for (const listener of [...this.#workbenchListeners]) listener()
   }
 
   #require(): PanelActions {

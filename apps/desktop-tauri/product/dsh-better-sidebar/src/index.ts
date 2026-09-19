@@ -572,8 +572,8 @@ function buildApi(
     'settings.get': () => {
       const settings = getSettings()
       return settings === undefined
-        ? { value: undefined, revision: undefined, externalDisable: false }
-        : { ...settings.get(), externalDisable: settings.externalDisable() }
+        ? { value: undefined, revision: undefined, externalDisable: false, presentation: resolved.presentation }
+        : { ...settings.get(), externalDisable: settings.externalDisable(), presentation: resolved.presentation }
     },
     'settings.update': async (payload) => {
       const settings = getSettings()

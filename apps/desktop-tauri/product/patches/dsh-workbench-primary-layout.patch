@@ -1,0 +1,687 @@
+diff --git a/packages/client/ui-layout/README.i18n.yaml b/packages/client/ui-layout/README.i18n.yaml
+index 17187a8179..ea6be2c3af 100644
+--- a/packages/client/ui-layout/README.i18n.yaml
++++ b/packages/client/ui-layout/README.i18n.yaml
+@@ -2,5 +2,5 @@
+ # side as of the last confirmed-consistent state. Both languages carry equal authority;
+ # after editing either side, bring the other along and re-record with:
+ #   pnpm run verify-translation-pairing --write packages/client/ui-layout/README.md
+-README.md: aa00242f1d63924b990cfec23bd0438332662b06
+-README.zh.md: 801346967f9fbb031e5e6c2612dff84af79f2d45
++README.md: 67d5eb71f685b6a1555cbd1c735fcd5ea6f65cdf
++README.zh.md: 2f69da3da59771824bb1a5eb7f128af139c86842
+diff --git a/packages/client/ui-layout/README.md b/packages/client/ui-layout/README.md
+index aa00242f1d..67d5eb71f6 100644
+--- a/packages/client/ui-layout/README.md
++++ b/packages/client/ui-layout/README.md
+@@ -1,5 +1,5 @@
+ ---
+-description: "Shell layout for the Web GUI: the three-column AppFrame with drag handles, concession behavior, the panel-geometry service, and theme presentation; for users and maintainers of the window chrome."
++description: "Shell layout for the Web GUI: AppFrame columns, optional workbench placement, drag handles, concession behavior, panel geometry, and theme presentation."
+ kind: "package-reference"
+ ---
+ 
+@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
+ 
+ ## Summary
+ 
+-This package provides the shell layout of the Web GUI: a three-column AppFrame with resizable sidebar and details panels, a concession chain that shrinks the details column and then auto-closes it when space runs out, and the `ctx.layout` panel-geometry service other plugins call to open or close the details column. It also seats the theme presenter, which projects the resolved color scheme, alias tokens, content font size, and `theme-color` metadata onto the document. Choose it for the standard window chrome; panel geometry is transient and resets on reload.
++This package provides the shell layout of the Web GUI. AppFrame normally renders sidebar, conversation, and details columns. An optional root-scoped `workbench` occupant becomes the flexible desktop primary surface and moves conversation into a resizable auxiliary column; below 768px, conversation remains primary and the workbench renders through the overlay as a drawer. The `ctx.layout` service coordinates the workbench width while preserving the existing sidebar and details actions. The package also projects the resolved theme onto the document.
+ 
+ ## Table of Contents
+ 
+@@ -25,7 +25,7 @@ This package provides the shell layout of the Web GUI: a three-column AppFrame w
+ <a id="use-this-package"></a>
+ ## Use this package
+ 
+-Mount this plugin at the root slot; it then renders the app frame around whatever occupies the sidebar, conversation, and details columns. Users resize the sidebar by dragging its invisible hit strip and the details panel by dragging its floating pill; when the window narrows, only details shrinks, then auto-closes. A closed sidebar retains a 56px control rail; details closes to zero width.
++Mount this plugin at the root slot; it renders the app frame around the sidebar, conversation, details, optional workbench, and shell overlay slots. Without a workbench occupant, behavior remains the three-column DSH layout. A workbench plugin registers one shared width binding through `ctx.layout`; AppFrame then owns the outer auxiliary-conversation drag handle while the plugin owns width persistence.
+ 
+ ### Theme presentation
+ 
+@@ -39,7 +39,7 @@ The presenter consumes resolved theme snapshots and projects them onto the docum
+ <details>
+ <summary>Implementation internals — click to expand</summary>
+ 
+-One `register()` call contributes `AppFrame` into the runtime's built-in `'root'` slot and, in the same breath, declares the four child slots (`sidebar`, `conversation`, `details`, `shell.overlay`), seats the layout store (panel geometry), and wires the `ctx.layout` panel-action service. The transient layout store starts the sidebar at its default width and details closed, and never reads or writes `localStorage`. AppFrame always mounts the conversation and details columns; a connected Session renders through `SessionProvider`. It projects the selected Session title over the build-configured product title or the localized `common.brand.localBuild` fallback, so locale revisions update document metadata with the root entry. The theme presenter is a second effect: pure DOM writes from resolved snapshots — initial state through the getter once, then event-driven only, with no React path. It applies palette, font-size, and token variables before measuring the rendered background as the single color authority.
++One `register()` call contributes `AppFrame` into the runtime's built-in `'root'` slot and declares five child slots (`sidebar`, `conversation`, `workbench`, `details`, `shell.overlay`), seats the layout store, and wires `ctx.layout`. `registerWorkbench()` installs one lifecycle-bound width binding; its disposer restores the ordinary conversation layout. The transient DSH layout store still owns only sidebar and details geometry, while the workbench provider can persist the auxiliary width. AppFrame always mounts conversation and details, and mounts the workbench at either the primary desktop column or the narrow overlay. The theme presenter remains a separate pure DOM effect.
+ 
+ </details>
+ 
+@@ -52,6 +52,7 @@ Read these pages when the layout surface is not enough. They move from the frame
+ 
+ - [ui-sidebar](../ui-sidebar/README.md) — occupies the `sidebar` column and its seats.
+ - [ui-conversation](../ui-conversation/README.md) — occupies the `conversation` and `details` columns.
++- [YourBuddy workbench layout](../../../docs/tech/202609/workbench-layout-compatibility.md) — downstream composition and refresh provenance.
+ - [ui-theme](../ui-theme/README.md) — the theme seam whose resolved snapshots the presenter consumes.
+ - [Web client architecture](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.md) — how browser plugin rows load and register slots.
+ 
+diff --git a/packages/client/ui-layout/README.zh.md b/packages/client/ui-layout/README.zh.md
+index 801346967f..2f69da3da5 100644
+--- a/packages/client/ui-layout/README.zh.md
++++ b/packages/client/ui-layout/README.zh.md
+@@ -1,5 +1,5 @@
+ ---
+-description: "Web GUI 的外壳布局：三栏 AppFrame、拖动手柄与让步行为、面板几何服务与主题呈现；供窗口外观的用户与维护者阅读。"
++description: "Web GUI 的外壳布局：AppFrame 栏位、可选工作台布局、拖动柄、让步行为、面板几何与主题呈现。"
+ kind: "package-reference"
+ ---
+ 
+@@ -9,7 +9,7 @@ kind: "package-reference"
+ 
+ ## 概述
+ 
+-本包提供 Web GUI 的外壳布局：一个三栏 AppFrame，带可缩放的侧栏与详情面板；一条让步链，在空间不足时先收缩详情栏、随后自动关闭它；以及 `ctx.layout` 面板几何服务，供其他插件调用以打开或关闭详情栏。它还承载主题呈现器，把解析后的配色方案、别名 token、正文字号与 `theme-color` 元数据投影到 document。需要标准窗口外观时选择它；面板几何是瞬时的，重新加载即重置。
++本包提供 Web GUI 的外壳布局。AppFrame 默认渲染侧栏、对话与详情栏。可选、Root Scope 的 `workbench` Occupant 会成为桌面端可伸缩主区域，并把对话移入可调整宽度的辅助栏；低于 768px 时，对话仍是主区域，工作台通过 Overlay 以抽屉呈现。`ctx.layout` 在保留现有侧栏和详情动作的同时协调工作台宽度。本包还把解析后的主题投影到 document。
+ 
+ ## 目录
+ 
+@@ -25,7 +25,7 @@ kind: "package-reference"
+ <a id="use-this-package"></a>
+ ## 使用本包
+ 
+-在 root 槽位挂载本插件；它随即围绕占据侧栏、会话与详情栏的内容渲染应用框架。用户拖动不可见命中条带缩放侧栏、拖动浮动胶囊缩放详情面板；窗口变窄时只有详情栏收缩，随后自动关闭。关闭的侧栏保留 56px 控制栏；详情栏关闭到零宽度。
++在 root 槽位挂载本插件；它围绕侧栏、对话、详情、可选工作台与 Shell Overlay 槽位渲染应用框架。没有工作台 Occupant 时，行为仍是 DSH 三栏布局。工作台插件通过 `ctx.layout` 注册一个共享宽度 Binding；随后由 AppFrame 管理外层辅助对话拖动柄，插件负责保存宽度。
+ 
+ ### 主题呈现
+ 
+@@ -39,7 +39,7 @@ kind: "package-reference"
+ <details>
+ <summary>实现细节——点击展开</summary>
+ 
+-一次 `register()` 调用把 `AppFrame` 贡献进运行时的内建 `'root'` 槽位，并在同一刻声明四个子槽位（`sidebar`、`conversation`、`details`、`shell.overlay`）、安放布局 store（面板几何）并接好 `ctx.layout` 面板动作服务。瞬时布局 store 以默认宽度启动侧栏、保持详情栏关闭，从不读写 `localStorage`。AppFrame 始终挂载会话与详情两栏；已连接 Session 经 `SessionProvider` 渲染。它把所选 Session 标题投影到构建配置的产品标题或本地化 `common.brand.localBuild` 回退值之上，因此 locale revision 会随根 entry 一起更新文档元数据。主题呈现器是第二个 effect：从解析后的快照做纯 DOM 写入——初始状态经 getter 读取一次，此后仅事件驱动，不经过 React。它先应用调色板、字号与 token 变量，再把渲染出的背景测量为唯一的颜色依据。
++一次 `register()` 调用把 `AppFrame` 贡献进运行时的内建 `'root'` 槽位，并声明五个子槽位（`sidebar`、`conversation`、`workbench`、`details`、`shell.overlay`）、安放布局 Store 并接好 `ctx.layout`。`registerWorkbench()` 安装一个随生命周期释放的宽度 Binding；释放后恢复普通对话布局。DSH 的瞬时布局 Store 仍只管理侧栏与详情几何，工作台提供方可以自行持久化辅助栏宽度。AppFrame 始终挂载对话和详情，并把工作台挂载到桌面主栏或窄窗口 Overlay。主题呈现器仍是独立的纯 DOM Effect。
+ 
+ </details>
+ 
+@@ -52,6 +52,7 @@ kind: "package-reference"
+ 
+ - [ui-sidebar](../ui-sidebar/README.zh.md)——占据 `sidebar` 栏及其座位。
+ - [ui-conversation](../ui-conversation/README.zh.md)——占据 `conversation` 与 `details` 栏。
++- [YourBuddy 工作台布局](../../../docs/tech/202609/workbench-layout-compatibility.zh.md)——下游组合与刷新来源记录。
+ - [ui-theme](../ui-theme/README.zh.md)——呈现器消费其解析快照的主题 seam。
+ - [Web 客户端架构](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.zh.md)——浏览器插件行如何加载并注册槽位。
+ 
+diff --git a/packages/client/ui-layout/src/client/AppFrame.module.css b/packages/client/ui-layout/src/client/AppFrame.module.css
+index 9ba4e82be6..9cfdfcacf8 100644
+--- a/packages/client/ui-layout/src/client/AppFrame.module.css
++++ b/packages/client/ui-layout/src/client/AppFrame.module.css
+@@ -36,6 +36,18 @@
+   overflow: hidden;
+ }
+ 
++.workbenchCol,
++.conversationCol {
++  min-width: 0;
++  display: flex;
++  flex-direction: column;
++  overflow: hidden;
++}
++
++.conversationCol {
++  border-left: 0.5px solid var(--dsw-alias-border-l3);
++}
++
+ .detailsCol {
+   min-width: 0;
+   overflow: hidden;
+@@ -75,7 +87,8 @@
+   }
+ }
+ 
+-.handle[data-side='details']::after {
++.handle[data-side='details']::after,
++.handle[data-side='conversation']::after {
+   content: '';
+   position: absolute;
+   top: 50%;
+@@ -97,12 +110,17 @@
+ 
+ .detailsCol:hover ~ .handle[data-side='details']::after,
+ .handle[data-side='details']:hover::after,
+-.handle[data-side='details'][data-dragging='true']::after {
++.handle[data-side='details'][data-dragging='true']::after,
++.conversationCol:hover ~ .handle[data-side='conversation']::after,
++.handle[data-side='conversation']:hover::after,
++.handle[data-side='conversation'][data-dragging='true']::after {
+   opacity: 1;
+ }
+ 
+ .handle[data-side='details']:hover::after,
+-.handle[data-side='details'][data-dragging='true']::after {
++.handle[data-side='details'][data-dragging='true']::after,
++.handle[data-side='conversation']:hover::after,
++.handle[data-side='conversation'][data-dragging='true']::after {
+   background: var(--dsw-alias-button-floating-hover);
+   border-color: var(--dsw-alias-border-l3);
+ }
+diff --git a/packages/client/ui-layout/src/client/AppFrame.tsx b/packages/client/ui-layout/src/client/AppFrame.tsx
+index cbef893aed..178e75c7dd 100644
+--- a/packages/client/ui-layout/src/client/AppFrame.tsx
++++ b/packages/client/ui-layout/src/client/AppFrame.tsx
+@@ -1,7 +1,9 @@
+ /**
+- * Three-column shell frame, registered into the built-in 'root' slot (the web
+- * shell renders only 'root'). Owns the grid tracks (sidebar | center |
+- * details), the drag handles (pointer capture + rAF throttle), the concession
++ * Shell frame registered into the built-in 'root' slot. Its default grid is
++ * sidebar | conversation | details. An occupied workbench slot changes the
++ * desktop grid to sidebar | workbench | details | conversation while narrow
++ * viewports keep conversation primary and render the workbench as a drawer.
++ * Owns the drag handles (pointer capture + rAF throttle), the concession
+  * chain (columns.ts), and the child-slot render decisions: the sidebar slot
+  * renders HERE with live parameters from the concession solve, and the
+  * session-aware occupants render in fixed column positions; strict entries
+@@ -10,7 +12,7 @@
+  * through the three framework shares — zero cordis or framework imports,
+  * zero self-made hooks.
+  */
+-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
++import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+ import type { ReactNode } from 'react'
+ import type {
+   PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
+@@ -18,20 +20,35 @@ import type {
+ import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
+ import { DocumentTitle } from './DocumentTitle.tsx'
+ import type { createLayoutStore } from './stores.ts'
++import type { LayoutController } from './service.ts'
+ import css from './AppFrame.module.css'
+ 
++/** Below this width the conversation stays primary and the workbench renders as a drawer. */
++export const WORKBENCH_DRAWER_BREAKPOINT = 768
++
+ /** Full composed props: runtime share + child-slot render share + store share. */
+ export type AppFrameProps =
+   & PropsRuntime<'root'>
+-  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay'>
++  & PropsRenderSlots<'sidebar' | 'conversation' | 'workbench' | 'details' | 'shell.overlay'>
+   & PropsStore<ReturnType<typeof createLayoutStore>>
+   & PropsLocale<'common'>
++  & { workbenchLayout: LayoutController }
+ 
+ /** Center column grid item (session-body building block). */
+ function CenterColumn(props: { children?: ReactNode }) {
+   return <div className={css.centerCol}>{props.children}</div>
+ }
+ 
++/** Primary workbench grid item. */
++function WorkbenchColumn(props: { children?: ReactNode }) {
++  return <div className={css.workbenchCol}>{props.children}</div>
++}
++
++/** Auxiliary conversation grid item. */
++function ConversationColumn(props: { children?: ReactNode }) {
++  return <div className={css.conversationCol}>{props.children}</div>
++}
++
+ /** Details column grid item; width 0 keeps the subtree mounted (never unmount on close). */
+ function DetailsColumn(props: { children?: ReactNode }) {
+   return <div className={css.detailsCol}>{props.children}</div>
+@@ -41,7 +58,7 @@ function DetailsColumn(props: { children?: ReactNode }) {
+  * One drag handle: pointer capture, rAF-throttled dx reports against the drag-start origin.
+  * `side` keys the hover-reveal CSS to the owning column.
+  */
+-function DragHandle(props: { side: 'sidebar' | 'details'; left: number; onStart: () => void; onDrag: (dx: number) => void; onEnd: () => void }) {
++function DragHandle(props: { side: 'sidebar' | 'details' | 'conversation'; left: number; onStart: () => void; onDrag: (dx: number) => void; onEnd: () => void }) {
+   const [dragging, setDragging] = useState(false)
+   const origin = useRef(0)
+   const latest = useRef(0)
+@@ -87,7 +104,7 @@ function DragHandle(props: { side: 'sidebar' | 'details'; left: number; onStart:
+   )
+ }
+ 
+-/** The three-column frame (see module doc). */
++/** The root application frame (see module doc). */
+ export function AppFrame({
+   useStore,
+   useSessions,
+@@ -95,8 +112,13 @@ export function AppFrame({
+   renderSlot,
+   SessionProvider,
+   t,
++  workbenchLayout,
+ }: AppFrameProps) {
+   const panels = useStore(s => s)
++  const workbench = useSyncExternalStore(
++    workbenchLayout.subscribeWorkbench,
++    workbenchLayout.getWorkbenchSnapshot,
++  )
+   const detailsSession = useSessions((s) => {
+     const current = s.current
+     return current !== undefined && s.byId[current]?.blank === false ? current : undefined
+@@ -149,7 +171,13 @@ export function AppFrame({
+   const sidebarPreference = sidebarCollapsed
+     ? 0
+     : panels.sidebar === 0 ? SIDEBAR_DEFAULT : panels.sidebar
+-  const cols = computeColumns(viewport, sidebarPreference, detailsSession === undefined ? 0 : panels.details)
++  const workbenchDesktop = workbench.present && viewport >= WORKBENCH_DRAWER_BREAKPOINT
++  const auxiliaryWidth = workbenchDesktop ? Math.min(workbench.width, Math.max(0, viewport)) : 0
++  const cols = computeColumns(
++    Math.max(0, viewport - auxiliaryWidth),
++    sidebarPreference,
++    detailsSession === undefined ? 0 : panels.details,
++  )
+   const colsRef = useRef(cols)
+   colsRef.current = cols
+ 
+@@ -158,25 +186,38 @@ export function AppFrame({
+   // it stays frozen for the whole gesture so dx deltas do not compound.
+   const sidebarBase = useRef(0)
+   const detailsBase = useRef(0)
++  const conversationBase = useRef(0)
+   // Track-level transitions pause for the whole gesture: eased tracks would
+   // detach the column edge from the pointer (AppFrame.module.css).
+   const [dragging, setDragging] = useState(false)
+   const onDragEnd = useCallback(() => { setDragging(false) }, [])
+   const onSidebarStart = useCallback(() => { sidebarBase.current = colsRef.current.sidebar; setDragging(true) }, [])
+   const onDetailsStart = useCallback(() => { detailsBase.current = colsRef.current.details; setDragging(true) }, [])
++  const onConversationStart = useCallback(() => { conversationBase.current = workbench.width; setDragging(true) }, [workbench.width])
+   const onSidebarDrag = useCallback((dx: number) => {
+     actions.setSidebar(sidebarBase.current + dx)
+   }, [actions])
+   const onDetailsDrag = useCallback((dx: number) => {
+     actions.setDetails(detailsBase.current - dx)
+   }, [actions])
++  const onConversationDrag = useCallback((dx: number) => {
++    workbenchLayout.setWorkbenchWidth(conversationBase.current - dx)
++  }, [workbenchLayout])
+   const productTitle = process.env.DSH_CLIENT_TITLE ?? t('brand.localBuild')
++  const detailsLeft = viewport - auxiliaryWidth - cols.details
++  const conversationLeft = viewport - auxiliaryWidth
+ 
+   return (
+     <div
+       ref={frameRef}
+       className={css.frame}
+-      style={{ gridTemplateColumns: `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px` }}
++      style={{
++        gridTemplateColumns: workbenchDesktop
++          ? `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px ${auxiliaryWidth}px`
++          : `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px`,
++      }}
++      data-dsh-frame
++      data-workbench-primary={workbenchDesktop || undefined}
+       data-sidebar-collapsed={sidebarCollapsed || undefined}
+       data-details-collapsed={cols.details === 0 || undefined}
+       data-dragging={dragging || undefined}
+@@ -202,17 +243,22 @@ export function AppFrame({
+             the shell's own pending rendering. The conversation
+             is session-maybe; SessionProvider withholds the strict details
+             entry while no session is current. */}
+-        <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
++        {workbenchDesktop
++          ? <WorkbenchColumn>{renderSlot('workbench', {})}</WorkbenchColumn>
++          : <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>}
+         <DetailsColumn>
+           <SessionProvider>{renderSlot('details', {})}</SessionProvider>
+         </DetailsColumn>
++        {workbenchDesktop && <ConversationColumn>{renderSlot('conversation', {})}</ConversationColumn>}
+       </>
+       <div className={css.overlayLayer} data-shell-overlay>
+         {renderSlot('shell.overlay', {})}
++        {workbench.present && !workbenchDesktop && renderSlot('workbench', {})}
+       </div>
+       {/* The collapsed rail is fixed-width: no resize handle while closed. */}
+       {!sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
+-      {cols.details > 0 && <DragHandle side="details" left={viewport - cols.details} onStart={onDetailsStart} onDrag={onDetailsDrag} onEnd={onDragEnd} />}
++      {cols.details > 0 && <DragHandle side="details" left={detailsLeft} onStart={onDetailsStart} onDrag={onDetailsDrag} onEnd={onDragEnd} />}
++      {workbenchDesktop && <DragHandle side="conversation" left={conversationLeft} onStart={onConversationStart} onDrag={onConversationDrag} onEnd={onDragEnd} />}
+     </div>
+   )
+ }
+diff --git a/packages/client/ui-layout/src/client/index.ts b/packages/client/ui-layout/src/client/index.ts
+index 56afec15e3..dd4d7042ba 100644
+--- a/packages/client/ui-layout/src/client/index.ts
++++ b/packages/client/ui-layout/src/client/index.ts
+@@ -1,7 +1,7 @@
+ /**
+  * Layout plugin, browser half: one register() call contributes AppFrame into
+  * the runtime's built-in 'root' slot and, in the same breath, declares the
+- * four child slots (declaration = exclusive render authority), seats the
++ * five child slots (declaration = exclusive render authority), seats the
+  * layout store (panel geometry), and wires the panel-action service face.
+  * ctx.layout is the cross-plugin panel-action contract; navigation state lives
+  * with the runtime sessions service. A second effect seats the theme
+@@ -24,7 +24,7 @@ import { ThemePresenter } from './theme-presenter.ts'
+ // OwnerShare contracts below are the render-side halves registrants compose
+ // against; the frame components and the store factory are package-internal.
+ export { LayoutController } from './service.ts'
+-export type { ILayout } from './service.ts'
++export type { ILayout, WorkbenchLayoutBinding, WorkbenchLayoutSnapshot } from './service.ts'
+ 
+ declare module '@deepseek-ai/cordis' {
+   interface Context {
+@@ -36,7 +36,7 @@ declare module '@deepseek-ai/cordis' {
+ declare module '@deepseek-ai/dsh-client-ui-slots' {
+   interface SlotMap {
+     // The 'root' entry itself is the runtime's built-in slot (declared
+-    // there); these four are the frame's children, declared by the same
++    // there); these five are the frame's children, declared by the same
+     // register() call that contributes AppFrame. Session owners never pass
+     // sessionId: the framework injects it as a standard prop.
+     /**
+@@ -63,6 +63,13 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
+      * framework hooks of the `session-maybe` scope.
+      */
+     'conversation': { kind: 'single'; scope: 'session-maybe'; owner: ConvOwnerProps }
++    /**
++     * Optional root-scoped workbench. When occupied, AppFrame makes it the
++     * desktop primary region and moves the conversation to a resizable right
++     * column. Narrow viewports dispatch it through the frame overlay so the
++     * occupant can present its existing drawer.
++     */
++    'workbench': { kind: 'single'; scope: 'root'; owner: WorkbenchOwnerProps }
+     /**
+      * The right details column, shown when the layout opens it. OCCUPIED by
+      * ui-conversation's DetailsPanel, which declares the tool-details seat
+@@ -104,6 +111,9 @@ export interface SidebarOwnerProps {
+ /** Conversation owner share: business state and actions belong to the registrant. */
+ export interface ConvOwnerProps {}
+ 
++/** Workbench owner share: geometry is coordinated through ctx.layout. */
++export interface WorkbenchOwnerProps {}
++
+ /** Details owner share: empty — sessionId arrives as a framework-standard prop. */
+ export interface DetailsOwnerProps {}
+ 
+@@ -112,7 +122,7 @@ export const inject = ['slots', 'theme', 'locale']
+ 
+ /**
+  * Client plugin body: provide ctx.layout, then one register() call — AppFrame
+- * into 'root' with the four child-slot declarations, the layout store seat,
++ * into 'root' with the five child-slot declarations, the layout store seat,
+  * and the inject hook that hands the store's bound actions to the service.
+  * @param ctx - client root context.
+  */
+@@ -126,6 +136,7 @@ export function apply(ctx: ClientContext): void {
+       children: {
+         'sidebar': { kind: 'single', scope: 'root' },
+         'conversation': { kind: 'single', scope: 'session-maybe' },
++        'workbench': { kind: 'single', scope: 'root' },
+         'details': { kind: 'single', scope: 'session' },
+         'shell.overlay': { kind: 'list', scope: 'root' },
+       },
+@@ -136,7 +147,7 @@ export function apply(ctx: ClientContext): void {
+       // conversation business actions belong to their registrants.
+       inject: (actions: PanelActions) => {
+         layout.attachPanels(actions)
+-        return {}
++        return { workbenchLayout: layout }
+       },
+     }, AppFrame)
+     return () => {
+diff --git a/packages/client/ui-layout/src/client/service.ts b/packages/client/ui-layout/src/client/service.ts
+index 2b2e50e5d5..1f822564dc 100644
+--- a/packages/client/ui-layout/src/client/service.ts
++++ b/packages/client/ui-layout/src/client/service.ts
+@@ -14,6 +14,28 @@ import type { createLayoutStore } from './stores.ts'
+ /** The layout store's bound action set (framework-baked, draft params peeled). */
+ export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
+ 
++/** Live geometry supplied by the plugin occupying the workbench slot. */
++export interface WorkbenchLayoutSnapshot {
++  /** Preferred width of the auxiliary conversation column in pixels. */
++  width: number
++}
++
++/** One workbench occupant's shared width state. */
++export interface WorkbenchLayoutBinding {
++  /** Read the current auxiliary conversation width. */
++  getSnapshot(): WorkbenchLayoutSnapshot
++  /** Subscribe to width changes. */
++  subscribe(listener: () => void): () => void
++  /** Persist a width chosen through the AppFrame drag handle. */
++  setWidth(width: number): void
++}
++
++/** AppFrame-facing view of the optional workbench contribution. */
++export interface WorkbenchLayoutState extends WorkbenchLayoutSnapshot {
++  /** Whether a workbench contribution currently owns the primary region. */
++  present: boolean
++}
++
+ /**
+  * The outward layout face (`ctx.layout`): the panel transitions other
+  * plugins may trigger — and exactly what a test fake must supply. The
+@@ -27,11 +49,30 @@ export interface ILayout {
+   openDetails(): void
+   /** Close the details panel. */
+   closeDetails(): void
++  /**
++   * Register the workbench width binding for the lifetime of its slot occupant.
++   * @param binding - Shared width state owned by the workbench provider.
++   * @returns Disposer that restores the ordinary conversation layout.
++   */
++  registerWorkbench(binding: WorkbenchLayoutBinding): () => void
+ }
+ 
+ /** Cross-plugin panel-action face (ctx.layout). */
+ export class LayoutController implements ILayout {
+   #panels: PanelActions | undefined
++  #workbench: WorkbenchLayoutBinding | undefined
++  #offWorkbench: (() => void) | undefined
++  #workbenchSnapshot: WorkbenchLayoutState = { present: false, width: 0 }
++  readonly #workbenchListeners = new Set<() => void>()
++
++  /** Subscribe to optional workbench geometry changes. */
++  readonly subscribeWorkbench = (listener: () => void): (() => void) => {
++    this.#workbenchListeners.add(listener)
++    return () => { this.#workbenchListeners.delete(listener) }
++  }
++
++  /** Read the AppFrame-facing workbench geometry. */
++  readonly getWorkbenchSnapshot = (): WorkbenchLayoutState => this.#workbenchSnapshot
+ 
+   /**
+    * Adopt the root entry's bound store actions. Called from the root
+@@ -59,6 +100,44 @@ export class LayoutController implements ILayout {
+     this.#require().closeDetails()
+   }
+ 
++  /**
++   * Register one workbench occupant and its shared auxiliary width.
++   * @param binding - Shared width state owned by the workbench provider.
++   * @returns Disposer that restores the ordinary conversation layout.
++   */
++  registerWorkbench(binding: WorkbenchLayoutBinding): () => void {
++    if (this.#workbench !== undefined) throw new Error('layout: workbench already registered')
++    this.#workbench = binding
++    const sync = (): void => {
++      this.#workbenchSnapshot = { present: true, width: binding.getSnapshot().width }
++      this.#notifyWorkbench()
++    }
++    this.#offWorkbench = binding.subscribe(sync)
++    sync()
++    let disposed = false
++    return () => {
++      if (disposed) return
++      disposed = true
++      this.#offWorkbench?.()
++      this.#offWorkbench = undefined
++      this.#workbench = undefined
++      this.#workbenchSnapshot = { present: false, width: 0 }
++      this.#notifyWorkbench()
++    }
++  }
++
++  /**
++   * Persist an AppFrame drag through the registered workbench binding.
++   * @param width - Requested auxiliary conversation width in pixels.
++   */
++  setWorkbenchWidth(width: number): void {
++    this.#workbench?.setWidth(width)
++  }
++
++  #notifyWorkbench(): void {
++    for (const listener of [...this.#workbenchListeners]) listener()
++  }
++
+   #require(): PanelActions {
+     // Callers are UI gestures, which cannot fire before the root entry
+     // rendered (the inject hook runs in its first render) — reaching this
+diff --git a/packages/client/ui-layout/tests/app-frame.client.spec.tsx b/packages/client/ui-layout/tests/app-frame.client.spec.tsx
+index a640480360..54d1b30e05 100644
+--- a/packages/client/ui-layout/tests/app-frame.client.spec.tsx
++++ b/packages/client/ui-layout/tests/app-frame.client.spec.tsx
+@@ -17,6 +17,7 @@ import { AppFrame } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.
+ import type { AppFrameProps } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
+ import { SIDEBAR_COLLAPSED } from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
+ import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/stores.ts'
++import { LayoutController } from '@deepseek-ai/dsh-client-ui-layout/client'
+ import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+ import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+@@ -57,6 +58,8 @@ function hookOf<T>(inst: { subscribe: (fn: () => void) => () => void; getSnapsho
+ function mountFrame() {
+   window.innerWidth = frameWidth // first-render viewport source before the observer fires
+   const instance = createLayoutStore().create()
++  const workbenchLayout = new LayoutController()
++  workbenchLayout.attachPanels(instance.actions)
+   const slotCalls: { key: string; props: unknown }[] = []
+   const renderSlot = ((key: string, owner: object) => {
+     slotCalls.push({ key, props: owner })
+@@ -100,12 +103,13 @@ function mountFrame() {
+       useSessionPendingInteraction={useSessionPendingInteraction}
+       useWorkspaces={((sel: (s: WorkspaceSnapshot) => unknown) => sel(workspaceState)) as never}
+       SessionProvider={SessionProviderStub}
++      workbenchLayout={workbenchLayout}
+       t={key => key === 'brand.localBuild' ? 'DSH Local Build' : key}
+     />
+   )
+   const utils = render(element())
+   const frame = utils.container.firstElementChild as HTMLElement
+-  return { instance, frame, slotCalls, rerenderFrame: () => { utils.rerender(element()) }, ...utils }
++  return { instance, frame, slotCalls, workbenchLayout, rerenderFrame: () => { utils.rerender(element()) }, ...utils }
+ }
+ 
+ function tracks(frame: HTMLElement): number[] {
+@@ -178,6 +182,41 @@ describe('AppFrame', () => {
+     expect(tracks(frame)).toEqual([280, 0])
+   })
+ 
++  it('makes a registered workbench primary and resizes the auxiliary conversation', () => {
++    let width = 400
++    const listeners = new Set<() => void>()
++    const { frame, slotCalls, workbenchLayout } = mountFrame()
++    act(() => {
++      workbenchLayout.registerWorkbench({
++        getSnapshot: () => ({ width }),
++        subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener) } },
++        setWidth: next => { width = next; for (const listener of listeners) listener() },
++      })
++    })
++    expect(frame.style.gridTemplateColumns).toBe('280px minmax(0, 1fr) 0px 400px')
++    expect(slotCalls.map(call => call.key)).toContain('workbench')
++    const handles = frame.querySelectorAll('[class*="handle"]')
++    drag(handles[1]!, 1520, 1460)
++    expect(frame.style.gridTemplateColumns).toBe('280px minmax(0, 1fr) 0px 460px')
++  })
++
++  it('keeps conversation primary and renders the workbench through the narrow overlay', () => {
++    frameWidth = 700
++    const { frame, slotCalls, workbenchLayout } = mountFrame()
++    act(() => {
++      workbenchLayout.registerWorkbench({
++        getSnapshot: () => ({ width: 400 }),
++        subscribe: () => () => {},
++        setWidth: () => {},
++      })
++    })
++
++    expect(frame.style.gridTemplateColumns).toBe('56px minmax(0, 1fr) 0px')
++    expect(frame.hasAttribute('data-workbench-primary')).toBe(false)
++    expect(slotCalls.map(call => call.key)).toContain('conversation')
++    expect(slotCalls.map(call => call.key)).toContain('workbench')
++  })
++
+   it('renders the session pair with empty owner shares (sessionId is framework-standard)', () => {
+     const { slotCalls, getByTestId } = mountFrame()
+     expect(getByTestId('center-content')).toBeTruthy()
+diff --git a/packages/client/ui-layout/tests/apply.client.spec.ts b/packages/client/ui-layout/tests/apply.client.spec.ts
+index da3056b5db..bd66d12623 100644
+--- a/packages/client/ui-layout/tests/apply.client.spec.ts
++++ b/packages/client/ui-layout/tests/apply.client.spec.ts
+@@ -33,16 +33,17 @@ describe('ui-layout client apply', () => {
+     expect(inject).toEqual(['slots', 'theme', 'locale'])
+   })
+ 
+-  it('provides ctx.layout and registers AppFrame into root with the three child declarations', async () => {
++  it('provides ctx.layout and registers AppFrame with all child declarations', async () => {
+     const { ctx, slots } = await bench()
+     const fiber = ctx.plugin({ inject: [...inject], apply })
+     await fiber.await()
+     expect(ctx.get('layout')).toBeInstanceOf(LayoutController)
+     // The one register() call occupied 'root'…
+     expect(slots.entries('root')).toHaveLength(1)
+-    // …and declared the three children in the ledger.
++    // …and declared the shell children in the ledger.
+     expect(slots.spec('sidebar')).toEqual({ kind: 'single', scope: 'root' })
+     expect(slots.spec('conversation')).toEqual({ kind: 'single', scope: 'session-maybe' })
++    expect(slots.spec('workbench')).toEqual({ kind: 'single', scope: 'root' })
+     expect(slots.spec('details')).toEqual({ kind: 'single', scope: 'session' })
+   })
+ 
+@@ -54,7 +55,7 @@ describe('ui-layout client apply', () => {
+       setSidebar: vi.fn(), setDetails: vi.fn(), toggleSidebar: vi.fn(), openDetails: vi.fn(), closeDetails: vi.fn(),
+     }
+     const injected = (slots.entries('root')[0]!.inject as (actions: never) => object)(actions as never)
+-    expect(injected).toEqual({})
++    expect(injected).toEqual({ workbenchLayout: expect.any(LayoutController) })
+     const layout = ctx.get('layout') as LayoutController
+     layout.toggleSidebar()
+     expect(actions.toggleSidebar).toHaveBeenCalledOnce()
+@@ -93,6 +94,10 @@ describe('ui-layout client apply', () => {
+     expect(ctx.get('layout')).toBeUndefined()
+     expect(slots.entries('root')).toHaveLength(0)
+     expect(slots.spec('sidebar')).toBeUndefined()
++    expect(slots.spec('conversation')).toBeUndefined()
++    expect(slots.spec('workbench')).toBeUndefined()
++    expect(slots.spec('details')).toBeUndefined()
++    expect(slots.spec('shell.overlay')).toBeUndefined()
+     // The built-in root declaration survives entry teardown (renderer-owned).
+     expect(slots.spec('root')).toEqual({ kind: 'single', scope: 'root' })
+   })
+diff --git a/packages/client/ui-layout/tests/service.client.spec.ts b/packages/client/ui-layout/tests/service.client.spec.ts
+index ea4118927c..24a4a0adf6 100644
+--- a/packages/client/ui-layout/tests/service.client.spec.ts
++++ b/packages/client/ui-layout/tests/service.client.spec.ts
+@@ -49,4 +49,38 @@ describe('LayoutController', () => {
+     expect(stale.toggleSidebar).not.toHaveBeenCalled()
+     expect(fresh.toggleSidebar).toHaveBeenCalledTimes(1)
+   })
++
++  it('projects one workbench binding and releases it with the registration', () => {
++    const service = new LayoutController()
++    let width = 400
++    let publish = (): void => {}
++    const changed = vi.fn()
++    const unsubscribe = service.subscribeWorkbench(changed)
++
++    const dispose = service.registerWorkbench({
++      getSnapshot: () => ({ width }),
++      subscribe: (listener) => {
++        publish = listener
++        return () => { publish = () => {} }
++      },
++      setWidth: (next) => { width = next; publish() },
++    })
++
++    expect(service.getWorkbenchSnapshot()).toEqual({ present: true, width: 400 })
++    service.setWorkbenchWidth(460)
++    expect(service.getWorkbenchSnapshot()).toEqual({ present: true, width: 460 })
++    expect(changed).toHaveBeenCalledTimes(2)
++
++    expect(() => service.registerWorkbench({
++      getSnapshot: () => ({ width: 320 }),
++      subscribe: () => () => {},
++      setWidth: () => {},
++    })).toThrow(/workbench already registered/)
++
++    dispose()
++    expect(service.getWorkbenchSnapshot()).toEqual({ present: false, width: 0 })
++    service.setWorkbenchWidth(520)
++    expect(width).toBe(460)
++    unsubscribe()
++  })
+ })

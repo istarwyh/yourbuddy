@@ -297,6 +297,7 @@ export declare const api: {
         value?: unknown;
         revision?: number;
         externalDisable?: boolean;
+        presentation?: "portal" | "slot";
     }>;
     /** Merge a patch into the side card preferences (revision-guarded). */
     settingsUpdate: (patch: Record<string, unknown>, expectedRevision?: number) => Promise<{

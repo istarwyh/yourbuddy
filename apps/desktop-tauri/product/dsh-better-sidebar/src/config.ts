@@ -34,8 +34,13 @@ export {
   type SidebarPrefs,
 } from './prefs-shared.ts'
 
+/** Host placement selected by the product composition. */
+export type SidebarPresentation = 'portal' | 'slot'
+
 /** Tunable sidebar host limits (every field optional; defaults fill in). */
 export interface SidebarConfig {
+  /** Render as the legacy viewport portal or occupy DSH's workbench slot. */
+  presentation?: SidebarPresentation
   /** Read cap of one text file (bytes); larger files return truncated. */
   readLimit?: number
   /** Media route cap (bytes); larger binaries are refused. */
@@ -68,6 +73,7 @@ export interface SidebarConfig {
 
 /** Schemastery schema for the plugin configuration. */
 export const Config: z<SidebarConfig> = z.object({
+  presentation: z.union([z.const('portal'), z.const('slot')]).default('portal'),
   readLimit: z.number().step(1).min(1).default(512 * 1024),
   mediaLimit: z.number().step(1).min(1).default(20 * 1024 * 1024),
   uploadLimit: z.number().step(1).min(1).default(128 * 1024 * 1024),
@@ -80,6 +86,8 @@ export const Config: z<SidebarConfig> = z.object({
 
 /** Fully defaulted sidebar host settings. */
 export interface ResolvedSidebarConfig {
+  /** Host placement selected by the product composition. */
+  presentation: SidebarPresentation
   readLimit: number
   mediaLimit: number
   uploadLimit: number
@@ -100,6 +108,7 @@ export interface ResolvedSidebarConfig {
  */
 export function resolveSidebarConfig(config: SidebarConfig | undefined): ResolvedSidebarConfig {
   return {
+    presentation: config?.presentation ?? 'portal',
     readLimit: config?.readLimit ?? 512 * 1024,
     mediaLimit: config?.mediaLimit ?? 20 * 1024 * 1024,
     uploadLimit: config?.uploadLimit ?? 128 * 1024 * 1024,

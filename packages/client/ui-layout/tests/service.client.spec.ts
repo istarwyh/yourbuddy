@@ -49,4 +49,38 @@ describe('LayoutController', () => {
     expect(stale.toggleSidebar).not.toHaveBeenCalled()
     expect(fresh.toggleSidebar).toHaveBeenCalledTimes(1)
   })
+
+  it('projects one workbench binding and releases it with the registration', () => {
+    const service = new LayoutController()
+    let width = 400
+    let publish = (): void => {}
+    const changed = vi.fn()
+    const unsubscribe = service.subscribeWorkbench(changed)
+
+    const dispose = service.registerWorkbench({
+      getSnapshot: () => ({ width }),
+      subscribe: (listener) => {
+        publish = listener
+        return () => { publish = () => {} }
+      },
+      setWidth: (next) => { width = next; publish() },
+    })
+
+    expect(service.getWorkbenchSnapshot()).toEqual({ present: true, width: 400 })
+    service.setWorkbenchWidth(460)
+    expect(service.getWorkbenchSnapshot()).toEqual({ present: true, width: 460 })
+    expect(changed).toHaveBeenCalledTimes(2)
+
+    expect(() => service.registerWorkbench({
+      getSnapshot: () => ({ width: 320 }),
+      subscribe: () => () => {},
+      setWidth: () => {},
+    })).toThrow(/workbench already registered/)
+
+    dispose()
+    expect(service.getWorkbenchSnapshot()).toEqual({ present: false, width: 0 })
+    service.setWorkbenchWidth(520)
+    expect(width).toBe(460)
+    unsubscribe()
+  })
 })

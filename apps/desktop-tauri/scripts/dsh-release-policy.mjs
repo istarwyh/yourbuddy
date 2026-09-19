@@ -75,11 +75,11 @@ export function readDshUpdatePolicy(productRoot) {
  * Validate the immutable DSH source recorded in a YourBuddy release input.
  *
  * @param {unknown} value
- * @returns {{repository: string, channel: 'stable-else-rc', tag: string, version: string, commit: string}}
+ * @returns {{repository: string, channel: 'stable-else-rc', tag: string, version: string, commit: string, patches: unknown[]}}
  */
 export function validateDshProvenance(value) {
   if (!isPlainObject(value)) throw new Error('DSH upstream provenance must be an object')
-  assertOnlyFields(value, new Set(['repository', 'channel', 'tag', 'version', 'commit']), 'DSH upstream provenance')
+  assertOnlyFields(value, new Set(['repository', 'channel', 'tag', 'version', 'commit', 'patches']), 'DSH upstream provenance')
   if (typeof value.repository !== 'string' || !repositoryPattern.test(value.repository)) {
     throw new Error('DSH upstream provenance repository is invalid')
   }
@@ -91,7 +91,10 @@ export function validateDshProvenance(value) {
   if (typeof value.commit !== 'string' || !commitPattern.test(value.commit)) {
     throw new Error('DSH upstream provenance commit is invalid')
   }
-  return value
+  if (value.patches !== undefined && !Array.isArray(value.patches)) {
+    throw new Error('DSH upstream provenance patches must be an array')
+  }
+  return { ...value, patches: value.patches ?? [] }
 }
 
 /**

@@ -3,5 +3,17 @@
   "channel": "stable-else-rc",
   "tag": "dsh-v0.1.2-rc.1",
   "version": "0.1.2-rc.1",
-  "commit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d"
+  "commit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d",
+  "patches": [
+    {
+      "id": "workbench-primary-layout",
+      "file": "patches/dsh-workbench-primary-layout.patch",
+      "sha256": "76602de5874467f2976c886283a2085d7213030c60abab8b3d0316b9a428b80c",
+      "baseCommit": "4e097fad4837e318903684bbea083a40996ae6a6",
+      "purpose": "Add an optional workbench slot that becomes the desktop primary region while retaining the default DSH conversation layout.",
+      "paths": [
+        "packages/client/ui-layout"
+      ]
+    }
+  ]
 }

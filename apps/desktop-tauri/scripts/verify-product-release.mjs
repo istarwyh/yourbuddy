@@ -780,6 +780,20 @@ async function runBrowserSmoke(baseUrl, env) {
       throw new Error(`desktop Host token exchange did not reach the clean root URL: ${embeddedUrl ?? 'no frame'}`)
     }
     await completeProductOnboarding(embedded)
+    const workbenchFrame = embedded.locator('[data-dsh-frame][data-workbench-primary]').first()
+    await workbenchFrame.waitFor({ timeout: 10_000 })
+    await embedded.locator('body[data-dsh-better-sidebar-presentation="slot"]').waitFor({ timeout: 10_000 })
+    const workbenchTracks = await workbenchFrame.evaluate(element =>
+      getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/u))
+    if (workbenchTracks.length !== 4) {
+      throw new Error(`YourBuddy workbench-primary layout rendered ${workbenchTracks.length} tracks: ${workbenchTracks.join(' ')}`)
+    }
+    const releaseScreenshot = env.YOURBUDDY_RELEASE_SCREENSHOT
+    if (releaseScreenshot) {
+      mkdirSync(dirname(releaseScreenshot), { recursive: true })
+      await page.screenshot({ path: releaseScreenshot, type: 'png' })
+      console.log(`verify-product-release: captured workbench-primary screenshot at ${releaseScreenshot}`)
+    }
     const externalLink = embedded.locator('#yourbuddy-external-link-smoke')
     await embedded.locator('body').evaluate((body, url) => {
       const anchor = document.createElement('a')
