@@ -49,7 +49,7 @@ Better Sidebar 现在是桌面端可伸缩的主工作区。DSH 对话区移动�
 | PR CI | 保留失败后通过 | 功能 PR 源码 | GitHub 托管矩阵 | [工作流记录](evidence/release-workflows.txt) |
 | 公开安装包与 Updater | 在记录范围内通过 | 五个公开产物 | GitHub Release；macOS 15.6.1 arm64 | [产物记录](evidence/public-artifact-stage.json) |
 | 公开 App 与迁移运行时 | 在记录范围内通过 | 原样公开 App | macOS 15.6.1 arm64 | [运行时记录](evidence/public-runtime-stage.json)与[原生启动跳过](evidence/public-native-startup.txt) |
-| 产品官网 | 等待 | 尚未同步 | GitHub Pages | 发布后补充 |
+| 产品官网 | 在记录范围内通过 | Merge Commit `adfed13669` | GitHub Pages 与未认证 HTTP | [部署记录](evidence/website-deployment.txt) |
 
 ## 场景：工作台布局与兼容补丁重放
 
@@ -129,9 +129,20 @@ YourBuddy 使用 Better Sidebar 作为桌面主工作区，保留对话区与插
 
 用户自己的 YourBuddy 实例及托管 Host 正在运行，因此没有启动下载的 App。原生启动、Finder 安装、从旧版本更新、安装包 WebView 交互、OAuth 与真实模型流量仍未验证。Release 截图来自真实组装桌面 Shell Smoke，不是已安装 App 截图。
 
+## 场景：公开产品官网
+
+- 状态：部署、中英文静态渲染、0.3.7 文案、截图和公开 Release／下载链接可用性通过；浏览器视觉渲染仍未验证。
+- 日期与时间：2026-09-19 16:45–16:48 UTC+08:00，Asia/Shanghai。
+- Release 与 Commit：`yourbuddy-v0.3.7`；官网源码 Merge Commit 为 [`adfed136696c7c9d89a30f8423cd7f3e390ea01e`](https://github.com/istarwyh/yourbuddy/commit/adfed136696c7c9d89a30f8423cd7f3e390ea01e)，来自 [PR #26](https://github.com/istarwyh/yourbuddy/pull/26)。
+- 证据：[官网本地记录](evidence/website-local-validation.txt)、[部署记录](evidence/website-deployment.txt)与[工作流 35432781851](https://github.com/istarwyh/yourbuddy/actions/runs/35432781851)。
+
+工作流的 Build 与 Deploy Job 通过，GitHub Pages Deployment `6539029843` 对准确源码 Commit 报告成功。中文和英文首页、下载页与 Release 页均返回 HTTP 200，并包含 0.3.7 内容。两个下载页都链接到准确 DMG、校验和文件、GitHub Release 及对应语言的验证记录。公开原始验证记录与工作台截图也返回 HTTP 200。由于此前已经完成 DMG 的匿名完整下载与哈希检查，本次没有再次下载完整 DMG。
+
+本检查可以证明已部署静态内容与链接可用，不能证明浏览器像素级渲染、桌面安装、原生启动、安装包 WebView 行为、Updater 安装、OAuth 或真实模型流量。
+
 ## 交付状态
 
 - 产品发布状态：已发布；五个正式产物均可公开下载，并已在记录范围内完成独立核验。
 - 验证资料状态：部分完成；已包含 Tag 证据、公开检查和截图，独立可下载 ZIP 待完成。
-- 官网同步状态：等待部署 0.3.7 产品文案。
-- 未验证范围：原生启动、已安装 DMG WebView 交互、从旧版本安装 Updater、Apple Developer 签名与公证、OAuth、真实模型流量以及线上 0.3.7 官网。
+- 官网同步状态：中英文静态内容与公开链接已部署并核验；Merge Commit 为 `adfed136696c7c9d89a30f8423cd7f3e390ea01e`，工作流为 `35432781851`。
+- 未验证范围：原生启动、已安装 DMG WebView 交互、从旧版本安装 Updater、Apple Developer 签名与公证、浏览器视觉渲染、OAuth 与真实模型流量。

@@ -49,7 +49,7 @@ Existing application data is retained and no migration is required. The desktop 
 | Pull-request CI | passed after retained failures | feature PR source | GitHub-hosted matrix | [workflow record](evidence/release-workflows.txt) |
 | Public installer and updater | passed within recorded scope | five public assets | GitHub Release; macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json) |
 | Public App and relocated runtime | passed within recorded scope | unchanged public App | macOS 15.6.1 arm64 | [runtime record](evidence/public-runtime-stage.json) and [native-startup skip](evidence/public-native-startup.txt) |
-| Product website | pending | not yet synchronized | GitHub Pages | added after publication |
+| Product website | passed within recorded scope | merge commit `adfed13669` | GitHub Pages and unauthenticated HTTP | [deployment record](evidence/website-deployment.txt) |
 
 ## Scenario: Workbench layout and compatibility replay
 
@@ -129,9 +129,20 @@ The public bundle records the DSH workbench patch SHA-256 `76602de5874467f2976c8
 
 A user-owned YourBuddy instance and managed Host were already running, so the downloaded App was not launched. Native startup, Finder installation, update from an older version, packaged-WebView interaction, OAuth, and real model traffic remain unverified. The release screenshot is from the real assembled desktop shell smoke, not an installed-App capture.
 
+## Scenario: Public product website
+
+- Status: passed for deployment, bilingual static rendering, 0.3.7 copy, screenshot, and public release/download link availability; visual browser rendering remains unverified.
+- Date and time: 2026-09-19 16:45–16:48 UTC+08:00, Asia/Shanghai.
+- Release and commit: `yourbuddy-v0.3.7`; website source merge commit [`adfed136696c7c9d89a30f8423cd7f3e390ea01e`](https://github.com/istarwyh/yourbuddy/commit/adfed136696c7c9d89a30f8423cd7f3e390ea01e) from [PR #26](https://github.com/istarwyh/yourbuddy/pull/26).
+- Evidence: [local website record](evidence/website-local-validation.txt), [deployment record](evidence/website-deployment.txt), and [workflow 35432781851](https://github.com/istarwyh/yourbuddy/actions/runs/35432781851).
+
+The workflow build and deploy jobs passed, and GitHub Pages deployment `6539029843` reported success for the exact source commit. Chinese and English home, download, and release pages all returned HTTP 200 and contained the 0.3.7 content. Both download pages linked the exact DMG, checksum file, GitHub Release, and language-matched verification record. The public raw verification records and workbench screenshot also returned HTTP 200. The complete DMG was not downloaded again because its earlier anonymous full-file download and hash check already passed.
+
+This check establishes deployed static content and link availability. It does not establish pixel-level browser rendering, desktop installation, native startup, packaged-WebView behavior, updater installation, OAuth, or real model traffic.
+
 ## Delivery status
 
 - Product publication status: published; all five formal assets are publicly downloadable and independently verified within the recorded scope.
 - Verification archive status: partial; tagged evidence, public checks, and screenshot are included, while the dedicated downloadable ZIP is pending.
-- Website synchronization status: pending deployment of the 0.3.7 product copy.
-- Unverified scope: native startup, installed DMG WebView interaction, updater installation from an older version, Apple Developer signing and notarization, OAuth, real model traffic, and the live 0.3.7 website.
+- Website synchronization status: deployed and verified for bilingual static content and public links at merge commit `adfed136696c7c9d89a30f8423cd7f3e390ea01e` by workflow `35432781851`.
+- Unverified scope: native startup, installed DMG WebView interaction, updater installation from an older version, Apple Developer signing and notarization, visual browser rendering, OAuth, and real model traffic.
