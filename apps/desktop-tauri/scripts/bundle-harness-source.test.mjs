@@ -200,7 +200,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     }
     const sidebarProvenance = JSON.parse(readFileSync(join(bundledSidebar, 'YOURBUDDY_UPSTREAM.json'), 'utf8'))
     assert.ok(sidebarProvenance.patches.some(
-      patch => patch.id === 'desktop-external-links' && /^[a-f0-9]{64}$/u.test(patch.sha256),
+      patch => patch.id === 'yourbuddy-workbench' && /^[a-f0-9]{64}$/u.test(patch.sha256),
     ))
     assert.ok(readFileSync(join(root, 'packages', 'product', 'context-doctor', 'lib', 'client.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'context-doctor', 'lib', 'index.js'), 'utf8').length > 0)

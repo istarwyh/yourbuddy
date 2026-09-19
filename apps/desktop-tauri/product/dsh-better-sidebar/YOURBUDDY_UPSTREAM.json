@@ -9,25 +9,13 @@
   "upstreamTreeSha256": "a2b7c5f93bb90be893684c9ce2050c4f738b7306ea7be8791bffdadf959c29cd",
   "patches": [
     {
-      "id": "workbench-slot-presentation",
-      "file": "patches/better-sidebar-workbench-slot.patch",
-      "sha256": "a48f74a495e7f5575f5325c4a93d8c539356376b5e41028d3f76d3fff1ba8d17",
-      "purpose": "Keep Portal as the default and add a Slot presentation for the YourBuddy workbench-primary layout."
-    },
-    {
-      "id": "desktop-external-links",
-      "file": "patches/better-sidebar-external-links.patch",
-      "sha256": "7b10eae5975797ac1a7c1f13b4955c520c3580737e95879598196ddc0c37f592",
-      "purpose": "Route recommended-plugin, embedded-browser, and terminal HTTP(S) actions through YourBuddy's desktop external-link bridge while preserving the ordinary browser fallback."
-    },
-    {
-      "id": "unbounded-media-routes",
-      "file": "patches/better-sidebar-unbounded-media.patch",
-      "sha256": "6277fc32f43aac539cf46102abea8ca2aa084cfcc2a5699de9635023bca6552a",
-      "purpose": "Allow the generic media and HTML file routes to serve files of any size so renderer plugins can open documents larger than 20 MiB."
+      "id": "yourbuddy-workbench",
+      "file": "patches/better-sidebar-yourbuddy.patch",
+      "sha256": "8437e252b852f4a08606afe406214587e438094aa163aed1637a1c2b3dce1eb8",
+      "purpose": "Add the workbench Slot presentation, desktop external-link bridge, and unbounded generic media routes to the pinned upstream snapshot."
     }
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "f6dbd85556e6586f5dc62b754e41d26dcc82bd5330d623be1db30ebea9a541bf"
+  "treeSha256": "d26a3a03175e0e3319fda664335d1c4a7e0315410596dfa8e602061e98038604"
 }

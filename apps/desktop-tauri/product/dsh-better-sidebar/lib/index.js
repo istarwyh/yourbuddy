@@ -67,6 +67,7 @@ const SIDEBAR_PREFS_DEFAULTS = {
 */
 /** Schemastery schema for the plugin configuration. */
 const Config = z.object({
+	presentation: z.union([z.const("portal"), z.const("slot")]).default("portal"),
 	readLimit: z.number().step(1).min(1).default(524288),
 	uploadLimit: z.number().step(1).min(1).default(134217728),
 	listLimit: z.number().step(1).min(1).default(1e3),
@@ -83,6 +84,7 @@ const Config = z.object({
 */
 function resolveSidebarConfig(config) {
 	return {
+		presentation: config?.presentation ?? "portal",
 		readLimit: config?.readLimit ?? 524288,
 		uploadLimit: config?.uploadLimit ?? 134217728,
 		listLimit: config?.listLimit ?? 1e3,
@@ -4351,10 +4353,12 @@ function buildApi(ctx, ptyManager, agentPtyRegistry, resolved, terminalShell, ge
 			return settings === void 0 ? {
 				value: void 0,
 				revision: void 0,
-				externalDisable: false
+				externalDisable: false,
+				presentation: resolved.presentation
 			} : {
 				...settings.get(),
-				externalDisable: settings.externalDisable()
+				externalDisable: settings.externalDisable(),
+				presentation: resolved.presentation
 			};
 		},
 		"settings.update": async (payload) => {
@@ -4620,8 +4624,7 @@ function apply(ctx, config) {
 				const raw = url.searchParams.get("path");
 				if (sessionId === null || raw === null) throw new SidebarError("bad-request", "sessionId and path are required");
 				const path = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0), raw, fenceEnabledOf(() => settingsFace));
-				const info = await stat(path);
-				if (!info.isFile()) throw new SidebarError("fs-error", "not a file", 400);
+				if (!(await stat(path)).isFile()) throw new SidebarError("fs-error", "not a file", 400);
 				const type = mediaTypeForPath(path);
 				const body = await readFile(path);
 				const headers = {
@@ -4658,8 +4661,7 @@ function apply(ctx, config) {
 				}
 				const { sessionId, path } = decoded.ref;
 				const absolute = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path, fenceEnabledOf(() => settingsFace));
-				const info = await stat(absolute);
-				if (!info.isFile()) throw new SidebarError("fs-error", "not a file", 400);
+				if (!(await stat(absolute)).isFile()) throw new SidebarError("fs-error", "not a file", 400);
 				const type = mediaTypeForPath(absolute);
 				const body = await readFile(absolute);
 				res.writeHead(200, {
