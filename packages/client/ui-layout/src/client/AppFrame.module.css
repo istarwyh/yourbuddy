@@ -36,6 +36,18 @@
   overflow: hidden;
 }
 
+.workbenchCol,
+.conversationCol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.conversationCol {
+  border-left: 0.5px solid var(--dsw-alias-border-l3);
+}
+
 .detailsCol {
   min-width: 0;
   overflow: hidden;
@@ -75,7 +87,8 @@
   }
 }
 
-.handle[data-side='details']::after {
+.handle[data-side='details']::after,
+.handle[data-side='conversation']::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -97,12 +110,17 @@
 
 .detailsCol:hover ~ .handle[data-side='details']::after,
 .handle[data-side='details']:hover::after,
-.handle[data-side='details'][data-dragging='true']::after {
+.handle[data-side='details'][data-dragging='true']::after,
+.conversationCol:hover ~ .handle[data-side='conversation']::after,
+.handle[data-side='conversation']:hover::after,
+.handle[data-side='conversation'][data-dragging='true']::after {
   opacity: 1;
 }
 
 .handle[data-side='details']:hover::after,
-.handle[data-side='details'][data-dragging='true']::after {
+.handle[data-side='details'][data-dragging='true']::after,
+.handle[data-side='conversation']:hover::after,
+.handle[data-side='conversation'][data-dragging='true']::after {
   background: var(--dsw-alias-button-floating-hover);
   border-color: var(--dsw-alias-border-l3);
 }

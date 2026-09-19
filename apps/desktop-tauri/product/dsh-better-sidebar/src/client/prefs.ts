@@ -226,13 +226,18 @@ export async function loadExternalDisable(settings: SidebarSettingsClient): Prom
 export interface BootDecision {
   prefs: SidebarPrefs
   suspended: boolean
+  presentation: 'portal' | 'slot'
 }
 
 export async function loadBootDecision(settings: SidebarSettingsClient): Promise<BootDecision> {
   try {
     const view = await settings.settingsGet()
-    return { prefs: parsePrefs(view.value), suspended: view.externalDisable === true }
+    return {
+      prefs: parsePrefs(view.value),
+      suspended: view.externalDisable === true,
+      presentation: view.presentation === 'slot' ? 'slot' : 'portal',
+    }
   } catch {
-    return { prefs: { ...SIDEBAR_PREFS_DEFAULTS }, suspended: false }
+    return { prefs: { ...SIDEBAR_PREFS_DEFAULTS }, suspended: false, presentation: 'portal' }
   }
 }

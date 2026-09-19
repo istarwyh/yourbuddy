@@ -74,6 +74,8 @@ dsh plugin --profile web add dsh-better-sidebar@latest   # re-run succeeds
 
 Then **hard-refresh the browser** (Cmd/Ctrl+Shift+R) to see the sidebar (DSH hot-reloads client changes; only host-half updates need a restart).
 
+The Host config accepts `presentation: portal | slot`. `portal` is the default and preserves the standalone right-sidebar behavior. Product compositions that provide DSH's optional `workbench` slot can select `slot`; the plugin then registers the same workbench service, store, tabs, viewers, terminals, bottom panel, and floating windows inside that slot while the DSH shell owns the outer column width.
+
 **Or let DSH install it for you** — paste this prompt into any DSH session:
 
 ```text
@@ -556,7 +558,7 @@ make clean          # remove lib/, *.tgz, playwright-report/, test-results/
 
 `pnpm check:consumer-types`: the consumer-facing declaration-surface guard — type-checks the built `lib/types` from a browser-only consumer's perspective (no `@types/node`, `skipLibCheck: false`); run `pnpm build` first.
 
-**Architecture**: a single npm package with host/client halves — host (`src/index.ts`): `/sidebar/api/*` JSON API, `/sidebar/file` media route, `/sidebar/html` preview route, `/sidebar/ws/terminal` WebSocket (fs / git / pty / preview, all session-scoped with a trust fence); client (`src/client/index.tsx`): portal sidebar + views + interception; state persisted per session in localStorage. Organized per DSH official conventions (no default export, dual client bundles); no dependency on npm / checkout at runtime (`@deepseek-ai/*` provided by the web profile).
+**Architecture**: a single npm package with host/client halves — host (`src/index.ts`): `/sidebar/api/*` JSON API, `/sidebar/file` media route, `/sidebar/html` preview route, `/sidebar/ws/terminal` WebSocket (fs / git / pty / preview, all session-scoped with a trust fence); client (`src/client/index.tsx`): Portal or workbench-slot presentation + views + interception; state persisted per session in localStorage. Organized per DSH official conventions (no default export, dual client bundles); no dependency on npm / checkout at runtime (`@deepseek-ai/*` provided by the web profile).
 
 ## 🔐 Security
 

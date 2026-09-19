@@ -17,6 +17,7 @@ import { AppFrame } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.
 import type { AppFrameProps } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
 import { SIDEBAR_COLLAPSED } from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
 import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/stores.ts'
+import { LayoutController } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -57,6 +58,8 @@ function hookOf<T>(inst: { subscribe: (fn: () => void) => () => void; getSnapsho
 function mountFrame() {
   window.innerWidth = frameWidth // first-render viewport source before the observer fires
   const instance = createLayoutStore().create()
+  const workbenchLayout = new LayoutController()
+  workbenchLayout.attachPanels(instance.actions)
   const slotCalls: { key: string; props: unknown }[] = []
   const renderSlot = ((key: string, owner: object) => {
     slotCalls.push({ key, props: owner })
@@ -100,12 +103,13 @@ function mountFrame() {
       useSessionPendingInteraction={useSessionPendingInteraction}
       useWorkspaces={((sel: (s: WorkspaceSnapshot) => unknown) => sel(workspaceState)) as never}
       SessionProvider={SessionProviderStub}
+      workbenchLayout={workbenchLayout}
       t={key => key === 'brand.localBuild' ? 'DSH Local Build' : key}
     />
   )
   const utils = render(element())
   const frame = utils.container.firstElementChild as HTMLElement
-  return { instance, frame, slotCalls, rerenderFrame: () => { utils.rerender(element()) }, ...utils }
+  return { instance, frame, slotCalls, workbenchLayout, rerenderFrame: () => { utils.rerender(element()) }, ...utils }
 }
 
 function tracks(frame: HTMLElement): number[] {
@@ -176,6 +180,41 @@ describe('AppFrame', () => {
   it('renders three tracks from store state', () => {
     const { frame } = mountFrame()
     expect(tracks(frame)).toEqual([280, 0])
+  })
+
+  it('makes a registered workbench primary and resizes the auxiliary conversation', () => {
+    let width = 400
+    const listeners = new Set<() => void>()
+    const { frame, slotCalls, workbenchLayout } = mountFrame()
+    act(() => {
+      workbenchLayout.registerWorkbench({
+        getSnapshot: () => ({ width }),
+        subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+        setWidth: (next) => { width = next; for (const listener of listeners) listener() },
+      })
+    })
+    expect(frame.style.gridTemplateColumns).toBe('280px minmax(0, 1fr) 0px 400px')
+    expect(slotCalls.map(call => call.key)).toContain('workbench')
+    const handles = frame.querySelectorAll('[class*="handle"]')
+    drag(handles[1]!, 1520, 1460)
+    expect(frame.style.gridTemplateColumns).toBe('280px minmax(0, 1fr) 0px 460px')
+  })
+
+  it('keeps conversation primary and renders the workbench through the narrow overlay', () => {
+    frameWidth = 700
+    const { frame, slotCalls, workbenchLayout } = mountFrame()
+    act(() => {
+      workbenchLayout.registerWorkbench({
+        getSnapshot: () => ({ width: 400 }),
+        subscribe: () => () => {},
+        setWidth: () => {},
+      })
+    })
+
+    expect(frame.style.gridTemplateColumns).toBe('56px minmax(0, 1fr) 0px')
+    expect(frame.hasAttribute('data-workbench-primary')).toBe(false)
+    expect(slotCalls.map(call => call.key)).toContain('conversation')
+    expect(slotCalls.map(call => call.key)).toContain('workbench')
   })
 
   it('renders the session pair with empty owner shares (sessionId is framework-standard)', () => {

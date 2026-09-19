@@ -1,7 +1,8 @@
 /**
  * Client half of dsh-better-sidebar: resolves the user's "Side card"
- * preferences through the plugin's own fenced settings route, mounts the
- * right sidebar portal (inside an error boundary so a rendering failure
+ * preferences through the plugin's own fenced settings route, mounts either
+ * the compatible right-sidebar portal or DSH's workbench slot, and wraps it
+ * in an error boundary so a rendering failure
  * shows an error strip instead of a blank panel), registers the turn-tail
  * interception, and contributes the Side card settings section to the DSH
  * Settings shell. Requires the runtime's slots and sessions services; the
@@ -11,7 +12,7 @@
 import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { Context } from '../context-types.ts'
-import { allLeaves, createSidebarStore, isAgentTabId } from './state.ts'
+import { allLeaves, createSidebarStore, isAgentTabId, PANEL_DEFAULT, setWidth } from './state.ts'
 import { createBetterSidebarService, matchUrlTarget } from './service.ts'
 import { revalidateChunksOnReactivate, setChunkModuleSystem } from './chunk-loader.ts'
 import { registerBuiltins } from './builtins/index.ts'
@@ -37,7 +38,7 @@ import './layout.css'
  *  service access without inject. The `remote.session` namespace is NOT here:
  *  it mounts asynchronously, so the open-path interception reaches it through
  *  `ctx.inject` (see intercept.tsx). */
-export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection']
+export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection', 'layout']
 
 /**
  * Error boundary over the sidebar tree (root scope): a render error in the
@@ -201,12 +202,14 @@ export function apply(ctx: Context): void {
       let disposed = false
       let root: Root | undefined
       let host: HTMLDivElement | undefined
-      let mounted = false
+      let mountedPresentation: 'portal' | 'slot' | undefined
+      let disposeSlot: (() => void) | undefined
+      let disposeLayout: (() => void) | undefined
       let bodyObserver: MutationObserver | undefined
       let hostCheckFrame: number | null = null
       const unmount = (): void => {
-        if (!mounted) return
-        mounted = false
+        if (mountedPresentation === undefined) return
+        mountedPresentation = undefined
         bodyObserver?.disconnect()
         bodyObserver = undefined
         if (hostCheckFrame !== null) {
@@ -217,6 +220,11 @@ export function apply(ctx: Context): void {
         root = undefined
         host?.remove()
         host = undefined
+        disposeLayout?.()
+        disposeLayout = undefined
+        disposeSlot?.()
+        disposeSlot = undefined
+        document.body.removeAttribute('data-dsh-better-sidebar-presentation')
       }
       /** Re-attach the host if the page (a desktop shell wrapper, SPA
        *  navigation, …) ever removes it from <body>. Cheap: childList only,
@@ -277,18 +285,40 @@ export function apply(ctx: Context): void {
           hostCheckFrame = requestAnimationFrame(sync)
         })
       }
-      const mount = (): void => {
-        if (mounted || disposed) return
+      const mount = (presentation: 'portal' | 'slot'): void => {
+        if (disposed || mountedPresentation === presentation) return
+        unmount()
         try {
-          host = document.createElement('div')
-          host.setAttribute('data-dsh-better-sidebar', '')
-          document.body.appendChild(host)
-          root = createRoot(host)
-          root.render(createElement(RenderBoundary, { className: css.boundaryError }, createElement(Sidebar, { ctx, store: sidebarStore })))
-          mounted = true
-          guardAnchor()
-          scheduleHostCheck()
+          mountedPresentation = presentation
+          document.body.setAttribute('data-dsh-better-sidebar-presentation', presentation)
+          if (presentation === 'slot') {
+            const WorkbenchSlot = () => createElement(
+              RenderBoundary,
+              { className: css.boundaryError },
+              createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'slot' }),
+            )
+            disposeSlot = ctx.slots.inject('workbench', () =>
+              ctx.slots.register({ name: 'workbench' }, WorkbenchSlot))
+            disposeLayout = ctx.layout.registerWorkbench({
+              getSnapshot: () => ({ width: sidebarStore.getSnapshot().state?.width ?? PANEL_DEFAULT }),
+              subscribe: listener => sidebarStore.subscribe(listener),
+              setWidth: width => { sidebarStore.reduce(state => setWidth(state, width)) },
+            })
+          } else {
+            host = document.createElement('div')
+            host.setAttribute('data-dsh-better-sidebar', '')
+            document.body.appendChild(host)
+            root = createRoot(host)
+            root.render(createElement(
+              RenderBoundary,
+              { className: css.boundaryError },
+              createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'portal' }),
+            ))
+            guardAnchor()
+            scheduleHostCheck()
+          }
         } catch (error) {
+          unmount()
           fail('mount', error)
         }
       }
@@ -314,7 +344,7 @@ export function apply(ctx: Context): void {
           sidebarStore.setSuspended(decision.suspended)
         }
         if (decision?.suspended) unmount()
-        else mount()
+        else mount(decision?.presentation ?? 'portal')
       }
       void sync()
       // Live re-evaluation: the runtime broadcasts settings-document updates

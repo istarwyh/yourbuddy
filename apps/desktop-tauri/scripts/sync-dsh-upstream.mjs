@@ -251,6 +251,7 @@ export async function syncDshUpstream(options = {}) {
       tag: release.tag,
       version: release.version,
       commit: release.commit,
+      patches: state.provenance.patches ?? [],
     })
     return {
       updates: [{

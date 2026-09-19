@@ -74,6 +74,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-cordis':
         specifier: workspace:^
         version: link:../../packages/extensions/ui-cordis
+      '@deepseek-ai/dsh-client-ui-layout':
+        specifier: workspace:*
+        version: link:../../packages/client/ui-layout
       '@deepseek-ai/dsh-client-ui-primitives':
         specifier: workspace:*
         version: link:../../packages/client/ui-primitives
@@ -3604,6 +3607,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-conversation':
         specifier: ^0.1.2-rc.1
         version: link:../../client/ui-conversation
+      '@deepseek-ai/dsh-client-ui-layout':
+        specifier: ^0.1.2-rc.1
+        version: link:../../client/ui-layout
       '@deepseek-ai/dsh-client-ui-primitives':
         specifier: ^0.1.2-rc.1
         version: link:../../client/ui-primitives

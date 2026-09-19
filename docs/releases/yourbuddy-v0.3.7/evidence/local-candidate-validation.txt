@@ -1,0 +1,629 @@
+YourBuddy 0.3.7 local candidate validation
+Date: 2026-09-19 Asia/Shanghai UTC+08:00
+Source feature commit: 6587e67762
+
+Completed before candidate assembly:
+- Focused layout and product tests: 4 files, 40 tests passed.
+- Product refresh tests: 44 tests passed.
+- Release preparation tests: 13 tests passed.
+- Complete DSH build: passed; 220 Client artifacts recorded.
+- Documentation gates: 32 passed, 0 failed.
+- DSH and Better Sidebar provenance patches: replayed cleanly on recorded bases.
+- Recorded patch hashes and Better Sidebar materialized tree hash: matched.
+
+Latest-plugin selection dry run:
+- DSH candidate remained compatible and did not modify the product tree.
+- Harbor Evolution 0.9.6 was rejected before materialization because it requires @deepseek-ai/dsh-skill >=0.1.0-rc.6 while YourBuddy bundles 0.1.2-rc.1.
+- Release selection: retain the reviewed Harbor Evolution 0.9.5 snapshot.
+
+Candidate assembly output follows.
+bundle-harness-source: wrote /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness
+bundle-harness-source: sha256=126045c8a1f29ab98e986e421aa6d411aa4458f542166c202c48fdd2b698fd85
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+✓ Lockfile passes supply-chain policies (verified 12d ago)
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 26, reused 0, downloaded 0, added 0
+Progress: resolved 341, reused 0, downloaded 0, added 0
+Progress: resolved 347, reused 0, downloaded 0, added 0
+Progress: resolved 655, reused 0, downloaded 0, added 0
+[WARN] 2 deprecated subdependencies found: glob@11.1.0, node-domexception@1.0.0
+Progress: resolved 655, reused 0, downloaded 0, added 0, done
+
+devDependencies: skipped
+
+Done in 7s using pnpm v11.7.0
+bundle-harness-source: wrote /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness
+bundle-harness-source: sha256=08b46e76d4042752b67da976b2f029e6ca6d2c72ac3900867f28056208cfcd66
+.../landlock-run/packages/linux-arm64    | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+.../landlock-run/packages/linux-x64      | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 268 workspace projects
+../..                                    | [WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/client/locale, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/test-support/client-runtime, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/client/ui-chat, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/client/ui-layout, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/client/ui-theme; /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/client/ui-conversation, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/client/ui-workspace; /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/e2b/e2b, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/e2b/fs-e2b; /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/sandbox/sandbox-local, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/sandbox/sandbox-windows-acl; /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/subagent/subagent-spawn-in-process, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/packages/subagent/tool-subagent; /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/vendor/include
+✓ Lockfile passes supply-chain policies (verified 13d ago)
+
+.../packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+.../packages/subprocess/subprocess-local postinstall: Done
+../.. postinstall$ node scripts/install-lefthook.mjs
+../.. postinstall: sync hooks: ✔️(pre-push, pre-merge-commit, pre-commit)
+../.. postinstall: Done
+Done in 2.5s using pnpm v11.7.0
+$ node scripts/prepare-dist.mjs
+bundle-harness-source: wrote /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness
+bundle-harness-source: sha256=08b46e76d4042752b67da976b2f029e6ca6d2c72ac3900867f28056208cfcd66
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+✓ Lockfile passes supply-chain policies (verified 13s ago)
+Done in 321ms using pnpm v11.7.0
+✓ Lockfile passes supply-chain policies (verified 13s ago)
+Importing packages to virtual store
+Already up to date
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 587, reused 0, downloaded 0, added 0
+Progress: resolved 587, reused 0, downloaded 10, added 10
+Progress: resolved 587, reused 0, downloaded 19, added 19
+Progress: resolved 587, reused 0, downloaded 38, added 38
+Progress: resolved 587, reused 0, downloaded 58, added 58
+Progress: resolved 587, reused 0, downloaded 78, added 78
+Progress: resolved 587, reused 0, downloaded 97, added 97
+Progress: resolved 587, reused 0, downloaded 117, added 117
+Progress: resolved 587, reused 0, downloaded 138, added 138
+Progress: resolved 587, reused 0, downloaded 156, added 156
+Progress: resolved 587, reused 0, downloaded 173, added 173
+Progress: resolved 587, reused 0, downloaded 192, added 192
+Progress: resolved 587, reused 0, downloaded 213, added 213
+Progress: resolved 587, reused 0, downloaded 231, added 231
+Progress: resolved 587, reused 0, downloaded 253, added 253
+Progress: resolved 587, reused 0, downloaded 273, added 273
+Progress: resolved 587, reused 0, downloaded 291, added 290
+Progress: resolved 587, reused 0, downloaded 308, added 308
+Progress: resolved 587, reused 0, downloaded 324, added 324
+Progress: resolved 587, reused 0, downloaded 340, added 340
+Progress: resolved 587, reused 0, downloaded 360, added 360
+Progress: resolved 587, reused 0, downloaded 382, added 382
+Progress: resolved 587, reused 0, downloaded 400, added 399
+Progress: resolved 587, reused 0, downloaded 407, added 407
+Progress: resolved 587, reused 0, downloaded 421, added 419
+Progress: resolved 587, reused 0, downloaded 429, added 429
+Progress: resolved 587, reused 0, downloaded 434, added 434
+Progress: resolved 587, reused 0, downloaded 442, added 442
+Progress: resolved 587, reused 0, downloaded 449, added 449
+Progress: resolved 587, reused 0, downloaded 456, added 456
+Progress: resolved 587, reused 0, downloaded 466, added 466
+Progress: resolved 587, reused 0, downloaded 479, added 479
+Progress: resolved 587, reused 0, downloaded 497, added 496
+Progress: resolved 587, reused 0, downloaded 515, added 515
+Progress: resolved 587, reused 0, downloaded 535, added 535
+Progress: resolved 587, reused 0, downloaded 555, added 555
+Progress: resolved 587, reused 0, downloaded 574, added 574
+Progress: resolved 587, reused 0, downloaded 587, added 587, done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node-pty@1.1.0/node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../node-pty@1.1.0/node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node-pty@1.1.0/node_modules/node-pty install: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node_modules/node-pty install: Done
+.../node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node_modules/node-pty postinstall: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+
+devDependencies: skipped
+
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +587
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 587, reused 587, downloaded 0, added 532
+Progress: resolved 587, reused 587, downloaded 0, added 586
+Progress: resolved 587, reused 587, downloaded 0, added 587, done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node-pty@1.1.0/node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../node-pty@1.1.0/node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node-pty@1.1.0/node_modules/node-pty install: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node-pty@1.1.0/node_modules/node-pty postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+
+devDependencies: skipped
+
+packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+packages/subprocess/subprocess-local postinstall: Done
+Done in 3.1s using pnpm v11.7.0
+prepare-harness-offline-store: 38708 files sha256=0610523b3b8c97a6d952f136ad3ce35111fd334dd8e7906e676e2035a4c7bcfd
+prepare-harness-offline-store: archive sha256=242654caf61737b1111cc7be3817103490b86215f3c24590388a6c7c305eaf18
+prepare-harness-offline-store: bundle sha256=1dea5671e7cdaa7c9f5c6459fa09953edaeb2532095893d39b1c0ad6dc87fc72
+prepare-managed-toolchain: wrote /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/toolchain
+node:internal/child_process:1120
+    result.error = new ErrnoException(result.error, 'spawnSync ' + options.file);
+                   ^
+
+Error: spawnSync uv ENOENT
+    at Object.spawnSync (node:internal/child_process:1120:20)
+    at spawnSync (node:child_process:902:24)
+    at run (file:///Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/scripts/prepare-yourbuddy-runtime.mjs:38:18)
+    at main (file:///Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/scripts/prepare-yourbuddy-runtime.mjs:230:3)
+    at file:///Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/scripts/prepare-yourbuddy-runtime.mjs:258:3
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'spawnSync uv',
+  path: 'uv',
+  spawnargs: [
+    'python',
+    'install',
+    '3.12.14',
+    '--install-dir',
+    '/Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/yourbuddy-runtime/python',
+    '--no-bin',
+    '--compile-bytecode'
+  ]
+}
+
+Node.js v22.22.2
+[ELIFECYCLE] Command failed with exit code 1.
+$ node scripts/prepare-dist.mjs
+bundle-harness-source: wrote /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness
+bundle-harness-source: sha256=08b46e76d4042752b67da976b2f029e6ca6d2c72ac3900867f28056208cfcd66
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+✓ Lockfile passes supply-chain policies (verified 1m ago)
+Done in 341ms using pnpm v11.7.0
+✓ Lockfile passes supply-chain policies (verified 1m ago)
+Importing packages to virtual store
+Already up to date
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 587, reused 0, downloaded 1, added 1
+Progress: resolved 587, reused 0, downloaded 10, added 10
+Progress: resolved 587, reused 0, downloaded 22, added 22
+Progress: resolved 587, reused 0, downloaded 41, added 41
+Progress: resolved 587, reused 0, downloaded 60, added 60
+Progress: resolved 587, reused 0, downloaded 80, added 80
+Progress: resolved 587, reused 0, downloaded 101, added 101
+Progress: resolved 587, reused 0, downloaded 123, added 122
+Progress: resolved 587, reused 0, downloaded 142, added 142
+Progress: resolved 587, reused 0, downloaded 161, added 161
+Progress: resolved 587, reused 0, downloaded 180, added 179
+Progress: resolved 587, reused 0, downloaded 199, added 199
+Progress: resolved 587, reused 0, downloaded 220, added 220
+Progress: resolved 587, reused 0, downloaded 239, added 239
+Progress: resolved 587, reused 0, downloaded 262, added 262
+Progress: resolved 587, reused 0, downloaded 284, added 284
+Progress: resolved 587, reused 0, downloaded 303, added 303
+Progress: resolved 587, reused 0, downloaded 320, added 320
+Progress: resolved 587, reused 0, downloaded 333, added 333
+Progress: resolved 587, reused 0, downloaded 356, added 356
+Progress: resolved 587, reused 0, downloaded 377, added 377
+Progress: resolved 587, reused 0, downloaded 396, added 396
+Progress: resolved 587, reused 0, downloaded 405, added 405
+Progress: resolved 587, reused 0, downloaded 415, added 414
+Progress: resolved 587, reused 0, downloaded 429, added 429
+Progress: resolved 587, reused 0, downloaded 445, added 445
+Progress: resolved 587, reused 0, downloaded 459, added 458
+Progress: resolved 587, reused 0, downloaded 473, added 473
+Progress: resolved 587, reused 0, downloaded 487, added 487
+Progress: resolved 587, reused 0, downloaded 502, added 501
+Progress: resolved 587, reused 0, downloaded 522, added 522
+Progress: resolved 587, reused 0, downloaded 543, added 543
+Progress: resolved 587, reused 0, downloaded 564, added 564
+Progress: resolved 587, reused 0, downloaded 583, added 583
+Progress: resolved 587, reused 0, downloaded 586, added 586
+Progress: resolved 587, reused 0, downloaded 587, added 586
+Progress: resolved 587, reused 0, downloaded 587, added 587, done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../node-pty@1.1.0/node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node-pty@1.1.0/node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node-pty@1.1.0/node_modules/node-pty install: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node_modules/node-pty install: Done
+.../node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node-pty@1.1.0/node_modules/node-pty postinstall: Done
+.../node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node_modules/node-pty postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+
+devDependencies: skipped
+
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +587
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 587, reused 587, downloaded 0, added 468
+Progress: resolved 587, reused 587, downloaded 0, added 585
+Progress: resolved 587, reused 587, downloaded 0, added 587, done
+.../node-pty@1.1.0/node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node-pty@1.1.0/node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node-pty@1.1.0/node_modules/node-pty install: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node-pty@1.1.0/node_modules/node-pty postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+
+devDependencies: skipped
+
+packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+packages/subprocess/subprocess-local postinstall: Done
+Done in 3.2s using pnpm v11.7.0
+prepare-harness-offline-store: 38708 files sha256=369ab7f8aaa33609b5234b97981bcabba0fdcaeddf10f5e29f4975bbbe7a6c11
+prepare-harness-offline-store: archive sha256=3f155e38d49f82d85a9bc2e718624720cf8ad450f9b7c53f28dc1f389034349a
+prepare-harness-offline-store: bundle sha256=d839273d768498b1d1d2523b6206f908528b4a94fee8aab6895f1ff506db4900
+prepare-managed-toolchain: wrote /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/toolchain
+Downloading cpython-3.12.14-macos-aarch64-none (download) (23.8MiB)
+ Downloaded cpython-3.12.14-macos-aarch64-none (download)
+Installed Python 3.12.14 in 4.53s
+ + cpython-3.12.14-macos-aarch64-none
+Bytecode compiled 1090 files in 1.25s
+Using CPython 3.12.14 interpreter at: bundled/yourbuddy-runtime/python/cpython-3.12.14-macos-aarch64-none/bin/python3.12
+Creating virtual environment with seed packages at: bundled/yourbuddy-runtime/venv
+ + pip==26.2.1
+Activate with: source bundled/yourbuddy-runtime/venv/bin/activate
+Using Python 3.12.14 environment at: bundled/yourbuddy-runtime/venv
+Resolved 90 packages in 1.88s
+   Building harbor-dsh-evolution @ file:///Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/product/harbor-python
+      Built harbor-dsh-evolution @ file:///Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/product/harbor-python
+Prepared 1 package in 489ms
+Installed 90 packages in 280ms
+ + aiohappyeyeballs==2.7.1
+ + aiohttp==3.14.3
+ + aiosignal==1.4.0
+ + annotated-doc==0.0.5
+ + annotated-types==0.8.0
+ + anyio==4.15.1
+ + attrs==26.1.0
+ + boto3==1.43.98
+ + botocore==1.43.98
+ + certifi==2026.7.22
+ + cffi==2.1.1
+ + charset-normalizer==3.5.1
+ + click==8.5.0
+ + cryptography==50.0.1
+ + deprecation==2.1.0
+ + dirhash==0.5.0
+ + distro==1.9.0
+ + fastapi==0.141.1
+ + fastuuid==0.14.0
+ + filelock==4.0.1
+ + frozenlist==1.8.0
+ + fsspec==2026.9.0
+ + h11==0.16.0
+ + h2==4.4.1
+ + harbor==0.21.0
+ + harbor-dsh-evolution==0.9.5 (from file:///Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/product/harbor-python)
+ + hf-xet==1.6.0
+ + hpack==4.2.0
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + huggingface-hub==1.32.0
+ + hyperframe==6.1.0
+ + idna==3.20
+ + importlib-metadata==8.9.0
+ + jinja2==3.1.6
+ + jiter==0.17.0
+ + jmespath==1.1.0
+ + jsonschema==4.26.0
+ + jsonschema-specifications==2025.9.1
+ + litellm==1.101.0
+ + markdown-it-py==4.2.0
+ + markupsafe==3.0.3
+ + mdurl==0.1.2
+ + multidict==6.9.0
+ + openai==2.54.0
+ + packaging==26.3
+ + pathspec==1.1.1
+ + platformdirs==4.11.11
+ + postgrest==2.31.0
+ + propcache==0.5.4
+ + pycparser==3.0
+ + pydantic==2.13.5
+ + pydantic-core==2.46.5
+ + pydantic-settings==2.15.0
+ + pygments==2.21.0
+ + pyjwt==2.14.0
+ + python-dateutil==2.9.0.post0
+ + python-dotenv==1.2.3
+ + pyyaml==6.0.3
+ + realtime==2.31.0
+ + referencing==0.37.0
+ + regex==2026.9.10
+ + requests==2.34.2
+ + rich==15.0.0
+ + rpds-py==2026.6.3
+ + s3transfer==0.19.2
+ + scantree==0.0.4
+ + shellingham==1.5.4
+ + shortuuid==1.0.13
+ + six==1.17.0
+ + sniffio==1.3.1
+ + starlette==1.6.0
+ + storage3==2.31.0
+ + strenum==0.4.15
+ + supabase==2.31.0
+ + supabase-auth==2.31.0
+ + supabase-functions==2.31.0
+ + tenacity==9.1.4
+ + tiktoken==0.14.0
+ + tokenizers==0.23.2
+ + toml==0.10.2
+ + tqdm==4.70.1
+ + typer==0.27.2
+ + typing-extensions==4.16.0
+ + typing-inspection==0.4.4
+ + urllib3==2.8.0
+ + uvicorn==0.53.0
+ + websockets==15.0.1
+ + yarl==1.25.1
+ + zipp==4.1.0
+prepare-yourbuddy-runtime: wrote /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/yourbuddy-runtime
+workbench-branding: default, customization, persistence, and reset snapshot passed
+verify-product-release: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+[2m  - waiting for locator('#app').contentFrame().locator('[data-dsh-frame][data-workbench-primary]').first() to be visible[22m
+
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +587
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+[ERR_PNPM_NO_OFFLINE_TARBALL] A package is missing from the store but cannot download it in offline mode. The missing package may be downloaded from https://registry.npmjs.org/commander/-/commander-15.0.0.tgz.
+verify-product-release: dsh-harbor-evolution did not install bundled peer @deepseek-ai/dsh-skill
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+? Verifying lockfile against supply-chain policies (655 entries)...
+✓ Lockfile passes supply-chain policies (655 entries in 4.7s)
+Done in 4.9s using pnpm v11.25.0
+✓ Lockfile passes supply-chain policies (verified 365ms ago)
+Importing packages to virtual store
+Already up to date
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 587, reused 0, downloaded 0, added 0
+Packages are cloned from the content-addressable store to the virtual store.
+  Content-addressable store is at: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/.yourbuddy-pnpm-store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 587, reused 0, downloaded 9, added 9
+Progress: resolved 587, reused 0, downloaded 22, added 22
+Progress: resolved 587, reused 0, downloaded 38, added 38
+Progress: resolved 587, reused 0, downloaded 56, added 56
+Progress: resolved 587, reused 0, downloaded 62, added 61
+Progress: resolved 587, reused 0, downloaded 74, added 74
+Progress: resolved 587, reused 0, downloaded 89, added 89
+Progress: resolved 587, reused 0, downloaded 112, added 112
+Progress: resolved 587, reused 0, downloaded 129, added 129
+Progress: resolved 587, reused 0, downloaded 147, added 147
+Progress: resolved 587, reused 0, downloaded 163, added 163
+Progress: resolved 587, reused 0, downloaded 183, added 183
+Progress: resolved 587, reused 0, downloaded 196, added 195
+Progress: resolved 587, reused 0, downloaded 207, added 206
+Progress: resolved 587, reused 0, downloaded 215, added 215
+Progress: resolved 587, reused 0, downloaded 225, added 225
+Progress: resolved 587, reused 0, downloaded 233, added 233
+Progress: resolved 587, reused 0, downloaded 242, added 242
+Progress: resolved 587, reused 0, downloaded 251, added 251
+Progress: resolved 587, reused 0, downloaded 267, added 267
+Progress: resolved 587, reused 0, downloaded 286, added 285
+Progress: resolved 587, reused 0, downloaded 306, added 306
+Progress: resolved 587, reused 0, downloaded 325, added 325
+Progress: resolved 587, reused 0, downloaded 344, added 344
+Progress: resolved 587, reused 0, downloaded 365, added 365
+Progress: resolved 587, reused 0, downloaded 384, added 384
+Progress: resolved 587, reused 0, downloaded 404, added 404
+Progress: resolved 587, reused 0, downloaded 426, added 426
+Progress: resolved 587, reused 0, downloaded 443, added 443
+Progress: resolved 587, reused 0, downloaded 457, added 457
+Progress: resolved 587, reused 0, downloaded 469, added 469
+Progress: resolved 587, reused 0, downloaded 489, added 489
+Progress: resolved 587, reused 0, downloaded 505, added 505
+Progress: resolved 587, reused 0, downloaded 524, added 524
+Progress: resolved 587, reused 0, downloaded 545, added 545
+Progress: resolved 587, reused 0, downloaded 565, added 565
+Progress: resolved 587, reused 0, downloaded 587, added 587, done
+.../node-pty@1.1.0/node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node-pty@1.1.0/node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node-pty@1.1.0/node_modules/node-pty install: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node_modules/node-pty install: Done
+.../node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node_modules/node-pty postinstall: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+
+devDependencies: skipped
+
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +587
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Packages are cloned from the content-addressable store to the virtual store.
+  Content-addressable store is at: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/.yourbuddy-pnpm-store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 587, reused 587, downloaded 0, added 258
+Progress: resolved 587, reused 587, downloaded 0, added 586
+Progress: resolved 587, reused 587, downloaded 0, added 587, done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node-pty@1.1.0/node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../node-pty@1.1.0/node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node-pty@1.1.0/node_modules/node-pty install: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node-pty@1.1.0/node_modules/node-pty postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+
+devDependencies: skipped
+
+packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+packages/subprocess/subprocess-local postinstall: Done
+Done in 3.2s using pnpm v11.25.0
+prepare-harness-offline-store: 38708 files sha256=e5aa8df3a7d77913201b25e8d348584ea1f35e015015323788c4bc1c7f642f08
+prepare-harness-offline-store: archive sha256=615aa4a1b9b82d17af61da5b2224c72795a8df847cdce387c9de4f75b5f55ef0
+prepare-harness-offline-store: bundle sha256=efe10f63798ce260d9dc72f9e970f52b36549c0226d8ec5326154f0cc8200588
+workbench-branding: default, customization, persistence, and reset snapshot passed
+verify-product-release: 55 bundled runtime peer links, 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed
+workbench-branding: default, customization, persistence, and reset snapshot passed
+verify-product-release: captured workbench-primary screenshot at /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/docs/releases/yourbuddy-v0.3.7/screenshots/workbench-primary.png
+verify-product-release: 55 bundled runtime peer links, 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed
+workbench-branding: default, customization, persistence, and reset snapshot passed
+verify-product-release: captured workbench-primary screenshot at /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/docs/releases/yourbuddy-v0.3.7/screenshots/workbench-primary.png
+verify-product-release: 55 bundled runtime peer links, 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+✓ Lockfile passes supply-chain policies (verified 6m ago)
+Done in 306ms using pnpm v11.25.0
+✓ Lockfile passes supply-chain policies (verified 6m ago)
+Importing packages to virtual store
+Already up to date
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 587, reused 0, downloaded 0, added 0
+Packages are cloned from the content-addressable store to the virtual store.
+  Content-addressable store is at: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/.yourbuddy-pnpm-store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 587, reused 0, downloaded 12, added 12
+Progress: resolved 587, reused 0, downloaded 28, added 28
+Progress: resolved 587, reused 0, downloaded 46, added 46
+Progress: resolved 587, reused 0, downloaded 58, added 58
+Progress: resolved 587, reused 0, downloaded 68, added 66
+Progress: resolved 587, reused 0, downloaded 84, added 84
+Progress: resolved 587, reused 0, downloaded 104, added 104
+Progress: resolved 587, reused 0, downloaded 126, added 126
+Progress: resolved 587, reused 0, downloaded 146, added 146
+Progress: resolved 587, reused 0, downloaded 165, added 165
+Progress: resolved 587, reused 0, downloaded 185, added 185
+Progress: resolved 587, reused 0, downloaded 199, added 198
+Progress: resolved 587, reused 0, downloaded 209, added 209
+Progress: resolved 587, reused 0, downloaded 219, added 219
+Progress: resolved 587, reused 0, downloaded 227, added 227
+Progress: resolved 587, reused 0, downloaded 237, added 237
+Progress: resolved 587, reused 0, downloaded 243, added 243
+Progress: resolved 587, reused 0, downloaded 260, added 259
+Progress: resolved 587, reused 0, downloaded 279, added 279
+Progress: resolved 587, reused 0, downloaded 297, added 297
+Progress: resolved 587, reused 0, downloaded 314, added 314
+Progress: resolved 587, reused 0, downloaded 333, added 332
+Progress: resolved 587, reused 0, downloaded 349, added 349
+Progress: resolved 587, reused 0, downloaded 368, added 368
+Progress: resolved 587, reused 0, downloaded 389, added 389
+Progress: resolved 587, reused 0, downloaded 409, added 409
+Progress: resolved 587, reused 0, downloaded 430, added 430
+Progress: resolved 587, reused 0, downloaded 447, added 447
+Progress: resolved 587, reused 0, downloaded 459, added 459
+Progress: resolved 587, reused 0, downloaded 472, added 472
+Progress: resolved 587, reused 0, downloaded 488, added 488
+Progress: resolved 587, reused 0, downloaded 502, added 502
+Progress: resolved 587, reused 0, downloaded 519, added 519
+Progress: resolved 587, reused 0, downloaded 538, added 538
+Progress: resolved 587, reused 0, downloaded 561, added 561
+Progress: resolved 587, reused 0, downloaded 581, added 580
+Progress: resolved 587, reused 0, downloaded 587, added 587, done
+.../node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node-pty@1.1.0/node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node-pty@1.1.0/node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node_modules/node-pty install: Done
+.../node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node-pty@1.1.0/node_modules/node-pty install: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node-pty@1.1.0/node_modules/node-pty postinstall: Done
+.../node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node_modules/node-pty postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+
+devDependencies: skipped
+
+native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 256 workspace projects
+[WARN] There are cyclic workspace dependencies: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/cordis, /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/vendor/include
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +587
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Packages are cloned from the content-addressable store to the virtual store.
+  Content-addressable store is at: /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/apps/desktop-tauri/bundled/harness/.yourbuddy-pnpm-store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 587, reused 587, downloaded 0, added 257
+Progress: resolved 587, reused 587, downloaded 0, added 586
+Progress: resolved 587, reused 587, downloaded 0, added 587, done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node-pty@1.1.0/node_modules/node-pty install$ node scripts/prebuild.js || node-gyp rebuild
+.../node-pty@1.1.0/node_modules/node-pty install: [32m> Checking prebuilds...[0m
+.../node-pty@1.1.0/node_modules/node-pty install: Done
+.../node-pty@1.1.0/node_modules/node-pty postinstall$ node scripts/post-install.js
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Cleaning release folder...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall: [32m> Moving conpty.dll...[0m
+.../node-pty@1.1.0/node_modules/node-pty postinstall:   SKIPPED (not Windows)
+.../node-pty@1.1.0/node_modules/node-pty postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+
+devDependencies: skipped
+
+packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+packages/subprocess/subprocess-local postinstall: Done
+Done in 3.2s using pnpm v11.25.0
+prepare-harness-offline-store: 38708 files sha256=81a6b0ed8940aa2eb047567441b6888d1b8106d5acbae727a9dc9e1380086a4d
+prepare-harness-offline-store: archive sha256=275849d5c44c7c10d0721328091f105951e5b510e581929a9cc9d78b80c98b9a
+prepare-harness-offline-store: bundle sha256=86140374a97d4cb3ff0c46a4350c738825cac4ef85f4b19225e4a701937e9d81
+workbench-branding: default, customization, persistence, and reset snapshot passed
+verify-product-release: captured workbench-primary screenshot at /Users/mac/.codex/worktrees/yourbuddy-workbench-037/xiaohui-harness/docs/releases/yourbuddy-v0.3.7/screenshots/workbench-primary.png
+verify-product-release: 55 bundled runtime peer links, 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed

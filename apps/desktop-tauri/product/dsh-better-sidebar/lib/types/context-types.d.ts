@@ -121,6 +121,18 @@ export interface SidebarSlotsService {
      */
     inject(key: string, callback: () => () => void): () => void;
 }
+/** Shared workbench-width binding consumed by DSH's root layout. */
+export interface SidebarWorkbenchLayoutBinding {
+    getSnapshot(): {
+        width: number;
+    };
+    subscribe(listener: () => void): () => void;
+    setWidth(width: number): void;
+}
+/** DSH layout service face used by the slot presentation. */
+export interface SidebarLayoutService {
+    registerWorkbench(binding: SidebarWorkbenchLayoutBinding): () => void;
+}
 /** The client session list row the sidebar reads (cwd for the explorer). */
 export interface SidebarSessionSummary {
     id: string;
@@ -503,6 +515,8 @@ export interface SidebarContextShape {
     webRuntime: SidebarWebRuntime;
     /** The client slot registry (register/inject). */
     slots: SidebarSlotsService;
+    /** The root layout service used by workbench-slot presentation. */
+    layout: SidebarLayoutService;
     /** The settings service face (prefs persistence + namespace reads). */
     settings: SidebarSettingsService;
     /** The invariant registry face. */

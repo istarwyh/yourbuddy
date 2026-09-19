@@ -69,6 +69,19 @@
   left: 0;
 }
 
+/* DSH workbench-slot presentation: the frame owns the column and its outer
+   resize handle, so the plugin host fills that grid cell instead of claiming
+   the viewport. Narrow viewports report portal presentation from Sidebar and
+   keep the existing full-screen drawer rules. */
+:global([data-dsh-panel-host][data-dsh-presentation='slot']) {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+  z-index: auto;
+  pointer-events: auto;
+}
+
 /* The persistent expand/collapse cluster at the top-right corner: two rail
    controls side by side (bottom panel's glyph LEFT of the right panel's).
    Always pinned to the viewport corner — inside the right panel's top-right
@@ -183,6 +196,14 @@
     visibility 0s linear var(--ds-transition-duration-slow);
 }
 
+.panelSlot {
+  left: 0;
+  width: 100%;
+  transform: none;
+  visibility: visible;
+  border-left: 0;
+}
+
 /* Width drags write at pointer cadence; easing would detach the edge. */
 .panel[data-dragging] {
   transition: none;
@@ -250,6 +271,11 @@
     transform var(--ds-transition-duration-slow) var(--ds-ease-in-out),
     height var(--ds-transition-duration-slow) var(--ds-ease-in-out),
     visibility 0s linear var(--ds-transition-duration-slow);
+}
+
+.bottomPanelSlot {
+  left: 0;
+  right: 0;
 }
 
 /* Height drags write at pointer cadence; easing would detach the edge. */

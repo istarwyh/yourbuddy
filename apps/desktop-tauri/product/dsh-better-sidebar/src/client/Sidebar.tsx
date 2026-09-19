@@ -1,15 +1,10 @@
 /**
- * The sidebar shell: panels mounted inside the unified panel host — a
- * fixed, viewport-sized containing block ([data-dsh-panel-host]) appended
- * to document.body — instead of individual fixed-position elements, so a
- * desktop shell's intermediate wrapper transforms can never hijack the
- * panels' fixed containing block (the core AppFrame owns the left sidebar /
- * center / details columns and has no right-side hole for plugins). The
- * right panel hosts the original workbench; the bottom panel hosts a
- * second, independent workbench. The bottom panel squeezes ONLY the center
- * column (the agent output area): it spans from the app shell's own left
- * sidebar to the right panel's left edge, so neither sidebar gives up any
- * position (the right panel keeps its full height). A persistent two-button
+ * The sidebar shell mounts in either a fixed viewport host or DSH's optional
+ * workbench slot. Slot presentation contains both panels in the assigned
+ * grid cell while free windows retain their viewport host. Portal
+ * presentation keeps the original right panel and bottom panel geometry.
+ * The bottom panel squeezes only the center column in Portal presentation
+ * and stays within the workbench in Slot presentation. A persistent two-button
  * cluster at the top-right corner toggles each panel; the right panel's
  * width drags from its left edge, the bottom panel's height from its top
  * edge, and the shared corner drags both at once. The whole layout lives in
@@ -30,6 +25,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
 import { useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import { IconCloseFill14, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '../context-types.ts'
@@ -102,7 +98,7 @@ function injectUserCss(attr: string, id: string, cssText: string): HTMLStyleElem
   return tag
 }
 
-export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation?: 'portal' | 'slot' }) {
   const { ctx, store } = props
 
   // Copy freshness: re-render the whole tree when the DSH locale switches.
@@ -170,6 +166,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
   // keep living in the right tree.
   const viewport = useViewportSize()
   const narrow = isNarrowWidth(viewport.width)
+  const slotDesktop = props.presentation === 'slot' && !narrow
 
   // On-screen keyboard / visual-viewport inset (mobile, split-screen, …):
   // when the visual viewport shrinks below the layout viewport, bottom-
@@ -240,7 +237,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
   // capsule) must yield. layout.css keys off this body attribute to push the
   // header's right padding out past the cluster. Only the CLOSED panel needs
   // it — an open panel reserves AppFrame padding, moving the header clear.
-  const collapsed = state === undefined || !state.panelOpen
+  const collapsed = !slotDesktop && (state === undefined || !state.panelOpen)
   useEffect(() => {
     if (collapsed) document.body.setAttribute('data-dsh-sidebar-collapsed', '')
     else document.body.removeAttribute('data-dsh-sidebar-collapsed')
@@ -357,7 +354,11 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
   // straight to the bottom panel element — per-frame tracking without
   // re-rendering the shell (the comments live with the hook now).
   const bottomRef = useRef<HTMLDivElement | null>(null)
-  const { centerColRef, centerRectRef, centerMeasured, measureCenter, draggingRef } = useCenterColumn(bottomRef, state?.bottomOpen)
+  const { centerColRef, centerRectRef, centerMeasured, measureCenter, draggingRef } = useCenterColumn(
+    bottomRef,
+    state?.bottomOpen,
+    slotDesktop,
+  )
 
   // Free-window drag-out gesture (sidebar/free-windows.tsx): watches the
   // document for OUR tab drags hovering the conversation column and floats
@@ -455,13 +456,15 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
    *  The layout push rides the shared writer (writeGeometry). */
   const applyDrag = (width: number, height: number): void => {
     lastDragSize.current = { width, height }
-    panelRef.current?.style.setProperty('width', `${width}px`)
+    if (!slotDesktop) panelRef.current?.style.setProperty('width', `${width}px`)
     bottomRef.current?.style.setProperty('height', `${height}px`)
     // centerRect.right is the center column's right edge at the committed
     // width (innerWidth - state.width - detailsWidth), so this equals
     // `width + detailsWidth` — derived from the measured column, keeping the
     // drag write-only (no React re-render mid-drag).
-    bottomRef.current?.style.setProperty('right', `${(window.innerWidth - centerRectRef.current.right) + (width - (state?.width ?? 0))}px`)
+    bottomRef.current?.style.setProperty('right', slotDesktop
+      ? '0px'
+      : `${(window.innerWidth - centerRectRef.current.right) + (width - (state?.width ?? 0))}px`)
     const bottomPush = !narrow && state?.bottomOpen === true ? height + keyboardInset : 0
     // The pushed width must ride the same gate as the committed push effect
     // (layoutPushSize): a collapsed right panel pushes 0. The bottom strip is
@@ -470,7 +473,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
     // host viewport across its 1024px auto-collapse breakpoint, and the
     // native left sidebar snapped to its 56px rail (and back on release).
     const pushWidth = !narrow && state?.panelOpen === true ? Math.min(width, window.innerWidth) : 0
-    writeGeometry(pushWidth, bottomPush)
+    writeGeometry(slotDesktop ? 0 : pushWidth, slotDesktop ? 0 : bottomPush)
   }
 
   // Drags write at most once per frame: pointer events fire several times
@@ -634,8 +637,8 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
     const bottomPush = !narrow && snapshot.state?.bottomOpen === true
       ? height + keyboardInset
       : 0
-    writeGeometry(width, bottomPush)
-  }, [narrow, snapshot.state?.panelOpen, snapshot.state?.width, snapshot.state?.bottomOpen, snapshot.state?.bottomHeight, viewport.width, layoutViewportHeight, keyboardInset])
+    writeGeometry(slotDesktop ? 0 : width, slotDesktop ? 0 : bottomPush)
+  }, [narrow, slotDesktop, snapshot.state?.panelOpen, snapshot.state?.width, snapshot.state?.bottomOpen, snapshot.state?.bottomHeight, viewport.width, layoutViewportHeight, keyboardInset])
   // Unmount must release the push (issue #31): when the boundary swaps the
   // whole sidebar after a render crash (or the plugin fiber is disposed /
   // HMR), the CSS variables would otherwise stay on <html> and layout.css
@@ -766,7 +769,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
     // Keep the unavailable controls focusable: touch users have no hover, so
     // focus is the only way the existing Tooltip can explain what is missing.
     return (
-      <div data-dsh-panel-host {...osFileDragShield}>
+      <div data-dsh-panel-host data-dsh-presentation={slotDesktop ? 'slot' : 'portal'} {...osFileDragShield}>
         <div className={css.toggleCluster} data-dsh-toggle-cluster>
           {!narrow && (
             <Tooltip label={t('noSession')} side="bottom" delayMs={500}>
@@ -775,11 +778,13 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
               </button>
             </Tooltip>
           )}
-          <Tooltip label={t('noSession')} side="bottom" delayMs={500}>
-            <button type="button" className={css.toggleButton} aria-disabled="true" aria-label={t('noSession')}>
-              <IconPanelRightOutline16 />
-            </button>
-          </Tooltip>
+          {!slotDesktop && (
+            <Tooltip label={t('noSession')} side="bottom" delayMs={500}>
+              <button type="button" className={css.toggleButton} aria-disabled="true" aria-label={t('noSession')}>
+                <IconPanelRightOutline16 />
+              </button>
+            </Tooltip>
+          )}
         </div>
       </div>
     )
@@ -878,7 +883,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
             ? true
             : placement === 'bottom'
               ? state.bottomOpen && active
-              : state.panelOpen && active
+              : (slotDesktop || state.panelOpen) && active
         }
         onSubagentJump={(childSessionId) => { subagentJumpRef.current = childSessionId }}
         onOpenDiff={(diffTab) => { store.reduce(s => openDiffTab(s, paneId, diffTab)) }}
@@ -889,7 +894,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
   }
 
   return (
-    <div data-dsh-panel-host {...osFileDragShield}>
+    <div data-dsh-panel-host data-dsh-presentation={slotDesktop ? 'slot' : 'portal'} {...osFileDragShield}>
       {/*
         The persistent toggle cluster at the top-right corner: the bottom
         panel's button (bottom glyph) LEFT of the right panel's (side glyph).
@@ -915,16 +920,18 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
             </button>
           </Tooltip>
         )}
-        <Tooltip label={state.panelOpen ? t('collapse') : t('expand')} side="bottom" delayMs={500}>
-          <button
-            type="button"
-            className={css.toggleButton}
-            aria-label={state.panelOpen ? t('collapse') : t('expand')}
-            onClick={() => { store.reduce(togglePanel) }}
-          >
-            <IconPanelRightOutline16 />
-          </button>
-        </Tooltip>
+        {!slotDesktop && (
+          <Tooltip label={state.panelOpen ? t('collapse') : t('expand')} side="bottom" delayMs={500}>
+            <button
+              type="button"
+              className={css.toggleButton}
+              aria-label={state.panelOpen ? t('collapse') : t('expand')}
+              onClick={() => { store.reduce(togglePanel) }}
+            >
+              <IconPanelRightOutline16 />
+            </button>
+          </Tooltip>
+        )}
       </div>
       {/*
         The right panel stays mounted while collapsed (hidden off-screen) so
@@ -937,19 +944,21 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
       */}
       <div
         ref={panelRef}
-        className={clsx(css.panel, !state.panelOpen && css.panelHidden)}
+        className={clsx(css.panel, slotDesktop && css.panelSlot, !slotDesktop && !state.panelOpen && css.panelHidden)}
         data-dsh-panel
         style={{
-          width: narrow ? '100vw' : Math.min(state.width, window.innerWidth),
+          width: slotDesktop ? '100%' : narrow ? '100vw' : Math.min(state.width, window.innerWidth),
           // Narrow drawer: keep the bottom-anchored sheet above the on-screen
           // keyboard (visualViewport inset); desktop panels are full-height
           // and unaffected.
-          bottom: narrow && keyboardInset > 0 ? `${keyboardInset}px` : undefined,
+          bottom: slotDesktop
+            ? state.bottomOpen ? bottomPanelHeight : 0
+            : narrow && keyboardInset > 0 ? `${keyboardInset}px` : undefined,
         }}
        
         data-dragging={anyDragging || undefined}
       >
-          {!narrow && (
+          {!narrow && !slotDesktop && (
             <div
               className={clsx(css.panelResize, draggingWidth && css.panelResizeActive)}
              
@@ -1009,7 +1018,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
           coordinates to keep in sync. (Never on narrow viewports: the
           bottom panel does not exist there.)
         */}
-        {!narrow && state.panelOpen && state.bottomOpen && (
+        {!narrow && !slotDesktop && state.panelOpen && state.bottomOpen && (
           <div
             className={css.cornerHandle}
             data-dragging={draggingCorner || undefined}
@@ -1069,12 +1078,12 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
       {!narrow && (
       <div
         ref={bottomRef}
-        className={clsx(css.bottomPanel, !state.bottomOpen && css.bottomPanelHidden)}
+        className={clsx(css.bottomPanel, slotDesktop && css.bottomPanelSlot, !state.bottomOpen && css.bottomPanelHidden)}
         data-dsh-panel
         data-dsh-bottom-panel
         style={{
           height: bottomPanelHeight,
-          left: centerRectRef.current.left,
+          left: slotDesktop ? 0 : centerRectRef.current.left,
           // Keep the panel above the on-screen keyboard when the visual
           // viewport shrinks (see the keyboardInset effect).
           bottom: keyboardInset > 0 ? `${keyboardInset}px` : undefined,
@@ -1083,14 +1092,14 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
           // details column's left edge (the details column sits between the
           // center and the right panel, and the right panel's reserved frame
           // padding is already baked into centerRect.right).
-          right: window.innerWidth - centerRectRef.current.right,
+          right: slotDesktop ? 0 : window.innerWidth - centerRectRef.current.right,
           // The seam against the open right panel needs its own hairline
           // (the right panel's border-left alone is covered by this panel's
           // fill — without it the corner looks cut off).
-          borderRight: state.panelOpen ? '1px solid var(--dsw-alias-border-l2)' : undefined,
+          borderRight: !slotDesktop && state.panelOpen ? '1px solid var(--dsw-alias-border-l2)' : undefined,
           // Unmeasured center column → keep the panel invisible (zero-size
           // geometry would flash full-width overflow instead).
-          visibility: centerMeasured ? undefined : 'hidden',
+          visibility: slotDesktop || centerMeasured ? undefined : 'hidden',
         }}
        
         data-dragging={(draggingBottom || draggingCorner) || undefined}
@@ -1161,16 +1170,32 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
         renderer, followed by the dashed drop-zone overlay (sidebar/
         free-windows.tsx renders both as one fragment — DOM unchanged).
       */}
-      <FreeWindowLayer
-        floats={state.floats}
-        hint={floatHint}
-        renderTab={renderTab}
-        getTabIcon={tabIconOf}
-        store={store}
-        ctx={ctx}
-        sessionId={sessionId}
-        cwd={cwd}
-      />
+      {slotDesktop
+        ? createPortal(
+            <div data-dsh-panel-host data-dsh-floating-host {...osFileDragShield}>
+              <FreeWindowLayer
+                floats={state.floats}
+                hint={floatHint}
+                renderTab={renderTab}
+                getTabIcon={tabIconOf}
+                store={store}
+                ctx={ctx}
+                sessionId={sessionId}
+                cwd={cwd}
+              />
+            </div>,
+            document.body,
+          )
+        : <FreeWindowLayer
+            floats={state.floats}
+            hint={floatHint}
+            renderTab={renderTab}
+            getTabIcon={tabIconOf}
+            store={store}
+            ctx={ctx}
+            sessionId={sessionId}
+            cwd={cwd}
+          />}
     </div>
   )
 }

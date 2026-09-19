@@ -28,6 +28,8 @@ export function useCenterColumn(
    *  panel re-runs the chain: a panel opened before the center column was
    *  ever found must not stay invisible forever). */
   bottomOpen: boolean | undefined,
+  /** Keep the bottom panel inside its slot host instead of spanning the app center. */
+  contained = false,
 ) {
   const centerRectRef = useRef({ left: 0, right: 0 })
   const [centerMeasured, setCenterMeasured] = useState(false)
@@ -59,11 +61,11 @@ export function useCenterColumn(
     centerRectRef.current = { left: rect.left, right: rect.right }
     const bottom = bottomRef.current
     if (bottom !== null) {
-      bottom.style.setProperty('left', `${rect.left}px`)
-      bottom.style.setProperty('right', `${window.innerWidth - rect.right}px`)
+      bottom.style.setProperty('left', contained ? '0px' : `${rect.left}px`)
+      bottom.style.setProperty('right', contained ? '0px' : `${window.innerWidth - rect.right}px`)
     }
     setCenterMeasured(prev => (prev ? prev : true))
-  }, [bottomRef])
+  }, [bottomRef, contained])
   useEffect(() => {
     let disposed = false
     let observer: ResizeObserver | undefined

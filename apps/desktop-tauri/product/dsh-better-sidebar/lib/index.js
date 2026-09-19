@@ -67,9 +67,10 @@ const SIDEBAR_PREFS_DEFAULTS = {
 */
 /** Schemastery schema for the plugin configuration. */
 const Config = z.object({
-	readLimit: z.number().step(1).min(1).default(524288),
-	mediaLimit: z.number().step(1).min(1).default(20971520),
-	uploadLimit: z.number().step(1).min(1).default(134217728),
+	presentation: z.union([z.const("portal"), z.const("slot")]).default("portal"),
+	readLimit: z.number().step(1).min(1).default(512 * 1024),
+	mediaLimit: z.number().step(1).min(1).default(20 * 1024 * 1024),
+	uploadLimit: z.number().step(1).min(1).default(128 * 1024 * 1024),
 	listLimit: z.number().step(1).min(1).default(1e3),
 	terminalsPerSession: z.number().step(1).min(1).default(3),
 	reconnectGraceMs: z.number().step(1).min(0).default(3e4),
@@ -84,9 +85,10 @@ const Config = z.object({
 */
 function resolveSidebarConfig(config) {
 	return {
-		readLimit: config?.readLimit ?? 524288,
-		mediaLimit: config?.mediaLimit ?? 20971520,
-		uploadLimit: config?.uploadLimit ?? 134217728,
+		presentation: config?.presentation ?? "portal",
+		readLimit: config?.readLimit ?? 512 * 1024,
+		mediaLimit: config?.mediaLimit ?? 20 * 1024 * 1024,
+		uploadLimit: config?.uploadLimit ?? 128 * 1024 * 1024,
 		listLimit: config?.listLimit ?? 1e3,
 		terminalsPerSession: config?.terminalsPerSession ?? 3,
 		reconnectGraceMs: config?.reconnectGraceMs ?? 3e4,
@@ -1524,8 +1526,7 @@ function isProfileRoot(dir) {
 function findProfileDir(fromFile = fileURLToPath(import.meta.url)) {
 	const detected = walkUp(realDir(fromFile), isProfileRoot);
 	if (detected !== null) return detected;
-	const home = process.env.DSH_HOME !== void 0 && process.env.DSH_HOME.trim() !== "" ? process.env.DSH_HOME : join(homedir(), ".dsh");
-	const web = join(home, "profiles", "web");
+	const web = join(process.env.DSH_HOME !== void 0 && process.env.DSH_HOME.trim() !== "" ? process.env.DSH_HOME : join(homedir(), ".dsh"), "profiles", "web");
 	return isProfileRoot(web) ? realpathSync(web) : null;
 }
 /** Whether `dir`'s package.json declares this plugin's name. */
@@ -1554,14 +1555,12 @@ function buildRepairCommand(options) {
 	const platform = options.platform ?? process.platform;
 	const profileName = profileDir !== null ? basename(profileDir) : null;
 	const profileArg = profileName !== null ? platform === "win32" ? ` -Profile "${profileName}"` : ` --profile "${profileName}"` : "";
-	if (pluginRoot !== null) {
-		if (platform === "win32") {
-			const script = join(pluginRoot, "scripts", "install.ps1");
-			if (existsSync(script)) return { command: `powershell -ExecutionPolicy Bypass -File "${script}" -Repair${profileArg}` };
-		} else {
-			const script = join(pluginRoot, "scripts", "install.sh");
-			if (existsSync(script)) return { command: `bash "${script}" --repair${profileArg}` };
-		}
+	if (pluginRoot !== null) if (platform === "win32") {
+		const script = join(pluginRoot, "scripts", "install.ps1");
+		if (existsSync(script)) return { command: `powershell -ExecutionPolicy Bypass -File "${script}" -Repair${profileArg}` };
+	} else {
+		const script = join(pluginRoot, "scripts", "install.sh");
+		if (existsSync(script)) return { command: `bash "${script}" --repair${profileArg}` };
 	}
 	return {
 		command: `dsh plugin --profile "${profileName ?? "web"}" install`,
@@ -1612,8 +1611,7 @@ const TRANSCRIPT_LIMIT$1 = 1 << 20;
 function ensureSpawnHelper() {
 	if (process.platform === "win32") return;
 	try {
-		const entry = createRequire(import.meta.url).resolve("node-pty");
-		const packageRoot = dirname(dirname(entry));
+		const packageRoot = dirname(dirname(createRequire(import.meta.url).resolve("node-pty")));
 		const candidates = [join(packageRoot, "prebuilds", `${process.platform}-${process.arch}`, "spawn-helper"), join(packageRoot, "build", "Release", "spawn-helper")];
 		for (const helper of candidates) if (existsSync(helper)) chmodSync(helper, 493);
 	} catch {}
@@ -2360,7 +2358,7 @@ var AgentPtyRegistry = class {
 *   C10 — no UI/transport vocabulary in the canonical value.
 */
 /** Maximum UTF-8 bytes of one `terminal_read` result text. */
-const READ_BYTE_LIMIT = 262144;
+const READ_BYTE_LIMIT = 256 * 1024;
 /**
 * Bound a string to a byte limit, marking truncation. Truncation never
 * splits a multi-byte UTF-8 sequence: when the byte cap lands inside one,
@@ -3546,7 +3544,7 @@ function buildOpenTurnSnapshot(events) {
 function sideLabel(question) {
 	const flat = question.replace(/\s+/g, " ").trim();
 	const max = Math.max(1, 42);
-	const body = flat.length > max ? `${flat.slice(0, 41)}…` : flat;
+	const body = flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 	return `${SIDE_LABEL_PREFIX}${body}`;
 }
 /**
@@ -3827,11 +3825,10 @@ function buildSidechatApi(ctx) {
 			const inheritance = buildSidechatInheritance(parentSession.snapshotEvents());
 			const { agentPreset, setup } = await composeChildSetup(ctx, resolvePresetId(parentSession.header, parentSession.snapshotEvents()));
 			const childId = `session-${randomUUID()}`;
-			const label = question === "" ? SIDE_NEW_THREAD_TITLE : sideLabel(question);
 			const descriptor = snapshotSubagentDescriptor({
 				mode: "continuable",
 				provider: "sidechat",
-				label,
+				label: question === "" ? SIDE_NEW_THREAD_TITLE : sideLabel(question),
 				...parent.options.provider === void 0 ? {} : { agentProvider: parent.options.provider },
 				...parent.options.model === void 0 ? {} : { agentModel: parent.options.model }
 			});
@@ -4065,8 +4062,7 @@ async function resolveGitPath(cwd, raw, selected) {
 	if (isAbsolute(raw)) return requireAbsolute(resolveSessionPath(cwd, raw));
 	const sessionPath = requireAbsolute(join(cwd, raw));
 	if (await stat(sessionPath).then(() => true).catch(() => false)) return sessionPath;
-	const root = await repoRoot(cwd, selected).catch(() => cwd);
-	return requireAbsolute(join(root, raw));
+	return requireAbsolute(join(await repoRoot(cwd, selected).catch(() => cwd), raw));
 }
 /** How many leading bytes a binary read returns for client-side detect sniffing. */
 const READ_HEAD_LIMIT = 4096;
@@ -4353,10 +4349,12 @@ function buildApi(ctx, ptyManager, agentPtyRegistry, resolved, terminalShell, ge
 			return settings === void 0 ? {
 				value: void 0,
 				revision: void 0,
-				externalDisable: false
+				externalDisable: false,
+				presentation: resolved.presentation
 			} : {
 				...settings.get(),
-				externalDisable: settings.externalDisable()
+				externalDisable: settings.externalDisable(),
+				presentation: resolved.presentation
 			};
 		},
 		"settings.update": async (payload) => {
@@ -4821,7 +4819,7 @@ async function attachTerminal(ctx, ptyManager, agentPtyRegistry, ws, req, resolv
 		armPtyResizeGate(handle.pty);
 		if (handle.transcript !== "") ws.send(handle.transcript);
 		const onData = (data) => {
-			if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
+			if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4 * 1024 * 1024) ws.send(data);
 		};
 		const onExit = ({ exitCode }) => {
 			onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`);
@@ -4866,7 +4864,7 @@ async function attachTerminal(ctx, ptyManager, agentPtyRegistry, ws, req, resolv
 function pumpAgentTerminal(registry, handle, ws) {
 	if (handle.transcript !== "") ws.send(handle.transcript);
 	const onData = (data) => {
-		if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
+		if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4 * 1024 * 1024) ws.send(data);
 	};
 	const onExit = ({ exitCode }) => {
 		onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`);

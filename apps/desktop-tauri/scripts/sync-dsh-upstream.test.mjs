@@ -38,6 +38,7 @@ function makeFixture(t) {
     tag: `dsh-v${oldVersion}`,
     version: oldVersion,
     commit: oldCommit,
+    patches: [{ id: 'workbench-layout', file: 'patches/dsh-workbench-layout.patch' }],
   })
   writeJson(join(product, 'plugin-update-policy.json'), {
     formatVersion: 1,
@@ -179,6 +180,7 @@ test('DSH sync prepares one upstream merge and rollback restores every owned fil
   const provenance = JSON.parse(readFileSync(join(fixture.product, 'DSH_UPSTREAM.json'), 'utf8'))
   assert.equal(provenance.version, nextVersion)
   assert.equal(provenance.commit, nextCommit)
+  assert.deepEqual(provenance.patches, [{ id: 'workbench-layout', file: 'patches/dsh-workbench-layout.patch' }])
   assert.equal(mergeOpen, true)
 
   result.rollback()

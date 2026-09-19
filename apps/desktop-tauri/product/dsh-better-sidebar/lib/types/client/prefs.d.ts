@@ -47,5 +47,6 @@ export declare function loadExternalDisable(settings: SidebarSettingsClient): Pr
 export interface BootDecision {
     prefs: SidebarPrefs;
     suspended: boolean;
+    presentation: 'portal' | 'slot';
 }
 export declare function loadBootDecision(settings: SidebarSettingsClient): Promise<BootDecision>;

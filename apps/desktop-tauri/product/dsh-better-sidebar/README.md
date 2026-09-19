@@ -74,6 +74,8 @@ dsh plugin --profile web add dsh-better-sidebar@latest   # 重跑即成功
 
 装完**硬刷新浏览器**（Cmd/Ctrl+Shift+R）即可看到侧边栏（DSH 对 client 改动热加载，无需重启；仅 host 半更新时需要重启）。
 
+Host 配置接受 `presentation: portal | slot`。`portal` 是默认值，保留独立右侧栏行为。提供 DSH 可选 `workbench` Slot 的产品组合可以选择 `slot`；插件会在该 Slot 内注册同一个工作台 Service、Store、标签、查看器、终端、底部面板和浮窗，外层栏宽由 DSH Shell 管理。
+
 **方式二：让 DSH 自己装**——把下面这段提示词发给任意一个 DSH 会话：
 
 ```text
@@ -555,7 +557,7 @@ make clean          # 清理 lib/、*.tgz、playwright-report/、test-results/
 
 `pnpm check:consumer-types`：对外类型声明面守卫——以浏览器-only 消费者（无 `@types/node`、`skipLibCheck: false`）的视角对构建出的 `lib/types` 做类型检查，需先 `pnpm build`。
 
-**架构**：单 npm 包、host/client 双半结构——host（`src/index.ts`）：`/sidebar/api/*` JSON API、`/sidebar/file` 媒体路由、`/sidebar/html` 预览路由、`/sidebar/ws/terminal` WebSocket（fs / git / pty / 预览，全部会话级 + 信任围栏）；client（`src/client/index.tsx`）：portal 侧边栏 + 各视图 + 拦截；状态按会话持久化 localStorage。插件按 DSH 官方规范组织（无 default 导出、双 client bundle），运行期不依赖 npm / checkout（`@deepseek-ai/*` 由 web profile 提供）。
+**架构**：单 npm 包、host/client 双半结构——host（`src/index.ts`）：`/sidebar/api/*` JSON API、`/sidebar/file` 媒体路由、`/sidebar/html` 预览路由、`/sidebar/ws/terminal` WebSocket（fs / git / pty / 预览，全部会话级 + 信任围栏）；client（`src/client/index.tsx`）：Portal 或 Workbench Slot 展现 + 各视图 + 拦截；状态按会话持久化 localStorage。插件按 DSH 官方规范组织（无 default 导出、双 client bundle），运行期不依赖 npm / checkout（`@deepseek-ai/*` 由 web profile 提供）。
 
 ## 🔐 安全
 

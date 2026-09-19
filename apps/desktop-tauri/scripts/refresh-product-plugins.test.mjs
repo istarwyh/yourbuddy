@@ -7,6 +7,7 @@ import test from 'node:test'
 import { gzipSync } from 'node:zlib'
 
 import {
+  applyRecordedMaterializedPatches,
   assertNoDowngrade,
   assertSafeArchiveListing,
   readProductUpdatePolicy,
@@ -122,6 +123,33 @@ test('product update policy accepts every supported source kind', () => {
     }),
   ])
   assert.equal(validateProductUpdatePolicy(policy, '/tmp/yourbuddy-product'), policy)
+})
+
+test('materialized product patches replay onto a fresh upstream snapshot', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-materialized-patch-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const product = join(root, 'product')
+  const staged = join(root, 'staged')
+  mkdirSync(join(product, 'patches'), { recursive: true })
+  mkdirSync(staged)
+  writeFileSync(join(staged, 'value.txt'), 'upstream\n')
+  writeFileSync(join(product, 'patches', 'compat.patch'), [
+    'diff --git a/value.txt b/value.txt',
+    'index 1f7391f..5716ca5 100644',
+    '--- a/value.txt',
+    '+++ b/value.txt',
+    '@@ -1 +1 @@',
+    '-upstream',
+    '+yourbuddy',
+    '',
+  ].join('\n'))
+
+  applyRecordedMaterializedPatches(staged, product, [
+    'Keep a manifest-only compatibility correction.',
+    { id: 'compat', file: 'patches/compat.patch' },
+  ])
+
+  assert.equal(readFileSync(join(staged, 'value.txt'), 'utf8'), 'yourbuddy\n')
 })
 
 test('product update policy rejects unsafe and duplicate ids', () => {
