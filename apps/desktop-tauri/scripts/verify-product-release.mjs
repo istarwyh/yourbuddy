@@ -234,6 +234,8 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
       name: dsh-codex-auth
     - id: yourbuddy-release-better-sidebar
       name: dsh-better-sidebar
+      config:
+        presentation: slot
     - id: yourbuddy-release-context-doctor
       name: dsh-context-doctor
     - id: yourbuddy-release-plugin-marketplace
@@ -788,8 +790,27 @@ async function runBrowserSmoke(baseUrl, env) {
     if (workbenchTracks.length !== 4) {
       throw new Error(`YourBuddy workbench-primary layout rendered ${workbenchTracks.length} tracks: ${workbenchTracks.join(' ')}`)
     }
-    const releaseScreenshot = env.YOURBUDDY_RELEASE_SCREENSHOT
+    const releaseScreenshot = process.env.YOURBUDDY_RELEASE_SCREENSHOT
     if (releaseScreenshot) {
+      await workbenchFrame.evaluate(frame => {
+        const root = document.createElement('div')
+        root.dataset.yourbuddyReleaseEvidence = 'workbench-layout'
+        root.style.cssText = 'position:fixed;inset:0;z-index:2147483646;pointer-events:none;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
+        const annotate = (target, label, color) => {
+          if (!(target instanceof HTMLElement)) return
+          const rect = target.getBoundingClientRect()
+          const outline = document.createElement('div')
+          outline.style.cssText = `position:fixed;left:${rect.left + 4}px;top:${rect.top + 4}px;width:${Math.max(0, rect.width - 8)}px;height:${Math.max(0, rect.height - 8)}px;border:2px solid ${color};border-radius:10px;box-sizing:border-box`
+          const badge = document.createElement('div')
+          badge.textContent = label
+          badge.style.cssText = `position:absolute;left:14px;top:14px;padding:7px 10px;border-radius:8px;background:${color};color:white;box-shadow:0 2px 10px #0003`
+          outline.append(badge)
+          root.append(outline)
+        }
+        annotate(frame.children[1], 'Better Sidebar · Primary Workbench / 主工作区', '#2563eb')
+        annotate(frame.children[3], 'DSH Conversation / 对话区', '#7c3aed')
+        document.body.append(root)
+      })
       mkdirSync(dirname(releaseScreenshot), { recursive: true })
       await page.screenshot({ path: releaseScreenshot, type: 'png' })
       console.log(`verify-product-release: captured workbench-primary screenshot at ${releaseScreenshot}`)
