@@ -10,7 +10,7 @@ const bundleRoot = join(snapshotRoot, 'lib')
 const sourceRoot = join(snapshotRoot, 'src', 'client')
 const bundleNames = ['client.js', 'client-registry.js', 'client-terminal.js']
 const bridgeStart = 'const DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";'
-const bridgeEnds = ['\n\t\t/** The modal body:', '\n\t//#endregion']
+const bridgeEnds = ['\n\t\t/** The modal body:', '\n\t\t//#endregion', '\n\t//#endregion']
 
 function loadExternalLinkApi(bundleName, browserWindow) {
   const bundle = readFileSync(join(bundleRoot, bundleName), 'utf8')
