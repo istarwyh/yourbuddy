@@ -30,7 +30,7 @@ Context Doctor 帮助发现上下文负担，Harbor Evolution 帮助分析完成
 
 ### 让工作台属于使用者
 
-用户可以替换工作台名称和 Logo，选择工作目录、模型与扩展。自定义名称是这项理念的可见入口；真正的价值还包括可配置的工作方式与明确的数据位置。个性化范围以现有设置为准，不宣传尚未实现的完整主题系统。
+用户可以替换工作台名称、Logo、新会话页标题与标题标记，选择工作目录、模型与扩展。自定义身份是这项理念的可见入口；真正的价值还包括可配置的工作方式与明确的数据位置。个性化范围以现有设置为准，不宣传尚未实现的完整主题系统。
 
 ## 首页建议文案
 
@@ -60,4 +60,4 @@ Context Doctor 帮助发现上下文负担，Harbor Evolution 帮助分析完成
 
 ## 事实依据
 
-产品装配与本地运行方式见[桌面说明](../../../apps/desktop-tauri/README.zh.md)；模型入口见[模型配置](../../user/guide/providers.zh.md)；名称与 Logo 的范围见[Personal Workbench](../../../apps/desktop-tauri/product/personal-workbench/README.zh.md)；上游归属见[产品声明](../../../YOURBUDDY_NOTICES.md)。
+产品装配与本地运行方式见[桌面说明](../../../apps/desktop-tauri/README.zh.md)；模型入口见[模型配置](../../user/guide/providers.zh.md)；工作台身份的范围见[Personal Workbench](../../../apps/desktop-tauri/product/personal-workbench/README.zh.md)；上游归属见[产品声明](../../../YOURBUDDY_NOTICES.md)。

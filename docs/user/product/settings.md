@@ -4,9 +4,9 @@ English | [中文](settings.zh.md)
 
 Personalize the interface and manage the desktop from one place.
 
-## Name and Logo
+## Workbench identity
 
-Open Settings → General → My workbench. Preview and save a new name or image, or restore YourBuddy defaults. Identity is stored per Profile and survives reloads. It does not change the desktop icon, application name, or complete theme.
+Open Settings → General → My workbench. Preview and save a sidebar name, image, new-session headline, and optional headline badge, or restore YourBuddy defaults. Empty text fields keep the localized headline and badge defaults. Identity is stored per Profile and survives reloads. It does not change the desktop icon, application name, or complete theme.
 
 ## Networking
 

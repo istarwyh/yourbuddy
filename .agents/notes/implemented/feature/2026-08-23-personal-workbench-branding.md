@@ -10,22 +10,22 @@ YourBuddy ships as one opinionated workbench, but the visible identity is still 
 
 ## Decision
 
-The distribution includes `dsh-personal-workbench`, a product plugin with one General settings card. The card edits a workbench name and uploaded Logo, previews the draft, applies it to the sidebar and empty-conversation mark, and restores the YourBuddy fallback on request. Values persist in the current Profile's `personal-workbench` settings namespace.
+The distribution includes `dsh-personal-workbench`, a product plugin with one General settings card. The card edits a workbench name, uploaded Logo, empty-conversation headline, and optional headline badge; it previews the draft, applies it to the sidebar and empty-conversation Hero, and restores the YourBuddy fallback on request. Values persist in the current Profile's `personal-workbench` settings namespace.
 
 The card follows the shared theme's primary-button recipe: `--dsw-alias-button-primary-fill` supplies the surface and `--dsw-alias-label-primary-foreground` supplies its paired text. It never hardcodes a light foreground, because the primary fill becomes light in dark mode and dark in light mode.
 
-Custom presentation occupies only `sidebar.brand.name`, `sidebar.brand.mark`, and `conversation.hero.brand.mark`. Disabled or missing values select the YourBuddy name and bundled Y8 mark, as defined by [product identity](2026-09-06-yourbuddy-product-identity.md). Personal occupants use priority `-10` to shadow an existing brand occupant without modifying that package.
+Custom presentation occupies only `sidebar.brand.name`, `sidebar.brand.mark`, `conversation.hero.brand.mark`, `conversation.hero.brand.headline`, and `conversation.hero.brand.badge`. Disabled or missing identity values select the YourBuddy name and bundled Y8 mark, as defined by [product identity](2026-09-06-yourbuddy-product-identity.md); empty Hero text values keep the Conversation locale fallbacks, and a disabled badge uses an occupant that renders nothing. Personal occupants use priority `-10` to shadow an existing brand occupant without modifying that package.
 
 ## Alternatives considered
 
 **Fold branding into Harbor Evolution.** Rejected because evaluation and workbench identity have different users, lifecycles, and settings; coupling them would make Harbor responsible for unrelated shell presentation.
 
-**Build a complete theme or white-label system.** Rejected because the current need is only a recognizable name and Logo. Browser title, desktop icon, themes, fonts, wallpapers, and global copy remain with their existing owners.
+**Build a complete theme or white-label system.** Rejected because the current need is limited to the workbench identity and empty-conversation Hero copy. Browser title, desktop icon, themes, fonts, wallpapers, and global copy remain with their existing owners.
 
 **Replace YourBuddy defaults in generated assets.** Rejected because every personal change would require a rebuild and would not follow the Profile across ordinary DSH configuration changes.
 
 ## Consequences
 
-Users can personalize the workbench from the running application and return to the distribution default without editing YAML. The feature adds one Profile namespace and three conditional slot occupants. It intentionally does not provide per-Workspace identities or broader skinning.
+Users can personalize the workbench from the running application and return to the distribution default without editing YAML. The feature adds one Profile namespace and five conditional slot occupants. It intentionally does not provide per-Workspace identities or broader skinning.
 
-The package is copied into the desktop's trimmed workspace, included in the CLI dependency closure, and activated by the desktop overlay. Focused tests pin settings defaults, apply/reset occupant lifecycle, the theme-safe primary-button token pair, bundle inclusion, and overlay activation.
+The package is copied into the desktop's trimmed workspace, included in the CLI dependency closure, and activated by the desktop overlay. Focused tests pin settings defaults, localized Hero fallbacks, custom and hidden badge occupants, apply/reset lifecycle, the theme-safe primary-button token pair, bundle inclusion, and overlay activation.

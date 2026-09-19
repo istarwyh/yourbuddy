@@ -17,7 +17,7 @@ Use Get started, Guides, Plugins, Releases, and Roadmap, with Download, language
 | `/docs/start/` | How do I complete a first task? | Ordered installation-to-output steps and success signals | [First use](quickstart.md) |
 | `/docs/models/` | How do I log in or configure another model? | GPT Auth and API paths, model selection, capability differences, failure handling | [First use](quickstart.md) |
 | `/docs/workspace/` | Where are files written? | Workspace selection, opening outputs, inspecting commands and differences | [Typical workflows](workflows.md) |
-| `/docs/settings/` | How do I change the workbench and networking? | Name / Logo, proxy, certificates, save and restart | [First use](quickstart.md) |
+| `/docs/settings/` | How do I change the workbench and networking? | Workbench identity, new-session Hero copy, proxy, certificates, save and restart | [First use](quickstart.md) |
 | `/plugins/` | What is preinstalled, and why? | External, first-party, and upstream ownership, versions, sources, selection reasons | [Default plugins](plugins.md) |
 | `/plugins/codex-auth/` | What can my account provide? | Login, search, images, account and unofficial-interface limits | [Default plugins](plugins.md) |
 | `/plugins/better-sidebar/` | How do I inspect task results? | Files, terminals, Git, panels, and optional tools | [Default plugins](plugins.md) |

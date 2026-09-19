@@ -725,16 +725,36 @@ function applyApprovedCompatibilityChanges(manifest, policy, recordedPatches = [
   ]
 }
 
-/** Replay product-owned source/build edits onto a newly downloaded snapshot. */
+/**
+ * Replay product-owned source and built-artifact edits onto a pristine downloaded snapshot.
+ * @param {string} staged - Extracted upstream package directory.
+ * @param {string} selectedProductRoot - Product directory that owns patch artifacts.
+ * @param {unknown[]} recordedPatches - Provenance entries from the current snapshot.
+ */
 export function applyRecordedMaterializedPatches(staged, selectedProductRoot, recordedPatches) {
   for (const patch of recordedPatches) {
     if (!isPlainObject(patch) || typeof patch.file !== 'string') continue
-    run('git', ['apply', '--whitespace=nowarn', join(selectedProductRoot, patch.file)], { cwd: staged })
+    const relativePatch = validateSafeRelativePath(
+      patch.file,
+      `recorded patch ${patch.id ?? '<unknown>'}.file`,
+      selectedProductRoot,
+    )
+    if (typeof patch.sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(patch.sha256)) {
+      throw new Error(`recorded patch ${patch.id ?? relativePatch} has an invalid sha256`)
+    }
+    const patchPath = join(selectedProductRoot, relativePatch)
+    const actualSha256 = createHash('sha256').update(readFileSync(patchPath)).digest('hex')
+    if (actualSha256 !== patch.sha256) {
+      throw new Error(`recorded patch ${patch.id ?? relativePatch} sha256 mismatch`)
+    }
+    run('git', ['apply', '--check', '--whitespace=nowarn', patchPath], { cwd: staged })
+    run('git', ['apply', '--whitespace=nowarn', patchPath], { cwd: staged })
   }
 }
 
 function mergeRecordedPatches(recordedPatches, changes) {
   const replacedPeers = new Set(changes.flatMap(change => {
+    if (typeof change !== 'string') return []
     const match = /^Set (\S+) peer range from /.exec(change)
     return match ? [match[1]] : []
   }))

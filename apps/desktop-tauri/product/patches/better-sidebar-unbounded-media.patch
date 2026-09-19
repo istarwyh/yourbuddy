@@ -1,0 +1,148 @@
+diff --git a/README.md b/README.md
+index 95f54e4..8ecc5dc 100644
+--- a/README.md
++++ b/README.md
+@@ -560,7 +560,7 @@ make clean          # 清理 lib/、*.tgz、playwright-report/、test-results/
+ ## 🔐 安全
+ 
+ - 路由受 Host 头信任围栏保护（与 `/api` 一致）；`fs.write` 原子写入；媒体/预览路由仅限会话 cwd 内文件；git 只调 CLI、绝不设置身份
+-- HTML 预览与浏览器 tab 的内容在**不透明源沙箱 iframe** 中渲染（无 `allow-same-origin`/`allow-top-navigation`、`no-referrer`、权限策略全禁）；`/sidebar/html` 路由带 CSP `sandbox` + 大小/路径边界；地址栏拒绝 `javascript:`/`data:`/`file:` 与 localhost 等本机地址
++- HTML 预览与浏览器 tab 的内容在**不透明源沙箱 iframe** 中渲染（无 `allow-same-origin`/`allow-top-navigation`、`no-referrer`、权限策略全禁）；`/sidebar/html` 路由带 CSP `sandbox` + 路径边界；地址栏拒绝 `javascript:`/`data:`/`file:` 与 localhost 等本机地址
+ - 界面实时显示沙箱状态（关闭时红色警示），可临时解锁当前页面；设置页可按功能关闭沙箱（默认关闭该设置，带警告文案）——关闭后内容与界面同源，仅建议对完全可信内容使用
+ 
+ ## ⚠️ 已知限制
+diff --git a/README_EN.md b/README_EN.md
+index f129fe3..b4b0d16 100644
+--- a/README_EN.md
++++ b/README_EN.md
+@@ -561,7 +561,7 @@ make clean          # remove lib/, *.tgz, playwright-report/, test-results/
+ ## 🔐 Security
+ 
+ - Routes protected by a Host-header trust fence (same as `/api`); `fs.write` is atomic; media/preview routes only serve files inside the session cwd; git only shells out to the CLI and never sets identity
+-- HTML preview and browser tab content render in **opaque-origin sandboxed iframes** (no `allow-same-origin`/`allow-top-navigation`, `no-referrer`, all permission policies disabled); the `/sidebar/html` route carries a CSP `sandbox` + size/path bounds; the address bar rejects `javascript:`/`data:`/`file:` and local addresses like localhost
++- HTML preview and browser tab content render in **opaque-origin sandboxed iframes** (no `allow-same-origin`/`allow-top-navigation`, `no-referrer`, all permission policies disabled); the `/sidebar/html` route carries a CSP `sandbox` + path bounds; the address bar rejects `javascript:`/`data:`/`file:` and local addresses like localhost
+ - The UI shows the sandbox status live (red warning when off) and can temporarily unlock the current page; the settings page can disable the sandbox per feature (disabled by default, with a warning) — when off, content shares the origin with the UI; only recommended for fully trusted content
+ 
+ ## ⚠️ Known Limitations
+diff --git a/lib/index.js b/lib/index.js
+index 0ccd541..7f4a863 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -68,7 +68,6 @@ const SIDEBAR_PREFS_DEFAULTS = {
+ /** Schemastery schema for the plugin configuration. */
+ const Config = z.object({
+ 	readLimit: z.number().step(1).min(1).default(524288),
+-	mediaLimit: z.number().step(1).min(1).default(20971520),
+ 	uploadLimit: z.number().step(1).min(1).default(134217728),
+ 	listLimit: z.number().step(1).min(1).default(1e3),
+ 	terminalsPerSession: z.number().step(1).min(1).default(3),
+@@ -85,7 +84,6 @@ const Config = z.object({
+ function resolveSidebarConfig(config) {
+ 	return {
+ 		readLimit: config?.readLimit ?? 524288,
+-		mediaLimit: config?.mediaLimit ?? 20971520,
+ 		uploadLimit: config?.uploadLimit ?? 134217728,
+ 		listLimit: config?.listLimit ?? 1e3,
+ 		terminalsPerSession: config?.terminalsPerSession ?? 3,
+@@ -4623,7 +4621,7 @@ function apply(ctx, config) {
+ 				if (sessionId === null || raw === null) throw new SidebarError("bad-request", "sessionId and path are required");
+ 				const path = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0), raw, fenceEnabledOf(() => settingsFace));
+ 				const info = await stat(path);
+-				if (!info.isFile() || info.size > resolved.mediaLimit) throw new SidebarError("fs-error", "not a file or too large", 400);
++				if (!info.isFile()) throw new SidebarError("fs-error", "not a file", 400);
+ 				const type = mediaTypeForPath(path);
+ 				const body = await readFile(path);
+ 				const headers = {
+@@ -4661,7 +4659,7 @@ function apply(ctx, config) {
+ 				const { sessionId, path } = decoded.ref;
+ 				const absolute = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path, fenceEnabledOf(() => settingsFace));
+ 				const info = await stat(absolute);
+-				if (!info.isFile() || info.size > resolved.mediaLimit) throw new SidebarError("fs-error", "not a file or too large", 400);
++				if (!info.isFile()) throw new SidebarError("fs-error", "not a file", 400);
+ 				const type = mediaTypeForPath(absolute);
+ 				const body = await readFile(absolute);
+ 				res.writeHead(200, {
+diff --git a/lib/types/config.d.ts b/lib/types/config.d.ts
+index 5352dde..d02333a 100644
+--- a/lib/types/config.d.ts
++++ b/lib/types/config.d.ts
+@@ -11,8 +11,6 @@ export { SIDEBAR_PREFS_DEFAULTS, SIDEBAR_PREFS_NS, TERMINAL_FONT_SIZE_DEFAULT, T
+ export interface SidebarConfig {
+     /** Read cap of one text file (bytes); larger files return truncated. */
+     readLimit?: number;
+-    /** Media route cap (bytes); larger binaries are refused. */
+-    mediaLimit?: number;
+     /** Upload route cap (bytes); larger files are refused without touching disk. */
+     uploadLimit?: number;
+     /** Explorer row bound of one level. */
+@@ -43,7 +41,6 @@ export declare const Config: z<SidebarConfig>;
+ /** Fully defaulted sidebar host settings. */
+ export interface ResolvedSidebarConfig {
+     readLimit: number;
+-    mediaLimit: number;
+     uploadLimit: number;
+     listLimit: number;
+     terminalsPerSession: number;
+diff --git a/src/config.ts b/src/config.ts
+index 3d055cb..e2bb948 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -38,8 +38,6 @@ export {
+ export interface SidebarConfig {
+   /** Read cap of one text file (bytes); larger files return truncated. */
+   readLimit?: number
+-  /** Media route cap (bytes); larger binaries are refused. */
+-  mediaLimit?: number
+   /** Upload route cap (bytes); larger files are refused without touching disk. */
+   uploadLimit?: number
+   /** Explorer row bound of one level. */
+@@ -69,7 +67,6 @@ export interface SidebarConfig {
+ /** Schemastery schema for the plugin configuration. */
+ export const Config: z<SidebarConfig> = z.object({
+   readLimit: z.number().step(1).min(1).default(512 * 1024),
+-  mediaLimit: z.number().step(1).min(1).default(20 * 1024 * 1024),
+   uploadLimit: z.number().step(1).min(1).default(128 * 1024 * 1024),
+   listLimit: z.number().step(1).min(1).default(1000),
+   terminalsPerSession: z.number().step(1).min(1).default(3),
+@@ -81,7 +78,6 @@ export const Config: z<SidebarConfig> = z.object({
+ /** Fully defaulted sidebar host settings. */
+ export interface ResolvedSidebarConfig {
+   readLimit: number
+-  mediaLimit: number
+   uploadLimit: number
+   listLimit: number
+   terminalsPerSession: number
+@@ -101,7 +97,6 @@ export interface ResolvedSidebarConfig {
+ export function resolveSidebarConfig(config: SidebarConfig | undefined): ResolvedSidebarConfig {
+   return {
+     readLimit: config?.readLimit ?? 512 * 1024,
+-    mediaLimit: config?.mediaLimit ?? 20 * 1024 * 1024,
+     uploadLimit: config?.uploadLimit ?? 128 * 1024 * 1024,
+     listLimit: config?.listLimit ?? 1000,
+     terminalsPerSession: config?.terminalsPerSession ?? 3,
+diff --git a/src/index.ts b/src/index.ts
+index be48e16..5c4f707 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -959,9 +959,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+         const cwd = await sessionCwdOf(ctx, sessionId, url.searchParams.get('cwd') ?? undefined)
+         const path = await ensureWorkspacePath(cwd, raw, fenceEnabledOf(() => settingsFace))
+         const info = await stat(path)
+-        if (!info.isFile() || info.size > resolved.mediaLimit) {
+-          throw new SidebarError('fs-error', 'not a file or too large', 400)
+-        }
++        if (!info.isFile()) throw new SidebarError('fs-error', 'not a file', 400)
+         const type = mediaTypeForPath(path)
+         const body = await readFile(path)
+         // Raw bytes either way (binary-safe); ?download=1 switches the
+@@ -1018,9 +1016,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+         const cwd = await sessionCwdOf(ctx, sessionId)
+         const absolute = await ensureWorkspacePath(cwd, path, fenceEnabledOf(() => settingsFace))
+         const info = await stat(absolute)
+-        if (!info.isFile() || info.size > resolved.mediaLimit) {
+-          throw new SidebarError('fs-error', 'not a file or too large', 400)
+-        }
++        if (!info.isFile()) throw new SidebarError('fs-error', 'not a file', 400)
+         const type = mediaTypeForPath(absolute)
+         const body = await readFile(absolute)
+         res.writeHead(200, {

@@ -40,7 +40,7 @@ Respond to any operation approvals shown by the interface. When the task ends, o
 |---|---|
 | Better Sidebar | Browse the practice directory, open the new Markdown file, and inspect the terminal or Git panel |
 | Context Doctor beside an existing session's input | Expand the context audit and inspect estimated instruction, skill, and tool usage |
-| Settings → General → My workbench | Change the name or Logo, preview and save, then reopen to check persistence |
+| Settings → General → My workbench | Change the name, Logo, new-session headline, or badge; preview and save, then reopen to check persistence |
 | Settings → Plugin Marketplace | Inspect a plugin's purpose, source, and installation eligibility; installing more plugins is optional |
 
 ## 6. Configure networking and updates when needed

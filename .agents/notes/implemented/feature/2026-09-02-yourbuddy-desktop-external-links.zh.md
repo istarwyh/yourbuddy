@@ -16,6 +16,8 @@ Tauri Shell 只接受当前 Host iframe 从其精确 Origin 发出的完整固�
 
 现有 Marketplace 通道保持独立且更加严格，因为它只接受 GitHub 仓库与 npm 目标。通用助手链接不会扩大与安装相关的协议权限。
 
+Better Sidebar 是由 npm 管理的产品快照，因此它的 Source 与已构建 Client 修改会保存在可替换快照之外，并由摘要绑定的 Patch 表达。产品刷新会在 `YOURBUDDY_UPSTREAM.json` 中记录 Patch Descriptor、验证其 SHA-256，并在验证候选版本前把 Patch 应用到刚下载的原始 Package。上游修改与 Patch 冲突时，刷新会在替换快照前失败，而不会静默恢复 `_blank` 行为。
+
 ## 考虑过的替代方案
 
 **依赖 WebView 的 `_blank` 行为。** 未采用，因为内嵌 Tauri WebView 不会可靠地把新浏览上下文交给系统浏览器，而这正是本决策需要修复的缺陷。

@@ -192,7 +192,16 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
       )
     }
     assert.ok(readFileSync(join(root, 'packages', 'product', 'dsh-codex-auth', 'lib', 'client.js'), 'utf8').length > 0)
-    assert.ok(readFileSync(join(root, 'packages', 'product', 'dsh-better-sidebar', 'lib', 'client.js'), 'utf8').length > 0)
+    const bundledSidebar = join(root, 'packages', 'product', 'dsh-better-sidebar')
+    for (const bundle of ['client.js', 'client-registry.js', 'client-terminal.js']) {
+      const source = readFileSync(join(bundledSidebar, 'lib', bundle), 'utf8')
+      assert.match(source, /yourbuddy\.desktop\.external-link/u)
+      assert.match(source, /window\.parent\.postMessage/u)
+    }
+    const sidebarProvenance = JSON.parse(readFileSync(join(bundledSidebar, 'YOURBUDDY_UPSTREAM.json'), 'utf8'))
+    assert.ok(sidebarProvenance.patches.some(
+      patch => patch.id === 'desktop-external-links' && /^[a-f0-9]{64}$/u.test(patch.sha256),
+    ))
     assert.ok(readFileSync(join(root, 'packages', 'product', 'context-doctor', 'lib', 'client.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'context-doctor', 'lib', 'index.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'client.js'), 'utf8').length > 0)

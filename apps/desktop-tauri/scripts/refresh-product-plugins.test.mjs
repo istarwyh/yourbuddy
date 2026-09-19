@@ -125,15 +125,16 @@ test('product update policy accepts every supported source kind', () => {
   assert.equal(validateProductUpdatePolicy(policy, '/tmp/yourbuddy-product'), policy)
 })
 
-test('materialized product patches replay onto a fresh upstream snapshot', (t) => {
+test('materialized product patches replay onto a pristine upstream snapshot', (t) => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-materialized-patch-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const product = join(root, 'product')
   const staged = join(root, 'staged')
-  mkdirSync(join(product, 'patches'), { recursive: true })
+  const patches = join(product, 'patches')
+  mkdirSync(patches, { recursive: true })
   mkdirSync(staged)
   writeFileSync(join(staged, 'value.txt'), 'upstream\n')
-  writeFileSync(join(product, 'patches', 'compat.patch'), [
+  const patch = [
     'diff --git a/value.txt b/value.txt',
     'index 1f7391f..5716ca5 100644',
     '--- a/value.txt',
@@ -142,14 +143,62 @@ test('materialized product patches replay onto a fresh upstream snapshot', (t) =
     '-upstream',
     '+yourbuddy',
     '',
-  ].join('\n'))
+  ].join('\n')
+  const patchFile = join(patches, 'compat.patch')
+  writeFileSync(patchFile, patch)
+  const descriptor = {
+    id: 'compat',
+    file: 'patches/compat.patch',
+    sha256: createHash('sha256').update(patch).digest('hex'),
+    purpose: 'Keep one product-owned behavior.',
+  }
 
   applyRecordedMaterializedPatches(staged, product, [
     'Keep a manifest-only compatibility correction.',
-    { id: 'compat', file: 'patches/compat.patch' },
+    descriptor,
   ])
 
   assert.equal(readFileSync(join(staged, 'value.txt'), 'utf8'), 'yourbuddy\n')
+})
+
+test('materialized product patches reject changed bytes and stale upstream context', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-materialized-patch-reject-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const product = join(root, 'product')
+  const staged = join(root, 'staged')
+  const patches = join(product, 'patches')
+  mkdirSync(patches, { recursive: true })
+  mkdirSync(staged)
+  const patch = [
+    'diff --git a/value.txt b/value.txt',
+    '--- a/value.txt',
+    '+++ b/value.txt',
+    '@@ -1 +1 @@',
+    '-upstream',
+    '+yourbuddy',
+    '',
+  ].join('\n')
+  writeFileSync(join(patches, 'compat.patch'), patch)
+  const descriptor = {
+    id: 'compat',
+    file: 'patches/compat.patch',
+    sha256: createHash('sha256').update(patch).digest('hex'),
+    purpose: 'Keep one product-owned behavior.',
+  }
+
+  writeFileSync(join(staged, 'value.txt'), 'upstream\n')
+  assert.throws(
+    () => applyRecordedMaterializedPatches(staged, product, [{ ...descriptor, sha256: '0'.repeat(64) }]),
+    /compat sha256 mismatch/,
+  )
+  assert.equal(readFileSync(join(staged, 'value.txt'), 'utf8'), 'upstream\n')
+
+  writeFileSync(join(staged, 'value.txt'), 'changed upstream\n')
+  assert.throws(
+    () => applyRecordedMaterializedPatches(staged, product, [descriptor]),
+    /git apply --check .* failed with exit/,
+  )
+  assert.equal(readFileSync(join(staged, 'value.txt'), 'utf8'), 'changed upstream\n')
 })
 
 test('product update policy rejects unsafe and duplicate ids', () => {

@@ -58,9 +58,13 @@ function resolveWorkbenchBrand(value) {
   const record = value;
   const name = normalizeWorkbenchName(record.name);
   const logo = normalizeLogoSource(record.logo);
+  const heroHeadline = normalizeWorkbenchName(record.heroHeadline);
+  const heroBadge = record.showHeroBadge === false ? null : normalizeWorkbenchName(record.heroBadge);
   return {
     ...name === void 0 ? {} : { name },
-    ...logo === void 0 ? {} : { logo }
+    ...logo === void 0 ? {} : { logo },
+    ...heroHeadline === void 0 ? {} : { heroHeadline },
+    ...heroBadge === void 0 ? {} : { heroBadge }
   };
 }
 function createPersonalBrandMark(logo) {
@@ -82,6 +86,11 @@ function createPersonalBrandMark(logo) {
 function createPersonalBrandName(name) {
   return function PersonalBrandName() {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: name });
+  };
+}
+function createPersonalHeroText(text) {
+  return function PersonalHeroText({ className }) {
+    return text === null ? null : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className, children: text });
   };
 }
 
@@ -389,15 +398,23 @@ function BrandSettingsRow({ scope, readLocale, t }) {
   const persisted = snapshot.value;
   const [name, setName] = (0, import_react.useState)("");
   const [logo, setLogo] = (0, import_react.useState)("");
+  const [heroHeadline, setHeroHeadline] = (0, import_react.useState)("");
+  const [heroBadge, setHeroBadge] = (0, import_react.useState)("");
+  const [showHeroBadge, setShowHeroBadge] = (0, import_react.useState)(true);
   const [status, setStatus] = (0, import_react.useState)("idle");
   const [errorKey, setErrorKey] = (0, import_react.useState)();
   (0, import_react.useEffect)(() => {
     if (persisted === void 0) return;
     setName(persisted.enabled ? persisted.name : "");
     setLogo(persisted.enabled ? persisted.logo : "");
+    setHeroHeadline(persisted.enabled ? persisted.heroHeadline : "");
+    setHeroBadge(persisted.enabled ? persisted.heroBadge : "");
+    setShowHeroBadge(persisted.enabled ? persisted.showHeroBadge : true);
   }, [persisted]);
   const displayName = normalizeWorkbenchName(name) ?? "YourBuddy";
   const displayLogo = normalizeLogoSource(logo) ?? app_icon_default;
+  const displayHeadline = normalizeWorkbenchName(heroHeadline) ?? t("hero.headline.default");
+  const displayBadge = normalizeWorkbenchName(heroBadge) ?? t("hero.badge.default");
   const writable = snapshot.writable;
   const busy = status === "saving";
   const chooseLogo = async (file) => {
@@ -422,6 +439,9 @@ function BrandSettingsRow({ scope, readLocale, t }) {
     try {
       await scope.set("name", normalizedName);
       await scope.set("logo", normalizeLogoSource(logo) ?? "");
+      await scope.set("heroHeadline", normalizeWorkbenchName(heroHeadline) ?? "");
+      await scope.set("heroBadge", normalizeWorkbenchName(heroBadge) ?? "");
+      await scope.set("showHeroBadge", showHeroBadge);
       await scope.set("enabled", true);
       setStatus("saved");
     } catch {
@@ -436,8 +456,14 @@ function BrandSettingsRow({ scope, readLocale, t }) {
       await scope.set("enabled", false);
       await scope.unset("name");
       await scope.unset("logo");
+      await scope.unset("heroHeadline");
+      await scope.unset("heroBadge");
+      await scope.unset("showHeroBadge");
       setName("");
       setLogo("");
+      setHeroHeadline("");
+      setHeroBadge("");
+      setShowHeroBadge(true);
       setStatus("reset");
     } catch {
       setStatus("error");
@@ -453,6 +479,10 @@ function BrandSettingsRow({ scope, readLocale, t }) {
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "dpw-preview-mark", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("img", { src: displayLogo, alt: "" }) }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "dpw-preview-copy", children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "dpw-preview-label", children: t("preview") }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "dpw-preview-hero", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "dpw-preview-headline", children: displayHeadline }),
+          showHeroBadge && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "dpw-preview-badge", children: displayBadge })
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "dpw-preview-name", children: displayName })
       ] })
     ] }),
@@ -508,6 +538,57 @@ function BrandSettingsRow({ scope, readLocale, t }) {
           )
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "dpw-hint", children: t("logo.hint") })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { className: "dpw-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "dpw-label", children: t("hero.headline.label") }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          "input",
+          {
+            className: "dpw-input",
+            value: heroHeadline,
+            placeholder: t("hero.headline.placeholder"),
+            disabled: !writable || busy,
+            onChange: (event) => {
+              setHeroHeadline(event.currentTarget.value);
+              setStatus("idle");
+              setErrorKey(void 0);
+            }
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "dpw-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "dpw-label", children: t("hero.badge.label") }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          "input",
+          {
+            className: "dpw-input",
+            "aria-label": t("hero.badge.label"),
+            value: heroBadge,
+            placeholder: t("hero.badge.placeholder"),
+            disabled: !writable || busy || !showHeroBadge,
+            onChange: (event) => {
+              setHeroBadge(event.currentTarget.value);
+              setStatus("idle");
+              setErrorKey(void 0);
+            }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { className: "dpw-checkbox-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            "input",
+            {
+              type: "checkbox",
+              checked: showHeroBadge,
+              disabled: !writable || busy,
+              onChange: (event) => {
+                setShowHeroBadge(event.currentTarget.checked);
+                setStatus("idle");
+                setErrorKey(void 0);
+              }
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: t("hero.badge.show") })
+        ] })
       ] })
     ] }),
     errorKey !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "dpw-error", role: "alert", children: t(errorKey) }),
@@ -1360,11 +1441,18 @@ var zh = {
   "help.error": "\u65E0\u6CD5\u6253\u5F00\u6D4F\u89C8\u5668\uFF0C\u8BF7\u590D\u5236\u5730\u5740\u540E\u624B\u52A8\u6253\u5F00\u3002",
   "help.address": "\u5E2E\u52A9\u9875\u9762\u5730\u5740",
   "title": "\u6211\u7684\u5DE5\u4F5C\u53F0",
-  "description": "\u8BBE\u7F6E\u4FA7\u8FB9\u680F\u540D\u79F0\u548C Logo\uFF0C\u6253\u9020\u5C5E\u4E8E\u4F60\u7684 Agent \u5DE5\u4F5C\u53F0\u3002",
+  "description": "\u8BBE\u7F6E\u4FA7\u8FB9\u680F\u8EAB\u4EFD\u548C\u65B0\u4F1A\u8BDD\u9875\u6807\u9898\uFF0C\u6253\u9020\u5C5E\u4E8E\u4F60\u7684 Agent \u5DE5\u4F5C\u53F0\u3002",
   "preview": "\u5B9E\u65F6\u9884\u89C8",
   "name.label": "\u5DE5\u4F5C\u53F0\u540D\u79F0",
   "name.placeholder": "\u4F8B\u5982\uFF1A\u6211\u7684\u7814\u7A76\u5BA4",
   "logo.label": "\u5DE5\u4F5C\u53F0 Logo",
+  "hero.headline.label": "\u9996\u9875\u6807\u9898",
+  "hero.headline.placeholder": "\u7559\u7A7A\u4F7F\u7528\u201C\u63A2\u7D22\u672A\u81F3\u4E4B\u5883\u201D",
+  "hero.headline.default": "\u63A2\u7D22\u672A\u81F3\u4E4B\u5883",
+  "hero.badge.label": "\u6807\u9898\u6807\u8BB0",
+  "hero.badge.placeholder": "\u7559\u7A7A\u4F7F\u7528\u201C\u9884\u89C8\u7248\u201D",
+  "hero.badge.default": "\u9884\u89C8\u7248",
+  "hero.badge.show": "\u663E\u793A\u6807\u9898\u6807\u8BB0",
   "logo.choose": "\u9009\u62E9\u56FE\u7247",
   "logo.replace": "\u66F4\u6362\u56FE\u7247",
   "logo.remove": "\u79FB\u9664 Logo",
@@ -1473,11 +1561,18 @@ var en = {
   "help.error": "Could not open the browser. Copy the address and open it manually.",
   "help.address": "Help page address",
   "title": "My Workbench",
-  "description": "Choose a sidebar name and logo for your personal Agent workbench.",
+  "description": "Choose the sidebar identity and new-session title for your personal Agent workbench.",
   "preview": "Live preview",
   "name.label": "Workbench name",
   "name.placeholder": "For example: Avery's Workbench",
   "logo.label": "Workbench logo",
+  "hero.headline.label": "Home headline",
+  "hero.headline.placeholder": "Leave blank to use \u201CInto the Unknown\u201D",
+  "hero.headline.default": "Into the Unknown",
+  "hero.badge.label": "Headline badge",
+  "hero.badge.placeholder": "Leave blank to use \u201CPreview\u201D",
+  "hero.badge.default": "Preview",
+  "hero.badge.show": "Show headline badge",
   "logo.choose": "Choose image",
   "logo.replace": "Replace image",
   "logo.remove": "Remove logo",
@@ -1581,15 +1676,17 @@ var PERSONAL_WORKBENCH_CSS = `
 .dpw-card{display:grid;gap:16px;padding:18px;border:1px solid var(--dsw-alias-border-l1);border-radius:16px;background:var(--dsw-alias-bg-layer-1)}
 .dpw-heading{display:grid;gap:4px}.dpw-title{font-size:16px;font-weight:650;color:var(--dsw-alias-label-primary)}
 .dpw-description,.dpw-hint,.dpw-status{font-size:13px;line-height:1.5;color:var(--dsw-alias-label-secondary)}
-.dpw-preview{display:flex;align-items:center;gap:12px;min-height:72px;padding:14px;border-radius:14px;background:var(--dsw-alias-bg-layer-2)}
-.dpw-preview-mark{display:grid;place-items:center;width:44px;height:44px;overflow:hidden;border-radius:12px;background:var(--dsw-alias-bg-base);font-size:25px}
-.dpw-preview-mark img{width:100%;height:100%;object-fit:contain}.dpw-preview-copy{display:grid;gap:2px;min-width:0}
-.dpw-preview-label{font-size:12px;color:var(--dsw-alias-label-secondary)}.dpw-preview-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:18px;font-weight:650;color:var(--dsw-alias-label-primary)}
+.dpw-preview{display:flex;align-items:center;gap:12px;min-height:84px;padding:14px;border-radius:14px;background:var(--dsw-alias-bg-layer-2)}
+.dpw-preview-mark{display:grid;place-items:center;flex:none;width:44px;height:44px;overflow:hidden;border-radius:12px;background:var(--dsw-alias-bg-base);font-size:25px}
+.dpw-preview-mark img{width:100%;height:100%;object-fit:contain}.dpw-preview-copy{display:grid;gap:3px;min-width:0}
+.dpw-preview-label,.dpw-preview-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--dsw-alias-label-secondary)}
+.dpw-preview-hero{display:flex;align-items:center;gap:8px;min-width:0}.dpw-preview-headline{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:18px;font-weight:650;color:var(--dsw-alias-label-primary)}
+.dpw-preview-badge{flex:none;padding:1px 7px;border:1px solid var(--dsw-alias-interactive-bg-hover);border-radius:24px;background:var(--dsw-alias-state-business-tertiary);color:var(--dsw-alias-label-primary-bluish);font-family:var(--ds-font-family-code);font-size:11px;line-height:17px}
 .dpw-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.dpw-field{display:grid;align-content:start;gap:8px}
 .dpw-field-wide{grid-column:1/-1}.dpw-proxy-panel{display:grid;gap:10px;padding:12px;border-radius:12px;background:var(--dsw-alias-bg-layer-2)}
 .dpw-code{display:grid;gap:4px;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:var(--dsw-alias-label-secondary)}
 .dpw-label{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary)}.dpw-input{box-sizing:border-box;width:100%;height:38px;padding:0 11px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:inherit}
-.dpw-upload-row,.dpw-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.dpw-file{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.dpw-upload-row,.dpw-actions,.dpw-checkbox-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.dpw-checkbox-row{font-size:13px;color:var(--dsw-alias-label-secondary)}.dpw-file{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 .dpw-button{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 13px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer}
 .dpw-button-primary{border-color:var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}.dpw-button-primary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover);background:var(--dsw-alias-button-primary-hover)}.dpw-button:disabled{cursor:not-allowed;opacity:.5}
 .dpw-error{font-size:13px;color:var(--dsw-alias-state-error-primary)}.dpw-success{color:var(--dsw-alias-state-success-primary)}
@@ -1666,9 +1763,31 @@ function installPersonalBrandOccupants(ctx, scope) {
     }
     return nameComponent;
   };
+  let selectedHeadline;
+  let headlineComponent;
+  const pickHeadline = (value) => {
+    const headline = resolveWorkbenchBrand(value).heroHeadline;
+    if (headline !== selectedHeadline) {
+      selectedHeadline = headline;
+      headlineComponent = headline === void 0 ? void 0 : createPersonalHeroText(headline);
+    }
+    return headlineComponent;
+  };
+  let selectedBadge;
+  let badgeComponent;
+  const pickBadge = (value) => {
+    const badge = resolveWorkbenchBrand(value).heroBadge;
+    if (badge !== selectedBadge) {
+      selectedBadge = badge;
+      badgeComponent = badge === void 0 ? void 0 : createPersonalHeroText(badge);
+    }
+    return badgeComponent;
+  };
   installBrandSlot(ctx, scope, "sidebar.brand.mark", pickMark);
   installBrandSlot(ctx, scope, "conversation.hero.brand.mark", pickMark);
   installBrandSlot(ctx, scope, "sidebar.brand.name", pickName);
+  installBrandSlot(ctx, scope, "conversation.hero.brand.headline", pickHeadline);
+  installBrandSlot(ctx, scope, "conversation.hero.brand.badge", pickBadge);
 }
 function apply(ctx) {
   installPersonalWorkbenchStyles(ctx);

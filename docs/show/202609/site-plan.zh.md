@@ -17,7 +17,7 @@
 | `/docs/start/` | 怎样完成第一个任务？ | 安装到可检查产物的顺序步骤与成功信号 | [首次使用](quickstart.zh.md) |
 | `/docs/models/` | 怎样登录或配置其他模型？ | GPT Auth 与 API 路径、选择模型、能力差异、失败处理 | [首次使用](quickstart.zh.md) |
 | `/docs/workspace/` | 文件写在哪里？ | 选择工作区、打开产物、查看命令和差异 | [典型工作流](workflows.zh.md) |
-| `/docs/settings/` | 如何调整工作台和网络？ | 名称／Logo、代理、证书、保存与重启 | [首次使用](quickstart.zh.md) |
+| `/docs/settings/` | 如何调整工作台和网络？ | 工作台身份、新会话 Hero 文案、代理、证书、保存与重启 | [首次使用](quickstart.zh.md) |
 | `/plugins/` | 默认装了什么，为什么？ | 外部、自有、上游能力的区分，版本与来源，选择理由 | [默认插件](plugins.zh.md) |
 | `/plugins/codex-auth/` | 账号能提供哪些能力？ | 登录、搜索、图片、账户和非官方接口限制 | [默认插件](plugins.zh.md) |
 | `/plugins/better-sidebar/` | 怎样查看任务成果？ | 文件、终端、Git、面板与可选工具 | [默认插件](plugins.zh.md) |

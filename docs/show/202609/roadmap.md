@@ -24,7 +24,7 @@ See the [desktop documentation](../../../apps/desktop-tauri/README.md), [Default
 | Apple application signing and notarization | Explicitly deferred in the [root documentation](../../../README.md) | Candidate improvement to desktop distribution, requiring real certificates, builds, and installation verification |
 | YourBuddy installers for Windows, Linux, and other architectures | The [product runtime](../../../apps/desktop-tauri/src-tauri/src/product.rs) accepts only the current target; desktop source contains cross-platform foundations | Explore demand without claiming support or a delivery date |
 | Exporting images directly to the workspace | [Codex Auth documentation](../../../apps/desktop-tauri/product/dsh-codex-auth/README.md) records the missing operation | Requires policy-aware binary writes; do not substitute export that bypasses policy |
-| Full themes and per-workspace personalization | [Personal Workbench documentation](../../../apps/desktop-tauri/product/personal-workbench/README.md) limits customization to Profile name and Logo | Validate actual demand before expanding scope |
+| Full themes and per-workspace personalization | [Personal Workbench documentation](../../../apps/desktop-tauri/product/personal-workbench/README.md) limits customization to Profile identity and new-session Hero copy | Validate actual demand before expanding scope |
 
 ## Proposed direction one: complete first use and the website journey
 

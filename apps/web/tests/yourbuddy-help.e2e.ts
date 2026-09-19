@@ -1,4 +1,4 @@
-/** Keyless Help journey through Loader, the shipped Web app, and the built product plugin. */
+/** Keyless branding and Help journeys through Loader, the shipped Web app, and the built product plugin. */
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,7 +12,7 @@ const PRODUCT = fileURLToPath(new URL('../../desktop-tauri/product/personal-work
 const EXPECTED = fileURLToPath(new URL('./expected/yourbuddy-help/', import.meta.url))
 const MODE = webSnapshotMode()
 
-describe('YourBuddy Help in the assembled workbench', () => {
+describe('YourBuddy product surfaces in the assembled workbench', () => {
   let world: string | undefined
   let scaffold: WebScaffold | undefined
   let browser: Browser | undefined
@@ -71,6 +71,39 @@ document.getElementById('workbench').src = ${JSON.stringify(scaffold!.authentica
       const title = language === 'zh' ? '帮助与指南' : 'Help and guides'
       const trigger = app.getByRole('button', { name: title, exact: true })
       await trigger.waitFor({ timeout: 30_000 })
+
+      const settingsTrigger = app.getByRole('button', {
+        name: language === 'zh' ? '设置' : 'Settings', exact: true,
+      })
+      await settingsTrigger.click()
+      const settings = app.getByRole('dialog', {
+        name: language === 'zh' ? '设置' : 'Settings', exact: true,
+      })
+      const card = settings.locator('.dpw-card').filter({
+        hasText: language === 'zh' ? '我的工作台' : 'My Workbench',
+      })
+      await card.waitFor({ timeout: 10_000 })
+      await compareOrRefreshGolden(
+        join(EXPECTED, `branding-${language}.expected.md`), await card.ariaSnapshot(), MODE,
+      )
+      const custom = language === 'zh'
+        ? { name: '远方研究室', headline: '一起探索远方', badge: '体验版' }
+        : { name: 'Frontier Lab', headline: 'Explore together', badge: 'Early access' }
+      await card.getByRole('textbox', { name: language === 'zh' ? '工作台名称' : 'Workbench name' }).fill(custom.name)
+      await card.getByRole('textbox', { name: language === 'zh' ? '首页标题' : 'Home headline' }).fill(custom.headline)
+      await card.getByRole('textbox', { name: language === 'zh' ? '标题标记' : 'Headline badge' }).fill(custom.badge)
+      await card.getByRole('button', { name: language === 'zh' ? '应用到工作台' : 'Apply to workbench' }).click()
+      await card.getByText(language === 'zh' ? '已应用' : 'Applied', { exact: true }).waitFor()
+      await settings.getByRole('button', { name: language === 'zh' ? '关闭' : 'Close', exact: true }).click()
+      await app.getByText(custom.headline, { exact: true }).waitFor()
+      await app.getByText(custom.badge, { exact: true }).waitFor()
+
+      await settingsTrigger.click()
+      await card.getByRole('button', { name: language === 'zh' ? '恢复 YourBuddy 默认' : 'Restore YourBuddy default' }).click()
+      await card.getByText(language === 'zh' ? '已恢复默认' : 'Default restored', { exact: true }).waitFor()
+      await settings.getByRole('button', { name: language === 'zh' ? '关闭' : 'Close', exact: true }).click()
+      await app.getByText(language === 'zh' ? '探索未至之境' : 'Into the Unknown', { exact: true }).waitFor()
+
       await trigger.press('Enter')
       await compareOrRefreshGolden(join(EXPECTED, `${language}.expected.md`), await app.locator('.dpw-help').ariaSnapshot(), MODE)
       const labels = await app.getByRole('menuitem').allTextContents()
@@ -122,8 +155,7 @@ document.getElementById('workbench').src = ${JSON.stringify(scaffold!.authentica
       expect(await trigger.evaluate(node => node === document.activeElement)).toBe(true)
       await page.evaluate('window.failHelp = false')
       await app.getByRole('button', { name: language === 'zh' ? '打开侧边栏' : 'Open sidebar', exact: true }).click()
-      await app.getByRole('button', { name: language === 'zh' ? '设置' : 'Settings', exact: true }).click()
-      const settings = app.getByRole('dialog', { name: language === 'zh' ? '设置' : 'Settings', exact: true })
+      await settingsTrigger.click()
       await settings.getByRole('link', { name: language === 'zh' ? '查看使用说明' : 'View usage guide', exact: true }).click()
       await expect.poll(() => page.evaluate('window.helpRequests.at(-1)')).toBe(`${prefix}docs/settings/`)
       await settings.getByRole('button', { name: language === 'zh' ? '关闭' : 'Close', exact: true }).click()

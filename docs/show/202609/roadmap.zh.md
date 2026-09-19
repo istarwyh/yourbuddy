@@ -24,7 +24,7 @@
 | Apple 应用签名与公证 | [根说明](../../../README.zh.md)明确暂缓 | 列为桌面发行体验的候选改进；需要真实证书、构建和安装验收 |
 | Windows、Linux 与其他架构的 YourBuddy 安装包 | [产品运行时](../../../apps/desktop-tauri/src-tauri/src/product.rs)只接受当前目标；桌面源码中有跨平台基础 | 作为需求探索，不发布“已支持”或确定日期 |
 | 图片直接导出工作区 | [Codex Auth 说明](../../../apps/desktop-tauri/product/dsh-codex-auth/README.zh.md)记录当前缺少该操作 | 依赖支持权限策略的二进制写入能力，不能用绕过策略的导出代替 |
-| 全主题与按工作区个性化 | [Personal Workbench 说明](../../../apps/desktop-tauri/product/personal-workbench/README.zh.md)限定为 Profile 名称与 Logo | 先验证真实使用需求，再决定是否扩展 |
+| 全主题与按工作区个性化 | [Personal Workbench 说明](../../../apps/desktop-tauri/product/personal-workbench/README.zh.md)限定为 Profile 身份与新会话 Hero 文案 | 先验证真实使用需求，再决定是否扩展 |
 
 ## 建议方向一：完成首次使用与官网闭环
 

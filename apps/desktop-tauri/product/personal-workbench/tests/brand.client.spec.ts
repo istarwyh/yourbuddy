@@ -34,9 +34,13 @@ class FakeScope implements SettingsScope<WorkbenchSettingsValue> {
   }
 }
 
-const HOLES = [
+const PRODUCT_HOLES = [
   'sidebar.brand.mark', 'sidebar.brand.name', 'conversation.hero.brand.mark',
 ] as const
+const HERO_TEXT_HOLES = [
+  'conversation.hero.brand.headline', 'conversation.hero.brand.badge',
+] as const
+const HOLES = [...PRODUCT_HOLES, ...HERO_TEXT_HOLES] as const
 
 function declareBrandHoles(slots: SlotRegistry): () => void {
   return slots.register({
@@ -52,13 +56,22 @@ describe('personal workbench browser behavior', () => {
     expect(PERSONAL_WORKBENCH_CSS).not.toContain('color:white')
   })
 
-  it('normalizes only enabled plain-text and bitmap branding', () => {
-    expect(resolveWorkbenchBrand({ enabled: false, name: 'A', logo: 'data:image/png;base64,YQ==' }))
-      .toEqual({})
-    expect(resolveWorkbenchBrand({ enabled: true, name: '  My Lab  ', logo: 'data:image/webp;base64,YQ==' }))
-      .toEqual({ name: 'My Lab', logo: 'data:image/webp;base64,YQ==' })
-    expect(resolveWorkbenchBrand({ enabled: true, name: 'A', logo: 'https://example.com/a.svg' }))
-      .toEqual({ name: 'A', logo: 'https://example.com/a.svg' })
+  it('normalizes only enabled identity and Hero text', () => {
+    expect(resolveWorkbenchBrand({
+      enabled: false, name: 'A', logo: 'data:image/png;base64,YQ==',
+      heroHeadline: 'Build boldly', heroBadge: 'Beta', showHeroBadge: true,
+    })).toEqual({})
+    expect(resolveWorkbenchBrand({
+      enabled: true, name: '  My Lab  ', logo: 'data:image/webp;base64,YQ==',
+      heroHeadline: '  Build boldly  ', heroBadge: '  Beta  ', showHeroBadge: true,
+    })).toEqual({
+      name: 'My Lab', logo: 'data:image/webp;base64,YQ==',
+      heroHeadline: 'Build boldly', heroBadge: 'Beta',
+    })
+    expect(resolveWorkbenchBrand({
+      enabled: true, name: 'A', logo: 'https://example.com/a.svg',
+      heroHeadline: '', heroBadge: '', showHeroBadge: false,
+    })).toEqual({ name: 'A', logo: 'https://example.com/a.svg', heroBadge: null })
   })
 
   it('restores product occupants on reset and removes them when disposed', async () => {
@@ -66,7 +79,14 @@ describe('personal workbench browser behavior', () => {
     await ctx.plugin(SlotRegistry).await()
     const slots = ctx.get('slots') as SlotRegistry
     declareBrandHoles(slots)
-    const scope = new FakeScope({ enabled: false, name: '', logo: '' })
+    const scope = new FakeScope({
+      enabled: false,
+      name: '',
+      logo: '',
+      heroHeadline: '',
+      heroBadge: '',
+      showHeroBadge: true,
+    })
     const fiber = ctx.plugin({
       inject: ['slots'],
       apply(clientCtx) { installPersonalBrandOccupants(clientCtx as never, scope) },
@@ -76,18 +96,50 @@ describe('personal workbench browser behavior', () => {
       const Component = slots.entries('sidebar.brand.name')[0]!.component as () => ReactElement<{ children: string }>
       return Component().props.children
     }
-    for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(1)
+    for (const hole of PRODUCT_HOLES) expect(slots.entries(hole)).toHaveLength(1)
+    for (const hole of HERO_TEXT_HOLES) expect(slots.entries(hole)).toHaveLength(0)
     expect(visibleName()).toBe('YourBuddy')
 
-    scope.replace({ enabled: true, name: 'My Lab', logo: 'data:image/png;base64,YQ==' })
+    scope.replace({
+      enabled: true,
+      name: 'My Lab',
+      logo: 'data:image/png;base64,YQ==',
+      heroHeadline: 'Build boldly',
+      heroBadge: 'Beta',
+      showHeroBadge: true,
+    })
     expect(visibleName()).toBe('My Lab')
     for (const hole of HOLES) {
       expect(slots.entries(hole)).toHaveLength(1)
       expect(slots.entries(hole)[0]?.options.priority).toBe(-10)
     }
+    const Headline = slots.entries('conversation.hero.brand.headline')[0]?.component as
+      | ((props: { className: string }) => ReactElement<{ children: string }>) | undefined
+    expect(Headline?.({ className: 'headline' }).props.children).toBe('Build boldly')
 
-    scope.replace({ enabled: false, name: '', logo: '' })
-    for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(1)
+    scope.replace({
+      enabled: true,
+      name: 'My Lab',
+      logo: '',
+      heroHeadline: '',
+      heroBadge: '',
+      showHeroBadge: false,
+    })
+    expect(slots.entries('conversation.hero.brand.headline')).toHaveLength(0)
+    const HiddenBadge = slots.entries('conversation.hero.brand.badge')[0]?.component as
+      | ((props: { className: string }) => ReactElement | null) | undefined
+    expect(HiddenBadge?.({ className: 'badge' })).toBeNull()
+
+    scope.replace({
+      enabled: false,
+      name: '',
+      logo: '',
+      heroHeadline: '',
+      heroBadge: '',
+      showHeroBadge: true,
+    })
+    for (const hole of PRODUCT_HOLES) expect(slots.entries(hole)).toHaveLength(1)
+    for (const hole of HERO_TEXT_HOLES) expect(slots.entries(hole)).toHaveLength(0)
     expect(visibleName()).toBe('YourBuddy')
     await fiber.dispose()
     for (const hole of HOLES) expect(slots.entries(hole)).toHaveLength(0)

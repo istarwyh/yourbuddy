@@ -84,7 +84,7 @@ YourBuddy 的默认体验由上游能力、独立插件项目和自有产品插�
 
 | 能力 | 归属 | 使用与选择理由 | 限制 |
 |---|---|---|---|
-| Personal Workbench `0.1.0` | YourBuddy 自有插件 | 通用设置中的名称／Logo、全局代理、更新和重启；给桌面用户一个集中的产品设置入口 | 自定义身份按 Profile 保存；不修改桌面图标或完整主题；原生生命周期能力仅在桌面有效 |
+| Personal Workbench `0.1.0` | YourBuddy 自有插件 | 通用设置中的工作台身份与新会话 Hero 文案、全局代理、更新和重启；给桌面用户一个集中的产品设置入口 | 自定义身份按 Profile 保存；不修改桌面图标或完整主题；原生生命周期能力仅在桌面有效 |
 | Codex Subagent | 仓库内的 `@deepseek-ai/dsh-subagent-codex` | 默认 Codex Agent Preset 可把自包含任务委派给官方 Codex 运行时，在同一工作目录中返回结果 | 与 Codex Auth 的主模型接入不同；不继承完整父会话，权限与登录遵循原生 Codex 配置；加载插件不会立即启动子进程 |
 | Harbor Python Adapter 与 Skill | Harbor 的配套组成 | 连接桌面工具、评测任务与结果呈现，无需把它们作为两个额外产品介绍 | 版本需与 Harbor 插件匹配；托管运行时不等于已安装 Docker 或已获得模型额度 |
 
