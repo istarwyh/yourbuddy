@@ -725,16 +725,45 @@ function applyApprovedCompatibilityChanges(manifest, policy, recordedPatches = [
   ]
 }
 
+/**
+ * Replay product-owned source and built-artifact edits onto a pristine downloaded snapshot.
+ * @param {string} staged - Extracted upstream package directory.
+ * @param {string} selectedProductRoot - Product directory that owns patch artifacts.
+ * @param {unknown[]} recordedPatches - Provenance entries from the current snapshot.
+ */
+export function applyRecordedMaterializedPatches(staged, selectedProductRoot, recordedPatches) {
+  for (const patch of recordedPatches) {
+    if (!isPlainObject(patch) || typeof patch.file !== 'string') continue
+    const relativePatch = validateSafeRelativePath(
+      patch.file,
+      `recorded patch ${patch.id ?? '<unknown>'}.file`,
+      selectedProductRoot,
+    )
+    if (typeof patch.sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(patch.sha256)) {
+      throw new Error(`recorded patch ${patch.id ?? relativePatch} has an invalid sha256`)
+    }
+    const patchPath = join(selectedProductRoot, relativePatch)
+    const actualSha256 = createHash('sha256').update(readFileSync(patchPath)).digest('hex')
+    if (actualSha256 !== patch.sha256) {
+      throw new Error(`recorded patch ${patch.id ?? relativePatch} sha256 mismatch`)
+    }
+    run('git', ['apply', '--check', '--whitespace=nowarn', patchPath], { cwd: staged })
+    run('git', ['apply', '--whitespace=nowarn', patchPath], { cwd: staged })
+  }
+}
+
 function mergeRecordedPatches(recordedPatches, changes) {
   const replacedPeers = new Set(changes.flatMap(change => {
+    if (typeof change !== 'string') return []
     const match = /^Set (\S+) peer range from /.exec(change)
     return match ? [match[1]] : []
   }))
   const retained = recordedPatches.filter((patch) => {
+    if (typeof patch !== 'string') return true
     const match = /^Set (\S+) peer range from /.exec(patch)
     return !match || !replacedPeers.has(match[1])
   })
-  return [...new Set([...retained, ...changes])]
+  return [...retained, ...changes.filter(change => !retained.includes(change))]
 }
 
 function archiveMetadata(bytes) {
@@ -790,10 +819,13 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
   const staged = join(work, 'staged')
   copyDirectory(packageRoot, staged)
   const upstreamTreeSha256 = hashExternalSnapshot(staged)
-  const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-  if (manifest.version !== latest.version) {
-    throw new Error(`npm artifact version mismatch for ${policy.package}: expected ${latest.version}, found ${manifest.version}`)
+  const upstreamManifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
+  if (upstreamManifest.version !== latest.version) {
+    throw new Error(`npm artifact version mismatch for ${policy.package}: expected ${latest.version}, found ${upstreamManifest.version}`)
   }
+  const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+  applyRecordedMaterializedPatches(staged, roots.productRoot, recordedPatches)
+  const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
   const patches = applyApprovedCompatibilityChanges(manifest, policy)
   writeManifestIfChanged(staged, manifest, patches)
   validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
@@ -806,7 +838,7 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
     integrity: latest.integrity,
     archiveSha256: createHash('sha256').update(bytes).digest('hex'),
     upstreamTreeSha256,
-    patches,
+    patches: mergeRecordedPatches(recordedPatches, patches),
     repository: repositoryUrl(manifest.repository),
     license: manifest.license,
   })

@@ -160,6 +160,17 @@ export declare const api: {
     fsWrite: (scope: SessionScope, path: string, content: string) => Promise<{
         ok: true;
     }>;
+    /** Rename one tree row within its directory (single-segment name; the
+     *  server refuses existing destinations, the workspace root, and — while
+     *  the fence is armed — anything resolving outside the workspace). */
+    fsRename: (scope: SessionScope, path: string, name: string) => Promise<{
+        path: string;
+    }>;
+    /** Permanently delete one tree row (recursive for directories; a symlink
+     *  row unlinks the link only). The UI confirms before calling this. */
+    fsRemove: (scope: SessionScope, path: string) => Promise<{
+        path: string;
+    }>;
     /** Upload one file's raw bytes into `dir` (keeps the folder tree via
      *  `relativePath`); the host streams it under the session workspace. */
     uploadFile: (scope: SessionScope, dir: string, relativePath: string, body: Blob, signal?: AbortSignal) => Promise<{
@@ -192,6 +203,12 @@ export declare const api: {
     /** Full patch text of one commit (diff display for the history rows). */
     gitCommitDiff: (scope: SessionScope, hash: string, worktree?: string, signal?: AbortSignal) => Promise<{
         diff: string;
+    }>;
+    /** One file's content at a revision (`git show <rev>:<path>`); null when the
+     *  revision has no such path. The diff views' on-demand hunk-fold expansion
+     *  reads both sides' full contents through this. */
+    gitShow: (scope: SessionScope, rev: string, path: string, worktree?: string, signal?: AbortSignal) => Promise<{
+        content: string | null;
     }>;
     /** The session's file-tool events for the changes tab's session lens: the
      *  `tool/call` + `tool/result` rows past `afterSeq` (0 = whole window),

@@ -1,0 +1,700 @@
+diff --git a/lib/client-registry.js b/lib/client-registry.js
+index 63ff94c..f2a83e6 100644
+--- a/lib/client-registry.js
++++ b/lib/client-registry.js
+@@ -14054,7 +14054,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 								title: t("browserOpenExternal"),
+ 								disabled: url === void 0,
+ 								onClick: () => {
+-									if (url !== void 0) window.open(url, "_blank", "noopener");
++									if (url !== void 0) openExternalHttpUrl(url);
+ 								},
+ 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscLinkExternal, { size: 15 })
+ 							})
+@@ -14081,7 +14081,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					}) : embedBlocked !== null && !forceEmbed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BrowserEmbedBlocked, {
+ 						url: embedBlocked,
+ 						onOpenInBrowser: () => {
+-							window.open(embedBlocked, "_blank", "noopener");
++							openExternalHttpUrl(embedBlocked);
+ 						},
+ 						onLoadAnyway: () => {
+ 							setForceEmbed(true);
+@@ -17951,8 +17951,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		* matching kind (name / url / description / install script).
+ 		*
+ 		* Per entry there are two actions:
+-		* - 「跳转」opens the plugin's repo in a REAL new browser tab (window.open
+-		*   — a button, so the sidebar link takeover cannot reroute it);
++		* - 「跳转」opens the plugin's repo outside the workbench. YourBuddy's
++		*   embedded Client sends the URL through the desktop external-link channel;
++		*   standalone Web falls back to a new browser tab;
+ 		* - 「安装」only COPIES the install script to the clipboard (writeClipboard)
+ 		*   with a transient "已复制" feedback on the button — the user pastes and
+ 		*   runs it wherever they manage their DSH profile. No terminal is opened,
+@@ -17970,6 +17971,49 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		}
+ 		/** How long the "已复制" feedback stays on the copy button. */
+ 		const COPIED_FEEDBACK_MS = 1500;
++		const DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
++		const DESKTOP_EXTERNAL_LINK_VERSION = 1;
++		const MAX_EXTERNAL_URL_LENGTH = 4096;
++		let externalLinkSequence = 0;
++		/**
++		* Normalize an HTTP(S) destination accepted by the desktop shell.
++		* @param value - Candidate absolute URL.
++		* @returns The normalized URL, or undefined when the value is unsupported.
++		*/
++		function resolveExternalHttpUrl(value) {
++			if (value.length === 0 || value.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
++			try {
++				const url = new URL(value);
++				if (url.protocol !== "http:" && url.protocol !== "https:" || url.hostname === "" || url.username !== "" || url.password !== "" || url.href.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
++				return url.href;
++			} catch {
++				return;
++			}
++		}
++		/**
++		* Dispatch an HTTP(S) destination without navigating the workbench.
++		* @param value - Candidate absolute URL.
++		* @returns True when the URL was sent to the desktop shell or browser API.
++		*/
++		function openExternalHttpUrl(value) {
++			if (typeof window === "undefined") return false;
++			const url = resolveExternalHttpUrl(value);
++			if (url === void 0) return false;
++			if (window.parent !== window) {
++				externalLinkSequence += 1;
++				window.parent.postMessage({
++					channel: DESKTOP_EXTERNAL_LINK_CHANNEL,
++					version: DESKTOP_EXTERNAL_LINK_VERSION,
++					type: "open-request",
++					requestId: `${Date.now()}_${externalLinkSequence}`,
++					url
++				}, "*");
++				return true;
++			}
++			const opened = window.open(url, "_blank", "noopener,noreferrer");
++			if (opened !== null) opened.opener = null;
++			return true;
++		}
+ 		/** The modal body: the GitHub topic button + the recommended plugin list
+ 		*  with per-entry jump/copy buttons (extracted for direct testing). */
+ 		function PluginListBody(props) {
+@@ -18005,11 +18049,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					setCopiedId((current) => current === entry.id ? null : current);
+ 				}, COPIED_FEEDBACK_MS);
+ 			};
+-			/** Open the plugin's repo in a REAL new browser tab (window.open — a
+-			*  button, so the sidebar link takeover cannot reroute it). */
+-			const jump = (entry) => {
+-				window.open(entry.url, "_blank", "noopener");
+-			};
+ 			/** One catalog row (extracted so the group render stays flat). The name
+ 			*  resolves like the description (string or () => string) so it follows
+ 			*  the active locale; a plain-string entry keeps its raw name. */
+@@ -18025,7 +18064,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 								className: SideCardSection_module_css_default.pluginName,
+ 								"aria-label": `${t("openPlugin")}: ${name}`,
+ 								onClick: () => {
+-									jump(entry);
++									openExternalHttpUrl(entry.url);
+ 								},
+ 								children: name
+ 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+@@ -18035,7 +18074,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 									className: SideCardSection_module_css_default.pluginJumpBtn,
+ 									"aria-label": `${t("openPlugin")}: ${name}`,
+ 									onClick: () => {
+-										jump(entry);
++										openExternalHttpUrl(entry.url);
+ 									},
+ 									children: t("openPlugin")
+ 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+@@ -18067,7 +18106,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						type: "button",
+ 						className: SideCardSection_module_css_default.pluginTopicBtn,
+ 						onClick: () => {
+-							window.open(PLUGIN_TOPIC_URL, "_blank", "noopener");
++							openExternalHttpUrl(PLUGIN_TOPIC_URL);
+ 						},
+ 						children: t("addPluginsBrowseMore")
+ 					}),
+@@ -19472,4 +19511,4 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 	}
+ });
+ 
+-//# sourceMappingURL=client-registry.js.map
+\ No newline at end of file
++//# sourceMappingURL=client-registry.js.map
+diff --git a/lib/client-terminal.js b/lib/client-terminal.js
+index 75b666b..0b9219a 100644
+--- a/lib/client-terminal.js
++++ b/lib/client-terminal.js
+@@ -8930,6 +8930,51 @@ globalThis.__dshChunks__["terminal"] = (require) => {
+ 		};
+ 	}
+ 	//#endregion
++	//#region src/client/desktop-external-links.ts
++	const DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
++	const DESKTOP_EXTERNAL_LINK_VERSION = 1;
++	const MAX_EXTERNAL_URL_LENGTH = 4096;
++	let externalLinkSequence = 0;
++	/**
++	* Normalize an HTTP(S) destination accepted by the desktop shell.
++	* @param value - Candidate absolute URL.
++	* @returns The normalized URL, or undefined when the value is unsupported.
++	*/
++	function resolveExternalHttpUrl(value) {
++		if (value.length === 0 || value.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
++		try {
++			const url = new URL(value);
++			if (url.protocol !== "http:" && url.protocol !== "https:" || url.hostname === "" || url.username !== "" || url.password !== "" || url.href.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
++			return url.href;
++		} catch {
++			return;
++		}
++	}
++	/**
++	* Dispatch an HTTP(S) destination without navigating the workbench.
++	* @param value - Candidate absolute URL.
++	* @returns True when the URL was sent to the desktop shell or browser API.
++	*/
++	function openExternalHttpUrl(value) {
++		if (typeof window === "undefined") return false;
++		const url = resolveExternalHttpUrl(value);
++		if (url === void 0) return false;
++		if (window.parent !== window) {
++			externalLinkSequence += 1;
++			window.parent.postMessage({
++				channel: DESKTOP_EXTERNAL_LINK_CHANNEL,
++				version: DESKTOP_EXTERNAL_LINK_VERSION,
++				type: "open-request",
++				requestId: `${Date.now()}_${externalLinkSequence}`,
++				url
++			}, "*");
++			return true;
++		}
++		const opened = window.open(url, "_blank", "noopener,noreferrer");
++		if (opened !== null) opened.opener = null;
++		return true;
++	}
++	//#endregion
+ 	//#region src/client/terminal-links.ts
+ 	/**
+ 	* Terminal URL hyperlinks: xterm's `registerLinkProvider` is fed per-line
+@@ -9071,25 +9116,19 @@ globalThis.__dshChunks__["terminal"] = (require) => {
+ 	}
+ 	/**
+ 	* Open a URL matched in the terminal, with a scheme guard so a printed
+-	* `file://` or anything that slipped past the regex cannot reach
+-	* `window.open`. The URL is constructed via `new URL(...)` which throws
+-	* on malformed input; the catch makes the function total so the xterm
+-	* handler never throws into the terminal's event loop.
++	* `file://` or anything that slipped past the regex is rejected.
+ 	*
+-	* @returns `true` when the URL was dispatched to `window.open`, `false`
+-	*   when it was rejected (bad URL, disallowed scheme, no `window`).
++	* @returns `true` when the URL was dispatched, `false` when it was rejected.
+ 	*/
+ 	function openTerminalUrl(uri) {
+-		if (typeof window === "undefined") return false;
+-		let url;
++		let protocol;
+ 		try {
+-			url = new URL(uri);
++			protocol = new URL(uri).protocol;
+ 		} catch {
+ 			return false;
+ 		}
+-		if (!OPENABLE_SCHEMES.has(url.protocol)) return false;
+-		window.open(url.toString(), "_blank", "noopener,noreferrer");
+-		return true;
++		if (!OPENABLE_SCHEMES.has(protocol)) return false;
++		return openExternalHttpUrl(uri);
+ 	}
+ 	//#endregion
+ 	//#region \0dsh-css:/home/runner/work/DSH-better-sidebar/DSH-better-sidebar/src/client/sidebar.module.css.mjs
+@@ -9422,6 +9461,10 @@ globalThis.__dshChunks__["terminal"] = (require) => {
+ 			const host = hostRef.current;
+ 			if (host === null) return;
+ 			const font = resolveTerminalFont(store.getPrefs(), tokenValue("--ds-font-family-code"));
++			const activateTerminalLink = (event, uri) => {
++				if (!shouldActivateTerminalLink(event)) return;
++				openTerminalUrl(uri);
++			};
+ 			const term = new import_xterm.Terminal({
+ 				cursorBlink: true,
+ 				fontSize: font.fontSize,
+@@ -9429,7 +9472,10 @@ globalThis.__dshChunks__["terminal"] = (require) => {
+ 				allowTransparency: true,
+ 				convertEol: false,
+ 				scrollback: 4e3,
+-				theme: xtermTheme()
++				theme: xtermTheme(),
++				linkHandler: { activate: (event, uri) => {
++					activateTerminalLink(event, uri);
++				} }
+ 			});
+ 			const fit = new import_addon_fit.FitAddon();
+ 			term.loadAddon(fit);
+@@ -9448,8 +9494,7 @@ globalThis.__dshChunks__["terminal"] = (require) => {
+ 					range: descriptor.range,
+ 					text: descriptor.text,
+ 					activate: (event) => {
+-						if (!shouldActivateTerminalLink(event)) return;
+-						openTerminalUrl(descriptor.text);
++						activateTerminalLink(event, descriptor.text);
+ 					}
+ 				})));
+ 			} });
+@@ -9695,4 +9740,4 @@ globalThis.__dshChunks__["terminal"] = (require) => {
+ 	return module.exports;
+ };
+ 
+-//# sourceMappingURL=client-terminal.js.map
+\ No newline at end of file
++//# sourceMappingURL=client-terminal.js.map
+diff --git a/lib/client.js b/lib/client.js
+index 6503691..5061c66 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -14054,7 +14054,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 								title: t("browserOpenExternal"),
+ 								disabled: url === void 0,
+ 								onClick: () => {
+-									if (url !== void 0) window.open(url, "_blank", "noopener");
++									if (url !== void 0) openExternalHttpUrl(url);
+ 								},
+ 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscLinkExternal, { size: 15 })
+ 							})
+@@ -14081,7 +14081,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					}) : embedBlocked !== null && !forceEmbed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BrowserEmbedBlocked, {
+ 						url: embedBlocked,
+ 						onOpenInBrowser: () => {
+-							window.open(embedBlocked, "_blank", "noopener");
++							openExternalHttpUrl(embedBlocked);
+ 						},
+ 						onLoadAnyway: () => {
+ 							setForceEmbed(true);
+@@ -17951,8 +17951,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		* matching kind (name / url / description / install script).
+ 		*
+ 		* Per entry there are two actions:
+-		* - 「跳转」opens the plugin's repo in a REAL new browser tab (window.open
+-		*   — a button, so the sidebar link takeover cannot reroute it);
++		* - 「跳转」opens the plugin's repo outside the workbench. YourBuddy's
++		*   embedded Client sends the URL through the desktop external-link channel;
++		*   standalone Web falls back to a new browser tab;
+ 		* - 「安装」only COPIES the install script to the clipboard (writeClipboard)
+ 		*   with a transient "已复制" feedback on the button — the user pastes and
+ 		*   runs it wherever they manage their DSH profile. No terminal is opened,
+@@ -17970,6 +17971,49 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		}
+ 		/** How long the "已复制" feedback stays on the copy button. */
+ 		const COPIED_FEEDBACK_MS = 1500;
++		const DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
++		const DESKTOP_EXTERNAL_LINK_VERSION = 1;
++		const MAX_EXTERNAL_URL_LENGTH = 4096;
++		let externalLinkSequence = 0;
++		/**
++		* Normalize an HTTP(S) destination accepted by the desktop shell.
++		* @param value - Candidate absolute URL.
++		* @returns The normalized URL, or undefined when the value is unsupported.
++		*/
++		function resolveExternalHttpUrl(value) {
++			if (value.length === 0 || value.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
++			try {
++				const url = new URL(value);
++				if (url.protocol !== "http:" && url.protocol !== "https:" || url.hostname === "" || url.username !== "" || url.password !== "" || url.href.length > MAX_EXTERNAL_URL_LENGTH) return void 0;
++				return url.href;
++			} catch {
++				return;
++			}
++		}
++		/**
++		* Dispatch an HTTP(S) destination without navigating the workbench.
++		* @param value - Candidate absolute URL.
++		* @returns True when the URL was sent to the desktop shell or browser API.
++		*/
++		function openExternalHttpUrl(value) {
++			if (typeof window === "undefined") return false;
++			const url = resolveExternalHttpUrl(value);
++			if (url === void 0) return false;
++			if (window.parent !== window) {
++				externalLinkSequence += 1;
++				window.parent.postMessage({
++					channel: DESKTOP_EXTERNAL_LINK_CHANNEL,
++					version: DESKTOP_EXTERNAL_LINK_VERSION,
++					type: "open-request",
++					requestId: `${Date.now()}_${externalLinkSequence}`,
++					url
++				}, "*");
++				return true;
++			}
++			const opened = window.open(url, "_blank", "noopener,noreferrer");
++			if (opened !== null) opened.opener = null;
++			return true;
++		}
+ 		/** The modal body: the GitHub topic button + the recommended plugin list
+ 		*  with per-entry jump/copy buttons (extracted for direct testing). */
+ 		function PluginListBody(props) {
+@@ -18005,11 +18049,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					setCopiedId((current) => current === entry.id ? null : current);
+ 				}, COPIED_FEEDBACK_MS);
+ 			};
+-			/** Open the plugin's repo in a REAL new browser tab (window.open — a
+-			*  button, so the sidebar link takeover cannot reroute it). */
+-			const jump = (entry) => {
+-				window.open(entry.url, "_blank", "noopener");
+-			};
+ 			/** One catalog row (extracted so the group render stays flat). The name
+ 			*  resolves like the description (string or () => string) so it follows
+ 			*  the active locale; a plain-string entry keeps its raw name. */
+@@ -18025,7 +18064,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 								className: SideCardSection_module_css_default.pluginName,
+ 								"aria-label": `${t("openPlugin")}: ${name}`,
+ 								onClick: () => {
+-									jump(entry);
++									openExternalHttpUrl(entry.url);
+ 								},
+ 								children: name
+ 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+@@ -18035,7 +18074,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 									className: SideCardSection_module_css_default.pluginJumpBtn,
+ 									"aria-label": `${t("openPlugin")}: ${name}`,
+ 									onClick: () => {
+-										jump(entry);
++										openExternalHttpUrl(entry.url);
+ 									},
+ 									children: t("openPlugin")
+ 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+@@ -18067,7 +18106,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						type: "button",
+ 						className: SideCardSection_module_css_default.pluginTopicBtn,
+ 						onClick: () => {
+-							window.open(PLUGIN_TOPIC_URL, "_blank", "noopener");
++							openExternalHttpUrl(PLUGIN_TOPIC_URL);
+ 						},
+ 						children: t("addPluginsBrowseMore")
+ 					}),
+@@ -19472,4 +19511,4 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 	}
+ });
+ 
+-//# sourceMappingURL=client.js.map
+\ No newline at end of file
++//# sourceMappingURL=client.js.map
+diff --git a/lib/types/client/desktop-external-links.d.ts b/lib/types/client/desktop-external-links.d.ts
+new file mode 100644
+index 0000000..31d1987
+--- /dev/null
++++ b/lib/types/client/desktop-external-links.d.ts
+@@ -0,0 +1,13 @@
++/** Open HTTP(S) destinations through the desktop shell or an ordinary browser tab. */
++/**
++ * Normalize an HTTP(S) destination accepted by the desktop shell.
++ * @param value - Candidate absolute URL.
++ * @returns The normalized URL, or undefined when the value is unsupported.
++ */
++export declare function resolveExternalHttpUrl(value: string): string | undefined;
++/**
++ * Dispatch an HTTP(S) destination without navigating the workbench.
++ * @param value - Candidate absolute URL.
++ * @returns True when the URL was sent to the desktop shell or browser API.
++ */
++export declare function openExternalHttpUrl(value: string): boolean;
+diff --git a/src/client/BrowserView.tsx b/src/client/BrowserView.tsx
+index c44d41a..a00b51e 100644
+--- a/src/client/BrowserView.tsx
++++ b/src/client/BrowserView.tsx
+@@ -27,6 +27,7 @@ import {
+ import { VscLinkExternal } from 'react-icons/vsc'
+ import { api } from './api.ts'
+ import { embeddabilityOf, isAllowedLoopbackUrl, normalizeBrowserUrl } from './browser.ts'
++import { openExternalHttpUrl } from './desktop-external-links.ts'
+ import { patchTab } from './state.ts'
+ import { SandboxStatusBar } from './SandboxStatusBar.tsx'
+ import { t } from './locales.ts'
+@@ -219,7 +220,7 @@ export function BrowserView(props: TabComponentProps) {
+           title={t('browserOpenExternal')}
+           disabled={url === undefined}
+           onClick={() => {
+-            if (url !== undefined) window.open(url, '_blank', 'noopener')
++            if (url !== undefined) openExternalHttpUrl(url)
+           }}
+         >
+           <VscLinkExternal size={15} />
+@@ -238,7 +239,7 @@ export function BrowserView(props: TabComponentProps) {
+       ) : embedBlocked !== null && !forceEmbed ? (
+         <BrowserEmbedBlocked
+           url={embedBlocked}
+-          onOpenInBrowser={() => { window.open(embedBlocked, '_blank', 'noopener') }}
++          onOpenInBrowser={() => { openExternalHttpUrl(embedBlocked) }}
+           onLoadAnyway={() => { setForceEmbed(true) }}
+         />
+       ) : (
+diff --git a/src/client/SideCardSection.module.css b/src/client/SideCardSection.module.css
+index ff19d7c..ea8a81c 100644
+--- a/src/client/SideCardSection.module.css
++++ b/src/client/SideCardSection.module.css
+@@ -638,9 +638,7 @@
+   width: 100%;
+ }
+ 
+-/* The GitHub topic entry: a full-width secondary BUTTON (not a link — it
+-   opens a real new browser tab via window.open, bypassing the sidebar
+-   link takeover). */
++/* The GitHub topic entry: a full-width secondary button. */
+ .pluginTopicBtn {
+   width: 100%;
+   appearance: none;
+@@ -700,9 +698,7 @@
+   flex: none;
+ }
+ 
+-/* The per-entry "jump" button: opens the plugin repo in a REAL new browser
+-   tab (window.open — a button, so the sidebar link takeover cannot reroute
+-   it). Secondary style, quieter than the Install button. */
++/* The per-entry "jump" button: secondary style, quieter than Install. */
+ .pluginJumpBtn {
+   flex: none;
+   appearance: none;
+@@ -728,9 +724,8 @@
+   outline-offset: 1px;
+ }
+ 
+-/* The plugin name: a BUTTON (not an anchor — an anchor would be caught by
+-   the sidebar link takeover at document capture, ignoring target=_blank)
+-   styled like a link; opens the repo in a real new browser tab. */
++/* The plugin name is a button styled like a link so the document-level
++   anchor takeover cannot reroute this explicit external action. */
+ .pluginName {
+   appearance: none;
+   min-width: 0;
+diff --git a/src/client/TerminalView.tsx b/src/client/TerminalView.tsx
+index 5c47604..5292dd4 100644
+--- a/src/client/TerminalView.tsx
++++ b/src/client/TerminalView.tsx
+@@ -124,6 +124,10 @@ export function TerminalView(props: { scope: SessionScope; tabId: string; store:
+     // The custom font prefs (side card settings, terminal card) resolve at
+     // mount; store changes re-apply them live below.
+     const font = resolveTerminalFont(store.getPrefs(), tokenValue('--ds-font-family-code'))
++    const activateTerminalLink = (event: MouseEvent, uri: string): void => {
++      if (!shouldActivateTerminalLink(event)) return
++      openTerminalUrl(uri)
++    }
+     const term = new Terminal({
+       cursorBlink: true,
+       fontSize: font.fontSize,
+@@ -132,6 +136,9 @@ export function TerminalView(props: { scope: SessionScope; tabId: string; store:
+       convertEol: false,
+       scrollback: 4000,
+       theme: xtermTheme(),
++      linkHandler: {
++        activate: (event, uri) => { activateTerminalLink(event, uri) },
++      },
+     })
+     const fit = new FitAddon()
+     term.loadAddon(fit)
+@@ -163,10 +170,7 @@ export function TerminalView(props: { scope: SessionScope; tabId: string; store:
+         callback(descriptors.map(descriptor => ({
+           range: descriptor.range,
+           text: descriptor.text,
+-          activate: (event) => {
+-            if (!shouldActivateTerminalLink(event)) return
+-            openTerminalUrl(descriptor.text)
+-          },
++          activate: event => { activateTerminalLink(event, descriptor.text) },
+         })))
+       },
+     })
+diff --git a/src/client/add-plugin-modal.tsx b/src/client/add-plugin-modal.tsx
+index 5fea314..04222a5 100644
+--- a/src/client/add-plugin-modal.tsx
++++ b/src/client/add-plugin-modal.tsx
+@@ -7,8 +7,9 @@
+  * matching kind (name / url / description / install script).
+  *
+  * Per entry there are two actions:
+- * - 「跳转」opens the plugin's repo in a REAL new browser tab (window.open
+- *   — a button, so the sidebar link takeover cannot reroute it);
++ * - 「跳转」opens the plugin's repo outside the workbench. YourBuddy's
++ *   embedded Client sends the URL through the desktop external-link channel;
++ *   standalone Web falls back to a new browser tab;
+  * - 「安装」only COPIES the install script to the clipboard (writeClipboard)
+  *   with a transient "已复制" feedback on the button — the user pastes and
+  *   runs it wherever they manage their DSH profile. No terminal is opened,
+@@ -25,6 +26,7 @@ import type { BetterSidebarService } from './service.ts'
+ import { PLUGIN_TOPIC_URL, type PluginEntry } from './plugins-shared.ts'
+ import { builtinTabPlugins } from './plugins-tabs.ts'
+ import { builtinViewerPlugins } from './plugins-viewers.ts'
++import { openExternalHttpUrl } from './desktop-external-links.ts'
+ import { t } from './locales.ts'
+ import css from './SideCardSection.module.css'
+ 
+@@ -88,12 +90,6 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
+     }, COPIED_FEEDBACK_MS)
+   }
+ 
+-  /** Open the plugin's repo in a REAL new browser tab (window.open — a
+-   *  button, so the sidebar link takeover cannot reroute it). */
+-  const jump = (entry: PluginEntry): void => {
+-    window.open(entry.url, '_blank', 'noopener')
+-  }
+-
+   /** One catalog row (extracted so the group render stays flat). The name
+    *  resolves like the description (string or () => string) so it follows
+    *  the active locale; a plain-string entry keeps its raw name. */
+@@ -102,15 +98,13 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
+     return (
+     <div key={entry.id} className={css.pluginEntry}>
+       <div className={css.pluginEntryHead}>
+-        {/* The name is a BUTTON on the same window.open path as the
+-            jump button: as an anchor it would be caught by the
+-            document-capture link takeover (which ignores
+-            target=_blank) and land in the sidebar browser. */}
++        {/* Keep the name a button so the sidebar's anchor takeover does not
++            route this explicit external action into its browser tab. */}
+         <button
+           type="button"
+           className={css.pluginName}
+           aria-label={`${t('openPlugin')}: ${name}`}
+-          onClick={() => { jump(entry) }}
++          onClick={() => { openExternalHttpUrl(entry.url) }}
+         >
+           {name}
+         </button>
+@@ -119,7 +113,7 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
+             type="button"
+             className={css.pluginJumpBtn}
+             aria-label={`${t('openPlugin')}: ${name}`}
+-            onClick={() => { jump(entry) }}
++            onClick={() => { openExternalHttpUrl(entry.url) }}
+           >
+             {t('openPlugin')}
+           </button>
+@@ -146,7 +140,7 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
+       <button
+         type="button"
+         className={css.pluginTopicBtn}
+-        onClick={() => { window.open(PLUGIN_TOPIC_URL, '_blank', 'noopener') }}
++        onClick={() => { openExternalHttpUrl(PLUGIN_TOPIC_URL) }}
+       >
+         {t('addPluginsBrowseMore')}
+       </button>
+diff --git a/src/client/desktop-external-links.ts b/src/client/desktop-external-links.ts
+new file mode 100644
+index 0000000..b13458d
+--- /dev/null
++++ b/src/client/desktop-external-links.ts
+@@ -0,0 +1,52 @@
++/** Open HTTP(S) destinations through the desktop shell or an ordinary browser tab. */
++
++const DESKTOP_EXTERNAL_LINK_CHANNEL = 'yourbuddy.desktop.external-link'
++const DESKTOP_EXTERNAL_LINK_VERSION = 1
++const MAX_EXTERNAL_URL_LENGTH = 4096
++
++let externalLinkSequence = 0
++
++/**
++ * Normalize an HTTP(S) destination accepted by the desktop shell.
++ * @param value - Candidate absolute URL.
++ * @returns The normalized URL, or undefined when the value is unsupported.
++ */
++export function resolveExternalHttpUrl(value: string): string | undefined {
++  if (value.length === 0 || value.length > MAX_EXTERNAL_URL_LENGTH) return undefined
++  try {
++    const url = new URL(value)
++    if ((url.protocol !== 'http:' && url.protocol !== 'https:')
++      || url.hostname === ''
++      || url.username !== ''
++      || url.password !== ''
++      || url.href.length > MAX_EXTERNAL_URL_LENGTH) return undefined
++    return url.href
++  } catch {
++    return undefined
++  }
++}
++
++/**
++ * Dispatch an HTTP(S) destination without navigating the workbench.
++ * @param value - Candidate absolute URL.
++ * @returns True when the URL was sent to the desktop shell or browser API.
++ */
++export function openExternalHttpUrl(value: string): boolean {
++  if (typeof window === 'undefined') return false
++  const url = resolveExternalHttpUrl(value)
++  if (url === undefined) return false
++  if (window.parent !== window) {
++    externalLinkSequence += 1
++    window.parent.postMessage({
++      channel: DESKTOP_EXTERNAL_LINK_CHANNEL,
++      version: DESKTOP_EXTERNAL_LINK_VERSION,
++      type: 'open-request',
++      requestId: `${Date.now()}_${externalLinkSequence}`,
++      url,
++    }, '*')
++    return true
++  }
++  const opened = window.open(url, '_blank', 'noopener,noreferrer')
++  if (opened !== null) opened.opener = null
++  return true
++}
+diff --git a/src/client/terminal-links.ts b/src/client/terminal-links.ts
+index 7e68a91..5cd1b42 100644
+--- a/src/client/terminal-links.ts
++++ b/src/client/terminal-links.ts
+@@ -8,9 +8,7 @@
+  * Ctrl (Win/Linux) or Cmd (mac) — a plain click is left for xterm's
+  * normal selection handling. Only http(s) URLs are dispatched to the
+  * browser; other schemes (`file://`, `mailto:`, `javascript:`, …) are
+- * underlined for visibility but rejected at activation, so a `file://`
+- * URL printed by a tool stays inert instead of being handed to
+- * `window.open`.
++ * underlined for visibility but rejected at activation.
+  *
+  * Kept as a pure module (no xterm import) so the regex, the line
+  * scanner, the modifier gate and the scheme guard are unit-testable
+@@ -21,6 +19,8 @@
+  * imports xterm types.
+  */
+ 
++import { openExternalHttpUrl } from './desktop-external-links.ts'
++
+ /** Scheme allowlist for activation. Only http(s) is opened externally. */
+ const OPENABLE_SCHEMES = new Set(['http:', 'https:'])
+ 
+@@ -171,24 +171,14 @@ export function shouldActivateTerminalLink(event: MouseEvent): boolean {
+ }
+ 
+ /**
+- * Open a URL matched in the terminal, with a scheme guard so a printed
+- * `file://` or anything that slipped past the regex cannot reach
+- * `window.open`. The URL is constructed via `new URL(...)` which throws
+- * on malformed input; the catch makes the function total so the xterm
+- * handler never throws into the terminal's event loop.
++ * Open a URL matched in the terminal. The shared dispatcher validates the
++ * URL and routes desktop requests without throwing into xterm's event loop.
+  *
+- * @returns `true` when the URL was dispatched to `window.open`, `false`
+- *   when it was rejected (bad URL, disallowed scheme, no `window`).
++ * @returns True when the URL was dispatched, or false when it was rejected.
+  */
+ export function openTerminalUrl(uri: string): boolean {
+-  if (typeof window === 'undefined') return false
+-  let url: URL
+-  try {
+-    url = new URL(uri)
+-  } catch {
+-    return false
+-  }
+-  if (!OPENABLE_SCHEMES.has(url.protocol)) return false
+-  window.open(url.toString(), '_blank', 'noopener,noreferrer')
+-  return true
++  let protocol: string
++  try { protocol = new URL(uri).protocol } catch { return false }
++  if (!OPENABLE_SCHEMES.has(protocol)) return false
++  return openExternalHttpUrl(uri)
+ }

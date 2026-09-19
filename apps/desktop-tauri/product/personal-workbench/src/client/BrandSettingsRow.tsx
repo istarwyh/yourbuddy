@@ -44,6 +44,9 @@ export function BrandSettingsRow({ scope, readLocale, t }: BrandSettingsRowProps
   const persisted = snapshot.value
   const [name, setName] = useState('')
   const [logo, setLogo] = useState('')
+  const [heroHeadline, setHeroHeadline] = useState('')
+  const [heroBadge, setHeroBadge] = useState('')
+  const [showHeroBadge, setShowHeroBadge] = useState(true)
   const [status, setStatus] = useState<Status>('idle')
   const [errorKey, setErrorKey] = useState<PersonalWorkbenchKey | undefined>()
 
@@ -51,10 +54,15 @@ export function BrandSettingsRow({ scope, readLocale, t }: BrandSettingsRowProps
     if (persisted === undefined) return
     setName(persisted.enabled ? persisted.name : '')
     setLogo(persisted.enabled ? persisted.logo : '')
+    setHeroHeadline(persisted.enabled ? persisted.heroHeadline : '')
+    setHeroBadge(persisted.enabled ? persisted.heroBadge : '')
+    setShowHeroBadge(persisted.enabled ? persisted.showHeroBadge : true)
   }, [persisted])
 
   const displayName = normalizeWorkbenchName(name) ?? 'YourBuddy'
   const displayLogo = normalizeLogoSource(logo) ?? productLogo
+  const displayHeadline = normalizeWorkbenchName(heroHeadline) ?? t('hero.headline.default')
+  const displayBadge = normalizeWorkbenchName(heroBadge) ?? t('hero.badge.default')
   const writable = snapshot.writable
   const busy = status === 'saving'
 
@@ -82,6 +90,9 @@ export function BrandSettingsRow({ scope, readLocale, t }: BrandSettingsRowProps
     try {
       await scope.set('name', normalizedName)
       await scope.set('logo', normalizeLogoSource(logo) ?? '')
+      await scope.set('heroHeadline', normalizeWorkbenchName(heroHeadline) ?? '')
+      await scope.set('heroBadge', normalizeWorkbenchName(heroBadge) ?? '')
+      await scope.set('showHeroBadge', showHeroBadge)
       await scope.set('enabled', true)
       setStatus('saved')
     }
@@ -98,8 +109,14 @@ export function BrandSettingsRow({ scope, readLocale, t }: BrandSettingsRowProps
       await scope.set('enabled', false)
       await scope.unset('name')
       await scope.unset('logo')
+      await scope.unset('heroHeadline')
+      await scope.unset('heroBadge')
+      await scope.unset('showHeroBadge')
       setName('')
       setLogo('')
+      setHeroHeadline('')
+      setHeroBadge('')
+      setShowHeroBadge(true)
       setStatus('reset')
     }
     catch {
@@ -121,6 +138,10 @@ export function BrandSettingsRow({ scope, readLocale, t }: BrandSettingsRowProps
         </div>
         <div className="dpw-preview-copy">
           <span className="dpw-preview-label">{t('preview')}</span>
+          <div className="dpw-preview-hero">
+            <span className="dpw-preview-headline">{displayHeadline}</span>
+            {showHeroBadge && <span className="dpw-preview-badge">{displayBadge}</span>}
+          </div>
           <span className="dpw-preview-name">{displayName}</span>
         </div>
       </div>
@@ -166,6 +187,50 @@ export function BrandSettingsRow({ scope, readLocale, t }: BrandSettingsRowProps
             )}
           </div>
           <span className="dpw-hint">{t('logo.hint')}</span>
+        </div>
+
+        <label className="dpw-field">
+          <span className="dpw-label">{t('hero.headline.label')}</span>
+          <input
+            className="dpw-input"
+            value={heroHeadline}
+            placeholder={t('hero.headline.placeholder')}
+            disabled={!writable || busy}
+            onChange={event => {
+              setHeroHeadline(event.currentTarget.value)
+              setStatus('idle')
+              setErrorKey(undefined)
+            }}
+          />
+        </label>
+
+        <div className="dpw-field">
+          <span className="dpw-label">{t('hero.badge.label')}</span>
+          <input
+            className="dpw-input"
+            aria-label={t('hero.badge.label')}
+            value={heroBadge}
+            placeholder={t('hero.badge.placeholder')}
+            disabled={!writable || busy || !showHeroBadge}
+            onChange={event => {
+              setHeroBadge(event.currentTarget.value)
+              setStatus('idle')
+              setErrorKey(undefined)
+            }}
+          />
+          <label className="dpw-checkbox-row">
+            <input
+              type="checkbox"
+              checked={showHeroBadge}
+              disabled={!writable || busy}
+              onChange={event => {
+                setShowHeroBadge(event.currentTarget.checked)
+                setStatus('idle')
+                setErrorKey(undefined)
+              }}
+            />
+            <span>{t('hero.badge.show')}</span>
+          </label>
         </div>
       </div>
 

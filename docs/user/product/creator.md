@@ -12,11 +12,11 @@ This guide uses the DSH source Web application. Complete the [source prerequisit
 pnpm dsh web --no-open --port 0
 ```
 
-Open the launch URL printed by the command, including its authentication fragment. The OS chooses an available port. Select a working directory and configure a model before sending a request. In the session's Agent Preset selector, choose Creator (创造模式, preset ID `cordis`). If your installed Y8 version does not expose this preset, use this source workflow; installing Y8 alone does not establish a standalone plugin development environment.
+Open the launch URL printed by the command, including its authentication fragment. The OS chooses an available port. Select a working directory and configure a model before sending a request. In the session's Agent Preset selector, choose Creator (创造模式, preset ID cordis). If your installed Y8 version does not expose this preset, use this source workflow; installing Y8 alone does not establish a standalone plugin development environment.
 
 ## Describe the change
 
-Use the [requirement outline](develop.md#define-a-small-requirement) and ask the assistant to load `cordis-plugin-development`. For composition changes, it also uses `editing-cordis-compositions`. Both Skills belong to the Creator preset.
+Use the [requirement outline](develop.md#define-a-small-requirement) and ask the assistant to load the Creator preset's plugin-development Skill. For composition changes, it also uses the preset's composition-editing Skill.
 
 For a first experiment, ask for one temporary, read-only tool that returns a short checklist for a task, and ask the assistant to inspect the available tool-registration interface first. State the expected result and require it to stop the experiment after verification. Model requests use your configured account.
 

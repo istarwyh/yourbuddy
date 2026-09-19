@@ -30,7 +30,7 @@ Context Doctor helps identify context overhead, while Harbor Evolution helps ana
 
 ### Let users make the workbench their own
 
-Users can replace the workbench name and Logo and choose directories, models, and extensions. A custom name is a visible entry point to this principle; configurable workflows and clear data locations also matter. Describe personalization within the current settings rather than advertising an unimplemented complete theme system.
+Users can replace the workbench name, Logo, new-session headline, and headline badge, and choose directories, models, and extensions. A custom identity is a visible entry point to this principle; configurable workflows and clear data locations also matter. Describe personalization within the current settings rather than advertising an unimplemented complete theme system.
 
 ## Proposed homepage copy
 
@@ -60,4 +60,4 @@ Users can replace the workbench name and Logo and choose directories, models, an
 
 ## Evidence
 
-See the [desktop documentation](../../../apps/desktop-tauri/README.md) for assembly and local operation, [model configuration](../../user/guide/providers.md) for model entry points, [Personal Workbench](../../../apps/desktop-tauri/product/personal-workbench/README.md) for name and Logo scope, and [product notices](../../../YOURBUDDY_NOTICES.md) for upstream attribution.
+See the [desktop documentation](../../../apps/desktop-tauri/README.md) for assembly and local operation, [model configuration](../../user/guide/providers.md) for model entry points, [Personal Workbench](../../../apps/desktop-tauri/product/personal-workbench/README.md) for workbench identity scope, and [product notices](../../../YOURBUDDY_NOTICES.md) for upstream attribution.

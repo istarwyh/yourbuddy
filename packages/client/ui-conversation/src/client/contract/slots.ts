@@ -121,6 +121,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.workspace': { kind: 'single'; scope: 'root'; owner: EmptyWorkspaceOwnerProps }
     /** Brand mark shown before the blank-session headline. */
     'conversation.hero.brand.mark': { kind: 'single'; scope: 'root'; owner: HeroBrandMarkOwnerProps }
+    /** Replaceable blank-session headline text. */
+    'conversation.hero.brand.headline': { kind: 'single'; scope: 'root'; owner: HeroBrandTextOwnerProps }
+    /** Replaceable blank-session badge, including an occupant that renders nothing. */
+    'conversation.hero.brand.badge': { kind: 'single'; scope: 'root'; owner: HeroBrandTextOwnerProps }
     /** Agent-preset control staged for a New Session. */
     'conversation.hero.agentPreset': { kind: 'single'; scope: 'root'; owner: HeroAgentPresetOwnerProps }
     /** Full-width entries above the composer card. */
@@ -315,6 +319,12 @@ export interface HeroBrandMarkOwnerProps {
   className?: string | undefined
 }
 
+/** Presentation props supplied to replaceable blank-session text. */
+export interface HeroBrandTextOwnerProps {
+  /** Host class preserving the headline or badge presentation. */
+  className?: string | undefined
+}
+
 /** Full props of the resident optional-Session Conversation shell. */
 export type ConversationSlotProps =
   PropsRuntime<'conversation'>
@@ -323,6 +333,8 @@ export type ConversationSlotProps =
     | 'conversation.composer' | 'conversation.composer.bar'
     | 'conversation.input.dock'
     | 'conversation.hero.brand.mark'
+    | 'conversation.hero.brand.headline'
+    | 'conversation.hero.brand.badge'
     | 'conversation.hero.workspace'
     | 'conversation.hero.agentPreset'
   >

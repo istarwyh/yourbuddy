@@ -1,7 +1,9 @@
 /** Brand value normalization and slot occupants. */
 
 import type { ComponentType } from 'react'
-import type { HeroBrandMarkOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {
+  HeroBrandMarkOwnerProps, HeroBrandTextOwnerProps,
+} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {
   SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps,
 } from '@deepseek-ai/dsh-client-ui-sidebar/client'
@@ -11,12 +13,18 @@ export interface WorkbenchSettingsValue {
   enabled: boolean
   name: string
   logo: string
+  heroHeadline: string
+  heroBadge: string
+  showHeroBadge: boolean
 }
 
 /** Active, normalized custom branding. Missing fields keep their shell fallback. */
 export interface ResolvedWorkbenchBrand {
   name?: string
   logo?: string
+  heroHeadline?: string
+  /** Null hides the badge; undefined keeps the localized shell fallback. */
+  heroBadge?: string | null
 }
 
 /** Normalize one plain-text name at the browser boundary. */
@@ -41,9 +49,15 @@ export function resolveWorkbenchBrand(value: unknown): ResolvedWorkbenchBrand {
   const record = value as Partial<WorkbenchSettingsValue>
   const name = normalizeWorkbenchName(record.name)
   const logo = normalizeLogoSource(record.logo)
+  const heroHeadline = normalizeWorkbenchName(record.heroHeadline)
+  const heroBadge = record.showHeroBadge === false
+    ? null
+    : normalizeWorkbenchName(record.heroBadge)
   return {
     ...(name === undefined ? {} : { name }),
     ...(logo === undefined ? {} : { logo }),
+    ...(heroHeadline === undefined ? {} : { heroHeadline }),
+    ...(heroBadge === undefined ? {} : { heroBadge }),
   }
 }
 
@@ -70,5 +84,12 @@ export function createPersonalBrandMark(logo: string): ComponentType<MarkProps> 
 export function createPersonalBrandName(name: string): ComponentType<SidebarBrandNameOwnerProps> {
   return function PersonalBrandName() {
     return <span>{name}</span>
+  }
+}
+
+/** Build a Hero text occupant; null intentionally suppresses its slot. */
+export function createPersonalHeroText(text: string | null): ComponentType<HeroBrandTextOwnerProps> {
+  return function PersonalHeroText({ className }: HeroBrandTextOwnerProps) {
+    return text === null ? null : <span className={className}>{text}</span>
   }
 }

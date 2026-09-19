@@ -1,0 +1,18 @@
+- region "My Workbench":
+  - text: My Workbench Choose the sidebar identity and new-session title for your personal Agent workbench. Live preview Into the Unknown Preview YourBuddy Workbench name
+  - textbox "Workbench name":
+    - /placeholder: "For example: Avery's Workbench"
+  - text: Workbench logo Choose image
+  - button "Choose image"
+  - text: Choose an image you like. Home headline
+  - textbox "Home headline":
+    - /placeholder: Leave blank to use “Into the Unknown”
+  - text: Headline badge
+  - textbox "Headline badge":
+    - /placeholder: Leave blank to use “Preview”
+  - checkbox "Show headline badge" [checked]
+  - text: Show headline badge
+  - button "Apply to workbench"
+  - button "Restore YourBuddy default"
+  - link "View usage guide":
+    - /url: https://istarwyh.github.io/yourbuddy/en/docs/settings/

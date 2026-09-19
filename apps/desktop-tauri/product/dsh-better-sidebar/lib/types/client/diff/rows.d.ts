@@ -151,6 +151,16 @@ export declare function parseUnifiedDiff(text: string): ParsedDiff;
 export declare function unifiedSegments(file: DiffFile): DiffSegment[];
 /** Build the untracked-file shape: one file, one hunk of pure additions. */
 export declare function untrackedFile(path: string, content: string): DiffFile;
+/**
+ * Materialize a git gap fold's hidden rows from the two sides' full file
+ * contents, by the fold's known line ranges: the old side drives context
+ * rows (each mapped onto the new side through the fold's offset — a gap is
+ * an unchanged run, so the sides align), and new-side lines the old range
+ * never reaches become pure additions. Line numbers clip to the actual
+ * content (a no-newline file's ranges can overrun by one); `\r` endings
+ * survive verbatim, like git's own context lines.
+ */
+export declare function foldRowsFromContents(fold: FoldSegment, oldContent: string, newContent: string): DiffRow[];
 /** Strip the `a/` / `b/` prefix git puts on diff paths (not on /dev/null). */
 export declare function displayPath(path: string): string;
 /** The diff's add/del/mod row counts (the "+n −m" header chips). */

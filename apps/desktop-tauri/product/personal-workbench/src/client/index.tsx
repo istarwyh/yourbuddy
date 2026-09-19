@@ -11,8 +11,8 @@ import {
   WORKBENCH_SETTINGS_NAMESPACE,
 } from '../constants.ts'
 import {
-  createPersonalBrandMark, createPersonalBrandName, resolveWorkbenchBrand,
-  type WorkbenchSettingsValue,
+  createPersonalBrandMark, createPersonalBrandName, createPersonalHeroText,
+  resolveWorkbenchBrand, type WorkbenchSettingsValue,
 } from './brand.tsx'
 import {
   BrandSettingsRow, type BrandSettingsRowInjected,
@@ -46,10 +46,13 @@ type BrandSlot =
   | 'sidebar.brand.mark'
   | 'sidebar.brand.name'
   | 'conversation.hero.brand.mark'
+  | 'conversation.hero.brand.headline'
+  | 'conversation.hero.brand.badge'
 
 type SlotComponent =
   | ReturnType<typeof createPersonalBrandMark>
   | ReturnType<typeof createPersonalBrandName>
+  | ReturnType<typeof createPersonalHeroText>
 
 /**
  * Keep the product identity synchronized with the durable customization.
@@ -109,9 +112,33 @@ export function installPersonalBrandOccupants(
     return nameComponent
   }
 
+  let selectedHeadline: string | undefined
+  let headlineComponent: SlotComponent | undefined
+  const pickHeadline = (value: unknown): SlotComponent | undefined => {
+    const headline = resolveWorkbenchBrand(value).heroHeadline
+    if (headline !== selectedHeadline) {
+      selectedHeadline = headline
+      headlineComponent = headline === undefined ? undefined : createPersonalHeroText(headline)
+    }
+    return headlineComponent
+  }
+
+  let selectedBadge: string | null | undefined
+  let badgeComponent: SlotComponent | undefined
+  const pickBadge = (value: unknown): SlotComponent | undefined => {
+    const badge = resolveWorkbenchBrand(value).heroBadge
+    if (badge !== selectedBadge) {
+      selectedBadge = badge
+      badgeComponent = badge === undefined ? undefined : createPersonalHeroText(badge)
+    }
+    return badgeComponent
+  }
+
   installBrandSlot(ctx, scope, 'sidebar.brand.mark', pickMark)
   installBrandSlot(ctx, scope, 'conversation.hero.brand.mark', pickMark)
   installBrandSlot(ctx, scope, 'sidebar.brand.name', pickName)
+  installBrandSlot(ctx, scope, 'conversation.hero.brand.headline', pickHeadline)
+  installBrandSlot(ctx, scope, 'conversation.hero.brand.badge', pickBadge)
 }
 
 /** Register the settings cards and brand occupants. */

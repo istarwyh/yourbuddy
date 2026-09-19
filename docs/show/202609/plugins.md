@@ -84,7 +84,7 @@ These projects are outside the official default DeepSeek Harness distribution. H
 
 | Capability | Ownership | Usage and selection reason | Limits |
 |---|---|---|---|
-| Personal Workbench `0.1.0` | YourBuddy first-party plugin | General settings for name / Logo, global proxy, updates, and restart give desktop users a central product settings entry | Custom identity is stored per Profile; it does not change the desktop icon or entire theme; native lifecycle actions require the desktop |
+| Personal Workbench `0.1.0` | YourBuddy first-party plugin | General settings for workbench identity and new-session Hero copy, global proxy, updates, and restart give desktop users a central product settings entry | Custom identity is stored per Profile; it does not change the desktop icon or entire theme; native lifecycle actions require the desktop |
 | Codex Subagent | In-repository `@deepseek-ai/dsh-subagent-codex` | The default Codex Agent Preset can delegate self-contained tasks to the official Codex runtime and return results from the same working directory | Separate from Codex Auth main-model access; it does not inherit the entire parent conversation; native Codex permissions and login apply; loading the plugin does not launch a process |
 | Harbor Python Adapter and Skill | Harbor companion components | Connect desktop tools, evaluation tasks, and result presentation without presenting them as two additional products | Versions must match the Harbor plugin; a managed runtime does not provide Docker or model quota |
 

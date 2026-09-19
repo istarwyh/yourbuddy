@@ -56,6 +56,14 @@ export declare function groupByFile(ops: readonly FileOp[]): Map<string, FileOp[
  * nothing (all-added).
  */
 export declare function knownContentBefore(ops: readonly FileOp[], path: string, before: FileOp): string | undefined;
+/**
+ * Strip the DSH read-tool response envelope down to the file's raw content,
+ * PRESERVING blank lines (unlike {@link parseReadLines}, which drops them):
+ * drops the <content> wrapper, the "(Showing lines ...)" note, and the
+ * per-line "<n>: " prefixes. The markdown reading mode needs the blank lines
+ * because markdown block structure depends on them.
+ */
+export declare function parseReadContent(raw: string): string;
 /** One parsed read line: the file's own line number and its content text. */
 export interface ReadLine {
     readonly line: number;

@@ -109,7 +109,10 @@ var WORKBENCH_SETTINGS_NAMESPACE = "personal-workbench";
 var WorkbenchSettingsSchema = Schema.object({
   enabled: Schema.boolean().default(false),
   name: Schema.string().default(""),
-  logo: Schema.string().default("")
+  logo: Schema.string().default(""),
+  heroHeadline: Schema.string().default(""),
+  heroBadge: Schema.string().default(""),
+  showHeroBadge: Schema.boolean().default(true)
 });
 
 // src/index.ts

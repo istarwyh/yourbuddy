@@ -1,0 +1,18 @@
+- region "我的工作台":
+  - text: 我的工作台 设置侧边栏身份和新会话页标题，打造属于你的 Agent 工作台。 实时预览 探索未至之境 预览版 YourBuddy 工作台名称
+  - textbox "工作台名称":
+    - /placeholder: 例如：我的研究室
+  - text: 工作台 Logo 选择图片
+  - button "选择图片"
+  - text: 选择一张你喜欢的图片。 首页标题
+  - textbox "首页标题":
+    - /placeholder: 留空使用“探索未至之境”
+  - text: 标题标记
+  - textbox "标题标记":
+    - /placeholder: 留空使用“预览版”
+  - checkbox "显示标题标记" [checked]
+  - text: 显示标题标记
+  - button "应用到工作台"
+  - button "恢复 YourBuddy 默认"
+  - link "查看使用说明":
+    - /url: https://istarwyh.github.io/yourbuddy/docs/settings/

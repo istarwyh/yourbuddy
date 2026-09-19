@@ -12,11 +12,11 @@ Creator 帮助你检查正在运行的 DSH 组合，并试验一个小插件。�
 pnpm dsh web --no-open --port 0
 ```
 
-打开命令打印的启动地址，包括其中的认证片段。系统会分配可用端口。选择工作目录并配置模型后再发送请求，在会话的 Agent Preset 选择器中选择“创造模式”（Creator，预设 ID 为 `cordis`）。如果当前安装的 Y8 未提供该预设，请使用这条源码路径；仅安装 Y8 不代表已具备独立插件开发环境。
+打开命令打印的启动地址，包括其中的认证片段。系统会分配可用端口。选择工作目录并配置模型后再发送请求，在会话的 Agent Preset 选择器中选择“创造模式”（Creator，预设 ID 为 cordis）。如果当前安装的 Y8 未提供该预设，请使用这条源码路径；仅安装 Y8 不代表已具备独立插件开发环境。
 
 ## 描述改动
 
-使用[需求提纲](develop.zh.md#define-a-small-requirement)，请助手加载 `cordis-plugin-development`。涉及组合配置时，还会使用 `editing-cordis-compositions`。这两个 Skill 属于 Creator 预设。
+使用[需求提纲](develop.zh.md#define-a-small-requirement)，请助手加载 Creator 预设中的插件开发 Skill；涉及组合配置时，再使用该预设中的组合编辑 Skill。
 
 首次试验可以要求一个临时只读工具，返回某项任务的简短检查清单，并要求助手先查询当前工具注册接口。写明预期结果，要求验证后停止试验。模型请求使用你配置的账号。
 

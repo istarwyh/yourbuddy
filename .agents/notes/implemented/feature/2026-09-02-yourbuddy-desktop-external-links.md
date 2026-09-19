@@ -16,6 +16,8 @@ The Tauri shell accepts only the exact request fields from the active Host ifram
 
 The existing Marketplace channel remains separate and narrower because it accepts only GitHub repository and npm destinations. General assistant links do not broaden that installation-related protocol.
 
+Better Sidebar is an npm-managed product snapshot, so its source and built Client edits are stored in a digest-bound patch outside the replaceable snapshot. Product refresh records the patch descriptor in `YOURBUDDY_UPSTREAM.json`, verifies its SHA-256, and applies it to the pristine downloaded package before candidate validation. An upstream overlap fails the refresh before replacement instead of silently restoring `_blank` behavior.
+
 ## Alternatives considered
 
 **Rely on the WebView's `_blank` behavior.** Rejected because the embedded Tauri WebView does not reliably hand a new browsing context to the system browser, which is the defect this decision closes.

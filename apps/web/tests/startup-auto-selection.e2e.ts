@@ -42,7 +42,7 @@ describe('web e2e: startup auto-selection', () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-first-workspace-stable-tree'))
     await page.locator(`${ROOT_PHASE}[data-phase="hero"]`).waitFor({ timeout: 15_000 })
     const headline = page.getByText('Into the Unknown', { exact: true })
-    const fishHitbox = headline.locator('xpath=preceding-sibling::span[1]')
+    const fishHitbox = page.locator('[data-slot="conversation.hero.brand.mark"]').locator('xpath=parent::span')
     const fish = fishHitbox.locator('svg')
     expect(await fish.evaluate(node => getComputedStyle(node).color))
       .toBe(await headline.evaluate(node => getComputedStyle(node).color))
