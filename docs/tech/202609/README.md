@@ -12,6 +12,8 @@ The current task has one goal: users can first complete work with Y8, then find 
 
 Read the [documentation, website, and in-app Help plan](implementation-plan.md) for specific page changes, application entry points, code locations, existing capabilities to reuse, and acceptance.
 
+Read the [workbench layout compatibility and provenance plan](workbench-layout-compatibility.md) for the proposed desktop workbench/conversation swap, the DSH and Better Sidebar extension split, reproducible product patches, upgrade workflows, and acceptance criteria. This plan is not implemented yet.
+
 | Area | Deliverable |
 |---|---|
 | Documentation | Basic use, default plugins and their reasons, extension choices, existing development tutorials, a Creator guide, and the Harbor example |
