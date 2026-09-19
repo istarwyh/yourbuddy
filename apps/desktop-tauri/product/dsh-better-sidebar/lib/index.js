@@ -67,7 +67,6 @@ const SIDEBAR_PREFS_DEFAULTS = {
 /** Schemastery schema for the plugin configuration. */
 const Config = z.object({
 	readLimit: z.number().step(1).min(1).default(524288),
-	mediaLimit: z.number().step(1).min(1).default(20971520),
 	uploadLimit: z.number().step(1).min(1).default(134217728),
 	listLimit: z.number().step(1).min(1).default(1e3),
 	terminalsPerSession: z.number().step(1).min(1).default(3),
@@ -84,7 +83,6 @@ const Config = z.object({
 function resolveSidebarConfig(config) {
 	return {
 		readLimit: config?.readLimit ?? 524288,
-		mediaLimit: config?.mediaLimit ?? 20971520,
 		uploadLimit: config?.uploadLimit ?? 134217728,
 		listLimit: config?.listLimit ?? 1e3,
 		terminalsPerSession: config?.terminalsPerSession ?? 3,
@@ -4523,7 +4521,7 @@ function apply(ctx, config) {
 				if (sessionId === null || raw === null) throw new SidebarError("bad-request", "sessionId and path are required");
 				const path = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0), raw, fenceEnabledOf(() => settingsFace));
 				const info = await stat(path);
-				if (!info.isFile() || info.size > resolved.mediaLimit) throw new SidebarError("fs-error", "not a file or too large", 400);
+				if (!info.isFile()) throw new SidebarError("fs-error", "not a file", 400);
 				const type = mediaTypeForPath(path);
 				const body = await readFile(path);
 				const headers = {
@@ -4561,7 +4559,7 @@ function apply(ctx, config) {
 				const { sessionId, path } = decoded.ref;
 				const absolute = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path, fenceEnabledOf(() => settingsFace));
 				const info = await stat(absolute);
-				if (!info.isFile() || info.size > resolved.mediaLimit) throw new SidebarError("fs-error", "not a file or too large", 400);
+				if (!info.isFile()) throw new SidebarError("fs-error", "not a file", 400);
 				const type = mediaTypeForPath(absolute);
 				const body = await readFile(absolute);
 				res.writeHead(200, {

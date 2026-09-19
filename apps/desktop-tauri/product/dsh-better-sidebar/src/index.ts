@@ -931,9 +931,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
         const cwd = await sessionCwdOf(ctx, sessionId, url.searchParams.get('cwd') ?? undefined)
         const path = await ensureWorkspacePath(cwd, raw, fenceEnabledOf(() => settingsFace))
         const info = await stat(path)
-        if (!info.isFile() || info.size > resolved.mediaLimit) {
-          throw new SidebarError('fs-error', 'not a file or too large', 400)
-        }
+        if (!info.isFile()) throw new SidebarError('fs-error', 'not a file', 400)
         const type = mediaTypeForPath(path)
         const body = await readFile(path)
         // Raw bytes either way (binary-safe); ?download=1 switches the
@@ -990,9 +988,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
         const cwd = await sessionCwdOf(ctx, sessionId)
         const absolute = await ensureWorkspacePath(cwd, path, fenceEnabledOf(() => settingsFace))
         const info = await stat(absolute)
-        if (!info.isFile() || info.size > resolved.mediaLimit) {
-          throw new SidebarError('fs-error', 'not a file or too large', 400)
-        }
+        if (!info.isFile()) throw new SidebarError('fs-error', 'not a file', 400)
         const type = mediaTypeForPath(absolute)
         const body = await readFile(absolute)
         res.writeHead(200, {

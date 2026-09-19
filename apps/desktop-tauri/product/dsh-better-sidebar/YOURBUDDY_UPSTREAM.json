@@ -8,9 +8,10 @@
   "archiveSha256": "ed721de536421841ecf48bddccd7249aed85473a2cff81c436038f593a4b873b",
   "upstreamTreeSha256": "4cfa9fcd6081e180f37be6d2f68ef5adc97de42568546496a05f5b004a82725e",
   "patches": [
-    "Route recommended-plugin, embedded-browser, and terminal HTTP(S) actions through YourBuddy's desktop external-link bridge while preserving the ordinary browser fallback."
+    "Route recommended-plugin, embedded-browser, and terminal HTTP(S) actions through YourBuddy's desktop external-link bridge while preserving the ordinary browser fallback.",
+    "Allow the generic media and HTML file routes to serve files of any size so renderer plugins can open documents larger than 20 MiB."
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "f6018b2435baea8018f0649475753271e1cd5a292a9bc7eb258663d0a0dfd7c5"
+  "treeSha256": "45cb86deb7dfcf1527049fe83c08b1b16da1925730861cb97186acbc5827a8c3"
 }

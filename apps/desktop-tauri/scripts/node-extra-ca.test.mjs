@@ -96,12 +96,13 @@ try {
 
 function runNode(url, caPath) {
   return new Promise((resolve, reject) => {
-    const environment = { ...process.env, NODE_OPTIONS: '--use-system-ca' }
+    const environment = { ...process.env }
     for (const name of [
       'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY',
       'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy',
-      'NODE_USE_ENV_PROXY', 'NODE_EXTRA_CA_CERTS',
+      'NODE_OPTIONS', 'NODE_USE_ENV_PROXY', 'NODE_EXTRA_CA_CERTS',
     ]) delete environment[name]
+    environment.NODE_OPTIONS = '--use-openssl-ca'
     if (caPath !== undefined) environment.NODE_EXTRA_CA_CERTS = caPath
     const child = spawn(process.execPath, ['--input-type=module', '--eval', CHILD_SOURCE, url], {
       env: environment,
@@ -124,8 +125,13 @@ test('NODE_EXTRA_CA_CERTS is effective only when supplied before Node Host start
     response.writeHead(204)
     response.end()
   })
-  t.after(() => {
-    server.close()
+  t.after(async () => {
+    await new Promise((resolve, reject) => {
+      server.close(error => {
+        if (error) reject(error)
+        else resolve()
+      })
+    })
     rmSync(workspace, { force: true, recursive: true })
   })
   await new Promise((resolve, reject) => {

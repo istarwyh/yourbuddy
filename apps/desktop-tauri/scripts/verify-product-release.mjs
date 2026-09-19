@@ -445,7 +445,7 @@ function buildDesktopBridgeSmokeShell(launchUrl) {
     window.__DSH_WEB_URL__ = ${encodedBaseUrl}
     window.__DSH_WEB_LAUNCH_URL__ = ${encodedLaunchUrl}
     window.__DSH_LOCALE__ = 'en'
-    window.__DSH_CHROME__ = { os: 'macos', titlebar_height: 32, left: [], right: [] }
+    window.__DSH_CHROME__ = { os: 'macos', left: ['close', 'minimize', 'maximize'], right: [] }
     window.__YOURBUDDY_DESKTOP_COMMANDS__ = []
     window.__YOURBUDDY_NATIVE_PROXY_TEST_RESULT__ = {
       ok: true,

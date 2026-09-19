@@ -1,5 +1,5 @@
 /**
- * Native chrome dictionaries for splash.html and shell.html.
+ * Native shell dictionaries for splash.html and shell.html.
  * Locale follows the OS language (zh* → zh, otherwise en).
  */
 window.DSH_I18N = (function () {

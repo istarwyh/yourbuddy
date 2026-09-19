@@ -1,12 +1,11 @@
-//! OS-aware window-control placement for the custom title bar.
+//! OS-aware button order for the compact window-control rail.
 //!
-//! Windows keeps minimize/maximize/close on the right. macOS keeps close/
-//! minimize/maximize on the left. Linux reads the window-manager button
-//! layout when available, including split left/right placements.
+//! Windows keeps minimize/maximize/close order. macOS keeps close/minimize/
+//! maximize order. Linux reads the window-manager button layout when available.
 
 use serde::Serialize;
 
-/// One title-bar control the shell HTML may render.
+/// One window control the shell HTML may render.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum WindowButton {
@@ -15,16 +14,15 @@ pub enum WindowButton {
     Close,
 }
 
-/// Buttons assigned to each side of the title bar.
+/// Platform button order and original side assignments.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ControlsLayout {
     pub left: Vec<WindowButton>,
     pub right: Vec<WindowButton>,
     pub os: &'static str,
-    pub titlebar_height: u32,
 }
 
-/// Resolve the live title-bar layout for this host.
+/// Resolve the live window-control layout for this host.
 ///
 /// `DSH_DESKTOP_BUTTON_LAYOUT` overrides the platform default using the
 /// GNOME `left:right` token list (`close,minimize,maximize:` / `:minimize,maximize,close`).
@@ -38,7 +36,6 @@ pub fn resolve_controls_layout() -> ControlsLayout {
         left: parsed.0,
         right: parsed.1,
         os: current_os(),
-        titlebar_height: titlebar_height(),
     }
 }
 
@@ -48,14 +45,6 @@ fn current_os() -> &'static str {
         "windows" => "windows",
         "linux" => "linux",
         other => other,
-    }
-}
-
-fn titlebar_height() -> u32 {
-    if cfg!(target_os = "macos") {
-        32
-    } else {
-        36
     }
 }
 

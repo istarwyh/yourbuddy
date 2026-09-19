@@ -11,8 +11,6 @@ export { SIDEBAR_PREFS_DEFAULTS, SIDEBAR_PREFS_NS, TERMINAL_FONT_SIZE_DEFAULT, T
 export interface SidebarConfig {
     /** Read cap of one text file (bytes); larger files return truncated. */
     readLimit?: number;
-    /** Media route cap (bytes); larger binaries are refused. */
-    mediaLimit?: number;
     /** Upload route cap (bytes); larger files are refused without touching disk. */
     uploadLimit?: number;
     /** Explorer row bound of one level. */
@@ -43,7 +41,6 @@ export declare const Config: z<SidebarConfig>;
 /** Fully defaulted sidebar host settings. */
 export interface ResolvedSidebarConfig {
     readLimit: number;
-    mediaLimit: number;
     uploadLimit: number;
     listLimit: number;
     terminalsPerSession: number;

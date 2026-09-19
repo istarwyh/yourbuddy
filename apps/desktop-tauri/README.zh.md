@@ -29,7 +29,7 @@ Harbor 会在 Job 启动前通过 Host 的 `agentDefaultModel` 与 LLM Service �
 
 Plugin Marketplace 只把公开 GitHub `dsh-plugin` Topic 用于发现仓库。打开结果时会搜索 npm；仅当 Package 声明 `dsh.bundle.patch`，且 Metadata 通过 Repository 字段或与 GitHub Owner 同 Scope 的 DSH 上游元数据关联该仓库时才启用一键确认，因此能从同时发布 SDK、CLI 与其他 npm Package 的仓库中选出 DSH Bundle，也能解析 npm 名称不同于仓库 Basename 的 Scoped Package。Metadata 缺失、歧义或不完整时，一键确认保持禁用。用户确认后，安装流程会针对隔离的 Web Profile 执行 `dsh plugin add`，把进度或可操作的 pnpm 失败持续关联到该 Package，并授予安装代码与手动安装 DSH 插件相同的 Host 权限。仓库与 npm 链接使用固定的 iframe 消息协议；Shell 与 Rust Validator 只允许 HTTPS GitHub 仓库、npm 搜索或 npm Package 页面，再由系统浏览器打开。
 
-桌面壳会通过 `dsh web --no-open` 启动私有 Host，并把 Loader 结算后打印且经过严格校验的进程 token URL 作为就绪信号。它会在不跟随重定向的情况下验证 token 交换，保留不含凭据的根 URL 用于 iframe Origin 校验与诊断，并仅在 Tauri WebView 第一次导航时使用 token URL。启动 URL 不会进入 `boot.log` 或面向用户的失败信息，操作系统默认浏览器也不会收到它。
+桌面壳会通过 `dsh web --no-open` 启动私有 Host，并把 Loader 结算后打印且经过严格校验的进程 token URL 作为就绪信号。它会在不跟随重定向的情况下验证 token 交换，保留不含凭据的根 URL 用于 iframe Origin 校验与诊断，并仅在 Tauri WebView 第一次导航时使用 token URL。启动 URL 不会进入 `boot.log` 或面向用户的失败信息，操作系统默认浏览器也不会收到它。无边框主窗口不再渲染单独的桌面标题栏。左侧的紧凑可拖动控制条会保留平台窗口按钮，避免重复工作台页眉；系统托盘仍可用于显示或退出应用。
 
 助手 Markdown 继续使用共享 Renderer 的 HTTP(S) 白名单。在桌面产品中，Personal Workbench Client 只拦截其中指向外部的 `_blank` Anchor，并请求父级 Shell 使用操作系统默认浏览器打开。悬停会显示目标地址，链接右键菜单可以打开或复制地址。Shell 只接受当前 Host iframe 从其精确 Origin 发出的固定版本请求；Shell 与 Rust Command 都要求有长度上限、不含凭据的 HTTP(S) URL。相对链接、同源路由、下载、文件引用以及 `javascript:`、`file:`、`data:` 等协议不会进入原生 Opener。
 
