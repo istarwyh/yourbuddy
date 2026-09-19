@@ -1,4 +1,4 @@
-//! Frameless main window, close preference, and custom title-bar commands.
+//! Frameless main window, close preference, and compact window-control rail.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 

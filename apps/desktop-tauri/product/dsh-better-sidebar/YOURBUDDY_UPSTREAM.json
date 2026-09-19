@@ -13,6 +13,18 @@
       "file": "patches/better-sidebar-workbench-slot.patch",
       "sha256": "a48f74a495e7f5575f5325c4a93d8c539356376b5e41028d3f76d3fff1ba8d17",
       "purpose": "Keep Portal as the default and add a Slot presentation for the YourBuddy workbench-primary layout."
+    },
+    {
+      "id": "desktop-external-links",
+      "file": "patches/better-sidebar-external-links.patch",
+      "sha256": "7b10eae5975797ac1a7c1f13b4955c520c3580737e95879598196ddc0c37f592",
+      "purpose": "Route recommended-plugin, embedded-browser, and terminal HTTP(S) actions through YourBuddy's desktop external-link bridge while preserving the ordinary browser fallback."
+    },
+    {
+      "id": "unbounded-media-routes",
+      "file": "patches/better-sidebar-unbounded-media.patch",
+      "sha256": "6277fc32f43aac539cf46102abea8ca2aa084cfcc2a5699de9635023bca6552a",
+      "purpose": "Allow the generic media and HTML file routes to serve files of any size so renderer plugins can open documents larger than 20 MiB."
     }
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",

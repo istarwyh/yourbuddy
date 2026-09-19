@@ -43,8 +43,6 @@ export interface SidebarConfig {
   presentation?: SidebarPresentation
   /** Read cap of one text file (bytes); larger files return truncated. */
   readLimit?: number
-  /** Media route cap (bytes); larger binaries are refused. */
-  mediaLimit?: number
   /** Upload route cap (bytes); larger files are refused without touching disk. */
   uploadLimit?: number
   /** Explorer row bound of one level. */
@@ -75,7 +73,6 @@ export interface SidebarConfig {
 export const Config: z<SidebarConfig> = z.object({
   presentation: z.union([z.const('portal'), z.const('slot')]).default('portal'),
   readLimit: z.number().step(1).min(1).default(512 * 1024),
-  mediaLimit: z.number().step(1).min(1).default(20 * 1024 * 1024),
   uploadLimit: z.number().step(1).min(1).default(128 * 1024 * 1024),
   listLimit: z.number().step(1).min(1).default(1000),
   terminalsPerSession: z.number().step(1).min(1).default(3),
@@ -89,7 +86,6 @@ export interface ResolvedSidebarConfig {
   /** Host placement selected by the product composition. */
   presentation: SidebarPresentation
   readLimit: number
-  mediaLimit: number
   uploadLimit: number
   listLimit: number
   terminalsPerSession: number
@@ -110,7 +106,6 @@ export function resolveSidebarConfig(config: SidebarConfig | undefined): Resolve
   return {
     presentation: config?.presentation ?? 'portal',
     readLimit: config?.readLimit ?? 512 * 1024,
-    mediaLimit: config?.mediaLimit ?? 20 * 1024 * 1024,
     uploadLimit: config?.uploadLimit ?? 128 * 1024 * 1024,
     listLimit: config?.listLimit ?? 1000,
     terminalsPerSession: config?.terminalsPerSession ?? 3,

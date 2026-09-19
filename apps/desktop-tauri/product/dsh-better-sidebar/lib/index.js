@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { access, lstat, mkdir, open, opendir, readFile, readdir, realpath, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, open, opendir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep, win32 } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 import z from "schemastery";
@@ -13,7 +13,6 @@ import { homedir, userInfo } from "node:os";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { snapshotSubagentDescriptor } from "@deepseek-ai/dsh-subagent";
-import { SessionLogOffset } from "@deepseek-ai/dsh-session";
 //#region src/prefs-shared.ts
 /**
 * Shared "Side card" preference vocabulary (types + constants), consumed by
@@ -67,10 +66,8 @@ const SIDEBAR_PREFS_DEFAULTS = {
 */
 /** Schemastery schema for the plugin configuration. */
 const Config = z.object({
-	presentation: z.union([z.const("portal"), z.const("slot")]).default("portal"),
-	readLimit: z.number().step(1).min(1).default(512 * 1024),
-	mediaLimit: z.number().step(1).min(1).default(20 * 1024 * 1024),
-	uploadLimit: z.number().step(1).min(1).default(128 * 1024 * 1024),
+	readLimit: z.number().step(1).min(1).default(524288),
+	uploadLimit: z.number().step(1).min(1).default(134217728),
 	listLimit: z.number().step(1).min(1).default(1e3),
 	terminalsPerSession: z.number().step(1).min(1).default(3),
 	reconnectGraceMs: z.number().step(1).min(0).default(3e4),
@@ -85,10 +82,8 @@ const Config = z.object({
 */
 function resolveSidebarConfig(config) {
 	return {
-		presentation: config?.presentation ?? "portal",
-		readLimit: config?.readLimit ?? 512 * 1024,
-		mediaLimit: config?.mediaLimit ?? 20 * 1024 * 1024,
-		uploadLimit: config?.uploadLimit ?? 128 * 1024 * 1024,
+		readLimit: config?.readLimit ?? 524288,
+		uploadLimit: config?.uploadLimit ?? 134217728,
 		listLimit: config?.listLimit ?? 1e3,
 		terminalsPerSession: config?.terminalsPerSession ?? 3,
 		reconnectGraceMs: config?.reconnectGraceMs ?? 3e4,
@@ -433,13 +428,6 @@ async function ensureWorkspaceWritePath(cwd, target, fence = true) {
 * to a uniquely named temp sibling
 * and are renamed into place, so a failed, aborted, or oversized upload never
 * leaves a partial file at the target path.
-*
-* The tree's rename/delete (below) are link-aware: existence and containment
-* are verified against the fully resolved target (a symlink pointing outside
-* the workspace is refused while the fence is armed), but the operation
-* itself addresses the lexical row path — renaming or deleting a symlink
-* row renames/unlinks the LINK, never its target, matching what the tree
-* row visually names (VS Code semantics).
 */
 /**
 * Stream `chunks` into `dir/relativePath` atomically: a uniquely named temp
@@ -495,82 +483,6 @@ async function writeWorkspaceUpload(input) {
 		await rm(tmp, { force: true }).catch(() => {});
 		throw error;
 	}
-}
-/** Resolve one existing entry for a link-aware mutation: the lexical row path
-* plus its fully resolved real target (fence-checked). ENOENT becomes an
-* fs-error, mirroring path-security's resolveRealPath semantics. */
-async function resolveEntry(cwd, target, fence) {
-	const absolute = requireAbsolute(resolveSessionPath(cwd, target));
-	let real;
-	let realCwd;
-	try {
-		[realCwd, real] = await Promise.all([realpath(cwd), realpath(absolute)]);
-	} catch (error) {
-		throw new SidebarError("fs-error", `cannot resolve "${target}": ${error instanceof Error ? error.message : String(error)}`, 400);
-	}
-	if (fence && !isWithin(realCwd, real)) throw new SidebarError("forbidden", `path "${target}" is outside workspace`, 403);
-	return {
-		absolute,
-		real,
-		realCwd
-	};
-}
-/** Whether a path exists (ENOENT → false; other failures propagate). */
-async function pathExists(target) {
-	try {
-		await access(target);
-		return true;
-	} catch (error) {
-		if (error.code === "ENOENT") return false;
-		throw error;
-	}
-}
-/**
-* Rename one tree row within its directory: `path` → `<parent>/<name>`.
-* The new name must be a single path segment (this is rename, not move);
-* an existing destination is refused (POSIX rename would clobber it
-* silently); the workspace root itself is never renamable; a symlink row
-* renames the link, not its target. A no-op rename (same name) succeeds
-* without touching the filesystem.
-*
-* @throws SidebarError with a wire code for shape, containment, existence
-* and root failures.
-*/
-async function renameWorkspaceEntry(input) {
-	const { cwd, path, name, fence = true } = input;
-	if (name === "" || name === "." || name === ".." || name.includes("/") || name.includes("\\")) throw new SidebarError("bad-request", "name must be a single path segment", 400);
-	const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence);
-	if (real === realCwd) throw new SidebarError("fs-error", "cannot rename the workspace root", 400);
-	if (basename(absolute) === name) return { path: absolute };
-	const safeDestination = await ensureWorkspaceWritePath(cwd, join(dirname(absolute), name), fence);
-	if (await pathExists(safeDestination)) throw new SidebarError("fs-error", `"${name}" already exists`, 409);
-	try {
-		await rename(absolute, safeDestination);
-	} catch (error) {
-		throw new SidebarError("fs-error", `cannot rename "${path}" to "${name}": ${error instanceof Error ? error.message : String(error)}`, 400);
-	}
-	return { path: safeDestination };
-}
-/**
-* Delete one tree row permanently (there is no trash on the host): files are
-* unlinked, directories removed recursively, a symlink row unlinks the LINK
-* only (lstat decides, so a link to a directory does not recurse into its
-* target). The workspace root itself is never removable.
-*
-* @throws SidebarError with a wire code for containment, existence and
-* root failures.
-*/
-async function removeWorkspaceEntry(input) {
-	const { cwd, path, fence = true } = input;
-	const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence);
-	if (real === realCwd) throw new SidebarError("fs-error", "cannot remove the workspace root", 400);
-	try {
-		if ((await lstat(absolute)).isDirectory()) await rm(absolute, { recursive: true });
-		else await unlink(absolute);
-	} catch (error) {
-		throw new SidebarError("fs-error", `cannot remove "${path}": ${error instanceof Error ? error.message : String(error)}`, 400);
-	}
-	return { path: absolute };
 }
 //#endregion
 //#region src/fs-search.ts
@@ -1526,7 +1438,8 @@ function isProfileRoot(dir) {
 function findProfileDir(fromFile = fileURLToPath(import.meta.url)) {
 	const detected = walkUp(realDir(fromFile), isProfileRoot);
 	if (detected !== null) return detected;
-	const web = join(process.env.DSH_HOME !== void 0 && process.env.DSH_HOME.trim() !== "" ? process.env.DSH_HOME : join(homedir(), ".dsh"), "profiles", "web");
+	const home = process.env.DSH_HOME !== void 0 && process.env.DSH_HOME.trim() !== "" ? process.env.DSH_HOME : join(homedir(), ".dsh");
+	const web = join(home, "profiles", "web");
 	return isProfileRoot(web) ? realpathSync(web) : null;
 }
 /** Whether `dir`'s package.json declares this plugin's name. */
@@ -1555,12 +1468,14 @@ function buildRepairCommand(options) {
 	const platform = options.platform ?? process.platform;
 	const profileName = profileDir !== null ? basename(profileDir) : null;
 	const profileArg = profileName !== null ? platform === "win32" ? ` -Profile "${profileName}"` : ` --profile "${profileName}"` : "";
-	if (pluginRoot !== null) if (platform === "win32") {
-		const script = join(pluginRoot, "scripts", "install.ps1");
-		if (existsSync(script)) return { command: `powershell -ExecutionPolicy Bypass -File "${script}" -Repair${profileArg}` };
-	} else {
-		const script = join(pluginRoot, "scripts", "install.sh");
-		if (existsSync(script)) return { command: `bash "${script}" --repair${profileArg}` };
+	if (pluginRoot !== null) {
+		if (platform === "win32") {
+			const script = join(pluginRoot, "scripts", "install.ps1");
+			if (existsSync(script)) return { command: `powershell -ExecutionPolicy Bypass -File "${script}" -Repair${profileArg}` };
+		} else {
+			const script = join(pluginRoot, "scripts", "install.sh");
+			if (existsSync(script)) return { command: `bash "${script}" --repair${profileArg}` };
+		}
 	}
 	return {
 		command: `dsh plugin --profile "${profileName ?? "web"}" install`,
@@ -1611,7 +1526,8 @@ const TRANSCRIPT_LIMIT$1 = 1 << 20;
 function ensureSpawnHelper() {
 	if (process.platform === "win32") return;
 	try {
-		const packageRoot = dirname(dirname(createRequire(import.meta.url).resolve("node-pty")));
+		const entry = createRequire(import.meta.url).resolve("node-pty");
+		const packageRoot = dirname(dirname(entry));
 		const candidates = [join(packageRoot, "prebuilds", `${process.platform}-${process.arch}`, "spawn-helper"), join(packageRoot, "build", "Release", "spawn-helper")];
 		for (const helper of candidates) if (existsSync(helper)) chmodSync(helper, 493);
 	} catch {}
@@ -2358,7 +2274,7 @@ var AgentPtyRegistry = class {
 *   C10 — no UI/transport vocabulary in the canonical value.
 */
 /** Maximum UTF-8 bytes of one `terminal_read` result text. */
-const READ_BYTE_LIMIT = 256 * 1024;
+const READ_BYTE_LIMIT = 262144;
 /**
 * Bound a string to a byte limit, marking truncation. Truncation never
 * splits a multi-byte UTF-8 sequence: when the byte cap lands inside one,
@@ -3033,9 +2949,9 @@ async function classifyTarget(raw, cwd) {
 		info = await stat(target);
 	} catch (error) {
 		const code = error.code;
-		if (code === "ENOENT") throw new Error(`"${raw}" does not exist (resolved to "${target}")`, { cause: error });
-		if (code === "EACCES" || code === "EPERM") throw new Error(`"${target}" is not readable`, { cause: error });
-		throw new Error(`cannot open "${target}": ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+		if (code === "ENOENT") throw new Error(`"${raw}" does not exist (resolved to "${target}")`);
+		if (code === "EACCES" || code === "EPERM") throw new Error(`"${target}" is not readable`);
+		throw new Error(`cannot open "${target}": ${error instanceof Error ? error.message : String(error)}`);
 	}
 	const title = basenameOf(target);
 	return {
@@ -3493,6 +3409,7 @@ function buildOpenTurnSnapshot(events) {
 	let reasoning = "";
 	const tools = [];
 	const pendingCalls = /* @__PURE__ */ new Map();
+	let total = 0;
 	for (let index = boundary + 1; index < events.length; index++) {
 		const event = events[index];
 		if (event === void 0) continue;
@@ -3526,11 +3443,13 @@ function buildOpenTurnSnapshot(events) {
 			const failed = data.error !== void 0;
 			const line = [`- \`${name ?? "tool"}\`${failed ? " (failed)" : ""}` + (args !== void 0 && args !== "" ? ` — arguments: \`${args}\`` : ""), ...result === "" ? [] : [`  Result: ${result}`]].join("\n");
 			tools.push(line);
+			total += line.length;
 		}
 	}
 	for (const [, call] of pendingCalls) {
 		const line = `- \`${call.name}\` (executing) — arguments: \`${call.args}\``;
 		tools.push(line);
+		total += line.length;
 	}
 	const sections = [];
 	if (text.trim() !== "") sections.push(`Assistant output so far:\n\n${text}`);
@@ -3544,7 +3463,7 @@ function buildOpenTurnSnapshot(events) {
 function sideLabel(question) {
 	const flat = question.replace(/\s+/g, " ").trim();
 	const max = Math.max(1, 42);
-	const body = flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+	const body = flat.length > max ? `${flat.slice(0, 41)}…` : flat;
 	return `${SIDE_LABEL_PREFIX}${body}`;
 }
 /**
@@ -3825,10 +3744,11 @@ function buildSidechatApi(ctx) {
 			const inheritance = buildSidechatInheritance(parentSession.snapshotEvents());
 			const { agentPreset, setup } = await composeChildSetup(ctx, resolvePresetId(parentSession.header, parentSession.snapshotEvents()));
 			const childId = `session-${randomUUID()}`;
+			const label = question === "" ? SIDE_NEW_THREAD_TITLE : sideLabel(question);
 			const descriptor = snapshotSubagentDescriptor({
 				mode: "continuable",
 				provider: "sidechat",
-				label: question === "" ? SIDE_NEW_THREAD_TITLE : sideLabel(question),
+				label,
 				...parent.options.provider === void 0 ? {} : { agentProvider: parent.options.provider },
 				...parent.options.model === void 0 ? {} : { agentModel: parent.options.model }
 			});
@@ -3844,13 +3764,11 @@ function buildSidechatApi(ctx) {
 				meta: {
 					...parentSession.header.cwd === void 0 ? {} : { cwd: parentSession.header.cwd },
 					parentSession: parentSession.id,
-					isSeeded: true,
 					origin: "subagent",
 					delegationDepth: (parentSession.header.delegationDepth ?? 0) + 1,
 					...agentPreset === void 0 ? {} : { agentPreset }
 				},
 				seed,
-				inheritedEventCount: SessionLogOffset(seed.length),
 				agentOptions: { ...parent.options },
 				setup,
 				signal: AbortSignal.timeout(CREATE_TIMEOUT_MS)
@@ -4062,7 +3980,8 @@ async function resolveGitPath(cwd, raw, selected) {
 	if (isAbsolute(raw)) return requireAbsolute(resolveSessionPath(cwd, raw));
 	const sessionPath = requireAbsolute(join(cwd, raw));
 	if (await stat(sessionPath).then(() => true).catch(() => false)) return sessionPath;
-	return requireAbsolute(join(await repoRoot(cwd, selected).catch(() => cwd), raw));
+	const root = await repoRoot(cwd, selected).catch(() => cwd);
+	return requireAbsolute(join(root, raw));
 }
 /** How many leading bytes a binary read returns for client-side detect sniffing. */
 const READ_HEAD_LIMIT = 4096;
@@ -4214,23 +4133,6 @@ function buildApi(ctx, ptyManager, agentPtyRegistry, resolved, terminalShell, ge
 			}
 			return { ok: true };
 		},
-		"fs.rename": async (payload) => {
-			const { cwd } = await cwdOf(payload);
-			return renameWorkspaceEntry({
-				cwd,
-				path: requireString(payload, "path"),
-				name: requireString(payload, "name"),
-				fence: fenceEnabledOf(getSettings)
-			});
-		},
-		"fs.remove": async (payload) => {
-			const { cwd } = await cwdOf(payload);
-			return removeWorkspaceEntry({
-				cwd,
-				path: requireString(payload, "path"),
-				fence: fenceEnabledOf(getSettings)
-			});
-		},
 		"git.worktrees": async (payload) => {
 			const { cwd } = await gitCwdOf(payload);
 			const selected = selectedRepoOf(payload);
@@ -4298,7 +4200,7 @@ function buildApi(ctx, ptyManager, agentPtyRegistry, resolved, terminalShell, ge
 		"git.show": async (payload) => {
 			const { cwd } = await gitCwdOf(payload);
 			const repoRoot = selectedRepoOf(payload);
-			const path = requireString(payload, "path");
+			const path = await resolveGitPath(cwd, requireString(payload, "path"), repoRoot);
 			return { content: await show(cwd, requireString(payload, "rev"), path, repoRoot) };
 		},
 		"changes.ops": async (payload) => {
@@ -4349,12 +4251,10 @@ function buildApi(ctx, ptyManager, agentPtyRegistry, resolved, terminalShell, ge
 			return settings === void 0 ? {
 				value: void 0,
 				revision: void 0,
-				externalDisable: false,
-				presentation: resolved.presentation
+				externalDisable: false
 			} : {
 				...settings.get(),
-				externalDisable: settings.externalDisable(),
-				presentation: resolved.presentation
+				externalDisable: settings.externalDisable()
 			};
 		},
 		"settings.update": async (payload) => {
@@ -4621,7 +4521,7 @@ function apply(ctx, config) {
 				if (sessionId === null || raw === null) throw new SidebarError("bad-request", "sessionId and path are required");
 				const path = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0), raw, fenceEnabledOf(() => settingsFace));
 				const info = await stat(path);
-				if (!info.isFile() || info.size > resolved.mediaLimit) throw new SidebarError("fs-error", "not a file or too large", 400);
+				if (!info.isFile()) throw new SidebarError("fs-error", "not a file", 400);
 				const type = mediaTypeForPath(path);
 				const body = await readFile(path);
 				const headers = {
@@ -4659,7 +4559,7 @@ function apply(ctx, config) {
 				const { sessionId, path } = decoded.ref;
 				const absolute = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path, fenceEnabledOf(() => settingsFace));
 				const info = await stat(absolute);
-				if (!info.isFile() || info.size > resolved.mediaLimit) throw new SidebarError("fs-error", "not a file or too large", 400);
+				if (!info.isFile()) throw new SidebarError("fs-error", "not a file", 400);
 				const type = mediaTypeForPath(absolute);
 				const body = await readFile(absolute);
 				res.writeHead(200, {
@@ -4819,7 +4719,7 @@ async function attachTerminal(ctx, ptyManager, agentPtyRegistry, ws, req, resolv
 		armPtyResizeGate(handle.pty);
 		if (handle.transcript !== "") ws.send(handle.transcript);
 		const onData = (data) => {
-			if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4 * 1024 * 1024) ws.send(data);
+			if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
 		};
 		const onExit = ({ exitCode }) => {
 			onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`);
@@ -4864,7 +4764,7 @@ async function attachTerminal(ctx, ptyManager, agentPtyRegistry, ws, req, resolv
 function pumpAgentTerminal(registry, handle, ws) {
 	if (handle.transcript !== "") ws.send(handle.transcript);
 	const onData = (data) => {
-		if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4 * 1024 * 1024) ws.send(data);
+		if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 4194304) ws.send(data);
 	};
 	const onExit = ({ exitCode }) => {
 		onData(`\r\n[process exited with code ${String(exitCode)}]\r\n`);

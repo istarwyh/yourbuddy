@@ -15,8 +15,6 @@ export interface SidebarConfig {
     presentation?: SidebarPresentation;
     /** Read cap of one text file (bytes); larger files return truncated. */
     readLimit?: number;
-    /** Media route cap (bytes); larger binaries are refused. */
-    mediaLimit?: number;
     /** Upload route cap (bytes); larger files are refused without touching disk. */
     uploadLimit?: number;
     /** Explorer row bound of one level. */
@@ -49,7 +47,6 @@ export interface ResolvedSidebarConfig {
     /** Host placement selected by the product composition. */
     presentation: SidebarPresentation;
     readLimit: number;
-    mediaLimit: number;
     uploadLimit: number;
     listLimit: number;
     terminalsPerSession: number;

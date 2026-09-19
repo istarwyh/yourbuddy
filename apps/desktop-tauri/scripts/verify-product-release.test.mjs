@@ -18,6 +18,13 @@ import {
   stopChild,
 } from './verify-product-release.mjs'
 
+test('desktop shell keeps window controls in a side rail without a title bar', () => {
+  const shell = readFileSync(join(import.meta.dirname, '..', 'shell.html'), 'utf8')
+  assert.match(shell, /<body>\s*<aside id="window-rail" data-tauri-drag-region>/u)
+  assert.match(shell, /<div id="window-controls"><\/div>\s*<\/aside>\s*<iframe id="app"/u)
+  assert.doesNotMatch(shell, /id="titlebar"/u)
+})
+
 test('release smoke exchanges the printed launch token for an authority cookie', async () => {
   const server = createServer((request, response) => {
     assert.equal(request.url, '/?token=release-secret')
