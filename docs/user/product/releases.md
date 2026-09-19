@@ -6,6 +6,12 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.7 — 2026-09-19
+
+YourBuddy 0.3.7 makes Better Sidebar the flexible primary desktop workbench while retaining the DSH conversation, navigation, details, tabs, files, tasks, terminals, previews, floating windows, and bottom workbench. The workbench/conversation divider is resizable; narrow windows keep the conversation primary and use the existing drawer. Both compatibility changes are stored as replayable hashed provenance patches, while Better Sidebar keeps its upstream portal default outside YourBuddy. All five public assets were anonymously downloaded and checked, the updater signature was cryptographically verified, and the public App's identity, provenance metadata, and relocated runtime passed inspection. Native startup, installed-WebView interaction, and an update from an older version remain unverified because a user-owned YourBuddy instance prevented an isolated launch.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.7) · [workbench screenshot](../../releases/yourbuddy-v0.3.7/screenshots/workbench-primary.png) · [verification record](../../releases/yourbuddy-v0.3.7/README.md) · [download page](download.md)
+
 ### 0.3.6 — 2026-09-10
 
 YourBuddy 0.3.6 makes enterprise proxy and custom-CA settings consistent across the native desktop client and every managed runtime. An explicit Settings CA overrides an inherited launch value and system trust; native and fresh bundled-Node tests must both pass before save or restart. All five public assets were anonymously downloaded and checked, the updater signature was cryptographically verified, and the public App's identity, bundled CA-source metadata, and relocated runtime passed inspection. Native startup, packaged-WebView controls, an update from an older version, and real enterprise traffic remain unverified because a user-owned YourBuddy instance prevented an isolated launch.

@@ -1,0 +1,70 @@
+{
+  "verifiedAt": "2026-09-19T08:25:54Z",
+  "timeZone": "Asia/Shanghai",
+  "source": "Unchanged App copied from the anonymously downloaded public DMG; local audit paths are represented as {{auditRoot}}.",
+  "app": {
+    "path": "{{auditRoot}}/dmg-app/YourBuddy.app",
+    "version": "0.3.7",
+    "build": "0.3.7",
+    "identifier": "io.github.istarwyh.yourbuddy",
+    "executable": "yourbuddy",
+    "executableType": "Mach-O 64-bit executable arm64",
+    "dmgChecksumValid": true,
+    "dmgUpdaterAppTreesIdentical": true,
+    "codesignDeepStrict": 0,
+    "signature": "adhoc",
+    "teamIdentifier": null,
+    "gatekeeperExitCode": 3,
+    "gatekeeperResult": "rejected"
+  },
+  "bundle": {
+    "harnessVersion": "0.1.2-rc.1",
+    "dshUpstream": {
+      "tag": "dsh-v0.1.2-rc.1",
+      "version": "0.1.2-rc.1",
+      "commit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d",
+      "workbenchPatchSha256": "76602de5874467f2976c886283a2085d7213030c60abab8b3d0316b9a428b80c"
+    },
+    "betterSidebar": {
+      "version": "0.18.1",
+      "patchSha256": "a48f74a495e7f5575f5325c4a93d8c539356376b5e41028d3f76d3fff1ba8d17",
+      "treeSha256": "f6dbd85556e6586f5dc62b754e41d26dcc82bd5330d623be1db30ebea9a541bf",
+      "slotPresentationPresent": true,
+      "portalRemainsDefault": true
+    },
+    "productPlugins": [
+      "dsh-harbor-evolution@0.9.5",
+      "dsh-codex-auth@0.3.2",
+      "dsh-better-sidebar@0.18.1",
+      "dsh-context-doctor@0.7.2",
+      "dsh-plugin-marketplace@0.3.1",
+      "dsh-personal-workbench@0.1.0"
+    ],
+    "defaultHarnessPlugins": [
+      "@deepseek-ai/dsh-subagent-codex@0.1.2-rc.1"
+    ],
+    "defaultAgentPreset": "codex",
+    "sourceSha256": "c9d7534c47f60fd578be4c17a62fac6e85358ecb54d837bf67d78fb236005a15",
+    "contentSha256": "3b70cda7f71bbacb0ccbd83d3eb981eb51277bdce46613c3b249299c25f63e7f",
+    "offlineStoreFiles": 38708,
+    "offlineStoreSha256": "c98d5fcad31d92f8f36a0801d42f759598f036d064ae7e36c2030d3684a13f0f",
+    "offlineStoreArchiveSha256": "f2c81f293ebd9f197d85a514afec288b20e6b3f375f7dee78d7c8d774becd435"
+  },
+  "toolchain": {
+    "platform": "darwin-arm64",
+    "nodeVersion": "22.19.0",
+    "pnpmVersion": "11.7.0"
+  },
+  "relocatedRuntime": {
+    "path": "{{auditRoot}}/relocated-runtime",
+    "pythonVersion": "3.12.14",
+    "harborVersion": "0.21.0",
+    "integrationVersion": "0.9.5",
+    "pythonIsRegularFile": true,
+    "buildPrefixReplacedWithNonexistentPath": true,
+    "harborVersionExitCode": 0,
+    "harborDshHelpExitCode": 0,
+    "pythonImportsExitCode": 0
+  },
+  "boundary": "This record proves public App identity, DMG integrity, updater/DMG App-tree equality, strict ad-hoc signature integrity, bundled provenance metadata, and relocated CLI/import behavior. Gatekeeper rejected the App because it has no Apple Developer identity. Native startup and visual packaged-WebView interaction are recorded separately as skipped."
+}
