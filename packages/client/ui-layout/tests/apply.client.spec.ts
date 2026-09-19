@@ -55,8 +55,8 @@ describe('ui-layout client apply', () => {
       setSidebar: vi.fn(), setDetails: vi.fn(), toggleSidebar: vi.fn(), openDetails: vi.fn(), closeDetails: vi.fn(),
     }
     const injected = (slots.entries('root')[0]!.inject as (actions: never) => object)(actions as never)
-    expect(injected).toEqual({ workbenchLayout: expect.any(LayoutController) })
     const layout = ctx.get('layout') as LayoutController
+    expect(injected).toEqual({ workbenchLayout: layout })
     layout.toggleSidebar()
     expect(actions.toggleSidebar).toHaveBeenCalledOnce()
   })
