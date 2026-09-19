@@ -26,26 +26,26 @@
   ],
   "hero": {
     "title_lines": [
-      "Your AI buddy,",
-      "right in your workspace."
+      "Everyone should have",
+      "an AI workbench of their own."
     ],
-    "lead": "Read documents, write files, and run tools. Choose your model, work on your own Mac, and inspect the files and changes along the way.",
+    "lead": "General AI tools solve common problems. YourBuddy brings your preferred models, Skills, Plugins, files, and professional workflows into one desktop workbench that grows around the way you work.",
     "note": "YourBuddy 0.3.7 · macOS · Apple Silicon",
     "status_label": "Download and verify",
     "actions": [
       {
-        "label": "Start your first task",
+        "label": "Start building yours",
         "url": "docs/start/",
         "style": "primary"
       },
       {
-        "label": "Extend it for your needs",
+        "label": "See how it extends",
         "url": "docs/develop/"
       }
     ]
   },
   "example": {
-    "title": "Start with something small.",
+    "title": "Your workbench starts with one small task.",
     "desc": "Example task: write a plan in your workspace, then open the file to review it.",
     "url": "docs/start/",
     "link_label": "Read the full walkthrough",
@@ -69,43 +69,43 @@
     ]
   },
   "workflow": {
-    "title": "Work the way you choose.",
+    "title": "Grow a general foundation into your workbench.",
     "items": [
       {
-        "title": "Bring your model",
-        "desc": "Connect an account or provider and switch models for each task. Manage model settings separately from your workspace.",
+        "title": "Choose your models",
+        "desc": "Connect an account or provider and switch models for each task. Your workbench is not tied to one model.",
         "url": "docs/models/"
       },
       {
-        "title": "Keep your files close",
-        "desc": "Work in your own directory, with direct access to files, the editor, terminal, and Git panels.",
-        "url": "docs/workspace/"
+        "title": "Bring in your methods",
+        "desc": "Use Skills for repeatable workflows and standards. Use Plugins to add tools, services, and workbench interfaces.",
+        "url": "docs/develop/"
       },
       {
-        "title": "Inspect, then improve",
-        "desc": "Review the files and task results first. Use session diagnostics, experiments, and evaluations when you need to compare changes.",
-        "url": "docs/evaluation/"
+        "title": "Keep the whole job in view",
+        "desc": "Use files, the editor, terminal, Git, and plugin pages beside the conversation, and inspect the actual result at any time.",
+        "url": "docs/workspace/"
       }
     ]
   },
   "cta": {
-    "title": "Open a folder you know.",
-    "desc": "Choose a model and try a small task. The guide walks you through your first session.",
+    "title": "Start with work that is actually yours.",
+    "desc": "Open a familiar folder and choose a model. After the first task, turn repeatable methods into Skills and specialized capabilities into Plugins.",
     "actions": [
       {
-        "label": "Read the getting-started guide",
+        "label": "Complete your first task",
         "url": "docs/start/",
         "style": "primary"
       },
       {
-        "label": "See what comes next",
-        "url": "roadmap/"
+        "label": "Explore extension paths",
+        "url": "docs/develop/"
       }
     ]
   },
   "plugins": {
-    "title": "A few useful tools, included.",
-    "desc": "DSH provides the AI runtime and Web UI. Y8 includes useful plugins to get started; further plugins can add the domain analysis engine and control panel for specialized work.",
+    "title": "Do more than install plugins. Shape the workbench.",
+    "desc": "Skills teach the workbench your workflows. Plugins add tools, services, and workbench interfaces. YourBuddy provides a useful foundation that each person can extend around their profession and habits.",
     "url": "plugins/",
     "link_label": "Read about the included plugins",
     "items": [
