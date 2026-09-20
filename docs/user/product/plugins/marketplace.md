@@ -2,7 +2,7 @@
 
 English | [中文](marketplace.zh.md)
 
-Application snapshot version: `0.3.1`. Source: [Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace).
+Application snapshot version: `0.3.3`. Source: [Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace).
 
 ## Problem addressed
 
@@ -10,7 +10,7 @@ Users can discover community plugins in Settings, inspect their README, source, 
 
 ## Usage
 
-Open Settings → Plugin Marketplace, search, and inspect a plugin. Eligible packages expose an installation confirmation. Check the resulting status and restart YourBuddy through Application lifecycle. The AI explanation feature uses the configured default model.
+Open Settings → Plugin Marketplace, search, and inspect a plugin. A package exposes an installation confirmation only when one npm package unambiguously links to the selected repository and declares a DSH Bundle patch. Check the resulting status and restart YourBuddy through Application lifecycle. The AI explanation feature uses the configured default model.
 
 ## Reason for default inclusion
 

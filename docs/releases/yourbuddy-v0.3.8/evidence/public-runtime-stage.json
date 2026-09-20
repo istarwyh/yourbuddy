@@ -1,0 +1,42 @@
+{
+  "verifiedAt": "2026-09-20T05:27:08Z",
+  "environment": "macOS 15.6.1 arm64",
+  "source": "anonymous download of the published updater archive and DMG",
+  "application": {
+    "version": "0.3.8",
+    "bundleIdentifier": "io.github.istarwyh.yourbuddy",
+    "teamIdentifier": "not set",
+    "codeSignatureStrictCheck": "passed",
+    "gatekeeperAssessment": "rejected because the App is not Apple Developer signed or notarized",
+    "executableSha256": "e067ead69977f9b464374babbc1d597d398a458e30bdfc8bf5a4302f49ed54e2",
+    "updaterAndDmgExecutableMatch": true
+  },
+  "bundledVersions": {
+    "deepseekHarness": "0.1.5-rc.2",
+    "betterSidebar": "0.19.1",
+    "harborEvolution": "0.9.7",
+    "pluginMarketplace": "0.3.3",
+    "contextDoctor": "0.7.2",
+    "python": "3.12.14",
+    "harborCli": "0.21.0"
+  },
+  "provenance": {
+    "betterSidebarManifestPresent": true,
+    "harborEvolutionManifestPresent": true,
+    "pluginMarketplaceManifestPresent": true,
+    "contextDoctorManifestPresent": true,
+    "treeAndPatchDigestsRetained": true
+  },
+  "relocation": {
+    "copiedOutsideAppBundle": true,
+    "pythonLauncherMaterializedFromSymlink": true,
+    "originalPythonHomeMadeUnavailable": true,
+    "harborVersionCommand": "passed",
+    "harborDshHelpCommand": "passed"
+  },
+  "nativeStartup": {
+    "status": "not verified",
+    "reason": "The release check did not launch the installed GUI or exercise its packaged WebView."
+  },
+  "boundary": "This record verifies the published App identity, ad-hoc signature integrity, bundled version provenance, and relocated Harbor CLI behavior. It does not prove Gatekeeper acceptance, native GUI startup, packaged-WebView interaction, updater installation, OAuth, or real model traffic."
+}

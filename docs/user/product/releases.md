@@ -6,6 +6,12 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.8 — 2026-09-20
+
+YourBuddy 0.3.8 synchronizes the desktop runtime with DSH 0.1.5-rc.2 and bundles Better Sidebar 0.19.1, Harbor Evolution 0.9.7, Plugin Marketplace 0.3.3, and Context Doctor 0.7.2. Better Sidebar uses the DSH native right sidebar while retaining the primary workbench, resizable split, drawer, bottom workbench, links, terminals, and media behavior. Marketplace one-click installation requires an unambiguous npm package linked to the selected repository with a declared DSH Bundle patch. All five public assets were anonymously downloaded and checked, the updater signature was cryptographically verified, and the public App's identity, product provenance, and relocated runtime passed inspection. Native startup, packaged-WebView interaction, an update from an older version, OAuth, and real model traffic remain unverified.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.8) · [verification record](../../releases/yourbuddy-v0.3.8/README.md) · [download page](download.md)
+
 ### 0.3.7 — 2026-09-19
 
 YourBuddy 0.3.7 makes Better Sidebar the flexible primary desktop workbench while retaining the DSH conversation, navigation, details, tabs, files, tasks, terminals, previews, floating windows, and bottom workbench. The workbench/conversation divider is resizable; narrow windows keep the conversation primary and use the existing drawer. Both compatibility changes are stored as replayable hashed provenance patches, while Better Sidebar keeps its upstream portal default outside YourBuddy. All five public assets were anonymously downloaded and checked, the updater signature was cryptographically verified, and the public App's identity, provenance metadata, and relocated runtime passed inspection. Native startup, installed-WebView interaction, and an update from an older version remain unverified because a user-owned YourBuddy instance prevented an isolated launch.

@@ -2,7 +2,7 @@
 
 [English](marketplace.md) | 中文
 
-随应用集成的快照版本：`0.3.1`。来源：[Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace)。
+随应用集成的快照版本：`0.3.3`。来源：[Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace)。
 
 ## 解决的问题
 
@@ -10,7 +10,7 @@
 
 ## 使用方式
 
-打开设置 → 插件市场，搜索插件并查看详情。符合条件的包提供确认安装入口；确认后查看安装状态，再通过应用生命周期入口重启 YourBuddy。AI 解释功能使用当前配置的默认模型。
+打开设置 → 插件市场，搜索插件并查看详情。只有当一个 npm 包明确关联所选代码仓库并声明 DSH Bundle 补丁时，页面才提供确认安装入口；确认后查看安装状态，再通过应用生命周期入口重启 YourBuddy。AI 解释功能使用当前配置的默认模型。
 
 ## 默认集成的理由
 

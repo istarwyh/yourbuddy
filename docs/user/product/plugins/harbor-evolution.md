@@ -2,9 +2,9 @@
 
 English | [中文](harbor-evolution.zh.md)
 
-YourBuddy 0.3.6 bundled snapshot version: `0.9.5`. Source: [istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving).
+YourBuddy 0.3.8 bundled snapshot version: `0.9.7`. Source: [istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving).
 
-The [0.3.6 verification archive](../../../releases/yourbuddy-v0.3.6/README.md) records the plugin and matching Python adapter 0.9.5 alongside the current public App and relocated Python CLI/import checks. Native startup, visual window inspection, and real model use remain unverified for 0.3.6. Older Hosts without page attachments still require explicit **Ask AI** or `@harbor` references. Updating only the independent plugin cannot add missing Host capabilities.
+The [0.3.8 verification archive](../../../releases/yourbuddy-v0.3.8/README.md) records the plugin and matching Python adapter 0.9.7 alongside the public App and relocated Python CLI checks. Native startup, visual window inspection, and real model use remain unverified for 0.3.8. Older Hosts without page attachments still require explicit **Ask AI** or `@harbor` references. Updating only the independent plugin cannot add missing Host capabilities.
 
 ## Problem addressed
 
@@ -22,7 +22,7 @@ Working your way can extend to judging effectiveness on your own tasks. Actual f
 
 ## Companion components
 
-The desktop also carries the Harbor Skill, matching `harbor-dsh-evolution` Python Adapter, and managed Python runtime. Ordinary desktop users should not repeat the independent plugin README's `npx ... setup` installation flow. Candidate tasks still require their Docker environment, model services, and networking, checked by Doctor.
+The desktop also carries the Harbor Skill, matching `harbor-dsh-evolution` Python Adapter, and managed Python runtime. Ordinary desktop users should not repeat the independent plugin README's `npx ... setup` installation flow. Jobs use Host execution by default; Docker remains available when a task needs container isolation. Candidate dependencies, model services, and networking must exist in the selected environment and pass Doctor.
 
 ## Limits
 

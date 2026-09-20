@@ -6,6 +6,12 @@
 
 ## YourBuddy
 
+### 0.3.8 — 2026-09-20
+
+YourBuddy 0.3.8 将桌面运行时同步至 DSH 0.1.5-rc.2，并内置 Better Sidebar 0.19.1、Harbor Evolution 0.9.7、Plugin Marketplace 0.3.3 与 Context Doctor 0.7.2。Better Sidebar 使用 DSH 原生右侧栏，同时保留主工作区、可调分隔、抽屉、底部工作区、链接、终端与媒体行为。Marketplace 一键安装要求 npm 包明确关联所选代码仓库，并声明 DSH Bundle 补丁。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、产品 provenance 和迁移运行时通过检查。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.8) · [验证记录](../../releases/yourbuddy-v0.3.8/README.zh.md) · [下载页](download.zh.md)
+
 ### 0.3.7 — 2026-09-19
 
 YourBuddy 0.3.7 把 Better Sidebar 设为可伸缩的桌面主工作区，同时保留 DSH 对话、导航、详情、标签页、文件、任务、终端、预览、浮动窗口与底部工作区。工作区与对话区之间可以拖动调整宽度；窄窗口仍以对话区为主，并使用原有抽屉。两处兼容修改均保存为可重放且带哈希的 provenance 补丁，而在 YourBuddy 之外 Better Sidebar 仍保持上游 Portal 默认方式。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、provenance 元数据和迁移运行时通过检查。由于用户自己的 YourBuddy 实例阻止隔离启动，原生启动、安装包 WebView 交互以及从旧版本实际更新仍未验证。

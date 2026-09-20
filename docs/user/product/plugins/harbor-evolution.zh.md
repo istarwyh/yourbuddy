@@ -2,9 +2,9 @@
 
 [English](harbor-evolution.md) | 中文
 
-YourBuddy 0.3.6 内置快照版本：`0.9.5`。来源：[istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving)。
+YourBuddy 0.3.8 内置快照版本：`0.9.7`。来源：[istarwyh/harbor-self-evolving](https://github.com/istarwyh/harbor-self-evolving)。
 
-[0.3.6 验证归档](../../../releases/yourbuddy-v0.3.6/README.zh.md)记录插件与配套 Python Adapter 0.9.5，以及当前公开 App 和迁移 Python CLI／导入检查。本版本原生启动、窗口可视化检查与真实模型使用仍未验证。不支持页面附件的旧宿主仍需使用“问 AI”或 `@harbor` 显式引用。仅更新独立插件不能增加缺失的宿主能力。
+[0.3.8 验证归档](../../../releases/yourbuddy-v0.3.8/README.zh.md)记录插件与配套 Python Adapter 0.9.7，以及公开 App 和迁移 Python CLI 检查。本版本原生启动、窗口可视化检查与真实模型使用仍未验证。不支持页面附件的旧宿主仍需使用“问 AI”或 `@harbor` 显式引用。仅更新独立插件不能增加缺失的宿主能力。
 
 ## 解决的问题
 
@@ -22,7 +22,7 @@ YourBuddy 0.3.6 内置快照版本：`0.9.5`。来源：[istarwyh/harbor-self-ev
 
 ## 配套内容
 
-桌面同时携带 Harbor Skill、配套的 `harbor-dsh-evolution` Python Adapter 和托管 Python 运行时，普通桌面用户不应再照搬独立插件 README 的 `npx ... setup` 安装流程。Candidate 任务所需的 Docker 环境、模型服务和网络仍需准备，并由 Doctor 检查。
+桌面同时携带 Harbor Skill、配套的 `harbor-dsh-evolution` Python Adapter 和托管 Python 运行时，普通桌面用户不应再照搬独立插件 README 的 `npx ... setup` 安装流程。Job 默认使用 Host 执行；任务需要容器隔离时仍可使用 Docker。Candidate 依赖、模型服务与网络必须存在于所选环境中，并通过 Doctor 检查。
 
 ## 限制
 

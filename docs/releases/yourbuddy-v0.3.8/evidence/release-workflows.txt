@@ -1,0 +1,25 @@
+YourBuddy 0.3.8 workflow record
+Captured: 2026-09-20 13:27 UTC+08:00 CST
+
+Master push and CI
+- Initial candidate commit: 88668f61483718cab3480e03d00d20dca685f36d
+- Initial CI master run: https://github.com/istarwyh/yourbuddy/actions/runs/35489438674
+- Observed failure: Python runtime single-exe jobs could not resolve `undici` from a retired CLI proxy installer that had no production consumer.
+- Recovery commit: 9c99a88d1d1b43c35ab922a90e8c409bdc3de06f (`fix(cli): remove retired proxy installer`).
+- Corrected CI master run: https://github.com/istarwyh/yourbuddy/actions/runs/35489894344
+- Hosted results observed before tagging: Windows Node/Wine passed; Python SDK wheel passed; Python runtime Linux arm64, macOS arm64, and macOS x64 passed.
+- The Linux and Windows self-hosted standby drills remained queued because no matching runner accepted them. The aggregate workflow therefore remained queued and was not reported as a completed success.
+- E2E real-provider workflow skipped because the repository run had no applicable provider execution.
+
+Formal release
+- Immutable tag: yourbuddy-v0.3.8
+- Tag object: 21d61c1d149102b1e096145f2c3e0d9433954365
+- Tag commit: 9c99a88d1d1b43c35ab922a90e8c409bdc3de06f
+- Release workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35490674447
+- Workflow result: success in 18m4s.
+- Passed steps: version alignment, selected DSH release check, Harness build, signed updater and DMG build, desktop Host/shell command tests, relocated runtime test, checksum staging and verification, updater-manifest generation, and GitHub Release publication.
+- Release page: https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.8
+- Published at: 2026-09-20T05:20:13Z
+
+Scope
+- Workflow success proves the executed build and publication steps, not independent public availability or installed-product behavior. Anonymous public downloads, hashes, updater signature, App identity, and relocated runtime were checked separately in the adjacent evidence records.
