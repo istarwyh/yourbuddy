@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-19-yourbuddy-workbench-primary-layout.md
-2026-09-19-yourbuddy-workbench-primary-layout.md: 4d82b812c9299d36c7a9a775735dc94d4a0a4084
-2026-09-19-yourbuddy-workbench-primary-layout.zh.md: 84fdb9804873782e67bcbcd112713d94f73ba39b
+2026-09-19-yourbuddy-workbench-primary-layout.md: 54adf5e4bbe73f1dfaec8cbabb2652a9f25a77e1
+2026-09-19-yourbuddy-workbench-primary-layout.zh.md: 7d6f526160a055b721b08b5b842cbb18f52b4e0c

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/tech/202609/workbench-layout-compatibility.md
-workbench-layout-compatibility.md: 1646fa5d5ddb6e2fe5d747313d215b442b4b4e8c
-workbench-layout-compatibility.zh.md: 25a190e2a755a3c548a0b73293df137b95f91881
+workbench-layout-compatibility.md: d04683436e47356b64165136cc826117a7cb9797
+workbench-layout-compatibility.zh.md: bc623a38328eb61adec12c8e3a779df4d78b4e81

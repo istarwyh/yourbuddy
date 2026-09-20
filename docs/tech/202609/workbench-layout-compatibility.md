@@ -31,7 +31,7 @@ Status: implemented for YourBuddy 0.3.7.
 |---|---|---|
 | Shell tracks and handles | [`ui-layout/AppFrame.tsx`](../../../packages/client/ui-layout/src/client/AppFrame.tsx) owns `sidebar | conversation | details` and the optional `sidebar | workbench | details | conversation` desktop grid | Keep the outer widths and drag handles in the shell. |
 | Shell child surfaces | [`ui-layout/src/client/index.ts`](../../../packages/client/ui-layout/src/client/index.ts) declares `sidebar`, `conversation`, `details`, and `shell.overlay` | Declare an optional root-scoped `workbench` slot without replacing `conversation`. |
-| Better Sidebar presentation | [`dsh-better-sidebar/src/client/index.tsx`](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/client/index.tsx) mounts a body portal and loads frame compensation CSS | Keep Portal as the default and add a Slot presentation selected by YourBuddy. |
+| Better Sidebar presentation | [`dsh-better-sidebar/src/client/index.tsx`](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/client/index.tsx) mounts either a body Portal or the workbench Slot | Keep Portal as the default and select Slot in YourBuddy. |
 | Better Sidebar behavior | The plugin service and store own tabs, viewers, terminals, interceptors, and workbench state | Reuse the same service and store in both presentation modes. |
 | DSH update | [`sync-dsh-upstream.mjs`](../../../apps/desktop-tauri/scripts/sync-dsh-upstream.mjs) merges an official DSH Release into the YourBuddy branch | Keep the layout change as committed downstream code and reconcile it during each merge. |
 | External plugin update | [`refresh-product-plugins.mjs`](../../../apps/desktop-tauri/scripts/refresh-product-plugins.mjs) replaces product snapshots from npm or GitHub | Reapply the Better Sidebar compatibility patch to each new staged snapshot. |
@@ -61,13 +61,13 @@ Status: implemented for YourBuddy 0.3.7.
 
 The desktop track order is navigation, primary surface, details, and auxiliary surface. The details column remains available instead of being replaced by the conversation or workbench.
 
-Narrow windows keep the conversation as the full-width task surface and expose the workbench through its existing drawer behavior.
+Narrow windows keep the conversation as the full-width task surface and expose the workbench through the shell overlay.
 
 ### Geometry and state
 
 DSH owns the outer grid, rendered widths, responsive layout, and drag handles. Better Sidebar owns the user's workbench preference and content state.
 
-The Better Sidebar store already keeps tab trees, panel state, and content per session while sharing the last dragged panel width across sessions. Slot mode keeps that behavior. A small registration on `ctx.layout` exposes the preferred auxiliary width and accepts resize requests from AppFrame.
+The Better Sidebar store keeps the split-pane tab tree, dock state, and content per session while the Slot width is shared across sessions. Desktop Slot presentation keeps the tree visible independently of the stored dock state. A small registration on `ctx.layout` exposes the preferred auxiliary width and accepts resize requests from AppFrame.
 
 The layout registration is installed and removed with the plugin lifecycle. AppFrame falls back to the current conversation layout when the workbench registration or occupant is absent.
 
@@ -75,9 +75,9 @@ The layout registration is installed and removed with the plugin lifecycle. AppF
 
 Better Sidebar separates capability setup from its outer shell while creating only one store and one `betterSidebar` service.
 
-- `portal` creates the current body host and keeps the current right-panel and bottom-panel behavior.
-- `slot` registers the workbench into the DSH `workbench` slot and lets AppFrame own the outer width and drag handle.
-- Both modes keep the same built-in and third-party tabs, viewers, terminals, file actions, side chat, subagent views, interceptors, locale integration, settings, split panes, bottom workbench, floating windows, and per-session content state.
+- `portal` creates the body host and keeps the expandable bottom workbench.
+- `slot` registers the same split-pane tree in the DSH `workbench` slot. At desktop width it fills the slot and omits the dock's height and close controls; at narrow width it returns to the overlay and honors the dock state.
+- Both modes keep the same built-in and third-party tabs, viewers, terminals, file actions, side chat, subagent views, interceptors, locale integration, settings, split panes, and per-session content state. Ordinary resource opens continue through DSH's native right Sidebar.
 
 The Better Sidebar Host config adds `presentation: 'portal' | 'slot'` with `portal` as the default. The existing boot-decision response carries the resolved value to the Client before it mounts the presentation.
 
@@ -157,7 +157,7 @@ No separate patch registry, approval workflow, compatibility range solver, or ge
 - Capability setup is shared by Portal and Slot presentation mounting.
 - The Host `presentation` setting travels through the existing boot response.
 - Portal compensation CSS is presentation-scoped; Slot mode registers the workbench and shared width binding.
-- The service, store, tabs, terminals, viewers, bottom workbench, floats, and integrations remain shared.
+- The service, store, tabs, terminals, viewers, split-pane workbench, and integrations remain shared.
 
 ### Downstream records
 
@@ -181,9 +181,9 @@ No separate patch registry, approval workflow, compatibility range solver, or ge
 | Default Better Sidebar | Without YourBuddy configuration, Better Sidebar keeps its current Portal presentation. |
 | YourBuddy desktop | Navigation stays left, the workbench is the flexible primary surface, details remain available, and conversation is the resizable right surface. |
 | Conversation | Streaming, tools, approvals, composer attachments, scrolling, stop, retry, and session switching remain usable. |
-| Workbench | Built-in and third-party tabs, explorer, editor, diff, terminal, browser, side chat, subagent views, split panes, bottom workbench, floats, and restored content remain usable. |
-| Geometry | Drag handles follow the visible columns, Portal compensation is inactive in Slot mode, and changing sessions keeps the shared width preference. |
-| Narrow window | Conversation and approvals remain reachable and the workbench opens as a drawer. |
+| Workbench | Built-in and third-party tabs, explorer, editor, diff, terminal, browser, side chat, subagent views, split panes, and restored content remain usable. |
+| Geometry | The desktop workbench fills its Slot even when the stored dock state is collapsed, drag handles follow the visible columns, Portal compensation is inactive in Slot mode, and changing sessions keeps the shared width preference. |
+| Narrow window | Conversation and approvals remain reachable and the workbench opens through the overlay. |
 | Lifecycle | Reload and plugin reactivation produce one workbench surface and preserve stored content. |
 | Upgrade | One DSH Release upgrade and one Better Sidebar snapshot refresh preserve the layout change through their documented workflows. |
 

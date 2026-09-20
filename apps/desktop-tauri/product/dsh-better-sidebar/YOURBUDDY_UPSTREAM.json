@@ -11,11 +11,11 @@
     {
       "id": "yourbuddy-workbench",
       "file": "patches/better-sidebar-yourbuddy.patch",
-      "sha256": "656213d50c9e8c517b99a94619f2d9b3bacd157d73231951d9724957aff248ef",
+      "sha256": "4b8ff8ddc574e328f77db183eeaf09d1f618d63acc226a460bade82a104a4c31",
       "purpose": "Add the workbench Slot presentation, desktop external-link bridge, and unbounded generic media routes to the pinned upstream snapshot."
     }
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "6d80994d365a6b54dfc7fc554d9f2142b4b3a8630f0dc88e6af917ef066940d7"
+  "treeSha256": "02e788668410581157340a986edfde2f4a5e3076293a30108d02226fc6ab3d56"
 }

@@ -31,7 +31,7 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 |---|---|---|
 | Shell 轨道与拖动柄 | [`ui-layout/AppFrame.tsx`](../../../packages/client/ui-layout/src/client/AppFrame.tsx) 管理 `sidebar | conversation | details` 与可选的 `sidebar | workbench | details | conversation` 桌面 Grid | 外层宽度和拖动柄继续由 Shell 管理。 |
 | Shell 子区域 | [`ui-layout/src/client/index.ts`](../../../packages/client/ui-layout/src/client/index.ts) 声明 `sidebar`、`conversation`、`details` 和 `shell.overlay` | 声明可选、Root Scope 的 `workbench` Slot，不替换 `conversation`。 |
-| Better Sidebar 展现 | [`dsh-better-sidebar/src/client/index.tsx`](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/client/index.tsx) 挂载 Body Portal 并加载 Frame 补偿 CSS | 保留 Portal 默认值，并增加由 YourBuddy 选择的 Slot 展现。 |
+| Better Sidebar 展现 | [`dsh-better-sidebar/src/client/index.tsx`](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/client/index.tsx) 挂载 Body Portal 或 Workbench Slot | 保留 Portal 默认值，并在 YourBuddy 中选择 Slot。 |
 | Better Sidebar 行为 | 插件 Service 和 Store 管理标签、查看器、终端、拦截器和工作台状态 | 两种展现模式复用同一个 Service 和 Store。 |
 | DSH 更新 | [`sync-dsh-upstream.mjs`](../../../apps/desktop-tauri/scripts/sync-dsh-upstream.mjs) 把官方 DSH Release 合并到 YourBuddy 分支 | 把布局改动作为已提交的下游代码，并在每次 Merge 时协调。 |
 | 外部插件更新 | [`refresh-product-plugins.mjs`](../../../apps/desktop-tauri/scripts/refresh-product-plugins.mjs) 使用 npm 或 GitHub 来源替换产品快照 | 对每个新的暂存快照重新应用 Better Sidebar 兼容补丁。 |
@@ -61,13 +61,13 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 
 桌面轨道顺序是导航、主区域、详情和辅助区域。详情栏继续可用，不会被对话或工作台替换。
 
-窄窗口保持对话为全宽任务区域，并通过现有抽屉行为访问工作台。
+窄窗口保持对话为全宽任务区域，并通过 Shell Overlay 访问工作台。
 
 ### 几何与状态
 
 DSH 管理外层 Grid、实际宽度、响应式布局和拖动柄。Better Sidebar 管理用户的工作台偏好与内容状态。
 
-Better Sidebar Store 当前把标签树、面板状态和内容按会话保存，同时在会话之间共享最后一次拖动的面板宽度。Slot 模式保持这个行为。`ctx.layout` 上的小型注册项暴露期望的辅助栏宽度，并接收 AppFrame 发出的尺寸调整请求。
+Better Sidebar Store 把 Split Pane 标签树、Dock 状态和内容按会话保存，同时在会话之间共享 Slot 宽度。桌面 Slot 展现始终显示标签树，不受已保存 Dock 状态影响。`ctx.layout` 上的小型注册项暴露期望的辅助栏宽度，并接收 AppFrame 发出的尺寸调整请求。
 
 布局注册项跟随插件生命周期安装和移除。工作台注册项或 Occupant 缺席时，AppFrame 回退为当前对话布局。
 
@@ -75,9 +75,9 @@ Better Sidebar Store 当前把标签树、面板状态和内容按会话保存�
 
 Better Sidebar 把能力初始化与外层 Shell 分开，同时只创建一个 Store 和一个 `betterSidebar` Service。
 
-- `portal` 创建当前 Body Host，并保留现有右侧面板和底部面板行为。
-- `slot` 把工作台注册到 DSH `workbench` Slot，由 AppFrame 管理外层宽度和拖动柄。
-- 两种模式都保留相同的内置与第三方标签、查看器、终端、文件操作、Side Chat、Subagent View、拦截器、多语言、设置、Split Pane、底部工作台、浮窗和逐会话内容状态。
+- `portal` 创建 Body Host，并保留可展开的底部工作台。
+- `slot` 把相同的 Split Pane 标签树注册到 DSH `workbench` Slot。桌面宽度下，它填满 Slot 并省略 Dock 的高度拖动与关闭控件；窄屏下，它回到 Overlay 并遵循 Dock 状态。
+- 两种模式都保留相同的内置与第三方标签、查看器、终端、文件操作、Side Chat、Subagent View、拦截器、多语言、设置、Split Pane 和逐会话内容状态。普通资源打开继续使用 DSH 原生右侧栏。
 
 Better Sidebar Host 配置增加 `presentation: 'portal' | 'slot'`，默认值为 `portal`。现有 Boot Decision 响应在 Client 挂载展现前携带解析后的取值。
 
@@ -157,7 +157,7 @@ Bundle Manifest 包含这些来源记录和补丁 Hash。补丁内容只作为�
 - Portal 与 Slot 展现挂载共享同一份能力初始化。
 - Host `presentation` 设置通过现有 Boot Response 传递。
 - Portal 补偿 CSS 按展现模式限定；Slot 模式注册 Workbench 与共享宽度 Binding。
-- Service、Store、标签、终端、查看器、底部工作台、浮窗和集成保持共享。
+- Service、Store、标签、终端、查看器、Split Pane 工作台和集成保持共享。
 
 ### 下游记录
 
@@ -181,9 +181,9 @@ Bundle Manifest 包含这些来源记录和补丁 Hash。补丁内容只作为�
 | 默认 Better Sidebar | 没有 YourBuddy 配置时，Better Sidebar 保持当前 Portal 展现。 |
 | YourBuddy 桌面 | 导航保持在左侧，工作台是可伸缩主区域，详情仍可用，对话位于可调整宽度的右侧区域。 |
 | 对话 | 流式输出、工具、审批、输入框附件、滚动、停止、重试和会话切换都可用。 |
-| 工作台 | 内置与第三方标签、Explorer、Editor、Diff、Terminal、Browser、Side Chat、Subagent View、Split Pane、底部工作台、浮窗和内容恢复都可用。 |
-| 几何 | 拖动柄跟随可见列，Slot 模式下 Portal 补偿不生效，切换会话后共享宽度偏好不变。 |
-| 窄窗口 | 对话和审批仍可访问，工作台以抽屉形式打开。 |
+| 工作台 | 内置与第三方标签、Explorer、Editor、Diff、Terminal、Browser、Side Chat、Subagent View、Split Pane 和内容恢复都可用。 |
+| 几何 | 即使已保存 Dock 状态为折叠，桌面工作台仍填满 Slot；拖动柄跟随可见列，Slot 模式下 Portal 补偿不生效，切换会话后共享宽度偏好不变。 |
+| 窄窗口 | 对话和审批仍可访问，工作台通过 Overlay 打开。 |
 | 生命周期 | 刷新页面和重新激活插件后只有一个工作台区域，并保留已存内容。 |
 | 升级 | 一次 DSH Release 升级和一次 Better Sidebar 快照刷新都能通过相应流程保留布局改动。 |
 
