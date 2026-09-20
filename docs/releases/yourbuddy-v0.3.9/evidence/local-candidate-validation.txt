@@ -35,10 +35,25 @@ Failure and recovery retained from preparation
 - The release smoke then failed because it expected the pre-Session model selector and an obsolete raw model label. Current YourBuddy stages only the Agent preset before Session creation. The smoke now verifies the Session-independent Host catalog, creates an isolated blank Session, persists its selection, and checks the actual Slot geometry.
 - The corrected direct prepared-product verification passed. No public tag, release asset, updater file, or website claim was created or replaced during recovery.
 
-Pending pre-tag checks
-- Run the complete prepare:release command on the committed 0.3.9 candidate and capture the workbench screenshot.
-- Run release-version, documentation, lint, website, and selected desktop checks.
-- Record the final candidate commit and results before creating the tag.
+Completed clean-tree preparation
+- Candidate commit: 0be8a931a2746718a4ca50335d2c9f68b2e45deb
+- Command: the repository prepare:release script with the controlled release PATH and YOURBUDDY_RELEASE_SCREENSHOT targeting the release archive.
+- Result: passed; compatible product sources and the frozen lockfile were ready for review and commit.
+- Assembled smoke result: 56 bundled runtime peer links, 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed.
+- Screenshot: screenshots/workbench-primary.png; 1680x1000 RGB PNG; SHA-256 3968de85040592aa5a5ce140a62f7b63b070f3f388ab26a5d2432192072f60de.
+- Visual inspection: Better Sidebar occupied the primary workbench with Files, Changes, Tasks, Side Chat, Terminal, and Browser entries; the DSH conversation remained in the right auxiliary column.
+
+Completed pre-tag gates
+- node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.3.9: passed.
+- pnpm --dir apps/desktop-tauri run test:release-version: passed, 3 tests.
+- pnpm exec vitest run apps/desktop-tauri/tests/better-sidebar-presentation.spec.ts with the controlled PATH: passed, 2 tests.
+- node --test apps/desktop-tauri/scripts/verify-product-release.test.mjs with the controlled PATH: passed, 14 tests.
+- pnpm run test:docs: passed, 17 gates.
+- pnpm run doc-sync: passed, 35 gates.
+- pnpm run lint: passed.
+- PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/ pnpm run website:check with Hugo Extended 0.165.0, Go 1.27.1, and the controlled PATH: passed, 70 tests and 57 product HTML pages.
+- git diff --check: passed.
+- The first focused and website test attempts were interrupted after the host PowerShell availability probe hung. Both commands then passed unchanged with a controlled PATH that excluded PowerShell; no assertion failure was bypassed.
 
 Scope limits
 - Controlled local services do not prove real OAuth or real model traffic.

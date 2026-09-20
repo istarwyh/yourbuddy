@@ -8,7 +8,7 @@ This archive records the Better Sidebar workbench, GPT Auth, and compact macOS w
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
 - Archive state: pre-publication candidate; local source and assembled-product checks are recorded, while public artifacts and website deployment remain pending.
 - Release source: the immutable tag and commit will be recorded after publication.
-- Evidence gallery: [workbench-primary screenshot](screenshots/workbench-primary.png) will be captured by the final assembled-product smoke.
+- Evidence gallery: [workbench-primary screenshot](screenshots/workbench-primary.png) from the final assembled-product smoke.
 - Evidence download: the dedicated verification ZIP will be attached after public artifact verification.
 
 ## User release notes
@@ -73,13 +73,13 @@ The selected Session renders Better Sidebar across the full primary workbench ev
 
 ### Actual
 
-The focused checks passed. The final direct assembled-product verification observed 56 bundled runtime peer links and six product Client plugins; Better Sidebar filled the Slot, the GPT Auth status channel and Codex catalog resolved, and the controlled external-link, Marketplace, proxy, and application-lifecycle paths passed. The complete clean-tree `prepare:release` rerun and screenshot capture are the remaining pre-tag checks.
+The focused checks and complete clean-tree `prepare:release` passed at candidate commit `0be8a931a2746718a4ca50335d2c9f68b2e45deb`. The assembled-product verification observed 56 bundled runtime peer links and six product Client plugins; Better Sidebar filled the Slot, the GPT Auth status channel and Codex catalog resolved, and the controlled external-link, Marketplace, proxy, and application-lifecycle paths passed. The resulting 1680×1000 screenshot has SHA-256 `3968de85040592aa5a5ce140a62f7b63b070f3f388ab26a5d2432192072f60de`.
 
 ### Evidence
 
 - Before: the user-provided blank-workbench screenshot is not redistributed because it came from a local desktop state.
 - In progress: [local candidate validation](evidence/local-candidate-validation.txt) records the failures, diagnosis, and recovery.
-- Result: the final screenshot and complete clean-tree preparation result will be added before tagging.
+- Result: [workbench-primary screenshot](screenshots/workbench-primary.png) records Better Sidebar in the primary workbench and the conversation in the auxiliary column after the complete clean-tree preparation passed.
 - Failure and recovery: the stale smoke expected a model selector before a Session existed. It now probes the Session-independent Host catalog, creates an isolated blank Session, persists its selection, and validates the real Slot geometry without model traffic.
 
 ### Scope limits
@@ -101,7 +101,7 @@ The controlled browser smoke is not the packaged native WebView and does not pro
 - [x] The local scenario records date, time zone, environment, build under test, evidence origin, data type, and service type.
 - [x] Source-only, synthetic-data, controlled-service, pending, and unverified evidence is labelled explicitly.
 - [x] The release entry was added to the bilingual release index.
-- [ ] The final clean-tree preparation and screenshot capture passed on the committed candidate.
+- [x] The final clean-tree preparation and screenshot capture passed on the committed candidate.
 - [ ] The public release page, installer, updater metadata, signatures, and hashes were independently verified.
 - [ ] The website was synchronized in both languages and the live download journey was independently verified.
 - [ ] The downloadable verification archive was created, uploaded, extracted, and checked.
