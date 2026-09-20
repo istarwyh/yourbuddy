@@ -1,0 +1,43 @@
+YourBuddy 0.3.8 local candidate validation
+Captured: 2026-09-20 12:01 UTC+08:00 CST
+Workspace: sanitized; local absolute path omitted
+Environment: macOS 15.6.1 (24G90) arm64; Node v22.19.0; pnpm 11.7.0; rustc 1.98.0
+Data and services: synthetic repository/npm metadata and controlled local Host/browser services; no model provider
+Public state at capture: no yourbuddy-v0.3.8 tag or GitHub Release
+
+Upstream identities
+- DeepSeek Harness: dsh-v0.1.5-rc.2, version 0.1.5-rc.2, commit fb2c4b9e698e30edb738bca4cf0618587db7d203
+- Better Sidebar: 0.19.1
+- Harbor Evolution: 0.9.7
+- Plugin Marketplace: 0.3.3
+- Context Doctor: 0.7.2
+
+Completed checks before the version commit
+1. CI=true pnpm run build
+   Result: passed.
+2. CI=true pnpm --dir apps/desktop-tauri run test:product-refresh
+   Result: passed, 58 tests.
+3. CI=true pnpm --dir apps/desktop-tauri run test:prepare-release
+   Result: passed, 13 tests.
+4. CI=true pnpm --dir apps/desktop-tauri run test:bundle
+   Result: passed, 7 tests.
+5. CI=true node --test apps/desktop-tauri/scripts/verify-product-release.test.mjs
+   Result: passed, 11 tests.
+6. CI=true NODE_OPTIONS=--use-openssl-ca node --test apps/desktop-tauri/scripts/node-extra-ca.test.mjs
+   Result: passed, 1 test.
+7. PATH="$HOME/.local/bin:$PATH" CI=true pnpm --dir apps/desktop-tauri run prepare:release
+   Result: passed after synchronizing DSH, preparing the offline dependency graph, building the assembled Host and Client, and exercising the controlled browser smoke.
+
+Replay and product observations
+- The Better Sidebar and Plugin Marketplace materialized patches replayed from pristine upstream releases during product refresh tests.
+- The assembled smoke observed Plugin Marketplace missing, ambiguous, registry-error, and verified-bundle states; one-click installation remained disabled unless repository and dsh.bundle.patch metadata matched.
+- The assembled smoke exercised the desktop Marketplace and Better Sidebar external-link bridges.
+- The prepared DSH provenance file selected dsh-v0.1.5-rc.2, and the workbench peers and offline lockfile aligned to 0.1.5-rc.2.
+
+Failure and recovery retained from preparation
+- Obsolete native/landlock-run packaging, an unused trimmed-workspace patch, a missing uv executable on the default PATH, retired proxy assertions, Plugin Marketplace adaptation loss, and Better Sidebar modal selectors caused separate pre-release preparation failures.
+- Each failure occurred before tagging or publication. The source was restored or corrected, focused tests passed, and the complete prepare:release command subsequently exited successfully.
+- No public tag, release asset, updater file, or website claim was created or replaced during recovery.
+
+Final tag-candidate checks
+- Pending after the 0.3.8 version and documentation commit. Results and artifact listings will be appended before tagging.
