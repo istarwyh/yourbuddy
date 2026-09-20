@@ -6,10 +6,10 @@
 
 - 发行标识：`yourbuddy-v0.3.8`。
 - 产品通道：面向 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：公开产品已核验；网站部署与可下载验证归档待完成。
+- 归档状态：在记录范围内完成；产品、网站与可下载验证归档均已公开并核验。
 - 发行源码：不可变 Tag `yourbuddy-v0.3.8`，Commit 为 `9c99a88d1d1b43c35ab922a90e8c409bdc3de06f`。
 - 证据画廊：未采集；本次更新改变内置运行时与插件行为，不改变桌面 Shell 展示。
-- 证据下载：等待最终网站核验。
+- 证据下载：[yourbuddy-v0.3.8-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.8/yourbuddy-v0.3.8-verification.zip)，SHA-256 为 `2165cc11b5e76c842dc7de4328268967c401b50df781db92a03dc3a1be29a25a`。
 
 ## 用户发行说明
 
@@ -47,7 +47,7 @@ YourBuddy 内置官方 DeepSeek Harness `dsh-v0.1.5-rc.2`，以及 Better Sideba
 | 正式桌面发布 | 通过 | 不可变 Tag `yourbuddy-v0.3.8` | GitHub Actions | [工作流记录](evidence/release-workflows.txt) |
 | 公开安装包与 Updater | 在记录范围内通过 | 五个匿名公开下载 | GitHub Release；macOS 15.6.1 arm64 | [产物记录](evidence/public-artifact-stage.json) |
 | 公开 App 与迁移运行时 | 在记录范围内通过 | Updater 归档与 DMG | macOS 15.6.1 arm64 | [运行时记录](evidence/public-runtime-stage.json) |
-| 网站同步 | 待完成 | 源码已更新，线上部署未检查 | GitHub Pages | 待补充 |
+| 网站同步 | 在记录范围内通过 | 源码 Commit `3d8d02737fcf4af97853b9ecbcad9155263f2735` | GitHub Pages | [部署记录](evidence/website-deployment.txt) |
 
 ## 场景：DSH 与产品准备
 
@@ -95,9 +95,9 @@ Updater 归档与 DMG 都包含 YourBuddy 0.3.8，Bundle Identifier 为 `io.gith
 ## 交付状态
 
 - 产品发布状态：已在 [YourBuddy 0.3.8](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.8) 发布并完成独立核验。
-- 验证归档状态：部分完成；本地、工作流、公开产物与运行时证据已提交，可下载归档与网站证据待补充。
-- 网站同步状态：中英文源码已更新；线上部署与下载路径待核验。
-- 未验证范围：原生 GUI 启动、安装包 WebView 交互、从旧版实际执行更新、Apple Developer 签名与公证、OAuth、真实模型流量、自托管备用 CI Drill 与线上网站更新。
+- 验证归档状态：在记录范围内完成；[公开 ZIP](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.8/yourbuddy-v0.3.8-verification.zip)通过匿名下载、SHA-256、GitHub 摘要与 ZIP 完整性检查；详见[归档记录](evidence/verification-archive.txt)。
+- 网站同步状态：中英文页面已部署，线上发行、插件与下载路径通过静态 HTTP 检查；详见[部署记录](evidence/website-deployment.txt)。
+- 未验证范围：原生 GUI 启动、浏览器视觉渲染、安装包 WebView 交互、从旧版实际执行更新、Apple Developer 签名与公证、OAuth、真实模型流量与自托管备用 CI Drill。
 
 ## 交付检查清单
 
@@ -109,7 +109,7 @@ Updater 归档与 DMG 都包含 YourBuddy 0.3.8，Bundle Identifier 为 `io.gith
 - [x] 仅源码、受控服务、待完成与未验证证据均有明确标识。
 - [x] 发行条目已加入 `docs/releases/README.zh.md`，中英文保持一致。
 - [x] 公开 Release 页面、安装包、Updater 元数据、签名与 Hash 已独立核验。
-- [ ] 网站已同步中英文，线上下载路径已独立核验。
-- [ ] 可下载验证归档已创建、上传并核验。
+- [x] 网站已同步中英文，线上下载路径已独立核验。
+- [x] 可下载验证归档已创建、上传并核验。
 - [x] 产品发布、归档状态、网站同步与未验证范围分开报告。
 - [x] 未移动或覆盖任何已发布 Tag 或安装包。

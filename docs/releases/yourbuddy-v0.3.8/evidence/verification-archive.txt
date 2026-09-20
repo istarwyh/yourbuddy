@@ -1,0 +1,15 @@
+YourBuddy 0.3.8 downloadable verification archive
+==================================================
+
+Observed: 2026-09-20 13:47 UTC+08:00, Asia/Shanghai
+Asset: yourbuddy-v0.3.8-verification.zip
+URL: https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.8/yourbuddy-v0.3.8-verification.zip
+Bytes: 15767
+SHA-256: 2165cc11b5e76c842dc7de4328268967c401b50df781db92a03dc3a1be29a25a
+GitHub API digest: sha256:2165cc11b5e76c842dc7de4328268967c401b50df781db92a03dc3a1be29a25a
+Authentication used for verification download: none
+ZIP integrity check: passed
+
+The archive contains the English and Chinese 0.3.8 verification records, their pairing record, and evidence available after website verification: local candidate validation, release workflows, public artifacts, published App/runtime, and website deployment. It intentionally does not contain this self-referential post-upload record.
+
+This proves public archive availability, complete-file integrity, and ZIP readability. The individual evidence files define the scope of the product, runtime, and website observations.

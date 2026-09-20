@@ -1,0 +1,29 @@
+YourBuddy 0.3.8 public website deployment
+==========================================
+
+Observed: 2026-09-20 13:41–13:44 UTC+08:00, Asia/Shanghai
+Source commit: 3d8d02737fcf4af97853b9ecbcad9155263f2735
+Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35492271699 (success)
+GitHub Pages deployment: 6549522753 (success)
+GitHub Pages deployment status: 18581410338
+Environment URL: https://istarwyh.github.io/yourbuddy/
+
+Passing observations
+--------------------
+
+1. The workflow build and deploy jobs passed for the exact source commit.
+2. The Chinese and English home, download, and release pages returned HTTP 200 and contained 0.3.8 content:
+   - https://istarwyh.github.io/yourbuddy/
+   - https://istarwyh.github.io/yourbuddy/en/
+   - https://istarwyh.github.io/yourbuddy/download/
+   - https://istarwyh.github.io/yourbuddy/en/download/
+   - https://istarwyh.github.io/yourbuddy/releases/
+   - https://istarwyh.github.io/yourbuddy/en/releases/
+3. The Chinese and English Better Sidebar, Plugin Marketplace, and Harbor Evolution pages returned HTTP 200 and contained snapshot versions 0.19.1, 0.3.3, and 0.9.7 respectively.
+4. Both download pages linked the exact 0.3.8 DMG and displayed SHA-256 `fb67f762ce15e86a98b080003729e93bab7b304c940ff90f0fc2d6535e1b8f7d`.
+5. The public GitHub Release, checksum file, and English and Chinese raw verification records returned HTTP 200. A one-byte range request to the DMG returned HTTP 206; the complete DMG had already passed the independent anonymous download and hash check recorded in public-artifact-stage.json.
+
+Evidence boundary
+-----------------
+
+Deployment metadata, public HTTP, and static HTML inspection establish the recorded website scope. They do not validate visual browser rendering, desktop installation, native startup, packaged-WebView behavior, updater installation, OAuth, or real-provider execution.

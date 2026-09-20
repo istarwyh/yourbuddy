@@ -6,10 +6,10 @@ This archive records the DSH 0.1.5-rc.2 synchronization, refreshed product plugi
 
 - Release identifier: `yourbuddy-v0.3.8`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: public product verified; website deployment and downloadable verification archive pending.
+- Archive state: complete within the recorded scope; product, website, and downloadable verification archive are public and checked.
 - Release source: immutable tag `yourbuddy-v0.3.8` at `9c99a88d1d1b43c35ab922a90e8c409bdc3de06f`.
 - Evidence gallery: not captured; this update changes bundled runtime and plugin behavior rather than the desktop shell presentation.
-- Evidence download: pending final website verification.
+- Evidence download: [yourbuddy-v0.3.8-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.8/yourbuddy-v0.3.8-verification.zip), SHA-256 `2165cc11b5e76c842dc7de4328268967c401b50df781db92a03dc3a1be29a25a`.
 
 ## User release notes
 
@@ -47,7 +47,7 @@ Existing application data is retained and no migration is required. The desktop 
 | Formal desktop publication | passed | immutable tag `yourbuddy-v0.3.8` | GitHub Actions | [workflow record](evidence/release-workflows.txt) |
 | Public installer and updater | passed within recorded scope | five anonymous public downloads | GitHub Release; macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json) |
 | Published App and relocated runtime | passed within recorded scope | updater archive and DMG | macOS 15.6.1 arm64 | [runtime record](evidence/public-runtime-stage.json) |
-| Website synchronization | pending | source updated; live deployment not checked | GitHub Pages | pending |
+| Website synchronization | passed within recorded scope | source commit `3d8d02737fcf4af97853b9ecbcad9155263f2735` | GitHub Pages | [deployment record](evidence/website-deployment.txt) |
 
 ## Scenario: DSH and product preparation
 
@@ -95,9 +95,9 @@ The corrected master CI run passed every hosted job observed before tagging. Its
 ## Delivery status
 
 - Product publication status: published and independently checked at [YourBuddy 0.3.8](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.8).
-- Verification archive status: partial; local, workflow, public-artifact, and runtime evidence are committed, while the downloadable archive and website evidence remain pending.
-- Website synchronization status: source updated in both languages; live deployment and download journey pending verification.
-- Unverified scope: native GUI startup, packaged-WebView interaction, updater installation from an older release, Apple Developer signing and notarization, OAuth, real model traffic, self-hosted standby CI drills, and the live website update.
+- Verification archive status: complete within the recorded scope; the [public ZIP](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.8/yourbuddy-v0.3.8-verification.zip) passed an anonymous download, SHA-256, GitHub digest, and ZIP integrity check; see the [archive record](evidence/verification-archive.txt).
+- Website synchronization status: English and Chinese pages were deployed and the live release, plugin, and download journeys passed static HTTP checks; see the [deployment record](evidence/website-deployment.txt).
+- Unverified scope: native GUI startup, visual browser rendering, packaged-WebView interaction, updater installation from an older release, Apple Developer signing and notarization, OAuth, real model traffic, and self-hosted standby CI drills.
 
 ## Delivery checklist
 
@@ -109,7 +109,7 @@ The corrected master CI run passed every hosted job observed before tagging. Its
 - [x] Source-only, controlled-service, pending, and unverified evidence is labelled explicitly.
 - [x] The release entry was added to `docs/releases/README.md` and both languages were kept consistent.
 - [x] The public release page, installer, updater metadata, signatures, and hashes were independently verified.
-- [ ] The website was synchronized in both languages and the live download journey was independently verified.
-- [ ] The downloadable verification archive was created, uploaded, and checked.
+- [x] The website was synchronized in both languages and the live download journey was independently verified.
+- [x] The downloadable verification archive was created, uploaded, and checked.
 - [x] Product publication, archive status, website synchronization, and unverified scope are reported separately.
 - [x] No published tag or installer was moved or overwritten.
