@@ -1,0 +1,40 @@
+YourBuddy 0.3.10 local candidate validation
+Date: 2026-09-20 22:50 UTC+08:00 CST
+Environment: macOS 15.6.1 arm64; Node 22.19.0; pnpm 11.7.0; Rust 1.98.0; uv 0.12.5
+Build under test: local source candidate; Better Sidebar fix commit 663210f699bd5f58cf848d5723da8218c4744cd2
+Evidence origin: this release run
+Data: synthetic file paths, isolated product state, public Baidu content
+Services: controlled local Host and Chromium; no model provider
+
+Focused behavior
+Command: NODE_ENV=test pnpm exec vitest run apps/desktop-tauri/tests/better-sidebar-file-open.spec.ts
+Result: passed; 1 test file, 1 test.
+
+Product compatibility and patch replay
+Command: pnpm --dir apps/desktop-tauri run test:product-refresh
+Result: passed; 67 tests, including 6 distributed-browser policy checks.
+The focused patch checks also applied better-sidebar-native-file-open.patch, better-sidebar-browser-navigation.patch, and better-sidebar-browser-default-unsandboxed.patch sequentially and verified the product snapshot and patch SHA-256 values.
+
+Agent Note records
+Commands: pnpm run verify-agent-note-format; pnpm run verify-translation-pairing
+Result: passed; 356 Agent Notes and 872 bilingual pairs checked at the time of the run.
+Supersession review: the existing desktop external-link note owns system-browser handoff, the primary-workbench note owns layout, and the DSH Sidebar file-tree notes own native Sidebar resources; none owns the Better Sidebar Session-scope or embedded-browser default decision, so no active note was superseded.
+
+Release preparation
+Command: pnpm --dir apps/desktop-tauri run prepare:release -- --allow-dirty
+Result: passed.
+Observed summary: selected DSH and product snapshots remained compatible; the Harness build completed; the product lock preserved 56 runtime peer links; the offline store contained 37,262 files; the assembled Client registered 6 product plugins; the product smoke passed external links, Plugin Marketplace, Network proxy, and Application lifecycle controls.
+
+Controlled browser observation
+Original iframe tokens: allow-scripts allow-forms allow-popups allow-downloads allow-modals allow-popups-to-escape-sandbox
+Observed result for https://baidu.com/: blank iframe.
+Compatibility additions: allow-same-origin allow-top-navigation
+Observed result for https://baidu.com/: page rendered in controlled Chromium.
+No-sandbox iframe result: page rendered.
+This observation does not exercise the packaged YourBuddy WebView.
+
+Known failed attempt retained
+The first browser regression imported the complete product BrowserView component and failed before collecting tests because react-icons/vsc is not installed in the root test dependency graph. The final regression extracts and executes the policy from both distributed Client bundles and separately asserts source/bundle token synchronization. The replacement test passed.
+
+Unverified at this stage
+Native GUI startup; packaged-WebView interaction; update installation from an older YourBuddy version; Apple Developer signing and notarization; OAuth; real model traffic; public release assets; stable updater metadata; website deployment and live download journey.
