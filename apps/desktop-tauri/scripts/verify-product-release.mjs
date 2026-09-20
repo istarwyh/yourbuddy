@@ -440,13 +440,13 @@ async function exerciseMarketplace(settings, { openExternalLinks = false } = {})
   }).waitFor({ timeout: 10_000 })
 }
 
-async function exerciseBetterSidebarExternalLink(settings) {
+async function exerciseBetterSidebarExternalLink(settings, surface = settings) {
   await settings.getByRole('button', { name: 'Side card', exact: true }).click()
-  await settings.getByRole('button', { name: 'Add preview plugins', exact: true }).click()
-  const plugins = settings.getByRole('dialog', { name: 'Add preview plugins', exact: true })
-  await plugins.waitFor({ timeout: 10_000 })
-  await plugins.getByRole('button', { name: 'Open: Office 预览插件', exact: true }).last().click()
-  await plugins.getByRole('button', { name: 'Done', exact: true }).click()
+  await settings.getByText('Add preview plugins', { exact: true }).click()
+  const officePreview = surface.getByRole('button', { name: /^(?:Open|跳转):/u }).first()
+  await officePreview.waitFor({ timeout: 10_000 })
+  await officePreview.click()
+  await surface.getByRole('button', { name: 'Done', exact: true }).last().click()
 }
 
 async function clickOnboardingAction(page, name, waitMilliseconds) {
@@ -862,7 +862,7 @@ async function runBrowserSmoke(baseUrl, env) {
     await embeddedSettings.getByRole('button', { name: 'Plugin Marketplace', exact: true }).click()
     await embeddedSettings.getByPlaceholder('Search plugins (keyword, or empty to browse all)…', { exact: true }).waitFor({ timeout: 10_000 })
     await exerciseMarketplace(embeddedSettings, { openExternalLinks: true })
-    await exerciseBetterSidebarExternalLink(embeddedSettings)
+    await exerciseBetterSidebarExternalLink(embeddedSettings, embedded)
     await page.waitForFunction(
       url => window.__YOURBUDDY_DESKTOP_COMMANDS__?.some(
         entry => entry.command === 'open_external_url' && entry.args?.url === url,
@@ -1122,15 +1122,17 @@ async function runHostSmoke(root, productRuntimeRoot) {
   writeFileSync(proxyVerifier, `import { createRequire } from 'node:module'
 
 const require = createRequire(${JSON.stringify(proxyPackage)})
-const { EnvHttpProxyAgent, getGlobalDispatcher } = require('undici')
+const { proxyRouteFor } = require('@deepseek-ai/dsh-http-proxy')
 
 export const name = 'yourbuddy-release-proxy-verifier'
 
 export async function apply() {
-  const deadline = Date.now() + 1_000
-  while (!(getGlobalDispatcher() instanceof EnvHttpProxyAgent)) {
-    if (Date.now() >= deadline) throw new Error('application proxy Dispatcher is not active')
-    await new Promise(resolve => { setTimeout(resolve, 10) })
+  const route = proxyRouteFor(new URL('https://example.com/'))
+  if (!route.proxied || route.proxy !== ${JSON.stringify(syntheticHostProxy)}) {
+    throw new Error('application proxy policy is not active')
+  }
+  if (typeof route.dispatcher.dispatch !== 'function') {
+    throw new Error('application proxy policy did not provide a Dispatcher')
   }
 }
 `)
@@ -1237,7 +1239,10 @@ export async function apply() {
     exitFailure = new Error(`${exitFailure.message}\nrelease smoke state preserved at ${world}`, { cause: exitFailure })
   }
   if (failure && exitFailure) {
-    throw new AggregateError([failure, exitFailure], 'YourBuddy product smoke and Host teardown both failed')
+    throw new AggregateError(
+      [failure, exitFailure],
+      `YourBuddy product smoke failed: ${failure.message}; Host teardown failed: ${exitFailure.message}`,
+    )
   }
   if (failure) throw failure
   if (exitFailure) throw exitFailure
