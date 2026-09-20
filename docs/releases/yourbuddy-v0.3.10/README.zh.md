@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.3.10`。
 - 产品渠道：适用于 Apple Silicon macOS 的 YourBuddy 桌面应用。
-- 归档状态：已发布；本地源码、组装产品、工作流、公开产物、App 标识、产品 Provenance、迁移运行时与官网检查通过，可下载验证归档仍待完成。
+- 归档状态：在声明范围内完成；产品发布、公开产物核验、官网部署与可下载验证归档均已记录。
 - 发布源码：不可变 Tag Commit `dda208173552536a743449499ce153a8991fc7ce`；产品修复 Commit `663210f699bd5f58cf848d5723da8218c4744cd2`。
 - 证据图集：未捕获；受控浏览器观察记录为仅测源码证据，而不是已安装 YourBuddy 截图。
-- 证据下载：等待最终归档组装与公开核验。
+- 证据下载：[yourbuddy-v0.3.10-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.10/yourbuddy-v0.3.10-verification.zip)，15,968 字节，SHA-256 `19ec2c7df84d4c733a20d8e5663c3ba887aba4dca8c92f7706b9b29cff6d587b`。
 
 ## 面向用户的发布说明
 
@@ -50,6 +50,7 @@ Better Sidebar 文件动作会显式指定 Files Tab 所属的 Session。Browser
 | 公开安装包与 Updater | 在记录范围内通过 | 五个匿名公开下载 | GitHub Release；macOS 15.6.1 arm64 | [产物记录](evidence/public-artifact-stage.json) |
 | 公开 App 标识、产品 Provenance 与迁移运行时 | 在记录范围内通过 | Updater 归档与 DMG | macOS 15.6.1 arm64 | [运行时记录](evidence/public-runtime-stage.json) |
 | 产品官网 | passed | 源码 Commit `5e0c06e98e1cf779242fd957da5758b09ee47814` | GitHub Pages | [官网记录](evidence/website-deployment.txt) |
+| 公开验证资料归档 | passed | 匿名公开下载 | GitHub Release | [归档记录](evidence/verification-archive.txt) |
 
 ## 场景：本地候选版本与组装产品验证
 
@@ -102,9 +103,9 @@ Better Sidebar 文件动作会显式指定 Files Tab 所属的 Session。Browser
 ## 交付状态
 
 - 产品发布状态：`yourbuddy-v0.3.10` 是最新正式 GitHub Release；全部工作流步骤通过。
-- 验证资料归档状态：部分完成；本地、工作流、公开产物、App 标识、产品 Provenance、迁移运行时与官网证据已记录，可下载归档仍待完成。
+- 验证资料归档状态：在声明范围内完成；可下载 ZIP 已上传、匿名下载、逐字节匹配、解压，并与 GitHub API 摘要核对。
 - 站点同步状态：已完成双语部署与独立核验，包括原始 Markdown 与安装包旅程。
-- 未验证范围：原生 GUI 启动、打包 WebView 交互、从旧安装版更新、Apple Developer 签名与公证、OAuth、真实模型流量与可下载验证归档。
+- 未验证范围：原生 GUI 启动、打包 WebView 交互、从旧安装版更新、Apple Developer 签名与公证、OAuth 与真实模型流量。
 
 ## 交付清单
 
@@ -117,6 +118,6 @@ Better Sidebar 文件动作会显式指定 Files Tab 所属的 Session。Browser
 - [x] 已在提交后的候选版本上完成最终干净工作区准备。
 - [x] 已独立核验公开发布页、安装包、Updater 元数据、签名、Hash 与迁移运行时。
 - [x] 已完成双语官网同步并独立核验线上下载旅程。
-- [ ] 已创建、上传、解压并核验可下载验证资料归档。
+- [x] 已创建、上传、解压并核验可下载验证资料归档。
 - [x] 已分别报告产品发布状态、归档状态、站点同步与未验证范围。
 - [x] 未移动或覆盖公开 Tag 与安装包；本次发布使用新版本。

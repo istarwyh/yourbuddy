@@ -27,4 +27,4 @@ YourBuddy 0.3.10 恢复 Better Sidebar 文件打开，并让内嵌浏览器默�
 ## Verification / 验证资料
 
 - [Tagged verification record / Tag 内验证记录](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.10/docs/releases/yourbuddy-v0.3.10)
-- The downloadable verification bundle is attached after public artifact verification. / 可下载验证资料包会在公开产物核验后附加。
+- [Downloadable verification bundle / 可下载验证资料包](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.10/yourbuddy-v0.3.10-verification.zip) — SHA-256 `19ec2c7df84d4c733a20d8e5663c3ba887aba4dca8c92f7706b9b29cff6d587b`.

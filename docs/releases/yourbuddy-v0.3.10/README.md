@@ -6,10 +6,10 @@ This archive records the Better Sidebar file-opening and embedded-browser recove
 
 - Release identifier: `yourbuddy-v0.3.10`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: published; local source, assembled-product, workflow, public-artifact, App identity, product provenance, relocated-runtime, and website checks passed, while the downloadable verification archive remains pending.
+- Archive state: complete within the stated limits; product publication, public-artifact verification, website deployment, and the downloadable verification archive are recorded.
 - Release source: immutable tag commit `dda208173552536a743449499ce153a8991fc7ce`; product fix commit `663210f699bd5f58cf848d5723da8218c4744cd2`.
 - Evidence gallery: not captured; the controlled browser observation is recorded as source-only evidence rather than an installed YourBuddy screenshot.
-- Evidence download: pending final archive assembly and public verification.
+- Evidence download: [yourbuddy-v0.3.10-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.10/yourbuddy-v0.3.10-verification.zip), 15,968 bytes, SHA-256 `19ec2c7df84d4c733a20d8e5663c3ba887aba4dca8c92f7706b9b29cff6d587b`.
 
 ## User release notes
 
@@ -50,6 +50,7 @@ Existing application data is retained and no migration is required. An explicitl
 | Public installer and updater | passed within recorded scope | five anonymous public downloads | GitHub Release; macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json) |
 | Public App identity, product provenance, and relocated runtime | passed within recorded scope | updater archive and DMG | macOS 15.6.1 arm64 | [runtime record](evidence/public-runtime-stage.json) |
 | Product website | passed | source commit `5e0c06e98e1cf779242fd957da5758b09ee47814` | GitHub Pages | [website record](evidence/website-deployment.txt) |
+| Public verification archive | passed | anonymous public download | GitHub Release | [archive record](evidence/verification-archive.txt) |
 
 ## Scenario: local candidate and assembled-product validation
 
@@ -102,9 +103,9 @@ The initial provenance probe expected each patch descriptor to use a `path` fiel
 ## Delivery status
 
 - Product publication status: `yourbuddy-v0.3.10` is the latest formal GitHub Release; all workflow steps passed.
-- Verification archive status: partial; local, workflow, public-artifact, App identity, product-provenance, relocated-runtime, and website evidence is recorded, while the downloadable archive remains pending.
+- Verification archive status: complete within stated limits; the downloadable ZIP was uploaded, anonymously downloaded, matched byte for byte, extracted, and checked against its GitHub API digest.
 - Website synchronization status: deployed and independently verified in both languages, including raw Markdown and the installer journey.
-- Unverified scope: native GUI startup, packaged-WebView interaction, an update from an older installation, Apple Developer signing and notarization, OAuth, real model traffic, and the downloadable verification archive.
+- Unverified scope: native GUI startup, packaged-WebView interaction, an update from an older installation, Apple Developer signing and notarization, OAuth, and real model traffic.
 
 ## Delivery checklist
 
@@ -117,6 +118,6 @@ The initial provenance probe expected each patch descriptor to use a `path` fiel
 - [x] The final clean-tree preparation passed on the committed candidate.
 - [x] The public release page, installer, updater metadata, signatures, hashes, and relocated runtime are independently verified.
 - [x] The website is synchronized in both languages and the live download journey is independently verified.
-- [ ] The downloadable verification archive is created, uploaded, extracted, and checked.
+- [x] The downloadable verification archive was created, uploaded, extracted, and checked.
 - [x] Product publication, archive status, website synchronization, and unverified scope are reported separately.
 - [x] No published tag or installer is moved or overwritten; this release uses a new version.

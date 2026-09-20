@@ -1,0 +1,14 @@
+YourBuddy 0.3.10 public verification archive
+
+Created from source commit: a75da9c2fc4f62f3d2b6e2486b9dd29bdbef169d
+Archive URL: https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.10/yourbuddy-v0.3.10-verification.zip
+GitHub asset creation: 2026-09-20T15:53:14Z
+Authentication for verification download: none
+HTTP result: 200 after the public release-asset redirect
+Downloaded bytes: 15,968
+SHA-256: 19ec2c7df84d4c733a20d8e5663c3ba887aba4dca8c92f7706b9b29cff6d587b
+GitHub API digest: sha256:19ec2c7df84d4c733a20d8e5663c3ba887aba4dca8c92f7706b9b29cff6d587b
+
+The anonymously downloaded file matched the locally generated archive byte for byte. unzip -t reported no errors, and extraction produced the paired release records, pairing metadata, local validation record, workflow record, public-artifact record, public-runtime record, and website-deployment record.
+
+The archive was generated before this verification-archive.txt record and therefore intentionally does not contain a self-referential copy of this file. Its release README records the archive as pending because the public result and digest were not known when the ZIP was assembled. The public tag and the five product assets were not moved, replaced, or otherwise modified; the verification ZIP is a separate sixth attachment.
