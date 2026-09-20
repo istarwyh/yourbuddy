@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,8 @@ from harbor_dsh_evolution.dataset import validate_dataset
 from harbor_dsh_evolution.identity import resolve_inside
 from harbor_dsh_evolution.promotion import load_policy
 from harbor_dsh_evolution.stack import validate_stack
+from harbor_dsh_evolution.execution_environment import normalize_execution_environment
+from harbor_dsh_evolution.runtime_identity import ACP_RUNNER_SDK_VERSION
 
 
 def _evaluator_artifact_findings(
@@ -143,6 +146,70 @@ def docker_runtime_check() -> dict[str, Any]:
     }
 
 
+def _host_runtime_findings(
+    candidate_runtime: dict[str, Any] | None = None,
+) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+    if sys.platform == "win32":
+        findings.append({
+            "level": "error",
+            "code": "HOST_PLATFORM_UNSUPPORTED",
+            "message": "Host execution currently requires a POSIX host.",
+        })
+        return findings
+    for command in ("bash", "node", "npm"):
+        if shutil.which(command) is None:
+            findings.append({
+                "level": "error",
+                "code": f"HOST_{command.upper()}_UNAVAILABLE",
+                "message": f"Host execution requires {command} on PATH.",
+            })
+    if candidate_runtime and shutil.which("node"):
+        try:
+            observed = subprocess.run(
+                ["node", "-p", "process.versions.node"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=8,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            observed = "unavailable"
+        expected = str(candidate_runtime.get("node_version") or "")
+        if observed != expected:
+            findings.append({
+                "level": "error",
+                "code": "HOST_NODE_VERSION_MISMATCH",
+                "message": f"Candidate requires Node {expected}; Host provides {observed}.",
+            })
+    try:
+        sdk_version = version("agent-client-protocol")
+    except PackageNotFoundError:
+        sdk_version = "unavailable"
+    if sdk_version != ACP_RUNNER_SDK_VERSION:
+        findings.append({
+            "level": "error",
+            "code": "HOST_ACP_SDK_MISMATCH",
+            "message": f"Host Adapter requires agent-client-protocol {ACP_RUNNER_SDK_VERSION}; found {sdk_version}.",
+        })
+    if not findings:
+        findings.append({
+            "level": "info",
+            "code": "HOST_RUNTIME_READY",
+            "message": "Host execution runtime is available; commands will run as the current user without isolation.",
+        })
+    return findings
+
+
+def host_runtime_check() -> dict[str, Any]:
+    findings = _host_runtime_findings()
+    return {
+        "schema_version": 1,
+        "valid": not any(item["level"] == "error" for item in findings),
+        "findings": findings,
+    }
+
+
 def _docker_runtime_findings(
     dataset_root: Path,
     dataset_manifest: dict[str, Any] | None,
@@ -206,6 +273,7 @@ def architecture_doctor(
     candidate_path: Path | None = None,
     policy_path: Path | None = None,
     runtime_checks: bool = False,
+    execution_environment: str = "docker",
 ) -> dict[str, Any]:
     project_root = project_root.expanduser().resolve(strict=True)
     findings: list[dict[str, str]] = []
@@ -222,8 +290,11 @@ def architecture_doctor(
     findings.extend(dataset.findings)
     dataset_root = resolve_inside(project_root, dataset_path, label="dataset")
     findings.extend(_evaluator_artifact_findings(dataset_root, dataset.manifest, stack))
-    if runtime_checks:
+    environment_kind = normalize_execution_environment(execution_environment)
+    if runtime_checks and environment_kind == "docker":
         findings.extend(_docker_runtime_findings(dataset_root, dataset.manifest))
+    elif runtime_checks:
+        findings.extend(_host_runtime_findings())
     duplicate_kinds = {
         "judge.py": ("DATASET_DUPLICATE_EVALUATOR", "Evaluator"),
         "Dockerfile": ("DATASET_DUPLICATE_ENVIRONMENT", "Environment"),
@@ -264,6 +335,9 @@ def architecture_doctor(
             # A missing runtime remains readable as historical evidence, but is
             # never executable, even when live Docker checks were not requested.
             runtime = load_candidate_runtime(candidate_root, required=True)
+            if runtime_checks and environment_kind == "host":
+                findings[:] = [item for item in findings if item.get("code") != "HOST_RUNTIME_READY"]
+                findings.extend(_host_runtime_findings(runtime))
             try:
                 render_runtime_config(candidate_root, gateway_provider="readiness-placeholder", model="readiness-placeholder", config_path=runtime["config_path"], agent_entry_id=runtime["agent_entry_id"])
             except (ValueError, OSError) as error:

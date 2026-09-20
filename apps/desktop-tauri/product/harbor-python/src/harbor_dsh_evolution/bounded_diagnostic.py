@@ -145,7 +145,7 @@ def plan_diagnostic(*, project_root: Path, source_job_dir: Path, trial_ids: list
     if any(not isinstance(item, str) or not item or len(item) > 240 for item in trial_ids) or len(set(trial_ids)) != len(trial_ids):
         _fail("SELECTION_INVALID", "Trial IDs must be unique bounded strings.")
     context = _json(root, job / "evaluation-context.json")
-    if context.get("schema_version") != 2 or not context.get("candidate") or context.get("job_kind") == "historical-generation-evaluation":
+    if context.get("schema_version") not in {2, 3} or not context.get("candidate") or context.get("job_kind") == "historical-generation-evaluation":
         _fail("UNSUPPORTED_JOB", "This action requires a recorded Candidate evaluation, not historical generation evidence.")
     configuration = _json(root, job / "config.json")
     agents = configuration.get("agents") or []

@@ -138,7 +138,7 @@ Require these before every Candidate execution Job:
 - `candidate-runtime.json` with schema_version=1, transport=acp, a Candidate-local Node entrypoint/config_path, top-level agent_entry_id, and exact node_version >=22. Require package-lock.json v3 with matching root metadata, exact direct versions and HTTPS/SHA-512 locked archives. Do not ship .npmrc, node_modules, user profiles or credentials. Prepare the Task image with that exact Node and `/opt/harbor-acp-venv` containing agent-client-protocol==0.12.1. Quick diagnostic generates this contract automatically. Never bypass CANDIDATE_RUNTIME_UNBOUND/INVALID or an outdated Adapter; migrate to a new Candidate and fresh baseline instead.
 - `dataset-manifest.json` with unique task ids, non-empty instructions, safe paths, a matching source digest, and the same Task population that Harbor resolves at runtime. A local Dataset contains immediate Task child directories; each Task uses `schema_version = "1.4"`, `[task].name = "org/name"`, `instruction.md`, `environment/`, and `tests/test.sh`.
 - `.harbor/evaluation-stack.yml` with all eight roles, Judge identity, and Evaluation Contract.
-- Evaluation Context v2 preview.
+- Candidate Evaluation Context v3 preview.
 
 Require `input_integrity`, `agent_completed`, `integration_valid`, `renderer_valid`, `judge_completed`, and `artifact_schema_valid` in the Trial validity contract. Specify which failures are hard requirements. Never infer that a numeric raw verifier reward is a valid Candidate quality score.
 
@@ -149,7 +149,7 @@ Before a formal Candidate execution Job, call in order:
 3. `harbor_evolution_doctor`
 4. `harbor_context_preview`
 
-Do not launch a `promotion-eligible` Job when Doctor reports an error, no comparable baseline exists, or `fresh_baseline_required` is true. A Candidate-execution diagnostic Job may investigate architecture warnings, but still requires a valid Candidate, Dataset Manifest, Evaluation Stack, and Context v2. The observe-existing Session branch instead uses its frozen Historical Generation Batch, Historical Evaluation Context, and non-promotion Stack.
+Do not launch a `promotion-eligible` Job when Doctor reports an error, no comparable baseline exists, or `fresh_baseline_required` is true. A Candidate-execution diagnostic Job may investigate architecture warnings, but still requires a valid Candidate, Dataset Manifest, Evaluation Stack, and Candidate Context v3. The observe-existing Session branch instead uses its frozen Historical Generation Batch, Historical Evaluation Context, and non-promotion Stack.
 
 Keep Runner orchestration-only. Treat these as architecture errors:
 
@@ -171,7 +171,7 @@ After initialization:
 
 ## Determine comparability correctly
 
-Use the Context v2 `digest`, not timestamps or Job names.
+Use the Candidate Context v3 `digest`, not timestamps or Job names.
 
 A fresh baseline is required when any of these change:
 

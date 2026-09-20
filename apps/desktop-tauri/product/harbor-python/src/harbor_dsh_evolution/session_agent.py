@@ -26,8 +26,17 @@ class SessionObservationAgent(BaseAgent):
     def version(self) -> str:
         return "1.0.0"
 
+    @staticmethod
+    def _path(environment: BaseEnvironment, path: str) -> str:
+        resolver = getattr(environment, "resolve_environment_path", None)
+        return str(resolver(path)) if callable(resolver) else path
+
     @override
     async def setup(self, environment: BaseEnvironment) -> None:
+        environment_dir = getattr(environment, "environment_dir", None)
+        source = Path(environment_dir) / "session-observation.json" if environment_dir else None
+        if source is not None and source.is_file():
+            await environment.upload_file(source, self.OBSERVATION_PATH)
         result = await environment.exec(
             "test -r /opt/harbor-dsh/session-observation.json "
             "&& mkdir -p /logs/artifacts "
@@ -48,13 +57,15 @@ class SessionObservationAgent(BaseAgent):
         context: AgentContext,
     ) -> None:
         del instruction
+        observation_path = self._path(environment, self.OBSERVATION_PATH)
+        artifact_path = self._path(environment, self.ARTIFACT_PATH)
         code = r'''
 import hashlib
 import json
 from pathlib import Path
 
-source = Path("/opt/harbor-dsh/session-observation.json")
-artifact = Path("/logs/artifacts/session-observation.json")
+source = Path(__OBSERVATION_PATH__)
+artifact = Path(__ARTIFACT_PATH__)
 value = json.loads(source.read_text())
 claimed = value.get("digest")
 unsigned = {key: item for key, item in value.items() if key != "digest"}
@@ -64,7 +75,9 @@ if claimed != actual:
     raise RuntimeError("Session Observation digest mismatch")
 artifact.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
 print(json.dumps({"status": "observed", "digest": actual}))
-'''.strip()
+'''.replace("__OBSERVATION_PATH__", repr(observation_path)).replace(
+            "__ARTIFACT_PATH__", repr(artifact_path)
+        ).strip()
         result = await environment.exec(
             f"python3 -c {shlex.quote(code)}",
             timeout_sec=30,

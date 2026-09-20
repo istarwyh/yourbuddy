@@ -1,5 +1,5 @@
 import type { LastActivity } from '../subagent-activity.ts';
-import type { SidechatLogEvent, SidechatThreadInfo } from '../sidechat-core.ts';
+import type { SidechatLiveEvent, SidechatLogEvent, SidechatThreadInfo } from '../sidechat-core.ts';
 import type { SidebarSessionEvent } from '../context-types.ts';
 import type { BrowserProbeResult } from './browser.ts';
 /** One wire failure. */
@@ -240,6 +240,12 @@ export declare const api: {
     agentPtyClose: (uuid: string) => Promise<{
         ok: true;
     }>;
+    /** Skip every active terminal_wait_for on one agent terminal (the wait
+     *  banner's skip button). Idempotent: {skipped:0} when none is active. */
+    agentSkipWait: (uuid: string) => Promise<{
+        ok: true;
+        skipped: number;
+    }>;
     /** Terminal dependency status (issue #140): after a WS close 1011 with
      *  reason `pty-deps-missing` the view fetches the full repair details here
      *  (the close reason itself is capped at 123 bytes). */
@@ -283,9 +289,13 @@ export declare const api: {
     sidechatInfo: (childId: string) => Promise<SidechatThreadInfo>;
     /** One transcript pull of a Side Chat thread: the thread's OWN events
      *  (the inherited seed is cut host-side and never crosses the wire).
-     *  `afterSeq` narrows the response to the delta beyond it (poll tail). */
+     *  `afterSeq` narrows the response to the delta beyond it (poll tail).
+     *  `live` is the thread's in-flight model deltas (DSH 0.1.5 publishes them
+     *  outside the session log) — the CURRENT attempt on every pull, never a
+     *  delta, so the caller replaces its live set instead of appending. */
     sidechatEvents: (childId: string, afterSeq?: number, signal?: AbortSignal) => Promise<{
         events: SidechatLogEvent[];
+        live: SidechatLiveEvent[];
     }>;
     /** The effective terminal shell and its display name (plugin-global). */
     shellGet: () => Promise<{

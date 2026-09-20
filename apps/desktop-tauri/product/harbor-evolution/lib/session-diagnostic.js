@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { resolveExecutionEnvironment } from './execution-environment.js'
 
 import { buildHistoricalGenerationBatch, writePrivateHistoricalBatch } from './session-materializer.js'
 import { buildSessionObservation, DEFAULT_REDACTION_POLICY } from './session-redaction.js'
@@ -188,6 +189,7 @@ export class SessionDiagnosticService {
       throw new Error('NO_ELIGIBLE_SESSIONS: no completed conversations with direct human input and assistant output were available in the selected history')
     }
     const judgeBinding = await resolveJudge(this.modelRuntime, args)
+    const executionEnvironment = resolveExecutionEnvironment(config, args).kind
     const includeFeedback = args.includeFeedback !== false
     const feedback = capability(this.ctx, 'messageFeedback')
     const feedbackObservations = includeFeedback
@@ -212,6 +214,7 @@ export class SessionDiagnosticService {
       selection: result.selected.map(withoutRawEvents),
       feedbackSnapshots,
       judgeBinding,
+      executionEnvironment,
       evaluation,
       parameters: { limit, includeFeedback, createdAfter, scope, order: 'last-activity-desc', ...(result.scan ? { scan: result.scan } : {}) },
     })
@@ -239,6 +242,7 @@ export class SessionDiagnosticService {
       estimatedJudgeRequests: selected.length,
       estimatedMaxBytes: selected.length * 512 * 1024,
       evaluation,
+      executionEnvironment,
       dataPolicy: {
         mode: 'source-text-with-secret-redaction',
         credentials: 'redacted',
@@ -280,6 +284,9 @@ export class SessionDiagnosticService {
     const token = String(args.selectionToken ?? '')
     if (!token) throw new Error('selectionToken is required; call harbor_session_diagnostic_preview first')
     const selectedState = this.tokens.consume(token, identity)
+    if (args.executionEnvironment !== undefined && args.executionEnvironment !== selectedState.executionEnvironment) {
+      throw new Error('HISTORICAL_EXECUTION_ENVIRONMENT_CHANGED: preview again to change the execution environment')
+    }
     const sessionQuery = capability(this.ctx, 'sessionQuery')
     if (!sessionQuery || typeof sessionQuery.readSession !== 'function') {
       throw new Error('DSH_SESSION_QUERY_UNAVAILABLE: this DSH Profile does not expose the Session Query service')
@@ -345,6 +352,7 @@ export class SessionDiagnosticService {
         batchDir: written.batchDir,
         jobName: args.jobName,
         judgeBinding,
+        executionEnvironment: selectedState.executionEnvironment,
       },
       this.modelRuntime,
     )

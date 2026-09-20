@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/historical-evaluation-context.schema.json",
-  "title": "Historical Generation Evaluation Context v1",
+  "title": "Historical Generation Evaluation Context v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "protocol", "job_kind", "mode", "promotion_eligible", "execution_mode", "evaluation_level", "evaluation_target", "generation_source", "dataset", "evaluation_stack", "execution_adapter", "runtime", "downstream_analysis", "digest", "full_digest"],
+  "required": ["schema_version", "protocol", "job_kind", "mode", "promotion_eligible", "execution_mode", "evaluation_level", "evaluation_target", "generation_source", "dataset", "evaluation_stack", "execution_adapter", "execution_environment", "runtime", "downstream_analysis", "digest", "full_digest"],
   "properties": {
-    "schema_version": { "const": 1 },
-    "protocol": { "const": "historical-generation-evaluation-context/v1" },
+    "schema_version": { "const": 2 },
+    "protocol": { "const": "historical-generation-evaluation-context/v2" },
     "job_kind": { "const": "historical-generation-evaluation" },
     "mode": { "const": "diagnostic" },
     "promotion_eligible": { "const": false },
@@ -40,6 +40,7 @@
     "dataset": { "type": "object" },
     "evaluation_stack": { "type": "object", "required": ["stack_id", "version", "digest", "comparison_digest", "components", "judge"] },
     "execution_adapter": { "type": "object", "required": ["id", "version", "import_path", "digest", "model_invocation", "tool_reexecution"] },
+    "execution_environment": { "$ref": "#/$defs/execution_environment" },
     "runtime": { "type": "object", "required": ["harbor_version", "integration_version"] },
     "downstream_analysis": {
       "type": "object",
@@ -62,5 +63,16 @@
     "digest": { "$ref": "#/$defs/digest" },
     "full_digest": { "$ref": "#/$defs/digest" }
   },
-  "$defs": { "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" } }
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "execution_environment": {
+      "type": "object",
+      "required": ["kind", "provider", "runtime_fingerprint"],
+      "properties": {
+        "kind": { "enum": ["host", "docker"] },
+        "provider": { "type": "string", "minLength": 1 },
+        "runtime_fingerprint": { "$ref": "#/$defs/digest" }
+      }
+    }
+  }
 }

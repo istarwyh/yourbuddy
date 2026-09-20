@@ -113,7 +113,10 @@ def summarize_job(job_dir: Path) -> dict[str, Any]:
     job_dir = job_dir.expanduser().resolve(strict=True)
     context_path = job_dir / CONTEXT_NAME
     evaluation_context = json.loads(context_path.read_text()) if context_path.exists() else None
-    if (evaluation_context or {}).get("protocol") == "historical-generation-evaluation-context/v1":
+    if (evaluation_context or {}).get("protocol") in {
+        "historical-generation-evaluation-context/v1",
+        "historical-generation-evaluation-context/v2",
+    }:
         from harbor_dsh_evolution.historical_summary import summarize_historical_job
 
         return summarize_historical_job(job_dir)

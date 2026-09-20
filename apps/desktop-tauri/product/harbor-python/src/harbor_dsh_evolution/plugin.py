@@ -44,6 +44,7 @@ class EvolutionPlugin(BaseJobPlugin):
         candidate_model_transport: str,
         candidate_model_protocol: str,
         candidate_reasoning_effort: str | None = None,
+        execution_environment: str = "host",
         dataset_path: str | None = None,
         policy_path: str | None = None,
     ):
@@ -56,6 +57,7 @@ class EvolutionPlugin(BaseJobPlugin):
         self._project_root = Path(project_root).expanduser().resolve(strict=True)
         self._stack_path = Path(stack_path)
         self._mode = mode
+        self._execution_environment = execution_environment
         self._candidate_model_binding = {
             "provider": candidate_model_provider,
             "model": candidate_model,
@@ -104,6 +106,7 @@ class EvolutionPlugin(BaseJobPlugin):
             dataset_path=dataset_path,
             candidate_path=self._source_manifest.parent,
             policy_path=self._policy_path,
+            execution_environment=self._execution_environment,
         )
         if self._mode == "promotion-eligible" and not doctor["promotion_ready"]:
             codes = ", ".join(item["code"] for item in doctor["findings"] if item["level"] == "error")
@@ -116,6 +119,7 @@ class EvolutionPlugin(BaseJobPlugin):
             project_root=self._project_root,
             mode=self._mode,
             candidate_model_binding=self._candidate_model_binding,
+            execution_environment=self._execution_environment,
         )
         self._job_dir = job.job_dir
         self._job_dir.mkdir(parents=True, exist_ok=True)

@@ -36,8 +36,6 @@ const Config = z.object({
     status: z.string().default("idle"), // idle | running | ok | error
     message: z.string().default(""),
     ts: z.number().default(0),
-    /** npm package this state belongs to; the Client hides unrelated results. */
-    pkg: z.string().default(""),
   }),
   /** AI-explain request (client writes repo/desc/readme, host answers). */
   aiExplain: z.object({

@@ -30,7 +30,10 @@ def evaluate_promotion(
     historical = any(
         summary.get("job_kind") == "historical-generation-evaluation"
         or (summary.get("evaluation_context") or {}).get("protocol")
-        == "historical-generation-evaluation-context/v1"
+        in {
+            "historical-generation-evaluation-context/v1",
+            "historical-generation-evaluation-context/v2",
+        }
         for summary in (baseline, candidate)
     )
     if historical:
@@ -93,8 +96,8 @@ def evaluate_promotion(
 
     base_context = baseline.get("evaluation_context") or {}
     next_context = candidate.get("evaluation_context") or {}
-    if base_context.get("schema_version") != 2 or next_context.get("schema_version") != 2:
-        reject("EVALUATION_CONTEXT_SCHEMA_INVALID", "Both Jobs require Evaluation Context v2")
+    if base_context.get("schema_version") != 3 or next_context.get("schema_version") != 3:
+        reject("EVALUATION_CONTEXT_SCHEMA_INVALID", "Both Jobs require Evaluation Context v3")
     if base_context.get("mode") != "promotion-eligible" or next_context.get("mode") != "promotion-eligible":
         reject("JOB_MODE_NOT_PROMOTION_ELIGIBLE", "Both Jobs must be promotion-eligible")
     base_dataset = base_context.get("dataset") or {}
@@ -122,6 +125,10 @@ def evaluate_promotion(
                 reject(code, f"Reward-affecting {role} identity changed")
     if base_stack.get("judge") != next_stack.get("judge"):
         reject("JUDGE_MODEL_MISMATCH", "Judge provider, model, version, or parameters changed")
+    base_environment = base_context.get("execution_environment") or {}
+    next_environment = next_context.get("execution_environment") or {}
+    if base_environment.get("runtime_fingerprint") != next_environment.get("runtime_fingerprint"):
+        reject("EXECUTION_ENVIRONMENT_MISMATCH", "Execution environment or Host runtime identity changed")
     if not base_context.get("digest") or base_context.get("digest") != next_context.get("digest"):
         reject("EVALUATION_STACK_MISMATCH", "Evaluation contexts are not comparable")
 

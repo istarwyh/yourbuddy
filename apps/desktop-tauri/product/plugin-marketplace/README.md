@@ -13,16 +13,8 @@ A **plugin marketplace** inside the DeepSeek Harness Web UI: browse
 from the settings page — no terminal needed.
 
 - **Search** the topic by keyword, **sort** by stars or last update
-- **Package identity** shows the installed `dsh-plugin-marketplace` version at the top of the settings section
 - **Plugin cards** with description, stars, language, and update date
-- **Detail panel**: GitHub README summary, install command, repo/npm links; the
-  YourBuddy desktop opens these links through a restricted system-browser bridge
-- **One-click eligibility**: enabled only after npm package metadata links a
-  package with `dsh.bundle.patch` to the repository through its Repository
-  field or owner-scoped DSH upstream metadata; differently named scoped
-  packages and repositories with sibling SDK/CLI packages are supported
-- **Install status**: progress and actionable pnpm failures stay attached to
-  the package the user confirmed
+- **Detail panel**: GitHub README summary, install command, repo/npm links
 - **AI explain**: one click asks the configured default model what a plugin
   roughly does, answered in the UI — no need to read the README yourself
 - Powered by the public GitHub search API (CORS-enabled, no key needed;
@@ -87,9 +79,6 @@ The browser half needs no `dsh.client.inject` packages: it only uses `react`
 - The GitHub search API returns at most 1000 results; the topic currently has
   280+ repos, so paging covers everything.
 - READMEs are fetched per plugin on demand and truncated to ~1200 chars.
-- GitHub topic membership is discovery metadata, not proof that a repository
-  publishes an installable DSH Bundle. Missing, ambiguous, or incomplete npm
-  identity metadata leaves one-click installation disabled.
 - If you see "rate-limited", wait an hour or run the web through a proxy that
   adds a GitHub token.
 

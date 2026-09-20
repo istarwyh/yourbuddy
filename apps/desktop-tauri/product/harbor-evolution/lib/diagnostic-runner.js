@@ -4,6 +4,7 @@ import path from 'node:path'
 import { runBoundedProcess } from './bounded-process.js'
 import { buildEvaluationRunReceipt, redactDiagnostic, resolveWithin } from './evolution.js'
 import { inspectDiagnostic, observeDiagnostic, pinDiagnosticEnvironment, readDiagnosticRuntimeIdentity } from './diagnostic-observation.js'
+import { resolveExecutionEnvironment } from './execution-environment.js'
 
 export const DIAGNOSTIC_LIMITS = Object.freeze({ maxTrials: 12, concurrency: 2, attempts: 1, maxRetries: 0, wallTimeoutMs: 900_000, maxModelRequests: 96, maxResponseBytes: 1_048_576 })
 const AGENT = 'harbor_dsh_evolution.agent:DshCandidateAgent'
@@ -106,6 +107,7 @@ export class DiagnosticRunner {
 
   async prepare({ owner, sourceJobDir, trialIds, signal }) {
     const root = await this._root(owner)
+    const execution = resolveExecutionEnvironment(this.config)
     const source = resolveWithin(root, sourceJobDir, 'source Job')
     const plan = await this._json(['diagnostic-subset', 'plan'], root, { input: { projectRoot: root, sourceJobDir: source, trialIds }, signal })
     assertPlan(plan)
@@ -113,19 +115,21 @@ export class DiagnosticRunner {
     if (typeof this.modelRuntime.assertLeaseLimits !== 'function') throw failure('HARBOR_DIAGNOSTIC_MODEL_LIMIT_UNSUPPORTED', 'The Host broker cannot prove the requested model budget; update the runtime before running.')
     const budget = await this.modelRuntime.assertLeaseLimits(binding, { maxRequests: DIAGNOSTIC_LIMITS.maxModelRequests, maxResponseBytes: DIAGNOSTIC_LIMITS.maxResponseBytes })
     if (!Number.isSafeInteger(budget?.maxRequests) || budget.maxRequests < 1 || budget.maxRequests > DIAGNOSTIC_LIMITS.maxModelRequests || !Number.isSafeInteger(budget?.maxResponseBytes) || budget.maxResponseBytes < 1 || budget.maxResponseBytes > DIAGNOSTIC_LIMITS.maxResponseBytes) throw failure('HARBOR_DIAGNOSTIC_MODEL_LIMIT_UNSUPPORTED', 'The Host broker returned an invalid effective budget.')
-    const runtime = await this._json(['docker-check'], root, { signal })
-    if (runtime?.valid !== true) {
-      const codes = (runtime?.findings ?? []).filter(item => item.level === 'error').map(item => String(item.code)).filter(code => /^DOCKER_[A-Z_]+$/.test(code))
-      throw failure('HARBOR_DIAGNOSTIC_RUNTIME_BLOCKED', `Docker is not ready (${codes.join(', ') || 'DOCKER_UNAVAILABLE'}). Fix the runtime and check parameters again; no Job was started.`)
+    if (execution.kind === 'docker') {
+      const runtime = await this._json(['docker-check'], root, { signal })
+      if (runtime?.valid !== true) {
+        const codes = (runtime?.findings ?? []).filter(item => item.level === 'error').map(item => String(item.code)).filter(code => /^DOCKER_[A-Z_]+$/.test(code))
+        throw failure('HARBOR_DIAGNOSTIC_RUNTIME_BLOCKED', `Docker is not ready (${codes.join(', ') || 'DOCKER_UNAVAILABLE'}). Fix the runtime and check parameters again; no Job was started.`)
+      }
     }
     // This is a read-only capability check. Unsupported remote/TLS transports
     // must be visible in preflight, not discovered after user confirmation.
-    await pinDiagnosticEnvironment(this.runProcess, this._environment())
+    if (execution.kind === 'docker') await pinDiagnosticEnvironment(this.runProcess, this._environment())
     try {
       const version = await this.runProcess(this.config.harborBin, ['--version'], { cwd: root, env: this._environment(), timeoutMs: 10_000, signal, maxOutputBytes: 4096 })
       if (!/\b0\.21\.\d+(?:\b|[-+])/.test(version.stdout)) throw failure('HARBOR_DIAGNOSTIC_RUNTIME_UNSUPPORTED', 'The bounded runner requires the installed Harbor 0.21 adapter contract.')
     } catch (error) { throw safeProcessError(error) }
-    return { ...plan, effectiveLimits: { ...plan.limits, maxModelRequests: budget.maxRequests, maxResponseBytes: budget.maxResponseBytes } }
+    return { ...plan, executionEnvironment: execution.kind, effectiveLimits: { ...plan.limits, maxModelRequests: budget.maxRequests, maxResponseBytes: budget.maxResponseBytes } }
   }
 
   async execute(plan, { owner, operationId, signal, onSpawn, onUsage } = {}) {
@@ -138,6 +142,7 @@ export class DiagnosticRunner {
     if (fresh.planDigest !== plan.planDigest) throw failure('HARBOR_DIAGNOSTIC_REVISION_CONFLICT', 'Inputs changed since preflight. Review a new preview; no Job was started.')
     if (plan.effectiveLimits && JSON.stringify(plan.effectiveLimits) !== JSON.stringify(fresh.effectiveLimits)) throw failure('HARBOR_DIAGNOSTIC_REVISION_CONFLICT', 'The effective diagnostic budget changed. Review a new preview; no Job was started.')
     const binding = await this._binding(fresh)
+    const execution = resolveExecutionEnvironment(this.config, { executionEnvironment: fresh.executionEnvironment })
     const jobName = `diagnostic-${operationId.slice(4)}`
     if (jobName.length > 100) throw failure('HARBOR_DIAGNOSTIC_OPERATION_INVALID', 'The Operation ID exceeds the fixed Job-name bound.')
     const jobs = resolveWithin(root, this.config.jobsDir ?? 'jobs', 'jobs directory')
@@ -161,20 +166,23 @@ export class DiagnosticRunner {
       'run', '-p', dataset, '-a', AGENT,
       '--ak', `candidate_path=${candidate}`, '--ak', `candidate_version=${identity.version}`, '--ak', `candidate_digest=${identity.digest}`,
       '--ak', `candidate_model_provider=${binding.provider}`, '--ak', `candidate_model=${binding.model}`,
-      '--job-name', jobName, '--jobs-dir', jobs, '-n', String(DIAGNOSTIC_LIMITS.concurrency), '-k', '1', '--max-retries', '0', '-e', 'docker', '--delete',
+      '--job-name', jobName, '--jobs-dir', jobs, '-n', String(DIAGNOSTIC_LIMITS.concurrency), '-k', '1', '--max-retries', '0', ...execution.harborArgs, '--delete',
       '--plugin', PLUGIN, '--plugin-kwarg', `candidate_manifest=${path.join(candidate, 'candidate-manifest.json')}`,
       '--plugin-kwarg', `dataset_path=${dataset}`, '--plugin-kwarg', `stack_path=${stack}`, '--plugin-kwarg', `project_root=${root}`, '--plugin-kwarg', 'mode=diagnostic',
       '--plugin-kwarg', `candidate_model_provider=${binding.provider}`, '--plugin-kwarg', `candidate_model=${binding.model}`,
       '--plugin-kwarg', `candidate_model_transport=${binding.transport}`, '--plugin-kwarg', `candidate_model_protocol=${binding.protocol}`,
+      '--plugin-kwarg', `execution_environment=${execution.kind}`,
       '--plugin-kwarg', `expected_dataset_digest=${materialized.datasetIdentity.source_digest}`, '--plugin-kwarg', `expected_stack_digest=${materialized.identities.stack.digest}`,
       '--plugin-kwarg', `operation_id=${operationId}`, '--plugin-kwarg', `source_plan_digest=${materialized.planDigest}`,
     ]
     if (binding.reasoning_effort !== undefined) args.push('--ak', `candidate_reasoning_effort=${binding.reasoning_effort}`, '--plugin-kwarg', `candidate_reasoning_effort=${binding.reasoning_effort}`)
     aborted(signal)
-    const environment = await pinDiagnosticEnvironment(this.runProcess, this._environment())
-    const runtimeIdentity = await readDiagnosticRuntimeIdentity({ runProcess: this.runProcess, platform: this.platform, env: environment })
+    const environment = execution.kind === 'docker'
+      ? await pinDiagnosticEnvironment(this.runProcess, this._environment())
+      : this._environment()
+    const runtimeIdentity = await readDiagnosticRuntimeIdentity({ runProcess: this.runProcess, platform: this.platform, env: environment, executionEnvironment: execution.kind })
     aborted(signal)
-    const lease = await this.modelRuntime.openLease(binding, { candidateDigest: identity.digest, jobName, maxRequests: fresh.effectiveLimits.maxModelRequests, maxResponseBytes: fresh.effectiveLimits.maxResponseBytes })
+    const lease = await this.modelRuntime.openLease(binding, { candidateDigest: identity.digest, jobName, advertisedHost: execution.gatewayAdvertisedHost, maxRequests: fresh.effectiveLimits.maxModelRequests, maxResponseBytes: fresh.effectiveLimits.maxResponseBytes })
     let processStarted = false
     // A lightweight in-memory counter is sampled by the controller; unlike
     // lifecycle evidence, request usage cannot be reconstructed after restart.
@@ -188,7 +196,7 @@ export class DiagnosticRunner {
       const result = await this.runProcess(this.config.harborBin, args, {
         cwd: root, env: { ...environment, HSE_MODEL_GATEWAY_URL: lease.endpoint, HSE_MODEL_GATEWAY_TOKEN: lease.token, HSE_MODEL_GATEWAY_PROVIDER: lease.candidateProvider, HSE_MODEL_GATEWAY_INFO: JSON.stringify(lease.modelInfo), HSE_MODEL_GATEWAY_PROTOCOL: lease.protocol },
         timeoutMs: DIAGNOSTIC_LIMITS.wallTimeoutMs, maxOutputBytes: 2 * 1024 * 1024, killGraceMs: 30_000, signal,
-        onSpawn: pid => { processStarted = true; return onSpawn?.(pid, { job: jobName, dataset: materialized.datasetIdentity, operationId, process: { pid, groupId: pid, platform: this.platform, dockerTransport: 'pinned-local-unix/v1', ...runtimeIdentity } }) },
+        onSpawn: pid => { processStarted = true; return onSpawn?.(pid, { job: jobName, dataset: materialized.datasetIdentity, operationId, process: { pid, groupId: pid, platform: this.platform, executionEnvironment: execution.kind, dockerTransport: execution.kind === 'docker' ? 'pinned-local-unix/v1' : 'none', ...runtimeIdentity } }) },
       })
       const summary = await safeJsonArtifact(root, path.join(jobDir, 'evaluation-summary.json'))
       const context = await safeJsonArtifact(root, path.join(jobDir, 'evaluation-context.json'))

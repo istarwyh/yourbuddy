@@ -16,6 +16,7 @@ window.__ModuleLoader__.load({
     Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
     var react = require("react");
     var h = react.createElement;
+    var PLUGIN_VERSION = "0.3.3";
 
     // ── CSS (theme tokens) ────────────────────────────────────────────────
     var CSS = ".__mp_grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;padding:0;margin:0;list-style:none}" +
@@ -27,9 +28,6 @@ window.__ModuleLoader__.load({
       ".__mp_star{flex:none;font-size:12px;color:var(--dsw-alias-label-secondary)}" +
       ".__mp_desc{font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}" +
       ".__mp_meta{display:flex;gap:10px;font-size:11px;color:var(--dsw-alias-label-tertiary)}" +
-      ".__mp_identity{display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;padding:4px 12px 4px 14px;border:1px solid var(--dsw-alias-border-l2);border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-size:12px;line-height:18px}" +
-      ".__mp_identityName{color:var(--dsw-alias-label-primary);font-weight:600}" +
-      ".__mp_identityVersion{padding:1px 8px;border-radius:999px;background:var(--dsw-alias-accent-soft,var(--dsw-alias-border-l2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}" +
       ".__mp_toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}" +
       ".__mp_input{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:32px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 10px;font-size:13px;min-width:200px;flex:1}" +
       ".__mp_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:32px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 8px;font-size:13px}" +
@@ -43,6 +41,9 @@ window.__ModuleLoader__.load({
       ".__mp_code{display:block;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:6px;padding:8px 10px;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--dsw-alias-label-primary);white-space:pre-wrap;word-break:break-all;width:100%;box-sizing:border-box;min-width:0}" +
       ".__mp_link{color:var(--dsw-alias-brand-primary);font-size:12px;text-decoration:none}" +
       ".__mp_btnPrimary{border-color:var(--dsw-alias-state-business-primary, #679efe);background:var(--dsw-alias-state-business-primary, #679efe);color:#fff}" +
+      ".__mp_identity{display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;padding:4px 12px 4px 14px;border:1px solid var(--dsw-alias-border-l2);border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-size:12px;line-height:18px}" +
+      ".__mp_identityName{color:var(--dsw-alias-label-primary);font-weight:600}" +
+      ".__mp_identityVersion{padding:1px 8px;border-radius:999px;background:var(--dsw-alias-accent-soft,var(--dsw-alias-border-l2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}" +
       ".__mp_error{color:var(--dsw-alias-label-error);font-size:12px;margin:8px 0 0}";
     var tagId = "dsh-plugin-marketplace/main.css";
     if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
@@ -55,8 +56,6 @@ window.__ModuleLoader__.load({
 
     // ── locale ────────────────────────────────────────────────────────────
     var NS = "marketplace";
-    // Kept in lockstep with package.json by the desktop product regression.
-    var PLUGIN_VERSION = "0.3.1";
     var inject = ["slots", "locale", "settingsScope", "connection"];
     var zh = {
       nav: "插件市场",
@@ -293,10 +292,18 @@ window.__ModuleLoader__.load({
     function writeField(scope, api, field, value) {
       if (scope && typeof scope.mutate === "function") {
         return scope.mutate([{ op: "set", path: [field], value: value }]).then(function () {
-          // A refused write leaves the namespace view absent (the scope folds
-          // the outcome into its snapshot before the promise settles).
+          // A settled write is not an applied write: one the Host refused
+          // (settings/conflict) still resolves. Compare the section itself —
+          // checking only `status === "ready"` passes after a refusal, because
+          // the namespace stays registered and the recovery read re-renders it
+          // as ready.
           var snap = scope.getSnapshot();
-          if (!snap || snap.status !== "ready") return { ok: false, error: { code: "settings-not-exposed" } };
+          if (!snap || snap.status !== "ready" || snap.value === void 0) {
+            return { ok: false, error: { code: "settings-not-exposed" } };
+          }
+          if (JSON.stringify(snap.value[field]) !== JSON.stringify(value)) {
+            return { ok: false, error: { code: "settings-not-applied" } };
+          }
           return { ok: true };
         }, function (e) {
           return { ok: false, error: { message: String(e && e.message || e) } };

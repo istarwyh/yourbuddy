@@ -16,6 +16,7 @@ function usage(stream = console.error) {
   stream('  --jobs-dir <path>      Job directory under projectRoot (default: jobs)')
   stream('  --dsh-home <path>      DSH state directory (default: DSH_HOME or ~/.dsh)')
   stream('  --runtime-dir <path>   Managed Harbor Python environment')
+  stream('  --execution-environment <host|docker>  Default Job runtime (default: host)')
 }
 
 async function main() {

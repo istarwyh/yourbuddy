@@ -142,6 +142,17 @@ export interface TabDescriptor {
     /** Unique id; also the `SidebarTab.type` value (`'explorer'`, `'my-plugin:db'`). */
     id: string;
     title: string | (() => string);
+    /**
+     * One-line description of what this tab shows, rendered under the title in
+     * the host's new-tab list (DSH's native right Sidebar guide page). DSH
+     * 0.1.5-rc.1+ renders descriptions only while the guide lists at most 4
+     * entries — a longer list drops every description and shows titles alone —
+     * and a descriptor that declares none renders the title by itself (the
+     * host no longer substitutes a generic fallback, so declare the real
+     * purpose of the page). Evaluated at render time, so a function follows
+     * the active locale.
+     */
+    description?: string | (() => string);
     icon?: ReactNode | ((size: number) => ReactNode);
     /** + menu sort order (ascending); default 100. */
     order?: number;
@@ -295,6 +306,60 @@ export interface FileViewerDescriptor {
     settings?: SidebarSettingsDeclaration;
     component: (props: FileViewerProps) => ReactNode;
 }
+/**
+ * Describes one external file-icon registration (feature `fileIcons`).
+ * Registrations override the built-in per-extension glyph map for their
+ * extensions; unlike the built-ins (monochrome `currentColor` per the skin
+ * contract), a registration's icon may be ANY ReactNode — colored included —
+ * and the registering plugin owns how its colors behave across skins.
+ */
+export interface FileIconDescriptor {
+    /** Unique id (`'my-plugin:icons'`). */
+    id: string;
+    /**
+     * Lowercase extensions without leading dot (`['csv','tsv']`). `[]` = the
+     * global default (catch-all): it only claims files the built-in glyph map
+     * does not cover — registered specifics and built-in glyphs always outrank
+     * it. OMITTED = no extension rule at all (a `names`-only registration is
+     * NOT a catch-all). Two values are RESERVED for directory rows (never
+     * matched against real file extensions): `'folder'` (a closed directory)
+     * and `'folder-open'` (an expanded directory) — see `FOLDER_EXT`.
+     */
+    exts?: readonly string[];
+    /**
+     * Exact FILE names (basename, case-insensitive — `['package.json',
+     * 'Dockerfile']`), the `fileNames` half of an icon theme. Name matches
+     * outrank extension matches, so a theme can color `package.json` apart
+     * from every other `.json`. Omitted/`[]` = no name rule.
+     */
+    names?: readonly string[];
+    /**
+     * Exact DIRECTORY names (basename, case-insensitive — `['node_modules',
+     * 'src']`), the `folderNames` half of an icon theme. A name match outranks
+     * the reserved `'folder'`/`'folder-open'` exts, and a descriptor with
+     * `folderNames` only claims the directories it names (never every folder —
+     * that is what the reserved exts are for). Omitted/`[]` = no name rule.
+     */
+    folderNames?: readonly string[];
+    /** Higher wins; default 0. Registered icons always outrank the built-in map. */
+    priority?: number;
+    /**
+     * Size-aware icon factory (the tree and file tabs render at 14 today).
+     * `open` is the directory's expanded state for a DIRECTORY row and
+     * `undefined` for a file row — a folder icon uses it to pick between the
+     * closed and opened glyph.
+     */
+    icon: (path: string, size: number, open?: boolean) => ReactNode;
+}
+/**
+ * Reserved `exts` values that claim DIRECTORY rows instead of file
+ * extensions: `'folder'` matches a closed directory, `'folder-open'` an
+ * expanded one (`folderIcon(path, open)` resolves them). They are filtered out of
+ * real-extension matching, so a file literally named `x.folder` is NOT
+ * claimed by a folder registration.
+ */
+export declare const FOLDER_EXT: "folder";
+export declare const FOLDER_OPEN_EXT: "folder-open";
 /** One `openTab` request. */
 export interface OpenTabSeed {
     type: string;
@@ -310,6 +375,72 @@ export interface OpenTabSeed {
     url?: string;
     /** JSON-serializable custom state carried on the minted tab (persisted across reloads; v0.12.0+). */
     meta?: unknown;
+    /**
+     * Where the open lands. `'right'` (the default) is DSH's right Sidebar —
+     * the plugin's content is registered there as native tab types; `'bottom'`
+     * is the plugin's own bottom workbench. Only the plugin's own flows pass
+     * `'bottom'` (the bottom panel's + menu, the auto-terminal).
+     */
+    target?: 'right' | 'bottom';
+}
+/**
+ * The plugin-side seed a native right-Sidebar tab carries in its navigation
+ * params (the native surface passes them back on every navigation).
+ */
+export interface NativeTabParams {
+    /** Overrides the descriptor's title for this instance. */
+    title?: string;
+    /** A file path (the editor window's content seed). */
+    path?: string;
+    /** A URL the tab navigates to on mount (the browser tab's seed). */
+    url?: string;
+    /** A diff reference (the diff tab's content seed). */
+    diff?: SidebarTab['diff'];
+    /** JSON-serializable custom state carried on the synthetic record. */
+    meta?: unknown;
+}
+/**
+ * The plugin's write face over DSH's native right Sidebar.
+ *
+ * Installed by the client half ({@link ./native/surface.ts}) so the service —
+ * and therefore every consumer of `ctx.betterSidebar` — keeps speaking the
+ * plugin's own vocabulary while the content lands natively. Without it the
+ * service writes into the plugin's own layout (the pre-0.1.5 behavior, which
+ * the bottom workbench still uses).
+ * @internal Not part of the consumer contract.
+ */
+export interface SidebarSurface {
+    /** Open a page type in one session's native surface. */
+    openTab(input: {
+        sessionId: string;
+        kind: string;
+        params: NativeTabParams;
+        revealIfOpened: boolean;
+    }): void;
+    /** Open a resource address in one session's native surface. */
+    openResource(input: {
+        sessionId: string;
+        address: string;
+        line?: number;
+        revealIfOpened: boolean;
+    }): void;
+    /** The file address of one path (the native surface owns the grammar). */
+    fileAddress(sessionId: string, cwd: string | undefined, path: string): string;
+    /** Close one native tab; the closed record's type/title, or undefined when the id is not native. */
+    close(sessionId: string, tabId: string): {
+        type: string;
+        title: string;
+    } | undefined;
+    /** Patch a native tab's plugin-side record; false when it is not native. */
+    update(tabId: string, patch: {
+        title?: string;
+        path?: string;
+        meta?: unknown;
+    }): boolean;
+    /** Focus a native tab; false when it is not native. */
+    activate(tabId: string): boolean;
+    /** Whether a tab id belongs to the native surface. */
+    has(tabId: string): boolean;
 }
 /**
  * The registry service published as `ctx.betterSidebar`.
@@ -317,8 +448,50 @@ export interface OpenTabSeed {
 export interface BetterSidebarService {
     registerTab(descriptor: TabDescriptor): () => void;
     registerFileViewer(descriptor: FileViewerDescriptor): () => void;
+    registerFileIcon(descriptor: FileIconDescriptor): () => void;
     getTabs(): readonly TabDescriptor[];
     getFileViewers(): readonly FileViewerDescriptor[];
+    getFileIcons(): readonly FileIconDescriptor[];
+    /**
+     * Find a SPECIFIC registered file icon for a path (priority desc, then
+     * registration order): a `names` match first, then an `exts` match.
+     * Catch-alls (`exts: []`) and folder registrations (`'folder'`/
+     * `'folder-open'`) are not consulted — this answers "did a registration
+     * claim this exact name or extension". Consumers should prefer
+     * `fileIcon`/`folderIcon`, which run the whole fallback chain.
+     */
+    matchFileIcon(path: string): FileIconDescriptor | undefined;
+    /**
+     * Find the registered icon for DIRECTORY rows (priority desc, then
+     * registration order): a `folderNames` match on `name` first (pass the
+     * directory's basename), then the `'folder'`/`'folder-open'` reserved
+     * exts by `open`. Undefined = fall back to the built-in VSCodicons folder
+     * glyphs.
+     */
+    matchFolderIcon(open: boolean, name?: string): FileIconDescriptor | undefined;
+    /**
+     * The authoritative FILE icon for a path (feature `fileIcons`), running
+     * the whole chain with per-factory crash isolation:
+     * 1. a specific registered name or extension (priority desc, registration
+     *    order),
+     * 2. the best registered global default (`exts: []`, priority desc) — an
+     *    external plugin that registers a catch-all owns every row the host's
+     *    classifier would otherwise draw,
+     * 3. the host's own `FileTypeIcon` artwork (feature `fileIcons`, DSH's
+     *    classifier and glyphs — the plugin ships no extension table).
+     * A throwing factory is logged (console.error) and skipped — the caller
+     * always gets a valid ReactNode.
+     */
+    fileIcon(path: string, size: number): ReactNode;
+    /**
+     * The authoritative DIRECTORY icon for a tree row: the registered
+     * `folderNames`/`'folder'`/`'folder-open'` icon (priority desc), else the
+     * built-in `VscFolder`/`VscFolderOpened`. `path` is the directory's own
+     * path (a theme may vary icons per directory); `open` reaches the factory
+     * so one descriptor can render both states. Same crash isolation as
+     * `fileIcon`.
+     */
+    folderIcon(path: string, open: boolean, size: number): ReactNode;
     /** Find a tab descriptor by id (undefined if not registered). */
     getTab(id: string): TabDescriptor | undefined;
     /**
@@ -349,12 +522,10 @@ export interface BetterSidebarService {
      * without switching the UI's active session; when absent the open lands
      * in the currently active session (the pre-0.12 behavior).
      *
-     * A CONTENT open (a `path` or `url` seed) must land in sight: when the
-     * panel hosting the landing pane is collapsed, it is expanded
-     * automatically (the right panel by default, the bottom panel when the
-     * active pane lives there; on narrow viewports the merged drawer opens).
-     * Type-only opens (the + menu, agent-terminal auto-tabs) never expand —
-     * the panel behavior is their caller's business.
+     * Every open lands in the bottom workbench and expands it (the workbench
+     * is the plugin's only own surface; the right column is DSH's native
+     * Sidebar). An open carrying a `path` or `url` goes through the native
+     * surface instead, which never touches this state.
      *
      * Note: `available` gates the + menu's disabled state only — it does NOT
      * refuse `openTab` (only the settings disable switch does).
@@ -400,6 +571,11 @@ export interface BetterSidebarService {
     activateTab(tabId: string, scope?: SessionScope): void;
     /** Open a file in the sidebar editor of `scope`'s session (title defaults to the file name). */
     openFile(scope: SessionScope, path: string, title?: string): void;
+    /**
+     * Install (or clear) the native right-Sidebar write face.
+     * @internal Called once by the client half; not part of the consumer API.
+     */
+    setSurface(surface: SidebarSurface | undefined): void;
 }
 /**
  * Find the tab type that claims an intercepted external-link URL (v0.13.0+).
@@ -418,7 +594,7 @@ export declare function matchUrlTarget(tabs: readonly TabDescriptor[], url: URL)
  * The plugin version this service instance reports. Keep in lockstep with
  * `package.json`'s version — `tests/service.spec.ts` asserts the pair.
  */
-export declare const SIDEBAR_SERVICE_VERSION = "0.18.1";
+export declare const SIDEBAR_SERVICE_VERSION = "0.19.1";
 /**
  * Monotonic capability list consumers use to gate new API usage (features
  * are never removed). Each string names a v0.12.0+ capability:
@@ -432,11 +608,16 @@ export declare const SIDEBAR_SERVICE_VERSION = "0.18.1";
  * - 'pluginSettings': SidebarSettingsDeclaration.pluginToggles/render
  * - 'urlTarget' (v0.13.0): TabDescriptor.urlTarget (external-link claims)
  * - 'settingSelect': SidebarSettingToggle type 'select' (options/multi)
- * - 'floatWindows' (v0.16.0): tabs float as free windows — openTab's dedupe/
- *   id focus targets RAISE the floating window (never duplicate the tab or
- *   expand panels), closeTab on a floating tab closes it with its window.
+ * - 'fileIcons' (v0.19.0): registerFileIcon/getFileIcons/matchFileIcon —
+ *   external file-tree icons overriding the built-in glyphs, matched by
+ *   extension (`exts`), exact file name (`names`), or directory name
+ *   (`folderNames`).
+ *
+ * v0.19.0 REMOVED 'floatWindows': the free-window feature is gone (DSH 0.1.5
+ * owns the right column, so the plugin keeps only its bottom workbench).
+ * Consumers must not gate on it any more.
  */
-export declare const SIDEBAR_FEATURES: readonly ["badge", "tabLifecycle", "updateTab", "openFile", "targetedOpen", "stateSubscription", "tabMeta", "pluginSettings", "urlTarget", "settingSelect", "floatWindows"];
+export declare const SIDEBAR_FEATURES: readonly ["badge", "tabLifecycle", "updateTab", "openFile", "targetedOpen", "stateSubscription", "tabMeta", "pluginSettings", "urlTarget", "settingSelect", "fileIcons"];
 /**
  * Create one BetterSidebar service bound to a store. The service owns the
  * tab/viewer registries (Map + listener set) and proxies openTab/closeTab

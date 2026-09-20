@@ -8,7 +8,7 @@ from pathlib import Path
 from harbor_dsh_evolution.candidate import load_manifest, snapshot_candidate, verify_candidate
 from harbor_dsh_evolution.context import context_preview
 from harbor_dsh_evolution.dataset import snapshot_dataset, validate_dataset
-from harbor_dsh_evolution.doctor import architecture_doctor, docker_runtime_check
+from harbor_dsh_evolution.doctor import architecture_doctor, docker_runtime_check, host_runtime_check
 from harbor_dsh_evolution.evaluator import inspect_evaluator, update_evaluator_source
 from harbor_dsh_evolution.initialize import initialize_project
 from harbor_dsh_evolution.historical_context import build_historical_context
@@ -153,8 +153,9 @@ def _parser() -> argparse.ArgumentParser:
     historical_context.add_argument("--batch", required=True, type=Path)
     historical_context.add_argument("--dataset", required=True, type=Path)
     historical_context.add_argument("--stack", required=True, type=Path)
+    historical_context.add_argument("--execution-environment", choices=("host", "docker"), default="host")
 
-    preview = commands.add_parser("context", help="Preview Evaluation Context v2")
+    preview = commands.add_parser("context", help="Preview Evaluation Context v3")
     preview_commands = preview.add_subparsers(dest="context_command", required=True)
     context_preview_parser = preview_commands.add_parser("preview")
     context_preview_parser.add_argument("--project-root", required=True, type=Path)
@@ -168,6 +169,7 @@ def _parser() -> argparse.ArgumentParser:
     context_preview_parser.add_argument("--candidate-reasoning-effort")
     context_preview_parser.add_argument("--candidate-model-transport", required=True)
     context_preview_parser.add_argument("--candidate-model-protocol", required=True)
+    context_preview_parser.add_argument("--execution-environment", choices=("host", "docker"), default="host")
 
     doctor = commands.add_parser("doctor", help="Validate evaluation architecture")
     doctor.add_argument("--architecture", action="store_true", required=True)
@@ -177,10 +179,15 @@ def _parser() -> argparse.ArgumentParser:
     doctor.add_argument("--candidate", type=Path)
     doctor.add_argument("--policy", type=Path)
     doctor.add_argument("--runtime", action="store_true")
+    doctor.add_argument("--execution-environment", choices=("host", "docker"), default="host")
 
     commands.add_parser(
         "docker-check",
         help="Preflight Docker CLI, daemon, and credential helper resolution",
+    )
+    commands.add_parser(
+        "host-check",
+        help="Preflight the unrestricted Host execution runtime",
     )
 
     promote = commands.add_parser("promote", help="Apply a Promotion Gate")
@@ -318,6 +325,7 @@ def main() -> int:
                 dataset_path=args.dataset,
                 stack_path=args.stack,
                 mode="diagnostic",
+                execution_environment=args.execution_environment,
             )
     elif args.command == "context":
         candidate_dir = args.candidate
@@ -340,6 +348,7 @@ def main() -> int:
                     else {}
                 ),
             },
+            execution_environment=args.execution_environment,
         )
     elif args.command == "doctor":
         result = architecture_doctor(
@@ -349,10 +358,14 @@ def main() -> int:
             candidate_path=args.candidate,
             policy_path=args.policy,
             runtime_checks=args.runtime,
+            execution_environment=args.execution_environment,
         )
         exit_code = 0 if result["promotion_ready"] else 2
     elif args.command == "docker-check":
         result = docker_runtime_check()
+        exit_code = 0 if result["valid"] else 2
+    elif args.command == "host-check":
+        result = host_runtime_check()
         exit_code = 0 if result["valid"] else 2
     else:
         report = compare_jobs(args.baseline_job, args.candidate_job, args.policy)

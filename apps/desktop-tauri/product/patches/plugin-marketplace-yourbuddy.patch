@@ -1,0 +1,360 @@
+diff --git a/client.js b/client.js
+index e1ca7da..bc9cca6 100644
+--- a/client.js
++++ b/client.js
+@@ -16,6 +16,7 @@ window.__ModuleLoader__.load({
+     Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+     var react = require("react");
+     var h = react.createElement;
++    var PLUGIN_VERSION = "0.3.3";
+ 
+     // ── CSS (theme tokens) ────────────────────────────────────────────────
+     var CSS = ".__mp_grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;padding:0;margin:0;list-style:none}" +
+@@ -40,6 +41,9 @@ window.__ModuleLoader__.load({
+       ".__mp_code{display:block;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:6px;padding:8px 10px;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--dsw-alias-label-primary);white-space:pre-wrap;word-break:break-all;width:100%;box-sizing:border-box;min-width:0}" +
+       ".__mp_link{color:var(--dsw-alias-brand-primary);font-size:12px;text-decoration:none}" +
+       ".__mp_btnPrimary{border-color:var(--dsw-alias-state-business-primary, #679efe);background:var(--dsw-alias-state-business-primary, #679efe);color:#fff}" +
++      ".__mp_identity{display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;padding:4px 12px 4px 14px;border:1px solid var(--dsw-alias-border-l2);border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-size:12px;line-height:18px}" +
++      ".__mp_identityName{color:var(--dsw-alias-label-primary);font-weight:600}" +
++      ".__mp_identityVersion{padding:1px 8px;border-radius:999px;background:var(--dsw-alias-accent-soft,var(--dsw-alias-border-l2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}" +
+       ".__mp_error{color:var(--dsw-alias-label-error);font-size:12px;margin:8px 0 0}";
+     var tagId = "dsh-plugin-marketplace/main.css";
+     if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+@@ -68,7 +72,7 @@ window.__ModuleLoader__.load({
+       readme: "README 摘要",
+       readmeEmpty: "（该仓库没有 README）",
+       openRepo: "打开 GitHub 仓库 ↗",
+-      openNpm: "在 npm 搜索同名包 ↗",
++      openNpm: "在 npm 查看相关包 ↗",
+       updated: "更新",
+       total: "共 {count} 个插件",
+       ghError: "GitHub API 请求失败（未认证限流 60 次/小时），请稍后再试",
+@@ -79,6 +83,12 @@ window.__ModuleLoader__.load({
+       installErr: "安装失败：{msg}",
+       installIdle: "",
+       installingHint: "正在后台执行 dsh plugin add，请稍候…",
++      npmChecking: "正在核验 npm 包…",
++      npmResolved: "可安装 npm 包：{pkg}@{version}",
++      npmMissing: "没有找到能关联该仓库并声明 dsh.bundle.patch 的 npm Package；不能一键安装，请按仓库 README 操作。",
++      npmCheckFailed: "暂时无法核验该仓库对应的 npm Package，因此不会执行一键安装。请稍后重试。",
++      npmAmbiguous: "多个可安装 DSH Bundle Package 声明与该仓库关联，无法安全选择；请按仓库 README 手动安装。",
++      npmUnavailable: "无法一键安装",
+       aiExplain: "🤖 AI 解释",
+       aiExplaining: "AI 解释中，请稍候…",
+       aiExplainErr: "AI 解释失败：{msg}",
+@@ -110,6 +120,12 @@ window.__ModuleLoader__.load({
+       installErr: "Install failed: {msg}",
+       installIdle: "",
+       installingHint: "Running dsh plugin add in the background…",
++      npmChecking: "Checking the npm package…",
++      npmResolved: "Installable npm package: {pkg}@{version}",
++      npmMissing: "No npm package both links to this repository and declares dsh.bundle.patch. Follow the repository README instead.",
++      npmCheckFailed: "The npm package for this repository could not be verified, so one-click install will not run. Try again later.",
++      npmAmbiguous: "Multiple installable DSH bundle packages claim this repository, so none can be selected safely. Follow the repository README instead.",
++      npmUnavailable: "One-click unavailable",
+       aiExplain: "🤖 AI Explain",
+       aiExplaining: "AI is explaining…",
+       aiExplainErr: "AI explain failed: {msg}",
+@@ -165,25 +181,104 @@ window.__ModuleLoader__.load({
+       for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+       return new TextDecoder("utf-8").decode(bytes);
+     }
+-    // npm metadata (bundle detection for the install hint); CORS-enabled, cached.
+-    var npmCache = new Map(); // pkg -> {isBundle} | null
+-    async function fetchNpmInfo(pkg) {
+-      if (npmCache.has(pkg)) return npmCache.get(pkg);
+-      var promise = fetch("https://registry.npmjs.org/" + encodeURIComponent(pkg) + "/latest", {
+-        headers: { Accept: "application/vnd.npm.install-v1+json" }
++    // npm metadata gates one-click install and detects bundle packages; CORS-enabled, cached.
++    var npmCache = new Map(); // GitHub owner/repo -> Promise<{status,isBundle,name?,version?}>
++    function normalizeGitHubRepository(value) {
++      if (value && typeof value === "object") value = value.url;
++      if (typeof value !== "string") return "";
++      var match = value.replace(/^git\+/, "").replace(/\.git$/, "").replace(/\/$/, "").match(/github\.com[/:]([^/]+)\/([^/#]+)$/i);
++      return match ? (match[1] + "/" + match[2]).toLowerCase() : "";
++    }
++    function referencesRepository(value, target, depth) {
++      if (depth > 6 || value === null || value === undefined) return false;
++      if (typeof value === "string") return normalizeGitHubRepository(value) === target;
++      if (Array.isArray(value)) return value.some(function (entry) { return referencesRepository(entry, target, depth + 1); });
++      if (typeof value === "object") return Object.keys(value).some(function (key) { return referencesRepository(value[key], target, depth + 1); });
++      return false;
++    }
++    function isDshBundle(data) {
++      return typeof data === "object" && data !== null && typeof data.dsh === "object" && data.dsh !== null && typeof data.dsh.bundle === "object" && data.dsh.bundle !== null && typeof data.dsh.bundle.patch === "string" && data.dsh.bundle.patch.length > 0;
++    }
++    function npmSearchCandidateRank(entry, fullName) {
++      var packageInfo = entry && entry.package;
++      if (!packageInfo || typeof packageInfo.name !== "string") return 0;
++      var owner = fullName.toLowerCase().split("/")[0];
++      var target = fullName.toLowerCase();
++      if (normalizeGitHubRepository(packageInfo.links && packageInfo.links.repository) === target) return 2;
++      return packageInfo.name.toLowerCase().startsWith("@" + owner + "/") ? 1 : 0;
++    }
++    function npmMatchRank(data, fullName) {
++      if (!isDshBundle(data)) return 0;
++      var parts = fullName.toLowerCase().split("/");
++      var owner = parts[0], target = parts.join("/");
++      if (normalizeGitHubRepository(data && data.repository) === target) return 3;
++      if (!referencesRepository(data && data.dsh, target, 0)) return 0;
++      return typeof data.name === "string" && data.name.toLowerCase().startsWith("@" + owner + "/") ? 2 : 0;
++    }
++    async function fetchNpmInfo(fullName) {
++      if (npmCache.has(fullName)) return npmCache.get(fullName);
++      var repositoryName = fullName.split("/")[1];
++      var promise = fetch("https://registry.npmjs.org/-/v1/search?text=" + encodeURIComponent(repositoryName) + "&size=20", {
++        headers: { Accept: "application/json" }
+       }).then(function (res) {
+-        if (!res.ok) return null;
++        if (!res.ok) throw new Error("npm search http " + res.status);
+         return res.json();
+-      }).then(function (data) {
+-        if (!data || !data.dsh) return { isBundle: false };
+-        return { isBundle: typeof data.dsh.bundle === "object" && data.dsh.bundle !== null && typeof data.dsh.bundle.patch === "string" && data.dsh.bundle.patch.length > 0 };
++      }).then(function (result) {
++        var names = Array.from(new Set((result.objects || []).filter(function (entry) {
++          return npmSearchCandidateRank(entry, fullName) > 0;
++        }).map(function (entry) { return entry.package.name; })));
++        return Promise.all(names.map(function (name) {
++          return fetch("https://registry.npmjs.org/" + encodeURIComponent(name) + "/latest", {
++            headers: { Accept: "application/json" }
++          }).then(function (res) {
++            if (res.status === 404) return null;
++            if (!res.ok) throw new Error("npm metadata http " + res.status);
++            return res.json();
++          }).then(function (data) {
++            if (data === null) return { ok: true, data: null, rank: 0 };
++            if (!data || data.name !== name || typeof data.version !== "string" || data.version.length === 0) throw new Error("npm metadata identity mismatch");
++            return { ok: true, data: data, rank: npmMatchRank(data, fullName) };
++          }).catch(function () { return { ok: false, data: null, rank: 0 }; });
++        }));
++      }).then(function (candidates) {
++        if (candidates.some(function (candidate) { return !candidate.ok; })) return { status: "error", isBundle: false };
++        var matched = candidates.filter(function (candidate) { return candidate.ok && candidate.rank > 0; }).sort(function (a, b) { return b.rank - a.rank; });
++        if (matched.length === 0) return { status: "missing", isBundle: false };
++        if (matched.length > 1 && matched[0].rank === matched[1].rank) return { status: "ambiguous", isBundle: false };
++        var data = matched[0].data;
++        return {
++          status: "available",
++          name: data.name,
++          version: data.version,
++          isBundle: true
++        };
+       }).catch(function () {
+-        return null;
++        return { status: "error", isBundle: false };
+       });
+-      npmCache.set(pkg, promise);
++      npmCache.set(fullName, promise);
+       return promise;
+     }
+ 
++    var marketplaceLinkChannel = "yourbuddy.desktop.marketplace-link";
++    var marketplaceLinkVersion = 1;
++    var marketplaceLinkSequence = 0;
++    function openMarketplaceLink(event, url) {
++      event.preventDefault();
++      if (window.parent !== window) {
++        marketplaceLinkSequence += 1;
++        window.parent.postMessage({
++          channel: marketplaceLinkChannel,
++          version: marketplaceLinkVersion,
++          type: "open-request",
++          requestId: String(Date.now()) + "_" + String(marketplaceLinkSequence),
++          url: url
++        }, "*");
++        return;
++      }
++      var opened = window.open(url, "_blank", "noopener,noreferrer");
++      if (opened) opened.opener = null;
++    }
++
+     // ── settings write channel ────────────────────────────────────────────
+     /**
+      * Write one namespace field through whichever settings channel this host
+@@ -243,10 +338,15 @@ window.__ModuleLoader__.load({
+ 
+     function DetailPanel(props) {
+       var p = props.plugin;
+-      var installName = p.fullName.split("/")[1];
++      var fallbackName = p.fullName.split("/")[1];
++      var installName = props.npmInfo && props.npmInfo.name || fallbackName;
+       var st = props.installState; // {status, message, pkg} from the settings scope
+       var active = st && st.pkg === installName;
+       var status = active ? st.status : "idle";
++      var npmStatus = props.npmInfo ? props.npmInfo.status : "loading";
++      var installAvailable = npmStatus === "available";
++      var repositoryUrl = p.htmlUrl;
++      var npmUrl = installAvailable ? "https://www.npmjs.com/package/" + installName : "https://www.npmjs.com/search?q=" + encodeURIComponent(fallbackName);
+       var explainState = props.explainState; // {status, text, repo} from the settings scope
+       // The settings field is namespace-global and persists across sessions,
+       // so only show it when it belongs to the plugin currently open.
+@@ -263,6 +363,8 @@ window.__ModuleLoader__.load({
+       var btn;
+       if (status === "running") {
+         btn = h("button", { type: "button", className: "__mp_more", disabled: true }, props.t("installing"));
++      } else if (!installAvailable) {
++        btn = h("button", { type: "button", className: "__mp_more", disabled: true }, npmStatus === "loading" ? props.t("npmChecking") : props.t("npmUnavailable"));
+       } else if (confirming) {
+         btn = h("button", {
+           type: "button", className: "__mp_btnPrimary __mp_more",
+@@ -282,19 +384,26 @@ window.__ModuleLoader__.load({
+           props.lang ? h("span", null, p.lang) : null
+         ),
+         h("div", null,
+-          h("a", { className: "__mp_link", href: p.htmlUrl, target: "_blank", rel: "noreferrer" }, props.t("openRepo")),
++          h("a", { className: "__mp_link", href: repositoryUrl, target: "_blank", rel: "noopener noreferrer", onClick: function (event) { openMarketplaceLink(event, repositoryUrl); } }, props.t("openRepo")),
+           "  ·  ",
+-          h("a", { className: "__mp_link", href: "https://www.npmjs.com/search?q=" + encodeURIComponent(installName), target: "_blank", rel: "noreferrer" }, props.t("openNpm"))
++          h("a", { className: "__mp_link", href: npmUrl, target: "_blank", rel: "noopener noreferrer", onClick: function (event) { openMarketplaceLink(event, npmUrl); } }, props.t("openNpm"))
+         ),
+         h("div", { className: "__mp_detailTitle" }, props.t("install")),
+-        h("div", { className: "__mp_readme" }, props.bundleInfo === true ? props.t("installHintBundle") : props.t("installHint")),
+-        h("code", { className: "__mp_code" },
++        h("div", { className: npmStatus === "missing" || npmStatus === "error" || npmStatus === "ambiguous" ? "__mp_error" : "__mp_readme" },
++          npmStatus === "loading" ? props.t("npmChecking")
++            : npmStatus === "missing" ? props.t("npmMissing")
++            : npmStatus === "error" ? props.t("npmCheckFailed")
++            : npmStatus === "ambiguous" ? props.t("npmAmbiguous")
++            : props.npmInfo.isBundle ? props.t("installHintBundle") : props.t("installHint")
++        ),
++        installAvailable ? h("div", { className: "__mp_status" }, props.t("npmResolved").replace("{pkg}", installName).replace("{version}", props.npmInfo.version || "?")) : null,
++        installAvailable ? h("code", { className: "__mp_code" },
+           "dsh plugin --profile web add " + installName + "\n" +
+-          (props.bundleInfo === true
++          (props.npmInfo.isBundle
+             ? "# standard bundle: auto-mounted via dsh.profile.bundles"
+             : "# then in $DSH_HOME/profiles/web/cordis.patch.yml:\n" +
+               "- insert:\n    - id: " + installName + "\n      name: '" + installName + "'")
+-        ),
++        ) : null,
+         btn,
+         statusNode,
+         h("div", { className: "__mp_detailTitle" }, props.t("readme")),
+@@ -325,7 +434,7 @@ window.__ModuleLoader__.load({
+       var t = props.t;
+       var scope = props.scope;
+       var api = props.api;
+-      var state = react.useState({ q: "", sort: "stars", page: 1, items: [], loading: false, error: null, total: 0, open: null, readme: null, readmeLoading: false, readmeError: false, readmeRateLimited: false, bundleInfo: null });
++      var state = react.useState({ q: "", sort: "stars", page: 1, items: [], loading: false, error: null, total: 0, open: null, readme: null, readmeLoading: false, readmeError: false, readmeRateLimited: false, npmInfo: null });
+       var s = state[0], set = state[1];
+       // install-state subscription (stable pattern: useState + subscribe, never
+       // depend on getSnapshot() reference identity).
+@@ -376,7 +485,7 @@ window.__ModuleLoader__.load({
+       }, [load]);
+       var openDetail = react.useCallback(function (plugin) {
+         if (s.open && s.open.fullName === plugin.fullName) { set(function (prev) { return Object.assign({}, prev, { open: null }); }); return; }
+-        set(function (prev) { return Object.assign({}, prev, { open: plugin, readme: null, readmeError: false, readmeRateLimited: false, readmeLoading: true }); });
++        set(function (prev) { return Object.assign({}, prev, { open: plugin, readme: null, readmeError: false, readmeRateLimited: false, readmeLoading: true, npmInfo: { status: "loading", isBundle: false } }); });
+         // Detail expands inline under the clicked card; scroll minimally
+         // (nearest) only when it would fall outside the viewport.
+         setTimeout(function () {
+@@ -395,12 +504,12 @@ window.__ModuleLoader__.load({
+             return Object.assign({}, prev, { readmeLoading: false, readmeError: !rateLimited, readmeRateLimited: rateLimited });
+           });
+         });
+-        // npm metadata: does the target package declare dsh.bundle.patch?
+-        // (determines whether the manual cordis.patch.yml row is needed)
+-        fetchNpmInfo(plugin.fullName.split("/")[1]).then(function (info) {
++        // npm metadata decides whether one-click install is safe to offer and
++        // whether the target package declares dsh.bundle.patch.
++        fetchNpmInfo(plugin.fullName).then(function (info) {
+           set(function (prev) {
+             if (!prev.open || prev.open.fullName !== plugin.fullName) return prev;
+-            return Object.assign({}, prev, { bundleInfo: info ? Boolean(info.isBundle) : null });
++            return Object.assign({}, prev, { npmInfo: info });
+           });
+         });
+       }, [s.open]);
+@@ -410,6 +519,10 @@ window.__ModuleLoader__.load({
+       };
+       var more = function () { load(s.q, s.sort, s.page + 1, true); };
+       return h("div", null,
++        h("div", { className: "__mp_identity" },
++          h("span", { className: "__mp_identityName" }, "dsh-plugin-marketplace"),
++          h("span", { className: "__mp_identityVersion" }, "v" + PLUGIN_VERSION)
++        ),
+         h("form", { className: "__mp_toolbar", onSubmit: submit },
+           h("input", { className: "__mp_input", type: "search", value: s.q, placeholder: t("search"), onChange: function (e) { set(function (prev) { return Object.assign({}, prev, { q: e.target.value }); }); } }),
+           h("select", { className: "__mp_select", value: s.sort, onChange: function (e) { load(s.q, e.target.value, 1, false); } },
+@@ -425,7 +538,7 @@ window.__ModuleLoader__.load({
+             var open = s.open && s.open.fullName === p.fullName;
+             return h("div", { key: p.fullName, className: "__mp_item" },
+               h(PluginCard, { plugin: p, t: t, onOpen: function () { openDetail(p); } }),
+-              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: installState && installState.status === "ready" ? installState.value.installState : null, onInstall: onInstall, ghError: t("ghError"), explainState: installState && installState.status === "ready" ? installState.value.aiExplainResult : null, explainError: s.explainError, onExplain: onExplain, bundleInfo: s.bundleInfo }) : null
++              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: installState && installState.status === "ready" ? installState.value.installState : null, onInstall: onInstall, ghError: t("ghError"), explainState: installState && installState.status === "ready" ? installState.value.aiExplainResult : null, explainError: s.explainError, onExplain: onExplain, npmInfo: s.npmInfo }) : null
+             );
+           })
+         ),
+diff --git a/index.js b/index.js
+index 7a01ce4..758537c 100644
+--- a/index.js
++++ b/index.js
+@@ -56,6 +56,24 @@ const Config = z.object({
+ /** npm package-name shape (scope/name, no spaces, no path chars). */
+ const PKG_NAME = /^@?[a-z0-9][a-z0-9-._]*(?:\/[a-z0-9][a-z0-9-._]*)?$/;
+ 
++/** Keep the actionable pnpm diagnostic instead of the CLI's generic footer. */
++function installFailureMessage(result) {
++  const output = [result.stdout, result.stderr]
++    .filter(Boolean)
++    .join("\n")
++    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
++  const lines = output.split("\n").map((line) => line.trim()).filter(Boolean);
++  const pnpmError = lines.find((line) => line.includes("ERR_PNPM_"));
++  const registryDetail = lines.find((line) => /(?:not in the npm registry|Not Found - 404)/i.test(line));
++  if (pnpmError) {
++    return [pnpmError, registryDetail]
++      .filter((line, index, values) => line && values.indexOf(line) === index)
++      .join(" ");
++  }
++  const details = lines.filter((line) => !line.startsWith("dsh: pnpm failed in profile directory"));
++  return details.slice(-3).join(" ") || "unknown error";
++}
++
+ function apply(ctx, config) {
+   let sourceGetter = null;
+   let lastTs = 0;
+@@ -206,12 +224,13 @@ function apply(ctx, config) {
+   }
+ 
+   async function maybeRunInstall() {
++    let pkg = "";
+     try {
+       const cfg = current();
+       const req = cfg?.install;
+       if (!req || !req.pkg || req.ts === lastTs || req.ts === 0) return;
+       lastTs = req.ts;
+-      const pkg = String(req.pkg).trim();
++      pkg = String(req.pkg).trim();
+       if (!PKG_NAME.test(pkg)) {
+         await report("error", `invalid package name: ${pkg}`, pkg);
+         return;
+@@ -221,10 +240,10 @@ function apply(ctx, config) {
+       await report("running", `installing ${pkg}…`, pkg);
+       const result = await runInstall(pkg, profile);
+       if (result.code !== 0) {
+-        const output = (result.stderr || result.stdout || "").trim();
++        const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
+         const tail = output.includes("ERR_PNPM_IGNORED_BUILDS")
+           ? "dependency build scripts were blocked by pnpm; the plugin author must make native build dependencies opt-in"
+-          : output.split("\n").slice(-3).join(" ");
++          : installFailureMessage(result);
+         ctx.logger.warn(`[plugin-marketplace] install failed (${result.code}): ${tail}`);
+         await report("error", `install failed: ${tail || "unknown error"}`, pkg);
+         return;
+@@ -234,7 +253,7 @@ function apply(ctx, config) {
+       await report("ok", `${pkg} installed${mountNote}. Restart dsh web to load it.`, pkg);
+     } catch (error) {
+       ctx.logger.warn(`[plugin-marketplace] install flow failed: ${String(error)}`);
+-      await report("error", String(error instanceof Error ? error.message : error));
++      await report("error", String(error instanceof Error ? error.message : error), pkg);
+     }
+   }
+ 
+@@ -314,4 +333,4 @@ function apply(ctx, config) {
+   }
+ }
+ 
+-export { Config, apply, inject, name };
++export { Config, apply, inject, installFailureMessage, name };

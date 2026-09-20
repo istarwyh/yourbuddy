@@ -87,7 +87,7 @@ The user supplies reports and review evidence; the Agent performs the protocol a
 After the evaluator Candidate passes its explicit Gate:
 
 1. Update Evaluation Stack identity.
-2. Preview Context v2 and confirm old Agent Jobs are no longer comparable.
+2. Preview Candidate Context v3 and confirm old Agent Jobs are no longer comparable.
 3. Run the current Champion Agent as a fresh baseline under the new evaluator.
 4. Compare later Agent Candidates only against Jobs sharing the new Context digest.
 

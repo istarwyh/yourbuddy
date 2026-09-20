@@ -1,8 +1,8 @@
 /**
  * Open-tab reconciliation after a file-tree mutation (rename/delete).
  *
- * The tree owns the rows; the TABS live in the sidebar state (either split
- * tree, the bottom panel, or free windows). A rename must retarget every
+ * The tree owns the rows; the TABS live in the sidebar state (the bottom
+ * workbench's split tree). A rename must retarget every
  * tab whose `path` is the renamed file (the editor content survives and
  * later saves land on the new path); a delete must close every tab at or
  * under the removed path — files and anything inside a removed directory

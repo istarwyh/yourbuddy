@@ -21,7 +21,7 @@ window.__ModuleLoader__.load({
 			}
 			return to;
 		};
-		var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", {
+		var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", {
 			value: mod,
 			enumerable: true
 		}) : target, mod));
@@ -41,8 +41,6 @@ window.__ModuleLoader__.load({
 		];
 		/** Fallback prefs used whenever the settings document is unreachable or malformed. */
 		const SIDEBAR_PREFS_DEFAULTS = {
-			openByDefault: false,
-			defaultWidthPercent: 35,
 			autoOpenSubagent: true,
 			autoOpenJobs: true,
 			agentTerminalTools: false,
@@ -50,9 +48,7 @@ window.__ModuleLoader__.load({
 			bottomPanelAutoTerminal: true,
 			terminalFontFamily: "",
 			terminalFontSize: 13,
-			interceptOpenPath: true,
 			editorExplorer: false,
-			changesDiffFloat: true,
 			workspaceFence: true,
 			terminalShell: "",
 			terminalShellArgs: "",
@@ -72,10 +68,6 @@ window.__ModuleLoader__.load({
 			viewersEnabled: {},
 			pluginSettings: {}
 		};
-		/** Clamp one width percent into the contract range (shared by schema and client reads). */
-		function clampWidthPercent(value) {
-			return Math.min(60, Math.max(20, Math.round(value)));
-		}
 		/** Clamp one terminal font size into the contract range (shared by schema and client reads). */
 		function clampTerminalFontSize(value) {
 			return Math.min(32, Math.max(9, Math.round(value)));
@@ -83,43 +75,6 @@ window.__ModuleLoader__.load({
 		/** Clamp one title-bar strip height into the contract range (shared by schema and client reads). */
 		function clampTitleBarStrip(value) {
 			return Math.min(120, Math.max(0, Math.round(value)));
-		}
-		/** Whether a viewport width is narrow (mobile). */
-		function isNarrowWidth(width) {
-			return width < 768;
-		}
-		/**
-		* Live narrow-viewport flag for components. Reads `window.innerWidth` and
-		* re-measures on resize (rAF-throttled, the repo's existing drag pattern).
-		* Deliberately avoids `matchMedia` (jsdom does not implement it) — the
-		* resize listener is equally exact for a breakpoint that never changes
-		* while the page is open.
-		*/
-		function useViewportSize() {
-			const [size, setSize] = (0, react.useState)(() => ({
-				width: typeof window === "undefined" ? 0 : window.innerWidth,
-				height: typeof window === "undefined" ? 0 : window.innerHeight
-			}));
-			(0, react.useEffect)(() => {
-				if (typeof window === "undefined") return;
-				let frame = null;
-				const measure = () => {
-					frame = null;
-					setSize({
-						width: window.innerWidth,
-						height: window.innerHeight
-					});
-				};
-				const onResize = () => {
-					if (frame === null) frame = requestAnimationFrame(measure);
-				};
-				window.addEventListener("resize", onResize);
-				return () => {
-					window.removeEventListener("resize", onResize);
-					if (frame !== null) cancelAnimationFrame(frame);
-				};
-			}, []);
-			return size;
 		}
 		let nextIdCounter = 0;
 		/** Unique pane/tab id within one state instance. */
@@ -135,7 +90,7 @@ window.__ModuleLoader__.load({
 		}
 		/**
 		* The largest numeric suffix across a raw persisted state's counter ids
-		* (`pane:N` / `tab:N` / `split:N` / `float:N`). The uid counter is module-global and
+		* (`pane:N` / `tab:N` / `split:N`). The uid counter is module-global and
 		* resets on every reload, so a split minted AFTER a reload would collide
 		* with the persisted ids (a fresh "pane:1" beside the persisted "pane:1");
 		* mapLeaf would then visit BOTH leaves and every open would land in both
@@ -146,7 +101,7 @@ window.__ModuleLoader__.load({
 			let max = 0;
 			const consider = (id) => {
 				if (typeof id !== "string") return;
-				const match = /^(?:pane|tab|split|float):(\d+)$/.exec(id);
+				const match = /^(?:pane|tab|split):(\d+)$/.exec(id);
 				if (match !== null) max = Math.max(max, Number(match[1]));
 			};
 			const walk = (node) => {
@@ -158,39 +113,16 @@ window.__ModuleLoader__.load({
 				}
 				if (Array.isArray(record.children)) for (const child of record.children) walk(child);
 			};
-			walk(parsed?.splits);
 			walk(parsed?.bottomSplits);
-			const floats = parsed?.floats;
-			if (Array.isArray(floats)) {
-				for (const float of floats) if (float !== null && typeof float === "object") consider(float.id);
-			}
 			return max;
 		}
-		/** A fresh default state: one seeded tab in one pane, open per the caller's
-		* preference. `width` is the caller's preferred panel width (default
-		* PANEL_DEFAULT) and `panelOpen` whether the panel starts expanded (default
-		* true); the store seeds new sessions from the user's side card prefs.
-		* `seed` picks the seeded tab: 'editor-home' places the EMPTY files window
-		* (an editor tab with no path whose tree panel starts open,
-		* `meta.treeOpen: true`) — in BOTH editorExplorer modes that window is the
-		* file explorer page — and 'none' starts with an empty pane (the store
-		* passes it when the user disabled the editor tab type in settings). */
-		function makeDefaultState(width = 400, panelOpen = true, seed = "editor-home") {
-			const leaf = {
-				kind: "leaf",
-				id: uid("pane"),
-				tabs: [],
-				active: null
-			};
-			if (seed === "editor-home") {
-				leaf.tabs = [{
-					id: uid("tab"),
-					type: "editor",
-					title: "Files",
-					meta: { treeOpen: true }
-				}];
-				leaf.active = leaf.tabs[0].id;
-			}
+		/**
+		* A fresh default state: one empty pane in the bottom workbench, closed.
+		* (The right column belongs to DSH's native Sidebar, so this plugin's own
+		* layout has nothing to seed — its welcome cards offer the openable types on
+		* first expansion.)
+		*/
+		function makeDefaultState() {
 			const bottomLeaf = {
 				kind: "leaf",
 				id: uid("pane"),
@@ -198,34 +130,17 @@ window.__ModuleLoader__.load({
 				active: null
 			};
 			return {
-				panelOpen,
-				width,
-				activePane: leaf.id,
+				activePane: bottomLeaf.id,
 				nextTerminal: 1,
 				nextBrowser: 1,
 				expanded: [],
 				revealed: [],
-				splits: leaf,
 				bottomOpen: false,
 				bottomHeight: 220,
 				bottomOpenedOnce: false,
 				bottomSplits: bottomLeaf,
-				floats: []
+				agentWaits: {}
 			};
-		}
-		/** Whether a tree node (or any descendant) carries the given pane/split id. */
-		function treeHasId(node, id) {
-			if (node.id === id) return true;
-			if (node.kind === "split") return node.children.some((child) => treeHasId(child, id));
-			return false;
-		}
-		/** Which tree owns a pane/split id: 'bottomSplits' when the id lives in the
-		*  bottom panel's tree, else 'splits' (the right panel's tree). Ids are
-		*  globally unique (the shared uid counter), so an id in neither tree falls
-		*  back to the right tree, where tree operations no-op on a missing node —
-		*  the pre-bottom-panel behavior. */
-		function treeOf(state, id) {
-			return treeHasId(state.bottomSplits, id) ? "bottomSplits" : "splits";
 		}
 		/** Walk the tree and apply `visit` to the leaf with the given id. */
 		function mapLeaf(node, paneId, visit) {
@@ -252,47 +167,6 @@ window.__ModuleLoader__.load({
 			if (node.kind === "leaf") return node;
 			return firstLeaf(node.children[0]);
 		}
-		/** Empty every leaf of a tree (the bottom tree after its tabs migrate out). */
-		function clearAllTabs(node) {
-			if (node.kind === "leaf") return {
-				...node,
-				tabs: [],
-				active: null
-			};
-			return {
-				...node,
-				children: node.children.map(clearAllTabs)
-			};
-		}
-		/**
-		* Narrow-viewport migration: the bottom panel's tabs are thrown INTO the
-		* right sidebar — the "merged display" on mobile is the right panel alone,
-		* whose tab strips now carry the bottom tree's tabs (depth-first order,
-		* appended to the right tree's FIRST leaf). The bottom tree is emptied (its
-		* structure stays — the desktop bottom panel re-renders its welcome cards)
-		* and the panel closes. The active pane moves to the right tree's first
-		* leaf so every new tab lands in the visible panel.
-		*
-		* Idempotent: a bottom tree with no tabs and a closed panel returns the
-		* same reference. Runs when the viewport enters narrow (see the Sidebar
-		* shell); migrating is permanent for the session — the tabs now live in the
-		* right tree, exactly like the user "threw them in".
-		*/
-		function migrateBottomTabs(state) {
-			const bottomTabs = allLeaves(state.bottomSplits).flatMap((leaf) => leaf.tabs);
-			const activeInBottom = state.activePane !== null && treeHasId(state.bottomSplits, state.activePane);
-			if (bottomTabs.length === 0 && !state.bottomOpen && !activeInBottom) return state;
-			const target = firstLeaf(state.splits);
-			return {
-				...state,
-				activePane: target.id,
-				bottomOpen: false,
-				splits: bottomTabs.length > 0 ? mapLeaf(state.splits, target.id, (leaf) => {
-					leaf.tabs = [...leaf.tabs, ...bottomTabs];
-				}) : state.splits,
-				bottomSplits: bottomTabs.length > 0 ? clearAllTabs(state.bottomSplits) : state.bottomSplits
-			};
-		}
 		/** Find the leaf containing a tab id, if any. */
 		function leafWithTab(node, tabId) {
 			if (node.kind === "leaf") return node.tabs.some((tab) => tab.id === tabId) ? node : void 0;
@@ -306,18 +180,9 @@ window.__ModuleLoader__.load({
 			if (node.kind === "leaf") return [node];
 			return node.children.flatMap(allLeaves);
 		}
-		/** Whether a tab exists anywhere in a state (either tree, any pane, or any
-		*  free window — a floating tab is as open as a docked one). */
+		/** Whether a tab is open anywhere in the session's workbench. */
 		function tabOpenIn(state, tabId) {
-			return allLeaves(state.splits).some((leaf) => leaf.tabs.some((tab) => tab.id === tabId)) || allLeaves(state.bottomSplits).some((leaf) => leaf.tabs.some((tab) => tab.id === tabId)) || state.floats.some((float) => float.tab.id === tabId);
-		}
-		/** The free window holding a tab id, if any. */
-		function floatWithTab(state, tabId) {
-			return state.floats.find((float) => float.tab.id === tabId);
-		}
-		/** The free window with the given window id, if any. */
-		function floatById(state, floatId) {
-			return state.floats.find((float) => float.id === floatId);
+			return allLeaves(state.bottomSplits).some((leaf) => leaf.tabs.some((tab) => tab.id === tabId));
 		}
 		/**
 		* Split a leaf by inserting a fresh leaf holding `tab` beside it — the
@@ -353,46 +218,10 @@ window.__ModuleLoader__.load({
 		* The VSCode drag gesture: move a tab out of its pane and either merge it
 		* into the target pane (center) or split the target pane with the tab in a
 		* fresh leaf (edge). The source pane collapses when it empties.
-		*
-		* The panes may live in DIFFERENT trees (dragging a tab between the two
-		* panels): the tab then leaves its own tree and lands in the other one.
 		*/
 		function moveTabToEdge(state, fromPane, tabId, toPane, zone) {
 			if (fromPane === toPane && zone === "center") return moveTab(state, fromPane, tabId, toPane, -1);
-			const key = treeOf(state, fromPane);
-			const toKey = treeOf(state, toPane);
-			if (key !== toKey) {
-				const source = leafWithTab(state[key], tabId);
-				if (source === void 0) return state;
-				const tab = source.tabs.find((candidate) => candidate.id === tabId);
-				let emptied = false;
-				let sourceNode = mapLeaf(state[key], source.id, (leaf) => {
-					leaf.tabs = leaf.tabs.filter((candidate) => candidate.id !== tabId);
-					if (leaf.active === tabId) leaf.active = leaf.tabs[leaf.tabs.length - 1]?.id ?? null;
-					if (leaf.tabs.length === 0) emptied = true;
-				});
-				if (emptied) sourceNode = removeLeafAt(sourceNode, source.id);
-				let targetNode = state[toKey];
-				let activePane;
-				if (zone === "center") {
-					targetNode = mapLeaf(targetNode, toPane, (leaf) => {
-						leaf.tabs = [...leaf.tabs, tab];
-						leaf.active = tab.id;
-					});
-					activePane = toPane;
-				} else {
-					const result = insertLeafAt(targetNode, toPane, zone === "left" || zone === "right" ? "row" : "col", tab, zone === "left" || zone === "up");
-					targetNode = result.node;
-					activePane = result.leafId;
-				}
-				return {
-					...state,
-					[key]: sourceNode,
-					[toKey]: targetNode,
-					activePane
-				};
-			}
-			const node = state[key];
+			const node = state.bottomSplits;
 			const source = leafWithTab(node, tabId);
 			if (source === void 0) return state;
 			const tab = source.tabs.find((candidate) => candidate.id === tabId);
@@ -410,14 +239,14 @@ window.__ModuleLoader__.load({
 				});
 				return {
 					...state,
-					[key]: splits,
+					bottomSplits: splits,
 					activePane: toPane
 				};
 			}
 			const result = insertLeafAt(splits, toPane, zone === "left" || zone === "right" ? "row" : "col", tab, zone === "left" || zone === "up");
 			return {
 				...state,
-				[key]: result.node,
+				bottomSplits: result.node,
 				activePane: result.leafId
 			};
 		}
@@ -446,7 +275,7 @@ window.__ModuleLoader__.load({
 		}
 		/** Close a tab; an emptied leaf is removed (unless it is the only pane). */
 		function closeTab(state, paneId, tabId) {
-			const key = treeOf(state, paneId);
+			const key = "bottomSplits";
 			let emptied = false;
 			const splits = mapLeaf(state[key], paneId, (leaf) => {
 				leaf.tabs = leaf.tabs.filter((tab) => tab.id !== tabId);
@@ -460,7 +289,7 @@ window.__ModuleLoader__.load({
 		}
 		/** Activate a tab in its pane (the pane's own tree). */
 		function activateTab(state, paneId, tabId) {
-			const key = treeOf(state, paneId);
+			const key = "bottomSplits";
 			return {
 				...state,
 				activePane: paneId,
@@ -499,24 +328,16 @@ window.__ModuleLoader__.load({
 					children
 				};
 			};
-			const splits = walk(state.splits);
 			const bottomSplits = walk(state.bottomSplits);
-			const floats = state.floats.map((float) => float.tab.id === tabId ? {
-				...float,
-				tab: apply(float.tab)
-			} : float);
 			return changed ? {
 				...state,
-				splits,
-				bottomSplits,
-				floats
+				bottomSplits
 			} : state;
 		}
 		/**
 		* Set or clear the pin marker on one open tab (v0.17.0+). A pin marker is
 		* structural metadata (NOT display fields like title/path), so it walks
-		* both split trees AND the free windows exactly like {@link patchTab} —
-		* the tab may live in either tree or float. Passing `null` clears the pin
+		* the workbench's split tree exactly like {@link patchTab}. Passing `null` clears the pin
 		* (the tab stays open in its home session); passing a `{ scope, homeCwd }`
 		* object sets it. An unknown tab id is a strict no-op (same reference
 		* returned) so a stale pin request never churns the state or rewrites
@@ -562,54 +383,32 @@ window.__ModuleLoader__.load({
 					children
 				};
 			};
-			const splits = walk(state.splits);
 			const bottomSplits = walk(state.bottomSplits);
-			const floatIdx = state.floats.findIndex((f) => f.tab.id === tabId);
-			const floats = floatIdx < 0 ? state.floats : (() => {
-				const oldFloat = state.floats[floatIdx];
-				const newTab = apply(oldFloat.tab);
-				if (newTab === oldFloat.tab) return state.floats;
-				const next = state.floats.slice();
-				next[floatIdx] = {
-					...oldFloat,
-					tab: newTab
-				};
-				return next;
-			})();
 			return changed ? {
 				...state,
-				splits,
-				bottomSplits,
-				floats
+				bottomSplits
 			} : state;
 		}
 		/**
-		* Land a tab in the active pane (or focus its existing instance by id).
-		* Dedup strategies (single-instance, per-path, per-change) are owned by the
-		* tab descriptor through {@link BetterSidebarService.openTab} / `dedupeKey`;
-		* this reducer only handles the id-based safety net (reconcile and
-		* openDiffTab already check existence before calling) and the landing
-		* itself — the service's dedupe path delegates here after its dedupeKey
-		* check misses.
-		*
-		* The active pane may live in EITHER tree (pane ids are globally unique):
-		* a stale id that survives in neither tree falls back to the right tree's
-		* first pane instead of swallowing the open.
+		* Land a tab in the workbench's first pane — the plugin's own opens (its
+		* bottom-panel + menu, the auto-terminal, and every open when no native
+		* surface is installed): the plugin owns no right column any more (DSH's
+		* native sidebar is the right one), so the bottom workbench is the only tree.
+		* @param state - the session state.
+		* @param tab - the tab to land.
+		* @returns the next state, with the bottom panel open.
 		*/
-		function openTabInActivePane(state, tab) {
-			let targetId = state.activePane ?? firstLeaf(state.splits).id;
-			if (!allLeaves(state[treeOf(state, targetId)]).some((leaf) => leaf.id === targetId)) targetId = firstLeaf(state.splits).id;
-			const targetKey = treeOf(state, targetId);
-			for (const leaf of allLeaves(state.splits).concat(allLeaves(state.bottomSplits))) {
+		function openTabInBottomPane(state, tab) {
+			const targetId = firstLeaf(state.bottomSplits).id;
+			for (const leaf of allLeaves(state.bottomSplits)) {
 				const existing = leaf.tabs.find((candidate) => candidate.id === tab.id);
 				if (existing !== void 0) return activateTab(state, leaf.id, existing.id);
 			}
-			const floated = floatWithTab(state, tab.id);
-			if (floated !== void 0) return raiseFloat(state, floated.id);
 			return {
 				...state,
+				bottomOpen: true,
 				activePane: targetId,
-				[targetKey]: mapLeaf(state[targetKey], targetId, (leaf) => {
+				bottomSplits: mapLeaf(state.bottomSplits, targetId, (leaf) => {
 					leaf.tabs = [...leaf.tabs, tab];
 					leaf.active = tab.id;
 				})
@@ -619,36 +418,7 @@ window.__ModuleLoader__.load({
 		*  The panes may live in DIFFERENT trees — dragging a tab between the two
 		*  panels removes it from its own tree and lands it in the other one. */
 		function moveTab(state, fromPane, tabId, toPane, index = -1) {
-			const fromKey = treeOf(state, fromPane);
-			const toKey = treeOf(state, toPane);
-			if (fromKey !== toKey) {
-				let moved;
-				let emptied = false;
-				const source = mapLeaf(state[fromKey], fromPane, (leaf) => {
-					const found = leaf.tabs.find((tab) => tab.id === tabId);
-					if (found === void 0) return;
-					moved = found;
-					leaf.tabs = leaf.tabs.filter((tab) => tab.id !== tabId);
-					if (leaf.active === tabId) leaf.active = leaf.tabs[leaf.tabs.length - 1]?.id ?? null;
-					if (leaf.tabs.length === 0) emptied = true;
-				});
-				if (moved === void 0) return state;
-				const target = mapLeaf(state[toKey], toPane, (leaf) => {
-					const insertAt = index >= 0 && index <= leaf.tabs.length ? index : leaf.tabs.length;
-					leaf.tabs = [
-						...leaf.tabs.slice(0, insertAt),
-						moved,
-						...leaf.tabs.slice(insertAt)
-					];
-					leaf.active = moved.id;
-				});
-				return {
-					...state,
-					[fromKey]: emptied ? removeLeafAt(source, fromPane) : source,
-					[toKey]: target,
-					activePane: toPane
-				};
-			}
+			const fromKey = "bottomSplits";
 			let moved;
 			let emptied = false;
 			let splits = mapLeaf(state[fromKey], fromPane, (leaf) => {
@@ -691,52 +461,36 @@ window.__ModuleLoader__.load({
 		* @returns the new state, with the diff pane active.
 		*/
 		function openDiffTab(state, sourcePaneId, tab) {
-			const existingLeaf = leafWithTab(state.splits, tab.id);
+			const existingLeaf = leafWithTab(state.bottomSplits, tab.id);
 			if (existingLeaf !== void 0) return activateTab(state, existingLeaf.id, tab.id);
-			const diffLeaf = allLeaves(state.splits).find((leaf) => leaf.tabs.some((candidate) => candidate.type === "diff"));
+			const diffLeaf = allLeaves(state.bottomSplits).find((leaf) => leaf.tabs.some((candidate) => candidate.type === "diff"));
 			if (diffLeaf !== void 0) return {
 				...state,
 				activePane: diffLeaf.id,
-				splits: mapLeaf(state.splits, diffLeaf.id, (leaf) => {
+				bottomSplits: mapLeaf(state.bottomSplits, diffLeaf.id, (leaf) => {
 					leaf.tabs = [...leaf.tabs, tab];
 					leaf.active = tab.id;
 				})
 			};
-			if (!allLeaves(state.splits).some((leaf) => leaf.id === sourcePaneId)) return openTabInActivePane(state, tab);
-			const result = insertLeafAt(state.splits, sourcePaneId, "col", tab, false);
+			if (!allLeaves(state.bottomSplits).some((leaf) => leaf.id === sourcePaneId)) return openTabInBottomPane(state, tab);
+			const result = insertLeafAt(state.bottomSplits, sourcePaneId, "col", tab, false);
 			return {
 				...state,
-				splits: result.node,
+				bottomSplits: result.node,
 				activePane: result.leafId
 			};
 		}
-		/** Toggle the panel open/closed (opening restores the previous layout). */
-		function togglePanel(state) {
-			return {
-				...state,
-				panelOpen: !state.panelOpen
-			};
-		}
-		/** Toggle the bottom panel open/closed (independent of the right panel). */
+		/** Expand/collapse the bottom workbench. */
 		function toggleBottomPanel(state) {
 			return {
 				...state,
 				bottomOpen: !state.bottomOpen
 			};
 		}
-		/** Set the panel width (clamped to the contract range; the upper bound is
-		* the viewport so the fullscreen expansion can fill the window). */
-		function setWidth(state, width) {
-			const max = typeof window !== "undefined" ? Math.max(280, window.innerWidth) : 640;
-			return {
-				...state,
-				width: Math.min(max, Math.max(280, Math.round(width)))
-			};
-		}
-		/** Set the bottom panel height (clamped to the contract range). The upper
-		* bound leaves the center column (the agent output area) at least PANEL_MIN
-		* tall — without the cap the bottom panel could swallow the whole viewport
-		* and squeeze the conversation to zero height. */
+		/** Set the bottom workbench height (clamped to the contract range). The
+		* upper bound leaves the conversation column at least {@link CONVERSATION_MIN}
+		* tall — without the cap the workbench could swallow the whole viewport and
+		* squeeze the conversation to zero height. */
 		function setBottomHeight(state, height) {
 			const viewport = typeof window !== "undefined" ? window.innerHeight : Infinity;
 			const max = Math.max(120, viewport - 280);
@@ -805,152 +559,10 @@ window.__ModuleLoader__.load({
 		/** State-level {@link resizeSplit} route: the divider may live in either
 		*  tree (split ids are globally unique). */
 		function resizeSplitIn(state, splitId, index, delta) {
-			const key = treeOf(state, splitId);
+			const key = "bottomSplits";
 			return {
 				...state,
 				[key]: resizeSplit(state[key], splitId, index, delta)
-			};
-		}
-		/** The viewport size, or Infinity where there is no (usable) window — unit
-		*  tests stub partial window objects, and a NaN bound would poison geometry. */
-		function viewportW() {
-			return typeof window !== "undefined" && Number.isFinite(window.innerWidth) ? window.innerWidth : Infinity;
-		}
-		function viewportH() {
-			return typeof window !== "undefined" && Number.isFinite(window.innerHeight) ? window.innerHeight : Infinity;
-		}
-		/** Clamp free-window geometry: sizes respect the floor and the viewport, and
-		*  the position keeps the whole window inside the viewport. Without a window
-		*  (unit tests) only the floor applies — the caller's values pass through. */
-		function clampFloatGeometry(x, y, w, h) {
-			const vw = viewportW();
-			const vh = viewportH();
-			const width = Math.round(Math.min(Math.max(w, 320), Math.max(320, vw)));
-			const height = Math.round(Math.min(Math.max(h, 200), Math.max(200, vh)));
-			return {
-				x: Math.round(Math.min(Math.max(x, 0), Math.max(0, vw - width))),
-				y: Math.round(Math.min(Math.max(y, 0), Math.max(0, vh - height))),
-				w: width,
-				h: height
-			};
-		}
-		/**
-		* Float a docked tab: remove it from its pane (either tree; an emptied pane
-		* collapses like any move) and append a free window centered on the drop
-		* point, with the default size clamped to the viewport. The stacking order
-		* is the array order, so a fresh window is born topmost. An unknown tab id
-		* (or one already floating) is a strict no-op.
-		*/
-		function floatTab(state, tabId, x, y) {
-			let source;
-			let key;
-			for (const treeKey of ["splits", "bottomSplits"]) {
-				source = leafWithTab(state[treeKey], tabId);
-				if (source !== void 0) {
-					key = treeKey;
-					break;
-				}
-			}
-			if (key === void 0 || source === void 0) return state;
-			const tab = source.tabs.find((candidate) => candidate.id === tabId);
-			let emptied = false;
-			let node = mapLeaf(state[key], source.id, (leaf) => {
-				leaf.tabs = leaf.tabs.filter((candidate) => candidate.id !== tabId);
-				if (leaf.active === tabId) leaf.active = leaf.tabs[leaf.tabs.length - 1]?.id ?? null;
-				if (leaf.tabs.length === 0) emptied = true;
-			});
-			if (emptied) node = removeLeafAt(node, source.id);
-			const vw = viewportW();
-			const vh = viewportH();
-			const width = Math.min(390, Math.max(320, vw - 24));
-			const height = Math.min(780, Math.max(200, vh - 24));
-			const window = clampFloatGeometry(x - width / 2, y - height / 2, width, height);
-			const next = {
-				...state,
-				[key]: node,
-				floats: [...state.floats, {
-					id: uid("float"),
-					tab,
-					...window
-				}]
-			};
-			if (emptied && state.activePane === source.id) next.activePane = firstLeaf(next.splits).id;
-			return next;
-		}
-		/** Move a free window (clamped to the viewport); unknown ids are a no-op. */
-		function moveFloat(state, floatId, x, y) {
-			const float = floatById(state, floatId);
-			if (float === void 0) return state;
-			const geo = clampFloatGeometry(x, y, float.w, float.h);
-			if (geo.x === float.x && geo.y === float.y) return state;
-			return {
-				...state,
-				floats: state.floats.map((f) => f.id === floatId ? {
-					...f,
-					...geo
-				} : f)
-			};
-		}
-		/** Resize a free window from its SE corner: the top-left corner stays
-		*  anchored, sizes clamp to the floor and to the viewport's remaining room. */
-		function resizeFloat(state, floatId, w, h) {
-			const float = floatById(state, floatId);
-			if (float === void 0) return state;
-			const vw = viewportW();
-			const vh = viewportH();
-			const width = Math.round(Math.min(Math.max(w, 320), Math.max(320, vw - float.x)));
-			const height = Math.round(Math.min(Math.max(h, 200), Math.max(200, vh - float.y)));
-			if (width === float.w && height === float.h) return state;
-			return {
-				...state,
-				floats: state.floats.map((f) => f.id === floatId ? {
-					...f,
-					w: width,
-					h: height
-				} : f)
-			};
-		}
-		/** Bring a free window to the top (the array's end). Already topmost (or the
-		*  only window) returns the same reference — no persist churn on every click. */
-		function raiseFloat(state, floatId) {
-			if (state.floats.length < 2) return state;
-			const index = state.floats.findIndex((f) => f.id === floatId);
-			if (index < 0 || index === state.floats.length - 1) return state;
-			const floats = [...state.floats];
-			const [raised] = floats.splice(index, 1);
-			floats.push(raised);
-			return {
-				...state,
-				floats
-			};
-		}
-		/** Dock a free window back into a pane (center merge): the tab joins the
-		*  target pane and activates. `toPane` defaults to the active pane with the
-		*  right tree's first leaf as the stale-id fallback (mirrors
-		*  {@link openTabInActivePane}). Unknown window ids are a no-op. */
-		function dockFloat(state, floatId, toPane) {
-			const float = floatById(state, floatId);
-			if (float === void 0) return state;
-			let targetId = toPane ?? state.activePane ?? firstLeaf(state.splits).id;
-			if (!allLeaves(state[treeOf(state, targetId)]).some((leaf) => leaf.id === targetId)) targetId = firstLeaf(state.splits).id;
-			const targetKey = treeOf(state, targetId);
-			return {
-				...state,
-				floats: state.floats.filter((f) => f.id !== floatId),
-				activePane: targetId,
-				[targetKey]: mapLeaf(state[targetKey], targetId, (leaf) => {
-					leaf.tabs = [...leaf.tabs, float.tab];
-					leaf.active = float.tab.id;
-				})
-			};
-		}
-		/** Close the free window holding a tab (the tab closes WITH the window —
-		*  the caller fires the descriptor's onClose lifecycle). */
-		function closeFloatByTab(state, tabId) {
-			if (!state.floats.some((f) => f.tab.id === tabId)) return state;
-			return {
-				...state,
-				floats: state.floats.filter((f) => f.tab.id !== tabId)
 			};
 		}
 		/** Prefix marking a tab id as an agent-owned terminal (suffix is the uuid). */
@@ -967,6 +579,28 @@ window.__ModuleLoader__.load({
 		function agentTabId(uuid) {
 			return `${AGENT_TAB_PREFIX}${uuid}`;
 		}
+		/** Shallow equality of two agent-wait maps (same keys, same needle+since). */
+		function sameAgentWaits(a, b) {
+			if (a === void 0) return Object.keys(b).length === 0;
+			const aKeys = Object.keys(a);
+			if (aKeys.length !== Object.keys(b).length) return false;
+			for (const key of aKeys) {
+				const av = a[key];
+				const bv = b[key];
+				if (av === void 0 || bv === void 0) return false;
+				if (av.needle !== bv.needle || av.since !== bv.since) return false;
+			}
+			return true;
+		}
+		/** Fold the pushed terminal snapshots into the authoritative wait map. */
+		function serverWaitsOf(agentTerminals) {
+			const serverWaits = {};
+			for (const terminal of agentTerminals) if (terminal.waiting !== void 0 && terminal.waiting !== null) serverWaits[terminal.uuid] = {
+				needle: terminal.waiting.needle,
+				since: terminal.waiting.since
+			};
+			return serverWaits;
+		}
 		/**
 		* Reconcile the sidebar's agent-terminal tabs with the host's live list.
 		* The host pushes the current list of agent terminals (created by the model
@@ -980,26 +614,24 @@ window.__ModuleLoader__.load({
 		* @returns the next state (or the same reference if no change was needed).
 		*/
 		function reconcileAgentTerminals(state, agentTerminals) {
-			const existingAgentTabs = allLeaves(state.splits).concat(allLeaves(state.bottomSplits)).flatMap((leaf) => leaf.tabs).concat(state.floats.map((float) => float.tab)).filter((tab) => isAgentTabId(tab.id));
+			const existingAgentTabs = allLeaves(state.bottomSplits).flatMap((leaf) => leaf.tabs).filter((tab) => isAgentTabId(tab.id));
 			const existingUuids = new Set(existingAgentTabs.map((tab) => agentUuidOf(tab.id)));
 			const serverUuids = new Set(agentTerminals.map((t) => t.uuid));
 			const toAdd = agentTerminals.filter((t) => !existingUuids.has(t.uuid));
 			const toRemove = existingAgentTabs.filter((tab) => !serverUuids.has(agentUuidOf(tab.id)) && tab.pin === void 0);
-			if (toAdd.length === 0 && toRemove.length === 0) return state;
-			let splits = state.splits;
-			let floats = state.floats;
+			const serverWaits = serverWaitsOf(agentTerminals);
+			if (toAdd.length === 0 && toRemove.length === 0 && sameAgentWaits(state.agentWaits, serverWaits)) return state;
+			let bottomSplits = state.bottomSplits;
 			for (const tab of toRemove) {
-				const leaf = leafWithTab(splits, tab.id);
-				if (leaf !== void 0) splits = closeTab({
+				const leaf = leafWithTab(bottomSplits, tab.id);
+				if (leaf !== void 0) bottomSplits = closeTab({
 					...state,
-					splits
-				}, leaf.id, tab.id).splits;
-				if (floats.some((float) => float.tab.id === tab.id)) floats = floats.filter((float) => float.tab.id !== tab.id);
+					bottomSplits
+				}, leaf.id, tab.id).bottomSplits;
 			}
 			let next = {
 				...state,
-				splits,
-				floats
+				bottomSplits
 			};
 			for (const terminal of toAdd) {
 				const tab = {
@@ -1007,46 +639,30 @@ window.__ModuleLoader__.load({
 					type: "terminal",
 					title: terminal.title
 				};
-				next = openTabInActivePane(next, tab);
+				next = openTabInBottomPane(next, tab);
 			}
-			return next;
+			return {
+				...next,
+				agentWaits: serverWaits
+			};
+		}
+		/**
+		* Mirror ONLY the authoritative agent-wait map from a push — no tab
+		* add/remove reconciliation. Used while the `terminal` tab type is disabled:
+		* the tab surface is frozen, but a wait that resolves during that window
+		* must still clear its banner state, or a re-enabled terminal keeps a stale
+		* banner/⏳ until some unrelated host event fires the next full reconcile.
+		* Idempotent: a no-op when the map already matches.
+		*/
+		function mirrorAgentWaits(state, agentTerminals) {
+			const serverWaits = serverWaitsOf(agentTerminals);
+			if (sameAgentWaits(state.agentWaits, serverWaits)) return state;
+			return {
+				...state,
+				agentWaits: serverWaits
+			};
 		}
 		const STORAGE_PREFIX = "dsh-sidebar:v1";
-		/**
-		* Cross-session panel width: the last dragged width, shared by EVERY
-		* conversation (the panel width is a layout preference, not per-session
-		* content). Written on every persist, read at session load and on
-		* cache-hit session switches, so a drag in one conversation carries to all
-		* the others (last drag wins).
-		*/
-		const GLOBAL_WIDTH_KEY = "dsh-sidebar:v1:width";
-		/** Clamp one width to the contract and the current viewport (mirror of {@link setWidth}). */
-		function clampWidth(width) {
-			const max = typeof window !== "undefined" ? Math.max(280, window.innerWidth) : 640;
-			return Math.min(max, Math.max(280, Math.round(width)));
-		}
-		/** Read the cross-session panel width (undefined when never dragged). */
-		function readGlobalWidth() {
-			try {
-				const raw = localStorage.getItem(GLOBAL_WIDTH_KEY);
-				if (raw !== null) {
-					const parsed = Number(raw);
-					if (Number.isFinite(parsed) && parsed > 0) return clampWidth(parsed);
-				}
-			} catch {}
-		}
-		/** Persist the cross-session panel width (best-effort, like the session states). */
-		function writeGlobalWidth(width) {
-			try {
-				localStorage.setItem(GLOBAL_WIDTH_KEY, String(width));
-			} catch {}
-		}
-		/** Default panel width for one viewport: the prefs percent of the window,
-		* clamped to the panel floor (a tiny percent must stay usable) and to the
-		* viewport (a large one must never cover the whole window). */
-		function defaultWidthFor(viewport, percent) {
-			return Math.min(viewport, Math.max(280, Math.round(viewport * percent / 100)));
-		}
 		/**
 		* URL escape hatch (#369): loading the app with `?dsh-sidebar-reset` drops
 		* the persisted layout for the session instead of restoring it. When a
@@ -1064,33 +680,21 @@ window.__ModuleLoader__.load({
 				return false;
 			}
 		}
-		function loadState(sessionId, prefs) {
+		function loadState(sessionId) {
 			const reset = resetRequested();
-			const viewport = typeof window !== "undefined" ? window.innerWidth : void 0;
 			if (reset) try {
 				localStorage.removeItem(`${STORAGE_PREFIX}:${sessionId}`);
-				localStorage.removeItem(GLOBAL_WIDTH_KEY);
 			} catch {}
-			const globalWidth = reset ? void 0 : readGlobalWidth();
 			if (!reset) try {
 				const raw = localStorage.getItem(`${STORAGE_PREFIX}:${sessionId}`);
 				if (raw !== null) {
 					const parsed = JSON.parse(raw);
 					nextIdCounter = maxCounterId(parsed);
 					const sanitized = sanitizeState(parsed);
-					if (sanitized !== void 0) {
-						const restored = globalWidth === void 0 ? sanitized : {
-							...sanitized,
-							width: globalWidth
-						};
-						return viewport !== void 0 && isNarrowWidth(viewport) && restored.panelOpen ? {
-							...restored,
-							panelOpen: false
-						} : restored;
-					}
+					if (sanitized !== void 0) return sanitized;
 				}
 			} catch {}
-			return makeDefaultState(globalWidth ?? (viewport === void 0 ? 400 : defaultWidthFor(viewport, prefs.defaultWidthPercent)), prefs.openByDefault && (viewport === void 0 || !isNarrowWidth(viewport)), prefs.tabsEnabled["editor"] === false ? "none" : "editor-home");
+			return makeDefaultState();
 		}
 		/**
 		* Structural validation of one persisted state. A malformed or stale shape
@@ -1103,17 +707,12 @@ window.__ModuleLoader__.load({
 		function sanitizeState(parsed) {
 			if (parsed === null || typeof parsed !== "object") return void 0;
 			const record = parsed;
-			if (typeof record.panelOpen !== "boolean") return void 0;
-			if (typeof record.width !== "number" || !Number.isFinite(record.width)) return void 0;
 			if (typeof record.nextTerminal !== "number" || !Number.isInteger(record.nextTerminal) || record.nextTerminal < 1) return;
 			const nextBrowser = typeof record.nextBrowser === "number" && Number.isInteger(record.nextBrowser) && record.nextBrowser >= 1 ? record.nextBrowser : 1;
 			if (typeof record.activePane !== "string" && record.activePane !== null) return void 0;
 			if (!Array.isArray(record.expanded) || record.expanded.some((item) => typeof item !== "string")) return void 0;
 			const seen = /* @__PURE__ */ new Set();
 			const reid = /* @__PURE__ */ new Map();
-			const restoredSplits = sanitizeNode(record.splits, seen, reid);
-			if (restoredSplits === void 0) return void 0;
-			const splits = pruneEmptyPanes(restoredSplits);
 			const bottomOpen = record.bottomOpen === true;
 			const maxHeight = typeof window !== "undefined" ? window.innerHeight : Infinity;
 			const bottomCap = Math.max(120, maxHeight - 280);
@@ -1125,38 +724,18 @@ window.__ModuleLoader__.load({
 				tabs: [],
 				active: null
 			});
-			const floats = [];
-			if (Array.isArray(record.floats)) for (const entry of record.floats) {
-				if (entry === null || typeof entry !== "object") continue;
-				const candidate = entry;
-				if (typeof candidate.id !== "string" || seen.has(candidate.id)) continue;
-				const tab = sanitizePersistedTab(candidate.tab);
-				if (tab === void 0 || tab === "diff") continue;
-				if (typeof candidate.x !== "number" || !Number.isFinite(candidate.x) || typeof candidate.y !== "number" || !Number.isFinite(candidate.y) || typeof candidate.w !== "number" || !Number.isFinite(candidate.w) || typeof candidate.h !== "number" || !Number.isFinite(candidate.h)) continue;
-				seen.add(candidate.id);
-				floats.push({
-					id: candidate.id,
-					tab,
-					...clampFloatGeometry(candidate.x, candidate.y, candidate.w, candidate.h)
-				});
-			}
 			const requestedActivePane = typeof record.activePane === "string" ? reid.get(record.activePane) ?? record.activePane : null;
-			const activePane = requestedActivePane === null ? null : treeHasId(splits, requestedActivePane) || treeHasId(bottomSplits, requestedActivePane) ? requestedActivePane : firstLeaf(splits).id;
-			const maxWidth = typeof window !== "undefined" ? window.innerWidth : Infinity;
 			return {
-				panelOpen: record.panelOpen,
-				width: Math.max(280, Math.min(record.width, maxWidth)),
-				activePane,
+				activePane: requestedActivePane === null ? null : allLeaves(bottomSplits).some((leaf) => leaf.id === requestedActivePane) ? requestedActivePane : firstLeaf(bottomSplits).id,
 				nextTerminal: record.nextTerminal,
 				nextBrowser,
 				expanded: record.expanded,
 				revealed: [],
-				splits,
 				bottomOpen,
 				bottomHeight,
 				bottomOpenedOnce: record.bottomOpenedOnce === true,
 				bottomSplits,
-				floats
+				agentWaits: {}
 			};
 		}
 		/** Collapse persisted split panes left empty after ephemeral diff tabs are dropped. */
@@ -1334,19 +913,9 @@ window.__ModuleLoader__.load({
 				else {
 					let state = this.bySession.get(sessionId);
 					if (state === void 0) {
-						state = loadState(sessionId, this.prefs);
+						state = loadState(sessionId);
 						this.bySession.set(sessionId, state);
-					} else {
-						nextIdCounter = maxCounterId(state);
-						const globalWidth = readGlobalWidth();
-						if (globalWidth !== void 0 && state.width !== globalWidth) {
-							state = {
-								...state,
-								width: globalWidth
-							};
-							this.bySession.set(sessionId, state);
-						}
-					}
+					} else nextIdCounter = maxCounterId(state);
 					this.snapshot = {
 						sessionId,
 						state,
@@ -1432,7 +1001,7 @@ window.__ModuleLoader__.load({
 				const counterBefore = nextIdCounter;
 				let state = this.bySession.get(sessionId);
 				if (state === void 0) {
-					state = loadState(sessionId, this.prefs);
+					state = loadState(sessionId);
 					this.bySession.set(sessionId, state);
 				} else nextIdCounter = maxCounterId(state);
 				const next = reducer(state);
@@ -1442,7 +1011,6 @@ window.__ModuleLoader__.load({
 				this.schedulePersist(sessionId, next);
 			}
 			schedulePersist(sessionId, state) {
-				if (sessionId === this.snapshot.sessionId) writeGlobalWidth(state.width);
 				const existing = this.persistTimers.get(sessionId);
 				if (existing !== void 0) window.clearTimeout(existing);
 				const timer = window.setTimeout(() => {
@@ -1490,7 +1058,7 @@ window.__ModuleLoader__.load({
 		* (`//server/share/...`) form. Deliberately a superset — see the module
 		* comment — so a produced UNC path is never joined onto the cwd.
 		*/
-		function isAbsolutePath(path) {
+		function isAbsolutePath$1(path) {
 			return path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path) || /^[\\/]{2}[^\\/]/.test(path);
 		}
 		/**
@@ -1550,7 +1118,51 @@ window.__ModuleLoader__.load({
 			return base.includes("/") || base.includes("\\") ? "" : base;
 		}
 		//#endregion
+		//#region src/client/file-icons.tsx
+		/**
+		* A file row: the host's own classifier and artwork for any path. Unknown
+		* extensions land on the generic document glyph, exactly like the host's
+		* explorer.
+		* @param path - the row's path (any separator; the classifier reads the basename).
+		* @param size - the square edge in px.
+		* @returns the host's file-type glyph.
+		*/
+		function builtinFileIcon(path, size) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.FileTypeIcon, {
+				path,
+				size
+			});
+		}
+		/**
+		* A directory row: the host's folder glyph.
+		*
+		* The host ships ONE folder drawing (`kind: 'folder'` resolves to its
+		* monochrome `IconFolderClose16`, which rides `currentColor` and therefore
+		* still follows the skin), and the classifier never returns a folder kind of
+		* its own. The expansion state is already legible from the tree's own chevron
+		* and row affordances, so this deliberately does not invent a second folder
+		* drawing.
+		* @param _open - whether the row is expanded (accepted for API compatibility).
+		* @param size - the square edge in px.
+		* @returns the host's folder glyph.
+		*/
+		function builtinFolderIcon(_open, size) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.FileTypeIcon, {
+				kind: "folder",
+				size
+			});
+		}
+		//#endregion
 		//#region src/client/service.ts
+		/**
+		* Reserved `exts` values that claim DIRECTORY rows instead of file
+		* extensions: `'folder'` matches a closed directory, `'folder-open'` an
+		* expanded one (`folderIcon(path, open)` resolves them). They are filtered out of
+		* real-extension matching, so a file literally named `x.folder` is NOT
+		* claimed by a folder registration.
+		*/
+		const FOLDER_EXT = "folder";
+		const FOLDER_OPEN_EXT = "folder-open";
 		/** The file name of a path (both separators). */
 		function baseNameOf(path) {
 			const at = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
@@ -1585,7 +1197,7 @@ window.__ModuleLoader__.load({
 		* The plugin version this service instance reports. Keep in lockstep with
 		* `package.json`'s version — `tests/service.spec.ts` asserts the pair.
 		*/
-		const SIDEBAR_SERVICE_VERSION = "0.18.1";
+		const SIDEBAR_SERVICE_VERSION = "0.19.1";
 		/**
 		* Monotonic capability list consumers use to gate new API usage (features
 		* are never removed). Each string names a v0.12.0+ capability:
@@ -1599,9 +1211,14 @@ window.__ModuleLoader__.load({
 		* - 'pluginSettings': SidebarSettingsDeclaration.pluginToggles/render
 		* - 'urlTarget' (v0.13.0): TabDescriptor.urlTarget (external-link claims)
 		* - 'settingSelect': SidebarSettingToggle type 'select' (options/multi)
-		* - 'floatWindows' (v0.16.0): tabs float as free windows — openTab's dedupe/
-		*   id focus targets RAISE the floating window (never duplicate the tab or
-		*   expand panels), closeTab on a floating tab closes it with its window.
+		* - 'fileIcons' (v0.19.0): registerFileIcon/getFileIcons/matchFileIcon —
+		*   external file-tree icons overriding the built-in glyphs, matched by
+		*   extension (`exts`), exact file name (`names`), or directory name
+		*   (`folderNames`).
+		*
+		* v0.19.0 REMOVED 'floatWindows': the free-window feature is gone (DSH 0.1.5
+		* owns the right column, so the plugin keeps only its bottom workbench).
+		* Consumers must not gate on it any more.
 		*/
 		const SIDEBAR_FEATURES = [
 			"badge",
@@ -1614,7 +1231,7 @@ window.__ModuleLoader__.load({
 			"pluginSettings",
 			"urlTarget",
 			"settingSelect",
-			"floatWindows"
+			"fileIcons"
 		];
 		/** Run one plugin callback; a throw is logged and never breaks the caller. */
 		function safeCall(fn) {
@@ -1632,7 +1249,10 @@ window.__ModuleLoader__.load({
 		function createBetterSidebarService(store) {
 			const tabs = /* @__PURE__ */ new Map();
 			const viewers = /* @__PURE__ */ new Map();
+			const fileIcons = /* @__PURE__ */ new Map();
 			const listeners = /* @__PURE__ */ new Set();
+			/** The native right-Sidebar write face, installed by the client half. */
+			let surface;
 			const notify = () => {
 				for (const fn of [...listeners]) fn();
 			};
@@ -1666,7 +1286,67 @@ window.__ModuleLoader__.load({
 			};
 			const getTabs = () => Array.from(tabs.values());
 			const getFileViewers = () => Array.from(viewers.values());
+			const getFileIcons = () => Array.from(fileIcons.values());
 			const getTab = (id) => tabs.get(id);
+			const registerFileIcon = (descriptor) => {
+				if (fileIcons.has(descriptor.id)) throw new Error(`[dsh-better-sidebar] file icons "${descriptor.id}" already registered`);
+				fileIcons.set(descriptor.id, descriptor);
+				notify();
+				return () => {
+					if (fileIcons.get(descriptor.id) === descriptor) {
+						fileIcons.delete(descriptor.id);
+						notify();
+					}
+				};
+			};
+			const rankedFileIcons = () => Array.from(fileIcons.values()).sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+			const matchFileIcon = (path) => {
+				const ext = extOf(path);
+				const reserved = ext === "folder" || ext === "folder-open";
+				const name = baseName$1(path).toLowerCase();
+				const ranked = rankedFileIcons();
+				for (const d of ranked) if (d.names?.some((entry) => entry.toLowerCase() === name) === true) return d;
+				if (reserved) return void 0;
+				for (const d of ranked) if (d.exts?.includes(ext) === true) return d;
+			};
+			const matchFolderIcon = (open, name) => {
+				const ranked = rankedFileIcons();
+				if (name !== void 0) {
+					const wanted = name.toLowerCase();
+					for (const d of ranked) if (d.folderNames?.some((entry) => entry.toLowerCase() === wanted) === true) return d;
+				}
+				const want = open ? FOLDER_OPEN_EXT : FOLDER_EXT;
+				for (const d of ranked) if (d.exts?.includes(want) === true) return d;
+			};
+			/** Run one registered factory; a throw is logged and returns undefined. */
+			const safeIcon = (d, path, size, open) => {
+				try {
+					return d.icon(path, size, open);
+				} catch (error) {
+					console.error(`[dsh-better-sidebar] file icon factory "${d.id}" error:`, error);
+					return;
+				}
+			};
+			const fileIcon = (path, size) => {
+				const specific = matchFileIcon(path);
+				if (specific !== void 0) {
+					const icon = safeIcon(specific, path, size);
+					if (icon !== void 0) return icon;
+				}
+				for (const d of rankedFileIcons()) if (d.exts !== void 0 && d.exts.length === 0) {
+					const icon = safeIcon(d, path, size);
+					if (icon !== void 0) return icon;
+				}
+				return builtinFileIcon(path, size);
+			};
+			const folderIcon = (path, open, size) => {
+				const registered = matchFolderIcon(open, baseName$1(path));
+				if (registered !== void 0) {
+					const icon = safeIcon(registered, path, size, open);
+					if (icon !== void 0) return icon;
+				}
+				return builtinFolderIcon(open, size);
+			};
 			const isTabEnabled = (id) => store.getPrefs().tabsEnabled[id] !== false;
 			const isViewerEnabled = (id) => store.getPrefs().viewersEnabled[id] !== false;
 			const matchFileViewer = (path, head) => {
@@ -1693,10 +1373,50 @@ window.__ModuleLoader__.load({
 				const targetSessionId = scope?.sessionId ?? store.getSnapshot().sessionId;
 				if (targetSessionId === void 0) return;
 				const callbackScope = scope ?? { sessionId: targetSessionId };
+				if (surface !== void 0 && seed.target !== "bottom") {
+					const state = store.getSnapshot().state;
+					const minted = descriptor.createTab === void 0 || state === void 0 ? void 0 : descriptor.createTab(state);
+					if (minted === null) return;
+					const title = seed.title ?? minted?.tab.title ?? (typeof descriptor.title === "function" ? descriptor.title() : descriptor.title);
+					const revealIfOpened = descriptor.createTab === void 0;
+					const synthetic = {
+						id: seed.id ?? minted?.tab.id ?? seed.type,
+						type: seed.type,
+						title,
+						...seed.path === void 0 ? {} : { path: seed.path },
+						...seed.diff === void 0 ? {} : { diff: seed.diff },
+						...seed.meta === void 0 && minted?.tab.meta === void 0 ? {} : { meta: seed.meta ?? minted?.tab.meta }
+					};
+					if (seed.path !== void 0) surface.openResource({
+						sessionId: targetSessionId,
+						address: surface.fileAddress(targetSessionId, scope?.cwd, seed.path),
+						revealIfOpened: true
+					});
+					else if (seed.type === "editor") surface.openTab({
+						sessionId: targetSessionId,
+						kind: "files",
+						params: {},
+						revealIfOpened: true
+					});
+					else surface.openTab({
+						sessionId: targetSessionId,
+						kind: seed.type,
+						params: {
+							title,
+							...seed.url === void 0 ? {} : { url: seed.url },
+							...seed.diff === void 0 ? {} : { diff: seed.diff },
+							...synthetic.meta === void 0 ? {} : { meta: synthetic.meta }
+						},
+						revealIfOpened
+					});
+					safeCall(() => descriptor.onOpen?.(synthetic, callbackScope));
+					return;
+				}
 				const activeSessionId = store.getSnapshot().sessionId;
 				const targetsInactiveSession = scope !== void 0 && scope.sessionId !== activeSessionId;
 				let created;
 				let activated;
+				const land = openTabInBottomPane;
 				const reducer = (state) => {
 					let tab;
 					let next;
@@ -1704,7 +1424,7 @@ window.__ModuleLoader__.load({
 						const result = descriptor.createTab(state);
 						if (result === null) return state;
 						tab = result.tab;
-						next = applyDedupe(state, result.tab, descriptor);
+						next = applyDedupe(state, result.tab, descriptor, land);
 						if (result.patch !== void 0) next = {
 							...next,
 							...result.patch
@@ -1718,11 +1438,11 @@ window.__ModuleLoader__.load({
 							...seed.diff !== void 0 ? { diff: seed.diff } : {},
 							...seed.meta !== void 0 ? { meta: seed.meta } : {}
 						};
-						next = applyDedupe(state, tab, descriptor);
+						next = applyDedupe(state, tab, descriptor, land);
 					}
 					const dedupeKey = descriptor.dedupeKey ?? (descriptor.single === true ? () => descriptor.id : void 0);
 					const key = dedupeKey?.(tab);
-					const inputTabs = allLeaves(state.splits).concat(allLeaves(state.bottomSplits)).flatMap((leaf) => leaf.tabs).concat(state.floats.map((f) => f.tab));
+					const inputTabs = allLeaves(state.bottomSplits).flatMap((leaf) => leaf.tabs);
 					const existedByKey = key !== void 0 && inputTabs.some((candidate) => candidate.type === tab.type && dedupeKey(candidate) === key);
 					const existedById = tabOpenIn(state, tab.id);
 					const isCreation = !existedByKey && !existedById;
@@ -1731,24 +1451,16 @@ window.__ModuleLoader__.load({
 						path: seed.url,
 						...seed.title !== void 0 ? { title: seed.title } : {}
 					});
-					if (isCreation) created = allLeaves(landed.splits).concat(allLeaves(landed.bottomSplits)).flatMap((leaf) => leaf.tabs).find((candidate) => candidate.id === tab.id) ?? tab;
+					if (isCreation) created = allLeaves(landed.bottomSplits).flatMap((leaf) => leaf.tabs).find((candidate) => candidate.id === tab.id) ?? tab;
 					else {
-						const candidates = allLeaves(landed.splits).concat(allLeaves(landed.bottomSplits)).flatMap((leaf) => leaf.tabs).concat(landed.floats.map((f) => f.tab));
+						const candidates = allLeaves(landed.bottomSplits).flatMap((leaf) => leaf.tabs);
 						activated = key !== void 0 ? candidates.find((candidate) => candidate.type === tab.type && dedupeKey(candidate) === key) : candidates.find((candidate) => candidate.id === tab.id);
 						activated ??= tab;
 					}
-					if (!isCreation && floatWithTab(landed, activated?.id ?? tab.id) !== void 0) return landed;
-					if (!targetsInactiveSession && typeof window !== "undefined" && (seed.path !== void 0 || seed.url !== void 0)) {
-						if (isNarrowWidth(window.innerWidth)) {
-							if (!landed.panelOpen) return togglePanel(landed);
-						} else if (treeOf(landed, landed.activePane ?? "") === "bottomSplits") {
-							if (!landed.bottomOpen) return {
-								...landed,
-								bottomOpen: true
-							};
-						} else if (!landed.panelOpen) return togglePanel(landed);
-					}
-					return landed;
+					return landed.bottomOpen ? landed : {
+						...landed,
+						bottomOpen: true
+					};
 				};
 				if (targetsInactiveSession) store.reduceFor(scope.sessionId, reducer);
 				else store.reduce(reducer);
@@ -1756,16 +1468,24 @@ window.__ModuleLoader__.load({
 				else if (activated !== void 0) safeCall(() => descriptor.onActivate?.(activated, callbackScope));
 			};
 			const closeTab$1 = (tabId, scope) => {
+				const sessionId = scope?.sessionId ?? store.getSnapshot().sessionId;
+				if (surface !== void 0 && sessionId !== void 0) {
+					const closedNative = surface.close(sessionId, tabId);
+					if (closedNative !== void 0) {
+						const descriptor = tabs.get(closedNative.type);
+						if (descriptor !== void 0) safeCall(() => descriptor.onClose?.({
+							id: tabId,
+							type: closedNative.type,
+							title: closedNative.title
+						}, scope ?? { sessionId }));
+						return;
+					}
+				}
 				let closed;
 				store.reduce((state) => {
 					if (!tabOpenIn(state, tabId)) return state;
-					const float = floatWithTab(state, tabId);
-					if (float !== void 0) {
-						closed = float.tab;
-						return closeFloatByTab(state, tabId);
-					}
 					const paneId = findPaneIdOf(state, tabId);
-					closed = leafWithTab(state[treeOf(state, paneId)], tabId)?.tabs.find((tab) => tab.id === tabId);
+					closed = leafWithTab(state.bottomSplits, tabId)?.tabs.find((tab) => tab.id === tabId);
 					return closeTab(state, paneId, tabId);
 				});
 				if (closed !== void 0) {
@@ -1782,6 +1502,7 @@ window.__ModuleLoader__.load({
 			const subscribeState = (listener) => store.subscribe(listener);
 			/** Patch an open tab's display fields (a missing tab id is a no-op). */
 			const updateTab = (tabId, patch) => {
+				if (surface?.update(tabId, patch) === true) return;
 				store.reduce((state) => patchTab(state, tabId, {
 					...patch.title !== void 0 ? { title: patch.title } : {},
 					...patch.path !== void 0 ? { path: patch.path } : {},
@@ -1790,16 +1511,12 @@ window.__ModuleLoader__.load({
 			};
 			/** Activate an open tab (the tab-bar activation path; fires onActivate). */
 			const activateTab$1 = (tabId, scope) => {
+				if (surface?.activate(tabId) === true) return;
 				let activated;
 				store.reduce((state) => {
 					if (!tabOpenIn(state, tabId)) return state;
-					const float = floatWithTab(state, tabId);
-					if (float !== void 0) {
-						activated = float.tab;
-						return raiseFloat(state, float.id);
-					}
 					const paneId = findPaneIdOf(state, tabId);
-					activated = leafWithTab(state[treeOf(state, paneId)], tabId)?.tabs.find((tab) => tab.id === tabId);
+					activated = leafWithTab(state.bottomSplits, tabId)?.tabs.find((tab) => tab.id === tabId);
 					return activateTab(state, paneId, tabId);
 				});
 				if (activated !== void 0) {
@@ -1824,8 +1541,14 @@ window.__ModuleLoader__.load({
 			return {
 				registerTab,
 				registerFileViewer,
+				registerFileIcon,
 				getTabs,
 				getFileViewers,
+				getFileIcons,
+				matchFileIcon,
+				matchFolderIcon,
+				fileIcon,
+				folderIcon,
 				getTab,
 				isTabEnabled,
 				isViewerEnabled,
@@ -1839,32 +1562,30 @@ window.__ModuleLoader__.load({
 				subscribeState,
 				updateTab,
 				activateTab: activateTab$1,
-				openFile
+				openFile,
+				setSurface: (next) => {
+					surface = next;
+				}
 			};
 		}
 		/**
 		* Apply dedup: if a tab whose `dedupeKey` matches an existing tab of the
-		* same type exists, focus it; otherwise land the tab through
-		* `openTabInActivePane` (the id safety net + active-pane landing are that
-		* reducer's job — not re-implemented here).
+		* same type exists, focus it; otherwise land the tab through `land` (the id
+		* safety net + landing are that reducer's job — not re-implemented here).
 		* `single: true` resolves to the id-key sugar when no explicit key is given.
 		*/
-		function applyDedupe(state, tab, descriptor) {
+		function applyDedupe(state, tab, descriptor, land = openTabInBottomPane) {
 			const dedupeKey = descriptor.dedupeKey ?? (descriptor.single === true ? () => descriptor.id : void 0);
 			const key = dedupeKey?.(tab);
-			if (key !== void 0) {
-				for (const leaf of allLeaves(state.splits).concat(allLeaves(state.bottomSplits))) {
-					const existing = leaf.tabs.find((t) => t.type === tab.type && dedupeKey(t) === key);
-					if (existing !== void 0) return activateTab(state, leaf.id, existing.id);
-				}
-				const floated = state.floats.find((f) => f.tab.type === tab.type && dedupeKey(f.tab) === key);
-				if (floated !== void 0) return raiseFloat(state, floated.id);
+			if (key !== void 0) for (const leaf of allLeaves(state.bottomSplits)) {
+				const existing = leaf.tabs.find((t) => t.type === tab.type && dedupeKey(t) === key);
+				if (existing !== void 0) return activateTab(state, leaf.id, existing.id);
 			}
-			return openTabInActivePane(state, tab);
+			return land(state, tab);
 		}
-		/** Find which pane hosts a tab id ('' if none). Either tree is searched. */
+		/** Find which pane hosts a tab id ('' if none). */
 		function findPaneIdOf(state, tabId) {
-			for (const leaf of allLeaves(state.splits).concat(allLeaves(state.bottomSplits))) if (leaf.tabs.some((t) => t.id === tabId)) return leaf.id;
+			for (const leaf of allLeaves(state.bottomSplits)) if (leaf.tabs.some((t) => t.id === tabId)) return leaf.id;
 			return state.activePane ?? "";
 		}
 		//#endregion
@@ -2068,6 +1789,316 @@ window.__ModuleLoader__.load({
 			return task;
 		}
 		//#endregion
+		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-source/src/client/builtins/tab-icons.module.css.mjs
+		const css$8 = "._3oXoba_files{color:var(--dsw-alias-brand-primary,var(--dsw-alias-label-primary))}._3oXoba_changes{color:var(--dsw-alias-state-success-primary,var(--dsw-alias-brand-primary,var(--dsw-alias-label-primary)))}._3oXoba_tasks{color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-label-primary))}._3oXoba_sidechat{color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary,var(--dsw-alias-label-primary)))}._3oXoba_terminal{color:var(--dsw-alias-label-primary)}._3oXoba_browser{color:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary,var(--dsw-alias-label-primary)))}";
+		const tagId$7 = "dsh-external/dsh-better-sidebar/tab-icons.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$7) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "dsh-external/dsh-better-sidebar";
+			tag.dataset.pluginCss = tagId$7;
+			tag.textContent = css$8;
+			document.head.appendChild(tag);
+		}
+		var tab_icons_module_css_default = {
+			"terminal": "_3oXoba_terminal",
+			"browser": "_3oXoba_browser",
+			"sidechat": "_3oXoba_sidechat",
+			"tasks": "_3oXoba_tasks",
+			"changes": "_3oXoba_changes",
+			"files": "_3oXoba_files"
+		};
+		//#endregion
+		//#region node_modules/.pnpm/react-icons@5.7.0_react@18.2.0/node_modules/react-icons/lib/iconContext.mjs
+		var DefaultContext = {
+			color: void 0,
+			size: void 0,
+			className: void 0,
+			style: void 0,
+			attr: void 0
+		};
+		var IconContext = react.default.createContext && /*#__PURE__*/ react.default.createContext(DefaultContext);
+		//#endregion
+		//#region node_modules/.pnpm/react-icons@5.7.0_react@18.2.0/node_modules/react-icons/lib/iconBase.mjs
+		var _excluded = [
+			"attr",
+			"size",
+			"title"
+		];
+		function _objectWithoutProperties(e, t) {
+			if (null == e) return {};
+			var o, r, i = _objectWithoutPropertiesLoose(e, t);
+			if (Object.getOwnPropertySymbols) {
+				var n = Object.getOwnPropertySymbols(e);
+				for (r = 0; r < n.length; r++) o = n[r], -1 === t.indexOf(o) && {}.propertyIsEnumerable.call(e, o) && (i[o] = e[o]);
+			}
+			return i;
+		}
+		function _objectWithoutPropertiesLoose(r, e) {
+			if (null == r) return {};
+			var t = {};
+			for (var n in r) if ({}.hasOwnProperty.call(r, n)) {
+				if (-1 !== e.indexOf(n)) continue;
+				t[n] = r[n];
+			}
+			return t;
+		}
+		function _extends() {
+			return _extends = Object.assign ? Object.assign.bind() : function(n) {
+				for (var e = 1; e < arguments.length; e++) {
+					var t = arguments[e];
+					for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]);
+				}
+				return n;
+			}, _extends.apply(null, arguments);
+		}
+		function ownKeys(e, r) {
+			var t = Object.keys(e);
+			if (Object.getOwnPropertySymbols) {
+				var o = Object.getOwnPropertySymbols(e);
+				r && (o = o.filter(function(r) {
+					return Object.getOwnPropertyDescriptor(e, r).enumerable;
+				})), t.push.apply(t, o);
+			}
+			return t;
+		}
+		function _objectSpread(e) {
+			for (var r = 1; r < arguments.length; r++) {
+				var t = null != arguments[r] ? arguments[r] : {};
+				r % 2 ? ownKeys(Object(t), !0).forEach(function(r) {
+					_defineProperty(e, r, t[r]);
+				}) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function(r) {
+					Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r));
+				});
+			}
+			return e;
+		}
+		function _defineProperty(e, r, t) {
+			return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
+				value: t,
+				enumerable: !0,
+				configurable: !0,
+				writable: !0
+			}) : e[r] = t, e;
+		}
+		function _toPropertyKey(t) {
+			var i = _toPrimitive(t, "string");
+			return "symbol" == typeof i ? i : i + "";
+		}
+		function _toPrimitive(t, r) {
+			if ("object" != typeof t || !t) return t;
+			var e = t[Symbol.toPrimitive];
+			if (void 0 !== e) {
+				var i = e.call(t, r || "default");
+				if ("object" != typeof i) return i;
+				throw new TypeError("@@toPrimitive must return a primitive value.");
+			}
+			return ("string" === r ? String : Number)(t);
+		}
+		function Tree2Element(tree) {
+			return tree && tree.map((node, i) => /*#__PURE__*/ react.default.createElement(node.tag, _objectSpread({ key: i }, node.attr), Tree2Element(node.child)));
+		}
+		function GenIcon(data) {
+			return (props) => /*#__PURE__*/ react.default.createElement(IconBase, _extends({ attr: _objectSpread({}, data.attr) }, props), Tree2Element(data.child));
+		}
+		function IconBase(props) {
+			var elem = (conf) => {
+				var attr = props.attr, size = props.size, title = props.title, svgProps = _objectWithoutProperties(props, _excluded);
+				var computedSize = size || conf.size || "1em";
+				var className;
+				if (conf.className) className = conf.className;
+				if (props.className) className = (className ? className + " " : "") + props.className;
+				return /*#__PURE__*/ react.default.createElement("svg", _extends({
+					stroke: "currentColor",
+					fill: "currentColor",
+					strokeWidth: "0"
+				}, conf.attr, attr, svgProps, {
+					className,
+					style: _objectSpread(_objectSpread({ color: props.color || conf.color }, conf.style), props.style),
+					height: computedSize,
+					width: computedSize,
+					xmlns: "http://www.w3.org/2000/svg"
+				}), title && /*#__PURE__*/ react.default.createElement("title", null, title), props.children);
+			};
+			return IconContext !== void 0 ? /*#__PURE__*/ react.default.createElement(IconContext.Consumer, null, (conf) => elem(conf)) : elem(DefaultContext);
+		}
+		//#endregion
+		//#region node_modules/.pnpm/react-icons@5.7.0_react@18.2.0/node_modules/react-icons/vsc/index.mjs
+		function VscTerminal(props) {
+			return GenIcon({
+				"tag": "svg",
+				"attr": {
+					"viewBox": "0 0 24 24",
+					"fill": "currentColor"
+				},
+				"child": [{
+					"tag": "path",
+					"attr": { "d": "M18.75 1.5H5.25C3.1815 1.5 1.5 3.183 1.5 5.25V18.75C1.5 20.8185 3.1815 22.5 5.25 22.5H18.75C20.8185 22.5 22.5 20.8185 22.5 18.75V5.25C22.5 3.183 20.8185 1.5 18.75 1.5ZM21 18.75C21 19.9905 19.9905 21 18.75 21H5.25C4.0095 21 3 19.9905 3 18.75V5.25C3 4.0095 4.0095 3 5.25 3H18.75C19.9905 3 21 4.0095 21 5.25V18.75ZM10.281 13.281L5.781 17.781C5.634 17.928 5.442 18 5.25 18C5.058 18 4.866 17.9265 4.719 17.781C4.4265 17.4885 4.4265 17.013 4.719 16.7205L8.688 12.7515L4.719 8.7825C4.4265 8.49 4.4265 8.0145 4.719 7.722C5.0115 7.4295 5.487 7.4295 5.7795 7.722L10.2795 12.222C10.572 12.5145 10.572 12.99 10.2795 13.2825L10.281 13.281ZM19.5 17.25C19.5 17.664 19.164 18 18.75 18H11.25C10.836 18 10.5 17.664 10.5 17.25C10.5 16.836 10.836 16.5 11.25 16.5H18.75C19.164 16.5 19.5 16.836 19.5 17.25Z" },
+					"child": []
+				}]
+			})(props);
+		}
+		function VscPinned(props) {
+			return GenIcon({
+				"tag": "svg",
+				"attr": {
+					"viewBox": "0 0 16 16",
+					"fill": "currentColor"
+				},
+				"child": [{
+					"tag": "path",
+					"attr": { "d": "M10.0589 2.44511C9.34701 1.73063 8.14697 1.90829 7.67261 2.79839L5.6526 6.58878L2.8419 7.52568C2.6775 7.58048 2.5532 7.71649 2.51339 7.88514C2.47357 8.0538 2.52392 8.23104 2.64646 8.35357L4.79291 10.5L2.14645 13.1465L2 14L2.85356 13.8536L5.50002 11.2071L7.64646 13.3536C7.76899 13.4761 7.94623 13.5265 8.11489 13.4866C8.28354 13.4468 8.41955 13.3225 8.47435 13.1581L9.41143 10.3469L13.1897 8.32423C14.0759 7.84982 14.2538 6.6551 13.5443 5.94305L10.0589 2.44511ZM8.55511 3.2687C8.71323 2.972 9.11324 2.91278 9.35055 3.15094L12.836 6.64889C13.0725 6.88624 13.0131 7.28448 12.7178 7.44262L8.76403 9.55921C8.65137 9.61952 8.56608 9.72068 8.52567 9.84191L7.7815 12.0744L3.92562 8.21853L6.15812 7.47436C6.27966 7.43385 6.38101 7.34823 6.44126 7.23518L8.55511 3.2687Z" },
+					"child": []
+				}]
+			})(props);
+		}
+		function VscPin(props) {
+			return GenIcon({
+				"tag": "svg",
+				"attr": {
+					"viewBox": "0 0 16 16",
+					"fill": "currentColor"
+				},
+				"child": [{
+					"tag": "path",
+					"attr": { "d": "M13.5 3C13.303 3 13.109 3.038 12.923 3.114L8.481 4.967L5.659 4.026C5.505 3.976 5.339 4.001 5.209 4.095C5.078 4.189 5.001 4.339 5.001 4.5V7H1.257L0.5 7.5L1.257 8H5V10.5C5 10.661 5.077 10.812 5.208 10.905C5.338 11 5.504 11.023 5.658 10.974L8.48 10.033L12.925 11.887C13.109 11.962 13.302 12 13.499 12C14.326 12 14.999 11.327 14.999 10.5V4.5C14.999 3.673 14.326 3 13.499 3H13.5ZM14 10.5C14 10.843 13.615 11.09 13.308 10.962L8.693 9.038C8.631 9.013 8.566 9 8.501 9C8.447 9 8.395 9.009 8.343 9.025L6.001 9.806V5.193L8.343 5.974C8.457 6.011 8.581 6.007 8.694 5.961L13.306 4.038C13.629 3.902 14.001 4.156 14.001 4.499V10.499L14 10.5Z" },
+					"child": []
+				}]
+			})(props);
+		}
+		function VscLinkExternal(props) {
+			return GenIcon({
+				"tag": "svg",
+				"attr": {
+					"viewBox": "0 0 16 16",
+					"fill": "currentColor"
+				},
+				"child": [{
+					"tag": "path",
+					"attr": { "d": "M15 9.5V12.5C15 13.879 13.879 15 12.5 15H3.5C2.121 15 1 13.879 1 12.5V3.5C1 2.121 2.121 1 3.5 1H6.5C6.776 1 7 1.224 7 1.5C7 1.776 6.776 2 6.5 2H3.5C2.673 2 2 2.673 2 3.5V12.5C2 13.327 2.673 14 3.5 14H12.5C13.327 14 14 13.327 14 12.5V9.5C14 9.224 14.224 9 14.5 9C14.776 9 15 9.224 15 9.5ZM14.5 1H9.5C9.224 1 9 1.224 9 1.5C9 1.776 9.224 2 9.5 2H13.293L9.147 6.146C8.952 6.341 8.952 6.658 9.147 6.853C9.245 6.951 9.373 6.999 9.501 6.999C9.629 6.999 9.757 6.95 9.855 6.853L14.001 2.707V6.5C14.001 6.776 14.225 7 14.501 7C14.777 7 15.001 6.776 15.001 6.5V1.5C15.001 1.224 14.777 1 14.501 1H14.5Z" },
+					"child": []
+				}]
+			})(props);
+		}
+		function VscLayers(props) {
+			return GenIcon({
+				"tag": "svg",
+				"attr": {
+					"viewBox": "0 0 16 16",
+					"fill": "currentColor"
+				},
+				"child": [
+					{
+						"tag": "path",
+						"attr": { "d": "M8 8.99993C7.819 8.99993 7.643 8.95093 7.486 8.85793L2.486 5.85693C2.186 5.67793 2 5.34893 2 4.99993C2 4.65093 2.187 4.32093 2.486 4.14193L7.486 1.14293C7.789 0.95693 8.207 0.95493 8.517 1.14493L13.513 4.14293C13.813 4.32293 13.999 4.65093 13.999 4.99993C13.999 5.34893 13.812 5.67893 13.513 5.85793L8.513 8.85693C8.357 8.95093 8.181 8.99993 8 8.99993ZM8 1.99993L3 4.99993L8 7.99993L13 4.99993L8 1.99993Z" },
+						"child": []
+					},
+					{
+						"tag": "path",
+						"attr": { "d": "M2.146 6.9873L8 10.5003L13.854 6.9873C13.946 7.1413 14 7.3173 14 7.5003C14 7.8493 13.814 8.1783 13.514 8.3583L8.514 11.3573C8.357 11.4513 8.181 11.5003 8 11.5003C7.819 11.5003 7.642 11.4513 7.486 11.3583L2.486 8.35731C2.187 8.17931 2 7.8503 2 7.5003C2 7.3163 2.054 7.1403 2.146 6.9873Z" },
+						"child": []
+					},
+					{
+						"tag": "path",
+						"attr": { "d": "M2.146 9.4873L8 13.0003L13.854 9.4873C13.946 9.6413 14 9.8173 14 10.0003C14 10.3493 13.814 10.6783 13.514 10.8583L8.514 13.8573C8.357 13.9513 8.181 14.0003 8 14.0003C7.819 14.0003 7.642 13.9513 7.486 13.8583L2.486 10.8573C2.187 10.6793 2 10.3503 2 10.0003C2 9.8163 2.054 9.6403 2.146 9.4873Z" },
+						"child": []
+					}
+				]
+			})(props);
+		}
+		function VscGlobe(props) {
+			return GenIcon({
+				"tag": "svg",
+				"attr": {
+					"viewBox": "0 0 16 16",
+					"fill": "currentColor"
+				},
+				"child": [{
+					"tag": "path",
+					"attr": { "d": "M8 1C4.141 1 1 4.141 1 8C1 11.859 4.141 15 8 15C11.859 15 15 11.859 15 8C15 4.141 11.859 1 8 1ZM8 14C7.422 14 6.686 12.906 6.288 11H9.713C9.315 12.906 8.579 14 8.001 14H8ZM6.121 10C6.044 9.392 6 8.723 6 8C6 7.277 6.044 6.608 6.121 6H9.878C9.955 6.608 9.999 7.277 9.999 8C9.999 8.723 9.955 9.392 9.878 10H6.121ZM2 8C2 7.299 2.121 6.626 2.343 6H5.121C5.041 6.656 5 7.332 5 8C5 8.668 5.041 9.344 5.121 10H2.343C2.121 9.374 2 8.701 2 8ZM8 2C8.578 2 9.314 3.094 9.712 5H6.287C6.685 3.094 7.422 2 8 2ZM10.879 6H13.657C13.879 6.626 14 7.299 14 8C14 8.701 13.879 9.374 13.657 10H10.879C10.959 9.344 11 8.668 11 8C11 7.332 10.959 6.656 10.879 6ZM13.195 5H10.722C10.516 3.938 10.199 2.98 9.775 2.268C11.228 2.719 12.446 3.707 13.195 5ZM6.226 2.268C5.802 2.98 5.484 3.938 5.279 5H2.806C3.556 3.707 4.774 2.718 6.226 2.268ZM2.805 11H5.278C5.484 12.062 5.801 13.02 6.225 13.732C4.772 13.281 3.554 12.293 2.805 11ZM9.774 13.732C10.198 13.02 10.516 12.062 10.721 11H13.194C12.444 12.293 11.226 13.282 9.774 13.732Z" },
+					"child": []
+				}]
+			})(props);
+		}
+		function VscGitCommit(props) {
+			return GenIcon({
+				"tag": "svg",
+				"attr": {
+					"viewBox": "0 0 16 16",
+					"fill": "currentColor"
+				},
+				"child": [{
+					"tag": "path",
+					"attr": { "d": "M11.5 8C11.5 6.24 10.194 4.779 8.5 4.536V1.5C8.5 1.224 8.276 1 8 1C7.724 1 7.5 1.224 7.5 1.5V4.536C5.806 4.779 4.5 6.24 4.5 8C4.5 9.76 5.806 11.221 7.5 11.464V14.5C7.5 14.776 7.724 15 8 15C8.276 15 8.5 14.776 8.5 14.5V11.464C10.194 11.221 11.5 9.76 11.5 8ZM8 10.5C6.621 10.5 5.5 9.378 5.5 8C5.5 6.622 6.621 5.5 8 5.5C9.379 5.5 10.5 6.622 10.5 8C10.5 9.378 9.379 10.5 8 10.5Z" },
+					"child": []
+				}]
+			})(props);
+		}
+		function VscFolderOpened(props) {
+			return GenIcon({
+				"tag": "svg",
+				"attr": {
+					"viewBox": "0 0 16 16",
+					"fill": "currentColor"
+				},
+				"child": [{
+					"tag": "path",
+					"attr": { "d": "M2 4.5V9.10022L2.92389 7.5C3.45979 6.5718 4.45017 6 5.52196 6L11.9146 6C11.7087 5.4174 11.1531 5 10.5 5H7C6.86739 5 6.74021 4.94732 6.64645 4.85355L4.93934 3.14645C4.84557 3.05268 4.71839 3 4.58579 3H3.5C2.67157 3 2 3.67157 2 4.5ZM7.06895 13.9953C7.04641 13.9984 7.02339 14 7 14H3.5C2.11929 14 1 12.8807 1 11.5V4.5C1 3.11929 2.11929 2 3.5 2H4.58579C4.98361 2 5.36514 2.15804 5.64645 2.43934L7.20711 4H10.5C11.724 4 12.7426 4.87965 12.958 6.04127C14.605 6.34148 15.5443 8.22106 14.6616 9.75L13.0766 12.4953C12.5407 13.4235 11.5503 13.9953 10.4785 13.9953H7.06895ZM5.52196 7C4.80743 7 4.14718 7.3812 3.78991 8L2.20492 10.7453C1.62757 11.7453 2.34926 12.9953 3.50396 12.9953L10.4785 12.9953C11.193 12.9953 11.8533 12.6141 12.2105 11.9953L13.7955 9.25C14.3729 8.25 13.6512 7 12.4965 7L5.52196 7Z" },
+					"child": []
+				}]
+			})(props);
+		}
+		function VscCommentDiscussion(props) {
+			return GenIcon({
+				"tag": "svg",
+				"attr": {
+					"viewBox": "0 0 16 16",
+					"fill": "currentColor"
+				},
+				"child": [{
+					"tag": "path",
+					"attr": { "d": "M14.56 7.44049C14.28 7.16049 13.9 7.00049 13.5 7.00049H13V4.00049C13 2.90049 12.1 2.00049 11 2.00049H3C1.9 2.00049 1 2.90049 1 4.00049V9.00049C1 10.1005 1.9 11.0005 3 11.0005V12.0005C3 12.8205 3.93 13.2905 4.59 12.8105L7 11.0505V11.5005C7 11.9005 7.16 12.2805 7.44 12.5605C7.72 12.8405 8.1 13.0005 8.5 13.0005H10.29L12.15 14.8505C12.19 14.9005 12.25 14.9405 12.31 14.9605C12.37 14.9905 12.43 15.0005 12.5 15.0005C12.57 15.0005 12.63 14.9905 12.69 14.9605C12.78 14.9205 12.86 14.8605 12.92 14.7805C12.97 14.7005 13 14.6005 13 14.5005V13.0005H13.5C13.9 13.0005 14.28 12.8405 14.56 12.5605C14.84 12.2805 15 11.9005 15 11.5005V8.50049C15 8.10049 14.84 7.72049 14.56 7.44049ZM6.75 10.0005L4 12.0005V10.0005H3C2.45 10.0005 2 9.55049 2 9.00049V4.00049C2 3.45049 2.45 3.00049 3 3.00049H11C11.55 3.00049 12 3.45049 12 4.00049V7.00049H8.5C8.1 7.00049 7.72 7.16049 7.44 7.44049C7.16 7.72049 7 8.10049 7 8.50049V10.0005H6.75ZM14 11.5005C14 11.6305 13.95 11.7605 13.85 11.8505C13.76 11.9505 13.63 12.0005 13.5 12.0005H12.5C12.37 12.0005 12.24 12.0505 12.15 12.1505C12.05 12.2405 12 12.3705 12 12.5005V13.2905L10.85 12.1505C10.81 12.1005 10.75 12.0605 10.69 12.0405C10.63 12.0105 10.57 12.0005 10.5 12.0005H8.5C8.37 12.0005 8.24 11.9505 8.15 11.8505C8.05 11.7605 8 11.6305 8 11.5005V8.50049C8 8.37049 8.05 8.24049 8.15 8.15049C8.24 8.05049 8.37 8.00049 8.5 8.00049H13.5C13.63 8.00049 13.76 8.05049 13.85 8.15049C13.95 8.24049 14 8.37049 14 8.50049V11.5005Z" },
+					"child": []
+				}]
+			})(props);
+		}
+		//#endregion
+		//#region src/client/builtins/tab-icons.tsx
+		/** The styled wrapper classes; typed so a renamed rule fails the build. */
+		const css$7 = tab_icons_module_css_default;
+		/** Surround a glyph with the class that hands it its token-driven color. */
+		function themed(className, glyph) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				className,
+				children: glyph
+			});
+		}
+		/** The Files tab: the host's folder artwork, like the rows it opens. */
+		const filesTabIcon = (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: css$7.files,
+			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.FileTypeIcon, {
+				kind: "folder",
+				size
+			})
+		});
+		/** Changes / diff: the commit glyph, green like the diff affordances. */
+		const changesTabIcon = (size) => themed(css$7.changes, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscGitCommit, { size }));
+		/**
+		* Tasks (subagents and background jobs) — the live-activity amber. The glyph
+		* is layered sheets, not a checklist: this page lists RUNNING work (subagent
+		* sessions plus the host's background jobs), not a to-do list.
+		*/
+		const tasksTabIcon = (size) => themed(css$7.tasks, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscLayers, { size }));
+		/** Side chat — the conversational/secondary accent. */
+		const sidechatTabIcon = (size) => themed(css$7.sidechat, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscCommentDiscussion, { size }));
+		/**
+		* Terminal — primary ink, the shell is text. Rendered one step down from the
+		* strip's 14px: the VSCodicon terminal is a wide filled rectangle and read
+		* heavier than its neighbours at full size.
+		*/
+		const terminalTabIcon = (size) => themed(css$7.terminal, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscTerminal, { size: Math.max(10, Math.round(size * .85)) }));
+		/** Browser — the same secondary accent as the side chat's sibling surfaces. */
+		const browserTabIcon = (size) => themed(css$7.browser, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscGlobe, { size }));
+		//#endregion
 		//#region src/client/locales.ts
 		/**
 		* Minimal zh/en/ja copy for the sidebar. The copy follows the DSH i18n system:
@@ -2094,6 +2125,12 @@ window.__ModuleLoader__.load({
 		/** The zh dictionary (also registered into the DSH locale registry under {@link LOCALE_NS}). */
 		const zh = {
 			files: "文件",
+			guideDescFiles: "浏览工作区文件树，点开即预览或编辑",
+			guideDescGit: "Git 变更与本轮文件改动，双视角合一",
+			guideDescSubagent: "子代理拓扑与后台任务，实时状态",
+			guideDescSidechat: "继承当前会话上下文的独立追问线程",
+			guideDescTerminal: "真实 shell 终端（xterm + pty），断线重连",
+			guideDescBrowser: "内嵌网页浏览器，可接管聊天里的外链",
 			changesSessionEmpty: "本会话还没有文件操作",
 			changesRead: "读取",
 			changesMdReading: "阅读",
@@ -2163,7 +2200,6 @@ window.__ModuleLoader__.load({
 			closeOtherTabs: "关闭其他页签",
 			closeLeftTabs: "关闭左侧页签",
 			closeRightTabs: "关闭右侧页签",
-			moveToFreeWindow: "移动到自由窗口",
 			floatDropHint: "松开以在自由窗口中打开",
 			dockToSidebar: "回到侧边栏",
 			pinTerminal: "固定终端",
@@ -2178,16 +2214,17 @@ window.__ModuleLoader__.load({
 			pinnedTerminalScopeGlobal: "固定到全局",
 			pinnedRailLabel: "固定终端",
 			closePinnedTerminal: "关闭终端",
-			collapse: "折叠侧边栏",
-			expand: "展开侧边栏",
 			collapseBottomPanel: "折叠底部面板",
 			expandBottomPanel: "展开底部面板",
 			terminalError: "终端连接失败",
 			terminalConnectFailed: "终端多次连接失败",
 			terminalRetry: "重试",
+			terminalWaitBanner: "Agent 正在等待 {needle}",
+			terminalSkipWait: "跳过等待",
 			terminalDepsFailed: "终端依赖 node-pty 加载失败",
 			terminalDepsHint: "在 DSH 所在环境的终端或 cmd 中执行以下命令修复，然后点重试（node-pty 与 DSH 核心保持同一版本）：",
 			terminalDepsProfile: "（检测到 profile：{profile}）",
+			terminalShellNotFound: "未找到配置的 Shell：{name}，请到 设置 → 侧边卡片 → 终端 检查 Shell 路径",
 			preview: "预览",
 			toc: "目录",
 			edit: "编辑",
@@ -2233,12 +2270,6 @@ window.__ModuleLoader__.load({
 			changesOpenDiffTab: "在独立页签中打开",
 			changesClosePreview: "关闭预览",
 			changesResizePreview: "调整预览高度",
-			changesDiffOpenTitle: "差异展开方式",
-			changesDiffOpenDesc: "「展开为独立页签」把 diff 放到哪里",
-			changesDiffOpenFloat: "浮窗",
-			changesDiffOpenFloatDesc: "作为自由窗口居中打开，可拖拽、缩放、置顶",
-			changesDiffOpenPane: "面板",
-			changesDiffOpenPaneDesc: "停靠在源面板下方（VSCode 式 diff 分栏）",
 			changesLoadError: "会话文件记录暂不可用",
 			staged: "已暂存",
 			unstaged: "未暂存",
@@ -2313,13 +2344,6 @@ window.__ModuleLoader__.load({
 			settingsIntro: "管理侧边卡片的显示内容与默认行为",
 			settingsPopupDesc: "为「{feature}」配置相关选项",
 			settingsDone: "完成",
-			settingsOpenTitle: "新会话默认打开",
-			settingsOpenDesc: "新建会话时自动展开侧边卡片；已存在的会话保持各自布局",
-			settingsWidthTitle: "默认宽度占比",
-			settingsWidthDesc: "新建会话时侧边卡片占窗口宽度的百分比 (20–60)",
-			settingsWidthSuffix: "%",
-			settingsOpenPathTitle: "聊天区文件在侧边栏打开",
-			settingsOpenPathDesc: "在聊天里点击文件链接（工具行、产物列表、文件提及）时，在侧边栏编辑器中打开，不再调用系统默认应用",
 			settingsOpenToolsTitle: "为模型注入侧边栏打开工具",
 			settingsOpenToolsDesc: "开启后，模型可通过 sidebar_open 工具在侧边栏主动打开文件、文件夹和 HTTP(S) 网页（默认关闭）",
 			settingsTitleBarTitle: "位置兼容模式",
@@ -2542,6 +2566,12 @@ window.__ModuleLoader__.load({
 		/** The en dictionary (key-set-equal to zh, enforced by the type annotation). */
 		const en = {
 			files: "Files",
+			guideDescFiles: "Browse the workspace tree; click a file to preview or edit",
+			guideDescGit: "Git changes and this session's file edits, in one tab",
+			guideDescSubagent: "Subagent topology and background jobs, live",
+			guideDescSidechat: "An independent follow-up thread inheriting this session's context",
+			guideDescTerminal: "A real shell (xterm + pty) with reconnect",
+			guideDescBrowser: "An embedded browser that can take over chat links",
 			changesSessionEmpty: "No file operations in this session yet",
 			changesRead: "Read",
 			changesMdReading: "Reading",
@@ -2611,7 +2641,6 @@ window.__ModuleLoader__.load({
 			closeOtherTabs: "Close Other Tabs",
 			closeLeftTabs: "Close Tabs to the Left",
 			closeRightTabs: "Close Tabs to the Right",
-			moveToFreeWindow: "Move to Free Window",
 			floatDropHint: "Release to open in a free window",
 			dockToSidebar: "Dock Back to Sidebar",
 			pinTerminal: "Pin Terminal",
@@ -2626,16 +2655,17 @@ window.__ModuleLoader__.load({
 			pinnedTerminalScopeGlobal: "Pinned globally",
 			pinnedRailLabel: "Pinned Terminals",
 			closePinnedTerminal: "Close Terminal",
-			collapse: "Collapse sidebar",
-			expand: "Expand sidebar",
 			collapseBottomPanel: "Collapse bottom panel",
 			expandBottomPanel: "Expand bottom panel",
 			terminalError: "Terminal connection failed",
 			terminalConnectFailed: "Terminal failed to connect repeatedly",
 			terminalRetry: "Retry",
+			terminalWaitBanner: "Agent is waiting for {needle}",
+			terminalSkipWait: "Skip wait",
 			terminalDepsFailed: "Terminal dependency node-pty failed to load",
 			terminalDepsHint: "Run the command below in a terminal or cmd on the DSH machine to repair it, then retry (node-pty stays in sync with the DSH core version):",
 			terminalDepsProfile: " (detected profile: {profile})",
+			terminalShellNotFound: "Configured shell not found: {name} — check the shell path under Settings → Side card → Terminal",
 			preview: "Preview",
 			toc: "Table of contents",
 			edit: "Edit",
@@ -2681,12 +2711,6 @@ window.__ModuleLoader__.load({
 			changesOpenDiffTab: "Open in a diff tab",
 			changesClosePreview: "Close preview",
 			changesResizePreview: "Resize preview",
-			changesDiffOpenTitle: "Diff opens as",
-			changesDiffOpenDesc: "Where the \"expand to a diff tab\" action lands the diff",
-			changesDiffOpenFloat: "Free window",
-			changesDiffOpenFloatDesc: "A floating window centered on the viewport — drag, resize, keep on top",
-			changesDiffOpenPane: "Pane",
-			changesDiffOpenPaneDesc: "Docked below the source panel (VSCode-style diff split)",
 			changesLoadError: "Session file records are unavailable right now",
 			staged: "Staged",
 			unstaged: "Unstaged",
@@ -2761,13 +2785,6 @@ window.__ModuleLoader__.load({
 			settingsIntro: "Manage what the side card shows and how it behaves",
 			settingsPopupDesc: "Configure related options for {feature}",
 			settingsDone: "Done",
-			settingsOpenTitle: "Open by default for new conversations",
-			settingsOpenDesc: "Expand the side card automatically for brand-new conversations; existing conversations keep their own layouts",
-			settingsWidthTitle: "Default width share",
-			settingsWidthDesc: "The side card's default share of the window width for new conversations (20–60)",
-			settingsWidthSuffix: "%",
-			settingsOpenPathTitle: "Open chat files in the sidebar",
-			settingsOpenPathDesc: "Open file links in the chat (tool rows, produced files, mentions) in the sidebar editor instead of the system default app",
 			settingsOpenToolsTitle: "Inject the sidebar-open tool for the model",
 			settingsOpenToolsDesc: "When enabled, the model can actively open files, folders, and HTTP(S) pages in the sidebar through the sidebar_open tool (off by default)",
 			settingsTitleBarTitle: "Position compatibility mode",
@@ -3161,81 +3178,15 @@ window.__ModuleLoader__.load({
 		* POSIX roots, drive letters and UNC shares must not be joined onto the cwd.
 		*/
 		function resolveSidebarPath(cwd, path) {
-			if (isAbsolutePath(path)) return path;
+			if (isAbsolutePath$1(path)) return path;
 			const base = cwd ?? "";
 			if (base === "") return path;
 			const separator = base.includes("\\") ? "\\" : "/";
 			return `${base.replace(/[\\/]+$/, "")}${separator}${path}`;
 		}
 		//#endregion
-		//#region src/client/openpath-intercept.ts
-		/**
-		* Whether a path is the "Show in folder" folder-reveal gesture. The stock
-		* ui-deliverables row passes `'.'` (the session workspace root, resolved by
-		* the chat view to `"<cwd>/."`); any path whose final segment is `.` is the
-		* same gesture. A directory has no editor content, so these opens must reach
-		* the explorer instead of an editor tab.
-		*/
-		function isFolderRevealPath(path) {
-			if (path === "." || path === "./") return true;
-			const trimmed = path.replace(/[\\/]+$/, "");
-			return trimmed === "." || /[\\/]\.$/.test(trimmed);
-		}
-		/**
-		* Shadow `remote.session.openWorkspacePath`: intercepted calls open the file
-		* in the sidebar editor and resolve with the remote SUCCESS ENVELOPE
-		* (`{ ok: true, value: { opened: true } }`, so ChatView shows no error
-		* dialog); anything that declines falls through to the captured original
-		* closure (the host OS's default application) untouched.
-		* The one exception is the folder-reveal gesture, which is routed to
-		* {@link OpenPathInterceptDeps.revealInExplorer} instead.
-		*
-		* The original closure is captured by ACCESSING the accessor once at wrap
-		* time — it invokes whatever method records are mounted at that moment. If
-		* the contribution remounts its methods while the shadow is installed, the
-		* captured closure points at the old records; the session namespace is
-		* effectively permanent in practice, so this is accepted and the shadow is
-		* re-applied anyway when the remount recreates the service (the caller's
-		* `ctx.inject` re-fires).
-		*
-		* @param service - the `remote.session` namespace service.
-		* @param deps - per-call takeover decisions.
-		* @returns the disposer restoring the original accessor descriptor (HMR-safe).
-		*/
-		function wrapOpenWorkspacePath(service, deps) {
-			const KEY = "openWorkspacePath";
-			const target = service;
-			const descriptor = Object.getOwnPropertyDescriptor(target, KEY);
-			const original = service.openWorkspacePath;
-			if (typeof original !== "function") return () => {};
-			const wrapped = (request, signal) => {
-				if (deps.takeoverEnabled()) {
-					const sessionId = deps.currentSessionId();
-					if (sessionId !== void 0) {
-						if (isFolderRevealPath(request.path)) deps.revealInExplorer(request.path, sessionId);
-						else deps.openInSidebar(request.path, sessionId);
-						return Promise.resolve({
-							ok: true,
-							value: { opened: true }
-						});
-					}
-				}
-				return original.call(service, request, signal);
-			};
-			Object.defineProperty(target, KEY, {
-				configurable: true,
-				enumerable: true,
-				writable: true,
-				value: wrapped
-			});
-			return () => {
-				if (descriptor !== void 0) Object.defineProperty(target, KEY, descriptor);
-				else Reflect.deleteProperty(target, KEY);
-			};
-		}
-		//#endregion
-		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-build/src/client/sidebar.module.css.mjs
-		const css$6 = "[data-dsh-panel-host]{z-index:25;pointer-events:none;position:fixed;inset:0;overflow:clip}[data-dsh-panel-host][data-dsh-panel-host-degraded]{position:absolute;top:0;left:0}[data-dsh-panel-host][data-dsh-presentation=slot]{z-index:auto;pointer-events:auto;width:100%;height:100%;position:relative;inset:auto}._2ySJLW_toggleCluster{top:calc(3px + env(safe-area-inset-top));z-index:45;pointer-events:auto;transition:top var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:row;gap:4px;display:flex;position:absolute;right:10px}._2ySJLW_panel:not(._2ySJLW_panelHidden) ._2ySJLW_tabBar{padding-right:72px}._2ySJLW_toggleButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out), color var(--ds-transition-duration-slow) var(--ds-ease-in-out);background:0 0;border:none;border-radius:50%;justify-content:center;align-items:center;display:flex}._2ySJLW_toggleButton:hover:not(:disabled):not([aria-disabled=true]){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_toggleButton:disabled,._2ySJLW_toggleButton[aria-disabled=true]{opacity:.4;cursor:default}._2ySJLW_panel{box-sizing:border-box;z-index:40;pointer-events:auto;background:var(--dsw-alias-bg-layer-1);border-left:1px solid var(--dsw-alias-border-l2);padding-bottom:env(safe-area-inset-bottom);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), width var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:column;display:flex;position:absolute;top:0;bottom:0;right:0}._2ySJLW_panelHidden{pointer-events:none;visibility:hidden;transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), width var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear var(--ds-transition-duration-slow);transform:translate(102%)}._2ySJLW_panelSlot{visibility:visible;border-left:0;width:100%;left:0;transform:none}._2ySJLW_panel[data-dragging]{transition:none}._2ySJLW_panelResize{cursor:col-resize;z-index:2;touch-action:none;width:8px;position:absolute;top:0;bottom:0;left:-4px}._2ySJLW_panelResizeActive{background:var(--dsw-alias-interactive-bg-hover-accent)}._2ySJLW_panelBody{flex:1;min-width:0;min-height:0;display:flex}._2ySJLW_bottomPanel{z-index:40;background:var(--dsw-alias-bg-layer-1);border-top:1px solid var(--dsw-alias-border-l2);pointer-events:auto;padding-bottom:env(safe-area-inset-bottom);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), height var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:column;display:flex;position:absolute;bottom:0}._2ySJLW_bottomPanelHidden{pointer-events:none;visibility:hidden;transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), height var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear var(--ds-transition-duration-slow);transform:translateY(102%)}._2ySJLW_bottomPanelSlot{left:0;right:0}._2ySJLW_bottomPanel[data-dragging]{transition:none}._2ySJLW_panel,._2ySJLW_bottomPanel{contain:layout style}body[data-dsh-sidebar-dragging] ._2ySJLW_panel,body[data-dsh-sidebar-dragging] ._2ySJLW_bottomPanel{will-change:transform}._2ySJLW_bottomResize{cursor:row-resize;z-index:2;touch-action:none;height:8px;position:absolute;top:-4px;left:0;right:0}._2ySJLW_bottomResizeActive{background:var(--dsw-alias-interactive-bg-hover-accent)}._2ySJLW_bottomClose{z-index:4;width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex;position:absolute;top:3px;right:6px}._2ySJLW_bottomClose:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_bottomPanel ._2ySJLW_tabBar{padding-right:40px}._2ySJLW_floatWindow{z-index:42;pointer-events:auto;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);box-shadow:var(--dsw-shadow-lv3);contain:layout style;border-radius:8px;flex-direction:column;display:flex;position:absolute;overflow:hidden}._2ySJLW_floatWindowDragging{will-change:left, top, width, height}._2ySJLW_floatHeader{height:34px;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border-bottom:1px solid var(--dsw-alias-border-l1);cursor:grab;user-select:none;flex:none;align-items:center;gap:4px;padding:0 4px 0 10px;display:flex}._2ySJLW_floatWindowDragging ._2ySJLW_floatHeader{cursor:grabbing}._2ySJLW_floatTitle{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}._2ySJLW_floatClose{width:18px;height:18px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}._2ySJLW_floatClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_floatContent{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden}._2ySJLW_floatResize{z-index:2;cursor:nwse-resize;touch-action:none;width:14px;height:14px;position:absolute;bottom:0;right:0}._2ySJLW_floatResize:hover{background:var(--dsw-alias-interactive-bg-hover-accent)}._2ySJLW_pane[data-dsh-float-dock-over]{outline:2px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-2px}._2ySJLW_floatDropHint{z-index:46;pointer-events:none;border:2px dashed var(--dsw-alias-interactive-bg-hover-accent);background:color-mix(in srgb, var(--dsw-alias-interactive-bg-hover-accent) 12%, transparent);border-radius:8px;justify-content:center;align-items:center;display:flex;position:absolute}._2ySJLW_floatDropHintLabel{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:999px;padding:4px 12px}._2ySJLW_toggleCluster,._2ySJLW_toggleButton,._2ySJLW_tabBar,._2ySJLW_floatHeader{-webkit-app-region:no-drag}body[data-dsh-title-bar-compat] ._2ySJLW_toggleCluster{top:calc(var(--dsh-title-bar-strip,40px) + 3px)}body[data-dsh-title-bar-compat] ._2ySJLW_panel{padding-top:var(--dsh-title-bar-strip,40px)}body[data-dsh-sidebar-collapsed] ._2ySJLW_toggleCluster{top:calc(14px + env(safe-area-inset-top))}body[data-dsh-sidebar-collapsed][data-dsh-title-bar-compat] ._2ySJLW_toggleCluster{top:calc(var(--dsh-title-bar-strip,40px) + 14px)}._2ySJLW_cornerHandle{left:-6px;bottom:calc(var(--dsh-sidebar-height,0px) + 6px);z-index:2;cursor:nwse-resize;touch-action:none;width:12px;height:12px;position:absolute}._2ySJLW_cornerHandle:hover,._2ySJLW_cornerHandle[data-dragging]{background:var(--dsw-alias-interactive-bg-hover-accent)}._2ySJLW_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}._2ySJLW_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_iconButton:disabled{opacity:.4;cursor:default}._2ySJLW_workbench,._2ySJLW_split{flex:1;min-width:0;min-height:0;display:flex}._2ySJLW_splitRow{flex-direction:row}._2ySJLW_splitCol{flex-direction:column}._2ySJLW_splitChild{display:flex;position:relative;overflow:hidden}._2ySJLW_divider{z-index:3;touch-action:none;flex:none;position:relative}._2ySJLW_dividerRow:after,._2ySJLW_dividerCol:after{content:\"\";background:var(--dsw-alias-border-l2);transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out);position:absolute}._2ySJLW_dividerRow{cursor:col-resize;width:7px;margin:0 -2px}._2ySJLW_dividerRow:after{width:1px;top:0;bottom:0;left:50%;transform:translate(-50%)}._2ySJLW_dividerCol{cursor:row-resize;height:7px;margin:-2px 0}._2ySJLW_dividerCol:after{height:1px;top:50%;left:0;right:0;transform:translateY(-50%)}._2ySJLW_divider:hover:after,._2ySJLW_dividerActive:after{background:var(--dsw-alias-interactive-bg-hover-accent)}._2ySJLW_pane{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;position:relative}._2ySJLW_paneDrop{outline:1px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}._2ySJLW_dropOverlay{z-index:6;pointer-events:none;background:var(--dsw-alias-interactive-bg-hover-accent);opacity:.5;position:absolute}._2ySJLW_dropLeft{width:25%;top:0;bottom:0;left:0}._2ySJLW_dropRight{width:25%;top:0;bottom:0;right:0}._2ySJLW_dropUp{height:25%;top:0;left:0;right:0}._2ySJLW_dropDown{height:25%;bottom:0;left:0;right:0}._2ySJLW_dropCenter{outline:2px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-2px;background:0 0;inset:25%}._2ySJLW_paneContent{flex-direction:column;flex:1;min-height:0;display:flex;overflow:hidden}._2ySJLW_paneTab{flex-direction:column;flex:1;min-height:0;display:flex}._2ySJLW_paneTabHidden{display:none}._2ySJLW_paneEmptyCards{flex:1;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));align-content:start;gap:8px;min-height:0;padding:12px;display:grid;overflow:hidden}._2ySJLW_paneCard{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;text-align:center;border-radius:8px;flex-direction:column;justify-content:center;align-items:center;gap:6px;padding:12px 8px;display:flex}._2ySJLW_paneCard:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2)}._2ySJLW_paneCard:disabled{opacity:.45;cursor:default}._2ySJLW_tabBar{border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);flex:none;align-items:stretch;height:34px;display:flex}._2ySJLW_tabBarDrop{outline:1px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}._2ySJLW_tabList{scrollbar-width:none;flex:1;min-width:0;display:flex;overflow-x:auto}._2ySJLW_tabList::-webkit-scrollbar{display:none}._2ySJLW_tab{min-width:64px;max-width:160px;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);border-right:1px solid var(--dsw-alias-border-l1);cursor:pointer;user-select:none;background:0 0;flex:none;align-items:center;gap:4px;padding:0 4px 0 10px;display:flex}._2ySJLW_tab:hover{background:var(--dsw-alias-interactive-bg-hover)}._2ySJLW_tabActive{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-active)}._2ySJLW_tabTitle{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}._2ySJLW_tabBadge{min-width:16px;height:15px;font:var(--dsw-font-xxxs-strong-11);background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-brand-primary);border-radius:8px;flex:none;justify-content:center;align-items:center;padding:0 4px;display:inline-flex}._2ySJLW_tabClose{width:18px;height:18px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}._2ySJLW_tabClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_tabBarPlus{background:var(--dsw-alias-bg-layer-1);width:22px;height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border:none;border-radius:5px;flex:none;justify-content:center;align-self:center;align-items:center;margin:0 6px;padding:0;display:inline-flex;position:sticky;right:0}._2ySJLW_tabBarPlus:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_pinnedTab{color:var(--dsw-alias-label-tertiary);font-style:italic}._2ySJLW_pinnedTab:hover{color:var(--dsw-alias-label-secondary)}._2ySJLW_explorer{flex-direction:column;flex:1;min-height:0;display:flex}._2ySJLW_explorerHeader{flex:none;justify-content:space-between;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}._2ySJLW_explorerRoot{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}._2ySJLW_explorerBody{flex:1;min-height:0;padding:4px 8px 8px;overflow:hidden auto}._2ySJLW_explorerRow{box-sizing:border-box;width:100%;max-width:100%;height:34px;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);text-align:left;cursor:pointer;white-space:nowrap;animation:_2ySJLW_dsh-row-in .15s var(--ds-ease-in-out);background:0 0;border:none;border-radius:8px;align-items:center;gap:6px;padding:0 8px;display:flex}._2ySJLW_explorerRow:hover{background:var(--dsw-alias-interactive-bg-hover)}._2ySJLW_explorerRowRevealed{background:var(--dsw-alias-state-business-tertiary)}._2ySJLW_explorerRowRevealed+._2ySJLW_explorerRowRevealed{border-top-left-radius:0;border-top-right-radius:0}._2ySJLW_explorerRowRevealed:has(+._2ySJLW_explorerRowRevealed){border-bottom-right-radius:0;border-bottom-left-radius:0}._2ySJLW_explorerDir{font:var(--dsw-font-s-strong-14)}._2ySJLW_explorerHidden{opacity:.45}._2ySJLW_explorerSymlink{color:var(--dsw-alias-label-tertiary);flex:none}._2ySJLW_explorerBroken ._2ySJLW_explorerName{color:var(--dsw-alias-state-error-primary)}._2ySJLW_explorerName{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}._2ySJLW_explorerRenaming{cursor:text}._2ySJLW_explorerRenameInput{box-sizing:border-box;border:1px solid var(--dsw-alias-state-business-primary);background:var(--dsw-alias-bg-layer-1);min-width:0;height:24px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:auto;padding:0 6px}._2ySJLW_explorerRenameInput:focus{border-color:var(--dsw-alias-state-business-primary);outline:none}._2ySJLW_explorerActionError{box-sizing:border-box;border:1px solid var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-1);border-radius:8px;align-items:flex-start;gap:6px;width:100%;margin-bottom:4px;padding:6px 8px;display:flex}._2ySJLW_explorerActionErrorText{overflow-wrap:anywhere;min-width:0;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex:auto}._2ySJLW_explorerActionErrorClose{width:20px;height:20px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:5px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}._2ySJLW_explorerActionErrorClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_explorerConfirmDesc{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;margin:0}._2ySJLW_explorerRef,._2ySJLW_explorerCopied{margin-left:auto}._2ySJLW_explorerRef{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);height:20px;color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;border-radius:999px;flex:none;align-items:center;padding:0 8px;display:none}._2ySJLW_explorerRef:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_explorerRow:hover ._2ySJLW_explorerRef,._2ySJLW_explorerRow:focus-within ._2ySJLW_explorerRef{display:inline-flex}._2ySJLW_explorerCopied{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}._2ySJLW_explorerError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);cursor:default}@keyframes _2ySJLW_dsh-row-in{0%{opacity:0}}._2ySJLW_explorerEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}._2ySJLW_explorerRowDropTarget{background:var(--dsw-alias-interactive-bg-hover);outline:1px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}._2ySJLW_uploadDropZone{z-index:1001;pointer-events:none;border:2px dashed var(--dsw-alias-interactive-bg-hover-accent);box-shadow:0 0 0 200vmax var(--dsw-alias-bg-mask-drop);animation:_2ySJLW_dsh-row-in .15s var(--ds-ease-in-out);border-radius:10px;justify-content:center;align-items:flex-start;padding:12px;display:flex;position:fixed}._2ySJLW_uploadDropHero{flex-direction:column;align-items:center;gap:10px;max-width:100%;padding-top:8px;display:flex}._2ySJLW_uploadDropZonePill{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);max-width:100%;box-shadow:var(--dsw-shadow-lv2);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);border-radius:999px;align-items:center;gap:6px;padding:6px 12px;display:flex}._2ySJLW_uploadDropZoneText{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}._2ySJLW_uploadDropChatHint{z-index:1002;pointer-events:none;animation:_2ySJLW_dsh-row-in .15s var(--ds-ease-in-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;top:0;bottom:0;left:0}._2ySJLW_uploadDropChatCard{text-align:center;max-width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-s-strong-14);flex-direction:column;align-items:center;gap:12px;display:flex}._2ySJLW_uploadOverlay{z-index:30;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);animation:_2ySJLW_dsh-row-in .15s var(--ds-ease-in-out);justify-content:center;align-items:center;display:flex;position:absolute;inset:0}._2ySJLW_uploadOverlayCard{border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-alias-bg-layer-2);min-width:280px;max-width:min(420px,100% - 48px);box-shadow:var(--dsw-shadow-lv3);border-radius:24px;flex-direction:column;gap:12px;padding:20px 24px;display:flex}._2ySJLW_uploadOverlayTitle{font:var(--dsw-font-s-strong-14);color:var(--dsw-alias-label-primary);align-items:center;gap:8px;display:flex}._2ySJLW_uploadOverlayTitle>svg{flex:none}._2ySJLW_uploadOverlayTitle>span{white-space:nowrap;text-overflow:ellipsis;min-width:0;overflow:hidden}._2ySJLW_uploadOverlayProgress{background:var(--dsw-alias-border-l2);border-radius:3px;height:6px;overflow:hidden}._2ySJLW_uploadOverlayProgressFill{background:var(--dsw-alias-interactive-bg-hover-accent);height:100%;transition:width .15s var(--ds-ease-in-out);border-radius:3px}._2ySJLW_uploadOverlayStatus{min-height:1em;font:var(--dsw-font-xxs-12);font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary);white-space:nowrap;text-overflow:ellipsis;overflow:hidden}._2ySJLW_uploadOverlayCancel{border:1px solid var(--dsw-alias-border-l2);height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;background:0 0;border-radius:8px;align-self:flex-end;padding:0 14px}._2ySJLW_uploadOverlayCancel:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}._2ySJLW_uploadOverlayCancel:disabled{opacity:.4;cursor:default}._2ySJLW_editor{flex-direction:column;flex:1;min-height:0;display:flex}._2ySJLW_editorHeader{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:6px;padding:6px 8px;display:flex}._2ySJLW_editorTitle{min-width:0;font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}._2ySJLW_editorPathInput{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}._2ySJLW_editorPathInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}._2ySJLW_editorTreeToggleActive{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-active)}._2ySJLW_editorBody{flex:1;min-height:0;display:flex}._2ySJLW_editorMain{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex}._2ySJLW_editorTreeDock{border-left:1px solid var(--dsw-alias-border-l1);flex:none;min-height:0;display:flex;position:relative}._2ySJLW_editorTreeResize{cursor:col-resize;touch-action:none;z-index:3;width:6px;position:absolute;top:0;bottom:0;left:0}._2ySJLW_editorTreeResize:hover{background:var(--dsw-alias-border-l2)}._2ySJLW_editorTreePanel{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;position:relative}._2ySJLW_editorTreePanelFull{flex:1}._2ySJLW_editorTreeSearch{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:6px;padding:6px 8px;display:flex}._2ySJLW_editorSearchInput{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:26px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}._2ySJLW_editorSearchInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}._2ySJLW_editorSearchHint{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:8px 12px}._2ySJLW_editorSearchResult{width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);text-align:left;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;background:0 0;border:none;border-radius:6px;padding:4px 8px;display:block;overflow:hidden}._2ySJLW_editorSearchResult:hover{background:var(--dsw-alias-interactive-bg-hover)}._2ySJLW_editorStatus{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}._2ySJLW_editorStatusError{color:var(--dsw-alias-state-error-primary)}._2ySJLW_dirtyDot{background:var(--dsw-alias-state-warn-primary);border-radius:50%;flex:none;width:7px;height:7px}._2ySJLW_editorPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;flex:1;justify-content:center;align-items:center;padding:16px;display:flex}._2ySJLW_orphanedType{opacity:.7;overflow-wrap:anywhere;margin-top:8px;font-size:12px;display:block}._2ySJLW_editorBinary{text-align:center;flex-direction:column;flex:1;justify-content:center;align-items:center;gap:12px;padding:24px 16px;display:flex}._2ySJLW_editorBinaryNotice{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}._2ySJLW_editorDownloadLink{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out), border-color var(--ds-transition-duration-slow) var(--ds-ease-in-out);border-radius:6px;align-items:center;gap:6px;padding:6px 14px;text-decoration:none;display:inline-flex}._2ySJLW_editorDownloadLink:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}._2ySJLW_editorError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);padding:12px 16px}._2ySJLW_fenceError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-wrap:wrap;align-items:center;gap:8px;padding:8px 16px;display:flex}._2ySJLW_editorBanner{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex:none;padding:4px 8px}._2ySJLW_sandboxStatus{font:var(--dsw-font-xxxs-11);flex:none;align-items:center;gap:8px;padding:4px 10px;display:flex}._2ySJLW_sandboxStatusOn{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border-bottom:1px solid var(--dsw-alias-border-l1)}._2ySJLW_sandboxStatusOff{color:var(--dsw-alias-state-error-primary);background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);border-bottom:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, transparent)}._2ySJLW_sandboxDot{background:var(--dsw-alias-state-success-primary);border-radius:50%;flex:none;width:6px;height:6px}._2ySJLW_sandboxStatusOff ._2ySJLW_sandboxDot{background:var(--dsw-alias-state-error-primary)}._2ySJLW_sandboxStatusText{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}._2ySJLW_sandboxAction{border:1px solid var(--dsw-alias-border-l2);font:inherit;color:inherit;cursor:pointer;background:0 0;border-radius:6px;flex:none;padding:2px 8px}._2ySJLW_sandboxAction:hover{background:var(--dsw-alias-interactive-bg-hover)}._2ySJLW_editorHtml{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}._2ySJLW_browser{flex-direction:column;flex:1;min-height:0;display:flex}._2ySJLW_browserBar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:4px;padding:6px 8px;display:flex}._2ySJLW_browserInput{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}._2ySJLW_browserInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}._2ySJLW_browserMessage{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex:none;padding:4px 12px}._2ySJLW_browserFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}._2ySJLW_browserStart{text-align:center;min-height:0;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);flex:1;justify-content:center;align-items:center;padding:20px;display:flex}._2ySJLW_browserBlocked{text-align:center;min-height:0;color:var(--dsw-alias-state-warn-primary);flex-direction:column;flex:1;justify-content:center;align-items:center;gap:6px;padding:24px;display:flex}._2ySJLW_browserBlockedTitle{font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-primary)}._2ySJLW_browserBlockedDesc{max-width:280px;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-secondary)}._2ySJLW_browserBlockedActions{gap:8px;margin-top:6px;display:flex}._2ySJLW_browserBlockedButton{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxxs-11);cursor:pointer;border-radius:6px;padding:4px 12px}._2ySJLW_browserBlockedButton:hover{background:var(--dsw-alias-interactive-bg-hover)}._2ySJLW_editorCm{background:0 0;flex:1;min-height:0;overflow:hidden}._2ySJLW_editorCmHidden{display:none}._2ySJLW_editorCm .cm-editor{height:100%}._2ySJLW_editorCm .cm-scroller{padding:12px 16px}._2ySJLW_editorCm .cm-editor.cm-focused{outline:none}._2ySJLW_editorModeToggle{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:6px;flex:none;align-items:center;gap:2px;padding:2px;display:inline-flex}._2ySJLW_editorModeButton{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border:none;border-radius:4px;padding:2px 8px}._2ySJLW_editorModeButton:hover{color:var(--dsw-alias-label-primary)}._2ySJLW_editorModeActive{background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}._2ySJLW_editorImageWrap{flex:1;justify-content:center;align-items:center;min-height:0;padding:12px;display:flex;overflow:auto}._2ySJLW_editorImage{object-fit:contain;max-width:100%;max-height:100%}._2ySJLW_editorMd{min-height:0;font:var(--dsw-font-xs-13);flex:1;padding:12px 16px;overflow-y:auto}._2ySJLW_editorMd .md-code-block:not([data-mermaid-processed])>div:first-child{z-index:auto;position:static}._2ySJLW_mermaidWrap{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:6px;margin:6px 0;overflow:hidden}._2ySJLW_mermaidHeader{border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);justify-content:space-between;align-items:center;gap:6px;padding:4px 8px;display:flex}._2ySJLW_mermaidInfo{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary)}._2ySJLW_mermaidCopy{height:20px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border:none;border-radius:4px;align-items:center;gap:4px;padding:0 6px;display:inline-flex}._2ySJLW_mermaidCopy:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_mermaidBody{cursor:zoom-in;justify-content:center;padding:10px;display:flex;overflow:auto}._2ySJLW_mermaidBody svg{max-width:100%;height:auto}._2ySJLW_mermaidError{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-state-error-primary);font:var(--dsw-font-xxxs-11);padding:6px 10px}._2ySJLW_mermaidCode{font:var(--dsw-font-xxxs-11);margin:0;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto}._2ySJLW_mermaidMarkdown .md-code-block[data-mermaid-processed]{display:contents}._2ySJLW_mermaidModal{z-index:1000;background:var(--dsw-alias-bg-mask-1);backdrop-filter:blur(2px);flex-direction:column;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}._2ySJLW_mermaidModalToolbar{z-index:10;gap:8px;display:flex;position:absolute;top:16px;right:16px}._2ySJLW_mermaidModalButton{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);width:36px;height:36px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xs-strong-13);cursor:pointer;border-radius:8px;justify-content:center;align-items:center;display:inline-flex}._2ySJLW_mermaidModalButton:hover{background:var(--dsw-alias-interactive-bg-hover)}._2ySJLW_mermaidModalStage{justify-content:center;align-items:center;width:90vw;height:80vh;display:flex;position:relative;overflow:hidden}._2ySJLW_mermaidModalStage svg{cursor:grab;transform-origin:50%;user-select:none;-webkit-user-drag:none;background:var(--dsw-alias-bg-layer-1);border-radius:12px;max-width:none;max-height:none;padding:16px}._2ySJLW_mermaidModalStage svg:active{cursor:grabbing}._2ySJLW_mermaidModalHint{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);pointer-events:none;position:absolute;bottom:16px;left:50%;transform:translate(-50%)}._2ySJLW_selectionPopup{z-index:60;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxxs-strong-11);white-space:nowrap;cursor:pointer;border-radius:6px;align-items:center;padding:0 10px;display:inline-flex;position:fixed;transform:translate(-50%,calc(-100% - 8px))}._2ySJLW_selectionPopup:hover{background:var(--dsw-alias-interactive-bg-hover)}._2ySJLW_editorPdf{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-height:0;display:flex}._2ySJLW_editorPdfToolbar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;justify-content:flex-end;padding:6px 8px;display:flex}._2ySJLW_editorPdfStage{flex:1;min-height:0;display:flex;position:relative}._2ySJLW_editorPdfFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}._2ySJLW_editorPdfFrameBlocked{pointer-events:none}._2ySJLW_editorPdfDragShield{z-index:4;pointer-events:none;background:0 0;position:absolute;inset:0}._2ySJLW_editorPdfDragShieldActive{pointer-events:auto}body[data-dsh-tab-dragging] ._2ySJLW_editorPdfFrame{pointer-events:none!important}body[data-dsh-tab-dragging] ._2ySJLW_editorPdfDragShield{pointer-events:auto!important}._2ySJLW_terminalWrap{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-height:0;display:flex;position:relative}._2ySJLW_terminal{flex:1;min-height:0;padding:6px 4px 6px 8px}._2ySJLW_terminal .xterm{height:100%}._2ySJLW_terminalBanner{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex-wrap:wrap;flex:none;align-items:center;gap:8px;padding:3px 10px;display:flex}._2ySJLW_terminalBannerUrl{word-break:break-all;opacity:.85;flex-basis:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}._2ySJLW_boundaryError{z-index:50;background:var(--dsw-alias-bg-layer-1);border-left:1px solid var(--dsw-alias-border-l2);font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-direction:column;align-items:flex-start;gap:8px;padding:16px;display:flex;position:fixed;top:0;bottom:0;right:0;overflow:auto}._2ySJLW_terminalRetry{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;border-radius:999px;flex:none;padding:1px 8px}._2ySJLW_terminalRetry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_terminalDepsBanner{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex-direction:column;flex:none;gap:6px;padding:10px;display:flex}._2ySJLW_terminalDepsTitle{font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-state-warn-primary)}._2ySJLW_terminalDepsHint{opacity:.9}._2ySJLW_terminalDepsCommandRow{align-items:flex-start;gap:8px;display:flex}._2ySJLW_terminalRepairCommand{white-space:pre-wrap;word-break:break-all;user-select:text;min-width:0;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:4px;flex:1;max-height:160px;margin:0;padding:6px 8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.5;overflow:auto}._2ySJLW_terminalDepsNote{opacity:.85}._2ySJLW_terminalDepsActions{align-items:center;gap:8px;display:flex}._2ySJLW_tabBoundaryError{min-height:0;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-direction:column;flex:1;align-items:flex-start;gap:8px;padding:12px 16px;display:flex;overflow:auto}._2ySJLW_gitEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:4px 12px 8px}._2ySJLW_gitPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}._2ySJLW_gitError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);white-space:pre-wrap;padding:8px 12px}._2ySJLW_gitDiffTab{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden auto}._2ySJLW_gitDiffTabHeader{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}._2ySJLW_gitDiffTabTitle{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}._2ySJLW_producedRow{flex-wrap:wrap;align-items:center;gap:8px;padding:4px 0;display:flex}._2ySJLW_producedLabel{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}._2ySJLW_producedChip{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);max-width:200px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);cursor:pointer;border-radius:999px;align-items:center;gap:4px;padding:2px 8px;display:inline-flex;overflow:hidden}._2ySJLW_producedChip:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_producedChip span{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}._2ySJLW_producedMore{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}._2ySJLW_toggleButton:focus-visible,._2ySJLW_bottomClose:focus-visible,._2ySJLW_iconButton:focus-visible,._2ySJLW_tab:focus-visible,._2ySJLW_tabClose:focus-visible,._2ySJLW_tabBarPlus:focus-visible,._2ySJLW_paneCard:focus-visible,._2ySJLW_explorerRow:focus-visible,._2ySJLW_explorerRef:focus-visible,._2ySJLW_terminalRetry:focus-visible,._2ySJLW_editorModeButton:focus-visible,._2ySJLW_editorDownloadLink:focus-visible,._2ySJLW_editorPptxButton:focus-visible,._2ySJLW_editorDocxZoomRange:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){._2ySJLW_panel,._2ySJLW_panelHidden,._2ySJLW_bottomPanel,._2ySJLW_bottomPanelHidden,._2ySJLW_toggleCluster,._2ySJLW_toggleButton,._2ySJLW_tab,._2ySJLW_tabBarPlus,._2ySJLW_paneCard,._2ySJLW_explorerRow,._2ySJLW_divider,._2ySJLW_dividerRow:after,._2ySJLW_dividerCol:after{transition:none;animation:none}}@media (width<=767px){._2ySJLW_panel:not(._2ySJLW_panelHidden) ._2ySJLW_tabBar{padding-right:40px}._2ySJLW_tab{min-width:48px;max-width:128px}}._2ySJLW_openWithLabel{align-items:center;gap:8px;width:100%;min-width:0;display:flex}._2ySJLW_openWithName{text-overflow:ellipsis;white-space:nowrap;flex:auto;min-width:0;overflow:hidden}._2ySJLW_openWithChevron{color:var(--dsw-alias-label-tertiary);flex:none}._2ySJLW_openWithPin{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-radius:5px;flex:none;justify-content:center;align-items:center;display:inline-flex}._2ySJLW_openWithPin:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_openWithPinActive{color:var(--dsw-alias-state-business-primary)}._2ySJLW_editorHtmlBlock{margin:8px 0}._2ySJLW_editorHtmlBlock img,._2ySJLW_editorHtmlBlock video{max-width:100%}._2ySJLW_editorHtmlBlock details{margin:4px 0;padding:4px 0}._2ySJLW_editorHtmlBlock summary{cursor:pointer}._2ySJLW_tocBar{z-index:7;pointer-events:none;justify-content:flex-end;height:0;display:flex;position:sticky;top:0}._2ySJLW_tocButton{pointer-events:auto;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;border-radius:6px;justify-content:center;align-items:center;margin:4px 2px 0 0;padding:0;display:inline-flex}._2ySJLW_tocButton:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_tocPanel{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);width:min(300px,82%);max-height:60vh;box-shadow:var(--dsw-shadow-lv2);pointer-events:auto;border-radius:8px;flex-direction:column;padding:4px;display:flex;position:absolute;top:32px;right:2px;overflow-y:auto}._2ySJLW_tocItem{min-width:0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:6px;align-items:baseline;gap:8px;padding:4px 8px;display:flex}._2ySJLW_tocItem:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._2ySJLW_tocItem[data-level=\"2\"]{padding-left:18px}._2ySJLW_tocItem[data-level=\"3\"]{padding-left:28px}._2ySJLW_tocItem[data-level=\"4\"]{padding-left:38px}._2ySJLW_tocItem[data-level=\"5\"]{padding-left:48px}._2ySJLW_tocItem[data-level=\"6\"]{padding-left:58px}._2ySJLW_tocItemLevel{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}._2ySJLW_tocItemText{text-overflow:ellipsis;white-space:nowrap;flex:auto;min-width:0;overflow:hidden}@keyframes _2ySJLW_dsh-toc-flash{0%,60%{background:var(--dsw-alias-interactive-bg-hover)}to{background:0 0}}._2ySJLW_tocFlash{border-radius:4px;animation:1.2s ease-out _2ySJLW_dsh-toc-flash}";
+		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-source/src/client/sidebar.module.css.mjs
+		const css$6 = "[data-dsh-panel-host]{z-index:25;pointer-events:none;position:fixed;inset:0;overflow:clip}[data-dsh-panel-host][data-dsh-panel-host-degraded]{position:absolute;top:0;left:0}.yERIRa_toggleButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out), color var(--ds-transition-duration-slow) var(--ds-ease-in-out);background:0 0;border:none;border-radius:50%;justify-content:center;align-items:center;display:flex}.yERIRa_toggleButton:hover:not(:disabled):not([aria-disabled=true]){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_toggleButton:disabled,.yERIRa_toggleButton[aria-disabled=true]{opacity:.4;cursor:default}.yERIRa_panelBody{flex:1;min-width:0;min-height:0;display:flex}.yERIRa_bottomPanel{z-index:40;background:var(--dsw-alias-bg-layer-1);border-top:1px solid var(--dsw-alias-border-l2);pointer-events:auto;padding-bottom:env(safe-area-inset-bottom);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), height var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex-direction:column;display:flex;position:absolute;bottom:0}.yERIRa_bottomPanelHidden{pointer-events:none;visibility:hidden;transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), height var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear var(--ds-transition-duration-slow);transform:translateY(102%)}.yERIRa_bottomPanel[data-dragging]{transition:none}.yERIRa_bottomPanel{contain:layout style}body[data-dsh-sidebar-dragging] .yERIRa_panel,body[data-dsh-sidebar-dragging] .yERIRa_bottomPanel{will-change:transform}.yERIRa_bottomResize{cursor:row-resize;z-index:2;touch-action:none;height:8px;position:absolute;top:-4px;left:0;right:0}.yERIRa_bottomResizeActive{background:var(--dsw-alias-interactive-bg-hover-accent)}.yERIRa_bottomClose{z-index:4;width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex;position:absolute;top:3px;right:6px}.yERIRa_bottomClose:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_bottomPanel .yERIRa_tabBar{padding-right:40px}.yERIRa_toggleButton,.yERIRa_tabBar{-webkit-app-region:no-drag}.yERIRa_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.yERIRa_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_iconButton:disabled{opacity:.4;cursor:default}.yERIRa_workbench,.yERIRa_split{flex:1;min-width:0;min-height:0;display:flex}.yERIRa_splitRow{flex-direction:row}.yERIRa_splitCol{flex-direction:column}.yERIRa_splitChild{display:flex;position:relative;overflow:hidden}.yERIRa_divider{z-index:3;touch-action:none;flex:none;position:relative}.yERIRa_dividerRow:after,.yERIRa_dividerCol:after{content:\"\";background:var(--dsw-alias-border-l2);transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out);position:absolute}.yERIRa_dividerRow{cursor:col-resize;width:7px;margin:0 -2px}.yERIRa_dividerRow:after{width:1px;top:0;bottom:0;left:50%;transform:translate(-50%)}.yERIRa_dividerCol{cursor:row-resize;height:7px;margin:-2px 0}.yERIRa_dividerCol:after{height:1px;top:50%;left:0;right:0;transform:translateY(-50%)}.yERIRa_divider:hover:after,.yERIRa_dividerActive:after{background:var(--dsw-alias-interactive-bg-hover-accent)}.yERIRa_pane{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;position:relative}.yERIRa_paneDrop{outline:1px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}.yERIRa_dropOverlay{z-index:6;pointer-events:none;background:var(--dsw-alias-interactive-bg-hover-accent);opacity:.5;position:absolute}.yERIRa_dropLeft{width:25%;top:0;bottom:0;left:0}.yERIRa_dropRight{width:25%;top:0;bottom:0;right:0}.yERIRa_dropUp{height:25%;top:0;left:0;right:0}.yERIRa_dropDown{height:25%;bottom:0;left:0;right:0}.yERIRa_dropCenter{outline:2px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-2px;background:0 0;inset:25%}.yERIRa_paneContent{flex-direction:column;flex:1;min-height:0;display:flex;overflow:hidden}.yERIRa_chipIcon{flex:none;align-items:center;margin-right:6px;display:inline-flex}.yERIRa_paneTab{flex-direction:column;flex:1;min-height:0;display:flex}.yERIRa_paneTabHidden{display:none}.yERIRa_paneEmptyCards{flex:1;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));align-content:start;gap:8px;min-height:0;padding:12px;display:grid;overflow:hidden}.yERIRa_paneCard{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;text-align:center;border-radius:8px;flex-direction:column;justify-content:center;align-items:center;gap:6px;padding:12px 8px;display:flex}.yERIRa_paneCard:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2)}.yERIRa_paneCard:disabled{opacity:.45;cursor:default}.yERIRa_tabBar{border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);flex:none;align-items:stretch;height:34px;display:flex}.yERIRa_tabBarDrop{outline:1px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}.yERIRa_tabList{scrollbar-width:none;flex:1;min-width:0;display:flex;overflow-x:auto}.yERIRa_tabList::-webkit-scrollbar{display:none}.yERIRa_tab{min-width:64px;max-width:160px;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);border-right:1px solid var(--dsw-alias-border-l1);cursor:pointer;user-select:none;background:0 0;flex:none;align-items:center;gap:4px;padding:0 4px 0 10px;display:flex}.yERIRa_tab:hover{background:var(--dsw-alias-interactive-bg-hover)}.yERIRa_tabActive{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-active)}.yERIRa_tabTitle{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.yERIRa_tabBadge{min-width:16px;height:15px;font:var(--dsw-font-xxxs-strong-11);background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-brand-primary);border-radius:8px;flex:none;justify-content:center;align-items:center;padding:0 4px;display:inline-flex}.yERIRa_tabClose{width:18px;height:18px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:4px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.yERIRa_tabClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_tabBarPlus{background:var(--dsw-alias-bg-layer-1);width:22px;height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border:none;border-radius:5px;flex:none;justify-content:center;align-self:center;align-items:center;margin:0 6px;padding:0;display:inline-flex;position:sticky;right:0}.yERIRa_tabBarPlus:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_pinnedTab{color:var(--dsw-alias-label-tertiary);font-style:italic}.yERIRa_pinnedTab:hover{color:var(--dsw-alias-label-secondary)}.yERIRa_explorer{flex-direction:column;flex:1;min-height:0;display:flex}.yERIRa_explorerHeader{flex:none;justify-content:space-between;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.yERIRa_explorerRoot{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.yERIRa_explorerBody{flex:1;min-height:0;padding:4px 8px 8px;overflow:hidden auto}.yERIRa_explorerRow{box-sizing:border-box;width:100%;max-width:100%;height:34px;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);text-align:left;cursor:pointer;white-space:nowrap;animation:yERIRa_dsh-row-in .15s var(--ds-ease-in-out);background:0 0;border:none;border-radius:8px;align-items:center;gap:6px;padding:0 8px;display:flex}.yERIRa_explorerRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.yERIRa_explorerRowRevealed{background:var(--dsw-alias-state-business-tertiary)}.yERIRa_explorerRowRevealed+.yERIRa_explorerRowRevealed{border-top-left-radius:0;border-top-right-radius:0}.yERIRa_explorerRowRevealed:has(+.yERIRa_explorerRowRevealed){border-bottom-right-radius:0;border-bottom-left-radius:0}.yERIRa_explorerDir{font:var(--dsw-font-s-strong-14)}.yERIRa_explorerHidden{opacity:.45}.yERIRa_explorerSymlink{color:var(--dsw-alias-label-tertiary);flex:none}.yERIRa_explorerBroken .yERIRa_explorerName{color:var(--dsw-alias-state-error-primary)}.yERIRa_explorerName{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.yERIRa_explorerRenaming{cursor:text}.yERIRa_explorerRenameInput{box-sizing:border-box;border:1px solid var(--dsw-alias-state-business-primary);background:var(--dsw-alias-bg-layer-1);min-width:0;height:24px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:auto;padding:0 6px}.yERIRa_explorerRenameInput:focus{border-color:var(--dsw-alias-state-business-primary);outline:none}.yERIRa_explorerActionError{box-sizing:border-box;border:1px solid var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-1);border-radius:8px;align-items:flex-start;gap:6px;width:100%;margin-bottom:4px;padding:6px 8px;display:flex}.yERIRa_explorerActionErrorText{overflow-wrap:anywhere;min-width:0;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex:auto}.yERIRa_explorerActionErrorClose{width:20px;height:20px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:5px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.yERIRa_explorerActionErrorClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_explorerConfirmDesc{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;margin:0}.yERIRa_explorerRef,.yERIRa_explorerCopied{margin-left:auto}.yERIRa_explorerRef{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);height:20px;color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;border-radius:999px;flex:none;align-items:center;padding:0 8px;display:none}.yERIRa_explorerRef:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_explorerRow:hover .yERIRa_explorerRef,.yERIRa_explorerRow:focus-within .yERIRa_explorerRef{display:inline-flex}.yERIRa_explorerCopied{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.yERIRa_explorerError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);cursor:default}@keyframes yERIRa_dsh-row-in{0%{opacity:0}}.yERIRa_explorerEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}.yERIRa_explorerRowDropTarget{background:var(--dsw-alias-interactive-bg-hover);outline:1px dashed var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}.yERIRa_uploadDropZone{z-index:1001;pointer-events:none;border:2px dashed var(--dsw-alias-interactive-bg-hover-accent);box-shadow:0 0 0 200vmax var(--dsw-alias-bg-mask-drop);animation:yERIRa_dsh-row-in .15s var(--ds-ease-in-out);border-radius:10px;justify-content:center;align-items:flex-start;padding:12px;display:flex;position:fixed}.yERIRa_uploadDropHero{flex-direction:column;align-items:center;gap:10px;max-width:100%;padding-top:8px;display:flex}.yERIRa_uploadDropZonePill{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);max-width:100%;box-shadow:var(--dsw-shadow-lv2);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);border-radius:999px;align-items:center;gap:6px;padding:6px 12px;display:flex}.yERIRa_uploadDropZoneText{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.yERIRa_uploadDropChatHint{z-index:1002;pointer-events:none;animation:yERIRa_dsh-row-in .15s var(--ds-ease-in-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;top:0;bottom:0;left:0}.yERIRa_uploadDropChatCard{text-align:center;max-width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-s-strong-14);flex-direction:column;align-items:center;gap:12px;display:flex}.yERIRa_uploadOverlay{z-index:30;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);animation:yERIRa_dsh-row-in .15s var(--ds-ease-in-out);justify-content:center;align-items:center;display:flex;position:absolute;inset:0}.yERIRa_uploadOverlayCard{border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-alias-bg-layer-2);min-width:280px;max-width:min(420px,100% - 48px);box-shadow:var(--dsw-shadow-lv3);border-radius:24px;flex-direction:column;gap:12px;padding:20px 24px;display:flex}.yERIRa_uploadOverlayTitle{font:var(--dsw-font-s-strong-14);color:var(--dsw-alias-label-primary);align-items:center;gap:8px;display:flex}.yERIRa_uploadOverlayTitle>svg{flex:none}.yERIRa_uploadOverlayTitle>span{white-space:nowrap;text-overflow:ellipsis;min-width:0;overflow:hidden}.yERIRa_uploadOverlayProgress{background:var(--dsw-alias-border-l2);border-radius:3px;height:6px;overflow:hidden}.yERIRa_uploadOverlayProgressFill{background:var(--dsw-alias-interactive-bg-hover-accent);height:100%;transition:width .15s var(--ds-ease-in-out);border-radius:3px}.yERIRa_uploadOverlayStatus{min-height:1em;font:var(--dsw-font-xxs-12);font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary);white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.yERIRa_uploadOverlayCancel{border:1px solid var(--dsw-alias-border-l2);height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;background:0 0;border-radius:8px;align-self:flex-end;padding:0 14px}.yERIRa_uploadOverlayCancel:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}.yERIRa_uploadOverlayCancel:disabled{opacity:.4;cursor:default}.yERIRa_editor{flex-direction:column;flex:1;min-height:0;display:flex}.yERIRa_editorHeader{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:6px;padding:6px 8px;display:flex}.yERIRa_editorTitle{min-width:0;font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}.yERIRa_editorPathInput{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}.yERIRa_editorPathInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}.yERIRa_editorTreeToggleActive{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-active)}.yERIRa_editorBody{flex:1;min-height:0;display:flex}.yERIRa_editorMain{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex}.yERIRa_editorTreeDock{border-left:1px solid var(--dsw-alias-border-l1);flex:none;min-height:0;display:flex;position:relative}.yERIRa_editorTreeResize{cursor:col-resize;touch-action:none;z-index:3;width:6px;position:absolute;top:0;bottom:0;left:0}.yERIRa_editorTreeResize:hover{background:var(--dsw-alias-border-l2)}.yERIRa_editorTreePanel{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;position:relative}.yERIRa_editorTreePanelFull{flex:1}.yERIRa_editorTreeSearch{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:6px;padding:6px 8px;display:flex}.yERIRa_editorSearchInput{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:26px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}.yERIRa_editorSearchInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}.yERIRa_editorSearchHint{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:8px 12px}.yERIRa_editorSearchResult{width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);text-align:left;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;background:0 0;border:none;border-radius:6px;padding:4px 8px;display:block;overflow:hidden}.yERIRa_editorSearchResult:hover{background:var(--dsw-alias-interactive-bg-hover)}.yERIRa_editorStatus{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}.yERIRa_editorStatusError{color:var(--dsw-alias-state-error-primary)}.yERIRa_dirtyDot{background:var(--dsw-alias-state-warn-primary);border-radius:50%;flex:none;width:7px;height:7px}.yERIRa_editorPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;flex:1;justify-content:center;align-items:center;padding:16px;display:flex}.yERIRa_orphanedType{opacity:.7;overflow-wrap:anywhere;margin-top:8px;font-size:12px;display:block}.yERIRa_editorBinary{text-align:center;flex-direction:column;flex:1;justify-content:center;align-items:center;gap:12px;padding:24px 16px;display:flex}.yERIRa_editorBinaryNotice{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}.yERIRa_editorDownloadLink{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-strong-12);cursor:pointer;transition:background var(--ds-transition-duration-slow) var(--ds-ease-in-out), border-color var(--ds-transition-duration-slow) var(--ds-ease-in-out);border-radius:6px;align-items:center;gap:6px;padding:6px 14px;text-decoration:none;display:inline-flex}.yERIRa_editorDownloadLink:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l2)}.yERIRa_editorError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);padding:12px 16px}.yERIRa_fenceError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-wrap:wrap;align-items:center;gap:8px;padding:8px 16px;display:flex}.yERIRa_editorBanner{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex:none;padding:4px 8px}.yERIRa_sandboxStatus{font:var(--dsw-font-xxxs-11);flex:none;align-items:center;gap:8px;padding:4px 10px;display:flex}.yERIRa_sandboxStatusOn{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border-bottom:1px solid var(--dsw-alias-border-l1)}.yERIRa_sandboxStatusOff{color:var(--dsw-alias-state-error-primary);background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);border-bottom:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, transparent)}.yERIRa_sandboxDot{background:var(--dsw-alias-state-success-primary);border-radius:50%;flex:none;width:6px;height:6px}.yERIRa_sandboxStatusOff .yERIRa_sandboxDot{background:var(--dsw-alias-state-error-primary)}.yERIRa_sandboxStatusText{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.yERIRa_sandboxAction{border:1px solid var(--dsw-alias-border-l2);font:inherit;color:inherit;cursor:pointer;background:0 0;border-radius:6px;flex:none;padding:2px 8px}.yERIRa_sandboxAction:hover{background:var(--dsw-alias-interactive-bg-hover)}.yERIRa_editorHtml{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}.yERIRa_browser{flex-direction:column;flex:1;min-height:0;display:flex}.yERIRa_browserBar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:4px;padding:6px 8px;display:flex}.yERIRa_browserInput{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);min-width:0;height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 10px}.yERIRa_browserInput:focus{border-color:var(--dsw-alias-border-l2);outline:none}.yERIRa_browserMessage{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex:none;padding:4px 12px}.yERIRa_browserFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}.yERIRa_browserStart{text-align:center;min-height:0;font:var(--dsw-font-xs-13);color:var(--dsw-alias-label-tertiary);flex:1;justify-content:center;align-items:center;padding:20px;display:flex}.yERIRa_browserBlocked{text-align:center;min-height:0;color:var(--dsw-alias-state-warn-primary);flex-direction:column;flex:1;justify-content:center;align-items:center;gap:6px;padding:24px;display:flex}.yERIRa_browserBlockedTitle{font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-primary)}.yERIRa_browserBlockedDesc{max-width:280px;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-secondary)}.yERIRa_browserBlockedActions{gap:8px;margin-top:6px;display:flex}.yERIRa_browserBlockedButton{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxxs-11);cursor:pointer;border-radius:6px;padding:4px 12px}.yERIRa_browserBlockedButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.yERIRa_editorCm{background:0 0;flex:1;min-height:0;overflow:hidden}.yERIRa_editorCmHidden{display:none}.yERIRa_editorCm .cm-editor{height:100%}.yERIRa_editorCm .cm-scroller{padding:12px 16px}.yERIRa_editorCm .cm-editor.cm-focused{outline:none}.yERIRa_editorModeToggle{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:6px;flex:none;align-items:center;gap:2px;padding:2px;display:inline-flex}.yERIRa_editorModeButton{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border:none;border-radius:4px;padding:2px 8px}.yERIRa_editorModeButton:hover{color:var(--dsw-alias-label-primary)}.yERIRa_editorModeActive{background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.yERIRa_editorImageWrap{flex:1;justify-content:center;align-items:center;min-height:0;padding:12px;display:flex;overflow:auto}.yERIRa_editorImage{object-fit:contain;max-width:100%;max-height:100%}.yERIRa_editorMd{min-height:0;font:var(--dsw-font-xs-13);flex:1;padding:12px 16px;overflow-y:auto}.yERIRa_editorMd .md-code-block:not([data-mermaid-processed])>div:first-child{z-index:auto;position:static}.yERIRa_mermaidWrap{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:6px;margin:6px 0;overflow:hidden}.yERIRa_mermaidHeader{border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);justify-content:space-between;align-items:center;gap:6px;padding:4px 8px;display:flex}.yERIRa_mermaidInfo{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary)}.yERIRa_mermaidCopy{height:20px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border:none;border-radius:4px;align-items:center;gap:4px;padding:0 6px;display:inline-flex}.yERIRa_mermaidCopy:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_mermaidBody{cursor:zoom-in;justify-content:center;padding:10px;display:flex;overflow:auto}.yERIRa_mermaidBody svg{max-width:100%;height:auto}.yERIRa_mermaidError{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-state-error-primary);font:var(--dsw-font-xxxs-11);padding:6px 10px}.yERIRa_mermaidCode{font:var(--dsw-font-xxxs-11);margin:0;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:auto}.yERIRa_mermaidMarkdown .md-code-block[data-mermaid-processed]{display:contents}.yERIRa_mermaidModal{z-index:1000;background:var(--dsw-alias-bg-mask-1);backdrop-filter:blur(2px);flex-direction:column;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.yERIRa_mermaidModalToolbar{z-index:10;gap:8px;display:flex;position:absolute;top:16px;right:16px}.yERIRa_mermaidModalButton{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);width:36px;height:36px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xs-strong-13);cursor:pointer;border-radius:8px;justify-content:center;align-items:center;display:inline-flex}.yERIRa_mermaidModalButton:hover{background:var(--dsw-alias-interactive-bg-hover)}.yERIRa_mermaidModalStage{justify-content:center;align-items:center;width:90vw;height:80vh;display:flex;position:relative;overflow:hidden}.yERIRa_mermaidModalStage svg{cursor:grab;transform-origin:50%;user-select:none;-webkit-user-drag:none;background:var(--dsw-alias-bg-layer-1);border-radius:12px;max-width:none;max-height:none;padding:16px}.yERIRa_mermaidModalStage svg:active{cursor:grabbing}.yERIRa_mermaidModalHint{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);pointer-events:none;position:absolute;bottom:16px;left:50%;transform:translate(-50%)}.yERIRa_selectionPopup{z-index:60;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);height:28px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxxs-strong-11);white-space:nowrap;cursor:pointer;border-radius:6px;align-items:center;padding:0 10px;display:inline-flex;position:fixed;transform:translate(-50%,calc(-100% - 8px))}.yERIRa_selectionPopup:hover{background:var(--dsw-alias-interactive-bg-hover)}.yERIRa_editorPdf{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-height:0;display:flex}.yERIRa_editorPdfToolbar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;justify-content:flex-end;padding:6px 8px;display:flex}.yERIRa_editorPdfStage{flex:1;min-height:0;display:flex;position:relative}.yERIRa_editorPdfFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%;min-height:0}.yERIRa_editorPdfFrameBlocked{pointer-events:none}.yERIRa_editorPdfDragShield{z-index:4;pointer-events:none;background:0 0;position:absolute;inset:0}.yERIRa_editorPdfDragShieldActive{pointer-events:auto}body[data-dsh-tab-dragging] .yERIRa_editorPdfFrame{pointer-events:none!important}body[data-dsh-tab-dragging] .yERIRa_editorPdfDragShield{pointer-events:auto!important}.yERIRa_terminalWrap{background:var(--dsw-alias-bg-base);flex-direction:column;flex:1;min-height:0;display:flex;position:relative}.yERIRa_terminal{flex:1;min-height:0;padding:6px 4px 6px 8px}.yERIRa_terminal .xterm{height:100%}.yERIRa_terminalBanner{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex-wrap:wrap;flex:none;align-items:center;gap:8px;padding:3px 10px;display:flex}.yERIRa_terminalBannerUrl{word-break:break-all;opacity:.85;flex-basis:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.yERIRa_terminalWaitBanner{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex:none;align-items:center;gap:8px;padding:3px 10px;display:flex}.yERIRa_terminalWaitNeedle{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.yERIRa_boundaryError{z-index:50;background:var(--dsw-alias-bg-layer-1);border-left:1px solid var(--dsw-alias-border-l2);font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-direction:column;align-items:flex-start;gap:8px;padding:16px;display:flex;position:fixed;top:0;bottom:0;right:0;overflow:auto}.yERIRa_terminalRetry{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;border-radius:999px;flex:none;padding:1px 8px}.yERIRa_terminalRetry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_terminalDepsBanner{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-warn-label);background:var(--dsw-alias-state-warn-tertiary);flex-direction:column;flex:none;gap:6px;padding:10px;display:flex}.yERIRa_terminalDepsTitle{font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-state-warn-primary)}.yERIRa_terminalDepsHint{opacity:.9}.yERIRa_terminalDepsCommandRow{align-items:flex-start;gap:8px;display:flex}.yERIRa_terminalRepairCommand{white-space:pre-wrap;word-break:break-all;user-select:text;min-width:0;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:4px;flex:1;max-height:160px;margin:0;padding:6px 8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.5;overflow:auto}.yERIRa_terminalDepsNote{opacity:.85}.yERIRa_terminalDepsActions{align-items:center;gap:8px;display:flex}.yERIRa_tabBoundaryError{min-height:0;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);flex-direction:column;flex:1;align-items:flex-start;gap:8px;padding:12px 16px;display:flex;overflow:auto}.yERIRa_nativeTabHost{flex-direction:column;height:100%;min-height:0;display:flex}.yERIRa_gitEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:4px 12px 8px}.yERIRa_gitPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}.yERIRa_gitError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);white-space:pre-wrap;padding:8px 12px}.yERIRa_gitDiffTab{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden auto}.yERIRa_gitDiffTabHeader{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.yERIRa_gitDiffTabTitle{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-xxs-strong-12);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.yERIRa_producedRow{flex-wrap:wrap;align-items:center;gap:8px;padding:4px 0;display:flex}.yERIRa_producedLabel{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}.yERIRa_producedChip{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);max-width:200px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);cursor:pointer;border-radius:999px;align-items:center;gap:4px;padding:2px 8px;display:inline-flex;overflow:hidden}.yERIRa_producedChip:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_producedChip span{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.yERIRa_producedMore{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary)}.yERIRa_toggleButton:focus-visible,.yERIRa_bottomClose:focus-visible,.yERIRa_iconButton:focus-visible,.yERIRa_tab:focus-visible,.yERIRa_tabClose:focus-visible,.yERIRa_tabBarPlus:focus-visible,.yERIRa_paneCard:focus-visible,.yERIRa_explorerRow:focus-visible,.yERIRa_explorerRef:focus-visible,.yERIRa_terminalRetry:focus-visible,.yERIRa_editorModeButton:focus-visible,.yERIRa_editorDownloadLink:focus-visible,.yERIRa_editorPptxButton:focus-visible,.yERIRa_editorDocxZoomRange:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){.yERIRa_bottomPanel,.yERIRa_bottomPanelHidden,.yERIRa_toggleButton,.yERIRa_tab,.yERIRa_tabBarPlus,.yERIRa_paneCard,.yERIRa_explorerRow,.yERIRa_divider,.yERIRa_dividerRow:after,.yERIRa_dividerCol:after{transition:none;animation:none}}@media (width<=767px){.yERIRa_tab{min-width:48px;max-width:128px}}.yERIRa_openWithLabel{align-items:center;gap:8px;width:100%;min-width:0;display:flex}.yERIRa_openWithName{text-overflow:ellipsis;white-space:nowrap;flex:auto;min-width:0;overflow:hidden}.yERIRa_openWithChevron{color:var(--dsw-alias-label-tertiary);flex:none}.yERIRa_openWithPin{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-radius:5px;flex:none;justify-content:center;align-items:center;display:inline-flex}.yERIRa_openWithPin:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_openWithPinActive{color:var(--dsw-alias-state-business-primary)}.yERIRa_editorHtmlBlock{margin:8px 0}.yERIRa_editorHtmlBlock img,.yERIRa_editorHtmlBlock video{max-width:100%}.yERIRa_editorHtmlBlock details{margin:4px 0;padding:4px 0}.yERIRa_editorHtmlBlock summary{cursor:pointer}.yERIRa_tocBar{z-index:7;pointer-events:none;justify-content:flex-end;height:0;display:flex;position:sticky;top:0}.yERIRa_tocButton{pointer-events:auto;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;border-radius:6px;justify-content:center;align-items:center;margin:4px 2px 0 0;padding:0;display:inline-flex}.yERIRa_tocButton:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_tocPanel{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);width:min(300px,82%);max-height:60vh;box-shadow:var(--dsw-shadow-lv2);pointer-events:auto;border-radius:8px;flex-direction:column;padding:4px;display:flex;position:absolute;top:32px;right:2px;overflow-y:auto}.yERIRa_tocItem{min-width:0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:6px;align-items:baseline;gap:8px;padding:4px 8px;display:flex}.yERIRa_tocItem:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.yERIRa_tocItem[data-level=\"2\"]{padding-left:18px}.yERIRa_tocItem[data-level=\"3\"]{padding-left:28px}.yERIRa_tocItem[data-level=\"4\"]{padding-left:38px}.yERIRa_tocItem[data-level=\"5\"]{padding-left:48px}.yERIRa_tocItem[data-level=\"6\"]{padding-left:58px}.yERIRa_tocItemLevel{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.yERIRa_tocItemText{text-overflow:ellipsis;white-space:nowrap;flex:auto;min-width:0;overflow:hidden}@keyframes yERIRa_dsh-toc-flash{0%,60%{background:var(--dsw-alias-interactive-bg-hover)}to{background:0 0}}.yERIRa_tocFlash{border-radius:4px;animation:1.2s ease-out yERIRa_dsh-toc-flash}";
 		const tagId$6 = "dsh-external/dsh-better-sidebar/sidebar.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
 			const tag = document.createElement("style");
@@ -3245,212 +3196,200 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var sidebar_module_css_default = {
-			"dropUp": "_2ySJLW_dropUp",
-			"browserBlockedActions": "_2ySJLW_browserBlockedActions",
-			"panelHidden": "_2ySJLW_panelHidden",
-			"splitCol": "_2ySJLW_splitCol",
-			"editorTreeToggleActive": "_2ySJLW_editorTreeToggleActive",
-			"editorTreeResize": "_2ySJLW_editorTreeResize",
-			"floatTitle": "_2ySJLW_floatTitle",
-			"fenceError": "_2ySJLW_fenceError",
-			"browserBar": "_2ySJLW_browserBar",
-			"uploadDropZone": "_2ySJLW_uploadDropZone",
-			"bottomClose": "_2ySJLW_bottomClose",
-			"editorCmHidden": "_2ySJLW_editorCmHidden",
-			"mermaidHeader": "_2ySJLW_mermaidHeader",
-			"dropOverlay": "_2ySJLW_dropOverlay",
-			"mermaidError": "_2ySJLW_mermaidError",
-			"uploadOverlay": "_2ySJLW_uploadOverlay",
-			"explorerHidden": "_2ySJLW_explorerHidden",
-			"pinnedTab": "_2ySJLW_pinnedTab",
-			"dividerActive": "_2ySJLW_dividerActive",
-			"mermaidModalHint": "_2ySJLW_mermaidModalHint",
-			"uploadOverlayTitle": "_2ySJLW_uploadOverlayTitle",
-			"editorPdfStage": "_2ySJLW_editorPdfStage",
-			"splitRow": "_2ySJLW_splitRow",
-			"bottomPanelSlot": "_2ySJLW_bottomPanelSlot",
-			"gitDiffTabHeader": "_2ySJLW_gitDiffTabHeader",
-			"browserBlockedTitle": "_2ySJLW_browserBlockedTitle",
-			"terminal": "_2ySJLW_terminal",
-			"workbench": "_2ySJLW_workbench",
-			"uploadOverlayCancel": "_2ySJLW_uploadOverlayCancel",
-			"editorBinary": "_2ySJLW_editorBinary",
-			"dividerRow": "_2ySJLW_dividerRow",
-			"tocBar": "_2ySJLW_tocBar",
-			"editorSearchInput": "_2ySJLW_editorSearchInput",
-			"explorerActionErrorText": "_2ySJLW_explorerActionErrorText",
-			"selectionPopup": "_2ySJLW_selectionPopup",
-			"gitDiffTabTitle": "_2ySJLW_gitDiffTabTitle",
-			"editorHtml": "_2ySJLW_editorHtml",
-			"splitChild": "_2ySJLW_splitChild",
-			"editorTreeDock": "_2ySJLW_editorTreeDock",
-			"mermaidCode": "_2ySJLW_mermaidCode",
-			"explorerError": "_2ySJLW_explorerError",
-			"editorImage": "_2ySJLW_editorImage",
-			"explorerBody": "_2ySJLW_explorerBody",
-			"floatDropHint": "_2ySJLW_floatDropHint",
-			"editorPdfFrameBlocked": "_2ySJLW_editorPdfFrameBlocked",
-			"gitDiffTab": "_2ySJLW_gitDiffTab",
-			"openWithLabel": "_2ySJLW_openWithLabel",
-			"dsh-toc-flash": "_2ySJLW_dsh-toc-flash",
-			"paneContent": "_2ySJLW_paneContent",
-			"mermaidCopy": "_2ySJLW_mermaidCopy",
-			"mermaidModalStage": "_2ySJLW_mermaidModalStage",
-			"browserBlockedButton": "_2ySJLW_browserBlockedButton",
-			"tabClose": "_2ySJLW_tabClose",
-			"openWithChevron": "_2ySJLW_openWithChevron",
-			"mermaidModalButton": "_2ySJLW_mermaidModalButton",
-			"uploadDropZonePill": "_2ySJLW_uploadDropZonePill",
-			"uploadDropZoneText": "_2ySJLW_uploadDropZoneText",
-			"paneDrop": "_2ySJLW_paneDrop",
-			"dsh-row-in": "_2ySJLW_dsh-row-in",
-			"editorSearchHint": "_2ySJLW_editorSearchHint",
-			"mermaidMarkdown": "_2ySJLW_mermaidMarkdown",
-			"sandboxStatusOn": "_2ySJLW_sandboxStatusOn",
-			"editorTreeSearch": "_2ySJLW_editorTreeSearch",
-			"gitEmpty": "_2ySJLW_gitEmpty",
-			"paneEmptyCards": "_2ySJLW_paneEmptyCards",
-			"explorerName": "_2ySJLW_explorerName",
-			"editorDownloadLink": "_2ySJLW_editorDownloadLink",
-			"tocPanel": "_2ySJLW_tocPanel",
-			"editorHtmlBlock": "_2ySJLW_editorHtmlBlock",
-			"floatContent": "_2ySJLW_floatContent",
-			"editorError": "_2ySJLW_editorError",
-			"tabList": "_2ySJLW_tabList",
-			"browserMessage": "_2ySJLW_browserMessage",
-			"explorerRowDropTarget": "_2ySJLW_explorerRowDropTarget",
-			"gitError": "_2ySJLW_gitError",
-			"toggleButton": "_2ySJLW_toggleButton",
-			"terminalDepsActions": "_2ySJLW_terminalDepsActions",
-			"uploadOverlayStatus": "_2ySJLW_uploadOverlayStatus",
-			"browserFrame": "_2ySJLW_browserFrame",
-			"terminalBannerUrl": "_2ySJLW_terminalBannerUrl",
-			"explorerConfirmDesc": "_2ySJLW_explorerConfirmDesc",
-			"terminalDepsNote": "_2ySJLW_terminalDepsNote",
-			"producedLabel": "_2ySJLW_producedLabel",
-			"producedChip": "_2ySJLW_producedChip",
-			"tabBar": "_2ySJLW_tabBar",
-			"tocButton": "_2ySJLW_tocButton",
-			"editorSearchResult": "_2ySJLW_editorSearchResult",
-			"mermaidWrap": "_2ySJLW_mermaidWrap",
-			"editor": "_2ySJLW_editor",
-			"explorerRef": "_2ySJLW_explorerRef",
-			"panelSlot": "_2ySJLW_panelSlot",
-			"floatHeader": "_2ySJLW_floatHeader",
-			"editorStatusError": "_2ySJLW_editorStatusError",
-			"editorPdf": "_2ySJLW_editorPdf",
-			"editorPdfFrame": "_2ySJLW_editorPdfFrame",
-			"producedMore": "_2ySJLW_producedMore",
-			"uploadDropHero": "_2ySJLW_uploadDropHero",
-			"editorPdfDragShieldActive": "_2ySJLW_editorPdfDragShieldActive",
-			"tabBarDrop": "_2ySJLW_tabBarDrop",
-			"editorCm": "_2ySJLW_editorCm",
-			"mermaidModalToolbar": "_2ySJLW_mermaidModalToolbar",
-			"bottomResize": "_2ySJLW_bottomResize",
-			"openWithName": "_2ySJLW_openWithName",
-			"editorTreePanel": "_2ySJLW_editorTreePanel",
-			"sandboxStatus": "_2ySJLW_sandboxStatus",
-			"explorerSymlink": "_2ySJLW_explorerSymlink",
-			"editorPdfDragShield": "_2ySJLW_editorPdfDragShield",
-			"tocItemLevel": "_2ySJLW_tocItemLevel",
-			"explorerRoot": "_2ySJLW_explorerRoot",
-			"browser": "_2ySJLW_browser",
-			"tabBadge": "_2ySJLW_tabBadge",
-			"pane": "_2ySJLW_pane",
-			"floatWindowDragging": "_2ySJLW_floatWindowDragging",
-			"dropLeft": "_2ySJLW_dropLeft",
-			"dirtyDot": "_2ySJLW_dirtyDot",
-			"orphanedType": "_2ySJLW_orphanedType",
-			"tab": "_2ySJLW_tab",
-			"editorMd": "_2ySJLW_editorMd",
-			"terminalDepsHint": "_2ySJLW_terminalDepsHint",
-			"floatWindow": "_2ySJLW_floatWindow",
-			"sandboxStatusText": "_2ySJLW_sandboxStatusText",
-			"browserStart": "_2ySJLW_browserStart",
-			"explorerActionError": "_2ySJLW_explorerActionError",
-			"toggleCluster": "_2ySJLW_toggleCluster",
-			"uploadOverlayCard": "_2ySJLW_uploadOverlayCard",
-			"editorDocxZoomRange": "_2ySJLW_editorDocxZoomRange",
-			"uploadDropChatCard": "_2ySJLW_uploadDropChatCard",
-			"gitPlaceholder": "_2ySJLW_gitPlaceholder",
-			"cornerHandle": "_2ySJLW_cornerHandle",
-			"dropDown": "_2ySJLW_dropDown",
-			"explorerActionErrorClose": "_2ySJLW_explorerActionErrorClose",
-			"tocItemText": "_2ySJLW_tocItemText",
-			"editorImageWrap": "_2ySJLW_editorImageWrap",
-			"tocFlash": "_2ySJLW_tocFlash",
-			"editorPdfToolbar": "_2ySJLW_editorPdfToolbar",
-			"iconButton": "_2ySJLW_iconButton",
-			"terminalRepairCommand": "_2ySJLW_terminalRepairCommand",
-			"floatClose": "_2ySJLW_floatClose",
-			"terminalDepsBanner": "_2ySJLW_terminalDepsBanner",
-			"explorerCopied": "_2ySJLW_explorerCopied",
-			"explorerEmpty": "_2ySJLW_explorerEmpty",
-			"sandboxAction": "_2ySJLW_sandboxAction",
-			"floatDropHintLabel": "_2ySJLW_floatDropHintLabel",
-			"terminalBanner": "_2ySJLW_terminalBanner",
-			"browserBlocked": "_2ySJLW_browserBlocked",
-			"tabTitle": "_2ySJLW_tabTitle",
-			"mermaidBody": "_2ySJLW_mermaidBody",
-			"explorerRenaming": "_2ySJLW_explorerRenaming",
-			"panelResizeActive": "_2ySJLW_panelResizeActive",
-			"uploadDropChatHint": "_2ySJLW_uploadDropChatHint",
-			"explorerRenameInput": "_2ySJLW_explorerRenameInput",
-			"openWithPinActive": "_2ySJLW_openWithPinActive",
-			"mermaidInfo": "_2ySJLW_mermaidInfo",
-			"dividerCol": "_2ySJLW_dividerCol",
-			"editorPathInput": "_2ySJLW_editorPathInput",
-			"bottomPanel": "_2ySJLW_bottomPanel",
-			"paneCard": "_2ySJLW_paneCard",
-			"explorerHeader": "_2ySJLW_explorerHeader",
-			"explorerRow": "_2ySJLW_explorerRow",
-			"panelResize": "_2ySJLW_panelResize",
-			"editorStatus": "_2ySJLW_editorStatus",
-			"editorModeToggle": "_2ySJLW_editorModeToggle",
-			"dropRight": "_2ySJLW_dropRight",
-			"editorTreePanelFull": "_2ySJLW_editorTreePanelFull",
-			"mermaidModal": "_2ySJLW_mermaidModal",
-			"uploadOverlayProgressFill": "_2ySJLW_uploadOverlayProgressFill",
-			"paneTab": "_2ySJLW_paneTab",
-			"terminalWrap": "_2ySJLW_terminalWrap",
-			"panelBody": "_2ySJLW_panelBody",
-			"dropCenter": "_2ySJLW_dropCenter",
-			"tabActive": "_2ySJLW_tabActive",
-			"editorModeActive": "_2ySJLW_editorModeActive",
-			"terminalDepsTitle": "_2ySJLW_terminalDepsTitle",
-			"bottomPanelHidden": "_2ySJLW_bottomPanelHidden",
-			"editorBody": "_2ySJLW_editorBody",
-			"tabBarPlus": "_2ySJLW_tabBarPlus",
-			"tabBoundaryError": "_2ySJLW_tabBoundaryError",
-			"openWithPin": "_2ySJLW_openWithPin",
-			"floatResize": "_2ySJLW_floatResize",
-			"editorTitle": "_2ySJLW_editorTitle",
-			"explorerDir": "_2ySJLW_explorerDir",
-			"terminalRetry": "_2ySJLW_terminalRetry",
-			"explorerRowRevealed": "_2ySJLW_explorerRowRevealed",
-			"editorBanner": "_2ySJLW_editorBanner",
-			"panel": "_2ySJLW_panel",
-			"sandboxStatusOff": "_2ySJLW_sandboxStatusOff",
-			"sandboxDot": "_2ySJLW_sandboxDot",
-			"browserInput": "_2ySJLW_browserInput",
-			"browserBlockedDesc": "_2ySJLW_browserBlockedDesc",
-			"boundaryError": "_2ySJLW_boundaryError",
-			"tocItem": "_2ySJLW_tocItem",
-			"bottomResizeActive": "_2ySJLW_bottomResizeActive",
-			"editorModeButton": "_2ySJLW_editorModeButton",
-			"split": "_2ySJLW_split",
-			"uploadOverlayProgress": "_2ySJLW_uploadOverlayProgress",
-			"editorHeader": "_2ySJLW_editorHeader",
-			"editorMain": "_2ySJLW_editorMain",
-			"editorPlaceholder": "_2ySJLW_editorPlaceholder",
-			"editorPptxButton": "_2ySJLW_editorPptxButton",
-			"paneTabHidden": "_2ySJLW_paneTabHidden",
-			"explorer": "_2ySJLW_explorer",
-			"explorerBroken": "_2ySJLW_explorerBroken",
-			"divider": "_2ySJLW_divider",
-			"terminalDepsCommandRow": "_2ySJLW_terminalDepsCommandRow",
-			"editorBinaryNotice": "_2ySJLW_editorBinaryNotice",
-			"producedRow": "_2ySJLW_producedRow"
+			"tabBar": "yERIRa_tabBar",
+			"uploadDropHero": "yERIRa_uploadDropHero",
+			"sandboxStatusOn": "yERIRa_sandboxStatusOn",
+			"tab": "yERIRa_tab",
+			"editorTreeResize": "yERIRa_editorTreeResize",
+			"terminalDepsHint": "yERIRa_terminalDepsHint",
+			"explorerBroken": "yERIRa_explorerBroken",
+			"paneEmptyCards": "yERIRa_paneEmptyCards",
+			"explorerRow": "yERIRa_explorerRow",
+			"gitDiffTab": "yERIRa_gitDiffTab",
+			"explorerName": "yERIRa_explorerName",
+			"uploadOverlayCancel": "yERIRa_uploadOverlayCancel",
+			"sandboxStatus": "yERIRa_sandboxStatus",
+			"mermaidModalHint": "yERIRa_mermaidModalHint",
+			"editorTreeDock": "yERIRa_editorTreeDock",
+			"terminalDepsCommandRow": "yERIRa_terminalDepsCommandRow",
+			"browserBlockedButton": "yERIRa_browserBlockedButton",
+			"explorerDir": "yERIRa_explorerDir",
+			"explorerBody": "yERIRa_explorerBody",
+			"dropOverlay": "yERIRa_dropOverlay",
+			"explorerRenameInput": "yERIRa_explorerRenameInput",
+			"editor": "yERIRa_editor",
+			"tocItemText": "yERIRa_tocItemText",
+			"dividerCol": "yERIRa_dividerCol",
+			"tabTitle": "yERIRa_tabTitle",
+			"explorerRef": "yERIRa_explorerRef",
+			"paneTab": "yERIRa_paneTab",
+			"mermaidModalStage": "yERIRa_mermaidModalStage",
+			"divider": "yERIRa_divider",
+			"uploadOverlay": "yERIRa_uploadOverlay",
+			"editorPdfStage": "yERIRa_editorPdfStage",
+			"workbench": "yERIRa_workbench",
+			"sandboxStatusText": "yERIRa_sandboxStatusText",
+			"editorModeToggle": "yERIRa_editorModeToggle",
+			"editorCmHidden": "yERIRa_editorCmHidden",
+			"openWithLabel": "yERIRa_openWithLabel",
+			"uploadOverlayCard": "yERIRa_uploadOverlayCard",
+			"dropRight": "yERIRa_dropRight",
+			"tocItem": "yERIRa_tocItem",
+			"uploadDropZone": "yERIRa_uploadDropZone",
+			"editorDocxZoomRange": "yERIRa_editorDocxZoomRange",
+			"tabClose": "yERIRa_tabClose",
+			"orphanedType": "yERIRa_orphanedType",
+			"explorerActionErrorClose": "yERIRa_explorerActionErrorClose",
+			"paneContent": "yERIRa_paneContent",
+			"bottomResize": "yERIRa_bottomResize",
+			"bottomResizeActive": "yERIRa_bottomResizeActive",
+			"explorerActionError": "yERIRa_explorerActionError",
+			"explorerSymlink": "yERIRa_explorerSymlink",
+			"browserBlockedDesc": "yERIRa_browserBlockedDesc",
+			"mermaidError": "yERIRa_mermaidError",
+			"explorerError": "yERIRa_explorerError",
+			"editorMd": "yERIRa_editorMd",
+			"split": "yERIRa_split",
+			"dropLeft": "yERIRa_dropLeft",
+			"sandboxStatusOff": "yERIRa_sandboxStatusOff",
+			"mermaidHeader": "yERIRa_mermaidHeader",
+			"splitChild": "yERIRa_splitChild",
+			"uploadDropZonePill": "yERIRa_uploadDropZonePill",
+			"editorStatusError": "yERIRa_editorStatusError",
+			"mermaidCode": "yERIRa_mermaidCode",
+			"editorHtml": "yERIRa_editorHtml",
+			"mermaidMarkdown": "yERIRa_mermaidMarkdown",
+			"nativeTabHost": "yERIRa_nativeTabHost",
+			"gitDiffTabHeader": "yERIRa_gitDiffTabHeader",
+			"editorPptxButton": "yERIRa_editorPptxButton",
+			"editorPdfDragShieldActive": "yERIRa_editorPdfDragShieldActive",
+			"terminal": "yERIRa_terminal",
+			"browserBlocked": "yERIRa_browserBlocked",
+			"terminalDepsTitle": "yERIRa_terminalDepsTitle",
+			"sandboxDot": "yERIRa_sandboxDot",
+			"gitEmpty": "yERIRa_gitEmpty",
+			"tocItemLevel": "yERIRa_tocItemLevel",
+			"paneDrop": "yERIRa_paneDrop",
+			"dropDown": "yERIRa_dropDown",
+			"editorSearchInput": "yERIRa_editorSearchInput",
+			"browserInput": "yERIRa_browserInput",
+			"terminalBannerUrl": "yERIRa_terminalBannerUrl",
+			"terminalDepsBanner": "yERIRa_terminalDepsBanner",
+			"editorHeader": "yERIRa_editorHeader",
+			"explorerRowRevealed": "yERIRa_explorerRowRevealed",
+			"editorTreePanelFull": "yERIRa_editorTreePanelFull",
+			"editorTreeSearch": "yERIRa_editorTreeSearch",
+			"splitCol": "yERIRa_splitCol",
+			"browserBar": "yERIRa_browserBar",
+			"editorImage": "yERIRa_editorImage",
+			"producedRow": "yERIRa_producedRow",
+			"tocPanel": "yERIRa_tocPanel",
+			"bottomPanel": "yERIRa_bottomPanel",
+			"dividerActive": "yERIRa_dividerActive",
+			"dsh-toc-flash": "yERIRa_dsh-toc-flash",
+			"pinnedTab": "yERIRa_pinnedTab",
+			"explorerRowDropTarget": "yERIRa_explorerRowDropTarget",
+			"browserStart": "yERIRa_browserStart",
+			"browserMessage": "yERIRa_browserMessage",
+			"mermaidModal": "yERIRa_mermaidModal",
+			"editorBanner": "yERIRa_editorBanner",
+			"producedChip": "yERIRa_producedChip",
+			"openWithChevron": "yERIRa_openWithChevron",
+			"dropUp": "yERIRa_dropUp",
+			"uploadOverlayTitle": "yERIRa_uploadOverlayTitle",
+			"tabBarPlus": "yERIRa_tabBarPlus",
+			"explorerRenaming": "yERIRa_explorerRenaming",
+			"explorerHidden": "yERIRa_explorerHidden",
+			"explorerActionErrorText": "yERIRa_explorerActionErrorText",
+			"mermaidBody": "yERIRa_mermaidBody",
+			"editorPdf": "yERIRa_editorPdf",
+			"uploadDropZoneText": "yERIRa_uploadDropZoneText",
+			"explorerCopied": "yERIRa_explorerCopied",
+			"explorerConfirmDesc": "yERIRa_explorerConfirmDesc",
+			"editorModeActive": "yERIRa_editorModeActive",
+			"editorPdfDragShield": "yERIRa_editorPdfDragShield",
+			"terminalRepairCommand": "yERIRa_terminalRepairCommand",
+			"chipIcon": "yERIRa_chipIcon",
+			"openWithName": "yERIRa_openWithName",
+			"panelBody": "yERIRa_panelBody",
+			"bottomClose": "yERIRa_bottomClose",
+			"editorPdfFrame": "yERIRa_editorPdfFrame",
+			"mermaidModalButton": "yERIRa_mermaidModalButton",
+			"openWithPinActive": "yERIRa_openWithPinActive",
+			"gitError": "yERIRa_gitError",
+			"dropCenter": "yERIRa_dropCenter",
+			"editorModeButton": "yERIRa_editorModeButton",
+			"producedMore": "yERIRa_producedMore",
+			"editorDownloadLink": "yERIRa_editorDownloadLink",
+			"pane": "yERIRa_pane",
+			"dirtyDot": "yERIRa_dirtyDot",
+			"terminalRetry": "yERIRa_terminalRetry",
+			"tabBadge": "yERIRa_tabBadge",
+			"editorImageWrap": "yERIRa_editorImageWrap",
+			"gitPlaceholder": "yERIRa_gitPlaceholder",
+			"uploadOverlayStatus": "yERIRa_uploadOverlayStatus",
+			"editorMain": "yERIRa_editorMain",
+			"producedLabel": "yERIRa_producedLabel",
+			"terminalDepsActions": "yERIRa_terminalDepsActions",
+			"editorError": "yERIRa_editorError",
+			"boundaryError": "yERIRa_boundaryError",
+			"dsh-row-in": "yERIRa_dsh-row-in",
+			"editorBinary": "yERIRa_editorBinary",
+			"iconButton": "yERIRa_iconButton",
+			"tocFlash": "yERIRa_tocFlash",
+			"mermaidCopy": "yERIRa_mermaidCopy",
+			"selectionPopup": "yERIRa_selectionPopup",
+			"uploadOverlayProgressFill": "yERIRa_uploadOverlayProgressFill",
+			"uploadDropChatCard": "yERIRa_uploadDropChatCard",
+			"gitDiffTabTitle": "yERIRa_gitDiffTabTitle",
+			"tabBarDrop": "yERIRa_tabBarDrop",
+			"toggleButton": "yERIRa_toggleButton",
+			"mermaidModalToolbar": "yERIRa_mermaidModalToolbar",
+			"explorerRoot": "yERIRa_explorerRoot",
+			"sandboxAction": "yERIRa_sandboxAction",
+			"editorTreeToggleActive": "yERIRa_editorTreeToggleActive",
+			"editorPlaceholder": "yERIRa_editorPlaceholder",
+			"editorBody": "yERIRa_editorBody",
+			"browserFrame": "yERIRa_browserFrame",
+			"bottomPanelHidden": "yERIRa_bottomPanelHidden",
+			"terminalDepsNote": "yERIRa_terminalDepsNote",
+			"tabActive": "yERIRa_tabActive",
+			"editorPdfToolbar": "yERIRa_editorPdfToolbar",
+			"uploadDropChatHint": "yERIRa_uploadDropChatHint",
+			"browser": "yERIRa_browser",
+			"dividerRow": "yERIRa_dividerRow",
+			"openWithPin": "yERIRa_openWithPin",
+			"paneTabHidden": "yERIRa_paneTabHidden",
+			"editorHtmlBlock": "yERIRa_editorHtmlBlock",
+			"tocButton": "yERIRa_tocButton",
+			"uploadOverlayProgress": "yERIRa_uploadOverlayProgress",
+			"terminalWrap": "yERIRa_terminalWrap",
+			"panel": "yERIRa_panel",
+			"editorStatus": "yERIRa_editorStatus",
+			"tabList": "yERIRa_tabList",
+			"tocBar": "yERIRa_tocBar",
+			"browserBlockedActions": "yERIRa_browserBlockedActions",
+			"explorer": "yERIRa_explorer",
+			"mermaidWrap": "yERIRa_mermaidWrap",
+			"splitRow": "yERIRa_splitRow",
+			"paneCard": "yERIRa_paneCard",
+			"fenceError": "yERIRa_fenceError",
+			"explorerHeader": "yERIRa_explorerHeader",
+			"editorSearchHint": "yERIRa_editorSearchHint",
+			"editorSearchResult": "yERIRa_editorSearchResult",
+			"editorCm": "yERIRa_editorCm",
+			"editorTreePanel": "yERIRa_editorTreePanel",
+			"explorerEmpty": "yERIRa_explorerEmpty",
+			"mermaidInfo": "yERIRa_mermaidInfo",
+			"browserBlockedTitle": "yERIRa_browserBlockedTitle",
+			"editorTitle": "yERIRa_editorTitle",
+			"editorPathInput": "yERIRa_editorPathInput",
+			"editorPdfFrameBlocked": "yERIRa_editorPdfFrameBlocked",
+			"terminalWaitBanner": "yERIRa_terminalWaitBanner",
+			"editorBinaryNotice": "yERIRa_editorBinaryNotice",
+			"terminalWaitNeedle": "yERIRa_terminalWaitNeedle",
+			"tabBoundaryError": "yERIRa_tabBoundaryError",
+			"terminalBanner": "yERIRa_terminalBanner"
 		};
 		//#endregion
 		//#region src/client/intercept.tsx
@@ -3476,26 +3415,14 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/**
-		* The produced files the turn-tail selector last matched for the visible
-		* session. The "Show in folder" gesture carries no file path of its own
-		* (`'.'`), so the reveal highlights exactly these rows when available.
-		*/
-		let lastProduced = [];
-		/**
 		* Reveal the produced files in the sidebar explorer: expand their parent
-		* directories, highlight the rows, and focus the explorer tab (expanding the
-		* hosting panel when it is collapsed). Unknown files fall back to revealing
-		* the workspace root itself.
+		* directories, highlight the rows, and focus the explorer tab. Unknown
+		* files fall back to revealing the workspace root itself.
 		*/
 		function revealInExplorer(ctx, store, sessionId, files) {
 			const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd;
 			const targets = files.length > 0 ? files.map((path) => resolveSidebarPath(cwd, path)) : cwd === void 0 ? [] : [cwd];
 			store.reduce((state) => revealPaths(state, cwd, targets));
-			store.reduce((s) => s.panelOpen ? s : togglePanel(s));
-			store.reduce((s) => ({
-				...s,
-				activePane: firstLeaf(s.splits).id
-			}));
 			ctx.get("betterSidebar")?.openTab({
 				type: "editor",
 				title: t("files")
@@ -3566,9 +3493,7 @@ window.__ModuleLoader__.load({
 				select: (owner) => {
 					if (store.getSuspended()) return null;
 					if (store.getPrefs().tabsEnabled["editor"] === false) return null;
-					const matched = selectProducedFiles(owner);
-					if (matched !== null) lastProduced = matched;
-					return matched;
+					return selectProducedFiles(owner);
 				},
 				priority: -1,
 				registrant: "dsh-better-sidebar",
@@ -3582,45 +3507,8 @@ window.__ModuleLoader__.load({
 				})
 			}, SidebarProducedFiles));
 		}
-		/**
-		* Register the chat file-open interception: shadows
-		* `remote.session.openWorkspacePath` — the single funnel every chat-side
-		* file open goes through on alpha hosts (tool-row path links, the
-		* produced-files row, prose mentions, inline-code paths) — so opens land in
-		* the sidebar editor instead of the Host OS. The folder-reveal gesture
-		* ("Show in folder" passes `'.'`) is the one exception: it is routed to the
-		* explorer. Gated by BOTH the `interceptOpenPath` pref and the editor tab's
-		* enable switch; declined opens fall through to the original remote call.
-		*
-		* The `remote.session` namespace service mounts asynchronously (the gateway
-		* client creates it when the session-controller contribution arrives) and
-		* is recreated on contribution remounts, so the wrapper installs through
-		* `ctx.inject`: the callback runs once the service exists and re-runs after
-		* every remount, re-applying the shadow on the fresh instance. Returns the
-		* disposer (disposes the inject fiber, which restores the original method
-		* descriptor — HMR-safe).
-		*/
-		function registerOpenPathInterception(ctx, store) {
-			const fiber = ctx.inject(["remote.session"], (fctx) => {
-				fctx.effect(() => {
-					return wrapOpenWorkspacePath(fctx.get("remote.session"), {
-						takeoverEnabled: () => !store.getSuspended() && store.getPrefs().interceptOpenPath !== false && store.getPrefs().tabsEnabled["editor"] !== false,
-						currentSessionId: () => ctx.sessions.list.getSnapshot().current,
-						openInSidebar: (path, sessionId) => {
-							openSidebarFile(ctx, store, sessionId, path);
-						},
-						revealInExplorer: (_path, sessionId) => {
-							revealInExplorer(ctx, store, sessionId, lastProduced);
-						}
-					});
-				}, "dsh-better-sidebar: open-path interception wrap");
-			});
-			return () => {
-				fiber.dispose();
-			};
-		}
 		//#endregion
-		//#region node_modules/clsx/dist/clsx.mjs
+		//#region node_modules/.pnpm/clsx@2.1.1/node_modules/clsx/dist/clsx.mjs
 		function r(e) {
 			var t, f, n = "";
 			if ("string" == typeof e || "number" == typeof e) n += e;
@@ -3834,6 +3722,9 @@ window.__ModuleLoader__.load({
 			ptyClose: (scope, tab) => call("pty.close", scopePayload(scope, { tab })),
 			/** Release an agent terminal by uuid (tab closed while WS was down). */
 			agentPtyClose: (uuid) => call("agent-pty.close", { uuid }),
+			/** Skip every active terminal_wait_for on one agent terminal (the wait
+			*  banner's skip button). Idempotent: {skipped:0} when none is active. */
+			agentSkipWait: (uuid) => call("agent-pty.skip-wait", { uuid }),
 			/** Terminal dependency status (issue #140): after a WS close 1011 with
 			*  reason `pty-deps-missing` the view fetches the full repair details here
 			*  (the close reason itself is capped at 123 bytes). */
@@ -3875,7 +3766,10 @@ window.__ModuleLoader__.load({
 			sidechatInfo: (childId) => call("sidechat.info", { childId }),
 			/** One transcript pull of a Side Chat thread: the thread's OWN events
 			*  (the inherited seed is cut host-side and never crosses the wire).
-			*  `afterSeq` narrows the response to the delta beyond it (poll tail). */
+			*  `afterSeq` narrows the response to the delta beyond it (poll tail).
+			*  `live` is the thread's in-flight model deltas (DSH 0.1.5 publishes them
+			*  outside the session log) — the CURRENT attempt on every pull, never a
+			*  delta, so the caller replaces its live set instead of appending. */
 			sidechatEvents: (childId, afterSeq, signal) => call("sidechat.events", {
 				childId,
 				...afterSeq !== void 0 ? { afterSeq } : {}
@@ -3956,8 +3850,6 @@ window.__ModuleLoader__.load({
 			if (value === null || typeof value !== "object") return { ...SIDEBAR_PREFS_DEFAULTS };
 			const record = value;
 			return {
-				openByDefault: typeof record.openByDefault === "boolean" ? record.openByDefault : SIDEBAR_PREFS_DEFAULTS.openByDefault,
-				defaultWidthPercent: typeof record.defaultWidthPercent === "number" && Number.isFinite(record.defaultWidthPercent) ? clampWidthPercent(record.defaultWidthPercent) : SIDEBAR_PREFS_DEFAULTS.defaultWidthPercent,
 				autoOpenSubagent: typeof record.autoOpenSubagent === "boolean" ? record.autoOpenSubagent : SIDEBAR_PREFS_DEFAULTS.autoOpenSubagent,
 				autoOpenJobs: typeof record.autoOpenJobs === "boolean" ? record.autoOpenJobs : SIDEBAR_PREFS_DEFAULTS.autoOpenJobs,
 				agentTerminalTools: typeof record.agentTerminalTools === "boolean" ? record.agentTerminalTools : SIDEBAR_PREFS_DEFAULTS.agentTerminalTools,
@@ -3967,9 +3859,7 @@ window.__ModuleLoader__.load({
 				terminalShell: typeof record.terminalShell === "string" ? record.terminalShell : SIDEBAR_PREFS_DEFAULTS.terminalShell,
 				terminalShellArgs: typeof record.terminalShellArgs === "string" ? record.terminalShellArgs : SIDEBAR_PREFS_DEFAULTS.terminalShellArgs,
 				terminalFontSize: typeof record.terminalFontSize === "number" && Number.isFinite(record.terminalFontSize) ? clampTerminalFontSize(record.terminalFontSize) : SIDEBAR_PREFS_DEFAULTS.terminalFontSize,
-				interceptOpenPath: typeof record.interceptOpenPath === "boolean" ? record.interceptOpenPath : SIDEBAR_PREFS_DEFAULTS.interceptOpenPath,
 				editorExplorer: typeof record.editorExplorer === "boolean" ? record.editorExplorer : SIDEBAR_PREFS_DEFAULTS.editorExplorer,
-				changesDiffFloat: typeof record.changesDiffFloat === "boolean" ? record.changesDiffFloat : SIDEBAR_PREFS_DEFAULTS.changesDiffFloat,
 				workspaceFence: typeof record.workspaceFence === "boolean" ? record.workspaceFence : SIDEBAR_PREFS_DEFAULTS.workspaceFence,
 				titleBarScheme: isTitleBarScheme(record.titleBarScheme) ? record.titleBarScheme : record.titleBarCompat === true || hasLegacyStripValue(record.titleBarStripPx) ? "custom" : "auto",
 				titleBarPresetId: typeof record.titleBarPresetId === "string" ? record.titleBarPresetId : SIDEBAR_PREFS_DEFAULTS.titleBarPresetId,
@@ -4137,121 +4027,7 @@ window.__ModuleLoader__.load({
 			return { kind: "binary" };
 		}
 		//#endregion
-		//#region node_modules/react-icons/lib/iconContext.mjs
-		var DefaultContext = {
-			color: void 0,
-			size: void 0,
-			className: void 0,
-			style: void 0,
-			attr: void 0
-		};
-		var IconContext = react.default.createContext && /*#__PURE__*/ react.default.createContext(DefaultContext);
-		//#endregion
-		//#region node_modules/react-icons/lib/iconBase.mjs
-		var _excluded = [
-			"attr",
-			"size",
-			"title"
-		];
-		function _objectWithoutProperties(e, t) {
-			if (null == e) return {};
-			var o, r, i = _objectWithoutPropertiesLoose(e, t);
-			if (Object.getOwnPropertySymbols) {
-				var n = Object.getOwnPropertySymbols(e);
-				for (r = 0; r < n.length; r++) o = n[r], -1 === t.indexOf(o) && {}.propertyIsEnumerable.call(e, o) && (i[o] = e[o]);
-			}
-			return i;
-		}
-		function _objectWithoutPropertiesLoose(r, e) {
-			if (null == r) return {};
-			var t = {};
-			for (var n in r) if ({}.hasOwnProperty.call(r, n)) {
-				if (-1 !== e.indexOf(n)) continue;
-				t[n] = r[n];
-			}
-			return t;
-		}
-		function _extends() {
-			return _extends = Object.assign ? Object.assign.bind() : function(n) {
-				for (var e = 1; e < arguments.length; e++) {
-					var t = arguments[e];
-					for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]);
-				}
-				return n;
-			}, _extends.apply(null, arguments);
-		}
-		function ownKeys(e, r) {
-			var t = Object.keys(e);
-			if (Object.getOwnPropertySymbols) {
-				var o = Object.getOwnPropertySymbols(e);
-				r && (o = o.filter(function(r) {
-					return Object.getOwnPropertyDescriptor(e, r).enumerable;
-				})), t.push.apply(t, o);
-			}
-			return t;
-		}
-		function _objectSpread(e) {
-			for (var r = 1; r < arguments.length; r++) {
-				var t = null != arguments[r] ? arguments[r] : {};
-				r % 2 ? ownKeys(Object(t), !0).forEach(function(r) {
-					_defineProperty(e, r, t[r]);
-				}) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function(r) {
-					Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r));
-				});
-			}
-			return e;
-		}
-		function _defineProperty(e, r, t) {
-			return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
-				value: t,
-				enumerable: !0,
-				configurable: !0,
-				writable: !0
-			}) : e[r] = t, e;
-		}
-		function _toPropertyKey(t) {
-			var i = _toPrimitive(t, "string");
-			return "symbol" == typeof i ? i : i + "";
-		}
-		function _toPrimitive(t, r) {
-			if ("object" != typeof t || !t) return t;
-			var e = t[Symbol.toPrimitive];
-			if (void 0 !== e) {
-				var i = e.call(t, r || "default");
-				if ("object" != typeof i) return i;
-				throw new TypeError("@@toPrimitive must return a primitive value.");
-			}
-			return ("string" === r ? String : Number)(t);
-		}
-		function Tree2Element(tree) {
-			return tree && tree.map((node, i) => /*#__PURE__*/ react.default.createElement(node.tag, _objectSpread({ key: i }, node.attr), Tree2Element(node.child)));
-		}
-		function GenIcon(data) {
-			return (props) => /*#__PURE__*/ react.default.createElement(IconBase, _extends({ attr: _objectSpread({}, data.attr) }, props), Tree2Element(data.child));
-		}
-		function IconBase(props) {
-			var elem = (conf) => {
-				var attr = props.attr, size = props.size, title = props.title, svgProps = _objectWithoutProperties(props, _excluded);
-				var computedSize = size || conf.size || "1em";
-				var className;
-				if (conf.className) className = conf.className;
-				if (props.className) className = (className ? className + " " : "") + props.className;
-				return /*#__PURE__*/ react.default.createElement("svg", _extends({
-					stroke: "currentColor",
-					fill: "currentColor",
-					strokeWidth: "0"
-				}, conf.attr, attr, svgProps, {
-					className,
-					style: _objectSpread(_objectSpread({ color: props.color || conf.color }, conf.style), props.style),
-					height: computedSize,
-					width: computedSize,
-					xmlns: "http://www.w3.org/2000/svg"
-				}), title && /*#__PURE__*/ react.default.createElement("title", null, title), props.children);
-			};
-			return IconContext !== void 0 ? /*#__PURE__*/ react.default.createElement(IconContext.Consumer, null, (conf) => elem(conf)) : elem(DefaultContext);
-		}
-		//#endregion
-		//#region node_modules/react-icons/si/index.mjs
+		//#region node_modules/.pnpm/react-icons@5.7.0_react@18.2.0/node_modules/react-icons/si/index.mjs
 		function SiZedindustries(props) {
 			return GenIcon({
 				"tag": "svg",
@@ -4281,123 +4057,7 @@ window.__ModuleLoader__.load({
 			})(props);
 		}
 		//#endregion
-		//#region node_modules/react-icons/vsc/index.mjs
-		function VscPinned(props) {
-			return GenIcon({
-				"tag": "svg",
-				"attr": {
-					"viewBox": "0 0 16 16",
-					"fill": "currentColor"
-				},
-				"child": [{
-					"tag": "path",
-					"attr": { "d": "M10.0589 2.44511C9.34701 1.73063 8.14697 1.90829 7.67261 2.79839L5.6526 6.58878L2.8419 7.52568C2.6775 7.58048 2.5532 7.71649 2.51339 7.88514C2.47357 8.0538 2.52392 8.23104 2.64646 8.35357L4.79291 10.5L2.14645 13.1465L2 14L2.85356 13.8536L5.50002 11.2071L7.64646 13.3536C7.76899 13.4761 7.94623 13.5265 8.11489 13.4866C8.28354 13.4468 8.41955 13.3225 8.47435 13.1581L9.41143 10.3469L13.1897 8.32423C14.0759 7.84982 14.2538 6.6551 13.5443 5.94305L10.0589 2.44511ZM8.55511 3.2687C8.71323 2.972 9.11324 2.91278 9.35055 3.15094L12.836 6.64889C13.0725 6.88624 13.0131 7.28448 12.7178 7.44262L8.76403 9.55921C8.65137 9.61952 8.56608 9.72068 8.52567 9.84191L7.7815 12.0744L3.92562 8.21853L6.15812 7.47436C6.27966 7.43385 6.38101 7.34823 6.44126 7.23518L8.55511 3.2687Z" },
-					"child": []
-				}]
-			})(props);
-		}
-		function VscPin(props) {
-			return GenIcon({
-				"tag": "svg",
-				"attr": {
-					"viewBox": "0 0 16 16",
-					"fill": "currentColor"
-				},
-				"child": [{
-					"tag": "path",
-					"attr": { "d": "M13.5 3C13.303 3 13.109 3.038 12.923 3.114L8.481 4.967L5.659 4.026C5.505 3.976 5.339 4.001 5.209 4.095C5.078 4.189 5.001 4.339 5.001 4.5V7H1.257L0.5 7.5L1.257 8H5V10.5C5 10.661 5.077 10.812 5.208 10.905C5.338 11 5.504 11.023 5.658 10.974L8.48 10.033L12.925 11.887C13.109 11.962 13.302 12 13.499 12C14.326 12 14.999 11.327 14.999 10.5V4.5C14.999 3.673 14.326 3 13.499 3H13.5ZM14 10.5C14 10.843 13.615 11.09 13.308 10.962L8.693 9.038C8.631 9.013 8.566 9 8.501 9C8.447 9 8.395 9.009 8.343 9.025L6.001 9.806V5.193L8.343 5.974C8.457 6.011 8.581 6.007 8.694 5.961L13.306 4.038C13.629 3.902 14.001 4.156 14.001 4.499V10.499L14 10.5Z" },
-					"child": []
-				}]
-			})(props);
-		}
-		function VscLinkExternal(props) {
-			return GenIcon({
-				"tag": "svg",
-				"attr": {
-					"viewBox": "0 0 16 16",
-					"fill": "currentColor"
-				},
-				"child": [{
-					"tag": "path",
-					"attr": { "d": "M15 9.5V12.5C15 13.879 13.879 15 12.5 15H3.5C2.121 15 1 13.879 1 12.5V3.5C1 2.121 2.121 1 3.5 1H6.5C6.776 1 7 1.224 7 1.5C7 1.776 6.776 2 6.5 2H3.5C2.673 2 2 2.673 2 3.5V12.5C2 13.327 2.673 14 3.5 14H12.5C13.327 14 14 13.327 14 12.5V9.5C14 9.224 14.224 9 14.5 9C14.776 9 15 9.224 15 9.5ZM14.5 1H9.5C9.224 1 9 1.224 9 1.5C9 1.776 9.224 2 9.5 2H13.293L9.147 6.146C8.952 6.341 8.952 6.658 9.147 6.853C9.245 6.951 9.373 6.999 9.501 6.999C9.629 6.999 9.757 6.95 9.855 6.853L14.001 2.707V6.5C14.001 6.776 14.225 7 14.501 7C14.777 7 15.001 6.776 15.001 6.5V1.5C15.001 1.224 14.777 1 14.501 1H14.5Z" },
-					"child": []
-				}]
-			})(props);
-		}
-		function VscFolder(props) {
-			return GenIcon({
-				"tag": "svg",
-				"attr": {
-					"viewBox": "0 0 16 16",
-					"fill": "currentColor"
-				},
-				"child": [{
-					"tag": "path",
-					"attr": { "d": "M2 4.5V6H5.58579C5.71839 6 5.84557 5.94732 5.93934 5.85355L7.29289 4.5L5.93934 3.14645C5.84557 3.05268 5.71839 3 5.58579 3H3.5C2.67157 3 2 3.67157 2 4.5ZM1 4.5C1 3.11929 2.11929 2 3.5 2H5.58579C5.98361 2 6.36514 2.15804 6.64645 2.43934L8.20711 4H12.5C13.8807 4 15 5.11929 15 6.5V11.5C15 12.8807 13.8807 14 12.5 14H3.5C2.11929 14 1 12.8807 1 11.5V4.5ZM2 7V11.5C2 12.3284 2.67157 13 3.5 13H12.5C13.3284 13 14 12.3284 14 11.5V6.5C14 5.67157 13.3284 5 12.5 5H8.20711L6.64645 6.56066C6.36514 6.84197 5.98361 7 5.58579 7H2Z" },
-					"child": []
-				}]
-			})(props);
-		}
-		function VscFolderOpened(props) {
-			return GenIcon({
-				"tag": "svg",
-				"attr": {
-					"viewBox": "0 0 16 16",
-					"fill": "currentColor"
-				},
-				"child": [{
-					"tag": "path",
-					"attr": { "d": "M2 4.5V9.10022L2.92389 7.5C3.45979 6.5718 4.45017 6 5.52196 6L11.9146 6C11.7087 5.4174 11.1531 5 10.5 5H7C6.86739 5 6.74021 4.94732 6.64645 4.85355L4.93934 3.14645C4.84557 3.05268 4.71839 3 4.58579 3H3.5C2.67157 3 2 3.67157 2 4.5ZM7.06895 13.9953C7.04641 13.9984 7.02339 14 7 14H3.5C2.11929 14 1 12.8807 1 11.5V4.5C1 3.11929 2.11929 2 3.5 2H4.58579C4.98361 2 5.36514 2.15804 5.64645 2.43934L7.20711 4H10.5C11.724 4 12.7426 4.87965 12.958 6.04127C14.605 6.34148 15.5443 8.22106 14.6616 9.75L13.0766 12.4953C12.5407 13.4235 11.5503 13.9953 10.4785 13.9953H7.06895ZM5.52196 7C4.80743 7 4.14718 7.3812 3.78991 8L2.20492 10.7453C1.62757 11.7453 2.34926 12.9953 3.50396 12.9953L10.4785 12.9953C11.193 12.9953 11.8533 12.6141 12.2105 11.9953L13.7955 9.25C14.3729 8.25 13.6512 7 12.4965 7L5.52196 7Z" },
-					"child": []
-				}]
-			})(props);
-		}
-		function VscFile(props) {
-			return GenIcon({
-				"tag": "svg",
-				"attr": {
-					"viewBox": "0 0 16 16",
-					"fill": "currentColor"
-				},
-				"child": [{
-					"tag": "path",
-					"attr": { "d": "M5 1C3.89543 1 3 1.89543 3 3V13C3 14.1046 3.89543 15 5 15H11C12.1046 15 13 14.1046 13 13V5.41421C13 5.01639 12.842 4.63486 12.5607 4.35355L9.64645 1.43934C9.36514 1.15804 8.98361 1 8.58579 1H5ZM4 3C4 2.44772 4.44772 2 5 2H8V4.5C8 5.32843 8.67157 6 9.5 6H12V13C12 13.5523 11.5523 14 11 14H5C4.44772 14 4 13.5523 4 13V3ZM11.7929 5H9.5C9.22386 5 9 4.77614 9 4.5V2.20711L11.7929 5Z" },
-					"child": []
-				}]
-			})(props);
-		}
-		//#endregion
 		//#region src/client/icons.tsx
-		/**
-		* Right-panel toggle glyph (the "侧拉" button): a frame with a filled strip
-		* along its RIGHT edge, in the app's outline style (1.5px stroke,
-		* currentColor).
-		*/
-		const IconPanelRightOutline16 = ({ size = 16, className }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-			width: size,
-			height: size,
-			className,
-			viewBox: "0 0 16 16",
-			fill: "none",
-			xmlns: "http://www.w3.org/2000/svg",
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-				x: "1.5",
-				y: "2",
-				width: "13",
-				height: "12",
-				rx: "2.5",
-				stroke: "currentColor",
-				strokeWidth: "1.5"
-			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-				x: "10.5",
-				y: "3.25",
-				width: "2.75",
-				height: "9.5",
-				rx: "1",
-				fill: "currentColor",
-				stroke: "none"
-			})]
-		});
 		/**
 		* Bottom-panel toggle glyph (the "底栏" button): a frame with a filled strip
 		* along its BOTTOM edge, in the app's outline style.
@@ -4426,74 +4086,6 @@ window.__ModuleLoader__.load({
 				fill: "currentColor",
 				stroke: "none"
 			})]
-		});
-		/**
-		* Terminal glyph in the app's outline style (1.5px stroke, currentColor):
-		* a rounded frame with a prompt chevron and underscore cursor.
-		*/
-		const IconTerminalOutline16 = ({ size = 16, className }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-			width: size,
-			height: size,
-			className,
-			viewBox: "0 0 16 16",
-			fill: "none",
-			xmlns: "http://www.w3.org/2000/svg",
-			children: [
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-					x: "1.5",
-					y: "2.5",
-					width: "13",
-					height: "11",
-					rx: "2",
-					stroke: "currentColor",
-					strokeWidth: "1.5"
-				}),
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-					d: "M4.5 6.25 6.75 8 4.5 9.75",
-					stroke: "currentColor",
-					strokeWidth: "1.5",
-					strokeLinecap: "round",
-					strokeLinejoin: "round"
-				}),
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-					d: "M8.5 10.4h3",
-					stroke: "currentColor",
-					strokeWidth: "1.5",
-					strokeLinecap: "round"
-				})
-			]
-		});
-		/** Diff glyph in the app's outline style: a file frame with a plus and a minus row. */
-		const IconDiffOutline16 = ({ size = 16, className }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-			width: size,
-			height: size,
-			className,
-			viewBox: "0 0 16 16",
-			fill: "none",
-			xmlns: "http://www.w3.org/2000/svg",
-			children: [
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-					x: "1.5",
-					y: "1.5",
-					width: "13",
-					height: "13",
-					rx: "2.5",
-					stroke: "currentColor",
-					strokeWidth: "1.5"
-				}),
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-					d: "M4 5h3M5.5 3.5v3",
-					stroke: "currentColor",
-					strokeWidth: "1.5",
-					strokeLinecap: "round"
-				}),
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-					d: "M9.5 12.5h2.5",
-					stroke: "currentColor",
-					strokeWidth: "1.5",
-					strokeLinecap: "round"
-				})
-			]
 		});
 		/**
 		* Stop glyph for the background-job kill button: a filled square in the
@@ -4688,38 +4280,6 @@ window.__ModuleLoader__.load({
 				})
 			]
 		});
-		/** Browser tab glyph: a globe with meridians. */
-		const IconGlobeOutline16 = ({ size = 16, className }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-			width: size,
-			height: size,
-			className,
-			viewBox: "0 0 16 16",
-			fill: "none",
-			xmlns: "http://www.w3.org/2000/svg",
-			children: [
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-					cx: "8",
-					cy: "8",
-					r: "6.5",
-					stroke: "currentColor",
-					strokeWidth: "1.5"
-				}),
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ellipse", {
-					cx: "8",
-					cy: "8",
-					rx: "2.8",
-					ry: "6.5",
-					stroke: "currentColor",
-					strokeWidth: "1.5"
-				}),
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-					d: "M1.5 8h13M8 1.5c-2.4 1.8-2.4 11.2 0 13M8 1.5c2.4 1.8 2.4 11.2 0 13",
-					stroke: "currentColor",
-					strokeWidth: "1.5",
-					strokeLinecap: "round"
-				})
-			]
-		});
 		/** History glyph (thread switcher): a clock with a counterclockwise arrow,
 		*  in the app's outline style — the "past conversations" mark. */
 		const IconHistoryOutline16 = ({ size = 16, className }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
@@ -4797,37 +4357,6 @@ window.__ModuleLoader__.load({
 			fill: "currentColor",
 			xmlns: "http://www.w3.org/2000/svg",
 			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z" })
-		});
-		/**
-		* Free-window glyph in the app's outline style (1.5px stroke, currentColor):
-		* a background frame with a detached rounded mini-window floating over its
-		* top-right — the changes tab's "diff opens as a free window" setting.
-		*/
-		const IconFloatWindowOutline16 = ({ size = 16, className }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-			width: size,
-			height: size,
-			className,
-			viewBox: "0 0 16 16",
-			fill: "none",
-			xmlns: "http://www.w3.org/2000/svg",
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-				x: "1.5",
-				y: "4.5",
-				width: "10",
-				height: "10",
-				rx: "2",
-				stroke: "currentColor",
-				strokeWidth: "1.5"
-			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-				x: "9.5",
-				y: "1.5",
-				width: "5",
-				height: "5",
-				rx: "1.5",
-				stroke: "currentColor",
-				strokeWidth: "1.5",
-				fill: "none"
-			})]
 		});
 		//#endregion
 		//#region src/client/ime-guard.ts
@@ -4965,7 +4494,7 @@ window.__ModuleLoader__.load({
 		/** Sanitize a relative target: absolute paths, traversal, and empty segments
 		*  are rejected (the host enforces the same rules with a 400). */
 		function sanitizeRelativePath(rel) {
-			if (rel === "" || isAbsolutePath(rel)) return void 0;
+			if (rel === "" || isAbsolutePath$1(rel)) return void 0;
 			if (rel.split(/[\\/]/).some((s) => s === "" || s === "." || s === "..")) return void 0;
 			return rel;
 		}
@@ -5228,8 +4757,30 @@ window.__ModuleLoader__.load({
 			})]
 		});
 		function FileTree(props) {
-			const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, onPathRenamed, onPathDeleted, refreshTick, onUploadRequest, busy } = props;
+			const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, onPathRenamed, onPathDeleted, refreshTick, onUploadRequest, busy, service } = props;
 			const [data, setData] = (0, react.useState)({});
+			/**
+			* Registry revision for the file-icon feature: bumps on ANY registry
+			* change (register/dispose of tabs, viewers, or icons — one listener
+			* set) so rows re-resolve their icons. The value itself is unread; the
+			* state bump IS the re-render trigger.
+			*/
+			const [, setIconsVersion] = (0, react.useState)(0);
+			(0, react.useEffect)(() => service?.subscribe(() => {
+				setIconsVersion((version) => version + 1);
+			}), [service]);
+			/**
+			* One file row's leading glyph. The service resolver owns the whole
+			* chain (registered specific ext → built-in glyph map → registered
+			* global default → stock VscFile, with per-factory crash isolation);
+			* without a service the built-in map alone applies.
+			*/
+			const fileRowIcon = (path) => service !== void 0 ? service.fileIcon(path, 14) : builtinFileIcon(path, 14);
+			/**
+			* One directory row's leading glyph: the registered `'folder'` /
+			* `'folder-open'` icon when present, else the built-in VSCodicons glyphs.
+			*/
+			const dirRowIcon = (path, open) => service !== void 0 ? service.folderIcon(path, open, 14) : builtinFolderIcon(open, 14);
 			const dataRef = (0, react.useRef)(data);
 			/** The row whose path was just copied ("copied" label replaces its button). */
 			const [copiedPath, setCopiedPath] = (0, react.useState)(null);
@@ -5604,7 +5155,7 @@ window.__ModuleLoader__.load({
 			const renderRenameRow = (entry, depth) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: clsx(sidebar_module_css_default.explorerRow, sidebar_module_css_default.explorerRenaming),
 				style: { paddingLeft: depth * 22 + 6 },
-				children: [entry.isDir ? expandedSet.has(entry.path) ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 14 }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolder, { size: 14 }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFile, { size: 14 }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+				children: [entry.isDir ? dirRowIcon(entry.path, expandedSet.has(entry.path)) : fileRowIcon(entry.path), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 					ref: renameInputRef,
 					className: sidebar_module_css_default.explorerRenameInput,
 					value: renaming?.value ?? "",
@@ -5683,7 +5234,7 @@ window.__ModuleLoader__.load({
 								openRowMenu(event, entry.path, true);
 							},
 							children: [
-								isOpen ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 14 }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolder, { size: 14 }),
+								dirRowIcon(entry.path, isOpen),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: sidebar_module_css_default.explorerName,
 									children: entry.name
@@ -5722,7 +5273,7 @@ window.__ModuleLoader__.load({
 							openRowMenu(event, entry.path, false);
 						},
 						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFile, { size: 14 }),
+							fileRowIcon(entry.path),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: sidebar_module_css_default.explorerName,
 								children: entry.name
@@ -5777,7 +5328,7 @@ window.__ModuleLoader__.load({
 								openRowMenu(event, root, true);
 							},
 							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(VscFolderOpened, { size: 14 }),
+								dirRowIcon(root, true),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: sidebar_module_css_default.explorerName,
 									children: baseName(root)
@@ -6262,7 +5813,7 @@ window.__ModuleLoader__.load({
 		* intake.
 		*/
 		function TreePanel(props) {
-			const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, onPathRenamed, onPathDeleted, full } = props;
+			const { sessionId, cwd, store, expanded, revealed, onToggle, onOpenFile, onOpenFileNewTab, onOpenFileSide, openWithTargets, openWithPinned, openWithSsh, onOpenWith, onToggleOpenWithPin, onReferenceFile, onPathRenamed, onPathDeleted, full, service } = props;
 			const [query, setQuery] = (0, react.useState)("");
 			const [results, setResults] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
@@ -6467,7 +6018,8 @@ window.__ModuleLoader__.load({
 						onPathDeleted,
 						refreshTick,
 						onUploadRequest: startUpload,
-						busy
+						busy,
+						service
 					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: sidebar_module_css_default.explorerBody,
 						children: [
@@ -6511,15 +6063,12 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/tree-mutations.ts
-		/** Every open tab that carries a file path (either split tree, the bottom
-		*  panel, and free windows — a floating tab is as open as a docked one). */
+		/** Every open tab that carries a file path. */
 		function pathTabsOf(snapshot) {
 			const state = snapshot.state;
 			if (state === void 0) return [];
 			const tabs = [];
-			for (const leaf of allLeaves(state.splits)) tabs.push(...leaf.tabs);
 			for (const leaf of allLeaves(state.bottomSplits)) tabs.push(...leaf.tabs);
-			for (const float of state.floats) tabs.push(float.tab);
 			return tabs.filter((tab) => tab.path !== void 0);
 		}
 		/** Retarget tabs after `oldPath` became `newPath` (title follows the new
@@ -6645,8 +6194,7 @@ window.__ModuleLoader__.load({
 			*/
 			const openFileSide = (absolute) => {
 				store.reduce((state) => {
-					const key = treeOf(state, tab.id);
-					const pane = leafWithTab(state[key], tab.id) ?? firstLeaf(state[key]);
+					const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits);
 					const fresh = {
 						id: mintTabId(),
 						type: "editor",
@@ -6654,10 +6202,10 @@ window.__ModuleLoader__.load({
 						path: absolute,
 						meta: { treeOpen: false }
 					};
-					const { node, leafId } = insertLeafAt(state[key], pane.id, "row", fresh, false);
+					const { node, leafId } = insertLeafAt(state.bottomSplits, pane.id, "row", fresh, false);
 					return {
 						...state,
-						[key]: node,
+						bottomSplits: node,
 						activePane: leafId
 					};
 				});
@@ -6852,7 +6400,8 @@ window.__ModuleLoader__.load({
 					onToggleOpenWithPin: toggleOpenWithPin,
 					onReferenceFile,
 					onPathRenamed,
-					onPathDeleted
+					onPathDeleted,
+					service: ctx.get("betterSidebar")
 				})
 			});
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -6991,7 +6540,8 @@ window.__ModuleLoader__.load({
 							onToggleOpenWithPin: toggleOpenWithPin,
 							onReferenceFile,
 							onPathRenamed,
-							onPathDeleted
+							onPathDeleted,
+							service: ctx.get("betterSidebar")
 						})]
 					})]
 				})]
@@ -7039,8 +6589,8 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
-		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-build/src/client/SideCardSection.module.css.mjs
-		const css$5 = ".hr6vzW_section{flex-direction:column;gap:16px;width:100%;max-width:760px;display:flex}.hr6vzW_intro{color:var(--dsw-alias-label-tertiary);margin:0;padding:0 2px;font-size:13px;line-height:20px}.hr6vzW_group{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:16px;flex-direction:column;flex:none;gap:8px;padding:20px;display:flex}.hr6vzW_groupHeading{color:var(--dsw-alias-label-primary);align-items:baseline;gap:7px;padding:0 2px 6px;font-size:13px;font-weight:600;line-height:20px;display:flex}.hr6vzW_count{background:var(--dsw-alias-accent-soft,var(--dsw-alias-bg-layer-2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:16px}.hr6vzW_grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;display:grid}.hr6vzW_card{border:1px solid var(--dsw-alias-border-l2);min-height:106px;font:inherit;color:inherit;cursor:pointer;background:0 0;border-radius:12px;flex-direction:column;transition:background .12s,border-color .12s;display:flex;position:relative;overflow:hidden}.hr6vzW_card:not(.hr6vzW_cardOn):hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-label-dimmed)}.hr6vzW_cardOn{border-color:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 45%, transparent);background:var(--dsw-alias-interactive-bg-active)}.hr6vzW_cardMain{border-radius:inherit;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;flex-direction:column;flex:1;gap:6px;padding:12px;display:flex}.hr6vzW_cardMain:focus-visible,.hr6vzW_cardSettings:focus-visible,.hr6vzW_rowGear:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:2px}.hr6vzW_cardTop{align-items:center;gap:8px;min-width:0;min-height:28px;display:flex}.hr6vzW_cardIconChip{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);border-radius:8px;flex:none;justify-content:center;align-items:center;display:inline-flex}.hr6vzW_cardOn .hr6vzW_cardIconChip{border-color:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 35%, transparent);background:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 12%, transparent);color:var(--dsw-alias-button-primary-fill)}.hr6vzW_cardTitle{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap;text-overflow:ellipsis;flex:1;font-size:13px;font-weight:600;line-height:20px;overflow:hidden}.hr6vzW_cardOn .hr6vzW_cardTitle{color:var(--dsw-alias-label-primary)}.hr6vzW_cardSwitch{flex:none;align-items:center;display:inline-flex}.hr6vzW_cardSwitchTrack{box-sizing:border-box;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;align-items:center;width:30px;height:16px;padding:2px;transition:background .15s,border-color .15s;display:inline-flex}.hr6vzW_cardSwitchThumb{background:var(--dsw-alias-label-tertiary);border-radius:50%;width:10px;height:10px;transition:transform .15s,background .15s;display:block}.hr6vzW_cardOn .hr6vzW_cardSwitchTrack{border-color:var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill)}.hr6vzW_cardOn .hr6vzW_cardSwitchThumb{background:var(--dsw-alias-bg-layer-3);transform:translate(14px)}.hr6vzW_cardDesc{color:var(--dsw-alias-label-tertiary);white-space:nowrap;text-overflow:ellipsis;font-size:11px;line-height:16px;overflow:hidden}.hr6vzW_addCard{border-style:dashed;border-color:var(--dsw-alias-border-l2);text-align:left;align-items:flex-start;padding:12px}.hr6vzW_addCard:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-label-primary)}.hr6vzW_addCard:hover .hr6vzW_cardTitle{color:var(--dsw-alias-label-primary)}.hr6vzW_addCard:hover .hr6vzW_cardIconChip{border-color:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 35%, transparent);color:var(--dsw-alias-button-primary-fill)}.hr6vzW_addCard:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:2px}.hr6vzW_cardOn .hr6vzW_cardDesc{color:var(--dsw-alias-label-secondary)}.hr6vzW_cardSettings{border:0;border-top:1px solid var(--dsw-alias-border-l1);width:100%;color:var(--dsw-alias-label-secondary);font:inherit;text-align:left;cursor:pointer;background:0 0;align-items:center;gap:6px;padding:6px 12px;font-size:11px;font-weight:500;line-height:16px;transition:background .12s,color .12s;display:flex}.hr6vzW_cardOn .hr6vzW_cardSettings{border-top-color:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 18%, transparent)}.hr6vzW_cardSettings:hover{background:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-brand-primary)}.hr6vzW_rowGear{border:1px solid var(--dsw-alias-border-l2);width:22px;height:22px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:6px;flex:none;justify-content:center;align-items:center;padding:0;transition:background .12s,border-color .12s,color .12s;display:inline-flex}.hr6vzW_rowGear:hover{border-color:var(--dsw-alias-interactive-bg-hover-accent);background:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-brand-primary)}.hr6vzW_row{border-bottom:1px solid var(--dsw-alias-border-l2);justify-content:space-between;align-items:center;gap:16px;padding:12px 2px;display:flex}.hr6vzW_row:last-child{border-bottom:none}.hr6vzW_rowText{flex-direction:column;gap:4px;min-width:0;display:flex}.hr6vzW_title{color:var(--dsw-alias-label-primary);font-size:14px;line-height:22px}.hr6vzW_desc{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.hr6vzW_switch{cursor:pointer;flex:none;display:inline-flex;position:relative}.hr6vzW_switchInput{opacity:0;width:1px;height:1px;margin:0;position:absolute}.hr6vzW_switchTrack{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:10px;align-items:center;width:36px;height:20px;padding:2px;transition:background .15s,border-color .15s;display:inline-flex}.hr6vzW_switchThumb{background:var(--dsw-alias-label-tertiary);border-radius:50%;width:14px;height:14px;transition:transform .15s,background .15s;display:block}.hr6vzW_switch:hover .hr6vzW_switchTrack{border-color:var(--dsw-alias-label-dimmed)}.hr6vzW_switchInput:checked+.hr6vzW_switchTrack{border-color:var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill)}.hr6vzW_switchInput:checked+.hr6vzW_switchTrack .hr6vzW_switchThumb{background:var(--dsw-alias-bg-layer-3);transform:translate(16px)}.hr6vzW_switchInput:focus-visible+.hr6vzW_switchTrack{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}.hr6vzW_control{flex:none;align-items:center;gap:6px;display:flex}.hr6vzW_percentInput{width:76px}.hr6vzW_typedInput{width:200px}.hr6vzW_typedInputNumber{width:76px}.hr6vzW_selectAnchor{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-width:220px;color:var(--dsw-alias-label-primary);cursor:pointer;border-radius:8px;align-items:center;gap:6px;padding:4px 8px;font-size:13px;line-height:20px;display:flex}.hr6vzW_selectAnchor:hover{border-color:var(--dsw-alias-label-dimmed)}.hr6vzW_selectAnchorIcon{flex:none;display:inline-flex}.hr6vzW_selectAnchorText{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.hr6vzW_selectOption{align-items:center;gap:10px;min-width:200px;display:flex}.hr6vzW_selectOptionIcon{color:var(--dsw-alias-label-secondary);flex:none;display:inline-flex}.hr6vzW_selectOptionText{flex-direction:column;min-width:0;display:flex}.hr6vzW_suffix{color:var(--dsw-alias-label-secondary);font-size:14px;line-height:22px}.hr6vzW_cssTextArea{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);width:100%;min-height:120px;color:var(--dsw-alias-label-primary);font-family:var(--ds-font-family-code,monospace);resize:vertical;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.6}.hr6vzW_cssTextArea:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}.hr6vzW_popupDialog.hr6vzW_popupDialog{width:min(460px,100%)}.hr6vzW_popupRows{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:var(--dsw-alias-scrollbar-bg-l2,transparent) transparent;flex-direction:column;gap:8px;width:100%;max-height:min(52vh,440px);padding-right:4px;display:flex;overflow:hidden auto}.hr6vzW_popupRows::-webkit-scrollbar{width:6px}.hr6vzW_popupRows::-webkit-scrollbar-thumb{background:var(--dsw-alias-scrollbar-bg-l2,var(--dsw-alias-border-l2));border-radius:3px}.hr6vzW_popupRows::-webkit-scrollbar-thumb:hover{background:var(--dsw-alias-scrollbar-hover-l2,var(--dsw-alias-label-dimmed))}.hr6vzW_popupRow{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;flex:none;justify-content:space-between;align-items:center;gap:16px;min-width:0;padding:12px 14px;transition:border-color .16s,background .16s;display:flex}.hr6vzW_popupRow:hover{border-color:var(--dsw-alias-label-dimmed)}.hr6vzW_done{appearance:none;font:inherit;cursor:pointer;background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3);border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.hr6vzW_done:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.hr6vzW_error{color:var(--dsw-alias-state-error-primary);padding:10px 0 2px;font-size:12px;line-height:17px}.hr6vzW_pluginModal.hr6vzW_pluginModal{width:min(560px,100%)}.hr6vzW_pluginList{flex-direction:column;gap:12px;width:100%;display:flex}.hr6vzW_pluginTopicBtn{appearance:none;border:1px solid var(--dsw-alias-border-l2);width:100%;font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);cursor:pointer;border-radius:8px;padding:6px 12px;font-size:12px;line-height:18px}.hr6vzW_pluginTopicBtn:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-label-primary)}.hr6vzW_pluginTopicBtn:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:1px}.hr6vzW_pluginEmpty{color:var(--dsw-alias-label-tertiary);padding:20px 2px;font-size:12px;line-height:18px}.hr6vzW_pluginEntry{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:12px;flex-direction:column;gap:4px;padding:12px;display:flex}.hr6vzW_pluginEntryHead{justify-content:space-between;align-items:center;gap:12px;display:flex}.hr6vzW_pluginEntryActions{flex:none;align-items:center;gap:6px;display:inline-flex}.hr6vzW_pluginJumpBtn{appearance:none;border:1px solid var(--dsw-alias-border-l2);font:inherit;cursor:pointer;color:var(--dsw-alias-label-secondary);background:0 0;border-radius:8px;flex:none;padding:3px 12px;font-size:12px;line-height:1.5}.hr6vzW_pluginJumpBtn:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-label-primary)}.hr6vzW_pluginJumpBtn:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:1px}.hr6vzW_pluginName{appearance:none;min-width:0;font:inherit;color:var(--dsw-alias-label-primary);text-align:left;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;background:0 0;border:0;padding:0;font-size:13px;font-weight:600;line-height:20px;text-decoration:none;overflow:hidden}.hr6vzW_pluginName:hover{color:var(--dsw-alias-button-primary-fill);text-decoration:underline}.hr6vzW_pluginDesc{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}.hr6vzW_pluginInstall{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);white-space:nowrap;border-radius:8px;padding:6px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:16px;display:block;overflow-x:auto}.hr6vzW_pluginCopyBtn{appearance:none;font:inherit;cursor:pointer;background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3);border:1px solid #0000;border-radius:8px;flex:none;padding:3px 12px;font-size:12px;line-height:1.5}.hr6vzW_pluginCopyBtn:hover{background:var(--dsw-alias-button-primary-hover)}.hr6vzW_pluginCopyBtn:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}@media (prefers-reduced-motion:reduce){.hr6vzW_card,.hr6vzW_cardSettings,.hr6vzW_cardSwitchTrack,.hr6vzW_cardSwitchThumb,.hr6vzW_rowGear,.hr6vzW_popupRow,.hr6vzW_switchTrack,.hr6vzW_switchThumb{transition:none}}.hr6vzW_versionBadge{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:999px;align-self:flex-start;align-items:center;gap:8px;padding:4px 12px 4px 14px;font-size:12px;line-height:18px;display:inline-flex}.hr6vzW_versionBadgeName{color:var(--dsw-alias-label-primary);font-weight:600}.hr6vzW_versionBadgeTag{background:var(--dsw-alias-accent-soft,var(--dsw-alias-border-l2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;border-radius:999px;padding:1px 8px}.hr6vzW_pluginSearch{box-sizing:border-box;appearance:none;border:1px solid var(--dsw-alias-border-l2);width:100%;font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border-radius:8px;padding:6px 10px;font-size:12px;line-height:18px}.hr6vzW_pluginSearch::placeholder{color:var(--dsw-alias-label-tertiary)}.hr6vzW_pluginSearch:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:1px}.hr6vzW_pluginEntries{flex-direction:column;gap:10px;max-height:46vh;padding-right:2px;display:flex;overflow:hidden auto}.hr6vzW_pluginGroup{flex-direction:column;gap:8px;display:flex}.hr6vzW_pluginGroupHeading{color:var(--dsw-alias-label-secondary);padding:2px 2px 0;font-size:12px;font-weight:600;line-height:18px}.hr6vzW_openWithEditorRow{grid-template-columns:1fr 1.5fr auto auto;align-items:center;gap:8px;min-width:0;display:grid}.hr6vzW_openWithEditorInput,.hr6vzW_openWithEditorTemplate{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);width:100%;min-width:0;color:var(--dsw-alias-label-primary);font:inherit;border-radius:8px;padding:5px 8px;font-size:13px;line-height:20px}.hr6vzW_openWithEditorInput:focus-visible,.hr6vzW_openWithEditorTemplate:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:1px}.hr6vzW_openWithFamily{color:var(--dsw-alias-label-secondary);white-space:nowrap;cursor:pointer;align-items:center;gap:5px;font-size:12px;display:inline-flex}.hr6vzW_openWithRemove{color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:8px;justify-content:center;align-items:center;padding:4px;display:inline-flex}.hr6vzW_openWithRemove:hover{color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-2)}.hr6vzW_openWithHint{color:var(--dsw-alias-state-error-primary);padding:0 2px;font-size:12px;line-height:17px}";
+		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-source/src/client/SideCardSection.module.css.mjs
+		const css$5 = ".KP94Mq_section{flex-direction:column;gap:16px;width:100%;max-width:760px;display:flex}.KP94Mq_intro{color:var(--dsw-alias-label-tertiary);margin:0;padding:0 2px;font-size:13px;line-height:20px}.KP94Mq_group{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:16px;flex-direction:column;flex:none;gap:8px;padding:20px;display:flex}.KP94Mq_groupHeading{color:var(--dsw-alias-label-primary);align-items:baseline;gap:7px;padding:0 2px 6px;font-size:13px;font-weight:600;line-height:20px;display:flex}.KP94Mq_count{background:var(--dsw-alias-accent-soft,var(--dsw-alias-bg-layer-2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:16px}.KP94Mq_grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;display:grid}.KP94Mq_card{border:1px solid var(--dsw-alias-border-l2);min-height:106px;font:inherit;color:inherit;cursor:pointer;background:0 0;border-radius:12px;flex-direction:column;transition:background .12s,border-color .12s;display:flex;position:relative;overflow:hidden}.KP94Mq_card:not(.KP94Mq_cardOn):hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-label-dimmed)}.KP94Mq_cardOn{border-color:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 45%, transparent);background:var(--dsw-alias-interactive-bg-active)}.KP94Mq_cardMain{border-radius:inherit;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;flex-direction:column;flex:1;gap:6px;padding:12px;display:flex}.KP94Mq_cardMain:focus-visible,.KP94Mq_cardSettings:focus-visible,.KP94Mq_rowGear:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:2px}.KP94Mq_cardTop{align-items:center;gap:8px;min-width:0;min-height:28px;display:flex}.KP94Mq_cardIconChip{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);border-radius:8px;flex:none;justify-content:center;align-items:center;display:inline-flex}.KP94Mq_cardOn .KP94Mq_cardIconChip{border-color:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 35%, transparent);background:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 12%, transparent);color:var(--dsw-alias-button-primary-fill)}.KP94Mq_cardTitle{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap;text-overflow:ellipsis;flex:1;font-size:13px;font-weight:600;line-height:20px;overflow:hidden}.KP94Mq_cardOn .KP94Mq_cardTitle{color:var(--dsw-alias-label-primary)}.KP94Mq_cardSwitch{flex:none;align-items:center;display:inline-flex}.KP94Mq_cardSwitchTrack{box-sizing:border-box;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;align-items:center;width:30px;height:16px;padding:2px;transition:background .15s,border-color .15s;display:inline-flex}.KP94Mq_cardSwitchThumb{background:var(--dsw-alias-label-tertiary);border-radius:50%;width:10px;height:10px;transition:transform .15s,background .15s;display:block}.KP94Mq_cardOn .KP94Mq_cardSwitchTrack{border-color:var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill)}.KP94Mq_cardOn .KP94Mq_cardSwitchThumb{background:var(--dsw-alias-bg-layer-3);transform:translate(14px)}.KP94Mq_cardDesc{color:var(--dsw-alias-label-tertiary);white-space:nowrap;text-overflow:ellipsis;font-size:11px;line-height:16px;overflow:hidden}.KP94Mq_addCard{border-style:dashed;border-color:var(--dsw-alias-border-l2);text-align:left;align-items:flex-start;padding:12px}.KP94Mq_addCard:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-label-primary)}.KP94Mq_addCard:hover .KP94Mq_cardTitle{color:var(--dsw-alias-label-primary)}.KP94Mq_addCard:hover .KP94Mq_cardIconChip{border-color:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 35%, transparent);color:var(--dsw-alias-button-primary-fill)}.KP94Mq_addCard:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:2px}.KP94Mq_cardOn .KP94Mq_cardDesc{color:var(--dsw-alias-label-secondary)}.KP94Mq_cardSettings{border:0;border-top:1px solid var(--dsw-alias-border-l1);width:100%;color:var(--dsw-alias-label-secondary);font:inherit;text-align:left;cursor:pointer;background:0 0;align-items:center;gap:6px;padding:6px 12px;font-size:11px;font-weight:500;line-height:16px;transition:background .12s,color .12s;display:flex}.KP94Mq_cardOn .KP94Mq_cardSettings{border-top-color:color-mix(in srgb, var(--dsw-alias-button-primary-fill) 18%, transparent)}.KP94Mq_cardSettings:hover{background:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-brand-primary)}.KP94Mq_rowGear{border:1px solid var(--dsw-alias-border-l2);width:22px;height:22px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:6px;flex:none;justify-content:center;align-items:center;padding:0;transition:background .12s,border-color .12s,color .12s;display:inline-flex}.KP94Mq_rowGear:hover{border-color:var(--dsw-alias-interactive-bg-hover-accent);background:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-brand-primary)}.KP94Mq_row{border-bottom:1px solid var(--dsw-alias-border-l2);justify-content:space-between;align-items:center;gap:16px;padding:12px 2px;display:flex}.KP94Mq_row:last-child{border-bottom:none}.KP94Mq_rowText{flex-direction:column;gap:4px;min-width:0;display:flex}.KP94Mq_title{color:var(--dsw-alias-label-primary);font-size:14px;line-height:22px}.KP94Mq_desc{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}.KP94Mq_switch{cursor:pointer;flex:none;display:inline-flex;position:relative}.KP94Mq_switchInput{opacity:0;width:1px;height:1px;margin:0;position:absolute}.KP94Mq_switchTrack{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:10px;align-items:center;width:36px;height:20px;padding:2px;transition:background .15s,border-color .15s;display:inline-flex}.KP94Mq_switchThumb{background:var(--dsw-alias-label-tertiary);border-radius:50%;width:14px;height:14px;transition:transform .15s,background .15s;display:block}.KP94Mq_switch:hover .KP94Mq_switchTrack{border-color:var(--dsw-alias-label-dimmed)}.KP94Mq_switchInput:checked+.KP94Mq_switchTrack{border-color:var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill)}.KP94Mq_switchInput:checked+.KP94Mq_switchTrack .KP94Mq_switchThumb{background:var(--dsw-alias-bg-layer-3);transform:translate(16px)}.KP94Mq_switchInput:focus-visible+.KP94Mq_switchTrack{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}.KP94Mq_control{flex:none;align-items:center;gap:6px;display:flex}.KP94Mq_percentInput{width:76px}.KP94Mq_typedInput{width:200px}.KP94Mq_typedInputNumber{width:76px}.KP94Mq_selectAnchor{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-width:220px;color:var(--dsw-alias-label-primary);cursor:pointer;border-radius:8px;align-items:center;gap:6px;padding:4px 8px;font-size:13px;line-height:20px;display:flex}.KP94Mq_selectAnchor:hover{border-color:var(--dsw-alias-label-dimmed)}.KP94Mq_selectAnchorIcon{flex:none;display:inline-flex}.KP94Mq_selectAnchorText{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.KP94Mq_selectOption{align-items:center;gap:10px;min-width:200px;display:flex}.KP94Mq_selectOptionIcon{color:var(--dsw-alias-label-secondary);flex:none;display:inline-flex}.KP94Mq_selectOptionText{flex-direction:column;min-width:0;display:flex}.KP94Mq_suffix{color:var(--dsw-alias-label-secondary);font-size:14px;line-height:22px}.KP94Mq_cssTextArea{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);width:100%;min-height:120px;color:var(--dsw-alias-label-primary);font-family:var(--ds-font-family-code,monospace);resize:vertical;border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.6}.KP94Mq_cssTextArea:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}.KP94Mq_popupDialog.KP94Mq_popupDialog{width:min(460px,100%)}.KP94Mq_popupRows{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:var(--dsw-alias-scrollbar-bg-l2,transparent) transparent;flex-direction:column;gap:8px;width:100%;max-height:min(52vh,440px);padding-right:4px;display:flex;overflow:hidden auto}.KP94Mq_popupRows::-webkit-scrollbar{width:6px}.KP94Mq_popupRows::-webkit-scrollbar-thumb{background:var(--dsw-alias-scrollbar-bg-l2,var(--dsw-alias-border-l2));border-radius:3px}.KP94Mq_popupRows::-webkit-scrollbar-thumb:hover{background:var(--dsw-alias-scrollbar-hover-l2,var(--dsw-alias-label-dimmed))}.KP94Mq_popupRow{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;flex:none;justify-content:space-between;align-items:center;gap:16px;min-width:0;padding:12px 14px;transition:border-color .16s,background .16s;display:flex}.KP94Mq_popupRow:hover{border-color:var(--dsw-alias-label-dimmed)}.KP94Mq_done{appearance:none;font:inherit;cursor:pointer;background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3);border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.KP94Mq_done:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.KP94Mq_error{color:var(--dsw-alias-state-error-primary);padding:10px 0 2px;font-size:12px;line-height:17px}.KP94Mq_pluginModal.KP94Mq_pluginModal{width:min(560px,100%)}.KP94Mq_pluginList{flex-direction:column;gap:12px;width:100%;display:flex}.KP94Mq_pluginTopicBtn{appearance:none;border:1px solid var(--dsw-alias-border-l2);width:100%;font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);cursor:pointer;border-radius:8px;padding:6px 12px;font-size:12px;line-height:18px}.KP94Mq_pluginTopicBtn:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-label-primary)}.KP94Mq_pluginTopicBtn:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:1px}.KP94Mq_pluginEmpty{color:var(--dsw-alias-label-tertiary);padding:20px 2px;font-size:12px;line-height:18px}.KP94Mq_pluginEntry{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:12px;flex-direction:column;gap:4px;padding:12px;display:flex}.KP94Mq_pluginEntryHead{justify-content:space-between;align-items:center;gap:12px;display:flex}.KP94Mq_pluginEntryActions{flex:none;align-items:center;gap:6px;display:inline-flex}.KP94Mq_pluginJumpBtn{appearance:none;border:1px solid var(--dsw-alias-border-l2);font:inherit;cursor:pointer;color:var(--dsw-alias-label-secondary);background:0 0;border-radius:8px;flex:none;padding:3px 12px;font-size:12px;line-height:1.5}.KP94Mq_pluginJumpBtn:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-interactive-bg-hover-accent);color:var(--dsw-alias-label-primary)}.KP94Mq_pluginJumpBtn:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:1px}.KP94Mq_pluginName{appearance:none;min-width:0;font:inherit;color:var(--dsw-alias-label-primary);text-align:left;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;background:0 0;border:0;padding:0;font-size:13px;font-weight:600;line-height:20px;text-decoration:none;overflow:hidden}.KP94Mq_pluginName:hover{color:var(--dsw-alias-button-primary-fill);text-decoration:underline}.KP94Mq_pluginDesc{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px}.KP94Mq_pluginInstall{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);white-space:nowrap;border-radius:8px;padding:6px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:16px;display:block;overflow-x:auto}.KP94Mq_pluginCopyBtn{appearance:none;font:inherit;cursor:pointer;background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3);border:1px solid #0000;border-radius:8px;flex:none;padding:3px 12px;font-size:12px;line-height:1.5}.KP94Mq_pluginCopyBtn:hover{background:var(--dsw-alias-button-primary-hover)}.KP94Mq_pluginCopyBtn:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}@media (prefers-reduced-motion:reduce){.KP94Mq_card,.KP94Mq_cardSettings,.KP94Mq_cardSwitchTrack,.KP94Mq_cardSwitchThumb,.KP94Mq_rowGear,.KP94Mq_popupRow,.KP94Mq_switchTrack,.KP94Mq_switchThumb{transition:none}}.KP94Mq_versionBadge{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);border-radius:999px;align-self:flex-start;align-items:center;gap:8px;padding:4px 12px 4px 14px;font-size:12px;line-height:18px;display:inline-flex}.KP94Mq_versionBadgeName{color:var(--dsw-alias-label-primary);font-weight:600}.KP94Mq_versionBadgeTag{background:var(--dsw-alias-accent-soft,var(--dsw-alias-border-l2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;border-radius:999px;padding:1px 8px}.KP94Mq_pluginSearch{box-sizing:border-box;appearance:none;border:1px solid var(--dsw-alias-border-l2);width:100%;font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border-radius:8px;padding:6px 10px;font-size:12px;line-height:18px}.KP94Mq_pluginSearch::placeholder{color:var(--dsw-alias-label-tertiary)}.KP94Mq_pluginSearch:focus-visible{outline:2px solid var(--dsw-alias-border-l4);outline-offset:1px}.KP94Mq_pluginEntries{flex-direction:column;gap:10px;max-height:46vh;padding-right:2px;display:flex;overflow:hidden auto}.KP94Mq_pluginGroup{flex-direction:column;gap:8px;display:flex}.KP94Mq_pluginGroupHeading{color:var(--dsw-alias-label-secondary);padding:2px 2px 0;font-size:12px;font-weight:600;line-height:18px}.KP94Mq_openWithEditorRow{grid-template-columns:1fr 1.5fr auto auto;align-items:center;gap:8px;min-width:0;display:grid}.KP94Mq_openWithEditorInput,.KP94Mq_openWithEditorTemplate{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);width:100%;min-width:0;color:var(--dsw-alias-label-primary);font:inherit;border-radius:8px;padding:5px 8px;font-size:13px;line-height:20px}.KP94Mq_openWithEditorInput:focus-visible,.KP94Mq_openWithEditorTemplate:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:1px}.KP94Mq_openWithFamily{color:var(--dsw-alias-label-secondary);white-space:nowrap;cursor:pointer;align-items:center;gap:5px;font-size:12px;display:inline-flex}.KP94Mq_openWithRemove{color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:8px;justify-content:center;align-items:center;padding:4px;display:inline-flex}.KP94Mq_openWithRemove:hover{color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-2)}.KP94Mq_openWithHint{color:var(--dsw-alias-state-error-primary);padding:0 2px;font-size:12px;line-height:17px}";
 		const tagId$5 = "dsh-external/dsh-better-sidebar/SideCardSection.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
 			const tag = document.createElement("style");
@@ -7050,75 +6600,75 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var SideCardSection_module_css_default = {
-			"popupRows": "hr6vzW_popupRows",
-			"count": "hr6vzW_count",
-			"pluginName": "hr6vzW_pluginName",
-			"selectAnchorIcon": "hr6vzW_selectAnchorIcon",
-			"percentInput": "hr6vzW_percentInput",
-			"switch": "hr6vzW_switch",
-			"cardDesc": "hr6vzW_cardDesc",
-			"versionBadge": "hr6vzW_versionBadge",
-			"pluginEntries": "hr6vzW_pluginEntries",
-			"grid": "hr6vzW_grid",
-			"cardTitle": "hr6vzW_cardTitle",
-			"typedInput": "hr6vzW_typedInput",
-			"openWithHint": "hr6vzW_openWithHint",
-			"pluginInstall": "hr6vzW_pluginInstall",
-			"pluginTopicBtn": "hr6vzW_pluginTopicBtn",
-			"popupRow": "hr6vzW_popupRow",
-			"switchThumb": "hr6vzW_switchThumb",
-			"row": "hr6vzW_row",
-			"pluginEntryActions": "hr6vzW_pluginEntryActions",
-			"desc": "hr6vzW_desc",
-			"openWithEditorTemplate": "hr6vzW_openWithEditorTemplate",
-			"pluginCopyBtn": "hr6vzW_pluginCopyBtn",
-			"selectAnchor": "hr6vzW_selectAnchor",
-			"cardSwitch": "hr6vzW_cardSwitch",
-			"cardMain": "hr6vzW_cardMain",
-			"popupDialog": "hr6vzW_popupDialog",
-			"rowText": "hr6vzW_rowText",
-			"control": "hr6vzW_control",
-			"openWithEditorRow": "hr6vzW_openWithEditorRow",
-			"pluginList": "hr6vzW_pluginList",
-			"pluginJumpBtn": "hr6vzW_pluginJumpBtn",
-			"cardOn": "hr6vzW_cardOn",
-			"pluginEntry": "hr6vzW_pluginEntry",
-			"pluginEmpty": "hr6vzW_pluginEmpty",
-			"pluginModal": "hr6vzW_pluginModal",
-			"pluginGroup": "hr6vzW_pluginGroup",
-			"pluginDesc": "hr6vzW_pluginDesc",
-			"pluginEntryHead": "hr6vzW_pluginEntryHead",
-			"suffix": "hr6vzW_suffix",
-			"versionBadgeTag": "hr6vzW_versionBadgeTag",
-			"error": "hr6vzW_error",
-			"versionBadgeName": "hr6vzW_versionBadgeName",
-			"switchInput": "hr6vzW_switchInput",
-			"selectOptionText": "hr6vzW_selectOptionText",
-			"card": "hr6vzW_card",
-			"intro": "hr6vzW_intro",
-			"cardTop": "hr6vzW_cardTop",
-			"cardSwitchTrack": "hr6vzW_cardSwitchTrack",
-			"selectAnchorText": "hr6vzW_selectAnchorText",
-			"selectOptionIcon": "hr6vzW_selectOptionIcon",
-			"switchTrack": "hr6vzW_switchTrack",
-			"openWithFamily": "hr6vzW_openWithFamily",
-			"section": "hr6vzW_section",
-			"title": "hr6vzW_title",
-			"done": "hr6vzW_done",
-			"cardSwitchThumb": "hr6vzW_cardSwitchThumb",
-			"pluginGroupHeading": "hr6vzW_pluginGroupHeading",
-			"typedInputNumber": "hr6vzW_typedInputNumber",
-			"selectOption": "hr6vzW_selectOption",
-			"cssTextArea": "hr6vzW_cssTextArea",
-			"cardSettings": "hr6vzW_cardSettings",
-			"pluginSearch": "hr6vzW_pluginSearch",
-			"rowGear": "hr6vzW_rowGear",
-			"groupHeading": "hr6vzW_groupHeading",
-			"addCard": "hr6vzW_addCard",
-			"openWithEditorInput": "hr6vzW_openWithEditorInput",
-			"group": "hr6vzW_group",
-			"cardIconChip": "hr6vzW_cardIconChip",
-			"openWithRemove": "hr6vzW_openWithRemove"
+			"suffix": "KP94Mq_suffix",
+			"typedInputNumber": "KP94Mq_typedInputNumber",
+			"cardTop": "KP94Mq_cardTop",
+			"addCard": "KP94Mq_addCard",
+			"selectAnchor": "KP94Mq_selectAnchor",
+			"count": "KP94Mq_count",
+			"cardSwitchThumb": "KP94Mq_cardSwitchThumb",
+			"pluginEntryHead": "KP94Mq_pluginEntryHead",
+			"cardMain": "KP94Mq_cardMain",
+			"pluginTopicBtn": "KP94Mq_pluginTopicBtn",
+			"selectAnchorText": "KP94Mq_selectAnchorText",
+			"pluginName": "KP94Mq_pluginName",
+			"popupRows": "KP94Mq_popupRows",
+			"openWithEditorInput": "KP94Mq_openWithEditorInput",
+			"selectOption": "KP94Mq_selectOption",
+			"selectOptionText": "KP94Mq_selectOptionText",
+			"versionBadge": "KP94Mq_versionBadge",
+			"grid": "KP94Mq_grid",
+			"cardIconChip": "KP94Mq_cardIconChip",
+			"intro": "KP94Mq_intro",
+			"selectOptionIcon": "KP94Mq_selectOptionIcon",
+			"pluginJumpBtn": "KP94Mq_pluginJumpBtn",
+			"openWithHint": "KP94Mq_openWithHint",
+			"rowText": "KP94Mq_rowText",
+			"cardOn": "KP94Mq_cardOn",
+			"percentInput": "KP94Mq_percentInput",
+			"selectAnchorIcon": "KP94Mq_selectAnchorIcon",
+			"pluginSearch": "KP94Mq_pluginSearch",
+			"title": "KP94Mq_title",
+			"typedInput": "KP94Mq_typedInput",
+			"cardSettings": "KP94Mq_cardSettings",
+			"popupRow": "KP94Mq_popupRow",
+			"versionBadgeTag": "KP94Mq_versionBadgeTag",
+			"switchThumb": "KP94Mq_switchThumb",
+			"openWithEditorRow": "KP94Mq_openWithEditorRow",
+			"switch": "KP94Mq_switch",
+			"pluginEntries": "KP94Mq_pluginEntries",
+			"pluginInstall": "KP94Mq_pluginInstall",
+			"card": "KP94Mq_card",
+			"openWithEditorTemplate": "KP94Mq_openWithEditorTemplate",
+			"switchTrack": "KP94Mq_switchTrack",
+			"popupDialog": "KP94Mq_popupDialog",
+			"versionBadgeName": "KP94Mq_versionBadgeName",
+			"cardSwitch": "KP94Mq_cardSwitch",
+			"row": "KP94Mq_row",
+			"rowGear": "KP94Mq_rowGear",
+			"control": "KP94Mq_control",
+			"cardDesc": "KP94Mq_cardDesc",
+			"pluginCopyBtn": "KP94Mq_pluginCopyBtn",
+			"section": "KP94Mq_section",
+			"pluginList": "KP94Mq_pluginList",
+			"cssTextArea": "KP94Mq_cssTextArea",
+			"pluginGroup": "KP94Mq_pluginGroup",
+			"openWithRemove": "KP94Mq_openWithRemove",
+			"group": "KP94Mq_group",
+			"done": "KP94Mq_done",
+			"pluginEntryActions": "KP94Mq_pluginEntryActions",
+			"groupHeading": "KP94Mq_groupHeading",
+			"desc": "KP94Mq_desc",
+			"pluginModal": "KP94Mq_pluginModal",
+			"pluginEmpty": "KP94Mq_pluginEmpty",
+			"error": "KP94Mq_error",
+			"pluginGroupHeading": "KP94Mq_pluginGroupHeading",
+			"switchInput": "KP94Mq_switchInput",
+			"cardSwitchTrack": "KP94Mq_cardSwitchTrack",
+			"pluginDesc": "KP94Mq_pluginDesc",
+			"pluginEntry": "KP94Mq_pluginEntry",
+			"cardTitle": "KP94Mq_cardTitle",
+			"openWithFamily": "KP94Mq_openWithFamily"
 		};
 		//#endregion
 		//#region src/client/open-with-settings.tsx
@@ -7418,8 +6968,8 @@ window.__ModuleLoader__.load({
 			]);
 		}
 		//#endregion
-		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-build/src/client/changes/changes.module.css.mjs
-		const css$4 = "._7ENl3W_root{background:var(--dsw-alias-bg-base);height:100%;min-height:0;color:var(--dsw-alias-label-primary);flex-direction:column;font-size:12px;display:flex}._7ENl3W_lensBar{flex:none;align-items:center;padding:8px 8px 4px 12px;display:flex}._7ENl3W_lensSwitch{border:1px solid var(--dsw-alias-border-l2);border-radius:8px;gap:2px;padding:2px;display:inline-flex}._7ENl3W_lensButton{color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;background:0 0;border:0;border-radius:6px;padding:2px 10px}._7ENl3W_lensButton:hover{color:var(--dsw-alias-label-primary)}._7ENl3W_lensButton[data-active=true]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary)}._7ENl3W_git{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden auto}._7ENl3W_gitHeader{flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}._7ENl3W_gitWorktreeRow{flex:none;align-items:center;gap:8px;padding:6px 8px 0 12px;display:flex}._7ENl3W_gitWorktreeLabel{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);flex:none}._7ENl3W_gitBranchSelect{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);min-width:0;height:26px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 6px}._7ENl3W_gitSection{border-top:1px solid var(--dsw-alias-border-l1)}._7ENl3W_gitSectionHeader{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary);text-transform:uppercase;justify-content:space-between;align-items:center;padding:6px 12px 4px;display:flex}._7ENl3W_gitLink{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-brand-primary);cursor:pointer;background:0 0;border:none;padding:0}._7ENl3W_gitLink:hover:not(:disabled){text-decoration:underline}._7ENl3W_gitLink:disabled{opacity:.4;cursor:default}._7ENl3W_gitRow{min-height:34px;animation:_7ENl3W_dsh-row-in .15s var(--ds-ease-in-out);border-radius:8px;align-items:center;gap:6px;margin:0 6px;padding:0 8px;display:flex}._7ENl3W_gitRow:hover{background:var(--dsw-alias-interactive-bg-hover)}._7ENl3W_gitRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}._7ENl3W_gitRowMain{cursor:pointer;text-align:left;background:0 0;border:none;flex:1;align-items:center;gap:8px;min-width:0;padding:3px 0;display:flex}._7ENl3W_gitBadge{width:20px;height:16px;font:var(--dsw-font-xxxs-strong-11);background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;justify-content:center;align-items:center;display:inline-flex}._7ENl3W_gitBadge[data-letter=A],._7ENl3W_gitBadge[data-letter=\\?]{color:var(--dsw-alias-state-success-primary)}._7ENl3W_gitBadge[data-letter=D]{color:var(--dsw-alias-state-error-primary)}._7ENl3W_gitBadge[data-letter=M],._7ENl3W_gitBadge[data-letter=R]{color:var(--dsw-alias-state-business-primary)}._7ENl3W_gitBadge[data-letter=C],._7ENl3W_gitBadge[data-letter=U]{color:var(--dsw-alias-state-warn-primary)}._7ENl3W_gitName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}._7ENl3W_gitEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:4px 12px 8px}._7ENl3W_gitPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}._7ENl3W_gitError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);white-space:pre-wrap;padding:8px 12px}._7ENl3W_gitConfirmDesc{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);white-space:pre-wrap;margin:0}._7ENl3W_gitCommit{border-top:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;padding:8px 12px;display:flex}._7ENl3W_gitCommitInput{flex:1;min-width:0}._7ENl3W_gitCommitButton{background:var(--dsw-alias-button-primary-fill);height:26px;color:var(--dsw-alias-label-primary-inverted);font:var(--dsw-font-xxs-strong-12);cursor:pointer;border:none;border-radius:6px;flex:none;padding:0 12px}._7ENl3W_gitCommitButton:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}._7ENl3W_gitCommitButton:disabled{opacity:.45;cursor:default}._7ENl3W_gitLogRow{cursor:pointer;border-radius:8px;flex-direction:column;gap:2px;padding:5px 12px;display:flex}._7ENl3W_gitLogRow:hover{background:var(--dsw-alias-interactive-bg-hover)}._7ENl3W_gitLogRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}._7ENl3W_gitLogLine1{align-items:baseline;gap:8px;min-width:0;display:flex}._7ENl3W_gitLogHash{font:var(--dsw-font-markdown-code-block-small);color:var(--dsw-alias-label-tertiary);flex:none}._7ENl3W_gitLogLine2{flex-wrap:wrap;align-items:center;gap:6px;min-width:0;display:flex}._7ENl3W_gitLogRef{border:1px solid var(--dsw-alias-border-l2);font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-brand-primary);white-space:nowrap;border-radius:999px;flex:none;padding:0 5px}._7ENl3W_gitLogSubject{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}._7ENl3W_gitLogMeta{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}._7ENl3W_gitLogMore{border:1px solid var(--dsw-alias-border-l2);width:calc(100% - 24px);font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:6px;margin:4px 12px 8px;padding:6px 0;display:block}._7ENl3W_gitLogMore:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7ENl3W_gitLogMore:disabled{opacity:.5;cursor:default}._7ENl3W_session{flex-direction:column;flex:1;min-height:0;display:flex}._7ENl3W_filterRow{flex-wrap:wrap;flex:none;gap:4px;padding:2px 8px 6px 12px;display:flex}._7ENl3W_filterChip{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border-radius:999px;padding:1px 8px}._7ENl3W_filterChip:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}._7ENl3W_filterChip[data-active=true]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary);border-color:#0000}._7ENl3W_sessionList{flex:1;min-height:0;padding:0 6px 10px;overflow-y:auto}._7ENl3W_empty{color:var(--dsw-alias-label-tertiary);text-align:center;padding:24px 8px}._7ENl3W_loadError{border-left:3px solid var(--dsw-alias-state-warn-primary);color:var(--dsw-alias-label-secondary);border-radius:0 6px 6px 0;margin:4px 8px;padding:6px 10px;font-size:11px}._7ENl3W_fileGroup{margin-bottom:6px}._7ENl3W_filePath{color:var(--dsw-alias-label-tertiary);font-family:var(--ds-font-family-code,monospace);word-break:break-all;padding:6px 4px 2px;font-size:11px;display:block}._7ENl3W_fileGroup:first-child ._7ENl3W_filePath{padding-top:2px}._7ENl3W_opRow{width:100%;color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer;text-align:left;background:0 0;border:0;border-radius:6px;align-items:center;gap:6px;padding:3px 5px;font-size:11px;display:flex}._7ENl3W_opRow:hover{background:var(--dsw-alias-interactive-bg-hover)}._7ENl3W_opRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}._7ENl3W_opRow[data-op-error=true]{box-shadow:inset 2px 0 0 var(--dsw-alias-state-error-primary)}._7ENl3W_opKind{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}._7ENl3W_opKind[data-kind=write]{color:var(--dsw-alias-state-success-primary)}._7ENl3W_opKind[data-kind=edit]{color:var(--dsw-alias-state-business-primary)}._7ENl3W_opMeta{flex:none;align-items:baseline;gap:8px;min-width:0;margin-left:auto;display:inline-flex}._7ENl3W_opTime{color:var(--dsw-alias-label-tertiary);flex:none;font-size:10px}._7ENl3W_opFlag{color:var(--dsw-alias-state-business-primary);flex:none;font-size:10px}._7ENl3W_opFlagError{color:var(--dsw-alias-state-error-primary);flex:none;font-size:10px}._7ENl3W_opSize{color:var(--dsw-alias-label-tertiary);font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none}._7ENl3W_redactBanner{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-state-warn-primary);background:var(--dsw-alias-interactive-bg-hover);white-space:nowrap;border-radius:7px;flex:none;padding:2px 8px}._7ENl3W_mdToggle{border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;background:0 0;border-radius:7px;flex:none;padding:2px 8px}._7ENl3W_mdToggle:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7ENl3W_mdToggle[data-on=true]{border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}._7ENl3W_mdBody{font:var(--dsw-font-xs-regular-13);min-height:0;padding:12px 16px 20px;line-height:1.6;overflow-y:auto}._7ENl3W_htmlPane{flex:1;min-height:0;display:flex}._7ENl3W_htmlFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%}._7ENl3W_diffPane{border-top:1px solid var(--dsw-alias-border-l1);flex-direction:column;flex:none;min-height:0;display:flex}._7ENl3W_dragHandle{cursor:ns-resize;background:var(--dsw-alias-bg-base);flex:none;height:8px;position:relative}._7ENl3W_dragHandle:after{content:\"\";background:var(--dsw-alias-border-l2);border-radius:1px;width:36px;height:2px;position:absolute;top:3px;left:calc(50% - 18px)}._7ENl3W_dragHandle:hover:after,._7ENl3W_dragHandle:focus-visible:after{background:var(--dsw-alias-state-business-primary)}._7ENl3W_diffHead{border-bottom:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;padding:3px 8px 3px 10px;display:flex}._7ENl3W_diffKind{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}._7ENl3W_diffKind[data-kind=git]{color:var(--dsw-alias-brand-primary)}._7ENl3W_diffKind[data-kind=write]{color:var(--dsw-alias-state-success-primary)}._7ENl3W_diffKind[data-kind=edit]{color:var(--dsw-alias-state-business-primary)}._7ENl3W_diffPath{font-family:var(--ds-font-family-code,monospace);white-space:nowrap;text-overflow:ellipsis;color:var(--dsw-alias-label-primary);direction:rtl;flex:1;min-width:0;font-size:11px;overflow:hidden}._7ENl3W_diffStats{font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none;gap:5px;display:inline-flex}._7ENl3W_iconButton{width:24px;height:24px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}._7ENl3W_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7ENl3W_iconButton:disabled{opacity:.4;cursor:default}._7ENl3W_paneBody{flex:1;min-height:0;overflow-y:auto}._7ENl3W_readError{color:var(--dsw-alias-state-error-primary);border-left:3px solid var(--dsw-alias-state-error-primary);white-space:pre-wrap;word-break:break-word;border-radius:0 6px 6px 0;margin:6px 8px;padding:6px 10px}._7ENl3W_priorUnknown{color:var(--dsw-alias-label-tertiary);padding:3px 10px;font-size:10px}@keyframes _7ENl3W_dsh-row-in{0%{opacity:0}}._7ENl3W_gitLink:focus-visible,._7ENl3W_gitRowMain:focus-visible,._7ENl3W_gitLogRow:focus-visible,._7ENl3W_gitCommitButton:focus-visible,._7ENl3W_gitLogMore:focus-visible,._7ENl3W_gitBranchSelect:focus-visible,._7ENl3W_lensButton:focus-visible,._7ENl3W_filterChip:focus-visible,._7ENl3W_iconButton:focus-visible,._7ENl3W_dragHandle:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){._7ENl3W_gitRow{animation:none}}";
+		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-source/src/client/changes/changes.module.css.mjs
+		const css$4 = ".nOda3a_root{background:var(--dsw-alias-bg-base);height:100%;min-height:0;color:var(--dsw-alias-label-primary);flex-direction:column;font-size:12px;display:flex}.nOda3a_lensBar{flex:none;align-items:center;padding:8px 8px 4px 12px;display:flex}.nOda3a_lensSwitch{border:1px solid var(--dsw-alias-border-l2);border-radius:8px;gap:2px;padding:2px;display:inline-flex}.nOda3a_lensButton{color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;background:0 0;border:0;border-radius:6px;padding:2px 10px}.nOda3a_lensButton:hover{color:var(--dsw-alias-label-primary)}.nOda3a_lensButton[data-active=true]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary)}.nOda3a_git{flex-direction:column;flex:1;min-width:0;min-height:0;display:flex;overflow:hidden auto}.nOda3a_gitHeader{flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.nOda3a_gitWorktreeRow{flex:none;align-items:center;gap:8px;padding:6px 8px 0 12px;display:flex}.nOda3a_gitWorktreeLabel{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxxs-11);flex:none}.nOda3a_gitBranchSelect{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);min-width:0;height:26px;color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);border-radius:6px;flex:1;padding:0 6px}.nOda3a_gitSection{border-top:1px solid var(--dsw-alias-border-l1)}.nOda3a_gitSectionHeader{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary);text-transform:uppercase;justify-content:space-between;align-items:center;padding:6px 12px 4px;display:flex}.nOda3a_gitLink{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-brand-primary);cursor:pointer;background:0 0;border:none;padding:0}.nOda3a_gitLink:hover:not(:disabled){text-decoration:underline}.nOda3a_gitLink:disabled{opacity:.4;cursor:default}.nOda3a_gitRow{min-height:34px;animation:nOda3a_dsh-row-in .15s var(--ds-ease-in-out);border-radius:8px;align-items:center;gap:6px;margin:0 6px;padding:0 8px;display:flex}.nOda3a_gitRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.nOda3a_gitRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}.nOda3a_gitRowMain{cursor:pointer;text-align:left;background:0 0;border:none;flex:1;align-items:center;gap:8px;min-width:0;padding:3px 0;display:flex}.nOda3a_gitBadge{width:20px;height:16px;font:var(--dsw-font-xxxs-strong-11);background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;justify-content:center;align-items:center;display:inline-flex}.nOda3a_gitBadge[data-letter=A],.nOda3a_gitBadge[data-letter=\\?]{color:var(--dsw-alias-state-success-primary)}.nOda3a_gitBadge[data-letter=D]{color:var(--dsw-alias-state-error-primary)}.nOda3a_gitBadge[data-letter=M],.nOda3a_gitBadge[data-letter=R]{color:var(--dsw-alias-state-business-primary)}.nOda3a_gitBadge[data-letter=C],.nOda3a_gitBadge[data-letter=U]{color:var(--dsw-alias-state-warn-primary)}.nOda3a_gitName{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.nOda3a_gitEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);padding:4px 12px 8px}.nOda3a_gitPlaceholder{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;padding:16px}.nOda3a_gitError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);white-space:pre-wrap;padding:8px 12px}.nOda3a_gitConfirmDesc{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);white-space:pre-wrap;margin:0}.nOda3a_gitCommit{border-top:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;padding:8px 12px;display:flex}.nOda3a_gitCommitInput{flex:1;min-width:0}.nOda3a_gitCommitButton{background:var(--dsw-alias-button-primary-fill);height:26px;color:var(--dsw-alias-label-primary-inverted);font:var(--dsw-font-xxs-strong-12);cursor:pointer;border:none;border-radius:6px;flex:none;padding:0 12px}.nOda3a_gitCommitButton:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}.nOda3a_gitCommitButton:disabled{opacity:.45;cursor:default}.nOda3a_gitLogRow{cursor:pointer;border-radius:8px;flex-direction:column;gap:2px;padding:5px 12px;display:flex}.nOda3a_gitLogRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.nOda3a_gitLogRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}.nOda3a_gitLogLine1{align-items:baseline;gap:8px;min-width:0;display:flex}.nOda3a_gitLogHash{font:var(--dsw-font-markdown-code-block-small);color:var(--dsw-alias-label-tertiary);flex:none}.nOda3a_gitLogLine2{flex-wrap:wrap;align-items:center;gap:6px;min-width:0;display:flex}.nOda3a_gitLogRef{border:1px solid var(--dsw-alias-border-l2);font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-brand-primary);white-space:nowrap;border-radius:999px;flex:none;padding:0 5px}.nOda3a_gitLogSubject{text-overflow:ellipsis;white-space:nowrap;min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.nOda3a_gitLogMeta{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}.nOda3a_gitLogMore{border:1px solid var(--dsw-alias-border-l2);width:calc(100% - 24px);font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:6px;margin:4px 12px 8px;padding:6px 0;display:block}.nOda3a_gitLogMore:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nOda3a_gitLogMore:disabled{opacity:.5;cursor:default}.nOda3a_session{flex-direction:column;flex:1;min-height:0;display:flex}.nOda3a_filterRow{flex-wrap:wrap;flex:none;gap:4px;padding:2px 8px 6px 12px;display:flex}.nOda3a_filterChip{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-11);cursor:pointer;background:0 0;border-radius:999px;padding:1px 8px}.nOda3a_filterChip:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}.nOda3a_filterChip[data-active=true]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary);border-color:#0000}.nOda3a_sessionList{flex:1;min-height:0;padding:0 6px 10px;overflow-y:auto}.nOda3a_empty{color:var(--dsw-alias-label-tertiary);text-align:center;padding:24px 8px}.nOda3a_loadError{border-left:3px solid var(--dsw-alias-state-warn-primary);color:var(--dsw-alias-label-secondary);border-radius:0 6px 6px 0;margin:4px 8px;padding:6px 10px;font-size:11px}.nOda3a_fileGroup{margin-bottom:6px}.nOda3a_filePath{color:var(--dsw-alias-label-tertiary);font-family:var(--ds-font-family-code,monospace);word-break:break-all;padding:6px 4px 2px;font-size:11px;display:block}.nOda3a_fileGroup:first-child .nOda3a_filePath{padding-top:2px}.nOda3a_opRow{width:100%;color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer;text-align:left;background:0 0;border:0;border-radius:6px;align-items:center;gap:6px;padding:3px 5px;font-size:11px;display:flex}.nOda3a_opRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.nOda3a_opRow[data-selected=true]{background:var(--dsw-alias-interactive-bg-active)}.nOda3a_opRow[data-op-error=true]{box-shadow:inset 2px 0 0 var(--dsw-alias-state-error-primary)}.nOda3a_opKind{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}.nOda3a_opKind[data-kind=write]{color:var(--dsw-alias-state-success-primary)}.nOda3a_opKind[data-kind=edit]{color:var(--dsw-alias-state-business-primary)}.nOda3a_opMeta{flex:none;align-items:baseline;gap:8px;min-width:0;margin-left:auto;display:inline-flex}.nOda3a_opTime{color:var(--dsw-alias-label-tertiary);flex:none;font-size:10px}.nOda3a_opFlag{color:var(--dsw-alias-state-business-primary);flex:none;font-size:10px}.nOda3a_opFlagError{color:var(--dsw-alias-state-error-primary);flex:none;font-size:10px}.nOda3a_opSize{color:var(--dsw-alias-label-tertiary);font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none}.nOda3a_redactBanner{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-state-warn-primary);background:var(--dsw-alias-interactive-bg-hover);white-space:nowrap;border-radius:7px;flex:none;padding:2px 8px}.nOda3a_mdToggle{border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;background:0 0;border-radius:7px;flex:none;padding:2px 8px}.nOda3a_mdToggle:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nOda3a_mdToggle[data-on=true]{border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}.nOda3a_mdBody{font:var(--dsw-font-xs-regular-13);min-height:0;padding:12px 16px 20px;line-height:1.6;overflow-y:auto}.nOda3a_htmlPane{flex:1;min-height:0;display:flex}.nOda3a_htmlFrame{background:var(--dsw-alias-bg-base);border:none;flex:1;width:100%}.nOda3a_diffPane{border-top:1px solid var(--dsw-alias-border-l1);flex-direction:column;flex:none;min-height:0;display:flex}.nOda3a_dragHandle{cursor:ns-resize;background:var(--dsw-alias-bg-base);flex:none;height:8px;position:relative}.nOda3a_dragHandle:after{content:\"\";background:var(--dsw-alias-border-l2);border-radius:1px;width:36px;height:2px;position:absolute;top:3px;left:calc(50% - 18px)}.nOda3a_dragHandle:hover:after,.nOda3a_dragHandle:focus-visible:after{background:var(--dsw-alias-state-business-primary)}.nOda3a_diffHead{border-bottom:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;padding:3px 8px 3px 10px;display:flex}.nOda3a_diffKind{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}.nOda3a_diffKind[data-kind=git]{color:var(--dsw-alias-brand-primary)}.nOda3a_diffKind[data-kind=write]{color:var(--dsw-alias-state-success-primary)}.nOda3a_diffKind[data-kind=edit]{color:var(--dsw-alias-state-business-primary)}.nOda3a_diffPath{font-family:var(--ds-font-family-code,monospace);white-space:nowrap;text-overflow:ellipsis;color:var(--dsw-alias-label-primary);direction:rtl;flex:1;min-width:0;font-size:11px;overflow:hidden}.nOda3a_diffStats{font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none;gap:5px;display:inline-flex}.nOda3a_iconButton{width:24px;height:24px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}.nOda3a_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.nOda3a_iconButton:disabled{opacity:.4;cursor:default}.nOda3a_paneBody{flex:1;min-height:0;overflow-y:auto}.nOda3a_readError{color:var(--dsw-alias-state-error-primary);border-left:3px solid var(--dsw-alias-state-error-primary);white-space:pre-wrap;word-break:break-word;border-radius:0 6px 6px 0;margin:6px 8px;padding:6px 10px}.nOda3a_priorUnknown{color:var(--dsw-alias-label-tertiary);padding:3px 10px;font-size:10px}@keyframes nOda3a_dsh-row-in{0%{opacity:0}}.nOda3a_gitLink:focus-visible,.nOda3a_gitRowMain:focus-visible,.nOda3a_gitLogRow:focus-visible,.nOda3a_gitCommitButton:focus-visible,.nOda3a_gitLogMore:focus-visible,.nOda3a_gitBranchSelect:focus-visible,.nOda3a_lensButton:focus-visible,.nOda3a_filterChip:focus-visible,.nOda3a_iconButton:focus-visible,.nOda3a_dragHandle:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){.nOda3a_gitRow{animation:none}}";
 		const tagId$4 = "dsh-external/dsh-better-sidebar/changes.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
 			const tag = document.createElement("style");
@@ -7429,68 +6979,68 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var changes_module_css_default = {
-			"gitHeader": "_7ENl3W_gitHeader",
-			"gitEmpty": "_7ENl3W_gitEmpty",
-			"filterRow": "_7ENl3W_filterRow",
-			"gitLogHash": "_7ENl3W_gitLogHash",
-			"fileGroup": "_7ENl3W_fileGroup",
-			"opTime": "_7ENl3W_opTime",
-			"gitLogMore": "_7ENl3W_gitLogMore",
-			"gitCommitButton": "_7ENl3W_gitCommitButton",
-			"dsh-row-in": "_7ENl3W_dsh-row-in",
-			"gitLogRef": "_7ENl3W_gitLogRef",
-			"gitCommit": "_7ENl3W_gitCommit",
-			"gitCommitInput": "_7ENl3W_gitCommitInput",
-			"gitBranchSelect": "_7ENl3W_gitBranchSelect",
-			"opFlagError": "_7ENl3W_opFlagError",
-			"iconButton": "_7ENl3W_iconButton",
-			"opFlag": "_7ENl3W_opFlag",
-			"dragHandle": "_7ENl3W_dragHandle",
-			"mdBody": "_7ENl3W_mdBody",
-			"gitLogRow": "_7ENl3W_gitLogRow",
-			"htmlFrame": "_7ENl3W_htmlFrame",
-			"gitRowMain": "_7ENl3W_gitRowMain",
-			"gitConfirmDesc": "_7ENl3W_gitConfirmDesc",
-			"opRow": "_7ENl3W_opRow",
-			"sessionList": "_7ENl3W_sessionList",
-			"htmlPane": "_7ENl3W_htmlPane",
-			"loadError": "_7ENl3W_loadError",
-			"gitBadge": "_7ENl3W_gitBadge",
-			"empty": "_7ENl3W_empty",
-			"gitWorktreeRow": "_7ENl3W_gitWorktreeRow",
-			"gitError": "_7ENl3W_gitError",
-			"git": "_7ENl3W_git",
-			"gitLogMeta": "_7ENl3W_gitLogMeta",
-			"opMeta": "_7ENl3W_opMeta",
-			"session": "_7ENl3W_session",
-			"gitLogLine1": "_7ENl3W_gitLogLine1",
-			"root": "_7ENl3W_root",
-			"lensSwitch": "_7ENl3W_lensSwitch",
-			"gitLink": "_7ENl3W_gitLink",
-			"gitLogSubject": "_7ENl3W_gitLogSubject",
-			"gitSectionHeader": "_7ENl3W_gitSectionHeader",
-			"redactBanner": "_7ENl3W_redactBanner",
-			"gitSection": "_7ENl3W_gitSection",
-			"gitPlaceholder": "_7ENl3W_gitPlaceholder",
-			"diffKind": "_7ENl3W_diffKind",
-			"diffHead": "_7ENl3W_diffHead",
-			"opSize": "_7ENl3W_opSize",
-			"diffStats": "_7ENl3W_diffStats",
-			"priorUnknown": "_7ENl3W_priorUnknown",
-			"filterChip": "_7ENl3W_filterChip",
-			"filePath": "_7ENl3W_filePath",
-			"opKind": "_7ENl3W_opKind",
-			"gitLogLine2": "_7ENl3W_gitLogLine2",
-			"mdToggle": "_7ENl3W_mdToggle",
-			"lensButton": "_7ENl3W_lensButton",
-			"diffPane": "_7ENl3W_diffPane",
-			"lensBar": "_7ENl3W_lensBar",
-			"diffPath": "_7ENl3W_diffPath",
-			"paneBody": "_7ENl3W_paneBody",
-			"gitRow": "_7ENl3W_gitRow",
-			"readError": "_7ENl3W_readError",
-			"gitWorktreeLabel": "_7ENl3W_gitWorktreeLabel",
-			"gitName": "_7ENl3W_gitName"
+			"filterRow": "nOda3a_filterRow",
+			"readError": "nOda3a_readError",
+			"dragHandle": "nOda3a_dragHandle",
+			"gitLink": "nOda3a_gitLink",
+			"gitConfirmDesc": "nOda3a_gitConfirmDesc",
+			"gitCommitButton": "nOda3a_gitCommitButton",
+			"lensButton": "nOda3a_lensButton",
+			"diffHead": "nOda3a_diffHead",
+			"sessionList": "nOda3a_sessionList",
+			"mdToggle": "nOda3a_mdToggle",
+			"gitLogLine1": "nOda3a_gitLogLine1",
+			"gitCommit": "nOda3a_gitCommit",
+			"dsh-row-in": "nOda3a_dsh-row-in",
+			"gitBadge": "nOda3a_gitBadge",
+			"gitLogHash": "nOda3a_gitLogHash",
+			"gitBranchSelect": "nOda3a_gitBranchSelect",
+			"diffPane": "nOda3a_diffPane",
+			"lensSwitch": "nOda3a_lensSwitch",
+			"gitLogRow": "nOda3a_gitLogRow",
+			"gitLogLine2": "nOda3a_gitLogLine2",
+			"redactBanner": "nOda3a_redactBanner",
+			"root": "nOda3a_root",
+			"gitError": "nOda3a_gitError",
+			"empty": "nOda3a_empty",
+			"iconButton": "nOda3a_iconButton",
+			"fileGroup": "nOda3a_fileGroup",
+			"gitHeader": "nOda3a_gitHeader",
+			"loadError": "nOda3a_loadError",
+			"gitLogSubject": "nOda3a_gitLogSubject",
+			"gitPlaceholder": "nOda3a_gitPlaceholder",
+			"gitWorktreeLabel": "nOda3a_gitWorktreeLabel",
+			"opSize": "nOda3a_opSize",
+			"gitLogRef": "nOda3a_gitLogRef",
+			"filePath": "nOda3a_filePath",
+			"opKind": "nOda3a_opKind",
+			"diffPath": "nOda3a_diffPath",
+			"lensBar": "nOda3a_lensBar",
+			"session": "nOda3a_session",
+			"htmlPane": "nOda3a_htmlPane",
+			"filterChip": "nOda3a_filterChip",
+			"git": "nOda3a_git",
+			"opTime": "nOda3a_opTime",
+			"gitRowMain": "nOda3a_gitRowMain",
+			"gitEmpty": "nOda3a_gitEmpty",
+			"gitSectionHeader": "nOda3a_gitSectionHeader",
+			"diffStats": "nOda3a_diffStats",
+			"gitSection": "nOda3a_gitSection",
+			"gitWorktreeRow": "nOda3a_gitWorktreeRow",
+			"opMeta": "nOda3a_opMeta",
+			"diffKind": "nOda3a_diffKind",
+			"priorUnknown": "nOda3a_priorUnknown",
+			"gitCommitInput": "nOda3a_gitCommitInput",
+			"htmlFrame": "nOda3a_htmlFrame",
+			"paneBody": "nOda3a_paneBody",
+			"opRow": "nOda3a_opRow",
+			"opFlag": "nOda3a_opFlag",
+			"gitLogMeta": "nOda3a_gitLogMeta",
+			"opFlagError": "nOda3a_opFlagError",
+			"mdBody": "nOda3a_mdBody",
+			"gitRow": "nOda3a_gitRow",
+			"gitLogMore": "nOda3a_gitLogMore",
+			"gitName": "nOda3a_gitName"
 		};
 		//#endregion
 		//#region src/client/changes/GitLens.tsx
@@ -8758,8 +8308,8 @@ window.__ModuleLoader__.load({
 		/** Human byte count for the panel meta row. */
 		function formatBytes(bytes) {
 			if (bytes < 1024) return `${String(bytes)} B`;
-			if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-			return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+			if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+			return `${(bytes / 1048576).toFixed(1)} MB`;
 		}
 		/** Parse the hunk header `@@ -a[,b] +c[,d] @@ section` (section may contain '@@'). */
 		function parseHunkHeader(line) {
@@ -9552,8 +9102,8 @@ window.__ModuleLoader__.load({
 			return COLORED.has(token.type);
 		}
 		//#endregion
-		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-build/src/client/diff/diff.module.css.mjs
-		const css$3 = ".lxpEga_rows{font-family:var(--ds-font-family-code,monospace);padding:4px 0 8px;font-size:11px}.lxpEga_row{cursor:default;align-items:flex-start;gap:5px;padding:0 10px;line-height:18px;display:flex}.lxpEga_row[data-folded=true]{cursor:pointer}.lxpEga_lineNo{width:2.5em;color:var(--dsw-alias-label-tertiary);text-align:right;user-select:none;flex:none;font-size:10px}.lxpEga_sign{text-align:center;user-select:none;flex:none;width:1em;font-weight:700}.lxpEga_row[data-kind=del] .lxpEga_sign,.lxpEga_row[data-kind=del] .lxpEga_text{color:var(--dsw-alias-state-error-primary)}.lxpEga_row[data-kind=add] .lxpEga_sign,.lxpEga_row[data-kind=add] .lxpEga_text{color:var(--dsw-alias-state-success-primary)}.lxpEga_row[data-kind=mod] .lxpEga_sign,.lxpEga_row[data-kind=mod] .lxpEga_text{color:var(--dsw-alias-state-business-primary)}.lxpEga_row[data-kind=context] .lxpEga_sign,.lxpEga_row[data-kind=context] .lxpEga_text{color:var(--dsw-alias-label-secondary)}.lxpEga_row[data-kind=read] .lxpEga_text{color:var(--dsw-alias-label-primary)}.lxpEga_row[data-kind=del]{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 8%, transparent)}.lxpEga_row[data-kind=add]{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 8%, transparent)}.lxpEga_row[data-kind=mod]{background:color-mix(in srgb, var(--dsw-alias-state-business-primary) 8%, transparent)}.lxpEga_row .lxpEga_text{white-space:pre-wrap;word-break:break-word;flex:1;min-width:0}.lxpEga_row[data-folded=true] .lxpEga_text{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.lxpEga_row[data-kind=meta] .lxpEga_metaText{color:var(--dsw-alias-label-tertiary);font-style:italic}.lxpEga_inlineChange{background:color-mix(in srgb, var(--dsw-alias-state-business-primary) 26%, transparent);border-radius:3px;padding:0 1px}.lxpEga_tokComment{color:var(--dsw-alias-label-tertiary);font-style:italic}.lxpEga_tokKeyword{color:color-mix(in oklab, var(--dsw-alias-state-business-primary) 55%, var(--dsw-alias-state-error-primary))}.lxpEga_tokString{color:color-mix(in oklab, var(--dsw-alias-state-success-primary) 45%, var(--dsw-alias-state-business-primary))}.lxpEga_tokType{color:color-mix(in oklab, var(--dsw-alias-brand-primary) 60%, var(--dsw-alias-state-success-primary))}.lxpEga_tokNumber{color:var(--dsw-alias-state-warn-primary)}.lxpEga_tokFunction{color:color-mix(in oklab, var(--dsw-alias-state-warn-primary) 55%, var(--dsw-alias-state-error-primary))}.lxpEga_tokMacro{color:color-mix(in oklab, var(--dsw-alias-state-error-primary) 45%, var(--dsw-alias-state-business-primary))}.lxpEga_foldRow{padding:0 10px}.lxpEga_foldRow[data-expandable=true]{cursor:pointer}.lxpEga_foldRow[data-expandable=true]:hover{background:var(--dsw-alias-interactive-bg-hover)}.lxpEga_foldRow[data-expanded=true]{cursor:default;padding:0}.lxpEga_foldRow[data-expanded=true] .lxpEga_foldMarker{display:none}.lxpEga_foldMarker{color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-interactive-bg-hover);border-radius:4px;align-items:center;gap:5px;margin:2px 0;padding:2px 7px;display:inline-flex}.lxpEga_foldRow[data-expandable=true] .lxpEga_foldMarker{color:var(--dsw-alias-label-secondary)}.lxpEga_foldRow[data-expandable=true] .lxpEga_foldMarker:before{content:\"›\";color:var(--dsw-alias-label-tertiary);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out)}.lxpEga_expand{border:1px solid var(--dsw-alias-border-l1);width:calc(100% - 20px);color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:6px;margin:4px 10px;padding:4px;font-size:11px;display:block}.lxpEga_expand:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.lxpEga_files,.lxpEga_fileBlock{flex-direction:column;display:flex}.lxpEga_file{width:100%;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;align-items:center;gap:6px;padding:6px 10px;font-size:11px;display:flex}.lxpEga_file:disabled{cursor:default}.lxpEga_file:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.lxpEga_fileChevron{width:12px;color:var(--dsw-alias-label-tertiary);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex:none}.lxpEga_fileChevronExpanded{transform:rotate(90deg)}.lxpEga_filePath{font-family:var(--ds-font-family-code,monospace);color:var(--dsw-alias-label-primary);word-break:break-all;min-width:0}.lxpEga_fileOld{text-overflow:ellipsis;white-space:nowrap;max-width:40%;color:var(--dsw-alias-label-tertiary);font-family:var(--ds-font-family-code,monospace);flex:none;overflow:hidden}.lxpEga_fileTag{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}.lxpEga_fileStats{font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none;gap:5px;margin-left:auto;display:inline-flex}.lxpEga_statAdd{color:var(--dsw-alias-state-success-primary)}.lxpEga_statDel{color:var(--dsw-alias-state-error-primary)}.lxpEga_row:focus-visible,.lxpEga_foldRow:focus-visible,.lxpEga_file:focus-visible,.lxpEga_expand:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){.lxpEga_fileChevron{transition:none}}";
+		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-source/src/client/diff/diff.module.css.mjs
+		const css$3 = ".SYaeuq_rows{font-family:var(--ds-font-family-code,monospace);padding:4px 0 8px;font-size:11px}.SYaeuq_row{cursor:default;align-items:flex-start;gap:5px;padding:0 10px;line-height:18px;display:flex}.SYaeuq_row[data-folded=true]{cursor:pointer}.SYaeuq_lineNo{width:2.5em;color:var(--dsw-alias-label-tertiary);text-align:right;user-select:none;flex:none;font-size:10px}.SYaeuq_sign{text-align:center;user-select:none;flex:none;width:1em;font-weight:700}.SYaeuq_row[data-kind=del] .SYaeuq_sign,.SYaeuq_row[data-kind=del] .SYaeuq_text{color:var(--dsw-alias-state-error-primary)}.SYaeuq_row[data-kind=add] .SYaeuq_sign,.SYaeuq_row[data-kind=add] .SYaeuq_text{color:var(--dsw-alias-state-success-primary)}.SYaeuq_row[data-kind=mod] .SYaeuq_sign,.SYaeuq_row[data-kind=mod] .SYaeuq_text{color:var(--dsw-alias-state-business-primary)}.SYaeuq_row[data-kind=context] .SYaeuq_sign,.SYaeuq_row[data-kind=context] .SYaeuq_text{color:var(--dsw-alias-label-secondary)}.SYaeuq_row[data-kind=read] .SYaeuq_text{color:var(--dsw-alias-label-primary)}.SYaeuq_row[data-kind=del]{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 8%, transparent)}.SYaeuq_row[data-kind=add]{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 8%, transparent)}.SYaeuq_row[data-kind=mod]{background:color-mix(in srgb, var(--dsw-alias-state-business-primary) 8%, transparent)}.SYaeuq_row .SYaeuq_text{white-space:pre-wrap;word-break:break-word;flex:1;min-width:0}.SYaeuq_row[data-folded=true] .SYaeuq_text{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.SYaeuq_row[data-kind=meta] .SYaeuq_metaText{color:var(--dsw-alias-label-tertiary);font-style:italic}.SYaeuq_inlineChange{background:color-mix(in srgb, var(--dsw-alias-state-business-primary) 26%, transparent);border-radius:3px;padding:0 1px}.SYaeuq_tokComment{color:var(--dsw-alias-label-tertiary);font-style:italic}.SYaeuq_tokKeyword{color:color-mix(in oklab, var(--dsw-alias-state-business-primary) 55%, var(--dsw-alias-state-error-primary))}.SYaeuq_tokString{color:color-mix(in oklab, var(--dsw-alias-state-success-primary) 45%, var(--dsw-alias-state-business-primary))}.SYaeuq_tokType{color:color-mix(in oklab, var(--dsw-alias-brand-primary) 60%, var(--dsw-alias-state-success-primary))}.SYaeuq_tokNumber{color:var(--dsw-alias-state-warn-primary)}.SYaeuq_tokFunction{color:color-mix(in oklab, var(--dsw-alias-state-warn-primary) 55%, var(--dsw-alias-state-error-primary))}.SYaeuq_tokMacro{color:color-mix(in oklab, var(--dsw-alias-state-error-primary) 45%, var(--dsw-alias-state-business-primary))}.SYaeuq_foldRow{padding:0 10px}.SYaeuq_foldRow[data-expandable=true]{cursor:pointer}.SYaeuq_foldRow[data-expandable=true]:hover{background:var(--dsw-alias-interactive-bg-hover)}.SYaeuq_foldRow[data-expanded=true]{cursor:default;padding:0}.SYaeuq_foldRow[data-expanded=true] .SYaeuq_foldMarker{display:none}.SYaeuq_foldMarker{color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-interactive-bg-hover);border-radius:4px;align-items:center;gap:5px;margin:2px 0;padding:2px 7px;display:inline-flex}.SYaeuq_foldRow[data-expandable=true] .SYaeuq_foldMarker{color:var(--dsw-alias-label-secondary)}.SYaeuq_foldRow[data-expandable=true] .SYaeuq_foldMarker:before{content:\"›\";color:var(--dsw-alias-label-tertiary);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out)}.SYaeuq_expand{border:1px solid var(--dsw-alias-border-l1);width:calc(100% - 20px);color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:6px;margin:4px 10px;padding:4px;font-size:11px;display:block}.SYaeuq_expand:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.SYaeuq_files,.SYaeuq_fileBlock{flex-direction:column;display:flex}.SYaeuq_file{width:100%;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;align-items:center;gap:6px;padding:6px 10px;font-size:11px;display:flex}.SYaeuq_file:disabled{cursor:default}.SYaeuq_file:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.SYaeuq_fileChevron{width:12px;color:var(--dsw-alias-label-tertiary);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);flex:none}.SYaeuq_fileChevronExpanded{transform:rotate(90deg)}.SYaeuq_filePath{font-family:var(--ds-font-family-code,monospace);color:var(--dsw-alias-label-primary);word-break:break-all;min-width:0}.SYaeuq_fileOld{text-overflow:ellipsis;white-space:nowrap;max-width:40%;color:var(--dsw-alias-label-tertiary);font-family:var(--ds-font-family-code,monospace);flex:none;overflow:hidden}.SYaeuq_fileTag{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary);border-radius:4px;flex:none;padding:0 5px;font-size:10px;line-height:16px}.SYaeuq_fileStats{font-size:10px;font-family:var(--ds-font-family-code,monospace);flex:none;gap:5px;margin-left:auto;display:inline-flex}.SYaeuq_statAdd{color:var(--dsw-alias-state-success-primary)}.SYaeuq_statDel{color:var(--dsw-alias-state-error-primary)}.SYaeuq_row:focus-visible,.SYaeuq_foldRow:focus-visible,.SYaeuq_file:focus-visible,.SYaeuq_expand:focus-visible{outline:2px solid var(--dsw-alias-interactive-bg-hover-accent);outline-offset:-1px}@media (prefers-reduced-motion:reduce){.SYaeuq_fileChevron{transition:none}}";
 		const tagId$3 = "dsh-external/dsh-better-sidebar/diff.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
@@ -9563,34 +9113,34 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var diff_module_css_default = {
-			"fileOld": "lxpEga_fileOld",
-			"fileStats": "lxpEga_fileStats",
-			"statAdd": "lxpEga_statAdd",
-			"lineNo": "lxpEga_lineNo",
-			"row": "lxpEga_row",
-			"statDel": "lxpEga_statDel",
-			"fileChevronExpanded": "lxpEga_fileChevronExpanded",
-			"tokString": "lxpEga_tokString",
-			"tokNumber": "lxpEga_tokNumber",
-			"file": "lxpEga_file",
-			"files": "lxpEga_files",
-			"tokFunction": "lxpEga_tokFunction",
-			"tokMacro": "lxpEga_tokMacro",
-			"tokKeyword": "lxpEga_tokKeyword",
-			"rows": "lxpEga_rows",
-			"tokType": "lxpEga_tokType",
-			"filePath": "lxpEga_filePath",
-			"fileChevron": "lxpEga_fileChevron",
-			"fileTag": "lxpEga_fileTag",
-			"inlineChange": "lxpEga_inlineChange",
-			"sign": "lxpEga_sign",
-			"text": "lxpEga_text",
-			"metaText": "lxpEga_metaText",
-			"tokComment": "lxpEga_tokComment",
-			"foldMarker": "lxpEga_foldMarker",
-			"fileBlock": "lxpEga_fileBlock",
-			"expand": "lxpEga_expand",
-			"foldRow": "lxpEga_foldRow"
+			"files": "SYaeuq_files",
+			"expand": "SYaeuq_expand",
+			"inlineChange": "SYaeuq_inlineChange",
+			"sign": "SYaeuq_sign",
+			"tokKeyword": "SYaeuq_tokKeyword",
+			"tokFunction": "SYaeuq_tokFunction",
+			"rows": "SYaeuq_rows",
+			"foldMarker": "SYaeuq_foldMarker",
+			"tokString": "SYaeuq_tokString",
+			"fileOld": "SYaeuq_fileOld",
+			"tokType": "SYaeuq_tokType",
+			"file": "SYaeuq_file",
+			"row": "SYaeuq_row",
+			"text": "SYaeuq_text",
+			"fileChevronExpanded": "SYaeuq_fileChevronExpanded",
+			"metaText": "SYaeuq_metaText",
+			"filePath": "SYaeuq_filePath",
+			"statAdd": "SYaeuq_statAdd",
+			"fileBlock": "SYaeuq_fileBlock",
+			"lineNo": "SYaeuq_lineNo",
+			"fileStats": "SYaeuq_fileStats",
+			"tokComment": "SYaeuq_tokComment",
+			"tokNumber": "SYaeuq_tokNumber",
+			"foldRow": "SYaeuq_foldRow",
+			"fileChevron": "SYaeuq_fileChevron",
+			"fileTag": "SYaeuq_fileTag",
+			"statDel": "SYaeuq_statDel",
+			"tokMacro": "SYaeuq_tokMacro"
 		};
 		//#endregion
 		//#region src/client/diff/DiffRows.tsx
@@ -10348,7 +9898,7 @@ window.__ModuleLoader__.load({
 			if (isRemoteUrl(trimmed)) return dest;
 			const slash = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
 			const directory = slash === -1 ? "/" : filePath.slice(0, slash + 1);
-			const candidate = isAbsolutePath(trimmed) ? trimmed : directory + trimmed;
+			const candidate = isAbsolutePath$1(trimmed) ? trimmed : directory + trimmed;
 			const params = new URLSearchParams({
 				sessionId: scope.sessionId,
 				path: normalizeLocalPath(candidate)
@@ -11040,9 +10590,9 @@ window.__ModuleLoader__.load({
 		* (repository truth: staged/unstaged files, commit box, history) and the
 		* session round (agent truth: every file the model read, wrote, or edited).
 		* Both lenses preview their selections in a shared resizable bottom pane
-		* ({@link DiffPane}); git targets expand into the dedicated diff tab —
-		* docked in a pane, or floated as a free window per the tab's setting.
-		* The active lens and the pane height persist in the tab's meta, so the tab
+		* ({@link DiffPane}); git targets expand into the dedicated diff tab docked
+		* in the workbench's diff pane. The active lens and the pane height persist
+		* in the tab's meta, so the tab
 		* reopens exactly where it was left.
 		*
 		* The session events ride the host's `changes.ops` route (the client
@@ -11133,18 +10683,11 @@ window.__ModuleLoader__.load({
 					prior: knownContentBefore(ops, path, op)
 				});
 			};
-			/** Expand the current git preview into the dedicated diff tab: docked
-			*  into the shell's diff pane, or floated as a free window centered on
-			*  the viewport when the tab's diff-open setting asks for it (default). */
+			/** Expand the current git preview into the dedicated diff tab, docked
+			*  into the workbench's diff pane. */
 			const expandPreview = () => {
 				if (preview?.kind !== "git") return;
-				const diffTab = diffTabOf(preview.ref);
-				onOpenDiff?.(diffTab);
-				if (store.getPrefs().changesDiffFloat !== false) {
-					const x = Math.round(window.innerWidth / 2);
-					const y = Math.round(window.innerHeight / 2);
-					store.reduce((state) => floatTab(state, diffTab.id, x, y));
-				}
+				onOpenDiff?.(diffTabOf(preview.ref));
 			};
 			const previewKey = (target) => target.kind === "git" ? target.ref.kind === "worktree" ? `git:w:${target.ref.path}:${target.ref.staged ? "s" : "u"}` : `git:c:${target.ref.hashFull}` : `op:${target.op.callId}`;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -11679,8 +11222,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			return t("jobDurationSeconds", { seconds });
 		}
 		//#endregion
-		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-build/src/client/SubagentView.module.css.mjs
-		const css$2 = ".leKTNq_subagent{flex-direction:column;flex:1;min-height:0;display:flex}.leKTNq_subagentHeader{flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.leKTNq_subagentTitle{min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}.leKTNq_subagentCount{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.leKTNq_subagentRefresh{width:24px;height:24px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;display:inline-flex}.leKTNq_subagentRefresh:hover{background:var(--dsw-alias-interactive-bg-hover)}.leKTNq_subagentBody{flex:1;min-height:0;padding:2px 6px 8px;overflow-y:auto}.leKTNq_subagentRow{box-sizing:border-box;width:100%;min-height:50px;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:8px;outline:none;align-items:flex-start;gap:8px;padding:7px 8px 7px 11px;display:flex;position:relative}.leKTNq_subagentRow:hover,.leKTNq_subagentRow:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}.leKTNq_subagentRowActive,.leKTNq_subagentRowActive:hover,.leKTNq_subagentRowActive:focus-visible{background:var(--dsw-alias-interactive-bg-active)}.leKTNq_subagentRowDisabled{color:var(--dsw-alias-label-dimmed);cursor:not-allowed}.leKTNq_subagentRowDisabled:hover{background:0 0}.leKTNq_subagentRowLoading{cursor:default}.leKTNq_subagentDot{margin-top:4px}.leKTNq_subagentContent{flex-direction:column;flex:1;gap:2px;min-width:0;display:flex}.leKTNq_subagentLabel,.leKTNq_subagentSecondary{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.leKTNq_subagentLabel{color:inherit;font-weight:400}.leKTNq_subagentSecondary{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}.leKTNq_subagentLive{min-width:0;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);align-items:baseline;gap:4px;display:flex;overflow:hidden}.leKTNq_subagentLiveTool{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-secondary);flex:none}.leKTNq_subagentLiveArgs{min-width:0;font-family:var(--ds-font-family-code);font-size:var(--dsw-font-xxxs-11-font-size);line-height:var(--dsw-font-xxxs-11-line-height);color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.leKTNq_subagentLiveText{-webkit-line-clamp:2;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-secondary);-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden}.leKTNq_subagentNode{min-width:0;position:relative}.leKTNq_subagentChildren{margin-left:18px;padding-left:4px;position:relative}.leKTNq_subagentChildren:before{content:\"\";border-left:1px solid var(--dsw-alias-border-l2);height:26px;position:absolute;top:-26px;left:0}.leKTNq_subagentChildren[aria-busy=true]:before{content:none}.leKTNq_subagentChildren>.leKTNq_subagentNode:before{content:\"\";border-left:1px solid var(--dsw-alias-border-l2);position:absolute;top:0;bottom:0;left:-4px}.leKTNq_subagentChildren>.leKTNq_subagentNode:last-child:before{height:17px;bottom:auto}.leKTNq_subagentChildren>.leKTNq_subagentNode>.leKTNq_subagentRow:before{content:\"\";border-top:1px solid var(--dsw-alias-border-l2);width:14px;position:absolute;top:16px;left:-4px}.leKTNq_subagentEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;flex-direction:column;gap:2px;padding:16px;display:flex}.leKTNq_subagentEmptyHint{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-dimmed)}.leKTNq_subagentError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;display:flex}.leKTNq_subagentErrorRetry{height:24px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;align-items:center;gap:4px;padding:0 8px;display:inline-flex}.leKTNq_subagentErrorRetry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.leKTNq_jobs{border-top:1px solid var(--dsw-alias-border-l2);margin-top:10px;padding-top:8px}.leKTNq_jobsHeader{align-items:center;gap:8px;height:26px;padding:0 2px;display:flex}.leKTNq_jobsTitle{min-width:0;font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}.leKTNq_jobsCount{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.leKTNq_jobsList{flex-direction:column;gap:2px;margin:0;padding:0;list-style:none;display:flex}.leKTNq_jobsRow{border-radius:8px;align-items:center;gap:4px;display:flex}.leKTNq_jobsRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.leKTNq_jobsRowSettled{opacity:.8}.leKTNq_jobsRowSelected,.leKTNq_jobsRowSelected:hover{background:var(--dsw-alias-interactive-bg-active)}.leKTNq_jobsRowMain{min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:8px;outline:none;flex:1;align-items:flex-start;gap:8px;padding:6px 8px 6px 11px;display:flex}.leKTNq_jobsRowMain:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}.leKTNq_jobsDot{margin-top:5px}.leKTNq_jobsContent{flex-direction:column;gap:1px;min-width:0;display:flex}.leKTNq_jobsLabelLine{align-items:center;gap:6px;min-width:0;display:flex}.leKTNq_jobsKind{text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--dsw-alias-border-l2);max-width:90px;font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary);border-radius:4px;flex:none;padding:0 5px;line-height:14px;overflow:hidden}.leKTNq_jobsLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--ds-font-family-code);font-size:var(--dsw-font-xxxs-11-font-size);line-height:var(--dsw-font-xxxs-11-line-height);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.leKTNq_jobsSecondary{text-overflow:ellipsis;white-space:nowrap;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);overflow:hidden}.leKTNq_jobsKill{width:22px;height:22px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;margin-right:4px;display:inline-flex}.leKTNq_jobsKill:hover{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);color:var(--dsw-alias-state-error-primary)}.leKTNq_jobsKillArmed,.leKTNq_jobsKillArmed:hover{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);width:auto;height:20px;color:var(--dsw-alias-state-error-primary);font:var(--dsw-font-xxxs-strong-11);white-space:nowrap;padding:0 8px}.leKTNq_jobsKill:disabled{opacity:.5;cursor:default}.leKTNq_jobsKillError{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-error-primary);flex:none;margin-right:4px}.leKTNq_jobsPane{z-index:1;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);border-radius:8px;margin-top:4px;position:sticky;bottom:0;overflow:hidden;box-shadow:0 -6px 12px -8px #00000059}.leKTNq_jobsPaneHeader{border-bottom:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;height:28px;padding:0 4px 0 10px;display:flex}.leKTNq_jobsPaneDot{flex:none}.leKTNq_jobsPaneLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--ds-font-family-code);font-size:var(--dsw-font-xxxs-11-font-size);line-height:var(--dsw-font-xxxs-11-line-height);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.leKTNq_jobsPaneStatus{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.leKTNq_jobsPaneClose{width:20px;height:20px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:5px;flex:none;justify-content:center;align-items:center;display:inline-flex}.leKTNq_jobsPaneClose:hover{background:var(--dsw-alias-interactive-bg-hover)}.leKTNq_jobsPanePre{max-height:200px;font-family:var(--ds-font-family-code);font-size:var(--dsw-font-xxxs-11-font-size);color:var(--dsw-alias-label-primary);white-space:pre-wrap;word-break:break-word;margin:0;padding:6px 10px;line-height:1.5;overflow:auto}.leKTNq_jobsPaneHint{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);padding:8px 10px}.leKTNq_jobsPaneError{color:var(--dsw-alias-state-error-primary)}";
+		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-source/src/client/SubagentView.module.css.mjs
+		const css$2 = ".ssxdYG_subagent{flex-direction:column;flex:1;min-height:0;display:flex}.ssxdYG_subagentHeader{flex:none;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;display:flex}.ssxdYG_subagentTitle{min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}.ssxdYG_subagentCount{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.ssxdYG_subagentRefresh{width:24px;height:24px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;display:inline-flex}.ssxdYG_subagentRefresh:hover{background:var(--dsw-alias-interactive-bg-hover)}.ssxdYG_subagentBody{flex:1;min-height:0;padding:2px 6px 8px;overflow-y:auto}.ssxdYG_subagentRow{box-sizing:border-box;width:100%;min-height:50px;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:8px;outline:none;align-items:flex-start;gap:8px;padding:7px 8px 7px 11px;display:flex;position:relative}.ssxdYG_subagentRow:hover,.ssxdYG_subagentRow:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}.ssxdYG_subagentRowActive,.ssxdYG_subagentRowActive:hover,.ssxdYG_subagentRowActive:focus-visible{background:var(--dsw-alias-interactive-bg-active)}.ssxdYG_subagentRowDisabled{color:var(--dsw-alias-label-dimmed);cursor:not-allowed}.ssxdYG_subagentRowDisabled:hover{background:0 0}.ssxdYG_subagentRowLoading{cursor:default}.ssxdYG_subagentDot{margin-top:4px}.ssxdYG_subagentContent{flex-direction:column;flex:1;gap:2px;min-width:0;display:flex}.ssxdYG_subagentLabel,.ssxdYG_subagentSecondary{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.ssxdYG_subagentLabel{color:inherit;font-weight:400}.ssxdYG_subagentSecondary{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary)}.ssxdYG_subagentLive{min-width:0;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);align-items:baseline;gap:4px;display:flex;overflow:hidden}.ssxdYG_subagentLiveTool{font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-secondary);flex:none}.ssxdYG_subagentLiveArgs{min-width:0;font-family:var(--ds-font-family-code);font-size:var(--dsw-font-xxxs-11-font-size);line-height:var(--dsw-font-xxxs-11-line-height);color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.ssxdYG_subagentLiveText{-webkit-line-clamp:2;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-secondary);-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden}.ssxdYG_subagentNode{min-width:0;position:relative}.ssxdYG_subagentChildren{margin-left:18px;padding-left:4px;position:relative}.ssxdYG_subagentChildren:before{content:\"\";border-left:1px solid var(--dsw-alias-border-l2);height:26px;position:absolute;top:-26px;left:0}.ssxdYG_subagentChildren[aria-busy=true]:before{content:none}.ssxdYG_subagentChildren>.ssxdYG_subagentNode:before{content:\"\";border-left:1px solid var(--dsw-alias-border-l2);position:absolute;top:0;bottom:0;left:-4px}.ssxdYG_subagentChildren>.ssxdYG_subagentNode:last-child:before{height:17px;bottom:auto}.ssxdYG_subagentChildren>.ssxdYG_subagentNode>.ssxdYG_subagentRow:before{content:\"\";border-top:1px solid var(--dsw-alias-border-l2);width:14px;position:absolute;top:16px;left:-4px}.ssxdYG_subagentEmpty{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-align:center;flex-direction:column;gap:2px;padding:16px;display:flex}.ssxdYG_subagentEmptyHint{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-dimmed)}.ssxdYG_subagentError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-state-error-primary);justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;display:flex}.ssxdYG_subagentErrorRetry{height:24px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxxs-strong-11);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;align-items:center;gap:4px;padding:0 8px;display:inline-flex}.ssxdYG_subagentErrorRetry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.ssxdYG_jobs{border-top:1px solid var(--dsw-alias-border-l2);margin-top:10px;padding-top:8px}.ssxdYG_jobsHeader{align-items:center;gap:8px;height:26px;padding:0 2px;display:flex}.ssxdYG_jobsTitle{min-width:0;font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}.ssxdYG_jobsCount{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.ssxdYG_jobsList{flex-direction:column;gap:2px;margin:0;padding:0;list-style:none;display:flex}.ssxdYG_jobsRow{border-radius:8px;align-items:center;gap:4px;display:flex}.ssxdYG_jobsRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.ssxdYG_jobsRowSettled{opacity:.8}.ssxdYG_jobsRowSelected,.ssxdYG_jobsRowSelected:hover{background:var(--dsw-alias-interactive-bg-active)}.ssxdYG_jobsRowMain{min-width:0;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:8px;outline:none;flex:1;align-items:flex-start;gap:8px;padding:6px 8px 6px 11px;display:flex}.ssxdYG_jobsRowMain:focus-visible{background:var(--dsw-alias-interactive-bg-hover)}.ssxdYG_jobsDot{margin-top:5px}.ssxdYG_jobsContent{flex-direction:column;gap:1px;min-width:0;display:flex}.ssxdYG_jobsLabelLine{align-items:center;gap:6px;min-width:0;display:flex}.ssxdYG_jobsKind{text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--dsw-alias-border-l2);max-width:90px;font:var(--dsw-font-xxxs-strong-11);color:var(--dsw-alias-label-tertiary);border-radius:4px;flex:none;padding:0 5px;line-height:14px;overflow:hidden}.ssxdYG_jobsLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--ds-font-family-code);font-size:var(--dsw-font-xxxs-11-font-size);line-height:var(--dsw-font-xxxs-11-line-height);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.ssxdYG_jobsSecondary{text-overflow:ellipsis;white-space:nowrap;font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);overflow:hidden}.ssxdYG_jobsKill{width:22px;height:22px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;margin-right:4px;display:inline-flex}.ssxdYG_jobsKill:hover{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);color:var(--dsw-alias-state-error-primary)}.ssxdYG_jobsKillArmed,.ssxdYG_jobsKillArmed:hover{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);width:auto;height:20px;color:var(--dsw-alias-state-error-primary);font:var(--dsw-font-xxxs-strong-11);white-space:nowrap;padding:0 8px}.ssxdYG_jobsKill:disabled{opacity:.5;cursor:default}.ssxdYG_jobsKillError{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-state-error-primary);flex:none;margin-right:4px}.ssxdYG_jobsPane{z-index:1;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);border-radius:8px;margin-top:4px;position:sticky;bottom:0;overflow:hidden;box-shadow:0 -6px 12px -8px #00000059}.ssxdYG_jobsPaneHeader{border-bottom:1px solid var(--dsw-alias-border-l1);align-items:center;gap:6px;height:28px;padding:0 4px 0 10px;display:flex}.ssxdYG_jobsPaneDot{flex:none}.ssxdYG_jobsPaneLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--ds-font-family-code);font-size:var(--dsw-font-xxxs-11-font-size);line-height:var(--dsw-font-xxxs-11-line-height);color:var(--dsw-alias-label-primary);flex:1;overflow:hidden}.ssxdYG_jobsPaneStatus{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);flex:none}.ssxdYG_jobsPaneClose{width:20px;height:20px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:5px;flex:none;justify-content:center;align-items:center;display:inline-flex}.ssxdYG_jobsPaneClose:hover{background:var(--dsw-alias-interactive-bg-hover)}.ssxdYG_jobsPanePre{max-height:200px;font-family:var(--ds-font-family-code);font-size:var(--dsw-font-xxxs-11-font-size);color:var(--dsw-alias-label-primary);white-space:pre-wrap;word-break:break-word;margin:0;padding:6px 10px;line-height:1.5;overflow:auto}.ssxdYG_jobsPaneHint{font:var(--dsw-font-xxxs-11);color:var(--dsw-alias-label-tertiary);padding:8px 10px}.ssxdYG_jobsPaneError{color:var(--dsw-alias-state-error-primary)}";
 		const tagId$2 = "dsh-external/dsh-better-sidebar/SubagentView.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
 			const tag = document.createElement("style");
@@ -11690,57 +11233,57 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			document.head.appendChild(tag);
 		}
 		var SubagentView_module_css_default = {
-			"subagentEmpty": "leKTNq_subagentEmpty",
-			"jobsKind": "leKTNq_jobsKind",
-			"subagentChildren": "leKTNq_subagentChildren",
-			"jobsHeader": "leKTNq_jobsHeader",
-			"subagentRowDisabled": "leKTNq_subagentRowDisabled",
-			"jobsRowSelected": "leKTNq_jobsRowSelected",
-			"subagentTitle": "leKTNq_subagentTitle",
-			"subagentContent": "leKTNq_subagentContent",
-			"jobsList": "leKTNq_jobsList",
-			"jobsDot": "leKTNq_jobsDot",
-			"jobsPane": "leKTNq_jobsPane",
-			"subagentLive": "leKTNq_subagentLive",
-			"subagentLiveTool": "leKTNq_subagentLiveTool",
-			"jobsRow": "leKTNq_jobsRow",
-			"subagent": "leKTNq_subagent",
-			"jobsRowMain": "leKTNq_jobsRowMain",
-			"subagentBody": "leKTNq_subagentBody",
-			"jobsLabelLine": "leKTNq_jobsLabelLine",
-			"jobsPaneHeader": "leKTNq_jobsPaneHeader",
-			"jobsCount": "leKTNq_jobsCount",
-			"jobsPaneLabel": "leKTNq_jobsPaneLabel",
-			"subagentNode": "leKTNq_subagentNode",
-			"subagentRefresh": "leKTNq_subagentRefresh",
-			"jobsPaneClose": "leKTNq_jobsPaneClose",
-			"jobsLabel": "leKTNq_jobsLabel",
-			"subagentSecondary": "leKTNq_subagentSecondary",
-			"subagentErrorRetry": "leKTNq_subagentErrorRetry",
-			"subagentLiveText": "leKTNq_subagentLiveText",
-			"jobsRowSettled": "leKTNq_jobsRowSettled",
-			"jobsPanePre": "leKTNq_jobsPanePre",
-			"jobsPaneError": "leKTNq_jobsPaneError",
-			"jobsContent": "leKTNq_jobsContent",
-			"subagentLabel": "leKTNq_subagentLabel",
-			"jobsPaneDot": "leKTNq_jobsPaneDot",
-			"jobsTitle": "leKTNq_jobsTitle",
-			"subagentRow": "leKTNq_subagentRow",
-			"jobsPaneStatus": "leKTNq_jobsPaneStatus",
-			"subagentError": "leKTNq_subagentError",
-			"jobsKillArmed": "leKTNq_jobsKillArmed",
-			"jobsKillError": "leKTNq_jobsKillError",
-			"jobsSecondary": "leKTNq_jobsSecondary",
-			"jobsPaneHint": "leKTNq_jobsPaneHint",
-			"subagentDot": "leKTNq_subagentDot",
-			"subagentCount": "leKTNq_subagentCount",
-			"jobs": "leKTNq_jobs",
-			"subagentHeader": "leKTNq_subagentHeader",
-			"subagentRowActive": "leKTNq_subagentRowActive",
-			"subagentRowLoading": "leKTNq_subagentRowLoading",
-			"subagentLiveArgs": "leKTNq_subagentLiveArgs",
-			"subagentEmptyHint": "leKTNq_subagentEmptyHint",
-			"jobsKill": "leKTNq_jobsKill"
+			"jobsContent": "ssxdYG_jobsContent",
+			"jobsPaneHint": "ssxdYG_jobsPaneHint",
+			"jobsLabel": "ssxdYG_jobsLabel",
+			"subagentCount": "ssxdYG_subagentCount",
+			"subagentLiveArgs": "ssxdYG_subagentLiveArgs",
+			"jobsTitle": "ssxdYG_jobsTitle",
+			"subagentSecondary": "ssxdYG_subagentSecondary",
+			"jobsList": "ssxdYG_jobsList",
+			"jobsRowMain": "ssxdYG_jobsRowMain",
+			"subagentRefresh": "ssxdYG_subagentRefresh",
+			"subagentError": "ssxdYG_subagentError",
+			"jobsLabelLine": "ssxdYG_jobsLabelLine",
+			"jobsPane": "ssxdYG_jobsPane",
+			"jobsPaneLabel": "ssxdYG_jobsPaneLabel",
+			"subagentBody": "ssxdYG_subagentBody",
+			"jobsPaneClose": "ssxdYG_jobsPaneClose",
+			"jobsCount": "ssxdYG_jobsCount",
+			"subagentRow": "ssxdYG_subagentRow",
+			"subagentContent": "ssxdYG_subagentContent",
+			"jobsKill": "ssxdYG_jobsKill",
+			"subagentRowActive": "ssxdYG_subagentRowActive",
+			"jobsRow": "ssxdYG_jobsRow",
+			"subagentTitle": "ssxdYG_subagentTitle",
+			"jobsSecondary": "ssxdYG_jobsSecondary",
+			"jobsDot": "ssxdYG_jobsDot",
+			"subagentLiveTool": "ssxdYG_subagentLiveTool",
+			"subagentChildren": "ssxdYG_subagentChildren",
+			"subagentErrorRetry": "ssxdYG_subagentErrorRetry",
+			"jobsHeader": "ssxdYG_jobsHeader",
+			"subagentRowLoading": "ssxdYG_subagentRowLoading",
+			"jobsKillArmed": "ssxdYG_jobsKillArmed",
+			"jobsPaneStatus": "ssxdYG_jobsPaneStatus",
+			"jobsKind": "ssxdYG_jobsKind",
+			"subagentRowDisabled": "ssxdYG_subagentRowDisabled",
+			"subagentDot": "ssxdYG_subagentDot",
+			"subagentLive": "ssxdYG_subagentLive",
+			"subagentEmpty": "ssxdYG_subagentEmpty",
+			"jobs": "ssxdYG_jobs",
+			"jobsRowSettled": "ssxdYG_jobsRowSettled",
+			"jobsRowSelected": "ssxdYG_jobsRowSelected",
+			"subagentLabel": "ssxdYG_subagentLabel",
+			"subagent": "ssxdYG_subagent",
+			"subagentEmptyHint": "ssxdYG_subagentEmptyHint",
+			"jobsPaneDot": "ssxdYG_jobsPaneDot",
+			"jobsPanePre": "ssxdYG_jobsPanePre",
+			"jobsKillError": "ssxdYG_jobsKillError",
+			"subagentLiveText": "ssxdYG_subagentLiveText",
+			"subagentHeader": "ssxdYG_subagentHeader",
+			"subagentNode": "ssxdYG_subagentNode",
+			"jobsPaneError": "ssxdYG_jobsPaneError",
+			"jobsPaneHeader": "ssxdYG_jobsPaneHeader"
 		};
 		//#endregion
 		//#region src/client/SubagentView.tsx
@@ -12512,7 +12055,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		];
 		function flatTruncate(text) {
 			const flat = text.replace(/\s+/g, " ").trim();
-			return flat.length > ARGS_SUMMARY_MAX ? `${flat.slice(0, ARGS_SUMMARY_MAX - 1)}…` : flat;
+			return flat.length > ARGS_SUMMARY_MAX ? `${flat.slice(0, 79)}…` : flat;
 		}
 		/**
 		* One-line summary of a tool call's raw arguments JSON for the collapsed
@@ -12714,12 +12257,13 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		/**
 		* Map a thread child's history rows onto compact transcript rows: the
 		* inherited fork seed is cut at the last `session/end-seed`, context
-		* injections map onto a collapsible injection row, `assistant/chunk`
+		* injections map onto a collapsible injection row, `assistant/live-chunk`
 		* deltas accumulate into streaming rows per (turn, step, block) and are
 		* superseded by the assembled `assistant/message`, and tool invocations
 		* render one expandable line each (arguments, paired result text, failure
 		* marker; a still-executing call is marked until its result lands).
-		* @param entries - history rows (event + host-computed view) in seq order.
+		* @param entries - history rows (event + host-computed view) in seq order,
+		*   the live deltas of the in-flight attempt appended after the durable tail.
 		* @returns display rows in log order.
 		*/
 		function transcriptRows(entries, prev) {
@@ -12798,7 +12342,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						});
 						break;
 					}
-					case "assistant/chunk": {
+					case "assistant/live-chunk": {
 						const chunk = data.chunk;
 						if (chunk === null || typeof chunk !== "object") break;
 						const kind = chunk.type === "text-delta" ? "assistant" : chunk.type === "reasoning-delta" ? "reasoning" : null;
@@ -12912,7 +12456,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						});
 						break;
 					}
-					default: break;
 				}
 			}
 			return reuseRows(rows, prev);
@@ -12962,8 +12505,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			return rows;
 		}
 		//#endregion
-		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-build/src/client/SideChatView.module.css.mjs
-		const css$1 = "._a_xRa_sidechat{flex-direction:column;flex:1;min-height:0;display:flex}._a_xRa_sidechatDetailHeader{border-bottom:1px solid var(--dsw-alias-hairline);flex:none;align-items:center;gap:4px;min-height:36px;padding:4px 8px 4px 12px;display:flex}._a_xRa_sidechatHeaderDot{flex:none}._a_xRa_sidechatHeaderSpacer{flex:1;min-width:0}._a_xRa_sidechatAgentBadge{border:1px solid var(--dsw-alias-hairline);max-width:55%;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;border-radius:999px;flex:none;padding:1px 8px;overflow:hidden}._a_xRa_sidechatIconBtn{width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;padding:0;transition:background-color .1s ease-out,color .1s ease-out;display:inline-flex}._a_xRa_sidechatIconBtn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._a_xRa_sidechatIconBtn:disabled{opacity:.4;cursor:default}._a_xRa_sidechatHero{min-height:0;color:var(--dsw-alias-label-tertiary);text-align:center;flex-direction:column;flex:1;justify-content:center;align-items:center;gap:8px;padding:24px 20px;animation:.2s ease-out _a_xRa_sidechatFadeIn;display:flex}._a_xRa_sidechatHeroTitle{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);font-weight:500}._a_xRa_sidechatHeroDesc{max-width:300px;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);line-height:1.6}._a_xRa_sidechatPrimaryBtn{background:var(--dsw-alias-button-info-fill,var(--dsw-alias-accent));color:var(--dsw-alias-button-info-label,var(--dsw-alias-accent-ink,#fff));font:var(--dsw-font-s-13);cursor:pointer;border:none;border-radius:999px;flex:none;margin-top:4px;padding:6px 14px;transition:opacity .1s ease-out}._a_xRa_sidechatPrimaryBtn:hover:not(:disabled){opacity:.88}._a_xRa_sidechatPrimaryBtn:disabled{opacity:.4;cursor:default}._a_xRa_sidechatHint{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);flex:none;padding:4px 12px}._a_xRa_sidechatError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-danger);flex:none;padding:4px 12px}._a_xRa_sidechatScroll{flex-direction:column;flex:1;gap:10px;min-height:0;padding:10px 12px;display:flex;overflow-y:auto}._a_xRa_sidechatScroll>*{animation:.18s ease-out _a_xRa_sidechatRowIn}._a_xRa_sidechatUser{background:var(--dsw-specific-bubble,var(--dsw-alias-bg-base));max-width:88%;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;border-radius:18px;align-self:flex-end;padding:8px 14px}._a_xRa_sidechatAssistant{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;align-self:stretch}._a_xRa_sidechatRow{align-self:stretch}._a_xRa_sidechatRowLine{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);align-items:center;gap:6px;padding:1px 0;display:flex}._a_xRa_sidechatRowSummary{cursor:pointer;user-select:none;list-style:none}._a_xRa_sidechatRowSummary::-webkit-details-marker{display:none}._a_xRa_sidechatRowSummary:hover{color:var(--dsw-alias-label-secondary)}._a_xRa_sidechatRowStatic{cursor:default}._a_xRa_sidechatRowChevron{flex:none;align-items:center;transition:transform .1s ease-out;display:inline-flex}._a_xRa_sidechatRow[open] ._a_xRa_sidechatRowChevron{transform:rotate(90deg)}._a_xRa_sidechatRowIcon{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;display:inline-flex}._a_xRa_sidechatRowLabel{text-overflow:ellipsis;white-space:nowrap;max-width:60%;color:var(--dsw-alias-label-secondary);flex:none;overflow:hidden}._a_xRa_sidechatRowMono{font-family:var(--dsw-font-mono)}._a_xRa_sidechatRowMeta{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--dsw-font-mono);color:var(--dsw-alias-label-tertiary);flex:1;overflow:hidden}._a_xRa_sidechatRowFailed ._a_xRa_sidechatRowLabel,._a_xRa_sidechatRowFailed ._a_xRa_sidechatRowMeta{color:var(--dsw-alias-danger)}._a_xRa_sidechatRowBody{border-left:1px solid var(--dsw-alias-hairline);margin:2px 0 4px 7px;padding:2px 0 2px 10px}._a_xRa_sidechatRowProse{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow-y:auto}._a_xRa_sidechatRowCode{font:var(--dsw-font-xxs-12);font-family:var(--dsw-font-mono);color:var(--dsw-alias-label-secondary);white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;margin:0;padding:4px 0;overflow-y:auto}._a_xRa_sidechatRowCode+._a_xRa_sidechatRowCode{border-top:1px solid var(--dsw-alias-hairline)}._a_xRa_sidechatRowBody>*{margin-top:2px}._a_xRa_sidechatTurnSummary{max-width:88%;font:var(--dsw-font-xxs-12);font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary);user-select:none;align-self:flex-end;padding:0 2px}._a_xRa_sidechatShimmerText{background-image:linear-gradient(90deg, var(--dsw-alias-label-tertiary) 0%, var(--dsw-alias-label-primary) 50%, var(--dsw-alias-label-tertiary) 100%);color:#0000;background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:2.6s linear infinite _a_xRa_sidechatSweep}._a_xRa_sidechatStatus{flex:none;align-items:center;gap:8px;padding:2px 14px 6px;animation:.16s ease-out _a_xRa_sidechatFadeIn;display:flex}._a_xRa_sidechatStatusText{font:var(--dsw-font-xxs-12);background-image:linear-gradient(90deg, var(--dsw-alias-label-tertiary) 0%, var(--dsw-alias-label-primary) 50%, var(--dsw-alias-label-tertiary) 100%);color:#0000;background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:2.6s linear infinite _a_xRa_sidechatSweep}._a_xRa_sidechatComposer{border:1px solid var(--dsw-alias-border-l2-darkmode-thin,var(--dsw-alias-hairline));background:var(--dsw-specific-input-major,var(--dsw-alias-bg-base));box-shadow:var(--dsw-shadow-lv2,none);border-radius:16px;flex-direction:column;flex:none;gap:4px;margin:0 8px 8px;padding:8px 8px 6px 14px;display:flex}._a_xRa_sidechatComposerInput{box-sizing:border-box;width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-s-14);resize:none;background:0 0;border:none;outline:none;max-height:132px;padding:2px 0;line-height:22px}._a_xRa_sidechatComposerInput::placeholder{color:var(--dsw-alias-label-tertiary)}._a_xRa_sidechatComposerBar{flex:none;align-items:center;gap:8px;min-height:28px;display:flex}._a_xRa_sidechatComposerMeta{min-width:0;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}._a_xRa_sidechatSendBtn{background:var(--dsw-alias-button-info-fill,var(--dsw-alias-accent));width:28px;height:28px;color:var(--dsw-alias-button-info-label,var(--dsw-alias-accent-ink,#fff));cursor:pointer;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;transition:opacity .1s ease-out;animation:.12s ease-out _a_xRa_sidechatBtnIn;display:inline-flex}._a_xRa_sidechatSendBtn:hover:not(:disabled){opacity:.88}._a_xRa_sidechatSendBtn:disabled{opacity:.35;cursor:default}@keyframes _a_xRa_sidechatRowIn{0%{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes _a_xRa_sidechatFadeIn{0%{opacity:0}to{opacity:1}}@keyframes _a_xRa_sidechatBtnIn{0%{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}@keyframes _a_xRa_sidechatSweep{0%{background-position:200% 0}to{background-position:-200% 0}}@media (prefers-reduced-motion:reduce){._a_xRa_sidechatScroll>*,._a_xRa_sidechatHero,._a_xRa_sidechatStatus,._a_xRa_sidechatSendBtn{animation:none}._a_xRa_sidechatStatusText,._a_xRa_sidechatShimmerText{color:var(--dsw-alias-label-tertiary);background-image:none;animation:none}._a_xRa_sidechatRowChevron{transition:none}}";
+		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-source/src/client/SideChatView.module.css.mjs
+		const css$1 = ".ibJbvq_sidechat{flex-direction:column;flex:1;min-height:0;display:flex}.ibJbvq_sidechatDetailHeader{border-bottom:1px solid var(--dsw-alias-hairline);flex:none;align-items:center;gap:4px;min-height:36px;padding:4px 8px 4px 12px;display:flex}.ibJbvq_sidechatHeaderDot{flex:none}.ibJbvq_sidechatHeaderSpacer{flex:1;min-width:0}.ibJbvq_sidechatAgentBadge{border:1px solid var(--dsw-alias-hairline);max-width:55%;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;border-radius:999px;flex:none;padding:1px 8px;overflow:hidden}.ibJbvq_sidechatIconBtn{width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;flex:none;justify-content:center;align-items:center;padding:0;transition:background-color .1s ease-out,color .1s ease-out;display:inline-flex}.ibJbvq_sidechatIconBtn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.ibJbvq_sidechatIconBtn:disabled{opacity:.4;cursor:default}.ibJbvq_sidechatHero{min-height:0;color:var(--dsw-alias-label-tertiary);text-align:center;flex-direction:column;flex:1;justify-content:center;align-items:center;gap:8px;padding:24px 20px;animation:.2s ease-out ibJbvq_sidechatFadeIn;display:flex}.ibJbvq_sidechatHeroTitle{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);font-weight:500}.ibJbvq_sidechatHeroDesc{max-width:300px;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);line-height:1.6}.ibJbvq_sidechatPrimaryBtn{background:var(--dsw-alias-button-info-fill,var(--dsw-alias-accent));color:var(--dsw-alias-button-info-label,var(--dsw-alias-accent-ink,#fff));font:var(--dsw-font-s-13);cursor:pointer;border:none;border-radius:999px;flex:none;margin-top:4px;padding:6px 14px;transition:opacity .1s ease-out}.ibJbvq_sidechatPrimaryBtn:hover:not(:disabled){opacity:.88}.ibJbvq_sidechatPrimaryBtn:disabled{opacity:.4;cursor:default}.ibJbvq_sidechatHint{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);flex:none;padding:4px 12px}.ibJbvq_sidechatError{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-danger);flex:none;padding:4px 12px}.ibJbvq_sidechatScroll{flex-direction:column;flex:1;gap:10px;min-height:0;padding:10px 12px;display:flex;overflow-y:auto}.ibJbvq_sidechatScroll>*{animation:.18s ease-out ibJbvq_sidechatRowIn}.ibJbvq_sidechatUser{background:var(--dsw-specific-bubble,var(--dsw-alias-bg-base));max-width:88%;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;border-radius:18px;align-self:flex-end;padding:8px 14px}.ibJbvq_sidechatAssistant{font:var(--dsw-font-s-14);color:var(--dsw-alias-label-primary);overflow-wrap:anywhere;align-self:stretch}.ibJbvq_sidechatRow{align-self:stretch}.ibJbvq_sidechatRowLine{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);align-items:center;gap:6px;padding:1px 0;display:flex}.ibJbvq_sidechatRowSummary{cursor:pointer;user-select:none;list-style:none}.ibJbvq_sidechatRowSummary::-webkit-details-marker{display:none}.ibJbvq_sidechatRowSummary:hover{color:var(--dsw-alias-label-secondary)}.ibJbvq_sidechatRowStatic{cursor:default}.ibJbvq_sidechatRowChevron{flex:none;align-items:center;transition:transform .1s ease-out;display:inline-flex}.ibJbvq_sidechatRow[open] .ibJbvq_sidechatRowChevron{transform:rotate(90deg)}.ibJbvq_sidechatRowIcon{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);flex:none;justify-content:center;align-items:center;display:inline-flex}.ibJbvq_sidechatRowLabel{text-overflow:ellipsis;white-space:nowrap;max-width:60%;color:var(--dsw-alias-label-secondary);flex:none;overflow:hidden}.ibJbvq_sidechatRowMono{font-family:var(--dsw-font-mono)}.ibJbvq_sidechatRowMeta{text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--dsw-font-mono);color:var(--dsw-alias-label-tertiary);flex:1;overflow:hidden}.ibJbvq_sidechatRowFailed .ibJbvq_sidechatRowLabel,.ibJbvq_sidechatRowFailed .ibJbvq_sidechatRowMeta{color:var(--dsw-alias-danger)}.ibJbvq_sidechatRowBody{border-left:1px solid var(--dsw-alias-hairline);margin:2px 0 4px 7px;padding:2px 0 2px 10px}.ibJbvq_sidechatRowProse{font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow-y:auto}.ibJbvq_sidechatRowCode{font:var(--dsw-font-xxs-12);font-family:var(--dsw-font-mono);color:var(--dsw-alias-label-secondary);white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;margin:0;padding:4px 0;overflow-y:auto}.ibJbvq_sidechatRowCode+.ibJbvq_sidechatRowCode{border-top:1px solid var(--dsw-alias-hairline)}.ibJbvq_sidechatRowBody>*{margin-top:2px}.ibJbvq_sidechatTurnSummary{max-width:88%;font:var(--dsw-font-xxs-12);font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary);user-select:none;align-self:flex-end;padding:0 2px}.ibJbvq_sidechatShimmerText{background-image:linear-gradient(90deg, var(--dsw-alias-label-tertiary) 0%, var(--dsw-alias-label-primary) 50%, var(--dsw-alias-label-tertiary) 100%);color:#0000;background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:2.6s linear infinite ibJbvq_sidechatSweep}.ibJbvq_sidechatStatus{flex:none;align-items:center;gap:8px;padding:2px 14px 6px;animation:.16s ease-out ibJbvq_sidechatFadeIn;display:flex}.ibJbvq_sidechatStatusText{font:var(--dsw-font-xxs-12);background-image:linear-gradient(90deg, var(--dsw-alias-label-tertiary) 0%, var(--dsw-alias-label-primary) 50%, var(--dsw-alias-label-tertiary) 100%);color:#0000;background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:2.6s linear infinite ibJbvq_sidechatSweep}.ibJbvq_sidechatComposer{border:1px solid var(--dsw-alias-border-l2-darkmode-thin,var(--dsw-alias-hairline));background:var(--dsw-specific-input-major,var(--dsw-alias-bg-base));box-shadow:var(--dsw-shadow-lv2,none);border-radius:16px;flex-direction:column;flex:none;gap:4px;margin:0 8px 8px;padding:8px 8px 6px 14px;display:flex}.ibJbvq_sidechatComposerInput{box-sizing:border-box;width:100%;color:var(--dsw-alias-label-primary);font:var(--dsw-font-s-14);resize:none;background:0 0;border:none;outline:none;max-height:132px;padding:2px 0;line-height:22px}.ibJbvq_sidechatComposerInput::placeholder{color:var(--dsw-alias-label-tertiary)}.ibJbvq_sidechatComposerBar{flex:none;align-items:center;gap:8px;min-height:28px;display:flex}.ibJbvq_sidechatComposerMeta{min-width:0;font:var(--dsw-font-xxs-12);color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}.ibJbvq_sidechatSendBtn{background:var(--dsw-alias-button-info-fill,var(--dsw-alias-accent));width:28px;height:28px;color:var(--dsw-alias-button-info-label,var(--dsw-alias-accent-ink,#fff));cursor:pointer;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;transition:opacity .1s ease-out;animation:.12s ease-out ibJbvq_sidechatBtnIn;display:inline-flex}.ibJbvq_sidechatSendBtn:hover:not(:disabled){opacity:.88}.ibJbvq_sidechatSendBtn:disabled{opacity:.35;cursor:default}@keyframes ibJbvq_sidechatRowIn{0%{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes ibJbvq_sidechatFadeIn{0%{opacity:0}to{opacity:1}}@keyframes ibJbvq_sidechatBtnIn{0%{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}@keyframes ibJbvq_sidechatSweep{0%{background-position:200% 0}to{background-position:-200% 0}}@media (prefers-reduced-motion:reduce){.ibJbvq_sidechatScroll>*,.ibJbvq_sidechatHero,.ibJbvq_sidechatStatus,.ibJbvq_sidechatSendBtn{animation:none}.ibJbvq_sidechatStatusText,.ibJbvq_sidechatShimmerText{color:var(--dsw-alias-label-tertiary);background-image:none;animation:none}.ibJbvq_sidechatRowChevron{transition:none}}";
 		const tagId$1 = "dsh-external/dsh-better-sidebar/SideChatView.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
 			const tag = document.createElement("style");
@@ -12973,47 +12516,47 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			document.head.appendChild(tag);
 		}
 		var SideChatView_module_css_default = {
-			"sidechatHint": "_a_xRa_sidechatHint",
-			"sidechatRowChevron": "_a_xRa_sidechatRowChevron",
-			"sidechatRowStatic": "_a_xRa_sidechatRowStatic",
-			"sidechatComposerInput": "_a_xRa_sidechatComposerInput",
-			"sidechatIconBtn": "_a_xRa_sidechatIconBtn",
-			"sidechatAssistant": "_a_xRa_sidechatAssistant",
-			"sidechatRowIcon": "_a_xRa_sidechatRowIcon",
-			"sidechatRowMeta": "_a_xRa_sidechatRowMeta",
-			"sidechatStatus": "_a_xRa_sidechatStatus",
-			"sidechatHeaderSpacer": "_a_xRa_sidechatHeaderSpacer",
-			"sidechatBtnIn": "_a_xRa_sidechatBtnIn",
-			"sidechatStatusText": "_a_xRa_sidechatStatusText",
-			"sidechatHeaderDot": "_a_xRa_sidechatHeaderDot",
-			"sidechatAgentBadge": "_a_xRa_sidechatAgentBadge",
-			"sidechatHero": "_a_xRa_sidechatHero",
-			"sidechatRowIn": "_a_xRa_sidechatRowIn",
-			"sidechatRowCode": "_a_xRa_sidechatRowCode",
-			"sidechatRowMono": "_a_xRa_sidechatRowMono",
-			"sidechat": "_a_xRa_sidechat",
-			"sidechatUser": "_a_xRa_sidechatUser",
-			"sidechatHeroDesc": "_a_xRa_sidechatHeroDesc",
-			"sidechatRowLabel": "_a_xRa_sidechatRowLabel",
-			"sidechatRow": "_a_xRa_sidechatRow",
-			"sidechatRowProse": "_a_xRa_sidechatRowProse",
-			"sidechatScroll": "_a_xRa_sidechatScroll",
-			"sidechatRowSummary": "_a_xRa_sidechatRowSummary",
-			"sidechatComposerMeta": "_a_xRa_sidechatComposerMeta",
-			"sidechatSendBtn": "_a_xRa_sidechatSendBtn",
-			"sidechatFadeIn": "_a_xRa_sidechatFadeIn",
-			"sidechatTurnSummary": "_a_xRa_sidechatTurnSummary",
-			"sidechatSweep": "_a_xRa_sidechatSweep",
-			"sidechatRowFailed": "_a_xRa_sidechatRowFailed",
-			"sidechatError": "_a_xRa_sidechatError",
-			"sidechatRowBody": "_a_xRa_sidechatRowBody",
-			"sidechatComposer": "_a_xRa_sidechatComposer",
-			"sidechatShimmerText": "_a_xRa_sidechatShimmerText",
-			"sidechatDetailHeader": "_a_xRa_sidechatDetailHeader",
-			"sidechatComposerBar": "_a_xRa_sidechatComposerBar",
-			"sidechatHeroTitle": "_a_xRa_sidechatHeroTitle",
-			"sidechatRowLine": "_a_xRa_sidechatRowLine",
-			"sidechatPrimaryBtn": "_a_xRa_sidechatPrimaryBtn"
+			"sidechatComposerInput": "ibJbvq_sidechatComposerInput",
+			"sidechatHeroTitle": "ibJbvq_sidechatHeroTitle",
+			"sidechatHeaderSpacer": "ibJbvq_sidechatHeaderSpacer",
+			"sidechatHint": "ibJbvq_sidechatHint",
+			"sidechatAgentBadge": "ibJbvq_sidechatAgentBadge",
+			"sidechatAssistant": "ibJbvq_sidechatAssistant",
+			"sidechatRowLine": "ibJbvq_sidechatRowLine",
+			"sidechatRowLabel": "ibJbvq_sidechatRowLabel",
+			"sidechatRowMeta": "ibJbvq_sidechatRowMeta",
+			"sidechat": "ibJbvq_sidechat",
+			"sidechatTurnSummary": "ibJbvq_sidechatTurnSummary",
+			"sidechatRow": "ibJbvq_sidechatRow",
+			"sidechatShimmerText": "ibJbvq_sidechatShimmerText",
+			"sidechatDetailHeader": "ibJbvq_sidechatDetailHeader",
+			"sidechatPrimaryBtn": "ibJbvq_sidechatPrimaryBtn",
+			"sidechatRowStatic": "ibJbvq_sidechatRowStatic",
+			"sidechatSweep": "ibJbvq_sidechatSweep",
+			"sidechatStatusText": "ibJbvq_sidechatStatusText",
+			"sidechatComposer": "ibJbvq_sidechatComposer",
+			"sidechatError": "ibJbvq_sidechatError",
+			"sidechatIconBtn": "ibJbvq_sidechatIconBtn",
+			"sidechatFadeIn": "ibJbvq_sidechatFadeIn",
+			"sidechatBtnIn": "ibJbvq_sidechatBtnIn",
+			"sidechatRowMono": "ibJbvq_sidechatRowMono",
+			"sidechatHeroDesc": "ibJbvq_sidechatHeroDesc",
+			"sidechatRowCode": "ibJbvq_sidechatRowCode",
+			"sidechatHeaderDot": "ibJbvq_sidechatHeaderDot",
+			"sidechatRowChevron": "ibJbvq_sidechatRowChevron",
+			"sidechatRowProse": "ibJbvq_sidechatRowProse",
+			"sidechatHero": "ibJbvq_sidechatHero",
+			"sidechatScroll": "ibJbvq_sidechatScroll",
+			"sidechatComposerBar": "ibJbvq_sidechatComposerBar",
+			"sidechatRowSummary": "ibJbvq_sidechatRowSummary",
+			"sidechatSendBtn": "ibJbvq_sidechatSendBtn",
+			"sidechatStatus": "ibJbvq_sidechatStatus",
+			"sidechatRowIn": "ibJbvq_sidechatRowIn",
+			"sidechatComposerMeta": "ibJbvq_sidechatComposerMeta",
+			"sidechatRowFailed": "ibJbvq_sidechatRowFailed",
+			"sidechatRowIcon": "ibJbvq_sidechatRowIcon",
+			"sidechatRowBody": "ibJbvq_sidechatRowBody",
+			"sidechatUser": "ibJbvq_sidechatUser"
 		};
 		//#endregion
 		//#region src/client/SideChatView.tsx
@@ -13279,7 +12822,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			const [revision, setRevision] = (0, react.useState)(0);
 			const [info, setInfo] = (0, react.useState)(null);
 			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
-			const cacheRef = (0, react.useRef)({ entries: [] });
+			const cacheRef = (0, react.useRef)({
+				entries: [],
+				live: []
+			});
 			const prevRowsRef = (0, react.useRef)([]);
 			const controllerRef = (0, react.useRef)(null);
 			const scrollRef = (0, react.useRef)(null);
@@ -13344,12 +12890,13 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				try {
 					const cache = cacheRef.current;
 					const afterSeq = cache.entries.at(-1)?.event.seq;
-					const { events } = await api.sidechatEvents(childId, afterSeq, controller.signal);
+					const { events, live } = await api.sidechatEvents(childId, afterSeq, controller.signal);
+					cache.live = live ?? [];
 					if (events.length > 0) {
 						const incoming = events.map((event) => ({ event }));
 						cache.entries = mergeBySeq(cache.entries, incoming);
-						setRevision((value) => value + 1);
 					}
+					setRevision((value) => value + 1);
 				} catch {}
 			}, []);
 			/** The thread header badge pull (live state + preset/model identity). */
@@ -13359,7 +12906,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				} catch {}
 			}, []);
 			(0, react.useEffect)(() => {
-				cacheRef.current = { entries: [] };
+				cacheRef.current = {
+					entries: [],
+					live: []
+				};
 				prevRowsRef.current = [];
 				controllerRef.current?.abort();
 				setError(null);
@@ -13407,7 +12957,13 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				fetchInfo
 			]);
 			const rows = (0, react.useMemo)(() => {
-				const next = threadId === void 0 ? [] : transcriptRows(cacheRef.current.entries, prevRowsRef.current);
+				const cache = cacheRef.current;
+				const settled = new Set(cache.entries.filter((entry) => entry.event.type === "assistant/message").map((entry) => {
+					const data = entry.event.data;
+					return `${String(data.turn)}:${String(data.step)}`;
+				}));
+				const live = cache.live.filter((event) => !settled.has(`${String(event.data.turn)}:${String(event.data.step)}`)).map((event) => ({ event }));
+				const next = threadId === void 0 ? [] : transcriptRows([...cache.entries, ...live], prevRowsRef.current);
 				prevRowsRef.current = next;
 				return next;
 			}, [threadId, revision]);
@@ -14222,15 +13778,16 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		}
 		/** Count UI-owned terminals (agent:` tabs excluded — they are the model's). */
 		function uiTerminalCount(state) {
-			return allLeaves(state.splits).flatMap((leaf) => leaf.tabs).filter((tab) => tab.type === "terminal" && !isAgentTabId(tab.id)).length;
+			return allLeaves(state.bottomSplits).flatMap((leaf) => leaf.tabs).filter((tab) => tab.type === "terminal" && !isAgentTabId(tab.id)).length;
 		}
 		/** The 6 built-in tab descriptors. */
 		function builtinTabs(ctx, options = {}) {
 			return [
 				{
 					id: "editor",
+					description: () => t("guideDescFiles"),
 					title: () => t("files"),
-					icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpen16, { size }),
+					icon: filesTabIcon,
 					order: 10,
 					hidden: false,
 					dedupeKey: (tab) => tab.path,
@@ -14275,30 +13832,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				{
 					id: "git",
 					title: () => t("changes"),
-					icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconDiffOutline16, { size }),
+					description: () => t("guideDescGit"),
+					icon: changesTabIcon,
 					order: 20,
 					single: true,
 					badge: (_ctx, scope) => {
 						const count = opCountOf(scope.sessionId);
 						return count === void 0 || count === 0 ? null : count;
 					},
-					settings: { toggles: [{
-						key: "changesDiffFloat",
-						type: "select",
-						title: () => t("changesDiffOpenTitle"),
-						desc: () => t("changesDiffOpenDesc"),
-						options: [{
-							value: true,
-							icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconFloatWindowOutline16, { size }),
-							title: () => t("changesDiffOpenFloat"),
-							desc: () => t("changesDiffOpenFloatDesc")
-						}, {
-							value: false,
-							icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconPanelBottomOutline16, { size }),
-							title: () => t("changesDiffOpenPane"),
-							desc: () => t("changesDiffOpenPaneDesc")
-						}]
-					}] },
 					component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
 						ctx,
 						store,
@@ -14314,7 +13855,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				{
 					id: "subagent",
 					title: () => t("subagent"),
-					icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconThinkOutline16, { size }),
+					description: () => t("guideDescSubagent"),
+					icon: tasksTabIcon,
 					order: 30,
 					single: true,
 					settings: { toggles: [{
@@ -14338,7 +13880,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				{
 					id: "sidechat",
 					title: () => t("sideChat"),
-					icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconNewChatOutline16, { size }),
+					description: () => t("guideDescSidechat"),
+					icon: sidechatTabIcon,
 					order: 35,
 					createTab: () => {
 						const threadId = consumeSidechatSeed();
@@ -14370,7 +13913,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				{
 					id: "terminal",
 					title: () => t("terminal"),
-					icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconTerminalOutline16, { size }),
+					description: () => t("guideDescTerminal"),
+					icon: terminalTabIcon,
 					order: 40,
 					available: (_ctx, _scope, state) => uiTerminalCount(state) < 3,
 					settings: { toggles: [
@@ -14435,7 +13979,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				{
 					id: "browser",
 					title: () => t("browser"),
-					icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconGlobeOutline16, { size }),
+					description: () => t("guideDescBrowser"),
+					icon: browserTabIcon,
 					order: 50,
 					settings: { toggles: [
 						{
@@ -14479,7 +14024,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				{
 					id: "diff",
 					title: () => t("changes"),
-					icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconDiffOutline16, { size }),
+					icon: changesTabIcon,
 					order: -1,
 					hidden: true,
 					dedupeKey: (tab) => tab.id,
@@ -14822,6 +14367,24 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			}
 		}
 		//#endregion
+		//#region src/client/reference-in-chat.ts
+		/**
+		* Reference one path in the session's conversation draft.
+		* @param ctx - the client context.
+		* @param sessionId - the session whose draft receives the reference.
+		* @param cwd - that session's workspace root (for the relative spelling).
+		* @param path - the absolute or workspace-relative path to reference.
+		* @param isDir - whether the path is a directory (folder mention vs file chip).
+		*/
+		function referenceInChat(ctx, sessionId, cwd, path, isDir) {
+			const rel = relativeTo(cwd ?? "", path);
+			if (isDir) {
+				appendToDraft(ctx, sessionId, `@${rel === "." ? "./" : `${rel}/`}`);
+				return;
+			}
+			if (!insertFileReference(ctx, sessionId, rel)) appendToDraft(ctx, sessionId, `@${rel}`);
+		}
+		//#endregion
 		//#region src/client/pinned.ts
 		const PINNED_META_KEY = "__pinnedHome";
 		const PINNED_VID_PREFIX = "pinned:";
@@ -14906,20 +14469,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* Collect every pinned terminal visible to the viewer across ALL cached
 		* session states. Excludes the viewer's own session (those tabs are on its
 		* own strip). Order is stable: sessions in the cache's insertion order,
-		* tabs in tree order (splits → bottomSplits → floats) within each session
-		* — the order tabs were opened/pinned, so the rail never reorders between
-		* renders.
+		* tabs in tree order within each session — the order tabs were
+		* opened/pinned, so the rail never reorders between renders.
 		*/
 		function collectPinnedTabs(bySession, viewer) {
 			const entries = [];
 			for (const [homeSessionId, state] of bySession) {
 				if (homeSessionId === viewer.sessionId) continue;
-				collectFromTree(state.splits, homeSessionId, viewer, entries);
 				collectFromTree(state.bottomSplits, homeSessionId, viewer, entries);
-				for (const float of state.floats) if (float.tab.type === "terminal" && pinnedVisibleTo(float.tab, viewer)) entries.push({
-					tab: float.tab,
-					homeSessionId
-				});
 			}
 			return entries;
 		}
@@ -14942,9 +14499,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* button cluster, and the + menu that opens new tabs (explorer / git /
 		* terminal). Tabs are draggable; dropping onto another tab inserts before it,
 		* dropping on the strip background appends to this pane. Right-clicking a
-		* tab opens the tab context menu (float as a free window / close / close
-		* others / close to the left / close to the right, the close ones scoped to
-		* this pane).
+		* tab opens the tab context menu (close / close others / close to the left /
+		* close to the right, the close ones scoped to this pane).
 		*/
 		/** Drag payload for tab moves (HTML5 DnD dataTransfer). */
 		const TAB_DRAG_TYPE = "application/x-dsh-tab";
@@ -14966,7 +14522,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			else document.body.removeAttribute("data-dsh-tab-dragging");
 		}
 		function TabBar(props) {
-			const { paneId, tabs, active, onActivate, onClose, onNewTab, newTabOptions, onDropTab, onFloatTab, onPinTab, getTabIcon, getTabBadge } = props;
+			const { paneId, tabs, active, onActivate, onClose, onNewTab, newTabOptions, onDropTab, onPinTab, getTabIcon, getTabBadge } = props;
 			const [menuOpen, setMenuOpen] = (0, react.useState)(false);
 			const [tabMenu, setTabMenu] = (0, react.useState)(null);
 			useSubmenuFlip(tabMenu);
@@ -15174,10 +14730,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 									label: t("close")
 								}];
 								return [
-									{
-										id: "float",
-										label: t("moveToFreeWindow")
-									},
 									...pinEntries,
 									{
 										id: "close",
@@ -15206,8 +14758,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 								setTabMenu(null);
 								const index = tabs.findIndex((tab) => tab.id === target.tabId);
 								if (index < 0) return;
-								if (id === "float") onFloatTab(target.tabId);
-								else if (id === "pinWorkspace") onPinTab?.(target.tabId, "workspace");
+								if (id === "pinWorkspace") onPinTab?.(target.tabId, "workspace");
 								else if (id === "pinGlobal") onPinTab?.(target.tabId, "global");
 								else if (id === "unpin") onPinTab?.(target.tabId, null);
 								else if (id === "close") onClose(target.tabId);
@@ -15391,7 +14942,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 							if (before === null) actions.moveTabToEdge(payload, leaf.id, "center");
 							else actions.moveTabBefore(payload, leaf.id, before);
 						},
-						onFloatTab: actions.floatTab,
 						onPinTab: actions.pinTab
 					}),
 					leaf.tabs.length > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -15457,7 +15007,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 				className: sidebar_module_css_default.workbench,
 				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(NodeView, {
-					node: tree ?? state.splits,
+					node: tree ?? state.bottomSplits,
 					state,
 					newTabOptions,
 					actions,
@@ -15468,29 +15018,60 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				})
 			});
 		}
+		/** Whether a viewport width is narrow (mobile). */
+		function isNarrowWidth(width) {
+			return width < 768;
+		}
+		/**
+		* Live narrow-viewport flag for components. Reads `window.innerWidth` and
+		* re-measures on resize (rAF-throttled, the repo's existing drag pattern).
+		* Deliberately avoids `matchMedia` (jsdom does not implement it) — the
+		* resize listener is equally exact for a breakpoint that never changes
+		* while the page is open.
+		*/
+		function useViewportSize() {
+			const [size, setSize] = (0, react.useState)(() => ({
+				width: typeof window === "undefined" ? 0 : window.innerWidth,
+				height: typeof window === "undefined" ? 0 : window.innerHeight
+			}));
+			(0, react.useEffect)(() => {
+				if (typeof window === "undefined") return;
+				let frame = null;
+				const measure = () => {
+					frame = null;
+					setSize({
+						width: window.innerWidth,
+						height: window.innerHeight
+					});
+				};
+				const onResize = () => {
+					if (frame === null) frame = requestAnimationFrame(measure);
+				};
+				window.addEventListener("resize", onResize);
+				return () => {
+					window.removeEventListener("resize", onResize);
+					if (frame !== null) cancelAnimationFrame(frame);
+				};
+			}, []);
+			return size;
+		}
 		//#endregion
 		//#region src/client/layout-push.ts
 		/**
-		* Size written to `--dsh-sidebar-width` / `--dsh-sidebar-height`.
-		* The conversation column (output + composer) must keep at least
-		* {@link PANEL_MIN} of the viewport after the bottom panel claims height.
+		* Size written to `--dsh-sidebar-height`. The conversation column (output +
+		* composer) must keep at least {@link CONVERSATION_MIN} of the viewport after
+		* the bottom workbench claims height; a closed workbench pushes 0. The right
+		* column belongs to DSH's native Sidebar, so this shell pushes no width.
 		*/
 		function finiteNonNegative(value) {
 			return Number.isFinite(value) ? Math.max(0, value) : 0;
 		}
-		/** Compute the live layout-push size. Narrow drawers float and push 0. */
-		function layoutPushSize(input) {
-			if (input.narrow) return {
-				width: 0,
-				height: 0
-			};
-			const viewportWidth = finiteNonNegative(input.viewportWidth);
+		/** Compute the live layout-push height for the bottom workbench. */
+		function bottomPushHeight(input) {
+			if (!input.open) return 0;
 			const viewportHeight = finiteNonNegative(input.viewportHeight);
 			const maxHeight = Math.max(0, viewportHeight - Math.min(280, viewportHeight));
-			return {
-				width: input.panelOpen ? Math.min(finiteNonNegative(input.width), viewportWidth) : 0,
-				height: input.bottomOpen ? Math.min(finiteNonNegative(input.bottomHeight), maxHeight) : 0
-			};
+			return Math.min(finiteNonNegative(input.height), maxHeight);
 		}
 		//#endregion
 		//#region src/client/desktop-env.ts
@@ -15676,7 +15257,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		*   errors in the sidebar shell itself (Workbench, drag layout, …) — a full
 		*   swap keeps the page alive.
 		* - PER-TAB (Sidebar.tsx TabContent, `css.tabBoundaryError`): a crashing
-		*   viewer/editor shows a strip inside ITS OWN pane; the toggle cluster, the
+		*   viewer/editor shows a strip inside ITS OWN pane; the workbench shell, the
 		*   other tabs, and the panel itself stay alive (issue #31 — a tab crash
 		*   must never take down the whole sidebar).
 		*
@@ -15774,8 +15355,18 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		}
 		//#endregion
 		//#region src/client/center-column.ts
-		/** Stable selector for the DSH AppFrame conversation slot. */
-		const CENTER_COLUMN_SELECTOR = "#root [data-slot=\"conversation\"]";
+		/**
+		* Anchor selectors for the DSH AppFrame conversation slot host, newest first:
+		*
+		* - DSH 0.1.5-alpha.2 replaced the root `conversation` slot with a root-scoped
+		*   keyed `main` slot, so the conversation renders under `main.conversation`
+		*   (ConversationPanel -> `renderSlot('main.conversation')`);
+		* - alpha.1 and earlier spell the same host `conversation`.
+		*
+		* Both keys are accepted deliberately so one build spans the alpha.1 → alpha.2
+		* boundary; only one exists in any given host.
+		*/
+		const CENTER_COLUMN_SELECTOR = "#root [data-slot=\"main.conversation\"], #root [data-slot=\"conversation\"]";
 		/** Last full DOM validation for each center-column node. Weak keys avoid leaks. */
 		const validatedAt = /* @__PURE__ */ new WeakMap();
 		/**
@@ -15784,6 +15375,19 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* fast path immediately, without requiring Sidebar to run a second locator.
 		*/
 		const documentStyleState = /* @__PURE__ */ new WeakMap();
+		/**
+		* From the matched conversation slot host, walk up through transparent slot
+		* hosts to the real column: DSH slot hosts render with `display: contents`,
+		* so on alpha.2 the `main.conversation` host (and any further keyed slot
+		* wrappers above it) contributes no box, and the center column is the first
+		* ancestor whose computed display is NOT `contents`.
+		*/
+		function columnOfSlotHost(host) {
+			const view = host.ownerDocument.defaultView;
+			let node = host.parentElement;
+			while (node !== null && (view?.getComputedStyle(node).display ?? "") === "contents") node = node.parentElement;
+			return node;
+		}
 		/**
 		* Resolve the AppFrame center column while keeping streaming mutations cheap.
 		*
@@ -15818,7 +15422,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				}
 				if (!styleChanged && lastValidation !== void 0 && now - lastValidation < revalidateMs) return current;
 			}
-			const col = (options.query ?? (() => doc.querySelector(CENTER_COLUMN_SELECTOR)))()?.parentElement;
+			const host = (options.query ?? (() => doc.querySelector(CENTER_COLUMN_SELECTOR)))();
+			const col = host === null || host === void 0 ? null : columnOfSlotHost(host);
 			if (col === null || col === void 0 || !col.isConnected) return void 0;
 			validatedAt.set(col, now);
 			return col;
@@ -15827,14 +15432,16 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		//#region src/client/sidebar/use-center-column.ts
 		/**
 		* Center-column tracking (extracted from Sidebar.tsx, behavior identical):
-		* the bottom panel spans ONLY the app shell's center column ("squeezes the
-		* agent output area") — it starts at the app sidebar's right edge and ends
-		* at the details column's left edge (the details column sits between the
-		* center and the right panel). Measured directly from the AppFrame's center
-		* column DOM (the parent of the [data-slot="conversation"] wrapper —
-		* layout.css's center column) so the bottom panel tracks the column's real
-		* horizontal edges — including the animated AppFrame padding reservation
-		* while the right panel opens/closes; a frame that never appears keeps the
+		* the bottom workbench spans ONLY the app shell's center column ("squeezes
+		* the agent output area") — it starts at the app sidebar's right edge and
+		* ends at the details column's left edge. Measured directly from the
+		* AppFrame's center column DOM (center-column.ts anchors on the conversation
+		* slot host — `main.conversation` on DSH 0.1.5-alpha.2+, `conversation` on
+		* alpha.1 — and walks up the transparent `display: contents` slot hosts to
+		* the column; layout.css's center column) so the workbench tracks the
+		* column's
+		* real horizontal edges, including the animated track moves while DSH's
+		* native right Sidebar opens/closes; a frame that never appears keeps the
 		* initial zero-size fallback (the panel renders at 0 width until measured).
 		* The rect lives in a REF (not state): the open/close transition resizes
 		* the center column EVERY frame for its duration, and reacting per frame
@@ -15960,6 +15567,39 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* title frame has had time to land.
 		*/
 		const AUTO_OPEN_DEBOUNCE_MS = 500;
+		/**
+		* Activate the Tasks page (the `subagent` tab type) in DSH's native right
+		* Sidebar — the landing the two auto-open switches promise: the right column
+		* IS the sidebar the user means, while the plugin's own bottom workbench only
+		* serves its own flows (its `+` menu and the first-expansion terminal). Every
+		* other open in this plugin already lands there, so a `target: 'bottom'` here
+		* puts the Tasks page in the bottom bar instead.
+		*
+		* A background activation must not take over a narrow viewport: below 768px
+		* the host draws that column FULLSCREEN, so the tab is placed and the column
+		* is put back to collapsed — parked, waiting behind the expand control,
+		* instead of covering the chat. The host expands on every open
+		* (`openContent` plans `setExpanded(true)`) and offers no option to suppress
+		* it, hence the read-then-restore pair: both commits land in one React batch,
+		* so the column never renders the intermediate state. The viewport is read
+		* when the activation FIRES (the debounced subagent trigger included), so a
+		* resize while arming is honoured.
+		*
+		* @param ctx - the client context (`ctx.sidebarRight` + `ctx.betterSidebar`).
+		* @param sessionId - the session the feed reports the activity for.
+		* @param options.background - `true` for background activity (parks on narrow
+		*   viewports); `false` for the explicit topology jump-back, which is a user
+		*   gesture and always leaves the column as the host expanded it.
+		*/
+		function activateTasksPage(ctx, sessionId, options) {
+			const column = ctx.get("sidebarRight");
+			const park = options.background && ctx.sessions.list.getSnapshot().current === sessionId && isNarrowWidth(window.innerWidth) && column?.isExpanded?.() === false;
+			ctx.get("betterSidebar")?.openTab({
+				type: "subagent",
+				title: t("subagent")
+			});
+			if (park) column?.toggleExpanded?.();
+		}
 		function useHostFeeds(feeds) {
 			const { ctx, store, sessionList, sessionId } = feeds;
 			/**
@@ -15972,8 +15612,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			* the same shell without losing the agent's work — capped like the
 			* terminal view's own reconnect loop, so a refused endpoint never spins
 			* forever (the next session switch restarts the loop).
-			* While the terminal tab type is disabled in settings, pushes are
-			* ignored (no auto-added tabs); re-enabling makes the next push converge.
+			* While the terminal tab type is disabled in settings, pushes add / remove
+			* no tabs — but the authoritative wait map is STILL mirrored (see the
+			* branch below); re-enabling makes the next push converge on both.
 			*/
 			(0, react.useEffect)(() => {
 				if (sessionId === void 0) return;
@@ -15992,7 +15633,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						try {
 							const list = JSON.parse(event.data);
 							if (!Array.isArray(list)) return;
-							store.reduce((s) => ctx.get("betterSidebar")?.isTabEnabled("terminal") === false ? s : reconcileAgentTerminals(s, list));
+							store.reduce((s) => ctx.get("betterSidebar")?.isTabEnabled("terminal") === false ? mirrorAgentWaits(s, list) : reconcileAgentTerminals(s, list));
 						} catch {}
 					};
 					socket.onclose = () => {
@@ -16098,11 +15739,11 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			* Subagent auto-activation: the moment the current conversation spawns its
 			* FIRST direct subagent (a 0 → N transition on the list feed), the "auto
 			* open" pref is on, and the Tasks tab type is enabled in settings, activate
-			* the Tasks page. Single-instance semantics focus an existing pane tab in
-			* place or raise an existing free window; a new tab lands in the right pane
-			* and is never duplicated. On wide viewports the right panel also expands;
-			* on narrow viewports background activity never forces the full-screen
-			* drawer open over the chat.
+			* the Tasks page in DSH's native right Sidebar. Single-instance semantics
+			* focus an existing tab in place; a new tab lands in that column and is
+			* never duplicated. Landing it EXPANDS the column on wide viewports, while
+			* a narrow viewport (where the host draws that column fullscreen) parks the
+			* tab instead of taking the screen over — see {@link activateTasksPage}.
 			* Switching to a session that already has subagents never triggers — its
 			* baseline starts at the current count — so a deliberate layout is never
 			* fought.
@@ -16128,15 +15769,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					if (!detectNewDirectSubagent(baseline, ctx.sessions.list.getSnapshot(), sessionId)) return;
 					if (!store.getPrefs().autoOpenSubagent) return;
 					if (ctx.get("betterSidebar")?.isTabEnabled("subagent") === false) return;
-					if (!isNarrowWidth(window.innerWidth)) store.reduce((s) => s.panelOpen ? s : togglePanel(s));
-					store.reduce((s) => ({
-						...s,
-						activePane: firstLeaf(s.splits).id
-					}));
-					ctx.get("betterSidebar")?.openTab({
-						type: "subagent",
-						title: t("subagent")
-					});
+					activateTasksPage(ctx, sessionId, { background: true });
 				}, AUTO_OPEN_DEBOUNCE_MS);
 				autoOpenPendingRef.current = {
 					baseline,
@@ -16157,11 +15790,12 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			* Job auto-activation: the moment a NEW background job appears for the
 			* current conversation (a job id the previous snapshot lacked), the
 			* auto-open pref is on, and the Tasks tab type is enabled, activate the Tasks
-			* page that contains the background-jobs section. The right panel expands
-			* only on wide viewports. Unlike the subagent trigger (0 → N only), ANY
-			* new job id triggers: the agent may start several jobs in one session, and
-			* each should surface. A fresh page load never triggers — its baseline starts
-			* at the current snapshot.
+			* page that contains the background-jobs section — in DSH's native right
+			* Sidebar, expanded on wide viewports and parked on narrow ones exactly like
+			* the subagent trigger ({@link activateTasksPage}). Unlike that trigger
+			* (0 → N only), ANY new job id triggers: the agent may start several jobs in
+			* one session, and each should surface. A fresh page load never triggers —
+			* its baseline starts at the current snapshot.
 			*/
 			const jobBaselineRef = (0, react.useRef)(void 0);
 			(0, react.useEffect)(() => {
@@ -16171,15 +15805,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				if (!detectNewJob(prev, sessionList, sessionId)) return;
 				if (!store.getPrefs().autoOpenJobs) return;
 				if (ctx.get("betterSidebar")?.isTabEnabled("subagent") === false) return;
-				if (!isNarrowWidth(window.innerWidth)) store.reduce((s) => s.panelOpen ? s : togglePanel(s));
-				store.reduce((s) => ({
-					...s,
-					activePane: firstLeaf(s.splits).id
-				}));
-				ctx.get("betterSidebar")?.openTab({
-					type: "subagent",
-					title: t("subagent")
-				});
+				activateTasksPage(ctx, sessionId, { background: true });
 			}, [
 				sessionList,
 				sessionId,
@@ -16192,25 +15818,18 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			* session's OWN layout (a fresh child session defaults to the explorer).
 			* The README contract says the Subagent page must stay open with the jumped
 			* node highlighted — so once the current session becomes the recorded jump
-			* target, re-open the Subagent page on top of the child's layout (expanding
-			* the panel first if it is collapsed). Only this explicit node click arms
-			* the flag, so switching to a subagent session by any other means keeps
-			* that session's own layout untouched.
+			* target, re-open the Tasks page on top of the child's layout, in DSH's
+			* native right Sidebar. This one is an explicit user gesture, so it always
+			* takes the host's expansion (no narrow-viewport parking). Only this node
+			* click arms the flag, so switching to a subagent session by any other means
+			* keeps that session's own layout untouched.
 			*/
 			const subagentJumpRef = (0, react.useRef)(void 0);
 			(0, react.useEffect)(() => {
 				const pending = subagentJumpRef.current;
 				if (pending === void 0 || sessionId !== pending) return;
 				subagentJumpRef.current = void 0;
-				store.reduce((s) => s.panelOpen ? s : togglePanel(s));
-				store.reduce((s) => ({
-					...s,
-					activePane: firstLeaf(s.splits).id
-				}));
-				ctx.get("betterSidebar")?.openTab({
-					type: "subagent",
-					title: t("subagent")
-				});
+				activateTasksPage(ctx, sessionId, { background: false });
 			}, [
 				sessionId,
 				store,
@@ -16223,7 +15842,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		/**
 		* Inline pinned terminals (extracted from Sidebar.tsx, behavior identical):
 		* pinned tabs from OTHER sessions inject as VIRTUAL tabs into the first
-		* leaf of the right panel's split tree, and the workbench actions are
+		* leaf of the bottom workbench's split tree, and the workbench actions are
 		* wrapped so virtual ids route back to the HOME session. The shell only
 		* consumes the augmented tree and the wrapped actions.
 		*/
@@ -16232,8 +15851,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			const state = snapshot.state;
 			/**
 			* Inline pinned terminals (v0.17.0+): pinned tabs from OTHER sessions
-			* inject as VIRTUAL tabs into the first leaf of the right panel's split
-			* tree. The virtual tabs have unique ids (prefixed with the home session)
+			* inject as VIRTUAL tabs into the first leaf of the bottom workbench's
+			* split tree. The virtual tabs have unique ids (prefixed with the home session)
 			* and carry the home scope in meta. Clicking a virtual tab sets
 			* `activePinnedTabId` — the augmented tree overrides the leaf's `active`
 			* so the pinned tab's content renders in-place (TerminalView connects to
@@ -16269,7 +15888,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			*  via useMemo so TabContent's memo comparator holds). */
 			const pinnedVirtualTabs = (0, react.useMemo)(() => pinnedEntries.map(createPinnedVirtualTab), [pinnedEntries]);
 			return {
-				augmentedTree: (0, react.useMemo)(() => state === void 0 ? void 0 : injectPinnedIntoTree(state.splits, pinnedVirtualTabs, activePinnedTabId), [
+				augmentedTree: (0, react.useMemo)(() => state === void 0 ? void 0 : injectPinnedIntoTree(state.bottomSplits, pinnedVirtualTabs, activePinnedTabId), [
 					state,
 					pinnedVirtualTabs,
 					activePinnedTabId
@@ -16281,10 +15900,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						const vtab = pinnedVirtualTabs.find((t) => t.id === virtualId);
 						const homeCwd = vtab !== void 0 ? getPinnedHomeScope(vtab)?.cwd : void 0;
 						store.reduceFor(homeSessionId, (s) => {
-							const leaf = leafWithTab(s.splits, originalId) ?? leafWithTab(s.bottomSplits, originalId);
-							if (leaf !== void 0) return closeTab(s, leaf.id, originalId);
-							if (s.floats.some((f) => f.tab.id === originalId)) return closeFloatByTab(s, originalId);
-							return s;
+							const leaf = leafWithTab(s.bottomSplits, originalId);
+							return leaf === void 0 ? s : closeTab(s, leaf.id, originalId);
 						});
 						if (isAgentTabId(originalId)) api.agentPtyClose(agentUuidOf(originalId)).catch(() => {});
 						else api.ptyClose({
@@ -16316,10 +15933,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 							if (isPinnedVirtualId(payload.tabId)) return;
 							actions.moveTabToEdge(payload, toPane, zone);
 						},
-						floatTab: (tabId) => {
-							if (isPinnedVirtualId(tabId)) return;
-							actions.floatTab(tabId);
-						},
 						pinTab: (tabId, scope) => {
 							if (isPinnedVirtualId(tabId)) {
 								if (scope !== null) return;
@@ -16339,484 +15952,38 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			};
 		}
 		//#endregion
-		//#region src/client/FreeWindow.tsx
-		/**
-		* One free window: a tab dragged out of the workbench floating over the
-		* conversation area at viewport coordinates (rendered inside the panel host,
-		* so desktop-shell transforms can never hijack its fixed containing block).
-		*
-		* The header drags the window with the panel-resize pattern — pointer
-		* capture + per-frame direct DOM writes + a store commit on release — and
-		* doubling as the DOCK-BACK gesture: while the pointer is over a workbench
-		* pane ([data-dsh-pane], either panel), that pane highlights live and
-		* releasing docks the tab into it (center merge); releasing anywhere else
-		* just moves the window. The SE corner resizes, any press raises (the
-		* floats array's order is the stacking order), the header right-click menu
-		* and the X button dock / close. The tab content reuses the regular tab
-		* renderer, so every tab type (terminal, editor, plugin tabs) floats
-		* unchanged.
-		*/
-		/** The pane under a viewport point, if any (rect hit-test; the dragged
-		*  window itself is not a pane, so it cannot shadow the targets). */
-		function paneAt(x, y) {
-			for (const pane of document.querySelectorAll("[data-dsh-pane]")) {
-				const rect = pane.getBoundingClientRect();
-				if (rect.width === 0 || rect.height === 0) continue;
-				if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return pane;
-			}
-			return null;
-		}
-		/** Pointer-capture helpers tolerant of environments without the API (jsdom
-		*  lacks setPointerCapture — component tests dispatch plain MouseEvents, so
-		*  the optional calls keep them driving the drag; real browsers always have
-		*  it and a missing pointerId can never occur there). */
-		const capturePointer = (element, pointerId) => {
-			element.setPointerCapture?.(pointerId);
-		};
-		const releasePointer = (element, pointerId) => {
-			element.releasePointerCapture?.(pointerId);
-		};
-		/** Whether the element holds the pointer (assumed true without the API). */
-		const holdsPointer = (element, pointerId) => {
-			return element.hasPointerCapture?.(pointerId) !== false;
-		};
-		function FreeWindow(props) {
-			const { float, renderTab, getTabIcon, onRaise, onMove, onResize, onDock, onClose } = props;
-			const rootRef = (0, react.useRef)(null);
-			const dragRef = (0, react.useRef)(null);
-			const dockTargetRef = (0, react.useRef)(null);
-			const frameRef = (0, react.useRef)(null);
-			const pendingRef = (0, react.useRef)(null);
-			const [dragging, setDragging] = (0, react.useState)(null);
-			const [menu, setMenu] = (0, react.useState)(null);
-			(0, react.useEffect)(() => () => {
-				if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-				dockTargetRef.current?.removeAttribute("data-dsh-float-dock-over");
-			}, []);
-			/** Apply the pending geometry to the DOM (one rAF per frame at most). */
-			const scheduleApply = (geo) => {
-				pendingRef.current = geo;
-				if (frameRef.current !== null) return;
-				frameRef.current = requestAnimationFrame(() => {
-					frameRef.current = null;
-					const pending = pendingRef.current;
-					const drag = dragRef.current;
-					const root = rootRef.current;
-					if (pending === null || drag === null || root === null) return;
-					drag.applied = pending;
-					root.style.left = `${pending.x}px`;
-					root.style.top = `${pending.y}px`;
-					root.style.width = `${pending.w}px`;
-					root.style.height = `${pending.h}px`;
-				});
-			};
-			/** Flush the pending frame synchronously (the release path's last write). */
-			const flushNow = () => {
-				const pending = pendingRef.current;
-				const drag = dragRef.current;
-				const root = rootRef.current;
-				if (pending === null || drag === null || root === null) return;
-				if (frameRef.current !== null) {
-					cancelAnimationFrame(frameRef.current);
-					frameRef.current = null;
-				}
-				pendingRef.current = null;
-				drag.applied = pending;
-				root.style.left = `${pending.x}px`;
-				root.style.top = `${pending.y}px`;
-				root.style.width = `${pending.w}px`;
-				root.style.height = `${pending.h}px`;
-			};
-			const clearDockHighlight = () => {
-				dockTargetRef.current?.removeAttribute("data-dsh-float-dock-over");
-				dockTargetRef.current = null;
-			};
-			/** Release a drag: `pane` (when set) docks instead of moving. */
-			const finishDrag = (mode, geo, pane) => {
-				const drag = dragRef.current;
-				if (drag === null || drag.committed) return;
-				drag.committed = true;
-				dragRef.current = null;
-				setDragging(null);
-				const target = pane ?? dockTargetRef.current;
-				clearDockHighlight();
-				if (mode === "move" && target !== null) onDock(target.getAttribute("data-dsh-pane"));
-				else if (mode === "move") onMove(geo.x, geo.y);
-				else onResize(geo.w, geo.h);
-			};
-			/** Cancel-path settle (pointercancel / lostpointercapture): the last
-			* APPLIED geometry is the user-visible truth — commit it, never roll back
-			* (the panel drags' issue-#247 semantics). The mode comes from the ref —
-			* the React `dragging` state can still be null when the cancel lands
-			* before the pointerdown re-render commits. */
-			const abortDrag = () => {
-				const drag = dragRef.current;
-				if (drag === null || drag.committed) return;
-				flushNow();
-				finishDrag(drag.mode, drag.applied, null);
-			};
-			const clampMove = (x, y) => {
-				const vw = window.innerWidth;
-				const vh = window.innerHeight;
-				return {
-					x: Math.min(Math.max(x, 0), Math.max(0, vw - float.w)),
-					y: Math.min(Math.max(y, 0), Math.max(0, vh - float.h)),
-					w: float.w,
-					h: float.h
-				};
-			};
-			const clampResize = (w, h) => {
-				const vw = window.innerWidth;
-				const vh = window.innerHeight;
-				return {
-					x: float.x,
-					y: float.y,
-					w: Math.round(Math.min(Math.max(w, 320), Math.max(320, vw - float.x))),
-					h: Math.round(Math.min(Math.max(h, 200), Math.max(200, vh - float.y)))
-				};
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				ref: rootRef,
-				className: clsx(sidebar_module_css_default.floatWindow, dragging !== null && sidebar_module_css_default.floatWindowDragging),
-				"data-dsh-float-window": true,
-				"data-dsh-float-id": float.id,
-				style: {
-					left: float.x,
-					top: float.y,
-					width: float.w,
-					height: float.h
-				},
-				onPointerDown: () => {
-					onRaise();
-				},
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: sidebar_module_css_default.floatHeader,
-						onPointerDown: (event) => {
-							if (event.button !== 0) return;
-							if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return;
-							if (event.target instanceof Element && event.target.closest("button") !== null) return;
-							event.preventDefault();
-							capturePointer(event.currentTarget, event.pointerId);
-							dragRef.current = {
-								mode: "move",
-								pointerX: event.clientX,
-								pointerY: event.clientY,
-								startX: float.x,
-								startY: float.y,
-								startW: float.w,
-								startH: float.h,
-								applied: {
-									x: float.x,
-									y: float.y,
-									w: float.w,
-									h: float.h
-								},
-								committed: false
-							};
-							setDragging("move");
-						},
-						onPointerMove: (event) => {
-							const drag = dragRef.current;
-							if (drag === null || !holdsPointer(event.currentTarget, event.pointerId)) return;
-							const geo = clampMove(drag.startX + (event.clientX - drag.pointerX), drag.startY + (event.clientY - drag.pointerY));
-							scheduleApply(geo);
-							const target = paneAt(event.clientX, event.clientY);
-							if (target !== dockTargetRef.current) {
-								clearDockHighlight();
-								if (target !== null) target.setAttribute("data-dsh-float-dock-over", "");
-								dockTargetRef.current = target;
-							}
-						},
-						onPointerUp: (event) => {
-							if (dragRef.current === null || !holdsPointer(event.currentTarget, event.pointerId)) return;
-							releasePointer(event.currentTarget, event.pointerId);
-							flushNow();
-							const geo = clampMove(dragRef.current.startX + (event.clientX - dragRef.current.pointerX), dragRef.current.startY + (event.clientY - dragRef.current.pointerY));
-							finishDrag("move", geo, paneAt(event.clientX, event.clientY));
-						},
-						onPointerCancel: () => {
-							abortDrag();
-						},
-						onLostPointerCapture: () => {
-							abortDrag();
-						},
-						onContextMenu: (event) => {
-							event.preventDefault();
-							setMenu({
-								x: event.clientX,
-								y: event.clientY
-							});
-						},
-						children: [
-							getTabIcon?.(float.tab) ?? null,
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: sidebar_module_css_default.floatTitle,
-								title: float.tab.title,
-								children: float.tab.title
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: sidebar_module_css_default.floatClose,
-								"aria-label": t("close"),
-								onClick: (event) => {
-									event.stopPropagation();
-									onClose();
-								},
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseFill14, {})
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
-								open: menu !== null,
-								onClose: () => {
-									setMenu(null);
-								},
-								items: [{
-									id: "dock",
-									label: t("dockToSidebar")
-								}, {
-									id: "close",
-									label: t("close")
-								}],
-								onSelect: (id) => {
-									setMenu(null);
-									if (id === "dock") onDock(null);
-									else if (id === "close") onClose();
-								},
-								portal: true,
-								compact: true,
-								align: "start",
-								getAnchorRect: () => menu === null ? null : new DOMRect(menu.x, menu.y, 0, 0),
-								anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {})
-							})
-						]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: sidebar_module_css_default.floatContent,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: sidebar_module_css_default.paneTab,
-							children: renderTab(float.tab, true, float.id)
-						})
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: sidebar_module_css_default.floatResize,
-						onPointerDown: (event) => {
-							if (event.button !== 0) return;
-							if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return;
-							event.preventDefault();
-							capturePointer(event.currentTarget, event.pointerId);
-							dragRef.current = {
-								mode: "resize",
-								pointerX: event.clientX,
-								pointerY: event.clientY,
-								startX: float.x,
-								startY: float.y,
-								startW: float.w,
-								startH: float.h,
-								applied: {
-									x: float.x,
-									y: float.y,
-									w: float.w,
-									h: float.h
-								},
-								committed: false
-							};
-							setDragging("resize");
-						},
-						onPointerMove: (event) => {
-							const drag = dragRef.current;
-							if (drag === null || !holdsPointer(event.currentTarget, event.pointerId)) return;
-							scheduleApply(clampResize(drag.startW + (event.clientX - drag.pointerX), drag.startH + (event.clientY - drag.pointerY)));
-						},
-						onPointerUp: (event) => {
-							if (dragRef.current === null || !holdsPointer(event.currentTarget, event.pointerId)) return;
-							releasePointer(event.currentTarget, event.pointerId);
-							flushNow();
-							const geo = clampResize(dragRef.current.startW + (event.clientX - dragRef.current.pointerX), dragRef.current.startH + (event.clientY - dragRef.current.pointerY));
-							finishDrag("resize", geo, null);
-						},
-						onPointerCancel: () => {
-							abortDrag();
-						},
-						onLostPointerCapture: () => {
-							abortDrag();
-						}
-					})
-				]
-			});
-		}
-		//#endregion
-		//#region src/client/sidebar/free-windows.tsx
-		/**
-		* Free windows (extracted from Sidebar.tsx, behavior identical): the
-		* drag-out gesture that floats a tab onto the conversation column, plus the
-		* render layer for the floating windows and its drop-zone hint overlay.
-		*/
-		/**
-		* Free windows — drag-out detection. The tab strips already drive HTML5
-		* DnD (payload application/x-dsh-tab) with drops owned by the panes
-		* (split/merge); this hook watches the DOCUMENT (capture) for the same
-		* drag hovering OUTSIDE the panel host: while the pointer is over the
-		* conversation column it arms the drop (preventDefault) and shows a hint
-		* overlay there, and the drop floats the tab at the release point. Targets
-		* inside the host are ignored here, so pane drops keep their behavior
-		* untouched. Only OUR tab drags count (the body flag is the tab strip's;
-		* OS file drags and any DSH drags pass through). Narrow viewports skip
-		* the gesture — the merged drawer covers the conversation, leaving
-		* nothing to drop onto (the tab context menu entry still floats tabs).
-		*/
-		function useFloatDragout(input) {
-			const { narrow, sessionId, store, centerColRef } = input;
-			const [floatHint, setFloatHint] = (0, react.useState)(null);
-			const floatHintRef = (0, react.useRef)(false);
-			(0, react.useEffect)(() => {
-				if (narrow || sessionId === void 0) return;
-				const inPanelHost = (target) => target instanceof Element && target.closest("[data-dsh-panel-host]") !== null;
-				/** The conversation column's rect when the pointer is over it (and not
-				*  over our own surfaces); null otherwise. */
-				const overConversation = (event) => {
-					if (inPanelHost(event.target)) return null;
-					const col = centerColRef.current;
-					if (col === null || !col.isConnected) return null;
-					const rect = col.getBoundingClientRect();
-					if (rect.width === 0 || rect.height === 0) return null;
-					const { clientX: x, clientY: y } = event;
-					if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
-					return rect;
-				};
-				const onDragOver = (event) => {
-					if (!document.body.hasAttribute("data-dsh-tab-dragging")) return;
-					const rect = overConversation(event);
-					if (rect !== null) {
-						event.preventDefault();
-						setFloatHint((prev) => {
-							const next = {
-								left: rect.left,
-								top: rect.top,
-								width: rect.width,
-								height: rect.height
-							};
-							if (prev !== null && prev.left === next.left && prev.top === next.top && prev.width === next.width && prev.height === next.height) return prev;
-							return next;
-						});
-						floatHintRef.current = true;
-					} else if (floatHintRef.current) {
-						floatHintRef.current = false;
-						setFloatHint(null);
-					}
-				};
-				const onDrop = (event) => {
-					if (!floatHintRef.current) return;
-					floatHintRef.current = false;
-					setFloatHint(null);
-					if (overConversation(event) === null) return;
-					event.preventDefault();
-					event.stopPropagation();
-					const payload = parseDrag(event.dataTransfer?.getData("application/x-dsh-tab") ?? "");
-					if (payload === null) return;
-					store.reduce((s) => floatTab(s, payload.tabId, event.clientX, event.clientY));
-				};
-				const clear = () => {
-					if (!floatHintRef.current) return;
-					floatHintRef.current = false;
-					setFloatHint(null);
-				};
-				document.addEventListener("dragover", onDragOver, true);
-				document.addEventListener("drop", onDrop, true);
-				window.addEventListener("dragend", clear, true);
-				window.addEventListener("blur", clear);
-				return () => {
-					document.removeEventListener("dragover", onDragOver, true);
-					document.removeEventListener("drop", onDrop, true);
-					window.removeEventListener("dragend", clear, true);
-					window.removeEventListener("blur", clear);
-				};
-			}, [
-				narrow,
-				sessionId,
-				store,
-				centerColRef
-			]);
-			return { floatHint };
-		}
-		/**
-		* The free-window render layer: tabs dragged out onto the conversation area
-		* (or floated from the tab context menu). They live in the panel host like
-		* the panels (viewport coordinates, immune to desktop-shell transforms) but
-		* are independent of panel state — a window stays up while panels collapse.
-		* The floats array's order is the stacking order; the content reuses the
-		* regular tab renderer, so every tab type floats unchanged. Renders a
-		* fragment so the DOM is exactly the floats followed by the drag-out hint.
-		*/
-		function FreeWindowLayer(props) {
-			const { floats, hint, renderTab, getTabIcon, store, ctx, sessionId, cwd } = props;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [floats.map((float) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FreeWindow, {
-				float,
-				renderTab: (tab, active, paneId) => renderTab(tab, active, paneId, "float"),
-				getTabIcon,
-				onRaise: () => {
-					store.reduce((s) => raiseFloat(s, float.id));
-				},
-				onMove: (x, y) => {
-					store.reduce((s) => moveFloat(s, float.id, x, y));
-				},
-				onResize: (w, h) => {
-					store.reduce((s) => resizeFloat(s, float.id, w, h));
-				},
-				onDock: (paneId) => {
-					store.reduce((s) => dockFloat(s, float.id, paneId ?? void 0));
-				},
-				onClose: () => {
-					ctx.get("betterSidebar")?.closeTab(float.tab.id, sessionId === void 0 ? void 0 : {
-						sessionId,
-						cwd
-					});
-				}
-			}, float.id)), hint !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: sidebar_module_css_default.floatDropHint,
-				style: {
-					left: hint.left,
-					top: hint.top,
-					width: hint.width,
-					height: hint.height
-				},
-				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: sidebar_module_css_default.floatDropHintLabel,
-					children: t("floatDropHint")
-				})
-			})] });
-		}
-		//#endregion
 		//#region src/client/Sidebar.tsx
 		/**
-		* The sidebar shell mounts in either a fixed viewport host or DSH's optional
-		* workbench slot. Slot presentation contains both panels in the assigned
-		* grid cell while free windows retain their viewport host. Portal
-		* presentation keeps the original right panel and bottom panel geometry.
-		* The bottom panel squeezes only the center column in Portal presentation
-		* and stays within the workbench in Slot presentation. A persistent two-button
-		* cluster at the top-right corner toggles each panel; the right panel's
-		* width drags from its left edge, the bottom panel's height from its top
-		* edge, and the shared corner drags both at once. The whole layout lives in
-		* the per-session store, so switching conversations swaps the sidebar.
+		* The sidebar shell: ONE surface — the bottom workbench docked to the
+		* conversation column.
+		*
+		* DSH 0.1.5 owns the right column: its native Sidebar hosts every tab type
+		* this plugin registers (client/native/), so this shell renders no right
+		* panel of its own. What remains plugin-owned is the bottom workbench: it
+		* spans ONLY the AppFrame's center column (the agent output area), from the
+		* app shell's own left sidebar to the details column's left edge, so neither
+		* sidebar gives up any position. Its height drags from its top edge, and the
+		* expand/collapse control is a header button registered into DSH's
+		* `conversation.session.header.utilities` list slot
+		* (sidebar/bottom-toggle.tsx) — the header's right corner belongs to the
+		* native sidebar's own expand control.
+		*
+		* The panel is mounted inside the unified panel host — a fixed,
+		* viewport-sized containing block ([data-dsh-panel-host]) appended to
+		* document.body — instead of a fixed-position element, so a desktop shell's
+		* intermediate wrapper transforms can never hijack its containing block.
+		* The whole layout lives in the per-session store, so switching
+		* conversations swaps the workbench.
 		*
 		* The shell binds the workbench actions to the store and dispatches tab
 		* content to the views. New tabs come from the + menu (explorer / git /
-		* terminal; editors open from the explorer). Tabs live in one tree only —
-		* they never cross panels; only the panel sizes drag against each other.
-		*
-		* Narrow (mobile, <768px) viewports show ONLY the right sidebar: entering
-		* narrow migrates the bottom panel's tabs INTO the right tree
-		* (migrateBottomTabs) — one workbench, the bottom tabs thrown into its
-		* strips. The right panel becomes a full-width drawer, the bottom panel
-		* and its toggle button disappear, and the layout push is disabled (the
-		* drawer floats). Widening does not migrate back: the tabs keep living in
-		* the right tree.
+		* terminal; editors open from the explorer).
 		*/
 		/**
 		* OS file drags over the sidebar belong to the sidebar, not to the chat:
 		* DSH's composer (InputBar) listens for file drags on the DOCUMENT and
 		* answers with a full-screen "drop image here" mask plus image intake on
-		* drop. Both panel-host render sites swallow the whole event quartet —
+		* drop. The panel host swallows the whole event quartet —
 		* enter/over/leave/drop — so the region is a black hole to that document
 		* listener. All four must be stopped: InputBar keeps an enter/leave depth
 		* counter, and a leave that escapes without its matching enter unbalances
@@ -16852,6 +16019,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		}
 		function Sidebar(props) {
 			const { ctx, store } = props;
+			const slotPresentation = props.presentation === "slot";
 			const localeRevision = (0, react.useSyncExternalStore)((0, react.useMemo)(() => (callback) => ctx.locale.subscribe(callback), [ctx]), (0, react.useCallback)(() => ctx.locale.getSnapshot().active, [ctx]));
 			const betterLocaleStore = typeof ctx.get === "function" ? ctx.get("betterLocale") : void 0;
 			(0, react.useSyncExternalStore)((0, react.useMemo)(() => {
@@ -16870,8 +16038,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				return service.subscribe(() => setTabsVersion((version) => version + 1));
 			}, [ctx]);
 			const viewport = useViewportSize();
-			const narrow = isNarrowWidth(viewport.width);
-			const slotDesktop = props.presentation === "slot" && !narrow;
 			const [keyboardInset, setKeyboardInset] = (0, react.useState)(0);
 			const [visualViewportHeight, setVisualViewportHeight] = (0, react.useState)(null);
 			(0, react.useEffect)(() => {
@@ -16906,23 +16072,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			const state = snapshot.state;
 			const sessionId = snapshot.sessionId;
 			const summaryCwd = sessionId === void 0 ? void 0 : sessionList.byId[sessionId]?.cwd;
-			const pushedBottomHeight = (bottomOpen, bottomHeight) => layoutPushSize({
-				narrow,
-				panelOpen: false,
-				bottomOpen,
-				width: 0,
-				bottomHeight,
-				viewportWidth: viewport.width,
-				viewportHeight: layoutViewportHeight
-			}).height;
-			const collapsed = !slotDesktop && (state === void 0 || !state.panelOpen);
-			(0, react.useEffect)(() => {
-				if (collapsed) document.body.setAttribute("data-dsh-sidebar-collapsed", "");
-				else document.body.removeAttribute("data-dsh-sidebar-collapsed");
-				return () => {
-					document.body.removeAttribute("data-dsh-sidebar-collapsed");
-				};
-			}, [collapsed]);
 			const desktopEnv = parseDesktopEnv();
 			const wco = (0, react.useSyncExternalStore)((0, react.useMemo)(() => subscribeWco, []), getWcoSnapshot);
 			const scheme = snapshot.prefs.titleBarScheme;
@@ -16957,21 +16106,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				customCss,
 				preset?.id
 			]);
-			/**
-			* Bottom-panel merge on narrow viewports: whenever a session is current
-			* while narrow (mount, session switch, or a desktop→narrow transition),
-			* throw the bottom tree's tabs into the right tree. Idempotent — after
-			* the first migration the bottom tree is empty and the reducer returns
-			* the same reference, so this effect settles immediately.
-			*/
-			(0, react.useEffect)(() => {
-				if (!narrow || sessionId === void 0) return;
-				store.reduce(migrateBottomTabs);
-			}, [
-				narrow,
-				sessionId,
-				store
-			]);
 			const [fetchedCwd, setFetchedCwd] = (0, react.useState)(void 0);
 			(0, react.useEffect)(() => {
 				setFetchedCwd(void 0);
@@ -17001,13 +16135,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				sessionId
 			});
 			const bottomRef = (0, react.useRef)(null);
-			const { centerColRef, centerRectRef, centerMeasured, measureCenter, draggingRef } = useCenterColumn(bottomRef, state?.bottomOpen, slotDesktop);
-			const { floatHint } = useFloatDragout({
-				narrow,
-				sessionId,
-				store,
-				centerColRef
-			});
+			const { centerRectRef, centerMeasured, measureCenter, draggingRef } = useCenterColumn(bottomRef, state?.bottomOpen, slotPresentation);
 			/**
 			* Bottom-panel first-expansion auto terminal: the FIRST time the user
 			* expands the bottom panel in a session, try to open a fresh terminal tab
@@ -17021,7 +16149,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			*/
 			const bottomWasOpenRef = (0, react.useRef)(void 0);
 			(0, react.useEffect)(() => {
-				if (narrow) return;
 				if (state === void 0) return;
 				const wasOpen = bottomWasOpenRef.current;
 				bottomWasOpenRef.current = state.bottomOpen;
@@ -17034,87 +16161,63 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					activePane: firstLeaf(s.bottomSplits).id,
 					bottomOpenedOnce: true
 				}));
-				ctx.get("betterSidebar")?.openTab({ type: "terminal" });
+				ctx.get("betterSidebar")?.openTab({
+					type: "terminal",
+					target: "bottom"
+				});
 			}, [
 				state,
 				store,
-				ctx,
-				narrow
+				ctx
 			]);
-			const panelRef = (0, react.useRef)(null);
-			const widthDrag = (0, react.useRef)({
-				startX: 0,
-				startWidth: 0
-			});
-			const [draggingWidth, setDraggingWidth] = (0, react.useState)(false);
 			const bottomDrag = (0, react.useRef)({
 				startY: 0,
 				startHeight: 0
 			});
 			const [draggingBottom, setDraggingBottom] = (0, react.useState)(false);
-			const cornerDrag = (0, react.useRef)({
-				startX: 0,
-				startY: 0,
-				startWidth: 0,
-				startHeight: 0
-			});
-			const [draggingCorner, setDraggingCorner] = (0, react.useState)(false);
-			const anyDragging = draggingWidth || draggingBottom || draggingCorner;
 			(0, react.useEffect)(() => {
-				draggingRef.current = anyDragging;
-				if (!anyDragging) measureCenter();
+				draggingRef.current = draggingBottom;
+				if (!draggingBottom) measureCenter();
 			}, [
-				anyDragging,
+				draggingBottom,
 				measureCenter,
 				draggingRef
 			]);
-			const clampWidth = (width) => Math.min(Math.max(280, Math.round(width)), Math.max(280, window.innerWidth));
 			const clampHeight = (height) => Math.min(Math.max(120, Math.round(height)), Math.max(120, window.innerHeight - 280));
-			/** Single writer for the layout-push variables: the app shell gives up
-			*  the panel's width/height while open (0 while collapsed) through
-			*  layout.css's margins. Every size change — drag frames and committed
-			*  state — flows through here so the push never forks between paths. */
-			const writeGeometry = (width, height) => {
-				document.documentElement.style.setProperty("--dsh-sidebar-width", `${width}px`);
+			/** Single writer for the layout-push variable: the app shell gives up the
+			*  workbench's height while it is open (0 while collapsed) through
+			*  layout.css's margin on the center column. Every size change — drag
+			*  frames and committed state — flows through here so the push never
+			*  forks between paths. The right column is DSH's native Sidebar, so no
+			*  width is written. */
+			const writeGeometry = (height) => {
 				document.documentElement.style.setProperty("--dsh-sidebar-height", `${height}px`);
 			};
-			/** Last size a drag actually applied to the DOM (updated by applyDrag).
+			/** Last height a drag actually applied to the DOM (updated by applyDrag).
 			*  When a pointer stream dies without any position info (issue #247: an
 			*  ultra-fast flick whose release events carried no usable coordinates),
 			*  the abort path adopts this instead of rolling back to the pre-drag
 			*  value — the DOM's current size is the only truthful record left. */
-			const lastDragSize = (0, react.useRef)(null);
-			/** Apply a drag size to the DOM without touching React state or the store.
-			*  The bottom panel's right edge tracks the right panel's left edge HERE
-			*  too — React state only updates on release, so the inline right must be
-			*  written directly or the bottom panel would lag the sidebar mid-drag.
-			*  The layout push rides the shared writer (writeGeometry). */
-			const applyDrag = (width, height) => {
-				lastDragSize.current = {
-					width,
-					height
-				};
-				if (!slotDesktop) panelRef.current?.style.setProperty("width", `${width}px`);
+			const lastDragHeight = (0, react.useRef)(null);
+			/** Apply a drag height to the DOM without touching React state or the
+			*  store. The layout push rides the shared writer (writeGeometry). */
+			const applyDrag = (height) => {
+				lastDragHeight.current = height;
 				bottomRef.current?.style.setProperty("height", `${height}px`);
-				bottomRef.current?.style.setProperty("right", slotDesktop ? "0px" : `${window.innerWidth - centerRectRef.current.right + (width - (state?.width ?? 0))}px`);
-				const bottomPush = !narrow && state?.bottomOpen === true ? height + keyboardInset : 0;
-				const pushWidth = !narrow && state?.panelOpen === true ? Math.min(width, window.innerWidth) : 0;
-				writeGeometry(slotDesktop ? 0 : pushWidth, slotDesktop ? 0 : bottomPush);
+				const push = !slotPresentation && state?.bottomOpen === true ? height + keyboardInset : 0;
+				writeGeometry(push);
 			};
 			const dragFrame = (0, react.useRef)(null);
 			const pendingDrag = (0, react.useRef)(null);
-			const scheduleDrag = (width, height) => {
-				pendingDrag.current = {
-					width,
-					height
-				};
+			const scheduleDrag = (height) => {
+				pendingDrag.current = height;
 				if (dragFrame.current !== null) return;
 				dragFrame.current = requestAnimationFrame(() => {
 					dragFrame.current = null;
 					const pending = pendingDrag.current;
 					if (pending !== null) {
 						pendingDrag.current = null;
-						applyDrag(pending.width, pending.height);
+						applyDrag(pending);
 					}
 				});
 			};
@@ -17128,23 +16231,21 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				pendingDrag.current = null;
 			};
 			/**
-			* Finalize a drag on pointer up: flush the LAST drag frame to the DOM
-			* synchronously, then commit the SAME clamped values to the store. A fast
+			* Finalize the drag on pointer up: flush the LAST drag frame to the DOM
+			* synchronously, then commit the SAME clamped value to the store. A fast
 			* release cancels the rAF before it ran — without the flush the DOM would
 			* sit at the pre-drag size until React re-renders with the committed
 			* value, and a value that never made it into a move handler would never
 			* be applied at all. The measurement pause ends here too: the center
 			* column is re-measured BEFORE the committed re-render lands, so the
-			* bottom panel's React-rendered right edge already reflects the new
-			* width (otherwise the re-render would re-apply the stale rect — the
-			* bottom panel visibly jumps for one frame).
+			* panel's React-rendered edges already reflect the new height.
 			*/
-			const commitDrag = (width, height, reduce) => {
+			const commitDrag = (height) => {
 				stopDragScheduling();
-				applyDrag(width, height);
+				applyDrag(height);
 				draggingRef.current = false;
 				measureCenter();
-				store.reduce(reduce);
+				store.reduce((s) => setBottomHeight(s, height));
 			};
 			/** Set once a drag's pointerup handler commits — premature capture loss
 			*  (pointercancel / lostpointercapture without pointerup) must then be told
@@ -17154,8 +16255,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			* Abort a drag whose pointer stream was interrupted (pointercancel, or
 			* capture lost before pointerup): no pointerup will arrive, so without
 			* this the dragging state would stick true and center-column measurement
-			* would stay paused forever — the bottom panel freezes at stale edges and
-			* stops tracking sidebar/app-rail layout changes.
+			* would stay paused forever — the panel freezes at stale edges and stops
+			* tracking layout changes.
 			*
 			* A FAST release is the common trigger: browsers merge pointermove bursts,
 			* and an ultra-fast flick can cancel the stream before ANY move lands.
@@ -17164,11 +16265,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			* position (only pointercancel is trusted to carry coordinates —
 			* lostpointercapture's coordinates are not guaranteed, so the handlers
 			* pass the event only from pointercancel), and finally the size the drag
-			* last APPLIED to the DOM (lastDragSize). A drag that produced none of
-			* those (pure down+up at the same spot) commits the store's own sizes —
-			* a no-op, never an explicit rollback (issue #247: v0.13.1 never reverted
-			* an interrupted fast flick; the abort path added in the unified-host
-			* refactor did, and that regression is what this ordering removes).
+			* last APPLIED to the DOM (lastDragHeight). A drag that produced none of
+			* those (pure down+up at the same spot) commits the store's own height —
+			* a no-op, never an explicit rollback (issue #247).
 			*
 			* Every commit path marks the drag committed, so the interrupt
 			* double-fire (pointercancel → lostpointercapture) cannot commit once
@@ -17177,157 +16276,111 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			const abortDrag = (reset, event) => {
 				if (dragCommitted.current) return;
 				const pending = pendingDrag.current;
-				let width;
 				let height;
-				if (pending !== null) {
-					width = pending.width;
-					height = pending.height;
-				} else if (event !== void 0) {
-					if (draggingWidth) {
-						width = clampWidth(widthDrag.current.startWidth + (widthDrag.current.startX - event.clientX));
-						height = pushedBottomHeight(state?.bottomOpen === true, state?.bottomHeight ?? 0);
-					} else if (draggingBottom) {
-						width = Math.min(state?.width ?? 0, window.innerWidth);
-						height = pushedBottomHeight(true, clampHeight(bottomDrag.current.startHeight + (bottomDrag.current.startY - event.clientY)));
-					} else if (draggingCorner) {
-						width = clampWidth(cornerDrag.current.startWidth + (cornerDrag.current.startX - event.clientX));
-						height = pushedBottomHeight(true, clampHeight(cornerDrag.current.startHeight + (cornerDrag.current.startY - event.clientY)));
-					}
-				}
-				if (width !== void 0 && height !== void 0) {
+				if (pending !== null) height = pending;
+				else if (event !== void 0) height = clampHeight(bottomDrag.current.startHeight + (bottomDrag.current.startY - event.clientY));
+				if (height !== void 0) {
 					dragCommitted.current = true;
-					pendingDrag.current = null;
-					if (dragFrame.current !== null) {
-						cancelAnimationFrame(dragFrame.current);
-						dragFrame.current = null;
-					}
-					applyDrag(width, height);
+					stopDragScheduling();
+					applyDrag(height);
 					draggingRef.current = false;
 					measureCenter();
-					store.reduce((s) => setBottomHeight(setWidth(s, width), height));
+					store.reduce((s) => setBottomHeight(s, height));
 				} else {
 					dragCommitted.current = true;
 					stopDragScheduling();
-					const last = lastDragSize.current;
-					const { width: adoptedWidth, height: adoptedHeight } = layoutPushSize({
-						narrow,
-						panelOpen: state?.panelOpen === true,
-						bottomOpen: state?.bottomOpen === true,
-						width: last?.width ?? state?.width ?? 0,
-						bottomHeight: last?.height ?? state?.bottomHeight ?? 0,
-						viewportWidth: viewport.width,
-						viewportHeight: layoutViewportHeight
-					});
-					applyDrag(adoptedWidth, adoptedHeight);
+					const adopted = clampHeight(lastDragHeight.current ?? state?.bottomHeight ?? 120);
+					applyDrag(adopted);
 					draggingRef.current = false;
 					measureCenter();
-					store.reduce((s) => setBottomHeight(setWidth(s, adoptedWidth), adoptedHeight));
+					store.reduce((s) => setBottomHeight(s, adopted));
 				}
 				reset();
 			};
 			(0, react.useEffect)(() => {
-				const { width, height } = layoutPushSize({
-					narrow,
-					panelOpen: snapshot.state?.panelOpen === true,
-					bottomOpen: snapshot.state?.bottomOpen === true,
-					width: snapshot.state?.width ?? 0,
-					bottomHeight: snapshot.state?.bottomHeight ?? 0,
-					viewportWidth: viewport.width,
+				const height = bottomPushHeight({
+					open: snapshot.state?.bottomOpen === true,
+					height: snapshot.state?.bottomHeight ?? 0,
 					viewportHeight: layoutViewportHeight
 				});
-				const bottomPush = !narrow && snapshot.state?.bottomOpen === true ? height + keyboardInset : 0;
-				writeGeometry(slotDesktop ? 0 : width, slotDesktop ? 0 : bottomPush);
+				writeGeometry(slotPresentation ? 0 : snapshot.state?.bottomOpen === true ? height + keyboardInset : 0);
 			}, [
-				narrow,
-				slotDesktop,
-				snapshot.state?.panelOpen,
-				snapshot.state?.width,
+				slotPresentation,
 				snapshot.state?.bottomOpen,
 				snapshot.state?.bottomHeight,
-				viewport.width,
 				layoutViewportHeight,
 				keyboardInset
 			]);
 			(0, react.useEffect)(() => {
 				return () => {
-					document.documentElement.style.removeProperty("--dsh-sidebar-width");
 					document.documentElement.style.removeProperty("--dsh-sidebar-height");
 				};
 			}, []);
 			(0, react.useEffect)(() => {
-				if (anyDragging) document.body.setAttribute("data-dsh-sidebar-dragging", "");
+				if (draggingBottom) document.body.setAttribute("data-dsh-sidebar-dragging", "");
 				else document.body.removeAttribute("data-dsh-sidebar-dragging");
-			}, [anyDragging]);
-			const actions = (0, react.useMemo)(() => ({
-				closeTab: (paneId, tabId) => {
-					const current = store.getSnapshot().state;
-					const tab = (current === void 0 ? void 0 : leafWithTab(current.splits, tabId) ?? leafWithTab(current.bottomSplits, tabId))?.tabs.find((candidate) => candidate.id === tabId);
-					ctx.get("betterSidebar")?.closeTab(tabId, sessionId === void 0 ? void 0 : {
-						sessionId,
-						cwd
-					});
-					if (tab?.type === "terminal") {
-						if (isAgentTabId(tabId)) {
-							const uuid = agentUuidOf(tabId);
-							api.agentPtyClose(uuid).catch(() => {});
-						} else if (sessionId !== void 0) api.ptyClose({
-							sessionId,
-							cwd
-						}, tabId).catch(() => {});
-					}
-				},
-				activateTab: (paneId, tabId) => {
-					ctx.get("betterSidebar")?.activateTab(tabId, sessionId === void 0 ? void 0 : {
-						sessionId,
-						cwd
-					});
-				},
-				focusPane: (paneId) => {
-					store.reduce((s) => ({
-						...s,
-						activePane: paneId
-					}));
-				},
-				moveTabToEdge: (payload, toPane, zone) => {
-					store.reduce((s) => moveTabToEdge(s, payload.paneId, payload.tabId, toPane, zone));
-				},
-				moveTabBefore: (payload, toPane, beforeTabId) => {
-					store.reduce((s) => {
-						let index = -1;
-						const source = leafWithTab(s.splits, beforeTabId);
-						if (source !== void 0 && source.id === toPane) index = source.tabs.findIndex((tab) => tab.id === beforeTabId);
-						return moveTab(s, payload.paneId, payload.tabId, toPane, index);
-					});
-				},
-				resizeSplit: (splitId, index, deltaFrac) => {
-					store.reduce((s) => resizeSplitIn(s, splitId, index, deltaFrac));
-				},
-				floatTab: (tabId) => {
-					const col = centerColRef.current;
-					const rect = col !== null && col.isConnected ? col.getBoundingClientRect() : null;
-					const x = rect !== null ? (rect.left + rect.right) / 2 : window.innerWidth / 2;
-					const y = rect !== null ? (rect.top + rect.bottom) / 2 : window.innerHeight / 2;
-					store.reduce((s) => floatTab(s, tabId, x, y));
-				},
-				pinTab: (tabId, scope) => {
-					store.reduce((s) => setTabPin(s, tabId, scope === null ? null : {
-						scope,
-						homeCwd: cwd
-					}));
-				}
-			}), [
-				store,
-				sessionId,
-				cwd,
-				ctx,
-				centerColRef
-			]);
+			}, [draggingBottom]);
 			const { augmentedTree, wrappedActions } = usePinnedTabs({
 				store,
 				sessionId,
 				cwd,
 				snapshot,
-				actions
+				actions: (0, react.useMemo)(() => ({
+					closeTab: (paneId, tabId) => {
+						const current = store.getSnapshot().state;
+						const tab = (current === void 0 ? void 0 : leafWithTab(current.bottomSplits, tabId))?.tabs.find((candidate) => candidate.id === tabId);
+						ctx.get("betterSidebar")?.closeTab(tabId, sessionId === void 0 ? void 0 : {
+							sessionId,
+							cwd
+						});
+						if (tab?.type === "terminal") {
+							if (isAgentTabId(tabId)) {
+								const uuid = agentUuidOf(tabId);
+								api.agentPtyClose(uuid).catch(() => {});
+							} else if (sessionId !== void 0) api.ptyClose({
+								sessionId,
+								cwd
+							}, tabId).catch(() => {});
+						}
+					},
+					activateTab: (paneId, tabId) => {
+						ctx.get("betterSidebar")?.activateTab(tabId, sessionId === void 0 ? void 0 : {
+							sessionId,
+							cwd
+						});
+					},
+					focusPane: (paneId) => {
+						store.reduce((s) => ({
+							...s,
+							activePane: paneId
+						}));
+					},
+					moveTabToEdge: (payload, toPane, zone) => {
+						store.reduce((s) => moveTabToEdge(s, payload.paneId, payload.tabId, toPane, zone));
+					},
+					moveTabBefore: (payload, toPane, beforeTabId) => {
+						store.reduce((s) => {
+							let index = -1;
+							const source = leafWithTab(s.bottomSplits, beforeTabId);
+							if (source !== void 0 && source.id === toPane) index = source.tabs.findIndex((tab) => tab.id === beforeTabId);
+							return moveTab(s, payload.paneId, payload.tabId, toPane, index);
+						});
+					},
+					resizeSplit: (splitId, index, deltaFrac) => {
+						store.reduce((s) => resizeSplitIn(s, splitId, index, deltaFrac));
+					},
+					pinTab: (tabId, scope) => {
+						store.reduce((s) => setTabPin(s, tabId, scope === null ? null : {
+							scope,
+							homeCwd: cwd
+						}));
+					}
+				}), [
+					store,
+					sessionId,
+					cwd,
+					ctx
+				])
 			});
 			/**
 			* The explorer's @-reference button. Directories append the folder mention
@@ -17340,14 +16393,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			* — a hook must never sit behind a conditional return (React counts hooks
 			* per render).
 			*/
-			const referenceInChat = (0, react.useCallback)((path, isDir) => {
+			const referenceInChat$1 = (0, react.useCallback)((path, isDir) => {
 				if (sessionId === void 0) return;
-				const rel = relativeTo(cwd ?? "", path);
-				if (isDir) {
-					appendToDraft(ctx, sessionId, `@${rel === "." ? "./" : `${rel}/`}`);
-					return;
-				}
-				if (!insertFileReference(ctx, sessionId, rel)) appendToDraft(ctx, sessionId, `@${rel}`);
+				referenceInChat(ctx, sessionId, cwd, path, isDir);
 			}, [
 				ctx,
 				sessionId,
@@ -17355,45 +16403,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			]);
 			if (state === void 0 || sessionId === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 				"data-dsh-panel-host": true,
-				"data-dsh-presentation": slotDesktop ? "slot" : "portal",
-				...osFileDragShield,
-				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: sidebar_module_css_default.toggleCluster,
-					"data-dsh-toggle-cluster": true,
-					children: [!narrow && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-						label: t("noSession"),
-						side: "bottom",
-						delayMs: 500,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							className: sidebar_module_css_default.toggleButton,
-							"aria-disabled": "true",
-							"aria-label": t("noSession"),
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconPanelBottomOutline16, {})
-						})
-					}), !slotDesktop && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-						label: t("noSession"),
-						side: "bottom",
-						delayMs: 500,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							className: sidebar_module_css_default.toggleButton,
-							"aria-disabled": "true",
-							"aria-label": t("noSession"),
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconPanelRightOutline16, {})
-						})
-					})]
-				})
+				"data-dsh-presentation": slotPresentation ? "slot" : "portal",
+				...osFileDragShield
 			});
-			const bottomPanelHeight = layoutPushSize({
-				narrow,
-				panelOpen: state.panelOpen,
-				bottomOpen: true,
-				width: state.width,
-				bottomHeight: state.bottomHeight,
-				viewportWidth: viewport.width,
+			const bottomPanelHeight = bottomPushHeight({
+				open: true,
+				height: state.bottomHeight,
 				viewportHeight: layoutViewportHeight
-			}).height;
+			});
 			const onNewTab = (optionId) => {
 				const service = ctx.get("betterSidebar");
 				const descriptor = service?.getTab(optionId);
@@ -17401,20 +16418,22 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				const title = typeof descriptor.title === "function" ? descriptor.title() : descriptor.title;
 				service.openTab({
 					type: optionId,
-					title
+					title,
+					target: "bottom"
 				}, {
 					sessionId,
 					cwd
 				});
 			};
 			/**
-			* The explorer's @-reference button: append `@<relative path>` to the
-			* session's composer draft (space-separated). Resolves the session-scope
-			* ctx and the conversation input service at click time; a missing service
-			* or scope degrades to a logged no-op, never a crash.
+			* The tab icon from the tab-type registry. An editor tab WITH a file path
+			* (the per-path windows of split mode — `meta.dir` marks folder windows,
+			* which keep the folder glyph) shows the same file icon the tree row shows
+			* (`fileIcon`, feature `fileIcons`); every other tab uses its tab-type
+			* descriptor icon.
 			*/
-			/** The tab icon from the tab-type registry (shared by every workbench). */
 			const tabIconOf = (tab) => {
+				if (tab.type === "editor" && tab.path !== void 0 && tab.meta?.dir !== true) return ctx.get("betterSidebar")?.fileIcon(tab.path, 14) ?? null;
 				const descriptor = ctx.get("betterSidebar")?.getTab(tab.type);
 				if (descriptor === void 0) return null;
 				return typeof descriptor.icon === "function" ? descriptor.icon(14) : descriptor.icon;
@@ -17425,6 +16444,12 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			* strip must never break because a plugin's badge computation failed.
 			*/
 			const tabBadgeOf = (tab) => {
+				if (isAgentTabId(tab.id)) {
+					if (state.agentWaits?.[agentUuidOf(tab.id)] !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: sidebar_module_css_default.tabBadge,
+						children: "⏳"
+					});
+				}
 				const descriptor = ctx.get("betterSidebar")?.getTab(tab.type);
 				if (descriptor?.badge === void 0) return null;
 				let value;
@@ -17451,7 +16476,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			* polling while the page is not actually visible). The pane id travels
 			* with the tab so diff tabs can split below their source pane.
 			*/
-			const renderTab = (tab, active, paneId, placement = "top") => {
+			const renderTab = (tab, active, paneId) => {
 				const home = getPinnedHomeScope(tab);
 				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TabContent, {
 					tab,
@@ -17464,10 +16489,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					onToggleDir: (path) => {
 						store.reduce((s) => toggleExpanded(s, path));
 					},
-					onReferenceFile: referenceInChat,
+					onReferenceFile: referenceInChat$1,
 					ctx,
 					store,
-					visible: placement === "float" ? true : placement === "bottom" ? state.bottomOpen && active : (slotDesktop || state.panelOpen) && active,
+					visible: state.bottomOpen && active,
 					onSubagentJump: (childSessionId) => {
 						subagentJumpRef.current = childSessionId;
 					},
@@ -17478,249 +16503,803 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					tabsVersion
 				});
 			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 				"data-dsh-panel-host": true,
-				"data-dsh-presentation": slotDesktop ? "slot" : "portal",
+				"data-dsh-presentation": slotPresentation ? "slot" : "portal",
 				...osFileDragShield,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: sidebar_module_css_default.toggleCluster,
-						"data-dsh-toggle-cluster": true,
-						children: [!narrow && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-							label: state.bottomOpen ? t("collapseBottomPanel") : t("expandBottomPanel"),
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					ref: bottomRef,
+					className: clsx(sidebar_module_css_default.bottomPanel, slotPresentation && sidebar_module_css_default.bottomPanelSlot, !state.bottomOpen && sidebar_module_css_default.bottomPanelHidden),
+					"data-dsh-panel": true,
+					"data-dsh-bottom-panel": true,
+					style: {
+						height: bottomPanelHeight,
+						left: slotPresentation ? 0 : centerRectRef.current.left,
+						bottom: keyboardInset > 0 ? `${keyboardInset}px` : void 0,
+						right: slotPresentation ? 0 : window.innerWidth - centerRectRef.current.right,
+						visibility: slotPresentation || centerMeasured ? void 0 : "hidden"
+					},
+					"data-dragging": draggingBottom || void 0,
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: clsx(sidebar_module_css_default.bottomResize, draggingBottom && sidebar_module_css_default.bottomResizeActive),
+							onPointerDown: (event) => {
+								event.preventDefault();
+								event.currentTarget.setPointerCapture(event.pointerId);
+								dragCommitted.current = false;
+								bottomDrag.current = {
+									startY: event.clientY,
+									startHeight: state.bottomHeight
+								};
+								setDraggingBottom(true);
+							},
+							onPointerMove: (event) => {
+								if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+								const { startY, startHeight } = bottomDrag.current;
+								scheduleDrag(clampHeight(startHeight + (startY - event.clientY)));
+							},
+							onPointerUp: (event) => {
+								if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+								if (dragCommitted.current) return;
+								dragCommitted.current = true;
+								event.currentTarget.releasePointerCapture(event.pointerId);
+								const { startY, startHeight } = bottomDrag.current;
+								commitDrag(clampHeight(startHeight + (startY - event.clientY)));
+								setDraggingBottom(false);
+							},
+							onPointerCancel: (event) => {
+								abortDrag(() => setDraggingBottom(false), event);
+							},
+							onLostPointerCapture: () => {
+								abortDrag(() => setDraggingBottom(false));
+							}
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+							label: t("collapseBottomPanel"),
 							side: "bottom",
 							delayMs: 500,
 							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: sidebar_module_css_default.toggleButton,
-								"aria-label": state.bottomOpen ? t("collapseBottomPanel") : t("expandBottomPanel"),
+								className: sidebar_module_css_default.bottomClose,
+								"aria-label": t("collapseBottomPanel"),
 								onClick: () => {
 									store.reduce(toggleBottomPanel);
 								},
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconPanelBottomOutline16, {})
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseFill14, {})
 							})
-						}), !slotDesktop && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-							label: state.panelOpen ? t("collapse") : t("expand"),
-							side: "bottom",
-							delayMs: 500,
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: sidebar_module_css_default.toggleButton,
-								"aria-label": state.panelOpen ? t("collapse") : t("expand"),
-								onClick: () => {
-									store.reduce(togglePanel);
-								},
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconPanelRightOutline16, {})
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: sidebar_module_css_default.panelBody,
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Workbench, {
+								state,
+								tree: augmentedTree,
+								newTabOptions,
+								actions: wrappedActions,
+								onNewTab,
+								renderTab,
+								getTabIcon: tabIconOf,
+								getTabBadge: tabBadgeOf
 							})
-						})]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						ref: panelRef,
-						className: clsx(sidebar_module_css_default.panel, slotDesktop && sidebar_module_css_default.panelSlot, !slotDesktop && !state.panelOpen && sidebar_module_css_default.panelHidden),
-						"data-dsh-panel": true,
-						style: {
-							width: slotDesktop ? "100%" : narrow ? "100vw" : Math.min(state.width, window.innerWidth),
-							bottom: slotDesktop ? state.bottomOpen ? bottomPanelHeight : 0 : narrow && keyboardInset > 0 ? `${keyboardInset}px` : void 0
-						},
-						"data-dragging": anyDragging || void 0,
-						children: [
-							!narrow && !slotDesktop && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: clsx(sidebar_module_css_default.panelResize, draggingWidth && sidebar_module_css_default.panelResizeActive),
-								onPointerDown: (event) => {
-									event.preventDefault();
-									event.currentTarget.setPointerCapture(event.pointerId);
-									dragCommitted.current = false;
-									widthDrag.current = {
-										startX: event.clientX,
-										startWidth: state.width
-									};
-									setDraggingWidth(true);
-								},
-								onPointerMove: (event) => {
-									if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-									const { startX, startWidth } = widthDrag.current;
-									const width = clampWidth(startWidth + (startX - event.clientX));
-									const height = pushedBottomHeight(state.bottomOpen, state.bottomHeight);
-									scheduleDrag(width, height);
-								},
-								onPointerUp: (event) => {
-									if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-									if (dragCommitted.current) return;
-									dragCommitted.current = true;
-									event.currentTarget.releasePointerCapture(event.pointerId);
-									const { startX, startWidth } = widthDrag.current;
-									const width = clampWidth(startWidth + (startX - event.clientX));
-									const height = pushedBottomHeight(state.bottomOpen, state.bottomHeight);
-									commitDrag(width, height, (s) => setWidth(s, width));
-									setDraggingWidth(false);
-								},
-								onPointerCancel: (event) => {
-									abortDrag(() => setDraggingWidth(false), event);
-								},
-								onLostPointerCapture: () => {
-									abortDrag(() => setDraggingWidth(false));
-								}
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: sidebar_module_css_default.panelBody,
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Workbench, {
-									state,
-									tree: augmentedTree,
-									newTabOptions,
-									actions: wrappedActions,
-									onNewTab,
-									renderTab,
-									getTabIcon: tabIconOf,
-									getTabBadge: tabBadgeOf
-								})
-							}),
-							!narrow && !slotDesktop && state.panelOpen && state.bottomOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: sidebar_module_css_default.cornerHandle,
-								"data-dragging": draggingCorner || void 0,
-								onPointerDown: (event) => {
-									event.preventDefault();
-									event.currentTarget.setPointerCapture(event.pointerId);
-									dragCommitted.current = false;
-									cornerDrag.current = {
-										startX: event.clientX,
-										startY: event.clientY,
-										startWidth: state.width,
-										startHeight: state.bottomHeight
-									};
-									setDraggingCorner(true);
-								},
-								onPointerMove: (event) => {
-									if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-									const { startX, startY, startWidth, startHeight } = cornerDrag.current;
-									const width = clampWidth(startWidth + (startX - event.clientX));
-									const height = pushedBottomHeight(true, clampHeight(startHeight + (startY - event.clientY)));
-									scheduleDrag(width, height);
-								},
-								onPointerUp: (event) => {
-									if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-									if (dragCommitted.current) return;
-									dragCommitted.current = true;
-									event.currentTarget.releasePointerCapture(event.pointerId);
-									const { startX, startY, startWidth, startHeight } = cornerDrag.current;
-									const width = clampWidth(startWidth + (startX - event.clientX));
-									const height = pushedBottomHeight(true, clampHeight(startHeight + (startY - event.clientY)));
-									commitDrag(width, height, (s) => setBottomHeight(setWidth(s, width), height));
-									setDraggingCorner(false);
-								},
-								onPointerCancel: (event) => {
-									abortDrag(() => setDraggingCorner(false), event);
-								},
-								onLostPointerCapture: () => {
-									abortDrag(() => setDraggingCorner(false));
-								}
-							})
-						]
-					}),
-					!narrow && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						ref: bottomRef,
-						className: clsx(sidebar_module_css_default.bottomPanel, slotDesktop && sidebar_module_css_default.bottomPanelSlot, !state.bottomOpen && sidebar_module_css_default.bottomPanelHidden),
-						"data-dsh-panel": true,
-						"data-dsh-bottom-panel": true,
-						style: {
-							height: bottomPanelHeight,
-							left: slotDesktop ? 0 : centerRectRef.current.left,
-							bottom: keyboardInset > 0 ? `${keyboardInset}px` : void 0,
-							right: slotDesktop ? 0 : window.innerWidth - centerRectRef.current.right,
-							borderRight: !slotDesktop && state.panelOpen ? "1px solid var(--dsw-alias-border-l2)" : void 0,
-							visibility: slotDesktop || centerMeasured ? void 0 : "hidden"
-						},
-						"data-dragging": draggingBottom || draggingCorner || void 0,
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: clsx(sidebar_module_css_default.bottomResize, draggingBottom && sidebar_module_css_default.bottomResizeActive),
-								onPointerDown: (event) => {
-									event.preventDefault();
-									event.currentTarget.setPointerCapture(event.pointerId);
-									dragCommitted.current = false;
-									bottomDrag.current = {
-										startY: event.clientY,
-										startHeight: state.bottomHeight
-									};
-									setDraggingBottom(true);
-								},
-								onPointerMove: (event) => {
-									if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-									const { startY, startHeight } = bottomDrag.current;
-									const height = pushedBottomHeight(true, clampHeight(startHeight + (startY - event.clientY)));
-									scheduleDrag(Math.min(state.width, window.innerWidth), height);
-								},
-								onPointerUp: (event) => {
-									if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-									if (dragCommitted.current) return;
-									dragCommitted.current = true;
-									event.currentTarget.releasePointerCapture(event.pointerId);
-									const { startY, startHeight } = bottomDrag.current;
-									const height = pushedBottomHeight(true, clampHeight(startHeight + (startY - event.clientY)));
-									commitDrag(Math.min(state.width, window.innerWidth), height, (s) => setBottomHeight(s, height));
-									setDraggingBottom(false);
-								},
-								onPointerCancel: (event) => {
-									abortDrag(() => setDraggingBottom(false), event);
-								},
-								onLostPointerCapture: () => {
-									abortDrag(() => setDraggingBottom(false));
-								}
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-								label: t("collapseBottomPanel"),
-								side: "bottom",
-								delayMs: 500,
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: sidebar_module_css_default.bottomClose,
-									"aria-label": t("collapseBottomPanel"),
-									onClick: () => {
-										store.reduce(toggleBottomPanel);
-									},
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseFill14, {})
-								})
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: sidebar_module_css_default.panelBody,
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Workbench, {
-									state,
-									tree: state.bottomSplits,
-									newTabOptions,
-									actions,
-									onNewTab,
-									renderTab: (tab, active, paneId) => renderTab(tab, active, paneId, "bottom"),
-									getTabIcon: tabIconOf,
-									getTabBadge: tabBadgeOf
-								})
-							})
-						]
-					}),
-					slotDesktop ? (0, react_dom.createPortal)(/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						"data-dsh-panel-host": true,
-						"data-dsh-floating-host": true,
-						...osFileDragShield,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FreeWindowLayer, {
-							floats: state.floats,
-							hint: floatHint,
-							renderTab,
-							getTabIcon: tabIconOf,
-							store,
-							ctx,
-							sessionId,
-							cwd
 						})
-					}), document.body) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FreeWindowLayer, {
-						floats: state.floats,
-						hint: floatHint,
-						renderTab,
-						getTabIcon: tabIconOf,
-						store,
-						ctx,
-						sessionId,
-						cwd
-					})
-				]
+					]
+				})
 			});
+		}
+		/** The header control that expands/collapses the bottom workbench (see
+		*  sidebar/bottom-toggle.tsx — registered into DSH's session header). */
+		function BottomDockToggle(props) {
+			const { store } = props;
+			const open = (0, react.useSyncExternalStore)((0, react.useCallback)((callback) => store.subscribe(callback), [store]), (0, react.useCallback)(() => store.getSnapshot(), [store])).state?.bottomOpen === true;
+			const label = open ? t("collapseBottomPanel") : t("expandBottomPanel");
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+				label,
+				side: "bottom",
+				delayMs: 500,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+					type: "button",
+					className: sidebar_module_css_default.toggleButton,
+					"data-dsh-bottom-toggle": true,
+					"data-active": open ? "true" : void 0,
+					"aria-label": label,
+					"aria-pressed": open,
+					onClick: () => {
+						store.reduce(toggleBottomPanel);
+					},
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconPanelBottomOutline16, {})
+				})
+			});
+		}
+		//#endregion
+		//#region src/client/native/tab-adapter.tsx
+		/**
+		* The plugin's side of a native right-Sidebar tab.
+		*
+		* A plugin tab descriptor is one registration in the plugin's own registry
+		* (`ctx.betterSidebar`); this module adapts the native tab record to that
+		* descriptor's component contract. The native surface carries the tab's
+		* record (id, kind, title, content identity, navigation params, lifetime
+		* signal); the plugin's components expect a `SidebarTab` plus the explorer
+		* state the plugin's own layout used to hold — both live here.
+		*
+		* The adapter owns three things the native layout does not carry:
+		*
+		* - a synthetic plugin `SidebarTab` per native tab id, minted from the native
+		*   record + `navigation.params` and kept live across navigations, so a
+		*   component that retitles itself (`updateTab`) or rewrites its path (the
+		*   editor's in-place file switch) keeps working;
+		* - the explorer's per-tab expansion/reveal sets;
+		* - the per-kind instance counter behind titles like "Terminal 2".
+		*
+		* Nothing here is a singleton: the registry is created once per client
+		* activation and handed to every registration.
+		*/
+		/** The chip glyph's size: the tab strip's own icon scale. */
+		const CHIP_ICON_SIZE = 14;
+		/** The editor kind: a chip for a file row shows the file's own glyph. */
+		const EDITOR_KIND$1 = "editor";
+		/** Create the record registry for one client activation. */
+		function createNativeTabRecords() {
+			const views = /* @__PURE__ */ new Map();
+			const instances = /* @__PURE__ */ new Map();
+			const listeners = /* @__PURE__ */ new Set();
+			const notify = () => {
+				for (const listener of listeners) listener();
+			};
+			const put = (id, view) => {
+				views.set(id, {
+					...view,
+					version: view.version + 1
+				});
+				notify();
+			};
+			return {
+				ensure({ id, kind, title, params, scope, mint }) {
+					const existing = views.get(id);
+					if (existing === void 0) {
+						const seeded = params?.title === void 0 && params?.meta === void 0 ? mint?.() : void 0;
+						const meta = params?.meta ?? seeded?.meta;
+						const minted = {
+							tab: {
+								id,
+								type: kind,
+								title: params?.title ?? seeded?.title ?? title,
+								...params?.path === void 0 ? {} : { path: params.path },
+								...params?.diff === void 0 ? {} : { diff: params.diff },
+								...meta === void 0 ? {} : { meta }
+							},
+							scope,
+							expanded: [],
+							revealed: [],
+							version: 0
+						};
+						views.set(id, minted);
+						return minted;
+					}
+					const patch = {};
+					if (params?.path !== void 0 && params.path !== existing.tab.path) patch.path = params.path;
+					if (params?.diff !== void 0) patch.diff = params.diff;
+					if (params?.url !== void 0) patch.meta = {
+						...typeof existing.tab.meta === "object" && existing.tab.meta !== null ? existing.tab.meta : {},
+						url: params.url
+					};
+					if (existing.scope.cwd !== scope.cwd) {
+						views.set(id, {
+							...existing,
+							scope,
+							tab: {
+								...existing.tab,
+								...patch
+							}
+						});
+						return views.get(id);
+					}
+					if (Object.keys(patch).length === 0) return existing;
+					const next = {
+						...existing,
+						tab: {
+							...existing.tab,
+							...patch
+						}
+					};
+					views.set(id, next);
+					return next;
+				},
+				get: (id) => views.get(id),
+				has: (id) => views.has(id),
+				update(id, patch) {
+					const entry = views.get(id);
+					if (entry === void 0) return;
+					put(id, {
+						...entry,
+						tab: {
+							...entry.tab,
+							...patch
+						}
+					});
+				},
+				drop(id) {
+					if (views.delete(id)) notify();
+				},
+				toggleExpanded(id, path) {
+					const entry = views.get(id);
+					if (entry === void 0) return;
+					const expanded = entry.expanded.includes(path) ? entry.expanded.filter((candidate) => candidate !== path) : [...entry.expanded, path];
+					put(id, {
+						...entry,
+						expanded
+					});
+				},
+				nextInstance(kind) {
+					const next = (instances.get(kind) ?? 0) + 1;
+					instances.set(kind, next);
+					return next;
+				},
+				versionOf: (id) => views.get(id)?.version ?? 0,
+				subscribe(listener) {
+					listeners.add(listener);
+					return () => {
+						listeners.delete(listener);
+					};
+				}
+			};
+		}
+		/** Subscribe a component to its own record's mutations. */
+		function useRecordVersion(records, id) {
+			return (0, react.useSyncExternalStore)((listener) => records.subscribe(listener), () => records.versionOf(id));
+		}
+		/** The current session's workspace root, live from the client session list. */
+		function useSessionCwd(ctx, sessionId) {
+			return (0, react.useSyncExternalStore)((0, react.useMemo)(() => (listener) => ctx.sessions.list.subscribe(listener), [ctx]), () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd);
+		}
+		/**
+		* One plugin tab rendered inside the native right Sidebar: the descriptor's
+		* own component with the plugin's props, over a synthetic record minted from
+		* the native tab and dropped when the record ends.
+		*/
+		function NativeTabBody(props) {
+			const { ctx, store, service, records, descriptorId, useTabInfo } = props;
+			const info = useTabInfo();
+			const nativeTab = info.tab;
+			useRecordVersion(records, nativeTab.id);
+			const sessionId = props.sessionIdOf?.(info) ?? props.sessionId;
+			const cwd = useSessionCwd(ctx, sessionId);
+			const scope = (0, react.useMemo)(() => ({
+				sessionId,
+				cwd
+			}), [sessionId, cwd]);
+			const derived = props.paramsOf?.(info);
+			const params = derived === void 0 && nativeTab.navigation.params === void 0 ? void 0 : {
+				...derived,
+				...nativeTab.navigation.params
+			};
+			const descriptor = service.getTab(descriptorId);
+			const view = records.ensure({
+				id: nativeTab.id,
+				kind: nativeTab.kind,
+				title: nativeTab.title,
+				params,
+				scope,
+				mint: () => {
+					const state = store.getSnapshot().state;
+					if (descriptor?.createTab === void 0 || state === void 0) return void 0;
+					const minted = descriptor.createTab(state);
+					return minted === null ? void 0 : {
+						title: minted.tab.title,
+						meta: minted.tab.meta
+					};
+				}
+			});
+			(0, react.useEffect)(() => () => {
+				records.drop(nativeTab.id);
+			}, [records, nativeTab.id]);
+			if (descriptor === void 0) return (0, react.createElement)("div", {
+				className: sidebar_module_css_default.nativeTabHost,
+				"data-dsh-native-tab-host": ""
+			}, (0, react.createElement)(OrphanedTab, {
+				ctx,
+				store,
+				scope,
+				tab: view.tab,
+				visible: nativeTab.visible
+			}));
+			return (0, react.createElement)(RenderBoundary, { className: sidebar_module_css_default.tabBoundaryError }, (0, react.createElement)("div", {
+				className: sidebar_module_css_default.nativeTabHost,
+				"data-dsh-native-tab-host": ""
+			}, (0, react.createElement)(descriptor.component, {
+				ctx,
+				store,
+				scope,
+				tab: view.tab,
+				visible: nativeTab.visible,
+				expanded: view.expanded,
+				revealed: view.revealed,
+				onToggleDir: (path) => {
+					records.toggleExpanded(nativeTab.id, path);
+				},
+				onReferenceFile: (path, isDir) => {
+					referenceInChat(ctx, sessionId, cwd, path, isDir);
+				},
+				onOpenDiff: (tab) => {
+					service.openTab({
+						type: "diff",
+						title: tab.title,
+						id: tab.id,
+						...tab.diff === void 0 ? {} : { diff: tab.diff }
+					}, scope);
+				},
+				onSubagentJump: (childSessionId) => {
+					service.openTab({
+						type: "subagent",
+						meta: { childSessionId }
+					}, scope);
+				}
+			})));
+		}
+		/**
+		* A live tab chip: the type's glyph followed by the synthetic record's title
+		* (the editor rewrites it on an in-place file switch, the side chat on the
+		* thread's first prompt). Without this registration the chip would keep the
+		* title captured when the tab opened.
+		*
+		* The host's tab definition has no icon field — a chip is drawn from the
+		* `title` text alone — but this slot IS the chip's content, so the glyph is
+		* ours to add. Placement follows the plugin's own semantics: an editor tab
+		* with a path shows that file's icon (the same glyph the tree row shows), and
+		* every other tab shows its descriptor's icon. Both ride
+		* `descriptor.icon`, so the workbench strip, the guide capsules and the chip
+		* cannot drift apart.
+		*/
+		function NativeTabTitle(props) {
+			const { records, service, descriptorId, useTabInfo } = props;
+			const nativeTab = useTabInfo().tab;
+			(0, react.useSyncExternalStore)((listener) => records.subscribe(listener), () => records.versionOf(nativeTab.id));
+			const record = records.get(nativeTab.id);
+			const title = record?.tab.title ?? nativeTab.title;
+			const descriptor = service.getTab(descriptorId) ?? service.getTab(record?.tab.type ?? nativeTab.kind);
+			const path = record?.tab.path;
+			const glyph = (path !== void 0 && descriptorId === EDITOR_KIND$1 ? service.fileIcon(path, CHIP_ICON_SIZE) : void 0) ?? (typeof descriptor?.icon === "function" ? descriptor.icon(CHIP_ICON_SIZE) : descriptor?.icon);
+			if (glyph === void 0 || glyph === null) return title;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				className: sidebar_module_css_default.chipIcon,
+				"aria-hidden": "true",
+				children: glyph
+			}), title] });
+		}
+		//#endregion
+		//#region src/client/resource-address.ts
+		/**
+		* The DSH resource-address grammar for files (`dsh-resource://file/…`).
+		*
+		* DSH's right Sidebar opens content by ADDRESS, and a file's address IS the
+		* tab's content identity: the same address is the same tab. Two scopes exist:
+		*
+		* - `dsh-resource://file/session/<sessionId>/<path>` names a file by its path
+		*   relative to that session's workspace root OR by its absolute path kept
+		*   absolute inside the session scope (`src/a.ts` vs `/outside/a.ts` — the
+		*   leading `/` survives; the host resolves it against the root it holds for
+		*   the session);
+		* - `dsh-resource://file/absolute/<path>` names a file by its absolute path
+		*   with the leading `/` dropped (`absolute/home/me/x.txt`; Windows
+		*   `absolute/C:/x/y.txt`; a UNC path keeps an empty first segment,
+		*   `absolute//server/share/x.txt`). It carries no session. `fileAddressFor`
+		*   no longer produces this scope on DSH 0.1.5-alpha.2, but it must keep
+		*   parsing: legacy and third-party addresses still spell it.
+		*
+		* Every id and path segment is component-encoded, so a name carrying `#`, `?`
+		* or a space survives the round trip; `:` stays literal so a drive letter
+		* reads as written.
+		*
+		* The plugin parses these addresses itself instead of importing
+		* `@deepseek-ai/dsh-util-workspace-path`: the client bundle's purity gate
+		* forbids value-importing an unlisted `@deepseek-ai/*` package. This module
+		* mirrors that package's implementation — `packages/util/workspace-path/src/file-address.ts`
+		* and `fileAddressFor` in `packages/util/workspace-path/src/index.ts` in
+		* DSH 0.1.5-alpha.2 (github.com/deepseek-ai/deepseek-harness, tag
+		* `dsh-v0.1.5-alpha.2`) — and is pinned by tests/resource-address.spec.ts.
+		*/
+		/** The scheme and type every file address opens with. */
+		const FILE_ADDRESS_PREFIX = "dsh-resource://file/";
+		/** Component-encode one id or path segment, keeping `:` literal for drive letters. */
+		function encodeSegment(segment) {
+			return encodeURIComponent(segment).replace(/%3A/gi, ":");
+		}
+		/** Encode a `/`-separated path segment by segment. */
+		function encodePath(path) {
+			return path.split("/").map(encodeSegment).join("/");
+		}
+		/** Whether a decoded first path segment is a Windows drive (`C:`). */
+		function isDriveSegment(segment) {
+			return segment !== void 0 && /^[A-Za-z]:$/.test(segment);
+		}
+		/**
+		* Build the address of a file read through one session.
+		* @param sessionId - the session whose workspace root resolves the path.
+		* @param path - absolute or workspace-relative path; backslashes are normalized
+		*   to `/`, and leading `./` prefixes are dropped (a leading `/` is KEPT: an
+		*   absolute path stays absolute inside the session scope).
+		* @returns the `dsh-resource://file/session/<sessionId>/<path>` address.
+		*/
+		function sessionFileAddress(sessionId, path) {
+			const normalized = path.replace(/\\/g, "/").replace(/^(?:\.\/)+/, "");
+			return `${FILE_ADDRESS_PREFIX}session/${encodeSegment(sessionId)}/${encodePath(normalized)}`;
+		}
+		/**
+		* Read a file address back into its parts without resolving `.` or `..`.
+		* Query and fragment suffixes are ignored; encoded path segments are decoded.
+		* @param address - a candidate address.
+		* @returns the parts, or `undefined` when the string is not a
+		*   `dsh-resource://file/` URI in a known scope with a path, or a segment is
+		*   not validly encoded.
+		*/
+		function parseFileAddress(address) {
+			try {
+				if (!address.startsWith("dsh-resource://file/")) return void 0;
+				const end = address.search(/[?#]/);
+				const [scope, ...rest] = address.slice(20, end === -1 ? void 0 : end).split("/");
+				if (scope === "session") {
+					const [id, ...segments] = rest;
+					if (id === void 0 || id === "" || segments.length === 0) return void 0;
+					return {
+						scope,
+						sessionId: decodeURIComponent(id),
+						path: segments.map(decodeURIComponent).join("/")
+					};
+				}
+				if (scope === "absolute") {
+					const unc = rest[0] === "" && rest.length > 1;
+					const segments = (unc ? rest.slice(1) : rest).map(decodeURIComponent);
+					if (segments.length === 0 || segments[0] === "") return void 0;
+					if (unc) return {
+						scope,
+						path: `//${segments.join("/")}`
+					};
+					return {
+						scope,
+						path: isDriveSegment(segments[0]) ? segments.join("/") : `/${segments.join("/")}`
+					};
+				}
+				return;
+			} catch {
+				return;
+			}
+		}
+		/** Whether a path is absolute in either spelling the host accepts. */
+		function isAbsolutePath(path) {
+			return path.startsWith("/") || /^[A-Za-z]:[/\\]/.test(path) || path.startsWith("\\\\");
+		}
+		/**
+		* The address for a path as a caller holds it: ALWAYS session-scoped. A
+		* relative path, or an absolute path inside the session's workspace, becomes
+		* the relative spelling; an absolute path outside it, or one whose workspace
+		* root is unknown, keeps its absolute path in that session's address. (Mirror
+		* of `fileAddressFor` — on alpha.2 this helper no longer produces the
+		* `absolute` scope, though such addresses still parse.)
+		* @param sessionId - the session the path is read in.
+		* @param cwd - that session's workspace root, when known.
+		* @param path - absolute or workspace-relative path, either separator spelling.
+		* @returns the `dsh-resource://file/…` address.
+		*/
+		function fileAddressFor(sessionId, cwd, path) {
+			const normalized = path.replace(/\\/g, "/");
+			if (!isAbsolutePath(normalized)) return sessionFileAddress(sessionId, normalized);
+			const root = cwd === void 0 ? "" : cwd.replace(/\\/g, "/").replace(/\/+$/, "");
+			if (root !== "" && normalized === root) return sessionFileAddress(sessionId, "");
+			if (root !== "" && normalized.startsWith(`${root}/`)) return sessionFileAddress(sessionId, normalized.slice(root.length + 1));
+			return sessionFileAddress(sessionId, normalized);
+		}
+		//#endregion
+		//#region src/client/native/index.ts
+		/** The kind the plugin's files window owns (page + file viewer). */
+		const EDITOR_KIND = "editor";
+		/** The built-in page kind this plugin takes over. */
+		const FILES_KIND = "files";
+		/** The plugin's implementation id for a descriptor (unique across kinds). */
+		function nativeId(descriptorId) {
+			return `dsh-better-sidebar:${descriptorId}`;
+		}
+		/** The descriptor's title text, evaluated fresh for the current locale. */
+		function titleOf(descriptor) {
+			return typeof descriptor.title === "function" ? descriptor.title() : descriptor.title;
+		}
+		/**
+		* The guide fields carrying the descriptor's own description line, evaluated
+		* fresh for the current locale. DSH 0.1.5-rc.1+ renders `description` only
+		* while the guide lists at most 4 entries, and a descriptor that declares
+		* none must reach the host with NO `description` field at all — the host has
+		* no fallback of its own, so an empty string would render as a blank second
+		* line rather than a clean title-only capsule.
+		* @param descriptor - the tab descriptor owning the guide entry.
+		* @returns the `description` field, or an empty object.
+		*/
+		function guideDescriptionOf(descriptor) {
+			const description = descriptor?.description;
+			return description === void 0 ? {} : { description: () => typeof description === "function" ? description() : description };
+		}
+		/**
+		* The guide row's glyph for a descriptor icon (nothing when it has none).
+		* The native guide renders `entry.icon`, so a takeover registered without one
+		* is the only row in the list with a blank leading slot.
+		* @param icon - the descriptor's icon value.
+		* @returns the guide-entry icon fields, or an empty object.
+		*/
+		function guideIconOf(icon) {
+			return typeof icon === "function" ? { icon: (props) => icon(props.size ?? 16) } : {};
+		}
+		/**
+		* The chip title of a file address: its own file name. A resource tab is
+		* identified by its address, so the strip must name the FILE — the
+		* descriptor's title ("Files") would make every open file look identical.
+		* @param address - the native tab's content address.
+		* @returns the file name, or undefined when the address is not a file.
+		*/
+		function fileTitleOf(address) {
+			const parsed = parseFileAddress(address);
+			if (parsed === void 0) return void 0;
+			const segments = parsed.path.split("/").filter((segment) => segment !== "");
+			return segments.length === 0 ? void 0 : segments[segments.length - 1];
+		}
+		/**
+		* Register the plugin's tabs into the native right Sidebar and keep them in
+		* step with the plugin's own registry and settings.
+		* @param deps - client context, the plugin store/service, and the records.
+		* @returns a disposer unregistering everything.
+		*/
+		function registerNativeSurface(deps) {
+			const { ctx, store, service, records } = deps;
+			const seat = ctx.inject(["sidebarRightTabs"], (injected) => {
+				const tabs = injected.get("sidebarRightTabs");
+				if (tabs === void 0) return;
+				const live = /* @__PURE__ */ new Map();
+				const fileParamsOf = (info) => {
+					const address = parseFileAddress(info.tab.contentId);
+					return address === void 0 ? void 0 : { path: address.path };
+				};
+				const fileSessionIdOf = (info) => {
+					const address = parseFileAddress(info.tab.contentId);
+					return address !== void 0 && address.scope === "session" ? address.sessionId : void 0;
+				};
+				/** Register the body + chip-title slots for one native implementation id. */
+				const registerSlots = (id, injected, params) => [ctx.slots.inject("sidebar.right.pane.tab", () => ctx.slots.register({
+					name: "sidebar.right.pane.tab",
+					key: id,
+					inject: (sessionId) => ({
+						...injected,
+						...params,
+						sessionId
+					})
+				}, NativeTabBody)), ctx.slots.inject("sidebar.right.pane.tab.title", () => ctx.slots.register({
+					name: "sidebar.right.pane.tab.title",
+					key: id,
+					inject: () => ({
+						records,
+						service,
+						descriptorId: injected.descriptorId
+					})
+				}, NativeTabTitle))];
+				/** One descriptor's native type + body + title, as one disposable. */
+				const registerDescriptor = (descriptor) => {
+					const id = nativeId(descriptor.id);
+					const isEditor = descriptor.id === EDITOR_KIND;
+					const icon = descriptor.icon;
+					const disposeType = tabs.register({
+						id,
+						kind: descriptor.id,
+						...isEditor ? {
+							patterns: ["dsh-resource://file/**"],
+							canOpen: (address) => parseFileAddress(address) !== void 0
+						} : {},
+						priority: "extension",
+						title: (address) => isEditor ? fileTitleOf(address) ?? titleOf(descriptor) : titleOf(descriptor),
+						...descriptor.hidden === true || isEditor ? {} : { guide: [{
+							order: descriptor.order ?? 100,
+							title: () => titleOf(descriptor),
+							...guideDescriptionOf(descriptor),
+							...guideIconOf(icon)
+						}] }
+					});
+					const slots = registerSlots(id, {
+						ctx,
+						store,
+						service,
+						records,
+						descriptorId: descriptor.id
+					}, isEditor ? {
+						paramsOf: fileParamsOf,
+						sessionIdOf: fileSessionIdOf
+					} : {});
+					return () => {
+						for (const dispose of slots.reverse()) dispose();
+						disposeType();
+					};
+				};
+				/** One `files`-kind takeover: the plugin's explorer under the built-in kind. */
+				const registerFilesKind = (editor) => {
+					const id = "dsh-better-sidebar:files";
+					const disposeType = tabs.register({
+						id,
+						kind: FILES_KIND,
+						priority: "extension",
+						title: () => t("files"),
+						guide: [{
+							order: 10,
+							title: () => t("files"),
+							...guideDescriptionOf(editor),
+							...guideIconOf(editor?.icon)
+						}]
+					});
+					const slots = registerSlots(id, {
+						ctx,
+						store,
+						service,
+						records,
+						descriptorId: EDITOR_KIND
+					}, {});
+					return () => {
+						for (const dispose of slots.reverse()) dispose();
+						disposeType();
+					};
+				};
+				/** Bring the live registrations in line with the registry + the settings. */
+				const sync = () => {
+					const wanted = /* @__PURE__ */ new Map();
+					for (const descriptor of service.getTabs()) {
+						if (!service.isTabEnabled(descriptor.id)) continue;
+						wanted.set(descriptor.id, () => registerDescriptor(descriptor));
+					}
+					for (const [descriptorId, registration] of live) {
+						if (wanted.has(descriptorId)) continue;
+						registration.dispose();
+						live.delete(descriptorId);
+					}
+					for (const [descriptorId, create] of wanted) {
+						if (live.has(descriptorId)) continue;
+						live.set(descriptorId, { dispose: create() });
+					}
+					const wantsFiles = service.isTabEnabled(EDITOR_KIND);
+					const hasFiles = live.has(FILES_KIND);
+					if (wantsFiles && !hasFiles) live.set(FILES_KIND, { dispose: registerFilesKind(service.getTab(EDITOR_KIND)) });
+					if (!wantsFiles && hasFiles) {
+						live.get(FILES_KIND)?.dispose();
+						live.delete(FILES_KIND);
+					}
+				};
+				const disposeSubscriptions = [service.subscribe(sync), store.subscribe(sync)];
+				sync();
+				return () => {
+					for (const registration of live.values()) registration.dispose();
+					live.clear();
+					for (const dispose of disposeSubscriptions.reverse()) dispose();
+				};
+			});
+			return () => {
+				seat.dispose();
+			};
+		}
+		//#endregion
+		//#region src/client/sidebar/bottom-toggle.tsx
+		/** Register the header toggle; returns the disposer. */
+		function registerBottomToggle(ctx, store) {
+			return ctx.slots.inject("conversation.session.header.utilities", () => ctx.slots.register({
+				name: "conversation.session.header.utilities",
+				id: "dsh-better-sidebar:bottom-toggle",
+				order: 10,
+				registrant: "dsh-better-sidebar"
+			}, () => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BottomDockToggle, { store })));
+		}
+		//#endregion
+		//#region src/client/native/surface.ts
+		/** The active session id, as the client list reports it. */
+		function activeSessionId(ctx) {
+			try {
+				return ctx.sessions.list.getSnapshot().current;
+			} catch {
+				return;
+			}
+		}
+		/**
+		* Bind the plugin's write face to the native controller.
+		* @param ctx - the client context (session list + `ctx.sidebarRight`).
+		* @param records - the plugin's native tab record registry.
+		* @returns the surface, plus a disposer unbinding its session subscription.
+		*/
+		function createNativeSurface(ctx, records) {
+			const pending = [];
+			const controller = () => ctx.get("sidebarRight");
+			const place = (entry) => {
+				const api = controller();
+				if (api === void 0) return false;
+				const active = activeSessionId(ctx);
+				const onScreen = active !== void 0 && active === entry.sessionId;
+				if (entry.kind === "tab") {
+					const options = {
+						params: entry.params,
+						revealIfOpened: entry.revealIfOpened
+					};
+					if (onScreen) {
+						api.openTab(entry.tabKind, options);
+						return true;
+					}
+					if (api.openTabIn !== void 0) {
+						api.openTabIn(entry.sessionId, entry.tabKind, options);
+						return true;
+					}
+					return false;
+				}
+				const options = {
+					...entry.line === void 0 ? {} : { params: { line: entry.line } },
+					revealIfOpened: entry.revealIfOpened
+				};
+				if (onScreen) {
+					api.openResource(entry.address, options);
+					return true;
+				}
+				if (api.openResourceIn !== void 0) {
+					api.openResourceIn(entry.sessionId, entry.address, options);
+					return true;
+				}
+				return false;
+			};
+			const flushPending = () => {
+				if (pending.length === 0) return;
+				for (let index = pending.length - 1; index >= 0; index--) {
+					const entry = pending[index];
+					if (entry !== void 0 && place(entry)) pending.splice(index, 1);
+				}
+			};
+			const enqueue = (entry) => {
+				if (!place(entry)) pending.push(entry);
+			};
+			const unsubscribe = ctx.sessions.list.subscribe(flushPending);
+			return {
+				openTab({ sessionId, kind, params, revealIfOpened }) {
+					enqueue({
+						kind: "tab",
+						sessionId,
+						tabKind: kind,
+						params,
+						revealIfOpened
+					});
+				},
+				openResource({ sessionId, address, line, revealIfOpened }) {
+					enqueue({
+						kind: "resource",
+						sessionId,
+						address,
+						line,
+						revealIfOpened
+					});
+				},
+				fileAddress(sessionId, cwd, path) {
+					return fileAddressFor(sessionId, cwd, path);
+				},
+				close(sessionId, tabId) {
+					const record = records.get(tabId);
+					if (record === void 0) return void 0;
+					records.drop(tabId);
+					const api = controller();
+					if (api !== void 0) {
+						if (sessionId === activeSessionId(ctx)) api.close(tabId);
+						else if (api.closeIn !== void 0) api.closeIn(sessionId, tabId);
+					}
+					return {
+						type: record.tab.type,
+						title: record.tab.title
+					};
+				},
+				update(tabId, patch) {
+					if (!records.has(tabId)) return false;
+					records.update(tabId, patch);
+					return true;
+				},
+				activate(tabId) {
+					return records.has(tabId);
+				},
+				has: (tabId) => records.has(tabId),
+				flushPending,
+				dispose: () => {
+					unsubscribe();
+				}
+			};
 		}
 		//#endregion
 		//#region src/client/link-intercept.ts
@@ -18493,29 +18072,30 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				else current.push(option.value);
 				onSelect(options.filter((o) => current.includes(o.value)).map((o) => o.value));
 			};
+			const anchor = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+				type: "button",
+				className: SideCardSection_module_css_default.selectAnchor,
+				"aria-label": label,
+				"aria-haspopup": "listbox",
+				"aria-expanded": open,
+				onClick: () => {
+					setOpen((now) => !now);
+				},
+				children: [
+					!multi && hasIcons && selected[0] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: SideCardSection_module_css_default.selectAnchorIcon,
+						children: iconOf(selected[0].icon, 16)
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: SideCardSection_module_css_default.selectAnchorText,
+						children: selected.length === 0 ? placeholder ?? "—" : selected.map((option) => textOf(option.title)).join(", ")
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { size: 12 })
+				]
+			});
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
 				open,
-				anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-					type: "button",
-					className: SideCardSection_module_css_default.selectAnchor,
-					"aria-label": label,
-					"aria-haspopup": "listbox",
-					"aria-expanded": open,
-					onClick: () => {
-						setOpen((now) => !now);
-					},
-					children: [
-						!multi && hasIcons && selected[0] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: SideCardSection_module_css_default.selectAnchorIcon,
-							children: iconOf(selected[0].icon, 16)
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: SideCardSection_module_css_default.selectAnchorText,
-							children: selected.length === 0 ? placeholder ?? "—" : selected.map((option) => textOf(option.title)).join(", ")
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { size: 12 })
-					]
-				}),
+				anchor,
 				items: options.map((option, index) => ({
 					id: String(index),
 					label: hasIcons ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
@@ -18634,7 +18214,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		*/
 		function SideCardSection({ store, service }) {
 			const [prefs, setPrefs] = (0, react.useState)(() => store.getPrefs());
-			const [widthDraft, setWidthDraft] = (0, react.useState)(String(store.getPrefs().defaultWidthPercent));
 			const [error, setError] = (0, react.useState)(null);
 			const [settingsFor, setSettingsFor] = (0, react.useState)(null);
 			const [stripSettingsOpen, setStripSettingsOpen] = (0, react.useState)(false);
@@ -18659,9 +18238,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					if (cancelled) return;
 					revisionRef.current = view.revision;
 					if (dirtyRef.current) return;
-					const next = parsePrefs(view.value);
-					setPrefs(next);
-					setWidthDraft(String(next.defaultWidthPercent));
+					setPrefs(parsePrefs(view.value));
 				}).catch(() => {});
 				return () => {
 					cancelled = true;
@@ -18691,9 +18268,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			};
 			/** Settle one commit: success adopts the server values, failure reverts. */
 			const applyOutcome = (previous, outcome) => {
-				const settled = outcome.ok ? outcome.prefs : previous;
-				setPrefs(settled);
-				setWidthDraft(String(settled.defaultWidthPercent));
+				setPrefs(outcome.ok ? outcome.prefs : previous);
 			};
 			/** Optimistically apply one pref patch, then commit (revert on failure). */
 			const applyPref = (patch) => {
@@ -18706,9 +18281,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				setPrefs(next);
 				setError(null);
 				commit(patch).then((outcome) => applyOutcome(previous, outcome));
-			};
-			const onToggle = (next) => {
-				applyPref({ openByDefault: next });
 			};
 			/** Flip one per-tab enable switch (merge into the tabsEnabled map). */
 			const onToggleTab = (id, next) => {
@@ -18809,22 +18381,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				applyPluginSetting(descriptorId, toggle.key, raw);
 				return raw;
 			};
-			const commitWidth = () => {
-				const parsed = Number(widthDraft);
-				if (!Number.isFinite(parsed)) {
-					setWidthDraft(String(prefs.defaultWidthPercent));
-					return;
-				}
-				const clamped = clampWidthPercent(parsed);
-				const previous = prefs;
-				setPrefs({
-					...previous,
-					defaultWidthPercent: clamped
-				});
-				setWidthDraft(String(clamped));
-				setError(null);
-				commit({ defaultWidthPercent: clamped }).then((outcome) => applyOutcome(previous, outcome));
-			};
 			/**
 			* One SMALL toggle card for the responsive inventory grid: the card's main
 			* area is the switch (click to flips, visual state IS the state), the icon
@@ -18901,76 +18457,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 								className: SideCardSection_module_css_default.groupHeading,
 								children: t("settingsGeneralTitle")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: SideCardSection_module_css_default.row,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: SideCardSection_module_css_default.rowText,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: SideCardSection_module_css_default.title,
-										children: t("settingsOpenTitle")
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: SideCardSection_module_css_default.desc,
-										children: t("settingsOpenDesc")
-									})]
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Switch, {
-									label: t("settingsOpenTitle"),
-									checked: prefs.openByDefault,
-									onChange: onToggle
-								})]
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: SideCardSection_module_css_default.row,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: SideCardSection_module_css_default.rowText,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: SideCardSection_module_css_default.title,
-										children: t("settingsWidthTitle")
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: SideCardSection_module_css_default.desc,
-										children: t("settingsWidthDesc")
-									})]
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: SideCardSection_module_css_default.control,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
-										type: "number",
-										className: SideCardSection_module_css_default.percentInput,
-										value: widthDraft,
-										min: 20,
-										max: 60,
-										step: 1,
-										"aria-label": t("settingsWidthTitle"),
-										onChange: (event) => {
-											setWidthDraft(event.currentTarget.value);
-										},
-										onBlur: commitWidth,
-										onKeyDown: (event) => {
-											if (event.key === "Enter") event.currentTarget.blur();
-										}
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: SideCardSection_module_css_default.suffix,
-										children: t("settingsWidthSuffix")
-									})]
-								})]
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: SideCardSection_module_css_default.row,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: SideCardSection_module_css_default.rowText,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: SideCardSection_module_css_default.title,
-										children: t("settingsOpenPathTitle")
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: SideCardSection_module_css_default.desc,
-										children: t("settingsOpenPathDesc")
-									})]
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Switch, {
-									label: t("settingsOpenPathTitle"),
-									checked: prefs.interceptOpenPath,
-									onChange: (next) => {
-										applyPref({ interceptOpenPath: next });
-									}
-								})]
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: SideCardSection_module_css_default.row,
@@ -19226,8 +18712,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			});
 		}
 		//#endregion
-		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-build/src/client/layout.css.mjs
-		const css = "/**\n * Layout push: an open panel occupies layout instead of floating over it.\n * The right panel reserves padding inside the AppFrame three-column grid,\n * so the app sidebar, conversation, and details column all remain to its\n * left while the frame's border-box stays viewport-wide. Harness measures\n * that border-box to choose desktop versus narrow presentation; preserving\n * it prevents a desktop window from entering narrow mode merely because the\n * plugin panel opened.\n *\n * AppFrame positions its details drag handle from the measured border-box.\n * Move that handle left by the same reserved width so it stays on the details\n * column edge. The ordinary sidebar handle remains at its native coordinate.\n *\n * The bottom panel squeezes only the conversation column. The anchor is the\n * [data-dsh-center-col] tag the Sidebar shell's locator writes on the\n * frame's measured center grid item (Sidebar.tsx locate — not a positional\n * path: the frame also contains an overlay layer and drag handles). A\n * stretched grid item shrinks by its bottom margin, so the conversation\n * output and composer lift without touching either sidebar.\n *\n * Sizes ride CSS variables updated by the Sidebar shell (0 while collapsed).\n * Expand/collapse uses the host theme duration; drags disable transitions so\n * every reserved edge tracks the pointer.\n */\n/* Current shells expose [data-dsh-frame]; rc.8-era shells expose the same\n   AppFrame only as the root slot's direct child. */\nbody[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame],\nbody[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot=\"root\"] > div {\n  box-sizing: border-box;\n  padding-right: var(--dsh-sidebar-width, 0px);\n  transition: padding-right var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\nbody[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame] > [data-side=\"details\"],\nbody[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot=\"root\"] > div > [data-side=\"details\"] {\n  transform: translateX(calc(0px - var(--dsh-sidebar-width, 0px)));\n  transition:\n    left var(--ds-transition-duration-slow) var(--ds-ease-in-out),\n    transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n/* The AppFrame's center column. The Sidebar shell's locator (Sidebar.tsx\n   locate/measureCenter) tags the measured column node with\n   [data-dsh-center-col] — one attribute write per node lifetime. The rule\n   used to anchor on a structural has()-selector over the conversation slot\n   wrapper, whose match cache invalidates on every #root subtree mutation\n   (the streaming chat mutates it constantly), re-evaluating the selector\n   against the whole document; the tag is evaluated once per node instead.\n   A stretched grid item shrinks by its margins, so the conversation\n   content (output + input bar) lifts without touching the sidebars. */\nbody[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-center-col] {\n  margin-bottom: var(--dsh-sidebar-height, 0px);\n  /* Grid/flex items default to min-height:auto. A long unbreakable token\n     (OAuth URL) then grows this column past the viewport and clips the\n     composer + left-rail Settings row. min-height:0 lets the cell shrink;\n     overflow-wrap lets the token wrap instead of forcing its intrinsic\n     size. The host's own descendants remain responsible for scrolling. */\n  min-height: 0;\n  overflow-wrap: anywhere;\n  transition: margin-bottom var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n/* When the sidebar is collapsed, the toggle cluster reclaims the top-right\n   corner. Push the DSH session header's right padding out so its right-aligned\n   utilities (the \"Session log\" download capsule) yield the corner instead of\n   hiding under the cluster. The header default right-pads 28px; the 2-button\n   cluster spans right 10→70px, so 78px clears it with an 8px gap. Anchor on\n   the header's slot host wrapper ([data-slot=\"conversation.session.header\"])\n   rather than a positional path: DSH 0.1.x nests the header several levels\n   under the center column. The Sidebar shell toggles the body attribute with\n   the panel open state. */\nbody[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-collapsed] [data-slot=\"conversation.session.header\"] > header {\n  padding-right: 78px;\n}\n\nbody[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root [data-dsh-frame],\nbody[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root > [data-slot=\"root\"] > div,\nbody[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root [data-dsh-frame] > [data-side=\"details\"],\nbody[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root > [data-slot=\"root\"] > div > [data-side=\"details\"],\nbody[data-dsh-better-sidebar-presentation='portal'][data-dsh-sidebar-dragging] #root [data-dsh-center-col],\nbody[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame][data-dragging] > [data-side=\"details\"],\nbody[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot=\"root\"] > div[data-dragging] > [data-side=\"details\"] {\n  transition: none;\n}\n\n/* DSH 0.1.x gives external settings sections a generic gear and exposes no\n   icon field in the settings.section contract. settings-nav-icon.ts marks\n   only this plugin's localized row; render the requested Lucide\n   gallery-horizontal-end SVG as a currentColor mask so it follows the native\n   nav hover/active colors without changing the shell's 16px icon rhythm. */\n[data-dsh-better-sidebar-settings-nav] > svg:first-child {\n  display: none;\n}\n\n[data-dsh-better-sidebar-settings-nav]::before {\n  content: '';\n  flex: none;\n  width: 16px;\n  height: 16px;\n  background: currentColor;\n  -webkit-mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n  mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame],\n  body[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot=\"root\"] > div,\n  body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-frame] > [data-side=\"details\"],\n  body[data-dsh-better-sidebar-presentation='portal'] #root > [data-slot=\"root\"] > div > [data-side=\"details\"],\n  body[data-dsh-better-sidebar-presentation='portal'] #root [data-dsh-center-col] {\n    transition: none;\n  }\n}\n\n/* Context-menu submenu flip (viewport clamping for the portaled menus).\n *\n * The ui-primitives Menu clamps its main portal list into the viewport but\n * positions nested submenus with static CSS only — anchored at the parent\n * row's bottom, growing UP and to the RIGHT — with no clamp whatsoever.\n * Docked on the window's right edge, both defaults are the worst case for\n * this panel: a tall \"open with\" submenu escapes past the viewport top when\n * the row menu opens near the top, and past the right edge on narrow panels\n * (PANEL_MIN 280 < card 218 + gap + submenu 165).\n *\n * menu-flip.ts publishes `data-dsh-sidebar-submenu` on <body> — with the\n * words \"down\" and/or \"left\" — for exactly the lifetime of one of OUR\n * submenu-bearing menus (FileTree row menu, TabBar tab menu). The tokens\n * flip the growth direction; the attribute's absence restores the\n * primitive's own geometry untouched, and host-owned menus are never\n * affected because they never open while the attribute exists (each side\n * closes on the other's outside pointerdown).\n *\n * No max-height/overflow scroll cap here on purpose: overflow clipping\n * would cut the submenu's ::before hover bridge (the corridor that keeps\n * itemWrap's mouseleave from closing the card mid-crossing). */\n\n/* Visual tether, part 1 — the parent row stays lit while its submenu is\n * open. The primitive only styles :hover, so once the pointer crossed into\n * the side card the parent row's fill cleared and the floating card read as\n * unrelated. The Menu marks the open parent row with aria-expanded=\"true\"\n * (host-rendered, stable), so the same hover token re-applies for the\n * submenu's whole lifetime. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] button[aria-expanded=\"true\"] {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n/* Visual tether, part 2 — the side card hugs its parent (10px → 4px gap),\n * with the ::before hover corridor narrowed to match. Ordered BEFORE the\n * flip overrides below so their left/right flips still win. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"] {\n  left: calc(100% + 4px);\n}\n\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: -4px;\n  width: 4px;\n}\n\nbody[data-dsh-sidebar-submenu~=\"down\"] div[role=\"menu\"] div[role=\"menu\"] {\n  top: -4px;\n  bottom: auto;\n}\n\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"] {\n  left: auto;\n  right: calc(100% + 4px);\n}\n\n/* The hover bridge follows the card to the left side of the parent row. */\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: auto;\n  right: -4px;\n}\n";
+		//#region \0dsh-css:/private/tmp/yourbuddy-sidebar-source/src/client/layout.css.mjs
+		const css = "/**\n * Layout push: the bottom workbench occupies layout instead of floating over\n * the conversation. The right column belongs to DSH's native Sidebar, so this\n * stylesheet pushes no width — only the workbench's height.\n *\n * The workbench squeezes only the conversation column. The anchor is the\n * [data-dsh-center-col] tag the Sidebar shell's locator writes on the\n * frame's measured center grid item (Sidebar.tsx locate — not a positional\n * path: the frame also contains an overlay layer and drag handles). A\n * stretched grid item shrinks by its bottom margin, so the conversation\n * output and composer lift without touching either sidebar.\n *\n * The size rides a CSS variable updated by the Sidebar shell (0 while\n * collapsed). Expand/collapse uses the host theme duration; drags disable\n * transitions so the reserved edge tracks the pointer.\n */\n/* The AppFrame's center column. The Sidebar shell's locator (Sidebar.tsx\n   locate/measureCenter, resolving via center-column.ts) tags the measured\n   column node with [data-dsh-center-col] — one attribute write per node\n   lifetime. The locator anchors on the conversation slot host\n   (`main.conversation` on DSH 0.1.5-alpha.2+, `conversation` on alpha.1)\n   and skips the transparent display:contents slot hosts above it. The rule\n   used to anchor on a structural has()-selector over the conversation slot\n   wrapper, whose match cache invalidates on every #root subtree mutation\n   (the streaming chat mutates it constantly), re-evaluating the selector\n   against the whole document; the tag is evaluated once per node instead.\n   A stretched grid item shrinks by its margins, so the conversation\n   content (output + input bar) lifts without touching the sidebars. */\n#root [data-dsh-center-col] {\n  margin-bottom: var(--dsh-sidebar-height, 0px);\n  /* Grid/flex items default to min-height:auto. A long unbreakable token\n     (OAuth URL) then grows this column past the viewport and clips the\n     composer + left-rail Settings row. min-height:0 lets the cell shrink;\n     overflow-wrap lets the token wrap instead of forcing its intrinsic\n     size. The host's own descendants remain responsible for scrolling. */\n  min-height: 0;\n  overflow-wrap: anywhere;\n  transition: margin-bottom var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n/* When the sidebar is collapsed, the toggle cluster reclaims the top-right\n   corner. Push the DSH session header's right padding out so its right-aligned\n   utilities (the \"Session log\" download capsule) yield the corner instead of\n   hiding under the cluster. The header default right-pads 28px; the 2-button\n   cluster spans right 10→70px, so 78px clears it with an 8px gap. Anchor on\n   the header's slot host wrapper ([data-slot=\"conversation.session.header\"])\n   rather than a positional path: DSH 0.1.x nests the header several levels\n   under the center column. The Sidebar shell toggles the body attribute with\n   the panel open state. */\nbody[data-dsh-sidebar-collapsed] [data-slot=\"conversation.session.header\"] > header {\n  padding-right: 78px;\n}\n\nbody[data-dsh-sidebar-dragging] #root [data-dsh-center-col] {\n  transition: none;\n}\n\n/* DSH 0.1.x gives external settings sections a generic gear and exposes no\n   icon field in the settings.section contract. settings-nav-icon.ts marks\n   only this plugin's localized row; render the requested Lucide\n   gallery-horizontal-end SVG as a currentColor mask so it follows the native\n   nav hover/active colors without changing the shell's 16px icon rhythm. */\n[data-dsh-better-sidebar-settings-nav] > svg:first-child {\n  display: none;\n}\n\n[data-dsh-better-sidebar-settings-nav]::before {\n  content: '';\n  flex: none;\n  width: 16px;\n  height: 16px;\n  background: currentColor;\n  -webkit-mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n  mask: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7v10'/%3E%3Cpath d='M6 5v14'/%3E%3Crect width='12' height='18' x='10' y='3' rx='2'/%3E%3C/svg%3E\") center / contain no-repeat;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  #root [data-dsh-center-col] {\n    transition: none;\n  }\n}\n\n/* Context-menu submenu flip (viewport clamping for the portaled menus).\n *\n * The ui-primitives Menu clamps its main portal list into the viewport but\n * positions nested submenus with static CSS only — anchored at the parent\n * row's bottom, growing UP and to the RIGHT — with no clamp whatsoever.\n * Both defaults are the worst case for our menus: a tall \"open with\" submenu\n * escapes past the viewport top when the row menu opens near the top, and\n * past the right edge in a narrow workbench pane (a pane can be far narrower\n * than the card 218 + gap + submenu 165 a submenu needs).\n *\n * menu-flip.ts publishes `data-dsh-sidebar-submenu` on <body> — with the\n * words \"down\" and/or \"left\" — for exactly the lifetime of one of OUR\n * submenu-bearing menus (FileTree row menu, TabBar tab menu). The tokens\n * flip the growth direction; the attribute's absence restores the\n * primitive's own geometry untouched, and host-owned menus are never\n * affected because they never open while the attribute exists (each side\n * closes on the other's outside pointerdown).\n *\n * No max-height/overflow scroll cap here on purpose: overflow clipping\n * would cut the submenu's ::before hover bridge (the corridor that keeps\n * itemWrap's mouseleave from closing the card mid-crossing). */\n\n/* Visual tether, part 1 — the parent row stays lit while its submenu is\n * open. The primitive only styles :hover, so once the pointer crossed into\n * the side card the parent row's fill cleared and the floating card read as\n * unrelated. The Menu marks the open parent row with aria-expanded=\"true\"\n * (host-rendered, stable), so the same hover token re-applies for the\n * submenu's whole lifetime. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] button[aria-expanded=\"true\"] {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n/* Visual tether, part 2 — the side card hugs its parent (10px → 4px gap),\n * with the ::before hover corridor narrowed to match. Ordered BEFORE the\n * flip overrides below so their left/right flips still win. */\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"] {\n  left: calc(100% + 4px);\n}\n\nbody[data-dsh-sidebar-submenu] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: -4px;\n  width: 4px;\n}\n\nbody[data-dsh-sidebar-submenu~=\"down\"] div[role=\"menu\"] div[role=\"menu\"] {\n  top: -4px;\n  bottom: auto;\n}\n\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"] {\n  left: auto;\n  right: calc(100% + 4px);\n}\n\n/* The hover bridge follows the card to the left side of the parent row. */\nbody[data-dsh-sidebar-submenu~=\"left\"] div[role=\"menu\"] div[role=\"menu\"]::before {\n  left: auto;\n  right: -4px;\n}\n";
 		const tagId = "dsh-external/dsh-better-sidebar/layout.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -19265,6 +18751,17 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			"connection",
 			"layout"
 		];
+		const WORKBENCH_WIDTH_KEY = "dsh-sidebar:v1:width";
+		const WORKBENCH_WIDTH_MIN = 280;
+		const WORKBENCH_WIDTH_MAX = 640;
+		const WORKBENCH_WIDTH_DEFAULT = 400;
+		function initialWorkbenchWidth() {
+			try {
+				const stored = Number(localStorage.getItem(WORKBENCH_WIDTH_KEY));
+				if (Number.isFinite(stored) && stored > 0) return Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, stored));
+			} catch {}
+			return WORKBENCH_WIDTH_DEFAULT;
+		}
 		/**
 		* Error boundary over the sidebar tree (root scope): a render error in the
 		* sidebar SHELL itself must never blank the page silently — the shared
@@ -19313,15 +18810,40 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				};
 			}, "dsh-better-sidebar: better-locale lazy integration");
 			const sidebarStore = createSidebarStore();
+			let workbenchWidth = initialWorkbenchWidth();
+			const workbenchWidthListeners = /* @__PURE__ */ new Set();
+			const setWorkbenchWidth = (width) => {
+				const next = Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, width));
+				if (next === workbenchWidth) return;
+				workbenchWidth = next;
+				try {
+					localStorage.setItem(WORKBENCH_WIDTH_KEY, String(next));
+				} catch {}
+				for (const listener of workbenchWidthListeners) listener();
+			};
 			const service = createBetterSidebarService(sidebarStore);
 			ctx.provide("betterSidebar", service);
+			const nativeRecords = createNativeTabRecords();
+			const nativeSurface = createNativeSurface(ctx, nativeRecords);
+			service.setSurface(nativeSurface);
+			ctx.effect(() => registerNativeSurface({
+				ctx,
+				store: sidebarStore,
+				service,
+				records: nativeRecords
+			}), "dsh-better-sidebar: native right-Sidebar registrations");
+			ctx.effect(() => registerBottomToggle(ctx, sidebarStore), "dsh-better-sidebar: bottom-workbench toggle");
+			ctx.effect(() => () => {
+				nativeSurface.dispose();
+				service.setSurface(void 0);
+			}, "dsh-better-sidebar: native right-Sidebar surface");
 			const fallbackTitle = t("terminal");
 			let terminalTitle = fallbackTitle;
 			api.shellGet().then(({ name }) => {
 				terminalTitle = name;
 				const snapshot = service.getSnapshot();
 				if (snapshot.state === void 0) return;
-				const tabs = allLeaves(snapshot.state.splits).concat(allLeaves(snapshot.state.bottomSplits)).flatMap((leaf) => leaf.tabs);
+				const tabs = allLeaves(snapshot.state.bottomSplits).flatMap((leaf) => leaf.tabs);
 				for (const tab of tabs) if (tab.type === "terminal" && !isAgentTabId(tab.id) && tab.title === fallbackTitle) service.updateTab(tab.id, { title: name });
 			}).catch(() => {});
 			ctx.effect(() => registerBuiltins(ctx, service, { terminalTitle: () => terminalTitle }), "dsh-better-sidebar: register built-in tabs and viewers");
@@ -19434,11 +18956,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 								}));
 								disposeSlot = ctx.slots.inject("workbench", () => ctx.slots.register({ name: "workbench" }, WorkbenchSlot));
 								disposeLayout = ctx.layout.registerWorkbench({
-									getSnapshot: () => ({ width: sidebarStore.getSnapshot().state?.width ?? 400 }),
-									subscribe: (listener) => sidebarStore.subscribe(listener),
-									setWidth: (width) => {
-										sidebarStore.reduce((state) => setWidth(state, width));
-									}
+									getSnapshot: () => ({ width: workbenchWidth }),
+									subscribe: (listener) => {
+										workbenchWidthListeners.add(listener);
+										return () => {
+											workbenchWidthListeners.delete(listener);
+										};
+									},
+									setWidth: setWorkbenchWidth
 								});
 							} else {
 								host = document.createElement("div");
@@ -19489,14 +19014,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						return () => {};
 					}
 				}, "dsh-better-sidebar: turn-tail interception");
-				ctx.effect(() => {
-					try {
-						return registerOpenPathInterception(ctx, sidebarStore);
-					} catch (error) {
-						fail("interception", error);
-						return () => {};
-					}
-				}, "dsh-better-sidebar: open-path interception");
 				ctx.effect(() => {
 					try {
 						const urlTargetOf = (url) => {

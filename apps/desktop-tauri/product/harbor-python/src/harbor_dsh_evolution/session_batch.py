@@ -557,7 +557,7 @@ import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, "/tests")
+sys.path.insert(0, os.environ.get("HARBOR_TESTS_DIR", "/tests"))
 from evaluator import evaluate
 
 observation_path = Path(os.environ.get(
@@ -829,7 +829,7 @@ def materialize_historical_dataset(
             )
             (task_root / "task.toml").write_text(task_toml)
             (tests_dir / "test.sh").write_text(
-                "#!/bin/sh\nset -eu\npython3 /tests/verify.py\n"
+                '#!/bin/sh\nset -eu\npython3 "${HARBOR_TESTS_DIR:-/tests}/verify.py"\n'
             )
             (tests_dir / "verify.py").write_text(verifier_source)
             (tests_dir / "evaluator.py").write_text(evaluator_source)

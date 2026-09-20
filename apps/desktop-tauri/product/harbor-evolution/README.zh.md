@@ -8,7 +8,7 @@
 
 ## 安装
 
-要求 Docker、Node.js 22+、pnpm 和 [uv](https://docs.astral.sh/uv/)。在业务 Agent 工作区执行：
+要求 Node.js 22+、pnpm 和 [uv](https://docs.astral.sh/uv/)。默认 Host 模式不要求 Docker。在业务 Agent 工作区执行：
 
 ```bash
 npx --yes dsh-harbor-evolution@latest setup --project-root "$PWD"
@@ -16,12 +16,14 @@ npx --yes dsh-harbor-evolution@latest setup --project-root "$PWD"
 
 Setup 命令会安装两个必需的运行时：
 
-- 在托管的 Python 环境中安装 `harbor-dsh-evolution==0.9.5`。
-- 在所选 DSH Profile 中安装 `dsh-harbor-evolution@0.9.5`。
+- 在托管的 Python 环境中安装 `harbor-dsh-evolution==0.9.7`。
+- 在所选 DSH Profile 中安装 `dsh-harbor-evolution@0.9.7`。
 
-随后，它会把 Harbor 可执行文件的绝对路径与一个回退 `projectRoot` 写入 Profile 的 `harbor-evolution` 配置块，并验证集成。Agent Tool 每次调用都会以调用 Session 的绝对工作目录作为项目根目录；配置值仍供 Web Workbench 和非 Agent 场景回退使用。无关的现有 Profile 条目会被保留；重复执行 Setup 只会更新同一个配置块。
+随后，它会把 DSH Profile／Home、托管 Python 运行时、Jobs 目录、Host／Docker 选择、Harbor 可执行文件的绝对路径与一个回退 `projectRoot` 写入 Profile 的 `harbor-evolution` 配置块，并验证集成。Agent Tool 每次调用都会以调用 Session 的绝对工作目录作为项目根目录；配置值仍供 Web Workbench 和非 Agent 场景回退使用。无关的现有 Profile 条目会被保留；重复执行 Setup 只会更新同一个配置块。
 
 Setup 成功要求 `harbor plugins list` 同时发现用于 Candidate Job 的 `dsh-evolution`，以及用于观测已有 Session Job 的 `dsh-historical-evaluation`。
+
+Profile 默认设置为 `executionEnvironment: "host"`。Agent、Verifier 与 Task 命令会以当前 Host 用户身份直接运行，不提供隔离、网络限制或资源限制；Task 依赖必须已存在于 Host。把 Profile 中的 `executionEnvironment` 设置为 `"docker"`，或向评测工具传入该值，可选择此前的 Docker Provider。
 
 默认 Profile 是 `web`。只有实际运行该 Profile 时才使用 `--profile headless`。通过以下命令查看全部选项：
 
@@ -63,7 +65,7 @@ Inspect this workspace and help me clarify and initialize a stable Harbor self-e
 在 `web` Profile 中，同一个包还会注册：
 
 - 本地化且以对象为起点的 Workbench（Summary、Trials、Pipeline、Optimization、Compare/Gate、Evaluator/Rubric、Artifacts、Audit），直接展示固定的实验身份、Agent 可见的 Dataset 查询与指令、安全的业务产物预览、Ground Truth 元评测、分页的逐 Trial 证据与建议、Population 有效性与覆盖率、受控优化假设，以及 Baseline/Gate 差异；原始 JSON 保留在审计抽屉中；
-- 现有原生 Composer 与对话，输入框上方没有 Context Capsule 或 Copilot 面板；可选的一次性 `Ask AI`／`@harbor` 引用会冻结 Job、Trial、Criterion 或 Evidence 选择，并在发送后清除。在当前 rc.8 Host 上，普通消息不会自动附加可见页面；
+- 现有原生 Composer 与对话，输入框上方没有 Context Capsule 或 Copilot 面板；在支持 `conversation.contexts.register` 的 Host 上，从 Harbor 发送普通消息会冻结可见的 Job、Trial、Criterion、Evidence 或列表选择。显式的一次性 `Ask AI`／`@harbor` 引用具有更高优先级，并在发送后清除；较旧的 rc.8 Host 需要这些显式引用；
 - 用于证据导航与已审阅 AI 提案的原生工具结果卡片；类型化 `harbor.navigate` 操作保留允许列表中的只读 Harbor 导航，Back 则恢复此前的 Workspace、页面、阶段、Trial 筛选／排序／焦点、Compare Baseline 与滚动位置。卡片在准备好对象后提示你打开 Harbor Tab，不会自动切换 Host Tab；
 - 插件主页中的后台操作，保留取消、恢复检查与结果导航。仅在读取成功且结果为空时隐藏入口，读取失败时不会隐藏；
 - 一等的 `Evaluate recent Sessions` 快速入口：从当前 DSH 可访问的历史中自动抽取最多 3 个已完成对话，不依赖评测输出目录。它会预览审阅模型与脱敏数据／费用说明，要求确认，在后台运行，并打开已完成 Job。无需选择历史路径、项目或日期；有限的近期样本不代表全部历史；
@@ -83,7 +85,7 @@ Inspect this workspace and help me clarify and initialize a stable Harbor self-e
 
 未保存的源码修改按 Session、Workspace、Job 与文件隔离，并保留在当前浏览器 Tab 的 `sessionStorage` 中。切换文件或视图以及刷新页面后可以恢复修改；关闭 Tab 可能丢弃修改。存储失败会明确显示，同时使用内存回退，并针对尚未持久化的修改显示离开页面警告。源码冲突会保留原始 Base 与编辑文本；接受新 Base 前，请检查最新源码。保存或显式丢弃只会清除当前文件的草稿。授权到期绝不会删除建议文本或人工修改；源码发生变化或 Task 子集过期时，需要显式重新选择，不能自动扩大范围。
 
-完整 AI Workbench PRD **尚未**全部实现。当前，受限的诊断与重试操作在没有注册 Runner 时会快速失败；长时间运行操作、可回放 Event/Outbox 以及完整的 Phase 1 审计身份仍待实现。自动页面上下文需要配套 Host 能力；不宣称支持自动跨视图打开。生产 RBAC、批准与发布仍属于后续阶段。实际旅程证据与其余验收工作见仓库的 `docs/ai-workbench-acceptance.md`。
+完整 AI Workbench PRD **尚未**全部实现。当前，受限的诊断与重试操作在没有注册 Runner 时会快速失败；长时间运行操作、可回放 Event/Outbox 以及完整的 Phase 1 审计身份仍待实现。自动页面上下文需要配套 Host 能力；不宣称支持自动跨视图打开。生产 RBAC、批准与发布仍属于后续阶段。当前验收边界与剩余工作见仓库的 `docs/acceptance-status.md`；带日期的证据保留在 Release 归档中。
 
 Web UI 只通过三条范围明确且显式的工作流修改业务资源：由 Descriptor 授权的 Evaluator 源码更新、已确认的 Historical Session Launcher，以及已确认的本地草稿／操作日志。上下文绑定还会持久化私有身份快照，但不会修改评测产物。Launcher 遵循 `Preview → confirm → background run → open Job`；其私有 Selection Token 绝不会进入浏览器状态。在支持的 Host 上，用户从当前选中的 Harbor View 提交普通消息时，可以附加冻结的上下文。仅刷新页面、普通读取或切换 Workspace，绝不会发送 Prompt，也不会启动 Agent 或 Job。Candidate 评测、Gate、Promotion、Deployment、Publishing 和每项生产变更仍然属于显式 Agent + Skill 工作流；Agent 请求的每项 Harbor 写入或评测工具都必须经过 DSH 可审计的一次性用户批准。如果没有可用的批准通道，调用会快速失败。
 
@@ -101,11 +103,11 @@ Web UI 只通过三条范围明确且显式的工作流修改业务资源：由 
 
 每个 Job 开始前，插件会对当前 DSH Agent 选择创建 Snapshot，其中包含 Provider、Model 与 Reasoning Effort；随后启动每个 Job 独立的本地 Model Broker。Candidate 通过 `dsh-host-broker`／`dsh-host-model-gateway/v1` 使用临时 `dsh-host` Adapter；它只会收到短期 Job Capability 文件，绝不会收到 GPT Auth、Codex OAuth 或上游 API Key。
 
-`harbor_eval_run`、`harbor_context_preview` 与 `harbor_evolution_doctor` 默认继承该选择。高级调用方只能同时覆盖 `candidateProvider` 与 `candidateModel`，还可以提供可选 `candidateReasoningEffort`。对于 `openai-codex`，Harbor 启动前会执行 GPT Auth 登录检查。生成的 Model Binding 是 Context v2 比较身份的一部分，因此 Provider、Model 或 Reasoning 发生任何变化都需要创建新 Baseline。
+`harbor_eval_run`、`harbor_context_preview` 与 `harbor_evolution_doctor` 默认继承该选择。高级调用方只能同时覆盖 `candidateProvider` 与 `candidateModel`，还可以提供可选 `candidateReasoningEffort`。对于 `openai-codex`，Harbor 启动前会执行 GPT Auth 登录检查。生成的 Model Binding 与执行环境 Fingerprint 是 Context v3 比较身份的一部分，因此 Provider、Model、Reasoning 或 Host 运行时发生任何变化都需要创建新 Baseline。
 
 `harbor_model_binding` 把当前默认选择作为不含凭据的 `model-binding.json` 草稿返回。在 Candidate Snapshot 前纳入该文件后，它会进入 Candidate Digest，并成为必需的 Job 模型身份。发生冲突的 Job 或 Plugin Override 会在 Harbor 启动前失败。即使使用 `openai-codex`，Candidate 也只会收到短期 Broker Capability，绝不会收到 Host OAuth 文件或上游 API Key。
 
-打开 Settings 时，Host 会执行有时限的 npm Registry 检查并缓存成功结果。存在可用 Release 时，界面会显示精确安装命令与 Release Link。浏览器绝不会安装、重写 DSH Profile 或重启 DSH；Registry 失败不会阻断其他操作。
+打开 Settings 时，Host 会执行有时限的 npm Registry 检查并缓存成功结果。存在可用 Release 时，界面会显示 Release Link。只有 Setup 已记录完整安装身份时，界面才显示精确安装命令；否则 Settings 会快速失败，不猜测默认值。浏览器绝不会执行 Registry Package，也不会安装、重写 DSH Profile 或重启 DSH；Registry 失败不会阻断其他操作。
 
 `harbor_eval_result` 默认返回稳定 Summary。使用 `view=job`、`view=dataset`、`view=progress`、`view=trial` 与返回的 `trialId`，或使用 `view=governance`，可以检查经过脱敏的指令、生成输出、证据和 Evaluator 源码，同时不会让 Agent 依赖产物文件路径。
 
@@ -122,8 +124,12 @@ Web UI 只通过三条范围明确且显式的工作流修改业务资源：由 
   config:
     projectRoot: /workspace/my-agent
     jobsDir: jobs
-    harborBin: /managed/runtime/.venv/bin/harbor
-    harborDshBin: /managed/runtime/.venv/bin/harbor-dsh
+    profile: web
+    dshHome: /home/user/.dsh
+    runtimeDir: /home/user/.local/share/harbor-dsh-evolution
+    harborBin: /home/user/.local/share/harbor-dsh-evolution/.venv/bin/harbor
+    harborDshBin: /home/user/.local/share/harbor-dsh-evolution/.venv/bin/harbor-dsh
+    executionEnvironment: host
     pythonPath: ""
 ```
 

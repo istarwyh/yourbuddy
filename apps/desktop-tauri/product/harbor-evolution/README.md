@@ -8,7 +8,7 @@ The package gives DSH nineteen strict Harbor tools, native Tool cards in the sam
 
 ## Install
 
-Requirements: Docker, Node.js 22+, pnpm, and [uv](https://docs.astral.sh/uv/). Run this from the business Agent workspace:
+Requirements: Node.js 22+, pnpm, and [uv](https://docs.astral.sh/uv/). Docker is not required for the default Host mode. Run this from the business Agent workspace:
 
 ```bash
 npx --yes dsh-harbor-evolution@latest setup --project-root "$PWD"
@@ -16,12 +16,14 @@ npx --yes dsh-harbor-evolution@latest setup --project-root "$PWD"
 
 The setup command installs both required runtimes:
 
-- `harbor-dsh-evolution==0.9.5` in a managed Python environment.
-- `dsh-harbor-evolution@0.9.5` in the selected DSH profile.
+- `harbor-dsh-evolution==0.9.7` in a managed Python environment.
+- `dsh-harbor-evolution@0.9.7` in the selected DSH profile.
 
-It then stores the absolute Harbor executable paths and a fallback `projectRoot` in the profile's `harbor-evolution` block and verifies the integration. Agent Tool calls always use the calling session's absolute working directory as their project root; the configured value remains the Web Workbench and non-Agent fallback. Existing unrelated profile entries are preserved, and rerunning setup updates the same block.
+It then stores the DSH profile/home, managed Python runtime, Jobs directory, Host/Docker choice, absolute Harbor executable paths, and a fallback `projectRoot` in the profile's `harbor-evolution` block and verifies the integration. Agent Tool calls always use the calling session's absolute working directory as their project root; the configured value remains the Web Workbench and non-Agent fallback. Existing unrelated profile entries are preserved, and rerunning setup updates the same block.
 
 Successful setup requires `harbor plugins list` to discover both `dsh-evolution` for Candidate Jobs and `dsh-historical-evaluation` for observe-existing Session Jobs.
+
+The default profile setting is `executionEnvironment: "host"`. Agent, verifier, and task commands run directly as the current Host user with no isolation, network enforcement, or resource limits; task dependencies must already exist on the Host. Set `executionEnvironment: "docker"` in the profile, or pass that value to an evaluation tool, to opt into the previous Docker provider.
 
 The default profile is `web`. Use `--profile headless` only when that is the profile you actually run. See all options with:
 
@@ -63,7 +65,7 @@ The Plugin registers:
 In the `web` profile, the same package also registers:
 
 - a localized object-first Workbench (Summary, Trials, Pipeline, Optimization, Compare/Gate, Evaluator/Rubric, Artifacts, Audit) that directly exposes fixed experiment identities, Agent-visible Dataset queries/instructions, safe business-artifact previews, Ground Truth meta-evaluation, paginated per-Trial evidence and recommendations, Population validity/coverage, controlled optimization hypotheses, and Baseline/Gate deltas; raw JSON remains in the audit drawer;
-- the existing native Composer and conversation, without a Context Capsule or Copilot panel above the input; optional one-shot `Ask AI` / `@harbor` references freeze a Job, Trial, Criterion, or Evidence selection and clear after sending. Plain messages do not automatically attach the visible page on the current rc.8 Host;
+- the existing native Composer and conversation, without a Context Capsule or Copilot panel above the input; on hosts supporting `conversation.contexts.register`, ordinary messages sent from Harbor freeze the visible Job, Trial, Criterion, Evidence, or list selection. Explicit one-shot `Ask AI` / `@harbor` references take priority and clear after sending; older rc.8 hosts require those explicit references;
 - native Tool result cards for evidence navigation and reviewed AI proposals; typed `harbor.navigate` actions retain allowlisted, read-only Harbor navigation and Back restoration of the prior workspace, page, stage, Trial filters/sort/focus, Compare Baseline, and scroll position. Cards ask you to open the Harbor tab after preparing the object; they do not automatically switch Host tabs;
 - background operations in the main plugin page, retaining cancellation, recovery inspection and result navigation. The entry disappears only after a successful empty read, not on a read failure;
 - a first-class `Evaluate recent Sessions` quickstart that automatically samples up to three completed conversations from history available to the current DSH, independent of the evaluation output directory. It previews the review model and redacted-data/cost disclosure, requires confirmation, runs in the background, and opens the completed Job. No history path, project or date picker is required; the bounded recent sample is not a claim about all history;
@@ -83,7 +85,7 @@ In the `web` profile, the same package also registers:
 
 Unsaved source edits are isolated by Session, workspace, Job, and file and retained in this browser tab's `sessionStorage`. File/view switches and refresh can recover them; closing the tab may discard them. Storage failures are shown, with an in-memory fallback and a leave-page warning for unpersisted edits. Source conflicts preserve the original base and edited text; review the latest source before accepting a new base. Saving or explicitly discarding clears only that file's draft. Expired authorizations never erase suggestion text or human edits; changed source or expired task subsets require an explicit new selection, not an automatically widened scope.
 
-The complete AI Workbench PRD is **not** implemented yet. Bounded diagnostic/retry operations currently fail closed without a registered runner; long-running operations, replayable events/outbox and full Phase 1 audit identity are pending. Automatic page context requires the paired host capability; automatic cross-view opening is not claimed. Production RBAC, approvals and rollout remain later-phase work. See the repository's `docs/ai-workbench-acceptance.md` for actual journey evidence and remaining acceptance work.
+The complete AI Workbench PRD is **not** implemented yet. Bounded diagnostic/retry operations currently fail closed without a registered runner; long-running operations, replayable events/outbox and full Phase 1 audit identity are pending. Automatic page context requires the paired host capability; automatic cross-view opening is not claimed. Production RBAC, approvals and rollout remain later-phase work. See the repository's `docs/acceptance-status.md` for current acceptance boundaries and remaining work; dated evidence remains in the release archives.
 
 The Web UI changes business resources through three narrow, explicit workflows: descriptor-authorized Evaluator source updates, the confirmed Historical Session launcher, and confirmed local draft/operation journals. Context binding also persists private identity snapshots; it does not alter evaluation artifacts. The launcher follows `Preview → confirm → background run → open Job`; its private selection token never enters browser state. User-submitted ordinary messages from the selected Harbor View can attach frozen context on supported hosts. Page refreshes, ordinary reads, and workspace switches alone never send a prompt or start an Agent or Job. Candidate evaluation, Gate, promotion, deployment, publishing, and every production mutation remain explicit Agent + Skill workflows, and each Agent-requested Harbor write or evaluation tool is forced through DSH's audited one-shot user approval. If no approval channel is available, the call fails closed.
 
@@ -101,11 +103,11 @@ A Historical Trial may finish as `completed-unscored` when required evidence is 
 
 Before each Job, the Plugin snapshots the current DSH Agent selection—provider, model, and reasoning effort—then starts a per-Job local Model Broker. The Candidate uses the temporary `dsh-host` adapter through `dsh-host-broker` / `dsh-host-model-gateway/v1`; it receives only a short-lived Job capability file, never GPT Auth, Codex OAuth, or an upstream API key.
 
-`harbor_eval_run`, `harbor_context_preview`, and `harbor_evolution_doctor` inherit that selection by default. Advanced callers can override `candidateProvider` and `candidateModel` only as a pair, plus an optional `candidateReasoningEffort`. `openai-codex` performs a GPT Auth sign-in check before Harbor starts. The resulting model binding is part of Context v2 comparison identity, so any provider/model/reasoning change requires a new baseline.
+`harbor_eval_run`, `harbor_context_preview`, and `harbor_evolution_doctor` inherit that selection by default. Advanced callers can override `candidateProvider` and `candidateModel` only as a pair, plus an optional `candidateReasoningEffort`. `openai-codex` performs a GPT Auth sign-in check before Harbor starts. The resulting model binding and execution-environment fingerprint are part of Context v3 comparison identity, so any provider/model/reasoning or Host runtime change requires a new baseline.
 
 `harbor_model_binding` returns the current default selection as a credential-free `model-binding.json` draft. Once included before Candidate snapshot, it enters the Candidate digest and becomes the required Job model identity. Conflicting Job or Plugin overrides fail before Harbor starts. Even for `openai-codex`, the Candidate receives only the short-lived Broker capability—never the Host OAuth file or an upstream API key.
 
-When Settings opens, the Host performs a bounded npm registry check and caches successful results. An available release is shown with its exact installer command and release link. The browser never installs, rewrites a DSH profile, or restarts DSH; registry failures are non-blocking.
+When Settings opens, the Host performs a bounded npm registry check and caches successful results. An available release is shown with its release link. The exact installer command appears only when setup has recorded the complete installation identity; otherwise Settings fails closed instead of guessing defaults. The browser never executes a registry package, installs, rewrites a DSH profile, or restarts DSH; registry failures are non-blocking.
 
 `harbor_eval_result` defaults to the stable Summary. Use `view=job`, `view=dataset`, `view=progress`, `view=trial` plus a returned `trialId`, or `view=governance` to inspect sanitized instructions, generated output, evidence, and evaluator source without coupling the Agent to artifact file paths.
 
@@ -122,8 +124,12 @@ The selected profile receives one id-targeted override:
   config:
     projectRoot: /workspace/my-agent
     jobsDir: jobs
-    harborBin: /managed/runtime/.venv/bin/harbor
-    harborDshBin: /managed/runtime/.venv/bin/harbor-dsh
+    profile: web
+    dshHome: /home/user/.dsh
+    runtimeDir: /home/user/.local/share/harbor-dsh-evolution
+    harborBin: /home/user/.local/share/harbor-dsh-evolution/.venv/bin/harbor
+    harborDshBin: /home/user/.local/share/harbor-dsh-evolution/.venv/bin/harbor-dsh
+    executionEnvironment: host
     pythonPath: ""
 ```
 

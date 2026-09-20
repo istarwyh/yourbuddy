@@ -5,6 +5,7 @@ import { MANIFEST_NAME, snapshotCandidate } from './candidate.js'
 import { loadCandidateRuntime } from './candidate-runtime.js'
 import { redactCredentialText, redactLocalPaths, redactOpaqueSecretText } from './credential-redaction.js'
 import { runProcess } from './process.js'
+import { resolveExecutionEnvironment } from './execution-environment.js'
 
 export function resolveWithin(root, value, label) {
   const base = path.resolve(root)
@@ -420,7 +421,8 @@ export async function initializeQuickDiagnostic(config, args) {
 
 export async function runDoctor(config, args) {
   const inputs = strictInputs(config, { ...args, mode: args.mode ?? 'diagnostic' })
-  const command = ['doctor', '--architecture', '--runtime', '--project-root', inputs.projectRoot, '--stack', inputs.stack, '--dataset', inputs.dataset]
+  const execution = resolveExecutionEnvironment(config, args)
+  const command = ['doctor', '--architecture', '--runtime', '--execution-environment', execution.kind, '--project-root', inputs.projectRoot, '--stack', inputs.stack, '--dataset', inputs.dataset]
   if (args.candidatePath) command.push('--candidate', inputs.candidate)
   if (inputs.policy) command.push('--policy', inputs.policy)
   return cliJson(config, command, { allowedExitCodes: [0, 2] })
@@ -429,6 +431,7 @@ export async function runDoctor(config, args) {
 export async function previewContext(config, args) {
   const manifest = await snapshot(config, args)
   const inputs = strictInputs(config, args)
+  const execution = resolveExecutionEnvironment(config, args)
   const preview = await cliJson(config, [
     'context', 'preview',
     '--project-root', inputs.projectRoot,
@@ -437,6 +440,7 @@ export async function previewContext(config, args) {
     '--stack', inputs.stack,
     '--jobs-dir', inputs.jobs,
     '--mode', inputs.mode,
+    '--execution-environment', execution.kind,
     ...candidateModelCliArgs(args.candidateModelBinding),
   ])
   return { manifest, ...preview }
@@ -444,6 +448,7 @@ export async function previewContext(config, args) {
 
 export async function runEvaluation(config, args, modelRuntime) {
   const inputs = strictInputs(config, args)
+  const execution = resolveExecutionEnvironment(config, args)
   // Do not rely on a possibly older Python Doctor to enforce a contract that
   // its agent may not understand. Legacy snapshots remain readable, not runnable.
   await loadCandidateRuntime(inputs.candidate, { required: true })
@@ -456,7 +461,11 @@ export async function runEvaluation(config, args, modelRuntime) {
     )
   }
   const doctor = await runDoctor(config, args)
-  const runtimeBlockers = doctor.findings.filter(item => item.level === 'error' && (item.code.startsWith('DOCKER_') || item.code.startsWith('CANDIDATE_RUNTIME_')))
+  const runtimeBlockers = doctor.findings.filter(item => item.level === 'error' && (
+    item.code.startsWith('CANDIDATE_RUNTIME_')
+    || (execution.kind === 'docker' && item.code.startsWith('DOCKER_'))
+    || (execution.kind === 'host' && item.code.startsWith('HOST_'))
+  ))
   if (runtimeBlockers.length) {
     throw new Error(`Runtime Doctor blocked Harbor Job:\n${runtimeBlockers.map(item => `${item.code}: ${item.message}`).join('\n')}`)
   }
@@ -470,6 +479,7 @@ export async function runEvaluation(config, args, modelRuntime) {
     'context', 'preview', '--project-root', inputs.projectRoot,
     '--candidate', inputs.candidate, '--dataset', inputs.dataset,
     '--stack', inputs.stack, '--jobs-dir', inputs.jobs, '--mode', inputs.mode,
+    '--execution-environment', execution.kind,
     ...candidateModelCliArgs(args.candidateModelBinding),
   ])
   const jobName = args.jobName ?? makeJobName(manifest)
@@ -485,12 +495,14 @@ export async function runEvaluation(config, args, modelRuntime) {
     '--ak', `candidate_model=${args.candidateModelBinding.model}`,
     '--job-name', jobName,
     '--jobs-dir', inputs.jobs,
+    ...execution.harborArgs,
     '--plugin', config.pluginImportPath,
     '--plugin-kwarg', `candidate_manifest=${path.join(inputs.candidate, MANIFEST_NAME)}`,
     '--plugin-kwarg', `dataset_path=${inputs.dataset}`,
     '--plugin-kwarg', `stack_path=${inputs.stack}`,
     '--plugin-kwarg', `project_root=${inputs.projectRoot}`,
     '--plugin-kwarg', `mode=${inputs.mode}`,
+    '--plugin-kwarg', `execution_environment=${execution.kind}`,
     '--plugin-kwarg', `candidate_model_provider=${args.candidateModelBinding.provider}`,
     '--plugin-kwarg', `candidate_model=${args.candidateModelBinding.model}`,
     '--plugin-kwarg', `candidate_model_transport=${args.candidateModelBinding.transport}`,
@@ -504,6 +516,7 @@ export async function runEvaluation(config, args, modelRuntime) {
   const lease = await modelRuntime.openLease(args.candidateModelBinding, {
     candidateDigest: manifest.digest,
     jobName,
+    advertisedHost: execution.gatewayAdvertisedHost,
   })
   try {
     const jobDir = path.join(inputs.jobs, jobName)
@@ -543,6 +556,7 @@ export async function runEvaluation(config, args, modelRuntime) {
  * snapshots or executes a Candidate.
  */
 export async function runHistoricalEvaluation(config, args, modelRuntime) {
+  const execution = resolveExecutionEnvironment(config, args)
   const projectRoot = path.resolve(config.projectRoot)
   const batchPath = resolveWithin(projectRoot, args.batchPath, 'batchPath')
   const batchDir = resolveWithin(projectRoot, args.batchDir ?? path.dirname(batchPath), 'batchDir')
@@ -566,12 +580,14 @@ export async function runHistoricalEvaluation(config, args, modelRuntime) {
   // Fail fast on Docker runtime blockers (e.g. an unresolvable credential
   // helper) before Harbor creates a Job whose Trials would all fail during
   // environment setup and only report missing downstream artifacts.
-  const dockerCheck = await cliJson(config, ['docker-check'], { allowedExitCodes: [0, 2] })
-  const dockerBlockers = historicalDockerBlockers(dockerCheck)
-  if (dockerBlockers.length) {
-    throw new Error(
-      `HISTORICAL_DOCKER_PREFLIGHT_FAILED: Docker runtime preflight blocked the Historical Job:\n${dockerBlockers.map(item => `${item.code}: ${item.message}`).join('\n')}`,
-    )
+  if (execution.kind === 'docker') {
+    const dockerCheck = await cliJson(config, ['docker-check'], { allowedExitCodes: [0, 2] })
+    const dockerBlockers = historicalDockerBlockers(dockerCheck)
+    if (dockerBlockers.length) {
+      throw new Error(
+        `HISTORICAL_DOCKER_PREFLIGHT_FAILED: Docker runtime preflight blocked the Historical Job:\n${dockerBlockers.map(item => `${item.code}: ${item.message}`).join('\n')}`,
+      )
+    }
   }
   const batch = JSON.parse(await readFile(batchPath, 'utf8'))
   const jobs = resolveWithin(projectRoot, config.jobsDir, 'jobsDir')
@@ -588,16 +604,19 @@ export async function runHistoricalEvaluation(config, args, modelRuntime) {
     '-a', agentImportPath,
     '--job-name', jobName,
     '--jobs-dir', jobs,
+    ...execution.harborArgs,
     '--plugin', pluginImportPath,
     '--plugin-kwarg', `batch_path=${batchPath}`,
     '--plugin-kwarg', `dataset_path=${dataset}`,
     '--plugin-kwarg', `stack_path=${stack}`,
     '--plugin-kwarg', `project_root=${projectRoot}`,
     '--plugin-kwarg', 'mode=diagnostic',
+    '--plugin-kwarg', `execution_environment=${execution.kind}`,
   ]
   const lease = await modelRuntime.openLease(args.judgeBinding, {
     candidateDigest: batch.digest,
     jobName,
+    advertisedHost: execution.gatewayAdvertisedHost,
   })
   const jobDir = path.join(jobs, jobName)
   try {

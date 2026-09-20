@@ -10,14 +10,8 @@
 [github.com/topics/dsh-plugin](https://github.com/topics/dsh-plugin)，无需打开终端。
 
 - **搜索**：按关键词搜索主题下的插件，按 Star 或更新时间**排序**
-- **Package 标识**：在设置分区顶部展示当前安装的 `dsh-plugin-marketplace` 版本
 - **插件卡片**：名称、简介、Star 数、语言、更新时间一目了然
-- **详情面板**：GitHub README 摘要、安装命令、仓库 / npm 链接；YourBuddy
-  桌面通过受限桥在系统浏览器中打开这些链接
-- **一键安装资格**：仅当带 `dsh.bundle.patch` 的 npm Package Metadata 通过
-  Repository 字段或与 GitHub Owner 同 Scope 的 DSH 上游元数据关联仓库时
-  启用；支持名称不同的 Scoped Package，以及同时发布 SDK/CLI Package 的仓库
-- **安装状态**：进度与可操作的 pnpm 错误会保留在用户确认的 Package 下
+- **详情面板**：GitHub README 摘要、安装命令、仓库 / npm 链接
 - **AI 解释**：一键调用已配置的默认模型，用中文直接告诉你这个插件大概是干嘛的，不用自己啃 README
 - 基于 GitHub 公开搜索 API（浏览器 CORS 直连，无需密钥；未认证限流 60 次/小时）
 - 零客户端依赖（只用 React），无构建步骤 —— 手写 ModuleLoader bundle
@@ -67,12 +61,20 @@ DSH `0.1.2-rc.1` 移除了客户端的 `connection.api`（旧 settings RPC 入�
 
 浏览器端不需要任何 `dsh.client.inject` 依赖包：只用 `react`（web 运行时自带）和 `slots` / `locale` 客户端服务。
 
+## v0.3.3：写入改为校验而非假定
+
+`writeField` 在走 settings scope 时只检查了 `snapshot.status === "ready"` 就返回成功。
+但 scope 的契约是「完成写入与恢复读取后结算」，**被宿主以 `settings/conflict` 拒绝的
+写入同样会 resolve**——而拒绝之后命名空间依然注册着，恢复读取也会把它重新渲染成
+`ready`，所以这个检查恒真，被拒的写入会被报成成功。
+
+现在改为比对 section 自身的值（`settings-not-applied`），调用方拿到的 `{ok:false}` 才
+真的代表写入没生效。
+
 ## 备注
 
 - GitHub 搜索 API 最多返回 1000 条；该主题目前有 280+ 仓库，翻页可以覆盖全部。
 - README 按需按插件拉取，截断到约 1200 字符。
-- GitHub Topic 只用于发现仓库，不能证明仓库发布了可安装的 DSH Bundle；
-  npm 身份元数据缺失、歧义或不完整时，一键安装保持禁用。
 - 遇到 "rate-limited"：等一小时，或让 web 走带 GitHub token 的代理。
 
 ## License

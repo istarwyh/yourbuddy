@@ -59,6 +59,7 @@ class HistoricalGenerationEvaluationPlugin(BaseJobPlugin):
         stack_path: str,
         project_root: str,
         mode: str = "diagnostic",
+        execution_environment: str = "host",
     ) -> None:
         super().__init__()
         self._project_root = Path(project_root).expanduser().resolve(strict=True)
@@ -68,6 +69,7 @@ class HistoricalGenerationEvaluationPlugin(BaseJobPlugin):
         if mode != "diagnostic":
             raise ValueError("Historical Generation Evaluation is diagnostic-only")
         self._mode = mode
+        self._execution_environment = execution_environment
         self._job_dir: Path | None = None
         self._batch = None
         self._dataset_manifest: dict | None = None
@@ -129,6 +131,7 @@ class HistoricalGenerationEvaluationPlugin(BaseJobPlugin):
             dataset_path=dataset_path,
             stack_path=stack_path,
             mode=self._mode,
+            execution_environment=self._execution_environment,
         )
         doctor = {
             "schema_version": 1,

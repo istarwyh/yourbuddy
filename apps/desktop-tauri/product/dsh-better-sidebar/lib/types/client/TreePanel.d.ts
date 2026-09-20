@@ -1,3 +1,4 @@
+import type { BetterSidebarService } from './service.ts';
 import type { SidebarStore } from './state.ts';
 import type { OpenWithTarget } from './open-with.ts';
 export declare function TreePanel(props: {
@@ -28,4 +29,6 @@ export declare function TreePanel(props: {
     /** Full-window presentation: the panel fills its host instead of docking
      *  at a fixed width. */
     full?: boolean;
+    /** The sidebar registry service (file-icon registrations; passed through to FileTree). */
+    service?: BetterSidebarService;
 }): import("react").JSX.Element;

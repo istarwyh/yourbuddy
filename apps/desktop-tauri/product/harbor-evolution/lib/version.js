@@ -50,12 +50,28 @@ function shellQuote(value) {
   return `'${String(value).replaceAll("'", `'"'"'`)}'`
 }
 
-export function renderUpdateCommand(latestVersion, projectRoot) {
-  if (!parseSemver(latestVersion)) throw new Error('latestVersion must be a valid semantic version')
-  return `npx --yes ${NPM_PACKAGE_NAME}@${latestVersion} setup --project-root ${shellQuote(projectRoot)}`
+const INSTALLATION_FIELDS = ['profile', 'projectRoot', 'jobsDir', 'dshHome', 'runtimeDir', 'executionEnvironment']
+
+export function completeInstallationIdentity(value) {
+  return value && INSTALLATION_FIELDS.every(field => typeof value[field] === 'string' && value[field].trim())
+    && ['host', 'docker'].includes(value.executionEnvironment)
 }
 
-function buildResult(currentVersion, latestVersion, projectRoot, checkedAt, options = {}) {
+export function renderUpdateCommand(latestVersion, installation) {
+  if (!parseSemver(latestVersion)) throw new Error('latestVersion must be a valid semantic version')
+  if (!completeInstallationIdentity(installation)) throw new Error('complete installation identity is required')
+  const flags = [
+    ['--profile', installation.profile],
+    ['--project-root', installation.projectRoot],
+    ['--jobs-dir', installation.jobsDir],
+    ['--dsh-home', installation.dshHome],
+    ['--runtime-dir', installation.runtimeDir],
+    ['--execution-environment', installation.executionEnvironment],
+  ]
+  return [`npx --yes ${NPM_PACKAGE_NAME}@${latestVersion} setup`, ...flags.map(([flag, value]) => `${flag} ${shellQuote(value)}`)].join(' ')
+}
+
+function buildResult(currentVersion, latestVersion, installation, checkedAt, options = {}) {
   const comparison = compareSemver(currentVersion, latestVersion)
   if (comparison === undefined) {
     return { status: 'unavailable', currentVersion, checkedAt, source: options.source, stale: options.stale }
@@ -69,7 +85,8 @@ function buildResult(currentVersion, latestVersion, projectRoot, checkedAt, opti
     source: options.source,
     stale: options.stale,
     releaseUrl: updateAvailable ? `${RELEASES_URL}/tag/v${latestVersion}` : RELEASES_URL,
-    command: updateAvailable ? renderUpdateCommand(latestVersion, projectRoot) : undefined,
+    command: updateAvailable && completeInstallationIdentity(installation) ? renderUpdateCommand(latestVersion, installation) : undefined,
+    updateBlockedReason: updateAvailable && !completeInstallationIdentity(installation) ? 'INSTALLATION_IDENTITY_INCOMPLETE' : undefined,
   }
 }
 
@@ -82,10 +99,10 @@ export function createVersionChecker(options = {}) {
   let successful
   let failedAt = 0
 
-  return async function checkVersion({ currentVersion, projectRoot, refresh = false }) {
+  return async function checkVersion({ currentVersion, refresh = false, ...installation }) {
     const checkedAt = new Date(now()).toISOString()
     if (!refresh && successful && now() < successful.expiresAt) {
-      return buildResult(currentVersion, successful.latestVersion, projectRoot, successful.checkedAt, { source: 'cache' })
+      return buildResult(currentVersion, successful.latestVersion, installation, successful.checkedAt, { source: 'cache' })
     }
     if (!refresh && !successful && failedAt && now() - failedAt < failureTtlMs) {
       return { status: 'unavailable', currentVersion, checkedAt, source: 'cache' }
@@ -114,11 +131,11 @@ export function createVersionChecker(options = {}) {
         expiresAt: now() + cacheTtlMs,
       }
       failedAt = 0
-      return buildResult(currentVersion, successful.latestVersion, projectRoot, checkedAt, { source: 'registry' })
+      return buildResult(currentVersion, successful.latestVersion, installation, checkedAt, { source: 'registry' })
     } catch {
       failedAt = now()
       if (successful) {
-        return buildResult(currentVersion, successful.latestVersion, projectRoot, successful.checkedAt, { source: 'cache', stale: true })
+        return buildResult(currentVersion, successful.latestVersion, installation, successful.checkedAt, { source: 'cache', stale: true })
       }
       return { status: 'unavailable', currentVersion, checkedAt, source: 'registry' }
     } finally {

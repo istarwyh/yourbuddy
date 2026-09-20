@@ -6,10 +6,11 @@ from typing import Any
 
 from harbor_dsh_evolution.dataset import load_validated_dataset
 from harbor_dsh_evolution.identity import canonical_digest
+from harbor_dsh_evolution.execution_environment import execution_environment_identity
 from harbor_dsh_evolution.session_batch import GenerationBatch, load_generation_batch
 from harbor_dsh_evolution.stack import snapshot_stack
 
-CONTEXT_PROTOCOL = "historical-generation-evaluation-context/v1"
+CONTEXT_PROTOCOL = "historical-generation-evaluation-context/v2"
 CONTEXT_NAME = "evaluation-context.json"
 JOB_KIND = "historical-generation-evaluation"
 
@@ -55,6 +56,7 @@ def build_historical_context(
     dataset_path: Path,
     stack_path: Path,
     mode: str = "diagnostic",
+    execution_environment: str = "host",
 ) -> dict[str, Any]:
     if mode != "diagnostic":
         raise ValueError("Historical Generation Evaluation is diagnostic-only")
@@ -107,15 +109,17 @@ def build_historical_context(
         "harbor_version": _package_version("harbor"),
         "integration_version": _package_version("harbor-dsh-evolution"),
     }
+    environment_identity = execution_environment_identity(execution_environment)
     comparison_identity = {
         "evaluation_target": evaluation_target,
         "dataset": dataset_identity,
         "stack_comparison_digest": stack["comparison_digest"],
         "execution_adapter": adapter_identity,
+        "execution_environment": environment_identity,
         "runtime": runtime,
     }
     context = {
-        "schema_version": 1,
+        "schema_version": 2,
         "protocol": CONTEXT_PROTOCOL,
         "job_kind": JOB_KIND,
         "mode": "diagnostic",
@@ -134,6 +138,7 @@ def build_historical_context(
         "dataset": dataset_identity,
         "evaluation_stack": stack_identity,
         "execution_adapter": adapter_identity,
+        "execution_environment": environment_identity,
         "runtime": runtime,
         "downstream_analysis": {
             "population_analysis": True,
@@ -147,10 +152,10 @@ def build_historical_context(
     }
     context["digest"] = canonical_digest(
         comparison_identity,
-        namespace="harbor-dsh-historical-evaluation-context-v1",
+        namespace="harbor-dsh-historical-evaluation-context-v2",
     )
     context["full_digest"] = canonical_digest(
         context,
-        namespace="harbor-dsh-historical-evaluation-audit-v1",
+        namespace="harbor-dsh-historical-evaluation-audit-v2",
     )
     return context

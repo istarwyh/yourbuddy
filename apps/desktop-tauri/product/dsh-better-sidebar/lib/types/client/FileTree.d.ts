@@ -1,4 +1,5 @@
 import type { OpenWithTarget } from './open-with.ts';
+import type { BetterSidebarService } from './service.ts';
 import type { SidebarStore } from './state.ts';
 import { type UploadItem } from './upload.ts';
 /** Root label: the last path segment (mirror of the host rootLabel). */
@@ -42,4 +43,10 @@ export declare function FileTree(props: {
     onUploadRequest: (dir: string, items: UploadItem[]) => void;
     /** True while an upload is in flight (drops are ignored). */
     busy: boolean;
+    /**
+     * The sidebar registry service: when present, externally registered file
+     * icons (`registerFileIcon`) outrank the host's file-type artwork on file rows.
+     * Absent → the built-ins alone (the host always passes it today).
+     */
+    service?: BetterSidebarService;
 }): import("react").JSX.Element;

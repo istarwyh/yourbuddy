@@ -1,20 +1,22 @@
 {
   "package": "dsh-plugin-marketplace",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "sourceKind": "npm-latest",
   "channel": "latest",
-  "source": "https://registry.npmjs.org/dsh-plugin-marketplace/-/dsh-plugin-marketplace-0.3.1.tgz",
-  "integrity": "sha512-sV4tMJJXwIB1U07Yad9pH+fU/inMSpX79F5GLvcRoqXEt2xZ6G+6EJ0MIDMCH+AdINtgp3eHCeJ2rm9xW17zhQ==",
-  "archiveSha256": "8ff6f235c44ff37f5a0d09ba8cc5fa38069de4be8a3e522adcd427a82b808e9b",
-  "upstreamTreeSha256": "091298ddc3b20b4d2d53f119c4a4722791eef378a6030898d5f734e67caf7a10",
+  "source": "https://registry.npmjs.org/dsh-plugin-marketplace/-/dsh-plugin-marketplace-0.3.3.tgz",
+  "integrity": "sha512-1//yMdnYtyYLkMOdDVKalbWLJZMyiS21s0QX7wQ+SUiIzRX6Coz1mNIbxe1CllR6x7nq2Ok1t/HogekTJQ1+lQ==",
+  "archiveSha256": "d684b41a1114731f15a14c3f4869b8a80d0216c4a0946b6720bee3a8a95a9f55",
+  "upstreamTreeSha256": "2b588eba7135301dbcb6a4a4b35f226c46ef73a055723ef0de57c43869015ab7",
   "patches": [
-    "Preserve install result package identity and expose actionable pnpm diagnostics.",
-    "Resolve only dsh.bundle.patch packages through Repository or owner-scoped DSH upstream metadata, request latest manifests as standard JSON, and ignore sibling SDK and CLI packages.",
-    "Route repository and npm links through YourBuddy's restricted desktop marketplace-link bridge while preserving the ordinary browser fallback.",
-    "Show the packaged dsh-plugin-marketplace version in an identity badge at the top of its settings section.",
+    {
+      "id": "yourbuddy-product-adaptations",
+      "file": "patches/plugin-marketplace-yourbuddy.patch",
+      "sha256": "54e417eeab9604103a87affc285cb3c08a6d86eb7d661c51c000cc1b1f47a425",
+      "purpose": "Preserve verified bundle resolution, actionable install diagnostics, desktop link routing, and the packaged version badge."
+    },
     "Document the YourBuddy product adaptations in the bilingual README projection."
   ],
   "repository": "https://github.com/Scorp1o117/dsh-plugin-marketplace",
   "license": "MIT",
-  "treeSha256": "e9401353dd8647fcbcc07fba611d5b9cbbefe2642b2602874c26043f6ad74f99"
+  "treeSha256": "744152bc76555bef563475b2b5de0f302f05075ce2b3fba3bc636b7a01ab44e7"
 }

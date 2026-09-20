@@ -93,8 +93,9 @@ export const name = 'yourbuddy-enterprise-ca-host-probe'
 export async function apply() {
   let result
 try {
-    const response = await fetch(process.env.YOURBUDDY_PROXY_TEST_URL)
-    result = { ok: true, status: response.status, errorCodes: [] }
+    const proxyResponse = await fetch(process.env.YOURBUDDY_PROXY_TEST_URL)
+    const caResponse = await fetch(process.env.YOURBUDDY_CA_TEST_URL)
+    result = { ok: true, status: caResponse.status, proxyStatus: proxyResponse.status, errorCodes: [] }
 } catch (error) {
   let current = error
   const codes = []
@@ -126,7 +127,8 @@ function runHost(url, proxyUrl, caPath, workspace, suffix) {
       no_proxy: '127.0.0.1',
       NODE_OPTIONS: '--use-system-ca',
       NODE_USE_ENV_PROXY: '1',
-      YOURBUDDY_PROXY_TEST_URL: url,
+      YOURBUDDY_CA_TEST_URL: url,
+      YOURBUDDY_PROXY_TEST_URL: 'http://proxy-test.invalid/probe',
     }
     for (const name of [
       'ALL_PROXY', 'all_proxy', 'NODE_EXTRA_CA_CERTS',
@@ -184,7 +186,7 @@ function closeServer(server) {
   })
 }
 
-test('actual Node Host uses HTTP CONNECT and startup CA injection together', async t => {
+test('actual Node Host uses HTTP proxying and startup CA injection together', async t => {
   const workspace = mkdtempSync(join(tmpdir(), 'yourbuddy-node-extra-ca-'))
   const caPath = join(workspace, 'company-root.pem')
   writeFileSync(caPath, TEST_CA_PEM)
@@ -193,8 +195,13 @@ test('actual Node Host uses HTTP CONNECT and startup CA injection together', asy
     response.end()
   })
   const authorities = []
+  const proxyRequests = []
   let targetPort = 0
-  const proxy = createProxyServer()
+  const proxy = createProxyServer((request, response) => {
+    proxyRequests.push(request.url ?? '')
+    response.writeHead(204)
+    response.end()
+  })
   proxy.on('connect', (request, client, head) => {
     authorities.push(request.url ?? '')
     const upstream = connect(targetPort, '127.0.0.1', () => {
@@ -239,9 +246,10 @@ test('actual Node Host uses HTTP CONNECT and startup CA injection together', asy
 
   const withCa = await runHost(url, proxyUrl, caPath, workspace, 'with-ca')
   assert.equal(withCa.code, 0, withCa.stderr)
-  assert.deepEqual(withCa.result, { ok: true, status: 204, errorCodes: [] })
-  assert.deepEqual(authorities, [
-    `localhost:${address.port}`,
-    `localhost:${address.port}`,
+  assert.deepEqual(withCa.result, { ok: true, status: 204, proxyStatus: 204, errorCodes: [] })
+  assert.deepEqual(proxyRequests, [
+    'http://proxy-test.invalid/probe',
+    'http://proxy-test.invalid/probe',
   ])
+  assert.deepEqual(authorities, [])
 })

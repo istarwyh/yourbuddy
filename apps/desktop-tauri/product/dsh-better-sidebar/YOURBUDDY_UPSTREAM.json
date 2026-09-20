@@ -1,21 +1,21 @@
 {
   "package": "dsh-better-sidebar",
-  "version": "0.18.1",
+  "version": "0.19.1",
   "sourceKind": "npm-latest",
   "channel": "latest",
-  "source": "https://registry.npmjs.org/dsh-better-sidebar/-/dsh-better-sidebar-0.18.1.tgz",
-  "integrity": "sha512-9gKJfodHmBmP/WL6DXiC4KU4enRcRfAESiWsrFrAjDC9fK9KAjtYSxJ7vw+lWMkDBVvDZ5BBUfUL3gqbX6r53A==",
-  "archiveSha256": "955de491b46c23f99666430ded7a6bcad0769fa942b13c0bcf7386a073e645f7",
-  "upstreamTreeSha256": "a2b7c5f93bb90be893684c9ce2050c4f738b7306ea7be8791bffdadf959c29cd",
+  "source": "https://registry.npmjs.org/dsh-better-sidebar/-/dsh-better-sidebar-0.19.1.tgz",
+  "integrity": "sha512-Jr0tPJoDKUVkq+fioL6Td+YwXZ+PULx3CnBJ4iktaQGNP5y9hgpz6V7o7f4Yh2czheVKZsewurqCaiN10GQYeQ==",
+  "archiveSha256": "67969b94e96747ad910ce945bafa2b8176af584fb8bc02f87dce5ed132986884",
+  "upstreamTreeSha256": "f38291e2312043f61c8f98a65fad60f8c3538f9d1a491eddd627e8445863d881",
   "patches": [
     {
       "id": "yourbuddy-workbench",
       "file": "patches/better-sidebar-yourbuddy.patch",
-      "sha256": "cba9733d8a8c8cd451d062e4e38557a5cd114a02bd7b78826819b76a71f87a9e",
+      "sha256": "656213d50c9e8c517b99a94619f2d9b3bacd157d73231951d9724957aff248ef",
       "purpose": "Add the workbench Slot presentation, desktop external-link bridge, and unbounded generic media routes to the pinned upstream snapshot."
     }
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "b8eb8335ecbfbdaa743601b0c2f12aee5c752a411d551bb968dd9fbe0b80d518"
+  "treeSha256": "6d80994d365a6b54dfc7fc554d9f2142b4b3a8630f0dc88e6af917ef066940d7"
 }

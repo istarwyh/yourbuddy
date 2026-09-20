@@ -23,6 +23,12 @@
 /** The zh dictionary (also registered into the DSH locale registry under {@link LOCALE_NS}). */
 export declare const zh: {
     files: string;
+    guideDescFiles: string;
+    guideDescGit: string;
+    guideDescSubagent: string;
+    guideDescSidechat: string;
+    guideDescTerminal: string;
+    guideDescBrowser: string;
     changesSessionEmpty: string;
     changesRead: string;
     changesMdReading: string;
@@ -92,7 +98,6 @@ export declare const zh: {
     closeOtherTabs: string;
     closeLeftTabs: string;
     closeRightTabs: string;
-    moveToFreeWindow: string;
     floatDropHint: string;
     dockToSidebar: string;
     pinTerminal: string;
@@ -107,16 +112,17 @@ export declare const zh: {
     pinnedTerminalScopeGlobal: string;
     pinnedRailLabel: string;
     closePinnedTerminal: string;
-    collapse: string;
-    expand: string;
     collapseBottomPanel: string;
     expandBottomPanel: string;
     terminalError: string;
     terminalConnectFailed: string;
     terminalRetry: string;
+    terminalWaitBanner: string;
+    terminalSkipWait: string;
     terminalDepsFailed: string;
     terminalDepsHint: string;
     terminalDepsProfile: string;
+    terminalShellNotFound: string;
     preview: string;
     toc: string;
     edit: string;
@@ -162,12 +168,6 @@ export declare const zh: {
     changesOpenDiffTab: string;
     changesClosePreview: string;
     changesResizePreview: string;
-    changesDiffOpenTitle: string;
-    changesDiffOpenDesc: string;
-    changesDiffOpenFloat: string;
-    changesDiffOpenFloatDesc: string;
-    changesDiffOpenPane: string;
-    changesDiffOpenPaneDesc: string;
     changesLoadError: string;
     staged: string;
     unstaged: string;
@@ -242,13 +242,6 @@ export declare const zh: {
     settingsIntro: string;
     settingsPopupDesc: string;
     settingsDone: string;
-    settingsOpenTitle: string;
-    settingsOpenDesc: string;
-    settingsWidthTitle: string;
-    settingsWidthDesc: string;
-    settingsWidthSuffix: string;
-    settingsOpenPathTitle: string;
-    settingsOpenPathDesc: string;
     settingsOpenToolsTitle: string;
     settingsOpenToolsDesc: string;
     settingsTitleBarTitle: string;

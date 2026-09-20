@@ -107,9 +107,10 @@ mcp_servers = []
         task / "tests" / "test.sh",
         """#!/bin/sh
 set -eu
-mkdir -p /logs/verifier
-printf '{"reward":1,"quality":1}\n' > /logs/verifier/reward.json
-printf '{"schema_version":1,"protocol":"evaluation-result/v1","criteria":[{"id":"quality","score":1,"reason":"Diagnostic only: Candidate execution reached the Harbor verifier; the business Rubric was not applied.","recommendation":"Replace this wiring verifier with the accepted business Evaluator before any quality comparison or promotion."}]}\n' > /logs/verifier/evaluation-result.json
+verifier_dir="${HARBOR_VERIFIER_LOG_DIR:-/logs/verifier}"
+mkdir -p "$verifier_dir"
+printf '{"reward":1,"quality":1}\n' > "$verifier_dir/reward.json"
+printf '{"schema_version":1,"protocol":"evaluation-result/v1","criteria":[{"id":"quality","score":1,"reason":"Diagnostic only: Candidate execution reached the Harbor verifier; the business Rubric was not applied.","recommendation":"Replace this wiring verifier with the accepted business Evaluator before any quality comparison or promotion."}]}\n' > "$verifier_dir/evaluation-result.json"
 """,
     )
     dataset_manifest = snapshot_dataset(dataset, dataset_id=f"{identity}-diagnostic", version="1.0.0")

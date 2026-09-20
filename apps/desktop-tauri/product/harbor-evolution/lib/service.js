@@ -1138,7 +1138,12 @@ export class EvolutionService {
     }
     return this.versionChecker({
       currentVersion: this.metadata.pluginVersion ?? 'development',
+      profile: config.profile,
       projectRoot: config.projectRoot,
+      jobsDir: config.jobsDir,
+      dshHome: config.dshHome,
+      runtimeDir: config.runtimeDir,
+      executionEnvironment: config.executionEnvironment,
       refresh: args.refresh === true || args.refresh === 'true',
     })
   }

@@ -8,9 +8,7 @@
  * Ctrl (Win/Linux) or Cmd (mac) — a plain click is left for xterm's
  * normal selection handling. Only http(s) URLs are dispatched to the
  * browser; other schemes (`file://`, `mailto:`, `javascript:`, …) are
- * underlined for visibility but rejected at activation, so a `file://`
- * URL printed by a tool stays inert instead of being handed to
- * `window.open`.
+ * underlined for visibility but rejected at activation.
  *
  * Kept as a pure module (no xterm import) so the regex, the line
  * scanner, the modifier gate and the scheme guard are unit-testable
@@ -107,13 +105,9 @@ export declare function buildTerminalLinks(lineText: string, lineNumber: number)
  */
 export declare function shouldActivateTerminalLink(event: MouseEvent): boolean;
 /**
- * Open a URL matched in the terminal, with a scheme guard so a printed
- * `file://` or anything that slipped past the regex cannot reach
- * `window.open`. The URL is constructed via `new URL(...)` which throws
- * on malformed input; the catch makes the function total so the xterm
- * handler never throws into the terminal's event loop.
+ * Open a URL matched in the terminal. The shared dispatcher validates the
+ * URL and routes desktop requests without throwing into xterm's event loop.
  *
- * @returns `true` when the URL was dispatched to `window.open`, `false`
- *   when it was rejected (bad URL, disallowed scheme, no `window`).
+ * @returns True when the URL was dispatched, or false when it was rejected.
  */
 export declare function openTerminalUrl(uri: string): boolean;

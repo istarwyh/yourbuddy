@@ -29,6 +29,9 @@ function checkoutExecutable(name) {
 export const Config = Schema.object({
   projectRoot: Schema.string().default('.'),
   jobsDir: Schema.string().default('jobs'),
+  profile: Schema.string().default(''),
+  dshHome: Schema.string().default(''),
+  runtimeDir: Schema.string().default(''),
   harborBin: Schema.string().default(''),
   harborDshBin: Schema.string().default(''),
   agentImportPath: Schema.string().default('harbor_dsh_evolution.agent:DshCandidateAgent'),
@@ -37,6 +40,7 @@ export const Config = Schema.object({
   historicalPluginImportPath: Schema.string().default('dsh-historical-evaluation'),
   pythonPath: Schema.string().default(''),
   timeoutMs: Schema.number().default(1800000),
+  executionEnvironment: Schema.string().default('host'),
   candidateProvider: Schema.string().default(''),
   candidateModel: Schema.string().default(''),
   candidateReasoningEffort: Schema.string().default(''),
@@ -215,6 +219,7 @@ export function apply(ctx, config) {
       candidateProvider: { type: 'string', description: 'Optional Candidate provider. Supply it together with candidateModel; defaults to the current DSH Agent model.' },
       candidateModel: { type: 'string' },
       candidateReasoningEffort: { type: 'string' },
+      executionEnvironment: { type: 'string', description: 'host (default) or docker.' },
     },
   }, (args, exec) => serviceForTool(exec).doctor(args)))
 
@@ -238,6 +243,7 @@ export function apply(ctx, config) {
       evaluatorProvider: { type: 'string', description: 'Optional Judge provider; supply together with evaluatorModel. Defaults to the calling DSH Agent model and is frozen into the confirmation token.' },
       evaluatorModel: { type: 'string' },
       evaluatorReasoningEffort: { type: 'string', description: 'Optional Judge reasoning effort; requires explicit evaluatorProvider and evaluatorModel.' },
+      executionEnvironment: { type: 'string', description: 'host (default) or docker.' },
     },
   }, (args, exec) => {
     synchronizeWorkbenchProjectRoot(service, exec)
@@ -250,6 +256,7 @@ export function apply(ctx, config) {
     parameters: {
       selectionToken: { type: 'string', required: true },
       jobName: { type: 'string' },
+      executionEnvironment: { type: 'string', description: 'host (default) or docker.' },
     },
   }, (args, exec) => {
     const projectRoot = synchronizeWorkbenchProjectRoot(service, exec)
@@ -270,7 +277,7 @@ export function apply(ctx, config) {
 
   ctx.tools.register(mutatingJsonTool({
     name: 'harbor_context_preview',
-    description: 'Refresh the Candidate manifest, then preview Evaluation Context v2 and find comparable baselines before launching a Job. The manifest write requires one-shot approval.',
+    description: 'Refresh the Candidate manifest, then preview Evaluation Context v3 and find comparable baselines before launching a Job. The manifest write requires one-shot approval.',
     parameters: {
       candidatePath: { type: 'string', required: true },
       candidateId: { type: 'string' },
@@ -281,12 +288,13 @@ export function apply(ctx, config) {
       candidateProvider: { type: 'string', description: 'Optional Candidate provider. Supply it together with candidateModel; defaults to the current DSH Agent model.' },
       candidateModel: { type: 'string' },
       candidateReasoningEffort: { type: 'string' },
+      executionEnvironment: { type: 'string', description: 'host (default) or docker.' },
     },
   }, (args, exec) => serviceForTool(exec).previewContext(args)))
 
   ctx.tools.register(mutatingJsonTool({
     name: 'harbor_eval_run',
-    description: 'Run a strict diagnostic or promotion-eligible Harbor Job bound to Candidate, Dataset Manifest, Evaluation Stack, and Context v2 identities.',
+    description: 'Run a strict diagnostic or promotion-eligible Harbor Job bound to Candidate, Dataset Manifest, Evaluation Stack, and Context v3 identities.',
     parameters: {
       candidatePath: { type: 'string', required: true },
       candidateId: { type: 'string' },
@@ -299,6 +307,7 @@ export function apply(ctx, config) {
       candidateProvider: { type: 'string', description: 'Optional Candidate provider. Supply it together with candidateModel; defaults to the current DSH Agent model and is frozen before the Job starts.' },
       candidateModel: { type: 'string' },
       candidateReasoningEffort: { type: 'string' },
+      executionEnvironment: { type: 'string', description: 'host (default) or docker.' },
     },
   }, (args, exec) => serviceForTool(exec).run(args)))
 

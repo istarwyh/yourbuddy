@@ -26,6 +26,11 @@ def _required_environment(name: str) -> str:
     return value
 
 
+def _environment_path(environment: BaseEnvironment, path: str) -> str:
+    resolver = getattr(environment, "resolve_environment_path", None)
+    return str(resolver(path)) if callable(resolver) else path
+
+
 class DshCandidateAgent(AcpAgent):
     """Run one immutable DeepSeek Harness Candidate through Harbor's ACP runner."""
 
@@ -146,14 +151,21 @@ class DshCandidateAgent(AcpAgent):
         return self.manifest.version
 
     @override
-    def _build_dependencies_command(self, kind: DistributionKind) -> str:
+    def _build_dependencies_command(
+        self, kind: DistributionKind, environment: BaseEnvironment | None = None
+    ) -> str:
         """Check the prepared Task runtime; never change Node/SDK at run time."""
+        runner_venv = (
+            _environment_path(environment, self._RUNNER_VENV_PATH)
+            if environment is not None
+            else self._RUNNER_VENV_PATH
+        )
         return f"""
 set -euo pipefail
 for tool in bash python3 node npm stdbuf; do command -v "$tool" >/dev/null; done
 test "$(node -p 'process.versions.node')" = {shlex.quote(self._candidate_runtime['node_version'])}
-test -x {self._RUNNER_VENV_PATH}/bin/python
-{self._RUNNER_VENV_PATH}/bin/python -c 'import acp; from importlib.metadata import version; assert version("agent-client-protocol") == "{ACP_RUNNER_SDK_VERSION}"'
+test -x {shlex.quote(runner_venv)}/bin/python
+{shlex.quote(runner_venv)}/bin/python -c 'import acp; from importlib.metadata import version; assert version("agent-client-protocol") == "{ACP_RUNNER_SDK_VERSION}"'
 """.strip()
 
     @override
@@ -161,24 +173,50 @@ test -x {self._RUNNER_VENV_PATH}/bin/python
         return f"test \"$(node -p 'process.versions.node')\" = {shlex.quote(self._candidate_runtime['node_version'])}"
 
     @override
-    def _build_launcher_script(self, kind=None, target=None) -> str:
+    def _build_launcher_script(
+        self, kind=None, target=None, environment: BaseEnvironment | None = None
+    ) -> str:
+        remote_root = (
+            _environment_path(environment, self._REMOTE_ROOT)
+            if environment is not None
+            else self._REMOTE_ROOT
+        )
+        runtime_dir = (
+            _environment_path(environment, self._RUNTIME_DIR)
+            if environment is not None
+            else self._RUNTIME_DIR
+        )
+        runtime_config = (
+            _environment_path(environment, self._RUNTIME_CONFIG)
+            if environment is not None
+            else self._RUNTIME_CONFIG
+        )
+        gateway_secret_path = (
+            _environment_path(environment, self._GATEWAY_SECRET_PATH)
+            if environment is not None
+            else self._GATEWAY_SECRET_PATH
+        )
         exports = {
-            "DSH_SESSION_ROOT": f"{self._REMOTE_ROOT}/.sessions",
-            "DSH_HOME": f"{self._RUNTIME_DIR}/home",
-            "DSH_AGENTS_HOME": f"{self._RUNTIME_DIR}/agents",
+            "DSH_SESSION_ROOT": f"{remote_root}/.sessions",
+            "DSH_HOME": f"{runtime_dir}/home",
+            "DSH_AGENTS_HOME": f"{runtime_dir}/agents",
             "HSE_MODEL_GATEWAY_URL": self._gateway_url,
-            "HSE_MODEL_GATEWAY_TOKEN_FILE": self._GATEWAY_SECRET_PATH,
+            "HSE_MODEL_GATEWAY_TOKEN_FILE": gateway_secret_path,
             "HSE_MODEL_GATEWAY_INFO": self._gateway_info,
         }
         env = "\n".join(f"export {key}={shlex.quote(value)}" for key, value in exports.items())
-        command = " ".join(map(shlex.quote, ["node", f"{self._REMOTE_ROOT}/{self._candidate_runtime['entrypoint']}", "--config", self._RUNTIME_CONFIG]))
+        command = " ".join(map(shlex.quote, ["node", f"{remote_root}/{self._candidate_runtime['entrypoint']}", "--config", runtime_config]))
         # Keep the Task cwd; the Candidate application's directory is not the
         # task workspace passed to ACP session/new.
-        return f"#!/bin/sh\nset -eu\n{env}\n{self._build_node_install_command()}\npython3 {self._RUNTIME_DIR}/check_source.py\nexec {command} \"$@\"\n"
+        return f"#!/bin/sh\nset -eu\n{env}\n{self._build_node_install_command()}\npython3 {shlex.quote(runtime_dir)}/check_source.py\nexec {command} \"$@\"\n"
 
     @override
     async def install(self, environment: BaseEnvironment) -> None:
-        checked = await environment.exec(self._build_dependencies_command("npx"), user="root", timeout_sec=30)
+        checked = await environment.exec(
+            self._build_dependencies_command("npx", environment),
+            user="root",
+            timeout_sec=30,
+        )
         if checked.return_code != 0:
             self._setup_diagnostic("environment", checked)
             raise RuntimeError(
@@ -190,7 +228,7 @@ test -x {self._RUNNER_VENV_PATH}/bin/python
         self._selected_distribution_kind = "candidate-local"  # type: ignore[assignment]
         self.logs_dir.mkdir(parents=True, exist_ok=True)
         launcher = self.logs_dir / "acp-launch.sh"
-        launcher.write_text(self._build_launcher_script())
+        launcher.write_text(self._build_launcher_script(environment=environment))
         await environment.upload_file(launcher, self._LAUNCHER_REMOTE_PATH)
         await environment.upload_file(Path(inspect.getfile(AcpAgent)).with_name("acp_runner.py"), self._RUNNER_REMOTE_PATH)
         await environment.upload_file(Path(__file__).with_name("acp_readiness.py"), "/installed-agent/acp_readiness.py")
@@ -256,7 +294,7 @@ test -x {self._RUNNER_VENV_PATH}/bin/python
                 model=self._model_binding["model"],
                 config_path=self._candidate_runtime["config_path"],
                 agent_entry_id=self._candidate_runtime["agent_entry_id"],
-                gateway_plugin=self._GATEWAY_PLUGIN,
+                gateway_plugin=_environment_path(environment, self._GATEWAY_PLUGIN),
             )
             await environment.upload_dir(staged, self._REMOTE_ROOT)
         await environment.exec(
@@ -272,7 +310,7 @@ test -x {self._RUNNER_VENV_PATH}/bin/python
 
         checker = "\n".join([
             "import hashlib, json", "from pathlib import Path",
-            f"root = Path({self._REMOTE_ROOT!r})",
+            f"root = Path({_environment_path(environment, self._REMOTE_ROOT)!r})",
             f"inventory = json.loads({json.dumps([item.__dict__ for item in self.manifest.files])!r})",
             "for item in inventory:",
             "    path = root / item['path']",

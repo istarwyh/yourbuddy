@@ -282,7 +282,8 @@ export class CandidateModelRuntime {
     })
 
     const port = await listen(server, this.config.modelBrokerBindHost)
-    const endpoint = `http://${this.config.modelBrokerAdvertisedHost}:${port}${route}`
+    const advertisedHost = scope.advertisedHost || this.config.modelBrokerAdvertisedHost || '127.0.0.1'
+    const endpoint = `http://${advertisedHost}:${port}${route}`
     let closed = false
     return {
       protocol: MODEL_GATEWAY_PROTOCOL,

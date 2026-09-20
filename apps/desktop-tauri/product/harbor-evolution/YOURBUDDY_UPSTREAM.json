@@ -1,21 +1,21 @@
 {
-  "version": "0.9.5",
+  "version": "0.9.7",
   "sourceKind": "github-release-pair",
   "channel": "latest-stable-release",
-  "source": "https://codeload.github.com/istarwyh/harbor-self-evolving/tar.gz/97d01bf3ee9abaed9f2555135def7ab55d2b722d",
-  "releaseTag": "v0.9.5",
-  "commit": "97d01bf3ee9abaed9f2555135def7ab55d2b722d",
-  "integrity": "sha512-j8xAb7pA8uAmnDEuABkn7qMIqZBADcNT1sLMY3ZonScVa4TQaEVfjZJsy8bQ40oOcsjUwjrstJ1t7kVwc4QzWg==",
-  "archiveSha256": "22b77dbd0845d52a76231991463379219089c2154a3e97e329a19d6e98ce71f3",
+  "source": "https://codeload.github.com/istarwyh/harbor-self-evolving/tar.gz/a9f2afebe7e21892a114092ed6666481ed8b43f7",
+  "releaseTag": "v0.9.7",
+  "commit": "a9f2afebe7e21892a114092ed6666481ed8b43f7",
+  "integrity": "sha512-C9WtEU1vgL30tnRGPT//W7vPi2tvTX8tvM0KgBTcePvlhO37EDTf/xYYFHUBS9aYHRYDq7Q/EgHCTfI75iZVfA==",
+  "archiveSha256": "9982f9c37a70636781170e4d26ffbe6d47bd1f3d6742438db405cc234c674bf0",
   "repository": "https://github.com/istarwyh/harbor-self-evolving",
   "package": "dsh-harbor-evolution",
   "sourcePath": "packages/dsh-plugin",
   "patches": [
-    "Set @deepseek-ai/dsh-skill peer range from >=0.1.0-rc.6 to 0.1.2-rc.1.",
-    "Set @deepseek-ai/dsh-tools peer range from >=0.1.0-rc.6 to 0.1.2-rc.1.",
+    "Set @deepseek-ai/dsh-skill peer range from >=0.1.0-rc.6 to 0.1.5-rc.2.",
+    "Set @deepseek-ai/dsh-tools peer range from >=0.1.0-rc.6 to 0.1.5-rc.2.",
     "Remove obsolete @deepseek-ai/dsh-client-runtime Client injection.",
     "Preserve the YourBuddy bilingual README projection."
   ],
   "license": "MIT",
-  "treeSha256": "8058480d94b669ce67f4360e2af041cdc9978d86d893d156b8d82cdb7ab4b013"
+  "treeSha256": "62cf2f8e801350ccae39850d823e31831af69044b51f8763fdf11bffa7b5797a"
 }

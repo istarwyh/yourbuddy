@@ -33,7 +33,7 @@ export async function pinDiagnosticEnvironment(runProcess, environment) {
   return env
 }
 
-export async function readDiagnosticRuntimeIdentity({ runProcess, platform = process.platform, env }) {
+export async function readDiagnosticRuntimeIdentity({ runProcess, platform = process.platform, env, executionEnvironment = 'docker' }) {
   let machine, processDomain = ''
   if (platform === 'darwin') {
     const response = await runProcess('ioreg', ['-rd1', '-c', 'IOPlatformExpertDevice'], { env, timeoutMs: 5000, maxOutputBytes: 64 * 1024 })
@@ -49,11 +49,13 @@ export async function readDiagnosticRuntimeIdentity({ runProcess, platform = pro
     processDomain = `:${namespace}:${boot}`
   } else fail()
   if (!/^[a-f0-9-]{16,64}$/i.test(machine)) fail()
+  const digest = value => `sha256:${createHash('sha256').update(value).digest('hex')}`
+  const hostIdentity = digest(`${platform}:${machine.toLowerCase()}${processDomain}`)
+  if (executionEnvironment === 'host') return { hostIdentity }
   const docker = await runProcess('docker', ['info', '--format', '{{.ID}}'], { env, timeoutMs: 10_000, maxOutputBytes: 1024 })
   if (docker.code !== 0 || !/^[A-Za-z0-9:_.-]{8,200}$/.test(docker.stdout.trim())) fail()
-  const digest = value => `sha256:${createHash('sha256').update(value).digest('hex')}`
   // Do not persist device IDs, daemon endpoints, context names or credentials.
-  return { hostIdentity: digest(`${platform}:${machine.toLowerCase()}${processDomain}`), dockerIdentity: digest(docker.stdout.trim()) }
+  return { hostIdentity, dockerIdentity: digest(docker.stdout.trim()) }
 }
 
 async function artifact(root, target) {
@@ -123,11 +125,12 @@ export async function inspectDiagnostic(config, operation, { root, runProcess, p
   let processState = 'unknown'
   let runtimeMatches = false
   let environment
-  if (/^sha256:[a-f0-9]{64}$/.test(checkpoint?.hostIdentity ?? '') && /^sha256:[a-f0-9]{64}$/.test(checkpoint?.dockerIdentity ?? '') && checkpoint.platform === platform && checkpoint.dockerTransport === 'pinned-local-unix/v1') {
+  const hostMode = checkpoint?.executionEnvironment === 'host' && checkpoint?.dockerTransport === 'none'
+  if (/^sha256:[a-f0-9]{64}$/.test(checkpoint?.hostIdentity ?? '') && checkpoint.platform === platform && (hostMode || (/^sha256:[a-f0-9]{64}$/.test(checkpoint?.dockerIdentity ?? '') && checkpoint.dockerTransport === 'pinned-local-unix/v1'))) {
     try {
-      environment = await pinDiagnosticEnvironment(runProcess, process.env)
-      const current = await readDiagnosticRuntimeIdentity({ runProcess, platform, env: environment })
-      runtimeMatches = current.hostIdentity === checkpoint.hostIdentity && current.dockerIdentity === checkpoint.dockerIdentity
+      environment = hostMode ? process.env : await pinDiagnosticEnvironment(runProcess, process.env)
+      const current = await readDiagnosticRuntimeIdentity({ runProcess, platform, env: environment, executionEnvironment: hostMode ? 'host' : 'docker' })
+      runtimeMatches = current.hostIdentity === checkpoint.hostIdentity && (hostMode || current.dockerIdentity === checkpoint.dockerIdentity)
     } catch {}
   }
   if (!runtimeMatches) blockers.push({ code: 'DIAGNOSTIC_RUNTIME_IDENTITY_UNVERIFIED', message: 'The recorded Host machine and Docker daemon cannot be matched. Restore the original runtime/context and inspect again; a different empty daemon is not proof of cleanup.' })
@@ -138,7 +141,10 @@ export async function inspectDiagnostic(config, operation, { root, runProcess, p
   const processInfo = { state: processState, ...(checkpoint?.pid ? { pid: checkpoint.pid, groupId: checkpoint.groupId } : {}) }
   if (processState !== 'stopped') blockers.push({ code: processState === 'running' ? 'DIAGNOSTIC_PROCESS_PRESENT' : 'DIAGNOSTIC_PROCESS_OWNERSHIP_UNKNOWN', message: processState === 'running' ? 'The recorded process or process group still exists. Stop the original Host-owned run and inspect again; no signal was sent.' : 'A trustworthy stopped-process checkpoint is unavailable. An administrator must reconcile the original runner; no resources or lock were changed.' })
   let resources = { state: 'unknown', items: [] }, resultRef
-  try {
+  if (hostMode && runtimeMatches) {
+    resources = { state: 'clean', items: [], boundary: 'Host mode creates no Docker resources.' }
+    try { resultRef = (await evidence(config, operation, root)).resultRef } catch {}
+  } else try {
     const value = await evidence(config, operation, root)
     resultRef = value.resultRef
     if (!runtimeMatches) fail()

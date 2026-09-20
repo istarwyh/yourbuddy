@@ -12,13 +12,17 @@
 import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { Context } from '../context-types.ts'
-import { allLeaves, createSidebarStore, isAgentTabId, PANEL_DEFAULT, setWidth } from './state.ts'
+import { allLeaves, createSidebarStore, isAgentTabId } from './state.ts'
 import { createBetterSidebarService, matchUrlTarget } from './service.ts'
 import { revalidateChunksOnReactivate, setChunkModuleSystem } from './chunk-loader.ts'
 import { registerBuiltins } from './builtins/index.ts'
 import { Sidebar } from './Sidebar.tsx'
 import { RenderBoundary } from './RenderBoundary.tsx'
-import { registerOpenPathInterception, registerTurnTailInterception } from './intercept.tsx'
+import { registerTurnTailInterception } from './intercept.tsx'
+import { createNativeTabRecords } from './native/tab-adapter.tsx'
+import { registerNativeSurface } from './native/index.ts'
+import { registerBottomToggle } from './sidebar/bottom-toggle.tsx'
+import { createNativeSurface } from './native/surface.ts'
 import { registerLinkInterception } from './link-intercept.ts'
 import { registerImeGuard } from './ime-guard.ts'
 import { registerSettingsNavIcon } from './settings-nav-icon.ts'
@@ -39,6 +43,23 @@ import './layout.css'
  *  it mounts asynchronously, so the open-path interception reaches it through
  *  `ctx.inject` (see intercept.tsx). */
 export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection', 'layout']
+
+const WORKBENCH_WIDTH_KEY = 'dsh-sidebar:v1:width'
+const WORKBENCH_WIDTH_MIN = 280
+const WORKBENCH_WIDTH_MAX = 640
+const WORKBENCH_WIDTH_DEFAULT = 400
+
+function initialWorkbenchWidth(): number {
+  try {
+    const stored = Number(localStorage.getItem(WORKBENCH_WIDTH_KEY))
+    if (Number.isFinite(stored) && stored > 0) {
+      return Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, stored))
+    }
+  } catch {
+    // Storage is optional; the in-memory preference remains available.
+  }
+  return WORKBENCH_WIDTH_DEFAULT
+}
 
 /**
  * Error boundary over the sidebar tree (root scope): a render error in the
@@ -132,12 +153,46 @@ export function apply(ctx: Context): void {
   // registrations (the official createXXXStore() factory rule — no
   // module-level singleton).
   const sidebarStore = createSidebarStore()
+  let workbenchWidth = initialWorkbenchWidth()
+  const workbenchWidthListeners = new Set<() => void>()
+  const setWorkbenchWidth = (width: number): void => {
+    const next = Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, width))
+    if (next === workbenchWidth) return
+    workbenchWidth = next
+    try {
+      localStorage.setItem(WORKBENCH_WIDTH_KEY, String(next))
+    } catch {
+      // Storage is optional; subscribers still receive the in-memory preference.
+    }
+    for (const listener of workbenchWidthListeners) listener()
+  }
   // The sidebar registry service: external plugins register tab types and
   // file previewers through `ctx.betterSidebar.registerTab/registerFileViewer`.
   // Published before the panel mounts so consumers injecting 'betterSidebar'
   // are ready by the time the sidebar renders.
   const service = createBetterSidebarService(sidebarStore)
   ctx.provide('betterSidebar', service)
+  // The native right-Sidebar surface: the plugin's content is registered as
+  // DSH tab types (one per descriptor) and every open routes there, so the
+  // right column belongs to the host and only the bottom workbench stays
+  // plugin-owned. Both halves live for this fiber's lifetime.
+  const nativeRecords = createNativeTabRecords()
+  const nativeSurface = createNativeSurface(ctx, nativeRecords)
+  service.setSurface(nativeSurface)
+  ctx.effect(
+    () => registerNativeSurface({ ctx, store: sidebarStore, service, records: nativeRecords }),
+    'dsh-better-sidebar: native right-Sidebar registrations',
+  )
+  // The bottom workbench's expand/collapse button in DSH's session header
+  // (the header's corner seat belongs to the native sidebar's own control).
+  ctx.effect(
+    () => registerBottomToggle(ctx, sidebarStore),
+    'dsh-better-sidebar: bottom-workbench toggle',
+  )
+  ctx.effect(
+    () => () => { nativeSurface.dispose(); service.setSurface(undefined) },
+    'dsh-better-sidebar: native right-Sidebar surface',
+  )
   // Terminal tab titles use the host's effective shell name (e.g. bash/zsh)
   // instead of "Terminal 1". Start with a safe fallback and replace it as
   // soon as the host shell info resolves. Tabs created before the response
@@ -149,8 +204,7 @@ export function apply(ctx: Context): void {
     terminalTitle = name
     const snapshot = service.getSnapshot()
     if (snapshot.state === undefined) return
-    const tabs = allLeaves(snapshot.state.splits)
-      .concat(allLeaves(snapshot.state.bottomSplits))
+    const tabs = allLeaves(snapshot.state.bottomSplits)
       .flatMap(leaf => leaf.tabs)
     for (const tab of tabs) {
       if (tab.type === 'terminal' && !isAgentTabId(tab.id) && tab.title === fallbackTitle) {
@@ -300,9 +354,12 @@ export function apply(ctx: Context): void {
             disposeSlot = ctx.slots.inject('workbench', () =>
               ctx.slots.register({ name: 'workbench' }, WorkbenchSlot))
             disposeLayout = ctx.layout.registerWorkbench({
-              getSnapshot: () => ({ width: sidebarStore.getSnapshot().state?.width ?? PANEL_DEFAULT }),
-              subscribe: listener => sidebarStore.subscribe(listener),
-              setWidth: width => { sidebarStore.reduce(state => setWidth(state, width)) },
+              getSnapshot: () => ({ width: workbenchWidth }),
+              subscribe: (listener) => {
+                workbenchWidthListeners.add(listener)
+                return () => { workbenchWidthListeners.delete(listener) }
+              },
+              setWidth: setWorkbenchWidth,
             })
           } else {
             host = document.createElement('div')
@@ -370,18 +427,6 @@ export function apply(ctx: Context): void {
         }
       },
       'dsh-better-sidebar: turn-tail interception',
-    )
-
-    ctx.effect(
-      () => {
-        try {
-          return registerOpenPathInterception(ctx, sidebarStore)
-        } catch (error) {
-          fail('interception', error)
-          return () => {}
-        }
-      },
-      'dsh-better-sidebar: open-path interception',
     )
 
     ctx.effect(
