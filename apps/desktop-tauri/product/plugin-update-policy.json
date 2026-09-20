@@ -14,24 +14,24 @@
       "pythonSourcePath": "packages/harbor-plugin",
       "peerOverrides": {
         "0.7.3": {
-          "@deepseek-ai/dsh-skill": "0.1.1-rc.2",
-          "@deepseek-ai/dsh-tools": "0.1.1-rc.2"
+          "@deepseek-ai/dsh-skill": "0.1.5-rc.2",
+          "@deepseek-ai/dsh-tools": "0.1.5-rc.2"
         },
         "0.8.1": {
-          "@deepseek-ai/dsh-skill": "0.1.1-rc.2",
-          "@deepseek-ai/dsh-tools": "0.1.1-rc.2"
+          "@deepseek-ai/dsh-skill": "0.1.5-rc.2",
+          "@deepseek-ai/dsh-tools": "0.1.5-rc.2"
         },
         "0.9.2": {
-          "@deepseek-ai/dsh-skill": "0.1.2-rc.1",
-          "@deepseek-ai/dsh-tools": "0.1.2-rc.1"
+          "@deepseek-ai/dsh-skill": "0.1.5-rc.2",
+          "@deepseek-ai/dsh-tools": "0.1.5-rc.2"
         },
         "0.9.4": {
-          "@deepseek-ai/dsh-skill": "0.1.2-rc.1",
-          "@deepseek-ai/dsh-tools": "0.1.2-rc.1"
+          "@deepseek-ai/dsh-skill": "0.1.5-rc.2",
+          "@deepseek-ai/dsh-tools": "0.1.5-rc.2"
         },
         "0.9.5": {
-          "@deepseek-ai/dsh-skill": "0.1.2-rc.1",
-          "@deepseek-ai/dsh-tools": "0.1.2-rc.1"
+          "@deepseek-ai/dsh-skill": "0.1.5-rc.2",
+          "@deepseek-ai/dsh-tools": "0.1.5-rc.2"
         },
         "0.9.6": {
           "@deepseek-ai/dsh-skill": "0.1.5-rc.2",
@@ -60,10 +60,10 @@
       "destination": "dsh-codex-auth",
       "peerOverrides": {
         "0.3.1": {
-          "@deepseek-ai/dsh-*": "0.1.2-rc.1"
+          "@deepseek-ai/dsh-*": "0.1.5-rc.2"
         },
         "0.3.2": {
-          "@deepseek-ai/dsh-*": "0.1.2-rc.1"
+          "@deepseek-ai/dsh-*": "0.1.5-rc.2"
         }
       },
       "peerRemovals": {
@@ -85,7 +85,7 @@
       "destination": "dsh-better-sidebar",
       "peerOverrides": {
         "0.17.1": {
-          "@deepseek-ai/dsh-*": "0.1.2-rc.1"
+          "@deepseek-ai/dsh-*": "0.1.5-rc.2"
         }
       }
     },
@@ -96,8 +96,8 @@
       "destination": "plugin-marketplace",
       "peerOverrides": {
         "0.2.8": {
-          "@deepseek-ai/dsh-llm": "0.1.2-rc.1",
-          "@deepseek-ai/dsh-settings": "0.1.2-rc.1"
+          "@deepseek-ai/dsh-llm": "0.1.5-rc.2",
+          "@deepseek-ai/dsh-settings": "0.1.5-rc.2"
         }
       }
     },
@@ -110,7 +110,7 @@
       "destination": "context-doctor",
       "peerOverrides": {
         "0.6.1": {
-          "@deepseek-ai/dsh-tools": "0.1.2-rc.1"
+          "@deepseek-ai/dsh-tools": "0.1.5-rc.2"
         }
       }
     }
