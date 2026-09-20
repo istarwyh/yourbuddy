@@ -92,7 +92,7 @@ This scenario proves the local source candidate and controlled assembled shell o
 
 ## Delivery checklist
 
-- [ ] The release identifier and every version source match the existing channel procedure.
+- [x] The release identifier and every version source match the existing channel procedure.
 - [x] The opening notes answer what changed, the problem solved, where to use it, and how to try it.
 - [x] Installation or upgrade, compatibility, migration, and known limitations are stated.
 - [x] The local scenario records date, time zone, commit state, environment, build under test, evidence origin, data type, and service type.

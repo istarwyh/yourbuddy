@@ -40,4 +40,41 @@ Failure and recovery retained from preparation
 - No public tag, release asset, updater file, or website claim was created or replaced during recovery.
 
 Final tag-candidate checks
-- Pending after the 0.3.8 version and documentation commit. Results and artifact listings will be appended before tagging.
+1. CI=true node --test apps/desktop-tauri/scripts/verify-release-version.test.mjs
+   Result: passed, 3 tests.
+2. node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.3.8
+   Result: passed; all desktop version authorities resolved to yourbuddy-v0.3.8.
+3. PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH" CI=true pnpm --dir apps/desktop-tauri run prepare:release
+   Result: passed on the committed 0.3.8 candidate.
+4. CI=true pnpm run test:docs
+   Result: passed, 17 gates.
+5. CI=true pnpm run doc-sync
+   Result: passed, 35 gates.
+6. CI=true pnpm run lint
+   Result: passed.
+7. CI=true pnpm exec vitest run apps/cli/tests/args.spec.ts
+   Result: passed, 7 tests.
+8. CI=true pnpm run verify-desktop-shell-permissions
+   Result: passed, 2 tests.
+9. CI=true NODE_OPTIONS=--use-openssl-ca node --test apps/desktop-tauri/scripts/node-extra-ca.test.mjs
+   Result: passed, 1 test.
+10. cargo test --locked --release --target aarch64-apple-darwin --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml runtime::supervisor::tests
+    Result: passed, 13 selected tests.
+11. cargo test --locked --release --target aarch64-apple-darwin --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml desktop_shell::tests::
+    Result: passed, 3 selected tests.
+
+Local desktop artifact build
+- The ordinary `pnpm --dir apps/desktop-tauri run build` built the application and updater archive, then stopped before DMG creation because the release signing private key is available only to GitHub Actions. This local failure did not alter source or public assets.
+- Repeated the Tauri app and DMG build with `bundle.createUpdaterArtifacts=false`, preserving the same source, target, resources, and ad-hoc application signing while omitting only the formally signed updater output.
+- Result: passed; generated `YourBuddy_0.3.8_aarch64.dmg`.
+- Local DMG SHA-256: `590bb24ec9759d5163daa8a4562e3c40af81dc5b0e1908081df07770a4357429`.
+- Local DMG size: 568107296 bytes.
+- Mounted App identity: version `0.3.8`; bundle identifier `io.github.istarwyh.yourbuddy`.
+- `codesign --verify --deep --strict` passed for the mounted ad-hoc-signed App.
+- Packaged `harness-source` and `yourbuddy-runtime` resource directories were present.
+- The pre-signing updater archive SHA-256 was `6a23dc1cbd07c96d2e7b3bf487f6879081d4a4778830d1660c10cc82d8edeb24`; it is local evidence only and is not a publishable updater asset.
+- The relocated bundled runtime reported Harbor `0.21.0`, and `harbor-dsh --help` succeeded after the original Python home was made unavailable.
+
+Artifact scope
+- Local artifact hashes are not expected to equal the GitHub-hosted signed release assets.
+- Formal updater signing, release checksums, stable updater metadata, and public download verification remain pending.
