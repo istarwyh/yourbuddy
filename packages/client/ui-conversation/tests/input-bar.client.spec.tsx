@@ -27,8 +27,8 @@ import type {
   ComposerAttachment, ComposerAttachmentsOwnerProps,
 } from '../src/client/contract/slots.ts'
 import type { DraftAttachmentId } from '../src/client/contract/input.ts'
-import { InputBar } from '../src/client/skeleton/InputBar.tsx'
-import type { InputBarProps } from '../src/client/skeleton/InputBar.tsx'
+import { InputBar } from '../src/client/input/InputBar.tsx'
+import type { InputBarProps } from '../src/client/input/InputBar.tsx'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)

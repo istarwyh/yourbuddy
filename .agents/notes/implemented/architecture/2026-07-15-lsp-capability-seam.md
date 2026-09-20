@@ -183,7 +183,7 @@ The provider trusts its configured server. Its filesystem visibility and process
 - Filesystem-host tests pin session-cwd requirements, provider-owned containment and URI rendering, bounded document reads, unformatted source, and no `fs/observed` event.
 - A keyless pinned TypeScript real-server e2e exercises all four operations; runnable configuration uses the same explicit provider mapping.
 - Snapshots cover model-visible schema, prompt, results, and omissions; a built-artifact smoke test covers framing and cleanup.
-- Package and architecture docs cover configuration, security boundaries, and search/read guidance; the new `packages/lsp/` group is added to the AGENTS.md repository-layout block, the packages/README.md group table, and architecture.md in the same change.
+- Package and architecture docs cover configuration, security boundaries, and search/read guidance; the `packages/lsp/` group is listed in the authoritative packages/README.md group table, and the package-group map gate keeps that inventory complete.
 
 ## Consequences
 

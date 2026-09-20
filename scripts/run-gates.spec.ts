@@ -166,10 +166,17 @@ describe('gate graph validation', () => {
     expect(ids).toContain('public-repository-links')
   })
 
-  it('keeps package-group subsystem ownership in the documentation gate', () => {
+  it('keeps package-group documentation ownership in the documentation gate', () => {
     const ids = withPnpmEntrypoint(() => gatesForMode('doc-sync').map(subject => subject.id))
 
     expect(ids).toContain('subsystem-pages')
+    expect(ids).toContain('package-group-map')
+  })
+
+  it('keeps client domain layering in shared static CI', () => {
+    const ids = withPnpmEntrypoint(() => gatesForMode('ci-static').map(subject => subject.id))
+
+    expect(ids).toContain('client-domain-graph')
   })
 
   it('derives the quick documentation aggregate from marked doc-sync leaves', () => {

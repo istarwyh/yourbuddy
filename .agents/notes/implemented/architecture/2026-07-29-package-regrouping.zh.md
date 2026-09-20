@@ -41,7 +41,7 @@ Status: implemented
 
 ## 移动触及了什么
 
-移动以纯 `git mv` 形式落地，历史由重命名检测承载。组移动触及了：被移动包的 `tsconfig.json` 相对 `references` 及每个依赖方的对应条目（含 `apps/cli` 的 project references）；tsconfig 聚合与路径映射；各组 README；[packages/README.md](../../../../packages/README.zh.md) 的层级结构表；根 `AGENTS.md` 的布局图；重新生成的产物（`docs/module-graph.md`、内嵌路径的目录以及锁文件的 importer 键）；以及散文与门禁脚本中以仓库根为基准的 `packages/...` 引用。其余每一处组路径引用（workspace 配置、测试 glob、lint 键）都由验收门禁的响亮失败机械地找了出来——这正是本仓库自己的「配置错误必须响亮失败」规则。
+移动以纯 `git mv` 形式落地，历史由重命名检测承载。组移动会触及被移动包的 `tsconfig.json` 相对 `references` 及每个依赖方的对应条目（含 `apps/cli` 的 project references）、tsconfig 聚合与路径映射、各组 README、权威 [packages/README.md](../../../../packages/README.zh.md) 层级结构表、重新生成的产物（`docs/module-graph.md`、内嵌路径的目录以及锁文件的 importer 键），以及散文与门禁脚本中以仓库根为基准的 `packages/...` 引用。`verify-package-group-map` 会拒绝层级结构表缺少包组，模块图则从该表取得包组顺序。其余每一处组路径引用（workspace 配置、测试 glob、lint 键）都会由验收门禁的响亮失败机械地找出——这正是本仓库自己的「配置错误必须响亮失败」规则。
 
 组移动未触及：npm 包名、import、`cordis.yml` 配置、快照 fixture（测试前置数据）、`pnpm-workspace.yaml` 与 `tsdown` 的 glob（都是 `packages/*/*`），以及 Python 运行时 manifest（元数据清单）——它们全部按 npm 包名引用包。
 

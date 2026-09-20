@@ -102,6 +102,7 @@
     "website:dev": "tsx scripts/product-site.ts dev",
     "website:build": "tsx scripts/product-site.ts build && tsx scripts/verify-product-site.ts",
     "verify-package-readme-limitations": "tsx scripts/verify-package-readme-limitations.ts",
+    "verify-package-group-map": "tsx scripts/verify-package-group-map.ts",
     "verify-node-next-types": "tsx scripts/verify-node-next-types.ts",
     "verify-optional-dependency-imports": "tsx scripts/verify-optional-dependency-imports.ts",
     "verify-runtime-closure": "tsx scripts/verify-runtime-closure.ts",

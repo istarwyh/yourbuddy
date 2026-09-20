@@ -96,14 +96,14 @@ src/client/
   skeleton/    conversation shell and details host
   conversation-nodes/ independently registered business Definitions and Chat builder
   chat/        ordered conversation view
-  input/       composer state machine
+  input/       composer state machine and presentation
   queue/       queued-message presentation
   settings/    conversation settings rows
   apply.ts     cross-domain assembly point
   index.ts     public contract surface
 ```
 
-各领域实现文件不 import 兄弟领域；共享面统一经过 `contract/`。`scripts/verify-client-domain-graph.ts` 把守分层（contract=0、domain=1、apply/index=2；import 只准指向不高于自身的层级；兄弟领域依赖会失败）。Tool 展示已经拆为独立 `ui-tool` 包，只通过 ui-conversation 声明的 slot 到达 chat 与 details。
+各领域实现文件不 import 兄弟领域；共享面统一经过 `contract/`。共享静态 CI 车道运行 `scripts/verify-client-domain-graph.ts` 把守分层（contract=0、domain=1、apply/index=2；import 只准指向不高于自身的层级；兄弟领域依赖会失败）。Tool 展示已经拆为独立 `ui-tool` 包，只通过 ui-conversation 声明的 slot 到达 chat 与 details。
 
 ## 怎么开发
 

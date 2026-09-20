@@ -96,14 +96,14 @@ src/client/
   skeleton/    conversation shell and details host
   conversation-nodes/ independently registered business Definitions and Chat builder
   chat/        ordered conversation view
-  input/       composer state machine
+  input/       composer state machine and presentation
   queue/       queued-message presentation
   settings/    conversation settings rows
   apply.ts     cross-domain assembly point
   index.ts     public contract surface
 ```
 
-Domain implementation files never import a sibling domain; shared surfaces route through `contract/`. `scripts/verify-client-domain-graph.ts` enforces the layering (contract=0, domains=1, apply/index=2; imports may only point at levels ≤ own; sibling-domain edges fail). Tool presentation is already a separate `ui-tool` package and reaches chat and details only through the slots ui-conversation declares.
+Domain implementation files never import a sibling domain; shared surfaces route through `contract/`. `scripts/verify-client-domain-graph.ts` enforces the layering (contract=0, domains=1, apply/index=2; imports may only point at levels ≤ own; sibling-domain edges fail) in the shared static CI lane. Tool presentation is already a separate `ui-tool` package and reaches chat and details only through the slots ui-conversation declares.
 
 ## How to develop
 

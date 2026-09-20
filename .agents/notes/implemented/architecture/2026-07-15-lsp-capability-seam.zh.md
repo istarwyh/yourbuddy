@@ -183,7 +183,7 @@ seam 和提供方不增加启动或请求截止时间。非工具调用方不会
 - 文件系统宿主测试固定 session cwd 要求、提供方自有的 containment 与 URI 渲染、有界文档读取、无格式源文本和不发送 `fs/observed`。
 - 无密钥且固定版本的 TypeScript 真实服务器 e2e 覆盖四种操作；可运行配置使用同一项显式提供方映射。
 - 快照覆盖模型可见 schema、提示词、结果和省略提示；构建产物冒烟测试覆盖分帧与清理。
-- 包与架构文档覆盖配置、安全边界和搜索/读取指导；同一改动中，新的 `packages/lsp/` 包组要加入 AGENTS.md 的仓库布局块、packages/README.md 的分组表和 architecture.md。
+- 包与架构文档覆盖配置、安全边界和搜索/读取指导；`packages/lsp/` 包组列在权威 packages/README.md 分组表中，包组地图门禁保证该清单完整。
 
 ## 影响
 
