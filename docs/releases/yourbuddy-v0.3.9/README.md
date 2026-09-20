@@ -6,7 +6,7 @@ This archive records the Better Sidebar workbench, GPT Auth, and compact macOS w
 
 - Release identifier: `yourbuddy-v0.3.9`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: product publication and public-artifact verification are complete within the recorded scope; website deployment and the downloadable verification archive remain pending.
+- Archive state: product publication, public-artifact verification, and website deployment are complete within the recorded scope; the downloadable verification archive remains pending.
 - Release source: immutable tag `yourbuddy-v0.3.9` at `549011d29d7abd1b31e9f0e57047312ef5eb7b7b`.
 - Evidence gallery: [workbench-primary screenshot](screenshots/workbench-primary.png) from the final assembled-product smoke.
 - Evidence download: the dedicated verification ZIP will be attached after public artifact verification.
@@ -48,7 +48,7 @@ Existing application data is retained and no migration is required. The desktop 
 | Formal desktop publication | passed | immutable tag `yourbuddy-v0.3.9` | GitHub Actions | [workflow record](evidence/release-workflows.txt) |
 | Public installer and updater | passed within recorded scope | five anonymous public downloads | GitHub Release; macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json) |
 | Published App and relocated runtime | passed within recorded scope | updater archive and DMG | macOS 15.6.1 arm64 | [runtime record](evidence/public-runtime-stage.json) |
-| Website synchronization | not verified | bilingual product site | GitHub Pages | pending |
+| Website synchronization | passed | bilingual product site at source commit `28b5bda281ff5775b96e8fee63817c1c41540b75` | GitHub Pages | [deployment record](evidence/website-deployment.txt) |
 
 ## Scenario: local candidate and assembled-product validation
 
@@ -101,12 +101,21 @@ The updater archive and DMG contain byte-identical YourBuddy 0.3.9 App trees wit
 
 The formal workflow passed version alignment, the selected DSH check, Harness and desktop builds, desktop Host and shell tests, relocated runtime testing, checksums, updater-manifest generation, and publication. See the [workflow record](evidence/release-workflows.txt), [artifact record](evidence/public-artifact-stage.json), and [runtime record](evidence/public-runtime-stage.json).
 
+## Scenario: website deployment and live download journey
+
+- Status: passed.
+- Website workflow: [GitHub Actions run 35502991471](https://github.com/istarwyh/yourbuddy/actions/runs/35502991471), including successful build and deployment jobs.
+- Source commit: `28b5bda281ff5775b96e8fee63817c1c41540b75`.
+- Evidence origin: independent anonymous HTTP requests after deployment.
+
+The bilingual home, download, release-status, Better Sidebar, and Codex Auth pages returned HTTP 200 and displayed YourBuddy 0.3.9. The English and Chinese release records and public checksum file also returned HTTP 200. A one-byte anonymous request followed the release redirect and returned HTTP 206 from the public DMG, verifying the live download journey without repeating the complete installer download. See the [website deployment record](evidence/website-deployment.txt).
+
 ## Delivery status
 
 - Product publication status: published and independently checked at [YourBuddy 0.3.9](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9).
-- Verification archive status: partial; local, workflow, public-asset, and runtime evidence is complete, while the website record and public verification ZIP remain pending.
-- Website synchronization status: pending; source updates and live delivery checks remain to be completed.
-- Unverified scope: native GUI startup, packaged-WebView interaction, updater installation from an older release, Apple Developer signing and notarization, OAuth, real model traffic, and live website deployment.
+- Verification archive status: partial; local, workflow, public-asset, runtime, and website evidence is complete, while the public verification ZIP remains pending.
+- Website synchronization status: deployed and verified at source commit `28b5bda281ff5775b96e8fee63817c1c41540b75` through workflow run 35502991471.
+- Unverified scope: native GUI startup, packaged-WebView interaction, updater installation from an older release, Apple Developer signing and notarization, OAuth, and real model traffic.
 
 ## Delivery checklist
 
@@ -118,7 +127,7 @@ The formal workflow passed version alignment, the selected DSH check, Harness an
 - [x] The release entry was added to the bilingual release index.
 - [x] The final clean-tree preparation and screenshot capture passed on the committed candidate.
 - [x] The public release page, installer, updater metadata, signatures, and hashes were independently verified.
-- [ ] The website was synchronized in both languages and the live download journey was independently verified.
+- [x] The website was synchronized in both languages and the live download journey was independently verified.
 - [ ] The downloadable verification archive was created, uploaded, extracted, and checked.
 - [x] Product publication, archive status, website synchronization, and unverified scope are reported separately.
 - [x] No published tag or installer was moved or overwritten; this repair uses a new version.

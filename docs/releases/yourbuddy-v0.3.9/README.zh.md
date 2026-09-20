@@ -6,7 +6,7 @@
 
 - 发布标识：`yourbuddy-v0.3.9`。
 - 产品渠道：适用于 Apple Silicon macOS 的 YourBuddy 桌面应用。
-- 归档状态：产品发布与公开产物核验已在记录范围内完成；官网部署与可下载验证归档仍待完成。
+- 归档状态：产品发布、公开产物核验与官网部署已在记录范围内完成；可下载验证归档仍待完成。
 - 发布源码：不可变 Tag `yourbuddy-v0.3.9`，Commit 为 `549011d29d7abd1b31e9f0e57047312ef5eb7b7b`。
 - 证据图集：最终组装产品 Smoke 生成的[主工作区截图](screenshots/workbench-primary.png)。
 - 证据下载：公开产物核验后附加独立验证资料 ZIP。
@@ -48,7 +48,7 @@
 | 正式桌面发布 | passed | 不可变 Tag `yourbuddy-v0.3.9` | GitHub Actions | [工作流记录](evidence/release-workflows.txt) |
 | 公开安装包与 Updater | 在记录范围内通过 | 五个匿名公开下载 | GitHub Release；macOS 15.6.1 arm64 | [产物记录](evidence/public-artifact-stage.json) |
 | 公开 App 与迁移运行时 | 在记录范围内通过 | Updater 归档与 DMG | macOS 15.6.1 arm64 | [运行时记录](evidence/public-runtime-stage.json) |
-| 官网同步 | not verified | 双语产品官网 | GitHub Pages | 待完成 |
+| 官网同步 | passed | 源码 Commit `28b5bda281ff5775b96e8fee63817c1c41540b75` 对应的双语产品官网 | GitHub Pages | [部署记录](evidence/website-deployment.txt) |
 
 ## 场景：本地候选版本与组装产品验证
 
@@ -101,12 +101,21 @@ Updater 归档与 DMG 包含字节一致的 YourBuddy 0.3.9 App 树，Bundle Ide
 
 正式工作流通过版本对齐、所选 DSH 检查、Harness 与桌面构建、桌面 Host 与 Shell 测试、迁移运行时测试、校验和、Updater Manifest 生成与发布。详见[工作流记录](evidence/release-workflows.txt)、[产物记录](evidence/public-artifact-stage.json)与[运行时记录](evidence/public-runtime-stage.json)。
 
+## 场景：官网部署与线上下载旅程
+
+- 状态：passed。
+- 官网工作流：[GitHub Actions Run 35502991471](https://github.com/istarwyh/yourbuddy/actions/runs/35502991471)，构建与部署 Job 均成功。
+- 源码 Commit：`28b5bda281ff5775b96e8fee63817c1c41540b75`。
+- 证据来源：部署完成后的独立匿名 HTTP 请求。
+
+中英文首页、下载页、版本状态页、Better Sidebar 页与 Codex Auth 页均返回 HTTP 200，并显示 YourBuddy 0.3.9。中英文发布记录与公开校验和文件也返回 HTTP 200。对公开 DMG 发起的一字节匿名请求跟随 Release 重定向并返回 HTTP 206，在不重复下载完整安装包的前提下核验线上下载旅程。详见[官网部署记录](evidence/website-deployment.txt)。
+
 ## 交付状态
 
 - 产品发布状态：已在 [YourBuddy 0.3.9](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9) 发布并完成独立核验。
-- 验证资料归档状态：部分完成；本地、工作流、公开产物与运行时证据已完成，官网记录和公开验证 ZIP 仍待补充。
-- 站点同步状态：待同步；仍需完成源码更新与线上交付检查。
-- 未验证范围：原生 GUI 启动、打包 WebView 交互、从旧版实际执行更新、Apple Developer 签名与公证、OAuth、真实模型流量及线上官网部署。
+- 验证资料归档状态：部分完成；本地、工作流、公开产物、运行时与官网证据已完成，公开验证 ZIP 仍待补充。
+- 站点同步状态：已部署并核验；源码 Commit 为 `28b5bda281ff5775b96e8fee63817c1c41540b75`，工作流 Run 为 35502991471。
+- 未验证范围：原生 GUI 启动、打包 WebView 交互、从旧版实际执行更新、Apple Developer 签名与公证、OAuth 及真实模型流量。
 
 ## 交付清单
 
@@ -118,7 +127,7 @@ Updater 归档与 DMG 包含字节一致的 YourBuddy 0.3.9 App 树，Bundle Ide
 - [x] 已在双语发布索引中添加版本条目。
 - [x] 已在提交后的候选版本上完成干净工作区准备与截图。
 - [x] 已独立核验公开发布页、安装包、Updater 元数据、签名与 Hash。
-- [ ] 已完成双语官网同步并独立核验线上下载旅程。
+- [x] 已完成双语官网同步并独立核验线上下载旅程。
 - [ ] 已创建、上传、解压并核验可下载验证资料归档。
 - [x] 已分别报告产品发布状态、验证资料归档状态、站点同步与未验证范围。
 - [x] 未移动或覆盖公开 Tag 与安装包；本次修复使用新版本。
