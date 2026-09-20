@@ -19,9 +19,12 @@ export function openSidebarFile(ctx: Context, store: SidebarStore, sessionId: st
   const absolute = resolveSidebarPath(summary?.cwd, path)
   const at = Math.max(absolute.lastIndexOf('/'), absolute.lastIndexOf('\\'))
   const title = at === -1 ? absolute : absolute.slice(at + 1)
-  // Route through the sidebar service so the editor descriptor's dedupeKey
-  // (per-path) applies; the id is path-derived so multiple editors coexist.
-  ctx.get('betterSidebar')?.openTab({ type: 'editor', title, path: absolute, id: `editor:${absolute}` })
+  // A native file tab can outlive the plugin-owned panel state, so its open
+  // names the session whose workspace resolves the path.
+  ctx.get('betterSidebar')?.openTab(
+    { type: 'editor', title, path: absolute, id: `editor:${absolute}` },
+    { sessionId, cwd: summary?.cwd },
+  )
 }
 
 /**
@@ -48,7 +51,10 @@ export function revealInExplorer(
   // reveal highlight renders. Read via ctx.get like every other internal
   // consumer (#357): the provider is not on this fiber chain, so a direct
   // ctx.betterSidebar read can throw before optional chaining applies.
-  ctx.get('betterSidebar')?.openTab({ type: 'editor', title: t('files') })
+  ctx.get('betterSidebar')?.openTab(
+    { type: 'editor', title: t('files') },
+    { sessionId, cwd },
+  )
 }
 
 /** The intercepted produced-files row (visual twin of the deliverables chips). */

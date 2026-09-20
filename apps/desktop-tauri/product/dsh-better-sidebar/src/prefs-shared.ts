@@ -257,7 +257,7 @@ export const SIDEBAR_PREFS_DEFAULTS: SidebarPrefs = {
   titleBarStripPx: TITLE_BAR_STRIP_DEFAULT,
   htmlViewerNoSandbox: false,
   htmlViewerDefaultUnsafe: false,
-  browserNoSandbox: false,
+  browserNoSandbox: true,
   browserInterceptLinks: true,
   browserInterceptHttp: true,
   browserInterceptHttps: false,

@@ -13,9 +13,27 @@
       "file": "patches/better-sidebar-yourbuddy.patch",
       "sha256": "4b8ff8ddc574e328f77db183eeaf09d1f618d63acc226a460bade82a104a4c31",
       "purpose": "Add the workbench Slot presentation, desktop external-link bridge, and unbounded generic media routes to the pinned upstream snapshot."
+    },
+    {
+      "id": "native-file-open-session",
+      "file": "patches/better-sidebar-native-file-open.patch",
+      "sha256": "4a360eeb7814cc18b02f5221c02a9b9517ac90ee88688936383bb1884ac3ee8b",
+      "purpose": "Route file-tree opens to the native Sidebar session that owns the Files tab."
+    },
+    {
+      "id": "browser-cross-origin-navigation",
+      "file": "patches/better-sidebar-browser-navigation.patch",
+      "sha256": "892728e5496c51dabf75effb8c0184d6c33704c3a8ae1de8a93266e4b955b793",
+      "purpose": "Preserve external page origins inside the sandbox so ordinary websites can render in the Browser tab."
+    },
+    {
+      "id": "browser-default-unsandboxed",
+      "file": "patches/better-sidebar-browser-default-unsandboxed.patch",
+      "sha256": "69e1ad919fc8b85fad9a3b1ebfd84f0feaaa54672c71cc8c380e70a26f1b8e0b",
+      "purpose": "Default the Browser tab to unrestricted embedding while retaining the sandbox setting as an opt-in."
     }
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "02e788668410581157340a986edfde2f4a5e3076293a30108d02226fc6ab3d56"
+  "treeSha256": "d2c125c04ff0ba7889110483ee3a2cfc025839929d7a4a15a3b1d8cacf9c164a"
 }

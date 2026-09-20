@@ -1,15 +1,13 @@
 /**
  * The built-in browser tab: an address bar plus a sandboxed iframe.
  *
- * Security model (see browser.ts + the sandbox tokens below): the iframe is
- * ALWAYS sandboxed without `allow-same-origin` (opaque origin — the visited
- * page can never sit on the GUI's origin, read its storage, or reach
- * /sidebar/api) and without `allow-top-navigation` (a page must not hijack
- * the GUI). The address bar only accepts http(s) and refuses loopback /
- * the GUI's own origin. The side card setting "关闭浏览器沙箱" drops the
- * sandbox attribute entirely for fully trusted sites — the visited page then
- * runs with the GUI's own origin and full session access, so a persistent
- * warning bar renders while it is off.
+ * Security model (see browser.ts + the sandbox tokens below): cross-origin
+ * pages keep their own origin and top-level navigation capability so ordinary
+ * sites can render; the GUI's own origin stays opaque and cannot reach its
+ * parent. The address bar only accepts http(s) and refuses loopback unless
+ * explicitly allowlisted. The side card setting "关闭浏览器沙箱" drops the sandbox
+ * attribute entirely for fully trusted sites, so a persistent warning bar
+ * renders while it is off.
  *
  * The URL is persisted onto the tab (path/title via the patchTab reducer)
  * so a reload restores the visited page; the back/forward stack only tracks
@@ -26,7 +24,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { VscLinkExternal } from 'react-icons/vsc'
 import { api } from './api.ts'
-import { embeddabilityOf, isAllowedLoopbackUrl, normalizeBrowserUrl } from './browser.ts'
+import { embeddabilityOf, isAllowedLoopbackUrl, isLoopbackHostname, normalizeBrowserUrl } from './browser.ts'
 import { openExternalHttpUrl } from './desktop-external-links.ts'
 import { patchTab } from './state.ts'
 import { SandboxStatusBar } from './SandboxStatusBar.tsx'
@@ -44,40 +42,34 @@ import css from './sidebar.module.css'
 export const BROWSER_IFRAME_SANDBOX =
   'allow-scripts allow-forms allow-popups allow-downloads allow-modals allow-popups-to-escape-sandbox'
 
-/** allow-same-origin appended for explicitly allowlisted local addresses. */
-const BROWSER_IFRAME_SANDBOX_SAME_ORIGIN =
-  `${BROWSER_IFRAME_SANDBOX} allow-same-origin`
+/** Compatibility tokens required by sites that refuse restricted nested browsing. */
+const BROWSER_IFRAME_SANDBOX_SITE =
+  `${BROWSER_IFRAME_SANDBOX} allow-same-origin allow-top-navigation`
 
 /**
- * The sandbox tokens for one URL: allowlisted loopback addresses (local dev
- * servers the user explicitly trusts) additionally get `allow-same-origin`
- * so Vite/module/HMR pipelines that need a real origin work; every other
- * site keeps the opaque-origin sandbox. `allow-same-origin` does NOT give
- * the page access to the GUI — it stays cross-origin to it and to every
- * other site — but it does give it its OWN origin privileges (localStorage,
- * fetch without CORS), so it is only granted for the explicit allowlist.
+ * The sandbox tokens for one URL. Cross-origin pages retain their own origin
+ * and top-level navigation capability so ordinary sites can use cookies,
+ * storage, modules, and frame-navigation checks. The browser's same-origin
+ * policy still prevents them from reading the GUI.
  *
- * The GUI itself is the one hard exception: even when its own host is
- * allowlisted (a bare-host entry covers every port, so the GUI origin
- * matches), a page at the GUI's exact origin must never get
- * `allow-same-origin` — that would make it same-origin with its parent and
- * hand it the GUI's storage/API (and the ability to shed the sandbox). The
- * GUI keeps the opaque-origin sandbox no matter what the allowlist says.
+ * The GUI itself is the hard exception: a page at the GUI's exact origin must
+ * stay opaque, because `allow-scripts` plus `allow-same-origin` would let it
+ * reach its parent. Unapproved loopback URLs receive the same conservative
+ * treatment even though the address policy normally rejects them first.
  */
 export function iframeSandboxFor(url: string | undefined, allowedLoopback: string, selfOrigin?: string): string | undefined {
   if (url === undefined) return undefined
-  if (selfOrigin !== undefined) {
-    let parsed: URL
-    try {
-      parsed = new URL(url)
-    } catch {
-      return BROWSER_IFRAME_SANDBOX
-    }
-    if (parsed.origin === selfOrigin) return BROWSER_IFRAME_SANDBOX
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return BROWSER_IFRAME_SANDBOX
   }
-  return isAllowedLoopbackUrl(url, allowedLoopback)
-    ? BROWSER_IFRAME_SANDBOX_SAME_ORIGIN
-    : BROWSER_IFRAME_SANDBOX
+  if (selfOrigin !== undefined && parsed.origin === selfOrigin) return BROWSER_IFRAME_SANDBOX
+  if (isLoopbackHostname(parsed.hostname) && !isAllowedLoopbackUrl(url, allowedLoopback)) {
+    return BROWSER_IFRAME_SANDBOX
+  }
+  return BROWSER_IFRAME_SANDBOX_SITE
 }
 
 export function BrowserView(props: TabComponentProps) {

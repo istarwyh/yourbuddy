@@ -1,0 +1,74 @@
+diff --git a/lib/client-registry.js b/lib/client-registry.js
+index 2084e01d84..c31ed5a115 100644
+--- a/lib/client-registry.js
++++ b/lib/client-registry.js
+@@ -59,7 +59,7 @@ window.__ModuleLoader__.load({
+ 			titleBarStripPx: 40,
+ 			htmlViewerNoSandbox: false,
+ 			htmlViewerDefaultUnsafe: false,
+-			browserNoSandbox: false,
++			browserNoSandbox: true,
+ 			browserInterceptLinks: true,
+ 			browserInterceptHttp: true,
+ 			browserInterceptHttps: false,
+diff --git a/lib/client.js b/lib/client.js
+index 45d64bcdf4..2a2f625691 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -59,7 +59,7 @@ window.__ModuleLoader__.load({
+ 			titleBarStripPx: 40,
+ 			htmlViewerNoSandbox: false,
+ 			htmlViewerDefaultUnsafe: false,
+-			browserNoSandbox: false,
++			browserNoSandbox: true,
+ 			browserInterceptLinks: true,
+ 			browserInterceptHttp: true,
+ 			browserInterceptHttps: false,
+diff --git a/lib/index.js b/lib/index.js
+index 9f1905d5af..6aa4555df8 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -44,7 +44,7 @@ const SIDEBAR_PREFS_DEFAULTS = {
+ 	titleBarStripPx: 40,
+ 	htmlViewerNoSandbox: false,
+ 	htmlViewerDefaultUnsafe: false,
+-	browserNoSandbox: false,
++	browserNoSandbox: true,
+ 	browserInterceptLinks: true,
+ 	browserInterceptHttp: true,
+ 	browserInterceptHttps: false,
+@@ -115,7 +115,7 @@ const PrefsSchema = z.object({
+ 	titleBarStripPx: z.number().step(1).min(0).max(120).default(40),
+ 	htmlViewerNoSandbox: z.boolean().default(false),
+ 	htmlViewerDefaultUnsafe: z.boolean().default(false),
+-	browserNoSandbox: z.boolean().default(false),
++	browserNoSandbox: z.boolean().default(true),
+ 	browserInterceptLinks: z.boolean().default(true),
+ 	browserInterceptHttp: z.boolean().default(true),
+ 	browserInterceptHttps: z.boolean().default(false),
+diff --git a/src/config.ts b/src/config.ts
+index 79e9991e6a..79be9ca583 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -131,7 +131,7 @@ export const PrefsSchema: z<SidebarPrefs> = z.object({
+   titleBarStripPx: z.number().step(1).min(TITLE_BAR_STRIP_MIN).max(TITLE_BAR_STRIP_MAX).default(TITLE_BAR_STRIP_DEFAULT),
+   htmlViewerNoSandbox: z.boolean().default(false),
+   htmlViewerDefaultUnsafe: z.boolean().default(false),
+-  browserNoSandbox: z.boolean().default(false),
++  browserNoSandbox: z.boolean().default(true),
+   browserInterceptLinks: z.boolean().default(true),
+   browserInterceptHttp: z.boolean().default(true),
+   browserInterceptHttps: z.boolean().default(false),
+diff --git a/src/prefs-shared.ts b/src/prefs-shared.ts
+index d08a9aa283..77fc62beb0 100644
+--- a/src/prefs-shared.ts
++++ b/src/prefs-shared.ts
+@@ -257,7 +257,7 @@ export const SIDEBAR_PREFS_DEFAULTS: SidebarPrefs = {
+   titleBarStripPx: TITLE_BAR_STRIP_DEFAULT,
+   htmlViewerNoSandbox: false,
+   htmlViewerDefaultUnsafe: false,
+-  browserNoSandbox: false,
++  browserNoSandbox: true,
+   browserInterceptLinks: true,
+   browserInterceptHttp: true,
+   browserInterceptHttps: false,

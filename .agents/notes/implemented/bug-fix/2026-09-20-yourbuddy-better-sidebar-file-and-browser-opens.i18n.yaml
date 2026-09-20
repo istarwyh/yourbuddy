@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-20-yourbuddy-better-sidebar-file-and-browser-opens.md
+2026-09-20-yourbuddy-better-sidebar-file-and-browser-opens.md: e9758fa6b275505a31130c12bac87f810ea5ace6
+2026-09-20-yourbuddy-better-sidebar-file-and-browser-opens.zh.md: ad2df13d1a1f01f3fa865a29dcc2f733f67fe86e
