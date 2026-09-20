@@ -6,10 +6,10 @@ This archive records the Better Sidebar file-opening and embedded-browser recove
 
 - Release identifier: `yourbuddy-v0.3.10`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: published; local source, assembled-product, workflow, public-artifact, App identity, product provenance, and relocated-runtime checks passed, while website deployment and the downloadable verification archive remain pending.
+- Archive state: published; local source, assembled-product, workflow, public-artifact, App identity, product provenance, relocated-runtime, and website checks passed, while the downloadable verification archive remains pending.
 - Release source: immutable tag commit `dda208173552536a743449499ce153a8991fc7ce`; product fix commit `663210f699bd5f58cf848d5723da8218c4744cd2`.
 - Evidence gallery: not captured; the controlled browser observation is recorded as source-only evidence rather than an installed YourBuddy screenshot.
-- Evidence download: pending website verification and final archive assembly.
+- Evidence download: pending final archive assembly and public verification.
 
 ## User release notes
 
@@ -49,7 +49,7 @@ Existing application data is retained and no migration is required. An explicitl
 | Formal desktop publication | passed | immutable tag `yourbuddy-v0.3.10` | GitHub Actions | [workflow record](evidence/release-workflows.txt) |
 | Public installer and updater | passed within recorded scope | five anonymous public downloads | GitHub Release; macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json) |
 | Public App identity, product provenance, and relocated runtime | passed within recorded scope | updater archive and DMG | macOS 15.6.1 arm64 | [runtime record](evidence/public-runtime-stage.json) |
-| Product website | pending | website-source commit pending | GitHub Pages | pending |
+| Product website | passed | source commit `5e0c06e98e1cf779242fd957da5758b09ee47814` | GitHub Pages | [website record](evidence/website-deployment.txt) |
 
 ## Scenario: local candidate and assembled-product validation
 
@@ -102,9 +102,9 @@ The initial provenance probe expected each patch descriptor to use a `path` fiel
 ## Delivery status
 
 - Product publication status: `yourbuddy-v0.3.10` is the latest formal GitHub Release; all workflow steps passed.
-- Verification archive status: partial; local, workflow, public-artifact, App identity, product-provenance, and relocated-runtime evidence is recorded, while website and downloadable-archive evidence remain pending.
-- Website synchronization status: the bilingual 0.3.10 source update is prepared but not yet deployed or independently checked.
-- Unverified scope: native GUI startup, packaged-WebView interaction, an update from an older installation, Apple Developer signing and notarization, OAuth, real model traffic, the 0.3.10 website journey, and the downloadable verification archive.
+- Verification archive status: partial; local, workflow, public-artifact, App identity, product-provenance, relocated-runtime, and website evidence is recorded, while the downloadable archive remains pending.
+- Website synchronization status: deployed and independently verified in both languages, including raw Markdown and the installer journey.
+- Unverified scope: native GUI startup, packaged-WebView interaction, an update from an older installation, Apple Developer signing and notarization, OAuth, real model traffic, and the downloadable verification archive.
 
 ## Delivery checklist
 
@@ -116,7 +116,7 @@ The initial provenance probe expected each patch descriptor to use a `path` fiel
 - [x] The release entry is present in the bilingual release index.
 - [x] The final clean-tree preparation passed on the committed candidate.
 - [x] The public release page, installer, updater metadata, signatures, hashes, and relocated runtime are independently verified.
-- [ ] The website is synchronized in both languages and the live download journey is independently verified.
+- [x] The website is synchronized in both languages and the live download journey is independently verified.
 - [ ] The downloadable verification archive is created, uploaded, extracted, and checked.
 - [x] Product publication, archive status, website synchronization, and unverified scope are reported separately.
 - [x] No published tag or installer is moved or overwritten; this release uses a new version.

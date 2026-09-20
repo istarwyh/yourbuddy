@@ -1,0 +1,26 @@
+YourBuddy 0.3.10 website deployment and live-delivery verification
+
+Checked: 2026-09-20 23:51:36 CST (+0800)
+Authentication: none for every HTTP request
+Source commit: 5e0c06e98e1cf779242fd957da5758b09ee47814
+Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35520739275
+Workflow result: success
+Build job: 106104258364, success, 2026-09-20T15:48:47Z to 2026-09-20T15:49:40Z
+Deploy job: 106104387539, success, 2026-09-20T15:49:44Z to 2026-09-20T15:49:53Z
+
+The workflow's website:check, Pages artifact upload, and Pages deployment steps passed. The Node 20-to-24 action-runtime annotations and future ubuntu-latest migration notices were informational and did not change the successful result.
+
+Live pages checked after deployment
+
+200  https://istarwyh.github.io/yourbuddy/                                  32,342 bytes  contains YourBuddy 0.3.10
+200  https://istarwyh.github.io/yourbuddy/en/                               32,558 bytes  contains YourBuddy 0.3.10
+200  https://istarwyh.github.io/yourbuddy/download/                         44,546 bytes  contains 0.3.10
+200  https://istarwyh.github.io/yourbuddy/en/download/                      45,263 bytes  contains 0.3.10
+200  https://istarwyh.github.io/yourbuddy/releases/                         51,144 bytes  contains 0.3.10
+200  https://istarwyh.github.io/yourbuddy/en/releases/                      52,394 bytes  contains 0.3.10
+200  https://istarwyh.github.io/yourbuddy/plugins/better-sidebar/           44,154 bytes  contains 0.3.10
+200  https://istarwyh.github.io/yourbuddy/en/plugins/better-sidebar/        44,520 bytes  contains 0.3.10
+200  https://istarwyh.github.io/yourbuddy/download/index.md                  2,865 bytes  contains 0.3.10
+200  https://istarwyh.github.io/yourbuddy/en/download/index.md               3,208 bytes  contains 0.3.10
+
+The English and Chinese release records at source commit 5e0c06e98e1cf779242fd957da5758b09ee47814 returned 200. The public SHA256SUMS.txt returned 200 with 315 bytes and SHA-256 0dd748b591261f00afc1e2d297091663ea69ae9b8079f7ae2a0c36526f3c5b62. An anonymous one-byte request to the 0.3.10 DMG followed the GitHub redirect and returned HTTP 206 with one byte, confirming the live download journey without redownloading the already verified full installer.
