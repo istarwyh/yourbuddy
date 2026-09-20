@@ -1,0 +1,46 @@
+YourBuddy 0.3.9 local candidate validation
+Captured: 2026-09-20 16:50 UTC+08:00 CST
+Workspace: sanitized; local absolute path omitted
+Candidate commit before version preparation: 0dd4123505b62bd01c575b7f376c1cf4ae849e7f
+Environment: macOS 15.6.1 (24G90) arm64; Node v22.22.3; pnpm 11.7.0; rustc 1.98.0; uv 0.12.5
+Data and services: synthetic Marketplace metadata, isolated blank Session, and controlled local Host/browser services; no model provider
+Public state at capture: no yourbuddy-v0.3.9 tag or GitHub Release
+
+Upstream identities
+- DeepSeek Harness: dsh-v0.1.5-rc.2, version 0.1.5-rc.2, commit fb2c4b9e698e30edb738bca4cf0618587db7d203
+- Better Sidebar: 0.19.1
+- Codex Auth bundle: 0.3.2
+- Harbor Evolution: 0.9.7
+- Plugin Marketplace: 0.3.3
+- Context Doctor: 0.7.2
+
+Completed checks before the version commit
+1. pnpm exec vitest run apps/desktop-tauri/tests/better-sidebar-presentation.spec.ts
+   Result: passed, 2 tests.
+2. node --test apps/desktop-tauri/scripts/verify-product-release.test.mjs
+   Result: passed, 14 tests after the final smoke correction.
+3. Direct prepared-product verification using the frozen offline Store
+   Result: passed; 56 bundled runtime peer links, 6 assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed.
+4. git diff --check
+   Result: passed.
+
+Observed assembled-product behavior
+- The smoke queried /api/session/modelCatalog before Session creation and resolved provider openai-codex, display name OpenAI Codex (chatgpt), and model gpt-5.6-sol / GPT-5.6 Sol without sending a model request.
+- The smoke created and selected an isolated blank Session, then loaded the same selection inside the desktop shell.
+- The desktop shell exposed body presentation slot, a four-track workbench-primary grid, and a visible Better Sidebar bottom-panel tree that filled its Slot host within a two-pixel tolerance.
+- The desktop GPT Auth settings page loaded through /codex-auth/status and displayed the controlled no-CLI state without a transport failure.
+
+Failure and recovery retained from preparation
+- The first prepare:release run failed because uv was absent from the controlled PATH. The next runs included the existing profile-local uv executable; no system installation changed.
+- The release smoke then failed because it expected the pre-Session model selector and an obsolete raw model label. Current YourBuddy stages only the Agent preset before Session creation. The smoke now verifies the Session-independent Host catalog, creates an isolated blank Session, persists its selection, and checks the actual Slot geometry.
+- The corrected direct prepared-product verification passed. No public tag, release asset, updater file, or website claim was created or replaced during recovery.
+
+Pending pre-tag checks
+- Run the complete prepare:release command on the committed 0.3.9 candidate and capture the workbench screenshot.
+- Run release-version, documentation, lint, website, and selected desktop checks.
+- Record the final candidate commit and results before creating the tag.
+
+Scope limits
+- Controlled local services do not prove real OAuth or real model traffic.
+- The browser smoke exercises the assembled Host and a desktop-shell bridge, not a packaged native WebView.
+- Public installer bytes, updater metadata and signature, relocated packaged runtime, Apple Developer signing and notarization, updater installation, GitHub workflows, and live website delivery remain unverified until their respective publication stages.

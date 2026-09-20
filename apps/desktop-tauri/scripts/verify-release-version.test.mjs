@@ -34,5 +34,5 @@ test('validateReleaseVersions rejects source and tag drift', () => {
 })
 
 test('repository desktop version sources are aligned', () => {
-  assert.equal(verifyReleaseVersion('yourbuddy-v0.3.8').version, '0.3.8')
+  assert.equal(verifyReleaseVersion('yourbuddy-v0.3.9').version, '0.3.9')
 })
