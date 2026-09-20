@@ -133,6 +133,35 @@ export function assertCodexAuthStatusProbe(probe) {
 }
 
 /**
+ * Validate Codex discovery through the Session-independent Host model catalog.
+ * @param {{ status: number, body: unknown }} probe
+ * @returns {void}
+ */
+export function assertCodexModelCatalogProbe(probe) {
+  if (probe.status !== 200) {
+    throw new Error(`Codex model catalog RPC returned HTTP ${probe.status}`)
+  }
+  const response = probe.body
+  const catalog = response?.result?.value
+  const group = Array.isArray(catalog?.groups)
+    ? catalog.groups.find(candidate => candidate?.id === 'openai-codex')
+    : undefined
+  const model = Array.isArray(group?.models)
+    ? group.models.find(candidate => candidate?.id === 'gpt-5.6-sol')
+    : undefined
+  const failed = Array.isArray(catalog?.failures)
+    && catalog.failures.some(candidate => candidate?.id === 'openai-codex')
+  if (response?.type !== 'server-response'
+    || response.rpcId !== 'yourbuddy-release-codex-model-catalog'
+    || response.result?.ok !== true
+    || group?.name !== 'OpenAI Codex (chatgpt)'
+    || model?.name !== 'GPT-5.6 Sol'
+    || failed) {
+    throw new Error(`Codex model catalog RPC returned an invalid response: ${JSON.stringify(response)}`)
+  }
+}
+
+/**
  * Build the isolated environment used to execute unreviewed release candidates.
  *
  * @param {string} root
@@ -494,6 +523,36 @@ async function completeProductOnboarding(page) {
   await clickOnboardingAction(page, 'Configure later', 5_000)
 }
 
+async function createAndOpenReleaseSmokeSession(page) {
+  const created = await page.evaluate(async () => {
+    const response = await fetch('/api/session/create', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        type: 'client-request',
+        rpcId: 'yourbuddy-release-create-session',
+        method: 'session/create',
+        payload: { args: { request: {} } },
+      }),
+    })
+    const body = await response.text()
+    return { status: response.status, body: response.ok ? JSON.parse(body) : body }
+  })
+  if (created.status !== 200
+    || created.body?.type !== 'server-response'
+    || created.body.rpcId !== 'yourbuddy-release-create-session'
+    || created.body.result?.ok !== true
+    || typeof created.body.result.value?.sessionId !== 'string') {
+    throw new Error(`release smoke could not create a blank Session: ${JSON.stringify(created)}`)
+  }
+  await page.evaluate((sessionId) => {
+    localStorage.setItem('dsh.sessions.current', JSON.stringify({ sessionId }))
+  }, created.body.result.value.sessionId)
+  await page.reload({ waitUntil: 'load', timeout: 30_000 })
+  await page.locator('[class*="frame"]').first().waitFor({ timeout: 30_000 })
+  await completeProductOnboarding(page)
+}
+
 function buildDesktopBridgeSmokeShell(webUrl) {
   const externalI18n = '<script src="desktop-i18n.js"></script>'
   if (desktopShellSource.split(externalI18n).length !== 2) {
@@ -753,16 +812,24 @@ async function runBrowserSmoke(baseUrl, env) {
       frameCount,
     })
     await completeProductOnboarding(page)
-    await verifyWorkbenchBranding(page)
     await page.getByRole('button', { name: 'Codex', exact: true }).waitFor({ timeout: 10_000 })
-    const modelSelector = page.getByRole('button', { name: /Select model, current openai-codex\/gpt-5\.6-sol/u })
-    await modelSelector.click()
-    await page.getByText('openai-codex/gpt-5.6-sol', { exact: true }).click()
-    await page.getByText('OpenAI Codex (chatgpt)', { exact: true }).waitFor({ timeout: 10_000 })
-    if (await page.getByText(/OpenAI Codex \(chatgpt\) failed to load:/u).count() !== 0) {
-      throw new Error('Codex model catalog failed to resolve against the bundled Pi AI adapter')
-    }
-    await page.keyboard.press('Escape')
+    const codexModelCatalogProbe = await page.evaluate(async () => {
+      const response = await fetch('/api/session/modelCatalog', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          type: 'client-request',
+          rpcId: 'yourbuddy-release-codex-model-catalog',
+          method: 'session/modelCatalog',
+          payload: { args: {} },
+        }),
+      })
+      const body = await response.text()
+      return { status: response.status, body: response.ok ? JSON.parse(body) : body }
+    })
+    assertCodexModelCatalogProbe(codexModelCatalogProbe)
+    await createAndOpenReleaseSmokeSession(page)
+    await verifyWorkbenchBranding(page)
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     const settings = page.getByRole('dialog', { name: 'Settings' })
     await settings.waitFor({ timeout: 10_000 })

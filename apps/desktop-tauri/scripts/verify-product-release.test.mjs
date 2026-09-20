@@ -11,6 +11,7 @@ import {
   authenticateHost,
   assertCleanChildExit,
   assertCodexAuthStatusProbe,
+  assertCodexModelCatalogProbe,
   assertProductClientBoot,
   buildProductSmokeOverlay,
   createReleaseChildEnvironment,
@@ -42,6 +43,44 @@ test('release smoke accepts only a mounted GPT Auth status channel', () => {
       },
     }),
     /GPT Auth status RPC returned an invalid response/u,
+  )
+})
+
+test('release smoke accepts the current Codex model through the Host catalog', () => {
+  assert.doesNotThrow(() => assertCodexModelCatalogProbe({
+    status: 200,
+    body: {
+      type: 'server-response',
+      rpcId: 'yourbuddy-release-codex-model-catalog',
+      result: {
+        ok: true,
+        value: {
+          groups: [{
+            id: 'openai-codex',
+            name: 'OpenAI Codex (chatgpt)',
+            models: [{ id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' }],
+          }],
+          failures: [],
+        },
+      },
+    },
+  }))
+  assert.throws(
+    () => assertCodexModelCatalogProbe({
+      status: 200,
+      body: {
+        type: 'server-response',
+        rpcId: 'yourbuddy-release-codex-model-catalog',
+        result: {
+          ok: true,
+          value: {
+            groups: [],
+            failures: [{ id: 'openai-codex', name: 'OpenAI Codex (chatgpt)', message: 'failed' }],
+          },
+        },
+      },
+    }),
+    /Codex model catalog RPC returned an invalid response/u,
   )
 })
 
