@@ -6,10 +6,10 @@ This archive records the Better Sidebar workbench, GPT Auth, and compact macOS w
 
 - Release identifier: `yourbuddy-v0.3.9`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: product publication, public-artifact verification, and website deployment are complete within the recorded scope; the downloadable verification archive remains pending.
+- Archive state: complete within the stated limits; product publication, public-artifact verification, website deployment, and the downloadable verification archive are recorded.
 - Release source: immutable tag `yourbuddy-v0.3.9` at `549011d29d7abd1b31e9f0e57047312ef5eb7b7b`.
 - Evidence gallery: [workbench-primary screenshot](screenshots/workbench-primary.png) from the final assembled-product smoke.
-- Evidence download: the dedicated verification ZIP will be attached after public artifact verification.
+- Evidence download: [yourbuddy-v0.3.9-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.9/yourbuddy-v0.3.9-verification.zip), 70,597 bytes, SHA-256 `d1ea414355bc85edaee249525f7e54c13dba10c6fdff1ee341f99a489f13208a`.
 
 ## User release notes
 
@@ -49,6 +49,7 @@ Existing application data is retained and no migration is required. The desktop 
 | Public installer and updater | passed within recorded scope | five anonymous public downloads | GitHub Release; macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json) |
 | Published App and relocated runtime | passed within recorded scope | updater archive and DMG | macOS 15.6.1 arm64 | [runtime record](evidence/public-runtime-stage.json) |
 | Website synchronization | passed | bilingual product site at source commit `28b5bda281ff5775b96e8fee63817c1c41540b75` | GitHub Pages | [deployment record](evidence/website-deployment.txt) |
+| Public verification archive | passed | anonymous public download | GitHub Release | [archive record](evidence/verification-archive.txt) |
 
 ## Scenario: local candidate and assembled-product validation
 
@@ -113,7 +114,7 @@ The bilingual home, download, release-status, Better Sidebar, and Codex Auth pag
 ## Delivery status
 
 - Product publication status: published and independently checked at [YourBuddy 0.3.9](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9).
-- Verification archive status: partial; local, workflow, public-asset, runtime, and website evidence is complete, while the public verification ZIP remains pending.
+- Verification archive status: complete; the public ZIP was anonymously downloaded, matched its local source, passed integrity and extraction checks, and is recorded at source commit `71d78e2cbce71c1fe13b2d5611a8c0beb14f370d`.
 - Website synchronization status: deployed and verified at source commit `28b5bda281ff5775b96e8fee63817c1c41540b75` through workflow run 35502991471.
 - Unverified scope: native GUI startup, packaged-WebView interaction, updater installation from an older release, Apple Developer signing and notarization, OAuth, and real model traffic.
 
@@ -128,6 +129,6 @@ The bilingual home, download, release-status, Better Sidebar, and Codex Auth pag
 - [x] The final clean-tree preparation and screenshot capture passed on the committed candidate.
 - [x] The public release page, installer, updater metadata, signatures, and hashes were independently verified.
 - [x] The website was synchronized in both languages and the live download journey was independently verified.
-- [ ] The downloadable verification archive was created, uploaded, extracted, and checked.
+- [x] The downloadable verification archive was created, uploaded, extracted, and checked.
 - [x] Product publication, archive status, website synchronization, and unverified scope are reported separately.
 - [x] No published tag or installer was moved or overwritten; this repair uses a new version.

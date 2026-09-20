@@ -25,4 +25,4 @@ YourBuddy 0.3.9 修复了 0.3.8 运行时刷新后可能不可用的桌面工作
 ## Verification / 验证资料
 
 - [Tagged verification record / Tag 内验证记录](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.9/docs/releases/yourbuddy-v0.3.9)
-- The downloadable verification bundle is attached after public artifact verification. / 可下载验证资料包会在公开产物核验后附加。
+- [Downloadable verification bundle / 可下载验证资料包](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.9/yourbuddy-v0.3.9-verification.zip) — SHA-256 `d1ea414355bc85edaee249525f7e54c13dba10c6fdff1ee341f99a489f13208a`.
