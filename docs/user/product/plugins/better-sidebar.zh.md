@@ -12,6 +12,8 @@
 
 桌面宽度下，即使早先会话保存的 Dock 状态为折叠，Split Pane 工作台仍会显示在对话左侧。拖动分隔条调整两侧宽度，在标签页中打开文件和预览，并通过终端或 Git 面板检查代码变化。窗口较窄时，对话仍是主界面，Better Sidebar 通过 Overlay 控件打开。推荐插件目标、内嵌浏览器的外部打开操作以及终端中的 HTTP(S) 链接会在系统浏览器中打开。在 YourBuddy 中，只需运行一次推荐插件的安装命令；其隔离 Web Profile 会执行依赖构建脚本，无需另行运行 `pnpm approve-builds`。
 
+YourBuddy 0.3.9 通过 [Release 工作台截图](../../../releases/yourbuddy-v0.3.9/screenshots/workbench-primary.png)核验这一桌面布局，并在[验证记录](../../../releases/yourbuddy-v0.3.9/README.zh.md)中记录聚焦展示检查。
+
 ## 默认集成的理由
 
 它补全“提出任务 → 产生结果 → 人工检查”的最后一步，也为其他插件页面和文件预览器提供稳定的主区域。

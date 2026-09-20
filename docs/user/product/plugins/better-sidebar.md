@@ -12,6 +12,8 @@ Users can inspect a file tree, editor, image and Markdown previews, real termina
 
 At desktop width, the split-pane workbench stays visible to the left of the conversation even when its dock state was collapsed in an earlier session. Drag the divider to resize the two regions, open files and previews in tabs, and use terminals or Git views to review code changes. On a narrow window, the conversation remains primary and Better Sidebar opens through its overlay control. Recommended-plugin destinations, embedded-browser external actions, and terminal HTTP(S) links open in the system browser. In YourBuddy, run a recommended plugin's install command once; its isolated Web Profile runs dependency build scripts without a separate `pnpm approve-builds` step.
 
+YourBuddy 0.3.9 verifies this desktop placement in the [release workbench screenshot](../../../releases/yourbuddy-v0.3.9/screenshots/workbench-primary.png) and records the focused presentation checks in its [verification record](../../../releases/yourbuddy-v0.3.9/README.md).
+
 ## Reason for default inclusion
 
 It completes the path from requesting work to producing results and human inspection, while giving other plugins a stable primary region for pages and file viewers.

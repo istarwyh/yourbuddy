@@ -12,6 +12,8 @@ One settings section combines Codex login state, available models, web search, a
 
 Open Settings → GPT Auth, complete login, inspect account state, and select a usable Codex model. The desktop composition also registers search and image capabilities: search uses standard `web_search`; `generate_image` creates or edits images and saves them as session attachments. Image tool availability depends on model declarations, login, account status, and plugin settings.
 
+YourBuddy 0.3.9 adapts its product smoke path to the current model-selector API and verifies that the GPT Auth status route and Codex model catalog resolve without making a real model request. OAuth and real provider traffic remain outside that verification.
+
 ## Reason for default inclusion
 
 Existing Codex users can start with a familiar account and use the same authentication entry for research and image tasks. Other providers remain configurable.

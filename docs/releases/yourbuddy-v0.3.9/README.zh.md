@@ -6,8 +6,8 @@
 
 - 发布标识：`yourbuddy-v0.3.9`。
 - 产品渠道：适用于 Apple Silicon macOS 的 YourBuddy 桌面应用。
-- 归档状态：发布前候选版本；已记录本地源码与组装产品检查，公开产物与官网部署仍待完成。
-- 发布源码：发布后记录不可变 Tag 与 Commit。
+- 归档状态：产品发布与公开产物核验已在记录范围内完成；官网部署与可下载验证归档仍待完成。
+- 发布源码：不可变 Tag `yourbuddy-v0.3.9`，Commit 为 `549011d29d7abd1b31e9f0e57047312ef5eb7b7b`。
 - 证据图集：最终组装产品 Smoke 生成的[主工作区截图](screenshots/workbench-primary.png)。
 - 证据下载：公开产物核验后附加独立验证资料 ZIP。
 
@@ -33,7 +33,7 @@
 
 ### 安装或升级
 
-发布后，从 0.3.9 GitHub Release 安装 Apple Silicon DMG，或在旧版 YourBuddy 中使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。
+从 [0.3.9 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9) 安装 [Apple Silicon DMG](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.9/yourbuddy-0.3.9-macos-arm64.dmg)，或在旧版 YourBuddy 中使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。
 
 ### 兼容性、迁移与限制
 
@@ -45,15 +45,16 @@
 |---|---|---|---|---|
 | 聚焦源码检查 | passed | 本地源码候选版本 | macOS 15.6.1 arm64；Node 22.22.3 | [本地验证记录](evidence/local-candidate-validation.txt) |
 | 组装 Host 与浏览器 Smoke | 在记录的受控范围内通过 | 已准备的本地产品 | 受控本地 Host 与 Chromium；无模型供应商 | [本地验证记录](evidence/local-candidate-validation.txt) |
-| 正式桌面发布 | not verified | 不可变 Tag | GitHub Actions | 待完成 |
-| 公开安装包与 Updater | not verified | 公开 Release 产物 | GitHub Release | 待完成 |
+| 正式桌面发布 | passed | 不可变 Tag `yourbuddy-v0.3.9` | GitHub Actions | [工作流记录](evidence/release-workflows.txt) |
+| 公开安装包与 Updater | 在记录范围内通过 | 五个匿名公开下载 | GitHub Release；macOS 15.6.1 arm64 | [产物记录](evidence/public-artifact-stage.json) |
+| 公开 App 与迁移运行时 | 在记录范围内通过 | Updater 归档与 DMG | macOS 15.6.1 arm64 | [运行时记录](evidence/public-runtime-stage.json) |
 | 官网同步 | not verified | 双语产品官网 | GitHub Pages | 待完成 |
 
 ## 场景：本地候选版本与组装产品验证
 
 - 状态：在记录的受控范围内通过。
 - 日期与时间：2026-09-20 16:50 UTC+08:00 CST。
-- 发布版本与 Commit：`yourbuddy-v0.3.9`；本地证据记录候选 Commit，发布后替换为不可变 Tag Commit。
+- 发布版本与 Commit：`yourbuddy-v0.3.9`；最终 Tag Commit 为 `549011d29d7abd1b31e9f0e57047312ef5eb7b7b`。
 - 受测构建：本地源码候选版本与已准备的组装 Host/Client 产品。
 - 环境：macOS 15.6.1 arm64；Node 22.22.3；pnpm 11.7.0；Rust 1.98.0；uv 0.12.5。
 - 证据来源：本次发布实测。
@@ -86,12 +87,26 @@
 
 受控浏览器 Smoke 不是打包后的原生 WebView，不能证明真实 OAuth、真实模型流量、Updater 安装、Apple Developer 签名、公证或线上官网交付。
 
+## 场景：正式发布与公开产物
+
+- 状态：在记录范围内通过。
+- 发布工作流：[GitHub Actions Run 35501402740](https://github.com/istarwyh/yourbuddy/actions/runs/35501402740)，18 分 28 秒成功完成。
+- Release：[YourBuddy 0.3.9](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9)，发布于 `2026-09-20T09:24:32Z`。
+- 证据来源：发布工作流与独立匿名下载。
+- 模型或服务：GitHub Actions 与 GitHub Release；未使用模型供应商。
+
+五个版本化产物和稳定 Updater Manifest 全部在未使用 GitHub 认证的情况下下载。三条校验和全部通过，每个摘要都与 GitHub API 一致，稳定 Updater Manifest 与版本化产物字节相同。`minisign-verify` 0.2.5 使用不可变 Tag 中的公钥验证了 Updater 归档的预哈希签名与受信注释。DMG 大小为 568,361,631 字节，SHA-256 为 `fea29a4eedef1417dfb4d66d657c5bf24444da7cab07f387efa505dca00bd7b0`；`hdiutil verify` 通过。
+
+Updater 归档与 DMG 包含字节一致的 YourBuddy 0.3.9 App 树，Bundle Identifier 为 `io.github.istarwyh.yourbuddy`，可执行文件为 arm64。严格代码签名验证通过；Gatekeeper 拒绝 ad-hoc 且未公证的 App。公开资源记录 DSH 0.1.5-rc.2、Better Sidebar 0.19.1、Codex Auth 0.3.2、Harbor Evolution 0.9.7、Plugin Marketplace 0.3.3 与 Context Doctor 0.7.2。将运行时复制到 App 外并让原 Python Home 不可用后，Harbor 报告 0.21.0，`harbor-dsh --help` 通过。
+
+正式工作流通过版本对齐、所选 DSH 检查、Harness 与桌面构建、桌面 Host 与 Shell 测试、迁移运行时测试、校验和、Updater Manifest 生成与发布。详见[工作流记录](evidence/release-workflows.txt)、[产物记录](evidence/public-artifact-stage.json)与[运行时记录](evidence/public-runtime-stage.json)。
+
 ## 交付状态
 
-- 产品发布状态：待发布；尚未创建 `yourbuddy-v0.3.9` Tag、GitHub Release 或安装包。
-- 验证资料归档状态：部分完成；已有本地证据，公开产物、运行时、工作流、官网与可下载 ZIP 记录仍待补充。
-- 站点同步状态：待同步；在 0.3.9 公开产物完成独立核验前，已核验的 0.3.8 下载仍是官网权威版本。
-- 未验证范围：公开安装包与 Updater 字节、Updater 签名、迁移后的打包运行时、原生 GUI 启动、打包 WebView 交互、旧版 Updater 安装、Apple Developer 签名与公证、OAuth、真实模型流量及线上官网部署。
+- 产品发布状态：已在 [YourBuddy 0.3.9](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9) 发布并完成独立核验。
+- 验证资料归档状态：部分完成；本地、工作流、公开产物与运行时证据已完成，官网记录和公开验证 ZIP 仍待补充。
+- 站点同步状态：待同步；仍需完成源码更新与线上交付检查。
+- 未验证范围：原生 GUI 启动、打包 WebView 交互、从旧版实际执行更新、Apple Developer 签名与公证、OAuth、真实模型流量及线上官网部署。
 
 ## 交付清单
 
@@ -102,7 +117,7 @@
 - [x] 明确标记仅测源码、合成数据、受控服务、待完成与未验证证据。
 - [x] 已在双语发布索引中添加版本条目。
 - [x] 已在提交后的候选版本上完成干净工作区准备与截图。
-- [ ] 已独立核验公开发布页、安装包、Updater 元数据、签名与 Hash。
+- [x] 已独立核验公开发布页、安装包、Updater 元数据、签名与 Hash。
 - [ ] 已完成双语官网同步并独立核验线上下载旅程。
 - [ ] 已创建、上传、解压并核验可下载验证资料归档。
 - [x] 已分别报告产品发布状态、验证资料归档状态、站点同步与未验证范围。

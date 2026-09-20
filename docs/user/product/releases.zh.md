@@ -6,6 +6,12 @@
 
 ## YourBuddy
 
+### 0.3.9 — 2026-09-20
+
+YourBuddy 0.3.9 修复了旧会话把 Dock 状态保留为折叠时 Better Sidebar 主工作区空白的问题，并适配当前模型选择器 API，恢复 GPT Auth 模型加载。五个带版本号的公开产物均已匿名下载并完成核验，稳定更新清单与版本化清单一致，Updater 签名通过密码学验证，DMG 与 Updater 中的 App 文件树完全一致。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9) · [工作台截图](../../releases/yourbuddy-v0.3.9/screenshots/workbench-primary.png) · [验证记录](../../releases/yourbuddy-v0.3.9/README.zh.md) · [下载页](download.zh.md)
+
 ### 0.3.8 — 2026-09-20
 
 YourBuddy 0.3.8 将桌面运行时同步至 DSH 0.1.5-rc.2，并内置 Better Sidebar 0.19.1、Harbor Evolution 0.9.7、Plugin Marketplace 0.3.3 与 Context Doctor 0.7.2。Better Sidebar 使用 DSH 原生右侧栏，同时保留主工作区、可调分隔、抽屉、底部工作区、链接、终端与媒体行为。Marketplace 一键安装要求 npm 包明确关联所选代码仓库，并声明 DSH Bundle 补丁。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、产品 provenance 和迁移运行时通过检查。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。

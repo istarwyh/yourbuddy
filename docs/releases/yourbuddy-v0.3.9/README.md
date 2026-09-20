@@ -6,8 +6,8 @@ This archive records the Better Sidebar workbench, GPT Auth, and compact macOS w
 
 - Release identifier: `yourbuddy-v0.3.9`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: pre-publication candidate; local source and assembled-product checks are recorded, while public artifacts and website deployment remain pending.
-- Release source: the immutable tag and commit will be recorded after publication.
+- Archive state: product publication and public-artifact verification are complete within the recorded scope; website deployment and the downloadable verification archive remain pending.
+- Release source: immutable tag `yourbuddy-v0.3.9` at `549011d29d7abd1b31e9f0e57047312ef5eb7b7b`.
 - Evidence gallery: [workbench-primary screenshot](screenshots/workbench-primary.png) from the final assembled-product smoke.
 - Evidence download: the dedicated verification ZIP will be attached after public artifact verification.
 
@@ -33,7 +33,7 @@ Open any YourBuddy Session to use Better Sidebar in the middle workbench. Open *
 
 ### Install or upgrade
 
-After publication, install the Apple Silicon DMG from the 0.3.9 GitHub Release, or use **Settings → General → Application lifecycle → Check for updates** from an earlier YourBuddy version.
+Install from the [0.3.9 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9) with the [Apple Silicon DMG](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.9/yourbuddy-0.3.9-macos-arm64.dmg), or use **Settings → General → Application lifecycle → Check for updates** from an earlier YourBuddy version.
 
 ### Compatibility, migration, and limitations
 
@@ -45,15 +45,16 @@ Existing application data is retained and no migration is required. The desktop 
 |---|---|---|---|---|
 | Focused source checks | passed | local source candidate | macOS 15.6.1 arm64; Node 22.22.3 | [local validation](evidence/local-candidate-validation.txt) |
 | Assembled Host and browser smoke | passed within recorded controlled scope | prepared local product | controlled local Host and Chromium; no model provider | [local validation](evidence/local-candidate-validation.txt) |
-| Formal desktop publication | not verified | immutable tag | GitHub Actions | pending |
-| Public installer and updater | not verified | public release assets | GitHub Release | pending |
+| Formal desktop publication | passed | immutable tag `yourbuddy-v0.3.9` | GitHub Actions | [workflow record](evidence/release-workflows.txt) |
+| Public installer and updater | passed within recorded scope | five anonymous public downloads | GitHub Release; macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json) |
+| Published App and relocated runtime | passed within recorded scope | updater archive and DMG | macOS 15.6.1 arm64 | [runtime record](evidence/public-runtime-stage.json) |
 | Website synchronization | not verified | bilingual product site | GitHub Pages | pending |
 
 ## Scenario: local candidate and assembled-product validation
 
 - Status: passed within the recorded controlled scope.
 - Date and time: 2026-09-20 16:50 UTC+08:00 CST.
-- Release and commit: `yourbuddy-v0.3.9`; candidate commit is recorded in the local evidence and will be replaced by the immutable tag commit after publication.
+- Release and commit: `yourbuddy-v0.3.9`; final tag commit `549011d29d7abd1b31e9f0e57047312ef5eb7b7b`.
 - Build under test: local source candidate and prepared assembled Host/Client product.
 - Environment: macOS 15.6.1 arm64; Node 22.22.3; pnpm 11.7.0; Rust 1.98.0; uv 0.12.5.
 - Evidence origin: this release run.
@@ -86,12 +87,26 @@ The focused checks and complete clean-tree `prepare:release` passed at candidate
 
 The controlled browser smoke is not the packaged native WebView and does not prove real OAuth, real model traffic, updater installation, Apple Developer signing, notarization, or live website delivery.
 
+## Scenario: formal publication and public artifacts
+
+- Status: passed within the recorded scope.
+- Publication workflow: [GitHub Actions run 35501402740](https://github.com/istarwyh/yourbuddy/actions/runs/35501402740), completed successfully in 18 minutes 28 seconds.
+- Release: [YourBuddy 0.3.9](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9), published at `2026-09-20T09:24:32Z`.
+- Evidence origin: release workflow plus independent anonymous downloads.
+- Model or service: GitHub Actions and GitHub Release; no model provider.
+
+All five versioned assets and the stable updater manifest were downloaded without GitHub authentication. All three checksum entries passed, every digest matched the GitHub API, and the stable updater manifest was byte-identical to the versioned asset. `minisign-verify` 0.2.5 verified the updater archive's prehashed signature and trusted comment using the public key from the immutable tag. The DMG is 568,361,631 bytes with SHA-256 `fea29a4eedef1417dfb4d66d657c5bf24444da7cab07f387efa505dca00bd7b0`; `hdiutil verify` passed.
+
+The updater archive and DMG contain byte-identical YourBuddy 0.3.9 App trees with bundle identifier `io.github.istarwyh.yourbuddy` and an arm64 executable. Strict code-signature verification passed; Gatekeeper rejected the ad-hoc, non-notarized App. The published resources identify DSH 0.1.5-rc.2, Better Sidebar 0.19.1, Codex Auth 0.3.2, Harbor Evolution 0.9.7, Plugin Marketplace 0.3.3, and Context Doctor 0.7.2. A copied runtime with the original Python home unavailable reported Harbor 0.21.0 and passed `harbor-dsh --help`.
+
+The formal workflow passed version alignment, the selected DSH check, Harness and desktop builds, desktop Host and shell tests, relocated runtime testing, checksums, updater-manifest generation, and publication. See the [workflow record](evidence/release-workflows.txt), [artifact record](evidence/public-artifact-stage.json), and [runtime record](evidence/public-runtime-stage.json).
+
 ## Delivery status
 
-- Product publication status: pending; no `yourbuddy-v0.3.9` tag, GitHub Release, or installer has been published yet.
-- Verification archive status: partial; local evidence exists, while public asset, runtime, workflow, website, and downloadable-ZIP records remain pending.
-- Website synchronization status: pending; the verified 0.3.8 download remains authoritative until 0.3.9 public assets are independently checked.
-- Unverified scope: public installer and updater bytes, updater signature, relocated packaged runtime, native GUI startup, packaged-WebView interaction, updater installation from an older release, Apple Developer signing and notarization, OAuth, real model traffic, and live website deployment.
+- Product publication status: published and independently checked at [YourBuddy 0.3.9](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9).
+- Verification archive status: partial; local, workflow, public-asset, and runtime evidence is complete, while the website record and public verification ZIP remain pending.
+- Website synchronization status: pending; source updates and live delivery checks remain to be completed.
+- Unverified scope: native GUI startup, packaged-WebView interaction, updater installation from an older release, Apple Developer signing and notarization, OAuth, real model traffic, and live website deployment.
 
 ## Delivery checklist
 
@@ -102,7 +117,7 @@ The controlled browser smoke is not the packaged native WebView and does not pro
 - [x] Source-only, synthetic-data, controlled-service, pending, and unverified evidence is labelled explicitly.
 - [x] The release entry was added to the bilingual release index.
 - [x] The final clean-tree preparation and screenshot capture passed on the committed candidate.
-- [ ] The public release page, installer, updater metadata, signatures, and hashes were independently verified.
+- [x] The public release page, installer, updater metadata, signatures, and hashes were independently verified.
 - [ ] The website was synchronized in both languages and the live download journey was independently verified.
 - [ ] The downloadable verification archive was created, uploaded, extracted, and checked.
 - [x] Product publication, archive status, website synchronization, and unverified scope are reported separately.
