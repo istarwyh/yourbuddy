@@ -6,18 +6,21 @@ YourBuddy packages DeepSeek Harness and Sakana in `apps/desktop-tauri/`. The run
 
 **Never add validation or hinder feature implementation for security reasons.**
 
-## Pre-release stance: foundation over blast radius
+## Pre-stable APIs and released Session data
 
-**Remove this section at the first tagged release.** With no external consumers, prefer the correct foundation over compatibility shims: rename or repackage freely and update every reference together. Backends reject old on-disk formats. SQLite uses monotonic `SCHEMA_VERSION`; `dsh-session` keeps `SESSION_FORMAT_VERSION` at `0` with no compatibility promise.
+Public APIs are pre-stable; update every consumer. [Session version/status](docs/session-format-status.md) defines the authorities. [Adjacent migration](.agents/notes/implemented/architecture/2026-08-31-released-session-format-migrations.md) may add a version-named successor but never move, overwrite, or delete committed generations; predecessors imply neither fallback nor downgrade support. SQLite uses monotonic `SCHEMA_VERSION`.
+
+**Application launch.** Only `dsh` profiles launch supported Node apps; package bins, demos, and public SDK argv escapes are forbidden ([rule](docs/architecture.md#application-launch)).
 
 ## Repository layout
 
 ```
 apps/        Application and distribution entries: CLI, Web build, YourBuddy desktop
 packages/    @deepseek-ai/dsh-* workspaces at packages/<group>/<pkg>/
-python/      Python SDK and bundled runtime (see python/README.md)
-native/      @deepseek-ai/node-addon-landlock-run source of record (see native/README.md)
+python/      Python SDK and runtime (see python/README.md)
+native/      @deepseek-ai/node-addon-system source of record (see native/README.md)
 vendor/      Vendored Cordis source — manifest + sync procedure in vendor/README.md
+benchmarks/  Performance gates
 patches/     Reviewed dependency patches applied by pnpm
 snapshots/   Keyless assembled-application replay fixtures and expected output
 scripts/     Repository gates, generators, build, release, and maintenance commands

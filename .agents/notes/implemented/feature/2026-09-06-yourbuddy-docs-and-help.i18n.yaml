@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-06-yourbuddy-docs-and-help.md
-2026-09-06-yourbuddy-docs-and-help.md: cf8d10f7b923b2621098957049bea9094c91c1eb
-2026-09-06-yourbuddy-docs-and-help.zh.md: b00699a04654d19f333841ca8845f1bbcf6db861
+2026-09-06-yourbuddy-docs-and-help.md: 519731fc6372db79220821c99d325702f4a5a9d2
+2026-09-06-yourbuddy-docs-and-help.zh.md: c5272997cb190e78a8d22ab2aadd8116e4f4ec86

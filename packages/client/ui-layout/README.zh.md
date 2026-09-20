@@ -1,5 +1,5 @@
 ---
-description: "Web GUI 的外壳布局：AppFrame 栏位、可选工作台布局、拖动柄、让步行为、面板几何与主题呈现。"
+description: "Web GUI 的外壳布局：AppFrame 栏位、可选工作台布局、面板几何、全局面板选择与主题呈现。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包提供 Web GUI 的外壳布局。AppFrame 默认渲染侧栏、对话与详情栏。可选、Root Scope 的 `workbench` Occupant 会成为桌面端可伸缩主区域，并把对话移入可调整宽度的辅助栏；低于 768px 时，对话仍是主区域，工作台通过 Overlay 以抽屉呈现。`ctx.layout` 在保留现有侧栏和详情动作的同时协调工作台宽度。本包还把解析后的主题投影到 document。
+本包提供 Web GUI 的 AppFrame、边缘栏宽度与 `ctx.layout` 呈现控制。常规布局包含侧栏、主内容和右栏。可选的 root 作用域 `workbench` 占用方会成为可伸缩的桌面主界面，并把选中的主内容移入可调整大小的辅助栏；窗口低于768px时，主内容仍为主界面，工作台通过 overlay 呈现。主题呈现器负责配色、别名 token、正文字号与 document 元数据。
 
 ## 目录
 
@@ -25,7 +25,9 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在 root 槽位挂载本插件；它围绕侧栏、对话、详情、可选工作台与 Shell Overlay 槽位渲染应用框架。没有工作台 Occupant 时，行为仍是 DSH 三栏布局。工作台插件通过 `ctx.layout` 注册一个共享宽度 Binding；随后由 AppFrame 管理外层辅助对话拖动柄，插件负责保存宽度。
+本插件在 root slot 组合侧栏、中央内容与右栏。左栏为264～420px，默认280px，收起后保留56px；窗口低于1024px时自动收起，打开右栏也会收起手动展开的左栏。右栏首次打开使用窗口宽度的45%，之后保留用户像素偏好，上限为70%；中栏不足400px时先把右栏压到300px，仍不足则通知占用方收起，最后才继续压缩中栏。拖拽跟手且无过渡延迟，关闭或全屏时不显示右栏拖拽区。
+
+全局面板占据 root 作用域的 `main` keyed slot；`conversation` 是为会话界面保留的 key。`ctx.layout.selectPanel(id)` 选中已注册面板，`null` 则选中会话界面，但不改变当前会话。默认组合不注册任何全局面板。工作台插件占据 `workbench`，并通过 `ctx.layout` 注册一个共享宽度绑定；AppFrame 持有辅助栏拖拽手柄，插件持有宽度持久化。
 
 ### 主题呈现
 
@@ -39,7 +41,9 @@ kind: "package-reference"
 <details>
 <summary>实现细节——点击展开</summary>
 
-一次 `register()` 调用把 `AppFrame` 贡献进运行时的内建 `'root'` 槽位，并声明五个子槽位（`sidebar`、`conversation`、`workbench`、`details`、`shell.overlay`）、安放布局 Store 并接好 `ctx.layout`。`registerWorkbench()` 安装一个随生命周期释放的宽度 Binding；释放后恢复普通对话布局。DSH 的瞬时布局 Store 仍只管理侧栏与详情几何，工作台提供方可以自行持久化辅助栏宽度。AppFrame 始终挂载对话和详情，并把工作台挂载到桌面主栏或窄窗口 Overlay。主题呈现器仍是独立的纯 DOM Effect。
+`selectPanel(id)` 在改变选中态前检查实时 `main` 注册表；缺失的 key 会抛错并保留当前面板。`beginNavigation()` 为异步 UI 导航返回 abort signal。后续调用、有效面板选择（包括重复选择）或布局释放会中止该 signal，但不取消底层会话创建。消费者在提交导航或搬移草稿前检查 signal。
+
+一次注册声明五个子slot并绑定 `ctx.layout` 的 `selectPanel`、`toggleSidebar`、`openRightbar(track, fullscreen)`、`closeRightbar` 与 `registerWorkbench`。`registerWorkbench()` 安装一个受生命周期约束的宽度绑定；它的 disposer 会恢复常规主内容布局。同一个 root 存储把 `panelInfo` 选中态与 `layoutInfo` 测量、宽度偏好、呈现报告分开。`usePanelInfo` 订阅引用稳定的选中态对象，AppFrame 订阅引用稳定的布局对象。`rightbar` 的owner参数为实际 `width`、`viewportWidth` 与普通呈现的 `canShow`；占用方在空间不足时执行确定性的收起，变宽不自行重新展开。全屏隐藏宽度手柄，但不自行释放占用方要求保留的轨道。AppFrame 保持各列容器挂载。右栏的 root 控制器仅在选中会话界面时，经 `SessionProvider` 渲染 `rightbar.session`；内容卸载时的报告释放列宽。独立的标题组件仅在会话界面可见时使用所选会话标题，以构建配置的产品标题或本地化 `common.brand.localBuild` 为回退值；语言变化会更新该回退值。主题呈现器是第二个 effect：从解析后的快照做纯 DOM 写入——初始状态经 getter 读取一次，此后仅事件驱动，不经过 React。它先应用调色板、字号与 token 变量，再把渲染出的背景测量为唯一的颜色依据。 全屏呈现禁用网格和手柄过渡；占用方完全覆盖框架后才报告新的列宽。 退出全屏时，框架先保持无过渡并安装目标布局：关闭移除右轨道，恢复保留右轨道。后续普通几何操作恢复正常过渡。
 
 </details>
 
@@ -51,8 +55,9 @@ kind: "package-reference"
 当布局面不够用时阅读以下页面。它们从框架进入它所渲染的栏与它所呈现的主题。
 
 - [ui-sidebar](../ui-sidebar/README.zh.md)——占据 `sidebar` 栏及其座位。
-- [ui-conversation](../ui-conversation/README.zh.md)——占据 `conversation` 与 `details` 栏。
-- [YourBuddy 工作台布局](../../../docs/tech/202609/workbench-layout-compatibility.zh.md)——下游组合与刷新来源记录。
+- [ui-conversation](../ui-conversation/README.zh.md)——占据 `main` 中的 `conversation` key。
+- [ui-sidebar-right](../ui-sidebar-right/README.zh.md)——以每会话一个停靠面占据 `rightbar` 栏。
+- [YourBuddy 工作台布局](../../../docs/tech/202609/workbench-layout-compatibility.zh.md)——下游组合与刷新来源。
 - [ui-theme](../ui-theme/README.zh.md)——呈现器消费其解析快照的主题 seam。
 - [Web 客户端架构](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.zh.md)——浏览器插件行如何加载并注册槽位。
 
@@ -74,8 +79,9 @@ kind: "package-reference"
 
 这些限制界定了当前布局行为。它们是当前包约束，不是通用窗口管理器对比或任务积压。
 
-- **面板几何是瞬时状态**——重新加载会恢复侧栏默认值并保持详情栏关闭；在不同会话 id 之间切换同样会关闭详情栏并忘记拖动后的宽度，而未选中表面以零宽度渲染详情栏却不修改几何。
-- **让步链自动关闭通过推导零宽度实现，不触碰偏好宽度**——窗口变宽时面板自行恢复；消费方不得把 store 中的详情宽度当作渲染真值。
+- **面板几何是瞬时状态**——重新加载会恢复侧栏默认值并隐藏右侧面板；每个拖出的宽度都是一份框架级偏好，不是按 Session 的事实。
+- **极窄窗口**——右栏关闭后，中栏仍可能小于400px；左侧56px控制栏保留。
+- **轨道与面板沿同一条曲线运动**——框架的轨道过渡和占位方的滑入读取同一组时长与缓动变量；占位方若自用一套，挤压时面板边缘就会与对话边缘脱开。
 - **挤压重排期间无滚动锚定**——布局变化可能移动读者的视口。
 
 <a id="dev-note"></a>
@@ -88,4 +94,4 @@ kind: "package-reference"
 
 </details>
 
-**运行时不变式：** 不发布伴生入口。`ctx.layout` 后的 viewing-state store 不发出 Cordis 事件；clamp、prune 与 concession-chain 顺序由本包测试覆盖。
+**运行时不变式：** 不发布伴生入口。`ctx.layout` 后的 viewing-state store 不发出 Cordis 事件；clamp 与轨道的时序由本包的 columns 与 service 规格直接断言。

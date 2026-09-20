@@ -1,9 +1,9 @@
 /**
- * Enforce intra-package domain layering inside `packages/client/*\/src/client/`.
- * verify-module-graph covers package-level edges; this gate covers the
- * directory level: domain directories may import `contract/` and never each
- * other, and only the assembly point (`apply.ts` / `index.ts`) may import
- * across domains.
+ * Enforce intra-package domain layering for Client packages that declare a
+ * `src/client/contract/` layer. verify-module-graph covers package-level edges;
+ * this gate covers the opted-in directory level: domain directories may import
+ * `contract/` and never each other, and only the assembly point (`apply.ts` /
+ * `index.ts`) may import across domains.
  *
  * Layer model (lower may not import higher):
  *   0  contract/            shared contract API (types + slot declarations)
@@ -85,8 +85,9 @@ function main(): void {
     const clientDir = join(CLIENT_DIR, pkg, 'src/client')
     try {
       if (!statSync(clientDir).isDirectory()) continue
+      if (!statSync(join(clientDir, 'contract')).isDirectory()) continue
     } catch {
-      // No client half in this package — nothing to layer-check.
+      // No client half or declared contract layer — nothing to layer-check.
       continue
     }
     violations.push(...checkPackage(pkg, clientDir))

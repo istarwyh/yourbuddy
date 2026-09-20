@@ -16,7 +16,7 @@ Keep native DSH packages, composition, public extension APIs, and ordinary proje
 
 ## Related decisions
 
-The [product distribution](../../implemented/feature/2026-08-22-yourbuddy-product-workbench.md), [plugin-owned settings](../../implemented/architecture/2026-08-12-plugin-owned-settings-surface.md), and [dynamic toolset rationale](../../implemented/feature/2026-07-08-self-referential-cordis-toolset.md) retain independent value. This proposal supersedes none of them and archives no records. Current dynamic API names and behavior belong to the [tool package](../../../../packages/extensions/tool-cordis/README.md), not to this proposal.
+The [product distribution](../../implemented/feature/2026-08-22-yourbuddy-product-workbench.md), plugin-owned settings, and [dynamic toolset rationale](../../implemented/feature/2026-07-08-self-referential-cordis-toolset.md) retain independent value. This proposal supersedes none of them and archives no records. Current dynamic API names and behavior belong to the [tool package](../../../../packages/extensions/tool-cordis/README.md), not to this proposal.
 
 ## Alternatives considered
 

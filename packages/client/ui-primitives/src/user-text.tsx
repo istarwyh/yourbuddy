@@ -2,19 +2,27 @@
  * Display projection of reference forms in sent user text (bubble and queue
  * rows). The logged model text remains the single truth; this is presentation
  * only. User-authored runs remain inline; standalone page-context blocks
- * render as collapsed attachments. Three decoration sources, by precedence:
- * the wire session form
- * `@[label](dsh-session:...)` folds to its label; exact session labels
- * supplied by an adjacent recall decorate their bare `@label` mention; and
- * plain `/name` / `@name` word-boundary tokens decorate by shape alone (sent
- * tokens were validated at compose time).
+ * render as collapsed attachments. Four decoration sources, by precedence:
+ * the wire session form `@[label](dsh-session:...)` folds to its label; exact
+ * session labels supplied by an adjacent recall decorate their bare `@label`
+ * mention; plain `@name` word-boundary tokens decorate by shape alone; and a
+ * plain `/name` token decorates only when the caller names it — a skill the
+ * host actually loaded for that message (ui-chat reads the step's
+ * `skill-invocation` injections) or the command a command-input bubble echoes
+ * — so `/123` or a stray `/word` stays plain text. A `/name` token is
+ * whitespace-bounded like the host skill gesture (`dsh-tool-skill`): it ends at
+ * whitespace or the text end, so slash paths (`/nfs-hg/xxx`, `/plan.md`) and
+ * punctuation-glued tokens (`/plan。`) stay plain even for a loaded name.
  */
 import { Fragment, type ReactNode } from 'react'
+import clsx from 'clsx'
 import { ReferenceIcon } from './ReferenceIcon.tsx'
 import css from './user-text.module.css'
 
 /** The wire form a session chip serializes to; label is the display text. */
 const SESSION_WIRE_RE = /@\[([^\]\n]+)\]\(dsh-session:[^)\s]+\)/gu
+/** Sentence punctuation a bare `@name` token may carry without being part of the reference. */
+const TRAILING_PUNCTUATION_RE = /[.,;:!?，。；：！？]+$/u
 
 interface PageContext {
   readonly source: string
@@ -54,9 +62,17 @@ interface DecorationRange {
  * Project user text and standalone context blocks without changing their logged content.
  * @param text - authored text, or separate blocks with authored text first (empty for image-only sends).
  * @param sessionLabels - exact session mention labels associated by an adjacent recall.
+ * @param slashNames - names a `/name` token may decorate as: the skills the host loaded for this message,
+ *   or the command a command bubble echoes.
+ * @param slashKind - the chip kind those tokens render as.
  * @returns user text with reference chips and collapsed, inspectable page-context attachments.
  */
-export function projectUserText(text: string | readonly string[], sessionLabels: readonly string[]): ReactNode
+export function projectUserText(
+  text: string | readonly string[],
+  sessionLabels: readonly string[],
+  slashNames?: readonly string[],
+  slashKind?: 'skill' | 'command',
+): ReactNode
 /**
  * Recover authored text for copy and editing; automatic context is prepared separately.
  * @param text - authored text, or separate blocks with authored text first (empty for image-only sends).
@@ -65,28 +81,32 @@ export function projectUserText(text: string | readonly string[], sessionLabels:
  * @returns authored text with its whitespace and reference wire forms unchanged.
  */
 export function projectUserText(text: string | readonly string[], sessionLabels: readonly string[], mode: 'editable'): string
-/**
- * @param text - authored text or separate logged text blocks.
- * @param sessionLabels - exact adjacent recall labels.
- * @param mode - optional authored-text projection for editing or copying.
- * @returns rendered text and attachments, or unchanged authored text.
- */
 export function projectUserText(
-  text: string | readonly string[], sessionLabels: readonly string[], mode?: 'editable',
+  text: string | readonly string[],
+  sessionLabels: readonly string[],
+  slashNamesOrMode: readonly string[] | 'editable' = [],
+  slashKind: 'skill' | 'command' = 'skill',
 ): ReactNode {
   const parts = typeof text === 'string'
     ? [{ text, context: undefined }]
     : text.map((value, index) => ({ text: value, context: index === 0 ? undefined : pageContext(value) }))
-  if (mode === 'editable') return parts.filter(part => part.context === undefined).map(part => part.text).join('')
+  if (slashNamesOrMode === 'editable') {
+    return parts.filter(part => part.context === undefined).map(part => part.text).join('')
+  }
   return <>{parts.map((part, index) => part.context === undefined
-    ? <Fragment key={index}>{decorateText(part.text, sessionLabels)}</Fragment>
+    ? <Fragment key={index}>{decorateText(part.text, sessionLabels, slashNamesOrMode, slashKind)}</Fragment>
     : <details key={index} className={css.pageContext} data-page-context={part.context.source}>
       <summary className={css.contextLabel}>{part.context.label}</summary>
       <pre className={css.contextText}>{part.context.description ?? part.context.text}</pre>
     </details>)}</>
 }
 
-function decorateText(text: string, sessionLabels: readonly string[]): ReactNode {
+function decorateText(
+  text: string,
+  sessionLabels: readonly string[],
+  slashNames: readonly string[],
+  slashKind: 'skill' | 'command',
+): ReactNode {
   const ranges: DecorationRange[] = []
   SESSION_WIRE_RE.lastIndex = 0
   let wire: RegExpExecArray | null
@@ -96,7 +116,7 @@ function decorateText(text: string, sessionLabels: readonly string[]): ReactNode
       end: wire.index + wire[0].length,
       label: wire[0],
       kind: 'session',
-      display: wire[1] as string, // non-optional capture in SESSION_WIRE_RE
+      display: wire[1] as string,
     })
   }
   for (const rawLabel of [...new Set(sessionLabels)].sort((a, b) => b.length - a.length)) {
@@ -107,15 +127,18 @@ function decorateText(text: string, sessionLabels: readonly string[]): ReactNode
       start = text.indexOf(label, start + label.length)
     }
   }
-  const re = /(^|\s)(\/[\w-]+|@"[^"\n]+"|@[^\s]+)/gu
+  // A `/` token ends at whitespace or the text end like the host skill
+  // gesture; only `@` tokens shed sentence punctuation below.
+  const re = /(^|\s)(\/[\w-]+(?=\s|$)|@"[^"\n]+"|@[^\s]+)/gu
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
-    const tokenStart = m.index + (m[1] as string).length // (^|\s) captures '' at line start
-    const rawLabel = m[2] as string // non-optional alternation capture
+    const tokenStart = m.index + (m[1] as string).length
+    const rawLabel = m[2] as string
     const label = rawLabel.startsWith('@"')
       ? rawLabel
-      : rawLabel.replace(/[.,;:!?，。；：！？]+$/gu, '')
+      : rawLabel.replace(TRAILING_PUNCTUATION_RE, '')
     if (label.length <= 1) continue
+    if (label.startsWith('/') && !slashNames.includes(label.slice(1))) continue
     ranges.push({ start: tokenStart, end: tokenStart + label.length, label, kind: 'plain' })
   }
   const rankOf = (range: DecorationRange): number => range.kind === 'session' ? 0 : 1
@@ -143,8 +166,8 @@ function decorateText(text: string, sessionLabels: readonly string[]): ReactNode
     parts.push(
       <span
         key={tokenStart}
-        className={css.refChip}
-        data-ref-chip={referenceKind ?? 'skill'}
+        className={clsx(css.refChip, referenceKind === undefined && css.slashChip)}
+        data-ref-chip={referenceKind ?? slashKind}
         title={label}
       >
         {referenceKind !== undefined && (

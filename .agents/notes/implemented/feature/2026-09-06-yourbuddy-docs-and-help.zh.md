@@ -16,7 +16,7 @@ Y8 通过双语产品指南和应用内 Help 串起默认使用、扩展选择�
 
 ## 相关决策
 
-[开发平台实验提案](../../rejected/feature/2026-09-06-yourbuddy-plugin-development-experiments.zh.md)不作为当前任务，保留拒绝理由以防重新扩大范围。[产品发行组合](../feature/2026-08-22-yourbuddy-product-workbench.zh.md)、[插件自有设置](../architecture/2026-08-12-plugin-owned-settings-surface.zh.md)与[动态工具机制](../feature/2026-07-08-self-referential-cordis-toolset.zh.md)继续维护独立决策；本决策不取代这些实现记录，不归档它们。
+[开发平台实验提案](../../rejected/feature/2026-09-06-yourbuddy-plugin-development-experiments.zh.md)不作为当前任务，保留拒绝理由以防重新扩大范围。[产品发行组合](../feature/2026-08-22-yourbuddy-product-workbench.zh.md)、插件自有设置与[动态工具机制](../feature/2026-07-08-self-referential-cordis-toolset.zh.md)继续维护独立决策；本决策不取代这些实现记录，不归档它们。
 
 ## 考虑过的替代方案
 

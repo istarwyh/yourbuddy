@@ -30,7 +30,6 @@
 | YourBuddy 桌面应用 | `yourbuddy-vX.Y.Z` | [桌面发布指南](../../apps/desktop-tauri/README.zh.md)与 [macOS 工作流](../../.github/workflows/desktop-release.yml) | GitHub Release 中的 DMG、带签名的更新归档及签名、`SHA256SUMS.txt` 和稳定更新 Manifest |
 | DSH 包与文档 | `dsh-vX.Y.Z` | [npm 打包工作流](../../.github/workflows/release.yml)、[手动 npm 发布](../../.github/workflows/release-publish.yml)和[文档部署](../../.github/workflows/docs-pages.yml) | npm 上已发布的版本与文件、安装后 Smoke，以及可以访问的文档站点 |
 | Vendored Cordis 包 | `vendor-<package>-vX.Y.Z` | [Vendor 打包工作流](../../.github/workflows/release-vendor.yml)和[手动 npm 发布](../../.github/workflows/release-vendor-publish.yml) | npm 上每个计划发布的包版本及其注册表完整性 |
-| Landlock Launcher 包 | `landlock-run-vX.Y.Z` | [Landlock 发布指南](../../native/landlock-run/docs/release.md)和[发布工作流](../../.github/workflows/landlock-run-release.yml) | npm 上计划发布的每个平台包与入口包，包括预期 Dist Tag |
 | Python SDK 与运行时 | `python-vX.Y.Z` | [Python 贡献者指南](../../python/development.zh.md)、[GitHub 发布](../../.github/workflows/python-release.yml)和 [GitLab 发布](../../.gitlab-ci.yml) | 每个选定 PyPI 注册表中的 SDK 与全部目标运行时 Wheel 包，以及安装 Wheel 包后的 Smoke |
 
 当次发布未涉及的渠道在版本页中标记为不适用。不得为了让归档看似完整而运行无关发布家族。

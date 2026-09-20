@@ -16,7 +16,7 @@ The first-party Personal Workbench plugin registers Help through the public side
 
 ## Related decisions
 
-The [development-platform experiment proposal](../../rejected/feature/2026-09-06-yourbuddy-plugin-development-experiments.md) is not the current task; its rejection rationale prevents renewed scope expansion. The [product distribution](../feature/2026-08-22-yourbuddy-product-workbench.md), [plugin-owned settings](../architecture/2026-08-12-plugin-owned-settings-surface.md), and [dynamic tool mechanism](../feature/2026-07-08-self-referential-cordis-toolset.md) retain independent decisions. This decision neither supersedes nor archives those implemented records.
+The [development-platform experiment proposal](../../rejected/feature/2026-09-06-yourbuddy-plugin-development-experiments.md) is not the current task; its rejection rationale prevents renewed scope expansion. The [product distribution](../feature/2026-08-22-yourbuddy-product-workbench.md), plugin-owned settings, and [dynamic tool mechanism](../feature/2026-07-08-self-referential-cordis-toolset.md) retain independent decisions. This decision neither supersedes nor archives those implemented records.
 
 ## Alternatives considered
 

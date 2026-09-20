@@ -16,7 +16,7 @@ Y8 需要可直接使用的默认工作台，也需要支持专业用户实现�
 
 ## 相关决策
 
-[产品发行组合](../../implemented/feature/2026-08-22-yourbuddy-product-workbench.zh.md)、[插件自有设置](../../implemented/architecture/2026-08-12-plugin-owned-settings-surface.zh.md)和[动态工具集原理](../../implemented/feature/2026-07-08-self-referential-cordis-toolset.zh.md)仍有独立价值。本提案不取代这些记录，也不归档任何记录。动态接口的当前名称和行为由[工具包](../../../../packages/extensions/tool-cordis/README.zh.md)维护，不由本提案定义。
+[产品发行组合](../../implemented/feature/2026-08-22-yourbuddy-product-workbench.zh.md)、插件自有设置和[动态工具集原理](../../implemented/feature/2026-07-08-self-referential-cordis-toolset.zh.md)仍有独立价值。本提案不取代这些记录，也不归档任何记录。动态接口的当前名称和行为由[工具包](../../../../packages/extensions/tool-cordis/README.zh.md)维护，不由本提案定义。
 
 ## 考虑过的替代方案
 

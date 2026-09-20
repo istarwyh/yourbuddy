@@ -1,5 +1,5 @@
 ---
-description: "Shell layout for the Web GUI: AppFrame columns, optional workbench placement, drag handles, concession behavior, panel geometry, and theme presentation."
+description: "Shell layout for the Web GUI: AppFrame columns, optional workbench placement, panel geometry, global-panel selection, and theme presentation."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package provides the shell layout of the Web GUI. AppFrame normally renders sidebar, conversation, and details columns. An optional root-scoped `workbench` occupant becomes the flexible desktop primary surface and moves conversation into a resizable auxiliary column; below 768px, conversation remains primary and the workbench renders through the overlay as a drawer. The `ctx.layout` service coordinates the workbench width while preserving the existing sidebar and details actions. The package also projects the resolved theme onto the document.
+This package provides the Web GUI's AppFrame, edge-column widths, and `ctx.layout` presentation control. Its ordinary layout has sidebar, main-content, and right-panel columns. An optional root-scoped `workbench` occupant becomes the flexible desktop primary surface and moves the selected main content into a resizable auxiliary column; below 768px, main content remains primary and the workbench renders through the overlay. The theme presenter owns color scheme, alias tokens, content font size, and document metadata.
 
 ## Table of Contents
 
@@ -25,7 +25,9 @@ This package provides the shell layout of the Web GUI. AppFrame normally renders
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount this plugin at the root slot; it renders the app frame around the sidebar, conversation, details, optional workbench, and shell overlay slots. Without a workbench occupant, behavior remains the three-column DSH layout. A workbench plugin registers one shared width binding through `ctx.layout`; AppFrame then owns the outer auxiliary-conversation drag handle while the plugin owns width persistence.
+The root slot composes the sidebar, main content, and right column. The sidebar spans 264–420px, defaults to 280px, and retains a 56px rail when collapsed; below 1024px it collapses automatically, and opening the right panel collapses a manually expanded sidebar. The right panel first opens at 45% of the viewport, then retains the user's pixel preference, capped at 70%. To protect 400px for the center, the frame first reduces the right panel to 300px, then reports insufficient room so its occupant closes it, and only then compresses the center further. Dragging has no transition delay; the right handle is absent while closed or fullscreen.
+
+Global panels occupy the root-scoped `main` keyed slot; `conversation` is the reserved key for the Conversation. `ctx.layout.selectPanel(id)` selects a registered panel, and `null` selects the Conversation without changing the current Session. No global panel is registered by the shipped composition. A workbench plugin occupies `workbench` and registers one shared width binding through `ctx.layout`; AppFrame owns the auxiliary-column drag handle while the plugin owns width persistence.
 
 ### Theme presentation
 
@@ -39,7 +41,9 @@ The presenter consumes resolved theme snapshots and projects them onto the docum
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-One `register()` call contributes `AppFrame` into the runtime's built-in `'root'` slot and declares five child slots (`sidebar`, `conversation`, `workbench`, `details`, `shell.overlay`), seats the layout store, and wires `ctx.layout`. `registerWorkbench()` installs one lifecycle-bound width binding; its disposer restores the ordinary conversation layout. The transient DSH layout store still owns only sidebar and details geometry, while the workbench provider can persist the auxiliary width. AppFrame always mounts conversation and details, and mounts the workbench at either the primary desktop column or the narrow overlay. The theme presenter remains a separate pure DOM effect.
+`selectPanel(id)` checks the live `main` registry before changing selection; an absent key throws and leaves the current panel intact. `beginNavigation()` returns an abort signal for an asynchronous UI navigation. A later call, a valid panel selection (including repeated selection), or layout disposal aborts that signal without cancelling underlying Session creation. Consumers check the signal before committing navigation or moving drafts.
+
+One registration declares five child slots and binds `ctx.layout` methods `selectPanel`, `toggleSidebar`, `openRightbar(track, fullscreen)`, `closeRightbar`, and `registerWorkbench`. `registerWorkbench()` installs one lifecycle-bound width binding; its disposer restores the ordinary main-content layout. One root store separates `panelInfo` selection from `layoutInfo` measurements, width preferences, and presentation reports. `usePanelInfo` subscribes to the stable selection object; AppFrame subscribes to the stable layout object. The `rightbar` owner supplies actual `width`, `viewportWidth`, and normal-presentation eligibility `canShow`; insufficient room causes a deterministic close, never automatic reopening on widening. Fullscreen hides the width handle without releasing a track the occupant retains. AppFrame keeps the column containers mounted. The right column's root controller renders `rightbar.session` through `SessionProvider` only while the Conversation is selected; its unmount report releases the track. The independent title component uses the selected Session title only while the Conversation is visible, with the build-configured product title or localized `common.brand.localBuild` as its fallback; locale revisions update that fallback. The theme presenter is a second effect: pure DOM writes from resolved snapshots — initial state through the getter once, then event-driven only, with no React path. It applies palette, font-size, and token variables before measuring the rendered background as the single color authority. Fullscreen presentation suppresses grid and handle transitions; its occupant reports the new columns only after covering the frame. Fullscreen exit keeps transitions suppressed while the frame installs its destination geometry: close removes the right track, and restore retains it. Subsequent normal geometry actions restore ordinary transitions.
 
 </details>
 
@@ -51,7 +55,8 @@ One `register()` call contributes `AppFrame` into the runtime's built-in `'root'
 Read these pages when the layout surface is not enough. They move from the frame to the columns it renders and the theme it presents.
 
 - [ui-sidebar](../ui-sidebar/README.md) — occupies the `sidebar` column and its seats.
-- [ui-conversation](../ui-conversation/README.md) — occupies the `conversation` and `details` columns.
+- [ui-conversation](../ui-conversation/README.md) — occupies the `main` key `conversation`.
+- [ui-sidebar-right](../ui-sidebar-right/README.md) — occupies the `rightbar` column with one docking surface per session.
 - [YourBuddy workbench layout](../../../docs/tech/202609/workbench-layout-compatibility.md) — downstream composition and refresh provenance.
 - [ui-theme](../ui-theme/README.md) — the theme seam whose resolved snapshots the presenter consumes.
 - [Web client architecture](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.md) — how browser plugin rows load and register slots.
@@ -74,8 +79,9 @@ None; this package neither assembles nor sends a provider request.
 
 These limits define the current layout behavior. They are current package constraints, not a general window-manager comparison or a task backlog.
 
-- **Panel geometry is transient** — reload restores the sidebar default and details closed; switching between distinct Session ids also closes details and forgets its dragged width, while unselected surfaces render details at zero width without modifying geometry.
-- **Concession-chain auto-close derives a zero width without touching the preferred width** — the panel restores itself when the window widens; consumers must not read the stored details width as the rendered truth.
+- **Panel geometry is transient** — reload restores the sidebar default and the right panel hidden; each dragged width is one frame-wide preference, not a per-Session fact.
+- **Extremely narrow windows** — after the right panel closes, the center may still fall below 400px; the left 56px rail remains.
+- **Track and panel travel on one shared curve** — the frame's track transition and the occupant's slide read the same duration and easing variables; an occupant that used its own would detach the panel's edge from the conversation's while squeezing.
 - **No scroll anchoring during squeeze reflow** — layout changes may move the reader's viewport.
 
 <a id="dev-note"></a>
@@ -88,4 +94,4 @@ None.
 
 </details>
 
-**Runtime invariant:** No companion is published. The shell viewing-state store behind ctx.layout emits no cordis events; clamp/prune/concession-chain sequencing is asserted directly by this package's columns and service specs.
+**Runtime invariant:** No companion is published. The shell viewing-state store behind ctx.layout emits no cordis events; clamp and track sequencing is asserted directly by this package's columns and service specs.
