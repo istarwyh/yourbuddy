@@ -1,0 +1,15 @@
+YourBuddy 0.3.10 workflow record
+Captured: 2026-09-20 23:40 UTC+08:00 CST
+
+Formal release
+- Immutable tag: yourbuddy-v0.3.10
+- Tag object: f0a51bfc11bcca14c610a58d7e435160a8880ed8
+- Tag commit: dda208173552536a743449499ce153a8991fc7ce
+- Release workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35518714275
+- Workflow result: success in 23m16s.
+- Passed steps: version alignment, selected DSH release check, Harness build, signed updater and DMG build, desktop Host and shell command tests, relocated runtime test, checksum staging and verification, updater-manifest generation, and GitHub Release publication.
+- Release page: https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.10
+- Published at: 2026-09-20T15:32:25Z
+
+Scope
+- Workflow success proves the executed build and publication steps, not independent public availability or installed-product behavior. Anonymous public downloads, hashes, updater signature, App identity, product provenance, and relocated runtime were checked separately in the adjacent evidence records.

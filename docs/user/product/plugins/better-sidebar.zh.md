@@ -10,9 +10,9 @@
 
 ## 使用方式
 
-桌面宽度下，即使早先会话保存的 Dock 状态为折叠，Split Pane 工作台仍会显示在对话左侧。拖动分隔条调整两侧宽度，在标签页中打开文件和预览，并通过终端或 Git 面板检查代码变化。窗口较窄时，对话仍是主界面，Better Sidebar 通过 Overlay 控件打开。推荐插件目标、内嵌浏览器的外部打开操作以及终端中的 HTTP(S) 链接会在系统浏览器中打开。在 YourBuddy 中，只需运行一次推荐插件的安装命令；其隔离 Web Profile 会执行依赖构建脚本，无需另行运行 `pnpm approve-builds`。
+桌面宽度下，即使早先会话保存的 Dock 状态为折叠，Split Pane 工作台仍会显示在对话左侧。拖动分隔条调整两侧宽度。文件树点击、**在新标签页中打开**、Explorer Reveal 与 Changes Tab 文件动作都会在来源 Tab 所属的 Session 中打开。通过终端或 Git 面板检查代码变化。内嵌浏览器默认不使用沙箱，可以渲染普通跨源网站；如有需要，可在 Side Card 设置中启用受限 iframe 沙箱。窗口较窄时，对话仍是主界面，Better Sidebar 通过 Overlay 控件打开。推荐插件目标、内嵌浏览器的外部打开操作以及终端中的 HTTP(S) 链接会在系统浏览器中打开。在 YourBuddy 中，只需运行一次推荐插件的安装命令；其隔离 Web Profile 会执行依赖构建脚本，无需另行运行 `pnpm approve-builds`。
 
-YourBuddy 0.3.9 通过 [Release 工作台截图](../../../releases/yourbuddy-v0.3.9/screenshots/workbench-primary.png)核验这一桌面布局，并在[验证记录](../../../releases/yourbuddy-v0.3.9/README.zh.md)中记录聚焦展示检查。
+YourBuddy 0.3.10 在[验证记录](../../../releases/yourbuddy-v0.3.10/README.zh.md)中记录文件与浏览器检查。
 
 ## 默认集成的理由
 
@@ -20,4 +20,4 @@ YourBuddy 0.3.9 通过 [Release 工作台截图](../../../releases/yourbuddy-v0.
 
 ## 限制
 
-真实终端操作会影响实际工作目录；面板不是隔离环境的保证。面向模型的 `terminal_*` 与 `sidebar_open` 工具默认关闭，需要用户显式开启。内嵌网页受到目标站点 iframe 策略与浏览器规则限制，部分网站无法嵌入；侧边对话仍属 Beta 能力。YourBuddy 以可重放产品补丁维护工作台位置；在 YourBuddy 之外，Better Sidebar 仍默认使用上游 Portal 展示方式。
+真实终端操作会影响实际工作目录；面板不是隔离环境的保证。面向模型的 `terminal_*` 与 `sidebar_open` 工具默认关闭，需要用户显式开启。浏览器默认不受限，内嵌跨源页面因此获得普通 iframe 能力，包括顶层导航。受限设置会让 GUI Origin 与未获准的 Loopback 地址保持不透明。所有模式仍受目标站点 iframe 策略与浏览器规则限制，部分网站无法嵌入；侧边对话仍属 Beta 能力。YourBuddy 以可重放产品补丁维护这些行为；在 YourBuddy 之外，Better Sidebar 仍默认使用上游 Portal 展示方式。

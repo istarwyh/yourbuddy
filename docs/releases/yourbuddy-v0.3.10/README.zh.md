@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.3.10`。
 - 产品渠道：适用于 Apple Silicon macOS 的 YourBuddy 桌面应用。
-- 归档状态：发布前候选版本；本地源码与组装产品检查通过，公开产物、Updater 元数据、官网部署与可下载验证归档仍待完成。
-- 发布源码：发布后记录不可变 Tag Commit；产品修复 Commit 为 `663210f699bd5f58cf848d5723da8218c4744cd2`。
+- 归档状态：已发布；本地源码、组装产品、工作流、公开产物、App 标识、产品 Provenance 与迁移运行时检查通过，官网部署与可下载验证归档仍待完成。
+- 发布源码：不可变 Tag Commit `dda208173552536a743449499ce153a8991fc7ce`；产品修复 Commit `663210f699bd5f58cf848d5723da8218c4744cd2`。
 - 证据图集：未捕获；受控浏览器观察记录为仅测源码证据，而不是已安装 YourBuddy 截图。
-- 证据下载：等待公开产物核验。
+- 证据下载：等待官网核验与最终归档组装。
 
 ## 面向用户的发布说明
 
@@ -34,11 +34,11 @@ Better Sidebar 文件动作会显式指定 Files Tab 所属的 Session。Browser
 
 ### 安装或升级
 
-发布后，从 0.3.10 GitHub Release 安装 Apple Silicon DMG，或在旧版 YourBuddy 中使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。
+从 0.3.10 GitHub Release 安装 Apple Silicon DMG，或在旧版 YourBuddy 中使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。
 
 ### 兼容性、迁移与限制
 
-现有应用数据会保留，无需迁移。已显式保存的浏览器沙箱偏好仍具有权威性。不受限默认值赋予内嵌跨源页面普通 iframe 能力，包括顶层导航。桌面应用支持 Apple Silicon 上的 macOS 11 及以上版本。应用继续使用 ad-hoc 签名，尚未完成 Apple Developer 签名或公证。在公开阶段补充记录之前，原生 GUI 启动、打包 WebView 交互、通过旧版 Updater 安装、OAuth 与真实模型流量仍未验证。
+现有应用数据会保留，无需迁移。已显式保存的浏览器沙箱偏好仍具有权威性。不受限默认值赋予内嵌跨源页面普通 iframe 能力，包括顶层导航。桌面应用支持 Apple Silicon 上的 macOS 11 及以上版本。应用继续使用 ad-hoc 签名，尚未完成 Apple Developer 签名或公证。原生 GUI 启动、打包 WebView 交互、通过旧版 Updater 安装、OAuth 与真实模型流量仍未验证。
 
 ## 验证概览
 
@@ -46,8 +46,10 @@ Better Sidebar 文件动作会显式指定 Files Tab 所属的 Session。Browser
 |---|---|---|---|---|
 | 聚焦 Sidebar 回归 | passed | 本地源码候选版本 | macOS 15.6.1 arm64；Node 22.19.0；pnpm 11.7.0 | [本地验证](evidence/local-candidate-validation.txt) |
 | 产品补丁重放与组装 Smoke | 在记录的受控范围内通过 | 已准备的本地产品 | 受控本地 Host 与 Chromium；无模型供应商 | [本地验证](evidence/local-candidate-validation.txt) |
-| 正式桌面发布 | pending | 不可变 Tag `yourbuddy-v0.3.10` | GitHub Actions | 待完成 |
-| 公开安装包、Updater、运行时与官网 | pending | 公开 Release 产物 | GitHub Release 与 GitHub Pages | 待完成 |
+| 正式桌面发布 | passed | 不可变 Tag `yourbuddy-v0.3.10` | GitHub Actions | [工作流记录](evidence/release-workflows.txt) |
+| 公开安装包与 Updater | 在记录范围内通过 | 五个匿名公开下载 | GitHub Release；macOS 15.6.1 arm64 | [产物记录](evidence/public-artifact-stage.json) |
+| 公开 App 标识、产品 Provenance 与迁移运行时 | 在记录范围内通过 | Updater 归档与 DMG | macOS 15.6.1 arm64 | [运行时记录](evidence/public-runtime-stage.json) |
+| 产品官网 | pending | 官网源码 Commit 待定 | GitHub Pages | 待完成 |
 
 ## 场景：本地候选版本与组装产品验证
 
@@ -87,12 +89,22 @@ Better Sidebar 文件动作会显式指定 Files Tab 所属的 Session。Browser
 
 受控 Chromium 观察不是打包后的原生 WebView。本地阶段不能证明原生 GUI 启动、Updater 安装、Apple Developer 签名、公证、OAuth、真实模型流量、公开下载、稳定 Updater 元数据或官网部署。
 
+## 公开发布核验
+
+正式工作流在 23 分 16 秒内完成，构建、桌面契约、迁移运行时、校验和、Manifest 与发布步骤全部通过。详见[工作流记录](evidence/release-workflows.txt)。
+
+五个版本化产物和稳定 Updater Manifest 全部在未使用 GitHub 认证的情况下下载。三条校验和全部通过，每个摘要都与 GitHub API 一致，稳定 Updater Manifest 与版本化产物字节相同。`minisign-verify` 0.2.5 使用不可变 Tag 中的公钥验证了 Updater 归档的预哈希签名与受信注释。DMG 大小为 568,405,039 字节，SHA-256 为 `0258d6529adc95fe96ef62878624b7a84b729d2821dc1ce90b119e287cae4df0`；`hdiutil verify` 通过。详见[产物记录](evidence/public-artifact-stage.json)。
+
+公开 Updater 与 DMG 中的 App 文件树完全相同。Arm64 App 报告版本 0.3.10，Bundle Identifier 为 `io.github.istarwyh.yourbuddy`；严格 ad-hoc 签名检查通过，没有 TeamIdentifier，Gatekeeper 因其未完成 Apple Developer 签名或公证而拒绝。公开 App 保留全部五份产品 Manifest、三项 0.3.10 Better Sidebar 补丁标识、快照摘要、分发文件 Scope、浏览器兼容 Token 与不受限默认值。将其 Python 3.12.14 / Harbor 0.21.0 运行时迁移复制，并让原始 Python Home 不可用后，`harbor --version` 与 `harbor-dsh --help` 通过。详见[运行时记录](evidence/public-runtime-stage.json)。
+
+首次 Provenance Probe 误以为每个补丁描述符使用 `path` 字段，因此在检查值之前失败；Manifest Schema 实际使用 `file`。修正后的 Probe 验证全部预期补丁 SHA-256、快照摘要与分发行为。这是验证脚本修正，不是产品失败。
+
 ## 交付状态
 
-- 产品发布状态：等待 `yourbuddy-v0.3.10` 工作流与 GitHub Release。
-- 验证资料归档状态：部分完成；本地证据已提交，公开产物、运行时、工作流、官网与可下载归档证据仍待完成。
-- 站点同步状态：等待产品发布与公开产物核验；现有 0.3.9 下载仍是已核验的公开目的地。
-- 未验证范围：原生 GUI 启动、打包 WebView 交互、从旧安装版更新、Apple Developer 签名与公证、OAuth、真实模型流量、公开产物、Updater 元数据与 0.3.10 官网旅程。
+- 产品发布状态：`yourbuddy-v0.3.10` 是最新正式 GitHub Release；全部工作流步骤通过。
+- 验证资料归档状态：部分完成；本地、工作流、公开产物、App 标识、产品 Provenance 与迁移运行时证据已记录，官网与可下载归档证据仍待完成。
+- 站点同步状态：0.3.10 双语源码更新已准备，但尚未部署或独立检查。
+- 未验证范围：原生 GUI 启动、打包 WebView 交互、从旧安装版更新、Apple Developer 签名与公证、OAuth、真实模型流量、0.3.10 官网旅程与可下载验证归档。
 
 ## 交付清单
 
@@ -103,7 +115,7 @@ Better Sidebar 文件动作会显式指定 Files Tab 所属的 Session。Browser
 - [x] 明确标记仅测源码、受控服务、待完成与未验证证据。
 - [x] 双语发布索引中已包含版本条目。
 - [x] 已在提交后的候选版本上完成最终干净工作区准备。
-- [ ] 已独立核验公开发布页、安装包、Updater 元数据、签名、Hash 与迁移运行时。
+- [x] 已独立核验公开发布页、安装包、Updater 元数据、签名、Hash 与迁移运行时。
 - [ ] 已完成双语官网同步并独立核验线上下载旅程。
 - [ ] 已创建、上传、解压并核验可下载验证资料归档。
 - [x] 已分别报告产品发布状态、归档状态、站点同步与未验证范围。

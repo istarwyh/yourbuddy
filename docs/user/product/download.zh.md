@@ -2,15 +2,15 @@
 
 [English](download.md) | 中文
 
-桌面目标为 macOS Apple Silicon。YourBuddy 0.3.9 是当前已核验的公开版本：完整文件、Updater 签名、App 标识、内置产品 provenance 与迁移运行时通过独立检查。原生启动与安装包 WebView 交互仍未验证。
+桌面目标为 macOS Apple Silicon。YourBuddy 0.3.10 是当前已核验的公开版本：完整文件、Updater 签名、App 标识、内置产品 Provenance 与迁移运行时通过独立检查。原生启动与安装包 WebView 交互仍未验证。
 
 ## YourBuddy 安装包
 
-下载 [macOS Apple Silicon 版 YourBuddy 0.3.9](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.9/yourbuddy-0.3.9-macos-arm64.dmg)。独立下载的完整文件为 568,361,631 字节，SHA-256 为 `fea29a4eedef1417dfb4d66d657c5bf24444da7cab07f387efa505dca00bd7b0`，与 GitHub 发布摘要及公开校验和一致。
+下载 [macOS Apple Silicon 版 YourBuddy 0.3.10](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.10/yourbuddy-0.3.10-macos-arm64.dmg)。独立下载的完整文件为 568,405,039 字节，SHA-256 为 `0258d6529adc95fe96ef62878624b7a84b729d2821dc1ce90b119e287cae4df0`，与 GitHub 发布摘要及公开校验和一致。
 
-0.3.9 修复了旧会话把 Dock 状态保留为折叠时 Better Sidebar 主工作区空白的问题，并适配模型选择器 API 变化，恢复 GPT Auth 模型加载。它内置 DSH 0.1.5-rc.2、Better Sidebar 0.19.1、Codex Auth 0.3.2、Harbor Evolution 0.9.7、Plugin Marketplace 0.3.3 与 Context Doctor 0.7.2。产品 provenance 与迁移复制后的 Python 3.12.14 / Harbor 0.21.0 运行时通过独立检查。原生启动、安装包 WebView 操作、从已有安装执行更新、OAuth 与真实模型流量仍未验证。
+0.3.10 让 Better Sidebar 文件树与右键菜单动作明确使用所属 Session，并让内嵌浏览器无需逐 Tab 解锁沙箱即可渲染普通网站。用户可以在 Side Card 设置中重新启用受限 iframe 沙箱。该版本内置 DSH 0.1.5-rc.2、Better Sidebar 0.19.1、Codex Auth 0.3.2、Harbor Evolution 0.9.7、Plugin Marketplace 0.3.3 与 Context Doctor 0.7.2。产品 Provenance 与迁移复制后的 Python 3.12.14 / Harbor 0.21.0 运行时通过独立检查。原生启动、安装包 WebView 操作、从已有安装执行更新、OAuth 与真实模型流量仍未验证。
 
-[查看 0.3.9 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9)、[下载校验和](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.9/SHA256SUMS.txt)、阅读[验证记录](../../releases/yourbuddy-v0.3.9/README.zh.md)，或按[源码构建说明](../../../README.zh.md#run-from-source)运行。旧 XiaoHui 产物保留原名称，不作为 YourBuddy 下载展示。
+[查看 0.3.10 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.10)、[下载校验和](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.10/SHA256SUMS.txt)、阅读[验证记录](../../releases/yourbuddy-v0.3.10/README.zh.md)，或按[源码构建说明](../../../README.zh.md#run-from-source)运行。旧 XiaoHui 产物保留原名称，不作为 YourBuddy 下载展示。
 
 ## 桌面包包含什么
 
@@ -18,6 +18,6 @@
 
 ## 更新与验证
 
-0.3.9 Release 提供安装包、SHA-256 校验和、Tauri Updater 包、签名文件与验证记录。稳定更新元数据与版本化清单相同；已使用正式 Tag 配置中的公钥，独立验证更新包的预哈希 Minisign 签名及受信注释。已有安装可以使用**设置 → 通用设置 → 应用生命周期 → 检查更新**；从旧安装版实际执行更新仍未验证。Updater 签名与 Apple 应用签名相互独立：App 的严格代码签名检查通过，签名为 ad-hoc、没有 TeamIdentifier，但 Gatekeeper 拒绝。它未完成 Apple Developer 签名或公证，首次启动可能需要按文档执行 macOS 放行操作。
+0.3.10 Release 提供安装包、SHA-256 校验和、Tauri Updater 包、签名文件与验证记录。稳定更新元数据与版本化清单相同；已使用正式 Tag 配置中的公钥，独立验证更新包的预哈希 Minisign 签名及受信注释。已有安装可以使用**设置 → 通用设置 → 应用生命周期 → 检查更新**；从旧安装版实际执行更新仍未验证。Updater 签名与 Apple 应用签名相互独立：App 的严格代码签名检查通过，签名为 ad-hoc、没有 TeamIdentifier，但 Gatekeeper 拒绝。它未完成 Apple Developer 签名或公证，首次启动可能需要按文档执行 macOS 放行操作。
 
 继续查看[发行状态](releases.zh.md)与[首次使用](start.zh.md)。

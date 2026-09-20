@@ -8,6 +8,6 @@
 
 DSH 提供带 WebUI 的 AI 运行时，Y8 提供可直接使用的基础组合。用 Skill 固化可重复的流程与标准，用 Plugin 加入工具、服务和界面，而不必从零组装应用。了解[产品理念](about.zh.md)。
 
-YourBuddy 0.3.9 已面向 Apple Silicon Mac 发布。它修复旧折叠状态导致的 Better Sidebar 主工作区空白，并恢复 GPT Auth 模型加载，同时组合 DSH 0.1.5-rc.2、Harbor 评测与可识别仓库关联的 Plugin Marketplace。请在下载页查看安装包 Hash、验证证据与剩余限制。
+YourBuddy 0.3.10 已面向 Apple Silicon Mac 发布。Better Sidebar 文件动作会在所属 Session 中打开，内嵌浏览器默认渲染普通网站，同时保留可选的受限沙箱。该版本组合 DSH 0.1.5-rc.2、Harbor 评测与可识别仓库关联的 Plugin Marketplace。请在下载页查看安装包 Hash、验证证据与剩余限制。
 
 [打造自己的工作台](start.zh.md) · [了解扩展路径](develop.zh.md) · [默认插件](plugins/index.zh.md) · [下载状态](download.zh.md)

@@ -6,10 +6,10 @@ This archive records the Better Sidebar file-opening and embedded-browser recove
 
 - Release identifier: `yourbuddy-v0.3.10`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: pre-publication candidate; local source and assembled-product checks passed, while public artifacts, updater metadata, website deployment, and the downloadable verification archive remain pending.
-- Release source: the immutable tag commit will be recorded after publication; the product fix is commit `663210f699bd5f58cf848d5723da8218c4744cd2`.
+- Archive state: published; local source, assembled-product, workflow, public-artifact, App identity, product provenance, and relocated-runtime checks passed, while website deployment and the downloadable verification archive remain pending.
+- Release source: immutable tag commit `dda208173552536a743449499ce153a8991fc7ce`; product fix commit `663210f699bd5f58cf848d5723da8218c4744cd2`.
 - Evidence gallery: not captured; the controlled browser observation is recorded as source-only evidence rather than an installed YourBuddy screenshot.
-- Evidence download: pending public-artifact verification.
+- Evidence download: pending website verification and final archive assembly.
 
 ## User release notes
 
@@ -34,11 +34,11 @@ Use the **Files**, **Changes**, and **Browser** tabs in the Better Sidebar prima
 
 ### Install or upgrade
 
-After publication, install the Apple Silicon DMG from the 0.3.10 GitHub Release or use **Settings → General → Application lifecycle → Check for updates** from an earlier YourBuddy installation.
+Install the Apple Silicon DMG from the 0.3.10 GitHub Release or use **Settings → General → Application lifecycle → Check for updates** from an earlier YourBuddy installation.
 
 ### Compatibility, migration, and limitations
 
-Existing application data is retained and no migration is required. An explicitly saved browser-sandbox preference remains authoritative. The unrestricted default gives embedded cross-origin pages normal iframe capabilities, including top-level navigation. The desktop supports macOS 11 or later on Apple Silicon. The application remains ad-hoc signed rather than Apple Developer signed or notarized. Native GUI startup, packaged-WebView interaction, installation through an older updater, OAuth, and real model traffic remain unverified until the public stage records otherwise.
+Existing application data is retained and no migration is required. An explicitly saved browser-sandbox preference remains authoritative. The unrestricted default gives embedded cross-origin pages normal iframe capabilities, including top-level navigation. The desktop supports macOS 11 or later on Apple Silicon. The application remains ad-hoc signed rather than Apple Developer signed or notarized. Native GUI startup, packaged-WebView interaction, installation through an older updater, OAuth, and real model traffic remain unverified.
 
 ## Verification summary
 
@@ -46,8 +46,10 @@ Existing application data is retained and no migration is required. An explicitl
 |---|---|---|---|---|
 | Focused sidebar regressions | passed | local source candidate | macOS 15.6.1 arm64; Node 22.19.0; pnpm 11.7.0 | [local validation](evidence/local-candidate-validation.txt) |
 | Product patch replay and assembled smoke | passed within recorded controlled scope | prepared local product | controlled local Host and Chromium; no model provider | [local validation](evidence/local-candidate-validation.txt) |
-| Formal desktop publication | pending | immutable tag `yourbuddy-v0.3.10` | GitHub Actions | pending |
-| Public installer, updater, runtime, and website | pending | public release assets | GitHub Release and GitHub Pages | pending |
+| Formal desktop publication | passed | immutable tag `yourbuddy-v0.3.10` | GitHub Actions | [workflow record](evidence/release-workflows.txt) |
+| Public installer and updater | passed within recorded scope | five anonymous public downloads | GitHub Release; macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json) |
+| Public App identity, product provenance, and relocated runtime | passed within recorded scope | updater archive and DMG | macOS 15.6.1 arm64 | [runtime record](evidence/public-runtime-stage.json) |
+| Product website | pending | website-source commit pending | GitHub Pages | pending |
 
 ## Scenario: local candidate and assembled-product validation
 
@@ -87,12 +89,22 @@ One focused Vitest assertion and all 67 product-refresh checks passed. The sourc
 
 The controlled Chromium observation is not the packaged native WebView. This local stage does not prove native GUI startup, updater installation, Apple Developer signing, notarization, OAuth, real model traffic, public downloads, stable updater metadata, or website deployment.
 
+## Public release verification
+
+The formal workflow completed in 23m16s and passed every build, desktop contract, relocated-runtime, checksum, manifest, and publication step. See the [workflow record](evidence/release-workflows.txt).
+
+All five versioned assets and the stable updater manifest were downloaded without GitHub authentication. All three checksum entries passed, every digest matched the GitHub API, and the stable updater manifest was byte-identical to the versioned asset. `minisign-verify` 0.2.5 verified the updater archive's prehashed signature and trusted comment using the public key from the immutable tag. The DMG is 568,405,039 bytes with SHA-256 `0258d6529adc95fe96ef62878624b7a84b729d2821dc1ce90b119e287cae4df0`; `hdiutil verify` passed. See the [artifact record](evidence/public-artifact-stage.json).
+
+The public updater and DMG contain identical App trees. The arm64 App reports version 0.3.10 and bundle identifier `io.github.istarwyh.yourbuddy`; its strict ad-hoc signature check passed, it has no TeamIdentifier, and Gatekeeper rejected it because it is not Apple Developer signed or notarized. The public App retains all five product manifests, the three 0.3.10 Better Sidebar patch identities, snapshot digest, distributed file scope, browser compatibility tokens, and unrestricted default. A copy of its Python 3.12.14 / Harbor 0.21.0 runtime passed `harbor --version` and `harbor-dsh --help` after relocation and after making the original Python home unavailable. See the [runtime record](evidence/public-runtime-stage.json).
+
+The initial provenance probe expected each patch descriptor to use a `path` field and failed before checking values; the manifest schema uses `file`. The corrected probe verified all expected patch SHA-256 values, the snapshot digest, and the distributed behavior. This was a verification-script correction, not a product failure.
+
 ## Delivery status
 
-- Product publication status: pending the `yourbuddy-v0.3.10` workflow and GitHub Release.
-- Verification archive status: partial; local evidence is committed, while public-artifact, runtime, workflow, website, and downloadable-archive evidence remain pending.
-- Website synchronization status: pending product publication and public-artifact verification; the existing 0.3.9 download remains the verified public destination.
-- Unverified scope: native GUI startup, packaged-WebView interaction, an update from an older installation, Apple Developer signing and notarization, OAuth, real model traffic, public artifacts, updater metadata, and the 0.3.10 website journey.
+- Product publication status: `yourbuddy-v0.3.10` is the latest formal GitHub Release; all workflow steps passed.
+- Verification archive status: partial; local, workflow, public-artifact, App identity, product-provenance, and relocated-runtime evidence is recorded, while website and downloadable-archive evidence remain pending.
+- Website synchronization status: the bilingual 0.3.10 source update is prepared but not yet deployed or independently checked.
+- Unverified scope: native GUI startup, packaged-WebView interaction, an update from an older installation, Apple Developer signing and notarization, OAuth, real model traffic, the 0.3.10 website journey, and the downloadable verification archive.
 
 ## Delivery checklist
 
@@ -103,7 +115,7 @@ The controlled Chromium observation is not the packaged native WebView. This loc
 - [x] Source-only, controlled-service, pending, and unverified evidence is labelled explicitly.
 - [x] The release entry is present in the bilingual release index.
 - [x] The final clean-tree preparation passed on the committed candidate.
-- [ ] The public release page, installer, updater metadata, signatures, hashes, and relocated runtime are independently verified.
+- [x] The public release page, installer, updater metadata, signatures, hashes, and relocated runtime are independently verified.
 - [ ] The website is synchronized in both languages and the live download journey is independently verified.
 - [ ] The downloadable verification archive is created, uploaded, extracted, and checked.
 - [x] Product publication, archive status, website synchronization, and unverified scope are reported separately.

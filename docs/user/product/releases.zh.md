@@ -6,6 +6,12 @@
 
 ## YourBuddy
 
+### 0.3.10 — 2026-09-20
+
+YourBuddy 0.3.10 让 Better Sidebar 文件树与右键菜单动作在所属 Session 中打开，并让内嵌浏览器默认渲染普通网站；受限 iframe 沙箱仍可作为显式设置启用。五个带版本号的公开产物均已匿名下载并完成核验，稳定更新清单与版本化清单一致，Updater 签名通过密码学验证，DMG 与 Updater 中的 App 文件树完全一致。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.10) · [验证记录](../../releases/yourbuddy-v0.3.10/README.zh.md) · [下载页](download.zh.md)
+
 ### 0.3.9 — 2026-09-20
 
 YourBuddy 0.3.9 修复了旧会话把 Dock 状态保留为折叠时 Better Sidebar 主工作区空白的问题，并适配当前模型选择器 API，恢复 GPT Auth 模型加载。五个带版本号的公开产物均已匿名下载并完成核验，稳定更新清单与版本化清单一致，Updater 签名通过密码学验证，DMG 与 Updater 中的 App 文件树完全一致。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。

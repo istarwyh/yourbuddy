@@ -6,6 +6,12 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.10 — 2026-09-20
+
+YourBuddy 0.3.10 makes Better Sidebar file-tree and context-menu actions open in their owning Session and lets its embedded Browser render ordinary sites by default; the restricted iframe sandbox remains available as an explicit setting. All five versioned public assets were anonymously downloaded and checked, the stable updater manifest matches the versioned manifest, the updater signature was cryptographically verified, and the DMG and updater App trees are identical. Native startup, packaged-WebView interaction, an update from an older version, OAuth, and real model traffic remain unverified.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.10) · [verification record](../../releases/yourbuddy-v0.3.10/README.md) · [download page](download.md)
+
 ### 0.3.9 — 2026-09-20
 
 YourBuddy 0.3.9 restores the Better Sidebar primary workbench when a prior session left its dock state collapsed and adapts GPT Auth to the current model-selector API. All five versioned public assets were anonymously downloaded and checked, the stable updater manifest matches the versioned manifest, the updater signature was cryptographically verified, and the DMG and updater App trees are identical. Native startup, packaged-WebView interaction, an update from an older version, OAuth, and real model traffic remain unverified.
