@@ -102,7 +102,7 @@ The controlled Chromium observation is not the packaged native WebView. This loc
 - [x] The local scenario records date, time zone, environment, build under test, evidence origin, data type, and service type.
 - [x] Source-only, controlled-service, pending, and unverified evidence is labelled explicitly.
 - [x] The release entry is present in the bilingual release index.
-- [ ] The final clean-tree preparation passes on the committed candidate.
+- [x] The final clean-tree preparation passed on the committed candidate.
 - [ ] The public release page, installer, updater metadata, signatures, hashes, and relocated runtime are independently verified.
 - [ ] The website is synchronized in both languages and the live download journey is independently verified.
 - [ ] The downloadable verification archive is created, uploaded, extracted, and checked.

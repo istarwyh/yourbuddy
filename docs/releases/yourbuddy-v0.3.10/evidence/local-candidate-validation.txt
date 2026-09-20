@@ -25,6 +25,10 @@ Command: pnpm --dir apps/desktop-tauri run prepare:release -- --allow-dirty
 Result: passed.
 Observed summary: selected DSH and product snapshots remained compatible; the Harness build completed; the product lock preserved 56 runtime peer links; the offline store contained 37,262 files; the assembled Client registered 6 product plugins; the product smoke passed external links, Plugin Marketplace, Network proxy, and Application lifecycle controls.
 
+Final committed-candidate preparation
+Command: pnpm --dir apps/desktop-tauri run prepare:release
+Result: passed from clean commit 4a94a65ba899bfc03f8d7c54d65ce80a5e6bf172; the same build, frozen-lock, assembled-product, and Host smoke stages completed without changing the worktree.
+
 Controlled browser observation
 Original iframe tokens: allow-scripts allow-forms allow-popups allow-downloads allow-modals allow-popups-to-escape-sandbox
 Observed result for https://baidu.com/: blank iframe.
