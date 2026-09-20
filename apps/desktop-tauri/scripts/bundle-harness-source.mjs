@@ -74,8 +74,8 @@ const skipDirNames = new Set([
 const trimmedPackages = [
   'vendor/*',
   'packages/*/*',
-  'native/landlock-run',
-  'native/landlock-run/packages/*',
+  'native/system',
+  'native/system/packages/*',
   'apps/cli',
   'apps/web',
 ]
@@ -86,11 +86,11 @@ const skipFileSuffixes = ['.spec.ts', '.e2e.ts', '.snapshot.ts']
 
 /**
  * Derive the bundled pnpm-workspace.yaml from the repository's own file,
- * replacing only the `packages:` membership. Every other section —
+ * replacing the `packages:` membership and allowing patches whose only
+ * consumers were omitted development packages. Every source section —
  * `patchedDependencies`, the dependency-build policy, overrides — is copied
  * verbatim so a stale hardcoded copy can never disagree with the source tree
- * the bundle ships; pnpm treats a declared-but-unused patch as a hard install
- * error.
+ * the bundle ships.
  *
  * @param {string} sourceYaml
  * @returns {string}
@@ -108,6 +108,8 @@ export function buildTrimmedWorkspaceYaml(sourceYaml) {
   const trimmedBlock = [
     'packages:',
     ...trimmedPackages.map(name => `  - ${name}`),
+    '',
+    'allowUnusedPatches: true',
     '',
   ]
   return [...lines.slice(0, packagesIndex), ...trimmedBlock, ...lines.slice(end)].join('\n')
@@ -171,7 +173,7 @@ function hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstrea
   hasher.update('YourBuddy')
   hasher.update(readFileSync(join(desktopRoot, 'app-icon.svg')))
 
-  for (const rel of ['patches', 'vendor', join('native', 'landlock-run'), join('apps', 'cli'), join('apps', 'web')]) {
+  for (const rel of ['patches', 'vendor', join('native', 'system'), join('apps', 'cli'), join('apps', 'web')]) {
     const path = join(repoRoot, rel)
     if (existsSync(path)) {
       hashSourceWalk(path, path, hasher, rel.replaceAll('\\', '/'))
@@ -261,12 +263,12 @@ function bundledWorkspacePackageNames(bundleRoot) {
   const manifests = [
     join(bundleRoot, 'apps', 'cli', 'package.json'),
     join(bundleRoot, 'apps', 'web', 'package.json'),
-    join(bundleRoot, 'native', 'landlock-run', 'package.json'),
+    join(bundleRoot, 'native', 'system', 'package.json'),
   ]
 
   for (const parent of [
     join(bundleRoot, 'vendor'),
-    join(bundleRoot, 'native', 'landlock-run', 'packages'),
+    join(bundleRoot, 'native', 'system', 'packages'),
   ]) {
     if (!existsSync(parent)) continue
     for (const entry of readdirSync(parent, { withFileTypes: true })) {
@@ -427,15 +429,15 @@ export function installProductWebIdentity(root) {
 function assertBuiltArtifacts() {
   const cliBin = join(repoRoot, 'apps', 'cli', 'lib', 'bin.js')
   const webIndex = join(repoRoot, 'apps', 'web', 'dist', 'index.html')
-  const landlockEntry = join(repoRoot, 'native', 'landlock-run', 'packages', 'entry', 'lib', 'index.js')
+  const systemEntry = join(repoRoot, 'native', 'system', 'packages', 'entry', 'lib', 'index.js')
   if (!existsSync(cliBin) || !existsSync(webIndex)) {
     throw new Error(
       'Harness build artifacts missing. From repo root run: pnpm run build',
     )
   }
-  if (!existsSync(landlockEntry)) {
+  if (!existsSync(systemEntry)) {
     throw new Error(
-      'landlock-run entry lib missing. From native/landlock-run run: pnpm run build:ts',
+      'node-addon-system entry lib missing. From native/system run: pnpm run build:ts',
     )
   }
   const buildRecordPath = join(repoRoot, '.dsh-build', 'client-build-environment.json')
@@ -504,7 +506,7 @@ if (existsSync(join(repoRoot, 'patches'))) {
 }
 
 copyTree(join(repoRoot, 'vendor'), join(outRoot, 'vendor'))
-copyTree(join(repoRoot, 'native', 'landlock-run'), join(outRoot, 'native', 'landlock-run'))
+copyTree(join(repoRoot, 'native', 'system'), join(outRoot, 'native', 'system'))
 copyTree(join(repoRoot, 'apps', 'cli'), join(outRoot, 'apps', 'cli'))
 copyTree(join(repoRoot, 'apps', 'web'), join(outRoot, 'apps', 'web'))
 installProductWebIdentity(outRoot)

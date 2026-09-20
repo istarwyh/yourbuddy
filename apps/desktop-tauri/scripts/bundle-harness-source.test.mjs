@@ -57,7 +57,7 @@ patchedDependencies:
   const trimmed = buildTrimmedWorkspaceYaml(source)
 
   assert.match(trimmed, /^packages:\n(?:  - .*\n)+/)
-  for (const name of ['vendor/*', 'packages/*/*', 'native/landlock-run', 'apps/cli', 'apps/web']) {
+  for (const name of ['vendor/*', 'packages/*/*', 'native/system', 'native/system/packages/*', 'apps/cli', 'apps/web']) {
     assert.ok(trimmed.includes(`  - ${name}\n`), `trimmed packages must include ${name}`)
   }
   assert.ok(!trimmed.includes('apps/*'))
@@ -67,6 +67,7 @@ patchedDependencies:
     trimmed.includes('  node-pty@1.2.0-beta.15: patches/node-pty@1.2.0-beta.15.patch\n'),
     'patchedDependencies must be copied from the source workspace, not hardcoded',
   )
+  assert.ok(trimmed.includes('allowUnusedPatches: true\n'))
   assert.ok(trimmed.includes('linkWorkspacePackages: true\n'))
 })
 
