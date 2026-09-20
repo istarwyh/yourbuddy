@@ -14,6 +14,17 @@
       "paths": [
         "packages/client/ui-layout"
       ]
+    },
+    {
+      "id": "sidebar-header-actions",
+      "file": "patches/dsh-sidebar-header-actions.patch",
+      "sha256": "50341401aabb05a81447fc2b96d7a677fc92eea579fa81f63c2c18bc108af329",
+      "baseCommit": "1915ef4a0d0ea64799c610eac45b4c6cdecbcd98",
+      "purpose": "Add a generic expanded-sidebar header action seat used by YourBuddy's compact native window controls.",
+      "paths": [
+        "packages/client/ui-sidebar",
+        "packages/extensions/cordis-client-runner/src/client/slot-catalog.ts"
+      ]
     }
   ]
 }

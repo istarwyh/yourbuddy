@@ -154,6 +154,15 @@
   letter-spacing: 0.04em;
 }
 
+/* Compact product actions share the brand row without adding another row or
+   divider. Occupants own their button visuals; the shell owns only placement. */
+.headerActions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .fallbackBrandName {
   font-size: 17px;
   letter-spacing: 0px;

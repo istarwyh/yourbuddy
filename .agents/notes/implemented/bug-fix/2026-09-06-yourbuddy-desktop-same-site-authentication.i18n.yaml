@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-06-yourbuddy-desktop-same-site-authentication.md
-2026-09-06-yourbuddy-desktop-same-site-authentication.md: 3d530bf06d23484551a7faf87739328c1c7be225
-2026-09-06-yourbuddy-desktop-same-site-authentication.zh.md: 2d3aa4ce5f2435d8733fb65c6e27e52db30d6aba
+2026-09-06-yourbuddy-desktop-same-site-authentication.md: 3b683619d35488c81b487bb7989844a23d99654b
+2026-09-06-yourbuddy-desktop-same-site-authentication.zh.md: f2b9959df0c9fb3ddea567cf7d3d0cd72a41b7e4

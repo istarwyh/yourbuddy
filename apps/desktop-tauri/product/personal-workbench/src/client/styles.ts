@@ -32,6 +32,18 @@ export const PERSONAL_WORKBENCH_CSS = `
 .dpw-help-icon{display:grid;place-items:center;flex:none;width:18px;height:18px;border:1.5px solid currentColor;border-radius:50%;font-size:12px;font-weight:650}
 .dpw-help-panel{position:fixed;z-index:1100;box-sizing:border-box;width:288px;max-width:calc(100vw - 16px);max-height:calc(100vh - 100px);overflow:auto;padding:8px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 8px 24px rgb(0 0 0 / .16)}
 .dpw-help-panel [role=menu]{display:grid}.dpw-help-panel p{margin:8px}.dpw-help-panel .dpw-hint{font-size:12px}.dpw-help-recovery{display:grid;gap:8px;border-top:1px solid var(--dsw-alias-border-l1);padding-top:8px}.dpw-help-recovery .dpw-input{font-size:12px}
+.dpw-window-controls{display:inline-flex;align-items:center;gap:0;padding:0 2px;user-select:none}
+.dpw-window-control{appearance:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:28px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}
+.dpw-window-control:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.dpw-window-control svg{display:block;width:10px;height:10px}.dpw-window-control-dot{display:none}
+.dpw-window-controls[data-platform=macos]{gap:2px;padding:0 1px}
+.dpw-window-controls[data-platform=macos] .dpw-window-control{width:18px;height:28px;border-radius:0;background:transparent}
+.dpw-window-controls[data-platform=macos] .dpw-window-control svg{display:none}
+.dpw-window-controls[data-platform=macos] .dpw-window-control-dot{display:block;width:12px;height:12px;border-radius:50%}
+.dpw-window-controls[data-platform=macos] .dpw-window-control-close .dpw-window-control-dot{background:#ff5f57}
+.dpw-window-controls[data-platform=macos] .dpw-window-control-minimize .dpw-window-control-dot{background:#febc2e}
+.dpw-window-controls[data-platform=macos] .dpw-window-control-maximize .dpw-window-control-dot{background:#28c840}
+.dpw-window-controls[data-platform=macos] .dpw-window-control:hover{filter:brightness(1.08)}
 @media (max-width:720px){.dpw-fields{grid-template-columns:1fr}}
 `
 

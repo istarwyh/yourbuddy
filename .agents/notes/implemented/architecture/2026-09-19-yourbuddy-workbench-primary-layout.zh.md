@@ -16,6 +16,8 @@ Layout Service 接受一个随生命周期释放的 Workbench 宽度 Binding。A
 
 Better Sidebar 保留 `portal` 作为默认展现。可选的 `slot` 展现创建相同 Service 和 Store，把 React Tree 注册到 DSH Workbench Slot，并通过 Layout Binding 暴露 Store 中的共享宽度。只用于 Portal 的 Frame 补偿由生命周期管理的 Body Attribute 选择。YourBuddy 原生 Overlay 选择 `slot`；其他 DSH 安装和 Better Sidebar 挂载保留默认行为。
 
+DSH 原生右侧栏负责普通标签页与资源打开。Better Sidebar 剩余的 Split Pane 工作台始终填满桌面 Slot，不受已持久化的底部面板展开状态影响，因此折叠 Dock 不会让主区域空白。桌面 Slot 不显示 Dock 的高度拖动和关闭控件。低于 768 像素时，同一标签树回到 Overlay 展现并遵循展开状态。
+
 DSH 源码改动作为普通代码提交在 YourBuddy 分支，并在合并官方 DSH Release 时通过 Git 协调。其边界清晰的 Diff 同时保存为来源记录补丁。Materialized Better Sidebar 快照包含相互匹配的 `src`、已构建 `lib`、类型声明和双语 README 改动。结构化来源记录条目指向可重放补丁；产品刷新先把补丁应用到新的原始 npm 快照，再执行现有兼容调整。该机制扩展 [YourBuddy 产品工作台分发](../feature/2026-08-22-yourbuddy-product-workbench.zh.md)，不引入通用补丁框架。
 
 ## 已考虑的替代方案
@@ -30,6 +32,6 @@ DSH 源码改动作为普通代码提交在 YourBuddy 分支，并在合并官�
 
 ## 后果
 
-YourBuddy 获得所需的工作台主区域桌面布局，同时不改变 DSH 默认 Grid 或 Better Sidebar 默认 Portal 模式。Better Sidebar 标签、查看器、终端、底部面板、浮窗、集成和逐会话状态继续使用同一个 Store 与 Service。Slot 模式复用现有面板宽度偏好，因此辅助对话宽度仍在会话之间共享。
+YourBuddy 获得所需的工作台主区域桌面布局，同时不改变 DSH 默认 Grid 或 Better Sidebar 默认 Portal 模式。Better Sidebar 标签、查看器、终端、集成和逐会话 Split Pane 状态继续使用同一个 Store 与 Service。Slot 模式复用现有面板宽度偏好，因此辅助对话宽度仍在会话之间共享。
 
 可选 Slot 与宽度 Binding 成为小型 DSH 扩展点；上游修改 AppFrame 或 Layout Service 时需要协调。Better Sidebar 升级必须接受已记录补丁，或把补丁与 Materialized 快照及来源记录一起更新。可见 Release 路径必须运行组装后的产品，因为单元测试无法证明真实工作台与对话确实位于预期栏位。

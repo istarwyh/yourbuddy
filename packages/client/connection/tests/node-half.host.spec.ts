@@ -2,7 +2,7 @@
 import { EventEmitter } from 'node:events'
 import { createServer, request as httpRequest } from 'node:http'
 import { Readable } from 'node:stream'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, type Fiber } from '@deepseek-ai/cordis'
 import { describe, expect, it } from 'vitest'
 import type { AddressInfo } from 'node:net'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -325,6 +325,36 @@ describe('connection node half', () => {
     expect(routes.map(candidate => candidate.path)).toEqual([API_PATH])
     await fiber.dispose()
     expect(routes).toHaveLength(0)
+  })
+
+  it('registers a dedicated channel from an optional Web carrier fiber', async () => {
+    const ctx = new Context()
+    const routes: WebRoute[] = []
+    provideBrowserCredentials(ctx)
+    ctx.provide('webServer', fakeHttpServer(routes, []) as WebServer)
+    const connectionFiber = ctx.plugin({ inject: [...inject], apply })
+    await connectionFiber.await()
+
+    let webCarrierFiber: Fiber | undefined
+    const consumerFiber = ctx.plugin({
+      inject: ['connection'],
+      apply(consumerCtx) {
+        webCarrierFiber = consumerCtx.inject(['webServer'], webCtx =>
+          webCtx.connection.rpc.handle('/optional-rpc', async () => ({ ok: true, value: null })))
+      },
+    })
+    try {
+      await consumerFiber.await()
+      await webCarrierFiber?.await()
+      expect(routes.map(route => route.path)).toContain('/optional-rpc')
+
+      await webCarrierFiber?.dispose()
+      expect(routes.map(route => route.path)).not.toContain('/optional-rpc')
+    } finally {
+      await webCarrierFiber?.dispose()
+      await consumerFiber.dispose()
+      await connectionFiber.dispose()
+    }
   })
 
   it('dispatches claimed /api endpoints and withdraws the claim', async () => {

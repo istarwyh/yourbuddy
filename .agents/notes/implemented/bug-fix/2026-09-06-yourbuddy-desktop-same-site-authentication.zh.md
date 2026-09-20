@@ -18,7 +18,7 @@ YourBuddy 0.3.2 会在打开窗口前完成私有 Host 的启动 Token 交换，
 
 具有原生权限的桌面 Shell 由最小化的应用自有 HTTP Server 从随机 `127.0.0.1` 端口提供。Tauri 只为该精确 Origin 与 `main` Window 添加运行时 Capability。该 Capability 保留既有 Shell Permission，并加入 `allow-desktop-shell-commands` 应用 Permission；这项 Permission 的 Command 清单与 `shell.html` 中的字面量 Invoke 精确相同，不包含插件提供或动态计算的 Command。Server 要求精确的 Loopback `Host`，只接受有界 `GET` 请求，以 No-store 和限制性响应 Header 提供内嵌 Shell、Locale Script 与图标，并在应用退出或重启前停止。
 
-Shell 与 Host 现在共享 HTTP `127.0.0.1` Site，同时因为端口不同而保持不同 Origin。原生代码会安装经过校验的 Strict Host Cookie，确认保存的值和属性，再允许 Shell 在 iframe 中打开不含凭据的 Host 根地址。因此 Cookie 可以按同站点规则发送，不需要第三方 Cookie 例外。Host iframe 无法读取 Shell Document，也不匹配 Shell 的精确 Tauri Capability Origin，所以产品 Client 代码仍只能使用既有的允许列表 `postMessage` Bridge。
+Shell 与 Host 现在共享 HTTP `127.0.0.1` Site，同时因为端口不同而保持不同 Origin。原生代码会安装经过校验的 Strict Host Cookie，确认保存的值和属性，再允许 Shell 在 iframe 中打开不含凭据的 Host 根地址。因此 Cookie 可以按同站点规则发送，不需要第三方 Cookie 例外。Host iframe 无法读取 Shell Document，也不匹配 Shell 的精确 Tauri Capability Origin，所以产品 Client 代码只能使用固定且在允许列表中的 `postMessage` Bridge。窗口控件 Bridge 只提供呈现元数据，以及最小化、最大化、关闭与拖动请求；全部 Tauri 操作仍由 Shell 持有。
 
 ## 验证
 

@@ -69,6 +69,17 @@
   left: 0;
 }
 
+/* Desktop slot presentation is in-flow inside AppFrame's workbench column.
+   Narrow layouts report portal presentation and retain the overlay drawer. */
+:global([data-dsh-panel-host][data-dsh-presentation='slot']) {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+  z-index: auto;
+  pointer-events: auto;
+}
+
 /* The closed-state affordance is the native rail icon control: a plain
    28px circle (the app's icon-button size — the cluster must stay inside
    the 34px tab-strip band so it never covers the pane headers below),
@@ -148,6 +159,15 @@
     visibility 0s linear var(--ds-transition-duration-slow);
 }
 
+/* The sole plugin-owned workbench becomes the full desktop slot after the
+   upstream native Sidebar owns the separate right column. */
+.bottomPanelSlot {
+  inset: 0;
+  transform: none;
+  visibility: visible;
+  border-top: 0;
+}
+
 /* Height drags write at pointer cadence; easing would detach the edge. */
 .bottomPanel[data-dragging] {
   transition: none;
@@ -217,6 +237,10 @@ body[data-dsh-sidebar-dragging] .bottomPanel {
    right end, so the + menu never hides under it. */
 .bottomPanel .tabBar {
   padding-right: 40px;
+}
+
+.bottomPanelSlot .tabBar {
+  padding-right: 0;
 }
 
 /* ── Desktop drag-region opt-out ──────────────────────────────────────── */

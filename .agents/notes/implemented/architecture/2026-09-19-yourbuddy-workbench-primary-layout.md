@@ -16,6 +16,8 @@ The layout service accepts one lifecycle-bound workbench width binding. AppFrame
 
 Better Sidebar retains `portal` as its default presentation. Its optional `slot` presentation creates the same service and store, registers its React tree in the DSH workbench slot, and exposes the store's shared width through the layout binding. Portal-only frame compensation is selected by a lifecycle-owned body attribute. YourBuddy's native overlay selects `slot`; other DSH installations and Better Sidebar mounts retain their defaults.
 
+DSH's native right Sidebar owns ordinary tab and resource opens. Better Sidebar's remaining split-pane workbench fills the desktop slot regardless of the persisted bottom-panel expanded state, so a collapsed dock cannot leave the primary region blank. The desktop slot omits the dock's height resize and close controls. Below 768 pixels, the same tree returns to overlay presentation and honors the expanded state.
+
 The DSH source change is committed normally on the YourBuddy branch and reconciled through Git when an official DSH Release is merged. Its bounded diff is also stored as a provenance patch. The materialized Better Sidebar snapshot contains matching `src`, built `lib`, type declarations, and bilingual README changes. Its structured provenance entry names a replayable patch, and product refresh applies that patch to the new pristine npm snapshot before the existing compatibility adjustments. This extends the [YourBuddy product workbench distribution](../feature/2026-08-22-yourbuddy-product-workbench.md) without introducing a general patch framework.
 
 ## Alternatives considered
@@ -30,6 +32,6 @@ The DSH source change is committed normally on the YourBuddy branch and reconcil
 
 ## Consequences
 
-YourBuddy gains the requested workbench-primary desktop layout without changing DSH's default grid or Better Sidebar's default Portal mode. Better Sidebar tabs, viewers, terminals, bottom panel, floating windows, integrations, and per-session state continue through the same store and service. The auxiliary conversation width remains shared because Slot mode reuses the existing panel-width preference.
+YourBuddy gains the requested workbench-primary desktop layout without changing DSH's default grid or Better Sidebar's default Portal mode. Better Sidebar tabs, viewers, terminals, integrations, and per-session split-pane state continue through the same store and service. The auxiliary conversation width remains shared because Slot mode reuses the existing panel-width preference.
 
 The optional slot and width binding become a small DSH extension point that must be reconciled when upstream changes AppFrame or the layout service. Better Sidebar upgrades must either accept the recorded patch or update it together with the materialized snapshot and provenance. The visible release journey must exercise the assembled product because unit tests cannot establish that the actual workbench and conversation occupy the intended columns.

@@ -10,6 +10,7 @@ import {
   PRODUCT_CLIENT_IDS,
   authenticateHost,
   assertCleanChildExit,
+  assertCodexAuthStatusProbe,
   assertProductClientBoot,
   buildProductSmokeOverlay,
   createReleaseChildEnvironment,
@@ -18,10 +19,51 @@ import {
   stopChild,
 } from './verify-product-release.mjs'
 
-test('desktop shell keeps window controls in a side rail without a title bar', () => {
+test('release smoke accepts only a mounted GPT Auth status channel', () => {
+  assert.doesNotThrow(() => assertCodexAuthStatusProbe({
+    status: 200,
+    body: {
+      type: 'server-response',
+      rpcId: 'yourbuddy-release-codex-auth-status',
+      result: { ok: true, value: { status: { available: false, configured: false } } },
+    },
+  }))
+  assert.throws(
+    () => assertCodexAuthStatusProbe({ status: 405, body: {} }),
+    /GPT Auth status RPC returned HTTP 405/u,
+  )
+  assert.throws(
+    () => assertCodexAuthStatusProbe({
+      status: 200,
+      body: {
+        type: 'server-response',
+        rpcId: 'yourbuddy-release-codex-auth-status',
+        result: { ok: true, value: { status: { configured: false } } },
+      },
+    }),
+    /GPT Auth status RPC returned an invalid response/u,
+  )
+})
+
+test('Codex Auth adapter profile satisfies the bundled Pi AI diagnostics contract', () => {
+  const adapter = readFileSync(
+    join(import.meta.dirname, '..', 'product', 'dsh-codex-auth', 'lib', 'bounded-response-CutNZ8kw.js'),
+    'utf8',
+  )
+  assert.match(
+    adapter,
+    /modelErrors: \/\* @__PURE__ \*\/ new Map\(\),\s+configuredMaxTokens: \/\* @__PURE__ \*\/ new Map\(\),/u,
+  )
+})
+
+test('desktop shell projects window controls into the sidebar with a compact fallback', () => {
   const shell = readFileSync(join(import.meta.dirname, '..', 'shell.html'), 'utf8')
-  assert.match(shell, /<body>\s*<aside id="window-rail" data-tauri-drag-region>/u)
-  assert.match(shell, /<div id="window-controls"><\/div>\s*<\/aside>\s*<iframe id="app"/u)
+  assert.match(shell, /<body>\s*<aside id="window-chrome-fallback" data-tauri-drag-region>/u)
+  assert.match(shell, /yourbuddy\.desktop\.window-controls/u)
+  assert.match(shell, /type: 'layout-response'/u)
+  assert.match(shell, /setWindowControlsFallbackVisible\(false\)/u)
+  assert.doesNotMatch(shell, /id="window-rail"/u)
+  assert.doesNotMatch(shell, /#window-chrome-fallback\s*\{[^}]*height:\s*100%/su)
   assert.doesNotMatch(shell, /id="titlebar"/u)
 })
 

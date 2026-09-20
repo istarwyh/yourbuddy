@@ -6,7 +6,9 @@
  * mid-slide. At settle the wide-only content unmounts and the upper
  * controls enter the 56px rail from the same horizontal offset (one icon each,
  * same top-down order) on one fade that ends with the slide. The bottom-pinned
- * settings control only fades. The workspace/session browsing region between
+ * settings control only fades. Expanded header actions sit immediately before
+ * the collapse control and unmount with the other wide-only content. The
+ * workspace/session browsing region between
  * global panel rows and the foot is the `sidebar.workspaces` registrant's,
  * and the foot holds `sidebar.settings` plus `sidebar.footer.action`; the shell
  * hands them the wide flag (plus an expand request callback for the browser).
@@ -205,6 +207,11 @@ export function SidebarRoot({
               </span>
             </span>
           </button>
+        )}
+        {wide && (
+          <div className={clsx(css.headerActions, css.wide)}>
+            {renderSlot('sidebar.header.action', {})}
+          </div>
         )}
         {/* Rail resting state is the whale mark; hovering swaps in the panel
             icon (the expand affordance, figma sidebar-hover flow). */}

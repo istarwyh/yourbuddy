@@ -7,12 +7,10 @@
   <style>
     :root {
       --dsw-static-neutral-bluish-50: rgb(249, 250, 251);
-      --dsw-static-neutral-bluish-800: rgb(53, 54, 56);
       --dsw-static-neutral-bluish-875: rgb(35, 35, 36);
       --dsw-static-neutral-bluish-950: rgb(21, 21, 23);
       --dsw-static-red-400: rgb(242, 90, 90);
       --bg: var(--dsw-static-neutral-bluish-950);
-      --line: var(--dsw-static-neutral-bluish-800);
       --text: var(--dsw-static-neutral-bluish-50);
       --hover: var(--dsw-static-neutral-bluish-875);
       --close-hover: var(--dsw-static-red-400);
@@ -21,32 +19,31 @@
     html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
     body {
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-      display: flex;
-      flex-direction: row;
     }
-    #window-rail {
-      position: relative;
+    #window-chrome-fallback {
+      position: fixed;
+      top: 10px;
+      left: 64px;
       z-index: 10;
-      width: 32px;
-      min-width: 32px;
-      height: 100%;
-      border-right: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      min-height: 32px;
       background: var(--bg);
       user-select: none;
     }
+    #window-chrome-fallback[hidden] { display: none; }
     #window-controls {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
       gap: 0;
-      padding-top: 4px;
     }
     button.ctl {
       appearance: none;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 31px;
+      width: 32px;
       height: 32px;
       border: 0;
       background: transparent;
@@ -57,24 +54,26 @@
     button.ctl.close:hover { background: var(--close-hover); color: #fff; }
     button.ctl svg { width: 10px; height: 10px; display: block; }
     body.macos #window-controls {
-      gap: 8px;
-      padding-top: 14px;
+      gap: 2px;
+      padding: 0 1px;
     }
     body.macos button.ctl {
-      width: 12px;
-      height: 12px;
-      flex: 0 0 12px;
-      border-radius: 50%;
+      width: 18px;
+      height: 28px;
+      flex: 0 0 18px;
+      border-radius: 0;
+      background: transparent;
     }
     body.macos button.ctl svg { display: none; }
-    body.macos button.ctl.close { background: #ff5f57; }
-    body.macos button.ctl.minimize { background: #febc2e; }
-    body.macos button.ctl.maximize { background: #28c840; }
+    body.macos button.ctl::after { content: ''; width: 12px; height: 12px; border-radius: 50%; }
+    body.macos button.ctl.close::after { background: #ff5f57; }
+    body.macos button.ctl.minimize::after { background: #febc2e; }
+    body.macos button.ctl.maximize::after { background: #28c840; }
     body.macos button.ctl:hover { filter: brightness(1.08); }
     iframe {
-      flex: 1 1 auto;
+      position: absolute;
+      inset: 0;
       width: 100%;
-      min-width: 0;
       height: 100%;
       border: 0;
       background: var(--bg);
@@ -179,7 +178,7 @@
   </style>
 </head>
 <body>
-  <aside id="window-rail" data-tauri-drag-region>
+  <aside id="window-chrome-fallback" data-tauri-drag-region>
     <div id="window-controls"></div>
   </aside>
   <iframe id="app" title="YourBuddy"></iframe>
@@ -215,6 +214,15 @@
       close: window.DSH_I18N.t('shell.close'),
     }
 
+    async function performWindowAction(kind) {
+      const current = window.__TAURI__?.window?.getCurrentWindow()
+      if (!current) return
+      if (kind === 'minimize') await current.minimize()
+      if (kind === 'maximize') await current.toggleMaximize()
+      if (kind === 'close') await current.close()
+      if (kind === 'drag') await current.startDragging()
+    }
+
     function windowButton(kind) {
       const el = document.createElement('button')
       el.className = `ctl ${kind}`
@@ -222,20 +230,24 @@
       el.innerHTML = icons[kind]
       el.title = labels[kind]
       el.setAttribute('aria-label', labels[kind])
-      el.addEventListener('click', async () => {
-        const current = window.__TAURI__?.window?.getCurrentWindow()
-        if (!current) return
-        if (kind === 'minimize') await current.minimize()
-        if (kind === 'maximize') await current.toggleMaximize()
-        if (kind === 'close') await current.close()
+      el.addEventListener('click', () => {
+        void performWindowAction(kind).catch(error => {
+          console.error('Desktop window action failed', error)
+        })
       })
       return el
     }
 
+    let windowControlLayout
     function renderWindowControls(layout) {
       document.body.classList.toggle('macos', layout.os === 'macos')
       const controls = [...layout.left, ...layout.right]
+      windowControlLayout = { os: layout.os, controls, labels }
       document.getElementById('window-controls').replaceChildren(...controls.map(windowButton))
+    }
+
+    function setWindowControlsFallbackVisible(visible) {
+      document.getElementById('window-chrome-fallback').hidden = !visible
     }
 
     const closePrompt = document.getElementById('close-prompt')
@@ -270,6 +282,8 @@
     const externalLinkVersion = 1
     const marketplaceLinkChannel = 'yourbuddy.desktop.marketplace-link'
     const marketplaceLinkVersion = 1
+    const windowControlsChannel = 'yourbuddy.desktop.window-controls'
+    const windowControlsVersion = 1
     let embeddedOrigin
     try {
       embeddedOrigin = new URL(window.__DSH_WEB_URL__).origin
@@ -289,6 +303,17 @@
       if (value.type === 'check-update-request') return 'check-update'
       if (value.type === 'restart-request') return 'restart'
       return false
+    }
+
+    function readWindowControlsAction(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      if (value.channel !== windowControlsChannel || value.version !== windowControlsVersion) return false
+      const keys = Object.keys(value).sort().join(',')
+      if (['mount-request', 'ready', 'unmount'].includes(value.type)) {
+        return keys === 'channel,type,version' ? value.type : false
+      }
+      if (value.type !== 'action-request' || keys !== 'action,channel,type,version') return false
+      return ['close', 'minimize', 'maximize', 'drag'].includes(value.action) ? value.action : false
     }
 
     function isNetworkProxySettings(value) {
@@ -392,6 +417,34 @@
       const embeddedWindow = appFrame.contentWindow
       if (embeddedOrigin === undefined || embeddedWindow === null) return
       if (event.source !== embeddedWindow || event.origin !== embeddedOrigin) return
+      const windowControlsAction = readWindowControlsAction(event.data)
+      if (windowControlsAction !== false) {
+        if (windowControlsAction === 'mount-request') {
+          if (windowControlLayout !== undefined) {
+            embeddedWindow.postMessage({
+              channel: windowControlsChannel,
+              version: windowControlsVersion,
+              type: 'layout-response',
+              ...windowControlLayout,
+            }, embeddedOrigin)
+          }
+        }
+        else if (windowControlsAction === 'ready') {
+          setWindowControlsFallbackVisible(false)
+        }
+        else if (windowControlsAction === 'unmount') {
+          setWindowControlsFallbackVisible(true)
+        }
+        else {
+          try {
+            await performWindowAction(windowControlsAction)
+          }
+          catch (error) {
+            console.error('Desktop window action failed', error)
+          }
+        }
+        return
+      }
       if (isExternalLinkRequest(event.data)) {
         const response = {
           channel: externalLinkChannel,
@@ -501,6 +554,7 @@
       if (url && appFrame.getAttribute('src') === null) appFrame.src = url
     }
     window.__DSH_OPEN_HOST__ = openHost
+    appFrame.addEventListener('load', () => { setWindowControlsFallbackVisible(true) })
 
     async function boot() {
       if (window.__DSH_HOST_COOKIE_READY__) openHost()

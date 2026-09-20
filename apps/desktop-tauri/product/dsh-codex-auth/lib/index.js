@@ -921,7 +921,7 @@ function apply(ctx, config) {
 		},
 		onChange: announceModelPolicyChange
 	});
-	ctx.inject(["connection"], (connectionCtx) => connectionCtx.connection.rpc.handle(CODEX_AUTH_RPC_CHANNEL, (endpoint, payload, signal) => handleCodexAuthRpc(service, endpoint, payload, signal), { authority: "loopback" }));
+	ctx.inject(["connection", "webServer"], (connectionCtx) => connectionCtx.connection.rpc.handle(CODEX_AUTH_RPC_CHANNEL, (endpoint, payload, signal) => handleCodexAuthRpc(service, endpoint, payload, signal), { authority: "loopback" }));
 	if (config.llmEnabled) ctx.logger.info("llm-codex-auth: route %s serving ChatGPT login from %s (transport %s, ws-connect %sms, request timeout %sms)", CODEX_ROUTE, authJsonPath, config.transport, config.websocketConnectTimeoutMs, config.timeoutMs);
 	else ctx.logger.info("llm-codex-auth: shared Login State active at %s; LLM route disabled", authJsonPath);
 }

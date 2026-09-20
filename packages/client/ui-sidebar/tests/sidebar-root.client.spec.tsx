@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import type {
-  SidebarFooterActionOwnerProps, SidebarRootComponentProps, SidebarSectionOwnerProps,
+  SidebarFooterActionOwnerProps, SidebarHeaderActionOwnerProps, SidebarRootComponentProps, SidebarSectionOwnerProps,
   SidebarSettingsOwnerProps,
 } from '../src/client/contract/slots.ts'
 import { SidebarRoot } from '../src/client/SidebarRoot.tsx'
@@ -39,6 +39,7 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
   let regionOwner: SidebarSectionOwnerProps | undefined
   let settingsOwner: SidebarSettingsOwnerProps | undefined
   let footerActionOwner: SidebarFooterActionOwnerProps | undefined
+  let headerActionOwner: SidebarHeaderActionOwnerProps | undefined
   const brandMark = <span data-testid="custom-brand-mark">M</span>
   const brandName = <span data-testid="custom-brand-name">Custom Brand</span>
   let current = { collapsed, width }
@@ -51,20 +52,24 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
       startSession={startSession} toggleSidebar={toggleSidebar} t={t}
       renderSlot={((
         key: string,
-        owner: SidebarFooterActionOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
+        owner: unknown,
       ) => {
         if (key === 'sidebar.brand.mark') return brandMark
         if (key === 'sidebar.brand.name') return brandName
+        if (key === 'sidebar.header.action') {
+          headerActionOwner = owner as SidebarHeaderActionOwnerProps
+          return <div data-testid="header-action-seat" />
+        }
         if (key === 'sidebar.settings') {
-          settingsOwner = owner
-          return <div data-testid="settings-seat" data-wide={owner.wide} />
+          settingsOwner = owner as SidebarSettingsOwnerProps
+          return <div data-testid="settings-seat" data-wide={settingsOwner.wide} />
         }
         if (key === 'sidebar.footer.action') {
-          footerActionOwner = owner
-          return <div data-testid="footer-action-seat" data-wide={owner.wide} />
+          footerActionOwner = owner as SidebarFooterActionOwnerProps
+          return <div data-testid="footer-action-seat" data-wide={footerActionOwner.wide} />
         }
         regionOwner = owner as SidebarSectionOwnerProps
-        return <div data-testid="region" data-wide={owner.wide} />
+        return <div data-testid="region" data-wide={(owner as SidebarSectionOwnerProps).wide} />
       }) as SidebarRootComponentProps['renderSlot']}
     />
   )
@@ -84,6 +89,10 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
       if (footerActionOwner === undefined) throw new Error('footer action owner not rendered')
       return footerActionOwner
     },
+    headerActionOwner: () => {
+      if (headerActionOwner === undefined) throw new Error('header action owner not rendered')
+      return headerActionOwner
+    },
     rerender(next: Partial<typeof current>) {
       current = { ...current, ...next }
       view.rerender(root())
@@ -96,6 +105,11 @@ describe('SidebarRoot shell', () => {
     const b = mountShell()
     expect(screen.getByTestId('custom-brand-mark')).toBeTruthy()
     expect(screen.getByTestId('custom-brand-name')).toBeTruthy()
+    expect(screen.getByTestId('header-action-seat')).toBeTruthy()
+    expect(b.headerActionOwner()).toEqual({})
+    const headerAction = screen.getByTestId('header-action-seat')
+    const collapse = screen.getByRole('button', { name: 'Collapse sidebar' })
+    expect(headerAction.compareDocumentPosition(collapse) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
     // Expanded, both the wordmark and the capsule start a session.
     const starters = screen.getAllByRole('button', { name: 'New session' })
     expect(starters).toHaveLength(2)
@@ -178,6 +192,7 @@ describe('SidebarRoot shell', () => {
     b.rerender({})
     expect(b.regionOwner().wide).toBe(false)
     expect(b.footerActionOwner().wide).toBe(false)
+    expect(screen.queryByTestId('header-action-seat')).toBeNull()
     expect(screen.getByTestId('region')).toBeTruthy()
     b.regionOwner().expandSidebar()
     expect(b.toggleSidebar).toHaveBeenCalledOnce()

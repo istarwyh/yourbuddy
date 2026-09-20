@@ -33,9 +33,15 @@
     "Set @deepseek-ai/dsh-settings peer range from 0.1.2-rc.1 to 0.1.5-rc.2.",
     "Set @deepseek-ai/dsh-token-meter peer range from 0.1.2-rc.1 to 0.1.5-rc.2.",
     "Set @deepseek-ai/dsh-tools peer range from 0.1.2-rc.1 to 0.1.5-rc.2.",
-    "Set @deepseek-ai/dsh-web peer range from 0.1.2-rc.1 to 0.1.5-rc.2."
+    "Set @deepseek-ai/dsh-web peer range from 0.1.2-rc.1 to 0.1.5-rc.2.",
+    {
+      "id": "yourbuddy-codex-auth-compatibility",
+      "file": "patches/codex-auth-yourbuddy.patch",
+      "sha256": "cb4c88154c69c20bb983551642f1df8ef41be1dd25bb4c519bfa75f0c97904b3",
+      "purpose": "Bind the GPT Auth RPC registration to the Web carrier and satisfy the bundled Pi AI profile diagnostics contract so status routes and exact Codex model resolution both work."
+    }
   ],
   "repository": "https://github.com/suntianc/dsh-codex-auth",
   "license": "MIT",
-  "treeSha256": "01bfd5d2bea49b83c039e3bbbce4e7fd3e78dc42d159043a343b36ef3ebb3279"
+  "treeSha256": "0ad532bc40790be0fd45a5dc2a6640d073bd628411cd067444af6d42e72d59e8"
 }

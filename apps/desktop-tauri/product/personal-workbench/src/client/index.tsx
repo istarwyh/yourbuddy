@@ -20,6 +20,7 @@ import {
 import { ApplicationLifecycleRow } from './ApplicationLifecycleRow.tsx'
 import { NetworkProxyRow } from './NetworkProxyRow.tsx'
 import { HelpMenu, type HelpMenuInjected } from './HelpMenu.tsx'
+import { WindowControls } from './WindowControls.tsx'
 import { installDesktopExternalLinks } from './desktop-external-links.ts'
 import { en, zh, type PersonalWorkbenchKey } from './locales.ts'
 import { installPersonalWorkbenchStyles } from './styles.ts'
@@ -141,6 +142,18 @@ export function installPersonalBrandOccupants(
   installBrandSlot(ctx, scope, 'conversation.hero.brand.badge', pickBadge)
 }
 
+/**
+ * Register the presentation-only desktop controls in the expanded sidebar header.
+ * @param ctx - Personal Workbench Client context.
+ */
+export function installDesktopWindowControls(ctx: Context): void {
+  ctx.slots.inject('sidebar.header.action', () => ctx.slots.register({
+    name: 'sidebar.header.action',
+    id: 'yourbuddy-window-controls',
+    order: 10,
+  }, WindowControls))
+}
+
 /** Register the settings cards and brand occupants. */
 export function apply(ctx: Context): void {
   installPersonalWorkbenchStyles(ctx)
@@ -154,6 +167,7 @@ export function apply(ctx: Context): void {
   installDesktopExternalLinks(ctx, ctx.locale.bind(SETTINGS_LOCALE_NAMESPACE))
 
   installPersonalBrandOccupants(ctx, scope)
+  installDesktopWindowControls(ctx)
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
     name: 'sidebar.footer.action',
     id: 'yourbuddy-help',
@@ -186,4 +200,5 @@ export type { ApplicationLifecycleRowProps } from './ApplicationLifecycleRow.tsx
 export type { BrandSettingsRowProps } from './BrandSettingsRow.tsx'
 export type { NetworkProxyRowProps } from './NetworkProxyRow.tsx'
 export type { HelpMenuProps } from './HelpMenu.tsx'
+export type { WindowControlsProps } from './WindowControls.tsx'
 export type PersonalBrandSettingsLocaleProps = PropsLocale<'settings.personal-workbench'>

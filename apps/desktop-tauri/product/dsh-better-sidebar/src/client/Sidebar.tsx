@@ -1,24 +1,17 @@
 /**
- * The sidebar shell: ONE surface — the bottom workbench docked to the
- * conversation column.
+ * The sidebar shell renders the plugin-owned workbench either as a docked
+ * bottom panel or as YourBuddy's primary desktop workbench.
  *
  * DSH 0.1.5 owns the right column: its native Sidebar hosts every tab type
  * this plugin registers (client/native/), so this shell renders no right
- * panel of its own. What remains plugin-owned is the bottom workbench: it
- * spans ONLY the AppFrame's center column (the agent output area), from the
- * app shell's own left sidebar to the details column's left edge, so neither
- * sidebar gives up any position. Its height drags from its top edge, and the
- * expand/collapse control is a header button registered into DSH's
- * `conversation.session.header.utilities` list slot
- * (sidebar/bottom-toggle.tsx) — the header's right corner belongs to the
- * native sidebar's own expand control.
+ * panel of its own. What remains plugin-owned is one split-pane workbench.
+ * Portal and narrow-overlay presentations dock it to the conversation
+ * column and retain height resize plus expand/collapse. The desktop Slot
+ * presentation fills AppFrame's workbench column and stays visible.
  *
- * The panel is mounted inside the unified panel host — a fixed,
- * viewport-sized containing block ([data-dsh-panel-host]) appended to
- * document.body — instead of a fixed-position element, so a desktop shell's
- * intermediate wrapper transforms can never hijack its containing block.
- * The whole layout lives in the per-session store, so switching
- * conversations swaps the workbench.
+ * The Portal host is a fixed viewport layer appended to document.body. The
+ * desktop Slot host is in-flow inside AppFrame. The whole layout lives in
+ * the per-session store, so switching conversations swaps the workbench.
  *
  * The shell binds the workbench actions to the store and dispatches tab
  * content to the views. New tabs come from the + menu (explorer / git /
@@ -39,7 +32,7 @@ import {
 import { getPinnedHomeScope } from './pinned.ts'
 import { IconPanelBottomOutline16 } from './icons.tsx'
 import { Workbench, type WorkbenchActions } from './split-pane.tsx'
-import { useViewportSize } from './breakpoints.ts'
+import { NARROW_MAX_WIDTH, useViewportSize } from './breakpoints.ts'
 import { bottomPushHeight } from './layout-push.ts'
 import { parseDesktopEnv } from './desktop-env.ts'
 import { getWcoSnapshot, subscribeWco } from './wco.ts'
@@ -155,6 +148,10 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
   }, [ctx])
 
   const viewport = useViewportSize()
+  // AppFrame moves the slot back into its overlay below the same 768px
+  // breakpoint. Only the desktop slot is a persistent primary workbench;
+  // the overlay keeps the panel's existing expand/collapse behavior.
+  const primaryWorkbench = slotPresentation && viewport.width >= NARROW_MAX_WIDTH
 
   // On-screen keyboard / visual-viewport inset (mobile, split-screen, …):
   // when the visual viewport shrinks below the layout viewport, bottom-
@@ -312,7 +309,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
   const { centerRectRef, centerMeasured, measureCenter, draggingRef } = useCenterColumn(
     bottomRef,
     state?.bottomOpen,
-    slotPresentation,
+    primaryWorkbench,
   )
 
   /**
@@ -613,7 +610,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
     // No conversation yet: the host stays mounted (the drag shield keeps
     // covering the region) but nothing is rendered — the toggle button lives
     // in DSH's session header, which does not exist without a session.
-    return <div data-dsh-panel-host data-dsh-presentation={slotPresentation ? 'slot' : 'portal'} {...osFileDragShield} />
+    return <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield} />
   }
 
   const bottomPanelHeight = bottomPushHeight({
@@ -705,7 +702,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
         onReferenceFile={referenceInChat}
         ctx={ctx}
         store={store}
-        visible={state.bottomOpen && active}
+        visible={(primaryWorkbench || state.bottomOpen) && active}
         onSubagentJump={(childSessionId) => { subagentJumpRef.current = childSessionId }}
         onOpenDiff={(diffTab) => { store.reduce(s => openDiffTab(s, paneId, diffTab)) }}
         localeRevision={localeRevision}
@@ -715,7 +712,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
   }
 
   return (
-    <div data-dsh-panel-host data-dsh-presentation={slotPresentation ? 'slot' : 'portal'} {...osFileDragShield}>
+    <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield}>
       {/*
         The bottom workbench: it squeezes ONLY the center column (the agent
         output area): it starts at the app shell's own left sidebar and ends
@@ -730,68 +727,76 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
       */}
       <div
         ref={bottomRef}
-        className={clsx(css.bottomPanel, slotPresentation && css.bottomPanelSlot, !state.bottomOpen && css.bottomPanelHidden)}
+        className={clsx(
+          css.bottomPanel,
+          primaryWorkbench && css.bottomPanelSlot,
+          !primaryWorkbench && !state.bottomOpen && css.bottomPanelHidden,
+        )}
         data-dsh-panel
         data-dsh-bottom-panel
         style={{
-          height: bottomPanelHeight,
-          left: slotPresentation ? 0 : centerRectRef.current.left,
+          height: primaryWorkbench ? '100%' : bottomPanelHeight,
+          left: primaryWorkbench ? 0 : centerRectRef.current.left,
           // Keep the panel above the on-screen keyboard when the visual
           // viewport shrinks (see the keyboardInset effect).
-          bottom: keyboardInset > 0 ? `${keyboardInset}px` : undefined,
+          bottom: primaryWorkbench ? 0 : keyboardInset > 0 ? `${keyboardInset}px` : undefined,
           // Direct from the center column's measured right edge: the bottom
           // panel spans ONLY the center column, ending exactly at the
           // details column's left edge.
-          right: slotPresentation ? 0 : window.innerWidth - centerRectRef.current.right,
+          right: primaryWorkbench ? 0 : window.innerWidth - centerRectRef.current.right,
           // Unmeasured center column → keep the panel invisible (zero-size
           // geometry would flash full-width overflow instead).
-          visibility: slotPresentation || centerMeasured ? undefined : 'hidden',
+          visibility: primaryWorkbench || centerMeasured ? undefined : 'hidden',
         }}
         data-dragging={draggingBottom || undefined}
       >
-        <div
-          className={clsx(css.bottomResize, draggingBottom && css.bottomResizeActive)}
-          onPointerDown={(event) => {
-            event.preventDefault()
-            event.currentTarget.setPointerCapture(event.pointerId)
-            dragCommitted.current = false
-            bottomDrag.current = { startY: event.clientY, startHeight: state.bottomHeight }
-            setDraggingBottom(true)
-          }}
-          onPointerMove={(event) => {
-            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
-            const { startY, startHeight } = bottomDrag.current
-            scheduleDrag(clampHeight(startHeight + (startY - event.clientY)))
-          }}
-          onPointerUp={(event) => {
-            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
-            if (dragCommitted.current) return
-            dragCommitted.current = true
-            event.currentTarget.releasePointerCapture(event.pointerId)
-            const { startY, startHeight } = bottomDrag.current
-            // Up position wins over the rAF pending value (see the abortDrag
-            // comment — issue #247).
-            commitDrag(clampHeight(startHeight + (startY - event.clientY)))
-            setDraggingBottom(false)
-          }}
-          onPointerCancel={(event) => { abortDrag(() => setDraggingBottom(false), event) }}
-          onLostPointerCapture={() => { abortDrag(() => setDraggingBottom(false)) }}
-        />
+        {!primaryWorkbench && (
+          <div
+            className={clsx(css.bottomResize, draggingBottom && css.bottomResizeActive)}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              event.currentTarget.setPointerCapture(event.pointerId)
+              dragCommitted.current = false
+              bottomDrag.current = { startY: event.clientY, startHeight: state.bottomHeight }
+              setDraggingBottom(true)
+            }}
+            onPointerMove={(event) => {
+              if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+              const { startY, startHeight } = bottomDrag.current
+              scheduleDrag(clampHeight(startHeight + (startY - event.clientY)))
+            }}
+            onPointerUp={(event) => {
+              if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+              if (dragCommitted.current) return
+              dragCommitted.current = true
+              event.currentTarget.releasePointerCapture(event.pointerId)
+              const { startY, startHeight } = bottomDrag.current
+              // Up position wins over the rAF pending value (see the abortDrag
+              // comment — issue #247).
+              commitDrag(clampHeight(startHeight + (startY - event.clientY)))
+              setDraggingBottom(false)
+            }}
+            onPointerCancel={(event) => { abortDrag(() => setDraggingBottom(false), event) }}
+            onLostPointerCapture={() => { abortDrag(() => setDraggingBottom(false)) }}
+          />
+        )}
         {/*
           The bottom panel's own close control at its tab strip's right end
           (the strip reserves the width via CSS so the + menu never hides
           under it): one tap collapses the panel.
         */}
-        <Tooltip label={t('collapseBottomPanel')} side="bottom" delayMs={500}>
-          <button
-            type="button"
-            className={css.bottomClose}
-            aria-label={t('collapseBottomPanel')}
-            onClick={() => { store.reduce(toggleBottomPanel) }}
-          >
-            <IconCloseFill14 />
-          </button>
-        </Tooltip>
+        {!primaryWorkbench && (
+          <Tooltip label={t('collapseBottomPanel')} side="bottom" delayMs={500}>
+            <button
+              type="button"
+              className={css.bottomClose}
+              aria-label={t('collapseBottomPanel')}
+              onClick={() => { store.reduce(toggleBottomPanel) }}
+            >
+              <IconCloseFill14 />
+            </button>
+          </Tooltip>
+        )}
         <div className={css.panelBody}>
           <Workbench
             state={state}

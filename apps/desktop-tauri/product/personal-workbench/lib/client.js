@@ -29,6 +29,7 @@ __export(index_exports, {
   SETTINGS_LOCALE_NAMESPACE: () => SETTINGS_LOCALE_NAMESPACE,
   apply: () => apply,
   inject: () => inject,
+  installDesktopWindowControls: () => installDesktopWindowControls,
   installPersonalBrandOccupants: () => installPersonalBrandOccupants,
   normalizeLogoSource: () => normalizeLogoSource,
   normalizeWorkbenchName: () => normalizeWorkbenchName,
@@ -1428,6 +1429,116 @@ function HelpMenu({ wide, readLocale, t }) {
   ] });
 }
 
+// src/client/WindowControls.tsx
+var import_react5 = require("react");
+
+// src/client/desktop-window-controls.ts
+var DESKTOP_WINDOW_CONTROLS_CHANNEL = "yourbuddy.desktop.window-controls";
+var DESKTOP_WINDOW_CONTROLS_VERSION = 1;
+function hasExactKeys3(value, expected) {
+  return Object.keys(value).sort().join(",") === expected;
+}
+function isRecord2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function readDesktopWindowControlsLayout(value) {
+  if (!isRecord2(value) || !hasExactKeys3(value, "channel,controls,labels,os,type,version") || value.channel !== DESKTOP_WINDOW_CONTROLS_CHANNEL || value.version !== DESKTOP_WINDOW_CONTROLS_VERSION || value.type !== "layout-response" || !["linux", "macos", "windows"].includes(String(value.os)) || !Array.isArray(value.controls) || value.controls.length > 3 || !value.controls.every((control) => ["close", "minimize", "maximize"].includes(String(control))) || new Set(value.controls).size !== value.controls.length || !isRecord2(value.labels) || !hasExactKeys3(value.labels, "close,maximize,minimize") || !Object.values(value.labels).every((label) => typeof label === "string" && label.length <= 128)) {
+    return void 0;
+  }
+  return {
+    os: value.os,
+    controls: value.controls,
+    labels: value.labels
+  };
+}
+function isDesktopWindowControlsAvailable(target = typeof window === "undefined" ? void 0 : window) {
+  return target !== void 0 && target.parent !== target;
+}
+function connectDesktopWindowControls(onLayout, target = window) {
+  if (!isDesktopWindowControlsAvailable(target)) return () => {
+  };
+  const parent = target.parent;
+  const onMessage = (event) => {
+    if (event.source !== parent) return;
+    const layout = readDesktopWindowControlsLayout(event.data);
+    if (layout === void 0) return;
+    onLayout(layout);
+    parent.postMessage({
+      channel: DESKTOP_WINDOW_CONTROLS_CHANNEL,
+      version: DESKTOP_WINDOW_CONTROLS_VERSION,
+      type: "ready"
+    }, "*");
+  };
+  target.addEventListener("message", onMessage);
+  parent.postMessage({
+    channel: DESKTOP_WINDOW_CONTROLS_CHANNEL,
+    version: DESKTOP_WINDOW_CONTROLS_VERSION,
+    type: "mount-request"
+  }, "*");
+  return () => {
+    target.removeEventListener("message", onMessage);
+    parent.postMessage({
+      channel: DESKTOP_WINDOW_CONTROLS_CHANNEL,
+      version: DESKTOP_WINDOW_CONTROLS_VERSION,
+      type: "unmount"
+    }, "*");
+  };
+}
+function requestDesktopWindowControl(action, target = window) {
+  if (!isDesktopWindowControlsAvailable(target)) return;
+  target.parent.postMessage({
+    channel: DESKTOP_WINDOW_CONTROLS_CHANNEL,
+    version: DESKTOP_WINDOW_CONTROLS_VERSION,
+    type: "action-request",
+    action
+  }, "*");
+}
+
+// src/client/WindowControls.tsx
+var import_jsx_runtime6 = require("react/jsx-runtime");
+function ControlIcon({ control }) {
+  if (control === "minimize") {
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("rect", { x: "1", y: "5", width: "8", height: "1", fill: "currentColor" }) });
+  }
+  if (control === "maximize") {
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("rect", { x: "1.5", y: "1.5", width: "7", height: "7", fill: "none", stroke: "currentColor", strokeWidth: "1" }) });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("path", { d: "M2 2 L8 8 M8 2 L2 8", stroke: "currentColor", strokeWidth: "1.2" }) });
+}
+function WindowControls({ target = window }) {
+  const [layout, setLayout] = (0, import_react5.useState)();
+  (0, import_react5.useEffect)(() => connectDesktopWindowControls(setLayout, target), [target]);
+  if (layout === void 0 || layout.controls.length === 0) return null;
+  const beginDrag = (event) => {
+    if (event.target === event.currentTarget) requestDesktopWindowControl("drag", target);
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+    "div",
+    {
+      className: "dpw-window-controls",
+      "data-platform": layout.os,
+      onPointerDown: beginDrag,
+      children: layout.controls.map((control) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+        "button",
+        {
+          type: "button",
+          className: `dpw-window-control dpw-window-control-${control}`,
+          title: layout.labels[control],
+          "aria-label": layout.labels[control],
+          onClick: () => {
+            requestDesktopWindowControl(control, target);
+          },
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dpw-window-control-dot", "aria-hidden": "true" }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ControlIcon, { control })
+          ]
+        },
+        control
+      ))
+    }
+  );
+}
+
 // src/client/locales.ts
 var zh = {
   "help.title": "\u5E2E\u52A9\u4E0E\u6307\u5357",
@@ -1700,6 +1811,18 @@ var PERSONAL_WORKBENCH_CSS = `
 .dpw-help-icon{display:grid;place-items:center;flex:none;width:18px;height:18px;border:1.5px solid currentColor;border-radius:50%;font-size:12px;font-weight:650}
 .dpw-help-panel{position:fixed;z-index:1100;box-sizing:border-box;width:288px;max-width:calc(100vw - 16px);max-height:calc(100vh - 100px);overflow:auto;padding:8px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 8px 24px rgb(0 0 0 / .16)}
 .dpw-help-panel [role=menu]{display:grid}.dpw-help-panel p{margin:8px}.dpw-help-panel .dpw-hint{font-size:12px}.dpw-help-recovery{display:grid;gap:8px;border-top:1px solid var(--dsw-alias-border-l1);padding-top:8px}.dpw-help-recovery .dpw-input{font-size:12px}
+.dpw-window-controls{display:inline-flex;align-items:center;gap:0;padding:0 2px;user-select:none}
+.dpw-window-control{appearance:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:28px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}
+.dpw-window-control:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.dpw-window-control svg{display:block;width:10px;height:10px}.dpw-window-control-dot{display:none}
+.dpw-window-controls[data-platform=macos]{gap:2px;padding:0 1px}
+.dpw-window-controls[data-platform=macos] .dpw-window-control{width:18px;height:28px;border-radius:0;background:transparent}
+.dpw-window-controls[data-platform=macos] .dpw-window-control svg{display:none}
+.dpw-window-controls[data-platform=macos] .dpw-window-control-dot{display:block;width:12px;height:12px;border-radius:50%}
+.dpw-window-controls[data-platform=macos] .dpw-window-control-close .dpw-window-control-dot{background:#ff5f57}
+.dpw-window-controls[data-platform=macos] .dpw-window-control-minimize .dpw-window-control-dot{background:#febc2e}
+.dpw-window-controls[data-platform=macos] .dpw-window-control-maximize .dpw-window-control-dot{background:#28c840}
+.dpw-window-controls[data-platform=macos] .dpw-window-control:hover{filter:brightness(1.08)}
 @media (max-width:720px){.dpw-fields{grid-template-columns:1fr}}
 `;
 function installPersonalWorkbenchStyles(ctx) {
@@ -1789,6 +1912,13 @@ function installPersonalBrandOccupants(ctx, scope) {
   installBrandSlot(ctx, scope, "conversation.hero.brand.headline", pickHeadline);
   installBrandSlot(ctx, scope, "conversation.hero.brand.badge", pickBadge);
 }
+function installDesktopWindowControls(ctx) {
+  ctx.slots.inject("sidebar.header.action", () => ctx.slots.register({
+    name: "sidebar.header.action",
+    id: "yourbuddy-window-controls",
+    order: 10
+  }, WindowControls));
+}
 function apply(ctx) {
   installPersonalWorkbenchStyles(ctx);
   const scope = ctx.settingsScope.bind({
@@ -1800,6 +1930,7 @@ function apply(ctx) {
   );
   installDesktopExternalLinks(ctx, ctx.locale.bind(SETTINGS_LOCALE_NAMESPACE));
   installPersonalBrandOccupants(ctx, scope);
+  installDesktopWindowControls(ctx);
   ctx.slots.inject("sidebar.footer.action", () => ctx.slots.register({
     name: "sidebar.footer.action",
     id: "yourbuddy-help",

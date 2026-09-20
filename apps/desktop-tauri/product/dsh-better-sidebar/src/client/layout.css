@@ -55,6 +55,15 @@ body[data-dsh-sidebar-dragging] #root [data-dsh-center-col] {
   transition: none;
 }
 
+/* The desktop Slot is always present, so its old bottom-panel toggle would
+   only mutate dormant overlay state. The control remains available when
+   AppFrame moves the workbench into its narrow overlay. */
+@media (min-width: 768px) {
+  body[data-dsh-better-sidebar-presentation='slot'] [data-dsh-bottom-toggle] {
+    display: none;
+  }
+}
+
 /* DSH 0.1.x gives external settings sections a generic gear and exposes no
    icon field in the settings.section contract. settings-nav-icon.ts marks
    only this plugin's localized row; render the requested Lucide

@@ -739,6 +739,7 @@ var CodexAuthAdapter = class extends PiAiAdapter {
 				timeoutMs: options.timeoutMs,
 				streamIdleTimeoutMs: STREAM_IDLE_TIMEOUT_MS
 			}, options.onPayload),
+			modelErrors: /* @__PURE__ */ new Map(),
 			configuredMaxTokens: /* @__PURE__ */ new Map(),
 			transport: options.transport,
 			websocketConnectTimeoutMs: options.websocketConnectTimeoutMs,

@@ -107,6 +107,32 @@ export function recordProductClientResponse(target, responseUrl, status) {
 }
 
 /**
+ * Validate the GPT Auth status response returned through its dedicated Connection channel.
+ * @param {{ status: number, body: unknown }} probe
+ * @returns {void}
+ */
+export function assertCodexAuthStatusProbe(probe) {
+  if (probe.status !== 200) {
+    throw new Error(`GPT Auth status RPC returned HTTP ${probe.status}`)
+  }
+  const response = probe.body
+  if (response === null || typeof response !== 'object' || Array.isArray(response)) {
+    throw new Error('GPT Auth status RPC returned a non-object response')
+  }
+  const result = response.result
+  const status = result?.value?.status
+  if (response.type !== 'server-response'
+    || response.rpcId !== 'yourbuddy-release-codex-auth-status'
+    || result?.ok !== true
+    || status === null
+    || typeof status !== 'object'
+    || typeof status.available !== 'boolean'
+    || typeof status.configured !== 'boolean') {
+    throw new Error(`GPT Auth status RPC returned an invalid response: ${JSON.stringify(response)}`)
+  }
+}
+
+/**
  * Build the isolated environment used to execute unreviewed release candidates.
  *
  * @param {string} root
@@ -729,6 +755,14 @@ async function runBrowserSmoke(baseUrl, env) {
     await completeProductOnboarding(page)
     await verifyWorkbenchBranding(page)
     await page.getByRole('button', { name: 'Codex', exact: true }).waitFor({ timeout: 10_000 })
+    const modelSelector = page.getByRole('button', { name: /Select model, current openai-codex\/gpt-5\.6-sol/u })
+    await modelSelector.click()
+    await page.getByText('openai-codex/gpt-5.6-sol', { exact: true }).click()
+    await page.getByText('OpenAI Codex (chatgpt)', { exact: true }).waitFor({ timeout: 10_000 })
+    if (await page.getByText(/OpenAI Codex \(chatgpt\) failed to load:/u).count() !== 0) {
+      throw new Error('Codex model catalog failed to resolve against the bundled Pi AI adapter')
+    }
+    await page.keyboard.press('Escape')
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     const settings = page.getByRole('dialog', { name: 'Settings' })
     await settings.waitFor({ timeout: 10_000 })
@@ -786,11 +820,28 @@ async function runBrowserSmoke(baseUrl, env) {
         { cause: error },
       )
     }
-    const embeddedUrl = page.frames().find(frame => frame.parentFrame() === page.mainFrame())?.url()
+    const embeddedFrame = page.frames().find(frame => frame.parentFrame() === page.mainFrame())
+    const embeddedUrl = embeddedFrame?.url()
     const cleanBaseUrl = `${new URL(baseUrl).origin}/`
     if (embeddedUrl !== cleanBaseUrl) {
       throw new Error(`desktop Host token exchange did not reach the clean root URL: ${embeddedUrl ?? 'no frame'}`)
     }
+    if (embeddedFrame === undefined) throw new Error('desktop Host frame is unavailable for the GPT Auth status probe')
+    const codexAuthStatusProbe = await embeddedFrame.evaluate(async () => {
+      const response = await fetch('/codex-auth/status', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          type: 'client-request',
+          rpcId: 'yourbuddy-release-codex-auth-status',
+          method: 'status',
+          payload: {},
+        }),
+      })
+      const body = await response.text()
+      return { status: response.status, body: response.ok ? JSON.parse(body) : body }
+    })
+    assertCodexAuthStatusProbe(codexAuthStatusProbe)
     await completeProductOnboarding(embedded)
     const workbenchFrame = embedded.locator('[data-dsh-frame][data-workbench-primary]').first()
     await workbenchFrame.waitFor({ timeout: 10_000 })
@@ -799,6 +850,23 @@ async function runBrowserSmoke(baseUrl, env) {
       getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/u))
     if (workbenchTracks.length !== 4) {
       throw new Error(`YourBuddy workbench-primary layout rendered ${workbenchTracks.length} tracks: ${workbenchTracks.join(' ')}`)
+    }
+    const betterSidebarHost = embedded.locator('[data-dsh-panel-host][data-dsh-presentation="slot"]').first()
+    const betterSidebarWorkbench = betterSidebarHost.locator('[data-dsh-bottom-panel]').first()
+    await betterSidebarWorkbench.waitFor({ state: 'visible', timeout: 10_000 })
+    const workbenchGeometry = await betterSidebarWorkbench.evaluate((panel) => {
+      const host = panel.parentElement
+      if (!(host instanceof HTMLElement)) throw new Error('Better Sidebar workbench has no element host')
+      const hostRect = host.getBoundingClientRect()
+      const panelRect = panel.getBoundingClientRect()
+      return {
+        host: { width: hostRect.width, height: hostRect.height },
+        panel: { width: panelRect.width, height: panelRect.height },
+      }
+    })
+    if (Math.abs(workbenchGeometry.host.width - workbenchGeometry.panel.width) > 2
+      || Math.abs(workbenchGeometry.host.height - workbenchGeometry.panel.height) > 2) {
+      throw new Error(`Better Sidebar did not fill the primary workbench slot: ${JSON.stringify(workbenchGeometry)}`)
     }
     const releaseScreenshot = process.env.YOURBUDDY_RELEASE_SCREENSHOT
     if (releaseScreenshot) {
@@ -859,6 +927,12 @@ async function runBrowserSmoke(baseUrl, env) {
     await embedded.getByRole('button', { name: 'Settings', exact: true }).click()
     const embeddedSettings = embedded.getByRole('dialog', { name: 'Settings' })
     await embeddedSettings.waitFor({ timeout: 10_000 })
+    await embeddedSettings.getByRole('button', { name: 'GPT Auth', exact: true }).click()
+    await embeddedSettings.getByRole('heading', { name: 'GPT Auth', exact: true }).waitFor({ timeout: 10_000 })
+    await embeddedSettings.getByRole('status', { name: 'codex CLI not available', exact: true }).waitFor({ timeout: 10_000 })
+    if (await embeddedSettings.getByText(/transport failure for \/codex-auth\/status/u).count() !== 0) {
+      throw new Error('desktop GPT Auth settings displayed a status transport failure')
+    }
     await embeddedSettings.getByRole('button', { name: 'Plugin Marketplace', exact: true }).click()
     await embeddedSettings.getByPlaceholder('Search plugins (keyword, or empty to browse all)…', { exact: true }).waitFor({ timeout: 10_000 })
     await exerciseMarketplace(embeddedSettings, { openExternalLinks: true })

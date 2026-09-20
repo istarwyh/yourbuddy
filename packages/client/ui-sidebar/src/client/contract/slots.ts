@@ -2,6 +2,8 @@
  * Sidebar slot contract: the registrant-side props composition for the
  * layout-owned `sidebar` slot, plus the holes this shell declares. The shell
  * owns column geometry, the brand row, New Session, and global panel rows;
+ * optional `sidebar.header.action` entries sit between the brand and collapse
+ * control while the column is expanded, and
  * everything between the workspace section header and the list bottom is the
  * `sidebar.workspaces` registrant's (ui-workspace), and the foot is the
  * `sidebar.settings` registrant's (ui-settings), followed by optional footer
@@ -25,6 +27,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * package's `sidebar` entry; the shell supplies a generic text fallback.
      */
     'sidebar.brand.name': { kind: 'single'; scope: 'root'; owner: SidebarBrandNameOwnerProps }
+    /**
+     * Optional compact actions between the expanded brand and collapse
+     * control. The shell does not render this seat in the collapsed rail.
+     */
+    'sidebar.header.action': { kind: 'list'; scope: 'root'; owner: SidebarHeaderActionOwnerProps }
     /**
      * Global panel icons. Each list id addresses the matching main panel;
      * the sidebar owns the button and resolves its label from list metadata.
@@ -60,6 +67,12 @@ export interface SidebarBrandMarkOwnerProps {
 /** Empty owner share for the sidebar brand-name occupant. */
 export interface SidebarBrandNameOwnerProps {
   /** Marker field: the occupant owns its own content and width. */
+  children?: never
+}
+
+/** Empty owner share for compact actions in the expanded sidebar header. */
+export interface SidebarHeaderActionOwnerProps {
+  /** Marker field: each action owns its own controls and accessible labels. */
   children?: never
 }
 
@@ -136,6 +149,7 @@ export type SidebarRootComponentProps =
   & PropsRenderSlots<
     | 'sidebar.brand.mark'
     | 'sidebar.brand.name'
+    | 'sidebar.header.action'
     | 'sidebar.panellist'
     | 'sidebar.workspaces'
     | 'sidebar.settings'

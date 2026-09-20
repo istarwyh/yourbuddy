@@ -1,0 +1,444 @@
+diff --git a/packages/client/ui-sidebar/README.i18n.yaml b/packages/client/ui-sidebar/README.i18n.yaml
+index 061d06f859..e3d15e6462 100644
+--- a/packages/client/ui-sidebar/README.i18n.yaml
++++ b/packages/client/ui-sidebar/README.i18n.yaml
+@@ -2,5 +2,5 @@
+ # side as of the last confirmed-consistent state. Both languages carry equal authority;
+ # after editing either side, bring the other along and re-record with:
+ #   pnpm run verify-translation-pairing --write packages/client/ui-sidebar/README.md
+-README.md: 1b520213809ca98a6819483a4ee5ea4f451841d2
+-README.zh.md: 8caae9f14eb4b7a70e674b9cef7245aaf077b378
++README.md: e26e1a27200ebe08d099850216c8faf8fda70028
++README.zh.md: 04e03d18619f058575ccf8c9bd56f51f4fa08a09
+diff --git a/packages/client/ui-sidebar/README.md b/packages/client/ui-sidebar/README.md
+index 1b52021380..e26e1a2720 100644
+--- a/packages/client/ui-sidebar/README.md
++++ b/packages/client/ui-sidebar/README.md
+@@ -1,5 +1,5 @@
+ ---
+-description: "Sidebar shell plugin for the dsh web client: brand row, New Session action, collapse control, scroll-aware region seat, and bottom-pinned Settings seat."
++description: "Sidebar shell plugin for the dsh web client: brand row and header actions, New Session, collapse control, scroll-aware region seat, and bottom-pinned Settings seat."
+ kind: "package-reference"
+ ---
+ 
+@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
+ 
+ ## Summary
+ 
+-The dsh web client sidebar lets users recognize the active build, start a new session, collapse navigation to a 56px rail, browse Workspaces and Sessions, and open Settings. It preserves a bottom-pinned Settings entry and hides idle scrollbars without moving browser rows. New Session uses an explicitly selected Workspace, then the current Session's Workspace, then the most recently active Workspace; if none exists, it opens a blank New Session page. Deployments can replace the brand mark or name while retaining the navigation controls and rail geometry.
++The dsh web client sidebar lets users recognize the active build, start a new session, collapse navigation to a 56px rail, browse Workspaces and Sessions, and open Settings. It preserves a bottom-pinned Settings entry and hides idle scrollbars without moving browser rows. New Session uses an explicitly selected Workspace, then the current Session's Workspace, then the most recently active Workspace; if none exists, it opens a blank New Session page. Deployments can replace the brand mark or name and add compact expanded-header actions while retaining the navigation controls and rail geometry.
+ 
+ ## Table of Contents
+ 
+@@ -31,6 +31,8 @@ The sidebar is the navigation shell: users see the brand, start new sessions, co
+ 
+ The expanded brand row renders `sidebar.brand.mark` and `sidebar.brand.name` as independent single slots; the collapsed rail renders the same mark slot. Without occupants, the shell uses the fish mark and a localized local-build label. A complete build stacks a code badge below the label as `version[-commit][-dirty]`, using `DSH_CLIENT_VERSION`, the optional 7-character `DSH_CLIENT_COMMIT_HASH`, and `DSH_CLIENT_GIT_DIRTY=true`; missing version metadata omits the badge. New Session targets the explicit Workspace used by a scoped action, otherwise the current Session's Workspace, otherwise the most recently active Workspace; when none exists it clears into the blank New Session page.
+ 
++The root-scoped `sidebar.header.action` list renders compact actions after the flexible brand and immediately before the collapse control. It exists only in the expanded header, adds no divider or separate row, and gives each occupant ownership of its controls and accessible labels. Features that must remain reachable while the sidebar is collapsed provide their own compact fallback outside this seat.
++
+ ### Global panel entries
+ 
+ Plugins add an icon component to the root-scoped `sidebar.panellist` list with an `id`, optional `order`, and a string or locale-aware `label`. The same id addresses the component registered in the layout's root-scoped `main` keyed slot; selecting a missing main entry throws without changing the current selection. The label supplies plain visible text, the accessible name, and the collapsed tooltip. Each row reads its own selected state through `usePanelInfo`; moving DOM focus to search or a directory picker does not change the displayed panel or its selected row. With no registrations, neither the list nor spacing for it is rendered. The shipped composition registers no example panel.
+@@ -55,7 +57,7 @@ The shell is pure composition: `SidebarRootComponentProps` composes the layout o
+ 
+ ### Slot discipline
+ 
+-Declaration-aware `slots.inject()` lets a replacing package activate before or after the sidebar. The foot is the `sidebar.settings` seat: the sidebar renders only the bottom-pinned layout slot and shares its column state (`wide`). The `/client` exports are the plugin body (`apply`/`inject`) plus the contract types only; SidebarRoot, the row components, and the tree derivation remain package-internal behind the slot registration.
++Declaration-aware `slots.inject()` lets a replacing package activate before or after the sidebar. The header renders `sidebar.header.action` between the flexible brand and collapse control only while wide. The foot is the `sidebar.settings` seat: the sidebar renders only the bottom-pinned layout slot and shares its column state (`wide`). The `/client` exports are the plugin body (`apply`/`inject`) plus the contract types only; SidebarRoot, the row components, and the tree derivation remain package-internal behind the slot registration.
+ 
+ </details>
+ 
+diff --git a/packages/client/ui-sidebar/README.zh.md b/packages/client/ui-sidebar/README.zh.md
+index 8caae9f14e..04e03d1861 100644
+--- a/packages/client/ui-sidebar/README.zh.md
++++ b/packages/client/ui-sidebar/README.zh.md
+@@ -1,5 +1,5 @@
+ ---
+-description: "dsh Web 客户端的侧边栏外壳插件：品牌行、New Session 操作、折叠控件、可感知滚动的区域席位与底部固定的 Settings 席位。"
++description: "dsh Web 客户端的侧边栏外壳插件：品牌行与标题操作、New Session、折叠控件、可感知滚动的区域席位与底部固定的 Settings 席位。"
+ kind: "package-reference"
+ ---
+ 
+@@ -9,7 +9,7 @@ kind: "package-reference"
+ 
+ ## 概述
+ 
+-dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将导航折叠为 56px 轨道、浏览 Workspace 与 Session，以及打开 Settings。它会将 Settings 入口固定在底部，并在隐藏空闲滚动条时避免浏览器行发生位移。New Session 优先使用显式选择的 Workspace，其次使用当前 Session 所属的 Workspace，再其次使用最近活跃的 Workspace；如果都不存在，则打开空白的 New Session 页面。部署可以替换品牌标记或名称，同时保留导航控件和轨道几何。
++dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将导航折叠为 56px 轨道、浏览 Workspace 与 Session，以及打开 Settings。它会将 Settings 入口固定在底部，并在隐藏空闲滚动条时避免浏览器行发生位移。New Session 优先使用显式选择的 Workspace，其次使用当前 Session 所属的 Workspace，再其次使用最近活跃的 Workspace；如果都不存在，则打开空白的 New Session 页面。部署可以替换品牌标记或名称，也可以加入紧凑的展开态标题操作，同时保留导航控件和轨道几何。
+ 
+ ## 目录
+ 
+@@ -31,6 +31,8 @@ dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将
+ 
+ 展开的品牌行把 `sidebar.brand.mark` 与 `sidebar.brand.name` 渲染为两个独立的 single slot；收起轨道则渲染同一个 mark slot。没有占位者时，外壳使用鱼形标记和本地化的本地构建标签。完整构建会在标签下方显示代码徽标；该徽标使用 `DSH_CLIENT_VERSION`、可选的 7 位 `DSH_CLIENT_COMMIT_HASH` 与 `DSH_CLIENT_GIT_DIRTY=true` 组装成 `version[-commit][-dirty]`；缺少版本元数据时不显示徽标。New Session 优先使用作用域操作明确指定的 Workspace，否则使用当前 Session 所属 Workspace，再否则使用最近活跃 Workspace；一个 Workspace 都没有时则清空选择，进入空白 New Session 页面。
+ 
++Root Scope 的 `sidebar.header.action` list 会把紧凑操作渲染在可伸缩品牌之后、折叠控件之前。该席位只存在于展开标题行，不增加分隔线或独立行；每个占位方自行负责控件与无障碍标签。侧栏收起后仍须可达的功能，应在该席位之外提供自己的紧凑回退入口。
++
+ ### 全局面板入口
+ 
+ 插件在 root 作用域的 `sidebar.panellist` list 中注册图标组件，提供 `id`、可选 `order`，以及字符串或随语言变化的 `label`。同一个 id 寻址布局中 root 作用域 `main` keyed slot 的组件；选择不存在的主面板条目会抛错，并保留当前选中态。标签提供普通可见文字、无障碍名称和折叠提示。每一行通过 `usePanelInfo` 读取自己的选中态；DOM 焦点移到搜索框或目录选择器时，显示的面板及其列表项选中态不变。没有注册项时，列表及其间距均不渲染。默认组合不注册示例面板。
+@@ -55,7 +57,7 @@ dsh Web 客户端的侧边栏让用户识别当前构建、启动新会话、将
+ 
+ ### Slot 纪律
+ 
+-声明感知的 `slots.inject()` 让替换包无论先于还是后于侧边栏激活都能生效。页脚承载 `sidebar.settings` 席位：侧边栏只渲染固定在底部的布局 slot，并共享其栏状态（`wide`）。`/client` 导出接口只包含插件主体（`apply`/`inject`）及约定类型；SidebarRoot、行组件与树派生仍由 slot 注册封装在包内。
++声明感知的 `slots.inject()` 让替换包无论先于还是后于侧边栏激活都能生效。标题行仅在展开态把 `sidebar.header.action` 渲染在可伸缩品牌与折叠控件之间。页脚承载 `sidebar.settings` 席位：侧边栏只渲染固定在底部的布局 slot，并共享其栏状态（`wide`）。`/client` 导出接口只包含插件主体（`apply`/`inject`）及约定类型；SidebarRoot、行组件与树派生仍由 slot 注册封装在包内。
+ 
+ </details>
+ 
+diff --git a/packages/client/ui-sidebar/src/client/SidebarRoot.module.css b/packages/client/ui-sidebar/src/client/SidebarRoot.module.css
+index f899b50c53..6bf76f6fe4 100644
+--- a/packages/client/ui-sidebar/src/client/SidebarRoot.module.css
++++ b/packages/client/ui-sidebar/src/client/SidebarRoot.module.css
+@@ -154,6 +154,15 @@
+   letter-spacing: 0.04em;
+ }
+ 
++/* Compact product actions share the brand row without adding another row or
++   divider. Occupants own their button visuals; the shell owns only placement. */
++.headerActions {
++  flex: none;
++  display: inline-flex;
++  align-items: center;
++  min-width: 0;
++}
++
+ .fallbackBrandName {
+   font-size: 17px;
+   letter-spacing: 0px;
+diff --git a/packages/client/ui-sidebar/src/client/SidebarRoot.tsx b/packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+index 35fdee173b..3a09a23141 100644
+--- a/packages/client/ui-sidebar/src/client/SidebarRoot.tsx
++++ b/packages/client/ui-sidebar/src/client/SidebarRoot.tsx
+@@ -6,7 +6,9 @@
+  * mid-slide. At settle the wide-only content unmounts and the upper
+  * controls enter the 56px rail from the same horizontal offset (one icon each,
+  * same top-down order) on one fade that ends with the slide. The bottom-pinned
+- * settings control only fades. The workspace/session browsing region between
++ * settings control only fades. Expanded header actions sit immediately before
++ * the collapse control and unmount with the other wide-only content. The
++ * workspace/session browsing region between
+  * global panel rows and the foot is the `sidebar.workspaces` registrant's,
+  * and the foot holds `sidebar.settings` plus `sidebar.footer.action`; the shell
+  * hands them the wide flag (plus an expand request callback for the browser).
+@@ -206,6 +208,11 @@ export function SidebarRoot({
+             </span>
+           </button>
+         )}
++        {wide && (
++          <div className={clsx(css.headerActions, css.wide)}>
++            {renderSlot('sidebar.header.action', {})}
++          </div>
++        )}
+         {/* Rail resting state is the whale mark; hovering swaps in the panel
+             icon (the expand affordance, figma sidebar-hover flow). */}
+         <Tooltip label={collapsed ? t('toggle.open') : t('toggle.collapse')} delayMs={500}>
+diff --git a/packages/client/ui-sidebar/src/client/contract/slots.ts b/packages/client/ui-sidebar/src/client/contract/slots.ts
+index df2933430e..cc2f04ff8c 100644
+--- a/packages/client/ui-sidebar/src/client/contract/slots.ts
++++ b/packages/client/ui-sidebar/src/client/contract/slots.ts
+@@ -2,6 +2,8 @@
+  * Sidebar slot contract: the registrant-side props composition for the
+  * layout-owned `sidebar` slot, plus the holes this shell declares. The shell
+  * owns column geometry, the brand row, New Session, and global panel rows;
++ * optional `sidebar.header.action` entries sit between the brand and collapse
++ * control while the column is expanded, and
+  * everything between the workspace section header and the list bottom is the
+  * `sidebar.workspaces` registrant's (ui-workspace), and the foot is the
+  * `sidebar.settings` registrant's (ui-settings), followed by optional footer
+@@ -25,6 +27,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
+      * package's `sidebar` entry; the shell supplies a generic text fallback.
+      */
+     'sidebar.brand.name': { kind: 'single'; scope: 'root'; owner: SidebarBrandNameOwnerProps }
++    /**
++     * Optional compact actions between the expanded brand and collapse
++     * control. The shell does not render this seat in the collapsed rail.
++     */
++    'sidebar.header.action': { kind: 'list'; scope: 'root'; owner: SidebarHeaderActionOwnerProps }
+     /**
+      * Global panel icons. Each list id addresses the matching main panel;
+      * the sidebar owns the button and resolves its label from list metadata.
+@@ -63,6 +70,12 @@ export interface SidebarBrandNameOwnerProps {
+   children?: never
+ }
+ 
++/** Empty owner share for compact actions in the expanded sidebar header. */
++export interface SidebarHeaderActionOwnerProps {
++  /** Marker field: each action owns its own controls and accessible labels. */
++  children?: never
++}
++
+ /** Icon presentation supplied by the global panel row. */
+ export interface SidebarPanelIconOwnerProps {
+   /** Requested square edge in pixels. */
+@@ -136,6 +149,7 @@ export type SidebarRootComponentProps =
+   & PropsRenderSlots<
+     | 'sidebar.brand.mark'
+     | 'sidebar.brand.name'
++    | 'sidebar.header.action'
+     | 'sidebar.panellist'
+     | 'sidebar.workspaces'
+     | 'sidebar.settings'
+diff --git a/packages/client/ui-sidebar/src/client/index.ts b/packages/client/ui-sidebar/src/client/index.ts
+index 38c384f697..f6df55d709 100644
+--- a/packages/client/ui-sidebar/src/client/index.ts
++++ b/packages/client/ui-sidebar/src/client/index.ts
+@@ -15,7 +15,7 @@ import { en, zh, type SidebarKey } from './locales.ts'
+ 
+ export type {
+   SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps,
+-  SidebarPanelIconOwnerProps, SidebarPanelMetadata,
++  SidebarHeaderActionOwnerProps, SidebarPanelIconOwnerProps, SidebarPanelMetadata,
+   SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps, SidebarSettingsOwnerProps,
+ } from './contract/slots.ts'
+ export type { SidebarKey } from './locales.ts'
+@@ -74,6 +74,7 @@ export function apply(ctx: ClientContext): void {
+     children: {
+       'sidebar.brand.mark': { kind: 'single', scope: 'root' },
+       'sidebar.brand.name': { kind: 'single', scope: 'root' },
++      'sidebar.header.action': { kind: 'list', scope: 'root' },
+       'sidebar.panellist': { kind: 'list', scope: 'root' },
+       'sidebar.workspaces': { kind: 'single', scope: 'root' },
+       'sidebar.settings': { kind: 'single', scope: 'root' },
+diff --git a/packages/client/ui-sidebar/tests/__snapshots__/sidebar-snapshot.client.spec.tsx.snap b/packages/client/ui-sidebar/tests/__snapshots__/sidebar-snapshot.client.spec.tsx.snap
+index ba3e4d9540..57ea46139d 100644
+--- a/packages/client/ui-sidebar/tests/__snapshots__/sidebar-snapshot.client.spec.tsx.snap
++++ b/packages/client/ui-sidebar/tests/__snapshots__/sidebar-snapshot.client.spec.tsx.snap
+@@ -155,6 +155,14 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
+           </span>
+         </span>
+       </button>
++      <div
++        class="headerActions wide"
++      >
++        <div
++          data-slot="sidebar.header.action"
++          style="display: contents;"
++        />
++      </div>
+       <button
+         aria-label="Collapse sidebar"
+         class="iconButton toggle"
+@@ -285,6 +293,14 @@ exports[`sidebar shell snapshots > renders the expanded column in the default lo
+           </span>
+         </span>
+       </button>
++      <div
++        class="headerActions wide"
++      >
++        <div
++          data-slot="sidebar.header.action"
++          style="display: contents;"
++        />
++      </div>
+       <button
+         aria-label="收起侧边栏"
+         class="iconButton toggle"
+diff --git a/packages/client/ui-sidebar/tests/apply.client.spec.tsx b/packages/client/ui-sidebar/tests/apply.client.spec.tsx
+index 701de45e74..3f8acde522 100644
+--- a/packages/client/ui-sidebar/tests/apply.client.spec.tsx
++++ b/packages/client/ui-sidebar/tests/apply.client.spec.tsx
+@@ -63,6 +63,7 @@ describe('ui-sidebar apply', () => {
+     expect(b.slots.entries('sidebar')).toHaveLength(1)
+     expect(b.slots.spec('sidebar.brand.mark')).toEqual({ kind: 'single', scope: 'root' })
+     expect(b.slots.spec('sidebar.brand.name')).toEqual({ kind: 'single', scope: 'root' })
++    expect(b.slots.spec('sidebar.header.action')).toEqual({ kind: 'list', scope: 'root' })
+     expect(b.slots.spec('sidebar.workspaces')).toEqual({ kind: 'single', scope: 'root' })
+     expect(b.slots.spec('sidebar.settings')).toEqual({ kind: 'single', scope: 'root' })
+     expect(b.slots.spec('sidebar.footer.action')).toEqual({ kind: 'list', scope: 'root' })
+@@ -139,6 +140,7 @@ describe('ui-sidebar apply', () => {
+     expect(b.slots.entries('sidebar')).toHaveLength(0)
+     expect(b.slots.spec('sidebar.brand.mark')).toBeUndefined()
+     expect(b.slots.spec('sidebar.brand.name')).toBeUndefined()
++    expect(b.slots.spec('sidebar.header.action')).toBeUndefined()
+     expect(b.slots.spec('sidebar.workspaces')).toBeUndefined()
+     expect(b.slots.spec('sidebar.footer.action')).toBeUndefined()
+     expect(b.slots.spec('sidebar.panellist')).toBeUndefined()
+diff --git a/packages/client/ui-sidebar/tests/sidebar-root.client.spec.tsx b/packages/client/ui-sidebar/tests/sidebar-root.client.spec.tsx
+index c7f890303f..4ffb3ed38c 100644
+--- a/packages/client/ui-sidebar/tests/sidebar-root.client.spec.tsx
++++ b/packages/client/ui-sidebar/tests/sidebar-root.client.spec.tsx
+@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
+ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+ import type { ReactNode } from 'react'
+ import type {
+-  SidebarFooterActionOwnerProps, SidebarRootComponentProps, SidebarSectionOwnerProps,
++  SidebarFooterActionOwnerProps, SidebarHeaderActionOwnerProps, SidebarRootComponentProps, SidebarSectionOwnerProps,
+   SidebarSettingsOwnerProps,
+ } from '../src/client/contract/slots.ts'
+ import { SidebarRoot } from '../src/client/SidebarRoot.tsx'
+@@ -39,6 +39,7 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
+   let regionOwner: SidebarSectionOwnerProps | undefined
+   let settingsOwner: SidebarSettingsOwnerProps | undefined
+   let footerActionOwner: SidebarFooterActionOwnerProps | undefined
++  let headerActionOwner: SidebarHeaderActionOwnerProps | undefined
+   const brandMark = <span data-testid="custom-brand-mark">M</span>
+   const brandName = <span data-testid="custom-brand-name">Custom Brand</span>
+   let current = { collapsed, width }
+@@ -51,20 +52,24 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
+       startSession={startSession} toggleSidebar={toggleSidebar} t={t}
+       renderSlot={((
+         key: string,
+-        owner: SidebarFooterActionOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
++        owner: unknown,
+       ) => {
+         if (key === 'sidebar.brand.mark') return brandMark
+         if (key === 'sidebar.brand.name') return brandName
++        if (key === 'sidebar.header.action') {
++          headerActionOwner = owner as SidebarHeaderActionOwnerProps
++          return <div data-testid="header-action-seat" />
++        }
+         if (key === 'sidebar.settings') {
+-          settingsOwner = owner
+-          return <div data-testid="settings-seat" data-wide={owner.wide} />
++          settingsOwner = owner as SidebarSettingsOwnerProps
++          return <div data-testid="settings-seat" data-wide={settingsOwner.wide} />
+         }
+         if (key === 'sidebar.footer.action') {
+-          footerActionOwner = owner
+-          return <div data-testid="footer-action-seat" data-wide={owner.wide} />
++          footerActionOwner = owner as SidebarFooterActionOwnerProps
++          return <div data-testid="footer-action-seat" data-wide={footerActionOwner.wide} />
+         }
+         regionOwner = owner as SidebarSectionOwnerProps
+-        return <div data-testid="region" data-wide={owner.wide} />
++        return <div data-testid="region" data-wide={(owner as SidebarSectionOwnerProps).wide} />
+       }) as SidebarRootComponentProps['renderSlot']}
+     />
+   )
+@@ -84,6 +89,10 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
+       if (footerActionOwner === undefined) throw new Error('footer action owner not rendered')
+       return footerActionOwner
+     },
++    headerActionOwner: () => {
++      if (headerActionOwner === undefined) throw new Error('header action owner not rendered')
++      return headerActionOwner
++    },
+     rerender(next: Partial<typeof current>) {
+       current = { ...current, ...next }
+       view.rerender(root())
+@@ -96,6 +105,11 @@ describe('SidebarRoot shell', () => {
+     const b = mountShell()
+     expect(screen.getByTestId('custom-brand-mark')).toBeTruthy()
+     expect(screen.getByTestId('custom-brand-name')).toBeTruthy()
++    expect(screen.getByTestId('header-action-seat')).toBeTruthy()
++    expect(b.headerActionOwner()).toEqual({})
++    const headerAction = screen.getByTestId('header-action-seat')
++    const collapse = screen.getByRole('button', { name: 'Collapse sidebar' })
++    expect(headerAction.compareDocumentPosition(collapse) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
+     // Expanded, both the wordmark and the capsule start a session.
+     const starters = screen.getAllByRole('button', { name: 'New session' })
+     expect(starters).toHaveLength(2)
+@@ -178,6 +192,7 @@ describe('SidebarRoot shell', () => {
+     b.rerender({})
+     expect(b.regionOwner().wide).toBe(false)
+     expect(b.footerActionOwner().wide).toBe(false)
++    expect(screen.queryByTestId('header-action-seat')).toBeNull()
+     expect(screen.getByTestId('region')).toBeTruthy()
+     b.regionOwner().expandSidebar()
+     expect(b.toggleSidebar).toHaveBeenCalledOnce()
+diff --git a/packages/extensions/cordis-client-runner/src/client/slot-catalog.ts b/packages/extensions/cordis-client-runner/src/client/slot-catalog.ts
+index a60771c405..14aeaf45e7 100644
+--- a/packages/extensions/cordis-client-runner/src/client/slot-catalog.ts
++++ b/packages/extensions/cordis-client-runner/src/client/slot-catalog.ts
+@@ -2151,7 +2151,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
+     ],
+     replaceRisk: 'shadows-shipped-ui',
+     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.brand.mark\', () => ctx.slots.register(\n      { name: \'sidebar.brand.mark\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
+-    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:22',
++    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:24',
+   },
+   {
+     key: 'sidebar.brand.name',
+@@ -2181,7 +2181,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
+     ],
+     replaceRisk: 'shadows-shipped-ui',
+     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.brand.name\', () => ctx.slots.register(\n      { name: \'sidebar.brand.name\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
+-    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:27',
++    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:29',
+   },
+   {
+     key: 'sidebar.footer.action',
+@@ -2230,7 +2230,54 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
+     ],
+     replaceRisk: 'none',
+     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.footer.action\', () => ctx.slots.register(\n      { name: \'sidebar.footer.action\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
+-    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:50',
++    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:57',
++  },
++  {
++    key: 'sidebar.header.action',
++    kind: 'list',
++    scope: 'root',
++    summary: 'Optional compact actions between the expanded brand and collapse control.',
++    doc: 'Optional compact actions between the expanded brand and collapse\ncontrol. The shell does not render this seat in the collapsed rail.',
++    registerOptions: [
++      {
++        name: 'id',
++        requirement: 'required',
++        type: 'string',
++        doc: 'Your cell key. Use an id of your own: a fresh id is added beside the shipped entries, while reusing a shipped id puts you in THAT cell and replaces it. Owners that filter by id address you by it.',
++      },
++      {
++        name: 'order',
++        requirement: 'optional',
++        type: 'number',
++        doc: 'Position among the entries, ascending (default 0).',
++      },
++      {
++        name: 'label',
++        requirement: 'optional',
++        type: 'string | (() => string)',
++        doc: 'Display text where the owner projects one (nav rows, tabs). A thunk is re-read on every projection, so localized text follows the active locale without re-registering.',
++      },
++    ],
++    ownerProps: [
++      '/** Empty owner share for compact actions in the expanded sidebar header. */\nexport interface SidebarHeaderActionOwnerProps {\n  /** Marker field: each action owns its own controls and accessible labels. */\n  children?: never\n}',
++    ],
++    ownerPropsReferences: [],
++    standardProps: [
++      'useResource: UseResource',
++      'useWorkspaces: SnapshotSelectorHook<WorkspaceSnapshot>',
++      'usePanelInfo: UsePanelInfo',
++      'useSessions: UseSessions',
++      'useSessionPendingInteraction: UseSessionPendingInteraction',
++      'useWorkspaces: SnapshotSelectorHook<WorkspaceSnapshot>',
++    ],
++    keyDomain: '',
++    hookContext: '',
++    slotInject: '',
++    declaredBy: 'an entry in \'sidebar\' (client-ui-sidebar), so it exists while that entry is mounted',
++    occupants: [],
++    replaceRisk: 'none',
++    example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.header.action\', () => ctx.slots.register(\n      { name: \'sidebar.header.action\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
++    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:34',
+   },
+   {
+     key: 'sidebar.panellist',
+@@ -2277,7 +2324,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
+     occupants: [],
+     replaceRisk: 'none',
+     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.panellist\', () => ctx.slots.register(\n      { name: \'sidebar.panellist\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
+-    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:32',
++    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:39',
+   },
+   {
+     key: 'sidebar.right.pane.tab',
+@@ -2547,7 +2594,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
+     ],
+     replaceRisk: 'shadows-shipped-ui',
+     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.settings\', () => ctx.slots.register(\n      { name: \'sidebar.settings\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
+-    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:45',
++    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:52',
+   },
+   {
+     key: 'sidebar.workspaces',
+@@ -2577,7 +2624,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
+     ],
+     replaceRisk: 'shadows-shipped-ui',
+     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.workspaces\', () => ctx.slots.register(\n      { name: \'sidebar.workspaces\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
+-    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:39',
++    source: 'packages/client/ui-sidebar/src/client/contract/slots.ts:46',
+   },
+   {
+     key: 'sidebar.workspaces.directoryFlow',
