@@ -8,6 +8,6 @@ General AI tools solve common problems. YourBuddy brings your preferred models, 
 
 DSH supplies the AI runtime and Web UI; Y8 supplies a ready-to-use foundation. Use Skills for repeatable workflows and standards, and Plugins for tools, services, and workbench interfaces, without assembling the application from scratch. Read the [product philosophy](about.md).
 
-YourBuddy 0.3.10 remains the verified macOS Apple Silicon download. The 0.3.11 candidate adds Oil Creator and the **内容创作** Agent Preset while retaining the latest eligible DSH release, 0.1.5-rc.2; it will replace the download only after its public files pass independent checks. Check the download page for the current installer hash, verification evidence, and remaining limits.
+YourBuddy 0.3.11 is the verified macOS Apple Silicon release. It adds Oil Creator and the **内容创作** Agent Preset while retaining the latest eligible DSH release, 0.1.5-rc.2. Check the download page for the installer hash, verification evidence, and remaining limits.
 
 [Build your workbench](start.md) · [Explore extension paths](develop.md) · [Default plugins](plugins/index.md) · [Download status](download.md)

@@ -6,11 +6,11 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
-### 0.3.11 — pending publication
+### 0.3.11 — 2026-09-21
 
-YourBuddy 0.3.11 adds Oil Creator as a default local content workbench and introduces the selectable **内容创作** Agent Preset. The candidate uses the latest eligible DSH release, 0.1.5-rc.2. Public installer, updater, website, and downloadable evidence checks remain pending, so 0.3.10 is still the verified download.
+YourBuddy 0.3.11 adds Oil Creator as a default local content workbench and introduces the selectable **内容创作** Agent Preset while retaining the latest eligible DSH release, 0.1.5-rc.2. All five versioned public assets were anonymously downloaded and checked, the stable updater manifest matches the versioned manifest, the updater signature was cryptographically verified, and the DMG and updater App trees are identical. Native startup, packaged-WebView interaction, an update from an older version, OAuth, optional creator integrations, and real model traffic remain unverified.
 
-[Candidate verification record](../../releases/yourbuddy-v0.3.11/README.md) · [current verified download](download.md)
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.11) · [verification record](../../releases/yourbuddy-v0.3.11/README.md) · [download page](download.md)
 
 ### 0.3.10 — 2026-09-20
 

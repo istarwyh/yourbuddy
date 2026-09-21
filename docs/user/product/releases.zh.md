@@ -6,11 +6,11 @@
 
 ## YourBuddy
 
-### 0.3.11 — 待发布
+### 0.3.11 — 2026-09-21
 
-YourBuddy 0.3.11 默认加入 Oil Creator 本地内容工作台，并新增可选的**内容创作** Agent Preset。该候选使用最新可用 DSH Release 0.1.5-rc.2。公开安装包、Updater、网站与可下载证据仍待核验，因此 0.3.10 仍是已核验下载版本。
+YourBuddy 0.3.11 默认加入 Oil Creator 本地内容工作台，并新增可选的**内容创作** Agent Preset，同时保留最新可用 DSH Release 0.1.5-rc.2。五个带版本号的公开产物均已匿名下载并完成核验，稳定更新清单与版本化清单一致，Updater 签名通过密码学验证，DMG 与 Updater 中的 App 文件树完全一致。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth、可选创作集成与真实模型流量仍未验证。
 
-[候选验证记录](../../releases/yourbuddy-v0.3.11/README.zh.md) · [当前已核验下载](download.zh.md)
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.11) · [验证记录](../../releases/yourbuddy-v0.3.11/README.zh.md) · [下载页](download.zh.md)
 
 ### 0.3.10 — 2026-09-20
 
