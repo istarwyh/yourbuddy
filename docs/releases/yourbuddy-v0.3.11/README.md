@@ -7,7 +7,7 @@ This archive records the Oil Creator content workbench and the **内容创作** 
 - Release identifier: `yourbuddy-v0.3.11`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
 - Archive state: pre-publication candidate; local source and assembled-product verification are recorded, while public artifacts and website availability remain pending.
-- Release source: Oil Creator feature commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`; final tag commit pending.
+- Release source: candidate commit `6d134ec46dd499efddc4866df58bfedb871e47ff`; Oil Creator feature commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`; final tag commit pending.
 - Evidence gallery: not captured; the assembled headless product journey is recorded as command evidence rather than an installed YourBuddy screenshot.
 - Evidence download: pending formal publication and independent public verification.
 
@@ -54,7 +54,7 @@ Existing application data is retained and no migration is required. The release 
 
 - Status: passed within the recorded controlled scope.
 - Date and time: 2026-09-21 21:46 UTC+08:00 CST.
-- Release and commit: `yourbuddy-v0.3.11`; Oil Creator feature commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`; final tag pending.
+- Release and commit: `yourbuddy-v0.3.11`; candidate commit `6d134ec46dd499efddc4866df58bfedb871e47ff`; Oil Creator feature commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`; final tag pending.
 - Build under test: local source candidate and prepared assembled Host/Client product.
 - Environment: macOS 15.6.1 arm64; Node 22.19.0; pnpm 11.7.0; Rust 1.98.0; uv 0.12.5.
 - Evidence origin: this release run.

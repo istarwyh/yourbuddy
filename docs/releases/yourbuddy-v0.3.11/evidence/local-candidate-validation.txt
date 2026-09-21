@@ -61,6 +61,16 @@ verify-product-release: 68 bundled runtime peer links, 7 assembled Client plugin
 prepare-release: compatible product sources and frozen lockfile are ready for review and commit
 Exit: 0
 
+Final clean release preparation from candidate commit 6d134ec46dd499efddc4866df58bfedb871e47ff
+$ pnpm --dir apps/desktop-tauri prepare:release
+prepare-harness-offline-store: 37262 files sha256=c50457086d52c42baefde264658de10b1595c96428dd577fc212f2c0e97e263e
+prepare-harness-offline-store: archive sha256=512858ccc61fc5aab52ea5bc5520e13b7f2094c8904d134df9cf324dc2250768
+prepare-harness-offline-store: bundle sha256=071d15a538eb7aa268ec5641dde5c2e339b67ca0bb70cff3f7d1579d9cddf815
+workbench-branding: default, customization, persistence, and reset snapshot passed
+verify-product-release: 68 bundled runtime peer links, 7 assembled Client plugins, Agent Presets, Oil Creator, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed
+prepare-release: compatible product sources and frozen lockfile are ready for review and commit
+Exit: 0
+
 Release version and website candidate
 $ node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.3.11
 verify-release-version: yourbuddy-v0.3.11

@@ -7,7 +7,7 @@
 - 发布标识：`yourbuddy-v0.3.11`。
 - 产品渠道：面向 macOS Apple Silicon 的 YourBuddy 桌面应用。
 - 归档状态：发布前候选；已记录本地源码与组装产品验证，公开产物与网站可用性仍待完成。
-- 发布源码：Oil Creator 功能 Commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`；最终 Tag Commit 待定。
+- 发布源码：候选 Commit `6d134ec46dd499efddc4866df58bfedb871e47ff`；Oil Creator 功能 Commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`；最终 Tag Commit 待定。
 - 证据图库：未捕获；组装后的 Headless 产品旅程记录为命令证据，而不是已安装 YourBuddy 截图。
 - 证据下载：正式发布并完成独立公开验证后提供。
 
@@ -54,7 +54,7 @@ YourBuddy 默认内置 Oil Creator，并新增可选的**内容创作** Agent Pr
 
 - 状态：在记录的受控范围内 passed。
 - 日期与时间：2026-09-21 21:46 UTC+08:00 CST。
-- 发布版本与 Commit：`yourbuddy-v0.3.11`；Oil Creator 功能 Commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`；最终 Tag 待定。
+- 发布版本与 Commit：`yourbuddy-v0.3.11`；候选 Commit `6d134ec46dd499efddc4866df58bfedb871e47ff`；Oil Creator 功能 Commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`；最终 Tag 待定。
 - 受测构建：本地源码候选与准备后的 Host/Client 组装产品。
 - 环境：macOS 15.6.1 arm64；Node 22.19.0；pnpm 11.7.0；Rust 1.98.0；uv 0.12.5。
 - 证据来源：本次发布运行。
