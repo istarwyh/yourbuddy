@@ -1,0 +1,12 @@
+YourBuddy 0.3.12 product website deployment
+
+Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35629057521
+Result: build passed; GitHub Pages deployment passed.
+Public base: https://istarwyh.github.io/yourbuddy/
+
+Live checks:
+- / and /en/ contain YourBuddy 0.3.12.
+- /download/ and /en/download/ contain DMG SHA-256 40b9a1131218e367728e22b26e82c31aa37e1f8e6e4ef8f33653b1ddd17c2f9b.
+- /plugins/harbor-evolution/ and /en/plugins/harbor-evolution/ contain Harbor Evolution 0.9.8.
+
+All six routes returned non-empty HTML and passed the expected-content checks.

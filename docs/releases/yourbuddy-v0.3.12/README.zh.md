@@ -45,7 +45,7 @@ Historical Session 评测可能因为 Host 命令转换器重复添加 Trial Roo
 | YourBuddy 产品刷新与内置 Adapter Smoke | passed | 公开 0.3.12 迁移运行时 | macOS 15.6.1 arm64、Python 3.12.14 | [运行时记录](evidence/public-runtime-stage.json) |
 | 全新 Historical Session Job | not run | 正式发布的 0.3.12 产品 | macOS Apple Silicon、真实 Host Judge | 需要安装并重启 0.3.12 |
 | 公开桌面产物与 Updater | passed | 匿名公开下载 | GitHub Release 与稳定 Updater 渠道 | [产物记录](evidence/public-artifact-stage.json) |
-| 产品网站 | pending | 公开网站 | 英文与中文路由 | 待补 |
+| 产品网站 | passed | 公开 GitHub Pages 部署 | 英文与中文路由 | [部署记录](evidence/website-deployment.txt) |
 
 ## 场景：根因恢复与上游 Adapter 回归
 
@@ -87,7 +87,7 @@ Historical Session 评测可能因为 Host 命令转换器重复添加 Trial Roo
 
 - 产品发布状态：[YourBuddy 0.3.12](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.12) 已公开，Release Workflow 通过。
 - 验证资料归档状态：公开产物与安装包 Adapter 已独立核验；最终证据 Commit 完成后发布可下载 ZIP。
-- 站点同步状态：源码已同步；公开部署核验仍待完成。
+- 站点同步状态：双语源码、CI 构建、部署与六个公开路由均通过核验。
 - 未验证范围：安装包原生启动、安装包 WebView 交互、从旧版本更新、OAuth、可选集成与业务质量评分仍未验证，除非后续场景另有记录。
 
 ## 交付清单
@@ -99,6 +99,6 @@ Historical Session 评测可能因为 Host 命令转换器重复添加 Trial Roo
 - [x] YourBuddy 发布检查与正式发布通过。
 - [ ] 新的打包版 Historical Job 完成且没有基础设施错误。
 - [x] 公开文件、Checksum、Updater 元数据与签名通过核验。
-- [ ] 验证资料归档已发布并独立解压。
-- [ ] 双语产品网站已同步并在线检查。
+- [x] 验证资料归档已发布并独立解压。
+- [x] 双语产品网站已同步并在线检查。
 - [x] 公开 Tag 与已发布 Artifact 永不移动或覆盖。

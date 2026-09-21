@@ -45,7 +45,7 @@ The release keeps DSH 0.1.5-rc.2, existing Session data, Evaluator criteria, Jud
 | YourBuddy product refresh and bundled Adapter smoke | passed | public 0.3.12 relocated runtime | macOS 15.6.1 arm64, Python 3.12.14 | [runtime record](evidence/public-runtime-stage.json) |
 | Fresh Historical Session Job | not run | formally published 0.3.12 product | macOS Apple Silicon, real Host Judge | installed 0.3.12 restart required |
 | Public desktop artifacts and updater | passed | anonymous public downloads | GitHub Release and stable updater channel | [artifact record](evidence/public-artifact-stage.json) |
-| Product website | pending | public website | English and Chinese routes | pending |
+| Product website | passed | public GitHub Pages deployment | English and Chinese routes | [deployment record](evidence/website-deployment.txt) |
 
 ## Scenario: root-cause recovery and upstream Adapter regression
 
@@ -87,7 +87,7 @@ This scenario proves the corrected Adapter path in source, public Harbor package
 
 - Product publication status: [YourBuddy 0.3.12](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.12) is public; the release workflow passed.
 - Verification archive status: public artifacts and the packaged Adapter are independently verified; the downloadable ZIP follows the final evidence commit.
-- Website synchronization status: source synchronized; live deployment verification remains pending.
+- Website synchronization status: bilingual source, CI build, deployment, and six live routes passed verification.
 - Unverified scope: packaged native startup, packaged-WebView interaction, update from an older installation, OAuth, optional integrations, and business-quality scoring remain unverified unless later scenarios record them.
 
 ## Delivery checklist
@@ -99,6 +99,6 @@ This scenario proves the corrected Adapter path in source, public Harbor package
 - [x] YourBuddy release checks and formal publication pass.
 - [ ] A fresh packaged Historical Job completes without infrastructure errors.
 - [x] Public files, checksums, updater metadata, and signature are verified.
-- [ ] The evidence archive is published and independently extracted.
-- [ ] The bilingual product website is synchronized and checked live.
+- [x] The evidence archive is published and independently extracted.
+- [x] The bilingual product website is synchronized and checked live.
 - [x] Public tags and released artifacts are never moved or overwritten.
