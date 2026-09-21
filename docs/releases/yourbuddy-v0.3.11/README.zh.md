@@ -6,7 +6,7 @@
 
 - 发布标识：`yourbuddy-v0.3.11`。
 - 产品渠道：面向 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：除最终网站部署与线上下载页检查外，发布后验证已完成；本地、CI、公开产物、App 标识、Provenance、迁移运行时与可下载归档验证均已记录。
+- 归档状态：在声明范围内已完成；本地、CI、公开产物、App 标识、Provenance、迁移运行时、可下载归档、网站与线上下载旅程验证均已记录。
 - 发布源码：不可变 Tag Commit `f96261582bf11a90274d705fad54c93698298304`；候选 Commit `6d134ec46dd499efddc4866df58bfedb871e47ff`；Oil Creator 功能 Commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`。
 - 证据图库：未捕获；组装后的 Headless 产品旅程记录为命令证据，而不是已安装 YourBuddy 截图。
 - 证据下载：[yourbuddy-v0.3.11-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.11/yourbuddy-v0.3.11-verification.zip)，15,814 字节，SHA-256 `999ebbb88511528dbc32a77414cc52dda9b5a7649c2bd5b90408eb479088e727`；已匿名下载、解压并检查。
@@ -49,7 +49,7 @@ YourBuddy 默认内置 Oil Creator，并新增可选的**内容创作** Agent Pr
 | 正式桌面发布 | passed | 不可变 Tag `yourbuddy-v0.3.11` | GitHub Actions macOS 15 arm64 | [Workflow](https://github.com/istarwyh/yourbuddy/actions/runs/35610547936) |
 | 公开安装包、Updater、App 标识、Provenance 与迁移运行时 | 在记录范围内 passed | 匿名下载的公开 Release 文件 | GitHub Release 与 macOS 15.6.1 arm64 | [产物记录](evidence/public-artifact-stage.json)、[运行时记录](evidence/public-runtime-stage.json) |
 | 可下载验证归档 | passed | 匿名公开归档下载 | GitHub Release 与 macOS 15.6.1 arm64 | 15,814 字节；SHA-256 `999ebbb88511528dbc32a77414cc52dda9b5a7649c2bd5b90408eb479088e727`；解压与 JSON 检查通过 |
-| 产品网站 | 等待最终同步 | 公开部署 | GitHub Pages | 候选网站部署通过；已核验 0.3.11 下载页待完成 |
+| 产品网站 | passed | 来自 Commit `0643d080f4cac51bb9ca00846b92631311842852` 的公开部署 | GitHub Pages | [Workflow](https://github.com/istarwyh/yourbuddy/actions/runs/35616158127)、[线上交付记录](evidence/website-deployment.txt) |
 
 ## 场景：本地候选与组装产品验证
 
@@ -101,7 +101,7 @@ Headless 组装旅程不是安装包原生 WebView。本阶段不能证明原生
 
 - 产品发布状态：`yourbuddy-v0.3.11` 是最新正式 GitHub Release，且 Release Workflow 已通过。
 - 验证归档状态：公开产物与运行时已记录；可下载归档经匿名下载后匹配 SHA-256 `999ebbb88511528dbc32a77414cc52dda9b5a7649c2bd5b90408eb479088e727`，并完成解压与检查。
-- 网站同步状态：双语 Oil Creator 候选页面已上线；已核验的 0.3.11 下载旅程仍待发布。
+- 网站同步状态：双语首页、下载页、发布页与 Oil Creator 页面已从 Commit `0643d080f4cac51bb9ca00846b92631311842852` 上线；Checksum 与一字节 DMG 下载旅程均在无认证情况下通过。
 - 未验证范围：原生 GUI 启动、安装包 WebView 交互、从旧安装更新、Apple Developer 签名和公证、OAuth、可选创作集成与真实模型流量。
 
 ## 交付检查表
@@ -114,7 +114,7 @@ Headless 组装旅程不是安装包原生 WebView。本阶段不能证明原生
 - [x] 双语发布索引已包含本版本。
 - [x] 最终候选 Commit 与不可变 Release Tag 已记录。
 - [x] 公开 Release 页、安装包、Updater 元数据、签名、Hash、App 标识、Provenance 与迁移运行时已独立核验。
-- [ ] 网站已完成双语同步，并独立核验线上下载旅程。
+- [x] 网站已完成双语同步，并独立核验线上下载旅程。
 - [x] 可下载验证归档已经创建、上传、解压与检查。
 - [x] 产品发布、归档状态、网站同步与未验证范围分别报告。
 - [x] 未移动或覆盖任何公开 Tag 或安装包；本次使用新版本。

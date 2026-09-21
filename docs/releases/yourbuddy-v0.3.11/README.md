@@ -6,7 +6,7 @@ This archive records the Oil Creator content workbench and the **内容创作** 
 
 - Release identifier: `yourbuddy-v0.3.11`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: post-publication verification is complete except for final website deployment and live download-page checks; local, CI, public-artifact, App identity, provenance, relocated-runtime, and downloadable-archive verification are recorded.
+- Archive state: complete within the stated scope; local, CI, public-artifact, App identity, provenance, relocated-runtime, downloadable-archive, website, and live download-journey verification are recorded.
 - Release source: immutable tag commit `f96261582bf11a90274d705fad54c93698298304`; candidate commit `6d134ec46dd499efddc4866df58bfedb871e47ff`; Oil Creator feature commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`.
 - Evidence gallery: not captured; the assembled headless product journey is recorded as command evidence rather than an installed YourBuddy screenshot.
 - Evidence download: [yourbuddy-v0.3.11-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.11/yourbuddy-v0.3.11-verification.zip), 15,814 bytes, SHA-256 `999ebbb88511528dbc32a77414cc52dda9b5a7649c2bd5b90408eb479088e727`; the anonymous public download was extracted and checked.
@@ -49,7 +49,7 @@ Existing application data is retained and no migration is required. The release 
 | Formal desktop publication | passed | immutable tag `yourbuddy-v0.3.11` | GitHub Actions macOS 15 arm64 | [workflow](https://github.com/istarwyh/yourbuddy/actions/runs/35610547936) |
 | Public installer, updater, App identity, provenance, and relocated runtime | passed within recorded scope | anonymously downloaded public release files | GitHub Release and macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json), [runtime record](evidence/public-runtime-stage.json) |
 | Downloadable verification archive | passed | anonymous public archive download | GitHub Release and macOS 15.6.1 arm64 | 15,814 bytes; SHA-256 `999ebbb88511528dbc32a77414cc52dda9b5a7649c2bd5b90408eb479088e727`; extraction and JSON checks passed |
-| Product website | pending final synchronization | public deployment | GitHub Pages | candidate site deployment passed; verified 0.3.11 download page pending |
+| Product website | passed | public deployment from commit `0643d080f4cac51bb9ca00846b92631311842852` | GitHub Pages | [workflow](https://github.com/istarwyh/yourbuddy/actions/runs/35616158127), [live-delivery record](evidence/website-deployment.txt) |
 
 ## Scenario: local candidate and assembled-product validation
 
@@ -101,7 +101,7 @@ The headless assembled journey is not the packaged native WebView. This stage do
 
 - Product publication status: `yourbuddy-v0.3.11` is the latest formal GitHub Release and its release workflow passed.
 - Verification archive status: public artifacts and runtime are recorded; the downloadable archive was anonymously downloaded, matched SHA-256 `999ebbb88511528dbc32a77414cc52dda9b5a7649c2bd5b90408eb479088e727`, extracted, and checked.
-- Website synchronization status: the candidate bilingual Oil Creator pages are live; the verified 0.3.11 download journey still needs publication.
+- Website synchronization status: the bilingual home, download, release, and Oil Creator pages are live from commit `0643d080f4cac51bb9ca00846b92631311842852`; the checksum and one-byte DMG download journey passed without authentication.
 - Unverified scope: native GUI startup, packaged-WebView interaction, update from an older installation, Apple Developer signing and notarization, OAuth, optional creator integrations, and real model traffic.
 
 ## Delivery checklist
@@ -114,7 +114,7 @@ The headless assembled journey is not the packaged native WebView. This stage do
 - [x] The release entry is present in the bilingual release index.
 - [x] The final candidate commit and immutable release tag are recorded.
 - [x] The public release page, installer, updater metadata, signatures, hashes, App identity, provenance, and relocated runtime are independently verified.
-- [ ] The website is synchronized in both languages and the live download journey is independently verified.
+- [x] The website is synchronized in both languages and the live download journey is independently verified.
 - [x] The downloadable verification archive is created, uploaded, extracted, and checked.
 - [x] Product publication, archive status, website synchronization, and unverified scope are reported separately.
 - [x] No published tag or installer is moved or overwritten; this release uses a new version.

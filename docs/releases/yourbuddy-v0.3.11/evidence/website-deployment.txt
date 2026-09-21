@@ -1,0 +1,24 @@
+YourBuddy 0.3.11 website deployment and live-delivery verification
+
+Checked: 2026-09-21 23:04 CST (+0800)
+Authentication: none for every HTTP request
+Source commit: 0643d080f4cac51bb9ca00846b92631311842852
+Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35616158127
+Workflow result: success
+Build job: 106387279746, success, 2026-09-21T15:02:02Z to 2026-09-21T15:03:08Z
+Deploy job: 106387720151, success, 2026-09-21T15:03:12Z to 2026-09-21T15:03:26Z
+
+The workflow's website:check, Pages artifact upload, and Pages deployment steps passed. The Node 20-to-24 action-runtime annotations and future ubuntu-latest migration notices were informational and did not change the successful result.
+
+Live pages checked after deployment
+
+200  https://istarwyh.github.io/yourbuddy/                                  32,554 bytes  contains YourBuddy 0.3.11
+200  https://istarwyh.github.io/yourbuddy/en/                               32,796 bytes  contains YourBuddy 0.3.11
+200  https://istarwyh.github.io/yourbuddy/download/                         44,751 bytes  contains 0.3.11
+200  https://istarwyh.github.io/yourbuddy/en/download/                      45,501 bytes  contains 0.3.11
+200  https://istarwyh.github.io/yourbuddy/releases/                         52,129 bytes  contains 0.3.11
+200  https://istarwyh.github.io/yourbuddy/en/releases/                      53,492 bytes  contains 0.3.11
+200  https://istarwyh.github.io/yourbuddy/plugins/oil-creator/              42,973 bytes  contains Oil Creator
+200  https://istarwyh.github.io/yourbuddy/en/plugins/oil-creator/           43,287 bytes  contains Oil Creator
+
+The public SHA256SUMS.txt returned 200 with 315 bytes and SHA-256 56e73d7f3e85574f17b28681c245ba5806a65251695b5c77f7078ba616dccb57. An anonymous one-byte request to the 0.3.11 DMG followed the GitHub redirect and returned HTTP 206 with one byte, confirming the live download journey without redownloading the already verified full installer.
