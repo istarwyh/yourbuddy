@@ -10,6 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
+| [yourbuddy-v0.3.11](yourbuddy-v0.3.11/README.md) | YourBuddy desktop | Included | Partial pre-publication archive; local source, latest-DSH selection, offline assembly, and Host/Client smoke recorded | Publication, public artifacts, website, and downloadable archive pending |
 | [yourbuddy-v0.3.10](yourbuddy-v0.3.10/README.md) | YourBuddy desktop | Included | Complete; source, CI, public files, updater signature, App identity, product provenance, relocated runtime, website, downloadable archive, and retained native-startup, packaged-WebView, OAuth, and real-model limits recorded | Published and independently verified within stated limits |
 | [yourbuddy-v0.3.9](yourbuddy-v0.3.9/README.md) | YourBuddy desktop | Included | Complete; source, screenshot, CI, public files, updater signature, App identity, relocated runtime, website, downloadable archive, and retained native-startup, packaged-WebView, OAuth, and real-model limits recorded | Published and independently verified within stated limits |
 | [yourbuddy-v0.3.8](yourbuddy-v0.3.8/README.md) | YourBuddy desktop | Included | Complete; source, CI, public files, updater signature, App identity, relocated runtime, website, downloadable archive, and retained native-startup, packaged-WebView, OAuth, and real-model limits recorded | Published and independently verified within stated limits |

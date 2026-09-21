@@ -125,6 +125,11 @@
         "url": "plugins/context-doctor/"
       },
       {
+        "title": "Oil Creator",
+        "desc": "Organize scripts, recordings, subtitles, covers, articles, and publication material around ordinary local project folders.",
+        "url": "plugins/oil-creator/"
+      },
+      {
         "title": "Plugin Marketplace",
         "desc": "Explore available extensions and their sources before adding the tools you need.",
         "url": "plugins/marketplace/"

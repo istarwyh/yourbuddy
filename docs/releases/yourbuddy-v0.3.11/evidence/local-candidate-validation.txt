@@ -1,0 +1,81 @@
+YourBuddy 0.3.11 local candidate validation
+Date: 2026-09-21 UTC+08:00 CST
+Environment: macOS 15.6.1 arm64; Node 22.19.0; pnpm 11.7.0; Rust 1.98.0; uv 0.12.5
+Data: synthetic profile, session, content-library, and file paths
+Services: controlled local Host and Chromium; no model provider or optional creator integration
+
+DSH release selection
+$ node apps/desktop-tauri/scripts/sync-dsh-upstream.mjs --check-current
+sync-dsh-upstream: current DSH matches rc Release dsh-v0.1.5-rc.2 (fb2c4b9e698e)
+Exit: 0
+
+Product candidate preview
+$ pnpm --dir apps/desktop-tauri prepare:release -- --dry-run --allow-dirty
+prepare-release: dry run found 0 latest candidate updates; static candidate checks passed; build, frozen install, and Host smoke were not run
+Exit: 0
+
+Focused product checks
+$ pnpm --dir apps/desktop-tauri test:bundle
+7 passed, 0 failed
+Exit: 0
+
+$ pnpm --dir apps/desktop-tauri test:product-refresh
+68 passed, 0 failed
+Exit: 0
+
+$ pnpm --dir apps/desktop-tauri test:offline
+13 passed, 0 failed
+Exit: 0
+
+$ cargo test overlay::tests --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml
+6 passed, 0 failed
+Exit: 0
+
+$ cargo test runtime::profile_repair::tests --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml
+6 passed, 0 failed
+Exit: 0
+
+$ pnpm exec vitest run scripts/translation-pairing.spec.ts
+67 passed, 0 failed
+Exit: 0
+
+$ pnpm exec vitest run scripts/verify-application-entrypoints.spec.ts -t 'ignores generated desktop bundles and reviewed external product snapshots'
+1 passed, 11 skipped
+Exit: 0
+
+Documentation and source checks
+$ pnpm run doc-sync
+35 passed, 0 failed
+Exit: 0
+
+$ git diff --check
+Exit: 0
+
+Clean release preparation
+$ pnpm --dir apps/desktop-tauri prepare:release
+prepare-harness-offline-store: 37262 files sha256=72b494dbd2285467d91b4e55d00ee19b445ebdeb0b75d8eb163883f17564f447
+prepare-harness-offline-store: archive sha256=8febd06d2ea8bbc6051f984def5ef548be2cba20a65dffe50667ece4d7cd1594
+prepare-harness-offline-store: bundle sha256=8c0e62a083f80e4396cf14249f7a67d84112854c775be2dc4b8e209c852bd2e7
+workbench-branding: default, customization, persistence, and reset snapshot passed
+verify-product-release: 68 bundled runtime peer links, 7 assembled Client plugins, Agent Presets, Oil Creator, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed
+prepare-release: compatible product sources and frozen lockfile are ready for review and commit
+Exit: 0
+
+Release version and website candidate
+$ node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.3.11
+verify-release-version: yourbuddy-v0.3.11
+Exit: 0
+
+$ pnpm --dir apps/desktop-tauri test:release-version
+3 passed, 0 failed
+Exit: 0
+
+$ HUGO_BIN=<official Hugo Extended 0.165.0> PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/ pnpm website:check
+70 tests passed; projected 50 YourBuddy pages; Hugo built 61 Chinese and 59 English pages; verified links, assets, fragments, and source actions in 59 product HTML pages
+Exit: 0
+
+Failure and recovery
+The first website check stopped before projection because Hugo Extended 0.165.0 was absent from PATH. The official gohugoio/hugo v0.165.0 macOS universal package was downloaded and unpacked into a temporary directory, then the unchanged command passed with HUGO_BIN selecting that binary. This was a local toolchain prerequisite, not a product or website failure.
+
+Scope limits
+The assembled smoke is headless and does not prove the packaged native WebView, updater installation, Apple Developer signing or notarization, OAuth, optional creator integrations, real model traffic, public assets, or website deployment.

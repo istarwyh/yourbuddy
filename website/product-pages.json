@@ -103,15 +103,21 @@
       "section": false
     },
     {
+      "source": "docs/user/product/plugins/oil-creator.md",
+      "route": "plugins/oil-creator",
+      "weight": 40,
+      "section": false
+    },
+    {
       "source": "docs/user/product/plugins/marketplace.md",
       "route": "plugins/marketplace",
-      "weight": 40,
+      "weight": 50,
       "section": false
     },
     {
       "source": "docs/user/product/plugins/harbor-evolution.md",
       "route": "plugins/harbor-evolution",
-      "weight": 50,
+      "weight": 60,
       "section": false
     },
     {

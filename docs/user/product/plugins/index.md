@@ -9,6 +9,7 @@ A considered starting point, with each project's contribution kept visible.
 | [Codex Auth](codex-auth.md) | Connect existing accounts to models, search, and images |
 | [Better Sidebar](better-sidebar.md) | Use files, terminals, previews, differences, tasks, and plugin pages in the primary workbench |
 | [Context Doctor](context-doctor.md) | Understand context costs, duplicates, and shadowed skills |
+| [Oil Creator](oil-creator.md) | Organize local video and article production around ordinary project folders |
 | [Plugin Marketplace](marketplace.md) | Discover and assess extensions before installing |
 | [Harbor Evolution](harbor-evolution.md) | Ground diagnosis and controlled improvement in task evidence |
 

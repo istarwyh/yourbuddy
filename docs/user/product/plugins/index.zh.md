@@ -9,6 +9,7 @@
 | [Codex Auth](codex-auth.zh.md) | 将已有账号连接到模型、搜索与图片能力 |
 | [Better Sidebar](better-sidebar.zh.md) | 在主工作区使用文件、终端、预览、差异、任务与插件页面 |
 | [Context Doctor](context-doctor.zh.md) | 理解上下文成本、重复内容与被遮蔽技能 |
+| [Oil Creator](oil-creator.zh.md) | 以普通项目文件夹组织本地视频与图文生产 |
 | [Plugin Marketplace](marketplace.zh.md) | 安装前发现并了解扩展 |
 | [Harbor Evolution](harbor-evolution.zh.md) | 用任务证据支持诊断与受控改进 |
 

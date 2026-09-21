@@ -125,6 +125,11 @@
         "url": "plugins/context-doctor/"
       },
       {
+        "title": "Oil Creator",
+        "desc": "围绕普通本地项目文件夹组织脚本、录屏、字幕、封面、图文与发布材料。",
+        "url": "plugins/oil-creator/"
+      },
+      {
         "title": "Plugin Marketplace",
         "desc": "在安装前了解可用扩展和项目来源，按需补充工具。",
         "url": "plugins/marketplace/"

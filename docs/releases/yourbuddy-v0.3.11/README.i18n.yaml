@@ -1,6 +1,6 @@
 # Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write docs/user/product/home.md
-home.md: 24349fb2835f0b82344b9bed5d2368287b27e8f6
-home.zh.md: 17d6e2d3deb53ebd0405a2950ebfed0e817cc9b9
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.11/README.md
+README.md: e4533aad17aaa32820dce0aa72326d07dbc0c907
+README.zh.md: 6081deb9156ce85ced8c4def10ebbc00e51415bf
