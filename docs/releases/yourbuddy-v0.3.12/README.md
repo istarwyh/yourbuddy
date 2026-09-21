@@ -7,9 +7,9 @@ This archive records the Harbor Historical Session Host-path repair in YourBuddy
 - Release identifier: `yourbuddy-v0.3.12`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
 - Archive state: published and independently verified within the stated scope.
-- Evidence commit: tagged product commit `1c1803ff553e2bfe9fab5b8973d78750f3cff081`; post-release evidence commit recorded with the downloadable archive.
+- Evidence commit: `87da6d81c6e25c5e3b47f62e8c8e67ba6e14cc46`; tagged product commit `1c1803ff553e2bfe9fab5b8973d78750f3cff081`.
 - Evidence gallery: not applicable; this release changes Adapter execution rather than UI.
-- Evidence download: attached to the GitHub Release after the final evidence commit.
+- Evidence download: [yourbuddy-v0.3.12-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.12/yourbuddy-v0.3.12-verification.zip).
 
 ## User release notes
 

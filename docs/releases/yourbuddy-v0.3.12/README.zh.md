@@ -7,9 +7,9 @@
 - 发布标识：`yourbuddy-v0.3.12`。
 - 产品渠道：macOS Apple Silicon 版 YourBuddy 桌面应用。
 - 归档状态：已发布，并在声明范围内完成独立核验。
-- 证据 Commit：产品 Tag Commit `1c1803ff553e2bfe9fab5b8973d78750f3cff081`；发布后证据 Commit 随可下载归档记录。
+- 证据 Commit：`87da6d81c6e25c5e3b47f62e8c8e67ba6e14cc46`；产品 Tag Commit `1c1803ff553e2bfe9fab5b8973d78750f3cff081`。
 - 证据图集：不适用；本版本修改 Adapter 执行而非 UI。
-- 证据下载：最终证据 Commit 完成后附加到 GitHub Release。
+- 证据下载：[yourbuddy-v0.3.12-verification.zip](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.12/yourbuddy-v0.3.12-verification.zip)。
 
 ## 面向用户的发布说明
 
