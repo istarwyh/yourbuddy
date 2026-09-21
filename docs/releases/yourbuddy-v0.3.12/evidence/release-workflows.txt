@@ -1,0 +1,13 @@
+YourBuddy 0.3.12 release workflow evidence
+
+Passed:
+- YourBuddy macOS Release: https://github.com/istarwyh/yourbuddy/actions/runs/35624762102
+- Release (dsh): https://github.com/istarwyh/yourbuddy/actions/runs/35624732567
+- Release (vendor): https://github.com/istarwyh/yourbuddy/actions/runs/35624732514
+
+Skipped by credential policy:
+- E2E (real DeepSeek API): https://github.com/istarwyh/yourbuddy/actions/runs/35624732490
+
+Independent master workflow signal outside this release scope:
+- Sandbox: https://github.com/istarwyh/yourbuddy/actions/runs/35624732475 — failed in unchanged macOS browser-path and Inspector timeout tests; Linux Sandbox jobs passed.
+- CI master: https://github.com/istarwyh/yourbuddy/actions/runs/35624732914 — queued behind repository concurrency when this record was written.

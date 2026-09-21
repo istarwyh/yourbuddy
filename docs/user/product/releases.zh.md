@@ -6,6 +6,12 @@
 
 ## YourBuddy
 
+### 0.3.12 — 2026-09-22
+
+YourBuddy 0.3.12 通过保留已经解析的 Trial 路径，修复 Host 模式中的 Harbor Historical Session 评测。本版本内置配套一致的 Harbor Evolution 0.9.8 Plugin 与 Python Adapter，同时保留 DSH 0.1.5-rc.2、Oil Creator 与**内容创作** Agent Preset。验证归档记录公开产物完整性、Updater 元数据与签名、App 标识、产品 Provenance、迁移运行时及安装包 Historical Session Adapter。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth、可选创作集成与真实模型评分仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.12) · [验证记录](../../releases/yourbuddy-v0.3.12/README.zh.md) · [下载页](download.zh.md)
+
 ### 0.3.11 — 2026-09-21
 
 YourBuddy 0.3.11 默认加入 Oil Creator 本地内容工作台，并新增可选的**内容创作** Agent Preset，同时保留最新可用 DSH Release 0.1.5-rc.2。五个带版本号的公开产物均已匿名下载并完成核验，稳定更新清单与版本化清单一致，Updater 签名通过密码学验证，DMG 与 Updater 中的 App 文件树完全一致。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth、可选创作集成与真实模型流量仍未验证。

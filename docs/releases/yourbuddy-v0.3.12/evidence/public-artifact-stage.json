@@ -1,0 +1,42 @@
+{
+  "verifiedAt": "2026-09-21T16:52:55Z",
+  "timeZone": "Asia/Shanghai",
+  "release": {
+    "tag": "yourbuddy-v0.3.12",
+    "tagObject": "2792a951f00c85b776869b669c435af09ec59a31",
+    "tagCommit": "1c1803ff553e2bfe9fab5b8973d78750f3cff081",
+    "workflow": "https://github.com/istarwyh/yourbuddy/actions/runs/35624762102",
+    "releaseUrl": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.12",
+    "publishedAt": "2026-09-21T16:43:46Z",
+    "draft": false,
+    "prerelease": false,
+    "latestFormalRelease": true
+  },
+  "download": {
+    "authentication": "none",
+    "complete": true,
+    "assets": [
+      {"name": "latest.json", "bytes": 3190, "sha256": "96333199d6cd173e9bcc417712fd55821e10426e49fd3e7410d530c75bd35623", "githubDigestMatch": true},
+      {"name": "SHA256SUMS.txt", "bytes": 315, "sha256": "7fd3d6f9c59ba22c874da3a6d119b68dc08e16dc056f760b110d9b0a0b018d81", "githubDigestMatch": true},
+      {"name": "yourbuddy-0.3.12-macos-arm64.app.tar.gz", "bytes": 571372477, "sha256": "e18877d588ec341a30e5ee8feb03b2d6a1b657deaeb1ed0dd1d3e3d93c6b6768", "githubDigestMatch": true},
+      {"name": "yourbuddy-0.3.12-macos-arm64.app.tar.gz.sig", "bytes": 408, "sha256": "637fa09f71ad8fb092d9957fd591e574fbb6e295c31691baf6942d1ee5ac2c8f", "githubDigestMatch": true},
+      {"name": "yourbuddy-0.3.12-macos-arm64.dmg", "bytes": 569130252, "sha256": "40b9a1131218e367728e22b26e82c31aa37e1f8e6e4ef8f33653b1ddd17c2f9b", "githubDigestMatch": true}
+    ]
+  },
+  "checks": {
+    "sha256SumsEntries": 3,
+    "sha256SumsPassed": 3,
+    "stableManifestByteIdentical": true,
+    "updaterVersion": "0.3.12",
+    "updaterPublishedAt": "2026-09-21T16:43:13.1724950Z",
+    "updaterPlatform": "darwin-aarch64",
+    "updaterUrlMatchesReleaseAsset": true,
+    "manifestSignatureEqualsSignatureAsset": true,
+    "signatureAssetEncoding": "base64-wrapped Minisign signature text",
+    "minisignVerifier": "minisign-verify 0.2.5",
+    "minisignResult": "PASS: minisign prehashed signature and trusted comment verified",
+    "publicKeySource": "apps/desktop-tauri/src-tauri/tauri.conf.json at yourbuddy-v0.3.12",
+    "dmgVerification": "passed"
+  },
+  "boundary": "This record proves anonymous public availability, complete-file digests, published checksums, updater metadata consistency, the updater cryptographic signature, and DMG checksum validity. It does not prove native startup, WebView interaction, installation over an existing App, updater installation, real-provider behavior, or Apple Developer signing and notarization."
+}

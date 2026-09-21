@@ -6,6 +6,12 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.12 — 2026-09-22
+
+YourBuddy 0.3.12 repairs Harbor Historical Session evaluation in Host mode by preserving Trial paths that are already resolved. The release bundles the matched Harbor Evolution 0.9.8 Plugin and Python Adapter while retaining DSH 0.1.5-rc.2, Oil Creator, and the **内容创作** Agent Preset. Public artifact integrity, updater metadata and signature, App identity, product provenance, relocated runtime, and the packaged Historical Session Adapter are recorded in the verification archive. Native startup, packaged-WebView interaction, an update from an older version, OAuth, optional creator integrations, and real-model scoring remain unverified.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.12) · [verification record](../../releases/yourbuddy-v0.3.12/README.md) · [download page](download.md)
+
 ### 0.3.11 — 2026-09-21
 
 YourBuddy 0.3.11 adds Oil Creator as a default local content workbench and introduces the selectable **内容创作** Agent Preset while retaining the latest eligible DSH release, 0.1.5-rc.2. All five versioned public assets were anonymously downloaded and checked, the stable updater manifest matches the versioned manifest, the updater signature was cryptographically verified, and the DMG and updater App trees are identical. Native startup, packaged-WebView interaction, an update from an older version, OAuth, optional creator integrations, and real model traffic remain unverified.
