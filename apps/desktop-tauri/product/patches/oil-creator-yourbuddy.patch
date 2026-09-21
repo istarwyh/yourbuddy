@@ -1,0 +1,104 @@
+diff --git a/lib/client.js b/lib/client.js
+index 789506cf41..b1a54e4a48 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -7165,7 +7165,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
+ 							onClick: () => {
+ 								startSession();
+ 							},
+-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, {})
++							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
++								className: "oilBrand",
++								children: [renderSlot("sidebar.brand.mark", { size: 24 }, {
++									fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
++								}), renderSlot("sidebar.brand.name", {}, {
++									fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
++										className: "oilBrandText",
++										children: "Oil Creator"
++									})
++								})]
++							})
++						}), wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
++							className: "headerActions wide",
++							children: renderSlot("sidebar.header.action", {})
+ 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+ 							label: collapsed ? t("toggle.open") : t("toggle.collapse"),
+ 							delayMs: 500,
+@@ -7178,7 +7191,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
+ 								},
+ 								children: [!wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+ 									className: "railBrand",
+-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
++									children: renderSlot("sidebar.brand.mark", { size: 24 }, {
++										fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
++									})
+ 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPanelLeftOutline16, {
+ 									className: "panelIcon",
+ 									size: wide ? 16 : 18
+@@ -7560,6 +7575,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
+ 				locale: NS,
+ 				priority: -1,
+ 				children: {
++					"sidebar.brand.mark": {
++						kind: "single",
++						scope: "root"
++					},
++					"sidebar.brand.name": {
++						kind: "single",
++						scope: "root"
++					},
++					"sidebar.header.action": {
++						kind: "list",
++						scope: "root"
++					},
+ 					"sidebar.workspaces": {
+ 						kind: "single",
+ 						scope: "root"
+diff --git a/lib/index.js b/lib/index.js
+index 200ce800b2..5d5f76d192 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -9,7 +9,6 @@ import { createServer } from "node:net";
+ import { fileURLToPath } from "node:url";
+ import { createHash } from "node:crypto";
+ import { createServer as createServer$1 } from "node:http";
+-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
+ import { defineTool } from "@deepseek-ai/dsh-tools";
+ //#region src/config.ts
+ function defaultLibraryRoot(platform = process.platform) {
+@@ -3584,7 +3583,7 @@ const CREATOR_SETTINGS_NAMESPACE = "dsh-oil-creator";
+ */
+ const CREATOR_SETTINGS_DISCOVERY_SCHEMA = Schema.object({});
+ function registerCreatorSettingsNamespace(settings) {
+-	settings.register(settingsNamespace(CREATOR_SETTINGS_NAMESPACE), CREATOR_SETTINGS_DISCOVERY_SCHEMA);
++	settings.register(CREATOR_SETTINGS_NAMESPACE, CREATOR_SETTINGS_DISCOVERY_SCHEMA);
+ }
+ //#endregion
+ //#region src/tools.ts
+diff --git a/package.json b/package.json
+index ac9e389b98..eb54ffb57d 100644
+--- a/package.json
++++ b/package.json
+@@ -61,14 +61,12 @@
+   },
+   "scripts": {
+     "build": "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs",
+-    "prepare": "npm run build",
+     "typecheck": "tsc --noEmit",
+     "test": "vitest run",
+     "release:check": "node scripts/check-release.mjs",
+     "check": "pnpm typecheck && pnpm test && pnpm build"
+   },
+   "dependencies": {
+-    "@deepseek-ai/dsh-tools": "0.1.0-rc.6 || 0.1.0-rc.7",
+     "@deepseek-ai/schemastery": "3.18.1",
+     "zod": "^4.4.3"
+   },
+@@ -84,6 +82,7 @@
+     "@deepseek-ai/dsh-client-ui-settings-plugins": "0.1.0-rc.6 || 0.1.0-rc.7",
+     "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.6 || 0.1.0-rc.7",
+     "@deepseek-ai/dsh-settings": "0.1.0-rc.6 || 0.1.0-rc.7",
++    "@deepseek-ai/dsh-tools": "0.1.0-rc.6 || 0.1.0-rc.7",
+     "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.6 || 0.1.0-rc.7",
+     "react": "^18.2.0"
+   },

@@ -78,6 +78,7 @@ describe('application entrypoints', () => {
     const root = fixture()
     write(root, 'apps/desktop-tauri/bundled/harness/apps/cli/src/bin.ts', '#!/usr/bin/env node\n')
     write(root, 'apps/desktop-tauri/product/harbor-evolution/bin/dsh-harbor.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/oil-creator/scripts/collect-publish.mjs', '#!/usr/bin/env node\n')
 
     expect(applicationEntrypointViolations(root)).toEqual([])
   })

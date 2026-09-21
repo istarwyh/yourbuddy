@@ -28,6 +28,7 @@ import {
   partitionGeneratedRegions,
   requiresSourceLanguageSwitcher,
   translationPairSourcePredicate,
+  TRANSLATION_SCOPE_GLOB_EXCLUDES,
   translationStructureDiff,
   translationStructureSignature,
 } from './translation-pairing.ts'
@@ -338,6 +339,10 @@ describe('translation scope discovery', () => {
     'python/sdk-runtime/src/deepseek_harness_runtime/runtime/node/README.md',
   ])('excludes non-source or non-README path %s', (file) => {
     expect(isTranslationScopeFile(file)).toBe(false)
+  })
+
+  it('excludes the reviewed Oil Creator snapshot from bilingual discovery', () => {
+    expect(TRANSLATION_SCOPE_GLOB_EXCLUDES).toContain('apps/desktop-tauri/product/oil-creator/**')
   })
 })
 

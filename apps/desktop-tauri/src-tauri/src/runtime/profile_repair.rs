@@ -31,6 +31,7 @@ const MANAGED_PRODUCT_LINKS: &[(&str, &str)] = &[
         "dsh-personal-workbench",
         "packages/product/personal-workbench",
     ),
+    ("dsh-oil-creator", "packages/product/oil-creator"),
 ];
 
 /// The profile `dsh web` boots; a profile whose install cannot be repaired is

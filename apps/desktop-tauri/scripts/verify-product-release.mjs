@@ -77,6 +77,7 @@ export const PRODUCT_CLIENT_IDS = [
   'dsh-context-doctor',
   'dsh-plugin-marketplace',
   'dsh-personal-workbench',
+  'dsh-oil-creator',
   'dsh-harbor-evolution',
 ]
 
@@ -86,6 +87,7 @@ const PRODUCT_CLIENT_ENTRY_IDS = {
   'dsh-context-doctor': 'yourharness-release-context-doctor',
   'dsh-plugin-marketplace': 'yourharness-release-plugin-marketplace',
   'dsh-personal-workbench': 'yourharness-release-personal-workbench',
+  'dsh-oil-creator': 'yourharness-release-oil-creator',
   'dsh-harbor-evolution': 'yourharness-release-harbor-evolution',
 }
 
@@ -236,7 +238,7 @@ export function assertInstalledProductPeerLinks(root) {
   const workspace = readWorkspacePackageVersions(root)
   const productRoot = join(root, 'packages', 'product')
   let checked = 0
-  for (const plugin of ['harbor-evolution', 'dsh-codex-auth', 'dsh-better-sidebar', 'context-doctor', 'plugin-marketplace', 'personal-workbench']) {
+  for (const plugin of ['harbor-evolution', 'dsh-codex-auth', 'dsh-better-sidebar', 'context-doctor', 'plugin-marketplace', 'personal-workbench', 'oil-creator']) {
     const pluginRoot = join(productRoot, plugin)
     const manifest = JSON.parse(readFileSync(join(pluginRoot, 'package.json'), 'utf8'))
     for (const name of Object.keys(manifest.peerDependencies ?? {})) {
@@ -283,6 +285,9 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
     modelExcludedSkills:
       - codexhost-delegation
 
+- id: ui-sidebar
+  disabled: true
+
 - insert:
     - id: yourbuddy-release-subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'
@@ -298,6 +303,8 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
       name: dsh-plugin-marketplace
     - id: yourbuddy-release-personal-workbench
       name: dsh-personal-workbench
+    - id: yourbuddy-release-oil-creator
+      name: dsh-oil-creator
 ${proxyVerifierRow}    - id: yourbuddy-release-harbor-evolution
       name: dsh-harbor-evolution
       config:
@@ -812,7 +819,12 @@ async function runBrowserSmoke(baseUrl, env) {
       frameCount,
     })
     await completeProductOnboarding(page)
-    await page.getByRole('button', { name: 'Codex', exact: true }).waitFor({ timeout: 10_000 })
+    const presetButton = page.getByRole('button', { name: 'Codex', exact: true })
+    await presetButton.waitFor({ timeout: 10_000 })
+    await presetButton.click()
+    await page.getByRole('menuitem', { name: /内容创作/ }).waitFor({ timeout: 10_000 })
+    await page.keyboard.press('Escape')
+    await page.getByRole('tab', { name: 'Library', exact: true }).waitFor({ timeout: 10_000 })
     const codexModelCatalogProbe = await page.evaluate(async () => {
       const response = await fetch('/api/session/modelCatalog', {
         method: 'POST',
@@ -1438,7 +1450,7 @@ export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRo
     run(join(productRuntimeRoot, 'venv', 'bin', 'harbor'), ['--version'], { cwd: commandWorld, env })
     run(join(productRuntimeRoot, 'venv', 'bin', 'harbor-dsh'), ['--help'], { cwd: commandWorld, env })
     await runHostSmoke(root, productRuntimeRoot)
-    console.log(`verify-product-release: ${installedPeers} bundled runtime peer links, ${PRODUCT_CLIENT_IDS.length} assembled Client plugins, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed`)
+    console.log(`verify-product-release: ${installedPeers} bundled runtime peer links, ${PRODUCT_CLIENT_IDS.length} assembled Client plugins, Agent Presets, Oil Creator, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed`)
   }
   finally {
     removeWorkspaceInstallState(root)

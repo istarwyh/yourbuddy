@@ -33,6 +33,12 @@ const defaultAgentPreset = {
   source: 'standard',
   description: 'YourBuddy 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。',
 }
+const creatorAgentPreset = {
+  id: 'creator',
+  name: '内容创作',
+  source: 'codex',
+  description: '面向本地视频与图文创作，包含完整工具、Skills、Codex 委派和内容工作台能力。',
+}
 const productPlugins = [
   {
     name: 'dsh-harbor-evolution',
@@ -63,6 +69,11 @@ const productPlugins = [
     name: 'dsh-personal-workbench',
     root: join(desktopRoot, 'product', 'personal-workbench'),
     destination: join('packages', 'product', 'personal-workbench'),
+  },
+  {
+    name: 'dsh-oil-creator',
+    root: join(desktopRoot, 'product', 'oil-creator'),
+    destination: join('packages', 'product', 'oil-creator'),
   },
 ]
 
@@ -201,6 +212,7 @@ function hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstrea
     hasher.update('workspace:*')
   }
   hasher.update(JSON.stringify(defaultAgentPreset))
+  hasher.update(JSON.stringify(creatorAgentPreset))
 
   hasher.update(trimmedWorkspace)
   return hasher.digest('hex')
@@ -342,7 +354,7 @@ export function installProductPlugins(bundleRoot) {
   writeFileSync(cliManifestPath, `${JSON.stringify(cliManifest, null, 2)}\n`)
 }
 
-/** Create YourBuddy's default Codex preset from the shipped standard composition. */
+/** Create YourBuddy's Codex default and content-creation Agent Presets. */
 export function installDefaultAgentPreset(bundleRoot) {
   const presetsRoot = join(bundleRoot, 'packages', 'preset', 'agent-presets', 'presets')
   const sourceRoot = join(presetsRoot, defaultAgentPreset.source)
@@ -388,6 +400,26 @@ export function installDefaultAgentPreset(bundleRoot) {
     `name: ${defaultAgentPreset.name}`,
     `description: ${defaultAgentPreset.description}`,
     'order: 0',
+    '',
+  ].join('\n'))
+
+  const creatorRoot = join(presetsRoot, creatorAgentPreset.id)
+  if (existsSync(creatorRoot)) {
+    throw new Error(`YourBuddy Creator Agent Preset id already exists: ${creatorAgentPreset.id}`)
+  }
+  copyTree(destinationRoot, creatorRoot)
+  const creatorCompositionPath = join(creatorRoot, 'agent.cordis.yml')
+  const creatorComposition = readFileSync(creatorCompositionPath, 'utf8')
+  const codingPersona = '      You are a coding agent powered by the {{model}} model.'
+  const creatorPersona = '      You are a creator workbench agent powered by the {{model}} model. Help the user plan, produce, package, and publish local video and article content while keeping human review at recording, editing, subtitle, and final publication checkpoints.'
+  if (creatorComposition.split(codingPersona).length !== 2) {
+    throw new Error('YourBuddy Creator Agent Preset expected one standard coding persona')
+  }
+  writeFileSync(creatorCompositionPath, creatorComposition.replace(codingPersona, creatorPersona))
+  writeFileSync(join(creatorRoot, 'preset.yml'), [
+    `name: ${creatorAgentPreset.name}`,
+    `description: ${creatorAgentPreset.description}`,
+    'order: 1',
     '',
   ].join('\n'))
 }
@@ -557,6 +589,7 @@ const manifest = {
     return `${plugin.name}@${pkg.version}`
   }),
   defaultAgentPreset,
+  agentPresets: [defaultAgentPreset, creatorAgentPreset],
   bundledAt: new Date().toISOString(),
   contentSha256: hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstream),
   method: 'trimmed-monorepo-source-frozen-lock',

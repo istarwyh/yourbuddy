@@ -109,6 +109,31 @@
       }
     },
     {
+      "id": "oil-creator",
+      "kind": "github-branch",
+      "repository": "oil-oil/dsh-oil-creator",
+      "branch": "main",
+      "build": "package-manager",
+      "package": "dsh-oil-creator",
+      "destination": "oil-creator",
+      "peerRemovals": {
+        "0.1.0": [
+          "@deepseek-ai/dsh-client-runtime"
+        ]
+      },
+      "clientInjectRemovals": {
+        "0.1.0": [
+          "@deepseek-ai/dsh-client-runtime"
+        ]
+      },
+      "peerOverrides": {
+        "0.1.0": {
+          "@deepseek-ai/cordis": "4.0.2",
+          "@deepseek-ai/dsh-*": "0.1.5-rc.2"
+        }
+      }
+    },
+    {
       "id": "context-doctor",
       "kind": "github-branch",
       "repository": "Zhenyu98/dsh-context-doctor",

@@ -112,6 +112,7 @@ test('product update policy accepts every supported source kind', () => {
       kind: 'github-branch',
       repository: 'owner/context-doctor',
       branch: 'main',
+      build: 'package-manager',
       package: 'context-doctor',
       destination: 'context-doctor',
     },
@@ -199,6 +200,22 @@ test('materialized product patches reject changed bytes and stale upstream conte
     /git apply --check .* failed with exit/,
   )
   assert.equal(readFileSync(join(staged, 'value.txt'), 'utf8'), 'changed upstream\n')
+})
+
+test('product update policy rejects unsupported GitHub branch build modes', () => {
+  const plugin = {
+    id: 'context',
+    kind: 'github-branch',
+    repository: 'owner/context-doctor',
+    branch: 'main',
+    build: 'shell-command',
+    package: 'context-doctor',
+    destination: 'context-doctor',
+  }
+  assert.throws(
+    () => validateProductUpdatePolicy(updatePolicy([plugin]), '/tmp/product'),
+    /build must be package-manager/,
+  )
 })
 
 test('product update policy rejects unsafe and duplicate ids', () => {

@@ -104,12 +104,17 @@ test('hashExternalSnapshot ignores only the YourBuddy provenance sidecar', () =>
   }
 })
 
-test('installDefaultAgentPreset creates the Codex preset without changing standard', () => {
+test('installDefaultAgentPreset creates Codex and Creator presets without changing standard', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-codex-preset-'))
   const presetsRoot = join(root, 'packages', 'preset', 'agent-presets', 'presets')
   const standard = join(presetsRoot, 'standard')
   mkdirSync(standard, { recursive: true })
-  const source = `- id: delegation
+  const source = `- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: >-
+      You are a coding agent powered by the {{model}} model.
+- id: delegation
   name: cordis:group
   config:
     # Production dsh keeps optional providers disabled.
@@ -143,6 +148,15 @@ test('installDefaultAgentPreset creates the Codex preset without changing standa
       readFileSync(join(codexRoot, 'preset.yml'), 'utf8'),
       'name: Codex\ndescription: YourBuddy 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。\norder: 0\n',
     )
+    const creatorRoot = join(presetsRoot, 'creator')
+    const creatorComposition = readFileSync(join(creatorRoot, 'agent.cordis.yml'), 'utf8')
+    assert.match(creatorComposition, /You are a creator workbench agent powered by the \{\{model\}\} model\./)
+    assert.doesNotMatch(creatorComposition, /You are a coding agent/)
+    assert.match(creatorComposition, /toolName: subagent_codex/)
+    assert.equal(
+      readFileSync(join(creatorRoot, 'preset.yml'), 'utf8'),
+      'name: 内容创作\ndescription: 面向本地视频与图文创作，包含完整工具、Skills、Codex 委派和内容工作台能力。\norder: 1\n',
+    )
     assert.equal(readFileSync(join(standard, 'agent.cordis.yml'), 'utf8'), source)
   }
   finally {
@@ -172,6 +186,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.equal(manifest.dependencies['dsh-context-doctor'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-plugin-marketplace'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-personal-workbench'], 'workspace:*')
+    assert.equal(manifest.dependencies['dsh-oil-creator'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-subagent-codex'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
     assert.ok(readFileSync(join(root, 'packages', 'product', 'harbor-evolution', 'skills', 'evolve-agent-with-harbor', 'SKILL.md'), 'utf8').length > 0)
@@ -186,6 +201,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
       ['context-doctor', 'context-doctor'],
       ['plugin-marketplace', 'plugin-marketplace'],
       ['personal-workbench', 'personal-workbench'],
+      ['oil-creator', 'oil-creator'],
     ]) {
       assert.equal(
         JSON.parse(readFileSync(join(root, 'packages', 'product', destination, 'package.json'), 'utf8')).version,
@@ -208,6 +224,10 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'client.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'index.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'personal-workbench', 'lib', 'client.js'), 'utf8').length > 0)
+    assert.ok(readFileSync(join(root, 'packages', 'product', 'oil-creator', 'lib', 'client.js'), 'utf8').length > 0)
+    assert.ok(readFileSync(join(root, 'packages', 'product', 'oil-creator', 'lib', 'index.js'), 'utf8').length > 0)
+    const oilCreator = JSON.parse(readFileSync(join(root, 'packages', 'product', 'oil-creator', 'package.json'), 'utf8'))
+    assert.equal(oilCreator.scripts.prepare, undefined)
   }
   finally {
     rmSync(root, { recursive: true, force: true })

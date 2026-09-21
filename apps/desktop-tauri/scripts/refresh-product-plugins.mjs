@@ -50,7 +50,7 @@ const commonPluginFields = new Set([
 ])
 const kindPluginFields = {
   'npm-latest': new Set(),
-  'github-branch': new Set(['repository', 'branch']),
+  'github-branch': new Set(['repository', 'branch', 'build']),
   'github-release-pair': new Set([
     'repository',
     'sourcePath',
@@ -269,6 +269,9 @@ export function validateProductUpdatePolicy(
     if (plugin.kind === 'github-branch') {
       validateGitHubRepository(plugin.repository, `${label}.repository`)
       validateGitBranch(plugin.branch, `${label}.branch`)
+      if (plugin.build !== undefined && plugin.build !== 'package-manager') {
+        throw new Error(`${label}.build must be package-manager when present`)
+      }
     }
     else if (plugin.kind === 'github-release-pair') {
       validateGitHubRepository(plugin.repository, `${label}.repository`)
@@ -666,6 +669,17 @@ function copyDirectory(source, destination) {
   cpSync(source, destination, { recursive: true })
 }
 
+function buildGitHubBranchPackage(source) {
+  const manifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
+  if (typeof manifest.packageManager !== 'string' || !/^pnpm@\d+\.\d+\.\d+$/.test(manifest.packageManager)) {
+    throw new Error(`GitHub branch package must pin an exact pnpm packageManager: ${manifest.name ?? source}`)
+  }
+  run('corepack', [manifest.packageManager, 'install', '--frozen-lockfile', '--ignore-scripts'], {
+    cwd: source,
+  })
+  run('corepack', [manifest.packageManager, 'run', 'build'], { cwd: source })
+}
+
 function npmPackSnapshot(source, workRoot) {
   const packRoot = join(workRoot, 'npm-pack')
   mkdirSync(packRoot, { recursive: true })
@@ -884,6 +898,7 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
   const work = join(roots.stagingRoot, policy.id)
   mkdirSync(work, { recursive: true })
   const checkout = singleExtractedDirectory(extractArchive(bytes, work))
+  if (policy.build === 'package-manager') buildGitHubBranchPackage(checkout)
   const packageRoot = npmPackSnapshot(checkout, work)
   const staged = join(work, 'staged')
   copyDirectory(packageRoot, staged)
@@ -902,7 +917,9 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
     commit: latest.commit,
     integrity: metadata.integrity,
     archiveSha256: metadata.archiveSha256,
-    snapshotMethod: 'npm pack file selection from the pinned GitHub commit with lifecycle scripts disabled',
+    snapshotMethod: policy.build === 'package-manager'
+      ? 'exact package-manager build followed by npm pack file selection from the pinned GitHub commit'
+      : 'npm pack file selection from the pinned GitHub commit with lifecycle scripts disabled',
     upstreamTreeSha256,
     patches,
     repository: `https://github.com/${policy.repository}`,

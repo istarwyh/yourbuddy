@@ -79,6 +79,7 @@ const SOURCE_EXCLUDES = [
   'apps/desktop-tauri/product/dsh-better-sidebar/**',
   'apps/desktop-tauri/product/dsh-codex-auth/**',
   'apps/desktop-tauri/product/harbor-evolution/**',
+  'apps/desktop-tauri/product/oil-creator/**',
   'apps/desktop-tauri/product/plugin-marketplace/**',
 ]
 

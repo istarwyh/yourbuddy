@@ -87,6 +87,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: workspace:*
         version: link:../../packages/client/ui-settings
+      '@deepseek-ai/dsh-client-ui-settings-plugins':
+        specifier: workspace:*
+        version: link:../../packages/client/ui-settings-plugins
       '@deepseek-ai/dsh-client-ui-sidebar':
         specifier: workspace:*
         version: link:../../packages/client/ui-sidebar
@@ -291,6 +294,9 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:*
         version: link:../../packages/core/tools
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: workspace:*
+        version: link:../../packages/typert/protocol
       '@deepseek-ai/dsh-web':
         specifier: workspace:*
         version: link:../../packages/web/web
@@ -324,6 +330,9 @@ importers:
       dsh-harbor-evolution:
         specifier: workspace:*
         version: link:../../packages/product/harbor-evolution
+      dsh-oil-creator:
+        specifier: workspace:*
+        version: link:../../packages/product/oil-creator
       dsh-personal-workbench:
         specifier: workspace:*
         version: link:../../packages/product/personal-workbench
@@ -3831,6 +3840,54 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
+
+  packages/product/oil-creator:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.2
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-api-remotes':
+        specifier: 0.1.5-rc.2
+        version: link:../../api/remotes
+      '@deepseek-ai/dsh-client-connection':
+        specifier: 0.1.5-rc.2
+        version: link:../../client/connection
+      '@deepseek-ai/dsh-client-locale':
+        specifier: 0.1.5-rc.2
+        version: link:../../client/locale
+      '@deepseek-ai/dsh-client-ui-layout':
+        specifier: 0.1.5-rc.2
+        version: link:../../client/ui-layout
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: 0.1.5-rc.2
+        version: link:../../client/ui-primitives
+      '@deepseek-ai/dsh-client-ui-settings':
+        specifier: 0.1.5-rc.2
+        version: link:../../client/ui-settings
+      '@deepseek-ai/dsh-client-ui-settings-plugins':
+        specifier: 0.1.5-rc.2
+        version: link:../../client/ui-settings-plugins
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: 0.1.5-rc.2
+        version: link:../../client/ui-slots
+      '@deepseek-ai/dsh-settings':
+        specifier: 0.1.5-rc.2
+        version: link:../../settings/settings
+      '@deepseek-ai/dsh-tools':
+        specifier: 0.1.5-rc.2
+        version: link:../../core/tools
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: 0.1.5-rc.2
+        version: link:../../typert/protocol
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
 
   packages/product/personal-workbench:
     dependencies:
