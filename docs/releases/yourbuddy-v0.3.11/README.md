@@ -6,10 +6,10 @@ This archive records the Oil Creator content workbench and the **内容创作** 
 
 - Release identifier: `yourbuddy-v0.3.11`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: pre-publication candidate; local source and assembled-product verification are recorded, while public artifacts and website availability remain pending.
-- Release source: candidate commit `6d134ec46dd499efddc4866df58bfedb871e47ff`; Oil Creator feature commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`; final tag commit pending.
+- Archive state: partial post-publication archive; local, CI, public-artifact, App identity, provenance, and relocated-runtime verification are recorded, while the synchronized download page and downloadable archive remain pending.
+- Release source: immutable tag commit `f96261582bf11a90274d705fad54c93698298304`; candidate commit `6d134ec46dd499efddc4866df58bfedb871e47ff`; Oil Creator feature commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`.
 - Evidence gallery: not captured; the assembled headless product journey is recorded as command evidence rather than an installed YourBuddy screenshot.
-- Evidence download: pending formal publication and independent public verification.
+- Evidence download: pending creation and independent extraction of the downloadable verification archive.
 
 ## User release notes
 
@@ -34,7 +34,7 @@ Choose **内容创作** from the Agent Preset menu, then use the Sidebar **Libra
 
 ### Install or upgrade
 
-After publication, install the Apple Silicon DMG from the 0.3.11 GitHub Release or use **Settings → General → Application lifecycle → Check for updates** from an earlier YourBuddy installation. Until the public files pass independent verification, 0.3.10 remains the verified download.
+Install the Apple Silicon DMG from the [0.3.11 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.11) or use **Settings → General → Application lifecycle → Check for updates** from an earlier YourBuddy installation. The anonymous public download, checksums, updater metadata, signature, App identity, provenance, and relocated runtime passed independent verification.
 
 ### Compatibility, migration, and limitations
 
@@ -46,15 +46,15 @@ Existing application data is retained and no migration is required. The release 
 |---|---|---|---|---|
 | Focused bundle, refresh, documentation, Rust, and source-policy checks | passed | local source candidate | macOS 15.6.1 arm64; Node 22.19.0; pnpm 11.7.0 | [local validation](evidence/local-candidate-validation.txt) |
 | Latest DSH selection and assembled-product preparation | passed within recorded controlled scope | prepared local product | isolated build environment and controlled local Host/Chromium; no model provider | [local validation](evidence/local-candidate-validation.txt) |
-| Formal desktop publication | pending | immutable tag `yourbuddy-v0.3.11` | GitHub Actions macOS 15 arm64 | pending |
-| Public installer, updater, App identity, provenance, and relocated runtime | pending | public release files | GitHub Release and macOS arm64 | pending |
-| Product website and downloadable verification archive | pending | public deployment and archive | GitHub Pages and GitHub Release | pending |
+| Formal desktop publication | passed | immutable tag `yourbuddy-v0.3.11` | GitHub Actions macOS 15 arm64 | [workflow](https://github.com/istarwyh/yourbuddy/actions/runs/35610547936) |
+| Public installer, updater, App identity, provenance, and relocated runtime | passed within recorded scope | anonymously downloaded public release files | GitHub Release and macOS 15.6.1 arm64 | [artifact record](evidence/public-artifact-stage.json), [runtime record](evidence/public-runtime-stage.json) |
+| Product website and downloadable verification archive | pending final synchronization | public deployment and archive | GitHub Pages and GitHub Release | candidate site deployment passed; verified download and archive pending |
 
 ## Scenario: local candidate and assembled-product validation
 
 - Status: passed within the recorded controlled scope.
 - Date and time: 2026-09-21 21:46 UTC+08:00 CST.
-- Release and commit: `yourbuddy-v0.3.11`; candidate commit `6d134ec46dd499efddc4866df58bfedb871e47ff`; Oil Creator feature commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`; final tag pending.
+- Release and commit: `yourbuddy-v0.3.11`; immutable tag commit `f96261582bf11a90274d705fad54c93698298304`; candidate commit `6d134ec46dd499efddc4866df58bfedb871e47ff`; Oil Creator feature commit `cf96ee6e1cdb04a8b925e8a59d817b1bd3cc8f61`.
 - Build under test: local source candidate and prepared assembled Host/Client product.
 - Environment: macOS 15.6.1 arm64; Node 22.19.0; pnpm 11.7.0; Rust 1.98.0; uv 0.12.5.
 - Evidence origin: this release run.
@@ -87,12 +87,21 @@ The DSH policy selected `dsh-v0.1.5-rc.2` and found no newer eligible candidate.
 
 The headless assembled journey is not the packaged native WebView. This stage does not prove native GUI startup, updater installation, Apple Developer signing or notarization, OAuth, optional external creator workflows, real model traffic, public downloads, stable updater metadata, or website deployment.
 
+## Scenario: public release verification
+
+- Status: passed within the recorded scope.
+- Date and time: 2026-09-21 22:53 UTC+08:00 CST.
+- Build under test: anonymous downloads from the published `yourbuddy-v0.3.11` GitHub Release.
+- Environment: macOS 15.6.1 arm64; no model provider or optional creator integration.
+- Actual: the release workflow passed in 34 minutes 38 seconds. All five files downloaded without authentication and matched GitHub digests; all three checksum entries passed; stable and versioned updater manifests were byte-identical; the Minisign signature verified; `hdiutil verify`, strict ad-hoc code-signature validation, App identity, Oil Creator provenance, the **内容创作** preset, updater/DMG App-tree equality, and relocated Harbor commands passed. Gatekeeper rejected the App because it is not Apple Developer signed or notarized.
+- Evidence: [artifact record](evidence/public-artifact-stage.json) and [runtime record](evidence/public-runtime-stage.json).
+
 ## Delivery status
 
-- Product publication status: pending `yourbuddy-v0.3.11` tag and GitHub Actions publication; 0.3.10 remains the verified public release.
-- Verification archive status: partial pre-publication archive; local candidate evidence is present, while CI, public artifacts, website, and downloadable archive evidence remain pending.
-- Website synchronization status: pending; candidate documentation is prepared without replacing the verified 0.3.10 download.
-- Unverified scope: native GUI startup, packaged-WebView interaction, update from an older installation, Apple Developer signing and notarization, OAuth, optional creator integrations, real model traffic, and all public-file claims.
+- Product publication status: `yourbuddy-v0.3.11` is the latest formal GitHub Release and its release workflow passed.
+- Verification archive status: public artifacts and runtime are recorded; the downloadable archive is pending creation, upload, extraction, and hash verification.
+- Website synchronization status: the candidate bilingual Oil Creator pages are live; the verified 0.3.11 download journey still needs publication.
+- Unverified scope: native GUI startup, packaged-WebView interaction, update from an older installation, Apple Developer signing and notarization, OAuth, optional creator integrations, and real model traffic.
 
 ## Delivery checklist
 
@@ -102,8 +111,8 @@ The headless assembled journey is not the packaged native WebView. This stage do
 - [x] The local scenario records date, time zone, environment, build under test, evidence origin, data type, and service type.
 - [x] Source-only, controlled-service, pending, and unverified evidence is labelled explicitly.
 - [x] The release entry is present in the bilingual release index.
-- [ ] The final candidate commit and immutable release tag are recorded.
-- [ ] The public release page, installer, updater metadata, signatures, hashes, App identity, provenance, and relocated runtime are independently verified.
+- [x] The final candidate commit and immutable release tag are recorded.
+- [x] The public release page, installer, updater metadata, signatures, hashes, App identity, provenance, and relocated runtime are independently verified.
 - [ ] The website is synchronized in both languages and the live download journey is independently verified.
 - [ ] The downloadable verification archive is created, uploaded, extracted, and checked.
 - [x] Product publication, archive status, website synchronization, and unverified scope are reported separately.

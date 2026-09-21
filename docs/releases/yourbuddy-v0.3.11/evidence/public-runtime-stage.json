@@ -1,0 +1,51 @@
+{
+  "verifiedAt": "2026-09-21T14:53:07Z",
+  "environment": "macOS 15.6.1 arm64",
+  "source": "anonymous download of the published updater archive and DMG",
+  "application": {
+    "version": "0.3.11",
+    "bundleIdentifier": "io.github.istarwyh.yourbuddy",
+    "architecture": "arm64",
+    "teamIdentifier": "not set",
+    "codeSignatureStrictCheck": "passed",
+    "gatekeeperAssessment": "rejected because the App is not Apple Developer signed or notarized",
+    "executableSha256": "a204ff34a4babec8a7f2debb2115e7feee1815601a990a417a2c2dbb0ba980cb",
+    "updaterAndDmgAppTreeMatch": true
+  },
+  "bundledVersions": {
+    "deepseekHarness": "0.1.5-rc.2",
+    "betterSidebar": "0.19.1",
+    "codexAuth": "0.3.2",
+    "harborEvolution": "0.9.7",
+    "pluginMarketplace": "0.3.3",
+    "contextDoctor": "0.7.2",
+    "oilCreator": "0.1.0",
+    "python": "3.12.14",
+    "harborCli": "0.21.0"
+  },
+  "provenance": {
+    "betterSidebarManifestPresent": true,
+    "codexAuthManifestPresent": true,
+    "harborEvolutionManifestPresent": true,
+    "pluginMarketplaceManifestPresent": true,
+    "contextDoctorManifestPresent": true,
+    "oilCreatorManifestPresent": true,
+    "creatorPresetPresent": true,
+    "oilCreatorCommit": "ed9417d1e0d24bdecdac831d4e72d3428e49a123",
+    "oilCreatorTreeSha256": "ed43aeff1af58a91b528de72274761a78252ed716a217d0682d83f715bcbb38f",
+    "oilCreatorPatchSha256": "8c7d98a5b461292191a7bd70b165025ad966b0a3e798a950e450e69e060c9be2",
+    "treeAndPatchDigestsRetained": true
+  },
+  "relocation": {
+    "copiedOutsideAppBundle": true,
+    "pythonLauncherMaterializedFromSymlink": true,
+    "originalPythonHomeMadeUnavailable": true,
+    "harborVersionCommand": "passed",
+    "harborDshHelpCommand": "passed"
+  },
+  "nativeStartup": {
+    "status": "not verified",
+    "reason": "The release check did not launch the installed GUI or exercise its packaged WebView."
+  },
+  "boundary": "This record verifies the published App identity, ad-hoc signature integrity, bundled version provenance, Oil Creator and the creator preset, DMG and updater App-tree equality, and relocated Harbor CLI behavior. It does not prove Gatekeeper acceptance, native GUI startup, packaged-WebView interaction, updater installation, OAuth, optional Oil Creator integrations, or real model traffic."
+}
