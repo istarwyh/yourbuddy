@@ -10,6 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
+| [yourbuddy-v0.3.12](yourbuddy-v0.3.12/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 草稿；已记录 Harbor 0.9.8 根因与源码/公开包回归；发布产物、新的打包版 Historical Job、网站与可下载归档仍待补 | 候选发布版本准备中 |
 | [yourbuddy-v0.3.11](yourbuddy-v0.3.11/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、公开文件、Updater 签名、App 标识、Oil Creator Provenance、迁移运行时、网站、可下载归档，以及保留的原生启动、安装包 WebView、OAuth、可选集成与真实模型限制 | 已发布并在声明范围内完成独立核验 |
 | [yourbuddy-v0.3.10](yourbuddy-v0.3.10/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、公开文件、Updater 签名、App 标识、产品 Provenance、迁移运行时、官网、可下载归档，以及保留的原生启动、打包 WebView、OAuth 与真实模型限制 | 已发布并在声明范围内完成独立核验 |
 | [yourbuddy-v0.3.9](yourbuddy-v0.3.9/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、截图、CI、公开文件、Updater 签名、App 标识、迁移运行时、官网、可下载归档，以及保留的原生启动、打包 WebView、OAuth 与真实模型限制 | 已发布并在声明范围内完成独立核验 |

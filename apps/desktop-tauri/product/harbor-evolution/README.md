@@ -16,8 +16,8 @@ npx --yes dsh-harbor-evolution@latest setup --project-root "$PWD"
 
 The setup command installs both required runtimes:
 
-- `harbor-dsh-evolution==0.9.7` in a managed Python environment.
-- `dsh-harbor-evolution@0.9.7` in the selected DSH profile.
+- `harbor-dsh-evolution==0.9.8` in a managed Python environment.
+- `dsh-harbor-evolution@0.9.8` in the selected DSH profile.
 
 It then stores the DSH profile/home, managed Python runtime, Jobs directory, Host/Docker choice, absolute Harbor executable paths, and a fallback `projectRoot` in the profile's `harbor-evolution` block and verifies the integration. Agent Tool calls always use the calling session's absolute working directory as their project root; the configured value remains the Web Workbench and non-Agent fallback. Existing unrelated profile entries are preserved, and rerunning setup updates the same block.
 

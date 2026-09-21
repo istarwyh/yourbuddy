@@ -1,0 +1,15 @@
+YourBuddy 0.3.12 bundled runtime Harbor Adapter verification
+Date: 2026-09-21 UTC+08:00 CST
+Environment: macOS 15.6.1 arm64; prepared relocated YourBuddy Python 3.12.14 runtime; Harbor 0.21.0
+Commands:
+- pnpm --dir apps/desktop-tauri run test:product-refresh
+- apps/desktop-tauri/bundled/yourbuddy-runtime/venv/bin/python apps/desktop-tauri/scripts/verify-harbor-host-path-translation.py --integration
+Input: synthetic dsh-session-observation/v1 with an independently computed canonical digest; no model call
+
+Observed results:
+- Product refresh suite: 69 passed, including the tracked exact-source regression that preserves an already-resolved Trial path and translates unresolved logical paths once.
+- Bundled integration: {"digest": "sha256:ef6e6c990a57f21ab424508746d2d0332e415e9df3a3bde9bb86cb85fc639239", "status": "passed", "version": "0.9.8"}
+
+The tracked script instantiated the installed HostEnvironment and SessionObservationAgent from the prepared relocated runtime, uploaded the frozen Observation, executed the Adapter command, read the Artifact, and matched the Artifact and AgentContext digests.
+
+Limit: this is the bundled runtime before desktop artifact publication. It proves the relocated Python package and Adapter path, not the signed updater archive, Renderer/Judge completion, or a real Historical Job score.

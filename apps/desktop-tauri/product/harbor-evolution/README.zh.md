@@ -16,8 +16,8 @@ npx --yes dsh-harbor-evolution@latest setup --project-root "$PWD"
 
 Setup 命令会安装两个必需的运行时：
 
-- 在托管的 Python 环境中安装 `harbor-dsh-evolution==0.9.7`。
-- 在所选 DSH Profile 中安装 `dsh-harbor-evolution@0.9.7`。
+- 在托管的 Python 环境中安装 `harbor-dsh-evolution==0.9.8`。
+- 在所选 DSH Profile 中安装 `dsh-harbor-evolution@0.9.8`。
 
 随后，它会把 DSH Profile／Home、托管 Python 运行时、Jobs 目录、Host／Docker 选择、Harbor 可执行文件的绝对路径与一个回退 `projectRoot` 写入 Profile 的 `harbor-evolution` 配置块，并验证集成。Agent Tool 每次调用都会以调用 Session 的绝对工作目录作为项目根目录；配置值仍供 Web Workbench 和非 Agent 场景回退使用。无关的现有 Profile 条目会被保留；重复执行 Setup 只会更新同一个配置块。
 

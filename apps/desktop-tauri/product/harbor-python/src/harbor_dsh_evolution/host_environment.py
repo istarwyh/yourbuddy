@@ -107,10 +107,27 @@ class HostEnvironment(BaseEnvironment):
 
     def _translate_command(self, command: str) -> str:
         logical_paths = sorted(self._path_map, key=len, reverse=True)
-        pattern = re.compile(
-            "|".join(re.escape(path) for path in logical_paths)
+        placeholder_prefix = "__HARBOR_RESOLVED_PATH_"
+        while placeholder_prefix in command:
+            placeholder_prefix = f"_{placeholder_prefix}"
+        protected: dict[str, str] = {}
+        translated = command
+        resolved_paths = sorted(
+            {str(path) for path in self._path_map.values()}, key=len, reverse=True
         )
-        return pattern.sub(lambda match: str(self._path_map[match.group(0)]), command)
+        for index, resolved in enumerate(resolved_paths):
+            if resolved not in translated:
+                continue
+            placeholder = f"{placeholder_prefix}{index}__"
+            translated = translated.replace(resolved, placeholder)
+            protected[placeholder] = resolved
+        pattern = re.compile("|".join(re.escape(path) for path in logical_paths))
+        translated = pattern.sub(
+            lambda match: str(self._path_map[match.group(0)]), translated
+        )
+        for placeholder, resolved in protected.items():
+            translated = translated.replace(placeholder, resolved)
+        return translated
 
     def _host_env(self, env: dict[str, str] | None = None) -> dict[str, str]:
         merged = dict(os.environ)

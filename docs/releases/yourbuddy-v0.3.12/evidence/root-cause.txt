@@ -1,0 +1,41 @@
+YourBuddy 0.3.12 Harbor Historical Session root-cause record
+Date: 2026-09-21 UTC+08:00 CST
+Data classification: sanitized infrastructure evidence; no Session transcript, credential, attachment, or private absolute path
+
+Observed in all three Trials of the immutable pre-fix Historical Job:
+
+RuntimeError: Session Observation adapter failed
+caused by:
+FileNotFoundError: <trial-host-root>/<trial-host-root>/opt/harbor-dsh/session-observation.json
+
+Integrity state before the exception:
+- input_integrity: true
+- observation_integrity: false
+- adapter_completed: false
+- renderer_valid: false
+- judge_completed: false
+- artifact_schema_valid: false
+
+Root cause:
+SessionObservationAgent resolved /opt/harbor-dsh/session-observation.json into the Trial Host directory before calling HostEnvironment.exec(). HostEnvironment command translation then matched the /opt/harbor-dsh fragment inside that already-resolved path and inserted the Trial Host root a second time.
+
+Correction:
+HostEnvironment protects mapped Host paths with collision-free placeholders before replacing logical Harbor roots, then restores the protected values. A resolved path is therefore stable, while an unresolved logical path is translated once.
+
+Focused verification:
+uv run --project packages/harbor-plugin pytest packages/harbor-plugin/tests/test_host_environment.py packages/harbor-plugin/tests/test_session_agent.py
+Result: 5 passed
+
+Complete upstream verification:
+NODE_ENV=development ./hse test
+Result: 321 Python tests and 596 Node tests passed; npm tgz and Python wheel/sdist built.
+
+Published upstream:
+- Harbor Evolution v0.9.8 tag commit: 47b4f4b7f87cc037ed11db9cebd1230ce350d12a
+- Tag CI: https://github.com/istarwyh/harbor-self-evolving/actions/runs/35620472947
+- npm publication: https://github.com/istarwyh/harbor-self-evolving/actions/runs/35620473013
+- PyPI publication: https://github.com/istarwyh/harbor-self-evolving/actions/runs/35620472983
+- Release: https://github.com/istarwyh/harbor-self-evolving/releases/tag/v0.9.8
+
+Limit:
+This evidence proves the failure mechanism and corrected Adapter path. It does not prove Renderer/Judge completion or a valid business score; a fresh packaged Historical Job remains required.
