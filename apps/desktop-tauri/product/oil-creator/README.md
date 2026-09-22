@@ -38,7 +38,7 @@
 | 选题与脚本 | 新建规范目录，读写 `topic.md` / `script.md`，遵守长期脚本规则 | 选题方向和最终表达 |
 | 录制与剪辑 | 绑定并打开 Screen Studio 工程，等待导出文件稳定落盘 | 录制、时间线剪辑和导出 |
 | 字幕与封面 | 启动字幕工作流，打开预览，烧录字幕，生成三种画幅封面 | 专有名词、标题和错别字 |
-| 发布 | 把本地材料交给 `video-publisher` 准备多平台草稿 | 各平台最终“发表”按钮 |
+| 发布 | 通过 `oil_prepare_publish` 准备多平台视频草稿和公众号文章草稿 | 各平台最终“发表”或群发按钮 |
 | 数据回收 | 通过 Ego Browser 同步已发布作品的播放、赞、评和链接 | 登录状态和异常匹配结果 |
 
 工作台不会假装替人完成录制、剪辑或最终发布。它负责把每一步需要的文件、状态和下一步动作放在同一个上下文里。
@@ -108,7 +108,7 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
 - **长期脚本规则**：保存语气、结构、禁忌和目标观众，之后写或修改 `script.md` 时复用。
 - **长任务追踪**：字幕、封面和烧录启动后立即返回，由工作台继续观察文件产物和任务状态。
 - **目录整理**：预览并修正旧文件夹名称；默认不执行、不删除文件。
-- **可选发布闭环**：准备平台草稿后由人最终发表，再同步播放、点赞、评论和作品链接。
+- **发布闭环**：内置视频、视频转文章和公众号草稿 Skills；准备草稿后由人最终发表，再同步播放、点赞、评论和作品链接。
 
 完整工具列表和逐步示例见 [使用说明](docs/usage.md)。
 
@@ -121,8 +121,8 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
 | 字幕转录、排版、预览和烧录 | [oil-subtitle](https://github.com/oil-oil/oil-subtitle) + `DASHSCOPE_API_KEY` | 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；Key 在[百炼控制台](https://bailian.console.aliyun.com)申请 |
 | 三画幅封面 | [oil-cover](https://github.com/oil-oil/oil-cover) + `ZENMUX_API_KEY` | Key 在 [ZenMux](https://zenmux.ai) 申请 |
 | Screen Studio 自动剪辑 | [screen-studio-editor](https://github.com/oil-oil/screen-studio-editor) | 仅 macOS；录制和导出仍在 Screen Studio 完成 |
-| 多平台草稿与数据回收 | [Ego Lite](https://lite.ego.app/) + [video-publisher](https://github.com/oil-oil/video-publisher-skill) | 仅 macOS；需要提前登录各平台创作者后台 |
-| 公众号图文 | [oil-video-article](https://github.com/oil-oil/oil-video-article) | 独立工作流，工作台负责展示已有文章 |
+| 多平台视频草稿与数据回收 | [Ego Lite](https://lite.ego.app/) | `video-publisher` 已内置；仅 macOS，需要提前登录各平台创作者后台 |
+| 公众号图文与草稿 | 微信公众号 API 凭据和固定出口 IP 白名单 | `oil-video-article` 与 `wechat-publisher` 已内置；创建草稿，不自动群发 |
 
 字幕和封面 Skill 留空时，插件会依次从 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 自动发现；只有非标准安装位置才需要填写高级路径。
 

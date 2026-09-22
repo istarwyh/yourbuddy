@@ -224,9 +224,16 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'client.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'index.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'personal-workbench', 'lib', 'client.js'), 'utf8').length > 0)
-    assert.ok(readFileSync(join(root, 'packages', 'product', 'oil-creator', 'lib', 'client.js'), 'utf8').length > 0)
-    assert.ok(readFileSync(join(root, 'packages', 'product', 'oil-creator', 'lib', 'index.js'), 'utf8').length > 0)
-    const oilCreator = JSON.parse(readFileSync(join(root, 'packages', 'product', 'oil-creator', 'package.json'), 'utf8'))
+    const bundledOilCreator = join(root, 'packages', 'product', 'oil-creator')
+    assert.ok(readFileSync(join(bundledOilCreator, 'lib', 'client.js'), 'utf8').length > 0)
+    const oilCreatorHost = readFileSync(join(bundledOilCreator, 'lib', 'index.js'), 'utf8')
+    assert.match(oilCreatorHost, /name: "oil_prepare_publish"/u)
+    for (const skill of ['video-publisher', 'oil-video-article', 'wechat-publisher']) {
+      assert.ok(readFileSync(join(bundledOilCreator, 'skills', skill, 'SKILL.md'), 'utf8').length > 0)
+    }
+    assert.ok(readFileSync(join(bundledOilCreator, 'skills', 'video-publisher', 'scripts', 'v2', 'publisher.mjs'), 'utf8').length > 0)
+    assert.ok(readFileSync(join(bundledOilCreator, 'skills', 'wechat-publisher', 'wechat-publisher.mjs'), 'utf8').length > 0)
+    const oilCreator = JSON.parse(readFileSync(join(bundledOilCreator, 'package.json'), 'utf8'))
     assert.equal(oilCreator.scripts.prepare, undefined)
   }
   finally {

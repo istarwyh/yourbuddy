@@ -22,8 +22,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 4. **等导出**：导出开始后，插件盯着影片目录，成片稳定落盘再往下走。这段时间可以并行做字幕和封面。
 5. **字幕**：用百炼 Key 转录；`oil-subtitle` 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；人在 skill 自带的预览编辑器里改稿，确认后再烧进视频。
 6. **封面**：有 ZenMux Key 就出 3:4 / 4:3 / 16:9。封面主标题和错别字由对话里的 Agent 核对，不交给脚本自行发挥。
-7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与 AI 发布和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，走 `oil-video-article`，成稿在 `公众号文章/`。
-8. **发布**：`video-publisher` 只为 `enabledPlatforms` 中的平台准备草稿，做到最终发布按钮前，人自己点发布。插件记录每平台未发布 / 草稿已备 / 已发布。
+7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与 AI 发布和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，内置 `oil-video-article` 成稿到 `公众号文章/`。
+8. **发布**：`oil_prepare_publish` 调用内置 `video-publisher` 为 `enabledPlatforms` 中的平台准备草稿，也可调用内置 `wechat-publisher` 创建公众号草稿。视频页面停在最终发布按钮前，公众号停在草稿箱；人自己完成最终发表或群发。
 9. **回收**：用 Ego Lite 打开已登录的创作者后台，只翻 `enabledPlatforms` 中平台的已发布列表，按标题或已存 id 对到本地文件夹，写下播放 / 赞 / 评论。不是公开站爬虫；平台上有、本地没有文件夹的不会自动建条目。
 
 一条片子对应影片目录里的一个子文件夹。工程在 Screen Studio 工程目录里，用绑定连起来。
@@ -53,8 +53,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 3. **字幕校对**：生成完不会自动改专有名词；预览还要人自己看。
 4. **封面主标题和错别字**：按钮不会先让 Agent 提炼标题，也不会验字。
 5. **发布包**：能展示已有 `publish-package.json` 里的标签，不会在插件里写平台长文案。
-6. **四平台上传**：不会调度 `video-publisher`，只记状态。
-7. **公众号成稿**：不会跑 `oil-video-article`。
+6. **发布草稿**：调用 `oil_prepare_publish` 后调度内置发布器，成功的视频平台写入草稿状态；工具不执行最终发表。
+7. **公众号成稿**：内置 `oil-video-article` 供 Agent 使用，工作台仍按磁盘文件展示文章。
 8. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
 
 工作阶段（`workflow`）由文件和 overlay 推出来，不是单独手填一张总表：
@@ -83,7 +83,7 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，�
 
 对话里的插件工具：
 
-`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
+`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_prepare_publish`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
 
 `oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时自动发布和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
 
@@ -141,8 +141,9 @@ ego-browser nodejs < scripts/collect-publish.mjs
 | 字幕 | `oil-subtitle` | `~/.agents/skills/oil-subtitle` | clone 后必须运行 `setup.sh`；已包预览编辑器、转录、按稿烧录 | 校对不确定词、确认预览后再烧 |
 | 封面 | `oil-cover` | `~/.agents/skills/oil-cover` | 已包脚本模式三画幅生成 | 提炼主标题、看错别字、决定是否重跑某一画幅 |
 | 发布文案语气 | `oil-tone` | `~/.agents/skills/oil-tone` | 不执行；写标题简介时读档案 | 成稿必须过 `tone_lint.py` 再通读 |
-| 公众号图文 | `oil-video-article` | `~/.agents/skills/oil-video-article` | 识别 `公众号文章/` | 从无头像屏幕轨截图、按 oil-tone 写文章 |
-| 四平台视频草稿 | `video-publisher` | `~/.agents/skills/video-publisher` | 读 `auto-publish.json` 显示状态 | Ego 上传、停在最终发布按钮前、人点发布 |
+| 公众号图文 | `oil-video-article` | 插件内置 `skills/oil-video-article` | 识别 `公众号文章/` | 从无头像屏幕轨截图、按 oil-tone 写文章 |
+| 公众号草稿 | `wechat-publisher` | 插件内置 `skills/wechat-publisher` | `oil_prepare_publish` 调用公众号 API | 草稿箱复核、人完成最终群发 |
+| 四平台视频草稿 | `video-publisher` | 插件内置 `skills/video-publisher` | `oil_prepare_publish` 调用生产入口并读回执 | Ego 上传、停在最终发布按钮前、人点发布 |
 
 字幕脚本入口以 oil-subtitle 为准：`bailian_transcribe.py` → `review_subtitles.py` → `prepare_subtitles.py` → `preview_editor.py`，用户确认后再 `burn_subtitles.py`（有审过的 SRT 用 `--srt-input`）。不要在预览前烧录。封面脚本是 `generate_oil_cover.py`，主标题由调用方按 oil-cover 提炼后传入 `--title`，Key 用环境变量 `ZENMUX_API_KEY`。不要改 skill 仓库里的用户路径和密钥。
 

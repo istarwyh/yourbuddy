@@ -2,11 +2,11 @@ import { closeSync, constants, createReadStream, existsSync, mkdirSync, openSync
 import { homedir } from "node:os";
 import { basename, delimiter, dirname, extname, isAbsolute, join, resolve, sep } from "node:path";
 import Schema from "@deepseek-ai/schemastery";
+import { fileURLToPath } from "node:url";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { access, mkdir, readFile, readdir, rename, rmdir, stat, unlink, writeFile } from "node:fs/promises";
 import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import { createServer } from "node:net";
-import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { createServer as createServer$1 } from "node:http";
 import { defineTool } from "@deepseek-ai/dsh-tools";
@@ -62,6 +62,13 @@ function resolveSkillDir(configured, skillName, envValue) {
 	return skillDirCandidates(skillName).find((candidate) => existsSync(candidate)) ?? skillDirCandidates(skillName)[0];
 }
 //#endregion
+//#region src/bundledSkills.ts
+const moduleDir = dirname(fileURLToPath(import.meta.url));
+const bundledSkillsRoot = join(moduleDir, "..", "skills");
+function bundledSkillDir(name) {
+	return join(bundledSkillsRoot, name);
+}
+//#endregion
 //#region src/creatorSkill.ts
 const CREATOR_WORKBENCH_SKILL = {
 	name: "creator-workbench",
@@ -87,7 +94,7 @@ const CREATOR_WORKBENCH_SKILL = {
 - 候选内容目录不存在时，先展示准备创建的完整路径；用户确认后用系统文件工具创建，再重新调用 \`oil_creator_setup\` 预览。不要把不存在的目录直接交给配置工具。
 - 第一次带配置字段调用时保持 \`apply=false\`，把精确变更展示给用户。
 - 只有用户确认后，才使用同一组字段和 \`apply=true\`。
-- 不向用户索要 API Key 明文。字幕和封面凭据只能让用户在插件设置页通过 Harness Credentials 配置。
+- 不向用户索要 API Key 明文。字幕、封面和公众号凭据只能通过本机配置或 Harness Credentials 提供。
 - 高级依赖路径由插件配置或环境自动发现；能自动发现时不要增加问题。
 
 ## 内容目录
@@ -97,18 +104,47 @@ const CREATOR_WORKBENCH_SKILL = {
 - 先列目录，再读这一集需要的 \`topic.md\`、\`script.md\`、发布包、字幕或文章文件。
 - 创建新内容使用 \`oil_create_content\`；修改普通 Markdown 和 JSON 正文使用系统文件工具。
 
-## 整理与发布安全
+## 整理与发布
 
 - 调用 \`oil_organize_library\` 时先预览，向用户列出改名前后；确认后才传 \`apply=true\`。它不删除文件。
-- 发布默认准备草稿。上传、账号登录和最终发表属于外部发布能力；最终发表必须由用户明确确认。
-- 自动发布（\`video-publisher\` skill）和已发布数据回收（\`oil_sync_publish\`）只处理 \`enabledPlatforms\` 中的平台，都依赖 Ego Browser 和已登录的创作者后台；\`enabledPlatforms\` 为空时不执行发布或同步，先配置并确认启用平台。能力检查显示缺失时明确告诉用户这两项不可用，其余功能照常。
+- 使用 \`oil_prepare_publish\` 可把启用的视频平台和已有公众号文章准备成草稿。它会保留平台页面供用户检查，不执行最终发表或群发。
+- 视频草稿和已发布数据回收依赖 Ego Browser 与已登录的创作者后台。公众号 API 草稿依赖本机配置的微信公众号 AppID、AppSecret 和 IP 白名单。
+- 最终发表必须由用户明确确认；默认停在草稿或最终发表按钮前。
 
 ## 推进工作
 
 每次只推进当前缺失的下一步：选题与脚本 → 录制/工程 → 导出成片 → 字幕 → 封面 → 发布草稿 → 用户最终发表 → 同步数据。长任务启动后检查产物或工作台状态，不把“已经启动”说成“已经完成”。`
 };
+function externalSkill(name, description) {
+	const root = bundledSkillDir(name);
+	const path = join(root, "SKILL.md");
+	const content = readFileSync(path, "utf8").replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, "").trim();
+	return {
+		name,
+		description,
+		source: "npm:dsh-oil-creator",
+		invocation: {
+			modelInvocable: true,
+			userInvocable: true
+		},
+		resourceBase: {
+			kind: "directory",
+			path: root
+		},
+		path,
+		content
+	};
+}
 function registerCreatorWorkbenchSkill(ctx) {
-	return ctx.skills.register(CREATOR_WORKBENCH_SKILL);
+	const disposers = [
+		ctx.skills.register(CREATOR_WORKBENCH_SKILL),
+		ctx.skills.register(externalSkill("video-publisher", "把本地视频准备为小红书、抖音、B站和视频号草稿，保留页面供用户最终确认。")),
+		ctx.skills.register(externalSkill("oil-video-article", "将视频和字幕整理为带真实配图的本地微信公众号 Markdown 文章。")),
+		ctx.skills.register(externalSkill("wechat-publisher", "把 Markdown 或 HTML 上传到微信公众号草稿箱；只有用户明确确认后才允许最终发布。"))
+	];
+	return () => {
+		for (const dispose of disposers.reverse()) dispose();
+	};
 }
 //#endregion
 //#region src/platforms.ts
@@ -174,10 +210,10 @@ function libraryConventionText(libraryRoot, dataDir, scriptRules, enabledPlatfor
 		"约定文件：topic.md 选题；script.md 口播脚本；公众号文章/<标题>.md 已转写文章，配图在 公众号文章/images/；publish-package.json 只放标题和 tags，不写平台长文案；*.mp4/*.mov 成片（_subtitled 为烧录版）；*.srt/*.ass 字幕；*_3x4.png *_4x3.png *_16x9.png 封面。",
 		"读或改这些内容，用系统自带的列文件、读文件、写文件工具。不要为了看一集再调插件工具。",
 		"写或改 script.md 必须遵循用户的脚本规则（人设）：先用 oil_script_rules 读取；还没配置时主动问清语气、结构和禁忌，再用 oil_script_rules 存下来。",
-		`插件工具只做文件做不到的事：配置工作台、按约定建文件夹、绑/开 Screen Studio、等导出、生成或烧录字幕、生成封面、同步已发布数据、整理文件夹名。工作台状态在 ${dataDir}/overlay.json，不是正文。`,
-		"自动发布（video-publisher skill）和已发布数据回收（oil_sync_publish）都依赖 Ego Browser；能力检查显示缺失时明确告诉用户，不要假装能同步。"
+		`插件工具只做文件做不到的事：配置工作台、按约定建文件夹、绑/开 Screen Studio、等导出、生成或烧录字幕、生成封面、准备发布草稿、同步已发布数据、整理文件夹名。工作台状态在 ${dataDir}/overlay.json，不是正文。`,
+		"视频草稿（oil_prepare_publish）和已发布数据回收（oil_sync_publish）都依赖 Ego Browser；公众号文章草稿使用本机配置的微信公众号 API。能力检查显示缺失时明确告诉用户，不要假装已上传或同步。"
 	];
-	if (enabledPlatforms !== void 0) lines.push(enabledPlatforms.length === 0 ? "当前没有启用发布平台。不要调用 video-publisher 或 oil_sync_publish。" : `当前启用平台：${enabledPlatformNames(enabledPlatforms)}。video-publisher 和 oil_sync_publish 只处理这些平台。`);
+	if (enabledPlatforms !== void 0) lines.push(enabledPlatforms.length === 0 ? "当前没有启用视频发布平台。不要为视频调用 oil_prepare_publish 或 oil_sync_publish。" : `当前启用视频平台：${enabledPlatformNames(enabledPlatforms)}。oil_prepare_publish 和 oil_sync_publish 只处理这些视频平台。`);
 	if (scriptRules !== void 0 && scriptRules.trim() !== "") lines.push("", "当前脚本规则（人设）：", scriptRules.trim());
 	return lines.join("\n");
 }
@@ -1256,7 +1292,16 @@ async function pickCoverLaunch(item, title) {
 //#endregion
 //#region src/capabilities.ts
 function defaultFindSkillDir(skillName, home = homedir()) {
-	return skillDirCandidates(skillName, home).find((candidate) => existsSync(join(candidate, "SKILL.md")));
+	const installed = skillDirCandidates(skillName, home).find((candidate) => existsSync(join(candidate, "SKILL.md")));
+	if (installed !== void 0) return installed;
+	if ([
+		"video-publisher",
+		"oil-video-article",
+		"wechat-publisher"
+	].includes(skillName)) {
+		const bundled = bundledSkillDir(skillName);
+		if (existsSync(join(bundled, "SKILL.md"))) return bundled;
+	}
 }
 function capability(state, required, detail, path) {
 	return path === void 0 ? {
@@ -1345,8 +1390,9 @@ function recommendationsOf(capabilities) {
 	if (capabilities.coverCredential.state !== "ready") recommendations.push("封面 Key：到 ZenMux（https://zenmux.ai）控制台申请 ZENMUX_API_KEY，在设置页填写。");
 	if (capabilities.publishSync.state !== "ready") recommendations.push(capabilities.publishSync.detail.includes("PATH") ? "自动发布和数据回收：已装 Ego Lite，还需要把 ego-browser 加到 PATH。" : "自动发布和数据回收：安装 Ego Browser（https://lite.ego.app）并保证 PATH 里有 ego-browser，再登录各平台后台。");
 	if (capabilities.editingSkill.state !== "ready") recommendations.push("自动剪辑：git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor");
-	if (capabilities.publishSkill.state !== "ready") recommendations.push("自动发布：git clone https://github.com/oil-oil/video-publisher-skill ~/.agents/skills/video-publisher");
-	if (capabilities.articleSkill.state !== "ready") recommendations.push("公众号图文：git clone https://github.com/oil-oil/oil-video-article ~/.agents/skills/oil-video-article");
+	if (capabilities.publishSkill.state !== "ready") recommendations.push("自动发布：当前安装包缺少内置 video-publisher，请修复或更新 YourBuddy。");
+	if (capabilities.articleSkill.state !== "ready") recommendations.push("公众号图文：当前安装包缺少内置 oil-video-article，请修复或更新 YourBuddy。");
+	if (capabilities.wechatPublisherSkill.state !== "ready") recommendations.push("公众号草稿：当前安装包缺少内置 wechat-publisher，请修复或更新 YourBuddy。");
 	return recommendations;
 }
 async function inspectCreatorSetup(options) {
@@ -1364,7 +1410,8 @@ async function inspectCreatorSetup(options) {
 		publishSync: egoCapability(await findEgo(platform, env, home)),
 		editingSkill: skillCapability(findSkillDir, "screen-studio-editor"),
 		publishSkill: skillCapability(findSkillDir, "video-publisher"),
-		articleSkill: skillCapability(findSkillDir, "oil-video-article")
+		articleSkill: skillCapability(findSkillDir, "oil-video-article"),
+		wechatPublisherSkill: skillCapability(findSkillDir, "wechat-publisher")
 	};
 	return {
 		platform,
@@ -1428,7 +1475,8 @@ function creatorGuideText(status) {
 		capabilityLine("Ego Browser（自动发布与数据回收）", capabilities.publishSync),
 		capabilityLine("剪辑 skill screen-studio-editor", capabilities.editingSkill),
 		capabilityLine("发布 skill video-publisher", capabilities.publishSkill),
-		capabilityLine("公众号 skill oil-video-article", capabilities.articleSkill),
+		capabilityLine("公众号成稿 skill oil-video-article", capabilities.articleSkill),
+		capabilityLine("公众号草稿 skill wechat-publisher", capabilities.wechatPublisherSkill),
 		"",
 		"## 内容管理",
 		`- 片库目录是 ${settings.libraryRoot}，一集一个子文件夹，命名为 YYYY-MM-DD_可读标题。`,
@@ -1455,16 +1503,17 @@ function creatorGuideText(status) {
 		capabilities.editingSkill.state === "ready" ? "- 已发现 screen-studio-editor，用户要求清理时间线时直接使用。" : "- 缺 screen-studio-editor：征得用户同意后执行 `git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor`；没有它时剪辑由用户自己完成。",
 		"",
 		"## 自动发布与数据回收",
-		"- 这两项都依赖 Ego Browser（PATH 里的 ego-browser 命令）和已登录的各平台创作者后台。",
+		"- 视频草稿和数据回收依赖 Ego Browser 与已登录的创作者后台；工作台会使用探测到的 ego-browser 绝对路径。",
 		publishPlatformLine(enabledPlatforms),
-		capabilities.publishSync.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 Ego Browser，但当前没有启用平台，不执行自动发布和数据回收。" : "- 当前已发现 Ego Browser。上传发布走外部 skill video-publisher，停在最终发表按钮前由用户点；发布后或用户要求时用 oil_sync_publish 回收播放、赞、评论并写回工作台。" : "- 当前未发现 Ego Browser：自动发布和 oil_sync_publish 数据回收都不可用。告诉用户到 https://lite.ego.app 下载 ego lite，完成首次引导后 ego-browser 命令可用，再登录各平台创作者后台；片库、脚本、字幕、封面不受影响，不要假装能同步。",
-		capabilities.publishSkill.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 video-publisher，但当前没有启用平台，不使用它。" : "- 已发现 video-publisher。" : enabledPlatforms.length === 0 ? "- 当前没有启用平台，先配置 enabledPlatforms，再考虑安装 video-publisher。" : "- 缺 video-publisher：征得用户同意后执行 `git clone https://github.com/oil-oil/video-publisher-skill ~/.agents/skills/video-publisher`；没有它时在插件里手动标记发布状态即可。",
+		capabilities.publishSync.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 Ego Browser，但当前没有启用平台，不执行自动发布和数据回收。" : "- 当前已发现 Ego Browser。用 oil_prepare_publish 准备启用平台的草稿，页面停在最终发表按钮前；发布后或用户要求时用 oil_sync_publish 回收播放、赞、评论并写回工作台。" : "- 当前未发现 Ego Browser：自动发布和 oil_sync_publish 数据回收都不可用。告诉用户到 https://lite.ego.app 下载 ego lite，完成首次引导后 ego-browser 命令可用，再登录各平台创作者后台；片库、脚本、字幕、封面不受影响，不要假装能同步。",
+		capabilities.publishSkill.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 video-publisher，但当前没有启用平台，不使用它。" : "- 已发现 video-publisher。" : "- 当前安装包缺少 video-publisher；请修复或更新 YourBuddy。",
 		"",
 		"## 公众号图文",
-		"- 把一期视频转成公众号文章走外部 skill oil-video-article，产物在这一集的 公众号文章/ 目录，插件负责展示，不负责生成。",
+		"- 把一期视频转成公众号文章使用内置 oil-video-article，产物在这一集的 公众号文章/ 目录。已有文章可由 oil_prepare_publish 上传到公众号草稿箱。",
 		"- 输入不绑死 Screen Studio：有 .screenstudio 工程时从无头像的屏幕轨道截帧，效果最好；只有普通成片视频时也能转写，配图直接从成片截取。",
 		"- 文章语气遵循 oil-tone skill；公众号不是第五个视频平台，不参与发布状态标记。",
-		capabilities.articleSkill.state === "ready" ? "- 已发现 oil-video-article，用户提到把视频整理成文章时直接使用。" : "- 缺 oil-video-article：征得用户同意后执行 `git clone https://github.com/oil-oil/oil-video-article ~/.agents/skills/oil-video-article`；不需要公众号时可以跳过这一环节。",
+		capabilities.articleSkill.state === "ready" ? "- 已发现 oil-video-article，用户提到把视频整理成文章时直接使用。" : "- 当前安装包缺少 oil-video-article；请修复或更新 YourBuddy。",
+		capabilities.wechatPublisherSkill.state === "ready" ? "- 已发现 wechat-publisher。配置微信公众号 AppID、AppSecret 和 IP 白名单后可创建草稿；最终群发仍由用户确认。" : "- 当前安装包缺少 wechat-publisher；请修复或更新 YourBuddy。",
 		"",
 		"## 推进原则",
 		"- 每次只推进当前缺失的下一步：选题与脚本 → 录制 → 导出成片 → 字幕 → 封面 → 发布 → 数据回收。",
@@ -1972,6 +2021,8 @@ async function resolveCollectScript(preferred) {
 }
 async function runCollectPublish(scriptPath, signal, options = {}) {
 	const source = await readFile(await resolveCollectScript(scriptPath), "utf8");
+	const egoExecutable = await findExecutable("ego-browser");
+	if (egoExecutable === void 0) throw new Error("ego-browser not found; finish Ego Lite onboarding first");
 	return new Promise((resolve, reject) => {
 		if (signal.aborted) {
 			reject(signal.reason ?? /* @__PURE__ */ new Error("aborted"));
@@ -1996,7 +2047,7 @@ async function runCollectPublish(scriptPath, signal, options = {}) {
 		if (options.cleanupPrefixes !== void 0 && options.cleanupPrefixes.length > 0) env.OIL_COLLECT_CLEANUP_PREFIXES = options.cleanupPrefixes.join(",");
 		if (options.maxPages !== void 0) env.OIL_COLLECT_MAX_PAGES = String(options.maxPages);
 		if (options.xhsScrollSteps !== void 0) env.OIL_COLLECT_XHS_SCROLL = String(options.xhsScrollSteps);
-		const child = spawn("ego-browser", ["nodejs"], {
+		const child = spawn(egoExecutable, ["nodejs"], {
 			stdio: [
 				"pipe",
 				"pipe",
@@ -2259,6 +2310,192 @@ async function saveOverlay(dataDir, store) {
 	const temp = `${path}.${process.pid}.${Date.now()}.tmp`;
 	await writeFile(temp, `${JSON.stringify(store, null, 2)}\n`, "utf8");
 	await rename(temp, path);
+}
+//#endregion
+//#region src/publishing.ts
+async function run(command, args, signal, env = process.env) {
+	return new Promise((resolve, reject) => {
+		signal.throwIfAborted();
+		const child = spawn(command, args, {
+			env,
+			stdio: [
+				"ignore",
+				"pipe",
+				"pipe"
+			]
+		});
+		let stdout = "";
+		let stderr = "";
+		child.stdout.on("data", (chunk) => {
+			stdout += String(chunk);
+		});
+		child.stderr.on("data", (chunk) => {
+			stderr += String(chunk);
+		});
+		const onAbort = () => {
+			child.kill("SIGTERM");
+		};
+		signal.addEventListener("abort", onAbort, { once: true });
+		child.once("error", (error) => {
+			signal.removeEventListener("abort", onAbort);
+			reject(error);
+		});
+		child.once("close", (code) => {
+			signal.removeEventListener("abort", onAbort);
+			if (signal.aborted) {
+				reject(signal.reason ?? /* @__PURE__ */ new Error("publishing aborted"));
+				return;
+			}
+			resolve({
+				code: code ?? 1,
+				stdout,
+				stderr
+			});
+		});
+	});
+}
+function parseLastJson(raw) {
+	const starts = [];
+	for (let index = 0; index < raw.length; index += 1) if (raw[index] === "{") starts.push(index);
+	for (const start of starts.reverse()) try {
+		const value = JSON.parse(raw.slice(start));
+		if (typeof value === "object" && value !== null && !Array.isArray(value)) return value;
+	} catch {
+		continue;
+	}
+}
+function weightedTitle(title) {
+	let weight = 0;
+	let result = "";
+	for (const char of title) {
+		const next = char.codePointAt(0) <= 127 ? .5 : 1;
+		if (weight + next > 20) break;
+		result += char;
+		weight += next;
+	}
+	return result;
+}
+async function publishMetadata(folderPath, fallbackTitle) {
+	const names = await readdir(folderPath).catch(() => []);
+	const name = names.find((candidate) => candidate === "publish-package.json") ?? names.find((candidate) => candidate.endsWith(".publish-package.json"));
+	if (name === void 0) return {
+		title: fallbackTitle,
+		tags: []
+	};
+	try {
+		const value = JSON.parse(await readFile(join(folderPath, name), "utf8"));
+		return {
+			title: typeof value.title === "string" && value.title.trim() !== "" ? value.title.trim() : fallbackTitle,
+			tags: Array.isArray(value.tags) ? value.tags.filter((tag) => typeof tag === "string" && tag.trim() !== "").map((tag) => tag.trim()) : []
+		};
+	} catch {
+		return {
+			title: fallbackTitle,
+			tags: []
+		};
+	}
+}
+function publisherPlatform(platform) {
+	return platform === "wechat" ? "wechat_channels" : platform;
+}
+function contentPackage(item, title, tags, platforms, uploadCovers) {
+	const videoPath = item.videoSubtitled ?? item.videoRaw;
+	if (videoPath === void 0) throw new Error(`content has no video: ${item.id}`);
+	const result = {
+		videoPath,
+		title
+	};
+	if (platforms.includes("xiaohongshu")) {
+		result.xhsTitle = weightedTitle(title);
+		result.xhsTopics = tags;
+	}
+	if (platforms.includes("douyin")) {
+		result.douyinDescription = title;
+		result.douyinTopics = tags;
+	}
+	if (platforms.includes("bilibili")) {
+		result.bilibiliDescription = title;
+		result.bilibiliTags = tags;
+	}
+	if (platforms.includes("wechat")) {
+		result.wechatDescription = [title, tags.map((tag) => `#${tag}`).join(" ")].filter(Boolean).join("\n\n");
+		result.wechatTags = tags;
+	}
+	const coversReady = (!platforms.includes("xiaohongshu") || item.covers["3x4"] !== void 0) && (!platforms.includes("douyin") || item.covers["3x4"] !== void 0 && item.covers["4x3"] !== void 0) && (!platforms.includes("bilibili") || item.covers["4x3"] !== void 0) && (!platforms.includes("wechat") || item.covers["3x4"] !== void 0 && item.covers["4x3"] !== void 0);
+	result.cover = uploadCovers && coversReady ? {
+		uploadCustomCover: true,
+		vertical3x4Path: item.covers["3x4"],
+		horizontal4x3Path: item.covers["4x3"],
+		horizontal16x9Path: item.covers["16x9"]
+	} : { uploadCustomCover: false };
+	return result;
+}
+async function prepareVideoDrafts(options) {
+	if (options.platforms.length === 0) return {
+		status: "skipped",
+		detail: "No enabled video platforms selected."
+	};
+	const ego = await findExecutable("ego-browser");
+	if (ego === void 0) return {
+		status: "blocked",
+		detail: "ego-browser not found; finish Ego Lite onboarding first."
+	};
+	const publisher = join(bundledSkillDir("video-publisher"), "scripts", "v2", "publisher.mjs");
+	await access(publisher);
+	const metadata = await publishMetadata(options.item.folderPath, options.item.title);
+	const payload = contentPackage(options.item, metadata.title, metadata.tags, options.platforms, options.uploadCovers);
+	const packageRoot = join(options.dataDir, "publish-packages");
+	await mkdir(packageRoot, { recursive: true });
+	const key = createHash("sha256").update(options.item.id).digest("hex").slice(0, 16);
+	const packagePath = join(packageRoot, `${key}.json`);
+	await writeFile(packagePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+	const args = [
+		publisher,
+		"--package",
+		packagePath,
+		"--keep-space"
+	];
+	for (const platform of options.platforms) args.push("--platform", publisherPlatform(platform));
+	if (options.originalRightsConfirmed) args.push("--confirm-original-rights");
+	if (options.inspectOnly) args.push("--inspect-only");
+	const env = {
+		...process.env,
+		PATH: `${dirname(ego)}${delimiter}${process.env.PATH ?? ""}`
+	};
+	const result = await run(process.execPath, args, options.signal, env);
+	const summary = parseLastJson(result.stdout);
+	const ready = summary?.ready === true;
+	return {
+		status: ready ? "readyForReview" : "blocked",
+		detail: ready ? "Video drafts are ready in retained Ego task spaces." : (result.stderr.trim() || result.stdout.trim() || `publisher exited ${result.code}`).slice(-1200),
+		...typeof summary?.jobId === "string" ? { jobId: summary.jobId } : {},
+		...typeof summary?.statePath === "string" ? { statePath: summary.statePath } : {},
+		...typeof summary?.platforms === "object" && summary.platforms !== null ? { platforms: summary.platforms } : {}
+	};
+}
+async function prepareWechatArticleDraft(options) {
+	if (options.item.articlePath === void 0) return {
+		status: "skipped",
+		detail: "No WeChat article Markdown exists for this content."
+	};
+	const cli = join(bundledSkillDir("wechat-publisher"), "wechat-publisher.mjs");
+	await access(cli);
+	const args = [
+		cli,
+		"publish-file",
+		options.item.articlePath
+	];
+	const thumb = options.item.covers["16x9"] ?? options.item.covers["4x3"] ?? options.item.covers["3x4"];
+	if (thumb !== void 0) args.push("--thumb", thumb);
+	const result = await run(process.execPath, args, options.signal);
+	const detail = (result.stdout.trim() || result.stderr.trim() || `wechat publisher exited ${result.code}`).slice(-1200);
+	return result.code === 0 ? {
+		status: "readyForReview",
+		detail
+	} : {
+		status: "blocked",
+		detail
+	};
 }
 //#endregion
 //#region src/secrets.ts
@@ -2784,6 +3021,43 @@ var OilCreatorService = class extends TypertRemoteService {
 			article: await readArticle(item.articlePath),
 			secrets: await describeCreatorSecrets(this.ctx)
 		};
+	}
+	async preparePublish(request, signal) {
+		signal.throwIfAborted();
+		const item = await this.find(request.id);
+		if (item === void 0) throw new Error(`content not found: ${request.id}`);
+		const settings = await this.getSettings({}, signal);
+		const enabled = new Set(settings.profile.enabledPlatforms);
+		const platforms = (request.platforms ?? settings.profile.enabledPlatforms).filter((platform) => enabled.has(platform));
+		const result = { id: request.id };
+		if (platforms.length > 0) {
+			result.video = await prepareVideoDrafts({
+				item,
+				platforms,
+				dataDir: this.dataDir,
+				originalRightsConfirmed: request.originalRightsConfirmed === true,
+				uploadCovers: request.uploadCovers === true,
+				inspectOnly: request.inspectOnly === true,
+				signal
+			});
+			if (request.inspectOnly !== true && result.video.platforms !== void 0) for (const platform of platforms) {
+				const key = platform === "wechat" ? "wechat_channels" : platform;
+				const status = result.video.platforms[key];
+				if (typeof status === "object" && status !== null && status.ready === true) await this.setPublish({
+					id: request.id,
+					platform,
+					status: "draft"
+				}, signal);
+			}
+		} else result.video = {
+			status: "skipped",
+			detail: "No enabled video platforms selected."
+		};
+		if (request.includeWechatArticle === true) result.wechatOfficialAccount = await prepareWechatArticleDraft({
+			item,
+			signal
+		});
+		return result;
 	}
 	async getCoverThumb(request, signal) {
 		signal.throwIfAborted();
@@ -3834,6 +4108,57 @@ function registerCreatorTools(ctx, service) {
 			apply: args.apply === true,
 			ids: args.ids ?? []
 		}, signalOf(exec)))
+	}));
+	ctx.tools.register(defineTool({
+		name: "oil_prepare_publish",
+		description: "Prepare verified drafts for the episode on enabled video platforms and, optionally, the WeChat Official Account. Video pages remain open in Ego for human review; the WeChat article is created in the draft box. This tool never performs the final publish or group-send action.",
+		parameters: {
+			id: {
+				type: "string",
+				required: true,
+				description: "Folder id."
+			},
+			platforms: {
+				type: "array",
+				items: {
+					type: "string",
+					enum: PUBLISH_PLATFORMS
+				},
+				description: "Enabled video platforms to prepare. Omit to use the creator profile."
+			},
+			includeWechatArticle: {
+				type: "boolean",
+				description: "Also upload the existing 公众号文章 Markdown file to the WeChat Official Account draft box."
+			},
+			originalRightsConfirmed: {
+				type: "boolean",
+				description: "True only when the user confirms this video may be declared original/self-produced."
+			},
+			uploadCovers: {
+				type: "boolean",
+				description: "Upload the episode's existing platform covers when every required ratio is available."
+			},
+			inspectOnly: {
+				type: "boolean",
+				description: "Inspect existing draft state without creating or changing drafts."
+			}
+		},
+		output: {
+			schema: JSON_VALUE,
+			render: (_args, value) => {
+				const result = value;
+				return compactText("Prepare publish", [result.video?.status, result.wechatOfficialAccount?.status].filter(Boolean).join(", ") || "skipped");
+			}
+		},
+		presentCall: (args) => present("Prepare publish drafts", args),
+		execute: (args, exec) => service.preparePublish({
+			id: args.id,
+			...Array.isArray(args.platforms) ? { platforms: normalizeEnabledPlatforms(args.platforms) } : {},
+			includeWechatArticle: args.includeWechatArticle === true,
+			originalRightsConfirmed: args.originalRightsConfirmed === true,
+			uploadCovers: args.uploadCovers === true,
+			inspectOnly: args.inspectOnly === true
+		}, signalOf(exec)).then(asJson)
 	}));
 	ctx.tools.register(defineTool({
 		name: "oil_sync_publish",

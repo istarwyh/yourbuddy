@@ -19,7 +19,7 @@
 
 Bundle Generator 会从随附的 Standard 组成派生一个 ID 为 `codex`、显示名为 **Codex** 的系统 Agent Preset，只启用其中已有的 `subagent_codex` 配置项，并保持其他随附 Preset 不变。桌面 Overlay 将 Codex 设为基础默认值，因此全新 Profile 以及没有显式选择 Preset 的新 Session 可以立即委派；用户明确选择的默认 Preset 仍然优先，已有 Session 继续使用启动时记录的组成。即使用户全局安装了 `codexhost-delegation` skill，Overlay 也会阻止模型自主路由到它，让普通 Codex 委派始终使用 Preset 原生、可追踪的 `subagent_codex` 工具；用户仍可通过显式输入 `/codexhost-delegation` 选择外部路径。加载 Provider 不会启动 Codex 进程。原生委派会在 Session Workspace 内启动 Package 自带的官方 Codex Runtime，并使用原生 Codex 配置和登录状态，而不是把凭据复制到 YourBuddy Settings。
 
-Generator 还会从 Codex 派生 **内容创作** Agent Preset。它保留完整的 Standard 工具集与原生 Codex 委派，并把编码 Persona 换成内容工作台 Persona。Oil Creator 继续作为 Host Plugin 运行，因为同一个 Package 同时拥有 Sidebar、Settings、Remote、模型工具、Skill 与 System Prompt Section；这个 Preset 只专门化 Agent，不会重复挂载 Service。它的 Sidebar 会保留 Personal Workbench 名称、Logo 和桌面窗口控件。Codex 仍是默认 Preset。
+Generator 还会从 Codex 派生 **内容创作** Agent Preset。它保留完整的 Standard 工具集与原生 Codex 委派，并把编码 Persona 换成内容工作台 Persona。Oil Creator 继续作为 Host Plugin 运行，因为同一个 Package 同时拥有 Sidebar、Settings、Remote、模型工具、Skills 与 System Prompt Section；这个 Preset 只专门化 Agent，不会重复挂载 Service。插件内置视频发布、视频转文章与微信公众号草稿 Skills，并提供统一的草稿准备工具；最终发表仍由用户完成。它的 Sidebar 会保留 Personal Workbench 名称、Logo 和桌面窗口控件。Codex 仍是默认 Preset。
 
 所有面向 Agent 的 Harbor Tool 都以调用方 Session 的绝对工作目录作为根目录。因此用户在 YourBuddy Session 中选择 `/Users/me/project` 后，初始化和后续由 Agent 创建的 Harbor 产物都会留在该项目内。桌面 Overlay 配置的应用数据 `projectRoot` 只作为全局 Web Workbench／非 Agent 场景的回退；Agent Tool 既不会使用它，也不会因为它与 Session 目录不同而拒绝执行。
 

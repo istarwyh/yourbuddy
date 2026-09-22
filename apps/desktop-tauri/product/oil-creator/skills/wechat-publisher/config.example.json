@@ -1,0 +1,5 @@
+{
+  "appId": "wx1234567890abcdef",
+  "appSecret": "your-app-secret-here",
+  "proxy": "http://YOUR_CLOUD_SERVER_IP:8888"
+}

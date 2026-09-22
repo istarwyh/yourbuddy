@@ -4,7 +4,7 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
 
 ## 对话工具能不能走完整条片子
 
-不能。片子的正文在影片目录的文件夹里，对话用系统自带的列文件、读文件、写文件去看和改。`oil_*` 只做文件做不到的事：按约定建文件夹、绑工程、等导出、生成或烧录字幕、生成封面、标记发布、同步已发布数据。它们不负责录屏、剪时间线、从 Screen Studio 导出成片、写四平台发布包、把视频上传到创作者后台，也不负责公众号成稿。
+不能。片子的正文在影片目录的文件夹里，对话用系统自带的列文件、读文件、写文件去看和改。`oil_*` 负责按约定建文件夹、绑工程、等导出、生成或烧录字幕、生成封面、准备发布草稿和同步已发布数据；它们不负责录屏、剪时间线、从 Screen Studio 导出成片或最终发表。
 
 人仍然要自己完成这几件：
 
@@ -13,7 +13,7 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
 - 看封面标题和错别字，决定要不要再生成
 - 在各平台点最终「发表」
 
-剪辑和四平台上传仍然走原来的 skill：`screen-studio-editor`、`video-publisher`。这两项没有做成 Harness 工具。公众号图文走 `oil-video-article`。
+剪辑仍走 `screen-studio-editor`。YourBuddy 内置 `video-publisher`、`oil-video-article` 和 `wechat-publisher`，`oil_prepare_publish` 统一准备视频平台与公众号草稿。
 
 所以对话可以推动一条片子往前走，不能代替录制、导出和最终发表。
 
@@ -52,6 +52,7 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
 | `oil_open_subtitle_preview` | 在浏览器打开字幕预览编辑器 |
 | `oil_burn_subtitles` | 用户预览确认后再烧进成片；立刻返回；完成后出现 `*_subtitled.mp4` |
 | `oil_generate_cover` | 一键生成 3:4 / 4:3 / 16:9 封面，立刻返回；完成后出现对应 png |
+| `oil_prepare_publish` | 准备启用的视频平台草稿，并可把已有公众号文章上传到草稿箱；不执行最终发表或群发 |
 | `oil_sync_publish` | 用 Ego 翻完启用平台的已发布列表，按标题或已存 id 写回播放 / 赞 / 评 |
 | `oil_creator_profile` | 读或改 `enabledPlatforms`，即 AI 发布和数据同步使用的平台列表 |
 | `oil_organize_library` | 预览或把文件夹改成 `日期_可读标题`，默认只预览 |
@@ -72,9 +73,9 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
 
 首次 clone `oil-subtitle` 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`，否则字幕工作流不会就绪。不要在预览前烧录。`oil_burn_subtitles` 不会覆盖已经带字幕的成片文件名习惯，产物文件名里带 `_subtitled`。
 
-成片、字幕、封面齐了，阶段会变成「待发布」。四平台上传仍然用 `video-publisher`，但只处理 `enabledPlatforms` 中启用的平台；做到各平台的最终发表按钮前停下，你自己点发表。在右侧输入框 `@` 这条片子，再说用 video-publisher 发布。「已发布，同步数据」从创作者后台回收播放、赞和评论。同步只翻启用平台的已发布列表，再对到本地片子；90 秒内再点一次会直接用刚才的结果。每次同步开一个新的 Ego 空间，采完就关掉。平台上有、本地没有文件夹的，不会自动新建一条片子。
+成片、字幕、封面齐了，阶段会变成「待发布」。在右侧输入框 `@` 这条片子，再说“准备发布草稿”；`oil_prepare_publish` 只处理 `enabledPlatforms` 中启用的视频平台，并把页面停在最终发表按钮前。「已发布，同步数据」从创作者后台回收播放、赞和评论。同步只翻启用平台的已发布列表，再对到本地片子；90 秒内再点一次会直接用刚才的结果。每次同步开一个新的 Ego 空间，采完就关掉。平台上有、本地没有文件夹的，不会自动新建一条片子。
 
-公众号不是第五个视频平台。需要图文时，另外喊 `oil-video-article`。工作台只显示文件夹里有没有 `公众号文章/`。
+公众号不是第五个视频平台。需要图文时使用内置 `oil-video-article` 生成 `公众号文章/` 下的 Markdown；再让 `oil_prepare_publish` 创建公众号草稿。公众号 AppID、AppSecret 和出口 IP 白名单是官方 API 的前提，最终群发仍由你确认。
 
 ## 把一条没做完的旧片子收尾
 

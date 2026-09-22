@@ -13,8 +13,8 @@
     {
       "id": "yourbuddy-compatibility",
       "file": "patches/oil-creator-yourbuddy.patch",
-      "sha256": "8c7d98a5b461292191a7bd70b165025ad966b0a3e798a950e450e69e060c9be2",
-      "purpose": "Use the current Settings and Sidebar slot APIs, preserve YourBuddy branding and desktop controls, share the bundled Harness tool registry, and prevent the prebuilt snapshot from rebuilding during offline production installation."
+      "sha256": "61710114497d33ec8a35d18f27d58ebe9b84ef095d2d259c1ca06bfcab3593b3",
+      "purpose": "Use the current Settings and Sidebar slot APIs, preserve YourBuddy branding and desktop controls, bundle the video, article, and WeChat draft Skills with a unified draft-preparation tool, share the bundled Harness tool registry, and prevent the prebuilt snapshot from rebuilding during offline production installation."
     },
     "Set @deepseek-ai/cordis peer range from 4.0.1 to 4.0.2.",
     "Set @deepseek-ai/dsh-api-remotes peer range from 0.1.0-rc.6 || 0.1.0-rc.7 to 0.1.5-rc.2.",
@@ -31,7 +31,27 @@
     "Remove obsolete @deepseek-ai/dsh-client-runtime peer.",
     "Remove obsolete @deepseek-ai/dsh-client-runtime Client injection."
   ],
+  "bundledSkills": [
+    {
+      "name": "video-publisher",
+      "repository": "https://github.com/oil-oil/video-publisher-skill",
+      "commit": "e8a8ea92f631a50300f28868def70851e865ceda",
+      "license": "MIT"
+    },
+    {
+      "name": "oil-video-article",
+      "repository": "https://github.com/oil-oil/oil-video-article",
+      "commit": "2476814e8f9cb5d9da568a17bde9d317549bff8f",
+      "license": "MIT"
+    },
+    {
+      "name": "wechat-publisher",
+      "repository": "https://github.com/peterpanstechland/wechat-publisher-skill",
+      "commit": "dc9b5eff5a7f806b2a8f0f076acb3bef2724da0c",
+      "license": "MIT"
+    }
+  ],
   "repository": "https://github.com/oil-oil/dsh-oil-creator",
   "license": "MIT",
-  "treeSha256": "ed43aeff1af58a91b528de72274761a78252ed716a217d0682d83f715bcbb38f"
+  "treeSha256": "65e2a2792217ca3da93faca99fc3ea83327f7233225850e526c0c4e5143792c2"
 }

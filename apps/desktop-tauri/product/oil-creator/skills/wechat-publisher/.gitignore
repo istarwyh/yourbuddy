@@ -1,0 +1,8 @@
+# Credentials & runtime state (live in the data dir, never commit)
+config.json
+token.json
+upload-cache.json
+*.db
+
+node_modules/
+.DS_Store
