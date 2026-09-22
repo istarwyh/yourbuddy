@@ -6,6 +6,12 @@
 
 ## YourBuddy
 
+### 0.3.15 — 2026-09-23
+
+YourBuddy 0.3.15 在内置的**内容创作** Agent Preset 中提供创作者发布能力。Oil Creator 内置维护中的视频发布、视频转文章与微信公众号发布 Skills；`oil_prepare_publish` 可以为小红书、抖音、B站、视频号和微信公众号草稿箱准备草稿，同时保留用户的最终发表检查点。公开产物完整性、Updater 元数据与签名、App 标识、生成的发布器运行时模块、产品 Provenance、迁移运行时与可下载验证归档通过独立检查。原生启动、安装包 WebView 交互、从旧版本实际更新、真实创作者账号、最终发表与 Apple 公证仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.15) · [验证记录](../../releases/yourbuddy-v0.3.15/README.zh.md) · [下载页](download.zh.md)
+
 ### 0.3.12 — 2026-09-22
 
 YourBuddy 0.3.12 通过保留已经解析的 Trial 路径，修复 Host 模式中的 Harbor Historical Session 评测。本版本内置配套一致的 Harbor Evolution 0.9.8 Plugin 与 Python Adapter，同时保留 DSH 0.1.5-rc.2、Oil Creator 与**内容创作** Agent Preset。验证归档记录公开产物完整性、Updater 元数据与签名、App 标识、产品 Provenance、迁移运行时及安装包 Historical Session Adapter。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth、可选创作集成与真实模型评分仍未验证。

@@ -2,15 +2,15 @@
 
 [English](download.md) | 中文
 
-桌面目标为 macOS Apple Silicon。YourBuddy 0.3.12 是当前已核验的公开版本：完整文件、Updater 签名、App 标识、内置产品 Provenance 与迁移运行时通过独立检查。原生启动与安装包 WebView 交互仍未验证。
+桌面目标为 macOS Apple Silicon。YourBuddy 0.3.15 是当前已核验的公开版本：完整文件、Updater 签名、App 标识、内置创作者发布资源、产品 Provenance 与迁移运行时通过独立检查。原生启动与安装包 WebView 交互仍未验证。
 
 ## YourBuddy 安装包
 
-下载 [macOS Apple Silicon 版 YourBuddy 0.3.12](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.12/yourbuddy-0.3.12-macos-arm64.dmg)。独立下载的完整文件为 569,130,252 字节，SHA-256 为 `40b9a1131218e367728e22b26e82c31aa37e1f8e6e4ef8f33653b1ddd17c2f9b`，与 GitHub 发布摘要及公开校验和一致。
+下载 [macOS Apple Silicon 版 YourBuddy 0.3.15](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.15/yourbuddy-0.3.15-macos-arm64.dmg)。独立下载的完整文件为 569,361,235 字节，SHA-256 为 `424ef403767624f01ac1e56e6003b0587600d45bf3c6c0e866c81fe8fcd8294b`，与 GitHub 发布摘要及公开校验和一致。
 
-0.3.12 通过保留已经解析的 Trial 路径，修复 Host 模式中的 Harbor Historical Session 评测。该版本内置 DSH 0.1.5-rc.2、Oil Creator 0.1.0、Better Sidebar 0.19.1、Codex Auth 0.3.2、Harbor Evolution 0.9.8、Plugin Marketplace 0.3.3 与 Context Doctor 0.7.2。产品 Provenance、迁移复制后的 Python 3.12.14 / Harbor 0.21.0 运行时与安装包 Historical Session Adapter 通过独立检查。原生启动、安装包 WebView 操作、从已有安装执行更新、OAuth、可选创作集成与真实模型评分仍未验证。
+0.3.15 在 Oil Creator 中内置视频发布、视频转文章与微信公众号发布 Skills。**内容创作** Preset 可以为小红书、抖音、B站、视频号和微信公众号草稿箱准备草稿；最终发表或群发仍由用户执行。该版本内置 DSH 0.1.5-rc.2、Oil Creator 0.1.0、Better Sidebar 0.19.1、Codex Auth 0.3.2、Harbor Evolution 0.9.8、Plugin Marketplace 0.3.4 与 Context Doctor 0.7.2。产品 Provenance、全部生成的发布器运行时模块，以及迁移复制后的 Python 3.12.14 / Harbor 0.21.0 运行时通过独立检查。原生启动、安装包 WebView 操作、从已有安装执行更新、真实创作者账号、OAuth 与真实模型评分仍未验证。
 
-[查看 0.3.12 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.12)、[下载校验和](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.12/SHA256SUMS.txt)、阅读[验证记录](../../releases/yourbuddy-v0.3.12/README.zh.md)、[下载验证归档](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.12/yourbuddy-v0.3.12-verification.zip)，或按[源码构建说明](../../../README.zh.md#run-from-source)运行。旧 XiaoHui 产物保留原名称，不作为 YourBuddy 下载展示。
+[查看 0.3.15 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.15)、[下载校验和](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.15/SHA256SUMS.txt)、阅读[验证记录](../../releases/yourbuddy-v0.3.15/README.zh.md)、[下载验证归档](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.15/yourbuddy-v0.3.15-verification.zip)，或按[源码构建说明](../../../README.zh.md#run-from-source)运行。旧 XiaoHui 产物保留原名称，不作为 YourBuddy 下载展示。
 
 ## 桌面包包含什么
 
@@ -18,6 +18,6 @@
 
 ## 更新与验证
 
-0.3.12 Release 提供安装包、SHA-256 校验和、Tauri Updater 包、签名文件与验证记录。稳定更新元数据与版本化清单相同；已使用正式 Tag 配置中的公钥，独立验证更新包的预哈希 Minisign 签名及受信注释。已有安装可以使用**设置 → 通用设置 → 应用生命周期 → 检查更新**；从旧安装版实际执行更新仍未验证。Updater 签名与 Apple 应用签名相互独立：App 的严格代码签名检查通过，签名为 ad-hoc、没有 TeamIdentifier，但 Gatekeeper 拒绝。它未完成 Apple Developer 签名或公证，首次启动可能需要按文档执行 macOS 放行操作。
+0.3.15 Release 提供安装包、SHA-256 校验和、Tauri Updater 包、签名文件与验证记录。稳定更新元数据与版本化清单相同；已使用正式 Tag 配置中的公钥，独立验证更新包的预哈希 Minisign 签名及受信注释。DMG 与 Updater 中的 App 文件树完全一致，安装包内的创作者发布器包含全部必需的生成运行时模块。已有安装可以使用**设置 → 通用设置 → 应用生命周期 → 检查更新**；从旧安装版实际执行更新仍未验证。Updater 签名与 Apple 应用签名相互独立：App 的严格代码签名检查通过，签名为 ad-hoc、没有 TeamIdentifier，但 Gatekeeper 拒绝。它未完成 Apple Developer 签名或公证，首次启动可能需要按文档执行 macOS 放行操作。
 
 继续查看[发行状态](releases.zh.md)与[首次使用](start.zh.md)。

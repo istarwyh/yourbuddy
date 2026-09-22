@@ -1,0 +1,43 @@
+YourBuddy 0.3.15 public artifact verification
+Date: 2026-09-23 UTC+08:00 CST
+Release: https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.15
+Tag object: 5a4ad8452e90424e0d076d78ff07fc0cb17a54ab
+Tag commit: 167e5512b7817fd690d6cd4c76236b70e2d82282
+
+Publication workflows
+- Tag-triggered run: https://github.com/istarwyh/yourbuddy/actions/runs/35782189882
+- Result: product snapshot checks, Harness build, release-profile App compilation, App bundle, updater archive, and updater signature passed; the macOS bundle_dmg.sh process then exited without a diagnostic and no assets were published.
+- Manual unpublished-tag retry: https://github.com/istarwyh/yourbuddy/actions/runs/35783932845
+- Result: passed; DMG creation, desktop Host and shell contracts, relocated runtime, asset staging, checksums, updater manifest, and release publication completed.
+
+Public files downloaded independently
+- yourbuddy-0.3.15-macos-arm64.dmg: 569361235 bytes; SHA-256 424ef403767624f01ac1e56e6003b0587600d45bf3c6c0e866c81fe8fcd8294b
+- yourbuddy-0.3.15-macos-arm64.app.tar.gz: 571541648 bytes; SHA-256 3895fa895873a1653687aac1dabfce9410c2bae5c166543b10e1272f9c097ec7
+- yourbuddy-0.3.15-macos-arm64.app.tar.gz.sig: 408 bytes; SHA-256 8c8f4a9b8c4625bfe2c9d8efae503e7192c80aef50b6e22fc1b461caa505c280
+- SHA256SUMS.txt: 315 bytes; SHA-256 d457a6b01a68c8e0476b0d08f3536a460ec171aa8c33bc0d21fb22cc85c91c2c
+- latest.json: 3998 bytes; SHA-256 3151565f30ef26da3b4b637427b9c7af9c2df0ca5e6f1dd385ad9b11283836e7
+- yourbuddy-v0.3.15-verification.zip: 22373 bytes; SHA-256 0ca760fb94d166db29297b67f4c51af8689cfa1a1c8e31fa9fdee65796061585; independently downloaded and extracted.
+- Every versioned product artifact matched SHA256SUMS.txt and GitHub's release digest.
+- The stable yourbuddy-updater/latest.json was byte-identical to the versioned manifest and advertised version 0.3.15 for darwin-aarch64.
+- The updater archive's BLAKE2b-prehashed Ed25519 signature and trusted comment signature were verified with the public key committed in the tagged Tauri configuration.
+
+Packaged application
+- The downloaded updater archive extracted successfully.
+- The downloaded DMG passed hdiutil checksum verification and mounted read-only.
+- The DMG App tree and updater App tree were byte-for-byte identical under diff -qr.
+- CFBundleDisplayName: YourBuddy
+- CFBundleIdentifier: io.github.istarwyh.yourbuddy
+- CFBundleShortVersionString: 0.3.15
+- CFBundleVersion: 0.3.15
+- codesign --verify --deep --strict passed.
+- Signature: ad hoc; TeamIdentifier: not set.
+- Gatekeeper rejected the App, as expected for a build without Apple Developer signing or notarization.
+- Bundled DSH: dsh-v0.1.5-rc.2 at fb2c4b9e698e30edb738bca4cf0618587db7d203.
+- Bundled product plugins: Harbor Evolution 0.9.8, Codex Auth 0.3.2, Better Sidebar 0.19.1, Context Doctor 0.7.2, Plugin Marketplace 0.3.4, Personal Workbench 0.1.0, and Oil Creator 0.1.0.
+- All 12 generated video-publisher runtime modules were present under scripts/lib and scripts/v2/lib in the packaged Oil Creator snapshot.
+- A copied runtime outside the App bundle reported Harbor 0.21.0 and completed harbor-dsh --help.
+
+Limits
+- Native GUI startup and packaged-WebView interaction were not exercised.
+- Installation over an older YourBuddy version was not exercised.
+- Real Ego Browser sessions, creator-platform accounts, WeChat Official Account API acceptance, final publication, and group-send were not exercised.

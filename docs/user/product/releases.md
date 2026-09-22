@@ -6,6 +6,12 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.15 — 2026-09-23
+
+YourBuddy 0.3.15 makes creator publishing available from the built-in **内容创作** Agent Preset. Oil Creator includes the maintained video publisher, video-to-article, and WeChat Official Account publisher Skills; `oil_prepare_publish` prepares drafts for Xiaohongshu, Douyin, Bilibili, WeChat Channels, and the WeChat Official Account draft box while retaining the user's final-publication checkpoint. Public artifact integrity, updater metadata and signature, App identity, generated publisher runtime modules, product provenance, relocated runtime, and the downloadable verification archive passed independent checks. Native startup, packaged-WebView interaction, an update from an older version, real creator accounts, final publication, and Apple notarization remain unverified.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.15) · [verification record](../../releases/yourbuddy-v0.3.15/README.md) · [download page](download.md)
+
 ### 0.3.12 — 2026-09-22
 
 YourBuddy 0.3.12 repairs Harbor Historical Session evaluation in Host mode by preserving Trial paths that are already resolved. The release bundles the matched Harbor Evolution 0.9.8 Plugin and Python Adapter while retaining DSH 0.1.5-rc.2, Oil Creator, and the **内容创作** Agent Preset. Public artifact integrity, updater metadata and signature, App identity, product provenance, relocated runtime, and the packaged Historical Session Adapter are recorded in the verification archive. Native startup, packaged-WebView interaction, an update from an older version, OAuth, optional creator integrations, and real-model scoring remain unverified.
