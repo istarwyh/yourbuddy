@@ -1,12 +1,12 @@
 {
   "package": "dsh-plugin-marketplace",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "sourceKind": "npm-latest",
   "channel": "latest",
-  "source": "https://registry.npmjs.org/dsh-plugin-marketplace/-/dsh-plugin-marketplace-0.3.3.tgz",
-  "integrity": "sha512-1//yMdnYtyYLkMOdDVKalbWLJZMyiS21s0QX7wQ+SUiIzRX6Coz1mNIbxe1CllR6x7nq2Ok1t/HogekTJQ1+lQ==",
-  "archiveSha256": "d684b41a1114731f15a14c3f4869b8a80d0216c4a0946b6720bee3a8a95a9f55",
-  "upstreamTreeSha256": "2b588eba7135301dbcb6a4a4b35f226c46ef73a055723ef0de57c43869015ab7",
+  "source": "https://registry.npmjs.org/dsh-plugin-marketplace/-/dsh-plugin-marketplace-0.3.4.tgz",
+  "integrity": "sha512-O0AqG/3rMrCHZF4PHoENOgO915iynieC2Kg2SWAHJeuzcMV9zN6nVnfZM3DrXCY/Op0mqNjEcg9K/s0t30bTyQ==",
+  "archiveSha256": "17a9acbbfaa357bb96e0724f8f1f01fcfda0162abf686a5a4b5c9319f9d1bd4e",
+  "upstreamTreeSha256": "c1f0004203940798bad8d7ad9f7580585f669d4e4c511f4913e0f7d6beca28fb",
   "patches": [
     {
       "id": "yourbuddy-product-adaptations",
@@ -18,5 +18,5 @@
   ],
   "repository": "https://github.com/Scorp1o117/dsh-plugin-marketplace",
   "license": "MIT",
-  "treeSha256": "744152bc76555bef563475b2b5de0f302f05075ce2b3fba3bc636b7a01ab44e7"
+  "treeSha256": "60ba1f38269fbc852ef2599447e4aada9ac23d9e168511edb99d85de44d5c0e5"
 }
