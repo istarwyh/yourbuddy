@@ -1,0 +1,22 @@
+YourBuddy 0.3.15 product website verification
+Date: 2026-09-23 UTC+08:00 CST
+Website commit: b3e556986824531958a8068027df6380dda444c7
+Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35789066398
+Result: build and GitHub Pages deployment passed
+
+Live pages checked
+- https://istarwyh.github.io/yourbuddy/
+- https://istarwyh.github.io/yourbuddy/en/
+- https://istarwyh.github.io/yourbuddy/download/
+- https://istarwyh.github.io/yourbuddy/en/download/
+- https://istarwyh.github.io/yourbuddy/releases/
+- https://istarwyh.github.io/yourbuddy/en/releases/
+- https://istarwyh.github.io/yourbuddy/download/index.md
+- https://istarwyh.github.io/yourbuddy/en/download/index.md
+
+Observed results
+- Every Chinese and English HTML page advertised YourBuddy 0.3.15.
+- Both raw Markdown download pages advertised YourBuddy 0.3.15.
+- Chinese and English navigation, language-switch links, download routes, and search controls were present.
+- The live download pages linked the 0.3.15 DMG, SHA256SUMS.txt, verification archive, and repository verification record.
+- The DMG, SHA256SUMS.txt, verification archive, and verification-record URLs returned successful ranged responses through their redirects.

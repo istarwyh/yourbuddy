@@ -6,7 +6,7 @@ This archive records the built-in creator publishing workflows in YourBuddy 0.3.
 
 - Release identifier: `yourbuddy-v0.3.15`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: product published, public artifacts independently verified, and downloadable verification archive prepared; website synchronization is pending.
+- Archive state: complete within the stated limits; product publication, public artifact verification, downloadable evidence, website deployment, and live checks are recorded.
 - Implementation evidence commit: `725d1f3f14db32c685288aa9dc637ed63c397796`; tagged product commit: `167e5512b7817fd690d6cd4c76236b70e2d82282`.
 - Evidence gallery: not applicable; this release adds model tools and bundled Skills without changing the GUI.
 - Evidence download: [immutable tagged source](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.15/docs/releases/yourbuddy-v0.3.15) and [downloadable verification archive](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.15/yourbuddy-v0.3.15-verification.zip).
@@ -44,7 +44,7 @@ The release retains existing content-library files and creator overlay data with
 | Oil Creator and bundled publishers | passed | isolated 0.3.15 release worktree | macOS 15.6.1 arm64, Node.js 22.19 | [source validation](evidence/source-validation.txt) |
 | Complete release preparation and Host smoke | passed | committed release inputs | macOS Apple Silicon | 68 peer links and seven assembled Client plugins passed |
 | Public desktop artifacts and updater | passed | public 0.3.15 assets | GitHub Release and stable updater channel | [artifact verification](evidence/public-artifact-verification.txt) |
-| Product website | not verified | published product, pending site follow-up | English and Chinese routes | pending deployment and live checks |
+| Product website | passed | website commit `b3e556986824531958a8068027df6380dda444c7` | English and Chinese HTML and raw Markdown routes | [website verification](evidence/website-verification.txt) |
 
 ## Scenario: Oil Creator and bundled publishers
 
@@ -87,7 +87,7 @@ This scenario proves source, bundled-resource, CLI dry-run, and assembled-packag
 
 - Product publication status: published by the successful manual retry of the immutable 0.3.15 tag after the tag-triggered run reached a non-diagnostic DMG creation failure.
 - Verification archive status: complete for the stated scope; source and public artifact evidence are recorded in the repository and downloadable archive.
-- Website synchronization status: pending deployment and live checks.
+- Website synchronization status: deployed and verified on the live Chinese and English HTML and raw Markdown routes.
 - Unverified scope: real creator accounts, final publication, native packaged startup, packaged-WebView interaction, update from an older installation, Apple Developer signing, and notarization remain unverified.
 
 ## Delivery checklist
@@ -99,5 +99,5 @@ This scenario proves source, bundled-resource, CLI dry-run, and assembled-packag
 - [x] Complete release preparation and the successful publication workflow pass.
 - [x] Public files, checksums, updater metadata, signature, App identity, packaged modules, and relocated runtime are independently verified.
 - [x] The evidence archive is published and independently extracted.
-- [ ] The bilingual product website is synchronized and checked live.
+- [x] The bilingual product website is synchronized and checked live.
 - [x] Public tags and released artifacts will not be moved or overwritten.

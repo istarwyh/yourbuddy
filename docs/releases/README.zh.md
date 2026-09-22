@@ -10,7 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.15](yourbuddy-v0.3.15/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 在声明限制内完整；已记录源码、公开文件、Updater 签名、App 标识、生成的发布器模块、产品 Provenance、迁移运行时与可下载归档；网站在线检查仍待完成 | 已发布并在声明限制内完成独立核验 |
+| [yourbuddy-v0.3.15](yourbuddy-v0.3.15/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 在声明限制内完整；已记录源码、公开文件、Updater 签名、App 标识、生成的发布器模块、产品 Provenance、迁移运行时、网站与可下载归档 | 已发布并在声明限制内完成独立核验 |
 | [yourbuddy-v0.3.14](yourbuddy-v0.3.14/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已保留发布前检查与干净 Checkout 失败证据 | 在产物发布前失败；由 0.3.15 取代 |
 | [yourbuddy-v0.3.13](yourbuddy-v0.3.13/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已保留发布前检查与失败 Workflow 证据 | 在产物发布前失败；由 0.3.15 取代 |
 | [yourbuddy-v0.3.12](yourbuddy-v0.3.12/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录 Harbor 0.9.8 根因、源码与公开包回归、公开文件、Updater 签名、安装包 Adapter、网站与可下载归档；新的打包版 Historical Job 仍未验证 | 已发布并在声明范围内完成独立核验 |

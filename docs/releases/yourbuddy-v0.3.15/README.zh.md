@@ -6,7 +6,7 @@
 
 - 发布标识：`yourbuddy-v0.3.15`。
 - 产品渠道：macOS Apple Silicon 版 YourBuddy 桌面应用。
-- 归档状态：产品已发布，公开产物已完成独立核验，可下载验证归档已准备；网站同步仍待完成。
+- 归档状态：在声明限制内完整；已记录产品发布、公开产物核验、可下载证据、网站部署与在线检查。
 - 实现证据 Commit：`725d1f3f14db32c685288aa9dc637ed63c397796`；产品 Tag Commit：`167e5512b7817fd690d6cd4c76236b70e2d82282`。
 - 证据图集：不适用；本版本增加模型工具与内置 Skills，不改变 GUI。
 - 证据下载：[不可变 Tag 源码](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.15/docs/releases/yourbuddy-v0.3.15)与[可下载验证归档](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.15/yourbuddy-v0.3.15-verification.zip)。
@@ -44,7 +44,7 @@ Oil Creator 内置视频发布、视频转文章与微信公众号发布 Skills�
 | Oil Creator 与内置发布器 | passed | 隔离的 0.3.15 发布工作树 | macOS 15.6.1 arm64、Node.js 22.19 | [源码验证](evidence/source-validation.txt) |
 | 完整发布准备与 Host Smoke | passed | 已提交发布输入 | macOS Apple Silicon | 68 个 Peer Link 与七个组装 Client Plugin 通过 |
 | 公开桌面产物与 Updater | passed | 公开的 0.3.15 产物 | GitHub Release 与稳定 Updater 渠道 | [产物核验](evidence/public-artifact-verification.txt) |
-| 产品网站 | not verified | 产品已发布，站点跟进待完成 | 英文与中文路由 | 等待部署与在线检查 |
+| 产品网站 | passed | 网站 Commit `b3e556986824531958a8068027df6380dda444c7` | 中英文 HTML 与原始 Markdown 路由 | [网站核验](evidence/website-verification.txt) |
 
 ## 场景：Oil Creator 与内置发布器
 
@@ -87,7 +87,7 @@ Oil Creator 的 232 项测试通过并成功构建。视频发布器 132 项测�
 
 - 产品发布状态：Tag 触发运行遇到无诊断信息的 DMG 创建失败后，通过不可变 0.3.15 Tag 的手动重试完成发布。
 - 验证资料归档状态：在声明范围内完整；源码与公开产物证据已记录到仓库及可下载归档。
-- 站点同步状态：等待部署与在线检查。
+- 站点同步状态：已部署，并完成中英文 HTML 与原始 Markdown 在线路由核验。
 - 未验证范围：真实创作者账号、最终发表、原生安装包启动、安装包 WebView 交互、从旧安装更新、Apple Developer 签名与公证仍未验证。
 
 ## 交付清单
@@ -99,5 +99,5 @@ Oil Creator 的 232 项测试通过并成功构建。视频发布器 132 项测�
 - [x] 完整发布准备与成功的发布 Workflow 均通过。
 - [x] 公开文件、Checksum、Updater 元数据、签名、App 标识、打包模块与迁移运行时完成独立核验。
 - [x] 验证资料归档已发布并独立解压。
-- [ ] 双语产品网站已同步并在线检查。
+- [x] 双语产品网站已同步并在线检查。
 - [x] 公开 Tag 与发布产物不会移动或覆盖。

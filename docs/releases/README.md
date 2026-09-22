@@ -10,7 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.15](yourbuddy-v0.3.15/README.md) | YourBuddy desktop | Included | Complete within stated limits; source, public files, updater signature, App identity, generated publisher modules, product provenance, relocated runtime, and downloadable archive recorded; website live checks remain pending | Published and independently verified within stated limits |
+| [yourbuddy-v0.3.15](yourbuddy-v0.3.15/README.md) | YourBuddy desktop | Included | Complete within stated limits; source, public files, updater signature, App identity, generated publisher modules, product provenance, relocated runtime, website, and downloadable archive recorded | Published and independently verified within stated limits |
 | [yourbuddy-v0.3.14](yourbuddy-v0.3.14/README.md) | YourBuddy desktop | Included | Pre-publication checks and clean-checkout failure evidence retained | Failed before artifact publication; superseded by 0.3.15 |
 | [yourbuddy-v0.3.13](yourbuddy-v0.3.13/README.md) | YourBuddy desktop | Included | Pre-publication checks and failed workflow evidence retained | Failed before artifact publication; superseded by 0.3.15 |
 | [yourbuddy-v0.3.12](yourbuddy-v0.3.12/README.md) | YourBuddy desktop | Included | Complete; records Harbor 0.9.8 root cause, source and public-package regressions, public files, updater signature, packaged Adapter, website, and downloadable archive; a fresh packaged Historical Job remains unverified | Published and independently verified within the stated scope |
