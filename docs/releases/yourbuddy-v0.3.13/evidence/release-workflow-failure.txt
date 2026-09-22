@@ -10,9 +10,10 @@ Diagnostic:
 - prepare-dist invoked bundle-harness-source.mjs.
 - Oil Creator expected tree digest: 65e2a2792217ca3da93faca99fc3ea83327f7233225850e526c0c4e5143792c2.
 - Runner-observed tree digest: 3f2a056ce8ad394886a42ed539221b4ce4b21d665775aff989806f49b2eb3d6c.
-- The snapshot digest used locale-sensitive path collation and every Unix permission bit instead of Git's portable path and executable-bit metadata.
+- The expected snapshot included generated video-publisher scripts/lib and scripts/v2/lib runtime modules that the nested Skill ignores; ordinary Git staging omitted them from the tag.
 
 Recovery:
 - No GitHub Release or updater asset was published.
 - The public tag remains immutable.
-- Version 0.3.14 sorts path segments by UTF-8 bytes, normalizes regular-file modes to 0644 or 0755 while retaining executable-bit integrity, and adds regressions for path ordering and non-executable permission variation.
+- Version 0.3.14 made snapshot path and mode hashing portable but reproduced the clean-checkout failure because the required ignored modules remained absent.
+- Version 0.3.15 force-adds the generated runtime modules and asserts representative modules during product assembly.

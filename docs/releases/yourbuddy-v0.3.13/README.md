@@ -85,7 +85,7 @@ This scenario proves source, bundled-resource, CLI dry-run, and assembled-packag
 
 ## Failed publication attempt
 
-The [macOS release workflow](https://github.com/istarwyh/yourbuddy/actions/runs/35775860483) stopped during App assembly before any release asset was published. The Oil Creator snapshot digest depended on host path collation and every permission bit instead of Git's portable metadata. Version 0.3.14 sorts paths by UTF-8 bytes, normalizes regular files to Git-compatible `0644` or `0755` modes before hashing, and retains the executable bit as an integrity input.
+The [macOS release workflow](https://github.com/istarwyh/yourbuddy/actions/runs/35775860483) stopped during App assembly before any release asset was published. The local Oil Creator snapshot included generated `video-publisher/scripts/**/lib` runtime modules that the nested Skill ignores, so ordinary Git staging omitted them from the tag. Version 0.3.14 made path and mode hashing portable but still lacked those modules; version 0.3.15 force-adds them and verifies their presence during product assembly.
 
 ## Delivery status
 

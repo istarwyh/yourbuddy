@@ -1,0 +1,20 @@
+YourBuddy 0.3.14 release workflow failure
+
+Tag object: 9789e7bac53668b1f172044b3682f1446ad68598
+Tag commit: ae700a570c2d430d5781c961e168ddcb24b8d7ad
+Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35779301496
+Result: failed before artifact publication
+Failed step: Build app and DMG
+
+Diagnostic:
+- prepare-dist invoked bundle-harness-source.mjs from a clean tag checkout.
+- Oil Creator expected tree digest: a8634740dfce230d83f6ed1bae72fd7be60df95a4297c38fcfe06747352ad2d6.
+- Clean-checkout tree digest: 8f98679530a6fe9a19453d9a93b6aaa04d222c13540c85257abb577f59db702c.
+- The expected snapshot included generated video-publisher scripts/lib and scripts/v2/lib runtime modules.
+- The nested Skill ignored those generated directories, so ordinary Git staging omitted them from the tag.
+- A clean local tag checkout reproduced the exact hosted digest after dependency installation and the Harness build.
+
+Recovery:
+- No GitHub Release or updater asset was published.
+- The public tag remains immutable.
+- Version 0.3.15 force-adds the required generated modules and asserts representative modules during product assembly.

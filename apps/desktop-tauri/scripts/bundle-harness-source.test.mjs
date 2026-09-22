@@ -251,6 +251,8 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
       assert.ok(readFileSync(join(bundledOilCreator, 'skills', skill, 'SKILL.md'), 'utf8').length > 0)
     }
     assert.ok(readFileSync(join(bundledOilCreator, 'skills', 'video-publisher', 'scripts', 'v2', 'publisher.mjs'), 'utf8').length > 0)
+    assert.ok(readFileSync(join(bundledOilCreator, 'skills', 'video-publisher', 'scripts', 'lib', 'config.mjs'), 'utf8').length > 0)
+    assert.ok(readFileSync(join(bundledOilCreator, 'skills', 'video-publisher', 'scripts', 'v2', 'lib', 'model.mjs'), 'utf8').length > 0)
     assert.ok(readFileSync(join(bundledOilCreator, 'skills', 'wechat-publisher', 'wechat-publisher.mjs'), 'utf8').length > 0)
     const oilCreator = JSON.parse(readFileSync(join(bundledOilCreator, 'package.json'), 'utf8'))
     assert.equal(oilCreator.scripts.prepare, undefined)

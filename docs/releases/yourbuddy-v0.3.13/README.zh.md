@@ -85,7 +85,7 @@ Oil Creator 的 232 项测试通过并成功构建。视频发布器 132 项测�
 
 ## 发布失败记录
 
-[macOS 发布 Workflow](https://github.com/istarwyh/yourbuddy/actions/runs/35775860483) 在组装 App 时停止，未发布任何 Release 产物。Oil Creator 快照摘要依赖宿主路径排序与全部权限位，而不是 Git 的可移植元数据。0.3.14 按 UTF-8 字节排序路径，在哈希前把普通文件规范化为与 Git 兼容的 `0644` 或 `0755` 权限，并继续把可执行位作为完整性输入。
+[macOS 发布 Workflow](https://github.com/istarwyh/yourbuddy/actions/runs/35775860483) 在组装 App 时停止，未发布任何 Release 产物。本地 Oil Creator 快照包含嵌套 Skill 忽略的 `video-publisher/scripts/**/lib` 生成运行时模块，因此普通 Git 暂存未把它们加入 Tag。0.3.14 让路径与权限哈希可移植，但仍缺少这些模块；0.3.15 会强制加入并在产品组装时验证其存在。
 
 ## 交付状态
 
