@@ -1,0 +1,18 @@
+YourBuddy 0.3.13 release workflow failure
+
+Tag object: c85ff03cf5c8f82295def324f4912d17b9bd0ddc
+Tag commit: d7f888d7fd63b50a12ab1935f925602c46d93325
+Workflow: https://github.com/istarwyh/yourbuddy/actions/runs/35775860483
+Result: failed before artifact publication
+Failed step: Build app and DMG
+
+Diagnostic:
+- prepare-dist invoked bundle-harness-source.mjs.
+- Oil Creator expected tree digest: 65e2a2792217ca3da93faca99fc3ea83327f7233225850e526c0c4e5143792c2.
+- Runner-observed tree digest: 3f2a056ce8ad394886a42ed539221b4ce4b21d665775aff989806f49b2eb3d6c.
+- The snapshot digest used locale-sensitive path collation and every Unix permission bit instead of Git's portable path and executable-bit metadata.
+
+Recovery:
+- No GitHub Release or updater asset was published.
+- The public tag remains immutable.
+- Version 0.3.14 sorts path segments by UTF-8 bytes, normalizes regular-file modes to 0644 or 0755 while retaining executable-bit integrity, and adds regressions for path ordering and non-executable permission variation.

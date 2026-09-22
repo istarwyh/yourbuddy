@@ -225,7 +225,7 @@ export function hashExternalSnapshot(root) {
   /** @param {string} current @param {string} prefix */
   const walk = (current, prefix) => {
     const entries = readdirSync(current, { withFileTypes: true })
-      .sort((left, right) => left.name.localeCompare(right.name))
+      .sort((left, right) => Buffer.compare(Buffer.from(left.name), Buffer.from(right.name)))
     for (const entry of entries) {
       if (prefix === '' && entry.name === 'YOURBUDDY_UPSTREAM.json') continue
       const path = join(current, entry.name)
@@ -238,7 +238,7 @@ export function hashExternalSnapshot(root) {
         continue
       }
       if (!entry.isFile()) continue
-      const mode = statSync(path).mode & 0o777
+      const mode = (statSync(path).mode & 0o111) === 0 ? 0o644 : 0o755
       hasher.update(`${rel}\0${mode.toString(8)}\0`)
       hasher.update(readFileSync(path))
       hasher.update('\0')

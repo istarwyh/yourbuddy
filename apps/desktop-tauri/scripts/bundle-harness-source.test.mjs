@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -96,8 +96,27 @@ test('hashExternalSnapshot ignores only the YourBuddy provenance sidecar', () =>
     const before = hashExternalSnapshot(root)
     writeFileSync(join(root, 'YOURBUDDY_UPSTREAM.json'), '{"treeSha256":"recorded"}\n')
     assert.equal(hashExternalSnapshot(root), before)
+    chmodSync(join(root, 'package.json'), 0o640)
+    assert.equal(hashExternalSnapshot(root), before)
+    chmodSync(join(root, 'package.json'), 0o750)
+    assert.notEqual(hashExternalSnapshot(root), before)
+    chmodSync(join(root, 'package.json'), 0o640)
     writeFileSync(join(root, 'package.json'), '{"name":"changed"}\n')
     assert.notEqual(hashExternalSnapshot(root), before)
+  }
+  finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('hashExternalSnapshot uses bytewise path order across locales', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-snapshot-order-'))
+  try {
+    for (const name of ['A.txt', '_meta', 'a-file', 'a_file', 'ä.txt']) {
+      writeFileSync(join(root, name), `${name}\n`)
+      chmodSync(join(root, name), 0o640)
+    }
+    assert.equal(hashExternalSnapshot(root), 'c87853d767d9d2b1ba229fdfe8a59cacea4bf6d7c2df71df62b42b4e39cc841e')
   }
   finally {
     rmSync(root, { recursive: true, force: true })

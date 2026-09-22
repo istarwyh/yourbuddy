@@ -1,0 +1,31 @@
+YourBuddy 0.3.14 source validation
+Date: 2026-09-23 UTC+08:00 CST
+Environment: macOS 15.6.1 arm64; Node.js 22.19
+Candidate base: 8df0f3ccfa12dccedf00f094dd2b602dafdca8a8
+
+Passed checks
+- Oil Creator upstream source: pnpm typecheck; pnpm test (38 files, 232 tests); pnpm build.
+- Bundled video publisher: node --test scripts/tests/*.test.mjs scripts/v2/tests/*.test.mjs (132 tests).
+- Bundled WeChat publisher: publish-file examples/article.md --dry-run.
+- YourBuddy bundle assembly: node --test apps/desktop-tauri/scripts/bundle-harness-source.test.mjs; includes locale-independent UTF-8 path ordering and non-executable permission normalization coverage.
+- Release preparation regressions: 13 tests.
+- Desktop product regressions: 69 tests. The initial isolated-worktree run lacked the generated apps/cli/lib/bin.js prerequisite; the affected Host CA test passed after the built CLI artifact and workspace dependencies were supplied.
+- Oil Creator materialized patch applicability, external snapshot hash, patch digest, JavaScript syntax, and git diff whitespace checks.
+- Complete prepare:release: rebuilt Harness; prepared the frozen offline install and relocated runtime; verified 68 runtime peer links, seven assembled Client plugins, and Host smoke.
+- Updater manifest tests: 10 passed.
+- Locked macOS arm64 Rust check: passed with existing warnings.
+- Website projection tests: 70 passed; exact Hugo Extended 0.165.0 build verified 59 product HTML pages.
+- Documentation synchronization: 35 gates passed; repository lint passed.
+- Bilingual README and Agent Note pairing checks.
+
+Publishing boundaries
+- oil_prepare_publish prepares platform drafts only.
+- Video pages stay open for human review and final publication.
+- WeChat Official Account integration invokes publish-file and creates a draft; it does not invoke the final publish or group-send command.
+
+Not exercised
+- Real Ego Browser sessions or logged-in creator accounts.
+- Real WeChat Official Account API credentials, IP allowlist, or remote draft acceptance.
+- Final publication or group-send.
+- Native packaged application startup and packaged-WebView interaction.
+- Upgrade from an older installed application.

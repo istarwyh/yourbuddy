@@ -10,9 +10,9 @@ Status: implemented
 
 ## Decision
 
-根目录 `.gitattributes` 会把每个带有 `YOURBUDDY_UPSTREAM.json` 的外部产品快照目录显式标记为 `-text -whitespace`。Git 因而会存储并检出经过审查的准确 Package 字节，包括上游换行符；`treeSha256` 也可以在干净 Checkout 中复现。第一方产品文件以及产品 Policy 和 Lockfile 继续使用仓库级 LF 规则。
+根目录 `.gitattributes` 会把每个带有 `YOURBUDDY_UPSTREAM.json` 的外部产品快照目录显式标记为 `-text -whitespace`。Git 因而会存储并检出经过审查的准确 Package 字节，包括上游换行符；`treeSha256` 也可以在干净 Checkout 中复现。摘要按 UTF-8 字节排序路径段，并把普通文件权限映射为 `0644` 或 `0755`；进程 Locale 不得影响路径顺序，Git 会保留可执行位但不保留 Owner 与 Group 权限差异。第一方产品文件以及产品 Policy 和 Lockfile 继续使用仓库级 LF 规则。
 
-新增外部产品快照时，必须在同一次变更中把其目录加入属性列表。发布准备仍会在打包前验证每个已记录的目录摘要。
+新增外部产品快照时，必须在同一次变更中把其目录加入属性列表。发布准备仍会在打包前验证每个已记录的目录摘要，包括准确字节、路径与可执行位。
 
 ## Alternatives considered
 

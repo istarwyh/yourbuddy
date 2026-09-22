@@ -10,9 +10,9 @@ Product refresh records a tree digest before a reviewed external package is comm
 
 ## Decision
 
-Every external product snapshot directory that carries `YOURBUDDY_UPSTREAM.json` is explicitly marked `-text -whitespace` in the root `.gitattributes`. Git therefore stores and checks out the exact reviewed package bytes, including upstream line endings, and `treeSha256` remains reproducible in a clean checkout. First-party product files and the product policy and lock files retain the repository-wide LF rule.
+Every external product snapshot directory that carries `YOURBUDDY_UPSTREAM.json` is explicitly marked `-text -whitespace` in the root `.gitattributes`. Git therefore stores and checks out the exact reviewed package bytes, including upstream line endings, and `treeSha256` remains reproducible in a clean checkout. The digest sorts path segments by UTF-8 bytes and maps regular-file modes to `0644` or `0755`; process locale must not affect path order, and Git preserves the executable bit but not owner and group permission variation. First-party product files and the product policy and lock files retain the repository-wide LF rule.
 
-Adding another external product snapshot requires adding its directory to the attribute list in the same change. Release preparation continues to verify every recorded tree digest before packaging.
+Adding another external product snapshot requires adding its directory to the attribute list in the same change. Release preparation continues to verify every recorded tree digest before packaging, including exact bytes, paths, and executable bits.
 
 ## Alternatives considered
 
