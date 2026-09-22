@@ -7,7 +7,7 @@ This archive records the built-in creator publishing workflows in YourBuddy 0.3.
 - Release identifier: `yourbuddy-v0.3.15`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
 - Archive state: release candidate; public artifacts, website synchronization, and independent download verification are pending.
-- Evidence commit: `31d933a44820b2261c09780ac624002df21b27e3`; tagged product commit pending.
+- Evidence commit: `725d1f3f14db32c685288aa9dc637ed63c397796`; tagged product commit pending.
 - Evidence gallery: not applicable; this release adds model tools and bundled Skills without changing the GUI.
 - Evidence download: immutable tag source archive after publication; a dedicated verification archive is pending.
 
@@ -50,7 +50,7 @@ The release retains existing content-library files and creator overlay data with
 
 - Status: `passed`.
 - Date and time: 2026-09-23 UTC+08:00 CST.
-- Release and commit: `yourbuddy-v0.3.15`; implementation evidence commit `31d933a44820b2261c09780ac624002df21b27e3`; tagged product commit pending.
+- Release and commit: `yourbuddy-v0.3.15`; implementation evidence commit `725d1f3f14db32c685288aa9dc637ed63c397796`; tagged product commit pending.
 - Build under test: isolated release worktree containing the committed Oil Creator snapshot and bundled Skills.
 - Environment: macOS 15.6.1 arm64, Node.js 22.19.
 - Evidence origin: this release run.

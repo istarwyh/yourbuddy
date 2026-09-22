@@ -9,6 +9,7 @@ Passed checks
 - Bundled WeChat publisher: publish-file examples/article.md --dry-run.
 - YourBuddy bundle assembly: 8 tests passed; includes generated video-publisher runtime-module assertions, locale-independent UTF-8 path ordering, and non-executable permission normalization coverage.
 - Every product snapshot digest matched under Node.js 22.19.0 and 24.20.0 after the generated video-publisher runtime modules were force-added to Git.
+- A clean checkout at evidence commit 725d1f3f14db32c685288aa9dc637ed63c397796 reproduced the expected Oil Creator digest, completed the branded Harness build, and passed the exact prepare-dist step that failed for 0.3.13 and 0.3.14.
 - Release preparation regressions: 13 tests.
 - Desktop product regressions: 69 tests. The initial isolated-worktree run lacked the generated apps/cli/lib/bin.js prerequisite; the affected Host CA test passed after the built CLI artifact and workspace dependencies were supplied.
 - Oil Creator materialized patch applicability, external snapshot hash, patch digest, JavaScript syntax, and git diff whitespace checks.
