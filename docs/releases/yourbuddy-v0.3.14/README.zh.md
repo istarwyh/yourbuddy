@@ -7,7 +7,7 @@
 - 发布标识：`yourbuddy-v0.3.14`。
 - 产品渠道：macOS Apple Silicon 版 YourBuddy 桌面应用。
 - 归档状态：候选发布版本；公开产物、网站同步与独立下载核验仍待完成。
-- 证据 Commit：`2b656363d1d180cd3ca9edd21997c7d125e19429`；产品 Tag Commit 待补。
+- 证据 Commit：`31d933a44820b2261c09780ac624002df21b27e3`；产品 Tag Commit 待补。
 - 证据图集：不适用；本版本增加模型工具与内置 Skills，不改变 GUI。
 - 证据下载：发布后提供不可变 Tag 源码归档；专用验证归档仍待发布。
 
@@ -50,7 +50,7 @@ Oil Creator 内置视频发布、视频转文章与微信公众号发布 Skills�
 
 - 状态：`passed`。
 - 日期与时间：2026-09-23 UTC+08:00 CST。
-- 发布版本与 Commit：`yourbuddy-v0.3.14`；实现证据 Commit `2b656363d1d180cd3ca9edd21997c7d125e19429`；产品 Tag Commit 待补。
+- 发布版本与 Commit：`yourbuddy-v0.3.14`；实现证据 Commit `31d933a44820b2261c09780ac624002df21b27e3`；产品 Tag Commit 待补。
 - 受测构建：包含已提交 Oil Creator 快照与内置 Skills 的隔离发布工作树。
 - 环境：macOS 15.6.1 arm64、Node.js 22.19。
 - 证据来源：本次发布实测。
@@ -70,7 +70,7 @@ Oil Creator 内置视频发布、视频转文章与微信公众号发布 Skills�
 
 ### 实际结果
 
-Oil Creator 的 232 项测试通过并成功构建。视频发布器 132 项测试通过，微信发布器以 Dry Run 模式转换内置文章，产品 Bundle 的 7 项测试通过，发布准备的 13 项测试通过；提供已记录的构建版 CLI 前置条件后，桌面产品测试 69 项全部通过。完整发布准备随后重新构建 Harness、准备冻结离线安装与迁移运行时，验证 68 个 Runtime Peer Link 和七个组装 Client Plugin，并通过 Host Smoke。
+Oil Creator 的 232 项测试通过并成功构建。视频发布器 132 项测试通过，微信发布器以 Dry Run 模式转换内置文章，产品 Bundle 的 8 项测试通过，发布准备的 13 项测试通过；提供已记录的构建版 CLI 前置条件后，桌面产品测试 69 项全部通过。完整发布准备随后重新构建 Harness、准备冻结离线安装与迁移运行时，验证 68 个 Runtime Peer Link 和七个组装 Client Plugin，并通过 Host Smoke。
 
 ### 证据
 

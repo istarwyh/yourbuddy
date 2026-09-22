@@ -7,7 +7,8 @@ Passed checks
 - Oil Creator upstream source: pnpm typecheck; pnpm test (38 files, 232 tests); pnpm build.
 - Bundled video publisher: node --test scripts/tests/*.test.mjs scripts/v2/tests/*.test.mjs (132 tests).
 - Bundled WeChat publisher: publish-file examples/article.md --dry-run.
-- YourBuddy bundle assembly: node --test apps/desktop-tauri/scripts/bundle-harness-source.test.mjs; includes locale-independent UTF-8 path ordering and non-executable permission normalization coverage.
+- YourBuddy bundle assembly: 8 tests passed; includes locale-independent UTF-8 path ordering and non-executable permission normalization coverage.
+- Every product snapshot digest matched under Node.js 22.19.0 and 24.20.0.
 - Release preparation regressions: 13 tests.
 - Desktop product regressions: 69 tests. The initial isolated-worktree run lacked the generated apps/cli/lib/bin.js prerequisite; the affected Host CA test passed after the built CLI artifact and workspace dependencies were supplied.
 - Oil Creator materialized patch applicability, external snapshot hash, patch digest, JavaScript syntax, and git diff whitespace checks.
