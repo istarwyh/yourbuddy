@@ -10,7 +10,7 @@ Video and article production creates related scripts, recordings, subtitles, cov
 
 ## Usage
 
-Select the **内容创作** Agent Preset, open the **Library** tab, and ask the Agent to inspect and configure the content workbench. Confirm the proposed library folder before saving it. Create a topic and script first, then bind optional recording, subtitle, cover, article, or publishing workflows as needed.
+Select the **内容创作** Agent Preset, open the **Library** tab, and ask the Agent to inspect and configure the content workbench. Confirm the proposed library folder before saving it. Create a topic and script first, then bind recording, subtitle, cover, article, or publishing workflows as needed. The bundled publishing Skills can prepare drafts for enabled video platforms and the WeChat Official Account draft box.
 
 ## Reason for default inclusion
 
@@ -18,4 +18,4 @@ A personal AI workbench should support finished media and articles as well as co
 
 ## Limits
 
-The core local library and script workflow work without optional integrations. Recording and editing remain human actions. Subtitle, cover, article, publishing, and metrics features require their documented external tools or credentials; publication stops before the final publish action. Review paths, generated copy, subtitles, titles, and platform matches before accepting or uploading them.
+The core local library and script workflow work without optional integrations. Recording and editing remain human actions. Video publishing requires Ego Lite and logged-in creator accounts; WeChat Official Account drafts require AppID, AppSecret, and an API IP allowlist. Subtitle, cover, article, publishing, and metrics features require their documented external tools or credentials. Draft preparation stops before final publication or group-send. Review paths, generated copy, subtitles, titles, and platform matches before accepting or uploading them.

@@ -1,6 +1,6 @@
 # Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write docs/user/product/plugins/oil-creator.md
-oil-creator.md: 8f5d32bf80ee8338ef5fee7d802240ce77300d9d
-oil-creator.zh.md: 97314d7e5a8642634fcb1b5046957062f725cb35
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.13/README.md
+README.md: ba2cd1ab80c54ac9bdf20211aa4941283a72ca1a
+README.zh.md: bf97ad23bf30eec42a906fe42bb1c4dfad1eabec
