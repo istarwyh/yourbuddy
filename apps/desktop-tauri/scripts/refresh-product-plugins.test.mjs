@@ -428,6 +428,12 @@ test('product update policy validates required source metadata before refresh', 
     })]), '/tmp/product'),
     /must contain at least one peer package name/,
   )
+  assert.throws(
+    () => validateProductUpdatePolicy(updatePolicy([npmPolicy({
+      scriptRemovals: { '^1.2.3': ['prepare'] },
+    })]), '/tmp/product'),
+    /key must be an exact semantic version/,
+  )
 })
 
 test('policy reader and refresh fail before network or an escaped path can be touched', async (t) => {

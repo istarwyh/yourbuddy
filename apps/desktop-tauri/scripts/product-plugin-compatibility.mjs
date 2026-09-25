@@ -138,6 +138,31 @@ export function applyApprovedClientInjectRemovals(manifest, policy, recordedPatc
   return changes
 }
 
+/**
+ * Remove a version-specific package lifecycle script from a prebuilt snapshot.
+ *
+ * @param {Record<string, unknown>} manifest
+ * @param {Record<string, unknown>} policy
+ * @param {string[]} recordedPatches
+ * @returns {string[]}
+ */
+export function applyApprovedScriptRemovals(manifest, policy, recordedPatches = []) {
+  const removals = policy.scriptRemovals?.[manifest.version]
+  if (!removals) return []
+  const scripts = manifest.scripts
+  const changes = []
+  for (const name of removals) {
+    const description = `Remove package lifecycle script ${name}.`
+    if (!scripts || typeof scripts !== 'object' || Array.isArray(scripts) || typeof scripts[name] !== 'string') {
+      if (recordedPatches.includes(description)) continue
+      throw new Error(`approved script removal no longer matches ${manifest.name}@${manifest.version}: ${name}`)
+    }
+    delete scripts[name]
+    changes.push(description)
+  }
+  return changes
+}
+
 function exportedPath(manifest, key) {
   const value = manifest.exports?.[key]
   if (typeof value === 'string') return value

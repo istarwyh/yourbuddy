@@ -23,6 +23,7 @@ import {
   applyApprovedClientInjectRemovals,
   applyApprovedPeerOverrides,
   applyApprovedPeerRemovals,
+  applyApprovedScriptRemovals,
   readWorkspacePackageVersions,
   validateProductPlugin,
 } from './product-plugin-compatibility.mjs'
@@ -47,6 +48,7 @@ const commonPluginFields = new Set([
   'peerOverrides',
   'peerRemovals',
   'clientInjectRemovals',
+  'scriptRemovals',
 ])
 const kindPluginFields = {
   'npm-latest': new Set(),
@@ -278,6 +280,7 @@ export function validateProductUpdatePolicy(
       `${label}.clientInjectRemovals`,
       'Client package name',
     )
+    validateVersionedPackageLists(plugin.scriptRemovals, `${label}.scriptRemovals`, 'script name')
 
     const destination = validateSafeRelativePath(plugin.destination, `${label}.destination`, selectedProductRoot)
     if ([...reservedProductPaths].some(path => pathsOverlap(destination, path))) {
@@ -801,6 +804,7 @@ function applyApprovedCompatibilityChanges(manifest, policy, recordedPatches = [
     ...applyApprovedPeerRemovals(manifest, policy, recordedPatches),
     ...applyApprovedPeerOverrides(manifest, policy),
     ...applyApprovedClientInjectRemovals(manifest, policy, recordedPatches),
+    ...applyApprovedScriptRemovals(manifest, policy, recordedPatches),
   ]
 }
 

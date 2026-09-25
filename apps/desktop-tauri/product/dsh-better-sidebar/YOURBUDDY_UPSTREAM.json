@@ -45,9 +45,10 @@
     "Set @deepseek-ai/dsh-session peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-settings peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-subagent peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-tools peer range from ^0.1.7-rc.1 to 0.1.7-rc.2."
+    "Set @deepseek-ai/dsh-tools peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
+    "Remove package lifecycle script prepare."
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "1dabb5785801644a06f4bcad4a0f58d37147318c89558acb1235eece7c18d493"
+  "treeSha256": "5735ff5c027e23fd94eb38cd8a821dde80f0c9d9579353afd08093037c4e5ecf"
 }

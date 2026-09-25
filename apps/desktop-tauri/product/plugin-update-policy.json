@@ -107,6 +107,11 @@
         "0.21.1": {
           "@deepseek-ai/dsh-*": "0.1.7-rc.2"
         }
+      },
+      "scriptRemovals": {
+        "0.21.1": [
+          "prepare"
+        ]
       }
     },
     {

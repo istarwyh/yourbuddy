@@ -8,6 +8,7 @@ import {
   applyApprovedClientInjectRemovals,
   applyApprovedPeerOverrides,
   applyApprovedPeerRemovals,
+  applyApprovedScriptRemovals,
   assertBundledProductPeerLinks,
   readLockImporterVersions,
   validateProductPlugin,
@@ -106,6 +107,24 @@ test('approved peer removals are exact-version metadata changes', () => {
   assert.throws(
     () => applyApprovedPeerRemovals(manifest, policy),
     /approved peer removal no longer matches fixture-plugin@1\.2\.3/,
+  )
+})
+
+test('approved lifecycle script removals are exact-version metadata changes', () => {
+  const manifest = {
+    name: 'fixture-plugin',
+    version: '1.2.3',
+    scripts: { prepare: 'tsdown', test: 'vitest run' },
+  }
+  const policy = { scriptRemovals: { '1.2.3': ['prepare'] } }
+  const description = 'Remove package lifecycle script prepare.'
+  assert.deepEqual(applyApprovedScriptRemovals(manifest, policy), [description])
+  assert.deepEqual(manifest.scripts, { test: 'vitest run' })
+  assert.deepEqual(applyApprovedScriptRemovals({ ...manifest, version: '1.2.4' }, policy), [])
+  assert.deepEqual(applyApprovedScriptRemovals(manifest, policy, [description]), [])
+  assert.throws(
+    () => applyApprovedScriptRemovals(manifest, policy),
+    /approved script removal no longer matches fixture-plugin@1\.2\.3/,
   )
 })
 
