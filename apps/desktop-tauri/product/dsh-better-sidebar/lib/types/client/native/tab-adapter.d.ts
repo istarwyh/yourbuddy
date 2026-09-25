@@ -35,6 +35,13 @@ export interface NativeTabInfo {
             readonly revision: number;
         };
         readonly signal: AbortSignal;
+        readonly actions: {
+            openResource(address: string, options?: {
+                revealIfOpened?: boolean;
+                replaceTab?: boolean;
+                toSide?: boolean;
+            }): void;
+        };
     };
 }
 /** One native tab's plugin-side view state. */
@@ -120,6 +127,15 @@ export interface NativeBodyInjected {
 export interface NativeBodyFrameworkProps {
     readonly useTabInfo: () => NativeTabInfo;
 }
+/**
+ * Open one path through the native tab occurrence that owns the gesture.
+ * @param info - the native tab and its Session-bound actions.
+ * @param sessionId - the Session whose workspace resolves the path.
+ * @param cwd - that Session's workspace root.
+ * @param path - an absolute or workspace-relative file path.
+ * @param placement - whether the resource reveals a tab, replaces this tab, or opens beside it.
+ */
+export declare function openNativeFile(info: NativeTabInfo, sessionId: string, cwd: string | undefined, path: string, placement: 'tab' | 'replace' | 'side'): void;
 /**
  * One plugin tab rendered inside the native right Sidebar: the descriptor's
  * own component with the plugin's props, over a synthetic record minted from

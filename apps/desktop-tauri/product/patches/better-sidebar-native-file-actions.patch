@@ -1,0 +1,885 @@
+diff --git a/lib/client-registry.js b/lib/client-registry.js
+index c31ed5a1159c9f3ea3f1a60490d450f03d789ccf..3ce7f0aa447feff19c241a2256ecacbb1ac5c04f 100644
+--- a/lib/client-registry.js
++++ b/lib/client-registry.js
+@@ -6159,7 +6159,7 @@ window.__ModuleLoader__.load({
+ 			return Math.min(TREE_WIDTH_MAX, Math.max(TREE_WIDTH_MIN, Math.round(value)));
+ 		}
+ 		function EditorHost(props) {
+-			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile } = props;
++			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide } = props;
+ 			const path = tab.path ?? "";
+ 			const title = tab.title;
+ 			const isDir = metaOf(tab).dir === true;
+@@ -6179,20 +6179,25 @@ window.__ModuleLoader__.load({
+ 			const treeOnly = showEmpty && !inPlace;
+ 			const folderRoot = isDir ? path : void 0;
+ 			/**
+-			* Open a file from THIS window (tree click / search row / path input):
+-			* merged mode switches this tab in place (stable id, meta survives);
+-			* split mode opens a per-path dedupe tab through openSidebarFile.
++			* Open a file from this window (tree click / search row / path input).
++			* A native tab uses its occurrence-bound actions so the open cannot drift to
++			* whichever Session happens to be mounted; the bottom workbench falls back
++			* to the Better Sidebar service.
+ 			*/
+ 			const openFile = (absolute) => {
+-				if (inPlace) ctx.get("betterSidebar")?.updateTab(tab.id, {
+-					path: absolute,
+-					title: baseName(absolute)
+-				});
++				if (inPlace) {
++					if (onOpenFileInPlace !== void 0) onOpenFileInPlace(absolute);
++					else ctx.get("betterSidebar")?.updateTab(tab.id, {
++						path: absolute,
++						title: baseName(absolute)
++					});
++				} else if (onOpenFile !== void 0) onOpenFile(absolute);
+ 				else openSidebarFile(ctx, store, scope.sessionId, absolute);
+ 			};
+ 			/** The context menu's explicit "new tab" escape (per-path dedupe). */
+ 			const openFileNewTab = (absolute) => {
+-				openSidebarFile(ctx, store, scope.sessionId, absolute);
++				if (onOpenFile !== void 0) onOpenFile(absolute);
++				else openSidebarFile(ctx, store, scope.sessionId, absolute);
+ 			};
+ 			/**
+ 			* The context menu's "open to the side": a fresh editor tab (uid id — the
+@@ -6200,6 +6205,10 @@ window.__ModuleLoader__.load({
+ 			* second side-open of the same file) in a rightward split of THIS pane.
+ 			*/
+ 			const openFileSide = (absolute) => {
++				if (onOpenFileSide !== void 0) {
++					onOpenFileSide(absolute);
++					return;
++				}
+ 				store.reduce((state) => {
+ 					const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits);
+ 					const fresh = {
+@@ -13817,7 +13826,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 							updatePluginSetting
+ 						})
+ 					},
+-					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
++					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
+ 						ctx,
+ 						store,
+ 						scope,
+@@ -13825,7 +13834,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						expanded: expanded ?? [],
+ 						revealed: revealed ?? [],
+ 						onToggleDir: onToggleDir ?? (() => {}),
+-						onReferenceFile: onReferenceFile ?? (() => {})
++						onReferenceFile: onReferenceFile ?? (() => {}),
++						onOpenFile,
++						onOpenFileInPlace,
++						onOpenFileSide
+ 					})
+ 				},
+ 				{
+@@ -13839,15 +13851,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						const count = opCountOf(scope.sessionId);
+ 						return count === void 0 || count === 0 ? null : count;
+ 					},
+-					component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
++					component: ({ ctx, store, scope, tab, visible, onOpenFile, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
+ 						ctx,
+ 						store,
+ 						scope,
+ 						tab,
+ 						visible,
+-						onOpenFile: (path) => {
++						onOpenFile: onOpenFile ?? ((path) => {
+ 							openSidebarFile(ctx, store, scope.sessionId, path);
+-						},
++						}),
+ 						onOpenDiff
+ 					})
+ 				},
+@@ -16744,6 +16756,17 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		function useSessionCwd(ctx, sessionId) {
+ 			return (0, react.useSyncExternalStore)((0, react.useMemo)(() => (listener) => ctx.sessions.list.subscribe(listener), [ctx]), () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd);
+ 		}
++		/** Open one path through the native tab occurrence that owns the gesture. */
++		function openNativeFile(info, sessionId, cwd, path, placement) {
++			const options = placement === "replace" ? {
++				replaceTab: true,
++				revealIfOpened: false
++			} : placement === "side" ? {
++				toSide: true,
++				revealIfOpened: false
++			} : { revealIfOpened: true };
++			info.tab.actions.openResource(fileAddressFor(sessionId, cwd, path), options);
++		}
+ 		/**
+ 		* One plugin tab rendered inside the native right Sidebar: the descriptor's
+ 		* own component with the plugin's props, over a synthetic record minted from
+@@ -16812,6 +16835,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 				onReferenceFile: (path, isDir) => {
+ 					referenceInChat(ctx, sessionId, cwd, path, isDir);
+ 				},
++				onOpenFile: (path) => {
++					openNativeFile(info, sessionId, cwd, path, "tab");
++				},
++				onOpenFileInPlace: (path) => {
++					openNativeFile(info, sessionId, cwd, path, "replace");
++				},
++				onOpenFileSide: (path) => {
++					openNativeFile(info, sessionId, cwd, path, "side");
++				},
+ 				onOpenDiff: (tab) => {
+ 					service.openTab({
+ 						type: "diff",
+@@ -17182,13 +17214,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		//#endregion
+ 		//#region src/client/native/surface.ts
+ 		/** The active session id, as the client list reports it. */
+-		function activeSessionId(ctx) {
+-			try {
+-				return ctx.sessions.list.getSnapshot().current;
+-			} catch {
+-				return;
+-			}
+-		}
+ 		/**
+ 		* Bind the plugin's write face to the native controller.
+ 		* @param ctx - the client context (session list + `ctx.sidebarRight`).
+@@ -17201,48 +17226,30 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 			const place = (entry) => {
+ 				const api = controller();
+ 				if (api === void 0) return false;
+-				const active = activeSessionId(ctx);
+-				const onScreen = active !== void 0 && active === entry.sessionId;
+ 				if (entry.kind === "tab") {
+ 					const options = {
+ 						params: entry.params,
+ 						revealIfOpened: entry.revealIfOpened
+ 					};
+-					if (onScreen) {
+-						api.openTab(entry.tabKind, options);
+-						return true;
+-					}
+-					if (api.openTabIn !== void 0) {
+-						api.openTabIn(entry.sessionId, entry.tabKind, options);
+-						return true;
+-					}
+-					return false;
++					return api.openTabIn(entry.sessionId, entry.tabKind, options);
+ 				}
+ 				const options = {
+ 					...entry.line === void 0 ? {} : { params: { line: entry.line } },
+ 					revealIfOpened: entry.revealIfOpened
+ 				};
+-				if (onScreen) {
+-					api.openResource(entry.address, options);
+-					return true;
+-				}
+-				if (api.openResourceIn !== void 0) {
+-					api.openResourceIn(entry.sessionId, entry.address, options);
+-					return true;
+-				}
+-				return false;
++				return api.openResourceIn(entry.sessionId, entry.address, options);
+ 			};
+ 			const flushPending = () => {
+ 				if (pending.length === 0) return;
+-				for (let index = pending.length - 1; index >= 0; index--) {
+-					const entry = pending[index];
+-					if (entry !== void 0 && place(entry)) pending.splice(index, 1);
+-				}
++				const retained = pending.filter((entry) => !place(entry));
++				pending.splice(0, pending.length, ...retained);
+ 			};
+ 			const enqueue = (entry) => {
++				flushPending();
+ 				if (!place(entry)) pending.push(entry);
+ 			};
+-			const unsubscribe = ctx.sessions.list.subscribe(flushPending);
++			const unsubscribeSessionList = ctx.sessions.list.subscribe(flushPending);
++			const unsubscribeAdoption = controller()?.onSessionAdopted(flushPending);
+ 			return {
+ 				openTab({ sessionId, kind, params, revealIfOpened }) {
+ 					enqueue({
+@@ -17269,11 +17276,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					const record = records.get(tabId);
+ 					if (record === void 0) return void 0;
+ 					records.drop(tabId);
+-					const api = controller();
+-					if (api !== void 0) {
+-						if (sessionId === activeSessionId(ctx)) api.close(tabId);
+-						else if (api.closeIn !== void 0) api.closeIn(sessionId, tabId);
+-					}
++					controller()?.closeIn(sessionId, tabId);
+ 					return {
+ 						type: record.tab.type,
+ 						title: record.tab.title
+@@ -17288,9 +17291,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					return records.has(tabId);
+ 				},
+ 				has: (tabId) => records.has(tabId),
+-				flushPending,
+ 				dispose: () => {
+-					unsubscribe();
++					unsubscribeSessionList();
++					unsubscribeAdoption?.();
+ 				}
+ 			};
+ 		}
+diff --git a/lib/client.js b/lib/client.js
+index 2a2f62569152d6dbf2c15cbad699f051ac5e829a..149096b41da84c1576f20bfed8ba441e9159954c 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -6159,7 +6159,7 @@ window.__ModuleLoader__.load({
+ 			return Math.min(TREE_WIDTH_MAX, Math.max(TREE_WIDTH_MIN, Math.round(value)));
+ 		}
+ 		function EditorHost(props) {
+-			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile } = props;
++			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide } = props;
+ 			const path = tab.path ?? "";
+ 			const title = tab.title;
+ 			const isDir = metaOf(tab).dir === true;
+@@ -6179,20 +6179,25 @@ window.__ModuleLoader__.load({
+ 			const treeOnly = showEmpty && !inPlace;
+ 			const folderRoot = isDir ? path : void 0;
+ 			/**
+-			* Open a file from THIS window (tree click / search row / path input):
+-			* merged mode switches this tab in place (stable id, meta survives);
+-			* split mode opens a per-path dedupe tab through openSidebarFile.
++			* Open a file from this window (tree click / search row / path input).
++			* A native tab uses its occurrence-bound actions so the open cannot drift to
++			* whichever Session happens to be mounted; the bottom workbench falls back
++			* to the Better Sidebar service.
+ 			*/
+ 			const openFile = (absolute) => {
+-				if (inPlace) ctx.get("betterSidebar")?.updateTab(tab.id, {
+-					path: absolute,
+-					title: baseName(absolute)
+-				});
++				if (inPlace) {
++					if (onOpenFileInPlace !== void 0) onOpenFileInPlace(absolute);
++					else ctx.get("betterSidebar")?.updateTab(tab.id, {
++						path: absolute,
++						title: baseName(absolute)
++					});
++				} else if (onOpenFile !== void 0) onOpenFile(absolute);
+ 				else openSidebarFile(ctx, store, scope.sessionId, absolute);
+ 			};
+ 			/** The context menu's explicit "new tab" escape (per-path dedupe). */
+ 			const openFileNewTab = (absolute) => {
+-				openSidebarFile(ctx, store, scope.sessionId, absolute);
++				if (onOpenFile !== void 0) onOpenFile(absolute);
++				else openSidebarFile(ctx, store, scope.sessionId, absolute);
+ 			};
+ 			/**
+ 			* The context menu's "open to the side": a fresh editor tab (uid id — the
+@@ -6200,6 +6205,10 @@ window.__ModuleLoader__.load({
+ 			* second side-open of the same file) in a rightward split of THIS pane.
+ 			*/
+ 			const openFileSide = (absolute) => {
++				if (onOpenFileSide !== void 0) {
++					onOpenFileSide(absolute);
++					return;
++				}
+ 				store.reduce((state) => {
+ 					const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits);
+ 					const fresh = {
+@@ -13817,7 +13826,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 							updatePluginSetting
+ 						})
+ 					},
+-					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
++					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
+ 						ctx,
+ 						store,
+ 						scope,
+@@ -13825,7 +13834,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						expanded: expanded ?? [],
+ 						revealed: revealed ?? [],
+ 						onToggleDir: onToggleDir ?? (() => {}),
+-						onReferenceFile: onReferenceFile ?? (() => {})
++						onReferenceFile: onReferenceFile ?? (() => {}),
++						onOpenFile,
++						onOpenFileInPlace,
++						onOpenFileSide
+ 					})
+ 				},
+ 				{
+@@ -13839,15 +13851,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						const count = opCountOf(scope.sessionId);
+ 						return count === void 0 || count === 0 ? null : count;
+ 					},
+-					component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
++					component: ({ ctx, store, scope, tab, visible, onOpenFile, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
+ 						ctx,
+ 						store,
+ 						scope,
+ 						tab,
+ 						visible,
+-						onOpenFile: (path) => {
++						onOpenFile: onOpenFile ?? ((path) => {
+ 							openSidebarFile(ctx, store, scope.sessionId, path);
+-						},
++						}),
+ 						onOpenDiff
+ 					})
+ 				},
+@@ -16744,6 +16756,17 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		function useSessionCwd(ctx, sessionId) {
+ 			return (0, react.useSyncExternalStore)((0, react.useMemo)(() => (listener) => ctx.sessions.list.subscribe(listener), [ctx]), () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd);
+ 		}
++		/** Open one path through the native tab occurrence that owns the gesture. */
++		function openNativeFile(info, sessionId, cwd, path, placement) {
++			const options = placement === "replace" ? {
++				replaceTab: true,
++				revealIfOpened: false
++			} : placement === "side" ? {
++				toSide: true,
++				revealIfOpened: false
++			} : { revealIfOpened: true };
++			info.tab.actions.openResource(fileAddressFor(sessionId, cwd, path), options);
++		}
+ 		/**
+ 		* One plugin tab rendered inside the native right Sidebar: the descriptor's
+ 		* own component with the plugin's props, over a synthetic record minted from
+@@ -16812,6 +16835,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 				onReferenceFile: (path, isDir) => {
+ 					referenceInChat(ctx, sessionId, cwd, path, isDir);
+ 				},
++				onOpenFile: (path) => {
++					openNativeFile(info, sessionId, cwd, path, "tab");
++				},
++				onOpenFileInPlace: (path) => {
++					openNativeFile(info, sessionId, cwd, path, "replace");
++				},
++				onOpenFileSide: (path) => {
++					openNativeFile(info, sessionId, cwd, path, "side");
++				},
+ 				onOpenDiff: (tab) => {
+ 					service.openTab({
+ 						type: "diff",
+@@ -17182,13 +17214,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		//#endregion
+ 		//#region src/client/native/surface.ts
+ 		/** The active session id, as the client list reports it. */
+-		function activeSessionId(ctx) {
+-			try {
+-				return ctx.sessions.list.getSnapshot().current;
+-			} catch {
+-				return;
+-			}
+-		}
+ 		/**
+ 		* Bind the plugin's write face to the native controller.
+ 		* @param ctx - the client context (session list + `ctx.sidebarRight`).
+@@ -17201,48 +17226,30 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 			const place = (entry) => {
+ 				const api = controller();
+ 				if (api === void 0) return false;
+-				const active = activeSessionId(ctx);
+-				const onScreen = active !== void 0 && active === entry.sessionId;
+ 				if (entry.kind === "tab") {
+ 					const options = {
+ 						params: entry.params,
+ 						revealIfOpened: entry.revealIfOpened
+ 					};
+-					if (onScreen) {
+-						api.openTab(entry.tabKind, options);
+-						return true;
+-					}
+-					if (api.openTabIn !== void 0) {
+-						api.openTabIn(entry.sessionId, entry.tabKind, options);
+-						return true;
+-					}
+-					return false;
++					return api.openTabIn(entry.sessionId, entry.tabKind, options);
+ 				}
+ 				const options = {
+ 					...entry.line === void 0 ? {} : { params: { line: entry.line } },
+ 					revealIfOpened: entry.revealIfOpened
+ 				};
+-				if (onScreen) {
+-					api.openResource(entry.address, options);
+-					return true;
+-				}
+-				if (api.openResourceIn !== void 0) {
+-					api.openResourceIn(entry.sessionId, entry.address, options);
+-					return true;
+-				}
+-				return false;
++				return api.openResourceIn(entry.sessionId, entry.address, options);
+ 			};
+ 			const flushPending = () => {
+ 				if (pending.length === 0) return;
+-				for (let index = pending.length - 1; index >= 0; index--) {
+-					const entry = pending[index];
+-					if (entry !== void 0 && place(entry)) pending.splice(index, 1);
+-				}
++				const retained = pending.filter((entry) => !place(entry));
++				pending.splice(0, pending.length, ...retained);
+ 			};
+ 			const enqueue = (entry) => {
++				flushPending();
+ 				if (!place(entry)) pending.push(entry);
+ 			};
+-			const unsubscribe = ctx.sessions.list.subscribe(flushPending);
++			const unsubscribeSessionList = ctx.sessions.list.subscribe(flushPending);
++			const unsubscribeAdoption = controller()?.onSessionAdopted(flushPending);
+ 			return {
+ 				openTab({ sessionId, kind, params, revealIfOpened }) {
+ 					enqueue({
+@@ -17269,11 +17276,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					const record = records.get(tabId);
+ 					if (record === void 0) return void 0;
+ 					records.drop(tabId);
+-					const api = controller();
+-					if (api !== void 0) {
+-						if (sessionId === activeSessionId(ctx)) api.close(tabId);
+-						else if (api.closeIn !== void 0) api.closeIn(sessionId, tabId);
+-					}
++					controller()?.closeIn(sessionId, tabId);
+ 					return {
+ 						type: record.tab.type,
+ 						title: record.tab.title
+@@ -17288,9 +17291,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					return records.has(tabId);
+ 				},
+ 				has: (tabId) => records.has(tabId),
+-				flushPending,
+ 				dispose: () => {
+-					unsubscribe();
++					unsubscribeSessionList();
++					unsubscribeAdoption?.();
+ 				}
+ 			};
+ 		}
+diff --git a/lib/types/client/EditorHost.d.ts b/lib/types/client/EditorHost.d.ts
+index c26764e8cbd13060906f0d2a5b8481f0c8dc2084..ec0e63761b8b064310a59210de4b6e23cf363ada 100644
+--- a/lib/types/client/EditorHost.d.ts
++++ b/lib/types/client/EditorHost.d.ts
+@@ -10,4 +10,10 @@ export declare function EditorHost(props: {
+     revealed: string[];
+     onToggleDir: (path: string) => void;
+     onReferenceFile: (path: string, isDir: boolean) => void;
++    /** Session-bound native resource open; absent in the bottom workbench. */
++    onOpenFile?: (path: string) => void;
++    /** Session-bound replacement of the native tab that owns this editor. */
++    onOpenFileInPlace?: (path: string) => void;
++    /** Session-bound open in a new native pane beside this editor. */
++    onOpenFileSide?: (path: string) => void;
+ }): import("react").JSX.Element;
+diff --git a/lib/types/client/native/surface.d.ts b/lib/types/client/native/surface.d.ts
+index 4635daf826eae63a4d5e8415b5181a3537e0a6d8..94f88a647ed489a375898b0df7ba315295963e23 100644
+--- a/lib/types/client/native/surface.d.ts
++++ b/lib/types/client/native/surface.d.ts
+@@ -11,9 +11,9 @@
+  * - the surface exists only while a session's panel is mounted, and the
+  *   service's public face (`ISidebarRight`) writes only into THAT session.
+  *   The controller also carries `openTabIn` / `openResourceIn` /
+- *   `closeIn`, which act on any session whose store the runtime has minted;
+- *   both are probed at call time, and an open for a session that has no
+- *   store yet is QUEUED and replayed when that session comes on screen;
++ *   `closeIn`, which act on any Session whose store the runtime has minted;
++ *   an open for a Session that has no store yet is queued and replayed in
++ *   request order when that store is adopted;
+  * - layout state is memory-only, so a queued open is not durable either.
+  */
+ import type { Context } from '../../context-types.ts';
+@@ -21,9 +21,7 @@ import type { SidebarSurface } from '../service.ts';
+ import type { NativeTabRecords } from './tab-adapter.tsx';
+ /** The plugin's write face over the native surface. */
+ export interface NativeSurface extends SidebarSurface {
+-    /** Replay opens that were queued for a session that had no mounted surface. */
+-    flushPending(): void;
+-    /** Stop observing the session list. */
++    /** Stop observing Session-list and native-store lifecycle changes. */
+     dispose(): void;
+ }
+ /**
+diff --git a/lib/types/client/native/tab-adapter.d.ts b/lib/types/client/native/tab-adapter.d.ts
+index 36bc0832aa79473f44a152fdb75c84be81435b20..cd10ee5e589bc3a2425b04576b90c94b187c7700 100644
+--- a/lib/types/client/native/tab-adapter.d.ts
++++ b/lib/types/client/native/tab-adapter.d.ts
+@@ -35,6 +35,13 @@ export interface NativeTabInfo {
+             readonly revision: number;
+         };
+         readonly signal: AbortSignal;
++        readonly actions: {
++            openResource(address: string, options?: {
++                revealIfOpened?: boolean;
++                replaceTab?: boolean;
++                toSide?: boolean;
++            }): void;
++        };
+     };
+ }
+ /** One native tab's plugin-side view state. */
+@@ -120,6 +127,15 @@ export interface NativeBodyInjected {
+ export interface NativeBodyFrameworkProps {
+     readonly useTabInfo: () => NativeTabInfo;
+ }
++/**
++ * Open one path through the native tab occurrence that owns the gesture.
++ * @param info - the native tab and its Session-bound actions.
++ * @param sessionId - the Session whose workspace resolves the path.
++ * @param cwd - that Session's workspace root.
++ * @param path - an absolute or workspace-relative file path.
++ * @param placement - whether the resource reveals a tab, replaces this tab, or opens beside it.
++ */
++export declare function openNativeFile(info: NativeTabInfo, sessionId: string, cwd: string | undefined, path: string, placement: 'tab' | 'replace' | 'side'): void;
+ /**
+  * One plugin tab rendered inside the native right Sidebar: the descriptor's
+  * own component with the plugin's props, over a synthetic record minted from
+diff --git a/lib/types/client/service.d.ts b/lib/types/client/service.d.ts
+index 461114457ea80c118f8f63bd781d4d0f2d16f61b..19e4b8cafa929b58621b9cb2e8d30a108107ed6a 100644
+--- a/lib/types/client/service.d.ts
++++ b/lib/types/client/service.d.ts
+@@ -133,7 +133,12 @@ export interface TabComponentProps {
+     revealed?: string[];
+     onToggleDir?: (path: string) => void;
+     onReferenceFile?: (path: string, isDir: boolean) => void;
++    /** Open a file as another native resource tab in this tab's Session. */
+     onOpenFile?: (path: string) => void;
++    /** Replace this native tab with a file resource in the same Session. */
++    onOpenFileInPlace?: (path: string) => void;
++    /** Open a file resource in a new pane beside this native tab. */
++    onOpenFileSide?: (path: string) => void;
+     onOpenDiff?: (tab: SidebarTab) => void;
+     onSubagentJump?: (childSessionId: string) => void;
+ }
+diff --git a/src/client/EditorHost.tsx b/src/client/EditorHost.tsx
+index 2181739896fab8646eea4b132beb447924607f3a..afe3ebda0fea5ab24c7ea4446681c6c1bc374b2a 100644
+--- a/src/client/EditorHost.tsx
++++ b/src/client/EditorHost.tsx
+@@ -102,8 +102,16 @@ export function EditorHost(props: {
+   revealed: string[]
+   onToggleDir: (path: string) => void
+   onReferenceFile: (path: string, isDir: boolean) => void
++  /** Session-bound native resource open; absent in the bottom workbench. */
++  onOpenFile?: (path: string) => void
++  /** Session-bound replacement of the native tab that owns this editor. */
++  onOpenFileInPlace?: (path: string) => void
++  /** Session-bound open in a new native pane beside this editor. */
++  onOpenFileSide?: (path: string) => void
+ }) {
+-  const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile } = props
++  const {
++    ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide,
++  } = props
+   const path = tab.path ?? ''
+   const title = tab.title
+   // A folder window: the model's `sidebar_open` (or any caller) opens a
+@@ -154,13 +162,17 @@ export function EditorHost(props: {
+   const folderRoot = isDir ? path : undefined
+ 
+   /**
+-   * Open a file from THIS window (tree click / search row / path input):
+-   * merged mode switches this tab in place (stable id, meta survives);
+-   * split mode opens a per-path dedupe tab through openSidebarFile.
++   * Open a file from this window (tree click / search row / path input).
++   * A native tab uses its occurrence-bound actions so the open cannot drift to
++   * whichever Session happens to be mounted; the bottom workbench falls back
++   * to the Better Sidebar service.
+    */
+   const openFile = (absolute: string): void => {
+     if (inPlace) {
+-      ctx.get('betterSidebar')?.updateTab(tab.id, { path: absolute, title: baseName(absolute) })
++      if (onOpenFileInPlace !== undefined) onOpenFileInPlace(absolute)
++      else ctx.get('betterSidebar')?.updateTab(tab.id, { path: absolute, title: baseName(absolute) })
++    } else if (onOpenFile !== undefined) {
++      onOpenFile(absolute)
+     } else {
+       openSidebarFile(ctx, store, scope.sessionId, absolute)
+     }
+@@ -168,7 +180,8 @@ export function EditorHost(props: {
+ 
+   /** The context menu's explicit "new tab" escape (per-path dedupe). */
+   const openFileNewTab = (absolute: string): void => {
+-    openSidebarFile(ctx, store, scope.sessionId, absolute)
++    if (onOpenFile !== undefined) onOpenFile(absolute)
++    else openSidebarFile(ctx, store, scope.sessionId, absolute)
+   }
+ 
+   /**
+@@ -177,6 +190,10 @@ export function EditorHost(props: {
+    * second side-open of the same file) in a rightward split of THIS pane.
+    */
+   const openFileSide = (absolute: string): void => {
++    if (onOpenFileSide !== undefined) {
++      onOpenFileSide(absolute)
++      return
++    }
+     store.reduce((state) => {
+       const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits)
+       const fresh: SidebarTab = {
+diff --git a/src/client/builtins/tabs.tsx b/src/client/builtins/tabs.tsx
+index 55e12ec59478673ea0b8e65194134e6ed685a21f..831c6b2d2c7175d4fb46cfc280acd86f76dad6fb 100644
+--- a/src/client/builtins/tabs.tsx
++++ b/src/client/builtins/tabs.tsx
+@@ -129,7 +129,10 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
+           <OpenWithSettings pluginSettings={pluginSettings} updatePluginSetting={updatePluginSetting} />
+         ),
+       },
+-      component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile }) => (
++      component: ({
++        ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace,
++        onOpenFileSide,
++      }) => (
+         <EditorHost
+           ctx={ctx}
+           store={store}
+@@ -139,6 +142,9 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
+           revealed={revealed ?? []}
+           onToggleDir={onToggleDir ?? (() => { /* no-op */ })}
+           onReferenceFile={onReferenceFile ?? (() => { /* no-op */ })}
++          onOpenFile={onOpenFile}
++          onOpenFileInPlace={onOpenFileInPlace}
++          onOpenFileSide={onOpenFileSide}
+         />
+       ),
+     },
+@@ -159,14 +165,14 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
+         const count = opCountOf(scope.sessionId)
+         return count === undefined || count === 0 ? null : count
+       },
+-      component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => (
++      component: ({ ctx, store, scope, tab, visible, onOpenFile, onOpenDiff }) => (
+         <ChangesTab
+           ctx={ctx}
+           store={store}
+           scope={scope}
+           tab={tab}
+           visible={visible}
+-          onOpenFile={(path) => { openSidebarFile(ctx, store, scope.sessionId, path) }}
++          onOpenFile={onOpenFile ?? ((path) => { openSidebarFile(ctx, store, scope.sessionId, path) })}
+           onOpenDiff={onOpenDiff}
+         />
+       ),
+diff --git a/src/client/native/surface.ts b/src/client/native/surface.ts
+index 6dc086170f66ee8171dd600c436955d7aef498ff..508c6c2630b68fa202a848e893b9e527c3c1379c 100644
+--- a/src/client/native/surface.ts
++++ b/src/client/native/surface.ts
+@@ -11,11 +11,14 @@
+  * - the surface exists only while a session's panel is mounted, and the
+  *   service's public face (`ISidebarRight`) writes only into THAT session.
+  *   The controller also carries `openTabIn` / `openResourceIn` /
+- *   `closeIn`, which act on any session whose store the runtime has minted;
+- *   both are probed at call time, and an open for a session that has no
+- *   store yet is QUEUED and replayed when that session comes on screen;
++ *   `closeIn`, which act on any Session whose store the runtime has minted;
++ *   an open for a Session that has no store yet is queued and replayed in
++ *   request order when that store is adopted;
+  * - layout state is memory-only, so a queued open is not durable either.
+  */
++import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
++import type { ISidebarRight } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type { Context } from '../../context-types.ts'
+ import { fileAddressFor } from '../resource-address.ts'
+ import type { NativeTabParams, SidebarSurface } from '../service.ts'
+@@ -26,34 +29,12 @@ type Pending =
+   | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean }
+   | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean }
+ 
+-/** The controller face this module uses (a structural slice of `ISidebarRight`). */
+-interface NativeController {
+-  openTab(kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+-  openResource(address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+-  close(tabId: string): void
+-  /** Not part of `ISidebarRight`: the concrete controller's per-session writes. */
+-  openTabIn?(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+-  openResourceIn?(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+-  closeIn?(sessionId: string, tabId: string): void
+-}
+-
+ /** The plugin's write face over the native surface. */
+ export interface NativeSurface extends SidebarSurface {
+-  /** Replay opens that were queued for a session that had no mounted surface. */
+-  flushPending(): void
+-  /** Stop observing the session list. */
++  /** Stop observing Session-list and native-store lifecycle changes. */
+   dispose(): void
+ }
+ 
+-/** The active session id, as the client list reports it. */
+-function activeSessionId(ctx: Context): string | undefined {
+-  try {
+-    return ctx.sessions.list.getSnapshot().current
+-  } catch {
+-    return undefined
+-  }
+-}
+-
+ /**
+  * Bind the plugin's write face to the native controller.
+  * @param ctx - the client context (session list + `ctx.sidebarRight`).
+@@ -62,54 +43,39 @@ function activeSessionId(ctx: Context): string | undefined {
+  */
+ export function createNativeSurface(ctx: Context, records: NativeTabRecords): NativeSurface {
+   const pending: Pending[] = []
+-  const controller = (): NativeController | undefined =>
+-    ctx.get('sidebarRight') as unknown as NativeController | undefined
++  const controller = (): ISidebarRight | undefined =>
++    ctx.get('sidebarRight') as unknown as ISidebarRight | undefined
+ 
+   const place = (entry: Pending): boolean => {
+     const api = controller()
+     if (api === undefined) return false
+-    const active = activeSessionId(ctx)
+-    const onScreen = active !== undefined && active === entry.sessionId
++    const sessionId = entry.sessionId as SessionId
+     if (entry.kind === 'tab') {
+       const options = { params: entry.params, revealIfOpened: entry.revealIfOpened }
+-      if (onScreen) {
+-        api.openTab(entry.tabKind, options)
+-        return true
+-      }
+-      if (api.openTabIn !== undefined) {
+-        api.openTabIn(entry.sessionId, entry.tabKind, options)
+-        return true
+-      }
+-      return false
++      return api.openTabIn(sessionId, entry.tabKind, options)
+     }
+     const options = {
+       ...(entry.line === undefined ? {} : { params: { line: entry.line } }),
+       revealIfOpened: entry.revealIfOpened,
+     }
+-    if (onScreen) {
+-      api.openResource(entry.address, options)
+-      return true
+-    }
+-    if (api.openResourceIn !== undefined) {
+-      api.openResourceIn(entry.sessionId, entry.address, options)
+-      return true
+-    }
+-    return false
++    return api.openResourceIn(sessionId, entry.address, options)
+   }
+ 
+   const flushPending = (): void => {
+     if (pending.length === 0) return
+-    for (let index = pending.length - 1; index >= 0; index--) {
+-      const entry = pending[index]
+-      if (entry !== undefined && place(entry)) pending.splice(index, 1)
+-    }
++    const retained = pending.filter(entry => !place(entry))
++    pending.splice(0, pending.length, ...retained)
+   }
+ 
+   const enqueue = (entry: Pending): void => {
++    // A later open may follow a controller replacement, so it also retries
++    // retained operations before placing the new request.
++    flushPending()
+     if (!place(entry)) pending.push(entry)
+   }
+ 
+-  const unsubscribe = ctx.sessions.list.subscribe(flushPending)
++  const unsubscribeSessionList = ctx.sessions.list.subscribe(flushPending)
++  const unsubscribeAdoption = controller()?.onSessionAdopted(flushPending)
+   return {
+     openTab({ sessionId, kind, params, revealIfOpened }) {
+       enqueue({ kind: 'tab', sessionId, tabKind: kind, params, revealIfOpened })
+@@ -124,11 +90,7 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
+       const record = records.get(tabId)
+       if (record === undefined) return undefined
+       records.drop(tabId)
+-      const api = controller()
+-      if (api !== undefined) {
+-        if (sessionId === activeSessionId(ctx)) api.close(tabId)
+-        else if (api.closeIn !== undefined) api.closeIn(sessionId, tabId)
+-      }
++      controller()?.closeIn(sessionId as SessionId, tabId as TabId)
+       return { type: record.tab.type, title: record.tab.title }
+     },
+     update(tabId, patch) {
+@@ -143,7 +105,9 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
+       return records.has(tabId)
+     },
+     has: tabId => records.has(tabId),
+-    flushPending,
+-    dispose: () => { unsubscribe() },
++    dispose: () => {
++      unsubscribeSessionList()
++      unsubscribeAdoption?.()
++    },
+   }
+ }
+diff --git a/src/client/native/tab-adapter.tsx b/src/client/native/tab-adapter.tsx
+index 89bfa218c18def581c58e62f71ed173ff9192a39..759b03e8af50ef3657b5100048fcf3212d9e6d42 100644
+--- a/src/client/native/tab-adapter.tsx
++++ b/src/client/native/tab-adapter.tsx
+@@ -27,6 +27,7 @@ import type { SessionScope } from '../api.ts'
+ import { RenderBoundary } from '../RenderBoundary.tsx'
+ import { OrphanedTab } from '../OrphanedTab.tsx'
+ import { referenceInChat } from '../reference-in-chat.ts'
++import { fileAddressFor } from '../resource-address.ts'
+ import type { BetterSidebarService } from '../service.ts'
+ import type { SidebarStore, SidebarTab, TabType } from '../state.ts'
+ import css from '../sidebar.module.css'
+@@ -70,6 +71,9 @@ export interface NativeTabInfo {
+       readonly revision: number
+     }
+     readonly signal: AbortSignal
++    readonly actions: {
++      openResource(address: string, options?: { revealIfOpened?: boolean; replaceTab?: boolean; toSide?: boolean }): void
++    }
+   }
+ }
+ 
+@@ -252,6 +256,29 @@ function useSessionCwd(ctx: Context, sessionId: string): string | undefined {
+   )
+ }
+ 
++/**
++ * Open one path through the native tab occurrence that owns the gesture.
++ * @param info - the native tab and its Session-bound actions.
++ * @param sessionId - the Session whose workspace resolves the path.
++ * @param cwd - that Session's workspace root.
++ * @param path - an absolute or workspace-relative file path.
++ * @param placement - whether the resource reveals a tab, replaces this tab, or opens beside it.
++ */
++export function openNativeFile(
++  info: NativeTabInfo,
++  sessionId: string,
++  cwd: string | undefined,
++  path: string,
++  placement: 'tab' | 'replace' | 'side',
++): void {
++  const options = placement === 'replace'
++    ? { replaceTab: true, revealIfOpened: false }
++    : placement === 'side'
++      ? { toSide: true, revealIfOpened: false }
++      : { revealIfOpened: true }
++  info.tab.actions.openResource(fileAddressFor(sessionId, cwd, path), options)
++}
++
+ /**
+  * One plugin tab rendered inside the native right Sidebar: the descriptor's
+  * own component with the plugin's props, over a synthetic record minted from
+@@ -317,6 +344,9 @@ export function NativeTabBody(props: NativeBodyInjected & NativeBodyFrameworkPro
+         revealed: view.revealed,
+         onToggleDir: (path: string) => { records.toggleExpanded(nativeTab.id, path) },
+         onReferenceFile: (path: string, isDir: boolean) => { referenceInChat(ctx, sessionId, cwd, path, isDir) },
++        onOpenFile: (path: string) => { openNativeFile(info, sessionId, cwd, path, 'tab') },
++        onOpenFileInPlace: (path: string) => { openNativeFile(info, sessionId, cwd, path, 'replace') },
++        onOpenFileSide: (path: string) => { openNativeFile(info, sessionId, cwd, path, 'side') },
+         onOpenDiff: (tab: SidebarTab) => {
+           service.openTab({
+             type: 'diff',
+diff --git a/src/client/service.ts b/src/client/service.ts
+index e37402df0331d99ddea11337fb9c869b8201555d..f63596648349237866eb0f4d5283d789deb89dc2 100644
+--- a/src/client/service.ts
++++ b/src/client/service.ts
+@@ -153,7 +153,12 @@ export interface TabComponentProps {
+   revealed?: string[]
+   onToggleDir?: (path: string) => void
+   onReferenceFile?: (path: string, isDir: boolean) => void
++  /** Open a file as another native resource tab in this tab's Session. */
+   onOpenFile?: (path: string) => void
++  /** Replace this native tab with a file resource in the same Session. */
++  onOpenFileInPlace?: (path: string) => void
++  /** Open a file resource in a new pane beside this native tab. */
++  onOpenFileSide?: (path: string) => void
+   onOpenDiff?: (tab: SidebarTab) => void
+   onSubagentJump?: (childSessionId: string) => void
+ }

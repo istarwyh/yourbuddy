@@ -129,7 +129,10 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
           <OpenWithSettings pluginSettings={pluginSettings} updatePluginSetting={updatePluginSetting} />
         ),
       },
-      component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile }) => (
+      component: ({
+        ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace,
+        onOpenFileSide,
+      }) => (
         <EditorHost
           ctx={ctx}
           store={store}
@@ -139,6 +142,9 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
           revealed={revealed ?? []}
           onToggleDir={onToggleDir ?? (() => { /* no-op */ })}
           onReferenceFile={onReferenceFile ?? (() => { /* no-op */ })}
+          onOpenFile={onOpenFile}
+          onOpenFileInPlace={onOpenFileInPlace}
+          onOpenFileSide={onOpenFileSide}
         />
       ),
     },
@@ -159,14 +165,14 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
         const count = opCountOf(scope.sessionId)
         return count === undefined || count === 0 ? null : count
       },
-      component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => (
+      component: ({ ctx, store, scope, tab, visible, onOpenFile, onOpenDiff }) => (
         <ChangesTab
           ctx={ctx}
           store={store}
           scope={scope}
           tab={tab}
           visible={visible}
-          onOpenFile={(path) => { openSidebarFile(ctx, store, scope.sessionId, path) }}
+          onOpenFile={onOpenFile ?? ((path) => { openSidebarFile(ctx, store, scope.sessionId, path) })}
           onOpenDiff={onOpenDiff}
         />
       ),

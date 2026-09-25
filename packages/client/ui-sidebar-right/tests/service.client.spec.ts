@@ -502,6 +502,50 @@ describe('SidebarRightController — a tab\'s own actions', () => {
     expect(titles()).toContain('a.txt')
   })
 
+  it('opens from a tab into a new pane only when that pane can split', () => {
+    const { controller, adopt, instance, publish, layout, room } = harness()
+    const release = adopt(SESSION, instance)
+    publish()
+    controller.openResource(A_TXT)
+    publish()
+    const own = Object.values(layout().tabs).find(tab => tab.title === 'a.txt')
+    if (own === undefined) throw new Error('expected the opened tab')
+    const { tabActions } = controller.tabDomain.occurrence(SESSION, own)
+
+    tabActions.openResource(B_TXT, { toSide: true, revealIfOpened: false })
+    const beside = Object.values(layout().tabs).find(tab => tab.title === 'b.txt')
+    if (beside === undefined) throw new Error('expected the side-opened tab')
+    expect(dockPaneIds(layout())).toHaveLength(2)
+    expect(findTabPane(layout(), beside.id).id).not.toBe(findTabPane(layout(), own.id).id)
+
+    room.allowed = false
+    tabActions.openResource('dsh-resource://file/session/s-test/c.txt', { toSide: true })
+    expect(Object.values(layout().tabs).map(tab => tab.title)).not.toContain('c.txt')
+    release()
+  })
+
+  it('reports targeted acceptance and publishes Session-store adoption', () => {
+    const { controller, adopt, instance, titles } = harness()
+    const adopted = vi.fn()
+    const stop = controller.onSessionAdopted(adopted)
+
+    expect(controller.openResourceIn(SESSION, A_TXT)).toBe(false)
+    expect(controller.openTabIn(SESSION, 'guide')).toBe(false)
+
+    const release = adopt(SESSION, instance)
+    expect(adopted).toHaveBeenCalledWith(SESSION)
+    expect(controller.openResourceIn(SESSION, A_TXT)).toBe(true)
+    expect(titles()).toContain('a.txt')
+    expect(controller.openTabIn(SESSION, 'guide')).toBe(true)
+
+    release()
+    stop()
+    const releaseAgain = adopt(SESSION, instance)
+    expect(adopted).toHaveBeenCalledOnce()
+    expect(controller.openResourceIn(SESSION, B_TXT)).toBe(true)
+    releaseAgain()
+  })
+
   it('adoption syncs the Tab domain on each commit of that store: the seeded guide is pinned, a closed tab aborted', () => {
     const { controller, adopt, instance, pin } = harness()
     const first = adopt(SESSION, instance)

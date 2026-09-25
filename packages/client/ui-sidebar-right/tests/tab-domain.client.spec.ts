@@ -35,7 +35,7 @@ function layouts() {
 }
 
 function harness() {
-  const navigator = { openResourceIn: vi.fn(), openTabIn: vi.fn(), closeIn: vi.fn() } satisfies
+  const navigator = { openResourceIn: vi.fn(), openTabIn: vi.fn(), splitIn: vi.fn(), closeIn: vi.fn() } satisfies
     SidebarRightNavigator & Record<string, ReturnType<typeof vi.fn>>
   const pin = vi.fn<(address: string, signal: AbortSignal) => void>()
   const domain = new TabDomain(navigator, pin)

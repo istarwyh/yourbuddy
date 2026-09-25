@@ -27,6 +27,7 @@ import type { SessionScope } from '../api.ts'
 import { RenderBoundary } from '../RenderBoundary.tsx'
 import { OrphanedTab } from '../OrphanedTab.tsx'
 import { referenceInChat } from '../reference-in-chat.ts'
+import { fileAddressFor } from '../resource-address.ts'
 import type { BetterSidebarService } from '../service.ts'
 import type { SidebarStore, SidebarTab, TabType } from '../state.ts'
 import css from '../sidebar.module.css'
@@ -70,6 +71,9 @@ export interface NativeTabInfo {
       readonly revision: number
     }
     readonly signal: AbortSignal
+    readonly actions: {
+      openResource(address: string, options?: { revealIfOpened?: boolean; replaceTab?: boolean; toSide?: boolean }): void
+    }
   }
 }
 
@@ -253,6 +257,29 @@ function useSessionCwd(ctx: Context, sessionId: string): string | undefined {
 }
 
 /**
+ * Open one path through the native tab occurrence that owns the gesture.
+ * @param info - the native tab and its Session-bound actions.
+ * @param sessionId - the Session whose workspace resolves the path.
+ * @param cwd - that Session's workspace root.
+ * @param path - an absolute or workspace-relative file path.
+ * @param placement - whether the resource reveals a tab, replaces this tab, or opens beside it.
+ */
+export function openNativeFile(
+  info: NativeTabInfo,
+  sessionId: string,
+  cwd: string | undefined,
+  path: string,
+  placement: 'tab' | 'replace' | 'side',
+): void {
+  const options = placement === 'replace'
+    ? { replaceTab: true, revealIfOpened: false }
+    : placement === 'side'
+      ? { toSide: true, revealIfOpened: false }
+      : { revealIfOpened: true }
+  info.tab.actions.openResource(fileAddressFor(sessionId, cwd, path), options)
+}
+
+/**
  * One plugin tab rendered inside the native right Sidebar: the descriptor's
  * own component with the plugin's props, over a synthetic record minted from
  * the native tab and dropped when the record ends.
@@ -317,6 +344,9 @@ export function NativeTabBody(props: NativeBodyInjected & NativeBodyFrameworkPro
         revealed: view.revealed,
         onToggleDir: (path: string) => { records.toggleExpanded(nativeTab.id, path) },
         onReferenceFile: (path: string, isDir: boolean) => { referenceInChat(ctx, sessionId, cwd, path, isDir) },
+        onOpenFile: (path: string) => { openNativeFile(info, sessionId, cwd, path, 'tab') },
+        onOpenFileInPlace: (path: string) => { openNativeFile(info, sessionId, cwd, path, 'replace') },
+        onOpenFileSide: (path: string) => { openNativeFile(info, sessionId, cwd, path, 'side') },
         onOpenDiff: (tab: SidebarTab) => {
           service.openTab({
             type: 'diff',

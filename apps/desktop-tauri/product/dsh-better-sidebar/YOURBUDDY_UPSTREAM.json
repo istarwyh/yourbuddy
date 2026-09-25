@@ -21,6 +21,12 @@
       "purpose": "Route file-tree opens to the native Sidebar session that owns the Files tab."
     },
     {
+      "id": "native-file-occurrence-actions",
+      "file": "patches/better-sidebar-native-file-actions.patch",
+      "sha256": "61b5b938db2ffa2fdd4646f309bba7484894187e7d64a2f3a25c2bba07af9922",
+      "purpose": "Use native occurrence actions for file and side opens, with FIFO retry after Session-store adoption."
+    },
+    {
       "id": "browser-cross-origin-navigation",
       "file": "patches/better-sidebar-browser-navigation.patch",
       "sha256": "892728e5496c51dabf75effb8c0184d6c33704c3a8ae1de8a93266e4b955b793",
@@ -35,5 +41,5 @@
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "562a9a37b4576f8b7d515805d58a4b7d1467c90b15e3d619bded077540bc5e7f"
+  "treeSha256": "84a7c294dcd5af81a17a1d3100fa1972e86c384867060bcd0272056fbc294bd4"
 }

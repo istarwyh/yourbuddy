@@ -11,11 +11,14 @@
  * - the surface exists only while a session's panel is mounted, and the
  *   service's public face (`ISidebarRight`) writes only into THAT session.
  *   The controller also carries `openTabIn` / `openResourceIn` /
- *   `closeIn`, which act on any session whose store the runtime has minted;
- *   both are probed at call time, and an open for a session that has no
- *   store yet is QUEUED and replayed when that session comes on screen;
+ *   `closeIn`, which act on any Session whose store the runtime has minted;
+ *   an open for a Session that has no store yet is queued and replayed in
+ *   request order when that store is adopted;
  * - layout state is memory-only, so a queued open is not durable either.
  */
+import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
+import type { ISidebarRight } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { Context } from '../../context-types.ts'
 import { fileAddressFor } from '../resource-address.ts'
 import type { NativeTabParams, SidebarSurface } from '../service.ts'
@@ -26,32 +29,10 @@ type Pending =
   | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean }
   | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean }
 
-/** The controller face this module uses (a structural slice of `ISidebarRight`). */
-interface NativeController {
-  openTab(kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
-  openResource(address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
-  close(tabId: string): void
-  /** Not part of `ISidebarRight`: the concrete controller's per-session writes. */
-  openTabIn?(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
-  openResourceIn?(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
-  closeIn?(sessionId: string, tabId: string): void
-}
-
 /** The plugin's write face over the native surface. */
 export interface NativeSurface extends SidebarSurface {
-  /** Replay opens that were queued for a session that had no mounted surface. */
-  flushPending(): void
-  /** Stop observing the session list. */
+  /** Stop observing Session-list and native-store lifecycle changes. */
   dispose(): void
-}
-
-/** The active session id, as the client list reports it. */
-function activeSessionId(ctx: Context): string | undefined {
-  try {
-    return ctx.sessions.list.getSnapshot().current
-  } catch {
-    return undefined
-  }
 }
 
 /**
@@ -62,54 +43,39 @@ function activeSessionId(ctx: Context): string | undefined {
  */
 export function createNativeSurface(ctx: Context, records: NativeTabRecords): NativeSurface {
   const pending: Pending[] = []
-  const controller = (): NativeController | undefined =>
-    ctx.get('sidebarRight') as unknown as NativeController | undefined
+  const controller = (): ISidebarRight | undefined =>
+    ctx.get('sidebarRight') as unknown as ISidebarRight | undefined
 
   const place = (entry: Pending): boolean => {
     const api = controller()
     if (api === undefined) return false
-    const active = activeSessionId(ctx)
-    const onScreen = active !== undefined && active === entry.sessionId
+    const sessionId = entry.sessionId as SessionId
     if (entry.kind === 'tab') {
       const options = { params: entry.params, revealIfOpened: entry.revealIfOpened }
-      if (onScreen) {
-        api.openTab(entry.tabKind, options)
-        return true
-      }
-      if (api.openTabIn !== undefined) {
-        api.openTabIn(entry.sessionId, entry.tabKind, options)
-        return true
-      }
-      return false
+      return api.openTabIn(sessionId, entry.tabKind, options)
     }
     const options = {
       ...(entry.line === undefined ? {} : { params: { line: entry.line } }),
       revealIfOpened: entry.revealIfOpened,
     }
-    if (onScreen) {
-      api.openResource(entry.address, options)
-      return true
-    }
-    if (api.openResourceIn !== undefined) {
-      api.openResourceIn(entry.sessionId, entry.address, options)
-      return true
-    }
-    return false
+    return api.openResourceIn(sessionId, entry.address, options)
   }
 
   const flushPending = (): void => {
     if (pending.length === 0) return
-    for (let index = pending.length - 1; index >= 0; index--) {
-      const entry = pending[index]
-      if (entry !== undefined && place(entry)) pending.splice(index, 1)
-    }
+    const retained = pending.filter(entry => !place(entry))
+    pending.splice(0, pending.length, ...retained)
   }
 
   const enqueue = (entry: Pending): void => {
+    // A later open may follow a controller replacement, so it also retries
+    // retained operations before placing the new request.
+    flushPending()
     if (!place(entry)) pending.push(entry)
   }
 
-  const unsubscribe = ctx.sessions.list.subscribe(flushPending)
+  const unsubscribeSessionList = ctx.sessions.list.subscribe(flushPending)
+  const unsubscribeAdoption = controller()?.onSessionAdopted(flushPending)
   return {
     openTab({ sessionId, kind, params, revealIfOpened }) {
       enqueue({ kind: 'tab', sessionId, tabKind: kind, params, revealIfOpened })
@@ -124,11 +90,7 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
       const record = records.get(tabId)
       if (record === undefined) return undefined
       records.drop(tabId)
-      const api = controller()
-      if (api !== undefined) {
-        if (sessionId === activeSessionId(ctx)) api.close(tabId)
-        else if (api.closeIn !== undefined) api.closeIn(sessionId, tabId)
-      }
+      controller()?.closeIn(sessionId as SessionId, tabId as TabId)
       return { type: record.tab.type, title: record.tab.title }
     },
     update(tabId, patch) {
@@ -143,7 +105,9 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
       return records.has(tabId)
     },
     has: tabId => records.has(tabId),
-    flushPending,
-    dispose: () => { unsubscribe() },
+    dispose: () => {
+      unsubscribeSessionList()
+      unsubscribeAdoption?.()
+    },
   }
 }

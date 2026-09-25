@@ -33,7 +33,9 @@ export interface SidebarRightNavigator {
   openResourceIn(sessionId: SessionId, address: string, options?: SidebarRightOpenResourceOptions): void
   /** Open a page type in one session; see `ISidebarRight.openTab`. */
   openTabIn(sessionId: SessionId, kind: string, options?: SidebarRightOpenTabOptions): void
-  /** Close a tab of one session. */
+  /** Split one Session's docked pane to its right. */
+  splitIn(sessionId: SessionId, paneId: PaneId): PaneId | undefined
+  /** Close a tab of one Session. */
   closeIn(sessionId: SessionId, tabId: TabId): void
 }
 
@@ -153,13 +155,24 @@ export class TabDomain {
     // Where an open from this tab lands, read at call time because the tab may
     // have been dragged since: `replaceTab: true` names this tab; otherwise the
     // pane holding it, unless the caller named another.
-    const place = (placement: SidebarRightTabPlacement): SidebarRightPlacement => ({
-      ...placement.replaceTab === true
-        ? { replaceTab: tabId }
-        : held.paneId === undefined ? {} : { paneId: held.paneId },
-      ...placement.paneId === undefined ? {} : { paneId: placement.paneId },
-      ...placement.revealIfOpened === undefined ? {} : { revealIfOpened: placement.revealIfOpened },
-    })
+    const place = (placement: SidebarRightTabPlacement): SidebarRightPlacement | undefined => {
+      if (placement.toSide === true) {
+        if (held.paneId === undefined) return undefined
+        const paneId = navigator.splitIn(sessionId, held.paneId)
+        if (paneId === undefined) return undefined
+        return {
+          paneId,
+          ...placement.revealIfOpened === undefined ? {} : { revealIfOpened: placement.revealIfOpened },
+        }
+      }
+      return {
+        ...placement.replaceTab === true
+          ? { replaceTab: tabId }
+          : held.paneId === undefined ? {} : { paneId: held.paneId },
+        ...placement.paneId === undefined ? {} : { paneId: placement.paneId },
+        ...placement.revealIfOpened === undefined ? {} : { revealIfOpened: placement.revealIfOpened },
+      }
+    }
     const held: Held = {
       sessionId,
       tabId,
@@ -170,10 +183,12 @@ export class TabDomain {
       pinned: false,
       tabActions: {
         openResource: (address, options = {}) => {
-          navigator.openResourceIn(sessionId, address, { ...place(options), params: options.params })
+          const placement = place(options)
+          if (placement !== undefined) navigator.openResourceIn(sessionId, address, { ...placement, params: options.params })
         },
         openTab: (kind, options = {}) => {
-          navigator.openTabIn(sessionId, kind, { ...place(options), params: options.params })
+          const placement = place(options)
+          if (placement !== undefined) navigator.openTabIn(sessionId, kind, { ...placement, params: options.params })
         },
         close: () => { navigator.closeIn(sessionId, tabId) },
       },

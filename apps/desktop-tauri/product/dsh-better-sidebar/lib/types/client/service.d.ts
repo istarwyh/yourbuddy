@@ -133,7 +133,12 @@ export interface TabComponentProps {
     revealed?: string[];
     onToggleDir?: (path: string) => void;
     onReferenceFile?: (path: string, isDir: boolean) => void;
+    /** Open a file as another native resource tab in this tab's Session. */
     onOpenFile?: (path: string) => void;
+    /** Replace this native tab with a file resource in the same Session. */
+    onOpenFileInPlace?: (path: string) => void;
+    /** Open a file resource in a new pane beside this native tab. */
+    onOpenFileSide?: (path: string) => void;
     onOpenDiff?: (tab: SidebarTab) => void;
     onSubagentJump?: (childSessionId: string) => void;
 }

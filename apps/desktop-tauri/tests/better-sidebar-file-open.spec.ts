@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { openSidebarFile } from '../product/dsh-better-sidebar/src/client/intercept.tsx'
+import { openNativeFile } from '../product/dsh-better-sidebar/src/client/native/tab-adapter.tsx'
 
 describe('YourBuddy Better Sidebar file opens', () => {
   it('targets the session that owns the native Files tab', () => {
@@ -25,6 +26,42 @@ describe('YourBuddy Better Sidebar file opens', () => {
         id: 'editor:/workspace/notes/readme.md',
       },
       { sessionId: 'session', cwd: '/workspace' },
+    )
+  })
+
+  it('uses the native tab occurrence for a new file tab', () => {
+    const openResource = vi.fn()
+    const info = { tab: { actions: { openResource } } }
+
+    openNativeFile(info as never, 'owner-session', '/workspace', '/workspace/notes/readme.md', 'tab')
+
+    expect(openResource).toHaveBeenCalledWith(
+      'dsh-resource://file/session/owner-session/notes/readme.md',
+      { revealIfOpened: true },
+    )
+  })
+
+  it('replaces the owning native tab for an in-place file open', () => {
+    const openResource = vi.fn()
+    const info = { tab: { actions: { openResource } } }
+
+    openNativeFile(info as never, 'owner-session', '/workspace', '/workspace/notes/readme.md', 'replace')
+
+    expect(openResource).toHaveBeenCalledWith(
+      'dsh-resource://file/session/owner-session/notes/readme.md',
+      { replaceTab: true, revealIfOpened: false },
+    )
+  })
+
+  it('uses the native tab occurrence for an open-to-the-side file action', () => {
+    const openResource = vi.fn()
+    const info = { tab: { actions: { openResource } } }
+
+    openNativeFile(info as never, 'owner-session', '/workspace', '/workspace/notes/readme.md', 'side')
+
+    expect(openResource).toHaveBeenCalledWith(
+      'dsh-resource://file/session/owner-session/notes/readme.md',
+      { toSide: true, revealIfOpened: false },
     )
   })
 })

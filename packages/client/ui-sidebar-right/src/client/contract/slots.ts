@@ -109,6 +109,8 @@ export interface SidebarRightTabPlacement {
   readonly revealIfOpened?: boolean
   /** `true` opens in this tab's place — its pane and strip slot — and closes this tab in the same step. */
   readonly replaceTab?: boolean
+  /** `true` creates a right-hand pane and opens there; no open occurs when the pane cannot split. */
+  readonly toSide?: boolean
 }
 
 /** The actions one tab may take on itself; each acts on the session the tab is in. */

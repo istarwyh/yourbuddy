@@ -102,8 +102,16 @@ export function EditorHost(props: {
   revealed: string[]
   onToggleDir: (path: string) => void
   onReferenceFile: (path: string, isDir: boolean) => void
+  /** Session-bound native resource open; absent in the bottom workbench. */
+  onOpenFile?: (path: string) => void
+  /** Session-bound replacement of the native tab that owns this editor. */
+  onOpenFileInPlace?: (path: string) => void
+  /** Session-bound open in a new native pane beside this editor. */
+  onOpenFileSide?: (path: string) => void
 }) {
-  const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile } = props
+  const {
+    ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide,
+  } = props
   const path = tab.path ?? ''
   const title = tab.title
   // A folder window: the model's `sidebar_open` (or any caller) opens a
@@ -154,13 +162,17 @@ export function EditorHost(props: {
   const folderRoot = isDir ? path : undefined
 
   /**
-   * Open a file from THIS window (tree click / search row / path input):
-   * merged mode switches this tab in place (stable id, meta survives);
-   * split mode opens a per-path dedupe tab through openSidebarFile.
+   * Open a file from this window (tree click / search row / path input).
+   * A native tab uses its occurrence-bound actions so the open cannot drift to
+   * whichever Session happens to be mounted; the bottom workbench falls back
+   * to the Better Sidebar service.
    */
   const openFile = (absolute: string): void => {
     if (inPlace) {
-      ctx.get('betterSidebar')?.updateTab(tab.id, { path: absolute, title: baseName(absolute) })
+      if (onOpenFileInPlace !== undefined) onOpenFileInPlace(absolute)
+      else ctx.get('betterSidebar')?.updateTab(tab.id, { path: absolute, title: baseName(absolute) })
+    } else if (onOpenFile !== undefined) {
+      onOpenFile(absolute)
     } else {
       openSidebarFile(ctx, store, scope.sessionId, absolute)
     }
@@ -168,7 +180,8 @@ export function EditorHost(props: {
 
   /** The context menu's explicit "new tab" escape (per-path dedupe). */
   const openFileNewTab = (absolute: string): void => {
-    openSidebarFile(ctx, store, scope.sessionId, absolute)
+    if (onOpenFile !== undefined) onOpenFile(absolute)
+    else openSidebarFile(ctx, store, scope.sessionId, absolute)
   }
 
   /**
@@ -177,6 +190,10 @@ export function EditorHost(props: {
    * second side-open of the same file) in a rightward split of THIS pane.
    */
   const openFileSide = (absolute: string): void => {
+    if (onOpenFileSide !== undefined) {
+      onOpenFileSide(absolute)
+      return
+    }
     store.reduce((state) => {
       const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits)
       const fresh: SidebarTab = {

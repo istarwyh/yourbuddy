@@ -66,7 +66,8 @@ export function createSidebarRightController(tabs: SidebarRightTabRegistry, pin:
   adopt: (sessionId: SessionId, store: SidebarRightSurfaceStore) => () => void
 } {
   const adopted = new Map<SessionId, Adoption>()
-  const controller = new SidebarRightController(tabs, pin, adopted)
+  const adoptionListeners = new Set<(sessionId: SessionId) => void>()
+  const controller = new SidebarRightController(tabs, pin, adopted, adoptionListeners)
   return {
     controller,
     adopt(sessionId, store) {
@@ -77,6 +78,7 @@ export function createSidebarRightController(tabs: SidebarRightTabRegistry, pin:
       }
       const adoption: Adoption = { store, unsubscribe: store.subscribe(sync) }
       adopted.set(sessionId, adoption)
+      for (const listener of adoptionListeners) listener(sessionId)
       return () => {
         adoption.unsubscribe()
         if (adopted.get(sessionId) === adoption) adopted.delete(sessionId)
@@ -157,6 +159,34 @@ export interface ISidebarRight {
    */
   openTab<K extends string>(kind: K, options?: SidebarRightOpenTabOptions<K>): void
   /**
+   * Try to open a resource in one Session's adopted store.
+   * @param sessionId - the target Session.
+   * @param address - a `dsh-resource://<type>/…` address.
+   * @param options - placement, the opening type, and navigation parameters.
+   * @returns whether the Session store accepted the open.
+   */
+  openResourceIn(sessionId: SessionId, address: string, options?: SidebarRightOpenResourceOptions): boolean
+  /**
+   * Try to open a page type in one Session's adopted store.
+   * @param sessionId - the target Session.
+   * @param kind - the page type's kind.
+   * @param options - placement and that kind's navigation parameters.
+   * @returns whether the Session store accepted the open.
+   */
+  openTabIn<K extends string>(sessionId: SessionId, kind: K, options?: SidebarRightOpenTabOptions<K>): boolean
+  /**
+   * Close one tab in a Session's adopted store.
+   * @param sessionId - the target Session.
+   * @param tabId - the tab to close.
+   */
+  closeIn(sessionId: SessionId, tabId: TabId): void
+  /**
+   * Observe Session-store adoption so a rejected targeted operation can retry.
+   * @param listener - called after a Session store becomes available.
+   * @returns a disposer that removes exactly this listener.
+   */
+  onSessionAdopted(listener: (sessionId: SessionId) => void): () => void
+  /**
    * Close one tab of the mounted session; the sole docked guide remains open.
    * @param tabId - the tab to close.
    */
@@ -214,11 +244,13 @@ export class SidebarRightController implements ISidebarRight {
    * @param tabs - the tab-type registry consulted to claim an address.
    * @param pin - `ctx.resources.pin`, which the Tab domain holds addresses with.
    * @param adopted - plugin-owned session stores used by occurrence actions.
+   * @param adoptionListeners - observers notified after a Session store becomes available.
    */
   constructor(
     private readonly tabs: SidebarRightTabRegistry,
     pin: PinResource,
     private readonly adopted = new Map<SessionId, Adoption>(),
+    private readonly adoptionListeners = new Set<(sessionId: SessionId) => void>(),
   ) {
     this.tabDomain = new TabDomain(this, pin)
   }
@@ -260,35 +292,61 @@ export class SidebarRightController implements ISidebarRight {
   }
 
   /**
-   * Open a resource in one session, for a tab's own action; nothing happens
-   * for a session whose store was never adopted or whose adoption was released.
-   * Not part of `ISidebarRight`: the Tab domain's path.
-   * @param sessionId - the session the acting tab is in.
+   * Open a resource in one Session's adopted store.
+   * @param sessionId - the Session the acting tab is in.
    * @param address - a `dsh-resource://<type>/…` address.
    * @param options - placement, the opening type, and navigation parameters.
+   * @returns whether that Session's store was adopted and accepted the open.
    */
-  openResourceIn(sessionId: SessionId, address: string, options: SidebarRightOpenResourceOptions = {}): void {
+  openResourceIn(sessionId: SessionId, address: string, options: SidebarRightOpenResourceOptions = {}): boolean {
     const actions = this.actionsFor(sessionId)
-    if (actions !== undefined) this.placeResource(sessionId, actions, address, options)
+    if (actions === undefined) return false
+    this.placeResource(sessionId, actions, address, options)
+    return true
   }
 
   /**
-   * Open a page type in one session, for a tab's own action; nothing happens
-   * for a session whose store was never adopted or whose adoption was released.
-   * Not part of `ISidebarRight`: the Tab domain's path.
-   * @param sessionId - the session the acting tab is in.
+   * Open a page type in one Session's adopted store.
+   * @param sessionId - the Session the acting tab is in.
    * @param kind - the page type's kind.
    * @param options - placement and that kind's navigation parameters.
+   * @returns whether that Session's store was adopted and accepted the open.
    */
-  openTabIn<K extends string>(sessionId: SessionId, kind: K, options: SidebarRightOpenTabOptions<K> = {}): void {
+  openTabIn<K extends string>(sessionId: SessionId, kind: K, options: SidebarRightOpenTabOptions<K> = {}): boolean {
     const actions = this.actionsFor(sessionId)
-    if (actions !== undefined) this.placeTab(sessionId, actions, kind, options)
+    if (actions === undefined) return false
+    this.placeTab(sessionId, actions, kind, options)
+    return true
   }
 
   /**
-   * Close a tab of one session, preserving the sole docked guide; nothing happens
-   * for a session whose store was never adopted or whose adoption was released.
-   * Not part of `ISidebarRight`: the Tab domain's path.
+   * Split one Session's currently mounted docked pane to its right.
+   * @param sessionId - the Session the acting tab is in.
+   * @param paneId - the docked pane to split.
+   * @returns the new pane, or `undefined` when the Session is not mounted or cannot split.
+   */
+  splitIn(sessionId: SessionId, paneId: PaneId): PaneId | undefined {
+    const binding = this.binding
+    if (binding === undefined || binding.sessionId !== sessionId) return undefined
+    const layout = binding.surfaces[sessionId]?.layout
+    return layout === undefined
+      ? undefined
+      : this.splitSurface(sessionId, binding.actions, layout, paneId, binding.canSplitPane)
+  }
+
+  /**
+   * Observe Session-store adoption so rejected targeted operations can retry.
+   * @param listener - called after a Session store becomes available.
+   * @returns a disposer that removes exactly this listener.
+   */
+  onSessionAdopted(listener: (sessionId: SessionId) => void): () => void {
+    this.adoptionListeners.add(listener)
+    return () => { this.adoptionListeners.delete(listener) }
+  }
+
+  /**
+   * Close a tab of one Session, preserving the sole docked guide; nothing happens
+   * for a Session whose store was never adopted or whose adoption was released.
    * @param sessionId - the session the tab is in.
    * @param tabId - the tab to close.
    */
@@ -394,8 +452,19 @@ export class SidebarRightController implements ISidebarRight {
   split(paneId?: PaneId): PaneId | undefined {
     const { sessionId, actions, canSplitPane } = this.require()
     const layout = this.mounted()?.layout
-    if (layout === undefined) return undefined
-    const target = paneId ?? activeDockPaneId(layout)
+    return layout === undefined
+      ? undefined
+      : this.splitSurface(sessionId, actions, layout, paneId ?? activeDockPaneId(layout), canSplitPane)
+  }
+
+  /** Apply the shared pane budget and room rule before recording one split. */
+  private splitSurface(
+    sessionId: SessionId,
+    actions: SurfaceActions,
+    layout: SurfaceState['layout'],
+    target: PaneId,
+    canSplitPane: (paneId: PaneId) => boolean,
+  ): PaneId | undefined {
     const node = layout.nodes[target]
     if (node === undefined || node.kind !== 'pane' || node.host !== 'dock') return undefined
     if (!canSplit(layout) || dockPaneIds(layout).length >= 2 || !canSplitPane(target)) return undefined

@@ -6159,7 +6159,7 @@ window.__ModuleLoader__.load({
 			return Math.min(TREE_WIDTH_MAX, Math.max(TREE_WIDTH_MIN, Math.round(value)));
 		}
 		function EditorHost(props) {
-			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile } = props;
+			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide } = props;
 			const path = tab.path ?? "";
 			const title = tab.title;
 			const isDir = metaOf(tab).dir === true;
@@ -6179,20 +6179,25 @@ window.__ModuleLoader__.load({
 			const treeOnly = showEmpty && !inPlace;
 			const folderRoot = isDir ? path : void 0;
 			/**
-			* Open a file from THIS window (tree click / search row / path input):
-			* merged mode switches this tab in place (stable id, meta survives);
-			* split mode opens a per-path dedupe tab through openSidebarFile.
+			* Open a file from this window (tree click / search row / path input).
+			* A native tab uses its occurrence-bound actions so the open cannot drift to
+			* whichever Session happens to be mounted; the bottom workbench falls back
+			* to the Better Sidebar service.
 			*/
 			const openFile = (absolute) => {
-				if (inPlace) ctx.get("betterSidebar")?.updateTab(tab.id, {
-					path: absolute,
-					title: baseName(absolute)
-				});
+				if (inPlace) {
+					if (onOpenFileInPlace !== void 0) onOpenFileInPlace(absolute);
+					else ctx.get("betterSidebar")?.updateTab(tab.id, {
+						path: absolute,
+						title: baseName(absolute)
+					});
+				} else if (onOpenFile !== void 0) onOpenFile(absolute);
 				else openSidebarFile(ctx, store, scope.sessionId, absolute);
 			};
 			/** The context menu's explicit "new tab" escape (per-path dedupe). */
 			const openFileNewTab = (absolute) => {
-				openSidebarFile(ctx, store, scope.sessionId, absolute);
+				if (onOpenFile !== void 0) onOpenFile(absolute);
+				else openSidebarFile(ctx, store, scope.sessionId, absolute);
 			};
 			/**
 			* The context menu's "open to the side": a fresh editor tab (uid id — the
@@ -6200,6 +6205,10 @@ window.__ModuleLoader__.load({
 			* second side-open of the same file) in a rightward split of THIS pane.
 			*/
 			const openFileSide = (absolute) => {
+				if (onOpenFileSide !== void 0) {
+					onOpenFileSide(absolute);
+					return;
+				}
 				store.reduce((state) => {
 					const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits);
 					const fresh = {
@@ -13817,7 +13826,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 							updatePluginSetting
 						})
 					},
-					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
+					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
 						ctx,
 						store,
 						scope,
@@ -13825,7 +13834,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						expanded: expanded ?? [],
 						revealed: revealed ?? [],
 						onToggleDir: onToggleDir ?? (() => {}),
-						onReferenceFile: onReferenceFile ?? (() => {})
+						onReferenceFile: onReferenceFile ?? (() => {}),
+						onOpenFile,
+						onOpenFileInPlace,
+						onOpenFileSide
 					})
 				},
 				{
@@ -13839,15 +13851,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						const count = opCountOf(scope.sessionId);
 						return count === void 0 || count === 0 ? null : count;
 					},
-					component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
+					component: ({ ctx, store, scope, tab, visible, onOpenFile, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
 						ctx,
 						store,
 						scope,
 						tab,
 						visible,
-						onOpenFile: (path) => {
+						onOpenFile: onOpenFile ?? ((path) => {
 							openSidebarFile(ctx, store, scope.sessionId, path);
-						},
+						}),
 						onOpenDiff
 					})
 				},
@@ -16744,6 +16756,17 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		function useSessionCwd(ctx, sessionId) {
 			return (0, react.useSyncExternalStore)((0, react.useMemo)(() => (listener) => ctx.sessions.list.subscribe(listener), [ctx]), () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd);
 		}
+		/** Open one path through the native tab occurrence that owns the gesture. */
+		function openNativeFile(info, sessionId, cwd, path, placement) {
+			const options = placement === "replace" ? {
+				replaceTab: true,
+				revealIfOpened: false
+			} : placement === "side" ? {
+				toSide: true,
+				revealIfOpened: false
+			} : { revealIfOpened: true };
+			info.tab.actions.openResource(fileAddressFor(sessionId, cwd, path), options);
+		}
 		/**
 		* One plugin tab rendered inside the native right Sidebar: the descriptor's
 		* own component with the plugin's props, over a synthetic record minted from
@@ -16811,6 +16834,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				},
 				onReferenceFile: (path, isDir) => {
 					referenceInChat(ctx, sessionId, cwd, path, isDir);
+				},
+				onOpenFile: (path) => {
+					openNativeFile(info, sessionId, cwd, path, "tab");
+				},
+				onOpenFileInPlace: (path) => {
+					openNativeFile(info, sessionId, cwd, path, "replace");
+				},
+				onOpenFileSide: (path) => {
+					openNativeFile(info, sessionId, cwd, path, "side");
 				},
 				onOpenDiff: (tab) => {
 					service.openTab({
@@ -17182,13 +17214,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		//#endregion
 		//#region src/client/native/surface.ts
 		/** The active session id, as the client list reports it. */
-		function activeSessionId(ctx) {
-			try {
-				return ctx.sessions.list.getSnapshot().current;
-			} catch {
-				return;
-			}
-		}
 		/**
 		* Bind the plugin's write face to the native controller.
 		* @param ctx - the client context (session list + `ctx.sidebarRight`).
@@ -17201,48 +17226,30 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			const place = (entry) => {
 				const api = controller();
 				if (api === void 0) return false;
-				const active = activeSessionId(ctx);
-				const onScreen = active !== void 0 && active === entry.sessionId;
 				if (entry.kind === "tab") {
 					const options = {
 						params: entry.params,
 						revealIfOpened: entry.revealIfOpened
 					};
-					if (onScreen) {
-						api.openTab(entry.tabKind, options);
-						return true;
-					}
-					if (api.openTabIn !== void 0) {
-						api.openTabIn(entry.sessionId, entry.tabKind, options);
-						return true;
-					}
-					return false;
+					return api.openTabIn(entry.sessionId, entry.tabKind, options);
 				}
 				const options = {
 					...entry.line === void 0 ? {} : { params: { line: entry.line } },
 					revealIfOpened: entry.revealIfOpened
 				};
-				if (onScreen) {
-					api.openResource(entry.address, options);
-					return true;
-				}
-				if (api.openResourceIn !== void 0) {
-					api.openResourceIn(entry.sessionId, entry.address, options);
-					return true;
-				}
-				return false;
+				return api.openResourceIn(entry.sessionId, entry.address, options);
 			};
 			const flushPending = () => {
 				if (pending.length === 0) return;
-				for (let index = pending.length - 1; index >= 0; index--) {
-					const entry = pending[index];
-					if (entry !== void 0 && place(entry)) pending.splice(index, 1);
-				}
+				const retained = pending.filter((entry) => !place(entry));
+				pending.splice(0, pending.length, ...retained);
 			};
 			const enqueue = (entry) => {
+				flushPending();
 				if (!place(entry)) pending.push(entry);
 			};
-			const unsubscribe = ctx.sessions.list.subscribe(flushPending);
+			const unsubscribeSessionList = ctx.sessions.list.subscribe(flushPending);
+			const unsubscribeAdoption = controller()?.onSessionAdopted(flushPending);
 			return {
 				openTab({ sessionId, kind, params, revealIfOpened }) {
 					enqueue({
@@ -17269,11 +17276,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					const record = records.get(tabId);
 					if (record === void 0) return void 0;
 					records.drop(tabId);
-					const api = controller();
-					if (api !== void 0) {
-						if (sessionId === activeSessionId(ctx)) api.close(tabId);
-						else if (api.closeIn !== void 0) api.closeIn(sessionId, tabId);
-					}
+					controller()?.closeIn(sessionId, tabId);
 					return {
 						type: record.tab.type,
 						title: record.tab.title
@@ -17288,9 +17291,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					return records.has(tabId);
 				},
 				has: (tabId) => records.has(tabId),
-				flushPending,
 				dispose: () => {
-					unsubscribe();
+					unsubscribeSessionList();
+					unsubscribeAdoption?.();
 				}
 			};
 		}

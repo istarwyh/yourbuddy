@@ -11,9 +11,9 @@
  * - the surface exists only while a session's panel is mounted, and the
  *   service's public face (`ISidebarRight`) writes only into THAT session.
  *   The controller also carries `openTabIn` / `openResourceIn` /
- *   `closeIn`, which act on any session whose store the runtime has minted;
- *   both are probed at call time, and an open for a session that has no
- *   store yet is QUEUED and replayed when that session comes on screen;
+ *   `closeIn`, which act on any Session whose store the runtime has minted;
+ *   an open for a Session that has no store yet is queued and replayed in
+ *   request order when that store is adopted;
  * - layout state is memory-only, so a queued open is not durable either.
  */
 import type { Context } from '../../context-types.ts';
@@ -21,9 +21,7 @@ import type { SidebarSurface } from '../service.ts';
 import type { NativeTabRecords } from './tab-adapter.tsx';
 /** The plugin's write face over the native surface. */
 export interface NativeSurface extends SidebarSurface {
-    /** Replay opens that were queued for a session that had no mounted surface. */
-    flushPending(): void;
-    /** Stop observing the session list. */
+    /** Stop observing Session-list and native-store lifecycle changes. */
     dispose(): void;
 }
 /**
