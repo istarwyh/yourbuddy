@@ -1481,10 +1481,23 @@ function verifyOfflineArchive(root) {
   }
 }
 
+/**
+ * Resolve a Settings schema result whether it is a plain value or a volatile proxy.
+ *
+ * @template T
+ * @param {(input: T) => T | {get: () => T}} schema
+ * @param {T} input
+ * @returns {T}
+ */
+export function resolveSettingsConfig(schema, input) {
+  const parsed = schema(input)
+  return typeof parsed?.get === 'function' ? parsed.get() : parsed
+}
+
 async function verifyMarketplaceHostContract(root) {
   const entry = join(root, 'packages', 'product', 'plugin-marketplace', 'index.js')
   const marketplace = await import(`${pathToFileURL(entry).href}?verify=${Date.now()}`)
-  const parsed = marketplace.Config({
+  const parsed = resolveSettingsConfig(marketplace.Config, {
     installState: {
       status: 'error',
       message: syntheticInstallFailure,

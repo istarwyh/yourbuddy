@@ -17,8 +17,15 @@ import {
   createReleaseChildEnvironment,
   desktopWebviewCookie,
   recordProductClientResponse,
+  resolveSettingsConfig,
   stopChild,
 } from './verify-product-release.mjs'
+
+test('release smoke reads plain and volatile Settings schema results', () => {
+  const input = { installState: { pkg: 'owner/repository' } }
+  assert.equal(resolveSettingsConfig(value => value, input), input)
+  assert.equal(resolveSettingsConfig(value => ({ get: () => value }), input), input)
+})
 
 test('release smoke accepts only a mounted GPT Auth status channel', () => {
   assert.doesNotThrow(() => assertCodexAuthStatusProbe({
