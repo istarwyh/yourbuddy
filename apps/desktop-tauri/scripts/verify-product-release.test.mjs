@@ -117,7 +117,7 @@ test('release smoke exchanges the printed launch token for an authority cookie',
   const server = createServer((request, response) => {
     assert.equal(request.url, '/?token=release-secret')
     response.writeHead(303, {
-      location: '/',
+      location: './',
       'set-cookie': 'dsh_session=test-cookie; Path=/; HttpOnly; SameSite=Strict',
     })
     response.end()

@@ -411,7 +411,7 @@ export async function authenticateHost(launchUrl) {
     redirect: 'manual',
     signal: AbortSignal.timeout(15_000),
   })
-  if (response.status !== 303 || response.headers.get('location') !== '/') {
+  if (response.status !== 303 || response.headers.get('location') !== './') {
     throw new Error(`release smoke Host authentication returned ${response.status}`)
   }
   const setCookie = response.headers.get('set-cookie')
