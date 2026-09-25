@@ -48,6 +48,9 @@ importers:
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:*
         version: link:../../packages/api/remotes
+      '@deepseek-ai/dsh-api-session-controller':
+        specifier: workspace:*
+        version: link:../../packages/api/session-controller
       '@deepseek-ai/dsh-app-boot':
         specifier: workspace:^
         version: link:../../packages/boot/app-boot
@@ -84,6 +87,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-renderer':
         specifier: workspace:*
         version: link:../../packages/client/ui-renderer
+      '@deepseek-ai/dsh-client-ui-session':
+        specifier: workspace:*
+        version: link:../../packages/client/ui-session
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: workspace:*
         version: link:../../packages/client/ui-settings
@@ -3897,6 +3903,9 @@ importers:
       '@deepseek-ai/dsh-api-remotes':
         specifier: 0.1.5-rc.2
         version: link:../../api/remotes
+      '@deepseek-ai/dsh-api-session-controller':
+        specifier: 0.1.5-rc.2
+        version: link:../../api/session-controller
       '@deepseek-ai/dsh-client-connection':
         specifier: 0.1.5-rc.2
         version: link:../../client/connection
@@ -3906,9 +3915,15 @@ importers:
       '@deepseek-ai/dsh-client-ui-conversation':
         specifier: 0.1.5-rc.2
         version: link:../../client/ui-conversation
+      '@deepseek-ai/dsh-client-ui-layout':
+        specifier: 0.1.5-rc.2
+        version: link:../../client/ui-layout
       '@deepseek-ai/dsh-client-ui-renderer':
         specifier: 0.1.5-rc.2
         version: link:../../client/ui-renderer
+      '@deepseek-ai/dsh-client-ui-session':
+        specifier: 0.1.5-rc.2
+        version: link:../../client/ui-session
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: 0.1.5-rc.2
         version: link:../../client/ui-settings

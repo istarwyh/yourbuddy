@@ -76,7 +76,7 @@ dsh plugin --profile web add dsh-better-sidebar@latest   # re-run succeeds
 
 Then **hard-refresh the browser** (Cmd/Ctrl+Shift+R) to see the sidebar (DSH hot-reloads client changes; only host-half updates need a restart).
 
-The Host config accepts `presentation: portal | slot`. `portal` is the default and preserves the expandable bottom workbench. Product compositions that provide DSH's optional `workbench` slot can select `slot`; at desktop width, the plugin's split-pane workbench always fills that slot regardless of the bottom-panel expanded state while the DSH shell owns the outer column width. On narrow screens, the same workbench returns to the overlay and continues to use its expanded and collapsed state.
+The Host config accepts `presentation: portal | slot`. `portal` is the default and preserves the expandable bottom workbench. A product composition can select `slot` and provide the `workbench.core` child slot. Better Sidebar then remains mounted as the product's durable middle workbench while the product coordinator controls outer geometry and may temporarily hide it behind another middle surface. Explicit user opens reveal the core workbench; Agent and feed opens update it in the background without replacing the visible surface.
 
 **Or let DSH install it for you** — paste this prompt into any DSH session:
 

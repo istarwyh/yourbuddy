@@ -7,6 +7,7 @@ const aligned = {
   packageVersion: '0.2.7',
   tauriVersion: '0.2.7',
   cargoVersion: '0.2.7',
+  cargoLockVersion: '0.2.7',
   notesVersion: '0.2.7',
   iconVersion: '0.2.7',
 }
@@ -24,6 +25,10 @@ test('validateReleaseVersions rejects source and tag drift', () => {
     /Cargo\.toml=0\.1\.0/,
   )
   assert.throws(
+    () => validateReleaseVersions({ ...aligned, cargoLockVersion: '0.1.0' }),
+    /Cargo\.lock=0\.1\.0/,
+  )
+  assert.throws(
     () => validateReleaseVersions({ ...aligned, tag: 'yourbuddy-v0.2.0' }),
     /release tag mismatch/,
   )
@@ -34,5 +39,6 @@ test('validateReleaseVersions rejects source and tag drift', () => {
 })
 
 test('repository desktop version sources are aligned', () => {
-  assert.equal(verifyReleaseVersion('yourbuddy-v0.3.15').version, '0.3.15')
+  const result = verifyReleaseVersion()
+  assert.equal(verifyReleaseVersion(result.expectedTag).version, result.version)
 })

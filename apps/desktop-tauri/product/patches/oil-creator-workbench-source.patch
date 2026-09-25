@@ -1,0 +1,3645 @@
+diff --git a/package.json b/package.json
+index ac9e389..041e241 100644
+--- a/package.json
++++ b/package.json
+@@ -65,7 +65,7 @@
+     "typecheck": "tsc --noEmit",
+     "test": "vitest run",
+     "release:check": "node scripts/check-release.mjs",
+-    "check": "pnpm typecheck && pnpm test && pnpm build"
++    "check": "pnpm typecheck && pnpm build && pnpm test"
+   },
+   "dependencies": {
+     "@deepseek-ai/dsh-tools": "0.1.0-rc.6 || 0.1.0-rc.7",
+diff --git a/scripts/check-release.mjs b/scripts/check-release.mjs
+index 04d27f2..89603a6 100644
+--- a/scripts/check-release.mjs
++++ b/scripts/check-release.mjs
+@@ -127,8 +127,8 @@ function checkRelease(root) {
+   if (typeof scripts.test !== "string" || scripts.test.length === 0) {
+     addFailure("缺少 test 脚本");
+   }
+-  if (scripts.check !== "pnpm typecheck && pnpm test && pnpm build") {
+-    addFailure("check 必须固定为完整的 pnpm typecheck、test、build 流程");
++  if (scripts.check !== "pnpm typecheck && pnpm build && pnpm test") {
++    addFailure("check 必须固定为完整的 pnpm typecheck、build、test 流程");
+   }
+   if (scripts["release:check"] !== "node scripts/check-release.mjs") {
+     addFailure("缺少显式 release:check 门禁脚本");
+diff --git a/src/bundledSkills.ts b/src/bundledSkills.ts
+new file mode 100644
+index 0000000..d6145dd
+--- /dev/null
++++ b/src/bundledSkills.ts
+@@ -0,0 +1,9 @@
++import { dirname, join } from "node:path";
++import { fileURLToPath } from "node:url";
++
++const moduleDir = dirname(fileURLToPath(import.meta.url));
++const bundledSkillsRoot = join(moduleDir, "..", "skills");
++
++export function bundledSkillDir(name: string): string {
++  return join(bundledSkillsRoot, name);
++}
+diff --git a/src/capabilities.ts b/src/capabilities.ts
+index 9618cf8..d8cb923 100644
+--- a/src/capabilities.ts
++++ b/src/capabilities.ts
+@@ -4,6 +4,7 @@ import { homedir } from "node:os";
+ import { delimiter, join } from "node:path";
+ 
+ import { skillDirCandidates } from "./config.ts";
++import { bundledSkillDir } from "./bundledSkills.ts";
+ import { resolveCoverSkill } from "./generate.ts";
+ import {
+   egoInstallCandidates,
+@@ -32,7 +33,14 @@ interface InspectCreatorSetupOptions {
+ }
+ 
+ export function defaultFindSkillDir(skillName: string, home = homedir()): string | undefined {
+-  return skillDirCandidates(skillName, home).find((candidate) => existsSync(join(candidate, "SKILL.md")));
++  const installed = skillDirCandidates(skillName, home)
++    .find((candidate) => existsSync(join(candidate, "SKILL.md")));
++  if (installed !== undefined) return installed;
++  if (["video-publisher", "oil-video-article", "wechat-publisher"].includes(skillName)) {
++    const bundled = bundledSkillDir(skillName);
++    if (existsSync(join(bundled, "SKILL.md"))) return bundled;
++  }
++  return undefined;
+ }
+ 
+ function capability(
+@@ -170,7 +178,7 @@ async function findEgo(
+ 
+ function egoCapability(found: { path: string; kind: "cli" | "app" } | undefined): CreatorCapability {
+   if (found === undefined) {
+-    return capability("missing", false, "未发现 Ego Browser；自动发布和发布数据回收不可用。");
++    return capability("missing", false, "未发现 Ego Browser；视频草稿准备和发布数据回收不可用。");
+   }
+   if (found.kind === "app") {
+     return capability(
+@@ -180,7 +188,7 @@ function egoCapability(found: { path: string; kind: "cli" | "app" } | undefined)
+       found.path,
+     );
+   }
+-  return capability("ready", false, "已发现 Ego Browser，可自动发布和回收发布数据。", found.path);
++  return capability("ready", false, "已发现 Ego Browser，可准备视频草稿和回收发布数据。", found.path);
+ }
+ 
+ function recommendationsOf(capabilities: CreatorCapabilities): string[] {
+@@ -203,13 +211,14 @@ function recommendationsOf(capabilities: CreatorCapabilities): string[] {
+   if (capabilities.publishSync.state !== "ready") {
+     recommendations.push(
+       capabilities.publishSync.detail.includes("PATH")
+-        ? "自动发布和数据回收：已装 Ego Lite，还需要把 ego-browser 加到 PATH。"
+-        : "自动发布和数据回收：安装 Ego Browser（https://lite.ego.app）并保证 PATH 里有 ego-browser，再登录各平台后台。",
++        ? "视频草稿准备和数据回收：已装 Ego Lite，还需要把 ego-browser 加到 PATH。"
++        : "视频草稿准备和数据回收：安装 Ego Browser（https://lite.ego.app）并保证 PATH 里有 ego-browser，再登录各平台后台。",
+     );
+   }
+   if (capabilities.editingSkill.state !== "ready") recommendations.push("自动剪辑：git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor");
+-  if (capabilities.publishSkill.state !== "ready") recommendations.push("自动发布：git clone https://github.com/oil-oil/video-publisher-skill ~/.agents/skills/video-publisher");
+-  if (capabilities.articleSkill.state !== "ready") recommendations.push("公众号图文：git clone https://github.com/oil-oil/oil-video-article ~/.agents/skills/oil-video-article");
++  if (capabilities.publishSkill.state !== "ready") recommendations.push("视频草稿准备：当前安装包缺少内置 video-publisher，请修复或更新 YourBuddy。");
++  if (capabilities.articleSkill.state !== "ready") recommendations.push("公众号图文：当前安装包缺少内置 oil-video-article，请修复或更新 YourBuddy。");
++  if (capabilities.wechatPublisherSkill.state !== "ready") recommendations.push("公众号草稿：当前安装包缺少内置 wechat-publisher，请修复或更新 YourBuddy。");
+   return recommendations;
+ }
+ 
+@@ -231,6 +240,7 @@ export async function inspectCreatorSetup(
+     editingSkill: skillCapability(findSkillDir, "screen-studio-editor"),
+     publishSkill: skillCapability(findSkillDir, "video-publisher"),
+     articleSkill: skillCapability(findSkillDir, "oil-video-article"),
++    wechatPublisherSkill: skillCapability(findSkillDir, "wechat-publisher"),
+   };
+   return {
+     platform,
+diff --git a/src/catalog.ts b/src/catalog.ts
+index 118add5..6d87c91 100644
+--- a/src/catalog.ts
++++ b/src/catalog.ts
+@@ -130,7 +130,9 @@ export function workflowOf(
+   if (anyPlatformPublished(item.publish)) return "live";
+   const recorded = item.videoRaw !== undefined || item.videoSubtitled !== undefined;
+   if (recorded) {
+-    if (hasSubtitle(item as ContentSummary) && hasCover(item as ContentSummary)) return "publish";
++    if (item.hasPublishPackage && hasSubtitle(item as ContentSummary) && hasCover(item as ContentSummary)) {
++      return "publish";
++    }
+     return "finish";
+   }
+   if (item.studioPath !== undefined || overlay?.studioPath !== undefined) return "cut";
+@@ -181,6 +183,16 @@ function stringArrayField(value: unknown, key: string): string[] {
+   return field.filter((item): item is string => typeof item === "string" && item.length > 0);
+ }
+ 
++function publishPackageIsValid(value: unknown): boolean {
++  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
++  const record = value as Record<string, unknown>;
++  return typeof record.title === "string"
++    && record.title.trim() !== ""
++    && Array.isArray(record.tags)
++    && record.tags.length > 0
++    && record.tags.every((tag) => typeof tag === "string" && tag.trim() !== "");
++}
++
+ async function scanFolder(
+   libraryRoot: string,
+   folderName: string,
+@@ -243,6 +255,7 @@ async function scanFolder(
+   const title = overlayTitle ?? folderTitle;
+ 
+   const tags = [
++    ...stringArrayField(packageJson, "tags"),
+     ...stringArrayField(packageJson, "xhsTopics"),
+     ...stringArrayField(packageJson, "douyinTopics"),
+     ...stringArrayField(packageJson, "bilibiliTags"),
+@@ -282,7 +295,7 @@ async function scanFolder(
+     createdMs,
+     covers,
+     subtitles,
+-    hasPublishPackage: packageJson !== undefined,
++    hasPublishPackage: publishPackageIsValid(packageJson),
+     hasArticle: articlePath !== undefined,
+     waitingForExport: overlayItem?.waitingForExport === true,
+     ...(overlayItem?.exportTimedOut === true ? { exportTimedOut: true } : {}),
+@@ -296,6 +309,9 @@ async function scanFolder(
+     burn: overlayItem?.burn ?? emptyBurn(),
+     subtitleJob: overlayItem?.subtitleJob ?? emptyBurn(),
+     coverJob: overlayItem?.coverJob ?? emptyBurn(),
++    ...(overlayItem?.publishPreparation === undefined
++      ? {}
++      : { publishPreparation: overlayItem.publishPreparation }),
+   };
+ 
+   return {
+diff --git a/src/client/ContentInspector.css b/src/client/ContentInspector.css
+index e67d7f0..6e3b379 100644
+--- a/src/client/ContentInspector.css
++++ b/src/client/ContentInspector.css
+@@ -14,17 +14,6 @@
+   --dsh-scrollbar-thumb-hover: transparent;
+ }
+ 
+-[data-plugin="dsh-oil-creator"][data-surface="inspector"].docked {
+-  position: absolute;
+-  top: 0;
+-  bottom: 0;
+-  left: var(--oil-sidebar-width, 280px);
+-}
+-
+-[data-plugin="dsh-oil-creator"][data-surface="inspector"].docked.open:not(.dragging) {
+-  transition: width var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+-}
+-
+ [data-plugin="dsh-oil-creator"][data-surface="inspector"] .header {
+   flex: none;
+   padding: 12px 16px 0 16px;
+@@ -309,16 +298,109 @@
+   gap: 10px;
+ }
+ 
+-[data-plugin="dsh-oil-creator"][data-surface="inspector"].wide .publishGrid {
+-  grid-template-columns: 1fr 1fr;
+-}
+-
+ [data-plugin="dsh-oil-creator"][data-surface="inspector"] .publishCard {
+   padding: 10px 12px;
+   border-radius: 10px;
+   background: var(--dsw-alias-bg-layer-1);
+ }
+ 
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareReview {
++  display: grid;
++  gap: 6px;
++  margin: 0 0 14px;
++  padding: 10px 12px;
++  border: 1px solid var(--dsw-alias-border-l1);
++  border-radius: 8px;
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareReview > div {
++  display: grid;
++  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
++  gap: 4px 10px;
++  color: var(--dsw-alias-label-tertiary);
++  font: var(--dsw-font-markdown-small);
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareReview strong,
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareReview code {
++  min-width: 0;
++  overflow: hidden;
++  color: var(--dsw-alias-label-primary);
++  font: inherit;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareReview code {
++  grid-column: 2;
++  color: var(--dsw-alias-label-tertiary);
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareOptions {
++  display: flex;
++  flex-direction: column;
++  gap: 8px;
++  margin-bottom: 12px;
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareLabel,
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareHelp,
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareDetail {
++  color: var(--dsw-alias-label-tertiary);
++  font: var(--dsw-font-markdown-small);
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .preparePlatforms {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 8px 14px;
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareCheck {
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  color: var(--dsw-alias-label-secondary);
++  font: var(--dsw-font-markdown-small);
++  cursor: pointer;
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareCheck:has(input:disabled) {
++  cursor: default;
++  opacity: 0.58;
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareConfirm {
++  color: var(--dsw-alias-label-primary);
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareResults {
++  display: flex;
++  flex-direction: column;
++  gap: 8px;
++  margin: 12px 0;
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareResultRow {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 12px;
++  min-width: 0;
++  font: var(--dsw-font-markdown-small);
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareReady {
++  color: var(--dsw-alias-state-success-primary);
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareBlocked {
++  max-width: 60%;
++  overflow-wrap: anywhere;
++  color: var(--dsw-alias-state-error-primary);
++  text-align: right;
++}
++
+ [data-plugin="dsh-oil-creator"][data-surface="inspector"] .scriptEditor {
+   display: block;
+   flex: 1;
+@@ -481,20 +563,3 @@
+   color: var(--dsw-alias-label-secondary);
+   font: var(--dsw-font-markdown-small);
+ }
+-
+-[data-plugin="dsh-oil-creator"][data-surface="inspector"] .resize {
+-  position: absolute;
+-  top: 0;
+-  right: -4px;
+-  bottom: 0;
+-  width: 8px;
+-  cursor: col-resize;
+-  z-index: 2;
+-  touch-action: none;
+-}
+-
+-@media (prefers-reduced-motion: reduce) {
+-  [data-plugin="dsh-oil-creator"][data-surface="inspector"].docked.open:not(.dragging) {
+-    transition: none;
+-  }
+-}
+diff --git a/src/client/ContentInspector.tsx b/src/client/ContentInspector.tsx
+index e98032b..e15977a 100644
+--- a/src/client/ContentInspector.tsx
++++ b/src/client/ContentInspector.tsx
+@@ -12,21 +12,36 @@ import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-cli
+ import { formatCount } from "../collectPublish.ts";
+ import { isPublishMark } from "../publishStatus.ts";
+ import { rewriteArticleImages } from "../articleMarkdown.ts";
+-import type { ArticleMediaResult, ContentDetail, PublishMark, PublishPlatform, SubtitleCue, VideoPlaybackResult, WorkflowStage } from "../types.ts";
++import type {
++  ArticleMediaResult,
++  ContentDetail,
++  PreparePublishResult,
++  PublishMark,
++  PublishPlatform,
++  SubtitleCue,
++  VideoPlaybackResult,
++  WorkflowStage,
++} from "../types.ts";
+ import { CoverThumb, coverThumbRevision } from "./CoverThumb.tsx";
+ import type { CreatorViewFace } from "./face.ts";
+ import {
+-  applyConversationInset,
+-  clearConversationInset,
+-  getInspectorWidth,
+-  setInspectorWidth,
+   useLibraryEpoch,
+   useProfileEpoch,
+   useSelectedContentId,
+ } from "./contentSelection.ts";
+ import type { CreatorKey } from "./locales.ts";
+ import { PlatformMark } from "./PlatformMark.tsx";
+-import { isPublishSyncDisabled, PUBLISH_UI_PLATFORMS, selectEnabledPublishPlatforms } from "./publishPlatforms.ts";
++import {
++  initialPreparePlatforms,
++  isPreparePublishDisabled,
++  isPublishSyncDisabled,
++  missingSelectedCoverRatios,
++  preparePublishOutcome,
++  publisherPlatformKey,
++  PUBLISH_UI_PLATFORMS,
++  requiresOriginalityConfirmation,
++  selectEnabledPublishPlatforms,
++} from "./publishPlatforms.ts";
+ import { formatRelativeTime } from "./relativeTime.ts";
+ import { WORKFLOW_TONE } from "./sidebar/ContentSidebarPanel.tsx";
+ import { ActionBar, ActionButton } from "./ui/ActionButton.tsx";
+@@ -87,6 +102,10 @@ const TAB_KEY: Record<InspectorTab, CreatorKey> = {
+   article: "inspector.tab.article",
+ };
+ 
++function basenameOf(path: string): string {
++  return path.replaceAll("\\", "/").split("/").at(-1) ?? path;
++}
++
+ function cuesFromSubtitle(nextSubtitle: { text: string; cues: SubtitleCue[] }): SubtitleCue[] {
+   if (nextSubtitle.cues.length > 0) return nextSubtitle.cues;
+   if (nextSubtitle.text === "") return [];
+@@ -118,7 +137,7 @@ function metricParts(
+   return parts;
+ }
+ 
+-function JobNote({ tone, children }: { tone?: "running" | "done" | "error"; children: ReactNode }) {
++function JobNote({ tone, children }: { tone?: "running" | "done" | "error" | undefined; children: ReactNode }) {
+   return (
+     <div className={tone === undefined ? "jobNote" : `jobNote ${tone}`}>
+       {tone === "running" && <StateDot state="ongoing" size={12} />}
+@@ -152,7 +171,7 @@ function WorkRow({
+ }
+ 
+ export type ContentInspectorProps =
+-  & PropsRuntime<"shell.overlay">
++  & PropsRuntime<"workbench.content">
+   & InjectFace<CreatorViewFace>
+   & PropsLocale<"dsh.oil.creator">
+   & {
+@@ -173,6 +192,7 @@ export function ContentInspector({
+   bindStudio,
+   openStudio,
+   setPublish,
++  preparePublish,
+   syncPublish,
+   startSubtitleGenerate,
+   startSubtitleBurn,
+@@ -183,23 +203,27 @@ export function ContentInspector({
+   openPath,
+   closeDetails,
+ }: ContentInspectorProps) {
+-  const [selectedId, setSelectedId] = useSelectedContentId();
++  const [selectedId] = useSelectedContentId();
+   const currentSessionId = useSessions((sessions) => sessions.current);
++  const previousSessionId = useRef(currentSessionId);
+   const libraryEpoch = useLibraryEpoch();
+   const profileEpoch = useProfileEpoch();
+   const [enabledPlatforms, setEnabledPlatforms] = useState<readonly PublishPlatform[] | undefined>(undefined);
++  const [draftPlatforms, setDraftPlatforms] = useState<PublishPlatform[]>([]);
++  const [includeWechatArticle, setIncludeWechatArticle] = useState(false);
++  const [originalRightsConfirmed, setOriginalRightsConfirmed] = useState(false);
++  const [uploadCovers, setUploadCovers] = useState(false);
++  const [prepareResult, setPrepareResult] = useState<PreparePublishResult | undefined>(undefined);
++  const draftSelectionId = useRef<string | null>(null);
+   const scriptSavedRef = useRef(true);
+   const loadedId = useRef<string | null>(null);
+   const [detail, setDetail] = useState<ContentDetail | undefined>(undefined);
+   const [cues, setCues] = useState<SubtitleCue[]>([]);
+   const [error, setError] = useState<string | undefined>(undefined);
+   const [tab, setTab] = useState<InspectorTab>("overview");
+-  const [panelWidth, setPanelWidth] = useState(getInspectorWidth);
+-  const [expanded, setExpanded] = useState(false);
+-  const [dragging, setDragging] = useState(false);
+   const [actionError, setActionError] = useState<string | undefined>(undefined);
+ 
+-  const [busy, setBusy] = useState<"subtitle" | "burn" | "cover" | "sync" | undefined>(undefined);
++  const [busy, setBusy] = useState<"subtitle" | "burn" | "cover" | "prepare" | "sync" | undefined>(undefined);
+   const expectSubtitlePreview = useRef(false);
+   const [syncHint, setSyncHint] = useState<string | undefined>(undefined);
+   const [scriptDraft, setScriptDraft] = useState("");
+@@ -210,7 +234,6 @@ export function ContentInspector({
+   const [articleOrigin, setArticleOrigin] = useState<string | undefined>(undefined);
+   const [publishMenu, setPublishMenu] = useState<PublishPlatform | null>(null);
+   const [publishPending, setPublishPending] = useState<PublishPlatform | null>(null);
+-  const drag = useRef<{ startX: number; startWidth: number } | null>(null);
+ 
+   useEffect(() => {
+     setTab("overview");
+@@ -226,6 +249,12 @@ export function ContentInspector({
+     expectSubtitlePreview.current = false;
+     setPublishMenu(null);
+     setPublishPending(null);
++    draftSelectionId.current = null;
++    setDraftPlatforms([]);
++    setIncludeWechatArticle(false);
++    setOriginalRightsConfirmed(false);
++    setUploadCovers(false);
++    setPrepareResult(undefined);
+   }, [selectedId]);
+ 
+   useEffect(() => {
+@@ -233,20 +262,33 @@ export function ContentInspector({
+     setEnabledPlatforms(undefined);
+     if (!ready()) {
+       setEnabledPlatforms([]);
++      setDraftPlatforms([]);
+       return () => { cancelled = true; };
+     }
+     void getSettings().then((settings) => {
+-      if (!cancelled) setEnabledPlatforms(settings.profile.enabledPlatforms);
++      if (cancelled) return;
++      setEnabledPlatforms(settings.profile.enabledPlatforms);
+     }, () => {
+-      if (!cancelled) setEnabledPlatforms([]);
++      if (cancelled) return;
++      setEnabledPlatforms([]);
++      setDraftPlatforms([]);
+     });
+     return () => { cancelled = true; };
+-  }, [getSettings, libraryEpoch, profileEpoch, ready]);
++  }, [getSettings, libraryEpoch, profileEpoch, ready, selectedId]);
+ 
+   useEffect(() => {
+-    const frame = window.requestAnimationFrame(() => { setExpanded(true); });
+-    return () => { window.cancelAnimationFrame(frame); };
+-  }, []);
++    if (detail === undefined || enabledPlatforms === undefined) return;
++    if (draftSelectionId.current === detail.id) {
++      const enabled = new Set(enabledPlatforms);
++      setDraftPlatforms((current) => current.filter((platform) => enabled.has(platform)));
++      return;
++    }
++    draftSelectionId.current = detail.id;
++    setDraftPlatforms(initialPreparePlatforms(
++      enabledPlatforms,
++      detail.publishPreparation?.selectedPlatforms,
++    ));
++  }, [detail, enabledPlatforms]);
+ 
+   useEffect(() => {
+     if (selectedId === null) {
+@@ -268,6 +310,7 @@ export function ContentInspector({
+         if (cancelled) return;
+         loadedId.current = selectedId;
+         setDetail(nextDetail);
++        setPrepareResult(nextDetail.publishPreparation);
+         if (switched || scriptSavedRef.current) {
+           setScriptDraft(nextDetail.script);
+           setScriptSaved(true);
+@@ -363,8 +406,6 @@ export function ContentInspector({
+     if (detail?.subtitleJob.status === "error") expectSubtitlePreview.current = false;
+   }, [selectedId, detail?.subtitleJob.status]);
+ 
+-  const shownWidth = expanded ? panelWidth : 0;
+-
+   const applyPublish = (platform: PublishPlatform, status: PublishMark): void => {
+     setPublishMenu(null);
+     if (detail === undefined || detail.publish[platform].status === status) return;
+@@ -379,43 +420,37 @@ export function ContentInspector({
+   };
+ 
+   useEffect(() => {
+-    if (selectedId === null) {
+-      clearConversationInset();
+-      return;
+-    }
+-    applyConversationInset(shownWidth, !dragging);
+-  }, [selectedId, currentSessionId, shownWidth, dragging]);
+-
+-  useEffect(() => () => { clearConversationInset(); }, []);
+-
+-  useEffect(() => {
+-    const onMove = (event: PointerEvent): void => {
+-      if (drag.current === null) return;
+-      setInspectorWidth(drag.current.startWidth + (event.clientX - drag.current.startX));
+-      setPanelWidth(getInspectorWidth());
+-    };
+-    const onUp = (): void => {
+-      if (drag.current === null) return;
+-      drag.current = null;
+-      setDragging(false);
+-    };
+-    document.addEventListener("pointermove", onMove);
+-    document.addEventListener("pointerup", onUp);
+-    return () => {
+-      document.removeEventListener("pointermove", onMove);
+-      document.removeEventListener("pointerup", onUp);
+-    };
+-  }, []);
++    if (previousSessionId.current === currentSessionId) return;
++    previousSessionId.current = currentSessionId;
++    closeDetails();
++  }, [currentSessionId, closeDetails]);
+ 
+   if (selectedId === null) return null;
+ 
+   const hasVideo = detail?.videoRaw !== undefined || detail?.videoSubtitled !== undefined;
++  const draftVideoPath = detail?.videoSubtitled ?? detail?.videoRaw;
+   const hasSubtitleDraft = detail?.subtitles.srt !== undefined || detail?.subtitles.transcript !== undefined;
+   const canPreviewSubtitle = hasSubtitleDraft || detail?.subtitleJob.status === "done";
+   const hasAnyCover = detail !== undefined
+     && (detail.covers["3x4"] !== undefined || detail.covers["4x3"] !== undefined || detail.covers["16x9"] !== undefined);
+   const platformSettingsPending = enabledPlatforms === undefined;
+   const visiblePlatforms = platformSettingsPending ? [] : selectEnabledPublishPlatforms(enabledPlatforms);
++  const draftNeedsOriginality = requiresOriginalityConfirmation(draftPlatforms);
++  const missingDraftCoverRatios = detail === undefined
++    ? []
++    : missingSelectedCoverRatios(detail.covers, draftPlatforms);
++  const prepareOutcome = prepareResult === undefined ? undefined : preparePublishOutcome(prepareResult);
++  const prepareDisabled = detail === undefined || isPreparePublishDisabled({
++    busy,
++    platformSettingsPending,
++    selectedPlatforms: draftPlatforms,
++    hasVideo,
++    includeWechatArticle,
++    hasArticle: detail?.hasArticle === true,
++    originalRightsConfirmed,
++    uploadCovers,
++    covers: detail?.covers ?? {},
++  });
+   const publishedCount = detail === undefined
+     ? 0
+     : visiblePlatforms.filter((platform) => detail.publish[platform.key].status === "published").length;
+@@ -519,6 +554,30 @@ export function ContentInspector({
+     });
+   };
+ 
++  const onPreparePublish = (): void => {
++    if (detail === undefined) return;
++    setActionError(undefined);
++    setBusy("prepare");
++    void preparePublish({
++      id: detail.id,
++      platforms: [...draftPlatforms],
++      includeWechatArticle,
++      originalRightsConfirmed,
++      uploadCovers,
++    }).then(async (result) => {
++      setPrepareResult(result);
++      const next = await getContent(detail.id);
++      return { next, result };
++    }).then(({ next, result }) => {
++      setDetail(next);
++      setPrepareResult(next.publishPreparation ?? result);
++      setBusy(undefined);
++    }, (cause: unknown) => {
++      setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
++      setBusy(undefined);
++    });
++  };
++
+   const onSyncPublish = (): void => {
+     if (detail === undefined) return;
+     setActionError(undefined);
+@@ -591,19 +650,7 @@ export function ContentInspector({
+   const currentStepMeta = PIPELINE_STEPS.find((step) => step.id === currentStep);
+ 
+   return (
+-    <div
+-      data-plugin="dsh-oil-creator"
+-      data-surface="inspector"
+-      className={[
+-        "docked",
+-        expanded ? "open" : "",
+-        dragging ? "dragging" : "",
+-        panelWidth >= 560 ? "wide" : "",
+-      ].filter((part) => part !== "").join(" ")}
+-      style={{
+-        width: shownWidth,
+-      }}
+-    >
++    <div data-plugin="dsh-oil-creator" data-surface="inspector">
+       <header className="header">
+         <div className="titleRow">
+           <div className="title">
+@@ -624,10 +671,7 @@ export function ContentInspector({
+               type="button"
+               className="close"
+               aria-label={t("inspector.close" as CreatorKey)}
+-              onClick={() => {
+-                setSelectedId(null);
+-                closeDetails();
+-              }}
++              onClick={closeDetails}
+             >
+               <IconCloseOutline16 size={14} />
+             </button>
+@@ -774,6 +818,161 @@ export function ContentInspector({
+             )}
+             {(detail.workflow === "publish" || anyPublishMarked || detail.hasArticle) && (
+               <>
++                <Surface
++                  title={t("inspector.prepare.title" as CreatorKey)}
++                  hint={t("inspector.prepare.hint" as CreatorKey)}
++                >
++                  {platformSettingsPending
++                    ? <div className="empty">{t("inspector.publish.platformsLoading" as CreatorKey)}</div>
++                    : visiblePlatforms.length === 0
++                      ? <div className="empty">{t("inspector.publish.enablePlatforms" as CreatorKey)}</div>
++                      : (
++                        <div className="prepareOptions">
++                          <div className="prepareLabel">{t("inspector.prepare.platforms" as CreatorKey)}</div>
++                          <div className="preparePlatforms">
++                            {visiblePlatforms.map((platform) => (
++                              <label key={platform.key} className="prepareCheck">
++                                <input
++                                  type="checkbox"
++                                  checked={draftPlatforms.includes(platform.key)}
++                                  disabled={busy !== undefined}
++                                  onChange={(event) => {
++                                    setDraftPlatforms((current) => event.target.checked
++                                      ? [...current, platform.key]
++                                      : current.filter((item) => item !== platform.key));
++                                    setOriginalRightsConfirmed(false);
++                                    setPrepareResult(undefined);
++                                  }}
++                                />
++                                <PlatformMark id={platform.id} size={16} />
++                                <span>{t(platform.label)}</span>
++                              </label>
++                            ))}
++                          </div>
++                        </div>
++                      )}
++                  <div className="prepareReview" data-prepare-review="inputs">
++                    <div>
++                      <span>{t("inspector.prepare.inputTitle" as CreatorKey)}</span>
++                      <strong>{detail.publishCopy.trim() || detail.title}</strong>
++                    </div>
++                    {draftVideoPath !== undefined && (
++                      <div>
++                        <span>{t("inspector.prepare.inputVideo" as CreatorKey)}</span>
++                        <strong title={draftVideoPath}>{basenameOf(draftVideoPath)}</strong>
++                        <code>{draftVideoPath}</code>
++                      </div>
++                    )}
++                    <div>
++                      <span>{t("inspector.prepare.inputTags" as CreatorKey)}</span>
++                      <strong>{detail.tags.join(" · ") || t("inspector.prepare.inputMissing" as CreatorKey)}</strong>
++                    </div>
++                    {uploadCovers && Object.entries(detail.covers).map(([ratio, path]) => (
++                      <div key={ratio}>
++                        <span>{t("inspector.prepare.inputCover" as CreatorKey).replace("{ratio}", ratio)}</span>
++                        <code>{path}</code>
++                      </div>
++                    ))}
++                  </div>
++                  <div className="prepareOptions">
++                    {draftNeedsOriginality && (
++                      <label className="prepareCheck prepareConfirm">
++                        <input
++                          type="checkbox"
++                          checked={originalRightsConfirmed}
++                          disabled={busy !== undefined}
++                          onChange={(event) => { setOriginalRightsConfirmed(event.target.checked); }}
++                        />
++                        <span>{t("inspector.prepare.originality" as CreatorKey)}</span>
++                      </label>
++                    )}
++                    <label className="prepareCheck">
++                      <input
++                        type="checkbox"
++                        checked={uploadCovers}
++                        disabled={busy !== undefined || !hasAnyCover || missingDraftCoverRatios.length > 0}
++                        onChange={(event) => { setUploadCovers(event.target.checked); }}
++                      />
++                      <span>{t("inspector.prepare.covers" as CreatorKey)}</span>
++                    </label>
++                    {hasAnyCover && missingDraftCoverRatios.length > 0 && (
++                      <div className="prepareHelp">
++                        {t("inspector.prepare.coverMissing" as CreatorKey)
++                          .replace("{ratios}", missingDraftCoverRatios.join("、"))}
++                      </div>
++                    )}
++                    <label className="prepareCheck">
++                      <input
++                        type="checkbox"
++                        checked={includeWechatArticle}
++                        disabled={busy !== undefined || !detail.hasArticle}
++                        onChange={(event) => { setIncludeWechatArticle(event.target.checked); }}
++                      />
++                      <span>{t("inspector.prepare.article" as CreatorKey)}</span>
++                    </label>
++                    {!detail.hasArticle && (
++                      <div className="prepareHelp">{t("inspector.prepare.articleMissing" as CreatorKey)}</div>
++                    )}
++                  </div>
++                  {busy === "prepare" && (
++                    <JobNote tone="running">{t("inspector.prepare.running" as CreatorKey)}</JobNote>
++                  )}
++                  {busy !== "prepare" && prepareOutcome !== undefined && (
++                    <JobNote tone={prepareOutcome === "success" ? "done" : prepareOutcome === "skipped" ? undefined : "error"}>
++                      {t(`inspector.prepare.${prepareOutcome}` as CreatorKey)}
++                    </JobNote>
++                  )}
++                  {prepareResult !== undefined && (
++                    <div className="prepareResults">
++                      {prepareResult.selectedPlatforms.map((platform) => {
++                        const definition = PUBLISH_UI_PLATFORMS.find((item) => item.key === platform);
++                        const result = prepareResult.video.platforms?.[publisherPlatformKey(platform)];
++                        if (definition === undefined || result === undefined) return null;
++                        const code = typeof result.blocker?.code === "string" ? result.blocker.code : undefined;
++                        const detailText = [code, ...result.missing].filter(Boolean).join(" · ");
++                        return (
++                          <div key={platform} className="prepareResultRow">
++                            <span className="publishName">
++                              <PlatformMark id={definition.id} size={16} />
++                              {t(definition.label)}
++                            </span>
++                            <span className={result.ready ? "prepareReady" : "prepareBlocked"}>
++                              {result.ready
++                                ? t("inspector.prepare.ready" as CreatorKey)
++                                : detailText || result.status}
++                            </span>
++                          </div>
++                        );
++                      })}
++                      {prepareResult.video.status === "blocked" && (
++                        <div className="prepareDetail">{prepareResult.video.detail}</div>
++                      )}
++                      {prepareResult.wechatOfficialAccount !== undefined && (
++                        <div className="prepareResultRow">
++                          <span>{t("inspector.prepare.articleLabel" as CreatorKey)}</span>
++                          <span className={prepareResult.wechatOfficialAccount.status === "readyForReview"
++                            ? "prepareReady"
++                            : "prepareBlocked"}
++                          >
++                            {prepareResult.wechatOfficialAccount.status === "readyForReview"
++                              ? t("inspector.prepare.ready" as CreatorKey)
++                              : prepareResult.wechatOfficialAccount.detail}
++                          </span>
++                        </div>
++                      )}
++                    </div>
++                  )}
++                  <ActionBar>
++                    <ActionButton
++                      data-action="prepare-publish"
++                      tone="primary"
++                      onClick={onPreparePublish}
++                      disabled={prepareDisabled}
++                    >
++                      {t((busy === "prepare" ? "inspector.prepare.running" : "inspector.prepare.action") as CreatorKey)}
++                    </ActionButton>
++                  </ActionBar>
++                </Surface>
+                 <Surface
+                   title={t("inspector.sync.title" as CreatorKey)}
+                   hint={syncHint ?? t((platformSettingsPending
+@@ -989,14 +1188,6 @@ export function ContentInspector({
+           </>
+         )}
+       </div>
+-      <div
+-        className="resize"
+-        onPointerDown={(event) => {
+-          event.preventDefault();
+-          drag.current = { startX: event.clientX, startWidth: panelWidth };
+-          setDragging(true);
+-        }}
+-      />
+     </div>
+   );
+ }
+diff --git a/src/client/CreatorSettingsCard.tsx b/src/client/CreatorSettingsCard.tsx
+index 808189a..e8f5fc7 100644
+--- a/src/client/CreatorSettingsCard.tsx
++++ b/src/client/CreatorSettingsCard.tsx
+@@ -38,6 +38,7 @@ const CAPABILITY_ROWS: ReadonlyArray<{ id: keyof CreatorCapabilities; label: Cre
+   { id: "editingSkill", label: "settings.capability.editing" },
+   { id: "publishSkill", label: "settings.capability.publish" },
+   { id: "articleSkill", label: "settings.capability.article" },
++  { id: "wechatPublisherSkill", label: "settings.capability.wechatDraft" },
+   { id: "publishSync", label: "settings.capability.ego" },
+ ];
+ 
+diff --git a/src/client/contentSelection.ts b/src/client/contentSelection.ts
+index febd613..062193e 100644
+--- a/src/client/contentSelection.ts
++++ b/src/client/contentSelection.ts
+@@ -9,6 +9,12 @@ import {
+ 
+ type Listener = () => void;
+ 
++export interface ProductWorkbenchFace {
++  showCore(): void;
++  showContent(id: string): void;
++}
++
++const noProductWorkbench = (): undefined => undefined;
+ const listeners = new Set<Listener>();
+ const libraryListeners = new Set<Listener>();
+ const profileListeners = new Set<Listener>();
+@@ -18,29 +24,13 @@ let sidebarTab: SidebarTab = initialUi.sidebarTab;
+ let libraryEpoch = 0;
+ let profileEpoch = 0;
+ let sidebarWidthPx = 280;
+-export const INSPECTOR_MIN = 320;
+-export const INSPECTOR_MAX = 800;
+-export const INSPECTOR_DEFAULT = 640;
+-let inspectorWidthPx = clampInspectorWidth(initialUi.inspectorWidth ?? INSPECTOR_DEFAULT);
+-
+-function clampInspectorWidth(px: number): number {
+-  return Math.min(INSPECTOR_MAX, Math.max(INSPECTOR_MIN, Math.round(px)));
+-}
++let resolveProductWorkbench: () => ProductWorkbenchFace | undefined = noProductWorkbench;
+ 
+ const chromeListeners = new Set<Listener>();
+ 
+-interface InlineStyleSnapshot {
+-  paddingLeft: string;
+-  paddingLeftPriority: string;
+-  transition: string;
+-  transitionPriority: string;
+-}
+-
+ let sidebarWidthStyleCaptured = false;
+ let previousSidebarWidthStyle = "";
+ let previousSidebarWidthPriority = "";
+-let insetHost: HTMLElement | null = null;
+-let insetStyleSnapshot: InlineStyleSnapshot | null = null;
+ 
+ function emitChrome(): void {
+   for (const listener of chromeListeners) listener();
+@@ -68,39 +58,36 @@ export function setSidebarChromeWidth(px: number): void {
+ }
+ 
+ export function releaseShellChrome(): void {
+-  if (typeof document !== "undefined") {
+-    if (sidebarWidthStyleCaptured) {
+-      if (previousSidebarWidthStyle === "") {
+-        document.documentElement.style.removeProperty("--oil-sidebar-width");
+-      } else {
+-        document.documentElement.style.setProperty(
+-          "--oil-sidebar-width",
+-          previousSidebarWidthStyle,
+-          previousSidebarWidthPriority,
+-        );
+-      }
++  if (typeof document !== "undefined" && sidebarWidthStyleCaptured) {
++    if (previousSidebarWidthStyle === "") {
++      document.documentElement.style.removeProperty("--oil-sidebar-width");
++    } else {
++      document.documentElement.style.setProperty(
++        "--oil-sidebar-width",
++        previousSidebarWidthStyle,
++        previousSidebarWidthPriority,
++      );
+     }
+   }
+   sidebarWidthStyleCaptured = false;
+   previousSidebarWidthStyle = "";
+   previousSidebarWidthPriority = "";
+-  clearConversationInset();
+ }
+ 
+ export function getSidebarChromeWidth(): number {
+   return sidebarWidthPx;
+ }
+ 
+-export function setInspectorWidth(px: number): void {
+-  const next = clampInspectorWidth(px);
+-  if (inspectorWidthPx === next) return;
+-  inspectorWidthPx = next;
+-  const state = loadCreatorUiState(browserCreatorStorage());
+-  saveCreatorUiState(browserCreatorStorage(), { ...state, inspectorWidth: next });
+-}
+-
+-export function getInspectorWidth(): number {
+-  return inspectorWidthPx;
++export function bindProductWorkbench(
++  resolve: () => ProductWorkbenchFace | undefined,
++): () => void {
++  resolveProductWorkbench = resolve;
++  if (selectedId !== null) resolve()?.showContent(selectedId);
++  return () => {
++    if (resolveProductWorkbench !== resolve) return;
++    resolve()?.showCore();
++    resolveProductWorkbench = noProductWorkbench;
++  };
+ }
+ 
+ function emit(): void {
+@@ -159,76 +146,6 @@ export function useProfileEpoch(): number {
+   return epoch;
+ }
+ 
+-/**
+- * The rc.7 public layout face exposes panel actions and shell slots, but no
+- * content-column inset. The host's stable scrollport is therefore the only
+- * remaining compatibility seam for keeping the overlay from covering the
+- * conversation. This adapter intentionally has one host, no observer, and a
+- * complete inline-style restore path.
+- */
+-function conversationHost(): HTMLElement | null {
+-  if (typeof document === "undefined" || typeof HTMLElement === "undefined") return null;
+-  const scrollport = document.querySelector("[data-conversation-scroll]");
+-  const host = scrollport?.parentElement;
+-  return host instanceof HTMLElement ? host : null;
+-}
+-
+-function restoreInsetHost(): void {
+-  if (insetHost === null || insetStyleSnapshot === null) return;
+-  if (insetStyleSnapshot.paddingLeft === "") {
+-    insetHost.style.removeProperty("padding-left");
+-  } else {
+-    insetHost.style.setProperty(
+-      "padding-left",
+-      insetStyleSnapshot.paddingLeft,
+-      insetStyleSnapshot.paddingLeftPriority,
+-    );
+-  }
+-  if (insetStyleSnapshot.transition === "") {
+-    insetHost.style.removeProperty("transition");
+-  } else {
+-    insetHost.style.setProperty(
+-      "transition",
+-      insetStyleSnapshot.transition,
+-      insetStyleSnapshot.transitionPriority,
+-    );
+-  }
+-  insetHost = null;
+-  insetStyleSnapshot = null;
+-}
+-
+-function captureInsetHost(host: HTMLElement): void {
+-  if (insetHost === host && insetStyleSnapshot !== null) return;
+-  restoreInsetHost();
+-  insetHost = host;
+-  insetStyleSnapshot = {
+-    paddingLeft: host.style.getPropertyValue("padding-left"),
+-    paddingLeftPriority: host.style.getPropertyPriority("padding-left"),
+-    transition: host.style.getPropertyValue("transition"),
+-    transitionPriority: host.style.getPropertyPriority("transition"),
+-  };
+-}
+-
+-export function clearConversationInset(): void {
+-  restoreInsetHost();
+-}
+-
+-export function applyConversationInset(width: number, animate = true): HTMLElement | null {
+-  const host = conversationHost();
+-  if (host === null) return null;
+-  captureInsetHost(host);
+-  if (width <= 0) {
+-    restoreInsetHost();
+-    return host;
+-  }
+-  host.style.setProperty(
+-    "transition",
+-    animate ? "padding-left var(--ds-transition-duration-slow) var(--ds-ease-in-out)" : "none",
+-  );
+-  host.style.setProperty("padding-left", `${width}px`);
+-  return host;
+-}
+-
+ export function getSidebarTab(): SidebarTab {
+   return sidebarTab;
+ }
+@@ -259,13 +176,14 @@ export function getSelectedContentId(): string | null {
+ 
+ export function setSelectedContentId(id: string | null): void {
+   if (selectedId === id) {
+-    if (id === null) clearConversationInset();
++    id === null ? resolveProductWorkbench()?.showCore() : resolveProductWorkbench()?.showContent(id);
+     return;
+   }
+   selectedId = id;
+   const state = loadCreatorUiState(browserCreatorStorage());
+   saveCreatorUiState(browserCreatorStorage(), { ...state, selectedId });
+-  if (id === null) clearConversationInset();
++  if (id === null) resolveProductWorkbench()?.showCore();
++  else resolveProductWorkbench()?.showContent(id);
+   emit();
+ }
+ 
+diff --git a/src/client/face.ts b/src/client/face.ts
+index 679cc7a..d09f942 100644
+--- a/src/client/face.ts
++++ b/src/client/face.ts
+@@ -6,6 +6,8 @@ import type {
+   CreatorProfile,
+   LibrarySettings,
+   ListContentsResult,
++  PreparePublishRequest,
++  PreparePublishResult,
+   PublishMark,
+   PublishPlatform,
+   SubtitlePreviewResult,
+@@ -37,6 +39,7 @@ export interface CreatorViewFace {
+   bindStudio: (id: string, path: string) => Promise<ContentDetail>;
+   openStudio: (id: string) => Promise<ContentDetail>;
+   setPublish: (id: string, platform: PublishPlatform, status: PublishMark, url?: string) => Promise<ContentDetail>;
++  preparePublish: (request: PreparePublishRequest) => Promise<PreparePublishResult>;
+   syncPublish: (request?: { platform?: PublishPlatform; id?: string }) => Promise<SyncPublishResult>;
+   openSubtitlePreview: (id: string) => Promise<SubtitlePreviewResult>;
+   startSubtitleBurn: (id: string) => Promise<ContentDetail>;
+diff --git a/src/client/index.tsx b/src/client/index.tsx
+index 799bab6..538f7be 100644
+--- a/src/client/index.tsx
++++ b/src/client/index.tsx
+@@ -9,7 +9,6 @@ import { TYPERT_REMOTE } from "../remote.ts";
+ import { CREATOR_SETTINGS_NAMESPACE } from "../settingsContract.ts";
+ import { startLibraryLiveSync } from "./catalogSync.ts";
+ import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
+-import { releaseShellChrome } from "./contentSelection.ts";
+ import { registerContentTriggers } from "./contentTriggers.ts";
+ import type {
+   ContentDetail,
+@@ -20,6 +19,8 @@ import type {
+   CreatorProfile,
+   LibrarySettings,
+   ListContentsResult,
++  PreparePublishRequest,
++  PreparePublishResult,
+   PublishMark,
+   PublishPlatform,
+   SubtitlePreviewResult,
+@@ -29,11 +30,12 @@ import type {
+ } from "../types.ts";
+ import { ContentInspector } from "./ContentInspector.tsx";
+ import {
++  bindProductWorkbench,
+   bumpLibrary,
+   bumpProfile,
+-  getSelectedContentId,
++  releaseShellChrome,
+   setSelectedContentId,
+-  subscribeSelectedContentId,
++  type ProductWorkbenchFace,
+ } from "./contentSelection.ts";
+ import type { CredentialsClient } from "./credentialsApi.ts";
+ import { CreatorSettingsCard } from "./CreatorSettingsCard.tsx";
+@@ -51,6 +53,10 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
+   interface LocaleNamespaceMap {
+     "dsh.oil.creator": CreatorKey;
+   }
++
++  interface SlotMap {
++    "workbench.content": { kind: "single"; scope: "root" };
++  }
+ }
+ 
+ interface RemoteAnswer<T> {
+@@ -83,6 +89,7 @@ interface OilCreatorRemote {
+     status: PublishMark;
+     url?: string;
+   }) => Promise<RemoteAnswer<ContentDetail>>;
++  preparePublish: (request: PreparePublishRequest) => Promise<RemoteAnswer<PreparePublishResult>>;
+   syncPublish: (request: { id?: string; platform?: PublishPlatform; force?: boolean }) => Promise<RemoteAnswer<SyncPublishResult>>;
+   openSubtitlePreview: (request: { id: string }) => Promise<RemoteAnswer<SubtitlePreviewResult>>;
+   startSubtitleBurn: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
+@@ -237,6 +244,13 @@ export function apply(ctx: ClientContext): void {
+       bumpLibrary();
+       return next;
+     },
++    preparePublish: async (request) => {
++      const remote = remoteOf();
++      if (remote === undefined) throw new Error("remote unavailable");
++      const result = unwrap(await remote.preparePublish(request), "prepare publish failed");
++      bumpLibrary();
++      return result;
++    },
+     syncPublish: async (request) => {
+       const remote = remoteOf();
+       if (remote === undefined) throw new Error("remote unavailable");
+@@ -345,36 +359,21 @@ export function apply(ctx: ClientContext): void {
+     }
+     bumpProfile();
+ 
+-    const stopOverlay = ctx.slots.inject("shell.overlay", () => {
+-      let disposeOccupant: (() => void) | undefined;
+-      const release = (): void => {
+-        disposeOccupant?.();
+-        disposeOccupant = undefined;
+-      };
+-      const sync = (): void => {
+-        if (getSelectedContentId() === null) {
+-          release();
+-          return;
+-        }
+-        if (disposeOccupant !== undefined) return;
+-        disposeOccupant = ctx.slots.register({
+-          name: "shell.overlay",
+-          id: "oil-creator-inspector",
+-          order: 20,
+-          locale: NS,
+-          inject: () => ({
+-            ...face(),
+-            closeDetails: () => {
+-              setSelectedContentId(null);
+-            },
+-          }),
+-        }, ContentInspector);
+-      };
+-      const stop = subscribeSelectedContentId(sync);
+-      sync();
++    const stopContent = ctx.slots.inject("workbench.content", () => {
++      const stopWorkbench = bindProductWorkbench(() =>
++        ctx.get("yourBuddyWorkbench") as ProductWorkbenchFace | undefined
++      );
++      const disposeOccupant = ctx.slots.register({
++        name: "workbench.content",
++        locale: NS,
++        inject: () => ({
++          ...face(),
++          closeDetails: () => { setSelectedContentId(null); },
++        }),
++      }, ContentInspector);
+       return () => {
+-        stop();
+-        release();
++        disposeOccupant();
++        stopWorkbench();
+       };
+     });
+     const stopSettings = ctx.slots.inject("settings.plugin.item", () =>
+@@ -396,7 +395,7 @@ export function apply(ctx: ClientContext): void {
+ 
+     return async () => {
+       stopLive();
+-      stopOverlay();
++      stopContent();
+       stopSettings();
+       await disposeRemote();
+     };
+diff --git a/src/client/locales.ts b/src/client/locales.ts
+index c32d42f..a86727c 100644
+--- a/src/client/locales.ts
++++ b/src/client/locales.ts
+@@ -99,6 +99,27 @@ export const zh = {
+   "inspector.publish.views": "{n} 播放",
+   "inspector.publish.likes": "{n} 赞",
+   "inspector.publish.comments": "{n} 评论",
++  "inspector.prepare.title": "准备发布草稿",
++  "inspector.prepare.hint": "只准备草稿并保留页面供你检查，不会点击最终发布或公众号群发。",
++  "inspector.prepare.platforms": "视频平台",
++  "inspector.prepare.inputTitle": "标题",
++  "inspector.prepare.inputVideo": "成片",
++  "inspector.prepare.inputTags": "标签",
++  "inspector.prepare.inputCover": "封面 {ratio}",
++  "inspector.prepare.inputMissing": "未填写",
++  "inspector.prepare.originality": "我确认这条视频可以真实声明为原创 / 自制",
++  "inspector.prepare.covers": "上传这一期已有封面",
++  "inspector.prepare.coverMissing": "所选平台还缺封面比例：{ratios}",
++  "inspector.prepare.article": "同时创建已有公众号文章草稿",
++  "inspector.prepare.articleMissing": "这一期还没有 公众号文章/ Markdown，暂不能加入公众号草稿。",
++  "inspector.prepare.action": "一键准备草稿",
++  "inspector.prepare.running": "正在准备草稿",
++  "inspector.prepare.success": "草稿已备好并保留供检查。没有执行最终发布或群发。",
++  "inspector.prepare.partial": "部分草稿已备好，未完成的平台仍需处理。没有执行最终发布或群发。",
++  "inspector.prepare.blocked": "草稿准备被阻止，请按下方提示处理后重试。",
++  "inspector.prepare.skipped": "没有可准备的草稿。",
++  "inspector.prepare.ready": "草稿待检查",
++  "inspector.prepare.articleLabel": "公众号文章",
+   "settings.title": "内容工作台",
+   "settings.description": "内容目录、启用的平台，以及字幕和封面用的 API Key。",
+   "settings.libraryRoot": "影片目录",
+@@ -129,8 +150,9 @@ export const zh = {
+   "settings.capability.subtitle": "字幕",
+   "settings.capability.cover": "封面",
+   "settings.capability.editing": "自动剪辑",
+-  "settings.capability.publish": "自动发布",
++  "settings.capability.publish": "视频草稿准备",
+   "settings.capability.article": "公众号图文",
++  "settings.capability.wechatDraft": "公众号草稿",
+   "settings.capability.ego": "Ego Browser",
+   "settings.state.ready": "可用",
+   "settings.state.missing": "不可用",
+@@ -261,6 +283,27 @@ export const en = {
+   "inspector.publish.views": "{n} views",
+   "inspector.publish.likes": "{n} likes",
+   "inspector.publish.comments": "{n} comments",
++  "inspector.prepare.title": "Prepare publishing drafts",
++  "inspector.prepare.hint": "Prepares drafts and keeps them open for review. It never clicks final publish or WeChat group-send.",
++  "inspector.prepare.platforms": "Video platforms",
++  "inspector.prepare.inputTitle": "Title",
++  "inspector.prepare.inputVideo": "Video",
++  "inspector.prepare.inputTags": "Tags",
++  "inspector.prepare.inputCover": "Cover {ratio}",
++  "inspector.prepare.inputMissing": "Missing",
++  "inspector.prepare.originality": "I confirm this video may truthfully be declared original / self-produced",
++  "inspector.prepare.covers": "Upload this episode's existing covers",
++  "inspector.prepare.coverMissing": "The selected platforms still need these cover ratios: {ratios}",
++  "inspector.prepare.article": "Also create a draft from the existing WeChat article",
++  "inspector.prepare.articleMissing": "This episode has no 公众号文章/ Markdown file to add as a WeChat draft.",
++  "inspector.prepare.action": "Prepare drafts",
++  "inspector.prepare.running": "Preparing drafts",
++  "inspector.prepare.success": "Drafts are ready and retained for review. Final publish and group-send were not performed.",
++  "inspector.prepare.partial": "Some drafts are ready; the remaining platforms still need attention. Final publish and group-send were not performed.",
++  "inspector.prepare.blocked": "Draft preparation is blocked. Follow the details below, then retry.",
++  "inspector.prepare.skipped": "There were no drafts to prepare.",
++  "inspector.prepare.ready": "Draft ready for review",
++  "inspector.prepare.articleLabel": "WeChat article",
+   "settings.title": "Content workbench",
+   "settings.description": "Library folder, enabled platforms, and the API keys for subtitles and covers.",
+   "settings.libraryRoot": "Library folder",
+@@ -291,8 +334,9 @@ export const en = {
+   "settings.capability.subtitle": "Subtitles",
+   "settings.capability.cover": "Covers",
+   "settings.capability.editing": "Auto editing",
+-  "settings.capability.publish": "Auto publish",
++  "settings.capability.publish": "Video draft preparation",
+   "settings.capability.article": "Article",
++  "settings.capability.wechatDraft": "WeChat draft",
+   "settings.capability.ego": "Ego Browser",
+   "settings.state.ready": "Ready",
+   "settings.state.missing": "Unavailable",
+diff --git a/src/client/publishPlatforms.ts b/src/client/publishPlatforms.ts
+index 3d7fade..48de415 100644
+--- a/src/client/publishPlatforms.ts
++++ b/src/client/publishPlatforms.ts
+@@ -1,5 +1,9 @@
+ import { PUBLISH_PLATFORM_DEFINITIONS, PUBLISH_PLATFORMS } from "../platforms.ts";
+-import type { PublishPlatform } from "../types.ts";
++import type {
++  ContentCovers,
++  PreparePublishResult,
++  PublishPlatform,
++} from "../types.ts";
+ import type { CreatorKey } from "./locales.ts";
+ import type { PlatformId } from "./PlatformMark.tsx";
+ 
+@@ -28,3 +32,73 @@ export function isPublishSyncDisabled(
+ ): boolean {
+   return busy !== undefined || platformSettingsPending || selectEnabledPublishPlatforms(enabledPlatforms).length === 0;
+ }
++
++export function initialPreparePlatforms(
++  enabledPlatforms: readonly PublishPlatform[],
++  persistedPlatforms?: readonly PublishPlatform[],
++): PublishPlatform[] {
++  if (persistedPlatforms === undefined) return [...enabledPlatforms];
++  const persisted = new Set(persistedPlatforms);
++  return enabledPlatforms.filter((platform) => persisted.has(platform));
++}
++
++export function requiresOriginalityConfirmation(platforms: readonly PublishPlatform[]): boolean {
++  return platforms.some((platform) =>
++    platform === "xiaohongshu" || platform === "bilibili" || platform === "wechat"
++  );
++}
++
++export function missingSelectedCoverRatios(
++  covers: ContentCovers,
++  platforms: readonly PublishPlatform[],
++): Array<"3x4" | "4x3"> {
++  const needs3x4 = platforms.some((platform) =>
++    platform === "xiaohongshu" || platform === "douyin" || platform === "wechat"
++  );
++  const needs4x3 = platforms.some((platform) =>
++    platform === "douyin" || platform === "bilibili" || platform === "wechat"
++  );
++  return [
++    ...(needs3x4 && covers["3x4"] === undefined ? ["3x4" as const] : []),
++    ...(needs4x3 && covers["4x3"] === undefined ? ["4x3" as const] : []),
++  ];
++}
++
++export function isPreparePublishDisabled(options: {
++  busy: string | undefined;
++  platformSettingsPending: boolean;
++  selectedPlatforms: readonly PublishPlatform[];
++  hasVideo: boolean;
++  includeWechatArticle: boolean;
++  hasArticle: boolean;
++  originalRightsConfirmed: boolean;
++  uploadCovers: boolean;
++  covers: ContentCovers;
++}): boolean {
++  if (options.busy !== undefined || options.platformSettingsPending) return true;
++  if (options.selectedPlatforms.length === 0 && !options.includeWechatArticle) return true;
++  if (options.selectedPlatforms.length > 0 && !options.hasVideo) return true;
++  if (options.includeWechatArticle && !options.hasArticle) return true;
++  if (
++    requiresOriginalityConfirmation(options.selectedPlatforms)
++    && !options.originalRightsConfirmed
++  ) return true;
++  return options.uploadCovers
++    && missingSelectedCoverRatios(options.covers, options.selectedPlatforms).length > 0;
++}
++
++export type PreparePublishOutcome = "success" | "partial" | "blocked" | "skipped";
++
++export function preparePublishOutcome(result: PreparePublishResult): PreparePublishOutcome {
++  const steps = [result.video, result.wechatOfficialAccount].filter((step) => step !== undefined);
++  const ready = steps.filter((step) => step.status === "readyForReview").length;
++  const blocked = steps.filter((step) => step.status === "blocked").length;
++  if (ready > 0 && blocked > 0) return "partial";
++  if (blocked > 0) return "blocked";
++  if (ready > 0) return "success";
++  return "skipped";
++}
++
++export function publisherPlatformKey(platform: PublishPlatform): string {
++  return platform === "wechat" ? "wechat_channels" : platform;
++}
+diff --git a/src/creatorSkill.ts b/src/creatorSkill.ts
+index 0c10363..ea34965 100644
+--- a/src/creatorSkill.ts
++++ b/src/creatorSkill.ts
+@@ -1,11 +1,18 @@
++import { existsSync, readFileSync } from "node:fs";
++import { join } from "node:path";
++
++import { bundledSkillDir } from "./bundledSkills.ts";
++
+ interface SkillsContext {
+   skills: {
+     register: (skill: {
+       name: string;
+       description: string;
+-      source: "runtime";
++      source: "runtime" | "npm:dsh-oil-creator";
+       content: string;
+       invocation: { modelInvocable: boolean; userInvocable: boolean };
++      resourceBase?: { kind: "directory"; path: string };
++      path?: string;
+     }) => () => void;
+   };
+ }
+@@ -32,7 +39,7 @@ export const CREATOR_WORKBENCH_SKILL = {
+ - 候选内容目录不存在时，先展示准备创建的完整路径；用户确认后用系统文件工具创建，再重新调用 \`oil_creator_setup\` 预览。不要把不存在的目录直接交给配置工具。
+ - 第一次带配置字段调用时保持 \`apply=false\`，把精确变更展示给用户。
+ - 只有用户确认后，才使用同一组字段和 \`apply=true\`。
+-- 不向用户索要 API Key 明文。字幕和封面凭据只能让用户在插件设置页通过 Harness Credentials 配置。
++- 不向用户索要 API Key 明文。字幕、封面和公众号凭据只能通过本机配置或 Harness Credentials 提供。
+ - 高级依赖路径由插件配置或环境自动发现；能自动发现时不要增加问题。
+ 
+ ## 内容目录
+@@ -42,17 +49,54 @@ export const CREATOR_WORKBENCH_SKILL = {
+ - 先列目录，再读这一集需要的 \`topic.md\`、\`script.md\`、发布包、字幕或文章文件。
+ - 创建新内容使用 \`oil_create_content\`；修改普通 Markdown 和 JSON 正文使用系统文件工具。
+ 
+-## 整理与发布安全
++## 整理与发布
+ 
+ - 调用 \`oil_organize_library\` 时先预览，向用户列出改名前后；确认后才传 \`apply=true\`。它不删除文件。
+-- 发布默认准备草稿。上传、账号登录和最终发表属于外部发布能力；最终发表必须由用户明确确认。
+-- 自动发布（\`video-publisher\` skill）和已发布数据回收（\`oil_sync_publish\`）只处理 \`enabledPlatforms\` 中的平台，都依赖 Ego Browser 和已登录的创作者后台；\`enabledPlatforms\` 为空时不执行发布或同步，先配置并确认启用平台。能力检查显示缺失时明确告诉用户这两项不可用，其余功能照常。
++- 使用 \`oil_prepare_publish\` 可把启用的视频平台和已有公众号文章准备成草稿。它会保留平台页面供用户检查，不执行最终发表或群发。
++- 视频草稿和已发布数据回收只处理 \`enabledPlatforms\` 中的平台，都依赖 Ego Browser 和已登录的创作者后台；\`enabledPlatforms\` 为空时不执行发布或同步，先配置并确认启用平台。公众号 API 草稿依赖本机配置的微信公众号 AppID、AppSecret 和 IP 白名单。
++- 能力检查显示缺失时明确告诉用户对应能力不可用，其余功能照常。最终发表必须由用户明确确认。
+ 
+ ## 推进工作
+ 
+ 每次只推进当前缺失的下一步：选题与脚本 → 录制/工程 → 导出成片 → 字幕 → 封面 → 发布草稿 → 用户最终发表 → 同步数据。长任务启动后检查产物或工作台状态，不把“已经启动”说成“已经完成”。`,
+ };
+ 
++function externalSkill(name: string, description: string) {
++  const root = bundledSkillDir(name);
++  const path = join(root, "SKILL.md");
++  if (!existsSync(path)) return undefined;
++  const content = readFileSync(path, "utf8")
++    .replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, "")
++    .trim();
++  return {
++    name,
++    description,
++    source: "npm:dsh-oil-creator" as const,
++    invocation: { modelInvocable: true, userInvocable: true },
++    resourceBase: { kind: "directory" as const, path: root },
++    path,
++    content,
++  };
++}
++
+ export function registerCreatorWorkbenchSkill(ctx: SkillsContext): () => void {
+-  return ctx.skills.register(CREATOR_WORKBENCH_SKILL);
++  const skills = [
++    CREATOR_WORKBENCH_SKILL,
++    externalSkill(
++      "video-publisher",
++      "把本地视频准备为小红书、抖音、B站和视频号草稿，保留页面供用户最终确认。",
++    ),
++    externalSkill(
++      "oil-video-article",
++      "将视频和字幕整理为带真实配图的本地微信公众号 Markdown 文章。",
++    ),
++    externalSkill(
++      "wechat-publisher",
++      "把 Markdown 或 HTML 上传到微信公众号草稿箱；只有用户明确确认后才允许最终发布。",
++    ),
++  ].filter((skill) => skill !== undefined);
++  const disposers = skills.map((skill) => ctx.skills.register(skill));
++  return () => {
++    for (const dispose of disposers.reverse()) dispose();
++  };
+ }
+diff --git a/src/guide.ts b/src/guide.ts
+index 0144b91..7bf2678 100644
+--- a/src/guide.ts
++++ b/src/guide.ts
+@@ -72,10 +72,11 @@ export function creatorGuideText(status: CreatorSetupStatus): string {
+     capabilityLine("字幕凭据 DASHSCOPE_API_KEY", capabilities.subtitleCredential),
+     capabilityLine("封面工作流 oil-cover", capabilities.coverSkill),
+     capabilityLine("封面凭据 ZENMUX_API_KEY", capabilities.coverCredential),
+-    capabilityLine("Ego Browser（自动发布与数据回收）", capabilities.publishSync),
++    capabilityLine("Ego Browser（视频草稿准备与数据回收）", capabilities.publishSync),
+     capabilityLine("剪辑 skill screen-studio-editor", capabilities.editingSkill),
+     capabilityLine("发布 skill video-publisher", capabilities.publishSkill),
+-    capabilityLine("公众号 skill oil-video-article", capabilities.articleSkill),
++    capabilityLine("公众号成稿 skill oil-video-article", capabilities.articleSkill),
++    capabilityLine("公众号草稿 skill wechat-publisher", capabilities.wechatPublisherSkill),
+     "",
+     "## 内容管理",
+     `- 片库目录是 ${settings.libraryRoot}，一集一个子文件夹，命名为 YYYY-MM-DD_可读标题。`,
+@@ -107,29 +108,30 @@ export function creatorGuideText(status: CreatorSetupStatus): string {
+       ? "- 已发现 screen-studio-editor，用户要求清理时间线时直接使用。"
+       : "- 缺 screen-studio-editor：征得用户同意后执行 `git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor`；没有它时剪辑由用户自己完成。",
+     "",
+-    "## 自动发布与数据回收",
+-    "- 这两项都依赖 Ego Browser（PATH 里的 ego-browser 命令）和已登录的各平台创作者后台。",
++    "## 视频草稿准备与数据回收",
++    "- 视频草稿和数据回收依赖 Ego Browser 与已登录的创作者后台；工作台会使用探测到的 ego-browser 绝对路径。",
+     publishPlatformLine(enabledPlatforms),
+     capabilities.publishSync.state === "ready"
+       ? enabledPlatforms.length === 0
+-        ? "- 已发现 Ego Browser，但当前没有启用平台，不执行自动发布和数据回收。"
+-        : "- 当前已发现 Ego Browser。上传发布走外部 skill video-publisher，停在最终发表按钮前由用户点；发布后或用户要求时用 oil_sync_publish 回收播放、赞、评论并写回工作台。"
+-      : "- 当前未发现 Ego Browser：自动发布和 oil_sync_publish 数据回收都不可用。告诉用户到 https://lite.ego.app 下载 ego lite，完成首次引导后 ego-browser 命令可用，再登录各平台创作者后台；片库、脚本、字幕、封面不受影响，不要假装能同步。",
++        ? "- 已发现 Ego Browser，但当前没有启用平台，不执行视频草稿准备和数据回收。"
++        : "- 当前已发现 Ego Browser。用 oil_prepare_publish 准备启用平台的草稿，页面停在最终发表按钮前；发布后或用户要求时用 oil_sync_publish 回收播放、赞、评论并写回工作台。"
++      : "- 当前未发现 Ego Browser：视频草稿准备和 oil_sync_publish 数据回收都不可用。告诉用户到 https://lite.ego.app 下载 ego lite，完成首次引导后 ego-browser 命令可用，再登录各平台创作者后台；片库、脚本、字幕、封面不受影响，不要假装能同步。",
+     capabilities.publishSkill.state === "ready"
+       ? enabledPlatforms.length === 0
+         ? "- 已发现 video-publisher，但当前没有启用平台，不使用它。"
+         : "- 已发现 video-publisher。"
+-      : enabledPlatforms.length === 0
+-        ? "- 当前没有启用平台，先配置 enabledPlatforms，再考虑安装 video-publisher。"
+-        : "- 缺 video-publisher：征得用户同意后执行 `git clone https://github.com/oil-oil/video-publisher-skill ~/.agents/skills/video-publisher`；没有它时在插件里手动标记发布状态即可。",
++      : "- 当前安装包缺少 video-publisher；请修复或更新 YourBuddy。",
+     "",
+     "## 公众号图文",
+-    "- 把一期视频转成公众号文章走外部 skill oil-video-article，产物在这一集的 公众号文章/ 目录，插件负责展示，不负责生成。",
++    "- 把一期视频转成公众号文章使用内置 oil-video-article，产物在这一集的 公众号文章/ 目录。已有文章可由 oil_prepare_publish 上传到公众号草稿箱。",
+     "- 输入不绑死 Screen Studio：有 .screenstudio 工程时从无头像的屏幕轨道截帧，效果最好；只有普通成片视频时也能转写，配图直接从成片截取。",
+     "- 文章语气遵循 oil-tone skill；公众号不是第五个视频平台，不参与发布状态标记。",
+     capabilities.articleSkill.state === "ready"
+       ? "- 已发现 oil-video-article，用户提到把视频整理成文章时直接使用。"
+-      : "- 缺 oil-video-article：征得用户同意后执行 `git clone https://github.com/oil-oil/oil-video-article ~/.agents/skills/oil-video-article`；不需要公众号时可以跳过这一环节。",
++      : "- 当前安装包缺少 oil-video-article；请修复或更新 YourBuddy。",
++    capabilities.wechatPublisherSkill.state === "ready"
++      ? "- 已发现 wechat-publisher。配置微信公众号 AppID、AppSecret 和 IP 白名单后可创建草稿；最终群发仍由用户确认。"
++      : "- 当前安装包缺少 wechat-publisher；请修复或更新 YourBuddy。",
+     "",
+     "## 推进原则",
+     "- 每次只推进当前缺失的下一步：选题与脚本 → 录制 → 导出成片 → 字幕 → 封面 → 发布 → 数据回收。",
+diff --git a/src/libraryPrompt.ts b/src/libraryPrompt.ts
+index 66022ee..08e2e00 100644
+--- a/src/libraryPrompt.ts
++++ b/src/libraryPrompt.ts
+@@ -43,8 +43,8 @@ export function libraryConventionText(
+     "约定文件：topic.md 选题；script.md 口播脚本；公众号文章/<标题>.md 已转写文章，配图在 公众号文章/images/；publish-package.json 只放标题和 tags，不写平台长文案；*.mp4/*.mov 成片（_subtitled 为烧录版）；*.srt/*.ass 字幕；*_3x4.png *_4x3.png *_16x9.png 封面。",
+     "读或改这些内容，用系统自带的列文件、读文件、写文件工具。不要为了看一集再调插件工具。",
+     "写或改 script.md 必须遵循用户的脚本规则（人设）：先用 oil_script_rules 读取；还没配置时主动问清语气、结构和禁忌，再用 oil_script_rules 存下来。",
+-    `插件工具只做文件做不到的事：配置工作台、按约定建文件夹、绑/开 Screen Studio、等导出、生成或烧录字幕、生成封面、同步已发布数据、整理文件夹名。工作台状态在 ${dataDir}/overlay.json，不是正文。`,
+-    "自动发布（video-publisher skill）和已发布数据回收（oil_sync_publish）都依赖 Ego Browser；能力检查显示缺失时明确告诉用户，不要假装能同步。",
++    `插件工具只做文件做不到的事：配置工作台、按约定建文件夹、绑/开 Screen Studio、等导出、生成或烧录字幕、生成封面、准备发布草稿、同步已发布数据、整理文件夹名。工作台状态在 ${dataDir}/overlay.json，不是正文。`,
++    "视频草稿准备（video-publisher skill）和已发布数据回收（oil_sync_publish）都依赖 Ego Browser；能力检查显示缺失时明确告诉用户，不要假装能同步。",
+   ];
+   if (enabledPlatforms !== undefined) {
+     lines.push(
+diff --git a/src/overlay.ts b/src/overlay.ts
+index f06161a..7596b7a 100644
+--- a/src/overlay.ts
++++ b/src/overlay.ts
+@@ -3,7 +3,14 @@ import { dirname, join } from "node:path";
+ 
+ import { normalizeEnabledPlatforms, PUBLISH_PLATFORMS } from "./platforms.ts";
+ import { decodeBurnJob, decodeOverlayPublish } from "./publishStatus.ts";
+-import type { CreatorProfile, OverlayItem, OverlayStore, PublishPlatform } from "./types.ts";
++import { preparePublishResultSchema } from "./schemas.ts";
++import type {
++  CreatorProfile,
++  OverlayItem,
++  OverlayStore,
++  PreparePublishResult,
++  PublishPlatform,
++} from "./types.ts";
+ 
+ export { normalizeEnabledPlatforms } from "./platforms.ts";
+ export const DEFAULT_ENABLED_PLATFORMS: readonly PublishPlatform[] = PUBLISH_PLATFORMS;
+@@ -59,6 +66,10 @@ export function decodeOverlay(value: unknown): OverlayStore {
+       if (subtitleJob !== undefined) next.subtitleJob = subtitleJob;
+       const coverJob = decodeBurnJob(record.coverJob);
+       if (coverJob !== undefined) next.coverJob = coverJob;
++      const publishPreparation = preparePublishResultSchema.safeParse(record.publishPreparation);
++      if (publishPreparation.success) {
++        next.publishPreparation = publishPreparation.data as PreparePublishResult;
++      }
+       items[id] = next;
+     }
+   }
+diff --git a/src/publishing.ts b/src/publishing.ts
+new file mode 100644
+index 0000000..9490526
+--- /dev/null
++++ b/src/publishing.ts
+@@ -0,0 +1,796 @@
++import { spawn, spawnSync } from "node:child_process";
++import { createHash, randomUUID } from "node:crypto";
++import { constants } from "node:fs";
++import { access, chmod, link, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
++import { delimiter, dirname, join } from "node:path";
++
++import { bundledSkillDir } from "./bundledSkills.ts";
++import { findExecutable } from "./capabilities.ts";
++import type {
++  ContentSummary,
++  PreparePublishResult,
++  PreparePublishStepResult,
++  PreparePublishVideoPlatformResult,
++  PublishPlatform,
++} from "./types.ts";
++
++const OUTPUT_LIMIT = 2 * 1024 * 1024;
++const ABORT_GRACE_MS = 1_000;
++const NORMAL_CONCURRENCY = 4;
++
++const PUBLISHER_PLATFORM: Record<PublishPlatform, string> = {
++  xiaohongshu: "xiaohongshu",
++  douyin: "douyin",
++  bilibili: "bilibili",
++  wechat: "wechat_channels",
++};
++
++const RUNTIME_ENV_KEYS = [
++  "PATH",
++  "Path",
++  "HOME",
++  "USERPROFILE",
++  "LOCALAPPDATA",
++  "APPDATA",
++  "TMPDIR",
++  "TEMP",
++  "TMP",
++  "SystemRoot",
++  "WINDIR",
++  "LANG",
++  "LC_ALL",
++  "TZ",
++] as const;
++
++const PUBLISHER_OVERRIDE_KEYS = [
++  "VIDEO_PUBLISHER_V2_EGO_COMMAND",
++  "VIDEO_PUBLISHER_V2_RUNNER",
++  "VIDEO_PUBLISHER_V2_TASK_NAME",
++] as const;
++
++const WECHAT_ENV_KEYS = [
++  "WECHAT_APP_ID",
++  "WECHAT_APP_SECRET",
++  "WECHAT_API_PROXY",
++  "WECHAT_PUBLISHER_DATA_DIR",
++] as const;
++
++export interface CommandResult {
++  code: number;
++  stdout: string;
++  stderr: string;
++}
++
++export type RunCommand = (
++  command: string,
++  args: readonly string[],
++  signal: AbortSignal,
++  env: NodeJS.ProcessEnv,
++) => Promise<CommandResult>;
++
++interface PrepareVideoDraftsOptions {
++  item: ContentSummary;
++  libraryRoot: string;
++  platforms: readonly PublishPlatform[];
++  dataDir: string;
++  originalRightsConfirmed: boolean;
++  uploadCovers: boolean;
++  inspectOnly: boolean;
++  jobId?: string;
++  signal: AbortSignal;
++}
++
++interface PrepareVideoDraftsDependencies {
++  findEgo?: typeof findExecutable;
++  publisherSkillDir?: string;
++  runCommand?: RunCommand;
++  now?: () => Date;
++  env?: NodeJS.ProcessEnv;
++}
++
++interface PrepareWechatArticleDraftOptions {
++  item: ContentSummary;
++  signal: AbortSignal;
++}
++
++interface PrepareWechatArticleDraftDependencies {
++  publisherSkillDir?: string;
++  runCommand?: RunCommand;
++  env?: NodeJS.ProcessEnv;
++}
++
++interface ManagedVideoPublisherConfig {
++  schemaVersion: 2;
++  onboarding: {
++    completed: true;
++    completedAt: string;
++    updatedAt: string;
++  };
++  locale: "zh-CN";
++  sourceDirectory: string;
++  availablePlatforms: string[];
++  defaultPlatforms: string[];
++  contentProfile: {
++    copyStyle: string;
++    recurringTags: string[];
++  };
++  declarations: {
++    originalityPolicy: "ask_each_run";
++  };
++  platforms: {
++    douyin: { defaultTopics: string[] };
++    bilibili: { allowedAutoTags: string[] };
++    youtube: {
++      defaultCategory: string;
++      defaultLanguage: string;
++      defaultVisibility: "private";
++    };
++  };
++  execution: {
++    checkConcurrency: number;
++    uploadConcurrency: number;
++  };
++  cover: {
++    uploadExistingByDefault: false;
++  };
++}
++
++export interface ManagedVideoPublisherPaths {
++  root: string;
++  configRoot: string;
++  configPath: string;
++  stateRoot: string;
++  lockRoot: string;
++  packageRoot: string;
++}
++
++function appendTail(current: string, chunk: Buffer | string): string {
++  const next = current + String(chunk);
++  return next.length <= OUTPUT_LIMIT ? next : next.slice(-OUTPUT_LIMIT);
++}
++
++/** Runs one owned subprocess and waits for exit after cancellation. */
++export function runPublishingCommand(
++  command: string,
++  args: readonly string[],
++  signal: AbortSignal,
++  env: NodeJS.ProcessEnv,
++): Promise<CommandResult> {
++  return new Promise((resolve, reject) => {
++    signal.throwIfAborted();
++    const ownsProcessGroup = process.platform !== "win32";
++    const child = spawn(command, [...args], {
++      env,
++      stdio: ["ignore", "pipe", "pipe"],
++      detached: ownsProcessGroup,
++    });
++    let stdout = "";
++    let stderr = "";
++    let settled = false;
++    let abortRequested = false;
++    let forceKill: NodeJS.Timeout | undefined;
++
++    child.stdout.on("data", (chunk: Buffer | string) => {
++      stdout = appendTail(stdout, chunk);
++    });
++    child.stderr.on("data", (chunk: Buffer | string) => {
++      stderr = appendTail(stderr, chunk);
++    });
++
++    const cleanup = (): void => {
++      signal.removeEventListener("abort", onAbort);
++      if (forceKill !== undefined) clearTimeout(forceKill);
++    };
++    const finish = (work: () => void): void => {
++      if (settled) return;
++      settled = true;
++      cleanup();
++      work();
++    };
++    const killOwned = (killSignal: NodeJS.Signals): void => {
++      if (process.platform === "win32" && child.pid !== undefined) {
++        const args = ["/pid", String(child.pid), "/t"];
++        if (killSignal === "SIGKILL") args.push("/f");
++        spawnSync("taskkill", args, { env, stdio: "ignore" });
++        return;
++      }
++      if (ownsProcessGroup && child.pid !== undefined) {
++        try {
++          process.kill(-child.pid, killSignal);
++          return;
++        } catch {
++          // The group may already be gone; target the direct child as a fallback.
++        }
++      }
++      child.kill(killSignal);
++    };
++    const onAbort = (): void => {
++      if (abortRequested) return;
++      abortRequested = true;
++      signal.removeEventListener("abort", onAbort);
++      killOwned("SIGTERM");
++      forceKill = setTimeout(() => {
++        if (!settled) killOwned("SIGKILL");
++      }, ABORT_GRACE_MS);
++      forceKill.unref();
++    };
++
++    child.once("error", (error) => {
++      finish(() => { reject(error); });
++    });
++    child.once("close", (code) => {
++      if (abortRequested || signal.aborted) killOwned("SIGKILL");
++      finish(() => {
++        if (abortRequested || signal.aborted) {
++          reject(signal.reason ?? new Error("publishing aborted"));
++          return;
++        }
++        resolve({ code: code ?? 1, stdout, stderr });
++      });
++    });
++    signal.addEventListener("abort", onAbort, { once: true });
++    if (signal.aborted) onAbort();
++  });
++}
++
++function copyEnvKeys(
++  source: NodeJS.ProcessEnv,
++  destination: NodeJS.ProcessEnv,
++  keys: readonly string[],
++): void {
++  for (const key of keys) {
++    const value = source[key];
++    if (value !== undefined) destination[key] = value;
++  }
++}
++
++/** Returns the credential-free environment used by Video Publisher. */
++export function publisherEnvironment(
++  source: NodeJS.ProcessEnv,
++  egoPath: string,
++  configPath: string,
++  lockRoot: string,
++): NodeJS.ProcessEnv {
++  const env: NodeJS.ProcessEnv = {};
++  copyEnvKeys(source, env, RUNTIME_ENV_KEYS);
++  copyEnvKeys(source, env, PUBLISHER_OVERRIDE_KEYS);
++  const path = env.PATH ?? env.Path ?? "";
++  env.PATH = `${dirname(egoPath)}${delimiter}${path}`;
++  env.VIDEO_PUBLISHER_CONFIG = configPath;
++  env.VIDEO_PUBLISHER_V2_LOCK_ROOT = lockRoot;
++  return env;
++}
++
++/** Returns the minimal environment documented by WeChat Publisher. */
++export function wechatPublisherEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
++  const env: NodeJS.ProcessEnv = {};
++  copyEnvKeys(source, env, RUNTIME_ENV_KEYS);
++  copyEnvKeys(source, env, WECHAT_ENV_KEYS);
++  return env;
++}
++
++export function managedVideoPublisherPaths(
++  dataDir: string,
++  configName = "managed.json",
++): ManagedVideoPublisherPaths {
++  const root = join(dataDir, "video-publisher");
++  const configRoot = join(root, "configs");
++  return {
++    root,
++    configRoot,
++    configPath: join(configRoot, configName),
++    stateRoot: join(root, "state"),
++    lockRoot: join(root, "locks"),
++    packageRoot: join(root, "packages"),
++  };
++}
++
++export function mapPublisherPlatforms(platforms: readonly PublishPlatform[]): string[] {
++  return platforms.map((platform) => PUBLISHER_PLATFORM[platform]);
++}
++
++export function isExactPreparedArticle(
++  step: PreparePublishStepResult | undefined,
++  currentFingerprint: string | undefined,
++): boolean {
++  return step?.inputFingerprint !== undefined
++    && step.inputFingerprint === currentFingerprint;
++}
++
++export function mergePreparationHistory(
++  current: PreparePublishResult,
++  previous: PreparePublishResult | undefined,
++  currentArticleFingerprint: string | undefined,
++): PreparePublishResult {
++  if (previous === undefined) return current;
++  const previousArticle = isExactPreparedArticle(
++    previous.wechatOfficialAccount,
++    currentArticleFingerprint,
++  ) ? previous.wechatOfficialAccount : undefined;
++  const mergedArticle = current.wechatOfficialAccount ?? previousArticle;
++  if (current.selectedPlatforms.length === 0) {
++    return {
++      ...current,
++      selectedPlatforms: previous.selectedPlatforms,
++      video: previous.video,
++      ...(mergedArticle === undefined ? {} : { wechatOfficialAccount: mergedArticle }),
++    };
++  }
++  return mergedArticle === undefined
++    ? current
++    : { ...current, wechatOfficialAccount: mergedArticle };
++}
++
++export function managedVideoPublisherConfig(
++  libraryRoot: string,
++  platforms: readonly PublishPlatform[],
++  now = new Date(),
++): ManagedVideoPublisherConfig {
++  const selected = mapPublisherPlatforms(platforms);
++  const timestamp = now.toISOString();
++  return {
++    schemaVersion: 2,
++    onboarding: {
++      completed: true,
++      completedAt: timestamp,
++      updatedAt: timestamp,
++    },
++    locale: "zh-CN",
++    sourceDirectory: libraryRoot,
++    availablePlatforms: selected,
++    defaultPlatforms: [...selected],
++    contentProfile: {
++      copyStyle: "clear, conversational, specific, non-hype",
++      recurringTags: [],
++    },
++    declarations: {
++      originalityPolicy: "ask_each_run",
++    },
++    platforms: {
++      douyin: { defaultTopics: [] },
++      bilibili: { allowedAutoTags: [] },
++      youtube: {
++        defaultCategory: "",
++        defaultLanguage: "",
++        defaultVisibility: "private",
++      },
++    },
++    execution: {
++      checkConcurrency: NORMAL_CONCURRENCY,
++      uploadConcurrency: NORMAL_CONCURRENCY,
++    },
++    cover: {
++      uploadExistingByDefault: false,
++    },
++  };
++}
++
++function privateJson(value: unknown): string {
++  return `${JSON.stringify(value, null, 2)}\n`;
++}
++
++async function writePrivateJson(path: string, value: unknown): Promise<void> {
++  const parent = dirname(path);
++  await mkdir(parent, { recursive: true, mode: 0o700 });
++  await chmod(parent, 0o700);
++  const temp = `${path}.${process.pid}.${randomUUID()}.tmp`;
++  try {
++    await writeFile(temp, privateJson(value), {
++      encoding: "utf8",
++      mode: 0o600,
++      flag: "wx",
++    });
++    await rename(temp, path);
++    await chmod(path, 0o600);
++  } catch (cause) {
++    await unlink(temp).catch(() => undefined);
++    throw cause;
++  }
++}
++
++async function writeImmutablePrivateJson(path: string, value: unknown): Promise<void> {
++  const parent = dirname(path);
++  await mkdir(parent, { recursive: true, mode: 0o700 });
++  await chmod(parent, 0o700);
++  const temp = `${path}.${process.pid}.${randomUUID()}.tmp`;
++  try {
++    await writeFile(temp, privateJson(value), {
++      encoding: "utf8",
++      mode: 0o600,
++      flag: "wx",
++    });
++    try {
++      await link(temp, path);
++    } catch (cause) {
++      if (!(cause instanceof Error && "code" in cause && cause.code === "EEXIST")) throw cause;
++    }
++  } finally {
++    await unlink(temp).catch(() => undefined);
++  }
++}
++
++export async function writeManagedVideoPublisherConfig(
++  dataDir: string,
++  libraryRoot: string,
++  platforms: readonly PublishPlatform[],
++  now = new Date(),
++): Promise<ManagedVideoPublisherPaths> {
++  const paths = managedVideoPublisherPaths(dataDir, `${randomUUID()}.json`);
++  await mkdir(paths.root, { recursive: true, mode: 0o700 });
++  await chmod(paths.root, 0o700);
++  await Promise.all([
++    mkdir(paths.configRoot, { recursive: true, mode: 0o700 }),
++    mkdir(paths.stateRoot, { recursive: true, mode: 0o700 }),
++    mkdir(paths.lockRoot, { recursive: true, mode: 0o700 }),
++    mkdir(paths.packageRoot, { recursive: true, mode: 0o700 }),
++  ]);
++  await Promise.all([
++    chmod(paths.configRoot, 0o700),
++    chmod(paths.stateRoot, 0o700),
++    chmod(paths.lockRoot, 0o700),
++    chmod(paths.packageRoot, 0o700),
++  ]);
++  await writePrivateJson(paths.configPath, managedVideoPublisherConfig(libraryRoot, platforms, now));
++  return paths;
++}
++
++/** Extracts the last complete JSON object without trusting surrounding logs. */
++export function parseLastJsonObject(raw: string): Record<string, unknown> | undefined {
++  let last: Record<string, unknown> | undefined;
++  let start = -1;
++  let depth = 0;
++  let inString = false;
++  let escaped = false;
++  for (let index = 0; index < raw.length; index += 1) {
++    const char = raw[index];
++    if (depth === 0) {
++      if (char !== "{") continue;
++      start = index;
++      depth = 1;
++      inString = false;
++      escaped = false;
++      continue;
++    }
++    if (inString) {
++      if (escaped) escaped = false;
++      else if (char === "\\") escaped = true;
++      else if (char === "\"") inString = false;
++      continue;
++    }
++    if (char === "\"") {
++      inString = true;
++      continue;
++    }
++    if (char === "{") depth += 1;
++    else if (char === "}") depth -= 1;
++    if (depth !== 0 || start < 0) continue;
++    try {
++      const parsed = JSON.parse(raw.slice(start, index + 1)) as unknown;
++      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
++        last = parsed as Record<string, unknown>;
++      }
++    } catch {
++      // Output may contain non-JSON braces before the structured summary.
++    }
++    start = -1;
++  }
++  return last;
++}
++
++async function publishMetadata(
++  folderPath: string,
++): Promise<{ title: string; tags: string[] } | undefined> {
++  const names = await readdir(folderPath).catch(() => []);
++  const name = names.find((candidate) => candidate === "publish-package.json")
++    ?? names.find((candidate) => candidate.endsWith(".publish-package.json"));
++  if (name === undefined) return undefined;
++  try {
++    const value = JSON.parse(await readFile(join(folderPath, name), "utf8")) as Record<string, unknown>;
++    if (typeof value.title !== "string" || value.title.trim() === "" || !Array.isArray(value.tags)) {
++      return undefined;
++    }
++    const tags = value.tags
++      .filter((tag): tag is string => typeof tag === "string" && tag.trim() !== "")
++      .map((tag) => tag.trim());
++    if (tags.length === 0 || tags.length !== value.tags.length) return undefined;
++    return { title: value.title.trim(), tags };
++  } catch {
++    return undefined;
++  }
++}
++
++function requiredCoverRatios(platforms: readonly PublishPlatform[]): Set<"3x4" | "4x3"> {
++  const ratios = new Set<"3x4" | "4x3">();
++  if (platforms.some((platform) => platform === "xiaohongshu" || platform === "douyin" || platform === "wechat")) {
++    ratios.add("3x4");
++  }
++  if (platforms.some((platform) => platform === "douyin" || platform === "bilibili" || platform === "wechat")) {
++    ratios.add("4x3");
++  }
++  return ratios;
++}
++
++export function missingCoverRatios(
++  item: Pick<ContentSummary, "covers">,
++  platforms: readonly PublishPlatform[],
++): Array<"3x4" | "4x3"> {
++  return [...requiredCoverRatios(platforms)].filter((ratio) => item.covers[ratio] === undefined);
++}
++
++function contentPackage(
++  item: ContentSummary,
++  title: string,
++  tags: string[],
++  platforms: readonly PublishPlatform[],
++  uploadCovers: boolean,
++): Record<string, unknown> {
++  const videoPath = item.videoSubtitled ?? item.videoRaw;
++  if (videoPath === undefined) throw new Error(`content has no video: ${item.id}`);
++  const result: Record<string, unknown> = { videoPath, title };
++  if (platforms.includes("xiaohongshu")) {
++    result.xhsTitle = title;
++    result.xhsTopics = tags;
++  }
++  if (platforms.includes("douyin")) {
++    result.douyinDescription = title;
++    result.douyinTopics = tags;
++  }
++  if (platforms.includes("bilibili")) {
++    result.bilibiliDescription = title;
++    result.bilibiliTags = tags;
++  }
++  if (platforms.includes("wechat")) {
++    result.wechatDescription = [title, tags.map((tag) => `#${tag}`).join(" ")]
++      .filter(Boolean)
++      .join("\n\n");
++    result.wechatTags = tags;
++  }
++  result.cover = uploadCovers
++    ? {
++      uploadCustomCover: true,
++      ...(item.covers["3x4"] === undefined ? {} : { vertical3x4Path: item.covers["3x4"] }),
++      ...(item.covers["4x3"] === undefined ? {} : { horizontal4x3Path: item.covers["4x3"] }),
++      ...(item.covers["16x9"] === undefined ? {} : { horizontal16x9Path: item.covers["16x9"] }),
++    }
++    : { uploadCustomCover: false };
++  return result;
++}
++
++function blockedStep(detail: string, code: string): PreparePublishStepResult {
++  return {
++    status: "blocked",
++    detail,
++    blocker: { code },
++  };
++}
++
++function publisherPlatformResult(value: unknown): PreparePublishVideoPlatformResult | undefined {
++  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
++  const raw = value as Record<string, unknown>;
++  const result: PreparePublishVideoPlatformResult = {
++    status: typeof raw.status === "string" ? raw.status : raw.ready === true ? "ready" : "blocked",
++    ready: raw.ready === true,
++    missing: Array.isArray(raw.missing)
++      ? raw.missing.filter((item): item is string => typeof item === "string")
++      : [],
++  };
++  if (typeof raw.taskSpaceId === "number" || raw.taskSpaceId === null) result.taskSpaceId = raw.taskSpaceId;
++  if (typeof raw.blocker === "object" && raw.blocker !== null && !Array.isArray(raw.blocker)) {
++    result.blocker = raw.blocker as Record<string, unknown>;
++  } else if (raw.blocker === null) result.blocker = null;
++  if (typeof raw.evidencePath === "string" || raw.evidencePath === null) result.evidencePath = raw.evidencePath;
++  return result;
++}
++
++function decodePublisherPlatforms(value: unknown): Record<string, PreparePublishVideoPlatformResult> {
++  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
++  const result: Record<string, PreparePublishVideoPlatformResult> = {};
++  for (const [platform, raw] of Object.entries(value as Record<string, unknown>)) {
++    const decoded = publisherPlatformResult(raw);
++    if (decoded !== undefined) result[platform] = decoded;
++  }
++  return result;
++}
++
++function outputDetail(result: CommandResult): string {
++  return (result.stderr.trim() || result.stdout.trim() || `publisher exited ${result.code}`).slice(-1200);
++}
++
++function platformBlockerDetail(
++  platforms: Record<string, PreparePublishVideoPlatformResult>,
++  fallback: string,
++): string {
++  const details = Object.entries(platforms).flatMap(([platform, result]) => {
++    if (result.ready) return [];
++    const blocker = result.blocker;
++    const code = typeof blocker?.code === "string" ? blocker.code : undefined;
++    const message = typeof blocker?.message === "string"
++      ? blocker.message
++      : typeof blocker?.detail === "string"
++        ? blocker.detail
++        : undefined;
++    const missing = result.missing.length > 0 ? `missing: ${result.missing.join(", ")}` : undefined;
++    return [`${platform}: ${[code, message, missing].filter(Boolean).join(" · ") || result.status}`];
++  });
++  return details.length > 0 ? details.join("\n") : fallback;
++}
++
++export async function prepareVideoDrafts(
++  options: PrepareVideoDraftsOptions,
++  dependencies: PrepareVideoDraftsDependencies = {},
++): Promise<PreparePublishStepResult> {
++  if (options.platforms.length === 0) {
++    return { status: "skipped", detail: "No enabled video platforms selected." };
++  }
++  if (options.item.videoSubtitled === undefined && options.item.videoRaw === undefined) {
++    return blockedStep("This episode has no finished video. Export an MP4 or MOV before preparing drafts.", "VIDEO_MISSING");
++  }
++  const metadata = await publishMetadata(options.item.folderPath);
++  if (!options.item.hasPublishPackage || metadata === undefined) {
++    return blockedStep(
++      "Create a valid publish-package.json containing a non-empty title and at least one non-empty tag before preparing drafts.",
++      "PUBLISH_PACKAGE_MISSING_OR_INVALID",
++    );
++  }
++  if (!options.inspectOnly && options.uploadCovers) {
++    const missing = missingCoverRatios(options.item, options.platforms);
++    if (missing.length > 0) {
++      return blockedStep(
++        `Existing-cover upload needs these missing ratios: ${missing.join(", ")}. Generate the covers or turn off cover upload.`,
++        "COVER_MISSING",
++      );
++    }
++  }
++  const originalityRequired = options.platforms.some((platform) =>
++    platform === "xiaohongshu" || platform === "bilibili" || platform === "wechat"
++  );
++  if (!options.inspectOnly && originalityRequired && !options.originalRightsConfirmed) {
++    return blockedStep(
++      "Confirm that this video may be declared original/self-produced before preparing drafts for the selected platforms.",
++      "ORIGINALITY_CONFIRMATION_REQUIRED",
++    );
++  }
++
++  const envSource = dependencies.env ?? process.env;
++  const findEgo = dependencies.findEgo ?? findExecutable;
++  const ego = await findEgo("ego-browser", envSource);
++  if (ego === undefined) {
++    return blockedStep("ego-browser was not found. Install Ego Lite, add its CLI to PATH, and log in to the creator sites.", "EGO_MISSING");
++  }
++
++  const skillRoot = dependencies.publisherSkillDir ?? bundledSkillDir("video-publisher");
++  const publisher = join(skillRoot, "scripts", "v2", "publisher.mjs");
++  const publisherReady = await access(publisher, constants.R_OK).then(() => true, () => false);
++  if (!publisherReady) {
++    return blockedStep("The bundled video-publisher skill is missing. Repair or update the Oil Creator installation.", "PUBLISHER_SKILL_MISSING");
++  }
++
++  let managedConfigPath: string | undefined;
++  try {
++    const paths = await writeManagedVideoPublisherConfig(
++      options.dataDir,
++      options.libraryRoot,
++      options.platforms,
++      (dependencies.now ?? (() => new Date()))(),
++    );
++    managedConfigPath = paths.configPath;
++    const payload = contentPackage(
++      options.item,
++      metadata.title,
++      metadata.tags,
++      options.platforms,
++      options.uploadCovers,
++    );
++    const itemKey = createHash("sha256").update(options.item.id).digest("hex").slice(0, 12);
++    const payloadKey = createHash("sha256").update(privateJson(payload)).digest("hex");
++    const packagePath = join(paths.packageRoot, `${itemKey}-${payloadKey}.json`);
++    await writeImmutablePrivateJson(packagePath, payload);
++
++    const args = [
++      publisher,
++      "--package",
++      packagePath,
++      "--state-root",
++      paths.stateRoot,
++      "--keep-space",
++      "--no-cleanup-stale-spaces",
++    ];
++    for (const platform of options.platforms) args.push("--platform", PUBLISHER_PLATFORM[platform]);
++    if (options.jobId !== undefined) args.push("--job-id", options.jobId);
++    if (options.originalRightsConfirmed) args.push("--confirm-original-rights");
++    if (options.inspectOnly) args.push("--inspect-only");
++
++    const runCommand = dependencies.runCommand ?? runPublishingCommand;
++    const result = await runCommand(
++      process.execPath,
++      args,
++      options.signal,
++      publisherEnvironment(envSource, ego, paths.configPath, paths.lockRoot),
++    );
++    const summary = parseLastJsonObject(result.stdout);
++    if (summary === undefined) {
++      return blockedStep(`Video Publisher did not return a structured summary. ${outputDetail(result)}`, "PUBLISHER_OUTPUT_INVALID");
++    }
++    const platforms = decodePublisherPlatforms(summary.platforms);
++    const selectedPublisherPlatforms = mapPublisherPlatforms(options.platforms);
++    const ready = summary.ready === true
++      && selectedPublisherPlatforms.every((platform) => platforms[platform]?.ready === true);
++    const step: PreparePublishStepResult = {
++      status: ready ? "readyForReview" : "blocked",
++      detail: ready
++        ? "Video drafts are ready for review in retained Ego task spaces. Final publication was not performed."
++        : platformBlockerDetail(platforms, outputDetail(result)),
++      platforms,
++    };
++    if (typeof summary.jobId === "string") step.jobId = summary.jobId;
++    if (typeof summary.statePath === "string") step.statePath = summary.statePath;
++    if (!ready) {
++      step.blocker = {
++        code: result.code === 0 ? "PLATFORM_BLOCKED" : `PUBLISHER_EXIT_${result.code}`,
++      };
++    }
++    return step;
++  } catch (cause) {
++    if (options.signal.aborted || (cause instanceof Error && cause.name === "AbortError")) throw cause;
++    return blockedStep(
++      cause instanceof Error ? cause.message : "Video draft preparation failed before launch.",
++      "PUBLISHER_LAUNCH_FAILED",
++    );
++  } finally {
++    if (managedConfigPath !== undefined) await unlink(managedConfigPath).catch(() => undefined);
++  }
++}
++
++export async function articleInputFingerprint(path: string): Promise<string> {
++  return createHash("sha256").update(await readFile(path)).digest("hex");
++}
++
++export async function prepareWechatArticleDraft(
++  options: PrepareWechatArticleDraftOptions,
++  dependencies: PrepareWechatArticleDraftDependencies = {},
++): Promise<PreparePublishStepResult> {
++  if (options.item.articlePath === undefined) {
++    return {
++      status: "skipped",
++      detail: "No WeChat Official Account article Markdown exists for this episode.",
++    };
++  }
++  const skillRoot = dependencies.publisherSkillDir ?? bundledSkillDir("wechat-publisher");
++  const cli = join(skillRoot, "wechat-publisher.mjs");
++  const publisherReady = await access(cli, constants.R_OK).then(() => true, () => false);
++  if (!publisherReady) {
++    return blockedStep("The bundled wechat-publisher skill is missing. Repair or update the Oil Creator installation.", "WECHAT_PUBLISHER_SKILL_MISSING");
++  }
++  const args = [cli, "publish-file", options.item.articlePath];
++  const thumb = options.item.covers["16x9"] ?? options.item.covers["4x3"] ?? options.item.covers["3x4"];
++  if (thumb !== undefined) args.push("--thumb", thumb);
++  try {
++    const inputFingerprint = await articleInputFingerprint(options.item.articlePath);
++    const runCommand = dependencies.runCommand ?? runPublishingCommand;
++    const result = await runCommand(
++      process.execPath,
++      args,
++      options.signal,
++      wechatPublisherEnvironment(dependencies.env ?? process.env),
++    );
++    const detail = (result.stdout.trim() || result.stderr.trim() || `wechat publisher exited ${result.code}`).slice(-1200);
++    return result.code === 0
++      ? {
++        status: "readyForReview",
++        detail: `${detail}\nA WeChat Official Account draft was created. Group-send was not performed.`,
++        inputFingerprint,
++      }
++      : {
++        status: "blocked",
++        detail,
++        blocker: { code: `WECHAT_PUBLISHER_EXIT_${result.code}` },
++        inputFingerprint,
++      };
++  } catch (cause) {
++    if (options.signal.aborted || (cause instanceof Error && cause.name === "AbortError")) throw cause;
++    return blockedStep(
++      cause instanceof Error ? cause.message : "WeChat article draft preparation failed before launch.",
++      "WECHAT_PUBLISHER_LAUNCH_FAILED",
++    );
++  }
++}
+diff --git a/src/remote-contract.ts b/src/remote-contract.ts
+index 21e2b08..40ef3f5 100644
+--- a/src/remote-contract.ts
++++ b/src/remote-contract.ts
+@@ -17,6 +17,8 @@ import {
+   setScriptRulesRequestSchema,
+   bindStudioRequestSchema,
+   setPublishRequestSchema,
++  preparePublishRequestSchema,
++  preparePublishResultSchema,
+   setScriptRequestSchema,
+   subtitlePreviewResultSchema,
+   subtitleTextResultSchema,
+@@ -86,6 +88,7 @@ export const OIL_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
+   invocation("bindStudio", bindStudioRequestSchema, contentDetailSchema),
+   invocation("openStudio", idRequestSchema, contentDetailSchema),
+   invocation("setPublish", setPublishRequestSchema, contentDetailSchema),
++  invocation("preparePublish", preparePublishRequestSchema, preparePublishResultSchema),
+   invocation("syncPublish", syncPublishRequestSchema, syncPublishResultSchema),
+   invocation("setScript", setScriptRequestSchema, contentDetailSchema),
+   invocation("openSubtitlePreview", idRequestSchema, subtitlePreviewResultSchema),
+diff --git a/src/schemas.ts b/src/schemas.ts
+index eadbf4e..ec0fbc6 100644
+--- a/src/schemas.ts
++++ b/src/schemas.ts
+@@ -61,6 +61,45 @@ const contentPublishSchema = z.object(
+   >,
+ );
+ 
++const preparePublishPlatformResultSchema = z.object({
++  status: z.string(),
++  ready: z.boolean(),
++  missing: z.array(z.string()),
++  taskSpaceId: z.number().nullable().optional(),
++  blocker: z.record(z.string(), z.unknown()).nullable().optional(),
++  evidencePath: z.string().nullable().optional(),
++});
++
++const preparePublishStepResultSchema = z.object({
++  status: z.union([
++    z.literal("readyForReview"),
++    z.literal("blocked"),
++    z.literal("skipped"),
++  ]),
++  detail: z.string(),
++  blocker: z.record(z.string(), z.unknown()).optional(),
++  jobId: z.string().optional(),
++  statePath: z.string().optional(),
++  inputFingerprint: z.string().optional(),
++  platforms: z.record(z.string(), preparePublishPlatformResultSchema).optional(),
++});
++
++export const preparePublishRequestSchema = z.object({
++  id: z.string().min(1),
++  platforms: z.array(publishPlatformSchema).optional(),
++  includeWechatArticle: z.boolean().optional(),
++  originalRightsConfirmed: z.boolean().optional(),
++  uploadCovers: z.boolean().optional(),
++  inspectOnly: z.boolean().optional(),
++});
++
++export const preparePublishResultSchema = z.object({
++  id: z.string().min(1),
++  selectedPlatforms: z.array(publishPlatformSchema),
++  video: preparePublishStepResultSchema,
++  wechatOfficialAccount: preparePublishStepResultSchema.optional(),
++});
++
+ const burnJobSchema = z.object({
+   status: z.union([
+     z.literal("idle"),
+@@ -98,6 +137,7 @@ export const contentSummarySchema = z.object({
+   burn: burnJobSchema,
+   subtitleJob: burnJobSchema,
+   coverJob: burnJobSchema,
++  publishPreparation: preparePublishResultSchema.optional(),
+ });
+ 
+ export const creatorProfileSchema = z.object({
+@@ -252,6 +292,7 @@ export const capabilitiesResultSchema = z.object({
+     editingSkill: capabilitySchema,
+     publishSkill: capabilitySchema,
+     articleSkill: capabilitySchema,
++    wechatPublisherSkill: capabilitySchema,
+   }),
+ });
+ 
+diff --git a/src/service.ts b/src/service.ts
+index 3fb4708..9a9a61d 100644
+--- a/src/service.ts
++++ b/src/service.ts
+@@ -57,6 +57,15 @@ import {
+   withOverlayLock,
+ } from "./overlay.ts";
+ import { patchOverlayPublish } from "./publishStatus.ts";
++import {
++  articleInputFingerprint,
++  isExactPreparedArticle,
++  mapPublisherPlatforms,
++  mergePreparationHistory,
++  prepareVideoDrafts,
++  prepareWechatArticleDraft,
++} from "./publishing.ts";
++import { PUBLISH_PLATFORMS } from "./platforms.ts";
+ import { missingSecretMessage } from "./secrets.ts";
+ import { describeCreatorSecrets, resolveCreatorSecret, secretEnv } from "./secretsHost.ts";
+ import {
+@@ -102,6 +111,9 @@ import type {
+   IdRequest,
+   OverlayItem,
+   OverlayStore,
++  PreparePublishRequest,
++  PreparePublishResult,
++  PreparePublishStepResult,
+   SetContentStageRequest,
+   LibrarySettings,
+   ListContentsRequest,
+@@ -143,6 +155,9 @@ export class OilCreatorService extends TypertRemoteService {
+   previews = new Map<string, { url: string; port: number; pid: number }>();
+   videos = new Map<string, { url: string; path: string; close: () => void }>();
+   articles = new Map<string, { origin: string; root: string; close: () => void }>();
++  prepareTails = new Map<string, Promise<void>>();
++  activePreparations = new Map<AbortController, Promise<void>>();
++  stopping = false;
+ 
+   constructor(ctx: Context, config: Config) {
+     super(ctx, OIL_CREATOR_SERVICE);
+@@ -154,6 +169,7 @@ export class OilCreatorService extends TypertRemoteService {
+     ctx.effect(() => async () => {
+       this.stopWatch();
+       this.stopExportWaiters();
++      await this.stopPreparations();
+       await this.stopServers();
+     }, "oil-creator: library watch");
+   }
+@@ -218,6 +234,17 @@ export class OilCreatorService extends TypertRemoteService {
+     this.exportWaiters.clear();
+   }
+ 
++  async stopPreparations(): Promise<void> {
++    this.stopping = true;
++    for (const controller of this.activePreparations.keys()) {
++      controller.abort(new Error("Oil Creator is stopping"));
++    }
++    await Promise.allSettled([...this.activePreparations.values()]);
++    this.activePreparations.clear();
++    await Promise.allSettled([...this.prepareTails.values()]);
++    this.prepareTails.clear();
++  }
++
+   subtitleSkill(): Promise<{ root: string; python: string }> {
+     return resolveSubtitleSkill(this.subtitleSkillDir());
+   }
+@@ -307,6 +334,138 @@ export class OilCreatorService extends TypertRemoteService {
+     };
+   }
+ 
++  async preparePublish(
++    request: PreparePublishRequest,
++    signal: AbortSignal,
++  ): Promise<PreparePublishResult> {
++    signal.throwIfAborted();
++    const previous = this.prepareTails.get(request.id) ?? Promise.resolve();
++    let release!: () => void;
++    const turn = new Promise<void>((resolve) => { release = resolve; });
++    const tail = previous.then(() => turn, () => turn);
++    this.prepareTails.set(request.id, tail);
++    await previous;
++    if (this.stopping) {
++      release();
++      throw new Error("Oil Creator is stopping");
++    }
++
++    const controller = new AbortController();
++    let finish!: () => void;
++    const settled = new Promise<void>((resolve) => { finish = resolve; });
++    this.activePreparations.set(controller, settled);
++    const onAbort = (): void => { controller.abort(signal.reason); };
++    signal.addEventListener("abort", onAbort, { once: true });
++    if (signal.aborted) onAbort();
++    try {
++      return await this.preparePublishNow(request, controller.signal);
++    } finally {
++      signal.removeEventListener("abort", onAbort);
++      finish();
++      await settled;
++      this.activePreparations.delete(controller);
++      release();
++      if (this.prepareTails.get(request.id) === tail) this.prepareTails.delete(request.id);
++    }
++  }
++
++  async preparePublishNow(
++    request: PreparePublishRequest,
++    signal: AbortSignal,
++  ): Promise<PreparePublishResult> {
++    signal.throwIfAborted();
++    const item = await this.find(request.id);
++    if (item === undefined) throw new Error(`content not found: ${request.id}`);
++    const settings = await this.getSettings({}, signal);
++    const enabled = new Set(settings.profile.enabledPlatforms);
++    const requested = new Set(request.platforms ?? settings.profile.enabledPlatforms);
++    const platforms = PUBLISH_PLATFORMS.filter((platform) =>
++      enabled.has(platform) && requested.has(platform)
++    );
++    const previous = item.publishPreparation;
++    const samePlatforms = previous !== undefined
++      && previous.selectedPlatforms.length === platforms.length
++      && previous.selectedPlatforms.every((platform, index) => platform === platforms[index]);
++    const previousJobId = samePlatforms ? previous.video.jobId : undefined;
++    const inspectExisting = request.inspectOnly === true
++      || (samePlatforms && previous?.video.status === "readyForReview" && previousJobId !== undefined);
++
++    const videoPromise = prepareVideoDrafts({
++      item,
++      libraryRoot: settings.libraryRoot,
++      platforms,
++      dataDir: this.dataDir,
++      originalRightsConfirmed: request.originalRightsConfirmed === true,
++      uploadCovers: request.uploadCovers === true,
++      inspectOnly: inspectExisting,
++      ...(previousJobId === undefined ? {} : { jobId: previousJobId }),
++      signal,
++    });
++    const previousArticle = previous?.wechatOfficialAccount;
++    const currentArticleFingerprint = item.articlePath === undefined
++      ? undefined
++      : await articleInputFingerprint(item.articlePath).catch(() => undefined);
++    const exactPersistedArticle = isExactPreparedArticle(
++      previousArticle,
++      currentArticleFingerprint,
++    );
++    let articlePromise: Promise<PreparePublishStepResult | undefined>;
++    if (request.includeWechatArticle !== true) {
++      articlePromise = Promise.resolve(undefined);
++    } else if (request.inspectOnly === true) {
++      articlePromise = Promise.resolve(exactPersistedArticle
++        ? previousArticle
++        : {
++          status: "skipped" as const,
++          detail: "No persisted WeChat Official Account draft matches the current article. Inspection did not create a draft.",
++          ...(currentArticleFingerprint === undefined ? {} : { inputFingerprint: currentArticleFingerprint }),
++        });
++    } else if (exactPersistedArticle && previousArticle?.status === "readyForReview") {
++      articlePromise = Promise.resolve(previousArticle);
++    } else {
++      articlePromise = prepareWechatArticleDraft({ item, signal });
++    }
++    const [videoSettled, articleSettled] = await Promise.allSettled([videoPromise, articlePromise]);
++    signal.throwIfAborted();
++    const video = videoSettled.status === "fulfilled"
++      ? videoSettled.value
++      : publishBranchFailure(videoSettled.reason, "VIDEO_PREPARATION_FAILED");
++    const article = articleSettled.status === "fulfilled"
++      ? articleSettled.value
++      : publishBranchFailure(articleSettled.reason, "WECHAT_ARTICLE_PREPARATION_FAILED");
++    const articleForResult = article
++      ?? (request.includeWechatArticle !== true && exactPersistedArticle ? previousArticle : undefined);
++    const result: PreparePublishResult = {
++      id: request.id,
++      selectedPlatforms: platforms,
++      video,
++      ...(articleForResult === undefined ? {} : { wechatOfficialAccount: articleForResult }),
++    };
++    const persistedResult = mergePreparationHistory(
++      result,
++      previous,
++      currentArticleFingerprint,
++    );
++
++    await withOverlayLock(this.dataDir, async () => {
++      const overlay = await loadOverlay(this.dataDir);
++      const current = overlay.items[request.id] ?? {};
++      const next: OverlayItem = { ...current, publishPreparation: persistedResult };
++      if (request.inspectOnly !== true && video.platforms !== undefined) {
++        for (const [index, publisherPlatform] of mapPublisherPlatforms(platforms).entries()) {
++          const platform = platforms[index];
++          if (platform !== undefined && video.platforms[publisherPlatform]?.ready === true) {
++            next.publish = patchOverlayPublish(next.publish, platform, "draft");
++          }
++        }
++      }
++      overlay.items[request.id] = next;
++      await saveOverlay(this.dataDir, overlay);
++      this.invalidateCatalog();
++    });
++    return result;
++  }
++
+   async getCoverThumb(request: IdRequest, signal: AbortSignal): Promise<CoverThumbResult> {
+     signal.throwIfAborted();
+     const folderId = request.id.split("::")[0] ?? request.id;
+@@ -995,6 +1154,14 @@ export class OilCreatorService extends TypertRemoteService {
+   }
+ }
+ 
++function publishBranchFailure(cause: unknown, code: string): PreparePublishStepResult {
++  return {
++    status: "blocked",
++    detail: cause instanceof Error ? cause.message : "Draft preparation failed.",
++    blocker: { code },
++  };
++}
++
+ function resolveUserPath(path: string): string {
+   const expanded = expandHomePath(path);
+   if (!isAbsolute(expanded)) throw new Error(`path must be absolute: ${path}`);
+diff --git a/src/tools.ts b/src/tools.ts
+index 0a42e95..d30e008 100644
+--- a/src/tools.ts
++++ b/src/tools.ts
+@@ -35,7 +35,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
+       "Self-bootstrap guide for this plugin. Call this when the user asks what this plugin does, "
+       + "how to use it, or when you are unsure which step comes next. "
+       + "Returns the full workflow (library, script rules, subtitles, covers, publish, data sync) "
+-      + "with the live capability status, including whether Ego Browser is available for auto-publish and data collection.",
++      + "with the live capability status, including whether Ego Browser is available for video draft preparation and data collection.",
+     parameters: {},
+     output: {
+       schema: JSON_VALUE,
+@@ -255,6 +255,62 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
+     }, signalOf(exec))),
+   }));
+ 
++  ctx.tools.register(defineTool({
++    name: "oil_prepare_publish",
++    description:
++      "Prepare verified drafts for the episode on enabled video platforms and, optionally, the WeChat Official Account. "
++      + "Video pages remain open in Ego for human review; the WeChat article is created in the draft box. "
++      + "This tool never performs the final publish or group-send action.",
++    parameters: {
++      id: { type: "string", required: true, description: "Folder id." },
++      platforms: {
++        type: "array",
++        items: { type: "string", enum: PUBLISH_PLATFORMS },
++        description: "Enabled video platforms to prepare. Omit to use the creator profile.",
++      },
++      includeWechatArticle: {
++        type: "boolean",
++        description: "Also upload the existing 公众号文章 Markdown file to the WeChat Official Account draft box.",
++      },
++      originalRightsConfirmed: {
++        type: "boolean",
++        description: "True only when the user confirms this video may be declared original/self-produced.",
++      },
++      uploadCovers: {
++        type: "boolean",
++        description: "Upload the episode's existing platform covers when every required ratio is available.",
++      },
++      inspectOnly: {
++        type: "boolean",
++        description: "Inspect existing draft state without creating or changing drafts.",
++      },
++    },
++    output: {
++      schema: JSON_VALUE,
++      render: (_args, value) => {
++        const result = value as {
++          video?: { status?: string };
++          wechatOfficialAccount?: { status?: string };
++        };
++        return compactText(
++          "Prepare publish",
++          [result.video?.status, result.wechatOfficialAccount?.status].filter(Boolean).join(", ") || "skipped",
++        );
++      },
++    },
++    presentCall: (args) => present("Prepare publish drafts", args),
++    execute: (args, exec) => service.preparePublish({
++      id: args.id,
++      ...(Array.isArray(args.platforms)
++        ? { platforms: normalizeEnabledPlatforms(args.platforms) }
++        : {}),
++      includeWechatArticle: args.includeWechatArticle === true,
++      originalRightsConfirmed: args.originalRightsConfirmed === true,
++      uploadCovers: args.uploadCovers === true,
++      inspectOnly: args.inspectOnly === true,
++    }, signalOf(exec)).then(asJson),
++  }));
++
+   ctx.tools.register(defineTool({
+     name: "oil_sync_publish",
+     description:
+diff --git a/src/types.ts b/src/types.ts
+index 82cc95f..62fd6f2 100644
+--- a/src/types.ts
++++ b/src/types.ts
+@@ -77,6 +77,43 @@ export interface ContentSubtitles {
+   transcript?: string;
+ }
+ 
++export type PreparePublishStepStatus = "readyForReview" | "blocked" | "skipped";
++
++export interface PreparePublishVideoPlatformResult {
++  status: string;
++  ready: boolean;
++  missing: string[];
++  taskSpaceId?: number | null;
++  blocker?: Record<string, unknown> | null;
++  evidencePath?: string | null;
++}
++
++export interface PreparePublishStepResult {
++  status: PreparePublishStepStatus;
++  detail: string;
++  blocker?: Record<string, unknown>;
++  jobId?: string;
++  statePath?: string;
++  inputFingerprint?: string;
++  platforms?: Record<string, PreparePublishVideoPlatformResult>;
++}
++
++export interface PreparePublishRequest {
++  id: string;
++  platforms?: PublishPlatform[];
++  includeWechatArticle?: boolean;
++  originalRightsConfirmed?: boolean;
++  uploadCovers?: boolean;
++  inspectOnly?: boolean;
++}
++
++export interface PreparePublishResult {
++  id: string;
++  selectedPlatforms: PublishPlatform[];
++  video: PreparePublishStepResult;
++  wechatOfficialAccount?: PreparePublishStepResult;
++}
++
+ export interface ContentSummary {
+   id: string;
+   folderPath: string;
+@@ -101,6 +138,7 @@ export interface ContentSummary {
+   burn: BurnJob;
+   subtitleJob: MediaJob;
+   coverJob: MediaJob;
++  publishPreparation?: PreparePublishResult;
+ }
+ 
+ export interface CreatorProfile {
+@@ -134,6 +172,7 @@ export interface CreatorCapabilities {
+   editingSkill: CreatorCapability;
+   publishSkill: CreatorCapability;
+   articleSkill: CreatorCapability;
++  wechatPublisherSkill: CreatorCapability;
+ }
+ 
+ export interface CreatorSetupStatus {
+@@ -247,6 +286,7 @@ export interface OverlayItem {
+   burn?: BurnJob;
+   subtitleJob?: MediaJob;
+   coverJob?: MediaJob;
++  publishPreparation?: PreparePublishResult;
+ }
+ 
+ export interface SetPublishRequest {
+diff --git a/tests/capabilities.test.ts b/tests/capabilities.test.ts
+index edd95eb..ecaf3aa 100644
+--- a/tests/capabilities.test.ts
++++ b/tests/capabilities.test.ts
+@@ -65,6 +65,7 @@ describe("creator setup inspection", () => {
+     expect(result.capabilities.editingSkill.path).toBe(join(root, "skills", "screen-studio-editor"));
+     expect(result.capabilities.publishSkill.state).toBe("ready");
+     expect(result.capabilities.articleSkill.state).toBe("ready");
++    expect(result.capabilities.wechatPublisherSkill.state).toBe("ready");
+     expect(result.recommendations).toEqual([]);
+   });
+ 
+@@ -92,6 +93,7 @@ describe("creator setup inspection", () => {
+     expect(result.capabilities.editingSkill.state).toBe("missing");
+     expect(result.capabilities.publishSkill.state).toBe("missing");
+     expect(result.capabilities.articleSkill.state).toBe("missing");
++    expect(result.capabilities.wechatPublisherSkill.state).toBe("missing");
+     expect(result.recommendations.length).toBeGreaterThan(3);
+   });
+ 
+diff --git a/tests/catalog.test.ts b/tests/catalog.test.ts
+index 52bfb48..e1a5b59 100644
+--- a/tests/catalog.test.ts
++++ b/tests/catalog.test.ts
+@@ -121,6 +121,7 @@ describe("pipeline and filters", () => {
+       videoRaw: "/a.mp4",
+       subtitles: { srt: "/a.srt" },
+       covers: { "3x4": "/a.png" },
++      hasPublishPackage: true,
+     })).toBe("publish");
+     expect(workflowOf({
+       ...base,
+@@ -248,7 +249,7 @@ describe("scanLibrary", () => {
+     await writeFile(join(folder, "2026-01-23_demo_subtitled.srt"), "1\n00:00:00,000 --> 00:00:01,000\nhi\n");
+     await writeFile(join(folder, "publish-package.json"), JSON.stringify({
+       title: "Demo title",
+-      xhsTopics: ["AI"],
++      tags: ["AI"],
+     }));
+ 
+     const items = await scanLibrary(root, emptyOverlay());
+@@ -264,6 +265,23 @@ describe("scanLibrary", () => {
+     expect(items[0]?.tags).toEqual(["AI"]);
+   });
+ 
++  it("does not advertise publish-ready for an empty or whitespace-only tags package", async () => {
++    const root = await mkdtemp(join(tmpdir(), "dsh-oil-invalid-publish-"));
++    const folder = join(root, "2026-01-23_demo");
++    await mkdir(folder);
++    await writeFile(join(folder, "demo.mp4"), "video");
++    await writeFile(join(folder, "demo.srt"), "subtitle");
++    await writeFile(join(folder, "demo_3x4.png"), "cover");
++    await writeFile(join(folder, "publish-package.json"), JSON.stringify({
++      title: "Demo title",
++      tags: ["   "],
++    }));
++
++    const [item] = await scanLibrary(root, emptyOverlay());
++    expect(item?.hasPublishPackage).toBe(false);
++    expect(item?.workflow).toBe("finish");
++  });
++
+   it("sorts by recordedAt: the name date decides, not the last touch", async () => {
+     const root = await mkdtemp(join(tmpdir(), "dsh-oil-sort-"));
+     const older = join(root, "2026-06-27_old video");
+diff --git a/tests/contentInspector.test.ts b/tests/contentInspector.test.ts
+index f939455..906bdf5 100644
+--- a/tests/contentInspector.test.ts
++++ b/tests/contentInspector.test.ts
+@@ -1,7 +1,11 @@
+ import { describe, expect, it } from "vitest";
+ 
+ import {
++  isPreparePublishDisabled,
+   isPublishSyncDisabled,
++  missingSelectedCoverRatios,
++  preparePublishOutcome,
++  requiresOriginalityConfirmation,
+   selectEnabledPublishPlatforms,
+ } from "../src/client/publishPlatforms.ts";
+ 
+@@ -18,4 +22,55 @@ describe("content inspector enabled platform contract", () => {
+     expect(isPublishSyncDisabled(undefined, false, [])).toBe(true);
+     expect(isPublishSyncDisabled(undefined, false, ["wechat"])).toBe(false);
+   });
++
++  it("requires truthful originality confirmation only for affected selected platforms", () => {
++    expect(requiresOriginalityConfirmation(["douyin"])).toBe(false);
++    expect(requiresOriginalityConfirmation(["douyin", "wechat"])).toBe(true);
++    expect(isPreparePublishDisabled({
++      busy: undefined,
++      platformSettingsPending: false,
++      selectedPlatforms: ["wechat"],
++      hasVideo: true,
++      includeWechatArticle: false,
++      hasArticle: false,
++      originalRightsConfirmed: false,
++      uploadCovers: false,
++      covers: {},
++    })).toBe(true);
++  });
++
++  it("checks selected-platform cover ratios and supports article-only preparation", () => {
++    expect(missingSelectedCoverRatios({ "3x4": "/vertical.png" }, ["bilibili", "wechat"]))
++      .toEqual(["4x3"]);
++    expect(isPreparePublishDisabled({
++      busy: undefined,
++      platformSettingsPending: false,
++      selectedPlatforms: [],
++      hasVideo: false,
++      includeWechatArticle: true,
++      hasArticle: true,
++      originalRightsConfirmed: false,
++      uploadCovers: false,
++      covers: {},
++    })).toBe(false);
++  });
++
++  it("keeps partial draft preparation visible instead of collapsing to failure", () => {
++    expect(preparePublishOutcome({
++      id: "demo",
++      selectedPlatforms: ["xiaohongshu", "douyin"],
++      video: {
++        status: "blocked",
++        detail: "douyin blocked",
++        platforms: {
++          xiaohongshu: { status: "ready", ready: true, missing: [] },
++          douyin: { status: "blocked", ready: false, missing: ["video"] },
++        },
++      },
++      wechatOfficialAccount: {
++        status: "readyForReview",
++        detail: "draft created",
++      },
++    })).toBe("partial");
++  });
+ });
+diff --git a/tests/contentSelection.test.ts b/tests/contentSelection.test.ts
+index 7e016a2..64b6304 100644
+--- a/tests/contentSelection.test.ts
++++ b/tests/contentSelection.test.ts
+@@ -1,6 +1,7 @@
+ import { afterEach, describe, expect, it, vi } from "vitest";
+ 
+ import {
++  bindProductWorkbench,
+   bumpLibrary,
+   bumpProfile,
+   getLibraryEpoch,
+@@ -8,7 +9,9 @@ import {
+   getSelectedContentId,
+   getSidebarTab,
+   inspectorIsOpen,
++  releaseShellChrome,
+   setSelectedContentId,
++  setSidebarChromeWidth,
+   setSidebarTab,
+   subscribeLibrary,
+   subscribeProfile,
+@@ -82,7 +85,34 @@ describe("content selection", () => {
+     stop();
+   });
+ 
+-  it("restores the inset host and global chrome on plugin release", async () => {
++  it("routes selection and close through the optional product workbench", () => {
++    const workbench = {
++      showCore: vi.fn(),
++      showContent: vi.fn(),
++    };
++    const stop = bindProductWorkbench(() => workbench);
++
++    setSelectedContentId("2026-01-23_demo");
++    setSelectedContentId("2026-01-23_demo");
++    expect(workbench.showContent).toHaveBeenCalledTimes(2);
++    expect(workbench.showContent).toHaveBeenCalledWith("2026-01-23_demo");
++
++    setSelectedContentId(null);
++    expect(workbench.showCore).toHaveBeenCalledOnce();
++    stop();
++    expect(workbench.showCore).toHaveBeenCalledTimes(2);
++  });
++
++  it("keeps selection standalone when the product coordinator is absent", () => {
++    const stop = bindProductWorkbench(() => undefined);
++    expect(() => {
++      setSelectedContentId("2026-01-23_demo");
++      setSelectedContentId(null);
++      stop();
++    }).not.toThrow();
++  });
++
++  it("restores global sidebar chrome on plugin release", () => {
+     class FakeStyle {
+       private readonly values = new Map<string, { value: string; priority: string }>();
+ 
+@@ -103,40 +133,13 @@ describe("content selection", () => {
+       }
+     }
+ 
+-    class FakeHTMLElement {
+-      readonly style = new FakeStyle();
+-      parentElement: FakeHTMLElement | null = null;
+-    }
+-
+-    const root = new FakeHTMLElement();
+-    const host = new FakeHTMLElement();
+-    const scrollport = new FakeHTMLElement();
+-    scrollport.parentElement = host;
+-    host.style.setProperty("padding-left", "8px", "important");
+-    host.style.setProperty("transition", "opacity 1s");
++    const root = { style: new FakeStyle() };
+     root.style.setProperty("--oil-sidebar-width", "11px", "important");
+-    vi.stubGlobal("HTMLElement", FakeHTMLElement);
+-    vi.stubGlobal("document", {
+-      documentElement: root,
+-      querySelector: () => scrollport,
+-    });
+-
+-    const { applyConversationInset, clearConversationInset, releaseShellChrome, setSidebarChromeWidth } =
+-      await import("../src/client/contentSelection.ts");
+-
+-    expect(applyConversationInset(640, false)).toBe(host);
+-    expect(host.style.getPropertyValue("padding-left")).toBe("640px");
+-    expect(host.style.getPropertyValue("transition")).toBe("none");
+-    expect(applyConversationInset(720, true)).toBe(host);
+-    expect(host.style.getPropertyValue("padding-left")).toBe("720px");
++    vi.stubGlobal("document", { documentElement: root });
+ 
+     setSidebarChromeWidth(350);
+     expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("350px");
+     releaseShellChrome();
+-    clearConversationInset();
+-    expect(host.style.getPropertyValue("padding-left")).toBe("8px");
+-    expect(host.style.getPropertyPriority("padding-left")).toBe("important");
+-    expect(host.style.getPropertyValue("transition")).toBe("opacity 1s");
+     expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("11px");
+     expect(root.style.getPropertyPriority("--oil-sidebar-width")).toBe("important");
+ 
+@@ -145,19 +148,4 @@ describe("content selection", () => {
+     releaseShellChrome();
+     expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("11px");
+   });
+-
+-  it("does not touch the document when the conversation seam is absent", async () => {
+-    class FakeHTMLElement {
+-      readonly style = {};
+-      parentElement: FakeHTMLElement | null = null;
+-    }
+-
+-    vi.stubGlobal("HTMLElement", FakeHTMLElement);
+-    vi.stubGlobal("document", {
+-      documentElement: new FakeHTMLElement(),
+-      querySelector: () => null,
+-    });
+-    const { applyConversationInset } = await import("../src/client/contentSelection.ts");
+-    expect(applyConversationInset(640)).toBeNull();
+-  });
+ });
+diff --git a/tests/creatorSkill.test.ts b/tests/creatorSkill.test.ts
+index b745a5e..0f75f7a 100644
+--- a/tests/creatorSkill.test.ts
++++ b/tests/creatorSkill.test.ts
+@@ -6,8 +6,10 @@ describe("creator-workbench skill", () => {
+   it("registers a model-visible onboarding workflow", () => {
+     const dispose = vi.fn();
+     const register = vi.fn(() => dispose);
+-    expect(registerCreatorWorkbenchSkill({ skills: { register } })).toBe(dispose);
++    const stop = registerCreatorWorkbenchSkill({ skills: { register } });
+     expect(register).toHaveBeenCalledWith(CREATOR_WORKBENCH_SKILL);
++    stop();
++    expect(dispose).toHaveBeenCalledOnce();
+     expect(CREATOR_WORKBENCH_SKILL.content).toContain("oil_creator_guide");
+     expect(CREATOR_WORKBENCH_SKILL.content).toContain("oil_creator_setup");
+     expect(CREATOR_WORKBENCH_SKILL.content).toContain("oil_script_rules");
+diff --git a/tests/guide.test.ts b/tests/guide.test.ts
+index 5ef29ff..78a3bd1 100644
+--- a/tests/guide.test.ts
++++ b/tests/guide.test.ts
+@@ -37,6 +37,7 @@ function statusOf(overrides: {
+       editingSkill: capability("ready"),
+       publishSkill: capability("ready"),
+       articleSkill: capability("ready"),
++      wechatPublisherSkill: capability("ready"),
+     },
+     recommendations: [],
+   };
+@@ -55,12 +56,12 @@ describe("creatorGuideText", () => {
+     expect(guide).toContain("video-publisher");
+   });
+ 
+-  it("tells the model auto-publish and data sync need Ego Browser when missing", () => {
++  it("tells the model video draft preparation and data sync need Ego Browser when missing", () => {
+     const guide = creatorGuideText(statusOf({
+-      publishSync: capability("missing", "未发现 Ego Browser；自动发布和发布数据回收不可用。"),
++      publishSync: capability("missing", "未发现 Ego Browser；视频草稿准备和发布数据回收不可用。"),
+     }));
+     expect(guide).toContain("未发现 Ego Browser");
+-    expect(guide).toContain("自动发布");
++    expect(guide).toContain("视频草稿准备");
+     expect(guide).toContain("oil_sync_publish");
+     expect(guide).toContain("lite.ego.app");
+     expect(guide).toContain("不要假装能同步");
+@@ -79,12 +80,12 @@ describe("creatorGuideText", () => {
+     expect(guide).not.toContain("小红书（xiaohongshu）");
+   });
+ 
+-  it("stops automatic publishing and sync when no platform is enabled", () => {
++  it("stops video draft preparation and sync when no platform is enabled", () => {
+     const guide = creatorGuideText(statusOf({ enabledPlatforms: [] }));
+     expect(guide).toContain("当前 enabledPlatforms 为空（[]）");
+     expect(guide).toContain("不要调用 video-publisher，也不要调用 oil_sync_publish");
+     expect(guide).toContain("先用 oil_creator_setup 配置启用平台");
+-    expect(guide).toContain("不执行自动发布和数据回收");
++    expect(guide).toContain("不执行视频草稿准备和数据回收");
+   });
+ 
+   it("asks for a persona before writing scripts when rules are unset", () => {
+@@ -145,13 +146,15 @@ describe("creatorGuideText", () => {
+     expect(guide).not.toContain("git clone https://github.com/oil-oil/oil-subtitle");
+   });
+ 
+-  it("gives install commands for video-publisher and oil-video-article when missing", () => {
++  it("reports missing bundled publishing skills as an installation problem", () => {
+     const status = statusOf({});
+     status.capabilities.publishSkill = capability("missing");
+     status.capabilities.articleSkill = capability("missing");
++    status.capabilities.wechatPublisherSkill = capability("missing");
+     const guide = creatorGuideText(status);
+-    expect(guide).toContain("git clone https://github.com/oil-oil/video-publisher-skill ~/.agents/skills/video-publisher");
+-    expect(guide).toContain("git clone https://github.com/oil-oil/oil-video-article ~/.agents/skills/oil-video-article");
++    expect(guide).toContain("当前安装包缺少 video-publisher");
++    expect(guide).toContain("当前安装包缺少 oil-video-article");
++    expect(guide).toContain("当前安装包缺少 wechat-publisher");
+   });
+ 
+   it("lists environment recommendations when present", () => {
+diff --git a/tests/publishing.test.ts b/tests/publishing.test.ts
+new file mode 100644
+index 0000000..afd00a1
+--- /dev/null
++++ b/tests/publishing.test.ts
+@@ -0,0 +1,297 @@
++import { access, mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++
++import { describe, expect, it, vi } from "vitest";
++
++import {
++  isExactPreparedArticle,
++  managedVideoPublisherConfig,
++  mergePreparationHistory,
++  parseLastJsonObject,
++  prepareVideoDrafts,
++  publisherEnvironment,
++  runPublishingCommand,
++  wechatPublisherEnvironment,
++  writeManagedVideoPublisherConfig,
++} from "../src/publishing.ts";
++import { emptyBurn, emptyPublish } from "../src/publishStatus.ts";
++import type { ContentSummary } from "../src/types.ts";
++
++function item(folderPath: string, videoPath: string): ContentSummary {
++  return {
++    id: "2026-09-01_demo",
++    folderPath,
++    title: "Demo",
++    recordedAt: 1,
++    createdMs: 1,
++    videoRaw: videoPath,
++    covers: { "3x4": join(folderPath, "cover_3x4.png"), "4x3": join(folderPath, "cover_4x3.png") },
++    subtitles: {},
++    hasPublishPackage: true,
++    hasArticle: false,
++    waitingForExport: false,
++    tags: [],
++    pipeline: "packaged",
++    workflow: "publish",
++    publish: emptyPublish(),
++    burn: emptyBurn(),
++    subtitleJob: emptyBurn(),
++    coverJob: emptyBurn(),
++  };
++}
++
++describe("managed Video Publisher configuration", () => {
++  it("maps selected platforms into an onboarded private schema-v2 config", async () => {
++    const dataDir = await mkdtemp(join(tmpdir(), "oil-publisher-config-"));
++    const paths = await writeManagedVideoPublisherConfig(
++      dataDir,
++      "/library",
++      ["xiaohongshu", "wechat"],
++      new Date("2026-09-01T12:00:00.000Z"),
++    );
++    const config = JSON.parse(await readFile(paths.configPath, "utf8")) as Record<string, unknown>;
++    expect(config).toEqual(managedVideoPublisherConfig(
++      "/library",
++      ["xiaohongshu", "wechat"],
++      new Date("2026-09-01T12:00:00.000Z"),
++    ));
++    expect(config).toMatchObject({
++      schemaVersion: 2,
++      onboarding: { completed: true },
++      sourceDirectory: "/library",
++      availablePlatforms: ["xiaohongshu", "wechat_channels"],
++      defaultPlatforms: ["xiaohongshu", "wechat_channels"],
++      declarations: { originalityPolicy: "ask_each_run" },
++      execution: { checkConcurrency: 4, uploadConcurrency: 4 },
++    });
++    expect((await stat(paths.configPath)).mode & 0o777).toBe(0o600);
++    expect((await stat(paths.root)).mode & 0o777).toBe(0o700);
++    await access(paths.stateRoot);
++    await access(paths.lockRoot);
++  });
++
++  it("scrubs ambient credentials while preserving documented child inputs", () => {
++    const ambient = {
++      PATH: "/usr/bin",
++      HOME: "/home/demo",
++      DEEPSEEK_API_KEY: "secret",
++      RANDOM_TOKEN: "secret",
++      VIDEO_PUBLISHER_V2_RUNNER: "/fixture/runner.mjs",
++      WECHAT_APP_ID: "wx-id",
++      WECHAT_APP_SECRET: "wx-secret",
++    };
++    const publisher = publisherEnvironment(ambient, "/opt/ego/ego-browser", "/managed/config.json", "/managed/locks");
++    expect(publisher.PATH).toContain("/opt/ego");
++    expect(publisher.VIDEO_PUBLISHER_CONFIG).toBe("/managed/config.json");
++    expect(publisher.VIDEO_PUBLISHER_V2_RUNNER).toBe("/fixture/runner.mjs");
++    expect(publisher.DEEPSEEK_API_KEY).toBeUndefined();
++    expect(publisher.RANDOM_TOKEN).toBeUndefined();
++    expect(publisher.WECHAT_APP_SECRET).toBeUndefined();
++
++    const wechat = wechatPublisherEnvironment(ambient);
++    expect(wechat.WECHAT_APP_ID).toBe("wx-id");
++    expect(wechat.WECHAT_APP_SECRET).toBe("wx-secret");
++    expect(wechat.DEEPSEEK_API_KEY).toBeUndefined();
++  });
++});
++
++describe("persisted preparation history", () => {
++  const article = {
++    status: "readyForReview" as const,
++    detail: "draft created",
++    inputFingerprint: "article-v1",
++  };
++  const video = {
++    status: "blocked" as const,
++    detail: "one platform blocked",
++    jobId: "job-1",
++  };
++  const previous = {
++    id: "demo",
++    selectedPlatforms: ["xiaohongshu" as const],
++    video,
++    wechatOfficialAccount: article,
++  };
++
++  it("reuses an article only for the exact current fingerprint", () => {
++    expect(isExactPreparedArticle(article, "article-v1")).toBe(true);
++    expect(isExactPreparedArticle(article, "article-v2")).toBe(false);
++    const { inputFingerprint: _fingerprint, ...withoutFingerprint } = article;
++    expect(isExactPreparedArticle(withoutFingerprint, "article-v1")).toBe(false);
++  });
++
++  it("preserves article state on video-only retries and video state on article-only runs", () => {
++    const videoOnly = mergePreparationHistory({
++      id: "demo",
++      selectedPlatforms: ["xiaohongshu"],
++      video: { ...video, detail: "retry" },
++    }, previous, "article-v1");
++    expect(videoOnly.wechatOfficialAccount).toEqual(article);
++
++    const articleOnly = mergePreparationHistory({
++      id: "demo",
++      selectedPlatforms: [],
++      video: { status: "skipped", detail: "no platforms" },
++      wechatOfficialAccount: article,
++    }, previous, "article-v1");
++    expect(articleOnly.selectedPlatforms).toEqual(["xiaohongshu"]);
++    expect(articleOnly.video).toBe(video);
++  });
++});
++
++describe("publishing subprocess cancellation", () => {
++  it.skipIf(process.platform === "win32")("kills an owned grandchild that keeps output pipes open", async () => {
++    const root = await mkdtemp(join(tmpdir(), "oil-publisher-abort-"));
++    const script = join(root, "leader.mjs");
++    const pidPath = join(root, "grandchild.pid");
++    await writeFile(script, [
++      'import { spawn } from "node:child_process";',
++      'import { writeFileSync } from "node:fs";',
++      `const child = spawn(process.execPath, ["-e", ${JSON.stringify("process.on('SIGTERM', () => {}); setInterval(() => {}, 1000);")}], { stdio: ["ignore", "inherit", "inherit"] });`,
++      `writeFileSync(${JSON.stringify(pidPath)}, String(child.pid));`,
++    ].join("\n"));
++    const controller = new AbortController();
++    const running = runPublishingCommand(process.execPath, [script], controller.signal, {
++      PATH: process.env.PATH,
++      HOME: process.env.HOME,
++    });
++    let grandchild = 0;
++    try {
++      for (let attempt = 0; attempt < 50; attempt += 1) {
++        grandchild = Number(await readFile(pidPath, "utf8").catch(() => "0"));
++        if (grandchild > 0) break;
++        await new Promise((resolve) => setTimeout(resolve, 20));
++      }
++      expect(grandchild).toBeGreaterThan(0);
++      controller.abort(new Error("cancel test"));
++      await expect(running).rejects.toThrow("cancel test");
++      let gone = false;
++      for (let attempt = 0; attempt < 50; attempt += 1) {
++        try {
++          process.kill(grandchild, 0);
++        } catch {
++          gone = true;
++          break;
++        }
++        await new Promise((resolve) => setTimeout(resolve, 20));
++      }
++      expect(gone).toBe(true);
++    } finally {
++      if (!controller.signal.aborted) controller.abort(new Error("test cleanup"));
++      await running.catch(() => undefined);
++      if (grandchild > 0) {
++        try {
++          process.kill(grandchild, "SIGKILL");
++        } catch {
++          // The owned process already reached quiescence.
++        }
++      }
++    }
++  });
++});
++
++describe("Video Publisher draft preparation", () => {
++  it("parses the last complete JSON object amid process logs", () => {
++    expect(parseLastJsonObject("log {not json}\n{\"ready\":false}\ntrailing\n{\"ready\":true,\"nested\":{\"ok\":1}}\n"))
++      .toEqual({ ready: true, nested: { ok: 1 } });
++  });
++
++  it("uses managed config/state, resumes safely, and preserves partial blockers", async () => {
++    const root = await mkdtemp(join(tmpdir(), "oil-publisher-run-"));
++    const folder = join(root, "episode");
++    const skill = join(root, "video-publisher");
++    const publisher = join(skill, "scripts", "v2", "publisher.mjs");
++    const video = join(folder, "demo.mp4");
++    await mkdir(join(skill, "scripts", "v2"), { recursive: true });
++    await mkdir(folder);
++    await writeFile(publisher, "export {};\n");
++    await writeFile(video, "video");
++    const exactTitle = "A title that must remain exact beyond the Xiaohongshu limit";
++    await writeFile(join(folder, "publish-package.json"), JSON.stringify({ title: exactTitle, tags: ["AI"] }));
++    let managedConfigPath = "";
++    const run = vi.fn(async (_command, args: readonly string[], _signal, env: NodeJS.ProcessEnv) => {
++      expect(args).toEqual(expect.arrayContaining([
++        "--state-root",
++        "--keep-space",
++        "--no-cleanup-stale-spaces",
++        "--confirm-original-rights",
++      ]));
++      const packageIndex = args.indexOf("--package");
++      const payload = JSON.parse(await readFile(args[packageIndex + 1]!, "utf8")) as { title: string; xhsTitle: string };
++      expect(payload.title).toBe(exactTitle);
++      expect(payload.xhsTitle).toBe(exactTitle);
++      expect(env.VIDEO_PUBLISHER_CONFIG).toContain("video-publisher/configs/");
++      expect(env.VIDEO_PUBLISHER_V2_LOCK_ROOT).toContain("video-publisher/locks");
++      managedConfigPath = env.VIDEO_PUBLISHER_CONFIG ?? "";
++      return {
++        code: 10,
++        stdout: JSON.stringify({
++          jobId: "job-1",
++          ready: false,
++          statePath: "/managed/state.json",
++          platforms: {
++            xiaohongshu: { status: "ready", ready: true, missing: [], blocker: null },
++            wechat_channels: {
++              status: "blocked_user",
++              ready: false,
++              missing: ["login"],
++              blocker: { code: "LOGIN_REQUIRED", requiresUser: true },
++            },
++          },
++        }),
++        stderr: "",
++      };
++    });
++    const result = await prepareVideoDrafts({
++      item: item(folder, video),
++      libraryRoot: root,
++      platforms: ["xiaohongshu", "wechat"],
++      dataDir: join(root, "data"),
++      originalRightsConfirmed: true,
++      uploadCovers: false,
++      inspectOnly: false,
++      signal: new AbortController().signal,
++    }, {
++      findEgo: async () => "/opt/ego/ego-browser",
++      publisherSkillDir: skill,
++      runCommand: run,
++      env: { PATH: "/usr/bin", DEEPSEEK_API_KEY: "must-not-leak" },
++      now: () => new Date("2026-09-01T12:00:00.000Z"),
++    });
++    expect(result.status).toBe("blocked");
++    expect(result.jobId).toBe("job-1");
++    expect(result.platforms?.xiaohongshu?.ready).toBe(true);
++    expect(result.platforms?.wechat_channels?.blocker).toEqual({
++      code: "LOGIN_REQUIRED",
++      requiresUser: true,
++    });
++    expect(result.detail).toContain("wechat_channels: LOGIN_REQUIRED");
++    await expect(access(managedConfigPath)).rejects.toThrow();
++  });
++
++  it("returns actionable preflight blockers without launching a child", async () => {
++    const root = await mkdtemp(join(tmpdir(), "oil-publisher-blocked-"));
++    const folder = join(root, "episode");
++    await mkdir(folder);
++    const video = join(folder, "demo.mp4");
++    await writeFile(video, "video");
++    const blocked = await prepareVideoDrafts({
++      item: { ...item(folder, video), hasPublishPackage: false },
++      libraryRoot: root,
++      platforms: ["douyin"],
++      dataDir: join(root, "data"),
++      originalRightsConfirmed: false,
++      uploadCovers: false,
++      inspectOnly: false,
++      signal: new AbortController().signal,
++    }, {
++      findEgo: async () => "/opt/ego/ego-browser",
++      runCommand: vi.fn(),
++    });
++    expect(blocked).toMatchObject({
++      status: "blocked",
++      blocker: { code: "PUBLISH_PACKAGE_MISSING_OR_INVALID" },
++    });
++  });
++});
+diff --git a/tests/releaseCheck.test.ts b/tests/releaseCheck.test.ts
+index 177167d..0ff1abe 100644
+--- a/tests/releaseCheck.test.ts
++++ b/tests/releaseCheck.test.ts
+@@ -7,7 +7,7 @@ import {
+   writeFileSync,
+ } from "node:fs";
+ import { tmpdir } from "node:os";
+-import { join, resolve } from "node:path";
++import { delimiter, join, resolve } from "node:path";
+ import { fileURLToPath } from "node:url";
+ 
+ import { describe, expect, it } from "vitest";
+@@ -67,7 +67,7 @@ function createRepository() {
+         build: buildScript,
+         prepare: "npm run build",
+         typecheck: "tsc --noEmit",
+-        check: "pnpm typecheck && pnpm test && pnpm build",
++        check: "pnpm typecheck && pnpm build && pnpm test",
+         test: "vitest run",
+         "release:check": "node scripts/check-release.mjs",
+       },
+@@ -102,6 +102,11 @@ function createRepository() {
+     mkdirSync(join(path, ".."), { recursive: true });
+     writeFileSync(path, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+   }
++  writeFileSync(
++    join(repository, "node_modules/.bin/pnpm"),
++    "#!/bin/sh\nexec npm run \"$@\"\n",
++    { mode: 0o755 },
++  );
+ 
+   git(repository, "init", "-q");
+   git(repository, "config", "user.email", "release-check@example.test");
+@@ -118,6 +123,10 @@ function runReleaseCheck(repository: string) {
+       code: 0,
+       output: execFileSync(process.execPath, [releaseCheck, "--root", repository], {
+         encoding: "utf8",
++        env: {
++          ...process.env,
++          PATH: `${join(repository, "node_modules/.bin")}${delimiter}${process.env.PATH ?? ""}`,
++        },
+       }),
+     };
+   } catch (error) {
+diff --git a/tests/service.test.ts b/tests/service.test.ts
+index 32fc346..974467c 100644
+--- a/tests/service.test.ts
++++ b/tests/service.test.ts
+@@ -70,6 +70,7 @@ vi.mock("../src/processAlive.ts", async (importOriginal) => {
+   };
+ });
+ 
++import { pidCommand } from "../src/processAlive.ts";
+ import { OilCreatorService } from "../src/service.ts";
+ import { saveCollectCache } from "../src/collectCache.ts";
+ import { emptyOverlay, loadOverlay, saveOverlay } from "../src/overlay.ts";
+@@ -309,17 +310,22 @@ describe("OilCreatorService subtitle job reconcile", () => {
+     return { dataDir, service };
+   }
+ 
+-  function liveScript(script: string) {
++  async function liveScript(script: string) {
+     const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 30000)", script], {
+       detached: true,
+       stdio: "ignore",
+     });
+     child.unref();
+-    return child;
++    for (let attempt = 0; attempt < 50; attempt += 1) {
++      if (child.pid !== undefined && pidCommand(child.pid)?.includes(script) === true) return child;
++      await new Promise((resolve) => setTimeout(resolve, 10));
++    }
++    if (child.pid !== undefined) process.kill(child.pid);
++    throw new Error(`test process did not become observable: ${script}`);
+   }
+ 
+   it("keeps subtitleJob running while prepare_subtitles.py is still the pid", async () => {
+-    const child = liveScript("prepare_subtitles.py");
++    const child = await liveScript("prepare_subtitles.py");
+     expect(child.pid).toBeTypeOf("number");
+     try {
+       const { dataDir, service } = await overlayService({
+@@ -339,7 +345,7 @@ describe("OilCreatorService subtitle job reconcile", () => {
+   });
+ 
+   it("recovers a false process-exited error while burn_subtitles.py is still running", async () => {
+-    const child = liveScript("burn_subtitles.py");
++    const child = await liveScript("burn_subtitles.py");
+     expect(child.pid).toBeTypeOf("number");
+     try {
+       const { dataDir, service } = await overlayService({
+diff --git a/tests/typert.test.ts b/tests/typert.test.ts
+index 4754b8f..7351eb9 100644
+--- a/tests/typert.test.ts
++++ b/tests/typert.test.ts
+@@ -31,6 +31,7 @@ describe("handwritten TYPERT", () => {
+       "bindStudio",
+       "openStudio",
+       "setPublish",
++      "preparePublish",
+       "syncPublish",
+       "setScript",
+       "openSubtitlePreview",
+diff --git a/tsdown.config.ts b/tsdown.config.ts
+index 7fcb6d8..e12295b 100644
+--- a/tsdown.config.ts
++++ b/tsdown.config.ts
+@@ -1,5 +1,5 @@
+ import { readFile } from "node:fs/promises";
+-import { basename, dirname, resolve } from "node:path";
++import { basename, dirname, relative, resolve, sep } from "node:path";
+ import { fileURLToPath } from "node:url";
+ 
+ import { defineConfig } from "tsdown";
+@@ -7,6 +7,7 @@ import { defineConfig } from "tsdown";
+ const PLUGIN_ID = "dsh-oil-creator";
+ const CSS_PREFIX = "\0dsh-oil-creator-css:";
+ const CSS_SUFFIX = ".mjs";
++const SOURCE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "src");
+ const CLIENT_EXTERNALS = [
+   "react",
+   "react/jsx-runtime",
+@@ -21,18 +22,24 @@ const CLIENT_EXTERNALS = [
+   "@deepseek-ai/dsh-client-connection/client",
+ ] as const;
+ 
++export function stableCssVirtualId(file: string): string {
++  const sourceRelative = relative(SOURCE_ROOT, file).split(sep).join("/");
++  return `${CSS_PREFIX}${sourceRelative}${CSS_SUFFIX}`;
++}
++
+ function inlineCssPlugin() {
+   return {
+     name: "dsh-oil-creator-inline-css",
+     resolveId(source: string, importer?: string) {
+       if (!source.endsWith(".css")) return null;
+       const file =
+-        importer === undefined ? source : resolve(dirname(importer), source);
+-      return `${CSS_PREFIX}${file}${CSS_SUFFIX}`;
++        importer === undefined ? resolve(source) : resolve(dirname(importer), source);
++      return stableCssVirtualId(file);
+     },
+     async load(id: string) {
+       if (!id.startsWith(CSS_PREFIX)) return null;
+-      const file = id.slice(CSS_PREFIX.length, -CSS_SUFFIX.length);
++      const sourceRelative = id.slice(CSS_PREFIX.length, -CSS_SUFFIX.length);
++      const file = resolve(SOURCE_ROOT, sourceRelative);
+       const css = await readFile(file, "utf8");
+       const tagId = `${PLUGIN_ID}/${basename(file)}`;
+       const registry = resolve(dirname(fileURLToPath(import.meta.url)), "src/client/pluginCss.ts");
+diff --git a/src/settingsHost.ts b/src/settingsHost.ts
+--- a/src/settingsHost.ts
++++ b/src/settingsHost.ts
+@@ -1,5 +1,5 @@
+ import Schema from "@deepseek-ai/schemastery";
+-import { settingsNamespace, type SettingsProvider } from "@deepseek-ai/dsh-settings";
++import type { SettingsNamespace, SettingsProvider } from "@deepseek-ai/dsh-settings";
+ 
+ import { CREATOR_SETTINGS_NAMESPACE } from "./settingsContract.ts";
+ 
+@@ -13,8 +13,5 @@ export const CREATOR_SETTINGS_DISCOVERY_SCHEMA = Schema.object({});
+ export function registerCreatorSettingsNamespace(
+   settings: Pick<SettingsProvider, "register">,
+ ): void {
+-  settings.register(
+-    settingsNamespace(CREATOR_SETTINGS_NAMESPACE),
+-    CREATOR_SETTINGS_DISCOVERY_SCHEMA,
+-  );
++  settings.register(CREATOR_SETTINGS_NAMESPACE as SettingsNamespace, CREATOR_SETTINGS_DISCOVERY_SCHEMA);
+ }
+diff --git a/src/client/sidebar/ContentSidebarPanel.tsx b/src/client/sidebar/ContentSidebarPanel.tsx
+--- a/src/client/sidebar/ContentSidebarPanel.tsx
++++ b/src/client/sidebar/ContentSidebarPanel.tsx
+@@ -267,9 +267,7 @@ export function ContentSidebarPanel({ t, items, loading, error, getCoverThumb }:
+             key={item.id}
+             type="button"
+             className={item.id === selectedId ? "contentRow selected" : "contentRow"}
+-            onClick={() => {
+-              setSelectedId(item.id === selectedId ? null : item.id);
+-            }}
++            onClick={() => setSelectedId(item.id)}
+           >
+             <span className="rowCover">
+               <CoverThumb

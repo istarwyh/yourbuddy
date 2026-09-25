@@ -77,6 +77,41 @@ const platformPublishSchema = z.object({
 	syncedAt: z.number().optional()
 });
 const contentPublishSchema = z.object(Object.fromEntries(PUBLISH_PLATFORMS.map((platform) => [platform, platformPublishSchema])));
+const preparePublishPlatformResultSchema = z.object({
+	status: z.string(),
+	ready: z.boolean(),
+	missing: z.array(z.string()),
+	taskSpaceId: z.number().nullable().optional(),
+	blocker: z.record(z.string(), z.unknown()).nullable().optional(),
+	evidencePath: z.string().nullable().optional()
+});
+const preparePublishStepResultSchema = z.object({
+	status: z.union([
+		z.literal("readyForReview"),
+		z.literal("blocked"),
+		z.literal("skipped")
+	]),
+	detail: z.string(),
+	blocker: z.record(z.string(), z.unknown()).optional(),
+	jobId: z.string().optional(),
+	statePath: z.string().optional(),
+	inputFingerprint: z.string().optional(),
+	platforms: z.record(z.string(), preparePublishPlatformResultSchema).optional()
+});
+const preparePublishRequestSchema = z.object({
+	id: z.string().min(1),
+	platforms: z.array(publishPlatformSchema).optional(),
+	includeWechatArticle: z.boolean().optional(),
+	originalRightsConfirmed: z.boolean().optional(),
+	uploadCovers: z.boolean().optional(),
+	inspectOnly: z.boolean().optional()
+});
+const preparePublishResultSchema = z.object({
+	id: z.string().min(1),
+	selectedPlatforms: z.array(publishPlatformSchema),
+	video: preparePublishStepResultSchema,
+	wechatOfficialAccount: preparePublishStepResultSchema.optional()
+});
 const burnJobSchema = z.object({
 	status: z.union([
 		z.literal("idle"),
@@ -112,7 +147,8 @@ const contentSummarySchema = z.object({
 	publish: contentPublishSchema,
 	burn: burnJobSchema,
 	subtitleJob: burnJobSchema,
-	coverJob: burnJobSchema
+	coverJob: burnJobSchema,
+	publishPreparation: preparePublishResultSchema.optional()
 });
 const creatorProfileSchema = z.object({ enabledPlatforms: z.array(publishPlatformSchema) });
 const secretViewSchema = z.object({
@@ -237,7 +273,8 @@ const capabilitiesResultSchema = z.object({ capabilities: z.object({
 	publishSync: capabilitySchema,
 	editingSkill: capabilitySchema,
 	publishSkill: capabilitySchema,
-	articleSkill: capabilitySchema
+	articleSkill: capabilitySchema,
+	wechatPublisherSkill: capabilitySchema
 }) });
 z.object({
 	id: z.string().min(1),
@@ -342,6 +379,7 @@ const TYPERT = {
 		invocation("bindStudio", bindStudioRequestSchema, contentDetailSchema),
 		invocation("openStudio", idRequestSchema, contentDetailSchema),
 		invocation("setPublish", setPublishRequestSchema, contentDetailSchema),
+		invocation("preparePublish", preparePublishRequestSchema, preparePublishResultSchema),
 		invocation("syncPublish", syncPublishRequestSchema, syncPublishResultSchema),
 		invocation("setScript", setScriptRequestSchema, contentDetailSchema),
 		invocation("openSubtitlePreview", idRequestSchema, subtitlePreviewResultSchema),

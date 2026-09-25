@@ -26,13 +26,17 @@ export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 
 /** Live geometry supplied by the plugin occupying the optional workbench slot. */
 export interface WorkbenchLayoutSnapshot {
-  /** Preferred width of the auxiliary main-content column in pixels. */
+  /** Preferred positive width of the auxiliary main-content column in pixels. */
   width: number
+  /** Whether the aggregate auxiliary region is visible. */
+  expanded: boolean
+  /** Whether the visible region reserves the rightbar occupant's requested track. */
+  reserveRightbar: boolean
 }
 
-/** One workbench occupant's shared width state. */
+/** One workbench occupant's shared auxiliary-region state. */
 export interface WorkbenchLayoutBinding {
-  /** Read the current auxiliary main-content width. */
+  /** Read the current auxiliary-region state. */
   getSnapshot(): WorkbenchLayoutSnapshot
   /** Subscribe to width changes. */
   subscribe(listener: () => void): () => void
@@ -72,8 +76,8 @@ export interface ILayout {
   /** Report the right panel as hidden: no track, no handle. */
   closeRightbar(): void
   /**
-   * Register the workbench width binding for the lifetime of its slot occupant.
-   * @param binding - Shared width state owned by the workbench provider.
+   * Register the workbench auxiliary-region binding for its slot lifetime.
+   * @param binding - Shared region state owned by the workbench provider.
    * @returns Disposer that restores the ordinary main-content layout.
    */
   registerWorkbench(binding: WorkbenchLayoutBinding): () => void
@@ -84,7 +88,12 @@ export class LayoutController implements ILayout {
   private navigation = new AbortController()
   private workbench: WorkbenchLayoutBinding | undefined
   private offWorkbench: (() => void) | undefined
-  private workbenchSnapshot: WorkbenchLayoutState = { present: false, width: 0 }
+  private workbenchSnapshot: WorkbenchLayoutState = {
+    present: false,
+    width: 0,
+    expanded: false,
+    reserveRightbar: false,
+  }
   private readonly workbenchListeners = new Set<() => void>()
 
   /** Subscribe to optional workbench geometry changes. */
@@ -143,15 +152,15 @@ export class LayoutController implements ILayout {
   }
 
   /**
-   * Register one workbench occupant and its shared auxiliary width.
-   * @param binding - Shared width state owned by the workbench provider.
+   * Register one workbench occupant and its shared auxiliary-region state.
+   * @param binding - Shared region state owned by the workbench provider.
    * @returns Disposer that restores the ordinary main-content layout.
    */
   registerWorkbench(binding: WorkbenchLayoutBinding): () => void {
     if (this.workbench !== undefined) throw new Error('layout: workbench already registered')
     this.workbench = binding
     const sync = (): void => {
-      this.workbenchSnapshot = { present: true, width: binding.getSnapshot().width }
+      this.workbenchSnapshot = { ...binding.getSnapshot(), present: true }
       this.notifyWorkbench()
     }
     this.offWorkbench = binding.subscribe(sync)
@@ -177,7 +186,12 @@ export class LayoutController implements ILayout {
     this.offWorkbench?.()
     this.offWorkbench = undefined
     this.workbench = undefined
-    this.workbenchSnapshot = { present: false, width: 0 }
+    this.workbenchSnapshot = {
+      present: false,
+      width: 0,
+      expanded: false,
+      reserveRightbar: false,
+    }
     this.notifyWorkbench()
   }
 

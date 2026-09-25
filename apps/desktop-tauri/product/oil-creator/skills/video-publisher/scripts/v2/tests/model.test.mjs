@@ -5,9 +5,18 @@ import { BLOCKER, classifyVerdict, evaluateObservation, requiredGates, videoRece
 function observation(platform, overrides = {}) {
   const gates = Object.fromEntries(requiredGates(platform).map(name => [name, {
     ok: true,
-    evidence: name === "safety" ? { finalPublishClicked: false, guardArmed: true, blockedAttempts: 0 } : {},
+    evidence: name === "safety" ? {
+      finalPublishClicked: false,
+      guardArmed: true,
+      blockedAttempts: 0,
+      handoffCommitted: true,
+      guardDetached: true,
+      detachVerified: true,
+      detach: { ok: true, detached: true, detachVerified: true },
+      detachedGuard: { armed: false, detached: true, detachVerified: true },
+    } : {},
   }]));
-  return { platform, phase: "verify", taskSpaceId: 1, gates: { ...gates, ...(overrides.gates || {}) }, blocker: overrides.blocker || null };
+  return { platform, phase: overrides.phase || "verify", taskSpaceId: 1, gates: { ...gates, ...(overrides.gates || {}) }, blocker: overrides.blocker || null };
 }
 
 test("READY is computed only when every required gate is verified", () => {
@@ -82,6 +91,95 @@ test("READY rejects any attempted final-publish interaction even when it was blo
   }));
   assert.equal(verdict.ready, false);
   assert.deepEqual(verdict.missing, ["safety"]);
+});
+
+test("final inspection and verification require a proven manual-publish handoff", () => {
+  for (const phase of ["inspect", "verify", undefined]) {
+    const input = observation("xiaohongshu", {
+      phase: phase || "inspect",
+      gates: { safety: { ok: true, evidence: {
+        finalPublishClicked: false,
+        guardArmed: true,
+        blockedAttempts: 0,
+        handoffCommitted: false,
+        guardDetached: false,
+        detachVerified: false,
+      } } },
+    });
+    if (phase === undefined) delete input.phase;
+    const verdict = evaluateObservation(input);
+    assert.equal(verdict.ready, false, phase || "default inspect");
+    assert.deepEqual(verdict.missing, ["safety"], phase || "default inspect");
+  }
+});
+
+test("complete mutation and upload observations cannot claim READY before handoff", () => {
+  for (const phase of ["mutate", "upload"]) {
+    const verdict = evaluateObservation(observation("xiaohongshu", {
+      phase,
+      gates: { safety: { ok: true, evidence: {
+        finalPublishClicked: false,
+        guardArmed: true,
+        blockedAttempts: 0,
+        handoffCommitted: false,
+        guardDetached: false,
+        detachVerified: false,
+      } } },
+    }));
+    assert.equal(verdict.ready, false, phase);
+    assert.deepEqual(verdict.missing, ["safety"], phase);
+  }
+});
+
+test("handoff summary flags cannot replace detach and post-detach evidence", () => {
+  const verdict = evaluateObservation(observation("xiaohongshu", {
+    gates: { safety: { ok: true, evidence: {
+      finalPublishClicked: false,
+      guardArmed: true,
+      blockedAttempts: 0,
+      handoffCommitted: true,
+      guardDetached: true,
+      detachVerified: true,
+    } } },
+  }));
+  assert.equal(verdict.ready, false);
+  assert.deepEqual(verdict.missing, ["safety"]);
+});
+
+test("partial verification keeps armed-guard safety without claiming handoff", () => {
+  const verdict = evaluateObservation(observation("xiaohongshu", {
+    gates: {
+      cover: { ok: false, evidence: { receipt: null } },
+      safety: { ok: true, evidence: {
+        finalPublishClicked: false,
+        guardArmed: true,
+        blockedAttempts: 0,
+        handoffCommitted: false,
+        guardDetached: false,
+        detachVerified: false,
+      } },
+    },
+  }));
+  assert.equal(verdict.ready, false);
+  assert.equal(verdict.gates.safety.ok, true);
+  assert.deepEqual(verdict.missing, ["cover"]);
+});
+
+test("a blocked verification keeps armed-guard safety without claiming handoff", () => {
+  const verdict = evaluateObservation(observation("xiaohongshu", {
+    blocker: { code: BLOCKER.RISK_CONTROL, message: "platform challenge", retryable: true },
+    gates: { safety: { ok: true, evidence: {
+      finalPublishClicked: false,
+      guardArmed: true,
+      blockedAttempts: 0,
+      handoffCommitted: false,
+      guardDetached: false,
+      detachVerified: false,
+    } } },
+  }));
+  assert.equal(verdict.ready, false);
+  assert.equal(verdict.gates.safety.ok, true);
+  assert.equal(verdict.blocker.code, BLOCKER.RISK_CONTROL);
 });
 
 test("YouTube READY requires audience, full settings, visibility, and final-save safety", () => {

@@ -399,6 +399,8 @@ export const FOLDER_OPEN_EXT = 'folder-open' as const
 /** One `openTab` request. */
 export interface OpenTabSeed {
   type: string
+  /** Whether this open follows an explicit user gesture or updates a hidden workbench in the background. */
+  intent?: 'user' | 'background'
   /** Overrides the descriptor's title when given (the editor tab shows the file name). */
   title?: string
   /** A file path (the editor tab's content seed). */
@@ -588,7 +590,7 @@ export interface BetterSidebarService {
    */
   activateTab(tabId: string, scope?: SessionScope): void
   /** Open a file in the sidebar editor of `scope`'s session (title defaults to the file name). */
-  openFile(scope: SessionScope, path: string, title?: string): void
+  openFile(scope: SessionScope, path: string, title?: string, intent?: 'user' | 'background'): void
   /**
    * Install (or clear) the native right-Sidebar write face.
    * @internal Called once by the client half; not part of the consumer API.
@@ -680,12 +682,25 @@ function safeCall(fn: () => void): void {
   }
 }
 
+interface BetterSidebarServiceOptions {
+  /** Route ordinary opens into the plugin-owned workbench instead of the native right surface. */
+  readonly preferWorkbench?: () => boolean
+  /** Notify a product coordinator after a current-Session open resolves. */
+  readonly onOpenIntent?: (intent: 'user' | 'background') => void
+}
+
 /**
  * Create one BetterSidebar service bound to a store. The service owns the
  * tab/viewer registries (Map + listener set) and proxies openTab/closeTab
  * to the store's reducer. One instance per client plugin activation.
+ * @param store - Activation-owned sidebar state.
+ * @param options - Optional product presentation routing.
+ * @returns the public Better Sidebar service.
  */
-export function createBetterSidebarService(store: SidebarStore): BetterSidebarService {
+export function createBetterSidebarService(
+  store: SidebarStore,
+  options: BetterSidebarServiceOptions = {},
+): BetterSidebarService {
   const tabs = new Map<string, TabDescriptor>()
   const viewers = new Map<string, FileViewerDescriptor>()
   const fileIcons = new Map<string, FileIconDescriptor>()
@@ -874,6 +889,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
   }
 
   const openTab = (seed: OpenTabSeed, scope?: SessionScope): void => {
+    const intent = seed.intent ?? 'user'
     // A type the user disabled in settings never opens — neither from the
     // + menu nor from derived flows (file opens, subagent auto-open,
     // external plugins). Already-open tabs keep rendering.
@@ -888,13 +904,15 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
     const targetSessionId = scope?.sessionId ?? store.getSnapshot().sessionId
     if (targetSessionId === undefined) return
     const callbackScope: SessionScope = scope ?? { sessionId: targetSessionId }
+    const activeSessionId = store.getSnapshot().sessionId
+    const targetsInactiveSession = scope !== undefined && scope.sessionId !== activeSessionId
     // ── Native right Sidebar ──────────────────────────────────────────────
     // With the native surface installed, every open except an explicit
     // bottom-panel one lands there: a file path becomes a resource address
     // (the native registry routes it to the plugin's file type), a path-less
     // editor open becomes the `files` page kind, and everything else becomes
     // a page open carrying the seed as navigation params.
-    if (surface !== undefined && seed.target !== 'bottom') {
+    if (surface !== undefined && seed.target !== 'bottom' && options.preferWorkbench?.() !== true) {
       const state = store.getSnapshot().state
       // The descriptor's own factory mints what a view needs beyond the seed:
       // the side chat's thread bootstrap / reattach meta, the terminal's
@@ -941,13 +959,12 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
       // The native surface reports one open event, not create-vs-focus, so a
       // lifecycle consumer hears onOpen (documented in the guide).
       safeCall(() => descriptor.onOpen?.(synthetic, callbackScope))
+      if (!targetsInactiveSession) options.onOpenIntent?.(intent)
       return
     }
     // Whether this open targets a session that is NOT the one on screen: a
     // targeted open must not auto-expand panels the user cannot see (the
     // expansion is about landing "in sight" for the CURRENT viewer).
-    const activeSessionId = store.getSnapshot().sessionId
-    const targetsInactiveSession = scope !== undefined && scope.sessionId !== activeSessionId
     // Lifecycle capture: `created` when the open minted a NEW tab (a
     // dedupe/id-safety-net focus is an ACTIVATION, not an open).
     let created: SidebarTab | undefined
@@ -1036,6 +1053,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
     }
     if (created !== undefined) safeCall(() => descriptor.onOpen?.(created!, callbackScope))
     else if (activated !== undefined) safeCall(() => descriptor.onActivate?.(activated!, callbackScope))
+    if (!targetsInactiveSession && (created !== undefined || activated !== undefined)) options.onOpenIntent?.(intent)
   }
 
   const closeTab = (tabId: string, scope?: SessionScope): void => {
@@ -1114,8 +1132,13 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
   /** Open a file in the sidebar editor of `scope`'s session (title defaults
    *  to the file name; the tab id is path-derived, like the internal
    *  open-path interception, so distinct files open side by side). */
-  const openFile = (scope: SessionScope, path: string, title?: string): void => {
-    openTab({ type: 'editor', title: title ?? baseNameOf(path), path, id: `editor:${path}` }, scope)
+  const openFile = (
+    scope: SessionScope,
+    path: string,
+    title?: string,
+    intent: 'user' | 'background' = 'user',
+  ): void => {
+    openTab({ type: 'editor', title: title ?? baseNameOf(path), path, id: `editor:${path}`, intent }, scope)
   }
 
   return {

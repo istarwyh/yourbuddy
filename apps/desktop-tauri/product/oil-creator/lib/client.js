@@ -1874,6 +1874,115 @@ window.__ModuleLoader__.load({
 			result.value = merged.data;
 			return result;
 		}
+		const $ZodRecord = /*@__PURE__*/ $constructor("$ZodRecord", (inst, def) => {
+			$ZodType.init(inst, def);
+			inst._zod.parse = (payload, ctx) => {
+				const input = payload.value;
+				if (!isPlainObject(input)) {
+					payload.issues.push({
+						expected: "record",
+						code: "invalid_type",
+						input,
+						inst
+					});
+					return payload;
+				}
+				const proms = [];
+				const values = def.keyType._zod.values;
+				if (values) {
+					payload.value = {};
+					const recordKeys = /* @__PURE__ */ new Set();
+					for (const key of values) if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
+						recordKeys.add(typeof key === "number" ? key.toString() : key);
+						const keyResult = def.keyType._zod.run({
+							value: key,
+							issues: []
+						}, ctx);
+						if (keyResult instanceof Promise) throw new Error("Async schemas not supported in object keys currently");
+						if (keyResult.issues.length) {
+							payload.issues.push({
+								code: "invalid_key",
+								origin: "record",
+								issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+								input: key,
+								path: [key],
+								inst
+							});
+							continue;
+						}
+						const outKey = keyResult.value;
+						const result = def.valueType._zod.run({
+							value: input[key],
+							issues: []
+						}, ctx);
+						if (result instanceof Promise) proms.push(result.then((result) => {
+							if (result.issues.length) payload.issues.push(...prefixIssues(key, result.issues));
+							payload.value[outKey] = result.value;
+						}));
+						else {
+							if (result.issues.length) payload.issues.push(...prefixIssues(key, result.issues));
+							payload.value[outKey] = result.value;
+						}
+					}
+					let unrecognized;
+					for (const key in input) if (!recordKeys.has(key)) {
+						unrecognized = unrecognized ?? [];
+						unrecognized.push(key);
+					}
+					if (unrecognized && unrecognized.length > 0) payload.issues.push({
+						code: "unrecognized_keys",
+						input,
+						inst,
+						keys: unrecognized
+					});
+				} else {
+					payload.value = {};
+					for (const key of Reflect.ownKeys(input)) {
+						if (key === "__proto__") continue;
+						if (!Object.prototype.propertyIsEnumerable.call(input, key)) continue;
+						let keyResult = def.keyType._zod.run({
+							value: key,
+							issues: []
+						}, ctx);
+						if (keyResult instanceof Promise) throw new Error("Async schemas not supported in object keys currently");
+						if (typeof key === "string" && number$1.test(key) && keyResult.issues.length) {
+							const retryResult = def.keyType._zod.run({
+								value: Number(key),
+								issues: []
+							}, ctx);
+							if (retryResult instanceof Promise) throw new Error("Async schemas not supported in object keys currently");
+							if (retryResult.issues.length === 0) keyResult = retryResult;
+						}
+						if (keyResult.issues.length) {
+							if (def.mode === "loose") payload.value[key] = input[key];
+							else payload.issues.push({
+								code: "invalid_key",
+								origin: "record",
+								issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+								input: key,
+								path: [key],
+								inst
+							});
+							continue;
+						}
+						const result = def.valueType._zod.run({
+							value: input[key],
+							issues: []
+						}, ctx);
+						if (result instanceof Promise) proms.push(result.then((result) => {
+							if (result.issues.length) payload.issues.push(...prefixIssues(key, result.issues));
+							payload.value[keyResult.value] = result.value;
+						}));
+						else {
+							if (result.issues.length) payload.issues.push(...prefixIssues(key, result.issues));
+							payload.value[keyResult.value] = result.value;
+						}
+					}
+				}
+				if (proms.length) return Promise.all(proms).then(() => payload);
+				return payload;
+			};
+		});
 		const $ZodEnum = /*@__PURE__*/ $constructor("$ZodEnum", (inst, def) => {
 			$ZodType.init(inst, def);
 			const values = getEnumValues(def.entries);
@@ -3154,6 +3263,39 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const isSimpleIntersection = (val) => "allOf" in val && Object.keys(val).length === 1;
 			json.allOf = [...isSimpleIntersection(a) ? a.allOf : [a], ...isSimpleIntersection(b) ? b.allOf : [b]];
 		};
+		const recordProcessor = (schema, ctx, _json, params) => {
+			const json = _json;
+			const def = schema._zod.def;
+			json.type = "object";
+			const keyType = def.keyType;
+			const patterns = keyType._zod.bag?.patterns;
+			if (def.mode === "loose" && patterns && patterns.size > 0) {
+				const valueSchema = process(def.valueType, ctx, {
+					...params,
+					path: [
+						...params.path,
+						"patternProperties",
+						"*"
+					]
+				});
+				json.patternProperties = {};
+				for (const pattern of patterns) json.patternProperties[pattern.source] = valueSchema;
+			} else {
+				if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") json.propertyNames = process(def.keyType, ctx, {
+					...params,
+					path: [...params.path, "propertyNames"]
+				});
+				json.additionalProperties = process(def.valueType, ctx, {
+					...params,
+					path: [...params.path, "additionalProperties"]
+				});
+			}
+			const keyValues = keyType._zod.values;
+			if (keyValues) {
+				const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
+				if (validKeyValues.length > 0) json.required = validKeyValues;
+			}
+		};
 		const nullableProcessor = (schema, ctx, json, params) => {
 			const def = schema._zod.def;
 			const inner = process(def.innerType, ctx, params);
@@ -3837,6 +3979,27 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				right
 			});
 		}
+		const ZodRecord = /*@__PURE__*/ $constructor("ZodRecord", (inst, def) => {
+			$ZodRecord.init(inst, def);
+			ZodType.init(inst, def);
+			inst._zod.processJSONSchema = (ctx, json, params) => recordProcessor(inst, ctx, json, params);
+			inst.keyType = def.keyType;
+			inst.valueType = def.valueType;
+		});
+		function record(keyType, valueType, params) {
+			if (!valueType || !valueType._zod) return new ZodRecord({
+				type: "record",
+				keyType: string(),
+				valueType: keyType,
+				...normalizeParams(valueType)
+			});
+			return new ZodRecord({
+				type: "record",
+				keyType,
+				valueType,
+				...normalizeParams(params)
+			});
+		}
 		const ZodEnum = /*@__PURE__*/ $constructor("ZodEnum", (inst, def) => {
 			$ZodEnum.init(inst, def);
 			ZodType.init(inst, def);
@@ -4151,6 +4314,41 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			syncedAt: number().optional()
 		});
 		const contentPublishSchema = object(Object.fromEntries(PUBLISH_PLATFORMS.map((platform) => [platform, platformPublishSchema])));
+		const preparePublishPlatformResultSchema = object({
+			status: string(),
+			ready: boolean(),
+			missing: array(string()),
+			taskSpaceId: number().nullable().optional(),
+			blocker: record(string(), unknown()).nullable().optional(),
+			evidencePath: string().nullable().optional()
+		});
+		const preparePublishStepResultSchema = object({
+			status: union([
+				literal("readyForReview"),
+				literal("blocked"),
+				literal("skipped")
+			]),
+			detail: string(),
+			blocker: record(string(), unknown()).optional(),
+			jobId: string().optional(),
+			statePath: string().optional(),
+			inputFingerprint: string().optional(),
+			platforms: record(string(), preparePublishPlatformResultSchema).optional()
+		});
+		const preparePublishRequestSchema = object({
+			id: string().min(1),
+			platforms: array(publishPlatformSchema).optional(),
+			includeWechatArticle: boolean().optional(),
+			originalRightsConfirmed: boolean().optional(),
+			uploadCovers: boolean().optional(),
+			inspectOnly: boolean().optional()
+		});
+		const preparePublishResultSchema = object({
+			id: string().min(1),
+			selectedPlatforms: array(publishPlatformSchema),
+			video: preparePublishStepResultSchema,
+			wechatOfficialAccount: preparePublishStepResultSchema.optional()
+		});
 		const burnJobSchema = object({
 			status: union([
 				literal("idle"),
@@ -4186,7 +4384,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			publish: contentPublishSchema,
 			burn: burnJobSchema,
 			subtitleJob: burnJobSchema,
-			coverJob: burnJobSchema
+			coverJob: burnJobSchema,
+			publishPreparation: preparePublishResultSchema.optional()
 		});
 		const creatorProfileSchema = object({ enabledPlatforms: array(publishPlatformSchema) });
 		const secretViewSchema = object({
@@ -4311,7 +4510,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			publishSync: capabilitySchema,
 			editingSkill: capabilitySchema,
 			publishSkill: capabilitySchema,
-			articleSkill: capabilitySchema
+			articleSkill: capabilitySchema,
+			wechatPublisherSkill: capabilitySchema
 		}) });
 		object({
 			id: string().min(1),
@@ -4409,6 +4609,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				invocation("bindStudio", bindStudioRequestSchema, contentDetailSchema),
 				invocation("openStudio", idRequestSchema, contentDetailSchema),
 				invocation("setPublish", setPublishRequestSchema, contentDetailSchema),
+				invocation("preparePublish", preparePublishRequestSchema, preparePublishResultSchema),
 				invocation("syncPublish", syncPublishRequestSchema, syncPublishResultSchema),
 				invocation("setScript", setScriptRequestSchema, contentDetailSchema),
 				invocation("openSubtitlePreview", idRequestSchema, subtitlePreviewResultSchema),
@@ -4467,6 +4668,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 		//#endregion
 		//#region src/client/contentSelection.ts
+		const noProductWorkbench = () => void 0;
 		const listeners = /* @__PURE__ */ new Set();
 		const libraryListeners = /* @__PURE__ */ new Set();
 		const profileListeners = /* @__PURE__ */ new Set();
@@ -4476,16 +4678,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		let libraryEpoch = 0;
 		let profileEpoch = 0;
 		let sidebarWidthPx = 280;
-		let inspectorWidthPx = clampInspectorWidth(initialUi.inspectorWidth ?? 640);
-		function clampInspectorWidth(px) {
-			return Math.min(800, Math.max(320, Math.round(px)));
-		}
+		let resolveProductWorkbench = noProductWorkbench;
 		const chromeListeners = /* @__PURE__ */ new Set();
 		let sidebarWidthStyleCaptured = false;
 		let previousSidebarWidthStyle = "";
 		let previousSidebarWidthPriority = "";
-		let insetHost = null;
-		let insetStyleSnapshot = null;
 		function emitChrome() {
 			for (const listener of chromeListeners) listener();
 		}
@@ -4509,29 +4706,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			emitChrome();
 		}
 		function releaseShellChrome() {
-			if (typeof document !== "undefined") {
-				if (sidebarWidthStyleCaptured) {
-					if (previousSidebarWidthStyle === "") document.documentElement.style.removeProperty("--oil-sidebar-width");
-					else document.documentElement.style.setProperty("--oil-sidebar-width", previousSidebarWidthStyle, previousSidebarWidthPriority);
-				}
+			if (typeof document !== "undefined" && sidebarWidthStyleCaptured) {
+				if (previousSidebarWidthStyle === "") document.documentElement.style.removeProperty("--oil-sidebar-width");
+				else document.documentElement.style.setProperty("--oil-sidebar-width", previousSidebarWidthStyle, previousSidebarWidthPriority);
 			}
 			sidebarWidthStyleCaptured = false;
 			previousSidebarWidthStyle = "";
 			previousSidebarWidthPriority = "";
-			clearConversationInset();
 		}
-		function setInspectorWidth(px) {
-			const next = clampInspectorWidth(px);
-			if (inspectorWidthPx === next) return;
-			inspectorWidthPx = next;
-			const state = loadCreatorUiState(browserCreatorStorage());
-			saveCreatorUiState(browserCreatorStorage(), {
-				...state,
-				inspectorWidth: next
-			});
-		}
-		function getInspectorWidth() {
-			return inspectorWidthPx;
+		function bindProductWorkbench(resolve) {
+			resolveProductWorkbench = resolve;
+			if (selectedId !== null) resolve()?.showContent(selectedId);
+			return () => {
+				if (resolveProductWorkbench !== resolve) return;
+				resolve()?.showCore();
+				resolveProductWorkbench = noProductWorkbench;
+			};
 		}
 		function emit() {
 			for (const listener of listeners) listener();
@@ -4579,53 +4769,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}), []);
 			return epoch;
 		}
-		/**
-		* The rc.7 public layout face exposes panel actions and shell slots, but no
-		* content-column inset. The host's stable scrollport is therefore the only
-		* remaining compatibility seam for keeping the overlay from covering the
-		* conversation. This adapter intentionally has one host, no observer, and a
-		* complete inline-style restore path.
-		*/
-		function conversationHost() {
-			if (typeof document === "undefined" || typeof HTMLElement === "undefined") return null;
-			const host = document.querySelector("[data-conversation-scroll]")?.parentElement;
-			return host instanceof HTMLElement ? host : null;
-		}
-		function restoreInsetHost() {
-			if (insetHost === null || insetStyleSnapshot === null) return;
-			if (insetStyleSnapshot.paddingLeft === "") insetHost.style.removeProperty("padding-left");
-			else insetHost.style.setProperty("padding-left", insetStyleSnapshot.paddingLeft, insetStyleSnapshot.paddingLeftPriority);
-			if (insetStyleSnapshot.transition === "") insetHost.style.removeProperty("transition");
-			else insetHost.style.setProperty("transition", insetStyleSnapshot.transition, insetStyleSnapshot.transitionPriority);
-			insetHost = null;
-			insetStyleSnapshot = null;
-		}
-		function captureInsetHost(host) {
-			if (insetHost === host && insetStyleSnapshot !== null) return;
-			restoreInsetHost();
-			insetHost = host;
-			insetStyleSnapshot = {
-				paddingLeft: host.style.getPropertyValue("padding-left"),
-				paddingLeftPriority: host.style.getPropertyPriority("padding-left"),
-				transition: host.style.getPropertyValue("transition"),
-				transitionPriority: host.style.getPropertyPriority("transition")
-			};
-		}
-		function clearConversationInset() {
-			restoreInsetHost();
-		}
-		function applyConversationInset(width, animate = true) {
-			const host = conversationHost();
-			if (host === null) return null;
-			captureInsetHost(host);
-			if (width <= 0) {
-				restoreInsetHost();
-				return host;
-			}
-			host.style.setProperty("transition", animate ? "padding-left var(--ds-transition-duration-slow) var(--ds-ease-in-out)" : "none");
-			host.style.setProperty("padding-left", `${width}px`);
-			return host;
-		}
 		function getSidebarTab() {
 			return sidebarTab;
 		}
@@ -4651,7 +4794,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 		function setSelectedContentId(id) {
 			if (selectedId === id) {
-				if (id === null) clearConversationInset();
+				id === null ? resolveProductWorkbench()?.showCore() : resolveProductWorkbench()?.showContent(id);
 				return;
 			}
 			selectedId = id;
@@ -4660,7 +4803,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				...state,
 				selectedId
 			});
-			if (id === null) clearConversationInset();
+			if (id === null) resolveProductWorkbench()?.showCore();
+			else resolveProductWorkbench()?.showContent(id);
 			emit();
 		}
 		function subscribeSelectedContentId(listener) {
@@ -4957,6 +5101,39 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function isPublishSyncDisabled(busy, platformSettingsPending, enabledPlatforms) {
 			return busy !== void 0 || platformSettingsPending || selectEnabledPublishPlatforms(enabledPlatforms).length === 0;
 		}
+		function initialPreparePlatforms(enabledPlatforms, persistedPlatforms) {
+			if (persistedPlatforms === void 0) return [...enabledPlatforms];
+			const persisted = new Set(persistedPlatforms);
+			return enabledPlatforms.filter((platform) => persisted.has(platform));
+		}
+		function requiresOriginalityConfirmation(platforms) {
+			return platforms.some((platform) => platform === "xiaohongshu" || platform === "bilibili" || platform === "wechat");
+		}
+		function missingSelectedCoverRatios(covers, platforms) {
+			const needs3x4 = platforms.some((platform) => platform === "xiaohongshu" || platform === "douyin" || platform === "wechat");
+			const needs4x3 = platforms.some((platform) => platform === "douyin" || platform === "bilibili" || platform === "wechat");
+			return [...needs3x4 && covers["3x4"] === void 0 ? ["3x4"] : [], ...needs4x3 && covers["4x3"] === void 0 ? ["4x3"] : []];
+		}
+		function isPreparePublishDisabled(options) {
+			if (options.busy !== void 0 || options.platformSettingsPending) return true;
+			if (options.selectedPlatforms.length === 0 && !options.includeWechatArticle) return true;
+			if (options.selectedPlatforms.length > 0 && !options.hasVideo) return true;
+			if (options.includeWechatArticle && !options.hasArticle) return true;
+			if (requiresOriginalityConfirmation(options.selectedPlatforms) && !options.originalRightsConfirmed) return true;
+			return options.uploadCovers && missingSelectedCoverRatios(options.covers, options.selectedPlatforms).length > 0;
+		}
+		function preparePublishOutcome(result) {
+			const steps = [result.video, result.wechatOfficialAccount].filter((step) => step !== void 0);
+			const ready = steps.filter((step) => step.status === "readyForReview").length;
+			const blocked = steps.filter((step) => step.status === "blocked").length;
+			if (ready > 0 && blocked > 0) return "partial";
+			if (blocked > 0) return "blocked";
+			if (ready > 0) return "success";
+			return "skipped";
+		}
+		function publisherPlatformKey(platform) {
+			return platform === "wechat" ? "wechat_channels" : platform;
+		}
 		//#endregion
 		//#region src/client/relativeTime.ts
 		function formatRelativeTime(recordedAt, now, t) {
@@ -4973,7 +5150,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return t("time.yearMonthDay").replace("{y}", String(date.getFullYear())).replace("{m}", String(date.getMonth() + 1)).replace("{d}", String(date.getDate()));
 		}
 		//#endregion
-		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/ui/StatusPill.css.mjs
+		//#region \0dsh-oil-creator-css:client/ui/StatusPill.css.mjs
 		registerPluginCss("dsh-oil-creator/StatusPill.css", ".statusPill {\n  gap: 5px;\n  max-width: 100%;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.statusPill.pending {\n  color: var(--dsw-alias-state-warn-label);\n}\n\n.statusPill.active {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n.statusPill.success {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n.statusPill.error {\n  color: var(--dsw-alias-state-error-primary);\n}\n\nbutton.statusPill:disabled {\n  opacity: 0.5;\n  cursor: default;\n}\n");
 		//#endregion
 		//#region src/client/ui/StatusPill.tsx
@@ -5005,7 +5182,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		}
 		//#endregion
-		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/sidebar/ContentSidebarPanel.css.mjs
+		//#region \0dsh-oil-creator-css:client/sidebar/ContentSidebarPanel.css.mjs
 		registerPluginCss("dsh-oil-creator/ContentSidebarPanel.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentPanel {\n  display: flex;\n  flex-direction: column;\n  min-height: 0;\n  height: 100%;\n  padding-right: var(--dsh-sidebar-inline-padding);\n  box-sizing: border-box;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentHeader {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 4px;\n  height: 36px;\n  padding-left: 4px;\n  margin: 2px -4px 4px 0;\n  box-sizing: border-box;\n  border-radius: 12px;\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchSlot {\n  flex: 1;\n  max-width: 28px;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  margin-left: auto;\n  padding-left: 0;\n  box-sizing: border-box;\n  transition:\n    max-width 180ms var(--ds-ease-in-out),\n    padding-left 180ms var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchSlot.expanded {\n  max-width: 100%;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 0;\n  width: 100%;\n  height: 28px;\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n  border: none;\n  border-radius: 50%;\n  background: transparent;\n  cursor: text;\n  color: var(--dsw-alias-label-secondary);\n  overflow: hidden;\n  transition:\n    width 180ms var(--ds-ease-in-out),\n    padding 180ms var(--ds-ease-in-out),\n    border-color 180ms var(--ds-ease-in-out),\n    background-color 180ms var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch.expanded {\n  width: calc(100% + 4px);\n  height: 30px;\n  margin-inline: -2px;\n  padding: 0 4px 0 0;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 10px;\n  background: transparent;\n  color: var(--dsw-alias-label-caption);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchButton {\n  flex: none;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: none;\n  border-radius: 50%;\n  background: transparent;\n  color: inherit;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch.expanded .searchButton {\n  width: 28px;\n  height: 30px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch.expanded .searchButton:hover {\n  background: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchInput {\n  flex: 1;\n  width: 0;\n  min-width: 0;\n  border: none;\n  outline: none;\n  background: transparent;\n  opacity: 0;\n  pointer-events: none;\n  color: var(--dsw-alias-label-primary);\n  font-size: 13px;\n  line-height: 18px;\n  transition: opacity 120ms var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch.expanded .searchInput {\n  margin-left: -2px;\n  opacity: 1;\n  pointer-events: auto;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchInput::placeholder {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .clearButton {\n  flex: none;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 24px;\n  height: 24px;\n  padding: 0;\n  border: none;\n  border-radius: 50%;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .clearButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerActions {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  max-width: 64px;\n  opacity: 1;\n  overflow: hidden;\n  visibility: visible;\n  transition:\n    max-width 180ms var(--ds-ease-in-out),\n    opacity 120ms var(--ds-ease-in-out),\n    transform 180ms var(--ds-ease-in-out),\n    visibility 0s linear;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerActions.hidden {\n  max-width: 0;\n  opacity: 0;\n  transform: translateX(4px);\n  visibility: hidden;\n  pointer-events: none;\n  transition-delay: 0s, 0s, 0s, 180ms;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentList {\n  flex: 1;\n  min-height: 0;\n  overflow: auto;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentEmpty {\n  padding: 16px 8px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentRow {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  width: 100%;\n  min-height: 64px;\n  margin: 0 0 4px;\n  padding: 8px;\n  border: none;\n  border-radius: 10px;\n  background: transparent;\n  color: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentRow:hover,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentRow.selected {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentRow:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowCover {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  width: 48px;\n  height: 64px;\n  overflow: hidden;\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowCover img {\n  width: 100%;\n  height: 100%;\n  object-fit: cover;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .coverFallback {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowBody {\n  display: flex;\n  flex-direction: column;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowTitle {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 14px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  width: 100%;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .createField,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] .createField {\n  display: flex;\n  flex-direction: column;\n  align-items: stretch;\n  gap: 8px;\n  width: 100%;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] .createLabel {\n  display: block;\n  width: 100%;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] .createInput {\n  display: flex;\n  width: 100%;\n  box-sizing: border-box;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .createError,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] .createError {\n  margin-top: 0;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowMeta {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowCover .coverFallback {\n  opacity: 0.5;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowDate {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n  line-height: 17px;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchSlot,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchInput,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerActions {\n    transition: none;\n  }\n}\n");
 		//#endregion
 		//#region src/client/sidebar/ContentSidebarPanel.tsx
@@ -5258,9 +5435,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 							items.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
 								className: item.id === selectedId ? "contentRow selected" : "contentRow",
-								onClick: () => {
-									setSelectedId(item.id === selectedId ? null : item.id);
-								},
+								onClick: () => setSelectedId(item.id),
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: "rowCover",
 									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CoverThumb, {
@@ -5295,7 +5470,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		}
 		//#endregion
-		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/ui/ActionButton.css.mjs
+		//#region \0dsh-oil-creator-css:client/ui/ActionButton.css.mjs
 		registerPluginCss("dsh-oil-creator/ActionButton.css", "[data-plugin=\"dsh-oil-creator\"] .oilActionBar {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n");
 		//#endregion
 		//#region src/client/ui/ActionButton.tsx
@@ -5320,7 +5495,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		}
 		//#endregion
-		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/ui/Surface.css.mjs
+		//#region \0dsh-oil-creator-css:client/ui/Surface.css.mjs
 		registerPluginCss("dsh-oil-creator/Surface.css", "[data-plugin=\"dsh-oil-creator\"] .oilSurface {\n  padding: 14px 14px 16px;\n  border-radius: 12px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"] .oilSurface + .oilSurface,\n[data-plugin=\"dsh-oil-creator\"] .oilSurface + .block,\n[data-plugin=\"dsh-oil-creator\"] .lede + .oilSurface {\n  margin-top: 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"] .oilSurfaceTitle {\n  margin-bottom: 4px;\n  font: var(--dsw-font-markdown-base-strong);\n  color: var(--dsw-alias-label-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"] .oilSurfaceHint {\n  margin: 0 0 12px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"] .oilSurfaceTitle + .oilActionBar,\n[data-plugin=\"dsh-oil-creator\"] .oilSurfaceHint + .oilActionBar {\n  margin-top: 12px;\n}\n");
 		//#endregion
 		//#region src/client/ui/Surface.tsx
@@ -5341,8 +5516,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		}
 		//#endregion
-		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/ContentInspector.css.mjs
-		registerPluginCss("dsh-oil-creator/ContentInspector.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-width: 0;\n  min-height: 0;\n  overflow: hidden;\n  background: var(--dsw-alias-bg-base);\n  border-right: 1px solid var(--dsw-alias-border-l1);\n  box-sizing: border-box;\n  font: var(--dsw-font-markdown-base);\n  color: var(--dsw-alias-label-primary);\n  --dsh-scrollbar-thumb: transparent;\n  --dsh-scrollbar-thumb-hover: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"].docked {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  left: var(--oil-sidebar-width, 280px);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"].docked.open:not(.dragging) {\n  transition: width var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .header {\n  flex: none;\n  padding: 12px 16px 0 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .titleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  min-height: 32px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .title {\n  min-width: 0;\n  overflow: hidden;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .titleActions {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .close {\n  flex: none;\n  display: grid;\n  place-items: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: none;\n  border-radius: 999px;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .close:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .close:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tabs {\n  display: flex;\n  gap: 20px;\n  margin-top: 4px;\n  padding-left: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab {\n  position: relative;\n  padding: 0 0 11px;\n  border: none;\n  background: transparent;\n  font-size: 13px;\n  line-height: 16px;\n  font-weight: 500;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab::after {\n  content: \"\";\n  position: absolute;\n  right: 0;\n  bottom: 1px;\n  left: 0;\n  height: 2px;\n  border-radius: 2px;\n  background: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab.active {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab.active::after {\n  background: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .body {\n  flex: 1;\n  min-height: 0;\n  padding: 20px 20px 32px;\n  overflow-y: auto;\n  scrollbar-width: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .body::-webkit-scrollbar {\n  width: 0;\n  height: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .empty {\n  padding: 8px 0;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .lede {\n  display: flex;\n  gap: 16px;\n  align-items: flex-start;\n  margin-bottom: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverPair {\n  flex: none;\n  display: flex;\n  align-items: stretch;\n  gap: 10px;\n  height: calc(80px * 4 / 3);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverHero {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  height: 100%;\n  aspect-ratio: 3 / 4;\n  overflow: hidden;\n  border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverWide {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  height: 100%;\n  aspect-ratio: 4 / 3;\n  overflow: hidden;\n  border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverHero img,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverWide img {\n  width: 100%;\n  height: 100%;\n  object-fit: cover;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverFallback {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .ledeText {\n  min-width: 0;\n  padding-top: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .stepper {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: 6px;\n  margin: -8px 0 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step + .step::before {\n  content: \"\";\n  width: 14px;\n  height: 1px;\n  margin-right: 2px;\n  background: var(--dsw-alias-border-l2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .stepDot {\n  flex: none;\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background: var(--dsw-alias-border-l2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.done {\n  color: var(--dsw-alias-label-secondary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.done .stepDot {\n  background: var(--dsw-alias-state-success-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.current {\n  color: var(--dsw-alias-state-business-primary);\n  font-weight: 500;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.current .stepDot {\n  background: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .time {\n  margin-top: 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workList {\n  display: flex;\n  flex-direction: column;\n  gap: 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workRow {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workMain {\n  display: flex;\n  align-items: baseline;\n  gap: 8px;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workName {\n  font: var(--dsw-font-markdown-base);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workMain .statusPill {\n  align-self: center;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .jobNote {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin: 12px 0 0;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .oilSurface .jobNote {\n  margin: 0 0 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .jobNote.done {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .jobNote.error {\n  color: var(--dsw-alias-state-error-primary);\n  max-height: 72px;\n  overflow: hidden;\n  overflow-wrap: anywhere;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishGrid {\n  display: grid;\n  grid-template-columns: 1fr;\n  gap: 10px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"].wide .publishGrid {\n  grid-template-columns: 1fr 1fr;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishCard {\n  padding: 10px 12px;\n  border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .scriptEditor {\n  display: block;\n  flex: 1;\n  width: 100%;\n  min-height: 240px;\n  margin: 0;\n  padding: 0;\n  border: none;\n  border-radius: 0;\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  font: var(--dsw-font-markdown-base);\n  line-height: 24px;\n  resize: none;\n  box-sizing: border-box;\n  outline: none;\n  box-shadow: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .scriptEditor:focus {\n  outline: none;\n  box-shadow: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .scriptEditor::placeholder {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .body:has(.scriptEditor) {\n  display: flex;\n  flex-direction: column;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .videoPlayer {\n  display: block;\n  width: 100%;\n  max-height: min(70vh, 520px);\n  border-radius: 10px;\n  background: #111;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishName {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n  font: var(--dsw-font-markdown-base);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishRow.articleRow {\n  width: 100%;\n  padding: 0;\n  border: none;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishRow.articleRow:hover .publishName {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .oilSurface .oilActionBar + .publishRows {\n  margin-top: 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishMetrics {\n  margin-top: 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishUrl {\n  display: block;\n  margin-top: 4px;\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cues {\n  margin: 20px 0 0;\n  padding: 0;\n  list-style: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cue + .cue {\n  margin-top: 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cueTime {\n  margin-bottom: 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cueText {\n  margin: 0;\n  font: var(--dsw-font-markdown-base);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .block {\n  margin-top: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .blockLabel {\n  margin-bottom: 8px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .platformMark {\n  flex: none;\n  display: block;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .copyTitle {\n  margin-bottom: 6px;\n  font: var(--dsw-font-markdown-base-strong);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .article {\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .article > :first-child > :first-child {\n  margin-top: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .article img {\n  display: block;\n  max-width: 100%;\n  height: auto;\n  margin: 16px 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tags:first-child {\n  margin-top: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tags {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n  margin-top: 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tag {\n  color: var(--dsw-alias-label-secondary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .resize {\n  position: absolute;\n  top: 0;\n  right: -4px;\n  bottom: 0;\n  width: 8px;\n  cursor: col-resize;\n  z-index: 2;\n  touch-action: none;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"].docked.open:not(.dragging) {\n    transition: none;\n  }\n}\n");
+		//#region \0dsh-oil-creator-css:client/ContentInspector.css.mjs
+		registerPluginCss("dsh-oil-creator/ContentInspector.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-width: 0;\n  min-height: 0;\n  overflow: hidden;\n  background: var(--dsw-alias-bg-base);\n  border-right: 1px solid var(--dsw-alias-border-l1);\n  box-sizing: border-box;\n  font: var(--dsw-font-markdown-base);\n  color: var(--dsw-alias-label-primary);\n  --dsh-scrollbar-thumb: transparent;\n  --dsh-scrollbar-thumb-hover: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .header {\n  flex: none;\n  padding: 12px 16px 0 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .titleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  min-height: 32px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .title {\n  min-width: 0;\n  overflow: hidden;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .titleActions {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .close {\n  flex: none;\n  display: grid;\n  place-items: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: none;\n  border-radius: 999px;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .close:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .close:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tabs {\n  display: flex;\n  gap: 20px;\n  margin-top: 4px;\n  padding-left: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab {\n  position: relative;\n  padding: 0 0 11px;\n  border: none;\n  background: transparent;\n  font-size: 13px;\n  line-height: 16px;\n  font-weight: 500;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab::after {\n  content: \"\";\n  position: absolute;\n  right: 0;\n  bottom: 1px;\n  left: 0;\n  height: 2px;\n  border-radius: 2px;\n  background: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab.active {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab.active::after {\n  background: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .body {\n  flex: 1;\n  min-height: 0;\n  padding: 20px 20px 32px;\n  overflow-y: auto;\n  scrollbar-width: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .body::-webkit-scrollbar {\n  width: 0;\n  height: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .empty {\n  padding: 8px 0;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .lede {\n  display: flex;\n  gap: 16px;\n  align-items: flex-start;\n  margin-bottom: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverPair {\n  flex: none;\n  display: flex;\n  align-items: stretch;\n  gap: 10px;\n  height: calc(80px * 4 / 3);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverHero {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  height: 100%;\n  aspect-ratio: 3 / 4;\n  overflow: hidden;\n  border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverWide {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  height: 100%;\n  aspect-ratio: 4 / 3;\n  overflow: hidden;\n  border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverHero img,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverWide img {\n  width: 100%;\n  height: 100%;\n  object-fit: cover;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverFallback {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .ledeText {\n  min-width: 0;\n  padding-top: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .stepper {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: 6px;\n  margin: -8px 0 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step + .step::before {\n  content: \"\";\n  width: 14px;\n  height: 1px;\n  margin-right: 2px;\n  background: var(--dsw-alias-border-l2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .stepDot {\n  flex: none;\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background: var(--dsw-alias-border-l2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.done {\n  color: var(--dsw-alias-label-secondary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.done .stepDot {\n  background: var(--dsw-alias-state-success-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.current {\n  color: var(--dsw-alias-state-business-primary);\n  font-weight: 500;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.current .stepDot {\n  background: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .time {\n  margin-top: 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workList {\n  display: flex;\n  flex-direction: column;\n  gap: 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workRow {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workMain {\n  display: flex;\n  align-items: baseline;\n  gap: 8px;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workName {\n  font: var(--dsw-font-markdown-base);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workMain .statusPill {\n  align-self: center;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .jobNote {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin: 12px 0 0;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .oilSurface .jobNote {\n  margin: 0 0 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .jobNote.done {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .jobNote.error {\n  color: var(--dsw-alias-state-error-primary);\n  max-height: 72px;\n  overflow: hidden;\n  overflow-wrap: anywhere;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishGrid {\n  display: grid;\n  grid-template-columns: 1fr;\n  gap: 10px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishCard {\n  padding: 10px 12px;\n  border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareReview {\n  display: grid;\n  gap: 6px;\n  margin: 0 0 14px;\n  padding: 10px 12px;\n  border: 1px solid var(--dsw-alias-border-l1);\n  border-radius: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareReview > div {\n  display: grid;\n  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);\n  gap: 4px 10px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareReview strong,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareReview code {\n  min-width: 0;\n  overflow: hidden;\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareReview code {\n  grid-column: 2;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareOptions {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  margin-bottom: 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareLabel,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareHelp,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareDetail {\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .preparePlatforms {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px 14px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareCheck {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n  color: var(--dsw-alias-label-secondary);\n  font: var(--dsw-font-markdown-small);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareCheck:has(input:disabled) {\n  cursor: default;\n  opacity: 0.58;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareConfirm {\n  color: var(--dsw-alias-label-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareResults {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  margin: 12px 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareResultRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareReady {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .prepareBlocked {\n  max-width: 60%;\n  overflow-wrap: anywhere;\n  color: var(--dsw-alias-state-error-primary);\n  text-align: right;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .scriptEditor {\n  display: block;\n  flex: 1;\n  width: 100%;\n  min-height: 240px;\n  margin: 0;\n  padding: 0;\n  border: none;\n  border-radius: 0;\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  font: var(--dsw-font-markdown-base);\n  line-height: 24px;\n  resize: none;\n  box-sizing: border-box;\n  outline: none;\n  box-shadow: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .scriptEditor:focus {\n  outline: none;\n  box-shadow: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .scriptEditor::placeholder {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .body:has(.scriptEditor) {\n  display: flex;\n  flex-direction: column;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .videoPlayer {\n  display: block;\n  width: 100%;\n  max-height: min(70vh, 520px);\n  border-radius: 10px;\n  background: #111;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishName {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n  font: var(--dsw-font-markdown-base);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishRow.articleRow {\n  width: 100%;\n  padding: 0;\n  border: none;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishRow.articleRow:hover .publishName {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .oilSurface .oilActionBar + .publishRows {\n  margin-top: 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishMetrics {\n  margin-top: 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishUrl {\n  display: block;\n  margin-top: 4px;\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cues {\n  margin: 20px 0 0;\n  padding: 0;\n  list-style: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cue + .cue {\n  margin-top: 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cueTime {\n  margin-bottom: 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cueText {\n  margin: 0;\n  font: var(--dsw-font-markdown-base);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .block {\n  margin-top: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .blockLabel {\n  margin-bottom: 8px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .platformMark {\n  flex: none;\n  display: block;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .copyTitle {\n  margin-bottom: 6px;\n  font: var(--dsw-font-markdown-base-strong);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .article {\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .article > :first-child > :first-child {\n  margin-top: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .article img {\n  display: block;\n  max-width: 100%;\n  height: auto;\n  margin: 16px 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tags:first-child {\n  margin-top: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tags {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n  margin-top: 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tag {\n  color: var(--dsw-alias-label-secondary);\n  font: var(--dsw-font-markdown-small);\n}\n");
 		//#endregion
 		//#region src/client/ContentInspector.tsx
 		const TABS = [
@@ -5416,6 +5591,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			subtitle: "inspector.tab.subtitle",
 			article: "inspector.tab.article"
 		};
+		function basenameOf(path) {
+			return path.replaceAll("\\", "/").split("/").at(-1) ?? path;
+		}
 		function cuesFromSubtitle(nextSubtitle) {
 			if (nextSubtitle.cues.length > 0) return nextSubtitle.cues;
 			if (nextSubtitle.text === "") return [];
@@ -5470,21 +5648,25 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}), actions !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: actions })]
 			});
 		}
-		function ContentInspector({ t, useSessions, ready, getContent, getCoverThumb, getVideoPlayback, getArticleMedia, getSubtitleText, getSettings, markReadyToRecord, bindStudio, openStudio, setPublish, syncPublish, startSubtitleGenerate, startSubtitleBurn, startCoverGenerate, setScript, pickDirectory, openSubtitlePreview, openPath, closeDetails }) {
-			const [selectedId, setSelectedId] = useSelectedContentId();
+		function ContentInspector({ t, useSessions, ready, getContent, getCoverThumb, getVideoPlayback, getArticleMedia, getSubtitleText, getSettings, markReadyToRecord, bindStudio, openStudio, setPublish, preparePublish, syncPublish, startSubtitleGenerate, startSubtitleBurn, startCoverGenerate, setScript, pickDirectory, openSubtitlePreview, openPath, closeDetails }) {
+			const [selectedId] = useSelectedContentId();
 			const currentSessionId = useSessions((sessions) => sessions.current);
+			const previousSessionId = (0, react.useRef)(currentSessionId);
 			const libraryEpoch = useLibraryEpoch();
 			const profileEpoch = useProfileEpoch();
 			const [enabledPlatforms, setEnabledPlatforms] = (0, react.useState)(void 0);
+			const [draftPlatforms, setDraftPlatforms] = (0, react.useState)([]);
+			const [includeWechatArticle, setIncludeWechatArticle] = (0, react.useState)(false);
+			const [originalRightsConfirmed, setOriginalRightsConfirmed] = (0, react.useState)(false);
+			const [uploadCovers, setUploadCovers] = (0, react.useState)(false);
+			const [prepareResult, setPrepareResult] = (0, react.useState)(void 0);
+			const draftSelectionId = (0, react.useRef)(null);
 			const scriptSavedRef = (0, react.useRef)(true);
 			const loadedId = (0, react.useRef)(null);
 			const [detail, setDetail] = (0, react.useState)(void 0);
 			const [cues, setCues] = (0, react.useState)([]);
 			const [error, setError] = (0, react.useState)(void 0);
 			const [tab, setTab] = (0, react.useState)("overview");
-			const [panelWidth, setPanelWidth] = (0, react.useState)(getInspectorWidth);
-			const [expanded, setExpanded] = (0, react.useState)(false);
-			const [dragging, setDragging] = (0, react.useState)(false);
 			const [actionError, setActionError] = (0, react.useState)(void 0);
 			const [busy, setBusy] = (0, react.useState)(void 0);
 			const expectSubtitlePreview = (0, react.useRef)(false);
@@ -5497,7 +5679,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const [articleOrigin, setArticleOrigin] = (0, react.useState)(void 0);
 			const [publishMenu, setPublishMenu] = (0, react.useState)(null);
 			const [publishPending, setPublishPending] = (0, react.useState)(null);
-			const drag = (0, react.useRef)(null);
 			(0, react.useEffect)(() => {
 				setTab("overview");
 				setActionError(void 0);
@@ -5511,20 +5692,30 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				expectSubtitlePreview.current = false;
 				setPublishMenu(null);
 				setPublishPending(null);
+				draftSelectionId.current = null;
+				setDraftPlatforms([]);
+				setIncludeWechatArticle(false);
+				setOriginalRightsConfirmed(false);
+				setUploadCovers(false);
+				setPrepareResult(void 0);
 			}, [selectedId]);
 			(0, react.useEffect)(() => {
 				let cancelled = false;
 				setEnabledPlatforms(void 0);
 				if (!ready()) {
 					setEnabledPlatforms([]);
+					setDraftPlatforms([]);
 					return () => {
 						cancelled = true;
 					};
 				}
 				getSettings().then((settings) => {
-					if (!cancelled) setEnabledPlatforms(settings.profile.enabledPlatforms);
+					if (cancelled) return;
+					setEnabledPlatforms(settings.profile.enabledPlatforms);
 				}, () => {
-					if (!cancelled) setEnabledPlatforms([]);
+					if (cancelled) return;
+					setEnabledPlatforms([]);
+					setDraftPlatforms([]);
 				});
 				return () => {
 					cancelled = true;
@@ -5533,16 +5724,19 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				getSettings,
 				libraryEpoch,
 				profileEpoch,
-				ready
+				ready,
+				selectedId
 			]);
 			(0, react.useEffect)(() => {
-				const frame = window.requestAnimationFrame(() => {
-					setExpanded(true);
-				});
-				return () => {
-					window.cancelAnimationFrame(frame);
-				};
-			}, []);
+				if (detail === void 0 || enabledPlatforms === void 0) return;
+				if (draftSelectionId.current === detail.id) {
+					const enabled = new Set(enabledPlatforms);
+					setDraftPlatforms((current) => current.filter((platform) => enabled.has(platform)));
+					return;
+				}
+				draftSelectionId.current = detail.id;
+				setDraftPlatforms(initialPreparePlatforms(enabledPlatforms, detail.publishPreparation?.selectedPlatforms));
+			}, [detail, enabledPlatforms]);
 			(0, react.useEffect)(() => {
 				if (selectedId === null) {
 					loadedId.current = null;
@@ -5562,6 +5756,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					if (cancelled) return;
 					loadedId.current = selectedId;
 					setDetail(nextDetail);
+					setPrepareResult(nextDetail.publishPreparation);
 					if (switched || scriptSavedRef.current) {
 						setScriptDraft(nextDetail.script);
 						setScriptSaved(true);
@@ -5666,7 +5861,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 				if (detail?.subtitleJob.status === "error") expectSubtitlePreview.current = false;
 			}, [selectedId, detail?.subtitleJob.status]);
-			const shownWidth = expanded ? panelWidth : 0;
 			const applyPublish = (platform, status) => {
 				setPublishMenu(null);
 				if (detail === void 0 || detail.publish[platform].status === status) return;
@@ -5680,45 +5874,32 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				});
 			};
 			(0, react.useEffect)(() => {
-				if (selectedId === null) {
-					clearConversationInset();
-					return;
-				}
-				applyConversationInset(shownWidth, !dragging);
-			}, [
-				selectedId,
-				currentSessionId,
-				shownWidth,
-				dragging
-			]);
-			(0, react.useEffect)(() => () => {
-				clearConversationInset();
-			}, []);
-			(0, react.useEffect)(() => {
-				const onMove = (event) => {
-					if (drag.current === null) return;
-					setInspectorWidth(drag.current.startWidth + (event.clientX - drag.current.startX));
-					setPanelWidth(getInspectorWidth());
-				};
-				const onUp = () => {
-					if (drag.current === null) return;
-					drag.current = null;
-					setDragging(false);
-				};
-				document.addEventListener("pointermove", onMove);
-				document.addEventListener("pointerup", onUp);
-				return () => {
-					document.removeEventListener("pointermove", onMove);
-					document.removeEventListener("pointerup", onUp);
-				};
-			}, []);
+				if (previousSessionId.current === currentSessionId) return;
+				previousSessionId.current = currentSessionId;
+				closeDetails();
+			}, [currentSessionId, closeDetails]);
 			if (selectedId === null) return null;
 			const hasVideo = detail?.videoRaw !== void 0 || detail?.videoSubtitled !== void 0;
+			const draftVideoPath = detail?.videoSubtitled ?? detail?.videoRaw;
 			const hasSubtitleDraft = detail?.subtitles.srt !== void 0 || detail?.subtitles.transcript !== void 0;
 			const canPreviewSubtitle = hasSubtitleDraft || detail?.subtitleJob.status === "done";
 			const hasAnyCover = detail !== void 0 && (detail.covers["3x4"] !== void 0 || detail.covers["4x3"] !== void 0 || detail.covers["16x9"] !== void 0);
 			const platformSettingsPending = enabledPlatforms === void 0;
 			const visiblePlatforms = platformSettingsPending ? [] : selectEnabledPublishPlatforms(enabledPlatforms);
+			const draftNeedsOriginality = requiresOriginalityConfirmation(draftPlatforms);
+			const missingDraftCoverRatios = detail === void 0 ? [] : missingSelectedCoverRatios(detail.covers, draftPlatforms);
+			const prepareOutcome = prepareResult === void 0 ? void 0 : preparePublishOutcome(prepareResult);
+			const prepareDisabled = detail === void 0 || isPreparePublishDisabled({
+				busy,
+				platformSettingsPending,
+				selectedPlatforms: draftPlatforms,
+				hasVideo,
+				includeWechatArticle,
+				hasArticle: detail?.hasArticle === true,
+				originalRightsConfirmed,
+				uploadCovers,
+				covers: detail?.covers ?? {}
+			});
 			const publishedCount = detail === void 0 ? 0 : visiblePlatforms.filter((platform) => detail.publish[platform.key].status === "published").length;
 			const anyPublishMarked = detail !== void 0 && visiblePlatforms.some((platform) => detail.publish[platform.key].status !== "unpublished");
 			const publishStepDone = visiblePlatforms.length > 0 && publishedCount === visiblePlatforms.length;
@@ -5811,6 +5992,31 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 				});
 			};
+			const onPreparePublish = () => {
+				if (detail === void 0) return;
+				setActionError(void 0);
+				setBusy("prepare");
+				preparePublish({
+					id: detail.id,
+					platforms: [...draftPlatforms],
+					includeWechatArticle,
+					originalRightsConfirmed,
+					uploadCovers
+				}).then(async (result) => {
+					setPrepareResult(result);
+					return {
+						next: await getContent(detail.id),
+						result
+					};
+				}).then(({ next, result }) => {
+					setDetail(next);
+					setPrepareResult(next.publishPreparation ?? result);
+					setBusy(void 0);
+				}, (cause) => {
+					setActionError(cause instanceof Error ? cause.message : t("empty.error"));
+					setBusy(void 0);
+				});
+			};
 			const onSyncPublish = () => {
 				if (detail === void 0) return;
 				setActionError(void 0);
@@ -5878,369 +6084,499 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				"data-plugin": "dsh-oil-creator",
 				"data-surface": "inspector",
-				className: [
-					"docked",
-					expanded ? "open" : "",
-					dragging ? "dragging" : "",
-					panelWidth >= 560 ? "wide" : ""
-				].filter((part) => part !== "").join(" "),
-				style: { width: shownWidth },
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
-						className: "header",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: "titleRow",
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "title",
-								children: detail?.title ?? (error === void 0 ? t("empty.loading") : "")
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "titleActions",
-								children: [detail !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: "close",
-									"aria-label": t("inspector.openFolder"),
-									onClick: () => {
-										openPath(detail.folderPath);
-									},
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpenOutline16, { size: 14 })
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: "close",
-									"aria-label": t("inspector.close"),
-									onClick: () => {
-										setSelectedId(null);
-										closeDetails();
-									},
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseOutline16, { size: 14 })
-								})]
-							})]
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: "tabs",
-							role: "tablist",
-							children: TABS.map((id) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+					className: "header",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "titleRow",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "title",
+							children: detail?.title ?? (error === void 0 ? t("empty.loading") : "")
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "titleActions",
+							children: [detail !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								role: "tab",
-								"aria-selected": tab === id,
-								className: tab === id ? "tab active" : "tab",
+								className: "close",
+								"aria-label": t("inspector.openFolder"),
 								onClick: () => {
-									setTab(id);
+									openPath(detail.folderPath);
 								},
-								children: t(TAB_KEY[id])
-							}, id))
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpenOutline16, { size: 14 })
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: "close",
+								"aria-label": t("inspector.close"),
+								onClick: closeDetails,
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseOutline16, { size: 14 })
+							})]
 						})]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: "body",
-						children: [
-							error !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "empty",
-								children: error
-							}),
-							error === void 0 && detail === void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "empty",
-								children: t("empty.loading")
-							}),
-							detail !== void 0 && tab === "overview" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "lede",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "coverPair",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: "coverHero",
-											children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CoverThumb, {
-												id: detail.id,
-												load: getCoverThumb,
-												revision: coverThumbRevision(detail.covers),
-												fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, {
-													className: "coverFallback",
-													size: 22
-												})
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "tabs",
+						role: "tablist",
+						children: TABS.map((id) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							role: "tab",
+							"aria-selected": tab === id,
+							className: tab === id ? "tab active" : "tab",
+							onClick: () => {
+								setTab(id);
+							},
+							children: t(TAB_KEY[id])
+						}, id))
+					})]
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "body",
+					children: [
+						error !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "empty",
+							children: error
+						}),
+						error === void 0 && detail === void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "empty",
+							children: t("empty.loading")
+						}),
+						detail !== void 0 && tab === "overview" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "lede",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "coverPair",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "coverHero",
+										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CoverThumb, {
+											id: detail.id,
+											load: getCoverThumb,
+											revision: coverThumbRevision(detail.covers),
+											fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, {
+												className: "coverFallback",
+												size: 22
 											})
-										}), detail.covers["4x3"] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: "coverWide",
-											children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CoverThumb, {
-												id: `${detail.id}::4x3`,
-												load: getCoverThumb,
-												revision: detail.covers["4x3"],
-												fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, {
-													className: "coverFallback",
-													size: 22
-												})
+										})
+									}), detail.covers["4x3"] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "coverWide",
+										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CoverThumb, {
+											id: `${detail.id}::4x3`,
+											load: getCoverThumb,
+											revision: detail.covers["4x3"],
+											fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, {
+												className: "coverFallback",
+												size: 22
 											})
-										})]
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "ledeText",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(StatusPill, {
-											tone: WORKFLOW_TONE[detail.workflow],
-											children: t(STAGE_KEY[detail.workflow])
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: "time",
-											children: formatRelativeTime(detail.recordedAt, Date.now(), t)
-										})]
+										})
 									})]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									className: "stepper",
-									"aria-hidden": "true",
-									children: PIPELINE_STEPS.map((step, index) => {
-										const done = index < stageIndex || step.id === "publish" && publishStepDone;
-										const current = !done && step.id === currentStep;
-										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-											className: `step ${done ? "done" : current ? "current" : ""}`,
-											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "stepDot" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-												className: "stepLabel",
-												children: t(step.label)
-											})]
-										}, step.id);
-									})
-								}),
-								hasVideo && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Surface, {
-									title: t("inspector.make"),
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "workList",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(WorkRow, {
-											name: t("inspector.track.subtitle"),
-											...subtitleStatus()
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(WorkRow, {
-											name: t("inspector.track.cover"),
-											...coverStatus(),
-											actions: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-												tone: hasAnyCover ? "secondary" : "primary",
-												onClick: onGenerateCover,
-												disabled: busy !== void 0 || detail.coverJob.status === "running",
-												children: t(hasAnyCover ? "inspector.cover.regenerate" : "inspector.cover.generate")
-											})
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "ledeText",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(StatusPill, {
+										tone: WORKFLOW_TONE[detail.workflow],
+										children: t(STAGE_KEY[detail.workflow])
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "time",
+										children: formatRelativeTime(detail.recordedAt, Date.now(), t)
+									})]
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "stepper",
+								"aria-hidden": "true",
+								children: PIPELINE_STEPS.map((step, index) => {
+									const done = index < stageIndex || step.id === "publish" && publishStepDone;
+									const current = !done && step.id === currentStep;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: `step ${done ? "done" : current ? "current" : ""}`,
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "stepDot" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: "stepLabel",
+											children: t(step.label)
 										})]
-									})
-								}),
-								currentStepMeta !== void 0 && currentStep !== "publish" && currentStep !== "finish" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Surface, {
-									title: t(currentStepMeta.label),
-									hint: "hint" in currentStepMeta ? t(currentStepMeta.hint) : void 0,
+									}, step.id);
+								})
+							}),
+							hasVideo && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Surface, {
+								title: t("inspector.make"),
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "workList",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(WorkRow, {
+										name: t("inspector.track.subtitle"),
+										...subtitleStatus()
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(WorkRow, {
+										name: t("inspector.track.cover"),
+										...coverStatus(),
+										actions: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+											tone: hasAnyCover ? "secondary" : "primary",
+											onClick: onGenerateCover,
+											disabled: busy !== void 0 || detail.coverJob.status === "running",
+											children: t(hasAnyCover ? "inspector.cover.regenerate" : "inspector.cover.generate")
+										})
+									})]
+								})
+							}),
+							currentStepMeta !== void 0 && currentStep !== "publish" && currentStep !== "finish" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Surface, {
+								title: t(currentStepMeta.label),
+								hint: "hint" in currentStepMeta ? t(currentStepMeta.hint) : void 0,
+								children: [
+									currentStep === "topic" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+										tone: "primary",
+										onClick: onReadyToRecord,
+										children: t("inspector.readyToRecord")
+									}) }),
+									currentStep === "record" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+										tone: "primary",
+										onClick: detail.studioPath === void 0 ? onBindStudio : onOpenStudio,
+										children: t(detail.studioPath === void 0 ? "inspector.studio.bind" : "inspector.studio.open")
+									}) }),
+									currentStep === "cut" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [detail.waitingForExport && !hasVideo && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
+										tone: detail.exportTimedOut === true ? "error" : "running",
+										children: t(detail.exportTimedOut === true ? "inspector.step.exportTimedOut" : "inspector.step.waitingExport")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ActionBar, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+										tone: "primary",
+										onClick: detail.studioPath === void 0 ? onBindStudio : onOpenStudio,
+										children: t(detail.studioPath === void 0 ? "inspector.studio.bind" : "inspector.studio.open")
+									}), detail.studioPath !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+										onClick: onBindStudio,
+										children: t("inspector.studio.rebind")
+									})] })] })
+								]
+							}),
+							actionError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
+								tone: "error",
+								children: actionError
+							}),
+							(detail.workflow === "publish" || anyPublishMarked || detail.hasArticle) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Surface, {
+									title: t("inspector.prepare.title"),
+									hint: t("inspector.prepare.hint"),
 									children: [
-										currentStep === "topic" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-											tone: "primary",
-											onClick: onReadyToRecord,
-											children: t("inspector.readyToRecord")
-										}) }),
-										currentStep === "record" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-											tone: "primary",
-											onClick: detail.studioPath === void 0 ? onBindStudio : onOpenStudio,
-											children: t(detail.studioPath === void 0 ? "inspector.studio.bind" : "inspector.studio.open")
-										}) }),
-										currentStep === "cut" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [detail.waitingForExport && !hasVideo && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
-											tone: detail.exportTimedOut === true ? "error" : "running",
-											children: t(detail.exportTimedOut === true ? "inspector.step.exportTimedOut" : "inspector.step.waitingExport")
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ActionBar, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-											tone: "primary",
-											onClick: detail.studioPath === void 0 ? onBindStudio : onOpenStudio,
-											children: t(detail.studioPath === void 0 ? "inspector.studio.bind" : "inspector.studio.open")
-										}), detail.studioPath !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-											onClick: onBindStudio,
-											children: t("inspector.studio.rebind")
-										})] })] })
-									]
-								}),
-								actionError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
-									tone: "error",
-									children: actionError
-								}),
-								(detail.workflow === "publish" || anyPublishMarked || detail.hasArticle) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Surface, {
-										title: t("inspector.sync.title"),
-										hint: syncHint ?? t(platformSettingsPending ? "inspector.publish.platformsLoading" : "inspector.sync.hint"),
-										children: [!platformSettingsPending && visiblePlatforms.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										platformSettingsPending ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+											className: "empty",
+											children: t("inspector.publish.platformsLoading")
+										}) : visiblePlatforms.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 											className: "empty",
 											children: t("inspector.publish.enablePlatforms")
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-											tone: "primary",
-											onClick: onSyncPublish,
-											disabled: isPublishSyncDisabled(busy, platformSettingsPending, enabledPlatforms ?? []),
-											children: t(busy === "sync" ? "inspector.publish.syncing" : "inspector.publish.sync")
-										}) })]
-									}),
-									visiblePlatforms.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Surface, {
-										title: t("inspector.platforms"),
-										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: "publishGrid",
-											children: visiblePlatforms.map((platform) => {
-												const row = detail.publish[platform.key];
-												const metrics = metricParts(row, t);
-												return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-													className: "publishCard",
+										}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "prepareOptions",
+											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+												className: "prepareLabel",
+												children: t("inspector.prepare.platforms")
+											}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+												className: "preparePlatforms",
+												children: visiblePlatforms.map((platform) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+													className: "prepareCheck",
 													children: [
-														/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-															className: "publishRow",
-															children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-																className: "publishName",
-																children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(PlatformMark, {
-																	id: platform.id,
-																	size: 16
-																}), t(platform.label)]
-															}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
-																portal: true,
-																align: "end",
-																open: publishMenu === platform.key,
-																anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StatusPill, {
-																	tone: PUBLISH_TONE[row.status],
-																	disabled: publishPending === platform.key,
-																	"aria-haspopup": "menu",
-																	"aria-label": `${t(platform.label)}：${t(PUBLISH_KEY[row.status])}`,
-																	onClick: () => {
-																		setPublishMenu(publishMenu === platform.key ? null : platform.key);
-																	},
-																	children: t(PUBLISH_KEY[row.status])
-																}),
-																items: PUBLISH_MARKS.map((mark) => ({
-																	id: mark,
-																	label: t(PUBLISH_KEY[mark])
-																})),
-																selectedId: row.status,
-																onSelect: (id) => {
-																	if (isPublishMark(id)) applyPublish(platform.key, id);
-																},
-																onClose: () => {
-																	setPublishMenu(null);
-																}
-															})]
+														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+															type: "checkbox",
+															checked: draftPlatforms.includes(platform.key),
+															disabled: busy !== void 0,
+															onChange: (event) => {
+																setDraftPlatforms((current) => event.target.checked ? [...current, platform.key] : current.filter((item) => item !== platform.key));
+																setOriginalRightsConfirmed(false);
+																setPrepareResult(void 0);
+															}
 														}),
-														metrics.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-															className: "publishMetrics",
-															children: metrics.join(" · ")
+														/* @__PURE__ */ (0, react_jsx_runtime.jsx)(PlatformMark, {
+															id: platform.id,
+															size: 16
 														}),
-														row.status === "published" && row.url !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
-															className: "publishUrl",
-															href: row.url,
-															target: "_blank",
-															rel: "noreferrer",
-															children: t("inspector.publish.open")
-														})
+														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t(platform.label) })
 													]
-												}, platform.id);
-											})
-										})
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Surface, {
-										title: t("inspector.article"),
-										children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-											type: "button",
-											className: "publishRow articleRow",
-											onClick: () => {
-												setTab("article");
-											},
-											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-												className: "publishName",
-												children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(PlatformMark, {
-													id: "article",
-													size: 16
-												}), t("inspector.article.draft")]
-											}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StatusPill, {
-												tone: detail.hasArticle ? "success" : "neutral",
-												children: t(detail.hasArticle ? "inspector.article.ready" : "inspector.article.missing")
+												}, platform.key))
 											})]
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "prepareReview",
+											"data-prepare-review": "inputs",
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("inspector.prepare.inputTitle") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: detail.publishCopy.trim() || detail.title })] }),
+												draftVideoPath !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("inspector.prepare.inputVideo") }),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
+														title: draftVideoPath,
+														children: basenameOf(draftVideoPath)
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: draftVideoPath })
+												] }),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("inspector.prepare.inputTags") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: detail.tags.join(" · ") || t("inspector.prepare.inputMissing") })] }),
+												uploadCovers && Object.entries(detail.covers).map(([ratio, path]) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("inspector.prepare.inputCover").replace("{ratio}", ratio) }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: path })] }, ratio))
+											]
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "prepareOptions",
+											children: [
+												draftNeedsOriginality && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+													className: "prepareCheck prepareConfirm",
+													children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+														type: "checkbox",
+														checked: originalRightsConfirmed,
+														disabled: busy !== void 0,
+														onChange: (event) => {
+															setOriginalRightsConfirmed(event.target.checked);
+														}
+													}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("inspector.prepare.originality") })]
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+													className: "prepareCheck",
+													children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+														type: "checkbox",
+														checked: uploadCovers,
+														disabled: busy !== void 0 || !hasAnyCover || missingDraftCoverRatios.length > 0,
+														onChange: (event) => {
+															setUploadCovers(event.target.checked);
+														}
+													}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("inspector.prepare.covers") })]
+												}),
+												hasAnyCover && missingDraftCoverRatios.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+													className: "prepareHelp",
+													children: t("inspector.prepare.coverMissing").replace("{ratios}", missingDraftCoverRatios.join("、"))
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+													className: "prepareCheck",
+													children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+														type: "checkbox",
+														checked: includeWechatArticle,
+														disabled: busy !== void 0 || !detail.hasArticle,
+														onChange: (event) => {
+															setIncludeWechatArticle(event.target.checked);
+														}
+													}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("inspector.prepare.article") })]
+												}),
+												!detail.hasArticle && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+													className: "prepareHelp",
+													children: t("inspector.prepare.articleMissing")
+												})
+											]
+										}),
+										busy === "prepare" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
+											tone: "running",
+											children: t("inspector.prepare.running")
+										}),
+										busy !== "prepare" && prepareOutcome !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
+											tone: prepareOutcome === "success" ? "done" : prepareOutcome === "skipped" ? void 0 : "error",
+											children: t(`inspector.prepare.${prepareOutcome}`)
+										}),
+										prepareResult !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "prepareResults",
+											children: [
+												prepareResult.selectedPlatforms.map((platform) => {
+													const definition = PUBLISH_UI_PLATFORMS.find((item) => item.key === platform);
+													const result = prepareResult.video.platforms?.[publisherPlatformKey(platform)];
+													if (definition === void 0 || result === void 0) return null;
+													const detailText = [typeof result.blocker?.code === "string" ? result.blocker.code : void 0, ...result.missing].filter(Boolean).join(" · ");
+													return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+														className: "prepareResultRow",
+														children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+															className: "publishName",
+															children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(PlatformMark, {
+																id: definition.id,
+																size: 16
+															}), t(definition.label)]
+														}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+															className: result.ready ? "prepareReady" : "prepareBlocked",
+															children: result.ready ? t("inspector.prepare.ready") : detailText || result.status
+														})]
+													}, platform);
+												}),
+												prepareResult.video.status === "blocked" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+													className: "prepareDetail",
+													children: prepareResult.video.detail
+												}),
+												prepareResult.wechatOfficialAccount !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+													className: "prepareResultRow",
+													children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("inspector.prepare.articleLabel") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: prepareResult.wechatOfficialAccount.status === "readyForReview" ? "prepareReady" : "prepareBlocked",
+														children: prepareResult.wechatOfficialAccount.status === "readyForReview" ? t("inspector.prepare.ready") : prepareResult.wechatOfficialAccount.detail
+													})]
+												})
+											]
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+											"data-action": "prepare-publish",
+											tone: "primary",
+											onClick: onPreparePublish,
+											disabled: prepareDisabled,
+											children: t(busy === "prepare" ? "inspector.prepare.running" : "inspector.prepare.action")
+										}) })
+									]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Surface, {
+									title: t("inspector.sync.title"),
+									hint: syncHint ?? t(platformSettingsPending ? "inspector.publish.platformsLoading" : "inspector.sync.hint"),
+									children: [!platformSettingsPending && visiblePlatforms.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "empty",
+										children: t("inspector.publish.enablePlatforms")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+										tone: "primary",
+										onClick: onSyncPublish,
+										disabled: isPublishSyncDisabled(busy, platformSettingsPending, enabledPlatforms ?? []),
+										children: t(busy === "sync" ? "inspector.publish.syncing" : "inspector.publish.sync")
+									}) })]
+								}),
+								visiblePlatforms.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Surface, {
+									title: t("inspector.platforms"),
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "publishGrid",
+										children: visiblePlatforms.map((platform) => {
+											const row = detail.publish[platform.key];
+											const metrics = metricParts(row, t);
+											return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: "publishCard",
+												children: [
+													/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+														className: "publishRow",
+														children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+															className: "publishName",
+															children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(PlatformMark, {
+																id: platform.id,
+																size: 16
+															}), t(platform.label)]
+														}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
+															portal: true,
+															align: "end",
+															open: publishMenu === platform.key,
+															anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StatusPill, {
+																tone: PUBLISH_TONE[row.status],
+																disabled: publishPending === platform.key,
+																"aria-haspopup": "menu",
+																"aria-label": `${t(platform.label)}：${t(PUBLISH_KEY[row.status])}`,
+																onClick: () => {
+																	setPublishMenu(publishMenu === platform.key ? null : platform.key);
+																},
+																children: t(PUBLISH_KEY[row.status])
+															}),
+															items: PUBLISH_MARKS.map((mark) => ({
+																id: mark,
+																label: t(PUBLISH_KEY[mark])
+															})),
+															selectedId: row.status,
+															onSelect: (id) => {
+																if (isPublishMark(id)) applyPublish(platform.key, id);
+															},
+															onClose: () => {
+																setPublishMenu(null);
+															}
+														})]
+													}),
+													metrics.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+														className: "publishMetrics",
+														children: metrics.join(" · ")
+													}),
+													row.status === "published" && row.url !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
+														className: "publishUrl",
+														href: row.url,
+														target: "_blank",
+														rel: "noreferrer",
+														children: t("inspector.publish.open")
+													})
+												]
+											}, platform.id);
 										})
 									})
-								] }),
-								detail.tags.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Surface, {
-									title: t("detail.tags"),
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-										className: "tags",
-										children: detail.tags.map((tag) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-											className: "tag",
-											children: ["#", tag]
-										}, tag))
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Surface, {
+									title: t("inspector.article"),
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+										type: "button",
+										className: "publishRow articleRow",
+										onClick: () => {
+											setTab("article");
+										},
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+											className: "publishName",
+											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(PlatformMark, {
+												id: "article",
+												size: 16
+											}), t("inspector.article.draft")]
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StatusPill, {
+											tone: detail.hasArticle ? "success" : "neutral",
+											children: t(detail.hasArticle ? "inspector.article.ready" : "inspector.article.missing")
+										})]
 									})
 								})
 							] }),
-							detail !== void 0 && tab === "video" && (!videoReady ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "empty",
-								children: t("empty.loading")
-							}) : videoSrc === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "empty",
-								children: t("inspector.video.empty")
-							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("video", {
-								className: "videoPlayer",
-								controls: true,
-								playsInline: true,
-								preload: "metadata",
-								src: videoSrc
-							})),
-							detail !== void 0 && tab === "script" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
-								className: "scriptEditor",
-								value: scriptDraft,
-								placeholder: t("inspector.script.placeholder"),
-								onChange: (event) => {
-									setScriptDraft(event.target.value);
-									setScriptSaved(event.target.value === detail.script);
-								}
-							}),
-							detail !== void 0 && tab === "article" && (detail.article.trim() === "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "empty",
-								children: t("inspector.article.empty")
-							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "article",
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: articleOrigin === void 0 ? detail.article : rewriteArticleImages(detail.article, articleOrigin) })
-							})),
-							detail !== void 0 && tab === "subtitle" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-								hasVideo && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ActionBar, { children: [
-									canPreviewSubtitle && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-										tone: "ghost",
-										onClick: onPreviewSubtitle,
-										children: t("inspector.subtitle.previewEdit")
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-										tone: !hasSubtitleDraft && detail.videoSubtitled === void 0 ? "primary" : "secondary",
-										onClick: onGenerateSubtitle,
-										disabled: busy !== void 0 || detail.subtitleJob.status === "running" || detail.burn.status === "running",
-										children: t(!hasSubtitleDraft ? "inspector.subtitle.generate" : "inspector.subtitle.regenerate")
-									}),
-									hasSubtitleDraft && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-										tone: detail.videoSubtitled === void 0 ? "primary" : "secondary",
-										onClick: onBurnSubtitle,
-										disabled: busy !== void 0 || detail.subtitleJob.status === "running" || detail.burn.status === "running",
-										children: t(detail.videoSubtitled === void 0 ? "inspector.subtitle.burn" : "inspector.subtitle.reburn")
-									})
-								] }),
-								actionError !== void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
-									tone: "error",
-									children: actionError
-								}) : detail.subtitleJob.status === "running" || detail.burn.status === "running" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
-									tone: "running",
-									children: t(detail.subtitleJob.status === "running" ? "inspector.subtitle.generating" : "inspector.subtitle.burning")
-								}) : detail.subtitleJob.status === "error" || detail.burn.status === "error" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
-									tone: "error",
-									children: (detail.subtitleJob.error ?? detail.burn.error ?? "").includes("process exited") ? t("inspector.subtitle.burnFailed") : detail.subtitleJob.error ?? detail.burn.error ?? t("inspector.subtitle.burnFailed")
-								}) : null,
-								cues.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									className: "empty",
-									children: t("inspector.subtitle.empty")
-								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
-									className: "cues",
-									children: cues.map((cue, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-										className: "cue",
-										children: [cue.at !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: "cueTime",
-											children: cue.at
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-											className: "cueText",
-											children: cue.text
-										})]
-									}, `${cue.at ?? "cue"}-${index}`))
+							detail.tags.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Surface, {
+								title: t("detail.tags"),
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									className: "tags",
+									children: detail.tags.map((tag) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: "tag",
+										children: ["#", tag]
+									}, tag))
 								})
-							] })
-						]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: "resize",
-						onPointerDown: (event) => {
-							event.preventDefault();
-							drag.current = {
-								startX: event.clientX,
-								startWidth: panelWidth
-							};
-							setDragging(true);
-						}
-					})
-				]
+							})
+						] }),
+						detail !== void 0 && tab === "video" && (!videoReady ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "empty",
+							children: t("empty.loading")
+						}) : videoSrc === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "empty",
+							children: t("inspector.video.empty")
+						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("video", {
+							className: "videoPlayer",
+							controls: true,
+							playsInline: true,
+							preload: "metadata",
+							src: videoSrc
+						})),
+						detail !== void 0 && tab === "script" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
+							className: "scriptEditor",
+							value: scriptDraft,
+							placeholder: t("inspector.script.placeholder"),
+							onChange: (event) => {
+								setScriptDraft(event.target.value);
+								setScriptSaved(event.target.value === detail.script);
+							}
+						}),
+						detail !== void 0 && tab === "article" && (detail.article.trim() === "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "empty",
+							children: t("inspector.article.empty")
+						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "article",
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: articleOrigin === void 0 ? detail.article : rewriteArticleImages(detail.article, articleOrigin) })
+						})),
+						detail !== void 0 && tab === "subtitle" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+							hasVideo && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ActionBar, { children: [
+								canPreviewSubtitle && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+									tone: "ghost",
+									onClick: onPreviewSubtitle,
+									children: t("inspector.subtitle.previewEdit")
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+									tone: !hasSubtitleDraft && detail.videoSubtitled === void 0 ? "primary" : "secondary",
+									onClick: onGenerateSubtitle,
+									disabled: busy !== void 0 || detail.subtitleJob.status === "running" || detail.burn.status === "running",
+									children: t(!hasSubtitleDraft ? "inspector.subtitle.generate" : "inspector.subtitle.regenerate")
+								}),
+								hasSubtitleDraft && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+									tone: detail.videoSubtitled === void 0 ? "primary" : "secondary",
+									onClick: onBurnSubtitle,
+									disabled: busy !== void 0 || detail.subtitleJob.status === "running" || detail.burn.status === "running",
+									children: t(detail.videoSubtitled === void 0 ? "inspector.subtitle.burn" : "inspector.subtitle.reburn")
+								})
+							] }),
+							actionError !== void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
+								tone: "error",
+								children: actionError
+							}) : detail.subtitleJob.status === "running" || detail.burn.status === "running" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
+								tone: "running",
+								children: t(detail.subtitleJob.status === "running" ? "inspector.subtitle.generating" : "inspector.subtitle.burning")
+							}) : detail.subtitleJob.status === "error" || detail.burn.status === "error" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
+								tone: "error",
+								children: (detail.subtitleJob.error ?? detail.burn.error ?? "").includes("process exited") ? t("inspector.subtitle.burnFailed") : detail.subtitleJob.error ?? detail.burn.error ?? t("inspector.subtitle.burnFailed")
+							}) : null,
+							cues.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "empty",
+								children: t("inspector.subtitle.empty")
+							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
+								className: "cues",
+								children: cues.map((cue, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
+									className: "cue",
+									children: [cue.at !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "cueTime",
+										children: cue.at
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+										className: "cueText",
+										children: cue.text
+									})]
+								}, `${cue.at ?? "cue"}-${index}`))
+							})
+						] })
+					]
+				})]
 			});
 		}
 		//#endregion
@@ -6277,7 +6613,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 		}
 		//#endregion
-		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/CreatorSettingsCard.css.mjs
+		//#region \0dsh-oil-creator-css:client/CreatorSettingsCard.css.mjs
 		registerPluginCss("dsh-oil-creator/CreatorSettingsCard.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] {\n  list-style: none;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: var(--dsw-alias-bg-layer-3);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"].open {\n  background: var(--dsw-alias-bg-layer-2);\n  border-color: var(--dsw-alias-label-dimmed);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .header {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  width: 100%;\n  padding: 14px 16px;\n  border: 0;\n  border-radius: 12px;\n  background: none;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .header:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: -2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .headText {\n  flex: 1;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .name {\n  color: var(--dsw-alias-label-primary);\n  font-size: 15px;\n  font-weight: 600;\n  line-height: 1.4;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .description {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 13px;\n  line-height: 1.5;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .pending {\n  flex: none;\n  padding: 1px 8px;\n  border-radius: 999px;\n  background: var(--dsw-alias-bg-module-platform);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  font-weight: 500;\n  line-height: 17px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .chevron.open {\n  transform: rotate(180deg);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .body {\n  margin: 0 16px;\n  padding-bottom: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .field {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  padding: 12px 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .fieldLabel {\n  color: var(--dsw-alias-label-primary);\n  font-size: 13px;\n  font-weight: 500;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .fieldHint {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .inputLabel {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  margin-top: 8px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .input {\n  width: 100%;\n  box-sizing: border-box;\n  padding: 6px 10px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-3);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .input:focus {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: -1px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .textarea {\n  min-height: 64px;\n  resize: vertical;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .pathRow {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin-top: 6px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .path {\n  flex: 1;\n  min-width: 0;\n  overflow: hidden;\n  padding: 6px 10px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  color: var(--dsw-alias-label-primary);\n  font-size: 13px;\n  line-height: 20px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .path.empty {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .footer {\n  display: flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 8px;\n  padding: 12px 0 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .failed,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .ok {\n  flex: 1;\n  min-width: 0;\n  margin: 0;\n  font-size: 12px;\n  line-height: 1.5;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .failed {\n  color: var(--dsw-alias-label-error);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .ok {\n  color: var(--dsw-alias-label-secondary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .capabilityGrid {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 6px 12px;\n  margin-top: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .capabilityItem {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  min-width: 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .capabilityName {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .secretHead {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n}\n");
 		//#endregion
 		//#region src/client/CreatorSettingsCard.tsx
@@ -6324,6 +6660,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			{
 				id: "articleSkill",
 				label: "settings.capability.article"
+			},
+			{
+				id: "wechatPublisherSkill",
+				label: "settings.capability.wechatDraft"
 			},
 			{
 				id: "publishSync",
@@ -6826,6 +7166,27 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"inspector.publish.views": "{n} 播放",
 			"inspector.publish.likes": "{n} 赞",
 			"inspector.publish.comments": "{n} 评论",
+			"inspector.prepare.title": "准备发布草稿",
+			"inspector.prepare.hint": "只准备草稿并保留页面供你检查，不会点击最终发布或公众号群发。",
+			"inspector.prepare.platforms": "视频平台",
+			"inspector.prepare.inputTitle": "标题",
+			"inspector.prepare.inputVideo": "成片",
+			"inspector.prepare.inputTags": "标签",
+			"inspector.prepare.inputCover": "封面 {ratio}",
+			"inspector.prepare.inputMissing": "未填写",
+			"inspector.prepare.originality": "我确认这条视频可以真实声明为原创 / 自制",
+			"inspector.prepare.covers": "上传这一期已有封面",
+			"inspector.prepare.coverMissing": "所选平台还缺封面比例：{ratios}",
+			"inspector.prepare.article": "同时创建已有公众号文章草稿",
+			"inspector.prepare.articleMissing": "这一期还没有 公众号文章/ Markdown，暂不能加入公众号草稿。",
+			"inspector.prepare.action": "一键准备草稿",
+			"inspector.prepare.running": "正在准备草稿",
+			"inspector.prepare.success": "草稿已备好并保留供检查。没有执行最终发布或群发。",
+			"inspector.prepare.partial": "部分草稿已备好，未完成的平台仍需处理。没有执行最终发布或群发。",
+			"inspector.prepare.blocked": "草稿准备被阻止，请按下方提示处理后重试。",
+			"inspector.prepare.skipped": "没有可准备的草稿。",
+			"inspector.prepare.ready": "草稿待检查",
+			"inspector.prepare.articleLabel": "公众号文章",
 			"settings.title": "内容工作台",
 			"settings.description": "内容目录、启用的平台，以及字幕和封面用的 API Key。",
 			"settings.libraryRoot": "影片目录",
@@ -6856,8 +7217,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"settings.capability.subtitle": "字幕",
 			"settings.capability.cover": "封面",
 			"settings.capability.editing": "自动剪辑",
-			"settings.capability.publish": "自动发布",
+			"settings.capability.publish": "视频草稿准备",
 			"settings.capability.article": "公众号图文",
+			"settings.capability.wechatDraft": "公众号草稿",
 			"settings.capability.ego": "Ego Browser",
 			"settings.state.ready": "可用",
 			"settings.state.missing": "不可用",
@@ -6987,6 +7349,27 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"inspector.publish.views": "{n} views",
 			"inspector.publish.likes": "{n} likes",
 			"inspector.publish.comments": "{n} comments",
+			"inspector.prepare.title": "Prepare publishing drafts",
+			"inspector.prepare.hint": "Prepares drafts and keeps them open for review. It never clicks final publish or WeChat group-send.",
+			"inspector.prepare.platforms": "Video platforms",
+			"inspector.prepare.inputTitle": "Title",
+			"inspector.prepare.inputVideo": "Video",
+			"inspector.prepare.inputTags": "Tags",
+			"inspector.prepare.inputCover": "Cover {ratio}",
+			"inspector.prepare.inputMissing": "Missing",
+			"inspector.prepare.originality": "I confirm this video may truthfully be declared original / self-produced",
+			"inspector.prepare.covers": "Upload this episode's existing covers",
+			"inspector.prepare.coverMissing": "The selected platforms still need these cover ratios: {ratios}",
+			"inspector.prepare.article": "Also create a draft from the existing WeChat article",
+			"inspector.prepare.articleMissing": "This episode has no 公众号文章/ Markdown file to add as a WeChat draft.",
+			"inspector.prepare.action": "Prepare drafts",
+			"inspector.prepare.running": "Preparing drafts",
+			"inspector.prepare.success": "Drafts are ready and retained for review. Final publish and group-send were not performed.",
+			"inspector.prepare.partial": "Some drafts are ready; the remaining platforms still need attention. Final publish and group-send were not performed.",
+			"inspector.prepare.blocked": "Draft preparation is blocked. Follow the details below, then retry.",
+			"inspector.prepare.skipped": "There were no drafts to prepare.",
+			"inspector.prepare.ready": "Draft ready for review",
+			"inspector.prepare.articleLabel": "WeChat article",
 			"settings.title": "Content workbench",
 			"settings.description": "Library folder, enabled platforms, and the API keys for subtitles and covers.",
 			"settings.libraryRoot": "Library folder",
@@ -7017,8 +7400,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"settings.capability.subtitle": "Subtitles",
 			"settings.capability.cover": "Covers",
 			"settings.capability.editing": "Auto editing",
-			"settings.capability.publish": "Auto publish",
+			"settings.capability.publish": "Video draft preparation",
 			"settings.capability.article": "Article",
+			"settings.capability.wechatDraft": "WeChat draft",
 			"settings.capability.ego": "Ego Browser",
 			"settings.state.ready": "Ready",
 			"settings.state.missing": "Unavailable",
@@ -7069,7 +7453,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		}
 		//#endregion
-		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/sidebar/OilSidebarRoot.css.mjs
+		//#region \0dsh-oil-creator-css:client/sidebar/OilSidebarRoot.css.mjs
 		registerPluginCss("dsh-oil-creator/OilSidebarRoot.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] {\n  --dsh-sidebar-inline-padding: 12px;\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  padding: 6px var(--dsh-sidebar-inline-padding);\n  box-sizing: border-box;\n  background: var(--dsw-specific-sidebar-fill);\n  color: var(--dsw-alias-label-primary);\n  font-size: 14px;\n  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);\n  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed {\n  padding: 18px 10px 6px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].quietBars {\n  --dsh-scrollbar-thumb: transparent;\n  --dsh-scrollbar-thumb-hover: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].fading > * {\n  opacity: 0;\n  transition: opacity 150ms var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .wide {\n  animation: oil-sidebar-wide-in 200ms var(--ds-ease-in-out);\n}\n\n@keyframes oil-sidebar-wide-in {\n  from { opacity: 0; }\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .iconButton,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .newSession,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .regionArea {\n  animation: oil-sidebar-rail-in 150ms var(--ds-ease-in-out) backwards;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .footArea {\n  animation: oil-sidebar-rail-fade-in 150ms var(--ds-ease-in-out) backwards;\n}\n\n@keyframes oil-sidebar-rail-in {\n  from {\n    opacity: 0;\n    transform: translateX(49px);\n  }\n}\n\n@keyframes oil-sidebar-rail-fade-in {\n  from { opacity: 0; }\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .logoRow {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 8px;\n  height: 52px;\n  padding: 4px 0 4px 4px;\n  margin-bottom: 4px;\n  box-sizing: border-box;\n  overflow: hidden;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .logoRow {\n  height: 36px;\n  padding: 0;\n  margin-bottom: 12px;\n  justify-content: flex-start;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .brandButton {\n  flex: 1;\n  min-width: 0;\n  display: inline-flex;\n  align-items: center;\n  padding: 0;\n  border: none;\n  background: transparent;\n  color: inherit;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .oilBrand {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .oilBrandIcon {\n  width: 24px;\n  height: 24px;\n  flex: none;\n  border-radius: 999px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .oilBrandText {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 16px;\n  font-weight: 650;\n  letter-spacing: -0.03em;\n  line-height: 1;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .iconButton {\n  flex: none;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  border: none;\n  border-radius: 50%;\n  padding: 0;\n  background: transparent;\n  cursor: pointer;\n  color: var(--dsw-alias-label-secondary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .iconButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .iconButton {\n  width: 36px;\n  height: 36px;\n  color: var(--dsw-alias-label-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .toggle .panelIcon {\n  display: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .toggle:hover .panelIcon {\n  display: inline;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .railBrand {\n  display: inline-flex;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .toggle:hover .railBrand {\n  display: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .brandButton:focus-visible,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .iconButton:focus-visible,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .newSession:focus-visible,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .newSession {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  width: 36px;\n  height: 36px;\n  margin: 0 0 12px;\n  padding: 0;\n  border: none;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .newSession:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabRow {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  margin: 0 2px 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabList {\n  flex: 1;\n  min-width: 0;\n  display: flex;\n  gap: 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton {\n  flex: 1;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  gap: 5px;\n  height: 28px;\n  border: none;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n  line-height: 20px;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton.active {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n  font-weight: 500;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionArea {\n  position: relative;\n  flex: 1;\n  min-height: 0;\n  display: flex;\n  flex-direction: column;\n  margin-left: -4px;\n  margin-right: calc(-1 * var(--dsh-sidebar-inline-padding));\n  padding-left: 4px;\n  overflow: hidden;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionPane {\n  flex: 1;\n  min-height: 0;\n  display: flex;\n  flex-direction: column;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionPane.hidden {\n  display: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerNewSession {\n  position: absolute;\n  top: 6px;\n  right: 104px;\n  z-index: 2;\n  display: flex;\n  align-items: center;\n  max-width: 28px;\n  opacity: 1;\n  overflow: hidden;\n  visibility: visible;\n  transition:\n    max-width 180ms var(--ds-ease-in-out),\n    opacity 120ms var(--ds-ease-in-out),\n    transform 180ms var(--ds-ease-in-out),\n    visibility 0s linear;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionArea:has(input:not([tabindex=\"-1\"])) .headerNewSession {\n  max-width: 0;\n  opacity: 0;\n  transform: translateX(4px);\n  visibility: hidden;\n  pointer-events: none;\n  transition-delay: 0s, 0s, 0s, 180ms;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .regionArea {\n  margin-left: 0;\n  margin-right: 0;\n  padding-left: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .footArea {\n  flex: none;\n  display: flex;\n  flex-direction: column;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .settingsArea,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .footerActions {\n  flex: none;\n  min-width: 0;\n  width: 100%;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .footerActions {\n  display: flex;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .footArea {\n  align-items: center;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .settingsArea,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .footerActions {\n  display: flex;\n  justify-content: center;\n  width: auto;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .wide,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].fading > *,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .iconButton,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .newSession,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .footArea,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .regionArea,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerNewSession {\n    transition: none;\n    animation: none;\n  }\n}\n");
 		//#endregion
 		//#region src/client/sidebar/OilSidebarRoot.tsx
@@ -7165,20 +7549,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 							onClick: () => {
 								startSession();
 							},
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-								className: "oilBrand",
-								children: [renderSlot("sidebar.brand.mark", { size: 24 }, {
-									fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
-								}), renderSlot("sidebar.brand.name", {}, {
-									fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: "oilBrandText",
-										children: "Oil Creator"
-									})
-								})]
-							})
-						}), wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: "headerActions wide",
-							children: renderSlot("sidebar.header.action", {})
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, {})
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
 							label: collapsed ? t("toggle.open") : t("toggle.collapse"),
 							delayMs: 500,
@@ -7191,9 +7562,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 								},
 								children: [!wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: "railBrand",
-									children: renderSlot("sidebar.brand.mark", { size: 24 }, {
-										fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
-									})
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPanelLeftOutline16, {
 									className: "panelIcon",
 									size: wide ? 16 : 18
@@ -7499,6 +7868,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					bumpLibrary();
 					return next;
 				},
+				preparePublish: async (request) => {
+					const remote = remoteOf();
+					if (remote === void 0) throw new Error("remote unavailable");
+					const result = unwrap(await remote.preparePublish(request), "prepare publish failed");
+					bumpLibrary();
+					return result;
+				},
 				syncPublish: async (request) => {
 					const remote = remoteOf();
 					if (remote === void 0) throw new Error("remote unavailable");
@@ -7575,18 +7951,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				locale: NS,
 				priority: -1,
 				children: {
-					"sidebar.brand.mark": {
-						kind: "single",
-						scope: "root"
-					},
-					"sidebar.brand.name": {
-						kind: "single",
-						scope: "root"
-					},
-					"sidebar.header.action": {
-						kind: "list",
-						scope: "root"
-					},
 					"sidebar.workspaces": {
 						kind: "single",
 						scope: "root"
@@ -7609,36 +7973,21 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					return () => {};
 				}
 				bumpProfile();
-				const stopOverlay = ctx.slots.inject("shell.overlay", () => {
-					let disposeOccupant;
-					const release = () => {
-						disposeOccupant?.();
-						disposeOccupant = void 0;
-					};
-					const sync = () => {
-						if (getSelectedContentId() === null) {
-							release();
-							return;
-						}
-						if (disposeOccupant !== void 0) return;
-						disposeOccupant = ctx.slots.register({
-							name: "shell.overlay",
-							id: "oil-creator-inspector",
-							order: 20,
-							locale: NS,
-							inject: () => ({
-								...face(),
-								closeDetails: () => {
-									setSelectedContentId(null);
-								}
-							})
-						}, ContentInspector);
-					};
-					const stop = subscribeSelectedContentId(sync);
-					sync();
+				const stopContent = ctx.slots.inject("workbench.content", () => {
+					const stopWorkbench = bindProductWorkbench(() => ctx.get("yourBuddyWorkbench"));
+					const disposeOccupant = ctx.slots.register({
+						name: "workbench.content",
+						locale: NS,
+						inject: () => ({
+							...face(),
+							closeDetails: () => {
+								setSelectedContentId(null);
+							}
+						})
+					}, ContentInspector);
 					return () => {
-						stop();
-						release();
+						disposeOccupant();
+						stopWorkbench();
 					};
 				});
 				const stopSettings = ctx.slots.inject("settings.plugin.item", () => registerCreatorSettingsCard(ctx.slots, CreatorSettingsCard, {
@@ -7654,7 +8003,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const stopLive = startLibraryLiveSync(() => contentFace.getRevision());
 				return async () => {
 					stopLive();
-					stopOverlay();
+					stopContent();
 					stopSettings();
 					await disposeRemote();
 				};

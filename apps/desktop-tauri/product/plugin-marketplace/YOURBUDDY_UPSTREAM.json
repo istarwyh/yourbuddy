@@ -11,12 +11,12 @@
     {
       "id": "yourbuddy-product-adaptations",
       "file": "patches/plugin-marketplace-yourbuddy.patch",
-      "sha256": "54e417eeab9604103a87affc285cb3c08a6d86eb7d661c51c000cc1b1f47a425",
+      "sha256": "771171971106b78ae0a88819db2b6fcabc171c89399a88727d2c7bf960e8cbb4",
       "purpose": "Preserve verified bundle resolution, actionable install diagnostics, desktop link routing, and the packaged version badge."
     },
     "Document the YourBuddy product adaptations in the bilingual README projection."
   ],
   "repository": "https://github.com/Scorp1o117/dsh-plugin-marketplace",
   "license": "MIT",
-  "treeSha256": "84931bbb2f2f7364a1ecea4a0d14a75a58d690c36ff929dd307bbd204ade1c90"
+  "treeSha256": "cfb541aa2f08631aae891937b515ae56743628f5b50e49fb96c809bacbb31d14"
 }

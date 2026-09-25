@@ -1,0 +1,540 @@
+diff --git a/README.md b/README.md
+index 559fb81ff3..82ce850418 100644
+--- a/README.md
++++ b/README.md
+@@ -76,7 +76,7 @@ dsh plugin --profile web add dsh-better-sidebar@latest   # 重跑即成功
+ 
+ 装完**硬刷新浏览器**（Cmd/Ctrl+Shift+R）即可看到侧边栏（DSH 对 client 改动热加载，无需重启；仅 host 半更新时需要重启）。
+ 
+-Host 配置接受 `presentation: portal | slot`。`portal` 是默认值，保留可展开的底部工作台。提供 DSH 可选 `workbench` Slot 的产品组合可以选择 `slot`；桌面宽度下，插件的 Split Pane 工作台始终填满该 Slot，不受底部面板展开状态影响，外层栏宽由 DSH Shell 管理。窄屏时，同一工作台回到 Overlay，并继续使用展开与折叠状态。
++Host 配置接受 `presentation: portal | slot`。`portal` 是默认值，保留可展开的底部工作台。产品组合可以选择 `slot`，并提供 `workbench.core` 子 Slot。此时 Better Sidebar 会保持挂载，成为产品的持久中间工作台；产品协调器负责外层几何布局，也可以让其他中间界面临时覆盖它。用户明确打开资源时会显示核心工作台；Agent 与 Feed 的后台打开只更新其状态，不会替换当前可见界面。
+ 
+ **方式二：让 DSH 自己装**——把下面这段提示词发给任意一个 DSH 会话：
+ 
+diff --git a/README_EN.md b/README_EN.md
+index 0a36d88566..3b5e302dab 100644
+--- a/README_EN.md
++++ b/README_EN.md
+@@ -76,7 +76,7 @@ dsh plugin --profile web add dsh-better-sidebar@latest   # re-run succeeds
+ 
+ Then **hard-refresh the browser** (Cmd/Ctrl+Shift+R) to see the sidebar (DSH hot-reloads client changes; only host-half updates need a restart).
+ 
+-The Host config accepts `presentation: portal | slot`. `portal` is the default and preserves the expandable bottom workbench. Product compositions that provide DSH's optional `workbench` slot can select `slot`; at desktop width, the plugin's split-pane workbench always fills that slot regardless of the bottom-panel expanded state while the DSH shell owns the outer column width. On narrow screens, the same workbench returns to the overlay and continues to use its expanded and collapsed state.
++The Host config accepts `presentation: portal | slot`. `portal` is the default and preserves the expandable bottom workbench. A product composition can select `slot` and provide the `workbench.core` child slot. Better Sidebar then remains mounted as the product's durable middle workbench while the product coordinator controls outer geometry and may temporarily hide it behind another middle surface. Explicit user opens reveal the core workbench; Agent and feed opens update it in the background without replacing the visible surface.
+ 
+ **Or let DSH install it for you** — paste this prompt into any DSH session:
+ 
+diff --git a/lib/client.js b/lib/client.js
+index 149096b41d..4b57e4468a 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -1246,7 +1246,7 @@ window.__ModuleLoader__.load({
+ 		* tab/viewer registries (Map + listener set) and proxies openTab/closeTab
+ 		* to the store's reducer. One instance per client plugin activation.
+ 		*/
+-		function createBetterSidebarService(store) {
++		function createBetterSidebarService(store, options = {}) {
+ 			const tabs = /* @__PURE__ */ new Map();
+ 			const viewers = /* @__PURE__ */ new Map();
+ 			const fileIcons = /* @__PURE__ */ new Map();
+@@ -1364,6 +1364,7 @@ window.__ModuleLoader__.load({
+ 				}
+ 			};
+ 			const openTab = (seed, scope) => {
++				const intent = seed.intent ?? "user";
+ 				if (!isTabEnabled(seed.type)) {
+ 					console.warn(`[dsh-better-sidebar] tab type "${seed.type}" is disabled in the side card settings`);
+ 					return;
+@@ -1373,7 +1374,9 @@ window.__ModuleLoader__.load({
+ 				const targetSessionId = scope?.sessionId ?? store.getSnapshot().sessionId;
+ 				if (targetSessionId === void 0) return;
+ 				const callbackScope = scope ?? { sessionId: targetSessionId };
+-				if (surface !== void 0 && seed.target !== "bottom") {
++				const activeSessionId = store.getSnapshot().sessionId;
++				const targetsInactiveSession = scope !== void 0 && scope.sessionId !== activeSessionId;
++				if (surface !== void 0 && seed.target !== "bottom" && options.preferWorkbench?.() !== true) {
+ 					const state = store.getSnapshot().state;
+ 					const minted = descriptor.createTab === void 0 || state === void 0 ? void 0 : descriptor.createTab(state);
+ 					if (minted === null) return;
+@@ -1410,10 +1413,9 @@ window.__ModuleLoader__.load({
+ 						revealIfOpened
+ 					});
+ 					safeCall(() => descriptor.onOpen?.(synthetic, callbackScope));
++					if (!targetsInactiveSession) options.onOpenIntent?.(intent);
+ 					return;
+ 				}
+-				const activeSessionId = store.getSnapshot().sessionId;
+-				const targetsInactiveSession = scope !== void 0 && scope.sessionId !== activeSessionId;
+ 				let created;
+ 				let activated;
+ 				const land = openTabInBottomPane;
+@@ -1466,6 +1468,7 @@ window.__ModuleLoader__.load({
+ 				else store.reduce(reducer);
+ 				if (created !== void 0) safeCall(() => descriptor.onOpen?.(created, callbackScope));
+ 				else if (activated !== void 0) safeCall(() => descriptor.onActivate?.(activated, callbackScope));
++				if (!targetsInactiveSession && (created !== void 0 || activated !== void 0)) options.onOpenIntent?.(intent);
+ 			};
+ 			const closeTab$1 = (tabId, scope) => {
+ 				const sessionId = scope?.sessionId ?? store.getSnapshot().sessionId;
+@@ -1530,12 +1533,13 @@ window.__ModuleLoader__.load({
+ 			/** Open a file in the sidebar editor of `scope`'s session (title defaults
+ 			*  to the file name; the tab id is path-derived, like the internal
+ 			*  open-path interception, so distinct files open side by side). */
+-			const openFile = (scope, path, title) => {
++			const openFile = (scope, path, title, intent = "user") => {
+ 				openTab({
+ 					type: "editor",
+ 					title: title ?? baseNameOf(path),
+ 					path,
+-					id: `editor:${path}`
++					id: `editor:${path}`,
++					intent
+ 				}, scope);
+ 			};
+ 			return {
+@@ -15607,7 +15611,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 			const park = options.background && ctx.sessions.list.getSnapshot().current === sessionId && isNarrowWidth(window.innerWidth) && column?.isExpanded?.() === false;
+ 			ctx.get("betterSidebar")?.openTab({
+ 				type: "subagent",
+-				title: t("subagent")
++				title: t("subagent"),
++				intent: options.background ? "background" : "user"
+ 			});
+ 			if (park) column?.toggleExpanded?.();
+ 		}
+@@ -15710,16 +15715,18 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 							if (request.kind === "url") ctx.get("betterSidebar")?.openTab({
+ 								type: "browser",
+ 								url: request.target,
+-								title
++								title,
++								intent: "background"
+ 							}, scope);
+ 							else if (request.kind === "folder") ctx.get("betterSidebar")?.openTab({
+ 								type: "editor",
+ 								title,
+ 								path: request.target,
+ 								id: `editor:${request.target}`,
+-								meta: { dir: true }
++								meta: { dir: true },
++								intent: "background"
+ 							}, scope);
+-							else ctx.get("betterSidebar")?.openFile(scope, request.target, title);
++							else ctx.get("betterSidebar")?.openFile(scope, request.target, title, "background");
+ 						} catch {}
+ 					};
+ 					socket.onclose = () => {
+@@ -18744,20 +18751,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 			"sessions",
+ 			"locale",
+ 			"modules",
+-			"connection",
+-			"layout"
++			"connection"
+ 		];
+-		const WORKBENCH_WIDTH_KEY = "dsh-sidebar:v1:width";
+-		const WORKBENCH_WIDTH_MIN = 280;
+-		const WORKBENCH_WIDTH_MAX = 640;
+-		const WORKBENCH_WIDTH_DEFAULT = 400;
+-		function initialWorkbenchWidth() {
+-			try {
+-				const stored = Number(localStorage.getItem(WORKBENCH_WIDTH_KEY));
+-				if (Number.isFinite(stored) && stored > 0) return Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, stored));
+-			} catch {}
+-			return WORKBENCH_WIDTH_DEFAULT;
+-		}
+ 		/**
+ 		* Error boundary over the sidebar tree (root scope): a render error in the
+ 		* sidebar SHELL itself must never blank the page silently — the shared
+@@ -18806,18 +18801,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 				};
+ 			}, "dsh-better-sidebar: better-locale lazy integration");
+ 			const sidebarStore = createSidebarStore();
+-			let workbenchWidth = initialWorkbenchWidth();
+-			const workbenchWidthListeners = /* @__PURE__ */ new Set();
+-			const setWorkbenchWidth = (width) => {
+-				const next = Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, width));
+-				if (next === workbenchWidth) return;
+-				workbenchWidth = next;
+-				try {
+-					localStorage.setItem(WORKBENCH_WIDTH_KEY, String(next));
+-				} catch {}
+-				for (const listener of workbenchWidthListeners) listener();
+-			};
+-			const service = createBetterSidebarService(sidebarStore);
++			let slotPresentationActive = false;
++			const service = createBetterSidebarService(sidebarStore, {
++				preferWorkbench: () => slotPresentationActive,
++				onOpenIntent: (intent) => {
++					const coordinator = ctx.get("yourBuddyWorkbench");
++					coordinator?.handleBetterSidebarOpen(intent);
++				}
++			});
+ 			ctx.provide("betterSidebar", service);
+ 			const nativeRecords = createNativeTabRecords();
+ 			const nativeSurface = createNativeSurface(ctx, nativeRecords);
+@@ -18861,7 +18852,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					let host;
+ 					let mountedPresentation;
+ 					let disposeSlot;
+-					let disposeLayout;
+ 					let bodyObserver;
+ 					let hostCheckFrame = null;
+ 					const unmount = () => {
+@@ -18877,10 +18867,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						root = void 0;
+ 						host?.remove();
+ 						host = void 0;
+-						disposeLayout?.();
+-						disposeLayout = void 0;
+ 						disposeSlot?.();
+ 						disposeSlot = void 0;
++						slotPresentationActive = false;
+ 						document.body.removeAttribute("data-dsh-better-sidebar-presentation");
+ 					};
+ 					/** Re-attach the host if the page (a desktop shell wrapper, SPA
+@@ -18950,17 +18939,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 									store: sidebarStore,
+ 									presentation: "slot"
+ 								}));
+-								disposeSlot = ctx.slots.inject("workbench", () => ctx.slots.register({ name: "workbench" }, WorkbenchSlot));
+-								disposeLayout = ctx.layout.registerWorkbench({
+-									getSnapshot: () => ({ width: workbenchWidth }),
+-									subscribe: (listener) => {
+-										workbenchWidthListeners.add(listener);
+-										return () => {
+-											workbenchWidthListeners.delete(listener);
+-										};
+-									},
+-									setWidth: setWorkbenchWidth
+-								});
++								slotPresentationActive = true;
++								disposeSlot = ctx.slots.inject("workbench.core", () => ctx.slots.register({ name: "workbench.core" }, WorkbenchSlot));
+ 							} else {
+ 								host = document.createElement("div");
+ 								host.setAttribute("data-dsh-better-sidebar", "");
+diff --git a/package.json b/package.json
+index 081ec4171d..b6abe6c608 100644
+--- a/package.json
++++ b/package.json
+@@ -46,7 +46,6 @@
+     "client": {
+       "inject": [
+         "@deepseek-ai/dsh-client-locale",
+-        "@deepseek-ai/dsh-client-ui-layout",
+         "@deepseek-ai/dsh-client-ui-slots",
+         "@deepseek-ai/dsh-client-ui-conversation",
+         "@deepseek-ai/dsh-client-ui-sidebar-right",
+diff --git a/src/client/index.tsx b/src/client/index.tsx
+index 6092130a2b..c12c7ecdbf 100644
+--- a/src/client/index.tsx
++++ b/src/client/index.tsx
+@@ -42,23 +42,10 @@ import './layout.css'
+  *  service access without inject. The `remote.session` namespace is NOT here:
+  *  it mounts asynchronously, so the open-path interception reaches it through
+  *  `ctx.inject` (see intercept.tsx). */
+-export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection', 'layout']
++export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection']
+ 
+-const WORKBENCH_WIDTH_KEY = 'dsh-sidebar:v1:width'
+-const WORKBENCH_WIDTH_MIN = 280
+-const WORKBENCH_WIDTH_MAX = 640
+-const WORKBENCH_WIDTH_DEFAULT = 400
+-
+-function initialWorkbenchWidth(): number {
+-  try {
+-    const stored = Number(localStorage.getItem(WORKBENCH_WIDTH_KEY))
+-    if (Number.isFinite(stored) && stored > 0) {
+-      return Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, stored))
+-    }
+-  } catch {
+-    // Storage is optional; the in-memory preference remains available.
+-  }
+-  return WORKBENCH_WIDTH_DEFAULT
++interface ProductWorkbenchFace {
++  handleBetterSidebarOpen(intent: 'user' | 'background'): void
+ }
+ 
+ /**
+@@ -153,24 +140,18 @@ export function apply(ctx: Context): void {
+   // registrations (the official createXXXStore() factory rule — no
+   // module-level singleton).
+   const sidebarStore = createSidebarStore()
+-  let workbenchWidth = initialWorkbenchWidth()
+-  const workbenchWidthListeners = new Set<() => void>()
+-  const setWorkbenchWidth = (width: number): void => {
+-    const next = Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, width))
+-    if (next === workbenchWidth) return
+-    workbenchWidth = next
+-    try {
+-      localStorage.setItem(WORKBENCH_WIDTH_KEY, String(next))
+-    } catch {
+-      // Storage is optional; subscribers still receive the in-memory preference.
+-    }
+-    for (const listener of workbenchWidthListeners) listener()
+-  }
++  let slotPresentationActive = false
+   // The sidebar registry service: external plugins register tab types and
+   // file previewers through `ctx.betterSidebar.registerTab/registerFileViewer`.
+   // Published before the panel mounts so consumers injecting 'betterSidebar'
+   // are ready by the time the sidebar renders.
+-  const service = createBetterSidebarService(sidebarStore)
++  const service = createBetterSidebarService(sidebarStore, {
++    preferWorkbench: () => slotPresentationActive,
++    onOpenIntent: intent => {
++      const coordinator = ctx.get('yourBuddyWorkbench') as ProductWorkbenchFace | undefined
++      coordinator?.handleBetterSidebarOpen(intent)
++    },
++  })
+   ctx.provide('betterSidebar', service)
+   // The native right-Sidebar surface: the plugin's content is registered as
+   // DSH tab types (one per descriptor) and every open routes there, so the
+@@ -258,7 +239,6 @@ export function apply(ctx: Context): void {
+       let host: HTMLDivElement | undefined
+       let mountedPresentation: 'portal' | 'slot' | undefined
+       let disposeSlot: (() => void) | undefined
+-      let disposeLayout: (() => void) | undefined
+       let bodyObserver: MutationObserver | undefined
+       let hostCheckFrame: number | null = null
+       const unmount = (): void => {
+@@ -274,10 +254,9 @@ export function apply(ctx: Context): void {
+         root = undefined
+         host?.remove()
+         host = undefined
+-        disposeLayout?.()
+-        disposeLayout = undefined
+         disposeSlot?.()
+         disposeSlot = undefined
++        slotPresentationActive = false
+         document.body.removeAttribute('data-dsh-better-sidebar-presentation')
+       }
+       /** Re-attach the host if the page (a desktop shell wrapper, SPA
+@@ -351,16 +330,9 @@ export function apply(ctx: Context): void {
+               { className: css.boundaryError },
+               createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'slot' }),
+             )
+-            disposeSlot = ctx.slots.inject('workbench', () =>
+-              ctx.slots.register({ name: 'workbench' }, WorkbenchSlot))
+-            disposeLayout = ctx.layout.registerWorkbench({
+-              getSnapshot: () => ({ width: workbenchWidth }),
+-              subscribe: (listener) => {
+-                workbenchWidthListeners.add(listener)
+-                return () => { workbenchWidthListeners.delete(listener) }
+-              },
+-              setWidth: setWorkbenchWidth,
+-            })
++            slotPresentationActive = true
++            disposeSlot = ctx.slots.inject('workbench.core', () =>
++              ctx.slots.register({ name: 'workbench.core' }, WorkbenchSlot))
+           } else {
+             host = document.createElement('div')
+             host.setAttribute('data-dsh-better-sidebar', '')
+diff --git a/src/client/service.ts b/src/client/service.ts
+index f635966483..de7c20e073 100644
+--- a/src/client/service.ts
++++ b/src/client/service.ts
+@@ -399,6 +399,8 @@ export const FOLDER_OPEN_EXT = 'folder-open' as const
+ /** One `openTab` request. */
+ export interface OpenTabSeed {
+   type: string
++  /** Whether this open follows an explicit user gesture or updates a hidden workbench in the background. */
++  intent?: 'user' | 'background'
+   /** Overrides the descriptor's title when given (the editor tab shows the file name). */
+   title?: string
+   /** A file path (the editor tab's content seed). */
+@@ -588,7 +590,7 @@ export interface BetterSidebarService {
+    */
+   activateTab(tabId: string, scope?: SessionScope): void
+   /** Open a file in the sidebar editor of `scope`'s session (title defaults to the file name). */
+-  openFile(scope: SessionScope, path: string, title?: string): void
++  openFile(scope: SessionScope, path: string, title?: string, intent?: 'user' | 'background'): void
+   /**
+    * Install (or clear) the native right-Sidebar write face.
+    * @internal Called once by the client half; not part of the consumer API.
+@@ -680,12 +682,25 @@ function safeCall(fn: () => void): void {
+   }
+ }
+ 
++interface BetterSidebarServiceOptions {
++  /** Route ordinary opens into the plugin-owned workbench instead of the native right surface. */
++  readonly preferWorkbench?: () => boolean
++  /** Notify a product coordinator after a current-Session open resolves. */
++  readonly onOpenIntent?: (intent: 'user' | 'background') => void
++}
++
+ /**
+  * Create one BetterSidebar service bound to a store. The service owns the
+  * tab/viewer registries (Map + listener set) and proxies openTab/closeTab
+  * to the store's reducer. One instance per client plugin activation.
++ * @param store - Activation-owned sidebar state.
++ * @param options - Optional product presentation routing.
++ * @returns the public Better Sidebar service.
+  */
+-export function createBetterSidebarService(store: SidebarStore): BetterSidebarService {
++export function createBetterSidebarService(
++  store: SidebarStore,
++  options: BetterSidebarServiceOptions = {},
++): BetterSidebarService {
+   const tabs = new Map<string, TabDescriptor>()
+   const viewers = new Map<string, FileViewerDescriptor>()
+   const fileIcons = new Map<string, FileIconDescriptor>()
+@@ -874,6 +889,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+   }
+ 
+   const openTab = (seed: OpenTabSeed, scope?: SessionScope): void => {
++    const intent = seed.intent ?? 'user'
+     // A type the user disabled in settings never opens — neither from the
+     // + menu nor from derived flows (file opens, subagent auto-open,
+     // external plugins). Already-open tabs keep rendering.
+@@ -888,13 +904,15 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+     const targetSessionId = scope?.sessionId ?? store.getSnapshot().sessionId
+     if (targetSessionId === undefined) return
+     const callbackScope: SessionScope = scope ?? { sessionId: targetSessionId }
++    const activeSessionId = store.getSnapshot().sessionId
++    const targetsInactiveSession = scope !== undefined && scope.sessionId !== activeSessionId
+     // ── Native right Sidebar ──────────────────────────────────────────────
+     // With the native surface installed, every open except an explicit
+     // bottom-panel one lands there: a file path becomes a resource address
+     // (the native registry routes it to the plugin's file type), a path-less
+     // editor open becomes the `files` page kind, and everything else becomes
+     // a page open carrying the seed as navigation params.
+-    if (surface !== undefined && seed.target !== 'bottom') {
++    if (surface !== undefined && seed.target !== 'bottom' && options.preferWorkbench?.() !== true) {
+       const state = store.getSnapshot().state
+       // The descriptor's own factory mints what a view needs beyond the seed:
+       // the side chat's thread bootstrap / reattach meta, the terminal's
+@@ -941,13 +959,12 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+       // The native surface reports one open event, not create-vs-focus, so a
+       // lifecycle consumer hears onOpen (documented in the guide).
+       safeCall(() => descriptor.onOpen?.(synthetic, callbackScope))
++      if (!targetsInactiveSession) options.onOpenIntent?.(intent)
+       return
+     }
+     // Whether this open targets a session that is NOT the one on screen: a
+     // targeted open must not auto-expand panels the user cannot see (the
+     // expansion is about landing "in sight" for the CURRENT viewer).
+-    const activeSessionId = store.getSnapshot().sessionId
+-    const targetsInactiveSession = scope !== undefined && scope.sessionId !== activeSessionId
+     // Lifecycle capture: `created` when the open minted a NEW tab (a
+     // dedupe/id-safety-net focus is an ACTIVATION, not an open).
+     let created: SidebarTab | undefined
+@@ -1036,6 +1053,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+     }
+     if (created !== undefined) safeCall(() => descriptor.onOpen?.(created!, callbackScope))
+     else if (activated !== undefined) safeCall(() => descriptor.onActivate?.(activated!, callbackScope))
++    if (!targetsInactiveSession && (created !== undefined || activated !== undefined)) options.onOpenIntent?.(intent)
+   }
+ 
+   const closeTab = (tabId: string, scope?: SessionScope): void => {
+@@ -1114,8 +1132,13 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+   /** Open a file in the sidebar editor of `scope`'s session (title defaults
+    *  to the file name; the tab id is path-derived, like the internal
+    *  open-path interception, so distinct files open side by side). */
+-  const openFile = (scope: SessionScope, path: string, title?: string): void => {
+-    openTab({ type: 'editor', title: title ?? baseNameOf(path), path, id: `editor:${path}` }, scope)
++  const openFile = (
++    scope: SessionScope,
++    path: string,
++    title?: string,
++    intent: 'user' | 'background' = 'user',
++  ): void => {
++    openTab({ type: 'editor', title: title ?? baseNameOf(path), path, id: `editor:${path}`, intent }, scope)
+   }
+ 
+   return {
+diff --git a/src/client/sidebar/use-host-feeds.ts b/src/client/sidebar/use-host-feeds.ts
+index d80e1c1ad1..539b7d4dcb 100644
+--- a/src/client/sidebar/use-host-feeds.ts
++++ b/src/client/sidebar/use-host-feeds.ts
+@@ -72,7 +72,11 @@ function activateTasksPage(ctx: Context, sessionId: string, options: { backgroun
+     // Only a column the user had COLLAPSED is put back: an expanded one is in
+     // use, and closing it under the user would be worse than the takeover.
+     && column?.isExpanded?.() === false
+-  ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent') })
++  ctx.get('betterSidebar')?.openTab({
++    type: 'subagent',
++    title: t('subagent'),
++    intent: options.background ? 'background' : 'user',
++  })
+   if (park) column?.toggleExpanded?.()
+ }
+ 
+@@ -183,7 +187,7 @@ export function useHostFeeds(feeds: {
+           const scope = { sessionId }
+           const title = typeof request.title === 'string' && request.title !== '' ? request.title : undefined
+           if (request.kind === 'url') {
+-            ctx.get('betterSidebar')?.openTab({ type: 'browser', url: request.target, title }, scope)
++            ctx.get('betterSidebar')?.openTab({ type: 'browser', url: request.target, title, intent: 'background' }, scope)
+           } else if (request.kind === 'folder') {
+             ctx.get('betterSidebar')?.openTab({
+               type: 'editor',
+@@ -191,9 +195,10 @@ export function useHostFeeds(feeds: {
+               path: request.target,
+               id: `editor:${request.target}`,
+               meta: { dir: true },
++              intent: 'background',
+             }, scope)
+           } else {
+-            ctx.get('betterSidebar')?.openFile(scope, request.target, title)
++            ctx.get('betterSidebar')?.openFile(scope, request.target, title, 'background')
+           }
+         } catch {
+           // Malformed push: ignore (the next push carries its own request).
+diff --git a/src/context-types.ts b/src/context-types.ts
+index fcaf1904f7..9f97b7dc3a 100644
+--- a/src/context-types.ts
++++ b/src/context-types.ts
+@@ -135,18 +135,6 @@ export interface SidebarSlotsService {
+   inject(key: string, callback: () => () => void): () => void
+ }
+ 
+-/** Shared workbench-width binding consumed by DSH's root layout. */
+-export interface SidebarWorkbenchLayoutBinding {
+-  getSnapshot(): { width: number }
+-  subscribe(listener: () => void): () => void
+-  setWidth(width: number): void
+-}
+-
+-/** DSH layout service face used by the slot presentation. */
+-export interface SidebarLayoutService {
+-  registerWorkbench(binding: SidebarWorkbenchLayoutBinding): () => void
+-}
+-
+ /** The client session list row the sidebar reads (cwd for the explorer). */
+ export interface SidebarSessionSummary {
+   id: string
+@@ -522,8 +510,6 @@ export interface SidebarContextShape {
+   webRuntime: SidebarWebRuntime
+   /** The client slot registry (register/inject). */
+   slots: SidebarSlotsService
+-  /** The root layout service used by workbench-slot presentation. */
+-  layout: SidebarLayoutService
+   /** The settings service face (prefs persistence + namespace reads). */
+   settings: SidebarSettingsService
+   /** The invariant registry face. */
+diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
+--- a/src/client/Sidebar.tsx
++++ b/src/client/Sidebar.tsx
+@@ -335,7 +335,7 @@ export function Sidebar({ ctx, store, service, presentation }: Props) {
+     // Land the tab in the bottom panel's first pane; the once-flag is set
+     // atomically so later expansions never repeat the auto-open.
+     store.reduce(s => ({ ...s, activePane: firstLeaf(s.bottomSplits).id, bottomOpenedOnce: true }))
+-    ctx.get('betterSidebar')?.openTab({ type: 'terminal', target: 'bottom' })
++    ctx.get('betterSidebar')?.openTab({ type: 'terminal', target: 'bottom', intent: 'background' })
+   }, [state, store, ctx])
+ 
+   // The bottom panel's height drag (top edge strip). Drags write the size
+diff --git a/lib/client.js b/lib/client.js
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -16174,8 +16174,9 @@
+ 				}));
+ 				ctx.get("betterSidebar")?.openTab({
+ 					type: "terminal",
+-					target: "bottom"
++					target: "bottom",
++					intent: "background"
+ 				});
+ 			}, [
+ 				state,
+ 				store,

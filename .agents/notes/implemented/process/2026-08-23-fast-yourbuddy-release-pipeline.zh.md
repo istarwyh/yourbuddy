@@ -14,6 +14,8 @@ macOS 标签流水线会在变更已经通过针对性开发检查和 Pull Reque
 
 Node、Python 与 Rust 单元测试套件属于发布前职责，不再在标签流水线重复运行。本地发布准备会解析同一 DSH 策略、验证选中 Tag 的 Commit、在干净 Worktree 中准备未提交的上游 Merge、重新绑定经过批准的产品 Peer Metadata、刷新外部产品，并要求完整 Host 与 Client 兼容性冒烟测试通过。Peer 修正与旧 Runtime Peer 或 Client 注入项的移除只适用于一个精确的外部产品版本和选中的 DSH Release。移除项第一次应用时必须精确匹配一项声明；后续同版本准备只有在已验证快照的来源记录包含该精确移除项时才接受目标已经不存在，新版本或未记录的候选仍会失败。后续步骤失败时，流程会中止自己创建的 DSH Merge、还原受管理的产品输入，并在恢复阶段把不存在的生成 Bundle 视为已经清理。Tauri App 只构建一次；DMG 基于该 App 封装，Updater 归档直接用于迁移后 Runtime 验证，因此删除第三次 App 重打包。Cargo Registry、Git、Fingerprint、Build Script 与依赖对象按 Rust Lockfile 缓存。绑定校验和的压缩离线 pnpm Store 则按冻结的产品 Lockfile 独立缓存；复用前会验证 Metadata 与归档 Digest，未命中时仍执行完整抓取和打包路径。发布直接在 macOS 构建 Job 中完成，大型 DMG 与 Updater 归档不再经过 Workflow Artifact Storage 往返传输。版本专属资产只创建一次；发布新版本时只会替换稳定更新通道的 Manifest。
 
+仓库级 `release:yourbuddy` 命令负责针对性检查与评审完成后的最终开发者交接。它接收显式版本号，重新运行桌面发布测试、完整发布准备、文档检查与使用生产 Base URL 的官网构建，再拒绝脏 Worktree、分支分叉或远端已存在 Tag 的候选。它以原子方式推送干净的 `master` 候选与 Annotated Release Tag；产物构建和发布仍由 GitHub Actions 负责。
+
 ## Alternatives considered
 
 **在 Tag 上保留全部测试。** 这会提供最多的重复信号，但同一份源码已经在打 Tag 前完成检查，仍会额外增加数分钟。

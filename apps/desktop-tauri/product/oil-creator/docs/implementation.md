@@ -22,8 +22,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 4. **等导出**：导出开始后，插件盯着影片目录，成片稳定落盘再往下走。这段时间可以并行做字幕和封面。
 5. **字幕**：用百炼 Key 转录；`oil-subtitle` 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；人在 skill 自带的预览编辑器里改稿，确认后再烧进视频。
 6. **封面**：有 ZenMux Key 就出 3:4 / 4:3 / 16:9。封面主标题和错别字由对话里的 Agent 核对，不交给脚本自行发挥。
-7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与 AI 发布和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，内置 `oil-video-article` 成稿到 `公众号文章/`。
-8. **发布**：`oil_prepare_publish` 调用内置 `video-publisher` 为 `enabledPlatforms` 中的平台准备草稿，也可调用内置 `wechat-publisher` 创建公众号草稿。视频页面停在最终发布按钮前，公众号停在草稿箱；人自己完成最终发表或群发。
+7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与视频草稿准备和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，内置 `oil-video-article` 成稿到 `公众号文章/`。
+8. **发布**：检查器的「准备发布草稿」和 `oil_prepare_publish` 共用同一服务。服务先验证视频、发布包、标签、所选封面和原创确认，再按 `enabledPlatforms` 生成私有发布器配置并调用内置 `video-publisher`；它不会修改独立发布器配置。每个平台独立返回就绪或阻塞结果，验证完成后解除页面自动化保护并交还给人。公众号草稿是默认关闭的可选分支，由内置 `wechat-publisher` 创建。最终发表、定时发布或群发都由人完成。
 9. **回收**：用 Ego Lite 打开已登录的创作者后台，只翻 `enabledPlatforms` 中平台的已发布列表，按标题或已存 id 对到本地文件夹，写下播放 / 赞 / 评论。不是公开站爬虫；平台上有、本地没有文件夹的不会自动建条目。
 
 一条片子对应影片目录里的一个子文件夹。工程在 Screen Studio 工程目录里，用绑定连起来。
@@ -32,7 +32,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 
 | 环节 | 现状 |
 | --- | --- |
-| 列表与检查器 | 自定义侧栏「内容」页；检查器叠在对话左边，聊天不关；概览用状态标签标明阶段，只展开当前步骤的操作 |
+| 列表与检查器 | 自定义侧栏「内容」页；检查器占用产品中间工作台，右侧对话保留；概览用状态标签标明阶段，只展开当前步骤的操作 |
 | 建内容、选题笔记 | 面板新建；`oil_create_content` 建文件夹；选题写 `topic.md` |
 | 绑定 / 打开工程 | 面板换绑、打开；`oil_open_studio` |
 | 等导出 | `oil_wait_export` 立刻返回并开始盯目录；成片稳定后清掉 waiting 标记 |
@@ -42,7 +42,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 | 已发布数据 | 检查器「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`oil_sync_publish` 不传 id 才同步整库 |
 | API Key | 设置 → 插件 → 内容工作台；和视觉识别共用官方凭据 |
 | 公众号 | 只显示目录里有没有 `公众号文章/`，不生成 |
-| 剪辑、多平台上传 | 还没从插件里调度，对话里继续用原来的 skill |
+| 剪辑 | 还没从插件里调度，对话里继续用 `screen-studio-editor` |
+| 多平台草稿 | 检查器和 `oil_prepare_publish` 共用预检与发布服务；每个平台独立记录结果，最终发表仍由人完成 |
 
 上面这张表是工作台已经具备的能力：能看列表、绑定工程、启动字幕和封面脚本、标记发布状态。对照「最终要做成什么样」那 9 步，整条创作路径还没有全部接到插件里。现在有的是一条片子的工作台和几个可点的执行入口，不是点一次就从选题走到待发布。
 
@@ -52,10 +53,9 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 2. **导出后的并行编排**：「导出开始就同时做字幕和封面」没有连成一条自动流水。
 3. **字幕校对**：生成完不会自动改专有名词；预览还要人自己看。
 4. **封面主标题和错别字**：按钮不会先让 Agent 提炼标题，也不会验字。
-5. **发布包**：能展示已有 `publish-package.json` 里的标签，不会在插件里写平台长文案。
-6. **发布草稿**：调用 `oil_prepare_publish` 后调度内置发布器，成功的视频平台写入草稿状态；工具不执行最终发表。
-7. **公众号成稿**：内置 `oil-video-article` 供 Agent 使用，工作台仍按磁盘文件展示文章。
-8. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
+5. **发布包**：能展示并验证已有 `publish-package.json` 里的标题和标签，不会在插件里写平台长文案。
+6. **公众号成稿**：内置 `oil-video-article` 供 Agent 使用，工作台仍按磁盘文件展示文章。
+7. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
 
 工作阶段（`workflow`）由文件和 overlay 推出来，不是单独手填一张总表：
 
@@ -63,7 +63,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 - `record` 待录制（overlay 里标了准备录）
 - `cut` 待剪辑（已绑工程、还没有成片）
 - `finish` 待加字幕 / 封面
-- `publish` 待发布（字幕和封面都齐）
+- `publish` 待发布（字幕、封面和有效发布包都齐）
 
 ## 一层工作台，skill 继续执行重活
 
@@ -85,7 +85,7 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，�
 
 `oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_prepare_publish`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
 
-`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时自动发布和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
+`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时视频草稿准备和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
 
 检查器中间栏可以拉到约 800px，走 `shell.overlay`，不占用官方右侧「详情」栏。官方详情栏保持关闭。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
 
@@ -154,7 +154,7 @@ ego-browser nodejs < scripts/collect-publish.mjs
 - 插件只做一张工作台，新能力优先加模块，不加新插件。
 - 密钥走官方凭据；页面只显示已配置 / 未配置。
 - 重媒体继续调用已有脚本，参数与对应 SKILL.md 保持一致。
-- 人导出、人点平台发布、Agent 做校对和标题，这三件事不要改成全自动。
+- 人导出、人点最终发表 / 定时发布 / 群发、Agent 做校对和标题，这三类操作不要改成全自动。
 - Host remote 或工具改完后要重新 `pnpm build` 并重启 `dsh web`。
 
 

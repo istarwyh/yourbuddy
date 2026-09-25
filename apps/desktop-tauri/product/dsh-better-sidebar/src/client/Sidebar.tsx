@@ -335,7 +335,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
     // Land the tab in the bottom panel's first pane; the once-flag is set
     // atomically so later expansions never repeat the auto-open.
     store.reduce(s => ({ ...s, activePane: firstLeaf(s.bottomSplits).id, bottomOpenedOnce: true }))
-    ctx.get('betterSidebar')?.openTab({ type: 'terminal', target: 'bottom' })
+    ctx.get('betterSidebar')?.openTab({ type: 'terminal', target: 'bottom', intent: 'background' })
   }, [state, store, ctx])
 
   // The bottom panel's height drag (top edge strip). Drags write the size

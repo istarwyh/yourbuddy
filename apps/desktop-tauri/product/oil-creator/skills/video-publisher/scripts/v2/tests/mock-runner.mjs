@@ -27,7 +27,6 @@ gates.authenticated = { ok: true, evidence: {} };
 gates.draftIdentity = { ok: true, evidence: {} };
 gates.noBlockingDialog = { ok: true, evidence: {} };
 gates.finalButton = { ok: true, evidence: { text: "final", disabled: false } };
-gates.safety = { ok: true, evidence: { finalPublishClicked: false, guardArmed: true, blockedAttempts: 0 } };
 if (phase === "upload") gates.video = { ok: true, evidence: { stable: true } };
 if (phase === "upload_start") gates.video = { ok: false, evidence: { uploading: true, failed: false } };
 if (phase === "prefill") {
@@ -42,8 +41,21 @@ if (["UPLOAD_NOT_STARTED", "UPLOAD_STALLED", "PLATFORM_REJECTED_ASSET"].includes
 }
 if (brokenChannel) {
   for (const name of Object.keys(gates)) gates[name] = { ok: false, evidence: { reason: "mock input channel broken" } };
-  gates.safety = { ok: false, evidence: { finalPublishClicked: false, guardArmed: false, blockedAttempts: 0 } };
 }
+const handoffCommitted = ["inspect", "verify"].includes(phase)
+  && !configuredBlocker
+  && !brokenChannel
+  && requiredGates(platform).filter(name => name !== "safety").every(name => gates[name]?.ok === true);
+gates.safety = { ok: !brokenChannel, evidence: {
+  finalPublishClicked: false,
+  guardArmed: !brokenChannel,
+  blockedAttempts: 0,
+  handoffCommitted,
+  guardDetached: handoffCommitted,
+  detachVerified: handoffCommitted,
+  detach: handoffCommitted ? { ok: true, detached: true, detachVerified: true } : null,
+  detachedGuard: handoffCommitted ? { armed: false, detached: true, detachVerified: true } : null,
+} };
 const result = {
   schemaVersion: 1,
   platform,

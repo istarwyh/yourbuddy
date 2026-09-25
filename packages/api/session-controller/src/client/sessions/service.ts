@@ -129,7 +129,7 @@ export interface SessionBinding {
   readonly sessionId: SessionId
   /** The outward session face only — feature code never sees the concrete class. */
   readonly session: SessionFace
-  /** Contiguous event window reserved for Conversation assembly. */
+  /** Contiguous event window for Conversation assembly and semantic current-Session UI reactions. */
   readonly eventSource: SessionEventSource
   readonly ctx: AgentContext
 }

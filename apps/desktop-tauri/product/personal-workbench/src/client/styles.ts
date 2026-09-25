@@ -44,7 +44,12 @@ export const PERSONAL_WORKBENCH_CSS = `
 .dpw-window-controls[data-platform=macos] .dpw-window-control-minimize .dpw-window-control-dot{background:#febc2e}
 .dpw-window-controls[data-platform=macos] .dpw-window-control-maximize .dpw-window-control-dot{background:#28c840}
 .dpw-window-controls[data-platform=macos] .dpw-window-control:hover{filter:brightness(1.08)}
-@media (max-width:720px){.dpw-fields{grid-template-columns:1fr}}
+.dpw-workbench{position:relative;display:grid;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;pointer-events:none}
+.dpw-workbench-surface{grid-area:1/1;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;pointer-events:none}.dpw-workbench-surface:not([hidden]){pointer-events:auto}.dpw-workbench-surface[hidden]{display:none}
+.dpw-session-restore{position:absolute;top:10px;right:10px;z-index:50;display:inline-flex;pointer-events:auto;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:9px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-shadow-lv2);font:inherit;cursor:pointer}
+.dpw-session-collapse,.dpw-workbench-session-collapse{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font:18px/1 sans-serif;cursor:pointer}.dpw-workbench-session-collapse{position:absolute;right:10px;bottom:10px;z-index:50;pointer-events:auto;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);box-shadow:var(--dsw-shadow-lv2)}.dpw-session-restore:hover,.dpw-session-collapse:hover,.dpw-workbench-session-collapse:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dpw-session-restore:focus-visible,.dpw-session-collapse:focus-visible,.dpw-workbench-session-collapse:focus-visible{outline:2px solid var(--dsw-alias-label-primary);outline-offset:2px}
+@media (max-width:720px){.dpw-fields{grid-template-columns:1fr}.dpw-session-restore span:last-child{display:none}}
 `
 
 /** Install one tagged stylesheet and remove it with the plugin lifecycle. */

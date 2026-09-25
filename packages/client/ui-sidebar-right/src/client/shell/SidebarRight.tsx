@@ -129,6 +129,8 @@ interface PanelProps {
   readonly occurrence: SidebarRightInjected['occurrence']
   readonly fullscreen: boolean
   readonly autoFullscreen: boolean
+  /** Whether the aggregate auxiliary region currently exposes this surface. */
+  readonly visible: boolean
   /** Receives the kit's room-rule readings for the service's `split`. */
   readonly reportRoom: (fits: ReadonlyMap<PaneId, HalvesFit>) => void
 }
@@ -288,8 +290,8 @@ function PanelChrome({ sessionId, fullscreen, autoFullscreen, actions, t }: Pick
  * anchored to the frame's right edge and slid off it while collapsed.
  */
 function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<HTMLDivElement> }): ReactNode {
-  const { sessionId, surface, actions, t, renderSlot, openTab, width, reportRoom, fullscreen, autoFullscreen, panelRef } = panel
-  const { expanded } = surface.layout
+  const { sessionId, surface, actions, t, renderSlot, openTab, width, reportRoom, fullscreen, autoFullscreen, panelRef, visible } = panel
+  const expanded = visible && surface.layout.expanded
   return (
     <div
       ref={panelRef}
@@ -327,10 +329,16 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
 
 /** Portal the floating layer out of whichever seat rendered it. */
 function Floats(panel: PanelProps): ReactNode {
-  const { sessionId, surface, actions, t, openTab } = panel
+  const { sessionId, surface, actions, t, openTab, visible } = panel
   if (surface.layout.floats.length === 0) return null
   return createPortal(
-    <div className={css.floatHost} data-sidebar-right-float-host>
+    <div
+      className={css.floatHost}
+      data-sidebar-right-float-host
+      hidden={!visible}
+      aria-hidden={!visible || undefined}
+      ref={(element) => { if (element !== null) element.inert = !visible }}
+    >
       <FloatLayer
         state={surface.layout}
         canCloseTab={tabId => canCloseTab(surface, tabId)}
@@ -351,7 +359,7 @@ function Floats(panel: PanelProps): ReactNode {
  * which session it is acting on, because this is the seat that knows both.
  */
 export function RightbarSeat({
-  sessionId, width, viewportWidth, canShow, useStore, actions, t, renderSlot, syncPresentation, bindService, openTab,
+  sessionId, width, visible, viewportWidth, canShow, useStore, actions, t, renderSlot, syncPresentation, bindService, openTab,
   useTabTypes, useTabNavigation, occurrence,
 }: RightbarSeatProps): ReactNode {
   // One store instance per session, so this map holds this session's surface.
@@ -375,8 +383,8 @@ export function RightbarSeat({
   }, [actions, sessionId, surface])
 
   useLayoutEffect(() => {
-    if (shown && !fullscreen && !canShow) actions.setExpanded(sessionId, false)
-  }, [actions, sessionId, shown, fullscreen, canShow])
+    if (visible && shown && !fullscreen && !canShow) actions.setExpanded(sessionId, false)
+  }, [actions, sessionId, visible, shown, fullscreen, canShow])
 
   // Fullscreen leaves the previous column report in force until its own slide
   // completes. Normal presentation and zero-duration transitions report before paint.
@@ -385,7 +393,7 @@ export function RightbarSeat({
     const reportWhenCovered = (): void => {
       if (disposed) return
       // A shown panel renders unconditionally and attaches its ref before this effect.
-      const entering = shown && fullscreen
+      const entering = visible && shown && fullscreen
         ? (panelRef.current as HTMLDivElement).getAnimations().filter(animation =>
           'transitionProperty' in animation && animation.transitionProperty === 'transform'
           && animation.playState !== 'finished' && animation.playState !== 'idle')
@@ -399,7 +407,7 @@ export function RightbarSeat({
     }
     reportWhenCovered()
     return () => { disposed = true }
-  }, [sessionId, shown, track, fullscreen, syncPresentation])
+  }, [sessionId, visible, shown, track, fullscreen, syncPresentation])
   // Leaving is part of that report: a seat that unmounts with its session must
   // hand the track back rather than leave one sized for a surface nobody draws.
   useLayoutEffect(() => () => { syncPresentation({ shown: false, track: false, fullscreen: false }) }, [syncPresentation])
@@ -417,7 +425,7 @@ export function RightbarSeat({
   if (surface === undefined) return null
   const panel: PanelProps = {
     sessionId, actions, t, renderSlot, surface, openTab, useTabTypes, useTabNavigation, useStore, occurrence,
-    fullscreen, autoFullscreen, reportRoom,
+    fullscreen, autoFullscreen, visible, reportRoom,
   }
   return (
     <>

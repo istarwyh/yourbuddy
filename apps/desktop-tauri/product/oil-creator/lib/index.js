@@ -4,10 +4,11 @@ import { basename, delimiter, dirname, extname, isAbsolute, join, resolve, sep }
 import Schema from "@deepseek-ai/schemastery";
 import { fileURLToPath } from "node:url";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { access, mkdir, readFile, readdir, rename, rmdir, stat, unlink, writeFile } from "node:fs/promises";
+import { access, chmod, link, mkdir, readFile, readdir, rename, rmdir, stat, unlink, writeFile } from "node:fs/promises";
 import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import { createServer } from "node:net";
-import { createHash } from "node:crypto";
+import { z } from "zod";
+import { createHash, randomUUID } from "node:crypto";
 import { createServer as createServer$1 } from "node:http";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 //#region src/config.ts
@@ -108,8 +109,8 @@ const CREATOR_WORKBENCH_SKILL = {
 
 - 调用 \`oil_organize_library\` 时先预览，向用户列出改名前后；确认后才传 \`apply=true\`。它不删除文件。
 - 使用 \`oil_prepare_publish\` 可把启用的视频平台和已有公众号文章准备成草稿。它会保留平台页面供用户检查，不执行最终发表或群发。
-- 视频草稿和已发布数据回收依赖 Ego Browser 与已登录的创作者后台。公众号 API 草稿依赖本机配置的微信公众号 AppID、AppSecret 和 IP 白名单。
-- 最终发表必须由用户明确确认；默认停在草稿或最终发表按钮前。
+- 视频草稿和已发布数据回收只处理 \`enabledPlatforms\` 中的平台，都依赖 Ego Browser 和已登录的创作者后台；\`enabledPlatforms\` 为空时不执行发布或同步，先配置并确认启用平台。公众号 API 草稿依赖本机配置的微信公众号 AppID、AppSecret 和 IP 白名单。
+- 能力检查显示缺失时明确告诉用户对应能力不可用，其余功能照常。最终发表必须由用户明确确认。
 
 ## 推进工作
 
@@ -118,6 +119,7 @@ const CREATOR_WORKBENCH_SKILL = {
 function externalSkill(name, description) {
 	const root = bundledSkillDir(name);
 	const path = join(root, "SKILL.md");
+	if (!existsSync(path)) return void 0;
 	const content = readFileSync(path, "utf8").replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, "").trim();
 	return {
 		name,
@@ -137,11 +139,11 @@ function externalSkill(name, description) {
 }
 function registerCreatorWorkbenchSkill(ctx) {
 	const disposers = [
-		ctx.skills.register(CREATOR_WORKBENCH_SKILL),
-		ctx.skills.register(externalSkill("video-publisher", "把本地视频准备为小红书、抖音、B站和视频号草稿，保留页面供用户最终确认。")),
-		ctx.skills.register(externalSkill("oil-video-article", "将视频和字幕整理为带真实配图的本地微信公众号 Markdown 文章。")),
-		ctx.skills.register(externalSkill("wechat-publisher", "把 Markdown 或 HTML 上传到微信公众号草稿箱；只有用户明确确认后才允许最终发布。"))
-	];
+		CREATOR_WORKBENCH_SKILL,
+		externalSkill("video-publisher", "把本地视频准备为小红书、抖音、B站和视频号草稿，保留页面供用户最终确认。"),
+		externalSkill("oil-video-article", "将视频和字幕整理为带真实配图的本地微信公众号 Markdown 文章。"),
+		externalSkill("wechat-publisher", "把 Markdown 或 HTML 上传到微信公众号草稿箱；只有用户明确确认后才允许最终发布。")
+	].filter((skill) => skill !== void 0).map((skill) => ctx.skills.register(skill));
 	return () => {
 		for (const dispose of disposers.reverse()) dispose();
 	};
@@ -211,9 +213,9 @@ function libraryConventionText(libraryRoot, dataDir, scriptRules, enabledPlatfor
 		"读或改这些内容，用系统自带的列文件、读文件、写文件工具。不要为了看一集再调插件工具。",
 		"写或改 script.md 必须遵循用户的脚本规则（人设）：先用 oil_script_rules 读取；还没配置时主动问清语气、结构和禁忌，再用 oil_script_rules 存下来。",
 		`插件工具只做文件做不到的事：配置工作台、按约定建文件夹、绑/开 Screen Studio、等导出、生成或烧录字幕、生成封面、准备发布草稿、同步已发布数据、整理文件夹名。工作台状态在 ${dataDir}/overlay.json，不是正文。`,
-		"视频草稿（oil_prepare_publish）和已发布数据回收（oil_sync_publish）都依赖 Ego Browser；公众号文章草稿使用本机配置的微信公众号 API。能力检查显示缺失时明确告诉用户，不要假装已上传或同步。"
+		"视频草稿准备（video-publisher skill）和已发布数据回收（oil_sync_publish）都依赖 Ego Browser；能力检查显示缺失时明确告诉用户，不要假装能同步。"
 	];
-	if (enabledPlatforms !== void 0) lines.push(enabledPlatforms.length === 0 ? "当前没有启用视频发布平台。不要为视频调用 oil_prepare_publish 或 oil_sync_publish。" : `当前启用视频平台：${enabledPlatformNames(enabledPlatforms)}。oil_prepare_publish 和 oil_sync_publish 只处理这些视频平台。`);
+	if (enabledPlatforms !== void 0) lines.push(enabledPlatforms.length === 0 ? "当前没有启用发布平台。不要调用 video-publisher 或 oil_sync_publish。" : `当前启用平台：${enabledPlatformNames(enabledPlatforms)}。video-publisher 和 oil_sync_publish 只处理这些平台。`);
 	if (scriptRules !== void 0 && scriptRules.trim() !== "") lines.push("", "当前脚本规则（人设）：", scriptRules.trim());
 	return lines.join("\n");
 }
@@ -497,7 +499,7 @@ function pipelineOf(item) {
 function workflowOf(item, overlay) {
 	if (anyPlatformPublished(item.publish)) return "live";
 	if (item.videoRaw !== void 0 || item.videoSubtitled !== void 0) {
-		if (hasSubtitle(item) && hasCover(item)) return "publish";
+		if (item.hasPublishPackage && hasSubtitle(item) && hasCover(item)) return "publish";
 		return "finish";
 	}
 	if (item.studioPath !== void 0 || overlay?.studioPath !== void 0) return "cut";
@@ -544,6 +546,11 @@ function stringArrayField(value, key) {
 	const field = value[key];
 	if (!Array.isArray(field)) return [];
 	return field.filter((item) => typeof item === "string" && item.length > 0);
+}
+function publishPackageIsValid(value) {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+	const record = value;
+	return typeof record.title === "string" && record.title.trim() !== "" && Array.isArray(record.tags) && record.tags.length > 0 && record.tags.every((tag) => typeof tag === "string" && tag.trim() !== "");
 }
 async function scanFolder(libraryRoot, folderName, overlay) {
 	const folderPath = join(libraryRoot, folderName);
@@ -594,6 +601,7 @@ async function scanFolder(libraryRoot, folderName, overlay) {
 	const packageJson = packagePath === void 0 ? void 0 : await readJson(packagePath);
 	const title = overlay.items[folderName]?.title ?? folderTitle;
 	const tags = [
+		...stringArrayField(packageJson, "tags"),
 		...stringArrayField(packageJson, "xhsTopics"),
 		...stringArrayField(packageJson, "douyinTopics"),
 		...stringArrayField(packageJson, "bilibiliTags"),
@@ -618,7 +626,7 @@ async function scanFolder(libraryRoot, folderName, overlay) {
 		createdMs,
 		covers,
 		subtitles,
-		hasPublishPackage: packageJson !== void 0,
+		hasPublishPackage: publishPackageIsValid(packageJson),
 		hasArticle: articlePath !== void 0,
 		waitingForExport: overlayItem?.waitingForExport === true,
 		...overlayItem?.exportTimedOut === true ? { exportTimedOut: true } : {},
@@ -631,7 +639,8 @@ async function scanFolder(libraryRoot, folderName, overlay) {
 		publish: mergePublish(await readFolderPublish(folderPath, names), overlayItem?.publish),
 		burn: overlayItem?.burn ?? emptyBurn(),
 		subtitleJob: overlayItem?.subtitleJob ?? emptyBurn(),
-		coverJob: overlayItem?.coverJob ?? emptyBurn()
+		coverJob: overlayItem?.coverJob ?? emptyBurn(),
+		...overlayItem?.publishPreparation === void 0 ? {} : { publishPreparation: overlayItem.publishPreparation }
 	};
 	return {
 		...draft,
@@ -1373,9 +1382,9 @@ async function findEgo(platform, env, home) {
 	};
 }
 function egoCapability(found) {
-	if (found === void 0) return capability("missing", false, "未发现 Ego Browser；自动发布和发布数据回收不可用。");
+	if (found === void 0) return capability("missing", false, "未发现 Ego Browser；视频草稿准备和发布数据回收不可用。");
 	if (found.kind === "app") return capability("missing", false, "已发现 Ego Lite 应用，但 PATH 里没有 ego-browser 命令；把 CLI 加到 PATH 后再试。", found.path);
-	return capability("ready", false, "已发现 Ego Browser，可自动发布和回收发布数据。", found.path);
+	return capability("ready", false, "已发现 Ego Browser，可准备视频草稿和回收发布数据。", found.path);
 }
 function recommendationsOf(capabilities) {
 	const recommendations = [];
@@ -1388,9 +1397,9 @@ function recommendationsOf(capabilities) {
 	if (capabilities.subtitleCredential.state !== "ready") recommendations.push("字幕 Key：到百炼控制台（https://bailian.console.aliyun.com）申请 DASHSCOPE_API_KEY，在设置页填写。");
 	if (capabilities.coverSkill.state !== "ready") recommendations.push("封面：git clone https://github.com/oil-oil/oil-cover ~/.agents/skills/oil-cover");
 	if (capabilities.coverCredential.state !== "ready") recommendations.push("封面 Key：到 ZenMux（https://zenmux.ai）控制台申请 ZENMUX_API_KEY，在设置页填写。");
-	if (capabilities.publishSync.state !== "ready") recommendations.push(capabilities.publishSync.detail.includes("PATH") ? "自动发布和数据回收：已装 Ego Lite，还需要把 ego-browser 加到 PATH。" : "自动发布和数据回收：安装 Ego Browser（https://lite.ego.app）并保证 PATH 里有 ego-browser，再登录各平台后台。");
+	if (capabilities.publishSync.state !== "ready") recommendations.push(capabilities.publishSync.detail.includes("PATH") ? "视频草稿准备和数据回收：已装 Ego Lite，还需要把 ego-browser 加到 PATH。" : "视频草稿准备和数据回收：安装 Ego Browser（https://lite.ego.app）并保证 PATH 里有 ego-browser，再登录各平台后台。");
 	if (capabilities.editingSkill.state !== "ready") recommendations.push("自动剪辑：git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor");
-	if (capabilities.publishSkill.state !== "ready") recommendations.push("自动发布：当前安装包缺少内置 video-publisher，请修复或更新 YourBuddy。");
+	if (capabilities.publishSkill.state !== "ready") recommendations.push("视频草稿准备：当前安装包缺少内置 video-publisher，请修复或更新 YourBuddy。");
 	if (capabilities.articleSkill.state !== "ready") recommendations.push("公众号图文：当前安装包缺少内置 oil-video-article，请修复或更新 YourBuddy。");
 	if (capabilities.wechatPublisherSkill.state !== "ready") recommendations.push("公众号草稿：当前安装包缺少内置 wechat-publisher，请修复或更新 YourBuddy。");
 	return recommendations;
@@ -1472,7 +1481,7 @@ function creatorGuideText(status) {
 		capabilityLine("字幕凭据 DASHSCOPE_API_KEY", capabilities.subtitleCredential),
 		capabilityLine("封面工作流 oil-cover", capabilities.coverSkill),
 		capabilityLine("封面凭据 ZENMUX_API_KEY", capabilities.coverCredential),
-		capabilityLine("Ego Browser（自动发布与数据回收）", capabilities.publishSync),
+		capabilityLine("Ego Browser（视频草稿准备与数据回收）", capabilities.publishSync),
 		capabilityLine("剪辑 skill screen-studio-editor", capabilities.editingSkill),
 		capabilityLine("发布 skill video-publisher", capabilities.publishSkill),
 		capabilityLine("公众号成稿 skill oil-video-article", capabilities.articleSkill),
@@ -1502,10 +1511,10 @@ function creatorGuideText(status) {
 		capabilities.screenStudio.state === "ready" ? "- 当前已发现 Screen Studio。用 oil_update_content 把工程绑到对应一集，oil_open_studio 打开，oil_wait_export 等待成片落盘。" : "- 当前没有可用的 Screen Studio：绑定工程、自动剪辑（screen-studio-editor）和等待导出都不可用。告诉用户需要先装 Screen Studio 并用它录制；如果用户用其他工具剪片，把成片文件放进这一集的文件夹即可跳过这一环节。",
 		capabilities.editingSkill.state === "ready" ? "- 已发现 screen-studio-editor，用户要求清理时间线时直接使用。" : "- 缺 screen-studio-editor：征得用户同意后执行 `git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor`；没有它时剪辑由用户自己完成。",
 		"",
-		"## 自动发布与数据回收",
+		"## 视频草稿准备与数据回收",
 		"- 视频草稿和数据回收依赖 Ego Browser 与已登录的创作者后台；工作台会使用探测到的 ego-browser 绝对路径。",
 		publishPlatformLine(enabledPlatforms),
-		capabilities.publishSync.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 Ego Browser，但当前没有启用平台，不执行自动发布和数据回收。" : "- 当前已发现 Ego Browser。用 oil_prepare_publish 准备启用平台的草稿，页面停在最终发表按钮前；发布后或用户要求时用 oil_sync_publish 回收播放、赞、评论并写回工作台。" : "- 当前未发现 Ego Browser：自动发布和 oil_sync_publish 数据回收都不可用。告诉用户到 https://lite.ego.app 下载 ego lite，完成首次引导后 ego-browser 命令可用，再登录各平台创作者后台；片库、脚本、字幕、封面不受影响，不要假装能同步。",
+		capabilities.publishSync.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 Ego Browser，但当前没有启用平台，不执行视频草稿准备和数据回收。" : "- 当前已发现 Ego Browser。用 oil_prepare_publish 准备启用平台的草稿，页面停在最终发表按钮前；发布后或用户要求时用 oil_sync_publish 回收播放、赞、评论并写回工作台。" : "- 当前未发现 Ego Browser：视频草稿准备和 oil_sync_publish 数据回收都不可用。告诉用户到 https://lite.ego.app 下载 ego lite，完成首次引导后 ego-browser 命令可用，再登录各平台创作者后台；片库、脚本、字幕、封面不受影响，不要假装能同步。",
 		capabilities.publishSkill.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 video-publisher，但当前没有启用平台，不使用它。" : "- 已发现 video-publisher。" : "- 当前安装包缺少 video-publisher；请修复或更新 YourBuddy。",
 		"",
 		"## 公众号图文",
@@ -2021,8 +2030,6 @@ async function resolveCollectScript(preferred) {
 }
 async function runCollectPublish(scriptPath, signal, options = {}) {
 	const source = await readFile(await resolveCollectScript(scriptPath), "utf8");
-	const egoExecutable = await findExecutable("ego-browser");
-	if (egoExecutable === void 0) throw new Error("ego-browser not found; finish Ego Lite onboarding first");
 	return new Promise((resolve, reject) => {
 		if (signal.aborted) {
 			reject(signal.reason ?? /* @__PURE__ */ new Error("aborted"));
@@ -2047,7 +2054,7 @@ async function runCollectPublish(scriptPath, signal, options = {}) {
 		if (options.cleanupPrefixes !== void 0 && options.cleanupPrefixes.length > 0) env.OIL_COLLECT_CLEANUP_PREFIXES = options.cleanupPrefixes.join(",");
 		if (options.maxPages !== void 0) env.OIL_COLLECT_MAX_PAGES = String(options.maxPages);
 		if (options.xhsScrollSteps !== void 0) env.OIL_COLLECT_XHS_SCROLL = String(options.xhsScrollSteps);
-		const child = spawn(egoExecutable, ["nodejs"], {
+		const child = spawn("ego-browser", ["nodejs"], {
 			stdio: [
 				"pipe",
 				"pipe",
@@ -2240,6 +2247,289 @@ async function libraryFingerprint(libraryRoot, overlayPath) {
 	return rows.join("|");
 }
 //#endregion
+//#region src/schemas.ts
+const contentCoversSchema = z.object({
+	"3x4": z.string().optional(),
+	"4x3": z.string().optional(),
+	"16x9": z.string().optional()
+});
+const contentSubtitlesSchema = z.object({
+	srt: z.string().optional(),
+	ass: z.string().optional(),
+	transcript: z.string().optional()
+});
+const pipelineSchema = z.union([
+	z.literal("raw"),
+	z.literal("subtitled"),
+	z.literal("covered"),
+	z.literal("packaged")
+]);
+const workflowSchema = z.union([
+	z.literal("idle"),
+	z.literal("record"),
+	z.literal("cut"),
+	z.literal("finish"),
+	z.literal("publish"),
+	z.literal("live")
+]);
+const publishMarkSchema = z.union([
+	z.literal("unpublished"),
+	z.literal("draft"),
+	z.literal("published")
+]);
+const publishPlatformSchema = z.enum(PUBLISH_PLATFORMS);
+const platformPublishSchema = z.object({
+	status: publishMarkSchema,
+	source: z.union([
+		z.literal("none"),
+		z.literal("publisher"),
+		z.literal("overlay"),
+		z.literal("sync")
+	]),
+	url: z.string().optional(),
+	remoteId: z.string().optional(),
+	views: z.number().optional(),
+	likes: z.number().optional(),
+	comments: z.number().optional(),
+	syncedAt: z.number().optional()
+});
+const contentPublishSchema = z.object(Object.fromEntries(PUBLISH_PLATFORMS.map((platform) => [platform, platformPublishSchema])));
+const preparePublishPlatformResultSchema = z.object({
+	status: z.string(),
+	ready: z.boolean(),
+	missing: z.array(z.string()),
+	taskSpaceId: z.number().nullable().optional(),
+	blocker: z.record(z.string(), z.unknown()).nullable().optional(),
+	evidencePath: z.string().nullable().optional()
+});
+const preparePublishStepResultSchema = z.object({
+	status: z.union([
+		z.literal("readyForReview"),
+		z.literal("blocked"),
+		z.literal("skipped")
+	]),
+	detail: z.string(),
+	blocker: z.record(z.string(), z.unknown()).optional(),
+	jobId: z.string().optional(),
+	statePath: z.string().optional(),
+	inputFingerprint: z.string().optional(),
+	platforms: z.record(z.string(), preparePublishPlatformResultSchema).optional()
+});
+z.object({
+	id: z.string().min(1),
+	platforms: z.array(publishPlatformSchema).optional(),
+	includeWechatArticle: z.boolean().optional(),
+	originalRightsConfirmed: z.boolean().optional(),
+	uploadCovers: z.boolean().optional(),
+	inspectOnly: z.boolean().optional()
+});
+const preparePublishResultSchema = z.object({
+	id: z.string().min(1),
+	selectedPlatforms: z.array(publishPlatformSchema),
+	video: preparePublishStepResultSchema,
+	wechatOfficialAccount: preparePublishStepResultSchema.optional()
+});
+const burnJobSchema = z.object({
+	status: z.union([
+		z.literal("idle"),
+		z.literal("running"),
+		z.literal("done"),
+		z.literal("error")
+	]),
+	startedAt: z.number().optional(),
+	output: z.string().optional(),
+	error: z.string().optional(),
+	pid: z.number().optional()
+});
+const contentSummarySchema = z.object({
+	id: z.string().min(1),
+	folderPath: z.string().min(1),
+	title: z.string(),
+	date: z.string().optional(),
+	recordedAt: z.number(),
+	createdMs: z.number(),
+	videoRaw: z.string().optional(),
+	videoSubtitled: z.string().optional(),
+	covers: contentCoversSchema,
+	subtitles: contentSubtitlesSchema,
+	hasPublishPackage: z.boolean(),
+	hasArticle: z.boolean(),
+	studioPath: z.string().optional(),
+	waitingForExport: z.boolean(),
+	exportTimedOut: z.boolean().optional(),
+	articlePath: z.string().optional(),
+	tags: z.array(z.string()),
+	pipeline: pipelineSchema,
+	workflow: workflowSchema,
+	publish: contentPublishSchema,
+	burn: burnJobSchema,
+	subtitleJob: burnJobSchema,
+	coverJob: burnJobSchema,
+	publishPreparation: preparePublishResultSchema.optional()
+});
+const creatorProfileSchema = z.object({ enabledPlatforms: z.array(publishPlatformSchema) });
+const secretViewSchema = z.object({
+	kind: z.union([z.literal("subtitle"), z.literal("cover")]),
+	ref: z.string(),
+	configured: z.boolean(),
+	writable: z.boolean(),
+	source: z.string().optional()
+});
+const librarySettingsSchema = z.object({
+	libraryRoot: z.string(),
+	profile: creatorProfileSchema,
+	secrets: z.object({
+		subtitle: secretViewSchema,
+		cover: secretViewSchema
+	}),
+	scriptRules: z.string().optional()
+});
+z.object({
+	query: z.string(),
+	filter: z.union([
+		z.literal("all"),
+		z.literal("cover"),
+		z.literal("subtitle"),
+		z.literal("article")
+	])
+});
+z.object({
+	settings: librarySettingsSchema,
+	items: z.array(contentSummarySchema),
+	counts: z.object({
+		total: z.number().int().nonnegative(),
+		cover: z.number().int().nonnegative(),
+		subtitle: z.number().int().nonnegative(),
+		article: z.number().int().nonnegative()
+	}),
+	revision: z.number().int().nonnegative()
+});
+z.object({ id: z.string().min(1) });
+contentSummarySchema.and(z.object({
+	publishCopy: z.string(),
+	topicNote: z.string(),
+	script: z.string(),
+	article: z.string(),
+	secrets: z.object({
+		subtitle: secretViewSchema,
+		cover: secretViewSchema
+	})
+}));
+z.object({
+	found: z.boolean(),
+	mime: z.string(),
+	base64: z.string()
+});
+z.object({
+	found: z.boolean(),
+	url: z.string(),
+	kind: z.union([z.literal("raw"), z.literal("subtitled")])
+});
+z.object({
+	found: z.boolean(),
+	origin: z.string()
+});
+z.object({
+	text: z.string(),
+	cues: z.array(z.object({
+		text: z.string(),
+		at: z.string().optional()
+	}))
+});
+z.object({
+	id: z.string().min(1),
+	readyToRecord: z.boolean()
+});
+z.object({
+	id: z.string().min(1),
+	path: z.string().min(1)
+});
+z.object({
+	id: z.string().min(1),
+	platform: publishPlatformSchema,
+	status: publishMarkSchema,
+	url: z.string().optional()
+});
+z.object({
+	url: z.string().min(1),
+	port: z.number().int().positive()
+});
+z.object({
+	id: z.string().min(1).optional(),
+	platform: publishPlatformSchema.optional(),
+	force: z.boolean().optional()
+});
+z.object({
+	matched: z.number().int().nonnegative(),
+	cached: z.boolean().optional(),
+	platforms: z.array(z.object({
+		platform: publishPlatformSchema,
+		count: z.number().int().nonnegative(),
+		loginRequired: z.boolean().optional(),
+		error: z.string().optional()
+	}))
+});
+z.object({ revision: z.number().int().nonnegative() });
+const capabilitySchema = z.object({
+	state: z.union([
+		z.literal("ready"),
+		z.literal("missing"),
+		z.literal("unsupported")
+	]),
+	required: z.boolean(),
+	detail: z.string(),
+	path: z.string().optional()
+});
+z.object({ capabilities: z.object({
+	library: capabilitySchema,
+	screenStudio: capabilitySchema,
+	subtitleSkill: capabilitySchema,
+	subtitleCredential: capabilitySchema,
+	coverSkill: capabilitySchema,
+	coverCredential: capabilitySchema,
+	publishSync: capabilitySchema,
+	editingSkill: capabilitySchema,
+	publishSkill: capabilitySchema,
+	articleSkill: capabilitySchema,
+	wechatPublisherSkill: capabilitySchema
+}) });
+z.object({
+	id: z.string().min(1),
+	timeoutMs: z.number().optional()
+});
+z.object({ path: z.string().min(1) });
+z.object({ title: z.string().min(1) });
+z.object({
+	id: z.string().min(1),
+	folderPath: z.string().min(1)
+});
+z.object({ profile: creatorProfileSchema });
+z.object({ text: z.string() });
+z.object({
+	id: z.string().min(1),
+	text: z.string()
+});
+z.object({
+	id: z.string().min(1),
+	text: z.string()
+});
+z.object({
+	apply: z.boolean(),
+	ids: z.array(z.string())
+});
+z.object({
+	moves: z.array(z.object({
+		from: z.string().min(1),
+		to: z.string().min(1),
+		reason: z.union([
+			z.literal("add-date"),
+			z.literal("readable-title"),
+			z.literal("both")
+		])
+	})),
+	unchanged: z.number().int().nonnegative()
+});
+//#endregion
 //#region src/overlay.ts
 const DEFAULT_ENABLED_PLATFORMS = PUBLISH_PLATFORMS;
 function emptyProfile() {
@@ -2281,6 +2571,8 @@ function decodeOverlay(value) {
 		if (subtitleJob !== void 0) next.subtitleJob = subtitleJob;
 		const coverJob = decodeBurnJob(record.coverJob);
 		if (coverJob !== void 0) next.coverJob = coverJob;
+		const publishPreparation = preparePublishResultSchema.safeParse(record.publishPreparation);
+		if (publishPreparation.success) next.publishPreparation = publishPreparation.data;
 		items[id] = next;
 	}
 	const store = emptyOverlay();
@@ -2313,90 +2605,370 @@ async function saveOverlay(dataDir, store) {
 }
 //#endregion
 //#region src/publishing.ts
-async function run(command, args, signal, env = process.env) {
+const OUTPUT_LIMIT = 2097152;
+const ABORT_GRACE_MS = 1e3;
+const NORMAL_CONCURRENCY = 4;
+const PUBLISHER_PLATFORM = {
+	xiaohongshu: "xiaohongshu",
+	douyin: "douyin",
+	bilibili: "bilibili",
+	wechat: "wechat_channels"
+};
+const RUNTIME_ENV_KEYS = [
+	"PATH",
+	"Path",
+	"HOME",
+	"USERPROFILE",
+	"LOCALAPPDATA",
+	"APPDATA",
+	"TMPDIR",
+	"TEMP",
+	"TMP",
+	"SystemRoot",
+	"WINDIR",
+	"LANG",
+	"LC_ALL",
+	"TZ"
+];
+const PUBLISHER_OVERRIDE_KEYS = [
+	"VIDEO_PUBLISHER_V2_EGO_COMMAND",
+	"VIDEO_PUBLISHER_V2_RUNNER",
+	"VIDEO_PUBLISHER_V2_TASK_NAME"
+];
+const WECHAT_ENV_KEYS = [
+	"WECHAT_APP_ID",
+	"WECHAT_APP_SECRET",
+	"WECHAT_API_PROXY",
+	"WECHAT_PUBLISHER_DATA_DIR"
+];
+function appendTail(current, chunk) {
+	const next = current + String(chunk);
+	return next.length <= OUTPUT_LIMIT ? next : next.slice(-2097152);
+}
+/** Runs one owned subprocess and waits for exit after cancellation. */
+function runPublishingCommand(command, args, signal, env) {
 	return new Promise((resolve, reject) => {
 		signal.throwIfAborted();
-		const child = spawn(command, args, {
+		const ownsProcessGroup = process.platform !== "win32";
+		const child = spawn(command, [...args], {
 			env,
 			stdio: [
 				"ignore",
 				"pipe",
 				"pipe"
-			]
+			],
+			detached: ownsProcessGroup
 		});
 		let stdout = "";
 		let stderr = "";
+		let settled = false;
+		let abortRequested = false;
+		let forceKill;
 		child.stdout.on("data", (chunk) => {
-			stdout += String(chunk);
+			stdout = appendTail(stdout, chunk);
 		});
 		child.stderr.on("data", (chunk) => {
-			stderr += String(chunk);
+			stderr = appendTail(stderr, chunk);
 		});
-		const onAbort = () => {
-			child.kill("SIGTERM");
+		const cleanup = () => {
+			signal.removeEventListener("abort", onAbort);
+			if (forceKill !== void 0) clearTimeout(forceKill);
 		};
-		signal.addEventListener("abort", onAbort, { once: true });
-		child.once("error", (error) => {
-			signal.removeEventListener("abort", onAbort);
-			reject(error);
-		});
-		child.once("close", (code) => {
-			signal.removeEventListener("abort", onAbort);
-			if (signal.aborted) {
-				reject(signal.reason ?? /* @__PURE__ */ new Error("publishing aborted"));
+		const finish = (work) => {
+			if (settled) return;
+			settled = true;
+			cleanup();
+			work();
+		};
+		const killOwned = (killSignal) => {
+			if (process.platform === "win32" && child.pid !== void 0) {
+				const args = [
+					"/pid",
+					String(child.pid),
+					"/t"
+				];
+				if (killSignal === "SIGKILL") args.push("/f");
+				spawnSync("taskkill", args, {
+					env,
+					stdio: "ignore"
+				});
 				return;
 			}
-			resolve({
-				code: code ?? 1,
-				stdout,
-				stderr
+			if (ownsProcessGroup && child.pid !== void 0) try {
+				process.kill(-child.pid, killSignal);
+				return;
+			} catch {}
+			child.kill(killSignal);
+		};
+		const onAbort = () => {
+			if (abortRequested) return;
+			abortRequested = true;
+			signal.removeEventListener("abort", onAbort);
+			killOwned("SIGTERM");
+			forceKill = setTimeout(() => {
+				if (!settled) killOwned("SIGKILL");
+			}, ABORT_GRACE_MS);
+			forceKill.unref();
+		};
+		child.once("error", (error) => {
+			finish(() => {
+				reject(error);
 			});
 		});
+		child.once("close", (code) => {
+			if (abortRequested || signal.aborted) killOwned("SIGKILL");
+			finish(() => {
+				if (abortRequested || signal.aborted) {
+					reject(signal.reason ?? /* @__PURE__ */ new Error("publishing aborted"));
+					return;
+				}
+				resolve({
+					code: code ?? 1,
+					stdout,
+					stderr
+				});
+			});
+		});
+		signal.addEventListener("abort", onAbort, { once: true });
+		if (signal.aborted) onAbort();
 	});
 }
-function parseLastJson(raw) {
-	const starts = [];
-	for (let index = 0; index < raw.length; index += 1) if (raw[index] === "{") starts.push(index);
-	for (const start of starts.reverse()) try {
-		const value = JSON.parse(raw.slice(start));
-		if (typeof value === "object" && value !== null && !Array.isArray(value)) return value;
-	} catch {
-		continue;
+function copyEnvKeys(source, destination, keys) {
+	for (const key of keys) {
+		const value = source[key];
+		if (value !== void 0) destination[key] = value;
 	}
 }
-function weightedTitle(title) {
-	let weight = 0;
-	let result = "";
-	for (const char of title) {
-		const next = char.codePointAt(0) <= 127 ? .5 : 1;
-		if (weight + next > 20) break;
-		result += char;
-		weight += next;
-	}
-	return result;
+/** Returns the credential-free environment used by Video Publisher. */
+function publisherEnvironment(source, egoPath, configPath, lockRoot) {
+	const env = {};
+	copyEnvKeys(source, env, RUNTIME_ENV_KEYS);
+	copyEnvKeys(source, env, PUBLISHER_OVERRIDE_KEYS);
+	const path = env.PATH ?? env.Path ?? "";
+	env.PATH = `${dirname(egoPath)}${delimiter}${path}`;
+	env.VIDEO_PUBLISHER_CONFIG = configPath;
+	env.VIDEO_PUBLISHER_V2_LOCK_ROOT = lockRoot;
+	return env;
 }
-async function publishMetadata(folderPath, fallbackTitle) {
+/** Returns the minimal environment documented by WeChat Publisher. */
+function wechatPublisherEnvironment(source) {
+	const env = {};
+	copyEnvKeys(source, env, RUNTIME_ENV_KEYS);
+	copyEnvKeys(source, env, WECHAT_ENV_KEYS);
+	return env;
+}
+function managedVideoPublisherPaths(dataDir, configName = "managed.json") {
+	const root = join(dataDir, "video-publisher");
+	const configRoot = join(root, "configs");
+	return {
+		root,
+		configRoot,
+		configPath: join(configRoot, configName),
+		stateRoot: join(root, "state"),
+		lockRoot: join(root, "locks"),
+		packageRoot: join(root, "packages")
+	};
+}
+function mapPublisherPlatforms(platforms) {
+	return platforms.map((platform) => PUBLISHER_PLATFORM[platform]);
+}
+function isExactPreparedArticle(step, currentFingerprint) {
+	return step?.inputFingerprint !== void 0 && step.inputFingerprint === currentFingerprint;
+}
+function mergePreparationHistory(current, previous, currentArticleFingerprint) {
+	if (previous === void 0) return current;
+	const previousArticle = isExactPreparedArticle(previous.wechatOfficialAccount, currentArticleFingerprint) ? previous.wechatOfficialAccount : void 0;
+	const mergedArticle = current.wechatOfficialAccount ?? previousArticle;
+	if (current.selectedPlatforms.length === 0) return {
+		...current,
+		selectedPlatforms: previous.selectedPlatforms,
+		video: previous.video,
+		...mergedArticle === void 0 ? {} : { wechatOfficialAccount: mergedArticle }
+	};
+	return mergedArticle === void 0 ? current : {
+		...current,
+		wechatOfficialAccount: mergedArticle
+	};
+}
+function managedVideoPublisherConfig(libraryRoot, platforms, now = /* @__PURE__ */ new Date()) {
+	const selected = mapPublisherPlatforms(platforms);
+	const timestamp = now.toISOString();
+	return {
+		schemaVersion: 2,
+		onboarding: {
+			completed: true,
+			completedAt: timestamp,
+			updatedAt: timestamp
+		},
+		locale: "zh-CN",
+		sourceDirectory: libraryRoot,
+		availablePlatforms: selected,
+		defaultPlatforms: [...selected],
+		contentProfile: {
+			copyStyle: "clear, conversational, specific, non-hype",
+			recurringTags: []
+		},
+		declarations: { originalityPolicy: "ask_each_run" },
+		platforms: {
+			douyin: { defaultTopics: [] },
+			bilibili: { allowedAutoTags: [] },
+			youtube: {
+				defaultCategory: "",
+				defaultLanguage: "",
+				defaultVisibility: "private"
+			}
+		},
+		execution: {
+			checkConcurrency: NORMAL_CONCURRENCY,
+			uploadConcurrency: NORMAL_CONCURRENCY
+		},
+		cover: { uploadExistingByDefault: false }
+	};
+}
+function privateJson(value) {
+	return `${JSON.stringify(value, null, 2)}\n`;
+}
+async function writePrivateJson(path, value) {
+	const parent = dirname(path);
+	await mkdir(parent, {
+		recursive: true,
+		mode: 448
+	});
+	await chmod(parent, 448);
+	const temp = `${path}.${process.pid}.${randomUUID()}.tmp`;
+	try {
+		await writeFile(temp, privateJson(value), {
+			encoding: "utf8",
+			mode: 384,
+			flag: "wx"
+		});
+		await rename(temp, path);
+		await chmod(path, 384);
+	} catch (cause) {
+		await unlink(temp).catch(() => void 0);
+		throw cause;
+	}
+}
+async function writeImmutablePrivateJson(path, value) {
+	const parent = dirname(path);
+	await mkdir(parent, {
+		recursive: true,
+		mode: 448
+	});
+	await chmod(parent, 448);
+	const temp = `${path}.${process.pid}.${randomUUID()}.tmp`;
+	try {
+		await writeFile(temp, privateJson(value), {
+			encoding: "utf8",
+			mode: 384,
+			flag: "wx"
+		});
+		try {
+			await link(temp, path);
+		} catch (cause) {
+			if (!(cause instanceof Error && "code" in cause && cause.code === "EEXIST")) throw cause;
+		}
+	} finally {
+		await unlink(temp).catch(() => void 0);
+	}
+}
+async function writeManagedVideoPublisherConfig(dataDir, libraryRoot, platforms, now = /* @__PURE__ */ new Date()) {
+	const paths = managedVideoPublisherPaths(dataDir, `${randomUUID()}.json`);
+	await mkdir(paths.root, {
+		recursive: true,
+		mode: 448
+	});
+	await chmod(paths.root, 448);
+	await Promise.all([
+		mkdir(paths.configRoot, {
+			recursive: true,
+			mode: 448
+		}),
+		mkdir(paths.stateRoot, {
+			recursive: true,
+			mode: 448
+		}),
+		mkdir(paths.lockRoot, {
+			recursive: true,
+			mode: 448
+		}),
+		mkdir(paths.packageRoot, {
+			recursive: true,
+			mode: 448
+		})
+	]);
+	await Promise.all([
+		chmod(paths.configRoot, 448),
+		chmod(paths.stateRoot, 448),
+		chmod(paths.lockRoot, 448),
+		chmod(paths.packageRoot, 448)
+	]);
+	await writePrivateJson(paths.configPath, managedVideoPublisherConfig(libraryRoot, platforms, now));
+	return paths;
+}
+/** Extracts the last complete JSON object without trusting surrounding logs. */
+function parseLastJsonObject(raw) {
+	let last;
+	let start = -1;
+	let depth = 0;
+	let inString = false;
+	let escaped = false;
+	for (let index = 0; index < raw.length; index += 1) {
+		const char = raw[index];
+		if (depth === 0) {
+			if (char !== "{") continue;
+			start = index;
+			depth = 1;
+			inString = false;
+			escaped = false;
+			continue;
+		}
+		if (inString) {
+			if (escaped) escaped = false;
+			else if (char === "\\") escaped = true;
+			else if (char === "\"") inString = false;
+			continue;
+		}
+		if (char === "\"") {
+			inString = true;
+			continue;
+		}
+		if (char === "{") depth += 1;
+		else if (char === "}") depth -= 1;
+		if (depth !== 0 || start < 0) continue;
+		try {
+			const parsed = JSON.parse(raw.slice(start, index + 1));
+			if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) last = parsed;
+		} catch {}
+		start = -1;
+	}
+	return last;
+}
+async function publishMetadata(folderPath) {
 	const names = await readdir(folderPath).catch(() => []);
 	const name = names.find((candidate) => candidate === "publish-package.json") ?? names.find((candidate) => candidate.endsWith(".publish-package.json"));
-	if (name === void 0) return {
-		title: fallbackTitle,
-		tags: []
-	};
+	if (name === void 0) return void 0;
 	try {
 		const value = JSON.parse(await readFile(join(folderPath, name), "utf8"));
+		if (typeof value.title !== "string" || value.title.trim() === "" || !Array.isArray(value.tags)) return;
+		const tags = value.tags.filter((tag) => typeof tag === "string" && tag.trim() !== "").map((tag) => tag.trim());
+		if (tags.length === 0 || tags.length !== value.tags.length) return void 0;
 		return {
-			title: typeof value.title === "string" && value.title.trim() !== "" ? value.title.trim() : fallbackTitle,
-			tags: Array.isArray(value.tags) ? value.tags.filter((tag) => typeof tag === "string" && tag.trim() !== "").map((tag) => tag.trim()) : []
+			title: value.title.trim(),
+			tags
 		};
 	} catch {
-		return {
-			title: fallbackTitle,
-			tags: []
-		};
+		return;
 	}
 }
-function publisherPlatform(platform) {
-	return platform === "wechat" ? "wechat_channels" : platform;
+function requiredCoverRatios(platforms) {
+	const ratios = /* @__PURE__ */ new Set();
+	if (platforms.some((platform) => platform === "xiaohongshu" || platform === "douyin" || platform === "wechat")) ratios.add("3x4");
+	if (platforms.some((platform) => platform === "douyin" || platform === "bilibili" || platform === "wechat")) ratios.add("4x3");
+	return ratios;
+}
+function missingCoverRatios(item, platforms) {
+	return [...requiredCoverRatios(platforms)].filter((ratio) => item.covers[ratio] === void 0);
 }
 function contentPackage(item, title, tags, platforms, uploadCovers) {
 	const videoPath = item.videoSubtitled ?? item.videoRaw;
@@ -2406,7 +2978,7 @@ function contentPackage(item, title, tags, platforms, uploadCovers) {
 		title
 	};
 	if (platforms.includes("xiaohongshu")) {
-		result.xhsTitle = weightedTitle(title);
+		result.xhsTitle = title;
 		result.xhsTopics = tags;
 	}
 	if (platforms.includes("douyin")) {
@@ -2421,65 +2993,134 @@ function contentPackage(item, title, tags, platforms, uploadCovers) {
 		result.wechatDescription = [title, tags.map((tag) => `#${tag}`).join(" ")].filter(Boolean).join("\n\n");
 		result.wechatTags = tags;
 	}
-	const coversReady = (!platforms.includes("xiaohongshu") || item.covers["3x4"] !== void 0) && (!platforms.includes("douyin") || item.covers["3x4"] !== void 0 && item.covers["4x3"] !== void 0) && (!platforms.includes("bilibili") || item.covers["4x3"] !== void 0) && (!platforms.includes("wechat") || item.covers["3x4"] !== void 0 && item.covers["4x3"] !== void 0);
-	result.cover = uploadCovers && coversReady ? {
+	result.cover = uploadCovers ? {
 		uploadCustomCover: true,
-		vertical3x4Path: item.covers["3x4"],
-		horizontal4x3Path: item.covers["4x3"],
-		horizontal16x9Path: item.covers["16x9"]
+		...item.covers["3x4"] === void 0 ? {} : { vertical3x4Path: item.covers["3x4"] },
+		...item.covers["4x3"] === void 0 ? {} : { horizontal4x3Path: item.covers["4x3"] },
+		...item.covers["16x9"] === void 0 ? {} : { horizontal16x9Path: item.covers["16x9"] }
 	} : { uploadCustomCover: false };
 	return result;
 }
-async function prepareVideoDrafts(options) {
+function blockedStep(detail, code) {
+	return {
+		status: "blocked",
+		detail,
+		blocker: { code }
+	};
+}
+function publisherPlatformResult(value) {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return void 0;
+	const raw = value;
+	const result = {
+		status: typeof raw.status === "string" ? raw.status : raw.ready === true ? "ready" : "blocked",
+		ready: raw.ready === true,
+		missing: Array.isArray(raw.missing) ? raw.missing.filter((item) => typeof item === "string") : []
+	};
+	if (typeof raw.taskSpaceId === "number" || raw.taskSpaceId === null) result.taskSpaceId = raw.taskSpaceId;
+	if (typeof raw.blocker === "object" && raw.blocker !== null && !Array.isArray(raw.blocker)) result.blocker = raw.blocker;
+	else if (raw.blocker === null) result.blocker = null;
+	if (typeof raw.evidencePath === "string" || raw.evidencePath === null) result.evidencePath = raw.evidencePath;
+	return result;
+}
+function decodePublisherPlatforms(value) {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+	const result = {};
+	for (const [platform, raw] of Object.entries(value)) {
+		const decoded = publisherPlatformResult(raw);
+		if (decoded !== void 0) result[platform] = decoded;
+	}
+	return result;
+}
+function outputDetail(result) {
+	return (result.stderr.trim() || result.stdout.trim() || `publisher exited ${result.code}`).slice(-1200);
+}
+function platformBlockerDetail(platforms, fallback) {
+	const details = Object.entries(platforms).flatMap(([platform, result]) => {
+		if (result.ready) return [];
+		const blocker = result.blocker;
+		return [`${platform}: ${[
+			typeof blocker?.code === "string" ? blocker.code : void 0,
+			typeof blocker?.message === "string" ? blocker.message : typeof blocker?.detail === "string" ? blocker.detail : void 0,
+			result.missing.length > 0 ? `missing: ${result.missing.join(", ")}` : void 0
+		].filter(Boolean).join(" · ") || result.status}`];
+	});
+	return details.length > 0 ? details.join("\n") : fallback;
+}
+async function prepareVideoDrafts(options, dependencies = {}) {
 	if (options.platforms.length === 0) return {
 		status: "skipped",
 		detail: "No enabled video platforms selected."
 	};
-	const ego = await findExecutable("ego-browser");
-	if (ego === void 0) return {
-		status: "blocked",
-		detail: "ego-browser not found; finish Ego Lite onboarding first."
-	};
-	const publisher = join(bundledSkillDir("video-publisher"), "scripts", "v2", "publisher.mjs");
-	await access(publisher);
-	const metadata = await publishMetadata(options.item.folderPath, options.item.title);
-	const payload = contentPackage(options.item, metadata.title, metadata.tags, options.platforms, options.uploadCovers);
-	const packageRoot = join(options.dataDir, "publish-packages");
-	await mkdir(packageRoot, { recursive: true });
-	const key = createHash("sha256").update(options.item.id).digest("hex").slice(0, 16);
-	const packagePath = join(packageRoot, `${key}.json`);
-	await writeFile(packagePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-	const args = [
-		publisher,
-		"--package",
-		packagePath,
-		"--keep-space"
-	];
-	for (const platform of options.platforms) args.push("--platform", publisherPlatform(platform));
-	if (options.originalRightsConfirmed) args.push("--confirm-original-rights");
-	if (options.inspectOnly) args.push("--inspect-only");
-	const env = {
-		...process.env,
-		PATH: `${dirname(ego)}${delimiter}${process.env.PATH ?? ""}`
-	};
-	const result = await run(process.execPath, args, options.signal, env);
-	const summary = parseLastJson(result.stdout);
-	const ready = summary?.ready === true;
-	return {
-		status: ready ? "readyForReview" : "blocked",
-		detail: ready ? "Video drafts are ready in retained Ego task spaces." : (result.stderr.trim() || result.stdout.trim() || `publisher exited ${result.code}`).slice(-1200),
-		...typeof summary?.jobId === "string" ? { jobId: summary.jobId } : {},
-		...typeof summary?.statePath === "string" ? { statePath: summary.statePath } : {},
-		...typeof summary?.platforms === "object" && summary.platforms !== null ? { platforms: summary.platforms } : {}
-	};
+	if (options.item.videoSubtitled === void 0 && options.item.videoRaw === void 0) return blockedStep("This episode has no finished video. Export an MP4 or MOV before preparing drafts.", "VIDEO_MISSING");
+	const metadata = await publishMetadata(options.item.folderPath);
+	if (!options.item.hasPublishPackage || metadata === void 0) return blockedStep("Create a valid publish-package.json containing a non-empty title and at least one non-empty tag before preparing drafts.", "PUBLISH_PACKAGE_MISSING_OR_INVALID");
+	if (!options.inspectOnly && options.uploadCovers) {
+		const missing = missingCoverRatios(options.item, options.platforms);
+		if (missing.length > 0) return blockedStep(`Existing-cover upload needs these missing ratios: ${missing.join(", ")}. Generate the covers or turn off cover upload.`, "COVER_MISSING");
+	}
+	const originalityRequired = options.platforms.some((platform) => platform === "xiaohongshu" || platform === "bilibili" || platform === "wechat");
+	if (!options.inspectOnly && originalityRequired && !options.originalRightsConfirmed) return blockedStep("Confirm that this video may be declared original/self-produced before preparing drafts for the selected platforms.", "ORIGINALITY_CONFIRMATION_REQUIRED");
+	const envSource = dependencies.env ?? process.env;
+	const ego = await (dependencies.findEgo ?? findExecutable)("ego-browser", envSource);
+	if (ego === void 0) return blockedStep("ego-browser was not found. Install Ego Lite, add its CLI to PATH, and log in to the creator sites.", "EGO_MISSING");
+	const skillRoot = dependencies.publisherSkillDir ?? bundledSkillDir("video-publisher");
+	const publisher = join(skillRoot, "scripts", "v2", "publisher.mjs");
+	if (!await access(publisher, constants.R_OK).then(() => true, () => false)) return blockedStep("The bundled video-publisher skill is missing. Repair or update the Oil Creator installation.", "PUBLISHER_SKILL_MISSING");
+	let managedConfigPath;
+	try {
+		const paths = await writeManagedVideoPublisherConfig(options.dataDir, options.libraryRoot, options.platforms, (dependencies.now ?? (() => /* @__PURE__ */ new Date()))());
+		managedConfigPath = paths.configPath;
+		const payload = contentPackage(options.item, metadata.title, metadata.tags, options.platforms, options.uploadCovers);
+		const itemKey = createHash("sha256").update(options.item.id).digest("hex").slice(0, 12);
+		const payloadKey = createHash("sha256").update(privateJson(payload)).digest("hex");
+		const packagePath = join(paths.packageRoot, `${itemKey}-${payloadKey}.json`);
+		await writeImmutablePrivateJson(packagePath, payload);
+		const args = [
+			publisher,
+			"--package",
+			packagePath,
+			"--state-root",
+			paths.stateRoot,
+			"--keep-space",
+			"--no-cleanup-stale-spaces"
+		];
+		for (const platform of options.platforms) args.push("--platform", PUBLISHER_PLATFORM[platform]);
+		if (options.jobId !== void 0) args.push("--job-id", options.jobId);
+		if (options.originalRightsConfirmed) args.push("--confirm-original-rights");
+		if (options.inspectOnly) args.push("--inspect-only");
+		const result = await (dependencies.runCommand ?? runPublishingCommand)(process.execPath, args, options.signal, publisherEnvironment(envSource, ego, paths.configPath, paths.lockRoot));
+		const summary = parseLastJsonObject(result.stdout);
+		if (summary === void 0) return blockedStep(`Video Publisher did not return a structured summary. ${outputDetail(result)}`, "PUBLISHER_OUTPUT_INVALID");
+		const platforms = decodePublisherPlatforms(summary.platforms);
+		const selectedPublisherPlatforms = mapPublisherPlatforms(options.platforms);
+		const ready = summary.ready === true && selectedPublisherPlatforms.every((platform) => platforms[platform]?.ready === true);
+		const step = {
+			status: ready ? "readyForReview" : "blocked",
+			detail: ready ? "Video drafts are ready for review in retained Ego task spaces. Final publication was not performed." : platformBlockerDetail(platforms, outputDetail(result)),
+			platforms
+		};
+		if (typeof summary.jobId === "string") step.jobId = summary.jobId;
+		if (typeof summary.statePath === "string") step.statePath = summary.statePath;
+		if (!ready) step.blocker = { code: result.code === 0 ? "PLATFORM_BLOCKED" : `PUBLISHER_EXIT_${result.code}` };
+		return step;
+	} catch (cause) {
+		if (options.signal.aborted || cause instanceof Error && cause.name === "AbortError") throw cause;
+		return blockedStep(cause instanceof Error ? cause.message : "Video draft preparation failed before launch.", "PUBLISHER_LAUNCH_FAILED");
+	} finally {
+		if (managedConfigPath !== void 0) await unlink(managedConfigPath).catch(() => void 0);
+	}
 }
-async function prepareWechatArticleDraft(options) {
+async function articleInputFingerprint(path) {
+	return createHash("sha256").update(await readFile(path)).digest("hex");
+}
+async function prepareWechatArticleDraft(options, dependencies = {}) {
 	if (options.item.articlePath === void 0) return {
 		status: "skipped",
-		detail: "No WeChat article Markdown exists for this content."
+		detail: "No WeChat Official Account article Markdown exists for this episode."
 	};
-	const cli = join(bundledSkillDir("wechat-publisher"), "wechat-publisher.mjs");
-	await access(cli);
+	const skillRoot = dependencies.publisherSkillDir ?? bundledSkillDir("wechat-publisher");
+	const cli = join(skillRoot, "wechat-publisher.mjs");
+	if (!await access(cli, constants.R_OK).then(() => true, () => false)) return blockedStep("The bundled wechat-publisher skill is missing. Repair or update the Oil Creator installation.", "WECHAT_PUBLISHER_SKILL_MISSING");
 	const args = [
 		cli,
 		"publish-file",
@@ -2487,15 +3128,24 @@ async function prepareWechatArticleDraft(options) {
 	];
 	const thumb = options.item.covers["16x9"] ?? options.item.covers["4x3"] ?? options.item.covers["3x4"];
 	if (thumb !== void 0) args.push("--thumb", thumb);
-	const result = await run(process.execPath, args, options.signal);
-	const detail = (result.stdout.trim() || result.stderr.trim() || `wechat publisher exited ${result.code}`).slice(-1200);
-	return result.code === 0 ? {
-		status: "readyForReview",
-		detail
-	} : {
-		status: "blocked",
-		detail
-	};
+	try {
+		const inputFingerprint = await articleInputFingerprint(options.item.articlePath);
+		const result = await (dependencies.runCommand ?? runPublishingCommand)(process.execPath, args, options.signal, wechatPublisherEnvironment(dependencies.env ?? process.env));
+		const detail = (result.stdout.trim() || result.stderr.trim() || `wechat publisher exited ${result.code}`).slice(-1200);
+		return result.code === 0 ? {
+			status: "readyForReview",
+			detail: `${detail}\nA WeChat Official Account draft was created. Group-send was not performed.`,
+			inputFingerprint
+		} : {
+			status: "blocked",
+			detail,
+			blocker: { code: `WECHAT_PUBLISHER_EXIT_${result.code}` },
+			inputFingerprint
+		};
+	} catch (cause) {
+		if (options.signal.aborted || cause instanceof Error && cause.name === "AbortError") throw cause;
+		return blockedStep(cause instanceof Error ? cause.message : "WeChat article draft preparation failed before launch.", "WECHAT_PUBLISHER_LAUNCH_FAILED");
+	}
 }
 //#endregion
 //#region src/secrets.ts
@@ -2880,6 +3530,9 @@ var OilCreatorService = class extends TypertRemoteService {
 	previews = /* @__PURE__ */ new Map();
 	videos = /* @__PURE__ */ new Map();
 	articles = /* @__PURE__ */ new Map();
+	prepareTails = /* @__PURE__ */ new Map();
+	activePreparations = /* @__PURE__ */ new Map();
+	stopping = false;
 	constructor(ctx, config) {
 		super(ctx, OIL_CREATOR_SERVICE);
 		this.libraryRoot = resolveUserPath(config.libraryRoot);
@@ -2892,6 +3545,7 @@ var OilCreatorService = class extends TypertRemoteService {
 		ctx.effect(() => async () => {
 			this.stopWatch();
 			this.stopExportWaiters();
+			await this.stopPreparations();
 			await this.stopServers();
 		}, "oil-creator: library watch");
 	}
@@ -2942,6 +3596,14 @@ var OilCreatorService = class extends TypertRemoteService {
 	stopExportWaiters() {
 		for (const waiter of this.exportWaiters.values()) waiter.abort();
 		this.exportWaiters.clear();
+	}
+	async stopPreparations() {
+		this.stopping = true;
+		for (const controller of this.activePreparations.keys()) controller.abort(/* @__PURE__ */ new Error("Oil Creator is stopping"));
+		await Promise.allSettled([...this.activePreparations.values()]);
+		this.activePreparations.clear();
+		await Promise.allSettled([...this.prepareTails.values()]);
+		this.prepareTails.clear();
 	}
 	subtitleSkill() {
 		return resolveSubtitleSkill(this.subtitleSkillDir());
@@ -3024,38 +3686,102 @@ var OilCreatorService = class extends TypertRemoteService {
 	}
 	async preparePublish(request, signal) {
 		signal.throwIfAborted();
+		const previous = this.prepareTails.get(request.id) ?? Promise.resolve();
+		let release;
+		const turn = new Promise((resolve) => {
+			release = resolve;
+		});
+		const tail = previous.then(() => turn, () => turn);
+		this.prepareTails.set(request.id, tail);
+		await previous;
+		if (this.stopping) {
+			release();
+			throw new Error("Oil Creator is stopping");
+		}
+		const controller = new AbortController();
+		let finish;
+		const settled = new Promise((resolve) => {
+			finish = resolve;
+		});
+		this.activePreparations.set(controller, settled);
+		const onAbort = () => {
+			controller.abort(signal.reason);
+		};
+		signal.addEventListener("abort", onAbort, { once: true });
+		if (signal.aborted) onAbort();
+		try {
+			return await this.preparePublishNow(request, controller.signal);
+		} finally {
+			signal.removeEventListener("abort", onAbort);
+			finish();
+			await settled;
+			this.activePreparations.delete(controller);
+			release();
+			if (this.prepareTails.get(request.id) === tail) this.prepareTails.delete(request.id);
+		}
+	}
+	async preparePublishNow(request, signal) {
+		signal.throwIfAborted();
 		const item = await this.find(request.id);
 		if (item === void 0) throw new Error(`content not found: ${request.id}`);
 		const settings = await this.getSettings({}, signal);
 		const enabled = new Set(settings.profile.enabledPlatforms);
-		const platforms = (request.platforms ?? settings.profile.enabledPlatforms).filter((platform) => enabled.has(platform));
-		const result = { id: request.id };
-		if (platforms.length > 0) {
-			result.video = await prepareVideoDrafts({
-				item,
-				platforms,
-				dataDir: this.dataDir,
-				originalRightsConfirmed: request.originalRightsConfirmed === true,
-				uploadCovers: request.uploadCovers === true,
-				inspectOnly: request.inspectOnly === true,
-				signal
-			});
-			if (request.inspectOnly !== true && result.video.platforms !== void 0) for (const platform of platforms) {
-				const key = platform === "wechat" ? "wechat_channels" : platform;
-				const status = result.video.platforms[key];
-				if (typeof status === "object" && status !== null && status.ready === true) await this.setPublish({
-					id: request.id,
-					platform,
-					status: "draft"
-				}, signal);
-			}
-		} else result.video = {
+		const requested = new Set(request.platforms ?? settings.profile.enabledPlatforms);
+		const platforms = PUBLISH_PLATFORMS.filter((platform) => enabled.has(platform) && requested.has(platform));
+		const previous = item.publishPreparation;
+		const samePlatforms = previous !== void 0 && previous.selectedPlatforms.length === platforms.length && previous.selectedPlatforms.every((platform, index) => platform === platforms[index]);
+		const previousJobId = samePlatforms ? previous.video.jobId : void 0;
+		const inspectExisting = request.inspectOnly === true || samePlatforms && previous?.video.status === "readyForReview" && previousJobId !== void 0;
+		const videoPromise = prepareVideoDrafts({
+			item,
+			libraryRoot: settings.libraryRoot,
+			platforms,
+			dataDir: this.dataDir,
+			originalRightsConfirmed: request.originalRightsConfirmed === true,
+			uploadCovers: request.uploadCovers === true,
+			inspectOnly: inspectExisting,
+			...previousJobId === void 0 ? {} : { jobId: previousJobId },
+			signal
+		});
+		const previousArticle = previous?.wechatOfficialAccount;
+		const currentArticleFingerprint = item.articlePath === void 0 ? void 0 : await articleInputFingerprint(item.articlePath).catch(() => void 0);
+		const exactPersistedArticle = isExactPreparedArticle(previousArticle, currentArticleFingerprint);
+		let articlePromise;
+		if (request.includeWechatArticle !== true) articlePromise = Promise.resolve(void 0);
+		else if (request.inspectOnly === true) articlePromise = Promise.resolve(exactPersistedArticle ? previousArticle : {
 			status: "skipped",
-			detail: "No enabled video platforms selected."
-		};
-		if (request.includeWechatArticle === true) result.wechatOfficialAccount = await prepareWechatArticleDraft({
+			detail: "No persisted WeChat Official Account draft matches the current article. Inspection did not create a draft.",
+			...currentArticleFingerprint === void 0 ? {} : { inputFingerprint: currentArticleFingerprint }
+		});
+		else if (exactPersistedArticle && previousArticle?.status === "readyForReview") articlePromise = Promise.resolve(previousArticle);
+		else articlePromise = prepareWechatArticleDraft({
 			item,
 			signal
+		});
+		const [videoSettled, articleSettled] = await Promise.allSettled([videoPromise, articlePromise]);
+		signal.throwIfAborted();
+		const video = videoSettled.status === "fulfilled" ? videoSettled.value : publishBranchFailure(videoSettled.reason, "VIDEO_PREPARATION_FAILED");
+		const articleForResult = (articleSettled.status === "fulfilled" ? articleSettled.value : publishBranchFailure(articleSettled.reason, "WECHAT_ARTICLE_PREPARATION_FAILED")) ?? (request.includeWechatArticle !== true && exactPersistedArticle ? previousArticle : void 0);
+		const result = {
+			id: request.id,
+			selectedPlatforms: platforms,
+			video,
+			...articleForResult === void 0 ? {} : { wechatOfficialAccount: articleForResult }
+		};
+		const persistedResult = mergePreparationHistory(result, previous, currentArticleFingerprint);
+		await withOverlayLock(this.dataDir, async () => {
+			const overlay = await loadOverlay(this.dataDir);
+			const next = {
+				...overlay.items[request.id] ?? {},
+				publishPreparation: persistedResult
+			};
+			if (request.inspectOnly !== true && video.platforms !== void 0) for (const [index, publisherPlatform] of mapPublisherPlatforms(platforms).entries()) {
+				const platform = platforms[index];
+				if (platform !== void 0 && video.platforms[publisherPlatform]?.ready === true) next.publish = patchOverlayPublish(next.publish, platform, "draft");
+			}
+			overlay.items[request.id] = next;
+			await saveOverlay(this.dataDir, overlay);
+			this.invalidateCatalog();
 		});
 		return result;
 	}
@@ -3675,6 +4401,13 @@ var OilCreatorService = class extends TypertRemoteService {
 		return this.getContent({ id }, signal);
 	}
 };
+function publishBranchFailure(cause, code) {
+	return {
+		status: "blocked",
+		detail: cause instanceof Error ? cause.message : "Draft preparation failed.",
+		blocker: { code }
+	};
+}
 function resolveUserPath(path) {
 	const expanded = expandHomePath(path);
 	if (!isAbsolute(expanded)) throw new Error(`path must be absolute: ${path}`);
@@ -3885,7 +4618,7 @@ const JSON_VALUE = { type: "json" };
 function registerCreatorTools(ctx, service) {
 	ctx.tools.register(defineTool({
 		name: "oil_creator_guide",
-		description: "Self-bootstrap guide for this plugin. Call this when the user asks what this plugin does, how to use it, or when you are unsure which step comes next. Returns the full workflow (library, script rules, subtitles, covers, publish, data sync) with the live capability status, including whether Ego Browser is available for auto-publish and data collection.",
+		description: "Self-bootstrap guide for this plugin. Call this when the user asks what this plugin does, how to use it, or when you are unsure which step comes next. Returns the full workflow (library, script rules, subtitles, covers, publish, data sync) with the live capability status, including whether Ego Browser is available for video draft preparation and data collection.",
 		parameters: {},
 		output: {
 			schema: JSON_VALUE,

@@ -1,37 +1,133 @@
-/** Keyless branding and Help journeys through Loader, the shipped Web app, and the built product plugin. */
-import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+/** Keyless YourBuddy journeys through Loader, the shipped Web app, and built product plugins. */
+import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Browser } from 'playwright'
+import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { compareOrRefreshGolden, launchWebScaffold, webSnapshotMode, type WebScaffold } from './scaffold.ts'
+import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import { createUserMessage, LlmAdapter } from '@deepseek-ai/dsh-llm'
+import type { StreamChunk } from '@deepseek-ai/dsh-llm'
+import {
+  assertFixtureInventory,
+  captureStableAria,
+  compareOrRefreshGolden,
+  launchWebScaffold,
+  watchConsole,
+  webSnapshotMode,
+  type WebScaffold,
+} from './scaffold.ts'
+import { connectFreshWorkspace, saveFailureShot } from './support.ts'
 
-const PRODUCT = fileURLToPath(new URL('../../desktop-tauri/product/personal-workbench/', import.meta.url))
+const PRODUCT_ROOT = fileURLToPath(new URL('../../desktop-tauri/product/', import.meta.url))
+const PERSONAL_PRODUCT = join(PRODUCT_ROOT, 'personal-workbench')
+const BETTER_SIDEBAR_PRODUCT = join(PRODUCT_ROOT, 'dsh-better-sidebar')
+const OIL_CREATOR_PRODUCT = join(PRODUCT_ROOT, 'oil-creator')
+const DRIVER = fileURLToPath(new URL('./fixtures/yourbuddy-workbench/', import.meta.url))
+const SCHEMASTERY_PRODUCT = fileURLToPath(new URL('../../../vendor/schemastery/', import.meta.url))
+const PNPM_PUBLIC_DEPENDENCIES = fileURLToPath(new URL('../../../node_modules/.pnpm/node_modules/', import.meta.url))
 const EXPECTED = fileURLToPath(new URL('./expected/yourbuddy-help/', import.meta.url))
 const MODE = webSnapshotMode()
+const EPISODE_TITLE = 'Assembled Workbench Episode'
+const ATTENTION_PROVIDER = 'yourbuddy-workbench-attention'
+
+/** Keyless model transport used only to append a current-Session turn completion. */
+class AttentionAdapter extends LlmAdapter {
+  override async *stream(): AsyncIterable<StreamChunk> {
+    yield { type: 'finish', reason: { kind: 'stop' } }
+  }
+}
+
+async function installPackageTree(source: string, destination: string): Promise<void> {
+  await mkdir(dirname(destination), { recursive: true })
+  await cp(source, destination, { recursive: true, dereference: true })
+}
+
+async function openSyntheticWorkbench(page: Page, intent: 'user' | 'background'): Promise<void> {
+  await page.evaluate((nextIntent) => {
+    const bridge = (window as unknown as {
+      __yourBuddyWorkbenchTest?: { open(value: 'user' | 'background'): void }
+    }).__yourBuddyWorkbenchTest
+    if (bridge === undefined) throw new Error('synthetic YourBuddy workbench driver is unavailable')
+    bridge.open(nextIntent)
+  }, intent)
+}
 
 describe('YourBuddy product surfaces in the assembled workbench', () => {
   let world: string | undefined
+  let libraryRoot: string
   let scaffold: WebScaffold | undefined
   let browser: Browser | undefined
 
   beforeAll(async () => {
     world = await mkdtemp(join(tmpdir(), 'yourbuddy-help-test-'))
     const harnessHome = join(world, 'home')
-    const installedProduct = join(harnessHome, 'profiles', 'product')
-    await mkdir(join(installedProduct, 'lib'), { recursive: true })
-    for (const file of ['index.js', 'lib/client.js', 'package.json']) {
-      await copyFile(join(PRODUCT, file), join(installedProduct, file))
-    }
+    const installedRoot = join(harnessHome, 'profiles', 'product')
+    const installedPersonal = join(installedRoot, 'personal-workbench')
+    const installedSidebar = join(installedRoot, 'dsh-better-sidebar')
+    const installedOil = join(harnessHome, 'profiles', 'node_modules', 'dsh-oil-creator')
+    await Promise.all([
+      installPackageTree(PERSONAL_PRODUCT, installedPersonal),
+      installPackageTree(BETTER_SIDEBAR_PRODUCT, installedSidebar),
+      installPackageTree(OIL_CREATOR_PRODUCT, installedOil),
+    ])
+    await Promise.all([
+      installPackageTree(SCHEMASTERY_PRODUCT, join(installedSidebar, 'node_modules', 'schemastery')),
+      installPackageTree(join(PNPM_PUBLIC_DEPENDENCIES, 'ws'), join(installedSidebar, 'node_modules', 'ws')),
+      installPackageTree(
+        SCHEMASTERY_PRODUCT,
+        join(installedOil, 'node_modules', '@deepseek-ai', 'schemastery'),
+      ),
+      installPackageTree(join(PNPM_PUBLIC_DEPENDENCIES, 'zod'), join(installedOil, 'node_modules', 'zod')),
+    ])
+    libraryRoot = join(world, 'library')
+    const episode = join(libraryRoot, `2026-09-30_${EPISODE_TITLE}`)
+    await mkdir(episode, { recursive: true })
+    await Promise.all([
+      writeFile(join(episode, 'topic.md'), '# Synthetic assembled-browser topic\n'),
+      writeFile(join(episode, 'script.md'), 'Synthetic local script. No external API is used.\n'),
+    ])
+    const dataDir = join(world, 'oil-data')
     const overlay = join(world, 'cordis.yml')
-    await writeFile(overlay, `- insert:\n    - id: yourbuddy-help-product\n      name: ${JSON.stringify(join(installedProduct, 'index.js'))}\n`)
-    scaffold = await launchWebScaffold({ harnessHome, extraOverlayPath: overlay,
-      extraInstallAnchors: [join(installedProduct, 'package.json')] })
+    await writeFile(overlay, `- id: ui-sidebar
+  disabled: true
+- id: typert-loader
+  config:
+    packages:
+      - dsh-oil-creator
+- insert:
+    - id: yourbuddy-help-product
+      name: ${JSON.stringify(join(installedPersonal, 'index.js'))}
+    - id: yourbuddy-help-better-sidebar
+      name: ${JSON.stringify(join(installedSidebar, 'lib/index.js'))}
+      config:
+        presentation: slot
+    - id: yourbuddy-help-oil-creator
+      name: ${JSON.stringify(join(installedOil, 'lib/index.js'))}
+      config:
+        libraryRoot: ${JSON.stringify(libraryRoot)}
+        dataDir: ${JSON.stringify(dataDir)}
+    - id: yourbuddy-help-workbench-driver
+      name: ${JSON.stringify(join(DRIVER, 'index.js'))}
+`)
+    scaffold = await launchWebScaffold({
+      harnessHome,
+      extraOverlayPath: overlay,
+      extraInstallAnchors: [
+        join(installedPersonal, 'package.json'),
+        join(installedSidebar, 'package.json'),
+        join(installedOil, 'package.json'),
+        join(DRIVER, 'package.json'),
+      ],
+    })
+    scaffold.ctx.effect(
+      () => scaffold!.ctx.llm.registerAdapter([ATTENTION_PROVIDER], new AttentionAdapter()),
+      'YourBuddy workbench attention adapter',
+    )
+    await scaffold.ctx.agentDefaultModel.saveSelection({ provider: ATTENTION_PROVIDER, model: 'keyless' })
     const executablePath = process.env.DSH_PLAYWRIGHT_EXECUTABLE_PATH
     browser = await chromium.launch(executablePath === undefined ? {} : { executablePath })
-  })
+  }, 120_000)
 
   afterAll(async () => {
     try { await browser?.close() }
@@ -40,6 +136,110 @@ describe('YourBuddy product surfaces in the assembled workbench', () => {
       finally { if (world !== undefined) await rm(world, { recursive: true, force: true }) }
     }
   })
+
+  it('coordinates durable core, creator content, and the aggregate Session region', async () => {
+    const context = await browser!.newContext({ locale: 'en-US', viewport: { width: 1440, height: 900 } })
+    const page = await context.newPage()
+    const tripwire = watchConsole(page)
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-yourbuddy-product-workbench'))
+    try {
+      await page.goto(scaffold!.authenticatedUrl, { waitUntil: 'load' })
+      await page.waitForSelector('[data-dsh-frame]', { timeout: 30_000 })
+      await connectFreshWorkspace(page, scaffold!.workspaceCwd, 'yourbuddy-workbench')
+      await page.waitForFunction(() => '__yourBuddyWorkbenchTest' in window)
+
+      const frame = page.locator('[data-dsh-frame][data-workbench-primary]').first()
+      const productWorkbench = page.locator('[data-product-workbench]').first()
+      const coreSurface = productWorkbench.locator('[data-workbench-surface="core"]')
+      const contentSurface = productWorkbench.locator('[data-workbench-surface="content"]')
+      const oilSidebar = page.locator('[data-plugin="dsh-oil-creator"][data-surface="sidebar"]')
+      await frame.waitFor({ timeout: 15_000 })
+      await coreSurface.waitFor({ state: 'visible', timeout: 15_000 })
+      expect(await coreSurface.getAttribute('hidden')).toBe(null)
+      expect(await contentSurface.getAttribute('hidden')).toBe('')
+      expect(await contentSurface.getAttribute('inert')).toBe('')
+
+      await oilSidebar.getByRole('tab', { name: 'Library', exact: true }).click()
+      await oilSidebar.getByText(EPISODE_TITLE, { exact: true }).click()
+      const creatorInspector = contentSurface.locator('[data-plugin="dsh-oil-creator"][data-surface="inspector"]')
+      await creatorInspector.waitFor({ state: 'visible', timeout: 15_000 })
+      expect(await contentSurface.getAttribute('hidden')).toBe(null)
+      expect(await coreSurface.getAttribute('hidden')).toBe('')
+      expect(await coreSurface.getAttribute('inert')).toBe('')
+
+      await openSyntheticWorkbench(page, 'background')
+      await creatorInspector.waitFor({ state: 'visible' })
+      expect(await productWorkbench.getAttribute('data-mode')).toBe('content')
+      const contentSnapshot = await captureStableAria(
+        page,
+        '[data-workbench-surface="content"] [data-plugin="dsh-oil-creator"] > header',
+        scaffold!.workspaceCwd,
+      )
+
+      await productWorkbench.locator('.dpw-workbench-session-collapse').click()
+      await expect.poll(() => frame.getAttribute('data-session-region-collapsed')).toBe('true')
+      expect(await frame.locator('#dsh-session-region').getAttribute('aria-hidden')).toBe('true')
+      const currentAgent = scaffold!.ctx.agents.list().at(-1)
+      if (currentAgent === undefined) throw new Error('connected workspace created no current Agent')
+      const settled = scaffold!.whenTurnSettled()
+      currentAgent.followup(createUserMessage({
+        content: [{ type: 'text', text: 'Synthetic current-Session attention.' }],
+        source: { kind: 'user' },
+      }))
+      await settled
+      await expect.poll(() => frame.getAttribute('data-session-region-collapsed'), { timeout: 15_000 }).toBe(null)
+      await creatorInspector.waitFor({ state: 'visible' })
+
+      await productWorkbench.locator('.dpw-workbench-session-collapse').click()
+      const restore = productWorkbench.getByRole('button', { name: 'Open Conversation', exact: true })
+      await restore.waitFor({ state: 'visible', timeout: 10_000 })
+      await restore.click()
+      await expect.poll(() => frame.getAttribute('data-session-region-collapsed')).toBe(null)
+
+      await creatorInspector.getByRole('button', { name: 'Close', exact: true }).click()
+      await coreSurface.waitFor({ state: 'visible', timeout: 10_000 })
+      await oilSidebar.getByRole('tab', { name: 'Library', exact: true }).click()
+      await oilSidebar.getByText(EPISODE_TITLE, { exact: true }).click()
+      await creatorInspector.waitFor({ state: 'visible', timeout: 10_000 })
+      await openSyntheticWorkbench(page, 'user')
+      await coreSurface.waitFor({ state: 'visible', timeout: 10_000 })
+      await coreSurface.getByRole('region', { name: 'Synthetic Better Sidebar content' }).waitFor()
+      expect(await productWorkbench.getAttribute('data-mode')).toBe('core')
+      const coreSnapshot = await captureStableAria(
+        page,
+        '[data-workbench-surface="core"] [aria-label="Synthetic Better Sidebar content"]',
+        scaffold!.workspaceCwd,
+      )
+
+      await oilSidebar.getByRole('tab', { name: 'Library', exact: true }).click()
+      await oilSidebar.getByText(EPISODE_TITLE, { exact: true }).click()
+      await creatorInspector.waitFor({ state: 'visible', timeout: 10_000 })
+      await productWorkbench.locator('.dpw-workbench-session-collapse').click()
+      await oilSidebar.getByRole('button', { name: 'New session', exact: true }).first().click()
+      await expect.poll(() => frame.getAttribute('data-session-region-collapsed'), { timeout: 15_000 }).toBe(null)
+      await coreSurface.waitFor({ state: 'visible', timeout: 10_000 })
+      expect(await productWorkbench.getAttribute('data-mode')).toBe('core')
+
+      await compareOrRefreshGolden(
+        join(EXPECTED, 'workbench-en.expected.md'),
+        `## Content after a background Better Sidebar open\n\n${contentSnapshot}\n\n## Core after an explicit user open\n\n${coreSnapshot}`,
+        MODE,
+      )
+      await assertFixtureInventory(EXPECTED, [
+        'branding-en.expected.md',
+        'branding-zh.expected.md',
+        'en-failure.expected.md',
+        'en.expected.md',
+        'workbench-en.expected.md',
+        'zh-failure.expected.md',
+        'zh.expected.md',
+      ])
+      expect(tripwire.pageErrors).toEqual([])
+      expect(tripwire.warnings).toEqual([])
+    } finally {
+      await context.close()
+    }
+  }, 120_000)
 
   it.each(['en', 'zh'] as const)('opens guides and recovers from native failure in %s', async (language) => {
     const context = await browser!.newContext({ locale: language === 'zh' ? 'zh-CN' : 'en-US',

@@ -43,7 +43,7 @@ kind: "package-reference"
 | `push`（默认） | 面板宽度：会话区让出空间 | 在轨道内；它的左缘与会话区的右缘沿框架自己的曲线一起移动 |
 | `fullscreen` | 保留宽屏普通轨道；窄屏自动全屏不占轨道 | 覆盖整个窗口 |
 
-席位通过 `ctx.layout.openRightbar(track, fullscreen)` / `closeRightbar()` 报告呈现，框架不注入本包。宽屏切换全屏不改变中栏宽度；宽度拖拽区只在普通展开态显示。独立浮窗及 `float`/`dock` 操作保持可用。
+席位通过 `ctx.layout.openRightbar(track, fullscreen)` / `closeRightbar()` 报告自己的呈现，框架不注入本包。框架的聚合 `visible` owner prop 可以屏蔽停靠面板与浮窗宿主，而不改变该报告、每会话展开状态或已挂载 tab 内容；恢复后会显示同一呈现。宽屏切换全屏不改变中栏宽度；宽度拖拽区只在普通展开态显示。独立浮窗及 `float`/`dock` 操作保持可用。
 
 面板没有标题行。它的两个控件——形态切换与折叠按钮——搭在套件 chrome 席位上，位于右上格 tab 条的最末端，因此 tab 条就是面板的整条上边。每条 tab 条从左到右读作：在允许时带关闭按钮的 tab 胶囊，添加控件（只在该格没有引导 tab 时绘制；它通过 `ctx.sidebarRight.openTab` 在该格打开引导页），该格的分栏控件，以及右上格里的两个面板控件。窄格里只有 chip 让位；其后的控件从不收缩或被裁切。
 

@@ -13,7 +13,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
+import { delimiter, dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { gunzipSync } from 'node:zlib'
 import semver from 'semver'
@@ -50,7 +50,7 @@ const commonPluginFields = new Set([
 ])
 const kindPluginFields = {
   'npm-latest': new Set(),
-  'github-branch': new Set(['repository', 'branch', 'build']),
+  'github-branch': new Set(['repository', 'branch', 'build', 'sourcePatches']),
   'github-release-pair': new Set([
     'repository',
     'sourcePath',
@@ -207,6 +207,25 @@ function validateVersionedPackageLists(value, label, itemDescription) {
   }
 }
 
+function validateSourcePatches(value, label, selectedProductRoot) {
+  if (value === undefined) return
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error(`${label} must contain at least one patch path`)
+  }
+  const unique = new Set(value)
+  if (unique.size !== value.length) throw new Error(`${label} must not contain duplicate patch paths`)
+  for (const [index, patch] of value.entries()) {
+    const relativePatch = validateSafeRelativePath(patch, `${label}[${index}]`, selectedProductRoot)
+    if (!relativePatch.startsWith('patches/')) {
+      throw new Error(`${label}[${index}] must be owned by the product patches directory`)
+    }
+    const patchPath = join(selectedProductRoot, relativePatch)
+    if (!existsSync(patchPath) || !lstatSync(patchPath).isFile()) {
+      throw new Error(`${label}[${index}] does not exist: ${relativePatch}`)
+    }
+  }
+}
+
 function pathsOverlap(left, right) {
   return left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`)
 }
@@ -272,6 +291,7 @@ export function validateProductUpdatePolicy(
       if (plugin.build !== undefined && plugin.build !== 'package-manager') {
         throw new Error(`${label}.build must be package-manager when present`)
       }
+      validateSourcePatches(plugin.sourcePatches, `${label}.sourcePatches`, selectedProductRoot)
     }
     else if (plugin.kind === 'github-release-pair') {
       validateGitHubRepository(plugin.repository, `${label}.repository`)
@@ -669,15 +689,56 @@ function copyDirectory(source, destination) {
   cpSync(source, destination, { recursive: true })
 }
 
-function buildGitHubBranchPackage(source) {
+export function githubBranchBuildScript(sourcePatches = []) {
+  return sourcePatches.length > 0 ? 'check' : 'build'
+}
+
+function buildGitHubBranchPackage(source, script = 'build') {
   const manifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
   if (typeof manifest.packageManager !== 'string' || !/^pnpm@\d+\.\d+\.\d+$/.test(manifest.packageManager)) {
     throw new Error(`GitHub branch package must pin an exact pnpm packageManager: ${manifest.name ?? source}`)
   }
-  run('corepack', [manifest.packageManager, 'install', '--frozen-lockfile', '--ignore-scripts'], {
-    cwd: source,
-  })
-  run('corepack', [manifest.packageManager, 'run', 'build'], { cwd: source })
+  const shimRoot = mkdtempSync(join(tmpdir(), 'yourbuddy-product-corepack-'))
+  try {
+    run('corepack', ['enable', '--install-directory', shimRoot])
+    const path = process.env.PATH === undefined ? shimRoot : `${shimRoot}${delimiter}${process.env.PATH}`
+    const env = {
+      ...process.env,
+      PATH: path,
+      npm_config_cache: join(shimRoot, 'npm-cache'),
+    }
+    run('corepack', [manifest.packageManager, 'install', '--frozen-lockfile', '--ignore-scripts'], {
+      cwd: source,
+      env,
+    })
+    run('corepack', [manifest.packageManager, 'run', script], { cwd: source, env })
+  }
+  finally {
+    rmSync(shimRoot, { recursive: true, force: true })
+  }
+}
+
+/**
+ * Read npm's final JSON array even when a package prepare script writes build progress to stdout.
+ *
+ * @param {string} output
+ * @returns {unknown}
+ */
+export function parseNpmPackRecords(output) {
+  try {
+    return JSON.parse(output)
+  }
+  catch {
+    for (let offset = output.lastIndexOf('\n['); offset >= 0; offset = output.lastIndexOf('\n[', offset - 1)) {
+      try {
+        return JSON.parse(output.slice(offset + 1))
+      }
+      catch {
+        // Earlier stdout may contain other bracket-prefixed build progress.
+      }
+    }
+    throw new Error('npm pack output does not end with a JSON array')
+  }
 }
 
 function npmPackSnapshot(source, workRoot) {
@@ -687,14 +748,18 @@ function npmPackSnapshot(source, workRoot) {
     'pack', '--ignore-scripts', '--json', '--pack-destination', packRoot,
   ], {
     cwd: source,
-    env: { ...process.env, npm_config_ignore_scripts: 'true' },
+    env: {
+      ...process.env,
+      npm_config_cache: join(workRoot, 'npm-cache'),
+      npm_config_ignore_scripts: 'true',
+    },
   })
   let records
   try {
-    records = JSON.parse(output)
+    records = parseNpmPackRecords(output)
   }
   catch {
-    throw new Error(`npm pack did not return JSON for ${source}`)
+    throw new Error(`npm pack did not return JSON for ${source}: ${output.slice(-2_000)}`)
   }
   if (!Array.isArray(records) || records.length !== 1 || typeof records[0].filename !== 'string') {
     throw new Error(`npm pack returned an unexpected artifact list for ${source}`)
@@ -740,7 +805,41 @@ function applyApprovedCompatibilityChanges(manifest, policy, recordedPatches = [
 }
 
 /**
- * Replay product-owned source and built-artifact edits onto a pristine downloaded snapshot.
+ * Apply policy-owned source patches before a GitHub package build.
+ * @param {string} checkout - Pristine extracted upstream source directory.
+ * @param {string} selectedProductRoot - Product directory that owns patch artifacts.
+ * @param {string[]} sourcePatches - Validated product-relative patch paths.
+ * @returns {Array<Record<string, string>>} Immutable provenance records for the applied patches.
+ */
+export function applySourcePatches(checkout, selectedProductRoot, sourcePatches = []) {
+  const records = sourcePatchRecords(selectedProductRoot, sourcePatches)
+  for (const record of records) {
+    const patchPath = join(selectedProductRoot, record.file)
+    run('git', ['apply', '--check', '--whitespace=error-all', patchPath], { cwd: checkout })
+    run('git', ['apply', '--whitespace=error-all', patchPath], { cwd: checkout })
+  }
+  return records
+}
+
+function sourcePatchRecords(selectedProductRoot, sourcePatches = []) {
+  return sourcePatches.map((file, index) => {
+    const relativePatch = validateSafeRelativePath(file, `sourcePatches[${index}]`, selectedProductRoot)
+    const patchPath = join(selectedProductRoot, relativePatch)
+    return {
+      id: `source-${policyPatchId(relativePatch)}`,
+      file: relativePatch,
+      sha256: createHash('sha256').update(readFileSync(patchPath)).digest('hex'),
+      purpose: 'Apply the reviewed YourBuddy source customization before building the published artifact.',
+    }
+  })
+}
+
+function policyPatchId(relativePatch) {
+  return posix.basename(relativePatch).replace(/\.patch$/u, '')
+}
+
+/**
+ * Replay product-owned built-artifact edits onto a pristine packed snapshot.
  * @param {string} staged - Extracted upstream package directory.
  * @param {string} selectedProductRoot - Product directory that owns patch artifacts.
  * @param {unknown[]} recordedPatches - Provenance entries from the current snapshot.
@@ -761,8 +860,8 @@ export function applyRecordedMaterializedPatches(staged, selectedProductRoot, re
     if (actualSha256 !== patch.sha256) {
       throw new Error(`recorded patch ${patch.id ?? relativePatch} sha256 mismatch`)
     }
-    run('git', ['apply', '--check', '--whitespace=nowarn', patchPath], { cwd: staged })
-    run('git', ['apply', '--whitespace=nowarn', patchPath], { cwd: staged })
+    run('git', ['apply', '--check', '--whitespace=error-all', patchPath], { cwd: staged })
+    run('git', ['apply', '--whitespace=error-all', patchPath], { cwd: staged })
   }
 }
 
@@ -864,7 +963,12 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
   const current = readCurrent(destination)
   verifyManagedSnapshot(destination, current.manifest)
   const latest = await resolveGitHubBranch(policy.repository, policy.branch, fetchImpl)
-  if (current.provenance?.commit === latest.commit) {
+  const desiredSourcePatches = sourcePatchRecords(roots.productRoot, policy.sourcePatches ?? [])
+  const recordedSourcePatches = Array.isArray(current.provenance?.sourcePatches)
+    ? current.provenance.sourcePatches
+    : []
+  const sourcePatchesChanged = JSON.stringify(recordedSourcePatches) !== JSON.stringify(desiredSourcePatches)
+  if (current.provenance?.commit === latest.commit && !sourcePatchesChanged) {
     const work = join(roots.stagingRoot, policy.id)
     const staged = join(work, 'staged')
     copyDirectory(destination, staged)
@@ -898,15 +1002,30 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
   const work = join(roots.stagingRoot, policy.id)
   mkdirSync(work, { recursive: true })
   const checkout = singleExtractedDirectory(extractArchive(bytes, work))
-  if (policy.build === 'package-manager') buildGitHubBranchPackage(checkout)
-  const packageRoot = npmPackSnapshot(checkout, work)
+  let upstreamTreeSha256
+  if (desiredSourcePatches.length > 0 && current.provenance?.commit !== latest.commit) {
+    if (policy.build === 'package-manager') buildGitHubBranchPackage(checkout)
+    const upstreamPackage = npmPackSnapshot(checkout, join(work, 'upstream'))
+    upstreamTreeSha256 = hashExternalSnapshot(upstreamPackage)
+  }
+  else if (desiredSourcePatches.length > 0) {
+    upstreamTreeSha256 = current.provenance?.upstreamTreeSha256
+  }
+  const sourcePatches = applySourcePatches(checkout, roots.productRoot, policy.sourcePatches ?? [])
+  if (policy.build === 'package-manager') {
+    buildGitHubBranchPackage(checkout, githubBranchBuildScript(sourcePatches))
+  }
+  const packageRoot = npmPackSnapshot(checkout, join(work, 'product'))
   const staged = join(work, 'staged')
   copyDirectory(packageRoot, staged)
-  const upstreamTreeSha256 = hashExternalSnapshot(staged)
+  upstreamTreeSha256 ??= hashExternalSnapshot(staged)
+  const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+  applyRecordedMaterializedPatches(staged, roots.productRoot, recordedPatches)
   const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
   assertNoDowngrade(policy.package, current.manifest.version, manifest.version)
-  const patches = applyApprovedCompatibilityChanges(manifest, policy)
-  writeManifestIfChanged(staged, manifest, patches)
+  const compatibilityPatches = applyApprovedCompatibilityChanges(manifest, policy, recordedPatches)
+  const patches = mergeRecordedPatches(recordedPatches, compatibilityPatches)
+  writeManifestIfChanged(staged, manifest, compatibilityPatches)
   validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
   writeProvenance(staged, {
     package: manifest.name,
@@ -921,6 +1040,7 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
       ? 'exact package-manager build followed by npm pack file selection from the pinned GitHub commit'
       : 'npm pack file selection from the pinned GitHub commit with lifecycle scripts disabled',
     upstreamTreeSha256,
+    sourcePatches,
     patches,
     repository: `https://github.com/${policy.repository}`,
     license: manifest.license,

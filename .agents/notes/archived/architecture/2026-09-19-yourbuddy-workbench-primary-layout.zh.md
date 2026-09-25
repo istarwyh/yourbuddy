@@ -1,6 +1,7 @@
 # Agent Note: YourBuddy 工作台主区域布局
 
 Status: implemented
+Archived: 2026-09-25
 
 [English](2026-09-19-yourbuddy-workbench-primary-layout.md) | 中文
 

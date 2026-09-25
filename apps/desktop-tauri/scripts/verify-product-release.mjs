@@ -32,6 +32,7 @@ const desktopShellSource = readFileSync(join(desktopRoot, 'shell.html'), 'utf8')
 const desktopI18nSource = readFileSync(join(desktopRoot, 'desktop-i18n.js'), 'utf8')
 const desktopAppIcon = readFileSync(join(desktopRoot, 'app-icon.png'))
 const desktopUpdateSmokeResult = 'Development build smoke does not check desktop updates'
+const creatorPublishSmokeTitle = '发布验收样例'
 const desktopProxySystemSettings = {
   mode: 'system',
   httpProxy: '',
@@ -698,7 +699,13 @@ async function runBrowserSmoke(baseUrl, env) {
       env,
       executablePath: installedChromiumExecutable,
     })
-    const context = await browser.newContext({ viewport: { width: 1680, height: 1000 }, locale: 'en-US' })
+    const releaseVideoDir = process.env.YOURBUDDY_RELEASE_VIDEO_DIR
+    if (releaseVideoDir) mkdirSync(releaseVideoDir, { recursive: true })
+    const context = await browser.newContext({
+      viewport: { width: 1680, height: 1000 },
+      locale: 'en-US',
+      ...(releaseVideoDir ? { recordVideo: { dir: releaseVideoDir, size: { width: 1344, height: 800 } } } : {}),
+    })
     const page = await context.newPage()
     await page.addInitScript(() => {
       window.__YOURBUDDY_COPIED_LINKS__ = []
@@ -941,6 +948,22 @@ async function runBrowserSmoke(baseUrl, env) {
     if (workbenchTracks.length !== 4) {
       throw new Error(`YourBuddy workbench-primary layout rendered ${workbenchTracks.length} tracks: ${workbenchTracks.join(' ')}`)
     }
+    const productWorkbench = embedded.locator('[data-product-workbench]').first()
+    await productWorkbench.waitFor({ state: 'visible', timeout: 10_000 })
+    const coreSurface = productWorkbench.locator('[data-workbench-surface="core"]')
+    const contentSurface = productWorkbench.locator('[data-workbench-surface="content"]')
+    if (await coreSurface.getAttribute('hidden') !== null || await coreSurface.getAttribute('inert') !== null) {
+      throw new Error('YourBuddy core workbench did not start as the interactive middle surface')
+    }
+    if (await contentSurface.getAttribute('hidden') === null || await contentSurface.getAttribute('inert') === null) {
+      throw new Error('YourBuddy Content workbench did not remain mounted and inactive by default')
+    }
+    const creatorInspector = contentSurface.locator('[data-plugin="dsh-oil-creator"][data-surface="inspector"]')
+    await embedded.getByRole('tab', { name: 'Library', exact: true }).click()
+    await embedded.getByText(creatorPublishSmokeTitle, { exact: true }).click()
+    await creatorInspector.waitFor({ state: 'visible', timeout: 10_000 })
+    await creatorInspector.locator('button.close').last().click()
+    await coreSurface.waitFor({ state: 'visible', timeout: 10_000 })
     const betterSidebarHost = embedded.locator('[data-dsh-panel-host][data-dsh-presentation="slot"]').first()
     const betterSidebarWorkbench = betterSidebarHost.locator('[data-dsh-bottom-panel]').first()
     await betterSidebarWorkbench.waitFor({ state: 'visible', timeout: 10_000 })
@@ -957,6 +980,34 @@ async function runBrowserSmoke(baseUrl, env) {
     if (Math.abs(workbenchGeometry.host.width - workbenchGeometry.panel.width) > 2
       || Math.abs(workbenchGeometry.host.height - workbenchGeometry.panel.height) > 2) {
       throw new Error(`Better Sidebar did not fill the primary workbench slot: ${JSON.stringify(workbenchGeometry)}`)
+    }
+    const newTabControl = coreSurface.getByRole('button', { name: 'New tab', exact: true }).first()
+    await newTabControl.click()
+    await embedded.getByRole('menu').last().waitFor({ state: 'visible', timeout: 10_000 })
+    await page.keyboard.press('Escape')
+    if (releaseVideoDir) await page.waitForTimeout(700)
+    await workbenchFrame.locator('.dpw-workbench-session-collapse').click()
+    await workbenchFrame.locator('.dpw-session-restore').waitFor({ state: 'visible', timeout: 10_000 })
+    if (releaseVideoDir) await page.waitForTimeout(1_000)
+    const collapsedTracks = await workbenchFrame.evaluate(element => ({
+      collapsed: element.hasAttribute('data-session-region-collapsed'),
+      tracks: getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/u),
+      rightbarHidden: element.querySelector('[data-sidebar-right-panel]')?.getAttribute('aria-hidden'),
+      conversationHidden: element.children[3]?.getAttribute('aria-hidden'),
+    }))
+    if (!collapsedTracks.collapsed
+      || collapsedTracks.tracks.length !== 4
+      || Number.parseFloat(collapsedTracks.tracks[2]) !== 0
+      || Number.parseFloat(collapsedTracks.tracks[3]) !== 0
+      || collapsedTracks.rightbarHidden !== 'true'
+      || collapsedTracks.conversationHidden !== 'true') {
+      throw new Error(`YourBuddy Session collapse did not produce two hidden zero tracks: ${JSON.stringify(collapsedTracks)}`)
+    }
+    await workbenchFrame.locator('.dpw-session-restore').click()
+    await workbenchFrame.locator('.dpw-workbench-session-collapse').waitFor({ state: 'visible', timeout: 10_000 })
+    if (releaseVideoDir) await page.waitForTimeout(1_000)
+    if (await workbenchFrame.getAttribute('data-session-region-collapsed') !== null) {
+      throw new Error('YourBuddy Session restore left the aggregate region collapsed')
     }
     const releaseScreenshot = process.env.YOURBUDDY_RELEASE_SCREENSHOT
     if (releaseScreenshot) {
@@ -1302,6 +1353,14 @@ export async function apply() {
 `)
   writeFileSync(overlay, buildProductSmokeOverlay(world, productRuntimeRoot, proxyVerifier))
   const env = createReleaseChildEnvironment(world, productRuntimeRoot)
+  const creatorEpisode = join(env.HOME, 'Movies', '视频项目', `2026-09-30_${creatorPublishSmokeTitle}`)
+  mkdirSync(creatorEpisode, { recursive: true })
+  writeFileSync(join(creatorEpisode, `${creatorPublishSmokeTitle}_subtitled.mp4`), 'release-smoke-video')
+  writeFileSync(join(creatorEpisode, `${creatorPublishSmokeTitle}.srt`), '1\n00:00:00,000 --> 00:00:01,000\n发布验收\n')
+  const cover = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64')
+  writeFileSync(join(creatorEpisode, `${creatorPublishSmokeTitle}_3x4.png`), cover)
+  writeFileSync(join(creatorEpisode, `${creatorPublishSmokeTitle}_4x3.png`), cover)
+  writeFileSync(join(creatorEpisode, 'publish-package.json'), `${JSON.stringify({ title: creatorPublishSmokeTitle, tags: ['验收'] }, null, 2)}\n`)
   const hostEnv = {
     ...env,
     HTTP_PROXY: syntheticHostProxy,

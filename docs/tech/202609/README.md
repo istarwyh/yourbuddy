@@ -14,7 +14,7 @@ Read the [documentation, website, and in-app Help plan](implementation-plan.md) 
 
 Read the [workbench layout compatibility and provenance plan](workbench-layout-compatibility.md) for the implemented desktop workbench/conversation placement, the DSH and Better Sidebar extension split, reproducible product patches, upgrade workflows, and acceptance criteria.
 
-Read the proposed [three-column workspace layout](three-column-workspace-layout.md) for independent Navigation, Primary, and Session collapse; keyed Better Sidebar and Content Workbench switching; responsive restoration; migration; and verification.
+Read the proposed [Better Sidebar-centered creator workbench architecture](creator-workbench-core-layout.md) for keeping Better Sidebar as the durable middle workbench, temporarily replacing its visible surface with selected Content details, collapsing the aggregate rightbar and Conversation region, reopening it for Agent input or completion, and preserving upstream-aligned package boundaries.
 
 | Area | Deliverable |
 |---|---|

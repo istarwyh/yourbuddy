@@ -59,6 +59,8 @@ DSH 策略选择最高的官方正式 Release；仅在没有正式 Release 时�
 
 Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改上游输入。新推送的 Tag 会解析 DSH 策略；已提交的源码、来源记录或祖先关系过期时拒绝发布。手工 Workflow Dispatch 只用于在失败后重试尚未发布的已有 Tag；它会跳过实时新鲜度检查，并只消费该 Tag 已提交的快照与冻结 Lockfile。若该 Tag 已经存在 GitHub Release，流水线会拒绝继续，因此修正已发布字节时必须发布新版本，不能替换安装包。
 
+发布输入、版本归档与针对性变更检查完成并提交后，`pnpm release:yourbuddy -- X.Y.Z` 会重新运行桌面发布测试、完整发布准备、文档检查和使用生产 Base URL 的官网构建。它要求干净的 `master` 能快进 `origin/master`，拒绝已经存在的远端 Tag，只创建或复用指向同一 Commit 的 Annotated Tag，并把 `master` 与 `yourbuddy-vX.Y.Z` 原子推送。桌面产物仍只由 Tag Workflow 发布。
+
 ## 发布文档与官网
 
 每次发布使用 [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md)准备[版本归档](../../docs/releases/README.zh.md)。核验公开桌面产物后，完成[产品官网同步](../../docs/product-website.zh.md#release-synchronization)，并将官网部署与线上检查独立于安装包发布记录。官网失败不影响已发布的桌面产物，但仍是待完成交付项。
@@ -79,6 +81,7 @@ pnpm --dir apps/desktop-tauri run sync:dsh -- --dry-run
 pnpm --dir apps/desktop-tauri run prepare:release
 pnpm --dir apps/desktop-tauri run prepare:product-runtime
 pnpm --dir apps/desktop-tauri run build
+pnpm release:yourbuddy -- X.Y.Z
 ```
 
 当前目标固定为 `aarch64-apple-darwin`；发布流水线有意不包含 Windows、Intel macOS 或 Linux 矩阵。

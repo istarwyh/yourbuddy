@@ -68,8 +68,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'main': { kind: 'keyed'; scope: 'root' }
     /**
      * Optional root-scoped workbench. When occupied, AppFrame makes it the
-     * desktop primary region and moves the selected main content to a resizable
-     * auxiliary column. Narrow viewports render it through the frame overlay.
+     * primary region and moves the selected main content into an aggregate,
+     * resizable auxiliary region with the rightbar. On narrow viewports an
+     * expanded auxiliary region keeps main content primary and overlays this seat.
      */
     'workbench': { kind: 'single'; scope: 'root'; owner: WorkbenchOwnerProps }
     /**
@@ -121,6 +122,8 @@ export interface WorkbenchOwnerProps {}
 export interface RightbarOwnerProps {
   /** Resolved normal panel width in px, not the saved preference; zero if it cannot fit. */
   width: number
+  /** Whether the aggregate auxiliary region currently exposes the rightbar. */
+  visible: boolean
   /** Current frame width in px. */
   viewportWidth: number
   /**

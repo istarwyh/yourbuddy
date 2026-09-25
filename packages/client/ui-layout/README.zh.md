@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包提供 Web GUI 的 AppFrame、边缘栏宽度与 `ctx.layout` 呈现控制。常规布局包含侧栏、主内容和右栏。可选的 root 作用域 `workbench` 占用方会成为可伸缩的桌面主界面，并把选中的主内容移入可调整大小的辅助栏；窗口低于768px时，主内容仍为主界面，工作台通过 overlay 呈现。主题呈现器负责配色、别名 token、正文字号与 document 元数据。
+本包提供 Web GUI 的 AppFrame、边缘栏宽度与 `ctx.layout` 呈现控制。常规布局包含侧栏、主内容和右栏。可选的 root 作用域 `workbench` 占用方会成为可伸缩的主界面，并控制一个包含选中主内容与右栏的辅助区域；窗口低于768px且该区域展开时，主内容仍为主界面，工作台通过 overlay 呈现。主题呈现器负责配色、别名 token、正文字号与 document 元数据。
 
 ## 目录
 
@@ -27,7 +27,7 @@ kind: "package-reference"
 
 本插件在 root slot 组合侧栏、中央内容与右栏。左栏为264～420px，默认280px，收起后保留56px；窗口低于1024px时自动收起，打开右栏也会收起手动展开的左栏。右栏首次打开使用窗口宽度的45%，之后保留用户像素偏好，上限为70%；中栏不足400px时先把右栏压到300px，仍不足则通知占用方收起，最后才继续压缩中栏。拖拽跟手且无过渡延迟，关闭或全屏时不显示右栏拖拽区。
 
-全局面板占据 root 作用域的 `main` keyed slot；`conversation` 是为会话界面保留的 key。`ctx.layout.selectPanel(id)` 选中已注册面板，`null` 则选中会话界面，但不改变当前会话。默认组合不注册任何全局面板。工作台插件占据 `workbench`，并通过 `ctx.layout` 注册一个共享宽度绑定；AppFrame 持有辅助栏拖拽手柄，插件持有宽度持久化。
+全局面板占据 root 作用域的 `main` keyed slot；`conversation` 是为会话界面保留的 key。`ctx.layout.selectPanel(id)` 选中已注册面板，`null` 则选中会话界面，但不改变当前会话。默认组合不注册任何全局面板。工作台插件占据 `workbench`，并通过 `ctx.layout` 注册共享的 `{ width, expanded, reserveRightbar }` 状态。AppFrame 持有辅助区域拖拽手柄，并在收起时把两个辅助轨道都屏蔽为零；插件持有持久化与恢复控件。
 
 ### 主题呈现
 
@@ -43,7 +43,7 @@ kind: "package-reference"
 
 `selectPanel(id)` 在改变选中态前检查实时 `main` 注册表；缺失的 key 会抛错并保留当前面板。`beginNavigation()` 为异步 UI 导航返回 abort signal。后续调用、有效面板选择（包括重复选择）或布局释放会中止该 signal，但不取消底层会话创建。消费者在提交导航或搬移草稿前检查 signal。
 
-一次注册声明五个子slot并绑定 `ctx.layout` 的 `selectPanel`、`toggleSidebar`、`openRightbar(track, fullscreen)`、`closeRightbar` 与 `registerWorkbench`。`registerWorkbench()` 安装一个受生命周期约束的宽度绑定；它的 disposer 会恢复常规主内容布局。同一个 root 存储把 `panelInfo` 选中态与 `layoutInfo` 测量、宽度偏好、呈现报告分开。`usePanelInfo` 订阅引用稳定的选中态对象，AppFrame 订阅引用稳定的布局对象。`rightbar` 的owner参数为实际 `width`、`viewportWidth` 与普通呈现的 `canShow`；占用方在空间不足时执行确定性的收起，变宽不自行重新展开。全屏隐藏宽度手柄，但不自行释放占用方要求保留的轨道。AppFrame 保持各列容器挂载。右栏的 root 控制器仅在选中会话界面时，经 `SessionProvider` 渲染 `rightbar.session`；内容卸载时的报告释放列宽。独立的标题组件仅在会话界面可见时使用所选会话标题，以构建配置的产品标题或本地化 `common.brand.localBuild` 为回退值；语言变化会更新该回退值。主题呈现器是第二个 effect：从解析后的快照做纯 DOM 写入——初始状态经 getter 读取一次，此后仅事件驱动，不经过 React。它先应用调色板、字号与 token 变量，再把渲染出的背景测量为唯一的颜色依据。 全屏呈现禁用网格和手柄过渡；占用方完全覆盖框架后才报告新的列宽。 退出全屏时，框架先保持无过渡并安装目标布局：关闭移除右轨道，恢复保留右轨道。后续普通几何操作恢复正常过渡。
+一次注册声明五个子slot并绑定 `ctx.layout` 的 `selectPanel`、`toggleSidebar`、`openRightbar(track, fullscreen)`、`closeRightbar` 与 `registerWorkbench`。`registerWorkbench()` 安装一个受生命周期约束的辅助区域绑定；它的 disposer 会恢复常规主内容布局。同一个 root 存储把 `panelInfo` 选中态与 `layoutInfo` 测量、宽度偏好、呈现报告分开。`usePanelInfo` 订阅引用稳定的选中态对象，AppFrame 订阅引用稳定的布局对象。`rightbar` 的owner参数为实际 `width`、聚合区域 `visible`、`viewportWidth` 与普通呈现的 `canShow`；聚合区域隐藏不会被当作空间不足而收起。AppFrame 使用保存的正辅助宽度计算恢复后的预期几何，在收起时把右栏与主内容轨道都屏蔽为零，同时保持两棵子树挂载且不可交互，并在恢复时还原先前状态。如果收起操作隐藏了辅助区域内当前拥有焦点的控件，AppFrame 会把焦点移动到可见的恢复控件；该控件的 `aria-controls` 指向会话区域，且 `aria-expanded` 为 false。窄屏收起时工作台成为主界面；展开则恢复主内容优先的 overlay 布局。全屏隐藏宽度手柄，但不自行释放占用方要求保留的轨道。右栏的 root 控制器仅在选中会话界面时，经 `SessionProvider` 渲染 `rightbar.session`；内容卸载时的报告释放列宽。独立的标题组件仅在会话界面可见时使用所选会话标题，以构建配置的产品标题或本地化 `common.brand.localBuild` 为回退值；语言变化会更新该回退值。主题呈现器是第二个 effect：从解析后的快照做纯 DOM 写入——初始状态经 getter 读取一次，此后仅事件驱动，不经过 React。它先应用调色板、字号与 token 变量，再把渲染出的背景测量为唯一的颜色依据。全屏呈现禁用网格和手柄过渡；占用方完全覆盖框架后才报告新的列宽。退出全屏时，框架先保持无过渡并安装目标布局：关闭移除右轨道，恢复保留右轨道。后续普通几何操作恢复正常过渡。
 
 </details>
 

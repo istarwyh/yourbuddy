@@ -105,12 +105,14 @@ describe('LayoutController', () => {
   it('projects one workbench binding and releases it with the registration', () => {
     const service = new LayoutController(fakePanels(), () => true)
     let width = 400
+    let expanded = true
+    let reserveRightbar = true
     let publish = (): void => {}
     const changed = vi.fn()
     const unsubscribe = service.subscribeWorkbench(changed)
 
     const dispose = service.registerWorkbench({
-      getSnapshot: () => ({ width }),
+      getSnapshot: () => ({ width, expanded, reserveRightbar }),
       subscribe: (listener) => {
         publish = listener
         return () => { publish = () => {} }
@@ -118,19 +120,31 @@ describe('LayoutController', () => {
       setWidth: (next) => { width = next; publish() },
     })
 
-    expect(service.getWorkbenchSnapshot()).toEqual({ present: true, width: 400 })
+    expect(service.getWorkbenchSnapshot()).toEqual({
+      present: true, width: 400, expanded: true, reserveRightbar: true,
+    })
     service.setWorkbenchWidth(460)
-    expect(service.getWorkbenchSnapshot()).toEqual({ present: true, width: 460 })
-    expect(changed).toHaveBeenCalledTimes(2)
+    expect(service.getWorkbenchSnapshot()).toEqual({
+      present: true, width: 460, expanded: true, reserveRightbar: true,
+    })
+    expanded = false
+    reserveRightbar = false
+    publish()
+    expect(service.getWorkbenchSnapshot()).toEqual({
+      present: true, width: 460, expanded: false, reserveRightbar: false,
+    })
+    expect(changed).toHaveBeenCalledTimes(3)
 
     expect(() => service.registerWorkbench({
-      getSnapshot: () => ({ width: 320 }),
+      getSnapshot: () => ({ width: 320, expanded: true, reserveRightbar: true }),
       subscribe: () => () => {},
       setWidth: () => {},
     })).toThrow(/workbench already registered/)
 
     dispose()
-    expect(service.getWorkbenchSnapshot()).toEqual({ present: false, width: 0 })
+    expect(service.getWorkbenchSnapshot()).toEqual({
+      present: false, width: 0, expanded: false, reserveRightbar: false,
+    })
     service.setWorkbenchWidth(520)
     expect(width).toBe(460)
     unsubscribe()

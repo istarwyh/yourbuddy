@@ -1,6 +1,7 @@
 # Agent Note: YourBuddy workbench-primary layout
 
 Status: implemented
+Archived: 2026-09-25
 
 English | [中文](2026-09-19-yourbuddy-workbench-primary-layout.zh.md)
 

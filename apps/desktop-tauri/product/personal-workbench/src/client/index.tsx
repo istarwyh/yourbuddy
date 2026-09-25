@@ -3,7 +3,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
@@ -24,6 +26,7 @@ import { WindowControls } from './WindowControls.tsx'
 import { installDesktopExternalLinks } from './desktop-external-links.ts'
 import { en, zh, type PersonalWorkbenchKey } from './locales.ts'
 import { installPersonalWorkbenchStyles } from './styles.ts'
+import { installProductWorkbench } from './workbench.tsx'
 import productLogo from '../../../../app-icon.svg'
 
 export {
@@ -40,8 +43,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-/** Browser services required for settings persistence, localization, and slots. */
-export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope']
+/** Browser services required for product composition, settings, and localization. */
+export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope', 'layout', 'sessions', 'uiSession']
 
 type BrandSlot =
   | 'sidebar.brand.mark'
@@ -168,6 +171,7 @@ export function apply(ctx: Context): void {
 
   installPersonalBrandOccupants(ctx, scope)
   installDesktopWindowControls(ctx)
+  ctx.effect(() => installProductWorkbench(ctx), 'personal-workbench: product workbench coordinator')
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
     name: 'sidebar.footer.action',
     id: 'yourbuddy-help',

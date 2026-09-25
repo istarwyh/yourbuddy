@@ -64,7 +64,7 @@ async function boot() {
   }))
   await rt.mount({ inject: [...sidebarInject], apply: sidebarApply })
   await rt.mount({ inject: [...inject], apply })
-  const view = rt.renderSlot('rightbar', { width: 600, viewportWidth: 1440, canShow: true })
+  const view = rt.renderSlot('rightbar', { width: 600, visible: true, viewportWidth: 1440, canShow: true })
   const open = (name: string): void => {
     act(() => { rt.ctx.sidebarRight.openResource('dsh-resource://file/session/documents/' + name) })
   }

@@ -42,23 +42,10 @@ import './layout.css'
  *  service access without inject. The `remote.session` namespace is NOT here:
  *  it mounts asynchronously, so the open-path interception reaches it through
  *  `ctx.inject` (see intercept.tsx). */
-export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection', 'layout']
+export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection']
 
-const WORKBENCH_WIDTH_KEY = 'dsh-sidebar:v1:width'
-const WORKBENCH_WIDTH_MIN = 280
-const WORKBENCH_WIDTH_MAX = 640
-const WORKBENCH_WIDTH_DEFAULT = 400
-
-function initialWorkbenchWidth(): number {
-  try {
-    const stored = Number(localStorage.getItem(WORKBENCH_WIDTH_KEY))
-    if (Number.isFinite(stored) && stored > 0) {
-      return Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, stored))
-    }
-  } catch {
-    // Storage is optional; the in-memory preference remains available.
-  }
-  return WORKBENCH_WIDTH_DEFAULT
+interface ProductWorkbenchFace {
+  handleBetterSidebarOpen(intent: 'user' | 'background'): void
 }
 
 /**
@@ -153,24 +140,18 @@ export function apply(ctx: Context): void {
   // registrations (the official createXXXStore() factory rule — no
   // module-level singleton).
   const sidebarStore = createSidebarStore()
-  let workbenchWidth = initialWorkbenchWidth()
-  const workbenchWidthListeners = new Set<() => void>()
-  const setWorkbenchWidth = (width: number): void => {
-    const next = Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, width))
-    if (next === workbenchWidth) return
-    workbenchWidth = next
-    try {
-      localStorage.setItem(WORKBENCH_WIDTH_KEY, String(next))
-    } catch {
-      // Storage is optional; subscribers still receive the in-memory preference.
-    }
-    for (const listener of workbenchWidthListeners) listener()
-  }
+  let slotPresentationActive = false
   // The sidebar registry service: external plugins register tab types and
   // file previewers through `ctx.betterSidebar.registerTab/registerFileViewer`.
   // Published before the panel mounts so consumers injecting 'betterSidebar'
   // are ready by the time the sidebar renders.
-  const service = createBetterSidebarService(sidebarStore)
+  const service = createBetterSidebarService(sidebarStore, {
+    preferWorkbench: () => slotPresentationActive,
+    onOpenIntent: intent => {
+      const coordinator = ctx.get('yourBuddyWorkbench') as ProductWorkbenchFace | undefined
+      coordinator?.handleBetterSidebarOpen(intent)
+    },
+  })
   ctx.provide('betterSidebar', service)
   // The native right-Sidebar surface: the plugin's content is registered as
   // DSH tab types (one per descriptor) and every open routes there, so the
@@ -258,7 +239,6 @@ export function apply(ctx: Context): void {
       let host: HTMLDivElement | undefined
       let mountedPresentation: 'portal' | 'slot' | undefined
       let disposeSlot: (() => void) | undefined
-      let disposeLayout: (() => void) | undefined
       let bodyObserver: MutationObserver | undefined
       let hostCheckFrame: number | null = null
       const unmount = (): void => {
@@ -274,10 +254,9 @@ export function apply(ctx: Context): void {
         root = undefined
         host?.remove()
         host = undefined
-        disposeLayout?.()
-        disposeLayout = undefined
         disposeSlot?.()
         disposeSlot = undefined
+        slotPresentationActive = false
         document.body.removeAttribute('data-dsh-better-sidebar-presentation')
       }
       /** Re-attach the host if the page (a desktop shell wrapper, SPA
@@ -351,16 +330,9 @@ export function apply(ctx: Context): void {
               { className: css.boundaryError },
               createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'slot' }),
             )
-            disposeSlot = ctx.slots.inject('workbench', () =>
-              ctx.slots.register({ name: 'workbench' }, WorkbenchSlot))
-            disposeLayout = ctx.layout.registerWorkbench({
-              getSnapshot: () => ({ width: workbenchWidth }),
-              subscribe: (listener) => {
-                workbenchWidthListeners.add(listener)
-                return () => { workbenchWidthListeners.delete(listener) }
-              },
-              setWidth: setWorkbenchWidth,
-            })
+            slotPresentationActive = true
+            disposeSlot = ctx.slots.inject('workbench.core', () =>
+              ctx.slots.register({ name: 'workbench.core' }, WorkbenchSlot))
           } else {
             host = document.createElement('div')
             host.setAttribute('data-dsh-better-sidebar', '')

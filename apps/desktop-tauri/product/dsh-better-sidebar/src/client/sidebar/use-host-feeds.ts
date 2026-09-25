@@ -72,7 +72,11 @@ function activateTasksPage(ctx: Context, sessionId: string, options: { backgroun
     // Only a column the user had COLLAPSED is put back: an expanded one is in
     // use, and closing it under the user would be worse than the takeover.
     && column?.isExpanded?.() === false
-  ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent') })
+  ctx.get('betterSidebar')?.openTab({
+    type: 'subagent',
+    title: t('subagent'),
+    intent: options.background ? 'background' : 'user',
+  })
   if (park) column?.toggleExpanded?.()
 }
 
@@ -183,7 +187,7 @@ export function useHostFeeds(feeds: {
           const scope = { sessionId }
           const title = typeof request.title === 'string' && request.title !== '' ? request.title : undefined
           if (request.kind === 'url') {
-            ctx.get('betterSidebar')?.openTab({ type: 'browser', url: request.target, title }, scope)
+            ctx.get('betterSidebar')?.openTab({ type: 'browser', url: request.target, title, intent: 'background' }, scope)
           } else if (request.kind === 'folder') {
             ctx.get('betterSidebar')?.openTab({
               type: 'editor',
@@ -191,9 +195,10 @@ export function useHostFeeds(feeds: {
               path: request.target,
               id: `editor:${request.target}`,
               meta: { dir: true },
+              intent: 'background',
             }, scope)
           } else {
-            ctx.get('betterSidebar')?.openFile(scope, request.target, title)
+            ctx.get('betterSidebar')?.openFile(scope, request.target, title, 'background')
           }
         } catch {
           // Malformed push: ignore (the next push carries its own request).

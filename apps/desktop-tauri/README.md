@@ -59,6 +59,8 @@ Managed product paths must be clean by default. `pnpm --dir apps/desktop-tauri r
 
 Tagged CI and ordinary `prepare:dist` or `build` commands never mutate upstream inputs. A newly pushed tag resolves the DSH policy and refuses to publish when the committed source, provenance, or ancestry is stale. Manual workflow dispatch may retry an existing unpublished tag after a failed run; it skips the live freshness check and consumes only that tag's committed snapshots and frozen lockfile. The workflow refuses any tag that already has a GitHub Release, so correcting published bytes requires a new version instead of replacing an installer.
 
+After the release inputs, version archive, and targeted change checks are committed, `pnpm release:yourbuddy -- X.Y.Z` reruns the desktop release tests, complete release preparation, documentation checks, and production-base website build. It requires a clean `master` that fast-forwards `origin/master`, rejects an existing remote tag, creates or reuses only a same-commit annotated tag, and atomically pushes `master` with `yourbuddy-vX.Y.Z`. The tag workflow remains the only publisher of desktop artifacts.
+
 ## Release documentation and website
 
 Use [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md) to prepare the [version archive](../../docs/releases/README.md) with each release. After verifying the public desktop assets, complete [product website synchronization](../../docs/product-website.md#release-synchronization) and record its deployment and live checks separately from installer publication. A website failure leaves the desktop release intact and remains an outstanding delivery item.
@@ -79,6 +81,7 @@ pnpm --dir apps/desktop-tauri run sync:dsh -- --dry-run
 pnpm --dir apps/desktop-tauri run prepare:release
 pnpm --dir apps/desktop-tauri run prepare:product-runtime
 pnpm --dir apps/desktop-tauri run build
+pnpm release:yourbuddy -- X.Y.Z
 ```
 
 The current target is `aarch64-apple-darwin`; the release workflow intentionally has no Windows, Intel macOS, or Linux matrix rows.

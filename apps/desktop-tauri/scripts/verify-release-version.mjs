@@ -8,13 +8,14 @@ const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
  * Require every desktop version source and the optional release tag to name
  * one immutable artifact version.
  *
- * @param {{ packageVersion: string, tauriVersion: string, cargoVersion: string, notesVersion: string, iconVersion: string, tag?: string }} input
+ * @param {{ packageVersion: string, tauriVersion: string, cargoVersion: string, cargoLockVersion: string, notesVersion: string, iconVersion: string, tag?: string }} input
  */
 export function validateReleaseVersions(input) {
   const versions = [
     ['package.json', input.packageVersion],
     ['tauri.conf.json', input.tauriVersion],
     ['Cargo.toml', input.cargoVersion],
+    ['Cargo.lock', input.cargoLockVersion],
     ['release-notes.md', input.notesVersion],
     ['icon resource', input.iconVersion],
   ]
@@ -42,12 +43,18 @@ export function verifyReleaseVersion(tag) {
   const manifest = JSON.parse(readFileSync(join(desktopRoot, 'package.json'), 'utf8'))
   const tauri = JSON.parse(readFileSync(join(desktopRoot, 'src-tauri', 'tauri.conf.json'), 'utf8'))
   const cargo = readFileSync(join(desktopRoot, 'src-tauri', 'Cargo.toml'), 'utf8')
+  const cargoLock = readFileSync(join(desktopRoot, 'src-tauri', 'Cargo.lock'), 'utf8')
   const notes = readFileSync(join(desktopRoot, 'release-notes.md'), 'utf8')
   const iconDestination = tauri.bundle?.resources?.['icons/icon.ico'] ?? ''
   return validateReleaseVersions({
     packageVersion: manifest.version,
     tauriVersion: tauri.version,
     cargoVersion: capture(cargo, /^version\s*=\s*"([^"]+)"/m, 'Cargo.toml'),
+    cargoLockVersion: capture(
+      cargoLock,
+      /\[\[package\]\]\s+name\s*=\s*"yourbuddy"\s+version\s*=\s*"([^"]+)"/m,
+      'Cargo.lock',
+    ),
     notesVersion: capture(notes, /^# YourBuddy ([^\s]+)$/m, 'release-notes.md'),
     iconVersion: capture(iconDestination, /yourbuddy-icon-([^.]+\.[^.]+\.[^.]+)\.ico$/, 'icon resource'),
     ...(tag === undefined ? {} : { tag }),

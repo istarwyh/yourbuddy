@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
     var react = require("react");
     var h = react.createElement;
-    var PLUGIN_VERSION = "0.3.3";
+    var PLUGIN_VERSION = "0.3.4";
 
     // ── CSS (theme tokens) ────────────────────────────────────────────────
     var CSS = ".__mp_grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;padding:0;margin:0;list-style:none}" +

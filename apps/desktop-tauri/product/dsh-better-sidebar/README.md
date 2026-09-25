@@ -76,7 +76,7 @@ dsh plugin --profile web add dsh-better-sidebar@latest   # 重跑即成功
 
 装完**硬刷新浏览器**（Cmd/Ctrl+Shift+R）即可看到侧边栏（DSH 对 client 改动热加载，无需重启；仅 host 半更新时需要重启）。
 
-Host 配置接受 `presentation: portal | slot`。`portal` 是默认值，保留可展开的底部工作台。提供 DSH 可选 `workbench` Slot 的产品组合可以选择 `slot`；桌面宽度下，插件的 Split Pane 工作台始终填满该 Slot，不受底部面板展开状态影响，外层栏宽由 DSH Shell 管理。窄屏时，同一工作台回到 Overlay，并继续使用展开与折叠状态。
+Host 配置接受 `presentation: portal | slot`。`portal` 是默认值，保留可展开的底部工作台。产品组合可以选择 `slot`，并提供 `workbench.core` 子 Slot。此时 Better Sidebar 会保持挂载，成为产品的持久中间工作台；产品协调器负责外层几何布局，也可以让其他中间界面临时覆盖它。用户明确打开资源时会显示核心工作台；Agent 与 Feed 的后台打开只更新其状态，不会替换当前可见界面。
 
 **方式二：让 DSH 自己装**——把下面这段提示词发给任意一个 DSH 会话：
 

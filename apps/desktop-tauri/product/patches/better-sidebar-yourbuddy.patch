@@ -4467,7 +4467,7 @@ index 9504208..6a49435 100644
   *  panel re-runs the chain: a panel opened before the center column was
   *  ever found must not stay invisible forever). */
 -bottomOpen: boolean | undefined): {
-+bottomOpen: boolean | undefined, 
++bottomOpen: boolean | undefined,
 +/** Keep the bottom panel inside its slot host instead of spanning the app center. */
 +contained?: boolean): {
      centerColRef: import("react").MutableRefObject<HTMLElement | null>;

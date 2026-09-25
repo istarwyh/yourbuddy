@@ -121,6 +121,9 @@
       "repository": "oil-oil/dsh-oil-creator",
       "branch": "main",
       "build": "package-manager",
+      "sourcePatches": [
+        "patches/oil-creator-workbench-source.patch"
+      ],
       "package": "dsh-oil-creator",
       "destination": "oil-creator",
       "peerRemovals": {

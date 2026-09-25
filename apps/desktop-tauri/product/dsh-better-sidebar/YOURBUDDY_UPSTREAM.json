@@ -11,7 +11,7 @@
     {
       "id": "yourbuddy-workbench",
       "file": "patches/better-sidebar-yourbuddy.patch",
-      "sha256": "4b8ff8ddc574e328f77db183eeaf09d1f618d63acc226a460bade82a104a4c31",
+      "sha256": "6752b2cc8e5b3ac71ae6847f6b96f4beac1015a4313016472cadcb26a0cf8464",
       "purpose": "Add the workbench Slot presentation, desktop external-link bridge, and unbounded generic media routes to the pinned upstream snapshot."
     },
     {
@@ -37,9 +37,15 @@
       "file": "patches/better-sidebar-browser-default-unsandboxed.patch",
       "sha256": "69e1ad919fc8b85fad9a3b1ebfd84f0feaaa54672c71cc8c380e70a26f1b8e0b",
       "purpose": "Default the Browser tab to unrestricted embedding while retaining the sandbox setting as an opt-in."
+    },
+    {
+      "id": "product-workbench-coordinator",
+      "file": "patches/better-sidebar-product-coordinator.patch",
+      "sha256": "923401da301fa06ff36a0c8e87d5461f1252ab62f01dee5843a87e014440adfc",
+      "purpose": "Contribute Better Sidebar to the product-owned core workbench and distinguish explicit user navigation from background resource opens."
     }
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "84a7c294dcd5af81a17a1d3100fa1972e86c384867060bcd0272056fbc294bd4"
+  "treeSha256": "b61239d0dfabf70c335ed22cd790e2cd19265a2a18b4b2f54ab32a0b3fde1441"
 }

@@ -14,7 +14,7 @@ description: "Y8 文档、官网与应用内帮助的九月实施方案入口，
 
 阅读[工作台布局兼容与来源记录方案](workbench-layout-compatibility.zh.md)，了解已经实现的桌面工作台与对话区域位置、DSH 与 Better Sidebar 扩展职责拆分、可复现产品补丁、升级流程和验收标准。
 
-阅读提案中的[三栏工作区布局](three-column-workspace-layout.zh.md)，了解 Navigation、Primary 与 Session 独立折叠，Better Sidebar 与内容工作台 keyed 切换，响应式恢复、迁移和验证。
+阅读提案中的[以 Better Sidebar 为核心的创作者工作台架构](creator-workbench-core-layout.zh.md)，了解如何保持 Better Sidebar 作为持久中间工作台、用已选内容详情临时替换其可见界面、折叠聚合 rightbar 与 Conversation 区域、在 Agent 请求输入或完成时重新打开，并保持与上游一致的 package 边界。
 
 | 部分 | 交付内容 |
 |---|---|

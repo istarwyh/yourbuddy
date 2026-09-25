@@ -10,7 +10,7 @@ import { en } from '../src/client/locales.ts'
 
 class FakeScope implements SettingsScope<WorkbenchSettingsValue> {
   readonly set = vi.fn(async () => {})
-  readonly unset = vi.fn(async () => {})
+  readonly unset = vi.fn<SettingsScope<WorkbenchSettingsValue>['unset']>(async () => {})
   readonly mutate = vi.fn(async () => {})
   private readonly snapshot: SettingsScopeSnapshot<WorkbenchSettingsValue> = {
     status: 'ready',

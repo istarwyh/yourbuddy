@@ -1551,6 +1551,8 @@ var zh = {
   "help.external": "\u4F7F\u7528\u6307\u5357\u5728\u6D4F\u89C8\u5668\u4E2D\u6253\u5F00\u3002",
   "help.error": "\u65E0\u6CD5\u6253\u5F00\u6D4F\u89C8\u5668\uFF0C\u8BF7\u590D\u5236\u5730\u5740\u540E\u624B\u52A8\u6253\u5F00\u3002",
   "help.address": "\u5E2E\u52A9\u9875\u9762\u5730\u5740",
+  "workbench.session.restore": "\u6253\u5F00\u4F1A\u8BDD",
+  "workbench.session.collapse": "\u6536\u8D77\u4F1A\u8BDD",
   "title": "\u6211\u7684\u5DE5\u4F5C\u53F0",
   "description": "\u8BBE\u7F6E\u4FA7\u8FB9\u680F\u8EAB\u4EFD\u548C\u65B0\u4F1A\u8BDD\u9875\u6807\u9898\uFF0C\u6253\u9020\u5C5E\u4E8E\u4F60\u7684 Agent \u5DE5\u4F5C\u53F0\u3002",
   "preview": "\u5B9E\u65F6\u9884\u89C8",
@@ -1671,6 +1673,8 @@ var en = {
   "help.external": "Guides open in your browser.",
   "help.error": "Could not open the browser. Copy the address and open it manually.",
   "help.address": "Help page address",
+  "workbench.session.restore": "Open Conversation",
+  "workbench.session.collapse": "Collapse Conversation",
   "title": "My Workbench",
   "description": "Choose the sidebar identity and new-session title for your personal Agent workbench.",
   "preview": "Live preview",
@@ -1823,7 +1827,12 @@ var PERSONAL_WORKBENCH_CSS = `
 .dpw-window-controls[data-platform=macos] .dpw-window-control-minimize .dpw-window-control-dot{background:#febc2e}
 .dpw-window-controls[data-platform=macos] .dpw-window-control-maximize .dpw-window-control-dot{background:#28c840}
 .dpw-window-controls[data-platform=macos] .dpw-window-control:hover{filter:brightness(1.08)}
-@media (max-width:720px){.dpw-fields{grid-template-columns:1fr}}
+.dpw-workbench{position:relative;display:grid;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;pointer-events:none}
+.dpw-workbench-surface{grid-area:1/1;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;pointer-events:none}.dpw-workbench-surface:not([hidden]){pointer-events:auto}.dpw-workbench-surface[hidden]{display:none}
+.dpw-session-restore{position:absolute;top:10px;right:10px;z-index:50;display:inline-flex;pointer-events:auto;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:9px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-shadow-lv2);font:inherit;cursor:pointer}
+.dpw-session-collapse,.dpw-workbench-session-collapse{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font:18px/1 sans-serif;cursor:pointer}.dpw-workbench-session-collapse{position:absolute;right:10px;bottom:10px;z-index:50;pointer-events:auto;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);box-shadow:var(--dsw-shadow-lv2)}.dpw-session-restore:hover,.dpw-session-collapse:hover,.dpw-workbench-session-collapse:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dpw-session-restore:focus-visible,.dpw-session-collapse:focus-visible,.dpw-workbench-session-collapse:focus-visible{outline:2px solid var(--dsw-alias-label-primary);outline-offset:2px}
+@media (max-width:720px){.dpw-fields{grid-template-columns:1fr}.dpw-session-restore span:last-child{display:none}}
 `;
 function installPersonalWorkbenchStyles(ctx) {
   ctx.effect(() => {
@@ -1843,9 +1852,298 @@ function installPersonalWorkbenchStyles(ctx) {
   }, "personal-workbench: settings styles");
 }
 
+// src/client/workbench.tsx
+var import_react6 = require("react");
+var import_jsx_runtime7 = require("react/jsx-runtime");
+var STORAGE_KEY = "yourbuddy.workbench:v1";
+var LEGACY_WIDTH_KEY = "dsh-sidebar:v1:width";
+var DEFAULT_SESSION_WIDTH = 560;
+var MIN_SESSION_WIDTH = 320;
+var MAX_SESSION_WIDTH = 800;
+var SESSION_REGION_ID = "dsh-session-region";
+function clampSessionWidth(width) {
+  return Math.min(MAX_SESSION_WIDTH, Math.max(MIN_SESSION_WIDTH, Math.round(width)));
+}
+function loadState(storage) {
+  if (storage === void 0) {
+    return { mode: "core", contentId: null, sessionExpanded: true, sessionWidth: DEFAULT_SESSION_WIDTH };
+  }
+  try {
+    const parsed = JSON.parse(storage.getItem(STORAGE_KEY) ?? "null");
+    if (parsed?.version === 1 && typeof parsed.sessionExpanded === "boolean" && typeof parsed.sessionWidth === "number" && Number.isFinite(parsed.sessionWidth)) {
+      return {
+        mode: "core",
+        contentId: null,
+        sessionExpanded: parsed.sessionExpanded,
+        sessionWidth: clampSessionWidth(parsed.sessionWidth)
+      };
+    }
+    const legacyWidth = Number(storage.getItem(LEGACY_WIDTH_KEY));
+    const sessionWidth = Number.isFinite(legacyWidth) && legacyWidth > 0 ? clampSessionWidth(legacyWidth) : DEFAULT_SESSION_WIDTH;
+    const migrated = { version: 1, sessionExpanded: true, sessionWidth };
+    storage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+    return { mode: "core", contentId: null, sessionExpanded: true, sessionWidth };
+  } catch {
+    return { mode: "core", contentId: null, sessionExpanded: true, sessionWidth: DEFAULT_SESSION_WIDTH };
+  }
+}
+var ProductWorkbenchController = class {
+  /**
+   * @param storage - Browser storage for the versioned Session-region preference.
+   */
+  constructor(storage) {
+    this.storage = storage;
+    this.snapshot = loadState(storage);
+  }
+  storage;
+  snapshot;
+  listeners = /* @__PURE__ */ new Set();
+  /** @returns the identity-stable current state. */
+  getSnapshot = () => this.snapshot;
+  /**
+   * Subscribe to committed product-workbench transitions.
+   * @param listener - Invalidation callback.
+   * @returns the unsubscribe function.
+   */
+  subscribe = (listener) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+  /** Show the durable Better Sidebar workbench without changing Session geometry. */
+  showCore() {
+    this.commit({ ...this.snapshot, mode: "core" });
+  }
+  /**
+   * Show one creator detail in the middle seat.
+   * @param id - Oil Creator content identity.
+   */
+  showContent(id) {
+    this.commit({ ...this.snapshot, mode: "content", contentId: id });
+  }
+  /**
+   * Apply the navigation policy for one Better Sidebar open.
+   * @param intent - Explicit user navigation or a background update.
+   */
+  handleBetterSidebarOpen(intent) {
+    if (intent === "user") this.showCore();
+  }
+  /**
+   * Expand or collapse the aggregate auxiliary main and rightbar region.
+   * @param expanded - Requested rendered state.
+   */
+  setSessionExpanded(expanded) {
+    if (this.snapshot.sessionExpanded === expanded) return;
+    this.commit({ ...this.snapshot, sessionExpanded: expanded });
+    this.persist();
+  }
+  /**
+   * Save the positive Conversation width restored by the next expansion.
+   * @param width - Requested width in pixels.
+   */
+  setSessionWidth(width) {
+    const sessionWidth = clampSessionWidth(width);
+    if (this.snapshot.sessionWidth === sessionWidth) return;
+    this.commit({ ...this.snapshot, sessionWidth });
+    this.persist();
+  }
+  commit(next) {
+    if (next.mode === this.snapshot.mode && next.contentId === this.snapshot.contentId && next.sessionExpanded === this.snapshot.sessionExpanded && next.sessionWidth === this.snapshot.sessionWidth) return;
+    this.snapshot = next;
+    for (const listener of [...this.listeners]) listener();
+  }
+  persist() {
+    try {
+      const value = {
+        version: 1,
+        sessionExpanded: this.snapshot.sessionExpanded,
+        sessionWidth: this.snapshot.sessionWidth
+      };
+      this.storage?.setItem(STORAGE_KEY, JSON.stringify(value));
+    } catch {
+    }
+  }
+};
+function ProductWorkbenchHost({
+  renderSlot,
+  useProductWorkbench,
+  collapseSession,
+  restoreSession,
+  t
+}) {
+  const snapshot = useProductWorkbench((value) => value);
+  const previousMode = (0, import_react6.useRef)(snapshot.mode);
+  (0, import_react6.useEffect)(() => {
+    if (previousMode.current !== snapshot.mode) window.requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    previousMode.current = snapshot.mode;
+  }, [snapshot.mode]);
+  const coreHidden = snapshot.mode !== "core";
+  const contentHidden = snapshot.mode !== "content";
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "dpw-workbench", "data-product-workbench": true, "data-mode": snapshot.mode, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "core", hidden: coreHidden, ...coreHidden ? { inert: "" } : {}, children: renderSlot("workbench.core", {}) }),
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "content", hidden: contentHidden, ...contentHidden ? { inert: "" } : {}, children: renderSlot("workbench.content", {}) }),
+    snapshot.sessionExpanded ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+      "button",
+      {
+        type: "button",
+        className: "dpw-workbench-session-collapse",
+        "aria-label": t("workbench.session.collapse"),
+        "aria-controls": SESSION_REGION_ID,
+        "aria-expanded": "true",
+        title: t("workbench.session.collapse"),
+        onClick: collapseSession,
+        children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
+      }
+    ) : /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+      "button",
+      {
+        type: "button",
+        className: "dpw-session-restore",
+        "aria-label": t("workbench.session.restore"),
+        "aria-controls": SESSION_REGION_ID,
+        "aria-expanded": "false",
+        title: t("workbench.session.restore"),
+        onClick: restoreSession,
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { "aria-hidden": "true", children: "\u2039" }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: t("workbench.session.restore") })
+        ]
+      }
+    )
+  ] });
+}
+function SessionRegionCollapseAction({
+  collapseSession,
+  t
+}) {
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+    "button",
+    {
+      type: "button",
+      className: "dpw-session-collapse",
+      "aria-label": t("workbench.session.collapse"),
+      "aria-controls": SESSION_REGION_ID,
+      "aria-expanded": "true",
+      title: t("workbench.session.collapse"),
+      onClick: collapseSession,
+      children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
+    }
+  );
+}
+function observeSessionAttention(ctx, controller) {
+  let current;
+  let eventSource;
+  let disposeEvents;
+  let pendingKey;
+  let initialized = false;
+  const bindCurrent = () => {
+    const next = ctx.sessions.list.getSnapshot().current;
+    if (initialized && next === current && eventSource !== void 0) return;
+    const sessionChanged = initialized && next !== current;
+    initialized = true;
+    current = next;
+    pendingKey = next === void 0 ? void 0 : ctx.uiSession.pendingInteractions.getSnapshot().get(next)?.key;
+    if (sessionChanged) {
+      controller.showCore();
+      controller.setSessionExpanded(true);
+    }
+    disposeEvents?.();
+    disposeEvents = void 0;
+    eventSource = next === void 0 ? void 0 : ctx.sessions.binding(next)?.eventSource;
+    if (eventSource === void 0) return;
+    disposeEvents = eventSource.subscribe(() => {
+      const change = eventSource?.getSnapshot().change;
+      if (change?.kind !== "append") return;
+      if (change.entries.some((entry) => entry.type === "event" && entry.event.type === "turn/end")) {
+        controller.setSessionExpanded(true);
+      }
+    });
+  };
+  const syncPending = () => {
+    if (current === void 0) return;
+    const nextKey = ctx.uiSession.pendingInteractions.getSnapshot().get(current)?.key;
+    if (nextKey !== void 0 && nextKey !== pendingKey) controller.setSessionExpanded(true);
+    pendingKey = nextKey;
+  };
+  bindCurrent();
+  const disposeSessions = ctx.sessions.list.subscribe(bindCurrent);
+  const disposePending = ctx.uiSession.pendingInteractions.subscribe(syncPending);
+  return () => {
+    disposePending();
+    disposeSessions();
+    disposeEvents?.();
+  };
+}
+function installProductWorkbench(ctx) {
+  const storage = typeof localStorage === "undefined" ? void 0 : localStorage;
+  const controller = new ProductWorkbenchController(storage);
+  const disposeService = ctx.reflect.provide("yourBuddyWorkbench", controller);
+  const disposeAttention = observeSessionAttention(ctx, controller);
+  const collapseSession = () => {
+    controller.setSessionExpanded(false);
+  };
+  const injection = {
+    hooks: { productWorkbench: controller },
+    collapseSession,
+    restoreSession: () => {
+      controller.setSessionExpanded(true);
+    }
+  };
+  const collapseInjection = { collapseSession };
+  const disposeHost = ctx.slots.inject("workbench", () => {
+    const disposeRegistration = ctx.slots.register({
+      name: "workbench",
+      locale: "settings.personal-workbench",
+      children: {
+        "workbench.core": { kind: "single", scope: "root" },
+        "workbench.content": { kind: "single", scope: "root" }
+      },
+      inject: () => injection
+    }, ProductWorkbenchHost);
+    let disposeLayout;
+    try {
+      disposeLayout = ctx.layout.registerWorkbench({
+        getSnapshot: () => ({
+          width: controller.getSnapshot().sessionWidth,
+          expanded: controller.getSnapshot().sessionExpanded,
+          reserveRightbar: true
+        }),
+        subscribe: controller.subscribe,
+        setWidth: (width) => {
+          controller.setSessionWidth(width);
+        }
+      });
+    } catch (error) {
+      disposeRegistration();
+      throw error;
+    }
+    return () => {
+      disposeRegistration();
+      disposeLayout();
+    };
+  });
+  const disposeCollapse = ctx.slots.inject("conversation.session.header.actions", () => ctx.slots.register({
+    name: "conversation.session.header.actions",
+    id: "yourbuddy-session-collapse",
+    order: 1e3,
+    locale: "settings.personal-workbench",
+    inject: () => collapseInjection
+  }, SessionRegionCollapseAction));
+  return () => {
+    disposeCollapse();
+    disposeHost();
+    disposeAttention();
+    controller.showCore();
+    void disposeService();
+  };
+}
+
 // src/client/index.tsx
 var SETTINGS_LOCALE_NAMESPACE = "settings.personal-workbench";
-var inject = ["slots", "locale", "connection", "remote", "settingsScope"];
+var inject = ["slots", "locale", "connection", "remote", "settingsScope", "layout", "sessions", "uiSession"];
 function installBrandSlot(ctx, scope, slot, pick) {
   ctx.slots.inject(slot, () => {
     let dispose;
@@ -1931,6 +2229,7 @@ function apply(ctx) {
   installDesktopExternalLinks(ctx, ctx.locale.bind(SETTINGS_LOCALE_NAMESPACE));
   installPersonalBrandOccupants(ctx, scope);
   installDesktopWindowControls(ctx);
+  ctx.effect(() => installProductWorkbench(ctx), "personal-workbench: product workbench coordinator");
   ctx.slots.inject("sidebar.footer.action", () => ctx.slots.register({
     name: "sidebar.footer.action",
     id: "yourbuddy-help",

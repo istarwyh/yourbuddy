@@ -119,6 +119,7 @@ const header = [
   `const expectedVideoReceipt = ${JSON.stringify(JSON.parse(process.env.VIDEO_PUBLISHER_V2_VIDEO_RECEIPT || "null"))};`,
   `const receiptCheckpointPath = ${JSON.stringify(process.env.VIDEO_PUBLISHER_V2_CHECKPOINT_PATH || "")};`,
   `const jobFingerprint = ${JSON.stringify(process.env.VIDEO_PUBLISHER_V2_FINGERPRINT || "")};`,
+  `const requiredGateNames = ${JSON.stringify(requiredGates(platform))};`,
 ].join("\n");
 const fragments = [
   header,
@@ -166,7 +167,14 @@ try {
   }
   const failureEvidence = { reason: "ego runner unavailable", exitCode: execution.code, detail };
   const gates = Object.fromEntries(requiredGates(platform).map(name => [name, { ok: false, evidence: failureEvidence }]));
-  gates.safety = { ok: false, evidence: { finalPublishClicked: false, guardArmed: false, blockedAttempts: 0 } };
+  gates.safety = { ok: false, evidence: {
+    finalPublishClicked: false,
+    guardArmed: false,
+    blockedAttempts: 0,
+    handoffCommitted: false,
+    guardDetached: false,
+    detachVerified: false,
+  } };
   result = {
     schemaVersion: 1,
     platform,

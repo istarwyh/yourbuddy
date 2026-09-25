@@ -120,4 +120,4 @@ Select the recorded numeric id. Do not perform final publishing or broad explora
 
 Freshly inspect after every mutation. Upload and cover helper return values are only action receipts; the platform adapter must also verify page state.
 
-Stop before the final button and record its exact text, visibility, and disabled state.
+Stop before the final button and record its exact text, visibility, and disabled state. Keep the capture guard armed through that evidence; the shared core alone may detach it after every required check passes, and `READY` also requires the core to verify that removal without clicking the platform button.

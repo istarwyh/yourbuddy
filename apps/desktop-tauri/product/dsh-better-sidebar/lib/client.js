@@ -1246,7 +1246,7 @@ window.__ModuleLoader__.load({
 		* tab/viewer registries (Map + listener set) and proxies openTab/closeTab
 		* to the store's reducer. One instance per client plugin activation.
 		*/
-		function createBetterSidebarService(store) {
+		function createBetterSidebarService(store, options = {}) {
 			const tabs = /* @__PURE__ */ new Map();
 			const viewers = /* @__PURE__ */ new Map();
 			const fileIcons = /* @__PURE__ */ new Map();
@@ -1364,6 +1364,7 @@ window.__ModuleLoader__.load({
 				}
 			};
 			const openTab = (seed, scope) => {
+				const intent = seed.intent ?? "user";
 				if (!isTabEnabled(seed.type)) {
 					console.warn(`[dsh-better-sidebar] tab type "${seed.type}" is disabled in the side card settings`);
 					return;
@@ -1373,7 +1374,9 @@ window.__ModuleLoader__.load({
 				const targetSessionId = scope?.sessionId ?? store.getSnapshot().sessionId;
 				if (targetSessionId === void 0) return;
 				const callbackScope = scope ?? { sessionId: targetSessionId };
-				if (surface !== void 0 && seed.target !== "bottom") {
+				const activeSessionId = store.getSnapshot().sessionId;
+				const targetsInactiveSession = scope !== void 0 && scope.sessionId !== activeSessionId;
+				if (surface !== void 0 && seed.target !== "bottom" && options.preferWorkbench?.() !== true) {
 					const state = store.getSnapshot().state;
 					const minted = descriptor.createTab === void 0 || state === void 0 ? void 0 : descriptor.createTab(state);
 					if (minted === null) return;
@@ -1410,10 +1413,9 @@ window.__ModuleLoader__.load({
 						revealIfOpened
 					});
 					safeCall(() => descriptor.onOpen?.(synthetic, callbackScope));
+					if (!targetsInactiveSession) options.onOpenIntent?.(intent);
 					return;
 				}
-				const activeSessionId = store.getSnapshot().sessionId;
-				const targetsInactiveSession = scope !== void 0 && scope.sessionId !== activeSessionId;
 				let created;
 				let activated;
 				const land = openTabInBottomPane;
@@ -1466,6 +1468,7 @@ window.__ModuleLoader__.load({
 				else store.reduce(reducer);
 				if (created !== void 0) safeCall(() => descriptor.onOpen?.(created, callbackScope));
 				else if (activated !== void 0) safeCall(() => descriptor.onActivate?.(activated, callbackScope));
+				if (!targetsInactiveSession && (created !== void 0 || activated !== void 0)) options.onOpenIntent?.(intent);
 			};
 			const closeTab$1 = (tabId, scope) => {
 				const sessionId = scope?.sessionId ?? store.getSnapshot().sessionId;
@@ -1530,12 +1533,13 @@ window.__ModuleLoader__.load({
 			/** Open a file in the sidebar editor of `scope`'s session (title defaults
 			*  to the file name; the tab id is path-derived, like the internal
 			*  open-path interception, so distinct files open side by side). */
-			const openFile = (scope, path, title) => {
+			const openFile = (scope, path, title, intent = "user") => {
 				openTab({
 					type: "editor",
 					title: title ?? baseNameOf(path),
 					path,
-					id: `editor:${path}`
+					id: `editor:${path}`,
+					intent
 				}, scope);
 			};
 			return {
@@ -15607,7 +15611,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			const park = options.background && ctx.sessions.list.getSnapshot().current === sessionId && isNarrowWidth(window.innerWidth) && column?.isExpanded?.() === false;
 			ctx.get("betterSidebar")?.openTab({
 				type: "subagent",
-				title: t("subagent")
+				title: t("subagent"),
+				intent: options.background ? "background" : "user"
 			});
 			if (park) column?.toggleExpanded?.();
 		}
@@ -15710,16 +15715,18 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 							if (request.kind === "url") ctx.get("betterSidebar")?.openTab({
 								type: "browser",
 								url: request.target,
-								title
+								title,
+								intent: "background"
 							}, scope);
 							else if (request.kind === "folder") ctx.get("betterSidebar")?.openTab({
 								type: "editor",
 								title,
 								path: request.target,
 								id: `editor:${request.target}`,
-								meta: { dir: true }
+								meta: { dir: true },
+								intent: "background"
 							}, scope);
-							else ctx.get("betterSidebar")?.openFile(scope, request.target, title);
+							else ctx.get("betterSidebar")?.openFile(scope, request.target, title, "background");
 						} catch {}
 					};
 					socket.onclose = () => {
@@ -16168,7 +16175,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				}));
 				ctx.get("betterSidebar")?.openTab({
 					type: "terminal",
-					target: "bottom"
+					target: "bottom",
+					intent: "background"
 				});
 			}, [
 				state,
@@ -18744,20 +18752,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			"sessions",
 			"locale",
 			"modules",
-			"connection",
-			"layout"
+			"connection"
 		];
-		const WORKBENCH_WIDTH_KEY = "dsh-sidebar:v1:width";
-		const WORKBENCH_WIDTH_MIN = 280;
-		const WORKBENCH_WIDTH_MAX = 640;
-		const WORKBENCH_WIDTH_DEFAULT = 400;
-		function initialWorkbenchWidth() {
-			try {
-				const stored = Number(localStorage.getItem(WORKBENCH_WIDTH_KEY));
-				if (Number.isFinite(stored) && stored > 0) return Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, stored));
-			} catch {}
-			return WORKBENCH_WIDTH_DEFAULT;
-		}
 		/**
 		* Error boundary over the sidebar tree (root scope): a render error in the
 		* sidebar SHELL itself must never blank the page silently — the shared
@@ -18806,18 +18802,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				};
 			}, "dsh-better-sidebar: better-locale lazy integration");
 			const sidebarStore = createSidebarStore();
-			let workbenchWidth = initialWorkbenchWidth();
-			const workbenchWidthListeners = /* @__PURE__ */ new Set();
-			const setWorkbenchWidth = (width) => {
-				const next = Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, width));
-				if (next === workbenchWidth) return;
-				workbenchWidth = next;
-				try {
-					localStorage.setItem(WORKBENCH_WIDTH_KEY, String(next));
-				} catch {}
-				for (const listener of workbenchWidthListeners) listener();
-			};
-			const service = createBetterSidebarService(sidebarStore);
+			let slotPresentationActive = false;
+			const service = createBetterSidebarService(sidebarStore, {
+				preferWorkbench: () => slotPresentationActive,
+				onOpenIntent: (intent) => {
+					const coordinator = ctx.get("yourBuddyWorkbench");
+					coordinator?.handleBetterSidebarOpen(intent);
+				}
+			});
 			ctx.provide("betterSidebar", service);
 			const nativeRecords = createNativeTabRecords();
 			const nativeSurface = createNativeSurface(ctx, nativeRecords);
@@ -18861,7 +18853,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					let host;
 					let mountedPresentation;
 					let disposeSlot;
-					let disposeLayout;
 					let bodyObserver;
 					let hostCheckFrame = null;
 					const unmount = () => {
@@ -18877,10 +18868,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						root = void 0;
 						host?.remove();
 						host = void 0;
-						disposeLayout?.();
-						disposeLayout = void 0;
 						disposeSlot?.();
 						disposeSlot = void 0;
+						slotPresentationActive = false;
 						document.body.removeAttribute("data-dsh-better-sidebar-presentation");
 					};
 					/** Re-attach the host if the page (a desktop shell wrapper, SPA
@@ -18950,17 +18940,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 									store: sidebarStore,
 									presentation: "slot"
 								}));
-								disposeSlot = ctx.slots.inject("workbench", () => ctx.slots.register({ name: "workbench" }, WorkbenchSlot));
-								disposeLayout = ctx.layout.registerWorkbench({
-									getSnapshot: () => ({ width: workbenchWidth }),
-									subscribe: (listener) => {
-										workbenchWidthListeners.add(listener);
-										return () => {
-											workbenchWidthListeners.delete(listener);
-										};
-									},
-									setWidth: setWorkbenchWidth
-								});
+								slotPresentationActive = true;
+								disposeSlot = ctx.slots.inject("workbench.core", () => ctx.slots.register({ name: "workbench.core" }, WorkbenchSlot));
 							} else {
 								host = document.createElement("div");
 								host.setAttribute("data-dsh-better-sidebar", "");

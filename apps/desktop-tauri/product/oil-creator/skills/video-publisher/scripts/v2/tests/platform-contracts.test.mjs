@@ -183,6 +183,19 @@ test("Bilibili upload waits for a real input and performs one bounded route reco
   assert.match(source, /attempt<=20/, "a silent injection failure must stop quickly instead of consuming the full upload window");
 });
 
+test("Bilibili quarantine re-arms the final guard after returning to upload", () => {
+  const source = fs.readFileSync(path.join(PLATFORM_DIR, "bilibili.mjs"), "utf8");
+  const start = source.indexOf("async function quarantineBilibili");
+  const end = source.indexOf("async function runPlatformPhase", start);
+  assert.ok(start >= 0 && end > start, "quarantine flow must remain discoverable");
+  const quarantine = source.slice(start, end);
+  const navigation = quarantine.indexOf("gotoAndWait(PLATFORM_URLS.bilibili");
+  const rearm = quarantine.indexOf("const guard=await armFinalPublishGuard()", navigation);
+  const inspection = quarantine.indexOf("const after=await inspectBilibili()", rearm);
+  assert.ok(navigation >= 0 && rearm > navigation && inspection > rearm);
+  assert.match(quarantine, /B站草稿隔离后无法重新挂载最终发布保护/);
+});
+
 test("Bilibili cover repair continues after a rejected tag and preserves the blocker", () => {
   const source = fs.readFileSync(path.join(PLATFORM_DIR, "bilibili.mjs"), "utf8");
   const start = source.indexOf("async function mutateBilibili");
@@ -228,10 +241,34 @@ test("YouTube prefill repairs full details but defers thumbnail, visibility, and
   assert.doesNotMatch(source, /click\([^)]*done-button|click\([^)]*final/i, "the adapter must never click YouTube's final action");
 });
 
-test("YouTube final guard covers localized Save, Publish, and Schedule labels only on YouTube", () => {
+test("final guard covers immediate and scheduled publish labels", () => {
   const source = fs.readFileSync(path.join(DIR, "..", "ego", "core.mjs"), "utf8");
-  assert.match(source, /YOUTUBE_FINAL_TEXT = \/\^\(保存\|发布\|安排时间\|Save\|Publish\|Schedule\)\$\//);
+  assert.match(source, /FINAL_TEXT = \/\^\(发布\|发布笔记\|发表\|立即投稿\|定时发布\|定时发表\)\$\//);
+  assert.match(source, /YOUTUBE_FINAL_TEXT = \/\^\(保存\|发布\|安排时间\|定时发布\|定时发表\|Save\|Publish\|Schedule\)\$\//);
   assert.match(source, /platform === 'youtube' \? YOUTUBE_FINAL_TEXT : FINAL_TEXT/);
+});
+
+test("manual handoff detaches only after complete read-only evidence and verifies removal", () => {
+  const core = fs.readFileSync(path.join(DIR, "..", "ego", "core.mjs"), "utf8");
+  const runner = fs.readFileSync(path.join(DIR, "..", "run-platform.mjs"), "utf8");
+  const detachStart = core.indexOf("async function detachFinalPublishGuard");
+  const detachEnd = core.indexOf("function checkpointReceipts", detachStart);
+  const handoffStart = core.indexOf("const handoffCandidate");
+  const handoffEnd = core.indexOf("delete payload.ready", handoffStart);
+  assert.ok(detachStart >= 0 && detachEnd > detachStart && handoffStart >= 0 && handoffEnd > handoffStart);
+  const detach = core.slice(detachStart, detachEnd);
+  const handoff = core.slice(handoffStart, handoffEnd);
+  assert.match(detach, /removeEventListener\('click', state\.guard, true\)/);
+  assert.match(detach, /removeEventListener\('submit', state\.guard, true\)/);
+  assert.match(detach, /button\.dispatchEvent\(clickEvent\)/);
+  assert.match(detach, /form\.dispatchEvent\(submitEvent\)/);
+  assert.doesNotMatch(detach, /\.click\(/, "handoff verification must never click the platform's final button");
+  assert.match(handoff, /\['inspect', 'verify'\]\.includes\(phase\)/);
+  assert.match(handoff, /requiredGateNames\.every/);
+  assert.match(handoff, /detachedGuard = detach\?\.guardAfter \|\| null/);
+  assert.doesNotMatch(handoff, /await inspectFinalPublishGuard\(\)/, "detach proof must stay inside one browser evaluation");
+  assert.match(handoff, /userControl \? 'USER_CONTROL' : failureDetail \? 'INPUT_CHANNEL_BROKEN' : 'ACTION_FAILED'/);
+  assert.match(runner, /const requiredGateNames = \$\{JSON\.stringify\(requiredGates\(platform\)\)\}/);
 });
 
 test("YouTube corrections can clear all tags and replace a stale details receipt", () => {

@@ -18,6 +18,8 @@ test("主入口保持精简并保留发布安全边界", () => {
   assert.ok(Buffer.byteLength(skill) <= 10_000, `SKILL.md 过大：${Buffer.byteLength(skill)}/10000 bytes`);
   assert.match(skill, /scripts\/run-safe-platforms\.sh <package\.json>/);
   assert.match(skill, /不点击任何平台的最终发布、保存或定时发布按钮/);
+  assert.match(skill, /完整 `READY` 证据通过后撤下并复核守卫/);
+  assert.match(skill, /最终按钮守卫也已撤下并复核/);
   assert.match(skill, /--confirm-original-rights/);
   assert.match(skill, /--no-cleanup-stale-spaces/);
   assert.match(skill, /部分平台/);

@@ -8,8 +8,11 @@ import { gzipSync } from 'node:zlib'
 
 import {
   applyRecordedMaterializedPatches,
+  applySourcePatches,
   assertNoDowngrade,
   assertSafeArchiveListing,
+  githubBranchBuildScript,
+  parseNpmPackRecords,
   readProductUpdatePolicy,
   refreshProductPlugins,
   resolveGitHubBranch,
@@ -160,6 +163,48 @@ test('materialized product patches replay onto a pristine upstream snapshot', (t
   ])
 
   assert.equal(readFileSync(join(staged, 'value.txt'), 'utf8'), 'yourbuddy\n')
+})
+
+test('source patches apply before build and return immutable provenance', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-source-patch-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const product = join(root, 'product')
+  const checkout = join(root, 'checkout')
+  mkdirSync(join(product, 'patches'), { recursive: true })
+  mkdirSync(checkout)
+  writeFileSync(join(checkout, 'source.txt'), 'upstream\n')
+  const patch = [
+    'diff --git a/source.txt b/source.txt',
+    '--- a/source.txt',
+    '+++ b/source.txt',
+    '@@ -1 +1 @@',
+    '-upstream',
+    '+yourbuddy',
+    '',
+  ].join('\n')
+  writeFileSync(join(product, 'patches', 'source.patch'), patch)
+
+  const records = applySourcePatches(checkout, product, ['patches/source.patch'])
+
+  assert.equal(readFileSync(join(checkout, 'source.txt'), 'utf8'), 'yourbuddy\n')
+  assert.deepEqual(records, [{
+    id: 'source-source',
+    file: 'patches/source.patch',
+    sha256: createHash('sha256').update(patch).digest('hex'),
+    purpose: 'Apply the reviewed YourBuddy source customization before building the published artifact.',
+  }])
+})
+
+test('source-patched GitHub builds run the package check before packing', () => {
+  assert.equal(githubBranchBuildScript([]), 'build')
+  assert.equal(githubBranchBuildScript([{ id: 'source-oil-creator' }]), 'check')
+})
+
+test('npm pack parsing accepts lifecycle progress before the final JSON array', () => {
+  const records = [{ filename: 'fixture-1.0.0.tgz' }]
+  assert.deepEqual(parseNpmPackRecords(JSON.stringify(records)), records)
+  assert.deepEqual(parseNpmPackRecords(`build complete\n${JSON.stringify(records, null, 2)}`), records)
+  assert.throws(() => parseNpmPackRecords('build complete'), /does not end with a JSON array/u)
 })
 
 test('materialized product patches reject changed bytes and stale upstream context', (t) => {

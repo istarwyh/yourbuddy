@@ -64,7 +64,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "release:check": "node scripts/check-release.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm typecheck && pnpm build && pnpm test"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.1",

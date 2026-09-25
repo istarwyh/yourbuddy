@@ -1,26 +1,35 @@
 diff --git a/README.md b/README.md
-index a738c3a821..a06b9e10b7 100644
+index a738c3a..b5769d0 100644
 --- a/README.md
 +++ b/README.md
-@@ -38,7 +38,7 @@
+@@ -10,6 +10,8 @@
+ > [!NOTE]
+ > 当前兼容 Node.js 22.19+、DeepSeek Harness `0.1.0-rc.6` / `0.1.0-rc.7`。核心片库可独立使用；Screen Studio、字幕、封面、公众号和发布能力均可按需安装。
+ 
++在 YourBuddy 中，内容详情注册到产品的 `workbench.content` 子 Slot，并始终保持挂载。点击内容行会让详情临时替换中间的 Better Sidebar；切回会话、关闭详情或卸载插件会显示核心工作台。详情不再查询或修改 Conversation DOM，也不拥有外层宽度和拖拽逻辑。
++
+ ## 一条片子，就是一个文件夹
+ 
+ 插件不建立封闭的内容数据库。正文和产物仍是普通文件，任何编辑器和 AI 文件工具都能读取：
+@@ -38,7 +40,7 @@
  | 选题与脚本 | 新建规范目录，读写 `topic.md` / `script.md`，遵守长期脚本规则 | 选题方向和最终表达 |
  | 录制与剪辑 | 绑定并打开 Screen Studio 工程，等待导出文件稳定落盘 | 录制、时间线剪辑和导出 |
  | 字幕与封面 | 启动字幕工作流，打开预览，烧录字幕，生成三种画幅封面 | 专有名词、标题和错别字 |
 -| 发布 | 把本地材料交给 `video-publisher` 准备多平台草稿 | 各平台最终“发表”按钮 |
-+| 发布 | 通过 `oil_prepare_publish` 准备多平台视频草稿和公众号文章草稿 | 各平台最终“发表”或群发按钮 |
++| 发布 | 在检查器一键预检并准备启用平台的视频草稿；也可通过 `oil_prepare_publish` 加入公众号文章草稿 | 各平台最终“发表”、定时发布或群发按钮 |
  | 数据回收 | 通过 Ego Browser 同步已发布作品的播放、赞、评和链接 | 登录状态和异常匹配结果 |
  
  工作台不会假装替人完成录制、剪辑或最终发布。它负责把每一步需要的文件、状态和下一步动作放在同一个上下文里。
-@@ -108,7 +108,7 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
+@@ -108,7 +110,7 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
  - **长期脚本规则**：保存语气、结构、禁忌和目标观众，之后写或修改 `script.md` 时复用。
  - **长任务追踪**：字幕、封面和烧录启动后立即返回，由工作台继续观察文件产物和任务状态。
  - **目录整理**：预览并修正旧文件夹名称；默认不执行、不删除文件。
 -- **可选发布闭环**：准备平台草稿后由人最终发表，再同步播放、点赞、评论和作品链接。
-+- **发布闭环**：内置视频、视频转文章和公众号草稿 Skills；准备草稿后由人最终发表，再同步播放、点赞、评论和作品链接。
++- **发布闭环**：检查器先验证成片、发布包、封面和原创确认，再调用内置视频发布器；各平台独立显示就绪或阻塞结果，页面交还后由人最终发表。公众号草稿是单独的可选项。
  
  完整工具列表和逐步示例见 [使用说明](docs/usage.md)。
  
-@@ -121,8 +121,8 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
+@@ -121,8 +123,8 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
  | 字幕转录、排版、预览和烧录 | [oil-subtitle](https://github.com/oil-oil/oil-subtitle) + `DASHSCOPE_API_KEY` | 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；Key 在[百炼控制台](https://bailian.console.aliyun.com)申请 |
  | 三画幅封面 | [oil-cover](https://github.com/oil-oil/oil-cover) + `ZENMUX_API_KEY` | Key 在 [ZenMux](https://zenmux.ai) 申请 |
  | Screen Studio 自动剪辑 | [screen-studio-editor](https://github.com/oil-oil/screen-studio-editor) | 仅 macOS；录制和导出仍在 Screen Studio 完成 |
@@ -31,8 +40,26 @@ index a738c3a821..a06b9e10b7 100644
  
  字幕和封面 Skill 留空时，插件会依次从 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 自动发现；只有非标准安装位置才需要填写高级路径。
  
+@@ -132,14 +134,15 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
+ 
+ - API Key 使用 Harness 官方凭据服务保存。页面只显示“已配置 / 未配置”，不会回显明文。
+ - 内容目录可以换成任意已有的绝对路径，每个直接子文件夹代表一条内容。
+-- `enabledPlatforms` 默认全开，包含小红书、抖音、B 站和视频号。关闭的平台不会参与 AI 发布或数据同步；全部关闭时不执行这两项操作。
++- `enabledPlatforms` 默认全开，包含小红书、抖音、B 站和视频号。关闭的平台不会参与视频草稿准备或数据同步；全部关闭时不执行这两项操作。
+ - 脚本规则既可以在设置页修改，也可以让 AI 通过 `oil_script_rules` 记录和更新。
+ - Cordis 高级配置仍保留 `libraryRoot`、`dataDir`、`subtitleSkillDir` 和 `coverSkillDir`，用于自动发现无法覆盖的特殊环境。
+ 
+ ## 数据与权限边界
+ 
+ - 正文、视频、字幕、封面和文章保存在用户选择的本地目录。
+-- 插件不会自动上传内容；上传只在用户明确调用发布 Skill 后发生，并停在最终发表前。
++- 插件不会自行开始上传；只有用户点击“准备发布草稿”或明确调用发布工具后，才会为已启用的平台上传，并停在最终发表、定时发布或群发前。
++- 视频发布器使用工作台根据本次选择生成的私有配置，不修改独立 `video-publisher` 的用户配置；平台结果独立保存，部分失败不会抹掉已经就绪的草稿。
+ - 字幕、封面和平台同步会访问各自的外部服务；不安装、不配置就不会启用。
+ - 目录创建、配置保存和批量重命名都遵循“先预览、再确认、后执行”。
+ 
 diff --git a/docs/implementation.md b/docs/implementation.md
-index 299862f699..1c550d6cb4 100644
+index 299862f..9eda762 100644
 --- a/docs/implementation.md
 +++ b/docs/implementation.md
 @@ -22,8 +22,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
@@ -41,30 +68,64 @@ index 299862f699..1c550d6cb4 100644
  6. **封面**：有 ZenMux Key 就出 3:4 / 4:3 / 16:9。封面主标题和错别字由对话里的 Agent 核对，不交给脚本自行发挥。
 -7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与 AI 发布和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，走 `oil-video-article`，成稿在 `公众号文章/`。
 -8. **发布**：`video-publisher` 只为 `enabledPlatforms` 中的平台准备草稿，做到最终发布按钮前，人自己点发布。插件记录每平台未发布 / 草稿已备 / 已发布。
-+7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与 AI 发布和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，内置 `oil-video-article` 成稿到 `公众号文章/`。
-+8. **发布**：`oil_prepare_publish` 调用内置 `video-publisher` 为 `enabledPlatforms` 中的平台准备草稿，也可调用内置 `wechat-publisher` 创建公众号草稿。视频页面停在最终发布按钮前，公众号停在草稿箱；人自己完成最终发表或群发。
++7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与视频草稿准备和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，内置 `oil-video-article` 成稿到 `公众号文章/`。
++8. **发布**：检查器的「准备发布草稿」和 `oil_prepare_publish` 共用同一服务。服务先验证视频、发布包、标签、所选封面和原创确认，再按 `enabledPlatforms` 生成私有发布器配置并调用内置 `video-publisher`；它不会修改独立发布器配置。每个平台独立返回就绪或阻塞结果，验证完成后解除页面自动化保护并交还给人。公众号草稿是默认关闭的可选分支，由内置 `wechat-publisher` 创建。最终发表、定时发布或群发都由人完成。
  9. **回收**：用 Ego Lite 打开已登录的创作者后台，只翻 `enabledPlatforms` 中平台的已发布列表，按标题或已存 id 对到本地文件夹，写下播放 / 赞 / 评论。不是公开站爬虫；平台上有、本地没有文件夹的不会自动建条目。
  
  一条片子对应影片目录里的一个子文件夹。工程在 Screen Studio 工程目录里，用绑定连起来。
-@@ -53,8 +53,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+@@ -32,7 +32,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+ 
+ | 环节 | 现状 |
+ | --- | --- |
+-| 列表与检查器 | 自定义侧栏「内容」页；检查器叠在对话左边，聊天不关；概览用状态标签标明阶段，只展开当前步骤的操作 |
++| 列表与检查器 | 自定义侧栏「内容」页；检查器占用产品中间工作台，右侧对话保留；概览用状态标签标明阶段，只展开当前步骤的操作 |
+ | 建内容、选题笔记 | 面板新建；`oil_create_content` 建文件夹；选题写 `topic.md` |
+ | 绑定 / 打开工程 | 面板换绑、打开；`oil_open_studio` |
+ | 等导出 | `oil_wait_export` 立刻返回并开始盯目录；成片稳定后清掉 waiting 标记 |
+@@ -42,7 +42,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+ | 已发布数据 | 检查器「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`oil_sync_publish` 不传 id 才同步整库 |
+ | API Key | 设置 → 插件 → 内容工作台；和视觉识别共用官方凭据 |
+ | 公众号 | 只显示目录里有没有 `公众号文章/`，不生成 |
+-| 剪辑、多平台上传 | 还没从插件里调度，对话里继续用原来的 skill |
++| 剪辑 | 还没从插件里调度，对话里继续用 `screen-studio-editor` |
++| 多平台草稿 | 检查器和 `oil_prepare_publish` 共用预检与发布服务；每个平台独立记录结果，最终发表仍由人完成 |
+ 
+ 上面这张表是工作台已经具备的能力：能看列表、绑定工程、启动字幕和封面脚本、标记发布状态。对照「最终要做成什么样」那 9 步，整条创作路径还没有全部接到插件里。现在有的是一条片子的工作台和几个可点的执行入口，不是点一次就从选题走到待发布。
+ 
+@@ -52,10 +53,9 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+ 2. **导出后的并行编排**：「导出开始就同时做字幕和封面」没有连成一条自动流水。
  3. **字幕校对**：生成完不会自动改专有名词；预览还要人自己看。
  4. **封面主标题和错别字**：按钮不会先让 Agent 提炼标题，也不会验字。
- 5. **发布包**：能展示已有 `publish-package.json` 里的标签，不会在插件里写平台长文案。
+-5. **发布包**：能展示已有 `publish-package.json` 里的标签，不会在插件里写平台长文案。
 -6. **四平台上传**：不会调度 `video-publisher`，只记状态。
 -7. **公众号成稿**：不会跑 `oil-video-article`。
-+6. **发布草稿**：调用 `oil_prepare_publish` 后调度内置发布器，成功的视频平台写入草稿状态；工具不执行最终发表。
-+7. **公众号成稿**：内置 `oil-video-article` 供 Agent 使用，工作台仍按磁盘文件展示文章。
- 8. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
+-8. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
++5. **发布包**：能展示并验证已有 `publish-package.json` 里的标题和标签，不会在插件里写平台长文案。
++6. **公众号成稿**：内置 `oil-video-article` 供 Agent 使用，工作台仍按磁盘文件展示文章。
++7. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
  
  工作阶段（`workflow`）由文件和 overlay 推出来，不是单独手填一张总表：
-@@ -83,7 +83,7 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，
+ 
+@@ -63,7 +63,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+ - `record` 待录制（overlay 里标了准备录）
+ - `cut` 待剪辑（已绑工程、还没有成片）
+ - `finish` 待加字幕 / 封面
+-- `publish` 待发布（字幕和封面都齐）
++- `publish` 待发布（字幕、封面和有效发布包都齐）
+ 
+ ## 一层工作台，skill 继续执行重活
+ 
+@@ -83,9 +83,9 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，
  
  对话里的插件工具：
  
 -`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
 +`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_prepare_publish`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
  
- `oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时自动发布和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
+-`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时自动发布和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
++`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时视频草稿准备和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
+ 
+ 检查器中间栏可以拉到约 800px，走 `shell.overlay`，不占用官方右侧「详情」栏。官方详情栏保持关闭。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
  
 @@ -141,8 +141,9 @@ ego-browser nodejs < scripts/collect-publish.mjs
  | 字幕 | `oil-subtitle` | `~/.agents/skills/oil-subtitle` | clone 后必须运行 `setup.sh`；已包预览编辑器、转录、按稿烧录 | 校对不确定词、确认预览后再烧 |
@@ -78,8 +139,17 @@ index 299862f699..1c550d6cb4 100644
  
  字幕脚本入口以 oil-subtitle 为准：`bailian_transcribe.py` → `review_subtitles.py` → `prepare_subtitles.py` → `preview_editor.py`，用户确认后再 `burn_subtitles.py`（有审过的 SRT 用 `--srt-input`）。不要在预览前烧录。封面脚本是 `generate_oil_cover.py`，主标题由调用方按 oil-cover 提炼后传入 `--title`，Key 用环境变量 `ZENMUX_API_KEY`。不要改 skill 仓库里的用户路径和密钥。
  
+@@ -153,7 +154,7 @@ ego-browser nodejs < scripts/collect-publish.mjs
+ - 插件只做一张工作台，新能力优先加模块，不加新插件。
+ - 密钥走官方凭据；页面只显示已配置 / 未配置。
+ - 重媒体继续调用已有脚本，参数与对应 SKILL.md 保持一致。
+-- 人导出、人点平台发布、Agent 做校对和标题，这三件事不要改成全自动。
++- 人导出、人点最终发表 / 定时发布 / 群发、Agent 做校对和标题，这三类操作不要改成全自动。
+ - Host remote 或工具改完后要重新 `pnpm build` 并重启 `dsh web`。
+ 
+ 
 diff --git a/docs/usage.md b/docs/usage.md
-index 8dff466ba5..ccaf5e6afa 100644
+index 8dff466..cc6b120 100644
 --- a/docs/usage.md
 +++ b/docs/usage.md
 @@ -4,7 +4,7 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
@@ -91,7 +161,7 @@ index 8dff466ba5..ccaf5e6afa 100644
  
  人仍然要自己完成这几件：
  
-@@ -13,7 +13,7 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
+@@ -13,23 +13,23 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
  - 看封面标题和错别字，决定要不要再生成
  - 在各平台点最终「发表」
  
@@ -100,651 +170,51 @@ index 8dff466ba5..ccaf5e6afa 100644
  
  所以对话可以推动一条片子往前走，不能代替录制、导出和最终发表。
  
-@@ -52,6 +52,7 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
+ ## 界面怎么用
+ 
+-左侧列表显示每条片子的阶段和时间。已经在任一视频平台发出去的，显示「已发布」；成片、字幕、封面都齐但还没发出去的，显示「待发布」。
++左侧列表显示每条片子的阶段和时间。已经在任一视频平台发出去的，显示「已发布」；成片、字幕、封面和有效的 `publish-package.json` 都齐但还没发出去的，显示「待发布」。
+ 
+-点开一条片子，中间检查器不关右边的对话。检查器有五个页：概览、视频、脚本、字幕、文章。概览用封面旁的状态标明阶段，只展开当前步骤的按钮；封面并排显示 3:4 和 4:3。视频页播放带字幕成片，没有带字幕成片时播放原片。字幕和烧录由对话里的工具完成。文章页用 Markdown 渲染 `公众号文章/` 里的成稿和配图。中间栏可以拖宽，大约到 800 像素。
++点开一条片子，中间检查器不关右边的对话。检查器有五个页：概览、视频、脚本、字幕、文章。概览用封面旁的状态标明阶段，只展开当前步骤的按钮；封面并排显示 3:4 和 4:3。进入发布阶段后，可以在这里选择是否上传现有封面、确认原创权利、按需加入公众号文章，然后点击「准备发布草稿」。视频页播放带字幕成片，没有带字幕成片时播放原片。字幕和烧录由对话里的工具完成。文章页用 Markdown 渲染 `公众号文章/` 里的成稿和配图。
+ 
+ 右边输入 `@`，可以选择「当前详情」或搜以前的片子。发出去的是那一期的文件夹路径，封面、脚本、字幕都在里面，按 [files.md](files.md) 自己去列、去读。`/current content` 同样只带当前打开那条的文件夹路径。
+ 
+-设置在 Harness 的设置 → 插件 → 内容工作台。这里可以配置影片目录、`enabledPlatforms`、脚本规则（人设）和凭据。影片目录默认是 `~/Movies/视频项目`。`enabledPlatforms` 有小红书、抖音、B 站、视频号四个开关，默认全部启用；AI 发布和数据同步只处理启用的平台，全部关闭时不执行这两项操作。脚本规则是写 `script.md` 时 AI 必须遵循的语气、结构和禁忌，也可以直接在对话里让 AI 记录，AI 会用 `oil_script_rules` 存到同一个地方。字幕转录使用百炼 `DASHSCOPE_API_KEY`，封面使用 ZenMux `ZENMUX_API_KEY`，两者和视觉识别共用官方凭据；页面只显示已配置或未配置，不会把 Key 读回来。
++设置在 Harness 的设置 → 插件 → 内容工作台。这里可以配置影片目录、`enabledPlatforms`、脚本规则（人设）和凭据。影片目录默认是 `~/Movies/视频项目`。`enabledPlatforms` 有小红书、抖音、B 站、视频号四个开关，默认全部启用；视频草稿准备和数据同步只处理启用的平台，全部关闭时不执行这两项操作。脚本规则是写 `script.md` 时 AI 必须遵循的语气、结构和禁忌，也可以直接在对话里让 AI 记录，AI 会用 `oil_script_rules` 存到同一个地方。字幕转录使用百炼 `DASHSCOPE_API_KEY`，封面使用 ZenMux `ZENMUX_API_KEY`，两者和视觉识别共用官方凭据；页面只显示已配置或未配置，不会把 Key 读回来。
+ 
+ 首次使用推荐选 Harness 的 `standard` 或 `code` Agent preset，再直接说「检查并配置内容工作台」。内置 `creator-workbench` Skill 会让 AI 先调用 `oil_creator_setup` 检查环境。AI 能从系统发现的目录和能力不再逐项追问；任何写入都会先预览，用户确认后才应用。`minimal` preset 没有 Skill 和文件工具，不适合首次引导、自动整理目录或修改正文。
+ 
+-装完不知道能做什么时，直接问「这个插件怎么用」。AI 会调用 `oil_creator_guide`，拿到带当前能力状态的完整指引后告诉你：哪些环节现在就能用，哪些还缺依赖。自动发布和已发布数据回收都依赖 Ego Browser；没装的时候 AI 会明说这两项不可用，片库、脚本、字幕、封面不受影响。
++装完不知道能做什么时，直接问「这个插件怎么用」。AI 会调用 `oil_creator_guide`，拿到带当前能力状态的完整指引后告诉你：哪些环节现在就能用，哪些还缺依赖。视频草稿准备和已发布数据回收都依赖 Ego Browser；没装的时候 AI 会明说这两项不可用，片库、脚本、字幕、封面不受影响。工作台会按本次启用的平台生成自己的发布器配置，不要求先配置独立 `video-publisher`，也不会覆盖它已有的配置。
+ 
+ 候选影片目录不存在时，先让 AI 展示准备创建的完整路径；确认后创建目录，再重新预览配置并确认应用。`oil_creator_setup` 只接受已经存在的目录，不会暗中创建文件夹。
+ 
+@@ -52,8 +52,9 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
  | `oil_open_subtitle_preview` | 在浏览器打开字幕预览编辑器 |
  | `oil_burn_subtitles` | 用户预览确认后再烧进成片；立刻返回；完成后出现 `*_subtitled.mp4` |
  | `oil_generate_cover` | 一键生成 3:4 / 4:3 / 16:9 封面，立刻返回；完成后出现对应 png |
-+| `oil_prepare_publish` | 准备启用的视频平台草稿，并可把已有公众号文章上传到草稿箱；不执行最终发表或群发 |
++| `oil_prepare_publish` | 先预检，再准备启用的视频平台草稿，并可把已有公众号文章上传到草稿箱；分别返回各平台结果，不执行最终发表、定时发布或群发 |
  | `oil_sync_publish` | 用 Ego 翻完启用平台的已发布列表，按标题或已存 id 写回播放 / 赞 / 评 |
- | `oil_creator_profile` | 读或改 `enabledPlatforms`，即 AI 发布和数据同步使用的平台列表 |
+-| `oil_creator_profile` | 读或改 `enabledPlatforms`，即 AI 发布和数据同步使用的平台列表 |
++| `oil_creator_profile` | 读或改 `enabledPlatforms`，即视频草稿准备和数据同步使用的平台列表 |
  | `oil_organize_library` | 预览或把文件夹改成 `日期_可读标题`，默认只预览 |
+ 
+ 长任务都是先启动，再看文件夹里有没有产物，不要把一次启动当成已经完成。
 @@ -72,9 +73,9 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
  
  首次 clone `oil-subtitle` 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`，否则字幕工作流不会就绪。不要在预览前烧录。`oil_burn_subtitles` 不会覆盖已经带字幕的成片文件名习惯，产物文件名里带 `_subtitled`。
  
 -成片、字幕、封面齐了，阶段会变成「待发布」。四平台上传仍然用 `video-publisher`，但只处理 `enabledPlatforms` 中启用的平台；做到各平台的最终发表按钮前停下，你自己点发表。在右侧输入框 `@` 这条片子，再说用 video-publisher 发布。「已发布，同步数据」从创作者后台回收播放、赞和评论。同步只翻启用平台的已发布列表，再对到本地片子；90 秒内再点一次会直接用刚才的结果。每次同步开一个新的 Ego 空间，采完就关掉。平台上有、本地没有文件夹的，不会自动新建一条片子。
-+成片、字幕、封面齐了，阶段会变成「待发布」。在右侧输入框 `@` 这条片子，再说“准备发布草稿”；`oil_prepare_publish` 只处理 `enabledPlatforms` 中启用的视频平台，并把页面停在最终发表按钮前。「已发布，同步数据」从创作者后台回收播放、赞和评论。同步只翻启用平台的已发布列表，再对到本地片子；90 秒内再点一次会直接用刚才的结果。每次同步开一个新的 Ego 空间，采完就关掉。平台上有、本地没有文件夹的，不会自动新建一条片子。
++成片、字幕、封面和 `publish-package.json` 齐了，阶段会变成「待发布」。打开这一期，在概览里确认本次平台、封面和原创权利，再点「准备发布草稿」；也可以在右侧 `@` 这条片子后说同一句话。工作台会在打开 Ego 前检查视频、标题、标签和所选封面，`oil_prepare_publish` 只处理 `enabledPlatforms` 中启用的视频平台。各平台分别显示就绪或阻塞原因；已经就绪的结果会保留，重试只继续未完成部分。验证结束后页面会解除自动化保护并交还给你，最终发表或定时发布仍由你点击。「已发布，同步数据」从创作者后台回收播放、赞和评论。同步只翻启用平台的已发布列表，再对到本地片子；90 秒内再点一次会直接用刚才的结果。每次同步开一个新的 Ego 空间，采完就关掉。平台上有、本地没有文件夹的，不会自动新建一条片子。
  
 -公众号不是第五个视频平台。需要图文时，另外喊 `oil-video-article`。工作台只显示文件夹里有没有 `公众号文章/`。
-+公众号不是第五个视频平台。需要图文时使用内置 `oil-video-article` 生成 `公众号文章/` 下的 Markdown；再让 `oil_prepare_publish` 创建公众号草稿。公众号 AppID、AppSecret 和出口 IP 白名单是官方 API 的前提，最终群发仍由你确认。
++公众号不是第五个视频平台。需要图文时使用内置 `oil-video-article` 生成 `公众号文章/` 下的 Markdown；检查文章后，再单独勾选让 `oil_prepare_publish` 创建公众号草稿。这个选项默认关闭，视频平台重试不会重复创建公众号草稿。公众号 AppID、AppSecret 和出口 IP 白名单是官方 API 的前提，最终群发仍由你确认。
  
  ## 把一条没做完的旧片子收尾
  
-diff --git a/lib/client.js b/lib/client.js
-index 533565499a..b1a54e4a48 100644
---- a/lib/client.js
-+++ b/lib/client.js
-@@ -4973,7 +4973,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 			return t("time.yearMonthDay").replace("{y}", String(date.getFullYear())).replace("{m}", String(date.getMonth() + 1)).replace("{d}", String(date.getDate()));
- 		}
- 		//#endregion
--		//#region \0dsh-oil-creator-css:/private/tmp/oil-base-repo/src/client/ui/StatusPill.css.mjs
-+		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/ui/StatusPill.css.mjs
- 		registerPluginCss("dsh-oil-creator/StatusPill.css", ".statusPill {\n  gap: 5px;\n  max-width: 100%;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.statusPill.pending {\n  color: var(--dsw-alias-state-warn-label);\n}\n\n.statusPill.active {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n.statusPill.success {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n.statusPill.error {\n  color: var(--dsw-alias-state-error-primary);\n}\n\nbutton.statusPill:disabled {\n  opacity: 0.5;\n  cursor: default;\n}\n");
- 		//#endregion
- 		//#region src/client/ui/StatusPill.tsx
-@@ -5005,7 +5005,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 			});
- 		}
- 		//#endregion
--		//#region \0dsh-oil-creator-css:/private/tmp/oil-base-repo/src/client/sidebar/ContentSidebarPanel.css.mjs
-+		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/sidebar/ContentSidebarPanel.css.mjs
- 		registerPluginCss("dsh-oil-creator/ContentSidebarPanel.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentPanel {\n  display: flex;\n  flex-direction: column;\n  min-height: 0;\n  height: 100%;\n  padding-right: var(--dsh-sidebar-inline-padding);\n  box-sizing: border-box;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentHeader {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 4px;\n  height: 36px;\n  padding-left: 4px;\n  margin: 2px -4px 4px 0;\n  box-sizing: border-box;\n  border-radius: 12px;\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchSlot {\n  flex: 1;\n  max-width: 28px;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  margin-left: auto;\n  padding-left: 0;\n  box-sizing: border-box;\n  transition:\n    max-width 180ms var(--ds-ease-in-out),\n    padding-left 180ms var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchSlot.expanded {\n  max-width: 100%;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 0;\n  width: 100%;\n  height: 28px;\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n  border: none;\n  border-radius: 50%;\n  background: transparent;\n  cursor: text;\n  color: var(--dsw-alias-label-secondary);\n  overflow: hidden;\n  transition:\n    width 180ms var(--ds-ease-in-out),\n    padding 180ms var(--ds-ease-in-out),\n    border-color 180ms var(--ds-ease-in-out),\n    background-color 180ms var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch.expanded {\n  width: calc(100% + 4px);\n  height: 30px;\n  margin-inline: -2px;\n  padding: 0 4px 0 0;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 10px;\n  background: transparent;\n  color: var(--dsw-alias-label-caption);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchButton {\n  flex: none;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: none;\n  border-radius: 50%;\n  background: transparent;\n  color: inherit;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch.expanded .searchButton {\n  width: 28px;\n  height: 30px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch.expanded .searchButton:hover {\n  background: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchInput {\n  flex: 1;\n  width: 0;\n  min-width: 0;\n  border: none;\n  outline: none;\n  background: transparent;\n  opacity: 0;\n  pointer-events: none;\n  color: var(--dsw-alias-label-primary);\n  font-size: 13px;\n  line-height: 18px;\n  transition: opacity 120ms var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch.expanded .searchInput {\n  margin-left: -2px;\n  opacity: 1;\n  pointer-events: auto;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchInput::placeholder {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .clearButton {\n  flex: none;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 24px;\n  height: 24px;\n  padding: 0;\n  border: none;\n  border-radius: 50%;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .clearButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerActions {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  max-width: 64px;\n  opacity: 1;\n  overflow: hidden;\n  visibility: visible;\n  transition:\n    max-width 180ms var(--ds-ease-in-out),\n    opacity 120ms var(--ds-ease-in-out),\n    transform 180ms var(--ds-ease-in-out),\n    visibility 0s linear;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerActions.hidden {\n  max-width: 0;\n  opacity: 0;\n  transform: translateX(4px);\n  visibility: hidden;\n  pointer-events: none;\n  transition-delay: 0s, 0s, 0s, 180ms;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentList {\n  flex: 1;\n  min-height: 0;\n  overflow: auto;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentEmpty {\n  padding: 16px 8px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentRow {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  width: 100%;\n  min-height: 64px;\n  margin: 0 0 4px;\n  padding: 8px;\n  border: none;\n  border-radius: 10px;\n  background: transparent;\n  color: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentRow:hover,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentRow.selected {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentRow:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowCover {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  width: 48px;\n  height: 64px;\n  overflow: hidden;\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowCover img {\n  width: 100%;\n  height: 100%;\n  object-fit: cover;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .coverFallback {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowBody {\n  display: flex;\n  flex-direction: column;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowTitle {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 14px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  width: 100%;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .createField,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] .createField {\n  display: flex;\n  flex-direction: column;\n  align-items: stretch;\n  gap: 8px;\n  width: 100%;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] .createLabel {\n  display: block;\n  width: 100%;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] .createInput {\n  display: flex;\n  width: 100%;\n  box-sizing: border-box;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .createError,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"create-dialog\"] .createError {\n  margin-top: 0;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowMeta {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowCover .coverFallback {\n  opacity: 0.5;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .rowDate {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n  line-height: 17px;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchSlot,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentSearch,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .searchInput,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerActions {\n    transition: none;\n  }\n}\n");
- 		//#endregion
- 		//#region src/client/sidebar/ContentSidebarPanel.tsx
-@@ -5295,7 +5295,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 			});
- 		}
- 		//#endregion
--		//#region \0dsh-oil-creator-css:/private/tmp/oil-base-repo/src/client/ui/ActionButton.css.mjs
-+		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/ui/ActionButton.css.mjs
- 		registerPluginCss("dsh-oil-creator/ActionButton.css", "[data-plugin=\"dsh-oil-creator\"] .oilActionBar {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n");
- 		//#endregion
- 		//#region src/client/ui/ActionButton.tsx
-@@ -5320,7 +5320,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 			});
- 		}
- 		//#endregion
--		//#region \0dsh-oil-creator-css:/private/tmp/oil-base-repo/src/client/ui/Surface.css.mjs
-+		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/ui/Surface.css.mjs
- 		registerPluginCss("dsh-oil-creator/Surface.css", "[data-plugin=\"dsh-oil-creator\"] .oilSurface {\n  padding: 14px 14px 16px;\n  border-radius: 12px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"] .oilSurface + .oilSurface,\n[data-plugin=\"dsh-oil-creator\"] .oilSurface + .block,\n[data-plugin=\"dsh-oil-creator\"] .lede + .oilSurface {\n  margin-top: 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"] .oilSurfaceTitle {\n  margin-bottom: 4px;\n  font: var(--dsw-font-markdown-base-strong);\n  color: var(--dsw-alias-label-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"] .oilSurfaceHint {\n  margin: 0 0 12px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"] .oilSurfaceTitle + .oilActionBar,\n[data-plugin=\"dsh-oil-creator\"] .oilSurfaceHint + .oilActionBar {\n  margin-top: 12px;\n}\n");
- 		//#endregion
- 		//#region src/client/ui/Surface.tsx
-@@ -5341,7 +5341,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 			});
- 		}
- 		//#endregion
--		//#region \0dsh-oil-creator-css:/private/tmp/oil-base-repo/src/client/ContentInspector.css.mjs
-+		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/ContentInspector.css.mjs
- 		registerPluginCss("dsh-oil-creator/ContentInspector.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-width: 0;\n  min-height: 0;\n  overflow: hidden;\n  background: var(--dsw-alias-bg-base);\n  border-right: 1px solid var(--dsw-alias-border-l1);\n  box-sizing: border-box;\n  font: var(--dsw-font-markdown-base);\n  color: var(--dsw-alias-label-primary);\n  --dsh-scrollbar-thumb: transparent;\n  --dsh-scrollbar-thumb-hover: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"].docked {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  left: var(--oil-sidebar-width, 280px);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"].docked.open:not(.dragging) {\n  transition: width var(--ds-transition-duration-slow) var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .header {\n  flex: none;\n  padding: 12px 16px 0 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .titleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  min-height: 32px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .title {\n  min-width: 0;\n  overflow: hidden;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .titleActions {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .close {\n  flex: none;\n  display: grid;\n  place-items: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: none;\n  border-radius: 999px;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .close:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .close:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tabs {\n  display: flex;\n  gap: 20px;\n  margin-top: 4px;\n  padding-left: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab {\n  position: relative;\n  padding: 0 0 11px;\n  border: none;\n  background: transparent;\n  font-size: 13px;\n  line-height: 16px;\n  font-weight: 500;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab::after {\n  content: \"\";\n  position: absolute;\n  right: 0;\n  bottom: 1px;\n  left: 0;\n  height: 2px;\n  border-radius: 2px;\n  background: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab.active {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab.active::after {\n  background: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tab:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .body {\n  flex: 1;\n  min-height: 0;\n  padding: 20px 20px 32px;\n  overflow-y: auto;\n  scrollbar-width: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .body::-webkit-scrollbar {\n  width: 0;\n  height: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .empty {\n  padding: 8px 0;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .lede {\n  display: flex;\n  gap: 16px;\n  align-items: flex-start;\n  margin-bottom: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverPair {\n  flex: none;\n  display: flex;\n  align-items: stretch;\n  gap: 10px;\n  height: calc(80px * 4 / 3);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverHero {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  height: 100%;\n  aspect-ratio: 3 / 4;\n  overflow: hidden;\n  border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverWide {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  height: 100%;\n  aspect-ratio: 4 / 3;\n  overflow: hidden;\n  border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverHero img,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverWide img {\n  width: 100%;\n  height: 100%;\n  object-fit: cover;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .coverFallback {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .ledeText {\n  min-width: 0;\n  padding-top: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .stepper {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: 6px;\n  margin: -8px 0 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step + .step::before {\n  content: \"\";\n  width: 14px;\n  height: 1px;\n  margin-right: 2px;\n  background: var(--dsw-alias-border-l2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .stepDot {\n  flex: none;\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background: var(--dsw-alias-border-l2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.done {\n  color: var(--dsw-alias-label-secondary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.done .stepDot {\n  background: var(--dsw-alias-state-success-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.current {\n  color: var(--dsw-alias-state-business-primary);\n  font-weight: 500;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .step.current .stepDot {\n  background: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .time {\n  margin-top: 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workList {\n  display: flex;\n  flex-direction: column;\n  gap: 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workRow {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workMain {\n  display: flex;\n  align-items: baseline;\n  gap: 8px;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workName {\n  font: var(--dsw-font-markdown-base);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .workMain .statusPill {\n  align-self: center;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .jobNote {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin: 12px 0 0;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .oilSurface .jobNote {\n  margin: 0 0 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .jobNote.done {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .jobNote.error {\n  color: var(--dsw-alias-state-error-primary);\n  max-height: 72px;\n  overflow: hidden;\n  overflow-wrap: anywhere;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishGrid {\n  display: grid;\n  grid-template-columns: 1fr;\n  gap: 10px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"].wide .publishGrid {\n  grid-template-columns: 1fr 1fr;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishCard {\n  padding: 10px 12px;\n  border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .scriptEditor {\n  display: block;\n  flex: 1;\n  width: 100%;\n  min-height: 240px;\n  margin: 0;\n  padding: 0;\n  border: none;\n  border-radius: 0;\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  font: var(--dsw-font-markdown-base);\n  line-height: 24px;\n  resize: none;\n  box-sizing: border-box;\n  outline: none;\n  box-shadow: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .scriptEditor:focus {\n  outline: none;\n  box-shadow: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .scriptEditor::placeholder {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .body:has(.scriptEditor) {\n  display: flex;\n  flex-direction: column;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .videoPlayer {\n  display: block;\n  width: 100%;\n  max-height: min(70vh, 520px);\n  border-radius: 10px;\n  background: #111;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishName {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n  font: var(--dsw-font-markdown-base);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishRow.articleRow {\n  width: 100%;\n  padding: 0;\n  border: none;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishRow.articleRow:hover .publishName {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .oilSurface .oilActionBar + .publishRows {\n  margin-top: 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishMetrics {\n  margin-top: 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .publishUrl {\n  display: block;\n  margin-top: 4px;\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cues {\n  margin: 20px 0 0;\n  padding: 0;\n  list-style: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cue + .cue {\n  margin-top: 16px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cueTime {\n  margin-bottom: 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .cueText {\n  margin: 0;\n  font: var(--dsw-font-markdown-base);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .block {\n  margin-top: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .blockLabel {\n  margin-bottom: 8px;\n  color: var(--dsw-alias-label-tertiary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .platformMark {\n  flex: none;\n  display: block;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .copyTitle {\n  margin-bottom: 6px;\n  font: var(--dsw-font-markdown-base-strong);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .article {\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .article > :first-child > :first-child {\n  margin-top: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .article img {\n  display: block;\n  max-width: 100%;\n  height: auto;\n  margin: 16px 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tags:first-child {\n  margin-top: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tags {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n  margin-top: 12px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .tag {\n  color: var(--dsw-alias-label-secondary);\n  font: var(--dsw-font-markdown-small);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"] .resize {\n  position: absolute;\n  top: 0;\n  right: -4px;\n  bottom: 0;\n  width: 8px;\n  cursor: col-resize;\n  z-index: 2;\n  touch-action: none;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"inspector\"].docked.open:not(.dragging) {\n    transition: none;\n  }\n}\n");
- 		//#endregion
- 		//#region src/client/ContentInspector.tsx
-@@ -6277,7 +6277,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 			};
- 		}
- 		//#endregion
--		//#region \0dsh-oil-creator-css:/private/tmp/oil-base-repo/src/client/CreatorSettingsCard.css.mjs
-+		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/CreatorSettingsCard.css.mjs
- 		registerPluginCss("dsh-oil-creator/CreatorSettingsCard.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] {\n  list-style: none;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: var(--dsw-alias-bg-layer-3);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"].open {\n  background: var(--dsw-alias-bg-layer-2);\n  border-color: var(--dsw-alias-label-dimmed);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .header {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  width: 100%;\n  padding: 14px 16px;\n  border: 0;\n  border-radius: 12px;\n  background: none;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .header:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: -2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .headText {\n  flex: 1;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .name {\n  color: var(--dsw-alias-label-primary);\n  font-size: 15px;\n  font-weight: 600;\n  line-height: 1.4;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .description {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 13px;\n  line-height: 1.5;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .pending {\n  flex: none;\n  padding: 1px 8px;\n  border-radius: 999px;\n  background: var(--dsw-alias-bg-module-platform);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  font-weight: 500;\n  line-height: 17px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .chevron.open {\n  transform: rotate(180deg);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .body {\n  margin: 0 16px;\n  padding-bottom: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .field {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  padding: 12px 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .fieldLabel {\n  color: var(--dsw-alias-label-primary);\n  font-size: 13px;\n  font-weight: 500;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .fieldHint {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .inputLabel {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  margin-top: 8px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .input {\n  width: 100%;\n  box-sizing: border-box;\n  padding: 6px 10px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-3);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .input:focus {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: -1px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .textarea {\n  min-height: 64px;\n  resize: vertical;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .pathRow {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin-top: 6px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .path {\n  flex: 1;\n  min-width: 0;\n  overflow: hidden;\n  padding: 6px 10px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  color: var(--dsw-alias-label-primary);\n  font-size: 13px;\n  line-height: 20px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .path.empty {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .footer {\n  display: flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 8px;\n  padding: 12px 0 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .failed,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .ok {\n  flex: 1;\n  min-width: 0;\n  margin: 0;\n  font-size: 12px;\n  line-height: 1.5;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .failed {\n  color: var(--dsw-alias-label-error);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .ok {\n  color: var(--dsw-alias-label-secondary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .capabilityGrid {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 6px 12px;\n  margin-top: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .capabilityItem {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  min-width: 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n  line-height: 20px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .capabilityName {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"settings-card\"] .secretHead {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n}\n");
- 		//#endregion
- 		//#region src/client/CreatorSettingsCard.tsx
-@@ -7069,7 +7069,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 			});
- 		}
- 		//#endregion
--		//#region \0dsh-oil-creator-css:/private/tmp/oil-base-repo/src/client/sidebar/OilSidebarRoot.css.mjs
-+		//#region \0dsh-oil-creator-css:/private/tmp/dsh-oil-creator-ed9417d/dsh-oil-creator-ed9417d1e0d24bdecdac831d4e72d3428e49a123/src/client/sidebar/OilSidebarRoot.css.mjs
- 		registerPluginCss("dsh-oil-creator/OilSidebarRoot.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] {\n  --dsh-sidebar-inline-padding: 12px;\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  padding: 6px var(--dsh-sidebar-inline-padding);\n  box-sizing: border-box;\n  background: var(--dsw-specific-sidebar-fill);\n  color: var(--dsw-alias-label-primary);\n  font-size: 14px;\n  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);\n  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed {\n  padding: 18px 10px 6px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].quietBars {\n  --dsh-scrollbar-thumb: transparent;\n  --dsh-scrollbar-thumb-hover: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].fading > * {\n  opacity: 0;\n  transition: opacity 150ms var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .wide {\n  animation: oil-sidebar-wide-in 200ms var(--ds-ease-in-out);\n}\n\n@keyframes oil-sidebar-wide-in {\n  from { opacity: 0; }\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .iconButton,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .newSession,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .regionArea {\n  animation: oil-sidebar-rail-in 150ms var(--ds-ease-in-out) backwards;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .footArea {\n  animation: oil-sidebar-rail-fade-in 150ms var(--ds-ease-in-out) backwards;\n}\n\n@keyframes oil-sidebar-rail-in {\n  from {\n    opacity: 0;\n    transform: translateX(49px);\n  }\n}\n\n@keyframes oil-sidebar-rail-fade-in {\n  from { opacity: 0; }\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .logoRow {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 8px;\n  height: 52px;\n  padding: 4px 0 4px 4px;\n  margin-bottom: 4px;\n  box-sizing: border-box;\n  overflow: hidden;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .logoRow {\n  height: 36px;\n  padding: 0;\n  margin-bottom: 12px;\n  justify-content: flex-start;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .brandButton {\n  flex: 1;\n  min-width: 0;\n  display: inline-flex;\n  align-items: center;\n  padding: 0;\n  border: none;\n  background: transparent;\n  color: inherit;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .oilBrand {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .oilBrandIcon {\n  width: 24px;\n  height: 24px;\n  flex: none;\n  border-radius: 999px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .oilBrandText {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 16px;\n  font-weight: 650;\n  letter-spacing: -0.03em;\n  line-height: 1;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .iconButton {\n  flex: none;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  border: none;\n  border-radius: 50%;\n  padding: 0;\n  background: transparent;\n  cursor: pointer;\n  color: var(--dsw-alias-label-secondary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .iconButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .iconButton {\n  width: 36px;\n  height: 36px;\n  color: var(--dsw-alias-label-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .toggle .panelIcon {\n  display: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .toggle:hover .panelIcon {\n  display: inline;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .railBrand {\n  display: inline-flex;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .toggle:hover .railBrand {\n  display: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .brandButton:focus-visible,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .iconButton:focus-visible,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .newSession:focus-visible,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .newSession {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  width: 36px;\n  height: 36px;\n  margin: 0 0 12px;\n  padding: 0;\n  border: none;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .newSession:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabRow {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  margin: 0 2px 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabList {\n  flex: 1;\n  min-width: 0;\n  display: flex;\n  gap: 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton {\n  flex: 1;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  gap: 5px;\n  height: 28px;\n  border: none;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n  line-height: 20px;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton.active {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n  font-weight: 500;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionArea {\n  position: relative;\n  flex: 1;\n  min-height: 0;\n  display: flex;\n  flex-direction: column;\n  margin-left: -4px;\n  margin-right: calc(-1 * var(--dsh-sidebar-inline-padding));\n  padding-left: 4px;\n  overflow: hidden;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionPane {\n  flex: 1;\n  min-height: 0;\n  display: flex;\n  flex-direction: column;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionPane.hidden {\n  display: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerNewSession {\n  position: absolute;\n  top: 6px;\n  right: 104px;\n  z-index: 2;\n  display: flex;\n  align-items: center;\n  max-width: 28px;\n  opacity: 1;\n  overflow: hidden;\n  visibility: visible;\n  transition:\n    max-width 180ms var(--ds-ease-in-out),\n    opacity 120ms var(--ds-ease-in-out),\n    transform 180ms var(--ds-ease-in-out),\n    visibility 0s linear;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionArea:has(input:not([tabindex=\"-1\"])) .headerNewSession {\n  max-width: 0;\n  opacity: 0;\n  transform: translateX(4px);\n  visibility: hidden;\n  pointer-events: none;\n  transition-delay: 0s, 0s, 0s, 180ms;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .regionArea {\n  margin-left: 0;\n  margin-right: 0;\n  padding-left: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .footArea {\n  flex: none;\n  display: flex;\n  flex-direction: column;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .settingsArea,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .footerActions {\n  flex: none;\n  min-width: 0;\n  width: 100%;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .footerActions {\n  display: flex;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .footArea {\n  align-items: center;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .settingsArea,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .footerActions {\n  display: flex;\n  justify-content: center;\n  width: auto;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .wide,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].fading > *,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .iconButton,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .newSession,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .footArea,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .regionArea,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerNewSession {\n    transition: none;\n    animation: none;\n  }\n}\n");
- 		//#endregion
- 		//#region src/client/sidebar/OilSidebarRoot.tsx
-@@ -7165,7 +7165,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 							onClick: () => {
- 								startSession();
- 							},
--							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, {})
-+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-+								className: "oilBrand",
-+								children: [renderSlot("sidebar.brand.mark", { size: 24 }, {
-+									fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
-+								}), renderSlot("sidebar.brand.name", {}, {
-+									fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-+										className: "oilBrandText",
-+										children: "Oil Creator"
-+									})
-+								})]
-+							})
-+						}), wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-+							className: "headerActions wide",
-+							children: renderSlot("sidebar.header.action", {})
- 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
- 							label: collapsed ? t("toggle.open") : t("toggle.collapse"),
- 							delayMs: 500,
-@@ -7178,7 +7191,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 								},
- 								children: [!wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
- 									className: "railBrand",
--									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
-+									children: renderSlot("sidebar.brand.mark", { size: 24 }, {
-+										fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
-+									})
- 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPanelLeftOutline16, {
- 									className: "panelIcon",
- 									size: wide ? 16 : 18
-@@ -7560,6 +7575,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
- 				locale: NS,
- 				priority: -1,
- 				children: {
-+					"sidebar.brand.mark": {
-+						kind: "single",
-+						scope: "root"
-+					},
-+					"sidebar.brand.name": {
-+						kind: "single",
-+						scope: "root"
-+					},
-+					"sidebar.header.action": {
-+						kind: "list",
-+						scope: "root"
-+					},
- 					"sidebar.workspaces": {
- 						kind: "single",
- 						scope: "root"
-diff --git a/lib/index.js b/lib/index.js
-index 200ce800b2..cac1147d9c 100644
---- a/lib/index.js
-+++ b/lib/index.js
-@@ -2,14 +2,13 @@ import { closeSync, constants, createReadStream, existsSync, mkdirSync, openSync
- import { homedir } from "node:os";
- import { basename, delimiter, dirname, extname, isAbsolute, join, resolve, sep } from "node:path";
- import Schema from "@deepseek-ai/schemastery";
-+import { fileURLToPath } from "node:url";
- import { execFileSync, spawn, spawnSync } from "node:child_process";
- import { access, mkdir, readFile, readdir, rename, rmdir, stat, unlink, writeFile } from "node:fs/promises";
- import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
- import { createServer } from "node:net";
--import { fileURLToPath } from "node:url";
- import { createHash } from "node:crypto";
- import { createServer as createServer$1 } from "node:http";
--import { settingsNamespace } from "@deepseek-ai/dsh-settings";
- import { defineTool } from "@deepseek-ai/dsh-tools";
- //#region src/config.ts
- function defaultLibraryRoot(platform = process.platform) {
-@@ -63,6 +62,13 @@ function resolveSkillDir(configured, skillName, envValue) {
- 	return skillDirCandidates(skillName).find((candidate) => existsSync(candidate)) ?? skillDirCandidates(skillName)[0];
- }
- //#endregion
-+//#region src/bundledSkills.ts
-+const moduleDir = dirname(fileURLToPath(import.meta.url));
-+const bundledSkillsRoot = join(moduleDir, "..", "skills");
-+function bundledSkillDir(name) {
-+	return join(bundledSkillsRoot, name);
-+}
-+//#endregion
- //#region src/creatorSkill.ts
- const CREATOR_WORKBENCH_SKILL = {
- 	name: "creator-workbench",
-@@ -88,7 +94,7 @@ const CREATOR_WORKBENCH_SKILL = {
- - 候选内容目录不存在时，先展示准备创建的完整路径；用户确认后用系统文件工具创建，再重新调用 \`oil_creator_setup\` 预览。不要把不存在的目录直接交给配置工具。
- - 第一次带配置字段调用时保持 \`apply=false\`，把精确变更展示给用户。
- - 只有用户确认后，才使用同一组字段和 \`apply=true\`。
--- 不向用户索要 API Key 明文。字幕和封面凭据只能让用户在插件设置页通过 Harness Credentials 配置。
-+- 不向用户索要 API Key 明文。字幕、封面和公众号凭据只能通过本机配置或 Harness Credentials 提供。
- - 高级依赖路径由插件配置或环境自动发现；能自动发现时不要增加问题。
- 
- ## 内容目录
-@@ -98,18 +104,47 @@ const CREATOR_WORKBENCH_SKILL = {
- - 先列目录，再读这一集需要的 \`topic.md\`、\`script.md\`、发布包、字幕或文章文件。
- - 创建新内容使用 \`oil_create_content\`；修改普通 Markdown 和 JSON 正文使用系统文件工具。
- 
--## 整理与发布安全
-+## 整理与发布
- 
- - 调用 \`oil_organize_library\` 时先预览，向用户列出改名前后；确认后才传 \`apply=true\`。它不删除文件。
--- 发布默认准备草稿。上传、账号登录和最终发表属于外部发布能力；最终发表必须由用户明确确认。
--- 自动发布（\`video-publisher\` skill）和已发布数据回收（\`oil_sync_publish\`）只处理 \`enabledPlatforms\` 中的平台，都依赖 Ego Browser 和已登录的创作者后台；\`enabledPlatforms\` 为空时不执行发布或同步，先配置并确认启用平台。能力检查显示缺失时明确告诉用户这两项不可用，其余功能照常。
-+- 使用 \`oil_prepare_publish\` 可把启用的视频平台和已有公众号文章准备成草稿。它会保留平台页面供用户检查，不执行最终发表或群发。
-+- 视频草稿和已发布数据回收依赖 Ego Browser 与已登录的创作者后台。公众号 API 草稿依赖本机配置的微信公众号 AppID、AppSecret 和 IP 白名单。
-+- 最终发表必须由用户明确确认；默认停在草稿或最终发表按钮前。
- 
- ## 推进工作
- 
- 每次只推进当前缺失的下一步：选题与脚本 → 录制/工程 → 导出成片 → 字幕 → 封面 → 发布草稿 → 用户最终发表 → 同步数据。长任务启动后检查产物或工作台状态，不把“已经启动”说成“已经完成”。`
- };
-+function externalSkill(name, description) {
-+	const root = bundledSkillDir(name);
-+	const path = join(root, "SKILL.md");
-+	const content = readFileSync(path, "utf8").replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, "").trim();
-+	return {
-+		name,
-+		description,
-+		source: "npm:dsh-oil-creator",
-+		invocation: {
-+			modelInvocable: true,
-+			userInvocable: true
-+		},
-+		resourceBase: {
-+			kind: "directory",
-+			path: root
-+		},
-+		path,
-+		content
-+	};
-+}
- function registerCreatorWorkbenchSkill(ctx) {
--	return ctx.skills.register(CREATOR_WORKBENCH_SKILL);
-+	const disposers = [
-+		ctx.skills.register(CREATOR_WORKBENCH_SKILL),
-+		ctx.skills.register(externalSkill("video-publisher", "把本地视频准备为小红书、抖音、B站和视频号草稿，保留页面供用户最终确认。")),
-+		ctx.skills.register(externalSkill("oil-video-article", "将视频和字幕整理为带真实配图的本地微信公众号 Markdown 文章。")),
-+		ctx.skills.register(externalSkill("wechat-publisher", "把 Markdown 或 HTML 上传到微信公众号草稿箱；只有用户明确确认后才允许最终发布。"))
-+	];
-+	return () => {
-+		for (const dispose of disposers.reverse()) dispose();
-+	};
- }
- //#endregion
- //#region src/platforms.ts
-@@ -175,10 +210,10 @@ function libraryConventionText(libraryRoot, dataDir, scriptRules, enabledPlatfor
- 		"约定文件：topic.md 选题；script.md 口播脚本；公众号文章/<标题>.md 已转写文章，配图在 公众号文章/images/；publish-package.json 只放标题和 tags，不写平台长文案；*.mp4/*.mov 成片（_subtitled 为烧录版）；*.srt/*.ass 字幕；*_3x4.png *_4x3.png *_16x9.png 封面。",
- 		"读或改这些内容，用系统自带的列文件、读文件、写文件工具。不要为了看一集再调插件工具。",
- 		"写或改 script.md 必须遵循用户的脚本规则（人设）：先用 oil_script_rules 读取；还没配置时主动问清语气、结构和禁忌，再用 oil_script_rules 存下来。",
--		`插件工具只做文件做不到的事：配置工作台、按约定建文件夹、绑/开 Screen Studio、等导出、生成或烧录字幕、生成封面、同步已发布数据、整理文件夹名。工作台状态在 ${dataDir}/overlay.json，不是正文。`,
--		"自动发布（video-publisher skill）和已发布数据回收（oil_sync_publish）都依赖 Ego Browser；能力检查显示缺失时明确告诉用户，不要假装能同步。"
-+		`插件工具只做文件做不到的事：配置工作台、按约定建文件夹、绑/开 Screen Studio、等导出、生成或烧录字幕、生成封面、准备发布草稿、同步已发布数据、整理文件夹名。工作台状态在 ${dataDir}/overlay.json，不是正文。`,
-+		"视频草稿（oil_prepare_publish）和已发布数据回收（oil_sync_publish）都依赖 Ego Browser；公众号文章草稿使用本机配置的微信公众号 API。能力检查显示缺失时明确告诉用户，不要假装已上传或同步。"
- 	];
--	if (enabledPlatforms !== void 0) lines.push(enabledPlatforms.length === 0 ? "当前没有启用发布平台。不要调用 video-publisher 或 oil_sync_publish。" : `当前启用平台：${enabledPlatformNames(enabledPlatforms)}。video-publisher 和 oil_sync_publish 只处理这些平台。`);
-+	if (enabledPlatforms !== void 0) lines.push(enabledPlatforms.length === 0 ? "当前没有启用视频发布平台。不要为视频调用 oil_prepare_publish 或 oil_sync_publish。" : `当前启用视频平台：${enabledPlatformNames(enabledPlatforms)}。oil_prepare_publish 和 oil_sync_publish 只处理这些视频平台。`);
- 	if (scriptRules !== void 0 && scriptRules.trim() !== "") lines.push("", "当前脚本规则（人设）：", scriptRules.trim());
- 	return lines.join("\n");
- }
-@@ -1257,7 +1292,16 @@ async function pickCoverLaunch(item, title) {
- //#endregion
- //#region src/capabilities.ts
- function defaultFindSkillDir(skillName, home = homedir()) {
--	return skillDirCandidates(skillName, home).find((candidate) => existsSync(join(candidate, "SKILL.md")));
-+	const installed = skillDirCandidates(skillName, home).find((candidate) => existsSync(join(candidate, "SKILL.md")));
-+	if (installed !== void 0) return installed;
-+	if ([
-+		"video-publisher",
-+		"oil-video-article",
-+		"wechat-publisher"
-+	].includes(skillName)) {
-+		const bundled = bundledSkillDir(skillName);
-+		if (existsSync(join(bundled, "SKILL.md"))) return bundled;
-+	}
- }
- function capability(state, required, detail, path) {
- 	return path === void 0 ? {
-@@ -1346,8 +1390,9 @@ function recommendationsOf(capabilities) {
- 	if (capabilities.coverCredential.state !== "ready") recommendations.push("封面 Key：到 ZenMux（https://zenmux.ai）控制台申请 ZENMUX_API_KEY，在设置页填写。");
- 	if (capabilities.publishSync.state !== "ready") recommendations.push(capabilities.publishSync.detail.includes("PATH") ? "自动发布和数据回收：已装 Ego Lite，还需要把 ego-browser 加到 PATH。" : "自动发布和数据回收：安装 Ego Browser（https://lite.ego.app）并保证 PATH 里有 ego-browser，再登录各平台后台。");
- 	if (capabilities.editingSkill.state !== "ready") recommendations.push("自动剪辑：git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor");
--	if (capabilities.publishSkill.state !== "ready") recommendations.push("自动发布：git clone https://github.com/oil-oil/video-publisher-skill ~/.agents/skills/video-publisher");
--	if (capabilities.articleSkill.state !== "ready") recommendations.push("公众号图文：git clone https://github.com/oil-oil/oil-video-article ~/.agents/skills/oil-video-article");
-+	if (capabilities.publishSkill.state !== "ready") recommendations.push("自动发布：当前安装包缺少内置 video-publisher，请修复或更新 YourBuddy。");
-+	if (capabilities.articleSkill.state !== "ready") recommendations.push("公众号图文：当前安装包缺少内置 oil-video-article，请修复或更新 YourBuddy。");
-+	if (capabilities.wechatPublisherSkill.state !== "ready") recommendations.push("公众号草稿：当前安装包缺少内置 wechat-publisher，请修复或更新 YourBuddy。");
- 	return recommendations;
- }
- async function inspectCreatorSetup(options) {
-@@ -1365,7 +1410,8 @@ async function inspectCreatorSetup(options) {
- 		publishSync: egoCapability(await findEgo(platform, env, home)),
- 		editingSkill: skillCapability(findSkillDir, "screen-studio-editor"),
- 		publishSkill: skillCapability(findSkillDir, "video-publisher"),
--		articleSkill: skillCapability(findSkillDir, "oil-video-article")
-+		articleSkill: skillCapability(findSkillDir, "oil-video-article"),
-+		wechatPublisherSkill: skillCapability(findSkillDir, "wechat-publisher")
- 	};
- 	return {
- 		platform,
-@@ -1429,7 +1475,8 @@ function creatorGuideText(status) {
- 		capabilityLine("Ego Browser（自动发布与数据回收）", capabilities.publishSync),
- 		capabilityLine("剪辑 skill screen-studio-editor", capabilities.editingSkill),
- 		capabilityLine("发布 skill video-publisher", capabilities.publishSkill),
--		capabilityLine("公众号 skill oil-video-article", capabilities.articleSkill),
-+		capabilityLine("公众号成稿 skill oil-video-article", capabilities.articleSkill),
-+		capabilityLine("公众号草稿 skill wechat-publisher", capabilities.wechatPublisherSkill),
- 		"",
- 		"## 内容管理",
- 		`- 片库目录是 ${settings.libraryRoot}，一集一个子文件夹，命名为 YYYY-MM-DD_可读标题。`,
-@@ -1456,16 +1503,17 @@ function creatorGuideText(status) {
- 		capabilities.editingSkill.state === "ready" ? "- 已发现 screen-studio-editor，用户要求清理时间线时直接使用。" : "- 缺 screen-studio-editor：征得用户同意后执行 `git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor`；没有它时剪辑由用户自己完成。",
- 		"",
- 		"## 自动发布与数据回收",
--		"- 这两项都依赖 Ego Browser（PATH 里的 ego-browser 命令）和已登录的各平台创作者后台。",
-+		"- 视频草稿和数据回收依赖 Ego Browser 与已登录的创作者后台；工作台会使用探测到的 ego-browser 绝对路径。",
- 		publishPlatformLine(enabledPlatforms),
--		capabilities.publishSync.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 Ego Browser，但当前没有启用平台，不执行自动发布和数据回收。" : "- 当前已发现 Ego Browser。上传发布走外部 skill video-publisher，停在最终发表按钮前由用户点；发布后或用户要求时用 oil_sync_publish 回收播放、赞、评论并写回工作台。" : "- 当前未发现 Ego Browser：自动发布和 oil_sync_publish 数据回收都不可用。告诉用户到 https://lite.ego.app 下载 ego lite，完成首次引导后 ego-browser 命令可用，再登录各平台创作者后台；片库、脚本、字幕、封面不受影响，不要假装能同步。",
--		capabilities.publishSkill.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 video-publisher，但当前没有启用平台，不使用它。" : "- 已发现 video-publisher。" : enabledPlatforms.length === 0 ? "- 当前没有启用平台，先配置 enabledPlatforms，再考虑安装 video-publisher。" : "- 缺 video-publisher：征得用户同意后执行 `git clone https://github.com/oil-oil/video-publisher-skill ~/.agents/skills/video-publisher`；没有它时在插件里手动标记发布状态即可。",
-+		capabilities.publishSync.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 Ego Browser，但当前没有启用平台，不执行自动发布和数据回收。" : "- 当前已发现 Ego Browser。用 oil_prepare_publish 准备启用平台的草稿，页面停在最终发表按钮前；发布后或用户要求时用 oil_sync_publish 回收播放、赞、评论并写回工作台。" : "- 当前未发现 Ego Browser：自动发布和 oil_sync_publish 数据回收都不可用。告诉用户到 https://lite.ego.app 下载 ego lite，完成首次引导后 ego-browser 命令可用，再登录各平台创作者后台；片库、脚本、字幕、封面不受影响，不要假装能同步。",
-+		capabilities.publishSkill.state === "ready" ? enabledPlatforms.length === 0 ? "- 已发现 video-publisher，但当前没有启用平台，不使用它。" : "- 已发现 video-publisher。" : "- 当前安装包缺少 video-publisher；请修复或更新 YourBuddy。",
- 		"",
- 		"## 公众号图文",
--		"- 把一期视频转成公众号文章走外部 skill oil-video-article，产物在这一集的 公众号文章/ 目录，插件负责展示，不负责生成。",
-+		"- 把一期视频转成公众号文章使用内置 oil-video-article，产物在这一集的 公众号文章/ 目录。已有文章可由 oil_prepare_publish 上传到公众号草稿箱。",
- 		"- 输入不绑死 Screen Studio：有 .screenstudio 工程时从无头像的屏幕轨道截帧，效果最好；只有普通成片视频时也能转写，配图直接从成片截取。",
- 		"- 文章语气遵循 oil-tone skill；公众号不是第五个视频平台，不参与发布状态标记。",
--		capabilities.articleSkill.state === "ready" ? "- 已发现 oil-video-article，用户提到把视频整理成文章时直接使用。" : "- 缺 oil-video-article：征得用户同意后执行 `git clone https://github.com/oil-oil/oil-video-article ~/.agents/skills/oil-video-article`；不需要公众号时可以跳过这一环节。",
-+		capabilities.articleSkill.state === "ready" ? "- 已发现 oil-video-article，用户提到把视频整理成文章时直接使用。" : "- 当前安装包缺少 oil-video-article；请修复或更新 YourBuddy。",
-+		capabilities.wechatPublisherSkill.state === "ready" ? "- 已发现 wechat-publisher。配置微信公众号 AppID、AppSecret 和 IP 白名单后可创建草稿；最终群发仍由用户确认。" : "- 当前安装包缺少 wechat-publisher；请修复或更新 YourBuddy。",
- 		"",
- 		"## 推进原则",
- 		"- 每次只推进当前缺失的下一步：选题与脚本 → 录制 → 导出成片 → 字幕 → 封面 → 发布 → 数据回收。",
-@@ -1973,6 +2021,8 @@ async function resolveCollectScript(preferred) {
- }
- async function runCollectPublish(scriptPath, signal, options = {}) {
- 	const source = await readFile(await resolveCollectScript(scriptPath), "utf8");
-+	const egoExecutable = await findExecutable("ego-browser");
-+	if (egoExecutable === void 0) throw new Error("ego-browser not found; finish Ego Lite onboarding first");
- 	return new Promise((resolve, reject) => {
- 		if (signal.aborted) {
- 			reject(signal.reason ?? /* @__PURE__ */ new Error("aborted"));
-@@ -1997,7 +2047,7 @@ async function runCollectPublish(scriptPath, signal, options = {}) {
- 		if (options.cleanupPrefixes !== void 0 && options.cleanupPrefixes.length > 0) env.OIL_COLLECT_CLEANUP_PREFIXES = options.cleanupPrefixes.join(",");
- 		if (options.maxPages !== void 0) env.OIL_COLLECT_MAX_PAGES = String(options.maxPages);
- 		if (options.xhsScrollSteps !== void 0) env.OIL_COLLECT_XHS_SCROLL = String(options.xhsScrollSteps);
--		const child = spawn("ego-browser", ["nodejs"], {
-+		const child = spawn(egoExecutable, ["nodejs"], {
- 			stdio: [
- 				"pipe",
- 				"pipe",
-@@ -2262,6 +2312,192 @@ async function saveOverlay(dataDir, store) {
- 	await rename(temp, path);
- }
- //#endregion
-+//#region src/publishing.ts
-+async function run(command, args, signal, env = process.env) {
-+	return new Promise((resolve, reject) => {
-+		signal.throwIfAborted();
-+		const child = spawn(command, args, {
-+			env,
-+			stdio: [
-+				"ignore",
-+				"pipe",
-+				"pipe"
-+			]
-+		});
-+		let stdout = "";
-+		let stderr = "";
-+		child.stdout.on("data", (chunk) => {
-+			stdout += String(chunk);
-+		});
-+		child.stderr.on("data", (chunk) => {
-+			stderr += String(chunk);
-+		});
-+		const onAbort = () => {
-+			child.kill("SIGTERM");
-+		};
-+		signal.addEventListener("abort", onAbort, { once: true });
-+		child.once("error", (error) => {
-+			signal.removeEventListener("abort", onAbort);
-+			reject(error);
-+		});
-+		child.once("close", (code) => {
-+			signal.removeEventListener("abort", onAbort);
-+			if (signal.aborted) {
-+				reject(signal.reason ?? /* @__PURE__ */ new Error("publishing aborted"));
-+				return;
-+			}
-+			resolve({
-+				code: code ?? 1,
-+				stdout,
-+				stderr
-+			});
-+		});
-+	});
-+}
-+function parseLastJson(raw) {
-+	const starts = [];
-+	for (let index = 0; index < raw.length; index += 1) if (raw[index] === "{") starts.push(index);
-+	for (const start of starts.reverse()) try {
-+		const value = JSON.parse(raw.slice(start));
-+		if (typeof value === "object" && value !== null && !Array.isArray(value)) return value;
-+	} catch {
-+		continue;
-+	}
-+}
-+function weightedTitle(title) {
-+	let weight = 0;
-+	let result = "";
-+	for (const char of title) {
-+		const next = char.codePointAt(0) <= 127 ? .5 : 1;
-+		if (weight + next > 20) break;
-+		result += char;
-+		weight += next;
-+	}
-+	return result;
-+}
-+async function publishMetadata(folderPath, fallbackTitle) {
-+	const names = await readdir(folderPath).catch(() => []);
-+	const name = names.find((candidate) => candidate === "publish-package.json") ?? names.find((candidate) => candidate.endsWith(".publish-package.json"));
-+	if (name === void 0) return {
-+		title: fallbackTitle,
-+		tags: []
-+	};
-+	try {
-+		const value = JSON.parse(await readFile(join(folderPath, name), "utf8"));
-+		return {
-+			title: typeof value.title === "string" && value.title.trim() !== "" ? value.title.trim() : fallbackTitle,
-+			tags: Array.isArray(value.tags) ? value.tags.filter((tag) => typeof tag === "string" && tag.trim() !== "").map((tag) => tag.trim()) : []
-+		};
-+	} catch {
-+		return {
-+			title: fallbackTitle,
-+			tags: []
-+		};
-+	}
-+}
-+function publisherPlatform(platform) {
-+	return platform === "wechat" ? "wechat_channels" : platform;
-+}
-+function contentPackage(item, title, tags, platforms, uploadCovers) {
-+	const videoPath = item.videoSubtitled ?? item.videoRaw;
-+	if (videoPath === void 0) throw new Error(`content has no video: ${item.id}`);
-+	const result = {
-+		videoPath,
-+		title
-+	};
-+	if (platforms.includes("xiaohongshu")) {
-+		result.xhsTitle = weightedTitle(title);
-+		result.xhsTopics = tags;
-+	}
-+	if (platforms.includes("douyin")) {
-+		result.douyinDescription = title;
-+		result.douyinTopics = tags;
-+	}
-+	if (platforms.includes("bilibili")) {
-+		result.bilibiliDescription = title;
-+		result.bilibiliTags = tags;
-+	}
-+	if (platforms.includes("wechat")) {
-+		result.wechatDescription = [title, tags.map((tag) => `#${tag}`).join(" ")].filter(Boolean).join("\n\n");
-+		result.wechatTags = tags;
-+	}
-+	const coversReady = (!platforms.includes("xiaohongshu") || item.covers["3x4"] !== void 0) && (!platforms.includes("douyin") || item.covers["3x4"] !== void 0 && item.covers["4x3"] !== void 0) && (!platforms.includes("bilibili") || item.covers["4x3"] !== void 0) && (!platforms.includes("wechat") || item.covers["3x4"] !== void 0 && item.covers["4x3"] !== void 0);
-+	result.cover = uploadCovers && coversReady ? {
-+		uploadCustomCover: true,
-+		vertical3x4Path: item.covers["3x4"],
-+		horizontal4x3Path: item.covers["4x3"],
-+		horizontal16x9Path: item.covers["16x9"]
-+	} : { uploadCustomCover: false };
-+	return result;
-+}
-+async function prepareVideoDrafts(options) {
-+	if (options.platforms.length === 0) return {
-+		status: "skipped",
-+		detail: "No enabled video platforms selected."
-+	};
-+	const ego = await findExecutable("ego-browser");
-+	if (ego === void 0) return {
-+		status: "blocked",
-+		detail: "ego-browser not found; finish Ego Lite onboarding first."
-+	};
-+	const publisher = join(bundledSkillDir("video-publisher"), "scripts", "v2", "publisher.mjs");
-+	await access(publisher);
-+	const metadata = await publishMetadata(options.item.folderPath, options.item.title);
-+	const payload = contentPackage(options.item, metadata.title, metadata.tags, options.platforms, options.uploadCovers);
-+	const packageRoot = join(options.dataDir, "publish-packages");
-+	await mkdir(packageRoot, { recursive: true });
-+	const key = createHash("sha256").update(options.item.id).digest("hex").slice(0, 16);
-+	const packagePath = join(packageRoot, `${key}.json`);
-+	await writeFile(packagePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-+	const args = [
-+		publisher,
-+		"--package",
-+		packagePath,
-+		"--keep-space"
-+	];
-+	for (const platform of options.platforms) args.push("--platform", publisherPlatform(platform));
-+	if (options.originalRightsConfirmed) args.push("--confirm-original-rights");
-+	if (options.inspectOnly) args.push("--inspect-only");
-+	const env = {
-+		...process.env,
-+		PATH: `${dirname(ego)}${delimiter}${process.env.PATH ?? ""}`
-+	};
-+	const result = await run(process.execPath, args, options.signal, env);
-+	const summary = parseLastJson(result.stdout);
-+	const ready = summary?.ready === true;
-+	return {
-+		status: ready ? "readyForReview" : "blocked",
-+		detail: ready ? "Video drafts are ready in retained Ego task spaces." : (result.stderr.trim() || result.stdout.trim() || `publisher exited ${result.code}`).slice(-1200),
-+		...typeof summary?.jobId === "string" ? { jobId: summary.jobId } : {},
-+		...typeof summary?.statePath === "string" ? { statePath: summary.statePath } : {},
-+		...typeof summary?.platforms === "object" && summary.platforms !== null ? { platforms: summary.platforms } : {}
-+	};
-+}
-+async function prepareWechatArticleDraft(options) {
-+	if (options.item.articlePath === void 0) return {
-+		status: "skipped",
-+		detail: "No WeChat article Markdown exists for this content."
-+	};
-+	const cli = join(bundledSkillDir("wechat-publisher"), "wechat-publisher.mjs");
-+	await access(cli);
-+	const args = [
-+		cli,
-+		"publish-file",
-+		options.item.articlePath
-+	];
-+	const thumb = options.item.covers["16x9"] ?? options.item.covers["4x3"] ?? options.item.covers["3x4"];
-+	if (thumb !== void 0) args.push("--thumb", thumb);
-+	const result = await run(process.execPath, args, options.signal);
-+	const detail = (result.stdout.trim() || result.stderr.trim() || `wechat publisher exited ${result.code}`).slice(-1200);
-+	return result.code === 0 ? {
-+		status: "readyForReview",
-+		detail
-+	} : {
-+		status: "blocked",
-+		detail
-+	};
-+}
-+//#endregion
- //#region src/secrets.ts
- const SUBTITLE_KEY_REFS = ["DASHSCOPE_API_KEY", "BAILIAN_API_KEY"];
- const COVER_KEY_REFS = ["ZENMUX_API_KEY"];
-@@ -2786,6 +3022,43 @@ var OilCreatorService = class extends TypertRemoteService {
- 			secrets: await describeCreatorSecrets(this.ctx)
- 		};
- 	}
-+	async preparePublish(request, signal) {
-+		signal.throwIfAborted();
-+		const item = await this.find(request.id);
-+		if (item === void 0) throw new Error(`content not found: ${request.id}`);
-+		const settings = await this.getSettings({}, signal);
-+		const enabled = new Set(settings.profile.enabledPlatforms);
-+		const platforms = (request.platforms ?? settings.profile.enabledPlatforms).filter((platform) => enabled.has(platform));
-+		const result = { id: request.id };
-+		if (platforms.length > 0) {
-+			result.video = await prepareVideoDrafts({
-+				item,
-+				platforms,
-+				dataDir: this.dataDir,
-+				originalRightsConfirmed: request.originalRightsConfirmed === true,
-+				uploadCovers: request.uploadCovers === true,
-+				inspectOnly: request.inspectOnly === true,
-+				signal
-+			});
-+			if (request.inspectOnly !== true && result.video.platforms !== void 0) for (const platform of platforms) {
-+				const key = platform === "wechat" ? "wechat_channels" : platform;
-+				const status = result.video.platforms[key];
-+				if (typeof status === "object" && status !== null && status.ready === true) await this.setPublish({
-+					id: request.id,
-+					platform,
-+					status: "draft"
-+				}, signal);
-+			}
-+		} else result.video = {
-+			status: "skipped",
-+			detail: "No enabled video platforms selected."
-+		};
-+		if (request.includeWechatArticle === true) result.wechatOfficialAccount = await prepareWechatArticleDraft({
-+			item,
-+			signal
-+		});
-+		return result;
-+	}
- 	async getCoverThumb(request, signal) {
- 		signal.throwIfAborted();
- 		const folderId = request.id.split("::")[0] ?? request.id;
-@@ -3584,7 +3857,7 @@ const CREATOR_SETTINGS_NAMESPACE = "dsh-oil-creator";
- */
- const CREATOR_SETTINGS_DISCOVERY_SCHEMA = Schema.object({});
- function registerCreatorSettingsNamespace(settings) {
--	settings.register(settingsNamespace(CREATOR_SETTINGS_NAMESPACE), CREATOR_SETTINGS_DISCOVERY_SCHEMA);
-+	settings.register(CREATOR_SETTINGS_NAMESPACE, CREATOR_SETTINGS_DISCOVERY_SCHEMA);
- }
- //#endregion
- //#region src/tools.ts
-@@ -3836,6 +4109,57 @@ function registerCreatorTools(ctx, service) {
- 			ids: args.ids ?? []
- 		}, signalOf(exec)))
- 	}));
-+	ctx.tools.register(defineTool({
-+		name: "oil_prepare_publish",
-+		description: "Prepare verified drafts for the episode on enabled video platforms and, optionally, the WeChat Official Account. Video pages remain open in Ego for human review; the WeChat article is created in the draft box. This tool never performs the final publish or group-send action.",
-+		parameters: {
-+			id: {
-+				type: "string",
-+				required: true,
-+				description: "Folder id."
-+			},
-+			platforms: {
-+				type: "array",
-+				items: {
-+					type: "string",
-+					enum: PUBLISH_PLATFORMS
-+				},
-+				description: "Enabled video platforms to prepare. Omit to use the creator profile."
-+			},
-+			includeWechatArticle: {
-+				type: "boolean",
-+				description: "Also upload the existing 公众号文章 Markdown file to the WeChat Official Account draft box."
-+			},
-+			originalRightsConfirmed: {
-+				type: "boolean",
-+				description: "True only when the user confirms this video may be declared original/self-produced."
-+			},
-+			uploadCovers: {
-+				type: "boolean",
-+				description: "Upload the episode's existing platform covers when every required ratio is available."
-+			},
-+			inspectOnly: {
-+				type: "boolean",
-+				description: "Inspect existing draft state without creating or changing drafts."
-+			}
-+		},
-+		output: {
-+			schema: JSON_VALUE,
-+			render: (_args, value) => {
-+				const result = value;
-+				return compactText("Prepare publish", [result.video?.status, result.wechatOfficialAccount?.status].filter(Boolean).join(", ") || "skipped");
-+			}
-+		},
-+		presentCall: (args) => present("Prepare publish drafts", args),
-+		execute: (args, exec) => service.preparePublish({
-+			id: args.id,
-+			...Array.isArray(args.platforms) ? { platforms: normalizeEnabledPlatforms(args.platforms) } : {},
-+			includeWechatArticle: args.includeWechatArticle === true,
-+			originalRightsConfirmed: args.originalRightsConfirmed === true,
-+			uploadCovers: args.uploadCovers === true,
-+			inspectOnly: args.inspectOnly === true
-+		}, signalOf(exec)).then(asJson)
-+	}));
- 	ctx.tools.register(defineTool({
- 		name: "oil_sync_publish",
- 		description: "Sync published titles, URLs, and counts from logged-in creator dashboards. Pass id to update one episode only and stop paging once that title is found. Omit id to match the whole library and collect every page. Requires Ego Lite and an already-logged-in creator session. Repeats within 90 seconds reuse the last snapshot.",
 diff --git a/package.json b/package.json
-index ac9e389b98..d683b473be 100644
+index 041e241..8b28584 100644
 --- a/package.json
 +++ b/package.json
 @@ -36,6 +36,7 @@
@@ -771,7 +241,7 @@ index ac9e389b98..d683b473be 100644
      "typecheck": "tsc --noEmit",
      "test": "vitest run",
      "release:check": "node scripts/check-release.mjs",
-     "check": "pnpm typecheck && pnpm test && pnpm build"
+     "check": "pnpm typecheck && pnpm build && pnpm test"
    },
    "dependencies": {
 -    "@deepseek-ai/dsh-tools": "0.1.0-rc.6 || 0.1.0-rc.7",
@@ -806,17 +276,17 @@ index ac9e389b98..d683b473be 100644
      "react": "^18.2.0"
    },
    "devDependencies": {
-diff --git a/tmp/oil-patch-tree/final/skills/oil-video-article/.gitignore b/skills/oil-video-article/.gitignore
+diff --git a/skills/oil-video-article/.gitignore b/skills/oil-video-article/.gitignore
 new file mode 100644
-index 0000000000..64777da0fb
+index 0000000..64777da
 --- /dev/null
 +++ b/skills/oil-video-article/.gitignore
 @@ -0,0 +1,2 @@
 +__pycache__/
 +.DS_Store
-diff --git a/tmp/oil-patch-tree/final/skills/oil-video-article/LICENSE b/skills/oil-video-article/LICENSE
+diff --git a/skills/oil-video-article/LICENSE b/skills/oil-video-article/LICENSE
 new file mode 100644
-index 0000000000..80fa9b501d
+index 0000000..80fa9b5
 --- /dev/null
 +++ b/skills/oil-video-article/LICENSE
 @@ -0,0 +1,21 @@
@@ -841,9 +311,9 @@ index 0000000000..80fa9b501d
 +LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 +OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 +SOFTWARE.
-diff --git a/tmp/oil-patch-tree/final/skills/oil-video-article/README.md b/skills/oil-video-article/README.md
+diff --git a/skills/oil-video-article/README.md b/skills/oil-video-article/README.md
 new file mode 100644
-index 0000000000..6eeeed1086
+index 0000000..6eeeed1
 --- /dev/null
 +++ b/skills/oil-video-article/README.md
 @@ -0,0 +1,56 @@
@@ -903,9 +373,9 @@ index 0000000000..6eeeed1086
 +```
 +
 +安装后由宿主重新加载 Skill。
-diff --git a/tmp/oil-patch-tree/final/skills/oil-video-article/SKILL.md b/skills/oil-video-article/SKILL.md
+diff --git a/skills/oil-video-article/SKILL.md b/skills/oil-video-article/SKILL.md
 new file mode 100644
-index 0000000000..1a278868fd
+index 0000000..1a27886
 --- /dev/null
 +++ b/skills/oil-video-article/SKILL.md
 @@ -0,0 +1,123 @@
@@ -1032,9 +502,9 @@ index 0000000000..1a278868fd
 +简短说明：文章路径、配图数量、输入是工程还是普通视频、时间轴是否发生过导出后剪辑（以及怎么校正的）、每张图核对时做过的取舍。不要在回复里复述脚本内部逻辑。
 +
 +文章成稿后，如果用户要求发布公众号或视频号，转 `oil-mp-publisher`（公众号图文排版+草稿）和 `video-publisher`（视频号）。
-diff --git a/tmp/oil-patch-tree/final/skills/oil-video-article/assets/banner.svg b/skills/oil-video-article/assets/banner.svg
+diff --git a/skills/oil-video-article/assets/banner.svg b/skills/oil-video-article/assets/banner.svg
 new file mode 100644
-index 0000000000..fb736be3c5
+index 0000000..fb736be
 --- /dev/null
 +++ b/skills/oil-video-article/assets/banner.svg
 @@ -0,0 +1,80 @@
@@ -1118,9 +588,9 @@ index 0000000000..fb736be3c5
 +  <!-- bottom strip -->
 +  <text x="80" y="560" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif" font-size="16" fill="#6e7681">agent skill · 搭配 oil-tone 成稿 · 只生成文章和图片，不发布</text>
 +</svg>
-diff --git a/tmp/oil-patch-tree/final/skills/oil-video-article/scripts/extract_frame.py b/skills/oil-video-article/scripts/extract_frame.py
+diff --git a/skills/oil-video-article/scripts/extract_frame.py b/skills/oil-video-article/scripts/extract_frame.py
 new file mode 100644
-index 0000000000..2641940c84
+index 0000000..2641940
 --- /dev/null
 +++ b/skills/oil-video-article/scripts/extract_frame.py
 @@ -0,0 +1,153 @@
@@ -1277,9 +747,9 @@ index 0000000000..2641940c84
 +
 +if __name__ == "__main__":
 +    sys.exit(main())
-diff --git a/tmp/oil-patch-tree/final/skills/oil-video-article/tests/test_extract_frame.py b/skills/oil-video-article/tests/test_extract_frame.py
+diff --git a/skills/oil-video-article/tests/test_extract_frame.py b/skills/oil-video-article/tests/test_extract_frame.py
 new file mode 100644
-index 0000000000..016b1ca373
+index 0000000..016b1ca
 --- /dev/null
 +++ b/skills/oil-video-article/tests/test_extract_frame.py
 @@ -0,0 +1,18 @@
@@ -1301,9 +771,9 @@ index 0000000000..016b1ca373
 +                map_time([(0,0,0,2000,1)], time)
 +
 +if __name__ == '__main__': unittest.main()
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/LICENSE b/skills/video-publisher/LICENSE
+diff --git a/skills/video-publisher/LICENSE b/skills/video-publisher/LICENSE
 new file mode 100644
-index 0000000000..80fa9b501d
+index 0000000..80fa9b5
 --- /dev/null
 +++ b/skills/video-publisher/LICENSE
 @@ -0,0 +1,21 @@
@@ -1328,9 +798,9 @@ index 0000000000..80fa9b501d
 +LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 +OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 +SOFTWARE.
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/README.md b/skills/video-publisher/README.md
+diff --git a/skills/video-publisher/README.md b/skills/video-publisher/README.md
 new file mode 100644
-index 0000000000..c21b07fe65
+index 0000000..c21b07f
 --- /dev/null
 +++ b/skills/video-publisher/README.md
 @@ -0,0 +1,35 @@
@@ -1369,9 +839,9 @@ index 0000000000..c21b07fe65
 +```bash
 +node --test scripts/tests/*.test.mjs scripts/v2/tests/*.test.mjs
 +```
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/SKILL.md b/skills/video-publisher/SKILL.md
+diff --git a/skills/video-publisher/SKILL.md b/skills/video-publisher/SKILL.md
 new file mode 100644
-index 0000000000..eba1957ca9
+index 0000000..87b10d9
 --- /dev/null
 +++ b/skills/video-publisher/SKILL.md
 @@ -0,0 +1,89 @@
@@ -1388,7 +858,7 @@ index 0000000000..eba1957ca9
 +
 +- 将本文件所在目录记为 `SKILL_DIR`，所有相对命令都在该目录运行。
 +- 日常发布只调用维护好的生产入口，不手工拆分平台阶段，也不自行控制创作者页面。
-+- 不点击任何平台的最终发布、保存或定时发布按钮。页面守卫只是最后一道保护，不是可试点的按钮。
++- 不点击任何平台的最终发布、保存或定时发布按钮。页面守卫只是最后一道保护，不是可试点的按钮；程序只在完整 `READY` 证据通过后撤下并复核守卫，未就绪页面继续保留守卫。移交通道中断且无法证明回滚时，不宣称守卫仍在；任务立即停止，恢复 Ego 后先重新检查原任务。
 +- 只有配置声明所有视频均为原创，或用户明确确认当前视频拥有原创权利时，才允许勾选原创、自制等声明；不得从视频内容自行推断。
 +- 使用用户确认的精确视频和封面路径，不静默替换、裁剪、转码或改用相似文件。
 +- 让程序判断上传完成、草稿身份、字段状态、回执和 `READY`；不要把“执行过动作”解释为成功。
@@ -1426,7 +896,7 @@ index 0000000000..eba1957ca9
 +
 +   平台参数省略时使用配置中的默认平台。仅在用户确认当前视频原创权利后追加 `--confirm-original-rights`。
 +6. 读取命令最后输出的结构化摘要：
-+   - `ready: true`：所有所选平台已验证。草稿页留着，你检查后自己点发布；
++   - `ready: true`：所有所选平台已验证，最终按钮守卫也已撤下并复核。草稿页留着，你检查后自己点发布；
 +   - `ready: false`：逐个平台报告 `blocker`、`missing` 和 `evidencePath`，不要笼统宣称失败或成功；
 +   - `USER_CONTROL`：立即停止全部浏览器工作，只有用户明确要求继续后才能重试；
 +   - `INPUT_CHANNEL_BROKEN`：立即说明受影响平台和缺失项，保留现有任务。通道未恢复时不重复跑生产命令；确认 Ego Lite 恢复后再沿用原 `--job-id` 和内容包，只恢复未完成平台；
@@ -1464,9 +934,9 @@ index 0000000000..eba1957ca9
 +页面适配器的改动必须以真实创作者页面证据和无操作复跑验收；调度、持久化、锁、任务空间、共享输入或回执改动还需要对应的崩溃恢复与完整生产回归。历史结果只记录在 `references/acceptance-history.md`。
 +
 +任何 Agent 都不得并行控制创作者页面；生产编排器是唯一的页面控制入口。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/agents/openai.yaml b/skills/video-publisher/agents/openai.yaml
+diff --git a/skills/video-publisher/agents/openai.yaml b/skills/video-publisher/agents/openai.yaml
 new file mode 100644
-index 0000000000..8d98f6fa37
+index 0000000..8d98f6f
 --- /dev/null
 +++ b/skills/video-publisher/agents/openai.yaml
 @@ -0,0 +1,7 @@
@@ -1477,9 +947,9 @@ index 0000000000..8d98f6fa37
 +
 +policy:
 +  allow_implicit_invocation: true
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/evals/evals.json b/skills/video-publisher/evals/evals.json
+diff --git a/skills/video-publisher/evals/evals.json b/skills/video-publisher/evals/evals.json
 new file mode 100644
-index 0000000000..9dab84b15b
+index 0000000..9dab84b
 --- /dev/null
 +++ b/skills/video-publisher/evals/evals.json
 @@ -0,0 +1,109 @@
@@ -1592,9 +1062,9 @@ index 0000000000..9dab84b15b
 +    }
 +  ]
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/acceptance-history.md b/skills/video-publisher/references/acceptance-history.md
+diff --git a/skills/video-publisher/references/acceptance-history.md b/skills/video-publisher/references/acceptance-history.md
 new file mode 100644
-index 0000000000..dbf7e0a25f
+index 0000000..dbf7e0a
 --- /dev/null
 +++ b/skills/video-publisher/references/acceptance-history.md
 @@ -0,0 +1,95 @@
@@ -1693,9 +1163,9 @@ index 0000000000..dbf7e0a25f
 +
 +- 2026-08-05 的单平台验收接受当前页面适配器。
 +- YouTube 任务空间崩溃恢复和五平台同跑仍需要各自的系统级真实回归。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/configuration.md b/skills/video-publisher/references/configuration.md
+diff --git a/skills/video-publisher/references/configuration.md b/skills/video-publisher/references/configuration.md
 new file mode 100644
-index 0000000000..67ebb5b5f4
+index 0000000..67ebb5b
 --- /dev/null
 +++ b/skills/video-publisher/references/configuration.md
 @@ -0,0 +1,118 @@
@@ -1817,9 +1287,9 @@ index 0000000000..67ebb5b5f4
 +- 配置可以保存平台可用性、文案偏好、默认 tags、原创政策、并发和封面偏好。
 +- 不保存 cookies、token、密码、单次视频路径或最终发布指令。
 +- 不手工编辑 schema；使用 CLI 写入，程序负责校验、权限和旧版本迁移。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/content-package.md b/skills/video-publisher/references/content-package.md
+diff --git a/skills/video-publisher/references/content-package.md b/skills/video-publisher/references/content-package.md
 new file mode 100644
-index 0000000000..14d9c4f086
+index 0000000..14d9c4f
 --- /dev/null
 +++ b/skills/video-publisher/references/content-package.md
 @@ -0,0 +1,150 @@
@@ -1973,9 +1443,9 @@ index 0000000000..14d9c4f086
 +```
 +
 +校验失败时修复内容包，或明确排除对应平台；不要绕过校验打开创作者页面，也不要自动改写 topic、裁剪、转码或替换视频。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/cover-workflow.md b/skills/video-publisher/references/cover-workflow.md
+diff --git a/skills/video-publisher/references/cover-workflow.md b/skills/video-publisher/references/cover-workflow.md
 new file mode 100644
-index 0000000000..7da127f183
+index 0000000..7da127f
 --- /dev/null
 +++ b/skills/video-publisher/references/cover-workflow.md
 @@ -0,0 +1,106 @@
@@ -2085,9 +1555,9 @@ index 0000000000..7da127f183
 +YouTube 替换缩略图时先回到详情步骤，完成后再进入可见性步骤。详情控件可读取时以当前页面为准，历史详情回执只能用于后续隐藏这些控件的步骤。
 +
 +该命令只处理仍在 Ego 任务空间中的 `READY` 草稿。已经发布的线上内容需要独立编辑流程；没有用户对具体内容和保存动作的明确授权时，不得点击保存。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/customizing-workflows.md b/skills/video-publisher/references/customizing-workflows.md
+diff --git a/skills/video-publisher/references/customizing-workflows.md b/skills/video-publisher/references/customizing-workflows.md
 new file mode 100644
-index 0000000000..3190aa6b84
+index 0000000..3190aa6
 --- /dev/null
 +++ b/skills/video-publisher/references/customizing-workflows.md
 @@ -0,0 +1,179 @@
@@ -2270,9 +1740,9 @@ index 0000000000..3190aa6b84
 +10. Run the full test suite and Skill validation. Search the Skill directory for credentials, cookies, tokens, account ids, and unintended absolute personal paths before sharing or pushing.
 +
 +If the change alters upload scheduling, task-space recovery, shared input handling, persistence, or receipts, add the relevant real crash/restart test instead of relying only on a one-platform happy path.
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/ego-browser-workflow.md b/skills/video-publisher/references/ego-browser-workflow.md
+diff --git a/skills/video-publisher/references/ego-browser-workflow.md b/skills/video-publisher/references/ego-browser-workflow.md
 new file mode 100644
-index 0000000000..c12b058688
+index 0000000..4222530
 --- /dev/null
 +++ b/skills/video-publisher/references/ego-browser-workflow.md
 @@ -0,0 +1,123 @@
@@ -2398,10 +1868,10 @@ index 0000000000..c12b058688
 +
 +Freshly inspect after every mutation. Upload and cover helper return values are only action receipts; the platform adapter must also verify page state.
 +
-+Stop before the final button and record its exact text, visibility, and disabled state.
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/intake-workflow.md b/skills/video-publisher/references/intake-workflow.md
++Stop before the final button and record its exact text, visibility, and disabled state. Keep the capture guard armed through that evidence; the shared core alone may detach it after every required check passes, and `READY` also requires the core to verify that removal without clicking the platform button.
+diff --git a/skills/video-publisher/references/intake-workflow.md b/skills/video-publisher/references/intake-workflow.md
 new file mode 100644
-index 0000000000..44ee7fa393
+index 0000000..44ee7fa
 --- /dev/null
 +++ b/skills/video-publisher/references/intake-workflow.md
 @@ -0,0 +1,100 @@
@@ -2505,9 +1975,9 @@ index 0000000000..44ee7fa393
 +```
 +
 +只填写所选平台需要的字段。具体字段、默认值和限制见 `content-package.md`；程序会在打开创作者页面前统一校验。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/platform-bilibili.md b/skills/video-publisher/references/platform-bilibili.md
+diff --git a/skills/video-publisher/references/platform-bilibili.md b/skills/video-publisher/references/platform-bilibili.md
 new file mode 100644
-index 0000000000..de6c1d4012
+index 0000000..de6c1d4
 --- /dev/null
 +++ b/skills/video-publisher/references/platform-bilibili.md
 @@ -0,0 +1,108 @@
@@ -2619,9 +2089,9 @@ index 0000000000..de6c1d4012
 +```
 +
 +实测记录和待回归边界见 `acceptance-history.md`。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/platform-common.md b/skills/video-publisher/references/platform-common.md
+diff --git a/skills/video-publisher/references/platform-common.md b/skills/video-publisher/references/platform-common.md
 new file mode 100644
-index 0000000000..1b031389e0
+index 0000000..9945e62
 --- /dev/null
 +++ b/skills/video-publisher/references/platform-common.md
 @@ -0,0 +1,196 @@
@@ -2642,7 +2112,7 @@ index 0000000000..1b031389e0
 +
 +Before reading or writing job state or starting a platform phase, acquire the account-wide publisher lock under the fixed lock root and then the job-directory `orchestrator.lock`. The publisher lock is independent of `--state-root`; direct platform diagnosis must join the same ownership token or acquire it itself. Register every spawned Ego controller as a token-bound member PID. Treat the lock as stale only when the owner and every registered member are dead. The job lock additionally protects persisted state, and a fresh lock whose owner file is still being written remains busy.
 +
-+Never click a final `发布`, `发布笔记`, `发表`, `立即投稿`, `保存`, `安排时间`, `Save`, `Publish`, or `Schedule` button. Final publishing is outside this Skill. Every adapter result must leave `finalPublishClicked: false`. The shared core installs a capture-phase click/submit guard; safety passes only when `guardArmed: true` and `blockedAttempts: 0` are observed from the live page.
++Never click a final `发布`, `发布笔记`, `发表`, `立即投稿`, `定时发布`, `定时发表`, `保存`, `安排时间`, `Save`, `Publish`, or `Schedule` button. Final publishing is outside this Skill. Every adapter result must leave `finalPublishClicked: false`. The shared core keeps its capture-phase click/submit guard armed through complete `inspect` or `verify` evidence, then detaches it only for a successful user handoff and verifies removal with inert synthetic controls. `READY` requires `guardArmed: true` during evidence capture, zero blocked attempts, and a proven detach; incomplete, blocked, failed-detach, and user-control results do not detach the guard.
 +
 +If Ego reports that the user controls a task space, stop the whole browser job. Do not retry, create a replacement task space, or claim it without explicit user confirmation.
 +
@@ -2821,9 +2291,9 @@ index 0000000000..1b031389e0
 +For a page-adapter change, verify the exact live postcondition and a no-op rerun. For scheduler, persistence, locking, shared input, task-space recovery, or receipt changes, repeat the relevant crash/restart case and the full selected-platform production regression. Never treat a one-platform diagnostic or unit test as system-level acceptance.
 +
 +历史证据、当前已接受范围和待回归项统一记录在 `acceptance-history.md`；只有验收或发布维护时读取。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/platform-douyin.md b/skills/video-publisher/references/platform-douyin.md
+diff --git a/skills/video-publisher/references/platform-douyin.md b/skills/video-publisher/references/platform-douyin.md
 new file mode 100644
-index 0000000000..016fa54d0f
+index 0000000..016fa54
 --- /dev/null
 +++ b/skills/video-publisher/references/platform-douyin.md
 @@ -0,0 +1,85 @@
@@ -2912,9 +2382,9 @@ index 0000000000..016fa54d0f
 +```
 +
 +实测记录和待回归边界见 `acceptance-history.md`。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/platform-wechat-channels.md b/skills/video-publisher/references/platform-wechat-channels.md
+diff --git a/skills/video-publisher/references/platform-wechat-channels.md b/skills/video-publisher/references/platform-wechat-channels.md
 new file mode 100644
-index 0000000000..ff38743adc
+index 0000000..ff38743
 --- /dev/null
 +++ b/skills/video-publisher/references/platform-wechat-channels.md
 @@ -0,0 +1,114 @@
@@ -3032,9 +2502,9 @@ index 0000000000..ff38743adc
 +```
 +
 +实测记录和待回归边界见 `acceptance-history.md`。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/platform-xiaohongshu.md b/skills/video-publisher/references/platform-xiaohongshu.md
+diff --git a/skills/video-publisher/references/platform-xiaohongshu.md b/skills/video-publisher/references/platform-xiaohongshu.md
 new file mode 100644
-index 0000000000..66bd9bcded
+index 0000000..66bd9bc
 --- /dev/null
 +++ b/skills/video-publisher/references/platform-xiaohongshu.md
 @@ -0,0 +1,72 @@
@@ -3110,9 +2580,9 @@ index 0000000000..66bd9bcded
 +```
 +
 +实测记录和待回归边界见 `acceptance-history.md`。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/platform-youtube.md b/skills/video-publisher/references/platform-youtube.md
+diff --git a/skills/video-publisher/references/platform-youtube.md b/skills/video-publisher/references/platform-youtube.md
 new file mode 100644
-index 0000000000..e408816830
+index 0000000..e408816
 --- /dev/null
 +++ b/skills/video-publisher/references/platform-youtube.md
 @@ -0,0 +1,77 @@
@@ -3193,9 +2663,9 @@ index 0000000000..e408816830
 +最终 `保存`、`发布`、`安排时间`、`Save`、`Publish`、`Schedule` 一律不得点击。
 +
 +实测记录和待回归边界见 `acceptance-history.md`。
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/references/scripts.md b/skills/video-publisher/references/scripts.md
+diff --git a/skills/video-publisher/references/scripts.md b/skills/video-publisher/references/scripts.md
 new file mode 100644
-index 0000000000..c9125afb28
+index 0000000..c9125af
 --- /dev/null
 +++ b/skills/video-publisher/references/scripts.md
 @@ -0,0 +1,215 @@
@@ -3414,9 +2884,9 @@ index 0000000000..c9125afb28
 +```
 +
 +These tests do not replace real platform acceptance.
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/check-package.mjs b/skills/video-publisher/scripts/check-package.mjs
+diff --git a/skills/video-publisher/scripts/check-package.mjs b/skills/video-publisher/scripts/check-package.mjs
 new file mode 100755
-index 0000000000..b49b8d5e68
+index 0000000..b49b8d5
 --- /dev/null
 +++ b/skills/video-publisher/scripts/check-package.mjs
 @@ -0,0 +1,53 @@
@@ -3473,9 +2943,9 @@ index 0000000000..b49b8d5e68
 +
 +console.log(JSON.stringify(result, null, 2));
 +if (errors.length) process.exit(1);
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/config.mjs b/skills/video-publisher/scripts/config.mjs
+diff --git a/skills/video-publisher/scripts/config.mjs b/skills/video-publisher/scripts/config.mjs
 new file mode 100644
-index 0000000000..359bcf640c
+index 0000000..359bcf6
 --- /dev/null
 +++ b/skills/video-publisher/scripts/config.mjs
 @@ -0,0 +1,193 @@
@@ -3672,9 +3142,9 @@ index 0000000000..359bcf640c
 +  print({ ok: false, path: configPath, error: String(error?.message || error) });
 +  process.exitCode = 1;
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/find-video.mjs b/skills/video-publisher/scripts/find-video.mjs
+diff --git a/skills/video-publisher/scripts/find-video.mjs b/skills/video-publisher/scripts/find-video.mjs
 new file mode 100644
-index 0000000000..0b4af6d3c4
+index 0000000..0b4af6d
 --- /dev/null
 +++ b/skills/video-publisher/scripts/find-video.mjs
 @@ -0,0 +1,149 @@
@@ -3827,9 +3297,9 @@ index 0000000000..0b4af6d3c4
 +  printJson({ ok: false, error: error.message });
 +  process.exit(1);
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/lib/config.mjs b/skills/video-publisher/scripts/lib/config.mjs
+diff --git a/skills/video-publisher/scripts/lib/config.mjs b/skills/video-publisher/scripts/lib/config.mjs
 new file mode 100644
-index 0000000000..a052c57fea
+index 0000000..a052c57
 --- /dev/null
 +++ b/skills/video-publisher/scripts/lib/config.mjs
 @@ -0,0 +1,234 @@
@@ -4067,9 +3537,9 @@ index 0000000000..a052c57fea
 +  fs.chmodSync(absolutePath, 0o600);
 +  return absolutePath;
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/lib/content-package.mjs b/skills/video-publisher/scripts/lib/content-package.mjs
+diff --git a/skills/video-publisher/scripts/lib/content-package.mjs b/skills/video-publisher/scripts/lib/content-package.mjs
 new file mode 100644
-index 0000000000..cad415c237
+index 0000000..cad415c
 --- /dev/null
 +++ b/skills/video-publisher/scripts/lib/content-package.mjs
 @@ -0,0 +1,341 @@
@@ -4414,9 +3884,9 @@ index 0000000000..cad415c237
 +    throw new Error(errors.join("; "));
 +  }
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/lib/media.mjs b/skills/video-publisher/scripts/lib/media.mjs
+diff --git a/skills/video-publisher/scripts/lib/media.mjs b/skills/video-publisher/scripts/lib/media.mjs
 new file mode 100644
-index 0000000000..db5b6671a6
+index 0000000..db5b667
 --- /dev/null
 +++ b/skills/video-publisher/scripts/lib/media.mjs
 @@ -0,0 +1,123 @@
@@ -4543,9 +4013,9 @@ index 0000000000..db5b6671a6
 +  }
 +  return errors;
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/run-safe-platforms.sh b/skills/video-publisher/scripts/run-safe-platforms.sh
+diff --git a/skills/video-publisher/scripts/run-safe-platforms.sh b/skills/video-publisher/scripts/run-safe-platforms.sh
 new file mode 100755
-index 0000000000..0544091021
+index 0000000..0544091
 --- /dev/null
 +++ b/skills/video-publisher/scripts/run-safe-platforms.sh
 @@ -0,0 +1,19 @@
@@ -4568,9 +4038,9 @@ index 0000000000..0544091021
 +fi
 +
 +exec node "${script_dir}/v2/publisher.mjs" "$@"
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/tests/config.test.mjs b/skills/video-publisher/scripts/tests/config.test.mjs
+diff --git a/skills/video-publisher/scripts/tests/config.test.mjs b/skills/video-publisher/scripts/tests/config.test.mjs
 new file mode 100644
-index 0000000000..8e787604d1
+index 0000000..8e78760
 --- /dev/null
 +++ b/skills/video-publisher/scripts/tests/config.test.mjs
 @@ -0,0 +1,200 @@
@@ -4774,9 +4244,9 @@ index 0000000000..8e787604d1
 +  assert.deepEqual(updated.contentProfile, { copyStyle: "Personal style", recurringTags: ["AI"] });
 +  await fs.promises.rm(root, { recursive: true, force: true });
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/tests/content-package.test.mjs b/skills/video-publisher/scripts/tests/content-package.test.mjs
+diff --git a/skills/video-publisher/scripts/tests/content-package.test.mjs b/skills/video-publisher/scripts/tests/content-package.test.mjs
 new file mode 100644
-index 0000000000..cb4a879722
+index 0000000..cb4a879
 --- /dev/null
 +++ b/skills/video-publisher/scripts/tests/content-package.test.mjs
 @@ -0,0 +1,391 @@
@@ -5171,12 +4641,12 @@ index 0000000000..cb4a879722
 +    assert.match(validateYoutubePackage(invalid).join("; "), /youtubeDescription is required/);
 +  });
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/tests/skill-contract.test.mjs b/skills/video-publisher/scripts/tests/skill-contract.test.mjs
+diff --git a/skills/video-publisher/scripts/tests/skill-contract.test.mjs b/skills/video-publisher/scripts/tests/skill-contract.test.mjs
 new file mode 100644
-index 0000000000..7c667bfb6e
+index 0000000..ce36159
 --- /dev/null
 +++ b/skills/video-publisher/scripts/tests/skill-contract.test.mjs
-@@ -0,0 +1,63 @@
+@@ -0,0 +1,65 @@
 +import assert from "node:assert/strict";
 +import fs from "node:fs";
 +import path from "node:path";
@@ -5197,6 +4667,8 @@ index 0000000000..7c667bfb6e
 +  assert.ok(Buffer.byteLength(skill) <= 10_000, `SKILL.md 过大：${Buffer.byteLength(skill)}/10000 bytes`);
 +  assert.match(skill, /scripts\/run-safe-platforms\.sh <package\.json>/);
 +  assert.match(skill, /不点击任何平台的最终发布、保存或定时发布按钮/);
++  assert.match(skill, /完整 `READY` 证据通过后撤下并复核守卫/);
++  assert.match(skill, /最终按钮守卫也已撤下并复核/);
 +  assert.match(skill, /--confirm-original-rights/);
 +  assert.match(skill, /--no-cleanup-stale-spaces/);
 +  assert.match(skill, /部分平台/);
@@ -5240,12 +4712,12 @@ index 0000000000..7c667bfb6e
 +  assert.match(history, /2026-08-05/);
 +  assert.match(history, /YouTube/);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/ego/core.mjs b/skills/video-publisher/scripts/v2/ego/core.mjs
+diff --git a/skills/video-publisher/scripts/v2/ego/core.mjs b/skills/video-publisher/scripts/v2/ego/core.mjs
 new file mode 100644
-index 0000000000..32e7e80314
+index 0000000..082f9c7
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/ego/core.mjs
-@@ -0,0 +1,268 @@
+@@ -0,0 +1,396 @@
 +const V2_RESULT_PREFIX = 'VIDEO_PUBLISHER_V2_RESULT:';
 +const PLATFORM_URLS = {
 +  xiaohongshu: 'https://creator.xiaohongshu.com/publish/publish?source=official&from=menu&target=video',
@@ -5261,8 +4733,8 @@ index 0000000000..32e7e80314
 +  wechat_channels: /channels\.weixin\.qq\.com/,
 +  youtube: /studio\.youtube\.com|accounts\.google\.com/,
 +};
-+const FINAL_TEXT = /^(发布|发布笔记|发表|立即投稿)$/;
-+const YOUTUBE_FINAL_TEXT = /^(保存|发布|安排时间|Save|Publish|Schedule)$/i;
++const FINAL_TEXT = /^(发布|发布笔记|发表|立即投稿|定时发布|定时发表)$/;
++const YOUTUBE_FINAL_TEXT = /^(保存|发布|安排时间|定时发布|定时发表|Save|Publish|Schedule)$/i;
 +const FINAL_GUARD_KEY = '__VIDEO_PUBLISHER_FINAL_GUARD__';
 +let activeTaskSpace = null;
 +let taskSpaceRecovery = null;
@@ -5341,12 +4813,22 @@ index 0000000000..32e7e80314
 +  const activeFinalText = platform === 'youtube' ? YOUTUBE_FINAL_TEXT : FINAL_TEXT;
 +  return await js(String.raw`((key, finalSource, finalFlags) => {
 +    const existing = window[key]
-+    if (existing?.armed === true && existing.version === 1) {
++    if (existing?.version === 2 && typeof existing.guard === 'function') {
++      document.addEventListener('click', existing.guard, true)
++      document.addEventListener('submit', existing.guard, true)
++      if (existing.armed !== true) existing.armedAt = new Date().toISOString()
++      existing.armed = true
++      existing.detached = false
++      existing.detachedAt = null
++      existing.detachVerified = false
 +      return { ok: true, armed: true, version: existing.version, armedAt: existing.armedAt, blockedAttempts: existing.blockedAttempts.length }
++    }
++    if (existing) {
++      return { ok: false, armed: existing.armed === true, version: existing.version || null, legacyGuard: true, reason: 'legacy final-publish guard requires a user page reload before retry' }
 +    }
 +    const finalText = new RegExp(finalSource, finalFlags)
 +    const compact = value => String(value || '').replace(/\s+/g, ' ').trim()
-+    const state = { armed: true, version: 1, armedAt: new Date().toISOString(), blockedAttempts: [] }
++    const state = { armed: true, version: 2, armedAt: new Date().toISOString(), detached: false, detachedAt: null, detachVerified: false, blockedAttempts: [], guard: null }
 +    const buttonLabel = element => {
 +      if (!(element instanceof Element)) return ''
 +      const buttonish = element.matches('button, input[type="submit"], [role="button"], .d-button, .bcc-button')
@@ -5361,6 +4843,7 @@ index 0000000000..32e7e80314
 +      event.stopImmediatePropagation()
 +      state.blockedAttempts.push({ type: event.type, label: match.label, at: new Date().toISOString() })
 +    }
++    state.guard = guard
 +    document.addEventListener('click', guard, true)
 +    document.addEventListener('submit', guard, true)
 +    window[key] = state
@@ -5371,10 +4854,72 @@ index 0000000000..32e7e80314
 +async function inspectFinalPublishGuard() {
 +  return await js(String.raw`((key) => {
 +    const state = window[key]
-+    return state?.armed === true && state.version === 1
-+      ? { armed: true, version: state.version, armedAt: state.armedAt, blockedAttempts: state.blockedAttempts.length, attempts: state.blockedAttempts.slice(-5) }
-+      : { armed: false, version: state?.version || null, blockedAttempts: state?.blockedAttempts?.length || 0, attempts: state?.blockedAttempts?.slice?.(-5) || [] }
++    return {
++      armed: state?.armed === true,
++      detached: state?.detached === true,
++      detachVerified: state?.detachVerified === true,
++      version: state?.version || null,
++      armedAt: state?.armedAt || null,
++      detachedAt: state?.detachedAt || null,
++      blockedAttempts: state?.blockedAttempts?.length || 0,
++      attempts: state?.blockedAttempts?.slice?.(-5) || [],
++    }
 +  })(${JSON.stringify(FINAL_GUARD_KEY)})`);
++}
++
++async function detachFinalPublishGuard() {
++  const probeLabel = platform === 'youtube' ? 'Publish' : '发布';
++  return await js(String.raw`((key, probeLabel) => {
++    const state = window[key]
++    if (state?.armed !== true || state.version !== 2 || typeof state.guard !== 'function') {
++      return { ok: false, armed: state?.armed === true, detached: state?.detached === true, detachVerified: false, version: state?.version || null, reason: 'detachable armed guard missing' }
++    }
++    document.removeEventListener('click', state.guard, true)
++    document.removeEventListener('submit', state.guard, true)
++    const attemptsBefore = state.blockedAttempts.length
++    let form = null
++    let clickAllowed = false
++    let submitAllowed = false
++    let probeError = null
++    try {
++      form = document.createElement('form')
++      const button = document.createElement('button')
++      button.type = 'button'
++      button.textContent = probeLabel
++      form.style.display = 'none'
++      form.appendChild(button)
++      document.documentElement.appendChild(form)
++      const clickEvent = new MouseEvent('click', { bubbles: true, composed: true, cancelable: true })
++      clickAllowed = button.dispatchEvent(clickEvent) && !clickEvent.defaultPrevented
++      const submitEvent = typeof SubmitEvent === 'function'
++        ? new SubmitEvent('submit', { bubbles: true, composed: true, cancelable: true, submitter: button })
++        : new Event('submit', { bubbles: true, composed: true, cancelable: true })
++      if (!('submitter' in submitEvent)) Object.defineProperty(submitEvent, 'submitter', { value: button })
++      submitAllowed = form.dispatchEvent(submitEvent) && !submitEvent.defaultPrevented
++    } catch (error) {
++      probeError = String(error?.message || error)
++    } finally {
++      form?.remove()
++    }
++    const attemptsAfter = state.blockedAttempts.length
++    const detachVerified = !probeError && clickAllowed && submitAllowed && attemptsAfter === attemptsBefore
++    if (!detachVerified) {
++      const probeBlockedAttempts = state.blockedAttempts.slice(attemptsBefore)
++      state.blockedAttempts.splice(attemptsBefore)
++      document.addEventListener('click', state.guard, true)
++      document.addEventListener('submit', state.guard, true)
++      state.armed = true
++      state.detached = false
++      state.detachVerified = false
++      return { ok: false, armed: true, detached: false, detachVerified: false, version: state.version, clickAllowed, submitAllowed, attemptsBefore, attemptsAfter, probeBlockedAttempts, probeError, reason: 'listener detachment probe failed' }
++    }
++    state.armed = false
++    state.detached = true
++    state.detachedAt = new Date().toISOString()
++    state.detachVerified = true
++    const guardAfter = { armed: state.armed, detached: state.detached, detachVerified: state.detachVerified, version: state.version, detachedAt: state.detachedAt, blockedAttempts: state.blockedAttempts.length }
++    return { ok: true, armed: false, detached: true, detachVerified: true, version: state.version, detachedAt: state.detachedAt, clickAllowed, submitAllowed, attemptsBefore, attemptsAfter, guardAfter }
++  })(${JSON.stringify(FINAL_GUARD_KEY)}, ${JSON.stringify(probeLabel)})`);
 +}
 +
 +function checkpointReceipts(receipts) {
@@ -5404,11 +4949,14 @@ index 0000000000..32e7e80314
 +  if (!selected.ok) return { task, selected };
 +  const guard = await armFinalPublishGuard();
 +  if (!guard.ok || !guard.armed) {
++    const legacyGuard = guard.legacyGuard === true;
 +    return {
 +      task,
 +      selected: {
 +        ok: false,
-+        blocker: typedBlocker('INPUT_CHANNEL_BROKEN', '最终发布按钮硬保护无法挂载', { retryable: true, evidence: guard }),
++        blocker: typedBlocker(legacyGuard ? 'ACTION_FAILED' : 'INPUT_CHANNEL_BROKEN', legacyGuard
++          ? '页面仍有旧版最终发布保护；请等待本次任务停止后手动刷新页面，再沿用原 Job 重试'
++          : '最终发布按钮硬保护无法挂载', { retryable: !legacyGuard, requiresUser: legacyGuard, evidence: guard }),
 +      },
 +    };
 +  }
@@ -5502,21 +5050,73 @@ index 0000000000..32e7e80314
 +    finalPublishClicked: false,
 +    ...observation,
 +  };
-+  // Safety is injected centrally and backed by a page-level capture guard.
-+  // A blocked attempt keeps the draft unpublished, but intentionally fails READY
-+  // so accidental final-button interaction cannot pass unnoticed.
 +  payload.gates ||= {};
-+  const safetyEvidence = { finalPublishClicked: false, guardArmed: guard.armed === true, blockedAttempts: guard.blockedAttempts || 0, attempts: guard.attempts || [], guardVersion: guard.version || null };
++  const safetyEvidence = {
++    finalPublishClicked: false,
++    guardArmed: guard.armed === true,
++    blockedAttempts: guard.blockedAttempts || 0,
++    attempts: guard.attempts || [],
++    guardVersion: guard.version || null,
++    handoffCommitted: false,
++    guardDetached: false,
++    detachVerified: false,
++  };
 +  payload.gates.safety = guard.armed === true && guard.blockedAttempts === 0
 +    ? okGate(safetyEvidence)
 +    : failedGate(safetyEvidence);
++  const handoffCandidate = ['inspect', 'verify'].includes(phase)
++    && !payload.blocker
++    && requiredGateNames.every(name => payload.gates[name]?.ok === true);
++  if (handoffCandidate) {
++    let detach = null;
++    let detachedGuard = null;
++    let detachError = null;
++    try {
++      detach = await detachFinalPublishGuard();
++      detachedGuard = detach?.guardAfter || null;
++    } catch (error) {
++      detachError = String(error?.message || error);
++    }
++    const handoffCommitted = detach?.ok === true
++      && detach.detached === true
++      && detach.detachVerified === true
++      && detachedGuard?.armed === false
++      && detachedGuard?.detached === true
++      && detachedGuard?.detachVerified === true;
++    Object.assign(safetyEvidence, {
++      handoffCommitted,
++      guardDetached: handoffCommitted,
++      detachVerified: handoffCommitted,
++      detachedAt: detachedGuard?.detachedAt || detach?.detachedAt || null,
++      detach,
++      detachedGuard,
++      detachError,
++    });
++    if (!handoffCommitted) {
++      const rollback = await armFinalPublishGuard().catch(error => ({ ok: false, error: String(error?.message || error) }));
++      const failureDetail = [detachError, rollback?.error].filter(Boolean).join(' | ');
++      const userControl = /user (?:has|had) taken control|user took control|user is controlling|user controls|用户.*控制|not assigned to an agent|task space.*inactive/i.test(failureDetail);
++      const blockerCode = userControl ? 'USER_CONTROL' : failureDetail ? 'INPUT_CHANNEL_BROKEN' : 'ACTION_FAILED';
++      safetyEvidence.rollback = rollback;
++      payload.gates.safety = failedGate(safetyEvidence);
++      payload.blocker = typedBlocker(blockerCode, userControl
++        ? '最终发布按钮移交期间用户接管了任务空间'
++        : blockerCode === 'INPUT_CHANNEL_BROKEN'
++          ? '最终发布按钮移交期间 Ego Lite 通道中断'
++          : '最终发布按钮保护无法安全移交给用户', {
++        retryable: !userControl,
++        requiresUser: userControl,
++        evidence: { detach, detachedGuard, detachError, rollback },
++      });
++    }
++  }
 +  delete payload.ready;
 +  cliLog(V2_RESULT_PREFIX + JSON.stringify(payload));
 +  return payload;
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/lib/cli-args.mjs b/skills/video-publisher/scripts/v2/lib/cli-args.mjs
+diff --git a/skills/video-publisher/scripts/v2/lib/cli-args.mjs b/skills/video-publisher/scripts/v2/lib/cli-args.mjs
 new file mode 100644
-index 0000000000..b626042f77
+index 0000000..b626042
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/lib/cli-args.mjs
 @@ -0,0 +1,135 @@
@@ -5655,9 +5255,9 @@ index 0000000000..b626042f77
 +  options.cleanupPrefixes = [...new Set(options.cleanupPrefixes.filter(Boolean))];
 +  return { ...options, platforms: selected };
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/lib/identity.mjs b/skills/video-publisher/scripts/v2/lib/identity.mjs
+diff --git a/skills/video-publisher/scripts/v2/lib/identity.mjs b/skills/video-publisher/scripts/v2/lib/identity.mjs
 new file mode 100644
-index 0000000000..b456017268
+index 0000000..b456017
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/lib/identity.mjs
 @@ -0,0 +1,83 @@
@@ -5744,9 +5344,9 @@ index 0000000000..b456017268
 +  const fingerprint = digest({ package: pkg, video, assets });
 +  return { fingerprint, previousFingerprint, legacyFingerprint, contentFingerprint, coverFingerprint, coverFingerprints, video, assets, cover };
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/lib/job-lock.mjs b/skills/video-publisher/scripts/v2/lib/job-lock.mjs
+diff --git a/skills/video-publisher/scripts/v2/lib/job-lock.mjs b/skills/video-publisher/scripts/v2/lib/job-lock.mjs
 new file mode 100644
-index 0000000000..87dd622523
+index 0000000..87dd622
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/lib/job-lock.mjs
 @@ -0,0 +1,141 @@
@@ -5891,9 +5491,9 @@ index 0000000000..87dd622523
 +  }
 +  throw new Error(`Could not acquire orchestrator lock for job ${jobId || path.basename(jobDir)}`);
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/lib/job-store.mjs b/skills/video-publisher/scripts/v2/lib/job-store.mjs
+diff --git a/skills/video-publisher/scripts/v2/lib/job-store.mjs b/skills/video-publisher/scripts/v2/lib/job-store.mjs
 new file mode 100644
-index 0000000000..1406cf3fae
+index 0000000..1406cf3
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/lib/job-store.mjs
 @@ -0,0 +1,150 @@
@@ -6047,12 +5647,12 @@ index 0000000000..1406cf3fae
 +    await this.queue;
 +  }
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/lib/model.mjs b/skills/video-publisher/scripts/v2/lib/model.mjs
+diff --git a/skills/video-publisher/scripts/v2/lib/model.mjs b/skills/video-publisher/scripts/v2/lib/model.mjs
 new file mode 100644
-index 0000000000..60ea929818
+index 0000000..7394e46
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/lib/model.mjs
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,170 @@
 +export const PLATFORMS = ["xiaohongshu", "douyin", "bilibili", "wechat_channels", "youtube"];
 +
 +export const BLOCKER = Object.freeze({
@@ -6157,12 +5757,24 @@ index 0000000000..60ea929818
 +    throw new Error("Invalid platform observation");
 +  }
 +  const required = requiredGates(observation.platform);
++  const observedPhase = observation.phase || "inspect";
 +  const gates = { ...(observation.gates || {}) };
 +  const safetyEvidence = gates.safety?.evidence || {};
++  const handoffRequired = !observation.blocker
++    && required.filter(name => name !== "safety").every(name => gates[name]?.ok === true);
 +  const safetyVerified = gates.safety?.ok === true
 +    && safetyEvidence.finalPublishClicked === false
 +    && safetyEvidence.guardArmed === true
-+    && safetyEvidence.blockedAttempts === 0;
++    && safetyEvidence.blockedAttempts === 0
++    && (!handoffRequired || (safetyEvidence.handoffCommitted === true
++      && safetyEvidence.guardDetached === true
++      && safetyEvidence.detachVerified === true
++      && safetyEvidence.detach?.ok === true
++      && safetyEvidence.detach?.detached === true
++      && safetyEvidence.detach?.detachVerified === true
++      && safetyEvidence.detachedGuard?.armed === false
++      && safetyEvidence.detachedGuard?.detached === true
++      && safetyEvidence.detachedGuard?.detachVerified === true));
 +  if (!safetyVerified) {
 +    gates.safety = {
 +      ...(gates.safety || {}),
@@ -6178,7 +5790,7 @@ index 0000000000..60ea929818
 +    schemaVersion: 1,
 +    platform: observation.platform,
 +    taskSpaceId: observation.taskSpaceId ?? null,
-+    phase: observation.phase || "inspect",
++    phase: observedPhase,
 +    observedAt: observation.observedAt || new Date().toISOString(),
 +    ready,
 +    required,
@@ -6211,9 +5823,9 @@ index 0000000000..60ea929818
 +    blocker: verdict.blocker,
 +  };
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/lib/platform-lock.mjs b/skills/video-publisher/scripts/v2/lib/platform-lock.mjs
+diff --git a/skills/video-publisher/scripts/v2/lib/platform-lock.mjs b/skills/video-publisher/scripts/v2/lib/platform-lock.mjs
 new file mode 100644
-index 0000000000..100ce0f4cf
+index 0000000..100ce0f
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/lib/platform-lock.mjs
 @@ -0,0 +1,63 @@
@@ -6280,9 +5892,9 @@ index 0000000000..100ce0f4cf
 +  }
 +  throw new Error(`Could not acquire platform lock for ${platform}`);
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/lib/result-line.mjs b/skills/video-publisher/scripts/v2/lib/result-line.mjs
+diff --git a/skills/video-publisher/scripts/v2/lib/result-line.mjs b/skills/video-publisher/scripts/v2/lib/result-line.mjs
 new file mode 100644
-index 0000000000..dbaa10d963
+index 0000000..dbaa10d
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/lib/result-line.mjs
 @@ -0,0 +1,13 @@
@@ -6299,9 +5911,9 @@ index 0000000000..dbaa10d963
 +    throw new Error(`${context} returned invalid structured observation: ${raw.slice(0, 600)}`, { cause: error });
 +  }
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/lib/scheduler.mjs b/skills/video-publisher/scripts/v2/lib/scheduler.mjs
+diff --git a/skills/video-publisher/scripts/v2/lib/scheduler.mjs b/skills/video-publisher/scripts/v2/lib/scheduler.mjs
 new file mode 100644
-index 0000000000..32b4e9beab
+index 0000000..32b4e9b
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/lib/scheduler.mjs
 @@ -0,0 +1,27 @@
@@ -6332,9 +5944,9 @@ index 0000000000..32b4e9beab
 +    await this.#tail;
 +  }
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/lib/spaces.mjs b/skills/video-publisher/scripts/v2/lib/spaces.mjs
+diff --git a/skills/video-publisher/scripts/v2/lib/spaces.mjs b/skills/video-publisher/scripts/v2/lib/spaces.mjs
 new file mode 100644
-index 0000000000..6e8638f38b
+index 0000000..6e8638f
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/lib/spaces.mjs
 @@ -0,0 +1,204 @@
@@ -6542,9 +6154,9 @@ index 0000000000..6e8638f38b
 +    detail: result.stderr.trim().slice(-800),
 +  };
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/platforms/bilibili.mjs b/skills/video-publisher/scripts/v2/platforms/bilibili.mjs
+diff --git a/skills/video-publisher/scripts/v2/platforms/bilibili.mjs b/skills/video-publisher/scripts/v2/platforms/bilibili.mjs
 new file mode 100644
-index 0000000000..046d648be6
+index 0000000..c3c7636
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/platforms/bilibili.mjs
 @@ -0,0 +1,316 @@
@@ -6861,12 +6473,12 @@ index 0000000000..046d648be6
 +  return {...after,actions,receipts,mutationBlockers,blocker:mutationBlockers[0]||null};
 +}
 +
-+async function quarantineBilibili(){let before=await inspectBilibili();if(before.gates.video.evidence?.restoreBanner){const resumed=await resumeBilibiliLocalDraftIfPresent();if(!resumed.ok)return {...before,blocker:typedBlocker('ACTION_FAILED',resumed.reason)};await wait(4);before=await inspectBilibili();if(before.gates.draftIdentity.ok)return {...before,quarantine:{safeToUpload:true,resumedTarget:true}}}if(before.gates.draftIdentity.ok)return {...before,quarantine:{safeToUpload:!before.gates.video.ok,skipped:true}};const saved=await js(String.raw`(() => {const c=v=>String(v||'').replace(/\s+/g,' ').trim();const button=[...document.querySelectorAll('button,[role="button"],div,span')].find(el=>c(el.innerText||el.textContent||'')==='存草稿'&&el.getBoundingClientRect().width>20);if(!button)return {ok:false,reason:'bilibili save-draft button missing'};button.click();return {ok:true}})()`);if(!saved.ok)return {...before,blocker:typedBlocker('ACTION_FAILED',saved.reason)};await wait(4);await gotoAndWait(PLATFORM_URLS.bilibili,{timeout:45,settle:2});await wait(3);const after=await inspectBilibili();const safe=!after.gates.video.ok&&after.gates.draftIdentity.ok;return {...after,quarantine:{safeToUpload:safe,saved:true},blocker:safe?null:typedBlocker('STATE_AMBIGUOUS','B站旧草稿保存后没有回到干净上传页',{retryable:true})}}
++async function quarantineBilibili(){let before=await inspectBilibili();if(before.gates.video.evidence?.restoreBanner){const resumed=await resumeBilibiliLocalDraftIfPresent();if(!resumed.ok)return {...before,blocker:typedBlocker('ACTION_FAILED',resumed.reason)};await wait(4);before=await inspectBilibili();if(before.gates.draftIdentity.ok)return {...before,quarantine:{safeToUpload:true,resumedTarget:true}}}if(before.gates.draftIdentity.ok)return {...before,quarantine:{safeToUpload:!before.gates.video.ok,skipped:true}};const saved=await js(String.raw`(() => {const c=v=>String(v||'').replace(/\s+/g,' ').trim();const button=[...document.querySelectorAll('button,[role="button"],div,span')].find(el=>c(el.innerText||el.textContent||'')==='存草稿'&&el.getBoundingClientRect().width>20);if(!button)return {ok:false,reason:'bilibili save-draft button missing'};button.click();return {ok:true}})()`);if(!saved.ok)return {...before,blocker:typedBlocker('ACTION_FAILED',saved.reason)};await wait(4);await gotoAndWait(PLATFORM_URLS.bilibili,{timeout:45,settle:2});const guard=await armFinalPublishGuard();if(!guard.ok||!guard.armed)return {...before,quarantine:{safeToUpload:false,saved:true},blocker:typedBlocker('INPUT_CHANNEL_BROKEN','B站草稿隔离后无法重新挂载最终发布保护',{retryable:true,evidence:guard})};await wait(3);const after=await inspectBilibili();const safe=!after.gates.video.ok&&after.gates.draftIdentity.ok;return {...after,quarantine:{safeToUpload:safe,saved:true},blocker:safe?null:typedBlocker('STATE_AMBIGUOUS','B站旧草稿保存后没有回到干净上传页',{retryable:true})}}
 +
 +async function runPlatformPhase(){if(phase==='inspect'||phase==='verify')return await inspectBilibili();if(phase==='upload_start')return await startBilibiliUpload();if(phase==='prefill')return await prefillBilibili();if(phase==='upload')return await uploadBilibili();if(phase==='mutate')return await mutateBilibili();if(phase==='quarantine')return await quarantineBilibili();return {...(await inspectBilibili()),blocker:typedBlocker('ACTION_FAILED',`unsupported Bilibili phase: ${phase}`)}}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/platforms/dispatch.mjs b/skills/video-publisher/scripts/v2/platforms/dispatch.mjs
+diff --git a/skills/video-publisher/scripts/v2/platforms/dispatch.mjs b/skills/video-publisher/scripts/v2/platforms/dispatch.mjs
 new file mode 100644
-index 0000000000..e5ddef285b
+index 0000000..e5ddef2
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/platforms/dispatch.mjs
 @@ -0,0 +1,14 @@
@@ -6884,9 +6496,9 @@ index 0000000000..e5ddef285b
 +  const result = await runPlatformPhase();
 +  await emitObservation(result);
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/platforms/douyin.mjs b/skills/video-publisher/scripts/v2/platforms/douyin.mjs
+diff --git a/skills/video-publisher/scripts/v2/platforms/douyin.mjs b/skills/video-publisher/scripts/v2/platforms/douyin.mjs
 new file mode 100644
-index 0000000000..1dcf8f8399
+index 0000000..1dcf8f8
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/platforms/douyin.mjs
 @@ -0,0 +1,569 @@
@@ -7459,9 +7071,9 @@ index 0000000000..1dcf8f8399
 +}
 +
 +async function runPlatformPhase(){if(phase==='inspect'||phase==='verify')return await inspectDouyin();if(phase==='upload_start')return await startDouyinUpload();if(phase==='prefill')return await prefillDouyin();if(phase==='upload')return await uploadDouyin();if(phase==='mutate')return await mutateDouyin();return {...(await inspectDouyin()),blocker:typedBlocker('ACTION_FAILED',`unsupported Douyin phase: ${phase}`)}}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/platforms/wechat-channels.mjs b/skills/video-publisher/scripts/v2/platforms/wechat-channels.mjs
+diff --git a/skills/video-publisher/scripts/v2/platforms/wechat-channels.mjs b/skills/video-publisher/scripts/v2/platforms/wechat-channels.mjs
 new file mode 100644
-index 0000000000..bd5b604f4d
+index 0000000..bd5b604
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/platforms/wechat-channels.mjs
 @@ -0,0 +1,235 @@
@@ -7700,9 +7312,9 @@ index 0000000000..bd5b604f4d
 +async function mutateWechatChannels(){let before=await inspectWechatChannels();if(!before.gates.draftIdentity.ok)return {...before,blocker:typedBlocker(before.gates.draftIdentity.evidence?.ambiguous?'STATE_AMBIGUOUS':'FOREIGN_DRAFT','视频号无法证明当前已上传草稿属于本任务',{evidence:before.gates.draftIdentity.evidence})};if(!before.gates.video.ok)return {...before,blocker:typedBlocker('STATE_AMBIGUOUS','视频号没有可修复的已上传视频')};const actions={};if(!before.gates.noBlockingDialog.ok&&before.gates.noBlockingDialog.evidence?.active?.some(item=>/编辑个人主页卡片|编辑分享卡片|裁剪封面图/.test(item.text||''))){actions.coverRecovery=await dismissWechatCoverEditor();if(!actions.coverRecovery.ok)return {...(await inspectWechatChannels()),blocker:typedBlocker('STATE_AMBIGUOUS',actions.coverRecovery.reason,{retryable:true,evidence:actions.coverRecovery})};before=await inspectWechatChannels()}if(!before.gates.noBlockingDialog.ok)return {...before,blocker:typedBlocker('STATE_AMBIGUOUS','视频号存在未识别的阻塞弹窗',{retryable:true,evidence:before.gates.noBlockingDialog.evidence})};const metadata=await ensureWechatEarlyMetadata(before);Object.assign(actions,metadata.actions);if(!metadata.ok)return {...metadata.current,actions,blocker:metadata.blocker};before=metadata.current;actions.original=await ensureWechatOriginal();if(!actions.original.ok)return {...(await inspectWechatChannels()),blocker:typedBlocker('ACTION_FAILED',actions.original.reason||'视频号原创声明没有完成',{evidence:actions.original})};const receipts={};if(wechatCustomCover){receipts.cover={slots:{}};for(const asset of wechatCoverAssets){const uploaded=await uploadWechatCover(asset);(actions.covers||=[]).push({asset,...uploaded});if(!uploaded.ok)return {...(await inspectWechatChannels()),blocker:typedBlocker('PLATFORM_REJECTED_ASSET',uploaded.reason,{retryable:true,evidence:uploaded})};receipts.cover.slots[asset.slot]=uploaded.receipt;actions.receiptCheckpoint=checkpointReceipts({...expectedReceipts,...receipts})}expectedReceipts.cover=receipts.cover}actions.receiptCheckpoint=checkpointReceipts({...expectedReceipts,...receipts});const after=await inspectWechatChannels();return {...after,actions,receipts}}
 +
 +async function runPlatformPhase(){if(phase==='inspect'||phase==='verify')return await inspectWechatChannels();if(phase==='upload_start')return await startWechatChannelsUpload();if(phase==='prefill')return await prefillWechatChannels();if(phase==='upload')return await uploadWechatChannels();if(phase==='mutate')return await mutateWechatChannels();return {...(await inspectWechatChannels()),blocker:typedBlocker('ACTION_FAILED',`unsupported WeChat phase: ${phase}`)}}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/platforms/xiaohongshu.mjs b/skills/video-publisher/scripts/v2/platforms/xiaohongshu.mjs
+diff --git a/skills/video-publisher/scripts/v2/platforms/xiaohongshu.mjs b/skills/video-publisher/scripts/v2/platforms/xiaohongshu.mjs
 new file mode 100644
-index 0000000000..4df41117e0
+index 0000000..4df4111
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/platforms/xiaohongshu.mjs
 @@ -0,0 +1,615 @@
@@ -8321,9 +7933,9 @@ index 0000000000..4df41117e0
 +  if (phase === 'mutate') return await mutateXiaohongshu();
 +  return { ...(await inspectXiaohongshu()), blocker: typedBlocker('ACTION_FAILED', `unsupported Xiaohongshu phase: ${phase}`) };
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/platforms/youtube.mjs b/skills/video-publisher/scripts/v2/platforms/youtube.mjs
+diff --git a/skills/video-publisher/scripts/v2/platforms/youtube.mjs b/skills/video-publisher/scripts/v2/platforms/youtube.mjs
 new file mode 100644
-index 0000000000..91e5ae626f
+index 0000000..91e5ae6
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/platforms/youtube.mjs
 @@ -0,0 +1,1200 @@
@@ -9527,9 +9139,9 @@ index 0000000000..91e5ae626f
 +  if (phase === 'mutate') return await mutateYoutube();
 +  return { ...(await inspectYoutube()), blocker: typedBlocker('ACTION_FAILED', `unsupported YouTube phase: ${phase}`) };
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/publisher.mjs b/skills/video-publisher/scripts/v2/publisher.mjs
+diff --git a/skills/video-publisher/scripts/v2/publisher.mjs b/skills/video-publisher/scripts/v2/publisher.mjs
 new file mode 100644
-index 0000000000..7e92dc71de
+index 0000000..7e92dc7
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/publisher.mjs
 @@ -0,0 +1,626 @@
@@ -10159,12 +9771,12 @@ index 0000000000..7e92dc71de
 +  .finally(() => {
 +    for (const release of activeLockReleases.reverse()) release();
 +  });
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/run-platform.mjs b/skills/video-publisher/scripts/v2/run-platform.mjs
+diff --git a/skills/video-publisher/scripts/v2/run-platform.mjs b/skills/video-publisher/scripts/v2/run-platform.mjs
 new file mode 100644
-index 0000000000..26e6772573
+index 0000000..6a0efee
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/run-platform.mjs
-@@ -0,0 +1,187 @@
+@@ -0,0 +1,195 @@
 +#!/usr/bin/env node
 +import fs from "node:fs";
 +import path from "node:path";
@@ -10286,6 +9898,7 @@ index 0000000000..26e6772573
 +  `const expectedVideoReceipt = ${JSON.stringify(JSON.parse(process.env.VIDEO_PUBLISHER_V2_VIDEO_RECEIPT || "null"))};`,
 +  `const receiptCheckpointPath = ${JSON.stringify(process.env.VIDEO_PUBLISHER_V2_CHECKPOINT_PATH || "")};`,
 +  `const jobFingerprint = ${JSON.stringify(process.env.VIDEO_PUBLISHER_V2_FINGERPRINT || "")};`,
++  `const requiredGateNames = ${JSON.stringify(requiredGates(platform))};`,
 +].join("\n");
 +const fragments = [
 +  header,
@@ -10333,7 +9946,14 @@ index 0000000000..26e6772573
 +  }
 +  const failureEvidence = { reason: "ego runner unavailable", exitCode: execution.code, detail };
 +  const gates = Object.fromEntries(requiredGates(platform).map(name => [name, { ok: false, evidence: failureEvidence }]));
-+  gates.safety = { ok: false, evidence: { finalPublishClicked: false, guardArmed: false, blockedAttempts: 0 } };
++  gates.safety = { ok: false, evidence: {
++    finalPublishClicked: false,
++    guardArmed: false,
++    blockedAttempts: 0,
++    handoffCommitted: false,
++    guardDetached: false,
++    detachVerified: false,
++  } };
 +  result = {
 +    schemaVersion: 1,
 +    platform,
@@ -10352,9 +9972,9 @@ index 0000000000..26e6772573
 +  };
 +}
 +console.log(V2_RESULT_PREFIX + JSON.stringify(result));
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/cli-args.test.mjs b/skills/video-publisher/scripts/v2/tests/cli-args.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/cli-args.test.mjs b/skills/video-publisher/scripts/v2/tests/cli-args.test.mjs
 new file mode 100644
-index 0000000000..9fead6bd40
+index 0000000..9fead6b
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/cli-args.test.mjs
 @@ -0,0 +1,96 @@
@@ -10454,9 +10074,265 @@ index 0000000000..9fead6bd40
 +  const repost = parse(["--package", "/tmp/pkg.json", "--operation", "repost", "--confirm-new-copy"]);
 +  assert.equal(repost.operation, "repost");
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/identity.test.mjs b/skills/video-publisher/scripts/v2/tests/identity.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/ego-core.test.mjs b/skills/video-publisher/scripts/v2/tests/ego-core.test.mjs
 new file mode 100644
-index 0000000000..f42ec49796
+index 0000000..d497189
+--- /dev/null
++++ b/skills/video-publisher/scripts/v2/tests/ego-core.test.mjs
+@@ -0,0 +1,250 @@
++import assert from "node:assert/strict";
++import fs from "node:fs";
++import path from "node:path";
++import test from "node:test";
++import vm from "node:vm";
++import { fileURLToPath } from "node:url";
++
++const DIR = path.dirname(fileURLToPath(import.meta.url));
++const CORE_SOURCE = fs.readFileSync(path.join(DIR, "..", "ego", "core.mjs"), "utf8");
++
++class FakeEvent {
++  constructor(type, options = {}) {
++    this.type = type;
++    this.bubbles = options.bubbles === true;
++    this.cancelable = options.cancelable === true;
++    this.defaultPrevented = false;
++    this.target = null;
++    this.submitter = options.submitter;
++  }
++
++  composedPath() {
++    return this.target ? [this.target] : [];
++  }
++
++  preventDefault() {
++    if (this.cancelable) this.defaultPrevented = true;
++  }
++
++  stopImmediatePropagation() {}
++}
++
++class FakeElement {
++  constructor(tagName, document) {
++    this.tagName = tagName.toUpperCase();
++    this.ownerDocument = document;
++    this.children = [];
++    this.parent = null;
++    this.style = {};
++    this.textContent = "";
++    this.innerText = "";
++    this.value = "";
++    this.type = "";
++  }
++
++  matches(selector) {
++    if (this.tagName === "BUTTON") return selector.includes("button");
++    return this.tagName === "INPUT" && this.type === "submit" && selector.includes('input[type="submit"]');
++  }
++
++  getAttribute(name) {
++    return name === "aria-label" ? null : null;
++  }
++
++  appendChild(child) {
++    child.parent = this;
++    this.children.push(child);
++    return child;
++  }
++
++  remove() {
++    if (!this.parent) return;
++    this.parent.children = this.parent.children.filter(child => child !== this);
++    this.parent = null;
++  }
++
++  dispatchEvent(event) {
++    return this.ownerDocument.dispatch(event, this);
++  }
++}
++
++class FakeDocument {
++  constructor({ ignoreRemovals = false } = {}) {
++    this.ignoreRemovals = ignoreRemovals;
++    this.listeners = new Map();
++    this.documentElement = new FakeElement("html", this);
++  }
++
++  addEventListener(type, listener) {
++    const listeners = this.listeners.get(type) || new Set();
++    listeners.add(listener);
++    this.listeners.set(type, listeners);
++  }
++
++  removeEventListener(type, listener) {
++    if (!this.ignoreRemovals) this.listeners.get(type)?.delete(listener);
++  }
++
++  createElement(tagName) {
++    return new FakeElement(tagName, this);
++  }
++
++  dispatch(event, target) {
++    event.target = target;
++    for (const listener of this.listeners.get(event.type) || []) listener(event);
++    return !event.defaultPrevented;
++  }
++
++  listenerCount(type) {
++    return this.listeners.get(type)?.size || 0;
++  }
++}
++
++function coreHarness({ phase = "verify", ignoreRemovals = false, failDetach = false } = {}) {
++  const document = new FakeDocument({ ignoreRemovals });
++  const browser = vm.createContext({
++    window: {},
++    document,
++    Element: FakeElement,
++    Event: FakeEvent,
++    MouseEvent: FakeEvent,
++    SubmitEvent: FakeEvent,
++    Date,
++    Object,
++    RegExp,
++    String,
++  });
++  const output = [];
++  let detachFailures = failDetach ? 1 : 0;
++  const context = vm.createContext({
++    platform: "xiaohongshu",
++    phase,
++    requiredGateNames: ["authenticated", "finalButton", "safety"],
++    taskName: "handoff-test",
++    taskSpaceRef: "",
++    receiptCheckpointPath: "",
++    jobFingerprint: "",
++    fs: {},
++    path: {},
++    cliLog: value => output.push(value),
++    js: async source => {
++      if (detachFailures > 0 && source.includes("detachable armed guard missing")) {
++        detachFailures -= 1;
++        throw new Error("Ego Lite channel disconnected");
++      }
++      return vm.runInContext(source, browser);
++    },
++  });
++  vm.runInContext(`${CORE_SOURCE}\nglobalThis.__core = { armFinalPublishGuard, inspectFinalPublishGuard, detachFinalPublishGuard, emitObservation };`, context);
++  return { core: context.__core, document, output };
++}
++
++function readyGates() {
++  return {
++    authenticated: { ok: true, evidence: {} },
++    finalButton: { ok: true, evidence: { text: "发布", disabled: false } },
++  };
++}
++
++test("successful READY evidence detaches and verifies the final-publish guard", async () => {
++  const { core, document, output } = coreHarness();
++  await core.armFinalPublishGuard();
++  assert.equal(document.listenerCount("click"), 1);
++  assert.equal(document.listenerCount("submit"), 1);
++
++  const payload = await core.emitObservation({ gates: readyGates() });
++
++  assert.equal(payload.gates.safety.ok, true);
++  assert.equal(payload.gates.safety.evidence.guardArmed, true);
++  assert.equal(payload.gates.safety.evidence.handoffCommitted, true);
++  assert.equal(payload.gates.safety.evidence.guardDetached, true);
++  assert.equal(payload.gates.safety.evidence.detachVerified, true);
++  assert.equal(document.listenerCount("click"), 0);
++  assert.equal(document.listenerCount("submit"), 0);
++  assert.match(output.at(-1), /^VIDEO_PUBLISHER_V2_RESULT:/);
++});
++
++test("an already-ready inspection also commits the manual-publish handoff", async () => {
++  const { core, document } = coreHarness({ phase: "inspect" });
++  await core.armFinalPublishGuard();
++
++  const payload = await core.emitObservation({ gates: readyGates() });
++
++  assert.equal(payload.gates.safety.evidence.handoffCommitted, true);
++  assert.equal(payload.gates.safety.evidence.detachVerified, true);
++  assert.equal(document.listenerCount("click"), 0);
++  assert.equal(document.listenerCount("submit"), 0);
++});
++
++test("the guard blocks scheduled-publish labels during automation", async () => {
++  const { core, document } = coreHarness({ phase: "mutate" });
++  await core.armFinalPublishGuard();
++
++  for (const label of ["定时发布", "定时发表"]) {
++    const button = document.createElement("button");
++    button.textContent = label;
++    const event = new FakeEvent("click", { bubbles: true, cancelable: true });
++    assert.equal(button.dispatchEvent(event), false, label);
++    assert.equal(event.defaultPrevented, true, label);
++  }
++  assert.equal((await core.inspectFinalPublishGuard()).blockedAttempts, 2);
++});
++
++test("partial verification leaves the final-publish guard armed", async () => {
++  const { core, document } = coreHarness();
++  await core.armFinalPublishGuard();
++
++  const payload = await core.emitObservation({
++    gates: { ...readyGates(), finalButton: { ok: false, evidence: { disabled: true } } },
++  });
++
++  assert.equal(payload.gates.safety.ok, true);
++  assert.equal(payload.gates.safety.evidence.handoffCommitted, false);
++  assert.equal(payload.gates.safety.evidence.guardDetached, false);
++  assert.equal(document.listenerCount("click"), 1);
++  assert.equal(document.listenerCount("submit"), 1);
++});
++
++test("user-control blockers never detach the final-publish guard", async () => {
++  const { core, document } = coreHarness();
++  await core.armFinalPublishGuard();
++
++  const payload = await core.emitObservation({
++    gates: readyGates(),
++    blocker: { code: "USER_CONTROL", message: "user took control", retryable: false, requiresUser: true },
++  });
++
++  assert.equal(payload.blocker.code, "USER_CONTROL");
++  assert.equal(payload.gates.safety.evidence.handoffCommitted, false);
++  assert.equal(document.listenerCount("click"), 1);
++  assert.equal(document.listenerCount("submit"), 1);
++});
++
++test("a handoff channel failure stays guarded and reports the circuit-breaker blocker", async () => {
++  const { core, document } = coreHarness({ failDetach: true });
++  await core.armFinalPublishGuard();
++
++  const payload = await core.emitObservation({ gates: readyGates() });
++
++  assert.equal(payload.blocker.code, "INPUT_CHANNEL_BROKEN");
++  assert.equal(payload.gates.safety.ok, false);
++  assert.equal(payload.gates.safety.evidence.rollback.ok, true);
++  assert.equal(document.listenerCount("click"), 1);
++  assert.equal(document.listenerCount("submit"), 1);
++});
++
++test("an unproven detach rolls back the guard and emits a structured blocker", async () => {
++  const { core, document } = coreHarness({ ignoreRemovals: true });
++  await core.armFinalPublishGuard();
++
++  const payload = await core.emitObservation({ gates: readyGates() });
++
++  assert.equal(payload.gates.safety.ok, false);
++  assert.equal(payload.gates.safety.evidence.handoffCommitted, false);
++  assert.equal(payload.gates.safety.evidence.rollback.ok, true);
++  assert.equal(payload.blocker.code, "ACTION_FAILED");
++  assert.equal(payload.blocker.retryable, true);
++  assert.equal((await core.inspectFinalPublishGuard()).blockedAttempts, 0);
++  assert.equal(document.listenerCount("click"), 1);
++  assert.equal(document.listenerCount("submit"), 1);
++});
+diff --git a/skills/video-publisher/scripts/v2/tests/identity.test.mjs b/skills/video-publisher/scripts/v2/tests/identity.test.mjs
+new file mode 100644
+index 0000000..f42ec49
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/identity.test.mjs
 @@ -0,0 +1,48 @@
@@ -10508,9 +10384,9 @@ index 0000000000..f42ec49796
 +  assert.equal(base.coverFingerprints.douyin, changed.coverFingerprints.douyin);
 +  assert.equal(base.coverFingerprints.wechat_channels, changed.coverFingerprints.wechat_channels);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/job-lock.test.mjs b/skills/video-publisher/scripts/v2/tests/job-lock.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/job-lock.test.mjs b/skills/video-publisher/scripts/v2/tests/job-lock.test.mjs
 new file mode 100644
-index 0000000000..01d93b5954
+index 0000000..01d93b5
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/job-lock.test.mjs
 @@ -0,0 +1,54 @@
@@ -10568,9 +10444,9 @@ index 0000000000..01d93b5954
 +  replacement();
 +  release();
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/job-store.test.mjs b/skills/video-publisher/scripts/v2/tests/job-store.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/job-store.test.mjs b/skills/video-publisher/scripts/v2/tests/job-store.test.mjs
 new file mode 100644
-index 0000000000..3d2fbd2b50
+index 0000000..3d2fbd2
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/job-store.test.mjs
 @@ -0,0 +1,121 @@
@@ -10695,9 +10571,9 @@ index 0000000000..3d2fbd2b50
 +  assert.equal(await fs.promises.readFile(statePath, "utf8"), original);
 +  assert.equal(fs.existsSync(path.join(root, "state.backup.json")), false);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/mock-ego-cleanup.mjs b/skills/video-publisher/scripts/v2/tests/mock-ego-cleanup.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/mock-ego-cleanup.mjs b/skills/video-publisher/scripts/v2/tests/mock-ego-cleanup.mjs
 new file mode 100644
-index 0000000000..e6b1ac3c49
+index 0000000..e6b1ac3
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/mock-ego-cleanup.mjs
 @@ -0,0 +1,21 @@
@@ -10722,12 +10598,12 @@ index 0000000000..e6b1ac3c49
 +  }
 +  console.log(`VIDEO_PUBLISHER_SPACE_CLEANUP:${JSON.stringify({ closed })}`);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/mock-runner.mjs b/skills/video-publisher/scripts/v2/tests/mock-runner.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/mock-runner.mjs b/skills/video-publisher/scripts/v2/tests/mock-runner.mjs
 new file mode 100644
-index 0000000000..040ca4028a
+index 0000000..844d4d2
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/mock-runner.mjs
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,77 @@
 +#!/usr/bin/env node
 +import fs from "node:fs";
 +import { requiredGates } from "../lib/model.mjs";
@@ -10757,7 +10633,6 @@ index 0000000000..040ca4028a
 +gates.draftIdentity = { ok: true, evidence: {} };
 +gates.noBlockingDialog = { ok: true, evidence: {} };
 +gates.finalButton = { ok: true, evidence: { text: "final", disabled: false } };
-+gates.safety = { ok: true, evidence: { finalPublishClicked: false, guardArmed: true, blockedAttempts: 0 } };
 +if (phase === "upload") gates.video = { ok: true, evidence: { stable: true } };
 +if (phase === "upload_start") gates.video = { ok: false, evidence: { uploading: true, failed: false } };
 +if (phase === "prefill") {
@@ -10772,8 +10647,21 @@ index 0000000000..040ca4028a
 +}
 +if (brokenChannel) {
 +  for (const name of Object.keys(gates)) gates[name] = { ok: false, evidence: { reason: "mock input channel broken" } };
-+  gates.safety = { ok: false, evidence: { finalPublishClicked: false, guardArmed: false, blockedAttempts: 0 } };
 +}
++const handoffCommitted = ["inspect", "verify"].includes(phase)
++  && !configuredBlocker
++  && !brokenChannel
++  && requiredGates(platform).filter(name => name !== "safety").every(name => gates[name]?.ok === true);
++gates.safety = { ok: !brokenChannel, evidence: {
++  finalPublishClicked: false,
++  guardArmed: !brokenChannel,
++  blockedAttempts: 0,
++  handoffCommitted,
++  guardDetached: handoffCommitted,
++  detachVerified: handoffCommitted,
++  detach: handoffCommitted ? { ok: true, detached: true, detachVerified: true } : null,
++  detachedGuard: handoffCommitted ? { armed: false, detached: true, detachVerified: true } : null,
++} };
 +const result = {
 +  schemaVersion: 1,
 +  platform,
@@ -10793,12 +10681,12 @@ index 0000000000..040ca4028a
 +};
 +if (process.env.VIDEO_PUBLISHER_V2_MOCK_LOG) fs.appendFileSync(process.env.VIDEO_PUBLISHER_V2_MOCK_LOG, JSON.stringify({ at: Date.now(), event: "end", platform, phase }) + "\n");
 +console.log("VIDEO_PUBLISHER_V2_RESULT:" + JSON.stringify(result));
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/model.test.mjs b/skills/video-publisher/scripts/v2/tests/model.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/model.test.mjs b/skills/video-publisher/scripts/v2/tests/model.test.mjs
 new file mode 100644
-index 0000000000..6cfd08050c
+index 0000000..6a59c58
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/model.test.mjs
-@@ -0,0 +1,100 @@
+@@ -0,0 +1,198 @@
 +import test from "node:test";
 +import assert from "node:assert/strict";
 +import { BLOCKER, classifyVerdict, evaluateObservation, requiredGates, videoReceiptFromObservation } from "../lib/model.mjs";
@@ -10806,9 +10694,18 @@ index 0000000000..6cfd08050c
 +function observation(platform, overrides = {}) {
 +  const gates = Object.fromEntries(requiredGates(platform).map(name => [name, {
 +    ok: true,
-+    evidence: name === "safety" ? { finalPublishClicked: false, guardArmed: true, blockedAttempts: 0 } : {},
++    evidence: name === "safety" ? {
++      finalPublishClicked: false,
++      guardArmed: true,
++      blockedAttempts: 0,
++      handoffCommitted: true,
++      guardDetached: true,
++      detachVerified: true,
++      detach: { ok: true, detached: true, detachVerified: true },
++      detachedGuard: { armed: false, detached: true, detachVerified: true },
++    } : {},
 +  }]));
-+  return { platform, phase: "verify", taskSpaceId: 1, gates: { ...gates, ...(overrides.gates || {}) }, blocker: overrides.blocker || null };
++  return { platform, phase: overrides.phase || "verify", taskSpaceId: 1, gates: { ...gates, ...(overrides.gates || {}) }, blocker: overrides.blocker || null };
 +}
 +
 +test("READY is computed only when every required gate is verified", () => {
@@ -10885,6 +10782,95 @@ index 0000000000..6cfd08050c
 +  assert.deepEqual(verdict.missing, ["safety"]);
 +});
 +
++test("final inspection and verification require a proven manual-publish handoff", () => {
++  for (const phase of ["inspect", "verify", undefined]) {
++    const input = observation("xiaohongshu", {
++      phase: phase || "inspect",
++      gates: { safety: { ok: true, evidence: {
++        finalPublishClicked: false,
++        guardArmed: true,
++        blockedAttempts: 0,
++        handoffCommitted: false,
++        guardDetached: false,
++        detachVerified: false,
++      } } },
++    });
++    if (phase === undefined) delete input.phase;
++    const verdict = evaluateObservation(input);
++    assert.equal(verdict.ready, false, phase || "default inspect");
++    assert.deepEqual(verdict.missing, ["safety"], phase || "default inspect");
++  }
++});
++
++test("complete mutation and upload observations cannot claim READY before handoff", () => {
++  for (const phase of ["mutate", "upload"]) {
++    const verdict = evaluateObservation(observation("xiaohongshu", {
++      phase,
++      gates: { safety: { ok: true, evidence: {
++        finalPublishClicked: false,
++        guardArmed: true,
++        blockedAttempts: 0,
++        handoffCommitted: false,
++        guardDetached: false,
++        detachVerified: false,
++      } } },
++    }));
++    assert.equal(verdict.ready, false, phase);
++    assert.deepEqual(verdict.missing, ["safety"], phase);
++  }
++});
++
++test("handoff summary flags cannot replace detach and post-detach evidence", () => {
++  const verdict = evaluateObservation(observation("xiaohongshu", {
++    gates: { safety: { ok: true, evidence: {
++      finalPublishClicked: false,
++      guardArmed: true,
++      blockedAttempts: 0,
++      handoffCommitted: true,
++      guardDetached: true,
++      detachVerified: true,
++    } } },
++  }));
++  assert.equal(verdict.ready, false);
++  assert.deepEqual(verdict.missing, ["safety"]);
++});
++
++test("partial verification keeps armed-guard safety without claiming handoff", () => {
++  const verdict = evaluateObservation(observation("xiaohongshu", {
++    gates: {
++      cover: { ok: false, evidence: { receipt: null } },
++      safety: { ok: true, evidence: {
++        finalPublishClicked: false,
++        guardArmed: true,
++        blockedAttempts: 0,
++        handoffCommitted: false,
++        guardDetached: false,
++        detachVerified: false,
++      } },
++    },
++  }));
++  assert.equal(verdict.ready, false);
++  assert.equal(verdict.gates.safety.ok, true);
++  assert.deepEqual(verdict.missing, ["cover"]);
++});
++
++test("a blocked verification keeps armed-guard safety without claiming handoff", () => {
++  const verdict = evaluateObservation(observation("xiaohongshu", {
++    blocker: { code: BLOCKER.RISK_CONTROL, message: "platform challenge", retryable: true },
++    gates: { safety: { ok: true, evidence: {
++      finalPublishClicked: false,
++      guardArmed: true,
++      blockedAttempts: 0,
++      handoffCommitted: false,
++      guardDetached: false,
++      detachVerified: false,
++    } } },
++  }));
++  assert.equal(verdict.ready, false);
++  assert.equal(verdict.gates.safety.ok, true);
++  assert.equal(verdict.blocker.code, BLOCKER.RISK_CONTROL);
++});
++
 +test("YouTube READY requires audience, full settings, visibility, and final-save safety", () => {
 +  const valid = observation("youtube");
 +  assert.equal(evaluateObservation(valid).ready, true);
@@ -10899,12 +10885,12 @@ index 0000000000..6cfd08050c
 +    "finalButton", "safety",
 +  ]);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/platform-contracts.test.mjs b/skills/video-publisher/scripts/v2/tests/platform-contracts.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/platform-contracts.test.mjs b/skills/video-publisher/scripts/v2/tests/platform-contracts.test.mjs
 new file mode 100644
-index 0000000000..27c6d36624
+index 0000000..a7cbd81
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/platform-contracts.test.mjs
-@@ -0,0 +1,243 @@
+@@ -0,0 +1,280 @@
 +import assert from "node:assert/strict";
 +import fs from "node:fs";
 +import path from "node:path";
@@ -11090,6 +11076,19 @@ index 0000000000..27c6d36624
 +  assert.match(source, /attempt<=20/, "a silent injection failure must stop quickly instead of consuming the full upload window");
 +});
 +
++test("Bilibili quarantine re-arms the final guard after returning to upload", () => {
++  const source = fs.readFileSync(path.join(PLATFORM_DIR, "bilibili.mjs"), "utf8");
++  const start = source.indexOf("async function quarantineBilibili");
++  const end = source.indexOf("async function runPlatformPhase", start);
++  assert.ok(start >= 0 && end > start, "quarantine flow must remain discoverable");
++  const quarantine = source.slice(start, end);
++  const navigation = quarantine.indexOf("gotoAndWait(PLATFORM_URLS.bilibili");
++  const rearm = quarantine.indexOf("const guard=await armFinalPublishGuard()", navigation);
++  const inspection = quarantine.indexOf("const after=await inspectBilibili()", rearm);
++  assert.ok(navigation >= 0 && rearm > navigation && inspection > rearm);
++  assert.match(quarantine, /B站草稿隔离后无法重新挂载最终发布保护/);
++});
++
 +test("Bilibili cover repair continues after a rejected tag and preserves the blocker", () => {
 +  const source = fs.readFileSync(path.join(PLATFORM_DIR, "bilibili.mjs"), "utf8");
 +  const start = source.indexOf("async function mutateBilibili");
@@ -11135,10 +11134,34 @@ index 0000000000..27c6d36624
 +  assert.doesNotMatch(source, /click\([^)]*done-button|click\([^)]*final/i, "the adapter must never click YouTube's final action");
 +});
 +
-+test("YouTube final guard covers localized Save, Publish, and Schedule labels only on YouTube", () => {
++test("final guard covers immediate and scheduled publish labels", () => {
 +  const source = fs.readFileSync(path.join(DIR, "..", "ego", "core.mjs"), "utf8");
-+  assert.match(source, /YOUTUBE_FINAL_TEXT = \/\^\(保存\|发布\|安排时间\|Save\|Publish\|Schedule\)\$\//);
++  assert.match(source, /FINAL_TEXT = \/\^\(发布\|发布笔记\|发表\|立即投稿\|定时发布\|定时发表\)\$\//);
++  assert.match(source, /YOUTUBE_FINAL_TEXT = \/\^\(保存\|发布\|安排时间\|定时发布\|定时发表\|Save\|Publish\|Schedule\)\$\//);
 +  assert.match(source, /platform === 'youtube' \? YOUTUBE_FINAL_TEXT : FINAL_TEXT/);
++});
++
++test("manual handoff detaches only after complete read-only evidence and verifies removal", () => {
++  const core = fs.readFileSync(path.join(DIR, "..", "ego", "core.mjs"), "utf8");
++  const runner = fs.readFileSync(path.join(DIR, "..", "run-platform.mjs"), "utf8");
++  const detachStart = core.indexOf("async function detachFinalPublishGuard");
++  const detachEnd = core.indexOf("function checkpointReceipts", detachStart);
++  const handoffStart = core.indexOf("const handoffCandidate");
++  const handoffEnd = core.indexOf("delete payload.ready", handoffStart);
++  assert.ok(detachStart >= 0 && detachEnd > detachStart && handoffStart >= 0 && handoffEnd > handoffStart);
++  const detach = core.slice(detachStart, detachEnd);
++  const handoff = core.slice(handoffStart, handoffEnd);
++  assert.match(detach, /removeEventListener\('click', state\.guard, true\)/);
++  assert.match(detach, /removeEventListener\('submit', state\.guard, true\)/);
++  assert.match(detach, /button\.dispatchEvent\(clickEvent\)/);
++  assert.match(detach, /form\.dispatchEvent\(submitEvent\)/);
++  assert.doesNotMatch(detach, /\.click\(/, "handoff verification must never click the platform's final button");
++  assert.match(handoff, /\['inspect', 'verify'\]\.includes\(phase\)/);
++  assert.match(handoff, /requiredGateNames\.every/);
++  assert.match(handoff, /detachedGuard = detach\?\.guardAfter \|\| null/);
++  assert.doesNotMatch(handoff, /await inspectFinalPublishGuard\(\)/, "detach proof must stay inside one browser evaluation");
++  assert.match(handoff, /userControl \? 'USER_CONTROL' : failureDetail \? 'INPUT_CHANNEL_BROKEN' : 'ACTION_FAILED'/);
++  assert.match(runner, /const requiredGateNames = \$\{JSON\.stringify\(requiredGates\(platform\)\)\}/);
 +});
 +
 +test("YouTube corrections can clear all tags and replace a stale details receipt", () => {
@@ -11148,9 +11171,9 @@ index 0000000000..27c6d36624
 +  assert.match(source, /currentDetailsComparable/);
 +  assert.match(source, /expectedReceipts\.details = receipts\.details/);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/platform-lock.test.mjs b/skills/video-publisher/scripts/v2/tests/platform-lock.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/platform-lock.test.mjs b/skills/video-publisher/scripts/v2/tests/platform-lock.test.mjs
 new file mode 100644
-index 0000000000..794e268e35
+index 0000000..794e268
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/platform-lock.test.mjs
 @@ -0,0 +1,26 @@
@@ -11180,9 +11203,9 @@ index 0000000000..794e268e35
 +  release();
 +  assert.equal(fs.existsSync(lockPath), false);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/publisher.test.mjs b/skills/video-publisher/scripts/v2/tests/publisher.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/publisher.test.mjs b/skills/video-publisher/scripts/v2/tests/publisher.test.mjs
 new file mode 100644
-index 0000000000..dbff778c59
+index 0000000..dbff778
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/publisher.test.mjs
 @@ -0,0 +1,846 @@
@@ -12032,9 +12055,9 @@ index 0000000000..dbff778c59
 +  assert.equal(stateFiles.length,1,"the refused job must not write state");
 +  assert.equal(fs.existsSync(path.join(process.env.VIDEO_PUBLISHER_V2_LOCK_ROOT,"publisher","orchestrator.lock")),false);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/result-line.test.mjs b/skills/video-publisher/scripts/v2/tests/result-line.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/result-line.test.mjs b/skills/video-publisher/scripts/v2/tests/result-line.test.mjs
 new file mode 100644
-index 0000000000..ec493685fb
+index 0000000..ec49368
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/result-line.test.mjs
 @@ -0,0 +1,14 @@
@@ -12052,9 +12075,9 @@ index 0000000000..ec493685fb
 +  const output = `Error: Ego runner returned no ${V2_RESULT_PREFIX} marker`;
 +  assert.throws(() => parseV2Result(output), /returned no structured observation/);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/run-platform.test.mjs b/skills/video-publisher/scripts/v2/tests/run-platform.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/run-platform.test.mjs b/skills/video-publisher/scripts/v2/tests/run-platform.test.mjs
 new file mode 100644
-index 0000000000..908b7f8bdc
+index 0000000..908b7f8
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/run-platform.test.mjs
 @@ -0,0 +1,148 @@
@@ -12206,9 +12229,9 @@ index 0000000000..908b7f8bdc
 +  assert.match(observation.blocker.evidence.detail,/user has taken control/i);
 +  assert.equal(observation.finalPublishClicked,false);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/spaces.test.mjs b/skills/video-publisher/scripts/v2/tests/spaces.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/spaces.test.mjs b/skills/video-publisher/scripts/v2/tests/spaces.test.mjs
 new file mode 100644
-index 0000000000..a9d6469dcf
+index 0000000..a9d6469
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/spaces.test.mjs
 @@ -0,0 +1,273 @@
@@ -12485,9 +12508,9 @@ index 0000000000..a9d6469dcf
 +  assert.equal(state.retiredSpaces[0].name, "old");
 +  assert.equal(state.retiredSpaces[0].id, 4);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/video-publisher/scripts/v2/tests/youtube.test.mjs b/skills/video-publisher/scripts/v2/tests/youtube.test.mjs
+diff --git a/skills/video-publisher/scripts/v2/tests/youtube.test.mjs b/skills/video-publisher/scripts/v2/tests/youtube.test.mjs
 new file mode 100644
-index 0000000000..5221af78a4
+index 0000000..5221af7
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/youtube.test.mjs
 @@ -0,0 +1,67 @@
@@ -12558,9 +12581,9 @@ index 0000000000..5221af78a4
 +  assert.deepEqual(await mutate(pkg, "/fixture/video.mp4", { details }, "title"),
 +    ["details", "visibility"]);
 +});
-diff --git a/tmp/oil-patch-tree/final/skills/wechat-publisher/.gitignore b/skills/wechat-publisher/.gitignore
+diff --git a/skills/wechat-publisher/.gitignore b/skills/wechat-publisher/.gitignore
 new file mode 100644
-index 0000000000..5c646c6db2
+index 0000000..5c646c6
 --- /dev/null
 +++ b/skills/wechat-publisher/.gitignore
 @@ -0,0 +1,8 @@
@@ -12572,9 +12595,9 @@ index 0000000000..5c646c6db2
 +
 +node_modules/
 +.DS_Store
-diff --git a/tmp/oil-patch-tree/final/skills/wechat-publisher/LICENSE b/skills/wechat-publisher/LICENSE
+diff --git a/skills/wechat-publisher/LICENSE b/skills/wechat-publisher/LICENSE
 new file mode 100644
-index 0000000000..ac0c5b8f15
+index 0000000..ac0c5b8
 --- /dev/null
 +++ b/skills/wechat-publisher/LICENSE
 @@ -0,0 +1,21 @@
@@ -12599,9 +12622,9 @@ index 0000000000..ac0c5b8f15
 +LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 +OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 +SOFTWARE.
-diff --git a/tmp/oil-patch-tree/final/skills/wechat-publisher/README.md b/skills/wechat-publisher/README.md
+diff --git a/skills/wechat-publisher/README.md b/skills/wechat-publisher/README.md
 new file mode 100644
-index 0000000000..2ed0dcc2af
+index 0000000..2ed0dcc
 --- /dev/null
 +++ b/skills/wechat-publisher/README.md
 @@ -0,0 +1,259 @@
@@ -12864,9 +12887,9 @@ index 0000000000..2ed0dcc2af
 +## License
 +
 +[MIT](LICENSE)
-diff --git a/tmp/oil-patch-tree/final/skills/wechat-publisher/SKILL.md b/skills/wechat-publisher/SKILL.md
+diff --git a/skills/wechat-publisher/SKILL.md b/skills/wechat-publisher/SKILL.md
 new file mode 100644
-index 0000000000..acea1260c9
+index 0000000..acea126
 --- /dev/null
 +++ b/skills/wechat-publisher/SKILL.md
 @@ -0,0 +1,507 @@
@@ -13377,9 +13400,9 @@ index 0000000000..acea1260c9
 +9. **正文配图最多 5 张**，超过的选重要的保留
 +10. **单张图片上传最多重试 1 次**，仍失败则跳过继续后续步骤
 +11. **publish 返回 48001（api_unauthorized）时不要重试**，这是账号认证级别的限制，引导用户去公众号后台手动发布即可
-diff --git a/tmp/oil-patch-tree/final/skills/wechat-publisher/_meta.json b/skills/wechat-publisher/_meta.json
+diff --git a/skills/wechat-publisher/_meta.json b/skills/wechat-publisher/_meta.json
 new file mode 100644
-index 0000000000..5c90eec0f8
+index 0000000..5c90eec
 --- /dev/null
 +++ b/skills/wechat-publisher/_meta.json
 @@ -0,0 +1,4 @@
@@ -13387,9 +13410,9 @@ index 0000000000..5c90eec0f8
 +  "slug": "wechat-publisher",
 +  "version": "1.2.0"
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/wechat-publisher/config.example.json b/skills/wechat-publisher/config.example.json
+diff --git a/skills/wechat-publisher/config.example.json b/skills/wechat-publisher/config.example.json
 new file mode 100644
-index 0000000000..d3aecd5fa7
+index 0000000..d3aecd5
 --- /dev/null
 +++ b/skills/wechat-publisher/config.example.json
 @@ -0,0 +1,5 @@
@@ -13398,9 +13421,9 @@ index 0000000000..d3aecd5fa7
 +  "appSecret": "your-app-secret-here",
 +  "proxy": "http://YOUR_CLOUD_SERVER_IP:8888"
 +}
-diff --git a/tmp/oil-patch-tree/final/skills/wechat-publisher/examples/article.md b/skills/wechat-publisher/examples/article.md
+diff --git a/skills/wechat-publisher/examples/article.md b/skills/wechat-publisher/examples/article.md
 new file mode 100644
-index 0000000000..7f79887d86
+index 0000000..7f79887
 --- /dev/null
 +++ b/skills/wechat-publisher/examples/article.md
 @@ -0,0 +1,39 @@
@@ -13443,9 +13466,9 @@ index 0000000000..7f79887d86
 +```bash
 +node wechat-publisher.mjs convert examples/article.md --style business
 +```
-diff --git a/tmp/oil-patch-tree/final/skills/wechat-publisher/wechat-publisher.mjs b/skills/wechat-publisher/wechat-publisher.mjs
+diff --git a/skills/wechat-publisher/wechat-publisher.mjs b/skills/wechat-publisher/wechat-publisher.mjs
 new file mode 100644
-index 0000000000..c1721b1a96
+index 0000000..c1721b1
 --- /dev/null
 +++ b/skills/wechat-publisher/wechat-publisher.mjs
 @@ -0,0 +1,1132 @@

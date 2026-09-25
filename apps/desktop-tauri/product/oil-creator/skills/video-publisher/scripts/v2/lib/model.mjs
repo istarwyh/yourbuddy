@@ -102,12 +102,24 @@ export function evaluateObservation(observation) {
     throw new Error("Invalid platform observation");
   }
   const required = requiredGates(observation.platform);
+  const observedPhase = observation.phase || "inspect";
   const gates = { ...(observation.gates || {}) };
   const safetyEvidence = gates.safety?.evidence || {};
+  const handoffRequired = !observation.blocker
+    && required.filter(name => name !== "safety").every(name => gates[name]?.ok === true);
   const safetyVerified = gates.safety?.ok === true
     && safetyEvidence.finalPublishClicked === false
     && safetyEvidence.guardArmed === true
-    && safetyEvidence.blockedAttempts === 0;
+    && safetyEvidence.blockedAttempts === 0
+    && (!handoffRequired || (safetyEvidence.handoffCommitted === true
+      && safetyEvidence.guardDetached === true
+      && safetyEvidence.detachVerified === true
+      && safetyEvidence.detach?.ok === true
+      && safetyEvidence.detach?.detached === true
+      && safetyEvidence.detach?.detachVerified === true
+      && safetyEvidence.detachedGuard?.armed === false
+      && safetyEvidence.detachedGuard?.detached === true
+      && safetyEvidence.detachedGuard?.detachVerified === true));
   if (!safetyVerified) {
     gates.safety = {
       ...(gates.safety || {}),
@@ -123,7 +135,7 @@ export function evaluateObservation(observation) {
     schemaVersion: 1,
     platform: observation.platform,
     taskSpaceId: observation.taskSpaceId ?? null,
-    phase: observation.phase || "inspect",
+    phase: observedPhase,
     observedAt: observation.observedAt || new Date().toISOString(),
     ready,
     required,
