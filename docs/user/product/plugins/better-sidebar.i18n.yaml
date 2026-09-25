@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for better-sidebar.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/better-sidebar.md
-better-sidebar.md: 90fe3fd508e8b5f32b2ec2c0b247cd1c2060ffbc
-better-sidebar.zh.md: ba92a0e59ae4597f2f7a0d9a96bb71878285e274
+/better-sidebar:
+  en: 70c379c48f5ef98e
+  zh: 53b21980d7b61009
+/better-sidebar/problem-addressed:
+  en: 7eea62dff27e152f
+  zh: 5ad838b250737bfd
+/better-sidebar/usage:
+  en: 637875711dc5930e
+  zh: 1dc8c81f498098b0
+/better-sidebar/reason-for-default-inclusion:
+  en: e2f0f2ed0833de91
+  zh: d49155827742bfe7
+/better-sidebar/limits:
+  en: 907c50e39e0a5230
+  zh: 9923ce47ea92a60a

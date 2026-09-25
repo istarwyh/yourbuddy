@@ -8,7 +8,7 @@ English | [中文](verification.zh.md)
 
 ## Delivered scope
 
-The [agreed plan](implementation-plan.md) is implemented in the product guides, OINK navigation, and the first-party Personal Workbench plugin. [Extend Y8](../../user/product/develop.md) explains extension choices and requirements; [Creator](../../user/product/creator.md) documents the source workflow; four existing development tutorials are published without duplicating their prose. Default-plugin pages explain provenance, reasons, prerequisites, and Harbor's development example.
+The [agreed plan](implementation-plan.md) is implemented in the product guides, OINK navigation, and the first-party Personal Workbench plugin. [Extend Y8](../../user/product/develop.md) explains extension choices and requirements; [Creator](../../user/product/creator.md) documents the source workflow; four existing development tutorials are published without duplicating their prose. Default-plugin pages explain source records, reasons, prerequisites, and Harbor's development example.
 
 Help uses the public sidebar footer slot, localized official URLs, keyboard navigation, and a selectable, copyable address after an open request fails. The My Workbench card links to settings guidance. Existing Creator Skills retain their instructions; their runtime and persistence guidance was reviewed against the new guide. This change adds no development-project manager or runtime API.
 

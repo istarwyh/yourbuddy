@@ -6,7 +6,7 @@ import {
   assertRecordedDshRelease,
   resolveAllowedDshRelease,
   selectAllowedDshRelease,
-  validateDshProvenance,
+  validateDshUpstreamRecord,
   validateDshUpdatePolicy,
 } from './dsh-release-policy.mjs'
 
@@ -108,10 +108,10 @@ test('DSH release resolution pins an annotated GitHub tag to its commit', async 
   assert.equal(requests.length, 3)
 })
 
-test('recorded and live DSH checks reject stale versions, provenance, and ancestry', () => {
+test('recorded and live DSH checks reject stale versions, upstream records, and ancestry', () => {
   const selectedPolicy = policy()
   const commit = 'c'.repeat(40)
-  const provenance = validateDshProvenance({
+  const upstreamRecord = validateDshUpstreamRecord({
     repository: selectedPolicy.repository,
     channel: selectedPolicy.channel,
     tag: 'dsh-v0.1.1-rc.2',
@@ -120,16 +120,16 @@ test('recorded and live DSH checks reject stale versions, provenance, and ancest
   })
   assert.doesNotThrow(() => assertRecordedDshRelease({
     policy: selectedPolicy,
-    provenance,
+    upstreamRecord,
     currentVersion: '0.1.1-rc.2',
   }))
   assert.doesNotThrow(() => assertCurrentDshRelease({
     currentVersion: '0.1.1-rc.2',
-    provenance,
+    upstreamRecord,
     release: {
-      repository: provenance.repository,
-      tag: provenance.tag,
-      version: provenance.version,
+      repository: upstreamRecord.repository,
+      tag: upstreamRecord.tag,
+      version: upstreamRecord.version,
       commit,
       channel: 'rc',
     },
@@ -138,8 +138,8 @@ test('recorded and live DSH checks reject stale versions, provenance, and ancest
   assert.throws(
     () => assertCurrentDshRelease({
       currentVersion: '0.1.1-rc.1',
-      provenance: { ...provenance, tag: 'dsh-v0.1.1-rc.1', version: '0.1.1-rc.1' },
-      release: { repository: provenance.repository, tag: provenance.tag, version: provenance.version, commit, channel: 'rc' },
+      upstreamRecord: { ...upstreamRecord, tag: 'dsh-v0.1.1-rc.1', version: '0.1.1-rc.1' },
+      release: { repository: upstreamRecord.repository, tag: upstreamRecord.tag, version: upstreamRecord.version, commit, channel: 'rc' },
       isAncestor: false,
     }),
     /is not the selected rc Release/,
@@ -147,8 +147,8 @@ test('recorded and live DSH checks reject stale versions, provenance, and ancest
   assert.throws(
     () => assertCurrentDshRelease({
       currentVersion: '0.1.1-rc.2',
-      provenance,
-      release: { repository: provenance.repository, tag: provenance.tag, version: provenance.version, commit, channel: 'rc' },
+      upstreamRecord,
+      release: { repository: upstreamRecord.repository, tag: upstreamRecord.tag, version: upstreamRecord.version, commit, channel: 'rc' },
       isAncestor: false,
     }),
     /is not an ancestor/,

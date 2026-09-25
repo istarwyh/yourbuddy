@@ -45,15 +45,14 @@ class HarborContextAdapter extends LlmAdapter {
 
   override async * stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     if (this.resolving) {
-      const result = options.messages.flatMap(message => message.content)
-        .find(block => block.type === 'tool-result' && block.toolCallId === RESOLVE_CALL)
-      if (result?.type !== 'tool-result' || result.isError === true) throw new Error('Real Harbor tool result missing or failed')
+      const result = options.messages.find(message => message.role === 'tool' && message.toolCallId === RESOLVE_CALL)
+      if (result?.role !== 'tool' || result.isError === true) throw new Error('Real Harbor tool result missing or failed')
       this.formalResult = JSON.parse(result.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')) as FormalResolvedResult
       this.resolving = false
     } else {
       this.requests.push(options)
       if (this.requests.length === 2) {
-        const user = options.messages.filter(message => message.source.kind === 'user').at(-1)
+        const user = options.messages.filter(message => message.source?.kind === 'user').at(-1)
         const content = user?.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n') ?? ''
         const token = content.match(/context-snapshot-id="(hctx_[A-Za-z0-9_-]+)"/u)?.[1]
         if (token === undefined) throw new Error('Ordinary Trial A prompt did not carry its page token')
@@ -167,7 +166,7 @@ describe.skipIf(MODE === 'record' || PLUGIN === undefined)('web e2e: real Harbor
       await input.press('Enter')
       return await settled
     }
-    const userContent = (index: number) => adapter.requests[index]?.messages.filter(message => message.source.kind === 'user').at(-1)?.content ?? []
+    const userContent = (index: number) => adapter.requests[index]?.messages.filter(message => message.source?.kind === 'user').at(-1)?.content ?? []
     const tokens = (index: number): string[] => userContent(index).flatMap(block => block.type === 'text'
       ? [...block.text.matchAll(/context-snapshot-id="(hctx_[A-Za-z0-9_-]+)"/gu)].map(match => match[1]!) : [])
     const resolveContext = async (sessionId: SessionId, token: string): Promise<ResolvedContext> => {
@@ -376,7 +375,7 @@ describe.skipIf(MODE === 'record' || PLUGIN === undefined)('web e2e: real Harbor
     const input = page.locator('[data-composer-input]').first()
     const firstRequest = adapter.requests.length
     const resolveRequest = async (index: number, sessionId: SessionId): Promise<ResolvedContext> => {
-      const content = adapter.requests[index]?.messages.filter(message => message.source.kind === 'user').at(-1)?.content ?? []
+      const content = adapter.requests[index]?.messages.filter(message => message.source?.kind === 'user').at(-1)?.content ?? []
       const tokens = content.flatMap(block => block.type === 'text'
         ? [...block.text.matchAll(/context-snapshot-id="(hctx_[A-Za-z0-9_-]+)"/gu)].map(match => match[1]!) : [])
       expect(tokens).toHaveLength(1)
@@ -444,7 +443,7 @@ describe.skipIf(MODE === 'record' || PLUGIN === undefined)('web e2e: real Harbor
 
     const userEvents = events.filter(item => item.event.type === 'user/message' && item.event.data.source.kind === 'user')
     const durable = userEvents.map(item => item.event.type === 'user/message' ? item.event.data.content : [])
-    expect(adapter.requests.map(request => request.messages.filter(message => message.source.kind === 'user').at(-1)?.content)).toEqual(durable)
+    expect(adapter.requests.map(request => request.messages.filter(message => message.source?.kind === 'user').at(-1)?.content)).toEqual(durable)
     const observations = {
       ordinaryCheckedMembers: checkedSet?.value?.members.map(member => member.id),
       ordinaryListViewState: filtered.value?.context.viewState,

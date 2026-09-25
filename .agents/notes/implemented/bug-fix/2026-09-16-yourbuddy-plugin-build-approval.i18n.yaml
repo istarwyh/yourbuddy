@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-16-yourbuddy-plugin-build-approval.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-16-yourbuddy-plugin-build-approval.md
-2026-09-16-yourbuddy-plugin-build-approval.md: 3f60b3dd52970376f64c53f0f338267773725e95
-2026-09-16-yourbuddy-plugin-build-approval.zh.md: a7de8d338524eb719d23e158117a9f647d542269
+/agent-note-remove-duplicate-plugin-build-approval-from-yourbuddy:
+  en: 1ff3fd00360434c2
+  zh: 2852a7264f8cf92c
+/agent-note-remove-duplicate-plugin-build-approval-from-yourbuddy/problem:
+  en: 7def4bf949b2e00e
+  zh: 823358d0a5817bb3
+/agent-note-remove-duplicate-plugin-build-approval-from-yourbuddy/decision:
+  en: bc1cffac7555d2c2
+  zh: 591c721d30bf6ffc
+/agent-note-remove-duplicate-plugin-build-approval-from-yourbuddy/alternatives-considered:
+  en: 792e3a33a521f980
+  zh: de4d45e8477ec317
+/agent-note-remove-duplicate-plugin-build-approval-from-yourbuddy/consequences:
+  en: 8afa7950ce6d568d
+  zh: fa3bb1dab1155e73

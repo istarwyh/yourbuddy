@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-14-desktop-shell-overlay-plugins.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-14-desktop-shell-overlay-plugins.md
-2026-08-14-desktop-shell-overlay-plugins.md: ccb9fd51c96676e9a243f354bf4198cdb07e5fec
-2026-08-14-desktop-shell-overlay-plugins.zh.md: 4f219213d6f532d5a0ded24948acad831cc49429
+/agent-note-desktop-shell-chrome-and-overlay-plugins:
+  en: 0cd293dcf3ccc3f3
+  zh: 38addb00ea163f01
+/agent-note-desktop-shell-chrome-and-overlay-plugins/problem:
+  en: 28afbba4dced6109
+  zh: c03f64f280efbb13
+/agent-note-desktop-shell-chrome-and-overlay-plugins/decision:
+  en: 695bac94c6b6096e
+  zh: 9becafe333835567
+/agent-note-desktop-shell-chrome-and-overlay-plugins/alternatives-considered:
+  en: ba808aa68ec7428c
+  zh: a68819882ac315f3
+/agent-note-desktop-shell-chrome-and-overlay-plugins/consequences:
+  en: 9bafaa5a74e7dddc
+  zh: 2c40ecb3f9853518

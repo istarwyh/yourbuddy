@@ -1,6 +1,37 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for product.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/show/202609/product.md
-product.md: c5dfb3e89667914e16c23a5fc29a30a0a50fd04f
-product.zh.md: 68e335d5e347aaac41fa1a2be98e24477c3d3104
+/product-philosophy-and-homepage-copy:
+  en: 7b50ff30fa8a817e
+  zh: 54986f477535e183
+/product-philosophy-and-homepage-copy/product-definition:
+  en: 9769f8abf957a6c1
+  zh: 2de37214c85f9341
+/product-philosophy-and-homepage-copy/core-principles:
+  en: 7205393de4240f82
+  zh: 3f1674f24c2dfd5c
+/product-philosophy-and-homepage-copy/core-principles/choose-models-for-the-task:
+  en: a2b553a65454b7ca
+  zh: 887f7d1d7511a7fa
+/product-philosophy-and-homepage-copy/core-principles/make-tools-serve-the-work:
+  en: 212f7d4efb70dae8
+  zh: d67a009a25128474
+/product-philosophy-and-homepage-copy/core-principles/make-results-inspectable:
+  en: 8d71067f6c1b9707
+  zh: 3e8a549dd872be09
+/product-philosophy-and-homepage-copy/core-principles/ground-improvement-in-evidence:
+  en: d9fdc56907f98c25
+  zh: c672e8b6ca3f4268
+/product-philosophy-and-homepage-copy/core-principles/let-users-make-the-workbench-their-own:
+  en: e8a9a8221b2a4fad
+  zh: 8b608139708a3d02
+/product-philosophy-and-homepage-copy/proposed-homepage-copy:
+  en: c1cb2d133fb16eab
+  zh: 2c717c683a7d2c93
+/product-philosophy-and-homepage-copy/limits-to-communicate:
+  en: 56468179bec6ed7d
+  zh: 5db037ac24e288bb
+/product-philosophy-and-homepage-copy/evidence:
+  en: fd1005efcde3859f
+  zh: de4ef6f0925bde35

@@ -1,6 +1,37 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/README.md
-README.md: f1f774cfd2970b4381763d14d58b52ed1938dd64
-README.zh.md: 5da4cb550fb876ebcc61b3e61e4e1c1e1454eead
+/documentation-map:
+  en: eae24276ea13def1
+  zh: 87d591912700da47
+/documentation-map/summary:
+  en: 33be895c633b709f
+  zh: 2538056757f1d4f5
+/documentation-map/table-of-contents:
+  en: 1410d715e12d8091
+  zh: 2bc20b0b2fc004be
+/documentation-map/use-yourbuddy:
+  en: e58e1c346e28e2d0
+  zh: f9103229f41bf987
+/documentation-map/use-deepseek-harness:
+  en: 2019cbcc7e34ba9e
+  zh: cc71e58455f5c487
+/documentation-map/develop-extensions:
+  en: 1216273db7c88885
+  zh: 570366d69b5b1319
+/documentation-map/maintain-the-repository:
+  en: e4a632e93300257e
+  zh: 9dd6f4649f5040b7
+/documentation-map/understand-the-architecture:
+  en: 506fdcc59891c9d6
+  zh: c90b303cf53bee51
+/documentation-map/look-up-generated-references:
+  en: 528e626eedfe4b08
+  zh: 31d5482033d03e56
+/documentation-map/documentation-ownership:
+  en: 71d341681f34ae8e
+  zh: 52137ba015068eb7
+/documentation-map/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

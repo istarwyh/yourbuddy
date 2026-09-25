@@ -1,6 +1,28 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for harbor-evolution.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/harbor-evolution.md
-harbor-evolution.md: aced8cae2b1dc26fae2996cc546ab1466c8a0398
-harbor-evolution.zh.md: 842905a50fdca21bc469c9f9247c0ad4371000ba
+/harbor-evolution:
+  en: c8c468f5960526f9
+  zh: 8c69d36577f7a718
+/harbor-evolution/problem-addressed:
+  en: fc914479b8f6a646
+  zh: 2b8c57517aed35d2
+/harbor-evolution/usage:
+  en: 9b1f67c853750bd0
+  zh: eab928073cdca677
+/harbor-evolution/reason-for-default-inclusion:
+  en: e5748acebc0e00aa
+  zh: 914256d8b78235fd
+/harbor-evolution/companion-components:
+  en: 1f107d351a565b57
+  zh: 501f0156c8453a90
+/harbor-evolution/limits:
+  en: 2a9319125fb64dad
+  zh: d5a5e5dddf00c08f
+/harbor-evolution/credentials:
+  en: b405ce6f3420b1d4
+  zh: a8e6e38edd5f424f
+/harbor-evolution/development-example-from-a-specialized-need-to-a-plugin:
+  en: 5331cc255035086d
+  zh: 60bec2cc4518ee70

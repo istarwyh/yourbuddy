@@ -1,6 +1,49 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for releases.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/releases.md
-releases.md: 48746b4897b4cd17111aec6c4555d960b48e13a2
-releases.zh.md: 28ded4d5f798d42ccc3e48833906a63e9589fb03
+/release-status:
+  en: 640b211e5afd2d97
+  zh: c540696225c541ac
+/release-status/yourbuddy:
+  en: adf5527ad75a8fcf
+  zh: adf5527ad75a8fcf
+/release-status/yourbuddy/0-3-15-2026-09-23:
+  en: 88410484cc7ff0cd
+  zh: 515120aeb8e20a23
+/release-status/yourbuddy/0-3-12-2026-09-22:
+  en: 33a02c9ef81f3112
+  zh: 351f44827e268f5a
+/release-status/yourbuddy/0-3-11-2026-09-21:
+  en: 593698333c0714da
+  zh: 01e1a4c54a1c6701
+/release-status/yourbuddy/0-3-10-2026-09-20:
+  en: e710455eaa28ebe7
+  zh: 53926c62a61a40a3
+/release-status/yourbuddy/0-3-9-2026-09-20:
+  en: b5076cec0c64949b
+  zh: 34d3b8deb5d48a54
+/release-status/yourbuddy/0-3-8-2026-09-20:
+  en: 7ece2ca2ddb19a91
+  zh: ed6b75477b973682
+/release-status/yourbuddy/0-3-7-2026-09-19:
+  en: b7fd485678805aa1
+  zh: 2a5df571dbe10314
+/release-status/yourbuddy/0-3-6-2026-09-10:
+  en: 8e393c56d69e1aa8
+  zh: 9429612f23bd224e
+/release-status/yourbuddy/0-3-5-2026-09-08:
+  en: b380dd487c8885ad
+  zh: 6da91573a01aec3d
+/release-status/yourbuddy/0-3-4-2026-09-07:
+  en: f013a5b01e4fabcd
+  zh: e230f14a0ad9004a
+/release-status/yourbuddy/0-3-3-2026-09-07:
+  en: 7fcf713fb48931c1
+  zh: d29207a2de1a421d
+/release-status/yourbuddy/0-3-2-2026-09-06:
+  en: 688258fc36204aee
+  zh: 065c6847a42a2ee5
+/release-status/what-a-release-entry-includes:
+  en: 93979851bedf93d2
+  zh: 399a758f3b9b5211

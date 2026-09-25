@@ -1,6 +1,28 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for roadmap.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/show/202609/roadmap.md
-roadmap.md: 0ae2525902bdd3958f2ee2cc7480cbf9b95701ee
-roadmap.zh.md: 9eea87cb0a343a116e32445e27de3407aa95bce7
+/roadmap-existing-foundations-and-proposed-directions:
+  en: 18d7a77b047a5329
+  zh: 024c94b59a6ca69b
+/roadmap-existing-foundations-and-proposed-directions/existing-foundations:
+  en: 7f7ac4815d833e92
+  zh: 511aa094bb3306dd
+/roadmap-existing-foundations-and-proposed-directions/explicit-deferrals-and-current-limits:
+  en: 858b52a03a41117f
+  zh: 3c6e13741fd3b81e
+/roadmap-existing-foundations-and-proposed-directions/proposed-direction-one-complete-first-use-and-the-website-journey:
+  en: 974bba466d2c88bf
+  zh: 4dcbfcbd9fcceac9
+/roadmap-existing-foundations-and-proposed-directions/proposed-direction-two-make-the-default-composition-understandable-and-maintainable:
+  en: fb28b5e5c94ca389
+  zh: 4442f211cfe5652d
+/roadmap-existing-foundations-and-proposed-directions/proposed-direction-three-make-evaluation-a-repeatable-improvement-habit:
+  en: eacd5d07d4db9243
+  zh: 58bdafe4f314fd02
+/roadmap-existing-foundations-and-proposed-directions/proposed-direction-four-let-user-needs-guide-expansion:
+  en: c091cbed1c193d57
+  zh: ec7ccf3b46f45f32
+/roadmap-existing-foundations-and-proposed-directions/public-roadmap-wording:
+  en: a11d4f1c10dd6f60
+  zh: 83a50e79692a1245

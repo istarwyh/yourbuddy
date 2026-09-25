@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-21-harbor-host-path-translation.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-21-harbor-host-path-translation.md
-2026-09-21-harbor-host-path-translation.md: 39b871b4ece9a23b4c02294165baf6ca74a055ae
-2026-09-21-harbor-host-path-translation.zh.md: 6776031c643c8fcc11c4edb522d346c74166fcb1
+/agent-note-harbor-host-path-translation-is-idempotent:
+  en: a5a0bce179a61f77
+  zh: 5b01807d902a5ce6
+/agent-note-harbor-host-path-translation-is-idempotent/problem:
+  en: a183cde4bb33aedc
+  zh: b1c5f3e5f5df9811
+/agent-note-harbor-host-path-translation-is-idempotent/decision:
+  en: 0d3d30bd9cfa6603
+  zh: 5cdf78a900f9e2f4
+/agent-note-harbor-host-path-translation-is-idempotent/alternatives-considered:
+  en: 3794ec9174b2dab8
+  zh: 44409a6a4302e524
+/agent-note-harbor-host-path-translation-is-idempotent/consequences:
+  en: 5a7023c54c4e8c2c
+  zh: cfca18cd2bfd8db9

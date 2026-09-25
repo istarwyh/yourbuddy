@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-06-preserve-external-product-snapshot-bytes.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-06-preserve-external-product-snapshot-bytes.md
-2026-09-06-preserve-external-product-snapshot-bytes.md: a98590472f5f8c8f7a1721dcc6d51e5b92273b2b
-2026-09-06-preserve-external-product-snapshot-bytes.zh.md: f39263f4dbb1862f5e459e8766f46010f83f8b51
+/agent-note-preserve-external-product-snapshot-bytes:
+  en: a0199bb13334a0c1
+  zh: 9bf1ec475ea032c4
+/agent-note-preserve-external-product-snapshot-bytes/problem:
+  en: 6886499d569bbb24
+  zh: 45e192a9f5ad592b
+/agent-note-preserve-external-product-snapshot-bytes/decision:
+  en: 5c8fe76b35ce0339
+  zh: c66c178df16a8cb3
+/agent-note-preserve-external-product-snapshot-bytes/alternatives-considered:
+  en: a76702675ef0e779
+  zh: fbd229da7251aa4d
+/agent-note-preserve-external-product-snapshot-bytes/consequences:
+  en: c1e66d7dce65e8cd
+  zh: b7d11b793a3d91bc

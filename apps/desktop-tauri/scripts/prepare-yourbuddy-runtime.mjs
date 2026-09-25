@@ -205,9 +205,9 @@ function main() {
   const integrationVersion = overrideMetadata?.version
     || (override ? 'override' : deriveHarborIntegrationVersion())
   if (!override) {
-    const provenancePath = join(vendoredPythonSource, 'YOURBUDDY_UPSTREAM.json')
-    if (!existsSync(provenancePath)) {
-      throw new Error(`vendored Harbor Python provenance missing: ${provenancePath}`)
+    const sourceRecordPath = join(vendoredPythonSource, 'YOURBUDDY_UPSTREAM.json')
+    if (!existsSync(sourceRecordPath)) {
+      throw new Error(`vendored Harbor Python source record missing: ${sourceRecordPath}`)
     }
     verifyExternalSnapshot(vendoredPythonSource, {
       name: 'harbor-dsh-evolution',

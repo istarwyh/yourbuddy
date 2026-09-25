@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-08-windows-coverage-resource-determinism.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-08-windows-coverage-resource-determinism.md
-2026-09-08-windows-coverage-resource-determinism.md: bdfd7116128fc6cdfe484217bc6ab05c29250a74
-2026-09-08-windows-coverage-resource-determinism.zh.md: bff0b0d407ae0150ab27d287f7c82bdd98a6861b
+/agent-note-windows-coverage-resource-determinism:
+  en: b9a5ae92aab76f45
+  zh: fceb8de2f4673a3f
+/agent-note-windows-coverage-resource-determinism/problem:
+  en: f517328fd15fff65
+  zh: 863f590492439295
+/agent-note-windows-coverage-resource-determinism/decision:
+  en: 623c3368f25b2e8c
+  zh: 856b0e51d297f51a
+/agent-note-windows-coverage-resource-determinism/verification:
+  en: d540195470ca8404
+  zh: 128a60735f65d01e
+/agent-note-windows-coverage-resource-determinism/alternatives-considered:
+  en: 29b81e14deb3f3c9
+  zh: bd4104f185c02ac9
+/agent-note-windows-coverage-resource-determinism/consequences:
+  en: be8aef2f08aa9c9b
+  zh: cde8d1e1e175f6a2

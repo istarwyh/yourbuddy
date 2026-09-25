@@ -36,7 +36,7 @@ Put Personal Workbench operations in Settings while retaining its ownership in t
 
 Tutorials follow prerequisites, actions, success signals, common failures, and next steps. Plugin details cover the problem, reason for inclusion, entry point, example, limits, and source. Reference pages answer one lookup question; the internal package tree does not directly become user navigation.
 
-Use the [Y8 artwork](../../../apps/desktop-tauri/app-icon.svg) and current product copy on the homepage, with a screenshot of conversation and work outputs. Internal hashes, Loader IDs, evaluation Stack fields, and test counts belong in provenance or developer material; include them in user steps only when they affect a decision.
+Use the [Y8 artwork](../../../apps/desktop-tauri/app-icon.svg) and current product copy on the homepage, with a screenshot of conversation and work outputs. Internal hashes, Loader IDs, evaluation Stack fields, and test counts belong in source records or developer material; include them in user steps only when they affect a decision.
 
 ## Materials still needed
 
@@ -59,7 +59,7 @@ Start from the [OINK Starter](https://github.com/pgsty/oink-starter) bilingual c
 
 The existing repository reuses Markdown through a [publication manifest](../../../website/docs.ts) and [projection script](../../../scripts/project-doc-site.ts). With OINK, retain one maintained body source and adapt page titles, navigation, internal links, anchors, and the small amount of VitePress-specific syntax. Do not create two complete documentation sets that evolve separately.
 
-Read plugin versions and download facts from the corresponding release records; a fixed manifest can generate provenance summaries. Do not display upstream Latest versions as application-bundled versions at build time. Provide search, translated-page navigation, and Markdown output. Chinese search keywords can include common aliases such as “密钥／API Key,” “工作区／项目目录,” and “上下文／Token.”
+Read plugin versions and download facts from the corresponding release records; a fixed manifest can generate source-record summaries. Do not display upstream Latest versions as application-bundled versions at build time. Provide search, translated-page navigation, and Markdown output. Chinese search keywords can include common aliases such as “密钥／API Key,” “工作区／项目目录,” and “上下文／Token.”
 
 ## Content acceptance before publication
 

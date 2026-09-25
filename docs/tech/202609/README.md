@@ -12,7 +12,7 @@ The current task has one goal: users can first complete work with Y8, then find 
 
 Read the [documentation, website, and in-app Help plan](implementation-plan.md) for specific page changes, application entry points, code locations, existing capabilities to reuse, and acceptance.
 
-Read the [workbench layout compatibility and provenance plan](workbench-layout-compatibility.md) for the implemented desktop workbench/conversation placement, the DSH and Better Sidebar extension split, reproducible product patches, upgrade workflows, and acceptance criteria.
+Read the [workbench layout compatibility and source-record plan](workbench-layout-compatibility.md) for the implemented desktop workbench/conversation placement, the DSH and Better Sidebar extension split, reproducible product patches, upgrade workflows, and acceptance criteria.
 
 Read the proposed [Better Sidebar-centered creator workbench architecture](creator-workbench-core-layout.md) for keeping Better Sidebar as the durable middle workbench, temporarily replacing its visible surface with selected Content details, collapsing the aggregate rightbar and Conversation region, reopening it for Agent input or completion, and preserving upstream-aligned package boundaries.
 

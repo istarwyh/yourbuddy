@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-23-personal-workbench-branding.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-23-personal-workbench-branding.md
-2026-08-23-personal-workbench-branding.md: 1acab55459769c3b1dd43972e6e2e42bd3544e3b
-2026-08-23-personal-workbench-branding.zh.md: 065f7735079c3f6d7bf9756c0d52388f23e85b87
+/agent-note-personal-workbench-branding:
+  en: 32e7fd5aec99a470
+  zh: 45f4df482f9785f2
+/agent-note-personal-workbench-branding/problem:
+  en: 6b8725428a672d04
+  zh: 345936e4edd5e850
+/agent-note-personal-workbench-branding/decision:
+  en: 384b9195a590cad0
+  zh: 373025360952d93d
+/agent-note-personal-workbench-branding/alternatives-considered:
+  en: ddd4a5b7287c828e
+  zh: 62e1c41ce98065a5
+/agent-note-personal-workbench-branding/consequences:
+  en: 2468fd05a98e61f6
+  zh: bacff5b769136b51

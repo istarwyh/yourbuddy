@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for models.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/models.md
-models.md: eb8a28f944b22b19a27ec91f0a51ebe8b068fa1d
-models.zh.md: 7e1e2322858c0181da04422cb1a4b7140ab2b1e3
+/connect-a-model:
+  en: 0d009d4744000f0a
+  zh: adc4637a4a89a2ce
+/connect-a-model/gpt-auth:
+  en: f0acf79ed5175de1
+  zh: 4b7194a9d050092e
+/connect-a-model/api-providers:
+  en: d58d5f326fc6a660
+  zh: ae5f6a6aa1664c3f
+/connect-a-model/custom-endpoints:
+  en: dc371b4fe38ffab2
+  zh: 9d041f93d5dafa10
+/connect-a-model/check-the-active-selection:
+  en: bedf7823aad3e9fe
+  zh: 4875f0eae9159ba0

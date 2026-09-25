@@ -1,6 +1,55 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.8/README.md
-README.md: 9b8b443f56afd0eeef8e10c86a12af156bf76796
-README.zh.md: b501ffcdc37d29779453f6b249446a7459096db7
+/yourbuddy-0-3-8:
+  en: 987bce245fc88eed
+  zh: 9cbd16ab4d92b525
+/yourbuddy-0-3-8/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: ba9758a78bdf26a6
+/yourbuddy-0-3-8/user-release-notes/what-changed:
+  en: 00f786122c7f4f37
+  zh: d984cfbbf1110159
+/yourbuddy-0-3-8/user-release-notes/problem-solved:
+  en: dbe510290e1c0f68
+  zh: 9342c157d8b0b411
+/yourbuddy-0-3-8/user-release-notes/where-to-use-it:
+  en: 9ce2e5b704ab8bde
+  zh: 9b6eb19e7f8e88ce
+/yourbuddy-0-3-8/user-release-notes/how-to-try-it:
+  en: f9564b73c405dd9b
+  zh: 26ed7dc0ce8c7206
+/yourbuddy-0-3-8/user-release-notes/install-or-upgrade:
+  en: 33de2f0df76a0c8d
+  zh: 0f7440fbce72806e
+/yourbuddy-0-3-8/user-release-notes/compatibility-migration-and-limitations:
+  en: 8c8015d2dc53c491
+  zh: 1168529135460a9b
+/yourbuddy-0-3-8/verification-summary:
+  en: 093437b67fa3b185
+  zh: 1ab759bc949e6f60
+/yourbuddy-0-3-8/scenario-dsh-and-product-preparation:
+  en: 38a3f664221157c8
+  zh: 9cb6687f7ced272f
+/yourbuddy-0-3-8/scenario-dsh-and-product-preparation/steps:
+  en: 72ad18fc1a0a0f0b
+  zh: 041dd091d8426c76
+/yourbuddy-0-3-8/scenario-dsh-and-product-preparation/expected:
+  en: bd190665197e0a27
+  zh: 4cf8e1343ea33db4
+/yourbuddy-0-3-8/scenario-dsh-and-product-preparation/actual:
+  en: 1b8bb53cd2b954b5
+  zh: 6e5c040b7f584997
+/yourbuddy-0-3-8/scenario-dsh-and-product-preparation/evidence-and-limits:
+  en: 26498448bd1b5d5c
+  zh: 32d3ad7d6104806e
+/yourbuddy-0-3-8/scenario-formal-publication-and-public-artifacts:
+  en: ba44f2f297d05cb7
+  zh: 54b3049196e3a96d
+/yourbuddy-0-3-8/delivery-status:
+  en: 7789de4479bab16c
+  zh: 9903a4926b077c57
+/yourbuddy-0-3-8/delivery-checklist:
+  en: 92acedb9c4a117f0
+  zh: 59ade9807a6f6983

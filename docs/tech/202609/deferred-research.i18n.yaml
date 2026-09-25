@@ -1,6 +1,64 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for deferred-research.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/tech/202609/deferred-research.md
-deferred-research.md: 49082ff8ed87efc52a7b98110d5131a82e9b5317
-deferred-research.zh.md: d4eedd69d5a95bf8a856982346528599eb633ad3
+/:
+  en: 72be59d1fad14d65
+  zh: d44ba96ba9657819
+/yourbuddy-plugin-development-platform-research-unadopted:
+  en: eccf04cfa3bfd7be
+  zh: fd8e39e4394bb7ac
+/yourbuddy-plugin-development-platform-research-unadopted/table-of-contents:
+  en: 8c53903ccfec80a7
+  zh: fd54e75cfb4b61f6
+/yourbuddy-plugin-development-platform-research-unadopted/product-goals-and-scope:
+  en: 630bfa10618778e9
+  zh: 115f03e47b753bd8
+/yourbuddy-plugin-development-platform-research-unadopted/existing-foundations-and-evidence-limits:
+  en: d839e3ee25e40f57
+  zh: 8c0b0f40cd7df1ff
+/yourbuddy-plugin-development-platform-research-unadopted/product-design-to-evaluate:
+  en: e999e508f5e59eb5
+  zh: 5e6936941ffb010d
+/yourbuddy-plugin-development-platform-research-unadopted/product-design-to-evaluate/default-use:
+  en: 23c4847030ff6fac
+  zh: f3f4f9cdce920cda
+/yourbuddy-plugin-development-platform-research-unadopted/product-design-to-evaluate/defining-a-plugin:
+  en: 94843eeff3d20d4f
+  zh: 977b3679c1267609
+/yourbuddy-plugin-development-platform-research-unadopted/product-design-to-evaluate/documentation-and-development-assistant:
+  en: 59078eef8cede446
+  zh: 7f52c7f5b568432d
+/yourbuddy-plugin-development-platform-research-unadopted/product-design-to-evaluate/local-development:
+  en: 564651cd85d46139
+  zh: a098280e32b90e09
+/yourbuddy-plugin-development-platform-research-unadopted/product-design-to-evaluate/from-experiment-to-delivery:
+  en: 88e6732029c6a2a4
+  zh: ef7f42e1cbeee5ca
+/yourbuddy-plugin-development-platform-research-unadopted/study-organization-and-measurement:
+  en: 7c72a54f4a0daa65
+  zh: 82cb19e0cc8ac3cd
+/yourbuddy-plugin-development-platform-research-unadopted/four-experiments:
+  en: e29aed74e391d27d
+  zh: bf75a4e26338ddd3
+/yourbuddy-plugin-development-platform-research-unadopted/four-experiments/e0-default-experience:
+  en: 0e77a9172e9c4fd4
+  zh: e9a1351d6db9000b
+/yourbuddy-plugin-development-platform-research-unadopted/four-experiments/e1-documentation-and-guidance:
+  en: 843e5d566e5f5091
+  zh: 75bf15cae2c4385f
+/yourbuddy-plugin-development-platform-research-unadopted/four-experiments/e2-local-development-and-continued-modification:
+  en: 46cb20c07b29838f
+  zh: d2410f51644a7408
+/yourbuddy-plugin-development-platform-research-unadopted/four-experiments/e3-saving-sharing-and-maintenance:
+  en: 1aeca455c17f5a9b
+  zh: 079407c640104cc1
+/yourbuddy-plugin-development-platform-research-unadopted/delivery-sequence-and-decisions:
+  en: f3de643f5bd47776
+  zh: a02c81449515c331
+/yourbuddy-plugin-development-platform-research-unadopted/records-and-subsequent-ownership:
+  en: caf99352272f9fc9
+  zh: 862153e14607e20a
+/yourbuddy-plugin-development-platform-research-unadopted/dev-note:
+  en: c7867633c77ff6c7
+  zh: 873ed6dd208a34c1

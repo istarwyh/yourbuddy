@@ -1,6 +1,85 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.1/README.md
-README.md: 32797853b553b4acdf999176a405e8775767f528
-README.zh.md: 7713a02ac1a3fdf2c760ee56e18b2f9a9486fc56
+/yourbuddy-0-3-1:
+  en: 22759560b07c4951
+  zh: 4cb4e88c15086c04
+/yourbuddy-0-3-1/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-1/user-release-notes/what-changed:
+  en: c54927cc036d1f75
+  zh: eefe95a4ac25e50e
+/yourbuddy-0-3-1/user-release-notes/problem-solved:
+  en: e1fb1899db4d335c
+  zh: 713819114afd74e8
+/yourbuddy-0-3-1/user-release-notes/where-to-use-it:
+  en: 36d3dca143642506
+  zh: b8789473dcdaf00c
+/yourbuddy-0-3-1/user-release-notes/how-to-try-it:
+  en: ada5fe3501bafb3a
+  zh: 2333d9625e81587f
+/yourbuddy-0-3-1/user-release-notes/install-or-upgrade:
+  en: d1b7ae4d6dd1a712
+  zh: bd1345451024cdb1
+/yourbuddy-0-3-1/user-release-notes/compatibility-migration-and-limitations:
+  en: 7614db51b5583c76
+  zh: ad574ee3356a5c0d
+/yourbuddy-0-3-1/verification-summary:
+  en: 367a26b406ae24c7
+  zh: 9b5ccf2142554c8a
+/yourbuddy-0-3-1/scenario-failed-0-3-0-publication-and-recovery:
+  en: 0aadb70b905684d7
+  zh: c988ea89e203e151
+/yourbuddy-0-3-1/scenario-failed-0-3-0-publication-and-recovery/steps:
+  en: a28cd2dc22abb04a
+  zh: eb051408d855cdc9
+/yourbuddy-0-3-1/scenario-failed-0-3-0-publication-and-recovery/expected-and-actual:
+  en: db71b92939e37426
+  zh: c5b0efc8bfa4df31
+/yourbuddy-0-3-1/scenario-failed-0-3-0-publication-and-recovery/evidence-and-scope-limits:
+  en: 001069fa9a87a0c3
+  zh: cf77d71b8f987eb8
+/yourbuddy-0-3-1/scenario-0-3-1-release-preparation-and-product-smoke:
+  en: d6e01f7f92d75bc3
+  zh: 90403e2b773e5d67
+/yourbuddy-0-3-1/scenario-0-3-1-release-preparation-and-product-smoke/steps:
+  en: e453ab35ff96d3b4
+  zh: b18a484b40584481
+/yourbuddy-0-3-1/scenario-0-3-1-release-preparation-and-product-smoke/expected-and-actual:
+  en: 15c9a74108761689
+  zh: c632bb031ac41230
+/yourbuddy-0-3-1/scenario-0-3-1-release-preparation-and-product-smoke/evidence-and-scope-limits:
+  en: 674acaa4b92264cd
+  zh: eef80d946d555088
+/yourbuddy-0-3-1/scenario-desktop-scripts-and-documentation:
+  en: 46e988632c155862
+  zh: a9a5d0a24b820bc5
+/yourbuddy-0-3-1/scenario-desktop-scripts-and-documentation/steps:
+  en: 7642e316e496a5a8
+  zh: 6f3b69deb6a3ebef
+/yourbuddy-0-3-1/scenario-desktop-scripts-and-documentation/expected-and-actual:
+  en: 278021531ebe9593
+  zh: cbaaba8deb3b48dc
+/yourbuddy-0-3-1/scenario-desktop-scripts-and-documentation/evidence-and-scope-limits:
+  en: 5ef54d639ccb8cdd
+  zh: 44cfe3c892525503
+/yourbuddy-0-3-1/scenario-public-release-and-packaged-artifact:
+  en: a51c46f618bf81ee
+  zh: 67329704d522f1b0
+/yourbuddy-0-3-1/scenario-public-release-and-packaged-artifact/steps:
+  en: 878b35db79349b9a
+  zh: 188725499f233d50
+/yourbuddy-0-3-1/scenario-public-release-and-packaged-artifact/expected-and-actual:
+  en: 9c4d63e2d839520f
+  zh: 26c5ad47ecdd9aae
+/yourbuddy-0-3-1/scenario-public-release-and-packaged-artifact/evidence-and-scope-limits:
+  en: 1af52f017b0d13bd
+  zh: 9a892c0fdad43f86
+/yourbuddy-0-3-1/delivery-status:
+  en: 527cde841a510e13
+  zh: bd8febb3f8594c05
+/yourbuddy-0-3-1/delivery-checklist:
+  en: 285beba400774b1b
+  zh: 2c36884dba25e97c

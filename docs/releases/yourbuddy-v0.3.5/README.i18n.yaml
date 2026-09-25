@@ -1,6 +1,106 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.5/README.md
-README.md: e2358692898eae7f180d5f0adf1cfa6760247941
-README.zh.md: 78efc2e8d4c040bcbd372914bcf54c4ca9f94243
+/yourbuddy-0-3-5:
+  en: e0c9762f5f4d3212
+  zh: eb948ff5bb39c191
+/yourbuddy-0-3-5/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-5/user-release-notes/what-changed:
+  en: dce67b42cd583883
+  zh: 7a155513bdd6d627
+/yourbuddy-0-3-5/user-release-notes/problem-solved:
+  en: abb8d3b056e47c9a
+  zh: 1e2816819f12396a
+/yourbuddy-0-3-5/user-release-notes/where-to-use-it:
+  en: 1b19b5b76ab1ab15
+  zh: 900beaad67540546
+/yourbuddy-0-3-5/user-release-notes/how-to-try-it:
+  en: d0e2e73ee1b9342b
+  zh: ced65e4f7a349e4d
+/yourbuddy-0-3-5/user-release-notes/install-or-upgrade:
+  en: ca0a5393e529d925
+  zh: 57faac2f9f3ae542
+/yourbuddy-0-3-5/user-release-notes/compatibility-migration-and-limitations:
+  en: dc05bbb682d88632
+  zh: 8d8e9f005cbf3e2e
+/yourbuddy-0-3-5/verification-summary:
+  en: 4a547a7a05b6fa92
+  zh: c1a6b09115a8875d
+/yourbuddy-0-3-5/scenario-codex-delegation-routing:
+  en: 1b9e0998c17de54b
+  zh: b4100ece13bc65d2
+/yourbuddy-0-3-5/scenario-codex-delegation-routing/steps:
+  en: 0d435fcfaeec98d3
+  zh: 9d092895455a0f64
+/yourbuddy-0-3-5/scenario-codex-delegation-routing/expected:
+  en: 89493479fd9666aa
+  zh: 01a1698bb1dce5ea
+/yourbuddy-0-3-5/scenario-codex-delegation-routing/actual:
+  en: dd6e5e21f758824f
+  zh: 86d585432df9f321
+/yourbuddy-0-3-5/scenario-codex-delegation-routing/evidence:
+  en: 641ae508ceb463d3
+  zh: 5d24cc37bebc0e07
+/yourbuddy-0-3-5/scenario-codex-delegation-routing/scope-limits:
+  en: ddd194c8281e0d50
+  zh: 1e56dfdd941dd38d
+/yourbuddy-0-3-5/scenario-desktop-shell-authorization:
+  en: bc558854a41ec2a6
+  zh: f951ba3d0970f337
+/yourbuddy-0-3-5/scenario-desktop-shell-authorization/steps:
+  en: d7efb972fb82df48
+  zh: 27c8c1e5d790976b
+/yourbuddy-0-3-5/scenario-desktop-shell-authorization/expected:
+  en: 9a4811dcfddf3fa3
+  zh: 00f90789393973b3
+/yourbuddy-0-3-5/scenario-desktop-shell-authorization/actual:
+  en: 0f754060916fb02a
+  zh: 3f557b05702c804c
+/yourbuddy-0-3-5/scenario-desktop-shell-authorization/evidence:
+  en: 03aab339e47cda81
+  zh: 6e852e950b1397ef
+/yourbuddy-0-3-5/scenario-desktop-shell-authorization/scope-limits:
+  en: e0459f8e185314c6
+  zh: e9469d3513d27fc1
+/yourbuddy-0-3-5/scenario-local-release-candidate-assembly:
+  en: 3476f8a16beec75b
+  zh: 52c58853dad9421a
+/yourbuddy-0-3-5/scenario-local-release-candidate-assembly/steps:
+  en: 06cb04876ad984fa
+  zh: cda11c96118571a2
+/yourbuddy-0-3-5/scenario-local-release-candidate-assembly/expected:
+  en: 61a2d746af4e6ea5
+  zh: 91305a353f7a0036
+/yourbuddy-0-3-5/scenario-local-release-candidate-assembly/actual:
+  en: 0762297e26ae08a5
+  zh: de63d3288719914d
+/yourbuddy-0-3-5/scenario-local-release-candidate-assembly/evidence:
+  en: 3e408840f861c8ac
+  zh: c3c0f7ac05ba17e1
+/yourbuddy-0-3-5/scenario-local-release-candidate-assembly/scope-limits:
+  en: abbe1a293c2058fe
+  zh: c6142ee626e3efc1
+/yourbuddy-0-3-5/scenario-pull-request-matrix-and-merge:
+  en: ed82e1c462ce7425
+  zh: 7ccbca50d10e042e
+/yourbuddy-0-3-5/scenario-independent-public-artifact-verification:
+  en: 8ddc0bbb32677ad7
+  zh: 28ca5b4f8d070847
+/yourbuddy-0-3-5/scenario-public-app-and-relocated-runtime:
+  en: 43d40a4ba0de5cbe
+  zh: 4707975d0e74c545
+/yourbuddy-0-3-5/scenario-public-product-website:
+  en: ad36b7d1b538cc73
+  zh: 4af6b5aeb89535e7
+/yourbuddy-0-3-5/scenario-downloadable-verification-archive:
+  en: 24ccb33bc49f1163
+  zh: 28fcee1356473706
+/yourbuddy-0-3-5/delivery-status:
+  en: 090202c504707462
+  zh: c2b42fd8552ec213
+/yourbuddy-0-3-5/delivery-checklist:
+  en: 23079a321e06ffd0
+  zh: b0fead90af2b8713

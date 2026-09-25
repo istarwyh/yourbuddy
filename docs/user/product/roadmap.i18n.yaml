@@ -1,6 +1,13 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for roadmap.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/roadmap.md
-roadmap.md: 4573923aad71497f493270e3c05a9ca0ff61fb8e
-roadmap.zh.md: 78b3b09342496a94d8e9c7cf55bf8dbd24bf58c0
+/where-we-go-next:
+  en: 5a160648fad14910
+  zh: b41e2af7e556986e
+/where-we-go-next/existing-foundations:
+  en: 00603e1db66856dd
+  zh: b6b935b5fa9e4e9b
+/where-we-go-next/what-is-not-promised:
+  en: 9bccf2d37eba331c
+  zh: 8ef11a226d9830b4

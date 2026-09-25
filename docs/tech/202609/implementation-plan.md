@@ -75,7 +75,7 @@ Publish the existing first-plugin, tool, configuration, and packaging pages on t
 
 Add a short Creator usage guide, proposed at `docs/user/product/creator.md` with its Chinese pair and the site route `docs/develop/creator`. Cover appropriate needs, the actual entry point and prerequisites, describing requirements, querying current interfaces, experimenting and checking results, saving source, and further reading. Verify the entry in the target installed Y8 version first. If unavailable, state the verified DSH source-based path without adding a product runtime.
 
-The [Creator composition](../../../packages/preset/agent-presets/presets/cordis/agent.cordis.yml) and [development Skill](../../../packages/preset/agent-presets/presets/cordis/skills/cordis-plugin-development/SKILL.md) are existing integration points. Explain the difference between temporary dynamic experiments and persistent source, linking the [dynamic tool documentation](../../../packages/extensions/tool-cordis/README.md). This delivery adds no “save as plugin project” button and does not treat a successful temporary experiment as a distributable plugin.
+The [Agent Preset package](../../../packages/preset/agent-preset/README.md) ships the [plugin development Skill](../../../packages/preset/agent-preset/skills/cordis-plugin-development/SKILL.md) as the current integration point. Explain the difference between temporary dynamic experiments and persistent source, linking the [dynamic tool documentation](../../../packages/extensions/tool-cordis/README.md). This delivery adds no “save as plugin project” button and does not treat a successful temporary experiment as a distributable plugin.
 
 <a id="website"></a>
 ## Website: make both paths discoverable

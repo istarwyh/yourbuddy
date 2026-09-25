@@ -165,7 +165,7 @@ test('materialized product patches replay onto a pristine upstream snapshot', (t
   assert.equal(readFileSync(join(staged, 'value.txt'), 'utf8'), 'yourbuddy\n')
 })
 
-test('source patches apply before build and return immutable provenance', (t) => {
+test('source patches apply before build and return immutable source record', (t) => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-source-patch-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const product = join(root, 'product')

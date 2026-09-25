@@ -1,7 +1,8 @@
 /**
  * Display projection of reference forms in sent user text (bubble and queue
  * rows). The logged model text remains the single truth; this is presentation
- * only. User-authored runs remain inline; standalone page-context blocks
+ * only. User-authored runs remain inline, follow the consumer's wrapping
+ * policy, and keep long labels within its width; standalone page-context blocks
  * render as collapsed attachments. Four decoration sources, by precedence:
  * the wire session form `@[label](dsh-session:...)` folds to its label; exact
  * session labels supplied by an adjacent recall decorate their bare `@label`
@@ -16,8 +17,9 @@
  */
 import { Fragment, type ReactNode } from 'react'
 import clsx from 'clsx'
-import { ReferenceIcon } from './ReferenceIcon.tsx'
+import { ReferenceIconRegular } from './ReferenceIcon.tsx'
 import css from './user-text.module.css'
+import markdownCss from './markdown/MarkdownText.module.css'
 
 /** The wire form a session chip serializes to; label is the display text. */
 const SESSION_WIRE_RE = /@\[([^\]\n]+)\]\(dsh-session:[^)\s]+\)/gu
@@ -58,6 +60,14 @@ interface DecorationRange {
   readonly display?: string
 }
 
+/** Optional navigation supplied by consumers that can preview references. */
+export interface UserTextReferences {
+  /** Open a file path decoded from an `@` mention. */
+  openFile: (path: string) => void
+  /** Open the source of a skill loaded for this message. */
+  openSkill: (name: string) => void
+}
+
 /**
  * Project user text and standalone context blocks without changing their logged content.
  * @param text - authored text, or separate blocks with authored text first (empty for image-only sends).
@@ -65,6 +75,7 @@ interface DecorationRange {
  * @param slashNames - names a `/name` token may decorate as: the skills the host loaded for this message,
  *   or the command a command bubble echoes.
  * @param slashKind - the chip kind those tokens render as.
+ * @param references - optional file and skill preview actions; session and command tokens stay labels.
  * @returns user text with reference chips and collapsed, inspectable page-context attachments.
  */
 export function projectUserText(
@@ -72,6 +83,7 @@ export function projectUserText(
   sessionLabels: readonly string[],
   slashNames?: readonly string[],
   slashKind?: 'skill' | 'command',
+  references?: UserTextReferences,
 ): ReactNode
 /**
  * Recover authored text for copy and editing; automatic context is prepared separately.
@@ -86,6 +98,7 @@ export function projectUserText(
   sessionLabels: readonly string[],
   slashNamesOrMode: readonly string[] | 'editable' = [],
   slashKind: 'skill' | 'command' = 'skill',
+  references?: UserTextReferences,
 ): ReactNode {
   const parts = typeof text === 'string'
     ? [{ text, context: undefined }]
@@ -94,7 +107,7 @@ export function projectUserText(
     return parts.filter(part => part.context === undefined).map(part => part.text).join('')
   }
   return <>{parts.map((part, index) => part.context === undefined
-    ? <Fragment key={index}>{decorateText(part.text, sessionLabels, slashNamesOrMode, slashKind)}</Fragment>
+    ? <Fragment key={index}>{decorateText(part.text, sessionLabels, slashNamesOrMode, slashKind, references)}</Fragment>
     : <details key={index} className={css.pageContext} data-page-context={part.context.source}>
       <summary className={css.contextLabel}>{part.context.label}</summary>
       <pre className={css.contextText}>{part.context.description ?? part.context.text}</pre>
@@ -104,8 +117,9 @@ export function projectUserText(
 function decorateText(
   text: string,
   sessionLabels: readonly string[],
-  slashNames: readonly string[],
-  slashKind: 'skill' | 'command',
+  slashNames: readonly string[] = [],
+  slashKind: 'skill' | 'command' = 'skill',
+  references?: UserTextReferences,
 ): ReactNode {
   const ranges: DecorationRange[] = []
   SESSION_WIRE_RE.lastIndex = 0
@@ -155,7 +169,7 @@ function decorateText(
     const referenceKind = kind === 'session'
       ? 'session'
       : label.startsWith('@')
-        ? label.endsWith('/') ? 'folder' : 'file'
+        ? label.replace(/^@"|"$/gu, '').endsWith('/') ? 'folder' : 'file'
         : undefined
     const displayLabel = range.display
       ?? (referenceKind === undefined
@@ -163,19 +177,36 @@ function decorateText(
         : referenceKind === 'session'
           ? label.slice(1)
           : label.slice(1).replace(/^"|"$/gu, '').split(/[\\/]/u).filter(Boolean).at(-1) ?? label.slice(1))
-    parts.push(
-      <span
+    const contents = <>
+      {referenceKind !== undefined && (
+        <ReferenceIconRegular kind={referenceKind} size={16} className={css.refIcon} />
+      )}
+      {displayLabel}
+    </>
+    const open = references === undefined ? undefined
+      : referenceKind === 'file'
+        ? () => { references.openFile(label.slice(1).replace(/^"|"$/gu, '')) }
+        : referenceKind === undefined && slashKind === 'skill'
+          ? () => { references.openSkill(label.slice(1)) }
+          : undefined
+    const className = clsx(css.refChip, referenceKind === undefined && css.slashChip)
+    parts.push(open === undefined
+      ? <span key={tokenStart} className={className} data-ref-chip={referenceKind ?? slashKind} title={label}>
+        {contents}
+      </span>
+      : <button
         key={tokenStart}
-        className={clsx(css.refChip, referenceKind === undefined && css.slashChip)}
+        type="button"
+        className={clsx(className, markdownCss.fileMention)}
         data-ref-chip={referenceKind ?? slashKind}
         title={label}
+        onClick={(event) => {
+          if (event.detail > 1 || (event.detail !== 0 && event.currentTarget.ownerDocument.getSelection()?.isCollapsed === false)) return
+          open()
+        }}
       >
-        {referenceKind !== undefined && (
-          <ReferenceIcon kind={referenceKind} size={16} className={css.refIcon} />
-        )}
-        {displayLabel}
-      </span>,
-    )
+        {contents}
+      </button>)
     cursor = end
   }
   if (parts.length === 0) return <span className={css.plainRun}>{text}</span>

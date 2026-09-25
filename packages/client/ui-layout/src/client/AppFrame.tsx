@@ -18,7 +18,7 @@ import type { ReactNode } from 'react'
 import type {
   PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore, SnapshotSelectorHook,
 } from '@deepseek-ai/dsh-client-ui-slots'
-import { CENTER_MIN, computeColumns, RIGHTBAR_DEFAULT_RATIO, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
+import { CENTER_MIN, clampWidth, computeColumns, RIGHTBAR_DEFAULT_RATIO, RIGHTBAR_MAX_RATIO, RIGHTBAR_MIN, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_COLLAPSED, SIDEBAR_DEFAULT } from './columns.ts'
 import { DocumentTitle } from './DocumentTitle.tsx'
 import type { createLayoutStore } from './stores.ts'
 import type { WorkbenchLayoutState } from './service.ts'
@@ -31,7 +31,7 @@ const SESSION_REGION_ID = 'dsh-session-region'
 /** Full composed props: runtime share + child-slot render share + store share. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'main' | 'workbench' | 'rightbar' | 'shell.overlay'>
+  & PropsRenderSlots<'sidebar' | 'main' | 'workbench' | 'rightbar' | 'shell.overlay' | 'shell.leading'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & PropsLocale<'common'>
   & {
@@ -49,8 +49,8 @@ function WorkbenchColumn(props: { children?: ReactNode }) {
   return <div className={css.workbenchCol}>{props.children}</div>
 }
 
-/** Auxiliary main-content grid item, kept mounted while the aggregate region is hidden. */
-function AuxiliaryColumn(props: { children?: ReactNode; visible: boolean }) {
+/** Aggregate Session region kept mounted while the workbench takes its tracks. */
+function SessionRegion(props: { children?: ReactNode; visible: boolean }) {
   const regionRef = useRef<HTMLDivElement | null>(null)
   useLayoutEffect(() => {
     const region = regionRef.current
@@ -67,13 +67,17 @@ function AuxiliaryColumn(props: { children?: ReactNode; visible: boolean }) {
     <div
       id={SESSION_REGION_ID}
       ref={regionRef}
-      className={css.auxiliaryCol}
-      data-auxiliary-visible={props.visible || undefined}
+      className={css.sessionRegion}
       aria-hidden={!props.visible || undefined}
     >
       {props.children}
     </div>
   )
+}
+
+/** Auxiliary main-content grid item. */
+function AuxiliaryColumn(props: { children?: ReactNode }) {
+  return <div className={css.auxiliaryCol}>{props.children}</div>
 }
 
 /** Subscribe to the main key without subscribing the column frame to each panel id. */
@@ -205,10 +209,15 @@ export function AppFrame({
   const sidebarPreference = sidebarCollapsed
     ? 0
     : layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : layoutInfo.sidebar
+  // Desktop reopen controls occupy the frame's shell.leading seat (macOS) or
+  // the Windows caption row; neither platform keeps an icon rail.
+  const darwin = document.documentElement.dataset.platform === 'darwin'
+  const collapsedWidth = darwin
+    || document.documentElement.hasAttribute('data-windows-titlebar') ? 0 : SIDEBAR_COLLAPSED
   const workbenchDesktop = workbench.present && viewport >= WORKBENCH_DRAWER_BREAKPOINT
   const sessionRegionVisible = !workbench.present || workbench.expanded
   const workbenchPrimary = workbenchDesktop || (workbench.present && !sessionRegionVisible)
-  const frameSidebarWidth = computeColumns(viewport, sidebarPreference, 0).sidebar
+  const frameSidebarWidth = computeColumns(viewport, sidebarPreference, 0, collapsedWidth).sidebar
   const preferredAuxiliaryWidth = workbenchDesktop
     ? Math.min(workbench.width, Math.max(0, viewport - frameSidebarWidth - CENTER_MIN))
     : 0
@@ -219,11 +228,21 @@ export function AppFrame({
   const rightbarPreference = layoutInfo.rightbar ?? layoutViewport * RIGHTBAR_DEFAULT_RATIO
   // Opening on a narrow frame collapses the left sidebar. Eligibility must
   // include that space before the occupant's first shown report arrives.
-  const normal = computeColumns(layoutViewport, !layoutInfo.rightbarShown && narrow ? 0 : sidebarPreference, rightbarPreference)
+  const normal = computeColumns(
+    layoutViewport,
+    !layoutInfo.rightbarShown && narrow ? 0 : sidebarPreference,
+    rightbarPreference,
+    collapsedWidth,
+  )
   const reserveRightbar = sessionRegionVisible
     && (!workbenchDesktop || workbench.reserveRightbar)
     && layoutInfo.rightbarTrack
-  const cols = computeColumns(layoutViewport, sidebarPreference, reserveRightbar ? rightbarPreference : 0)
+  const cols = computeColumns(
+    layoutViewport,
+    sidebarPreference,
+    reserveRightbar ? rightbarPreference : 0,
+    collapsedWidth,
+  )
   const effectiveRightbarWidth = sessionRegionVisible ? cols.rightbar : 0
   const colsRef = useRef(cols)
   colsRef.current = cols
@@ -239,6 +258,42 @@ export function AppFrame({
   // Track-level transitions pause for the whole gesture: eased tracks would
   // detach the column edge from the pointer (AppFrame.module.css).
   const [dragging, setDragging] = useState(false)
+  // Track easing is scoped to a discrete open/close toggle: data-animating
+  // goes up when the collapse state or the rightbar track flips and comes down
+  // at transition end (timeout as the reduced-motion/covered-frame fallback).
+  // Steady-state viewport updates stay instant (AppFrame.module.css), and so
+  // does a toggle arriving together with a viewport change — that is the
+  // responsive auto-collapse firing mid window-resize, where easing would
+  // chase the live window edge. The counter restarts the settle window when a
+  // re-toggle interrupts a running transition.
+  const [animating, setAnimating] = useState(0)
+  const trackToggle = `${sidebarCollapsed}:${layoutInfo.rightbarTrack}:${sessionRegionVisible}`
+  const previousToggle = useRef(trackToggle)
+  const previousViewport = useRef(viewport)
+  useLayoutEffect(() => {
+    const viewportChanged = previousViewport.current !== viewport
+    previousViewport.current = viewport
+    if (previousToggle.current === trackToggle) return
+    previousToggle.current = trackToggle
+    if (viewportChanged) return
+    setAnimating(token => token + 1)
+  }, [trackToggle, viewport])
+  useEffect(() => {
+    if (animating === 0) return
+    const frame = frameRef.current
+    /* v8 ignore next -- the ref is always attached by effect time: the frame div renders unconditionally. */
+    if (frame === null) return
+    const settle = () => { setAnimating(0) }
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target === frame && event.propertyName === 'grid-template-columns') settle()
+    }
+    frame.addEventListener('transitionend', onTransitionEnd)
+    const timer = setTimeout(settle, 600)
+    return () => {
+      frame.removeEventListener('transitionend', onTransitionEnd)
+      clearTimeout(timer)
+    }
+  }, [animating])
   const onDragEnd = useCallback(() => { setDragging(false) }, [])
   const onSidebarStart = useCallback(() => { sidebarBase.current = colsRef.current.sidebar; setDragging(true) }, [])
   const onSidebarDrag = useCallback((dx: number) => {
@@ -253,6 +308,17 @@ export function AppFrame({
     setWorkbenchWidth(mainBase.current - dx)
   }, [setWorkbenchWidth])
   const productTitle = process.env.DSH_CLIENT_TITLE ?? t('brand.localBuild')
+  // The rendered template lets the grid solve the squeeze natively: the centre
+  // declares its protected minimum and the right column bids up to the clamped
+  // preference, so a window resize lands in the same layout pass as the frame
+  // edge. The JS solve lags the viewport by a ResizeObserver + rAF frame; when
+  // it priced the squeeze itself, the centre column absorbed each width change
+  // whole and was corrected two frames later — visible jitter. cols keeps only
+  // the discrete decisions (track present, collapse state) and the drag base.
+  const rightbarMax = effectiveRightbarWidth === 0
+    ? 0
+    : clampWidth(rightbarPreference, RIGHTBAR_MIN, layoutViewport * RIGHTBAR_MAX_RATIO)
+  const centerMinimum = effectiveRightbarWidth === 0 ? 0 : CENTER_MIN
   const sidebar = useMemo(() => renderSlot('sidebar', {
     collapsed: sidebarCollapsed,
     width: cols.sidebar,
@@ -261,15 +327,24 @@ export function AppFrame({
     <MainPanel usePanelInfo={usePanelInfo} renderSlot={renderSlot} />
   ), [usePanelInfo, renderSlot])
   const overlays = useMemo(() => renderSlot('shell.overlay', {}), [renderSlot])
+  // Window-chrome seat over the main panels' top-left corner: only a fully
+  // hidden sidebar column on macOS desktop leaves window chrome without a
+  // home — the Windows zero-width collapse keeps its controls in the caption
+  // row (ui-sidebar). AppFrame.module.css publishes the matching
+  // --dsh-frame-leading-clearance under the same collapsed condition.
+  const leading = useMemo(() => renderSlot('shell.leading', {}), [renderSlot])
+  const leadingMounted = darwin && sidebarCollapsed
 
   return (
     <div
       ref={frameRef}
       className={css.frame}
       style={{
+        ...(document.documentElement.hasAttribute('data-windows-titlebar')
+          ? { '--dsh-windows-sidebar-width': `${cols.sidebar}px` } : {}),
         gridTemplateColumns: workbenchPrimary
-          ? `${cols.sidebar}px minmax(0, 1fr) ${effectiveRightbarWidth}px ${auxiliaryWidth}px`
-          : `${cols.sidebar}px minmax(0, 1fr) ${effectiveRightbarWidth}px`,
+          ? `${cols.sidebar}px minmax(${centerMinimum}px, 1fr) minmax(0px, ${rightbarMax}px) ${auxiliaryWidth}px`
+          : `${cols.sidebar}px minmax(${centerMinimum}px, 1fr) minmax(0px, ${rightbarMax}px)`,
       }}
       data-dsh-frame
       data-workbench-primary={workbenchPrimary || undefined}
@@ -279,6 +354,7 @@ export function AppFrame({
       data-rightbar-fullscreen={sessionRegionVisible && layoutInfo.rightbarFullscreen || undefined}
       data-rightbar-instant={layoutInfo.rightbarInstant || undefined}
       data-dragging={dragging || undefined}
+      data-animating={animating > 0 || undefined}
     >
       <DocumentTitle
         productTitle={productTitle}
@@ -288,24 +364,27 @@ export function AppFrame({
       <div className={css.sidebarCol}>
         {sidebar}
       </div>
-      <>
-        {workbenchPrimary
-          ? <WorkbenchColumn>{renderSlot('workbench', {})}</WorkbenchColumn>
-          : <CenterColumn>{main}</CenterColumn>}
-        <RightbarColumn>
+      {workbenchPrimary && <WorkbenchColumn>{renderSlot('workbench', {})}</WorkbenchColumn>}
+      <SessionRegion visible={sessionRegionVisible}>
+        {!workbenchPrimary && <CenterColumn key="main">{main}</CenterColumn>}
+        <RightbarColumn key="rightbar">
           {renderSlot('rightbar', {
             width: normal.rightbar,
-            visible: sessionRegionVisible,
             viewportWidth: viewport,
-            canShow: normal.rightbar > 0,
+            canShow: !sessionRegionVisible || normal.rightbar > 0,
           })}
         </RightbarColumn>
-        {workbenchPrimary && <AuxiliaryColumn visible={sessionRegionVisible}>{main}</AuxiliaryColumn>}
-      </>
+        {workbenchPrimary && <AuxiliaryColumn key="main">{main}</AuxiliaryColumn>}
+      </SessionRegion>
       <div className={css.overlayLayer} data-shell-overlay>
         {overlays}
         {workbench.present && !workbenchPrimary && renderSlot('workbench', {})}
       </div>
+      {leadingMounted && (
+        <div className={css.leadingSeat} data-shell-leading>
+          {leading}
+        </div>
+      )}
       {/* The collapsed rail is fixed-width: no resize handle while closed. */}
       {!sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
       {sessionRegionVisible && layoutInfo.rightbarShown && !layoutInfo.rightbarFullscreen && normal.rightbar > 0 && (

@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-20-yourbuddy-codex-auth-rpc-registration.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-20-yourbuddy-codex-auth-rpc-registration.md
-2026-09-20-yourbuddy-codex-auth-rpc-registration.md: 9470b7a0d223c2b057254346544d70f255af0273
-2026-09-20-yourbuddy-codex-auth-rpc-registration.zh.md: d099aff4b64c4b5dd52897c51fa478091ff53d6a
+/agent-note-yourbuddy-gpt-auth-compatibility:
+  en: 323608faaf9025fe
+  zh: 03bcc63f47bcec71
+/agent-note-yourbuddy-gpt-auth-compatibility/problem:
+  en: 25ed7595d198fae6
+  zh: fa1fd5cdccabfa05
+/agent-note-yourbuddy-gpt-auth-compatibility/decision:
+  en: e934b45caf8534f4
+  zh: 6494331fc97ffd4f
+/agent-note-yourbuddy-gpt-auth-compatibility/alternatives-considered:
+  en: b204f0bf85b412bc
+  zh: f949563c96a8fded
+/agent-note-yourbuddy-gpt-auth-compatibility/consequences:
+  en: a2fcec6a2dfc689f
+  zh: 255cd1ba32fb6c85

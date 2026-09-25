@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for about.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/about.md
-about.md: f7aa2a069d6ddf139a930268c2135a581890913a
-about.zh.md: 12a773d90e03f6b01b699e9bdb81fe2f3be77a54
+/why-yourbuddy:
+  en: aa0802ac23f0988f
+  zh: fcb0c9533ef21382
+/why-yourbuddy/start-using-then-extend:
+  en: bc3479eb5e42d37e
+  zh: 7c0cb29c7aa25c7d
+/why-yourbuddy/two-parts-of-a-specialized-workbench:
+  en: f3fd436070b79371
+  zh: 8b895728f1ae69de
+/why-yourbuddy/choose-what-fits:
+  en: 6387c4f8919cdc63
+  zh: 2d96a3da6c49bb22
+/why-yourbuddy/inspect-what-happened:
+  en: 3bdcb7733a3719e7
+  zh: ffc5a7d5cd713da7
+/why-yourbuddy/improve-with-evidence:
+  en: deb8fbf1b38602e2
+  zh: 8aae3b2ab39cf8f0
+/why-yourbuddy/know-where-work-goes:
+  en: 9799b6285bf109c2
+  zh: 1abc8a52ece01e78

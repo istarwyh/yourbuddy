@@ -34,13 +34,13 @@ Harbor Self Evolving 是 Y8 维护者本人深度开发的独立项目，也是�
 <a id="baseline"></a>
 ## 现有基础与证据边界
 
-以下入口依据编制时的仓库文件核对，源码基准为 f0ac7f6a4f15a5c20f3463430e4f336a3865a0f0。源码和文档只用于选择复用点；本次没有验证安装包中的完整开发流程。每轮实验另行冻结实际安装包、内置 DSH 和插件版本，不能用本表代替运行证据。
+以下入口反映当前仓库文件。源码和文档只用于选择复用点；本次没有验证安装包中的完整开发流程。每轮实验另行冻结实际安装包、内置 DSH 和插件版本，不能用本表代替运行证据。
 
 | 核对对象 | 已有依据 | 实验需要补充的证据 |
 |---|---|---|
 | 默认体验 | [模型接入](../../user/product/models.zh.md)、[工作区](../../user/product/workspace.zh.md)和[默认插件组合](../../user/product/plugins/index.zh.md) | 新用户完成并检查真实产物，区分已安装和已就绪 |
 | 原生扩展 | [架构](../../architecture.zh.md)和[插件设置卡片](../../cookbook/adding-a-settings-card.zh.md) | 独立项目使用公开接口完成工具、设置与界面贡献 |
-| 开发助手 | [Creator 组合](../../../packages/preset/agent-presets/presets/cordis/agent.cordis.yml)和[插件开发 Skill](../../../packages/preset/agent-presets/presets/cordis/skills/cordis-plugin-development/SKILL.md) | 实际运行时接口查询能够指导实现并降低错误 |
+| 开发助手 | [Agent Preset 包](../../../packages/preset/agent-preset/README.zh.md)及其[插件开发 Skill](../../../packages/preset/agent-preset/skills/cordis-plugin-development/SKILL.md) | 实际运行时接口查询能够指导实现并降低错误 |
 | 动态试验 | [动态插件工具](../../../packages/extensions/tool-cordis/README.zh.md) | 临时定义到可安装项目的转换及重新验证；内存定义不等于持久化插件 |
 | 本地联调 | [Client 模块与开发重载](../../subsystems/client-modules.zh.md) | 独立开发实例中的 Host、Client 和构建反馈形成可用路径 |
 | 分发 | [打包与安装](../../user/develop/basic/publish.zh.md) | 接收者使用相同构建产物完成安装、配置和重启验证 |

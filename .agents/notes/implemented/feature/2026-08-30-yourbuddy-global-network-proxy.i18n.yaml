@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-30-yourbuddy-global-network-proxy.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-30-yourbuddy-global-network-proxy.md
-2026-08-30-yourbuddy-global-network-proxy.md: 4e12effa6fb9ae4d185e0a8e3f038450c6382d10
-2026-08-30-yourbuddy-global-network-proxy.zh.md: 42ac0c897fd951c96fa02f4d614520c8db617e4a
+/agent-note-yourbuddy-application-wide-network-proxy:
+  en: f236e79a80cf862a
+  zh: 9cabb6b011e2a4e5
+/agent-note-yourbuddy-application-wide-network-proxy/problem:
+  en: f1179c9509a16ff6
+  zh: d7219362340c9d10
+/agent-note-yourbuddy-application-wide-network-proxy/decision:
+  en: 27aeee06502cb0b6
+  zh: 854f1c0854ba512f
+/agent-note-yourbuddy-application-wide-network-proxy/alternatives-considered:
+  en: 1955514dc8a4dff8
+  zh: 87247cfd8f78d0c1
+/agent-note-yourbuddy-application-wide-network-proxy/consequences:
+  en: 126cb64fff22a017
+  zh: fb0574bcfd34d688

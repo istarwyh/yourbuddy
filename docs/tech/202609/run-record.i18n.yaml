@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for run-record.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/tech/202609/run-record.md
-run-record.md: ed8c2b276a2935b3ff77ac3b9f409e76d3419cd8
-run-record.zh.md: 203568b6a52b2b2ead992d487fe33ef2458a9e18
+/y8-plugin-development-research-record-template-inactive:
+  en: 03dbdeef08ea25a9
+  zh: cc2283628157368b
+/y8-plugin-development-research-record-template-inactive/run-identity:
+  en: 3ed0fe4eafb8780a
+  zh: e5c33329a59a7090
+/y8-plugin-development-research-record-template-inactive/timing-assistance-and-outcome:
+  en: d61a213263441212
+  zh: eacab440b6390840
+/y8-plugin-development-research-record-template-inactive/acceptance-evidence:
+  en: bb911cfb873a93d0
+  zh: 570c9f48a2b31f19
+/y8-plugin-development-research-record-template-inactive/failure-and-recovery:
+  en: 4f6c0405ca01bb90
+  zh: 03d64b23d7923382
+/y8-plugin-development-research-record-template-inactive/conclusion:
+  en: fff3758a159cb1c4
+  zh: 8be95620b280d296
+/y8-plugin-development-research-record-template-inactive/dev-note:
+  en: 651106f3e6cf48cc
+  zh: 57980bfd22ed29a5

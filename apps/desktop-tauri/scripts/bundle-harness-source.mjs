@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import {
   assertRecordedDshRelease,
-  readDshProvenance,
+  readDshUpstreamRecord,
   readDshUpdatePolicy,
 } from './dsh-release-policy.mjs'
 
@@ -218,7 +218,7 @@ function hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstrea
   return hasher.digest('hex')
 }
 
-/** Hash an external plugin snapshot without its YourBuddy provenance sidecar. */
+/** Hash an external plugin snapshot without its YourBuddy source record sidecar. */
 export function hashExternalSnapshot(root) {
   const hasher = createHash('sha256')
 
@@ -251,21 +251,21 @@ export function hashExternalSnapshot(root) {
 
 /** Verify the committed package still matches its reviewed external snapshot. */
 export function verifyExternalSnapshot(root, manifest) {
-  const provenancePath = join(root, 'YOURBUDDY_UPSTREAM.json')
-  if (!existsSync(provenancePath)) return
-  const provenance = JSON.parse(readFileSync(provenancePath, 'utf8'))
-  if (provenance.package !== manifest.name || provenance.version !== manifest.version) {
+  const sourceRecordPath = join(root, 'YOURBUDDY_UPSTREAM.json')
+  if (!existsSync(sourceRecordPath)) return
+  const sourceRecord = JSON.parse(readFileSync(sourceRecordPath, 'utf8'))
+  if (sourceRecord.package !== manifest.name || sourceRecord.version !== manifest.version) {
     throw new Error(
-      `YourBuddy product provenance mismatch for ${manifest.name}@${manifest.version}`,
+      `YourBuddy product source record mismatch for ${manifest.name}@${manifest.version}`,
     )
   }
-  if (!/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(provenance.integrity ?? '')) {
+  if (!/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(sourceRecord.integrity ?? '')) {
     throw new Error(`YourBuddy product integrity is invalid: ${manifest.name}`)
   }
   const actual = hashExternalSnapshot(root)
-  if (actual !== provenance.treeSha256) {
+  if (actual !== sourceRecord.treeSha256) {
     throw new Error(
-      `YourBuddy product snapshot hash mismatch for ${manifest.name}: expected ${provenance.treeSha256}, found ${actual}`,
+      `YourBuddy product snapshot hash mismatch for ${manifest.name}: expected ${sourceRecord.treeSha256}, found ${actual}`,
     )
   }
 }
@@ -563,8 +563,8 @@ writeFileSync(join(outRoot, 'pnpm-workspace.yaml'), trimmedWorkspace)
 
 const rootPkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'))
 const dshPolicy = readDshUpdatePolicy(join(desktopRoot, 'product'))
-const dshUpstream = readDshProvenance(join(desktopRoot, 'product'))
-assertRecordedDshRelease({ policy: dshPolicy, provenance: dshUpstream, currentVersion: rootPkg.version })
+const dshUpstream = readDshUpstreamRecord(join(desktopRoot, 'product'))
+assertRecordedDshRelease({ policy: dshPolicy, upstreamRecord: dshUpstream, currentVersion: rootPkg.version })
 const productLock = readFileSync(productLockPath)
 const bundlePkg = {
   name: '@deepseek-ai/dsh-desktop-bundle',

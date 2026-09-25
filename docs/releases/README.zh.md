@@ -11,15 +11,15 @@
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
 | [yourbuddy-v0.3.16](yourbuddy-v0.3.16/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 发布前归档；源码、组装浏览器、公开产物、Updater、官网与可下载证据待补 | 候选版本；尚未发布 |
-| [yourbuddy-v0.3.15](yourbuddy-v0.3.15/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 在声明限制内完整；已记录源码、公开文件、Updater 签名、App 标识、生成的发布器模块、产品 Provenance、迁移运行时、网站与可下载归档 | 已发布并在声明限制内完成独立核验 |
+| [yourbuddy-v0.3.15](yourbuddy-v0.3.15/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 在声明限制内完整；已记录源码、公开文件、Updater 签名、App 标识、生成的发布器模块、产品来源记录、迁移运行时、网站与可下载归档 | 已发布并在声明限制内完成独立核验 |
 | [yourbuddy-v0.3.14](yourbuddy-v0.3.14/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已保留发布前检查与干净 Checkout 失败证据 | 在产物发布前失败；由 0.3.15 取代 |
 | [yourbuddy-v0.3.13](yourbuddy-v0.3.13/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已保留发布前检查与失败 Workflow 证据 | 在产物发布前失败；由 0.3.15 取代 |
 | [yourbuddy-v0.3.12](yourbuddy-v0.3.12/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录 Harbor 0.9.8 根因、源码与公开包回归、公开文件、Updater 签名、安装包 Adapter、网站与可下载归档；新的打包版 Historical Job 仍未验证 | 已发布并在声明范围内完成独立核验 |
-| [yourbuddy-v0.3.11](yourbuddy-v0.3.11/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、公开文件、Updater 签名、App 标识、Oil Creator Provenance、迁移运行时、网站、可下载归档，以及保留的原生启动、安装包 WebView、OAuth、可选集成与真实模型限制 | 已发布并在声明范围内完成独立核验 |
-| [yourbuddy-v0.3.10](yourbuddy-v0.3.10/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、公开文件、Updater 签名、App 标识、产品 Provenance、迁移运行时、官网、可下载归档，以及保留的原生启动、打包 WebView、OAuth 与真实模型限制 | 已发布并在声明范围内完成独立核验 |
+| [yourbuddy-v0.3.11](yourbuddy-v0.3.11/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、公开文件、Updater 签名、App 标识、Oil Creator 来源记录、迁移运行时、网站、可下载归档，以及保留的原生启动、安装包 WebView、OAuth、可选集成与真实模型限制 | 已发布并在声明范围内完成独立核验 |
+| [yourbuddy-v0.3.10](yourbuddy-v0.3.10/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、公开文件、Updater 签名、App 标识、产品来源记录、迁移运行时、官网、可下载归档，以及保留的原生启动、打包 WebView、OAuth 与真实模型限制 | 已发布并在声明范围内完成独立核验 |
 | [yourbuddy-v0.3.9](yourbuddy-v0.3.9/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、截图、CI、公开文件、Updater 签名、App 标识、迁移运行时、官网、可下载归档，以及保留的原生启动、打包 WebView、OAuth 与真实模型限制 | 已发布并在声明范围内完成独立核验 |
 | [yourbuddy-v0.3.8](yourbuddy-v0.3.8/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、公开文件、Updater 签名、App 标识、迁移运行时、官网、可下载归档，以及保留的原生启动、打包 WebView、OAuth 与真实模型限制 | 已发布并在声明范围内完成独立核验 |
-| [yourbuddy-v0.3.7](yourbuddy-v0.3.7/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、截图、公开文件、Updater 签名、App 标识、provenance 补丁、迁移运行时、官网、可下载归档与原生启动跳过 | 已发布并在声明范围内完成独立核验 |
+| [yourbuddy-v0.3.7](yourbuddy-v0.3.7/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、截图、公开文件、Updater 签名、App 标识、来源记录补丁、迁移运行时、官网、可下载归档与原生启动跳过 | 已发布并在声明范围内完成独立核验 |
 | [yourbuddy-v0.3.6](yourbuddy-v0.3.6/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、公开文件、更新签名、App 标识、迁移运行时、官网、可下载归档与原生启动跳过；产品限制保持明确 | 已发布并在声明范围内完成独立核验 |
 | [yourbuddy-v0.3.5](yourbuddy-v0.3.5/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录源码、CI、公开文件、更新签名、App 标识、迁移运行时、官网、可下载归档与原生启动跳过；保留安装包 WebView 与真实 OAuth 限制 | 已发布并在声明范围内完成独立核验 |
 | [yourbuddy-v0.3.4](yourbuddy-v0.3.4/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已完成；记录七张历史源码图、公开产物、更新签名、迁移运行时、隔离启动、官网与可下载归档；保留可视窗口限制 | 已发布并在声明范围内完成独立核验 |

@@ -1,6 +1,16 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for download.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/download.md
-download.md: e87dcab2cd8191eee71d4891451bd335dc4aa38b
-download.zh.md: e9d81b3971be45ed41205d64bb3f4aaf002599f9
+/get-yourbuddy:
+  en: 803346607995e7f0
+  zh: 11d9518e77b20334
+/get-yourbuddy/yourbuddy-installer:
+  en: 9f24cbd49c2c0f1d
+  zh: aaf63070795d93c4
+/get-yourbuddy/what-the-desktop-carries:
+  en: 7c0fca329ec142f7
+  zh: 909dcf3b42395644
+/get-yourbuddy/updates-and-verification:
+  en: 5f5bb20e39d91a5e
+  zh: 67b2e76e3c23c24c

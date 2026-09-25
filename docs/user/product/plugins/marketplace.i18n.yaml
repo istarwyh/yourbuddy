@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for marketplace.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/marketplace.md
-marketplace.md: d4f1432cf1933a2f6d6960c281c1097de1f3963f
-marketplace.zh.md: ae399919265bb5295f2852ac115e70521068bb41
+/plugin-marketplace:
+  en: 05626d7e21d7b96c
+  zh: eb446b8d715aa3c3
+/plugin-marketplace/problem-addressed:
+  en: 7738422eee2747a3
+  zh: 271aa5d247090100
+/plugin-marketplace/usage:
+  en: be1cb0be06c73128
+  zh: d55bc8eb4cbb5904
+/plugin-marketplace/reason-for-default-inclusion:
+  en: 21c26e02cdc37b83
+  zh: c006a01ac34cd08d
+/plugin-marketplace/limits:
+  en: 207ed52e6980c52d
+  zh: 4d028970f92da73f

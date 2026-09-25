@@ -2,11 +2,11 @@
 description: "Technical plan for swapping the YourBuddy workbench and conversation surfaces while maintaining downstream DSH and Better Sidebar changes."
 ---
 
-# YourBuddy workbench layout compatibility and provenance plan
+# YourBuddy workbench layout compatibility and source-record plan
 
 English | [中文](workbench-layout-compatibility.zh.md)
 
-YourBuddy maintains the layout change on its own branch: the Better Sidebar workbench becomes the primary desktop surface and the DSH conversation moves to the auxiliary right column. DSH and Better Sidebar keep their existing defaults outside YourBuddy, and the product provenance records the upstream source plus the small downstream change set.
+YourBuddy maintains the layout change on its own branch: the Better Sidebar workbench becomes the primary desktop surface and the DSH conversation moves to the auxiliary right column. DSH and Better Sidebar keep their existing defaults outside YourBuddy, and the product source record stores the upstream source plus the small downstream change set.
 
 Status: implemented for YourBuddy 0.3.7.
 
@@ -44,7 +44,7 @@ Status: implemented for YourBuddy 0.3.7.
 2. DSH adds a generic optional `workbench` slot. An occupied slot becomes the desktop primary region; without an occupant DSH retains its existing conversation layout.
 3. Better Sidebar keeps `portal` as its default presentation and adds `slot` for YourBuddy.
 4. Both modified codebases are committed in the YourBuddy repository. DSH updates use Merge and comparison; Better Sidebar updates rebuild the product snapshot from upstream plus its compatibility patch.
-5. Provenance stays small: it records the upstream identity, patch file, patch hash, purpose, and affected paths. The implementation does not introduce a general patch platform or extensive policy engine.
+5. The source record stays small: it stores the upstream identity, patch file, patch hash, purpose, and affected paths. The implementation does not introduce a general patch platform or extensive policy engine.
 
 <a id="runtime-design"></a>
 
@@ -102,7 +102,7 @@ Both components are committed in their modified form. Their upstream update stra
 
 The DSH layout change remains a small normal commit restricted to `packages/client/ui-layout` and directly related documentation and tests. An official DSH update merges into the YourBuddy branch and therefore preserves the change or presents an ordinary Git conflict for review.
 
-The DSH patch file is a provenance artifact generated from the YourBuddy downstream base recorded in its patch entry. It documents the bounded DSH change and is never applied again to the already modified YourBuddy working tree.
+The DSH patch file is a source-record artifact generated from the YourBuddy downstream base recorded in its patch entry. It documents the bounded DSH change and is never applied again to the already modified YourBuddy working tree.
 
 ### Better Sidebar downstream change
 
@@ -110,13 +110,13 @@ The Better Sidebar npm archive is a replaceable snapshot. The compatibility patc
 
 Refresh downloads the new pristine snapshot into a temporary directory, applies the compatibility patch there, runs the focused package and bundled-client checks, and replaces the committed product directory with the resulting snapshot.
 
-### Minimal provenance
+### Minimal source records
 
 `DSH_UPSTREAM.json` continues to record the official repository, Tag, version, and Commit and adds a short `patches` list for materialized downstream changes. Each entry records `id`, `file`, `sha256`, `baseCommit`, `purpose`, and `paths`.
 
 `dsh-better-sidebar/YOURBUDDY_UPSTREAM.json` keeps its current package, source, integrity, archive, upstream tree, and final tree fields. Its `patches` entries become structured references containing `id`, `file`, `sha256`, and `purpose`.
 
-The bundle manifest includes these provenance records and patch hashes. Patch contents remain product source inputs; the runtime does not read them.
+The bundle manifest includes these source records and patch hashes. Patch contents remain product source inputs; the runtime does not read them.
 
 No separate patch registry, approval workflow, compatibility range solver, or generic transformation language is introduced. A patch that no longer applies is maintained together with the corresponding upstream upgrade.
 
@@ -129,9 +129,9 @@ No separate patch registry, approval workflow, compatibility range solver, or ge
 1. Create an isolated upgrade worktree and fetch the selected official DSH Tag.
 2. Merge the official Commit through the existing DSH synchronization flow.
 3. Resolve any conflict in the small layout change and review upstream changes in the affected files.
-4. Regenerate the DSH provenance patch from the resulting downstream base.
+4. Regenerate the DSH source-record patch from the resulting downstream base.
 5. Run the focused layout tests, build, bundled-app smoke, and visible layout journey.
-6. Update `DSH_UPSTREAM.json` and commit the merge, downstream adjustment, patch, and provenance together.
+6. Update `DSH_UPSTREAM.json` and commit the merge, downstream adjustment, patch, and source record together.
 
 ### Better Sidebar upgrade
 
@@ -140,7 +140,7 @@ No separate patch registry, approval workflow, compatibility range solver, or ge
 3. Adjust the patch when upstream changed the same presentation code or already contains part of the behavior.
 4. Run the plugin tests and built Client smoke against the staged snapshot.
 5. Update the patch reference and `YOURBUDDY_UPSTREAM.json`.
-6. Replace and commit the product snapshot, patch, lockfile, and provenance together.
+6. Replace and commit the product snapshot, patch, lockfile, and source record together.
 
 <a id="implementation"></a>
 
@@ -162,7 +162,7 @@ No separate patch registry, approval workflow, compatibility range solver, or ge
 ### Downstream records
 
 - One DSH layout patch records the first-party downstream diff, and one Better Sidebar compatibility patch covers source and runtime bundle output.
-- The two existing provenance files contain the structured patch entries.
+- The two existing source-record files contain the structured patch entries.
 - Better Sidebar refresh replays the declared materialized patch before compatibility adjustments and replaces the committed snapshot only after its existing checks pass.
 
 ### YourBuddy composition
@@ -193,7 +193,7 @@ No separate patch registry, approval workflow, compatibility range solver, or ge
 
 YourBuddy can restore the default conversation layout by selecting Better Sidebar `portal` presentation without downgrading either component. The workbench content store remains unchanged, so switching presentation does not discard tabs or terminal records.
 
-If a compatibility change must be removed, remove its product configuration first and delete the downstream code and provenance patch in the same follow-up change.
+If a compatibility change must be removed, remove its product configuration first and delete the downstream code and source-record patch in the same follow-up change.
 
 <a id="further-exploration"></a>
 

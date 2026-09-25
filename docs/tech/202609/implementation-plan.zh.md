@@ -75,7 +75,7 @@ description: "Y8 文档、官网和应用内 Help 的实施范围、页面改动
 
 新增一篇简短的 Creator 使用指南，拟议源文件为 `docs/user/product/creator.md` 及中文配对，站点路径为 `docs/develop/creator`。内容依次为：适用需求、实际可用入口及前提、描述需求、查询当前接口、试验与检查、保存源码及继续阅读。先在目标 Y8 安装版本核对入口；若未提供该入口，就如实给出已验证的 DSH 源码使用路径，不新增产品运行时。
 
-[Creator 组合](../../../packages/preset/agent-presets/presets/cordis/agent.cordis.yml)和[开发 Skill](../../../packages/preset/agent-presets/presets/cordis/skills/cordis-plugin-development/SKILL.md)是已有复用点。开发指南解释临时动态试验与持久化源码的区别，并链接[动态工具说明](../../../packages/extensions/tool-cordis/README.zh.md)。本轮不提供“自动保存为插件项目”按钮，不把临时成功当成可分发插件。
+[Agent Preset 包](../../../packages/preset/agent-preset/README.zh.md)随包提供[插件开发 Skill](../../../packages/preset/agent-preset/skills/cordis-plugin-development/SKILL.md)，这是当前复用点。开发指南解释临时动态试验与持久化源码的区别，并链接[动态工具说明](../../../packages/extensions/tool-cordis/README.zh.md)。本轮不提供“自动保存为插件项目”按钮，不把临时成功当成可分发插件。
 
 <a id="website"></a>
 ## 官网：让两条路径可找到

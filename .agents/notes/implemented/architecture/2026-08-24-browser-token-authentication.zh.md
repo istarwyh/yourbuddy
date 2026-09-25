@@ -12,7 +12,7 @@ Web Host 以当前操作系统用户的权限运行具有工具能力的 Session
 
 `dsh-client-connection` 在分发前认证完整 Host API。每个 API Proxy 方法、Remote 一元调用、通用 Connection channel 和 Remote WebSocket stream 都要求同一个浏览器会话；endpoint 所有权与方法名称不改变 authority。既有 Host/Origin 校验先执行，继续负责 DNS rebinding 和跨站请求防御，失败时返回 403。Host 可信但没有有效浏览器会话时返回 401。浏览器信任规则仍由[载体级浏览器信任决策](2026-07-28-api-browser-trust-boundary.zh.md)持有。
 
-每个 Host 进程生成随机启动令牌，并由应用根 context 跨 Connection 热重载保留。`dsh-web-app` 每个进程只打印并打开一次 query 中带该令牌的普通根 URL。`frontend-static` 请求 Connection 授权 index 响应：只有 `GET /?token=...` 会把进程令牌交换为 cookie，再重定向到干净的 `/`；API 路径和 Authorization header 都不接受该令牌。过时令牌如果同时带有有效 cookie，会重定向到干净的 `/`。缺失与无效凭据得到同一份最小 401 响应。非 index 静态资产保持公开。
+每个 Host 进程生成随机启动令牌，并由应用根 context 跨 Connection 热重载保留。`dsh-web-app` 每个进程只打印并打开一次 query 中带该令牌的普通根 URL。`frontend-static` 请求 Connection 授权 index 响应：只有 `GET /?token=...` 会把进程令牌交换为 cookie，再重定向到干净的 `./`；API 路径和 Authorization header 都不接受该令牌。过时令牌如果同时带有有效 cookie，会重定向到干净的 `./`。缺失与无效凭据得到同一份最小 401 响应。非 index 静态资产保持公开。
 
 YourBuddy 桌面 Supervisor 只接受使用 HTTP、选定 `127.0.0.1` 端口、根路径与一个有界 base64url Token 的已打印 URL。该线程在读到这一行后继续排空 stdout，完成可到达的 303 交换，只校验并保留返回的 Session Cookie，再在创建主 WebView 前丢弃该 URL。不含凭据的根 URL 会单独保存，供 Origin 校验与诊断使用。原生与 WSL 启动都保留子进程退出和总超时处理；WSL 交换还会证明 Windows localhost 转发能到达 Linux Host。如果上游诊断重复 Token，启动日志与失败输出会将其脱敏。YourBuddy 的同站点 Shell 与 WebView Cookie 交接由[桌面认证修复说明](../bug-fix/2026-09-06-yourbuddy-desktop-same-site-authentication.zh.md)持有。
 

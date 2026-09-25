@@ -1,6 +1,16 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop-tauri/product/personal-workbench/README.md
-README.md: 63b8ff96b524ca2b5ece060acd30bb9d88aa9f90
-README.zh.md: 613e4aec8d0d1af756e04247ce756fd4fe3b72a3
+/dsh-personal-workbench:
+  en: 71e58070aa1f9f23
+  zh: 848c24a5bbe0cb88
+/dsh-personal-workbench/model-experience:
+  en: 5751b25bda821ead
+  zh: 541ade2fecd37508
+/dsh-personal-workbench/model-experience/kv-cache-effect:
+  en: 57d0e3e1ee54f724
+  zh: fe21812a63d3865f
+/dsh-personal-workbench/known-limitations-and-deferred-work:
+  en: 9c7ec94b96b15d58
+  zh: cd2a2a058391c0d7

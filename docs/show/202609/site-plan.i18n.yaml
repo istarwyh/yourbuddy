@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for site-plan.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/show/202609/site-plan.md
-site-plan.md: 1f30ef3054450771f2b4b5835552fa8e2a926d0e
-site-plan.zh.md: 4d6c59c3a080476fec2d90577152a7ec1d0d154d
+/site-structure-and-publication-materials:
+  en: 4f6e89e382cfb070
+  zh: afe8ee61e6101124
+/site-structure-and-publication-materials/top-level-navigation:
+  en: d4d9381cb0814824
+  zh: 88a9766337ebca50
+/site-structure-and-publication-materials/page-inventory:
+  en: e77aacabd6ce778e
+  zh: 6e8d01c8ae05d2fd
+/site-structure-and-publication-materials/page-structure:
+  en: 68f7c977bec2c5a8
+  zh: e164d029468acef6
+/site-structure-and-publication-materials/materials-still-needed:
+  en: f2353b45feade85b
+  zh: 122ba6fa21280d69
+/site-structure-and-publication-materials/content-handling-with-oink:
+  en: 065fb0e95a37b7bc
+  zh: 06b662a80a2477ba
+/site-structure-and-publication-materials/content-acceptance-before-publication:
+  en: 32e0ff4a49731fe3
+  zh: 052d8b74cc64ad83

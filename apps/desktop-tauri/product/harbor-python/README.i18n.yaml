@@ -1,6 +1,7 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop-tauri/product/harbor-python/README.md
-README.md: ec67e093ce38a39fd667995281c42f024ffcbb91
-README.zh.md: db8a15079437e66ca670884baac9b6b08e143ff8
+/harbor-dsh-evolution:
+  en: 5e6ca7c351f7ada3
+  zh: a5077e1a3b1e13c5

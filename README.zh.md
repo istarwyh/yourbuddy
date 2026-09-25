@@ -63,6 +63,10 @@ YOURBUDDY_HARBOR_PYTHON_SOURCE=/absolute/path/to/harbor-self-evolving/packages/h
   pnpm --dir apps/desktop-tauri run prepare:product-runtime
 ```
 
+`pnpm run dev:web` 会在一个终端里完成构建、启动，并在源码修改时重建 client bundle；`make help` 列出 Web 与 Desktop 对应的 Make target。完整表格见开发指南的「应用命令」一节。
+
+面向 agent：请遵循 [AGENTS.md](AGENTS.md)。
+
 ## 发布
 
 创建发布 Tag 前，先使用[发布交付模板](docs/releases/_template/README.zh.md)准备面向用户的说明与验证资料，并更新[版本索引](docs/releases/README.zh.md)。归档资料是对下方渠道专用命令的补充，产品发布状态与验证状态必须分别记录。
@@ -78,6 +82,20 @@ pnpm --dir apps/desktop-tauri run prepare:release
 打 Tag 前必须检查并提交生成的快照与 Lockfile。每个 `YOURBUDDY_UPSTREAM.json` 记录外部组件的精确 Revision、归档 Hash 与 Tree Hash；生成的 `.bundle-manifest.json` 记录选定的 Package 版本与整个 Bundle 的 Hash。Tag CI 与普通桌面构建不会查询 Latest Channel，只消费已提交快照与冻结 Lockfile，因此发行构建可复现。
 
 推送格式严格为 `yourbuddy-vX.Y.Z` 的 Tag 会触发 macOS arm64 流水线。流水线会拒绝版本漂移，构建带 YourBuddy 品牌的客户端，并把 DMG 与带签名的 Tauri 更新产物发布到 [GitHub Releases](https://github.com/istarwyh/yourbuddy/releases)。更新签名用于保护更新真实性，但不等同于 Apple Developer 签名。macOS 应用签名与公证暂缓处理；用户可能需要在“隐私与安全性”中选择“仍要打开”。
+
+## 引用
+
+```bibtex
+@misc{deepseek-harness2026,
+  title={DeepSeek Harness: Everything is a Plugin},
+  author={DeepSeek-AI},
+  year={2026},
+  publisher={GitHub},
+  howpublished={\url{https://github.com/deepseek-ai/deepseek-harness}},
+}
+```
+
+## 许可证
 
 DeepSeek 与 Sakana 的原始代码继续保留其 MIT 许可证和版权。内置的 Harbor 集成与 Personal Workbench 插件使用 MIT 许可证；Codex Auth、Better Sidebar 和 Plugin Marketplace 保留上游 MIT 许可证，Context Doctor 则在 `apps/desktop-tauri/product/` 下保留 BSD-3-Clause 许可证。每个由外部来源刷新的快照旁都提交了准确的来源地址、不可变版本和完整性 Hash。
 

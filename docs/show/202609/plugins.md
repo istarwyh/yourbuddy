@@ -92,16 +92,16 @@ These projects are outside the official default DeepSeek Harness distribution. H
 
 Explain the user's work before each plugin's contribution. Keep the default set tied to clear purposes and verifiable entry points, and describe experimental capabilities at their actual maturity. Distinguish user-installed packages from bundled snapshots. Bundled plugins update with YourBuddy releases; upstream notifications are not evidence of an application update.
 
-## Implementation and provenance
+## Implementation and source records
 
 The [bundling script](../../../apps/desktop-tauri/scripts/bundle-harness-source.mjs) and [desktop configuration](../../../apps/desktop-tauri/src-tauri/src/overlay.rs) establish composition. The following local records support version and feature checks. External READMEs may describe standalone installation or older versions; website instructions follow the assembled desktop behavior.
 
 | Component | Behavioral source | Snapshot source |
 |---|---|---|
-| Codex Auth | [Bundled documentation](../../../apps/desktop-tauri/product/dsh-codex-auth/README.md) | [Provenance](../../../apps/desktop-tauri/product/dsh-codex-auth/YOURBUDDY_UPSTREAM.json) |
-| Better Sidebar | [Bundled implementation](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/index.ts); [default switches](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/config.ts) | [Provenance](../../../apps/desktop-tauri/product/dsh-better-sidebar/YOURBUDDY_UPSTREAM.json) |
-| Context Doctor | [Bundled implementation](../../../apps/desktop-tauri/product/context-doctor/lib/index.js) | [Provenance](../../../apps/desktop-tauri/product/context-doctor/YOURBUDDY_UPSTREAM.json) |
-| Plugin Marketplace | [Bundled documentation](../../../apps/desktop-tauri/product/plugin-marketplace/README.md) | [Provenance](../../../apps/desktop-tauri/product/plugin-marketplace/YOURBUDDY_UPSTREAM.json) |
-| Harbor Evolution | [Bundled documentation](../../../apps/desktop-tauri/product/harbor-evolution/README.md) | [Provenance](../../../apps/desktop-tauri/product/harbor-evolution/YOURBUDDY_UPSTREAM.json) |
+| Codex Auth | [Bundled documentation](../../../apps/desktop-tauri/product/dsh-codex-auth/README.md) | [Source record](../../../apps/desktop-tauri/product/dsh-codex-auth/YOURBUDDY_UPSTREAM.json) |
+| Better Sidebar | [Bundled implementation](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/index.ts); [default switches](../../../apps/desktop-tauri/product/dsh-better-sidebar/src/config.ts) | [Source record](../../../apps/desktop-tauri/product/dsh-better-sidebar/YOURBUDDY_UPSTREAM.json) |
+| Context Doctor | [Bundled implementation](../../../apps/desktop-tauri/product/context-doctor/lib/index.js) | [Source record](../../../apps/desktop-tauri/product/context-doctor/YOURBUDDY_UPSTREAM.json) |
+| Plugin Marketplace | [Bundled documentation](../../../apps/desktop-tauri/product/plugin-marketplace/README.md) | [Source record](../../../apps/desktop-tauri/product/plugin-marketplace/YOURBUDDY_UPSTREAM.json) |
+| Harbor Evolution | [Bundled documentation](../../../apps/desktop-tauri/product/harbor-evolution/README.md) | [Source record](../../../apps/desktop-tauri/product/harbor-evolution/YOURBUDDY_UPSTREAM.json) |
 | Personal Workbench | [Product documentation](../../../apps/desktop-tauri/product/personal-workbench/README.md) | [Package version](../../../apps/desktop-tauri/product/personal-workbench/package.json) |
 | Codex Subagent | [Package documentation](../../../packages/subagent/subagent-codex/README.md) | [Package version](../../../packages/subagent/subagent-codex/package.json) |

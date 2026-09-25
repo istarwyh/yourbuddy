@@ -1,6 +1,58 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.14/README.md
-README.md: 41b05a735a3cde66c94cdbe63d1fe347c2a6d1fd
-README.zh.md: 2a59b388f3830cf4161d923fd6c06a6f688e118b
+/yourbuddy-0-3-14:
+  en: 363b7941c1deb27c
+  zh: b70cc57e26aca109
+/yourbuddy-0-3-14/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-14/user-release-notes/what-changed:
+  en: 214c6705d2e9ccab
+  zh: 894c018839360702
+/yourbuddy-0-3-14/user-release-notes/problem-solved:
+  en: 5cb46316c9f7e2b2
+  zh: ee16442be28b93d9
+/yourbuddy-0-3-14/user-release-notes/where-to-use-it:
+  en: d9ea30c744033fd4
+  zh: 7ba754a509e4e5b2
+/yourbuddy-0-3-14/user-release-notes/how-to-try-it:
+  en: 0ca94b54684811d7
+  zh: 13c0ce77179a8618
+/yourbuddy-0-3-14/user-release-notes/install-or-upgrade:
+  en: 2c9a9492de8f73c4
+  zh: 1e20ae58c20c1a5b
+/yourbuddy-0-3-14/user-release-notes/compatibility-migration-and-limitations:
+  en: 77159e8dac786159
+  zh: 1fdf7a8e827dd2c6
+/yourbuddy-0-3-14/verification-summary:
+  en: c3657dc6cbc14aca
+  zh: b8c8e4a2c132c6cd
+/yourbuddy-0-3-14/scenario-oil-creator-and-bundled-publishers:
+  en: 3479ada79f3b5663
+  zh: 50aa24a61d49a636
+/yourbuddy-0-3-14/scenario-oil-creator-and-bundled-publishers/steps:
+  en: 632e1fed2ff5eeaf
+  zh: a8775dcc9d41d019
+/yourbuddy-0-3-14/scenario-oil-creator-and-bundled-publishers/expected:
+  en: badc4bb9c3a2b382
+  zh: ea4921d83095f235
+/yourbuddy-0-3-14/scenario-oil-creator-and-bundled-publishers/actual:
+  en: 647cb082e758b3c1
+  zh: 79f648e42fe8716f
+/yourbuddy-0-3-14/scenario-oil-creator-and-bundled-publishers/evidence:
+  en: b433a5f25050bc74
+  zh: 0ce970c8a6d9eba1
+/yourbuddy-0-3-14/scenario-oil-creator-and-bundled-publishers/scope-limits:
+  en: 1f75dbc96b2760b4
+  zh: c368cf3d9af9efe1
+/yourbuddy-0-3-14/failed-publication-attempt:
+  en: daa6709033263e96
+  zh: d268dec403ccde33
+/yourbuddy-0-3-14/delivery-status:
+  en: 4b2ebc5e41d43fd1
+  zh: 113375aeff1fdf8e
+/yourbuddy-0-3-14/delivery-checklist:
+  en: 404351dde0bc27b7
+  zh: 5935e1f2256e5064

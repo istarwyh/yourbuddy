@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-24-desktop-host-does-not-open-default-browser.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-24-desktop-host-does-not-open-default-browser.md
-2026-08-24-desktop-host-does-not-open-default-browser.md: 7b7b1974286ebea647fbec4a12e1c16d5a0b2557
-2026-08-24-desktop-host-does-not-open-default-browser.zh.md: f7c04b2603fdb7671040f3ab1a44fa7c3e14c63b
+/agent-note-desktop-host-does-not-open-the-default-browser:
+  en: db7607504285f080
+  zh: fb4ab7b77b1a13aa
+/agent-note-desktop-host-does-not-open-the-default-browser/problem:
+  en: e41617061f566608
+  zh: ec02a985b0f91838
+/agent-note-desktop-host-does-not-open-the-default-browser/decision:
+  en: 23ec455cfcfa6455
+  zh: dd02fc09d5b07e24
+/agent-note-desktop-host-does-not-open-the-default-browser/testing:
+  en: 233866400c3cf93d
+  zh: f1e7d6292043bdf5
+/agent-note-desktop-host-does-not-open-the-default-browser/alternatives-considered:
+  en: 234339a979e7995b
+  zh: 9bafcfec0c64396d
+/agent-note-desktop-host-does-not-open-the-default-browser/consequences:
+  en: d1666cf53fe9c681
+  zh: 09086a6098d0cac0

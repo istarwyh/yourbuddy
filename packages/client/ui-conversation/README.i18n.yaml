@@ -1,6 +1,49 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-conversation/README.md
-README.md: e299fd6f6be381df0e8fcd66ed93605f88499ccc
-README.zh.md: 6e00d4a9164b5deccf43b2a8adfc19d88e110e1c
+/:
+  en: 0ca51f37788dcbdb
+  zh: 14d73c6bc8d4e17f
+/deepseek-ai-dsh-client-ui-conversation:
+  en: 71d52109076d859d
+  zh: 8e63171fbd9bde48
+/deepseek-ai-dsh-client-ui-conversation/summary:
+  en: bac0bf0d7330f3b1
+  zh: 84a895f4b26d8490
+/deepseek-ai-dsh-client-ui-conversation/table-of-contents:
+  en: 81dd329a81a9113f
+  zh: 85547a71e04267c7
+/deepseek-ai-dsh-client-ui-conversation/conversation-assembly:
+  en: 13ae68865fa315d7
+  zh: c152f020abf20f35
+/deepseek-ai-dsh-client-ui-conversation/shell-and-standard-props:
+  en: 535d95725407bd28
+  zh: 85cd3c191ffc88ca
+/deepseek-ai-dsh-client-ui-conversation/page-context-on-send:
+  en: 32b6810e88c3ce7c
+  zh: 668ab777b3ab0e9c
+/deepseek-ai-dsh-client-ui-conversation/temporary-composer-entries:
+  en: bb1244310f5c0382
+  zh: 824b84077432b559
+/deepseek-ai-dsh-client-ui-conversation/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-client-ui-conversation/model-experience/selected-view-page-context:
+  en: d5fef4de23631184
+  zh: 94b573791dabe51a
+/deepseek-ai-dsh-client-ui-conversation/model-experience/selected-view-page-context/what-the-model-sees:
+  en: 65da71ab4e0cf903
+  zh: cd301d5a88ceb035
+/deepseek-ai-dsh-client-ui-conversation/model-experience/selected-view-page-context/token-effect:
+  en: 4670ba60e5494b01
+  zh: 9750c66cfbb84a1b
+/deepseek-ai-dsh-client-ui-conversation/model-experience/selected-view-page-context/kv-cache-effect:
+  en: a64a0fd3918bf2af
+  zh: 0dd92a7601d30bf2
+/deepseek-ai-dsh-client-ui-conversation/known-limitations-and-deferred-work:
+  en: 31788ce324683428
+  zh: f31cd2c7b596df53
+/deepseek-ai-dsh-client-ui-conversation/known-limitations-and-deferred-work/dev-note:
+  en: 48c7f1797012293f
+  zh: ec56b609a1b5fb9e

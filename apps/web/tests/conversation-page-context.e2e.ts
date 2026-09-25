@@ -107,7 +107,7 @@ describe.skipIf(MODE === 'record')('web e2e: ordinary-message page context', () 
     const userEvents = events.filter(event => event.type === 'user/message' && event.data.source.kind === 'user')
     expect(userEvents).toHaveLength(4)
     const durable = userEvents.map(event => event.type === 'user/message' ? event.data.content : [])
-    const visibleToModel = adapter.requests.map(request => request.messages.filter(message => message.source.kind === 'user').at(-1)?.content)
+    const visibleToModel = adapter.requests.map(request => request.messages.filter(message => message.source?.kind === 'user').at(-1)?.content)
     expect(visibleToModel).toEqual(durable)
     expect(durable).toEqual([
       [{ type: 'text', text: 'Start the synthetic acceptance session.' }],
@@ -137,7 +137,7 @@ describe.skipIf(MODE === 'record')('web e2e: ordinary-message page context', () 
     await settled
     const durable = events.filter(event => event.type === 'user/message' && event.data.source.kind === 'user').at(-1)
     if (durable?.type !== 'user/message') throw new Error('image-only message was not admitted')
-    const model = adapter.requests.at(-1)?.messages.filter(message => message.source.kind === 'user').at(-1)?.content
+    const model = adapter.requests.at(-1)?.messages.filter(message => message.source?.kind === 'user').at(-1)?.content
     expect(model).toEqual(durable.data.content)
     expect(durable.data.content.map(block => block.type)).toEqual(['image', 'text', 'text'])
     expect(durable.data.content.filter(block => block.type === 'text').map(block => block.text)).toEqual(['', contextText('B')])
@@ -206,7 +206,7 @@ describe.skipIf(MODE === 'record')('web e2e: ordinary-message page context', () 
     await settledA
     const durable = events.filter(event => event.type === 'user/message' && event.data.source.kind === 'user')
       .map(event => event.type === 'user/message' ? event.data.content : [])
-    const model = adapter.requests.map(request => request.messages.filter(message => message.source.kind === 'user').at(-1)?.content)
+    const model = adapter.requests.map(request => request.messages.filter(message => message.source?.kind === 'user').at(-1)?.content)
     expect(model).toEqual(durable)
     expect(durable.slice(before)).toEqual([
       [{ type: 'text', text: draftB }, { type: 'text', text: contextText('B') }],

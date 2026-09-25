@@ -1,6 +1,34 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for plugins.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/show/202609/plugins.md
-plugins.md: 1ea4eb68348370747a2964fe937e59b10fc291c9
-plugins.zh.md: 00e364d993d79afe22e343327ba5ab4e04a0be94
+/default-plugins-purpose-selection-reasons-and-limits:
+  en: c8892a46ac6e62b2
+  zh: a293146b6b8a561a
+/default-plugins-purpose-selection-reasons-and-limits/external-plugin-snapshots:
+  en: 172156a946758408
+  zh: 605326f8ecbe294f
+/default-plugins-purpose-selection-reasons-and-limits/codex-auth-bring-an-existing-account-into-the-workflow:
+  en: 63a16dbb59e4a290
+  zh: b9f8c9c66cb5ac2e
+/default-plugins-purpose-selection-reasons-and-limits/better-sidebar-make-task-outputs-visible:
+  en: 2e15eab4c29314c3
+  zh: 136cee05eb68a6c7
+/default-plugins-purpose-selection-reasons-and-limits/context-doctor-understand-context-costs:
+  en: 89acdf4c3a1f2d07
+  zh: 3cd6f8315c985606
+/default-plugins-purpose-selection-reasons-and-limits/plugin-marketplace-extend-the-workbench:
+  en: 4856a2a4aad6b13c
+  zh: 43c57a1efb829b18
+/default-plugins-purpose-selection-reasons-and-limits/harbor-evolution-establish-evidence-for-improvement:
+  en: 841e6238b55c1f2a
+  zh: ebcca45554ae68f1
+/default-plugins-purpose-selection-reasons-and-limits/first-party-and-upstream-companions:
+  en: 2351324d7e0363b7
+  zh: 1ee5810302e15439
+/default-plugins-purpose-selection-reasons-and-limits/maintaining-the-default-composition:
+  en: 20524452d9f69f64
+  zh: 06750f445be51673
+/default-plugins-purpose-selection-reasons-and-limits/implementation-and-source-records:
+  en: 461db5f75275cd34
+  zh: df798926aeaf692f

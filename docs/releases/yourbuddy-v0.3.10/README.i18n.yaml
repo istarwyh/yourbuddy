@@ -1,6 +1,58 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.10/README.md
-README.md: 7d77ca662ca1ec75e5cf0035485aff7470ce9a26
-README.zh.md: 007e2a5dee8e4f2c5b5e77d704af152ab92907e4
+/yourbuddy-0-3-10:
+  en: e060525f100d04c8
+  zh: 6f1a64551a9dd8af
+/yourbuddy-0-3-10/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-10/user-release-notes/what-changed:
+  en: c8d23abfd535a2fd
+  zh: 0af3f68e86ee6c02
+/yourbuddy-0-3-10/user-release-notes/problem-solved:
+  en: 3e8c4b710a748ecb
+  zh: cf0cd504a916abd6
+/yourbuddy-0-3-10/user-release-notes/where-to-use-it:
+  en: 8977af8a4e98f1fd
+  zh: db30ac265fa52b74
+/yourbuddy-0-3-10/user-release-notes/how-to-try-it:
+  en: d356e75538843a38
+  zh: 256f2cd39eab280f
+/yourbuddy-0-3-10/user-release-notes/install-or-upgrade:
+  en: 88cb4a805a7a9876
+  zh: 7c7394d5e441926e
+/yourbuddy-0-3-10/user-release-notes/compatibility-migration-and-limitations:
+  en: ff96f5bac0f1971f
+  zh: 3e9de86355a83846
+/yourbuddy-0-3-10/verification-summary:
+  en: d45be0b9fb9aab94
+  zh: ca767fd377b90503
+/yourbuddy-0-3-10/scenario-local-candidate-and-assembled-product-validation:
+  en: 7b28928a4c427aa2
+  zh: 5b8195ae64e61213
+/yourbuddy-0-3-10/scenario-local-candidate-and-assembled-product-validation/steps:
+  en: 845688c55f7647ea
+  zh: e1792e6dc26366d1
+/yourbuddy-0-3-10/scenario-local-candidate-and-assembled-product-validation/expected:
+  en: fe00691993d9cd99
+  zh: 73a32580da68c850
+/yourbuddy-0-3-10/scenario-local-candidate-and-assembled-product-validation/actual:
+  en: 24447d3d2304f809
+  zh: fef9ebda401f377a
+/yourbuddy-0-3-10/scenario-local-candidate-and-assembled-product-validation/evidence:
+  en: a02eedcce2e36f77
+  zh: 2f72a606b90bde5f
+/yourbuddy-0-3-10/scenario-local-candidate-and-assembled-product-validation/scope-limits:
+  en: 26ee37e328d90075
+  zh: 3642e7b5d0acff93
+/yourbuddy-0-3-10/public-release-verification:
+  en: a9ac84d679eda417
+  zh: 85c37a67ee5871d5
+/yourbuddy-0-3-10/delivery-status:
+  en: 2532c144660bec20
+  zh: 45d2ad3c09919b37
+/yourbuddy-0-3-10/delivery-checklist:
+  en: 2b7dc0b15948ee3f
+  zh: 1770ab9a0d45ca81

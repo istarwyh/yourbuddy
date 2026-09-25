@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-23-fast-yourbuddy-release-pipeline.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-08-23-fast-yourbuddy-release-pipeline.md
-2026-08-23-fast-yourbuddy-release-pipeline.md: 8e7f2dc6560220c3d4d85cd56b75e22453d82510
-2026-08-23-fast-yourbuddy-release-pipeline.zh.md: 9fdd263cfa18ecc120acc4bc2b6590260e4ee984
+/agent-note-fast-yourbuddy-release-pipeline:
+  en: baf5733156b909da
+  zh: 3ddf5262415f3577
+/agent-note-fast-yourbuddy-release-pipeline/problem:
+  en: 1423f42d759ee289
+  zh: 6523f987ab0f2742
+/agent-note-fast-yourbuddy-release-pipeline/decision:
+  en: 683edbd2948de836
+  zh: b055f97a7c0cdc16
+/agent-note-fast-yourbuddy-release-pipeline/alternatives-considered:
+  en: d028cfe15d262862
+  zh: b8a3620e3ef40ee0
+/agent-note-fast-yourbuddy-release-pipeline/consequences:
+  en: 1ed35fcf76899698
+  zh: 610325abb30e6d02

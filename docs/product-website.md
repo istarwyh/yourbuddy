@@ -59,7 +59,7 @@ Complete this sequence for each YourBuddy desktop release, including patch relea
 | [Download](user/product/download.md) | Exact tag and installer link, platform, checksum, installation or upgrade path, and known limitations |
 | [Releases](user/product/releases.md) | Version, date, user-visible changes, verification limits, and links to the public release and its evidence |
 | [Homepage prose](user/product/home.md) and [Chinese](user/product/home-data/zh.json) / [English homepage data](user/product/home-data/en.json) | Consistent installation status and action labels; inspect both inputs because HTML and raw Markdown have different content sources |
-| [User guides](user/product/index.md) and [default plugins](user/product/plugins/index.md) | Changed setup, usage, plugin prerequisites, sources, limitations, and selection reasons; confirm bundled provenance instead of assuming upstream latest |
+| [User guides](user/product/index.md) and [default plugins](user/product/plugins/index.md) | Changed setup, usage, plugin prerequisites, sources, limitations, and selection reasons; confirm bundled source records instead of assuming upstream latest |
 | [Roadmap](user/product/roadmap.md) | Move a planned capability to shipped only when this release's evidence supports it; retain uncommitted directions as proposals |
 
 4. Re-record changed Markdown pairs. Run `pnpm website:check` with `PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/`, then the documentation checks in this guide. Run the separate SDK check when its sources or adapter also change. Review both languages and the download journey in the local preview when browser access is available.

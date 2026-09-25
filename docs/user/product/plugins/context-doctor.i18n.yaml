@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for context-doctor.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/context-doctor.md
-context-doctor.md: c53b7d4bc9ae11aa7be1d3b3261e980bdf4b015f
-context-doctor.zh.md: ccfca6c4ab21289b4426a38d601891cb6fad98e6
+/context-doctor:
+  en: 963ec5544dfc5418
+  zh: a3a842c1fb35473e
+/context-doctor/problem-addressed:
+  en: a850a9b803ed2bf3
+  zh: 836c955a760c9a0b
+/context-doctor/usage:
+  en: 18538698dadea4af
+  zh: 420de800ccfcc634
+/context-doctor/reason-for-default-inclusion:
+  en: 9c48e4b1e583fc7c
+  zh: a368f14c51f5e35c
+/context-doctor/limits:
+  en: 55b3243a43209e93
+  zh: bf779e7144d7342b

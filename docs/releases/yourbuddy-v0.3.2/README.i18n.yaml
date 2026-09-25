@@ -1,6 +1,142 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.2/README.md
-README.md: 537f026d6c5cf694cf982bfdba11061d58e8aeca
-README.zh.md: 81c11b472f3dbf33176caa84d06ed49bb1ce8068
+/yourbuddy-0-3-2:
+  en: 6931d0ce48de1c16
+  zh: f4e7c354dc3d59be
+/yourbuddy-0-3-2/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-2/user-release-notes/what-changed:
+  en: 92b16318c3780482
+  zh: 9892e6b0a9a6a520
+/yourbuddy-0-3-2/user-release-notes/problem-solved:
+  en: 8ee32655177c0851
+  zh: d5ff0ed686336759
+/yourbuddy-0-3-2/user-release-notes/where-to-use-it:
+  en: 58291d875012d4ac
+  zh: 2fdb03740ead06e7
+/yourbuddy-0-3-2/user-release-notes/how-to-try-it:
+  en: b7dadeb6cab641db
+  zh: 19762b61e9ff8ba6
+/yourbuddy-0-3-2/user-release-notes/install-or-upgrade:
+  en: aa5ae55f4d2d7d7d
+  zh: 87af1b392ce18261
+/yourbuddy-0-3-2/user-release-notes/compatibility-migration-and-limitations:
+  en: 4240dc8979101515
+  zh: e62cb5630a4bdc2f
+/yourbuddy-0-3-2/verification-summary:
+  en: 7d7add907c68398b
+  zh: 215fd7261938d125
+/yourbuddy-0-3-2/scenario-published-macos-artifacts-and-updater:
+  en: e88a794bd2c0057e
+  zh: 3b59d6378e5c9649
+/yourbuddy-0-3-2/scenario-published-macos-artifacts-and-updater/steps:
+  en: 729b2356f6ac5dc7
+  zh: 89c2d3d9decd1da8
+/yourbuddy-0-3-2/scenario-published-macos-artifacts-and-updater/expected:
+  en: 7d26f416b4cbceff
+  zh: 110e5176a109e418
+/yourbuddy-0-3-2/scenario-published-macos-artifacts-and-updater/actual:
+  en: fb89dd832423d18e
+  zh: bc5969abf735f1f8
+/yourbuddy-0-3-2/scenario-published-macos-artifacts-and-updater/evidence:
+  en: 1581cddd8f0c3be2
+  zh: 845ef47be3494899
+/yourbuddy-0-3-2/scenario-published-macos-artifacts-and-updater/scope-limits:
+  en: 6795390c879dede5
+  zh: 622b0ecdcd216185
+/yourbuddy-0-3-2/scenario-in-app-help-and-recovery:
+  en: 4bf2c4930e497de8
+  zh: a2f5507c73943777
+/yourbuddy-0-3-2/scenario-in-app-help-and-recovery/steps:
+  en: c8a6d470a9cda9d1
+  zh: 2d9d7636d16acbd2
+/yourbuddy-0-3-2/scenario-in-app-help-and-recovery/expected:
+  en: e3ed3312fd6e1dff
+  zh: 365862e3a69f7452
+/yourbuddy-0-3-2/scenario-in-app-help-and-recovery/actual:
+  en: 6cd9d9d9ab665756
+  zh: f7073414445e7810
+/yourbuddy-0-3-2/scenario-in-app-help-and-recovery/evidence:
+  en: 0a893989476a1a2f
+  zh: 63e4f24a6a5d12e7
+/yourbuddy-0-3-2/scenario-in-app-help-and-recovery/scope-limits:
+  en: 82239c67bc8e94f8
+  zh: 41e3676b74202879
+/yourbuddy-0-3-2/scenario-authenticated-host-startup-and-lifecycle:
+  en: c80f1be8ebb7f86f
+  zh: 7db53d594c6a3cb9
+/yourbuddy-0-3-2/scenario-authenticated-host-startup-and-lifecycle/steps:
+  en: c39395f72a9296d6
+  zh: f3b279776d89afab
+/yourbuddy-0-3-2/scenario-authenticated-host-startup-and-lifecycle/expected:
+  en: df0d332150aebe49
+  zh: 4d7d294c4fca0f47
+/yourbuddy-0-3-2/scenario-authenticated-host-startup-and-lifecycle/actual:
+  en: 10205f3c5fc04d33
+  zh: 9fba8f3664f6d3c8
+/yourbuddy-0-3-2/scenario-authenticated-host-startup-and-lifecycle/evidence:
+  en: 06e3fbd52cbfb1bd
+  zh: c210ffd5bffee18c
+/yourbuddy-0-3-2/scenario-authenticated-host-startup-and-lifecycle/scope-limits:
+  en: f8babfbc3b18ee05
+  zh: 4ae85713b4f1ed39
+/yourbuddy-0-3-2/scenario-release-preparation-and-product-refresh:
+  en: f29ee884ba2b3ab7
+  zh: daef5d4abcb049cb
+/yourbuddy-0-3-2/scenario-release-preparation-and-product-refresh/steps:
+  en: ab91b151e428cf07
+  zh: cd1537c278f2cb1a
+/yourbuddy-0-3-2/scenario-release-preparation-and-product-refresh/expected:
+  en: b7dfeed079cb7efa
+  zh: 23a89d7d3d638cfb
+/yourbuddy-0-3-2/scenario-release-preparation-and-product-refresh/actual:
+  en: 729827174e407ca4
+  zh: dd3b7866984462b4
+/yourbuddy-0-3-2/scenario-release-preparation-and-product-refresh/evidence:
+  en: 9aec80726cbed362
+  zh: 1b6d024050976e51
+/yourbuddy-0-3-2/scenario-release-preparation-and-product-refresh/scope-limits:
+  en: 423f02bf743bc459
+  zh: 24e1eda422d609bf
+/yourbuddy-0-3-2/scenario-documentation-and-product-website-build:
+  en: 86e179ef95be2ab7
+  zh: 63d18bc6c9d8dada
+/yourbuddy-0-3-2/scenario-documentation-and-product-website-build/steps:
+  en: 50c2df665ed98062
+  zh: 84e9a955f9957cf8
+/yourbuddy-0-3-2/scenario-documentation-and-product-website-build/expected:
+  en: d23762fd38ee6387
+  zh: 72812e375509ec69
+/yourbuddy-0-3-2/scenario-documentation-and-product-website-build/actual:
+  en: ffdb8229d6ffde21
+  zh: 909cc7174f2086a1
+/yourbuddy-0-3-2/scenario-documentation-and-product-website-build/evidence:
+  en: 79a6ecc21e329ee6
+  zh: 540d41bdec26c89f
+/yourbuddy-0-3-2/scenario-documentation-and-product-website-build/scope-limits:
+  en: ae8f6f0ebb52750f
+  zh: c478761c3f985ba9
+/yourbuddy-0-3-2/scenario-post-publication-installed-app-startup:
+  en: 88fa568b583ad982
+  zh: 8ec1d961be8b0558
+/yourbuddy-0-3-2/scenario-post-publication-installed-app-startup/steps:
+  en: b03eb0bf535c3898
+  zh: 3cd2d453be873125
+/yourbuddy-0-3-2/scenario-post-publication-installed-app-startup/expected:
+  en: 1f57f1ebefeee524
+  zh: ee375f0618e5500c
+/yourbuddy-0-3-2/scenario-post-publication-installed-app-startup/actual:
+  en: 970652e9d10ae908
+  zh: 69f0f2d0ac626096
+/yourbuddy-0-3-2/scenario-post-publication-installed-app-startup/scope-limits:
+  en: b888244fd600dde6
+  zh: 955a03882bfc3509
+/yourbuddy-0-3-2/delivery-status:
+  en: 592d695812caabbb
+  zh: 817981a0653ddc2c
+/yourbuddy-0-3-2/delivery-checklist:
+  en: 808739218d35fef7
+  zh: fa592531ea765a72

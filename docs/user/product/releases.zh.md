@@ -8,13 +8,13 @@
 
 ### 0.3.15 — 2026-09-23
 
-YourBuddy 0.3.15 在内置的**内容创作** Agent Preset 中提供创作者发布能力。Oil Creator 内置维护中的视频发布、视频转文章与微信公众号发布 Skills；`oil_prepare_publish` 可以为小红书、抖音、B站、视频号和微信公众号草稿箱准备草稿，同时保留用户的最终发表检查点。公开产物完整性、Updater 元数据与签名、App 标识、生成的发布器运行时模块、产品 Provenance、迁移运行时与可下载验证归档通过独立检查。原生启动、安装包 WebView 交互、从旧版本实际更新、真实创作者账号、最终发表与 Apple 公证仍未验证。
+YourBuddy 0.3.15 在内置的**内容创作** Agent Preset 中提供创作者发布能力。Oil Creator 内置维护中的视频发布、视频转文章与微信公众号发布 Skills；`oil_prepare_publish` 可以为小红书、抖音、B站、视频号和微信公众号草稿箱准备草稿，同时保留用户的最终发表检查点。公开产物完整性、Updater 元数据与签名、App 标识、生成的发布器运行时模块、产品来源记录、迁移运行时与可下载验证归档通过独立检查。原生启动、安装包 WebView 交互、从旧版本实际更新、真实创作者账号、最终发表与 Apple 公证仍未验证。
 
 [Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.15) · [验证记录](../../releases/yourbuddy-v0.3.15/README.zh.md) · [下载页](download.zh.md)
 
 ### 0.3.12 — 2026-09-22
 
-YourBuddy 0.3.12 通过保留已经解析的 Trial 路径，修复 Host 模式中的 Harbor Historical Session 评测。本版本内置配套一致的 Harbor Evolution 0.9.8 Plugin 与 Python Adapter，同时保留 DSH 0.1.5-rc.2、Oil Creator 与**内容创作** Agent Preset。验证归档记录公开产物完整性、Updater 元数据与签名、App 标识、产品 Provenance、迁移运行时及安装包 Historical Session Adapter。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth、可选创作集成与真实模型评分仍未验证。
+YourBuddy 0.3.12 通过保留已经解析的 Trial 路径，修复 Host 模式中的 Harbor Historical Session 评测。本版本内置配套一致的 Harbor Evolution 0.9.8 Plugin 与 Python Adapter，同时保留 DSH 0.1.5-rc.2、Oil Creator 与**内容创作** Agent Preset。验证归档记录公开产物完整性、Updater 元数据与签名、App 标识、产品来源记录、迁移运行时及安装包 Historical Session Adapter。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth、可选创作集成与真实模型评分仍未验证。
 
 [Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.12) · [验证记录](../../releases/yourbuddy-v0.3.12/README.zh.md) · [下载页](download.zh.md)
 
@@ -38,13 +38,13 @@ YourBuddy 0.3.9 修复了旧会话把 Dock 状态保留为折叠时 Better Sideb
 
 ### 0.3.8 — 2026-09-20
 
-YourBuddy 0.3.8 将桌面运行时同步至 DSH 0.1.5-rc.2，并内置 Better Sidebar 0.19.1、Harbor Evolution 0.9.7、Plugin Marketplace 0.3.3 与 Context Doctor 0.7.2。Better Sidebar 使用 DSH 原生右侧栏，同时保留主工作区、可调分隔、抽屉、底部工作区、链接、终端与媒体行为。Marketplace 一键安装要求 npm 包明确关联所选代码仓库，并声明 DSH Bundle 补丁。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、产品 provenance 和迁移运行时通过检查。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。
+YourBuddy 0.3.8 将桌面运行时同步至 DSH 0.1.5-rc.2，并内置 Better Sidebar 0.19.1、Harbor Evolution 0.9.7、Plugin Marketplace 0.3.3 与 Context Doctor 0.7.2。Better Sidebar 使用 DSH 原生右侧栏，同时保留主工作区、可调分隔、抽屉、底部工作区、链接、终端与媒体行为。Marketplace 一键安装要求 npm 包明确关联所选代码仓库，并声明 DSH Bundle 补丁。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、产品来源记录 和迁移运行时通过检查。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。
 
 [Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.8) · [验证记录](../../releases/yourbuddy-v0.3.8/README.zh.md) · [下载页](download.zh.md)
 
 ### 0.3.7 — 2026-09-19
 
-YourBuddy 0.3.7 把 Better Sidebar 设为可伸缩的桌面主工作区，同时保留 DSH 对话、导航、详情、标签页、文件、任务、终端、预览、浮动窗口与底部工作区。工作区与对话区之间可以拖动调整宽度；窄窗口仍以对话区为主，并使用原有抽屉。两处兼容修改均保存为可重放且带哈希的 provenance 补丁，而在 YourBuddy 之外 Better Sidebar 仍保持上游 Portal 默认方式。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、provenance 元数据和迁移运行时通过检查。由于用户自己的 YourBuddy 实例阻止隔离启动，原生启动、安装包 WebView 交互以及从旧版本实际更新仍未验证。
+YourBuddy 0.3.7 把 Better Sidebar 设为可伸缩的桌面主工作区，同时保留 DSH 对话、导航、详情、标签页、文件、任务、终端、预览、浮动窗口与底部工作区。工作区与对话区之间可以拖动调整宽度；窄窗口仍以对话区为主，并使用原有抽屉。两处兼容修改均保存为可重放且带哈希的 来源记录补丁，而在 YourBuddy 之外 Better Sidebar 仍保持上游 Portal 默认方式。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、来源元数据和迁移运行时通过检查。由于用户自己的 YourBuddy 实例阻止隔离启动，原生启动、安装包 WebView 交互以及从旧版本实际更新仍未验证。
 
 [Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.7) · [工作台截图](../../releases/yourbuddy-v0.3.7/screenshots/workbench-primary.png) · [验证记录](../../releases/yourbuddy-v0.3.7/README.zh.md) · [下载页](download.zh.md)
 

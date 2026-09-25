@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-06-release-notes-and-verification-archives.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-06-release-notes-and-verification-archives.md
-2026-09-06-release-notes-and-verification-archives.md: 41ab5cb1535b12ecc0d1d3407fe02159226c642c
-2026-09-06-release-notes-and-verification-archives.zh.md: ced1ddb265edf197a41650e83909ac3b9607712f
+/agent-note-versioned-release-notes-and-verification-archives:
+  en: 1bce95ba5bb43ab4
+  zh: c8097facac7d6e1f
+/agent-note-versioned-release-notes-and-verification-archives/problem:
+  en: e5f695e21ad36acd
+  zh: f64b546df389a7e7
+/agent-note-versioned-release-notes-and-verification-archives/decision:
+  en: b6900deed4977f5b
+  zh: cdd191ac09303805
+/agent-note-versioned-release-notes-and-verification-archives/alternatives-considered:
+  en: 0374b7090922d2fd
+  zh: 4b958d327f2ef0a8
+/agent-note-versioned-release-notes-and-verification-archives/consequences:
+  en: 0317d9e05a30e9cc
+  zh: 82e40e254d74c605

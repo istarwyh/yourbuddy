@@ -1,6 +1,55 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.12/README.md
-README.md: 39cef46af055ea8f46de0f44fb1c3c4d85416bba
-README.zh.md: 907d1f33d92e787bbee5df0fbc5ffaa0ea26b215
+/yourbuddy-0-3-12:
+  en: 63e484bdf5533edd
+  zh: b5f45943aaae7302
+/yourbuddy-0-3-12/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-12/user-release-notes/what-changed:
+  en: b847355f196afb12
+  zh: 48be170accb1a504
+/yourbuddy-0-3-12/user-release-notes/problem-solved:
+  en: 0f8ef9f52144f786
+  zh: 0c48b61b28bf2187
+/yourbuddy-0-3-12/user-release-notes/where-to-use-it:
+  en: fcfb6cf738e3dd53
+  zh: e0970f1ea8311b1c
+/yourbuddy-0-3-12/user-release-notes/how-to-try-it:
+  en: 95953e7ebf3f37f7
+  zh: 7a78cdfefbe10643
+/yourbuddy-0-3-12/user-release-notes/install-or-upgrade:
+  en: b21328279dc7d49d
+  zh: 293709c1d8d5a9d2
+/yourbuddy-0-3-12/user-release-notes/compatibility-migration-and-limitations:
+  en: 47c2a16722c1a3a2
+  zh: 1b86192e22aa9cc2
+/yourbuddy-0-3-12/verification-summary:
+  en: 19e177677e68cdd6
+  zh: c59224a2ed00163c
+/yourbuddy-0-3-12/scenario-root-cause-recovery-and-upstream-adapter-regression:
+  en: b1c7eae184472317
+  zh: a534940b8e8141c3
+/yourbuddy-0-3-12/scenario-root-cause-recovery-and-upstream-adapter-regression/steps:
+  en: 6c312822df85d4fc
+  zh: d0b2357985cfe19b
+/yourbuddy-0-3-12/scenario-root-cause-recovery-and-upstream-adapter-regression/expected:
+  en: 7a4e91d8193c9689
+  zh: 616671a4f5d309e8
+/yourbuddy-0-3-12/scenario-root-cause-recovery-and-upstream-adapter-regression/actual:
+  en: 6a5f224a1678072a
+  zh: cc4750f2b660b54c
+/yourbuddy-0-3-12/scenario-root-cause-recovery-and-upstream-adapter-regression/evidence:
+  en: 1a0bcbdb1e3767b5
+  zh: af4e59e87f1b20d6
+/yourbuddy-0-3-12/scenario-root-cause-recovery-and-upstream-adapter-regression/scope-limits:
+  en: c25f5dfe9a4fdcf9
+  zh: b3b5a8c8aaed8193
+/yourbuddy-0-3-12/delivery-status:
+  en: 02c33ac5a9035ef3
+  zh: 15a8d860f821004d
+/yourbuddy-0-3-12/delivery-checklist:
+  en: 604fd472fb5cdf71
+  zh: c61eb2ec361377af

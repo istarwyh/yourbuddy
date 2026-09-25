@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-25-yourbuddy-product-workbench-coordinator.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-25-yourbuddy-product-workbench-coordinator.md
-2026-09-25-yourbuddy-product-workbench-coordinator.md: 7141ec46b797f07e584f3f891893f3402cb23b85
-2026-09-25-yourbuddy-product-workbench-coordinator.zh.md: cd4f6df2b3acc62340eea7f10d1df2cf41f1707a
+/agent-note-yourbuddy-product-workbench-coordinator:
+  en: 01d46f4cfb9248d6
+  zh: 22c938daa0bf0e1d
+/agent-note-yourbuddy-product-workbench-coordinator/problem:
+  en: eb8be726dbb08ee9
+  zh: 3e5767547402788c
+/agent-note-yourbuddy-product-workbench-coordinator/decision:
+  en: 18cc873f824c8411
+  zh: e25f7abd3934b0ec
+/agent-note-yourbuddy-product-workbench-coordinator/alternatives-considered:
+  en: 24289049332cd1c7
+  zh: 4f9b5d5b528434a8
+/agent-note-yourbuddy-product-workbench-coordinator/consequences:
+  en: 362cedcabf08cc09
+  zh: 8ed56129477cb761

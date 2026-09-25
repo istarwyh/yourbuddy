@@ -14,7 +14,7 @@ import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 // error, so scope resolution goes through the sessions service (scopeOf
 // method) instead of the standalone helper.
 import type {
-  ISessions, PendingSubmissionRetirement, SessionFace,
+  ISessions, PendingSubmissionRetirement, SessionBinding, SessionFace,
 } from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-file-upload/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -24,7 +24,8 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type {
   ComposerAttachment, ComposerFileAttachment, ComposerImageAttachment, DraftFileUpload,
 } from './contract/slots.ts'
-import type { QueueAction, QueueItemId } from './contract/queue.ts'
+import type { QueueAction } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
 import type { ComposerBlocks } from './contract/composer-blocks.ts'
 import type {
   DraftAttachmentId, DraftAttachmentSerializationResult, Occurrence, SessionInputResolver, SubmitAttachment,
@@ -61,7 +62,7 @@ export interface IConversation {
    * @param action - requested queue operation.
    * @returns completion; converged QueueDock races resolve, while other failures reject.
    */
-  updateQueue(itemId: QueueItemId, action: QueueAction): Promise<void>
+  updateQueue(itemId: MessageId, action: QueueAction): Promise<void>
   /**
    * Cancel the scoped session's in-flight turn while preserving its pending Queue.
    * @returns completion; failures reject as in send.
@@ -219,9 +220,10 @@ export class ConversationController extends Service implements IConversation {
    * @param text - prompt text, preserved beside any selected-View context.
    */
   async send(text: string): Promise<void> {
-    const session = this.scopedSession('send')
+    const binding = this.scopedBinding('send')
+    const session = binding.session
     const controller = new AbortController()
-    const dispose = this.ctx.effect(() => () => { controller.abort() }, 'conversation.send context')
+    const dispose = binding.ctx.effect(() => () => { controller.abort() }, 'conversation.send context')
     const prepared = this.prepareContext(session.sessionId, text, [], controller.signal)
     const submission = prepared !== undefined && session.getSnapshot().subagent === null
       ? session.beginSubmission({
@@ -562,7 +564,7 @@ export class ConversationController extends Service implements IConversation {
   }
 
   /** Apply one operation to a pending queue occurrence. */
-  async updateQueue(itemId: QueueItemId, action: QueueAction): Promise<void> {
+  async updateQueue(itemId: MessageId, action: QueueAction): Promise<void> {
     const session = this.scopedSession('updateQueue')
     const result = await session.updateQueue(itemId, action)
     if (!result.ok) {
@@ -587,12 +589,17 @@ export class ConversationController extends Service implements IConversation {
     await this.scopedSession('loadOlder').loadOlder()
   }
 
-  /** Resolve the caller scope's session face or throw on root contexts. */
-  private scopedSession(op: string): SessionFace {
+  /** Resolve the caller scope's current Session binding or throw on root and withdrawn contexts. */
+  private scopedBinding(op: string): SessionBinding {
     const id = this.scopeId(op)
     const binding = this.requireSessions().binding(id)
     if (binding === undefined) throw new Error(`conversation.${op}: session "${id}" resolved no binding`)
-    return binding.session
+    return binding
+  }
+
+  /** Resolve the caller scope's session face or throw on root contexts. */
+  private scopedSession(op: string): SessionFace {
+    return this.scopedBinding(op).session
   }
 
   /** Read the caller's session scope tag via the sessions service; root contexts fail loud. */
@@ -665,8 +672,12 @@ function imageMediaType(value: string): ImageMediaType {
   }
 }
 
-/** Whether a browser-declared MIME selects the image draft path (all other files upload verbatim). */
-function isImageMediaType(value: string): boolean {
+/**
+ * Whether a browser-declared MIME selects the image draft path (all other files upload verbatim).
+ * @param value - the browser's declared MIME type.
+ * @returns whether the file is an accepted raster image.
+ */
+export function isImageMediaType(value: string): boolean {
   return value === 'image/png' || value === 'image/jpeg' || value === 'image/webp' || value === 'image/gif'
 }
 

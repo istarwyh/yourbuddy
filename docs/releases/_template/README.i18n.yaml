@@ -1,6 +1,55 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/_template/README.md
-README.md: 93d4d65636ffb5269c1dd777638a1cf76065e3b8
-README.zh.md: fcba620e4314a998eeb8602171bac10e98319a3c
+/section:
+  en: cd4a4fc0886a56e3
+  zh: a873aa55e9a300d3
+/section/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/section/user-release-notes/what-changed:
+  en: 33f87b3b3f728773
+  zh: 183a3c5616944447
+/section/user-release-notes/problem-solved:
+  en: 4e3a99d42d7c8b16
+  zh: bf1b50cb1bd658bd
+/section/user-release-notes/where-to-use-it:
+  en: 8a72b7fcff999860
+  zh: efd27b094ae0668c
+/section/user-release-notes/how-to-try-it:
+  en: 2327509f1ea5452e
+  zh: ad5a6d5a877cce72
+/section/user-release-notes/install-or-upgrade:
+  en: 694b9e4a64b674f2
+  zh: f58b4bad630c1ab3
+/section/user-release-notes/compatibility-migration-and-limitations:
+  en: 9b88505c967aa220
+  zh: a14a013f0cb6ddb3
+/section/verification-summary:
+  en: dd60295a3ad4ded5
+  zh: 6fb75cc2b7a1d248
+/section/scenario:
+  en: bd9d21becdc6fac2
+  zh: ea593307de75c631
+/section/scenario/steps:
+  en: 259970f4c0dde8fb
+  zh: 00198a3d86bd037c
+/section/scenario/expected:
+  en: 8396109477c5cfa9
+  zh: 5bb62a28ed018734
+/section/scenario/actual:
+  en: 82f73826371d7bcd
+  zh: 2e685b371be7a866
+/section/scenario/evidence:
+  en: c8239f4a46a12732
+  zh: 20b4c4b524ae8cf2
+/section/scenario/scope-limits:
+  en: ab96674baba9a52c
+  zh: 163a56d2a1a6d383
+/section/delivery-status:
+  en: 43ba04e3c638628a
+  zh: be47408ff4c52eac
+/section/delivery-checklist:
+  en: 416f022ab17df075
+  zh: 0cc45353616e79ba

@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-06-yourbuddy-plugin-development-experiments.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/rejected/feature/2026-09-06-yourbuddy-plugin-development-experiments.md
-2026-09-06-yourbuddy-plugin-development-experiments.md: 531f2fbdefbb735356993a02c1367e9ff86d9114
-2026-09-06-yourbuddy-plugin-development-experiments.zh.md: ad2915e7c82a3d073a5d4145a874d2c6aa6d469a
+/agent-note-yourbuddy-default-use-and-plugin-development-experiments:
+  en: 09031e47230c570e
+  zh: 01c1d85da2f9696e
+/agent-note-yourbuddy-default-use-and-plugin-development-experiments/problem:
+  en: a40f39967579668b
+  zh: be943fe12a6e25f7
+/agent-note-yourbuddy-default-use-and-plugin-development-experiments/proposal:
+  en: 651ee320f3bf4b62
+  zh: 85b541505fec5f03
+/agent-note-yourbuddy-default-use-and-plugin-development-experiments/related-decisions:
+  en: 065336a979cd3143
+  zh: d350f1d13c6f7c2e
+/agent-note-yourbuddy-default-use-and-plugin-development-experiments/alternatives-considered:
+  en: 38b285ede7909a0a
+  zh: dfa8e7dd381bb9bb
+/agent-note-yourbuddy-default-use-and-plugin-development-experiments/acceptance-criteria:
+  en: eadb30ebc55abca7
+  zh: e9129f8bde1bde87
+/agent-note-yourbuddy-default-use-and-plugin-development-experiments/risks:
+  en: 65a518491c2c38a9
+  zh: f6b5ed3fc6ed1157

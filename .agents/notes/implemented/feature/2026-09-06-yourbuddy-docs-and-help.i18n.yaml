@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-06-yourbuddy-docs-and-help.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-06-yourbuddy-docs-and-help.md
-2026-09-06-yourbuddy-docs-and-help.md: 519731fc6372db79220821c99d325702f4a5a9d2
-2026-09-06-yourbuddy-docs-and-help.zh.md: c5272997cb190e78a8d22ab2aadd8116e4f4ec86
+/agent-note-yourbuddy-documentation-and-in-app-help:
+  en: 4a242007367e40b4
+  zh: cba674b8da3d1f3b
+/agent-note-yourbuddy-documentation-and-in-app-help/problem:
+  en: 858cd48ae0c56bfa
+  zh: 4da3e2298523a317
+/agent-note-yourbuddy-documentation-and-in-app-help/decision:
+  en: 369333629818482e
+  zh: 0c3d7cbd141d276c
+/agent-note-yourbuddy-documentation-and-in-app-help/related-decisions:
+  en: b607ed3415035363
+  zh: 1bbbc7f20a01b15b
+/agent-note-yourbuddy-documentation-and-in-app-help/alternatives-considered:
+  en: cfd8833e14a2502a
+  zh: 7446580ababdf57f
+/agent-note-yourbuddy-documentation-and-in-app-help/verification:
+  en: 66ba10b970ea1064
+  zh: adfe2a843c65100a
+/agent-note-yourbuddy-documentation-and-in-app-help/consequences:
+  en: 188d964fbf6b5e30
+  zh: 72147c78a8a0271f

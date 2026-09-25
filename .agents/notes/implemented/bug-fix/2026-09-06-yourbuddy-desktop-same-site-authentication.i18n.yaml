@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-06-yourbuddy-desktop-same-site-authentication.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-06-yourbuddy-desktop-same-site-authentication.md
-2026-09-06-yourbuddy-desktop-same-site-authentication.md: 3b683619d35488c81b487bb7989844a23d99654b
-2026-09-06-yourbuddy-desktop-same-site-authentication.zh.md: f2b9959df0c9fb3ddea567cf7d3d0cd72a41b7e4
+/agent-note-yourbuddy-desktop-same-site-authentication:
+  en: 9fd60e6b1de6cb7f
+  zh: ed3b38fe60d0a150
+/agent-note-yourbuddy-desktop-same-site-authentication/problem:
+  en: 334f216dab452144
+  zh: 2edf9c9e193ae210
+/agent-note-yourbuddy-desktop-same-site-authentication/decision:
+  en: 6730d0a841a5cd24
+  zh: ea0a9d1c10c5d1eb
+/agent-note-yourbuddy-desktop-same-site-authentication/verification:
+  en: 02076e4e47054abf
+  zh: 110033ad2fae2725
+/agent-note-yourbuddy-desktop-same-site-authentication/alternatives-considered:
+  en: d171f46252b6c551
+  zh: e0b6f7d7c5cab2a2
+/agent-note-yourbuddy-desktop-same-site-authentication/consequences:
+  en: 452fe0d56afed662
+  zh: 0b02403c4c3a7c10

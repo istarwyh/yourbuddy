@@ -1,6 +1,13 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for troubleshooting.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/troubleshooting.md
-troubleshooting.md: 37872c08b3f3b08d35b248803c01e4570e36876e
-troubleshooting.zh.md: 65d7adce9ec08546632950575b7fd7f4862be5e7
+/troubleshooting:
+  en: aabacfe3f9dc4cd4
+  zh: 17621db33fa0964a
+/troubleshooting/startup-and-system-prompts:
+  en: 710ff056163646fa
+  zh: 3170d082e394e276
+/troubleshooting/share-useful-evidence:
+  en: 8a9adb107edaeeb4
+  zh: b42ad1d035463064

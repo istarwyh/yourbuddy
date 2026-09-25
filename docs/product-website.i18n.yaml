@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for product-website.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/product-website.md
-product-website.md: d48ade7242564a99a35789bc471d350422a24aa4
-product-website.zh.md: 4aa6956a68897f73d74b9ec18495e4154c7749dd
+/maintaining-the-yourbuddy-website:
+  en: d461ff20622323de
+  zh: e5f7201793b42284
+/maintaining-the-yourbuddy-website/run-locally:
+  en: 7972e4f4308bef2d
+  zh: 803da62629734863
+/maintaining-the-yourbuddy-website/edit-content:
+  en: 11d7dbe9142b0541
+  zh: a1e5996f84c603e7
+/maintaining-the-yourbuddy-website/build-and-verify:
+  en: 1ce5d359639d64d1
+  zh: 7c91c479f304ab3f
+/maintaining-the-yourbuddy-website/github-pages:
+  en: 0a32e835c70dbb6c
+  zh: 211fc5840c632574
+/maintaining-the-yourbuddy-website/download-information-and-publication:
+  en: af84233650a15820
+  zh: 25993baee792494e
+/maintaining-the-yourbuddy-website/release-synchronization:
+  en: 6d5e0d0c45f61a1a
+  zh: fea4e52e56cf8340

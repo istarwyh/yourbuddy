@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for oil-creator.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/oil-creator.md
-oil-creator.md: 0c8ae70a530e967bce792767e3d9a44e1a470ca5
-oil-creator.zh.md: c445f44c93fe55573fb75d273f221aa19f329a12
+/oil-creator:
+  en: 3ab109e5e8e6c021
+  zh: a2bf6133ccfdd690
+/oil-creator/problem-addressed:
+  en: aabd8514bf19195a
+  zh: 393fe4ee597d6f26
+/oil-creator/usage:
+  en: b370f21dcf8b5555
+  zh: 579f7f043290ff70
+/oil-creator/reason-for-default-inclusion:
+  en: 0a9f2f131a8448c0
+  zh: a8d3d441d1686c97
+/oil-creator/limits:
+  en: b602e768b5ebc38d
+  zh: cfa87887c1632c08

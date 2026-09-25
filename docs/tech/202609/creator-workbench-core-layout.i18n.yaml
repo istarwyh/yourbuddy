@@ -1,6 +1,64 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for creator-workbench-core-layout.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/tech/202609/creator-workbench-core-layout.md
-creator-workbench-core-layout.md: 6ef3018f61a7904c8ca17ff4dfb0ab871a636583
-creator-workbench-core-layout.zh.md: f764a03c56e4558d384a398d7ab3d2b98bd582fc
+/:
+  en: 50828ac8b257dde9
+  zh: 98fbf74976ace42a
+/yourbuddy-better-sidebar-centered-workbench-architecture:
+  en: 287da505f95e2195
+  zh: 571c7a71b0e3fff3
+/yourbuddy-better-sidebar-centered-workbench-architecture/product-model:
+  en: 80567bbf29e766d6
+  zh: ff13e2b62205bbde
+/yourbuddy-better-sidebar-centered-workbench-architecture/layout-model:
+  en: 238d8c08faacc578
+  zh: 883f890a638befa0
+/yourbuddy-better-sidebar-centered-workbench-architecture/composition-ownership:
+  en: bd2ee55c58990723
+  zh: 250ae2419c712f3b
+/yourbuddy-better-sidebar-centered-workbench-architecture/component-composition:
+  en: e5377572b58d7119
+  zh: 7df5e685b3a2d9b0
+/yourbuddy-better-sidebar-centered-workbench-architecture/state-ownership:
+  en: 80bda2f66e429d1e
+  zh: 0ab8e1c72db71848
+/yourbuddy-better-sidebar-centered-workbench-architecture/product-coordinator-service:
+  en: 445c9110a5e56ec7
+  zh: 85a292b413485e75
+/yourbuddy-better-sidebar-centered-workbench-architecture/open-intent-and-agent-event-rules:
+  en: da095597be13090e
+  zh: 20dfc4e3818b2ff0
+/yourbuddy-better-sidebar-centered-workbench-architecture/better-sidebar-responsibilities:
+  en: d901c2d65b42efdf
+  zh: 364cd08952159bef
+/yourbuddy-better-sidebar-centered-workbench-architecture/content-responsibilities:
+  en: e1f569a2f7d41a09
+  zh: 8f3e9fdf3eeef0e0
+/yourbuddy-better-sidebar-centered-workbench-architecture/upstream-alignment-and-package-boundaries:
+  en: d45c012fc158e3a3
+  zh: f18fb70c698f4577
+/yourbuddy-better-sidebar-centered-workbench-architecture/persistence:
+  en: 89e6e1a38adcc70a
+  zh: 307169ab596e7f08
+/yourbuddy-better-sidebar-centered-workbench-architecture/focus-and-accessibility:
+  en: dcea37890c76dfad
+  zh: 63a72d1484aba397
+/yourbuddy-better-sidebar-centered-workbench-architecture/failure-and-lifecycle-rules:
+  en: 50877aae138d1b21
+  zh: fb6fa4295729d96d
+/yourbuddy-better-sidebar-centered-workbench-architecture/implementation-ownership:
+  en: 0432f30c972abb3d
+  zh: b672bfd379ada950
+/yourbuddy-better-sidebar-centered-workbench-architecture/verification-coverage:
+  en: 3789593be1c314a4
+  zh: 024bb437f0f7282a
+/yourbuddy-better-sidebar-centered-workbench-architecture/observable-behavior:
+  en: 45e061a909d18794
+  zh: 8c3657addf961e4a
+/yourbuddy-better-sidebar-centered-workbench-architecture/limitations:
+  en: e5b1316908edf1fc
+  zh: dcd7123ad548d470
+/yourbuddy-better-sidebar-centered-workbench-architecture/developer-note:
+  en: 06bd489f25d5ab35
+  zh: 059dd46b93687441

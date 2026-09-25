@@ -77,22 +77,22 @@ export function readDshUpdatePolicy(productRoot) {
  * @param {unknown} value
  * @returns {{repository: string, channel: 'stable-else-rc', tag: string, version: string, commit: string, patches: unknown[]}}
  */
-export function validateDshProvenance(value) {
-  if (!isPlainObject(value)) throw new Error('DSH upstream provenance must be an object')
-  assertOnlyFields(value, new Set(['repository', 'channel', 'tag', 'version', 'commit', 'patches']), 'DSH upstream provenance')
+export function validateDshUpstreamRecord(value) {
+  if (!isPlainObject(value)) throw new Error('DSH upstream record must be an object')
+  assertOnlyFields(value, new Set(['repository', 'channel', 'tag', 'version', 'commit', 'patches']), 'DSH upstream record')
   if (typeof value.repository !== 'string' || !repositoryPattern.test(value.repository)) {
-    throw new Error('DSH upstream provenance repository is invalid')
+    throw new Error('DSH upstream record repository is invalid')
   }
-  if (value.channel !== supportedChannel) throw new Error('DSH upstream provenance channel is invalid')
-  if (typeof value.tag !== 'string' || value.tag.length === 0) throw new Error('DSH upstream provenance tag is invalid')
+  if (value.channel !== supportedChannel) throw new Error('DSH upstream record channel is invalid')
+  if (typeof value.tag !== 'string' || value.tag.length === 0) throw new Error('DSH upstream record tag is invalid')
   if (typeof value.version !== 'string' || semver.valid(value.version) !== value.version) {
-    throw new Error('DSH upstream provenance version is invalid')
+    throw new Error('DSH upstream record version is invalid')
   }
   if (typeof value.commit !== 'string' || !commitPattern.test(value.commit)) {
-    throw new Error('DSH upstream provenance commit is invalid')
+    throw new Error('DSH upstream record commit is invalid')
   }
   if (value.patches !== undefined && !Array.isArray(value.patches)) {
-    throw new Error('DSH upstream provenance patches must be an array')
+    throw new Error('DSH upstream record patches must be an array')
   }
   return { ...value, patches: value.patches ?? [] }
 }
@@ -101,32 +101,32 @@ export function validateDshProvenance(value) {
  * Read the immutable DSH source recorded for the current YourBuddy tree.
  *
  * @param {string} productRoot
- * @returns {ReturnType<typeof validateDshProvenance>}
+ * @returns {ReturnType<typeof validateDshUpstreamRecord>}
  */
-export function readDshProvenance(productRoot) {
-  return validateDshProvenance(
+export function readDshUpstreamRecord(productRoot) {
+  return validateDshUpstreamRecord(
     JSON.parse(readFileSync(join(productRoot, 'DSH_UPSTREAM.json'), 'utf8')),
   )
 }
 
 /**
- * Require committed DSH provenance to match the policy and bundled source version.
+ * Require committed DSH upstream record to match the policy and bundled source version.
  *
- * @param {{policy: ReturnType<typeof validateDshUpdatePolicy>, provenance: ReturnType<typeof validateDshProvenance>, currentVersion: string}} input
+ * @param {{policy: ReturnType<typeof validateDshUpdatePolicy>, upstreamRecord: ReturnType<typeof validateDshUpstreamRecord>, currentVersion: string}} input
  */
 export function assertRecordedDshRelease(input) {
-  if (input.provenance.repository !== input.policy.repository) {
-    throw new Error(`DSH upstream repository=${input.provenance.repository} does not match ${input.policy.repository}`)
+  if (input.upstreamRecord.repository !== input.policy.repository) {
+    throw new Error(`DSH upstream repository=${input.upstreamRecord.repository} does not match ${input.policy.repository}`)
   }
-  if (input.provenance.channel !== input.policy.channel) {
-    throw new Error(`DSH upstream channel=${input.provenance.channel} does not match ${input.policy.channel}`)
+  if (input.upstreamRecord.channel !== input.policy.channel) {
+    throw new Error(`DSH upstream channel=${input.upstreamRecord.channel} does not match ${input.policy.channel}`)
   }
-  if (input.provenance.version !== input.currentVersion) {
-    throw new Error(`DSH upstream version=${input.provenance.version} does not match bundled ${input.currentVersion}`)
+  if (input.upstreamRecord.version !== input.currentVersion) {
+    throw new Error(`DSH upstream version=${input.upstreamRecord.version} does not match bundled ${input.currentVersion}`)
   }
   const expectedTag = `${input.policy.tagPrefix}${input.currentVersion}`
-  if (input.provenance.tag !== expectedTag) {
-    throw new Error(`DSH upstream tag=${input.provenance.tag} does not match ${expectedTag}`)
+  if (input.upstreamRecord.tag !== expectedTag) {
+    throw new Error(`DSH upstream tag=${input.upstreamRecord.tag} does not match ${expectedTag}`)
   }
 }
 
@@ -250,12 +250,12 @@ export async function resolveAllowedDshRelease(policy, fetchImpl = globalThis.fe
 }
 
 /**
- * Require the checked-out DSH source and provenance to match the selected official Release.
+ * Require the checked-out DSH source and upstream record to match the selected official Release.
  *
- * @param {{currentVersion: string, provenance: ReturnType<typeof validateDshProvenance>, release: Awaited<ReturnType<typeof resolveAllowedDshRelease>>, isAncestor: boolean}} state
+ * @param {{currentVersion: string, upstreamRecord: ReturnType<typeof validateDshUpstreamRecord>, release: Awaited<ReturnType<typeof resolveAllowedDshRelease>>, isAncestor: boolean}} state
  */
 export function assertCurrentDshRelease(state) {
-  const { currentVersion, provenance, release, isAncestor } = state
+  const { currentVersion, upstreamRecord, release, isAncestor } = state
   if (semver.valid(currentVersion) !== currentVersion) {
     throw new Error(`current DSH version is invalid: ${currentVersion}`)
   }
@@ -266,12 +266,12 @@ export function assertCurrentDshRelease(state) {
     throw new Error(`current DSH ${currentVersion} is not the selected ${release.channel} Release ${release.version}`)
   }
   for (const field of ['repository', 'tag', 'version', 'commit']) {
-    if (provenance[field] !== release[field]) {
-      throw new Error(`DSH upstream provenance ${field}=${provenance[field]} does not match ${release[field]}`)
+    if (upstreamRecord[field] !== release[field]) {
+      throw new Error(`DSH upstream record ${field}=${upstreamRecord[field]} does not match ${release[field]}`)
     }
   }
-  if (provenance.channel !== supportedChannel) {
-    throw new Error(`DSH upstream provenance channel=${provenance.channel} does not match ${supportedChannel}`)
+  if (upstreamRecord.channel !== supportedChannel) {
+    throw new Error(`DSH upstream record channel=${upstreamRecord.channel} does not match ${supportedChannel}`)
   }
   if (!isAncestor) {
     throw new Error(`official DSH commit ${release.commit} is not an ancestor of the YourBuddy release input`)

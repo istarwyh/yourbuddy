@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-07-page-context-on-submit.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-07-page-context-on-submit.md
-2026-09-07-page-context-on-submit.md: aa537fceb5dbb60085993d67228f4ec926e4fbab
-2026-09-07-page-context-on-submit.zh.md: bf5fae3f0ae31f7646263a1e3350186d65195d79
+/agent-note-page-context-on-ordinary-submit:
+  en: 6d4b51498d49fece
+  zh: 16a8279adf1b1dab
+/agent-note-page-context-on-ordinary-submit/problem:
+  en: 164b5ec24e21a14e
+  zh: bb8b96ec01c7adc6
+/agent-note-page-context-on-ordinary-submit/decision:
+  en: 0cec89c1ec7e4ef5
+  zh: 13bc6068290c08d4
+/agent-note-page-context-on-ordinary-submit/alternatives-considered:
+  en: 4181fad1b48c7c86
+  zh: 7b31aaef075af65c
+/agent-note-page-context-on-ordinary-submit/consequences:
+  en: ba331a257f06f907
+  zh: 17d40bddf8252281
+/agent-note-page-context-on-ordinary-submit/testing:
+  en: d2c99046f55c9677
+  zh: 01a8f40b31bee6f5

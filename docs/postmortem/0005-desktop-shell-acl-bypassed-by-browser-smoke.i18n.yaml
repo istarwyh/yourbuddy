@@ -1,6 +1,28 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 0005-desktop-shell-acl-bypassed-by-browser-smoke.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/postmortem/0005-desktop-shell-acl-bypassed-by-browser-smoke.md
-0005-desktop-shell-acl-bypassed-by-browser-smoke.md: b0afb2a06a96adcbdbc2ef8b1da9a3662ed30764
-0005-desktop-shell-acl-bypassed-by-browser-smoke.zh.md: 91f462a355a5094a77be4bb874d3c278111afd8d
+/post-mortem-0005-desktop-shell-acl-was-bypassed-by-the-release-smoke:
+  en: 7f7205b47882ec81
+  zh: 82e0b4843c30877f
+/post-mortem-0005-desktop-shell-acl-was-bypassed-by-the-release-smoke/executive-summary:
+  en: dc12762cf5efb415
+  zh: a80f86f4732e8aaa
+/post-mortem-0005-desktop-shell-acl-was-bypassed-by-the-release-smoke/summary:
+  en: 5743528dbdf4fcfa
+  zh: 78cf06edc618d499
+/post-mortem-0005-desktop-shell-acl-was-bypassed-by-the-release-smoke/impact:
+  en: b97d27a4516a92ff
+  zh: feab43b3427b3c7b
+/post-mortem-0005-desktop-shell-acl-was-bypassed-by-the-release-smoke/timeline:
+  en: f3ace44471e714a4
+  zh: c61c6216911a230d
+/post-mortem-0005-desktop-shell-acl-was-bypassed-by-the-release-smoke/root-cause:
+  en: c8795a90490bfe49
+  zh: 821774a2ec35016c
+/post-mortem-0005-desktop-shell-acl-was-bypassed-by-the-release-smoke/guardrails-added:
+  en: 7c1fc08e1fbc7557
+  zh: f8c10bc74a73c632
+/post-mortem-0005-desktop-shell-acl-was-bypassed-by-the-release-smoke/lessons:
+  en: 8c421b35033abfb4
+  zh: 98493f7ac42ead4d

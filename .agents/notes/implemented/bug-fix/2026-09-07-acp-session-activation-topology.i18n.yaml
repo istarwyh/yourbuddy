@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-07-acp-session-activation-topology.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-07-acp-session-activation-topology.md
-2026-09-07-acp-session-activation-topology.md: 16091225beb0e20cfb9e3b8cc3bc361f7ff5c45b
-2026-09-07-acp-session-activation-topology.zh.md: b10e5fd99974e9d24420c5c75fb5ad1947028797
+/agent-note-publish-acp-sessions-after-stable-configuration-discovery:
+  en: 9634321356869a20
+  zh: 19bfef2f1b764ac5
+/agent-note-publish-acp-sessions-after-stable-configuration-discovery/problem:
+  en: 8ee3cbbeeffe5748
+  zh: c767258623a7ca39
+/agent-note-publish-acp-sessions-after-stable-configuration-discovery/decision:
+  en: bc3154e8602635bc
+  zh: 7ef64b99ddc11c75
+/agent-note-publish-acp-sessions-after-stable-configuration-discovery/verification:
+  en: 582d9164e4bfd3f9
+  zh: dcaf3801661c7b25
+/agent-note-publish-acp-sessions-after-stable-configuration-discovery/alternatives-considered:
+  en: b51eea04e2cf666a
+  zh: 8b7baa3bc289460a
+/agent-note-publish-acp-sessions-after-stable-configuration-discovery/consequences:
+  en: c3817b1bc582be39
+  zh: 5256e83b692dbd0e

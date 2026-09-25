@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-23-harbor-host-model-bridge.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-23-harbor-host-model-bridge.md
-2026-08-23-harbor-host-model-bridge.md: 8f3294035d3c6666be92b8a3f68d857c823dd473
-2026-08-23-harbor-host-model-bridge.zh.md: 86394897b195fd2fbdd9d4812977cfc371dc5913
+/agent-note-job-scoped-host-model-bridge-for-harbor-candidates:
+  en: 4eb04a9c4301539b
+  zh: 83c063423c8fb9f4
+/agent-note-job-scoped-host-model-bridge-for-harbor-candidates/problem:
+  en: 2ad91b188193f6ae
+  zh: f9fc4dfdfcba8e48
+/agent-note-job-scoped-host-model-bridge-for-harbor-candidates/decision:
+  en: 499e4b82453e4d43
+  zh: 7f15add538f34daf
+/agent-note-job-scoped-host-model-bridge-for-harbor-candidates/alternatives-considered:
+  en: b9217a1278980305
+  zh: 1a69d021758da00f
+/agent-note-job-scoped-host-model-bridge-for-harbor-candidates/consequences:
+  en: 4250e7f62054f21f
+  zh: c37ae418bb743967

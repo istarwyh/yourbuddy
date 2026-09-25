@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-24-harbor-tools-use-session-working-directory.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-24-harbor-tools-use-session-working-directory.md
-2026-08-24-harbor-tools-use-session-working-directory.md: 3b26acc5fb02ef75f2beebb9037aa16194a4c77e
-2026-08-24-harbor-tools-use-session-working-directory.zh.md: dfa1039c23d00598b483e384694a69cb6fb2b161
+/agent-note-harbor-agent-tools-use-the-calling-session-workspace:
+  en: 9b84c90b2aee71bc
+  zh: 7737debeb63a270d
+/agent-note-harbor-agent-tools-use-the-calling-session-workspace/problem:
+  en: 846098ac344cbe01
+  zh: 9de792cb7aaba059
+/agent-note-harbor-agent-tools-use-the-calling-session-workspace/decision:
+  en: 74db2122ee3dba21
+  zh: 975914d343a862ee
+/agent-note-harbor-agent-tools-use-the-calling-session-workspace/testing:
+  en: f7dc61f3179cb469
+  zh: 88bdb05a7050b35f
+/agent-note-harbor-agent-tools-use-the-calling-session-workspace/alternatives-considered:
+  en: 27799179a1f0d9ab
+  zh: 611a1d7da7c8ca15
+/agent-note-harbor-agent-tools-use-the-calling-session-workspace/consequences:
+  en: 8b0de45b583c458d
+  zh: ff88fc22dc9d0ab7

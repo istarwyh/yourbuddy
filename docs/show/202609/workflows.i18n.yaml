@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for workflows.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/show/202609/workflows.md
-workflows.md: 77288da1c5a49096ce73b800cfa762e2286c23fc
-workflows.zh.md: bcb2be673e25917aa1179c28d9ce837118931745
+/typical-workflows:
+  en: 1ecb957865f89bb1
+  zh: 69de1dc32525eaba
+/typical-workflows/organize-research-from-files-to-an-inspectable-summary:
+  en: 67eba5cbb0f98704
+  zh: 34f56d7a5efde49f
+/typical-workflows/development-from-a-problem-to-differences-and-verification:
+  en: 28b271c4f02ec4f9
+  zh: a242ea8abb7a2c7b
+/typical-workflows/context-diagnosis-observe-before-trimming:
+  en: b1c46912298c539c
+  zh: e54b8b44c6109fa9
+/typical-workflows/evaluation-cold-start-learn-from-completed-sessions:
+  en: e20d7a185a7d2605
+  zh: 1b5e4293b3c77e0f
+/typical-workflows/controlled-improvement-fix-a-baseline-then-change-one-factor:
+  en: 6ed938c631ad595f
+  zh: 2c842c4e99796d4e
+/typical-workflows/demonstration-materials:
+  en: 41623fbd7458f12f
+  zh: 7a687dec3e2a5159

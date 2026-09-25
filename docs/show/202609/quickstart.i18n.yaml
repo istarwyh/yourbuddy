@@ -1,6 +1,34 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for quickstart.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/show/202609/quickstart.md
-quickstart.md: a1fc0cf63f37d006c1d6f9e3b6d07156fc488fb0
-quickstart.zh.md: 95fb224d3219dc4a9953efdf3815b56b45e82d90
+/first-use-complete-an-inspectable-task:
+  en: 7c419a587b8d8bc0
+  zh: b6495ac4ffe70ef4
+/first-use-complete-an-inspectable-task/1-install-and-launch:
+  en: d95bc7f98925bec5
+  zh: 4c3d8c0d74a9d82f
+/first-use-complete-an-inspectable-task/2-connect-a-usable-model:
+  en: 7166c16853443640
+  zh: a81086a969335aa5
+/first-use-complete-an-inspectable-task/3-select-a-working-directory:
+  en: d4467d285c2c6c82
+  zh: 8f6ec77522d48482
+/first-use-complete-an-inspectable-task/4-create-and-inspect-the-first-output:
+  en: 072ad9e94ebaedab
+  zh: 8572eed656ac0d20
+/first-use-complete-an-inspectable-task/5-find-common-controls:
+  en: 582d93ffc56329aa
+  zh: 255f3d6b900bfd4b
+/first-use-complete-an-inspectable-task/6-configure-networking-and-updates-when-needed:
+  en: 1efa5bbda84a47ab
+  zh: 29dd7d5506cb367f
+/first-use-complete-an-inspectable-task/troubleshooting:
+  en: 936a110206d9fac4
+  zh: 01a75fa6d0f6236d
+/first-use-complete-an-inspectable-task/data-and-further-learning:
+  en: ad9972d171c21588
+  zh: 59f1caea189b9001
+/first-use-complete-an-inspectable-task/evidence:
+  en: f4fc4d57d98d6717
+  zh: 4c4f713997fef3cb

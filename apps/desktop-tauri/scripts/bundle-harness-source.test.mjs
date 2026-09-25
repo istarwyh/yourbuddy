@@ -89,7 +89,7 @@ test('buildTrimmedWorkspaceYaml rejects a workspace without a packages block', (
   assert.throws(() => buildTrimmedWorkspaceYaml('linkWorkspacePackages: true\n'), /packages/)
 })
 
-test('hashExternalSnapshot ignores only the YourBuddy provenance sidecar', () => {
+test('hashExternalSnapshot ignores only the YourBuddy source record sidecar', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-external-plugin-'))
   try {
     writeFileSync(join(root, 'package.json'), '{"name":"example"}\n')
@@ -234,8 +234,8 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
       assert.match(source, /yourbuddy\.desktop\.external-link/u)
       assert.match(source, /window\.parent\.postMessage/u)
     }
-    const sidebarProvenance = JSON.parse(readFileSync(join(bundledSidebar, 'YOURBUDDY_UPSTREAM.json'), 'utf8'))
-    assert.ok(sidebarProvenance.patches.some(
+    const sidebarSourceRecord = JSON.parse(readFileSync(join(bundledSidebar, 'YOURBUDDY_UPSTREAM.json'), 'utf8'))
+    assert.ok(sidebarSourceRecord.patches.some(
       patch => patch.id === 'yourbuddy-workbench' && /^[a-f0-9]{64}$/u.test(patch.sha256),
     ))
     assert.ok(readFileSync(join(root, 'packages', 'product', 'context-doctor', 'lib', 'client.js'), 'utf8').length > 0)

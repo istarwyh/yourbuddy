@@ -13,7 +13,7 @@ import semver from 'semver'
 
 import {
   assertCurrentDshRelease,
-  readDshProvenance,
+  readDshUpstreamRecord,
   readDshUpdatePolicy,
   resolveAllowedDshRelease,
 } from './dsh-release-policy.mjs'
@@ -140,7 +140,7 @@ function assertCleanForMerge(git) {
 function releaseState(input, release, git) {
   return {
     currentVersion: currentRootVersion(input.repositoryRoot),
-    provenance: readDshProvenance(input.productRoot),
+    upstreamRecord: readDshUpstreamRecord(input.productRoot),
     release,
     isAncestor: gitCommitIsAncestor(release.commit, git),
   }
@@ -206,11 +206,11 @@ export async function syncDshUpstream(options = {}) {
 
   assertCleanForMerge(git)
   const pluginPolicyPath = join(input.productRoot, 'plugin-update-policy.json')
-  const provenancePath = join(input.productRoot, 'DSH_UPSTREAM.json')
+  const upstreamRecordPath = join(input.productRoot, 'DSH_UPSTREAM.json')
   const firstPartyPaths = policy.firstPartyPeerPackages.map(directory => (
     join(input.productRoot, directory, 'package.json')
   ))
-  const snapshot = snapshotFiles([pluginPolicyPath, provenancePath, ...firstPartyPaths])
+  const snapshot = snapshotFiles([pluginPolicyPath, upstreamRecordPath, ...firstPartyPaths])
   let mergeStarted = false
   let active = true
   const rollback = () => {
@@ -245,13 +245,13 @@ export async function syncDshUpstream(options = {}) {
       throw new Error(`merged DSH source version is ${mergedVersion}, expected ${release.version}`)
     }
     retargetProductDshPeers({ productRoot: input.productRoot, policy, version: release.version })
-    writeJson(provenancePath, {
+    writeJson(upstreamRecordPath, {
       repository: policy.repository,
       channel: policy.channel,
       tag: release.tag,
       version: release.version,
       commit: release.commit,
-      patches: state.provenance.patches ?? [],
+      patches: state.upstreamRecord.patches ?? [],
     })
     return {
       updates: [{

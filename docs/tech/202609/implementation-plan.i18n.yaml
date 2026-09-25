@@ -1,6 +1,52 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for implementation-plan.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/tech/202609/implementation-plan.md
-implementation-plan.md: 3a96811616f6f97d1ffb598457ceacf4043b7673
-implementation-plan.zh.md: b5d4b814c995ae3538edb76b6813c7c8a84f5c2c
+/:
+  en: 16905d2cc92c6160
+  zh: 714dbf39ec6ce003
+/yourbuddy-documentation-website-and-in-app-help-plan:
+  en: 28b04efd7883fbce
+  zh: 1001cf22b7819652
+/yourbuddy-documentation-website-and-in-app-help-plan/summary:
+  en: 5e895b7e7f03d5c6
+  zh: 8eb581ede81db444
+/yourbuddy-documentation-website-and-in-app-help-plan/table-of-contents:
+  en: 0f65ace58857d2c8
+  zh: d679d5f79a1b7c53
+/yourbuddy-documentation-website-and-in-app-help-plan/concrete-changes:
+  en: 062ff20380c5aa8a
+  zh: be2819c86c69060a
+/yourbuddy-documentation-website-and-in-app-help-plan/documentation-from-use-to-extension:
+  en: b4b52029668b4954
+  zh: 6289cba3ce52e347
+/yourbuddy-documentation-website-and-in-app-help-plan/documentation-from-use-to-extension/basic-use-and-default-plugins:
+  en: 4089d3ad9a31c7a8
+  zh: ab28c7c76e8066d2
+/yourbuddy-documentation-website-and-in-app-help-plan/documentation-from-use-to-extension/rewrite-the-developer-entry:
+  en: 4b1ceadd5b9e6880
+  zh: afa434cfe9e160f2
+/yourbuddy-documentation-website-and-in-app-help-plan/documentation-from-use-to-extension/connect-existing-development-tutorials:
+  en: 4f1b15c9faf5abc7
+  zh: 1fe8627db66cf973
+/yourbuddy-documentation-website-and-in-app-help-plan/website-make-both-paths-discoverable:
+  en: ce1ffb65a1d5dbb6
+  zh: b4a3aa8b19d9128c
+/yourbuddy-documentation-website-and-in-app-help-plan/application-add-help-and-guides:
+  en: 784360d636b60e3b
+  zh: 3a8cb861cbe063c1
+/yourbuddy-documentation-website-and-in-app-help-plan/application-add-help-and-guides/code-locations:
+  en: bd7d3d1ab97162b6
+  zh: f6ff622a201b051e
+/yourbuddy-documentation-website-and-in-app-help-plan/dsh-and-y8-responsibilities:
+  en: 8a0884df5ab25bc4
+  zh: c8419bf4784d4a2c
+/yourbuddy-documentation-website-and-in-app-help-plan/implementation-order-and-acceptance:
+  en: 7e9da9e2fdd612a4
+  zh: 153b66b48ded0a39
+/yourbuddy-documentation-website-and-in-app-help-plan/further-development:
+  en: d3a44f7cc54538e7
+  zh: 92a6501b58e5bc23
+/yourbuddy-documentation-website-and-in-app-help-plan/dev-note:
+  en: 47de8eb329c2a14b
+  zh: 66996a56cb41ae22

@@ -1,6 +1,82 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for workbench-layout-compatibility.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/tech/202609/workbench-layout-compatibility.md
-workbench-layout-compatibility.md: d04683436e47356b64165136cc826117a7cb9797
-workbench-layout-compatibility.zh.md: bc623a38328eb61adec12c8e3a779df4d78b4e81
+/:
+  en: 4f426034ba337008
+  zh: a5359ce4f39c9a8b
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan:
+  en: ff6e186c13882fda
+  zh: 3f312f5b6d92556d
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/contents:
+  en: 6dfebb0257890ade
+  zh: 9861e5c6b8d9895f
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/current-ownership:
+  en: 66ed1d54c7ce7eac
+  zh: 2777a22ce4463373
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/decisions:
+  en: a9a77a5803c80063
+  zh: 1f67104f1631ab19
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design:
+  en: 30a0e650a95d8914
+  zh: 367c412612fe4c6b
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design/shell-placement:
+  en: bd0dcbb875dd6286
+  zh: 4563223a7b2e6bf9
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design/geometry-and-state:
+  en: 24fd69ad66dfd2d8
+  zh: 0e589ad749790cb9
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design/better-sidebar-presentation:
+  en: 158ad89143ea50f2
+  zh: ade0cdda8ff238d4
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design/product-selection:
+  en: 277dbb9f0a72fdeb
+  zh: 91ff107cd928819a
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/downstream-maintenance:
+  en: 9bd9e3d3528964eb
+  zh: 3475f7280f7605aa
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/downstream-maintenance/dsh-downstream-change:
+  en: 2c093d1cc409a78e
+  zh: 7c5e0dc769c2b629
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/downstream-maintenance/better-sidebar-downstream-change:
+  en: 33fe73cfc13487fe
+  zh: 813a89053b6d145c
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/downstream-maintenance/minimal-source-records:
+  en: 951cdaff262e3d0d
+  zh: d43391470e7986ce
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/upgrade-workflows:
+  en: f74f91f2e8116d0b
+  zh: 9a4826a06e51ebf1
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/upgrade-workflows/dsh-release-upgrade:
+  en: 6335d47a00ad0712
+  zh: 31f608f009e6a2ab
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/upgrade-workflows/better-sidebar-upgrade:
+  en: b95642fe72d698f9
+  zh: 8032f961fd567542
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/implementation:
+  en: 50c313341b980c0f
+  zh: 40842e0d9bac2109
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/implementation/dsh-layout:
+  en: b6a997a32063ffcf
+  zh: 3ec7b043dabe7e57
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/implementation/better-sidebar-presentation:
+  en: 9a413ea18c2d597b
+  zh: 1e788e2d28c078ca
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/implementation/downstream-records:
+  en: 59deac12cb6bb611
+  zh: e87bc95940ba134e
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/implementation/yourbuddy-composition:
+  en: cb8efe0a4a5a984c
+  zh: a93b47ac4198c9a0
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/functional-acceptance:
+  en: 318b078fcc04dee1
+  zh: 93ee5933e7116768
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/rollback:
+  en: 79f97a962a8f4ee5
+  zh: d6b05f882e309547
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/further-exploration:
+  en: a500c78c231ad729
+  zh: 49f6bbdd1da7f8ee
+/yourbuddy-workbench-layout-compatibility-and-source-record-plan/developer-note:
+  en: a3bb596715e61f5c
+  zh: b3d6c67c67421ff5

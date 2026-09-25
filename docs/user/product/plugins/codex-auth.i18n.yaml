@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for codex-auth.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/codex-auth.md
-codex-auth.md: 0429b40e42e3f52b0b8688674f85daa496030bed
-codex-auth.zh.md: 4926e4d811645831f1627904f315bdcc9dd2b67e
+/codex-auth:
+  en: 961dc21198cdae08
+  zh: d700db2c593cd000
+/codex-auth/problem-addressed:
+  en: 44a3e476e42db10b
+  zh: 60a52f785e2aad8e
+/codex-auth/usage:
+  en: de459b0367b00eb4
+  zh: ac0526f911675a25
+/codex-auth/reason-for-default-inclusion:
+  en: a52e6b0c71e97fa4
+  zh: e8e92b9c8164d1b9
+/codex-auth/limits:
+  en: 37f06c6aa4c6ddc8
+  zh: 50d204808ee31933

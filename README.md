@@ -26,7 +26,7 @@ The desktop release targets Apple Silicon only. The application keeps its sessio
 | Evaluation runtime | Portable CPython 3.12 with the committed Harbor Python adapter snapshot and Harbor |
 | Product data | An isolated `DSH_HOME` and a default YourBuddy workspace |
 
-First launch does not contact npm or a Node mirror: YourBuddy verifies and expands its bundled Node/pnpm and dependency-store archives, then performs a frozen offline install. Harbor Jobs still require Docker to be installed and running. Codex Auth requires the official `codex` CLI and its local ChatGPT login; it reads the CLI-owned login state on the Host and never copies tokens into browser settings. **Settings → General → Network proxy** supplies one Direct, fixed macOS system, or custom proxy policy to the Host, plugin subprocesses, installers, and application updater; its test checks the desktop draft and active Node Host routes separately, and saved settings take effect after the requested restart. Context Doctor provides a read-only context-injection audit panel and the `context_audit` tool. Plugin Marketplace is available under Settings and treats GitHub topic results as discovery metadata: one-click install is enabled only after npm links a package with `dsh.bundle.patch` to the repository through its Repository field or owner-scoped DSH upstream metadata, package-specific pnpm failures remain visible, and repository/npm links open in the system browser through a restricted desktop bridge. After installing a plugin, **Settings → General → Application lifecycle → Restart YourBuddy** stops the private Host and restarts the application so the new package is scanned. Harbor freezes the current Agent model before a Job and lets the isolated Candidate call that same Host model through a Job-scoped broker, so the default GPT Auth path needs no separate DeepSeek credential. The Candidate receives a short-lived broker capability, not the reusable Codex OAuth token. DeepSeek API credentials remain available for explicitly selected DeepSeek models and are configured inside the workbench, never committed to this repository. Peer-metadata overrides require a reviewed exact-version policy entry; every functional compatibility patch to an external snapshot is named in its provenance and pinned by release smoke.
+First launch does not contact npm or a Node mirror: YourBuddy verifies and expands its bundled Node/pnpm and dependency-store archives, then performs a frozen offline install. Harbor Jobs still require Docker to be installed and running. Codex Auth requires the official `codex` CLI and its local ChatGPT login; it reads the CLI-owned login state on the Host and never copies tokens into browser settings. **Settings → General → Network proxy** supplies one Direct, fixed macOS system, or custom proxy policy to the Host, plugin subprocesses, installers, and application updater; its test checks the desktop draft and active Node Host routes separately, and saved settings take effect after the requested restart. Context Doctor provides a read-only context-injection audit panel and the `context_audit` tool. Plugin Marketplace is available under Settings and treats GitHub topic results as discovery metadata: one-click install is enabled only after npm links a package with `dsh.bundle.patch` to the repository through its Repository field or owner-scoped DSH upstream metadata, package-specific pnpm failures remain visible, and repository/npm links open in the system browser through a restricted desktop bridge. After installing a plugin, **Settings → General → Application lifecycle → Restart YourBuddy** stops the private Host and restarts the application so the new package is scanned. Harbor freezes the current Agent model before a Job and lets the isolated Candidate call that same Host model through a Job-scoped broker, so the default GPT Auth path needs no separate DeepSeek credential. The Candidate receives a short-lived broker capability, not the reusable Codex OAuth token. DeepSeek API credentials remain available for explicitly selected DeepSeek models and are configured inside the workbench, never committed to this repository. Peer-metadata overrides require a reviewed exact-version policy entry; every functional compatibility patch to an external snapshot is named in its source record and pinned by release smoke.
 
 <a id="run"></a>
 
@@ -63,6 +63,10 @@ YOURBUDDY_HARBOR_PYTHON_SOURCE=/absolute/path/to/harbor-self-evolving/packages/h
   pnpm --dir apps/desktop-tauri run prepare:product-runtime
 ```
 
+`pnpm run dev:web` builds, serves, and rebuilds client bundles on source edits in one terminal, and `make help` lists the matching Make targets for Web and Desktop; the guide's application commands section owns the full table.
+
+For agents, follow [AGENTS.md](AGENTS.md).
+
 ## Release
 
 Prepare the user-facing notes and verification archive from the [release delivery template](docs/releases/_template/README.md) before creating a release tag, and add it to the [version index](docs/releases/README.md). The archive complements the channel-specific commands below and records product publication separately from verification status.
@@ -73,11 +77,25 @@ Before cutting a release, refresh and validate the committed product inputs loca
 pnpm --dir apps/desktop-tauri run prepare:release
 ```
 
-The command checks npm's latest stable Codex Auth, Better Sidebar, and Plugin Marketplace releases, the latest stable Harbor GitHub Release for both the JavaScript plugin and Python adapter, and the Context Doctor `main` head. It deliberately excludes the first-party Personal Workbench. It verifies downloaded archives and provenance, stages every candidate before replacement, validates the bundled Node version plus DSH peer and Client requirements, regenerates the frozen product lockfile, rejects a second DSH/Cordis runtime, performs a real frozen offline install, and runs both Harbor commands plus the assembled Host in a temporary credential-scrubbed environment. Headless Chromium must load the workbench after every Client plugin activates without a page or console error, while the smoke also checks the Context Doctor API, all six product Client responses, npm-gated Marketplace installation feedback, and the Application lifecycle update and restart controls. Any failure restores the managed product snapshots and lockfile. Managed paths must be clean by default; `pnpm --dir apps/desktop-tauri run prepare:release -- --allow-dirty` is the explicit escape for intentional local edits.
+The command checks npm's latest stable Codex Auth, Better Sidebar, and Plugin Marketplace releases, the latest stable Harbor GitHub Release for both the JavaScript plugin and Python adapter, and the Context Doctor `main` head. It deliberately excludes the first-party Personal Workbench. It verifies downloaded archives and source record, stages every candidate before replacement, validates the bundled Node version plus DSH peer and Client requirements, regenerates the frozen product lockfile, rejects a second DSH/Cordis runtime, performs a real frozen offline install, and runs both Harbor commands plus the assembled Host in a temporary credential-scrubbed environment. Headless Chromium must load the workbench after every Client plugin activates without a page or console error, while the smoke also checks the Context Doctor API, all six product Client responses, npm-gated Marketplace installation feedback, and the Application lifecycle update and restart controls. Any failure restores the managed product snapshots and lockfile. Managed paths must be clean by default; `pnpm --dir apps/desktop-tauri run prepare:release -- --allow-dirty` is the explicit escape for intentional local edits.
 
 Review and commit the resulting snapshots and lockfile before tagging. Each `YOURBUDDY_UPSTREAM.json` records the exact external revision plus archive and tree hashes; the generated `.bundle-manifest.json` records the selected package versions and whole-bundle hash. Tagged CI and ordinary desktop builds never query latest channels; they consume only the committed snapshots and frozen lockfile so the release remains reproducible.
 
 Pushing an exact `yourbuddy-vX.Y.Z` tag runs the macOS arm64 workflow. The workflow refuses version drift, builds the branded client, and publishes a DMG plus signed Tauri updater artifacts to [GitHub Releases](https://github.com/istarwyh/yourbuddy/releases). The updater signature protects update authenticity, but it is not an Apple Developer signature. macOS application signing and notarization remain deferred; Gatekeeper may require the user to choose **Open Anyway** in Privacy & Security.
+
+## Citation
+
+```bibtex
+@misc{deepseek-harness2026,
+  title={DeepSeek Harness: Everything is a Plugin},
+  author={DeepSeek-AI},
+  year={2026},
+  publisher={GitHub},
+  howpublished={\url{https://github.com/deepseek-ai/deepseek-harness}},
+}
+```
+
+## License
 
 Product attribution and bundled component licenses are listed in [YourBuddy notices](YOURBUDDY_NOTICES.md).
 

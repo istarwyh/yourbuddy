@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-07-yourbuddy-codex-delegation-routing.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-07-yourbuddy-codex-delegation-routing.md
-2026-09-07-yourbuddy-codex-delegation-routing.md: 02613af5a5d1fd8a803a0459d31875737e40d0af
-2026-09-07-yourbuddy-codex-delegation-routing.zh.md: b6221c39c911c592ad9b4f552d2035bdbaa18462
+/agent-note-yourbuddy-codex-delegation-routing:
+  en: a96c5ccc9c437c0c
+  zh: 1529d78915d0836f
+/agent-note-yourbuddy-codex-delegation-routing/problem:
+  en: 60360a303d422e79
+  zh: 862ea287102d6810
+/agent-note-yourbuddy-codex-delegation-routing/decision:
+  en: f547e7f44245af6b
+  zh: c4e65eff5e83e72f
+/agent-note-yourbuddy-codex-delegation-routing/verification:
+  en: 5ec7b4ed17aef1f8
+  zh: 24ec6bcb306a2ccc
+/agent-note-yourbuddy-codex-delegation-routing/alternatives-considered:
+  en: 608de87534e5972a
+  zh: 64272912d87ba46d
+/agent-note-yourbuddy-codex-delegation-routing/consequences:
+  en: b014d159a1679299
+  zh: 46a07c1586ba4275

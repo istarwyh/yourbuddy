@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop-tauri/product/harbor-evolution/README.md
-README.md: 699f01b35e7c0f35dc3c0ffa7db24dcdc1e38b9e
-README.zh.md: 47be91eb9fa153328e2a63de15b4ef8ee16386b8
+/dsh-harbor-evolution:
+  en: ccd3088dd210be9a
+  zh: c95346c0b44d5c2a
+/dsh-harbor-evolution/install:
+  en: 749813140185eaad
+  zh: 5ef51e642904443b
+/dsh-harbor-evolution/install/start-with-an-object-not-a-command:
+  en: 2d65b556e3631b3c
+  zh: 99c87af1f6ef5f30
+/dsh-harbor-evolution/historical-session-cold-start:
+  en: 216afaf3d53e035a
+  zh: eebe49b7e4b85564
+/dsh-harbor-evolution/candidate-model-binding:
+  en: 035844e354f9131a
+  zh: 2dfb4b24d0ab5faf
+/dsh-harbor-evolution/what-setup-writes:
+  en: 9ab73b278c8d0015
+  zh: 107e597bbb1b9c55

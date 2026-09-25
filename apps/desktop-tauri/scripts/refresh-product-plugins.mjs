@@ -770,16 +770,16 @@ function npmPackSnapshot(source, workRoot) {
 
 function readCurrent(destination) {
   const manifest = JSON.parse(readFileSync(join(destination, 'package.json'), 'utf8'))
-  const provenancePath = join(destination, 'YOURBUDDY_UPSTREAM.json')
-  const provenance = existsSync(provenancePath)
-    ? JSON.parse(readFileSync(provenancePath, 'utf8'))
+  const sourceRecordPath = join(destination, 'YOURBUDDY_UPSTREAM.json')
+  const sourceRecord = existsSync(sourceRecordPath)
+    ? JSON.parse(readFileSync(sourceRecordPath, 'utf8'))
     : undefined
-  return { manifest, provenance }
+  return { manifest, sourceRecord }
 }
 
 function verifyManagedSnapshot(root, manifest) {
   if (!existsSync(join(root, 'YOURBUDDY_UPSTREAM.json'))) {
-    throw new Error(`YourBuddy product provenance is missing: ${manifest.name}@${manifest.version}`)
+    throw new Error(`YourBuddy product source record is missing: ${manifest.name}@${manifest.version}`)
   }
   verifyExternalSnapshot(root, manifest)
 }
@@ -790,8 +790,8 @@ function writeManifestIfChanged(root, manifest, changes) {
   }
 }
 
-function writeProvenance(root, provenance) {
-  const value = { ...provenance, treeSha256: hashExternalSnapshot(root) }
+function writeSourceRecord(root, sourceRecord) {
+  const value = { ...sourceRecord, treeSha256: hashExternalSnapshot(root) }
   writeFileSync(join(root, 'YOURBUDDY_UPSTREAM.json'), `${JSON.stringify(value, null, 2)}\n`)
   return value
 }
@@ -809,7 +809,7 @@ function applyApprovedCompatibilityChanges(manifest, policy, recordedPatches = [
  * @param {string} checkout - Pristine extracted upstream source directory.
  * @param {string} selectedProductRoot - Product directory that owns patch artifacts.
  * @param {string[]} sourcePatches - Validated product-relative patch paths.
- * @returns {Array<Record<string, string>>} Immutable provenance records for the applied patches.
+ * @returns {Array<Record<string, string>>} Immutable source records for the applied patches.
  */
 export function applySourcePatches(checkout, selectedProductRoot, sourcePatches = []) {
   const records = sourcePatchRecords(selectedProductRoot, sourcePatches)
@@ -842,7 +842,7 @@ function policyPatchId(relativePatch) {
  * Replay product-owned built-artifact edits onto a pristine packed snapshot.
  * @param {string} staged - Extracted upstream package directory.
  * @param {string} selectedProductRoot - Product directory that owns patch artifacts.
- * @param {unknown[]} recordedPatches - Provenance entries from the current snapshot.
+ * @param {unknown[]} recordedPatches - Source-record entries from the current snapshot.
  */
 export function applyRecordedMaterializedPatches(staged, selectedProductRoot, recordedPatches) {
   for (const patch of recordedPatches) {
@@ -893,20 +893,20 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
   const latest = await resolveNpmLatest(policy.package, fetchImpl)
   assertNoDowngrade(policy.package, current.manifest.version, latest.version)
   if (current.manifest.version === latest.version) {
-    if (current.provenance?.integrity !== latest.integrity) {
+    if (current.sourceRecord?.integrity !== latest.integrity) {
       throw new Error(`${policy.package}@${latest.version} registry integrity changed after it was committed`)
     }
     const work = join(roots.stagingRoot, policy.id)
     const staged = join(work, 'staged')
     copyDirectory(destination, staged)
     const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-    const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+    const recordedPatches = Array.isArray(current.sourceRecord?.patches) ? current.sourceRecord.patches : []
     const patches = applyApprovedCompatibilityChanges(manifest, policy, recordedPatches)
     if (patches.length > 0) {
       writeManifestIfChanged(staged, manifest, patches)
       validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
-      writeProvenance(staged, {
-        ...current.provenance,
+      writeSourceRecord(staged, {
+        ...current.sourceRecord,
         package: manifest.name,
         version: manifest.version,
         patches: mergeRecordedPatches(recordedPatches, patches),
@@ -936,13 +936,13 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
   if (upstreamManifest.version !== latest.version) {
     throw new Error(`npm artifact version mismatch for ${policy.package}: expected ${latest.version}, found ${upstreamManifest.version}`)
   }
-  const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+  const recordedPatches = Array.isArray(current.sourceRecord?.patches) ? current.sourceRecord.patches : []
   applyRecordedMaterializedPatches(staged, roots.productRoot, recordedPatches)
   const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
   const patches = applyApprovedCompatibilityChanges(manifest, policy)
   writeManifestIfChanged(staged, manifest, patches)
   validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
-  writeProvenance(staged, {
+  writeSourceRecord(staged, {
     package: manifest.name,
     version: manifest.version,
     sourceKind: 'npm-latest',
@@ -964,22 +964,22 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
   verifyManagedSnapshot(destination, current.manifest)
   const latest = await resolveGitHubBranch(policy.repository, policy.branch, fetchImpl)
   const desiredSourcePatches = sourcePatchRecords(roots.productRoot, policy.sourcePatches ?? [])
-  const recordedSourcePatches = Array.isArray(current.provenance?.sourcePatches)
-    ? current.provenance.sourcePatches
+  const recordedSourcePatches = Array.isArray(current.sourceRecord?.sourcePatches)
+    ? current.sourceRecord.sourcePatches
     : []
   const sourcePatchesChanged = JSON.stringify(recordedSourcePatches) !== JSON.stringify(desiredSourcePatches)
-  if (current.provenance?.commit === latest.commit && !sourcePatchesChanged) {
+  if (current.sourceRecord?.commit === latest.commit && !sourcePatchesChanged) {
     const work = join(roots.stagingRoot, policy.id)
     const staged = join(work, 'staged')
     copyDirectory(destination, staged)
     const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-    const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+    const recordedPatches = Array.isArray(current.sourceRecord?.patches) ? current.sourceRecord.patches : []
     const patches = applyApprovedCompatibilityChanges(manifest, policy, recordedPatches)
     if (patches.length > 0) {
       writeManifestIfChanged(staged, manifest, patches)
       validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
-      writeProvenance(staged, {
-        ...current.provenance,
+      writeSourceRecord(staged, {
+        ...current.sourceRecord,
         package: manifest.name,
         version: manifest.version,
         patches: mergeRecordedPatches(recordedPatches, patches),
@@ -1003,13 +1003,13 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
   mkdirSync(work, { recursive: true })
   const checkout = singleExtractedDirectory(extractArchive(bytes, work))
   let upstreamTreeSha256
-  if (desiredSourcePatches.length > 0 && current.provenance?.commit !== latest.commit) {
+  if (desiredSourcePatches.length > 0 && current.sourceRecord?.commit !== latest.commit) {
     if (policy.build === 'package-manager') buildGitHubBranchPackage(checkout)
     const upstreamPackage = npmPackSnapshot(checkout, join(work, 'upstream'))
     upstreamTreeSha256 = hashExternalSnapshot(upstreamPackage)
   }
   else if (desiredSourcePatches.length > 0) {
-    upstreamTreeSha256 = current.provenance?.upstreamTreeSha256
+    upstreamTreeSha256 = current.sourceRecord?.upstreamTreeSha256
   }
   const sourcePatches = applySourcePatches(checkout, roots.productRoot, policy.sourcePatches ?? [])
   if (policy.build === 'package-manager') {
@@ -1019,7 +1019,7 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
   const staged = join(work, 'staged')
   copyDirectory(packageRoot, staged)
   upstreamTreeSha256 ??= hashExternalSnapshot(staged)
-  const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+  const recordedPatches = Array.isArray(current.sourceRecord?.patches) ? current.sourceRecord.patches : []
   applyRecordedMaterializedPatches(staged, roots.productRoot, recordedPatches)
   const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
   assertNoDowngrade(policy.package, current.manifest.version, manifest.version)
@@ -1027,7 +1027,7 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
   const patches = mergeRecordedPatches(recordedPatches, compatibilityPatches)
   writeManifestIfChanged(staged, manifest, compatibilityPatches)
   validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
-  writeProvenance(staged, {
+  writeSourceRecord(staged, {
     package: manifest.name,
     version: manifest.version,
     sourceKind: 'github-branch',
@@ -1057,7 +1057,7 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
   verifyManagedSnapshot(pythonDestination, { name: currentPython.name, version: currentPython.version })
   const latest = await resolveGitHubLatestRelease(policy.repository, fetchImpl)
   assertNoDowngrade(policy.package, current.manifest.version, latest.version)
-  if (current.provenance?.commit === latest.commit && current.provenance?.releaseTag === latest.tag) {
+  if (current.sourceRecord?.commit === latest.commit && current.sourceRecord?.releaseTag === latest.tag) {
     const python = readPythonProjectMetadata(readFileSync(join(pythonDestination, 'pyproject.toml'), 'utf8'))
     if (python.name !== policy.pythonPackage || python.version !== current.manifest.version) {
       throw new Error(`committed Harbor JavaScript/Python versions do not match: ${current.manifest.version} and ${python.version}`)
@@ -1066,7 +1066,7 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
     const staged = join(work, 'staged-node')
     copyDirectory(destination, staged)
     const manifest = JSON.parse(readFileSync(join(staged, 'package.json'), 'utf8'))
-    const recordedPatches = Array.isArray(current.provenance?.patches) ? current.provenance.patches : []
+    const recordedPatches = Array.isArray(current.sourceRecord?.patches) ? current.sourceRecord.patches : []
     const compatibilityPatches = applyApprovedCompatibilityChanges(manifest, policy, recordedPatches)
     if (compatibilityPatches.length > 0) {
       const patches = [
@@ -1075,8 +1075,8 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
       ]
       writeManifestIfChanged(staged, manifest, compatibilityPatches)
       validateProductPlugin(staged, policy, roots.workspacePackages, roots.managedNodeVersion)
-      writeProvenance(staged, {
-        ...current.provenance,
+      writeSourceRecord(staged, {
+        ...current.sourceRecord,
         package: manifest.name,
         version: manifest.version,
         patches: mergeRecordedPatches(recordedPatches, patches),
@@ -1137,14 +1137,14 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
     archiveSha256: metadata.archiveSha256,
     repository: `https://github.com/${policy.repository}`,
   }
-  writeProvenance(staged, {
+  writeSourceRecord(staged, {
     ...common,
     package: manifest.name,
     sourcePath: policy.sourcePath,
     patches,
     license: manifest.license,
   })
-  writeProvenance(stagedPython, {
+  writeSourceRecord(stagedPython, {
     ...common,
     package: python.name,
     sourcePath: policy.pythonSourcePath,

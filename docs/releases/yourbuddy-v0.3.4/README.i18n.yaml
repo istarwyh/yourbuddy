@@ -1,6 +1,106 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.4/README.md
-README.md: cb0c38fe3034d0d6174cad6373c082496496632b
-README.zh.md: c07eed337a09a3d895caae02b1812e7886888d87
+/yourbuddy-0-3-4:
+  en: b562ab527e993602
+  zh: 692c29819d2558a5
+/yourbuddy-0-3-4/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-4/user-release-notes/what-changed:
+  en: b989f63713d4dc19
+  zh: 0073eb59abac6471
+/yourbuddy-0-3-4/user-release-notes/problem-solved:
+  en: c3f236fc765033a0
+  zh: 5d36d24b95e80c06
+/yourbuddy-0-3-4/user-release-notes/where-to-use-it:
+  en: 639c2cd6e4fcdc18
+  zh: f6be5f048c1f2c4f
+/yourbuddy-0-3-4/user-release-notes/how-to-try-it:
+  en: 1fc73ffe57658002
+  zh: 966d46caf9dae104
+/yourbuddy-0-3-4/user-release-notes/install-or-upgrade:
+  en: 3a77fd0e3394d6aa
+  zh: 7501e652bd5a5927
+/yourbuddy-0-3-4/user-release-notes/compatibility-migration-and-limitations:
+  en: 85cee2487dfde4af
+  zh: e929c19206da5488
+/yourbuddy-0-3-4/verification-summary:
+  en: 0ba401203225e404
+  zh: 6cb4342451149d55
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation:
+  en: 0166acf24d686de0
+  zh: 8c8c2f688af842f2
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/steps:
+  en: ba52af8829521df6
+  zh: 2f8bdb3c752a3f32
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/expected:
+  en: 7974ca082b21a5e6
+  zh: 24c6f4d88ccf9b4b
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/actual:
+  en: 9d382a132d1fb00a
+  zh: 4a08670146ba9a7f
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/evidence:
+  en: cedc37636d56d53a
+  zh: 559f6e6c23b970b9
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/evidence/01-historical-source-ask-directly-about-trial-a:
+  en: dc278767c3d9f806
+  zh: 1a494031a97101a0
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/evidence/02-historical-source-inspect-the-frozen-message-attachment:
+  en: b783f1c7d94e75c3
+  zh: 3d0db1bb3783ac05
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/evidence/03-historical-source-explicit-a-takes-priority-over-visible-b:
+  en: 60a28519397ea23d
+  zh: bec361fb552a8fa8
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/evidence/04-historical-source-preparation-failure-retains-the-question:
+  en: 79a0145c639670cc
+  zh: 5b0179f3a962b083
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/evidence/05-historical-generic-host-image-and-page-attachment-coexist:
+  en: 53d83c91f47fafe0
+  zh: b0c607f4cb5a62ee
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/evidence/06-historical-source-selected-members-and-list-filters-stay-readable:
+  en: 7841b874408cc82b
+  zh: 5b0bed9c79fd7b7b
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/evidence/07-historical-generic-host-failed-a-does-not-replace-draft-b:
+  en: ca8a76677511c7e3
+  zh: 439c201add10a775
+/yourbuddy-0-3-4/scenario-historical-automatic-context-source-validation/scope-limits:
+  en: 9b4bbda7d1d6082e
+  zh: 63d3dd3d39fea06d
+/yourbuddy-0-3-4/scenario-node-24-source-checks-and-local-release-preparation:
+  en: 8ab1a770682b49a3
+  zh: d438473c9b8605df
+/yourbuddy-0-3-4/scenario-node-24-source-checks-and-local-release-preparation/steps-and-results:
+  en: 23176bb8b2be1ece
+  zh: fa2d3d140dc91582
+/yourbuddy-0-3-4/scenario-node-24-source-checks-and-local-release-preparation/failure-recovery-and-limits:
+  en: 74f83c0a122495a6
+  zh: 2c278b0170bfe40c
+/yourbuddy-0-3-4/scenario-release-documentation-preparation:
+  en: 32939f2f8ddc0796
+  zh: 7cfdf257b3dec882
+/yourbuddy-0-3-4/scenario-release-documentation-preparation/steps-and-results:
+  en: 905e48366f007ece
+  zh: 90879f0a6e2bffa8
+/yourbuddy-0-3-4/scenario-release-documentation-preparation/scope-limits:
+  en: fda3cee14074d28a
+  zh: e0fc101a0e301f04
+/yourbuddy-0-3-4/product-source-and-publication-progress:
+  en: e4307eae1858aacd
+  zh: 7b53195e757c3642
+/yourbuddy-0-3-4/scenario-independent-public-artifact-verification:
+  en: 92cb181141615be9
+  zh: 0b9e6ee0b12deffb
+/yourbuddy-0-3-4/scenario-public-app-inspection-and-isolated-native-startup:
+  en: 403e9e9bc0cfdca9
+  zh: 9243b4c88eee27a8
+/yourbuddy-0-3-4/scenario-website-and-evidence-archive-delivery:
+  en: 19fa21ac363b182f
+  zh: bdacc9f91b608bf8
+/yourbuddy-0-3-4/delivery-status:
+  en: bdc7529ee46ce26e
+  zh: 6c9b19bc374e8315
+/yourbuddy-0-3-4/delivery-checklist:
+  en: 416959d5c74bef56
+  zh: 29664e139c19379c

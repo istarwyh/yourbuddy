@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for verification.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/tech/202609/verification.md
-verification.md: a93ba2e247768c93f38cf0607a49cdeb0fe2411c
-verification.zh.md: 1f0cb0a252b2e785f59023cdd9c0c7894b916589
+/:
+  en: 97964e163db18e61
+  zh: 4a8a9130cf5700d9
+/yourbuddy-guidance-implementation-record:
+  en: 9fb5a759a55dfd56
+  zh: 8410a7ac8c7c6d51
+/yourbuddy-guidance-implementation-record/delivered-scope:
+  en: cb46c5df76f96bd9
+  zh: 108558bf38514d31
+/yourbuddy-guidance-implementation-record/executed-verification:
+  en: f2b9ae2e49919052
+  zh: f02eb65c31b3d144
+/yourbuddy-guidance-implementation-record/documentation-and-site-checks:
+  en: edc6d26720b45767
+  zh: b9eb79ef1709171c
+/yourbuddy-guidance-implementation-record/remaining-acceptance-and-publication:
+  en: 5eb27c0282135665
+  zh: c6e778ae3f5616c8
+/yourbuddy-guidance-implementation-record/dev-note:
+  en: d71f39deaa5a642a
+  zh: e9a0598bf0c6c26c

@@ -1,6 +1,34 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/README.md
-README.md: 9ef10841ce405d03acb67ee206e8a9246b3dd770
-README.zh.md: fe4d974ec38b9d5fd386545613a79858cf7321de
+/release-notes-and-verification-archives:
+  en: 178161ffee34223a
+  zh: 4c6c27e08e4d1b24
+/release-notes-and-verification-archives/version-index:
+  en: ba780b8199468e5c
+  zh: b217921e7aeab0f1
+/release-notes-and-verification-archives/existing-release-channels:
+  en: d03ce0af47bc7937
+  zh: 535c043d531bebd0
+/release-notes-and-verification-archives/per-release-archive:
+  en: 9479c167ef57fac7
+  zh: efffb345ed782c3f
+/release-notes-and-verification-archives/user-facing-release-notes:
+  en: 0bb8d292ae75b57c
+  zh: f4676bf4ae15576a
+/release-notes-and-verification-archives/evidence-record:
+  en: 8b99fbefaa8799ef
+  zh: 4f43bfbda66af8f4
+/release-notes-and-verification-archives/screenshots-logs-and-sensitive-data:
+  en: 4c564723e41569e1
+  zh: 07b89aebfa92cfde
+/release-notes-and-verification-archives/publication-and-immutable-links:
+  en: 99b8b45db9e90594
+  zh: 55701b434e63f5ea
+/release-notes-and-verification-archives/delivery-status:
+  en: 694799c649ee324e
+  zh: 68fa67df0a1b7f8a
+/release-notes-and-verification-archives/process-scope:
+  en: 180297a5baa69362
+  zh: a36a996e16202e44

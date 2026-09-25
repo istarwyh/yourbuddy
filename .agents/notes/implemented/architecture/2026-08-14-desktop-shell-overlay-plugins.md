@@ -36,4 +36,4 @@ This extends [cross-platform desktop source provisioning](../feature/2026-08-14-
 
 ## Consequences
 
-Desktop-specific window behavior stays in `apps/desktop-tauri`; the generic sidebar header-action seat is recorded in YourBuddy's DSH provenance patch and contains no native action code. A missing overlay file fails Host startup loud. Users who already have a home `cordis.patch.yml` keep it. Focused-window turns do not toast or chime. Linux hosts without a readable button layout get Windows-style control order. Screenshot assets in `apps/desktop-tauri/screenshots/` are illustrative of the shell, not recorded from a live session.
+Desktop-specific window behavior stays in `apps/desktop-tauri`; the generic sidebar header-action seat is recorded in YourBuddy's DSH source-record patch and contains no native action code. A missing overlay file fails Host startup loud. Users who already have a home `cordis.patch.yml` keep it. Focused-window turns do not toast or chime. Linux hosts without a readable button layout get Windows-style control order. Screenshot assets in `apps/desktop-tauri/screenshots/` are illustrative of the shell, not recorded from a live session.

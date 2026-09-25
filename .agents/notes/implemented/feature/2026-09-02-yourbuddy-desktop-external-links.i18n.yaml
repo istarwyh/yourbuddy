@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-02-yourbuddy-desktop-external-links.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-02-yourbuddy-desktop-external-links.md
-2026-09-02-yourbuddy-desktop-external-links.md: 908d8cd5ffa8da6087e666490851f848d7ec6783
-2026-09-02-yourbuddy-desktop-external-links.zh.md: b29916fd4d3f77cc1fd1eead5d276f274205d35f
+/agent-note-yourbuddy-desktop-external-links:
+  en: f39064c640d79f8a
+  zh: 82086af67c5d680d
+/agent-note-yourbuddy-desktop-external-links/problem:
+  en: 2c2428b615e00514
+  zh: 20c63eac7f582b14
+/agent-note-yourbuddy-desktop-external-links/decision:
+  en: 0a412944dc2421aa
+  zh: c581f4df875679fe
+/agent-note-yourbuddy-desktop-external-links/alternatives-considered:
+  en: 4482821057165b46
+  zh: a5265d01b5ea6301
+/agent-note-yourbuddy-desktop-external-links/consequences:
+  en: 3b4f115ac5196c0f
+  zh: 17fd1b70762b5466

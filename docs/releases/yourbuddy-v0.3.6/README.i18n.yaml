@@ -1,6 +1,124 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.6/README.md
-README.md: 80b27ffc88c6f2586a3aa1a4f01588e787a24d9e
-README.zh.md: 0db8aed0d13d2614d2f3e4db7d8fc7cf80f1a7d9
+/yourbuddy-0-3-6:
+  en: 785e3edfd2939ffc
+  zh: a1ade9fd527f56d6
+/yourbuddy-0-3-6/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: e75e1627ae692bfa
+/yourbuddy-0-3-6/user-release-notes/what-changed:
+  en: 4c5137881a3cf189
+  zh: aa3679f41dbb2db8
+/yourbuddy-0-3-6/user-release-notes/problem-solved:
+  en: d9eef33c0f334815
+  zh: 2b2e13e40741b298
+/yourbuddy-0-3-6/user-release-notes/where-to-use-it:
+  en: 2d297f90839a833f
+  zh: ae76218114846600
+/yourbuddy-0-3-6/user-release-notes/how-to-try-it:
+  en: 89432217837655ee
+  zh: 5898be6384121b3a
+/yourbuddy-0-3-6/user-release-notes/install-or-upgrade:
+  en: 7961e80a4d66bac5
+  zh: cac03c40aae0f725
+/yourbuddy-0-3-6/user-release-notes/compatibility-migration-and-limitations:
+  en: 0b0539aae6990f01
+  zh: 6a4998cbba68fbcf
+/yourbuddy-0-3-6/verification-summary:
+  en: 30e621d0408a38b7
+  zh: d394da60a14e8518
+/yourbuddy-0-3-6/scenario-enterprise-ca-and-proxy-policy:
+  en: b07b017ea1782c33
+  zh: e753a690e65d6bdc
+/yourbuddy-0-3-6/scenario-enterprise-ca-and-proxy-policy/steps:
+  en: 4e8c9e325adf3653
+  zh: f90bf687d1d14473
+/yourbuddy-0-3-6/scenario-enterprise-ca-and-proxy-policy/expected:
+  en: e6acbfc43aca5422
+  zh: d851b3e5486cf189
+/yourbuddy-0-3-6/scenario-enterprise-ca-and-proxy-policy/actual:
+  en: 01a4f74ee9f72dd2
+  zh: 765abd3b1adf2774
+/yourbuddy-0-3-6/scenario-enterprise-ca-and-proxy-policy/evidence:
+  en: 1e4ce78559089b14
+  zh: eb7a319f419c1b72
+/yourbuddy-0-3-6/scenario-enterprise-ca-and-proxy-policy/scope-limits:
+  en: 96a83b9f44a64793
+  zh: c599db592ec2536c
+/yourbuddy-0-3-6/scenario-local-release-candidate-assembly:
+  en: 34b78ac80ea0718d
+  zh: dfab77f104b4eeaf
+/yourbuddy-0-3-6/scenario-local-release-candidate-assembly/steps:
+  en: 264f8326264285ce
+  zh: 33554635f353bc6d
+/yourbuddy-0-3-6/scenario-local-release-candidate-assembly/expected:
+  en: 5b1b4a5701d075ee
+  zh: 33db8a5c7bf63a9c
+/yourbuddy-0-3-6/scenario-local-release-candidate-assembly/actual:
+  en: 9124e884e4bf5648
+  zh: fe5d2f1717f225af
+/yourbuddy-0-3-6/scenario-local-release-candidate-assembly/evidence:
+  en: 5c816ab7256a0324
+  zh: c1629299a9c48866
+/yourbuddy-0-3-6/scenario-local-release-candidate-assembly/scope-limits:
+  en: f76597391fae1bc8
+  zh: ff15fd8875f7bcf9
+/yourbuddy-0-3-6/scenario-pull-request-ci-and-durability-test-recovery:
+  en: cb2b89d4ffb0e1ae
+  zh: 80cfe95d3762d95e
+/yourbuddy-0-3-6/scenario-pull-request-ci-and-durability-test-recovery/steps:
+  en: 479d26f6a2f94039
+  zh: ade541b1013736c9
+/yourbuddy-0-3-6/scenario-pull-request-ci-and-durability-test-recovery/expected:
+  en: cdd87ea4bf3c90e8
+  zh: 35e512b6a37e8eea
+/yourbuddy-0-3-6/scenario-pull-request-ci-and-durability-test-recovery/actual:
+  en: 342d5f886daf8730
+  zh: fb359683cf0f9c79
+/yourbuddy-0-3-6/scenario-pull-request-ci-and-durability-test-recovery/evidence:
+  en: 0ad7486bcb12d961
+  zh: 158d3dc0c59abe80
+/yourbuddy-0-3-6/scenario-pull-request-ci-and-durability-test-recovery/scope-limits:
+  en: a0eea4840c72d6f0
+  zh: 59a75508254dc745
+/yourbuddy-0-3-6/scenario-release-pr-terminal-output-recovery:
+  en: 383e312f3d1e3abd
+  zh: 98175bdd80c7e2d5
+/yourbuddy-0-3-6/scenario-release-pr-terminal-output-recovery/steps:
+  en: 49ec95b7ec8f09ba
+  zh: 79c498e490587d6d
+/yourbuddy-0-3-6/scenario-release-pr-terminal-output-recovery/expected:
+  en: d89961e9e7ac226a
+  zh: ba74100313d0722a
+/yourbuddy-0-3-6/scenario-release-pr-terminal-output-recovery/actual:
+  en: 04cf5e277e9026fc
+  zh: 2183d63828f9c841
+/yourbuddy-0-3-6/scenario-release-pr-terminal-output-recovery/evidence:
+  en: cf4b722bfc89fbf5
+  zh: ebfe49c030f4c244
+/yourbuddy-0-3-6/scenario-release-pr-terminal-output-recovery/scope-limits:
+  en: 5dad96e9fbaa977d
+  zh: 12887b6e684250cb
+/yourbuddy-0-3-6/scenario-independent-public-artifact-verification:
+  en: 7e4ce106053fd3b4
+  zh: 2e1a17b4e3437c81
+/yourbuddy-0-3-6/scenario-public-app-and-relocated-runtime:
+  en: 4cbb19732b5d432b
+  zh: ccd5813f32013ff8
+/yourbuddy-0-3-6/scenario-public-product-website:
+  en: d0e675d81e000e89
+  zh: 48d0ddcc4275a631
+/yourbuddy-0-3-6/scenario-evidence-finalization-ci:
+  en: 653b761dcfab805f
+  zh: 6bd7215377ee4884
+/yourbuddy-0-3-6/scenario-downloadable-verification-archive:
+  en: 6da7677cd7f52fe3
+  zh: 0b728469fbfe5c26
+/yourbuddy-0-3-6/delivery-status:
+  en: 3d3f84a71642b1a4
+  zh: a9a75186e2438168
+/yourbuddy-0-3-6/delivery-checklist:
+  en: eb4f7e548e4b45ad
+  zh: 65cc859e1a0ad7b3
