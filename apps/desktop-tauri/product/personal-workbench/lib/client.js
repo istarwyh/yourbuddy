@@ -2040,12 +2040,12 @@ function observeSessionAttention(ctx, controller) {
   let pendingKey;
   let initialized = false;
   const bindCurrent = () => {
-    const next = ctx.sessions.list.getSnapshot().current;
+    const next = Object.values(ctx.sessions.list.getSnapshot().byId).find((candidate) => (candidate.retainedBy.mainView ?? 0) > 0)?.id;
     if (initialized && next === current && eventSource !== void 0) return;
     const sessionChanged = initialized && next !== current;
     initialized = true;
     current = next;
-    pendingKey = next === void 0 ? void 0 : ctx.uiSession.pendingInteractions.getSnapshot().get(next)?.key;
+    pendingKey = next === void 0 ? void 0 : ctx.uiSession.sessionStatus.getSnapshot().get(next)?.pendingInteraction?.key;
     if (sessionChanged) {
       controller.showCore();
       controller.setSessionExpanded(true);
@@ -2064,13 +2064,13 @@ function observeSessionAttention(ctx, controller) {
   };
   const syncPending = () => {
     if (current === void 0) return;
-    const nextKey = ctx.uiSession.pendingInteractions.getSnapshot().get(current)?.key;
+    const nextKey = ctx.uiSession.sessionStatus.getSnapshot().get(current)?.pendingInteraction?.key;
     if (nextKey !== void 0 && nextKey !== pendingKey) controller.setSessionExpanded(true);
     pendingKey = nextKey;
   };
   bindCurrent();
   const disposeSessions = ctx.sessions.list.subscribe(bindCurrent);
-  const disposePending = ctx.uiSession.pendingInteractions.subscribe(syncPending);
+  const disposePending = ctx.uiSession.sessionStatus.subscribe(syncPending);
   return () => {
     disposePending();
     disposeSessions();
@@ -2143,7 +2143,7 @@ function installProductWorkbench(ctx) {
 
 // src/client/index.tsx
 var SETTINGS_LOCALE_NAMESPACE = "settings.personal-workbench";
-var inject = ["slots", "locale", "connection", "remote", "settingsScope", "layout", "sessions", "uiSession"];
+var inject = ["slots", "locale", "connection", "remote", "configForms", "layout", "sessions", "uiSession"];
 function installBrandSlot(ctx, scope, slot, pick) {
   ctx.slots.inject(slot, () => {
     let dispose;
@@ -2219,9 +2219,7 @@ function installDesktopWindowControls(ctx) {
 }
 function apply(ctx) {
   installPersonalWorkbenchStyles(ctx);
-  const scope = ctx.settingsScope.bind({
-    namespace: WORKBENCH_SETTINGS_NAMESPACE
-  });
+  const scope = ctx.configForms.get(WORKBENCH_SETTINGS_NAMESPACE);
   ctx.effect(
     () => ctx.locale.register(SETTINGS_LOCALE_NAMESPACE, { zh, en }),
     "personal-workbench: settings dictionaries"

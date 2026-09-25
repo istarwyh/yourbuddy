@@ -7,7 +7,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   WORKBENCH_SETTINGS_NAMESPACE,
@@ -44,7 +44,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 /** Browser services required for product composition, settings, and localization. */
-export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope', 'layout', 'sessions', 'uiSession']
+export const inject = ['slots', 'locale', 'connection', 'remote', 'configForms', 'layout', 'sessions', 'uiSession']
 
 type BrandSlot =
   | 'sidebar.brand.mark'
@@ -64,7 +64,7 @@ type SlotComponent =
  */
 function installBrandSlot(
   ctx: Context,
-  scope: SettingsScope<WorkbenchSettingsValue>,
+  scope: ConfigForm<WorkbenchSettingsValue>,
   slot: BrandSlot,
   pick: (value: unknown) => SlotComponent | undefined,
 ): void {
@@ -92,7 +92,7 @@ function installBrandSlot(
 /** Install brand occupants whose lower priority intentionally shadows built-in occupants. */
 export function installPersonalBrandOccupants(
   ctx: Context,
-  scope: SettingsScope<WorkbenchSettingsValue>,
+  scope: ConfigForm<WorkbenchSettingsValue>,
 ): void {
   let markLogo: string | undefined
   let mark: SlotComponent | undefined
@@ -160,9 +160,7 @@ export function installDesktopWindowControls(ctx: Context): void {
 /** Register the settings cards and brand occupants. */
 export function apply(ctx: Context): void {
   installPersonalWorkbenchStyles(ctx)
-  const scope = ctx.settingsScope.bind<WorkbenchSettingsValue>({
-    namespace: WORKBENCH_SETTINGS_NAMESPACE,
-  })
+  const scope = ctx.configForms.get<WorkbenchSettingsValue>(WORKBENCH_SETTINGS_NAMESPACE)
   ctx.effect(
     () => ctx.locale.register(SETTINGS_LOCALE_NAMESPACE, { zh, en }),
     'personal-workbench: settings dictionaries',

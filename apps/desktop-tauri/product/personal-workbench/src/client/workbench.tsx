@@ -285,12 +285,15 @@ export function observeSessionAttention(ctx: Context, controller: ProductWorkben
   let initialized = false
 
   const bindCurrent = (): void => {
-    const next = ctx.sessions.list.getSnapshot().current
+    const next = Object.values(ctx.sessions.list.getSnapshot().byId)
+      .find(candidate => (candidate.retainedBy.mainView ?? 0) > 0)?.id
     if (initialized && next === current && eventSource !== undefined) return
     const sessionChanged = initialized && next !== current
     initialized = true
     current = next
-    pendingKey = next === undefined ? undefined : ctx.uiSession.pendingInteractions.getSnapshot().get(next)?.key
+    pendingKey = next === undefined
+      ? undefined
+      : ctx.uiSession.sessionStatus.getSnapshot().get(next)?.pendingInteraction?.key
     if (sessionChanged) {
       controller.showCore()
       controller.setSessionExpanded(true)
@@ -310,14 +313,14 @@ export function observeSessionAttention(ctx: Context, controller: ProductWorkben
 
   const syncPending = (): void => {
     if (current === undefined) return
-    const nextKey = ctx.uiSession.pendingInteractions.getSnapshot().get(current)?.key
+    const nextKey = ctx.uiSession.sessionStatus.getSnapshot().get(current)?.pendingInteraction?.key
     if (nextKey !== undefined && nextKey !== pendingKey) controller.setSessionExpanded(true)
     pendingKey = nextKey
   }
 
   bindCurrent()
   const disposeSessions = ctx.sessions.list.subscribe(bindCurrent)
-  const disposePending = ctx.uiSession.pendingInteractions.subscribe(syncPending)
+  const disposePending = ctx.uiSession.sessionStatus.subscribe(syncPending)
   return () => {
     disposePending()
     disposeSessions()

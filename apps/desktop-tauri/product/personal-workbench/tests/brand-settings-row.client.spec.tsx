@@ -1,18 +1,18 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BrandSettingsRow } from '../src/client/BrandSettingsRow.tsx'
 import type { BrandSettingsRowProps } from '../src/client/BrandSettingsRow.tsx'
 import type { WorkbenchSettingsValue } from '../src/client/brand.tsx'
 import { en } from '../src/client/locales.ts'
 
-class FakeScope implements SettingsScope<WorkbenchSettingsValue> {
-  readonly set = vi.fn(async () => {})
-  readonly unset = vi.fn<SettingsScope<WorkbenchSettingsValue>['unset']>(async () => {})
-  readonly mutate = vi.fn(async () => {})
-  private readonly snapshot: SettingsScopeSnapshot<WorkbenchSettingsValue> = {
+class FakeScope implements ConfigForm<WorkbenchSettingsValue> {
+  readonly set = vi.fn(async () => true)
+  readonly unset = vi.fn<ConfigForm<WorkbenchSettingsValue>['unset']>(async () => true)
+  readonly mutate = vi.fn(async () => true)
+  private readonly snapshot: ConfigFormSnapshot<WorkbenchSettingsValue> = {
     status: 'ready',
     value: {
       enabled: false,
@@ -29,7 +29,7 @@ class FakeScope implements SettingsScope<WorkbenchSettingsValue> {
     mode: 'host',
   }
 
-  getSnapshot(): SettingsScopeSnapshot<WorkbenchSettingsValue> { return this.snapshot }
+  getSnapshot(): ConfigFormSnapshot<WorkbenchSettingsValue> { return this.snapshot }
   subscribe(): () => void { return () => {} }
 }
 

@@ -15,8 +15,8 @@
     {
       "id": "yourbuddy-codex-auth-compatibility",
       "file": "patches/codex-auth-yourbuddy.patch",
-      "sha256": "cb4c88154c69c20bb983551642f1df8ef41be1dd25bb4c519bfa75f0c97904b3",
-      "purpose": "Bind the GPT Auth RPC registration to the Web carrier and satisfy the bundled Pi AI profile diagnostics contract so status routes and exact Codex model resolution both work."
+      "sha256": "b01eaf180644133d4dc53c610ba28a3d82b96e2ca68f73276bbd2bae65032428",
+      "purpose": "Bind the GPT Auth RPC registration to the Web carrier, satisfy the bundled Pi AI profile diagnostics contract, and use the current Config Forms settings service."
     },
     "Set @deepseek-ai/dsh-agent peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-api-remotes peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
@@ -43,5 +43,5 @@
   ],
   "repository": "https://github.com/suntianc/dsh-codex-auth",
   "license": "MIT",
-  "treeSha256": "795d6187537f4b053a24e2a89894b795b4a850fa04353446691e1ce51d5b7a10"
+  "treeSha256": "7784ff181ecf20d24e3ddc7887449c1e4ed028dde2904c27363ff231ab518494"
 }

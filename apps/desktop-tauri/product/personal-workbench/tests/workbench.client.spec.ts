@@ -127,8 +127,9 @@ describe('ProductWorkbenchHost', () => {
 describe('observeSessionAttention', () => {
   it('expands only for a new current-Session interaction or appended turn completion', () => {
     const current = 'current' as SessionId
-    const list = new Observable({ current })
-    const pending = new Observable(new Map())
+    const selected = (id: SessionId) => ({ byId: { [id]: { id, retainedBy: { mainView: 1 } } } })
+    const list = new Observable(selected(current))
+    const status = new Observable(new Map())
     const currentEvents = new MutableSessionEventSource()
     const otherEvents = new MutableSessionEventSource()
     const controller = new ProductWorkbenchController(undefined)
@@ -140,7 +141,7 @@ describe('observeSessionAttention', () => {
           eventSource: id === current ? currentEvents : otherEvents,
         }),
       },
-      uiSession: { pendingInteractions: pending },
+      uiSession: { sessionStatus: status },
     } as unknown as Context
     const dispose = observeSessionAttention(ctx, controller)
 
@@ -154,11 +155,19 @@ describe('observeSessionAttention', () => {
     })
     expect(controller.getSnapshot().sessionExpanded).toBe(false)
 
-    pending.publish(new Map([[current, { key: 'question:1', kind: 'question', sessionId: current }]]))
+    status.publish(new Map([[current, {
+      running: false,
+      pendingInteraction: { key: 'question:1', kind: 'question', sessionId: current },
+      completionUnread: false,
+    }]]))
     expect(controller.getSnapshot().sessionExpanded).toBe(true)
 
     controller.setSessionExpanded(false)
-    pending.publish(new Map([[current, { key: 'question:1', kind: 'question', sessionId: current }]]))
+    status.publish(new Map([[current, {
+      running: false,
+      pendingInteraction: { key: 'question:1', kind: 'question', sessionId: current },
+      completionUnread: false,
+    }]]))
     expect(controller.getSnapshot().sessionExpanded).toBe(false)
 
     currentEvents.replace([{
@@ -175,7 +184,7 @@ describe('observeSessionAttention', () => {
 
     controller.showContent('episode-a')
     controller.setSessionExpanded(false)
-    list.publish({ current: 'other' as SessionId })
+    list.publish(selected('other' as SessionId))
     expect(controller.getSnapshot()).toMatchObject({ mode: 'core', sessionExpanded: true })
     dispose()
   })

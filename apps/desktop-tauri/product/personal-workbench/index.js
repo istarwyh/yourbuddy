@@ -108,23 +108,18 @@ var WORKBENCH_SETTINGS_NAMESPACE = "personal-workbench";
 
 // src/settings.ts
 var WorkbenchSettingsSchema = Schema.object({
-  enabled: Schema.boolean().default(false),
-  name: Schema.string().default(""),
-  logo: Schema.string().default(""),
-  heroHeadline: Schema.string().default(""),
-  heroBadge: Schema.string().default(""),
-  showHeroBadge: Schema.boolean().default(true)
+  enabled: Schema.boolean().default(false).volatile(),
+  name: Schema.string().default("").volatile(),
+  logo: Schema.string().default("").volatile(),
+  heroHeadline: Schema.string().default("").volatile(),
+  heroBadge: Schema.string().default("").volatile(),
+  showHeroBadge: Schema.boolean().default(true).volatile()
 });
 
 // src/index.ts
 var name = "personal-workbench";
+var Config = WorkbenchSettingsSchema;
 function apply(ctx) {
-  ctx.inject(["settings"], (settingsCtx) => {
-    settingsCtx.settings.register(
-      WORKBENCH_SETTINGS_NAMESPACE,
-      WorkbenchSettingsSchema
-    );
-  });
   ctx.inject(["webServer"], (webCtx) => {
     webCtx.effect(
       () => webCtx.webServer.register(createHostNetworkProxyRoute()),
@@ -133,6 +128,7 @@ function apply(ctx) {
   });
 }
 export {
+  Config,
   WORKBENCH_SETTINGS_NAMESPACE,
   WorkbenchSettingsSchema,
   apply,

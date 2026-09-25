@@ -1372,7 +1372,7 @@ window.__ModuleLoader__.load({
 			"locale",
 			"connection",
 			"remote",
-			"settingsScope",
+			"configForms",
 			"sessions"
 		];
 		/** Register the four-card settings section and keyed image result renderers. */
@@ -1383,18 +1383,9 @@ window.__ModuleLoader__.load({
 			}), "codex-capabilities: copy dictionaries");
 			const rpc = createCodexAuthRpcClient(ctx.get("connection").rpc);
 			const t = ctx.locale.bind(NS);
-			const llmScope = ctx.settingsScope.bind({
-				namespace: LLM_NAMESPACE,
-				decode: decodeLlmSettings
-			});
-			const searchScope = ctx.settingsScope.bind({
-				namespace: SEARCH_NAMESPACE,
-				decode: decodeSearchSettings
-			});
-			const imageScope = ctx.settingsScope.bind({
-				namespace: IMAGE_NAMESPACE,
-				decode: decodeImageSettings
-			});
+			const llmScope = ctx.configForms.get(LLM_NAMESPACE);
+			const searchScope = ctx.configForms.get(SEARCH_NAMESPACE);
+			const imageScope = ctx.configForms.get(IMAGE_NAMESPACE);
 			const listeners = /* @__PURE__ */ new Set();
 			const subscribe = (listener) => {
 				listeners.add(listener);

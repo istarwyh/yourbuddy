@@ -1,6 +1,6 @@
 import { Context } from '@deepseek-ai/cordis'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { describe, expect, it } from 'vitest'
 import type { ReactElement } from 'react'
 import {
@@ -9,9 +9,9 @@ import {
 } from '../src/client/index.tsx'
 import { PERSONAL_WORKBENCH_CSS } from '../src/client/styles.ts'
 
-class FakeScope implements SettingsScope<WorkbenchSettingsValue> {
+class FakeScope implements ConfigForm<WorkbenchSettingsValue> {
   private listeners = new Set<() => void>()
-  private snapshot: SettingsScopeSnapshot<WorkbenchSettingsValue>
+  private snapshot: ConfigFormSnapshot<WorkbenchSettingsValue>
 
   constructor(value: WorkbenchSettingsValue) {
     this.snapshot = {
@@ -19,14 +19,14 @@ class FakeScope implements SettingsScope<WorkbenchSettingsValue> {
     }
   }
 
-  getSnapshot(): SettingsScopeSnapshot<WorkbenchSettingsValue> { return this.snapshot }
+  getSnapshot(): ConfigFormSnapshot<WorkbenchSettingsValue> { return this.snapshot }
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }
-  async mutate(): Promise<void> {}
-  async set(): Promise<void> {}
-  async unset(): Promise<void> {}
+  async mutate(): Promise<boolean> { return true }
+  async set(): Promise<boolean> { return true }
+  async unset(): Promise<boolean> { return true }
 
   replace(value: WorkbenchSettingsValue): void {
     this.snapshot = { ...this.snapshot, value, revision: (this.snapshot.revision ?? 0) + 1 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { WorkbenchSettingsValue } from './brand.tsx'
 import { normalizeLogoSource, normalizeWorkbenchName } from './brand.tsx'
 import type { PersonalWorkbenchKey } from './locales.ts'
@@ -13,7 +13,7 @@ import productLogo from '../../../../app-icon.svg'
 /** Settings capability injected into the card. */
 export interface BrandSettingsRowInjected extends HelpMenuInjected {
   /** Durable namespace scope owned by this plugin. */
-  scope: SettingsScope<WorkbenchSettingsValue>
+  scope: ConfigForm<WorkbenchSettingsValue>
 }
 
 /** Composed props for the General settings item. */

@@ -1,11 +1,8 @@
 /** Host half: registers the profile-persisted personal-workbench namespace. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-settings'
 import { createHostNetworkProxyRoute } from './host-network-proxy.ts'
-import {
-  WorkbenchSettingsSchema, WORKBENCH_SETTINGS_NAMESPACE,
-} from './settings.ts'
+import { WorkbenchSettingsSchema } from './settings.ts'
 
 export {
   WorkbenchSettingsSchema, WORKBENCH_SETTINGS_NAMESPACE,
@@ -15,14 +12,11 @@ export {
 /** Cordis plugin name. */
 export const name = 'personal-workbench'
 
-/** Register this plugin's live settings namespace when the settings service is available. */
+/** Loader configuration projected into the shared settings forms. */
+export const Config = WorkbenchSettingsSchema
+
+/** Register the product's Host network diagnostic route. */
 export function apply(ctx: Context): void {
-  ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.register(
-      WORKBENCH_SETTINGS_NAMESPACE,
-      WorkbenchSettingsSchema,
-    )
-  })
   ctx.inject(['webServer'], (webCtx) => {
     webCtx.effect(() => webCtx.webServer.register(createHostNetworkProxyRoute()),
       'personal-workbench: Host network proxy diagnostic')

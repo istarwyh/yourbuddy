@@ -21,11 +21,11 @@ export interface WorkbenchSettings {
 }
 
 /** Host schema for profile-persisted branding. */
-export const WorkbenchSettingsSchema: Schema<WorkbenchSettings> = Schema.object({
-  enabled: Schema.boolean().default(false),
-  name: Schema.string().default(''),
-  logo: Schema.string().default(''),
-  heroHeadline: Schema.string().default(''),
-  heroBadge: Schema.string().default(''),
-  showHeroBadge: Schema.boolean().default(true),
+export const WorkbenchSettingsSchema = Schema.object({
+  enabled: Schema.boolean().default(false).volatile(),
+  name: Schema.string().default('').volatile(),
+  logo: Schema.string().default('').volatile(),
+  heroHeadline: Schema.string().default('').volatile(),
+  heroBadge: Schema.string().default('').volatile(),
+  showHeroBadge: Schema.boolean().default(true).volatile(),
 })
