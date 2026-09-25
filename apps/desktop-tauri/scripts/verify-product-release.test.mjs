@@ -338,7 +338,7 @@ test('product smoke overlay mounts the product defaults and plugins', () => {
   assert.match(overlay, /id: yourbuddy-release-better-sidebar\n      name: dsh-better-sidebar\n      config:\n        presentation: slot/)
   assert.match(overlay, /id: yourbuddy-release-subagent-codex/)
   assert.match(overlay, /name: '@deepseek-ai\/dsh-subagent-codex'/)
-  assert.match(overlay, /id: agent-presets\n  config:\n    default: codex/)
+  assert.match(overlay, /id: agent-preset-registry\n  config:\n    default: codex/)
   assert.match(overlay, /id: tool-skill\n  config:\n    modelExcludedSkills:\n      - codexhost-delegation/)
   assert.match(overlay, /id: ui-sidebar\n  disabled: true/)
   assert.match(overlay, /id: yourbuddy-release-proxy-verifier/)

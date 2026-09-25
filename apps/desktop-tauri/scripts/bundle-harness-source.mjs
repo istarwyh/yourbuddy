@@ -32,13 +32,18 @@ const defaultAgentPreset = {
   name: 'Codex',
   source: 'standard',
   description: 'YourBuddy 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。',
+  order: 0,
 }
 const creatorAgentPreset = {
   id: 'creator',
   name: '内容创作',
   source: 'codex',
   description: '面向本地视频与图文创作，包含完整工具、Skills、Codex 委派和内容工作台能力。',
+  order: 1,
 }
+const productAgentPresetPatches = [defaultAgentPreset, creatorAgentPreset]
+  .map(preset => `./presets/${preset.id}.patch.yml`)
+const creatorPersona = 'You are a creator workbench agent powered by the {{model}} model. Help the user plan, produce, package, and publish local video and article content while keeping human review at recording, editing, subtitle, and final publication checkpoints.'
 const productPlugins = [
   {
     name: 'dsh-harbor-evolution',
@@ -354,74 +359,123 @@ export function installProductPlugins(bundleRoot) {
   writeFileSync(cliManifestPath, `${JSON.stringify(cliManifest, null, 2)}\n`)
 }
 
-/** Create YourBuddy's Codex default and content-creation Agent Presets. */
-export function installDefaultAgentPreset(bundleRoot) {
-  const presetsRoot = join(bundleRoot, 'packages', 'preset', 'agent-presets', 'presets')
-  const sourceRoot = join(presetsRoot, defaultAgentPreset.source)
-  const destinationRoot = join(presetsRoot, defaultAgentPreset.id)
-  const sourceComposition = join(sourceRoot, 'agent.cordis.yml')
-  if (!existsSync(sourceComposition)) {
-    throw new Error(`YourBuddy default Agent Preset source is missing: ${sourceComposition}`)
+/** Find one exact YAML line or reject an upstream layout the product generator does not understand. */
+function onlyLineIndex(lines, expected, label) {
+  const indexes = lines
+    .map((line, index) => line === expected ? index : -1)
+    .filter(index => index !== -1)
+  if (indexes.length !== 1) {
+    throw new Error(`YourBuddy Agent Preset expected one ${label}, found ${indexes.length}`)
   }
-  if (existsSync(destinationRoot)) {
-    throw new Error(`YourBuddy default Agent Preset id already exists: ${defaultAgentPreset.id}`)
+  return indexes[0]
+}
+
+/** Derive one product declaration from the shipped standard preset patch. */
+function deriveProductAgentPreset(standardPatch, preset) {
+  const lines = standardPatch.split('\n')
+  const declarationIndex = onlyLineIndex(lines, '    - id: preset-standard', 'standard declaration row')
+  const idIndex = onlyLineIndex(lines, '        id: standard', 'standard preset id')
+  const orderIndex = onlyLineIndex(lines, '        order: 1', 'standard preset order')
+  lines[declarationIndex] = `    - id: preset-${preset.id}`
+  lines[idIndex] = `        id: ${preset.id}`
+  lines.splice(
+    idIndex + 1,
+    0,
+    `        name: ${preset.name}`,
+    `        description: ${preset.description}`,
+  )
+  lines[orderIndex + 2] = `        order: ${preset.order}`
+  if (lines[0] === '# Agent preset standard: one `@deepseek-ai/dsh-agent-preset` declaration inserted') {
+    lines[0] = `# YourBuddy Agent preset ${preset.id}: derived from the shipped standard declaration.`
   }
 
-  copyTree(sourceRoot, destinationRoot)
-  const compositionPath = join(destinationRoot, 'agent.cordis.yml')
-  const lines = readFileSync(compositionPath, 'utf8').split('\n')
-  const rowIndexes = lines
-    .map((line, index) => line === '    - id: tool-subagent-codex' ? index : -1)
+  const codexRows = lines
+    .map((line, index) => line.trim() === '- id: tool-subagent-codex' ? index : -1)
     .filter(index => index !== -1)
-  if (rowIndexes.length !== 1) {
-    throw new Error(`YourBuddy default Agent Preset expected one Codex tool row, found ${rowIndexes.length}`)
+  if (codexRows.length !== 1) {
+    throw new Error(`YourBuddy Agent Preset expected one Codex tool row, found ${codexRows.length}`)
   }
-  const rowStart = rowIndexes[0]
-  const nextRow = lines.findIndex((line, index) => index > rowStart && line.startsWith('    - id: '))
+  const rowStart = codexRows[0]
+  const rowIndent = lines[rowStart].length - lines[rowStart].trimStart().length
+  const nextRow = lines.findIndex((line, index) => index > rowStart
+    && line.length - line.trimStart().length === rowIndent
+    && line.trimStart().startsWith('- id: '))
   const rowEnd = nextRow === -1 ? lines.length : nextRow
   const disabledIndexes = lines
-    .map((line, index) => index >= rowStart && index < rowEnd && line === '      disabled: true' ? index : -1)
+    .map((line, index) => index > rowStart && index < rowEnd && line.trim() === 'disabled: true' ? index : -1)
     .filter(index => index !== -1)
   if (disabledIndexes.length !== 1) {
-    throw new Error(`YourBuddy default Agent Preset expected one disabled Codex tool flag, found ${disabledIndexes.length}`)
+    throw new Error(`YourBuddy Agent Preset expected one disabled Codex tool flag, found ${disabledIndexes.length}`)
   }
   lines.splice(disabledIndexes[0], 1)
 
-  let commentStart = rowStart
-  while (commentStart > 0 && lines[commentStart - 1]?.startsWith('    #')) commentStart -= 1
-  lines.splice(
-    commentStart,
-    rowStart - commentStart,
-    '    # YourBuddy bundles the Codex provider on the Host and exposes this',
-    '    # one-shot delegation tool in the default product preset.',
-  )
-  writeFileSync(compositionPath, lines.join('\n'))
-  writeFileSync(join(destinationRoot, 'preset.yml'), [
-    `name: ${defaultAgentPreset.name}`,
-    `description: ${defaultAgentPreset.description}`,
-    'order: 0',
-    '',
-  ].join('\n'))
+  if (preset.id === creatorAgentPreset.id) {
+    const codingPersona = 'prefix: You are a coding agent powered by the {{model}} model.'
+    const personaIndexes = lines
+      .map((line, index) => line.trim() === codingPersona ? index : -1)
+      .filter(index => index !== -1)
+    if (personaIndexes.length !== 1) {
+      throw new Error(`YourBuddy Creator Agent Preset expected one standard coding persona, found ${personaIndexes.length}`)
+    }
+    const personaIndex = personaIndexes[0]
+    const indent = lines[personaIndex].slice(0, lines[personaIndex].length - lines[personaIndex].trimStart().length)
+    lines.splice(personaIndex, 1, `${indent}prefix: >-`, `${indent}  ${creatorPersona}`)
+  }
+  return lines.join('\n')
+}
 
-  const creatorRoot = join(presetsRoot, creatorAgentPreset.id)
-  if (existsSync(creatorRoot)) {
-    throw new Error(`YourBuddy Creator Agent Preset id already exists: ${creatorAgentPreset.id}`)
+/** Create YourBuddy's declarative Codex and content-creation Agent Presets. */
+export function installDefaultAgentPresets(bundleRoot) {
+  const webAppRoot = join(bundleRoot, 'packages', 'bundle', 'web-app')
+  const standardPatchPath = join(webAppRoot, 'presets', 'standard.patch.yml')
+  const webManifestPath = join(webAppRoot, 'package.json')
+  const webCordisPatchPath = join(webAppRoot, 'cordis.patch.yml')
+  for (const path of [standardPatchPath, webManifestPath, webCordisPatchPath]) {
+    if (!existsSync(path)) throw new Error(`YourBuddy Agent Preset source is missing: ${path}`)
   }
-  copyTree(destinationRoot, creatorRoot)
-  const creatorCompositionPath = join(creatorRoot, 'agent.cordis.yml')
-  const creatorComposition = readFileSync(creatorCompositionPath, 'utf8')
-  const codingPersona = '      You are a coding agent powered by the {{model}} model.'
-  const creatorPersona = '      You are a creator workbench agent powered by the {{model}} model. Help the user plan, produce, package, and publish local video and article content while keeping human review at recording, editing, subtitle, and final publication checkpoints.'
-  if (creatorComposition.split(codingPersona).length !== 2) {
-    throw new Error('YourBuddy Creator Agent Preset expected one standard coding persona')
+
+  const standardPatch = readFileSync(standardPatchPath, 'utf8')
+  const generated = [
+    [defaultAgentPreset, deriveProductAgentPreset(standardPatch, defaultAgentPreset)],
+    [creatorAgentPreset, deriveProductAgentPreset(standardPatch, creatorAgentPreset)],
+  ]
+  for (const [preset, content] of generated) {
+    const destination = join(webAppRoot, 'presets', `${preset.id}.patch.yml`)
+    if (existsSync(destination)) {
+      throw new Error(`YourBuddy Agent Preset patch already exists: ${destination}`)
+    }
+    writeFileSync(destination, content)
   }
-  writeFileSync(creatorCompositionPath, creatorComposition.replace(codingPersona, creatorPersona))
-  writeFileSync(join(creatorRoot, 'preset.yml'), [
-    `name: ${creatorAgentPreset.name}`,
-    `description: ${creatorAgentPreset.description}`,
-    'order: 1',
-    '',
-  ].join('\n'))
+
+  const webManifest = JSON.parse(readFileSync(webManifestPath, 'utf8'))
+  if (webManifest.exports?.['./presets/*.patch.yml'] !== './presets/*.patch.yml') {
+    throw new Error('YourBuddy Agent Presets require the shipped web-app preset export')
+  }
+  for (const patch of productAgentPresetPatches) {
+    if (Object.hasOwn(webManifest.exports, patch)) {
+      throw new Error(`YourBuddy Agent Preset export already exists: ${patch}`)
+    }
+    webManifest.exports[patch] = patch
+  }
+  if (!Array.isArray(webManifest.files) || !Array.isArray(webManifest.dsh?.bundle?.patch)) {
+    throw new Error('YourBuddy Agent Presets require web-app files and dsh.bundle.patch arrays')
+  }
+  for (const patch of productAgentPresetPatches) {
+    const file = patch.slice(2)
+    if (webManifest.files.includes(file) || webManifest.dsh.bundle.patch.includes(patch)) {
+      throw new Error(`YourBuddy Agent Preset manifest row already exists: ${patch}`)
+    }
+    webManifest.files.push(file)
+    webManifest.dsh.bundle.patch.push(patch)
+  }
+  writeFileSync(webManifestPath, `${JSON.stringify(webManifest, null, 2)}\n`)
+
+  const webCordisPatch = readFileSync(webCordisPatchPath, 'utf8')
+  const defaultRow = '        default: standard'
+  if (webCordisPatch.split(defaultRow).length !== 2) {
+    throw new Error('YourBuddy Agent Presets expected one standard registry default')
+  }
+  writeFileSync(webCordisPatchPath, webCordisPatch.replace(defaultRow, '        default: codex'))
 }
 
 /**
@@ -554,7 +608,7 @@ for (const group of readdirSync(packagesRoot, { withFileTypes: true })) {
   }
 }
 installProductPlugins(outRoot)
-installDefaultAgentPreset(outRoot)
+installDefaultAgentPresets(outRoot)
 
 const trimmedWorkspace = buildTrimmedWorkspaceYaml(
   readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8'),

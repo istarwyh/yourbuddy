@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { load } from 'js-yaml'
 
 import {
   buildTrimmedWorkspaceYaml,
   hashExternalSnapshot,
-  installDefaultAgentPreset,
+  installDefaultAgentPresets,
   installProductPlugins,
   installProductWebIdentity,
 } from './bundle-harness-source.mjs'
@@ -123,60 +124,106 @@ test('hashExternalSnapshot uses bytewise path order across locales', () => {
   }
 })
 
-test('installDefaultAgentPreset creates Codex and Creator presets without changing standard', () => {
+test('installDefaultAgentPresets declares product presets from the standard profile patch', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-codex-preset-'))
-  const presetsRoot = join(root, 'packages', 'preset', 'agent-presets', 'presets')
-  const standard = join(presetsRoot, 'standard')
-  mkdirSync(standard, { recursive: true })
-  const source = `- id: persona
-  name: '@deepseek-ai/dsh-persona'
-  config:
-    prefix: >-
-      You are a coding agent powered by the {{model}} model.
-- id: delegation
-  name: cordis:group
-  config:
-    # Production dsh keeps optional providers disabled.
-    - id: tool-subagent-codex
-      name: '@deepseek-ai/dsh-tool-subagent'
-      disabled: true
+  const webAppRoot = join(root, 'packages', 'bundle', 'web-app')
+  const presetsRoot = join(webAppRoot, 'presets')
+  mkdirSync(presetsRoot, { recursive: true })
+  const source = `# Agent preset standard: one \`@deepseek-ai/dsh-agent-preset\` declaration inserted
+# after the web patch.
+- insert:
+    - id: preset-standard
+      name: '@deepseek-ai/dsh-agent-preset'
       config:
-        provider: codex
-        toolName: subagent_codex
-        backgroundMode: one-shot
-        maxDepth: provider-managed
-    - id: tool-subagent-claude-code
-      name: '@deepseek-ai/dsh-tool-subagent'
-      disabled: true
+        id: standard
+        order: 1
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: You are a coding agent powered by the {{model}} model.
+          - id: delegation
+            name: cordis:group
+            group: true
+            config:
+              - id: tool-subagent-codex
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
+                config:
+                  provider: codex
+                  toolName: subagent_codex
+              - id: tool-subagent-claude-code
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
 `
-  writeFileSync(join(standard, 'agent.cordis.yml'), source)
-  writeFileSync(join(standard, 'preset.yml'), 'name: 标准模式\norder: 1\n')
+  writeFileSync(join(presetsRoot, 'standard.patch.yml'), source)
+  writeFileSync(join(webAppRoot, 'cordis.patch.yml'), `- insert:
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: standard
+`)
+  writeFileSync(join(webAppRoot, 'package.json'), `${JSON.stringify({
+    name: '@deepseek-ai/dsh-web-app',
+    exports: {
+      './cordis.patch.yml': './cordis.patch.yml',
+      './presets/*.patch.yml': './presets/*.patch.yml',
+      './package.json': './package.json',
+    },
+    files: ['cordis.patch.yml', 'presets/standard.patch.yml'],
+    dsh: { bundle: { patch: ['./cordis.patch.yml', './presets/standard.patch.yml'] } },
+  }, null, 2)}\n`)
 
   try {
-    installDefaultAgentPreset(root)
-    const codexRoot = join(presetsRoot, 'codex')
-    const composition = readFileSync(join(codexRoot, 'agent.cordis.yml'), 'utf8')
-    const codexRow = composition.slice(
-      composition.indexOf('    - id: tool-subagent-codex'),
-      composition.indexOf('    - id: tool-subagent-claude-code'),
-    )
-    assert.match(codexRow, /toolName: subagent_codex/)
-    assert.doesNotMatch(codexRow, /disabled:/)
-    assert.match(composition, /tool-subagent-claude-code[\s\S]*disabled: true/)
-    assert.equal(
-      readFileSync(join(codexRoot, 'preset.yml'), 'utf8'),
-      'name: Codex\ndescription: YourBuddy 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。\norder: 0\n',
-    )
-    const creatorRoot = join(presetsRoot, 'creator')
-    const creatorComposition = readFileSync(join(creatorRoot, 'agent.cordis.yml'), 'utf8')
-    assert.match(creatorComposition, /You are a creator workbench agent powered by the \{\{model\}\} model\./)
-    assert.doesNotMatch(creatorComposition, /You are a coding agent/)
-    assert.match(creatorComposition, /toolName: subagent_codex/)
-    assert.equal(
-      readFileSync(join(creatorRoot, 'preset.yml'), 'utf8'),
-      'name: 内容创作\ndescription: 面向本地视频与图文创作，包含完整工具、Skills、Codex 委派和内容工作台能力。\norder: 1\n',
-    )
-    assert.equal(readFileSync(join(standard, 'agent.cordis.yml'), 'utf8'), source)
+    installDefaultAgentPresets(root)
+    const standard = load(source)[0].insert[0].config
+    const codexPath = join(presetsRoot, 'codex.patch.yml')
+    const creatorPath = join(presetsRoot, 'creator.patch.yml')
+    const codex = load(readFileSync(codexPath, 'utf8'))[0].insert[0]
+    const creator = load(readFileSync(creatorPath, 'utf8'))[0].insert[0]
+    assert.deepEqual({
+      id: codex.id,
+      name: codex.config.name,
+      description: codex.config.description,
+      order: codex.config.order,
+    }, {
+      id: 'preset-codex',
+      name: 'Codex',
+      description: 'YourBuddy 默认编码 Agent，具备标准模式的全部能力，并可直接委派任务给 Codex。',
+      order: 0,
+    })
+    const expectedCodexPlugins = structuredClone(standard.plugins)
+    delete expectedCodexPlugins[1].config[0].disabled
+    assert.deepEqual(codex.config.plugins, expectedCodexPlugins)
+    assert.equal(codex.config.id, 'codex')
+    assert.equal(codex.config.plugins[1].config[1].disabled, true)
+
+    const expectedCreatorPlugins = structuredClone(expectedCodexPlugins)
+    expectedCreatorPlugins[0].config.prefix = 'You are a creator workbench agent powered by the {{model}} model. Help the user plan, produce, package, and publish local video and article content while keeping human review at recording, editing, subtitle, and final publication checkpoints.'
+    assert.deepEqual(creator.config.plugins, expectedCreatorPlugins)
+    assert.deepEqual({
+      id: creator.id,
+      preset: creator.config.id,
+      name: creator.config.name,
+      description: creator.config.description,
+      order: creator.config.order,
+    }, {
+      id: 'preset-creator',
+      preset: 'creator',
+      name: '内容创作',
+      description: '面向本地视频与图文创作，包含完整工具、Skills、Codex 委派和内容工作台能力。',
+      order: 1,
+    })
+
+    const manifest = JSON.parse(readFileSync(join(webAppRoot, 'package.json'), 'utf8'))
+    for (const patch of ['./presets/codex.patch.yml', './presets/creator.patch.yml']) {
+      assert.equal(manifest.exports[patch], patch)
+      assert.ok(manifest.files.includes(patch.slice(2)))
+      assert.ok(manifest.dsh.bundle.patch.includes(patch))
+    }
+    assert.match(readFileSync(join(webAppRoot, 'cordis.patch.yml'), 'utf8'), /default: codex/)
+    assert.equal(readFileSync(join(presetsRoot, 'standard.patch.yml'), 'utf8'), source)
+    assert.equal(existsSync(join(root, 'packages', 'preset', 'agent-presets')), false)
   }
   finally {
     rmSync(root, { recursive: true, force: true })

@@ -286,7 +286,7 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
   config:
     policy: never
 
-- id: agent-presets
+- id: agent-preset-registry
   config:
     default: codex
 
