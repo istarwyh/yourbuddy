@@ -11,11 +11,11 @@
   "package": "dsh-harbor-evolution",
   "sourcePath": "packages/dsh-plugin",
   "patches": [
-    "Set @deepseek-ai/dsh-skill peer range from >=0.1.0-rc.6 to 0.1.5-rc.2.",
-    "Set @deepseek-ai/dsh-tools peer range from >=0.1.0-rc.6 to 0.1.5-rc.2.",
     "Remove obsolete @deepseek-ai/dsh-client-runtime Client injection.",
-    "Preserve the YourBuddy bilingual README projection."
+    "Preserve the YourBuddy bilingual README projection.",
+    "Set @deepseek-ai/dsh-skill peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
+    "Set @deepseek-ai/dsh-tools peer range from 0.1.5-rc.2 to 0.1.7-rc.2."
   ],
   "license": "MIT",
-  "treeSha256": "97c9821ae09cdc621d08cf4988fe01b85ae26bd4422a0f5c3bcb588c31996498"
+  "treeSha256": "7b0e04aca338fb6ef320d44977a73abab13da0610b058506e1d8e7b3542f3f8a"
 }
