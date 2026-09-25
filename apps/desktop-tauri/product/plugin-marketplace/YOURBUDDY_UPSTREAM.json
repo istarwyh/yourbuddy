@@ -1,22 +1,24 @@
 {
   "package": "dsh-plugin-marketplace",
-  "version": "0.3.4",
+  "version": "0.3.6",
   "sourceKind": "npm-latest",
   "channel": "latest",
-  "source": "https://registry.npmjs.org/dsh-plugin-marketplace/-/dsh-plugin-marketplace-0.3.4.tgz",
-  "integrity": "sha512-O0AqG/3rMrCHZF4PHoENOgO915iynieC2Kg2SWAHJeuzcMV9zN6nVnfZM3DrXCY/Op0mqNjEcg9K/s0t30bTyQ==",
-  "archiveSha256": "17a9acbbfaa357bb96e0724f8f1f01fcfda0162abf686a5a4b5c9319f9d1bd4e",
-  "upstreamTreeSha256": "c1f0004203940798bad8d7ad9f7580585f669d4e4c511f4913e0f7d6beca28fb",
+  "source": "https://registry.npmjs.org/dsh-plugin-marketplace/-/dsh-plugin-marketplace-0.3.6.tgz",
+  "integrity": "sha512-3vRteG8N1QhAV75QZJKYp0Nbroax5Ahb8/A8yessdSs6/qsi3Hs+5zi9zIOpuSlFe78JXvhuQTOt0uqEv3uRHQ==",
+  "archiveSha256": "3747f8116d567add2b40a810a2cfba9ecb7a7b911f5d7d67c8c2deb8bbdb9c98",
+  "upstreamTreeSha256": "a5a4d39911ec9853afc520b53dcf4e1d895c9e322538806019fbd9579dbdcf53",
   "patches": [
     {
       "id": "yourbuddy-product-adaptations",
       "file": "patches/plugin-marketplace-yourbuddy.patch",
-      "sha256": "771171971106b78ae0a88819db2b6fcabc171c89399a88727d2c7bf960e8cbb4",
+      "sha256": "2a69ac67c8a7017cdd64a06aa636b0db286957f66a11475d2f310019e0a803d3",
       "purpose": "Preserve verified bundle resolution, actionable install diagnostics, desktop link routing, and the packaged version badge."
     },
-    "Document the YourBuddy product adaptations in the bilingual README projection."
+    "Document the YourBuddy product adaptations in the bilingual README projection.",
+    "Set @deepseek-ai/dsh-llm peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
+    "Set @deepseek-ai/dsh-settings peer range from ^0.1.7-rc.1 to 0.1.7-rc.2."
   ],
   "repository": "https://github.com/Scorp1o117/dsh-plugin-marketplace",
   "license": "MIT",
-  "treeSha256": "cfb541aa2f08631aae891937b515ae56743628f5b50e49fb96c809bacbb31d14"
+  "treeSha256": "43c7c20413a339f98b4c8d14abc12c0ce8806a71eb9c1df94cea9d3b1ea4935a"
 }

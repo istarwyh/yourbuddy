@@ -1,12 +1,12 @@
 diff --git a/client.js b/client.js
-index e1ca7da..bc9cca6 100644
+index aefeec929d..5eaeb339ba 100644
 --- a/client.js
 +++ b/client.js
 @@ -16,6 +16,7 @@ window.__ModuleLoader__.load({
      Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
      var react = require("react");
      var h = react.createElement;
-+    var PLUGIN_VERSION = "0.3.4";
++    var PLUGIN_VERSION = "0.3.6";
  
      // ── CSS (theme tokens) ────────────────────────────────────────────────
      var CSS = ".__mp_grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;padding:0;margin:0;list-style:none}" +
@@ -287,10 +287,10 @@ index e1ca7da..bc9cca6 100644
            })
          ),
 diff --git a/index.js b/index.js
-index 7a01ce4..758537c 100644
+index f590afce10..146e16601a 100644
 --- a/index.js
 +++ b/index.js
-@@ -56,6 +56,24 @@ const Config = z.object({
+@@ -57,6 +57,24 @@ const Config = z.object({
  /** npm package-name shape (scope/name, no spaces, no path chars). */
  const PKG_NAME = /^@?[a-z0-9][a-z0-9-._]*(?:\/[a-z0-9][a-z0-9-._]*)?$/;
  
@@ -313,9 +313,9 @@ index 7a01ce4..758537c 100644
 +}
 +
  function apply(ctx, config) {
-   let sourceGetter = null;
+   const sourceGetter = () => typeof config.get === "function" ? config.get() : config;
    let lastTs = 0;
-@@ -206,12 +224,13 @@ function apply(ctx, config) {
+@@ -203,12 +221,13 @@ function apply(ctx, config) {
    }
  
    async function maybeRunInstall() {
@@ -330,7 +330,7 @@ index 7a01ce4..758537c 100644
        if (!PKG_NAME.test(pkg)) {
          await report("error", `invalid package name: ${pkg}`, pkg);
          return;
-@@ -221,10 +240,10 @@ function apply(ctx, config) {
+@@ -218,10 +237,10 @@ function apply(ctx, config) {
        await report("running", `installing ${pkg}…`, pkg);
        const result = await runInstall(pkg, profile);
        if (result.code !== 0) {
@@ -343,7 +343,7 @@ index 7a01ce4..758537c 100644
          ctx.logger.warn(`[plugin-marketplace] install failed (${result.code}): ${tail}`);
          await report("error", `install failed: ${tail || "unknown error"}`, pkg);
          return;
-@@ -234,7 +253,7 @@ function apply(ctx, config) {
+@@ -231,7 +250,7 @@ function apply(ctx, config) {
        await report("ok", `${pkg} installed${mountNote}. Restart dsh web to load it.`, pkg);
      } catch (error) {
        ctx.logger.warn(`[plugin-marketplace] install flow failed: ${String(error)}`);
@@ -352,7 +352,7 @@ index 7a01ce4..758537c 100644
      }
    }
  
-@@ -314,4 +333,4 @@ function apply(ctx, config) {
+@@ -311,4 +330,4 @@ function apply(ctx, config) {
    }
  }
  
