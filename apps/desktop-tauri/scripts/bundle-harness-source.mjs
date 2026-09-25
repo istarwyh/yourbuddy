@@ -317,7 +317,7 @@ function bundledWorkspacePackageNames(bundleRoot) {
 export function installProductPlugins(bundleRoot) {
   const cliManifestPath = join(bundleRoot, 'apps', 'cli', 'package.json')
   const cliManifest = JSON.parse(readFileSync(cliManifestPath, 'utf8'))
-  const manifests = []
+  const installedPlugins = []
 
   for (const plugin of productPlugins) {
     const productManifest = join(plugin.root, 'package.json')
@@ -336,7 +336,7 @@ export function installProductPlugins(bundleRoot) {
     verifyExternalSnapshot(plugin.root, manifest)
 
     copyTree(plugin.root, join(bundleRoot, plugin.destination))
-    manifests.push(manifest)
+    installedPlugins.push({ manifest, destination: plugin.destination })
     cliManifest.dependencies = {
       ...cliManifest.dependencies,
       [plugin.name]: 'workspace:*',
@@ -350,10 +350,15 @@ export function installProductPlugins(bundleRoot) {
     }
     cliManifest.dependencies[plugin.name] = 'workspace:*'
   }
-  for (const manifest of manifests) {
-    for (const peerName of Object.keys(manifest.peerDependencies ?? {})) {
-      if (workspaceNames.has(peerName)) cliManifest.dependencies[peerName] = 'workspace:*'
+  for (const plugin of installedPlugins) {
+    const bundledManifestPath = join(bundleRoot, plugin.destination, 'package.json')
+    const bundledManifest = JSON.parse(readFileSync(bundledManifestPath, 'utf8'))
+    for (const peerName of Object.keys(plugin.manifest.peerDependencies ?? {})) {
+      if (!workspaceNames.has(peerName)) continue
+      cliManifest.dependencies[peerName] = 'workspace:*'
+      bundledManifest.peerDependencies[peerName] = 'workspace:*'
     }
+    writeFileSync(bundledManifestPath, `${JSON.stringify(bundledManifest, null, 2)}\n`)
   }
 
   writeFileSync(cliManifestPath, `${JSON.stringify(cliManifest, null, 2)}\n`)

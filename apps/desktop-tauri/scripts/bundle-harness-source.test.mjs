@@ -255,6 +255,16 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.equal(manifest.dependencies['dsh-oil-creator'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-subagent-codex'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
+    const bundledCodex = JSON.parse(readFileSync(
+      join(root, 'packages', 'product', 'dsh-codex-auth', 'package.json'),
+      'utf8',
+    ))
+    assert.equal(bundledCodex.peerDependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
+    const sourceCodex = JSON.parse(readFileSync(
+      join(desktopRoot, 'product', 'dsh-codex-auth', 'package.json'),
+      'utf8',
+    ))
+    assert.notEqual(sourceCodex.peerDependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
     assert.ok(readFileSync(join(root, 'packages', 'product', 'harbor-evolution', 'skills', 'evolve-agent-with-harbor', 'SKILL.md'), 'utf8').length > 0)
     assert.equal(
       JSON.parse(readFileSync(join(root, 'packages', 'product', 'harbor-evolution', 'schemas', 'meta-evaluation-report.schema.json'), 'utf8')).title,
