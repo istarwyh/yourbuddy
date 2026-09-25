@@ -1,9 +1,9 @@
 {
   "repository": "deepseek-ai/deepseek-harness",
   "channel": "stable-else-rc",
-  "tag": "dsh-v0.1.5-rc.2",
-  "version": "0.1.5-rc.2",
-  "commit": "fb2c4b9e698e30edb738bca4cf0618587db7d203",
+  "tag": "dsh-v0.1.7-rc.2",
+  "version": "0.1.7-rc.2",
+  "commit": "477b4f420553e8a52c2fbccc464d7561b239c443",
   "patches": [
     {
       "id": "workbench-primary-layout",
