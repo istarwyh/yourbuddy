@@ -321,7 +321,8 @@ function codec(typeSymbol, schema) {
 	return {
 		mode: "strict",
 		typeSymbol,
-		schema
+		schema,
+		create: () => schema
 	};
 }
 function jsonParam(name, typeSymbol, schema) {

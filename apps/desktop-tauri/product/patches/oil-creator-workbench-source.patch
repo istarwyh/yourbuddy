@@ -844,7 +844,7 @@ index 808189a..e8f5fc7 100644
  ];
  
 diff --git a/src/client/contentSelection.ts b/src/client/contentSelection.ts
-index febd613..062193e 100644
+index febd613..6441b6f 100644
 --- a/src/client/contentSelection.ts
 +++ b/src/client/contentSelection.ts
 @@ -9,6 +9,12 @@ import {
@@ -1365,6 +1365,21 @@ index 3d7fade..48de415 100644
 +export function publisherPlatformKey(platform: PublishPlatform): string {
 +  return platform === "wechat" ? "wechat_channels" : platform;
 +}
+diff --git a/src/client/sidebar/ContentSidebarPanel.tsx b/src/client/sidebar/ContentSidebarPanel.tsx
+index c2f280f..e1ac8b4 100644
+--- a/src/client/sidebar/ContentSidebarPanel.tsx
++++ b/src/client/sidebar/ContentSidebarPanel.tsx
+@@ -267,9 +267,7 @@ export function ContentSidebarPanel({
+             key={item.id}
+             type="button"
+             className={item.id === selectedId ? "contentRow selected" : "contentRow"}
+-            onClick={() => {
+-              setSelectedId(item.id === selectedId ? null : item.id);
+-            }}
++            onClick={() => setSelectedId(item.id)}
+           >
+             <span className="rowCover">
+               <CoverThumb
 diff --git a/src/creatorSkill.ts b/src/creatorSkill.ts
 index 0c10363..ea34965 100644
 --- a/src/creatorSkill.ts
@@ -2365,7 +2380,7 @@ index 0000000..9490526
 +  }
 +}
 diff --git a/src/remote-contract.ts b/src/remote-contract.ts
-index 21e2b08..40ef3f5 100644
+index 21e2b08..fe3c90f 100644
 --- a/src/remote-contract.ts
 +++ b/src/remote-contract.ts
 @@ -17,6 +17,8 @@ import {
@@ -2377,6 +2392,15 @@ index 21e2b08..40ef3f5 100644
    setScriptRequestSchema,
    subtitlePreviewResultSchema,
    subtitleTextResultSchema,
+@@ -33,7 +35,7 @@ export const REMOTE_NAMESPACE = "oilCreator";
+ const emptyObjectSchema = z.object({});
+ 
+ function codec(typeSymbol: string, schema: z.ZodType<unknown>) {
+-  return { mode: "strict" as const, typeSymbol, schema };
++  return { mode: "strict" as const, typeSymbol, schema, create: () => schema };
+ }
+ 
+ function jsonParam(
 @@ -86,6 +88,7 @@ export const OIL_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
    invocation("bindStudio", bindStudioRequestSchema, contentDetailSchema),
    invocation("openStudio", idRequestSchema, contentDetailSchema),
@@ -2671,6 +2695,27 @@ index 3fb4708..9a9a61d 100644
  function resolveUserPath(path: string): string {
    const expanded = expandHomePath(path);
    if (!isAbsolute(expanded)) throw new Error(`path must be absolute: ${path}`);
+diff --git a/src/settingsHost.ts b/src/settingsHost.ts
+index 1f6b9d9..f4a6f22 100644
+--- a/src/settingsHost.ts
++++ b/src/settingsHost.ts
+@@ -1,5 +1,5 @@
+ import Schema from "@deepseek-ai/schemastery";
+-import { settingsNamespace, type SettingsProvider } from "@deepseek-ai/dsh-settings";
++import type { SettingsNamespace, SettingsProvider } from "@deepseek-ai/dsh-settings";
+ 
+ import { CREATOR_SETTINGS_NAMESPACE } from "./settingsContract.ts";
+ 
+@@ -13,8 +13,5 @@ export const CREATOR_SETTINGS_DISCOVERY_SCHEMA = Schema.object({});
+ export function registerCreatorSettingsNamespace(
+   settings: Pick<SettingsProvider, "register">,
+ ): void {
+-  settings.register(
+-    settingsNamespace(CREATOR_SETTINGS_NAMESPACE),
+-    CREATOR_SETTINGS_DISCOVERY_SCHEMA,
+-  );
++  settings.register(CREATOR_SETTINGS_NAMESPACE as SettingsNamespace, CREATOR_SETTINGS_DISCOVERY_SCHEMA);
+ }
 diff --git a/src/tools.ts b/src/tools.ts
 index 0a42e95..d30e008 100644
 --- a/src/tools.ts
@@ -2957,7 +3002,7 @@ index f939455..906bdf5 100644
 +  });
  });
 diff --git a/tests/contentSelection.test.ts b/tests/contentSelection.test.ts
-index 7e016a2..64b6304 100644
+index 7e016a2..0ec0806 100644
 --- a/tests/contentSelection.test.ts
 +++ b/tests/contentSelection.test.ts
 @@ -1,6 +1,7 @@
@@ -3551,7 +3596,7 @@ index 32fc346..974467c 100644
      try {
        const { dataDir, service } = await overlayService({
 diff --git a/tests/typert.test.ts b/tests/typert.test.ts
-index 4754b8f..7351eb9 100644
+index 4754b8f..1d11a3f 100644
 --- a/tests/typert.test.ts
 +++ b/tests/typert.test.ts
 @@ -31,6 +31,7 @@ describe("handwritten TYPERT", () => {
@@ -3562,6 +3607,28 @@ index 4754b8f..7351eb9 100644
        "syncPublish",
        "setScript",
        "openSubtitlePreview",
+@@ -41,10 +42,17 @@ describe("handwritten TYPERT", () => {
+     for (const item of OIL_CREATOR_INVOCATIONS) {
+       expect(item.service).toBe(REMOTE_NAMESPACE);
+       expect(item.namespace).toBe(REMOTE_NAMESPACE);
+-      expect(item.result.mode).toBe("strict");
+-      if (item.result.mode !== "strict") continue;
+-      expect("_zod" in item.result.schema).toBe(true);
+-      expect(typeof item.result.schema.parse).toBe("function");
++      for (const codec of [item.result, ...item.parameters.map((parameter) => parameter.codec)]) {
++        expect(codec.mode).toBe("strict");
++        if (codec.mode !== "strict") continue;
++        const create = Reflect.get(codec, "create");
++        expect(create).toBeTypeOf("function");
++        if (typeof create !== "function") continue;
++        const schema = create();
++        expect(schema).toBe(Reflect.get(codec, "schema"));
++        expect("_zod" in schema).toBe(true);
++        expect(typeof schema.parse).toBe("function");
++      }
+     }
+   });
+ });
 diff --git a/tsdown.config.ts b/tsdown.config.ts
 index 7fcb6d8..e12295b 100644
 --- a/tsdown.config.ts
@@ -3609,37 +3676,3 @@ index 7fcb6d8..e12295b 100644
        const css = await readFile(file, "utf8");
        const tagId = `${PLUGIN_ID}/${basename(file)}`;
        const registry = resolve(dirname(fileURLToPath(import.meta.url)), "src/client/pluginCss.ts");
-diff --git a/src/settingsHost.ts b/src/settingsHost.ts
---- a/src/settingsHost.ts
-+++ b/src/settingsHost.ts
-@@ -1,5 +1,5 @@
- import Schema from "@deepseek-ai/schemastery";
--import { settingsNamespace, type SettingsProvider } from "@deepseek-ai/dsh-settings";
-+import type { SettingsNamespace, SettingsProvider } from "@deepseek-ai/dsh-settings";
- 
- import { CREATOR_SETTINGS_NAMESPACE } from "./settingsContract.ts";
- 
-@@ -13,8 +13,5 @@ export const CREATOR_SETTINGS_DISCOVERY_SCHEMA = Schema.object({});
- export function registerCreatorSettingsNamespace(
-   settings: Pick<SettingsProvider, "register">,
- ): void {
--  settings.register(
--    settingsNamespace(CREATOR_SETTINGS_NAMESPACE),
--    CREATOR_SETTINGS_DISCOVERY_SCHEMA,
--  );
-+  settings.register(CREATOR_SETTINGS_NAMESPACE as SettingsNamespace, CREATOR_SETTINGS_DISCOVERY_SCHEMA);
- }
-diff --git a/src/client/sidebar/ContentSidebarPanel.tsx b/src/client/sidebar/ContentSidebarPanel.tsx
---- a/src/client/sidebar/ContentSidebarPanel.tsx
-+++ b/src/client/sidebar/ContentSidebarPanel.tsx
-@@ -267,9 +267,7 @@ export function ContentSidebarPanel({ t, items, loading, error, getCoverThumb }:
-             key={item.id}
-             type="button"
-             className={item.id === selectedId ? "contentRow selected" : "contentRow"}
--            onClick={() => {
--              setSelectedId(item.id === selectedId ? null : item.id);
--            }}
-+            onClick={() => setSelectedId(item.id)}
-           >
-             <span className="rowCover">
-               <CoverThumb

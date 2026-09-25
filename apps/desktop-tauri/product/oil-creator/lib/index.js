@@ -64,8 +64,7 @@ function resolveSkillDir(configured, skillName, envValue) {
 }
 //#endregion
 //#region src/bundledSkills.ts
-const moduleDir = dirname(fileURLToPath(import.meta.url));
-const bundledSkillsRoot = join(moduleDir, "..", "skills");
+const bundledSkillsRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "skills");
 function bundledSkillDir(name) {
 	return join(bundledSkillsRoot, name);
 }
@@ -425,7 +424,7 @@ async function readFolderPublish(folderPath, names) {
 //#endregion
 //#region src/catalog.ts
 const DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})_(.+)$/;
-const SKIP_DIRS = /* @__PURE__ */ new Set([
+const SKIP_DIRS = new Set([
 	".dsh-oil-creator",
 	".oil-cover",
 	"公众号文章"
@@ -690,8 +689,7 @@ async function writeTopicNote(folderPath, text) {
 		await unlink(path).catch(() => void 0);
 		return;
 	}
-	const body = text.endsWith("\n") ? text : `${text}\n`;
-	await writeFile(path, body, "utf8");
+	await writeFile(path, text.endsWith("\n") ? text : `${text}\n`, "utf8");
 }
 async function readScript(folderPath) {
 	try {
@@ -706,8 +704,7 @@ async function writeScript(folderPath, text) {
 		await unlink(path).catch(() => void 0);
 		return;
 	}
-	const body = text.endsWith("\n") ? text : `${text}\n`;
-	await writeFile(path, body, "utf8");
+	await writeFile(path, text.endsWith("\n") ? text : `${text}\n`, "utf8");
 }
 async function readArticle(path) {
 	if (path === void 0) return "";
@@ -770,7 +767,7 @@ function cuesFromTranscript(value) {
 }
 const ASS_DRAWING = /\\p\d/;
 const ASS_VECTOR = /^(?:m|l|b)\s+-?\d/i;
-const ASS_SKIP_STYLES = /* @__PURE__ */ new Set([
+const ASS_SKIP_STYLES = new Set([
 	"captionbox",
 	"progresslabel",
 	"progressfill"
@@ -1101,8 +1098,7 @@ async function pickBurnLaunch(item) {
 	if (video === void 0) throw new Error("no raw video to burn");
 	const stem = basename(video, extname(video));
 	const output = await uniqueSubtitledPath(item.folderPath, stem);
-	const work = workDirOf(item);
-	const preview = join(work, "preview-transcript.json");
+	const preview = join(workDirOf(item), "preview-transcript.json");
 	const transcript = item.subtitles.transcript ?? (await pathExists(preview) ? preview : void 0);
 	const srt = item.subtitles.srt;
 	if (srt !== void 0 && (transcript === void 0 || await newerOrEqual(srt, transcript)) && srt !== void 0) return {
@@ -1365,8 +1361,7 @@ async function findExecutable(command, env = process.env, platform = process.pla
 	const mode = platform === "win32" ? constants.F_OK : constants.X_OK;
 	const directories = [...pathValue.split(delimiter).filter(Boolean), ...extraBinDirs(platform, home, env)];
 	for (const directory of directories) for (const extension of extensions) {
-		const fileName = platform === "win32" && extension !== "" ? `${command}${extension}` : command;
-		const path = join(directory, fileName);
+		const path = join(directory, platform === "win32" && extension !== "" ? `${command}${extension}` : command);
 		if (await access(path, mode).then(() => true, () => false)) return path;
 	}
 }
@@ -2605,7 +2600,7 @@ async function saveOverlay(dataDir, store) {
 }
 //#endregion
 //#region src/publishing.ts
-const OUTPUT_LIMIT = 2097152;
+const OUTPUT_LIMIT = 2 * 1024 * 1024;
 const ABORT_GRACE_MS = 1e3;
 const NORMAL_CONCURRENCY = 4;
 const PUBLISHER_PLATFORM = {
@@ -3063,8 +3058,7 @@ async function prepareVideoDrafts(options, dependencies = {}) {
 	const envSource = dependencies.env ?? process.env;
 	const ego = await (dependencies.findEgo ?? findExecutable)("ego-browser", envSource);
 	if (ego === void 0) return blockedStep("ego-browser was not found. Install Ego Lite, add its CLI to PATH, and log in to the creator sites.", "EGO_MISSING");
-	const skillRoot = dependencies.publisherSkillDir ?? bundledSkillDir("video-publisher");
-	const publisher = join(skillRoot, "scripts", "v2", "publisher.mjs");
+	const publisher = join(dependencies.publisherSkillDir ?? bundledSkillDir("video-publisher"), "scripts", "v2", "publisher.mjs");
 	if (!await access(publisher, constants.R_OK).then(() => true, () => false)) return blockedStep("The bundled video-publisher skill is missing. Repair or update the Oil Creator installation.", "PUBLISHER_SKILL_MISSING");
 	let managedConfigPath;
 	try {
@@ -3118,8 +3112,7 @@ async function prepareWechatArticleDraft(options, dependencies = {}) {
 		status: "skipped",
 		detail: "No WeChat Official Account article Markdown exists for this episode."
 	};
-	const skillRoot = dependencies.publisherSkillDir ?? bundledSkillDir("wechat-publisher");
-	const cli = join(skillRoot, "wechat-publisher.mjs");
+	const cli = join(dependencies.publisherSkillDir ?? bundledSkillDir("wechat-publisher"), "wechat-publisher.mjs");
 	if (!await access(cli, constants.R_OK).then(() => true, () => false)) return blockedStep("The bundled wechat-publisher skill is missing. Repair or update the Oil Creator installation.", "WECHAT_PUBLISHER_SKILL_MISSING");
 	const args = [
 		cli,
