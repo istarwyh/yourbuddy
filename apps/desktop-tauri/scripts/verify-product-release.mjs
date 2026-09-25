@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto'
 import { spawn, spawnSync } from 'node:child_process'
 import { createServer } from 'node:http'
+import { createRequire } from 'node:module'
 import {
   existsSync,
   mkdirSync,
@@ -12,7 +13,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { delimiter, dirname, join } from 'node:path'
+import { delimiter, dirname, isAbsolute, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { chromium } from 'playwright'
 
@@ -230,7 +231,33 @@ function run(command, args, options = {}) {
 }
 
 /**
- * Prove installed product peers point at the same workspace packages as the Host.
+ * Require a package from one product plugin and verify its entry is inside the expected workspace package.
+ *
+ * @param {string} pluginRoot
+ * @param {string} pluginName
+ * @param {string} packageName
+ * @param {string} expectedRoot
+ */
+export function assertResolvedWorkspacePackage(pluginRoot, pluginName, packageName, expectedRoot) {
+  let resolved
+  try {
+    resolved = createRequire(join(pluginRoot, 'package.json')).resolve(packageName)
+  }
+  catch (error) {
+    throw new Error(`${pluginName} did not resolve bundled peer ${packageName}`, { cause: error })
+  }
+  const actualEntry = realpathSync(resolved)
+  const expectedPackageRoot = realpathSync(expectedRoot)
+  const pathFromExpectedRoot = relative(expectedPackageRoot, actualEntry)
+  if (isAbsolute(pathFromExpectedRoot)
+    || pathFromExpectedRoot === '..'
+    || pathFromExpectedRoot.startsWith(`..${sep}`)) {
+    throw new Error(`${pluginName} installed a second ${packageName}: ${actualEntry}`)
+  }
+}
+
+/**
+ * Verify installed product peers resolve to the same workspace packages as the Host.
  *
  * @param {string} root
  * @returns {number}
@@ -246,13 +273,7 @@ export function assertInstalledProductPeerLinks(root) {
       if (!isBundledRuntimePackage(name)) continue
       const expected = workspace.get(name)
       if (!expected) throw new Error(`${manifest.name} has no bundled workspace target for ${name}`)
-      const installed = join(pluginRoot, 'node_modules', ...name.split('/'))
-      if (!existsSync(installed)) throw new Error(`${manifest.name} did not install bundled peer ${name}`)
-      const actualRoot = realpathSync(installed)
-      const expectedRoot = realpathSync(expected.root)
-      if (actualRoot !== expectedRoot) {
-        throw new Error(`${manifest.name} installed a second ${name}: ${actualRoot}`)
-      }
+      assertResolvedWorkspacePackage(pluginRoot, manifest.name, name, expected.root)
       checked += 1
     }
   }

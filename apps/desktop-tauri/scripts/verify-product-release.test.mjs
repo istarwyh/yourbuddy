@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -13,6 +13,7 @@ import {
   assertCodexAuthStatusProbe,
   assertCodexModelCatalogProbe,
   assertProductClientBoot,
+  assertResolvedWorkspacePackage,
   buildProductSmokeOverlay,
   createReleaseChildEnvironment,
   desktopWebviewCookie,
@@ -20,6 +21,38 @@ import {
   resolveSettingsConfig,
   stopChild,
 } from './verify-product-release.mjs'
+
+test('installed peer verification follows Node resolution without a plugin-local link', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-peer-resolution-'))
+  try {
+    const pluginRoot = join(root, 'packages', 'product', 'fixture-plugin')
+    const expectedRoot = join(root, 'packages', 'runtime')
+    const otherRoot = join(root, 'packages', 'other-runtime')
+    mkdirSync(pluginRoot, { recursive: true })
+    mkdirSync(expectedRoot, { recursive: true })
+    mkdirSync(otherRoot, { recursive: true })
+    mkdirSync(join(root, 'node_modules'), { recursive: true })
+    writeFileSync(join(pluginRoot, 'package.json'), '{"name":"fixture-plugin","type":"module"}\n')
+    writeFileSync(join(expectedRoot, 'package.json'), '{"name":"fixture-runtime","type":"module","main":"index.js"}\n')
+    writeFileSync(join(expectedRoot, 'index.js'), 'export default {}\n')
+    writeFileSync(join(otherRoot, 'index.js'), 'export default {}\n')
+    symlinkSync(expectedRoot, join(root, 'node_modules', 'fixture-runtime'))
+
+    assert.doesNotThrow(() => assertResolvedWorkspacePackage(
+      pluginRoot,
+      'fixture-plugin',
+      'fixture-runtime',
+      expectedRoot,
+    ))
+    assert.throws(
+      () => assertResolvedWorkspacePackage(pluginRoot, 'fixture-plugin', 'fixture-runtime', otherRoot),
+      /installed a second fixture-runtime/u,
+    )
+  }
+  finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
 
 test('release smoke reads plain and volatile Settings schema results', () => {
   const input = { installState: { pkg: 'owner/repository' } }
