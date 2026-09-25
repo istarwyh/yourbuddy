@@ -12,7 +12,9 @@ description: "Y8 文档、官网与应用内帮助的九月实施方案入口，
 
 阅读[文档、官网与应用内帮助方案](implementation-plan.zh.md)。其中逐项说明要改的页面、应用入口、代码位置、现有能力复用与验收方式。
 
-阅读[工作台布局兼容与来源记录方案](workbench-layout-compatibility.zh.md)，了解桌面工作台与对话区域交换、DSH 与 Better Sidebar 扩展职责拆分、可复现产品补丁、升级流程和验收标准。这项方案尚未实施。
+阅读[工作台布局兼容与来源记录方案](workbench-layout-compatibility.zh.md)，了解已经实现的桌面工作台与对话区域位置、DSH 与 Better Sidebar 扩展职责拆分、可复现产品补丁、升级流程和验收标准。
+
+阅读提案中的[三栏工作区布局](three-column-workspace-layout.zh.md)，了解 Navigation、Primary 与 Session 独立折叠，Better Sidebar 与内容工作台 keyed 切换，响应式恢复、迁移和验证。
 
 | 部分 | 交付内容 |
 |---|---|

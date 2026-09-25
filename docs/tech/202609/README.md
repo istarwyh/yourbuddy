@@ -12,7 +12,9 @@ The current task has one goal: users can first complete work with Y8, then find 
 
 Read the [documentation, website, and in-app Help plan](implementation-plan.md) for specific page changes, application entry points, code locations, existing capabilities to reuse, and acceptance.
 
-Read the [workbench layout compatibility and provenance plan](workbench-layout-compatibility.md) for the proposed desktop workbench/conversation swap, the DSH and Better Sidebar extension split, reproducible product patches, upgrade workflows, and acceptance criteria. This plan is not implemented yet.
+Read the [workbench layout compatibility and provenance plan](workbench-layout-compatibility.md) for the implemented desktop workbench/conversation placement, the DSH and Better Sidebar extension split, reproducible product patches, upgrade workflows, and acceptance criteria.
+
+Read the proposed [three-column workspace layout](three-column-workspace-layout.md) for independent Navigation, Primary, and Session collapse; keyed Better Sidebar and Content Workbench switching; responsive restoration; migration; and verification.
 
 | Area | Deliverable |
 |---|---|
