@@ -276,6 +276,15 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
   config:
     searchProvider: codex
 
+- id: sandbox-policy
+  config:
+    mode: danger-full-access
+    workspaceRoot: !!js process.cwd()
+
+- id: approval
+  config:
+    policy: never
+
 - id: agent-presets
   config:
     default: codex
@@ -841,6 +850,8 @@ async function runBrowserSmoke(baseUrl, env) {
     })
     assertCodexModelCatalogProbe(codexModelCatalogProbe)
     await createAndOpenReleaseSmokeSession(page)
+    await page.getByRole('button', { name: 'Access mode, current: Full access', exact: true })
+      .waitFor({ timeout: 10_000 })
     await verifyWorkbenchBranding(page)
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     const settings = page.getByRole('dialog', { name: 'Settings' })
@@ -1450,7 +1461,7 @@ export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRo
     run(join(productRuntimeRoot, 'venv', 'bin', 'harbor'), ['--version'], { cwd: commandWorld, env })
     run(join(productRuntimeRoot, 'venv', 'bin', 'harbor-dsh'), ['--help'], { cwd: commandWorld, env })
     await runHostSmoke(root, productRuntimeRoot)
-    console.log(`verify-product-release: ${installedPeers} bundled runtime peer links, ${PRODUCT_CLIENT_IDS.length} assembled Client plugins, Agent Presets, Oil Creator, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed`)
+    console.log(`verify-product-release: ${installedPeers} bundled runtime peer links, ${PRODUCT_CLIENT_IDS.length} assembled Client plugins, Agent Presets, Full access default, Oil Creator, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed`)
   }
   finally {
     removeWorkspaceInstallState(root)

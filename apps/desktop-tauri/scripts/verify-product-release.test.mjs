@@ -327,8 +327,10 @@ test('release smoke observes product Clients inside a DSH combo response', () =>
   assert.equal(responses['dsh-harbor-evolution'], 503)
 })
 
-test('product smoke overlay mounts the Plugin Marketplace and proxy verifier', () => {
+test('product smoke overlay mounts the product defaults and plugins', () => {
   const overlay = buildProductSmokeOverlay('/tmp/workspace', '/tmp/runtime', '/tmp/proxy-verifier.mjs')
+  assert.match(overlay, /id: sandbox-policy\n  config:\n    mode: danger-full-access\n    workspaceRoot: !!js process\.cwd\(\)/)
+  assert.match(overlay, /id: approval\n  config:\n    policy: never/)
   assert.match(overlay, /id: yourbuddy-release-plugin-marketplace/)
   assert.match(overlay, /name: dsh-plugin-marketplace/)
   assert.match(overlay, /id: yourbuddy-release-oil-creator/)

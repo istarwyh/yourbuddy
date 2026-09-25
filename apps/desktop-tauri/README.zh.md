@@ -21,6 +21,8 @@ Bundle Generator 会从随附的 Standard 组成派生一个 ID 为 `codex`、�
 
 Generator 还会从 Codex 派生 **内容创作** Agent Preset。它保留完整的 Standard 工具集与原生 Codex 委派，并把编码 Persona 换成内容工作台 Persona。Oil Creator 继续作为 Host Plugin 运行，因为同一个 Package 同时拥有 Sidebar、Settings、Remote、模型工具、Skills 与 System Prompt Section；这个 Preset 只专门化 Agent，不会重复挂载 Service。插件内置视频发布、视频转文章与微信公众号草稿 Skills，并提供统一的草稿准备工具；最终发表仍由用户完成。它的 Sidebar 会保留 Personal Workbench 名称、Logo 和桌面窗口控件。Codex 仍是默认 Preset。
 
+桌面 Overlay 将 `danger-full-access`（**完全权限**）设为新 Session 的基础权限 Preset。该 Preset 不限制文件访问，也不会为工具调用请求审批。通用设置中已保存的显式默认值仍然优先，产品基础值不会改写已有 Session。
+
 所有面向 Agent 的 Harbor Tool 都以调用方 Session 的绝对工作目录作为根目录。因此用户在 YourBuddy Session 中选择 `/Users/me/project` 后，初始化和后续由 Agent 创建的 Harbor 产物都会留在该项目内。桌面 Overlay 配置的应用数据 `projectRoot` 只作为全局 Web Workbench／非 Agent 场景的回退；Agent Tool 既不会使用它，也不会因为它与 Session 目录不同而拒绝执行。
 
 Harbor 会在 Job 启动前通过 Host 的 `agentDefaultModel` 与 LLM Service 解析并冻结 Candidate 模型。仅绑定 Loopback 的 Host Broker 随后通过随机的 Job 级 URL 与 Bearer Capability，把这条准确的模型路由开放给 Docker 任务。Python Adapter 会先从容器内执行健康检查，再安装和启动 Candidate；它在 `.harbor-runtime` 下生成临时 Cordis Overlay，只把 Candidate ACP 的模型路由替换为 `yourbuddy-host/<frozen-model>`。原始 Candidate 保持不可变，Codex OAuth 凭据不会进入 Candidate 文件、配置或容器环境。模型绑定属于 Evaluation Context v2，因此更换 Provider、Model、Reasoning Effort、Transport 或 Protocol 后不能复用旧的比较 Baseline。
