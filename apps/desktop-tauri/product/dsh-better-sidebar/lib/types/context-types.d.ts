@@ -121,18 +121,6 @@ export interface SidebarSlotsService {
      */
     inject(key: string, callback: () => () => void): () => void;
 }
-/** Shared workbench-width binding consumed by DSH's root layout. */
-export interface SidebarWorkbenchLayoutBinding {
-    getSnapshot(): {
-        width: number;
-    };
-    subscribe(listener: () => void): () => void;
-    setWidth(width: number): void;
-}
-/** DSH layout service face used by the slot presentation. */
-export interface SidebarLayoutService {
-    registerWorkbench(binding: SidebarWorkbenchLayoutBinding): () => void;
-}
 /** The client session list row the sidebar reads (cwd for the explorer). */
 export interface SidebarSessionSummary {
     id: string;
@@ -145,38 +133,12 @@ export interface SidebarSessionSummary {
     /** Whether the session's agent is currently running. */
     running?: boolean;
 }
-/** One healthy subagent catalog child row (structural mirror of the runtime). */
-export interface SidebarSubagentChildEntry {
-    kind: 'child';
-    id: string;
-    /** Whether the child Agent driver is running at the Host sampling boundary. */
-    activity: 'running' | 'inactive';
-    /** Whether a direct descendant has durable `origin: 'subagent'`. */
-    hasChildren: boolean;
-    mode: 'one-shot' | 'continuable';
-    label?: string;
-}
-/** One unreadable catalog row (corrupt / unsupported / unavailable). */
-export interface SidebarSubagentDiagnosticEntry {
-    kind: 'diagnostic';
-    id: string;
-    reason: 'corrupt' | 'unsupported' | 'unavailable';
-}
-/** The per-parent lazy catalog delivered through the sessions list feed. */
-export interface SidebarSubagentCatalog {
-    entries: Array<SidebarSubagentChildEntry | SidebarSubagentDiagnosticEntry>;
-    parentAvailable: boolean;
-    state: 'loading' | 'ready' | 'error';
-    error: {
-        code?: string;
-        message?: string;
-    } | null;
-}
 /** Durable parent/child address that selects subagent transport in the client. */
 export interface SidebarSubagentAddress {
     parentSessionId: string;
     childSessionId: string;
-    mode: 'one-shot' | 'continuable';
+    /** `unknown` keeps a child visible without claiming continuation support. */
+    mode: 'one-shot' | 'continuable' | 'unknown';
 }
 /** Minimal structural mirror of one session event (the subagent history tail). */
 export interface SidebarSessionEvent {
@@ -212,10 +174,21 @@ export interface SidebarJobView {
     /** Epoch ms when the job settled; absent while live. */
     finishedAt?: number;
 }
-/** The host jobs registry face the sidebar routes touch (structural mirror of `JobRegistry`). */
+/**
+ * The host jobs registry face the sidebar routes touch (structural mirror of
+ * `JobRegistry`).
+ *
+ * DSH 0.1.7 moved the access fence from the live `Agent` to the reading
+ * session id: `caller` is a `SessionId` string on every member. The plugin no
+ * longer needs `ctx.agents` in order to call the registry, and the Tasks page
+ * reads `list` through the plugin's own `jobs.list` route (the client session
+ * snapshot stopped mirroring background jobs in the same release).
+ */
 export interface SidebarJobsService {
+    /** Caller-owned and unowned jobs in registration order (the Tasks page list). */
+    list(caller?: string): SidebarJobView[];
     /** Request cancellation; throws for an unknown or foreign job. */
-    kill(id: string, caller?: SidebarAgent, reason?: string): 'requested' | 'already-finished';
+    kill(id: string, caller?: string, reason?: string): 'requested' | 'already-finished';
 }
 /** The host agent registry face (structural mirror of the runtime `ctx.agents`). */
 export interface SidebarAgentsService {
@@ -323,16 +296,40 @@ export interface SidebarSessionHandle {
 }
 /** The client session list snapshot the sidebar subscribes to. */
 export interface SidebarSessionList {
-    current: string | undefined;
     byId: Record<string, SidebarSessionSummary>;
-    /** Direct durable catalogs keyed by their selected parent address. */
-    subagentsByParent?: Readonly<Record<string, SidebarSubagentCatalog>>;
     /**
-     * Background jobs per session, last-wins from the harness's `session/jobs`
-     * push (a missing key is an empty set). Absent on runtime snapshots older
-     * than the jobs mirror — the sidebar simply shows no job rows.
+     * Host-computed projection values per session (DSH 0.1.7). The only field
+     * this plugin reads is `subagentCatalog`, the direct-child list the 0.1.6
+     * runtime published as `subagentsByParent`.
+     *
+     * Two facts the 0.1.6 snapshot carried are gone and must not be re-read:
+     * there is no `current` session id (`ctx.sidebarRight.mounted` is the
+     * sanctioned feed for "which session's seat is on screen"), and there is no
+     * background-jobs mirror (the `jobs.list` route reads the registry itself).
      */
-    jobsBySession?: Readonly<Record<string, readonly SidebarJobView[]>>;
+    projectionsBySession?: Readonly<Record<string, SidebarProjectionSnapshot>>;
+}
+/** One session's projection values, as the client snapshot publishes them. */
+export interface SidebarProjectionSnapshot {
+    values: {
+        subagentCatalog?: readonly SidebarSubagentCatalogEntry[];
+    };
+    state: 'idle' | 'loading' | 'ready' | 'error';
+    error: {
+        code?: string;
+        message?: string;
+    } | null;
+}
+/** One direct-child row of the host's `subagentCatalog` projection. */
+export interface SidebarSubagentCatalogEntry {
+    /** Child session id (`childId` in the durable event). */
+    id: string;
+    /** Epoch ms the child was created. */
+    createdAt: number;
+    /** `unknown` keeps a child visible without claiming continuation support. */
+    mode: 'one-shot' | 'continuable' | 'unknown';
+    /** Mode-specific label; continuable children always carry one. */
+    label?: string;
 }
 /** The client sessions service face (only the list feed is needed). */
 export interface SidebarSessionsService {
@@ -437,34 +434,71 @@ export interface SidebarInvariantsService {
     /** Reserve one package's checks and install them in the service's child fiber. */
     register(packageName: string, installer: (ctx: Context, fail: (message: string) => never) => void | Promise<void>): () => void;
 }
-/** The settings service face (mirror of @deepseek-ai/dsh-settings' SettingsProvider). */
+/**
+ * The settings service face (mirror of `@deepseek-ai/dsh-settings`'
+ * `SettingsForms`).
+ *
+ * DSH 0.1.7 replaced the registrable-namespace provider with a forms service
+ * over the profile's own entries: a form is addressed by the **Loader entry
+ * id** of the plugin row (`better-sidebar` for this bundle's patch, whatever
+ * id an aggregate bundle mounted it under), its schema is the row's exported
+ * `Config`, and the value shown is the live fiber config. There is no
+ * `register`/`get`/`watch` any more — reads go through {@link describe} and
+ * writes through {@link update}, which also carries the revision guard.
+ */
 export interface SidebarSettingsService {
-    /**
-     * Register one namespace schema (the resolved value layers schema defaults,
-     * then the composition base, then the user document).
-     */
-    register<T>(ns: string, schema: unknown, options?: {
-        base?: Partial<T>;
-        applies?: 'live' | 'restart';
-    }): {
-        get(): T;
-        watch(callback: (next: T, prev: T) => void | Promise<void>): () => void;
-        update(patch: object): Promise<void>;
-        replace(section: object): Promise<void>;
-    };
-    /** Redacted descriptors of every registered namespace (secrets stripped). */
+    /** Redacted descriptors of every configurable profile entry (secrets stripped). */
     describe(options?: {
         redactSecrets?: boolean;
     }): Array<{
+        /** Profile entry id — NOT a plugin-chosen namespace. */
         ns: string;
-        value?: unknown;
-        base?: unknown;
-        user?: unknown;
-        applies: 'live' | 'restart';
         revision: number;
+        value?: unknown;
+        /**
+         * The profile override layer alone, projected through the form. Empty
+         * means nothing has been persisted for this entry yet, which is what the
+         * one-time legacy import tests before seeding. Absent under
+         * `redactSecrets`.
+         */
+        user?: unknown;
     }>;
-    /** Service-level merge write with the revision guard (a stale writer is refused). */
+    /** Merge editable fields into one entry's config (a stale writer is refused). */
     update(ns: string, patch: object, expectedRevision?: number): Promise<void>;
+    /**
+     * Opt this plugin instance out of the auto-generated page: the plugin ships
+     * its own Side card settings section, so the native form must not duplicate
+     * it. The policy does not remove configuration reads or writes.
+     * @param presentation - page policy; `auto: false` opts out.
+     * @param owner - the plugin instance's fiber (the loader entry's fiber).
+     * @returns Disposer; register it with the plugin's effects.
+     */
+    configure(presentation: {
+        auto?: boolean;
+    }, owner?: unknown): () => void;
+}
+/**
+ * The Loader face this plugin consumes (structural mirror of the loader's
+ * `Loader#entries`). Each entry carries the row's configured id/name and the
+ * fiber it owns, which together identify this plugin's own row.
+ */
+export interface SidebarLoaderService {
+    entries(): Iterable<SidebarLoaderEntry>;
+    /**
+     * Resolves once every profile entry has been mounted (the Loader settles).
+     * Optional: a composition without the loader imports immediately instead.
+     */
+    await?(): Promise<unknown>;
+}
+/** One configured plugin row inside the profile's entry tree. */
+export interface SidebarLoaderEntry {
+    options: {
+        id?: string;
+        name?: string;
+    };
+    /** The fiber the row owns once it is loaded; compared by identity. */
+    fiber?: unknown;
+    disabled?: boolean;
 }
 /**
  * The tools service face (mirror of @deepseek-ai/dsh-tools' ToolRuntime).
@@ -505,8 +539,6 @@ export interface SidebarContextShape {
     webRuntime: SidebarWebRuntime;
     /** The client slot registry (register/inject). */
     slots: SidebarSlotsService;
-    /** The root layout service used by workbench-slot presentation. */
-    layout: SidebarLayoutService;
     /** The settings service face (prefs persistence + namespace reads). */
     settings: SidebarSettingsService;
     /** The invariant registry face. */
@@ -523,6 +555,22 @@ export interface SidebarContextShape {
     jobs: SidebarJobsService;
     /** The host live-agent registry (optional; side chat thread agents). */
     agents: SidebarAgentsService;
+    /**
+     * The active profile's context (optional). Only `home` is consumed: the
+     * harness home is where DSH 0.1.7 leaves the removed `settings.yaml` under
+     * its `.imported` name, which is the one surviving source of a pre-0.1.7
+     * user's Side card preferences.
+     */
+    profileContext?: {
+        home: string;
+    };
+    /**
+     * The Loader's entry list. This plugin reads it only to discover the id its
+     * own row was mounted under — 0.1.7 addresses settings forms by profile
+     * entry id, and the id is not knowable at author time (an aggregate bundle
+     * mounts the same package under its own id).
+     */
+    loader: SidebarLoaderService;
     /** The host subagent runtime (optional; live topology batch route). */
     subagents: SidebarSubagentsService;
     /** The host agent-presets service (optional; side chat cold resume). */

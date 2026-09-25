@@ -53,3 +53,9 @@ export declare function baseName(path: string): string;
  * extension matching (service.ts), which both live in the core bundle.
  */
 export declare function extOf(path: string): string;
+/**
+ * Resolve a (possibly relative) path against the session cwd for the sidebar.
+ * Absolute detection mirrors the host (see {@link isAbsolutePath}): POSIX
+ * roots, drive letters and UNC shares must not be joined onto the cwd.
+ */
+export declare function resolveSidebarPath(cwd: string | undefined, path: string): string;

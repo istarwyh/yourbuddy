@@ -1,553 +1,682 @@
-diff --git a/lib/client-registry.js b/lib/client-registry.js
-index c31ed5a1159c9f3ea3f1a60490d450f03d789ccf..3ce7f0aa447feff19c241a2256ecacbb1ac5c04f 100644
---- a/lib/client-registry.js
-+++ b/lib/client-registry.js
-@@ -6159,7 +6159,7 @@ window.__ModuleLoader__.load({
- 			return Math.min(TREE_WIDTH_MAX, Math.max(TREE_WIDTH_MIN, Math.round(value)));
- 		}
- 		function EditorHost(props) {
--			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile } = props;
-+			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide } = props;
- 			const path = tab.path ?? "";
- 			const title = tab.title;
- 			const isDir = metaOf(tab).dir === true;
-@@ -6179,20 +6179,25 @@ window.__ModuleLoader__.load({
- 			const treeOnly = showEmpty && !inPlace;
- 			const folderRoot = isDir ? path : void 0;
- 			/**
--			* Open a file from THIS window (tree click / search row / path input):
--			* merged mode switches this tab in place (stable id, meta survives);
--			* split mode opens a per-path dedupe tab through openSidebarFile.
-+			* Open a file from this window (tree click / search row / path input).
-+			* A native tab uses its occurrence-bound actions so the open cannot drift to
-+			* whichever Session happens to be mounted; the bottom workbench falls back
-+			* to the Better Sidebar service.
- 			*/
- 			const openFile = (absolute) => {
--				if (inPlace) ctx.get("betterSidebar")?.updateTab(tab.id, {
--					path: absolute,
--					title: baseName(absolute)
--				});
-+				if (inPlace) {
-+					if (onOpenFileInPlace !== void 0) onOpenFileInPlace(absolute);
-+					else ctx.get("betterSidebar")?.updateTab(tab.id, {
-+						path: absolute,
-+						title: baseName(absolute)
-+					});
-+				} else if (onOpenFile !== void 0) onOpenFile(absolute);
- 				else openSidebarFile(ctx, store, scope.sessionId, absolute);
- 			};
- 			/** The context menu's explicit "new tab" escape (per-path dedupe). */
- 			const openFileNewTab = (absolute) => {
--				openSidebarFile(ctx, store, scope.sessionId, absolute);
-+				if (onOpenFile !== void 0) onOpenFile(absolute);
-+				else openSidebarFile(ctx, store, scope.sessionId, absolute);
- 			};
- 			/**
- 			* The context menu's "open to the side": a fresh editor tab (uid id — the
-@@ -6200,6 +6205,10 @@ window.__ModuleLoader__.load({
- 			* second side-open of the same file) in a rightward split of THIS pane.
- 			*/
- 			const openFileSide = (absolute) => {
-+				if (onOpenFileSide !== void 0) {
-+					onOpenFileSide(absolute);
-+					return;
-+				}
- 				store.reduce((state) => {
- 					const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits);
- 					const fresh = {
-@@ -13817,7 +13826,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 							updatePluginSetting
- 						})
- 					},
--					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
-+					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
- 						ctx,
- 						store,
- 						scope,
-@@ -13825,7 +13834,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 						expanded: expanded ?? [],
- 						revealed: revealed ?? [],
- 						onToggleDir: onToggleDir ?? (() => {}),
--						onReferenceFile: onReferenceFile ?? (() => {})
-+						onReferenceFile: onReferenceFile ?? (() => {}),
-+						onOpenFile,
-+						onOpenFileInPlace,
-+						onOpenFileSide
- 					})
- 				},
- 				{
-@@ -13839,15 +13851,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 						const count = opCountOf(scope.sessionId);
- 						return count === void 0 || count === 0 ? null : count;
- 					},
--					component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
-+					component: ({ ctx, store, scope, tab, visible, onOpenFile, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
- 						ctx,
- 						store,
- 						scope,
- 						tab,
- 						visible,
--						onOpenFile: (path) => {
-+						onOpenFile: onOpenFile ?? ((path) => {
- 							openSidebarFile(ctx, store, scope.sessionId, path);
--						},
-+						}),
- 						onOpenDiff
- 					})
- 				},
-@@ -16744,6 +16756,17 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 		function useSessionCwd(ctx, sessionId) {
- 			return (0, react.useSyncExternalStore)((0, react.useMemo)(() => (listener) => ctx.sessions.list.subscribe(listener), [ctx]), () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd);
- 		}
-+		/** Open one path through the native tab occurrence that owns the gesture. */
-+		function openNativeFile(info, sessionId, cwd, path, placement) {
-+			const options = placement === "replace" ? {
-+				replaceTab: true,
-+				revealIfOpened: false
-+			} : placement === "side" ? {
-+				toSide: true,
-+				revealIfOpened: false
-+			} : { revealIfOpened: true };
-+			info.tab.actions.openResource(fileAddressFor(sessionId, cwd, path), options);
-+		}
- 		/**
- 		* One plugin tab rendered inside the native right Sidebar: the descriptor's
- 		* own component with the plugin's props, over a synthetic record minted from
-@@ -16812,6 +16835,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 				onReferenceFile: (path, isDir) => {
- 					referenceInChat(ctx, sessionId, cwd, path, isDir);
- 				},
-+				onOpenFile: (path) => {
-+					openNativeFile(info, sessionId, cwd, path, "tab");
-+				},
-+				onOpenFileInPlace: (path) => {
-+					openNativeFile(info, sessionId, cwd, path, "replace");
-+				},
-+				onOpenFileSide: (path) => {
-+					openNativeFile(info, sessionId, cwd, path, "side");
-+				},
- 				onOpenDiff: (tab) => {
- 					service.openTab({
- 						type: "diff",
-@@ -17182,13 +17214,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 		//#endregion
- 		//#region src/client/native/surface.ts
- 		/** The active session id, as the client list reports it. */
--		function activeSessionId(ctx) {
--			try {
--				return ctx.sessions.list.getSnapshot().current;
--			} catch {
--				return;
--			}
--		}
- 		/**
- 		* Bind the plugin's write face to the native controller.
- 		* @param ctx - the client context (session list + `ctx.sidebarRight`).
-@@ -17201,48 +17226,30 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 			const place = (entry) => {
- 				const api = controller();
- 				if (api === void 0) return false;
--				const active = activeSessionId(ctx);
--				const onScreen = active !== void 0 && active === entry.sessionId;
- 				if (entry.kind === "tab") {
- 					const options = {
- 						params: entry.params,
- 						revealIfOpened: entry.revealIfOpened
- 					};
--					if (onScreen) {
--						api.openTab(entry.tabKind, options);
--						return true;
--					}
--					if (api.openTabIn !== void 0) {
--						api.openTabIn(entry.sessionId, entry.tabKind, options);
--						return true;
--					}
--					return false;
-+					return api.openTabIn(entry.sessionId, entry.tabKind, options);
- 				}
- 				const options = {
- 					...entry.line === void 0 ? {} : { params: { line: entry.line } },
- 					revealIfOpened: entry.revealIfOpened
- 				};
--				if (onScreen) {
--					api.openResource(entry.address, options);
--					return true;
--				}
--				if (api.openResourceIn !== void 0) {
--					api.openResourceIn(entry.sessionId, entry.address, options);
--					return true;
--				}
--				return false;
-+				return api.openResourceIn(entry.sessionId, entry.address, options);
- 			};
- 			const flushPending = () => {
- 				if (pending.length === 0) return;
--				for (let index = pending.length - 1; index >= 0; index--) {
--					const entry = pending[index];
--					if (entry !== void 0 && place(entry)) pending.splice(index, 1);
--				}
-+				const retained = pending.filter((entry) => !place(entry));
-+				pending.splice(0, pending.length, ...retained);
- 			};
- 			const enqueue = (entry) => {
-+				flushPending();
- 				if (!place(entry)) pending.push(entry);
- 			};
--			const unsubscribe = ctx.sessions.list.subscribe(flushPending);
-+			const unsubscribeSessionList = ctx.sessions.list.subscribe(flushPending);
-+			const unsubscribeAdoption = controller()?.onSessionAdopted(flushPending);
- 			return {
- 				openTab({ sessionId, kind, params, revealIfOpened }) {
- 					enqueue({
-@@ -17269,11 +17276,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 					const record = records.get(tabId);
- 					if (record === void 0) return void 0;
- 					records.drop(tabId);
--					const api = controller();
--					if (api !== void 0) {
--						if (sessionId === activeSessionId(ctx)) api.close(tabId);
--						else if (api.closeIn !== void 0) api.closeIn(sessionId, tabId);
--					}
-+					controller()?.closeIn(sessionId, tabId);
- 					return {
- 						type: record.tab.type,
- 						title: record.tab.title
-@@ -17288,9 +17291,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 					return records.has(tabId);
- 				},
- 				has: (tabId) => records.has(tabId),
--				flushPending,
- 				dispose: () => {
--					unsubscribe();
-+					unsubscribeSessionList();
-+					unsubscribeAdoption?.();
- 				}
- 			};
- 		}
-diff --git a/lib/client.js b/lib/client.js
-index 2a2f62569152d6dbf2c15cbad699f051ac5e829a..149096b41da84c1576f20bfed8ba441e9159954c 100644
---- a/lib/client.js
-+++ b/lib/client.js
-@@ -6159,7 +6159,7 @@ window.__ModuleLoader__.load({
- 			return Math.min(TREE_WIDTH_MAX, Math.max(TREE_WIDTH_MIN, Math.round(value)));
- 		}
- 		function EditorHost(props) {
--			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile } = props;
-+			const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide } = props;
- 			const path = tab.path ?? "";
- 			const title = tab.title;
- 			const isDir = metaOf(tab).dir === true;
-@@ -6179,20 +6179,25 @@ window.__ModuleLoader__.load({
- 			const treeOnly = showEmpty && !inPlace;
- 			const folderRoot = isDir ? path : void 0;
- 			/**
--			* Open a file from THIS window (tree click / search row / path input):
--			* merged mode switches this tab in place (stable id, meta survives);
--			* split mode opens a per-path dedupe tab through openSidebarFile.
-+			* Open a file from this window (tree click / search row / path input).
-+			* A native tab uses its occurrence-bound actions so the open cannot drift to
-+			* whichever Session happens to be mounted; the bottom workbench falls back
-+			* to the Better Sidebar service.
- 			*/
- 			const openFile = (absolute) => {
--				if (inPlace) ctx.get("betterSidebar")?.updateTab(tab.id, {
--					path: absolute,
--					title: baseName(absolute)
--				});
-+				if (inPlace) {
-+					if (onOpenFileInPlace !== void 0) onOpenFileInPlace(absolute);
-+					else ctx.get("betterSidebar")?.updateTab(tab.id, {
-+						path: absolute,
-+						title: baseName(absolute)
-+					});
-+				} else if (onOpenFile !== void 0) onOpenFile(absolute);
- 				else openSidebarFile(ctx, store, scope.sessionId, absolute);
- 			};
- 			/** The context menu's explicit "new tab" escape (per-path dedupe). */
- 			const openFileNewTab = (absolute) => {
--				openSidebarFile(ctx, store, scope.sessionId, absolute);
-+				if (onOpenFile !== void 0) onOpenFile(absolute);
-+				else openSidebarFile(ctx, store, scope.sessionId, absolute);
- 			};
- 			/**
- 			* The context menu's "open to the side": a fresh editor tab (uid id — the
-@@ -6200,6 +6205,10 @@ window.__ModuleLoader__.load({
- 			* second side-open of the same file) in a rightward split of THIS pane.
- 			*/
- 			const openFileSide = (absolute) => {
-+				if (onOpenFileSide !== void 0) {
-+					onOpenFileSide(absolute);
-+					return;
-+				}
- 				store.reduce((state) => {
- 					const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits);
- 					const fresh = {
-@@ -13817,7 +13826,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 							updatePluginSetting
- 						})
- 					},
--					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
-+					component: ({ ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EditorHost, {
- 						ctx,
- 						store,
- 						scope,
-@@ -13825,7 +13834,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 						expanded: expanded ?? [],
- 						revealed: revealed ?? [],
- 						onToggleDir: onToggleDir ?? (() => {}),
--						onReferenceFile: onReferenceFile ?? (() => {})
-+						onReferenceFile: onReferenceFile ?? (() => {}),
-+						onOpenFile,
-+						onOpenFileInPlace,
-+						onOpenFileSide
- 					})
- 				},
- 				{
-@@ -13839,15 +13851,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 						const count = opCountOf(scope.sessionId);
- 						return count === void 0 || count === 0 ? null : count;
- 					},
--					component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
-+					component: ({ ctx, store, scope, tab, visible, onOpenFile, onOpenDiff }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChangesTab, {
- 						ctx,
- 						store,
- 						scope,
- 						tab,
- 						visible,
--						onOpenFile: (path) => {
-+						onOpenFile: onOpenFile ?? ((path) => {
- 							openSidebarFile(ctx, store, scope.sessionId, path);
--						},
-+						}),
- 						onOpenDiff
- 					})
- 				},
-@@ -16744,6 +16756,17 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 		function useSessionCwd(ctx, sessionId) {
- 			return (0, react.useSyncExternalStore)((0, react.useMemo)(() => (listener) => ctx.sessions.list.subscribe(listener), [ctx]), () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd);
- 		}
-+		/** Open one path through the native tab occurrence that owns the gesture. */
-+		function openNativeFile(info, sessionId, cwd, path, placement) {
-+			const options = placement === "replace" ? {
-+				replaceTab: true,
-+				revealIfOpened: false
-+			} : placement === "side" ? {
-+				toSide: true,
-+				revealIfOpened: false
-+			} : { revealIfOpened: true };
-+			info.tab.actions.openResource(fileAddressFor(sessionId, cwd, path), options);
-+		}
- 		/**
- 		* One plugin tab rendered inside the native right Sidebar: the descriptor's
- 		* own component with the plugin's props, over a synthetic record minted from
-@@ -16812,6 +16835,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 				onReferenceFile: (path, isDir) => {
- 					referenceInChat(ctx, sessionId, cwd, path, isDir);
- 				},
-+				onOpenFile: (path) => {
-+					openNativeFile(info, sessionId, cwd, path, "tab");
-+				},
-+				onOpenFileInPlace: (path) => {
-+					openNativeFile(info, sessionId, cwd, path, "replace");
-+				},
-+				onOpenFileSide: (path) => {
-+					openNativeFile(info, sessionId, cwd, path, "side");
-+				},
- 				onOpenDiff: (tab) => {
- 					service.openTab({
- 						type: "diff",
-@@ -17182,13 +17214,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 		//#endregion
- 		//#region src/client/native/surface.ts
- 		/** The active session id, as the client list reports it. */
--		function activeSessionId(ctx) {
--			try {
--				return ctx.sessions.list.getSnapshot().current;
--			} catch {
--				return;
--			}
--		}
- 		/**
- 		* Bind the plugin's write face to the native controller.
- 		* @param ctx - the client context (session list + `ctx.sidebarRight`).
-@@ -17201,48 +17226,30 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 			const place = (entry) => {
- 				const api = controller();
- 				if (api === void 0) return false;
--				const active = activeSessionId(ctx);
--				const onScreen = active !== void 0 && active === entry.sessionId;
- 				if (entry.kind === "tab") {
- 					const options = {
- 						params: entry.params,
- 						revealIfOpened: entry.revealIfOpened
- 					};
--					if (onScreen) {
--						api.openTab(entry.tabKind, options);
--						return true;
--					}
--					if (api.openTabIn !== void 0) {
--						api.openTabIn(entry.sessionId, entry.tabKind, options);
--						return true;
--					}
--					return false;
-+					return api.openTabIn(entry.sessionId, entry.tabKind, options);
- 				}
- 				const options = {
- 					...entry.line === void 0 ? {} : { params: { line: entry.line } },
- 					revealIfOpened: entry.revealIfOpened
- 				};
--				if (onScreen) {
--					api.openResource(entry.address, options);
--					return true;
--				}
--				if (api.openResourceIn !== void 0) {
--					api.openResourceIn(entry.sessionId, entry.address, options);
--					return true;
--				}
--				return false;
-+				return api.openResourceIn(entry.sessionId, entry.address, options);
- 			};
- 			const flushPending = () => {
- 				if (pending.length === 0) return;
--				for (let index = pending.length - 1; index >= 0; index--) {
--					const entry = pending[index];
--					if (entry !== void 0 && place(entry)) pending.splice(index, 1);
--				}
-+				const retained = pending.filter((entry) => !place(entry));
-+				pending.splice(0, pending.length, ...retained);
- 			};
- 			const enqueue = (entry) => {
-+				flushPending();
- 				if (!place(entry)) pending.push(entry);
- 			};
--			const unsubscribe = ctx.sessions.list.subscribe(flushPending);
-+			const unsubscribeSessionList = ctx.sessions.list.subscribe(flushPending);
-+			const unsubscribeAdoption = controller()?.onSessionAdopted(flushPending);
- 			return {
- 				openTab({ sessionId, kind, params, revealIfOpened }) {
- 					enqueue({
-@@ -17269,11 +17276,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 					const record = records.get(tabId);
- 					if (record === void 0) return void 0;
- 					records.drop(tabId);
--					const api = controller();
--					if (api !== void 0) {
--						if (sessionId === activeSessionId(ctx)) api.close(tabId);
--						else if (api.closeIn !== void 0) api.closeIn(sessionId, tabId);
--					}
-+					controller()?.closeIn(sessionId, tabId);
- 					return {
- 						type: record.tab.type,
- 						title: record.tab.title
-@@ -17288,9 +17291,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
- 					return records.has(tabId);
- 				},
- 				has: (tabId) => records.has(tabId),
--				flushPending,
- 				dispose: () => {
--					unsubscribe();
-+					unsubscribeSessionList();
-+					unsubscribeAdoption?.();
- 				}
- 			};
- 		}
-diff --git a/lib/types/client/EditorHost.d.ts b/lib/types/client/EditorHost.d.ts
-index c26764e8cbd13060906f0d2a5b8481f0c8dc2084..ec0e63761b8b064310a59210de4b6e23cf363ada 100644
---- a/lib/types/client/EditorHost.d.ts
-+++ b/lib/types/client/EditorHost.d.ts
-@@ -10,4 +10,10 @@ export declare function EditorHost(props: {
-     revealed: string[];
-     onToggleDir: (path: string) => void;
-     onReferenceFile: (path: string, isDir: boolean) => void;
-+    /** Session-bound native resource open; absent in the bottom workbench. */
-+    onOpenFile?: (path: string) => void;
-+    /** Session-bound replacement of the native tab that owns this editor. */
-+    onOpenFileInPlace?: (path: string) => void;
-+    /** Session-bound open in a new native pane beside this editor. */
-+    onOpenFileSide?: (path: string) => void;
- }): import("react").JSX.Element;
-diff --git a/lib/types/client/native/surface.d.ts b/lib/types/client/native/surface.d.ts
-index 4635daf826eae63a4d5e8415b5181a3537e0a6d8..94f88a647ed489a375898b0df7ba315295963e23 100644
---- a/lib/types/client/native/surface.d.ts
-+++ b/lib/types/client/native/surface.d.ts
-@@ -11,9 +11,9 @@
-  * - the surface exists only while a session's panel is mounted, and the
-  *   service's public face (`ISidebarRight`) writes only into THAT session.
-  *   The controller also carries `openTabIn` / `openResourceIn` /
-- *   `closeIn`, which act on any session whose store the runtime has minted;
-- *   both are probed at call time, and an open for a session that has no
-- *   store yet is QUEUED and replayed when that session comes on screen;
-+ *   `closeIn`, which act on any Session whose store the runtime has minted;
-+ *   an open for a Session that has no store yet is queued and replayed in
-+ *   request order when that store is adopted;
-  * - layout state is memory-only, so a queued open is not durable either.
-  */
- import type { Context } from '../../context-types.ts';
-@@ -21,9 +21,7 @@ import type { SidebarSurface } from '../service.ts';
- import type { NativeTabRecords } from './tab-adapter.tsx';
- /** The plugin's write face over the native surface. */
- export interface NativeSurface extends SidebarSurface {
--    /** Replay opens that were queued for a session that had no mounted surface. */
--    flushPending(): void;
--    /** Stop observing the session list. */
-+    /** Stop observing Session-list and native-store lifecycle changes. */
-     dispose(): void;
- }
- /**
-diff --git a/lib/types/client/native/tab-adapter.d.ts b/lib/types/client/native/tab-adapter.d.ts
-index 36bc0832aa79473f44a152fdb75c84be81435b20..cd10ee5e589bc3a2425b04576b90c94b187c7700 100644
---- a/lib/types/client/native/tab-adapter.d.ts
-+++ b/lib/types/client/native/tab-adapter.d.ts
-@@ -35,6 +35,13 @@ export interface NativeTabInfo {
-             readonly revision: number;
-         };
-         readonly signal: AbortSignal;
-+        readonly actions: {
-+            openResource(address: string, options?: {
-+                revealIfOpened?: boolean;
-+                replaceTab?: boolean;
-+                toSide?: boolean;
-+            }): void;
-+        };
-     };
- }
- /** One native tab's plugin-side view state. */
-@@ -120,6 +127,15 @@ export interface NativeBodyInjected {
- export interface NativeBodyFrameworkProps {
-     readonly useTabInfo: () => NativeTabInfo;
- }
-+/**
-+ * Open one path through the native tab occurrence that owns the gesture.
-+ * @param info - the native tab and its Session-bound actions.
-+ * @param sessionId - the Session whose workspace resolves the path.
-+ * @param cwd - that Session's workspace root.
-+ * @param path - an absolute or workspace-relative file path.
-+ * @param placement - whether the resource reveals a tab, replaces this tab, or opens beside it.
-+ */
-+export declare function openNativeFile(info: NativeTabInfo, sessionId: string, cwd: string | undefined, path: string, placement: 'tab' | 'replace' | 'side'): void;
- /**
-  * One plugin tab rendered inside the native right Sidebar: the descriptor's
-  * own component with the plugin's props, over a synthetic record minted from
-diff --git a/lib/types/client/service.d.ts b/lib/types/client/service.d.ts
-index 461114457ea80c118f8f63bd781d4d0f2d16f61b..19e4b8cafa929b58621b9cb2e8d30a108107ed6a 100644
---- a/lib/types/client/service.d.ts
-+++ b/lib/types/client/service.d.ts
-@@ -133,7 +133,12 @@ export interface TabComponentProps {
-     revealed?: string[];
-     onToggleDir?: (path: string) => void;
-     onReferenceFile?: (path: string, isDir: boolean) => void;
-+    /** Open a file as another native resource tab in this tab's Session. */
-     onOpenFile?: (path: string) => void;
-+    /** Replace this native tab with a file resource in the same Session. */
-+    onOpenFileInPlace?: (path: string) => void;
-+    /** Open a file resource in a new pane beside this native tab. */
-+    onOpenFileSide?: (path: string) => void;
-     onOpenDiff?: (tab: SidebarTab) => void;
-     onSubagentJump?: (childSessionId: string) => void;
- }
+diff --git a/lib/client-editor.js b/lib/client-editor.js
+index a38385a438bf8d467b2b1c6d003477f11ebba3df..528d12a2284250d8b51672117092c62e5295c9d1 100644
+--- a/lib/client-editor.js
++++ b/lib/client-editor.js
+@@ -44444,181 +44444,181 @@ globalThis.__dshChunks__["editor"] = (require) => {
+ 		document.head.appendChild(tag);
+ 	}
+ 	var sidebar_module_css_default = {
+-		"toggleButton": "UpyclG_toggleButton",
+-		"editorPptxButton": "UpyclG_editorPptxButton",
+-		"gitDiffTabHeader": "UpyclG_gitDiffTabHeader",
+-		"tabActive": "UpyclG_tabActive",
+-		"editorPlaceholder": "UpyclG_editorPlaceholder",
+-		"explorerRenameInput": "UpyclG_explorerRenameInput",
+-		"boundaryError": "UpyclG_boundaryError",
+-		"gitError": "UpyclG_gitError",
+-		"dropOverlay": "UpyclG_dropOverlay",
+-		"mermaidModalHint": "UpyclG_mermaidModalHint",
+-		"explorerError": "UpyclG_explorerError",
+-		"editorPdfDragShield": "UpyclG_editorPdfDragShield",
+-		"editorCmHidden": "UpyclG_editorCmHidden",
+-		"uploadOverlay": "UpyclG_uploadOverlay",
+-		"explorerConfirmDesc": "UpyclG_explorerConfirmDesc",
+-		"editorBinaryNotice": "UpyclG_editorBinaryNotice",
+-		"explorerRow": "UpyclG_explorerRow",
+-		"orphanedType": "UpyclG_orphanedType",
+-		"sandboxDot": "UpyclG_sandboxDot",
+-		"browserBlockedButton": "UpyclG_browserBlockedButton",
+-		"gitDiffTabTitle": "UpyclG_gitDiffTabTitle",
+-		"openWithLabel": "UpyclG_openWithLabel",
+-		"tocBar": "UpyclG_tocBar",
+-		"tocItemLevel": "UpyclG_tocItemLevel",
+-		"editorTreeSearch": "UpyclG_editorTreeSearch",
+-		"uploadDropChatHint": "UpyclG_uploadDropChatHint",
+-		"chipIcon": "UpyclG_chipIcon",
+-		"dsh-row-in": "UpyclG_dsh-row-in",
+-		"tabList": "UpyclG_tabList",
+-		"dropDown": "UpyclG_dropDown",
+-		"tocPanel": "UpyclG_tocPanel",
+-		"dropUp": "UpyclG_dropUp",
+-		"tabTitle": "UpyclG_tabTitle",
+-		"tabBar": "UpyclG_tabBar",
+-		"mermaidCopy": "UpyclG_mermaidCopy",
+-		"editor": "UpyclG_editor",
+-		"browserBlockedDesc": "UpyclG_browserBlockedDesc",
+-		"browserStart": "UpyclG_browserStart",
+ 		"editorTreeResize": "UpyclG_editorTreeResize",
+-		"editorStatus": "UpyclG_editorStatus",
+-		"editorPdfToolbar": "UpyclG_editorPdfToolbar",
++		"mermaidMarkdown": "UpyclG_mermaidMarkdown",
++		"explorerHeader": "UpyclG_explorerHeader",
++		"sandboxStatusOn": "UpyclG_sandboxStatusOn",
++		"tocItemLevel": "UpyclG_tocItemLevel",
++		"editorBanner": "UpyclG_editorBanner",
+ 		"editorTreePanelFull": "UpyclG_editorTreePanelFull",
+-		"editorSearchResult": "UpyclG_editorSearchResult",
+-		"mermaidHeader": "UpyclG_mermaidHeader",
+-		"splitCol": "UpyclG_splitCol",
+-		"editorMain": "UpyclG_editorMain",
+-		"tocItemText": "UpyclG_tocItemText",
+-		"editorSearchInput": "UpyclG_editorSearchInput",
+-		"mermaidBody": "UpyclG_mermaidBody",
+-		"explorerRowDropTarget": "UpyclG_explorerRowDropTarget",
+-		"bottomPanelHidden": "UpyclG_bottomPanelHidden",
+-		"bottomPanelSlot": "UpyclG_bottomPanelSlot",
+-		"workbench": "UpyclG_workbench",
+-		"mermaidCode": "UpyclG_mermaidCode",
+-		"panel": "UpyclG_panel",
+-		"uploadDropHero": "UpyclG_uploadDropHero",
+-		"uploadOverlayStatus": "UpyclG_uploadOverlayStatus",
+-		"uploadOverlayTitle": "UpyclG_uploadOverlayTitle",
+-		"mermaidModalStage": "UpyclG_mermaidModalStage",
+-		"explorerRef": "UpyclG_explorerRef",
++		"selectionPopup": "UpyclG_selectionPopup",
+ 		"uploadOverlayCard": "UpyclG_uploadOverlayCard",
++		"uploadDropZone": "UpyclG_uploadDropZone",
++		"editorPdfDragShield": "UpyclG_editorPdfDragShield",
++		"nativeTabHost": "UpyclG_nativeTabHost",
+ 		"mermaidInfo": "UpyclG_mermaidInfo",
+-		"paneTab": "UpyclG_paneTab",
+-		"browserBar": "UpyclG_browserBar",
+-		"iconButton": "UpyclG_iconButton",
+-		"dividerCol": "UpyclG_dividerCol",
+-		"editorTreeDock": "UpyclG_editorTreeDock",
++		"editorMd": "UpyclG_editorMd",
++		"tabBarPlus": "UpyclG_tabBarPlus",
++		"boundaryError": "UpyclG_boundaryError",
++		"browserBlockedTitle": "UpyclG_browserBlockedTitle",
++		"editorCmHidden": "UpyclG_editorCmHidden",
++		"tocBar": "UpyclG_tocBar",
++		"gitDiffTab": "UpyclG_gitDiffTab",
+ 		"explorerRoot": "UpyclG_explorerRoot",
++		"paneTab": "UpyclG_paneTab",
++		"editor": "UpyclG_editor",
++		"sandboxStatusOff": "UpyclG_sandboxStatusOff",
+ 		"dividerActive": "UpyclG_dividerActive",
+-		"fenceError": "UpyclG_fenceError",
+-		"sandboxStatus": "UpyclG_sandboxStatus",
+-		"editorDownloadLink": "UpyclG_editorDownloadLink",
+-		"uploadDropChatCard": "UpyclG_uploadDropChatCard",
+-		"dropLeft": "UpyclG_dropLeft",
++		"bottomPanelSlot": "UpyclG_bottomPanelSlot",
++		"explorerRenaming": "UpyclG_explorerRenaming",
++		"mermaidError": "UpyclG_mermaidError",
++		"uploadOverlayCancel": "UpyclG_uploadOverlayCancel",
+ 		"mermaidModalButton": "UpyclG_mermaidModalButton",
+-		"gitDiffTab": "UpyclG_gitDiffTab",
+-		"bottomPanel": "UpyclG_bottomPanel",
+-		"uploadOverlayProgressFill": "UpyclG_uploadOverlayProgressFill",
+-		"editorTreePanel": "UpyclG_editorTreePanel",
+-		"tocFlash": "UpyclG_tocFlash",
+-		"browser": "UpyclG_browser",
+-		"gitEmpty": "UpyclG_gitEmpty",
+-		"editorBanner": "UpyclG_editorBanner",
+-		"explorerName": "UpyclG_explorerName",
+-		"paneTabHidden": "UpyclG_paneTabHidden",
+-		"editorHeader": "UpyclG_editorHeader",
+-		"uploadOverlayProgress": "UpyclG_uploadOverlayProgress",
++		"bottomPanelHidden": "UpyclG_bottomPanelHidden",
++		"tabBar": "UpyclG_tabBar",
++		"dropCenter": "UpyclG_dropCenter",
++		"editorPdfToolbar": "UpyclG_editorPdfToolbar",
++		"explorerBroken": "UpyclG_explorerBroken",
++		"editorPathInput": "UpyclG_editorPathInput",
++		"explorer": "UpyclG_explorer",
++		"sandboxStatus": "UpyclG_sandboxStatus",
++		"explorerRowDropTarget": "UpyclG_explorerRowDropTarget",
++		"pane": "UpyclG_pane",
++		"splitCol": "UpyclG_splitCol",
+ 		"mermaidModal": "UpyclG_mermaidModal",
+-		"tocItem": "UpyclG_tocItem",
+-		"mermaidModalToolbar": "UpyclG_mermaidModalToolbar",
+-		"splitChild": "UpyclG_splitChild",
+-		"tabBarPlus": "UpyclG_tabBarPlus",
+-		"explorerDir": "UpyclG_explorerDir",
+-		"splitRow": "UpyclG_splitRow",
+-		"explorerHidden": "UpyclG_explorerHidden",
+-		"explorerRenaming": "UpyclG_explorerRenaming",
++		"explorerActionError": "UpyclG_explorerActionError",
++		"browserBlocked": "UpyclG_browserBlocked",
++		"tabBadge": "UpyclG_tabBadge",
++		"uploadDropChatHint": "UpyclG_uploadDropChatHint",
++		"editorHtml": "UpyclG_editorHtml",
++		"panel": "UpyclG_panel",
+ 		"tabClose": "UpyclG_tabClose",
+-		"explorerBody": "UpyclG_explorerBody",
+-		"openWithPin": "UpyclG_openWithPin",
+-		"editorBinary": "UpyclG_editorBinary",
+-		"panelBody": "UpyclG_panelBody",
+-		"editorPathInput": "UpyclG_editorPathInput",
+-		"browserBlockedActions": "UpyclG_browserBlockedActions",
++		"orphanedType": "UpyclG_orphanedType",
++		"paneContent": "UpyclG_paneContent",
++		"editorCm": "UpyclG_editorCm",
++		"tabList": "UpyclG_tabList",
++		"browserBlockedDesc": "UpyclG_browserBlockedDesc",
++		"editorModeToggle": "UpyclG_editorModeToggle",
++		"editorTitle": "UpyclG_editorTitle",
++		"mermaidHeader": "UpyclG_mermaidHeader",
++		"editorPdfDragShieldActive": "UpyclG_editorPdfDragShieldActive",
+ 		"paneDrop": "UpyclG_paneDrop",
+-		"tabBarDrop": "UpyclG_tabBarDrop",
+-		"sandboxStatusText": "UpyclG_sandboxStatusText",
+-		"browserMessage": "UpyclG_browserMessage",
+-		"editorMd": "UpyclG_editorMd",
+-		"sandboxStatusOff": "UpyclG_sandboxStatusOff",
+-		"uploadDropZonePill": "UpyclG_uploadDropZonePill",
+-		"explorerHeader": "UpyclG_explorerHeader",
+-		"editorError": "UpyclG_editorError",
++		"tocFlash": "UpyclG_tocFlash",
++		"mermaidBody": "UpyclG_mermaidBody",
++		"openWithLabel": "UpyclG_openWithLabel",
++		"mermaidModalToolbar": "UpyclG_mermaidModalToolbar",
++		"mermaidCode": "UpyclG_mermaidCode",
++		"gitEmpty": "UpyclG_gitEmpty",
++		"explorerEmpty": "UpyclG_explorerEmpty",
++		"tocPanel": "UpyclG_tocPanel",
++		"editorMain": "UpyclG_editorMain",
++		"fenceError": "UpyclG_fenceError",
+ 		"bottomClose": "UpyclG_bottomClose",
+-		"sandboxStatusOn": "UpyclG_sandboxStatusOn",
+-		"mermaidWrap": "UpyclG_mermaidWrap",
+-		"browserBlocked": "UpyclG_browserBlocked",
+-		"mermaidError": "UpyclG_mermaidError",
+-		"terminalRetry": "UpyclG_terminalRetry",
+-		"nativeTabHost": "UpyclG_nativeTabHost",
+-		"gitPlaceholder": "UpyclG_gitPlaceholder",
+-		"browserFrame": "UpyclG_browserFrame",
+-		"editorDocxZoomRange": "UpyclG_editorDocxZoomRange",
+-		"explorerRowRevealed": "UpyclG_explorerRowRevealed",
+-		"dividerRow": "UpyclG_dividerRow",
+-		"openWithPinActive": "UpyclG_openWithPinActive",
++		"browserStart": "UpyclG_browserStart",
++		"editorHtmlBlock": "UpyclG_editorHtmlBlock",
++		"tab": "UpyclG_tab",
+ 		"tocButton": "UpyclG_tocButton",
+-		"paneEmptyCards": "UpyclG_paneEmptyCards",
+-		"explorerEmpty": "UpyclG_explorerEmpty",
+-		"paneCard": "UpyclG_paneCard",
+-		"tabBadge": "UpyclG_tabBadge",
++		"mermaidWrap": "UpyclG_mermaidWrap",
++		"mermaidModalStage": "UpyclG_mermaidModalStage",
++		"uploadOverlay": "UpyclG_uploadOverlay",
++		"gitDiffTabHeader": "UpyclG_gitDiffTabHeader",
++		"editorSearchInput": "UpyclG_editorSearchInput",
++		"chipIcon": "UpyclG_chipIcon",
++		"tabActive": "UpyclG_tabActive",
++		"openWithPin": "UpyclG_openWithPin",
+ 		"dropRight": "UpyclG_dropRight",
+-		"uploadOverlayCancel": "UpyclG_uploadOverlayCancel",
+-		"editorBody": "UpyclG_editorBody",
+-		"editorStatusError": "UpyclG_editorStatusError",
++		"editorTreePanel": "UpyclG_editorTreePanel",
++		"editorBinary": "UpyclG_editorBinary",
++		"editorPdfFrameBlocked": "UpyclG_editorPdfFrameBlocked",
++		"editorPdfStage": "UpyclG_editorPdfStage",
++		"explorerDir": "UpyclG_explorerDir",
+ 		"sandboxAction": "UpyclG_sandboxAction",
+-		"dropCenter": "UpyclG_dropCenter",
+-		"editorCm": "UpyclG_editorCm",
++		"iconButton": "UpyclG_iconButton",
+ 		"editorModeActive": "UpyclG_editorModeActive",
+-		"editorPdfStage": "UpyclG_editorPdfStage",
+-		"editorSearchHint": "UpyclG_editorSearchHint",
+-		"editorPdfFrameBlocked": "UpyclG_editorPdfFrameBlocked",
+-		"bottomResize": "UpyclG_bottomResize",
+-		"explorerActionErrorText": "UpyclG_explorerActionErrorText",
+-		"editorPdfDragShieldActive": "UpyclG_editorPdfDragShieldActive",
++		"editorStatus": "UpyclG_editorStatus",
++		"dropDown": "UpyclG_dropDown",
++		"editorModeButton": "UpyclG_editorModeButton",
++		"dirtyDot": "UpyclG_dirtyDot",
++		"tocItemText": "UpyclG_tocItemText",
++		"dsh-row-in": "UpyclG_dsh-row-in",
+ 		"editorTreeToggleActive": "UpyclG_editorTreeToggleActive",
+-		"tab": "UpyclG_tab",
+-		"editorPdf": "UpyclG_editorPdf",
++		"uploadDropZonePill": "UpyclG_uploadDropZonePill",
++		"editorError": "UpyclG_editorError",
++		"uploadOverlayTitle": "UpyclG_uploadOverlayTitle",
++		"editorPlaceholder": "UpyclG_editorPlaceholder",
++		"explorerActionErrorClose": "UpyclG_explorerActionErrorClose",
++		"browserInput": "UpyclG_browserInput",
++		"tabBarDrop": "UpyclG_tabBarDrop",
++		"mermaidCopy": "UpyclG_mermaidCopy",
++		"uploadOverlayStatus": "UpyclG_uploadOverlayStatus",
++		"dropOverlay": "UpyclG_dropOverlay",
++		"paneCard": "UpyclG_paneCard",
++		"explorerRow": "UpyclG_explorerRow",
++		"sandboxStatusText": "UpyclG_sandboxStatusText",
++		"explorerName": "UpyclG_explorerName",
++		"explorerHidden": "UpyclG_explorerHidden",
++		"explorerError": "UpyclG_explorerError",
++		"splitChild": "UpyclG_splitChild",
++		"explorerBody": "UpyclG_explorerBody",
++		"editorSearchHint": "UpyclG_editorSearchHint",
++		"browserBar": "UpyclG_browserBar",
++		"editorDownloadLink": "UpyclG_editorDownloadLink",
++		"browserBlockedButton": "UpyclG_browserBlockedButton",
++		"dividerRow": "UpyclG_dividerRow",
++		"explorerSymlink": "UpyclG_explorerSymlink",
+ 		"editorPdfFrame": "UpyclG_editorPdfFrame",
+-		"explorerBroken": "UpyclG_explorerBroken",
+-		"explorerActionError": "UpyclG_explorerActionError",
+-		"split": "UpyclG_split",
+-		"paneContent": "UpyclG_paneContent",
+-		"editorModeToggle": "UpyclG_editorModeToggle",
+-		"pane": "UpyclG_pane",
+-		"selectionPopup": "UpyclG_selectionPopup",
+-		"editorHtml": "UpyclG_editorHtml",
++		"gitDiffTabTitle": "UpyclG_gitDiffTabTitle",
++		"dropUp": "UpyclG_dropUp",
++		"explorerCopied": "UpyclG_explorerCopied",
++		"dividerCol": "UpyclG_dividerCol",
++		"editorBody": "UpyclG_editorBody",
++		"browserFrame": "UpyclG_browserFrame",
++		"editorPdf": "UpyclG_editorPdf",
++		"tabBoundaryError": "UpyclG_tabBoundaryError",
++		"browser": "UpyclG_browser",
++		"dropLeft": "UpyclG_dropLeft",
+ 		"uploadDropZoneText": "UpyclG_uploadDropZoneText",
+-		"mermaidMarkdown": "UpyclG_mermaidMarkdown",
+-		"uploadDropZone": "UpyclG_uploadDropZone",
++		"tabTitle": "UpyclG_tabTitle",
++		"split": "UpyclG_split",
++		"uploadDropChatCard": "UpyclG_uploadDropChatCard",
++		"terminalRetry": "UpyclG_terminalRetry",
++		"paneTabHidden": "UpyclG_paneTabHidden",
++		"explorerRenameInput": "UpyclG_explorerRenameInput",
++		"uploadDropHero": "UpyclG_uploadDropHero",
++		"editorBinaryNotice": "UpyclG_editorBinaryNotice",
++		"explorerRef": "UpyclG_explorerRef",
+ 		"divider": "UpyclG_divider",
++		"editorDocxZoomRange": "UpyclG_editorDocxZoomRange",
++		"panelBody": "UpyclG_panelBody",
++		"editorSearchResult": "UpyclG_editorSearchResult",
++		"editorStatusError": "UpyclG_editorStatusError",
++		"openWithChevron": "UpyclG_openWithChevron",
++		"tocItem": "UpyclG_tocItem",
++		"explorerConfirmDesc": "UpyclG_explorerConfirmDesc",
++		"workbench": "UpyclG_workbench",
++		"editorHeader": "UpyclG_editorHeader",
++		"gitError": "UpyclG_gitError",
++		"editorPptxButton": "UpyclG_editorPptxButton",
++		"bottomResize": "UpyclG_bottomResize",
+ 		"bottomResizeActive": "UpyclG_bottomResizeActive",
+-		"browserInput": "UpyclG_browserInput",
+-		"editorModeButton": "UpyclG_editorModeButton",
+-		"tabBoundaryError": "UpyclG_tabBoundaryError",
+-		"explorer": "UpyclG_explorer",
+-		"browserBlockedTitle": "UpyclG_browserBlockedTitle",
++		"uploadOverlayProgress": "UpyclG_uploadOverlayProgress",
++		"uploadOverlayProgressFill": "UpyclG_uploadOverlayProgressFill",
++		"editorTreeSearch": "UpyclG_editorTreeSearch",
++		"browserBlockedActions": "UpyclG_browserBlockedActions",
+ 		"openWithName": "UpyclG_openWithName",
+-		"dirtyDot": "UpyclG_dirtyDot",
+-		"openWithChevron": "UpyclG_openWithChevron",
+-		"explorerActionErrorClose": "UpyclG_explorerActionErrorClose",
+-		"editorHtmlBlock": "UpyclG_editorHtmlBlock",
++		"toggleButton": "UpyclG_toggleButton",
++		"paneEmptyCards": "UpyclG_paneEmptyCards",
++		"browserMessage": "UpyclG_browserMessage",
++		"gitPlaceholder": "UpyclG_gitPlaceholder",
++		"mermaidModalHint": "UpyclG_mermaidModalHint",
++		"sandboxDot": "UpyclG_sandboxDot",
++		"bottomPanel": "UpyclG_bottomPanel",
+ 		"dsh-toc-flash": "UpyclG_dsh-toc-flash",
+-		"editorTitle": "UpyclG_editorTitle",
+-		"explorerCopied": "UpyclG_explorerCopied",
+-		"explorerSymlink": "UpyclG_explorerSymlink"
++		"splitRow": "UpyclG_splitRow",
++		"explorerActionErrorText": "UpyclG_explorerActionErrorText",
++		"openWithPinActive": "UpyclG_openWithPinActive",
++		"editorTreeDock": "UpyclG_editorTreeDock",
++		"explorerRowRevealed": "UpyclG_explorerRowRevealed"
+ 	};
+ 	//#endregion
+ 	//#region src/client/SandboxStatusBar.tsx
+diff --git a/lib/client-mermaid.js b/lib/client-mermaid.js
+index 5ef83080886104202da28f0a290f3b1895fa37c6..6b0cc27cb0b6dd880591bb90993531a576e63e0c 100644
+--- a/lib/client-mermaid.js
++++ b/lib/client-mermaid.js
+@@ -200330,181 +200330,181 @@ ${prefix}${Math.round(value * 100) / 100}${suffix}`;
+ 		document.head.appendChild(tag);
+ 	}
+ 	var sidebar_module_css_default = {
+-		"paneDrop": "UpyclG_paneDrop",
+-		"sandboxAction": "UpyclG_sandboxAction",
+-		"mermaidModalToolbar": "UpyclG_mermaidModalToolbar",
+-		"fenceError": "UpyclG_fenceError",
+-		"tabBarPlus": "UpyclG_tabBarPlus",
+-		"splitRow": "UpyclG_splitRow",
+-		"explorerConfirmDesc": "UpyclG_explorerConfirmDesc",
+-		"nativeTabHost": "UpyclG_nativeTabHost",
+-		"editorStatus": "UpyclG_editorStatus",
+-		"browserFrame": "UpyclG_browserFrame",
+-		"sandboxStatus": "UpyclG_sandboxStatus",
+-		"uploadOverlayStatus": "UpyclG_uploadOverlayStatus",
+-		"tocPanel": "UpyclG_tocPanel",
+-		"tocItemText": "UpyclG_tocItemText",
+-		"explorerRef": "UpyclG_explorerRef",
+-		"bottomPanelSlot": "UpyclG_bottomPanelSlot",
+-		"browserBlockedActions": "UpyclG_browserBlockedActions",
+-		"editorPdfDragShield": "UpyclG_editorPdfDragShield",
+-		"editorPdf": "UpyclG_editorPdf",
++		"browserStart": "UpyclG_browserStart",
+ 		"tabTitle": "UpyclG_tabTitle",
+-		"dirtyDot": "UpyclG_dirtyDot",
+-		"uploadDropChatHint": "UpyclG_uploadDropChatHint",
+-		"sandboxDot": "UpyclG_sandboxDot",
+-		"editorMd": "UpyclG_editorMd",
+-		"paneTab": "UpyclG_paneTab",
+-		"dividerCol": "UpyclG_dividerCol",
+-		"uploadOverlayProgress": "UpyclG_uploadOverlayProgress",
+ 		"explorer": "UpyclG_explorer",
++		"editorStatusError": "UpyclG_editorStatusError",
++		"orphanedType": "UpyclG_orphanedType",
++		"tocPanel": "UpyclG_tocPanel",
++		"panelBody": "UpyclG_panelBody",
++		"explorerBroken": "UpyclG_explorerBroken",
++		"openWithPin": "UpyclG_openWithPin",
++		"chipIcon": "UpyclG_chipIcon",
++		"editorPlaceholder": "UpyclG_editorPlaceholder",
++		"dropRight": "UpyclG_dropRight",
++		"editorTitle": "UpyclG_editorTitle",
++		"editorModeToggle": "UpyclG_editorModeToggle",
++		"editorDocxZoomRange": "UpyclG_editorDocxZoomRange",
++		"mermaidCode": "UpyclG_mermaidCode",
+ 		"bottomPanel": "UpyclG_bottomPanel",
+-		"explorerSymlink": "UpyclG_explorerSymlink",
+-		"dropUp": "UpyclG_dropUp",
+-		"tabBarDrop": "UpyclG_tabBarDrop",
+-		"uploadOverlay": "UpyclG_uploadOverlay",
+-		"mermaidInfo": "UpyclG_mermaidInfo",
+-		"tabClose": "UpyclG_tabClose",
+-		"editorSearchResult": "UpyclG_editorSearchResult",
+-		"tocItemLevel": "UpyclG_tocItemLevel",
+-		"uploadDropZonePill": "UpyclG_uploadDropZonePill",
+-		"uploadDropZoneText": "UpyclG_uploadDropZoneText",
+-		"mermaidMarkdown": "UpyclG_mermaidMarkdown",
+-		"paneEmptyCards": "UpyclG_paneEmptyCards",
+-		"explorerEmpty": "UpyclG_explorerEmpty",
+-		"uploadOverlayCard": "UpyclG_uploadOverlayCard",
++		"explorerRenameInput": "UpyclG_explorerRenameInput",
++		"explorerActionErrorText": "UpyclG_explorerActionErrorText",
++		"explorerRowDropTarget": "UpyclG_explorerRowDropTarget",
++		"uploadOverlayTitle": "UpyclG_uploadOverlayTitle",
++		"browserBlocked": "UpyclG_browserBlocked",
++		"fenceError": "UpyclG_fenceError",
++		"sandboxDot": "UpyclG_sandboxDot",
++		"editorPdfToolbar": "UpyclG_editorPdfToolbar",
+ 		"editorBinaryNotice": "UpyclG_editorBinaryNotice",
+-		"editorDownloadLink": "UpyclG_editorDownloadLink",
++		"dropUp": "UpyclG_dropUp",
++		"bottomResizeActive": "UpyclG_bottomResizeActive",
+ 		"editorBanner": "UpyclG_editorBanner",
++		"split": "UpyclG_split",
++		"browserBar": "UpyclG_browserBar",
+ 		"paneContent": "UpyclG_paneContent",
+-		"divider": "UpyclG_divider",
+-		"bottomResize": "UpyclG_bottomResize",
+-		"paneCard": "UpyclG_paneCard",
+-		"dsh-row-in": "UpyclG_dsh-row-in",
+-		"gitDiffTabHeader": "UpyclG_gitDiffTabHeader",
+-		"boundaryError": "UpyclG_boundaryError",
+-		"splitChild": "UpyclG_splitChild",
+-		"explorerDir": "UpyclG_explorerDir",
+-		"uploadDropHero": "UpyclG_uploadDropHero",
+-		"editorTreeSearch": "UpyclG_editorTreeSearch",
+-		"dropCenter": "UpyclG_dropCenter",
+-		"editorTreePanel": "UpyclG_editorTreePanel",
+-		"editorModeToggle": "UpyclG_editorModeToggle",
+-		"mermaidHeader": "UpyclG_mermaidHeader",
+-		"mermaidCopy": "UpyclG_mermaidCopy",
+-		"selectionPopup": "UpyclG_selectionPopup",
+-		"explorerCopied": "UpyclG_explorerCopied",
+-		"editorPdfFrame": "UpyclG_editorPdfFrame",
+-		"openWithLabel": "UpyclG_openWithLabel",
+-		"tocItem": "UpyclG_tocItem",
+-		"editorPdfStage": "UpyclG_editorPdfStage",
+-		"browserBlockedTitle": "UpyclG_browserBlockedTitle",
+-		"terminalRetry": "UpyclG_terminalRetry",
++		"sandboxStatusText": "UpyclG_sandboxStatusText",
++		"mermaidError": "UpyclG_mermaidError",
++		"pane": "UpyclG_pane",
++		"nativeTabHost": "UpyclG_nativeTabHost",
++		"uploadOverlayProgressFill": "UpyclG_uploadOverlayProgressFill",
+ 		"workbench": "UpyclG_workbench",
+-		"editorPathInput": "UpyclG_editorPathInput",
+-		"tabBar": "UpyclG_tabBar",
+-		"editorBinary": "UpyclG_editorBinary",
+-		"editorModeButton": "UpyclG_editorModeButton",
+-		"editorHtmlBlock": "UpyclG_editorHtmlBlock",
+-		"editorPlaceholder": "UpyclG_editorPlaceholder",
+-		"tab": "UpyclG_tab",
+-		"bottomPanelHidden": "UpyclG_bottomPanelHidden",
+-		"panelBody": "UpyclG_panelBody",
+-		"openWithPin": "UpyclG_openWithPin",
+-		"tabBadge": "UpyclG_tabBadge",
+-		"bottomResizeActive": "UpyclG_bottomResizeActive",
+ 		"dividerRow": "UpyclG_dividerRow",
+-		"browserBlockedDesc": "UpyclG_browserBlockedDesc",
+-		"editorTreeToggleActive": "UpyclG_editorTreeToggleActive",
++		"browserFrame": "UpyclG_browserFrame",
++		"dividerCol": "UpyclG_dividerCol",
++		"toggleButton": "UpyclG_toggleButton",
++		"tocItemText": "UpyclG_tocItemText",
++		"splitRow": "UpyclG_splitRow",
++		"uploadOverlayCard": "UpyclG_uploadOverlayCard",
++		"uploadDropZone": "UpyclG_uploadDropZone",
++		"paneTab": "UpyclG_paneTab",
++		"divider": "UpyclG_divider",
+ 		"explorerRenaming": "UpyclG_explorerRenaming",
+-		"editorHtml": "UpyclG_editorHtml",
+-		"explorerBody": "UpyclG_explorerBody",
++		"browserBlockedButton": "UpyclG_browserBlockedButton",
++		"tabBar": "UpyclG_tabBar",
++		"explorerHeader": "UpyclG_explorerHeader",
++		"explorerError": "UpyclG_explorerError",
++		"uploadOverlayCancel": "UpyclG_uploadOverlayCancel",
++		"mermaidModalButton": "UpyclG_mermaidModalButton",
++		"editorHtmlBlock": "UpyclG_editorHtmlBlock",
++		"tocButton": "UpyclG_tocButton",
++		"editorDownloadLink": "UpyclG_editorDownloadLink",
++		"explorerDir": "UpyclG_explorerDir",
++		"paneEmptyCards": "UpyclG_paneEmptyCards",
++		"dropOverlay": "UpyclG_dropOverlay",
++		"sandboxAction": "UpyclG_sandboxAction",
++		"tabList": "UpyclG_tabList",
++		"explorerRow": "UpyclG_explorerRow",
++		"uploadDropZoneText": "UpyclG_uploadDropZoneText",
++		"editorBody": "UpyclG_editorBody",
++		"browser": "UpyclG_browser",
++		"browserBlockedTitle": "UpyclG_browserBlockedTitle",
++		"explorerRoot": "UpyclG_explorerRoot",
++		"uploadOverlay": "UpyclG_uploadOverlay",
+ 		"editorTreeResize": "UpyclG_editorTreeResize",
+-		"editorSearchHint": "UpyclG_editorSearchHint",
++		"editorCmHidden": "UpyclG_editorCmHidden",
++		"tabActive": "UpyclG_tabActive",
++		"tocItem": "UpyclG_tocItem",
+ 		"panel": "UpyclG_panel",
+-		"dropRight": "UpyclG_dropRight",
+-		"chipIcon": "UpyclG_chipIcon",
+-		"splitCol": "UpyclG_splitCol",
+-		"paneTabHidden": "UpyclG_paneTabHidden",
+-		"uploadOverlayCancel": "UpyclG_uploadOverlayCancel",
+-		"editorStatusError": "UpyclG_editorStatusError",
+-		"editorMain": "UpyclG_editorMain",
+-		"browserMessage": "UpyclG_browserMessage",
+-		"gitEmpty": "UpyclG_gitEmpty",
+ 		"explorerRowRevealed": "UpyclG_explorerRowRevealed",
++		"openWithChevron": "UpyclG_openWithChevron",
++		"mermaidHeader": "UpyclG_mermaidHeader",
++		"editorMd": "UpyclG_editorMd",
++		"editorModeActive": "UpyclG_editorModeActive",
++		"gitDiffTab": "UpyclG_gitDiffTab",
++		"dropLeft": "UpyclG_dropLeft",
++		"explorerSymlink": "UpyclG_explorerSymlink",
++		"dropCenter": "UpyclG_dropCenter",
++		"dsh-row-in": "UpyclG_dsh-row-in",
++		"gitDiffTabHeader": "UpyclG_gitDiffTabHeader",
++		"tabBarPlus": "UpyclG_tabBarPlus",
++		"explorerCopied": "UpyclG_explorerCopied",
++		"gitDiffTabTitle": "UpyclG_gitDiffTabTitle",
+ 		"openWithName": "UpyclG_openWithName",
+-		"uploadDropChatCard": "UpyclG_uploadDropChatCard",
++		"bottomPanelSlot": "UpyclG_bottomPanelSlot",
++		"bottomResize": "UpyclG_bottomResize",
++		"editorPathInput": "UpyclG_editorPathInput",
+ 		"editorHeader": "UpyclG_editorHeader",
+-		"explorerActionError": "UpyclG_explorerActionError",
+-		"uploadDropZone": "UpyclG_uploadDropZone",
++		"dirtyDot": "UpyclG_dirtyDot",
++		"tabBoundaryError": "UpyclG_tabBoundaryError",
++		"browserInput": "UpyclG_browserInput",
++		"gitEmpty": "UpyclG_gitEmpty",
+ 		"tocBar": "UpyclG_tocBar",
+-		"dropLeft": "UpyclG_dropLeft",
+-		"explorerRoot": "UpyclG_explorerRoot",
+-		"split": "UpyclG_split",
+-		"editorTreeDock": "UpyclG_editorTreeDock",
+-		"editorSearchInput": "UpyclG_editorSearchInput",
+-		"mermaidModal": "UpyclG_mermaidModal",
+-		"editorPdfFrameBlocked": "UpyclG_editorPdfFrameBlocked",
+-		"browserBar": "UpyclG_browserBar",
+-		"explorerRowDropTarget": "UpyclG_explorerRowDropTarget",
++		"tabBarDrop": "UpyclG_tabBarDrop",
++		"mermaidInfo": "UpyclG_mermaidInfo",
++		"paneDrop": "UpyclG_paneDrop",
++		"uploadDropChatHint": "UpyclG_uploadDropChatHint",
++		"uploadDropChatCard": "UpyclG_uploadDropChatCard",
+ 		"editorTreePanelFull": "UpyclG_editorTreePanelFull",
+-		"editorCmHidden": "UpyclG_editorCmHidden",
+-		"editorModeActive": "UpyclG_editorModeActive",
+-		"dropDown": "UpyclG_dropDown",
+-		"explorerActionErrorClose": "UpyclG_explorerActionErrorClose",
+-		"tocButton": "UpyclG_tocButton",
+-		"gitDiffTab": "UpyclG_gitDiffTab",
+-		"explorerBroken": "UpyclG_explorerBroken",
+-		"explorerError": "UpyclG_explorerError",
+-		"dropOverlay": "UpyclG_dropOverlay",
+-		"editorTitle": "UpyclG_editorTitle",
+-		"browserInput": "UpyclG_browserInput",
+-		"browserBlocked": "UpyclG_browserBlocked",
+-		"editorError": "UpyclG_editorError",
+-		"editor": "UpyclG_editor",
+-		"sandboxStatusText": "UpyclG_sandboxStatusText",
++		"editorBinary": "UpyclG_editorBinary",
++		"editorCm": "UpyclG_editorCm",
++		"splitCol": "UpyclG_splitCol",
++		"editorSearchInput": "UpyclG_editorSearchInput",
++		"explorerName": "UpyclG_explorerName",
++		"explorerBody": "UpyclG_explorerBody",
+ 		"mermaidModalStage": "UpyclG_mermaidModalStage",
+-		"explorerActionErrorText": "UpyclG_explorerActionErrorText",
+-		"editorBody": "UpyclG_editorBody",
+-		"uploadOverlayProgressFill": "UpyclG_uploadOverlayProgressFill",
+-		"uploadOverlayTitle": "UpyclG_uploadOverlayTitle",
+-		"browserBlockedButton": "UpyclG_browserBlockedButton",
+-		"editorPdfToolbar": "UpyclG_editorPdfToolbar",
+-		"toggleButton": "UpyclG_toggleButton",
+-		"browserStart": "UpyclG_browserStart",
+-		"bottomClose": "UpyclG_bottomClose",
+-		"mermaidCode": "UpyclG_mermaidCode",
+-		"tabActive": "UpyclG_tabActive",
+-		"explorerHeader": "UpyclG_explorerHeader",
+-		"gitError": "UpyclG_gitError",
+-		"mermaidBody": "UpyclG_mermaidBody",
+-		"orphanedType": "UpyclG_orphanedType",
+-		"iconButton": "UpyclG_iconButton",
+-		"gitPlaceholder": "UpyclG_gitPlaceholder",
+-		"pane": "UpyclG_pane",
+ 		"explorerHidden": "UpyclG_explorerHidden",
++		"paneTabHidden": "UpyclG_paneTabHidden",
++		"explorerConfirmDesc": "UpyclG_explorerConfirmDesc",
++		"sandboxStatus": "UpyclG_sandboxStatus",
++		"splitChild": "UpyclG_splitChild",
++		"bottomPanelHidden": "UpyclG_bottomPanelHidden",
++		"uploadDropZonePill": "UpyclG_uploadDropZonePill",
++		"editorTreeDock": "UpyclG_editorTreeDock",
++		"sandboxStatusOff": "UpyclG_sandboxStatusOff",
++		"mermaidModal": "UpyclG_mermaidModal",
++		"editorPdfFrameBlocked": "UpyclG_editorPdfFrameBlocked",
+ 		"editorPdfDragShieldActive": "UpyclG_editorPdfDragShieldActive",
+-		"editorDocxZoomRange": "UpyclG_editorDocxZoomRange",
+-		"mermaidModalButton": "UpyclG_mermaidModalButton",
+-		"tabBoundaryError": "UpyclG_tabBoundaryError",
+ 		"editorPptxButton": "UpyclG_editorPptxButton",
++		"openWithLabel": "UpyclG_openWithLabel",
+ 		"openWithPinActive": "UpyclG_openWithPinActive",
+-		"explorerName": "UpyclG_explorerName",
+-		"editorCm": "UpyclG_editorCm",
+-		"dividerActive": "UpyclG_dividerActive",
+-		"sandboxStatusOn": "UpyclG_sandboxStatusOn",
+-		"openWithChevron": "UpyclG_openWithChevron",
+-		"mermaidWrap": "UpyclG_mermaidWrap",
+-		"dsh-toc-flash": "UpyclG_dsh-toc-flash",
++		"editor": "UpyclG_editor",
++		"tabClose": "UpyclG_tabClose",
+ 		"mermaidModalHint": "UpyclG_mermaidModalHint",
+-		"tabList": "UpyclG_tabList",
++		"sandboxStatusOn": "UpyclG_sandboxStatusOn",
++		"uploadOverlayStatus": "UpyclG_uploadOverlayStatus",
++		"gitPlaceholder": "UpyclG_gitPlaceholder",
++		"editorPdfDragShield": "UpyclG_editorPdfDragShield",
+ 		"tocFlash": "UpyclG_tocFlash",
+-		"explorerRenameInput": "UpyclG_explorerRenameInput",
+-		"browser": "UpyclG_browser",
+-		"explorerRow": "UpyclG_explorerRow",
+-		"sandboxStatusOff": "UpyclG_sandboxStatusOff",
+-		"mermaidError": "UpyclG_mermaidError",
+-		"gitDiffTabTitle": "UpyclG_gitDiffTabTitle"
++		"tabBadge": "UpyclG_tabBadge",
++		"gitError": "UpyclG_gitError",
++		"editorTreePanel": "UpyclG_editorTreePanel",
++		"editorPdfStage": "UpyclG_editorPdfStage",
++		"dsh-toc-flash": "UpyclG_dsh-toc-flash",
++		"uploadOverlayProgress": "UpyclG_uploadOverlayProgress",
++		"dividerActive": "UpyclG_dividerActive",
++		"boundaryError": "UpyclG_boundaryError",
++		"explorerActionError": "UpyclG_explorerActionError",
++		"editorError": "UpyclG_editorError",
++		"bottomClose": "UpyclG_bottomClose",
++		"browserBlockedDesc": "UpyclG_browserBlockedDesc",
++		"editorHtml": "UpyclG_editorHtml",
++		"explorerRef": "UpyclG_explorerRef",
++		"tab": "UpyclG_tab",
++		"terminalRetry": "UpyclG_terminalRetry",
++		"editorTreeSearch": "UpyclG_editorTreeSearch",
++		"selectionPopup": "UpyclG_selectionPopup",
++		"editorPdfFrame": "UpyclG_editorPdfFrame",
++		"editorModeButton": "UpyclG_editorModeButton",
++		"editorPdf": "UpyclG_editorPdf",
++		"mermaidModalToolbar": "UpyclG_mermaidModalToolbar",
++		"mermaidWrap": "UpyclG_mermaidWrap",
++		"uploadDropHero": "UpyclG_uploadDropHero",
++		"editorMain": "UpyclG_editorMain",
++		"browserBlockedActions": "UpyclG_browserBlockedActions",
++		"mermaidBody": "UpyclG_mermaidBody",
++		"dropDown": "UpyclG_dropDown",
++		"editorStatus": "UpyclG_editorStatus",
++		"browserMessage": "UpyclG_browserMessage",
++		"tocItemLevel": "UpyclG_tocItemLevel",
++		"explorerEmpty": "UpyclG_explorerEmpty",
++		"mermaidCopy": "UpyclG_mermaidCopy",
++		"editorTreeToggleActive": "UpyclG_editorTreeToggleActive",
++		"iconButton": "UpyclG_iconButton",
++		"editorSearchResult": "UpyclG_editorSearchResult",
++		"explorerActionErrorClose": "UpyclG_explorerActionErrorClose",
++		"mermaidMarkdown": "UpyclG_mermaidMarkdown",
++		"paneCard": "UpyclG_paneCard",
++		"editorSearchHint": "UpyclG_editorSearchHint"
+ 	};
+ 	//#endregion
+ 	//#region src/client/mermaid.tsx
 diff --git a/src/client/EditorHost.tsx b/src/client/EditorHost.tsx
-index 2181739896fab8646eea4b132beb447924607f3a..afe3ebda0fea5ab24c7ea4446681c6c1bc374b2a 100644
+index 3c2359e42435d0240486493eb28183502fa69c69..4a0268b6fe87c4bbfd12177326c98ebd560931be 100644
 --- a/src/client/EditorHost.tsx
 +++ b/src/client/EditorHost.tsx
 @@ -102,8 +102,16 @@ export function EditorHost(props: {
@@ -588,15 +717,15 @@ index 2181739896fab8646eea4b132beb447924607f3a..afe3ebda0fea5ab24c7ea4446681c6c1
 +    } else if (onOpenFile !== undefined) {
 +      onOpenFile(absolute)
      } else {
-       openSidebarFile(ctx, store, scope.sessionId, absolute)
+       openSidebarFile(ctx, scope.sessionId, absolute)
      }
 @@ -168,7 +180,8 @@ export function EditorHost(props: {
  
    /** The context menu's explicit "new tab" escape (per-path dedupe). */
    const openFileNewTab = (absolute: string): void => {
--    openSidebarFile(ctx, store, scope.sessionId, absolute)
+-    openSidebarFile(ctx, scope.sessionId, absolute)
 +    if (onOpenFile !== undefined) onOpenFile(absolute)
-+    else openSidebarFile(ctx, store, scope.sessionId, absolute)
++    else openSidebarFile(ctx, scope.sessionId, absolute)
    }
  
    /**
@@ -612,10 +741,10 @@ index 2181739896fab8646eea4b132beb447924607f3a..afe3ebda0fea5ab24c7ea4446681c6c1
        const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits)
        const fresh: SidebarTab = {
 diff --git a/src/client/builtins/tabs.tsx b/src/client/builtins/tabs.tsx
-index 55e12ec59478673ea0b8e65194134e6ed685a21f..831c6b2d2c7175d4fb46cfc280acd86f76dad6fb 100644
+index fcbd93e62eebe43ec3c5af862fea23e697760e7d..835f1c9f62454b859fa3ce73fd13d4065bd4f556 100644
 --- a/src/client/builtins/tabs.tsx
 +++ b/src/client/builtins/tabs.tsx
-@@ -129,7 +129,10 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
+@@ -77,7 +77,10 @@ export function builtinTabs(): readonly TabDescriptor[] {
            <OpenWithSettings pluginSettings={pluginSettings} updatePluginSetting={updatePluginSetting} />
          ),
        },
@@ -627,7 +756,7 @@ index 55e12ec59478673ea0b8e65194134e6ed685a21f..831c6b2d2c7175d4fb46cfc280acd86f
          <EditorHost
            ctx={ctx}
            store={store}
-@@ -139,6 +142,9 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
+@@ -87,6 +90,9 @@ export function builtinTabs(): readonly TabDescriptor[] {
            revealed={revealed ?? []}
            onToggleDir={onToggleDir ?? (() => { /* no-op */ })}
            onReferenceFile={onReferenceFile ?? (() => { /* no-op */ })}
@@ -637,7 +766,7 @@ index 55e12ec59478673ea0b8e65194134e6ed685a21f..831c6b2d2c7175d4fb46cfc280acd86f
          />
        ),
      },
-@@ -159,14 +165,14 @@ export function builtinTabs(ctx: Context, options: BuiltinTabOptions = {}): read
+@@ -107,14 +113,14 @@ export function builtinTabs(): readonly TabDescriptor[] {
          const count = opCountOf(scope.sessionId)
          return count === undefined || count === 0 ? null : count
        },
@@ -649,84 +778,45 @@ index 55e12ec59478673ea0b8e65194134e6ed685a21f..831c6b2d2c7175d4fb46cfc280acd86f
            scope={scope}
            tab={tab}
            visible={visible}
--          onOpenFile={(path) => { openSidebarFile(ctx, store, scope.sessionId, path) }}
-+          onOpenFile={onOpenFile ?? ((path) => { openSidebarFile(ctx, store, scope.sessionId, path) })}
+-          onOpenFile={(path) => { openSidebarFile(ctx, scope.sessionId, path) }}
++          onOpenFile={onOpenFile ?? ((path) => { openSidebarFile(ctx, scope.sessionId, path) })}
            onOpenDiff={onOpenDiff}
          />
        ),
 diff --git a/src/client/native/surface.ts b/src/client/native/surface.ts
-index 6dc086170f66ee8171dd600c436955d7aef498ff..508c6c2630b68fa202a848e893b9e527c3c1379c 100644
+index 4886f2055f3e39d6667647c6e8cf5b442b611c5b..45cb282fa8b5a37eebd8866cf4b3695750af295b 100644
 --- a/src/client/native/surface.ts
 +++ b/src/client/native/surface.ts
-@@ -11,11 +11,14 @@
-  * - the surface exists only while a session's panel is mounted, and the
-  *   service's public face (`ISidebarRight`) writes only into THAT session.
-  *   The controller also carries `openTabIn` / `openResourceIn` /
-- *   `closeIn`, which act on any session whose store the runtime has minted;
-- *   both are probed at call time, and an open for a session that has no
-- *   store yet is QUEUED and replayed when that session comes on screen;
-+ *   `closeIn`, which act on any Session whose store the runtime has minted;
-+ *   an open for a Session that has no store yet is queued and replayed in
-+ *   request order when that store is adopted;
-  * - layout state is memory-only, so a queued open is not durable either.
-  */
-+import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
-+import type { ISidebarRight } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
-+import type { SessionId } from '@deepseek-ai/dsh-session/types'
- import type { Context } from '../../context-types.ts'
- import { fileAddressFor } from '../resource-address.ts'
- import type { NativeTabParams, SidebarSurface } from '../service.ts'
-@@ -26,34 +29,12 @@ type Pending =
-   | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean }
-   | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean }
- 
--/** The controller face this module uses (a structural slice of `ISidebarRight`). */
--interface NativeController {
--  openTab(kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
--  openResource(address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
--  close(tabId: string): void
+@@ -47,17 +47,16 @@ interface NativeController {
+   close(tabId: string): void
+   /** The mounted-seat observation (0.1.7 `ISidebarRight.mounted`). */
+   mounted?: MountedSessions
 -  /** Not part of `ISidebarRight`: the concrete controller's per-session writes. */
 -  openTabIn?(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
 -  openResourceIn?(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
 -  closeIn?(sessionId: string, tabId: string): void
--}
--
++  /** Concrete controller writes for retained Session stores. */
++  openTabIn(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
++  openResourceIn(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
++  closeIn(sessionId: string, tabId: string): void
++  onSessionAdopted(listener: (sessionId: string) => void): () => void
+ }
+ 
  /** The plugin's write face over the native surface. */
  export interface NativeSurface extends SidebarSurface {
 -  /** Replay opens that were queued for a session that had no mounted surface. */
 -  flushPending(): void
--  /** Stop observing the session list. */
+-  /** Stop observing the session list and the mounted-seat feed. */
 +  /** Stop observing Session-list and native-store lifecycle changes. */
    dispose(): void
  }
  
--/** The active session id, as the client list reports it. */
--function activeSessionId(ctx: Context): string | undefined {
--  try {
--    return ctx.sessions.list.getSnapshot().current
--  } catch {
--    return undefined
--  }
--}
--
- /**
-  * Bind the plugin's write face to the native controller.
-  * @param ctx - the client context (session list + `ctx.sidebarRight`).
-@@ -62,54 +43,39 @@ function activeSessionId(ctx: Context): string | undefined {
-  */
- export function createNativeSurface(ctx: Context, records: NativeTabRecords): NativeSurface {
-   const pending: Pending[] = []
--  const controller = (): NativeController | undefined =>
--    ctx.get('sidebarRight') as unknown as NativeController | undefined
-+  const controller = (): ISidebarRight | undefined =>
-+    ctx.get('sidebarRight') as unknown as ISidebarRight | undefined
- 
+@@ -132,58 +131,33 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
    const place = (entry: Pending): boolean => {
      const api = controller()
      if (api === undefined) return false
--    const active = activeSessionId(ctx)
--    const onScreen = active !== undefined && active === entry.sessionId
-+    const sessionId = entry.sessionId as SessionId
+-    const onScreen = mountedSessionId(ctx) === entry.sessionId
++    const sessionId = entry.sessionId
      if (entry.kind === 'tab') {
        const options = { params: entry.params, revealIfOpened: entry.revealIfOpened }
 -      if (onScreen) {
@@ -773,35 +863,47 @@ index 6dc086170f66ee8171dd600c436955d7aef498ff..508c6c2630b68fa202a848e893b9e527
      if (!place(entry)) pending.push(entry)
    }
  
--  const unsubscribe = ctx.sessions.list.subscribe(flushPending)
+-  // Two feeds flush the queue: the mounted seat (a session coming on screen)
+-  // and the session list, which also stays the pulse that picks the native
+-  // service up when it is provided after this surface was created.
+-  let mountedUnsubscribe: (() => void) | undefined
+-  const onListChange = (): void => {
+-    if (mountedUnsubscribe === undefined) {
+-      const mounted = controller()?.mounted
+-      if (typeof mounted?.subscribe === 'function') mountedUnsubscribe = mounted.subscribe(flushPending)
+-    }
+-    flushPending()
+-  }
+-  const unsubscribeList = ctx.sessions.list.subscribe(onListChange)
 +  const unsubscribeSessionList = ctx.sessions.list.subscribe(flushPending)
 +  const unsubscribeAdoption = controller()?.onSessionAdopted(flushPending)
    return {
      openTab({ sessionId, kind, params, revealIfOpened }) {
        enqueue({ kind: 'tab', sessionId, tabKind: kind, params, revealIfOpened })
-@@ -124,11 +90,7 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
+@@ -198,11 +172,7 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
        const record = records.get(tabId)
        if (record === undefined) return undefined
        records.drop(tabId)
 -      const api = controller()
 -      if (api !== undefined) {
--        if (sessionId === activeSessionId(ctx)) api.close(tabId)
+-        if (sessionId === mountedSessionId(ctx)) api.close(tabId)
 -        else if (api.closeIn !== undefined) api.closeIn(sessionId, tabId)
 -      }
-+      controller()?.closeIn(sessionId as SessionId, tabId as TabId)
++      controller()?.closeIn(sessionId, tabId)
        return { type: record.tab.type, title: record.tab.title }
      },
      update(tabId, patch) {
-@@ -143,7 +105,9 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
+@@ -217,10 +187,9 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
        return records.has(tabId)
      },
      has: tabId => records.has(tabId),
 -    flushPending,
--    dispose: () => { unsubscribe() },
-+    dispose: () => {
+     dispose: () => {
+-      unsubscribeList()
+-      mountedUnsubscribe?.()
 +      unsubscribeSessionList()
 +      unsubscribeAdoption?.()
-+    },
+     },
    }
  }
 diff --git a/src/client/native/tab-adapter.tsx b/src/client/native/tab-adapter.tsx
@@ -867,7 +969,7 @@ index 89bfa218c18def581c58e62f71ed173ff9192a39..759b03e8af50ef3657b5100048fcf321
            service.openTab({
              type: 'diff',
 diff --git a/src/client/service.ts b/src/client/service.ts
-index e37402df0331d99ddea11337fb9c869b8201555d..f63596648349237866eb0f4d5283d789deb89dc2 100644
+index bb7b6261df894086e4438ce71ebfa7bced94aa00..e38f04dc0048442e0d88be3d4c06cbeb281beebf 100644
 --- a/src/client/service.ts
 +++ b/src/client/service.ts
 @@ -153,7 +153,12 @@ export interface TabComponentProps {

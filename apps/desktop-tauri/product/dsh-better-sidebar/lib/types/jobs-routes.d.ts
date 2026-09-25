@@ -14,13 +14,25 @@
  *   the live `session/event` feed and merges both sources (deduped by seq).
  *   This touches NO DSH source: the model's `job_output` cursor is never
  *   consumed, and the pane stays empty until the agent reads the job.
- * - 'jobs.kill' — the registry's stock `kill` (a pristine DSH API),
- *   fenced by the owning session via the live agent caller. Absent registry
- *   → 503, mirroring the settings routes' optional-service downgrade.
+ * - 'jobs.kill' — the registry's stock `kill` (a pristine DSH API), fenced
+ *   by the owning session id (the 0.1.7 registry compares `SessionId`, the
+ *   0.1.6 one compared a live Agent). Absent registry → 503, mirroring the
+ *   settings routes' optional-service downgrade.
  */
-import type { Context } from './context-types.ts';
-/** The two background-job routes of the sidebar API. */
+import type { Context, SidebarJobView } from './context-types.ts';
+/** The background-job routes of the sidebar API. */
 export interface SidebarJobsRoutes {
+    /**
+     * The caller-visible jobs of one session, read straight from the registry.
+     *
+     * DSH 0.1.7 stopped mirroring background jobs into the client session list
+     * (`jobsBySession` is gone with no replacement), so the Tasks page reads
+     * them here instead. This is also the more authoritative source: the mirror
+     * was last-wins over push frames, while the registry is the state itself.
+     */
+    list(payload: unknown): {
+        jobs: SidebarJobView[];
+    };
     /** The output the model has read so far for one job (event replay, capped). */
     output(payload: unknown): {
         text: string;
@@ -34,10 +46,11 @@ export interface SidebarJobsRoutes {
     };
 }
 /**
- * Build the jobs routes bound to the plugin context. `output` merges the
- * owner session's own event log with the live job_output mirror; `kill`
- * reads the jobs/agents services lazily and degrades to a 503 when the
- * deployment lacks the registry.
+ * Build the jobs routes bound to the plugin context. `list` reads the
+ * registry's own projection, `output` merges the owner session's event log
+ * with the live job_output mirror, and `kill` cancels through the registry.
+ * Every route that needs the registry degrades to a 503 when the deployment
+ * lacks it.
  * @param ctx - host plugin context.
  * @param outputLimit - response cap for one output replay in bytes; longer
  *   texts are sliced and flagged `truncated` (mirrors the fs.read cap).

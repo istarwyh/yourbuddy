@@ -21,13 +21,6 @@ export interface SidebarPrefs {
      */
     autoOpenJobs: boolean;
     /**
-     * Whether the model-facing agent terminal tools (terminal_create / list /
-     * send / read / wait_for / resize / signal / close) are injected into the
-     * model's toolset. Off by default: the feature stays dormant until the
-     * user explicitly enables it in the side card settings.
-     */
-    agentTerminalTools: boolean;
-    /**
      * Whether the model-facing `sidebar_open` tool is injected into the
      * model's toolset — one tool that lets the model actively open a local
      * file, a local folder (as a tree rooted there), or an HTTP(S) page in
@@ -35,25 +28,6 @@ export interface SidebarPrefs {
      * dormant until the user explicitly enables it in the side card settings.
      */
     agentOpenTools: boolean;
-    /**
-     * Custom terminal font-family stack (a CSS font-family value, e.g.
-     * `'JetBrains Mono', monospace`). Empty string follows the app's theme
-     * monospace font (`--ds-font-family-code`). Applied live to every
-     * terminal tab; configured under the terminal card's secondary settings.
-     */
-    terminalFontFamily: string;
-    /**
-     * Custom terminal font size in px (9–32). Applied live to every terminal
-     * tab; configured under the terminal card's secondary settings.
-     */
-    terminalFontSize: number;
-    /**
-     * Whether expanding the bottom panel for the FIRST time in a session tries
-     * to open a fresh terminal tab there (the terminal quota/type still gates
-     * the attempt). On by default; the switch lives under the terminal tab's
-     * row in the Side card settings.
-     */
-    bottomPanelAutoTerminal: boolean;
     /**
      * Whether the editor tab runs in merged mode: a path input replaces the
      * plain header and a toggleable file-tree panel (with a global name
@@ -77,21 +51,6 @@ export interface SidebarPrefs {
      * one-click global off + retry.
      */
     workspaceFence: boolean;
-    /**
-     * The shell the UI and agent terminals spawn (absolute path or bare
-     * executable name). Empty (default) keeps the legacy resolution order:
-     * `cordis.patch.yml` `config.shell`, then `$SHELL` / login shell /
-     * `powershell.exe` on Windows. Set it from the terminal card's gear in
-     * the Side card settings (or the yaml) to pin a specific shell — takes
-     * effect for terminals opened afterwards.
-     */
-    terminalShell: string;
-    /**
-     * Explicit arguments for `terminalShell`, space-separated (empty keeps
-     * the platform defaults; when set, they fully replace them — same
-     * contract as the yaml `shellArgs`).
-     */
-    terminalShellArgs: string;
     /**
      * Title-bar / shell compatibility scheme (the "位置兼容模式" setting):
      * - `auto` (default): CONSERVATIVE — only the standard Window Controls
@@ -150,50 +109,6 @@ export interface SidebarPrefs {
      */
     htmlViewerDefaultUnsafe: boolean;
     /**
-     * Whether the browser tab drops its sandboxed iframe. Sandbox ON (the
-     * default) keeps browsed sites in an opaque origin with no GUI access;
-     * turning it OFF runs any visited site with the GUI's own origin — it
-     * can read session data and act as the logged-in GUI. Only for trusted
-     * sites; the setting copy warns.
-     */
-    browserNoSandbox: boolean;
-    /**
-     * MASTER switch: whether clicking an EXTERNAL link in the GUI (chat
-     * messages, tool rows, prose mentions) is taken over into the sidebar at
-     * all. On by default; the per-protocol granularity lives in
-     * `browserInterceptHttp` / `browserInterceptHttps` (the protocol flag
-     * must also be on), and the target tab's own enable switch gates it too.
-     * Ctrl/Cmd+click always bypasses the takeover. Kept as the master so old
-     * documents keep their meaning with no migration (an explicit `false`
-     * stays "never take over").
-     */
-    browserInterceptLinks: boolean;
-    /**
-     * Whether clicking an http EXTERNAL link in the GUI opens the sidebar
-     * (the built-in browser tab, or a plugin tab that declares `urlTarget`)
-     * instead of a new browser tab. On by default; gated on the
-     * `browserInterceptLinks` master and the target tab's own enable switch.
-     */
-    browserInterceptHttp: boolean;
-    /**
-     * Whether clicking an https EXTERNAL link in the GUI opens the sidebar
-     * instead of a new browser tab. OFF by default — most https sites (e.g.
-     * GitHub) refuse iframe embedding, so the system browser is the smoother
-     * default; gated on the `browserInterceptLinks` master and the target
-     * tab's own enable switch.
-     */
-    browserInterceptHttps: boolean;
-    /**
-     * Comma-separated allowlist of local (loopback) authorities the browser
-     * tab may navigate to — `localhost`, `127.0.0.1`, `127.0.0.1:5174`, or
-     * host:port pairs. Empty by default: loopback addresses stay blocked so a
-     * browsed page cannot probe local services. Each entry is either a bare
-     * hostname (all ports) or host:port; the GUI's own origin is always
-     * allowed regardless. The iframe sandbox still renders allowed local
-     * pages in an opaque origin, exactly like any other site.
-     */
-    browserAllowedLoopback: string;
-    /**
      * Per-tab enable switches, keyed by tab descriptor id (`'explorer'`,
      * `'my-plugin:db'`). An ABSENT key means enabled — only an explicit
      * `false` disables a tab type (hidden from the + menu, `openTab` refuses,
@@ -220,10 +135,6 @@ export interface SidebarPrefs {
      */
     pluginSettings: Record<string, Record<string, unknown>>;
 }
-/** Range contract of {@link SidebarPrefs.terminalFontSize}. */
-export declare const TERMINAL_FONT_SIZE_MIN = 9;
-export declare const TERMINAL_FONT_SIZE_MAX = 32;
-export declare const TERMINAL_FONT_SIZE_DEFAULT = 13;
 /** Range contract of {@link SidebarPrefs.titleBarStripPx}. */
 export declare const TITLE_BAR_STRIP_MIN = 0;
 export declare const TITLE_BAR_STRIP_MAX = 120;
@@ -233,7 +144,5 @@ export declare const TITLE_BAR_SCHEMES: readonly ["auto", "web", "preset", "cust
 export type TitleBarScheme = typeof TITLE_BAR_SCHEMES[number];
 /** Fallback prefs used whenever the settings document is unreachable or malformed. */
 export declare const SIDEBAR_PREFS_DEFAULTS: SidebarPrefs;
-/** Clamp one terminal font size into the contract range (shared by schema and client reads). */
-export declare function clampTerminalFontSize(value: number): number;
 /** Clamp one title-bar strip height into the contract range (shared by schema and client reads). */
 export declare function clampTitleBarStrip(value: number): number;

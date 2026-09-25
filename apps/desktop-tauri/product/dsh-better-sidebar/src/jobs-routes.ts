@@ -14,15 +14,25 @@
  *   the live `session/event` feed and merges both sources (deduped by seq).
  *   This touches NO DSH source: the model's `job_output` cursor is never
  *   consumed, and the pane stays empty until the agent reads the job.
- * - 'jobs.kill' — the registry's stock `kill` (a pristine DSH API),
- *   fenced by the owning session via the live agent caller. Absent registry
- *   → 503, mirroring the settings routes' optional-service downgrade.
+ * - 'jobs.kill' — the registry's stock `kill` (a pristine DSH API), fenced
+ *   by the owning session id (the 0.1.7 registry compares `SessionId`, the
+ *   0.1.6 one compared a live Agent). Absent registry → 503, mirroring the
+ *   settings routes' optional-service downgrade.
  */
-import type { Context, SidebarSessionEvent } from './context-types.ts'
+import type { Context, SidebarJobsService, SidebarJobView, SidebarSessionEvent } from './context-types.ts'
 import { requireString, SidebarError } from './wire.ts'
 
-/** The two background-job routes of the sidebar API. */
+/** The background-job routes of the sidebar API. */
 export interface SidebarJobsRoutes {
+  /**
+   * The caller-visible jobs of one session, read straight from the registry.
+   *
+   * DSH 0.1.7 stopped mirroring background jobs into the client session list
+   * (`jobsBySession` is gone with no replacement), so the Tasks page reads
+   * them here instead. This is also the more authoritative source: the mirror
+   * was last-wins over push frames, while the registry is the state itself.
+   */
+  list(payload: unknown): { jobs: SidebarJobView[] }
   /** The output the model has read so far for one job (event replay, capped). */
   output(payload: unknown): { text: string; truncated: boolean; read: boolean }
   /** Request cancellation of one job (live jobs flip to stopping). */
@@ -33,6 +43,8 @@ export interface SidebarJobsRoutes {
 interface ToolResultMessageLike {
   source?: { kind?: unknown; callId?: unknown }
   content?: unknown
+  /** The 0.1.7 first-class tool message lifts the error flag onto the message. */
+  isError?: unknown
 }
 
 /** One 'tool-result' content block (the inner blocks carry the text). */
@@ -43,38 +55,50 @@ interface ToolResultBlockLike {
 }
 
 /**
- * Extract the plain text of a finalized tool result: the text blocks inside
- * the 'tool-result' block, joined with newlines. Error results and
- * non-text blocks contribute nothing.
+ * The result blocks and error flag of one tool/result message, read under BOTH
+ * logged shapes: 0.1.6 wrapped the result in a single `type: 'tool-result'`
+ * content block on a user-role message (the text nested inside it, `isError`
+ * on the wrapper), 0.1.7's first-class tool-role message carries the blocks at
+ * the message's own top level with `isError` lifted onto the message.
+ * Historical logs keep the old shape forever, so both are read. Undefined when
+ * the message carries no block array.
  */
-function resultText(message: ToolResultMessageLike): string | undefined {
+function resultOf(message: ToolResultMessageLike): { blocks: readonly unknown[]; isError: boolean } | undefined {
   if (!Array.isArray(message.content)) return undefined
-  const parts: string[] = []
   for (const block of message.content) {
     if (block === null || typeof block !== 'object') continue
-    const candidate = block as ToolResultBlockLike
-    if (candidate.type !== 'tool-result') continue
-    const inner = candidate.content
-    if (!Array.isArray(inner)) continue
-    for (const item of inner) {
-      if (item === null || typeof item !== 'object') continue
-      const textItem = item as { type?: unknown; text?: unknown }
-      if (textItem.type === 'text' && typeof textItem.text === 'string') {
-        parts.push(textItem.text)
-      }
+    const wrapper = block as ToolResultBlockLike
+    if (wrapper.type !== 'tool-result') continue
+    return {
+      blocks: Array.isArray(wrapper.content) ? wrapper.content as readonly unknown[] : [],
+      isError: wrapper.isError === true,
+    }
+  }
+  return { blocks: message.content as readonly unknown[], isError: message.isError === true }
+}
+
+/**
+ * Extract the plain text of a finalized tool result: its text blocks, joined
+ * with newlines. Error results and non-text blocks contribute nothing.
+ */
+function resultText(message: ToolResultMessageLike): string | undefined {
+  const blocks = resultOf(message)?.blocks
+  if (blocks === undefined) return undefined
+  const parts: string[] = []
+  for (const item of blocks) {
+    if (item === null || typeof item !== 'object') continue
+    const textItem = item as { type?: unknown; text?: unknown }
+    if (textItem.type === 'text' && typeof textItem.text === 'string') {
+      parts.push(textItem.text)
     }
   }
   return parts.length > 0 ? parts.join('\n') : undefined
 }
 
-/** Whether a tool/result is an error result (the inner block's isError flag). */
+/** Whether a tool/result is an error result (0.1.7's message-level flag, else
+ *  the 0.1.6 wrapper block's flag). */
 function resultIsError(message: ToolResultMessageLike): boolean {
-  if (!Array.isArray(message.content)) return false
-  return message.content.some((block) => {
-    if (block === null || typeof block !== 'object') return false
-    return (block as ToolResultBlockLike).type === 'tool-result'
-      && (block as ToolResultBlockLike).isError === true
-  })
+  return resultOf(message)?.isError === true
 }
 
 /** Whether a job_output result carries no new output — the controller's
@@ -187,24 +211,38 @@ function createJobOutputMirror(ctx: Context): { entries(sessionId: string): read
 }
 
 /**
- * Build the jobs routes bound to the plugin context. `output` merges the
- * owner session's own event log with the live job_output mirror; `kill`
- * reads the jobs/agents services lazily and degrades to a 503 when the
- * deployment lacks the registry.
+ * Build the jobs routes bound to the plugin context. `list` reads the
+ * registry's own projection, `output` merges the owner session's event log
+ * with the live job_output mirror, and `kill` cancels through the registry.
+ * Every route that needs the registry degrades to a 503 when the deployment
+ * lacks it.
  * @param ctx - host plugin context.
  * @param outputLimit - response cap for one output replay in bytes; longer
  *   texts are sliced and flagged `truncated` (mirrors the fs.read cap).
  */
 export function buildJobsApi(ctx: Context, outputLimit: number): SidebarJobsRoutes {
   const jobs = ctx.get('jobs')
-  const agents = ctx.get('agents')
   const mirror = createJobOutputMirror(ctx)
-  /** The live caller whose session id the registry fence compares against. */
-  const callerOf = (sessionId: string) => agents?.get(sessionId)
   /** Registry refusals become a 404 job-error; unknown and foreign ids are indistinguishable. */
   const registryError = (error: unknown): SidebarError =>
     new SidebarError('job-error', error instanceof Error ? error.message : String(error), 404)
+  /** The registry, or the 503 every registry-backed route returns without it. */
+  const requireJobs = (): SidebarJobsService => {
+    if (jobs === undefined) {
+      throw new SidebarError('job-error', 'the background-job registry is not mounted in this deployment', 503)
+    }
+    return jobs
+  }
   return {
+    list(payload) {
+      const sessionId = requireString(payload, 'sessionId')
+      try {
+        return { jobs: requireJobs().list(sessionId) }
+      } catch (error) {
+        if (error instanceof SidebarError) throw error
+        throw registryError(error)
+      }
+    },
     output(payload) {
       const sessionId = requireString(payload, 'sessionId')
       const id = requireString(payload, 'id')
@@ -248,7 +286,8 @@ export function buildJobsApi(ctx: Context, outputLimit: number): SidebarJobsRout
         ? record.reason
         : 'user requested via sidebar'
       try {
-        return { ok: true, outcome: jobs.kill(id, callerOf(sessionId), reason) }
+        // The 0.1.7 registry fences by SessionId, not by live Agent.
+        return { ok: true, outcome: jobs.kill(id, sessionId, reason) }
       } catch (error) {
         throw registryError(error)
       }

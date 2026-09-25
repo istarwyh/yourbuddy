@@ -9,38 +9,52 @@
  * back to the main session), with its subagents hanging below it in clearly
  * LAYERED levels: tree connector lines (first level included) and per-level
  * indentation show the hierarchy, and the currently-open session is
- * highlighted in place. Every branch is expanded automatically (lazy
- * catalogs hydrate on demand and consume live membership while visible).
+ * highlighted in place. Every branch is expanded automatically.
+ *
+ * The child rows come from DSH 0.1.7's host-computed `subagentCatalog`
+ * projection (folded per parent by ./subagent-catalog.ts), which the client
+ * loads for every session with the connection — there is no per-parent
+ * observe/refresh handshake to run any more. What a row no longer carries is
+ * derived: a branch stays open until the child's own catalog is known-empty,
+ * and live status comes from the `subagents.live` batch channel.
  *
  * Each node card carries live status (state dot, durable label, mode and
  * activity); while a child RUNS, its card additionally shows the LAST text
  * output and LAST tool call pulled from its history tail, auto-refreshing
  * every few seconds while the page is visible. Clicking a card jumps
- * straight into the child transcript (`openSubagent`); the page stays open
+ * straight into the child transcript (`openChild`); the page stays open
  * and the topology remains rooted at the main session.
+ *
+ * The background-jobs section below the tree is fed by the plugin's
+ * `jobs.list` route, one polled read per tree session (the registry's fence
+ * admits a job only to its owner, and 0.1.7 stopped mirroring jobs into the
+ * client snapshot).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useSyncExternalStore } from 'react'
 import clsx from 'clsx'
 import {
-  IconRefreshOutline14, StateDot,
+  IconRefreshOutlineRegular, StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   Context,
   SidebarSessionList,
   SidebarSessionSummary,
   SidebarSubagentAddress,
-  SidebarSubagentCatalog,
-  SidebarSubagentChildEntry,
-  SidebarSubagentDiagnosticEntry,
+  SidebarSubagentCatalogEntry,
   SidebarJobView,
 } from '../context-types.ts'
 import {
-  collectBranchIds,
   countSubagentDescendants,
   isSideThreadSummary,
   rootAncestor,
 } from './subagent-detect.ts'
+import {
+  childActivity,
+  isKnownLeaf,
+  subagentCatalogs,
+  type SubagentCatalogView,
+} from './subagent-catalog.ts'
 import { type LastActivity } from '../subagent-activity.ts'
 import { SIDE_LABEL_PREFIX } from '../sidechat-core.ts'
 import {
@@ -50,6 +64,7 @@ import {
   orderJobs,
   jobDotState,
   jobStatusLabel,
+  treeSessionIds,
   type TreeJob,
 } from './subagent-jobs.ts'
 import { api, type JobOutputResult } from './api.ts'
@@ -60,6 +75,8 @@ import css from './SubagentView.module.css'
 
 /** Refresh cadence of the live "last text + tool call" lines while a child runs. */
 const POLL_MS = 3000
+/** Refresh cadence of the tree's background-job lists (one read per tree session). */
+const JOBS_POLL_MS = 3000
 /** Preview cap of one tool-call argument line. */
 const ARGS_PREVIEW = 60
 /** Refresh cadence of an expanded job-output panel while its job runs. */
@@ -82,29 +99,37 @@ function directChildren(
 
 /** Human label of one catalog child: durable label, then summary title, then id. */
 function childLabel(
-  entry: SidebarSubagentChildEntry,
+  entry: SidebarSubagentCatalogEntry,
   summary: SidebarSessionSummary | undefined,
 ): string {
   return entry.label ?? summary?.displayTitle ?? entry.id
 }
 
-function diagnosticReason(entry: SidebarSubagentDiagnosticEntry): string {
-  switch (entry.reason) {
-    case 'corrupt': return t('subagentDiagCorrupt')
-    case 'unsupported': return t('subagentDiagUnsupported')
-    case 'unavailable': return t('subagentDiagUnavailable')
+/**
+ * The mode word of one catalog row. DSH 0.1.7 added `unknown` (a child the
+ * host's catalog fold kept without a readable descriptor): it claims NEITHER
+ * mode, so the segment is omitted rather than mislabelled — printing
+ * "Continuable" would be a lie, and the shipped dictionaries have no key for
+ * it yet (adding one would have to touch every locale chunk).
+ */
+function modeLabel(mode: SidebarSubagentCatalogEntry['mode']): string | undefined {
+  switch (mode) {
+    case 'one-shot': return t('subagentModeOneShot')
+    case 'continuable': return t('subagentModeContinuable')
+    case 'unknown': return undefined
   }
 }
 
 /** The secondary line of one card: title · mode · activity (skips empty parts). */
 function cardSecondary(
   summary: SidebarSessionSummary | undefined,
-  entry: SidebarSubagentChildEntry,
+  entry: SidebarSubagentCatalogEntry,
+  activity: 'running' | 'inactive',
 ): string {
   return [
     summary?.displayTitle,
-    entry.mode === 'one-shot' ? t('subagentModeOneShot') : t('subagentModeContinuable'),
-    entry.activity === 'running' ? t('subagentRunning') : t('subagentInactive'),
+    modeLabel(entry.mode),
+    activity === 'running' ? t('subagentRunning') : t('subagentInactive'),
   ].filter(Boolean).join(' · ')
 }
 
@@ -211,8 +236,8 @@ function useSubagentLive(
 
 interface RowsProps {
   parentSessionId: string
-  catalog: SidebarSubagentCatalog | undefined
-  catalogs: Readonly<Record<string, SidebarSubagentCatalog>>
+  catalog: SubagentCatalogView | undefined
+  catalogs: Readonly<Record<string, SubagentCatalogView>>
   byId: Readonly<Record<string, SidebarSessionSummary>>
   level: number
   /** The currently-open session id (highlighted in the topology). */
@@ -223,7 +248,7 @@ interface RowsProps {
   refresh: (parentSessionId: string) => void
 }
 
-/** Render one topology level; branches are always expanded (lazy catalogs). */
+/** Render one topology level; branches are always expanded. */
 function CatalogRows({
   parentSessionId, catalog, catalogs, byId, level, currentSessionId, live,
   openChild, refresh,
@@ -231,12 +256,12 @@ function CatalogRows({
   const emptyLoading = catalog?.state === 'loading' && catalog.entries.length === 0
   // Side Chat threads are honest catalog citizens (durable descriptor, 'Side: '
   // label) but they are NOT subagent topology — filter them out here (the tab
-  // strip owns them). Legacy threads created before the descriptor fix still
-  // arrive as corrupt diagnostics; they are recognized by summary title.
-  const visibleEntries = (catalog?.entries ?? []).filter((entry) => {
-    if (entry.kind === 'child') return !(entry.label?.startsWith(SIDE_LABEL_PREFIX) ?? false)
-    return !(byId[entry.id]?.displayTitle.startsWith(SIDE_LABEL_PREFIX) ?? false)
-  })
+  // strip owns them). The label lives on the entry for a continuable child and
+  // on the summary for a one-shot whose descriptor carried none, so both are
+  // checked.
+  const visibleEntries = (catalog?.entries ?? []).filter(entry =>
+    !(entry.label?.startsWith(SIDE_LABEL_PREFIX) ?? false)
+    && !(byId[entry.id]?.displayTitle.startsWith(SIDE_LABEL_PREFIX) ?? false))
   return (
     <>
       {emptyLoading && (
@@ -250,43 +275,31 @@ function CatalogRows({
             className={css.subagentErrorRetry}
             onClick={() => { refresh(parentSessionId) }}
           >
-            <IconRefreshOutline14 />
+            <IconRefreshOutlineRegular size={14} />
             {t('retry')}
           </button>
         </div>
       )}
       {visibleEntries.map((entry) => {
-        if (entry.kind === 'diagnostic') {
-          return (
-            <div key={entry.id} className={css.subagentNode}>
-              <div
-                role="treeitem"
-                aria-disabled="true"
-                aria-level={level}
-                className={`${css.subagentRow} ${css.subagentRowDisabled}`}
-                title={diagnosticReason(entry)}
-              >
-                <StateDot state="error" className={css.subagentDot} />
-                <span className={css.subagentContent}>
-                  <span className={css.subagentLabel}>{entry.id}</span>
-                  <span className={css.subagentSecondary}>{diagnosticReason(entry)}</span>
-                </span>
-              </div>
-            </div>
-          )
-        }
-
         const childCatalog = catalogs[entry.id]
-        const knownLeaf = !entry.hasChildren
+        // A branch stays open until the child's OWN catalog loaded empty; a
+        // catalog that is missing, still loading, or failed keeps its level so
+        // the rows appear the moment the projection lands.
+        const knownLeaf = isKnownLeaf(catalogs, entry.id)
         const summary = byId[entry.id]
         const label = childLabel(entry, summary)
-        const secondary = cardSecondary(summary, entry)
+        const activity = childActivity(live, entry.id)
+        const secondary = cardSecondary(summary, entry, activity)
         const childLoading = childCatalog === undefined
           || (childCatalog.state === 'loading' && childCatalog.entries.length === 0)
         const address: SidebarSubagentAddress = {
           parentSessionId,
           childSessionId: entry.id,
-          mode: entry.mode,
+          // DSH 0.1.7 widened the runtime address to `mode: 'unknown'` (the
+          // row's own mode). This plugin's structural mirror of the address
+          // still spells the 0.1.6 pair — the cast is that pending widening,
+          // not a claim about a shape the host rejects.
+          mode: entry.mode as SidebarSubagentAddress['mode'],
         }
         const current = entry.id === currentSessionId
 
@@ -310,13 +323,13 @@ function CatalogRows({
               }}
             >
               <StateDot
-                state={entry.activity === 'running' ? 'ongoing' : 'done'}
+                state={activity === 'running' ? 'ongoing' : 'done'}
                 className={css.subagentDot}
               />
               <span className={css.subagentContent}>
                 <span className={css.subagentLabel}>{label}</span>
                 <span className={css.subagentSecondary}>{secondary}</span>
-                {entry.activity === 'running' && (
+                {activity === 'running' && (
                   <SubagentLiveLines live={live[entry.id]} />
                 )}
               </span>
@@ -450,20 +463,42 @@ function JobOutputPane(props: {
 
 /**
  * The background-job section of the Subagent page: every job of the whole
- * current tree (main agent + subagents, owner-labeled), fed by the harness
- * `session/jobs` push mirror. Clicking a row feeds its model-read output to
- * the shared bottom dock (event replay — never the model's cursor); live
- * rows carry a two-click-confirm kill button. Renders nothing while the
- * tree has no jobs.
+ * current tree (main agent + subagents, owner-labeled), read through the
+ * plugin's `jobs.list` route while the page is visible. Clicking a row feeds
+ * its model-read output to the shared bottom dock (event replay — never the
+ * model's cursor); live rows carry a two-click-confirm kill button. Renders
+ * nothing while the tree has no jobs.
  */
 function JobsSection(props: {
   byId: SidebarSessionList['byId']
-  jobsBySession: SidebarSessionList['jobsBySession']
   rootId: string | undefined
   /** The page is visible (active tab + open panel): skip polling otherwise. */
   active: boolean
 }) {
-  const { byId, jobsBySession, rootId, active } = props
+  const { byId, rootId, active } = props
+  // The registry's access fence admits a job to its OWNER session only, so the
+  // tree's jobs are one read per tree session — fanned out on each tick and
+  // keyed by owner for the (pure) collection below.
+  const treeIds = useMemo(() => [...treeSessionIds(byId, rootId)], [byId, rootId])
+  const [jobsBySession, setJobsBySession] = useState<Readonly<Record<string, readonly SidebarJobView[]>>>({})
+  const poll = useCallback(async (signal: AbortSignal): Promise<void> => {
+    const entries = await Promise.all(treeIds.map(async (sessionId): Promise<[string, readonly SidebarJobView[]]> => {
+      try {
+        const result = await api.jobsList(sessionId, signal)
+        return [sessionId, result.jobs]
+      } catch {
+        // A host without the jobs service (503) or one dropped read degrades
+        // to an empty set for THIS session; the next tick retries.
+        return [sessionId, []]
+      }
+    }))
+    if (!signal.aborted) setJobsBySession(Object.fromEntries(entries))
+  }, [treeIds])
+  usePolling(active && treeIds.length > 0, poll, {
+    intervalMs: JOBS_POLL_MS,
+    mode: 'self-scheduling',
+    immediate: true,
+  })
   const rows = useMemo(
     () => orderJobs(collectTreeJobs(byId, jobsBySession, rootId)),
     [byId, jobsBySession, rootId],
@@ -615,10 +650,27 @@ function JobsSection(props: {
 }
 
 /**
+ * The client's own "show this conversation" verb. DSH 0.1.6 moved child and
+ * session navigation OFF `ISessions` (0.1.5's `open` / `openSubagent`, neither
+ * of which exists any more — the optional calls this page used were silently
+ * dead) onto the workspace face, which owns the main-view selection. The
+ * pre-0.1.6 faces stay as the fallback for a host that predates the move.
+ */
+interface ConversationNavigation {
+  openSession?(target: SidebarSubagentAddress | string): void
+}
+
+/** The per-parent catalog refresh across the two DSH generations. */
+interface CatalogRefreshFace {
+  refreshProjections?(sessionId: string): Promise<void>
+  refreshSubagents?(sessionId: string): Promise<void>
+}
+
+/**
  * The sidebar's Subagent topology page.
  * @param props - current session id, whether the page is actually visible
  *   (active tab + open panel), the client context, and an optional
- *   jump-notify hook fired right before `openSubagent` (lets the sidebar
+ *   jump-notify hook fired right before the child is opened (lets the sidebar
  *   shell re-open the Subagent page after the conversation switch lands on
  *   the child session).
  * @returns the main agent's topology tree, or the empty/error/loading states.
@@ -632,17 +684,19 @@ export function SubagentView(props: {
   const { sessionId, active, ctx, onOpenChild } = props
   const sessions = ctx.sessions
 
-  // The same list feed the official catalog consumes (byId lineage + the
-  // lazy per-parent catalogs). Older DSH snapshots without the subagent seam
-  // simply leave these surfaces empty — the page degrades to the empty state.
+  // The same list feed the official catalog consumes (`byId` lineage + the
+  // host-computed projection values). A snapshot without the projection seam
+  // (a pre-0.1.7 runtime) leaves every catalog absent, so the topology shows
+  // the root card alone — no rows, and no empty-state copy either.
   const list = useSyncExternalStore(
     useMemo(() => (callback: () => void) => sessions.list.subscribe(callback), [sessions]),
     useCallback(() => sessions.list.getSnapshot(), [sessions]),
   )
   const byId = list.byId
-  // Memoized so the empty-catalog fallback keeps a stable identity — a fresh
-  // `{}` per render would invalidate every catalog-dependent memo/effect.
-  const catalogs = useMemo(() => list.subagentsByParent ?? {}, [list.subagentsByParent])
+  // One fold per snapshot: the views are what every row, the branch test and
+  // the loading/error states read, and a fresh object per render would
+  // invalidate each of their memos.
+  const catalogs = useMemo(() => subagentCatalogs(list.projectionsBySession), [list.projectionsBySession])
 
   // The topology root: the main agent of the current session's tree.
   const rootId = useMemo(() => rootAncestor(byId, sessionId), [byId, sessionId])
@@ -650,50 +704,15 @@ export function SubagentView(props: {
   const rootSummary = rootId === undefined ? undefined : byId[rootId]
   const live = useSubagentLive(rootId, active)
 
-  /** Catalog owners currently consuming live membership updates. */
-  const observedRef = useRef(new Set<string>())
-
-  const observe = useCallback((parentSessionId: string, open: boolean): void => {
-    sessions.setSubagentCatalogOpen?.(parentSessionId, open)
-    if (open) observedRef.current.add(parentSessionId)
-    else observedRef.current.delete(parentSessionId)
-  }, [sessions])
-
-  // While the page is visible the topology root consumes live membership; a
-  // root change (switching to another main agent's tree) or the page hiding
-  // (tab switched away / panel collapsed) releases everything observed.
-  useEffect(() => {
-    if (rootId === undefined || !active) return
-    observe(rootId, true)
-    return () => {
-      // The cleanup must release everything observed AT cleanup time (the set
-      // mutates as branches open), so reading the ref here is the point.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      for (const parentSessionId of observedRef.current) {
-        sessions.setSubagentCatalogOpen?.(parentSessionId, false)
-      }
-      observedRef.current.clear()
+  const openConversation = useCallback((target: SidebarSubagentAddress | string): void => {
+    const workspace = ctx.get('uiWorkspace') as unknown as ConversationNavigation | undefined
+    if (typeof workspace?.openSession === 'function') {
+      workspace.openSession(target)
+      return
     }
-  }, [rootId, active, observe, sessions])
-
-  // Every branch of the always-expanded topology consumes live membership
-  // (add-only: a branch stays observed until the root changes or the page
-  // hides, which releases the whole set via the root effect's cleanup).
-  const branches = useMemo(() => collectBranchIds(catalogs, rootId), [catalogs, rootId])
-  useEffect(() => {
-    if (!active) return
-    for (const id of branches) {
-      if (!observedRef.current.has(id)) observe(id, true)
-    }
-  }, [branches, active, observe])
-
-  // Unobserve everything on unmount (the host stops refreshing unused catalogs).
-  useEffect(() => () => {
-    for (const parentSessionId of observedRef.current) {
-      sessions.setSubagentCatalogOpen?.(parentSessionId, false)
-    }
-    observedRef.current.clear()
-  }, [sessions])
+    if (typeof target === 'string') sessions.open?.(target)
+    else sessions.openSubagent?.(target)
+  }, [ctx, sessions])
 
   const openChild = useCallback((address: SidebarSubagentAddress): void => {
     // Notify the shell first: the jump switches the sidebar to the child
@@ -702,24 +721,28 @@ export function SubagentView(props: {
     // highlighted) — the README "page stays open" contract.
     onOpenChild?.(address)
     try {
-      sessions.openSubagent?.(address)
+      openConversation(address)
     } catch (error) {
-      console.error('[dsh-better-sidebar] openSubagent failed:', error)
+      console.error('[dsh-better-sidebar] open subagent failed:', error)
     }
-  }, [sessions, onOpenChild])
+  }, [openConversation, onOpenChild])
 
   /** Jump back to the main agent (the topology root) from its node. */
   const openMain = useCallback((): void => {
     if (rootId === undefined) return
     try {
-      sessions.open?.(rootId)
+      openConversation(rootId)
     } catch (error) {
       console.error('[dsh-better-sidebar] open session failed:', error)
     }
-  }, [sessions, rootId])
+  }, [openConversation, rootId])
 
   const refresh = useCallback((parentSessionId: string): void => {
-    void sessions.refreshSubagents?.(parentSessionId)
+    // 0.1.7 renamed the per-parent catalog refresh to `refreshProjections`
+    // (the projection store owns every session's values now); calling the
+    // removed 0.1.6 name alone would make this button a silent no-op.
+    const face = sessions as CatalogRefreshFace
+    void (face.refreshProjections ?? face.refreshSubagents)?.(parentSessionId)
   }, [sessions])
 
   const totals = useMemo(
@@ -789,7 +812,7 @@ export function SubagentView(props: {
           disabled={rootId === undefined}
           onClick={() => { if (rootId !== undefined) refresh(rootId) }}
         >
-          <IconRefreshOutline14 />
+          <IconRefreshOutlineRegular size={14} />
         </button>
       </div>
       <div
@@ -862,7 +885,6 @@ export function SubagentView(props: {
         </div>
         <JobsSection
           byId={byId}
-          jobsBySession={list.jobsBySession}
           rootId={rootId}
           active={active}
         />

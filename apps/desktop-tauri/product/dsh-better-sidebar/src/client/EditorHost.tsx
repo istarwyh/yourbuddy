@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createElement } from 'react'
 import clsx from 'clsx'
-import { IconCheckOutline16, IconFolderOpen16, IconRefreshOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCheckOutlineRegular, IconFolderOpenRegular, IconRefreshOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '../context-types.ts'
 import { api, isOutsideWorkspaceMessage, mediaUrl, type SessionScope } from './api.ts'
 import { BinaryDownload } from './binary-download.tsx'
@@ -33,13 +33,13 @@ import { FenceErrorNotice } from './FenceErrorNotice.tsx'
 import { planFirstMatch, planFsReadOutcome, type EditorLoadAction } from './editor-load.ts'
 import { baseName } from './FileTree.tsx'
 import { createFrameBatcher } from './frame-batcher.ts'
-import { openSidebarFile } from './intercept.tsx'
+import { openSidebarFile } from './sidebar-file.ts'
 import { openWithSshActive, openWithUrl, parseOpenWithConfig, resolveOpenWithTargets } from './open-with.ts'
 import { updatePluginSettings } from './plugin-settings.ts'
 import { TreePanel } from './TreePanel.tsx'
 import { t } from './locales.ts'
 import { relativeTo } from './paths.ts'
-import { resolveSidebarPath } from './produced-files.ts'
+import { resolveSidebarPath } from './paths.ts'
 import { closePathTabs, retargetPathTabs } from './tree-mutations.ts'
 import type { EditorToolbarControls, EditorToolbarState, FileViewerDescriptor } from './service.ts'
 import { firstLeaf, insertLeafAt, leafWithTab, mintTabId, type SidebarStore, type SidebarTab } from './state.ts'
@@ -174,14 +174,14 @@ export function EditorHost(props: {
     } else if (onOpenFile !== undefined) {
       onOpenFile(absolute)
     } else {
-      openSidebarFile(ctx, store, scope.sessionId, absolute)
+      openSidebarFile(ctx, scope.sessionId, absolute)
     }
   }
 
   /** The context menu's explicit "new tab" escape (per-path dedupe). */
   const openFileNewTab = (absolute: string): void => {
     if (onOpenFile !== undefined) onOpenFile(absolute)
-    else openSidebarFile(ctx, store, scope.sessionId, absolute)
+    else openSidebarFile(ctx, scope.sessionId, absolute)
   }
 
   /**
@@ -464,7 +464,7 @@ export function EditorHost(props: {
             title={`${t('save')} (Ctrl/Cmd+S)`}
             onClick={() => { controlsRef.current?.save() }}
           >
-            <IconCheckOutline16 size={14} />
+            <IconCheckOutlineRegular size={14} />
           </button>
         )}
         {saveLabel !== '' && (
@@ -478,7 +478,7 @@ export function EditorHost(props: {
             title={t('refresh')}
             onClick={refreshFile}
           >
-            <IconRefreshOutline14 size={14} />
+            <IconRefreshOutlineRegular size={14} />
           </button>
         )}
         <button
@@ -489,7 +489,7 @@ export function EditorHost(props: {
           aria-pressed={treeOpen}
           onClick={toggleTree}
         >
-          <IconFolderOpen16 size={14} />
+          <IconFolderOpenRegular size={14} />
         </button>
       </div>
       <div className={css.editorBody}>

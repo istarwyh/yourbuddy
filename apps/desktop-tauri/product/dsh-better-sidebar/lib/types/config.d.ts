@@ -2,11 +2,20 @@
  * Serializable configuration and defaults for the sidebar host half. Loader
  * schema validation normally fills defaults; {@link resolveSidebarConfig}
  * applies the same defaults for direct callers that bypass the Loader.
+ *
+ * Schemastery comes from DSH, not from the public `schemastery` package, and
+ * that is load-bearing rather than stylistic: only DSH's build WRAPS a
+ * `meta.volatile` field in a cosmokit `Volatile` reference when it parses the
+ * config. The Loader's volatile-commit path walks those references
+ * (`volatileEntries` / `updateVolatile`), so a schema built with the public
+ * package produces plain values, leaves the loader nothing to commit, and
+ * **silently drops every live preference write** — the write reports success
+ * and the effective value never changes.
  * @module dsh-better-sidebar/config
  */
-import z from 'schemastery';
+import z from '@deepseek-ai/schemastery';
 import { type SidebarPrefs } from './prefs-shared.ts';
-export { SIDEBAR_PREFS_DEFAULTS, SIDEBAR_PREFS_NS, TERMINAL_FONT_SIZE_DEFAULT, TERMINAL_FONT_SIZE_MAX, TERMINAL_FONT_SIZE_MIN, TITLE_BAR_STRIP_DEFAULT, TITLE_BAR_STRIP_MAX, TITLE_BAR_STRIP_MIN, type SidebarPrefs, } from './prefs-shared.ts';
+export { SIDEBAR_PREFS_DEFAULTS, SIDEBAR_PREFS_NS, TITLE_BAR_STRIP_DEFAULT, TITLE_BAR_STRIP_MAX, TITLE_BAR_STRIP_MIN, type SidebarPrefs, } from './prefs-shared.ts';
 /** Host placement selected by the product composition. */
 export type SidebarPresentation = 'portal' | 'slot';
 /** Tunable sidebar host limits (every field optional; defaults fill in). */
@@ -19,29 +28,7 @@ export interface SidebarConfig {
     uploadLimit?: number;
     /** Explorer row bound of one level. */
     listLimit?: number;
-    /** Terminals per session. */
-    terminalsPerSession?: number;
-    /** How long a disconnected terminal process survives awaiting a reconnect. */
-    reconnectGraceMs?: number;
-    /**
-     * Terminal shell (absolute path or bare executable name) for BOTH the UI
-     * terminal tabs and the model-facing `terminal_*` tools. Empty = auto:
-     * POSIX follows `$SHELL` then the account login shell; Windows follows
-     * `DSH_SIDEBAR_SHELL`, then probes for `pwsh.exe`, then falls back to the
-     * inbox `powershell.exe` (5.1). Set it from `cordis.patch.yml` / profile
-     * plugin config, e.g. `config: { shell: /bin/zsh }`.
-     */
-    shell?: string;
-    /**
-     * Optional arguments passed to the shell executable. When non-empty these
-     * REPLACE the automatic platform defaults (POSIX `-l` / Windows none), so
-     * the deployment has full control over how the shell starts. When omitted
-     * the existing default behavior is kept.
-     */
-    shellArgs?: string[];
 }
-/** Schemastery schema for the plugin configuration. */
-export declare const Config: z<SidebarConfig>;
 /** Fully defaulted sidebar host settings. */
 export interface ResolvedSidebarConfig {
     /** Host placement selected by the product composition. */
@@ -49,12 +36,6 @@ export interface ResolvedSidebarConfig {
     readLimit: number;
     uploadLimit: number;
     listLimit: number;
-    terminalsPerSession: number;
-    reconnectGraceMs: number;
-    /** The configured terminal shell; empty means the host auto-resolves it. */
-    shell: string;
-    /** Explicit shell arguments; empty means use the platform defaults. */
-    shellArgs: string[];
 }
 /**
  * Apply direct-call defaults after Loader schema validation has normally run.
@@ -65,3 +46,8 @@ export interface ResolvedSidebarConfig {
 export declare function resolveSidebarConfig(config: SidebarConfig | undefined): ResolvedSidebarConfig;
 /** Schemastery schema for the user-facing preferences (validated by the settings service). */
 export declare const PrefsSchema: z<SidebarPrefs>;
+/**
+ * Config schema of this plugin's Loader row: deployment limits plus the live
+ * user preferences.
+ */
+export declare const Config: z<SidebarConfig & SidebarPrefs>;

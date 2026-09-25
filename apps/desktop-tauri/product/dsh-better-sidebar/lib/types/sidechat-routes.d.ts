@@ -1,6 +1,23 @@
 import type { Context } from './context-types.ts';
-import { type SidechatLiveEvent, type SidechatLogEvent, type SidechatThreadInfo } from './sidechat-core.ts';
+import { SIDE_INJECTION_SOURCE_KIND, type SidechatLiveEvent, type SidechatLogEvent, type SidechatThreadInfo } from './sidechat-core.ts';
 import type { AssistantLiveBuffer } from './assistant-live.ts';
+/**
+ * The plugin's producer-owned message source kind. Message sources are a
+ * merge-extensible sum type — DSH 0.1.7 has no shared catch-all `plugin`
+ * kind, so every producer declares its own in its own module (the same
+ * `declare module` seam dsh-time-context / dsh-tmux-context use). The kind
+ * itself is {@link SIDE_INJECTION_SOURCE_KIND}: exactly the `plugin:<name>`
+ * value DSH's own v3→v4 migration derives for the rows this plugin wrote
+ * under 0.1.6, so old and new logs carry one shape.
+ */
+declare module '@deepseek-ai/dsh-llm' {
+    interface MessageSourceMap {
+        /** Side-chat context injection (boundary prompt + parked in-progress snapshot). */
+        'dsh-better-sidebar': {
+            kind: typeof SIDE_INJECTION_SOURCE_KIND;
+        };
+    }
+}
 /** The six Side Chat routes of the sidebar API (wire method names). */
 export interface SidechatRoutes {
     /** Create a side thread child seeded with the parent's log up to now.

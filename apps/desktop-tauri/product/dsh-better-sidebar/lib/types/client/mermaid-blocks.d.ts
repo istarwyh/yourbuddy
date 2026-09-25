@@ -8,6 +8,7 @@
  * all, so the mermaid chunk is only fetched when needed (unit-tested in
  * tests/mermaid-blocks.spec.ts).
  */
+import type { MarkdownCopyLabels } from './markdown-labels.tsx';
 /** One fenced mermaid diagram lifted out of the markdown source. */
 export interface MermaidBlock {
     kind: 'mermaid';
@@ -24,10 +25,7 @@ export type MdBlock = MarkdownBlock | MermaidBlock;
 export interface MermaidMarkdownProps {
     /** The full markdown source (rendered in a single MarkdownText pass). */
     text: string;
-    codeLabels: {
-        copyLabel: string;
-        copiedLabel: string;
-    };
+    codeLabels: MarkdownCopyLabels;
 }
 /** CommonMark opening fence: 0-3 spaces indent + a run of 3+ backticks or tildes. */
 export declare const OPEN_FENCE_RE: RegExp;

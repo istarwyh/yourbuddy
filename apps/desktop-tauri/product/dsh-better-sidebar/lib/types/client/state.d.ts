@@ -45,15 +45,6 @@ export interface SidebarTab {
     /** Plugin-owned state (v0.12.0+): MUST be JSON-serializable — it is
      *  persisted with the layout and restored verbatim on reload. */
     meta?: unknown;
-    /** Pinned-terminal marker (v0.17.0+): a pinned terminal tab survives a
-     *  session switch in its home session's state and surfaces in the
-     *  PinnedRail of every session the scope allows. `homeCwd` is the cwd
-     *  snapshot at pin time — a `workspace`-scoped pin is only visible to
-     *  sessions whose cwd matches it. Absent = unpinned (legacy states). */
-    pin?: {
-        scope: 'workspace' | 'global';
-        homeCwd?: string;
-    };
 }
 /** A tab group. */
 export interface SidebarLeaf {
@@ -75,9 +66,7 @@ export type SplitNode = SidebarLeaf | SidebarSplit;
 export interface SidebarState {
     /** The pane receiving newly opened tabs (the last pane the user touched). */
     activePane: string | null;
-    /** Monotonic terminal tab counter (ids survive reloads). */
-    nextTerminal: number;
-    /** Monotonic browser tab counter (ids survive reloads; mirrors nextTerminal). */
+    /** Monotonic browser tab counter (ids survive reloads). */
     nextBrowser: number;
     /** Explorer expansion set (absolute directory paths). */
     expanded: string[];
@@ -91,25 +80,8 @@ export interface SidebarState {
     bottomOpen: boolean;
     /** The bottom panel's height (clamped to the contract range). */
     bottomHeight: number;
-    /**
-     * Whether the bottom panel has been expanded at least once in this
-     * session — the FIRST expansion tries to auto-open a terminal tab (gated
-     * on the bottomPanelAutoTerminal pref); later expansions never do.
-     */
-    bottomOpenedOnce: boolean;
     /** The bottom workbench's split tree. */
     bottomSplits: SplitNode;
-    /**
-     * Live agent-terminal wait state (uuid → the wait the model currently
-     * blocks on in `terminal_wait_for`), mirrored from the host's
-     * agent-terminals push. Transient by design: sanitizeState never restores
-     * it, so a reload starts clean and the next push (sent immediately on WS
-     * attach) repopulates it.
-     */
-    agentWaits: Record<string, {
-        needle: string;
-        since: number;
-    }>;
 }
 export declare const TAB_MAX_WIDTH = 160;
 /** Bottom panel geometry contract (the upper bound is the viewport, enforced
@@ -181,28 +153,10 @@ export declare function patchTab(state: SidebarState, tabId: string, patch: {
     meta?: unknown;
 }): SidebarState;
 /**
- * Set or clear the pin marker on one open tab (v0.17.0+). A pin marker is
- * structural metadata (NOT display fields like title/path), so it walks
- * the workbench's split tree exactly like {@link patchTab}. Passing `null` clears the pin
- * (the tab stays open in its home session); passing a `{ scope, homeCwd }`
- * object sets it. An unknown tab id is a strict no-op (same reference
- * returned) so a stale pin request never churns the state or rewrites
- * localStorage.
- * @param state - the current per-session sidebar state.
- * @param tabId - the tab to pin/unpin.
- * @param pin - the pin marker to set, or null to clear.
- * @returns the next state (or the same reference when the tab is missing
- *          or the pin marker is already the requested value).
- */
-export declare function setTabPin(state: SidebarState, tabId: string, pin: {
-    scope: 'workspace' | 'global';
-    homeCwd?: string;
-} | null): SidebarState;
-/**
  * Land a tab in the workbench's first pane — the plugin's own opens (its
- * bottom-panel + menu, the auto-terminal, and every open when no native
- * surface is installed): the plugin owns no right column any more (DSH's
- * native sidebar is the right one), so the bottom workbench is the only tree.
+ * bottom-panel + menu, and every open when no native surface is installed):
+ * the plugin owns no right column any more (DSH's native sidebar is the
+ * right one), so the bottom workbench is the only tree.
  * @param state - the session state.
  * @param tab - the tab to land.
  * @returns the next state, with the bottom panel open.
@@ -254,50 +208,6 @@ export declare function resizeSplit(node: SplitNode, splitId: string, index: num
 /** State-level {@link resizeSplit} route: the divider may live in either
  *  tree (split ids are globally unique). */
 export declare function resizeSplitIn(state: SidebarState, splitId: string, index: number, delta: number): SidebarState;
-/** Prefix marking a tab id as an agent-owned terminal (suffix is the uuid). */
-export declare const AGENT_TAB_PREFIX = "agent:";
-/** Whether a tab id refers to an agent-owned terminal. */
-export declare function isAgentTabId(tabId: string): boolean;
-/** Extract the agent terminal uuid from an `agent:<uuid>` tab id. */
-export declare function agentUuidOf(tabId: string): string;
-/** Build the sidebar tab id for one agent terminal uuid. */
-export declare function agentTabId(uuid: string): string;
-/**
- * Reconcile the sidebar's agent-terminal tabs with the host's live list.
- * The host pushes the current list of agent terminals (created by the model
- * through the `terminal_create` tool) over a dedicated WebSocket; this
- * reducer mirrors that list into tabs: new uuids get a tab, vanished uuids
- * lose theirs. The agent owns the lifetime — the user closing a tab sends a
- * WS close frame that kills the pty, which fires a change, which converges
- * the view. Idempotent: a no-op when the lists already match.
- * @param state - the current per-session sidebar state.
- * @param agentTerminals - the live agent terminal snapshots from the host.
- * @returns the next state (or the same reference if no change was needed).
- */
-export declare function reconcileAgentTerminals(state: SidebarState, agentTerminals: ReadonlyArray<{
-    uuid: string;
-    title: string;
-    waiting?: {
-        needle: string;
-        since: number;
-    } | null;
-}>): SidebarState;
-/**
- * Mirror ONLY the authoritative agent-wait map from a push — no tab
- * add/remove reconciliation. Used while the `terminal` tab type is disabled:
- * the tab surface is frozen, but a wait that resolves during that window
- * must still clear its banner state, or a re-enabled terminal keeps a stale
- * banner/⏳ until some unrelated host event fires the next full reconcile.
- * Idempotent: a no-op when the map already matches.
- */
-export declare function mirrorAgentWaits(state: SidebarState, agentTerminals: ReadonlyArray<{
-    uuid: string;
-    title: string;
-    waiting?: {
-        needle: string;
-        since: number;
-    } | null;
-}>): SidebarState;
 /**
  * Cross-session panel width: the last dragged width, shared by EVERY
  * conversation (the panel width is a layout preference, not per-session

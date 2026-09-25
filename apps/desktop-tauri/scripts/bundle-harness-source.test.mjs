@@ -229,7 +229,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     }
     assert.ok(readFileSync(join(root, 'packages', 'product', 'dsh-codex-auth', 'lib', 'client.js'), 'utf8').length > 0)
     const bundledSidebar = join(root, 'packages', 'product', 'dsh-better-sidebar')
-    for (const bundle of ['client.js', 'client-registry.js', 'client-terminal.js']) {
+    for (const bundle of ['client.js', 'client-registry.js']) {
       const source = readFileSync(join(bundledSidebar, 'lib', bundle), 'utf8')
       assert.match(source, /yourbuddy\.desktop\.external-link/u)
       assert.match(source, /window\.parent\.postMessage/u)

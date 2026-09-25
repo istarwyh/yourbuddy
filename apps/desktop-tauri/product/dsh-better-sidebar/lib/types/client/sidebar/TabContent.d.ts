@@ -23,7 +23,7 @@ interface TabContentProps extends TabContentMemoKey {
 export declare const TabContent: import("react").NamedExoticComponent<TabContentProps>;
 /** The + menu options for the current state, driven by the tab registry.
  * Hidden tabs (editor/diff) never show; `available` returning false shows
- * a disabled row (e.g. terminal at capacity) instead of hiding the option.
+ * a disabled row instead of hiding the option.
  * Tabs the user disabled in the side card settings are filtered out
  * entirely — re-enabling them is the settings page's job. */
 export declare function buildNewTabOptions(state: SidebarState, ctx: Context, scope: SessionScope): NewTabOption[];

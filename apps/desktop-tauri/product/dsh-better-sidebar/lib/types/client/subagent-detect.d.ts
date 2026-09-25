@@ -15,18 +15,12 @@
  * ./subagent-lineage.ts — the single shared walk implementation — and are
  * re-exported below for their established import sites.
  */
-import type { SidebarSessionList, SidebarSubagentCatalog } from '../context-types.ts';
+import type { SidebarSessionList } from '../context-types.ts';
 import { countSubagentDescendants, isSideThreadSummary, rootAncestor } from './subagent-lineage.ts';
 export { countSubagentDescendants, isSideThreadSummary, rootAncestor };
 export type { SubagentDescendantTotals } from './subagent-lineage.ts';
 /** Count the direct subagent children of one session (durable `origin` rows). */
 export declare function directSubagentCount(byId: SidebarSessionList['byId'], sessionId: string): number;
-/**
- * Collect every catalog branch (an entry with `hasChildren`) reachable from
- * the root — the set of catalogs the always-expanded topology consumes.
- * Cycles fail soft.
- */
-export declare function collectBranchIds(catalogs: Readonly<Record<string, SidebarSubagentCatalog>>, rootId: string | undefined): string[];
 /**
  * Whether a new direct subagent appeared under `sessionId` between two
  * consecutive list snapshots (the count crossed 0 → >0). Switching to a

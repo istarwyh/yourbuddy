@@ -291,11 +291,8 @@ export declare const zh: {
     settingsGeneralTitle: string;
     settingsPopup: string;
     settingsViewerCatchAll: string;
-    viewerImage: string;
-    viewerPdf: string;
     viewerMarkdown: string;
     viewerCode: string;
-    viewerBinary: string;
     viewerHtml: string;
     browser: string;
     browserPlaceholder: string;
@@ -306,7 +303,6 @@ export declare const zh: {
     browserBlockedScheme: string;
     browserBlockedLoopback: string;
     browserInvalid: string;
-    browserNoSandboxWarning: string;
     htmlNoSandboxWarning: string;
     sandboxStatusOn: string;
     sandboxUnlock: string;
@@ -317,12 +313,6 @@ export declare const zh: {
     settingsHtmlSandboxDesc: string;
     settingsBrowserSandboxTitle: string;
     settingsBrowserSandboxDesc: string;
-    settingsBrowserLinksTitle: string;
-    settingsBrowserLinksDesc: string;
-    settingsBrowserHttpTitle: string;
-    settingsBrowserHttpDesc: string;
-    settingsBrowserHttpsTitle: string;
-    settingsBrowserHttpsDesc: string;
     settingsBrowserLoopbackTitle: string;
     settingsBrowserLoopbackDesc: string;
     settingsBrowserLoopbackPlaceholder: string;
@@ -376,11 +366,14 @@ export declare const zh: {
     sideChatBlockExpandAria: string;
     sideChatBlockSignal: string;
     sideChatBlockExitCode: string;
+    sideChatBlockNoExitCode: string;
     sideChatBlockRunning: string;
     sideChatBlockFailed: string;
     sideChatBlockDone: string;
     sideChatBlockNoOutput: string;
-    sideChatBlockFiles: string;
+    codeBlockTitle: string;
+    codeBlockWrap: string;
+    codeBlockUnwrap: string;
     sideChatBlockWindow: string;
     sideChatConnDisconnected: string;
     sideChatConnReconnect: string;

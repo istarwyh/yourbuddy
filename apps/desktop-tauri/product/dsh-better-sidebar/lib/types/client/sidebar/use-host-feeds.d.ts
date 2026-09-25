@@ -1,5 +1,5 @@
 import type { Context, SidebarSessionList } from '../../context-types.ts';
-import { type SidebarStore } from '../state.ts';
+import type { SidebarStore } from '../state.ts';
 export declare function useHostFeeds(feeds: {
     ctx: Context;
     store: SidebarStore;
