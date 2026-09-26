@@ -4,7 +4,7 @@
 
 这是一个可安装的 DeepSeek Harness 插件与 Skill，用于执行稳定的 Harbor 评测和受控的 Agent 演进循环，并提供原生 DSH Web 工作台。
 
-该包为 DSH 提供 19 个严格的 Harbor 工具、同 Session 对话中的原生工具卡片、以对象为起点的 Evaluation Workbench、安装 Doctor，以及可由模型和用户调用的 `evolve-agent-with-harbor` Skill。Skill 从四个面向用户的概念开始：Dataset（测什么）、Generator（谁来回答）、Evaluator 及评测标准（什么算好），以及 Optimizer（谁来改进）；随后把已确认的选择编译为严格的 Evaluation Stack。没有提供 Dataset 时，它也可以预览近期已完成的 DSH Session，再把每个不可变 Session 作为一个 Historical Trial 进行评测，而不重新运行 Candidate。DSH Generator 可以显式固定当前默认模型，作为不含密钥的 Candidate 身份，同时保留每个 Job 的 Host Broker 凭据边界。插件会验证 Dataset 身份、检查 Trial Lifecycle 与 Score Validity、管理独立的 Ground Truth 元评测、诊断证据来源，把每次迭代限制为一个受控 Candidate 变更，并且只在明确操作中调用 Promotion Gate。
+该包为 DSH 提供 21 个严格的 Harbor 工具、同 Session 对话中的原生工具卡片、以对象为起点的 Evaluation Workbench、安装 Doctor，以及可由模型和用户调用的 `evolve-agent-with-harbor` Skill。Skill 从四个面向用户的概念开始：Dataset（测什么）、Generator（谁来回答）、Evaluator 及评测标准（什么算好），以及 Optimizer（谁来改进）；随后把已确认的选择编译为严格的 Evaluation Stack。没有提供 Dataset 时，它也可以预览近期已完成的 DSH Session，再把每个不可变 Session 作为一个 Historical Trial 进行评测，而不重新运行 Candidate。DSH Generator 可以显式固定当前默认模型，作为不含密钥的 Candidate 身份，同时保留每个 Job 的 Host Broker 凭据边界。插件会验证 Dataset 身份、检查 Trial Lifecycle 与 Score Validity、管理独立的 Ground Truth 元评测、诊断证据来源，把每次迭代限制为一个受控 Candidate 变更，并且只在明确操作中调用 Promotion Gate。
 
 ## 安装
 
@@ -16,8 +16,8 @@ npx --yes dsh-harbor-evolution@latest setup --project-root "$PWD"
 
 Setup 命令会安装两个必需的运行时：
 
-- 在托管的 Python 环境中安装 `harbor-dsh-evolution==0.9.8`。
-- 在所选 DSH Profile 中安装 `dsh-harbor-evolution@0.9.8`。
+- 在托管的 Python 环境中安装 `harbor-dsh-evolution==0.10.1`。
+- 在所选 DSH Profile 中安装 `dsh-harbor-evolution@0.10.1`。
 
 随后，它会把 DSH Profile／Home、托管 Python 运行时、Jobs 目录、Host／Docker 选择、Harbor 可执行文件的绝对路径与一个回退 `projectRoot` 写入 Profile 的 `harbor-evolution` 配置块，并验证集成。Agent Tool 每次调用都会以调用 Session 的绝对工作目录作为项目根目录；配置值仍供 Web Workbench 和非 Agent 场景回退使用。无关的现有 Profile 条目会被保留；重复执行 Setup 只会更新同一个配置块。
 
@@ -49,6 +49,8 @@ Inspect this workspace and help me clarify and initialize a stable Harbor self-e
 - `harbor_quick_diagnostic_init`
 - `harbor_session_diagnostic_preview`
 - `harbor_session_diagnostic_run`
+- `harbor_business_observation_import`（经过审阅的项目内文件或结构化聚合 Payload；不进行网络导入，也不覆盖现有记录）
+- `harbor_business_observation_list`（按身份筛选 Observation、趋势和分组；只表示相关性）
 - `harbor_dataset_validate`
 - `harbor_context_preview`（在返回预览前，经过一次性批准刷新 `candidate-manifest.json`）
 - `harbor_eval_run`
@@ -64,13 +66,13 @@ Inspect this workspace and help me clarify and initialize a stable Harbor self-e
 
 在 `web` Profile 中，同一个包还会注册：
 
-- 本地化且以对象为起点的 Workbench（Summary、Trials、Pipeline、Optimization、Compare/Gate、Evaluator/Rubric、Artifacts、Audit），直接展示固定的实验身份、Agent 可见的 Dataset 查询与指令、安全的业务产物预览、Ground Truth 元评测、分页的逐 Trial 证据与建议、Population 有效性与覆盖率、受控优化假设，以及 Baseline/Gate 差异；原始 JSON 保留在审计抽屉中；
+- 本地化且以结果为起点的 Workbench，优先展示 Verdict、Scoreability、Coverage、Finding、代表性案例、Effective Evaluator 和一项后续操作。Trials、Optimization 与 Evaluator 保持主要入口；Pipeline、原始产物与 Audit 移到高级详情中。Compare 只在版本实验中出现，Gate 只用于可选治理；
 - 现有原生 Composer 与对话，输入框上方没有 Context Capsule 或 Copilot 面板；在支持 `conversation.contexts.register` 的 Host 上，从 Harbor 发送普通消息会冻结可见的 Job、Trial、Criterion、Evidence 或列表选择。显式的一次性 `Ask AI`／`@harbor` 引用具有更高优先级，并在发送后清除；较旧的 rc.8 Host 需要这些显式引用；
 - 用于证据导航与已审阅 AI 提案的原生工具结果卡片；类型化 `harbor.navigate` 操作保留允许列表中的只读 Harbor 导航，Back 则恢复此前的 Workspace、页面、阶段、Trial 筛选／排序／焦点、Compare Baseline 与滚动位置。卡片在准备好对象后提示你打开 Harbor Tab，不会自动切换 Host Tab；
 - 插件主页中的后台操作，保留取消、恢复检查与结果导航。仅在读取成功且结果为空时隐藏入口，读取失败时不会隐藏；
-- 一等的 `Evaluate recent Sessions` 快速入口：从当前 DSH 可访问的历史中自动抽取最多 3 个已完成对话，不依赖评测输出目录。它会预览审阅模型与脱敏数据／费用说明，要求确认，在后台运行，并打开已完成 Job。无需选择历史路径、项目或日期；有限的近期样本不代表全部历史；
-- 通过 Descriptor 授权编辑 `script` 与 `llm-as-judge` 实现的 Evaluator/Rubric 源码，使用乐观并发控制并强制采用新身份；
-- 由确定性脚本与 LLM-as-Judge 实现共享的 `harbor-dsh-evaluator/v1` 接口；
+- 一等的 `Experience diagnostic: evaluate recent Sessions` 快速入口：从当前 DSH 可访问的历史中自动抽取最多 3 个已完成对话，不依赖评测输出目录。它会预览审阅模型与脱敏数据／费用说明，要求确认，在后台运行，并打开已完成 Job。它用于讲解评测流程，不构成业务质量证明；有限的近期样本不代表全部历史；
+- 通过 Descriptor 授权编辑 `script` 与 `llm-as-judge` 实现的 Evaluator/Rubric 源码，并把编辑绑定到实际运行且经过验证的代码。如果当前 Stack 已更新，编辑会从不可变的已执行 Job Bundle 分叉，而不是用当前源码替换它；
+- `harbor-dsh-evaluator/v2` 为每项正式 Candidate Experiment 提供完整 Bundle 身份。这些 Experiment 使用一个严格的生成 Adapter 调用已声明的 `input_builder` 与 Evaluator；Dataset 自有的 Verifier 代码没有评分权威；
 - 所有 Harbor Tool 调用的紧凑结果卡片；
 - 显式本地对象选择和冻结的 Trial 集合选择器（固定 ID／Revision 或 Query Snapshot，最多包含 1000 个成员）、可移除的原生引用，以及针对源码片段的 Ask 操作；
 - AI 提案卡片，包含确定性的 Preflight、显式审阅、幂等确认与仅追加的本地操作日志；Candidate、Gate 与交接输出是已保存的草稿，不是已应用的资源变更。Evaluator 源码提案可以在经过检查的版本编辑器中打开。选定的 Compare 只执行读取；
@@ -98,6 +100,12 @@ Web UI 只通过三条范围明确且显式的工作流修改业务资源：由 
 用户明确确认后，`harbor_session_diagnostic_run` 只接收 `selectionToken` 与可选 Job 名称。它会重新验证冻结的 Session 与 Feedback Digest，物化不可变 Historical Batch 以及配套 Dataset 和 Stack，并把每个 Session Observation 作为一个 Harbor Trial 进行评测。该 Job 不会重新运行 Candidate，不能进入 Promotion Gate，并把 Evaluator Meta-Evaluation 记录为 `not-run`，因为 Evaluator 可靠性需要另行执行独立的 Ground Truth 工作流。
 
 缺少必要证据时，Historical Trial 可以以 `completed-unscored` 结束。这是 Evaluator 的正常弃权，不是零分或基础设施失败；应结合 Trial 与 Criterion 覆盖率解释结果。
+
+## 外部业务观测
+
+`harbor_business_observation_import` 只接受一个经过审阅的项目内 JSON 文件或结构化聚合 Payload。Python Adapter 会校验严格的 `business-observation/v1` Contract、来源信息、Subject 身份、带时区的时间窗口、Metric／Segment、敏感字段、Canonical Digest、项目范围和不可变 Observation id，然后以排他方式保存到 `.harbor/business-observations/`。它不会抓取 URL，也不会连接分析系统。
+
+`harbor_business_observation_list` 返回按身份筛选的 Observation，以及按 Subject 分离的趋势和分组。Candidate Job 报告只会在离线指标旁显示 Candidate Digest 完全匹配的结果，并始终标记为只表示相关性。导入不会修改 Job 产物、Summary、Reward、Comparison、Optimizer 输出或 Gate。完整说明见[业务观测指南](../../docs/business-observations.md)。
 
 ## Candidate 模型绑定
 

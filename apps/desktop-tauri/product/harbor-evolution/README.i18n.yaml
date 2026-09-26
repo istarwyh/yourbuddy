@@ -3,17 +3,20 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop-tauri/product/harbor-evolution/README.md
 /dsh-harbor-evolution:
-  en: ccd3088dd210be9a
-  zh: c95346c0b44d5c2a
+  en: b5b0cbe20dede6e9
+  zh: 8d70f9b509835a06
 /dsh-harbor-evolution/install:
-  en: 749813140185eaad
-  zh: 5ef51e642904443b
+  en: 1973acc96aa4c68c
+  zh: de13624d2dfd5b35
 /dsh-harbor-evolution/install/start-with-an-object-not-a-command:
   en: 2d65b556e3631b3c
   zh: 99c87af1f6ef5f30
 /dsh-harbor-evolution/historical-session-cold-start:
   en: 216afaf3d53e035a
   zh: eebe49b7e4b85564
+/dsh-harbor-evolution/external-business-observations:
+  en: 8f4ec318e57d4709
+  zh: 48b71c0b42e368e3
 /dsh-harbor-evolution/candidate-model-binding:
   en: 035844e354f9131a
   zh: 2dfb4b24d0ab5faf

@@ -3,5 +3,5 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop-tauri/product/harbor-python/README.md
 /harbor-dsh-evolution:
-  en: 5e6ca7c351f7ada3
-  zh: a5077e1a3b1e13c5
+  en: b279b61a8f2aacfd
+  zh: 589d4903223d8718
