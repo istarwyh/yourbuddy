@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.17/README.md
 /yourbuddy-0-3-17:
-  en: c45a79b795cb1487
-  zh: ddc0caef210c4e8b
+  en: 85501154fc645b50
+  zh: c0bec42427c9e043
 /yourbuddy-0-3-17/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -21,35 +21,35 @@
   en: f7916b8c2aed7ea5
   zh: 32a3e6cd228dfe7d
 /yourbuddy-0-3-17/user-release-notes/install-or-upgrade:
-  en: b1e7c6f34b2fc9d5
-  zh: d708fa8f1efc8522
+  en: 8bdd0ff96fe825b3
+  zh: a74045e582eaa0dc
 /yourbuddy-0-3-17/user-release-notes/compatibility-migration-and-limitations:
-  en: a100b7d391b566e7
-  zh: a360fbec18dfdc77
+  en: 0589d177cfcc1048
+  zh: f38719c7c0b1f9b2
 /yourbuddy-0-3-17/verification-summary:
-  en: f74a0b34725fa9eb
-  zh: 94c733d0dc313fe9
+  en: 540a22e08c655e3b
+  zh: 3a8b7a7cda660b48
 /yourbuddy-0-3-17/scenario-desktop-authentication-handoff:
-  en: 6bfdfce50baf46a9
-  zh: e37d76ea89c8813d
+  en: 0472a16b09c2b1ac
+  zh: 12a56778bbf9b554
 /yourbuddy-0-3-17/scenario-desktop-authentication-handoff/steps:
-  en: e45708faa9e83eed
-  zh: 24e7f1bfcf9ef977
+  en: 3352fa3f28049552
+  zh: 7c035caa249607ef
 /yourbuddy-0-3-17/scenario-desktop-authentication-handoff/expected:
   en: 3a888555c9f4f117
   zh: 538eca36448d25c9
 /yourbuddy-0-3-17/scenario-desktop-authentication-handoff/actual:
-  en: e0e145be88eaa834
-  zh: a6b962948ee28318
+  en: fcd1c5051a0ec450
+  zh: 7526bef8d13eb728
 /yourbuddy-0-3-17/scenario-desktop-authentication-handoff/evidence:
-  en: f06ae93312fd46c7
-  zh: 61d6a71a3424459c
+  en: c83ba6a7923cbe4a
+  zh: 36d1f488d226fda9
 /yourbuddy-0-3-17/scenario-desktop-authentication-handoff/scope-limits:
-  en: 2a25105b80ee61ac
-  zh: 556e4dc0ac522166
+  en: 3d1cea5615e54aad
+  zh: 987b0a6da93d6fc0
 /yourbuddy-0-3-17/delivery-status:
-  en: 72be09e608032d07
-  zh: 13f18c52e6f9305b
+  en: bf5a54d61f28b41f
+  zh: 84485169007dd76f
 /yourbuddy-0-3-17/delivery-checklist:
-  en: 33b72a17dadd547f
-  zh: 703cd1aa0ddfa89c
+  en: 4f0c46904fe59f2c
+  zh: 7d81b07310ffb0b9

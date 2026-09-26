@@ -6,6 +6,12 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.17 — 2026-09-26
+
+YourBuddy 0.3.17 fixes desktop startup compatibility with the current DSH Web authentication redirect and removes duplicate desktop-side URL, cookie-attribute, and post-write checks. The product homepage now shows the task-shaped personal workbench directly. Public artifact integrity, updater metadata and signature, App identity, product source records, generated publisher runtime modules, and the relocated runtime passed independent checks. Native startup was not exercised because a user-owned YourBuddy instance was active; packaged-WebView interaction, an update from an older version, Apple Developer signing, and notarization remain unverified.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.17) · [verification record](../../releases/yourbuddy-v0.3.17/README.md) · [download page](download.md)
+
 ### 0.3.16 — 2026-09-26
 
 YourBuddy 0.3.16 keeps the workbench, creator Content, and active Session coordinated without discarding their state. Conversation and the native right sidebar collapse as one Session region; background Agent opens no longer replace visible creator Content; fresh Sessions use Full access by default; and Oil Creator validates draft inputs while protecting final and scheduled actions. Public artifact integrity, updater metadata and signature, App identity, product source records, generated publisher runtime modules, and the relocated runtime passed independent checks. The exact-commit interaction recording, native startup, packaged-WebView interaction, an update from an older version, real creator accounts, final publication, and Apple notarization remain unverified.

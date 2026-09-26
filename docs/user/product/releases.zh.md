@@ -6,6 +6,12 @@
 
 ## YourBuddy
 
+### 0.3.17 — 2026-09-26
+
+YourBuddy 0.3.17 修复桌面启动与当前 DSH Web 身份认证重定向的兼容问题，并移除桌面端重复的 URL、Cookie 属性与写入后检查。产品首页现在会直接展示由任务塑造的个人工作台。公开产物完整性、Updater 元数据与签名、App 标识、产品来源记录、生成的发布器运行时模块与迁移运行时通过独立检查。由于用户自己的 YourBuddy 实例正在运行，本次没有执行原生启动；安装包 WebView 交互、从旧版本实际更新、Apple Developer 签名与公证仍未验证。
+
+[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.17) · [验证记录](../../releases/yourbuddy-v0.3.17/README.zh.md) · [下载页](download.zh.md)
+
 ### 0.3.16 — 2026-09-26
 
 YourBuddy 0.3.16 让工作台、创作者 Content 与当前 Session 协同切换，同时保留各自状态。Conversation 与原生右侧栏作为一个 Session 区域一起收起；Agent 后台打开不再替换可见的创作者 Content；新建 Session 默认使用 Full access；Oil Creator 会校验草稿输入并保护最终发表与定时操作。公开产物完整性、Updater 元数据与签名、App 标识、产品来源记录、生成的发布器运行时模块与迁移运行时通过独立检查。精确 Commit 的交互录制、原生启动、安装包 WebView 交互、从旧版本实际更新、真实创作者账号、最终发表与 Apple 公证仍未验证。

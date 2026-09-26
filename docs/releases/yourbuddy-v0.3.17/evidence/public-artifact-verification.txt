@@ -1,0 +1,41 @@
+YourBuddy 0.3.17 public artifact verification
+Date: 2026-09-26 UTC+08:00 CST
+Release: https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.17
+Tag object: 7eb14f52bd4b745329ed0f691488a6047119d74b
+Tag commit: ae8a3d442ada5c8524a6a92ab024b5bcb93877ea
+
+Publication workflow
+- Tag-triggered run: https://github.com/istarwyh/yourbuddy/actions/runs/36243287834
+- Result: passed; release-version checks, DSH selection, Harness and DMG builds, desktop Host and shell contracts, supervisor tests, relocated runtime, checksums, updater manifest, and release publication completed.
+
+Public files downloaded independently
+- yourbuddy-0.3.17-macos-arm64.dmg: 686380951 bytes; SHA-256 7b981f76578b9edcec7deb09576c64d23b2eb9ef93abf1c01faf81f1f53627d7
+- yourbuddy-0.3.17-macos-arm64.app.tar.gz: 688225388 bytes; SHA-256 2d6ccf21ba4d8fb8d20a0bbe69372e295e7c42cdd59e5d2cf40057c5d51c54ac
+- yourbuddy-0.3.17-macos-arm64.app.tar.gz.sig: 408 bytes; SHA-256 98f25620145c5012763755dfb4739c314db0cd89bb2765c23616bd307581c707
+- SHA256SUMS.txt: 315 bytes; SHA-256 342ca8d6bdd723a16e90d572d49b79e83e4e777f349ac9c783e72a219cd8ade9
+- latest.json: 3289 bytes; SHA-256 33e0bdb2c51a92823998fc7e49e2c340aec6f8deec76467b74a3efaf1968d6c1
+- Every versioned product artifact matched SHA256SUMS.txt and GitHub's release digest.
+- The stable yourbuddy-updater/latest.json was byte-identical to the versioned manifest and advertised version 0.3.17 for darwin-aarch64.
+- The updater archive's BLAKE2b-prehashed Ed25519 signature and trusted comment signature were verified with minisign-verify 0.2.5 and the public key committed in the tagged Tauri configuration.
+
+Packaged application
+- The downloaded updater archive extracted successfully.
+- The downloaded DMG passed hdiutil checksum verification and mounted read-only.
+- The DMG App tree and updater App tree were byte-for-byte identical under diff -qr.
+- CFBundleDisplayName: YourBuddy
+- CFBundleIdentifier: io.github.istarwyh.yourbuddy
+- CFBundleShortVersionString: 0.3.17
+- CFBundleVersion: 0.3.17
+- Executable architecture: arm64.
+- codesign --verify --deep --strict passed.
+- Signature: ad hoc; TeamIdentifier: not set.
+- Gatekeeper rejected the App, as expected for a build without Apple Developer signing or notarization.
+- Bundled DSH: 0.1.7-rc.2.
+- Bundled product plugins: Harbor Evolution 0.10.1, Codex Auth 0.3.2, Better Sidebar 0.21.1, Context Doctor 0.7.2, Plugin Marketplace 0.3.6, Personal Workbench 0.1.0, and Oil Creator 0.1.0.
+- All 12 generated video-publisher runtime modules were present under scripts/lib and scripts/v2/lib in the packaged Oil Creator snapshot.
+- The packaged runtime reported Python 3.12.14 and Harbor 0.21.0; harbor-dsh --help passed.
+
+Limits
+- Native startup of the downloaded App was not exercised because a user-owned /Applications/YourBuddy.app process was active; it was not terminated or disturbed.
+- Packaged-WebView interaction and installation over an older YourBuddy version were not exercised.
+- Apple Developer signing and notarization remain unavailable.

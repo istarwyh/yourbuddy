@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.3.17`。
 - 产品渠道：macOS Apple Silicon 版 YourBuddy 桌面应用。
-- 归档状态：发布前候选；原生安装包启动、公开产物、Updater、官网与可下载证据仍待完成。
-- 候选源码：带 Tag 的产品 Commit 待生成。
+- 归档状态：部分完成；产品发布与公开产物核验已经完成，原生启动、可下载证据与发布后官网检查仍待完成。
+- 带 Tag 的产品 Commit：`ae8a3d442ada5c8524a6a92ab024b5bcb93877ea`。
 - 证据图集：发布前不适用。
-- 证据下载：不可变 Tag 源码与可下载验证归档等待发布。
+- 证据下载：[不可变 Tag 源码](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.17/docs/releases/yourbuddy-v0.3.17)；可下载验证归档仍待发布。
 
 ## 面向用户的发布说明
 
@@ -31,11 +31,11 @@
 
 ### 安装或升级
 
-Apple Silicon DMG 与应用内 Updater 路径需等待 GitHub Release 发布并完成独立核验。已有 YourBuddy 数据不需要迁移。
+请安装 [Apple Silicon DMG](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.17/yourbuddy-0.3.17-macos-arm64.dmg)，该安装包来自 [0.3.17 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.17)；也可以在旧版 YourBuddy 中使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。已有 YourBuddy 数据不需要迁移。
 
 ### 兼容性、迁移与限制
 
-桌面目标仍为 Apple Silicon 上的 macOS 11 或更高版本。启动交接仍解析运行时 URL 与 Session Cookie，并报告实际操作失败，但会信任第一方 DSH 运行时，不再重复执行安全策略。从旧版本安装更新、Apple Developer 签名与公证在公开产物核验前仍未验证。
+桌面目标仍为 Apple Silicon 上的 macOS 11 或更高版本。启动交接仍解析运行时 URL 与 Session Cookie，并报告实际操作失败，但会信任第一方 DSH 运行时，不再重复执行安全策略。由于用户自己的 YourBuddy 实例正在运行，本次没有启动下载的 App。从旧版本安装更新、Apple Developer 签名与公证仍未验证。
 
 ## 验证概览
 
@@ -43,16 +43,16 @@ Apple Silicon DMG 与应用内 Updater 路径需等待 GitHub Release 发布并�
 |---|---|---|---|---|
 | 聚焦启动检查 | passed | 版本准备前的源码候选 | macOS 15.6.1 Apple Silicon、Rust 测试环境 | 13 项 Supervisor 与 3 项 WebView 测试通过 |
 | 产品文档检查 | 在所述范围内通过 | 版本准备前的源码候选 | Node.js 22.22.3 | 21 项快速文档与 43 项文档检查通过；网站结构 71 项测试通过 |
-| 原生安装包启动 | pending | 已发布 DMG | macOS Apple Silicon | 待补 |
-| 公开桌面产物与 Updater | pending | GitHub Release 产物 | 匿名公开下载 | 待补 |
+| 原生安装包启动 | not verified | 已发布 0.3.17 App | macOS Apple Silicon | 用户自己的 YourBuddy 进程正在运行，未终止该进程 |
+| 公开桌面产物与 Updater | passed | 公开 0.3.17 产物 | GitHub Release 与稳定 Updater Channel | [产物核验](evidence/public-artifact-verification.txt) |
 | 产品官网 | pending | 发布后的官网 Commit | GitHub Pages | 待补 |
 
 ## 场景：桌面身份认证交接
 
-- 状态：聚焦源码检查通过；已安装候选与公开产物检查待完成。
+- 状态：聚焦源码与公开产物检查通过；正式产物的原生启动仍未验证。
 - 日期与时间：`2026-09-26 20:30 +0800 CST`。
-- 发布版本与 Commit：`yourbuddy-v0.3.17`；带 Tag 的 Commit 待生成。
-- 受测构建：发布前源码候选。
+- 发布版本与 Commit：`yourbuddy-v0.3.17`；带 Tag 的 Commit 为 `ae8a3d442ada5c8524a6a92ab024b5bcb93877ea`。
+- 受测构建：发布前源码候选与正式发布的 0.3.17 产物。
 - 环境：macOS 15.6.1 Apple Silicon、Node.js 22.22.3、pnpm 11.7.0 与 Rust 测试环境。
 - 证据来源：本次发布运行，以及同一候选紧邻的故障诊断。
 - 数据：合成 HTTP 响应与本地运行时观察，未保留凭据。
@@ -63,7 +63,7 @@ Apple Silicon DMG 与应用内 Updater 路径需等待 GitHub Release 发布并�
 1. 重现 DSH Web Token 交换，观察其携带 Session Cookie、`Location: ./` 的 `303 See Other` 响应。
 2. 使用当前重定向形式运行 Supervisor，确认其获得 Cookie，且不再要求固定的重定向状态与目标。
 3. 移除重复的 Allowlist、属性与写入后检查后，运行 WebView 导航与 Cookie 设置路径。
-4. 发布不可变候选，再安装并启动下载的 App，之后才提升公开启动声明。
+4. 发布不可变候选，独立下载并检查所有公开产物；当用户自己的 YourBuddy 实例正在运行时，保持原生启动为未验证。
 
 ### 预期结果
 
@@ -71,23 +71,23 @@ Apple Silicon DMG 与应用内 Updater 路径需等待 GitHub Release 发布并�
 
 ### 实际结果
 
-已安装的 0.3.16 运行时返回有效 Cookie，且带 Cookie 的根页面与 API 响应均为 200；但 DSH Web 现返回 `Location: ./`，桌面的 `Location: /` 精确比较因此失败。移除重复策略检查后，0.3.17 源码测试接受当前响应并通过。正式 0.3.17 产物的原生启动仍待验证。
+已安装的 0.3.16 运行时返回有效 Cookie，且带 Cookie 的根页面与 API 响应均为 200；但 DSH Web 现返回 `Location: ./`，桌面的 `Location: /` 精确比较因此失败。移除重复策略检查后，0.3.17 源码与 CI 测试接受当前响应并通过。全部 5 个公开产物、Updater 元数据与签名、App 标识、DMG／Updater 文件树、产品包和迁移运行时均通过独立检查。正式 0.3.17 产物的原生启动仍未验证。
 
 ### 证据
 
 - 操作前：0.3.16 启动错误与本地交换把差异定位到桌面 Supervisor 的精确重定向断言。
 - 执行中：`cargo test runtime::supervisor::tests` 的 13 项测试与 `cargo test chrome::tests` 的 3 项测试通过。
-- 结果：聚焦 Rust 套件与文档检查通过；正式产物检查仍待完成。
+- 结果：聚焦 Rust 套件、完整发布准备、CI、公开校验和、Updater 签名、App 标识、产品包与迁移运行时均通过。由于用户自己的实例正在运行，没有启动正式 App。
 - 失败与恢复：网站构建已通过结构套件，但本机缺少 Hugo Extended 0.165.0；发布运行将临时使用匹配的 Hugo 二进制，不修改系统安装。
 
 ### 范围限制
 
-源码测试与本地诊断不能证明已发布 0.3.17 App 的原生启动、安装包 WebView 行为、Updater 安装、签名或公证。
+源码、CI 与静态产物检查不能证明已发布 0.3.17 App 的原生启动、安装包 WebView 行为、Updater 安装、Apple Developer 签名或公证。
 
 ## 交付状态
 
-- 产品发布状态：待发布。
-- 验证资料归档状态：草稿；已记录源码诊断与聚焦检查，公开证据待补。
+- 产品发布状态：已由[不可变 Tag 工作流](https://github.com/istarwyh/yourbuddy/actions/runs/36243287834)发布；全部 5 个版本文件均可公开下载并完成独立核验。
+- 验证资料归档状态：部分完成；已记录源码诊断与公开产物证据，可下载归档待补。
 - 站点同步状态：待处理；在 0.3.17 产物完成独立核验前，已核验的 0.3.16 下载保持公开。
 - 未验证范围：已发布 App 的原生启动、安装包 WebView 交互、更新安装、签名与公证。
 
@@ -96,9 +96,9 @@ Apple Silicon DMG 与应用内 Updater 路径需等待 GitHub Release 发布并�
 - [x] 发布标识与桌面版本真源匹配 0.3.17。
 - [x] 用户说明覆盖变更、问题、位置、最短体验路径、迁移与限制。
 - [x] 聚焦启动与文档检查通过。
-- [ ] 完整桌面发布套件与候选准备在已提交候选上通过。
+- [x] 完整桌面发布套件与候选准备在已提交候选上通过。
 - [ ] 已发布 App 的原生启动完成身份认证交接并打开工作台。
-- [ ] 公开文件、校验和、Updater 元数据、签名、App 标识、来源记录与迁移运行时完成独立核验。
+- [x] 公开文件、校验和、Updater 元数据、签名、App 标识、来源记录与迁移运行时完成独立核验。
 - [ ] 验证归档已发布并独立解压检查。
 - [ ] 双语产品官网完成同步与线上检查，且未提升未经验证的文件。
 - [x] 公开 Tag 与安装包不会移动或覆盖。
