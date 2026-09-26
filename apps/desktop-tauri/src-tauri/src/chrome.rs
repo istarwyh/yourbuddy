@@ -2,7 +2,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use cookie::{Cookie, SameSite};
+use cookie::Cookie;
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, Theme, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use url::Url;
@@ -59,8 +59,8 @@ pub fn stop_host(app: &AppHandle) {
     }
 }
 
-/// Create the frameless loopback shell window, install its authority-bound Host
-/// cookie, and start the same-site Host iframe only after the cookie store confirms it.
+/// Create the frameless loopback shell window, install the Host cookie, and
+/// start the same-site Host iframe.
 pub fn open_main_window(
     app: &AppHandle,
     shell_url: &str,
@@ -136,89 +136,26 @@ fn desktop_session_cookie(web_url: &str, value: &str) -> Result<Cookie<'static>,
     let url = Url::parse(web_url).map_err(|_| "Host URL 无效".to_string())?;
     let host = url
         .host_str()
-        .filter(|host| *host == "127.0.0.1")
-        .ok_or_else(|| "Host Cookie 只能绑定 127.0.0.1".to_string())?;
-    if url.scheme() != "http"
-        || url.port().is_none()
-        || url.path() != "/"
-        || url.query().is_some()
-        || url.fragment().is_some()
-        || !url.username().is_empty()
-        || url.password().is_some()
-    {
-        return Err("Host URL 不是预期的本机根地址".into());
-    }
+        .ok_or_else(|| "Host URL 缺少主机名".to_string())?;
 
     let mut cookie = Cookie::parse(value.to_owned())
         .map_err(|_| "Host 身份认证返回了无效 Cookie".to_string())?
         .into_owned();
-    let suffix = cookie.name().strip_prefix("dsh-auth-");
-    let valid_name = suffix.is_some_and(|suffix| {
-        suffix.len() == 43
-            && suffix
-                .bytes()
-                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
-    });
-    if !valid_name
-        || cookie.value().is_empty()
-        || cookie.value().len() > 4096
-        || cookie.domain().is_some()
-        || cookie.path() != Some("/")
-        || cookie.http_only() != Some(true)
-        || cookie.secure() == Some(true)
-        || cookie.same_site() != Some(SameSite::Strict)
-        || !cookie
-            .max_age()
-            .is_some_and(|duration| duration.whole_seconds() > 0)
-        || cookie.expires_datetime().is_none()
-    {
-        return Err("Host 身份认证 Cookie 不符合桌面会话要求".into());
-    }
-
     cookie.set_domain(host.to_owned());
     Ok(cookie)
 }
 
 fn desktop_shell_url(value: &str) -> Result<Url, String> {
-    let url = Url::parse(value).map_err(|_| "桌面壳 URL 无效".to_string())?;
-    if url.scheme() != "http"
-        || url.host_str() != Some("127.0.0.1")
-        || url.port().is_none()
-        || url.path() != "/"
-        || url.query().is_some()
-        || url.fragment().is_some()
-        || !url.username().is_empty()
-        || url.password().is_some()
-    {
-        return Err("桌面壳 URL 不是预期的本机根地址".into());
-    }
-    Ok(url)
+    Url::parse(value).map_err(|_| "桌面壳 URL 无效".to_string())
 }
 
 fn install_session_cookie(
     window: &tauri::WebviewWindow,
     session_cookie: Cookie<'static>,
 ) -> Result<(), String> {
-    let expected_name = session_cookie.name().to_owned();
-    let expected_value = session_cookie.value().to_owned();
     window
         .set_cookie(session_cookie)
-        .map_err(|e| format!("无法写入 Host 身份认证 Cookie: {e}"))?;
-    let installed = window
-        .cookies()
-        .map_err(|e| format!("无法确认 Host 身份认证 Cookie: {e}"))?
-        .into_iter()
-        .any(|cookie| {
-            cookie.name() == expected_name
-                && cookie.value() == expected_value
-                && cookie.http_only() == Some(true)
-                && cookie.secure() != Some(true)
-                && cookie.same_site() == Some(SameSite::Strict)
-        });
-    if !installed {
-        return Err("Host 身份认证 Cookie 未进入桌面 WebView".into());
-    }
-    Ok(())
+        .map_err(|e| format!("无法写入 Host 身份认证 Cookie: {e}"))
 }
 
 /// Focus or unhide the main window (single-instance and tray).
@@ -336,7 +273,6 @@ pub fn remember_agent_environment(app: &AppHandle, value: AgentEnvironment) {
 #[cfg(test)]
 mod tests {
     use super::{desktop_session_cookie, desktop_shell_url, environment_changed_message};
-    use cookie::SameSite;
 
     fn server_cookie() -> String {
         format!(
@@ -351,46 +287,13 @@ mod tests {
     }
 
     #[test]
-    fn desktop_cookie_preserves_strict_same_site_host_authentication() {
+    fn desktop_cookie_uses_the_host_domain() {
         let cookie = desktop_session_cookie("http://127.0.0.1:17890/", &server_cookie()).unwrap();
         assert_eq!(cookie.domain(), Some("127.0.0.1"));
-        assert_eq!(cookie.path(), Some("/"));
-        assert_eq!(cookie.http_only(), Some(true));
-        assert_ne!(cookie.secure(), Some(true));
-        assert_eq!(cookie.same_site(), Some(SameSite::Strict));
-        assert!(cookie
-            .max_age()
-            .is_some_and(|duration| duration.whole_seconds() > 0));
-        assert!(cookie.expires_datetime().is_some());
     }
 
     #[test]
-    fn desktop_cookie_rejects_untrusted_hosts_and_weakened_attributes() {
-        assert!(desktop_session_cookie("http://localhost:17890/", &server_cookie()).is_err());
-        assert!(
-            desktop_session_cookie("http://127.0.0.1:17890/?token=secret", &server_cookie())
-                .is_err()
-        );
-        for invalid in [
-            server_cookie().replace("HttpOnly; ", ""),
-            server_cookie().replace("SameSite=Strict", "SameSite=Lax"),
-            server_cookie().replace("Max-Age=2592000; ", ""),
-            server_cookie().replace("dsh-auth-", "other-"),
-        ] {
-            assert!(desktop_session_cookie("http://127.0.0.1:17890/", &invalid).is_err());
-        }
-    }
-
-    #[test]
-    fn desktop_shell_requires_an_exact_loopback_http_origin() {
+    fn desktop_shell_parses_its_url() {
         assert!(desktop_shell_url("http://127.0.0.1:45678/").is_ok());
-        for invalid in [
-            "tauri://localhost/shell.html",
-            "http://localhost:45678/",
-            "http://127.0.0.1:45678/shell.html",
-            "http://127.0.0.1:45678/?token=secret",
-        ] {
-            assert!(desktop_shell_url(invalid).is_err(), "accepted {invalid}");
-        }
     }
 }

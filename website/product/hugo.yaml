@@ -78,4 +78,5 @@ module:
     - {source: .generated/assets, target: assets}
     - {source: assets, target: assets}
     - {source: .generated/static, target: static}
+    - {source: ../../docs/user/product/assets, target: static/media/product}
     - {source: ../../docs/user/product/home-data, target: data/home}

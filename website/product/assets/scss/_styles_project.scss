@@ -147,36 +147,31 @@
 .yb-text-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 .yb-text-link span { margin-inline-start: 4px; }
 
-.yb-example {
-  padding: 36px 40px;
+.yb-proof {
+  padding-block: 24px 80px;
+
+  .yb-section-intro { max-width: 720px; }
+  .yb-section-intro p { margin-top: 12px; }
+}
+
+.yb-proof-figure {
+  margin: 32px 0 0;
+  overflow: hidden;
   border: 1px solid var(--bs-border-color);
   border-radius: 8px;
-  background: var(--bs-tertiary-bg);
+  background: #171717;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
 
-  .yb-section-intro p { margin-top: 10px; }
+  img { display: block; width: 100%; height: auto; }
 }
 
-.yb-example-content {
+.yb-proof-points {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 48px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px;
   margin-top: 32px;
-}
 
-.yb-request {
-  h3 { font-size: 0.9rem; color: var(--bs-secondary-color); font-weight: 500; }
-  blockquote { margin: 14px 0 0; padding: 0; border: 0; background: none; }
-  blockquote p { color: var(--bs-emphasis-color); font-size: 1.25rem; line-height: 1.85; }
-}
-
-.yb-steps {
-  margin: 0;
-  padding-inline-start: 24px;
-
-  li { padding-inline-start: 8px; }
-  li + li { margin-top: 20px; }
-  li::marker { color: var(--bs-tertiary-color); font-size: 0.9rem; }
-  p { margin-top: 4px; font-size: 0.9rem; }
+  p { margin-top: 8px; font-size: 0.95rem; }
 }
 
 .yb-workflow { padding-block: 80px; }
@@ -223,8 +218,8 @@
 
 @media (max-width: 767px) {
   .yb-hero { padding-block: 64px 48px; }
-  .yb-example { padding: 28px; }
-  .yb-example-content { grid-template-columns: 1fr; gap: 28px; }
+  .yb-proof { padding-block: 16px 56px; }
+  .yb-proof-points { grid-template-columns: 1fr; gap: 24px; }
   .yb-workflow { padding-block: 56px; }
   .yb-workflow-items { grid-template-columns: 1fr; gap: 28px; }
   .yb-plugins { grid-template-columns: 1fr; gap: 32px; padding-block: 48px; }
@@ -236,6 +231,5 @@
   .yb-container { width: calc(100% - 40px); overflow-wrap: anywhere; }
   .yb-hero .yb-lead { font-size: 1rem; }
   .yb-hero .yb-availability a { display: block; margin: 6px 0 0; }
-  .yb-example { padding: 24px; }
-  .yb-request blockquote p { font-size: 1.1rem; }
+  .yb-proof-figure { margin-top: 24px; border-radius: 6px; }
 }

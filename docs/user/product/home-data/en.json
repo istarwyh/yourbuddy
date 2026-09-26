@@ -6,8 +6,8 @@
     },
     {
       "type": "cards",
-      "key": "example",
-      "partial": "yourbuddy/example.html"
+      "key": "proof",
+      "partial": "yourbuddy/proof.html"
     },
     {
       "type": "cards",
@@ -44,27 +44,27 @@
       }
     ]
   },
-  "example": {
-    "title": "Your workbench starts with one small task.",
-    "desc": "Example task: write a plan in your workspace, then open the file to review it.",
-    "url": "docs/start/",
-    "link_label": "Read the full walkthrough",
+  "proof": {
+    "title": "Work does not stop at the chat box.",
+    "desc": "Your project, task breakdown, and agent execution history stay in one workbench. You see more than an answer: you see the work moving forward.",
+    "image": {
+      "src": "media/product/yourbuddy-task-workbench.png",
+      "alt": "The YourBuddy workbench showing the project workspace, task management, and Session trajectory together"
+    },
+    "url": "docs/workspace/",
+    "link_label": "Explore the complete workspace",
     "items": [
       {
-        "title": "Try asking",
-        "desc": "Create hello-yourbuddy.md in the current directory with three tasks for this week and an acceptance criterion for each. Tell me where you saved it."
+        "title": "Keep the project present",
+        "desc": "The workspace, conversations, and active task stay together without moving context between tools."
       },
       {
-        "title": "Choose a model and folder",
-        "desc": "Connect an available account or API and select a practice folder."
+        "title": "Make complex work legible",
+        "desc": "Task management shows the steps, running state, and pending queue."
       },
       {
-        "title": "Give YourBuddy the task",
-        "desc": "Send your request and respond to any approval prompts in the app."
-      },
-      {
-        "title": "Open the file and check it",
-        "desc": "Read the result in the file panel. In a Git repository, you can also review the diff."
+        "title": "Trace the execution",
+        "desc": "Move between conversation, trajectory, and plugin views to inspect agent calls and results."
       }
     ]
   },
@@ -72,13 +72,13 @@
     "title": "Grow a general foundation into your workbench.",
     "items": [
       {
-        "title": "Choose your models",
-        "desc": "Connect an account or provider and switch models for each task. Your workbench is not tied to one model.",
-        "url": "docs/models/"
+        "title": "Reuse the way you work",
+        "desc": "Use Skills to retain repeatable workflows, standards, and judgment.",
+        "url": "docs/develop/"
       },
       {
-        "title": "Bring in your methods",
-        "desc": "Use Skills for repeatable workflows and standards. Use Plugins to add tools, services, and workbench interfaces.",
+        "title": "Bring in professional capabilities",
+        "desc": "Use Plugins to add the tools, services, and interfaces your work requires.",
         "url": "docs/develop/"
       },
       {
@@ -89,11 +89,11 @@
     ]
   },
   "cta": {
-    "title": "Start with work that is actually yours.",
-    "desc": "Open a familiar folder and choose a model. After the first task, turn repeatable methods into Skills and specialized capabilities into Plugins.",
+    "title": "Keep your methods in the workbench.",
+    "desc": "Turn repeatable workflows and standards into Skills. Turn professional tools, services, and interfaces into Plugins. Start the next job with what you have already built.",
     "actions": [
       {
-        "label": "Complete your first task",
+        "label": "Start building my workbench",
         "url": "docs/start/",
         "style": "primary"
       },

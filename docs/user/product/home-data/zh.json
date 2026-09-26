@@ -6,8 +6,8 @@
     },
     {
       "type": "cards",
-      "key": "example",
-      "partial": "yourbuddy/example.html"
+      "key": "proof",
+      "partial": "yourbuddy/proof.html"
     },
     {
       "type": "cards",
@@ -44,27 +44,27 @@
       }
     ]
   },
-  "example": {
-    "title": "你的工作台，从一件小事开始。",
-    "desc": "任务示例：在工作区写一份计划，再打开文件检查内容。",
-    "url": "docs/start/",
-    "link_label": "查看完整入门步骤",
+  "proof": {
+    "title": "工作，不只发生在对话框里。",
+    "desc": "项目、任务分解与代理执行轨迹留在同一个工作台中。你看到的不只是一段回答，而是工作如何向前推进。",
+    "image": {
+      "src": "media/product/yourbuddy-task-workbench.png",
+      "alt": "YourBuddy 工作台同时显示项目工作区、任务管理和会话轨迹"
+    },
+    "url": "docs/workspace/",
+    "link_label": "了解完整工作现场",
     "items": [
       {
-        "title": "试试这样说",
-        "desc": "在当前目录创建 hello-yourbuddy.md，写出本周的三件事和各自的验收条件。完成后告诉我保存位置。"
+        "title": "项目始终在场",
+        "desc": "工作区、会话与当前任务保持在一个工作现场，不必来回搬运上下文。"
       },
       {
-        "title": "选好模型和目录",
-        "desc": "连接可用账号或 API，选择一个练习文件夹。"
+        "title": "复杂任务清晰展开",
+        "desc": "任务管理展示拆分后的步骤、运行状态与等待队列。"
       },
       {
-        "title": "把任务交给 YourBuddy",
-        "desc": "发送请求；需要审批时，在界面中确认。"
-      },
-      {
-        "title": "打开文件，亲自检查",
-        "desc": "在文件面板查看内容；如果是 Git 仓库，也可以检查差异。"
+        "title": "执行过程可以追溯",
+        "desc": "在对话、轨迹和插件视图之间切换，检查代理调用与结果。"
       }
     ]
   },
@@ -72,13 +72,13 @@
     "title": "从通用能力，长成你的工作台。",
     "items": [
       {
-        "title": "选择你的模型",
-        "desc": "连接已有账号或提供方，按任务切换模型。工作台不与某一个模型绑定。",
-        "url": "docs/models/"
+        "title": "沿用你的工作方法",
+        "desc": "用 Skill 固化可重复的流程、标准和判断方式。",
+        "url": "docs/develop/"
       },
       {
-        "title": "装进你的工作方法",
-        "desc": "用 Skill 固化可重复的流程和标准，用 Plugin 加入工具、服务与界面。",
+        "title": "接入你的专业能力",
+        "desc": "用 Plugin 加入工作所需的工具、服务与界面。",
         "url": "docs/develop/"
       },
       {
@@ -89,11 +89,11 @@
     ]
   },
   "cta": {
-    "title": "先从一项真实任务开始。",
-    "desc": "打开熟悉的文件夹，选择一个模型。完成第一项任务后，再把重复方法变成 Skill，把专业能力做成 Plugin。",
+    "title": "把你的方法，留在工作台里。",
+    "desc": "把反复使用的流程与标准变成 Skill，把专业工具、服务和界面变成 Plugin。下一次工作，从已有积累继续。",
     "actions": [
       {
-        "label": "完成第一个任务",
+        "label": "开始打造我的工作台",
         "url": "docs/start/",
         "style": "primary"
       },

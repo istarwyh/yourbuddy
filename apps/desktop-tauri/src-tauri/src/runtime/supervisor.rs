@@ -6,9 +6,8 @@ use std::sync::mpsc::{self, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use reqwest::header::{HeaderMap, LOCATION, SET_COOKIE};
-use reqwest::{redirect, StatusCode};
-use url::Url;
+use reqwest::header::{HeaderMap, SET_COOKIE};
+use reqwest::redirect;
 
 use super::app_data_root;
 use super::boot_log;
@@ -168,7 +167,7 @@ pub async fn spawn_web_host(
                 return Err(error);
             }
         };
-        let ready_urls = drain_stdout_for_ready_url(stdout, port);
+        let ready_urls = drain_stdout_for_ready_url(stdout);
 
         let session_cookie = match wait_for_host_ready(
             &web_url,
@@ -278,7 +277,7 @@ pub async fn spawn_wsl_web_host(
             return Err("WSL dsh web stdout 不可用".into());
         }
     };
-    let ready_urls = drain_stdout_for_ready_url(stdout, port);
+    let ready_urls = drain_stdout_for_ready_url(stdout);
 
     let child_handle = Arc::new(Mutex::new(Some(child)));
     let wsl_timeout = i18n::t(Msg::WslWaitForwarding);
@@ -615,21 +614,20 @@ fn drain_lines<R: std::io::Read>(reader: R, sink: Arc<Mutex<Vec<String>>>) {
 
 fn drain_stdout_for_ready_url<R: std::io::Read + Send + 'static>(
     reader: R,
-    port: u16,
 ) -> mpsc::Receiver<String> {
     let (sender, receiver) = mpsc::channel();
-    std::thread::spawn(move || read_ready_url_and_drain(reader, port, sender));
+    std::thread::spawn(move || read_ready_url_and_drain(reader, sender));
     receiver
 }
 
-fn read_ready_url_and_drain<R: std::io::Read>(reader: R, port: u16, sender: mpsc::Sender<String>) {
+fn read_ready_url_and_drain<R: std::io::Read>(reader: R, sender: mpsc::Sender<String>) {
     let reader = BufReader::new(reader);
     let mut sender = Some(sender);
     for line in reader.lines().map_while(Result::ok) {
         let Some(ready_sender) = sender.as_ref() else {
             continue;
         };
-        let Some(url) = parse_ready_url(&line, port) else {
+        let Some(url) = parse_ready_url(&line) else {
             continue;
         };
         let _ = ready_sender.send(url);
@@ -637,31 +635,12 @@ fn read_ready_url_and_drain<R: std::io::Read>(reader: R, port: u16, sender: mpsc
     }
 }
 
-fn parse_ready_url(line: &str, port: u16) -> Option<String> {
+fn parse_ready_url(line: &str) -> Option<String> {
     const PREFIX: &str = "dsh web: ";
-    const MIN_TOKEN_LENGTH: usize = 32;
-    const MAX_TOKEN_LENGTH: usize = 128;
-
-    let value = line.strip_prefix(PREFIX)?.split_ascii_whitespace().next()?;
-    let parsed = Url::parse(value).ok()?;
-    let token = parsed.query()?.strip_prefix("token=")?;
-    let expected = format!("http://127.0.0.1:{port}/?token={token}");
-    if value != expected
-        || parsed.scheme() != "http"
-        || !parsed.username().is_empty()
-        || parsed.password().is_some()
-        || parsed.host_str() != Some("127.0.0.1")
-        || parsed.port() != Some(port)
-        || parsed.path() != "/"
-        || parsed.fragment().is_some()
-        || !(MIN_TOKEN_LENGTH..=MAX_TOKEN_LENGTH).contains(&token.len())
-        || !token
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
-    {
-        return None;
-    }
-    Some(value.to_string())
+    line.strip_prefix(PREFIX)?
+        .split_ascii_whitespace()
+        .next()
+        .map(ToOwned::to_owned)
 }
 
 fn child_exit_code(child: &Arc<Mutex<Option<Child>>>) -> Option<i32> {
@@ -726,10 +705,7 @@ fn readiness_timeout(url: &str, timeout_detail: Option<&str>) -> String {
     }
 }
 
-fn authenticated_exchange_cookie(status: StatusCode, headers: &HeaderMap) -> Option<String> {
-    if status != StatusCode::SEE_OTHER || !headers.get(LOCATION).is_some_and(|value| value == "/") {
-        return None;
-    }
+fn authenticated_exchange_cookie(headers: &HeaderMap) -> Option<String> {
     headers
         .get(SET_COOKIE)?
         .to_str()
@@ -794,17 +770,12 @@ async fn wait_for_host_ready(
 
         match client.get(&launch_url).send().await {
             Ok(response) => {
-                if let Some(session_cookie) =
-                    authenticated_exchange_cookie(response.status(), response.headers())
-                {
+                if let Some(session_cookie) = authenticated_exchange_cookie(response.headers()) {
                     return Ok(session_cookie);
                 }
                 return Err(format_readiness_failure(
                     stderr_lines,
-                    &format!(
-                        "dsh web 身份认证就绪检查返回意外状态 {}: {web_url}",
-                        response.status()
-                    ),
+                    &format!("dsh web 身份认证就绪响应缺少 Cookie: {web_url}"),
                 ));
             }
             Err(err) => {
@@ -843,8 +814,7 @@ mod tests {
         parse_ready_url, read_linux_pid_handshake, read_ready_url_and_drain, reap_child_handle,
         rescue_patch_body, wait_for_host_ready, wsl_stop_args,
     };
-    use reqwest::header::{HeaderMap, HeaderValue, LOCATION, SET_COOKIE};
-    use reqwest::StatusCode;
+    use reqwest::header::{HeaderMap, HeaderValue, SET_COOKIE};
     use std::io::{Cursor, Read, Write};
     use std::net::TcpListener;
     use std::path::Path;
@@ -906,34 +876,15 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
     }
 
     #[test]
-    fn accepts_only_the_selected_hosts_authenticated_ready_url() {
+    fn reads_the_reported_ready_url() {
         let token = "A".repeat(43);
         let expected = format!("http://127.0.0.1:17890/?token={token}");
         assert_eq!(
-            parse_ready_url(
-                &format!("dsh web: {expected} (LAN: http://192.168.1.2:17890/?token={token})"),
-                17890
-            ),
+            parse_ready_url(&format!(
+                "dsh web: {expected} (LAN: http://192.168.1.2:17890/?token={token})"
+            )),
             Some(expected)
         );
-
-        for line in [
-            format!("ready: http://127.0.0.1:17890/?token={token}"),
-            format!("dsh web: https://127.0.0.1:17890/?token={token}"),
-            format!("dsh web: http://localhost:17890/?token={token}"),
-            format!("dsh web: http://2130706433:17890/?token={token}"),
-            format!("dsh web: http://127.0.0.1:17891/?token={token}"),
-            format!("dsh web: http://127.0.0.1:17890/index.html?token={token}"),
-            format!("dsh web: http://127.0.0.1:17890/?token={token}#fragment"),
-            format!("dsh web: http://127.0.0.1:17890/?token={token}&extra=1"),
-            "dsh web: http://127.0.0.1:17890/?token=short".to_string(),
-            format!(
-                "dsh web: http://127.0.0.1:17890/?token={}%41",
-                "A".repeat(42)
-            ),
-        ] {
-            assert_eq!(parse_ready_url(&line, 17890), None, "accepted {line}");
-        }
     }
 
     #[test]
@@ -944,7 +895,7 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
         );
         let mut reader = Cursor::new(input.as_bytes());
         let (sender, receiver) = mpsc::channel();
-        read_ready_url_and_drain(&mut reader, 17890, sender);
+        read_ready_url_and_drain(&mut reader, sender);
 
         assert_eq!(
             receiver.recv().unwrap(),
@@ -966,27 +917,12 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
     }
 
     #[test]
-    fn readiness_extracts_only_the_token_exchange_cookie() {
+    fn readiness_extracts_the_token_exchange_cookie() {
         let mut headers = HeaderMap::new();
-        headers.insert(LOCATION, HeaderValue::from_static("/"));
         headers.insert(SET_COOKIE, HeaderValue::from_static("dsh-auth=test"));
         assert_eq!(
-            authenticated_exchange_cookie(StatusCode::SEE_OTHER, &headers),
+            authenticated_exchange_cookie(&headers),
             Some("dsh-auth=test".into())
-        );
-        assert_eq!(
-            authenticated_exchange_cookie(StatusCode::UNAUTHORIZED, &headers),
-            None
-        );
-        headers.remove(SET_COOKIE);
-        assert_eq!(
-            authenticated_exchange_cookie(StatusCode::SEE_OTHER, &headers),
-            None
-        );
-        headers.insert(SET_COOKIE, HeaderValue::from_bytes(&[0xff]).unwrap());
-        assert_eq!(
-            authenticated_exchange_cookie(StatusCode::SEE_OTHER, &headers),
-            None
         );
     }
 
@@ -1040,7 +976,7 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
             assert!(request.starts_with(&expected_request_target), "{request}");
             stream
                 .write_all(
-                    b"HTTP/1.1 303 See Other\r\nLocation: /\r\nSet-Cookie: dsh-auth=test; HttpOnly\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    b"HTTP/1.1 303 See Other\r\nLocation: ./\r\nSet-Cookie: dsh-auth=test; HttpOnly\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
                 )
                 .unwrap();
         });
@@ -1056,7 +992,7 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
-        let ready_urls = drain_stdout_for_ready_url(child.stdout.take().unwrap(), port);
+        let ready_urls = drain_stdout_for_ready_url(child.stdout.take().unwrap());
         let stderr_lines = Arc::new(Mutex::new(Vec::new()));
         let stderr = child.stderr.take().unwrap();
         let stderr_sink = Arc::clone(&stderr_lines);

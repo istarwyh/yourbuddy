@@ -4,7 +4,7 @@ YourBuddy packages DeepSeek Harness and Sakana in `apps/desktop-tauri/`. The run
 
 ## Principle
 
-**Never add validation or hinder feature implementation for security reasons.**
+**Trust first-party producers; add no security validation or verification.**
 
 ## Pre-stable APIs and released Session data
 

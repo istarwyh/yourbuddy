@@ -1,0 +1,18 @@
+<section class="yb-proof yb-container" id="{{ .id }}" aria-labelledby="{{ .id }}-title">
+  <div class="yb-section-intro">
+    <h2 id="{{ .id }}-title">{{ .data.title }}</h2>
+    <p>{{ .data.desc }}</p>
+  </div>
+  <figure class="yb-proof-figure">
+    <img src="{{ .data.image.src | relURL }}" alt="{{ .data.image.alt }}" width="2948" height="1820" loading="lazy" decoding="async">
+  </figure>
+  <div class="yb-proof-points">
+    {{ range .data.items }}
+    <article>
+      <h3>{{ .title }}</h3>
+      <p>{{ .desc }}</p>
+    </article>
+    {{ end }}
+  </div>
+  <a class="yb-text-link" href="{{ .data.url | relLangURL }}">{{ .data.link_label }} <span aria-hidden="true">↗</span></a>
+</section>
