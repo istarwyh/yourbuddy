@@ -1,5 +1,6 @@
 import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
 import z from "@deepseek-ai/schemastery";
+import { readImageSettings } from "./settings-values.js";
 import { basename } from "node:path";
 import { HarnessError } from "@deepseek-ai/dsh-llm";
 //#region src/image.ts
@@ -763,7 +764,7 @@ const inject = [
 function apply(ctx, config) {
 	const auth = ctx.get("codexAuth");
 	if (auth === void 0) throw new Error("codex-image: shared codexAuth service is unavailable");
-	const current = () => config;
+	const current = () => readImageSettings(config);
 	const registrations = /* @__PURE__ */ new Map();
 	const generations = /* @__PURE__ */ new Map();
 	let disposed = false;

@@ -1,4 +1,4 @@
-import type { Context } from '@deepseek-ai/cordis';
+import type { Context, Volatile } from '@deepseek-ai/cordis';
 import z from '@deepseek-ai/schemastery';
 import type { WebSearchProvider, WebSearchRequest, WebSearchResult } from '@deepseek-ai/dsh-web';
 import type { CodexAuthService } from './codex-auth-service.ts';
@@ -17,7 +17,12 @@ export interface CodexSearchSettings {
     fallbackModel: string;
     maxOutputTokens: number;
 }
-export interface Config extends CodexSearchSettings {
+export interface Config {
+    enabled: Volatile<boolean>;
+    mode: Volatile<CodexSearchMode>;
+    contextSize: Volatile<CodexSearchContextSize>;
+    fallbackModel: Volatile<string>;
+    maxOutputTokens: Volatile<number>;
 }
 export declare const Config: z<Config>;
 export interface CodexSearchProviderOptions {

@@ -1,6 +1,7 @@
 import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, p as mergeRefreshed, r as CodexAuthAdapter, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-CutNZ8kw.js";
 import z from "@deepseek-ai/schemastery";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
+import { readLlmSettings } from "./settings-values.js";
 import { withFileLock } from "@deepseek-ai/dsh-atomic-write";
 import { spawn } from "node:child_process";
 import { Service } from "@deepseek-ai/cordis";
@@ -891,8 +892,7 @@ function apply(ctx, config) {
 		refreshLeadMs: config.refreshLeadMs,
 		fetchImpl: fetch
 	});
-	const settingsEntry = { longContextEnabled: config.longContextEnabled };
-	let currentSettings = () => settingsEntry;
+	const currentSettings = () => readLlmSettings(config);
 	if (config.llmEnabled) {
 		if (ctx.llm.listProviders().some((provider) => provider.id === "openai-codex")) throw new Error("dsh-codex-auth cannot own the \"openai-codex\" route because another plugin already registered it; dsh-codex-auth and dsh-codex are mutually exclusive, so uninstall or disable one bundle");
 		const adapter = new CodexAuthAdapter(ctx, {

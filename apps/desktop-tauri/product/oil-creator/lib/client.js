@@ -4620,9 +4620,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			]
 		};
 		//#endregion
-		//#region src/settingsContract.ts
-		const CREATOR_SETTINGS_NAMESPACE = "dsh-oil-creator";
-		//#endregion
 		//#region src/client/persistence.ts
 		const CREATOR_STORAGE_KEY = "dsh-oil-creator/ui/v1";
 		const DEFAULT_UI_STATE = {
@@ -7397,10 +7394,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		//#region src/client/settingsSlot.ts
 		function registerCreatorSettingsCard(slots, component, options) {
 			return slots.register({
-				name: "settings.plugin.item",
-				key: options.namespace,
-				id: options.legacyId,
-				order: options.legacyOrder,
+				name: "settings.plugins.tab",
+				id: options.id,
+				order: options.order,
+				label: options.label,
 				locale: options.locale,
 				inject: options.inject
 			}, component);
@@ -7700,10 +7697,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						stopWorkbench();
 					};
 				});
-				const stopSettings = ctx.slots.inject("settings.plugin.item", () => registerCreatorSettingsCard(ctx.slots, CreatorSettingsCard, {
-					namespace: CREATOR_SETTINGS_NAMESPACE,
-					legacyId: "dsh-oil-creator",
-					legacyOrder: 40,
+				const stopSettings = ctx.slots.inject("settings.plugins.tab", () => registerCreatorSettingsCard(ctx.slots, CreatorSettingsCard, {
+					id: "dsh-oil-creator",
+					order: 40,
+					label: () => contentT("settings.title"),
 					locale: NS,
 					inject: () => ({
 						...face(),

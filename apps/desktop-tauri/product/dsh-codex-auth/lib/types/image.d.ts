@@ -1,4 +1,4 @@
-import type { Context } from '@deepseek-ai/cordis';
+import type { Context, Volatile } from '@deepseek-ai/cordis';
 import z from '@deepseek-ai/schemastery';
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment';
 import type { FileSystem } from '@deepseek-ai/dsh-fs';
@@ -27,7 +27,13 @@ export interface CodexImageSettings {
     quality: ImageQuality;
     background: ImageBackground;
 }
-export interface Config extends CodexImageSettings {
+export interface Config {
+    enabled: Volatile<boolean>;
+    model: Volatile<string>;
+    n: Volatile<number>;
+    size: Volatile<ImageSize>;
+    quality: Volatile<ImageQuality>;
+    background: Volatile<ImageBackground>;
 }
 export declare const Config: z<Config>;
 /** Narrow dependency surface used by both public Tool definitions. */

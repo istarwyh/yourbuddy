@@ -70,7 +70,7 @@ function controllerOf(ctx: Context): NativeController | undefined {
 export function mountedSessions(ctx: Context): MountedSessions {
   return {
     getSnapshot: () => Object.values(ctx.sessions.list.getSnapshot().byId)
-      .find(summary => (summary.retainedBy.mainView ?? 0) > 0)?.id,
+      .find(summary => (summary.retainedBy?.mainView ?? 0) > 0)?.id,
     subscribe: listener => ctx.sessions.list.subscribe(listener),
   }
 }

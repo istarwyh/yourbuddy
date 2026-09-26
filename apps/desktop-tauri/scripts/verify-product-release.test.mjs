@@ -152,6 +152,21 @@ test('Codex Auth binds settings forms to bundled profile entry ids', () => {
   assert.match(readFileSync(join(codexLib, 'image.js'), 'utf8'), /enabled: z\.boolean\(\)\.default\(true\)\.volatile\(\)/u)
   const patch = readFileSync(join(import.meta.dirname, '..', 'product', 'patches', 'codex-auth-current-settings.patch'), 'utf8')
   assert.doesNotMatch(patch, /YOURBUDDY_UPSTREAM\.json/u)
+  const settingsSource = readFileSync(join(
+    import.meta.dirname,
+    '..', '..', '..',
+    'packages', 'settings', 'settings', 'src', 'index.ts',
+  ), 'utf8')
+  assert.match(settingsSource, /'codex-llm': 'llm-codex-auth'/u)
+})
+
+test('Oil Creator uses the current Plugins settings tab', () => {
+  const oilLib = join(import.meta.dirname, '..', 'product', 'oil-creator', 'lib')
+  const host = readFileSync(join(oilLib, 'index.js'), 'utf8')
+  const client = readFileSync(join(oilLib, 'client.js'), 'utf8')
+  assert.doesNotMatch(host, /registerCreatorSettingsNamespace|settings\.register\(/u)
+  assert.match(client, /settings\.plugins\.tab/u)
+  assert.doesNotMatch(client, /settings\.plugin\.item/u)
 })
 
 test('desktop shell projects window controls into the sidebar with a compact fallback', () => {

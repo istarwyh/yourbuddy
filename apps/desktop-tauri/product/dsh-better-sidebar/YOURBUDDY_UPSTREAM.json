@@ -35,7 +35,7 @@
     {
       "id": "current-main-session",
       "file": "patches/better-sidebar-current-session.patch",
-      "sha256": "56b1e34e286dad8ed4067f0df1d941d80f2d9e5ece94f0bf666952dc23827a98",
+      "sha256": "a63075592a2d101fb2615a33b27fceafeb3b76161c0119e4a35ebe625e41fdf0",
       "purpose": "Derive the active Session from the current main-view retention summary exposed by DSH 0.1.7."
     },
     "Set @deepseek-ai/dsh-agent peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
@@ -56,5 +56,5 @@
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "ebfb41f17134616a665342f1f7d47195171ccbcd1d443f39895a39e338c1d8d1"
+  "treeSha256": "cb668adb029cbfd03db05fc70065704f5f358f3f68a7cddbc37559e6b7fe52cb"
 }

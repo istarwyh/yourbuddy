@@ -132,6 +132,10 @@ export interface SidebarSessionSummary {
     parentId?: string;
     /** Whether the session's agent is currently running. */
     running?: boolean;
+    /** View retainers currently keeping the Session mounted. */
+    retainedBy?: {
+        mainView?: number;
+    };
 }
 /** Durable parent/child address that selects subagent transport in the client. */
 export interface SidebarSubagentAddress {

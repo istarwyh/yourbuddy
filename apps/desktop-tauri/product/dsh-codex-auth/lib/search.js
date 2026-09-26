@@ -1,5 +1,6 @@
 import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
 import z from "@deepseek-ai/schemastery";
+import { readSearchSettings } from "./settings-values.js";
 import { randomUUID } from "node:crypto";
 import { WebError } from "@deepseek-ai/dsh-web";
 //#region src/search.ts
@@ -115,7 +116,7 @@ function apply(ctx, config) {
 	if (auth === void 0) throw new Error("codex-search: shared codexAuth service is unavailable");
 	ctx.web.registerSearchProvider(new CodexSearchProvider({
 		auth,
-		settings: () => config,
+		settings: () => readSearchSettings(config),
 		fetchImpl: fetch,
 		requestId: () => String(ctx.get("agents")?.currentInitiator()?.id ?? randomUUID()),
 		initiatingModel: () => initiatingCodexModel(ctx)

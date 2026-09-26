@@ -199,6 +199,7 @@ function member(node: unknown, key: string, own = false): unknown {
 
 /** Entry ids of the removed `settings.yaml` sections whose owning entry carries another id. */
 const LEGACY_SECTION_ENTRIES: Record<string, string> = {
+  'codex-llm': 'llm-codex-auth',
   'ui-developer-tools': 'ui-settings',
   'ui-onboarding': 'ui-settings-general',
   /* v8 ignore next -- the base bundle composes one shell executor per platform */

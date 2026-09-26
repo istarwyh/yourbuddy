@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto'
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
-import { dirname, join, relative, sep } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import {
@@ -267,6 +267,27 @@ export function verifyExternalSnapshot(root, manifest) {
   if (!/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(sourceRecord.integrity ?? '')) {
     throw new Error(`YourBuddy product integrity is invalid: ${manifest.name}`)
   }
+  const productRoot = resolve(dirname(root))
+  for (const patch of [
+    ...(sourceRecord.sourcePatches ?? []),
+    ...(sourceRecord.patches ?? []),
+  ]) {
+    if (patch === null || typeof patch !== 'object' || Array.isArray(patch)) continue
+    if (typeof patch.file !== 'string' || typeof patch.sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(patch.sha256)) {
+      throw new Error(`YourBuddy product patch record is invalid: ${manifest.name}`)
+    }
+    const patchPath = resolve(productRoot, patch.file)
+    if (patchPath !== productRoot && !patchPath.startsWith(`${productRoot}${sep}`)) {
+      throw new Error(`YourBuddy product patch escapes its source root: ${manifest.name}`)
+    }
+    if (!existsSync(patchPath)) {
+      throw new Error(`YourBuddy product patch is missing: ${manifest.name} ${patch.file}`)
+    }
+    const actualPatchSha = createHash('sha256').update(readFileSync(patchPath)).digest('hex')
+    if (actualPatchSha !== patch.sha256) {
+      throw new Error(`YourBuddy product patch hash mismatch: ${manifest.name} ${patch.file}`)
+    }
+  }
   const actual = hashExternalSnapshot(root)
   if (actual !== sourceRecord.treeSha256) {
     throw new Error(
@@ -367,13 +388,13 @@ export function installProductPlugins(bundleRoot) {
 
   const webPatchPath = join(bundleRoot, 'packages', 'bundle', 'web-app', 'cordis.patch.yml')
   const webPatch = readFileSync(webPatchPath, 'utf8').trimEnd()
-  const marker = '# YourBuddy product bundle layers'
+  const marker = '# YourBuddy default Harness bundle layers'
   if (webPatch.includes(marker)) {
-    throw new Error('YourBuddy product bundle layers are already installed')
+    throw new Error('YourBuddy default Harness bundle layers are already installed')
   }
-  const productPatches = [...productPlugins, ...defaultHarnessPlugins]
+  const defaultPatches = defaultHarnessPlugins
     .map(plugin => readFileSync(join(plugin.root, 'cordis.patch.yml'), 'utf8').trim())
-  writeFileSync(webPatchPath, `${webPatch}\n\n${marker}\n\n${productPatches.join('\n\n')}\n`)
+  writeFileSync(webPatchPath, `${webPatch}\n\n${marker}\n\n${defaultPatches.join('\n\n')}\n`)
 }
 
 /** Find one exact YAML line or reject an upstream layout the product generator does not understand. */

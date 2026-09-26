@@ -1,65 +1,75 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { installSettingsSection } from '../product/dsh-codex-auth/lib/settings-section.js'
+import {
+  readImageSettings,
+  readLlmSettings,
+  readSearchSettings,
+} from '../product/dsh-codex-auth/lib/settings-values.js'
 
-function harness(entry, resolved) {
-  let current = () => entry
-  let watcher
-  let dispose
-  const seen = []
-  const ctx = {
-    fiber: { state: 0 },
-    inject(names, callback) {
-      assert.deepEqual(names, ['settings'])
-      callback({
-        settings: {
-          register(namespace, schema, options) {
-            assert.equal(namespace, 'codex-test')
-            assert.equal(schema, 'schema')
-            assert.deepEqual(options, { base: entry })
-            return {
-              get: () => resolved.value,
-              watch(callback) { watcher = callback },
-            }
-          },
-        },
-        effect(factory) { dispose = factory() },
-      })
-    },
-  }
-  installSettingsSection(ctx, 'codex-test', 'schema', entry, {
-    setSource(source) { current = source },
-    onChange() { seen.push(current()) },
-  })
+function live(value) {
   return {
-    ctx,
-    dispose: () => dispose(),
-    seen,
-    watch: () => watcher(),
+    get: () => value.current,
   }
 }
 
-test('Codex settings adapter follows live settings and falls back when the provider detaches', () => {
-  const entry = { enabled: false }
-  const resolved = { value: { enabled: true } }
-  const fixture = harness(entry, resolved)
-  assert.deepEqual(fixture.seen, [{ enabled: true }])
+test('Codex settings readers dereference defaults and live mutations', () => {
+  const longContextEnabled = { current: false }
+  const searchEnabled = { current: true }
+  const searchMode = { current: 'live' }
+  const contextSize = { current: 'medium' }
+  const fallbackModel = { current: 'gpt-5.4' }
+  const maxOutputTokens = { current: 2048 }
+  const imageEnabled = { current: true }
+  const imageModel = { current: 'gpt-image-2' }
+  const imageCount = { current: 1 }
+  const imageSize = { current: 'auto' }
+  const imageQuality = { current: 'auto' }
+  const imageBackground = { current: 'auto' }
 
-  resolved.value = { enabled: false }
-  fixture.watch()
-  fixture.dispose()
-  assert.deepEqual(fixture.seen, [
-    { enabled: true },
-    { enabled: false },
-    entry,
-  ])
-})
+  const llm = { longContextEnabled: live(longContextEnabled) }
+  const search = {
+    enabled: live(searchEnabled),
+    mode: live(searchMode),
+    contextSize: live(contextSize),
+    fallbackModel: live(fallbackModel),
+    maxOutputTokens: live(maxOutputTokens),
+  }
+  const image = {
+    enabled: live(imageEnabled),
+    model: live(imageModel),
+    n: live(imageCount),
+    size: live(imageSize),
+    quality: live(imageQuality),
+    background: live(imageBackground),
+  }
 
-test('Codex settings adapter stays quiet while its consumer unloads', () => {
-  const fixture = harness({ enabled: false }, { value: { enabled: true } })
-  fixture.ctx.fiber.state = 5
-  fixture.watch()
-  fixture.dispose()
-  assert.deepEqual(fixture.seen, [{ enabled: true }])
+  assert.deepEqual(readLlmSettings(llm), { longContextEnabled: false })
+  assert.deepEqual(readSearchSettings(search), {
+    enabled: true,
+    mode: 'live',
+    contextSize: 'medium',
+    fallbackModel: 'gpt-5.4',
+    maxOutputTokens: 2048,
+  })
+  assert.deepEqual(readImageSettings(image), {
+    enabled: true,
+    model: 'gpt-image-2',
+    n: 1,
+    size: 'auto',
+    quality: 'auto',
+    background: 'auto',
+  })
+
+  longContextEnabled.current = true
+  searchEnabled.current = false
+  searchMode.current = 'cached'
+  imageEnabled.current = false
+  imageCount.current = 3
+
+  assert.deepEqual(readLlmSettings(llm), { longContextEnabled: true })
+  assert.equal(readSearchSettings(search).enabled, false)
+  assert.equal(readSearchSettings(search).mode, 'cached')
+  assert.equal(readImageSettings(image).enabled, false)
+  assert.equal(readImageSettings(image).n, 3)
 })

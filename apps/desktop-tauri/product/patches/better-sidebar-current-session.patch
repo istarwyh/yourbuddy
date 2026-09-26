@@ -1,3 +1,122 @@
+diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
+index 9f0e58e50acc8921fd1c10812de38304c0927606..2c65503d9bf263b52aa9d42f8e092164a9b4a988 100644
+--- a/src/client/Sidebar.tsx
++++ b/src/client/Sidebar.tsx
+@@ -196,17 +196,11 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
+   // so the conversation keeps CONVERSATION_MIN even on wide touch devices.
+   const layoutViewportHeight = visualViewportHeight ?? viewport.height
+ 
+-  // Current conversation (the sessions list feed).
++  // Current conversation and the Session retained by the main view.
+   const sessionList = useSyncExternalStore(
+     useMemo(() => (callback: () => void) => ctx.sessions.list.subscribe(callback), [ctx]),
+     useCallback(() => ctx.sessions.list.getSnapshot(), [ctx]),
+   )
+-  // Which conversation is on screen. The session-list snapshot has no
+-  // current-session field in ANY DSH release, so the old read of one was
+-  // permanently `undefined` and `store.setSession` below never bound a
+-  // session: DSH 0.1.7 publishes the mounted seat instead
+-  // (`ctx.sidebarRight.mounted`), and that is what the per-session state
+-  // follows.
+   const mounted = useMemo(() => mountedSessions(ctx), [ctx])
+   const current = useSyncExternalStore(
+     useCallback((callback: () => void) => mounted.subscribe(callback), [mounted]),
+diff --git a/src/client/native/surface.ts b/src/client/native/surface.ts
+index 45cb282fa8b5a37eebd8866cf4b3695750af295b..0906a55b71d598504dcf02f6a9545d306ab596e2 100644
+--- a/src/client/native/surface.ts
++++ b/src/client/native/surface.ts
+@@ -10,9 +10,8 @@
+  *
+  * - the surface exists only while a session's panel is mounted, and the
+  *   service's public face (`ISidebarRight`) writes only into THAT session.
+- *   "Which session that is" comes from the controller's `mounted` observation
+- *   ({@link mountedSessions}) — never from the session list, which has no
+- *   current-session field. The controller also carries `openTabIn` /
++ *   {@link mountedSessions} derives that session from the list summary retained
++ *   by `mainView`. The controller also carries `openTabIn` /
+  *   `openResourceIn` / `closeIn`, which act on any session whose store the
+  *   runtime has minted; both are probed at call time, and an open for a
+  *   session that has no store yet is QUEUED and replayed when that session
+@@ -29,12 +28,7 @@ type Pending =
+   | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean }
+   | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean }
+ 
+-/**
+- * The observation "which session's seat is on screen": DSH 0.1.7 publishes it
+- * as `ISidebarRight.mounted` (`ObservableSnapshot<SessionId | undefined>`, set
+- * only when the mounted seat really changes). `undefined` means NO seat is
+- * drawn — a global panel, or a right column that was never mounted.
+- */
++/** The observation of the Session retained by the main conversation view. */
+ export interface MountedSessions {
+   getSnapshot(): string | undefined
+   subscribe(listener: () => void): () => void
+@@ -45,8 +39,6 @@ interface NativeController {
+   openTab(kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+   openResource(address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
+   close(tabId: string): void
+-  /** The mounted-seat observation (0.1.7 `ISidebarRight.mounted`). */
+-  mounted?: MountedSessions
+   /** Concrete controller writes for retained Session stores. */
+   openTabIn(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
+   openResourceIn(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
+@@ -70,38 +62,16 @@ function controllerOf(ctx: Context): NativeController | undefined {
+ }
+ 
+ /**
+- * The on-screen-session feed, as anything outside this module should read it.
+- *
+- * The session-list snapshot carries NO current-session field in any DSH
+- * release (0.1.6 and 0.1.7 both publish only `ids` / `byId` / `phase` plus
+- * projections), so a read of one was always `undefined`: `mounted` is the
+- * only sanctioned source, and the plugin's own type invented the field it
+- * used to read.
+- *
+- * The probe tolerates a host without `mounted` (or a controller the runtime
+- * has not provided yet — the seat race this plugin already hit once on
+- * 0.1.5): the session list then doubles as the change pulse, so a late
+- * service is still picked up on the next list publish instead of never.
++ * Observe the Session retained by the main conversation view.
+  *
+  * @param ctx - the client context.
+- * @returns the observable face of the mounted seat's session id.
++ * @returns the observable face of the main view's session id.
+  */
+ export function mountedSessions(ctx: Context): MountedSessions {
+   return {
+-    getSnapshot: () => {
+-      try {
+-        const mounted = controllerOf(ctx)?.mounted
+-        return typeof mounted?.getSnapshot === 'function' ? mounted.getSnapshot() : undefined
+-      } catch {
+-        return undefined
+-      }
+-    },
+-    subscribe: (listener) => {
+-      const mounted = controllerOf(ctx)?.mounted
+-      return typeof mounted?.subscribe === 'function'
+-        ? mounted.subscribe(listener)
+-        : ctx.sessions.list.subscribe(listener)
+-    },
++    getSnapshot: () => Object.values(ctx.sessions.list.getSnapshot().byId)
++      .find(summary => (summary.retainedBy?.mainView ?? 0) > 0)?.id,
++    subscribe: listener => ctx.sessions.list.subscribe(listener),
+   }
+ }
+ 
+diff --git a/src/context-types.ts b/src/context-types.ts
+index 7c003d01bdd13cc8f9e100239dff281b5a8b54ad..cdee544d5e5df8d2ec7577e33aa35d4e149fba77 100644
+--- a/src/context-types.ts
++++ b/src/context-types.ts
+@@ -146,6 +146,8 @@ export interface SidebarSessionSummary {
+   parentId?: string
+   /** Whether the session's agent is currently running. */
+   running?: boolean
++  /** View retainers currently keeping the Session mounted. */
++  retainedBy?: { mainView?: number }
+ }
+ 
+ /** Durable parent/child address that selects subagent transport in the client. */
 diff --git a/lib/client-registry.js b/lib/client-registry.js
 index f28748bad5f1f0cd0e9b6b0e4d20b3fc3bc48030..31763b459fb33f4786a288b37e45b7cb36684cd8 100644
 --- a/lib/client-registry.js
@@ -88,49 +207,34 @@ index 74d708dcbd48272e6666990c16edac93589c652b..ae75f4daefece03522466c6763eb6480
  			};
  		}
  		/**
-diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
-index 9f0e58e50acc8921fd1c10812de38304c0927606..2c65503d9bf263b52aa9d42f8e092164a9b4a988 100644
---- a/src/client/Sidebar.tsx
-+++ b/src/client/Sidebar.tsx
-@@ -196,17 +196,11 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
-   // so the conversation keeps CONVERSATION_MIN even on wide touch devices.
-   const layoutViewportHeight = visualViewportHeight ?? viewport.height
- 
--  // Current conversation (the sessions list feed).
-+  // Current conversation and the Session retained by the main view.
-   const sessionList = useSyncExternalStore(
-     useMemo(() => (callback: () => void) => ctx.sessions.list.subscribe(callback), [ctx]),
-     useCallback(() => ctx.sessions.list.getSnapshot(), [ctx]),
-   )
--  // Which conversation is on screen. The session-list snapshot has no
--  // current-session field in ANY DSH release, so the old read of one was
--  // permanently `undefined` and `store.setSession` below never bound a
--  // session: DSH 0.1.7 publishes the mounted seat instead
--  // (`ctx.sidebarRight.mounted`), and that is what the per-session state
--  // follows.
-   const mounted = useMemo(() => mountedSessions(ctx), [ctx])
-   const current = useSyncExternalStore(
-     useCallback((callback: () => void) => mounted.subscribe(callback), [mounted]),
-diff --git a/src/client/native/surface.ts b/src/client/native/surface.ts
-index 45cb282fa8b5a37eebd8866cf4b3695750af295b..959fa319d9569d3043a43d29655b3b0a0e5f42a0 100644
---- a/src/client/native/surface.ts
-+++ b/src/client/native/surface.ts
-@@ -10,9 +10,8 @@
+diff --git a/lib/types/client/native/surface.d.ts b/lib/types/client/native/surface.d.ts
+index 0e74e5d8d61439170efafe03df4aa7cc1ae83062..4ec569322d5e5624d1edd681c5d7fbcf798cd502 100644
+--- a/lib/types/client/native/surface.d.ts
++++ b/lib/types/client/native/surface.d.ts
+@@ -8,26 +8,18 @@
   *
-  * - the surface exists only while a session's panel is mounted, and the
-  *   service's public face (`ISidebarRight`) writes only into THAT session.
+  * Two native limits shape the implementation:
+  *
+- * - the surface exists only while a session's panel is mounted, and the
+- *   service's public face (`ISidebarRight`) writes only into THAT session.
 - *   "Which session that is" comes from the controller's `mounted` observation
 - *   ({@link mountedSessions}) — never from the session list, which has no
 - *   current-session field. The controller also carries `openTabIn` /
-+ *   {@link mountedSessions} derives that session from the list summary retained
-+ *   by `mainView`. The controller also carries `openTabIn` /
-  *   `openResourceIn` / `closeIn`, which act on any session whose store the
-  *   runtime has minted; both are probed at call time, and an open for a
-  *   session that has no store yet is QUEUED and replayed when that session
-@@ -29,12 +28,7 @@ type Pending =
-   | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean }
-   | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean }
- 
+- *   `openResourceIn` / `closeIn`, which act on any session whose store the
+- *   runtime has minted; both are probed at call time, and an open for a
+- *   session that has no store yet is QUEUED and replayed when that session
+- *   comes on screen;
++ * - the surface writes into the Session retained by the main conversation
++ *   view. The session list's `retainedBy.mainView` count provides that identity.
++ *   The controller also carries `openTabIn` / `openResourceIn` / `closeIn`,
++ *   which act on any session whose store the runtime has minted; both are
++ *   probed at call time, and an open for a session that has no store yet is
++ *   queued and replayed when that session comes on screen;
+  * - layout state is memory-only, so a queued open is not durable either.
+  */
+ import type { Context } from '../../context-types.ts';
+ import type { SidebarSurface } from '../service.ts';
+ import type { NativeTabRecords } from './tab-adapter.tsx';
 -/**
 - * The observation "which session's seat is on screen": DSH 0.1.7 publishes it
 - * as `ISidebarRight.mounted` (`ObservableSnapshot<SessionId | undefined>`, set
@@ -139,20 +243,11 @@ index 45cb282fa8b5a37eebd8866cf4b3695750af295b..959fa319d9569d3043a43d29655b3b0a
 - */
 +/** The observation of the Session retained by the main conversation view. */
  export interface MountedSessions {
-   getSnapshot(): string | undefined
-   subscribe(listener: () => void): () => void
-@@ -45,8 +39,6 @@ interface NativeController {
-   openTab(kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
-   openResource(address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
-   close(tabId: string): void
--  /** The mounted-seat observation (0.1.7 `ISidebarRight.mounted`). */
--  mounted?: MountedSessions
-   /** Concrete controller writes for retained Session stores. */
-   openTabIn(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
-   openResourceIn(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
-@@ -70,38 +62,16 @@ function controllerOf(ctx: Context): NativeController | undefined {
+     getSnapshot(): string | undefined;
+     subscribe(listener: () => void): () => void;
+@@ -38,21 +30,10 @@ export interface NativeSurface extends SidebarSurface {
+     dispose(): void;
  }
- 
  /**
 - * The on-screen-session feed, as anything outside this module should read it.
 - *
@@ -172,25 +267,20 @@ index 45cb282fa8b5a37eebd8866cf4b3695750af295b..959fa319d9569d3043a43d29655b3b0a
 - * @returns the observable face of the mounted seat's session id.
 + * @returns the observable face of the main view's session id.
   */
- export function mountedSessions(ctx: Context): MountedSessions {
-   return {
--    getSnapshot: () => {
--      try {
--        const mounted = controllerOf(ctx)?.mounted
--        return typeof mounted?.getSnapshot === 'function' ? mounted.getSnapshot() : undefined
--      } catch {
--        return undefined
--      }
--    },
--    subscribe: (listener) => {
--      const mounted = controllerOf(ctx)?.mounted
--      return typeof mounted?.subscribe === 'function'
--        ? mounted.subscribe(listener)
--        : ctx.sessions.list.subscribe(listener)
--    },
-+    getSnapshot: () => Object.values(ctx.sessions.list.getSnapshot().byId)
-+      .find(summary => (summary.retainedBy.mainView ?? 0) > 0)?.id,
-+    subscribe: listener => ctx.sessions.list.subscribe(listener),
-   }
+ export declare function mountedSessions(ctx: Context): MountedSessions;
+ /**
+diff --git a/lib/types/context-types.d.ts b/lib/types/context-types.d.ts
+index 0cd34bf350927e652944100ca62c8635e552147c..0009be1749869f6df34d06dc9578b9512f5d7725 100644
+--- a/lib/types/context-types.d.ts
++++ b/lib/types/context-types.d.ts
+@@ -132,6 +132,10 @@ export interface SidebarSessionSummary {
+     parentId?: string;
+     /** Whether the session's agent is currently running. */
+     running?: boolean;
++    /** View retainers currently keeping the Session mounted. */
++    retainedBy?: {
++        mainView?: number;
++    };
  }
- 
+ /** Durable parent/child address that selects subagent transport in the client. */
+ export interface SidebarSubagentAddress {

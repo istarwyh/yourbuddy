@@ -21,8 +21,8 @@
     {
       "id": "current-settings-namespace",
       "file": "patches/codex-auth-current-settings.patch",
-      "sha256": "489b1fa5f0477163bb92ea840f82a813fb93c8a26abd933f3a9f2168ecee1dd9",
-      "purpose": "Bind capability settings to stable Loader entries, use current Config Forms mutations, and let profile reloads apply each accepted change."
+      "sha256": "f784d24692c13561926ac86d394f5c967ededa449252b42eb32396a308761c85",
+      "purpose": "Bind capability settings to stable Loader entries, use current Config Forms mutations, and dereference live settings at each operation."
     },
     "Set @deepseek-ai/dsh-agent peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-api-remotes peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
@@ -49,5 +49,5 @@
   ],
   "repository": "https://github.com/suntianc/dsh-codex-auth",
   "license": "MIT",
-  "treeSha256": "b984697f5f3476b239650f64a63226d6d2cfa27430ea71a1b78a27af1e218321"
+  "treeSha256": "1ec435cd8748c42ad8fa706a69ea023b7d8ab64c43eadba2b0fcf5271cae03e6"
 }

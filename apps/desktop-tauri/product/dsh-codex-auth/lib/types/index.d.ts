@@ -15,7 +15,7 @@
  *
  * @module dsh-codex-auth
  */
-import type { Context } from '@deepseek-ai/cordis';
+import type { Context, Volatile } from '@deepseek-ai/cordis';
 import z from '@deepseek-ai/schemastery';
 import type { CodexAuthTransport } from './codex-auth-adapter.ts';
 export declare const name = "llm-codex-auth";
@@ -35,7 +35,7 @@ export interface Config {
     /** Selector label for the provider route. */
     displayName: string;
     /** Opt into the one-million-token context budget for supported GPT-5.6 models. */
-    longContextEnabled: boolean;
+    longContextEnabled: Volatile<boolean>;
     /** Streaming transport for the route; SSE by default because the WebSocket upgrade is unreliable through common HTTP proxies. */
     transport: CodexAuthTransport;
     /** WebSocket connect timeout in milliseconds; only used when `transport` is not `sse`; zero disables it. */

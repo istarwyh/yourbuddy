@@ -68,7 +68,7 @@ When required `gh`, `pnpm`, build, test, or generator commands fail because the 
 Before pushing, follow [dsh-pre-push-checks](.agents/skills/dsh-pre-push-checks/SKILL.md); report only commands run. After `gh stack sync`, validate immediately; do not merge before checks pass.
 
 - Match evidence to the surface: focused tests for behavior, snapshots for model or user output, `doc-sync` for docs, build/hygiene and built smokes for published paths, and real-API e2e for provider behavior.
-- Never default to the full suite or repeat a passing check for commit or push. CI owns exhaustive coverage and the platform matrix; rehearse all locally only by explicit request, for CI diagnosis, or for an irreducibly repository-wide change.
+- Minimize test authoring and local runs. Cover the single most critical happy path unless a more specific rule requires more; do not default to the full suite or repeat passing checks unless explicitly requested, diagnosing CI, or making an irreducibly repository-wide change. CI owns exhaustive coverage and platform matrices.
 - `test:coverage`, not `test`, is the CI coverage gate ([why](docs/testing.md)).
 - **Web browser automation and GIF recording:** launch with `pnpm dsh web --patch apps/web/tests/pin-browse-picker.overlay.yml` to use the [in-page directory picker](apps/web/tests/pin-browse-picker.overlay.yml); omit this override only when testing native picker behavior explicitly.
 

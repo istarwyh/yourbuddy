@@ -44,17 +44,18 @@ index 1b72b8d30b88f912c0ad2c117d1a269780e11e05..132fc25721657b58c601f29a4bf7d2c9
  		const IMAGE_NAMESPACE = "codex-image";
  		/** Required browser services, including session-authorized attachment reads. */
 diff --git a/lib/image.js b/lib/image.js
-index 2661a421ef329b3ea9f3e9651ec3387b902401c2..19c66e801b7641f4ac4ec2c053d290bdb1e09b76 100644
+index 2661a421ef329b3ea9f3e9651ec3387b902401c2..45110c01fcc3a18a8caf2d0656d5051dc22d1890 100644
 --- a/lib/image.js
 +++ b/lib/image.js
-@@ -1,6 +1,5 @@
+@@ -1,6 +1,6 @@
  import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
  import z from "@deepseek-ai/schemastery";
 -import { installSettingsSection } from "./settings-section.js";
++import { readImageSettings } from "./settings-values.js";
  import { basename } from "node:path";
  import { HarnessError } from "@deepseek-ai/dsh-llm";
  //#region src/image.ts
-@@ -36,12 +35,12 @@ const IMAGE_BACKGROUNDS = [
+@@ -36,12 +36,12 @@ const IMAGE_BACKGROUNDS = [
  const MAX_REFERENCES = 5;
  const MAX_GENERATED_IMAGES = 10;
  const Config = z.object({
@@ -73,16 +74,16 @@ index 2661a421ef329b3ea9f3e9651ec3387b902401c2..19c66e801b7641f4ac4ec2c053d290bd
  });
  /** Build registry-ready public Capability Tools around one dependency set. */
  function createCodexImageTools(options) {
-@@ -764,7 +763,7 @@ const inject = [
+@@ -764,7 +764,7 @@ const inject = [
  function apply(ctx, config) {
  	const auth = ctx.get("codexAuth");
  	if (auth === void 0) throw new Error("codex-image: shared codexAuth service is unavailable");
 -	let current = () => config;
-+	const current = () => config;
++	const current = () => readImageSettings(config);
  	const registrations = /* @__PURE__ */ new Map();
  	const generations = /* @__PURE__ */ new Map();
  	let disposed = false;
-@@ -803,12 +802,6 @@ function apply(ctx, config) {
+@@ -803,12 +803,6 @@ function apply(ctx, config) {
  		registrations.clear();
  		generations.clear();
  	}, "codex-image: scoped tool cleanup");
@@ -96,19 +97,20 @@ index 2661a421ef329b3ea9f3e9651ec3387b902401c2..19c66e801b7641f4ac4ec2c053d290bd
  		refreshAgent(agent);
  	});
 diff --git a/lib/index.js b/lib/index.js
-index 31c7846c4ae4cf438cd2394ce5b4992063621d49..2bafa55a2351e3f9bc9afbba36a2b40284d8456b 100644
+index 31c7846c4ae4cf438cd2394ce5b4992063621d49..a9290fa6d9d0f01603725ce3fbfcb9ae7ba4c55e 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -1,7 +1,6 @@
+@@ -1,7 +1,7 @@
 -import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, o as CODEX_LLM_SETTINGS_NAMESPACE, p as mergeRefreshed, r as CodexAuthAdapter, s as CodexLlmSettingsConfig, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-CutNZ8kw.js";
 +import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, p as mergeRefreshed, r as CodexAuthAdapter, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-CutNZ8kw.js";
  import z from "@deepseek-ai/schemastery";
  import { credentialRef } from "@deepseek-ai/dsh-credentials";
 -import { installSettingsSection } from "./settings-section.js";
++import { readLlmSettings } from "./settings-values.js";
  import { withFileLock } from "@deepseek-ai/dsh-atomic-write";
  import { spawn } from "node:child_process";
  import { Service } from "@deepseek-ai/cordis";
-@@ -869,7 +868,7 @@ const Config = z.object({
+@@ -869,7 +869,7 @@ const Config = z.object({
  	refreshLeadMs: z.number().min(0).default(DEFAULT_REFRESH_LEAD_MS),
  	codexCommand: z.string().default("codex"),
  	displayName: z.string().default("OpenAI Codex (chatgpt)"),
@@ -117,11 +119,14 @@ index 31c7846c4ae4cf438cd2394ce5b4992063621d49..2bafa55a2351e3f9bc9afbba36a2b402
  	transport: z.union([
  		z.const("auto"),
  		z.const("sse"),
-@@ -894,7 +893,6 @@ function apply(ctx, config) {
+@@ -892,9 +892,7 @@ function apply(ctx, config) {
+ 		refreshLeadMs: config.refreshLeadMs,
+ 		fetchImpl: fetch
  	});
- 	const settingsEntry = { longContextEnabled: config.longContextEnabled };
- 	let currentSettings = () => settingsEntry;
+-	const settingsEntry = { longContextEnabled: config.longContextEnabled };
+-	let currentSettings = () => settingsEntry;
 -	let announceModelPolicyChange = () => {};
++	const currentSettings = () => readLlmSettings(config);
  	if (config.llmEnabled) {
  		if (ctx.llm.listProviders().some((provider) => provider.id === "openai-codex")) throw new Error("dsh-codex-auth cannot own the \"openai-codex\" route because another plugin already registered it; dsh-codex-auth and dsh-codex are mutually exclusive, so uninstall or disable one bundle");
  		const adapter = new CodexAuthAdapter(ctx, {
@@ -146,13 +151,14 @@ index 31c7846c4ae4cf438cd2394ce5b4992063621d49..2bafa55a2351e3f9bc9afbba36a2b402
  	if (config.llmEnabled) ctx.logger.info("llm-codex-auth: route %s serving ChatGPT login from %s (transport %s, ws-connect %sms, request timeout %sms)", CODEX_ROUTE, authJsonPath, config.transport, config.websocketConnectTimeoutMs, config.timeoutMs);
  	else ctx.logger.info("llm-codex-auth: shared Login State active at %s; LLM route disabled", authJsonPath);
 diff --git a/lib/search.js b/lib/search.js
-index a743c0a02ee649f940e459de9c12ac7b38c48afe..0d43f576f9e9bf440722fdd992c052797689483b 100644
+index a743c0a02ee649f940e459de9c12ac7b38c48afe..0f11b5521efac164b7e920dca864762e97afc882 100644
 --- a/lib/search.js
 +++ b/lib/search.js
-@@ -1,32 +1,31 @@
+@@ -1,32 +1,32 @@
  import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
  import z from "@deepseek-ai/schemastery";
 -import { installSettingsSection } from "./settings-section.js";
++import { readSearchSettings } from "./settings-values.js";
  import { randomUUID } from "node:crypto";
  import { WebError } from "@deepseek-ai/dsh-web";
  //#region src/search.ts
@@ -188,7 +194,7 @@ index a743c0a02ee649f940e459de9c12ac7b38c48afe..0d43f576f9e9bf440722fdd992c05279
  });
  /** Codex backend implementation behind DSH's existing stock `web_search` tool. */
  var CodexSearchProvider = class {
-@@ -114,16 +113,9 @@ const inject = ["web", "codexAuth"];
+@@ -114,16 +114,9 @@ const inject = ["web", "codexAuth"];
  function apply(ctx, config) {
  	const auth = ctx.get("codexAuth");
  	if (auth === void 0) throw new Error("codex-search: shared codexAuth service is unavailable");
@@ -202,7 +208,188 @@ index a743c0a02ee649f940e459de9c12ac7b38c48afe..0d43f576f9e9bf440722fdd992c05279
  	ctx.web.registerSearchProvider(new CodexSearchProvider({
  		auth,
 -		settings: () => current(),
-+		settings: () => config,
++		settings: () => readSearchSettings(config),
  		fetchImpl: fetch,
  		requestId: () => String(ctx.get("agents")?.currentInitiator()?.id ?? randomUUID()),
  		initiatingModel: () => initiatingCodexModel(ctx)
+diff --git a/lib/settings-values.js b/lib/settings-values.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..17dca2be1b8beaba978db9abdec90e41bb43bd7e
+--- /dev/null
++++ b/lib/settings-values.js
+@@ -0,0 +1,34 @@
++/** Read the live GPT Auth settings consumed by each operation. */
++function read(ref) {
++	return ref.get();
++}
++
++/** Resolve the live model-policy fields. */
++function readLlmSettings(config) {
++	return { longContextEnabled: read(config.longContextEnabled) };
++}
++
++/** Resolve the live standalone-search fields. */
++function readSearchSettings(config) {
++	return {
++		enabled: read(config.enabled),
++		mode: read(config.mode),
++		contextSize: read(config.contextSize),
++		fallbackModel: read(config.fallbackModel),
++		maxOutputTokens: read(config.maxOutputTokens)
++	};
++}
++
++/** Resolve the live image-creation fields. */
++function readImageSettings(config) {
++	return {
++		enabled: read(config.enabled),
++		model: read(config.model),
++		n: read(config.n),
++		size: read(config.size),
++		quality: read(config.quality),
++		background: read(config.background)
++	};
++}
++
++export { readImageSettings, readLlmSettings, readSearchSettings };
+diff --git a/lib/types/client/index.d.ts b/lib/types/client/index.d.ts
+index bf229a07f18130f681d2823f66e9df66f0f2bbd2..87427b309d040352cf78aa3c1a241882f52c8ef3 100644
+--- a/lib/types/client/index.d.ts
++++ b/lib/types/client/index.d.ts
+@@ -1,4 +1,4 @@
+-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
++import type { Context } from '@deepseek-ai/cordis';
+ import { type CodexAuthKey } from './locales.ts';
+ export { CodexCapabilitySettings } from './CodexCapabilitySettings.tsx';
+ export type { CodexCapabilitySettingsProps, ImageSettingsView, LlmSettingsView, SearchSettingsView, } from './CodexCapabilitySettings.tsx';
+@@ -13,5 +13,5 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
+ /** Required browser services, including session-authorized attachment reads. */
+ export declare const inject: string[];
+ /** Register the four-card settings section and keyed image result renderers. */
+-export declare function apply(ctx: ClientContext): void;
++export declare function apply(ctx: Context): void;
+ //# sourceMappingURL=index.d.ts.map
+\ No newline at end of file
+diff --git a/lib/types/image.d.ts b/lib/types/image.d.ts
+index d1064c789b549b7e2e1780d9eb363d81b8f42358..5349a4038a674c13fa1b2155c92f0f122608022e 100644
+--- a/lib/types/image.d.ts
++++ b/lib/types/image.d.ts
+@@ -1,4 +1,4 @@
+-import type { Context } from '@deepseek-ai/cordis';
++import type { Context, Volatile } from '@deepseek-ai/cordis';
+ import z from '@deepseek-ai/schemastery';
+ import type { AttachmentStore } from '@deepseek-ai/dsh-attachment';
+ import type { FileSystem } from '@deepseek-ai/dsh-fs';
+@@ -27,7 +27,13 @@ export interface CodexImageSettings {
+     quality: ImageQuality;
+     background: ImageBackground;
+ }
+-export interface Config extends CodexImageSettings {
++export interface Config {
++    enabled: Volatile<boolean>;
++    model: Volatile<string>;
++    n: Volatile<number>;
++    size: Volatile<ImageSize>;
++    quality: Volatile<ImageQuality>;
++    background: Volatile<ImageBackground>;
+ }
+ export declare const Config: z<Config>;
+ /** Narrow dependency surface used by both public Tool definitions. */
+diff --git a/lib/types/index.d.ts b/lib/types/index.d.ts
+index b02d539b383563905147b40ad3459df2de2d73c9..1e69d674090b00852d3ff5d451bfdb7d8ac0ffe8 100644
+--- a/lib/types/index.d.ts
++++ b/lib/types/index.d.ts
+@@ -15,7 +15,7 @@
+  *
+  * @module dsh-codex-auth
+  */
+-import type { Context } from '@deepseek-ai/cordis';
++import type { Context, Volatile } from '@deepseek-ai/cordis';
+ import z from '@deepseek-ai/schemastery';
+ import type { CodexAuthTransport } from './codex-auth-adapter.ts';
+ export declare const name = "llm-codex-auth";
+@@ -35,7 +35,7 @@ export interface Config {
+     /** Selector label for the provider route. */
+     displayName: string;
+     /** Opt into the one-million-token context budget for supported GPT-5.6 models. */
+-    longContextEnabled: boolean;
++    longContextEnabled: Volatile<boolean>;
+     /** Streaming transport for the route; SSE by default because the WebSocket upgrade is unreliable through common HTTP proxies. */
+     transport: CodexAuthTransport;
+     /** WebSocket connect timeout in milliseconds; only used when `transport` is not `sse`; zero disables it. */
+diff --git a/lib/types/rpc-contract.d.ts b/lib/types/rpc-contract.d.ts
+index f2ee3f2b70f4d93a6fe77ed19f9fa0447570ebb5..55f2acac58684d4381f883ccad1eee6d72f3e3a7 100644
+--- a/lib/types/rpc-contract.d.ts
++++ b/lib/types/rpc-contract.d.ts
+@@ -1,5 +1,5 @@
+ /** Browser-safe dedicated Connection RPC contract owned by codex-auth. */
+-import type { RpcResult } from '@deepseek-ai/dsh-host-apiproxy/api';
++import type { ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection';
+ /** Logical channel registered by the plugin's Host half and called by its browser half. */
+ export declare const CODEX_AUTH_RPC_CHANNEL = "/codex-auth";
+ /** One official codex CLI login flow. */
+@@ -31,21 +31,21 @@ export interface CodexUsageView {
+ /** Browser-safe face consumed by the settings card. */
+ export interface CodexAuthRpcClient {
+     /** Read the value-free codex login state. */
+-    status(signal?: AbortSignal): Promise<RpcResult<{
++    status(signal?: AbortSignal): Promise<ConnectionRpcResult<{
+         status: CodexAuthStatusView;
+     }>>;
+     /** Read the value-free weekly quota snapshot from the ChatGPT backend. */
+-    usage(signal?: AbortSignal): Promise<RpcResult<{
++    usage(signal?: AbortSignal): Promise<ConnectionRpcResult<{
+         usage: CodexUsageView;
+     }>>;
+     /** Start one official codex CLI login flow. */
+-    login(mode: CodexAuthLoginMode, signal?: AbortSignal): Promise<RpcResult<{
++    login(mode: CodexAuthLoginMode, signal?: AbortSignal): Promise<ConnectionRpcResult<{
+         started: boolean;
+     }>>;
+ }
+ /** Minimal generic Connection caller required by this plugin. */
+ export interface CodexAuthConnectionRpc {
+-    call(channel: string, endpoint: string, payload: unknown, signal?: AbortSignal): Promise<RpcResult<unknown>>;
++    call(channel: string, endpoint: string, payload: unknown, signal?: AbortSignal): Promise<ConnectionRpcResult<unknown>>;
+ }
+ /** Build the browser face over Connection's plugin-owned unary channel. */
+ export declare function createCodexAuthRpcClient(rpc: CodexAuthConnectionRpc): CodexAuthRpcClient;
+diff --git a/lib/types/rpc.d.ts b/lib/types/rpc.d.ts
+index 567010ff6db8f81a49ffc39c32f7d2276b297955..056a768132127172cb8d47d54cf795cb7c5c0916 100644
+--- a/lib/types/rpc.d.ts
++++ b/lib/types/rpc.d.ts
+@@ -1,7 +1,7 @@
+ /** Host dispatcher for the codex-auth plugin's dedicated Connection RPC. */
+-import type { RpcResult } from '@deepseek-ai/dsh-host-apiproxy/api';
++import type { ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection';
+ import type { CodexAuthService } from './codex-auth-service.ts';
+ export { CODEX_AUTH_RPC_CHANNEL } from './rpc-contract.ts';
+ /** Dispatch a decoded Host request without ever exposing token material. */
+-export declare function handleCodexAuthRpc(service: Pick<CodexAuthService, 'status' | 'usage' | 'login'>, endpoint: string, payload: unknown, signal?: AbortSignal): Promise<RpcResult<unknown>>;
++export declare function handleCodexAuthRpc(service: Pick<CodexAuthService, 'status' | 'usage' | 'login'>, endpoint: string, payload: unknown, signal?: AbortSignal): Promise<ConnectionRpcResult<unknown>>;
+ //# sourceMappingURL=rpc.d.ts.map
+\ No newline at end of file
+diff --git a/lib/types/search.d.ts b/lib/types/search.d.ts
+index 9410bf33fd182abe10fe5a17d8138a5f086244d7..daf7c11f5ba7f10eed53510082c75821382bd292 100644
+--- a/lib/types/search.d.ts
++++ b/lib/types/search.d.ts
+@@ -1,4 +1,4 @@
+-import type { Context } from '@deepseek-ai/cordis';
++import type { Context, Volatile } from '@deepseek-ai/cordis';
+ import z from '@deepseek-ai/schemastery';
+ import type { WebSearchProvider, WebSearchRequest, WebSearchResult } from '@deepseek-ai/dsh-web';
+ import type { CodexAuthService } from './codex-auth-service.ts';
+@@ -17,7 +17,12 @@ export interface CodexSearchSettings {
+     fallbackModel: string;
+     maxOutputTokens: number;
+ }
+-export interface Config extends CodexSearchSettings {
++export interface Config {
++    enabled: Volatile<boolean>;
++    mode: Volatile<CodexSearchMode>;
++    contextSize: Volatile<CodexSearchContextSize>;
++    fallbackModel: Volatile<string>;
++    maxOutputTokens: Volatile<number>;
+ }
+ export declare const Config: z<Config>;
+ export interface CodexSearchProviderOptions {

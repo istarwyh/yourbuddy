@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import test from 'node:test'
 
 import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -13,6 +14,7 @@ import {
   installDefaultAgentPresets,
   installProductPlugins,
   installProductWebIdentity,
+  verifyExternalSnapshot,
 } from './bundle-harness-source.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -124,6 +126,38 @@ test('hashExternalSnapshot uses bytewise path order across locales', () => {
   }
 })
 
+test('verifyExternalSnapshot validates every recorded materialized patch digest', () => {
+  const productRoot = mkdtempSync(join(tmpdir(), 'yourbuddy-source-record-'))
+  const pluginRoot = join(productRoot, 'example')
+  const patchRoot = join(productRoot, 'patches')
+  mkdirSync(pluginRoot)
+  mkdirSync(patchRoot)
+  const manifest = { name: 'example-plugin', version: '1.0.0' }
+  writeFileSync(join(pluginRoot, 'package.json'), `${JSON.stringify(manifest)}\n`)
+  const patchPath = join(patchRoot, 'example.patch')
+  writeFileSync(patchPath, 'reviewed patch\n')
+  const patchSha = createHash('sha256').update(readFileSync(patchPath)).digest('hex')
+  writeFileSync(join(pluginRoot, 'YOURBUDDY_UPSTREAM.json'), `${JSON.stringify({
+    package: manifest.name,
+    version: manifest.version,
+    integrity: 'sha512-AA==',
+    patches: [{ id: 'example', file: 'patches/example.patch', sha256: patchSha }],
+    treeSha256: hashExternalSnapshot(pluginRoot),
+  })}\n`)
+
+  try {
+    assert.doesNotThrow(() => verifyExternalSnapshot(pluginRoot, manifest))
+    writeFileSync(patchPath, 'changed patch\n')
+    assert.throws(
+      () => verifyExternalSnapshot(pluginRoot, manifest),
+      /product patch hash mismatch/u,
+    )
+  }
+  finally {
+    rmSync(productRoot, { recursive: true, force: true })
+  }
+})
+
 test('installDefaultAgentPresets declares product presets from the standard profile patch', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-codex-preset-'))
   const webAppRoot = join(root, 'packages', 'bundle', 'web-app')
@@ -230,7 +264,7 @@ test('installDefaultAgentPresets declares product presets from the standard prof
   }
 })
 
-test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependency', () => {
+test('installProductPlugins packages product code and defers product mounts to the desktop overlay', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-product-plugin-'))
   const cli = join(root, 'apps', 'cli')
   mkdirSync(cli, { recursive: true })
@@ -259,9 +293,10 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-subagent-codex'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
     const webPatch = readFileSync(join(webApp, 'cordis.patch.yml'), 'utf8')
-    assert.match(webPatch, /# YourBuddy product bundle layers/u)
-    assert.match(webPatch, /id: personal-workbench\n\s+name: dsh-personal-workbench/u)
-    assert.match(webPatch, /id: dsh-oil-creator\n\s+name: dsh-oil-creator/u)
+    assert.match(webPatch, /# YourBuddy default Harness bundle layers/u)
+    assert.doesNotMatch(webPatch, /name: dsh-personal-workbench/u)
+    assert.doesNotMatch(webPatch, /name: dsh-oil-creator/u)
+    assert.doesNotMatch(webPatch, /name: dsh-better-sidebar/u)
     assert.match(webPatch, /id: subagent-codex\n\s+name: '@deepseek-ai\/dsh-subagent-codex'/u)
     assert.doesNotMatch(webPatch, /id: ui-sidebar\n\s+disabled: true/u)
     const bundledCodex = JSON.parse(readFileSync(

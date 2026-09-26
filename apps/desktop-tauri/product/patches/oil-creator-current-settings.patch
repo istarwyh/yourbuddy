@@ -1,0 +1,79 @@
+diff --git a/lib/client.js b/lib/client.js
+index 4c185217c411c8e2feac43b69a98f60ac8e090cf..40a63dfe10381c54bca2edc058e94ac51eb2ae6a 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -4620,9 +4620,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
+ 			]
+ 		};
+ 		//#endregion
+-		//#region src/settingsContract.ts
+-		const CREATOR_SETTINGS_NAMESPACE = "dsh-oil-creator";
+-		//#endregion
+ 		//#region src/client/persistence.ts
+ 		const CREATOR_STORAGE_KEY = "dsh-oil-creator/ui/v1";
+ 		const DEFAULT_UI_STATE = {
+@@ -7397,10 +7394,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
+ 		//#region src/client/settingsSlot.ts
+ 		function registerCreatorSettingsCard(slots, component, options) {
+ 			return slots.register({
+-				name: "settings.plugin.item",
+-				key: options.namespace,
+-				id: options.legacyId,
+-				order: options.legacyOrder,
++				name: "settings.plugins.tab",
++				id: options.id,
++				order: options.order,
++				label: options.label,
+ 				locale: options.locale,
+ 				inject: options.inject
+ 			}, component);
+@@ -7700,10 +7697,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
+ 						stopWorkbench();
+ 					};
+ 				});
+-				const stopSettings = ctx.slots.inject("settings.plugin.item", () => registerCreatorSettingsCard(ctx.slots, CreatorSettingsCard, {
+-					namespace: CREATOR_SETTINGS_NAMESPACE,
+-					legacyId: "dsh-oil-creator",
+-					legacyOrder: 40,
++				const stopSettings = ctx.slots.inject("settings.plugins.tab", () => registerCreatorSettingsCard(ctx.slots, CreatorSettingsCard, {
++					id: "dsh-oil-creator",
++					order: 40,
++					label: () => contentT("settings.title"),
+ 					locale: NS,
+ 					inject: () => ({
+ 						...face(),
+diff --git a/lib/index.js b/lib/index.js
+index 2ebbcfaa3728fa60b4873647e7d155b2df14bd0a..35ad272b1d5cae0cd43d99a861748753f68d445b 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -4579,20 +4579,6 @@ async function waitForStableVideo(folderPath, timeoutMs, signal) {
+ 	return false;
+ }
+ //#endregion
+-//#region src/settingsContract.ts
+-const CREATOR_SETTINGS_NAMESPACE = "dsh-oil-creator";
+-//#endregion
+-//#region src/settingsHost.ts
+-/**
+-* Harness rc.7 dispatches settings cards only for Host-registered namespaces.
+-* The card's values still live in the plugin overlay and travel through the
+-* typed Remote so rc.6 users and AI tools keep one authoritative data source.
+-*/
+-const CREATOR_SETTINGS_DISCOVERY_SCHEMA = Schema.object({});
+-function registerCreatorSettingsNamespace(settings) {
+-	settings.register(CREATOR_SETTINGS_NAMESPACE, CREATOR_SETTINGS_DISCOVERY_SCHEMA);
+-}
+-//#endregion
+ //#region src/tools.ts
+ function signalOf(exec) {
+ 	return exec.signal;
+@@ -5095,9 +5081,6 @@ function registerCreatorTools(ctx, service) {
+ const name = "dsh-oil-creator";
+ function apply(ctx, config) {
+ 	const service = new OilCreatorService(ctx, config);
+-	ctx.inject(["settings"], (settingsCtx) => {
+-		registerCreatorSettingsNamespace(settingsCtx.settings);
+-	});
+ 	ctx.inject(["tools"], (toolsCtx) => {
+ 		registerCreatorTools(toolsCtx, service);
+ 	});
