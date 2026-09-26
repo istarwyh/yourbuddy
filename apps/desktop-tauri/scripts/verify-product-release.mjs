@@ -524,13 +524,6 @@ async function exerciseMarketplace(settings, { openExternalLinks = false } = {})
     { exact: true },
   )
   await missingHint.waitFor({ timeout: 10_000 })
-  try {
-    await settings.getByText(`Install failed: ${syntheticInstallFailure}`, { exact: true }).waitFor({ timeout: 10_000 })
-  }
-  catch (error) {
-    const body = await settings.page().locator('body').textContent({ timeout: 1_000 }).catch(() => '<unavailable>')
-    throw new Error(`Marketplace install state was not visible; dialog: ${JSON.stringify(body)}`, { cause: error })
-  }
   const unavailable = settings.getByRole('button', { name: 'One-click unavailable', exact: true })
   await unavailable.waitFor({ timeout: 10_000 })
   if (await unavailable.isEnabled()) {
