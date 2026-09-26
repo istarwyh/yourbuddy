@@ -317,6 +317,7 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
       - codexhost-delegation
 
 - id: better-sidebar
+  disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'better-sidebar' && !e.disabled)"
   config:
     presentation: slot
 

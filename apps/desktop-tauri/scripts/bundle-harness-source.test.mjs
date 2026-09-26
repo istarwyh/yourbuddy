@@ -264,7 +264,7 @@ test('installDefaultAgentPresets declares product presets from the standard prof
   }
 })
 
-test('installProductPlugins packages product code and defers product mounts to the desktop overlay', () => {
+test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependency', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-product-plugin-'))
   const cli = join(root, 'apps', 'cli')
   mkdirSync(cli, { recursive: true })
@@ -293,10 +293,9 @@ test('installProductPlugins packages product code and defers product mounts to t
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-subagent-codex'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
     const webPatch = readFileSync(join(webApp, 'cordis.patch.yml'), 'utf8')
-    assert.match(webPatch, /# YourBuddy default Harness bundle layers/u)
-    assert.doesNotMatch(webPatch, /name: dsh-personal-workbench/u)
-    assert.doesNotMatch(webPatch, /name: dsh-oil-creator/u)
-    assert.doesNotMatch(webPatch, /name: dsh-better-sidebar/u)
+    assert.match(webPatch, /# YourBuddy product bundle layers/u)
+    assert.match(webPatch, /id: personal-workbench\n\s+name: dsh-personal-workbench/u)
+    assert.match(webPatch, /id: dsh-oil-creator\n\s+name: dsh-oil-creator/u)
     assert.match(webPatch, /id: subagent-codex\n\s+name: '@deepseek-ai\/dsh-subagent-codex'/u)
     assert.doesNotMatch(webPatch, /id: ui-sidebar\n\s+disabled: true/u)
     const bundledCodex = JSON.parse(readFileSync(
