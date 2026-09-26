@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.3.16`。
 - 产品渠道：macOS Apple Silicon 版 YourBuddy 桌面应用。
-- 归档状态：部分完成；产品发布与公开产物核验已经完成，交互录制、可下载证据与官网检查仍待补。
+- 归档状态：部分完成；产品发布、公开产物核验、可下载证据与官网检查已经完成，交互录制仍待补。
 - 带 Tag 的产品 Commit：`3e3c0da88f1a9a6b080b606d15b363745d32669d`。
 - 证据图集：产品工作台交互录制待完成。
-- 证据下载：不可变 Tag 源码与可下载验证归档待发布。
+- 证据下载：[不可变 Tag 源码](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.16/docs/releases/yourbuddy-v0.3.16)与[可下载验证归档](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.16/yourbuddy-v0.3.16-verification.zip)。
 
 ## 面向用户的发布说明
 
@@ -45,7 +45,7 @@ Better Sidebar 保持为中间工作台，创作者内容会临时使用同一�
 | 组装 Host 与浏览器工作台 | 在所述范围内通过 | 从源码构建的 Web Client 与准备后的 Host | 本地 Host 与 Chromium | 70 个 peer link、7 个 Client 插件、无密钥刷新与回放通过，3 项浏览器测试通过 |
 | 产品工作台交互录制 | pending | 准备后的候选版本 | YourBuddy Web GUI | 待补 |
 | 公开桌面产物与 Updater | passed | 公开 0.3.16 产物 | GitHub Release 与稳定 Updater Channel | [产物核验](evidence/public-artifact-verification.txt) |
-| 产品官网 | pending | 发布后的官网 Commit | GitHub Pages | 待补 |
+| 产品官网 | passed | 官网 Commit `151af2c4d8239bbd495c425e72ca5c3fee424791` | 中英文 HTML 与原始 Markdown 路由 | [官网核验](evidence/website-verification.txt) |
 
 ## 场景：产品工作台协同
 
@@ -86,8 +86,8 @@ Better Sidebar 保持为中间工作台，创作者内容会临时使用同一�
 ## 交付状态
 
 - 产品发布状态：[不可变 Tag 工作流](https://github.com/istarwyh/yourbuddy/actions/runs/36235367585)成功发布。
-- 验证资料归档状态：部分完成；源码、执行与公开产物证据已经记录，交互录制与可下载归档仍待补。
-- 站点同步状态：待同步；在 0.3.16 产物通过独立检查前，官网继续提供已验证的 0.3.15 下载。
+- 验证资料归档状态：部分完成；源码、执行、公开产物、官网与可下载证据已经记录，交互录制仍待补。
+- 站点同步状态：已部署，并在中英文 HTML 与原始 Markdown 线上路由完成核验。
 - 未验证范围：真实创作者账号、最终发表操作、原生安装后启动、安装包 WebView 交互、更新安装、签名与公证。
 
 ## 交付清单
@@ -98,6 +98,6 @@ Better Sidebar 保持为中间工作台，创作者内容会临时使用同一�
 - [x] 完整发布准备与组装 Host／浏览器检查通过。
 - [ ] 产品工作台 GUI 路径完成录制并保留。
 - [x] 公开文件、校验和、Updater 元数据、签名、App 标识、来源记录与迁移运行时完成独立核验。
-- [ ] 验证归档已发布并独立解压检查。
-- [ ] 双语产品官网完成同步与线上检查，且未提升未经验证的文件。
+- [x] 验证归档已发布并独立解压检查。
+- [x] 双语产品官网完成同步与线上检查，且未提升未经验证的文件。
 - [x] 公开 Tag 与安装包不会移动或覆盖。

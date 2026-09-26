@@ -6,10 +6,10 @@ This archive records the coordinated product workbench, safer creator-draft prep
 
 - Release identifier: `yourbuddy-v0.3.16`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: partial; product publication and public artifact verification are complete, while the interaction recording, downloadable evidence, and website checks remain pending.
+- Archive state: partial; product publication, public artifact verification, downloadable evidence, and website checks are complete, while the interaction recording remains pending.
 - Tagged product commit: `3e3c0da88f1a9a6b080b606d15b363745d32669d`.
 - Evidence gallery: the product-workbench interaction recording is pending.
-- Evidence download: the immutable tagged source and downloadable verification archive are pending publication.
+- Evidence download: [immutable tagged source](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.16/docs/releases/yourbuddy-v0.3.16) and [downloadable verification archive](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.16/yourbuddy-v0.3.16-verification.zip).
 
 ## User release notes
 
@@ -45,7 +45,7 @@ The desktop target remains macOS 11 or later on Apple Silicon. Fresh Sessions us
 | Assembled Host and browser workbench | passed within stated limits | source-built Web Client and prepared Host | local Host and Chromium | 70 peer links, seven Client plugins, keyless refresh and replay, and 3 browser tests passed |
 | Product-workbench interaction recording | pending | prepared release candidate | YourBuddy Web GUI | pending |
 | Public desktop artifacts and updater | passed | public 0.3.16 assets | GitHub Release and stable updater channel | [artifact verification](evidence/public-artifact-verification.txt) |
-| Product website | pending | post-publication website commit | GitHub Pages | pending |
+| Product website | passed | website commit `151af2c4d8239bbd495c425e72ca5c3fee424791` | English and Chinese HTML and raw Markdown routes | [website verification](evidence/website-verification.txt) |
 
 ## Scenario: coordinated product workbench
 
@@ -86,8 +86,8 @@ Source, synthetic, and assembled local checks do not prove real-account creator 
 ## Delivery status
 
 - Product publication status: published by the [successful immutable-tag workflow](https://github.com/istarwyh/yourbuddy/actions/runs/36235367585).
-- Verification archive status: partial; source, execution, and public artifact evidence are recorded, while the interaction recording and downloadable archive remain pending.
-- Website synchronization status: pending; the verified 0.3.15 download remains public until 0.3.16 artifacts pass independent checks.
+- Verification archive status: partial; source, execution, public artifact, website, and downloadable evidence are recorded, while the interaction recording remains pending.
+- Website synchronization status: deployed and verified on the live Chinese and English HTML and raw Markdown routes.
 - Unverified scope: real creator accounts, final publishing actions, native installed startup, packaged-WebView interaction, update installation, signing, and notarization.
 
 ## Delivery checklist
@@ -98,6 +98,6 @@ Source, synthetic, and assembled local checks do not prove real-account creator 
 - [x] Complete release preparation and assembled Host/browser checks pass.
 - [ ] The product-workbench GUI journey is recorded and retained.
 - [x] Public files, checksums, updater metadata, signature, App identity, source record, and relocated runtime are independently verified.
-- [ ] The evidence archive is published and independently extracted.
-- [ ] The bilingual product website is synchronized and checked live without promoting unverified files.
+- [x] The evidence archive is published and independently extracted.
+- [x] The bilingual product website is synchronized and checked live without promoting unverified files.
 - [x] Public tags and installers will not be moved or overwritten.
