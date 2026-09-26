@@ -332,9 +332,20 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
     - id: yourbuddy-release-subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === '@deepseek-ai/dsh-subagent-codex' && e.options.id !== 'yourbuddy-release-subagent-codex' && !e.disabled)"
+    - id: yourbuddy-release-better-sidebar
+      name: dsh-better-sidebar
+      config:
+        presentation: slot
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'yourbuddy-release-better-sidebar' && !e.disabled)"
     - id: yourbuddy-release-codex-auth
       name: dsh-codex-auth
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth' && e.options.id !== 'yourbuddy-release-codex-auth' && !e.disabled)"
+    - id: yourbuddy-release-codex-search
+      name: dsh-codex-auth/search
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/search' && e.options.id !== 'yourbuddy-release-codex-search' && !e.disabled)"
+    - id: yourbuddy-release-codex-image
+      name: dsh-codex-auth/image
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/image' && e.options.id !== 'yourbuddy-release-codex-image' && !e.disabled)"
     - id: yourbuddy-release-context-doctor
       name: dsh-context-doctor
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-context-doctor' && e.options.id !== 'yourbuddy-release-context-doctor' && !e.disabled)"
