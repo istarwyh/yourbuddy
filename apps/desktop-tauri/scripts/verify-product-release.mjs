@@ -316,34 +316,40 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
     modelExcludedSkills:
       - codexhost-delegation
 
-- id: ui-sidebar
-  disabled: true
+- id: better-sidebar
+  config:
+    presentation: slot
+
+- id: harbor-evolution
+  config:
+    projectRoot: ${value(workspace)}
+    jobsDir: "jobs"
+    harborBin: ${value(join(productRuntimeRoot, 'venv', 'bin', 'harbor'))}
+    harborDshBin: ${value(join(productRuntimeRoot, 'venv', 'bin', 'harbor-dsh'))}
+    pythonPath: ""
 
 - insert:
     - id: yourbuddy-release-subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === '@deepseek-ai/dsh-subagent-codex' && e.options.id !== 'yourbuddy-release-subagent-codex' && !e.disabled)"
     - id: yourbuddy-release-codex-auth
       name: dsh-codex-auth
-    - id: yourbuddy-release-better-sidebar
-      name: dsh-better-sidebar
-      config:
-        presentation: slot
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth' && e.options.id !== 'yourbuddy-release-codex-auth' && !e.disabled)"
     - id: yourbuddy-release-context-doctor
       name: dsh-context-doctor
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-context-doctor' && e.options.id !== 'yourbuddy-release-context-doctor' && !e.disabled)"
     - id: yourbuddy-release-plugin-marketplace
       name: dsh-plugin-marketplace
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-plugin-marketplace' && e.options.id !== 'yourbuddy-release-plugin-marketplace' && !e.disabled)"
     - id: yourbuddy-release-personal-workbench
       name: dsh-personal-workbench
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-personal-workbench' && e.options.id !== 'yourbuddy-release-personal-workbench' && !e.disabled)"
     - id: yourbuddy-release-oil-creator
       name: dsh-oil-creator
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-oil-creator' && e.options.id !== 'yourbuddy-release-oil-creator' && !e.disabled)"
 ${proxyVerifierRow}    - id: yourbuddy-release-harbor-evolution
       name: dsh-harbor-evolution
-      config:
-        projectRoot: ${value(workspace)}
-        jobsDir: "jobs"
-        harborBin: ${value(join(productRuntimeRoot, 'venv', 'bin', 'harbor'))}
-        harborDshBin: ${value(join(productRuntimeRoot, 'venv', 'bin', 'harbor-dsh'))}
-        pythonPath: ""
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-harbor-evolution' && e.options.id !== 'yourbuddy-release-harbor-evolution' && !e.disabled)"
 `
 }
 
@@ -500,31 +506,54 @@ export function assertProductClientBoot(result) {
 }
 
 async function exerciseMarketplace(settings, { openExternalLinks = false } = {}) {
-  await settings.getByText(`YourBuddy-test/${missingMarketplaceRepository}`, { exact: true }).click()
-  await settings.getByText(
+  const missingCard = settings.getByRole('button').filter({ hasText: `YourBuddy-test/${missingMarketplaceRepository}` }).first()
+  await missingCard.click()
+  const missingHint = settings.getByText(
     'No npm package both links to this repository and declares dsh.bundle.patch. Follow the repository README instead.',
     { exact: true },
-  ).waitFor({ timeout: 10_000 })
-  await settings.getByText(`Install failed: ${syntheticInstallFailure}`, { exact: true }).waitFor({ timeout: 10_000 })
+  )
+  await missingHint.waitFor({ timeout: 10_000 })
+  try {
+    await settings.getByText(`Install failed: ${syntheticInstallFailure}`, { exact: true }).waitFor({ timeout: 10_000 })
+  }
+  catch (error) {
+    const body = await settings.page().locator('body').textContent({ timeout: 1_000 }).catch(() => '<unavailable>')
+    throw new Error(`Marketplace install state was not visible; dialog: ${JSON.stringify(body)}`, { cause: error })
+  }
   const unavailable = settings.getByRole('button', { name: 'One-click unavailable', exact: true })
   await unavailable.waitFor({ timeout: 10_000 })
   if (await unavailable.isEnabled()) {
     throw new Error('Marketplace enabled one-click install for a repository without an npm package')
   }
 
-  await settings.getByText(`YourBuddy-test/${validMarketplaceRepository}`, { exact: true }).click()
-  await settings.getByText(
-    `Installable npm package: ${validMarketplacePackage}@1.2.3`,
-    { exact: true },
-  ).waitFor({ timeout: 10_000 })
+  await missingCard.click()
+  await missingHint.waitFor({ state: 'detached', timeout: 10_000 })
+  const validCard = settings.getByRole('button').filter({ hasText: `YourBuddy-test/${validMarketplaceRepository}` }).first()
+  await validCard.click()
+  try {
+    await settings.getByText(
+      `Installable npm package: ${validMarketplacePackage}@1.2.3`,
+      { exact: true },
+    ).waitFor({ timeout: 10_000 })
+  }
+  catch (error) {
+    const body = await settings.page().locator('body').textContent({ timeout: 1_000 }).catch(() => '<unavailable>')
+    throw new Error(`Marketplace package verification was not visible; dialog: ${JSON.stringify(body)}`, { cause: error })
+  }
   if (openExternalLinks) {
     await settings.getByRole('link', { name: 'Open GitHub repo ↗', exact: true }).click()
     await settings.getByRole('link', { name: 'Search npm ↗', exact: true }).click()
   }
   const install = settings.getByRole('button', { name: 'Install', exact: true })
-  await install.waitFor({ timeout: 10_000 })
-  if (!await install.isEnabled()) {
-    throw new Error('Marketplace did not enable one-click install for a verified npm package')
+  try {
+    await install.waitFor({ timeout: 10_000 })
+    if (!await install.isEnabled()) {
+      throw new Error('Marketplace did not enable one-click install for a verified npm package')
+    }
+  }
+  catch (error) {
+    const body = await settings.page().locator('body').textContent({ timeout: 1_000 }).catch(() => '<unavailable>')
+    throw new Error(`Marketplace install action was not ready; dialog: ${JSON.stringify(body)}`, { cause: error })
   }
   await install.click()
   await settings.getByRole('button', {
@@ -861,7 +890,7 @@ async function runBrowserSmoke(baseUrl, env) {
     await presetButton.click()
     await page.getByRole('menuitem', { name: /内容创作/ }).waitFor({ timeout: 10_000 })
     await page.keyboard.press('Escape')
-    await page.getByRole('tab', { name: 'Library', exact: true }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: 'Library', exact: true }).waitFor({ timeout: 10_000 })
     const codexModelCatalogProbe = await page.evaluate(async () => {
       const response = await fetch('/api/session/modelCatalog', {
         method: 'POST',
@@ -880,7 +909,6 @@ async function runBrowserSmoke(baseUrl, env) {
     await createAndOpenReleaseSmokeSession(page)
     await page.getByRole('button', { name: 'Access mode, current: Full access', exact: true })
       .waitFor({ timeout: 10_000 })
-    await verifyWorkbenchBranding(page)
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     const settings = page.getByRole('dialog', { name: 'Settings' })
     await settings.waitFor({ timeout: 10_000 })
@@ -915,6 +943,7 @@ async function runBrowserSmoke(baseUrl, env) {
       bootFailureCount: await page.getByText('Failed to load plugins', { exact: true }).count(),
       frameCount,
     })
+    await settings.getByRole('button', { name: 'Close', exact: true }).click()
 
     await page.context().clearCookies()
     const desktopAuthentication = await authenticateHost(baseUrl)
@@ -980,13 +1009,12 @@ async function runBrowserSmoke(baseUrl, env) {
       throw new Error('YourBuddy Content workbench did not remain mounted and inactive by default')
     }
     const creatorInspector = contentSurface.locator('[data-plugin="dsh-oil-creator"][data-surface="inspector"]')
-    await embedded.getByRole('tab', { name: 'Library', exact: true }).click()
+    await embedded.getByRole('button', { name: 'Library', exact: true }).click()
     await embedded.getByText(creatorPublishSmokeTitle, { exact: true }).click()
     await creatorInspector.waitFor({ state: 'visible', timeout: 10_000 })
     await creatorInspector.locator('button.close').last().click()
     await coreSurface.waitFor({ state: 'visible', timeout: 10_000 })
-    const betterSidebarHost = embedded.locator('[data-dsh-panel-host][data-dsh-presentation="slot"]').first()
-    const betterSidebarWorkbench = betterSidebarHost.locator('[data-dsh-bottom-panel]').first()
+    const betterSidebarWorkbench = embedded.locator('[data-dsh-bottom-panel]').first()
     await betterSidebarWorkbench.waitFor({ state: 'visible', timeout: 10_000 })
     const workbenchGeometry = await betterSidebarWorkbench.evaluate((panel) => {
       const host = panel.parentElement
@@ -1014,7 +1042,7 @@ async function runBrowserSmoke(baseUrl, env) {
       collapsed: element.hasAttribute('data-session-region-collapsed'),
       tracks: getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/u),
       rightbarHidden: element.querySelector('[data-sidebar-right-panel]')?.getAttribute('aria-hidden'),
-      conversationHidden: element.children[3]?.getAttribute('aria-hidden'),
+      conversationHidden: element.querySelector('#dsh-session-region')?.getAttribute('aria-hidden'),
     }))
     if (!collapsedTracks.collapsed
       || collapsedTracks.tracks.length !== 4
@@ -1048,7 +1076,7 @@ async function runBrowserSmoke(baseUrl, env) {
           root.append(outline)
         }
         annotate(frame.children[1], 'Better Sidebar · Primary Workbench / 主工作区', '#2563eb')
-        annotate(frame.children[3], 'DSH Conversation / 对话区', '#7c3aed')
+        annotate(frame.querySelector('#dsh-session-region'), 'DSH Conversation / 对话区', '#7c3aed')
         document.body.append(root)
       })
       mkdirSync(dirname(releaseScreenshot), { recursive: true })
@@ -1090,7 +1118,27 @@ async function runBrowserSmoke(baseUrl, env) {
     const embeddedSettings = embedded.getByRole('dialog', { name: 'Settings' })
     await embeddedSettings.waitFor({ timeout: 10_000 })
     await embeddedSettings.getByRole('button', { name: 'GPT Auth', exact: true }).click()
-    await embeddedSettings.getByRole('heading', { name: 'GPT Auth', exact: true }).waitFor({ timeout: 10_000 })
+    try {
+      await embeddedSettings.getByRole('heading', { name: 'GPT Auth', exact: true }).waitFor({ timeout: 10_000 })
+    }
+    catch (error) {
+      const body = await embedded.locator('body').textContent({ timeout: 1_000 }).catch(() => '<unavailable>')
+      const markup = await embeddedSettings.evaluate(element => element.innerHTML.slice(0, 8_000)).catch(() => '<unavailable>')
+      const settingsView = await embedded.locator('body').evaluate(async () => {
+        const response = await fetch('/api/settings/describe', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            type: 'client-request',
+            rpcId: 'yourbuddy-release-codex-settings',
+            method: 'settings/describe',
+            payload: { args: {} },
+          }),
+        })
+        return await response.json()
+      }).catch(() => '<unavailable>')
+      throw new Error(`desktop GPT Auth settings did not open; body=${JSON.stringify(body)}; dialog=${JSON.stringify(markup)}; settings=${JSON.stringify(settingsView)}; pageErrors=${JSON.stringify(pageErrors)}; consoleErrors=${JSON.stringify(consoleErrors)}`, { cause: error })
+    }
     await embeddedSettings.getByRole('status', { name: 'codex CLI not available', exact: true }).waitFor({ timeout: 10_000 })
     if (await embeddedSettings.getByText(/transport failure for \/codex-auth\/status/u).count() !== 0) {
       throw new Error('desktop GPT Auth settings displayed a status transport failure')
@@ -1315,6 +1363,13 @@ async function runBrowserSmoke(baseUrl, env) {
       bootFailureCount: await proxyEmbedded.getByText('Failed to load plugins', { exact: true }).count(),
       frameCount: await proxyEmbedded.locator('[class*="frame"]').count(),
     })
+
+    const brandingNavigation = await page.goto(baseUrl, { waitUntil: 'load', timeout: 30_000 })
+    if (brandingNavigation === null || brandingNavigation.status() !== 200) {
+      throw new Error(`YourBuddy branding navigation returned HTTP ${brandingNavigation?.status() ?? 'no response'}`)
+    }
+    await page.locator('[class*="frame"]').first().waitFor({ timeout: 30_000 })
+    await verifyWorkbenchBranding(page)
   }
   catch (error) {
     failure = error
@@ -1392,25 +1447,28 @@ export async function apply() {
     no_proxy: 'localhost,127.0.0.1,::1',
     NODE_USE_ENV_PROXY: '1',
   }
-  writeFileSync(join(env.DSH_HOME, 'settings.yaml'), `plugin-marketplace:
-  install:
-    pkg: ""
-    ts: 0
-  installState:
-    status: error
-    message: ${syntheticInstallFailure}
-    ts: 1
-    pkg: ${missingMarketplaceRepository}
-  aiExplain:
-    repo: ""
-    desc: ""
-    readme: ""
-    ts: 0
-  aiExplainResult:
-    status: idle
-    text: ""
-    repo: ""
-    ts: 0
+  const webProfile = join(env.DSH_HOME, 'profiles', 'web')
+  mkdirSync(webProfile, { recursive: true })
+  writeFileSync(join(webProfile, 'cordis.patch.yml'), `- id: plugin-marketplace
+  config:
+    install:
+      pkg: ""
+      ts: 0
+    installState:
+      status: error
+      message: ${syntheticInstallFailure}
+      ts: 1
+      pkg: ${missingMarketplaceRepository}
+    aiExplain:
+      repo: ""
+      desc: ""
+      readme: ""
+      ts: 0
+    aiExplainResult:
+      status: idle
+      text: ""
+      repo: ""
+      ts: 0
 `)
   const child = spawn(process.execPath, [
     join(root, 'apps', 'cli', 'lib', 'bin.js'),
@@ -1488,7 +1546,9 @@ export async function apply() {
       `YourBuddy product smoke failed: ${failure.message}; Host teardown failed: ${exitFailure.message}`,
     )
   }
-  if (failure) throw failure
+  if (failure) {
+    throw new Error(`${failure.message}\nstdout:\n${stdout}\nstderr:\n${stderr}`, { cause: failure })
+  }
   if (exitFailure) throw exitFailure
 }
 
@@ -1565,7 +1625,7 @@ export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRo
 const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
 if (isDirectRun) {
   verifyPreparedProduct().catch(error => {
-    console.error(`verify-product-release: ${error.message}`)
+    console.error(`verify-product-release: ${error.stack ?? error.message}`)
     process.exitCode = 1
   })
 }

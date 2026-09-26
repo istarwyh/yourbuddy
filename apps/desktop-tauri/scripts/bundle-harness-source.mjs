@@ -362,6 +362,16 @@ export function installProductPlugins(bundleRoot) {
   }
 
   writeFileSync(cliManifestPath, `${JSON.stringify(cliManifest, null, 2)}\n`)
+
+  const webPatchPath = join(bundleRoot, 'packages', 'bundle', 'web-app', 'cordis.patch.yml')
+  const webPatch = readFileSync(webPatchPath, 'utf8').trimEnd()
+  const marker = '# YourBuddy product bundle layers'
+  if (webPatch.includes(marker)) {
+    throw new Error('YourBuddy product bundle layers are already installed')
+  }
+  const productPatches = [...productPlugins, ...defaultHarnessPlugins]
+    .map(plugin => readFileSync(join(plugin.root, 'cordis.patch.yml'), 'utf8').trim())
+  writeFileSync(webPatchPath, `${webPatch}\n\n${marker}\n\n${productPatches.join('\n\n')}\n`)
 }
 
 /** Find one exact YAML line or reject an upstream layout the product generator does not understand. */

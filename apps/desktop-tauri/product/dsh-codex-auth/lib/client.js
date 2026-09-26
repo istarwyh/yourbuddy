@@ -307,7 +307,7 @@ window.__ModuleLoader__.load({
 												className: `${CodexCapabilitySettings_module_css_default.compactButton} ${CodexCapabilitySettings_module_css_default.refresh}`,
 												icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 													className: refreshBusy ? CodexCapabilitySettings_module_css_default.spinIcon : CodexCapabilitySettings_module_css_default.staticIcon,
-													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline16, { size: 16 })
+													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineRegular, { size: 16 })
 												}),
 												disabled: refreshBusy,
 												onClick: () => {
@@ -481,7 +481,7 @@ window.__ModuleLoader__.load({
 					className: CodexCapabilitySettings_module_css_default.disclosureIcon,
 					"data-expanded": expanded,
 					"aria-hidden": "true",
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { size: 14 })
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { size: 14 })
 				})
 			});
 		}
@@ -880,7 +880,12 @@ window.__ModuleLoader__.load({
 			return async (field, value) => {
 				onError(null);
 				try {
-					await scope.set(field, value);
+					const accepted = await scope.mutate([{
+						op: "set",
+						path: [field],
+						value
+					}]);
+					if (!accepted) onError(t("writeFailed"));
 				} catch (error) {
 					onError(messageOf(error, t("writeFailed")));
 				}
@@ -1363,7 +1368,7 @@ window.__ModuleLoader__.load({
 		//#region src/client/index.ts
 		/** Browser half of the Codex Capability Bundle. */
 		const NS = "settings.codexAuth";
-		const LLM_NAMESPACE = "codex-llm";
+		const LLM_NAMESPACE = "llm-codex-auth";
 		const SEARCH_NAMESPACE = "codex-search";
 		const IMAGE_NAMESPACE = "codex-image";
 		/** Required browser services, including session-authorized attachment reads. */

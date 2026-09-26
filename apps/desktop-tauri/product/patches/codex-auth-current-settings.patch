@@ -1,0 +1,232 @@
+diff --git a/YOURBUDDY_UPSTREAM.json b/YOURBUDDY_UPSTREAM.json
+index 49df883e913dd186c29fd646982ef67cc9026ec2..bf41b0906293ec832b79b9f1d7668c8a3e9cf7ed 100644
+--- a/YOURBUDDY_UPSTREAM.json
++++ b/YOURBUDDY_UPSTREAM.json
+@@ -18,6 +18,12 @@
+       "sha256": "b01eaf180644133d4dc53c610ba28a3d82b96e2ca68f73276bbd2bae65032428",
+       "purpose": "Bind the GPT Auth RPC registration to the Web carrier, satisfy the bundled Pi AI profile diagnostics contract, and use the current Config Forms settings service."
+     },
++    {
++      "id": "current-settings-namespace",
++      "file": "patches/codex-auth-current-settings.patch",
++      "sha256": "8c05c6814da42d3c203876ef9cc982ab42c3d95b5d192cf70fdba10222bbe9f0",
++      "purpose": "Bind capability settings to stable Loader entries, use current Config Forms mutations, and let profile reloads apply each accepted change."
++    },
+     "Set @deepseek-ai/dsh-agent peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
+     "Set @deepseek-ai/dsh-api-remotes peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
+     "Set @deepseek-ai/dsh-atomic-write peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
+@@ -43,5 +49,5 @@
+   ],
+   "repository": "https://github.com/suntianc/dsh-codex-auth",
+   "license": "MIT",
+-  "treeSha256": "7784ff181ecf20d24e3ddc7887449c1e4ed028dde2904c27363ff231ab518494"
++  "treeSha256": "1ac52e400696c5e9c7376557a6a4ac863076878aba6132e04392bdaff4e551c9"
+ }
+diff --git a/lib/client.js b/lib/client.js
+index 1b72b8d30b88f912c0ad2c117d1a269780e11e05..132fc25721657b58c601f29a4bf7d2c983be1e71 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -307,7 +307,7 @@ window.__ModuleLoader__.load({
+ 												className: `${CodexCapabilitySettings_module_css_default.compactButton} ${CodexCapabilitySettings_module_css_default.refresh}`,
+ 												icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+ 													className: refreshBusy ? CodexCapabilitySettings_module_css_default.spinIcon : CodexCapabilitySettings_module_css_default.staticIcon,
+-													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline16, { size: 16 })
++													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineRegular, { size: 16 })
+ 												}),
+ 												disabled: refreshBusy,
+ 												onClick: () => {
+@@ -481,7 +481,7 @@ window.__ModuleLoader__.load({
+ 					className: CodexCapabilitySettings_module_css_default.disclosureIcon,
+ 					"data-expanded": expanded,
+ 					"aria-hidden": "true",
+-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { size: 14 })
++					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { size: 14 })
+ 				})
+ 			});
+ 		}
+@@ -880,7 +880,12 @@ window.__ModuleLoader__.load({
+ 			return async (field, value) => {
+ 				onError(null);
+ 				try {
+-					await scope.set(field, value);
++					const accepted = await scope.mutate([{
++						op: "set",
++						path: [field],
++						value
++					}]);
++					if (!accepted) onError(t("writeFailed"));
+ 				} catch (error) {
+ 					onError(messageOf(error, t("writeFailed")));
+ 				}
+@@ -1363,7 +1368,7 @@ window.__ModuleLoader__.load({
+ 		//#region src/client/index.ts
+ 		/** Browser half of the Codex Capability Bundle. */
+ 		const NS = "settings.codexAuth";
+-		const LLM_NAMESPACE = "codex-llm";
++		const LLM_NAMESPACE = "llm-codex-auth";
+ 		const SEARCH_NAMESPACE = "codex-search";
+ 		const IMAGE_NAMESPACE = "codex-image";
+ 		/** Required browser services, including session-authorized attachment reads. */
+diff --git a/lib/image.js b/lib/image.js
+index 2661a421ef329b3ea9f3e9651ec3387b902401c2..19c66e801b7641f4ac4ec2c053d290bdb1e09b76 100644
+--- a/lib/image.js
++++ b/lib/image.js
+@@ -1,6 +1,5 @@
+ import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
+ import z from "@deepseek-ai/schemastery";
+-import { installSettingsSection } from "./settings-section.js";
+ import { basename } from "node:path";
+ import { HarnessError } from "@deepseek-ai/dsh-llm";
+ //#region src/image.ts
+@@ -36,12 +35,12 @@ const IMAGE_BACKGROUNDS = [
+ const MAX_REFERENCES = 5;
+ const MAX_GENERATED_IMAGES = 10;
+ const Config = z.object({
+-	enabled: z.boolean().default(true),
+-	model: z.string().default("gpt-image-2"),
+-	n: z.number().step(1).min(1).max(MAX_GENERATED_IMAGES).default(1),
+-	size: z.union(IMAGE_SIZES.map((value) => z.const(value))).default("auto"),
+-	quality: z.union(IMAGE_QUALITIES.map((value) => z.const(value))).default("auto"),
+-	background: z.union(IMAGE_BACKGROUNDS.map((value) => z.const(value))).default("auto")
++	enabled: z.boolean().default(true).volatile(),
++	model: z.string().default("gpt-image-2").volatile(),
++	n: z.number().step(1).min(1).max(MAX_GENERATED_IMAGES).default(1).volatile(),
++	size: z.union(IMAGE_SIZES.map((value) => z.const(value))).default("auto").volatile(),
++	quality: z.union(IMAGE_QUALITIES.map((value) => z.const(value))).default("auto").volatile(),
++	background: z.union(IMAGE_BACKGROUNDS.map((value) => z.const(value))).default("auto").volatile()
+ });
+ /** Build registry-ready public Capability Tools around one dependency set. */
+ function createCodexImageTools(options) {
+@@ -764,7 +763,7 @@ const inject = [
+ function apply(ctx, config) {
+ 	const auth = ctx.get("codexAuth");
+ 	if (auth === void 0) throw new Error("codex-image: shared codexAuth service is unavailable");
+-	let current = () => config;
++	const current = () => config;
+ 	const registrations = /* @__PURE__ */ new Map();
+ 	const generations = /* @__PURE__ */ new Map();
+ 	let disposed = false;
+@@ -803,12 +802,6 @@ function apply(ctx, config) {
+ 		registrations.clear();
+ 		generations.clear();
+ 	}, "codex-image: scoped tool cleanup");
+-	installSettingsSection(ctx, CODEX_IMAGE_SETTINGS_NAMESPACE, Config, config, {
+-		setSource: (source) => {
+-			current = source;
+-		},
+-		onChange: refreshAll
+-	});
+ 	ctx.on("agent/created", ({ agent }) => {
+ 		refreshAgent(agent);
+ 	});
+diff --git a/lib/index.js b/lib/index.js
+index 31c7846c4ae4cf438cd2394ce5b4992063621d49..2bafa55a2351e3f9bc9afbba36a2b40284d8456b 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1,7 +1,6 @@
+-import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, o as CODEX_LLM_SETTINGS_NAMESPACE, p as mergeRefreshed, r as CodexAuthAdapter, s as CodexLlmSettingsConfig, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-CutNZ8kw.js";
++import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, p as mergeRefreshed, r as CodexAuthAdapter, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-CutNZ8kw.js";
+ import z from "@deepseek-ai/schemastery";
+ import { credentialRef } from "@deepseek-ai/dsh-credentials";
+-import { installSettingsSection } from "./settings-section.js";
+ import { withFileLock } from "@deepseek-ai/dsh-atomic-write";
+ import { spawn } from "node:child_process";
+ import { Service } from "@deepseek-ai/cordis";
+@@ -869,7 +868,7 @@ const Config = z.object({
+ 	refreshLeadMs: z.number().min(0).default(DEFAULT_REFRESH_LEAD_MS),
+ 	codexCommand: z.string().default("codex"),
+ 	displayName: z.string().default("OpenAI Codex (chatgpt)"),
+-	longContextEnabled: z.boolean().default(false),
++	longContextEnabled: z.boolean().default(false).volatile(),
+ 	transport: z.union([
+ 		z.const("auto"),
+ 		z.const("sse"),
+@@ -894,7 +893,6 @@ function apply(ctx, config) {
+ 	});
+ 	const settingsEntry = { longContextEnabled: config.longContextEnabled };
+ 	let currentSettings = () => settingsEntry;
+-	let announceModelPolicyChange = () => {};
+ 	if (config.llmEnabled) {
+ 		if (ctx.llm.listProviders().some((provider) => provider.id === "openai-codex")) throw new Error("dsh-codex-auth cannot own the \"openai-codex\" route because another plugin already registered it; dsh-codex-auth and dsh-codex are mutually exclusive, so uninstall or disable one bundle");
+ 		const adapter = new CodexAuthAdapter(ctx, {
+@@ -909,18 +907,8 @@ function apply(ctx, config) {
+ 			websocketConnectTimeoutMs: config.websocketConnectTimeoutMs,
+ 			timeoutMs: config.timeoutMs
+ 		});
+-		const registration = ctx.llm.registerAdapter([CODEX_ROUTE], adapter);
+-		announceModelPolicyChange = () => {
+-			adapter.replaceRouteGeneration();
+-			registration.replace([CODEX_ROUTE]);
+-		};
++		ctx.llm.registerAdapter([CODEX_ROUTE], adapter);
+ 	}
+-	installSettingsSection(ctx, CODEX_LLM_SETTINGS_NAMESPACE, CodexLlmSettingsConfig, settingsEntry, {
+-		setSource: (source) => {
+-			currentSettings = source;
+-		},
+-		onChange: announceModelPolicyChange
+-	});
+ 	ctx.inject(["connection", "webServer"], (connectionCtx) => connectionCtx.connection.rpc.handle(CODEX_AUTH_RPC_CHANNEL, (endpoint, payload, signal) => handleCodexAuthRpc(service, endpoint, payload, signal), { authority: "loopback" }));
+ 	if (config.llmEnabled) ctx.logger.info("llm-codex-auth: route %s serving ChatGPT login from %s (transport %s, ws-connect %sms, request timeout %sms)", CODEX_ROUTE, authJsonPath, config.transport, config.websocketConnectTimeoutMs, config.timeoutMs);
+ 	else ctx.logger.info("llm-codex-auth: shared Login State active at %s; LLM route disabled", authJsonPath);
+diff --git a/lib/search.js b/lib/search.js
+index a743c0a02ee649f940e459de9c12ac7b38c48afe..0d43f576f9e9bf440722fdd992c052797689483b 100644
+--- a/lib/search.js
++++ b/lib/search.js
+@@ -1,32 +1,31 @@
+ import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
+ import z from "@deepseek-ai/schemastery";
+-import { installSettingsSection } from "./settings-section.js";
+ import { randomUUID } from "node:crypto";
+ import { WebError } from "@deepseek-ai/dsh-web";
+ //#region src/search.ts
+ /** Codex standalone-search provider and independently live Search row. */
+ /** Stable provider id selected by DSH's stock `web_search` Capability Tool. */
+ const CODEX_SEARCH_PROVIDER_ID = "codex";
++const CODEX_SEARCH_SETTINGS_NAMESPACE = "codex-search";
+ /** Official standalone search endpoint used by Codex 0.147.0. */
+ const CODEX_SEARCH_ENDPOINT = "https://chatgpt.com/backend-api/codex/alpha/search";
+-const CODEX_SEARCH_SETTINGS_NAMESPACE = "codex-search";
+ const MAX_SEARCH_ATTEMPTS = 5;
+ const MAX_SEARCH_RESPONSE_BYTES = 2097152;
+ const DEFAULT_RETRY_BASE_DELAY_MS = 100;
+ const Config = z.object({
+-	enabled: z.boolean().default(true),
++	enabled: z.boolean().default(true).volatile(),
+ 	mode: z.union([
+ 		z.const("live"),
+ 		z.const("cached"),
+ 		z.const("indexed")
+-	]).default("live"),
++	]).default("live").volatile(),
+ 	contextSize: z.union([
+ 		z.const("low"),
+ 		z.const("medium"),
+ 		z.const("high")
+-	]).default("medium"),
+-	fallbackModel: z.string().default("gpt-5.4"),
+-	maxOutputTokens: z.number().step(1).min(1).default(2048)
++	]).default("medium").volatile(),
++	fallbackModel: z.string().default("gpt-5.4").volatile(),
++	maxOutputTokens: z.number().step(1).min(1).default(2048).volatile()
+ });
+ /** Codex backend implementation behind DSH's existing stock `web_search` tool. */
+ var CodexSearchProvider = class {
+@@ -114,16 +113,9 @@ const inject = ["web", "codexAuth"];
+ function apply(ctx, config) {
+ 	const auth = ctx.get("codexAuth");
+ 	if (auth === void 0) throw new Error("codex-search: shared codexAuth service is unavailable");
+-	let current = () => config;
+-	installSettingsSection(ctx, CODEX_SEARCH_SETTINGS_NAMESPACE, Config, config, {
+-		setSource: (source) => {
+-			current = source;
+-		},
+-		onChange: () => {}
+-	});
+ 	ctx.web.registerSearchProvider(new CodexSearchProvider({
+ 		auth,
+-		settings: () => current(),
++		settings: () => config,
+ 		fetchImpl: fetch,
+ 		requestId: () => String(ctx.get("agents")?.currentInitiator()?.id ?? randomUUID()),
+ 		initiatingModel: () => initiatingCodexModel(ctx)

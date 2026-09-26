@@ -1,7 +1,6 @@
-import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, o as CODEX_LLM_SETTINGS_NAMESPACE, p as mergeRefreshed, r as CodexAuthAdapter, s as CodexLlmSettingsConfig, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-CutNZ8kw.js";
+import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, p as mergeRefreshed, r as CodexAuthAdapter, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-CutNZ8kw.js";
 import z from "@deepseek-ai/schemastery";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
-import { installSettingsSection } from "./settings-section.js";
 import { withFileLock } from "@deepseek-ai/dsh-atomic-write";
 import { spawn } from "node:child_process";
 import { Service } from "@deepseek-ai/cordis";
@@ -869,7 +868,7 @@ const Config = z.object({
 	refreshLeadMs: z.number().min(0).default(DEFAULT_REFRESH_LEAD_MS),
 	codexCommand: z.string().default("codex"),
 	displayName: z.string().default("OpenAI Codex (chatgpt)"),
-	longContextEnabled: z.boolean().default(false),
+	longContextEnabled: z.boolean().default(false).volatile(),
 	transport: z.union([
 		z.const("auto"),
 		z.const("sse"),
@@ -894,7 +893,6 @@ function apply(ctx, config) {
 	});
 	const settingsEntry = { longContextEnabled: config.longContextEnabled };
 	let currentSettings = () => settingsEntry;
-	let announceModelPolicyChange = () => {};
 	if (config.llmEnabled) {
 		if (ctx.llm.listProviders().some((provider) => provider.id === "openai-codex")) throw new Error("dsh-codex-auth cannot own the \"openai-codex\" route because another plugin already registered it; dsh-codex-auth and dsh-codex are mutually exclusive, so uninstall or disable one bundle");
 		const adapter = new CodexAuthAdapter(ctx, {
@@ -909,18 +907,8 @@ function apply(ctx, config) {
 			websocketConnectTimeoutMs: config.websocketConnectTimeoutMs,
 			timeoutMs: config.timeoutMs
 		});
-		const registration = ctx.llm.registerAdapter([CODEX_ROUTE], adapter);
-		announceModelPolicyChange = () => {
-			adapter.replaceRouteGeneration();
-			registration.replace([CODEX_ROUTE]);
-		};
+		ctx.llm.registerAdapter([CODEX_ROUTE], adapter);
 	}
-	installSettingsSection(ctx, CODEX_LLM_SETTINGS_NAMESPACE, CodexLlmSettingsConfig, settingsEntry, {
-		setSource: (source) => {
-			currentSettings = source;
-		},
-		onChange: announceModelPolicyChange
-	});
 	ctx.inject(["connection", "webServer"], (connectionCtx) => connectionCtx.connection.rpc.handle(CODEX_AUTH_RPC_CHANNEL, (endpoint, payload, signal) => handleCodexAuthRpc(service, endpoint, payload, signal), { authority: "loopback" }));
 	if (config.llmEnabled) ctx.logger.info("llm-codex-auth: route %s serving ChatGPT login from %s (transport %s, ws-connect %sms, request timeout %sms)", CODEX_ROUTE, authJsonPath, config.transport, config.websocketConnectTimeoutMs, config.timeoutMs);
 	else ctx.logger.info("llm-codex-auth: shared Login State active at %s; LLM route disabled", authJsonPath);

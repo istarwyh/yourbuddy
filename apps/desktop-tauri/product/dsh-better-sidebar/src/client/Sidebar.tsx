@@ -196,17 +196,11 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
   // so the conversation keeps CONVERSATION_MIN even on wide touch devices.
   const layoutViewportHeight = visualViewportHeight ?? viewport.height
 
-  // Current conversation (the sessions list feed).
+  // Current conversation and the Session retained by the main view.
   const sessionList = useSyncExternalStore(
     useMemo(() => (callback: () => void) => ctx.sessions.list.subscribe(callback), [ctx]),
     useCallback(() => ctx.sessions.list.getSnapshot(), [ctx]),
   )
-  // Which conversation is on screen. The session-list snapshot has no
-  // current-session field in ANY DSH release, so the old read of one was
-  // permanently `undefined` and `store.setSession` below never bound a
-  // session: DSH 0.1.7 publishes the mounted seat instead
-  // (`ctx.sidebarRight.mounted`), and that is what the per-session state
-  // follows.
   const mounted = useMemo(() => mountedSessions(ctx), [ctx])
   const current = useSyncExternalStore(
     useCallback((callback: () => void) => mounted.subscribe(callback), [mounted]),

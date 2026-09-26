@@ -10,9 +10,8 @@
  *
  * - the surface exists only while a session's panel is mounted, and the
  *   service's public face (`ISidebarRight`) writes only into THAT session.
- *   "Which session that is" comes from the controller's `mounted` observation
- *   ({@link mountedSessions}) — never from the session list, which has no
- *   current-session field. The controller also carries `openTabIn` /
+ *   {@link mountedSessions} derives that session from the list summary retained
+ *   by `mainView`. The controller also carries `openTabIn` /
  *   `openResourceIn` / `closeIn`, which act on any session whose store the
  *   runtime has minted; both are probed at call time, and an open for a
  *   session that has no store yet is QUEUED and replayed when that session
@@ -29,12 +28,7 @@ type Pending =
   | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean }
   | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean }
 
-/**
- * The observation "which session's seat is on screen": DSH 0.1.7 publishes it
- * as `ISidebarRight.mounted` (`ObservableSnapshot<SessionId | undefined>`, set
- * only when the mounted seat really changes). `undefined` means NO seat is
- * drawn — a global panel, or a right column that was never mounted.
- */
+/** The observation of the Session retained by the main conversation view. */
 export interface MountedSessions {
   getSnapshot(): string | undefined
   subscribe(listener: () => void): () => void
@@ -45,8 +39,6 @@ interface NativeController {
   openTab(kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
   openResource(address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
   close(tabId: string): void
-  /** The mounted-seat observation (0.1.7 `ISidebarRight.mounted`). */
-  mounted?: MountedSessions
   /** Concrete controller writes for retained Session stores. */
   openTabIn(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
   openResourceIn(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
@@ -70,38 +62,16 @@ function controllerOf(ctx: Context): NativeController | undefined {
 }
 
 /**
- * The on-screen-session feed, as anything outside this module should read it.
- *
- * The session-list snapshot carries NO current-session field in any DSH
- * release (0.1.6 and 0.1.7 both publish only `ids` / `byId` / `phase` plus
- * projections), so a read of one was always `undefined`: `mounted` is the
- * only sanctioned source, and the plugin's own type invented the field it
- * used to read.
- *
- * The probe tolerates a host without `mounted` (or a controller the runtime
- * has not provided yet — the seat race this plugin already hit once on
- * 0.1.5): the session list then doubles as the change pulse, so a late
- * service is still picked up on the next list publish instead of never.
+ * Observe the Session retained by the main conversation view.
  *
  * @param ctx - the client context.
- * @returns the observable face of the mounted seat's session id.
+ * @returns the observable face of the main view's session id.
  */
 export function mountedSessions(ctx: Context): MountedSessions {
   return {
-    getSnapshot: () => {
-      try {
-        const mounted = controllerOf(ctx)?.mounted
-        return typeof mounted?.getSnapshot === 'function' ? mounted.getSnapshot() : undefined
-      } catch {
-        return undefined
-      }
-    },
-    subscribe: (listener) => {
-      const mounted = controllerOf(ctx)?.mounted
-      return typeof mounted?.subscribe === 'function'
-        ? mounted.subscribe(listener)
-        : ctx.sessions.list.subscribe(listener)
-    },
+    getSnapshot: () => Object.values(ctx.sessions.list.getSnapshot().byId)
+      .find(summary => (summary.retainedBy.mainView ?? 0) > 0)?.id,
+    subscribe: listener => ctx.sessions.list.subscribe(listener),
   }
 }
 

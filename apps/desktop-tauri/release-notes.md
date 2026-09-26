@@ -4,7 +4,7 @@
 
 YourBuddy 0.3.16 keeps work, creator content, and the active Session coordinated without discarding their state.
 
-- Better Sidebar remains the middle workbench. Opening creator Content temporarily uses the same middle seat; closing it, explicitly opening a Better Sidebar resource, or selecting another Session returns to the workbench.
+- Better Sidebar remains the middle workbench. Creator Content is a native navigation item, so YourBuddy branding and Session controls stay available. Opening Content temporarily uses the same middle seat; closing it, explicitly opening a Better Sidebar resource, or selecting another Session returns to the workbench.
 - Conversation and its native right sidebar collapse and restore as one Session region. Pending questions, approvals, completed current-Session turns, and explicit Session selection restore that region; collapsed focused controls move focus to the persistent restore button.
 - Background Agent resource opens can update Better Sidebar without replacing visible Content. User file actions remain bound to the Session and pane where they started, including deferred in-place, reveal, new-tab, and side-pane opens.
 - Fresh Sessions default to Full access with no approval prompts. Existing Sessions and an explicitly saved user default retain their recorded settings.
@@ -20,7 +20,7 @@ Video drafts require Ego Lite and logged-in creator accounts. WeChat Official Ac
 
 YourBuddy 0.3.16 让工作区、创作者内容和当前 Session 协同切换，同时保留各自状态。
 
-- Better Sidebar 保持为中间工作台。打开创作者内容时，详情临时使用同一个中间位置；关闭详情、显式打开 Better Sidebar 资源或选择另一个 Session 后，会回到工作台。
+- Better Sidebar 保持为中间工作台。创作者内容改用原生导航入口，因此 YourBuddy 品牌与 Session 控件会持续可用。打开创作者内容时，详情临时使用同一个中间位置；关闭详情、显式打开 Better Sidebar 资源或选择另一个 Session 后，会回到工作台。
 - Conversation 与原生右侧栏作为一个 Session 区域一起收起和恢复。待回答问题、待审批、当前 Session 完成一轮以及显式选择 Session 都会恢复该区域；如果收起时焦点位于其中，焦点会移动到持续可见的恢复按钮。
 - Agent 后台打开资源时可以更新 Better Sidebar，但不会替换正在显示的内容详情。用户文件操作会继续绑定到发起时的 Session 和 Pane，包括延迟执行的原位打开、定位、新标签和侧栏打开。
 - 新建 Session 默认使用 Full access，且不弹出审批提示。已有 Session 与用户显式保存的默认设置保持不变。

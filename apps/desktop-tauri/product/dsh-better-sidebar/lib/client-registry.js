@@ -14453,36 +14453,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			}
 		}
 		/**
-		* The on-screen-session feed, as anything outside this module should read it.
-		*
-		* The session-list snapshot carries NO current-session field in any DSH
-		* release (0.1.6 and 0.1.7 both publish only `ids` / `byId` / `phase` plus
-		* projections), so a read of one was always `undefined`: `mounted` is the
-		* only sanctioned source, and the plugin's own type invented the field it
-		* used to read.
-		*
-		* The probe tolerates a host without `mounted` (or a controller the runtime
-		* has not provided yet — the seat race this plugin already hit once on
-		* 0.1.5): the session list then doubles as the change pulse, so a late
-		* service is still picked up on the next list publish instead of never.
+		* Observe the Session retained by the main conversation view.
 		*
 		* @param ctx - the client context.
-		* @returns the observable face of the mounted seat's session id.
+		* @returns the observable face of the main view's session id.
 		*/
 		function mountedSessions(ctx) {
 			return {
-				getSnapshot: () => {
-					try {
-						const mounted = controllerOf(ctx)?.mounted;
-						return typeof mounted?.getSnapshot === "function" ? mounted.getSnapshot() : void 0;
-					} catch {
-						return;
-					}
-				},
-				subscribe: (listener) => {
-					const mounted = controllerOf(ctx)?.mounted;
-					return typeof mounted?.subscribe === "function" ? mounted.subscribe(listener) : ctx.sessions.list.subscribe(listener);
-				}
+				getSnapshot: () => Object.values(ctx.sessions.list.getSnapshot().byId).find((summary) => (summary.retainedBy.mainView ?? 0) > 0)?.id,
+				subscribe: (listener) => ctx.sessions.list.subscribe(listener)
 			};
 		}
 		/**

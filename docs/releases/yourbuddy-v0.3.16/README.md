@@ -60,7 +60,7 @@ The desktop target remains macOS 11 or later on Apple Silicon. Fresh Sessions us
 
 ### Steps
 
-1. Run the focused coordinator, layout, file-routing, publisher, provenance, catalog, documentation, and release-version checks.
+1. Run the focused coordinator, layout, file-routing, publisher, source record, catalog, documentation, and release-version checks.
 2. Prepare the complete release input and exercise core-to-Content-to-core switching, aggregate Session collapse and restore, background versus user opens, and current-Session attention expansion.
 3. Record the assembled interaction, then publish and independently inspect every public artifact before promoting download or website claims.
 
@@ -74,7 +74,7 @@ The source, product, documentation, release-script, and assembled keyless browse
 
 ### Evidence
 
-- Before: the 0.3.16 version sources, bilingual archive, product snapshots, and materialized patch provenance were aligned before publication.
+- Before: the 0.3.16 version sources, bilingual archive, product snapshots, and materialized patch source record were aligned before publication.
 - In progress: `pnpm run typecheck`, `pnpm run doc-sync`, `pnpm --dir apps/desktop-tauri run test:release`, focused Vitest runs, Oil Creator source refresh, and Better Sidebar patch replay passed on macOS Apple Silicon with Node.js 22.19.
 - Result: `DSH_SNAPSHOT=replay pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/yourbuddy-help.e2e.ts` passed 3 browser tests. GUI recording, prepared Host smoke, public checksums, updater verification, and the downloadable archive remain pending.
 - Failure and recovery: the assembled browser first exposed missing Oil Creator Typert registration, a background-triggered automatic terminal reported as user navigation, and a selected-row toggle that could not reopen hidden Content. The fixture loads the product Typert artifact explicitly, the automatic terminal carries background intent, the selected row reopens Content, and replay passes. Release preparation correctly refused the uncommitted worktree and will run after the candidate commit.
@@ -97,7 +97,7 @@ Source, synthetic, and assembled local checks do not prove real-account creator 
 - [x] Focused source, product, catalog, documentation, and release checks pass with retained logs.
 - [ ] Complete release preparation and assembled Host/browser checks pass.
 - [ ] The product-workbench GUI journey is recorded and retained.
-- [ ] Public files, checksums, updater metadata, signature, App identity, provenance, and relocated runtime are independently verified.
+- [ ] Public files, checksums, updater metadata, signature, App identity, source record, and relocated runtime are independently verified.
 - [ ] The evidence archive is published and independently extracted.
 - [ ] The bilingual product website is synchronized and checked live without promoting unverified files.
 - [x] Public tags and installers will not be moved or overwritten.

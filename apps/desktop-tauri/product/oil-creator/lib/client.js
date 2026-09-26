@@ -4,10 +4,10 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-		let react = require("react");
 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
+		let react = require("react");
 		let react_jsx_runtime = require("react/jsx-runtime");
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/core.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/core.js
 		var _a$1;
 		function $constructor(name, initializer, params) {
 			function init(inst, def) {
@@ -66,7 +66,7 @@ window.__ModuleLoader__.load({
 			return globalConfig;
 		}
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/util.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/util.js
 		function getEnumValues(entries) {
 			const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 			return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -82,7 +82,6 @@ window.__ModuleLoader__.load({
 					Object.defineProperty(this, "value", { value });
 					return value;
 				}
-				throw new Error("cached value already set");
 			} };
 		}
 		function nullish(input) {
@@ -128,7 +127,10 @@ window.__ModuleLoader__.load({
 		}
 		function mergeDefs(...defs) {
 			const mergedDescriptors = {};
-			for (const def of defs) Object.assign(mergedDescriptors, Object.getOwnPropertyDescriptors(def));
+			for (const def of defs) {
+				const descriptors = Object.getOwnPropertyDescriptors(def);
+				Object.assign(mergedDescriptors, descriptors);
+			}
 			return Object.defineProperties({}, mergedDescriptors);
 		}
 		function esc(str) {
@@ -378,7 +380,7 @@ window.__ModuleLoader__.load({
 			return { ...iss };
 		}
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/errors.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/errors.js
 		const initializer$1 = (inst, def) => {
 			inst.name = "$ZodError";
 			Object.defineProperty(inst, "_zod", {
@@ -438,7 +440,7 @@ window.__ModuleLoader__.load({
 			return fieldErrors;
 		}
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/parse.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/parse.js
 		const _parse = (_Err) => (schema, value, _ctx, _params) => {
 			const ctx = _ctx ? {
 				..._ctx,
@@ -552,7 +554,7 @@ window.__ModuleLoader__.load({
 			return _safeParseAsync(_Err)(schema, value, _ctx);
 		};
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/regexes.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/regexes.js
 		/**
 		* @deprecated CUID v1 is deprecated by its authors due to information leakage
 		* (timestamps embedded in the id). Use {@link cuid2} instead.
@@ -616,7 +618,7 @@ window.__ModuleLoader__.load({
 		const lowercase = /^[^A-Z]*$/;
 		const uppercase = /^[^a-z]*$/;
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/checks.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/checks.js
 		const $ZodCheck = /*@__PURE__*/ $constructor("$ZodCheck", (inst, def) => {
 			var _a;
 			inst._zod ?? (inst._zod = {});
@@ -634,8 +636,10 @@ window.__ModuleLoader__.load({
 			inst._zod.onattach.push((inst) => {
 				const bag = inst._zod.bag;
 				const curr = (def.inclusive ? bag.maximum : bag.exclusiveMaximum) ?? Number.POSITIVE_INFINITY;
-				if (def.value < curr) if (def.inclusive) bag.maximum = def.value;
-				else bag.exclusiveMaximum = def.value;
+				if (def.value < curr) {
+					if (def.inclusive) bag.maximum = def.value;
+					else bag.exclusiveMaximum = def.value;
+				}
 			});
 			inst._zod.check = (payload) => {
 				if (def.inclusive ? payload.value <= def.value : payload.value < def.value) return;
@@ -656,8 +660,10 @@ window.__ModuleLoader__.load({
 			inst._zod.onattach.push((inst) => {
 				const bag = inst._zod.bag;
 				const curr = (def.inclusive ? bag.minimum : bag.exclusiveMinimum) ?? Number.NEGATIVE_INFINITY;
-				if (def.value > curr) if (def.inclusive) bag.minimum = def.value;
-				else bag.exclusiveMinimum = def.value;
+				if (def.value > curr) {
+					if (def.inclusive) bag.minimum = def.value;
+					else bag.exclusiveMinimum = def.value;
+				}
 			});
 			inst._zod.check = (payload) => {
 				if (def.inclusive ? payload.value >= def.value : payload.value > def.value) return;
@@ -974,7 +980,7 @@ window.__ModuleLoader__.load({
 			};
 		});
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/doc.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/doc.js
 		var Doc = class {
 			constructor(args = []) {
 				this.content = [];
@@ -1005,14 +1011,14 @@ window.__ModuleLoader__.load({
 			}
 		};
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/versions.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/versions.js
 		const version = {
 			major: 4,
 			minor: 4,
 			patch: 3
 		};
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/schemas.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/schemas.js
 		const $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
 			var _a;
 			inst ?? (inst = {});
@@ -2042,7 +2048,7 @@ window.__ModuleLoader__.load({
 			inst._zod.optin = "optional";
 			inst._zod.optout = "optional";
 			defineLazy(inst._zod, "values", () => {
-				return def.innerType._zod.values ? new Set([...def.innerType._zod.values, void 0]) : void 0;
+				return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, void 0]) : void 0;
 			});
 			defineLazy(inst._zod, "pattern", () => {
 				const pattern = def.innerType._zod.pattern;
@@ -2076,7 +2082,7 @@ window.__ModuleLoader__.load({
 				return pattern ? new RegExp(`^(${cleanRegex(pattern.source)}|null)$`) : void 0;
 			});
 			defineLazy(inst._zod, "values", () => {
-				return def.innerType._zod.values ? new Set([...def.innerType._zod.values, null]) : void 0;
+				return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, null]) : void 0;
 			});
 			inst._zod.parse = (payload, ctx) => {
 				if (payload.value === null) return payload;
@@ -2242,7 +2248,7 @@ window.__ModuleLoader__.load({
 			}
 		}
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/registries.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/registries.js
 		var _a;
 		var $ZodRegistry = class {
 			constructor() {
@@ -2289,7 +2295,7 @@ window.__ModuleLoader__.load({
 		(_a = globalThis).__zod_globalRegistry ?? (_a.__zod_globalRegistry = registry());
 		const globalRegistry = globalThis.__zod_globalRegistry;
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/api.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/api.js
 		// @__NO_SIDE_EFFECTS__
 		function _string(Class, params) {
 			return new Class({
@@ -2794,7 +2800,7 @@ window.__ModuleLoader__.load({
 			return ch;
 		}
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/to-json-schema.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/to-json-schema.js
 		function initializeContext(params) {
 			let target = params?.target ?? "draft-2020-12";
 			if (target === "draft-4") target = "draft-04";
@@ -3010,8 +3016,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					defs[seen.defId] = seen.def;
 				}
 			}
-			if (ctx.external) {} else if (Object.keys(defs).length > 0) if (ctx.target === "draft-2020-12") result.$defs = defs;
-			else result.definitions = defs;
+			if (ctx.external) {} else if (Object.keys(defs).length > 0) {
+				if (ctx.target === "draft-2020-12") result.$defs = defs;
+				else result.definitions = defs;
+			}
 			try {
 				const finalized = JSON.parse(JSON.stringify(result));
 				Object.defineProperty(finalized, "~standard", {
@@ -3087,7 +3095,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return finalize(ctx, schema);
 		};
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/json-schema-processors.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/json-schema-processors.js
 		const formatMap = {
 			guid: "uuid",
 			url: "uri",
@@ -3124,16 +3132,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
 			const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
 			const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
-			if (exMin) if (legacy) {
-				json.minimum = exclusiveMinimum;
-				json.exclusiveMinimum = true;
-			} else json.exclusiveMinimum = exclusiveMinimum;
-			else if (typeof minimum === "number") json.minimum = minimum;
-			if (exMax) if (legacy) {
-				json.maximum = exclusiveMaximum;
-				json.exclusiveMaximum = true;
-			} else json.exclusiveMaximum = exclusiveMaximum;
-			else if (typeof maximum === "number") json.maximum = maximum;
+			if (exMin) {
+				if (legacy) {
+					json.minimum = exclusiveMinimum;
+					json.exclusiveMinimum = true;
+				} else json.exclusiveMinimum = exclusiveMinimum;
+			} else if (typeof minimum === "number") json.minimum = minimum;
+			if (exMax) {
+				if (legacy) {
+					json.maximum = exclusiveMaximum;
+					json.exclusiveMaximum = true;
+				} else json.exclusiveMaximum = exclusiveMaximum;
+			} else if (typeof maximum === "number") json.maximum = maximum;
 			if (typeof multipleOf === "number") json.multipleOf = multipleOf;
 		};
 		const booleanProcessor = (_schema, _ctx, json, _params) => {
@@ -3154,9 +3164,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const vals = [];
 			for (const val of def.values) if (val === void 0) {
 				if (ctx.unrepresentable === "throw") throw new Error("Literal `undefined` cannot be represented in JSON Schema");
-			} else if (typeof val === "bigint") if (ctx.unrepresentable === "throw") throw new Error("BigInt literals cannot be represented in JSON Schema");
-			else vals.push(Number(val));
-			else vals.push(val);
+			} else if (typeof val === "bigint") {
+				if (ctx.unrepresentable === "throw") throw new Error("BigInt literals cannot be represented in JSON Schema");
+				else vals.push(Number(val));
+			} else vals.push(val);
 			if (vals.length === 0) {} else if (vals.length === 1) {
 				const val = vals[0];
 				json.type = val === null ? "null" : typeof val;
@@ -3349,7 +3360,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			seen.ref = def.innerType;
 		};
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/iso.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/iso.js
 		const ZodISODateTime = /*@__PURE__*/ $constructor("ZodISODateTime", (inst, def) => {
 			$ZodISODateTime.init(inst, def);
 			ZodStringFormat.init(inst, def);
@@ -3379,7 +3390,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return /* @__PURE__ */ _isoDuration(ZodISODuration, params);
 		}
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/errors.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/errors.js
 		const initializer = (inst, issues) => {
 			$ZodError.init(inst, issues);
 			inst.name = "ZodError";
@@ -3401,7 +3412,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		};
 		const ZodRealError = /*@__PURE__*/ $constructor("ZodError", initializer, { Parent: Error });
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/parse.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/parse.js
 		const parse = /* @__PURE__ */ _parse(ZodRealError);
 		const parseAsync = /* @__PURE__ */ _parseAsync(ZodRealError);
 		const safeParse = /* @__PURE__ */ _safeParse(ZodRealError);
@@ -3415,7 +3426,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync(ZodRealError);
 		const safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync(ZodRealError);
 		//#endregion
-		//#region ../../../Users/mac/Desktop/code-open/xiaohui-harness/node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/schemas.js
+		//#region node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/classic/schemas.js
 		const _installedGroups = /* @__PURE__ */ new WeakMap();
 		function _installLazyMethods(inst, group, methods) {
 			const proto = Object.getPrototypeOf(inst);
@@ -3936,11 +3947,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		});
 		function object(shape, params) {
-			return new ZodObject({
+			const def = {
 				type: "object",
 				shape: shape ?? {},
 				...normalizeParams(params)
-			});
+			};
+			return new ZodObject(def);
 		}
 		const ZodUnion = /*@__PURE__*/ $constructor("ZodUnion", (inst, def) => {
 			$ZodUnion.init(inst, def);
@@ -4019,9 +4031,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 		});
 		function _enum(values, params) {
+			const entries = Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values;
 			return new ZodEnum({
 				type: "enum",
-				entries: Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values,
+				entries,
 				...normalizeParams(params)
 			});
 		}
@@ -4662,40 +4675,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const profileListeners = /* @__PURE__ */ new Set();
 		const initialUi = loadCreatorUiState(browserCreatorStorage());
 		let selectedId = initialUi.selectedId;
-		let sidebarTab = initialUi.sidebarTab;
+		initialUi.sidebarTab;
 		let libraryEpoch = 0;
 		let profileEpoch = 0;
-		let sidebarWidthPx = 280;
 		let resolveProductWorkbench = noProductWorkbench;
-		const chromeListeners = /* @__PURE__ */ new Set();
 		let sidebarWidthStyleCaptured = false;
 		let previousSidebarWidthStyle = "";
 		let previousSidebarWidthPriority = "";
-		function emitChrome() {
-			for (const listener of chromeListeners) listener();
-		}
-		function subscribeSidebarChrome(listener) {
-			chromeListeners.add(listener);
-			return () => {
-				chromeListeners.delete(listener);
-			};
-		}
-		function setSidebarChromeWidth(px) {
-			if (sidebarWidthPx === px && (typeof document === "undefined" || sidebarWidthStyleCaptured)) return;
-			sidebarWidthPx = px;
-			if (typeof document !== "undefined") {
-				if (!sidebarWidthStyleCaptured) {
-					previousSidebarWidthStyle = document.documentElement.style.getPropertyValue("--oil-sidebar-width");
-					previousSidebarWidthPriority = document.documentElement.style.getPropertyPriority("--oil-sidebar-width");
-					sidebarWidthStyleCaptured = true;
-				}
-				document.documentElement.style.setProperty("--oil-sidebar-width", `${px}px`);
-			}
-			emitChrome();
-		}
 		function releaseShellChrome() {
-			if (typeof document !== "undefined" && sidebarWidthStyleCaptured) if (previousSidebarWidthStyle === "") document.documentElement.style.removeProperty("--oil-sidebar-width");
-			else document.documentElement.style.setProperty("--oil-sidebar-width", previousSidebarWidthStyle, previousSidebarWidthPriority);
+			if (typeof document !== "undefined" && sidebarWidthStyleCaptured) {
+				if (previousSidebarWidthStyle === "") document.documentElement.style.removeProperty("--oil-sidebar-width");
+				else document.documentElement.style.setProperty("--oil-sidebar-width", previousSidebarWidthStyle, previousSidebarWidthPriority);
+			}
 			sidebarWidthStyleCaptured = false;
 			previousSidebarWidthStyle = "";
 			previousSidebarWidthPriority = "";
@@ -4754,26 +4745,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				setEpoch(getProfileEpoch());
 			}), []);
 			return epoch;
-		}
-		function getSidebarTab() {
-			return sidebarTab;
-		}
-		function setSidebarTab(tab) {
-			if (sidebarTab === tab) return;
-			sidebarTab = tab;
-			const state = loadCreatorUiState(browserCreatorStorage());
-			saveCreatorUiState(browserCreatorStorage(), {
-				...state,
-				sidebarTab
-			});
-			emitChrome();
-		}
-		function useSidebarTab() {
-			const [tab, setTab] = (0, react.useState)(getSidebarTab);
-			(0, react.useEffect)(() => subscribeSidebarChrome(() => {
-				setTab(getSidebarTab());
-			}), []);
-			return tab;
 		}
 		function getSelectedContentId() {
 			return selectedId;
@@ -4889,7 +4860,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			for (const ch of chars) {
 				const w = charUnits(ch);
 				if (used + w > CHIP_UNITS) {
-					while (used > CHIP_UNITS - 1 && out.length > 0) {
+					while (used > 7 && out.length > 0) {
 						used -= charUnits(out[out.length - 1] ?? "");
 						out.pop();
 					}
@@ -5014,7 +4985,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return markdown.replace(/!\[([^\]]*)\]\(\s*<?([^)\s>]+)>?((?:\s+(?:"[^"]*"|'[^']*'))?)\s*\)/g, (all, alt, src, title) => {
 				const dest = src.trim();
 				if (/^(https?:|data:|file:)/i.test(dest)) return all;
-				return `![${alt}](${base}/${dest.replace(/^\.\//, "").replace(/^\/+/, "")}${title})`;
+				const rel = dest.replace(/^\.\//, "").replace(/^\/+/, "");
+				return `![${alt}](${base}/${rel}${title})`;
 			});
 		}
 		//#endregion
@@ -5124,8 +5096,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function formatRelativeTime(recordedAt, now, t) {
 			const delta = now - recordedAt;
 			if (delta < 45e3) return t("time.justNow");
-			if (delta < 3600 * 1e3) return t("time.minutes").replace("{n}", String(Math.max(1, Math.round(delta / 6e4))));
-			if (delta < 1440 * 60 * 1e3) return t("time.hours").replace("{n}", String(Math.max(1, Math.round(delta / 36e5))));
+			if (delta < 36e5) return t("time.minutes").replace("{n}", String(Math.max(1, Math.round(delta / 6e4))));
+			if (delta < 864e5) return t("time.hours").replace("{n}", String(Math.max(1, Math.round(delta / 36e5))));
 			const days = Math.round(delta / 864e5);
 			if (days === 1) return t("time.yesterday");
 			if (days < 7) return t("time.days").replace("{n}", String(days));
@@ -5299,7 +5271,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 											onClick: () => {
 												setSearchOpen(true);
 											},
-											children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutline16, { size: searchOpen ? 11 : 14 })
+											children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconSearchOutlineRegular, { size: searchOpen ? 11 : 14 })
 										})
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
@@ -5324,7 +5296,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 											event.stopPropagation();
 											closeSearch();
 										},
-										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseFill14, {})
+										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseFillRegular, {})
 									})
 								]
 							})
@@ -5340,7 +5312,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 									onClick: () => {
 										refreshCatalog().then(() => loadList(query));
 									},
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutline16, { size: 16 })
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineRegular, { size: 16 })
 								})
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
 								label: t("toolbar.create"),
@@ -5352,7 +5324,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 									onClick: () => {
 										setCreateOpen(true);
 									},
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconProjectAddOutline16, { size: 16 })
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconProjectAddOutlineRegular, { size: 16 })
 								})
 							})]
 						})]
@@ -5427,7 +5399,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 										id: item.id,
 										load: getCoverThumb,
 										revision: coverThumbRevision(item.covers),
-										fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, {
+										fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, {
 											className: "coverFallback",
 											size: 20
 										})
@@ -6085,13 +6057,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 								onClick: () => {
 									openPath(detail.folderPath);
 								},
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpenOutline16, { size: 14 })
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpenOutlineRegular, { size: 14 })
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: "close",
 								"aria-label": t("inspector.close"),
 								onClick: closeDetails,
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseOutline16, { size: 14 })
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseOutlineRegular, { size: 14 })
 							})]
 						})]
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -6130,7 +6102,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 											id: detail.id,
 											load: getCoverThumb,
 											revision: coverThumbRevision(detail.covers),
-											fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, {
+											fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, {
 												className: "coverFallback",
 												size: 22
 											})
@@ -6141,7 +6113,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 											id: `${detail.id}::4x3`,
 											load: getCoverThumb,
 											revision: detail.covers["4x3"],
-											fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, {
+											fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, {
 												className: "coverFallback",
 												size: 22
 											})
@@ -6844,7 +6816,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 							className: "pending",
 							children: t("settings.save")
 						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, { className: open ? "chevron open" : "chevron" })
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { className: open ? "chevron open" : "chevron" })
 					]
 				}), open && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					className: "body",
@@ -7419,241 +7391,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"inspector.subtitle.needVideo": "A finished video is required to generate subtitles"
 		};
 		//#endregion
-		//#region src/client/assets/oilIcon.ts
-		const OIL_ICON_SRC = "data:image/png;base64,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";
-		//#endregion
-		//#region src/client/sidebar/OilBrand.tsx
-		function OilBrand({ compact = false, name = "Oil Creator" }) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-				className: "oilBrand",
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("img", {
-					className: "oilBrandIcon",
-					src: OIL_ICON_SRC,
-					alt: "",
-					"aria-hidden": "true"
-				}), !compact && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: "oilBrandText",
-					children: name
-				})]
-			});
-		}
-		//#endregion
-		//#region \0dsh-oil-creator-css:client/sidebar/OilSidebarRoot.css.mjs
-		registerPluginCss("dsh-oil-creator/OilSidebarRoot.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] {\n  --dsh-sidebar-inline-padding: 12px;\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  padding: 6px var(--dsh-sidebar-inline-padding);\n  box-sizing: border-box;\n  background: var(--dsw-specific-sidebar-fill);\n  color: var(--dsw-alias-label-primary);\n  font-size: 14px;\n  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);\n  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed {\n  padding: 18px 10px 6px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].quietBars {\n  --dsh-scrollbar-thumb: transparent;\n  --dsh-scrollbar-thumb-hover: transparent;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].fading > * {\n  opacity: 0;\n  transition: opacity 150ms var(--ds-ease-in-out);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .wide {\n  animation: oil-sidebar-wide-in 200ms var(--ds-ease-in-out);\n}\n\n@keyframes oil-sidebar-wide-in {\n  from { opacity: 0; }\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .iconButton,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .newSession,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .regionArea {\n  animation: oil-sidebar-rail-in 150ms var(--ds-ease-in-out) backwards;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .footArea {\n  animation: oil-sidebar-rail-fade-in 150ms var(--ds-ease-in-out) backwards;\n}\n\n@keyframes oil-sidebar-rail-in {\n  from {\n    opacity: 0;\n    transform: translateX(49px);\n  }\n}\n\n@keyframes oil-sidebar-rail-fade-in {\n  from { opacity: 0; }\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .logoRow {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 8px;\n  height: 52px;\n  padding: 4px 0 4px 4px;\n  margin-bottom: 4px;\n  box-sizing: border-box;\n  overflow: hidden;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .logoRow {\n  height: 36px;\n  padding: 0;\n  margin-bottom: 12px;\n  justify-content: flex-start;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .brandButton {\n  flex: 1;\n  min-width: 0;\n  display: inline-flex;\n  align-items: center;\n  padding: 0;\n  border: none;\n  background: transparent;\n  color: inherit;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .oilBrand {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .oilBrandIcon {\n  width: 24px;\n  height: 24px;\n  flex: none;\n  border-radius: 999px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .oilBrandText {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 16px;\n  font-weight: 650;\n  letter-spacing: -0.03em;\n  line-height: 1;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .iconButton {\n  flex: none;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  border: none;\n  border-radius: 50%;\n  padding: 0;\n  background: transparent;\n  cursor: pointer;\n  color: var(--dsw-alias-label-secondary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .iconButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .iconButton {\n  width: 36px;\n  height: 36px;\n  color: var(--dsw-alias-label-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .toggle .panelIcon {\n  display: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .toggle:hover .panelIcon {\n  display: inline;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .railBrand {\n  display: inline-flex;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .toggle:hover .railBrand {\n  display: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .brandButton:focus-visible,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .iconButton:focus-visible,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .newSession:focus-visible,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton:focus-visible {\n  outline: 2px solid var(--dsw-alias-state-business-primary);\n  outline-offset: 2px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .newSession {\n  flex: none;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  width: 36px;\n  height: 36px;\n  margin: 0 0 12px;\n  padding: 0;\n  border: none;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .newSession:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabRow {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  margin: 0 2px 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabList {\n  flex: 1;\n  min-width: 0;\n  display: flex;\n  gap: 4px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton {\n  flex: 1;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  gap: 5px;\n  height: 28px;\n  border: none;\n  border-radius: 8px;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 13px;\n  line-height: 20px;\n  cursor: pointer;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .tabButton.active {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n  font-weight: 500;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionArea {\n  position: relative;\n  flex: 1;\n  min-height: 0;\n  display: flex;\n  flex-direction: column;\n  margin-left: -4px;\n  margin-right: calc(-1 * var(--dsh-sidebar-inline-padding));\n  padding-left: 4px;\n  overflow: hidden;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionPane {\n  flex: 1;\n  min-height: 0;\n  display: flex;\n  flex-direction: column;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionPane.hidden {\n  display: none;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerNewSession {\n  position: absolute;\n  top: 6px;\n  right: 104px;\n  z-index: 2;\n  display: flex;\n  align-items: center;\n  max-width: 28px;\n  opacity: 1;\n  overflow: hidden;\n  visibility: visible;\n  transition:\n    max-width 180ms var(--ds-ease-in-out),\n    opacity 120ms var(--ds-ease-in-out),\n    transform 180ms var(--ds-ease-in-out),\n    visibility 0s linear;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .regionArea:has(input:not([tabindex=\"-1\"])) .headerNewSession {\n  max-width: 0;\n  opacity: 0;\n  transform: translateX(4px);\n  visibility: hidden;\n  pointer-events: none;\n  transition-delay: 0s, 0s, 0s, 180ms;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .regionArea {\n  margin-left: 0;\n  margin-right: 0;\n  padding-left: 0;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .footArea {\n  flex: none;\n  display: flex;\n  flex-direction: column;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .settingsArea,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .footerActions {\n  flex: none;\n  min-width: 0;\n  width: 100%;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .footerActions {\n  display: flex;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .footArea {\n  align-items: center;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .settingsArea,\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].collapsed .footerActions {\n  display: flex;\n  justify-content: center;\n  width: auto;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .wide,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].fading > *,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .iconButton,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .newSession,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .footArea,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].railIn .regionArea,\n  [data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .headerNewSession {\n    transition: none;\n    animation: none;\n  }\n}\n");
-		//#endregion
-		//#region src/client/sidebar/OilSidebarRoot.tsx
-		const COLLAPSE_SETTLE_MS = 150;
-		const SCROLLBAR_LINGER_MS = 2e3;
-		function cx(...parts) {
-			return parts.filter((part) => typeof part === "string" && part !== "").join(" ");
-		}
-		function OilSidebarRoot({ collapsed, width, startSession, toggleSidebar, t, renderSlot, tabLabels, contentFace, contentT }) {
-			const [settled, setSettled] = (0, react.useState)(collapsed);
-			(0, react.useEffect)(() => {
-				if (!collapsed) {
-					setSettled(false);
-					return;
-				}
-				const timer = window.setTimeout(() => {
-					setSettled(true);
-				}, COLLAPSE_SETTLE_MS);
-				return () => {
-					window.clearTimeout(timer);
-				};
-			}, [collapsed]);
-			const wide = !collapsed || !settled;
-			const lastWideWidth = (0, react.useRef)(width);
-			if (!collapsed) lastWideWidth.current = width;
-			const everWide = (0, react.useRef)(!collapsed);
-			if (!collapsed) everWide.current = true;
-			const sidebarTab = useSidebarTab();
-			const chooseTab = (tab) => {
-				setSidebarTab(tab);
-			};
-			const column = (0, react.useRef)(null);
-			const [pointerInside, setPointerInside] = (0, react.useState)(false);
-			const lingerTimer = (0, react.useRef)(void 0);
-			const armLinger = () => {
-				if (lingerTimer.current !== void 0) return;
-				lingerTimer.current = window.setTimeout(() => {
-					lingerTimer.current = void 0;
-					setPointerInside(false);
-				}, SCROLLBAR_LINGER_MS);
-			};
-			const cancelLinger = () => {
-				window.clearTimeout(lingerTimer.current);
-				lingerTimer.current = void 0;
-			};
-			(0, react.useEffect)(() => {
-				if (!pointerInside) return;
-				const onMove = (event) => {
-					const rect = column.current?.getBoundingClientRect();
-					if (rect === void 0) return;
-					if (event.clientX >= rect.left && event.clientX < rect.right && event.clientY >= rect.top && event.clientY < rect.bottom) cancelLinger();
-					else armLinger();
-				};
-				document.addEventListener("pointermove", onMove);
-				return () => {
-					document.removeEventListener("pointermove", onMove);
-					cancelLinger();
-				};
-			}, [pointerInside]);
-			const [contentMounted, setContentMounted] = (0, react.useState)(sidebarTab === "content");
-			(0, react.useEffect)(() => {
-				if (sidebarTab === "content") setContentMounted(true);
-			}, [sidebarTab]);
-			const sessionsVisible = !wide || sidebarTab === "sessions";
-			const contentVisible = wide && sidebarTab === "content";
-			(0, react.useEffect)(() => {
-				setSidebarChromeWidth(!wide ? 56 : collapsed ? lastWideWidth.current : width);
-			}, [
-				wide,
-				collapsed,
-				width
-			]);
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				ref: column,
-				"data-plugin": "dsh-oil-creator",
-				"data-surface": "sidebar",
-				className: cx(!wide && "collapsed", !wide && everWide.current && "railIn", collapsed && wide && "fading", !pointerInside && "quietBars"),
-				style: wide ? { width: collapsed ? lastWideWidth.current : width } : void 0,
-				onPointerEnter: () => {
-					cancelLinger();
-					setPointerInside(true);
-				},
-				onPointerLeave: () => {
-					armLinger();
-				},
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: "logoRow",
-						children: [wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							className: cx("brandButton", "wide"),
-							"aria-label": t("session.new.label"),
-							onClick: () => {
-								startSession();
-							},
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, {})
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-							label: collapsed ? t("toggle.open") : t("toggle.collapse"),
-							delayMs: 500,
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-								type: "button",
-								className: cx("iconButton", "toggle"),
-								"aria-label": collapsed ? t("toggle.open") : t("toggle.collapse"),
-								onClick: () => {
-									toggleSidebar();
-								},
-								children: [!wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: "railBrand",
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilBrand, { compact: true })
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPanelLeftOutline16, {
-									className: "panelIcon",
-									size: wide ? 16 : 18
-								})]
-							})
-						})]
-					}),
-					!wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-						label: t("session.new.label"),
-						delayMs: 500,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							className: "newSession",
-							"aria-label": t("session.new.label"),
-							onClick: () => {
-								startSession();
-							},
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconNewChatOutline16, { size: 18 })
-						})
-					}),
-					wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: "tabRow",
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: "tabList",
-							role: "tablist",
-							"aria-label": tabLabels.sessions,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-								type: "button",
-								role: "tab",
-								"aria-selected": sidebarTab === "sessions",
-								className: cx("tabButton", sidebarTab === "sessions" && "active"),
-								onClick: () => {
-									chooseTab("sessions");
-								},
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconNewChatOutline16, { size: 14 }), tabLabels.sessions]
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-								type: "button",
-								role: "tab",
-								"aria-selected": sidebarTab === "content",
-								className: cx("tabButton", sidebarTab === "content" && "active"),
-								onClick: () => {
-									chooseTab("content");
-								},
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutline16, { size: 14 }), tabLabels.content]
-							})]
-						})
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: "regionArea",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: cx("regionPane", !sessionsVisible && "hidden"),
-							children: [wide && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "headerNewSession",
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-									label: t("session.new.label"),
-									delayMs: 500,
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-										type: "button",
-										className: "iconButton",
-										"aria-label": t("session.new.label"),
-										onClick: () => {
-											startSession();
-										},
-										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconNewChatOutline16, { size: 16 })
-									})
-								})
-							}), renderSlot("sidebar.workspaces", {
-								wide,
-								expandSidebar: () => {
-									if (collapsed) toggleSidebar();
-								}
-							})]
-						}), contentMounted && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: cx("regionPane", !contentVisible && "hidden"),
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ContentSidebarPanel, {
-								t: contentT,
-								...contentFace
-							})
-						})]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: "footArea",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: "footerActions",
-							children: renderSlot("sidebar.footer.action", { wide })
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: "settingsArea",
-							children: renderSlot("sidebar.settings", { wide })
-						})]
-					})
-				]
-			});
-		}
-		//#endregion
-		//#region src/client/sidebar/startSession.ts
-		/** 0.1.2-rc.1 将导航迁入 uiWorkspace；0.1.1-rc.2 仍由 workspaces 提供。 */
-		function startSidebarSession(ctx, workspaceId) {
-			for (const name of ["uiWorkspace", "workspaces"]) {
-				const navigation = ctx.get(name);
-				if (typeof navigation?.startSession === "function") {
-					navigation.startSession(workspaceId);
-					return;
-				}
-			}
-			throw new Error("新建会话服务尚未就绪，请刷新页面后重试。");
-		}
+		//#region \0dsh-oil-creator-css:client/sidebar/ContentMainPanel.css.mjs
+		registerPluginCss("dsh-oil-creator/ContentMainPanel.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].contentMainPanel {\n  height: 100%;\n  min-width: 0;\n  padding: 16px;\n  box-sizing: border-box;\n  --dsh-sidebar-inline-padding: 0px;\n}\n");
 		//#endregion
 		//#region src/client/settingsSlot.ts
 		function registerCreatorSettingsCard(slots, component, options) {
@@ -7680,7 +7419,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"locale",
 			"remote",
 			"workspaces",
-			"layout",
 			"connection"
 		];
 		function apply(ctx) {
@@ -7911,46 +7649,33 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					}));
 				});
 			}, "dsh-oil-creator: content triggers");
-			const injectSidebar = () => ({
-				startSession: (workspaceId) => {
-					startSidebarSession(ctx, workspaceId);
-				},
-				toggleSidebar: () => {
-					ctx.layout.toggleSidebar();
-				}
-			});
-			function BoundSidebar(props) {
-				const contentT = ctx.locale.bind(NS);
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OilSidebarRoot, {
-					...props,
-					tabLabels: {
-						sessions: contentT("tab.sessions"),
-						content: contentT("tab")
-					},
-					contentFace,
-					contentT
+			const contentT = ctx.locale.bind(NS);
+			function ContentPanel() {
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: "contentMainPanel",
+					"data-plugin": "dsh-oil-creator",
+					"data-surface": "sidebar",
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ContentSidebarPanel, {
+						t: contentT,
+						...contentFace
+					})
 				});
 			}
-			ctx.slots.inject("sidebar", () => ctx.slots.register({
-				name: "sidebar",
-				locale: NS,
-				priority: -1,
-				children: {
-					"sidebar.workspaces": {
-						kind: "single",
-						scope: "root"
-					},
-					"sidebar.settings": {
-						kind: "single",
-						scope: "root"
-					},
-					"sidebar.footer.action": {
-						kind: "list",
-						scope: "root"
-					}
-				},
-				inject: injectSidebar
-			}, BoundSidebar));
+			function ContentPanelIcon({ size }) {
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, { size });
+			}
+			ctx.slots.inject("main", () => ctx.slots.register({
+				name: "main",
+				key: "oil-creator",
+				locale: NS
+			}, ContentPanel));
+			ctx.slots.inject("sidebar.panellist", () => ctx.slots.register({
+				name: "sidebar.panellist",
+				id: "oil-creator",
+				order: 20,
+				label: () => contentT("tab"),
+				locale: NS
+			}, ContentPanelIcon));
 			ctx.effect(async () => {
 				const disposeRemote = await ctx.remote.$mount(TYPERT_REMOTE);
 				if (ctx.fiber.state >= 5) {

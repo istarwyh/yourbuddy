@@ -438,12 +438,15 @@ function BrandSettingsRow({ scope, readLocale, t }) {
     setStatus("saving");
     setErrorKey(void 0);
     try {
-      await scope.set("name", normalizedName);
-      await scope.set("logo", normalizeLogoSource(logo) ?? "");
-      await scope.set("heroHeadline", normalizeWorkbenchName(heroHeadline) ?? "");
-      await scope.set("heroBadge", normalizeWorkbenchName(heroBadge) ?? "");
-      await scope.set("showHeroBadge", showHeroBadge);
-      await scope.set("enabled", true);
+      const accepted = await scope.mutate([
+        { op: "set", path: ["name"], value: normalizedName },
+        { op: "set", path: ["logo"], value: normalizeLogoSource(logo) ?? "" },
+        { op: "set", path: ["heroHeadline"], value: normalizeWorkbenchName(heroHeadline) ?? "" },
+        { op: "set", path: ["heroBadge"], value: normalizeWorkbenchName(heroBadge) ?? "" },
+        { op: "set", path: ["showHeroBadge"], value: showHeroBadge },
+        { op: "set", path: ["enabled"], value: true }
+      ]);
+      if (!accepted) throw new Error("settings mutation was refused");
       setStatus("saved");
     } catch {
       setStatus("error");
@@ -454,12 +457,15 @@ function BrandSettingsRow({ scope, readLocale, t }) {
     setStatus("saving");
     setErrorKey(void 0);
     try {
-      await scope.set("enabled", false);
-      await scope.unset("name");
-      await scope.unset("logo");
-      await scope.unset("heroHeadline");
-      await scope.unset("heroBadge");
-      await scope.unset("showHeroBadge");
+      const accepted = await scope.mutate([
+        { op: "set", path: ["enabled"], value: false },
+        { op: "unset", path: ["name"] },
+        { op: "unset", path: ["logo"] },
+        { op: "unset", path: ["heroHeadline"] },
+        { op: "unset", path: ["heroBadge"] },
+        { op: "unset", path: ["showHeroBadge"] }
+      ]);
+      if (!accepted) throw new Error("settings mutation was refused");
       setName("");
       setLogo("");
       setHeroHeadline("");

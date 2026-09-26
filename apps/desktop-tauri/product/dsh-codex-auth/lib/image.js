@@ -1,6 +1,5 @@
 import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
 import z from "@deepseek-ai/schemastery";
-import { installSettingsSection } from "./settings-section.js";
 import { basename } from "node:path";
 import { HarnessError } from "@deepseek-ai/dsh-llm";
 //#region src/image.ts
@@ -36,12 +35,12 @@ const IMAGE_BACKGROUNDS = [
 const MAX_REFERENCES = 5;
 const MAX_GENERATED_IMAGES = 10;
 const Config = z.object({
-	enabled: z.boolean().default(true),
-	model: z.string().default("gpt-image-2"),
-	n: z.number().step(1).min(1).max(MAX_GENERATED_IMAGES).default(1),
-	size: z.union(IMAGE_SIZES.map((value) => z.const(value))).default("auto"),
-	quality: z.union(IMAGE_QUALITIES.map((value) => z.const(value))).default("auto"),
-	background: z.union(IMAGE_BACKGROUNDS.map((value) => z.const(value))).default("auto")
+	enabled: z.boolean().default(true).volatile(),
+	model: z.string().default("gpt-image-2").volatile(),
+	n: z.number().step(1).min(1).max(MAX_GENERATED_IMAGES).default(1).volatile(),
+	size: z.union(IMAGE_SIZES.map((value) => z.const(value))).default("auto").volatile(),
+	quality: z.union(IMAGE_QUALITIES.map((value) => z.const(value))).default("auto").volatile(),
+	background: z.union(IMAGE_BACKGROUNDS.map((value) => z.const(value))).default("auto").volatile()
 });
 /** Build registry-ready public Capability Tools around one dependency set. */
 function createCodexImageTools(options) {
@@ -764,7 +763,7 @@ const inject = [
 function apply(ctx, config) {
 	const auth = ctx.get("codexAuth");
 	if (auth === void 0) throw new Error("codex-image: shared codexAuth service is unavailable");
-	let current = () => config;
+	const current = () => config;
 	const registrations = /* @__PURE__ */ new Map();
 	const generations = /* @__PURE__ */ new Map();
 	let disposed = false;
@@ -803,12 +802,6 @@ function apply(ctx, config) {
 		registrations.clear();
 		generations.clear();
 	}, "codex-image: scoped tool cleanup");
-	installSettingsSection(ctx, CODEX_IMAGE_SETTINGS_NAMESPACE, Config, config, {
-		setSource: (source) => {
-			current = source;
-		},
-		onChange: refreshAll
-	});
 	ctx.on("agent/created", ({ agent }) => {
 		refreshAgent(agent);
 	});

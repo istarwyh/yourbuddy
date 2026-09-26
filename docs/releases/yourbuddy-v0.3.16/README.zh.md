@@ -60,7 +60,7 @@ Apple Silicon DMG 与应用内更新路径仍待 GitHub Release 发布并完成�
 
 ### 操作步骤
 
-1. 运行聚焦的协调器、布局、文件路由、发布器、Provenance、Catalog、文档与版本检查。
+1. 运行聚焦的协调器、布局、文件路由、发布器、来源记录、Catalog、文档与版本检查。
 2. 准备完整发布输入，并操作核心工作台到 Content 再返回、聚合 Session 收起与恢复、后台与用户打开，以及当前 Session 注意力展开。
 3. 录制组装交互，然后发布并独立检查每个公开产物，之后才提升下载或官网声明。
 
@@ -74,7 +74,7 @@ Apple Silicon DMG 与应用内更新路径仍待 GitHub Release 发布并完成�
 
 ### 证据
 
-- 操作前：0.3.16 版本真源、双语归档、产品快照与物化 Patch Provenance 在发布前保持一致。
+- 操作前：0.3.16 版本真源、双语归档、产品快照与物化 Patch 来源记录 在发布前保持一致。
 - 执行中：`pnpm run typecheck`、`pnpm run doc-sync`、`pnpm --dir apps/desktop-tauri run test:release`、聚焦 Vitest、Oil Creator 源码刷新与 Better Sidebar Patch 回放在 macOS Apple Silicon 和 Node.js 22.19 上通过。
 - 结果：`DSH_SNAPSHOT=replay pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/yourbuddy-help.e2e.ts` 的 3 项浏览器测试通过。GUI 录制、准备后的 Host Smoke、公开校验和、Updater 核验与可下载归档仍待补。
 - 失败与恢复：组装浏览器最初发现 Oil Creator Typert 未注册、后台触发的自动终端被标成用户导航，以及已选中行无法重新打开隐藏 Content。Fixture 现显式加载产品 Typert 产物，自动终端携带后台意图，已选中行会重新打开 Content，回放通过。发布准备正确拒绝了未提交工作树，将在候选 Commit 后执行。
@@ -97,7 +97,7 @@ Apple Silicon DMG 与应用内更新路径仍待 GitHub Release 发布并完成�
 - [x] 聚焦源码、产品、Catalog、文档与发布检查通过并保留日志。
 - [ ] 完整发布准备与组装 Host／浏览器检查通过。
 - [ ] 产品工作台 GUI 路径完成录制并保留。
-- [ ] 公开文件、校验和、Updater 元数据、签名、App 标识、Provenance 与迁移运行时完成独立核验。
+- [ ] 公开文件、校验和、Updater 元数据、签名、App 标识、来源记录 与迁移运行时完成独立核验。
 - [ ] 验证归档已发布并独立解压检查。
 - [ ] 双语产品官网完成同步与线上检查，且未提升未经验证的文件。
 - [x] 公开 Tag 与安装包不会移动或覆盖。

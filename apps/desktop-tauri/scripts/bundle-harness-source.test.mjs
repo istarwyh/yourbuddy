@@ -241,6 +241,9 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
   const codexSubagent = join(root, 'packages', 'subagent', 'subagent-codex')
   mkdirSync(codexSubagent, { recursive: true })
   writeFileSync(join(codexSubagent, 'package.json'), '{"name":"@deepseek-ai/dsh-subagent-codex","version":"0.1.1-rc.1"}\n')
+  const webApp = join(root, 'packages', 'bundle', 'web-app')
+  mkdirSync(webApp, { recursive: true })
+  writeFileSync(join(webApp, 'cordis.patch.yml'), '- insert:\n    - id: built-in\n      name: built-in\n')
 
   try {
     installProductPlugins(root)
@@ -255,6 +258,12 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.equal(manifest.dependencies['dsh-oil-creator'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-subagent-codex'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
+    const webPatch = readFileSync(join(webApp, 'cordis.patch.yml'), 'utf8')
+    assert.match(webPatch, /# YourBuddy product bundle layers/u)
+    assert.match(webPatch, /id: personal-workbench\n\s+name: dsh-personal-workbench/u)
+    assert.match(webPatch, /id: dsh-oil-creator\n\s+name: dsh-oil-creator/u)
+    assert.match(webPatch, /id: subagent-codex\n\s+name: '@deepseek-ai\/dsh-subagent-codex'/u)
+    assert.doesNotMatch(webPatch, /id: ui-sidebar\n\s+disabled: true/u)
     const bundledCodex = JSON.parse(readFileSync(
       join(root, 'packages', 'product', 'dsh-codex-auth', 'package.json'),
       'utf8',

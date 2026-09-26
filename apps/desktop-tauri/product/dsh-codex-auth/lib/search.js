@@ -1,32 +1,31 @@
 import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
 import z from "@deepseek-ai/schemastery";
-import { installSettingsSection } from "./settings-section.js";
 import { randomUUID } from "node:crypto";
 import { WebError } from "@deepseek-ai/dsh-web";
 //#region src/search.ts
 /** Codex standalone-search provider and independently live Search row. */
 /** Stable provider id selected by DSH's stock `web_search` Capability Tool. */
 const CODEX_SEARCH_PROVIDER_ID = "codex";
+const CODEX_SEARCH_SETTINGS_NAMESPACE = "codex-search";
 /** Official standalone search endpoint used by Codex 0.147.0. */
 const CODEX_SEARCH_ENDPOINT = "https://chatgpt.com/backend-api/codex/alpha/search";
-const CODEX_SEARCH_SETTINGS_NAMESPACE = "codex-search";
 const MAX_SEARCH_ATTEMPTS = 5;
 const MAX_SEARCH_RESPONSE_BYTES = 2097152;
 const DEFAULT_RETRY_BASE_DELAY_MS = 100;
 const Config = z.object({
-	enabled: z.boolean().default(true),
+	enabled: z.boolean().default(true).volatile(),
 	mode: z.union([
 		z.const("live"),
 		z.const("cached"),
 		z.const("indexed")
-	]).default("live"),
+	]).default("live").volatile(),
 	contextSize: z.union([
 		z.const("low"),
 		z.const("medium"),
 		z.const("high")
-	]).default("medium"),
-	fallbackModel: z.string().default("gpt-5.4"),
-	maxOutputTokens: z.number().step(1).min(1).default(2048)
+	]).default("medium").volatile(),
+	fallbackModel: z.string().default("gpt-5.4").volatile(),
+	maxOutputTokens: z.number().step(1).min(1).default(2048).volatile()
 });
 /** Codex backend implementation behind DSH's existing stock `web_search` tool. */
 var CodexSearchProvider = class {
@@ -114,16 +113,9 @@ const inject = ["web", "codexAuth"];
 function apply(ctx, config) {
 	const auth = ctx.get("codexAuth");
 	if (auth === void 0) throw new Error("codex-search: shared codexAuth service is unavailable");
-	let current = () => config;
-	installSettingsSection(ctx, CODEX_SEARCH_SETTINGS_NAMESPACE, Config, config, {
-		setSource: (source) => {
-			current = source;
-		},
-		onChange: () => {}
-	});
 	ctx.web.registerSearchProvider(new CodexSearchProvider({
 		auth,
-		settings: () => current(),
+		settings: () => config,
 		fetchImpl: fetch,
 		requestId: () => String(ctx.get("agents")?.currentInitiator()?.id ?? randomUUID()),
 		initiatingModel: () => initiatingCodexModel(ctx)

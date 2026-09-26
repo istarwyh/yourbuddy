@@ -236,7 +236,8 @@ index 041e241..cf36f80 100644
 @@ -61,30 +61,28 @@
    },
    "scripts": {
-     "build": "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs",
+-    "build": "tsdown && node scripts/compat-current-dsh.mjs && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs",
++    "build": "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs",
 -    "prepare": "npm run build",
      "typecheck": "tsc --noEmit",
      "test": "vitest run",

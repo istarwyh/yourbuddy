@@ -20,8 +20,28 @@ export async function verifyWorkbenchBranding(page) {
   assert.equal(favicon.trim(), artwork)
   const observed = []
   const capture = async (step, name, logo) => {
-    const brand = page.getByRole('button', { name: 'New session', exact: true }).filter({ hasText: name }).first()
-    await brand.waitFor({ timeout: 10_000 })
+    const brandButtons = page.getByRole('button', { name: 'New session', exact: true })
+    const brand = brandButtons.filter({ hasText: name }).first()
+    try {
+      await brand.waitFor({ timeout: 10_000 })
+    }
+    catch (error) {
+      const visibleNames = await brandButtons.allTextContents()
+      const settingsView = await page.evaluate(async () => {
+        const response = await fetch('/api/settings/describe', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            type: 'client-request',
+            rpcId: 'yourbuddy-release-brand-settings',
+            method: 'settings/describe',
+            payload: { args: {} },
+          }),
+        })
+        return await response.json()
+      })
+      throw new Error(`workbench brand ${JSON.stringify(name)} was not visible; New session buttons: ${JSON.stringify(visibleNames)}; settings: ${JSON.stringify(settingsView)}`, { cause: error })
+    }
     const image = brand.locator('img')
     await image.waitFor({ timeout: 10_000 })
     await image.evaluate(image => image.decode())
@@ -49,8 +69,30 @@ export async function verifyWorkbenchBranding(page) {
   await settings.getByRole('textbox', { name: 'Workbench name', exact: true }).fill('Research Lab')
   await settings.locator('input[type="file"]').setInputFiles(fileURLToPath(uploadedLogo))
   await settings.getByText('Replace image', { exact: true }).waitFor()
+  const mutationResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/settings/mutate')
   await settings.getByRole('button', { name: 'Apply to workbench', exact: true }).click()
-  await settings.getByText('Applied', { exact: true }).waitFor()
+  const mutation = await mutationResponse
+  const mutationBody = await mutation.text()
+  try {
+    await settings.getByText('Applied', { exact: true }).waitFor()
+  }
+  catch (error) {
+    const body = await settings.textContent()
+    const settingsView = await page.evaluate(async () => {
+      const response = await fetch('/api/settings/describe', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          type: 'client-request',
+          rpcId: 'yourbuddy-release-brand-settings',
+          method: 'settings/describe',
+          payload: { args: {} },
+        }),
+      })
+      return await response.json()
+    })
+    throw new Error(`workbench branding update did not apply; mutation: HTTP ${mutation.status()} ${mutationBody}; settings dialog: ${JSON.stringify(body)}; settings: ${JSON.stringify(settingsView)}`, { cause: error })
+  }
   await capture('custom', 'Research Lab', 'uploaded')
   await page.reload({ waitUntil: 'load' })
   await capture('reloaded', 'Research Lab', 'uploaded')

@@ -62,14 +62,14 @@ describe('personal workbench branding card', () => {
     expect(view.queryByText('Early access')).toBeNull()
     fireEvent.click(view.getByRole('button', { name: 'Apply to workbench' }))
 
-    await waitFor(() => { expect(scope.set).toHaveBeenCalledWith('enabled', true) })
-    expect(scope.set.mock.calls).toEqual([
-      ['name', 'Research Lab'],
-      ['logo', ''],
-      ['heroHeadline', 'Explore together'],
-      ['heroBadge', 'Early access'],
-      ['showHeroBadge', false],
-      ['enabled', true],
+    await waitFor(() => { expect(scope.mutate).toHaveBeenCalledOnce() })
+    expect(scope.mutate).toHaveBeenCalledWith([
+      { op: 'set', path: ['name'], value: 'Research Lab' },
+      { op: 'set', path: ['logo'], value: '' },
+      { op: 'set', path: ['heroHeadline'], value: 'Explore together' },
+      { op: 'set', path: ['heroBadge'], value: 'Early access' },
+      { op: 'set', path: ['showHeroBadge'], value: false },
+      { op: 'set', path: ['enabled'], value: true },
     ])
   })
 
@@ -78,10 +78,25 @@ describe('personal workbench branding card', () => {
     const view = mount(scope)
     fireEvent.click(view.getByRole('button', { name: 'Restore YourBuddy default' }))
 
-    await waitFor(() => { expect(scope.unset).toHaveBeenCalledTimes(5) })
-    expect(scope.set).toHaveBeenCalledWith('enabled', false)
-    expect(scope.unset.mock.calls.map(call => call[0])).toEqual([
-      'name', 'logo', 'heroHeadline', 'heroBadge', 'showHeroBadge',
+    await waitFor(() => { expect(scope.mutate).toHaveBeenCalledOnce() })
+    expect(scope.mutate).toHaveBeenCalledWith([
+      { op: 'set', path: ['enabled'], value: false },
+      { op: 'unset', path: ['name'] },
+      { op: 'unset', path: ['logo'] },
+      { op: 'unset', path: ['heroHeadline'] },
+      { op: 'unset', path: ['heroBadge'] },
+      { op: 'unset', path: ['showHeroBadge'] },
     ])
+  })
+
+  it('reports a refused atomic branding update', async () => {
+    const scope = new FakeScope()
+    scope.mutate.mockResolvedValueOnce(false)
+    const view = mount(scope)
+    fireEvent.change(view.getByLabelText('Workbench name'), { target: { value: 'Research Lab' } })
+    fireEvent.click(view.getByRole('button', { name: 'Apply to workbench' }))
+
+    expect(await view.findByText('Could not save. Check the settings document and try again.')).toBeTruthy()
+    expect(view.queryByText('Applied')).toBeNull()
   })
 })

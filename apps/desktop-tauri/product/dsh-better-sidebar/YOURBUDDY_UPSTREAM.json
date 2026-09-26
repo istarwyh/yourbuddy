@@ -32,6 +32,12 @@
       "sha256": "76c5914bdeada77e2feafc45cf241c53b89ff8efee122e1e981ed6b3fd54df78",
       "purpose": "Contribute Better Sidebar to the product-owned core workbench and distinguish explicit user navigation from background resource opens."
     },
+    {
+      "id": "current-main-session",
+      "file": "patches/better-sidebar-current-session.patch",
+      "sha256": "56b1e34e286dad8ed4067f0df1d941d80f2d9e5ece94f0bf666952dc23827a98",
+      "purpose": "Derive the active Session from the current main-view retention summary exposed by DSH 0.1.7."
+    },
     "Set @deepseek-ai/dsh-agent peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-locale peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-ui-conversation peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
@@ -50,5 +56,5 @@
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "5735ff5c027e23fd94eb38cd8a821dde80f0c9d9579353afd08093037c4e5ecf"
+  "treeSha256": "ebfb41f17134616a665342f1f7d47195171ccbcd1d443f39895a39e338c1d8d1"
 }

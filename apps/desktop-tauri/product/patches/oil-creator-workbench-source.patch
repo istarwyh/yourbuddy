@@ -1,8 +1,24 @@
+diff --git a/cordis.patch.yml b/cordis.patch.yml
+index 9041ae288e29d58237046b1905dc49c02a3a30bd..c2e5a477c037151bf4fee85e472932c8bbf313e0 100644
+--- a/cordis.patch.yml
++++ b/cordis.patch.yml
+@@ -1,5 +1,3 @@
+-- id: ui-sidebar
+-  disabled: true
+ - insert:
+     - id: dsh-oil-creator
+       name: dsh-oil-creator
 diff --git a/package.json b/package.json
-index ac9e389..041e241 100644
+index ac9e389b986a8911c577296c2f3184d5c4eaa0fc..bfca1cc82b17248b9e22c2ad0c647ba7a2663520 100644
 --- a/package.json
 +++ b/package.json
-@@ -65,7 +65,7 @@
+@@ -60,12 +60,12 @@
+     }
+   },
+   "scripts": {
+-    "build": "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs",
++    "build": "tsdown && node scripts/compat-current-dsh.mjs && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs",
+     "prepare": "npm run build",
      "typecheck": "tsc --noEmit",
      "test": "vitest run",
      "release:check": "node scripts/check-release.mjs",
@@ -12,7 +28,7 @@ index ac9e389..041e241 100644
    "dependencies": {
      "@deepseek-ai/dsh-tools": "0.1.0-rc.6 || 0.1.0-rc.7",
 diff --git a/scripts/check-release.mjs b/scripts/check-release.mjs
-index 04d27f2..89603a6 100644
+index 04d27f2e5acb945e32496e52db2cf8dc68e08d64..89603a66c4d13e6a685b6df7ce03436fb248d827 100644
 --- a/scripts/check-release.mjs
 +++ b/scripts/check-release.mjs
 @@ -127,8 +127,8 @@ function checkRelease(root) {
@@ -26,9 +42,37 @@ index 04d27f2..89603a6 100644
    }
    if (scripts["release:check"] !== "node scripts/check-release.mjs") {
      addFailure("缺少显式 release:check 门禁脚本");
+diff --git a/scripts/compat-current-dsh.mjs b/scripts/compat-current-dsh.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..67cc2d412ad3bd82bf4db1fb72a472462db4518c
+--- /dev/null
++++ b/scripts/compat-current-dsh.mjs
+@@ -0,0 +1,22 @@
++import { readFileSync, writeFileSync } from "node:fs";
++import { fileURLToPath } from "node:url";
++
++const clientBundle = fileURLToPath(new URL("../lib/client.js", import.meta.url));
++const replacements = [
++  ["IconBrowseOutline16", "IconBrowseOutlineRegular"],
++  ["IconChevronDownOutline14", "IconChevronDownOutlineRegular"],
++  ["IconCloseFill14", "IconCloseFillRegular"],
++  ["IconCloseOutline16", "IconCloseOutlineRegular"],
++  ["IconFolderOpenOutline16", "IconFolderOpenOutlineRegular"],
++  ["IconNewChatOutline16", "IconNewChatOutlineRegular"],
++  ["IconPanelLeftOutline16", "IconPanelLeftOutlineRegular"],
++  ["IconProjectAddOutline16", "IconProjectAddOutlineRegular"],
++  ["IconRefreshOutline16", "IconRefreshOutlineRegular"],
++  ["IconSearchOutline16", "IconSearchOutlineRegular"],
++];
++
++let source = readFileSync(clientBundle, "utf8");
++for (const [legacyName, currentName] of replacements) {
++  source = source.replaceAll(legacyName, currentName);
++}
++writeFileSync(clientBundle, source);
 diff --git a/src/bundledSkills.ts b/src/bundledSkills.ts
 new file mode 100644
-index 0000000..d6145dd
+index 0000000000000000000000000000000000000000..d6145ddcaea26b29fae2e905aea27415d3385331
 --- /dev/null
 +++ b/src/bundledSkills.ts
 @@ -0,0 +1,9 @@
@@ -42,7 +86,7 @@ index 0000000..d6145dd
 +  return join(bundledSkillsRoot, name);
 +}
 diff --git a/src/capabilities.ts b/src/capabilities.ts
-index 9618cf8..d8cb923 100644
+index 9618cf8d98e514589499d0d3e5ecc3924ddae5ee..d8cb923e56656a7cbd4ac956ea4027be1c182348 100644
 --- a/src/capabilities.ts
 +++ b/src/capabilities.ts
 @@ -4,6 +4,7 @@ import { homedir } from "node:os";
@@ -115,7 +159,7 @@ index 9618cf8..d8cb923 100644
    return {
      platform,
 diff --git a/src/catalog.ts b/src/catalog.ts
-index 118add5..6d87c91 100644
+index 118add5f070a247bccda787a1fd8f307a190bb83..6d87c9110eb4e4d144e95645222ed9048bd14676 100644
 --- a/src/catalog.ts
 +++ b/src/catalog.ts
 @@ -130,7 +130,9 @@ export function workflowOf(
@@ -174,7 +218,7 @@ index 118add5..6d87c91 100644
  
    return {
 diff --git a/src/client/ContentInspector.css b/src/client/ContentInspector.css
-index e67d7f0..6e3b379 100644
+index e67d7f0f538b0eaaf4509f84545f12aa7841367c..6e3b379fbb8dcdf7c5ddc9608df7d218a87b480b 100644
 --- a/src/client/ContentInspector.css
 +++ b/src/client/ContentInspector.css
 @@ -14,17 +14,6 @@
@@ -331,7 +375,7 @@ index e67d7f0..6e3b379 100644
 -  }
 -}
 diff --git a/src/client/ContentInspector.tsx b/src/client/ContentInspector.tsx
-index e98032b..e15977a 100644
+index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e26278090cd4 100644
 --- a/src/client/ContentInspector.tsx
 +++ b/src/client/ContentInspector.tsx
 @@ -12,21 +12,36 @@ import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-cli
@@ -832,7 +876,7 @@ index e98032b..e15977a 100644
    );
  }
 diff --git a/src/client/CreatorSettingsCard.tsx b/src/client/CreatorSettingsCard.tsx
-index 808189a..e8f5fc7 100644
+index 808189ac39b2d4a7f461751e12894c0edf188111..e8f5fc761f249cfe4183db5d45f80d517d75a73e 100644
 --- a/src/client/CreatorSettingsCard.tsx
 +++ b/src/client/CreatorSettingsCard.tsx
 @@ -38,6 +38,7 @@ const CAPABILITY_ROWS: ReadonlyArray<{ id: keyof CreatorCapabilities; label: Cre
@@ -844,7 +888,7 @@ index 808189a..e8f5fc7 100644
  ];
  
 diff --git a/src/client/contentSelection.ts b/src/client/contentSelection.ts
-index febd613..6441b6f 100644
+index febd61379c094af6cae6e79110f481dca3179d1a..6441b6ffb6cfeae61800ce705a998f56bb6141db 100644
 --- a/src/client/contentSelection.ts
 +++ b/src/client/contentSelection.ts
 @@ -9,6 +9,12 @@ import {
@@ -1045,7 +1089,7 @@ index febd613..6441b6f 100644
  }
  
 diff --git a/src/client/face.ts b/src/client/face.ts
-index 679cc7a..d09f942 100644
+index 679cc7a3bccf8bef373658710b4933b4653fe4fa..d09f9423d8148c0bba71dd9c96c1c18de035da3f 100644
 --- a/src/client/face.ts
 +++ b/src/client/face.ts
 @@ -6,6 +6,8 @@ import type {
@@ -1066,10 +1110,19 @@ index 679cc7a..d09f942 100644
    openSubtitlePreview: (id: string) => Promise<SubtitlePreviewResult>;
    startSubtitleBurn: (id: string) => Promise<ContentDetail>;
 diff --git a/src/client/index.tsx b/src/client/index.tsx
-index 799bab6..538f7be 100644
+index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2b9031fc5 100644
 --- a/src/client/index.tsx
 +++ b/src/client/index.tsx
-@@ -9,7 +9,6 @@ import { TYPERT_REMOTE } from "../remote.ts";
+@@ -1,6 +1,7 @@
+-import type { ClientContext, WorkspaceId } from "@deepseek-ai/dsh-client-runtime/client";
++import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
+ import type {} from "@deepseek-ai/dsh-client-locale/client";
+ import type {} from "@deepseek-ai/dsh-client-ui-layout/client";
++import { IconBrowseOutline16 } from "@deepseek-ai/dsh-client-ui-primitives";
+ import type {} from "@deepseek-ai/dsh-api-remotes/client";
+ import type {} from "@deepseek-ai/dsh-client-connection/client";
+ import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
+@@ -9,7 +10,6 @@ import { TYPERT_REMOTE } from "../remote.ts";
  import { CREATOR_SETTINGS_NAMESPACE } from "../settingsContract.ts";
  import { startLibraryLiveSync } from "./catalogSync.ts";
  import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
@@ -1077,7 +1130,7 @@ index 799bab6..538f7be 100644
  import { registerContentTriggers } from "./contentTriggers.ts";
  import type {
    ContentDetail,
-@@ -20,6 +19,8 @@ import type {
+@@ -20,6 +20,8 @@ import type {
    CreatorProfile,
    LibrarySettings,
    ListContentsResult,
@@ -1086,7 +1139,7 @@ index 799bab6..538f7be 100644
    PublishMark,
    PublishPlatform,
    SubtitlePreviewResult,
-@@ -29,11 +30,12 @@ import type {
+@@ -29,19 +31,19 @@ import type {
  } from "../types.ts";
  import { ContentInspector } from "./ContentInspector.tsx";
  import {
@@ -1101,18 +1154,34 @@ index 799bab6..538f7be 100644
  } from "./contentSelection.ts";
  import type { CredentialsClient } from "./credentialsApi.ts";
  import { CreatorSettingsCard } from "./CreatorSettingsCard.tsx";
-@@ -51,6 +53,10 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
+ import type { CreatorViewFace } from "./face.ts";
+ import { en, NS, type CreatorKey, zh } from "./locales.ts";
+-import { OilSidebarRoot } from "./sidebar/OilSidebarRoot.tsx";
+-import { startSidebarSession } from "./sidebar/startSession.ts";
+-import type { OilSidebarInjected, OilSidebarSlotProps } from "./sidebar/slots.ts";
++import { ContentSidebarPanel } from "./sidebar/ContentSidebarPanel.tsx";
++import "./sidebar/ContentMainPanel.css";
+ import {
+   registerCreatorSettingsCard,
+   type CompatibleSettingsSlots,
+@@ -51,6 +53,16 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
    interface LocaleNamespaceMap {
      "dsh.oil.creator": CreatorKey;
    }
 +
 +  interface SlotMap {
 +    "workbench.content": { kind: "single"; scope: "root" };
++    "main": { kind: "keyed"; scope: "root" };
++    "sidebar.panellist": {
++      kind: "list";
++      scope: "root";
++      owner: { size: number; active: boolean };
++    };
 +  }
  }
  
  interface RemoteAnswer<T> {
-@@ -83,6 +89,7 @@ interface OilCreatorRemote {
+@@ -83,6 +95,7 @@ interface OilCreatorRemote {
      status: PublishMark;
      url?: string;
    }) => Promise<RemoteAnswer<ContentDetail>>;
@@ -1120,7 +1189,16 @@ index 799bab6..538f7be 100644
    syncPublish: (request: { id?: string; platform?: PublishPlatform; force?: boolean }) => Promise<RemoteAnswer<SyncPublishResult>>;
    openSubtitlePreview: (request: { id: string }) => Promise<RemoteAnswer<SubtitlePreviewResult>>;
    startSubtitleBurn: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
-@@ -237,6 +244,13 @@ export function apply(ctx: ClientContext): void {
+@@ -103,7 +116,7 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
+   return answer.value;
+ }
+ 
+-export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection"];
++export const inject = ["slots", "locale", "remote", "workspaces", "connection"];
+ 
+ export function apply(ctx: ClientContext): void {
+   ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-oil-creator: dictionaries");
+@@ -237,6 +250,13 @@ export function apply(ctx: ClientContext): void {
        bumpLibrary();
        return next;
      },
@@ -1134,7 +1212,72 @@ index 799bab6..538f7be 100644
      syncPublish: async (request) => {
        const remote = remoteOf();
        if (remote === undefined) throw new Error("remote unavailable");
-@@ -345,36 +359,21 @@ export function apply(ctx: ClientContext): void {
+@@ -296,42 +316,35 @@ export function apply(ctx: ClientContext): void {
+     );
+   }, "dsh-oil-creator: content triggers");
+ 
+-  const injectSidebar = (): OilSidebarInjected => ({
+-    startSession: (workspaceId?: WorkspaceId) => {
+-      startSidebarSession(ctx, workspaceId);
+-    },
+-    toggleSidebar: () => {
+-      ctx.layout.toggleSidebar();
+-    },
+-  });
++  const contentT = ctx.locale.bind(NS);
+ 
+-  function BoundSidebar(props: OilSidebarSlotProps) {
+-    const contentT = ctx.locale.bind(NS);
++  function ContentPanel() {
+     return (
+-      <OilSidebarRoot
+-        {...props}
+-        tabLabels={{
+-          sessions: contentT("tab.sessions"),
+-          content: contentT("tab"),
+-        }}
+-        contentFace={contentFace}
+-        contentT={contentT}
+-      />
++      <div className="contentMainPanel" data-plugin="dsh-oil-creator" data-surface="sidebar">
++        <ContentSidebarPanel t={contentT} {...contentFace} />
++      </div>
+     );
+   }
+ 
+-  ctx.slots.inject("sidebar", () =>
++  function ContentPanelIcon({ size }: { size: number; active: boolean }) {
++    return <IconBrowseOutline16 size={size} />;
++  }
++
++  ctx.slots.inject("main", () =>
+     ctx.slots.register({
+-      name: "sidebar",
++      name: "main",
++      key: "oil-creator",
+       locale: NS,
+-      priority: -1,
+-      children: {
+-        "sidebar.workspaces": { kind: "single", scope: "root" },
+-        "sidebar.settings": { kind: "single", scope: "root" },
+-        "sidebar.footer.action": { kind: "list", scope: "root" },
+-      },
+-      inject: injectSidebar,
+-    }, BoundSidebar),
++    }, ContentPanel),
++  );
++  ctx.slots.inject("sidebar.panellist", () =>
++    ctx.slots.register({
++      name: "sidebar.panellist",
++      id: "oil-creator",
++      order: 20,
++      label: () => contentT("tab"),
++      locale: NS,
++    }, ContentPanelIcon),
+   );
+ 
+   ctx.effect(async () => {
+@@ -345,36 +358,21 @@ export function apply(ctx: ClientContext): void {
      }
      bumpProfile();
  
@@ -1185,7 +1328,7 @@ index 799bab6..538f7be 100644
        };
      });
      const stopSettings = ctx.slots.inject("settings.plugin.item", () =>
-@@ -396,7 +395,7 @@ export function apply(ctx: ClientContext): void {
+@@ -396,7 +394,7 @@ export function apply(ctx: ClientContext): void {
  
      return async () => {
        stopLive();
@@ -1195,7 +1338,7 @@ index 799bab6..538f7be 100644
        await disposeRemote();
      };
 diff --git a/src/client/locales.ts b/src/client/locales.ts
-index c32d42f..a86727c 100644
+index c32d42fd2379476f77e9b3205f1c171e34c9a999..a86727ca86e12ee8f2ed4661bfcd2f715b950e61 100644
 --- a/src/client/locales.ts
 +++ b/src/client/locales.ts
 @@ -99,6 +99,27 @@ export const zh = {
@@ -1277,7 +1420,7 @@ index c32d42f..a86727c 100644
    "settings.state.ready": "Ready",
    "settings.state.missing": "Unavailable",
 diff --git a/src/client/publishPlatforms.ts b/src/client/publishPlatforms.ts
-index 3d7fade..48de415 100644
+index 3d7fade5e388ea872142bc54c2b470dd30e39a5b..48de415b4506c36c0fd984bd12d356968e6eb1a3 100644
 --- a/src/client/publishPlatforms.ts
 +++ b/src/client/publishPlatforms.ts
 @@ -1,5 +1,9 @@
@@ -1365,8 +1508,21 @@ index 3d7fade..48de415 100644
 +export function publisherPlatformKey(platform: PublishPlatform): string {
 +  return platform === "wechat" ? "wechat_channels" : platform;
 +}
+diff --git a/src/client/sidebar/ContentMainPanel.css b/src/client/sidebar/ContentMainPanel.css
+new file mode 100644
+index 0000000000000000000000000000000000000000..5dad611b6aa16cbfc42faa6bab771b2b1784356d
+--- /dev/null
++++ b/src/client/sidebar/ContentMainPanel.css
+@@ -0,0 +1,7 @@
++[data-plugin="dsh-oil-creator"][data-surface="sidebar"].contentMainPanel {
++  height: 100%;
++  min-width: 0;
++  padding: 16px;
++  box-sizing: border-box;
++  --dsh-sidebar-inline-padding: 0px;
++}
 diff --git a/src/client/sidebar/ContentSidebarPanel.tsx b/src/client/sidebar/ContentSidebarPanel.tsx
-index c2f280f..e1ac8b4 100644
+index c2f280f1abf5f226e021770ec8823037589df955..e1ac8b459c4e362df44192ed97fe11bc501deed9 100644
 --- a/src/client/sidebar/ContentSidebarPanel.tsx
 +++ b/src/client/sidebar/ContentSidebarPanel.tsx
 @@ -267,9 +267,7 @@ export function ContentSidebarPanel({
@@ -1381,7 +1537,7 @@ index c2f280f..e1ac8b4 100644
              <span className="rowCover">
                <CoverThumb
 diff --git a/src/creatorSkill.ts b/src/creatorSkill.ts
-index 0c10363..ea34965 100644
+index 0c10363e8408b6fc0c8a727001f278b4884f7c59..ea349656410439f06f88674339b559f289d35e1f 100644
 --- a/src/creatorSkill.ts
 +++ b/src/creatorSkill.ts
 @@ -1,11 +1,18 @@
@@ -1473,7 +1629,7 @@ index 0c10363..ea34965 100644
 +  };
  }
 diff --git a/src/guide.ts b/src/guide.ts
-index 0144b91..7bf2678 100644
+index 0144b91ed0d9b249b4152128ce55a181bc262775..7bf2678c79c4c6a08c3eae9afcbbdf32c4507059 100644
 --- a/src/guide.ts
 +++ b/src/guide.ts
 @@ -72,10 +72,11 @@ export function creatorGuideText(status: CreatorSetupStatus): string {
@@ -1532,7 +1688,7 @@ index 0144b91..7bf2678 100644
      "## 推进原则",
      "- 每次只推进当前缺失的下一步：选题与脚本 → 录制 → 导出成片 → 字幕 → 封面 → 发布 → 数据回收。",
 diff --git a/src/libraryPrompt.ts b/src/libraryPrompt.ts
-index 66022ee..08e2e00 100644
+index 66022ee3ebe7d96e6b2e8f65d5f8d5aabf842302..08e2e008d08030553f9bb6fd0229637186474260 100644
 --- a/src/libraryPrompt.ts
 +++ b/src/libraryPrompt.ts
 @@ -43,8 +43,8 @@ export function libraryConventionText(
@@ -1547,7 +1703,7 @@ index 66022ee..08e2e00 100644
    if (enabledPlatforms !== undefined) {
      lines.push(
 diff --git a/src/overlay.ts b/src/overlay.ts
-index f06161a..7596b7a 100644
+index f06161a873f5074a3509ea802e074267944af704..7596b7a5a08d934c2100f08ab05d6d28aa0bf5b9 100644
 --- a/src/overlay.ts
 +++ b/src/overlay.ts
 @@ -3,7 +3,14 @@ import { dirname, join } from "node:path";
@@ -1579,7 +1735,7 @@ index f06161a..7596b7a 100644
    }
 diff --git a/src/publishing.ts b/src/publishing.ts
 new file mode 100644
-index 0000000..9490526
+index 0000000000000000000000000000000000000000..9490526700f0f8fd0477a008eb54bc19b3f188df
 --- /dev/null
 +++ b/src/publishing.ts
 @@ -0,0 +1,796 @@
@@ -2380,7 +2536,7 @@ index 0000000..9490526
 +  }
 +}
 diff --git a/src/remote-contract.ts b/src/remote-contract.ts
-index 21e2b08..fe3c90f 100644
+index 21e2b0880e2fb92e01ea902fb255ad42a9b54581..fe3c90fe5124b27977a62ff3d968536d770eb1fb 100644
 --- a/src/remote-contract.ts
 +++ b/src/remote-contract.ts
 @@ -17,6 +17,8 @@ import {
@@ -2410,7 +2566,7 @@ index 21e2b08..fe3c90f 100644
    invocation("setScript", setScriptRequestSchema, contentDetailSchema),
    invocation("openSubtitlePreview", idRequestSchema, subtitlePreviewResultSchema),
 diff --git a/src/schemas.ts b/src/schemas.ts
-index eadbf4e..ec0fbc6 100644
+index eadbf4e5cba3c3988636b5be00f68de8031397a2..ec0fbc6e2d8d888bbd43c84ad280214fca6c508e 100644
 --- a/src/schemas.ts
 +++ b/src/schemas.ts
 @@ -61,6 +61,45 @@ const contentPublishSchema = z.object(
@@ -2476,7 +2632,7 @@ index eadbf4e..ec0fbc6 100644
  });
  
 diff --git a/src/service.ts b/src/service.ts
-index 3fb4708..9a9a61d 100644
+index 3fb4708bb4db1161411e76b63656f4d178889236..9a9a61d5253df0d7b6bebb32b619548139d577c9 100644
 --- a/src/service.ts
 +++ b/src/service.ts
 @@ -57,6 +57,15 @@ import {
@@ -2696,7 +2852,7 @@ index 3fb4708..9a9a61d 100644
    const expanded = expandHomePath(path);
    if (!isAbsolute(expanded)) throw new Error(`path must be absolute: ${path}`);
 diff --git a/src/settingsHost.ts b/src/settingsHost.ts
-index 1f6b9d9..f4a6f22 100644
+index 1f6b9d9c9b15eb910104185498aafe5649942334..f4a6f222d4cf2fa7d9071050978011a0562222ed 100644
 --- a/src/settingsHost.ts
 +++ b/src/settingsHost.ts
 @@ -1,5 +1,5 @@
@@ -2717,7 +2873,7 @@ index 1f6b9d9..f4a6f22 100644
 +  settings.register(CREATOR_SETTINGS_NAMESPACE as SettingsNamespace, CREATOR_SETTINGS_DISCOVERY_SCHEMA);
  }
 diff --git a/src/tools.ts b/src/tools.ts
-index 0a42e95..d30e008 100644
+index 0a42e956b0931603b79b81ed0eaaf7a8dd3e7d69..d30e0087ea28ddd1f0788fef53dc442cb0b402ef 100644
 --- a/src/tools.ts
 +++ b/src/tools.ts
 @@ -35,7 +35,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
@@ -2793,7 +2949,7 @@ index 0a42e95..d30e008 100644
      name: "oil_sync_publish",
      description:
 diff --git a/src/types.ts b/src/types.ts
-index 82cc95f..62fd6f2 100644
+index 82cc95f70da138008e091ec3481b8a420ae3223d..62fd6f2a36722e0b181beec1c66f0a8d54d71b47 100644
 --- a/src/types.ts
 +++ b/src/types.ts
 @@ -77,6 +77,43 @@ export interface ContentSubtitles {
@@ -2864,8 +3020,30 @@ index 82cc95f..62fd6f2 100644
  }
  
  export interface SetPublishRequest {
+diff --git a/tests/bundlePackaging.test.ts b/tests/bundlePackaging.test.ts
+index acaff00a0ce283977a5f20720bd2c7f384a52766..a1bd3baa89cf91588c84d1ee4a798b8b9fcaca7b 100644
+--- a/tests/bundlePackaging.test.ts
++++ b/tests/bundlePackaging.test.ts
+@@ -21,7 +21,7 @@ function parsePackMetadata(output: string) {
+ }
+ 
+ describe("DeepSeek Harness bundle packaging", () => {
+-  it("owns the sidebar replacement in the bundle layer", () => {
++  it("keeps the native sidebar and mounts the creator panel", () => {
+     const manifest = JSON.parse(
+       readFileSync(resolve(root, "package.json"), "utf8"),
+     ) as {
+@@ -76,7 +76,7 @@ describe("DeepSeek Harness bundle packaging", () => {
+       .toContain("0.1.0-rc.7");
+     expect(manifest.peerDependencies?.["@deepseek-ai/dsh-client-ui-settings-plugins"])
+       .toContain("0.1.0-rc.7");
+-    expect(patch).toMatch(/^- id: ui-sidebar\n  disabled: true$/m);
++    expect(patch).not.toMatch(/^- id: ui-sidebar\n  disabled: true$/m);
+     expect(patch).toMatch(/^- insert:\n    - id: dsh-oil-creator\n      name: dsh-oil-creator$/m);
+     expect(copyInplace).not.toContain(".dsh/profiles");
+     expect(copyInplace).toContain("libDirectory");
 diff --git a/tests/capabilities.test.ts b/tests/capabilities.test.ts
-index edd95eb..ecaf3aa 100644
+index edd95ebde1d601c0b360e8dd687c50d6c0643859..ecaf3aa5b7cfeb7e71be27c4a2967b47490255c3 100644
 --- a/tests/capabilities.test.ts
 +++ b/tests/capabilities.test.ts
 @@ -65,6 +65,7 @@ describe("creator setup inspection", () => {
@@ -2885,7 +3063,7 @@ index edd95eb..ecaf3aa 100644
    });
  
 diff --git a/tests/catalog.test.ts b/tests/catalog.test.ts
-index 52bfb48..e1a5b59 100644
+index 52bfb48d5e2f5f53bdde4384cc824eb326c9166c..e1a5b594f694660d511e9733ad052b00161b8a47 100644
 --- a/tests/catalog.test.ts
 +++ b/tests/catalog.test.ts
 @@ -121,6 +121,7 @@ describe("pipeline and filters", () => {
@@ -2930,7 +3108,7 @@ index 52bfb48..e1a5b59 100644
      const root = await mkdtemp(join(tmpdir(), "dsh-oil-sort-"));
      const older = join(root, "2026-06-27_old video");
 diff --git a/tests/contentInspector.test.ts b/tests/contentInspector.test.ts
-index f939455..906bdf5 100644
+index f93945577cd67030898a5096d85b32cbed6b2ac9..906bdf56c8485798952ee1e1f64bbc64c9dbf115 100644
 --- a/tests/contentInspector.test.ts
 +++ b/tests/contentInspector.test.ts
 @@ -1,7 +1,11 @@
@@ -3002,7 +3180,7 @@ index f939455..906bdf5 100644
 +  });
  });
 diff --git a/tests/contentSelection.test.ts b/tests/contentSelection.test.ts
-index 7e016a2..0ec0806 100644
+index 7e016a2587608f6337d039965c1e6d1b937a5052..0ec08061f3736712cb7049c61c2896efd759e82f 100644
 --- a/tests/contentSelection.test.ts
 +++ b/tests/contentSelection.test.ts
 @@ -1,6 +1,7 @@
@@ -3123,7 +3301,7 @@ index 7e016a2..0ec0806 100644
 -  });
  });
 diff --git a/tests/creatorSkill.test.ts b/tests/creatorSkill.test.ts
-index b745a5e..0f75f7a 100644
+index b745a5ead29db6b05f2d20f8a1e5c1b032b6f15d..0f75f7ae5709cf181762019acad5fdc0e95fa0e4 100644
 --- a/tests/creatorSkill.test.ts
 +++ b/tests/creatorSkill.test.ts
 @@ -6,8 +6,10 @@ describe("creator-workbench skill", () => {
@@ -3139,7 +3317,7 @@ index b745a5e..0f75f7a 100644
      expect(CREATOR_WORKBENCH_SKILL.content).toContain("oil_creator_setup");
      expect(CREATOR_WORKBENCH_SKILL.content).toContain("oil_script_rules");
 diff --git a/tests/guide.test.ts b/tests/guide.test.ts
-index 5ef29ff..78a3bd1 100644
+index 5ef29fffe5c8c662caa155b0b22f431a09c9b2c3..78a3bd17b3ccb0c7a363de8bab3aecbe93b000db 100644
 --- a/tests/guide.test.ts
 +++ b/tests/guide.test.ts
 @@ -37,6 +37,7 @@ function statusOf(overrides: {
@@ -3202,7 +3380,7 @@ index 5ef29ff..78a3bd1 100644
    it("lists environment recommendations when present", () => {
 diff --git a/tests/publishing.test.ts b/tests/publishing.test.ts
 new file mode 100644
-index 0000000..afd00a1
+index 0000000000000000000000000000000000000000..afd00a14b62d23e2afdf2b864d48d7fc327f6a7b
 --- /dev/null
 +++ b/tests/publishing.test.ts
 @@ -0,0 +1,297 @@
@@ -3504,7 +3682,7 @@ index 0000000..afd00a1
 +  });
 +});
 diff --git a/tests/releaseCheck.test.ts b/tests/releaseCheck.test.ts
-index 177167d..0ff1abe 100644
+index 177167dfbbd211d146e1a0fe4e5129566a557f9e..0ff1abee0bd201dadefb29bf335f1a1547f36e8f 100644
 --- a/tests/releaseCheck.test.ts
 +++ b/tests/releaseCheck.test.ts
 @@ -7,7 +7,7 @@ import {
@@ -3549,7 +3727,7 @@ index 177167d..0ff1abe 100644
      };
    } catch (error) {
 diff --git a/tests/service.test.ts b/tests/service.test.ts
-index 32fc346..974467c 100644
+index 32fc34616bf57f3e237e4e1a70108c7232fffb0b..974467c95b2008f9601b73c4a7e87d87ab60bbfc 100644
 --- a/tests/service.test.ts
 +++ b/tests/service.test.ts
 @@ -70,6 +70,7 @@ vi.mock("../src/processAlive.ts", async (importOriginal) => {
@@ -3595,8 +3773,27 @@ index 32fc346..974467c 100644
      expect(child.pid).toBeTypeOf("number");
      try {
        const { dataDir, service } = await overlayService({
+diff --git a/tests/sidebarStartSession.test.ts b/tests/sidebarStartSession.test.ts
+index cc77ae4e98c5d5dabd4093f5bade32a29db7a621..ad974b607b2eea29935f0b5ce9068398cd120245 100644
+--- a/tests/sidebarStartSession.test.ts
++++ b/tests/sidebarStartSession.test.ts
+@@ -5,10 +5,11 @@ import { describe, expect, it, vi } from "vitest";
+ import { startSidebarSession } from "../src/client/sidebar/startSession.ts";
+ 
+ describe("侧栏新建会话版本兼容", () => {
+-  it("侧栏入口统一经过兼容适配器", () => {
++  it("内容入口使用 Harness 原生全局面板", () => {
+     const source = readFileSync(new URL("../src/client/index.tsx", import.meta.url), "utf8");
+-    expect(source).toContain("startSidebarSession(ctx, workspaceId)");
+-    expect(source).not.toContain("ctx.workspaces.startSession(");
++    expect(source).toContain('ctx.slots.inject("main"');
++    expect(source).toContain('ctx.slots.inject("sidebar.panellist"');
++    expect(source).not.toContain('ctx.slots.inject("sidebar"');
+   });
+ 
+   it("新版 workspaces 不再提供导航时，使用 uiWorkspace 并保留方法接收者", () => {
 diff --git a/tests/typert.test.ts b/tests/typert.test.ts
-index 4754b8f..1d11a3f 100644
+index 4754b8f564ffc8dc733d400aad7a40b632dac848..1d11a3f657648aebc9cd45278613e39de34624fa 100644
 --- a/tests/typert.test.ts
 +++ b/tests/typert.test.ts
 @@ -31,6 +31,7 @@ describe("handwritten TYPERT", () => {
@@ -3630,7 +3827,7 @@ index 4754b8f..1d11a3f 100644
    });
  });
 diff --git a/tsdown.config.ts b/tsdown.config.ts
-index 7fcb6d8..e12295b 100644
+index 7fcb6d8e1646a6a7e8c54a5a0ce15195af5f07a9..e12295b2338e03d2e8bf596f394647d46067d62e 100644
 --- a/tsdown.config.ts
 +++ b/tsdown.config.ts
 @@ -1,5 +1,5 @@
