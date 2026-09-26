@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.17/README.md
 /yourbuddy-0-3-17:
-  en: 85501154fc645b50
-  zh: c0bec42427c9e043
+  en: c11b6e23dd14bfc2
+  zh: 40602b048f623b42
 /yourbuddy-0-3-17/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -27,8 +27,8 @@
   en: 0589d177cfcc1048
   zh: f38719c7c0b1f9b2
 /yourbuddy-0-3-17/verification-summary:
-  en: 540a22e08c655e3b
-  zh: 3a8b7a7cda660b48
+  en: 571e9ad52ad7ed87
+  zh: 01a165b1d630cf46
 /yourbuddy-0-3-17/scenario-desktop-authentication-handoff:
   en: 0472a16b09c2b1ac
   zh: 12a56778bbf9b554
@@ -48,8 +48,8 @@
   en: 3d1cea5615e54aad
   zh: 987b0a6da93d6fc0
 /yourbuddy-0-3-17/delivery-status:
-  en: bf5a54d61f28b41f
-  zh: 84485169007dd76f
+  en: 5c0797ff7a3f5055
+  zh: a1b6f19128ccf420
 /yourbuddy-0-3-17/delivery-checklist:
-  en: 4f0c46904fe59f2c
-  zh: 7d81b07310ffb0b9
+  en: 150f590cc702a8ec
+  zh: 69d78d6b438a091b

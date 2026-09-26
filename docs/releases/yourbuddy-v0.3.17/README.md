@@ -6,10 +6,10 @@ This archive records the desktop-startup compatibility fix and refreshed persona
 
 - Release identifier: `yourbuddy-v0.3.17`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: partial; product publication and public-artifact verification are complete, while native startup, downloadable evidence, and post-publication website checks remain pending.
+- Archive state: complete within stated limits; source, CI, public files, updater signature, App identity, product sources, relocated runtime, website, and downloadable evidence are recorded; native startup remains unverified.
 - Tagged product commit: `ae8a3d442ada5c8524a6a92ab024b5bcb93877ea`.
-- Evidence gallery: not applicable before publication.
-- Evidence download: [immutable tagged source](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.17/docs/releases/yourbuddy-v0.3.17); the downloadable verification archive is pending.
+- Evidence gallery: not applicable to this startup and website release.
+- Evidence download: [immutable tagged source](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.17/docs/releases/yourbuddy-v0.3.17) and [downloadable verification archive](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.17/yourbuddy-v0.3.17-verification.zip).
 
 ## User release notes
 
@@ -45,7 +45,7 @@ The desktop target remains macOS 11 or later on Apple Silicon. The startup hando
 | Product documentation checks | passed within stated limits | source candidate before version preparation | Node.js 22.22.3 | 21 quick documentation and 43 documentation checks passed; website structure passed 71 tests |
 | Native packaged startup | not verified | published 0.3.17 App | macOS Apple Silicon | a user-owned YourBuddy process was active and was not terminated |
 | Public desktop artifacts and updater | passed | public 0.3.17 assets | GitHub Release and stable updater channel | [artifact verification](evidence/public-artifact-verification.txt) |
-| Product website | pending | post-publication website commit | GitHub Pages | pending |
+| Product website | passed | commit `b239ed5451d0f0df7edaf2ccf7b67bb8eec8552b` | GitHub Pages | [website verification](evidence/website-verification.txt) |
 
 ## Scenario: desktop authentication handoff
 
@@ -87,8 +87,8 @@ Source, CI, and static artifact checks do not prove native startup of the publis
 ## Delivery status
 
 - Product publication status: published by the [successful immutable-tag workflow](https://github.com/istarwyh/yourbuddy/actions/runs/36243287834); all five versioned files are publicly downloadable and independently verified.
-- Verification archive status: partial; source diagnosis and public-artifact evidence are recorded, while the downloadable archive is pending.
-- Website synchronization status: pending; the verified 0.3.16 download remains public until 0.3.17 artifacts pass independent checks.
+- Verification archive status: complete within stated limits; the downloadable archive was published and independently extracted.
+- Website synchronization status: deployed and checked live through the [successful website workflow](https://github.com/istarwyh/yourbuddy/actions/runs/36245576082); Chinese and English pages advertise only verified 0.3.17 files.
 - Unverified scope: native startup of the published App, packaged-WebView interaction, update installation, signing, and notarization.
 
 ## Delivery checklist
@@ -99,6 +99,6 @@ Source, CI, and static artifact checks do not prove native startup of the publis
 - [x] The complete desktop release suite and preparation pass on the committed candidate.
 - [ ] Native startup of the published App completes the authentication handoff and opens the workbench.
 - [x] Public files, checksums, updater metadata, signature, App identity, source records, and relocated runtime are independently verified.
-- [ ] The evidence archive is published and independently extracted.
-- [ ] The bilingual product website is synchronized and checked live without promoting unverified files.
+- [x] The evidence archive is published and independently extracted.
+- [x] The bilingual product website is synchronized and checked live without promoting unverified files.
 - [x] Public tags and installers will not be moved or overwritten.

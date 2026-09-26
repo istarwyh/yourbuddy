@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.3.17`。
 - 产品渠道：macOS Apple Silicon 版 YourBuddy 桌面应用。
-- 归档状态：部分完成；产品发布与公开产物核验已经完成，原生启动、可下载证据与发布后官网检查仍待完成。
+- 归档状态：在声明限制内完整；已记录源码、CI、公开文件、Updater 签名、App 标识、产品来源、迁移运行时、官网与可下载证据；原生启动仍未验证。
 - 带 Tag 的产品 Commit：`ae8a3d442ada5c8524a6a92ab024b5bcb93877ea`。
-- 证据图集：发布前不适用。
-- 证据下载：[不可变 Tag 源码](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.17/docs/releases/yourbuddy-v0.3.17)；可下载验证归档仍待发布。
+- 证据图集：本次启动与官网发布不适用。
+- 证据下载：[不可变 Tag 源码](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.17/docs/releases/yourbuddy-v0.3.17)与[可下载验证归档](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.17/yourbuddy-v0.3.17-verification.zip)。
 
 ## 面向用户的发布说明
 
@@ -45,7 +45,7 @@
 | 产品文档检查 | 在所述范围内通过 | 版本准备前的源码候选 | Node.js 22.22.3 | 21 项快速文档与 43 项文档检查通过；网站结构 71 项测试通过 |
 | 原生安装包启动 | not verified | 已发布 0.3.17 App | macOS Apple Silicon | 用户自己的 YourBuddy 进程正在运行，未终止该进程 |
 | 公开桌面产物与 Updater | passed | 公开 0.3.17 产物 | GitHub Release 与稳定 Updater Channel | [产物核验](evidence/public-artifact-verification.txt) |
-| 产品官网 | pending | 发布后的官网 Commit | GitHub Pages | 待补 |
+| 产品官网 | passed | Commit `b239ed5451d0f0df7edaf2ccf7b67bb8eec8552b` | GitHub Pages | [官网核验](evidence/website-verification.txt) |
 
 ## 场景：桌面身份认证交接
 
@@ -87,8 +87,8 @@
 ## 交付状态
 
 - 产品发布状态：已由[不可变 Tag 工作流](https://github.com/istarwyh/yourbuddy/actions/runs/36243287834)发布；全部 5 个版本文件均可公开下载并完成独立核验。
-- 验证资料归档状态：部分完成；已记录源码诊断与公开产物证据，可下载归档待补。
-- 站点同步状态：待处理；在 0.3.17 产物完成独立核验前，已核验的 0.3.16 下载保持公开。
+- 验证资料归档状态：在声明限制内完整；可下载归档已发布并独立解压检查。
+- 站点同步状态：已通过[官网成功工作流](https://github.com/istarwyh/yourbuddy/actions/runs/36245576082)部署并完成线上检查；中英文页面只展示已核验的 0.3.17 文件。
 - 未验证范围：已发布 App 的原生启动、安装包 WebView 交互、更新安装、签名与公证。
 
 ## 交付清单
@@ -99,6 +99,6 @@
 - [x] 完整桌面发布套件与候选准备在已提交候选上通过。
 - [ ] 已发布 App 的原生启动完成身份认证交接并打开工作台。
 - [x] 公开文件、校验和、Updater 元数据、签名、App 标识、来源记录与迁移运行时完成独立核验。
-- [ ] 验证归档已发布并独立解压检查。
-- [ ] 双语产品官网完成同步与线上检查，且未提升未经验证的文件。
+- [x] 验证归档已发布并独立解压检查。
+- [x] 双语产品官网完成同步与线上检查，且未提升未经验证的文件。
 - [x] 公开 Tag 与安装包不会移动或覆盖。
