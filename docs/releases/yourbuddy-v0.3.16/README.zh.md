@@ -6,8 +6,8 @@
 
 - 发布标识：`yourbuddy-v0.3.16`。
 - 产品渠道：macOS Apple Silicon 版 YourBuddy 桌面应用。
-- 归档状态：发布前候选；源码、组装浏览器、公开产物、Updater、官网与可下载证据只在对应检查完成后更新。
-- 候选源码：待生成带 Tag 的产品 Commit。
+- 归档状态：部分完成；产品发布与公开产物核验已经完成，交互录制、可下载证据与官网检查仍待补。
+- 带 Tag 的产品 Commit：`3e3c0da88f1a9a6b080b606d15b363745d32669d`。
 - 证据图集：产品工作台交互录制待完成。
 - 证据下载：不可变 Tag 源码与可下载验证归档待发布。
 
@@ -31,7 +31,7 @@ Better Sidebar 保持为中间工作台，创作者内容会临时使用同一�
 
 ### 安装或升级
 
-Apple Silicon DMG 与应用内更新路径仍待 GitHub Release 发布并完成独立核验。已有 YourBuddy 数据不需要迁移。
+请安装 [Apple Silicon DMG](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.16/yourbuddy-0.3.16-macos-arm64.dmg)，该安装包来自 [0.3.16 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.16)；也可以在旧版 YourBuddy 中使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。已有 YourBuddy 数据不需要迁移。
 
 ### 兼容性、迁移与限制
 
@@ -41,17 +41,17 @@ Apple Silicon DMG 与应用内更新路径仍待 GitHub Release 发布并完成�
 
 | 场景 | 状态 | 受测构建 | 环境 | 证据 |
 |---|---|---|---|---|
-| 聚焦源码与产品检查 | passed | 未提交的 0.3.16 候选 | macOS Apple Silicon、Node.js 22.19 | Typecheck、35 项文档检查、94 项聚焦测试、221 项桌面产品测试与完整桌面发布测试套件 |
-| 组装 Host 与浏览器工作台 | 浏览器通过；准备后的 Host 待验证 | 从源码构建的 Web Client | 本地 Host 与 Chromium | 无密钥刷新与回放通过，3 项浏览器测试通过 |
+| 聚焦源码与产品检查 | passed | 已提交的 0.3.16 发布输入 | macOS Apple Silicon、Node.js 22.19 | Typecheck、43 项文档检查、聚焦发布测试套件与完整桌面发布测试套件 |
+| 组装 Host 与浏览器工作台 | 在所述范围内通过 | 从源码构建的 Web Client 与准备后的 Host | 本地 Host 与 Chromium | 70 个 peer link、7 个 Client 插件、无密钥刷新与回放通过，3 项浏览器测试通过 |
 | 产品工作台交互录制 | pending | 准备后的候选版本 | YourBuddy Web GUI | 待补 |
-| 公开桌面产物与 Updater | pending | GitHub Release 产物 | 匿名公开下载 | 待补 |
+| 公开桌面产物与 Updater | passed | 公开 0.3.16 产物 | GitHub Release 与稳定 Updater Channel | [产物核验](evidence/public-artifact-verification.txt) |
 | 产品官网 | pending | 发布后的官网 Commit | GitHub Pages | 待补 |
 
 ## 场景：产品工作台协同
 
-- 状态：本地源码与组装浏览器检查已通过；准备后的 Host、录制与发布待完成。
+- 状态：源码、准备后的 Host、组装浏览器与发布检查已通过；交互录制仍待补。
 - 日期与时间：本地准备与回放时间为 `2026-09-25 23:13` 至 `2026-09-26 00:11 +0800 CST`。
-- 发布版本与 Commit：`yourbuddy-v0.3.16`；Tag Commit 待生成。
+- 发布版本与 Commit：`yourbuddy-v0.3.16`；带 Tag 的 Commit 为 `3e3c0da88f1a9a6b080b606d15b363745d32669d`。
 - 受测构建：发布前源码与组装候选版本。
 - 环境：macOS Apple Silicon、Node.js 22.19、本地 Host 与内置 Chromium。
 - 证据来源：本次发布运行。
@@ -70,14 +70,14 @@ Apple Silicon DMG 与应用内更新路径仍待 GitHub Release 发布并完成�
 
 ### 实际结果
 
-源码、产品、文档、发布脚本与组装无密钥浏览器检查已通过。浏览器路径在 Better Sidebar 后台打开期间保留创作者 Content，在显式用户打开与 Session 变化时返回核心工作台，恢复聚合 Session 区域，并能重新打开已选中的一集。完整发布准备、精确 Commit 录制与发布仍待完成。
+源码、产品、文档、发布脚本、准备后的 Host、组装无密钥浏览器与发布检查已通过。浏览器路径在 Better Sidebar 后台打开期间保留创作者 Content，在显式用户打开与 Session 变化时返回核心工作台，恢复聚合 Session 区域，并能重新打开已选中的一集。精确 Commit 的交互录制仍待补。
 
 ### 证据
 
 - 操作前：0.3.16 版本真源、双语归档、产品快照与物化 Patch 来源记录 在发布前保持一致。
 - 执行中：`pnpm run typecheck`、`pnpm run doc-sync`、`pnpm --dir apps/desktop-tauri run test:release`、聚焦 Vitest、Oil Creator 源码刷新与 Better Sidebar Patch 回放在 macOS Apple Silicon 和 Node.js 22.19 上通过。
-- 结果：`DSH_SNAPSHOT=replay pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/yourbuddy-help.e2e.ts` 的 3 项浏览器测试通过。GUI 录制、准备后的 Host Smoke、公开校验和、Updater 核验与可下载归档仍待补。
-- 失败与恢复：组装浏览器最初发现 Oil Creator Typert 未注册、后台触发的自动终端被标成用户导航，以及已选中行无法重新打开隐藏 Content。Fixture 现显式加载产品 Typert 产物，自动终端携带后台意图，已选中行会重新打开 Content，回放通过。发布准备正确拒绝了未提交工作树，将在候选 Commit 后执行。
+- 结果：`DSH_SNAPSHOT=replay pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/yourbuddy-help.e2e.ts` 的 3 项浏览器测试通过。完整发布准备验证了 70 个 peer link 与 7 个组装 Client 插件。发布工作流、公开校验和、Updater 签名、App 标识、DMG／Updater 文件树对比、产品包与迁移运行时通过检查。GUI 录制与可下载归档仍待补。
+- 失败与恢复：组装浏览器最初发现 Oil Creator Typert 未注册、后台触发的自动终端被标成用户导航，以及已选中行无法重新打开隐藏 Content。Fixture 现显式加载产品 Typert 产物，自动终端携带后台意图，已选中行会重新打开 Content，回放通过。发布准备发现双语产品记录陈旧，因此先完成同步再创建 Tag。HTTPS OAuth 凭据缺少 Workflow Scope，原子推送没有改变任何远端 Ref；随后通过已有 SSH 凭据原子推送相同分支与 Tag。
 
 ### 范围限制
 
@@ -85,8 +85,8 @@ Apple Silicon DMG 与应用内更新路径仍待 GitHub Release 发布并完成�
 
 ## 交付状态
 
-- 产品发布状态：待发布。
-- 验证资料归档状态：草稿；已有候选源码记录，执行与公开证据待补。
+- 产品发布状态：[不可变 Tag 工作流](https://github.com/istarwyh/yourbuddy/actions/runs/36235367585)成功发布。
+- 验证资料归档状态：部分完成；源码、执行与公开产物证据已经记录，交互录制与可下载归档仍待补。
 - 站点同步状态：待同步；在 0.3.16 产物通过独立检查前，官网继续提供已验证的 0.3.15 下载。
 - 未验证范围：真实创作者账号、最终发表操作、原生安装后启动、安装包 WebView 交互、更新安装、签名与公证。
 
@@ -95,9 +95,9 @@ Apple Silicon DMG 与应用内更新路径仍待 GitHub Release 发布并完成�
 - [x] 发布标识与桌面版本真源匹配 0.3.16。
 - [x] 用户说明覆盖变更、问题、位置、最短体验路径、迁移与限制。
 - [x] 聚焦源码、产品、Catalog、文档与发布检查通过并保留日志。
-- [ ] 完整发布准备与组装 Host／浏览器检查通过。
+- [x] 完整发布准备与组装 Host／浏览器检查通过。
 - [ ] 产品工作台 GUI 路径完成录制并保留。
-- [ ] 公开文件、校验和、Updater 元数据、签名、App 标识、来源记录 与迁移运行时完成独立核验。
+- [x] 公开文件、校验和、Updater 元数据、签名、App 标识、来源记录与迁移运行时完成独立核验。
 - [ ] 验证归档已发布并独立解压检查。
 - [ ] 双语产品官网完成同步与线上检查，且未提升未经验证的文件。
 - [x] 公开 Tag 与安装包不会移动或覆盖。

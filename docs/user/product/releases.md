@@ -6,6 +6,12 @@ A release means an available artifact and matching user-facing evidence.
 
 ## YourBuddy
 
+### 0.3.16 — 2026-09-26
+
+YourBuddy 0.3.16 keeps the workbench, creator Content, and active Session coordinated without discarding their state. Conversation and the native right sidebar collapse as one Session region; background Agent opens no longer replace visible creator Content; fresh Sessions use Full access by default; and Oil Creator validates draft inputs while protecting final and scheduled actions. Public artifact integrity, updater metadata and signature, App identity, product source records, generated publisher runtime modules, and the relocated runtime passed independent checks. The exact-commit interaction recording, native startup, packaged-WebView interaction, an update from an older version, real creator accounts, final publication, and Apple notarization remain unverified.
+
+[Release and downloads](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.16) · [verification record](../../releases/yourbuddy-v0.3.16/README.md) · [download page](download.md)
+
 ### 0.3.15 — 2026-09-23
 
 YourBuddy 0.3.15 makes creator publishing available from the built-in **内容创作** Agent Preset. Oil Creator includes the maintained video publisher, video-to-article, and WeChat Official Account publisher Skills; `oil_prepare_publish` prepares drafts for Xiaohongshu, Douyin, Bilibili, WeChat Channels, and the WeChat Official Account draft box while retaining the user's final-publication checkpoint. Public artifact integrity, updater metadata and signature, App identity, generated publisher runtime modules, product source records, relocated runtime, and the downloadable verification archive passed independent checks. Native startup, packaged-WebView interaction, an update from an older version, real creator accounts, final publication, and Apple notarization remain unverified.

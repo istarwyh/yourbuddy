@@ -10,7 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.16](yourbuddy-v0.3.16/README.md) | YourBuddy desktop | Included | Pre-publication archive; source, assembled-browser, public-artifact, updater, website, and downloadable evidence pending | Candidate; not yet published |
+| [yourbuddy-v0.3.16](yourbuddy-v0.3.16/README.md) | YourBuddy desktop | Included | Partial; source, assembled-browser, public files, updater signature, App identity, product source records, and relocated runtime recorded; interaction recording, website, and downloadable archive pending | Published and independently verified within stated limits |
 | [yourbuddy-v0.3.15](yourbuddy-v0.3.15/README.md) | YourBuddy desktop | Included | Complete within stated limits; source, public files, updater signature, App identity, generated publisher modules, product source records, relocated runtime, website, and downloadable archive recorded | Published and independently verified within stated limits |
 | [yourbuddy-v0.3.14](yourbuddy-v0.3.14/README.md) | YourBuddy desktop | Included | Pre-publication checks and clean-checkout failure evidence retained | Failed before artifact publication; superseded by 0.3.15 |
 | [yourbuddy-v0.3.13](yourbuddy-v0.3.13/README.md) | YourBuddy desktop | Included | Pre-publication checks and failed workflow evidence retained | Failed before artifact publication; superseded by 0.3.15 |

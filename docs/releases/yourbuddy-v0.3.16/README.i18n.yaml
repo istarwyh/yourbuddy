@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.16/README.md
 /yourbuddy-0-3-16:
-  en: d8d13f02c4e2fcf9
-  zh: 148ffff03342b7e8
+  en: b028e3fb78aeac2e
+  zh: ce2c12c6c96b44e8
 /yourbuddy-0-3-16/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -21,17 +21,17 @@
   en: f5e55d9be1b62253
   zh: 50a72fc23937a46d
 /yourbuddy-0-3-16/user-release-notes/install-or-upgrade:
-  en: b1e7c6f34b2fc9d5
-  zh: 330a918681d19fd4
+  en: 74430ab9c723ab56
+  zh: 8edbdf055d3d33a6
 /yourbuddy-0-3-16/user-release-notes/compatibility-migration-and-limitations:
   en: 0f30cb84f10020af
   zh: 2f24b84d501533e1
 /yourbuddy-0-3-16/verification-summary:
-  en: 811eca12fe1dc36f
-  zh: b9fc2dfa2996fb36
+  en: a8a261f4d2662a22
+  zh: 0a71cdf459f5d653
 /yourbuddy-0-3-16/scenario-coordinated-product-workbench:
-  en: 0206e3f69a65fa7d
-  zh: f4c60f67480842cb
+  en: 61540e91b62407de
+  zh: ee19b76a0b512bff
 /yourbuddy-0-3-16/scenario-coordinated-product-workbench/steps:
   en: c4a0ed599a744925
   zh: 4881edd68e5dc8bb
@@ -39,17 +39,17 @@
   en: df011edb9fa74f78
   zh: a367730099e115f6
 /yourbuddy-0-3-16/scenario-coordinated-product-workbench/actual:
-  en: 24a7ccd077bbfd52
-  zh: 8680634e3c0404d8
+  en: 1935f7742800144d
+  zh: de9ff952da1e41e4
 /yourbuddy-0-3-16/scenario-coordinated-product-workbench/evidence:
-  en: 975d6e862452da9d
-  zh: 05a5ae4cbc3cc788
+  en: d6588b28dd242985
+  zh: 70103f2d69666e77
 /yourbuddy-0-3-16/scenario-coordinated-product-workbench/scope-limits:
   en: 06af18880cb93101
   zh: f6fcda3ef014bc18
 /yourbuddy-0-3-16/delivery-status:
-  en: 57228d4c27ba815a
-  zh: 84bd10387fa6c4be
+  en: 643fa55bc458a59c
+  zh: 803e81ceff34a5dc
 /yourbuddy-0-3-16/delivery-checklist:
-  en: 50e2b3ab22cedb82
-  zh: 7eedf66b04ab2848
+  en: 1cdbe310e6ccb43c
+  zh: 042ac148903a7b0c

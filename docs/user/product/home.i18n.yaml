@@ -3,5 +3,5 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/home.md
 /yourbuddy:
-  en: e8f29584138e63e3
-  zh: eb25c2a8e772debf
+  en: 9db5b5abe1796bd8
+  zh: 89ef1027b1807d46
