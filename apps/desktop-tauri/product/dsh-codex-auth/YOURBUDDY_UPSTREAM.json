@@ -21,7 +21,7 @@
     {
       "id": "current-settings-namespace",
       "file": "patches/codex-auth-current-settings.patch",
-      "sha256": "2bd8b29c2a3cdadfa7249719c80d72ad0e5a1f0c404ae1cd3cca24ba1bbc7818",
+      "sha256": "489b1fa5f0477163bb92ea840f82a813fb93c8a26abd933f3a9f2168ecee1dd9",
       "purpose": "Bind capability settings to stable Loader entries, use current Config Forms mutations, and let profile reloads apply each accepted change."
     },
     "Set @deepseek-ai/dsh-agent peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",

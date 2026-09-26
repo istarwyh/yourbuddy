@@ -150,6 +150,8 @@ test('Codex Auth binds settings forms to bundled profile entry ids', () => {
   assert.match(readFileSync(join(codexLib, 'index.js'), 'utf8'), /longContextEnabled: z\.boolean\(\)\.default\(false\)\.volatile\(\)/u)
   assert.match(readFileSync(join(codexLib, 'search.js'), 'utf8'), /enabled: z\.boolean\(\)\.default\(true\)\.volatile\(\)/u)
   assert.match(readFileSync(join(codexLib, 'image.js'), 'utf8'), /enabled: z\.boolean\(\)\.default\(true\)\.volatile\(\)/u)
+  const patch = readFileSync(join(import.meta.dirname, '..', 'product', 'patches', 'codex-auth-current-settings.patch'), 'utf8')
+  assert.doesNotMatch(patch, /YOURBUDDY_UPSTREAM\.json/u)
 })
 
 test('desktop shell projects window controls into the sidebar with a compact fallback', () => {

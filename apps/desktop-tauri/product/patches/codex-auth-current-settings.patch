@@ -1,27 +1,3 @@
-diff --git a/YOURBUDDY_UPSTREAM.json b/YOURBUDDY_UPSTREAM.json
-index 49df883e913dd186c29fd646982ef67cc9026ec2..bf41b0906293ec832b79b9f1d7668c8a3e9cf7ed 100644
---- a/YOURBUDDY_UPSTREAM.json
-+++ b/YOURBUDDY_UPSTREAM.json
-@@ -18,6 +18,12 @@
-       "sha256": "b01eaf180644133d4dc53c610ba28a3d82b96e2ca68f73276bbd2bae65032428",
-       "purpose": "Bind the GPT Auth RPC registration to the Web carrier, satisfy the bundled Pi AI profile diagnostics contract, and use the current Config Forms settings service."
-     },
-+    {
-+      "id": "current-settings-namespace",
-+      "file": "patches/codex-auth-current-settings.patch",
-+      "sha256": "8c05c6814da42d3c203876ef9cc982ab42c3d95b5d192cf70fdba10222bbe9f0",
-+      "purpose": "Bind capability settings to stable Loader entries, use current Config Forms mutations, and let profile reloads apply each accepted change."
-+    },
-     "Set @deepseek-ai/dsh-agent peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
-     "Set @deepseek-ai/dsh-api-remotes peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
-     "Set @deepseek-ai/dsh-atomic-write peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
-@@ -43,5 +49,5 @@
-   ],
-   "repository": "https://github.com/suntianc/dsh-codex-auth",
-   "license": "MIT",
--  "treeSha256": "7784ff181ecf20d24e3ddc7887449c1e4ed028dde2904c27363ff231ab518494"
-+  "treeSha256": "1ac52e400696c5e9c7376557a6a4ac863076878aba6132e04392bdaff4e551c9"
- }
 diff --git a/lib/client.js b/lib/client.js
 index 1b72b8d30b88f912c0ad2c117d1a269780e11e05..132fc25721657b58c601f29a4bf7d2c983be1e71 100644
 --- a/lib/client.js

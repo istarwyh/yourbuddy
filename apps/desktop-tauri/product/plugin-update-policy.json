@@ -68,6 +68,9 @@
         ],
         "0.9.8": [
           "@deepseek-ai/dsh-client-runtime"
+        ],
+        "0.10.1": [
+          "@deepseek-ai/dsh-client-runtime"
         ]
       }
     },

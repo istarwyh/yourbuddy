@@ -335,7 +335,9 @@ export function installProductPlugins(bundleRoot) {
     }
     verifyExternalSnapshot(plugin.root, manifest)
 
-    copyTree(plugin.root, join(bundleRoot, plugin.destination))
+    const bundledPluginRoot = join(bundleRoot, plugin.destination)
+    copyTree(plugin.root, bundledPluginRoot)
+    rmSync(join(bundledPluginRoot, 'YOURBUDDY_UPSTREAM.json'), { force: true })
     installedPlugins.push({ manifest, destination: plugin.destination })
     cliManifest.dependencies = {
       ...cliManifest.dependencies,

@@ -269,6 +269,10 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
       'utf8',
     ))
     assert.equal(bundledCodex.peerDependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
+    assert.equal(
+      existsSync(join(root, 'packages', 'product', 'dsh-codex-auth', 'YOURBUDDY_UPSTREAM.json')),
+      false,
+    )
     const sourceCodex = JSON.parse(readFileSync(
       join(desktopRoot, 'product', 'dsh-codex-auth', 'package.json'),
       'utf8',
@@ -300,10 +304,16 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
       assert.match(source, /yourbuddy\.desktop\.external-link/u)
       assert.match(source, /window\.parent\.postMessage/u)
     }
-    const sidebarSourceRecord = JSON.parse(readFileSync(join(bundledSidebar, 'YOURBUDDY_UPSTREAM.json'), 'utf8'))
+    const sidebarSourceRecord = JSON.parse(readFileSync(join(
+      desktopRoot,
+      'product',
+      'dsh-better-sidebar',
+      'YOURBUDDY_UPSTREAM.json',
+    ), 'utf8'))
     assert.ok(sidebarSourceRecord.patches.some(
       patch => patch.id === 'yourbuddy-workbench' && /^[a-f0-9]{64}$/u.test(patch.sha256),
     ))
+    assert.equal(existsSync(join(bundledSidebar, 'YOURBUDDY_UPSTREAM.json')), false)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'context-doctor', 'lib', 'client.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'context-doctor', 'lib', 'index.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'client.js'), 'utf8').length > 0)
