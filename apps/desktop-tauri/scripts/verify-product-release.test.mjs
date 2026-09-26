@@ -411,7 +411,6 @@ test('product smoke overlay mounts the product defaults and plugins', () => {
   assert.match(overlay, /name: dsh-oil-creator/)
   assert.match(overlay, /id: better-sidebar/)
   assert.match(overlay, /e\.options\.id !== 'better-sidebar' && !e\.disabled/)
-  assert.match(overlay, /id: yourbuddy-release-better-sidebar/)
   assert.match(overlay, /id: yourbuddy-release-codex-search/)
   assert.match(overlay, /id: yourbuddy-release-codex-image/)
   assert.match(overlay, /id: yourbuddy-release-subagent-codex/)

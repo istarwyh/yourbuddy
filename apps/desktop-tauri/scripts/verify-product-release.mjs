@@ -333,11 +333,6 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
     - id: yourbuddy-release-subagent-codex
       name: '@deepseek-ai/dsh-subagent-codex'
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === '@deepseek-ai/dsh-subagent-codex' && e.options.id !== 'yourbuddy-release-subagent-codex' && !e.disabled)"
-    - id: yourbuddy-release-better-sidebar
-      name: dsh-better-sidebar
-      config:
-        presentation: slot
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'yourbuddy-release-better-sidebar' && !e.disabled)"
     - id: yourbuddy-release-codex-auth
       name: dsh-codex-auth
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth' && e.options.id !== 'yourbuddy-release-codex-auth' && !e.disabled)"
