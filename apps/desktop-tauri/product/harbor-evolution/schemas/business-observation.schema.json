@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/business-observation.schema.json",
+  "title": "Harbor External Business Observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol",
+    "observation_id",
+    "source",
+    "subject",
+    "window",
+    "metrics",
+    "segments",
+    "digest"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "protocol": { "const": "business-observation/v1" },
+    "observation_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "version", "provenance"],
+      "properties": {
+        "kind": { "enum": ["manual", "analytics", "api", "external-experiment"] },
+        "id": { "$ref": "#/$defs/identity" },
+        "version": { "$ref": "#/$defs/identity" },
+        "provenance": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "generator_id": { "$ref": "#/$defs/identity" },
+        "candidate_digest": { "$ref": "#/$defs/digest" },
+        "deployment_id": { "$ref": "#/$defs/identity" },
+        "project_id": { "$ref": "#/$defs/identity" }
+      },
+      "anyOf": [
+        { "required": ["generator_id"] },
+        { "required": ["candidate_digest"] },
+        { "required": ["deployment_id"] },
+        { "required": ["project_id"] }
+      ]
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "through"],
+      "properties": {
+        "from": { "type": "string", "format": "date-time", "maxLength": 64 },
+        "through": { "type": "string", "format": "date-time", "maxLength": 64 }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/metric" }
+    },
+    "segments": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/segment" }
+    },
+    "digest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^\\r\\n\\u0000]+$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "value", "unit", "direction", "sample_size"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._-]{0,127}$"
+        },
+        "value": { "type": "number" },
+        "unit": { "$ref": "#/$defs/identity" },
+        "direction": { "enum": ["maximize", "minimize"] },
+        "sample_size": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+      }
+    },
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "value"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._-]{0,127}$"
+        },
+        "value": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[^\\r\\n\\u0000]+$" },
+            { "type": "number" },
+            { "type": "boolean" }
+          ]
+        }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "dimensions", "metrics"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._-]{0,127}$"
+        },
+        "label": { "$ref": "#/$defs/identity" },
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/dimension" }
+        },
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/metric" }
+        }
+      }
+    }
+  }
+}

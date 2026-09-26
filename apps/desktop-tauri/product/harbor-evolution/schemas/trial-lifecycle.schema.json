@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/trial-lifecycle.schema.json",
+  "title": "Trial Lifecycle Snapshot",
+  "type": "object",
+  "required": ["schema_version", "job", "updated_at", "dataset_total", "attempt_count", "counts", "trials"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "job": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "dataset_total": { "type": "integer", "minimum": 0 },
+    "attempt_count": { "type": "integer", "minimum": 0 },
+    "counts": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "trials": { "type": "array", "items": { "type": "object" } }
+  }
+}

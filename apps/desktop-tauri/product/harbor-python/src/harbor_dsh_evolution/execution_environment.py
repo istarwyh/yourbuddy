@@ -45,11 +45,24 @@ def execution_environment_identity(value: str | None) -> dict[str, Any]:
         identity: dict[str, Any] = {
             "kind": "docker",
             "provider": "harbor.environments.docker:LocalDockerEnvironment",
+            "isolation": "container",
+            "network_policy_enforced": True,
+            "resource_limits_enforced": True,
+            "user_switch_enforced": True,
+            "docker_version": _command_version("docker", "version", "--format", "{{.Server.Version}}"),
+            "docker_platform": _command_version("docker", "info", "--format", "{{.OSType}}/{{.Architecture}}"),
+            "image_identity": None,
+            "identity_strength": "runtime-engine-only",
         }
     else:
         identity = {
             "kind": "host",
             "provider": HOST_ENVIRONMENT_IMPORT,
+            "isolation": "none",
+            "network_policy_enforced": False,
+            "resource_limits_enforced": False,
+            "user_switch_enforced": False,
+            "identity_strength": "unrestricted-host",
             "platform": platform.system().lower(),
             "platform_release": platform.release(),
             "architecture": platform.machine(),

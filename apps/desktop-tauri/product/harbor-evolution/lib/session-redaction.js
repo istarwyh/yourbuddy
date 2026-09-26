@@ -9,6 +9,8 @@ import {
 const MAX_MESSAGE_CHARS = 4_000
 const MAX_TRANSCRIPT_MESSAGES = 80
 const MAX_OBSERVATION_BYTES = 512 * 1024
+const MAX_EVIDENCE_SUMMARY_BYTES = 4 * 1024
+const MAX_EVIDENCE_SOURCE_CHARS = 32_000
 
 function replaceCanaries(value, canaries) {
   let text = value
@@ -89,28 +91,140 @@ function modelSegments(selected, report, canaries) {
   }))
 }
 
-function toolEvidence(events) {
+function boundedResultText(result) {
+  const parts = []
+  const append = value => {
+    if (typeof value === 'string' && value) parts.push(value)
+  }
+  append(result?.data?.error?.message)
+  for (const block of result?.data?.message?.content ?? []) {
+    append(block?.text)
+    for (const nested of block?.content ?? []) append(nested?.text)
+  }
+  const text = parts.join('\n')
+  return { text: text.slice(0, MAX_EVIDENCE_SOURCE_CHARS), truncated: text.length > MAX_EVIDENCE_SOURCE_CHARS }
+}
+
+function integer(value) {
+  const number = Number(value)
+  return Number.isSafeInteger(number) && number >= 0 ? number : undefined
+}
+
+function resultExitCode(result, text) {
+  const direct = integer(result?.data?.exitCode ?? result?.data?.exit_code ?? result?.data?.code)
+  if (direct !== undefined) return direct
+  const match = text.match(/\[exit code:\s*(-?\d+)\]|(?:exit(?:ed)?(?:\s+with)?(?:\s+code)?[:= ]+)\s*(-?\d+)/i)
+  if (!match) return undefined
+  const parsed = Number(match[1] ?? match[2])
+  return Number.isSafeInteger(parsed) ? parsed : undefined
+}
+
+function evidenceCategory(tool, invocation) {
+  const source = `${tool} ${invocation}`.toLowerCase()
+  if (/\b(?:test|pytest|vitest|jest|node --test)\b/.test(source)) return 'test'
+  if (/\bgit\b/.test(source)) return 'git'
+  if (/\b(?:build|compile|pack)\b/.test(source)) return 'build'
+  if (/\b(?:write|edit|patch)\b/.test(source)) return 'file-write'
+  if (/\b(?:http|fetch|curl|request)\b/.test(source)) return 'http'
+  return 'unknown'
+}
+
+function allowlistedFacts(category, text, outcome) {
+  const facts = []
+  if (category === 'test') {
+    let passed
+    let failed
+    for (const pattern of [/(\d+)\s+passed\b/i, /#\s*pass\s+(\d+)\b/i]) {
+      const match = text.match(pattern)
+      if (match) { passed = integer(match[1]); break }
+    }
+    for (const pattern of [/(\d+)\s+failed\b/i, /#\s*fail\s+(\d+)\b/i]) {
+      const match = text.match(pattern)
+      if (match) { failed = integer(match[1]); break }
+    }
+    if (passed !== undefined || failed !== undefined) facts.push({ kind: 'test-count', passed: passed ?? 0, failed: failed ?? 0 })
+  } else if (category === 'git') {
+    const changed = integer(text.match(/(\d+)\s+files? changed/i)?.[1])
+    const insertions = integer(text.match(/(\d+)\s+insertions?/i)?.[1])
+    const deletions = integer(text.match(/(\d+)\s+deletions?/i)?.[1])
+    if (changed !== undefined || insertions !== undefined || deletions !== undefined) {
+      facts.push({ kind: 'git-change-count', files_changed: changed ?? 0, insertions: insertions ?? 0, deletions: deletions ?? 0 })
+    }
+  } else if (category === 'file-write') {
+    facts.push({ kind: 'file-change', count: 1 })
+  } else if (category === 'http') {
+    const status = integer(text.match(/\bHTTP\/[0-9.]+\s+(\d{3})\b/i)?.[1] ?? text.match(/\bstatus(?: code)?[:= ]+(\d{3})\b/i)?.[1])
+    if (status !== undefined) facts.push({ kind: 'http-status', status })
+  } else if (category === 'build') {
+    facts.push({ kind: 'build-status', status: outcome })
+  }
+  return facts.slice(0, 4)
+}
+
+function artifactReferences(result) {
+  const values = Array.isArray(result?.data?.artifacts) ? result.data.artifacts : []
+  return values.slice(0, 5).map((value, index) => canonicalDigest(
+    { index, value },
+    'harbor-dsh-session-artifact-ref-v1',
+  ))
+}
+
+function toolEvidence(events, report, canaries) {
   const results = new Map()
   for (const event of events) {
     if (event?.type !== 'tool/result') continue
     results.set(event.data?.message?.source?.callId, event)
   }
   const tools = []
+  const evidenceSummaries = []
+  const totalCalls = events.filter(event => event?.type === 'tool/call').length
   for (const event of events) {
-    if (event?.type !== 'tool/call') continue
+    if (event?.type !== 'tool/call' || tools.length >= 200) continue
     const result = results.get(event.data?.callId)
+    const safeName = sanitizeIdentity(event.data?.name ?? 'unknown', report, canaries)
+    const raw = boundedResultText(result)
+    const sanitized = replaceSecrets(raw.text, canaries)
+    report.replacements += sanitized.replacements
+    const exitCode = resultExitCode(result, sanitized.text)
+    const failed = Boolean(result?.data?.error || result?.data?.message?.content?.[0]?.isError || (exitCode !== undefined && exitCode !== 0))
+    const outcome = !result ? 'unknown' : failed ? 'failed' : 'succeeded'
+    const invocation = JSON.stringify(event.data?.input ?? event.data?.arguments ?? {}).slice(0, 2_000)
+    const category = evidenceCategory(safeName, invocation)
+    const callRef = canonicalDigest({ call_id: event.data?.callId ?? null }, 'harbor-dsh-session-tool-call-ref-v1')
+    const durationMs = Number.isSafeInteger(result?.time) && Number.isSafeInteger(event.time)
+      ? Math.max(0, result.time - event.time)
+      : null
     tools.push({
       event_seq: event.seq,
-      name: String(event.data?.name ?? 'unknown').slice(0, 160),
-      outcome: result?.data?.error || result?.data?.message?.content?.[0]?.isError ? 'error' : result ? 'success' : 'unknown',
+      name: safeName,
+      outcome: outcome === 'failed' ? 'error' : outcome === 'succeeded' ? 'success' : 'unknown',
       error_code: typeof result?.data?.error?.code === 'string'
-        ? result.data.error.code.slice(0, 160)
+        ? sanitizeIdentity(result.data.error.code, report, canaries)
         : null,
-      result_summary: result ? 'Tool completed; payload intentionally omitted.' : 'No matching tool result observed.',
-      truncated: true,
+      result_summary: result ? 'Deterministic bounded evidence summary available.' : 'No matching tool result observed.',
+      truncated: raw.truncated,
     })
+    const summary = {
+      call_ref: callRef,
+      tool: safeName,
+      category,
+      outcome,
+      ...(exitCode === undefined ? {} : { exit_code: exitCode }),
+      ...(durationMs === null ? {} : { duration_ms: durationMs }),
+      facts: allowlistedFacts(category, sanitized.text, outcome),
+      artifact_refs: artifactReferences(result),
+      result_digest: canonicalDigest(result?.data ?? null, 'harbor-dsh-session-tool-result-v1'),
+      redaction: { replacements: sanitized.replacements, truncated: raw.truncated },
+    }
+    if (Buffer.byteLength(JSON.stringify(summary)) > MAX_EVIDENCE_SUMMARY_BYTES) {
+      summary.facts = []
+      summary.artifact_refs = []
+      summary.redaction.truncated = true
+    }
+    assertNoSecret(summary, canaries)
+    evidenceSummaries.push(summary)
   }
-  return tools.slice(0, 200)
+  return { tools, evidenceSummaries, omittedCalls: Math.max(0, totalCalls - tools.length) }
 }
 
 function turnEvidence(events) {
@@ -178,11 +292,11 @@ function assertNoSecret(value, canaries = []) {
 
 const policyWithoutDigest = {
   id: 'dsh-session-default-redaction',
-  version: '1.1.0',
-  projection: 'direct-human-and-assembled-assistant-text',
+  version: '2.0.0',
+  projection: 'direct-human-and-assembled-assistant-text-with-deterministic-evidence',
   visible_text: 'preserve-except-credentials-and-session-identifiers',
   local_paths: 'preserve',
-  tool_payloads: 'omit',
+  tool_payloads: 'deterministic-allowlist-summary',
   reasoning: 'omit',
   attachments: 'omit',
   credentials: 'redact-and-fail-closed',
@@ -190,7 +304,7 @@ const policyWithoutDigest = {
 
 export const DEFAULT_REDACTION_POLICY = Object.freeze({
   ...policyWithoutDigest,
-  digest: canonicalDigest(policyWithoutDigest, 'harbor-dsh-session-redaction-policy-v1'),
+  digest: canonicalDigest(policyWithoutDigest, 'harbor-dsh-session-redaction-policy-v2'),
 })
 
 export function buildSessionObservation(selected, feedbackItems = []) {
@@ -237,9 +351,12 @@ export function buildSessionObservation(selected, feedbackItems = []) {
   if (sanitizedTitle.truncated) report.truncations += 1
 
   const agentPreset = selected.index.effectiveAgentPreset ?? selected.header.agentPreset
+  const executionEvidence = toolEvidence(selected.events, report, canaries)
+  if (executionEvidence.omittedCalls) report.truncations += 1
+  const feedback = sanitizeFeedback(feedbackItems, report, canaries)
   const observation = {
-    schema_version: 1,
-    protocol: 'dsh-session-observation/v1',
+    schema_version: 2,
+    protocol: 'dsh-session-observation/v2',
     record_kind: 'dsh-session',
     execution_mode: 'observe-existing',
     trial_id: selected.trialId,
@@ -265,20 +382,34 @@ export function buildSessionObservation(selected, feedbackItems = []) {
     },
     visible_transcript: visibleTranscript,
     execution: {
-      tools: toolEvidence(selected.events),
+      tools: executionEvidence.tools,
+      evidence_summaries: executionEvidence.evidenceSummaries,
       turns: turnEvidence(selected.events),
       usage: usageEvidence(selected.events),
     },
-    feedback: { items: sanitizeFeedback(feedbackItems, report, canaries) },
+    evidence_coverage: {
+      transcript: visibleTranscript.length < MAX_TRANSCRIPT_MESSAGES ? 'complete' : 'partial',
+      tool_outcomes: executionEvidence.evidenceSummaries.length === 0
+        ? 'omitted'
+        : executionEvidence.omittedCalls === 0 && executionEvidence.evidenceSummaries.every(item => item.outcome !== 'unknown') ? 'complete' : 'partial',
+      artifacts: executionEvidence.evidenceSummaries.some(item => item.artifact_refs.length) ? 'partial' : 'omitted',
+      feedback: feedback.length ? 'available' : 'omitted',
+    },
+    feedback: { items: feedback },
     completeness: {
       transcript_complete: visibleTranscript.length < MAX_TRANSCRIPT_MESSAGES,
-      tool_payloads_complete: false,
+      tool_payloads_complete: executionEvidence.evidenceSummaries.length > 0
+        && executionEvidence.omittedCalls === 0
+        && executionEvidence.evidenceSummaries.every(item => item.outcome !== 'unknown'),
       attachments_complete: false,
-      truncations: report.truncations ? [`${report.truncations} bounded text projection(s)`] : [],
+      truncations: [
+        ...(report.truncations ? [`${report.truncations} bounded projection(s)`] : []),
+        ...(executionEvidence.omittedCalls ? [`${executionEvidence.omittedCalls} tool call(s) omitted after the 200-call evidence limit`] : []),
+      ],
     },
     redaction: report,
   }
-  observation.digest = canonicalDigest(observation, 'harbor-dsh-session-observation-v1')
+  observation.digest = canonicalDigest(observation, 'harbor-dsh-session-observation-v2')
   assertNoSecret(observation, canaries)
   return observation
 }

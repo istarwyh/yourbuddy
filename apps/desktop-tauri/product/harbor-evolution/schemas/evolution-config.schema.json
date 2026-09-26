@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/evolution-config.schema.json",
+  "title": "Harbor Evolution Project Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "stack", "dataset", "jobs", "promotion_policy"],
+  "properties": { "schema_version": { "const": 1 }, "stack": { "type": "string" }, "dataset": { "type": "string" }, "jobs": { "type": "string" }, "promotion_policy": { "type": "string" }, "candidate_root": { "type": "string" } }
+}

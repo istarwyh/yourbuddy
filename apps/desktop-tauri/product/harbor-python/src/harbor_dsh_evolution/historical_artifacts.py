@@ -10,6 +10,7 @@ from typing import Any, Iterable
 from urllib.parse import unquote, urlparse
 
 from harbor_dsh_evolution.artifacts import exception_summary, redact
+from harbor_dsh_evolution.bridge_contract import BRIDGE_CONTRACT
 from harbor_dsh_evolution.evaluator import validate_evaluation_result
 from harbor_dsh_evolution.session_batch import validate_session_observation
 
@@ -118,6 +119,34 @@ def _task_for(payload: dict[str, Any], lookup: dict[str, dict[str, Any]]) -> dic
     return {}
 
 
+def _effective_evaluator_error(
+    effective: dict[str, Any] | None,
+    evaluator_interface: dict[str, Any],
+) -> str | None:
+    if not evaluator_interface.get("bundle_complete"):
+        return None
+    if not isinstance(effective, dict):
+        return "effective Evaluator attestation is missing"
+    expected = {
+        "id": evaluator_interface.get("evaluator_id"),
+        "version": evaluator_interface.get("version"),
+        "portable_digest": evaluator_interface.get("portable_digest"),
+    }
+    configured = effective.get("configured")
+    materialized = effective.get("materialized")
+    executed = effective.get("executed")
+    if configured != expected:
+        return "configured Evaluator attestation does not match the Evaluation Stack"
+    for label, identity in (("materialized", materialized), ("executed", executed)):
+        if not isinstance(identity, dict) or any(
+            identity.get(key) != value for key, value in expected.items()
+        ):
+            return f"{label} Evaluator identity does not match the configured Evaluator"
+    if effective.get("identity_match") is not True:
+        return "Evaluator identity attestation reported a mismatch"
+    return None
+
+
 def historical_trial_assessment(
     payload: dict[str, Any],
     *,
@@ -145,6 +174,7 @@ def historical_trial_assessment(
     evaluator_result = _trial_evaluator_result(payload, job_dir)
     normalized: dict[str, Any] | None = None
     evaluator_error: str | None = None
+    evaluator_identity_error: str | None = None
     if not infrastructure_failed:
         try:
             if evaluator_result is None:
@@ -154,6 +184,11 @@ def historical_trial_assessment(
                 criteria=list(evaluator_interface.get("criteria") or []),
                 aggregate=evaluator_interface.get("aggregate"),
             )
+            evaluator_identity_error = _effective_evaluator_error(
+                normalized.get("effective_evaluator"), evaluator_interface
+            )
+            if evaluator_identity_error:
+                raise ValueError(evaluator_identity_error)
         except ValueError as error:
             evaluator_error = str(error)
 
@@ -174,6 +209,13 @@ def historical_trial_assessment(
         and not (normalized or {}).get("criterion_status_counts", {}).get(
             "evaluation-error", 0
         ),
+        "evaluator_identity_match": exception is None
+        and evaluator_identity_error is None
+        and (
+            not evaluator_interface.get("bundle_complete")
+            or (normalized or {}).get("effective_evaluator", {}).get("identity_match")
+            is True
+        ),
         "artifact_schema_valid": exception is None
         and observation_error is None
         and evaluator_error is None,
@@ -187,7 +229,9 @@ def historical_trial_assessment(
     else:
         if observation_error:
             invalid_reasons.append(f"observation-invalid:{observation_error}")
-        if evaluator_error:
+        if evaluator_identity_error:
+            invalid_reasons.append("evaluator-identity-mismatch")
+        elif evaluator_error:
             invalid_reasons.append(f"evaluator-result-invalid:{evaluator_error}")
         if normalized is not None and not normalized["score_valid"]:
             if normalized["aggregate"]["scored_criteria"] == 0:
@@ -248,7 +292,7 @@ def historical_trial_assessment(
     score_value = (normalized or {}).get("reward") if status == "completed" else None
     return redact(
         {
-            "schema_version": 3,
+            "schema_version": BRIDGE_CONTRACT["protocols"]["historical_trial_assessment"]["schema_version"],
             "job_kind": JOB_KIND,
             "evaluation_target": {
                 "kind": "generation-record",
@@ -269,6 +313,7 @@ def historical_trial_assessment(
                 "invalid_reasons": invalid_reasons,
             },
             "requirements": requirements,
+            "effective_evaluator": (normalized or {}).get("effective_evaluator"),
             "criteria": criteria,
             "criterion_coverage": (normalized or {}).get("coverage", 0.0),
             "criterion_status_counts": (normalized or {}).get(
@@ -440,6 +485,7 @@ def _reports(
         )
     optimization = {
         "schema_version": 3,
+        "protocol": "optimization-proposal/v1",
         "job_kind": JOB_KIND,
         "mode": "diagnostic",
         "hook": {
@@ -509,19 +555,22 @@ def write_historical_job_artifacts(
         ("generation-source", "Generation Batch", "generation-batch-manifest.json", False),
         ("dataset", "Dataset Manifest", "dataset-manifest.json", False),
         ("evaluation-stack", "Evaluation Context", "evaluation-context.json", True),
+        ("evaluation-stack", "Evaluation Spec", "evaluation-spec.json", True),
         ("evaluation-stack", "Evaluation Contract", "evaluation-contract.json", True),
         ("reporter", "Population Report", "population-report.json", False),
         ("diagnoser", "Diagnosis Report", "diagnosis-report.json", False),
         ("optimizer", "Optimization Report", "optimization-report.json", False),
         ("runner", "Trial Lifecycle", "trial-lifecycle.json", False),
+        ("evaluator", "Executed Evaluator Bundle", "evaluator-bundle-manifest.json", True),
     ]
     artifact_specs.extend(
         ("judge", "Historical Trial Assessment", path.relative_to(job_dir).as_posix(), True)
         for path in paths
     )
     registry = {
-        "schema_version": 2,
+        "schema_version": BRIDGE_CONTRACT["protocols"]["artifact_registry"]["schema_version"],
         "job_kind": JOB_KIND,
+        "artifact_profile": "diagnostic",
         "artifacts": [
             {
                 "role": role,

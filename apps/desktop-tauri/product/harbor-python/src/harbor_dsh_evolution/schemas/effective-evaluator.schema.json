@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/effective-evaluator.schema.json",
+  "title": "Harbor DSH Effective Evaluator v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol", "configured", "materialized", "executed", "identity_match"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "protocol": { "const": "effective-evaluator/v1" },
+    "configured": { "$ref": "#/$defs/identity" },
+    "materialized": { "oneOf": [{ "$ref": "#/$defs/runtimeIdentity" }, { "type": "null" }] },
+    "executed": { "oneOf": [{ "$ref": "#/$defs/runtimeIdentity" }, { "type": "null" }] },
+    "identity_match": { "type": ["boolean", "null"] },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "error_type"],
+      "properties": {
+        "status": { "enum": ["not-run", "attempted", "succeeded", "failed"] },
+        "error_type": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "portable_digest"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "portable_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "runtimeIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "portable_digest"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "portable_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "interface": { "type": "string", "minLength": 1 },
+        "entry": { "type": "string", "minLength": 1 },
+        "callable": { "type": "string", "minLength": 1 },
+        "bundle_complete": { "type": "boolean" }
+      }
+    }
+  }
+}

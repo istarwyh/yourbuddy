@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "protocol": "canonical-digest-vectors/v1",
+  "algorithm": "sha256(namespace + NUL + canonical-json-utf8)",
+  "vectors": [
+    {
+      "id": "empty",
+      "namespace": "harbor-dsh-golden-v1",
+      "value": {},
+      "digest": "sha256:7fe1978dbabcbe0cf0ea7043f1486fe4e61489f9d6bf318acea8358c9c39da80"
+    },
+    {
+      "id": "unicode-and-order",
+      "namespace": "harbor-dsh-golden-v1",
+      "value": { "z": [3, { "β": "值", "a": true }], "a": null },
+      "digest": "sha256:a070e39c250cf8f3f6eddc32fd50d130a60d480bc415b50cda75417c9964c72b"
+    },
+    {
+      "id": "numbers",
+      "namespace": "harbor-dsh-golden-v1",
+      "value": { "integer": 42, "negative": -7, "fraction": 0.5 },
+      "digest": "sha256:03e075e1c722b4e5cfedf05a6d573e5a9ae4f6bf86acb912fec8ff83fc279126"
+    },
+    {
+      "id": "cross-language-number-forms",
+      "namespace": "harbor-dsh-golden-v1",
+      "value": { "integralFloat": 1.0, "negativeZero": -0.0, "smallExponent": 1e-7, "largeFixed": 1e20, "largeExponent": 1e21 },
+      "digest": "sha256:9b6f1a827e0f1d8f00433cd47f4d1f6a50c57d3ef81ca4a063455630397e14a0"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -10,6 +11,7 @@ from urllib.parse import unquote, urlparse
 
 from jsonschema import Draft202012Validator
 
+from harbor_dsh_evolution.bridge_contract import BRIDGE_CONTRACT
 from harbor_dsh_evolution.evaluator import validate_evaluation_result
 
 SENSITIVE_KEY = re.compile(
@@ -103,6 +105,7 @@ VALIDITY_REQUIREMENTS = (
     "integration_valid",
     "renderer_valid",
     "judge_completed",
+    "evaluator_identity_match",
     "artifact_schema_valid",
 )
 
@@ -233,7 +236,7 @@ _SCHEMAS: dict[str, dict[str, Any]] = {
         "type": "object",
         "required": ["schema_version", "artifacts"],
         "properties": {
-            "schema_version": {"const": 1},
+            "schema_version": {"const": 2},
             "artifacts": {
                 "type": "array",
                 "items": {
@@ -547,7 +550,8 @@ def trial_assessment(
     task = task or {}
     exception = payload.get("exception_info")
     verifier = payload.get("verifier_result")
-    rewards = _numbers((verifier or {}).get("rewards"))
+    native_rewards = _numbers((verifier or {}).get("rewards"))
+    rewards: dict[str, float] = {}
     primary_metric = str(evaluation_contract.get("primary_metric") or "reward")
     query = str(task.get("query") or task.get("instruction") or payload.get("task_name") or "")
     input_integrity = bool(query.strip()) and "[object object]" not in query.lower()
@@ -556,7 +560,8 @@ def trial_assessment(
         "agent_completed": exception is None and payload.get("agent_result") is not None,
         "integration_valid": exception is None and verifier is not None,
         "renderer_valid": exception is None and verifier is not None,
-        "judge_completed": exception is None and verifier is not None,
+        "judge_completed": False,
+        "evaluator_identity_match": False,
         "artifact_schema_valid": True,
     }
     requirements.update(_reported_validity(payload))
@@ -566,21 +571,71 @@ def trial_assessment(
         invalid_reasons.append("infrastructure-error")
     if verifier is None:
         invalid_reasons.append("evaluation-not-completed")
-    if primary_metric not in rewards:
-        invalid_reasons.append(f"primary-metric-missing:{primary_metric}")
     evaluator_interface = payload.get("evaluator_interface")
     evaluator_result = payload.get("evaluator_result") if isinstance(payload.get("evaluator_result"), dict) else None
-    if isinstance(evaluator_interface, dict):
+    normalized_evaluator: dict[str, Any] | None = None
+    effective_evaluator: dict[str, Any] | None = None
+    if not isinstance(evaluator_interface, dict):
+        requirements["artifact_schema_valid"] = False
+        invalid_reasons.append("strict-evaluator-interface-missing")
+    else:
         try:
+            if evaluator_interface.get("interface") != "harbor-dsh-evaluator/v2" or (evaluator_interface.get("protocol") or {}).get("output") != "evaluation-result/v2":
+                raise ValueError("formal Candidate evaluation requires harbor-dsh-evaluator/v2")
             if evaluator_result is None:
                 raise ValueError("evaluation-result.json is missing")
-            validate_evaluation_result(
+            if evaluator_result.get("schema_version") != 2 or evaluator_result.get("protocol") != "evaluation-result/v2":
+                raise ValueError("formal Candidate evaluation requires evaluation-result/v2")
+            normalized_evaluator = validate_evaluation_result(
                 evaluator_result,
                 criteria=list(evaluator_interface.get("criteria") or []),
+                aggregate=dict(evaluator_interface.get("aggregate") or {}),
             )
+            effective_evaluator = normalized_evaluator.get("effective_evaluator")
+            expected = {
+                "id": evaluator_interface.get("evaluator_id"),
+                "version": evaluator_interface.get("version"),
+                "portable_digest": evaluator_interface.get("portable_digest"),
+            }
+            configured = (effective_evaluator or {}).get("configured") or {}
+            materialized = (effective_evaluator or {}).get("materialized") or {}
+            executed = (effective_evaluator or {}).get("executed") or {}
+            execution_succeeded = ((effective_evaluator or {}).get("execution") or {}).get("status") == "succeeded"
+            identity_match = bool(
+                (effective_evaluator or {}).get("identity_match") is True
+                and execution_succeeded
+                and evaluator_interface.get("bundle_complete") is True
+                and all(identity == expected for identity in (
+                    {key: configured.get(key) for key in expected},
+                    {key: materialized.get(key) for key in expected},
+                    {key: executed.get(key) for key in expected},
+                ))
+                and materialized.get("bundle_complete") is True
+                and executed.get("bundle_complete") is True
+            )
+            requirements["evaluator_identity_match"] = identity_match
+            if not execution_succeeded:
+                invalid_reasons.append("evaluator-execution-failed")
+            elif not identity_match:
+                invalid_reasons.append("evaluator-identity-mismatch")
+            details = normalized_evaluator.get("details") or {}
+            requirements["judge_completed"] = identity_match and not any(
+                item.get("status") == "evaluation-error"
+                for item in details.values()
+                if isinstance(item, dict)
+            )
+            for criterion_id, item in details.items():
+                value = item.get("score") if isinstance(item, dict) else None
+                if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
+                    rewards[str(criterion_id)] = float(value)
+            reward = normalized_evaluator.get("reward")
+            if isinstance(reward, (int, float)) and not isinstance(reward, bool) and math.isfinite(reward):
+                rewards[primary_metric] = float(reward)
         except ValueError as error:
             requirements["artifact_schema_valid"] = False
             invalid_reasons.append(f"evaluator-result-invalid:{error}")
+    if primary_metric not in rewards:
+        invalid_reasons.append(f"primary-metric-missing:{primary_metric}")
     for requirement in VALIDITY_REQUIREMENTS:
         if not requirements[requirement] and (
             requirement in hard or requirement in {"input_integrity", "agent_completed", "judge_completed"}
@@ -645,34 +700,29 @@ def trial_assessment(
         for item in evaluation_contract.get("metrics") or []
         if isinstance(item, dict) and item.get("id")
     }
-    criterion_rewards = {key: value for key, value in rewards.items() if key != primary_metric}
-    if not criterion_rewards:
-        criterion_rewards = rewards
     evaluator_result = evaluator_result or {}
     evaluator_criteria = {
         str(item.get("id")): item
         for item in evaluator_result.get("criteria") or []
         if isinstance(item, dict) and item.get("id")
     }
-    criteria = [
-        {
-            "id": key,
-            "label": metric_labels.get(key, key),
-            "score": value,
-            "status": "measured",
-            "evidence_refs": [item["id"] for item in evidence_provenance],
-            **(
-                {
-                    "reason": str(evaluator_criteria[key].get("reason") or ""),
-                    "recommendation": str(evaluator_criteria[key].get("recommendation") or ""),
-                    "recommendation_source": "evaluator",
-                }
-                if key in evaluator_criteria
-                else {}
-            ),
-        }
-        for key, value in sorted(criterion_rewards.items())
-    ]
+    normalized_details = (normalized_evaluator or {}).get("details") or {}
+    criteria = []
+    for key, detail in sorted(normalized_details.items()):
+        source = evaluator_criteria.get(str(key)) or {}
+        criterion_status = detail.get("status") if isinstance(detail, dict) else None
+        criteria.append(
+            {
+                "id": str(key),
+                "label": metric_labels.get(str(key), str(key)),
+                "score": detail.get("score") if isinstance(detail, dict) else None,
+                "status": "measured" if criterion_status in {None, "scored"} else criterion_status,
+                "evidence_refs": list(source.get("evidence_refs") or [item["id"] for item in evidence_provenance]),
+                "reason": str(source.get("reason") or ""),
+                "recommendation": str(source.get("recommendation") or ""),
+                "recommendation_source": "evaluator",
+            }
+        )
     recommendations = [
         {
             "criterion_id": item["id"],
@@ -699,7 +749,18 @@ def trial_assessment(
     elif verifier is None:
         status = "evaluation-error"
     elif not valid:
-        status = "candidate-quality-failed"
+        evaluator_failure = any(
+            reason.startswith((
+                "evaluator-",
+                "strict-evaluator-",
+                "primary-metric-missing",
+                "requirement-failed:evaluator_identity_match",
+                "requirement-failed:judge_completed",
+                "requirement-failed:artifact_schema_valid",
+            ))
+            for reason in invalid_reasons
+        )
+        status = "evaluation-error" if evaluator_failure else "candidate-quality-failed"
     else:
         status = "completed"
 
@@ -719,7 +780,7 @@ def trial_assessment(
     population = task.get("metadata") if isinstance(task.get("metadata"), dict) else {}
     return redact(
         {
-            "schema_version": 2,
+            "schema_version": BRIDGE_CONTRACT["protocols"]["candidate_trial_assessment"]["schema_version"],
             "trial_id": str(payload.get("id") or payload.get("trial_name") or "unknown"),
             "trial_name": str(payload.get("trial_name") or "unknown"),
             "dataset_trial": str(payload.get("task_name") or task.get("id") or "unknown"),
@@ -731,7 +792,9 @@ def trial_assessment(
             "criteria": criteria,
             "findings": findings,
             "recommendations": recommendations,
-            "raw_rewards": rewards,
+            "raw_rewards": native_rewards,
+            "evaluator_metrics": rewards,
+            "effective_evaluator": effective_evaluator,
             "output": output,
             "evidence_provenance": evidence_provenance,
             "exception": exception_summary(exception),
@@ -781,7 +844,7 @@ def _optimization_report(
         for assessment in assessments:
             if not assessment["score"]["valid"]:
                 continue
-            for metric, value in assessment["raw_rewards"].items():
+            for metric, value in assessment.get("evaluator_metrics", {}).items():
                 if metric != primary:
                     metric_values[metric].append((assessment["trial_id"], value))
         normalized = {
@@ -819,6 +882,7 @@ def _optimization_report(
     optimizer = ((stack_manifest or {}).get("components") or {}).get("optimizer") or {}
     return {
         "schema_version": 2,
+        "protocol": "optimization-proposal/v1",
         "hook": {
             "id": "harbor-dsh-deterministic-optimizer",
             "version": "0.6.0",
@@ -869,24 +933,40 @@ def _diagnosis_report(
     }
 
 
-def _registry(job_dir: Path, assessment_paths: list[Path]) -> dict[str, Any]:
+def _registry(job_dir: Path, assessment_paths: list[Path], artifact_profile: str = "experiment") -> dict[str, Any]:
     specs = [
         ("candidate", "Candidate Manifest", "candidate-manifest.json", 1, False),
+        ("integration", "Candidate Materialization", "candidate-materialization.json", 1, True),
         ("dataset", "Dataset Manifest", "dataset-manifest.json", 1, False),
         ("dataset", "Dataset Preview", "dataset-preview.json", 1, False),
         ("evaluation-stack", "Evaluation Stack", "evaluation-stack-manifest.json", 1, True),
         ("evaluation-stack", "Evaluation Stack Sources", "evaluation-stack-sources.json", 1, False),
-        ("evaluation-stack", "Evaluation Context", "evaluation-context.json", 2, True),
+        ("evaluation-stack", "Evaluation Context", "evaluation-context.json", 3, True),
+        ("evaluation-stack", "Evaluation Spec", "evaluation-spec.json", 1, True),
         ("evaluation-stack", "Evaluation Contract", "evaluation-contract.json", 1, True),
         ("reporter", "Population Report", "population-report.json", 2, False),
         ("diagnoser", "Diagnosis Report", "diagnosis-report.json", 1, False),
         ("optimizer", "Optimization Report", "optimization-report.json", 2, False),
         ("runner", "Trial Lifecycle", "trial-lifecycle.json", 1, False),
+        ("evaluator", "Executed Evaluator Bundle", "evaluator-bundle-manifest.json", 1, True),
     ]
+    if artifact_profile == "diagnostic":
+        visible = {
+            "candidate-materialization.json", "dataset-manifest.json", "evaluation-context.json",
+            "evaluation-spec.json", "evaluation-contract.json", "population-report.json", "diagnosis-report.json",
+            "optimization-report.json", "evaluator-bundle-manifest.json",
+        }
+        specs = [item for item in specs if item[2] in visible]
+    elif artifact_profile == "experiment":
+        specs = [item for item in specs if item[2] not in {"evaluation-stack-sources.json", "trial-lifecycle.json"}]
+    elif artifact_profile != "governed":
+        raise ValueError("artifact_profile must be diagnostic, experiment, or governed")
     for assessment in assessment_paths:
         specs.append(("judge", "Trial Assessment", str(assessment.relative_to(job_dir)), 2, True))
     return {
-        "schema_version": 1,
+        "schema_version": BRIDGE_CONTRACT["protocols"]["artifact_registry"]["schema_version"],
+        "job_kind": "candidate-evaluation",
+        "artifact_profile": artifact_profile,
         "artifacts": [
             {
                 "role": role,
@@ -908,6 +988,7 @@ def write_job_artifacts(
     evaluation_contract: dict[str, Any],
     dataset_manifest: dict[str, Any] | None = None,
     stack_manifest: dict[str, Any] | None = None,
+    artifact_profile: str = "experiment",
 ) -> dict[str, Any]:
     payloads = list(payloads)
     contract = {"schema_version": 1, **evaluation_contract}
@@ -946,7 +1027,7 @@ def write_job_artifacts(
     for assessment in assessments:
         if not assessment["score"]["valid"]:
             continue
-        for key, value in assessment["raw_rewards"].items():
+        for key, value in assessment.get("evaluator_metrics", {}).items():
             metrics[key].append(value)
     configured_groups = evaluation_contract.get("groups") or []
     groups: list[dict[str, Any]] = []
@@ -995,7 +1076,7 @@ def write_job_artifacts(
         job_dir / "optimization-report.json",
         _optimization_report(assessments, stack_manifest, evaluation_contract),
     )
-    _write_json(job_dir / "artifact-registry.json", _registry(job_dir, assessment_paths))
+    _write_json(job_dir / "artifact-registry.json", _registry(job_dir, assessment_paths, artifact_profile))
     return validate_job_artifacts(job_dir, expected_trials=len(assessments))
 
 

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/evaluation-summary.schema.json",
+  "title": "Evaluation Summary v3/v4 union",
+  "type": "object",
+  "required": ["schema_version", "job", "n_trials", "n_discovered_trials", "n_valid_scores", "n_invalid_scores", "metrics", "trials", "artifact_validation"],
+  "properties": {
+    "schema_version": { "enum": [3, 4] },
+    "job_kind": { "enum": ["candidate-evaluation", "historical-generation-evaluation"] },
+    "job": { "type": "string" },
+    "n_trials": { "type": "integer", "minimum": 0 },
+    "n_discovered_trials": { "type": "integer", "minimum": 0 },
+    "n_valid_scores": { "type": "integer", "minimum": 0 },
+    "n_invalid_scores": { "type": "integer", "minimum": 0 },
+    "metrics": { "type": "object", "additionalProperties": { "type": "number" } },
+    "trials": { "type": "array", "items": { "type": "object" } },
+    "artifact_validation": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "schema_version": { "const": 4 } }, "required": ["schema_version"] },
+      "then": {
+        "required": ["job_kind", "execution_mode", "evaluation_target", "generation_source", "n_completed_trials", "n_unscored_trials", "status_counts", "coverage", "criterion_status_counts", "evaluator_meta_evaluation"],
+        "properties": {
+          "job_kind": { "const": "historical-generation-evaluation" },
+          "execution_mode": { "const": "observe-existing" }
+        },
+        "not": { "required": ["candidate"] }
+      }
+    }
+  ]
+}

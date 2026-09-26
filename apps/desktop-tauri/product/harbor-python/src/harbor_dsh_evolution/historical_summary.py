@@ -6,12 +6,45 @@ from pathlib import Path
 from statistics import mean
 from typing import Any, Iterable
 
+from harbor_dsh_evolution.bridge_contract import BRIDGE_CONTRACT
 from harbor_dsh_evolution.historical_artifacts import (
     load_historical_assessments,
     validate_historical_job_artifacts,
 )
 
 JOB_KIND = "historical-generation-evaluation"
+
+
+def _effective_evaluator_rollup(
+    assessments: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    values = [
+        item.get("effective_evaluator")
+        for item in assessments
+        if isinstance(item.get("effective_evaluator"), dict)
+    ]
+    if not values:
+        return None
+    first = values[0]
+    if len(values) == len(assessments) and all(value == first for value in values):
+        return first
+    configured = first.get("configured")
+    materialized = first.get("materialized")
+    executed = first.get("executed")
+    if any(value.get("configured") != configured for value in values):
+        configured = None
+    if any(value.get("materialized") != materialized for value in values):
+        materialized = None
+    if any(value.get("executed") != executed for value in values):
+        executed = None
+    return {
+        "schema_version": 1,
+        "protocol": "effective-evaluator/v1",
+        "configured": configured,
+        "materialized": materialized,
+        "executed": executed,
+        "identity_match": False,
+    }
 
 
 def summarize_historical_payloads(
@@ -48,6 +81,7 @@ def summarize_historical_payloads(
                 "status": assessment.get("status"),
                 "score": score,
                 "requirements": assessment.get("requirements"),
+                "effectiveEvaluator": assessment.get("effective_evaluator"),
                 "criteria": assessment.get("criteria"),
                 "population": assessment.get("population"),
                 "exception": assessment.get("exception"),
@@ -77,7 +111,7 @@ def summarize_historical_payloads(
         "validation_report_ref": None,
     }
     return {
-        "schema_version": 4,
+        "schema_version": BRIDGE_CONTRACT["protocols"]["historical_summary"]["schema_version"],
         "job": job_name,
         "job_kind": JOB_KIND,
         "mode": "diagnostic",
@@ -101,6 +135,7 @@ def summarize_historical_payloads(
         "exceptions": exceptions,
         "trials": trials,
         "artifact_validation": artifact_validation,
+        "effective_evaluator": _effective_evaluator_rollup(assessments),
         "evaluator_meta_evaluation": meta,
     }
 

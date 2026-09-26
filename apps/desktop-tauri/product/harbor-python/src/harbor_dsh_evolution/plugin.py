@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import re
+import subprocess
 from pathlib import Path
 from typing import override
 
+from harbor.environments.definition import environment_content_hash
 from harbor.job import Job
 from harbor.models.job.plugin import BaseJobPlugin
 from harbor.models.job.result import JobResult
@@ -11,7 +14,8 @@ from harbor.trial.hooks import TrialHookEvent
 
 from harbor_dsh_evolution.artifacts import load_trial_assessments, write_job_artifacts
 from harbor_dsh_evolution.candidate import CandidateManifest, verify_candidate
-from harbor_dsh_evolution.context import CONTEXT_NAME, build_evaluation_context
+from harbor_dsh_evolution.candidate_materialization import validate_candidate_materialization
+from harbor_dsh_evolution.context import CONTEXT_NAME, build_evaluation_context, refresh_evaluation_context_digests
 from harbor_dsh_evolution.dataset import (
     MANIFEST_NAME as DATASET_MANIFEST_NAME,
     PREVIEW_NAME as DATASET_PREVIEW_NAME,
@@ -19,6 +23,10 @@ from harbor_dsh_evolution.dataset import (
     load_validated_dataset,
 )
 from harbor_dsh_evolution.doctor import architecture_doctor
+from harbor_dsh_evolution.evaluator import snapshot_evaluator_bundle
+from harbor_dsh_evolution.evaluation_spec import build_evaluation_spec
+from harbor_dsh_evolution.identity import canonical_digest, resolve_inside
+from harbor_dsh_evolution.job_seal import SEAL_NAME, seal_job_bundle
 from harbor_dsh_evolution.lifecycle import TrialLifecycleStore, bind_lifecycle_task_names, terminal_phase
 from harbor_dsh_evolution.stack import (
     STACK_MANIFEST_NAME,
@@ -45,6 +53,7 @@ class EvolutionPlugin(BaseJobPlugin):
         candidate_model_protocol: str,
         candidate_reasoning_effort: str | None = None,
         execution_environment: str = "host",
+        artifact_profile: str | None = None,
         dataset_path: str | None = None,
         policy_path: str | None = None,
     ):
@@ -57,6 +66,11 @@ class EvolutionPlugin(BaseJobPlugin):
         self._project_root = Path(project_root).expanduser().resolve(strict=True)
         self._stack_path = Path(stack_path)
         self._mode = mode
+        self._artifact_profile = artifact_profile or ("governed" if mode == "promotion-eligible" else "experiment")
+        if self._artifact_profile not in {"diagnostic", "experiment", "governed"}:
+            raise ValueError("artifact_profile must be diagnostic, experiment, or governed")
+        if (mode == "promotion-eligible") is not (self._artifact_profile == "governed"):
+            raise ValueError("governed artifact profile must match promotion-eligible runtime mode")
         self._execution_environment = execution_environment
         self._candidate_model_binding = {
             "provider": candidate_model_provider,
@@ -80,6 +94,9 @@ class EvolutionPlugin(BaseJobPlugin):
         self._job_dir: Path | None = None
         self._events_path: Path | None = None
         self._dataset_manifest: dict | None = None
+        self._dataset_path: Path | None = None
+        self._evaluation_spec: dict | None = None
+        self._docker_image_ids: dict[str, str] = {}
         self._lifecycle: TrialLifecycleStore | None = None
 
     @override
@@ -99,7 +116,13 @@ class EvolutionPlugin(BaseJobPlugin):
             raise ValueError("EvolutionPlugin requires exactly one local Harbor dataset path")
 
         dataset_manifest = load_validated_dataset(dataset_path, project_root=self._project_root)
+        materialization_receipt = validate_candidate_materialization(
+            project_root=self._project_root,
+            dataset_path=dataset_path,
+            stack_path=self._stack_path,
+        )
         self._dataset_manifest = dataset_manifest
+        self._dataset_path = dataset_path
         doctor = architecture_doctor(
             project_root=self._project_root,
             stack_path=self._stack_path,
@@ -108,9 +131,9 @@ class EvolutionPlugin(BaseJobPlugin):
             policy_path=self._policy_path,
             execution_environment=self._execution_environment,
         )
-        if self._mode == "promotion-eligible" and not doctor["promotion_ready"]:
+        if (self._mode == "promotion-eligible" or self._artifact_profile == "experiment") and not doctor["promotion_ready"]:
             codes = ", ".join(item["code"] for item in doctor["findings"] if item["level"] == "error")
-            raise ValueError(f"Architecture Doctor blocked promotion-eligible Job: {codes}")
+            raise ValueError(f"Architecture Doctor blocked formal Experiment Job: {codes}")
         self._stack_manifest = snapshot_stack(self._stack_path, project_root=self._project_root)
         self._context = build_evaluation_context(
             dataset_path,
@@ -118,11 +141,21 @@ class EvolutionPlugin(BaseJobPlugin):
             stack_path=self._stack_path,
             project_root=self._project_root,
             mode=self._mode,
+            artifact_profile=self._artifact_profile,
             candidate_model_binding=self._candidate_model_binding,
             execution_environment=self._execution_environment,
         )
         self._job_dir = job.job_dir
         self._job_dir.mkdir(parents=True, exist_ok=True)
+        if (self._job_dir / SEAL_NAME).exists():
+            raise ValueError("JOB_ALREADY_SEALED: completed Jobs cannot be resumed in place")
+        evaluation_spec = build_evaluation_spec(
+            context=self._context,
+            stack=self._stack_manifest,
+            repeats=max(1, int(job.config.n_attempts)),
+            seed_policy="harbor-managed",
+        )
+        self._evaluation_spec = evaluation_spec
         artifacts = {
             "candidate-manifest.json": self._manifest.to_dict(),
             DATASET_MANIFEST_NAME: dataset_manifest,
@@ -132,10 +165,18 @@ class EvolutionPlugin(BaseJobPlugin):
                 self._stack_manifest, project_root=self._project_root
             ),
             CONTEXT_NAME: self._context,
+            "evaluation-spec.json": evaluation_spec,
             "architecture-doctor.json": doctor,
+            "candidate-materialization.json": materialization_receipt,
         }
         for name, value in artifacts.items():
             (self._job_dir / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
+        evaluator_entry = self._stack_manifest["components"]["evaluator"]["entry"]
+        snapshot_evaluator_bundle(
+            resolve_inside(self._project_root, evaluator_entry, label="evaluator descriptor"),
+            project_root=self._project_root,
+            destination=self._job_dir / "evaluator-bundle",
+        )
         self._events_path = self._job_dir / "candidate-events.jsonl"
         self._lifecycle = TrialLifecycleStore(
             self._job_dir,
@@ -158,6 +199,25 @@ class EvolutionPlugin(BaseJobPlugin):
     async def _on_environment_started(self, event: TrialHookEvent) -> None:
         if self._lifecycle:
             self._lifecycle.transition(event, "preparing-environment")
+        if self._execution_environment == "docker":
+            configured_image = event.lock.environment.docker_image
+            image_name = configured_image
+            task_path = event.lock.task.path
+            if not image_name and task_path is not None:
+                environment_dir = Path(task_path) / "environment"
+                identity = environment_content_hash(environment_dir, docker_image=None)
+                image_name = re.sub(r"[^a-z0-9._-]", "-", f"hb__{identity}".lower())
+            if image_name:
+                try:
+                    result = subprocess.run(
+                        ["docker", "image", "inspect", "--format", "{{.Id}}", image_name],
+                        check=True, capture_output=True, text=True, timeout=15,
+                    )
+                    image_id = result.stdout.strip()
+                    if image_id.startswith("sha256:"):
+                        self._docker_image_ids[str(event.result.id)] = image_id
+                except (OSError, subprocess.SubprocessError):
+                    pass
 
     async def _on_agent_started(self, event: TrialHookEvent) -> None:
         if self._lifecycle:
@@ -208,6 +268,18 @@ class EvolutionPlugin(BaseJobPlugin):
             or self._dataset_manifest is None
         ):
             return
+        if self._execution_environment == "docker":
+            expected_trials = {str(result.id) for result in job_result.trial_results}
+            captured = dict(sorted(self._docker_image_ids.items()))
+            environment = self._context["execution_environment"]
+            environment["image_identities"] = captured
+            environment["image_identity"] = (
+                canonical_digest(captured, namespace="harbor-dsh-docker-image-set-v1")
+                if captured and set(captured) == expected_trials else None
+            )
+            environment["identity_strength"] = "immutable-image-set" if environment["image_identity"] else "runtime-engine-only"
+            refresh_evaluation_context_digests(self._context)
+            (self._job_dir / CONTEXT_NAME).write_text(json.dumps(self._context, ensure_ascii=False, indent=2) + "\n")
         payloads = [result.model_dump(mode="json") for result in job_result.trial_results]
         validation = write_job_artifacts(
             self._job_dir,
@@ -215,6 +287,7 @@ class EvolutionPlugin(BaseJobPlugin):
             evaluation_contract=self._stack_manifest["evaluation_contract"],
             dataset_manifest=self._dataset_manifest,
             stack_manifest=self._stack_manifest,
+            artifact_profile=self._artifact_profile,
         )
         summary = summarize_payloads(
             payloads,
@@ -224,6 +297,7 @@ class EvolutionPlugin(BaseJobPlugin):
             artifact_validation=validation,
             evaluation_contract=self._stack_manifest["evaluation_contract"],
             dataset_manifest=self._dataset_manifest,
+            evaluation_spec=self._evaluation_spec,
             assessments=load_trial_assessments(self._job_dir),
         )
         write_summary(self._job_dir, summary)
@@ -234,3 +308,4 @@ class EvolutionPlugin(BaseJobPlugin):
                     phase=trial["status"],
                     score=trial["score"],
                 )
+        seal_job_bundle(self._job_dir)

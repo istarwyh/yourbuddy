@@ -155,11 +155,30 @@ def load_ground_truth(path: Path, *, project_root: Path | None = None) -> tuple[
 def _observations(value: dict[str, Any], ground_truth: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if value.get("schema_version") != 1 or value.get("protocol") != OBSERVATIONS_PROTOCOL:
         raise ValueError("Evaluator observations must use evaluator-observations/v1")
+    expected_ground_truth_digest = validate_ground_truth(ground_truth)["digest"]
+    if value.get("ground_truth_digest") != expected_ground_truth_digest:
+        raise ValueError("Evaluator observations were not produced against this exact Ground Truth")
     evaluator = value.get("evaluator")
     if not isinstance(evaluator, dict):
         raise ValueError("Evaluator observations require evaluator identity")
     _identity(evaluator.get("id"), "evaluator id")
     _identity(evaluator.get("version"), "evaluator version")
+    portable_digest = str(evaluator.get("portable_digest") or "")
+    if not portable_digest.startswith("sha256:"):
+        raise ValueError("Evaluator observations require portable Evaluator digest")
+    for key in ("rubric", "template"):
+        identity = value.get(key)
+        if not isinstance(identity, dict):
+            raise ValueError(f"Evaluator observations require exact {key} identity")
+        _identity(identity.get("id"), f"{key} id")
+        _identity(identity.get("version"), f"{key} version")
+        if not str(identity.get("digest") or "").startswith("sha256:"):
+            raise ValueError(f"Evaluator observations require {key} digest")
+    judge = value.get("judge")
+    if not isinstance(judge, dict):
+        raise ValueError("Evaluator observations require exact Judge identity")
+    for field in ("provider", "model", "version"):
+        _identity(judge.get(field), f"judge {field}")
     repeat_policy = value.get("repeat_policy")
     repeats = repeat_policy.get("repeats") if isinstance(repeat_policy, dict) else None
     if not isinstance(repeats, int) or isinstance(repeats, bool) or repeats < 1:
@@ -193,7 +212,21 @@ def _observations(value: dict[str, Any], ground_truth: dict[str, Any]) -> tuple[
                 raise ValueError(f"Observation {case_id}/{repeat} scores must be 0, 0.5, or 1")
             scores[str(label["id"])] = float(label["score"])
         normalized.append({"case_id": case_id, "repeat": repeat, "scores": scores})
-    return normalized, evaluator
+    return normalized, {
+        "evaluator": evaluator,
+        "rubric": value["rubric"],
+        "judge": value["judge"],
+        "template": value["template"],
+        "digest": canonical_digest(
+            {
+                "evaluator": evaluator,
+                "rubric": value["rubric"],
+                "judge": value["judge"],
+                "template": value["template"],
+            },
+            namespace="harbor-dsh-meta-evaluator-identity-v1",
+        ),
+    }
 
 
 def _f_beta(recall: float, pass_rate: float, beta: float = 2) -> float:
@@ -205,7 +238,7 @@ def meta_evaluate(ground_truth: dict[str, Any], observations_value: dict[str, An
     validation = validate_ground_truth(ground_truth)
     if not validation["ready"]:
         raise ValueError("Ground Truth has no cases")
-    observations, evaluator = _observations(observations_value, ground_truth)
+    observations, evaluation_identity = _observations(observations_value, ground_truth)
     gt_cases = {
         str(case["id"]): {str(item["id"]): item for item in case["criteria"]}
         for case in ground_truth["cases"]
@@ -258,7 +291,8 @@ def meta_evaluate(ground_truth: dict[str, Any], observations_value: dict[str, An
             "case_count": validation["case_count"],
             "badcase_count": validation["badcase_count"],
         },
-        "evaluator": evaluator,
+        "evaluation_identity": evaluation_identity,
+        "evaluator": evaluation_identity["evaluator"],
         "coverage": {
             "expected_observations": expected_observations,
             "observed": len(observations),

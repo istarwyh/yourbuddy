@@ -36,12 +36,21 @@ export function runProcess(command, args, options = {}) {
     })
     let stdout = ''
     let stderr = ''
+    let outputExceeded = false
+    const maxOutputBytes = options.maxOutputBytes ?? 64 * 1024 * 1024
+    const append = (current, chunk) => {
+      const next = current + chunk
+      if (Buffer.byteLength(next) <= maxOutputBytes) return next
+      outputExceeded = true
+      child.kill('SIGTERM')
+      return next.slice(0, maxOutputBytes)
+    }
     const timeout = setTimeout(() => {
       child.kill('SIGTERM')
       reject(new Error(`Command timed out after ${options.timeoutMs}ms: ${command}`))
     }, options.timeoutMs ?? 1_800_000)
-    child.stdout.on('data', chunk => { stdout += chunk })
-    child.stderr.on('data', chunk => { stderr += chunk })
+    child.stdout.on('data', chunk => { stdout = append(stdout, chunk) })
+    child.stderr.on('data', chunk => { stderr = append(stderr, chunk) })
     if (options.input !== undefined) child.stdin.end(options.input)
     child.on('error', error => {
       clearTimeout(timeout)
@@ -50,6 +59,10 @@ export function runProcess(command, args, options = {}) {
     child.on('close', code => {
       clearTimeout(timeout)
       const result = { command, args, code, stdout, stderr }
+      if (outputExceeded) {
+        reject(Object.assign(new Error(`Command output exceeded ${maxOutputBytes} bytes: ${command}`), { result }))
+        return
+      }
       const allowedExitCodes = options.allowedExitCodes ?? [0]
       if (allowedExitCodes.includes(code)) resolve(result)
       else reject(Object.assign(new Error(`Command failed with exit code ${code}: ${command}`), { result }))

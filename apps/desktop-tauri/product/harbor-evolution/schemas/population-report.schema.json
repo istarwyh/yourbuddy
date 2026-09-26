@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/population-report.schema.json",
+  "title": "Population Report v2",
+  "type": "object",
+  "required": ["schema_version", "population_size", "valid_population_size", "invalid_population_size", "groups", "metrics"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "population_size": { "type": "integer", "minimum": 0 },
+    "valid_population_size": { "type": "integer", "minimum": 0 },
+    "invalid_population_size": { "type": "integer", "minimum": 0 },
+    "groups": { "type": "array", "items": { "type": "object" } },
+    "metrics": { "type": "object", "additionalProperties": { "type": "number" } }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/optimization-report.schema.json",
+  "title": "Optimization Report v2",
+  "type": "object",
+  "required": ["schema_version", "protocol", "hook", "hypotheses"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "protocol": { "const": "optimization-proposal/v1" },
+    "hook": {
+      "type": "object",
+      "required": ["id", "version", "reward_affecting", "status"],
+      "properties": {
+        "id": { "type": "string" }, "version": { "type": "string" },
+        "reward_affecting": { "const": false }, "status": { "enum": ["completed", "failed", "skipped"] }
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "evidence_refs", "root_cause", "affected_trials", "expected_metric_effect", "mutation_surface", "forbidden_surface", "guardrails", "rollback_condition", "next_experiment"],
+        "properties": {
+          "id": { "type": "string" },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } },
+          "root_cause": { "type": "string" },
+          "affected_trials": { "type": "array", "items": { "type": "string" } },
+          "expected_metric_effect": { "type": "string" },
+          "mutation_surface": { "type": "array", "items": { "type": "string" } },
+          "forbidden_surface": { "type": "array", "items": { "type": "string" } },
+          "guardrails": { "type": "array", "items": { "type": "string" } },
+          "rollback_condition": { "type": "string" },
+          "next_experiment": { "type": "string" }
+        }
+      }
+    }
+  }
+}

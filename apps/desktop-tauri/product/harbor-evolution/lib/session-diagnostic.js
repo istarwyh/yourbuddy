@@ -122,7 +122,7 @@ function judgeIdentity(binding, selections) {
     selections.flatMap(item => item.index.modelRoutes.map(value => `${value.provider}/${value.model}`)),
   )
   return {
-    evaluator: { id: 'dsh-session-historical-evaluator', version: '1.0.0' },
+    evaluator: { id: 'dsh-session-historical-evaluator', version: '2.0.0', metricTemplate: 'general-agent-session@1' },
     judge: {
       provider: binding.provider,
       model: binding.model,

@@ -25,6 +25,7 @@ import {
   readComparison,
   readDashboardSnapshot,
   readDatasetPreview,
+  readEvaluationReport,
   readEvaluationSummary,
   readEvaluatorGovernance,
   readHistoricalEvidence,
@@ -33,17 +34,21 @@ import {
   readMetaEvaluation,
   readTrialDetail,
   readTrialsPage,
+  resolveJobReference,
 } from './dashboard.js'
 import {
   compareCandidates,
+  importBusinessObservation,
   initializeGroundTruth,
   initializeProject,
   initializeQuickDiagnostic,
   inspectEvaluator,
+  inspectEvaluatorBundle,
   previewContext,
   runDoctor,
   runEvaluation,
   runMetaEvaluation,
+  listBusinessObservations,
   snapshot,
   updateEvaluator,
   validateDataset,
@@ -1065,12 +1070,13 @@ export class EvolutionService {
 
   async result(args) {
     try {
-      const job = String(args.jobPath ?? '').split(/[\\/]/).filter(Boolean).at(-1)
-      const view = ['job', 'progress', 'trial', 'dataset', 'governance'].includes(args.view)
+      const { job } = resolveJobReference(this.config, args.jobPath)
+      const view = ['report', 'summary', 'job', 'progress', 'trial', 'dataset', 'governance'].includes(args.view)
         ? args.view
-        : 'summary'
+        : 'report'
       let value
-      if (view === 'job') value = await readJobDetail(this.config, { job })
+      if (view === 'report') value = await readEvaluationReport(this.config, { job })
+      else if (view === 'job') value = await readJobDetail(this.config, { job })
       else if (view === 'progress') value = await readJobProgress(this.config, { job, since: args.since })
       else if (view === 'trial') {
         if (!args.trialId) throw new Error('trialId is required when view=trial')
@@ -1078,7 +1084,7 @@ export class EvolutionService {
       }
       else if (view === 'dataset') value = await readDatasetPreview(this.config, { job })
       else if (view === 'governance') value = await readEvaluatorGovernance(this.config, { job, compareJob: args.compareJob })
-      else value = await readEvaluationSummary(this.config, args)
+      else value = await readEvaluationSummary(this.config, { job })
       return untrustedAgentReadEnvelope('harbor_eval_result', value, { view })
     } catch {
       throw agentReadFailure('harbor_eval_result')
@@ -1686,24 +1692,47 @@ export class EvolutionService {
     let current
     try {
       const stackPath = await resolveEvaluatorStackPath(config, governance, args.stackPath)
-      current = await inspectEvaluator(config, { ...args, stackPath })
-      const historicalEvaluator = governance.components?.evaluator
-      const identityMatches = current.stack?.id === governance.stackIdentity.id
-        && current.stack?.version === governance.stackIdentity.version
-        && current.evaluator?.evaluator_id === historicalEvaluator?.id
-        && current.evaluator?.version === historicalEvaluator?.version
-        && current.evaluator?.digest === historicalEvaluator?.digest
-      if (!identityMatches) {
+      const live = await inspectEvaluator(config, { ...args, stackPath })
+      current = live
+      const executedEvaluator = governance.effectiveEvaluator?.status === 'verified'
+        ? governance.effectiveEvaluator.executed
+        : undefined
+      const liveIdentityMatches = Boolean(executedEvaluator)
+        && live.stack?.id === governance.stackIdentity.id
+        && live.stack?.version === governance.stackIdentity.version
+        && live.evaluator?.evaluator_id === executedEvaluator?.id
+        && live.evaluator?.version === executedEvaluator?.version
+        && live.evaluator?.portable_digest === executedEvaluator?.portable_digest
+      let source = liveIdentityMatches ? live : undefined
+      let forkFromExecuted = false
+      if (!source && executedEvaluator) {
+        const { directory } = resolveJobReference(config, args.job)
+        const bundle = await inspectEvaluatorBundle(config, { bundlePath: path.join(directory, 'evaluator-bundle') })
+        const bundleMatches = bundle.evaluator?.evaluator_id === executedEvaluator.id
+          && bundle.evaluator?.version === executedEvaluator.version
+          && bundle.evaluator?.portable_digest === executedEvaluator.portable_digest
+        if (bundleMatches) {
+          source = { ...bundle, stack: live.stack }
+          current = source
+          forkFromExecuted = true
+        }
+      }
+      if (!source) {
         governance.evaluatorInterface = {
-          error: 'The live Evaluator no longer matches this historical Job. Historical sources remain readable, but editing is disabled until you open a Job with the current Stack identity.',
+          error: executedEvaluator
+            ? 'The verified executed Evaluator bundle is unavailable or no longer matches this Job. Editing is disabled rather than substituting live source.'
+            : 'This Job does not contain a verified executed Evaluator identity. Configured source remains readable, but it cannot be presented or edited as the code that actually ran.',
         }
         governance.editingPolicy.identityMatch = false
       } else {
-        governance.evaluatorInterface = current
+        governance.evaluatorInterface = source
         governance.editingPolicy.browserWriteEnabled = true
         governance.editingPolicy.identityMatch = true
-        governance.editingPolicy.stackPath = current.stack?.path
-        governance.editingPolicy.saveBehavior = 'Update one descriptor-authorized file with optimistic concurrency and create new Evaluator and Stack identities.'
+        governance.editingPolicy.forkFromExecuted = forkFromExecuted
+        governance.editingPolicy.stackPath = live.stack?.path
+        governance.editingPolicy.saveBehavior = forkFromExecuted
+          ? 'Fork the verified executed bundle, update one descriptor-authorized file, and create new Evaluator and Stack identities.'
+          : 'Update one descriptor-authorized file with optimistic concurrency and create new Evaluator and Stack identities.'
       }
     } catch (error) {
       governance.evaluatorInterface = { error: error instanceof Error ? error.message : String(error) }
@@ -1732,7 +1761,14 @@ export class EvolutionService {
     if (!governance.editingPolicy?.identityMatch || !governance.evaluatorInterface?.stack?.path) throw new Error('HARBOR_EVALUATOR_BINDING_STALE: The current Evaluator no longer matches this historical Job; reload before saving.')
     const scope = { ...args, workspace: config.workspaceId }
     await prepareEvaluatorSaveHistory(config, scope)
-    const receipt = await updateEvaluator(config, { ...args, stackPath: governance.evaluatorInterface.stack.path })
+    const sourceBundlePath = governance.editingPolicy.forkFromExecuted
+      ? path.join(resolveJobReference(config, args.job).directory, 'evaluator-bundle')
+      : undefined
+    const receipt = await updateEvaluator(config, {
+      ...args,
+      stackPath: governance.evaluatorInterface.stack.path,
+      sourceBundlePath,
+    })
     try { return await recordEvaluatorSave(config, scope, governance, receipt) }
     catch { return { ...receipt, continuation: { verification: 'VERIFIED', durable: false, code: 'HARBOR_EVALUATOR_SAVE_HISTORY_UNAVAILABLE' } } }
   }
@@ -1743,6 +1779,15 @@ export class EvolutionService {
     } catch {
       throw agentReadFailure('harbor_evaluator_inspect')
     }
+  }
+
+  businessObservationImport(args) {
+    return importBusinessObservation(this.config, args)
+  }
+
+  async businessObservations(args) {
+    const value = await listBusinessObservations(this.config, args)
+    return untrustedAgentReadEnvelope('harbor_business_observation_list', value, { view: 'business-observations' })
   }
 
   groundTruthInitialize(args) {
@@ -1760,9 +1805,18 @@ export class EvolutionService {
     if (!stackPath) return readMetaEvaluation(config, args)
     const stackDirectory = path.dirname(path.resolve(config.projectRoot, stackPath))
     const evaluationRoot = path.dirname(stackDirectory)
+    const evaluatorInterface = governance.components?.evaluator?.interface ?? governance.components?.evaluator
+    const rubric = governance.components?.rubric
+    const template = evaluatorInterface?.metric_template
     return readMetaEvaluation(config, {
       ...args,
       evaluationRoot: path.relative(config.projectRoot, evaluationRoot),
+      currentEvaluationIdentity: {
+        evaluator: evaluatorInterface ? { id: evaluatorInterface.evaluator_id ?? evaluatorInterface.id, version: evaluatorInterface.version, portable_digest: evaluatorInterface.portable_digest } : null,
+        rubric: rubric ? { id: rubric.id, version: rubric.version, digest: rubric.digest } : null,
+        judge: governance.judge ? { provider: governance.judge.provider, model: governance.judge.model, version: governance.judge.version } : null,
+        template: template?.digest ? { id: template.id, version: template.version, digest: template.digest } : null,
+      },
     })
   }
 }

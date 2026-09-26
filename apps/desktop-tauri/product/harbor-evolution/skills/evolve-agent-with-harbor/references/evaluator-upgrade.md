@@ -47,11 +47,11 @@ One reviewed report is useful for wiring and discussion but cannot establish gen
 
 Show the current identity, source, proposed diff, and expected semantic impact. Create new files and increment component plus Evaluation Stack versions. Never edit a historical Evaluator, Rubric, Judge identity, or old Job artifact in place.
 
-Use the `harbor-dsh-evaluator/v1` Descriptor as the implementation boundary:
+Use the `harbor-dsh-evaluator/v2` Descriptor as the formal Candidate implementation boundary:
 
 - `kind=script` for deterministic code, rules, or local models.
 - `kind=llm-as-judge` for a model-backed judge; keep credentials out of source and identity artifacts.
-- Both kinds consume `evaluation-input/v1` and return `evaluation-result/v1` with Descriptor-declared Criterion ids and score values.
+- Both kinds consume `evaluation-input/v2` and return `evaluation-result/v2` with Descriptor-declared Criterion ids and score values.
 - Every Criterion also requires non-empty `reason` and `recommendation` strings. Missing fields invalidate the evaluator result; Reporter never fabricates them.
 - `editable_files` is the exact source allowlist used by the Workbench and `harbor_evaluator_update`.
 

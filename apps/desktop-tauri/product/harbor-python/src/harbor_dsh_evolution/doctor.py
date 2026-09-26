@@ -28,35 +28,35 @@ def _evaluator_artifact_findings(
     dataset_manifest: dict[str, Any] | None,
     stack: dict[str, Any],
 ) -> list[dict[str, str]]:
+    del dataset_root, dataset_manifest
     interface = ((stack.get("components") or {}).get("evaluator") or {}).get("interface")
     if not isinstance(interface, dict):
         return []
     findings: list[dict[str, str]] = []
-    for task in (dataset_manifest or {}).get("tasks") or []:
-        if not isinstance(task, dict) or not isinstance(task.get("path"), str):
-            continue
-        try:
-            task_root = resolve_inside(dataset_root, task["path"], label="task.path")
-        except (FileNotFoundError, ValueError):
-            continue
-        tests = task_root / "tests"
-        content = "\n".join(
-            path.read_text(errors="replace")
-            for path in tests.rglob("*")
-            if path.is_file() and not path.is_symlink() and path.stat().st_size <= 512_000
-        ) if tests.is_dir() else ""
-        if "evaluation-result.json" not in content:
-            findings.append(
-                {
-                    "level": "error",
-                    "code": "EVALUATOR_RESULT_OUTPUT_MISSING",
-                    "message": (
-                        f"Task {task.get('id') or task['path']} has a harbor-dsh-evaluator/v1 Stack "
-                        "but its verifier does not declare /logs/verifier/evaluation-result.json output. "
-                        "Write evaluation-result/v1 with a reason and recommendation for every Criterion."
-                    ),
-                }
-            )
+    if interface.get("bundle_complete") is not True:
+        findings.append(
+            {
+                "level": "error",
+                "code": "STRICT_EVALUATOR_BUNDLE_REQUIRED",
+                "message": "Formal Candidate evaluation requires a complete Evaluator bundle that declares every runtime file.",
+            }
+        )
+    if not isinstance(interface.get("input_builder"), dict):
+        findings.append(
+            {
+                "level": "error",
+                "code": "STRICT_EVALUATOR_INPUT_BUILDER_REQUIRED",
+                "message": "Formal Candidate evaluation requires descriptor-authorized input_builder.entry and input_builder.callable.",
+            }
+        )
+    if interface.get("implementation", {}).get("language") != "python":
+        findings.append(
+            {
+                "level": "error",
+                "code": "STRICT_EVALUATOR_LANGUAGE_UNSUPPORTED",
+                "message": "The current strict Candidate adapter supports Python Evaluator implementations only.",
+            }
+        )
     return findings
 
 
@@ -289,6 +289,13 @@ def architecture_doctor(
     dataset = validate_dataset(dataset_path, project_root=project_root)
     findings.extend(dataset.findings)
     dataset_root = resolve_inside(project_root, dataset_path, label="dataset")
+    reviewed_badcases = (((dataset.manifest or {}).get("metadata") or {}).get("reviewed_badcases") or {})
+    if reviewed_badcases.get("promotion_eligible") is False and policy_path is not None:
+        findings.append({
+            "level": "error",
+            "code": "REVIEWED_BADCASE_DATASET_NOT_PROMOTION_ELIGIBLE",
+            "message": "This Historical badcase draft still requires deterministic expectations or independent Ground Truth before governed promotion.",
+        })
     findings.extend(_evaluator_artifact_findings(dataset_root, dataset.manifest, stack))
     environment_kind = normalize_execution_environment(execution_environment)
     if runtime_checks and environment_kind == "docker":
@@ -361,8 +368,16 @@ def architecture_doctor(
                 findings.append({"level": "error", "code": "CANDIDATE_INVALID", "message": str(error)})
     if policy_path is not None:
         try:
-            load_policy(resolve_inside(project_root, policy_path, label="policy"))
-            findings.append({"level": "info", "code": "POLICY_VERIFIED", "message": "Promotion Policy is valid and versioned"})
+            policy = load_policy(resolve_inside(project_root, policy_path, label="policy"))
+            environment_policy = policy["execution_environment"]
+            if environment_kind == "host" and environment_policy.get("strategy") != "allow-unrestricted-host":
+                findings.append({
+                    "level": "error",
+                    "code": "HOST_EXECUTION_RISK_NOT_ACCEPTED",
+                    "message": "Promotion on unrestricted Host execution requires explicit Policy acceptance; use Docker or update the reviewed Policy with a rationale.",
+                })
+            else:
+                findings.append({"level": "info", "code": "POLICY_VERIFIED", "message": "Promotion Policy is valid, versioned, and explicit about the execution boundary"})
         except (FileNotFoundError, ValueError, json.JSONDecodeError) as error:
             findings.append({"level": "error", "code": "PROMOTION_POLICY_INVALID", "message": str(error)})
 

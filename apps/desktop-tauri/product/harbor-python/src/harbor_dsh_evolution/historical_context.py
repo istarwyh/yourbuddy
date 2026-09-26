@@ -4,13 +4,14 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
+from harbor_dsh_evolution.bridge_contract import BRIDGE_CONTRACT
 from harbor_dsh_evolution.dataset import load_validated_dataset
 from harbor_dsh_evolution.identity import canonical_digest
 from harbor_dsh_evolution.execution_environment import execution_environment_identity
 from harbor_dsh_evolution.session_batch import GenerationBatch, load_generation_batch
 from harbor_dsh_evolution.stack import snapshot_stack
 
-CONTEXT_PROTOCOL = "historical-generation-evaluation-context/v2"
+CONTEXT_PROTOCOL = BRIDGE_CONTRACT["protocols"]["historical_context"]["protocol"]
 CONTEXT_NAME = "evaluation-context.json"
 JOB_KIND = "historical-generation-evaluation"
 
@@ -87,6 +88,13 @@ def build_historical_context(
         "batch_id": batch.manifest["batch_id"],
         "digest": batch.manifest["digest"],
         "record_count": len(batch.manifest["records"]),
+        "observation_protocol": batch.manifest["source"].get("observation_protocol", "dsh-session-observation/v1"),
+        "evidence_coverage": {
+            "transcript": sorted({record.get("evidence_coverage", {}).get("transcript", "unknown") for record in batch.manifest["records"]}),
+            "tool_outcomes": sorted({record.get("evidence_coverage", {}).get("tool_outcomes", "unknown") for record in batch.manifest["records"]}),
+            "artifacts": sorted({record.get("evidence_coverage", {}).get("artifacts", "unknown") for record in batch.manifest["records"]}),
+            "feedback": sorted({record.get("evidence_coverage", {}).get("feedback", "unknown") for record in batch.manifest["records"]}),
+        },
         "generator_population": batch.manifest.get("generator_population") or {},
     }
     dataset_identity = {
@@ -119,7 +127,7 @@ def build_historical_context(
         "runtime": runtime,
     }
     context = {
-        "schema_version": 2,
+        "schema_version": BRIDGE_CONTRACT["protocols"]["historical_context"]["schema_version"],
         "protocol": CONTEXT_PROTOCOL,
         "job_kind": JOB_KIND,
         "mode": "diagnostic",
@@ -134,6 +142,7 @@ def build_historical_context(
             "adapter_id": batch.manifest["source"]["adapter"],
             "selection": batch.manifest["selection"],
             "redaction_policy": batch.manifest["redaction_policy"],
+            "observation_protocol": batch.manifest["source"].get("observation_protocol", "dsh-session-observation/v1"),
         },
         "dataset": dataset_identity,
         "evaluation_stack": stack_identity,
@@ -152,10 +161,10 @@ def build_historical_context(
     }
     context["digest"] = canonical_digest(
         comparison_identity,
-        namespace="harbor-dsh-historical-evaluation-context-v2",
+        namespace="harbor-dsh-historical-evaluation-context-v3",
     )
     context["full_digest"] = canonical_digest(
         context,
-        namespace="harbor-dsh-historical-evaluation-audit-v2",
+        namespace="harbor-dsh-historical-evaluation-audit-v3",
     )
     return context

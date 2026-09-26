@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/evaluation-stack-manifest.schema.json",
+  "title": "Evaluation Stack Manifest",
+  "type": "object",
+  "required": ["schema_version", "stack_id", "version", "created_at", "source", "digest", "comparison_digest", "components", "judge", "evaluation_contract"],
+  "properties": {
+    "schema_version": { "const": 1 }, "stack_id": { "type": "string" }, "version": { "type": "string" }, "created_at": { "type": "string" }, "source": { "type": "string" },
+    "digest": { "$ref": "#/$defs/digest" }, "comparison_digest": { "$ref": "#/$defs/digest" },
+    "components": { "type": "object", "additionalProperties": { "$ref": "#/$defs/component" } },
+    "judge": { "type": "object" }, "contracts": { "type": "object" }, "evaluation_contract": { "$ref": "evaluation-contract.schema.json" }, "labels": { "type": "object" }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "component": { "type": "object", "required": ["id", "version", "entry", "digest", "reward_affecting"], "properties": { "id": { "type": "string" }, "version": { "type": "string" }, "entry": { "type": "string" }, "digest": { "$ref": "#/$defs/digest" }, "reward_affecting": { "type": "boolean" } } }
+  }
+}

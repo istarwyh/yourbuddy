@@ -102,22 +102,53 @@ def initialize_project(
         (workspace_root / directory).mkdir(parents=True, exist_ok=True)
 
     evaluator_id = f"{stack_id}-evaluator"
-    evaluator_implementation = '''"""Implement harbor-dsh-evaluator/v1 for this business domain."""
+    evaluator_implementation = '''"""Implement the strict Harbor Evaluator and its input builder for this business domain."""
+
+import json
+from pathlib import Path
+
+
+def build_input(context):
+    """Build evaluation-input/v2 from immutable Task and Agent artifacts."""
+    trajectory_path = Path(context["agent_log_dir"]) / "trajectory.json"
+    trajectory = json.loads(trajectory_path.read_text()) if trajectory_path.is_file() else {}
+    messages = [
+        step.get("message")
+        for step in trajectory.get("steps", [])
+        if isinstance(step, dict) and isinstance(step.get("message"), str)
+    ]
+    return {
+        "schema_version": 2,
+        "protocol": "evaluation-input/v2",
+        "task": {"root": context["task_root"]},
+        "candidate_output": messages[-1] if messages else None,
+        "evidence": {"trajectory": trajectory},
+    }
+
 
 def evaluate(payload):
     return {
-        "schema_version": 1,
-        "protocol": "evaluation-result/v1",
+        "schema_version": 2,
+        "protocol": "evaluation-result/v2",
         "criteria": [
             {
                 "id": "quality",
-                "score": 0,
-                "reason": "Replace the placeholder evaluator.",
-                "recommendation": "Implement the accepted business Rubric before running a formal Job.",
+                "status": "evaluation-error",
+                "score": None,
+                "reason": "The initialized Evaluator is a fail-closed placeholder.",
+                "recommendation": "Implement and independently review the accepted business Rubric before running a formal Job.",
+                "evidence_refs": ["evaluator-placeholder"],
             },
         ],
+        "aggregate": {
+            "metric_id": "__PRIMARY_METRIC__",
+            "value": None,
+            "scored_criteria": 0,
+            "total_criteria": 1,
+            "coverage": 0.0,
+        },
     }
-'''
+'''.replace("__PRIMARY_METRIC__", primary_metric)
     _write_new(workspace_root / "evaluators/default/evaluator.py", evaluator_implementation, created, existing, project_root)
 
     for role, relative in ROLE_PATHS.items():
@@ -126,19 +157,24 @@ def evaluate(payload):
         elif role == "evaluator":
             content = json.dumps(
                 {
-                    "schema_version": 1,
-                    "interface": "harbor-dsh-evaluator/v1",
+                    "schema_version": 2,
+                    "interface": "harbor-dsh-evaluator/v2",
                     "evaluator_id": evaluator_id,
                     "version": stack_version,
                     "kind": "script",
-                    "protocol": {"input": "evaluation-input/v1", "output": "evaluation-result/v1"},
+                    "protocol": {"input": "evaluation-input/v2", "output": "evaluation-result/v2"},
                     "implementation": {"entry": "evaluator.py", "language": "python", "callable": "evaluate"},
+                    "input_builder": {"entry": "evaluator.py", "callable": "build_input"},
                     "editable_files": [
                         {"path": "evaluator.py", "role": "implementation", "language": "python", "affects": ["evaluator"]},
                         {"path": "rubric.md", "role": "rubric", "language": "markdown", "affects": ["evaluator", "rubric"]},
                     ],
-                    "criteria": [{"id": "quality", "label": "Quality", "values": [0, 0.5, 1]}],
-                    "aggregate": {"metric_id": primary_metric, "method": "mean"},
+                    "bundle_files": [
+                        {"path": "evaluator.py", "role": "implementation"},
+                        {"path": "rubric.md", "role": "rubric"},
+                    ],
+                    "criteria": [{"id": "quality", "label": "Quality", "values": [0, 0.5, 1], "required": True}],
+                    "aggregate": {"metric_id": primary_metric, "method": "mean", "minimum_coverage": 1.0},
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -186,6 +222,7 @@ def evaluate(payload):
                 {"id": "integration_valid"},
                 {"id": "renderer_valid"},
                 {"id": "judge_completed"},
+                {"id": "evaluator_identity_match"},
                 {"id": "artifact_schema_valid"},
             ],
         },
@@ -234,6 +271,10 @@ def evaluate(payload):
         "metric_directions": {primary_metric: primary_direction},
         "non_regression_tolerance": 0,
         "hard_requirements": ["exception_free", "artifact_schema_valid", "doctor_error_free"],
+        "execution_environment": {
+            "strategy": "docker-required",
+            "require_image_identity": True,
+        },
     }
     _write_new(workspace_root / "policies/promotion.json", json.dumps(policy, ensure_ascii=False, indent=2) + "\n", created, existing, project_root)
     return {

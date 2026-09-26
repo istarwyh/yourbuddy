@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/promotion-report.schema.json",
+  "title": "Promotion Report v2",
+  "type": "object",
+  "required": ["schema_version", "decision", "baseline_job", "candidate_job", "policy_digest", "reasons"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "decision": { "enum": ["PROMOTE", "REJECT"] },
+    "baseline_job": { "type": ["string", "null"] },
+    "candidate_job": { "type": ["string", "null"] },
+    "policy_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "policy_snapshot": { "type": "object" },
+    "report_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {
+            "enum": [
+              "UNSUPPORTED_JOB_KIND_FOR_PROMOTION",
+              "DIAGNOSTIC_ONLY_POLICY",
+              "CANDIDATE_PRODUCT_MISMATCH",
+              "CANDIDATE_IDENTITY_MISSING",
+              "CANDIDATE_DIGEST_UNCHANGED",
+              "EVALUATION_CONTEXT_SCHEMA_INVALID",
+              "JOB_MODE_NOT_PROMOTION_ELIGIBLE",
+              "DATASET_NOT_PROMOTION_ELIGIBLE",
+              "DATASET_VERSION_MISMATCH",
+              "DATASET_SOURCE_MISMATCH",
+              "INTEGRATION_MISMATCH",
+              "RENDERER_MISMATCH",
+              "EVALUATOR_MISMATCH",
+              "RUBRIC_MISMATCH",
+              "RUNNER_SEMANTICS_MISMATCH",
+              "JUDGE_MODEL_MISMATCH",
+              "EXECUTION_ENVIRONMENT_MISMATCH",
+              "EXECUTION_ENVIRONMENT_INVALID",
+              "DOCKER_EXECUTION_REQUIRED",
+              "EVALUATION_STACK_MISMATCH",
+              "EVALUATION_SPEC_MISMATCH",
+              "EVALUATION_CONTRACT_MISMATCH",
+              "JOB_BUNDLE_INTEGRITY_FAILED",
+              "EFFECTIVE_EVALUATOR_UNVERIFIED",
+              "HOST_EXECUTION_RISK_NOT_ACCEPTED",
+              "DOCKER_IMAGE_IDENTITY_MISSING",
+              "INFRASTRUCTURE_EXCEPTION_PRESENT",
+              "ARTIFACT_SCHEMA_INVALID",
+              "ARCHITECTURE_DOCTOR_FAILED",
+              "INVALID_QUALITY_SCORE_PRESENT",
+              "NO_VALID_QUALITY_SCORE",
+              "TRIAL_COVERAGE_INCOMPLETE",
+              "PRIMARY_METRIC_MISSING",
+              "PRIMARY_METRIC_DIRECTION_INVALID",
+              "PRIMARY_METRIC_BELOW_DELTA",
+              "METRIC_MINIMUM_FAILED",
+              "METRIC_MAXIMUM_FAILED",
+              "NON_REGRESSION_METRIC_MISSING",
+              "NON_REGRESSION_FAILED"
+            ]
+          },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}

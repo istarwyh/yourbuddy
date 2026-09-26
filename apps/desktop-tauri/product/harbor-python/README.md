@@ -7,16 +7,17 @@ Harbor-side integration for both DeepSeek Harness Candidate evaluation and priva
 It provides:
 
 - `DshCandidateAgent`: verifies and uploads an immutable Candidate, installs its locked npm dependencies, and runs it through Harbor's ACP runner.
-- `EvolutionPlugin`: binds each Job to Candidate, Dataset Manifest, Evaluation Stack Manifest, Candidate Context v3, Architecture Doctor, Trial assessments, Population report, and Summary.
+- `EvolutionPlugin`: binds each Job to Candidate, Dataset Manifest, Evaluation Stack Manifest, Candidate Context v3, Architecture Doctor, the immutable executed Evaluator bundle, Trial assessments, Population report, and Summary. Before Harbor runs, every source Task verifier is replaced by one strict adapter that calls the descriptor-authorized `input_builder` and Evaluator and verifies configured/materialized/executed portable digests.
 - `SessionObservationAgent`: presents one frozen, credential-redacted DSH Session Observation as one deterministic Harbor Trial without rerunning a Candidate; ordinary paths in visible source text are preserved.
 - `HistoricalGenerationEvaluationPlugin`: validates the immutable Historical Batch/Dataset/Stack cross-links, runs Evaluator v2, preserves `completed-unscored` abstention, and writes Summary v4 plus a strict completion sentinel. Historical Jobs are diagnostic and cannot enter Promotion Gate.
 - `harbor-dsh`: initializes strict projects; validates/snapshots Candidates, Datasets, and Stacks; materializes Historical Batch inputs; previews Candidate Context v3; diagnoses architecture; summarizes Jobs; and runs the deterministic Promotion Gate.
+- `business-observation/v1`: validates and stores reviewed aggregate business metrics under the project with immutable observation ids, canonical digests, source provenance, subject/window/metric identity, sensitive-field rejection, and trend/group reads. It never performs network imports or mutates offline Summary, reward, or Gate.
 
 Install it into the same Python environment as Harbor so the plugin entry point is discoverable:
 
 ```bash
 uv venv .venv
-uv pip install --python .venv/bin/python harbor-dsh-evolution==0.9.8
+uv pip install --python .venv/bin/python harbor-dsh-evolution==0.10.1
 source .venv/bin/activate
 harbor plugins list
 harbor-dsh --help
@@ -38,10 +39,12 @@ uv run harbor-dsh --help
 uv run harbor-dsh historical --help
 uv run harbor-dsh dataset validate ../../examples/deep-research/task --project-root ../..
 uv run harbor-dsh stack validate ../../examples/deep-research/.harbor/evaluation-stack.yml --project-root ../..
+uv run harbor-dsh business-observation import --project-root ../.. --input ../../results/reviewed-observation.json
+uv run harbor-dsh business-observation list --project-root ../.. --candidate-digest sha256:<64-hex>
 uv run pytest
 uv build
 ```
 
 Harbor and this package must be installed into the same Python environment for the `dsh-evolution` and `dsh-historical-evaluation` entry points to appear in `harbor plugins list`.
 
-`snapshot` derives Candidate id and version from `package.json` unless explicitly supplied. Context v1 is not accepted. Candidate promotion requires Context v3 and emits structured mismatch, artifact, infrastructure, metric, and regression reason codes. Historical materialization instead derives a matching Dataset and immutable Stack from a credential-redacted `historical-generation-batch/v1`; it never creates a Candidate identity, reports insufficient evidence as `completed-unscored`, and always returns `UNSUPPORTED_JOB_KIND_FOR_PROMOTION` if passed to Gate.
+`snapshot` derives Candidate id and version from `package.json` unless explicitly supplied. Legacy Candidate Context and Dataset-owned scoring verifiers are not accepted as a compatibility path. Candidate promotion requires Context v3 and emits structured mismatch, artifact, infrastructure, metric, and regression reason codes. Historical materialization instead derives a matching Dataset and immutable Stack from a credential-redacted `historical-generation-batch/v1`; it never creates a Candidate identity, reports insufficient evidence as `completed-unscored`, and always returns `UNSUPPORTED_JOB_KIND_FOR_PROMOTION` if passed to Gate.

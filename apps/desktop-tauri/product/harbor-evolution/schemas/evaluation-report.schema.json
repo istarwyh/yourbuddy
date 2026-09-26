@@ -1,0 +1,434 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/evaluation-report.schema.json",
+  "title": "Harbor User-facing Evaluation Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol",
+    "run",
+    "verdict",
+    "sample",
+    "quality",
+    "generator_quality",
+    "evaluation_health",
+    "run_health",
+    "dataset_validity",
+    "evaluator_reliability",
+    "optimization_generalization",
+    "effective_evaluator",
+    "findings",
+    "representative_cases",
+    "next_action",
+    "source",
+    "experiment_details_ref",
+    "advanced"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "protocol": { "const": "evaluation-report/v1" },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "job_kind", "mode", "evaluation_type", "artifact_profile", "status", "experience_diagnostic", "promotion_eligible"],
+      "properties": {
+        "id": { "type": ["string", "null"] },
+        "job_kind": { "type": "string", "minLength": 1 },
+        "mode": { "type": ["string", "null"] },
+        "evaluation_type": { "enum": ["experience-diagnostic", "diagnostic", "experiment", "governed"] },
+        "artifact_profile": { "enum": ["diagnostic", "experiment", "governed"] },
+        "status": { "enum": ["completed", "completed-with-limitations", "failed"] },
+        "experience_diagnostic": { "type": "boolean" },
+        "promotion_eligible": { "type": "boolean" }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "headline", "summary"],
+      "properties": {
+        "code": { "enum": ["reliable-result", "actionable-with-limitations", "insufficient-evidence", "evaluation-failed", "run-failed"] },
+        "headline": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "evaluated", "scored", "unscored", "invalid", "evaluation_errors", "infrastructure_errors", "trial_coverage", "criterion_scored", "criterion_total", "criterion_coverage"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "evaluated": { "type": "integer", "minimum": 0 },
+        "scored": { "type": "integer", "minimum": 0 },
+        "unscored": { "type": "integer", "minimum": 0 },
+        "invalid": { "type": "integer", "minimum": 0 },
+        "evaluation_errors": { "type": "integer", "minimum": 0 },
+        "infrastructure_errors": { "type": "integer", "minimum": 0 },
+        "trial_coverage": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "criterion_scored": { "type": "integer", "minimum": 0 },
+        "criterion_total": { "type": "integer", "minimum": 0 },
+        "criterion_coverage": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary_metric_id", "primary_metric_status", "overall_score", "metrics", "partial_signals", "score_trusted", "trust_requirements"],
+      "properties": {
+        "primary_metric_id": { "type": ["string", "null"] },
+        "primary_metric_status": { "enum": ["available", "not-configured", "unavailable", "insufficient-coverage", "untrusted"] },
+        "overall_score": { "type": ["number", "null"] },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "value", "direction", "unit", "valid_coverage", "source"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 },
+              "value": { "type": ["number", "null"] },
+              "suppressed": { "type": "boolean" },
+              "direction": { "type": ["string", "null"] },
+              "unit": { "type": ["string", "null"] },
+              "valid_coverage": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+              "source": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "partial_signals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "scored", "unscored", "evaluation_errors", "mean"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 },
+              "scored": { "type": "integer", "minimum": 0 },
+              "unscored": { "type": "integer", "minimum": 0 },
+              "evaluation_errors": { "type": "integer", "minimum": 0 },
+              "mean": { "type": ["number", "null"] },
+              "suppressed": { "type": "boolean" }
+            }
+          }
+        },
+        "score_trusted": { "type": "boolean" },
+        "trust_requirements": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact_validation", "job_bundle_verified", "evaluator_executed_and_attested", "required_coverage_complete"],
+          "properties": {
+            "artifact_validation": { "type": "boolean" },
+            "job_bundle_verified": { "type": "boolean" },
+            "evaluator_executed_and_attested": { "type": "boolean" },
+            "required_coverage_complete": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "generator_quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "overall_score", "primary_metric_id", "evidence_scope"],
+      "properties": {
+        "status": { "enum": ["measured", "experience-only", "untrusted", "insufficient-evidence"] },
+        "overall_score": { "type": ["number", "null"] },
+        "primary_metric_id": { "type": ["string", "null"] },
+        "evidence_scope": { "enum": ["observed-historical-sessions", "fixed-dataset"] }
+      }
+    },
+    "evaluation_health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_adequacy", "evaluator_reliability", "judge_completed", "judge_failed", "evaluation_errors", "infrastructure_errors"],
+      "properties": {
+        "status": { "enum": ["healthy", "limited", "failed"] },
+        "evidence_adequacy": { "enum": ["sufficient", "partial", "insufficient"] },
+        "evaluator_reliability": { "enum": ["validated", "limited", "unvalidated", "stale", "failed"] },
+        "judge_completed": { "type": "integer", "minimum": 0 },
+        "judge_failed": { "type": "integer", "minimum": 0 },
+        "evaluation_errors": { "type": "integer", "minimum": 0 },
+        "infrastructure_errors": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "run_health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "artifact_validation", "job_bundle_verified", "infrastructure_errors"],
+      "properties": {
+        "status": { "enum": ["healthy", "failed"] },
+        "artifact_validation": { "type": "boolean" },
+        "job_bundle_verified": { "type": "boolean" },
+        "infrastructure_errors": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "dataset_validity": { "$ref": "#/$defs/readiness" },
+    "evaluator_reliability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "report_ref"],
+      "properties": {
+        "status": { "enum": ["validated", "limited", "unvalidated", "stale", "failed"] },
+        "report_ref": { "type": ["string", "null"] }
+      }
+    },
+    "optimization_generalization": { "$ref": "#/$defs/readiness" },
+    "business_results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "candidate_digest", "association_label", "causality", "observations", "trends", "groups"],
+      "properties": {
+        "status": { "enum": ["matched-candidate", "no-matching-observations", "candidate-unavailable", "unavailable"] },
+        "candidate_digest": { "oneOf": [{ "$ref": "#/$defs/sha256Digest" }, { "type": "null" }] },
+        "association_label": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "causality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "label", "affects_offline_summary", "affects_reward", "affects_gate"],
+          "properties": {
+            "status": { "const": "correlation-only" },
+            "label": { "type": "string", "minLength": 1, "maxLength": 512 },
+            "affects_offline_summary": { "const": false },
+            "affects_reward": { "const": false },
+            "affects_gate": { "const": false }
+          }
+        },
+        "observations": { "type": "array", "maxItems": 1000, "items": { "$ref": "#/$defs/businessObservation" } },
+        "trends": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["subject", "metric_id", "unit", "direction", "segment_id", "points"],
+            "properties": {
+              "subject": { "$ref": "#/$defs/businessSubject" },
+              "metric_id": { "$ref": "#/$defs/metricId" },
+              "unit": { "$ref": "#/$defs/businessIdentity" },
+              "direction": { "enum": ["maximize", "minimize"] },
+              "segment_id": { "oneOf": [{ "$ref": "#/$defs/metricId" }, { "type": "null" }] },
+              "points": {
+                "type": "array",
+                "maxItems": 1000,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["observation_id", "candidate_digest", "window", "value", "sample_size"],
+                  "properties": {
+                    "observation_id": { "$ref": "#/$defs/observationId" },
+                    "candidate_digest": { "oneOf": [{ "$ref": "#/$defs/sha256Digest" }, { "type": "null" }] },
+                    "window": { "$ref": "#/$defs/businessWindow" },
+                    "value": { "type": "number" },
+                    "sample_size": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "groups": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["subject", "observation_count", "observation_ids"],
+            "properties": {
+              "subject": { "$ref": "#/$defs/businessSubject" },
+              "observation_count": { "type": "integer", "minimum": 1 },
+              "observation_ids": { "type": "array", "maxItems": 1000, "items": { "$ref": "#/$defs/observationId" } }
+            }
+          }
+        }
+      }
+    },
+    "effective_evaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "configured", "materialized", "executed", "identity_match", "execution", "experience_only"],
+      "properties": {
+        "status": { "enum": ["verified", "mismatch", "execution-failed", "unattested", "unknown"] },
+        "configured": { "type": ["object", "null"] },
+        "materialized": { "type": ["object", "null"] },
+        "executed": { "type": ["object", "null"] },
+        "identity_match": { "type": ["boolean", "null"] },
+        "execution": { "type": ["object", "null"] },
+        "experience_only": { "type": "boolean" }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "owner", "root_cause", "criterion_id", "summary", "recommendation", "affected_count", "case_ids", "evidence_refs"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string", "minLength": 1 },
+          "root_cause": { "type": "string", "minLength": 1 },
+          "criterion_id": { "type": ["string", "null"] },
+          "summary": { "type": ["string", "null"] },
+          "recommendation": { "type": ["string", "null"] },
+          "affected_count": { "type": "integer", "minimum": 0 },
+          "case_ids": { "type": "array", "items": { "type": "string" } },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "representative_cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["trial_id", "execution_id", "dataset_trial", "status", "score", "score_valid", "criterion_statuses"],
+        "properties": {
+          "trial_id": { "type": "string", "minLength": 1 },
+          "execution_id": { "type": ["string", "null"] },
+          "dataset_trial": { "type": ["string", "null"] },
+          "status": { "type": ["string", "null"] },
+          "score": { "type": ["number", "null"] },
+          "score_valid": { "type": "boolean" },
+          "score_suppressed": { "type": "boolean" },
+          "criterion_statuses": { "type": "object", "additionalProperties": { "type": "string" } }
+        }
+      }
+    },
+    "next_action": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["owner", "change", "verification", "evidence_refs"],
+          "properties": {
+            "owner": { "type": "string", "minLength": 1 },
+            "hypothesis_id": { "type": ["string", "null"] },
+            "change": { "type": "string", "minLength": 1 },
+            "verification": { "type": ["string", "null"] },
+            "evidence_refs": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "summary_schema_version", "legacy_projection", "persisted"],
+      "properties": {
+        "kind": { "const": "dynamic-projection" },
+        "summary_schema_version": { "type": ["integer", "null"] },
+        "legacy_projection": { "type": "boolean" },
+        "persisted": { "const": false }
+      }
+    },
+    "experiment_details_ref": { "type": ["string", "null"] },
+    "advanced": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["experiment_details_available", "source_artifacts"],
+      "properties": {
+        "experiment_details_available": { "type": "boolean" },
+        "source_artifacts": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "$defs": {
+    "sha256Digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "businessIdentity": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[^\\r\\n\\u0000]+$" },
+    "observationId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "metricId": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9._-]{0,127}$" },
+    "businessSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "generator_id": { "$ref": "#/$defs/businessIdentity" },
+        "candidate_digest": { "$ref": "#/$defs/sha256Digest" },
+        "deployment_id": { "$ref": "#/$defs/businessIdentity" },
+        "project_id": { "$ref": "#/$defs/businessIdentity" }
+      },
+      "anyOf": [{ "required": ["generator_id"] }, { "required": ["candidate_digest"] }, { "required": ["deployment_id"] }, { "required": ["project_id"] }]
+    },
+    "businessWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "through"],
+      "properties": {
+        "from": { "type": "string", "format": "date-time", "maxLength": 64 },
+        "through": { "type": "string", "format": "date-time", "maxLength": 64 }
+      }
+    },
+    "businessMetric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "value", "unit", "direction", "sample_size"],
+      "properties": {
+        "id": { "$ref": "#/$defs/metricId" },
+        "value": { "type": "number" },
+        "unit": { "$ref": "#/$defs/businessIdentity" },
+        "direction": { "enum": ["maximize", "minimize"] },
+        "sample_size": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+      }
+    },
+    "businessDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "value"],
+      "properties": {
+        "id": { "$ref": "#/$defs/metricId" },
+        "value": { "oneOf": [
+          { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[^\\r\\n\\u0000]+$" },
+          { "type": "number" },
+          { "type": "boolean" }
+        ] }
+      }
+    },
+    "businessSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "dimensions", "metrics"],
+      "properties": {
+        "id": { "$ref": "#/$defs/metricId" },
+        "label": { "$ref": "#/$defs/businessIdentity" },
+        "dimensions": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/$defs/businessDimension" } },
+        "metrics": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/$defs/businessMetric" } }
+      }
+    },
+    "businessObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "protocol", "observation_id", "source", "subject", "window", "metrics", "segments", "digest"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "protocol": { "const": "business-observation/v1" },
+        "observation_id": { "$ref": "#/$defs/observationId" },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id", "version", "provenance"],
+          "properties": {
+            "kind": { "enum": ["manual", "analytics", "api", "external-experiment"] },
+            "id": { "$ref": "#/$defs/businessIdentity" },
+            "version": { "$ref": "#/$defs/businessIdentity" },
+            "provenance": { "type": "string", "minLength": 1, "maxLength": 512 }
+          }
+        },
+        "subject": { "$ref": "#/$defs/businessSubject" },
+        "window": { "$ref": "#/$defs/businessWindow" },
+        "metrics": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/$defs/businessMetric" } },
+        "segments": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/businessSegment" } },
+        "digest": { "$ref": "#/$defs/sha256Digest" }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["not-assessed"] }
+      }
+    }
+  }
+}

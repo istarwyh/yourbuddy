@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -9,10 +11,55 @@ EXCLUDED_DIRS = {".git", "node_modules", "__pycache__", ".venv"}
 EXCLUDED_FILES = {".DS_Store"}
 
 
+def canonical_json(value: Any) -> str:
+    """Serialize the protocol subset exactly like sorted-key JSON.stringify.
+
+    This closes Python/JavaScript identity drift for integral floats, negative
+    zero, and exponent formatting while rejecting non-JSON numbers.
+    """
+    if value is None:
+        return "null"
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    if isinstance(value, int) and not isinstance(value, bool):
+        try:
+            round_trip = int(float(value))
+        except (OverflowError, ValueError):
+            round_trip = None
+        if round_trip != value:
+            raise ValueError("Canonical protocol JSON forbids integers that cannot round-trip through an IEEE-754 Number")
+        return str(value)
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("Canonical protocol JSON forbids non-finite numbers")
+        if value == 0:
+            return "0"
+        absolute = abs(value)
+        representation = repr(value)
+        if 1e-6 <= absolute < 1e21:
+            fixed = format(Decimal(representation), "f")
+            return fixed.rstrip("0").rstrip(".") if "." in fixed else fixed
+        mantissa, exponent = representation.lower().split("e")
+        exponent_value = int(exponent)
+        return f"{mantissa}e{'+' if exponent_value >= 0 else ''}{exponent_value}"
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    if isinstance(value, list) or isinstance(value, tuple):
+        return "[" + ",".join(canonical_json(item) for item in value) + "]"
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise ValueError("Canonical protocol JSON requires string object keys")
+        return "{" + ",".join(
+            canonical_json(key) + ":" + canonical_json(value[key])
+            for key in sorted(value, key=lambda item: item.encode("utf-16-be", "surrogatepass"))
+        ) + "}"
+    raise ValueError(f"Canonical protocol JSON does not support {type(value).__name__}")
+
+
 def canonical_digest(value: Any, *, namespace: str) -> str:
-    payload = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    payload = canonical_json(value).encode("utf-8")
     digest = hashlib.sha256()
     digest.update(namespace.encode("utf-8"))
     digest.update(b"\0")

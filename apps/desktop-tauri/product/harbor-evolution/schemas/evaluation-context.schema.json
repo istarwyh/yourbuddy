@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/evaluation-context.schema.json",
+  "title": "Harbor DSH Evaluation Context v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "digest", "full_digest", "mode", "candidate", "dataset", "evaluation_stack", "candidate_model_binding", "execution_environment", "runtime"],
+  "properties": {
+    "schema_version": { "const": 3 },
+    "digest": { "$ref": "#/$defs/digest" },
+    "full_digest": { "$ref": "#/$defs/digest" },
+    "mode": { "enum": ["diagnostic", "promotion-eligible"] },
+    "evaluation_type": { "enum": ["diagnostic", "experiment", "governed"] },
+    "artifact_profile": { "enum": ["diagnostic", "experiment", "governed"] },
+    "candidate": {
+      "type": "object",
+      "required": ["candidate_id", "version", "digest", "runtime"],
+      "properties": {
+        "candidate_id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "runtime": { "type": "object" }
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_id", "version", "source_digest", "task_count"],
+      "properties": {
+        "dataset_id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "source_digest": { "$ref": "#/$defs/digest" },
+        "task_count": { "type": "integer", "minimum": 1 },
+        "promotion_eligible": { "type": "boolean" }
+      }
+    },
+    "evaluation_stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stack_id", "version", "digest", "comparison_digest", "components", "judge"],
+      "properties": {
+        "stack_id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "comparison_digest": { "$ref": "#/$defs/digest" },
+        "components": { "type": "object" },
+        "judge": { "type": "object" }
+      }
+    },
+    "candidate_model_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model", "transport", "protocol"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "reasoning_effort": { "type": "string", "minLength": 1 },
+        "transport": { "const": "dsh-host-broker" },
+        "protocol": { "const": "dsh-host-model-gateway/v1" }
+      }
+    },
+    "execution_environment": { "$ref": "#/$defs/execution_environment" },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["harbor_version", "integration_version", "integration_digest"],
+      "properties": {
+        "harbor_version": { "type": "string", "minLength": 1 },
+        "integration_version": { "type": "string", "minLength": 1 },
+        "integration_digest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "execution_environment": {
+      "type": "object",
+      "required": ["kind", "provider", "runtime_fingerprint"],
+      "properties": {
+        "kind": { "enum": ["host", "docker"] },
+        "provider": { "type": "string", "minLength": 1 },
+        "runtime_fingerprint": { "$ref": "#/$defs/digest" }
+      }
+    }
+  }
+}

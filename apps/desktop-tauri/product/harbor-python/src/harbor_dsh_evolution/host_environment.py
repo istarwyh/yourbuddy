@@ -55,20 +55,21 @@ class HostEnvironment(BaseEnvironment):
     @property
     @override
     def capabilities(self) -> EnvironmentCapabilities:
-        # These flags mean Harbor may proceed. Host mode deliberately ignores
-        # the corresponding policies rather than enforcing them.
+        # Host mode must not advertise policy enforcement or accelerators that
+        # it does not actually provide. Jobs requesting those controls fail
+        # capability negotiation instead of silently running unrestricted.
         return EnvironmentCapabilities(
-            gpus=True,
-            tpus=True,
-            disable_internet=True,
-            network_allowlist=True,
-            network_allowlist_hostnames=True,
-            network_allowlist_wildcard_hostnames=True,
-            network_allowlist_ipv4_addresses=True,
-            network_allowlist_ipv6_addresses=True,
-            network_allowlist_ipv4_cidrs=True,
-            network_allowlist_ipv6_cidrs=True,
-            dynamic_network_policy=True,
+            gpus=False,
+            tpus=False,
+            disable_internet=False,
+            network_allowlist=False,
+            network_allowlist_hostnames=False,
+            network_allowlist_wildcard_hostnames=False,
+            network_allowlist_ipv4_addresses=False,
+            network_allowlist_ipv6_addresses=False,
+            network_allowlist_ipv4_cidrs=False,
+            network_allowlist_ipv6_cidrs=False,
+            dynamic_network_policy=False,
             mounted=True,
         )
 
@@ -146,6 +147,7 @@ class HostEnvironment(BaseEnvironment):
                 "HARBOR_AGENT_LOG_DIR": str(self.resolve_environment_path("/logs/agent")),
                 "HARBOR_VERIFIER_LOG_DIR": str(self.resolve_environment_path("/logs/verifier")),
                 "HARBOR_ARTIFACTS_DIR": str(self.resolve_environment_path("/logs/artifacts")),
+                "HSE_TASK_ROOT": str(self.resolve_environment_path("/workspace")),
                 "HSE_SESSION_OBSERVATION_PATH": str(self.resolve_environment_path("/opt/harbor-dsh/session-observation.json")),
                 "HSE_VERIFIER_LOG_DIR": str(self.resolve_environment_path("/logs/verifier")),
             }

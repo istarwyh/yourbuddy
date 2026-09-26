@@ -26,6 +26,10 @@ from harbor_dsh_evolution.historical_context import (
     build_historical_context,
 )
 from harbor_dsh_evolution.historical_summary import summarize_historical_payloads
+from harbor_dsh_evolution.evaluator import snapshot_evaluator_bundle
+from harbor_dsh_evolution.evaluation_spec import build_evaluation_spec
+from harbor_dsh_evolution.identity import resolve_inside
+from harbor_dsh_evolution.job_seal import SEAL_NAME, seal_job_bundle
 from harbor_dsh_evolution.lifecycle import TrialLifecycleStore, terminal_phase
 from harbor_dsh_evolution.session_batch import (
     BATCH_MANIFEST_NAME,
@@ -88,6 +92,8 @@ class HistoricalGenerationEvaluationPlugin(BaseJobPlugin):
     async def on_job_start(self, job: Job) -> None:
         self._job_dir = job.job_dir
         self._job_dir.mkdir(parents=True, exist_ok=True)
+        if (self._job_dir / SEAL_NAME).exists():
+            raise ValueError("JOB_ALREADY_SEALED: completed Jobs cannot be resumed in place")
         # Harbor 0.21 can resume an existing Job directory. Invalidate the old
         # success marker before any validation or callback registration so a
         # failed plugin finalization can never inherit a previous completion.
@@ -147,6 +153,12 @@ class HistoricalGenerationEvaluationPlugin(BaseJobPlugin):
                 }
             ],
         }
+        evaluation_spec = build_evaluation_spec(
+            context=self._context,
+            stack=self._stack_manifest,
+            repeats=1,
+            seed_policy="observed-record",
+        )
         artifacts = {
             BATCH_MANIFEST_NAME: self._batch.manifest,
             DATASET_MANIFEST_NAME: self._dataset_manifest,
@@ -158,12 +170,19 @@ class HistoricalGenerationEvaluationPlugin(BaseJobPlugin):
                 self._stack_manifest, project_root=self._project_root
             ),
             CONTEXT_NAME: self._context,
+            "evaluation-spec.json": evaluation_spec,
             "architecture-doctor.json": doctor,
         }
         for name, value in artifacts.items():
             (self._job_dir / name).write_text(
                 json.dumps(value, ensure_ascii=False, indent=2) + "\n"
             )
+        evaluator_entry = self._stack_manifest["components"]["evaluator"]["entry"]
+        snapshot_evaluator_bundle(
+            resolve_inside(self._project_root, evaluator_entry, label="evaluator descriptor"),
+            project_root=self._project_root,
+            destination=self._job_dir / "evaluator-bundle",
+        )
         self._events_path = self._job_dir / "historical-events.jsonl"
         self._lifecycle = TrialLifecycleStore(
             self._job_dir,
@@ -286,3 +305,4 @@ class HistoricalGenerationEvaluationPlugin(BaseJobPlugin):
                 },
             },
         )
+        seal_job_bundle(self._job_dir)

@@ -1,6 +1,6 @@
 {
   "name": "dsh-harbor-evolution",
-  "version": "0.9.8",
+  "version": "0.10.1",
   "description": "DeepSeek Harness plugin and Skill for Harbor Candidate and Historical Session evaluation workflows.",
   "type": "module",
   "main": "index.js",
@@ -8,8 +8,14 @@
     ".": "./index.js",
     "./client": "./lib/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./schemas/bridge-contract.json": "./schemas/bridge-contract.json",
+    "./schemas/business-observation.schema.json": "./schemas/business-observation.schema.json",
+    "./schemas/canonical-digest-vectors.json": "./schemas/canonical-digest-vectors.json",
     "./schemas/evaluation-result.schema.json": "./schemas/evaluation-result.schema.json",
     "./schemas/evaluation-result-v2.schema.json": "./schemas/evaluation-result-v2.schema.json",
+    "./schemas/evaluation-report.schema.json": "./schemas/evaluation-report.schema.json",
+    "./schemas/effective-evaluator.schema.json": "./schemas/effective-evaluator.schema.json",
+    "./schemas/evaluator.schema.json": "./schemas/evaluator.schema.json",
     "./schemas/historical-generation-batch.schema.json": "./schemas/historical-generation-batch.schema.json",
     "./schemas/dsh-session-observation.schema.json": "./schemas/dsh-session-observation.schema.json",
     "./schemas/historical-evaluation-context.schema.json": "./schemas/historical-evaluation-context.schema.json",
@@ -17,6 +23,7 @@
     "./schemas/ground-truth.schema.json": "./schemas/ground-truth.schema.json",
     "./schemas/evaluator-observations.schema.json": "./schemas/evaluator-observations.schema.json",
     "./schemas/meta-evaluation-report.schema.json": "./schemas/meta-evaluation-report.schema.json",
+    "./schemas/*.json": "./schemas/*.json",
     "./package.json": "./package.json"
   },
   "bin": {

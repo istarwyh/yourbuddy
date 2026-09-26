@@ -22,6 +22,7 @@ from harbor_dsh_evolution.candidate import verify_candidate
 from harbor_dsh_evolution.candidate_runtime import load_candidate_runtime
 from harbor_dsh_evolution.runtime_binding import render_runtime_config
 from harbor_dsh_evolution.context import normalize_candidate_model_binding
+from harbor_dsh_evolution.candidate_materialization import materialize_candidate_dataset
 from harbor_dsh_evolution.dataset import load_validated_dataset, snapshot_dataset
 from harbor_dsh_evolution.identity import canonical_digest, files_under, tree_digest
 from harbor_dsh_evolution.stack import snapshot_stack
@@ -254,8 +255,16 @@ def materialize_diagnostic(*, project_root: Path, source_job_dir: Path, trial_id
     if again["planDigest"] != plan["planDigest"]:
         _fail("REVISION_CONFLICT", "Diagnostic inputs changed while preparing the subset. No Job was started.")
     provenance = {"protocol": "harbor-diagnostic-provenance/v1", "operationId": operation_id, "sourceJob": plan["sourceJob"], "sourceIdentities": plan["identities"], "selection": plan["selection"], "planDigest": plan["planDigest"], "limits": plan["limits"], "promotionEligible": False}
-    manifest = snapshot_dataset(destination, dataset_id=f"diagnostic-{operation_id}", version="1.0.0", dataset_kind="candidate-execution", metadata={"diagnostic_provenance": provenance})
-    return {**plan, "datasetPath": destination.relative_to(root).as_posix(), "datasetIdentity": {key: manifest[key] for key in ("dataset_id", "version", "source_digest", "task_count")}, "provenance": provenance}
+    snapshot_dataset(destination, dataset_id=f"diagnostic-{operation_id}", version="1.0.0", dataset_kind="candidate-execution", metadata={"diagnostic_provenance": provenance})
+    strict_destination = parent / f"{operation_id}-strict"
+    materialized = materialize_candidate_dataset(
+        project_root=root,
+        dataset_path=destination,
+        stack_path=root / plan["stackPath"],
+        output_path=strict_destination,
+    )
+    manifest = materialized["dataset_manifest"]
+    return {**plan, "datasetPath": strict_destination.relative_to(root).as_posix(), "datasetIdentity": {key: manifest[key] for key in ("dataset_id", "version", "source_digest", "task_count")}, "provenance": provenance}
 
 
 def run_command(command: str) -> int:

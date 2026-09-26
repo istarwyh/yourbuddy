@@ -24,7 +24,7 @@ class SessionObservationAgent(BaseAgent):
 
     @override
     def version(self) -> str:
-        return "1.0.0"
+        return "2.0.0"
 
     @staticmethod
     def _path(environment: BaseEnvironment, path: str) -> str:
@@ -62,15 +62,63 @@ class SessionObservationAgent(BaseAgent):
         code = r'''
 import hashlib
 import json
+from decimal import Decimal
 from pathlib import Path
+
+
+def canonical_number(value):
+    if isinstance(value, int):
+        return str(value)
+    if not isinstance(value, float) or not value == value or abs(value) == float("inf"):
+        raise ValueError("Canonical JSON supports only finite numbers")
+    if value == 0:
+        return "0"
+    representation = repr(value).lower()
+    absolute = abs(value)
+    if 1e-6 <= absolute < 1e21:
+        fixed = format(Decimal(representation), "f")
+        return fixed.rstrip("0").rstrip(".") if "." in fixed else fixed
+    mantissa, exponent = representation.split("e")
+    mantissa = mantissa.rstrip("0").rstrip(".")
+    sign = "+" if int(exponent) >= 0 else "-"
+    return f"{mantissa}e{sign}{abs(int(exponent))}"
+
+
+def canonical_json(value):
+    if value is None:
+        return "null"
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return canonical_number(value)
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    if isinstance(value, list):
+        return "[" + ",".join(canonical_json(item) for item in value) + "]"
+    if isinstance(value, dict):
+        return "{" + ",".join(
+            canonical_json(key) + ":" + canonical_json(value[key])
+            for key in sorted(value, key=lambda item: item.encode("utf-16-be", "surrogatepass"))
+        ) + "}"
+    raise TypeError("Unsupported canonical JSON value")
+
 
 source = Path(__OBSERVATION_PATH__)
 artifact = Path(__ARTIFACT_PATH__)
 value = json.loads(source.read_text())
 claimed = value.get("digest")
 unsigned = {key: item for key, item in value.items() if key != "digest"}
-canonical = json.dumps(unsigned, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
-actual = "sha256:" + hashlib.sha256(b"harbor-dsh-session-observation-v1\0" + canonical).hexdigest()
+protocol = value.get("protocol")
+namespace = {
+    "dsh-session-observation/v1": "harbor-dsh-session-observation-v1",
+    "dsh-session-observation/v2": "harbor-dsh-session-observation-v2",
+}.get(protocol)
+if namespace is None:
+    raise RuntimeError("Unsupported Session Observation protocol")
+canonical = canonical_json(unsigned).encode()
+actual = "sha256:" + hashlib.sha256(namespace.encode() + b"\0" + canonical).hexdigest()
 if claimed != actual:
     raise RuntimeError("Session Observation digest mismatch")
 artifact.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")

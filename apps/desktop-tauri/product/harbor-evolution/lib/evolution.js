@@ -1,6 +1,7 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { BRIDGE_CONTRACT } from './bridge-contract.js'
 import { MANIFEST_NAME, snapshotCandidate } from './candidate.js'
 import { loadCandidateRuntime } from './candidate-runtime.js'
 import { redactCredentialText, redactLocalPaths, redactOpaqueSecretText } from './credential-redaction.js'
@@ -136,7 +137,7 @@ export function assertHistoricalCompletion(summary, completion, {
   }
 }
 
-async function cliJson(config, args, { allowedExitCodes = [0], input } = {}) {
+async function cliJson(config, args, { allowedExitCodes = [0], input, maxOutputBytes } = {}) {
   let result
   try {
     result = await runProcess(config.harborDshBin, args, {
@@ -144,6 +145,7 @@ async function cliJson(config, args, { allowedExitCodes = [0], input } = {}) {
       timeoutMs: config.timeoutMs,
       allowedExitCodes,
       input,
+      maxOutputBytes,
       env: { ...process.env, ...(config.pythonPath ? { PYTHONPATH: config.pythonPath } : {}) },
     })
   } catch (error) {
@@ -155,6 +157,43 @@ async function cliJson(config, args, { allowedExitCodes = [0], input } = {}) {
     return JSON.parse(result.stdout)
   } catch {
     throw new Error(`harbor-dsh returned invalid JSON for ${args.slice(0, 2).join(' ')}`)
+  }
+}
+
+async function materializeCandidateDataset(config, inputs, output) {
+  const result = await cliJson(config, [
+    'candidate', 'materialize',
+    '--project-root', inputs.projectRoot,
+    '--dataset', inputs.dataset,
+    '--stack', inputs.stack,
+    '--output', output,
+  ])
+  if (result?.protocol !== BRIDGE_CONTRACT.protocols.candidate_materialization.protocol || !result.dataset_path) {
+    throw new Error('STRICT_EVALUATOR_MATERIALIZATION_INVALID: the Adapter did not return a strict Candidate Dataset')
+  }
+  return result
+}
+
+async function previewWithStrictDataset(config, inputs, args, execution) {
+  const root = path.join(inputs.projectRoot, '.harbor', 'private', 'candidate-context-previews')
+  await mkdir(root, { recursive: true })
+  const temporary = await mkdtemp(path.join(root, 'preview-'))
+  try {
+    const materialized = await materializeCandidateDataset(config, inputs, path.join(temporary, 'dataset'))
+    return await cliJson(config, [
+      'context', 'preview',
+      '--project-root', inputs.projectRoot,
+      '--candidate', inputs.candidate,
+      '--dataset', materialized.dataset_path,
+      '--stack', inputs.stack,
+      '--jobs-dir', inputs.jobs,
+      '--mode', inputs.mode,
+      '--artifact-profile', inputs.artifactProfile,
+      '--execution-environment', execution.kind,
+      ...candidateModelCliArgs(args.candidateModelBinding),
+    ])
+  } finally {
+    await rm(temporary, { recursive: true, force: true })
   }
 }
 
@@ -176,10 +215,19 @@ export async function inspectEvaluator(config, args = {}) {
   ])
 }
 
+export async function inspectEvaluatorBundle(config, args) {
+  const bundle = resolveWithin(config.projectRoot, args.bundlePath, 'evaluatorBundle')
+  return cliJson(config, [
+    'evaluator', 'inspect-bundle',
+    '--project-root', config.projectRoot,
+    '--bundle', bundle,
+  ])
+}
+
 export async function updateEvaluator(config, args) {
   const stack = resolveWithin(config.projectRoot, args.stackPath ?? '.harbor/evaluation-stack.yml', 'stackPath')
   if (typeof args.content !== 'string') throw new Error('content is required')
-  return cliJson(config, [
+  const command = [
     'evaluator', 'update',
     '--project-root', config.projectRoot,
     '--stack', stack,
@@ -187,8 +235,10 @@ export async function updateEvaluator(config, args) {
     '--expected-digest', String(args.expectedDigest ?? ''),
     '--new-evaluator-version', String(args.newEvaluatorVersion ?? ''),
     '--new-stack-version', String(args.newStackVersion ?? ''),
-    '--content-stdin',
-  ], { input: args.content })
+  ]
+  if (args.sourceBundlePath) command.push('--source-bundle', resolveWithin(config.projectRoot, args.sourceBundlePath, 'evaluatorBundle'))
+  command.push('--content-stdin')
+  return cliJson(config, command, { input: args.content })
 }
 
 export async function initializeGroundTruth(config, args) {
@@ -206,6 +256,41 @@ export async function initializeGroundTruth(config, args) {
   ])
   result.artifact_index = await recordMetaArtifact(config, output, 'ground_truth', args.evaluationRoot)
   return result
+}
+
+export async function importBusinessObservation(config, args = {}) {
+  const hasFile = typeof args.filePath === 'string' && args.filePath.length > 0
+  const hasPayload = args.observation !== undefined
+  if (hasFile === hasPayload) throw new Error('BUSINESS_OBSERVATION_IMPORT_INVALID: provide exactly one filePath or observation')
+  const command = ['business-observation', 'import', '--project-root', config.projectRoot]
+  if (hasFile) {
+    command.push('--input', resolveWithin(config.projectRoot, args.filePath, 'filePath'))
+    return cliJson(config, command)
+  }
+  if (!args.observation || typeof args.observation !== 'object' || Array.isArray(args.observation)) {
+    throw new Error('BUSINESS_OBSERVATION_IMPORT_INVALID: observation must be an object')
+  }
+  const payload = JSON.stringify(args.observation)
+  if (Buffer.byteLength(payload, 'utf8') > 256 * 1024) {
+    throw new Error('BUSINESS_OBSERVATION_INPUT_TOO_LARGE: payload exceeds 256 KiB')
+  }
+  command.push('--payload-stdin')
+  return cliJson(config, command, { input: payload })
+}
+
+export async function listBusinessObservations(config, args = {}) {
+  const command = ['business-observation', 'list', '--project-root', config.projectRoot]
+  const filters = [
+    ['candidateDigest', '--candidate-digest'],
+    ['generatorId', '--generator-id'],
+    ['deploymentId', '--deployment-id'],
+    ['metricId', '--metric-id'],
+    ['segmentId', '--segment-id'],
+  ]
+  for (const [key, flag] of filters) if (args[key]) command.push(flag, String(args[key]))
+  if (args.offset !== undefined) command.push('--offset', String(args.offset))
+  if (args.limit !== undefined) command.push('--limit', String(args.limit))
+  return cliJson(config, command, { maxOutputBytes: 8 * 1024 * 1024 })
 }
 
 export async function runMetaEvaluation(config, args) {
@@ -231,11 +316,17 @@ function strictInputs(config, args) {
   const dataset = resolveWithin(projectRoot, args.datasetPath, 'datasetPath')
   const stack = resolveWithin(projectRoot, args.stackPath, 'stackPath')
   const jobs = resolveWithin(projectRoot, config.jobsDir, 'jobsDir')
-  const mode = args.mode
-  if (!['diagnostic', 'promotion-eligible'].includes(mode)) throw new Error('mode must be diagnostic or promotion-eligible')
+  const requestedMode = args.mode
+  if (!['diagnostic', 'experiment', 'governed', 'promotion-eligible'].includes(requestedMode)) {
+    throw new Error('mode must be diagnostic, experiment, or governed')
+  }
+  const mode = ['governed', 'promotion-eligible'].includes(requestedMode) ? 'promotion-eligible' : 'diagnostic'
+  const artifactProfile = mode === 'promotion-eligible'
+    ? 'governed'
+    : requestedMode === 'diagnostic' ? 'diagnostic' : 'experiment'
   const policy = args.policyPath ? resolveWithin(projectRoot, args.policyPath, 'policyPath') : undefined
-  if (mode === 'promotion-eligible' && !policy) throw new Error('promotion-eligible mode requires policyPath')
-  return { projectRoot, candidate, dataset, stack, jobs, mode, policy }
+  if (artifactProfile === 'governed' && !policy) throw new Error('governed mode requires policyPath')
+  return { projectRoot, candidate, dataset, stack, jobs, mode, requestedMode, artifactProfile, policy }
 }
 
 function candidateModelCliArgs(binding) {
@@ -308,26 +399,32 @@ function narrowRunSummary(summary, { historical = false } = {}) {
  * harbor_eval_result, where untrusted artifact content receives its dedicated
  * allowlist/redaction policy.
  */
-export function buildEvaluationRunReceipt({ jobName, mode, summary, processCode }) {
+export function buildEvaluationRunReceipt({ jobName, jobPath, mode, artifactProfile, summary, processCode }) {
+  const profile = artifactProfile ?? (mode === 'promotion-eligible' ? 'governed' : 'experiment')
   return {
     schema_version: 1,
     jobKind: 'candidate-evaluation',
+    evaluationType: profile,
+    artifactProfile: profile,
     mode: mode === 'promotion-eligible' ? 'promotion-eligible' : 'diagnostic',
     status: 'completed',
     job: boundedRunReceiptText(jobName),
+    jobPath: boundedRunReceiptText(jobPath ?? jobName),
     summary: narrowRunSummary(summary),
     process: { code: safeNonNegativeInteger(processCode) ?? null },
   }
 }
 
-export function buildHistoricalRunReceipt({ jobName, summary, processCode }) {
+export function buildHistoricalRunReceipt({ jobName, jobPath, summary, processCode }) {
   return {
     schema_version: 1,
     jobKind: 'historical-generation-evaluation',
+    evaluationType: 'experience-diagnostic',
     executionMode: 'observe-existing',
     promotionEligible: false,
     status: 'completed',
     job: boundedRunReceiptText(jobName),
+    jobPath: boundedRunReceiptText(jobPath ?? jobName),
     summary: narrowRunSummary(summary, { historical: true }),
     completion: {
       schema_version: 1,
@@ -346,7 +443,7 @@ export function classifyHarborFailure(value) {
     suggestions.push({ code: 'AGENT_SETUP_TIMEOUT', action: 'Use a base image with Python, curl, Node.js, npm, and ACP/DSH dependencies already installed; then rerun Doctor.' })
   }
   if (/evaluation-result\.json is missing/i.test(text)) {
-    suggestions.push({ code: 'EVALUATOR_RESULT_MISSING', action: 'Update tests/test.sh or its evaluator script to write /logs/verifier/evaluation-result.json using evaluation-result/v1.' })
+    suggestions.push({ code: 'EVALUATOR_RESULT_MISSING', action: 'Update tests/test.sh or its evaluator script to write /logs/verifier/evaluation-result.json using evaluation-result/v2.' })
   }
   if (/Either datasets or tasks must be provided|HARBOR_RUNTIME_NO_TASKS/i.test(text)) {
     suggestions.push({ code: 'DATASET_NOT_RESOLVED', action: 'Make the Dataset root contain immediate Task subdirectories with schema_version = "1.4", [task] name = "org/name", instruction.md, environment/, and tests/test.sh.' })
@@ -432,17 +529,7 @@ export async function previewContext(config, args) {
   const manifest = await snapshot(config, args)
   const inputs = strictInputs(config, args)
   const execution = resolveExecutionEnvironment(config, args)
-  const preview = await cliJson(config, [
-    'context', 'preview',
-    '--project-root', inputs.projectRoot,
-    '--candidate', inputs.candidate,
-    '--dataset', inputs.dataset,
-    '--stack', inputs.stack,
-    '--jobs-dir', inputs.jobs,
-    '--mode', inputs.mode,
-    '--execution-environment', execution.kind,
-    ...candidateModelCliArgs(args.candidateModelBinding),
-  ])
+  const preview = await previewWithStrictDataset(config, inputs, args, execution)
   return { manifest, ...preview }
 }
 
@@ -475,18 +562,29 @@ export async function runEvaluation(config, args, modelRuntime) {
   if (inputs.mode === 'promotion-eligible' && !doctor.promotion_ready) {
     throw new Error(`Architecture Doctor blocked promotion-eligible Job: ${doctor.findings.filter(item => item.level === 'error').map(item => item.code).join(', ')}`)
   }
+  const jobName = args.jobName ?? makeJobName(manifest)
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(jobName)) throw new Error('jobName contains unsupported characters')
+  const materializationRoot = path.join(inputs.projectRoot, '.harbor', 'private', 'candidate-materializations')
+  await mkdir(materializationRoot, { recursive: true })
+  const materialized = await materializeCandidateDataset(
+    config,
+    inputs,
+    path.join(materializationRoot, jobName),
+  )
   const preview = await cliJson(config, [
     'context', 'preview', '--project-root', inputs.projectRoot,
-    '--candidate', inputs.candidate, '--dataset', inputs.dataset,
+    '--candidate', inputs.candidate, '--dataset', materialized.dataset_path,
     '--stack', inputs.stack, '--jobs-dir', inputs.jobs, '--mode', inputs.mode,
+    '--artifact-profile', inputs.artifactProfile,
     '--execution-environment', execution.kind,
     ...candidateModelCliArgs(args.candidateModelBinding),
   ])
-  const jobName = args.jobName ?? makeJobName(manifest)
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(jobName)) throw new Error('jobName contains unsupported characters')
 
+  const repeats = args.repeats === undefined ? 1 : Number(args.repeats)
+  if (!Number.isSafeInteger(repeats) || repeats < 1 || repeats > 10) throw new Error('repeats must be an integer from 1 to 10')
   const harborArgs = [
-    'run', '-p', inputs.dataset,
+    'run', '-p', materialized.dataset_path,
+    ...(repeats === 1 ? [] : ['--n-attempts', String(repeats)]),
     '-a', config.agentImportPath,
     '--ak', `candidate_path=${inputs.candidate}`,
     '--ak', `candidate_version=${manifest.version}`,
@@ -498,10 +596,11 @@ export async function runEvaluation(config, args, modelRuntime) {
     ...execution.harborArgs,
     '--plugin', config.pluginImportPath,
     '--plugin-kwarg', `candidate_manifest=${path.join(inputs.candidate, MANIFEST_NAME)}`,
-    '--plugin-kwarg', `dataset_path=${inputs.dataset}`,
+    '--plugin-kwarg', `dataset_path=${materialized.dataset_path}`,
     '--plugin-kwarg', `stack_path=${inputs.stack}`,
     '--plugin-kwarg', `project_root=${inputs.projectRoot}`,
     '--plugin-kwarg', `mode=${inputs.mode}`,
+    '--plugin-kwarg', `artifact_profile=${inputs.artifactProfile}`,
     '--plugin-kwarg', `execution_environment=${execution.kind}`,
     '--plugin-kwarg', `candidate_model_provider=${args.candidateModelBinding.provider}`,
     '--plugin-kwarg', `candidate_model=${args.candidateModelBinding.model}`,
@@ -541,7 +640,9 @@ export async function runEvaluation(config, args, modelRuntime) {
     const summary = JSON.parse(await readFile(path.join(jobDir, 'evaluation-summary.json'), 'utf8'))
     return buildEvaluationRunReceipt({
       jobName,
+      jobPath: path.relative(config.projectRoot, jobDir).split(path.sep).join('/'),
       mode: inputs.mode,
+      artifactProfile: inputs.artifactProfile,
       summary,
       processCode: processResult.code,
     })
@@ -668,6 +769,7 @@ export async function runHistoricalEvaluation(config, args, modelRuntime) {
     })
     return buildHistoricalRunReceipt({
       jobName,
+      jobPath: path.relative(config.projectRoot, jobDir).split(path.sep).join('/'),
       summary,
       processCode: processResult.code,
     })

@@ -267,6 +267,29 @@ export function apply(ctx, config) {
     )
   }))
 
+  ctx.tools.register(mutatingJsonTool({
+    name: 'harbor_business_observation_import',
+    description: 'Import one reviewed aggregate business-observation/v1 from an in-project JSON file or structured payload. This never performs network access, overwrites an observation id, changes offline scores, or runs Gate.',
+    parameters: {
+      filePath: { type: 'string', description: 'Project-relative JSON file. Supply exactly one of filePath or observation.' },
+      observation: { type: 'object', additionalProperties: true, description: 'Structured business-observation/v1 payload. Digest may be omitted and is computed by the Python validator.' },
+    },
+  }, (args, exec) => serviceForTool(exec).businessObservationImport(args)))
+
+  ctx.tools.register(jsonTool({
+    name: 'harbor_business_observation_list',
+    description: 'List validated external business observations with identity filters, trends, and groups in a bounded, explicitly untrusted envelope. Results are correlation-only and never affect offline Summary, reward, or Gate.',
+    parameters: {
+      candidateDigest: { type: 'string' },
+      generatorId: { type: 'string' },
+      deploymentId: { type: 'string' },
+      metricId: { type: 'string' },
+      segmentId: { type: 'string' },
+      offset: { type: 'number' },
+      limit: { type: 'number' },
+    },
+  }, (args, exec) => serviceForTool(exec).businessObservations(args)))
+
   ctx.tools.register(jsonTool({
     name: 'harbor_dataset_validate',
     description: 'Validate dataset-manifest.json, task uniqueness, instructions, paths, sensitive metadata, and the immutable source digest.',
@@ -294,7 +317,7 @@ export function apply(ctx, config) {
 
   ctx.tools.register(mutatingJsonTool({
     name: 'harbor_eval_run',
-    description: 'Run a strict diagnostic or promotion-eligible Harbor Job bound to Candidate, Dataset Manifest, Evaluation Stack, and Context v3 identities.',
+    description: 'Run a strict diagnostic, formal experiment, or governed Harbor Job. Governed mode requires Policy and explicit execution-boundary acceptance.',
     parameters: {
       candidatePath: { type: 'string', required: true },
       candidateId: { type: 'string' },
@@ -304,6 +327,7 @@ export function apply(ctx, config) {
       mode: { type: 'string', required: true },
       policyPath: { type: 'string' },
       jobName: { type: 'string' },
+      repeats: { type: 'number', description: 'Independent Harbor attempts per Dataset task, from 1 to 10. Defaults to 1.' },
       candidateProvider: { type: 'string', description: 'Optional Candidate provider. Supply it together with candidateModel; defaults to the current DSH Agent model and is frozen before the Job starts.' },
       candidateModel: { type: 'string' },
       candidateReasoningEffort: { type: 'string' },
@@ -313,10 +337,10 @@ export function apply(ctx, config) {
 
   ctx.tools.register(jsonTool({
     name: 'harbor_eval_result',
-    description: 'Read a stable Job summary or Workbench, Dataset instruction, Trial output/evidence, progress, or Evaluator governance view inside a bounded, recursively redacted, explicitly untrusted envelope. Invalid scores remain distinct from raw verifier rewards.',
+    description: 'Read a user-facing Evaluation Report, stable Job summary or Workbench, Dataset instruction, Trial output/evidence, progress, or Evaluator governance view inside a bounded, recursively redacted, explicitly untrusted envelope. Invalid scores remain distinct from raw verifier rewards.',
     parameters: {
       jobPath: { type: 'string', required: true },
-      view: { type: 'string', description: 'summary (default), job, dataset, progress, trial, or governance' },
+      view: { type: 'string', description: 'report (default), summary, job, dataset, progress, trial, or governance' },
       trialId: { type: 'string', description: 'Required only for view=trial; use an id returned by the Job/Progress view' },
       compareJob: { type: 'string', description: 'Optional previous Job for view=governance impact analysis' },
       since: { type: 'string', description: 'Optional ISO timestamp for incremental progress changes' },
@@ -363,7 +387,7 @@ export function apply(ctx, config) {
 
   ctx.tools.register(jsonTool({
     name: 'harbor_evaluator_inspect',
-    description: 'Inspect the active harbor-dsh-evaluator/v1 descriptor, implementation kind, ternary Criteria, and a bounded set of editable source files inside an explicitly untrusted envelope. Source text containing secret- or local-path-shaped values is omitted.',
+    description: 'Inspect the active harbor-dsh-evaluator/v2 descriptor, implementation kind, ternary Criteria, and a bounded set of editable source files inside an explicitly untrusted envelope. Source text containing secret- or local-path-shaped values is omitted.',
     parameters: {
       stackPath: { type: 'string', description: 'Defaults to .harbor/evaluation-stack.yml' },
     },

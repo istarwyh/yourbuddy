@@ -38,6 +38,7 @@ VALIDITY_REQUIREMENTS = {
         "integration_valid",
         "renderer_valid",
         "judge_completed",
+        "evaluator_identity_match",
         "artifact_schema_valid",
     },
     "historical-generation-evaluation": {
@@ -46,6 +47,7 @@ VALIDITY_REQUIREMENTS = {
         "adapter_completed",
         "renderer_valid",
         "judge_completed",
+        "evaluator_identity_match",
         "artifact_schema_valid",
     },
 }

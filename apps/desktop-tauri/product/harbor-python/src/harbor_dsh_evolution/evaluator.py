@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import math
 import os
 import re
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Protocol
@@ -25,6 +27,50 @@ TERNARY_VALUES = (0, 0.5, 1)
 CRITERION_STATUSES = ("scored", "not-applicable", "insufficient-evidence", "evaluation-error")
 MAX_EDIT_BYTES = 128 * 1024
 IDENTITY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,99}$")
+_SECRET_KEYS = {"authorization", "cookie", "token", "api_key", "apikey", "secret", "password", "private_key", "client_secret", "credentials"}
+_SECRET_VALUES = re.compile(r"(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[A-Z0-9]{16}|(?:bearer|basic)\s+[A-Za-z0-9._~-]{12,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)", re.IGNORECASE)
+
+
+def _descriptor_has_secret(value: Any, key: str = "") -> bool:
+    if key.casefold().replace("-", "_") in _SECRET_KEYS:
+        return True
+    if isinstance(value, dict):
+        return any(_descriptor_has_secret(item, str(name)) for name, item in value.items())
+    if isinstance(value, list):
+        return any(_descriptor_has_secret(item) for item in value)
+    return isinstance(value, str) and bool(_SECRET_VALUES.search(value))
+
+
+def _validate_python_dependency_closure(bundle_root: Path, bundle_paths: set[Path]) -> None:
+    local_modules = {
+        path.stem for path in bundle_paths if path.suffix == ".py"
+    } | {
+        path.parent.name for path in bundle_paths if path.name == "__init__.py"
+    }
+    stdlib = set(getattr(sys, "stdlib_module_names", ()))
+    for path in sorted(bundle_paths):
+        if path.suffix != ".py":
+            continue
+        try:
+            tree = ast.parse(_read_safe(path), filename=path.name)
+        except SyntaxError as error:
+            raise ValueError(f"Evaluator Python source is invalid: {path.name}: {error.msg}") from error
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name.split(".")[0] for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [] if node.level else [str(node.module or "").split(".")[0]]
+            else:
+                names = []
+            for name in names:
+                if name and name not in stdlib and name not in local_modules:
+                    raise ValueError(f"Evaluator dependency closure is incomplete or non-portable: {name}")
+            if isinstance(node, ast.Call):
+                called = node.func
+                dynamic = isinstance(called, ast.Name) and called.id == "__import__"
+                dynamic = dynamic or (isinstance(called, ast.Attribute) and called.attr in {"import_module", "spec_from_file_location"})
+                if dynamic:
+                    raise ValueError("Evaluator bundle may not use dynamic imports")
 
 _DESCRIPTOR_SCHEMA = {
     "type": "object",
@@ -113,13 +159,21 @@ def _sha256(text: str) -> str:
     return "sha256:" + hashlib.sha256(text.encode()).hexdigest()
 
 
-def _read_safe(path: Path, *, max_bytes: int = MAX_EDIT_BYTES) -> str:
+def _sha256_bytes(value: bytes) -> str:
+    return "sha256:" + hashlib.sha256(value).hexdigest()
+
+
+def _read_safe_bytes(path: Path, *, max_bytes: int = MAX_EDIT_BYTES) -> bytes:
     details = path.lstat()
     if details.st_size > max_bytes:
         raise ValueError(f"Evaluator file exceeds {max_bytes} bytes: {path.name}")
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"Evaluator file is not a regular file: {path.name}")
-    return path.read_text()
+    return path.read_bytes()
+
+
+def _read_safe(path: Path, *, max_bytes: int = MAX_EDIT_BYTES) -> str:
+    return _read_safe_bytes(path, max_bytes=max_bytes).decode("utf-8")
 
 
 def _descriptor_path(path: Path, project_root: Path) -> Path:
@@ -143,6 +197,8 @@ def load_evaluator_descriptor(
         descriptor = json.loads(descriptor_text)
     except json.JSONDecodeError as error:
         raise ValueError(f"Evaluator descriptor is invalid JSON: {error.msg}") from error
+    if _descriptor_has_secret(descriptor):
+        raise ValueError("Evaluator descriptor must not contain credentials or secret-shaped values")
     is_v2 = isinstance(descriptor, dict) and (
         descriptor.get("schema_version") == 2 or descriptor.get("interface") == EVALUATOR_INTERFACE_V2
     )
@@ -169,7 +225,15 @@ def load_evaluator_descriptor(
         criterion_ids.add(identity)
         criterion = {"id": identity, "label": label, "values": list(TERNARY_VALUES)}
         if is_v2:
-            criterion["required"] = item.get("required", False)
+            criterion.update({
+                "required": item.get("required", False),
+                **({"direction": item["direction"]} if "direction" in item else {}),
+                **({"weight": item["weight"]} if "weight" in item else {}),
+                **({"applicability": item["applicability"]} if "applicability" in item else {}),
+                **({"evidence_requirements": item["evidence_requirements"]} if "evidence_requirements" in item else {}),
+                **({"status_policy": item["status_policy"]} if "status_policy" in item else {}),
+                **({"quality_affecting": item["quality_affecting"]} if "quality_affecting" in item else {}),
+            })
         criteria.append(criterion)
 
     editable: list[dict[str, Any]] = []
@@ -204,6 +268,53 @@ def load_evaluator_descriptor(
             }
         )
 
+    declared_bundle = descriptor.get("bundle_files")
+    bundle_complete = declared_bundle is not None
+    if declared_bundle is None:
+        declared_bundle = [{"path": item["relative_path"]} for item in editable]
+    if not isinstance(declared_bundle, list) or not declared_bundle:
+        raise ValueError("Evaluator bundle_files must be a non-empty array when declared")
+    bundle_files: list[dict[str, Any]] = []
+    bundle_paths: set[Path] = set()
+    for item in declared_bundle:
+        if not isinstance(item, dict):
+            raise ValueError("Evaluator bundle_files must contain objects")
+        relative = str(item.get("path") or "").strip()
+        if not relative:
+            raise ValueError("Evaluator bundle file requires path")
+        file_path = resolve_inside(
+            project_root,
+            descriptor_path.parent / relative,
+            label="evaluator bundle file",
+        )
+        if file_path != descriptor_path.parent and descriptor_path.parent not in file_path.parents:
+            raise ValueError("Evaluator bundle files must stay inside the versioned bundle directory")
+        if file_path in bundle_paths:
+            raise ValueError("Evaluator bundle file paths must be unique")
+        content = _read_safe_bytes(file_path)
+        bundle_paths.add(file_path)
+        bundle_files.append(
+            {
+                "path": relative,
+                "digest": _sha256_bytes(content),
+                "size": len(content),
+            }
+        )
+    if not editable_paths <= bundle_paths:
+        raise ValueError("Evaluator bundle_files must include every editable file")
+    if bundle_complete:
+        actual_bundle_paths: set[Path] = set()
+        for candidate in descriptor_path.parent.rglob("*"):
+            if candidate.is_symlink():
+                raise ValueError("Symlinks are not allowed in an Evaluator bundle")
+            if candidate.is_file() and candidate != descriptor_path:
+                actual_bundle_paths.add(candidate.resolve(strict=True))
+        if actual_bundle_paths != bundle_paths:
+            raise ValueError(
+                "Evaluator bundle_files must declare every file in the versioned bundle"
+            )
+    _validate_python_dependency_closure(descriptor_path.parent, bundle_paths)
+
     implementation = descriptor["implementation"]
     implementation_path = resolve_inside(
         project_root,
@@ -212,6 +323,31 @@ def load_evaluator_descriptor(
     )
     if implementation_path not in editable_paths:
         raise ValueError("Evaluator implementation entry must be listed in editable_files")
+    if implementation_path not in bundle_paths:
+        raise ValueError("Evaluator implementation entry must be listed in bundle_files")
+    input_builder = descriptor.get("input_builder")
+    normalized_input_builder = None
+    if input_builder is not None:
+        if not isinstance(input_builder, dict):
+            raise ValueError("Evaluator input_builder must be an object")
+        input_entry = str(input_builder.get("entry") or "").strip()
+        input_callable = str(input_builder.get("callable") or "").strip()
+        if not input_entry or not input_callable:
+            raise ValueError("Evaluator input_builder requires entry and callable")
+        input_path = resolve_inside(
+            project_root,
+            descriptor_path.parent / input_entry,
+            label="evaluator input builder",
+        )
+        if input_path != descriptor_path.parent and descriptor_path.parent not in input_path.parents:
+            raise ValueError("Evaluator input builder must stay inside the versioned bundle directory")
+        if input_path not in bundle_paths:
+            raise ValueError("Evaluator input builder must be listed in bundle_files")
+        normalized_input_builder = {
+            "entry": input_entry,
+            "callable": input_callable,
+            "path": public_relative(project_root, input_path),
+        }
     if descriptor["kind"] == "llm-as-judge" and not isinstance(descriptor.get("judge"), dict):
         raise ValueError("LLM-as-Judge evaluator requires non-secret judge configuration")
 
@@ -223,18 +359,30 @@ def load_evaluator_descriptor(
         "interface": descriptor["interface"],
         "evaluator_id": descriptor["evaluator_id"],
         "version": descriptor["version"],
+        "metric_template": descriptor.get("metric_template"),
         "kind": descriptor["kind"],
         "protocol": descriptor["protocol"],
         "implementation": {
             **implementation,
             "path": public_relative(project_root, implementation_path),
         },
+        "input_builder": normalized_input_builder,
         "editable_files": editable,
         "criteria": criteria,
         "aggregate": aggregate,
         "judge": descriptor.get("judge"),
         "descriptor_path": public_relative(project_root, descriptor_path),
+        "descriptor_digest": _sha256(descriptor_text),
+        "bundle_files": bundle_files,
+        "bundle_complete": bundle_complete,
     }
+    bundle["portable_digest"] = canonical_digest(
+        {
+            "descriptor": descriptor,
+            "files": bundle_files,
+        },
+        namespace="harbor-dsh-evaluator-portable-v1",
+    )
     bundle["digest"] = canonical_digest(
         {
             "descriptor": descriptor,
@@ -284,7 +432,82 @@ def _validate_evaluation_result_v1(
     if set(received) != expected:
         raise ValueError("Evaluator result criteria do not match the descriptor")
     aggregate = sum(received.values()) / len(received)
-    return {"criteria": received, "details": details, "reward": round(aggregate, 6)}
+    return {
+        "criteria": received,
+        "details": details,
+        "reward": round(aggregate, 6),
+        "effective_evaluator": _normalize_effective_evaluator(
+            result.get("effective_evaluator")
+        ),
+    }
+
+
+def _normalize_effective_evaluator(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ValueError("effective_evaluator must be an object")
+    if value.get("schema_version") != 1 or value.get("protocol") != "effective-evaluator/v1":
+        raise ValueError("effective_evaluator must use effective-evaluator/v1")
+
+    def identity(item: Any, label: str, *, optional: bool = False) -> dict[str, Any] | None:
+        if item is None and optional:
+            return None
+        if not isinstance(item, dict):
+            raise ValueError(f"effective_evaluator {label} must be an object")
+        result: dict[str, Any] = {}
+        for key in ("id", "version"):
+            text = str(item.get(key) or "").strip()
+            if not text:
+                raise ValueError(f"effective_evaluator {label} requires {key}")
+            result[key] = text
+        digest = str(item.get("portable_digest") or "").strip()
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+            raise ValueError(
+                f"effective_evaluator {label} requires a portable_digest"
+            )
+        result["portable_digest"] = digest
+        for key in ("interface", "entry", "callable"):
+            if item.get(key) is not None:
+                text = str(item[key]).strip()
+                if not text:
+                    raise ValueError(
+                        f"effective_evaluator {label} {key} must be non-empty"
+                    )
+                result[key] = text
+        if item.get("bundle_complete") is not None:
+            if not isinstance(item["bundle_complete"], bool):
+                raise ValueError(
+                    f"effective_evaluator {label} bundle_complete must be a boolean"
+                )
+            result["bundle_complete"] = item["bundle_complete"]
+        return result
+
+    identity_match = value.get("identity_match")
+    if not isinstance(identity_match, bool):
+        raise ValueError("effective_evaluator identity_match must be a boolean")
+    execution = value.get("execution")
+    normalized_execution = None
+    if execution is not None:
+        if not isinstance(execution, dict) or execution.get("status") not in {
+            "not-run", "attempted", "succeeded", "failed"
+        }:
+            raise ValueError("effective_evaluator execution status is invalid")
+        error_type = execution.get("error_type")
+        if error_type is not None and (not isinstance(error_type, str) or not error_type.strip()):
+            raise ValueError("effective_evaluator execution error_type must be null or non-empty")
+        normalized_execution = {"status": execution["status"], "error_type": error_type}
+    return {
+        "schema_version": 1,
+        "protocol": "effective-evaluator/v1",
+        "configured": identity(value.get("configured"), "configured"),
+        "materialized": identity(
+            value.get("materialized"), "materialized", optional=True
+        ),
+        "executed": identity(value.get("executed"), "executed", optional=True),
+        "identity_match": identity_match,
+        **({"execution": normalized_execution} if normalized_execution is not None else {}),
+    }
 
 
 def _finite_number(value: Any) -> bool:
@@ -411,12 +634,31 @@ def _validate_evaluation_result_v2(
     elif not _rounded_number_matches(reported_value, aggregate_value):
         raise ValueError("Evaluator result aggregate value does not match the scored criteria")
 
+    invalid_not_applicable = [
+        identity for identity, criterion in expected.items()
+        if details[identity]["status"] == "not-applicable"
+        and not str((criterion.get("applicability") or {}).get("when") or "").strip()
+    ]
+    if invalid_not_applicable:
+        raise ValueError("Evaluator marked unconditional criteria not-applicable: " + ", ".join(invalid_not_applicable))
     required_criteria_scored = all(
         details[identity]["status"] == "scored"
+        or (
+            details[identity]["status"] == "not-applicable"
+            and (criterion.get("status_policy") or {}).get("not_applicable") == "exclude"
+            and bool(str((criterion.get("applicability") or {}).get("when") or "").strip())
+        )
         for identity, criterion in expected.items()
         if criterion["required"]
     )
-    coverage_satisfied = coverage >= minimum_coverage
+    excluded = sum(
+        details[identity]["status"] == "not-applicable"
+        and (criterion.get("status_policy") or {}).get("not_applicable") == "exclude"
+        for identity, criterion in expected.items()
+    )
+    eligible_total = max(0, total_criteria - excluded)
+    eligible_coverage = round(scored_criteria / eligible_total, 6) if eligible_total else 0.0
+    coverage_satisfied = eligible_coverage >= minimum_coverage
     score_valid = (
         aggregate_value is not None
         and required_criteria_scored
@@ -436,11 +678,15 @@ def _validate_evaluation_result_v2(
         "reward": aggregate_value if score_valid else None,
         "aggregate": normalized_aggregate,
         "coverage": coverage,
+        "eligible_coverage": eligible_coverage,
         "minimum_coverage": minimum_coverage,
         "coverage_satisfied": coverage_satisfied,
         "required_criteria_scored": required_criteria_scored,
         "criterion_status_counts": status_counts,
         "score_valid": score_valid,
+        "effective_evaluator": _normalize_effective_evaluator(
+            result.get("effective_evaluator")
+        ),
     }
 
 
@@ -457,6 +703,85 @@ def validate_evaluation_result(
             aggregate_config=aggregate,
         )
     return _validate_evaluation_result_v1(result, criteria=criteria)
+
+
+def snapshot_evaluator_bundle(
+    descriptor_path: Path,
+    *,
+    project_root: Path,
+    destination: Path,
+) -> dict[str, Any]:
+    """Copy the exact complete Evaluator bundle into an immutable Job directory."""
+    interface = load_evaluator_descriptor(descriptor_path, project_root=project_root)
+    if not interface.get("bundle_complete"):
+        raise ValueError("Evaluator bundle must be complete before it can be snapshotted")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        snapshotted = load_evaluator_descriptor(
+            destination / "evaluator.json", project_root=project_root
+        )
+    else:
+        source_descriptor = descriptor_path.expanduser().resolve(strict=True)
+        temporary = Path(
+            tempfile.mkdtemp(prefix=f".{destination.name}-", dir=destination.parent)
+        )
+        try:
+            shutil.copy2(source_descriptor, temporary / "evaluator.json")
+            for item in interface["bundle_files"]:
+                relative = Path(item["path"])
+                source = source_descriptor.parent / relative
+                target = temporary / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+            snapshotted = load_evaluator_descriptor(
+                temporary / "evaluator.json", project_root=project_root
+            )
+            if snapshotted.get("portable_digest") != interface.get("portable_digest"):
+                raise ValueError("Snapshotted Evaluator bundle does not match the configured Evaluator")
+            os.replace(temporary, destination)
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary)
+    if snapshotted.get("portable_digest") != interface.get("portable_digest"):
+        raise ValueError("Existing Evaluator Job bundle does not match the configured Evaluator")
+    receipt = {
+        "schema_version": 1,
+        "protocol": "evaluator-job-bundle/v1",
+        "evaluator": {
+            "id": snapshotted["evaluator_id"],
+            "version": snapshotted["version"],
+            "portable_digest": snapshotted["portable_digest"],
+        },
+        "descriptor": "evaluator.json",
+        "bundle_files": snapshotted["bundle_files"],
+    }
+    manifest_path = destination.parent / "evaluator-bundle-manifest.json"
+    if manifest_path.exists():
+        existing_receipt = json.loads(_read_safe(manifest_path))
+        if existing_receipt != receipt:
+            raise ValueError("Existing Evaluator Job bundle manifest does not match the immutable bundle")
+    else:
+        manifest_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n")
+    return receipt
+
+
+def inspect_evaluator_bundle(
+    *, project_root: Path, bundle_path: Path, include_source: bool = True
+) -> dict[str, Any]:
+    project_root = project_root.expanduser().resolve(strict=True)
+    bundle_path = resolve_inside(project_root, bundle_path, label="evaluator Job bundle")
+    descriptor_path = resolve_inside(
+        project_root, bundle_path / "evaluator.json", label="evaluator Job bundle descriptor"
+    )
+    bundle = load_evaluator_descriptor(descriptor_path, project_root=project_root)
+    if include_source:
+        for item in bundle["editable_files"]:
+            item["text"] = _read_safe(project_root / item["path"])
+    return {
+        "schema_version": 1,
+        "source": "executed-job-bundle",
+        "evaluator": bundle,
+    }
 
 
 def inspect_evaluator(*, project_root: Path, stack_path: Path, include_source: bool = True) -> dict[str, Any]:
@@ -508,6 +833,7 @@ def update_evaluator_source(
     expected_digest: str,
     new_evaluator_version: str,
     new_stack_version: str,
+    source_bundle_path: Path | None = None,
 ) -> dict[str, Any]:
     if len(content.encode()) > MAX_EDIT_BYTES:
         raise ValueError(f"Evaluator source exceeds {MAX_EDIT_BYTES} bytes")
@@ -518,14 +844,24 @@ def update_evaluator_source(
     stack_text = _read_safe(stack_path)
     stack = yaml.safe_load(stack_text)
     component = (stack.get("components") or {}).get("evaluator") or {}
-    descriptor_path = _descriptor_path(Path(str(component.get("entry") or "")), project_root)
+    live_descriptor_path = _descriptor_path(Path(str(component.get("entry") or "")), project_root)
+    if source_bundle_path is not None:
+        source_bundle_path = resolve_inside(project_root, source_bundle_path, label="evaluator Job bundle")
+        descriptor_path = _descriptor_path(source_bundle_path / "evaluator.json", project_root)
+    else:
+        descriptor_path = live_descriptor_path
     descriptor_text = _read_safe(descriptor_path)
     descriptor = json.loads(descriptor_text)
     current = load_evaluator_descriptor(
         descriptor_path,
         project_root=project_root,
-        expected_id=str(component.get("id") or ""),
-        expected_version=str(component.get("version") or ""),
+        **(
+            {
+                "expected_id": str(component.get("id") or ""),
+                "expected_version": str(component.get("version") or ""),
+            }
+            if source_bundle_path is None else {}
+        ),
     )
     if new_evaluator_version == current["version"] or new_stack_version == stack.get("version"):
         raise ValueError("Semantic edits require new Evaluator and Stack versions")
@@ -541,12 +877,14 @@ def update_evaluator_source(
 
     descriptor["version"] = new_evaluator_version
     stack["version"] = new_stack_version
+    if source_bundle_path is not None:
+        stack["components"]["evaluator"]["id"] = current["evaluator_id"]
     for role in allowed[file_path]["affects"]:
         role_component = (stack.get("components") or {}).get(role)
         if not isinstance(role_component, dict):
             raise ValueError(f"Evaluation Stack is missing affected component: {role}")
         role_component["version"] = new_evaluator_version
-    family_root = descriptor_path.parent.parent if descriptor_path.parent.name == current["version"] else descriptor_path.parent
+    family_root = live_descriptor_path.parent.parent if live_descriptor_path.parent.name == component.get("version") else live_descriptor_path.parent
     next_bundle = family_root / new_evaluator_version
     if next_bundle.exists():
         raise ValueError("The requested Evaluator version directory already exists")
@@ -554,13 +892,16 @@ def update_evaluator_source(
     next_descriptor_path = temporary_bundle / descriptor_path.name
     selected = allowed[file_path]
     try:
-        copied: dict[str, Path] = {}
-        for item in current["editable_files"]:
-            destination = temporary_bundle / item["relative_path"]
+        selected_source = target.resolve(strict=True)
+        for item in current["bundle_files"]:
+            relative = Path(item["path"])
+            source = (descriptor_path.parent / relative).resolve(strict=True)
+            destination = temporary_bundle / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
-            source_text = content if item["path"] == file_path else _read_safe(project_root / item["path"])
-            destination.write_text(source_text)
-            copied[item["role"]] = destination
+            if source == selected_source:
+                destination.write_text(content)
+            else:
+                shutil.copy2(source, destination)
         next_descriptor_path.write_text(json.dumps(descriptor, ensure_ascii=False, indent=2) + "\n")
         os.replace(temporary_bundle, next_bundle)
         stack["components"]["evaluator"]["entry"] = public_relative(project_root, next_bundle / descriptor_path.name)

@@ -54,7 +54,7 @@ export function buildHistoricalGenerationBatch({
   }
   const seed = canonicalDigest(
     observations.map(observation => observation.digest),
-    'harbor-dsh-historical-batch-id-v1',
+    'harbor-dsh-historical-batch-id-v2',
   ).slice('sha256:'.length, 'sha256:'.length + 8)
   const batchId = `recent-${isoCompact(now)}-${seed}`.toLowerCase()
   const records = selections.map((selection, index) => {
@@ -74,6 +74,8 @@ export function buildHistoricalGenerationBatch({
           ) }
         : {}),
       observation_digest: observation.digest,
+      observation_protocol: observation.protocol,
+      evidence_coverage: observation.evidence_coverage,
       last_activity_at: observation.source.last_activity_at,
       generator: {
         agent_preset: observation.generator.agent_preset,
@@ -93,8 +95,8 @@ export function buildHistoricalGenerationBatch({
   const presets = [...new Set(records.map(record => record.generator.agent_preset).filter(Boolean))].sort()
   const routes = [...new Set(records.flatMap(record => record.generator.model_routes.map(routeName)))].sort()
   const batch = {
-    schema_version: 1,
-    protocol: 'historical-generation-batch/v1',
+    schema_version: 2,
+    protocol: 'historical-generation-batch/v2',
     batch_id: batchId,
     created_at: now.toISOString(),
     project: {
@@ -114,6 +116,7 @@ export function buildHistoricalGenerationBatch({
       kind: 'dsh-session',
       adapter: 'dsh-session-query',
       session_format_versions: [...new Set(selections.map(item => item.header.version))].sort(),
+      observation_protocol: 'dsh-session-observation/v2',
     },
     redaction_policy: DEFAULT_REDACTION_POLICY,
     records,
@@ -130,7 +133,7 @@ export function buildHistoricalGenerationBatch({
       throw new Error('SESSION_REDACTION_FAILED: a raw Session id survived Batch materialization')
     }
   }
-  batch.digest = canonicalDigest(batch, 'harbor-dsh-historical-generation-batch-v1')
+  batch.digest = canonicalDigest(batch, 'harbor-dsh-historical-generation-batch-v2')
   return batch
 }
 

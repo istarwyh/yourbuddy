@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harbor-self-evolving.dev/schemas/evaluation-spec.schema.json",
+  "title": "Harbor Evaluation Spec v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol", "evaluation_id", "mode", "artifact_profile", "dataset", "generator", "evaluator", "metrics", "optimizer", "repeat_policy", "measurement_digest", "digest"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "protocol": { "const": "evaluation-spec/v1" },
+    "evaluation_id": { "type": "string", "minLength": 1 },
+    "mode": { "enum": ["experience-diagnostic", "diagnostic", "experiment", "governed"] },
+    "artifact_profile": { "enum": ["diagnostic", "experiment", "governed"] },
+    "dataset": { "$ref": "#/$defs/identity" },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "version"],
+      "properties": {
+        "kind": { "enum": ["candidate", "dsh-session"] },
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "evaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "portable_digest"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "portable_digest": { "$ref": "#/$defs/digest" },
+        "metric_template": { "type": ["string", "null"] }
+      }
+    },
+    "metrics": { "type": "object", "required": ["primary", "definitions"] },
+    "optimizer": { "type": "object", "required": ["kind", "enabled"] },
+    "repeat_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repeats", "seed_policy"],
+      "properties": {
+        "repeats": { "type": "integer", "minimum": 1 },
+        "seed_policy": { "enum": ["observed-record", "harbor-managed", "fixed"] },
+        "seed": { "type": ["integer", "string", "null"] }
+      }
+    },
+    "measurement_digest": { "$ref": "#/$defs/digest" },
+    "digest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "digest"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  }
+}

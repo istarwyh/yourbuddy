@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/trial-assessment.schema.json",
+  "title": "Trial Assessment v2/v3",
+  "type": "object",
+  "required": ["schema_version", "trial_id", "query", "population", "status", "score", "requirements", "criteria", "output", "evidence_provenance", "exception"],
+  "properties": {
+    "schema_version": { "enum": [2, 3] },
+    "job_kind": { "const": "historical-generation-evaluation" },
+    "evaluation_target": { "type": "object" },
+    "trial_id": { "type": "string", "minLength": 1 },
+    "trial_name": { "type": "string" },
+    "dataset_trial": { "type": "string" },
+    "query": { "type": "string" },
+    "population": { "type": "object" },
+    "status": { "enum": ["completed", "completed-unscored", "candidate-quality-failed", "infrastructure-error", "evaluation-error", "cancelled"] },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "valid", "invalid_reasons"],
+      "properties": {
+        "value": { "type": ["number", "null"] },
+        "valid": { "type": "boolean" },
+        "invalid_reasons": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "required": ["input_integrity", "renderer_valid", "judge_completed", "evaluator_identity_match", "artifact_schema_valid"],
+      "properties": {
+        "input_integrity": { "type": "boolean" },
+        "agent_completed": { "type": "boolean" },
+        "integration_valid": { "type": "boolean" },
+        "observation_integrity": { "type": "boolean" },
+        "adapter_completed": { "type": "boolean" },
+        "renderer_valid": { "type": "boolean" },
+        "judge_completed": { "type": "boolean" },
+        "evaluator_identity_match": { "type": "boolean" },
+        "artifact_schema_valid": { "type": "boolean" }
+      },
+      "additionalProperties": { "type": "boolean" }
+    },
+    "effective_evaluator": { "anyOf": [{ "$ref": "#/$defs/effectiveEvaluator" }, { "type": "null" }] },
+    "criteria": { "type": "array", "items": { "type": "object" } },
+    "criterion_coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+    "criterion_status_counts": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+    "findings": { "type": "array", "items": { "type": "object" } },
+    "recommendations": { "type": "array" },
+    "raw_rewards": { "type": "object", "additionalProperties": { "type": "number" } },
+    "evaluator_metrics": { "type": "object", "additionalProperties": { "type": "number" } },
+    "output": {},
+    "evidence_provenance": { "type": "array", "items": { "type": "object" } },
+    "exception": { "type": ["object", "null"] },
+    "process": { "type": "array", "items": { "type": "object" } }
+  },
+  "$defs": {
+    "effectiveEvaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "protocol", "configured", "materialized", "executed", "identity_match"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "protocol": { "const": "effective-evaluator/v1" },
+        "configured": { "$ref": "#/$defs/evaluatorIdentity" },
+        "materialized": { "oneOf": [{ "$ref": "#/$defs/evaluatorRuntimeIdentity" }, { "type": "null" }] },
+        "executed": { "oneOf": [{ "$ref": "#/$defs/evaluatorRuntimeIdentity" }, { "type": "null" }] },
+        "identity_match": { "type": ["boolean", "null"] },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "error_type"],
+          "properties": {
+            "status": { "enum": ["not-run", "attempted", "succeeded", "failed"] },
+            "error_type": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "evaluatorIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "portable_digest"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "portable_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "evaluatorRuntimeIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "portable_digest"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "portable_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "interface": { "type": "string", "minLength": 1 },
+        "entry": { "type": "string", "minLength": 1 },
+        "callable": { "type": "string", "minLength": 1 },
+        "bundle_complete": { "type": "boolean" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "schema_version": { "const": 2 } } },
+      "then": { "properties": { "requirements": { "required": ["agent_completed", "integration_valid"] } } }
+    },
+    {
+      "if": { "properties": { "schema_version": { "const": 3 } } },
+      "then": {
+        "required": ["job_kind", "evaluation_target", "effective_evaluator", "criterion_coverage", "criterion_status_counts"],
+        "properties": { "requirements": { "required": ["observation_integrity", "adapter_completed"] } }
+      }
+    }
+  ]
+}

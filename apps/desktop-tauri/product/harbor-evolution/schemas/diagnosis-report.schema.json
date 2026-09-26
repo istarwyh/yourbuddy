@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/istarwyh/harbor-self-evolving/schemas/diagnosis-report.schema.json",
+  "title": "Diagnosis Report",
+  "type": "object",
+  "required": ["schema_version", "hook", "diagnoses"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "hook": {
+      "type": "object",
+      "required": ["id", "version", "reward_affecting", "status"],
+      "properties": {
+        "id": { "type": "string" }, "version": { "type": "string" },
+        "reward_affecting": { "const": false }, "status": { "enum": ["completed", "failed", "skipped"] }
+      }
+    },
+    "diagnoses": { "type": "array", "items": { "type": "object" } }
+  }
+}

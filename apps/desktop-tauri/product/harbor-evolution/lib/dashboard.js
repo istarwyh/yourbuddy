@@ -8,7 +8,10 @@ import {
   redactLocalPaths,
   redactOpaqueSecretText,
 } from './credential-redaction.js'
-import { resolveWithin } from './evolution.js'
+import { listBusinessObservations, resolveWithin } from './evolution.js'
+import { BRIDGE_CONTRACT, canonicalDigest } from './bridge-contract.js'
+import { buildEvaluationReport } from './evaluation-report.js'
+import { businessObservationProjection } from './business-results.js'
 import { ATTENTION_FILTERS, attentionCounts, jobAttention, matchesJobFilter } from './workbench-health.js'
 
 const SUMMARY_NAME = 'evaluation-summary.json'
@@ -51,6 +54,90 @@ function redactSourceText(value) {
 
 function rawContentRevision(value) {
   return `sha256:${createHash('sha256').update(value).digest('hex')}`
+}
+
+const REQUIRED_SEALED_ARTIFACTS = new Set([
+  'evaluation-summary.json', 'evaluation-context.json', 'evaluation-stack-manifest.json', 'dataset-manifest.json',
+])
+const FIXED_REWARD_ARTIFACTS = new Set([
+  'candidate-manifest.json', 'candidate-materialization.json', 'dataset-manifest.json',
+  'evaluation-stack-manifest.json', 'evaluation-contract.json', 'evaluation-context.json',
+  'evaluation-spec.json', 'architecture-doctor.json', 'evaluator-bundle-manifest.json', 'evaluation-summary.json',
+])
+
+async function currentRewardArtifactPaths(directory) {
+  const values = new Set()
+  for (const name of FIXED_REWARD_ARTIFACTS) {
+    try {
+      const details = await lstat(path.join(directory, name))
+      if (details.isFile() && !details.isSymbolicLink()) values.add(name)
+    } catch {}
+  }
+  const walk = async (root, prefix) => {
+    let entries = []
+    try { entries = await readdir(root, { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      const relative = `${prefix}/${entry.name}`
+      if (entry.isSymbolicLink()) continue
+      if (entry.isDirectory()) await walk(path.join(root, entry.name), relative)
+      else if (entry.isFile()) values.add(relative)
+    }
+  }
+  await walk(path.join(directory, 'evaluator-bundle'), 'evaluator-bundle')
+  try {
+    for (const entry of await readdir(path.join(directory, 'trial-assessments'), { withFileTypes: true })) {
+      if (entry.isFile() && !entry.isSymbolicLink() && entry.name.endsWith('.json')) values.add(`trial-assessments/${entry.name}`)
+    }
+  } catch {}
+  try {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) continue
+      try {
+        const result = await lstat(path.join(directory, entry.name, 'result.json'))
+        if (result.isFile() && !result.isSymbolicLink()) values.add(`${entry.name}/result.json`)
+      } catch {}
+    }
+  } catch {}
+  return values
+}
+
+async function verifyJobBundleSeal(directory, projectRoot) {
+  const seal = await readJson(path.join(directory, 'job-bundle-manifest.json'), { root: projectRoot })
+  if (!seal || seal.__readError || seal.protocol !== 'job-bundle/v1' || seal.schema_version !== 1) {
+    return { status: 'invalid', error: 'JOB_BUNDLE_SEAL_MISSING_OR_INVALID' }
+  }
+  const { digest, ...content } = seal
+  if (digest !== canonicalDigest(content, 'harbor-dsh-job-bundle-v1')) {
+    return { status: 'invalid', error: 'JOB_BUNDLE_SEAL_DIGEST_MISMATCH' }
+  }
+  if (!Array.isArray(seal.artifacts) || !seal.artifacts.length) return { status: 'invalid', error: 'JOB_BUNDLE_SEAL_EMPTY' }
+  if (seal.job !== path.basename(directory)) return { status: 'invalid', error: 'JOB_BUNDLE_JOB_ID_MISMATCH' }
+  const seen = new Set()
+  try {
+    for (const entry of seal.artifacts) {
+      if (!entry || typeof entry.path !== 'string' || seen.has(entry.path)) throw new Error('JOB_BUNDLE_SEAL_ENTRY_INVALID')
+      seen.add(entry.path)
+      const file = resolveWithin(directory, entry.path, 'sealedArtifact')
+      const bytes = await readFile(file)
+      const current = `sha256:${createHash('sha256').update(bytes).digest('hex')}`
+      if (bytes.length !== entry.size || current !== entry.digest) throw new Error(`JOB_BUNDLE_ARTIFACT_TAMPERED: ${entry.path}`)
+    }
+  } catch (error) {
+    return { status: 'invalid', error: String(error?.message ?? error) }
+  }
+  if ([...REQUIRED_SEALED_ARTIFACTS].some(name => !seen.has(name))) {
+    return { status: 'invalid', error: 'JOB_BUNDLE_REQUIRED_ARTIFACT_MISSING' }
+  }
+  const currentRewardPaths = await currentRewardArtifactPaths(directory)
+  const declaredRewardPaths = new Set(seal.artifacts.filter(entry => entry.reward_affecting === true).map(entry => entry.path))
+  if (currentRewardPaths.size !== declaredRewardPaths.size || [...currentRewardPaths].some(name => !declaredRewardPaths.has(name))) {
+    return { status: 'invalid', error: 'JOB_BUNDLE_REWARD_ARTIFACT_SET_CHANGED' }
+  }
+  for (const entry of seal.artifacts) {
+    const expectedReward = currentRewardPaths.has(entry.path)
+    if (Boolean(entry.reward_affecting) !== expectedReward) return { status: 'invalid', error: 'JOB_BUNDLE_REWARD_FLAG_INVALID' }
+  }
+  return { status: 'valid', digest, artifactCount: seal.artifacts.length }
 }
 
 function rememberAuthoritativeRevision(value, ...sources) {
@@ -177,7 +264,11 @@ const HISTORICAL_JOB_KIND = 'historical-generation-evaluation'
 function normalizedJobKind(summary, context) {
   const declared = summary?.job_kind ?? context?.job_kind
   if (typeof declared === 'string' && declared) return declared
-  if (['historical-generation-evaluation-context/v1', 'historical-generation-evaluation-context/v2'].includes(context?.protocol)) return HISTORICAL_JOB_KIND
+  if ([
+    'historical-generation-evaluation-context/v1',
+    'historical-generation-evaluation-context/v2',
+    BRIDGE_CONTRACT.protocols.historical_context.protocol,
+  ].includes(context?.protocol)) return HISTORICAL_JOB_KIND
   return CANDIDATE_JOB_KIND
 }
 
@@ -209,11 +300,14 @@ function evaluatorMetaEvaluation(summary, context) {
 function capabilityMap(summary, context, lifecycle, registry, stack) {
   const jobKind = normalizedJobKind(summary, context)
   const historicalGeneration = jobKind === HISTORICAL_JOB_KIND
-  const candidateContextV3 = !historicalGeneration && context?.schema_version === 3
+  const candidateContextV3 = !historicalGeneration && context?.schema_version === BRIDGE_CONTRACT.protocols.candidate_context.schema_version
   const contextV2 = !historicalGeneration && context?.schema_version === 2
   const historicalContextV2 = historicalGeneration
-    && context?.schema_version === 2
-    && context?.protocol === 'historical-generation-evaluation-context/v2'
+    && [2, 3].includes(context?.schema_version)
+    && [
+      'historical-generation-evaluation-context/v2',
+      BRIDGE_CONTRACT.protocols.historical_context.protocol,
+    ].includes(context?.protocol)
   const historicalContextV1 = historicalGeneration
     && context?.schema_version === 1
     && context?.protocol === 'historical-generation-evaluation-context/v1'
@@ -231,7 +325,7 @@ function capabilityMap(summary, context, lifecycle, registry, stack) {
     trialLifecycle: lifecycle?.schema_version === 1,
     scoreValidity,
     evidenceProvenance: scoreValidity,
-    artifactRegistry: [1, 2].includes(registry?.schema_version),
+    artifactRegistry: registry?.schema_version === 2,
     source: historicalGeneration,
     compare: (candidateContextV3 || contextV2) && !historicalGeneration,
     evaluatorGovernance: stack?.schema_version === 1,
@@ -242,10 +336,22 @@ function capabilityMap(summary, context, lifecycle, registry, stack) {
 }
 
 function primaryMetric(summary, contract) {
-  const name = contract?.primary_metric
-  if (name && typeof summary?.metrics?.[name] === 'number') return { name, value: summary.metrics[name] }
-  const entry = Object.entries(summary?.metrics ?? {}).find(([, value]) => typeof value === 'number')
-  return entry ? { name: entry[0], value: entry[1] } : undefined
+  const id = typeof contract?.primary_metric === 'string' && contract.primary_metric
+    ? contract.primary_metric
+    : undefined
+  if (!id || typeof summary?.metrics?.[id] !== 'number') return undefined
+  const definition = (contract?.metrics ?? []).find(item => item?.id === id) ?? {}
+  const coverage = coverageView(summary)
+  return {
+    id,
+    name: id,
+    label: definition.label ?? id,
+    value: summary.metrics[id],
+    unit: definition.unit ?? null,
+    direction: definition.direction ?? null,
+    validCoverage: typeof coverage.trial_rate === 'number' ? coverage.trial_rate : null,
+    source: 'evaluation-contract',
+  }
 }
 
 function progressView(summary, lifecycle, updatedAt) {
@@ -315,7 +421,7 @@ function jobStatus(summary, lifecycle, progress, jobKind, completion, jobName) {
 
 async function readJob(jobsDir, entry, details, projectRoot) {
   const directory = path.join(jobsDir, entry.name)
-  const [summary, contextFile, promotion, contract, lifecycle, registry, stack, completion] = await Promise.all([
+  const [summary, contextFile, promotion, contract, lifecycle, registry, stack, completion, jobBundle] = await Promise.all([
     readJson(path.join(directory, SUMMARY_NAME), { root: projectRoot }),
     readJson(path.join(directory, 'evaluation-context.json'), { root: projectRoot }),
     readJson(path.join(directory, 'promotion-report.json'), { root: projectRoot }),
@@ -324,6 +430,7 @@ async function readJob(jobsDir, entry, details, projectRoot) {
     readJson(path.join(directory, 'artifact-registry.json'), { root: projectRoot }),
     readJson(path.join(directory, 'evaluation-stack-manifest.json'), { root: projectRoot }),
     readJson(path.join(directory, HISTORICAL_COMPLETION_NAME), { root: projectRoot }),
+    verifyJobBundleSeal(directory, projectRoot),
   ])
   const evaluationContext = summary?.evaluation_context ?? contextFile
   if (!evaluationContext && !summary && !lifecycle) return undefined
@@ -334,6 +441,15 @@ async function readJob(jobsDir, entry, details, projectRoot) {
   const evaluationTarget = summary?.evaluation_target ?? evaluationContext?.evaluation_target
   const generationSource = summary?.generation_source ?? evaluationContext?.generation_source
   const coverage = coverageView(summary)
+  const trustProjection = buildEvaluationReport({
+    job: entry.name,
+    summary: summary?.__readError ? {} : summary,
+    context: evaluationContext ?? {},
+    contract: contract?.__readError ? {} : contract,
+    stack: stack?.__readError ? {} : stack,
+    validation: { jobBundle },
+  })
+  const scoreTrusted = trustProjection.quality.score_trusted === true
   return {
     name: entry.name,
     updatedAt,
@@ -349,8 +465,10 @@ async function readJob(jobsDir, entry, details, projectRoot) {
     nExceptions: Number(summary?.n_exceptions ?? 0),
     nInfrastructureExceptions: Number(summary?.n_infrastructure_exceptions ?? 0),
     nEvaluationExceptions: Number(summary?.n_evaluation_exceptions ?? 0),
-    primaryMetric: primaryMetric(summary, contract),
-    metrics: summary?.metrics ?? {},
+    primaryMetric: scoreTrusted ? primaryMetric(summary, contract) : undefined,
+    metrics: scoreTrusted ? (summary?.metrics ?? {}) : {},
+    scoreTrusted,
+    jobBundleVerified: jobBundle.status === 'valid',
     candidate: summary?.candidate ?? evaluationContext?.candidate,
     evaluationTarget,
     generationSource,
@@ -472,6 +590,29 @@ export async function discoverWorkspaceConfigs(config) {
   return found.sort((left, right) => left.workspaceRoot.localeCompare(right.workspaceRoot))
 }
 
+function observationProjectConfig(config) {
+  const projectRoot = path.resolve(config.projectRoot)
+  const workspaceRoot = config.workspaceRoot && config.workspaceRoot !== '.'
+    ? resolveWithin(projectRoot, config.workspaceRoot, 'workspaceRoot')
+    : projectRoot
+  return { ...config, projectRoot: workspaceRoot }
+}
+
+async function safeBusinessObservationList(config, args = {}) {
+  if (typeof config.harborDshBin !== 'string' || !config.harborDshBin) return undefined
+  try {
+    return await listBusinessObservations(observationProjectConfig(config), { limit: 1000, ...args })
+  } catch {
+    return undefined
+  }
+}
+
+function jobCandidateDigest(summary, context, candidate) {
+  const values = [summary?.candidate?.digest, context?.candidate?.digest, candidate?.digest].filter(value => value !== undefined && value !== null)
+  if (!values.length || values.some(value => typeof value !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value))) return undefined
+  return new Set(values).size === 1 ? values[0] : undefined
+}
+
 function jobsDirectory(config) {
   return resolveWithin(path.resolve(config.projectRoot), config.jobsDir, 'jobsDir')
 }
@@ -480,10 +621,41 @@ function jobDirectory(config, job) {
   return path.join(jobsDirectory(config), safeSegment(job, 'job'))
 }
 
+/** Resolve legacy Job paths and current Job names to one immediate configured jobsDir child. */
+export function resolveJobReference(config, value) {
+  const projectRoot = path.resolve(config.projectRoot)
+  const jobsRoot = jobsDirectory(config)
+  const reference = String(value ?? '').trim()
+  if (!reference) throw new Error('jobPath is required')
+  if (/^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/.test(reference)) {
+    const job = safeSegment(reference, 'job')
+    return {
+      job,
+      directory: jobDirectory(config, job),
+      jobPath: path.relative(projectRoot, jobDirectory(config, job)).split(path.sep).join('/'),
+    }
+  }
+  const candidate = path.isAbsolute(reference)
+    ? path.resolve(reference)
+    : path.resolve(projectRoot, reference)
+  const relative = path.relative(jobsRoot, candidate)
+  if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative) || relative.includes(path.sep)) {
+    throw new Error('jobPath must identify one immediate child of the configured jobs directory')
+  }
+  const job = safeSegment(relative, 'job')
+  return {
+    job,
+    directory: jobDirectory(config, job),
+    jobPath: path.relative(projectRoot, jobDirectory(config, job)).split(path.sep).join('/'),
+  }
+}
+
 /** Read the stable Job Summary through the same bounded, redacting reader used by the Workbench. */
 export async function readEvaluationSummary(config, args) {
   const projectRoot = path.resolve(config.projectRoot)
-  const directory = resolveWithin(projectRoot, args.jobPath, 'jobPath')
+  const directory = args.job
+    ? jobDirectory(config, safeSegment(args.job, 'job'))
+    : resolveJobReference(config, args.jobPath).directory
   const check = await directoryCheck(directory, { root: projectRoot })
   if (check.status !== 'ok') return { __readError: 'Job path is not a safe directory' }
   const summary = await readJson(path.join(directory, SUMMARY_NAME), { root: projectRoot })
@@ -495,18 +667,45 @@ export async function readDashboardSnapshot(config, metadata = {}, args = {}) {
   const jobsDir = jobsDirectory(config)
   const offset = Math.max(0, Number.parseInt(args.offset ?? 0, 10) || 0)
   const limit = Math.min(MAX_JOB_PAGE_SIZE, Math.max(1, Number.parseInt(args.limit ?? DEFAULT_JOB_PAGE_SIZE, 10) || DEFAULT_JOB_PAGE_SIZE))
-  const [jobPage, projectRootCheck, jobsDirCheck, harborCheck, harborDshCheck, stackCheck] = await Promise.all([
+  const [jobPage, projectRootCheck, jobsDirCheck, harborCheck, harborDshCheck, stackCheck, businessList] = await Promise.all([
     listJobs(jobsDir, { offset, limit, root: projectRoot, attention: args.attention ?? 'all' }),
     directoryCheck(projectRoot),
     directoryCheck(jobsDir, { optional: true, root: projectRoot }),
     executableCheck(config.harborBin),
     executableCheck(config.harborDshBin),
     fileCheck(resolveWithin(projectRoot, config.stackPath ?? '.harbor/evaluation-stack.yml', 'stackPath'), { root: projectRoot }),
+    safeBusinessObservationList(config),
   ])
-  const jobs = jobPage.items
-  const allJobs = jobPage.allJobs ?? jobs
+  const observationCounts = new Map()
+  if (Array.isArray(businessList?.groups) && businessList.groups.length > 0) {
+    for (const group of businessList.groups) {
+      const digest = group?.subject?.candidate_digest
+      if (digest) observationCounts.set(digest, (observationCounts.get(digest) ?? 0) + Number(group.observation_count ?? 0))
+    }
+  } else {
+    for (const observation of businessList?.observations ?? []) {
+      const digest = observation?.subject?.candidate_digest
+      if (digest) observationCounts.set(digest, (observationCounts.get(digest) ?? 0) + 1)
+    }
+  }
+  const annotate = job => {
+    const candidateDigest = job.jobBundleVerified ? jobCandidateDigest(job, job.evaluationContext) : undefined
+    return {
+      ...job,
+      businessResults: {
+        association: candidateDigest ? 'candidate-digest' : 'candidate-unavailable',
+        observationCount: candidateDigest ? observationCounts.get(candidateDigest) ?? 0 : 0,
+        causality: 'correlation-only',
+      },
+    }
+  }
+  const jobs = jobPage.items.map(annotate)
+  const allJobs = (jobPage.allJobs ?? jobPage.items).map(annotate)
   const counts = allJobs.reduce((result, job) => ({ ...result, [job.status]: (result[job.status] ?? 0) + 1 }), {})
-  const latestMetric = jobs.find(job => job.primaryMetric)?.primaryMetric
+  const latestMetric = [...allJobs]
+    .filter(job => job.primaryMetric)
+    .sort((left, right) => Date.parse(right.updatedAt ?? 0) - Date.parse(left.updatedAt ?? 0) || left.name.localeCompare(right.name))[0]
+    ?.primaryMetric
   const totalTrials = allJobs.reduce((total, job) => total + Number(job.nTrials ?? 0), 0)
   const totalExceptions = allJobs.reduce((total, job) => total + Math.max(
     Number(job.nExceptions ?? 0),
@@ -529,6 +728,8 @@ export async function readDashboardSnapshot(config, metadata = {}, args = {}) {
       completedJobs: (counts.completed ?? 0) + (counts.partial ?? 0) + (counts.attention ?? 0),
       activeJobs: (counts.pending ?? 0) + (counts.running ?? 0),
       failedJobs: counts.failed ?? 0,
+      businessObservationCount: businessList?.pagination?.total ?? 0,
+      businessObservationStatus: businessList ? 'available' : 'unavailable',
       latestMetric,
     },
     jobPagination: { offset: jobPage.offset, limit: jobPage.limit, total: jobPage.total, hasMore: jobPage.hasMore },
@@ -561,7 +762,7 @@ function schemaIssue(key, value) {
   if (!isObject(value)) return 'artifact must be an object'
   const versions = {
     summary: [2, 3, 4], candidate: [1], dataset: [1], datasetPreview: [1], stack: [1], stackSources: [1], context: [1, 2, 3], contract: [1],
-    doctor: [1], population: [1, 2, 3], lifecycle: [1], registry: [1, 2], diagnosis: [1, 2], optimization: [1, 2, 3], promotion: [2], completion: [1],
+    doctor: [1], population: [1, 2, 3], lifecycle: [1], registry: [BRIDGE_CONTRACT.protocols.artifact_registry.schema_version], diagnosis: [1, 2], optimization: [1, 2, 3], promotion: [2], completion: [1],
   }[key]
   if (versions && !versions.includes(value.schema_version)) return `schema_version must be one of ${versions.join(', ')}`
   const required = {
@@ -595,6 +796,7 @@ export async function readJobDetail(config, args) {
     const issue = schemaIssue(key, value)
     return [key, value === undefined ? { status: 'unavailable', reason: 'capability-not-produced' } : issue ? { status: 'invalid', error: issue } : { status: 'valid' }]
   }))
+  validation.jobBundle = await verifyJobBundleSeal(directory, projectRoot)
   const context = artifacts.context ?? values[Object.keys(DETAIL_ARTIFACTS).indexOf('context')]
   const summary = values[Object.keys(DETAIL_ARTIFACTS).indexOf('summary')]
   const jobKind = normalizedJobKind(summary, context)
@@ -611,6 +813,24 @@ export async function readJobDetail(config, args) {
     summary, context, artifacts.lifecycle, artifacts.registry, artifacts.stack,
   )
   const evaluationTarget = summary?.evaluation_target ?? context?.evaluation_target
+  const candidateDigest = validation.jobBundle.status === 'valid'
+    ? jobCandidateDigest(summary, context, artifacts.candidate)
+    : undefined
+  const businessList = candidateDigest
+    ? await safeBusinessObservationList(config, { candidateDigest })
+    : undefined
+  const businessResults = businessObservationProjection(businessList, candidateDigest)
+  const report = buildEvaluationReport({
+    job,
+    summary: summary && !summary.__readError ? summary : {},
+    context: context && !context.__readError ? context : {},
+    contract: artifacts.contract && !artifacts.contract.__readError ? artifacts.contract : {},
+    stack: artifacts.stack && !artifacts.stack.__readError ? artifacts.stack : {},
+    diagnosis: artifacts.diagnosis && !artifacts.diagnosis.__readError ? artifacts.diagnosis : {},
+    optimization: artifacts.optimization && !artifacts.optimization.__readError ? artifacts.optimization : {},
+    validation,
+    businessResults,
+  })
   return {
     schemaVersion: 3,
     job,
@@ -621,10 +841,49 @@ export async function readJobDetail(config, args) {
     executionMode: summary?.execution_mode ?? context?.execution_mode,
     coverage: coverageView(summary),
     evaluatorMetaEvaluation: evaluatorMetaEvaluation(summary, context),
+    report,
     capabilities,
     artifacts,
     validation,
   }
+}
+
+/** Read the user-facing Evaluation Report derived from immutable Job artifacts. */
+export async function readEvaluationReport(config, args) {
+  const job = safeSegment(args.job, 'job')
+  const directory = jobDirectory(config, job)
+  const projectRoot = path.resolve(config.projectRoot)
+  const check = await directoryCheck(directory, { root: projectRoot })
+  if (check.status !== 'ok') throw new Error('Job not found')
+  const [summary, context, contract, stack, diagnosis, optimization] = await Promise.all([
+    readJson(path.join(directory, SUMMARY_NAME), { root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-context.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-contract.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-stack-manifest.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'diagnosis-report.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'optimization-report.json'), { root: projectRoot }),
+  ])
+  const bundleValidation = await verifyJobBundleSeal(directory, projectRoot)
+  const candidateDigest = bundleValidation.status === 'valid' ? jobCandidateDigest(summary, context) : undefined
+  const businessList = candidateDigest
+    ? await safeBusinessObservationList(config, { candidateDigest })
+    : undefined
+  return buildEvaluationReport({
+    job,
+    summary: summary && !summary.__readError ? summary : {},
+    context: context && !context.__readError ? context : {},
+    contract: contract && !contract.__readError ? contract : {},
+    stack: stack && !stack.__readError ? stack : {},
+    diagnosis: diagnosis && !diagnosis.__readError ? diagnosis : {},
+    optimization: optimization && !optimization.__readError ? optimization : {},
+    validation: {
+      summary: summary?.__readError
+        ? { status: 'invalid', error: summary.__readError }
+        : summary ? { status: 'valid' } : { status: 'unavailable' },
+      jobBundle: bundleValidation,
+    },
+    businessResults: businessObservationProjection(businessList, candidateDigest),
+  })
 }
 
 function selectedLifecycleTrials(lifecycle) {
@@ -637,23 +896,40 @@ function selectedLifecycleTrials(lifecycle) {
 }
 
 function normalizeTrial(trial, order) {
-  const score = trial.score ?? { value: undefined, valid: trial.exception ? false : true, invalid_reasons: trial.exception ? ['infrastructure-error'] : [] }
+  const suppliedScore = isObject(trial.score)
+  const score = suppliedScore
+    ? trial.score
+    : {
+        value: null,
+        valid: false,
+        invalid_reasons: trial.exception ? ['infrastructure-error'] : ['score-unavailable'],
+      }
   const datasetOrder = Number(trial.datasetOrder ?? trial.dataset_order ?? order)
   const status = trial.status ?? trial.phase ?? (trial.exception ? 'infrastructure-error' : 'completed')
+  const executionId = trial.executionId ?? trial.execution_id ?? trial.id
+  const assessmentId = trial.assessmentId
+    ?? trial.assessment_id
+    ?? trial.generationRecord?.record_id
+    ?? trial.evaluation_target?.record_id
+  const id = assessmentId ?? trial.id ?? trial.execution_id ?? `dataset-${datasetOrder}`
+  const scored = suppliedScore && score.valid === true && typeof score.value === 'number'
   return {
-    id: trial.id ?? trial.execution_id ?? `dataset-${datasetOrder}`,
+    id,
+    executionId,
+    assessmentId: assessmentId ?? trial.id ?? trial.execution_id,
     name: trial.name ?? trial.trial_name ?? trial.dataset_trial ?? trial.trial,
     datasetTrial: trial.datasetTrial ?? trial.dataset_trial ?? trial.trial,
     datasetOrder,
     attempt: Number(trial.attempt ?? 1),
     status,
-    scoringStatus: status === 'completed-unscored' ? 'unscored' : score.valid ? 'scored' : 'invalid',
+    scoringStatus: status === 'completed-unscored' ? 'unscored' : scored ? 'scored' : suppliedScore || trial.exception ? 'invalid' : 'unknown',
     terminal: trial.terminal ?? true,
     updatedAt: trial.updatedAt ?? trial.updated_at,
     score,
     rewards: trial.rewards ?? {},
     requirements: trial.requirements,
     population: trial.population ?? {},
+    generationRecord: trial.generationRecord,
     evidenceAvailable: Boolean(trial.evidenceAvailable ?? trial.terminal),
     exception: trial.exception ? { type: trial.exception.type, classification: trial.exception.classification } : undefined,
   }
@@ -671,7 +947,7 @@ async function jobTrials(config, job) {
   if ((!summary || summary.__readError) && (!lifecycle || lifecycle.__readError)) throw new Error('Job progress is unavailable')
   const summaryTrials = (summary?.trials ?? []).map(normalizeTrial)
   if (!lifecycle?.trials) return { trials: summaryTrials, total: Number(summary?.n_trials ?? summaryTrials.length), lifecycle }
-  const byExecution = new Map(summaryTrials.map(item => [String(item.id), item]))
+  const byExecution = new Map(summaryTrials.map(item => [String(item.executionId ?? item.id), item]))
   const byDataset = new Map(summaryTrials.map(item => [String(item.datasetTrial), item]))
   const trials = selectedLifecycleTrials(lifecycle).map((item, index) => {
     const evaluated = byExecution.get(String(item.execution_id)) ?? byDataset.get(String(item.dataset_trial))
@@ -738,7 +1014,7 @@ export async function readTrialsPage(config, args) {
   // Internal fixed-set reads must not expand to the entire (possibly large) Job.
   if (Array.isArray(args.trialIds)) {
     const selectedIds = new Set(args.trialIds)
-    trials = trials.filter(trial => selectedIds.has(trial.id))
+    trials = trials.filter(trial => [trial.id, trial.executionId, trial.assessmentId].some(id => selectedIds.has(id)))
   }
   if (query) trials = trials.filter(trial => `${trial.id ?? ''} ${trial.displayName ?? ''} ${trial.name ?? ''} ${trial.datasetTrial ?? ''}`.toLowerCase().includes(query))
   if (status) trials = trials.filter(trial => trial.status === status)
@@ -816,31 +1092,6 @@ async function previewFromTrialFiles(directory, lifecycle, projectRoot) {
     : undefined
 }
 
-async function evaluatorResultFromTrialFiles(directory, lifecycle, projectRoot) {
-  let trialName
-  try { trialName = safeSegment(lifecycle?.name, 'trial directory') } catch { return undefined }
-  const trialDirectory = path.join(directory, trialName)
-  const check = await directoryCheck(trialDirectory, { root: projectRoot })
-  if (check.status !== 'ok') return undefined
-  const result = await readJson(path.join(trialDirectory, 'verifier', 'evaluation-result.json'), { maxBytes: 128_000, maxText: 32_000, root: projectRoot })
-  return result && !result.__readError ? result : undefined
-}
-
-function enrichAssessmentWithEvaluator(assessment, evaluatorResult) {
-  if (!assessment) return assessment
-  const byCriterion = new Map((evaluatorResult?.criteria ?? []).filter(isObject).map(item => [String(item.id), item]))
-  const criteria = (assessment.criteria ?? []).map(item => {
-    const evaluator = byCriterion.get(String(item.id))
-    return evaluator ? { ...item, reason: evaluator.reason ?? item.reason, recommendation: evaluator.recommendation ?? item.recommendation } : item
-  })
-  const evaluatorRecommendations = (evaluatorResult?.recommendations ?? []).map(item => isObject(item) ? item : { message: String(item) })
-  return rememberAuthoritativeRevision(
-    { ...assessment, criteria, recommendations: [...(assessment.recommendations ?? []), ...evaluatorRecommendations] },
-    assessment,
-    evaluatorResult,
-  )
-}
-
 async function datasetRoots(directory, projectRoot) {
   const entries = await readdir(directory, { withFileTypes: true })
   const roots = []
@@ -889,13 +1140,16 @@ export async function readTrialDetail(config, args) {
   if (check.status !== 'ok') throw new Error('Job not found')
   let assessment = await readJson(path.join(directory, 'trial-assessments', assessmentName(trial)), { root: projectRoot })
   const source = await jobTrials(config, job)
-  const lifecycle = source.trials.find(item => String(item.id) === trial || String(item.datasetTrial) === trial || String(item.name) === trial)
-  if ((!assessment || assessment.__readError) && lifecycle?.id && String(lifecycle.id) !== trial) {
-    assessment = await readJson(path.join(directory, 'trial-assessments', assessmentName(lifecycle.id)), { root: projectRoot })
+  const lifecycle = source.trials.find(item => [item.id, item.executionId, item.assessmentId, item.datasetTrial, item.name].some(value => String(value) === trial))
+  if (!assessment || assessment.__readError) {
+    for (const candidate of [lifecycle?.assessmentId, lifecycle?.id, lifecycle?.executionId]) {
+      if (!candidate || String(candidate) === trial) continue
+      assessment = await readJson(path.join(directory, 'trial-assessments', assessmentName(candidate)), { root: projectRoot })
+      if (assessment && !assessment.__readError) break
+    }
   }
   if (assessment?.__readError) throw new Error('Trial assessment is invalid')
   if (!assessment && !lifecycle) throw new Error('Trial not found')
-  assessment = enrichAssessmentWithEvaluator(assessment, await evaluatorResultFromTrialFiles(directory, lifecycle, projectRoot))
   const assessmentPreview = previewFromOutput(assessment?.output, assessment?.evidence_provenance)
   const realAssessmentOutput = assessment?.evidence_provenance?.some(item => item?.kind === 'real-renderer' || item?.kind === 'agent-artifact')
   const filePreview = realAssessmentOutput ? undefined : await previewFromTrialFiles(directory, lifecycle, projectRoot)
@@ -958,7 +1212,7 @@ export async function readHistoricalEvidence(config, args) {
   const directory = jobDirectory(config, job)
   const source = await jobTrials(config, job)
   const lifecycle = source.trials.find(item => (
-    String(item.id) === trial || String(item.datasetTrial) === trial || String(item.name) === trial
+    [item.id, item.executionId, item.assessmentId, item.datasetTrial, item.name].some(value => String(value) === trial)
   ))
   if (!lifecycle) return { available: false, reason: 'The Historical Generation Trial is unavailable.' }
   let trialName
@@ -1051,14 +1305,44 @@ export async function readMetaEvaluation(config, args = {}) {
   const disagreementOffset = Math.max(0, Number.parseInt(args.offset ?? 0, 10) || 0)
   const disagreementLimit = Math.min(100, Math.max(1, Number.parseInt(args.limit ?? 20, 10) || 20))
   const disagreements = availableReport && Array.isArray(report.disagreements) ? report.disagreements : []
+  const groundTruthDigest = availableGroundTruth
+    ? canonicalDigest(groundTruth, 'harbor-dsh-ground-truth-v1')
+    : null
+  const expectedIdentity = args.currentEvaluationIdentity
+  const identityParts = ['evaluator', 'rubric', 'judge', 'template']
+  const identityMismatchReasons = expectedIdentity
+    ? identityParts.flatMap(part => {
+      if (!expectedIdentity[part]) return [`Current ${part} identity is unavailable.`]
+      return JSON.stringify(report?.evaluation_identity?.[part] ?? null) === JSON.stringify(expectedIdentity[part])
+        ? []
+        : [`Current ${part} identity differs from this report.`]
+    })
+    : []
+  const reportDigestValid = availableReport && report.digest === canonicalDigest(
+    Object.fromEntries(Object.entries(report).filter(([key]) => key !== 'digest')),
+    'harbor-dsh-meta-evaluation-report-v1',
+  )
+  const reportStale = Boolean(availableReport && (
+    report.ground_truth?.digest !== groundTruthDigest
+    || !report.evaluation_identity?.digest
+    || !reportDigestValid
+    || identityMismatchReasons.length
+  ))
   const pagedReport = availableReport ? {
     ...report,
+    stale: reportStale,
+    staleReasons: [
+      ...(report.ground_truth?.digest !== groundTruthDigest ? ['Ground Truth changed after this report was generated.'] : []),
+      ...(!report.evaluation_identity?.digest ? ['Exact Evaluator/Rubric/Judge/Template identity is missing.'] : []),
+      ...(!reportDigestValid ? ['Meta-evaluation report digest is invalid.'] : []),
+      ...identityMismatchReasons,
+    ],
     disagreements: disagreements.slice(disagreementOffset, disagreementOffset + disagreementLimit),
   } : undefined
   return {
     schemaVersion: 1,
     evaluationRoot: path.relative(projectRoot, evaluationRoot) || '.',
-    status: availableReport ? 'evaluated' : availableGroundTruth ? (cases.length ? 'ground-truth-ready' : 'ground-truth-draft') : 'ground-truth-required',
+    status: availableReport ? (reportStale ? 'stale-report' : 'evaluated') : availableGroundTruth ? (cases.length ? 'ground-truth-ready' : 'ground-truth-draft') : 'ground-truth-required',
     groundTruth: availableGroundTruth ? {
       id: groundTruth.ground_truth_id,
       version: groundTruth.version,
@@ -1089,7 +1373,9 @@ export async function readMetaEvaluation(config, args = {}) {
           ? 'Add cases with artifact_ref and ternary criterion labels before collecting observations.'
           : !availableReport
             ? 'Collect repeated evaluator observations and run harbor_evaluator_meta_evaluate.'
-            : 'Review disagreements before adopting the evaluator and establishing a fresh Agent baseline.',
+            : reportStale
+              ? 'The Meta-evaluation report is stale; collect identity-bound observations and rerun harbor_evaluator_meta_evaluate.'
+              : 'Review disagreements before adopting the evaluator and establishing a fresh Agent baseline.',
     },
   }
 }
@@ -1120,8 +1406,67 @@ function comparisonTrials(summary, lifecycle) {
   return [...current, ...summaryTrials.filter(item => !matched.has(item))]
 }
 
+function compareTrialGroups(summary, lifecycle) {
+  const groups = new Map()
+  for (const item of comparisonTrials(summary, lifecycle)) {
+    const key = String(item.datasetTrial ?? item.name ?? item.id)
+    const current = groups.get(key) ?? []
+    current.push(item)
+    groups.set(key, current)
+  }
+  return groups
+}
+
 function compareTrialMaps(summary, lifecycle) {
-  return new Map(comparisonTrials(summary, lifecycle).map(item => [String(item.datasetTrial ?? item.name ?? item.id), item]))
+  return new Map([...compareTrialGroups(summary, lifecycle)].map(([key, items]) => [key, items.at(-1)]))
+}
+
+function validComparisonValues(items) {
+  return items.flatMap(item => {
+    if (item.score?.valid !== true) return []
+    const value = item.score.value ?? item.rewards?.reward
+    return Number.isFinite(value) ? [value] : []
+  })
+}
+
+function descriptiveStatistics(values) {
+  if (!values.length) return { n: 0, mean: null, variance: null, standardDeviation: null, range: null }
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length
+  const variance = values.length < 2
+    ? null
+    : values.reduce((sum, value) => sum + ((value - average) ** 2), 0) / (values.length - 1)
+  return {
+    n: values.length,
+    mean: average,
+    variance,
+    standardDeviation: variance === null ? null : Math.sqrt(variance),
+    range: values.length < 2 ? null : Math.max(...values) - Math.min(...values),
+  }
+}
+
+function repeatabilityReport(baselineGroups, candidateGroups, repeatPolicy) {
+  const expected = Math.max(Number(repeatPolicy?.baseline?.repeats ?? 1), Number(repeatPolicy?.candidate?.repeats ?? 1))
+  const taskIds = [...new Set([...baselineGroups.keys(), ...candidateGroups.keys()])].sort()
+  const tasks = taskIds.map(trial => {
+    const baselineValues = validComparisonValues(baselineGroups.get(trial) ?? [])
+    const candidateValues = validComparisonValues(candidateGroups.get(trial) ?? [])
+    const paired = Array.from({ length: Math.min(baselineValues.length, candidateValues.length) }, (_, index) => candidateValues[index] - baselineValues[index])
+    return {
+      trial,
+      baseline: descriptiveStatistics(baselineValues),
+      candidate: descriptiveStatistics(candidateValues),
+      paired_attempts: descriptiveStatistics(paired),
+      complete: baselineValues.length >= expected && candidateValues.length >= expected,
+    }
+  })
+  const repeated = expected > 1
+  return {
+    expected_repeats: expected,
+    status: repeated ? (tasks.length > 0 && tasks.every(item => item.complete) ? 'complete' : 'partial') : 'single-attempt',
+    baseline: descriptiveStatistics(tasks.flatMap(item => validComparisonValues(baselineGroups.get(item.trial) ?? []))),
+    candidate: descriptiveStatistics(tasks.flatMap(item => validComparisonValues(candidateGroups.get(item.trial) ?? []))),
+    tasks,
+  }
 }
 
 function isInvalidComparisonTrial(trial) {
@@ -1137,6 +1482,23 @@ function isInfrastructureComparisonTrial(trial) {
   )
 }
 
+function pairedUncertainty(pairs) {
+  const deltas = pairs.map(item => item.improvement).filter(Number.isFinite)
+  if (!deltas.length) return { method: 'paired-task-normal-approximation', n: 0, meanImprovement: null, standardError: null, confidence95: null, status: 'insufficient-pairs' }
+  const meanDelta = deltas.reduce((sum, value) => sum + value, 0) / deltas.length
+  if (deltas.length < 2) return { method: 'paired-task-normal-approximation', n: 1, meanImprovement: meanDelta, standardError: null, confidence95: null, status: 'insufficient-pairs' }
+  const variance = deltas.reduce((sum, value) => sum + ((value - meanDelta) ** 2), 0) / (deltas.length - 1)
+  const standardError = Math.sqrt(variance / deltas.length)
+  return {
+    method: 'paired-task-normal-approximation',
+    n: deltas.length,
+    meanImprovement: meanDelta,
+    standardError,
+    confidence95: { low: meanDelta - 1.96 * standardError, high: meanDelta + 1.96 * standardError },
+    status: 'estimated',
+  }
+}
+
 export async function readComparison(config, args) {
   const baselineJob = safeSegment(args.baseline, 'baseline')
   const candidateJob = safeSegment(args.candidate, 'candidate')
@@ -1148,13 +1510,17 @@ export async function readComparison(config, args) {
   if (baselineDirectoryCheck.status !== 'ok' || candidateDirectoryCheck.status !== 'ok') {
     throw new Error('Both Job directories must be safe')
   }
-  const [baseline, candidate, baselineContract, candidateContract, baselineLifecycle, candidateLifecycle] = await Promise.all([
+  const [baseline, candidate, baselineContract, candidateContract, baselineLifecycle, candidateLifecycle, baselineSpec, candidateSpec, baselineBundle, candidateBundle] = await Promise.all([
     readJson(path.join(jobDirectory(config, baselineJob), SUMMARY_NAME), { root: projectRoot }),
     readJson(path.join(jobDirectory(config, candidateJob), SUMMARY_NAME), { root: projectRoot }),
     readJson(path.join(jobDirectory(config, baselineJob), 'evaluation-contract.json'), { root: projectRoot }),
     readJson(path.join(jobDirectory(config, candidateJob), 'evaluation-contract.json'), { root: projectRoot }),
     readJson(path.join(jobDirectory(config, baselineJob), 'trial-lifecycle.json'), { root: projectRoot }),
     readJson(path.join(jobDirectory(config, candidateJob), 'trial-lifecycle.json'), { root: projectRoot }),
+    readJson(path.join(jobDirectory(config, baselineJob), 'evaluation-spec.json'), { root: projectRoot }),
+    readJson(path.join(jobDirectory(config, candidateJob), 'evaluation-spec.json'), { root: projectRoot }),
+    verifyJobBundleSeal(jobDirectory(config, baselineJob), projectRoot),
+    verifyJobBundleSeal(jobDirectory(config, candidateJob), projectRoot),
   ])
   if (!baseline || baseline.__readError || !candidate || candidate.__readError) throw new Error('Both Job summaries are required')
   const baselineContext = baseline.evaluation_context ?? await readJson(path.join(jobDirectory(config, baselineJob), 'evaluation-context.json'), { root: projectRoot })
@@ -1188,11 +1554,19 @@ export async function readComparison(config, args) {
     }, baseline, candidate, baselineContract, candidateContract, baselineLifecycle, candidateLifecycle, baselineContext, candidateContext)
   }
   const reasons = []
+  const baselineTrust = buildEvaluationReport({ job: baselineJob, summary: baseline, context: baselineContext, contract: baselineContract, validation: { jobBundle: baselineBundle } }).quality.score_trusted === true
+  const candidateTrust = buildEvaluationReport({ job: candidateJob, summary: candidate, context: candidateContext, contract: candidateContract, validation: { jobBundle: candidateBundle } }).quality.score_trusted === true
+  if (!baselineTrust || !candidateTrust) reasons.push('Both Jobs require verified seals, successful exact Evaluator execution, valid artifacts, and complete required Trial coverage')
   if (baselineContext?.schema_version !== 3 || candidateContext?.schema_version !== 3) reasons.push('Context v3 is required')
   if (!baselineContext?.digest || baselineContext.digest !== candidateContext?.digest) reasons.push('Evaluation Context differs; establish a fresh baseline')
   if (baselineContract?.contract_id !== candidateContract?.contract_id || baselineContract?.version !== candidateContract?.version) reasons.push('Evaluation Contract identity differs')
+  if (baselineSpec?.protocol !== 'evaluation-spec/v1' || candidateSpec?.protocol !== 'evaluation-spec/v1') {
+    reasons.push('Evaluation Spec v1 is required for formal comparison')
+  } else if (baselineSpec.measurement_digest !== candidateSpec.measurement_digest) {
+    reasons.push('Evaluation Spec measurement identity differs; establish a fresh baseline')
+  }
   const directions = Object.fromEntries((candidateContract?.metrics ?? []).map(item => [item.id, item.direction ?? 'maximize']))
-  const metrics = Object.fromEntries([...new Set([...Object.keys(baseline.metrics ?? {}), ...Object.keys(candidate.metrics ?? {})])].map(key => [key, {
+  const metrics = !baselineTrust || !candidateTrust ? {} : Object.fromEntries([...new Set([...Object.keys(baseline.metrics ?? {}), ...Object.keys(candidate.metrics ?? {})])].map(key => [key, {
     baseline: baseline.metrics?.[key], candidate: candidate.metrics?.[key],
     delta: typeof baseline.metrics?.[key] === 'number' && typeof candidate.metrics?.[key] === 'number' ? candidate.metrics[key] - baseline.metrics[key] : undefined,
     direction: directions[key] ?? 'maximize',
@@ -1200,21 +1574,30 @@ export async function readComparison(config, args) {
       ? (directions[key] === 'minimize' ? baseline.metrics[key] - candidate.metrics[key] : candidate.metrics[key] - baseline.metrics[key])
       : undefined,
   }]))
-  const oldTrials = compareTrialMaps(baseline, baselineLifecycle)
-  const nextTrials = compareTrialMaps(candidate, candidateLifecycle)
+  const baselineGroups = baselineTrust ? compareTrialGroups(baseline, null) : new Map()
+  const candidateGroups = candidateTrust ? compareTrialGroups(candidate, null) : new Map()
+  const oldTrials = baselineTrust ? compareTrialMaps(baseline, null) : new Map()
+  const nextTrials = candidateTrust ? compareTrialMaps(candidate, null) : new Map()
   const improved = []
   const regressed = []
+  const tied = []
+  const pairedTrials = []
   const primaryDirection = directions[candidateContract?.primary_metric] ?? 'maximize'
-  for (const trial of [...oldTrials.keys()].filter(key => nextTrials.has(key)).sort()) {
-    const oldTrial = oldTrials.get(trial)
-    const newTrial = nextTrials.get(trial)
-    if (oldTrial.score?.valid !== true || newTrial.score?.valid !== true) continue
-    const oldValue = oldTrial.score.value ?? oldTrial.rewards?.reward
-    const newValue = newTrial.score.value ?? newTrial.rewards?.reward
-    if (!Number.isFinite(oldValue) || !Number.isFinite(newValue) || oldValue === newValue) continue
-    const item = { trial, baseline: oldValue, candidate: newValue, delta: newValue - oldValue }
-    const isImproved = primaryDirection === 'minimize' ? newValue < oldValue : newValue > oldValue
-    ;(isImproved ? improved : regressed).push(item)
+  for (const trial of [...baselineGroups.keys()].filter(key => candidateGroups.has(key)).sort()) {
+    const baselineValues = validComparisonValues(baselineGroups.get(trial))
+    const candidateValues = validComparisonValues(candidateGroups.get(trial))
+    if (!baselineValues.length || !candidateValues.length) continue
+    const oldValue = descriptiveStatistics(baselineValues).mean
+    const newValue = descriptiveStatistics(candidateValues).mean
+    const delta = newValue - oldValue
+    const item = {
+      trial, baseline: oldValue, candidate: newValue, delta,
+      baselineAttempts: baselineValues.length, candidateAttempts: candidateValues.length,
+      improvement: primaryDirection === 'minimize' ? -delta : delta,
+    }
+    pairedTrials.push(item)
+    if (oldValue === newValue) tied.push(item)
+    else (item.improvement > 0 ? improved : regressed).push(item)
   }
   const invalidTrials = [...nextTrials.entries()]
     .filter(([, trial]) => isInvalidComparisonTrial(trial))
@@ -1241,10 +1624,23 @@ export async function readComparison(config, args) {
   const baselineExceptions = new Set((baseline.exceptions ?? []).map(item => String(item.trial)))
   const newExceptions = (candidate.exceptions ?? []).filter(item => !baselineExceptions.has(String(item.trial)))
   const artifactRegressions = (baseline.artifact_validation?.valid && !candidate.artifact_validation?.valid) ? ['artifact-validation'] : []
+  const repeatPolicy = {
+    baseline: baselineSpec?.repeat_policy ?? null,
+    candidate: candidateSpec?.repeat_policy ?? null,
+  }
   return rememberAuthoritativeRevision({
     schemaVersion: 1, baselineJob, candidateJob, comparable: reasons.length === 0, comparabilityReasons: reasons,
     metrics, population: { baseline: baseline.n_trials, candidate: candidate.n_trials, baselineValid: baseline.n_valid_scores, candidateValid: candidate.n_valid_scores },
-    improvedTrials: improved, regressedTrials: regressed, invalidTrials, newInfrastructureExceptions, newExceptions, artifactRegressions,
+    improvedTrials: improved, regressedTrials: regressed, tiedTrials: tied, pairedTrials,
+    uncertainty: pairedUncertainty(pairedTrials),
+    repeatPolicy,
+    repeatability: repeatabilityReport(baselineGroups, candidateGroups, repeatPolicy),
+    measurementIdentity: {
+      baseline: baselineSpec?.measurement_digest ?? null,
+      candidate: candidateSpec?.measurement_digest ?? null,
+      match: Boolean(baselineSpec?.measurement_digest && baselineSpec.measurement_digest === candidateSpec?.measurement_digest),
+    },
+    invalidTrials, newInfrastructureExceptions, newExceptions, artifactRegressions,
     gateEligibility: reasons.length ? 'not-comparable' : 'requires-explicit-gate',
     note: 'This read-only comparison never runs Gate, promotes a Candidate, deploys, or publishes.',
   }, baseline, candidate, baselineContract, candidateContract, baselineLifecycle, candidateLifecycle, baselineContext, candidateContext)
@@ -1256,13 +1652,21 @@ export async function readEvaluatorGovernance(config, args) {
   const projectRoot = path.resolve(config.projectRoot)
   const check = await directoryCheck(directory, { root: projectRoot })
   if (check.status !== 'ok') throw new Error('Job not found')
-  const [stack, sources, contract, context] = await Promise.all([
+  const [stack, sources, contract, context, summary] = await Promise.all([
     readJson(path.join(directory, 'evaluation-stack-manifest.json'), { root: projectRoot }),
     readJson(path.join(directory, 'evaluation-stack-sources.json'), { maxText: MAX_SOURCE_BYTES, root: projectRoot }),
     readJson(path.join(directory, 'evaluation-contract.json'), { root: projectRoot }),
     readJson(path.join(directory, 'evaluation-context.json'), { root: projectRoot }),
+    readJson(path.join(directory, 'evaluation-summary.json'), { root: projectRoot }),
   ])
   if (!stack || stack.__readError) throw new Error('Evaluation Stack is unavailable')
+  const effective = buildEvaluationReport({
+    job,
+    summary: summary && !summary.__readError ? summary : {},
+    stack,
+    context: context && !context.__readError ? context : {},
+    contract: contract && !contract.__readError ? contract : {},
+  }).effective_evaluator
   const historicalSources = sources?.schema_version === 1 && sources.stack_digest === stack.digest
     ? sources
     : undefined
@@ -1305,7 +1709,7 @@ export async function readEvaluatorGovernance(config, args) {
   }
   return {
     schemaVersion: 1, job, stackIdentity: { id: stack.stack_id, version: stack.version, digest: stack.digest, comparisonDigest: stack.comparison_digest },
-    judge: stack.judge, contract, contextDigest: context?.digest, components, comparison,
+    judge: stack.judge, contract, contextDigest: context?.digest, effectiveEvaluator: effective, components, comparison,
     editingPolicy: {
       browserWriteEnabled: false,
       saveBehavior: 'Create a new Stack/component identity in source control, then run a fresh baseline when reward-affecting semantics change.',
