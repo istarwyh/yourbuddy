@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.3.19`。
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选版本；源码验证已完成，Tag CI 负责发布产物。
+- 归档状态：产物发布前失败；由 0.3.20 取代。
 - 证据 Commit：由 `yourbuddy-v0.3.19` 标记的不可变 Commit。
 - 证据图集：未采集；打包后 WebView 交互仍未验证。
-- 证据下载：`yourbuddy-v0.3.19` 的不可变源码；公开安装包等待 Tag CI 发布。
+- 证据下载：`yourbuddy-v0.3.19` 的不可变源码；没有生成公开安装包。
 
 ## 面向用户的发布说明
 
@@ -43,7 +43,7 @@ Tag CI 发布产物后，从 0.3.19 GitHub Release 安装 Apple Silicon DMG；�
 |---|---|---|---|---|
 | 产品集成聚焦验证 | 通过 | 源码候选版本 | macOS 15.6.1 arm64、Node.js 22.19.0、pnpm 11.7.0 | 54 项 Node 测试、6 项 Rust Overlay 测试、13 项离线测试 |
 | 文档与 Lint | 通过 | 源码候选版本 | 相同本地环境 | 43 项文档门禁和仓库 Lint 通过 |
-| 正式桌面发布 | 等待中 | `yourbuddy-v0.3.19` | GitHub Actions macOS arm64 | Tag CI 负责构建、打包后 Runtime 冒烟、校验和、Updater Metadata 与上传 |
+| 正式桌面发布 | 上传前失败 | `yourbuddy-v0.3.19` | GitHub Actions macOS arm64 | 工作流 `36310499165` 在 App 组装时发现产品快照 Hash 不一致 |
 
 ## 场景：Ego Browser 默认源码集成
 
@@ -80,12 +80,16 @@ Tag CI 发布产物后，从 0.3.19 GitHub Release 安装 Apple Silicon DMG；�
 
 这些检查不能确认原生 App 启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、Apple Developer 签名、公证或公开 0.3.19 产物可用性。Tag CI 和发布后检查负责记录这些结果。
 
+## 发布失败记录
+
+[macOS 发布工作流](https://github.com/istarwyh/yourbuddy/actions/runs/36310499165)在 App 组装阶段停止，没有发布任何 Release 产物。已提交的来源记录是在本地存在被忽略的 `runtime/ego-browser/dist/` 构建输出时测得的快照 Hash；干净 Checkout 正确拒绝了包含这些未提交字节的 Hash。0.3.20 记录已提交快照的 Hash 并重新发布，不移动 0.3.19 Tag。
+
 ## 交付状态
 
-- 产品发布状态：等待 Annotated Tag 和 Tag GitHub Actions 工作流。
-- 验证资料归档状态：所述范围内的源码证据已完成，并包含在候选 Commit 中。
-- 站点同步状态：单次发布不适用；产品指南已经更新，官网使用稳定的最新 Release 链接。
-- 未验证范围：原生启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、公开产物下载、Apple Developer 签名与公证。
+- 产品发布状态：产物发布前失败；由 0.3.20 取代。
+- 验证资料归档状态：终态部分记录；保留源码与失败工作流证据，没有公开产物归档。
+- 站点同步状态：产品指南已由工作流 `36310499295` 成功部署；稳定下载仍指向上一已发布版本。
+- 未验证范围：公开 0.3.19 产物不存在；原生启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、Apple Developer 签名与公证仍未验证。
 
 ## 交付清单
 

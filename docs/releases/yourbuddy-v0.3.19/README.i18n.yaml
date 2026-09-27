@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.19/README.md
 /yourbuddy-0-3-19:
-  en: 498254e365676c6a
-  zh: 1cd7d977ff744b90
+  en: ec851e5fdbe099c3
+  zh: 19852930d8f4350d
 /yourbuddy-0-3-19/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -27,8 +27,8 @@
   en: 680e257230ac4542
   zh: 7f06d166d467b981
 /yourbuddy-0-3-19/verification-summary:
-  en: 72751dc393bb64fb
-  zh: bbc0b330ecdf7bbb
+  en: d2a9f6ab48190150
+  zh: d8a59c5b1602fa72
 /yourbuddy-0-3-19/scenario-default-ego-browser-source-integration:
   en: c60a36b2f5c2ca70
   zh: 158672f010079f96
@@ -47,9 +47,12 @@
 /yourbuddy-0-3-19/scenario-default-ego-browser-source-integration/scope-limits:
   en: 6457400794f94d58
   zh: 687df9d44dd99c07
+/yourbuddy-0-3-19/failed-publication-attempt:
+  en: 133b2c9229bbfb00
+  zh: e285bdc596ded664
 /yourbuddy-0-3-19/delivery-status:
-  en: 6d050ed2f8a54f4b
-  zh: 97015976bb257739
+  en: a3518e453674ffb6
+  zh: 26927cad55a27b31
 /yourbuddy-0-3-19/delivery-checklist:
   en: f0eac202237ada3f
   zh: e1e37a1f014330a6

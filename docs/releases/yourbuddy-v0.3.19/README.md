@@ -6,10 +6,10 @@ This archive records the default Ego Browser integration and the source verifica
 
 - Release identifier: `yourbuddy-v0.3.19`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; source verification is complete and tagged CI owns artifact publication.
+- Archive state: failed before artifact publication; superseded by 0.3.20.
 - Evidence commit: the immutable commit tagged `yourbuddy-v0.3.19`.
 - Evidence gallery: not captured; packaged WebView interaction remains unverified.
-- Evidence download: immutable source at `yourbuddy-v0.3.19`; public installers are pending tagged CI.
+- Evidence download: immutable source at `yourbuddy-v0.3.19`; no public installer was produced.
 
 ## User release notes
 
@@ -43,7 +43,7 @@ The target remains macOS 11 or later on Apple Silicon. Existing YourBuddy data r
 |---|---|---|---|---|
 | Focused product integration | passed | source candidate | macOS 15.6.1 arm64, Node.js 22.19.0, pnpm 11.7.0 | 54 Node tests, 6 Rust Overlay tests, 13 offline tests |
 | Documentation and lint | passed | source candidate | same local environment | 43 documentation gates and repository lint passed |
-| Formal desktop publication | pending | `yourbuddy-v0.3.19` | GitHub Actions macOS arm64 | tagged CI owns build, packaged-runtime smoke, checksums, updater metadata, and upload |
+| Formal desktop publication | failed before upload | `yourbuddy-v0.3.19` | GitHub Actions macOS arm64 | workflow `36310499165` detected a product snapshot hash mismatch during App assembly |
 
 ## Scenario: default Ego Browser source integration
 
@@ -80,12 +80,16 @@ All 54 focused Node tests, 6 Rust Overlay tests, 13 offline tests, 43 documentat
 
 These checks do not establish native App startup, packaged WebView interaction, real-site login behavior, updater installation, Apple Developer signing, notarization, or the availability of the public 0.3.19 artifacts. Tagged CI and post-publication checks own those observations.
 
+## Failed publication attempt
+
+The [macOS release workflow](https://github.com/istarwyh/yourbuddy/actions/runs/36310499165) stopped during App assembly before any release asset was published. The committed source record contained a snapshot hash measured while an ignored local `runtime/ego-browser/dist/` build output was present; the clean checkout correctly rejected the hash that included those uncommitted bytes. Version 0.3.20 records the committed snapshot hash and reruns publication without moving the 0.3.19 tag.
+
 ## Delivery status
 
-- Product publication status: pending the annotated tag and tagged GitHub Actions workflow.
-- Verification archive status: source evidence is complete within the stated limits and included in the candidate commit.
-- Website synchronization status: not applicable per release; product guidance is already updated and the website uses the stable latest-Release link.
-- Unverified scope: native startup, packaged WebView interaction, real-site login behavior, updater installation, public artifact download, Apple Developer signing, and notarization.
+- Product publication status: failed before artifact publication; superseded by 0.3.20.
+- Verification archive status: terminal partial record; source and failed-workflow evidence are retained, with no public artifact archive.
+- Website synchronization status: product guidance deployed successfully in workflow `36310499295`; the stable download still points to the preceding published release.
+- Unverified scope: public 0.3.19 artifacts do not exist; native startup, packaged WebView interaction, real-site login behavior, updater installation, Apple Developer signing, and notarization remain unverified.
 
 ## Delivery checklist
 
