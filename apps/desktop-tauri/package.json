@@ -17,7 +17,7 @@
     "dev": "tauri dev",
     "dev:local": "cross-env DSH_DESKTOP_LAUNCH=local tauri dev",
     "test:update-manifest": "node --test scripts/generate-updater-manifest.test.mjs",
-    "test:release-version": "node --test scripts/verify-release-version.test.mjs",
+    "test:release-version": "node --test scripts/verify-release-version.test.mjs scripts/prepare-release-candidate.test.mjs",
     "test:bundle": "node --test scripts/bundle-harness-source.test.mjs",
     "test:oil-publisher": "node --test product/oil-creator/skills/video-publisher/scripts/tests/*.test.mjs product/oil-creator/skills/video-publisher/scripts/v2/tests/*.test.mjs",
     "test:product-refresh": "pnpm run test:oil-publisher && cross-env NODE_OPTIONS=--use-openssl-ca node --test scripts/better-sidebar-browser.test.mjs scripts/better-sidebar-file-open.test.mjs scripts/better-sidebar-external-link.test.mjs scripts/better-sidebar-media-route.test.mjs scripts/codex-auth-settings-section.test.mjs scripts/desktop-lifecycle-bridge.test.mjs scripts/desktop-shell-permissions.test.mjs scripts/harbor-host-path-translation.test.mjs scripts/node-extra-ca.test.mjs scripts/oil-creator-credentials.test.mjs scripts/product-plugin-compatibility.test.mjs scripts/refresh-product-plugins.test.mjs scripts/sync-product-plugin.test.mjs scripts/verify-product-release.test.mjs",

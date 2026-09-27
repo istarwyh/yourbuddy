@@ -6,14 +6,14 @@
 
 ## 本地运行
 
-准备 Node 22.19+、仓库指定的 pnpm、Go 1.27.x 和 Hugo Extended 0.165.0。先运行仓库依赖安装，再启动官网：
+准备 Node 22.19+、仓库指定的 pnpm 与 Go 1.27.x。先运行仓库依赖安装，再启动官网：
 
 ```sh
 pnpm install
 pnpm website:dev
 ```
 
-打开 `http://localhost:4174/`。修改正文会重新投影；修改首页数据与样式由 Hugo 自动刷新。工具不在 PATH 时，用 `HUGO_BIN` 指定 Hugo，并把 Go 的目录加入 PATH。
+打开 `http://localhost:4174/`。如果 PATH 中没有匹配版本，首次运行产品官网命令时会通过 pnpm 获取固定的 Hugo Extended 0.165.0；也可以用 `HUGO_BIN` 指定可执行文件。修改正文会重新投影，修改首页数据与样式由 Hugo 自动刷新。
 
 ## 编辑内容
 

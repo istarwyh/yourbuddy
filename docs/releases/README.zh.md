@@ -10,7 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.18](yourbuddy-v0.3.18/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 源码候选记录更短的发布路径；公开产物证据待补 | 候选发布版本；等待发布 |
+| [yourbuddy-v0.3.18](yourbuddy-v0.3.18/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录发布工作流、5 个公开附件、稳定 Updater 元数据、耗时与保留的原生安装限制 | 已在说明范围内发布 |
 | [yourbuddy-v0.3.17](yourbuddy-v0.3.17/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 在声明限制内完整；已记录源码、CI、公开文件、Updater 签名、App 标识、产品来源、迁移运行时、官网与可下载归档；原生启动仍未验证 | 已发布并在声明限制内完成独立核验 |
 | [yourbuddy-v0.3.16](yourbuddy-v0.3.16/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 部分完成；已记录源码、组装浏览器、公开文件、Updater 签名、App 标识、产品来源记录、迁移运行时、官网与可下载归档；交互录制待补 | 已发布并在声明限制内完成独立核验 |
 | [yourbuddy-v0.3.15](yourbuddy-v0.3.15/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 在声明限制内完整；已记录源码、公开文件、Updater 签名、App 标识、生成的发布器模块、产品来源记录、迁移运行时、网站与可下载归档 | 已发布并在声明限制内完成独立核验 |
@@ -49,7 +49,7 @@ YourBuddy 产品官网使用 GitHub 稳定的最新 Release 与 Release 历史 U
 
 ## 单版本归档
 
-最终验证前，把 `docs/releases/_template/` 复制到 `docs/releases/<release-tag>/`。`README.md`、`README.zh.md` 及其配对记录必须保持完整；只在确有有用资料时创建 `screenshots/` 与 `evidence/`。
+YourBuddy 在干净的 `master` 上运行 `pnpm release:yourbuddy:prepare -- X.Y.Z`；该命令不联网，会更新版本源，并创建双语归档、索引、配对记录与发布说明草稿。发布前必须替换全部自动生成的 `TODO`。其他渠道把 `docs/releases/_template/` 复制到 `docs/releases/<release-tag>/`。`README.md`、`README.zh.md` 及其配对记录必须保持完整；只在确有有用资料时创建 `screenshots/` 与 `evidence/`。
 
 ```text
 docs/releases/<release-tag>/

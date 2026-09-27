@@ -69,17 +69,25 @@ jobs:
       - name: Install Rust target
         run: rustup target add "$RUST_TARGET"
 
+      - name: Identify Rust toolchain
+        id: rust
+        run: echo "cache-key=$(rustc -Vv | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
+            apps/desktop-tauri/src-tauri/target/release/.fingerprint
+            apps/desktop-tauri/src-tauri/target/release/build
+            apps/desktop-tauri/src-tauri/target/release/deps
             apps/desktop-tauri/src-tauri/target/aarch64-apple-darwin/release/.fingerprint
             apps/desktop-tauri/src-tauri/target/aarch64-apple-darwin/release/build
             apps/desktop-tauri/src-tauri/target/aarch64-apple-darwin/release/deps
-          key: ${{ runner.os }}-${{ runner.arch }}-yourbuddy-cargo-${{ hashFiles('apps/desktop-tauri/src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-yourbuddy-cargo-${{ steps.rust.outputs.cache-key }}-${{ hashFiles('apps/desktop-tauri/src-tauri/Cargo.lock', 'apps/desktop-tauri/src-tauri/Cargo.toml') }}
           restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-yourbuddy-cargo-${{ steps.rust.outputs.cache-key }}-
             ${{ runner.os }}-${{ runner.arch }}-yourbuddy-cargo-
 
       - name: Install workspace dependencies

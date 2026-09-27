@@ -10,7 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.18](yourbuddy-v0.3.18/README.md) | YourBuddy desktop | Included | Source candidate records the shorter release path; public artifact evidence pending | Release candidate; publication pending |
+| [yourbuddy-v0.3.18](yourbuddy-v0.3.18/README.md) | YourBuddy desktop | Included | Published workflow, five public attachments, stable updater metadata, duration, and retained native-install limits recorded | Published within the stated scope |
 | [yourbuddy-v0.3.17](yourbuddy-v0.3.17/README.md) | YourBuddy desktop | Included | Complete within stated limits; source, CI, public files, updater signature, App identity, product sources, relocated runtime, website, and downloadable archive recorded; native startup remains unverified | Published and independently verified within stated limits |
 | [yourbuddy-v0.3.16](yourbuddy-v0.3.16/README.md) | YourBuddy desktop | Included | Partial; source, assembled-browser, public files, updater signature, App identity, product source records, relocated runtime, website, and downloadable archive recorded; interaction recording pending | Published and independently verified within stated limits |
 | [yourbuddy-v0.3.15](yourbuddy-v0.3.15/README.md) | YourBuddy desktop | Included | Complete within stated limits; source, public files, updater signature, App identity, generated publisher modules, product source records, relocated runtime, website, and downloadable archive recorded | Published and independently verified within stated limits |
@@ -49,7 +49,7 @@ The YourBuddy product site points to GitHub's stable latest-release and release-
 
 ## Per-release archive
 
-Copy `docs/releases/_template/` to `docs/releases/<release-tag>/` before final validation. Keep `README.md`, `README.zh.md`, and their pairing record together; create `screenshots/` and `evidence/` only when they contain useful material.
+For YourBuddy, run `pnpm release:yourbuddy:prepare -- X.Y.Z` on a clean `master`; it updates the version sources and creates the bilingual archive, indexes, pairing records, and release-notes draft without network access. Replace every generated `TODO` before publication. Other channels copy `docs/releases/_template/` to `docs/releases/<release-tag>/`. Keep `README.md`, `README.zh.md`, and their pairing record together; create `screenshots/` and `evidence/` only when they contain useful material.
 
 ```text
 docs/releases/<release-tag>/

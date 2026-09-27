@@ -1,9 +1,8 @@
 /** @vitest-environment jsdom */
 /** Image loading, accessible controls, and ownership of the shared documentation viewer. */
-import assert from 'node:assert/strict'
 import type { PanzoomOptions } from '@panzoom/panzoom'
 import { getByRole, queryAllByRole, queryByRole, waitFor } from '@testing-library/dom'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ImageViewer } from '../.vitepress/theme/image-viewer.ts'
 import { MediaViewer } from '../.vitepress/theme/media-viewer.ts'
 import { installMermaidViewer, type MermaidViewer } from '../.vitepress/theme/mermaid-viewer.ts'

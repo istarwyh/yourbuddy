@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.18/README.md
 /yourbuddy-0-3-18:
-  en: f48d46ec47e73702
-  zh: 58a3c63bb47c970f
+  en: dcef0602e327c54a
+  zh: d2d7da1af2345c6e
 /yourbuddy-0-3-18/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -21,17 +21,17 @@
   en: 0580af11207cc4bb
   zh: 8bba2ca884d349d6
 /yourbuddy-0-3-18/user-release-notes/install-or-upgrade:
-  en: c9b0e264e50afe2b
-  zh: af4587ce0376228d
+  en: 14db97d80f0d4fb1
+  zh: 6ad05b6e79e63280
 /yourbuddy-0-3-18/user-release-notes/compatibility-migration-and-limitations:
   en: da45ad55a398e20a
   zh: eff28e7018ed0462
 /yourbuddy-0-3-18/verification-summary:
-  en: f3f023d18f84d6d0
-  zh: 10544364e3da6f6b
+  en: c05a60e930c4d15a
+  zh: 3d740a51ed219959
 /yourbuddy-0-3-18/scenario-shortened-publication-path:
-  en: 7516f4f3030f17e6
-  zh: 785057698aff9051
+  en: 3e1f57583e7f761e
+  zh: e60d7360a3001007
 /yourbuddy-0-3-18/scenario-shortened-publication-path/steps:
   en: dc50cd17c1c5fec7
   zh: 7cc772318ed738c1
@@ -39,17 +39,17 @@
   en: b0ef9317d30ba5f7
   zh: 12b0d72918d26293
 /yourbuddy-0-3-18/scenario-shortened-publication-path/actual:
-  en: e1c8aa5138c94302
-  zh: 18a7194400db60e0
+  en: a7f7a117f003f5a7
+  zh: 9da5fbce1ec5e543
 /yourbuddy-0-3-18/scenario-shortened-publication-path/evidence:
-  en: 729a95ecc8386584
-  zh: 7cb11d43b31fd6dc
+  en: 592ae48a9854099f
+  zh: cf6724a42da77293
 /yourbuddy-0-3-18/scenario-shortened-publication-path/scope-limits:
-  en: 0d0a62c189836e02
-  zh: 1a12d2d30d466456
+  en: 3d5506c18bc47a7e
+  zh: 1647acdb3ebd424b
 /yourbuddy-0-3-18/delivery-status:
-  en: 6c1d5bd91927c4eb
-  zh: 3a632e89a377d0a6
+  en: 64cbddbc7b7921aa
+  zh: 5d6d79d871bbd165
 /yourbuddy-0-3-18/delivery-checklist:
-  en: fee40f8870c1cf27
-  zh: 7f5a03da091e887a
+  en: 6d4aed61bd6e8059
+  zh: e95ffb06188f4f02

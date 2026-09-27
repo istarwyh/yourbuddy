@@ -87,7 +87,7 @@ export function verifyReleaseArchive(root, version, tag) {
     throw new Error(`docs/releases/${tag}/README.zh.md does not identify ${tag}`)
   }
   const templateMarkers = [
-    '<Describe', '<State', '<Record', '<Product', '<scenario>',
+    'TODO', '<Describe', '<State', '<Record', '<Product', '<scenario>',
     '<描述', '<说明', '<记录', '<产品名称>', '<场景>',
   ]
   for (const [name, text] of [['README.md', english], ['README.zh.md', chinese]]) {
@@ -105,6 +105,9 @@ export function verifyReleaseArchive(root, version, tag) {
     throw new Error(`docs/releases/README.zh.md is missing ${tag}`)
   }
   const notes = readFileSync(join(root, 'apps', 'desktop-tauri', 'release-notes.md'), 'utf8')
+  if (notes.includes('TODO')) {
+    throw new Error('apps/desktop-tauri/release-notes.md still contains template marker TODO')
+  }
   if (!notes.includes(`/tree/${tag}/docs/releases/${tag}`)) {
     throw new Error(`apps/desktop-tauri/release-notes.md is missing the ${tag} verification link`)
   }

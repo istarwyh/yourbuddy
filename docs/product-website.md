@@ -6,14 +6,14 @@ The website uses [OINK](https://oink.pgsty.com/docs/start/starter/) 1.0.0 and Hu
 
 ## Run locally
 
-Install Node 22.19+, the repository's pnpm version, Go 1.27.x, and Hugo Extended 0.165.0. Install repository dependencies, then start the website:
+Install Node 22.19+, the repository's pnpm version, and Go 1.27.x. Install repository dependencies, then start the website:
 
 ```sh
 pnpm install
 pnpm website:dev
 ```
 
-Open `http://localhost:4174/`. Prose edits trigger projection; Hugo refreshes home data and styles automatically. If tools are outside PATH, select Hugo with `HUGO_BIN` and add the Go directory to PATH.
+Open `http://localhost:4174/`. The first product-site command obtains the pinned Hugo Extended 0.165.0 through pnpm when PATH has no matching executable; `HUGO_BIN` selects an explicit executable instead. Prose edits trigger projection, and Hugo refreshes home data and styles automatically.
 
 ## Edit content
 

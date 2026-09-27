@@ -23,6 +23,28 @@ function parseManifest(input: unknown): ProductPage[] {
 }
 const repository = 'https://github.com/istarwyh/yourbuddy'
 const root = resolve(import.meta.dirname, '..')
+const HUGO_VERSION = '0.165.0'
+const HUGO_VERSION_PATTERN = /v0\.165\.0(?:-[\da-f]+)?\+extended\b/
+
+interface HugoCommand { executable: string; prefix: string[] }
+
+function resolveHugoCommand(): HugoCommand {
+  const configured = process.env.HUGO_BIN
+  const candidates: HugoCommand[] = configured === undefined
+    ? [
+      { executable: 'hugo', prefix: [] },
+      {
+        executable: process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
+        prefix: [`--package=hugo-extended@${HUGO_VERSION}`, 'dlx', 'hugo'],
+      },
+    ]
+    : [{ executable: configured, prefix: [] }]
+  for (const candidate of candidates) {
+    const version = spawnSync(candidate.executable, [...candidate.prefix, 'version'], { encoding: 'utf8' })
+    if (version.status === 0 && HUGO_VERSION_PATTERN.test(version.stdout)) return candidate
+  }
+  throw new Error(`Product site requires Hugo Extended ${HUGO_VERSION}; HUGO_BIN may select the executable.`)
+}
 
 /**
  * Build bilingual Hugo input from the product allowlist; reject missing or ambiguous pages.
@@ -99,16 +121,12 @@ async function main(): Promise<void> {
   const mode = process.argv[2] ?? 'build'
   if (!['build', 'dev'].includes(mode)) throw new Error(`Unknown product site mode: ${mode}`)
   const baseURL = process.env.PRODUCT_SITE_BASE_URL ?? 'http://localhost:4174/'
-  const hugo = process.env.HUGO_BIN ?? 'hugo'
-  const version = spawnSync(hugo, ['version'], { encoding: 'utf8' })
-  if (version.error !== undefined || version.status !== 0 || !/v0\.165\.0(?:-[\da-f]+)?\+extended\b/.test(version.stdout)) {
-    throw new Error('Install Hugo Extended 0.165.0 and Go 1.27.x; HUGO_BIN may select the Hugo executable.')
-  }
+  const hugo = resolveHugoCommand()
   console.log(`Projected ${projectProductSite(root, baseURL)} YourBuddy pages`)
   const args = ['--baseURL', baseURL, '--panicOnWarning', '--cleanDestinationDir']
   if (mode === 'dev') args.unshift('server', '--bind', '127.0.0.1', '--port', '4174', '--disableFastRender')
   else args.push('--minify')
-  const child = spawn(hugo, args, { cwd: resolve(root, 'website/product'), stdio: 'inherit' })
+  const child = spawn(hugo.executable, [...hugo.prefix, ...args], { cwd: resolve(root, 'website/product'), stdio: 'inherit' })
   const watchers = mode === 'dev' ? [
     watch(resolve(root, 'docs/user'), { recursive: true }, changed),
     watch(resolve(root, 'website/product-pages.json'), changed),

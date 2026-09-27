@@ -59,7 +59,7 @@ Managed product paths must be clean by default. `pnpm --dir apps/desktop-tauri r
 
 Tagged CI and ordinary `prepare:dist` or `build` commands never mutate or re-resolve upstream inputs. The tag workflow consumes only that tag's committed snapshots and frozen lockfile. Manual workflow dispatch may retry an existing unpublished tag after a failed run. The workflow refuses any tag that already has a GitHub Release, so correcting published bytes requires a new version instead of replacing an installer.
 
-After the release inputs, version archive, and targeted change checks are committed, `pnpm release:yourbuddy -- X.Y.Z` validates only the version archive and Git state; it does not repeat tests, release preparation, documentation checks, or the website build already completed before the push. It requires a clean `master` that fast-forwards `origin/master`, rejects an existing remote tag, creates or reuses only a same-commit annotated tag, and atomically pushes `master` with `yourbuddy-vX.Y.Z`. The tag workflow remains the only publisher of desktop artifacts.
+On a clean `master`, `pnpm release:yourbuddy:prepare -- X.Y.Z` updates every desktop version source, creates the bilingual release archive and index entries, records their pairing files, and writes a release-notes draft without network access. Replace every generated `TODO`, re-record the changed pair, review, and commit. `pnpm release:yourbuddy -- X.Y.Z` then validates only the committed version archive and Git state; it does not repeat tests, product refresh, documentation checks, or the website build. It requires `master` to fast-forward `origin/master`, rejects an existing remote tag, creates or reuses only a same-commit annotated tag, and atomically pushes the branch and tag. The tag workflow remains the only publisher of desktop artifacts.
 
 ## Release documentation and website
 
@@ -81,6 +81,7 @@ pnpm --dir apps/desktop-tauri run sync:dsh -- --dry-run
 pnpm --dir apps/desktop-tauri run prepare:release
 pnpm --dir apps/desktop-tauri run prepare:product-runtime
 pnpm --dir apps/desktop-tauri run build
+pnpm release:yourbuddy:prepare -- X.Y.Z
 pnpm release:yourbuddy -- X.Y.Z
 ```
 

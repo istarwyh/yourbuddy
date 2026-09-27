@@ -84,8 +84,14 @@ test('verifyReleaseArchive requires the bilingual archive, indexes, and immutabl
     )
 
     assert.doesNotThrow(() => verifyReleaseArchive(root, '0.3.16', tag))
-    writeFileSync(join(archive, 'README.md'), `# YourBuddy 0.3.16\n\n<Describe the user-visible change.>\n\`${tag}\`\n`)
-    assert.throws(() => verifyReleaseArchive(root, '0.3.16', tag), /template marker/u)
+    writeFileSync(join(archive, 'README.md'), `# YourBuddy 0.3.16\n\nTODO: complete this draft.\n\`${tag}\`\n`)
+    assert.throws(() => verifyReleaseArchive(root, '0.3.16', tag), /template marker TODO/u)
+    writeFileSync(join(archive, 'README.md'), `# YourBuddy 0.3.16\n\n- Release identifier: \`${tag}\`\n`)
+    writeFileSync(
+      join(root, 'apps', 'desktop-tauri', 'release-notes.md'),
+      `TODO: replace me\nhttps://github.com/istarwyh/yourbuddy/tree/${tag}/docs/releases/${tag}\n`,
+    )
+    assert.throws(() => verifyReleaseArchive(root, '0.3.16', tag), /release-notes\.md still contains template marker TODO/u)
   }
   finally {
     rmSync(root, { recursive: true, force: true })

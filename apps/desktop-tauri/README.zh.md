@@ -59,7 +59,7 @@ DSH 策略选择最高的官方正式 Release；仅在没有正式 Release 时�
 
 Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析上游输入。Tag 流水线只消费该 Tag 已提交的快照与冻结 Lockfile。手工 Workflow Dispatch 只用于在失败后重试尚未发布的已有 Tag。若该 Tag 已经存在 GitHub Release，流水线会拒绝继续，因此修正已发布字节时必须发布新版本，不能替换安装包。
 
-发布输入、版本归档与针对性变更检查完成并提交后，`pnpm release:yourbuddy -- X.Y.Z` 只校验版本归档与 Git 状态，不重复运行已经在推送前完成的测试、发布准备、文档检查或官网构建。它要求干净的 `master` 能快进 `origin/master`，拒绝已经存在的远端 Tag，只创建或复用指向同一 Commit 的 Annotated Tag，并把 `master` 与 `yourbuddy-vX.Y.Z` 原子推送。桌面产物仍只由 Tag Workflow 发布。
+在干净的 `master` 上运行 `pnpm release:yourbuddy:prepare -- X.Y.Z`，会在不联网的情况下更新全部桌面版本源、创建双语发布归档和索引条目、记录配对文件，并写入发布说明草稿。替换全部自动生成的 `TODO`，重新记录变更配对，检查并提交。随后，`pnpm release:yourbuddy -- X.Y.Z` 只校验已提交的版本归档与 Git 状态，不重复测试、产品刷新、文档检查或官网构建。它要求 `master` 能快进 `origin/master`，拒绝已有远端 Tag，只创建或复用指向同一 Commit 的 Annotated Tag，并原子推送分支与 Tag。桌面产物仍只由 Tag Workflow 发布。
 
 ## 发布文档与官网
 
@@ -81,6 +81,7 @@ pnpm --dir apps/desktop-tauri run sync:dsh -- --dry-run
 pnpm --dir apps/desktop-tauri run prepare:release
 pnpm --dir apps/desktop-tauri run prepare:product-runtime
 pnpm --dir apps/desktop-tauri run build
+pnpm release:yourbuddy:prepare -- X.Y.Z
 pnpm release:yourbuddy -- X.Y.Z
 ```
 

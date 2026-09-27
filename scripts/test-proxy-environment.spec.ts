@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { globSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { PROXY_ENV_NAMES } from '../packages/util/http-proxy/src/policy.ts'
-import { clearAmbientProxyEnv, TEST_PROXY_SETUP_FILE, vitestConfigFiles } from './test-proxy-environment.ts'
+import { clearAmbientProxyEnv, TEST_PROXY_SETUP_FILE } from './test-proxy-environment.ts'
 
 describe('ambient proxy environment', () => {
   it('clears every name the policy resolver reads, in both casings', () => {
@@ -26,8 +27,9 @@ describe('ambient proxy environment', () => {
   // A runtime assertion that this process is clear would pass either way: importing the module
   // above already ran it. What can actually regress is the wiring — a new Vitest project, or a
   // config that lists only the invariant host — so that is what this pins.
-  const declared = vitestConfigFiles()
-    .map(config => ({ config, slots: readFileSync(config, 'utf8').match(/setupFiles: \[[^\]]*\]/g) ?? [] }))
+  const repositoryRoot = resolve(import.meta.dirname, '..')
+  const declared = globSync('vitest*.ts', { cwd: repositoryRoot }).sort()
+    .map(config => ({ config, slots: readFileSync(resolve(repositoryRoot, config), 'utf8').match(/setupFiles: \[[^\]]*\]/g) ?? [] }))
     .filter(entry => entry.slots.length > 0)
 
   it('finds the configurations that declare a setup at all', () => {
