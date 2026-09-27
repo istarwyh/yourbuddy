@@ -2,96 +2,14 @@
 
 [English](releases.md) | 中文
 
-一次发行需要可用产物，以及与之对应的用户说明和验证证据。
+YourBuddy 通过 GitHub Releases 发布不可变的桌面版本。当前版本入口与下载产物由 GitHub 管理，因此本官网不再重复维护版本列表。
 
-## YourBuddy
+## 当前版本
 
-### 0.3.17 — 2026-09-26
+打开 [YourBuddy 最新 Release](https://github.com/istarwyh/yourbuddy/releases/latest)，查看版本号、发布说明、macOS Apple Silicon DMG、校验和、带签名的 Updater 归档与更新 Manifest。
 
-YourBuddy 0.3.17 修复桌面启动与当前 DSH Web 身份认证重定向的兼容问题，并移除桌面端重复的 URL、Cookie 属性与写入后检查。产品首页现在会直接展示由任务塑造的个人工作台。公开产物完整性、Updater 元数据与签名、App 标识、产品来源记录、生成的发布器运行时模块与迁移运行时通过独立检查。由于用户自己的 YourBuddy 实例正在运行，本次没有执行原生启动；安装包 WebView 交互、从旧版本实际更新、Apple Developer 签名与公证仍未验证。
+## 历史版本与证据
 
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.17) · [验证记录](../../releases/yourbuddy-v0.3.17/README.zh.md) · [下载页](download.zh.md)
+[全部 GitHub Releases](https://github.com/istarwyh/yourbuddy/releases)保留可下载版本。仓库中的不可变[发布归档](../../releases/README.zh.md)保留各版本的证据与已知限制。构建成功本身不能证明原生启动、Updater 安装、Apple Developer 签名或公证；这些结果以所选版本的记录为准。
 
-### 0.3.16 — 2026-09-26
-
-YourBuddy 0.3.16 让工作台、创作者 Content 与当前 Session 协同切换，同时保留各自状态。Conversation 与原生右侧栏作为一个 Session 区域一起收起；Agent 后台打开不再替换可见的创作者 Content；新建 Session 默认使用 Full access；Oil Creator 会校验草稿输入并保护最终发表与定时操作。公开产物完整性、Updater 元数据与签名、App 标识、产品来源记录、生成的发布器运行时模块与迁移运行时通过独立检查。精确 Commit 的交互录制、原生启动、安装包 WebView 交互、从旧版本实际更新、真实创作者账号、最终发表与 Apple 公证仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.16) · [验证记录](../../releases/yourbuddy-v0.3.16/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.15 — 2026-09-23
-
-YourBuddy 0.3.15 在内置的**内容创作** Agent Preset 中提供创作者发布能力。Oil Creator 内置维护中的视频发布、视频转文章与微信公众号发布 Skills；`oil_prepare_publish` 可以为小红书、抖音、B站、视频号和微信公众号草稿箱准备草稿，同时保留用户的最终发表检查点。公开产物完整性、Updater 元数据与签名、App 标识、生成的发布器运行时模块、产品来源记录、迁移运行时与可下载验证归档通过独立检查。原生启动、安装包 WebView 交互、从旧版本实际更新、真实创作者账号、最终发表与 Apple 公证仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.15) · [验证记录](../../releases/yourbuddy-v0.3.15/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.12 — 2026-09-22
-
-YourBuddy 0.3.12 通过保留已经解析的 Trial 路径，修复 Host 模式中的 Harbor Historical Session 评测。本版本内置配套一致的 Harbor Evolution 0.9.8 Plugin 与 Python Adapter，同时保留 DSH 0.1.5-rc.2、Oil Creator 与**内容创作** Agent Preset。验证归档记录公开产物完整性、Updater 元数据与签名、App 标识、产品来源记录、迁移运行时及安装包 Historical Session Adapter。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth、可选创作集成与真实模型评分仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.12) · [验证记录](../../releases/yourbuddy-v0.3.12/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.11 — 2026-09-21
-
-YourBuddy 0.3.11 默认加入 Oil Creator 本地内容工作台，并新增可选的**内容创作** Agent Preset，同时保留最新可用 DSH Release 0.1.5-rc.2。五个带版本号的公开产物均已匿名下载并完成核验，稳定更新清单与版本化清单一致，Updater 签名通过密码学验证，DMG 与 Updater 中的 App 文件树完全一致。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth、可选创作集成与真实模型流量仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.11) · [验证记录](../../releases/yourbuddy-v0.3.11/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.10 — 2026-09-20
-
-YourBuddy 0.3.10 让 Better Sidebar 文件树与右键菜单动作在所属 Session 中打开，并让内嵌浏览器默认渲染普通网站；受限 iframe 沙箱仍可作为显式设置启用。五个带版本号的公开产物均已匿名下载并完成核验，稳定更新清单与版本化清单一致，Updater 签名通过密码学验证，DMG 与 Updater 中的 App 文件树完全一致。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.10) · [验证记录](../../releases/yourbuddy-v0.3.10/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.9 — 2026-09-20
-
-YourBuddy 0.3.9 修复了旧会话把 Dock 状态保留为折叠时 Better Sidebar 主工作区空白的问题，并适配当前模型选择器 API，恢复 GPT Auth 模型加载。五个带版本号的公开产物均已匿名下载并完成核验，稳定更新清单与版本化清单一致，Updater 签名通过密码学验证，DMG 与 Updater 中的 App 文件树完全一致。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.9) · [工作台截图](../../releases/yourbuddy-v0.3.9/screenshots/workbench-primary.png) · [验证记录](../../releases/yourbuddy-v0.3.9/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.8 — 2026-09-20
-
-YourBuddy 0.3.8 将桌面运行时同步至 DSH 0.1.5-rc.2，并内置 Better Sidebar 0.19.1、Harbor Evolution 0.9.7、Plugin Marketplace 0.3.3 与 Context Doctor 0.7.2。Better Sidebar 使用 DSH 原生右侧栏，同时保留主工作区、可调分隔、抽屉、底部工作区、链接、终端与媒体行为。Marketplace 一键安装要求 npm 包明确关联所选代码仓库，并声明 DSH Bundle 补丁。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、产品来源记录 和迁移运行时通过检查。原生启动、安装包 WebView 交互、从旧版本实际更新、OAuth 与真实模型流量仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.8) · [验证记录](../../releases/yourbuddy-v0.3.8/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.7 — 2026-09-19
-
-YourBuddy 0.3.7 把 Better Sidebar 设为可伸缩的桌面主工作区，同时保留 DSH 对话、导航、详情、标签页、文件、任务、终端、预览、浮动窗口与底部工作区。工作区与对话区之间可以拖动调整宽度；窄窗口仍以对话区为主，并使用原有抽屉。两处兼容修改均保存为可重放且带哈希的 来源记录补丁，而在 YourBuddy 之外 Better Sidebar 仍保持上游 Portal 默认方式。五个公开产物均已匿名下载并完成核验，Updater 签名通过密码学验证，公开 App 的标识、来源元数据和迁移运行时通过检查。由于用户自己的 YourBuddy 实例阻止隔离启动，原生启动、安装包 WebView 交互以及从旧版本实际更新仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.7) · [工作台截图](../../releases/yourbuddy-v0.3.7/screenshots/workbench-primary.png) · [验证记录](../../releases/yourbuddy-v0.3.7/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.6 — 2026-09-10
-
-YourBuddy 0.3.6 让企业代理与自定义 CA 设置在原生桌面客户端和所有托管运行时中保持一致。设置中显式选择的 CA 优先于启动环境继承值与系统信任；保存或重启前，原生与新内置 Node 测试必须全部通过。五个公开附件均已匿名下载核验，Updater 签名通过密码学验证，公开 App 的标识、内置 CA 来源元数据与迁移运行时通过检查。由于已有用户持有的 YourBuddy 实例妨碍隔离启动，原生启动、安装包 WebView 控制项、从旧版升级与真实企业流量仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.6) · [验证记录](../../releases/yourbuddy-v0.3.6/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.5 — 2026-09-08
-
-YourBuddy 0.3.5 恢复了被桌面权限层拒绝的网络、生命周期、更新、外部链接与插件市场控制项。即使存在冲突的全局 `codexhost-delegation` Skill，Codex Preset 委派也会使用内置 `subagent_codex` 路径。五个公开附件均已匿名完整下载检查，更新签名通过密码学验证，公开 App 的标识、内置修复与迁移运行时通过检查。由于已有用户持有的旧版实例妨碍隔离启动，原生启动、安装包 WebView 控制项、从 0.3.4 升级、OAuth 与真实供应商调用仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.5) · [验证记录](../../releases/yourbuddy-v0.3.5/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.4 — 2026-09-07
-
-YourBuddy 0.3.4 新增普通消息附带页面，以及找回未发送消息。在 Harbor 中，无需手动附加引用，就能询问当前 Trial 或勾选行；显式引用优先。公开 App 内含配套 Harbor JavaScript／Python 适配器 0.9.4。五个附件均已独立完整下载检查，更新签名已通过密码学验证，原样 App 副本已使用隔离数据完成 Host 认证就绪与启动。窗口可视化检查／截图、从已有安装执行更新、OAuth 与真实模型调用仍未验证。图集中的七张图是使用合成数据的历史源码截图，不是正式安装后应用截图。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.4) · [验证记录](../../releases/yourbuddy-v0.3.4/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.3 — 2026-09-07
-
-YourBuddy 0.3.3 修复了已安装 macOS 应用的本地 Host 认证。原生启动在打开同 Site 工作台 Shell 前完成一次性交换，因此 macOS WebKit 可以使用严格的会话 Cookie，而无需向 Renderer 暴露进程 Token。公开 DMG、Updater 归档、签名、校验和与稳定 Manifest 已独立下载检查；发布版应用已使用隔离数据完成 Host 认证就绪与启动。窗口可视化截图、从旧安装版执行更新、OAuth 与真实模型调用仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.3) · [验证记录](../../releases/yourbuddy-v0.3.3/README.zh.md) · [下载页](download.zh.md)
-
-### 0.3.2 — 2026-09-06
-
-YourBuddy 0.3.2 新增应用内帮助，并强化私有 Host 的认证启动。macOS Apple Silicon 文件仍然公开，并曾完成独立检查，但安装后的应用后来复现了 `dsh web authentication required`；请在 0.3.3 发布后使用新版本。App 使用 ad-hoc 签名，尚未使用 Apple Developer 身份完成签名和公证；安装后的交互式帮助、真实 OAuth/模型调用与企业代理/CA 路径仍未验证。
-
-[Release 与下载](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.2) · [不可变验证记录](https://github.com/istarwyh/yourbuddy/tree/27183fd9c14ae5c10fb86694a045358428569756/docs/releases/yourbuddy-v0.3.2) · [下载页](download.zh.md)
-
-## 每个版本会说明什么
-
-版本页说明用户可以完成的工作、精确版本和产物、已知限制，以及实际执行的安装或使用验证。失败、跳过与未验证路径保留可见；构建成功本身不等于已经发布。
-
-[GitHub Releases](https://github.com/istarwyh/yourbuddy/releases)保存下载产物，仓库[发布记录](../../releases/README.zh.md)定义配套证据。旧品牌发行保留为历史记录，不作为新品牌可用性声明。
+继续前往[下载页](download.zh.md)或[首次使用](start.zh.md)。

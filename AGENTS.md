@@ -74,7 +74,7 @@ Before pushing, follow [dsh-pre-push-checks](.agents/skills/dsh-pre-push-checks/
 
 ## Release delivery
 
-Every published tag includes user-facing notes and an honest verification archive under [`docs/releases/<release-tag>/`](docs/releases/README.md), using the [version template](docs/releases/_template/README.md). YourBuddy releases also synchronize the [product website](docs/product-website.md#release-synchronization) through [dsh-doc](.agents/skills/dsh-doc/SKILL.md). Report product publication, archive status, website synchronization, and unverified scope separately; CI success alone never proves publication.
+Every published tag includes user-facing notes and an honest verification archive under [`docs/releases/<release-tag>/`](docs/releases/README.md), using the [version template](docs/releases/_template/README.md). YourBuddy's website uses stable GitHub Release URLs and needs [website synchronization](docs/product-website.md#release-synchronization) through [dsh-doc](.agents/skills/dsh-doc/SKILL.md) only when product guidance changes. Report product publication, archive status, website status, and unverified scope separately; CI success alone never proves publication.
 
 ## Secrets / .env
 

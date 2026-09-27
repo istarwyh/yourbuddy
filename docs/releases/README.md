@@ -45,7 +45,7 @@ The channel owners remain authoritative for versions, commands, and publication.
 
 A channel that is not part of a release is marked not applicable in that version page. Do not run unrelated release families to make the archive appear complete.
 
-Every YourBuddy desktop release includes [product website synchronization](../product-website.md#release-synchronization). Prepare content before tagging, then publish verified availability after checking the public assets. The product website and SDK documentation use separate workflows; neither is evidence that the desktop installer is available.
+The YourBuddy product site points to GitHub's stable latest-release and release-history URLs, so an ordinary desktop release does not require a website commit or deployment. Update the site only when product guidance changes; the website and SDK documentation workflows remain separate from desktop artifact publication.
 
 ## Per-release archive
 

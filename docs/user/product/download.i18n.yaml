@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/download.md
 /get-yourbuddy:
-  en: e564c210f72ccd90
-  zh: dd20fc1e8a375e32
-/get-yourbuddy/yourbuddy-installer:
-  en: 795e10f067acf84e
-  zh: 70e44329a96ba281
+  en: cefd522c9c66da53
+  zh: 78974adb5a411296
+/get-yourbuddy/download-the-latest-release:
+  en: 7e5d9b02debeac63
+  zh: 8c8bdc3c5f2da567
 /get-yourbuddy/what-the-desktop-carries:
   en: 7c0fca329ec142f7
   zh: 909dcf3b42395644
-/get-yourbuddy/updates-and-verification:
-  en: b69d7d3775774ebd
-  zh: 4dcca0f71cda54bc
+/get-yourbuddy/installation-limits:
+  en: cc180a01ff5d95bf
+  zh: f74abf6531494d42

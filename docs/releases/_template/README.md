@@ -103,6 +103,6 @@ Copy this directory to `docs/releases/<release-tag>/`, replace every placeholder
 - [ ] The actual product destination was checked independently of CI and temporary workflow artifacts.
 - [ ] Desktop shell origin, capability, permission, or command changes include real Tauri Runtime Authority evidence and packaged WebView exercise of every affected control; JavaScript invoke stubs are labelled bridge-only.
 - [ ] Published filenames, versions, hashes, registry metadata, updater metadata, and installed behavior are recorded as applicable.
-- [ ] For YourBuddy, [release website synchronization](../../product-website.md#release-synchronization) covers both languages, actual download links, affected guides and plugins, and the observed live deployment; unrelated channels are marked not applicable.
+- [ ] For YourBuddy, the stable latest-release link resolves; [website synchronization](../../product-website.md#release-synchronization) covers both languages only when product guidance changes, otherwise it is marked not applicable.
 - [ ] Product publication status, verification archive status, website synchronization, and unverified scope are reported separately.
 - [ ] Public tags and installers were not moved or overwritten; corrections use a new version.

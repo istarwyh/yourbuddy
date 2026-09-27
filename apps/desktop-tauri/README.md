@@ -63,7 +63,7 @@ After the release inputs, version archive, and targeted change checks are commit
 
 ## Release documentation and website
 
-Use [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md) to prepare the [version archive](../../docs/releases/README.md) with each release. After verifying the public desktop assets, complete [product website synchronization](../../docs/product-website.md#release-synchronization) and record its deployment and live checks separately from installer publication. A website failure leaves the desktop release intact and remains an outstanding delivery item.
+Use [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md) to prepare the [version archive](../../docs/releases/README.md) with each release. The product site's download and release pages use GitHub's stable `releases/latest` and release-history URLs, so an ordinary desktop release requires no follow-up website edit or deployment. Update and deploy the website only when product guidance or other site content changes.
 
 ## Commands
 

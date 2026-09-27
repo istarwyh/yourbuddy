@@ -63,7 +63,7 @@ Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析�
 
 ## 发布文档与官网
 
-每次发布使用 [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md)准备[版本归档](../../docs/releases/README.zh.md)。核验公开桌面产物后，完成[产品官网同步](../../docs/product-website.zh.md#release-synchronization)，并将官网部署与线上检查独立于安装包发布记录。官网失败不影响已发布的桌面产物，但仍是待完成交付项。
+每次发布使用 [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md)准备[版本归档](../../docs/releases/README.zh.md)。产品官网的下载页和发行页使用 GitHub 稳定的 `releases/latest` 与 Release 历史 URL，因此普通桌面发布不需要后续修改或部署官网。只有产品指南或其他站点内容发生变化时才更新并部署官网。
 
 ## 命令
 

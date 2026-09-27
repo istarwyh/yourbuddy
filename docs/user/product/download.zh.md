@@ -2,22 +2,20 @@
 
 [English](download.md) | 中文
 
-桌面目标为 macOS Apple Silicon。YourBuddy 0.3.17 是当前已核验的公开版本：完整文件、Updater 签名、App 标识、内置产品资源、产品来源记录与迁移运行时通过独立检查。原生启动与安装包 WebView 交互仍未验证。
+YourBuddy 当前适用于 Apple Silicon 上的 macOS 11 或更高版本。
 
-## YourBuddy 安装包
+## 下载最新版本
 
-下载 [macOS Apple Silicon 版 YourBuddy 0.3.17](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.17/yourbuddy-0.3.17-macos-arm64.dmg)。独立下载的完整文件为 686,380,951 字节，SHA-256 为 `7b981f76578b9edcec7deb09576c64d23b2eb9ef93abf1c01faf81f1f53627d7`，与 GitHub 发布摘要及公开校验和一致。
+打开 [YourBuddy 最新 Release](https://github.com/istarwyh/yourbuddy/releases/latest)，在 **Assets** 中下载 macOS Apple Silicon DMG。GitHub 会让这个 URL 始终指向最新公开 Release，因此本页不需要在每次发布后修改版本链接。
 
-0.3.17 修复桌面启动与当前 DSH Web 身份认证重定向的兼容问题，并移除桌面端重复的 URL、Cookie 属性与写入后检查。产品首页现在会直接展示由任务塑造的个人工作台。该版本内置 DSH 0.1.7-rc.2、Oil Creator 0.1.0、Better Sidebar 0.21.1、Codex Auth 0.3.2、Harbor Evolution 0.10.1、Plugin Marketplace 0.3.6 与 Context Doctor 0.7.2。产品来源记录、全部生成的发布器运行时模块，以及迁移复制后的 Python 3.12.14 / Harbor 0.21.0 运行时通过独立检查。由于用户自己的 YourBuddy 实例正在运行，本次没有执行原生启动；安装包 WebView 操作与从已有安装执行更新仍未验证。
-
-[查看 0.3.17 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.17)、[下载校验和](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.17/SHA256SUMS.txt)、阅读[验证记录](../../releases/yourbuddy-v0.3.17/README.zh.md)、[下载验证归档](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.3.17/yourbuddy-v0.3.17-verification.zip)，或按[源码构建说明](../../../README.zh.md#run-from-source)运行。旧 XiaoHui 产物保留原名称，不作为 YourBuddy 下载展示。
+旧版应用也可以使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。正常升级会保留现有 YourBuddy 数据。
 
 ## 桌面包包含什么
 
 默认插件、托管的 Node 与 pnpm 资源、Harbor Python 运行时随包提供。模型访问、在线服务网络以及需要容器的评测流程所用 Docker 仍需准备。目前不支持 Windows、Linux 或 Intel Mac 安装包。
 
-## 更新与验证
+## 安装限制
 
-0.3.17 Release 提供安装包、SHA-256 校验和、Tauri Updater 包、签名文件与验证记录。稳定更新元数据与版本化清单相同；已使用正式 Tag 配置中的公钥，独立验证更新包的预哈希 Minisign 签名及受信注释。DMG 与 Updater 中的 App 文件树完全一致，安装包内的创作者发布器包含全部必需的生成运行时模块。已有安装可以使用**设置 → 通用设置 → 应用生命周期 → 检查更新**；从旧安装版实际执行更新仍未验证。Updater 签名与 Apple 应用签名相互独立：App 的严格代码签名检查通过，签名为 ad-hoc、没有 TeamIdentifier，但 Gatekeeper 拒绝。它未完成 Apple Developer 签名或公证，首次启动可能需要按文档执行 macOS 放行操作。
+YourBuddy 使用带签名的 Tauri Updater，但 macOS 应用尚未使用 Apple Developer 身份签名或公证。首次启动可能需要选择**隐私与安全性 → 仍要打开**。请查看所选 GitHub Release 及其不可变[发布归档](../../releases/README.zh.md)，了解对应版本的说明、校验和、证据与已知限制。
 
-继续查看[发行状态](releases.zh.md)与[首次使用](start.zh.md)。
+继续查看[发行状态](releases.zh.md)、[全部 GitHub Releases](https://github.com/istarwyh/yourbuddy/releases)与[首次使用](start.zh.md)。

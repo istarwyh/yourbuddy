@@ -31,6 +31,24 @@ function fixture(): string {
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
 
 describe('YourBuddy publication', () => {
+  it('keeps website release entry points independent of desktop versions', () => {
+    const repositoryRoot = resolve(import.meta.dirname, '..')
+    const productRoot = resolve(repositoryRoot, 'docs/user/product')
+    const download = ['download.md', 'download.zh.md'].map(path => readFileSync(resolve(productRoot, path), 'utf8'))
+    const releases = ['releases.md', 'releases.zh.md'].map(path => readFileSync(resolve(productRoot, path), 'utf8'))
+    const currentReleasePattern = /yourbuddy-v\d+\.\d+\.\d+|YourBuddy \d+\.\d+\.\d+/u
+
+    for (const page of [...download, ...releases]) {
+      expect(page).not.toMatch(currentReleasePattern)
+    }
+    for (const page of [...download, ...releases]) {
+      expect(page).toContain('https://github.com/istarwyh/yourbuddy/releases')
+    }
+    for (const page of download) {
+      expect(page).toContain('https://github.com/istarwyh/yourbuddy/releases/latest')
+    }
+  })
+
   it('maps both languages below a deployment subpath and preserves canonical source ownership', () => {
     const root = fixture()
     expect(projectProductSite(root, 'https://example.org/workbench/')).toBe(4)

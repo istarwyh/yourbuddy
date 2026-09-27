@@ -45,7 +45,7 @@
 
 当次发布未涉及的渠道在版本页中标记为不适用。不得为了让归档看似完整而运行无关发布家族。
 
-每次 YourBuddy 桌面发布都包含[产品官网同步](../product-website.zh.md#release-synchronization)。打 Tag 前准备内容，核验公开产物后再发布真实可用状态。产品官网与 SDK 文档使用不同工作流，两者都不能证明桌面安装包已经可用。
+YourBuddy 产品官网使用 GitHub 稳定的最新 Release 与 Release 历史 URL，因此普通桌面发布不需要官网 Commit 或部署。只有产品指南发生变化时才更新站点；产品官网与 SDK 文档工作流仍与桌面产物发布相互独立。
 
 ## 单版本归档
 
