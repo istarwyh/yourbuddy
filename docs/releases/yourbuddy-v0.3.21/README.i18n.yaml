@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.21/README.md
 /yourbuddy-0-3-21:
-  en: 35e8ba78ad40716a
-  zh: c3d3d7a6e192dca2
+  en: 97b45f1278e598ea
+  zh: 7cc89604e9d4b37c
 /yourbuddy-0-3-21/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -27,8 +27,8 @@
   en: 06703791ea87667e
   zh: 3bafd7bdf5cc7f4f
 /yourbuddy-0-3-21/verification-summary:
-  en: 103c500b0d028126
-  zh: 74be3a59ab6bfc0d
+  en: 0cd1e2c98ad1bf2e
+  zh: 236b5cf659d4380c
 /yourbuddy-0-3-21/scenario-headed-macos-ego-browser-runtime:
   en: 280915300bab1520
   zh: 5fee248289e7f547
@@ -39,8 +39,8 @@
   en: 4d39c2253852369b
   zh: a9ed21939e6239f0
 /yourbuddy-0-3-21/scenario-headed-macos-ego-browser-runtime/actual:
-  en: f6242482bb87f69b
-  zh: 45ed0b246a60d4c3
+  en: 4e18b02f2df28c85
+  zh: d4e544f5ee4410e6
 /yourbuddy-0-3-21/scenario-headed-macos-ego-browser-runtime/evidence:
   en: c351bff34f1902c4
   zh: 91da541adf15882b
@@ -48,8 +48,8 @@
   en: 04b521cbc81574cb
   zh: 6d2e269f3a3ade2b
 /yourbuddy-0-3-21/delivery-status:
-  en: cb141fdfe162a64f
-  zh: 8c654a5f3062122b
+  en: 49529faae118ac27
+  zh: 8e095a321812538f
 /yourbuddy-0-3-21/delivery-checklist:
-  en: 4f3c8ca035dc91e0
-  zh: 2f4336fc0588fdd4
+  en: 865adfff61c8fb4d
+  zh: 008f8268085ceea3
