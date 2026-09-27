@@ -41,6 +41,21 @@ function productVersion(directory) {
   return JSON.parse(readFileSync(join(desktopRoot, 'product', directory, 'package.json'), 'utf8')).version
 }
 
+test('Ego Browser keeps headed macOS launches on the native desktop', () => {
+  const root = join(desktopRoot, 'product', 'ego-browser')
+  const plugin = readFileSync(join(root, 'lib', 'index.js'), 'utf8')
+  const chrome = readFileSync(join(root, 'runtime', 'ego-linux', 'src', 'chrome.mjs'), 'utf8')
+  const cli = readFileSync(join(root, 'runtime', 'ego-linux', 'bin', 'ego-browser.mjs'), 'utf8')
+  const sdk = readFileSync(join(root, 'runtime', 'ego-browser', 'dist', 'out', 'index.js'))
+
+  assert.match(plugin, /\/Applications\/Google Chrome\.app\/Contents\/MacOS\/Google Chrome/u)
+  assert.match(plugin, /platform === "win32" \|\| platform === "darwin"/u)
+  assert.match(chrome, /process\.platform === "win32" \|\| process\.platform === "darwin"/u)
+  assert.match(chrome, /plan && process\.platform !== "darwin"/u)
+  assert.match(cli, /process\.platform === "darwin"/u)
+  assert.equal(createHash('sha256').update(sdk).digest('hex'), '2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751')
+})
+
 test('buildTrimmedWorkspaceYaml keeps upstream patch declarations verbatim', () => {
   const source = `packages:
   - vendor/*

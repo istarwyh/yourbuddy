@@ -2765,7 +2765,11 @@ const COMMON_CHROME_BINS = [
 	"/usr/bin/google-chrome",
 	"/usr/bin/chromium",
 	"/usr/bin/chromium-browser",
-	"/opt/google/chrome/google-chrome"
+	"/opt/google/chrome/google-chrome",
+	"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+	"/Applications/Chromium.app/Contents/MacOS/Chromium",
+	"/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+	"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
 ];
 /** Windows registry-free probe of the usual install dirs (no subprocess). */
 function windowsChromeCandidates() {
@@ -2839,7 +2843,7 @@ function resolveEgoEnv(cfg, { platform = process.platform, baseEnv = process.env
 	const configChrome = cfg?.chromePath;
 	if (env.EGO_LINUX_CHROME === void 0 && configChrome) env.EGO_LINUX_CHROME = configChrome;
 	if (env.EGO_LINUX_CHROME === void 0 && isPosixRoot(platform) && chrome) env.EGO_LINUX_CHROME = BUNDLED_WRAPPER;
-	if (env.EGO_LINUX_CHROME === void 0 && platform === "win32" && chrome) env.EGO_LINUX_CHROME = chrome;
+	if (env.EGO_LINUX_CHROME === void 0 && (platform === "win32" || platform === "darwin") && chrome) env.EGO_LINUX_CHROME = chrome;
 	if (env.EGO_LINUX_HEADLESS === void 0 && isHeadlessDetected(platform, env)) env.EGO_LINUX_HEADLESS = "1";
 	const configChromeArgs = cfg?.chromeArgs;
 	if (env.EGO_LINUX_EXTRA_ARGS === void 0 && typeof configChromeArgs === "string" && configChromeArgs.trim() !== "") env.EGO_LINUX_EXTRA_ARGS = configChromeArgs;

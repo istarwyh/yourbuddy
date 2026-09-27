@@ -13,6 +13,10 @@ const BINARY_CANDIDATES = [
   "chromium-browser",
   "brave-browser",
   "microsoft-edge",
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+  "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
 ].filter(Boolean);
 
 // Chrome writes the negotiated port here once the DevTools endpoint is live.
@@ -581,8 +585,9 @@ export async function ensureXDisplay({ ignoreEnvDisplay = false } = {}) {
   // directly (the v0.4.0 Windows adaptation). Returning a pseudo display keeps
   // the headed path alive without ever touching Xvfb (issue: post-merge cold
   // start failed with "no X display ... no Xvfb binary on PATH").
-  if (process.platform === "win32") {
-    return { display: process.env.DISPLAY || "win32-desktop", pid: null, launched: false };
+  if (process.platform === "win32" || process.platform === "darwin") {
+    const desktop = process.platform === "darwin" ? "macos-desktop" : "win32-desktop";
+    return { display: process.env.DISPLAY || desktop, pid: null, launched: false };
   }
   if (!ignoreEnvDisplay && (await displayUsable(process.env.DISPLAY))) {
     return { display: process.env.DISPLAY, pid: null, launched: false };
@@ -611,7 +616,7 @@ async function spawnAndAwait(binary, args, plan, lastError) {
     // Xvfb lives on a display number this process just chose, so the browser
     // must be told where to draw explicitly — the caller's environment may
     // still carry no DISPLAY at all.
-    env: plan ? { ...process.env, DISPLAY: plan.display } : process.env,
+    env: plan && process.platform !== "darwin" ? { ...process.env, DISPLAY: plan.display } : process.env,
   });
   child.unref();
   try {
@@ -708,7 +713,7 @@ async function launch({ headless }) {
   let result = await attempt(plan);
   let xvfb = plan?.launched ? plan : null;
 
-  if (!result && plan && !plan.launched) {
+  if (!result && plan && !plan.launched && process.platform !== "darwin") {
     // The environment display did not bring the browser up. Retry right away
     // on a virtual framebuffer — never hand the same broken display back.
     process.stderr.write(

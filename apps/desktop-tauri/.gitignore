@@ -1,5 +1,8 @@
 bundled/
 dist/
+!product/ego-browser/runtime/ego-browser/dist/
+!product/ego-browser/runtime/ego-browser/dist/out/
+!product/ego-browser/runtime/ego-browser/dist/out/index.js
 src-tauri/target/
 src-tauri/gen/
 src-tauri/icons/android/

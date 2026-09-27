@@ -21,7 +21,7 @@
 
 默认外部插件以经过检查的快照进入冻结 Workspace，不会在应用启动时通过 `dsh plugin add` 下载。如果命令使用用户的 `~/.dsh`，运行时 Git 安装会写入错误的主目录；它还会让冷启动依赖 GitHub 和本机构建，并允许可变分支在没有 YourBuddy 发版的情况下改变应用。内置依赖闭包保留离线启动，并把来源、兼容性 Metadata 与传递依赖解析固定到当前发行版。
 
-这种策略会把每个插件的打包文件和共享 Store 条目加入安装包，也让上游更新必须随 YourBuddy 发行。Ego Browser 贡献约 317 KB 的打包载荷，解压后约为 1.2 MB，其中不含 Chromium 和按需下载的可选 FFmpeg。每次更新 Ego Browser 或 Harness 都需要刷新来源记录、重新生成 Lockfile、验证兼容性并运行组装后的 Client Smoke。用户自行安装并启用的 Profile Bundle 会优先于名称唯一的内置 Fallback，因此仍可独立更新，但版本选择与兼容性也重新由用户负责。
+这种策略会把每个插件的打包文件和共享 Store 条目加入安装包，也让上游更新必须随 YourBuddy 发行。Ego Browser 贡献约 314 KB 的打包载荷，解压后约为 1.2 MB，其中包含按完整性固定的 SDK Runtime，但不含 Chromium 和按需下载的可选 FFmpeg。在 macOS 上，经过评审的兼容补丁会发现标准位置中的原生浏览器，并绕过 Linux X11/Xvfb 路径。每次更新 Ego Browser 或 Harness 都需要刷新来源记录、重新生成 Lockfile、验证兼容性并运行组装后的 Client Smoke。用户自行安装并启用的 Profile Bundle 会优先于名称唯一的内置 Fallback，因此仍可独立更新，但版本选择与兼容性也重新由用户负责。
 
 Bundle Generator 会从随附的 Standard 组成派生一个 ID 为 `codex`、显示名为 **Codex** 的系统 Agent Preset，只启用其中已有的 `subagent_codex` 配置项，并保持其他随附 Preset 不变。桌面 Overlay 将 Codex 设为基础默认值，因此全新 Profile 以及没有显式选择 Preset 的新 Session 可以立即委派；用户明确选择的默认 Preset 仍然优先，已有 Session 继续使用启动时记录的组成。即使用户全局安装了 `codexhost-delegation` skill，Overlay 也会阻止模型自主路由到它，让普通 Codex 委派始终使用 Preset 原生、可追踪的 `subagent_codex` 工具；用户仍可通过显式输入 `/codexhost-delegation` 选择外部路径。加载 Provider 不会启动 Codex 进程。原生委派会在 Session Workspace 内启动 Package 自带的官方 Codex Runtime，并使用原生 Codex 配置和登录状态，而不是把凭据复制到 YourBuddy Settings。
 

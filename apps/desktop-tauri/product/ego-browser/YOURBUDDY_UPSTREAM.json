@@ -15,9 +15,27 @@
     "Set @deepseek-ai/dsh-client-ui-settings-plugins peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-ui-slots peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-settings peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-tools peer range from >=0.1.2-rc.1 to 0.1.7-rc.2."
+    "Set @deepseek-ai/dsh-tools peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
+    {
+      "id": "ego-browser-macos-runtime",
+      "file": "patches/ego-browser-macos-runtime.patch",
+      "sha256": "53f30a4fcf94aab0a56b5dcaedba702097cba0631756d984c9e72233a3632ee3",
+      "purpose": "Run the vendored Ego Browser host on the native macOS desktop and restore its pinned SDK runtime."
+    }
+  ],
+  "runtimeArtifacts": [
+    {
+      "package": "ego-browser-v2",
+      "version": "0.1.1",
+      "source": "https://registry.npmjs.org/ego-browser-v2/-/ego-browser-v2-0.1.1.tgz",
+      "integrity": "sha512-BUTBrSbsbagzqlFDH05W0c2eaa3DMiUL3yHY3ESSlpSRw8KAZUJ6pR9Y5vV59QcApaXHXzy1w+6zH9nuk3VCsA==",
+      "archiveSha256": "fd3190b6c89a82526a00c3b920cd383a2a8a98d123125efa1b53a20ef7897ad4",
+      "file": "runtime/ego-browser/dist/out/index.js",
+      "fileSha256": "2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751",
+      "license": "MIT"
+    }
   ],
   "repository": "https://github.com/Fisfzy/dsh-ego-browser",
   "license": "MIT",
-  "treeSha256": "dc8203c572c5a2736653f352b8d971301dfdc8c51e0941a37e104ff5cfb3e928"
+  "treeSha256": "cb66f8c0013a62f494c4e9e3f2e66c43c76311e7181448c0aefad3dc711c01d9"
 }
