@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for ego-browser.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/user/product/plugins/ego-browser.md
+/ego-browser:
+  en: 67e62e047e56e06f
+  zh: cdce2405781d0f5b
+/ego-browser/problem-addressed:
+  en: 9c4da08d71b47bb1
+  zh: c27ac70c8218a82b
+/ego-browser/usage:
+  en: 7f30114c52760c27
+  zh: b1e01c332613757b
+/ego-browser/reason-for-default-inclusion:
+  en: cd330c1ed51dfa18
+  zh: c071c86009fdac5f
+/ego-browser/delivery-choice-and-trade-offs:
+  en: 79a31a9404e56ee9
+  zh: 4d9baf6df0b5b2ad
+/ego-browser/limits:
+  en: 7d806b8b9d49f62f
+  zh: e50b89e97122b361

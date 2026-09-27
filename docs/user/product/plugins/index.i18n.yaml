@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/index.md
 /the-default-plugin-composition:
-  en: 9bc4c1bdcb4bbf26
-  zh: eff70791e3ef18d1
+  en: a6cabfeae90cfbb3
+  zh: 1668e1fb6d8da74f
 /the-default-plugin-composition/first-party-and-upstream-contributions:
   en: 9f5dd12b660ccaf6
   zh: c4f0721649483b9d

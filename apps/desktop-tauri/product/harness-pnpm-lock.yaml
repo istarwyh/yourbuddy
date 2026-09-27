@@ -75,6 +75,9 @@ importers:
       '@deepseek-ai/dsh-client-locale':
         specifier: workspace:*
         version: link:../../packages/client/locale
+      '@deepseek-ai/dsh-client-store':
+        specifier: workspace:*
+        version: link:../../packages/client/store
       '@deepseek-ai/dsh-client-ui-agent-preset':
         specifier: workspace:*
         version: link:../../packages/client/ui-agent-preset
@@ -363,6 +366,9 @@ importers:
       dsh-context-doctor:
         specifier: workspace:*
         version: link:../../packages/product/context-doctor
+      dsh-ego-browser:
+        specifier: workspace:*
+        version: link:../../packages/product/ego-browser
       dsh-harbor-evolution:
         specifier: workspace:*
         version: link:../../packages/product/harbor-evolution
@@ -5071,6 +5077,33 @@ importers:
         specifier: ^8.10.0
         version: 8.10.0
 
+  packages/product/ego-browser:
+    dependencies:
+      '@deepseek-ai/dsh-client-locale':
+        specifier: workspace:*
+        version: link:../../client/locale
+      '@deepseek-ai/dsh-client-store':
+        specifier: workspace:*
+        version: link:../../client/store
+      '@deepseek-ai/dsh-client-ui-settings-plugins':
+        specifier: workspace:*
+        version: link:../../client/ui-settings-plugins
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: workspace:*
+        version: link:../../client/ui-slots
+      '@deepseek-ai/dsh-settings':
+        specifier: workspace:*
+        version: link:../../settings/settings
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:*
+        version: link:../../core/tools
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      schemastery:
+        specifier: ^3.18.0
+        version: 3.18.0
+
   packages/product/harbor-evolution:
     dependencies:
       '@deepseek-ai/dsh-skill':
@@ -9088,6 +9121,9 @@ packages:
   cose-base@2.2.0:
     resolution: {integrity: sha512-AzlgcsCbUMymkADOJtQm3wO9S3ltPfYOFD5033keQn9NJzIbtnZj+UdBJe7DYml/8TdbtHJW3j58SOnKhWY/5g==}
 
+  cosmokit@1.8.1:
+    resolution: {integrity: sha512-PDBv4l90xZKrUsZ0vtoycgZpO/j4iFsqJXrAxsyBDsnQRI7ZMJXIjgDJsKNjd5L8jnVnnlrDCdhkFbTncgCVjQ==}
+
   crelt@1.0.7:
     resolution: {integrity: sha512-aK6BbWfhf4U/wCcLHKPJl/xa6VkVstRaPywWtMKGwuOLc/wZTyQYuoxgvZnNsBvv7Kg3YTBQYYBCggcviQczuA==}
 
@@ -10024,6 +10060,9 @@ packages:
 
   scheduler@0.23.2:
     resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
+
+  schemastery@3.18.0:
+    resolution: {integrity: sha512-Jw2uxjoyyqc/yeurmChUEc/jbi8GsrdXV/KmqRUDZXJAXAmrJiPsz8vKa17l/VckyzljHZ9oGaul443CQiXxtA==}
 
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
@@ -11893,6 +11932,8 @@ snapshots:
     dependencies:
       layout-base: 2.0.1
 
+  cosmokit@1.8.1: {}
+
   crelt@1.0.7: {}
 
   cross-spawn@7.0.6:
@@ -12852,6 +12893,11 @@ snapshots:
   scheduler@0.23.2:
     dependencies:
       loose-envify: 1.4.0
+
+  schemastery@3.18.0:
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      cosmokit: 1.8.1
 
   semver@7.8.5: {}
 

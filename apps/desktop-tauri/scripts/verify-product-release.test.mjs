@@ -398,7 +398,13 @@ test('release smoke observes product Clients inside a DSH combo response', () =>
     'http://127.0.0.1:3080/plugins/dsh-harbor-evolution/client.js?rev=legacy',
     503,
   )
+  recordProductClientResponse(
+    responses,
+    'http://127.0.0.1:3080/plugins/yourbuddy-release-ego-browser/client.js?rev=browser',
+    200,
+  )
   assert.equal(responses['dsh-harbor-evolution'], 503)
+  assert.equal(responses['dsh-ego-browser'], 200)
 })
 
 test('product smoke overlay mounts the product defaults and plugins', () => {
@@ -407,6 +413,8 @@ test('product smoke overlay mounts the product defaults and plugins', () => {
   assert.match(overlay, /id: approval\n  config:\n    policy: never/)
   assert.match(overlay, /id: yourbuddy-release-plugin-marketplace/)
   assert.match(overlay, /name: dsh-plugin-marketplace/)
+  assert.match(overlay, /id: yourbuddy-release-ego-browser/)
+  assert.match(overlay, /name: dsh-ego-browser/)
   assert.match(overlay, /id: yourbuddy-release-oil-creator/)
   assert.match(overlay, /name: dsh-oil-creator/)
   assert.match(overlay, /id: better-sidebar/)

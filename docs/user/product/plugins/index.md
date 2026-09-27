@@ -8,6 +8,7 @@ A considered starting point, with each project's contribution kept visible.
 |---|---|
 | [Codex Auth](codex-auth.md) | Connect existing accounts to models, search, and images |
 | [Better Sidebar](better-sidebar.md) | Use files, terminals, previews, differences, tasks, and plugin pages in the primary workbench |
+| [Ego Browser](ego-browser.md) | Operate a real browser with a live view and human takeover |
 | [Context Doctor](context-doctor.md) | Understand context costs, duplicates, and shadowed skills |
 | [Oil Creator](oil-creator.md) | Organize local video and article production, including reviewed publishing drafts |
 | [Plugin Marketplace](marketplace.md) | Discover and assess extensions before installing |

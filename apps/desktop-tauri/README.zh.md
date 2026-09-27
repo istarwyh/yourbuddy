@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-这个 Tauri 应用承载现有的 `dsh web` 客户端，并加入 YourBuddy 产品装配层。安装包携带裁剪后的 Harness 源码、Harbor Evolution 及其 Skill、Codex Auth、原生 Codex Subagent Provider、Better Sidebar、Context Doctor、Plugin Marketplace、Personal Workbench 品牌插件、Oil Creator、便携式 CPython 3.12 和 Harbor Adapter。
+这个 Tauri 应用承载现有的 `dsh web` 客户端，并加入 YourBuddy 产品装配层。安装包携带裁剪后的 Harness 源码、Harbor Evolution 及其 Skill、Codex Auth、原生 Codex Subagent Provider、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace、Personal Workbench 品牌插件、Oil Creator、便携式 CPython 3.12 和 Harbor Adapter。
 
 ## 运行时布局
 
@@ -11,11 +11,17 @@
 | `harness-source` | 携带已构建源码、冻结 Lockfile 与单个压缩的离线 pnpm Store，并复制到按内容 Hash 隔离的应用数据目录 |
 | `toolchain` | 校验和固定的 macOS arm64 Node 22.19.0 与 pnpm 11.7.0 归档；宿主没有兼容 Node 时使用 |
 | `yourbuddy-runtime` | 直接从签名的应用资源运行，提供 `harbor` 和 `harbor-dsh` |
-| `desktop-overlay` | 通过 `dsh web --patch` 选择 Codex Agent Preset，并注册通知、Codex Subagent Provider、Codex Auth/Search/Image、Better Sidebar、Context Doctor、Plugin Marketplace、Personal Workbench、Oil Creator 与 Harbor Evolution |
+| `desktop-overlay` | 通过 `dsh web --patch` 选择 Codex Agent Preset，并注册通知、Codex Subagent Provider、Codex Auth/Search/Image、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace、Personal Workbench、Oil Creator 与 Harbor Evolution |
 | `YourBuddy/dsh-home` | 隔离保存会话、设置、凭据和 Web Profile |
 | `YourBuddy/workspace` | 没有标准 Profile 实例时供 Harbor Workbench 使用的回退根目录 |
 
-产品源码位于 `product/harbor-evolution`、`product/harbor-python`、`product/dsh-codex-auth`、`product/dsh-better-sidebar`、`product/context-doctor`、`product/plugin-marketplace`、`product/personal-workbench` 和 `product/oil-creator`。`scripts/bundle-harness-source.mjs` 把七个产品 Cordis Package 与 Harbor Skill 放进裁剪后的 workspace，并将它们和仓库内的 `@deepseek-ai/dsh-subagent-codex` Package 一起加入 CLI 依赖闭包，因此 Host 无需从 Registry 安装即可解析所有默认插件。生成的 Bundle Manifest 会单独记录 Codex Subagent Package 版本与产品 Agent Preset，不把它们混入由外部来源刷新的产品快照。Codex Auth、Better Sidebar 与 Plugin Marketplace 固定到经过检查的 npm Tarball。Harbor 的 JavaScript 与 Python 快照来自同一个经过检查的 GitHub Release。Context Doctor 与 Oil Creator 都没有 npm Release，因此分别固定到经过检查的 GitHub `main` Commit；Oil Creator 会先使用其声明的 Package Manager 构建，再冻结 npm Package 的文件选择结果。每个由外部来源刷新的快照都在 `YOURBUDDY_UPSTREAM.json` 中记录不可变来源、完整性 Hash、已提交 Tree Hash、上游许可证、精确版本的 Peer Metadata 覆盖以及经过评审的功能兼容补丁。`scripts/prepare-yourbuddy-runtime.mjs` 把已提交的 Python 快照安装进可迁移资源，也接受 `YOURBUDDY_HARBOR_PYTHON_SOURCE` 用于临时测试本地 Adapter。
+产品源码位于 `product/harbor-evolution`、`product/harbor-python`、`product/dsh-codex-auth`、`product/dsh-better-sidebar`、`product/ego-browser`、`product/context-doctor`、`product/plugin-marketplace`、`product/personal-workbench` 和 `product/oil-creator`。`scripts/bundle-harness-source.mjs` 把八个产品 Cordis Package 与 Harbor Skill 放进裁剪后的 workspace，并将它们和仓库内的 `@deepseek-ai/dsh-subagent-codex` Package 一起加入 CLI 依赖闭包，因此 Host 无需从 Registry 安装即可解析所有默认插件。生成的 Bundle Manifest 会单独记录 Codex Subagent Package 版本与产品 Agent Preset，不把它们混入由外部来源刷新的产品快照。Codex Auth、Better Sidebar 与 Plugin Marketplace 固定到经过检查的 npm Tarball。Harbor 的 JavaScript 与 Python 快照来自同一个经过检查的 GitHub Release。Ego Browser、Context Doctor 与 Oil Creator 固定到经过检查的 GitHub 分支 Commit；Oil Creator 会先使用其声明的 Package Manager 构建，再冻结 npm Package 的文件选择结果。每个由外部来源刷新的快照都在 `YOURBUDDY_UPSTREAM.json` 中记录不可变来源、完整性 Hash、已提交 Tree Hash、上游许可证、精确版本的 Peer Metadata 覆盖以及经过评审的功能兼容补丁。`scripts/prepare-yourbuddy-runtime.mjs` 把已提交的 Python 快照安装进可迁移资源，也接受 `YOURBUDDY_HARBOR_PYTHON_SOURCE` 用于临时测试本地 Adapter。
+
+## 默认插件交付策略
+
+默认外部插件以经过检查的快照进入冻结 Workspace，不会在应用启动时通过 `dsh plugin add` 下载。如果命令使用用户的 `~/.dsh`，运行时 Git 安装会写入错误的主目录；它还会让冷启动依赖 GitHub 和本机构建，并允许可变分支在没有 YourBuddy 发版的情况下改变应用。内置依赖闭包保留离线启动，并把来源、兼容性 Metadata 与传递依赖解析固定到当前发行版。
+
+这种策略会把每个插件的打包文件和共享 Store 条目加入安装包，也让上游更新必须随 YourBuddy 发行。Ego Browser 贡献约 317 KB 的打包载荷，解压后约为 1.2 MB，其中不含 Chromium 和按需下载的可选 FFmpeg。每次更新 Ego Browser 或 Harness 都需要刷新来源记录、重新生成 Lockfile、验证兼容性并运行组装后的 Client Smoke。用户自行安装并启用的 Profile Bundle 会优先于名称唯一的内置 Fallback，因此仍可独立更新，但版本选择与兼容性也重新由用户负责。
 
 Bundle Generator 会从随附的 Standard 组成派生一个 ID 为 `codex`、显示名为 **Codex** 的系统 Agent Preset，只启用其中已有的 `subagent_codex` 配置项，并保持其他随附 Preset 不变。桌面 Overlay 将 Codex 设为基础默认值，因此全新 Profile 以及没有显式选择 Preset 的新 Session 可以立即委派；用户明确选择的默认 Preset 仍然优先，已有 Session 继续使用启动时记录的组成。即使用户全局安装了 `codexhost-delegation` skill，Overlay 也会阻止模型自主路由到它，让普通 Codex 委派始终使用 Preset 原生、可追踪的 `subagent_codex` 工具；用户仍可通过显式输入 `/codexhost-delegation` 选择外部路径。加载 Provider 不会启动 Codex 进程。原生委派会在 Session Workspace 内启动 Package 自带的官方 Codex Runtime，并使用原生 Codex 配置和登录状态，而不是把凭据复制到 YourBuddy Settings。
 
@@ -29,7 +35,7 @@ Harbor 会在 Job 启动前通过 Host 的 `agentDefaultModel` 与 LLM Service �
 
 复用宿主 Node 时会同时检查受支持版本与原生 CPU 架构。YourBuddy 不接管全局 pnpm，而是准备固定版本的产品自有 pnpm，避免 Wrapper 或 Native Package 由另一种 Node 架构安装。冷启动会先校验每个归档的摘要，展开依赖 Store，再通过 `pnpm install --prod --frozen-lockfile --offline` 重建 `node_modules`；成功后删除临时展开的 Store 与复制出的归档。发布时把约 35,000 个 Store 小文件压缩成一个应用资源，既减小安装体积，也避免 Tauri 打包时受到平台链接影响。macOS 构建把 App/Updater、DMG、App/Updater 分成三个阶段，避免 Finder 的 DMG 美化失败连带丢失已签名的更新产物。
 
-应用只在 Host 进程树内前置其私有的 `dsh`、Node 与 pnpm Shim。它不会覆盖用户的全局 `dsh` 命令或 Shell Profile；只有开发者显式设置 `YOURBUDDY_PERSIST_DSH_CLI=1` 启动时才会持久化。仓库 workspace 与隔离 Web Profile 都设置 `dangerouslyAllowAllBuilds: true`，因此依赖生命周期脚本无需单独经过 pnpm 审批；通用 DSH Profile 保留各自的构建策略。产品插件 Overlay 会按包名复用已经激活的标准 Profile Bundle，只有不存在先前挂载时才启用名称唯一的内置 Fallback，因此用户安装过的 Codex Subagent、Harbor、Codex Auth、Better Sidebar、Context Doctor、Plugin Marketplace、Personal Workbench 或 Oil Creator Bundle 不会产生重复 Loader ID。升级时，原生启动链路还会修复这项 Web Profile 策略，只重绑仍指向本应用旧内容寻址 Harness Tree 的 YourBuddy 托管 `link:` 依赖，并在任一操作改变托管状态时执行标准 Profile 安装；Registry 依赖以及 YourBuddy 应用数据目录之外的链接仍归用户所有，且不会被修改。
+应用只在 Host 进程树内前置其私有的 `dsh`、Node 与 pnpm Shim。它不会覆盖用户的全局 `dsh` 命令或 Shell Profile；只有开发者显式设置 `YOURBUDDY_PERSIST_DSH_CLI=1` 启动时才会持久化。仓库 workspace 与隔离 Web Profile 都设置 `dangerouslyAllowAllBuilds: true`，因此依赖生命周期脚本无需单独经过 pnpm 审批；通用 DSH Profile 保留各自的构建策略。产品插件 Overlay 会按包名复用已经激活的标准 Profile Bundle，只有不存在先前挂载时才启用名称唯一的内置 Fallback，因此用户安装过的 Codex Subagent、Harbor、Codex Auth、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace、Personal Workbench 或 Oil Creator Bundle 不会产生重复 Loader ID。升级时，原生启动链路还会修复这项 Web Profile 策略，只重绑仍指向本应用旧内容寻址 Harness Tree 的 YourBuddy 托管 `link:` 依赖，并在任一操作改变托管状态时执行标准 Profile 安装；Registry 依赖以及 YourBuddy 应用数据目录之外的链接仍归用户所有，且不会被修改。
 
 Plugin Marketplace 只把公开 GitHub `dsh-plugin` Topic 用于发现仓库。打开结果时会搜索 npm；仅当 Package 声明 `dsh.bundle.patch`，且 Metadata 通过 Repository 字段或与 GitHub Owner 同 Scope 的 DSH 上游元数据关联该仓库时才启用一键确认，因此能从同时发布 SDK、CLI 与其他 npm Package 的仓库中选出 DSH Bundle，也能解析 npm 名称不同于仓库 Basename 的 Scoped Package。Metadata 缺失、歧义或不完整时，一键确认保持禁用。用户确认后，安装流程会针对隔离的 Web Profile 执行 `dsh plugin add`，把进度或可操作的 pnpm 失败持续关联到该 Package，并授予安装代码与手动安装 DSH 插件相同的 Host 权限。仓库与 npm 链接使用固定的 iframe 消息协议；Shell 与 Rust Validator 只允许 HTTPS GitHub 仓库、npm 搜索或 npm Package 页面，再由系统浏览器打开。
 

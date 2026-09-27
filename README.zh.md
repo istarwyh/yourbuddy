@@ -12,7 +12,7 @@
 
 [官网](https://istarwyh.github.io/yourbuddy/) · [使用文档](docs/user/product/index.zh.md) · [仓库文档](docs/README.zh.md) · [默认插件](docs/user/product/plugins/index.zh.md) · [官网开发](docs/product-website.zh.md)
 
-YourBuddy 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 和成熟的 [Sakana 桌面发行版](https://github.com/Sakana-yuyu/deepseek-harness-desktop)构建的 macOS AI 工作台。它把 Harbor Evolution 及其 Skill、[dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth)、[dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)、[dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor)、[dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace)、个人工作台品牌插件和便携式 Harbor Python 运行时封装成一个应用。
+YourBuddy 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 和成熟的 [Sakana 桌面发行版](https://github.com/Sakana-yuyu/deepseek-harness-desktop)构建的 macOS AI 工作台。它把 Harbor Evolution 及其 Skill、[dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth)、[dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)、[dsh-ego-browser](https://github.com/Fisfzy/dsh-ego-browser)、[dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor)、[dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace)、个人工作台品牌插件和便携式 Harbor Python 运行时封装成一个应用。
 
 桌面发行版仅支持 Apple Silicon。应用把会话、Profile、工作区和 Job 保存在 `~/Library/Application Support/YourBuddy`，不会读取或修改用户已有的 `~/.dsh` 主目录。
 
@@ -22,7 +22,7 @@ YourBuddy 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-h
 |---|---|
 | 桌面外壳 | Tauri 2 窗口、托盘、通知、进程监管、启动恢复与签名更新 |
 | Harness | 裁剪并完成构建的 DeepSeek Harness 源码、冻结的产品 Lockfile、压缩的离线依赖 Store，以及经过校验和固定的 macOS arm64 Node/pnpm 工具链 |
-| 产品插件 | Harbor Evolution、Codex Auth、Better Sidebar、Context Doctor、Plugin Marketplace 与第一方 Personal Workbench 的已提交快照；Harbor 插件包含 `evolve-agent-with-harbor` Skill |
+| 产品插件 | Harbor Evolution、Codex Auth、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace 与第一方 Personal Workbench 的已提交快照；Harbor 插件包含 `evolve-agent-with-harbor` Skill |
 | 评测运行时 | 便携式 CPython 3.12、已提交的 Harbor Python Adapter 快照与 Harbor |
 | 产品数据 | 独立的 `DSH_HOME` 和默认 YourBuddy 工作区 |
 

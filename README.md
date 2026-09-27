@@ -12,7 +12,7 @@ An AI workbench that works your way.
 
 [Website](https://istarwyh.github.io/yourbuddy/) · [User guide](docs/user/product/index.md) · [Repository docs](docs/README.md) · [Default plugins](docs/user/product/plugins/index.md) · [Website development](docs/product-website.md)
 
-YourBuddy is a macOS AI workbench built from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) and the mature [Sakana desktop distribution](https://github.com/Sakana-yuyu/deepseek-harness-desktop). It packages Harbor Evolution and its Skill, [dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth), [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar), [dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor), [dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace), a personal-workbench branding plugin, and a portable Harbor Python runtime as one application.
+YourBuddy is a macOS AI workbench built from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) and the mature [Sakana desktop distribution](https://github.com/Sakana-yuyu/deepseek-harness-desktop). It packages Harbor Evolution and its Skill, [dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth), [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar), [dsh-ego-browser](https://github.com/Fisfzy/dsh-ego-browser), [dsh-context-doctor](https://github.com/Zhenyu98/dsh-context-doctor), [dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace), a personal-workbench branding plugin, and a portable Harbor Python runtime as one application.
 
 The desktop release targets Apple Silicon only. The application keeps its sessions, profiles, workspace, and jobs under `~/Library/Application Support/YourBuddy`; it does not read or modify the user's existing `~/.dsh` home.
 
@@ -22,7 +22,7 @@ The desktop release targets Apple Silicon only. The application keeps its sessio
 |---|---|
 | Desktop shell | Tauri 2 window, tray, notifications, process supervision, startup recovery, and signed updater |
 | Harness | A trimmed, built DeepSeek Harness source tree, frozen product lockfile, compressed offline dependency store, and checksum-pinned macOS arm64 Node/pnpm toolchain |
-| Product plugins | Committed snapshots of Harbor Evolution, Codex Auth, Better Sidebar, Context Doctor, Plugin Marketplace, and the first-party Personal Workbench; Harbor includes the `evolve-agent-with-harbor` Skill |
+| Product plugins | Committed snapshots of Harbor Evolution, Codex Auth, Better Sidebar, Ego Browser, Context Doctor, Plugin Marketplace, and the first-party Personal Workbench; Harbor includes the `evolve-agent-with-harbor` Skill |
 | Evaluation runtime | Portable CPython 3.12 with the committed Harbor Python adapter snapshot and Harbor |
 | Product data | An isolated `DSH_HOME` and a default YourBuddy workspace |
 

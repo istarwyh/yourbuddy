@@ -166,6 +166,19 @@
       }
     },
     {
+      "id": "ego-browser",
+      "kind": "github-branch",
+      "repository": "Fisfzy/dsh-ego-browser",
+      "branch": "master",
+      "package": "dsh-ego-browser",
+      "destination": "ego-browser",
+      "peerOverrides": {
+        "0.8.5": {
+          "@deepseek-ai/dsh-*": "0.1.7-rc.2"
+        }
+      }
+    },
+    {
       "id": "context-doctor",
       "kind": "github-branch",
       "repository": "Zhenyu98/dsh-context-doctor",

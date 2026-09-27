@@ -1,0 +1,23 @@
+{
+  "package": "dsh-ego-browser",
+  "version": "0.8.5",
+  "sourceKind": "github-branch",
+  "channel": "master",
+  "source": "https://codeload.github.com/Fisfzy/dsh-ego-browser/tar.gz/205af08479cd9e0e9e63cea494e720d8ec1d4560",
+  "commit": "205af08479cd9e0e9e63cea494e720d8ec1d4560",
+  "integrity": "sha512-Lww4OzLKXA2+lgg2EeXvBDBhxSTRQ5bE8t2BbzHOssFXnJXBRaCHsdwvUxg5S8Dandc4iyXwv5fwGjf7XCyVLw==",
+  "archiveSha256": "84cf9e07d0c4a4cb5c2abd566a3917abc1750ff5a5cf0e329d9bb15d259245ca",
+  "snapshotMethod": "npm pack file selection from the pinned GitHub commit with lifecycle scripts disabled",
+  "upstreamTreeSha256": "5845a28f9d62a22cca262d94c7df5f5e4cac6839bd8501fd3b3065fd1c1cda8e",
+  "patches": [
+    "Set @deepseek-ai/dsh-client-locale peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
+    "Set @deepseek-ai/dsh-client-store peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-settings-plugins peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-slots peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
+    "Set @deepseek-ai/dsh-settings peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
+    "Set @deepseek-ai/dsh-tools peer range from >=0.1.2-rc.1 to 0.1.7-rc.2."
+  ],
+  "repository": "https://github.com/Fisfzy/dsh-ego-browser",
+  "license": "MIT",
+  "treeSha256": "415478f53e5c7d5a758c5a23d30fab76019010ae5ef0251778c017d36777e303"
+}

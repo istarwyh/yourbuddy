@@ -287,6 +287,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.equal(manifest.dependencies['dsh-codex-auth'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-better-sidebar'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-context-doctor'], 'workspace:*')
+    assert.equal(manifest.dependencies['dsh-ego-browser'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-plugin-marketplace'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-personal-workbench'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-oil-creator'], 'workspace:*')
@@ -295,6 +296,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     const webPatch = readFileSync(join(webApp, 'cordis.patch.yml'), 'utf8')
     assert.match(webPatch, /# YourBuddy product bundle layers/u)
     assert.match(webPatch, /id: personal-workbench\n\s+name: dsh-personal-workbench/u)
+    assert.doesNotMatch(webPatch, /name: "dsh-ego-browser"/u)
     assert.match(webPatch, /id: dsh-oil-creator\n\s+name: dsh-oil-creator/u)
     assert.match(webPatch, /id: subagent-codex\n\s+name: '@deepseek-ai\/dsh-subagent-codex'/u)
     assert.doesNotMatch(webPatch, /id: ui-sidebar\n\s+disabled: true/u)
@@ -322,6 +324,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
       ['dsh-codex-auth', 'dsh-codex-auth'],
       ['dsh-better-sidebar', 'dsh-better-sidebar'],
       ['context-doctor', 'context-doctor'],
+      ['ego-browser', 'ego-browser'],
       ['plugin-marketplace', 'plugin-marketplace'],
       ['personal-workbench', 'personal-workbench'],
       ['oil-creator', 'oil-creator'],

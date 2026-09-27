@@ -8,6 +8,7 @@
 |---|---|
 | [Codex Auth](codex-auth.zh.md) | 将已有账号连接到模型、搜索与图片能力 |
 | [Better Sidebar](better-sidebar.zh.md) | 在主工作区使用文件、终端、预览、差异、任务与插件页面 |
+| [Ego Browser](ego-browser.zh.md) | 通过实时画面和人工接管操作真实浏览器 |
 | [Context Doctor](context-doctor.zh.md) | 理解上下文成本、重复内容与被遮蔽技能 |
 | [Oil Creator](oil-creator.zh.md) | 以普通项目文件夹组织本地视频、图文与人工检查后的发布草稿 |
 | [Plugin Marketplace](marketplace.zh.md) | 安装前发现并了解扩展 |

@@ -76,6 +76,7 @@ const syntheticHostProxy = 'http://127.0.0.1:9'
 export const PRODUCT_CLIENT_IDS = [
   'dsh-codex-auth',
   'dsh-better-sidebar',
+  'dsh-ego-browser',
   'dsh-context-doctor',
   'dsh-plugin-marketplace',
   'dsh-personal-workbench',
@@ -86,6 +87,7 @@ export const PRODUCT_CLIENT_IDS = [
 const PRODUCT_CLIENT_ENTRY_IDS = {
   'dsh-codex-auth': 'yourharness-release-codex-auth',
   'dsh-better-sidebar': 'yourharness-release-better-sidebar',
+  'dsh-ego-browser': 'yourbuddy-release-ego-browser',
   'dsh-context-doctor': 'yourharness-release-context-doctor',
   'dsh-plugin-marketplace': 'yourharness-release-plugin-marketplace',
   'dsh-personal-workbench': 'yourharness-release-personal-workbench',
@@ -266,7 +268,7 @@ export function assertInstalledProductPeerLinks(root) {
   const workspace = readWorkspacePackageVersions(root)
   const productRoot = join(root, 'packages', 'product')
   let checked = 0
-  for (const plugin of ['harbor-evolution', 'dsh-codex-auth', 'dsh-better-sidebar', 'context-doctor', 'plugin-marketplace', 'personal-workbench', 'oil-creator']) {
+  for (const plugin of ['harbor-evolution', 'dsh-codex-auth', 'dsh-better-sidebar', 'ego-browser', 'context-doctor', 'plugin-marketplace', 'personal-workbench', 'oil-creator']) {
     const pluginRoot = join(productRoot, plugin)
     const manifest = JSON.parse(readFileSync(join(pluginRoot, 'package.json'), 'utf8'))
     for (const name of Object.keys(manifest.peerDependencies ?? {})) {
@@ -345,6 +347,9 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
     - id: yourbuddy-release-context-doctor
       name: dsh-context-doctor
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-context-doctor' && e.options.id !== 'yourbuddy-release-context-doctor' && !e.disabled)"
+    - id: yourbuddy-release-ego-browser
+      name: dsh-ego-browser
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-ego-browser' && e.options.id !== 'yourbuddy-release-ego-browser' && !e.disabled)"
     - id: yourbuddy-release-plugin-marketplace
       name: dsh-plugin-marketplace
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-plugin-marketplace' && e.options.id !== 'yourbuddy-release-plugin-marketplace' && !e.disabled)"
@@ -1614,7 +1619,7 @@ export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRo
     run(join(productRuntimeRoot, 'venv', 'bin', 'harbor'), ['--version'], { cwd: commandWorld, env })
     run(join(productRuntimeRoot, 'venv', 'bin', 'harbor-dsh'), ['--help'], { cwd: commandWorld, env })
     await runHostSmoke(root, productRuntimeRoot)
-    console.log(`verify-product-release: ${installedPeers} bundled runtime peer links, ${PRODUCT_CLIENT_IDS.length} assembled Client plugins, Agent Presets, Full access default, Oil Creator, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed`)
+    console.log(`verify-product-release: ${installedPeers} bundled runtime peer links, ${PRODUCT_CLIENT_IDS.length} assembled Client plugins, Agent Presets, Full access default, Ego Browser, Oil Creator, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed`)
   }
   finally {
     removeWorkspaceInstallState(root)

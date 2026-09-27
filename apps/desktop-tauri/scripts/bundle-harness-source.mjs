@@ -66,6 +66,12 @@ const productPlugins = [
     destination: join('packages', 'product', 'context-doctor'),
   },
   {
+    name: 'dsh-ego-browser',
+    root: join(desktopRoot, 'product', 'ego-browser'),
+    destination: join('packages', 'product', 'ego-browser'),
+    embedPatch: false,
+  },
+  {
     name: 'dsh-plugin-marketplace',
     root: join(desktopRoot, 'product', 'plugin-marketplace'),
     destination: join('packages', 'product', 'plugin-marketplace'),
@@ -393,6 +399,7 @@ export function installProductPlugins(bundleRoot) {
     throw new Error('YourBuddy product bundle layers are already installed')
   }
   const productPatches = [...productPlugins, ...defaultHarnessPlugins]
+    .filter(plugin => plugin.embedPatch !== false)
     .map(plugin => readFileSync(join(plugin.root, 'cordis.patch.yml'), 'utf8').trim())
   writeFileSync(webPatchPath, `${webPatch}\n\n${marker}\n\n${productPatches.join('\n\n')}\n`)
 }
