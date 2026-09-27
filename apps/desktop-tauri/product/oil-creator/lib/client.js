@@ -6678,15 +6678,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				if (!open || credentials === void 0) return;
 				let cancelled = false;
 				const refs = secrets.map((item) => item.ref);
-				credentials.describe({ refs }).then((response) => {
-					if (cancelled || !response.result.ok || response.result.value === void 0) {
-						if (!cancelled && response.result.ok !== true) setSecrets((current) => current.map((item) => ({
+				credentials.describe(refs).then((response) => {
+					if (cancelled || !response.ok || response.value === void 0) {
+						if (!cancelled && response.ok !== true) setSecrets((current) => current.map((item) => ({
 							...item,
 							loadError: true
 						})));
 						return;
 					}
-					const described = response.result.value.credentials;
+					const described = response.value;
 					setSecrets((current) => current.map((item) => applyDescribed(item, described)));
 				}, () => {
 					if (!cancelled) setSecrets((current) => current.map((item) => ({
@@ -6752,10 +6752,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						for (const item of secrets) {
 							const value = item.nextValue.trim();
 							if (value === "") continue;
-							if (!(await credentials.set({
-								ref: item.ref,
-								value
-							})).result.ok) {
+							if (!(await credentials.set(item.ref, value)).ok) {
 								setKeyFailed(true);
 								return;
 							}
@@ -7405,7 +7402,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		//#endregion
 		//#region src/client/index.tsx
 		function credentialsOf(ctx) {
-			return ctx.get("connection")?.api?.credentials;
+			return ctx.remote.credentials;
 		}
 		function unwrap(answer, fallback) {
 			if (!answer.ok || answer.value === void 0) throw new Error(answer.error?.message ?? fallback);
