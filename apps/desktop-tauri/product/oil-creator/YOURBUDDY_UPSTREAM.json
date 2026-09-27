@@ -13,8 +13,8 @@
     {
       "id": "source-oil-creator-workbench-source",
       "file": "patches/oil-creator-workbench-source.patch",
-      "sha256": "8d770568303ae2cc4d3212c3a3e6c624feef7672670fa9b6853dd05e8a3750b6",
-      "purpose": "Apply the reviewed YourBuddy source customization before building the published artifact."
+      "sha256": "f4df8f182cc48b8dd1d01ebfda76bf49a48cec4b187b7d886a053be164ac31cd",
+      "purpose": "Apply the reviewed YourBuddy workbench source, current Harness client APIs, and visible async-action feedback before building the published artifact."
     }
   ],
   "patches": [
@@ -27,8 +27,8 @@
     {
       "id": "current-settings-api",
       "file": "patches/oil-creator-current-settings.patch",
-      "sha256": "e29d390508e584ba1f07c7affa9be2555b58086e8d639261fb06842c532b279e",
-      "purpose": "Register Content workbench in the current Plugins tab slot and remove the obsolete Host settings registration."
+      "sha256": "06c32a35638650c2ad5c8de6b2af6a22da4bc62c7b46ecade031d956811c7d42",
+      "purpose": "Register Content workbench in the current Plugins tab slot, remove the obsolete Host settings registration, and document current client API and action-feedback requirements."
     },
     "Set @deepseek-ai/dsh-api-remotes peer range from 0.1.0-rc.6 || 0.1.0-rc.7 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-connection peer range from 0.1.0-rc.6 || 0.1.0-rc.7 to 0.1.7-rc.2.",
@@ -47,5 +47,5 @@
   ],
   "repository": "https://github.com/oil-oil/dsh-oil-creator",
   "license": "MIT",
-  "treeSha256": "5a6e3e9b535e31c26870f678e7f7e2ed3fe7dc2d243c4fbded034830a81791df"
+  "treeSha256": "8de087215783c6b7d86f72a4d40289caa2839c700475d938fbeb8d0db15f77fc"
 }

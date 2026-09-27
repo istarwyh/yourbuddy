@@ -1,5 +1,5 @@
 diff --git a/cordis.patch.yml b/cordis.patch.yml
-index 9041ae288e29d58237046b1905dc49c02a3a30bd..c2e5a477c037151bf4fee85e472932c8bbf313e0 100644
+index 9041ae2..c2e5a47 100644
 --- a/cordis.patch.yml
 +++ b/cordis.patch.yml
 @@ -1,5 +1,3 @@
@@ -9,7 +9,7 @@ index 9041ae288e29d58237046b1905dc49c02a3a30bd..c2e5a477c037151bf4fee85e472932c8
      - id: dsh-oil-creator
        name: dsh-oil-creator
 diff --git a/package.json b/package.json
-index ac9e389b986a8911c577296c2f3184d5c4eaa0fc..bfca1cc82b17248b9e22c2ad0c647ba7a2663520 100644
+index ac9e389..bfca1cc 100644
 --- a/package.json
 +++ b/package.json
 @@ -60,12 +60,12 @@
@@ -28,7 +28,7 @@ index ac9e389b986a8911c577296c2f3184d5c4eaa0fc..bfca1cc82b17248b9e22c2ad0c647ba7
    "dependencies": {
      "@deepseek-ai/dsh-tools": "0.1.0-rc.6 || 0.1.0-rc.7",
 diff --git a/scripts/check-release.mjs b/scripts/check-release.mjs
-index 04d27f2e5acb945e32496e52db2cf8dc68e08d64..89603a66c4d13e6a685b6df7ce03436fb248d827 100644
+index 04d27f2..89603a6 100644
 --- a/scripts/check-release.mjs
 +++ b/scripts/check-release.mjs
 @@ -127,8 +127,8 @@ function checkRelease(root) {
@@ -44,16 +44,15 @@ index 04d27f2e5acb945e32496e52db2cf8dc68e08d64..89603a66c4d13e6a685b6df7ce03436f
      addFailure("缺少显式 release:check 门禁脚本");
 diff --git a/scripts/compat-current-dsh.mjs b/scripts/compat-current-dsh.mjs
 new file mode 100644
-index 0000000000000000000000000000000000000000..986ff820d0e5215ac18950be4f0ebd66d0c67cd3
+index 0000000..67cc2d4
 --- /dev/null
 +++ b/scripts/compat-current-dsh.mjs
-@@ -0,0 +1,23 @@
+@@ -0,0 +1,22 @@
 +import { readFileSync, writeFileSync } from "node:fs";
 +import { fileURLToPath } from "node:url";
 +
 +const clientBundle = fileURLToPath(new URL("../lib/client.js", import.meta.url));
 +const replacements = [
-+  ['ctx.get("connection")?.api?.credentials', "ctx.remote.credentials"],
 +  ["IconBrowseOutline16", "IconBrowseOutlineRegular"],
 +  ["IconChevronDownOutline14", "IconChevronDownOutlineRegular"],
 +  ["IconCloseFill14", "IconCloseFillRegular"],
@@ -73,7 +72,7 @@ index 0000000000000000000000000000000000000000..986ff820d0e5215ac18950be4f0ebd66
 +writeFileSync(clientBundle, source);
 diff --git a/src/bundledSkills.ts b/src/bundledSkills.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..d6145ddcaea26b29fae2e905aea27415d3385331
+index 0000000..d6145dd
 --- /dev/null
 +++ b/src/bundledSkills.ts
 @@ -0,0 +1,9 @@
@@ -87,7 +86,7 @@ index 0000000000000000000000000000000000000000..d6145ddcaea26b29fae2e905aea27415
 +  return join(bundledSkillsRoot, name);
 +}
 diff --git a/src/capabilities.ts b/src/capabilities.ts
-index 9618cf8d98e514589499d0d3e5ecc3924ddae5ee..d8cb923e56656a7cbd4ac956ea4027be1c182348 100644
+index 9618cf8..d8cb923 100644
 --- a/src/capabilities.ts
 +++ b/src/capabilities.ts
 @@ -4,6 +4,7 @@ import { homedir } from "node:os";
@@ -160,7 +159,7 @@ index 9618cf8d98e514589499d0d3e5ecc3924ddae5ee..d8cb923e56656a7cbd4ac956ea4027be
    return {
      platform,
 diff --git a/src/catalog.ts b/src/catalog.ts
-index 118add5f070a247bccda787a1fd8f307a190bb83..6d87c9110eb4e4d144e95645222ed9048bd14676 100644
+index 118add5..6d87c91 100644
 --- a/src/catalog.ts
 +++ b/src/catalog.ts
 @@ -130,7 +130,9 @@ export function workflowOf(
@@ -219,7 +218,7 @@ index 118add5f070a247bccda787a1fd8f307a190bb83..6d87c9110eb4e4d144e95645222ed904
  
    return {
 diff --git a/src/client/ContentInspector.css b/src/client/ContentInspector.css
-index e67d7f0f538b0eaaf4509f84545f12aa7841367c..6e3b379fbb8dcdf7c5ddc9608df7d218a87b480b 100644
+index e67d7f0..6e3b379 100644
 --- a/src/client/ContentInspector.css
 +++ b/src/client/ContentInspector.css
 @@ -14,17 +14,6 @@
@@ -376,10 +375,10 @@ index e67d7f0f538b0eaaf4509f84545f12aa7841367c..6e3b379fbb8dcdf7c5ddc9608df7d218
 -  }
 -}
 diff --git a/src/client/ContentInspector.tsx b/src/client/ContentInspector.tsx
-index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e26278090cd4 100644
+index e98032b..e34693f 100644
 --- a/src/client/ContentInspector.tsx
 +++ b/src/client/ContentInspector.tsx
-@@ -12,21 +12,36 @@ import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-cli
+@@ -12,22 +12,38 @@ import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-cli
  import { formatCount } from "../collectPublish.ts";
  import { isPublishMark } from "../publishStatus.ts";
  import { rewriteArticleImages } from "../articleMarkdown.ts";
@@ -420,9 +419,11 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
 +  selectEnabledPublishPlatforms,
 +} from "./publishPlatforms.ts";
  import { formatRelativeTime } from "./relativeTime.ts";
++import { SelectionGuard } from "./selectionGuard.ts";
  import { WORKFLOW_TONE } from "./sidebar/ContentSidebarPanel.tsx";
  import { ActionBar, ActionButton } from "./ui/ActionButton.tsx";
-@@ -87,6 +102,10 @@ const TAB_KEY: Record<InspectorTab, CreatorKey> = {
+ import { StatusPill, type StatusTone } from "./ui/StatusPill.tsx";
+@@ -87,6 +103,10 @@ const TAB_KEY: Record<InspectorTab, CreatorKey> = {
    article: "inspector.tab.article",
  };
  
@@ -433,7 +434,7 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
  function cuesFromSubtitle(nextSubtitle: { text: string; cues: SubtitleCue[] }): SubtitleCue[] {
    if (nextSubtitle.cues.length > 0) return nextSubtitle.cues;
    if (nextSubtitle.text === "") return [];
-@@ -118,7 +137,7 @@ function metricParts(
+@@ -118,7 +138,7 @@ function metricParts(
    return parts;
  }
  
@@ -442,7 +443,7 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
    return (
      <div className={tone === undefined ? "jobNote" : `jobNote ${tone}`}>
        {tone === "running" && <StateDot state="ongoing" size={12} />}
-@@ -152,7 +171,7 @@ function WorkRow({
+@@ -152,7 +172,7 @@ function WorkRow({
  }
  
  export type ContentInspectorProps =
@@ -451,7 +452,7 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
    & InjectFace<CreatorViewFace>
    & PropsLocale<"dsh.oil.creator">
    & {
-@@ -173,6 +192,7 @@ export function ContentInspector({
+@@ -173,6 +193,7 @@ export function ContentInspector({
    bindStudio,
    openStudio,
    setPublish,
@@ -459,12 +460,14 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
    syncPublish,
    startSubtitleGenerate,
    startSubtitleBurn,
-@@ -183,23 +203,27 @@ export function ContentInspector({
+@@ -183,23 +204,29 @@ export function ContentInspector({
    openPath,
    closeDetails,
  }: ContentInspectorProps) {
 -  const [selectedId, setSelectedId] = useSelectedContentId();
 +  const [selectedId] = useSelectedContentId();
++  const selectionGuard = useRef(new SelectionGuard(selectedId));
++  selectionGuard.current.update(selectedId);
    const currentSessionId = useSessions((sessions) => sessions.current);
 +  const previousSessionId = useRef(currentSessionId);
    const libraryEpoch = useLibraryEpoch();
@@ -488,11 +491,11 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
    const [actionError, setActionError] = useState<string | undefined>(undefined);
  
 -  const [busy, setBusy] = useState<"subtitle" | "burn" | "cover" | "sync" | undefined>(undefined);
-+  const [busy, setBusy] = useState<"subtitle" | "burn" | "cover" | "prepare" | "sync" | undefined>(undefined);
++  const [busy, setBusy] = useState<"ready" | "studio" | "path" | "subtitle" | "burn" | "cover" | "prepare" | "sync" | undefined>(undefined);
    const expectSubtitlePreview = useRef(false);
    const [syncHint, setSyncHint] = useState<string | undefined>(undefined);
    const [scriptDraft, setScriptDraft] = useState("");
-@@ -210,7 +234,6 @@ export function ContentInspector({
+@@ -210,7 +237,6 @@ export function ContentInspector({
    const [articleOrigin, setArticleOrigin] = useState<string | undefined>(undefined);
    const [publishMenu, setPublishMenu] = useState<PublishPlatform | null>(null);
    const [publishPending, setPublishPending] = useState<PublishPlatform | null>(null);
@@ -500,7 +503,7 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
  
    useEffect(() => {
      setTab("overview");
-@@ -226,6 +249,12 @@ export function ContentInspector({
+@@ -226,6 +252,12 @@ export function ContentInspector({
      expectSubtitlePreview.current = false;
      setPublishMenu(null);
      setPublishPending(null);
@@ -513,7 +516,7 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
    }, [selectedId]);
  
    useEffect(() => {
-@@ -233,20 +262,33 @@ export function ContentInspector({
+@@ -233,20 +265,33 @@ export function ContentInspector({
      setEnabledPlatforms(undefined);
      if (!ready()) {
        setEnabledPlatforms([]);
@@ -553,7 +556,7 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
  
    useEffect(() => {
      if (selectedId === null) {
-@@ -268,6 +310,7 @@ export function ContentInspector({
+@@ -268,6 +313,7 @@ export function ContentInspector({
          if (cancelled) return;
          loadedId.current = selectedId;
          setDetail(nextDetail);
@@ -561,7 +564,68 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
          if (switched || scriptSavedRef.current) {
            setScriptDraft(nextDetail.script);
            setScriptSaved(true);
-@@ -363,8 +406,6 @@ export function ContentInspector({
+@@ -320,12 +366,17 @@ export function ContentInspector({
+ 
+   useEffect(() => {
+     if (detail === undefined || scriptSaved) return;
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
+     const timer = window.setTimeout(() => {
+       void setScript(detail.id, scriptDraft).then((next) => {
++        if (!selectionGuard.current.current(token)) return;
+         setDetail(next);
+         setScriptSaved(scriptDraft === next.script);
+       }, (cause: unknown) => {
+-        setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
++        if (selectionGuard.current.current(token)) {
++          setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
++        }
+       });
+     }, 700);
+     return () => {
+@@ -338,16 +389,26 @@ export function ContentInspector({
+       || detail?.subtitleJob.status === "running"
+       || detail?.coverJob.status === "running";
+     if (!running || selectedId === null || !ready()) return;
++    const token = selectionGuard.current.capture(selectedId);
++    if (token === undefined) return;
+     const timer = window.setInterval(() => {
+-      void getContent(selectedId).then((next) => { setDetail(next); });
++      void getContent(selectedId).then((next) => {
++        if (selectionGuard.current.current(token)) setDetail(next);
++      }, (cause: unknown) => {
++        if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
++      });
+     }, 3000);
+     return () => { window.clearInterval(timer); };
+   }, [selectedId, detail?.burn.status, detail?.subtitleJob.status, detail?.coverJob.status]);
+ 
+   useEffect(() => {
+     if (selectedId === null || detail?.subtitleJob.status !== "done" || !ready()) return;
++    const token = selectionGuard.current.capture(selectedId);
++    if (token === undefined) return;
+     void getSubtitleText(selectedId).then((nextSubtitle) => {
+-      setCues(cuesFromSubtitle(nextSubtitle));
++      if (selectionGuard.current.current(token)) setCues(cuesFromSubtitle(nextSubtitle));
++    }, (cause: unknown) => {
++      if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
+     });
+   }, [selectedId, detail?.subtitleJob.status]);
+ 
+@@ -355,67 +416,68 @@ export function ContentInspector({
+     if (!expectSubtitlePreview.current || selectedId === null || !ready()) return;
+     if (detail?.subtitleJob.status === "done") {
+       expectSubtitlePreview.current = false;
++      const token = selectionGuard.current.capture(selectedId);
++      if (token === undefined) return;
+       void openSubtitlePreview(selectedId).then(() => undefined, (cause: unknown) => {
+-        setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
++        if (selectionGuard.current.current(token)) {
++          setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
++        }
+       });
+       return;
+     }
      if (detail?.subtitleJob.status === "error") expectSubtitlePreview.current = false;
    }, [selectedId, detail?.subtitleJob.status]);
  
@@ -569,8 +633,21 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
 -
    const applyPublish = (platform: PublishPlatform, status: PublishMark): void => {
      setPublishMenu(null);
-     if (detail === undefined || detail.publish[platform].status === status) return;
-@@ -379,43 +420,37 @@ export function ContentInspector({
+-    if (detail === undefined || detail.publish[platform].status === status) return;
++    if (detail === undefined || publishPending !== null || detail.publish[platform].status === status) return;
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
++    setActionError(undefined);
+     setPublishPending(platform);
+     void setPublish(detail.id, platform, status).then((next) => {
++      if (!selectionGuard.current.current(token)) return;
+       setDetail(next);
+       setPublishPending(null);
+     }, (cause: unknown) => {
++      if (!selectionGuard.current.current(token)) return;
+       setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
+       setPublishPending(null);
+     });
    };
  
    useEffect(() => {
@@ -635,12 +712,161 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
    const publishedCount = detail === undefined
      ? 0
      : visiblePlatforms.filter((platform) => detail.publish[platform.key].status === "published").length;
-@@ -519,6 +554,30 @@ export function ContentInspector({
-     });
+@@ -427,24 +489,70 @@ export function ContentInspector({
+     ? "publish"
+     : (PIPELINE_STEPS[stageIndex]?.id ?? "topic");
+ 
+-  const onReadyToRecord = (): void => {
+-    if (detail === undefined) return;
+-    void markReadyToRecord(detail.id).then((next) => { setDetail(next); });
++  const onReadyToRecord = async (): Promise<void> => {
++    if (detail === undefined || busy !== undefined) return;
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
++    setActionError(undefined);
++    setBusy("ready");
++    try {
++      const next = await markReadyToRecord(detail.id);
++      if (selectionGuard.current.current(token)) setDetail(next);
++    } catch (cause) {
++      if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
++    } finally {
++      if (selectionGuard.current.current(token)) setBusy(undefined);
++    }
    };
  
+-  const onBindStudio = (): void => {
+-    if (detail === undefined) return;
+-    void pickDirectory().then((path) => {
+-      if (path === null) return;
+-      return bindStudio(detail.id, path);
+-    }).then((next) => {
+-      if (next !== undefined) setDetail(next);
+-    });
++  const onBindStudio = async (): Promise<void> => {
++    if (detail === undefined || busy !== undefined) return;
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
++    setActionError(undefined);
++    setBusy("studio");
++    try {
++      const path = await pickDirectory();
++      if (path !== null && selectionGuard.current.current(token)) {
++        const next = await bindStudio(detail.id, path);
++        if (selectionGuard.current.current(token)) setDetail(next);
++      }
++    } catch (cause) {
++      if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
++    } finally {
++      if (selectionGuard.current.current(token)) setBusy(undefined);
++    }
+   };
+ 
+-  const onOpenStudio = (): void => {
+-    if (detail === undefined) return;
+-    void openStudio(detail.id);
++  const onOpenStudio = async (): Promise<void> => {
++    if (detail === undefined || busy !== undefined) return;
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
++    setActionError(undefined);
++    setBusy("studio");
++    try {
++      const next = await openStudio(detail.id);
++      if (selectionGuard.current.current(token)) setDetail(next);
++    } catch (cause) {
++      if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
++    } finally {
++      if (selectionGuard.current.current(token)) setBusy(undefined);
++    }
++  };
++
++  const onOpenPath = async (): Promise<void> => {
++    if (detail === undefined || busy !== undefined) return;
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
++    setActionError(undefined);
++    setBusy("path");
++    try {
++      await openPath(detail.folderPath);
++    } catch (cause) {
++      if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
++    } finally {
++      if (selectionGuard.current.current(token)) setBusy(undefined);
++    }
+   };
+ 
+   const onGenerateCover = (): void => {
+@@ -457,12 +565,16 @@ export function ContentInspector({
+       setActionError(t("inspector.cover.needKey" as CreatorKey));
+       return;
+     }
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
+     setActionError(undefined);
+     setBusy("cover");
+     void startCoverGenerate(detail.id).then((next) => {
++      if (!selectionGuard.current.current(token)) return;
+       setDetail(next);
+       setBusy(undefined);
+     }, (cause: unknown) => {
++      if (!selectionGuard.current.current(token)) return;
+       setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
+       setBusy(undefined);
+     });
+@@ -478,13 +590,17 @@ export function ContentInspector({
+       setActionError(t("inspector.subtitle.needKey" as CreatorKey));
+       return;
+     }
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
+     setActionError(undefined);
+     setBusy("subtitle");
+     expectSubtitlePreview.current = true;
+     void startSubtitleGenerate(detail.id).then((next) => {
++      if (!selectionGuard.current.current(token)) return;
+       setDetail(next);
+       setBusy(undefined);
+     }, (cause: unknown) => {
++      if (!selectionGuard.current.current(token)) return;
+       expectSubtitlePreview.current = false;
+       setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
+       setBusy(undefined);
+@@ -501,12 +617,16 @@ export function ContentInspector({
+       setActionError(t("inspector.subtitle.needDraft" as CreatorKey));
+       return;
+     }
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
+     setActionError(undefined);
+     setBusy("burn");
+     void startSubtitleBurn(detail.id).then((next) => {
++      if (!selectionGuard.current.current(token)) return;
+       setDetail(next);
+       setBusy(undefined);
+     }, (cause: unknown) => {
++      if (!selectionGuard.current.current(token)) return;
+       setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
+       setBusy(undefined);
+     });
+@@ -514,16 +634,53 @@ export function ContentInspector({
+ 
+   const onPreviewSubtitle = (): void => {
+     if (detail === undefined) return;
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
++    setActionError(undefined);
+     void openSubtitlePreview(detail.id).then(() => undefined, (cause: unknown) => {
++      if (selectionGuard.current.current(token)) {
++        setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
++      }
++    });
++  };
++
 +  const onPreparePublish = (): void => {
 +    if (detail === undefined) return;
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
 +    setActionError(undefined);
 +    setBusy("prepare");
 +    void preparePublish({
@@ -650,23 +876,45 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
 +      originalRightsConfirmed,
 +      uploadCovers,
 +    }).then(async (result) => {
++      if (!selectionGuard.current.current(token)) return undefined;
 +      setPrepareResult(result);
 +      const next = await getContent(detail.id);
 +      return { next, result };
-+    }).then(({ next, result }) => {
-+      setDetail(next);
-+      setPrepareResult(next.publishPreparation ?? result);
++    }).then((outcome) => {
++      if (outcome === undefined || !selectionGuard.current.current(token)) return;
++      setDetail(outcome.next);
++      setPrepareResult(outcome.next.publishPreparation ?? outcome.result);
 +      setBusy(undefined);
 +    }, (cause: unknown) => {
-+      setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
++      if (!selectionGuard.current.current(token)) return;
+       setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
 +      setBusy(undefined);
-+    });
-+  };
-+
+     });
+   };
+ 
    const onSyncPublish = (): void => {
      if (detail === undefined) return;
++    const token = selectionGuard.current.capture(detail.id);
++    if (token === undefined) return;
      setActionError(undefined);
-@@ -591,19 +650,7 @@ export function ContentInspector({
+     setBusy("sync");
+     void syncPublish({ id: detail.id }).then((result) => {
++      if (!selectionGuard.current.current(token)) return undefined;
+       const login = result.platforms
+         .filter((page) => page.loginRequired === true)
+         .map((page) => {
+@@ -540,8 +697,9 @@ export function ContentInspector({
+       setBusy(undefined);
+       return getContent(detail.id);
+     }).then((next) => {
+-      if (next !== undefined) setDetail(next);
++      if (next !== undefined && selectionGuard.current.current(token)) setDetail(next);
+     }, (cause: unknown) => {
++      if (!selectionGuard.current.current(token)) return;
+       setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
+       setBusy(undefined);
+     });
+@@ -591,19 +749,7 @@ export function ContentInspector({
    const currentStepMeta = PIPELINE_STEPS.find((step) => step.id === currentStep);
  
    return (
@@ -687,7 +935,18 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
        <header className="header">
          <div className="titleRow">
            <div className="title">
-@@ -624,10 +671,7 @@ export function ContentInspector({
+@@ -615,7 +761,9 @@ export function ContentInspector({
+                 type="button"
+                 className="close"
+                 aria-label={t("inspector.openFolder" as CreatorKey)}
+-                onClick={() => { void openPath(detail.folderPath); }}
++                aria-busy={busy === "path"}
++                disabled={busy !== undefined}
++                onClick={() => { void onOpenPath(); }}
+               >
+                 <IconFolderOpenOutline16 size={14} />
+               </button>
+@@ -624,10 +772,7 @@ export function ContentInspector({
                type="button"
                className="close"
                aria-label={t("inspector.close" as CreatorKey)}
@@ -699,8 +958,66 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
              >
                <IconCloseOutline16 size={14} />
              </button>
-@@ -774,6 +818,161 @@ export function ContentInspector({
+@@ -653,6 +798,9 @@ export function ContentInspector({
+         {error === undefined && detail === undefined && (
+           <div className="empty">{t("empty.loading" as CreatorKey)}</div>
+         )}
++        {detail !== undefined && actionError !== undefined && (
++          <JobNote tone="error">{actionError}</JobNote>
++        )}
+         {detail !== undefined && tab === "overview" && (
+           <>
+             <div className="lede">
+@@ -728,8 +876,8 @@ export function ContentInspector({
+               >
+                 {currentStep === "topic" && (
+                   <ActionBar>
+-                    <ActionButton tone="primary" onClick={onReadyToRecord}>
+-                      {t("inspector.readyToRecord" as CreatorKey)}
++                    <ActionButton tone="primary" disabled={busy !== undefined} onClick={() => { void onReadyToRecord(); }}>
++                      {t((busy === "ready" ? "inspector.action.working" : "inspector.readyToRecord") as CreatorKey)}
+                     </ActionButton>
+                   </ActionBar>
+                 )}
+@@ -737,9 +885,10 @@ export function ContentInspector({
+                   <ActionBar>
+                     <ActionButton
+                       tone="primary"
+-                      onClick={detail.studioPath === undefined ? onBindStudio : onOpenStudio}
++                      disabled={busy !== undefined}
++                      onClick={() => { void (detail.studioPath === undefined ? onBindStudio() : onOpenStudio()); }}
+                     >
+-                      {t((detail.studioPath === undefined ? "inspector.studio.bind" : "inspector.studio.open") as CreatorKey)}
++                      {t((busy === "studio" ? "inspector.action.working" : detail.studioPath === undefined ? "inspector.studio.bind" : "inspector.studio.open") as CreatorKey)}
+                     </ActionButton>
+                   </ActionBar>
+                 )}
+@@ -755,13 +904,14 @@ export function ContentInspector({
+                     <ActionBar>
+                       <ActionButton
+                         tone="primary"
+-                        onClick={detail.studioPath === undefined ? onBindStudio : onOpenStudio}
++                        disabled={busy !== undefined}
++                        onClick={() => { void (detail.studioPath === undefined ? onBindStudio() : onOpenStudio()); }}
+                       >
+-                        {t((detail.studioPath === undefined ? "inspector.studio.bind" : "inspector.studio.open") as CreatorKey)}
++                        {t((busy === "studio" ? "inspector.action.working" : detail.studioPath === undefined ? "inspector.studio.bind" : "inspector.studio.open") as CreatorKey)}
+                       </ActionButton>
+                       {detail.studioPath !== undefined && (
+-                        <ActionButton onClick={onBindStudio}>
+-                          {t("inspector.studio.rebind" as CreatorKey)}
++                        <ActionButton disabled={busy !== undefined} onClick={() => { void onBindStudio(); }}>
++                          {t((busy === "studio" ? "inspector.action.working" : "inspector.studio.rebind") as CreatorKey)}
+                         </ActionButton>
+                       )}
+                     </ActionBar>
+@@ -769,11 +919,163 @@ export function ContentInspector({
+                 )}
+               </Surface>
              )}
+-            {actionError !== undefined && (
+-              <JobNote tone="error">{actionError}</JobNote>
+-            )}
              {(detail.workflow === "publish" || anyPublishMarked || detail.hasArticle) && (
                <>
 +                <Surface
@@ -861,7 +1178,29 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
                  <Surface
                    title={t("inspector.sync.title" as CreatorKey)}
                    hint={syncHint ?? t((platformSettingsPending
-@@ -989,14 +1188,6 @@ export function ContentInspector({
+@@ -813,7 +1115,7 @@ export function ContentInspector({
+                                 anchor={(
+                                   <StatusPill
+                                     tone={PUBLISH_TONE[row.status]}
+-                                    disabled={publishPending === platform.key}
++                                    disabled={publishPending !== null}
+                                     aria-haspopup="menu"
+                                     aria-label={`${t(platform.label)}：${t(PUBLISH_KEY[row.status])}`}
+                                     onClick={() => {
+@@ -953,10 +1255,8 @@ export function ContentInspector({
+                 )}
+               </ActionBar>
+             )}
+-            {actionError !== undefined
+-              ? <JobNote tone="error">{actionError}</JobNote>
+-              : detail.subtitleJob.status === "running" || detail.burn.status === "running"
+-                ? (
++            {detail.subtitleJob.status === "running" || detail.burn.status === "running"
++              ? (
+                   <JobNote tone="running">
+                     {t((detail.subtitleJob.status === "running"
+                       ? "inspector.subtitle.generating"
+@@ -989,14 +1289,6 @@ export function ContentInspector({
            </>
          )}
        </div>
@@ -876,8 +1215,21 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
      </div>
    );
  }
+diff --git a/src/client/CoverThumb.tsx b/src/client/CoverThumb.tsx
+index 1f6395a..205b055 100644
+--- a/src/client/CoverThumb.tsx
++++ b/src/client/CoverThumb.tsx
+@@ -26,6 +26,8 @@ export function CoverThumb({
+     void load(id).then((thumb) => {
+       if (cancelled || !thumb.found) return;
+       setSrc(`data:${thumb.mime};base64,${thumb.base64}`);
++    }, () => {
++      if (!cancelled) setSrc(undefined);
+     });
+     return () => {
+       cancelled = true;
 diff --git a/src/client/CreatorSettingsCard.tsx b/src/client/CreatorSettingsCard.tsx
-index 808189ac39b2d4a7f461751e12894c0edf188111..bbb7290051c5305438334540ddbb8c067d777dee 100644
+index 808189a..36a5118 100644
 --- a/src/client/CreatorSettingsCard.tsx
 +++ b/src/client/CreatorSettingsCard.tsx
 @@ -38,6 +38,7 @@ const CAPABILITY_ROWS: ReadonlyArray<{ id: keyof CreatorCapabilities; label: Cre
@@ -888,7 +1240,35 @@ index 808189ac39b2d4a7f461751e12894c0edf188111..bbb7290051c5305438334540ddbb8c06
    { id: "publishSync", label: "settings.capability.ego" },
  ];
  
-@@ -118,14 +119,14 @@ export function CreatorSettingsCard({
+@@ -83,11 +84,15 @@ export function CreatorSettingsCard({
+     secretDraftOf(EMPTY_SECRETS.cover),
+   ]);
+   const [loaded, setLoaded] = useState(false);
++  const [loadFailed, setLoadFailed] = useState(false);
+   const [capabilities, setCapabilities] = useState<CreatorCapabilities | undefined>(undefined);
++  const [capabilitiesFailed, setCapabilitiesFailed] = useState(false);
+   const [saving, setSaving] = useState(false);
+   const [failed, setFailed] = useState(false);
+   const [saved, setSaved] = useState(false);
+   const [keyFailed, setKeyFailed] = useState(false);
++  const [picking, setPicking] = useState(false);
++  const [pickFailed, setPickFailed] = useState(false);
+ 
+   useEffect(() => {
+     if (!ready()) return;
+@@ -105,9 +110,10 @@ export function CreatorSettingsCard({
+         secretDraftOf(nextSecrets.subtitle),
+         secretDraftOf(nextSecrets.cover),
+       ]);
++      setLoadFailed(false);
+       setLoaded(true);
+     }, () => {
+-      if (!cancelled) setLoaded(true);
++      if (!cancelled) setLoadFailed(true);
+     });
+     return () => {
+       cancelled = true;
+@@ -118,15 +124,14 @@ export function CreatorSettingsCard({
      if (!open || credentials === undefined) return;
      let cancelled = false;
      const refs = secrets.map((item) => item.ref);
@@ -897,17 +1277,60 @@ index 808189ac39b2d4a7f461751e12894c0edf188111..bbb7290051c5305438334540ddbb8c06
 -        if (!cancelled && (response.result.ok !== true)) {
 +    void credentials.describe(refs).then((response) => {
 +      if (cancelled || !response.ok || response.value === undefined) {
-+        if (!cancelled && (response.ok !== true)) {
++        if (!cancelled) {
            setSecrets((current) => current.map((item) => ({ ...item, loadError: true })));
          }
          return;
        }
 -      const described = response.result.value.credentials;
-+      const described = response.value;
-       setSecrets((current) => current.map((item) => applyDescribed(item, described)));
+-      setSecrets((current) => current.map((item) => applyDescribed(item, described)));
++      setSecrets((current) => current.map((item) => applyDescribed(item, response.value)));
      }, () => {
        if (!cancelled) setSecrets((current) => current.map((item) => ({ ...item, loadError: true })));
-@@ -188,7 +189,7 @@ export function CreatorSettingsCard({
+     });
+@@ -139,8 +144,13 @@ export function CreatorSettingsCard({
+     if (!open || !ready()) return;
+     let cancelled = false;
+     void getCapabilities().then((next) => {
+-      if (!cancelled) setCapabilities(next);
+-    }, () => undefined);
++      if (!cancelled) {
++        setCapabilities(next);
++        setCapabilitiesFailed(false);
++      }
++    }, () => {
++      if (!cancelled) setCapabilitiesFailed(true);
++    });
+     return () => {
+       cancelled = true;
+     };
+@@ -154,11 +164,20 @@ export function CreatorSettingsCard({
+   const title = t("settings.title" as CreatorKey);
+ 
+   const onPick = async () => {
+-    const path = await pickDirectory();
+-    if (path === null) return;
+-    setDraftRoot(path);
+-    setSaved(false);
+-    setFailed(false);
++    if (picking) return;
++    setPicking(true);
++    setPickFailed(false);
++    try {
++      const path = await pickDirectory();
++      if (path === null) return;
++      setDraftRoot(path);
++      setSaved(false);
++      setFailed(false);
++    } catch {
++      setPickFailed(true);
++    } finally {
++      setPicking(false);
++    }
+   };
+ 
+   const patchProfile = (platform: PublishPlatform, enabled: boolean) => {
+@@ -188,7 +207,7 @@ export function CreatorSettingsCard({
          for (const item of secrets) {
            const value = item.nextValue.trim();
            if (value === "") continue;
@@ -916,8 +1339,31 @@ index 808189ac39b2d4a7f461751e12894c0edf188111..bbb7290051c5305438334540ddbb8c06
              setKeyFailed(true);
              return;
            }
+@@ -237,6 +256,8 @@ export function CreatorSettingsCard({
+       </button>
+       {open && (
+         <div className="body">
++          {loadFailed && <p className="failed" role="status">{t("settings.loadFailed" as CreatorKey)}</p>}
++          {capabilitiesFailed && <p className="failed" role="status">{t("settings.capabilitiesFailed" as CreatorKey)}</p>}
+           {capabilities !== undefined && (
+             <div className="field">
+               <span className="fieldLabel">{t("settings.capabilities" as CreatorKey)}</span>
+@@ -263,10 +284,11 @@ export function CreatorSettingsCard({
+               <span className={draftRoot === "" ? "path empty" : "path"}>
+                 {draftRoot === "" ? t("settings.libraryRootEmpty" as CreatorKey) : draftRoot}
+               </span>
+-              <ActionButton onClick={() => { void onPick(); }}>
+-                {t("settings.pick" as CreatorKey)}
++              <ActionButton disabled={picking} onClick={() => { void onPick(); }}>
++                {t((picking ? "settings.picking" : "settings.pick") as CreatorKey)}
+               </ActionButton>
+             </span>
++            {pickFailed && <span className="failed" role="status">{t("settings.pickFailed" as CreatorKey)}</span>}
+           </label>
+           <div className="field">
+             <span className="fieldLabel">{t("settings.enabledPlatforms" as CreatorKey)}</span>
 diff --git a/src/client/contentSelection.ts b/src/client/contentSelection.ts
-index febd61379c094af6cae6e79110f481dca3179d1a..6441b6ffb6cfeae61800ce705a998f56bb6141db 100644
+index febd613..6441b6f 100644
 --- a/src/client/contentSelection.ts
 +++ b/src/client/contentSelection.ts
 @@ -9,6 +9,12 @@ import {
@@ -1118,31 +1564,35 @@ index febd61379c094af6cae6e79110f481dca3179d1a..6441b6ffb6cfeae61800ce705a998f56
  }
  
 diff --git a/src/client/credentialsApi.ts b/src/client/credentialsApi.ts
-index 40a0f214ea4043c9fe9a0d04bbb311f0777e917c..2cc42b02df7cf2cd30156549d97a0ccf054df8da 100644
+index 40a0f21..9532952 100644
 --- a/src/client/credentialsApi.ts
 +++ b/src/client/credentialsApi.ts
-@@ -7,14 +7,12 @@ export interface CredentialView {
+@@ -6,16 +6,14 @@ export interface CredentialView {
+   source?: string;
  }
  
++interface RemoteAnswer<T> {
++  ok: boolean;
++  value: T;
++}
++
  export interface CredentialsClient {
 -  describe: (request: { refs: string[] }) => Promise<{
 -    result: {
 -      ok: boolean;
 -      value?: { credentials: Record<string, CredentialView> };
 -    };
-+  describe: (refs: string[]) => Promise<{
-+    ok: boolean;
-+    value?: Record<string, CredentialView>;
-   }>;
+-  }>;
 -  set: (request: { ref: string; value: string }) => Promise<{
 -    result: { ok: boolean };
-+  set: (ref: string, value: string) => Promise<{
-+    ok: boolean;
-   }>;
+-  }>;
++  describe: (refs: string[]) => Promise<RemoteAnswer<Record<string, CredentialView>>>;
++  set: (ref: string, value: string) => Promise<RemoteAnswer<void>>;
  }
  
+ export interface SecretDraft {
 diff --git a/src/client/face.ts b/src/client/face.ts
-index 679cc7a3bccf8bef373658710b4933b4653fe4fa..d09f9423d8148c0bba71dd9c96c1c18de035da3f 100644
+index 679cc7a..d09f942 100644
 --- a/src/client/face.ts
 +++ b/src/client/face.ts
 @@ -6,6 +6,8 @@ import type {
@@ -1163,7 +1613,7 @@ index 679cc7a3bccf8bef373658710b4933b4653fe4fa..d09f9423d8148c0bba71dd9c96c1c18d
    openSubtitlePreview: (id: string) => Promise<SubtitlePreviewResult>;
    startSubtitleBurn: (id: string) => Promise<ContentDetail>;
 diff --git a/src/client/index.tsx b/src/client/index.tsx
-index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2b9031fc5 100644
+index 799bab6..3de1bfb 100644
 --- a/src/client/index.tsx
 +++ b/src/client/index.tsx
 @@ -1,6 +1,7 @@
@@ -1175,15 +1625,18 @@ index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2
  import type {} from "@deepseek-ai/dsh-api-remotes/client";
  import type {} from "@deepseek-ai/dsh-client-connection/client";
  import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
-@@ -9,7 +10,6 @@ import { TYPERT_REMOTE } from "../remote.ts";
+@@ -9,8 +10,9 @@ import { TYPERT_REMOTE } from "../remote.ts";
  import { CREATOR_SETTINGS_NAMESPACE } from "../settingsContract.ts";
  import { startLibraryLiveSync } from "./catalogSync.ts";
  import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
 -import { releaseShellChrome } from "./contentSelection.ts";
  import { registerContentTriggers } from "./contentTriggers.ts";
++import { pickWorkspaceDirectory } from "./pickDirectory.ts";
++import { revealWorkspacePath } from "./openWorkspacePath.ts";
  import type {
    ContentDetail,
-@@ -20,6 +20,8 @@ import type {
+   ContentFilter,
+@@ -20,6 +22,8 @@ import type {
    CreatorProfile,
    LibrarySettings,
    ListContentsResult,
@@ -1192,7 +1645,7 @@ index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2
    PublishMark,
    PublishPlatform,
    SubtitlePreviewResult,
-@@ -29,19 +31,19 @@ import type {
+@@ -29,19 +33,19 @@ import type {
  } from "../types.ts";
  import { ContentInspector } from "./ContentInspector.tsx";
  import {
@@ -1217,7 +1670,7 @@ index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2
  import {
    registerCreatorSettingsCard,
    type CompatibleSettingsSlots,
-@@ -51,6 +53,16 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
+@@ -51,6 +55,16 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
    interface LocaleNamespaceMap {
      "dsh.oil.creator": CreatorKey;
    }
@@ -1234,7 +1687,7 @@ index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2
  }
  
  interface RemoteAnswer<T> {
-@@ -83,6 +95,7 @@ interface OilCreatorRemote {
+@@ -83,6 +97,7 @@ interface OilCreatorRemote {
      status: PublishMark;
      url?: string;
    }) => Promise<RemoteAnswer<ContentDetail>>;
@@ -1242,16 +1695,37 @@ index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2
    syncPublish: (request: { id?: string; platform?: PublishPlatform; force?: boolean }) => Promise<RemoteAnswer<SyncPublishResult>>;
    openSubtitlePreview: (request: { id: string }) => Promise<RemoteAnswer<SubtitlePreviewResult>>;
    startSubtitleBurn: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
-@@ -103,7 +116,7 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
+@@ -92,8 +107,7 @@ interface OilCreatorRemote {
+ }
+ 
+ function credentialsOf(ctx: ClientContext): CredentialsClient | undefined {
+-  const connection = ctx.get("connection") as { api?: { credentials?: CredentialsClient } } | undefined;
+-  return connection?.api?.credentials;
++  return (ctx.remote as { credentials?: CredentialsClient }).credentials;
+ }
+ 
+ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
+@@ -103,7 +117,7 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
    return answer.value;
  }
  
 -export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection"];
-+export const inject = ["slots", "locale", "remote", "workspaces", "connection"];
++export const inject = ["slots", "locale", "remote", "remote.credentials", "remote.session", "uiWorkspace"];
  
  export function apply(ctx: ClientContext): void {
    ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-oil-creator: dictionaries");
-@@ -237,6 +250,13 @@ export function apply(ctx: ClientContext): void {
+@@ -159,8 +173,8 @@ export function apply(ctx: ClientContext): void {
+       const answer = await remote.getSubtitleText({ id });
+       return answer.ok && answer.value !== undefined ? answer.value : { text: "", cues: [] };
+     },
+-    pickDirectory: () => ctx.workspaces.pickDirectory(),
+-    openPath: (path) => ctx.workspaces.openPath(path),
++    pickDirectory: () => pickWorkspaceDirectory(ctx),
++    openPath: (path) => revealWorkspacePath(ctx, path),
+     getSettings: async () => {
+       const remote = remoteOf();
+       if (remote === undefined) throw new Error("remote unavailable");
+@@ -237,6 +251,13 @@ export function apply(ctx: ClientContext): void {
        bumpLibrary();
        return next;
      },
@@ -1265,7 +1739,7 @@ index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2
      syncPublish: async (request) => {
        const remote = remoteOf();
        if (remote === undefined) throw new Error("remote unavailable");
-@@ -296,42 +316,35 @@ export function apply(ctx: ClientContext): void {
+@@ -296,42 +317,35 @@ export function apply(ctx: ClientContext): void {
      );
    }, "dsh-oil-creator: content triggers");
  
@@ -1330,7 +1804,7 @@ index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2
    );
  
    ctx.effect(async () => {
-@@ -345,36 +358,21 @@ export function apply(ctx: ClientContext): void {
+@@ -345,36 +359,21 @@ export function apply(ctx: ClientContext): void {
      }
      bumpProfile();
  
@@ -1381,7 +1855,7 @@ index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2
        };
      });
      const stopSettings = ctx.slots.inject("settings.plugin.item", () =>
-@@ -396,7 +394,7 @@ export function apply(ctx: ClientContext): void {
+@@ -396,7 +395,7 @@ export function apply(ctx: ClientContext): void {
  
      return async () => {
        stopLive();
@@ -1391,10 +1865,18 @@ index 799bab6ed1f61238916a14b5ecd2057d7eb040c4..9e65c231f49bc18157387b359b2d86d2
        await disposeRemote();
      };
 diff --git a/src/client/locales.ts b/src/client/locales.ts
-index c32d42fd2379476f77e9b3205f1c171e34c9a999..a86727ca86e12ee8f2ed4661bfcd2f715b950e61 100644
+index c32d42f..266865e 100644
 --- a/src/client/locales.ts
 +++ b/src/client/locales.ts
-@@ -99,6 +99,27 @@ export const zh = {
+@@ -38,6 +38,7 @@ export const zh = {
+   "inspector.article.missing": "未转写",
+   "inspector.article.empty": "还没有转成文章。成稿会放在这一期的 公众号文章/ 里。",
+   "inspector.readyToRecord": "准备好录制了",
++  "inspector.action.working": "处理中",
+   "inspector.video.empty": "还没有成片。",
+   "inspector.publish.unpublished": "未发布",
+   "inspector.publish.draft": "草稿已备",
+@@ -99,6 +100,27 @@ export const zh = {
    "inspector.publish.views": "{n} 播放",
    "inspector.publish.likes": "{n} 赞",
    "inspector.publish.comments": "{n} 评论",
@@ -1422,7 +1904,23 @@ index c32d42fd2379476f77e9b3205f1c171e34c9a999..a86727ca86e12ee8f2ed4661bfcd2f71
    "settings.title": "内容工作台",
    "settings.description": "内容目录、启用的平台，以及字幕和封面用的 API Key。",
    "settings.libraryRoot": "影片目录",
-@@ -129,8 +150,9 @@ export const zh = {
+@@ -114,11 +136,15 @@ export const zh = {
+   "settings.platform.wechat": "视频号",
+   "settings.libraryRootEmpty": "尚未选择",
+   "settings.pick": "选择",
++  "settings.picking": "选择中",
++  "settings.pickFailed": "无法打开目录选择器，请重试。",
+   "settings.save": "保存",
+   "settings.saving": "保存中",
+   "settings.discard": "放弃",
+   "settings.saved": "已保存",
+   "settings.saveFailed": "保存失败",
++  "settings.loadFailed": "无法加载内容工作台设置，请稍后重试。",
++  "settings.capabilitiesFailed": "无法读取环境状态，请稍后重试。",
+   "settings.expand": "展开",
+   "settings.collapse": "收起",
+   "settings.secrets": "接口密钥",
+@@ -129,8 +155,9 @@ export const zh = {
    "settings.capability.subtitle": "字幕",
    "settings.capability.cover": "封面",
    "settings.capability.editing": "自动剪辑",
@@ -1433,7 +1931,15 @@ index c32d42fd2379476f77e9b3205f1c171e34c9a999..a86727ca86e12ee8f2ed4661bfcd2f71
    "settings.capability.ego": "Ego Browser",
    "settings.state.ready": "可用",
    "settings.state.missing": "不可用",
-@@ -261,6 +283,27 @@ export const en = {
+@@ -200,6 +227,7 @@ export const en = {
+   "inspector.article.missing": "Not written",
+   "inspector.article.empty": "No article yet. Finished drafts go in this episode's 公众号文章/ folder.",
+   "inspector.readyToRecord": "Ready to record",
++  "inspector.action.working": "Working",
+   "inspector.video.empty": "No video yet.",
+   "inspector.publish.unpublished": "Not published",
+   "inspector.publish.draft": "Draft ready",
+@@ -261,6 +289,27 @@ export const en = {
    "inspector.publish.views": "{n} views",
    "inspector.publish.likes": "{n} likes",
    "inspector.publish.comments": "{n} comments",
@@ -1461,7 +1967,23 @@ index c32d42fd2379476f77e9b3205f1c171e34c9a999..a86727ca86e12ee8f2ed4661bfcd2f71
    "settings.title": "Content workbench",
    "settings.description": "Library folder, enabled platforms, and the API keys for subtitles and covers.",
    "settings.libraryRoot": "Library folder",
-@@ -291,8 +334,9 @@ export const en = {
+@@ -276,11 +325,15 @@ export const en = {
+   "settings.platform.wechat": "Channels",
+   "settings.libraryRootEmpty": "Not chosen",
+   "settings.pick": "Choose",
++  "settings.picking": "Choosing",
++  "settings.pickFailed": "The directory picker could not open. Try again.",
+   "settings.save": "Save",
+   "settings.saving": "Saving",
+   "settings.discard": "Discard",
+   "settings.saved": "Saved",
+   "settings.saveFailed": "Save failed",
++  "settings.loadFailed": "Creator settings could not load. Try again later.",
++  "settings.capabilitiesFailed": "Environment status could not load. Try again later.",
+   "settings.expand": "Expand",
+   "settings.collapse": "Collapse",
+   "settings.secrets": "API keys",
+@@ -291,8 +344,9 @@ export const en = {
    "settings.capability.subtitle": "Subtitles",
    "settings.capability.cover": "Covers",
    "settings.capability.editing": "Auto editing",
@@ -1472,8 +1994,54 @@ index c32d42fd2379476f77e9b3205f1c171e34c9a999..a86727ca86e12ee8f2ed4661bfcd2f71
    "settings.capability.ego": "Ego Browser",
    "settings.state.ready": "Ready",
    "settings.state.missing": "Unavailable",
+diff --git a/src/client/openWorkspacePath.ts b/src/client/openWorkspacePath.ts
+new file mode 100644
+index 0000000..d7210b7
+--- /dev/null
++++ b/src/client/openWorkspacePath.ts
+@@ -0,0 +1,20 @@
++import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
++
++interface RemoteAnswer {
++  ok: boolean;
++  error?: { message: string };
++}
++
++interface SessionRemote {
++  openWorkspacePath: (request: { path: string; action: "reveal" }) => Promise<RemoteAnswer>;
++}
++
++/** Reveal one Host workspace path through the current Session remote. */
++export async function revealWorkspacePath(ctx: ClientContext, path: string): Promise<void> {
++  const remote = ctx.get("remote.session") as Partial<SessionRemote> | undefined;
++  if (typeof remote?.openWorkspacePath !== "function") {
++    throw new Error("workspace path opener unavailable");
++  }
++  const answer = await remote.openWorkspacePath({ path, action: "reveal" });
++  if (!answer.ok) throw new Error(answer.error?.message ?? "open path failed");
++}
+diff --git a/src/client/pickDirectory.ts b/src/client/pickDirectory.ts
+new file mode 100644
+index 0000000..e93a258
+--- /dev/null
++++ b/src/client/pickDirectory.ts
+@@ -0,0 +1,14 @@
++import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
++
++interface DirectoryPicker {
++  pickDirectory: () => Promise<string | null>;
++}
++
++/** Open the current Harness directory picker. */
++export function pickWorkspaceDirectory(ctx: ClientContext): Promise<string | null> {
++  const picker = ctx.get("uiWorkspace") as Partial<DirectoryPicker> | undefined;
++  if (typeof picker?.pickDirectory !== "function") {
++    throw new Error("directory picker unavailable");
++  }
++  return picker.pickDirectory();
++}
 diff --git a/src/client/publishPlatforms.ts b/src/client/publishPlatforms.ts
-index 3d7fade5e388ea872142bc54c2b470dd30e39a5b..48de415b4506c36c0fd984bd12d356968e6eb1a3 100644
+index 3d7fade..48de415 100644
 --- a/src/client/publishPlatforms.ts
 +++ b/src/client/publishPlatforms.ts
 @@ -1,5 +1,9 @@
@@ -1561,9 +2129,43 @@ index 3d7fade5e388ea872142bc54c2b470dd30e39a5b..48de415b4506c36c0fd984bd12d35696
 +export function publisherPlatformKey(platform: PublishPlatform): string {
 +  return platform === "wechat" ? "wechat_channels" : platform;
 +}
+diff --git a/src/client/selectionGuard.ts b/src/client/selectionGuard.ts
+new file mode 100644
+index 0000000..8fadef6
+--- /dev/null
++++ b/src/client/selectionGuard.ts
+@@ -0,0 +1,28 @@
++export interface SelectionToken {
++  readonly id: string;
++  readonly generation: number;
++}
++
++/** Reject async work that started for an earlier content selection. */
++export class SelectionGuard {
++  #id: string | null;
++  #generation = 0;
++
++  constructor(id: string | null) {
++    this.#id = id;
++  }
++
++  update(id: string | null): void {
++    if (id === this.#id) return;
++    this.#id = id;
++    this.#generation += 1;
++  }
++
++  capture(id: string): SelectionToken | undefined {
++    return id === this.#id ? { id, generation: this.#generation } : undefined;
++  }
++
++  current(token: SelectionToken): boolean {
++    return token.id === this.#id && token.generation === this.#generation;
++  }
++}
 diff --git a/src/client/sidebar/ContentMainPanel.css b/src/client/sidebar/ContentMainPanel.css
 new file mode 100644
-index 0000000000000000000000000000000000000000..5dad611b6aa16cbfc42faa6bab771b2b1784356d
+index 0000000..5dad611
 --- /dev/null
 +++ b/src/client/sidebar/ContentMainPanel.css
 @@ -0,0 +1,7 @@
@@ -1575,10 +2177,52 @@ index 0000000000000000000000000000000000000000..5dad611b6aa16cbfc42faa6bab771b2b
 +  --dsh-sidebar-inline-padding: 0px;
 +}
 diff --git a/src/client/sidebar/ContentSidebarPanel.tsx b/src/client/sidebar/ContentSidebarPanel.tsx
-index c2f280f1abf5f226e021770ec8823037589df955..e1ac8b459c4e362df44192ed97fe11bc501deed9 100644
+index c2f280f..eaf600c 100644
 --- a/src/client/sidebar/ContentSidebarPanel.tsx
 +++ b/src/client/sidebar/ContentSidebarPanel.tsx
-@@ -267,9 +267,7 @@ export function ContentSidebarPanel({
+@@ -57,6 +57,7 @@ export function ContentSidebarPanel({
+   const [items, setItems] = useState<ContentSummary[]>([]);
+   const [error, setError] = useState<string | undefined>(undefined);
+   const [loading, setLoading] = useState(false);
++  const [refreshing, setRefreshing] = useState(false);
+   const [creating, setCreating] = useState(false);
+   const [createOpen, setCreateOpen] = useState(false);
+   const [createName, setCreateName] = useState("");
+@@ -123,6 +124,20 @@ export function ContentSidebarPanel({
+     setCreateError(undefined);
+   };
+ 
++  const onRefresh = async () => {
++    if (refreshing) return;
++    setRefreshing(true);
++    setError(undefined);
++    try {
++      await refreshCatalog();
++      await loadList(query);
++    } catch (cause) {
++      setError(cause instanceof Error ? cause.message : t("empty.error"));
++    } finally {
++      setRefreshing(false);
++    }
++  };
++
+   const onCreate = async () => {
+     const title = createName.trim();
+     if (title === "" || creating) return;
+@@ -197,9 +212,9 @@ export function ContentSidebarPanel({
+               type="button"
+               className="iconButton"
+               aria-label={t("toolbar.refresh")}
+-              onClick={() => {
+-                void refreshCatalog().then(() => loadList(query));
+-              }}
++              aria-busy={refreshing}
++              disabled={refreshing}
++              onClick={() => { void onRefresh(); }}
+             >
+               <IconRefreshOutline16 size={16} />
+             </button>
+@@ -267,9 +282,7 @@ export function ContentSidebarPanel({
              key={item.id}
              type="button"
              className={item.id === selectedId ? "contentRow selected" : "contentRow"}
@@ -1590,7 +2234,7 @@ index c2f280f1abf5f226e021770ec8823037589df955..e1ac8b459c4e362df44192ed97fe11bc
              <span className="rowCover">
                <CoverThumb
 diff --git a/src/creatorSkill.ts b/src/creatorSkill.ts
-index 0c10363e8408b6fc0c8a727001f278b4884f7c59..ea349656410439f06f88674339b559f289d35e1f 100644
+index 0c10363..ea34965 100644
 --- a/src/creatorSkill.ts
 +++ b/src/creatorSkill.ts
 @@ -1,11 +1,18 @@
@@ -1682,7 +2326,7 @@ index 0c10363e8408b6fc0c8a727001f278b4884f7c59..ea349656410439f06f88674339b559f2
 +  };
  }
 diff --git a/src/guide.ts b/src/guide.ts
-index 0144b91ed0d9b249b4152128ce55a181bc262775..7bf2678c79c4c6a08c3eae9afcbbdf32c4507059 100644
+index 0144b91..7bf2678 100644
 --- a/src/guide.ts
 +++ b/src/guide.ts
 @@ -72,10 +72,11 @@ export function creatorGuideText(status: CreatorSetupStatus): string {
@@ -1741,7 +2385,7 @@ index 0144b91ed0d9b249b4152128ce55a181bc262775..7bf2678c79c4c6a08c3eae9afcbbdf32
      "## 推进原则",
      "- 每次只推进当前缺失的下一步：选题与脚本 → 录制 → 导出成片 → 字幕 → 封面 → 发布 → 数据回收。",
 diff --git a/src/libraryPrompt.ts b/src/libraryPrompt.ts
-index 66022ee3ebe7d96e6b2e8f65d5f8d5aabf842302..08e2e008d08030553f9bb6fd0229637186474260 100644
+index 66022ee..08e2e00 100644
 --- a/src/libraryPrompt.ts
 +++ b/src/libraryPrompt.ts
 @@ -43,8 +43,8 @@ export function libraryConventionText(
@@ -1756,7 +2400,7 @@ index 66022ee3ebe7d96e6b2e8f65d5f8d5aabf842302..08e2e008d08030553f9bb6fd02296371
    if (enabledPlatforms !== undefined) {
      lines.push(
 diff --git a/src/overlay.ts b/src/overlay.ts
-index f06161a873f5074a3509ea802e074267944af704..7596b7a5a08d934c2100f08ab05d6d28aa0bf5b9 100644
+index f06161a..7596b7a 100644
 --- a/src/overlay.ts
 +++ b/src/overlay.ts
 @@ -3,7 +3,14 @@ import { dirname, join } from "node:path";
@@ -1788,7 +2432,7 @@ index f06161a873f5074a3509ea802e074267944af704..7596b7a5a08d934c2100f08ab05d6d28
    }
 diff --git a/src/publishing.ts b/src/publishing.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..9490526700f0f8fd0477a008eb54bc19b3f188df
+index 0000000..9490526
 --- /dev/null
 +++ b/src/publishing.ts
 @@ -0,0 +1,796 @@
@@ -2589,7 +3233,7 @@ index 0000000000000000000000000000000000000000..9490526700f0f8fd0477a008eb54bc19
 +  }
 +}
 diff --git a/src/remote-contract.ts b/src/remote-contract.ts
-index 21e2b0880e2fb92e01ea902fb255ad42a9b54581..fe3c90fe5124b27977a62ff3d968536d770eb1fb 100644
+index 21e2b08..fe3c90f 100644
 --- a/src/remote-contract.ts
 +++ b/src/remote-contract.ts
 @@ -17,6 +17,8 @@ import {
@@ -2619,7 +3263,7 @@ index 21e2b0880e2fb92e01ea902fb255ad42a9b54581..fe3c90fe5124b27977a62ff3d968536d
    invocation("setScript", setScriptRequestSchema, contentDetailSchema),
    invocation("openSubtitlePreview", idRequestSchema, subtitlePreviewResultSchema),
 diff --git a/src/schemas.ts b/src/schemas.ts
-index eadbf4e5cba3c3988636b5be00f68de8031397a2..ec0fbc6e2d8d888bbd43c84ad280214fca6c508e 100644
+index eadbf4e..ec0fbc6 100644
 --- a/src/schemas.ts
 +++ b/src/schemas.ts
 @@ -61,6 +61,45 @@ const contentPublishSchema = z.object(
@@ -2685,7 +3329,7 @@ index eadbf4e5cba3c3988636b5be00f68de8031397a2..ec0fbc6e2d8d888bbd43c84ad280214f
  });
  
 diff --git a/src/service.ts b/src/service.ts
-index 3fb4708bb4db1161411e76b63656f4d178889236..9a9a61d5253df0d7b6bebb32b619548139d577c9 100644
+index 3fb4708..9a9a61d 100644
 --- a/src/service.ts
 +++ b/src/service.ts
 @@ -57,6 +57,15 @@ import {
@@ -2905,7 +3549,7 @@ index 3fb4708bb4db1161411e76b63656f4d178889236..9a9a61d5253df0d7b6bebb32b6195481
    const expanded = expandHomePath(path);
    if (!isAbsolute(expanded)) throw new Error(`path must be absolute: ${path}`);
 diff --git a/src/settingsHost.ts b/src/settingsHost.ts
-index 1f6b9d9c9b15eb910104185498aafe5649942334..f4a6f222d4cf2fa7d9071050978011a0562222ed 100644
+index 1f6b9d9..f4a6f22 100644
 --- a/src/settingsHost.ts
 +++ b/src/settingsHost.ts
 @@ -1,5 +1,5 @@
@@ -2926,7 +3570,7 @@ index 1f6b9d9c9b15eb910104185498aafe5649942334..f4a6f222d4cf2fa7d9071050978011a0
 +  settings.register(CREATOR_SETTINGS_NAMESPACE as SettingsNamespace, CREATOR_SETTINGS_DISCOVERY_SCHEMA);
  }
 diff --git a/src/tools.ts b/src/tools.ts
-index 0a42e956b0931603b79b81ed0eaaf7a8dd3e7d69..d30e0087ea28ddd1f0788fef53dc442cb0b402ef 100644
+index 0a42e95..d30e008 100644
 --- a/src/tools.ts
 +++ b/src/tools.ts
 @@ -35,7 +35,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
@@ -3002,7 +3646,7 @@ index 0a42e956b0931603b79b81ed0eaaf7a8dd3e7d69..d30e0087ea28ddd1f0788fef53dc442c
      name: "oil_sync_publish",
      description:
 diff --git a/src/types.ts b/src/types.ts
-index 82cc95f70da138008e091ec3481b8a420ae3223d..62fd6f2a36722e0b181beec1c66f0a8d54d71b47 100644
+index 82cc95f..62fd6f2 100644
 --- a/src/types.ts
 +++ b/src/types.ts
 @@ -77,6 +77,43 @@ export interface ContentSubtitles {
@@ -3074,7 +3718,7 @@ index 82cc95f70da138008e091ec3481b8a420ae3223d..62fd6f2a36722e0b181beec1c66f0a8d
  
  export interface SetPublishRequest {
 diff --git a/tests/bundlePackaging.test.ts b/tests/bundlePackaging.test.ts
-index acaff00a0ce283977a5f20720bd2c7f384a52766..a1bd3baa89cf91588c84d1ee4a798b8b9fcaca7b 100644
+index acaff00..a1bd3ba 100644
 --- a/tests/bundlePackaging.test.ts
 +++ b/tests/bundlePackaging.test.ts
 @@ -21,7 +21,7 @@ function parsePackMetadata(output: string) {
@@ -3096,7 +3740,7 @@ index acaff00a0ce283977a5f20720bd2c7f384a52766..a1bd3baa89cf91588c84d1ee4a798b8b
      expect(copyInplace).not.toContain(".dsh/profiles");
      expect(copyInplace).toContain("libDirectory");
 diff --git a/tests/capabilities.test.ts b/tests/capabilities.test.ts
-index edd95ebde1d601c0b360e8dd687c50d6c0643859..ecaf3aa5b7cfeb7e71be27c4a2967b47490255c3 100644
+index edd95eb..ecaf3aa 100644
 --- a/tests/capabilities.test.ts
 +++ b/tests/capabilities.test.ts
 @@ -65,6 +65,7 @@ describe("creator setup inspection", () => {
@@ -3116,7 +3760,7 @@ index edd95ebde1d601c0b360e8dd687c50d6c0643859..ecaf3aa5b7cfeb7e71be27c4a2967b47
    });
  
 diff --git a/tests/catalog.test.ts b/tests/catalog.test.ts
-index 52bfb48d5e2f5f53bdde4384cc824eb326c9166c..e1a5b594f694660d511e9733ad052b00161b8a47 100644
+index 52bfb48..e1a5b59 100644
 --- a/tests/catalog.test.ts
 +++ b/tests/catalog.test.ts
 @@ -121,6 +121,7 @@ describe("pipeline and filters", () => {
@@ -3161,7 +3805,7 @@ index 52bfb48d5e2f5f53bdde4384cc824eb326c9166c..e1a5b594f694660d511e9733ad052b00
      const root = await mkdtemp(join(tmpdir(), "dsh-oil-sort-"));
      const older = join(root, "2026-06-27_old video");
 diff --git a/tests/contentInspector.test.ts b/tests/contentInspector.test.ts
-index f93945577cd67030898a5096d85b32cbed6b2ac9..906bdf56c8485798952ee1e1f64bbc64c9dbf115 100644
+index f939455..906bdf5 100644
 --- a/tests/contentInspector.test.ts
 +++ b/tests/contentInspector.test.ts
 @@ -1,7 +1,11 @@
@@ -3233,7 +3877,7 @@ index f93945577cd67030898a5096d85b32cbed6b2ac9..906bdf56c8485798952ee1e1f64bbc64
 +  });
  });
 diff --git a/tests/contentSelection.test.ts b/tests/contentSelection.test.ts
-index 7e016a2587608f6337d039965c1e6d1b937a5052..0ec08061f3736712cb7049c61c2896efd759e82f 100644
+index 7e016a2..0ec0806 100644
 --- a/tests/contentSelection.test.ts
 +++ b/tests/contentSelection.test.ts
 @@ -1,6 +1,7 @@
@@ -3354,7 +3998,7 @@ index 7e016a2587608f6337d039965c1e6d1b937a5052..0ec08061f3736712cb7049c61c2896ef
 -  });
  });
 diff --git a/tests/creatorSkill.test.ts b/tests/creatorSkill.test.ts
-index b745a5ead29db6b05f2d20f8a1e5c1b032b6f15d..0f75f7ae5709cf181762019acad5fdc0e95fa0e4 100644
+index b745a5e..0f75f7a 100644
 --- a/tests/creatorSkill.test.ts
 +++ b/tests/creatorSkill.test.ts
 @@ -6,8 +6,10 @@ describe("creator-workbench skill", () => {
@@ -3370,7 +4014,7 @@ index b745a5ead29db6b05f2d20f8a1e5c1b032b6f15d..0f75f7ae5709cf181762019acad5fdc0
      expect(CREATOR_WORKBENCH_SKILL.content).toContain("oil_creator_setup");
      expect(CREATOR_WORKBENCH_SKILL.content).toContain("oil_script_rules");
 diff --git a/tests/guide.test.ts b/tests/guide.test.ts
-index 5ef29fffe5c8c662caa155b0b22f431a09c9b2c3..78a3bd17b3ccb0c7a363de8bab3aecbe93b000db 100644
+index 5ef29ff..78a3bd1 100644
 --- a/tests/guide.test.ts
 +++ b/tests/guide.test.ts
 @@ -37,6 +37,7 @@ function statusOf(overrides: {
@@ -3431,9 +4075,79 @@ index 5ef29fffe5c8c662caa155b0b22f431a09c9b2c3..78a3bd17b3ccb0c7a363de8bab3aecbe
    });
  
    it("lists environment recommendations when present", () => {
+diff --git a/tests/openWorkspacePath.test.ts b/tests/openWorkspacePath.test.ts
+new file mode 100644
+index 0000000..5170a51
+--- /dev/null
++++ b/tests/openWorkspacePath.test.ts
+@@ -0,0 +1,35 @@
++import { describe, expect, it, vi } from "vitest";
++
++import { revealWorkspacePath } from "../src/client/openWorkspacePath.ts";
++
++describe("revealWorkspacePath", () => {
++  it("uses the current session remote and preserves its method receiver", async () => {
++    const remote = {
++      calls: 0,
++      openWorkspacePath(request: { path: string; action: "reveal" }) {
++        this.calls += 1;
++        return Promise.resolve({ ok: true, request });
++      },
++    };
++    const ctx = { get: (name: string) => name === "remote.session" ? remote : undefined };
++
++    await expect(revealWorkspacePath(ctx as never, "/video/project")).resolves.toBeUndefined();
++    expect(remote.calls).toBe(1);
++  });
++
++  it("surfaces the Host failure message", async () => {
++    const openWorkspacePath = vi.fn(() => Promise.resolve({
++      ok: false,
++      error: { message: "path is unavailable" },
++    }));
++    const ctx = { get: () => ({ openWorkspacePath }) };
++
++    await expect(revealWorkspacePath(ctx as never, "/missing")).rejects.toThrow("path is unavailable");
++  });
++
++  it("fails clearly when the current remote is unavailable", async () => {
++    const ctx = { get: () => undefined };
++
++    await expect(revealWorkspacePath(ctx as never, "/missing")).rejects.toThrow("workspace path opener unavailable");
++  });
++});
+diff --git a/tests/pickDirectory.test.ts b/tests/pickDirectory.test.ts
+new file mode 100644
+index 0000000..11c2e50
+--- /dev/null
++++ b/tests/pickDirectory.test.ts
+@@ -0,0 +1,23 @@
++import { describe, expect, it } from "vitest";
++
++import { pickWorkspaceDirectory } from "../src/client/pickDirectory.ts";
++
++describe("pickWorkspaceDirectory", () => {
++  it("uses uiWorkspace and preserves its method receiver", async () => {
++    const picker = {
++      value: "/current",
++      pickDirectory() {
++        return Promise.resolve(this.value);
++      },
++    };
++    const ctx = { get: (name: string) => name === "uiWorkspace" ? picker : undefined };
++
++    await expect(pickWorkspaceDirectory(ctx as never)).resolves.toBe("/current");
++  });
++
++  it("fails clearly when the current service is unavailable", () => {
++    const ctx = { get: () => undefined };
++
++    expect(() => pickWorkspaceDirectory(ctx as never)).toThrow("directory picker unavailable");
++  });
++});
 diff --git a/tests/publishing.test.ts b/tests/publishing.test.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..afd00a14b62d23e2afdf2b864d48d7fc327f6a7b
+index 0000000..afd00a1
 --- /dev/null
 +++ b/tests/publishing.test.ts
 @@ -0,0 +1,297 @@
@@ -3735,7 +4449,7 @@ index 0000000000000000000000000000000000000000..afd00a14b62d23e2afdf2b864d48d7fc
 +  });
 +});
 diff --git a/tests/releaseCheck.test.ts b/tests/releaseCheck.test.ts
-index 177167dfbbd211d146e1a0fe4e5129566a557f9e..0ff1abee0bd201dadefb29bf335f1a1547f36e8f 100644
+index 177167d..0ff1abe 100644
 --- a/tests/releaseCheck.test.ts
 +++ b/tests/releaseCheck.test.ts
 @@ -7,7 +7,7 @@ import {
@@ -3779,8 +4493,33 @@ index 177167dfbbd211d146e1a0fe4e5129566a557f9e..0ff1abee0bd201dadefb29bf335f1a15
        }),
      };
    } catch (error) {
+diff --git a/tests/selectionGuard.test.ts b/tests/selectionGuard.test.ts
+new file mode 100644
+index 0000000..847adfd
+--- /dev/null
++++ b/tests/selectionGuard.test.ts
+@@ -0,0 +1,19 @@
++import { describe, expect, it } from "vitest";
++
++import { SelectionGuard } from "../src/client/selectionGuard.ts";
++
++describe("SelectionGuard", () => {
++  it("rejects late results after switching away and back", () => {
++    const guard = new SelectionGuard("episode-a");
++    const first = guard.capture("episode-a");
++    expect(first).toBeDefined();
++
++    guard.update("episode-b");
++    expect(guard.current(first!)).toBe(false);
++    expect(guard.capture("episode-a")).toBeUndefined();
++
++    guard.update("episode-a");
++    expect(guard.current(first!)).toBe(false);
++    expect(guard.current(guard.capture("episode-a")!)).toBe(true);
++  });
++});
 diff --git a/tests/service.test.ts b/tests/service.test.ts
-index 32fc34616bf57f3e237e4e1a70108c7232fffb0b..974467c95b2008f9601b73c4a7e87d87ab60bbfc 100644
+index 32fc346..974467c 100644
 --- a/tests/service.test.ts
 +++ b/tests/service.test.ts
 @@ -70,6 +70,7 @@ vi.mock("../src/processAlive.ts", async (importOriginal) => {
@@ -3827,7 +4566,7 @@ index 32fc34616bf57f3e237e4e1a70108c7232fffb0b..974467c95b2008f9601b73c4a7e87d87
      try {
        const { dataDir, service } = await overlayService({
 diff --git a/tests/sidebarStartSession.test.ts b/tests/sidebarStartSession.test.ts
-index cc77ae4e98c5d5dabd4093f5bade32a29db7a621..ad974b607b2eea29935f0b5ce9068398cd120245 100644
+index cc77ae4..ad974b6 100644
 --- a/tests/sidebarStartSession.test.ts
 +++ b/tests/sidebarStartSession.test.ts
 @@ -5,10 +5,11 @@ import { describe, expect, it, vi } from "vitest";
@@ -3846,7 +4585,7 @@ index cc77ae4e98c5d5dabd4093f5bade32a29db7a621..ad974b607b2eea29935f0b5ce9068398
  
    it("新版 workspaces 不再提供导航时，使用 uiWorkspace 并保留方法接收者", () => {
 diff --git a/tests/typert.test.ts b/tests/typert.test.ts
-index 4754b8f564ffc8dc733d400aad7a40b632dac848..1d11a3f657648aebc9cd45278613e39de34624fa 100644
+index 4754b8f..1d11a3f 100644
 --- a/tests/typert.test.ts
 +++ b/tests/typert.test.ts
 @@ -31,6 +31,7 @@ describe("handwritten TYPERT", () => {
@@ -3880,7 +4619,7 @@ index 4754b8f564ffc8dc733d400aad7a40b632dac848..1d11a3f657648aebc9cd45278613e39d
    });
  });
 diff --git a/tsdown.config.ts b/tsdown.config.ts
-index 7fcb6d8e1646a6a7e8c54a5a0ce15195af5f07a9..e12295b2338e03d2e8bf596f394647d46067d62e 100644
+index 7fcb6d8..e12295b 100644
 --- a/tsdown.config.ts
 +++ b/tsdown.config.ts
 @@ -1,5 +1,5 @@

@@ -158,8 +158,8 @@ ego-browser nodejs < scripts/collect-publish.mjs
 - Host remote 或工具改完后要重新 `pnpm build` 并重启 `dsh web`。
 
 
-### 新建会话接口兼容
+### 客户端接口兼容
 
-侧栏新建会话的版本回归基线（2026-09-10）：本地编译依赖为 `0.1.1-rc.2`，实际使用的是 DSH Desktop `2.0.5`、`web` profile，桌面安装包内置 Harness `0.1.2-rc.1`。本地 Harness 仓库 HEAD 为 `47f943859bef60e4160492346772ded9b24f765a`，接口判断以桌面安装产物为准。旧版调用 `workspaces.startSession`，新版官方侧栏调用 `uiWorkspace.startSession`；插件通过 `sidebar/startSession.ts` 在点击时解析服务，优先新版并保留旧版入口，不复制宿主的工作区选择、空会话复用和导航策略。
+内容工作台随当前 YourBuddy 客户端 API 发布：目录选择使用 `uiWorkspace`，在 Finder 中显示目录使用 `remote.session`，接口密钥使用 `remote.credentials`。这些服务必须列入插件注入项；升级 Harness 时应同时更新调用参数、返回值处理和回归测试，不保留已从当前服务接口删除的方法。
 
-升级验收必须对照实际宿主的官方侧栏和服务实现，不能只依赖项目锁定版本的类型检查。`sidebarStartSession.test.ts` 覆盖新版控制器不含旧方法、旧版透传工作区、服务方法接收者、失败不重复创建及服务重新解析；入口契约测试同时防止绕过适配器。未进行人工点击或授权的界面验收时，不能把代码测试表述为按钮已在实际窗口验证。
+需要 Host 或 Remote 的按钮必须在请求期间禁用，并在失败时显示可见错误；不得丢弃 Promise 或只记录控制台异常。升级验收必须对照实际宿主实现，并覆盖目录选择、打开路径、凭据读写和操作失败。未进行人工点击或授权的界面验收时，不能把代码测试表述为按钮已在实际窗口验证。
