@@ -1,8 +1,8 @@
-# YourBuddy 0.3.19
+# YourBuddy 0.3.20
 
 ## English
 
-YourBuddy 0.3.19 includes Ego Browser as a reviewed offline default.
+YourBuddy 0.3.20 includes Ego Browser as a reviewed offline default and corrects the product snapshot record that stopped 0.3.19 before artifact publication.
 
 - Browser tools and the live Agent Browser tab are available without a separate GitHub or npm plugin installation.
 - The pinned `dsh-ego-browser` 0.8.5 snapshot uses YourBuddy's frozen offline dependency closure and yields to an active user-installed bundle.
@@ -12,7 +12,7 @@ Install the Apple Silicon DMG from this release, or use **Settings → General �
 
 ## 中文
 
-YourBuddy 0.3.19 将 Ego Browser 作为经过检查的离线默认插件。
+YourBuddy 0.3.20 将 Ego Browser 作为经过检查的离线默认插件，并修正了导致 0.3.19 在产物发布前停止的产品快照记录。
 
 - 无需另外通过 GitHub 或 npm 安装插件，即可使用浏览器工具和实时 Agent Browser 标签页。
 - 固定的 `dsh-ego-browser` 0.8.5 快照使用 YourBuddy 冻结的离线依赖闭包；用户自行安装并启用的 Bundle 仍然优先。
@@ -22,4 +22,4 @@ YourBuddy 0.3.19 将 Ego Browser 作为经过检查的离线默认插件。
 
 ## Verification / 验证资料
 
-- [Tagged verification record / Tag 内验证记录](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.19/docs/releases/yourbuddy-v0.3.19)
+- [Tagged verification record / Tag 内验证记录](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.20/docs/releases/yourbuddy-v0.3.20)
