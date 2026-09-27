@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.3.20`。
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选版本；源码验证已完成，Tag CI 负责发布产物。
+- 归档状态：已发布；发布后观察结果记录在 `master`。
 - 证据 Commit：由 `yourbuddy-v0.3.20` 标记的不可变 Commit。
 - 证据图集：未采集；打包后 WebView 交互仍未验证。
-- 证据下载：`yourbuddy-v0.3.20` 的不可变源码；公开安装包等待 Tag CI 发布。
+- 证据下载：[公开 0.3.20 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.20)，包含 5 个产物。
 
 ## 面向用户的发布说明
 
@@ -44,7 +44,7 @@ Tag CI 发布产物后，从 0.3.20 GitHub Release 安装 Apple Silicon DMG；�
 | 产品集成聚焦验证 | 通过 | 源码候选版本 | macOS 15.6.1 arm64、Node.js 22.19.0、pnpm 11.7.0 | 54 项 Node 测试、6 项 Rust Overlay 测试、13 项离线测试 |
 | 干净快照验证 | 通过 | 已提交源码候选版本 | 本地干净产品目录 | `dsh-ego-browser` 来源记录匹配 `dc8203c572c5a2736653f352b8d971301dfdc8c51e0941a37e104ff5cfb3e928` |
 | 文档与 Lint | 通过 | 源码候选版本 | 相同本地环境 | 43 项文档门禁和仓库 Lint 通过 |
-| 正式桌面发布 | 等待中 | `yourbuddy-v0.3.20` | GitHub Actions macOS arm64 | Tag CI 负责构建、打包后 Runtime 冒烟、校验和、Updater Metadata 与上传 |
+| 正式桌面发布 | 通过 | `yourbuddy-v0.3.20` | GitHub Actions macOS arm64 | 工作流 `36311318965` 完成构建、冒烟、校验、签名并上传 5 个产物 |
 
 ## 场景：修正后的 Ego Browser 来源集成
 
@@ -68,25 +68,25 @@ Tag CI 发布产物后，从 0.3.20 GitHub Release 安装 Apple Silicon DMG；�
 
 ### 实际结果
 
-干净的已提交快照与修正后的来源记录匹配。在准备新的不可变修正版本前，集成通过 54 项聚焦 Node 测试、6 项 Rust Overlay 测试、13 项离线测试、43 项文档门禁和仓库 Lint。
+干净的已提交快照与修正后的来源记录匹配。集成通过 54 项聚焦 Node 测试、6 项 Rust Overlay 测试、13 项离线测试、43 项文档门禁和仓库 Lint。随后工作流 `36311318965` 构建 App 与 DMG，通过迁移 Runtime 冒烟和校验和验证，并发布 5 个产物。
 
 ### 证据
 
 - 操作前：0.3.19 源码检查所在工作区包含被忽略的 `runtime/ego-browser/dist/` 字节，托管干净 Checkout 在产物发布前拒绝了已记录 Hash。
 - 执行中：删除被忽略的构建输出，重新计算并验证已提交 Tree Hash。
-- 结果：干净快照验证与源码聚焦检查通过；0.3.20 使用新的不可变 Tag。
-- 失败与恢复：工作流 `36310499165` 没有发布产物，并保留 0.3.19 Tag 而没有移动它。
+- 结果：[工作流 `36311318965`](https://github.com/istarwyh/yourbuddy/actions/runs/36311318965)发布 `latest.json`、`SHA256SUMS.txt`、Updater 归档及签名与 Apple Silicon DMG；稳定 Updater Manifest 报告 0.3.20。
+- 失败与恢复：工作流 `36310499165` 没有发布产物，并保留 0.3.19 Tag 而没有移动它；新的 0.3.20 工作流完成发布。
 
 ### 范围限制
 
-这些检查不能确认原生 App 启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、Apple Developer 签名、公证或公开 0.3.20 产物可用性。Tag CI 和发布后检查负责记录这些结果。
+工作流通过迁移 Runtime 冒烟确认打包 Runtime 启动，并确认公开产物可用。它不能确认交互式原生 App 启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、Apple Developer 签名或公证。发布后没有独立下载体积较大的 DMG。
 
 ## 交付状态
 
-- 产品发布状态：等待 Annotated Tag 和 Tag GitHub Actions 工作流。
-- 验证资料归档状态：所述范围内的源码与干净 Checkout 修正证据已完成。
-- 站点同步状态：产品指南已由工作流 `36310499295` 成功部署；官网使用稳定的最新 Release 链接。
-- 未验证范围：原生启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、公开产物下载、Apple Developer 签名与公证。
+- 产品发布状态：已发布为 `yourbuddy-v0.3.20`，包含 5 个公开产物与稳定 Updater Metadata。
+- 验证资料归档状态：不可变源码包含在 Tag 中；发布后观察结果记录在 `master`。
+- 站点同步状态：产品指南已由工作流 `36310499295` 成功部署；中英文插件页面与稳定最新 Release 链接均返回 HTTP 200。
+- 未验证范围：独立完整 DMG 下载、交互式原生启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、Apple Developer 签名与公证。
 
 ## 交付清单
 
@@ -95,6 +95,6 @@ Tag CI 发布产物后，从 0.3.20 GitHub Release 安装 Apple Silicon DMG；�
 - [x] 已记录失败的不可变 0.3.19 Tag 以及通过新版本完成的恢复。
 - [x] 已提交快照 Hash 在没有本地忽略输出时通过来源记录验证。
 - [x] 文档、Lint、产品聚焦测试、Rust Overlay 测试与离线测试通过。
-- [ ] Tag CI 已发布并独立提供 DMG、Updater 归档、签名、校验和及稳定 Updater Metadata。
-- [ ] 已独立下载公开 DMG，并在打包后 WebView 中完成操作。
+- [x] Tag CI 已发布并独立提供 DMG、Updater 归档、签名、校验和及稳定 Updater Metadata。
+- [ ] 未独立下载公开 DMG，也未在打包后 WebView 中完成操作。
 - [x] 未移动或覆盖任何公开 Tag 或安装包。

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.20/README.md
 /yourbuddy-0-3-20:
-  en: 8bdfaed1c70b3dc3
-  zh: 2cf1f84de33ef181
+  en: 258b0c8d898001ae
+  zh: 9bcfbd5c45dc0f19
 /yourbuddy-0-3-20/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -27,8 +27,8 @@
   en: 680e257230ac4542
   zh: 7f06d166d467b981
 /yourbuddy-0-3-20/verification-summary:
-  en: 71f9c0f27127aa66
-  zh: 5e24425f9d21caf9
+  en: 696fcce08936cf82
+  zh: 97abd0b31fc2e4bf
 /yourbuddy-0-3-20/scenario-corrected-ego-browser-source-integration:
   en: 021d3061726dd3c7
   zh: bbbb436388aa402f
@@ -39,17 +39,17 @@
   en: a471b2ded5ab3413
   zh: c8ae5d687632e495
 /yourbuddy-0-3-20/scenario-corrected-ego-browser-source-integration/actual:
-  en: 26855047d7390669
-  zh: ca4cc4b473a03c04
+  en: 808aa1fb6ad88bad
+  zh: 853faa5918cbcbd4
 /yourbuddy-0-3-20/scenario-corrected-ego-browser-source-integration/evidence:
-  en: c768e9982d68bb8e
-  zh: 1f3a10009c123aff
+  en: e3732345a5530b61
+  zh: edcdf2554904e22b
 /yourbuddy-0-3-20/scenario-corrected-ego-browser-source-integration/scope-limits:
-  en: 0346168f29aab373
-  zh: 29b9e2ac8eb1efce
+  en: a86e585d5ef31251
+  zh: ebd746534be85b6e
 /yourbuddy-0-3-20/delivery-status:
-  en: c2af707c446a0d71
-  zh: 44a2fd0a59ade0de
+  en: 622e9acc83984e9d
+  zh: a46d77c23c97f0a6
 /yourbuddy-0-3-20/delivery-checklist:
-  en: 4aaa5c4cd1ccf4df
-  zh: f4d425ad8d8cbaf3
+  en: 8ff8eb3ab506826d
+  zh: afa60fd1766048f1

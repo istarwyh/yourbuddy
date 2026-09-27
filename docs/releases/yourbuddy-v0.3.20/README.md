@@ -6,10 +6,10 @@ This archive records the default Ego Browser integration and the corrected clean
 
 - Release identifier: `yourbuddy-v0.3.20`.
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; source verification is complete and tagged CI owns artifact publication.
+- Archive state: published release with post-publication observations recorded on `master`.
 - Evidence commit: the immutable commit tagged `yourbuddy-v0.3.20`.
 - Evidence gallery: not captured; packaged WebView interaction remains unverified.
-- Evidence download: immutable source at `yourbuddy-v0.3.20`; public installers are pending tagged CI.
+- Evidence download: [public 0.3.20 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.20) with five assets.
 
 ## User release notes
 
@@ -44,7 +44,7 @@ The target remains macOS 11 or later on Apple Silicon. Existing YourBuddy data r
 | Focused product integration | passed | source candidate | macOS 15.6.1 arm64, Node.js 22.19.0, pnpm 11.7.0 | 54 Node tests, 6 Rust Overlay tests, 13 offline tests |
 | Clean snapshot verification | passed | committed source candidate | local clean product tree | `dsh-ego-browser` source record matches `dc8203c572c5a2736653f352b8d971301dfdc8c51e0941a37e104ff5cfb3e928` |
 | Documentation and lint | passed | source candidate | same local environment | 43 documentation gates and repository lint passed |
-| Formal desktop publication | pending | `yourbuddy-v0.3.20` | GitHub Actions macOS arm64 | tagged CI owns build, packaged-runtime smoke, checksums, updater metadata, and upload |
+| Formal desktop publication | passed | `yourbuddy-v0.3.20` | GitHub Actions macOS arm64 | workflow `36311318965` built, smoke-tested, checksummed, signed, and uploaded five assets |
 
 ## Scenario: corrected Ego Browser source integration
 
@@ -68,25 +68,25 @@ The reviewed Ego Browser snapshot remains resolvable without a registry install,
 
 ### Actual
 
-The clean committed snapshot matches the corrected source record. The integration passed 54 focused Node tests, 6 Rust Overlay tests, 13 offline tests, 43 documentation gates, and repository lint before the immutable correction release was prepared.
+The clean committed snapshot matches the corrected source record. The integration passed 54 focused Node tests, 6 Rust Overlay tests, 13 offline tests, 43 documentation gates, and repository lint. Workflow `36311318965` then built the App and DMG, passed the relocated-runtime smoke and checksum verification, and published five assets.
 
 ### Evidence
 
 - Before: 0.3.19 source checks passed in a worktree containing ignored `runtime/ego-browser/dist/` bytes, but hosted clean-checkout assembly rejected the recorded hash before publishing assets.
 - In progress: the ignored build output was removed and the committed tree hash was recomputed and validated.
-- Result: clean snapshot verification and the focused source checks passed; 0.3.20 uses a new immutable tag.
-- Failure and recovery: workflow `36310499165` published no assets, and the 0.3.19 tag was retained rather than moved.
+- Result: [workflow `36311318965`](https://github.com/istarwyh/yourbuddy/actions/runs/36311318965) published `latest.json`, `SHA256SUMS.txt`, the updater archive and signature, and the Apple Silicon DMG; the stable updater manifest reports 0.3.20.
+- Failure and recovery: workflow `36310499165` published no assets, and the 0.3.19 tag was retained rather than moved; the new 0.3.20 workflow completed the release.
 
 ### Scope limits
 
-These checks do not establish native App startup, packaged WebView interaction, real-site login behavior, updater installation, Apple Developer signing, notarization, or the availability of public 0.3.20 artifacts. Tagged CI and post-publication checks own those observations.
+The workflow establishes packaged runtime startup through its relocated-runtime smoke and public artifact availability. It does not establish interactive native App startup, packaged WebView interaction, real-site login behavior, updater installation, Apple Developer signing, or notarization. The large DMG was not independently downloaded after publication.
 
 ## Delivery status
 
-- Product publication status: pending the annotated tag and tagged GitHub Actions workflow.
-- Verification archive status: source and clean-checkout correction evidence are complete within the stated limits.
-- Website synchronization status: product guidance deployed successfully in workflow `36310499295`; the website uses the stable latest-Release link.
-- Unverified scope: native startup, packaged WebView interaction, real-site login behavior, updater installation, public artifact download, Apple Developer signing, and notarization.
+- Product publication status: published as `yourbuddy-v0.3.20` with five public assets and stable updater metadata.
+- Verification archive status: immutable source is included in the tag; post-publication observations are recorded on `master`.
+- Website synchronization status: product guidance deployed successfully in workflow `36310499295`; Chinese and English plugin pages and the stable latest-Release link returned HTTP 200.
+- Unverified scope: independent full DMG download, interactive native startup, packaged WebView interaction, real-site login behavior, updater installation, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -95,6 +95,6 @@ These checks do not establish native App startup, packaged WebView interaction, 
 - [x] The failed immutable 0.3.19 tag and recovery through a new version are recorded.
 - [x] The committed snapshot hash passes source-record verification without ignored local output.
 - [x] Documentation, lint, focused product tests, Rust Overlay tests, and offline tests passed.
-- [ ] Tagged CI published and independently exposed the DMG, updater archive, signature, checksums, and stable updater metadata.
-- [ ] The published DMG was independently downloaded and exercised in the packaged WebView.
+- [x] Tagged CI published and independently exposed the DMG, updater archive, signature, checksums, and stable updater metadata.
+- [ ] The published DMG was not independently downloaded or exercised in the packaged WebView.
 - [x] No public tag or installer was moved or overwritten.
