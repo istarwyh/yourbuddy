@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.22/README.md
 /yourbuddy-0-3-22:
-  en: 37bd239d688c7806
-  zh: d2821d4ea5472ac4
+  en: 4a348ec9aaab3927
+  zh: 811145deff0e8120
 /yourbuddy-0-3-22/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -27,8 +27,8 @@
   en: 7ade917fa2a0a92f
   zh: 83501b6f5ef6f723
 /yourbuddy-0-3-22/verification-summary:
-  en: bf259997aa97a513
-  zh: 5b0c94a6fa32cef8
+  en: 34c7381a835789af
+  zh: e71605aa3158227d
 /yourbuddy-0-3-22/scenario-packaged-agent-browser-and-release-maintenance:
   en: 8b5210d8ee75298a
   zh: 392cc85980229621
@@ -39,17 +39,17 @@
   en: 14462198c51e8533
   zh: 535451fa4e39accd
 /yourbuddy-0-3-22/scenario-packaged-agent-browser-and-release-maintenance/actual:
-  en: 1ea78cc1dc850c4e
-  zh: 1d87962fe5992024
+  en: 7445979fa4d2d6e8
+  zh: 7ff96236aa3ae675
 /yourbuddy-0-3-22/scenario-packaged-agent-browser-and-release-maintenance/evidence:
   en: 9d3ca4d9dee35cb1
   zh: e3d2f8f95ecb2296
 /yourbuddy-0-3-22/scenario-packaged-agent-browser-and-release-maintenance/scope-limits:
-  en: a1b38675f16c0933
-  zh: 48e76fd56d3b939e
+  en: 008b521638f67625
+  zh: 17af51561d9dbb7a
 /yourbuddy-0-3-22/delivery-status:
-  en: 1a1d1e6e5b6621b5
-  zh: 1a62078f1dc9d18a
+  en: 75e721d83a1c6577
+  zh: d3a27a8384942796
 /yourbuddy-0-3-22/delivery-checklist:
-  en: 0bdfe6ed6af3e2ec
-  zh: 541e7bc4bbfc055c
+  en: aad313e8d6029b20
+  zh: 596e3dfc3aa5b106

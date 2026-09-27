@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.3.22`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选版本；源码与前序打包产物检查已完成，Tag CI 负责发布 0.3.22 产物。
-- 证据 Commit：`bf8b15beebe1785e74fabea286a6cf8a407b8c55`
+- 归档状态：已发布，并在说明范围内完成独立检查。
+- 证据 Commit：`bf8b15beebe1785e74fabea286a6cf8a407b8c55`；Release Tag Commit 为 `fd1a11050d4955e6ed7d78a61a2a01b9a36e18a3`。
 - 证据图集：不适用；有界命令输出与 Package Digest 是本次有效证据。
-- 证据下载：`yourbuddy-v0.3.22` 中的不可变源码；公开安装包等待 Tag CI 发布。
+- 证据下载：[YourBuddy 0.3.22 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.22)。
 
 ## 面向用户的发布说明
 
@@ -41,10 +41,10 @@ Agent Browser 修正已在 0.3.21 发布，但首版归档没有独立下载并�
 
 | 场景 | 状态 | 受测构建 | 环境 | 证据 |
 |---|---|---|---|---|
-| 独立下载的 Agent Browser Package | 通过 | 已发布且携带相同 Runtime 快照的 0.3.21 DMG | macOS Apple Silicon、Google Chrome、全新与正常 Profile | DMG 校验和、SDK Digest、有界面本地页面与公开页面导航 |
+| 独立下载的 Agent Browser Package | 通过 | 已发布的 0.3.22 DMG | macOS Apple Silicon、Google Chrome、全新隔离 Profile | DMG 校验和、SDK Digest、有界面本地页面与公开页面导航 |
 | 产品刷新兼容性 | 通过 | `bf8b15beeb` 的源码 | 本地 Node 22/pnpm Workspace 与当前上游 Metadata | 27 项聚焦测试与实时 Dry-run 候选 |
 | Node.js 24 发布 Actions | 源码检查通过 | 0.3.22 Workflow 定义 | 官方 Action Metadata 与仓库 Lint | cache v5、setup-uv v7、pnpm setup v4.4.0 |
-| 正式发布 0.3.22 | 等待中 | `yourbuddy-v0.3.22` | GitHub Actions macOS arm64 | Tag CI 负责构建、打包后 Runtime Smoke、校验和、Updater Metadata 与上传 |
+| 正式发布 0.3.22 | 通过 | `yourbuddy-v0.3.22` | GitHub Actions macOS arm64 | 工作流 `36325871514` 通过构建、打包后 Runtime Smoke、校验和与 Updater Metadata 检查并完成发布 |
 
 ## 场景：打包 Agent Browser 与发布维护
 
@@ -69,7 +69,7 @@ Package 必须匹配校验和、包含固定 SDK、在没有 Xvfb 的情况下�
 
 ### 实际结果
 
-687,617,324 字节的 DMG 匹配 SHA-256 `022efb08fdda09afde12058a62f13bff34c84ddec79dea9d5b57698e2f7b55d9` 并以只读方式挂载。其中的 SDK 匹配 SHA-256 `2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751`。打包 Host 以有界面模式启动 Google Chrome，通过全新隔离 Profile 导航到 `Published Fresh Profile`，并通过正常 Profile 导航到标题为 `Example Domain` 的 `https://example.com/`。27 项聚焦兼容性与刷新测试以及 21 项快速文档门禁全部通过；仓库 Lint 通过。实时 Dry-run 接受 Harbor 0.10.3 与当前 Oil Creator Commit，且没有修改已提交快照。
+687,617,324 字节的 DMG 匹配 SHA-256 `022efb08fdda09afde12058a62f13bff34c84ddec79dea9d5b57698e2f7b55d9` 并以只读方式挂载。其中的 SDK 匹配 SHA-256 `2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751`。打包 Host 以有界面模式启动 Google Chrome，通过全新隔离 Profile 导航到 `Published Fresh Profile`，并通过正常 Profile 导航到标题为 `Example Domain` 的 `https://example.com/`。27 项聚焦兼容性与刷新测试以及 21 项快速文档门禁全部通过；仓库 Lint 通过。实时 Dry-run 接受 Harbor 0.10.3 与当前 Oil Creator Commit，且没有修改已提交快照。工作流 `36325871514` 使用兼容 Node.js 24 的 Actions，用时 21 分 14 秒，通过打包后 Runtime Smoke 并发布 5 个产物，且没有此前的 Node.js 20 弃用 Annotation。DMG SHA-256 为 `f315c09d87ff2a0e1541315abe654824a48dc58d60186081c4f1704c5d1ecd89`；Updater 归档 SHA-256 为 `cf9afbe1118a5c711f3ce24f4a3f14aa6aedaf53f02268517e3aa58c8c31fa88`。稳定 Updater Manifest 报告 0.3.22，包含 408 字符签名；稳定最新 Release URL 指向 0.3.22。随后独立下载 687,614,489 字节的公开 0.3.22 DMG，确认其 SHA-256 并以只读方式挂载。其中的 SDK 匹配 SHA-256 `2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751`；打包 Host 使用全新隔离 Profile，以 `headless: false` 启动 Google Chrome，先导航到标题为 `YourBuddy 0.3.22 Package` 的本地页面，再导航到标题为 `Example Domain` 的 `https://example.com/`。
 
 ### 证据
 
@@ -80,14 +80,14 @@ Package 必须匹配校验和、包含固定 SDK、在没有 Xvfb 的情况下�
 
 ### 范围限制
 
-独立操作的 Package 是 0.3.21，其 Ego Browser Runtime 字节在 0.3.22 候选版本中没有变化。Tag CI 仍需构建并发布新版本。打包后 Tauri WebView 交互、真实网站登录、验证码与下载流程、非 Chrome 浏览器、Updater 安装、Apple Developer 签名与公证仍未验证。
+已独立操作公开 0.3.22 DMG 及其中打包的 Agent Browser Host。打包后 Tauri WebView 交互、真实网站登录、验证码与下载流程、非 Chrome 浏览器、Updater 安装、Apple Developer 签名与公证仍未验证。
 
 ## 交付状态
 
-- 产品发布状态：等待 Annotated Tag 与 Tag GitHub Actions 工作流。
-- 验证资料归档状态：源码、独立前序 DMG 操作、聚焦回归、刷新 Dry-run、文档与 Lint 证据在说明范围内已完成。
-- 站点同步状态：发布前不适用；本维护版本除 Release 归档外不改变产品指南。
-- 未验证范围：0.3.22 产物、打包后 Tauri WebView 交互、真实网站登录、验证码与下载流程、非 Chrome 浏览器、Updater 安装、Apple Developer 签名与公证。
+- 产品发布状态：工作流 `36325871514` 已发布 `yourbuddy-v0.3.22`，包含 5 个公开产物与稳定 Updater Metadata。
+- 验证资料归档状态：源码、独立下载的 0.3.22 DMG、真实打包后有界面浏览器操作、聚焦回归、刷新 Dry-run、公开产物 Metadata、校验和与稳定 Updater Metadata 在说明范围内已完成。
+- 站点同步状态：不适用；本维护版本除 Release 归档外不改变产品指南。
+- 未验证范围：打包后 Tauri WebView 交互、真实网站登录、验证码与下载流程、非 Chrome 浏览器、Updater 安装、Apple Developer 签名与公证。
 
 ## 交付清单
 
@@ -102,11 +102,11 @@ Package 必须匹配校验和、包含固定 SDK、在没有 Xvfb 的情况下�
 - [x] 只跟踪脱敏副本；凭据、个人信息、私有内容与敏感原图均未进入归档。
 - [x] 已在 `docs/releases/README.zh.md` 中添加版本条目，并确认两种语言内容一致。
 - [x] 相对链接可以渲染，引用的每个本地文件都存在。
-- [ ] Tag CI 已发布并独立提供 0.3.22 DMG、Updater 归档、签名、校验和及稳定 Updater Metadata。
-- [ ] 公开发布页已链接本不可变归档。
-- [ ] 已独立于 CI 与临时产物检查 0.3.22 公开目的地。
+- [x] Tag CI 已发布 0.3.22 DMG、Updater 归档、签名、校验和及稳定 Updater Metadata；DMG 已被独立下载、验证、挂载，并通过其中的打包 Agent Browser Host 完成操作。
+- [x] 公开发布页已链接本不可变归档。
+- [x] 已独立于 CI 与临时产物检查 0.3.22 Release、稳定最新 Release 跳转与稳定 Updater Manifest。
 - [x] 未修改桌面 Shell Origin、Capability、Permission 或 Command；打包后 WebView 交互明确保留为未验证。
-- [ ] 已记录发布后的文件名、版本、Hash、Updater Metadata 与安装后行为。
-- [ ] 发布后稳定最新 Release 链接指向 0.3.22；网站同步仍不适用。
+- [x] 已记录发布后的文件名、版本、Hash 与 Updater Metadata；完整 App 安装后行为明确保留为未验证。
+- [x] 稳定最新 Release 链接指向 0.3.22；网站同步仍不适用。
 - [x] 分别报告产品发布状态、归档状态、网站状态与未验证范围。
 - [x] 未移动或覆盖公开 Tag 与安装包；本次发布使用新版本。

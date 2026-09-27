@@ -10,7 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.22](yourbuddy-v0.3.22/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录独立前序 DMG 操作、产品刷新回归、Dry-run 候选、Node.js 24 发布路径、文档与 Lint | 候选版本 |
+| [yourbuddy-v0.3.22](yourbuddy-v0.3.22/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录独立下载的 DMG、打包后有界面浏览器、产品刷新回归、Node.js 24 发布工作流、5 个产物、校验和与 Updater Metadata | 已发布并在说明范围内完成独立检查 |
 | [yourbuddy-v0.3.21](yourbuddy-v0.3.21/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码、独立下载的 DMG、打包后 macOS 有界面浏览器、5 个公开产物、校验和、Updater Metadata 与网站部署 | 已发布并在说明范围内完成独立检查 |
 | [yourbuddy-v0.3.20](yourbuddy-v0.3.20/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录发布工作流与 5 个产物；后续首次使用发现 macOS Agent Browser Runtime 缺陷 | 已发布，Agent Browser 由 0.3.21 取代 |
 | [yourbuddy-v0.3.19](yourbuddy-v0.3.19/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码检查与干净 Checkout 的快照 Hash 失败 | 产物发布前失败；由 0.3.20 取代 |

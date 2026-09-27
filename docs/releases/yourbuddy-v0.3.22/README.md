@@ -6,10 +6,10 @@ This archive records the independently confirmed Agent Browser package and relea
 
 - Release identifier: `yourbuddy-v0.3.22`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; source and predecessor-package checks are complete, while tagged CI owns 0.3.22 artifact publication.
-- Evidence commit: `bf8b15beebe1785e74fabea286a6cf8a407b8c55`
+- Archive state: published and independently checked within the stated limits.
+- Evidence commit: `bf8b15beebe1785e74fabea286a6cf8a407b8c55`; release tag commit `fd1a11050d4955e6ed7d78a61a2a01b9a36e18a3`.
 - Evidence gallery: not applicable; bounded command output and package digests provide the useful evidence.
-- Evidence download: immutable source at `yourbuddy-v0.3.22`; public installers are pending tagged CI.
+- Evidence download: [YourBuddy 0.3.22 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.22).
 
 ## User release notes
 
@@ -41,10 +41,10 @@ This release targets macOS Apple Silicon and needs a local Chrome, Chromium, Bra
 
 | Scenario | Status | Build under test | Environment | Evidence |
 |---|---|---|---|---|
-| Independently downloaded Agent Browser package | passed | published 0.3.21 DMG carrying the same runtime snapshot | macOS Apple Silicon, Google Chrome, fresh and normal profiles | DMG checksum, SDK digest, headed local-page and public-page navigation |
+| Independently downloaded Agent Browser package | passed | published 0.3.22 DMG | macOS Apple Silicon, Google Chrome, fresh isolated profile | DMG checksum, SDK digest, headed local-page and public-page navigation |
 | Product refresh compatibility | passed | source at `bf8b15beeb` | local Node 22/pnpm workspace plus current upstream metadata | 27 focused tests and live dry-run candidates |
 | Node.js 24 publication Actions | source-checked | 0.3.22 workflow definition | official Action metadata and repository lint | cache v5, setup-uv v7, pnpm setup v4.4.0 |
-| Formal 0.3.22 publication | pending | `yourbuddy-v0.3.22` | GitHub Actions macOS arm64 | tagged CI owns build, packaged-runtime smoke, checksums, updater metadata, and upload |
+| Formal 0.3.22 publication | passed | `yourbuddy-v0.3.22` | GitHub Actions macOS arm64 | workflow `36325871514` passed build, packaged-runtime smoke, checksums, updater metadata, and publication |
 
 ## Scenario: packaged Agent Browser and release maintenance
 
@@ -69,7 +69,7 @@ The package must match its checksum, contain the pinned SDK, launch native Chrom
 
 ### Actual
 
-The 687,617,324-byte DMG matched SHA-256 `022efb08fdda09afde12058a62f13bff34c84ddec79dea9d5b57698e2f7b55d9` and mounted read-only. Its SDK matched SHA-256 `2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751`. The packaged Host launched Google Chrome headed, navigated a fresh isolated profile to `Published Fresh Profile`, and navigated the normal profile to `https://example.com/` with title `Example Domain`. All 27 focused compatibility and refresh tests and all 21 quick documentation gates passed; repository lint passed. The live dry run accepted Harbor 0.10.3 and the current Oil Creator commit without changing committed snapshots.
+The 687,617,324-byte DMG matched SHA-256 `022efb08fdda09afde12058a62f13bff34c84ddec79dea9d5b57698e2f7b55d9` and mounted read-only. Its SDK matched SHA-256 `2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751`. The packaged Host launched Google Chrome headed, navigated a fresh isolated profile to `Published Fresh Profile`, and navigated the normal profile to `https://example.com/` with title `Example Domain`. All 27 focused compatibility and refresh tests and all 21 quick documentation gates passed; repository lint passed. The live dry run accepted Harbor 0.10.3 and the current Oil Creator commit without changing committed snapshots. Workflow `36325871514` completed in 21 minutes 14 seconds with the Node.js 24-compatible Actions, passed the packaged-runtime smoke, and published five assets without the previous Node.js 20 deprecation annotations. The DMG SHA-256 is `f315c09d87ff2a0e1541315abe654824a48dc58d60186081c4f1704c5d1ecd89`; the updater archive SHA-256 is `cf9afbe1118a5c711f3ce24f4a3f14aa6aedaf53f02268517e3aa58c8c31fa88`. The stable updater manifest reports 0.3.22 with a 408-character signature, and the stable latest-release URL resolves to 0.3.22. The 687,614,489-byte public 0.3.22 DMG was then independently downloaded, matched its SHA-256, and mounted read-only. Its SDK matched SHA-256 `2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751`; the packaged Host launched Google Chrome with `headless: false` under a fresh isolated profile, navigated to a local page titled `YourBuddy 0.3.22 Package`, and then navigated to `https://example.com/` with title `Example Domain`.
 
 ### Evidence
 
@@ -80,14 +80,14 @@ The 687,617,324-byte DMG matched SHA-256 `022efb08fdda09afde12058a62f13bff34c84d
 
 ### Scope limits
 
-The independently exercised package is 0.3.21, whose Ego Browser runtime bytes are unchanged in the 0.3.22 candidate. Tagged CI must still build and publish the new version. Packaged Tauri WebView interaction, real-site login, CAPTCHA and download flows, non-Chrome browsers, updater installation, Apple Developer signing, and notarization remain unverified.
+The published 0.3.22 DMG and its packaged Agent Browser Host were independently exercised. Packaged Tauri WebView interaction, real-site login, CAPTCHA and download flows, non-Chrome browsers, updater installation, Apple Developer signing, and notarization remain unverified.
 
 ## Delivery status
 
-- Product publication status: pending the annotated tag and tagged GitHub Actions workflow.
-- Verification archive status: source, independent predecessor-DMG exercise, focused regressions, refresh dry run, documentation, and lint evidence are complete within the stated limits.
-- Website synchronization status: not applicable before publication; this maintenance release does not change product guidance beyond its release archive.
-- Unverified scope: 0.3.22 artifacts, packaged Tauri WebView interaction, real-site login, CAPTCHA and download flows, non-Chrome browsers, updater installation, Apple Developer signing, and notarization.
+- Product publication status: published as `yourbuddy-v0.3.22` with five public assets and stable updater metadata in workflow `36325871514`.
+- Verification archive status: source, independently downloaded 0.3.22 DMG, real packaged headed-browser exercise, focused regressions, refresh dry run, public asset metadata, checksums, and stable updater metadata are complete within the stated limits.
+- Website synchronization status: not applicable; this maintenance release does not change product guidance beyond its release archive.
+- Unverified scope: packaged Tauri WebView interaction, real-site login, CAPTCHA and download flows, non-Chrome browsers, updater installation, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -102,11 +102,11 @@ The independently exercised package is 0.3.21, whose Ego Browser runtime bytes a
 - [x] Only sanitized derivatives are tracked; credentials, personal information, private content, and sensitive originals are absent.
 - [x] The release entry was added to `docs/releases/README.md` and both language files were confirmed consistent.
 - [x] Relative links render and every referenced local file exists.
-- [ ] Tagged CI published and independently exposed the 0.3.22 DMG, updater archive, signature, checksums, and stable updater metadata.
-- [ ] The public release page links to this immutable archive.
-- [ ] The actual 0.3.22 public destination was checked independently of CI and temporary artifacts.
+- [x] Tagged CI published the 0.3.22 DMG, updater archive, signature, checksums, and stable updater metadata; the DMG was independently downloaded, verified, mounted, and exercised through its packaged Agent Browser Host.
+- [x] The public release page links to this immutable archive.
+- [x] The 0.3.22 release, stable latest-release redirect, and stable updater manifest were checked independently of CI and temporary artifacts.
 - [x] No desktop Shell origin, capability, permission, or command changed; packaged WebView interaction remains explicitly unverified.
-- [ ] Published filenames, versions, hashes, updater metadata, and installed behavior are recorded.
-- [ ] The stable latest-release link resolves to 0.3.22 after publication; website synchronization remains not applicable.
+- [x] Published filenames, versions, hashes, and updater metadata are recorded; installed full-App behavior remains explicitly unverified.
+- [x] The stable latest-release link resolves to 0.3.22; website synchronization remains not applicable.
 - [x] Product publication status, archive status, website status, and unverified scope are reported separately.
 - [x] Public tags and installers were not moved or overwritten; this release uses a new version.
