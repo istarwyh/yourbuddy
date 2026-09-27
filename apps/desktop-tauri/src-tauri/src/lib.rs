@@ -2,6 +2,7 @@ mod chrome;
 mod cli_shim;
 mod desktop_settings;
 mod desktop_shell;
+mod directory_picker;
 mod external_links;
 mod i18n;
 mod network_proxy;
@@ -51,6 +52,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             chrome::set_close_action,
             chrome::restart_app,
+            directory_picker::select_directory,
             external_links::open_external_url,
             external_links::open_marketplace_url,
             network_proxy::get_network_proxy_settings,

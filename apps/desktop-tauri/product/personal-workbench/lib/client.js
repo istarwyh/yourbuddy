@@ -1545,6 +1545,104 @@ function WindowControls({ target = window }) {
   );
 }
 
+// src/client/desktop-directory-picker.ts
+var DESKTOP_DIRECTORY_PICKER_CHANNEL = "yourbuddy.desktop.directory-picker";
+var DESKTOP_DIRECTORY_PICKER_VERSION = 1;
+var ACCEPT_TIMEOUT_MS = 5e3;
+var REQUEST_ID_PATTERN4 = /^[A-Za-z0-9_-]{1,64}$/;
+function createRequestId4() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+function readDesktopDirectoryPickerResponse(value, requestId) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return void 0;
+  const response = value;
+  if (response.channel !== DESKTOP_DIRECTORY_PICKER_CHANNEL || response.version !== DESKTOP_DIRECTORY_PICKER_VERSION || response.requestId !== requestId) return void 0;
+  if (response.type === "pick-accepted") {
+    return Object.keys(response).sort().join(",") === "channel,requestId,type,version" ? {
+      channel: DESKTOP_DIRECTORY_PICKER_CHANNEL,
+      version: DESKTOP_DIRECTORY_PICKER_VERSION,
+      type: "pick-accepted",
+      requestId
+    } : void 0;
+  }
+  if (response.type !== "pick-response" || typeof response.ok !== "boolean") return void 0;
+  const expectedKeys = response.ok ? "channel,ok,requestId,type,value,version" : "channel,error,ok,requestId,type,version";
+  if (Object.keys(response).sort().join(",") !== expectedKeys) return void 0;
+  if (response.ok) {
+    if (response.value !== null && typeof response.value !== "string") return void 0;
+    return {
+      channel: DESKTOP_DIRECTORY_PICKER_CHANNEL,
+      version: DESKTOP_DIRECTORY_PICKER_VERSION,
+      type: "pick-response",
+      requestId,
+      ok: true,
+      value: response.value
+    };
+  }
+  if (typeof response.error !== "string" || response.error.length > 2048) return void 0;
+  return {
+    channel: DESKTOP_DIRECTORY_PICKER_CHANNEL,
+    version: DESKTOP_DIRECTORY_PICKER_VERSION,
+    type: "pick-response",
+    requestId,
+    ok: false,
+    error: response.error
+  };
+}
+function requestDesktopDirectory(options = {}) {
+  const target = options.target ?? window;
+  if (Object.is(target.parent, target)) return Promise.reject(new Error("desktop-shell-unavailable"));
+  const requestId = options.requestId ?? createRequestId4();
+  if (!REQUEST_ID_PATTERN4.test(requestId)) return Promise.reject(new Error("invalid-request-id"));
+  return new Promise((resolve, reject) => {
+    const parent = target.parent;
+    let accepted = false;
+    const onMessage = (event) => {
+      if (event.source !== parent) return;
+      const response = readDesktopDirectoryPickerResponse(event.data, requestId);
+      if (response === void 0) return;
+      if (response.type === "pick-accepted") {
+        accepted = true;
+        target.clearTimeout(timeout);
+        return;
+      }
+      cleanup();
+      if (response.ok) resolve(response.value ?? null);
+      else reject(new Error(response.error));
+    };
+    const timeout = target.setTimeout(() => {
+      if (accepted) return;
+      cleanup();
+      reject(new Error("desktop-shell-unavailable"));
+    }, options.acceptTimeoutMs ?? ACCEPT_TIMEOUT_MS);
+    const cleanup = () => {
+      target.clearTimeout(timeout);
+      target.removeEventListener("message", onMessage);
+    };
+    target.addEventListener("message", onMessage);
+    parent.postMessage({
+      channel: DESKTOP_DIRECTORY_PICKER_CHANNEL,
+      version: DESKTOP_DIRECTORY_PICKER_VERSION,
+      type: "pick-request",
+      requestId
+    }, "*");
+  });
+}
+function installDesktopDirectoryPicker(ctx) {
+  if (window.parent === window) return;
+  const target = globalThis;
+  if (target.__DSH_DIRECTORY_PICKER__ !== void 0) return;
+  const picker = { pick: () => requestDesktopDirectory() };
+  ctx.effect(() => {
+    target.__DSH_DIRECTORY_PICKER__ = picker;
+    return () => {
+      if (target.__DSH_DIRECTORY_PICKER__ === picker) delete target.__DSH_DIRECTORY_PICKER__;
+    };
+  }, "personal-workbench: desktop directory picker");
+}
+
 // src/client/locales.ts
 var zh = {
   "help.title": "\u5E2E\u52A9\u4E0E\u6307\u5357",
@@ -2231,6 +2329,7 @@ function apply(ctx) {
     "personal-workbench: settings dictionaries"
   );
   installDesktopExternalLinks(ctx, ctx.locale.bind(SETTINGS_LOCALE_NAMESPACE));
+  installDesktopDirectoryPicker(ctx);
   installPersonalBrandOccupants(ctx, scope);
   installDesktopWindowControls(ctx);
   ctx.effect(() => installProductWorkbench(ctx), "personal-workbench: product workbench coordinator");

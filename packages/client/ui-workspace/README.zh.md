@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包让用户浏览分组或扁平的 Session 列表、为新 Session 选择 Workspace，并通过添加、重命名、重排序、搜索、fork、归档和删除 Workspace 来管理 Workspace 与 Session；Session 行菜单及其悬停按钮是可由客户端插件扩展的 slot 列表。待处理交互显示为警告点，subagent 来源的 Session 则保持隐藏。处于空闲状态且未归档、其 Session 有活动定时任务的 Session 行会显示时钟标记，其悬浮卡片会列出这些任务。规范化后仍有差异的文件夹路径会保留为独立 Workspace。添加 Workspace 需要组合目录选择器；没有目录选择器时，添加操作不可用。
+浏览分组或扁平的 Session 列表，为新 Session 选择 Workspace，并通过添加、重命名、重排序、搜索、fork、归档和删除 Workspace 来管理两者。Client 插件可以扩展 Session 行操作。待处理交互显示警告点；活动 Schedule 在符合条件的行显示时钟；subagent 来源的 Session 保持隐藏。规范化后仍有差异的文件夹路径会保留为独立 Workspace。添加 Workspace 需要组合目录选择器。`uiWorkspace.pickDirectory()` 优先使用已安装的桌面选择器，否则调用配置的 Host 选择器，因此所有 Client 消费方共享同一套载体选择。
 
 ## 目录
 
@@ -209,7 +209,7 @@ Workspace 与 Session 悬浮卡片会复制对应行被截断的值：激活 Wor
 - **没有模糊内容搜索或事件深链接**：内容后端采用字面 token/短语匹配，选择结果会打开 Session，而不是匹配的事件。
 - **没有 Session 删除**：会话可以归档但绝不会被删除；已归档的行通过「已归档会话」视图筛选与搜索结果中的取消归档操作原位恢复，删除 Workspace 注册记录不会删除 Session。
 - **待处理的用户交互不会聚合到折叠的分组上**：折叠分组内正在等待的行不会点亮分组头指示，只有展开该分组后才可见。
-- **原生文件夹选择依赖本地 Host 载体**：在 `-native` 组合下，进程内部署或远程浏览器部署无法打开本地操作系统对话框；可远程的选取是 `-browse` 组合的应用内流程。
+- **原生文件夹选择需要本地桌面或 Host 载体**：桌面 Shell 可以安装 `__DSH_DIRECTORY_PICKER__`；否则 `-native` 组合调用 Host 选择器。进程内部署与远程浏览器部署使用 `-browse` 组合的应用内流程。
 
 <a id="dev-note"></a>
 ### 开发备注

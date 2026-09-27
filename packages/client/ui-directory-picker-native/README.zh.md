@@ -27,7 +27,7 @@ kind: "package-reference"
 
 与 `ui-workspace` 及 Host 后端 [`dsh-host-directory-picker-native`](../../host/directory-picker-native/README.zh.md) 一起挂载本插件；一行 `cordis.yml` 随即组合出完整的原生拾取交互。当工作区添加或选择器流程发起目录请求时，用户看到操作系统的文件夹对话框；拾取的路径被工作区流程采纳，取消则关闭对话框。
 
-在本地 Electron 应用中，此流程使用 preload 提供的窄目录选择接口。取消和失败都不会改用 Host 选择器重试。普通 Web 使用 Host 调用；独立的浏览组合始终列出 Host 目录。
+在本地桌面应用中，`uiWorkspace` 会优先使用已安装的 `__DSH_DIRECTORY_PICKER__` 桥接，再考虑 Host 调用。Electron 通过 preload 安装它；YourBuddy 通过 Tauri Shell 消息通道安装它。取消和失败都不会改用 Host 选择器重试。普通 Web 使用 Host 调用；独立的浏览组合始终列出 Host 目录。
 
 ### 何时选择
 
@@ -76,7 +76,7 @@ kind: "package-reference"
 这些限制界定了原生选择器的适用时机。它们是当前包约束，不是通用选择器对比或任务积压。
 
 - **无法取消已打开的选择器**——wire 没有按请求中止的机制，因此已显示在本地的选择器无法从浏览器关闭；被丢弃的结算会被忽略。
-- **仅限本地承载**——Electron 对话框选择本地路径；普通 Web 打开 Host 选择器。远程浏览器与进程内部署使用 `-browse` 组合。平台失败经由持有方的可重试文件夹对话框呈现。
+- **仅限本地承载**——Electron 与 YourBuddy 对话框选择本地路径；普通 Web 打开 Host 选择器。远程浏览器与进程内部署使用 `-browse` 组合。平台失败经由持有方的可重试文件夹对话框呈现。
 - **Linux 自动选择**——缺少 zenity 或 kdialog 时，Host 即使在 Desktop 中也选择浏览模式，不使用 Electron 对话框。
 
 <a id="dev-note"></a>

@@ -24,6 +24,7 @@ import { NetworkProxyRow } from './NetworkProxyRow.tsx'
 import { HelpMenu, type HelpMenuInjected } from './HelpMenu.tsx'
 import { WindowControls } from './WindowControls.tsx'
 import { installDesktopExternalLinks } from './desktop-external-links.ts'
+import { installDesktopDirectoryPicker } from './desktop-directory-picker.ts'
 import { en, zh, type PersonalWorkbenchKey } from './locales.ts'
 import { installPersonalWorkbenchStyles } from './styles.ts'
 import { installProductWorkbench } from './workbench.tsx'
@@ -166,6 +167,7 @@ export function apply(ctx: Context): void {
     'personal-workbench: settings dictionaries',
   )
   installDesktopExternalLinks(ctx, ctx.locale.bind(SETTINGS_LOCALE_NAMESPACE))
+  installDesktopDirectoryPicker(ctx)
 
   installPersonalBrandOccupants(ctx, scope)
   installDesktopWindowControls(ctx)

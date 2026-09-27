@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package lets users browse grouped or flat Session lists, choose a Workspace for a new Session, and manage Workspaces and Sessions through add, rename, reorder, search, fork, archive, and Workspace deletion; the Session row menu and its hover buttons are slot lists that client plugins extend. Pending interactions appear as warning dots, and subagent-origin Sessions remain hidden. An idle, unarchived Session row with active scheduled tasks shows a clock mark, and its hover card lists those tasks. Canonically distinct folder paths remain separate Workspaces. Adding a Workspace requires a composed directory picker; without one, adding is unavailable.
+Browse grouped or flat Session lists, choose a Workspace for a new Session, and manage both through add, rename, reorder, search, fork, archive, and Workspace deletion. Client plugins can extend Session row actions. Pending interactions show warning dots; active schedules show a clock on eligible rows; subagent-origin Sessions stay hidden. Canonically distinct folder paths remain separate Workspaces. Adding one requires a composed directory picker. `uiWorkspace.pickDirectory()` prefers an installed desktop picker and otherwise calls the configured Host picker, so every Client consumer shares the same carrier selection.
 
 ## Table of Contents
 
@@ -209,7 +209,7 @@ These limits define the search depth, the archive surface, and the picking carri
 - **No fuzzy content search or event deep links** — the content backend uses literal token/phrase matching, and selecting a result opens the Session rather than the matching event.
 - **No Session deletion** — sessions can be archived but never deleted; archived rows stay recoverable in place through the archived view filter and the search results' unarchive action, and Workspace registration deletion does not delete Sessions.
 - **Pending user interaction is not aggregated into collapsed groups** — a waiting row inside a collapsed group lights no group-header indicator and becomes visible only after that group is expanded.
-- **Native folder selection depends on the local Host carrier** — under the `-native` composition, in-process or remote browser deployments cannot open a local operating-system dialog; remote-capable picking is the `-browse` composition's in-app flow.
+- **Native folder selection needs a local desktop or Host carrier** — a desktop shell may install `__DSH_DIRECTORY_PICKER__`; otherwise the `-native` composition calls the Host chooser. In-process and remote browser deployments use the `-browse` composition's in-app flow.
 
 <a id="dev-note"></a>
 ### Dev Note

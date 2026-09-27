@@ -95,6 +95,7 @@ pub enum Msg {
     ProfileReady,
     ProfileInstallFailed,
     StatusDownloadLinuxNode,
+    DirectoryPickerTitle,
 }
 
 static TEST_LOCALE: OnceLock<Locale> = OnceLock::new();
@@ -227,6 +228,7 @@ fn zh(msg: Msg) -> &'static str {
             "profile {0} 依赖安装失败: {1}\n请检查网络后重试，或手动运行 dsh plugin --profile {0} install"
         }
         Msg::StatusDownloadLinuxNode => "正在下载 Linux Node {0}…",
+        Msg::DirectoryPickerTitle => "选择目录",
     }
 }
 
@@ -330,6 +332,7 @@ fn en(msg: Msg) -> &'static str {
             "Profile {0} dependency install failed: {1}\nCheck the network and retry, or run: dsh plugin --profile {0} install"
         }
         Msg::StatusDownloadLinuxNode => "Downloading Linux Node {0}…",
+        Msg::DirectoryPickerTitle => "Select Directory",
     }
 }
 

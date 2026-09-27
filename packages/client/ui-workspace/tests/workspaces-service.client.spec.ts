@@ -1110,4 +1110,14 @@ describe('UiWorkspaceService', () => {
       rpcError: { code: 'directory-picker/exists' },
     })
   })
+
+  it('prefers the desktop-owned picker without starting a Host request', async () => {
+    const b = bench()
+    const pick = vi.fn<() => Promise<string | null>>().mockResolvedValue('/desktop/workspace')
+    vi.stubGlobal('__DSH_DIRECTORY_PICKER__', { pick })
+
+    await expect(b.uiWorkspace.pickDirectory()).resolves.toBe('/desktop/workspace')
+    expect(pick).toHaveBeenCalledOnce()
+    expect(b.directoryPicker.callsOf('pick')).toEqual([])
+  })
 })

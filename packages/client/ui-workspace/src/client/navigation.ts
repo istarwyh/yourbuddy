@@ -25,6 +25,17 @@ interface MainSelection {
   readonly subagentAddress?: SubagentAddress
 }
 
+/** Desktop-shell directory picker installed by a privileged local application. */
+export interface DesktopDirectoryPicker {
+  /** Open the desktop-owned picker and return its selected directory. */
+  pick(): Promise<string | null>
+}
+
+declare global {
+  /** Optional native picker whose implementation stays outside the Host iframe. */
+  var __DSH_DIRECTORY_PICKER__: DesktopDirectoryPicker | undefined
+}
+
 /** Workspace archive and directory operations consumed by Client UI domains. */
 export interface UiWorkspace {
   /**
@@ -85,7 +96,7 @@ export interface UiWorkspace {
    */
   unpinSession(sessionId: SessionId): Promise<void>
   /**
-   * Open the Host-native directory picker.
+   * Open the desktop-owned picker when present, otherwise the Host-native picker.
    * @returns the selected directory, or null when cancelled.
    */
   pickDirectory(): Promise<string | null>
@@ -263,6 +274,8 @@ class UiWorkspaceService extends Service implements UiWorkspace {
   }
 
   async pickDirectory(): Promise<string | null> {
+    const desktop = globalThis.__DSH_DIRECTORY_PICKER__
+    if (desktop !== undefined) return await desktop.pick()
     const result = await this.directoryPicker.pick()
     if (!result.ok) throw new Error(`directory picker failed: ${result.error.message}`)
     return result.value

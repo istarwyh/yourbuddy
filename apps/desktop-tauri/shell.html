@@ -276,6 +276,8 @@
     const desktopLifecycleChannel = 'yourbuddy.desktop.lifecycle'
     const desktopLifecycleVersion = 1
     const desktopLifecycleRequestId = /^[A-Za-z0-9_-]{1,64}$/
+    const directoryPickerChannel = 'yourbuddy.desktop.directory-picker'
+    const directoryPickerVersion = 1
     const networkProxyChannel = 'yourbuddy.desktop.network-proxy'
     const networkProxyVersion = 4
     const externalLinkChannel = 'yourbuddy.desktop.external-link'
@@ -303,6 +305,17 @@
       if (value.type === 'check-update-request') return 'check-update'
       if (value.type === 'restart-request') return 'restart'
       return false
+    }
+
+    function isDirectoryPickerRequest(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      const keys = Object.keys(value).sort()
+      return keys.join(',') === 'channel,requestId,type,version'
+        && value.channel === directoryPickerChannel
+        && value.version === directoryPickerVersion
+        && value.type === 'pick-request'
+        && typeof value.requestId === 'string'
+        && desktopLifecycleRequestId.test(value.requestId)
     }
 
     function readWindowControlsAction(value) {
@@ -479,6 +492,28 @@
           response.ok = true
         }
         catch (error) {
+          response.ok = false
+          response.error = String(error instanceof Error ? error.message : error).slice(0, 2048)
+        }
+        embeddedWindow.postMessage(response, embeddedOrigin)
+        return
+      }
+      if (isDirectoryPickerRequest(event.data)) {
+        const response = {
+          channel: directoryPickerChannel,
+          version: directoryPickerVersion,
+          requestId: event.data.requestId,
+        }
+        embeddedWindow.postMessage({ ...response, type: 'pick-accepted' }, embeddedOrigin)
+        try {
+          const invoke = window.__TAURI__?.core?.invoke
+          if (typeof invoke !== 'function') throw new Error('Desktop directory-picker bridge is unavailable')
+          response.value = await invoke('select_directory')
+          response.type = 'pick-response'
+          response.ok = true
+        }
+        catch (error) {
+          response.type = 'pick-response'
           response.ok = false
           response.error = String(error instanceof Error ? error.message : error).slice(0, 2048)
         }

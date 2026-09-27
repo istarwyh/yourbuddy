@@ -15,14 +15,16 @@ const validators = Function(
   'desktopLifecycleChannel',
   'desktopLifecycleVersion',
   'desktopLifecycleRequestId',
+  'directoryPickerChannel',
+  'directoryPickerVersion',
   'networkProxyChannel',
   'networkProxyVersion',
   'externalLinkChannel',
   'externalLinkVersion',
   'marketplaceLinkChannel',
   'marketplaceLinkVersion',
-  `${validatorSource}; return { readDesktopLifecycleAction, readNetworkProxyAction, isExternalLinkRequest, isMarketplaceLinkRequest }`,
-)('yourbuddy.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/, 'yourbuddy.desktop.network-proxy', 4, 'yourbuddy.desktop.external-link', 1, 'yourbuddy.desktop.marketplace-link', 1)
+  `${validatorSource}; return { readDesktopLifecycleAction, isDirectoryPickerRequest, readNetworkProxyAction, isExternalLinkRequest, isMarketplaceLinkRequest }`,
+)('yourbuddy.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/, 'yourbuddy.desktop.directory-picker', 1, 'yourbuddy.desktop.network-proxy', 4, 'yourbuddy.desktop.external-link', 1, 'yourbuddy.desktop.marketplace-link', 1)
 
 test('desktop shell accepts only fixed lifecycle request fields and actions', () => {
   const request = {
@@ -37,6 +39,19 @@ test('desktop shell accepts only fixed lifecycle request fields and actions', ()
   assert.equal(validators.readDesktopLifecycleAction({ ...request, version: 2 }), false)
   assert.equal(validators.readDesktopLifecycleAction({ ...request, type: 'quit-request' }), false)
   assert.equal(validators.readDesktopLifecycleAction({ ...request, requestId: 'a'.repeat(65) }), false)
+})
+
+test('desktop shell accepts only fixed directory-picker requests', () => {
+  const request = {
+    channel: 'yourbuddy.desktop.directory-picker',
+    version: 1,
+    type: 'pick-request',
+    requestId: 'picker_1',
+  }
+  assert.equal(validators.isDirectoryPickerRequest(request), true)
+  assert.equal(validators.isDirectoryPickerRequest({ ...request, path: '/tmp' }), false)
+  assert.equal(validators.isDirectoryPickerRequest({ ...request, type: 'pick-file-request' }), false)
+  assert.equal(validators.isDirectoryPickerRequest({ ...request, version: 2 }), false)
 })
 
 test('desktop shell accepts only restricted Marketplace repository and npm links', () => {
@@ -139,6 +154,7 @@ test('desktop shell binds lifecycle commands to the active Host iframe', () => {
   assert.match(shell, /type: `\$\{lifecycleAction\}-accepted`/u)
   assert.match(shell, /await invoke\('check_for_updates'\)/u)
   assert.match(shell, /await invoke\('restart_app'\)/u)
+  assert.match(shell, /await invoke\('select_directory'\)/u)
   assert.match(shell, /await invoke\('get_network_proxy_settings'\)/u)
   assert.match(shell, /await invoke\('select_ca_certificate'\)/u)
   assert.match(shell, /await invoke\('test_network_proxy_settings', \{ settings: event\.data\.settings \}\)/u)
