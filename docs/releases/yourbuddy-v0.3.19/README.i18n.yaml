@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.19/README.md
+/yourbuddy-0-3-19:
+  en: 498254e365676c6a
+  zh: 1cd7d977ff744b90
+/yourbuddy-0-3-19/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-19/user-release-notes/what-changed:
+  en: 95ee409fd71d602a
+  zh: 4696357682852769
+/yourbuddy-0-3-19/user-release-notes/problem-solved:
+  en: 9f4a79d15f92737f
+  zh: 0c50bcd1fe49116e
+/yourbuddy-0-3-19/user-release-notes/where-to-use-it:
+  en: 635ccc240d6f7922
+  zh: 871bc79979619caf
+/yourbuddy-0-3-19/user-release-notes/how-to-try-it:
+  en: f5dabc3bcbe44c1a
+  zh: dbf33cf3ec2acfcc
+/yourbuddy-0-3-19/user-release-notes/install-or-upgrade:
+  en: ba295328322596d2
+  zh: 4da7ba28e5fab4cb
+/yourbuddy-0-3-19/user-release-notes/compatibility-migration-and-limitations:
+  en: 680e257230ac4542
+  zh: 7f06d166d467b981
+/yourbuddy-0-3-19/verification-summary:
+  en: 72751dc393bb64fb
+  zh: bbc0b330ecdf7bbb
+/yourbuddy-0-3-19/scenario-default-ego-browser-source-integration:
+  en: c60a36b2f5c2ca70
+  zh: 158672f010079f96
+/yourbuddy-0-3-19/scenario-default-ego-browser-source-integration/steps:
+  en: 6cfc18b2533ecd25
+  zh: 62ce2560cb15fd35
+/yourbuddy-0-3-19/scenario-default-ego-browser-source-integration/expected:
+  en: 0ff89eb639b48eef
+  zh: fcaab65ce037f66c
+/yourbuddy-0-3-19/scenario-default-ego-browser-source-integration/actual:
+  en: d5cc203fab53200d
+  zh: 251bd6385ec10a0b
+/yourbuddy-0-3-19/scenario-default-ego-browser-source-integration/evidence:
+  en: 326b6c61e86bc92f
+  zh: 85ab6d72f59b3ab2
+/yourbuddy-0-3-19/scenario-default-ego-browser-source-integration/scope-limits:
+  en: 6457400794f94d58
+  zh: 687df9d44dd99c07
+/yourbuddy-0-3-19/delivery-status:
+  en: 6d050ed2f8a54f4b
+  zh: 97015976bb257739
+/yourbuddy-0-3-19/delivery-checklist:
+  en: f0eac202237ada3f
+  zh: e1e37a1f014330a6
