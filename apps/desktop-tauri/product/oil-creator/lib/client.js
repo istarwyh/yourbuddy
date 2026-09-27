@@ -4958,6 +4958,26 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 		}
 		//#endregion
+		//#region src/client/pickDirectory.ts
+		/** Open the current Harness directory picker. */
+		function pickWorkspaceDirectory(ctx) {
+			const picker = ctx.get("uiWorkspace");
+			if (typeof picker?.pickDirectory !== "function") throw new Error("directory picker unavailable");
+			return picker.pickDirectory();
+		}
+		//#endregion
+		//#region src/client/openWorkspacePath.ts
+		/** Reveal one Host workspace path through the current Session remote. */
+		async function revealWorkspacePath(ctx, path) {
+			const remote = ctx.get("remote.session");
+			if (typeof remote?.openWorkspacePath !== "function") throw new Error("workspace path opener unavailable");
+			const answer = await remote.openWorkspacePath({
+				path,
+				action: "reveal"
+			});
+			if (!answer.ok) throw new Error(answer.error?.message ?? "open path failed");
+		}
+		//#endregion
 		//#region src/collectPublish.ts
 		function formatCount(value) {
 			if (!Number.isFinite(value) || value < 0) return "";
@@ -5001,6 +5021,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				load(id).then((thumb) => {
 					if (cancelled || !thumb.found) return;
 					setSrc(`data:${thumb.mime};base64,${thumb.base64}`);
+				}, () => {
+					if (!cancelled) setSrc(void 0);
 				});
 				return () => {
 					cancelled = true;
@@ -5104,6 +5126,30 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return t("time.yearMonthDay").replace("{y}", String(date.getFullYear())).replace("{m}", String(date.getMonth() + 1)).replace("{d}", String(date.getDate()));
 		}
 		//#endregion
+		//#region src/client/selectionGuard.ts
+		/** Reject async work that started for an earlier content selection. */
+		var SelectionGuard = class {
+			#id;
+			#generation = 0;
+			constructor(id) {
+				this.#id = id;
+			}
+			update(id) {
+				if (id === this.#id) return;
+				this.#id = id;
+				this.#generation += 1;
+			}
+			capture(id) {
+				return id === this.#id ? {
+					id,
+					generation: this.#generation
+				} : void 0;
+			}
+			current(token) {
+				return token.id === this.#id && token.generation === this.#generation;
+			}
+		};
+		//#endregion
 		//#region \0dsh-oil-creator-css:client/ui/StatusPill.css.mjs
 		registerPluginCss("dsh-oil-creator/StatusPill.css", ".statusPill {\n  gap: 5px;\n  max-width: 100%;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.statusPill.pending {\n  color: var(--dsw-alias-state-warn-label);\n}\n\n.statusPill.active {\n  color: var(--dsw-alias-state-business-primary);\n}\n\n.statusPill.success {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n.statusPill.error {\n  color: var(--dsw-alias-state-error-primary);\n}\n\nbutton.statusPill:disabled {\n  opacity: 0.5;\n  cursor: default;\n}\n");
 		//#endregion
@@ -5166,6 +5212,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const [items, setItems] = (0, react.useState)([]);
 			const [error, setError] = (0, react.useState)(void 0);
 			const [loading, setLoading] = (0, react.useState)(false);
+			const [refreshing, setRefreshing] = (0, react.useState)(false);
 			const [creating, setCreating] = (0, react.useState)(false);
 			const [createOpen, setCreateOpen] = (0, react.useState)(false);
 			const [createName, setCreateName] = (0, react.useState)("");
@@ -5222,6 +5269,19 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				setCreateOpen(false);
 				setCreateName("");
 				setCreateError(void 0);
+			};
+			const onRefresh = async () => {
+				if (refreshing) return;
+				setRefreshing(true);
+				setError(void 0);
+				try {
+					await refreshCatalog();
+					await loadList(query);
+				} catch (cause) {
+					setError(cause instanceof Error ? cause.message : t("empty.error"));
+				} finally {
+					setRefreshing(false);
+				}
 			};
 			const onCreate = async () => {
 				const title = createName.trim();
@@ -5306,8 +5366,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 									type: "button",
 									className: "iconButton",
 									"aria-label": t("toolbar.refresh"),
+									"aria-busy": refreshing,
+									disabled: refreshing,
 									onClick: () => {
-										refreshCatalog().then(() => loadList(query));
+										onRefresh();
 									},
 									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineRegular, { size: 16 })
 								})
@@ -5604,6 +5666,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 		function ContentInspector({ t, useSessions, ready, getContent, getCoverThumb, getVideoPlayback, getArticleMedia, getSubtitleText, getSettings, markReadyToRecord, bindStudio, openStudio, setPublish, preparePublish, syncPublish, startSubtitleGenerate, startSubtitleBurn, startCoverGenerate, setScript, pickDirectory, openSubtitlePreview, openPath, closeDetails }) {
 			const [selectedId] = useSelectedContentId();
+			const selectionGuard = (0, react.useRef)(new SelectionGuard(selectedId));
+			selectionGuard.current.update(selectedId);
 			const currentSessionId = useSessions((sessions) => sessions.current);
 			const previousSessionId = (0, react.useRef)(currentSessionId);
 			const libraryEpoch = useLibraryEpoch();
@@ -5766,12 +5830,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			]);
 			(0, react.useEffect)(() => {
 				if (detail === void 0 || scriptSaved) return;
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
 				const timer = window.setTimeout(() => {
 					setScript(detail.id, scriptDraft).then((next) => {
+						if (!selectionGuard.current.current(token)) return;
 						setDetail(next);
 						setScriptSaved(scriptDraft === next.script);
 					}, (cause) => {
-						setActionError(cause instanceof Error ? cause.message : t("empty.error"));
+						if (selectionGuard.current.current(token)) setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 					});
 				}, 700);
 				return () => {
@@ -5784,9 +5851,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			]);
 			(0, react.useEffect)(() => {
 				if (!(detail?.burn.status === "running" || detail?.subtitleJob.status === "running" || detail?.coverJob.status === "running") || selectedId === null || !ready()) return;
+				const token = selectionGuard.current.capture(selectedId);
+				if (token === void 0) return;
 				const timer = window.setInterval(() => {
 					getContent(selectedId).then((next) => {
-						setDetail(next);
+						if (selectionGuard.current.current(token)) setDetail(next);
+					}, (cause) => {
+						if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
 					});
 				}, 3e3);
 				return () => {
@@ -5800,16 +5871,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			]);
 			(0, react.useEffect)(() => {
 				if (selectedId === null || detail?.subtitleJob.status !== "done" || !ready()) return;
+				const token = selectionGuard.current.capture(selectedId);
+				if (token === void 0) return;
 				getSubtitleText(selectedId).then((nextSubtitle) => {
-					setCues(cuesFromSubtitle(nextSubtitle));
+					if (selectionGuard.current.current(token)) setCues(cuesFromSubtitle(nextSubtitle));
+				}, (cause) => {
+					if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
 				});
 			}, [selectedId, detail?.subtitleJob.status]);
 			(0, react.useEffect)(() => {
 				if (!expectSubtitlePreview.current || selectedId === null || !ready()) return;
 				if (detail?.subtitleJob.status === "done") {
 					expectSubtitlePreview.current = false;
+					const token = selectionGuard.current.capture(selectedId);
+					if (token === void 0) return;
 					openSubtitlePreview(selectedId).then(() => void 0, (cause) => {
-						setActionError(cause instanceof Error ? cause.message : t("empty.error"));
+						if (selectionGuard.current.current(token)) setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 					});
 					return;
 				}
@@ -5817,12 +5894,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, [selectedId, detail?.subtitleJob.status]);
 			const applyPublish = (platform, status) => {
 				setPublishMenu(null);
-				if (detail === void 0 || detail.publish[platform].status === status) return;
+				if (detail === void 0 || publishPending !== null || detail.publish[platform].status === status) return;
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
+				setActionError(void 0);
 				setPublishPending(platform);
 				setPublish(detail.id, platform, status).then((next) => {
+					if (!selectionGuard.current.current(token)) return;
 					setDetail(next);
 					setPublishPending(null);
 				}, (cause) => {
+					if (!selectionGuard.current.current(token)) return;
 					setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 					setPublishPending(null);
 				});
@@ -5859,24 +5941,67 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const publishStepDone = visiblePlatforms.length > 0 && publishedCount === visiblePlatforms.length;
 			const stageIndex = detail === void 0 ? 0 : WORKFLOW_INDEX[detail.workflow];
 			const currentStep = publishStepDone ? "publish" : PIPELINE_STEPS[stageIndex]?.id ?? "topic";
-			const onReadyToRecord = () => {
-				if (detail === void 0) return;
-				markReadyToRecord(detail.id).then((next) => {
-					setDetail(next);
-				});
+			const onReadyToRecord = async () => {
+				if (detail === void 0 || busy !== void 0) return;
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
+				setActionError(void 0);
+				setBusy("ready");
+				try {
+					const next = await markReadyToRecord(detail.id);
+					if (selectionGuard.current.current(token)) setDetail(next);
+				} catch (cause) {
+					if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
+				} finally {
+					if (selectionGuard.current.current(token)) setBusy(void 0);
+				}
 			};
-			const onBindStudio = () => {
-				if (detail === void 0) return;
-				pickDirectory().then((path) => {
-					if (path === null) return;
-					return bindStudio(detail.id, path);
-				}).then((next) => {
-					if (next !== void 0) setDetail(next);
-				});
+			const onBindStudio = async () => {
+				if (detail === void 0 || busy !== void 0) return;
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
+				setActionError(void 0);
+				setBusy("studio");
+				try {
+					const path = await pickDirectory();
+					if (path !== null && selectionGuard.current.current(token)) {
+						const next = await bindStudio(detail.id, path);
+						if (selectionGuard.current.current(token)) setDetail(next);
+					}
+				} catch (cause) {
+					if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
+				} finally {
+					if (selectionGuard.current.current(token)) setBusy(void 0);
+				}
 			};
-			const onOpenStudio = () => {
-				if (detail === void 0) return;
-				openStudio(detail.id);
+			const onOpenStudio = async () => {
+				if (detail === void 0 || busy !== void 0) return;
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
+				setActionError(void 0);
+				setBusy("studio");
+				try {
+					const next = await openStudio(detail.id);
+					if (selectionGuard.current.current(token)) setDetail(next);
+				} catch (cause) {
+					if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
+				} finally {
+					if (selectionGuard.current.current(token)) setBusy(void 0);
+				}
+			};
+			const onOpenPath = async () => {
+				if (detail === void 0 || busy !== void 0) return;
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
+				setActionError(void 0);
+				setBusy("path");
+				try {
+					await openPath(detail.folderPath);
+				} catch (cause) {
+					if (selectionGuard.current.current(token)) setActionError(friendlyError(cause, t));
+				} finally {
+					if (selectionGuard.current.current(token)) setBusy(void 0);
+				}
 			};
 			const onGenerateCover = () => {
 				if (detail === void 0) return;
@@ -5888,12 +6013,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setActionError(t("inspector.cover.needKey"));
 					return;
 				}
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
 				setActionError(void 0);
 				setBusy("cover");
 				startCoverGenerate(detail.id).then((next) => {
+					if (!selectionGuard.current.current(token)) return;
 					setDetail(next);
 					setBusy(void 0);
 				}, (cause) => {
+					if (!selectionGuard.current.current(token)) return;
 					setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 					setBusy(void 0);
 				});
@@ -5908,13 +6037,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setActionError(t("inspector.subtitle.needKey"));
 					return;
 				}
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
 				setActionError(void 0);
 				setBusy("subtitle");
 				expectSubtitlePreview.current = true;
 				startSubtitleGenerate(detail.id).then((next) => {
+					if (!selectionGuard.current.current(token)) return;
 					setDetail(next);
 					setBusy(void 0);
 				}, (cause) => {
+					if (!selectionGuard.current.current(token)) return;
 					expectSubtitlePreview.current = false;
 					setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 					setBusy(void 0);
@@ -5930,24 +6063,33 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setActionError(t("inspector.subtitle.needDraft"));
 					return;
 				}
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
 				setActionError(void 0);
 				setBusy("burn");
 				startSubtitleBurn(detail.id).then((next) => {
+					if (!selectionGuard.current.current(token)) return;
 					setDetail(next);
 					setBusy(void 0);
 				}, (cause) => {
+					if (!selectionGuard.current.current(token)) return;
 					setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 					setBusy(void 0);
 				});
 			};
 			const onPreviewSubtitle = () => {
 				if (detail === void 0) return;
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
+				setActionError(void 0);
 				openSubtitlePreview(detail.id).then(() => void 0, (cause) => {
-					setActionError(cause instanceof Error ? cause.message : t("empty.error"));
+					if (selectionGuard.current.current(token)) setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 				});
 			};
 			const onPreparePublish = () => {
 				if (detail === void 0) return;
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
 				setActionError(void 0);
 				setBusy("prepare");
 				preparePublish({
@@ -5957,25 +6099,31 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					originalRightsConfirmed,
 					uploadCovers
 				}).then(async (result) => {
+					if (!selectionGuard.current.current(token)) return void 0;
 					setPrepareResult(result);
 					return {
 						next: await getContent(detail.id),
 						result
 					};
-				}).then(({ next, result }) => {
-					setDetail(next);
-					setPrepareResult(next.publishPreparation ?? result);
+				}).then((outcome) => {
+					if (outcome === void 0 || !selectionGuard.current.current(token)) return;
+					setDetail(outcome.next);
+					setPrepareResult(outcome.next.publishPreparation ?? outcome.result);
 					setBusy(void 0);
 				}, (cause) => {
+					if (!selectionGuard.current.current(token)) return;
 					setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 					setBusy(void 0);
 				});
 			};
 			const onSyncPublish = () => {
 				if (detail === void 0) return;
+				const token = selectionGuard.current.capture(detail.id);
+				if (token === void 0) return;
 				setActionError(void 0);
 				setBusy("sync");
 				syncPublish({ id: detail.id }).then((result) => {
+					if (!selectionGuard.current.current(token)) return void 0;
 					const login = result.platforms.filter((page) => page.loginRequired === true).map((page) => {
 						const label = PUBLISH_UI_PLATFORMS.find((item) => item.key === page.platform);
 						return label === void 0 ? page.platform : t(label.label);
@@ -5985,8 +6133,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setBusy(void 0);
 					return getContent(detail.id);
 				}).then((next) => {
-					if (next !== void 0) setDetail(next);
+					if (next !== void 0 && selectionGuard.current.current(token)) setDetail(next);
 				}, (cause) => {
+					if (!selectionGuard.current.current(token)) return;
 					setActionError(cause instanceof Error ? cause.message : t("empty.error"));
 					setBusy(void 0);
 				});
@@ -6051,8 +6200,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 								type: "button",
 								className: "close",
 								"aria-label": t("inspector.openFolder"),
+								"aria-busy": busy === "path",
+								disabled: busy !== void 0,
 								onClick: () => {
-									openPath(detail.folderPath);
+									onOpenPath();
 								},
 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconFolderOpenOutlineRegular, { size: 14 })
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
@@ -6087,6 +6238,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						error === void 0 && detail === void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 							className: "empty",
 							children: t("empty.loading")
+						}),
+						detail !== void 0 && actionError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
+							tone: "error",
+							children: actionError
 						}),
 						detail !== void 0 && tab === "overview" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -6167,30 +6322,38 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 								children: [
 									currentStep === "topic" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
 										tone: "primary",
-										onClick: onReadyToRecord,
-										children: t("inspector.readyToRecord")
+										disabled: busy !== void 0,
+										onClick: () => {
+											onReadyToRecord();
+										},
+										children: t(busy === "ready" ? "inspector.action.working" : "inspector.readyToRecord")
 									}) }),
 									currentStep === "record" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionBar, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
 										tone: "primary",
-										onClick: detail.studioPath === void 0 ? onBindStudio : onOpenStudio,
-										children: t(detail.studioPath === void 0 ? "inspector.studio.bind" : "inspector.studio.open")
+										disabled: busy !== void 0,
+										onClick: () => {
+											detail.studioPath === void 0 ? onBindStudio() : onOpenStudio();
+										},
+										children: t(busy === "studio" ? "inspector.action.working" : detail.studioPath === void 0 ? "inspector.studio.bind" : "inspector.studio.open")
 									}) }),
 									currentStep === "cut" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [detail.waitingForExport && !hasVideo && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
 										tone: detail.exportTimedOut === true ? "error" : "running",
 										children: t(detail.exportTimedOut === true ? "inspector.step.exportTimedOut" : "inspector.step.waitingExport")
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ActionBar, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
 										tone: "primary",
-										onClick: detail.studioPath === void 0 ? onBindStudio : onOpenStudio,
-										children: t(detail.studioPath === void 0 ? "inspector.studio.bind" : "inspector.studio.open")
+										disabled: busy !== void 0,
+										onClick: () => {
+											detail.studioPath === void 0 ? onBindStudio() : onOpenStudio();
+										},
+										children: t(busy === "studio" ? "inspector.action.working" : detail.studioPath === void 0 ? "inspector.studio.bind" : "inspector.studio.open")
 									}), detail.studioPath !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
-										onClick: onBindStudio,
-										children: t("inspector.studio.rebind")
+										disabled: busy !== void 0,
+										onClick: () => {
+											onBindStudio();
+										},
+										children: t(busy === "studio" ? "inspector.action.working" : "inspector.studio.rebind")
 									})] })] })
 								]
-							}),
-							actionError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
-								tone: "error",
-								children: actionError
 							}),
 							(detail.workflow === "publish" || anyPublishMarked || detail.hasArticle) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Surface, {
@@ -6384,7 +6547,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 															open: publishMenu === platform.key,
 															anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StatusPill, {
 																tone: PUBLISH_TONE[row.status],
-																disabled: publishPending === platform.key,
+																disabled: publishPending !== null,
 																"aria-haspopup": "menu",
 																"aria-label": `${t(platform.label)}：${t(PUBLISH_KEY[row.status])}`,
 																onClick: () => {
@@ -6502,10 +6665,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 									children: t(detail.videoSubtitled === void 0 ? "inspector.subtitle.burn" : "inspector.subtitle.reburn")
 								})
 							] }),
-							actionError !== void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
-								tone: "error",
-								children: actionError
-							}) : detail.subtitleJob.status === "running" || detail.burn.status === "running" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
+							detail.subtitleJob.status === "running" || detail.burn.status === "running" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
 								tone: "running",
 								children: t(detail.subtitleJob.status === "running" ? "inspector.subtitle.generating" : "inspector.subtitle.burning")
 							}) : detail.subtitleJob.status === "error" || detail.burn.status === "error" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobNote, {
@@ -6648,11 +6808,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const [draftRules, setDraftRules] = (0, react.useState)("");
 			const [secrets, setSecrets] = (0, react.useState)([secretDraftOf(EMPTY_SECRETS.subtitle), secretDraftOf(EMPTY_SECRETS.cover)]);
 			const [loaded, setLoaded] = (0, react.useState)(false);
+			const [loadFailed, setLoadFailed] = (0, react.useState)(false);
 			const [capabilities, setCapabilities] = (0, react.useState)(void 0);
+			const [capabilitiesFailed, setCapabilitiesFailed] = (0, react.useState)(false);
 			const [saving, setSaving] = (0, react.useState)(false);
 			const [failed, setFailed] = (0, react.useState)(false);
 			const [saved, setSaved] = (0, react.useState)(false);
 			const [keyFailed, setKeyFailed] = (0, react.useState)(false);
+			const [picking, setPicking] = (0, react.useState)(false);
+			const [pickFailed, setPickFailed] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				if (!ready()) return;
 				let cancelled = false;
@@ -6666,9 +6830,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setDraftRules(settings.scriptRules ?? "");
 					const nextSecrets = settings.secrets ?? EMPTY_SECRETS;
 					setSecrets([secretDraftOf(nextSecrets.subtitle), secretDraftOf(nextSecrets.cover)]);
+					setLoadFailed(false);
 					setLoaded(true);
 				}, () => {
-					if (!cancelled) setLoaded(true);
+					if (!cancelled) setLoadFailed(true);
 				});
 				return () => {
 					cancelled = true;
@@ -6680,14 +6845,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const refs = secrets.map((item) => item.ref);
 				credentials.describe(refs).then((response) => {
 					if (cancelled || !response.ok || response.value === void 0) {
-						if (!cancelled && response.ok !== true) setSecrets((current) => current.map((item) => ({
+						if (!cancelled) setSecrets((current) => current.map((item) => ({
 							...item,
 							loadError: true
 						})));
 						return;
 					}
-					const described = response.value;
-					setSecrets((current) => current.map((item) => applyDescribed(item, described)));
+					setSecrets((current) => current.map((item) => applyDescribed(item, response.value)));
 				}, () => {
 					if (!cancelled) setSecrets((current) => current.map((item) => ({
 						...item,
@@ -6706,8 +6870,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				if (!open || !ready()) return;
 				let cancelled = false;
 				getCapabilities().then((next) => {
-					if (!cancelled) setCapabilities(next);
-				}, () => void 0);
+					if (!cancelled) {
+						setCapabilities(next);
+						setCapabilitiesFailed(false);
+					}
+				}, () => {
+					if (!cancelled) setCapabilitiesFailed(true);
+				});
 				return () => {
 					cancelled = true;
 				};
@@ -6723,11 +6892,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const dirty = dirtyRoot || dirtyProfile || dirtyRules || dirtyKeys;
 			const title = t("settings.title");
 			const onPick = async () => {
-				const path = await pickDirectory();
-				if (path === null) return;
-				setDraftRoot(path);
-				setSaved(false);
-				setFailed(false);
+				if (picking) return;
+				setPicking(true);
+				setPickFailed(false);
+				try {
+					const path = await pickDirectory();
+					if (path === null) return;
+					setDraftRoot(path);
+					setSaved(false);
+					setFailed(false);
+				} catch {
+					setPickFailed(true);
+				} finally {
+					setPicking(false);
+				}
 			};
 			const patchProfile = (platform, enabled) => {
 				setDraftProfile((current) => {
@@ -6815,6 +6993,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}), open && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					className: "body",
 					children: [
+						loadFailed && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							className: "failed",
+							role: "status",
+							children: t("settings.loadFailed")
+						}),
+						capabilitiesFailed && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							className: "failed",
+							role: "status",
+							children: t("settings.capabilitiesFailed")
+						}),
 						capabilities !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: "field",
 							children: [
@@ -6862,11 +7050,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 										className: draftRoot === "" ? "path empty" : "path",
 										children: draftRoot === "" ? t("settings.libraryRootEmpty") : draftRoot
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionButton, {
+										disabled: picking,
 										onClick: () => {
 											onPick();
 										},
-										children: t("settings.pick")
+										children: t(picking ? "settings.picking" : "settings.pick")
 									})]
+								}),
+								pickFailed && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "failed",
+									role: "status",
+									children: t("settings.pickFailed")
 								})
 							]
 						}),
@@ -7056,6 +7250,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"inspector.article.missing": "未转写",
 			"inspector.article.empty": "还没有转成文章。成稿会放在这一期的 公众号文章/ 里。",
 			"inspector.readyToRecord": "准备好录制了",
+			"inspector.action.working": "处理中",
 			"inspector.video.empty": "还没有成片。",
 			"inspector.publish.unpublished": "未发布",
 			"inspector.publish.draft": "草稿已备",
@@ -7153,11 +7348,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"settings.platform.wechat": "视频号",
 			"settings.libraryRootEmpty": "尚未选择",
 			"settings.pick": "选择",
+			"settings.picking": "选择中",
+			"settings.pickFailed": "无法打开目录选择器，请重试。",
 			"settings.save": "保存",
 			"settings.saving": "保存中",
 			"settings.discard": "放弃",
 			"settings.saved": "已保存",
 			"settings.saveFailed": "保存失败",
+			"settings.loadFailed": "无法加载内容工作台设置，请稍后重试。",
+			"settings.capabilitiesFailed": "无法读取环境状态，请稍后重试。",
 			"settings.expand": "展开",
 			"settings.collapse": "收起",
 			"settings.secrets": "接口密钥",
@@ -7239,6 +7438,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"inspector.article.missing": "Not written",
 			"inspector.article.empty": "No article yet. Finished drafts go in this episode's 公众号文章/ folder.",
 			"inspector.readyToRecord": "Ready to record",
+			"inspector.action.working": "Working",
 			"inspector.video.empty": "No video yet.",
 			"inspector.publish.unpublished": "Not published",
 			"inspector.publish.draft": "Draft ready",
@@ -7336,11 +7536,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"settings.platform.wechat": "Channels",
 			"settings.libraryRootEmpty": "Not chosen",
 			"settings.pick": "Choose",
+			"settings.picking": "Choosing",
+			"settings.pickFailed": "The directory picker could not open. Try again.",
 			"settings.save": "Save",
 			"settings.saving": "Saving",
 			"settings.discard": "Discard",
 			"settings.saved": "Saved",
 			"settings.saveFailed": "Save failed",
+			"settings.loadFailed": "Creator settings could not load. Try again later.",
+			"settings.capabilitiesFailed": "Environment status could not load. Try again later.",
 			"settings.expand": "Expand",
 			"settings.collapse": "Collapse",
 			"settings.secrets": "API keys",
@@ -7412,8 +7616,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"slots",
 			"locale",
 			"remote",
-			"workspaces",
-			"connection"
+			"remote.credentials",
+			"remote.session",
+			"uiWorkspace"
 		];
 		function apply(ctx) {
 			ctx.effect(() => ctx.locale.register(NS, {
@@ -7495,8 +7700,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						cues: []
 					};
 				},
-				pickDirectory: () => ctx.workspaces.pickDirectory(),
-				openPath: (path) => ctx.workspaces.openPath(path),
+				pickDirectory: () => pickWorkspaceDirectory(ctx),
+				openPath: (path) => revealWorkspacePath(ctx, path),
 				getSettings: async () => {
 					const remote = remoteOf();
 					if (remote === void 0) throw new Error("remote unavailable");
