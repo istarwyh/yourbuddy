@@ -10,7 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.21](yourbuddy-v0.3.21/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码、macOS 有界面浏览器、打包 Runtime 工作流、5 个公开产物、校验和、Updater Metadata 与网站部署 | 已发布并在说明范围内完成独立检查 |
+| [yourbuddy-v0.3.21](yourbuddy-v0.3.21/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码、独立下载的 DMG、打包后 macOS 有界面浏览器、5 个公开产物、校验和、Updater Metadata 与网站部署 | 已发布并在说明范围内完成独立检查 |
 | [yourbuddy-v0.3.20](yourbuddy-v0.3.20/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录发布工作流与 5 个产物；后续首次使用发现 macOS Agent Browser Runtime 缺陷 | 已发布，Agent Browser 由 0.3.21 取代 |
 | [yourbuddy-v0.3.19](yourbuddy-v0.3.19/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码检查与干净 Checkout 的快照 Hash 失败 | 产物发布前失败；由 0.3.20 取代 |
 | [yourbuddy-v0.3.18](yourbuddy-v0.3.18/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录发布工作流、5 个公开附件、稳定 Updater 元数据、耗时与保留的原生安装限制 | 已在说明范围内发布 |

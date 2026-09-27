@@ -128,16 +128,21 @@ test('approved lifecycle script removals are exact-version metadata changes', ()
   )
 })
 
-test('product compatibility rejects a peer range that excludes the bundled prerelease', () => {
+test('product compatibility compares bundled prereleases against peer ranges', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-plugin-compat-'))
   try {
     fixturePlugin(root, {
       peerDependencies: { '@deepseek-ai/dsh-tools': '>=0.1.0-rc.6' },
     })
     const workspace = new Map([
-      ['@deepseek-ai/dsh-tools', { version: '0.1.1-rc.1', root: '/tools' }],
-      ['@deepseek-ai/dsh-client-runtime', { version: '0.1.1-rc.1', root: '/runtime' }],
+      ['@deepseek-ai/dsh-tools', { version: '0.1.7-rc.2', root: '/tools' }],
+      ['@deepseek-ai/dsh-client-runtime', { version: '0.1.7-rc.2', root: '/runtime' }],
     ])
+    assert.equal(
+      validateProductPlugin(root, { package: 'fixture-plugin' }, workspace, '22.19.0').version,
+      '1.0.0',
+    )
+    workspace.set('@deepseek-ai/dsh-tools', { version: '0.1.0-rc.5', root: '/tools' })
     assert.throws(
       () => validateProductPlugin(root, { package: 'fixture-plugin' }, workspace, '22.19.0'),
       /requires @deepseek-ai\/dsh-tools@>=0\.1\.0-rc\.6/,

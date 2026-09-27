@@ -243,7 +243,8 @@ export function validateProductPlugin(root, policy, workspacePackages, managedNo
     if (!isBundledRuntimePackage(name)) continue
     const workspace = workspacePackages.get(name)
     if (!workspace) throw new Error(`${manifest.name}@${manifest.version} requires missing bundled peer ${name}`)
-    if (!semver.validRange(range) || !semver.satisfies(workspace.version, range)) {
+    if (!semver.validRange(range)
+      || !semver.satisfies(workspace.version, range, { includePrerelease: true })) {
       throw new Error(
         `${manifest.name}@${manifest.version} requires ${name}@${range}; YourBuddy bundles ${workspace.version}`,
       )

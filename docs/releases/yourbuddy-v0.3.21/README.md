@@ -44,6 +44,7 @@ This release targets macOS Apple Silicon and needs a local Chrome, Chromium, Bra
 | Headed macOS Ego Browser launch and navigation | passed | committed `dsh-ego-browser` 0.8.5 snapshot plus reviewed compatibility patch | macOS Apple Silicon, Google Chrome | `--open`, `--status`, and `nodejs` navigation output |
 | Product snapshot and documentation regressions | passed | source at `208375672c` | local Node 22/pnpm workspace | 54 focused Node tests, 43 documentation gates, and repository lint |
 | Formal desktop publication | passed | `yourbuddy-v0.3.21` | GitHub Actions macOS arm64 | workflow `36322371241` passed packaged-runtime smoke, checksums, updater metadata, and publication |
+| Independently downloaded DMG Agent Browser | passed | published `yourbuddy-0.3.21-macos-arm64.dmg` | mounted read-only on macOS Apple Silicon, fresh browser profile | DMG checksum, SDK digest, headed local-page navigation, and public-page navigation |
 
 ## Scenario: headed macOS Ego Browser runtime
 
@@ -68,7 +69,7 @@ The patch must replay exactly, the SDK runtime must be tracked and digest-pinned
 
 ### Actual
 
-Patch replay produced tree SHA-256 `cb66f8c0013a62f494c4e9e3f2e66c43c76311e7181448c0aefad3dc711c01d9`. The headed runtime reported Google Chrome with `headless: false`; navigation returned `https://example.com/` and title `Example Domain`. Ten bundle tests and the adjacent refresh/release suites passed, the focused group totaled 54 passing Node tests, all 43 documentation gates passed, and repository lint passed. The live upstream refresh check was not counted as passing because an unrelated latest Harbor candidate exposed a pre-existing prerelease peer-range comparison failure. Workflow `36322371241` completed in 24 minutes, passed the packaged-runtime smoke, and published five assets. The DMG SHA-256 is `022efb08fdda09afde12058a62f13bff34c84ddec79dea9d5b57698e2f7b55d9`; the updater archive SHA-256 is `a52eafc6fec3028c01ef5abc32017aab2f4cfa326a0daef8d3a405113c624d4c`. The stable updater manifest reports 0.3.21 with a 408-character signature.
+Patch replay produced tree SHA-256 `cb66f8c0013a62f494c4e9e3f2e66c43c76311e7181448c0aefad3dc711c01d9`. The headed runtime reported Google Chrome with `headless: false`; navigation returned `https://example.com/` and title `Example Domain`. Ten bundle tests and the adjacent refresh/release suites passed, the focused group totaled 54 passing Node tests, all 43 documentation gates passed, and repository lint passed. A post-publication maintenance correction made the refresh compatibility gate apply SemVer prerelease ordering; the latest Harbor and Oil Creator dry-run candidates then passed static checks without changing committed product snapshots. Workflow `36322371241` completed in 24 minutes, passed the packaged-runtime smoke, and published five assets. The DMG SHA-256 is `022efb08fdda09afde12058a62f13bff34c84ddec79dea9d5b57698e2f7b55d9`; the updater archive SHA-256 is `a52eafc6fec3028c01ef5abc32017aab2f4cfa326a0daef8d3a405113c624d4c`. The stable updater manifest reports 0.3.21 with a 408-character signature. The 687,617,324-byte public DMG was independently downloaded, matched its recorded SHA-256, and mounted read-only. Its packaged SDK matched SHA-256 `2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751`; the packaged Host launched Google Chrome headed, navigated a fresh isolated profile to a local page titled `Published Fresh Profile`, and navigated the normal profile to `https://example.com/` with title `Example Domain`.
 
 ### Evidence
 
@@ -79,14 +80,14 @@ Patch replay produced tree SHA-256 `cb66f8c0013a62f494c4e9e3f2e66c43c76311e71814
 
 ### Scope limits
 
-These checks establish the committed runtime, real headed browser launch, and a public-page navigation on this machine. They do not establish the tagged DMG, packaged Tauri WebView interaction, real-site authentication, CAPTCHA handling, downloads, other browser brands, updater installation, Apple Developer signing, or notarization.
+These checks establish the committed runtime, the independently downloaded DMG contents, real headed browser launch, a fresh browser profile, and local and public-page navigation on this machine. They do not establish packaged Tauri WebView interaction, real-site authentication, CAPTCHA handling, downloads, other browser brands, updater installation, Apple Developer signing, or notarization.
 
 ## Delivery status
 
 - Product publication status: published as `yourbuddy-v0.3.21` with five public assets and stable updater metadata in workflow `36322371241`.
-- Verification archive status: source, clean patch replay, focused regressions, real headed-browser evidence, public asset metadata, checksums, and stable updater metadata are complete within the stated limits.
+- Verification archive status: source, clean patch replay, focused regressions, independently downloaded DMG, real packaged headed-browser evidence, public asset metadata, checksums, and stable updater metadata are complete within the stated limits.
 - Website synchronization status: deployed successfully in workflow `36322371623`; the Chinese and English site roots returned HTTP 200.
-- Unverified scope: tagged artifacts, packaged Tauri WebView interaction, real-site login, CAPTCHA and download flows, non-Chrome browsers, updater installation, Apple Developer signing, and notarization.
+- Unverified scope: packaged Tauri WebView interaction, real-site login, CAPTCHA and download flows, non-Chrome browsers, updater installation, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -101,7 +102,7 @@ These checks establish the committed runtime, real headed browser launch, and a 
 - [x] Only sanitized derivatives are tracked or attached; credentials, personal information, private content, and sensitive originals are absent.
 - [x] The release entry was added to `docs/releases/README.md` and both language files were confirmed consistent.
 - [x] Relative links render and every referenced local file exists.
-- [x] Tagged CI published and independently exposed the DMG, updater archive, signature, checksums, and stable updater metadata.
+- [x] Tagged CI published the DMG, updater archive, signature, checksums, and stable updater metadata; the DMG was independently downloaded, verified, mounted, and exercised through its packaged Agent Browser Host.
 - [x] The public release page links to the immutable verification archive.
 - [x] The public release, stable latest-release redirect, and stable updater manifest were checked independently of CI and temporary workflow artifacts.
 - [x] No desktop Shell origin, capability, permission, or command changed; packaged WebView interaction remains explicitly unverified.

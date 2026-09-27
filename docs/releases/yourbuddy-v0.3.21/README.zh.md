@@ -44,6 +44,7 @@ YourBuddy 现在会通过 macOS 原生桌面会话启动内置 Ego Browser Host�
 | macOS 有界面 Ego Browser 启动与导航 | 通过 | 已提交的 `dsh-ego-browser` 0.8.5 快照及经过评审的兼容补丁 | macOS Apple Silicon、Google Chrome | `--open`、`--status` 与 `nodejs` 导航输出 |
 | 产品快照与文档回归 | 通过 | `208375672c` 的源码 | 本地 Node 22/pnpm Workspace | 54 项聚焦 Node 测试、43 项文档门禁与仓库 Lint |
 | 正式桌面发布 | 通过 | `yourbuddy-v0.3.21` | GitHub Actions macOS arm64 | 工作流 `36322371241` 通过打包后 Runtime 冒烟、校验和与 Updater Metadata 检查并完成发布 |
+| 独立下载 DMG 中的 Agent Browser | 通过 | 已发布的 `yourbuddy-0.3.21-macos-arm64.dmg` | macOS Apple Silicon 只读挂载、全新浏览器 Profile | DMG 校验和、SDK Digest、有界面本地页面导航与公开页面导航 |
 
 ## 场景：macOS 有界面 Ego Browser Runtime
 
@@ -68,7 +69,7 @@ YourBuddy 现在会通过 macOS 原生桌面会话启动内置 Ego Browser Host�
 
 ### 实际结果
 
-补丁重放得到 Tree SHA-256 `cb66f8c0013a62f494c4e9e3f2e66c43c76311e7181448c0aefad3dc711c01d9`。有界面 Runtime 报告 Google Chrome 且 `headless: false`；导航返回 `https://example.com/` 与标题 `Example Domain`。10 项 Bundle 测试及相邻刷新与 Release Suite 通过，聚焦组共计 54 项 Node 测试通过，43 项文档门禁全部通过，仓库 Lint 通过。实时上游刷新检查未计为通过，因为一个无关的最新 Harbor 候选暴露了现有的预发布 Peer Range 比较失败。工作流 `36322371241` 用时 24 分钟，打包后 Runtime Smoke 通过并发布 5 个产物。DMG SHA-256 为 `022efb08fdda09afde12058a62f13bff34c84ddec79dea9d5b57698e2f7b55d9`；Updater 归档 SHA-256 为 `a52eafc6fec3028c01ef5abc32017aab2f4cfa326a0daef8d3a405113c624d4c`。稳定 Updater Manifest 报告 0.3.21，并包含 408 字符签名。
+补丁重放得到 Tree SHA-256 `cb66f8c0013a62f494c4e9e3f2e66c43c76311e7181448c0aefad3dc711c01d9`。有界面 Runtime 报告 Google Chrome 且 `headless: false`；导航返回 `https://example.com/` 与标题 `Example Domain`。10 项 Bundle 测试及相邻刷新与 Release Suite 通过，聚焦组共计 54 项 Node 测试通过，43 项文档门禁全部通过，仓库 Lint 通过。发布后的维护修正让刷新兼容性门禁使用 SemVer 预发布排序；随后最新 Harbor 与 Oil Creator 的 Dry-run 候选通过静态检查，且没有改变已提交产品快照。工作流 `36322371241` 用时 24 分钟，打包后 Runtime Smoke 通过并发布 5 个产物。DMG SHA-256 为 `022efb08fdda09afde12058a62f13bff34c84ddec79dea9d5b57698e2f7b55d9`；Updater 归档 SHA-256 为 `a52eafc6fec3028c01ef5abc32017aab2f4cfa326a0daef8d3a405113c624d4c`。稳定 Updater Manifest 报告 0.3.21，并包含 408 字符签名。公开 DMG 大小为 687,617,324 字节，已独立下载、匹配已记录 SHA-256 并以只读方式挂载。其打包 SDK 匹配 SHA-256 `2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751`；打包 Host 以有界面模式启动 Google Chrome，通过全新隔离 Profile 导航到标题为 `Published Fresh Profile` 的本地页面，并通过正常 Profile 导航到标题为 `Example Domain` 的 `https://example.com/`。
 
 ### 证据
 
@@ -79,14 +80,14 @@ YourBuddy 现在会通过 macOS 原生桌面会话启动内置 Ego Browser Host�
 
 ### 范围限制
 
-这些检查确认本机上的已提交 Runtime、真实有界面浏览器启动与公开页面导航。它们不能确认 Tag DMG、打包后 Tauri WebView 交互、真实网站认证、验证码处理、下载、其他浏览器品牌、Updater 安装、Apple Developer 签名或公证。
+这些检查确认本机上的已提交 Runtime、独立下载的 DMG 内容、真实有界面浏览器启动、全新浏览器 Profile、本地页面与公开页面导航。它们不能确认打包后 Tauri WebView 交互、真实网站认证、验证码处理、下载、其他浏览器品牌、Updater 安装、Apple Developer 签名或公证。
 
 ## 交付状态
 
 - 产品发布状态：工作流 `36322371241` 已发布 `yourbuddy-v0.3.21`，包含 5 个公开产物与稳定 Updater Metadata。
-- 验证资料归档状态：源码、干净补丁重放、聚焦回归、真实有界面浏览器证据、公开产物 Metadata、校验和与稳定 Updater Metadata 在说明范围内已完成。
+- 验证资料归档状态：源码、干净补丁重放、聚焦回归、独立下载的 DMG、真实打包后有界面浏览器证据、公开产物 Metadata、校验和与稳定 Updater Metadata 在说明范围内已完成。
 - 站点同步状态：工作流 `36322371623` 已成功部署；中英文站点根路径均返回 HTTP 200。
-- 未验证范围：Tag 产物、打包后 Tauri WebView 交互、真实网站登录、验证码与下载流程、非 Chrome 浏览器、Updater 安装、Apple Developer 签名与公证。
+- 未验证范围：打包后 Tauri WebView 交互、真实网站登录、验证码与下载流程、非 Chrome 浏览器、Updater 安装、Apple Developer 签名与公证。
 
 ## 交付清单
 
@@ -101,7 +102,7 @@ YourBuddy 现在会通过 macOS 原生桌面会话启动内置 Ego Browser Host�
 - [x] 只跟踪或上传脱敏副本；凭据、个人信息、私有内容和敏感原图均未进入归档。
 - [x] 已在 `docs/releases/README.zh.md` 中添加版本条目，并确认两种语言内容一致。
 - [x] 相对链接可以渲染，引用的每个本地文件都存在。
-- [x] Tag CI 已发布并独立提供 DMG、Updater 归档、签名、校验和及稳定 Updater Metadata。
+- [x] Tag CI 已发布 DMG、Updater 归档、签名、校验和及稳定 Updater Metadata；DMG 已被独立下载、验证、挂载，并通过其中的打包 Agent Browser Host 完成操作。
 - [x] 公开发布页已链接不可变验证资料归档。
 - [x] 已独立于 CI 和临时工作流产物检查公开 Release、稳定最新 Release 跳转与稳定 Updater Manifest。
 - [x] 未修改桌面 Shell Origin、Capability、Permission 或 Command；打包后 WebView 交互明确保留为未验证。

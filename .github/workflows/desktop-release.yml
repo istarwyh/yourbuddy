@@ -44,7 +44,7 @@ jobs:
             exit 1
           fi
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4.4.0
         with:
           dest: ${{ runner.temp }}/setup-pnpm
 
@@ -54,7 +54,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}/yourbuddy-offline-store-cache
           key: ${{ runner.os }}-${{ runner.arch }}-yourbuddy-pnpm-store-v1-${{ hashFiles('apps/desktop-tauri/product/harness-pnpm-lock.yaml') }}
@@ -62,7 +62,7 @@ jobs:
       - name: Verify release tag and desktop versions
         run: node apps/desktop-tauri/scripts/verify-release-version.mjs --tag "$RELEASE_TAG"
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           version: '0.12.5'
 
@@ -73,7 +73,7 @@ jobs:
         id: rust
         run: echo "cache-key=$(rustc -Vv | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry/index

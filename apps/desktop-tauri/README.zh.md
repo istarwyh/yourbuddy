@@ -19,7 +19,7 @@
 
 ## 默认插件交付策略
 
-默认外部插件以经过检查的快照进入冻结 Workspace，不会在应用启动时通过 `dsh plugin add` 下载。如果命令使用用户的 `~/.dsh`，运行时 Git 安装会写入错误的主目录；它还会让冷启动依赖 GitHub 和本机构建，并允许可变分支在没有 YourBuddy 发版的情况下改变应用。内置依赖闭包保留离线启动，并把来源、兼容性 Metadata 与传递依赖解析固定到当前发行版。
+默认外部插件以经过检查的快照进入冻结 Workspace，不会在应用启动时通过 `dsh plugin add` 下载。如果命令使用用户的 `~/.dsh`，运行时 Git 安装会写入错误的主目录；它还会让冷启动依赖 GitHub 和本机构建，并允许可变分支在没有 YourBuddy 发版的情况下改变应用。内置依赖闭包保留离线启动，并把来源、兼容性 Metadata 与传递依赖解析固定到当前发行版。刷新兼容性会使用 SemVer 预发布排序，把内置 Release Candidate Package 与 Peer Range 进行比较；精确版本的 Metadata 修正仍需在产品更新策略中明确记录。
 
 这种策略会把每个插件的打包文件和共享 Store 条目加入安装包，也让上游更新必须随 YourBuddy 发行。Ego Browser 贡献约 314 KB 的打包载荷，解压后约为 1.2 MB，其中包含按完整性固定的 SDK Runtime，但不含 Chromium 和按需下载的可选 FFmpeg。在 macOS 上，经过评审的兼容补丁会发现标准位置中的原生浏览器，并绕过 Linux X11/Xvfb 路径。每次更新 Ego Browser 或 Harness 都需要刷新来源记录、重新生成 Lockfile、验证兼容性并运行组装后的 Client Smoke。用户自行安装并启用的 Profile Bundle 会优先于名称唯一的内置 Fallback，因此仍可独立更新，但版本选择与兼容性也重新由用户负责。
 
