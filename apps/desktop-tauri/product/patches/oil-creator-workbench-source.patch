@@ -44,15 +44,16 @@ index 04d27f2e5acb945e32496e52db2cf8dc68e08d64..89603a66c4d13e6a685b6df7ce03436f
      addFailure("缺少显式 release:check 门禁脚本");
 diff --git a/scripts/compat-current-dsh.mjs b/scripts/compat-current-dsh.mjs
 new file mode 100644
-index 0000000000000000000000000000000000000000..67cc2d412ad3bd82bf4db1fb72a472462db4518c
+index 0000000000000000000000000000000000000000..986ff820d0e5215ac18950be4f0ebd66d0c67cd3
 --- /dev/null
 +++ b/scripts/compat-current-dsh.mjs
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,23 @@
 +import { readFileSync, writeFileSync } from "node:fs";
 +import { fileURLToPath } from "node:url";
 +
 +const clientBundle = fileURLToPath(new URL("../lib/client.js", import.meta.url));
 +const replacements = [
++  ['ctx.get("connection")?.api?.credentials', "ctx.remote.credentials"],
 +  ["IconBrowseOutline16", "IconBrowseOutlineRegular"],
 +  ["IconChevronDownOutline14", "IconChevronDownOutlineRegular"],
 +  ["IconCloseFill14", "IconCloseFillRegular"],
@@ -876,7 +877,7 @@ index e98032b72c7cc49d1c37417f82e542314104893f..e15977adf59e9d8ca8cf2b7eae82e262
    );
  }
 diff --git a/src/client/CreatorSettingsCard.tsx b/src/client/CreatorSettingsCard.tsx
-index 808189ac39b2d4a7f461751e12894c0edf188111..e8f5fc761f249cfe4183db5d45f80d517d75a73e 100644
+index 808189ac39b2d4a7f461751e12894c0edf188111..bbb7290051c5305438334540ddbb8c067d777dee 100644
 --- a/src/client/CreatorSettingsCard.tsx
 +++ b/src/client/CreatorSettingsCard.tsx
 @@ -38,6 +38,7 @@ const CAPABILITY_ROWS: ReadonlyArray<{ id: keyof CreatorCapabilities; label: Cre
@@ -887,6 +888,34 @@ index 808189ac39b2d4a7f461751e12894c0edf188111..e8f5fc761f249cfe4183db5d45f80d51
    { id: "publishSync", label: "settings.capability.ego" },
  ];
  
+@@ -118,14 +119,14 @@ export function CreatorSettingsCard({
+     if (!open || credentials === undefined) return;
+     let cancelled = false;
+     const refs = secrets.map((item) => item.ref);
+-    void credentials.describe({ refs }).then((response) => {
+-      if (cancelled || !response.result.ok || response.result.value === undefined) {
+-        if (!cancelled && (response.result.ok !== true)) {
++    void credentials.describe(refs).then((response) => {
++      if (cancelled || !response.ok || response.value === undefined) {
++        if (!cancelled && (response.ok !== true)) {
+           setSecrets((current) => current.map((item) => ({ ...item, loadError: true })));
+         }
+         return;
+       }
+-      const described = response.result.value.credentials;
++      const described = response.value;
+       setSecrets((current) => current.map((item) => applyDescribed(item, described)));
+     }, () => {
+       if (!cancelled) setSecrets((current) => current.map((item) => ({ ...item, loadError: true })));
+@@ -188,7 +189,7 @@ export function CreatorSettingsCard({
+         for (const item of secrets) {
+           const value = item.nextValue.trim();
+           if (value === "") continue;
+-          if (!(await credentials.set({ ref: item.ref, value })).result.ok) {
++          if (!(await credentials.set(item.ref, value)).ok) {
+             setKeyFailed(true);
+             return;
+           }
 diff --git a/src/client/contentSelection.ts b/src/client/contentSelection.ts
 index febd61379c094af6cae6e79110f481dca3179d1a..6441b6ffb6cfeae61800ce705a998f56bb6141db 100644
 --- a/src/client/contentSelection.ts
@@ -1086,6 +1115,30 @@ index febd61379c094af6cae6e79110f481dca3179d1a..6441b6ffb6cfeae61800ce705a998f56
 +  if (id === null) resolveProductWorkbench()?.showCore();
 +  else resolveProductWorkbench()?.showContent(id);
    emit();
+ }
+ 
+diff --git a/src/client/credentialsApi.ts b/src/client/credentialsApi.ts
+index 40a0f214ea4043c9fe9a0d04bbb311f0777e917c..2cc42b02df7cf2cd30156549d97a0ccf054df8da 100644
+--- a/src/client/credentialsApi.ts
++++ b/src/client/credentialsApi.ts
+@@ -7,14 +7,12 @@ export interface CredentialView {
+ }
+ 
+ export interface CredentialsClient {
+-  describe: (request: { refs: string[] }) => Promise<{
+-    result: {
+-      ok: boolean;
+-      value?: { credentials: Record<string, CredentialView> };
+-    };
++  describe: (refs: string[]) => Promise<{
++    ok: boolean;
++    value?: Record<string, CredentialView>;
+   }>;
+-  set: (request: { ref: string; value: string }) => Promise<{
+-    result: { ok: boolean };
++  set: (ref: string, value: string) => Promise<{
++    ok: boolean;
+   }>;
  }
  
 diff --git a/src/client/face.ts b/src/client/face.ts

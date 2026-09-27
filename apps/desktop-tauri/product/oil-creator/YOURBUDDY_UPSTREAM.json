@@ -13,7 +13,7 @@
     {
       "id": "source-oil-creator-workbench-source",
       "file": "patches/oil-creator-workbench-source.patch",
-      "sha256": "a7fc6366f01777c93dc323ffd5688f2068f4b2eb261499d23538867b5d916f34",
+      "sha256": "8d770568303ae2cc4d3212c3a3e6c624feef7672670fa9b6853dd05e8a3750b6",
       "purpose": "Apply the reviewed YourBuddy source customization before building the published artifact."
     }
   ],
@@ -47,5 +47,5 @@
   ],
   "repository": "https://github.com/oil-oil/dsh-oil-creator",
   "license": "MIT",
-  "treeSha256": "c71f8595bb9f7b2ecab50a5ec746fbb9591c636481b3f789cfe8dc6a5a91195a"
+  "treeSha256": "5a6e3e9b535e31c26870f678e7f7e2ed3fe7dc2d243c4fbded034830a81791df"
 }
