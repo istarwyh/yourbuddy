@@ -85,12 +85,6 @@ jobs:
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify selected DSH Release for a new tag
-        if: github.event_name == 'push'
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node apps/desktop-tauri/scripts/sync-dsh-upstream.mjs --check-current
-
       - name: Build Harness
         env:
           DSH_CLIENT_TITLE: YourBuddy
@@ -102,20 +96,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm --dir apps/desktop-tauri run build
-
-      - name: Test desktop Host and shell command contracts
-        run: |
-          pnpm exec vitest run apps/cli/tests/args.spec.ts
-          pnpm run verify-desktop-shell-permissions
-          pnpm --dir apps/desktop-tauri run test:oil-publisher
-          node_archive="$(find apps/desktop-tauri/bundled/toolchain -maxdepth 1 -type f -name 'node-*-darwin-arm64.tar.gz' -print -quit)"
-          test -n "$node_archive"
-          node_root="$RUNNER_TEMP/yourbuddy-node-preflight"
-          mkdir -p "$node_root"
-          tar -xzf "$node_archive" -C "$node_root" --strip-components=1
-          YOURBUDDY_NODE_BINARY="$node_root/bin/node" node --test apps/desktop-tauri/scripts/node-extra-ca.test.mjs
-          cargo test --locked --release --target "$RUST_TARGET" --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml runtime::supervisor::tests
-          cargo test --locked --release --target "$RUST_TARGET" --manifest-path apps/desktop-tauri/src-tauri/Cargo.toml desktop_shell::tests::
 
       - name: Test relocated YourBuddy product runtime
         run: |

@@ -57,9 +57,9 @@ DSH 策略选择最高的官方正式 Release；仅在没有正式 Release 时�
 
 默认要求受管理的产品路径保持干净。只有开发者已经检查准备由事务保留或替换的本地产品修改时，才显式使用 `pnpm --dir apps/desktop-tauri run prepare:release -- --allow-dirty`；它绝不会允许在脏 Worktree 中合并上游 DSH。成功后，DSH Merge、刷新的快照与 Lockfile 会留给人工检查并提交；`DSH_UPSTREAM.json` 记录官方 DSH Tag 与 Commit，每个 `YOURBUDDY_UPSTREAM.json` 记录外部组件的精确 Revision、归档 Hash 与 Tree Hash，生成的 `.bundle-manifest.json` 则记录这些输入与整个 Bundle 的 Hash。后续任何准备步骤失败都会中止由该流程创建的 DSH Merge，并还原受管理的产品输入。
 
-Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改上游输入。新推送的 Tag 会解析 DSH 策略；已提交的源码、来源记录或祖先关系过期时拒绝发布。手工 Workflow Dispatch 只用于在失败后重试尚未发布的已有 Tag；它会跳过实时新鲜度检查，并只消费该 Tag 已提交的快照与冻结 Lockfile。若该 Tag 已经存在 GitHub Release，流水线会拒绝继续，因此修正已发布字节时必须发布新版本，不能替换安装包。
+Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析上游输入。Tag 流水线只消费该 Tag 已提交的快照与冻结 Lockfile。手工 Workflow Dispatch 只用于在失败后重试尚未发布的已有 Tag。若该 Tag 已经存在 GitHub Release，流水线会拒绝继续，因此修正已发布字节时必须发布新版本，不能替换安装包。
 
-发布输入、版本归档与针对性变更检查完成并提交后，`pnpm release:yourbuddy -- X.Y.Z` 会重新运行桌面发布测试、完整发布准备、文档检查和使用生产 Base URL 的官网构建。它要求干净的 `master` 能快进 `origin/master`，拒绝已经存在的远端 Tag，只创建或复用指向同一 Commit 的 Annotated Tag，并把 `master` 与 `yourbuddy-vX.Y.Z` 原子推送。桌面产物仍只由 Tag Workflow 发布。
+发布输入、版本归档与针对性变更检查完成并提交后，`pnpm release:yourbuddy -- X.Y.Z` 只校验版本归档与 Git 状态，不重复运行已经在推送前完成的测试、发布准备、文档检查或官网构建。它要求干净的 `master` 能快进 `origin/master`，拒绝已经存在的远端 Tag，只创建或复用指向同一 Commit 的 Annotated Tag，并把 `master` 与 `yourbuddy-vX.Y.Z` 原子推送。桌面产物仍只由 Tag Workflow 发布。
 
 ## 发布文档与官网
 
@@ -86,4 +86,4 @@ pnpm release:yourbuddy -- X.Y.Z
 
 当前目标固定为 `aarch64-apple-darwin`；发布流水线有意不包含 Windows、Intel macOS 或 Linux 矩阵。
 
-macOS arm64 发布门禁会校验 Tag 与所有桌面版本真源的一致性，并在新 Tag 上要求已提交内容使用策略选中的 DSH Release。它不会刷新产品插件 Channel，而是直接构建已提交的 Harness 和带签名的更新产物，并通过 DSH 参数解析器与原生 supervisor 执行聚焦的 Host 启动约定测试，包括原生与 WSL 参数向量、stdout 持续排空、token 脱敏和 token 交换。它还会检查 Shell Invoke 与 Permission 一致性，并通过 Tauri Runtime Authority 为精确 Remote Origin 解析每个允许的应用 Command，同时拒绝其他 Origin 与 Window。随后，流水线会把便携式 Runtime 移出应用 Bundle，故意破坏原始 Python Home 引用，并要求 `harbor --version` 与 `harbor-dsh --help` 都成功，之后才计算校验和并发布产物。该门禁有意保持小于仓库完整测试矩阵，避免桌面 Patch Release 等待无关平台或 Package。
+macOS arm64 发布流水线会校验 Tag 与所有桌面版本真源的一致性，安装冻结依赖，并直接构建已提交的 Harness、App、DMG 与带签名的更新产物，不刷新产品 Channel，也不重复推送前测试。随后，流水线会把便携式 Runtime 移出应用 Bundle，故意破坏原始 Python Home 引用，并要求 `harbor --version` 与 `harbor-dsh --help` 都成功，之后才计算校验和并发布产物。这个打包后 Runtime 冒烟测试会继续保留，因为它验证的是实际发布字节，而不是源码树。

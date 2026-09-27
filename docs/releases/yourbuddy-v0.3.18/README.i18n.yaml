@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.18/README.md
+/yourbuddy-0-3-18:
+  en: f48d46ec47e73702
+  zh: 58a3c63bb47c970f
+/yourbuddy-0-3-18/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-18/user-release-notes/what-changed:
+  en: 5a5cf5bad16dd633
+  zh: b0c8a1b02e08f638
+/yourbuddy-0-3-18/user-release-notes/problem-solved:
+  en: 78814bf15d90eeba
+  zh: f9580259b33a023b
+/yourbuddy-0-3-18/user-release-notes/where-to-use-it:
+  en: e60e8a056ec983ae
+  zh: 35b0251d8e17135a
+/yourbuddy-0-3-18/user-release-notes/how-to-try-it:
+  en: 0580af11207cc4bb
+  zh: 8bba2ca884d349d6
+/yourbuddy-0-3-18/user-release-notes/install-or-upgrade:
+  en: c9b0e264e50afe2b
+  zh: af4587ce0376228d
+/yourbuddy-0-3-18/user-release-notes/compatibility-migration-and-limitations:
+  en: da45ad55a398e20a
+  zh: eff28e7018ed0462
+/yourbuddy-0-3-18/verification-summary:
+  en: f3f023d18f84d6d0
+  zh: 10544364e3da6f6b
+/yourbuddy-0-3-18/scenario-shortened-publication-path:
+  en: 7516f4f3030f17e6
+  zh: 785057698aff9051
+/yourbuddy-0-3-18/scenario-shortened-publication-path/steps:
+  en: dc50cd17c1c5fec7
+  zh: 7cc772318ed738c1
+/yourbuddy-0-3-18/scenario-shortened-publication-path/expected:
+  en: b0ef9317d30ba5f7
+  zh: 12b0d72918d26293
+/yourbuddy-0-3-18/scenario-shortened-publication-path/actual:
+  en: e1c8aa5138c94302
+  zh: 18a7194400db60e0
+/yourbuddy-0-3-18/scenario-shortened-publication-path/evidence:
+  en: 729a95ecc8386584
+  zh: 7cb11d43b31fd6dc
+/yourbuddy-0-3-18/scenario-shortened-publication-path/scope-limits:
+  en: 0d0a62c189836e02
+  zh: 1a12d2d30d466456
+/yourbuddy-0-3-18/delivery-status:
+  en: 6c1d5bd91927c4eb
+  zh: 3a632e89a377d0a6
+/yourbuddy-0-3-18/delivery-checklist:
+  en: fee40f8870c1cf27
+  zh: 7f5a03da091e887a

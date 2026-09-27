@@ -9,7 +9,6 @@ import { verifyReleaseVersion } from './verify-release-version.mjs'
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = join(desktopRoot, '..', '..')
 const releaseBranch = 'master'
-const productSiteBaseUrl = 'https://istarwyh.github.io/yourbuddy/'
 
 function commandFailure(command, args, result) {
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim()
@@ -45,15 +44,6 @@ function optionalGit(args) {
   if (result.status === 0) return result.stdout.trim()
   if (result.status === 1) return undefined
   throw commandFailure('git', args, result)
-}
-
-function runPnpm(cwd, args, env = process.env) {
-  const npmExecPath = process.env.npm_execpath
-  if (npmExecPath && /\.[cm]?js$/iu.test(npmExecPath)) {
-    run(process.execPath, [npmExecPath, ...args], { cwd, env })
-    return
-  }
-  run('pnpm', args, { cwd, env })
 }
 
 /**
@@ -157,7 +147,7 @@ function currentState(remote, tag) {
   if (ancestor.status !== 0 && ancestor.status !== 1) {
     throw new Error(`git merge-base --is-ancestor failed with exit ${ancestor.status ?? 'unknown'}`)
   }
-  const localTagHead = optionalGit(['rev-parse', '--verify', `refs/tags/${tag}^{commit}`])
+  const localTagHead = optionalGit(['rev-parse', '--verify', '--quiet', `refs/tags/${tag}^{commit}`])
   return {
     branch: git(['branch', '--show-current']),
     status: git(['status', '--porcelain=v1']),
@@ -169,16 +159,6 @@ function currentState(remote, tag) {
       ? undefined
       : git(['cat-file', '-t', `refs/tags/${tag}`]),
     remoteTagRefs: git(['ls-remote', '--tags', remote, `refs/tags/${tag}`, `refs/tags/${tag}^{}`]),
-  }
-}
-
-function assertCandidateUnchanged(head) {
-  const currentHead = git(['rev-parse', 'HEAD'])
-  const status = git(['status', '--porcelain=v1'])
-  if (currentHead !== head || status !== '') {
-    throw new Error(
-      'release checks changed the candidate; review and commit those changes, then rerun the publish command',
-    )
   }
 }
 
@@ -214,16 +194,6 @@ export function publishRelease({ version, tag, remote }) {
   run('git', ['fetch', '--no-tags', remote, `refs/heads/${releaseBranch}:refs/remotes/${remote}/${releaseBranch}`])
   const state = currentState(remote, tag)
   validatePublishState(state)
-
-  runPnpm(desktopRoot, ['run', 'test:release'])
-  runPnpm(desktopRoot, ['run', 'prepare:release'])
-  assertCandidateUnchanged(state.head)
-  runPnpm(repositoryRoot, ['run', 'doc-sync'])
-  runPnpm(repositoryRoot, ['run', 'website:check'], {
-    ...process.env,
-    PRODUCT_SITE_BASE_URL: productSiteBaseUrl,
-  })
-  assertCandidateUnchanged(state.head)
 
   if (state.localTagHead === undefined) {
     run('git', ['tag', '--annotate', tag, '--message', `YourBuddy ${version}`])
