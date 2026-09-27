@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.21/README.md
+/yourbuddy-0-3-21:
+  en: 35e8ba78ad40716a
+  zh: c3d3d7a6e192dca2
+/yourbuddy-0-3-21/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-21/user-release-notes/what-changed:
+  en: d3a6cb73887ad9e4
+  zh: 22f3795ef1546fa9
+/yourbuddy-0-3-21/user-release-notes/problem-solved:
+  en: f36d7958dc9b244d
+  zh: c3757f4b111226d1
+/yourbuddy-0-3-21/user-release-notes/where-to-use-it:
+  en: 068d0ac3ae0e40d3
+  zh: ab147693ce793538
+/yourbuddy-0-3-21/user-release-notes/how-to-try-it:
+  en: a1c5041bc77177e3
+  zh: a6db84e392c8c536
+/yourbuddy-0-3-21/user-release-notes/install-or-upgrade:
+  en: bd92526bb1aedb3b
+  zh: 729c24bac1529674
+/yourbuddy-0-3-21/user-release-notes/compatibility-migration-and-limitations:
+  en: 06703791ea87667e
+  zh: 3bafd7bdf5cc7f4f
+/yourbuddy-0-3-21/verification-summary:
+  en: 103c500b0d028126
+  zh: 74be3a59ab6bfc0d
+/yourbuddy-0-3-21/scenario-headed-macos-ego-browser-runtime:
+  en: 280915300bab1520
+  zh: 5fee248289e7f547
+/yourbuddy-0-3-21/scenario-headed-macos-ego-browser-runtime/steps:
+  en: 1ba9b2205aa32105
+  zh: 22a9c8fd9cba0fd1
+/yourbuddy-0-3-21/scenario-headed-macos-ego-browser-runtime/expected:
+  en: 4d39c2253852369b
+  zh: a9ed21939e6239f0
+/yourbuddy-0-3-21/scenario-headed-macos-ego-browser-runtime/actual:
+  en: f6242482bb87f69b
+  zh: 45ed0b246a60d4c3
+/yourbuddy-0-3-21/scenario-headed-macos-ego-browser-runtime/evidence:
+  en: c351bff34f1902c4
+  zh: 91da541adf15882b
+/yourbuddy-0-3-21/scenario-headed-macos-ego-browser-runtime/scope-limits:
+  en: 04b521cbc81574cb
+  zh: 6d2e269f3a3ade2b
+/yourbuddy-0-3-21/delivery-status:
+  en: cb141fdfe162a64f
+  zh: 8c654a5f3062122b
+/yourbuddy-0-3-21/delivery-checklist:
+  en: 4f3c8ca035dc91e0
+  zh: 2f4336fc0588fdd4

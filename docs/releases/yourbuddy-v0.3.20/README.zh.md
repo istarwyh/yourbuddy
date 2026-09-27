@@ -68,7 +68,7 @@ Tag CI 发布产物后，从 0.3.20 GitHub Release 安装 Apple Silicon DMG；�
 
 ### 实际结果
 
-干净的已提交快照与修正后的来源记录匹配。集成通过 54 项聚焦 Node 测试、6 项 Rust Overlay 测试、13 项离线测试、43 项文档门禁和仓库 Lint。随后工作流 `36311318965` 构建 App 与 DMG，通过迁移 Runtime 冒烟和校验和验证，并发布 5 个产物。
+干净的已提交快照与修正后的来源记录匹配。集成通过 54 项聚焦 Node 测试、6 项 Rust Overlay 测试、13 项离线测试、43 项文档门禁和仓库 Lint。随后工作流 `36311318965` 构建 App 与 DMG，通过迁移 Runtime 冒烟和校验和验证，并发布 5 个产物。后续首次使用报告确认该 Smoke 没有调用浏览器 Host：macOS 路径要求 Linux Xvfb，且干净快照遗漏了被忽略的 SDK Runtime。
 
 ### 证据
 
@@ -79,11 +79,11 @@ Tag CI 发布产物后，从 0.3.20 GitHub Release 安装 Apple Silicon DMG；�
 
 ### 范围限制
 
-工作流通过迁移 Runtime 冒烟确认打包 Runtime 启动，并确认公开产物可用。它不能确认交互式原生 App 启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、Apple Developer 签名或公证。发布后没有独立下载体积较大的 DMG。
+工作流确认迁移后的 Host 启动与公开产物可用，但没有确认 Ego Browser 启动。该版本的 Agent Browser 在 macOS 上不可用，并由 0.3.21 取代。交互式原生 App 启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、Apple Developer 签名与公证均未确认；发布后也没有独立下载体积较大的 DMG。
 
 ## 交付状态
 
-- 产品发布状态：已发布为 `yourbuddy-v0.3.20`，包含 5 个公开产物与稳定 Updater Metadata。
+- 产品发布状态：已发布为 `yourbuddy-v0.3.20`，包含 5 个公开产物与稳定 Updater Metadata；其无法使用的 macOS Agent Browser 由 0.3.21 取代。
 - 验证资料归档状态：不可变源码包含在 Tag 中；发布后观察结果记录在 `master`。
 - 站点同步状态：产品指南已由工作流 `36310499295` 成功部署；中英文插件页面与稳定最新 Release 链接均返回 HTTP 200。
 - 未验证范围：独立完整 DMG 下载、交互式原生启动、打包后 WebView 交互、真实网站登录行为、Updater 安装、Apple Developer 签名与公证。

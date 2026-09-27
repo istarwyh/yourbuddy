@@ -68,7 +68,7 @@ The reviewed Ego Browser snapshot remains resolvable without a registry install,
 
 ### Actual
 
-The clean committed snapshot matches the corrected source record. The integration passed 54 focused Node tests, 6 Rust Overlay tests, 13 offline tests, 43 documentation gates, and repository lint. Workflow `36311318965` then built the App and DMG, passed the relocated-runtime smoke and checksum verification, and published five assets.
+The clean committed snapshot matches the corrected source record. The integration passed 54 focused Node tests, 6 Rust Overlay tests, 13 offline tests, 43 documentation gates, and repository lint. Workflow `36311318965` then built the App and DMG, passed the relocated-runtime smoke and checksum verification, and published five assets. A later first-use report established that this smoke did not invoke the browser host: the macOS path requested Linux Xvfb, and the clean snapshot omitted its ignored SDK runtime.
 
 ### Evidence
 
@@ -79,11 +79,11 @@ The clean committed snapshot matches the corrected source record. The integratio
 
 ### Scope limits
 
-The workflow establishes packaged runtime startup through its relocated-runtime smoke and public artifact availability. It does not establish interactive native App startup, packaged WebView interaction, real-site login behavior, updater installation, Apple Developer signing, or notarization. The large DMG was not independently downloaded after publication.
+The workflow establishes the relocated Host startup and public artifact availability, but not Ego Browser startup. The released Agent Browser is unusable on macOS and is superseded by 0.3.21. Interactive native App startup, packaged WebView interaction, real-site login behavior, updater installation, Apple Developer signing, and notarization were not established; the large DMG was not independently downloaded after publication.
 
 ## Delivery status
 
-- Product publication status: published as `yourbuddy-v0.3.20` with five public assets and stable updater metadata.
+- Product publication status: published as `yourbuddy-v0.3.20` with five public assets and stable updater metadata; its broken macOS Agent Browser is superseded by 0.3.21.
 - Verification archive status: immutable source is included in the tag; post-publication observations are recorded on `master`.
 - Website synchronization status: product guidance deployed successfully in workflow `36310499295`; Chinese and English plugin pages and the stable latest-Release link returned HTTP 200.
 - Unverified scope: independent full DMG download, interactive native startup, packaged WebView interaction, real-site login behavior, updater installation, Apple Developer signing, and notarization.
