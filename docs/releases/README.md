@@ -10,6 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
+| [yourbuddy-v0.3.23](yourbuddy-v0.3.23/README.md) | YourBuddy desktop | Included | Source terminal lifecycle, retained Web replay, requested coverage removals, CI baseline failures, and packaged-interaction limits recorded | Release candidate pending tagged artifact publication |
 | [yourbuddy-v0.3.22](yourbuddy-v0.3.22/README.md) | YourBuddy desktop | Included | Independently downloaded DMG, packaged headed browser, product-refresh regressions, Node.js 24 publication workflow, five assets, checksums, and updater metadata recorded | Published and independently checked within stated limits |
 | [yourbuddy-v0.3.21](yourbuddy-v0.3.21/README.md) | YourBuddy desktop | Included | Source, independently downloaded DMG, packaged headed macOS browser, five public assets, checksums, updater metadata, and website deployment recorded | Published and independently checked within stated limits |
 | [yourbuddy-v0.3.20](yourbuddy-v0.3.20/README.md) | YourBuddy desktop | Included | Published workflow and five assets recorded; later first use found the macOS Agent Browser runtime defect | Published, Agent Browser superseded by 0.3.21 |

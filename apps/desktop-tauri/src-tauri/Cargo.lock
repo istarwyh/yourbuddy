@@ -6044,7 +6044,7 @@ dependencies = [
 
 [[package]]
 name = "yourbuddy"
-version = "0.3.22"
+version = "0.3.23"
 dependencies = [
  "cookie",
  "dirs",

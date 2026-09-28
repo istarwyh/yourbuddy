@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.23/README.md
+/yourbuddy-0-3-23:
+  en: 3279a667b9108140
+  zh: 16660b61bcac82fa
+/yourbuddy-0-3-23/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-23/user-release-notes/what-changed:
+  en: 7313c73b9595373d
+  zh: ab03f683f194e70f
+/yourbuddy-0-3-23/user-release-notes/problem-solved:
+  en: 19040ce78393d171
+  zh: d51baba7f8123699
+/yourbuddy-0-3-23/user-release-notes/where-to-use-it:
+  en: 5a0f562e4d41f4a3
+  zh: 4590ee8d3c988e78
+/yourbuddy-0-3-23/user-release-notes/how-to-try-it:
+  en: fd88da50aa78ab1f
+  zh: c38447f4c4e38240
+/yourbuddy-0-3-23/user-release-notes/install-or-upgrade:
+  en: cdc22aefb66dc74c
+  zh: 01855d5d72f27592
+/yourbuddy-0-3-23/user-release-notes/compatibility-migration-and-limitations:
+  en: e0ac73fc6cca9745
+  zh: 9e14ab46facbaafa
+/yourbuddy-0-3-23/verification-summary:
+  en: b6adfc40d27a9d1f
+  zh: 4ffa8a3fb3323951
+/yourbuddy-0-3-23/scenario-source-terminal-integration-and-release-preflight:
+  en: 8f26b98831759cea
+  zh: f2c051b31dab0118
+/yourbuddy-0-3-23/scenario-source-terminal-integration-and-release-preflight/steps:
+  en: 031ac49b3b8d77e7
+  zh: d8fdc012c957bae2
+/yourbuddy-0-3-23/scenario-source-terminal-integration-and-release-preflight/expected:
+  en: 4f0497f9fe4c0bae
+  zh: 08439459334a22bc
+/yourbuddy-0-3-23/scenario-source-terminal-integration-and-release-preflight/actual:
+  en: 9bfe31dfe93ae8ae
+  zh: dab9cbc59a341127
+/yourbuddy-0-3-23/scenario-source-terminal-integration-and-release-preflight/evidence:
+  en: 554ff16372eedbd6
+  zh: 7a4bcc481f8b9faf
+/yourbuddy-0-3-23/scenario-source-terminal-integration-and-release-preflight/scope-limits:
+  en: 18724993b1a7169d
+  zh: e6a7f1a2863dfd87
+/yourbuddy-0-3-23/delivery-status:
+  en: 996fd372e22bebee
+  zh: 033330cbca9c1a65
+/yourbuddy-0-3-23/delivery-checklist:
+  en: 90d52358c134e258
+  zh: f94fefc35f3020e3

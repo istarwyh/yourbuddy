@@ -10,6 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
+| [yourbuddy-v0.3.23](yourbuddy-v0.3.23/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码终端生命周期、保留 Web Replay、按要求删除的覆盖、CI 基线失败与打包后交互限制 | 候选版本，等待 Tag 发布制品 |
 | [yourbuddy-v0.3.22](yourbuddy-v0.3.22/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录独立下载的 DMG、打包后有界面浏览器、产品刷新回归、Node.js 24 发布工作流、5 个产物、校验和与 Updater Metadata | 已发布并在说明范围内完成独立检查 |
 | [yourbuddy-v0.3.21](yourbuddy-v0.3.21/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码、独立下载的 DMG、打包后 macOS 有界面浏览器、5 个公开产物、校验和、Updater Metadata 与网站部署 | 已发布并在说明范围内完成独立检查 |
 | [yourbuddy-v0.3.20](yourbuddy-v0.3.20/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录发布工作流与 5 个产物；后续首次使用发现 macOS Agent Browser Runtime 缺陷 | 已发布，Agent Browser 由 0.3.21 取代 |
