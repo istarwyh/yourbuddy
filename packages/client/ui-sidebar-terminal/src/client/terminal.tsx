@@ -4,7 +4,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { Button, IconPlusOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TerminalViewState, TerminalView } from '@deepseek-ai/dsh-api-terminal-controller/client'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { FactoryComponentPropsOf, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { TerminalBodyInjected } from './face.ts'
 import type {} from './locales.ts'
@@ -34,6 +34,16 @@ export function TerminalBody({ useTabInfo, useTerminal, useTheme, view, t }: Ter
     t={t}
     onNew={() => { tab.actions.openTab('terminal', { replaceTab: true }) }}
   />
+}
+
+/** Render a deferred Factory occurrence after the terminal chunk loads. */
+export function LoadedTerminalSurfaceFactory(props: FactoryComponentPropsOf<'terminal.surface'>): ReactNode {
+  const { sessionId, tabId, contentId, visible, replace, view, release, useTerminal, useTheme } = props
+  const model = view({ sessionId, tabId, contentId })
+  const state = useTerminal(contentId)
+  const theme = useTheme(value => value)
+  useEffect(() => () => { release(contentId) }, [release, contentId])
+  return <TerminalSurface model={model} state={state} visible={visible} theme={theme} t={props.t} onNew={replace} />
 }
 
 /** Shared terminal renderer used by every terminal placement. */
