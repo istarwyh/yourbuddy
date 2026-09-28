@@ -17,6 +17,7 @@ import { apply as hostApply } from '../src/index.ts'
 import { TerminalGuide, type TerminalGuideInjected } from '../src/client/TerminalGuide.tsx'
 import { LazyTerminalBody } from '../src/client/LazyTerminalBody.tsx'
 import { TerminalTitle } from '../src/client/TerminalTitle.tsx'
+import { TerminalSurfaceFactory } from '../src/client/TerminalSurfaceFactory.tsx'
 import type { TerminalBodyInjected } from '../src/client/face.ts'
 import { en, zh } from '../src/client/locales.ts'
 
@@ -41,10 +42,11 @@ async function mountPlugin() {
     inject: (id: SessionId) => unknown
   }[] = []
   const dictionaries = new Map<string, unknown>()
+  const factories: { name: string; scope: string; locale: string; component: unknown; inject: () => unknown }[] = []
   let closeHandler: SidebarRightCloseHandler | undefined
   const model = { state: {} }
   const terminals = {
-    retainTabs: vi.fn(), view: vi.fn(() => model), close: vi.fn(), closeFailures: {}, retryClose: vi.fn(),
+    retainTabs: vi.fn(), retainTab: vi.fn(() => vi.fn()), view: vi.fn(() => model), close: vi.fn(), closeFailures: {}, retryClose: vi.fn(),
     launchShells: vi.fn(async () => ({ shells: [], selectedShell: undefined })), selectShell: vi.fn(),
     recover: vi.fn(async (_sessionId: SessionId): Promise<WebTerminalInfo[]> => []),
   }
@@ -63,6 +65,7 @@ async function mountPlugin() {
   ctx.provide('slots', {
     inject: (_name: string, register: () => () => void) => register(),
     register: (options: Omit<typeof entries[number], 'component'>, component: unknown) => { const entry = { ...options, component }; entries.push(entry); return () => { entries.splice(entries.indexOf(entry), 1) } },
+    registerFactory: (options: Omit<typeof factories[number], 'component'>, component: unknown) => { const entry = { ...options, component }; factories.push(entry); return () => { factories.splice(factories.indexOf(entry), 1) } },
   } as never)
   ctx.provide('shortcuts', { register: (command: ShortcutCommand) => {
     commands.push(command)
@@ -76,7 +79,7 @@ async function mountPlugin() {
   ctx.provide('theme', { getTheme: () => theme } as never)
   const fiber = await ctx.plugin({ inject, apply })
   return {
-    tabs, entries, dictionaries, terminals, model, occurrence, openTabIn, tabsIn, openTabs, theme,
+    tabs, entries, factories, dictionaries, terminals, model, occurrence, openTabIn, tabsIn, openTabs, theme,
     commandTarget, openTabFromTarget, commands,
     emitTheme() { ctx.emit('theme/change', theme) },
     get closeHandler() { return closeHandler },
@@ -103,7 +106,22 @@ it('registers terminal views without recovery or cleanup slots, then releases co
       ['sidebar.right.pane.tab', LazyTerminalBody, 'sidebarTerminal'],
       ['sidebar.right.pane.tab.title', TerminalTitle, 'sidebarTerminal'],
     ])
+    expect(h.factories.map(factory => [factory.name, factory.scope, factory.locale, factory.component])).toEqual([
+      ['terminal.surface', 'root', 'sidebarTerminal', TerminalSurfaceFactory],
+    ])
     const sessionId = 'session' as SessionId
+    const surface = h.factories[0]!.inject() as {
+      view(input: { sessionId: SessionId; tabId: string; contentId: string }): unknown
+      release(contentId: string): void
+      keyedHooks: { terminal(contentId: string): unknown }
+      hooks: { theme: { getSnapshot(): unknown } }
+    }
+    expect(surface.view({ sessionId, tabId: 'workbench-tab', contentId: 'workbench-content' })).toBe(h.model)
+    expect(h.terminals.view).toHaveBeenLastCalledWith(sessionId, 'workbench-tab', 'workbench-content')
+    expect(surface.keyedHooks.terminal('workbench-content')).toBe(h.model.state)
+    surface.release('workbench-content')
+    expect(() => surface.keyedHooks.terminal('workbench-content')).toThrow('no surface view')
+    expect(surface.hooks.theme.getSnapshot()).toBe(h.theme)
     const launcher = h.entries[0]!.inject(sessionId) as TerminalGuideInjected
     const signal = new AbortController().signal
     await launcher.loadShells(signal)
@@ -145,6 +163,7 @@ it('registers terminal views without recovery or cleanup slots, then releases co
   expect(h.closeHandler).toBeUndefined()
   expect(h.tabs.get('terminal')).toBeUndefined()
   expect(h.entries).toEqual([])
+  expect(h.factories).toEqual([])
   expect(h.dictionaries.size).toBe(0)
 })
 

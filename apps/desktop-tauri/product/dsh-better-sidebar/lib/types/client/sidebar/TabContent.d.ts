@@ -1,4 +1,5 @@
 import type { Context } from '../../context-types.ts';
+import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots';
 import type { SidebarState, SidebarStore, SidebarTab } from '../state.ts';
 import type { SessionScope } from '../api.ts';
 import { type TabContentMemoKey } from '../tab-content-memo.ts';
@@ -18,6 +19,7 @@ interface TabContentProps extends TabContentMemoKey {
     onSubagentJump: (childSessionId: string) => void;
     /** Open a diff tab from the git panel (placement handled by the store). */
     onOpenDiff: (tab: SidebarTab) => void;
+    renderFactorySlot?: RenderFactorySlot;
 }
 /** Render the content of one tab (dispatched by type). */
 export declare const TabContent: import("react").NamedExoticComponent<TabContentProps>;

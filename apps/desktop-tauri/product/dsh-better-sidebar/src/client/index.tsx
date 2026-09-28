@@ -21,6 +21,8 @@ import { createNativeTabRecords } from './native/tab-adapter.tsx'
 import { registerNativeSurface } from './native/index.ts'
 import { registerBottomToggle } from './sidebar/bottom-toggle.tsx'
 import { createNativeSurface } from './native/surface.ts'
+import { registerWorkbenchTerminal } from './native/terminal-adapter.tsx'
+import type { PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
 import { isTargetAvailable, openInterceptedLink, registerLinkInterception, shouldTakeOverLink } from './link-intercept.ts'
 import { registerImeGuard } from './ime-guard.ts'
 import { registerSettingsNavIcon } from './settings-nav-icon.ts'
@@ -219,6 +221,7 @@ export function apply(ctx: Context): void {
       let host: HTMLDivElement | undefined
       let mountedPresentation: 'portal' | 'slot' | undefined
       let disposeSlot: (() => void) | undefined
+      let disposeWorkbenchTerminal: (() => void) | undefined
       let bodyObserver: MutationObserver | undefined
       let hostCheckFrame: number | null = null
       const unmount = (): void => {
@@ -236,6 +239,8 @@ export function apply(ctx: Context): void {
         host = undefined
         disposeSlot?.()
         disposeSlot = undefined
+        disposeWorkbenchTerminal?.()
+        disposeWorkbenchTerminal = undefined
         slotPresentationActive = false
         document.body.removeAttribute('data-dsh-better-sidebar-presentation')
       }
@@ -305,12 +310,13 @@ export function apply(ctx: Context): void {
           mountedPresentation = presentation
           document.body.setAttribute('data-dsh-better-sidebar-presentation', presentation)
           if (presentation === 'slot') {
-            const WorkbenchSlot = () => createElement(
+            const WorkbenchSlot = ({ renderFactorySlot }: PropsRenderFactories) => createElement(
               RenderBoundary,
               { className: css.boundaryError },
-              createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'slot' }),
+              createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'slot', renderFactorySlot }),
             )
             slotPresentationActive = true
+            disposeWorkbenchTerminal = registerWorkbenchTerminal(ctx, sidebarStore, service)
             disposeSlot = ctx.slots.inject('workbench.core', () =>
               ctx.slots.register({ name: 'workbench.core' }, WorkbenchSlot))
           } else {

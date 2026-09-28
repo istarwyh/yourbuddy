@@ -14,9 +14,11 @@ import { PluginArtworkTerminal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { TerminalGuide, type TerminalGuideInjected } from './TerminalGuide.tsx'
 import { LazyTerminalBody } from './LazyTerminalBody.tsx'
 import { TerminalTitle } from './TerminalTitle.tsx'
+import { TerminalSurfaceFactory } from './TerminalSurfaceFactory.tsx'
 // import { TerminalRecovery, type TerminalRecoveryInjected } from './TerminalRecovery.tsx'
 // import { TerminalCleanup, type TerminalCleanupInjected } from './TerminalCleanup.tsx'
 import type { TerminalBodyInjected, TerminalInjected } from './face.ts'
+export type { TerminalSurfaceInputProps } from './face.ts'
 import { en, zh } from './locales.ts'
 
 /** Services needed by the terminal's two sidebar seats. */
@@ -83,6 +85,24 @@ export function apply(ctx: Context): void {
     getSnapshot: () => ctx.theme.getTheme(),
     subscribe: listener => ctx.on('theme/change', listener),
   }
+  const surfaceViews = new Map<string, ReturnType<typeof ctx.webTerminals.view>>()
+  ctx.effect(() => ctx.slots.registerFactory({
+    name: 'terminal.surface', scope: 'root', locale: namespace,
+    inject: () => ({
+      view: ({ sessionId, tabId, contentId }) => {
+        const model = ctx.webTerminals.view(sessionId, tabId, contentId)
+        surfaceViews.set(contentId, model)
+        return model
+      },
+      release: (contentId) => { surfaceViews.delete(contentId) },
+      keyedHooks: { terminal: (contentId) => {
+        const model = surfaceViews.get(contentId)
+        if (model === undefined) throw new Error(`ui-sidebar-terminal: no surface view for "${contentId}"`)
+        return model.state
+      } },
+      hooks: { theme },
+    }),
+  }, TerminalSurfaceFactory), 'ui-sidebar-terminal.surface-factory')
   ctx.effect(() => ctx.slots.inject('sidebar.right.tab.guide.entry', () => ctx.slots.register({
     name: 'sidebar.right.tab.guide.entry', key: id, locale: namespace,
     inject: (sessionId): TerminalGuideInjected => ({

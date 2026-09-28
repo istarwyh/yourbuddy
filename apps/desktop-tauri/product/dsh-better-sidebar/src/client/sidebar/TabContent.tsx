@@ -6,6 +6,7 @@
  */
 import { createElement, memo } from 'react'
 import type { Context } from '../../context-types.ts'
+import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SidebarState, SidebarStore, SidebarTab } from '../state.ts'
 import type { SessionScope } from '../api.ts'
 import { OrphanedTab } from '../OrphanedTab.tsx'
@@ -29,11 +30,12 @@ interface TabContentProps extends TabContentMemoKey {
   onSubagentJump: (childSessionId: string) => void
   /** Open a diff tab from the git panel (placement handled by the store). */
   onOpenDiff: (tab: SidebarTab) => void
+  renderFactorySlot?: RenderFactorySlot
 }
 
 /** Render the content of one tab (dispatched by type). */
 export const TabContent = memo(function TabContent(props: TabContentProps) {
-  const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff } = props
+  const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff, renderFactorySlot } = props
   const scope = { sessionId, cwd }
   const descriptor = ctx.get('betterSidebar')?.getTab(tab.type)
   if (descriptor === undefined) {
@@ -43,7 +45,7 @@ export const TabContent = memo(function TabContent(props: TabContentProps) {
     RenderBoundary,
     { className: css.tabBoundaryError },
     createElement(descriptor.component, {
-      ctx, store, scope, tab, visible, expanded, revealed,
+      ctx, store, scope, tab, visible, expanded, revealed, renderFactorySlot,
       onToggleDir, onReferenceFile, onOpenDiff, onSubagentJump,
     }),
   )
