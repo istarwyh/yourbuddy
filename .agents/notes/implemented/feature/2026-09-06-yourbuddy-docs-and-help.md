@@ -26,7 +26,7 @@ The [development-platform experiment proposal](../../rejected/feature/2026-09-06
 
 ## Verification
 
-The assembled keyless [Web journey](../../../../apps/web/tests/yourbuddy-help.e2e.ts) loads the built product plugin and checks both languages, menu navigation, workbench preservation, settings guidance, and native-open failure with a substituted native bridge. Package tests cover destination validation and late responses. The [implementation record](../../../../docs/tech/202609/verification.md) separates these results from installed-desktop and real-model acceptance.
+Package tests cover Help destination validation and late native-bridge responses. The [implementation record](../../../../docs/tech/202609/verification.md) separates source-level coverage from installed-desktop and real-model acceptance.
 
 ## Consequences
 
