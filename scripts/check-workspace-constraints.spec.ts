@@ -255,6 +255,13 @@ describe('dsh family version coherence', () => {
 })
 
 describe('package payload constraints', () => {
+  it.each(['apps/desktop', 'apps/desktop-host', 'apps/desktop-tauri'])(
+    'keeps the assembled desktop package %s private', (dir) => {
+      const manifest = JSON.parse(readFileSync(new URL(`../${dir}/package.json`, import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
+      expect(checkWorkspaceManifest({ dir, manifest })).toEqual([])
+    },
+  )
+
   it.each(['./art/icon.svg', 'art/icon.svg'])('includes declared icon %s in the canonical payload', (icon) => {
     expect(expectedDshPackageFiles({ icon, exports: { './locale/*.json': './locale/*.json' } })).toEqual([
       'art/icon.svg', 'locale/*.json', 'lib/index.js', 'lib/types/**/*.d.ts',
