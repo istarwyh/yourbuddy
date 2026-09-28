@@ -620,6 +620,26 @@ it('retains only open saved occurrences across inactive Sessions and deduplicate
   await expect.poll(() => calls.every(call => call[2]?.aborted)).toBe(true)
 })
 
+it('combines independently retained terminal surfaces with the right Sidebar inventory', async () => {
+  storage()
+  const otherSession = 'workbench-session' as SessionId
+  const otherId = 'workbench-terminal' as WebTerminalId
+  const bindings = new TerminalBindings()
+  bindings.set(sessionId, 'right', info.id)
+  bindings.set(otherSession, 'workbench', otherId)
+  const h = fixture()
+  const { service } = await h.service()
+  service.retainTabs([{ sessionId, tabId: 'right', contentId: 'right' }])
+  const release = service.retainTab({ sessionId: otherSession, tabId: 'workbench', contentId: 'workbench' })
+  await expect.poll(() => h.remote.retain).toHaveBeenCalledTimes(2)
+  const calls = vi.mocked(h.remote.retain).mock.calls
+  service.retainTabs([])
+  await expect.poll(() => calls.find(call => call[0] === sessionId)?.[2]?.aborted).toBe(true)
+  expect(calls.find(call => call[0] === otherSession)?.[2]?.aborted).toBe(false)
+  release()
+  await expect.poll(() => calls.find(call => call[0] === otherSession)?.[2]?.aborted).toBe(true)
+})
+
 it('waits for the window hold acknowledgement before restoring an output attachment', async () => {
   storage()
   new TerminalBindings().set(sessionId, 'restored', info.id)

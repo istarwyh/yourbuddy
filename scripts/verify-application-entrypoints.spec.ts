@@ -77,8 +77,10 @@ describe('application entrypoints', () => {
   it('ignores generated desktop bundles and reviewed external product snapshots', () => {
     const root = fixture()
     write(root, 'apps/desktop-tauri/bundled/harness/apps/cli/src/bin.ts', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/ego-browser/bin/ego-cast-worker.mjs', '#!/usr/bin/env node\n')
     write(root, 'apps/desktop-tauri/product/harbor-evolution/bin/dsh-harbor.mjs', '#!/usr/bin/env node\n')
     write(root, 'apps/desktop-tauri/product/oil-creator/scripts/collect-publish.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/src-tauri/target/debug/generated.mjs', '#!/usr/bin/env node\n')
 
     expect(applicationEntrypointViolations(root)).toEqual([])
   })

@@ -23,9 +23,12 @@
  * absent from the native guide and `openTab` refuses it.
  */
 import type { Context } from '../../context-types.ts';
-import type { BetterSidebarService } from '../service.ts';
+import type { BetterSidebarService, TabDescriptor } from '../service.ts';
 import type { SidebarStore } from '../state.ts';
 import { type NativeTabRecords } from './tab-adapter.tsx';
+/** The descriptor's title text, evaluated fresh for the current locale. */
+/** Tab descriptors eligible for adaptation into DSH's native right Sidebar. */
+export declare function nativeTabDescriptors(service: BetterSidebarService): readonly TabDescriptor[];
 /** Everything the registrations need. */
 export interface NativeSurfaceDeps {
     readonly ctx: Context;

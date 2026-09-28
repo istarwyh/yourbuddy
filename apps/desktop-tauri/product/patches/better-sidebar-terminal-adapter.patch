@@ -1,0 +1,756 @@
+diff --git a/README.md b/README.md
+index fb1b0f5d1c..07f22d746b 100644
+--- a/README.md
++++ b/README.md
+@@ -47,12 +47,12 @@
+ 
+ - **🗂️ 文件工作台**：资源管理器（懒加载目录树，**展开的目录由宿主按目录 watch、改动后自动重列**；软链接按目标类型展示——目录软链接可展开、失效链接标红；文件树与文件 tab 按扩展名显示图标——markdown / 图片 / PDF / 代码 / 配置 / 压缩包等各有 glyph，插件可经 `registerFileIcon` 注册自定义图标与目录图标）+ **可编辑**的 CodeMirror 编辑器；Markdown（含 Mermaid 图表，strict 安全渲染 + 点击放大；README 级内嵌 HTML——徽章墙 / `<details>` 折叠 / 表格内联标签经 DOMPurify 消毒真实渲染；浮动目录大纲一键跳转）与 HTML（沙箱 iframe + 两个宿主没有的逃生门开关）仍由插件渲染
+ - **🌐 浏览器与文档预览（由 DSH 内置提供）**：网页 tab 是宿主自己的 `ui-sidebar-browser`（多开 / 后退前进刷新 / 沙箱 iframe，**0.1.7 起只在 desktop profile 挂载**）；表格 / PDF / 图片 / Office 预览是宿主自己的 `ui-sidebar-documentpreview`（宿主侧 Office→PDF 转换、电子表格 worker 表格、图片 / PDF 缩放视口、按目录自动刷新）。插件**不再认领**这些格式，只保留宿主没有的那一半：**外链接管**——只认领有 tab 类型通过 `urlTarget` 明确声明的链接，其余一律放行给宿主（正文链接的去向由宿主用户设置 `linkOpening` 决定）
+-- **💻 终端（DSH 内置）**：右侧栏终端由 **DSH 内置**的 `ui-sidebar-terminal` 提供（shell 选择 / 重命名 / 断线重连 / 刷新后恢复 / 主题跟随）。插件不再自带终端实现
++- **💻 终端（DSH 内置）**：右侧栏与底部工作台都复用 **DSH 内置**的 `ui-sidebar-terminal`（shell / PTY / 断线重连 / 刷新后恢复 / 主题跟随）。插件只提供底部工作台适配，不自带终端实现
+ - **📂 模型侧边栏打开（可选）**：全局设置开启后注入 `sidebar_open` 工具——模型可主动在侧边栏打开文件 / 文件夹（树以该目录为根）/ HTTP(S) 网页（网页 tab 需要宿主提供 `browser` kind，即 desktop profile）
+ - **🌿 文件变动**：Git 视角（真 diff / 历史 / 暂存·提交·还原 / worktree·子仓库选择）与本轮文件视角（模型读 / 写 / 编辑实时追踪，按文件分组、按类型筛选）**双视角合一**；统一 diff 渲染（改蓝配对 + 行内字符级高亮 + 语法着色（含 mjs/cjs/mts/cts、CSS/SCSS/Less、HTML/XML/SVG/Vue、GraphQL、JSONC/JSON5）+ 上下文折叠），底部可拖拽预览面板，可一键展开为独立 diff tab（落进工作台的 diff 分栏）；`.md` 操作（读 / 写 / 编辑）预览头部可切换**阅读模式**——经共享 MarkdownText 渲染 GFM 表格 / 任务列表 / 删除线 / 脚注 / 数学公式，本地图片自动改写为 `/sidebar/file` 媒体路由；含 ```mermaid 围栏时走编辑器同款懒加载 mermaid 渲染器（图可点击缩放 / 平移）；**敏感内容脱敏**——凭据形态路径整文件遮罩、普通文件按内容形态遮值（api_key: / Bearer / sk- / AKIA / ghp_ / PEM 等，字段名保留），默认开启、预览面板一键开关（localStorage 记忆），仅影响显示、不改会话数据。已知边界：mermaid 无引号节点标签含被遮密钥时，图回退源码（规避：标签加引号）；`.html` 操作（读 / 写 / 编辑）预览头部可切换**渲染模式**——复用编辑器同款 `/sidebar/html` 路由 iframe，相对资源（./style.css、img/x.png）同路由解析，分段读取也渲染完整文档，恒定沙箱（opaque origin + CSP 头，无逃生门）；`.pdf` 操作（读 / 写 / 编辑）同样可切换**渲染模式**——复用编辑器同款 PDF 预览（媒体路由字节流 + 显式 Blob，浏览器原生查看器内嵌，附下载入口）
+ - **🧩 后台任务页**：subagent 拓扑 + 后台任务（退出码 / 实时输出 / 强制终止）
+ - **💬 侧边对话(beta)**：Codex 风格的侧边线程——继承主会话完整上下文（含进行中的回合与工具调用）独立运行，不进入主会话；线程内可持续追问，一键「保存为新会话」提升为顶层会话
+-- **🖥️ 原生右侧栏 + 底部工作台**：右列交给 DSH 原生右侧栏——插件把每个 tab 类型注册成原生 tab（文件打开走 `dsh-resource://file/**`，并接管内置「文件」页 / 文件树），插件自己只保留底部工作台（分栏 / 随会话持久化），开合按钮挂在会话头右侧
++- **🖥️ 原生右侧栏 + 底部工作台**：右列交给 DSH 原生右侧栏——插件把可原生放置的 tab 类型注册成原生 tab（文件打开走 `dsh-resource://file/**`，并接管内置「文件」页 / 文件树）；底部工作台保留分栏与随会话持久化，并可承载仅限工作台的适配 tab
+ - **🔁 会话隔离**：布局 / Tab / 面板按会话持久化，陈旧状态自动净化
+ - **⚙️ 声明式设置**：设置页「侧边卡片」逐项独立开关，二级设置经齿轮弹窗
+ - **⚡ 按需加载**：启动只拉 ~325KB 核心，编辑器 / Mermaid 图表 / 第三语言词典等重依赖用到才按需拉取（[设计文档](docs/plans/2026-08-12-lazy-chunks-design.md)）
+diff --git a/README_EN.md b/README_EN.md
+index 79df97663e..a112ef9136 100644
+--- a/README_EN.md
++++ b/README_EN.md
+@@ -47,12 +47,12 @@
+ 
+ - **🗂️ File Workbench**: file explorer (lazy-loading tree whose **expanded directories the host watches per directory, re-listing them whenever they change**; symlinks show their target kind — directory links expand, dangling links flagged; per-extension icons on tree rows and file tabs — markdown / images / PDF / code / config / archives — plus plugin-registered ones via `registerFileIcon`) + an **editable** CodeMirror editor; Markdown (incl. Mermaid diagrams, strict-mode safe rendering + click-to-zoom; README-level inline HTML — badge walls / `<details>` blocks / inline tags in table cells, DOMPurify-sanitized; floating table of contents) and HTML (sandboxed iframe plus the two escape hatches the host does not have) are still rendered by this plugin
+ - **🌐 Browser and document preview (provided by DSH)**: web tabs are the host's own `ui-sidebar-browser` (multiple tabs, back / forward / reload, sandboxed iframe — **desktop profile only since 0.1.7**); spreadsheets / PDF / images / Office are the host's own `ui-sidebar-documentpreview` (host-side Office→PDF conversion, worker-backed spreadsheet tables, image / PDF zoom viewports, per-directory auto-refresh). The plugin **no longer claims** those formats and keeps only the half the host does not provide: the **external-link takeover** — only links a tab type explicitly claims through `urlTarget`, everything else is let through to the host (whose `linkOpening` user setting decides where prose links go)
+-- **💻 Terminal (provided by DSH)**: the right-Sidebar terminal is provided by DSH's own `ui-sidebar-terminal` (shell picker, rename, reconnect, restore after reload, theme following). The plugin no longer ships a terminal of its own
++- **💻 Terminal (provided by DSH)**: both the right Sidebar and bottom workbench reuse DSH's own `ui-sidebar-terminal` (shell, PTY, reconnect, restore after reload, theme following). The plugin supplies only the bottom-workbench adapter and no terminal implementation
+ - **📂 Model-driven sidebar opens (opt-in)**: with the global setting on, the `sidebar_open` tool lets the model actively open files / folders (tree rooted there) / HTTP(S) pages in the sidebar (a web tab needs the host's `browser` kind, i.e. the desktop profile)
+ - **🌿 Changes**: one tab, two lenses — **Git** (real diff / history / stage·commit·revert / worktree & child-repo selection) and **This Session** (live tracking of every file the model reads / writes / edits, grouped by file with kind filters); a unified diff renderer (mod pairing + intra-line character highlights + syntax coloring incl. mjs/cjs/mts/cts, CSS/SCSS/Less, HTML/XML/SVG/Vue, GraphQL, JSONC/JSON5 + context folding), a draggable bottom preview pane, and one-click expansion into a dedicated diff tab; `.md` ops (read / write / edit) offer a **reading-mode** toggle in the preview header — the shared MarkdownText renders GFM tables / task lists / strikethrough / footnotes / math, with local images rewritten through the /sidebar/file media route; documents with ```mermaid fences render through the editor's lazy mermaid renderer (click-to-zoom / pan diagrams); **secret redaction** — credential-shaped paths mask whole files and ordinary files mask secret-shaped values (api_key: / Bearer / sk- / AKIA / ghp_ / PEM …, field names kept), on by default with a one-click preview-pane toggle (persisted in localStorage), display-only — session data untouched. Known edge: an unquoted mermaid label containing a redacted secret breaks the diagram (falls back to source); workaround: quote the label. `.html` ops (read / write / edit) gain a **Render** toggle in the preview head — the editor's `/sidebar/html` route iframe, with relative assets resolving inside the route and segmented reads rendering the full document; always sandboxed (opaque origin + CSP header, no escape hatch). `.pdf` ops (read / write / edit) gain the same **Render** toggle — the editor's PDF preview reused verbatim (media-route bytes + explicit Blob, the browser's native viewer inline, with a download fallback)
+ - **🧩 Background Tasks**: agent topology + background tasks (exit codes / live output / force-kill)
+ - **💬 Side Chat (beta)**: Codex-style side threads — the child inherits the parent's FULL context (completed turns + the pending question + the in-progress turn's assistant output and tool activity, honestly frozen as "interrupted") and runs independently without entering the main conversation; threads support continuous follow-ups (auto-resumed after a DSH restart) and one-click "Save as new session" promotion to a top-level session
+-- **🖥️ Native right sidebar + plugin bottom workbench**: the right column belongs to DSH's native right sidebar — the plugin registers every tab type as a native tab (file opens go through `dsh-resource://file/**`, and the built-in Files page / file tree is taken over), keeping only its own bottom workbench (split panes / session persistence) whose toggle sits in the session header
++- **🖥️ Native right sidebar + plugin bottom workbench**: the right column belongs to DSH's native right sidebar — the plugin registers every natively placed tab type there (file opens go through `dsh-resource://file/**`, and the built-in Files page / file tree is taken over); the bottom workbench keeps split panes and per-Session persistence and can host workbench-only adapter tabs
+ - **🔁 Session Isolation**: layout / tabs / panels persisted per session, stale state auto-purged
+ - **⚙️ Declarative Settings**: per-item toggles in the "Side Cards" settings section, secondary settings via the gear dialog
+ - **⚡ On-demand Loading**: only ~325KB core at startup; heavy deps (editor / mermaid diagrams / third-language dictionaries) load on demand ([design](docs/plans/2026-08-12-lazy-chunks-design.md))
+diff --git a/lib/client-registry.js b/lib/client-registry.js
+index 31763b459f..31b81ce1c7 100644
+--- a/lib/client-registry.js
++++ b/lib/client-registry.js
+@@ -14085,7 +14085,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		*/
+ 		/** Render the content of one tab (dispatched by type). */
+ 		const TabContent = (0, react.memo)(function TabContent(props) {
+-			const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff } = props;
++			const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff, renderFactorySlot } = props;
+ 			const scope = {
+ 				sessionId,
+ 				cwd
+@@ -14106,6 +14106,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 				visible,
+ 				expanded,
+ 				revealed,
++				renderFactorySlot,
+ 				onToggleDir,
+ 				onReferenceFile,
+ 				onOpenDiff,
+@@ -15308,7 +15309,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						store.reduce((s) => openDiffTab(s, paneId, diffTab));
+ 					},
+ 					localeRevision,
+-					tabsVersion
++					tabsVersion,
++					renderFactorySlot: props.renderFactorySlot
+ 				});
+ 			};
+ 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+@@ -15763,6 +15765,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		function nativeId(descriptorId) {
+ 			return `dsh-better-sidebar:${descriptorId}`;
+ 		}
++		/** Tab descriptors eligible for adaptation into DSH's native right Sidebar. */
++		function nativeTabDescriptors(service) {
++			return service.getTabs().filter((descriptor) => descriptor.native !== false && service.isTabEnabled(descriptor.id));
++		}
+ 		/** The descriptor's title text, evaluated fresh for the current locale. */
+ 		function titleOf(descriptor) {
+ 			return typeof descriptor.title === "function" ? descriptor.title() : descriptor.title;
+@@ -15913,10 +15919,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 				/** Bring the live registrations in line with the registry + the settings. */
+ 				const sync = () => {
+ 					const wanted = /* @__PURE__ */ new Map();
+-					for (const descriptor of service.getTabs()) {
+-						if (!service.isTabEnabled(descriptor.id)) continue;
+-						wanted.set(descriptor.id, () => registerDescriptor(descriptor));
+-					}
++					for (const descriptor of nativeTabDescriptors(service)) wanted.set(descriptor.id, () => registerDescriptor(descriptor));
+ 					for (const [descriptorId, registration] of live) {
+ 						if (wanted.has(descriptorId)) continue;
+ 						registration.dispose();
+@@ -15966,6 +15969,77 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 			}, () => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BottomDockToggle, { store })));
+ 		}
+ 		//#endregion
++		//#region src/client/native/terminal-adapter.tsx
++		function contentIdOf(sessionId, tabId) {
++			return `better-sidebar:${sessionId}:${tabId}`;
++		}
++		function terminalController(ctx) {
++			return ctx.get("webTerminals");
++		}
++		/** Register the workbench terminal tab and retain every cached Session occurrence. */
++		function registerWorkbenchTerminal(ctx, store, service) {
++			const component = ({ scope, tab, visible, renderFactorySlot }) => {
++				if (renderFactorySlot === void 0) return null;
++				const replace = () => {
++					service.closeTab(tab.id, scope);
++					service.openTab({ type: "terminal" }, scope);
++				};
++				return renderFactorySlot("terminal.surface", {
++					sessionId: scope.sessionId,
++					tabId: tab.id,
++					contentId: contentIdOf(scope.sessionId, tab.id),
++					visible,
++					replace
++				});
++			};
++			const disposeDescriptor = service.registerTab({
++				id: "terminal",
++				title: () => t("terminal"),
++				description: () => t("guideDescTerminal"),
++				icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.PluginArtworkTerminal, { size }),
++				order: 40,
++				native: false,
++				available: () => terminalController(ctx) !== void 0,
++				createTab: () => ({ tab: {
++					id: `terminal:${crypto.randomUUID()}`,
++					type: "terminal",
++					title: t("terminal")
++				} }),
++				onClose: (tab, scope) => {
++					terminalController(ctx)?.close(scope.sessionId, tab.id, contentIdOf(scope.sessionId, tab.id));
++				},
++				component
++			});
++			const holds = /* @__PURE__ */ new Map();
++			const syncHolds = () => {
++				const terminals = terminalController(ctx);
++				const wanted = /* @__PURE__ */ new Set();
++				for (const [sessionId, state] of store.getSessionStates()) for (const leaf of allLeaves(state.bottomSplits)) for (const tab of leaf.tabs) {
++					if (tab.type !== "terminal") continue;
++					const contentId = contentIdOf(sessionId, tab.id);
++					wanted.add(contentId);
++					if (!holds.has(contentId) && terminals !== void 0) holds.set(contentId, terminals.retainTab({
++						sessionId,
++						tabId: tab.id,
++						contentId
++					}));
++				}
++				for (const [contentId, release] of holds) {
++					if (wanted.has(contentId)) continue;
++					release();
++					holds.delete(contentId);
++				}
++			};
++			const unsubscribe = store.subscribe(syncHolds);
++			syncHolds();
++			return () => {
++				unsubscribe();
++				for (const release of holds.values()) release();
++				holds.clear();
++				disposeDescriptor();
++			};
++		}
++		//#endregion
+ 		//#region src/client/desktop-external-links.ts
+ 		/** Open HTTP(S) destinations through the desktop shell or an ordinary browser tab. */
+ 		const DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
+@@ -17595,6 +17669,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					let host;
+ 					let mountedPresentation;
+ 					let disposeSlot;
++					let disposeWorkbenchTerminal;
+ 					let bodyObserver;
+ 					let hostCheckFrame = null;
+ 					const unmount = () => {
+@@ -17612,6 +17687,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						host = void 0;
+ 						disposeSlot?.();
+ 						disposeSlot = void 0;
++						disposeWorkbenchTerminal?.();
++						disposeWorkbenchTerminal = void 0;
+ 						slotPresentationActive = false;
+ 						document.body.removeAttribute("data-dsh-better-sidebar-presentation");
+ 					};
+@@ -17677,12 +17754,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 							mountedPresentation = presentation;
+ 							document.body.setAttribute("data-dsh-better-sidebar-presentation", presentation);
+ 							if (presentation === "slot") {
+-								const WorkbenchSlot = () => (0, react.createElement)(RenderBoundary, { className: sidebar_module_css_default.boundaryError }, (0, react.createElement)(Sidebar, {
++								const WorkbenchSlot = ({ renderFactorySlot }) => (0, react.createElement)(RenderBoundary, { className: sidebar_module_css_default.boundaryError }, (0, react.createElement)(Sidebar, {
+ 									ctx,
+ 									store: sidebarStore,
+-									presentation: "slot"
++									presentation: "slot",
++									renderFactorySlot
+ 								}));
+ 								slotPresentationActive = true;
++								disposeWorkbenchTerminal = registerWorkbenchTerminal(ctx, sidebarStore, service);
+ 								disposeSlot = ctx.slots.inject("workbench.core", () => ctx.slots.register({ name: "workbench.core" }, WorkbenchSlot));
+ 							} else {
+ 								host = document.createElement("div");
+diff --git a/lib/client.js b/lib/client.js
+index ae75f4daef..a162573eca 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -14085,7 +14085,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		*/
+ 		/** Render the content of one tab (dispatched by type). */
+ 		const TabContent = (0, react.memo)(function TabContent(props) {
+-			const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff } = props;
++			const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff, renderFactorySlot } = props;
+ 			const scope = {
+ 				sessionId,
+ 				cwd
+@@ -14106,6 +14106,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 				visible,
+ 				expanded,
+ 				revealed,
++				renderFactorySlot,
+ 				onToggleDir,
+ 				onReferenceFile,
+ 				onOpenDiff,
+@@ -15308,7 +15309,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						store.reduce((s) => openDiffTab(s, paneId, diffTab));
+ 					},
+ 					localeRevision,
+-					tabsVersion
++					tabsVersion,
++					renderFactorySlot: props.renderFactorySlot
+ 				});
+ 			};
+ 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+@@ -15763,6 +15765,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		function nativeId(descriptorId) {
+ 			return `dsh-better-sidebar:${descriptorId}`;
+ 		}
++		/** Tab descriptors eligible for adaptation into DSH's native right Sidebar. */
++		function nativeTabDescriptors(service) {
++			return service.getTabs().filter((descriptor) => descriptor.native !== false && service.isTabEnabled(descriptor.id));
++		}
+ 		/** The descriptor's title text, evaluated fresh for the current locale. */
+ 		function titleOf(descriptor) {
+ 			return typeof descriptor.title === "function" ? descriptor.title() : descriptor.title;
+@@ -15913,10 +15919,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 				/** Bring the live registrations in line with the registry + the settings. */
+ 				const sync = () => {
+ 					const wanted = /* @__PURE__ */ new Map();
+-					for (const descriptor of service.getTabs()) {
+-						if (!service.isTabEnabled(descriptor.id)) continue;
+-						wanted.set(descriptor.id, () => registerDescriptor(descriptor));
+-					}
++					for (const descriptor of nativeTabDescriptors(service)) wanted.set(descriptor.id, () => registerDescriptor(descriptor));
+ 					for (const [descriptorId, registration] of live) {
+ 						if (wanted.has(descriptorId)) continue;
+ 						registration.dispose();
+@@ -15966,6 +15969,77 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 			}, () => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BottomDockToggle, { store })));
+ 		}
+ 		//#endregion
++		//#region src/client/native/terminal-adapter.tsx
++		function contentIdOf(sessionId, tabId) {
++			return `better-sidebar:${sessionId}:${tabId}`;
++		}
++		function terminalController(ctx) {
++			return ctx.get("webTerminals");
++		}
++		/** Register the workbench terminal tab and retain every cached Session occurrence. */
++		function registerWorkbenchTerminal(ctx, store, service) {
++			const component = ({ scope, tab, visible, renderFactorySlot }) => {
++				if (renderFactorySlot === void 0) return null;
++				const replace = () => {
++					service.closeTab(tab.id, scope);
++					service.openTab({ type: "terminal" }, scope);
++				};
++				return renderFactorySlot("terminal.surface", {
++					sessionId: scope.sessionId,
++					tabId: tab.id,
++					contentId: contentIdOf(scope.sessionId, tab.id),
++					visible,
++					replace
++				});
++			};
++			const disposeDescriptor = service.registerTab({
++				id: "terminal",
++				title: () => t("terminal"),
++				description: () => t("guideDescTerminal"),
++				icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.PluginArtworkTerminal, { size }),
++				order: 40,
++				native: false,
++				available: () => terminalController(ctx) !== void 0,
++				createTab: () => ({ tab: {
++					id: `terminal:${crypto.randomUUID()}`,
++					type: "terminal",
++					title: t("terminal")
++				} }),
++				onClose: (tab, scope) => {
++					terminalController(ctx)?.close(scope.sessionId, tab.id, contentIdOf(scope.sessionId, tab.id));
++				},
++				component
++			});
++			const holds = /* @__PURE__ */ new Map();
++			const syncHolds = () => {
++				const terminals = terminalController(ctx);
++				const wanted = /* @__PURE__ */ new Set();
++				for (const [sessionId, state] of store.getSessionStates()) for (const leaf of allLeaves(state.bottomSplits)) for (const tab of leaf.tabs) {
++					if (tab.type !== "terminal") continue;
++					const contentId = contentIdOf(sessionId, tab.id);
++					wanted.add(contentId);
++					if (!holds.has(contentId) && terminals !== void 0) holds.set(contentId, terminals.retainTab({
++						sessionId,
++						tabId: tab.id,
++						contentId
++					}));
++				}
++				for (const [contentId, release] of holds) {
++					if (wanted.has(contentId)) continue;
++					release();
++					holds.delete(contentId);
++				}
++			};
++			const unsubscribe = store.subscribe(syncHolds);
++			syncHolds();
++			return () => {
++				unsubscribe();
++				for (const release of holds.values()) release();
++				holds.clear();
++				disposeDescriptor();
++			};
++		}
++		//#endregion
+ 		//#region src/client/desktop-external-links.ts
+ 		/** Open HTTP(S) destinations through the desktop shell or an ordinary browser tab. */
+ 		const DESKTOP_EXTERNAL_LINK_CHANNEL = "yourbuddy.desktop.external-link";
+@@ -17595,6 +17669,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 					let host;
+ 					let mountedPresentation;
+ 					let disposeSlot;
++					let disposeWorkbenchTerminal;
+ 					let bodyObserver;
+ 					let hostCheckFrame = null;
+ 					const unmount = () => {
+@@ -17612,6 +17687,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 						host = void 0;
+ 						disposeSlot?.();
+ 						disposeSlot = void 0;
++						disposeWorkbenchTerminal?.();
++						disposeWorkbenchTerminal = void 0;
+ 						slotPresentationActive = false;
+ 						document.body.removeAttribute("data-dsh-better-sidebar-presentation");
+ 					};
+@@ -17677,12 +17754,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 							mountedPresentation = presentation;
+ 							document.body.setAttribute("data-dsh-better-sidebar-presentation", presentation);
+ 							if (presentation === "slot") {
+-								const WorkbenchSlot = () => (0, react.createElement)(RenderBoundary, { className: sidebar_module_css_default.boundaryError }, (0, react.createElement)(Sidebar, {
++								const WorkbenchSlot = ({ renderFactorySlot }) => (0, react.createElement)(RenderBoundary, { className: sidebar_module_css_default.boundaryError }, (0, react.createElement)(Sidebar, {
+ 									ctx,
+ 									store: sidebarStore,
+-									presentation: "slot"
++									presentation: "slot",
++									renderFactorySlot
+ 								}));
+ 								slotPresentationActive = true;
++								disposeWorkbenchTerminal = registerWorkbenchTerminal(ctx, sidebarStore, service);
+ 								disposeSlot = ctx.slots.inject("workbench.core", () => ctx.slots.register({ name: "workbench.core" }, WorkbenchSlot));
+ 							} else {
+ 								host = document.createElement("div");
+diff --git a/lib/types/client/Sidebar.d.ts b/lib/types/client/Sidebar.d.ts
+index ed28603126..ea0db52153 100644
+--- a/lib/types/client/Sidebar.d.ts
++++ b/lib/types/client/Sidebar.d.ts
+@@ -1,9 +1,11 @@
++import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots';
+ import type { Context } from '../context-types.ts';
+ import { type SidebarStore } from './state.ts';
+ export declare function Sidebar(props: {
+     ctx: Context;
+     store: SidebarStore;
+     presentation?: 'portal' | 'slot';
++    renderFactorySlot?: RenderFactorySlot;
+ }): import("react").JSX.Element;
+ /** The header control that expands/collapses the bottom workbench (see
+  *  sidebar/bottom-toggle.tsx — registered into DSH's session header). */
+diff --git a/lib/types/client/native/index.d.ts b/lib/types/client/native/index.d.ts
+index acd42ed280..e93046559a 100644
+--- a/lib/types/client/native/index.d.ts
++++ b/lib/types/client/native/index.d.ts
+@@ -23,9 +23,12 @@
+  * absent from the native guide and `openTab` refuses it.
+  */
+ import type { Context } from '../../context-types.ts';
+-import type { BetterSidebarService } from '../service.ts';
++import type { BetterSidebarService, TabDescriptor } from '../service.ts';
+ import type { SidebarStore } from '../state.ts';
+ import { type NativeTabRecords } from './tab-adapter.tsx';
++/** The descriptor's title text, evaluated fresh for the current locale. */
++/** Tab descriptors eligible for adaptation into DSH's native right Sidebar. */
++export declare function nativeTabDescriptors(service: BetterSidebarService): readonly TabDescriptor[];
+ /** Everything the registrations need. */
+ export interface NativeSurfaceDeps {
+     readonly ctx: Context;
+diff --git a/lib/types/client/service.d.ts b/lib/types/client/service.d.ts
+index a7172eee86..733f6ffee7 100644
+--- a/lib/types/client/service.d.ts
++++ b/lib/types/client/service.d.ts
+@@ -20,6 +20,7 @@
+  *   then `exts`; `exts: []` is a catch-all that matches any path.
+  */
+ import type { ReactNode } from 'react';
++import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots';
+ import type { Context } from '../context-types.ts';
+ import { type SidebarSnapshot, type SidebarState, type SidebarStore, type SidebarTab } from './state.ts';
+ import type { SessionScope } from './api.ts';
+@@ -127,6 +128,8 @@ export interface TabComponentProps {
+     tab: SidebarTab;
+     /** Whether this tab is the active one AND the panel is open (live views pause otherwise). */
+     visible: boolean;
++    /** Reusable DSH UI factories available when the workbench is slot-hosted. */
++    renderFactorySlot?: RenderFactorySlot;
+     /** The explorer's expanded directory set (ExplorerView). */
+     expanded?: string[];
+     /** The explorer's reveal-highlight set (ExplorerView; "Show in folder" targets). */
+@@ -163,6 +166,8 @@ export interface TabDescriptor {
+     order?: number;
+     /** Hide from the + menu (the editor tab is opened by file-open, not by the menu). */
+     hidden?: boolean;
++    /** Register this type in DSH's native right Sidebar; defaults to true. */
++    native?: boolean;
+     /**
+      * + menu disabled predicate (e.g. terminal at capacity). Receives the
+      * session scope and the live sidebar state (counts, expansions).
+diff --git a/lib/types/client/sidebar/TabContent.d.ts b/lib/types/client/sidebar/TabContent.d.ts
+index 146bb89e33..e5bf93c06e 100644
+--- a/lib/types/client/sidebar/TabContent.d.ts
++++ b/lib/types/client/sidebar/TabContent.d.ts
+@@ -1,4 +1,5 @@
+ import type { Context } from '../../context-types.ts';
++import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots';
+ import type { SidebarState, SidebarStore, SidebarTab } from '../state.ts';
+ import type { SessionScope } from '../api.ts';
+ import { type TabContentMemoKey } from '../tab-content-memo.ts';
+@@ -18,6 +19,7 @@ interface TabContentProps extends TabContentMemoKey {
+     onSubagentJump: (childSessionId: string) => void;
+     /** Open a diff tab from the git panel (placement handled by the store). */
+     onOpenDiff: (tab: SidebarTab) => void;
++    renderFactorySlot?: RenderFactorySlot;
+ }
+ /** Render the content of one tab (dispatched by type). */
+ export declare const TabContent: import("react").NamedExoticComponent<TabContentProps>;
+diff --git a/package.json b/package.json
+index 3aa864d9fe..d3e9a15fd0 100644
+--- a/package.json
++++ b/package.json
+@@ -51,6 +51,7 @@
+         "@deepseek-ai/dsh-client-ui-slots",
+         "@deepseek-ai/dsh-client-ui-conversation",
+         "@deepseek-ai/dsh-client-ui-sidebar-right",
++        "@deepseek-ai/dsh-client-ui-sidebar-terminal",
+         "@deepseek-ai/dsh-client-modules"
+       ],
+       "platform": "web"
+@@ -165,6 +166,7 @@
+     "@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.1",
+     "@deepseek-ai/dsh-client-ui-settings": "0.1.7-rc.1",
+     "@deepseek-ai/dsh-client-ui-sidebar-right": "0.1.7-rc.1",
++    "@deepseek-ai/dsh-client-ui-sidebar-terminal": "0.1.7-rc.2",
+     "@deepseek-ai/dsh-client-ui-slots": "0.1.7-rc.1",
+     "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.1",
+     "@deepseek-ai/dsh-invariants": "0.1.7-rc.1",
+diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
+index 2c65503d9b..e1bbb4527c 100644
+--- a/src/client/Sidebar.tsx
++++ b/src/client/Sidebar.tsx
+@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as Re
+ import { useSyncExternalStore } from 'react'
+ import clsx from 'clsx'
+ import { IconCloseFillRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
++import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
+ import type { Context } from '../context-types.ts'
+ import { referenceInChat as referenceInChatShared } from './reference-in-chat.ts'
+ import {
+@@ -94,7 +95,7 @@ function injectUserCss(attr: string, id: string, cssText: string): HTMLStyleElem
+   return tag
+ }
+ 
+-export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation?: 'portal' | 'slot' }) {
++export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation?: 'portal' | 'slot'; renderFactorySlot?: RenderFactorySlot }) {
+   const { ctx, store } = props
+   const slotPresentation = props.presentation === 'slot'
+ 
+@@ -644,6 +645,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
+         onOpenDiff={(diffTab) => { store.reduce(s => openDiffTab(s, paneId, diffTab)) }}
+         localeRevision={localeRevision}
+         tabsVersion={tabsVersion}
++        renderFactorySlot={props.renderFactorySlot}
+       />
+     )
+   }
+diff --git a/src/client/index.tsx b/src/client/index.tsx
+index 7aca5b8319..08fc7614ac 100644
+--- a/src/client/index.tsx
++++ b/src/client/index.tsx
+@@ -21,6 +21,8 @@ import { createNativeTabRecords } from './native/tab-adapter.tsx'
+ import { registerNativeSurface } from './native/index.ts'
+ import { registerBottomToggle } from './sidebar/bottom-toggle.tsx'
+ import { createNativeSurface } from './native/surface.ts'
++import { registerWorkbenchTerminal } from './native/terminal-adapter.tsx'
++import type { PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
+ import { isTargetAvailable, openInterceptedLink, registerLinkInterception, shouldTakeOverLink } from './link-intercept.ts'
+ import { registerImeGuard } from './ime-guard.ts'
+ import { registerSettingsNavIcon } from './settings-nav-icon.ts'
+@@ -219,6 +221,7 @@ export function apply(ctx: Context): void {
+       let host: HTMLDivElement | undefined
+       let mountedPresentation: 'portal' | 'slot' | undefined
+       let disposeSlot: (() => void) | undefined
++      let disposeWorkbenchTerminal: (() => void) | undefined
+       let bodyObserver: MutationObserver | undefined
+       let hostCheckFrame: number | null = null
+       const unmount = (): void => {
+@@ -236,6 +239,8 @@ export function apply(ctx: Context): void {
+         host = undefined
+         disposeSlot?.()
+         disposeSlot = undefined
++        disposeWorkbenchTerminal?.()
++        disposeWorkbenchTerminal = undefined
+         slotPresentationActive = false
+         document.body.removeAttribute('data-dsh-better-sidebar-presentation')
+       }
+@@ -305,12 +310,13 @@ export function apply(ctx: Context): void {
+           mountedPresentation = presentation
+           document.body.setAttribute('data-dsh-better-sidebar-presentation', presentation)
+           if (presentation === 'slot') {
+-            const WorkbenchSlot = () => createElement(
++            const WorkbenchSlot = ({ renderFactorySlot }: PropsRenderFactories) => createElement(
+               RenderBoundary,
+               { className: css.boundaryError },
+-              createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'slot' }),
++              createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'slot', renderFactorySlot }),
+             )
+             slotPresentationActive = true
++            disposeWorkbenchTerminal = registerWorkbenchTerminal(ctx, sidebarStore, service)
+             disposeSlot = ctx.slots.inject('workbench.core', () =>
+               ctx.slots.register({ name: 'workbench.core' }, WorkbenchSlot))
+           } else {
+diff --git a/src/client/native/index.ts b/src/client/native/index.ts
+index c126034729..a0369a5709 100644
+--- a/src/client/native/index.ts
++++ b/src/client/native/index.ts
+@@ -14,7 +14,7 @@
+  *   registration of the same kind, so `openTab('files')` draws the plugin's
+  *   explorer instead of the built-in tree; the built-in resumes when this
+  *   plugin unregisters;
+- * - every other descriptor (changes / subagent / side chat / terminal /
++ * - every descriptor not marked workbench-only (changes / subagent / side chat /
+  *   browser / diff) becomes a page type of its own.
+  *
+  * The registrations follow the plugin's registry lifecycle: a descriptor
+@@ -106,6 +106,11 @@ function nativeId(descriptorId: string): string {
+   return `dsh-better-sidebar:${descriptorId}`
+ }
+ 
++/** Tab descriptors eligible for adaptation into DSH's native right Sidebar. */
++export function nativeTabDescriptors(service: BetterSidebarService): readonly TabDescriptor[] {
++  return service.getTabs().filter(descriptor => descriptor.native !== false && service.isTabEnabled(descriptor.id))
++}
++
+ /** The descriptor's title text, evaluated fresh for the current locale. */
+ function titleOf(descriptor: TabDescriptor): string {
+   return typeof descriptor.title === 'function' ? descriptor.title() : descriptor.title
+@@ -314,8 +319,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
+     /** Bring the live registrations in line with the registry + the settings. */
+     const sync = (): void => {
+       const wanted = new Map<string, () => () => void>()
+-      for (const descriptor of service.getTabs()) {
+-        if (!service.isTabEnabled(descriptor.id)) continue
++      for (const descriptor of nativeTabDescriptors(service)) {
+         wanted.set(descriptor.id, () => registerDescriptor(descriptor))
+       }
+       for (const [descriptorId, registration] of live) {
+diff --git a/src/client/service.ts b/src/client/service.ts
+index 70f31a521f..9e576479ed 100644
+--- a/src/client/service.ts
++++ b/src/client/service.ts
+@@ -20,6 +20,7 @@
+  *   then `exts`; `exts: []` is a catch-all that matches any path.
+  */
+ import type { ReactNode } from 'react'
++import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
+ import type { Context } from '../context-types.ts'
+ import {
+   activateTab as activateTabReducer, allLeaves, closeTab as closeTabReducer,
+@@ -147,6 +148,8 @@ export interface TabComponentProps {
+   tab: SidebarTab
+   /** Whether this tab is the active one AND the panel is open (live views pause otherwise). */
+   visible: boolean
++  /** Reusable DSH UI factories available when the workbench is slot-hosted. */
++  renderFactorySlot?: RenderFactorySlot
+   /** The explorer's expanded directory set (ExplorerView). */
+   expanded?: string[]
+   /** The explorer's reveal-highlight set (ExplorerView; "Show in folder" targets). */
+@@ -184,6 +187,8 @@ export interface TabDescriptor {
+   order?: number
+   /** Hide from the + menu (the editor tab is opened by file-open, not by the menu). */
+   hidden?: boolean
++  /** Register this type in DSH's native right Sidebar; defaults to true. */
++  native?: boolean
+   /**
+    * + menu disabled predicate (e.g. terminal at capacity). Receives the
+    * session scope and the live sidebar state (counts, expansions).
+diff --git a/src/client/sidebar/TabContent.tsx b/src/client/sidebar/TabContent.tsx
+index 9a729f3ea9..c70aa38ffc 100644
+--- a/src/client/sidebar/TabContent.tsx
++++ b/src/client/sidebar/TabContent.tsx
+@@ -6,6 +6,7 @@
+  */
+ import { createElement, memo } from 'react'
+ import type { Context } from '../../context-types.ts'
++import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
+ import type { SidebarState, SidebarStore, SidebarTab } from '../state.ts'
+ import type { SessionScope } from '../api.ts'
+ import { OrphanedTab } from '../OrphanedTab.tsx'
+@@ -29,11 +30,12 @@ interface TabContentProps extends TabContentMemoKey {
+   onSubagentJump: (childSessionId: string) => void
+   /** Open a diff tab from the git panel (placement handled by the store). */
+   onOpenDiff: (tab: SidebarTab) => void
++  renderFactorySlot?: RenderFactorySlot
+ }
+ 
+ /** Render the content of one tab (dispatched by type). */
+ export const TabContent = memo(function TabContent(props: TabContentProps) {
+-  const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff } = props
++  const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff, renderFactorySlot } = props
+   const scope = { sessionId, cwd }
+   const descriptor = ctx.get('betterSidebar')?.getTab(tab.type)
+   if (descriptor === undefined) {
+@@ -43,7 +45,7 @@ export const TabContent = memo(function TabContent(props: TabContentProps) {
+     RenderBoundary,
+     { className: css.tabBoundaryError },
+     createElement(descriptor.component, {
+-      ctx, store, scope, tab, visible, expanded, revealed,
++      ctx, store, scope, tab, visible, expanded, revealed, renderFactorySlot,
+       onToggleDir, onReferenceFile, onOpenDiff, onSubagentJump,
+     }),
+   )
+diff --git a/lib/types/client/native/terminal-adapter.d.ts b/lib/types/client/native/terminal-adapter.d.ts
+new file mode 100644
+index 0000000000..81cbe6d3a5
+--- /dev/null
++++ b/lib/types/client/native/terminal-adapter.d.ts
+@@ -0,0 +1,5 @@
++import type { Context } from '../../context-types.ts';
++import type { BetterSidebarService } from '../service.ts';
++import { type SidebarStore } from '../state.ts';
++/** Register the workbench terminal tab and retain every cached Session occurrence. */
++export declare function registerWorkbenchTerminal(ctx: Context, store: SidebarStore, service: BetterSidebarService): () => void;
+diff --git a/src/client/native/terminal-adapter.tsx b/src/client/native/terminal-adapter.tsx
+new file mode 100644
+index 0000000000..a625384943
+--- /dev/null
++++ b/src/client/native/terminal-adapter.tsx
+@@ -0,0 +1,92 @@
++/** Adapt DSH's terminal factory to the slot-hosted Better Sidebar workbench. */
++import type { ReactNode } from 'react'
++import { PluginArtworkTerminal } from '@deepseek-ai/dsh-client-ui-primitives'
++import type { TerminalSurfaceInputProps } from '@deepseek-ai/dsh-client-ui-sidebar-terminal/client'
++import type { Context } from '../../context-types.ts'
++import type { BetterSidebarService, TabComponentProps } from '../service.ts'
++import { allLeaves, type SidebarStore } from '../state.ts'
++import { t } from '../locales.ts'
++
++type TerminalSessionId = TerminalSurfaceInputProps['sessionId']
++
++interface TerminalControllerFace {
++  close(sessionId: TerminalSessionId, key: string, contentId: string): void
++  retainTab(tab: { sessionId: TerminalSessionId; tabId: string; contentId: string }): () => void
++}
++
++function contentIdOf(sessionId: string, tabId: string): string {
++  return `better-sidebar:${sessionId}:${tabId}`
++}
++
++function terminalController(ctx: Context): TerminalControllerFace | undefined {
++  return ctx.get('webTerminals') as TerminalControllerFace | undefined
++}
++
++/** Register the workbench terminal tab and retain every cached Session occurrence. */
++export function registerWorkbenchTerminal(ctx: Context, store: SidebarStore, service: BetterSidebarService): () => void {
++  const component = ({ scope, tab, visible, renderFactorySlot }: TabComponentProps): ReactNode => {
++    if (renderFactorySlot === undefined) return null
++    const replace = (): void => {
++      service.closeTab(tab.id, scope)
++      service.openTab({ type: 'terminal' }, scope)
++    }
++    const input: TerminalSurfaceInputProps = {
++      sessionId: scope.sessionId as TerminalSessionId,
++      tabId: tab.id,
++      contentId: contentIdOf(scope.sessionId, tab.id),
++      visible,
++      replace,
++    }
++    return renderFactorySlot('terminal.surface', input)
++  }
++  const disposeDescriptor = service.registerTab({
++    id: 'terminal',
++    title: () => t('terminal'),
++    description: () => t('guideDescTerminal'),
++    icon: size => <PluginArtworkTerminal size={size} />,
++    order: 40,
++    native: false,
++    available: () => terminalController(ctx) !== undefined,
++    createTab: () => ({
++      tab: {
++        id: `terminal:${crypto.randomUUID()}`,
++        type: 'terminal',
++        title: t('terminal'),
++      },
++    }),
++    onClose: (tab, scope) => {
++      terminalController(ctx)?.close(scope.sessionId as TerminalSessionId, tab.id, contentIdOf(scope.sessionId, tab.id))
++    },
++    component,
++  })
++  const holds = new Map<string, () => void>()
++  const syncHolds = (): void => {
++    const terminals = terminalController(ctx)
++    const wanted = new Set<string>()
++    for (const [sessionId, state] of store.getSessionStates()) {
++      for (const leaf of allLeaves(state.bottomSplits)) {
++        for (const tab of leaf.tabs) {
++          if (tab.type !== 'terminal') continue
++          const contentId = contentIdOf(sessionId, tab.id)
++          wanted.add(contentId)
++          if (!holds.has(contentId) && terminals !== undefined) {
++            holds.set(contentId, terminals.retainTab({ sessionId: sessionId as TerminalSessionId, tabId: tab.id, contentId }))
++          }
++        }
++      }
++    }
++    for (const [contentId, release] of holds) {
++      if (wanted.has(contentId)) continue
++      release()
++      holds.delete(contentId)
++    }
++  }
++  const unsubscribe = store.subscribe(syncHolds)
++  syncHolds()
++  return () => {
++    unsubscribe()
++    for (const release of holds.values()) release()
++    holds.clear()
++    disposeDescriptor()
++  }
++}

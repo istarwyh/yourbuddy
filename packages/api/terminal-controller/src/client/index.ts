@@ -47,6 +47,7 @@ export class ClientTerminals extends Service {
   private readonly holds = new Map<SessionId, Map<WebTerminalId, TerminalWindowHold>>()
   private readonly releasing = new Set<Promise<void>>()
   private openTabs: readonly { sessionId: SessionId; tabId: string; contentId: string }[] = []
+  private readonly retainedTabs = new Map<symbol, { sessionId: SessionId; tabId: string; contentId: string }>()
 
   /**
    * @param ctx - Client root Context with Gateway and terminal Remote namespace.
@@ -59,6 +60,7 @@ export class ClientTerminals extends Service {
       const detaching = [...this.views.values()].flatMap(views => [...views.values()].map(view => view.dispose()))
       this.views.clear()
       this.bindings.clear()
+      this.retainedTabs.clear()
       const holds = [...this.holds.values()].flatMap(holds => [...holds.values()].map(hold => hold.dispose()))
       this.holds.clear()
       await Promise.all([...detaching, ...holds, ...this.releasing, ...this.closing.values()])
@@ -142,6 +144,21 @@ export class ClientTerminals extends Service {
     this.reconcileHolds()
   }
 
+  /**
+   * Retain one terminal occurrence owned by a surface outside the right Sidebar.
+   * @param tab - Session, occurrence, and durable content identities.
+   * @returns a disposer that releases this occurrence without closing its Host terminal.
+   */
+  retainTab(tab: { sessionId: SessionId; tabId: string; contentId: string }): () => void {
+    const token = Symbol()
+    this.retainedTabs.set(token, tab)
+    this.reconcileHolds()
+    return () => {
+      if (!this.retainedTabs.delete(token)) return
+      this.reconcileHolds()
+    }
+  }
+
   private hold(sessionId: SessionId, id: WebTerminalId): TerminalWindowHold {
     let holds = this.holds.get(sessionId)
     if (holds === undefined) { holds = new Map(); this.holds.set(sessionId, holds) }
@@ -157,7 +174,7 @@ export class ClientTerminals extends Service {
   private reconcileHolds(): void {
     if (this.disposed) return
     const wanted = new Map<SessionId, Set<WebTerminalId>>()
-    for (const tab of this.openTabs) {
+    for (const tab of [...this.openTabs, ...this.retainedTabs.values()]) {
       const id = this.bindings.get(tab.sessionId, tab.contentId)
       if (id === undefined || this.closed.has(id)) continue
       let ids = wanted.get(tab.sessionId)

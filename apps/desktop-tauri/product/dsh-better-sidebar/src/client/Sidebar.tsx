@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as Re
 import { useSyncExternalStore } from 'react'
 import clsx from 'clsx'
 import { IconCloseFillRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
 import type { Context } from '../context-types.ts'
 import { referenceInChat as referenceInChatShared } from './reference-in-chat.ts'
 import {
@@ -94,7 +95,7 @@ function injectUserCss(attr: string, id: string, cssText: string): HTMLStyleElem
   return tag
 }
 
-export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation?: 'portal' | 'slot' }) {
+export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation?: 'portal' | 'slot'; renderFactorySlot?: RenderFactorySlot }) {
   const { ctx, store } = props
   const slotPresentation = props.presentation === 'slot'
 
@@ -644,6 +645,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
         onOpenDiff={(diffTab) => { store.reduce(s => openDiffTab(s, paneId, diffTab)) }}
         localeRevision={localeRevision}
         tabsVersion={tabsVersion}
+        renderFactorySlot={props.renderFactorySlot}
       />
     )
   }

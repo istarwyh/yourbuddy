@@ -14085,7 +14085,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		*/
 		/** Render the content of one tab (dispatched by type). */
 		const TabContent = (0, react.memo)(function TabContent(props) {
-			const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff } = props;
+			const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff, renderFactorySlot } = props;
 			const scope = {
 				sessionId,
 				cwd
@@ -14106,6 +14106,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				visible,
 				expanded,
 				revealed,
+				renderFactorySlot,
 				onToggleDir,
 				onReferenceFile,
 				onOpenDiff,
@@ -15308,7 +15309,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						store.reduce((s) => openDiffTab(s, paneId, diffTab));
 					},
 					localeRevision,
-					tabsVersion
+					tabsVersion,
+					renderFactorySlot: props.renderFactorySlot
 				});
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -15763,6 +15765,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		function nativeId(descriptorId) {
 			return `dsh-better-sidebar:${descriptorId}`;
 		}
+		/** Tab descriptors eligible for adaptation into DSH's native right Sidebar. */
+		function nativeTabDescriptors(service) {
+			return service.getTabs().filter((descriptor) => descriptor.native !== false && service.isTabEnabled(descriptor.id));
+		}
 		/** The descriptor's title text, evaluated fresh for the current locale. */
 		function titleOf(descriptor) {
 			return typeof descriptor.title === "function" ? descriptor.title() : descriptor.title;
@@ -15913,10 +15919,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				/** Bring the live registrations in line with the registry + the settings. */
 				const sync = () => {
 					const wanted = /* @__PURE__ */ new Map();
-					for (const descriptor of service.getTabs()) {
-						if (!service.isTabEnabled(descriptor.id)) continue;
-						wanted.set(descriptor.id, () => registerDescriptor(descriptor));
-					}
+					for (const descriptor of nativeTabDescriptors(service)) wanted.set(descriptor.id, () => registerDescriptor(descriptor));
 					for (const [descriptorId, registration] of live) {
 						if (wanted.has(descriptorId)) continue;
 						registration.dispose();
@@ -15964,6 +15967,77 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				order: 10,
 				registrant: "dsh-better-sidebar"
 			}, () => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BottomDockToggle, { store })));
+		}
+		//#endregion
+		//#region src/client/native/terminal-adapter.tsx
+		function contentIdOf(sessionId, tabId) {
+			return `better-sidebar:${sessionId}:${tabId}`;
+		}
+		function terminalController(ctx) {
+			return ctx.get("webTerminals");
+		}
+		/** Register the workbench terminal tab and retain every cached Session occurrence. */
+		function registerWorkbenchTerminal(ctx, store, service) {
+			const component = ({ scope, tab, visible, renderFactorySlot }) => {
+				if (renderFactorySlot === void 0) return null;
+				const replace = () => {
+					service.closeTab(tab.id, scope);
+					service.openTab({ type: "terminal" }, scope);
+				};
+				return renderFactorySlot("terminal.surface", {
+					sessionId: scope.sessionId,
+					tabId: tab.id,
+					contentId: contentIdOf(scope.sessionId, tab.id),
+					visible,
+					replace
+				});
+			};
+			const disposeDescriptor = service.registerTab({
+				id: "terminal",
+				title: () => t("terminal"),
+				description: () => t("guideDescTerminal"),
+				icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.PluginArtworkTerminal, { size }),
+				order: 40,
+				native: false,
+				available: () => terminalController(ctx) !== void 0,
+				createTab: () => ({ tab: {
+					id: `terminal:${crypto.randomUUID()}`,
+					type: "terminal",
+					title: t("terminal")
+				} }),
+				onClose: (tab, scope) => {
+					terminalController(ctx)?.close(scope.sessionId, tab.id, contentIdOf(scope.sessionId, tab.id));
+				},
+				component
+			});
+			const holds = /* @__PURE__ */ new Map();
+			const syncHolds = () => {
+				const terminals = terminalController(ctx);
+				const wanted = /* @__PURE__ */ new Set();
+				for (const [sessionId, state] of store.getSessionStates()) for (const leaf of allLeaves(state.bottomSplits)) for (const tab of leaf.tabs) {
+					if (tab.type !== "terminal") continue;
+					const contentId = contentIdOf(sessionId, tab.id);
+					wanted.add(contentId);
+					if (!holds.has(contentId) && terminals !== void 0) holds.set(contentId, terminals.retainTab({
+						sessionId,
+						tabId: tab.id,
+						contentId
+					}));
+				}
+				for (const [contentId, release] of holds) {
+					if (wanted.has(contentId)) continue;
+					release();
+					holds.delete(contentId);
+				}
+			};
+			const unsubscribe = store.subscribe(syncHolds);
+			syncHolds();
+			return () => {
+				unsubscribe();
+				for (const release of holds.values()) release();
+				holds.clear();
+				disposeDescriptor();
+			};
 		}
 		//#endregion
 		//#region src/client/desktop-external-links.ts
@@ -17595,6 +17669,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					let host;
 					let mountedPresentation;
 					let disposeSlot;
+					let disposeWorkbenchTerminal;
 					let bodyObserver;
 					let hostCheckFrame = null;
 					const unmount = () => {
@@ -17612,6 +17687,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						host = void 0;
 						disposeSlot?.();
 						disposeSlot = void 0;
+						disposeWorkbenchTerminal?.();
+						disposeWorkbenchTerminal = void 0;
 						slotPresentationActive = false;
 						document.body.removeAttribute("data-dsh-better-sidebar-presentation");
 					};
@@ -17677,12 +17754,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 							mountedPresentation = presentation;
 							document.body.setAttribute("data-dsh-better-sidebar-presentation", presentation);
 							if (presentation === "slot") {
-								const WorkbenchSlot = () => (0, react.createElement)(RenderBoundary, { className: sidebar_module_css_default.boundaryError }, (0, react.createElement)(Sidebar, {
+								const WorkbenchSlot = ({ renderFactorySlot }) => (0, react.createElement)(RenderBoundary, { className: sidebar_module_css_default.boundaryError }, (0, react.createElement)(Sidebar, {
 									ctx,
 									store: sidebarStore,
-									presentation: "slot"
+									presentation: "slot",
+									renderFactorySlot
 								}));
 								slotPresentationActive = true;
+								disposeWorkbenchTerminal = registerWorkbenchTerminal(ctx, sidebarStore, service);
 								disposeSlot = ctx.slots.inject("workbench.core", () => ctx.slots.register({ name: "workbench.core" }, WorkbenchSlot));
 							} else {
 								host = document.createElement("div");

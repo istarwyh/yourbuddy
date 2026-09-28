@@ -14,7 +14,7 @@
  *   registration of the same kind, so `openTab('files')` draws the plugin's
  *   explorer instead of the built-in tree; the built-in resumes when this
  *   plugin unregisters;
- * - every other descriptor (changes / subagent / side chat / terminal /
+ * - every descriptor not marked workbench-only (changes / subagent / side chat /
  *   browser / diff) becomes a page type of its own.
  *
  * The registrations follow the plugin's registry lifecycle: a descriptor
@@ -104,6 +104,11 @@ const FILES_KIND = 'files'
 /** The plugin's implementation id for a descriptor (unique across kinds). */
 function nativeId(descriptorId: string): string {
   return `dsh-better-sidebar:${descriptorId}`
+}
+
+/** Tab descriptors eligible for adaptation into DSH's native right Sidebar. */
+export function nativeTabDescriptors(service: BetterSidebarService): readonly TabDescriptor[] {
+  return service.getTabs().filter(descriptor => descriptor.native !== false && service.isTabEnabled(descriptor.id))
 }
 
 /** The descriptor's title text, evaluated fresh for the current locale. */
@@ -314,8 +319,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
     /** Bring the live registrations in line with the registry + the settings. */
     const sync = (): void => {
       const wanted = new Map<string, () => () => void>()
-      for (const descriptor of service.getTabs()) {
-        if (!service.isTabEnabled(descriptor.id)) continue
+      for (const descriptor of nativeTabDescriptors(service)) {
         wanted.set(descriptor.id, () => registerDescriptor(descriptor))
       }
       for (const [descriptorId, registration] of live) {

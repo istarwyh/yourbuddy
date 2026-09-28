@@ -20,6 +20,7 @@
  *   then `exts`; `exts: []` is a catch-all that matches any path.
  */
 import type { ReactNode } from 'react'
+import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
 import type { Context } from '../context-types.ts'
 import {
   activateTab as activateTabReducer, allLeaves, closeTab as closeTabReducer,
@@ -147,6 +148,8 @@ export interface TabComponentProps {
   tab: SidebarTab
   /** Whether this tab is the active one AND the panel is open (live views pause otherwise). */
   visible: boolean
+  /** Reusable DSH UI factories available when the workbench is slot-hosted. */
+  renderFactorySlot?: RenderFactorySlot
   /** The explorer's expanded directory set (ExplorerView). */
   expanded?: string[]
   /** The explorer's reveal-highlight set (ExplorerView; "Show in folder" targets). */
@@ -184,6 +187,8 @@ export interface TabDescriptor {
   order?: number
   /** Hide from the + menu (the editor tab is opened by file-open, not by the menu). */
   hidden?: boolean
+  /** Register this type in DSH's native right Sidebar; defaults to true. */
+  native?: boolean
   /**
    * + menu disabled predicate (e.g. terminal at capacity). Receives the
    * session scope and the live sidebar state (counts, expansions).
