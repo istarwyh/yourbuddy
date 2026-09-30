@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.4.0`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选版本；公开制品与网站同步等待 Tag Workflow。
+- 归档状态：已发布；源码行为、公开制品与双语网站指南已在说明范围内完成独立检查。
 - 证据 Commit：实施 Commit `570f71653d`；Release Tag 固定完整候选版本。
 - 证据图集：不适用；没有录制打包后 WebView 交互。
-- 证据下载：发布后使用 [YourBuddy 0.4.0 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.0)。
+- 证据下载：[YourBuddy 0.4.0 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.0)。
 
 ## 面向用户的发布说明
 
@@ -35,7 +35,7 @@
 
 ### 兼容性、迁移与限制
 
-本版本面向 macOS Apple Silicon。Bootstrap 首次启动需要访问对应 GitHub Release，除非所需组件已在 Cache 中；Offline 内嵌固定组件。应用仍未使用 Apple Developer Identity 签名，也未公证。本地检查没有覆盖正式签名的公开 DMG、打包后 WebView Control、组件传输中取消或断网启动 Offline。
+本版本面向 macOS Apple Silicon。Bootstrap 首次启动需要访问对应 GitHub Release，除非所需组件已在 Cache 中；Offline 内嵌固定组件。应用仍未使用 Apple Developer Identity 签名，也未公证。验证没有启动打包后的应用、操作打包后 WebView Control、取消组件传输或断网启动 Offline。
 
 ## 验证概览
 
@@ -44,7 +44,8 @@
 | Bootstrap 体积与资源分离 | 本地通过 | 使用 0.4.0 组件输入的未签名 0.3.24 开发 Shell | macOS Apple Silicon | Bootstrap DMG 为 10,892,640 字节；通过含 30,000,000 字节上限 |
 | 组件与桌面集成 | 通过 | 0.4.0 候选源码 | macOS Apple Silicon、Node 24、pnpm 11.7.0、Rust | 聚焦组件、Updater、Bridge、Personal Workbench、Cargo、Lint、Typecheck 与 21 项文档门禁 |
 | 搬移后的 Harbor Runtime | 本地通过 | 生成的 Harbor 组件 | macOS Apple Silicon | 搬移后 `harbor --version` 返回 0.21.0，`harbor-dsh --help` 成功 |
-| 正式发布 0.4.0 | 等待 | `yourbuddy-v0.4.0` | GitHub Actions macOS arm64 | 提交候选归档时尚未启动 Tag Workflow |
+| 正式发布 0.4.0 | 通过 | `yourbuddy-v0.4.0` 位于 `48c75feb8b` | GitHub Actions macOS arm64 | 恢复工作流 `36755192123` 通过全部构建、30,000,000 字节、搬移、Checksum 与发布步骤；发布 14 个 Asset |
+| 公开制品与网站 | 在说明范围内通过 | 已发布的 0.4.0 制品与产品页面 | 匿名 GitHub 下载与 GitHub Pages | 14 个下载制品全部通过 `SHA256SUMS.txt`；两个 DMG 均通过 `hdiutil verify`；中英文下载页返回 200 并包含 Bootstrap 与 Offline 指南 |
 
 ## 场景：Bootstrap 组件装配
 
@@ -68,25 +69,25 @@ Bootstrap DMG 不超过硬上限，且不包含 Harness、Node、pnpm Store、Ha
 
 ### 实际结果
 
-本地 Bootstrap DMG 为 10,892,640 字节。组件与 Updater 测试通过，55 个 Personal Workbench 测试通过，Rust 组件与用户 Store 选择测试通过，原生编译通过，搬移后的 Harbor 命令成功，Lint、Typecheck 与全部 21 项快速文档门禁通过。第一次本地应用构建只因 Updater 签名需要 CI 持有的私钥而停止；单独打包 DMG 成功。
+本地 Bootstrap DMG 为 10,892,640 字节。组件与 Updater 测试通过，55 个 Personal Workbench 测试通过，Rust 组件与用户 Store 选择测试通过，原生编译通过，搬移后的 Harbor 命令成功，Lint、Typecheck 与全部 21 项快速文档门禁通过。恢复工作流 `36755192123` 随后构建并发布 10,836,649 字节的 Bootstrap DMG 与 601,585,330 字节的 Offline DMG。匿名下载的 14 个制品全部通过公开 Checksum 清单，两个 DMG 均通过 `hdiutil verify`，稳定 Updater Manifest 与 Release 内副本一致且只选择 Bootstrap Updater Archive，两个公开下载指南语言版本均返回 200 并展示新指南。
 
 ### 证据
 
 - 操作前：默认 DMG 内嵌完整 Harness、Node Archive、离线 Store 与 Harbor Python Runtime。
 - 执行中：首次组件构建暴露 Node 与 Harbor 内部符号链接；Node 链接被物化，Harbor 只保留组件内部的安全相对链接，随后重新构建通过。
 - 结果：发布 Workflow 现在从同一签名组件 Manifest 构建 Bootstrap 与 Offline DMG，发布组件 Archive 与 Hash，并只让 `latest.json` 指向 Bootstrap Updater Archive。
-- 失败与恢复：预期内的本地 Updater 签名失败被限定为缺少 Release 私钥；正式签名与发布由 CI 负责。
+- 失败与恢复：首次 Tag Workflow `36753484271` 通过 Harness 编译，但签名命令从 `apps/desktop-tauri` 运行时收到仓库根目录相对的组件 Manifest 路径，因此在发布前失败。Commit `8b051aaa49` 改用绝对路径；随后通过恢复入口重新构建未发布的原 Tag，未移动 Tag。
 
 ### 范围限制
 
-公开 Workflow、签名制品、匿名下载、稳定 Updater Metadata、网站页面、打包后首次启动、Offline 无网络路径、传输取消与打包后 Harbor 按钮等待 Tag 后验证。
+发布后未启动打包应用。打包后 WebView Control、显式 Harbor 按钮、Bootstrap 首次启动下载、Offline 无网络启动、组件传输取消、Apple Developer 签名与公证仍未验证。公开签名制品、下载、Checksum、稳定 Updater 选择、DMG 容器完整性与网站页面已经验证。
 
 ## 交付状态
 
-- 产品发布状态：等待 `yourbuddy-v0.4.0` Tag Workflow。
-- 验证资料归档状态：发布前源码与本地构建证据完整；公开制品证据仍等待验证。
-- 站点同步状态：双语下载指南已改变，因此等待同步。
-- 未验证范围：正式签名与发布、公开下载与 Hash、稳定 Updater 选择、打包后启动与 WebView Control、Offline 无网络启动、传输取消、Apple Developer 签名与公证。
+- 产品发布状态：已通过 Workflow `36755192123` 发布；公开 Release 包含 Bootstrap 与 Offline DMG、带签名的 Bootstrap Updater、带签名的组件 Manifest、四个 Runtime 组件、Debug Bundle、体积报告、Checksum 与 Release Updater Manifest。
+- 验证资料归档状态：已在说明范围内完成；已记录 Workflow 结论、公开文件名、匿名下载、全部公开 Hash、Updater 选择、DMG 完整性与不可变 Tag 归属。
+- 站点同步状态：已由 Workflow `36753484445` 部署；公开中英文下载页面均展示 Bootstrap 与 Offline 指南。
+- 未验证范围：打包后启动与 WebView Control、打包后的 Harbor 按钮、Bootstrap 首次启动下载、Offline 无网络启动、传输取消、Apple Developer 签名与公证。
 
 ## 交付清单
 
@@ -97,6 +98,6 @@ Bootstrap DMG 不超过硬上限，且不包含 Harness、Node、pnpm Store、Ha
 - [x] 本地步骤、预期结果、实际结果、状态和范围限制符合实际检查。
 - [x] 已明确标记仅测源码与未验证声明。
 - [x] 已在双语索引中添加 Release 条目，并确认两种语言内容一致。
-- [ ] 公开文件、Hash、Updater Metadata、稳定 Latest Release 目的地与网站页面需要 Tag 后验证。
+- [x] 已匿名下载全部 14 个公开文件，并验证 Hash、Updater Metadata、稳定 Latest Release 目的地、两个 DMG 容器与两个网站语言版本。
 - [ ] 打包后 WebView Control 与 Offline 无网络行为需要发布后操作。
 - [x] 未移动或覆盖任何现有公开 Tag 或安装包。

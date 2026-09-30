@@ -6,10 +6,10 @@ This archive records the Bootstrap release channel, its pre-publication checks, 
 
 - Release identifier: `yourbuddy-v0.4.0`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; public assets and website synchronization are pending the tagged workflow.
+- Archive state: published; source behavior, public artifacts, and bilingual website guidance are independently checked within the stated limits.
 - Evidence commit: implementation commit `570f71653d`; the release tag fixes the complete candidate.
 - Evidence gallery: not applicable; no packaged-WebView interaction recording was captured.
-- Evidence download: [YourBuddy 0.4.0 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.0) after publication.
+- Evidence download: [YourBuddy 0.4.0 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.0).
 
 ## User release notes
 
@@ -35,7 +35,7 @@ Install the Apple Silicon DMG from the GitHub Release, or use **Settings → Gen
 
 ### Compatibility, migration, and limitations
 
-This release targets macOS Apple Silicon. Bootstrap first launch needs access to the matching GitHub Release unless required components are already cached; Offline embeds the fixed components. The application remains unsigned with an Apple Developer identity and unnotarized. Local checks did not exercise a formally signed published DMG, packaged WebView controls, cancellation during a component transfer, or a no-network Offline launch.
+This release targets macOS Apple Silicon. Bootstrap first launch needs access to the matching GitHub Release unless required components are already cached; Offline embeds the fixed components. The application remains unsigned with an Apple Developer identity and unnotarized. Verification did not launch the packaged application, exercise packaged WebView controls, cancel a component transfer, or start Offline without network access.
 
 ## Verification summary
 
@@ -44,7 +44,8 @@ This release targets macOS Apple Silicon. Bootstrap first launch needs access to
 | Bootstrap size and resource separation | passed locally | unsigned 0.3.24 development shell with 0.4.0 component inputs | macOS Apple Silicon | Bootstrap DMG measured 10,892,640 bytes; 30,000,000-byte inclusive gate passed |
 | Component and desktop integration | passed | 0.4.0 candidate source | macOS Apple Silicon, Node 24, pnpm 11.7.0, Rust | focused component, updater, bridge, personal-workbench, Cargo, lint, typecheck, and 21 documentation gates |
 | Relocated Harbor runtime | passed locally | generated Harbor component | macOS Apple Silicon | relocated `harbor --version` returned 0.21.0 and `harbor-dsh --help` succeeded |
-| Formal 0.4.0 publication | pending | `yourbuddy-v0.4.0` | GitHub Actions macOS arm64 | tagged workflow not started when this candidate archive was committed |
+| Formal 0.4.0 publication | passed | `yourbuddy-v0.4.0` at `48c75feb8b` | GitHub Actions macOS arm64 | recovery workflow `36755192123` passed all build, 30,000,000-byte, relocation, checksum, and publication steps; 14 assets published |
+| Public artifacts and website | passed within stated limits | published 0.4.0 assets and product pages | anonymous GitHub downloads and GitHub Pages | all 14 downloaded assets passed `SHA256SUMS.txt`; both DMGs passed `hdiutil verify`; Chinese and English download pages returned 200 with Bootstrap and Offline guidance |
 
 ## Scenario: Bootstrap component assembly
 
@@ -68,25 +69,25 @@ The Bootstrap DMG stays within the hard limit and excludes Harness, Node, pnpm S
 
 ### Actual
 
-The local Bootstrap DMG was 10,892,640 bytes. Component and updater tests passed, 55 personal-workbench tests passed, Rust component and user-Store selection tests passed, native compilation passed, relocated Harbor commands succeeded, and lint, typecheck, and all 21 quick documentation gates passed. The first local app build stopped only when updater signing required the CI-owned private key; bundling the DMG separately succeeded.
+The local Bootstrap DMG was 10,892,640 bytes. Component and updater tests passed, 55 personal-workbench tests passed, Rust component and user-Store selection tests passed, native compilation passed, relocated Harbor commands succeeded, and lint, typecheck, and all 21 quick documentation gates passed. Recovery workflow `36755192123` then built and published a 10,836,649-byte Bootstrap DMG and a 601,585,330-byte Offline DMG. Anonymous downloads of all 14 assets passed the published checksum list, both DMGs passed `hdiutil verify`, the stable updater manifest matched the release copy and selected only the Bootstrap updater archive, and both public download-guide locales returned 200 with the new guidance.
 
 ### Evidence
 
 - Before: the default DMG embedded the full Harness, Node archive, offline Store, and Harbor Python runtime.
 - In progress: one initial component build exposed internal Node and Harbor symbolic links; Node links were materialized and Harbor retained only safe component-relative links before the passing rebuild.
 - Result: the release workflow now builds Bootstrap and Offline DMGs from one signed component manifest, publishes component archives and hashes, and points `latest.json` only to the Bootstrap updater archive.
-- Failure and recovery: the expected local updater-signing failure was isolated to the unavailable release private key; CI owns formal signing and publication.
+- Failure and recovery: the first tagged workflow `36753484271` passed Harness compilation but supplied the root-relative component-manifest path to a signing command running from `apps/desktop-tauri`; it failed before publication. Commit `8b051aaa49` made the path absolute, and the existing unpublished tag was rebuilt through the recovery entry point without moving the tag.
 
 ### Scope limits
 
-The public workflow, signed assets, anonymous downloads, stable updater metadata, website pages, packaged first launch, Offline no-network path, transfer cancellation, and packaged Harbor button remain pending post-tag verification.
+The packaged application was not launched after publication. Packaged WebView controls, the explicit Harbor button, Bootstrap first-launch downloading, Offline no-network startup, component-transfer cancellation, Apple Developer signing, and notarization remain unverified. Public signing artifacts, downloads, checksums, stable updater selection, DMG container integrity, and website pages were verified.
 
 ## Delivery status
 
-- Product publication status: pending the `yourbuddy-v0.4.0` tagged workflow.
-- Verification archive status: complete for the pre-publication source and local-build evidence; public artifact evidence remains pending.
-- Website synchronization status: pending because the bilingual download guidance changed.
-- Unverified scope: formal signing and publication, public downloads and hashes, stable updater selection, packaged startup and WebView controls, Offline no-network launch, transfer cancellation, Apple Developer signing, and notarization.
+- Product publication status: published through workflow `36755192123`; the public release contains Bootstrap and Offline DMGs, the signed Bootstrap updater, signed component manifest, four runtime components, debug bundle, size report, checksums, and release updater manifest.
+- Verification archive status: complete within the stated limits; workflow conclusion, public filenames, anonymous downloads, all published hashes, updater selection, DMG integrity, and immutable tag attribution are recorded.
+- Website synchronization status: deployed by workflow `36753484445`; the public Chinese and English download pages expose the Bootstrap and Offline guidance.
+- Unverified scope: packaged startup and WebView controls, the packaged Harbor button, Bootstrap first-launch downloading, Offline no-network launch, transfer cancellation, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -97,6 +98,6 @@ The public workflow, signed assets, anonymous downloads, stable updater metadata
 - [x] Local steps, expected result, actual result, status, and scope limits match the observed checks.
 - [x] Source-only and unverified claims are labelled explicitly.
 - [x] The release entry was added to the bilingual index and both language files were confirmed consistent.
-- [ ] Public files, hashes, updater metadata, stable latest-release destination, and website pages require post-tag verification.
+- [x] All 14 public files were downloaded anonymously; hashes, updater metadata, stable latest-release destination, both DMG containers, and both website locales were verified.
 - [ ] Packaged WebView controls and Offline no-network behavior require post-publication exercise.
 - [x] No existing public tag or installer was moved or overwritten.

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.0/README.md
 /yourbuddy-0-4-0:
-  en: 9c53579a996411cb
-  zh: 752e8ddef96dc6b1
+  en: 02cc5310f5d098e7
+  zh: eac18923e9f9c57f
 /yourbuddy-0-4-0/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -24,11 +24,11 @@
   en: 462713636b8485ef
   zh: e9e8fd4a9ca1f77b
 /yourbuddy-0-4-0/user-release-notes/compatibility-migration-and-limitations:
-  en: 474efff726bd55a1
-  zh: 1391678df5d262b0
+  en: 594b58b4b56e5a2d
+  zh: b69cd72a13a395ca
 /yourbuddy-0-4-0/verification-summary:
-  en: 494d9cf42d59bff4
-  zh: c518f4e6f5dfa7b8
+  en: 66f42ce314b1e96e
+  zh: 6b46d253e0f1ea7d
 /yourbuddy-0-4-0/scenario-bootstrap-component-assembly:
   en: c61254081c709361
   zh: d244b05c2867aa49
@@ -39,17 +39,17 @@
   en: f88c05129de956a2
   zh: 50a2e45947e35c75
 /yourbuddy-0-4-0/scenario-bootstrap-component-assembly/actual:
-  en: b53c38cf11634c87
-  zh: cd4d5cc7cc44b8e1
+  en: 8e4d61e70d1bf7e3
+  zh: b3975944e1a00610
 /yourbuddy-0-4-0/scenario-bootstrap-component-assembly/evidence:
-  en: 420ca4b7a23582d5
-  zh: 06445aa2981dc38c
+  en: 046158e2ca5eb7b9
+  zh: c01680c73b136709
 /yourbuddy-0-4-0/scenario-bootstrap-component-assembly/scope-limits:
-  en: dca9f97257bceda8
-  zh: e6e50bb70d155c90
+  en: f1e235d55bff028d
+  zh: 1c5390957553397a
 /yourbuddy-0-4-0/delivery-status:
-  en: 4dfa745f2ddcb264
-  zh: 792ecafff96d699a
+  en: 69ba577d501c5076
+  zh: 30bf6ae47745d0fd
 /yourbuddy-0-4-0/delivery-checklist:
-  en: f2cffdf42220372a
-  zh: 29243f1f64f6020a
+  en: 371f9cefc593514e
+  zh: 536ae037ecb6bcdf
