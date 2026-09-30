@@ -8,7 +8,7 @@ description: "Better Sidebar 核心工作台与共享同一中间位置的内容
 
 ## 产品模型
 
-Better Sidebar 是 YourBuddy 的核心工作台，负责中间工作体验，包括标签、分屏、文件、编辑器、终端、浏览器和其他工具视图。DSH Conversation 显示在右侧，用户可以同时工作并与 Agent 对话；用户希望中间工作台使用全部剩余宽度时，也可以把它完全折叠。
+Better Sidebar 是 YourBuddy 的核心工作台，负责中间工作体验，包括标签、分屏、文件、编辑器、终端、浏览器和其他工具视图。DSH Conversation 占用 Session 区域。展开该区域会自动收起中间工作台；收起该区域会恢复同一棵仍保持挂载的工作台及其状态。
 
 左侧侧栏提供**会话**和**内容**两个导航标签。切换左侧标签只改变导航列表。选择一条具体内容后，内容详情工作区临时替换中间可见的 Better Sidebar。关闭内容详情、返回会话或执行“返回工作台”后，恢复 Better Sidebar 及其原有标签和分屏。
 
@@ -19,7 +19,7 @@ Better Sidebar 是 YourBuddy 的核心工作台，负责中间工作体验，包
 创作者产品使用以下外层排列：
 
 ```text
-Navigation | Middle workbench seat | Session right area
+Navigation | Middle workbench seat ⇄ Session area
 ```
 
 中间位置只有两种由产品拥有的模式：
@@ -31,7 +31,7 @@ Navigation | Middle workbench seat | Session right area
 
 中间模式切换不能增加或删除 AppFrame 轨道、改变右侧 Session 宽度或展开状态、选择其他 Session 或修改 Better Sidebar store。一个产品协调器拥有中间模式，以及右侧 Session 的展开偏好和恢复宽度。Better Sidebar 与 Oil Creator 只贡献内容。
 
-右侧 Session 区域是由 DSH `rightbar` 和 Conversation 组成的一个产品可见区域，并拥有统一的展开状态。折叠会彻底移除两条外层轨道，让中间位置使用释放出的宽度，同时保留每个内部界面的状态；展开会恢复保存的 Conversation 宽度和保留的 rightbar 展示，同时保持中间模式不变。现有左侧栏折叠继续可用。中间位置不支持独立折叠。
+Session 区域是由 DSH `rightbar` 和 Conversation 组成的一个产品可见区域，并拥有统一的展开状态。收起会移除两条 Session 轨道并恢复中间位置。展开会恢复保留的 rightbar 展示、把中间位置收为零宽轨道，并让 Conversation 使用释放的宽度，同时不改变已保存的中间模式。两个区域都保持组件挂载状态，现有左侧栏折叠继续可用。
 
 ## 组合所有权
 
@@ -56,11 +56,11 @@ root
 
 两个子槽位刻意采用产品专用的 `single`，因为只有两个消费者。该组合不暴露公开的动态工作台提供者注册表。
 
-协调器而不是 Better Sidebar 向 `ctx.layout` 注册外层工作台绑定。它的快照包含 Session 区域的请求展开状态和 Conversation 正数偏好宽度。AppFrame 在折叠时把已报告的 rightbar 预留和辅助 Conversation 轨道都推导为 `0px`，在展开时恢复 rightbar 报告和经过限制的 Conversation 宽度。中间模式切换不能写入这两个字段。
+协调器而不是 Better Sidebar 向 `ctx.layout` 注册外层工作台绑定。它的快照包含 Session 区域的请求展开状态、Conversation 正数偏好宽度，以及 Session 展开时收起工作台的产品策略。AppFrame 在 Session 收起时把两条 Session 轨道推导为 `0px`，在 Session 展开时把工作台轨道推导为 `0px`。中间模式切换不能写入这些字段。
 
 恢复控件位于中间宿主或持久外壳控制区，不能放在已经折叠的 Session 区域内。显式新建或选择 Session 会展开右侧区域，因为用户明确指向 Conversation。普通流式内容、工具活动、内容选择和中间模式切换不能展开它；下文明确的 Session 输入请求与本轮完成事件可以展开。
 
-窄视口下一次只显示一个内容界面。Session 展开时 Conversation 保持主界面，工作台通过现有抽屉显示；Session 折叠时工作台宿主成为主界面，同时保留持久的 Conversation 恢复控件。宿主仍在同一个工作台边界内切换 Better Sidebar 和内容，不能创建第二个覆盖层。
+桌面布局中，产品注册让 Session 展开时 Conversation 成为主界面，并让 Session 收起时工作台成为主界面。窄视口保留现有抽屉行为：Session 展开时 Conversation 保持主界面，工作台通过 overlay 显示；Session 收起时工作台宿主成为主界面，同时保留持久的 Conversation 恢复控件。宿主仍在同一个工作台边界内切换 Better Sidebar 和内容，不能创建第二个覆盖层。
 
 ## 状态所有权
 
@@ -139,7 +139,7 @@ Oil Creator 没有外层几何行为：
 
 ## 上游一致性与 package 边界
 
-DSH 核心只接收通用布局能力：被占用的工作台可以报告辅助主区域是否展开、正数偏好宽度，以及关联 rightbar 预留是否参与当前求解。`ui-layout` 拥有计算和 DOM 轨道，其源码不能包含 YourBuddy、Better Sidebar、Oil Creator、Content 或创作者 profile 标识。
+DSH 核心只接收通用布局能力：被占用的工作台可以报告辅助主区域是否展开、正数偏好宽度、展开时是否收起工作台轨道，以及关联 rightbar 预留是否参与当前求解。`ui-layout` 拥有计算和 DOM 轨道，其源码不能包含 YourBuddy、Better Sidebar、Oil Creator、Content 或创作者 profile 标识。
 
 产品协调器位于 YourBuddy 产品组合之下，拥有全部产品语义，包括 `core/content`、聚合 Session 区域、打开意图、Agent 事件展开和持久化。它通过 Cordis 服务和声明的 Slot 组合功能 package，不能运行时导入其他功能组件。
 
@@ -163,7 +163,7 @@ Better Sidebar 持久化的标签和偏好保持现有格式。只有协调器�
 
 进入内容后，只有目标条目提交成功才把焦点移到内容标题。关闭内容后，焦点恢复到已选内容行或返回操作的逻辑前序控制点。隐藏的 Better Sidebar 使用 `hidden` 或等效 `inert` 行为，使其控件不能获得焦点，屏幕阅读器也不会同时朗读两种模式。
 
-折叠当前获得焦点的 Session 后，焦点移到中间宿主或外壳控制区中的持久恢复控件。只有显式指向 Session 的操作才会在展开后把焦点移入 Conversation；普通恢复操作让焦点留在控件上。折叠控件暴露 `aria-expanded` 和 `aria-controls`，零宽度 Session 子树在保留状态的同时变为 inert。
+收起当前获得焦点的 Session 后，焦点移到中间宿主或外壳控制区中的持久恢复控件。如果 Session 展开会隐藏当前获得焦点的工作台控件，AppFrame 会把焦点移到可见的 Session 收起控件；普通恢复操作在其他情况下让焦点留在控件上。两个收起控件都暴露 `aria-expanded` 和 `aria-controls`，每棵零宽度子树在保留状态的同时变为 inert。
 
 响应式进入或退出窄屏抽屉不能抢夺焦点。内容加载失败时，中间位置继续显示内容标题、错误信息和返回操作。
 
@@ -204,7 +204,7 @@ YourBuddy profile 只有一个由协调器拥有的根工作台，不把功能�
 | Better Sidebar | store 和组件状态跨越 core → content → core；隐藏时服务保持活动；`user` 打开显示目标标签，`background` 打开不替换 Content |
 | Oil Creator | 内容导航只改变左侧列表；内容行打开中间详情；返回后草稿保留；会话和返回恢复 core；不使用覆盖层或写 Conversation 样式 |
 | Session 事件 | 流式内容和工具保持折叠；当前 Session 输入请求和本轮完成只展开一次；非当前 Session 完成不能切换 Session |
-| 布局回归 | 一个稳定工作台占用者；Content 模式期间 Session 状态一致；折叠后 rightbar 与 Conversation 轨道都为零；展开恢复两者展示 |
+| 布局回归 | 一个稳定工作台占用者；Content 模式期间 Session 状态一致；Session 收起后两条轨道都为零；展开时收起仍挂载的工作台轨道，并恢复 Conversation 与 rightbar |
 | 生命周期 | 卸载和 HMR 各自只移除一次根与子注册；Oil 卸载返回 core；缺少 Better Sidebar 或恢复控件时明确失败 |
 | 真实组合 | YourBuddy 在进入 Content、两种打开意图、聚合折叠、事件驱动展开和返回前后保留标签、草稿、rightbar 状态、Session 标识和宽度 |
 | 浏览器回放 | 无密钥流程覆盖“会话 → 内容列表 → 内容详情 → 返回”、Session 区域完全折叠，以及输入和完成时自动打开 Conversation |
@@ -216,7 +216,7 @@ YourBuddy profile 只有一个由协调器拥有的根工作台，不把功能�
 
 应用启动时，Better Sidebar 占用中间位置。把左侧导航切到内容只改变左侧列表；选择一条内容后，其详情显示在同一位置。返回、关闭和会话导航恢复同一组 Better Sidebar 标签、分屏、终端会话、编辑器状态和滚动上下文。
 
-中间模式切换保留聚合 Session 区域的展开状态、已选 Session、Conversation 宽度和 rightbar 展示。用户可以把 rightbar 和 Conversation 都折叠为零宽度轨道，并通过始终可见的控件恢复。
+中间模式切换保留聚合 Session 区域的展开状态、已选 Session、Conversation 宽度和 rightbar 展示。展开 Session 会自动收起中间工作台；收起 Session 会恢复该工作台，并完整保留它的标签、分屏、终端、编辑器和滚动状态。
 
 用户意图的 Better Sidebar 打开请求显示并聚焦目标。后台打开请求更新隐藏工作台，不能替换 Content。当前 Session 请求输入和本轮完成时展开 Conversation；流式内容和工具活动不能展开，非当前 Session 不能抢走选择。
 

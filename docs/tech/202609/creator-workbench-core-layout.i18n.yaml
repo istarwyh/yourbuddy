@@ -9,17 +9,17 @@
   en: 287da505f95e2195
   zh: 571c7a71b0e3fff3
 /yourbuddy-better-sidebar-centered-workbench-architecture/product-model:
-  en: 80567bbf29e766d6
-  zh: ff13e2b62205bbde
+  en: 191eb365a392bb96
+  zh: 209f9ab15eb4ec4f
 /yourbuddy-better-sidebar-centered-workbench-architecture/layout-model:
-  en: 238d8c08faacc578
-  zh: 883f890a638befa0
+  en: 563766ba6bcafbf9
+  zh: 176771a8ddc4d45a
 /yourbuddy-better-sidebar-centered-workbench-architecture/composition-ownership:
   en: bd2ee55c58990723
   zh: 250ae2419c712f3b
 /yourbuddy-better-sidebar-centered-workbench-architecture/component-composition:
-  en: e5377572b58d7119
-  zh: 7df5e685b3a2d9b0
+  en: e7d339a855d21c0b
+  zh: 03fdaaf4e123eb38
 /yourbuddy-better-sidebar-centered-workbench-architecture/state-ownership:
   en: 80bda2f66e429d1e
   zh: 0ab8e1c72db71848
@@ -36,14 +36,14 @@
   en: e1f569a2f7d41a09
   zh: 8f3e9fdf3eeef0e0
 /yourbuddy-better-sidebar-centered-workbench-architecture/upstream-alignment-and-package-boundaries:
-  en: d45c012fc158e3a3
-  zh: f18fb70c698f4577
+  en: fe9700c9c3aea3b2
+  zh: 1f10315a9fc69585
 /yourbuddy-better-sidebar-centered-workbench-architecture/persistence:
   en: 89e6e1a38adcc70a
   zh: 307169ab596e7f08
 /yourbuddy-better-sidebar-centered-workbench-architecture/focus-and-accessibility:
-  en: dcea37890c76dfad
-  zh: 63a72d1484aba397
+  en: 1110716a88caa677
+  zh: bdb6e4565cac2df3
 /yourbuddy-better-sidebar-centered-workbench-architecture/failure-and-lifecycle-rules:
   en: 50877aae138d1b21
   zh: fb6fa4295729d96d
@@ -51,11 +51,11 @@
   en: 0432f30c972abb3d
   zh: b672bfd379ada950
 /yourbuddy-better-sidebar-centered-workbench-architecture/verification-coverage:
-  en: 3789593be1c314a4
-  zh: 024bb437f0f7282a
+  en: 036382ec88c9041c
+  zh: c13b5a721f59dbe6
 /yourbuddy-better-sidebar-centered-workbench-architecture/observable-behavior:
-  en: 45e061a909d18794
-  zh: 8c3657addf961e4a
+  en: 4672e8649cc2dd6d
+  zh: a3288343ebd22f9d
 /yourbuddy-better-sidebar-centered-workbench-architecture/limitations:
   en: e5b1316908edf1fc
   zh: dcd7123ad548d470

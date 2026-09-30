@@ -6,7 +6,7 @@ description: "在 YourBuddy 中持续维护 DSH 与 Better Sidebar 下游改动�
 
 [English](workbench-layout-compatibility.md) | 中文
 
-YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台成为桌面主区域，DSH 对话移入右侧辅助栏。DSH 和 Better Sidebar 在 YourBuddy 之外保持原有默认行为，产品来源记录保存上游来源和小范围下游改动集合。
+YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 占用可选工作台区域，DSH Session 区域可以在不卸载工作台的情况下替换它。DSH 和 Better Sidebar 在 YourBuddy 之外保持原有默认行为，产品来源记录保存上游来源和小范围下游改动集合。
 
 状态：已为 YourBuddy 0.3.7 实现。
 
@@ -41,7 +41,7 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 ## 已确定方案
 
 1. YourBuddy 在自己的分支持续维护 DSH 布局改动，不以进入官方 DSH Release 为前提。
-2. DSH 增加通用、可选的 `workbench` Slot。Slot 被占用时成为桌面主区域；没有 Occupant 时 DSH 保持原有对话布局。
+2. DSH 增加通用、可选的 `workbench` Slot。占用方可以选择让展开的辅助区域与工作台并排，或收起工作台轨道；没有 Occupant 时 DSH 保持原有对话布局。
 3. Better Sidebar 保留 `portal` 默认展现，并为 YourBuddy 增加 `slot`。
 4. 两个修改后的代码库都提交到 YourBuddy 仓库。DSH 更新使用 Merge 和比较；Better Sidebar 更新使用上游快照与兼容补丁重新生成产品快照。
 5. 来源记录保持精简：只记录上游身份、补丁文件、补丁 Hash、用途和受影响路径。实现不引入通用补丁平台或复杂策略引擎。
@@ -52,12 +52,12 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 
 ### Shell 布局
 
-`@deepseek-ai/dsh-client-ui-layout` 增加可选、Root Scope 的单一 `workbench` Slot。没有 Occupant 时，AppFrame 渲染当前三栏布局。Occupant 本身就是明确的运行时选择：AppFrame 把工作台渲染为可伸缩的桌面主区域，并把对话移入右侧辅助栏。
+`@deepseek-ai/dsh-client-ui-layout` 增加可选、Root Scope 的单一 `workbench` Slot。没有 Occupant 时，AppFrame 渲染当前三栏布局。Occupant 本身就是明确的运行时选择：AppFrame 可以让工作台与辅助主区域并排，也可以在该区域展开时把仍保持挂载的工作台保留在零宽轨道中。
 
 | 运行时状态 | 主区域 | 辅助区域 | 选择者 |
 |---|---|---|---|
 | 没有 Workbench Occupant | 对话 | 无 | DSH 默认值 |
-| 存在 Workbench Occupant | 工作台 | 对话 | 注册到 `workbench` Slot 的插件 |
+| 存在 Workbench Occupant | 工作台或对话 | 对话或无 | 已注册的工作台 Binding |
 
 桌面轨道顺序是导航、主区域、详情和辅助区域。详情栏继续可用，不会被对话或工作台替换。
 
@@ -67,7 +67,7 @@ YourBuddy 在自己的分支持续维护布局改动：Better Sidebar 工作台�
 
 DSH 管理外层 Grid、实际宽度、响应式布局和拖动柄。Better Sidebar 管理用户的工作台偏好与内容状态。
 
-Better Sidebar Store 把 Split Pane 标签树、Dock 状态和内容按会话保存，同时在会话之间共享 Slot 宽度。桌面 Slot 展现始终显示标签树，不受已保存 Dock 状态影响。`ctx.layout` 上的小型注册项暴露期望的辅助栏宽度，并接收 AppFrame 发出的尺寸调整请求。
+Better Sidebar Store 把 Split Pane 标签树、Dock 状态和内容按会话保存，同时在会话之间共享 Slot 宽度。桌面 Slot 展现让标签树保持挂载，不受已保存 Dock 状态影响。`ctx.layout` 上的小型注册项暴露期望的辅助栏宽度、选择展开时是否收起工作台轨道，并接收 AppFrame 发出的尺寸调整请求。
 
 布局注册项跟随插件生命周期安装和移除。工作台注册项或 Occupant 缺席时，AppFrame 回退为当前对话布局。
 
@@ -85,7 +85,7 @@ Better Sidebar Host 配置增加 `presentation: 'portal' | 'slot'`，默认值�
 
 ### 产品选择
 
-YourBuddy 把 Better Sidebar 配置为 `presentation: 'slot'`。由此产生的 Workbench Occupant 会激活 DSH 的可选桌面 Grid。产品插件不替换 `root`、`conversation` 或 `betterSidebar` Service。
+YourBuddy 把 Better Sidebar 配置为 `presentation: 'slot'`，并注册一个在 Session 展开时收起工作台轨道的产品工作台 Binding。产品插件不替换 `root`、`conversation` 或 `betterSidebar` Service。
 
 <a id="downstream-maintenance"></a>
 
@@ -179,10 +179,10 @@ Bundle Manifest 包含这些来源记录和补丁 Hash。补丁内容只作为�
 |---|---|
 | 默认 DSH | 没有工作台 Occupant 时，DSH 保持当前对话布局。 |
 | 默认 Better Sidebar | 没有 YourBuddy 配置时，Better Sidebar 保持当前 Portal 展现。 |
-| YourBuddy 桌面 | 导航保持在左侧，工作台是可伸缩主区域，详情仍可用，对话位于可调整宽度的右侧区域。 |
+| YourBuddy 桌面 | 导航保持在左侧；Session 展开时使用可用的主区域宽度，Session 收起时恢复仍保持挂载的工作台及其内容。 |
 | 对话 | 流式输出、工具、审批、输入框附件、滚动、停止、重试和会话切换都可用。 |
 | 工作台 | 内置与第三方标签、Explorer、Editor、Diff、Terminal、Browser、Side Chat、Subagent View、Split Pane 和内容恢复都可用。 |
-| 几何 | 即使已保存 Dock 状态为折叠，桌面工作台仍填满 Slot；拖动柄跟随可见列，Slot 模式下 Portal 补偿不生效，切换会话后共享宽度偏好不变。 |
+| 几何 | Session 展开时收起仍保持挂载的工作台轨道，Session 收起时恢复该轨道；拖动柄跟随可见栏，Slot 模式下 Portal 补偿不生效，切换会话后共享宽度偏好不变。 |
 | 窄窗口 | 对话和审批仍可访问，工作台通过 Overlay 打开。 |
 | 生命周期 | 刷新页面和重新激活插件后只有一个工作台区域，并保留已存内容。 |
 | 升级 | 一次 DSH Release 升级和一次 Better Sidebar 快照刷新都能通过相应流程保留布局改动。 |

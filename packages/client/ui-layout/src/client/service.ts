@@ -30,6 +30,8 @@ export interface WorkbenchLayoutSnapshot {
   width: number
   /** Whether the aggregate auxiliary region is visible. */
   expanded: boolean
+  /** Whether an expanded auxiliary region collapses the workbench to a zero-width track. */
+  collapseWorkbenchWhenExpanded: boolean
   /** Whether the visible region reserves the rightbar occupant's requested track. */
   reserveRightbar: boolean
 }
@@ -94,6 +96,7 @@ export class LayoutController implements ILayout {
     present: false,
     width: 0,
     expanded: false,
+    collapseWorkbenchWhenExpanded: false,
     reserveRightbar: false,
   }
   private readonly workbenchListeners = new Set<() => void>()
@@ -194,6 +197,7 @@ export class LayoutController implements ILayout {
       present: false,
       width: 0,
       expanded: false,
+      collapseWorkbenchWhenExpanded: false,
       reserveRightbar: false,
     }
     this.notifyWorkbench()

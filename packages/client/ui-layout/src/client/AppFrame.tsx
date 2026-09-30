@@ -1,9 +1,10 @@
 /**
  * Shell frame registered into the built-in 'root' slot. Its default grid is
  * sidebar | main | rightbar. An occupied workbench slot changes the desktop
- * grid to sidebar | workbench | rightbar | auxiliary main. Narrow viewports
- * keep an expanded auxiliary region primary and render the workbench as an
- * overlay; collapsing that region makes the workbench primary at every width.
+ * grid to sidebar | workbench | rightbar | auxiliary main. An occupant can
+ * instead collapse its workbench track while the auxiliary region is expanded.
+ * Narrow viewports keep an expanded auxiliary region primary and render the
+ * workbench as an overlay; collapsing that region makes the workbench primary.
  * The frame owns drag handles, the column solve, and child-slot placement.
  *
  * The right column is a track, not a box: its occupant draws its panel anchored
@@ -44,9 +45,29 @@ function CenterColumn(props: { children?: ReactNode }) {
   return <div className={css.centerCol}>{props.children}</div>
 }
 
-/** Primary workbench grid item. */
-function WorkbenchColumn(props: { children?: ReactNode }) {
-  return <div className={css.workbenchCol}>{props.children}</div>
+/** Primary workbench grid item kept mounted while the expanded auxiliary region collapses its track. */
+function WorkbenchColumn(props: { children?: ReactNode; visible: boolean }) {
+  const regionRef = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    const region = regionRef.current
+    /* v8 ignore next -- the ref is attached whenever this mounted component's effect runs. */
+    if (region === null) return
+    if (!props.visible && region.contains(document.activeElement)) {
+      document.querySelector<HTMLElement>(
+        `[aria-controls="${SESSION_REGION_ID}"][aria-expanded="true"]`,
+      )?.focus()
+    }
+    region.inert = !props.visible
+  }, [props.visible])
+  return (
+    <div
+      ref={regionRef}
+      className={css.workbenchCol}
+      aria-hidden={!props.visible || undefined}
+    >
+      {props.children}
+    </div>
+  )
 }
 
 /** Aggregate Session region kept mounted while the workbench takes its tracks. */
@@ -216,15 +237,24 @@ export function AppFrame({
     || document.documentElement.hasAttribute('data-windows-titlebar') ? 0 : SIDEBAR_COLLAPSED
   const workbenchDesktop = workbench.present && viewport >= WORKBENCH_DRAWER_BREAKPOINT
   const sessionRegionVisible = !workbench.present || workbench.expanded
-  const workbenchPrimary = workbenchDesktop || (workbench.present && !sessionRegionVisible)
+  const workbenchCollapsed = workbenchDesktop
+    && workbench.collapseWorkbenchWhenExpanded
+    && sessionRegionVisible
+  const workbenchPrimary = (workbenchDesktop && !workbenchCollapsed)
+    || (workbench.present && !sessionRegionVisible)
   const frameSidebarWidth = computeColumns(viewport, sidebarPreference, 0, collapsedWidth).sidebar
   const preferredAuxiliaryWidth = workbenchDesktop
     ? Math.min(workbench.width, Math.max(0, viewport - frameSidebarWidth - CENTER_MIN))
     : 0
-  const auxiliaryWidth = sessionRegionVisible ? preferredAuxiliaryWidth : 0
-  // Solve against the restored auxiliary width even while hidden, so reopening
-  // cannot retain a rightbar that fits only because the Session region is absent.
-  const layoutViewport = Math.max(0, viewport - preferredAuxiliaryWidth)
+  const auxiliaryWidth = sessionRegionVisible && workbenchPrimary ? preferredAuxiliaryWidth : 0
+  // A side-by-side layout solves against the restored auxiliary width even
+  // while hidden, so reopening cannot retain a rightbar that fits only because
+  // the Session region is absent. A collapsed workbench leaves the full width
+  // to the Session region.
+  const prospectiveAuxiliaryWidth = workbench.collapseWorkbenchWhenExpanded
+    ? 0
+    : preferredAuxiliaryWidth
+  const layoutViewport = Math.max(0, viewport - prospectiveAuxiliaryWidth)
   const rightbarPreference = layoutInfo.rightbar ?? layoutViewport * RIGHTBAR_DEFAULT_RATIO
   // Opening on a narrow frame collapses the left sidebar. Eligibility must
   // include that space before the occupant's first shown report arrives.
@@ -267,7 +297,7 @@ export function AppFrame({
   // chase the live window edge. The counter restarts the settle window when a
   // re-toggle interrupts a running transition.
   const [animating, setAnimating] = useState(0)
-  const trackToggle = `${sidebarCollapsed}:${layoutInfo.rightbarTrack}:${sessionRegionVisible}`
+  const trackToggle = `${sidebarCollapsed}:${layoutInfo.rightbarTrack}:${sessionRegionVisible}:${workbenchCollapsed}`
   const previousToggle = useRef(trackToggle)
   const previousViewport = useRef(viewport)
   useLayoutEffect(() => {
@@ -344,10 +374,13 @@ export function AppFrame({
           ? { '--dsh-windows-sidebar-width': `${cols.sidebar}px` } : {}),
         gridTemplateColumns: workbenchPrimary
           ? `${cols.sidebar}px minmax(${centerMinimum}px, 1fr) minmax(0px, ${rightbarMax}px) ${auxiliaryWidth}px`
-          : `${cols.sidebar}px minmax(${centerMinimum}px, 1fr) minmax(0px, ${rightbarMax}px)`,
+          : workbenchDesktop
+            ? `${cols.sidebar}px 0px minmax(${centerMinimum}px, 1fr) minmax(0px, ${rightbarMax}px)`
+            : `${cols.sidebar}px minmax(${centerMinimum}px, 1fr) minmax(0px, ${rightbarMax}px)`,
       }}
       data-dsh-frame
       data-workbench-primary={workbenchPrimary || undefined}
+      data-workbench-collapsed={workbenchCollapsed || undefined}
       data-session-region-collapsed={!sessionRegionVisible || undefined}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-rightbar-collapsed={effectiveRightbarWidth === 0 || undefined}
@@ -364,7 +397,9 @@ export function AppFrame({
       <div className={css.sidebarCol}>
         {sidebar}
       </div>
-      {workbenchPrimary && <WorkbenchColumn>{renderSlot('workbench', {})}</WorkbenchColumn>}
+      {(workbenchPrimary || workbenchDesktop) && (
+        <WorkbenchColumn visible={!workbenchCollapsed}>{renderSlot('workbench', {})}</WorkbenchColumn>
+      )}
       <SessionRegion visible={sessionRegionVisible}>
         {!workbenchPrimary && <CenterColumn key="main">{main}</CenterColumn>}
         <RightbarColumn key="rightbar">
@@ -378,7 +413,7 @@ export function AppFrame({
       </SessionRegion>
       <div className={css.overlayLayer} data-shell-overlay>
         {overlays}
-        {workbench.present && !workbenchPrimary && renderSlot('workbench', {})}
+        {workbench.present && !workbenchDesktop && !workbenchPrimary && renderSlot('workbench', {})}
       </div>
       {leadingMounted && (
         <div className={css.leadingSeat} data-shell-leading>
@@ -390,7 +425,7 @@ export function AppFrame({
       {sessionRegionVisible && layoutInfo.rightbarShown && !layoutInfo.rightbarFullscreen && normal.rightbar > 0 && (
         <DragHandle side="rightbar" left={viewport - auxiliaryWidth - normal.rightbar} onStart={onRightbarStart} onDrag={onRightbarDrag} onEnd={onDragEnd} />
       )}
-      {workbenchDesktop && sessionRegionVisible && <DragHandle side="main" left={viewport - auxiliaryWidth} onStart={onMainStart} onDrag={onMainDrag} onEnd={onDragEnd} />}
+      {workbenchDesktop && workbenchPrimary && sessionRegionVisible && <DragHandle side="main" left={viewport - auxiliaryWidth} onStart={onMainStart} onDrag={onMainDrag} onEnd={onDragEnd} />}
     </div>
   )
 }

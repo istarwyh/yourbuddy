@@ -125,7 +125,9 @@ function mountFrame(windowWidth = frameWidth) {
    specs read the specified tracks): [sidebar px, rightbar growth limit].
    The centre's protected minimum must accompany an open right track. */
 function tracks(frame: HTMLElement): number[] {
-  const match = /^([\d.]+)px minmax\((0|400)px, 1fr\) minmax\(0px, ([\d.]+)px\)(?: ([\d.]+)px)?$/.exec(frame.style.gridTemplateColumns)
+  const template = frame.style.gridTemplateColumns
+  const match = /^([\d.]+)px (?:0px )?minmax\((0|400)px, 1fr\) minmax\(0px, ([\d.]+)px\)(?: ([\d.]+)px)?$/
+    .exec(template)
   if (match === null) throw new Error(`unexpected template: ${frame.style.gridTemplateColumns}`)
   const rightbar = Number(match[3])
   if ((match[2] === '400') !== (rightbar > 0)) throw new Error(`centre minimum out of step: ${frame.style.gridTemplateColumns}`)
@@ -303,7 +305,7 @@ describe('AppFrame occupied workbench', () => {
   it('collapses and restores the aggregate rightbar and auxiliary region from the prospective solve', () => {
     const { frame, instance, layout, rightOwner, getByTestId } = mountFrame()
     act(() => { instance.actions.openRightbar(true, false) })
-    let snapshot = { width: 500, expanded: true, reserveRightbar: true }
+    let snapshot = { width: 500, expanded: true, collapseWorkbenchWhenExpanded: false, reserveRightbar: true }
     let publish = (): void => {}
     act(() => {
       layout.registerWorkbench({
@@ -346,12 +348,55 @@ describe('AppFrame occupied workbench', () => {
     expect(region.inert).toBe(false)
   })
 
+  it('collapses the mounted desktop workbench while the auxiliary Session region is expanded', () => {
+    const { frame, instance, layout, getByTestId, getAllByTestId } = mountFrame()
+    act(() => { instance.actions.openRightbar(true, false) })
+    let snapshot = { width: 500, expanded: false, collapseWorkbenchWhenExpanded: true, reserveRightbar: true }
+    let publish = (): void => {}
+    act(() => {
+      layout.registerWorkbench({
+        getSnapshot: () => snapshot,
+        subscribe: (listener) => { publish = listener; return () => { publish = () => {} } },
+        setWidth: (width) => { snapshot = { ...snapshot, width }; publish() },
+      })
+    })
+
+    expect(tracks(frame)).toEqual([280, 0, 0])
+    const workbench = getByTestId('workbench-content').parentElement
+    if (workbench === null) throw new Error('expected workbench column')
+    expect(workbench.hasAttribute('aria-hidden')).toBe(false)
+    expect(workbench.inert).toBe(false)
+
+    const collapseSession = document.createElement('button')
+    collapseSession.setAttribute('aria-controls', 'dsh-session-region')
+    collapseSession.setAttribute('aria-expanded', 'true')
+    document.body.append(collapseSession)
+    getByTestId('workbench-content').tabIndex = 0
+    getByTestId('workbench-content').focus()
+
+    act(() => { snapshot = { ...snapshot, expanded: true }; publish() })
+    expect(document.activeElement).toBe(collapseSession)
+    collapseSession.remove()
+    expect(frame.dataset.workbenchCollapsed).toBe('true')
+    expect(tracks(frame)).toEqual([280, 864])
+    expect(getAllByTestId('workbench-content')).toHaveLength(1)
+    expect(workbench.getAttribute('aria-hidden')).toBe('true')
+    expect(workbench.inert).toBe(true)
+    expect(frame.querySelector('[data-side="main"]')).toBeNull()
+
+    act(() => { snapshot = { ...snapshot, expanded: false }; publish() })
+    expect(frame.dataset.workbenchCollapsed).toBeUndefined()
+    expect(tracks(frame)).toEqual([280, 0, 0])
+    expect(workbench.hasAttribute('aria-hidden')).toBe(false)
+    expect(workbench.inert).toBe(false)
+  })
+
   it('caps a restored Session width before it can clip the workbench at the desktop breakpoint', () => {
     frameWidth = 768
     const { frame, layout } = mountFrame()
     act(() => {
       layout.registerWorkbench({
-        getSnapshot: () => ({ width: 800, expanded: true, reserveRightbar: true }),
+        getSnapshot: () => ({ width: 800, expanded: true, collapseWorkbenchWhenExpanded: false, reserveRightbar: true }),
         subscribe: () => () => {},
         setWidth: () => {},
       })
@@ -364,7 +409,7 @@ describe('AppFrame occupied workbench', () => {
     act(() => { instance.actions.openRightbar(true, false) })
     act(() => {
       layout.registerWorkbench({
-        getSnapshot: () => ({ width: 500, expanded: true, reserveRightbar: false }),
+        getSnapshot: () => ({ width: 500, expanded: true, collapseWorkbenchWhenExpanded: false, reserveRightbar: false }),
         subscribe: () => () => {},
         setWidth: () => {},
       })
@@ -376,7 +421,7 @@ describe('AppFrame occupied workbench', () => {
   it('makes a collapsed narrow workbench primary and restores the Conversation-primary overlay mode', () => {
     frameWidth = 700
     const { frame, layout, getAllByTestId } = mountFrame()
-    let snapshot = { width: 500, expanded: false, reserveRightbar: true }
+    let snapshot = { width: 500, expanded: false, collapseWorkbenchWhenExpanded: false, reserveRightbar: true }
     let publish = (): void => {}
     act(() => {
       layout.registerWorkbench({

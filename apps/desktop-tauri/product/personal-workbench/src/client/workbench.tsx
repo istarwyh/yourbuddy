@@ -357,6 +357,7 @@ export function installProductWorkbench(ctx: Context): () => void {
         getSnapshot: () => ({
           width: controller.getSnapshot().sessionWidth,
           expanded: controller.getSnapshot().sessionExpanded,
+          collapseWorkbenchWhenExpanded: true,
           reserveRightbar: true,
         }),
         subscribe: controller.subscribe,

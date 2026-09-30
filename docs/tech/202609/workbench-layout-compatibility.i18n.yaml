@@ -6,8 +6,8 @@
   en: 4f426034ba337008
   zh: a5359ce4f39c9a8b
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan:
-  en: ff6e186c13882fda
-  zh: 3f312f5b6d92556d
+  en: 1c29256c42e60d72
+  zh: ad24df65c58547df
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/contents:
   en: 6dfebb0257890ade
   zh: 9861e5c6b8d9895f
@@ -15,23 +15,23 @@
   en: 66ed1d54c7ce7eac
   zh: 2777a22ce4463373
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/decisions:
-  en: a9a77a5803c80063
-  zh: 1f67104f1631ab19
+  en: 9d5a5e7a8e9ec2a2
+  zh: 808fb8c49976a6b4
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design:
   en: 30a0e650a95d8914
   zh: 367c412612fe4c6b
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design/shell-placement:
-  en: bd0dcbb875dd6286
-  zh: 4563223a7b2e6bf9
+  en: 2942b81988a15bd9
+  zh: ac41c6e5a7183266
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design/geometry-and-state:
-  en: 24fd69ad66dfd2d8
-  zh: 0e589ad749790cb9
+  en: f9fd803dab515f4e
+  zh: 13bfb557b4943911
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design/better-sidebar-presentation:
   en: 158ad89143ea50f2
   zh: ade0cdda8ff238d4
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/runtime-design/product-selection:
-  en: 277dbb9f0a72fdeb
-  zh: 91ff107cd928819a
+  en: 904ece936c983b46
+  zh: 3def201c7e148b94
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/downstream-maintenance:
   en: 9bd9e3d3528964eb
   zh: 3475f7280f7605aa
@@ -69,8 +69,8 @@
   en: cb8efe0a4a5a984c
   zh: a93b47ac4198c9a0
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/functional-acceptance:
-  en: 318b078fcc04dee1
-  zh: 93ee5933e7116768
+  en: d9b067ce1b310839
+  zh: cf8438fd7e705c23
 /yourbuddy-workbench-layout-compatibility-and-source-record-plan/rollback:
   en: 79f97a962a8f4ee5
   zh: d6b05f882e309547

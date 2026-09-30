@@ -107,13 +107,14 @@ describe('LayoutController', () => {
     const service = new LayoutController(fakePanels(), () => true, createSnapshotStore({ activePanelId: null }))
     let width = 400
     let expanded = true
+    let collapseWorkbenchWhenExpanded = false
     let reserveRightbar = true
     let publish = (): void => {}
     const changed = vi.fn()
     const unsubscribe = service.subscribeWorkbench(changed)
 
     const dispose = service.registerWorkbench({
-      getSnapshot: () => ({ width, expanded, reserveRightbar }),
+      getSnapshot: () => ({ width, expanded, collapseWorkbenchWhenExpanded, reserveRightbar }),
       subscribe: (listener) => {
         publish = listener
         return () => { publish = () => {} }
@@ -122,29 +123,30 @@ describe('LayoutController', () => {
     })
 
     expect(service.getWorkbenchSnapshot()).toEqual({
-      present: true, width: 400, expanded: true, reserveRightbar: true,
+      present: true, width: 400, expanded: true, collapseWorkbenchWhenExpanded: false, reserveRightbar: true,
     })
     service.setWorkbenchWidth(460)
     expect(service.getWorkbenchSnapshot()).toEqual({
-      present: true, width: 460, expanded: true, reserveRightbar: true,
+      present: true, width: 460, expanded: true, collapseWorkbenchWhenExpanded: false, reserveRightbar: true,
     })
     expanded = false
+    collapseWorkbenchWhenExpanded = true
     reserveRightbar = false
     publish()
     expect(service.getWorkbenchSnapshot()).toEqual({
-      present: true, width: 460, expanded: false, reserveRightbar: false,
+      present: true, width: 460, expanded: false, collapseWorkbenchWhenExpanded: true, reserveRightbar: false,
     })
     expect(changed).toHaveBeenCalledTimes(3)
 
     expect(() => service.registerWorkbench({
-      getSnapshot: () => ({ width: 320, expanded: true, reserveRightbar: true }),
+      getSnapshot: () => ({ width: 320, expanded: true, collapseWorkbenchWhenExpanded: false, reserveRightbar: true }),
       subscribe: () => () => {},
       setWidth: () => {},
     })).toThrow(/workbench already registered/)
 
     dispose()
     expect(service.getWorkbenchSnapshot()).toEqual({
-      present: false, width: 0, expanded: false, reserveRightbar: false,
+      present: false, width: 0, expanded: false, collapseWorkbenchWhenExpanded: false, reserveRightbar: false,
     })
     service.setWorkbenchWidth(520)
     expect(width).toBe(460)

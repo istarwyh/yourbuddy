@@ -8,7 +8,7 @@ English | [中文](creator-workbench-core-layout.zh.md)
 
 ## Product model
 
-Better Sidebar is the core YourBuddy workbench. It owns the middle working experience: tabs, splits, files, editors, terminals, browsers, and other tool views. DSH Conversation appears on the right so a user can work and talk to the Agent at the same time, and it can collapse completely when the user wants the middle workbench to use the full remaining width.
+Better Sidebar is the core YourBuddy workbench. It owns the middle working experience: tabs, splits, files, editors, terminals, browsers, and other tool views. DSH Conversation occupies the Session area. Expanding that area automatically collapses the middle workbench; collapsing it restores the same mounted workbench and its state.
 
 The left sidebar offers **Sessions** and **Content** navigation tabs. Switching that left tab changes the navigation list only. Selecting a specific content item temporarily replaces Better Sidebar's visible middle surface with the content detail workspace. Closing the content detail, returning to Sessions, or invoking “Back to workbench” restores Better Sidebar with its prior tabs and splits intact.
 
@@ -19,7 +19,7 @@ Content is a temporary middle-seat mode, not a Better Sidebar tab, a second oute
 The creator product uses this outer arrangement:
 
 ```text
-Navigation | Middle workbench seat | Session right area
+Navigation | Middle workbench seat ⇄ Session area
 ```
 
 The middle seat has exactly two product-owned modes:
@@ -31,7 +31,7 @@ The middle seat has exactly two product-owned modes:
 
 The middle-mode switch does not add or remove an AppFrame track, change the right Session width or expanded state, select another Session, or alter Better Sidebar's store. One product coordinator owns the middle mode plus the right Session's expanded preference and restored width. Better Sidebar and Oil Creator contribute content only.
 
-The right Session area is one product-visible region composed from DSH `rightbar` plus Conversation. It has one explicit expanded state. Collapsing it removes both outer tracks completely and lets the middle seat use the released width while preserving each inner surface's state; expanding restores the saved Conversation width and retained rightbar presentation without changing the middle mode. Existing left-sidebar collapse remains available. The middle seat does not support independent collapse.
+The Session area is one product-visible region composed from DSH `rightbar` plus Conversation. It has one explicit expanded state. Collapsing it removes both Session tracks and restores the middle seat. Expanding it restores the retained rightbar presentation, collapses the middle seat to a zero-width track, and uses the released width for Conversation without changing the stored middle mode. Both regions keep their mounted component state, and the existing left-sidebar collapse remains available.
 
 ## Composition ownership
 
@@ -56,11 +56,11 @@ The host renders both children inside the same middle grid cell. Better Sidebar'
 
 The two child slots are deliberately `single` and product-specific because there are exactly two consumers. The composition does not expose a public dynamic workbench-provider registry.
 
-The coordinator, not Better Sidebar, registers the outer workbench binding with `ctx.layout`. Its snapshot contains the Session region's requested expansion and preferred positive Conversation width. AppFrame derives `0px` for both the reported rightbar reservation and auxiliary Conversation track while collapsed, then restores the rightbar report and clamped Conversation width while expanded. Middle-mode changes never write either field.
+The coordinator, not Better Sidebar, registers the outer workbench binding with `ctx.layout`. Its snapshot contains the Session region's requested expansion, preferred positive Conversation width, and the product policy that collapses the workbench while Session is expanded. AppFrame derives `0px` for both Session tracks while collapsed, or derives `0px` for the workbench track while expanded. Middle-mode changes never write these fields.
 
 A restore control lives in the middle host or persistent shell chrome, never inside the collapsed Session area. Explicitly creating or selecting a Session expands the right area because the user targeted Conversation. Ordinary streaming, tool activity, content selection, and middle-mode switching cannot expand it; the explicit Session input-request and Turn-completion events below can.
 
-On narrow viewports, AppFrame uses one visible content surface at a time. An expanded Session keeps Conversation primary and presents the workbench through its existing drawer; a collapsed Session makes the workbench host primary and retains a persistent Conversation restore control. The host still switches Better Sidebar and Content inside the same workbench bounds and never creates a second overlay.
+On desktop, the product registration makes Conversation primary while Session is expanded and the workbench primary while Session is collapsed. On narrow viewports, AppFrame retains the existing drawer behavior: an expanded Session keeps Conversation primary and presents the workbench through the overlay; a collapsed Session makes the workbench host primary and retains a persistent Conversation restore control. The host still switches Better Sidebar and Content inside the same workbench bounds and never creates a second overlay.
 
 ## State ownership
 
@@ -139,7 +139,7 @@ Content may retain an internal detail-tab layout and an internal list-detail wid
 
 ## Upstream alignment and package boundaries
 
-DSH core receives only a generic layout capability: an occupied workbench may report whether the auxiliary main region is expanded, its preferred positive width, and whether the associated rightbar reservation participates in the current solve. `ui-layout` owns the calculation and DOM tracks. Its source contains no YourBuddy, Better Sidebar, Oil Creator, Content, or creator-profile identifiers.
+DSH core receives only a generic layout capability: an occupied workbench may report whether the auxiliary main region is expanded, its preferred positive width, whether expansion collapses the workbench track, and whether the associated rightbar reservation participates in the current solve. `ui-layout` owns the calculation and DOM tracks. Its source contains no YourBuddy, Better Sidebar, Oil Creator, Content, or creator-profile identifiers.
 
 The product coordinator lives under the YourBuddy product composition and owns all product semantics: `core/content`, the aggregate Session region, open intent, Agent-event expansion, and persistence. It composes feature packages through Cordis services and declared Slots, never through runtime component imports.
 
@@ -163,7 +163,7 @@ The middle host has one labelled region regardless of mode. Its mode controls ex
 
 Entering Content moves focus to the content heading only after the selected item commits. Closing Content restores focus to the selected content row or the Back control's logical predecessor. Hidden Better Sidebar content uses `hidden` or equivalent `inert` behavior so its controls cannot receive focus and screen readers do not announce both modes.
 
-Collapsing a focused Session moves focus to its persistent restore control in the middle host or shell chrome. Expanding it moves focus into Conversation only after an explicit Session-targeting action; a plain restore leaves focus on the control. The collapse control exposes `aria-expanded` and `aria-controls`, and the zero-width Session subtree is inert while preserving its state.
+Collapsing a focused Session moves focus to its persistent restore control in the middle host or shell chrome. If Session expansion hides a focused workbench control, AppFrame moves focus to the visible Session collapse control. A plain restore otherwise leaves focus on its control. Both collapse controls expose `aria-expanded` and `aria-controls`; each zero-width subtree is inert while preserving its state.
 
 Responsive movement into or out of the narrow drawer does not steal focus. A failed Content load keeps the Content heading, error message, and Back action visible inside the middle seat.
 
@@ -204,7 +204,7 @@ The YourBuddy profile has one coordinator-owned root workbench. It does not main
 | Better Sidebar | Store and component state survive core → content → core; services remain active while hidden; `user` opens reveal their tab and `background` opens do not replace Content |
 | Oil Creator | Content navigation changes only the left list; a content row opens middle detail; drafts survive return; Sessions and Back restore core; no overlay or Conversation style writes occur |
 | Session events | Streaming and tools remain collapsed; a current-Session input request and Turn completion expand once; non-current completion never switches Session |
-| Layout regression | One stable workbench occupant; identical Session state across Content mode; collapsed rightbar and Conversation tracks are both zero; expansion restores both presentations |
+| Layout regression | One stable workbench occupant; identical Session state across Content mode; collapsed Session tracks are zero; expansion collapses the mounted workbench track and restores Conversation plus rightbar |
 | Lifecycle | Disposal and HMR remove every root and child registration exactly once; Oil disposal returns core; missing Better Sidebar or restore control fails loud |
 | Real composition | YourBuddy preserves tabs, drafts, rightbar state, Session identity, and width across Content entry, both open intents, aggregate collapse, event-driven expansion, and return |
 | Browser replay | The keyless journey covers Sessions → Content list → Content detail → Back, complete Session-region collapse, and automatic Conversation opening for input and completion |
@@ -216,7 +216,7 @@ Focused package tests, `pnpm run test:gui`, and `DSH_SNAPSHOT=replay pnpm run te
 
 At application start, Better Sidebar occupies the middle seat. Switching the left navigation to Content changes only the left list; selecting a content item displays its detail in the same seat. Back, close, and Sessions navigation restore the same Better Sidebar tabs, splits, terminal sessions, editor state, and scroll context.
 
-Middle-mode transitions preserve the aggregate Session region's expanded state, selected Session, Conversation width, and rightbar presentation. The user can collapse both rightbar and Conversation to zero-width tracks and restore them through a control that remains visible.
+Middle-mode transitions preserve the aggregate Session region's expanded state, selected Session, Conversation width, and rightbar presentation. Expanding Session automatically collapses the middle workbench; collapsing Session restores that workbench with its tabs, splits, terminals, editors, and scroll state intact.
 
 A user-intent Better Sidebar open reveals and focuses its target. A background open updates the hidden workbench without replacing Content. Current-Session input requests and Turn completion expand Conversation; streaming and tool activity do not, and non-current Sessions never steal selection.
 
