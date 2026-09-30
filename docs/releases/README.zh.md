@@ -10,6 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
+| [yourbuddy-v0.4.0](yourbuddy-v0.4.0/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录 Bootstrap 与 Offline 渠道、本地体积测量、组件检查、搬移 Harbor Smoke 与等待中的公开验证 | 候选版本 |
 | [yourbuddy-v0.3.24](yourbuddy-v0.3.24/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录跨引擎 JSON 容器、Session 打开失败终态、重试操作、发布工作流、5 个公开产物、独立下载、Hash 与 Updater Metadata | 已发布并在说明范围内完成独立检查 |
 | [yourbuddy-v0.3.23](yourbuddy-v0.3.23/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码终端生命周期、保留 Web Replay、按要求删除的覆盖、CI 基线失败、5 个公开产物、Checksum、Updater Metadata 与打包后交互限制 | 已发布并在说明范围内完成检查 |
 | [yourbuddy-v0.3.22](yourbuddy-v0.3.22/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录独立下载的 DMG、打包后有界面浏览器、产品刷新回归、Node.js 24 发布工作流、5 个产物、校验和与 Updater Metadata | 已发布并在说明范围内完成独立检查 |

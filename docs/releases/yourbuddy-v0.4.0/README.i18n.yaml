@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.0/README.md
+/yourbuddy-0-4-0:
+  en: 9c53579a996411cb
+  zh: 752e8ddef96dc6b1
+/yourbuddy-0-4-0/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-4-0/user-release-notes/what-changed:
+  en: d71ca5da0a44ae2d
+  zh: dfc3ce7c5a3fef26
+/yourbuddy-0-4-0/user-release-notes/problem-solved:
+  en: 2ad15a16723e3626
+  zh: 2ba6c90287018507
+/yourbuddy-0-4-0/user-release-notes/where-to-use-it:
+  en: 9884083c4d73af52
+  zh: 40f9e40ddb729c8c
+/yourbuddy-0-4-0/user-release-notes/how-to-try-it:
+  en: ba45a95f58d4d959
+  zh: 66b013e2dbc77cfd
+/yourbuddy-0-4-0/user-release-notes/install-or-upgrade:
+  en: 462713636b8485ef
+  zh: e9e8fd4a9ca1f77b
+/yourbuddy-0-4-0/user-release-notes/compatibility-migration-and-limitations:
+  en: 474efff726bd55a1
+  zh: 1391678df5d262b0
+/yourbuddy-0-4-0/verification-summary:
+  en: 494d9cf42d59bff4
+  zh: c518f4e6f5dfa7b8
+/yourbuddy-0-4-0/scenario-bootstrap-component-assembly:
+  en: c61254081c709361
+  zh: d244b05c2867aa49
+/yourbuddy-0-4-0/scenario-bootstrap-component-assembly/steps:
+  en: 81d1d5eb08ae454f
+  zh: c6b8d077d874044e
+/yourbuddy-0-4-0/scenario-bootstrap-component-assembly/expected:
+  en: f88c05129de956a2
+  zh: 50a2e45947e35c75
+/yourbuddy-0-4-0/scenario-bootstrap-component-assembly/actual:
+  en: b53c38cf11634c87
+  zh: cd4d5cc7cc44b8e1
+/yourbuddy-0-4-0/scenario-bootstrap-component-assembly/evidence:
+  en: 420ca4b7a23582d5
+  zh: 06445aa2981dc38c
+/yourbuddy-0-4-0/scenario-bootstrap-component-assembly/scope-limits:
+  en: dca9f97257bceda8
+  zh: e6e50bb70d155c90
+/yourbuddy-0-4-0/delivery-status:
+  en: 4dfa745f2ddcb264
+  zh: 792ecafff96d699a
+/yourbuddy-0-4-0/delivery-checklist:
+  en: f2cffdf42220372a
+  zh: 29243f1f64f6020a

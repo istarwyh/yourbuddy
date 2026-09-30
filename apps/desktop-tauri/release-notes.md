@@ -1,23 +1,7 @@
-# YourBuddy 0.3.24
+# YourBuddy 0.4.0
 
-## English
+The recommended macOS download is now a small Bootstrap DMG. It installs exact signed runtime components on first use, reuses a compatible Host Node and local pnpm Store when possible, and installs Harbor only after you choose **Install Harbor runtime**. A separately named Offline DMG carries the same fixed components for no-network first launch. This release also bundles Pomodoro and collapses the workbench when a Session opens.
 
-YourBuddy 0.3.24 fixes Session history loading in the macOS app.
+推荐的 macOS 下载现在是小型 Bootstrap DMG。它在首次使用时安装精确的签名 Runtime 组件，尽量复用兼容的 Host Node 与本地 pnpm Store，并且只在你选择**安装 Harbor 运行时**后安装 Harbor。独立命名的 Offline DMG 携带同一组固定组件，支持首次离线启动。本版本还默认内置 Pomodoro，并在打开 Session 时自动收起工作台。
 
-- Main and subagent Sessions containing Assistant stream history now load consistently across WebKit, Chromium, Gecko, and Node runtimes.
-- A history validation failure now ends in a visible error instead of leaving the conversation on **Loading history…**.
-- The error state includes **Retry loading**, which opens a fresh history-stream generation without changing persisted Session data.
-
-Install the Apple Silicon DMG from this release, or use **Settings → General → Application lifecycle → Check for updates**. Existing Session files require no migration. Completely quit and reopen an older running application after updating. The application is not signed or notarized with an Apple Developer identity.
-
-## 中文
-
-YourBuddy 0.3.24 修复 macOS 应用中的 Session 历史加载问题。
-
-- 包含 Assistant Stream 历史的主 Session 与子 Agent Session 现在可以在 WebKit、Chromium、Gecko 和 Node Runtime 中一致加载。
-- 历史校验失败时，会进入可见错误状态，不再让对话永久停在**载入历史…**。
-- 错误状态提供**重试加载**，可用新的历史 Stream Generation 重试，且不会修改已持久化的 Session 数据。
-
-请从本 Release 安装 Apple Silicon DMG，或使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。现有 Session 文件无需迁移。更新后请完全退出并重新打开旧进程。应用尚未使用 Apple Developer 身份签名或公证。
-
-Verification archive: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.3.24/docs/releases/yourbuddy-v0.3.24
+Verification archive: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.0/docs/releases/yourbuddy-v0.4.0
