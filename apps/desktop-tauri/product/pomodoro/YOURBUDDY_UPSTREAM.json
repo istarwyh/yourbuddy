@@ -1,0 +1,17 @@
+{
+  "package": "@xiaohui-wang/dsh-pomodoro",
+  "version": "0.5.5",
+  "sourceKind": "npm-latest",
+  "channel": "latest",
+  "source": "https://registry.npmjs.org/@xiaohui-wang/dsh-pomodoro/-/dsh-pomodoro-0.5.5.tgz",
+  "integrity": "sha512-r/mO68R+4izJkohHyDb+1TqJpGEKecQnMHNcFCYssaU6pxklZjpMrrIU3cIVLOkBGk/9EE4z8UkW5dd3+OT8pQ==",
+  "archiveSha256": "dbf2d1ad29601f098521926ed9d63131f0578aebaca7b7759b4d314ed994761f",
+  "upstreamTreeSha256": "64b0e93c531b9c2ae0a6ceeb6bc74fb79740d93a6c4ffdea24533381db163af8",
+  "patches": [
+    "Remove obsolete @deepseek-ai/dsh-client-runtime Client injection.",
+    "Align the bundled bilingual README with repository language-switcher, code-block, and link-target pairing rules."
+  ],
+  "repository": "https://github.com/istarwyh/dsh-pomodoro",
+  "license": "MIT",
+  "treeSha256": "fe629b6fd996a84430d3b3a7e7b134a7ff01ad708a109a5e336c0043b8f3f5de"
+}

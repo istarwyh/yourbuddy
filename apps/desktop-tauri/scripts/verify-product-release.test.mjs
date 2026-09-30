@@ -415,6 +415,8 @@ test('product smoke overlay mounts the product defaults and plugins', () => {
   assert.match(overlay, /name: dsh-plugin-marketplace/)
   assert.match(overlay, /id: yourbuddy-release-ego-browser/)
   assert.match(overlay, /name: dsh-ego-browser/)
+  assert.match(overlay, /id: yourbuddy-release-pomodoro/)
+  assert.match(overlay, /name: '@xiaohui-wang\/dsh-pomodoro'/)
   assert.match(overlay, /id: yourbuddy-release-oil-creator/)
   assert.match(overlay, /name: dsh-oil-creator/)
   assert.match(overlay, /id: better-sidebar/)

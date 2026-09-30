@@ -354,6 +354,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: link:../../vendor/schemastery
         version: link:../../vendor/schemastery
+      '@xiaohui-wang/dsh-pomodoro':
+        specifier: workspace:*
+        version: link:../../packages/product/pomodoro
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -5226,6 +5229,18 @@ importers:
       react:
         specifier: ^18.2.0
         version: 18.3.1
+
+  packages/product/pomodoro:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-settings':
+        specifier: workspace:*
+        version: link:../../settings/settings
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
 
   packages/ptc-runtime/ptc-runtime:
     dependencies:

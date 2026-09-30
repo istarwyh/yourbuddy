@@ -1,0 +1,61 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write apps/desktop-tauri/product/pomodoro/README.md
+/dsh-pomodoro:
+  en: f674dbdc4e9a6132
+  zh: 1bd1b0253d7c190a
+/dsh-pomodoro/interface-preview:
+  en: c40ee059f90453bf
+  zh: 72aebf55e833e998
+/dsh-pomodoro/interface-preview/mini-mode:
+  en: 17ba427b8b50d093
+  zh: b9f1b13bbfbf165f
+/dsh-pomodoro/interface-preview/settings:
+  en: ab1379610d0a3eac
+  zh: 8715a44adc048a5a
+/dsh-pomodoro/highlights:
+  en: f8419a284613ebf2
+  zh: ea18de4b9e192151
+/dsh-pomodoro/requirements:
+  en: b41974f7a5f3ed4e
+  zh: 0bb855dfc5dfd47f
+/dsh-pomodoro/quick-start:
+  en: 35dc41abdd0fdcd1
+  zh: a17e420112f75353
+/dsh-pomodoro/quick-start/install-from-the-dsh-ui:
+  en: 06bc936488a18523
+  zh: 278a4666b5212abb
+/dsh-pomodoro/usage:
+  en: 9f9b05afbf759f69
+  zh: 0b61b5638e15b5b0
+/dsh-pomodoro/settings-and-notifications:
+  en: 124d1d6910bfbc19
+  zh: 843b90d9885acc42
+/dsh-pomodoro/settings-and-notifications/completion-feedback:
+  en: 57543a7c4d9fb241
+  zh: 1a7ea08f289b2448
+/dsh-pomodoro/updating-and-removing:
+  en: e61034ccb7eff87a
+  zh: ce0657ba51bc2800
+/dsh-pomodoro/troubleshooting:
+  en: 4da15dee64ff5979
+  zh: f42600323ce840f7
+/dsh-pomodoro/links:
+  en: fcf79d9e513704db
+  zh: 62b94819c077b441
+/dsh-pomodoro/license:
+  en: e9d8820308294ef0
+  zh: c4421ef2c7b78d53
+/dsh-pomodoro/development-and-maintenance:
+  en: ef1539f62e08e6e3
+  zh: eb4abc1cbf433739
+/dsh-pomodoro/development-and-maintenance/local-development:
+  en: 47768df45d19f507
+  zh: a89fab50296caa2a
+/dsh-pomodoro/development-and-maintenance/project-structure:
+  en: 15bc0107c10ae87f
+  zh: fca64ecc5d48fad5
+/dsh-pomodoro/development-and-maintenance/release-workflow:
+  en: 96cfca7387afa949
+  zh: 8242300c34fbb3b7
