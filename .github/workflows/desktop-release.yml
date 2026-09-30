@@ -108,7 +108,7 @@ jobs:
           pnpm --dir apps/desktop-tauri run prepare:dist
           pnpm --dir apps/desktop-tauri run build:components -- --version "$version"
           manifest="apps/desktop-tauri/component-release/yourbuddy-components-$version.json"
-          pnpm --dir apps/desktop-tauri exec tauri signer sign "$manifest"
+          pnpm --dir apps/desktop-tauri exec tauri signer sign "$PWD/$manifest"
           cp "$manifest" apps/desktop-tauri/component-channel/components.json
           cp "$manifest.sig" apps/desktop-tauri/component-channel/components.json.sig
 
