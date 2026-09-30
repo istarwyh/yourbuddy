@@ -16,11 +16,14 @@ Read the [workbench layout compatibility and source-record plan](workbench-layou
 
 Read the proposed [Better Sidebar-centered creator workbench architecture](creator-workbench-core-layout.md) for keeping Better Sidebar as the durable middle workbench, temporarily replacing its visible surface with selected Content details, collapsing the aggregate rightbar and Conversation region, reopening it for Agent input or completion, and preserving upstream-aligned package boundaries.
 
+Read the proposed [Bootstrap release plan](bootstrap-release-plan.md) for publishing a small default DMG, resolving exact Harness and Node components at first launch, reusing complete local pnpm package content, installing Harbor only when requested, retaining a no-network Offline DMG, and delivering both paths from one tag.
+
 | Area | Deliverable |
 |---|---|
 | Documentation | Basic use, default plugins and their reasons, extension choices, existing development tutorials, a Creator guide, and the Harbor example |
 | Website | Connect “Start using” and “Extend Y8” within the existing visual style and publish continuously readable guidance |
 | In-app Help | A sidebar “Help and guides” menu leading to getting started, default plugins, extension, troubleshooting, and feedback |
+| Distribution | A Bootstrap DMG, Offline DMG, reusable signed components, on-demand Harbor runtime, and one stable updater channel |
 
 Status: documentation, website navigation, and in-app Help are implemented. See the [implementation record](verification.md) for executed checks and unverified scope. The [decision record](../../../.agents/notes/implemented/feature/2026-09-06-yourbuddy-docs-and-help.md) owns trade-offs; source implementation does not establish installer publication or website deployment.
 

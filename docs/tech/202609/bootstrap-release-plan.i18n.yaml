@@ -1,0 +1,61 @@
+# Bilingual-pair consistency record for bootstrap-release-plan.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/tech/202609/bootstrap-release-plan.md
+/:
+  en: 021eccdf4e5d345c
+  zh: c7b87bc4112b3032
+/yourbuddy-bootstrap-release-plan:
+  en: f9e21f4913dd0b23
+  zh: 76e0c96e963414f5
+/yourbuddy-bootstrap-release-plan/summary:
+  en: eb9975df5f810ea5
+  zh: 9b734c29d38bc1b6
+/yourbuddy-bootstrap-release-plan/table-of-contents:
+  en: ffd06564dcdd35c3
+  zh: f744406b20857d9d
+/yourbuddy-bootstrap-release-plan/measured-baseline:
+  en: 7e16e559e538dd84
+  zh: ee65afd98ee64aa5
+/yourbuddy-bootstrap-release-plan/delivery-outcome:
+  en: 3a982afbf870380b
+  zh: e41cc44f59db44d0
+/yourbuddy-bootstrap-release-plan/release-artifacts:
+  en: 28a767833489d2c6
+  zh: 7abfe9588755f11e
+/yourbuddy-bootstrap-release-plan/component-manifest:
+  en: df481f0ac790c704
+  zh: 9336acbfe9102371
+/yourbuddy-bootstrap-release-plan/bootstrap-and-dependency-installation:
+  en: 3615027f7e3ded42
+  zh: 1c8fa86537dca381
+/yourbuddy-bootstrap-release-plan/on-demand-harbor-runtime:
+  en: e1b66bd7e63498eb
+  zh: 6cdbba0cfbafb386
+/yourbuddy-bootstrap-release-plan/component-storage-and-lifecycle:
+  en: 6d779efd9714756d
+  zh: db8a45328cd71281
+/yourbuddy-bootstrap-release-plan/updates-and-offline-installation:
+  en: 426dd5902a9a0ca9
+  zh: 7c0ac8fe091c81eb
+/yourbuddy-bootstrap-release-plan/failure-and-recovery:
+  en: c96460a15e95c212
+  zh: 5f9ce240559f4744
+/yourbuddy-bootstrap-release-plan/code-ownership-and-changes:
+  en: f52071926f25cc40
+  zh: bbdbe739b78a4f47
+/yourbuddy-bootstrap-release-plan/release-workflow:
+  en: d4c695e7fe943b94
+  zh: 0616572ab43e1096
+/yourbuddy-bootstrap-release-plan/verification-and-acceptance:
+  en: 1139a144c144ce5e
+  zh: c322bc7b906e23e7
+/yourbuddy-bootstrap-release-plan/single-delivery-implementation-order:
+  en: 8c8f431a3d3fb9b6
+  zh: 49a1b6739528c051
+/yourbuddy-bootstrap-release-plan/documentation-and-operations:
+  en: e5ae05d268027372
+  zh: a030b2b7fdf60ff8
+/yourbuddy-bootstrap-release-plan/dev-note:
+  en: 8e7b1569a3da1471
+  zh: 5c61aa6c9e063d8d

@@ -16,11 +16,14 @@ description: "Y8 文档、官网与应用内帮助的九月实施方案入口，
 
 阅读提案中的[以 Better Sidebar 为核心的创作者工作台架构](creator-workbench-core-layout.zh.md)，了解如何保持 Better Sidebar 作为持久中间工作台、用已选内容详情临时替换其可见界面、折叠聚合 rightbar 与 Conversation 区域、在 Agent 请求输入或完成时重新打开，并保持与上游一致的 package 边界。
 
+阅读提案中的 [Bootstrap 发布方案](bootstrap-release-plan.zh.md)，了解如何发布小型默认 DMG、在首次启动时解析精确 Harness 与 Node 组件、复用完整本地 pnpm Package 内容、只在请求时安装 Harbor、保留无需网络的 Offline DMG，并从一个 Tag 交付两条路径。
+
 | 部分 | 交付内容 |
 |---|---|
 | 文档 | 基础使用、默认插件与理由、扩展选择、现有开发教程、Creator 指南和 Harbor 案例 |
 | 官网 | 在现有风格下串起“开始使用”和“扩展 Y8”，发布可连续阅读的指南 |
 | 应用内 Help | 侧栏“帮助与指南”菜单，直达快速开始、默认插件、扩展、排障与反馈 |
+| 发行 | Bootstrap DMG、Offline DMG、可复用签名组件、按需 Harbor Runtime 和一个稳定 Updater Channel |
 
 状态：文档、官网导航和应用内 Help 已实现，已执行检查和未验证范围见[实施记录](verification.zh.md)。[决策记录](../../../.agents/notes/implemented/feature/2026-09-06-yourbuddy-docs-and-help.zh.md)维护取舍；源码实现不代表安装包发布或官网部署。
 
