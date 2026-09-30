@@ -6,7 +6,7 @@ This archive records the cross-engine Session history repair and the verificatio
 
 - Release identifier: `yourbuddy-v0.3.24`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; source behavior is checked within the stated limits.
+- Archive state: published; source behavior and public artifacts are independently checked within the stated limits.
 - Evidence commit: feature series beginning at `66456d4eb8`; the release tag fixes the complete candidate.
 - Evidence gallery: not applicable; no packaged-WebView interaction recording was captured.
 - Evidence download: [YourBuddy 0.3.24 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.24).
@@ -43,6 +43,7 @@ This release targets macOS Apple Silicon and retains the existing unsigned and u
 |---|---|---|---|---|
 | Cross-engine JSON and Session opening behavior | passed | feature series beginning at `66456d4eb8` | macOS Apple Silicon, Node 22.22.3, pnpm 11.7.0 | 5 focused files; 252 tests, then the 62-test Session file after exposing the retry verb |
 | Client contract integration | passed | 0.3.24 candidate | local macOS workspace | `npm run typecheck:contracts-ready` |
+| Formal 0.3.24 publication | passed | `yourbuddy-v0.3.24` at `f993f80739` | GitHub Actions macOS arm64 | workflow `36723446378` built the application, exercised its relocated runtime, verified checksums, and published five assets |
 | Documentation and generated catalogs | passed after regeneration | 0.3.24 candidate | local macOS workspace | 42 documentation gates plus the corrected Client catalog check |
 | Packaged WebKit reproduction | not verified | 0.3.24 candidate | macOS Tauri WebView | no packaged application run before tagging |
 
@@ -68,25 +69,25 @@ Plain JSON containers must not depend on `Function.prototype.toString()` formatt
 
 ### Actual
 
-Five focused files passed 252 tests. After `retryOpen()` became a formal `SessionFace` verb, its 62-test Session file passed and the Client contract typecheck completed. The tests accepted structurally coherent cross-realm containers, rejected subclasses and malformed containers, converted a plain `TypeError` during history opening into `openState: "error"`, reopened a fresh stream generation, and invoked the localized retry action. Documentation synchronization passed 42 checks and identified one stale generated Client catalog; regeneration followed by its focused freshness check passed. Staged lint and bilingual-pair checks passed when the fix commit was created.
+Five focused files passed 252 tests. After `retryOpen()` became a formal `SessionFace` verb, its 62-test Session file passed and the Client contract typecheck completed. The tests accepted structurally coherent cross-realm containers, rejected subclasses and malformed containers, converted a plain `TypeError` during history opening into `openState: "error"`, reopened a fresh stream generation, and invoked the localized retry action. Documentation synchronization passed 42 checks and identified one stale generated Client catalog; regeneration followed by its focused freshness check passed. Staged lint and bilingual-pair checks passed when the fix commit was created. Tagged workflow `36723446378` completed successfully in 22 minutes 5 seconds and published five files. Anonymous downloads of the DMG, updater archive, signature, checksum list, and updater manifest succeeded; all three payload hashes passed the downloaded checksum list, the archive directory opened, and `hdiutil verify` reported the DMG valid. The stable updater manifest names 0.3.24 and its public updater URL.
 
 ### Evidence
 
 - Before: the four JSON paths compared exact native-function source text, and a local opening exception escaped while the Session remained `loading`.
 - In progress: the shared helper replaced three copies, the dependency-free PTC bootstrap adopted the same structure test, and Session opening gained a single failure normalization path.
-- Result: source tests confirm engine-text-independent container recognition, a terminal error state, stream cleanup, and an explicit retry action.
+- Result: source tests confirm engine-text-independent container recognition, a terminal error state, stream cleanup, and an explicit retry action. The public release contains `latest.json`, `SHA256SUMS.txt`, the updater archive and signature, and the DMG; their published SHA-256 digests are `26524db70fa1eaf0bc9d12e5585aef16f880892c61d40b1fa9509ca75a69efba`, `aa2aab4b6ce9dcd367180c6475f52a61c29f68ddfbae6f0af5d2949a1cbff184`, `eee907be174303fdbb0408219713e2b09dd57dc795e77a520b8bf288812a74b3`, `fbc0f1f009ace0dc12343a722eacc57f2b247c8e2ff306424e616c2482506365`, and `ec6870673a47996244aa3758d03cecd96e0106832b783d0b35050de459641d46` respectively.
 - Failure and recovery: documentation synchronization found the expected stale Client slot catalog after adding `retryOpen`; regenerating only that catalog made its focused check pass.
 
 ### Scope limits
 
-The candidate was not run inside JavaScriptCore or a packaged Tauri WebView. No DMG was mounted or launched, no updater installation was attempted, and Apple Developer signing and notarization remain absent. Public artifacts, checksums, updater metadata, and workflow conclusions are recorded only after publication.
+The application was not run inside JavaScriptCore or a packaged Tauri WebView after publication. The independently downloaded DMG was verified but not mounted or launched; the updater archive directory was read but the application was not extracted or started. No updater installation was attempted, and Apple Developer signing and notarization remain absent.
 
 ## Delivery status
 
-- Product publication status: release candidate prepared; GitHub Actions owns artifact publication after the tag is pushed.
-- Verification archive status: source evidence complete within the stated limits; public artifact evidence remains pending.
-- Website synchronization status: not applicable before publication; this release changes application behavior and release notes but no product guidance page.
-- Unverified scope: packaged WebKit reproduction, independent DMG/updater download and extraction, updater installation, Apple Developer signing, and notarization.
+- Product publication status: published through workflow `36723446378`; the public release contains the Apple Silicon DMG, updater archive, signature, checksums, and updater manifest, and the stable updater manifest names 0.3.24.
+- Verification archive status: complete within the stated limits; source evidence, workflow conclusion, public filenames, independent downloads, hashes, updater metadata, archive listing, DMG integrity, and stable latest-release destination are recorded.
+- Website synchronization status: not applicable; this release changes application behavior and release notes but no product guidance page.
+- Unverified scope: packaged WebKit reproduction, application extraction or launch, updater installation, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -101,11 +102,11 @@ The candidate was not run inside JavaScriptCore or a packaged Tauri WebView. No 
 - [x] Only sanitized evidence is tracked; credentials, personal information, private content, and sensitive originals are absent.
 - [x] The release entry was added to `docs/releases/README.md` and both language files were confirmed consistent.
 - [x] Relative links render and every referenced local file exists.
-- [ ] The downloadable evidence archive was extracted and its documented contents were opened successfully.
+- [x] The updater archive was independently downloaded and its directory opened; the DMG was independently downloaded and passed `hdiutil verify`.
 - [x] The immutable tag archive and release URL are recorded; no gallery applies.
-- [ ] The public product destination remains pending until artifact publication completes.
+- [x] The public release page and all five downloadable assets are present.
 - [x] No desktop Shell origin, capability, permission, or command changed; packaged-WebView interaction remains explicitly unverified.
-- [ ] Published filenames, hashes, and updater metadata remain pending until artifact publication completes.
-- [ ] The stable latest-release link remains pending; website synchronization is not applicable because product guidance did not change.
+- [x] Published filenames, GitHub digests, downloaded checksum contents, updater version, signature, and archive URL are recorded.
+- [x] The stable latest-release manifest resolves to 0.3.24; website synchronization is not applicable because product guidance did not change.
 - [x] Product publication status, archive status, website status, and unverified scope are reported separately.
-- [x] Existing public tags and installers were not moved or overwritten; this candidate uses a new version.
+- [x] Existing public tags and installers were not moved or overwritten; this release uses a new version.

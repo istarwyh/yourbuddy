@@ -6,7 +6,7 @@
 
 - 发布标识：`yourbuddy-v0.3.24`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选版本；源码行为已在所述限制内完成检查。
+- 归档状态：已发布；已在所述限制内独立检查源码行为与公开产物。
 - 证据 Commit：始于 `66456d4eb8` 的功能 Commit 系列；Release Tag 固定完整候选版本。
 - 证据图集：不适用；未录制打包后 WebView 交互。
 - 证据下载：[YourBuddy 0.3.24 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.24)。
@@ -43,6 +43,7 @@ macOS WebKit 对原生函数采用与 V8 不同的文本格式，因此有效的
 |---|---|---|---|---|
 | 跨引擎 JSON 与 Session 打开行为 | 通过 | 始于 `66456d4eb8` 的功能 Commit 系列 | macOS Apple Silicon、Node 22.22.3、pnpm 11.7.0 | 5 个聚焦文件、252 个测试；公开重试动词后再通过含 62 个测试的 Session 文件 |
 | Client 契约集成 | 通过 | 0.3.24 候选版本 | 本地 macOS 工作区 | `npm run typecheck:contracts-ready` |
+| 0.3.24 正式发布 | 通过 | `f993f80739` 的 `yourbuddy-v0.3.24` | GitHub Actions macOS arm64 | 工作流 `36723446378` 构建应用、检查迁移运行时、验证 Checksum，并发布 5 个产物 |
 | 文档与生成目录 | 重新生成后通过 | 0.3.24 候选版本 | 本地 macOS 工作区 | 42 项文档检查及修正后的 Client Catalog 检查 |
 | 打包后 WebKit 复现 | 未验证 | 0.3.24 候选版本 | macOS Tauri WebView | Tag 前未运行打包应用 |
 
@@ -68,25 +69,25 @@ Plain JSON 容器不得依赖 `Function.prototype.toString()` 的格式。任何
 
 ### 实际结果
 
-5 个聚焦文件通过 252 个测试。`retryOpen()` 成为正式 `SessionFace` 动词后，含 62 个测试的 Session 文件通过，Client 契约类型检查也完成。测试接受结构自洽的 Cross-realm 容器，拒绝 Subclass 和异常容器，把历史打开期间的普通 `TypeError` 转换为 `openState: "error"`，重新打开新的 Stream Generation，并调用本地化重试操作。文档同步通过 42 项检查，并发现新增 `retryOpen` 后 Client Slot Catalog 过期；重新生成后，该目录的聚焦新鲜度检查通过。创建修复 Commit 时，Staged Lint 与双语配对检查通过。
+5 个聚焦文件通过 252 个测试。`retryOpen()` 成为正式 `SessionFace` 动词后，含 62 个测试的 Session 文件通过，Client 契约类型检查也完成。测试接受结构自洽的 Cross-realm 容器，拒绝 Subclass 和异常容器，把历史打开期间的普通 `TypeError` 转换为 `openState: "error"`，重新打开新的 Stream Generation，并调用本地化重试操作。文档同步通过 42 项检查，并发现新增 `retryOpen` 后 Client Slot Catalog 过期；重新生成后，该目录的聚焦新鲜度检查通过。创建修复 Commit 时，Staged Lint 与双语配对检查通过。Tag 工作流 `36723446378` 在 22 分 5 秒后成功完成并发布 5 个文件。DMG、Updater Archive、签名、Checksum 列表与 Updater Manifest 均通过匿名下载；3 个 Payload Hash 全部通过下载所得 Checksum 列表，Archive 目录可以打开，`hdiutil verify` 也确认 DMG 有效。稳定 Updater Manifest 标明 0.3.24 及其公开 Updater URL。
 
 ### 证据
 
 - 操作前：4 条 JSON 路径比较原生函数的精确源码文本，本地打开异常直接逃逸，而 Session 保持 `loading`。
 - 执行中：共享 Helper 替换 3 个副本，免依赖的 PTC Bootstrap 使用同一结构检查，Session 打开增加单一失败归一化路径。
-- 结果：源码测试确认无需引擎文本的容器识别、错误终态、Stream 清理及显式重试操作。
+- 结果：源码测试确认无需引擎文本的容器识别、错误终态、Stream 清理及显式重试操作。公开 Release 包含 `latest.json`、`SHA256SUMS.txt`、Updater Archive 与签名以及 DMG；它们发布的 SHA-256 Digest 依次为 `26524db70fa1eaf0bc9d12e5585aef16f880892c61d40b1fa9509ca75a69efba`、`aa2aab4b6ce9dcd367180c6475f52a61c29f68ddfbae6f0af5d2949a1cbff184`、`eee907be174303fdbb0408219713e2b09dd57dc795e77a520b8bf288812a74b3`、`fbc0f1f009ace0dc12343a722eacc57f2b247c8e2ff306424e616c2482506365` 与 `ec6870673a47996244aa3758d03cecd96e0106832b783d0b35050de459641d46`。
 - 失败与恢复：新增 `retryOpen` 后，文档同步发现预期的 Client Slot Catalog 过期；仅重新生成该目录后，其聚焦检查通过。
 
 ### 范围限制
 
-未在 JavaScriptCore 或打包后的 Tauri WebView 中运行候选版本。未挂载或启动 DMG，未尝试 Updater 安装，仍未进行 Apple Developer 签名与公证。公开产物、Checksum、Updater Metadata 与工作流结论只能在发布后记录。
+发布后未在 JavaScriptCore 或打包后的 Tauri WebView 中运行应用。独立下载的 DMG 已通过验证，但未挂载或启动；已读取 Updater Archive 目录，但未解压或启动应用。未尝试 Updater 安装，仍未进行 Apple Developer 签名与公证。
 
 ## 交付状态
 
-- 产品发布状态：已准备候选版本；推送 Tag 后由 GitHub Actions 负责发布产物。
-- 验证资料归档状态：在所述限制内已完成源码证据；公开产物证据仍待发布。
-- 站点同步状态：发布前不适用；本版本修改应用行为与发布说明，但不修改产品指南页面。
-- 未验证范围：打包后 WebKit 复现、独立下载并解压 DMG/Updater、Updater 安装、Apple Developer 签名及公证。
+- 产品发布状态：已通过工作流 `36723446378` 发布；公开 Release 包含 Apple Silicon DMG、Updater Archive、签名、Checksum 与 Updater Manifest，稳定 Updater Manifest 标明 0.3.24。
+- 验证资料归档状态：在所述限制内完整；已记录源码证据、工作流结论、公开文件名、独立下载、Hash、Updater Metadata、Archive 目录、DMG 完整性与稳定 Latest Release 目的地。
+- 站点同步状态：不适用；本版本修改应用行为与发布说明，但不修改产品指南页面。
+- 未验证范围：打包后的 WebKit 复现、应用解压或启动、Updater 安装、Apple Developer 签名与公证。
 
 ## 交付清单
 
@@ -101,11 +102,11 @@ Plain JSON 容器不得依赖 `Function.prototype.toString()` 的格式。任何
 - [x] 只跟踪脱敏证据；不包含凭据、个人信息、私有内容和敏感原图。
 - [x] 已在 `docs/releases/README.zh.md` 中添加版本条目，并确认两种语言内容一致。
 - [x] 相对链接可以渲染，引用的每个本地文件都存在。
-- [ ] 已解压可下载的验证资料归档，并成功打开文档列出的内容。
+- [x] Updater Archive 已独立下载并打开目录；DMG 已独立下载并通过 `hdiutil verify`。
 - [x] 已记录不可变 Tag 归档与 Release URL；本次不适用图集。
-- [ ] 公开产品目的地需等待产物发布完成后检查。
+- [x] 公开 Release 页面与全部 5 个可下载产物均已存在。
 - [x] 未修改桌面 Shell Origin、Capability、Permission 或 Command；打包后 WebView 交互仍明确标为未验证。
-- [ ] 已发布文件名、Hash 与 Updater Metadata 需等待产物发布完成后记录。
-- [ ] 稳定 Latest Release 链接需等待发布；因未修改产品指南，站点同步不适用。
+- [x] 已记录发布文件名、GitHub Digest、下载所得 Checksum 内容、Updater 版本、签名与 Archive URL。
+- [x] 稳定 Latest Release Manifest 解析为 0.3.24；因未修改产品指南，站点同步不适用。
 - [x] 已分别报告产品发布状态、归档状态、站点状态与未验证范围。
-- [x] 未移动或覆盖已有公开 Tag 与安装包；本候选版本使用新版本。
+- [x] 未移动或覆盖已有公开 Tag 与安装包；本 Release 使用新版本。

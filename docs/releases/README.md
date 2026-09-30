@@ -10,7 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.3.24](yourbuddy-v0.3.24/README.md) | YourBuddy desktop | Included | Cross-engine JSON containers, Session opening failure terminal state, retry action, and source verification recorded | Release candidate checked within stated limits |
+| [yourbuddy-v0.3.24](yourbuddy-v0.3.24/README.md) | YourBuddy desktop | Included | Cross-engine JSON containers, Session opening failure terminal state, retry action, published workflow, five public assets, independent downloads, hashes, and updater metadata recorded | Published and independently checked within stated limits |
 | [yourbuddy-v0.3.23](yourbuddy-v0.3.23/README.md) | YourBuddy desktop | Included | Source terminal lifecycle, retained Web replay, requested coverage removals, CI baseline failures, five public assets, checksums, updater metadata, and packaged-interaction limits recorded | Published and checked within stated limits |
 | [yourbuddy-v0.3.22](yourbuddy-v0.3.22/README.md) | YourBuddy desktop | Included | Independently downloaded DMG, packaged headed browser, product-refresh regressions, Node.js 24 publication workflow, five assets, checksums, and updater metadata recorded | Published and independently checked within stated limits |
 | [yourbuddy-v0.3.21](yourbuddy-v0.3.21/README.md) | YourBuddy desktop | Included | Source, independently downloaded DMG, packaged headed macOS browser, five public assets, checksums, updater metadata, and website deployment recorded | Published and independently checked within stated limits |

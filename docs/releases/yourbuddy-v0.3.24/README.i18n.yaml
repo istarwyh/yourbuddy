@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.24/README.md
 /yourbuddy-0-3-24:
-  en: de8ce3bbbe0edc54
-  zh: ccbbd69af6d08017
+  en: a4011563a9cacf69
+  zh: babcf408823074d8
 /yourbuddy-0-3-24/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -27,8 +27,8 @@
   en: 5a853c5a37353c46
   zh: b77586abeaab7f96
 /yourbuddy-0-3-24/verification-summary:
-  en: 7bb724162d17eca8
-  zh: 6f99ad066883606a
+  en: b7670c0be59e5384
+  zh: 1fd3ac7197cb00a0
 /yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery:
   en: 73b6f468b06482a8
   zh: f9ac7bdca077d601
@@ -39,17 +39,17 @@
   en: 21a89e13556f0d57
   zh: 0ff9add79d88cd55
 /yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery/actual:
-  en: b3241eaa7735b25a
-  zh: a18d1ab1d7f36a9a
+  en: 289da531ada5a33f
+  zh: 35331350df2c87cb
 /yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery/evidence:
-  en: fad89da35c88d50a
-  zh: d7bb9133b3096663
+  en: b2f79a4e498f9c02
+  zh: b8ed279e510959db
 /yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery/scope-limits:
-  en: 3ee6cf4cc184845a
-  zh: 10bd72d4e3e8b591
+  en: 1026089413df77ca
+  zh: 4ef96c53c8cbc303
 /yourbuddy-0-3-24/delivery-status:
-  en: 1c817c6df5d8234e
-  zh: d18ce14b53d6ea9d
+  en: 3ad4d5d71d39b089
+  zh: 676b73ca664a56eb
 /yourbuddy-0-3-24/delivery-checklist:
-  en: 8a565c2a7bab4280
-  zh: 39e6bb55c383a363
+  en: adf6219bd0074467
+  zh: 48d488b441f254c8
