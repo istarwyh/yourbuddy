@@ -7,7 +7,7 @@
 - 发布标识：`yourbuddy-v0.3.24`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
 - 归档状态：候选版本；源码行为已在所述限制内完成检查。
-- 证据 Commit：功能 Commit `66456d4eb8`；Release Tag 固定完整候选版本。
+- 证据 Commit：始于 `66456d4eb8` 的功能 Commit 系列；Release Tag 固定完整候选版本。
 - 证据图集：不适用；未录制打包后 WebView 交互。
 - 证据下载：[YourBuddy 0.3.24 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.24)。
 
@@ -41,7 +41,8 @@ macOS WebKit 对原生函数采用与 V8 不同的文本格式，因此有效的
 
 | 场景 | 状态 | 受测构建 | 环境 | 证据 |
 |---|---|---|---|---|
-| 跨引擎 JSON 与 Session 打开行为 | 通过 | `66456d4eb8` 的源码 | macOS Apple Silicon、Node 22.22.3、pnpm 11.7.0 | 5 个聚焦文件、252 个测试 |
+| 跨引擎 JSON 与 Session 打开行为 | 通过 | 始于 `66456d4eb8` 的功能 Commit 系列 | macOS Apple Silicon、Node 22.22.3、pnpm 11.7.0 | 5 个聚焦文件、252 个测试；公开重试动词后再通过含 62 个测试的 Session 文件 |
+| Client 契约集成 | 通过 | 0.3.24 候选版本 | 本地 macOS 工作区 | `npm run typecheck:contracts-ready` |
 | 文档与生成目录 | 重新生成后通过 | 0.3.24 候选版本 | 本地 macOS 工作区 | 42 项文档检查及修正后的 Client Catalog 检查 |
 | 打包后 WebKit 复现 | 未验证 | 0.3.24 候选版本 | macOS Tauri WebView | Tag 前未运行打包应用 |
 
@@ -67,7 +68,7 @@ Plain JSON 容器不得依赖 `Function.prototype.toString()` 的格式。任何
 
 ### 实际结果
 
-5 个聚焦文件通过 252 个测试。测试接受结构自洽的 Cross-realm 容器，拒绝 Subclass 和异常容器，把历史打开期间的普通 `TypeError` 转换为 `openState: "error"`，并调用本地化重试操作。文档同步通过 42 项检查，并发现新增 `retryOpen` 后 Client Slot Catalog 过期；重新生成后，该目录的聚焦新鲜度检查通过。创建修复 Commit 时，Staged Lint 与双语配对检查通过。
+5 个聚焦文件通过 252 个测试。`retryOpen()` 成为正式 `SessionFace` 动词后，含 62 个测试的 Session 文件通过，Client 契约类型检查也完成。测试接受结构自洽的 Cross-realm 容器，拒绝 Subclass 和异常容器，把历史打开期间的普通 `TypeError` 转换为 `openState: "error"`，重新打开新的 Stream Generation，并调用本地化重试操作。文档同步通过 42 项检查，并发现新增 `retryOpen` 后 Client Slot Catalog 过期；重新生成后，该目录的聚焦新鲜度检查通过。创建修复 Commit 时，Staged Lint 与双语配对检查通过。
 
 ### 证据
 

@@ -136,6 +136,12 @@ describe('Session open', () => {
     } finally {
       open.mockRestore()
     }
+
+    const replacement = plainTurn(SessionSeq(0), 0, '重试', '成功')
+    mock.stream(FOLLOW, followScript(history(replacement)))
+    await session.retryOpen()
+    expect(session.getSnapshot()).toMatchObject({ openState: 'open', openError: null })
+    expect(eventSeqs(session)).toEqual(replacement.map(event => event.seq))
   })
 
   it('stitches live frames landing right behind the opening snapshot, dropping the page overlap', async ({ mock, start }) => {

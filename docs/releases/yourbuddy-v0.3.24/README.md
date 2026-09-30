@@ -7,7 +7,7 @@ This archive records the cross-engine Session history repair and the verificatio
 - Release identifier: `yourbuddy-v0.3.24`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
 - Archive state: release candidate; source behavior is checked within the stated limits.
-- Evidence commit: feature commit `66456d4eb8`; the release tag fixes the complete candidate.
+- Evidence commit: feature series beginning at `66456d4eb8`; the release tag fixes the complete candidate.
 - Evidence gallery: not applicable; no packaged-WebView interaction recording was captured.
 - Evidence download: [YourBuddy 0.3.24 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.3.24).
 
@@ -41,7 +41,8 @@ This release targets macOS Apple Silicon and retains the existing unsigned and u
 
 | Scenario | Status | Build under test | Environment | Evidence |
 |---|---|---|---|---|
-| Cross-engine JSON and Session opening behavior | passed | source at `66456d4eb8` | macOS Apple Silicon, Node 22.22.3, pnpm 11.7.0 | 5 focused files; 252 tests |
+| Cross-engine JSON and Session opening behavior | passed | feature series beginning at `66456d4eb8` | macOS Apple Silicon, Node 22.22.3, pnpm 11.7.0 | 5 focused files; 252 tests, then the 62-test Session file after exposing the retry verb |
+| Client contract integration | passed | 0.3.24 candidate | local macOS workspace | `npm run typecheck:contracts-ready` |
 | Documentation and generated catalogs | passed after regeneration | 0.3.24 candidate | local macOS workspace | 42 documentation gates plus the corrected Client catalog check |
 | Packaged WebKit reproduction | not verified | 0.3.24 candidate | macOS Tauri WebView | no packaged application run before tagging |
 
@@ -67,7 +68,7 @@ Plain JSON containers must not depend on `Function.prototype.toString()` formatt
 
 ### Actual
 
-Five focused files passed 252 tests. The tests accepted structurally coherent cross-realm containers, rejected subclasses and malformed containers, converted a plain `TypeError` during history opening into `openState: "error"`, and invoked the localized retry action. Documentation synchronization passed 42 checks and identified one stale generated Client catalog; regeneration followed by its focused freshness check passed. Staged lint and bilingual-pair checks passed when the fix commit was created.
+Five focused files passed 252 tests. After `retryOpen()` became a formal `SessionFace` verb, its 62-test Session file passed and the Client contract typecheck completed. The tests accepted structurally coherent cross-realm containers, rejected subclasses and malformed containers, converted a plain `TypeError` during history opening into `openState: "error"`, reopened a fresh stream generation, and invoked the localized retry action. Documentation synchronization passed 42 checks and identified one stale generated Client catalog; regeneration followed by its focused freshness check passed. Staged lint and bilingual-pair checks passed when the fix commit was created.
 
 ### Evidence
 

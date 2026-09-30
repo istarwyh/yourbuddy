@@ -514,6 +514,12 @@ export class Session implements SessionFace {
     await this.open()
   }
 
+  /** Retry a failed history opening (see ISession.retryOpen). */
+  async retryOpen(): Promise<void> {
+    if (this.openState !== 'error') return
+    await this.resync()
+  }
+
   // ---- Subscription API (useSyncExternalStore direct wiring) ----
 
   /**

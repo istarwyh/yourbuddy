@@ -231,7 +231,7 @@ export function apply(ctx: Context): void {
               window.open(url, '_blank', 'noopener,noreferrer')
             }
           },
-          retryOpen: () => { void session.resync() },
+          retryOpen: () => { void session.retryOpen() },
           loadOlder: () => { void session.loadOlder() },
           loadThrough: seq => session.loadThrough(seq),
           loadImage: Object.assign(

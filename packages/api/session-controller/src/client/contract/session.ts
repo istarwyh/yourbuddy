@@ -119,6 +119,13 @@ export interface ISession {
    */
   rename(title: string): Promise<RemoteResult<{ title: string; seq: SessionSeq }>>
   /**
+   * Retry history opening after `snapshot.openState` reaches `error`.
+   * Other lifecycle states are left unchanged. The retry replaces the failed
+   * event stream with a fresh generation while retaining the Session face.
+   * @returns completion once the replacement opening settles.
+   */
+  retryOpen(): Promise<void>
+  /**
    * Extend history by at least 50 messages and two Turn starts, including a
    * partial Turn at the window's beginning. Stop at 500 messages or history
    * exhaustion even when those minima cannot be met. Publish one prepend.
