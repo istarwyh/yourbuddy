@@ -2,15 +2,15 @@
 
 [English](README.md) | 中文
 
-这个 Tauri 应用承载现有的 `dsh web` 客户端，并加入 YourBuddy 产品装配层。安装包携带裁剪后的 Harness 源码、Harbor Evolution 及其 Skill、Codex Auth、原生 Codex Subagent Provider、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace、Personal Workbench 品牌插件、Oil Creator、便携式 CPython 3.12 和 Harbor Adapter。
+这个 Tauri 应用承载现有的 `dsh web` 客户端，并加入 YourBuddy 产品装配层。默认 Bootstrap DMG 只携带签名 Shell、固定 pnpm Package、组件 Manifest 与桌面 Overlay。不可变 Harness、Node、pnpm Store 与 Harbor Archive 随同一个 Release 发布；单独标注的 Offline DMG Seed 同一组 Archive，不创建第二套 Runtime 布局。
 
 ## 运行时布局
 
 | 资源 | 运行时行为 |
 |---|---|
-| `harness-source` | 携带已构建源码、冻结 Lockfile 与单个压缩的离线 pnpm Store，并复制到按内容 Hash 隔离的应用数据目录 |
-| `toolchain` | 校验和固定的 macOS arm64 Node 22.19.0 与 pnpm 11.7.0 归档；宿主没有兼容 Node 时使用 |
-| `yourbuddy-runtime` | 直接从签名的应用资源运行，提供 `harbor` 和 `harbor-dsh` |
+| `component-channel` | 两种安装包都内嵌的签名 Release Manifest 与固定 pnpm 11.7.0 Package |
+| `component-seeds` | 只在 Offline DMG 中出现的精确 Release Archive，导入共享组件 Cache |
+| `YourBuddy/components` | 带 Staging 与 Active State 的签名、内容寻址 Harness、Store、Node 与按需 Harbor 组件 |
 | `desktop-overlay` | 通过 `dsh web --patch` 选择 Codex Agent Preset，并注册通知、Codex Subagent Provider、Codex Auth/Search/Image、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace、Personal Workbench、Oil Creator 与 Harbor Evolution |
 | `YourBuddy/dsh-home` | 隔离保存会话、设置、凭据和 Web Profile |
 | `YourBuddy/workspace` | 没有标准 Profile 实例时供 Harbor Workbench 使用的回退根目录 |
@@ -33,7 +33,7 @@ Generator 还会从 Codex 派生 **内容创作** Agent Preset。它保留完整
 
 Harbor 会在 Job 启动前通过 Host 的 `agentDefaultModel` 与 LLM Service 解析并冻结 Candidate 模型。仅绑定 Loopback 的 Host Broker 随后通过随机的 Job 级 URL 与 Bearer Capability，把这条准确的模型路由开放给 Docker 任务。Python Adapter 会先从容器内执行健康检查，再安装和启动 Candidate；它在 `.harbor-runtime` 下生成临时 Cordis Overlay，只把 Candidate ACP 的模型路由替换为 `yourbuddy-host/<frozen-model>`。原始 Candidate 保持不可变，Codex OAuth 凭据不会进入 Candidate 文件、配置或容器环境。模型绑定属于 Evaluation Context v2，因此更换 Provider、Model、Reasoning Effort、Transport 或 Protocol 后不能复用旧的比较 Baseline。
 
-复用宿主 Node 时会同时检查受支持版本与原生 CPU 架构。YourBuddy 不接管全局 pnpm，而是准备固定版本的产品自有 pnpm，避免 Wrapper 或 Native Package 由另一种 Node 架构安装。冷启动会先校验每个归档的摘要，展开依赖 Store，再通过 `pnpm install --prod --frozen-lockfile --offline` 重建 `node_modules`；成功后删除临时展开的 Store 与复制出的归档。发布时把约 35,000 个 Store 小文件压缩成一个应用资源，既减小安装体积，也避免 Tauri 打包时受到平台链接影响。macOS 构建把 App/Updater、DMG、App/Updater 分成三个阶段，避免 Finder 的 DMG 美化失败连带丢失已签名的更新产物。
+复用宿主 Node 时会同时检查受支持版本与原生 CPU 架构。YourBuddy 不接管全局 pnpm，而是安装应用内嵌的固定 pnpm Package。Bootstrap 先针对 pnpm 的正常用户 Store 执行冻结生产安装；只有内容缺失才激活签名 Store 组件，并通过显式 Store Path 重复同一个 Offline Install。宿主 Node 不兼容或缺失时同样只激活签名 Node 组件。Harbor 在没有 Python 时仍可发现；用户明确安装签名 Harbor 组件前，命令 Wrapper 会返回 `HARBOR_RUNTIME_NOT_READY`。
 
 应用只在 Host 进程树内前置其私有的 `dsh`、Node 与 pnpm Shim。它不会覆盖用户的全局 `dsh` 命令或 Shell Profile；只有开发者显式设置 `YOURBUDDY_PERSIST_DSH_CLI=1` 启动时才会持久化。仓库 workspace 与隔离 Web Profile 都设置 `dangerouslyAllowAllBuilds: true`，因此依赖生命周期脚本无需单独经过 pnpm 审批；通用 DSH Profile 保留各自的构建策略。产品插件 Overlay 会按包名复用已经激活的标准 Profile Bundle，只有不存在先前挂载时才启用名称唯一的内置 Fallback，因此用户安装过的 Codex Subagent、Harbor、Codex Auth、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace、Personal Workbench 或 Oil Creator Bundle 不会产生重复 Loader ID。升级时，原生启动链路还会修复这项 Web Profile 策略，只重绑仍指向本应用旧内容寻址 Harness Tree 的 YourBuddy 托管 `link:` 依赖，并在任一操作改变托管状态时执行标准 Profile 安装；Registry 依赖以及 YourBuddy 应用数据目录之外的链接仍归用户所有，且不会被修改。
 
@@ -93,4 +93,4 @@ pnpm release:yourbuddy -- X.Y.Z
 
 当前目标固定为 `aarch64-apple-darwin`；发布流水线有意不包含 Windows、Intel macOS 或 Linux 矩阵。
 
-macOS arm64 发布流水线会校验 Tag 与所有桌面版本真源的一致性，安装冻结依赖，并直接构建已提交的 Harness、App、DMG 与带签名的更新产物，不刷新产品 Channel，也不重复推送前测试。随后，流水线会把便携式 Runtime 移出应用 Bundle，故意破坏原始 Python Home 引用，并要求 `harbor --version` 与 `harbor-dsh --help` 都成功，之后才计算校验和并发布产物。这个打包后 Runtime 冒烟测试会继续保留，因为它验证的是实际发布字节，而不是源码树。
+macOS arm64 发布流水线会校验 Tag 与所有桌面版本真源的一致性，构建并签署一份组件 Manifest，再用同一组件集合生成 Bootstrap 与 Offline DMG，并随 Size Report 发布组件 Archive。Bootstrap DMG 超过 30,000,000 字节，或包含 Harness Tree、Node Archive、pnpm Store、Harbor Runtime、Offline Seed 时会直接拒绝发布。`latest.json` 只指向 Bootstrap Updater Payload。流水线还会搬移公开 Harbor 组件并运行两个 Entry Point，随后才为全部制品计算校验和并发布。

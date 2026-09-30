@@ -2,6 +2,7 @@ use std::fs::{self, File};
 use std::io::{copy, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 use flate2::read::GzDecoder;
@@ -11,6 +12,7 @@ use tar::Archive;
 use zip::ZipArchive;
 
 use super::boot_log;
+use super::components::ComponentManager;
 use super::config::{
     dev_launch_mode, node_mirror_base, npm_registry, BUNDLED_NODE_ARCHIVE, BUNDLED_NODE_SHA256,
     BUNDLED_PNPM_ARCHIVE, BUNDLED_PNPM_SHA512, BUNDLED_TOOLCHAIN_DIR, DEFAULT_NODE_VERSION,
@@ -64,6 +66,7 @@ pub(crate) struct NodeArchiveSpec {
 /// Ensure bundled harness + Node + pnpm deps exist; mirror-fetch only build tools.
 pub async fn ensure_runtime(
     bundled_source: Option<PathBuf>,
+    components: Option<Arc<ComponentManager>>,
     network_proxy: ResolvedNetworkProxy,
     progress: impl Fn(ProvisionEvent) + Send + Sync + 'static,
 ) -> Result<RuntimePaths, String> {
@@ -135,7 +138,11 @@ pub async fn ensure_runtime(
     progress(ProvisionEvent::Status(toolchain_status(&toolchain)));
 
     let mut node_binary = toolchain.node.unwrap_or_else(|| preferred_node.clone());
-    let mut pnpm_binary = toolchain.pnpm.unwrap_or_else(|| preferred_pnpm.clone());
+    let mut pnpm_binary = if components.is_some() {
+        preferred_pnpm.clone()
+    } else {
+        toolchain.pnpm.unwrap_or_else(|| preferred_pnpm.clone())
+    };
 
     boot_log::info("provision starting: seed harness + node + pnpm install");
     if let Err(error) = fs::create_dir_all(&runtime_root) {
@@ -180,10 +187,16 @@ pub async fn ensure_runtime(
             DEFAULT_NODE_VERSION,
         )));
         progress(ProvisionEvent::Progress(15));
-        let bundled_result = bundled_toolchain
-            .as_deref()
-            .ok_or_else(|| "bundled toolchain directory is missing".to_string())
-            .and_then(|root| install_bundled_node(root, &node_dir, DEFAULT_NODE_VERSION));
+        let bundled_result = if let Some(manager) = components.as_ref() {
+            manager.ensure("node").await.map(|root| {
+                node_binary = node_binary_path(&root);
+            })
+        } else {
+            bundled_toolchain
+                .as_deref()
+                .ok_or_else(|| "bundled toolchain directory is missing".to_string())
+                .and_then(|root| install_bundled_node(root, &node_dir, DEFAULT_NODE_VERSION))
+        };
         if let Err(bundled_error) = bundled_result {
             boot_log::info(&format!("bundled Node fallback: {bundled_error}"));
             if let Err(error) =
@@ -198,7 +211,7 @@ pub async fn ensure_runtime(
             } else {
                 node_binary = preferred_node;
             }
-        } else {
+        } else if components.is_none() {
             node_binary = preferred_node;
         }
     }
@@ -215,11 +228,17 @@ pub async fn ensure_runtime(
             DEFAULT_PNPM_VERSION,
         )));
         progress(ProvisionEvent::Progress(35));
+        let component_pnpm = components.as_ref().map(|manager| manager.pnpm_archive());
+        let legacy_pnpm = bundled_toolchain
+            .as_deref()
+            .map(|root| root.join(BUNDLED_PNPM_ARCHIVE))
+            .filter(|path| path.is_file());
+        let bundled_pnpm = component_pnpm.as_deref().or(legacy_pnpm.as_deref());
         if let Err(error) = install_pnpm(
             &node_binary,
             &pnpm_home,
             DEFAULT_PNPM_VERSION,
-            bundled_toolchain.as_deref(),
+            bundled_pnpm,
             &network_proxy,
         ) {
             boot_log::info(&format!("pnpm install fallback: {error}"));
@@ -237,13 +256,40 @@ pub async fn ensure_runtime(
         i18n::t(Msg::StatusInstallDeps).into(),
     ));
     progress(ProvisionEvent::Progress(50));
-    if let Err(error) =
-        pnpm_install_harness(&node_binary, &pnpm_binary, &harness_root, &network_proxy)
-    {
+    let initial_store = if components.is_none() {
+        prepare_offline_pnpm_store(&harness_root)?;
+        Some(harness_root.join(OFFLINE_PNPM_STORE_DIR))
+    } else {
+        None
+    };
+    let mut install_result = pnpm_install_harness(
+        &node_binary,
+        &pnpm_binary,
+        &harness_root,
+        initial_store.as_deref(),
+        &network_proxy,
+    );
+    if install_result.is_err() {
+        if let Some(manager) = components.as_ref() {
+            let _ = fs::remove_dir_all(harness_root.join("node_modules"));
+            let store = manager.ensure("pnpmStore").await?;
+            install_result = pnpm_install_harness(
+                &node_binary,
+                &pnpm_binary,
+                &harness_root,
+                Some(&store),
+                &network_proxy,
+            );
+        }
+    }
+    if let Err(error) = install_result {
         boot_log::info(&format!("pnpm install harness fallback: {error}"));
         if !harness_root.join("node_modules").join(".pnpm").is_dir() && !is_recoverable_io(&error) {
             return Err(error);
         }
+    }
+    if components.is_none() {
+        cleanup_offline_pnpm_store(&harness_root);
     }
 
     if !cli_entry.is_file() {
@@ -949,7 +995,7 @@ fn install_pnpm(
     node_binary: &Path,
     pnpm_home: &Path,
     version: &str,
-    bundled_toolchain: Option<&Path>,
+    bundled_archive: Option<&Path>,
     network_proxy: &ResolvedNetworkProxy,
 ) -> Result<(), String> {
     if pnpm_home.exists() {
@@ -957,8 +1003,7 @@ fn install_pnpm(
     }
     fs::create_dir_all(pnpm_home).map_err(|e| e.to_string())?;
 
-    let bundled_archive = bundled_toolchain.map(|root| root.join(BUNDLED_PNPM_ARCHIVE));
-    let spec = if let Some(archive) = bundled_archive.as_ref().filter(|path| path.is_file()) {
+    let spec = if let Some(archive) = bundled_archive.filter(|path| path.is_file()) {
         let actual = file_sha512(archive)?;
         if actual != BUNDLED_PNPM_SHA512 {
             return Err(format!(
@@ -969,7 +1014,7 @@ fn install_pnpm(
     } else {
         format!("pnpm@{version}")
     };
-    let offline = bundled_archive.as_ref().is_some_and(|path| path.is_file());
+    let offline = bundled_archive.is_some_and(|path| path.is_file());
     let registry = npm_registry();
     let status = if let Some(npm_cli) = find_npm_cli(node_binary) {
         let mut cmd = Command::new(node_binary);
@@ -1064,26 +1109,24 @@ fn configure_pnpm_install(
     cmd: &mut Command,
     node_binary: &Path,
     harness_root: &Path,
+    store: Option<&Path>,
 ) -> Result<(), String> {
-    let store = harness_root.join(OFFLINE_PNPM_STORE_DIR);
-    if !store.is_dir() {
-        return Err(format!(
-            "offline pnpm store is missing: {}",
-            store.display()
-        ));
-    }
     cmd.arg("--pm-on-fail=ignore")
         .arg("install")
         .arg("--prod")
         .arg("--frozen-lockfile")
         .arg("--offline")
         .arg("--trust-lockfile")
-        .arg("--store-dir")
-        .arg(&store)
         .current_dir(harness_root)
         .env_remove("CI")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    if let Some(store) = store {
+        if !store.is_dir() {
+            return Err(format!("offline pnpm store is missing: {}", store.display()));
+        }
+        cmd.arg("--store-dir").arg(store);
+    }
     add_node_to_path(cmd, node_binary)?;
     hide_console(cmd);
     Ok(())
@@ -1153,9 +1196,9 @@ fn pnpm_install_harness(
     node_binary: &Path,
     pnpm_binary: &Path,
     harness_root: &Path,
+    store: Option<&Path>,
     network_proxy: &ResolvedNetworkProxy,
 ) -> Result<(), String> {
-    prepare_offline_pnpm_store(harness_root)?;
     let mut cmd = if let Some(entry) = pnpm_js_entry(pnpm_binary) {
         let mut cmd = Command::new(node_binary);
         cmd.arg(entry);
@@ -1165,7 +1208,7 @@ fn pnpm_install_harness(
     } else {
         return Err(format!("pnpm entry is missing: {}", pnpm_binary.display()));
     };
-    configure_pnpm_install(&mut cmd, node_binary, harness_root)?;
+    configure_pnpm_install(&mut cmd, node_binary, harness_root, store)?;
     apply_to_command(&mut cmd, network_proxy);
 
     let mut child = cmd
@@ -1185,8 +1228,6 @@ fn pnpm_install_harness(
             status
         ));
     }
-
-    cleanup_offline_pnpm_store(harness_root);
 
     Ok(())
 }
@@ -1239,9 +1280,10 @@ mod tests {
     fn offline_install_uses_only_the_pinned_manager_and_reviewed_lockfile() {
         let dir = std::env::temp_dir().join(format!("dsh-pnpm-args-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(dir.join(".yourbuddy-pnpm-store")).unwrap();
+        let store = dir.join(".yourbuddy-pnpm-store");
+        fs::create_dir_all(&store).unwrap();
         let mut command = Command::new("pnpm");
-        configure_pnpm_install(&mut command, Path::new("node"), &dir).unwrap();
+        configure_pnpm_install(&mut command, Path::new("node"), &dir, Some(&store)).unwrap();
         let args: Vec<String> = command
             .get_args()
             .map(|arg| arg.to_string_lossy().into_owned())
@@ -1259,6 +1301,22 @@ mod tests {
         );
         assert_eq!(args[6], "--store-dir");
         assert_eq!(Path::new(&args[7]), dir.join(".yourbuddy-pnpm-store"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn bootstrap_install_checks_the_user_store_before_component_fallback() {
+        let dir = std::env::temp_dir().join(format!("dsh-user-store-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let mut command = Command::new("pnpm");
+        configure_pnpm_install(&mut command, Path::new("node"), &dir, None).unwrap();
+        let args: Vec<String> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert!(args.contains(&"--offline".to_string()));
+        assert!(!args.contains(&"--store-dir".to_string()));
         let _ = fs::remove_dir_all(&dir);
     }
 

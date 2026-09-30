@@ -714,6 +714,9 @@ function requestDesktopUpdate(options = {}) {
 function requestDesktopRestart(options = {}) {
   return requestDesktopLifecycle("restart", options);
 }
+function requestHarborInstall(options = {}) {
+  return requestDesktopLifecycle("install-harbor", options);
+}
 
 // src/client/ApplicationLifecycleRow.tsx
 var import_jsx_runtime3 = require("react/jsx-runtime");
@@ -742,7 +745,18 @@ function ApplicationLifecycleRow({ t }) {
       setStatus("restart-error");
     }
   };
-  const busy = status === "checking" || status === "restarting";
+  const installHarbor = async () => {
+    setStatus("harbor-installing");
+    setDetail("");
+    try {
+      await requestHarborInstall();
+      setStatus("harbor-result");
+    } catch (error) {
+      setDetail(error instanceof Error ? error.message : String(error));
+      setStatus("harbor-error");
+    }
+  };
+  const busy = status === "checking" || status === "restarting" || status === "harbor-installing";
   const shellUnavailable = detail === "desktop-shell-unavailable";
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("section", { className: "dpw-card", "aria-labelledby": "dpw-lifecycle-title", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "dpw-heading", children: [
@@ -752,9 +766,11 @@ function ApplicationLifecycleRow({ t }) {
     !available && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status", children: t("lifecycle.desktop-only") }),
     status === "checking" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status", role: "status", children: t("lifecycle.update.checking") }),
     status === "restarting" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status", role: "status", children: t("lifecycle.restart.restarting") }),
+    status === "harbor-installing" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status", role: "status", children: t("lifecycle.harbor.installing") }),
     status === "update-result" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status dpw-success", role: "status", children: detail }),
-    (status === "update-error" || status === "restart-error") && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "dpw-error", role: "alert", children: [
-      t(shellUnavailable ? "lifecycle.shell-unavailable" : status === "update-error" ? "lifecycle.update.error" : "lifecycle.restart.error"),
+    status === "harbor-result" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status dpw-success", role: "status", children: t("lifecycle.harbor.installed") }),
+    (status === "update-error" || status === "restart-error" || status === "harbor-error") && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "dpw-error", role: "alert", children: [
+      t(shellUnavailable ? "lifecycle.shell-unavailable" : status === "update-error" ? "lifecycle.update.error" : status === "harbor-error" ? "lifecycle.harbor.error" : "lifecycle.restart.error"),
       shellUnavailable ? "" : ` ${detail}`
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "dpw-actions", children: [
@@ -780,6 +796,18 @@ function ApplicationLifecycleRow({ t }) {
             void restart();
           },
           children: t(status === "restarting" ? "lifecycle.restart.restarting-action" : "lifecycle.restart.action")
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        "button",
+        {
+          type: "button",
+          className: "dpw-button",
+          disabled: !available || busy,
+          onClick: () => {
+            void installHarbor();
+          },
+          children: t(status === "harbor-installing" ? "lifecycle.harbor.installing-action" : "lifecycle.harbor.action")
         }
       )
     ] })
@@ -1666,7 +1694,12 @@ var zh = {
   "lifecycle.restart.action": "\u91CD\u542F YourBuddy",
   "lifecycle.restart.restarting-action": "\u6B63\u5728\u91CD\u542F\u2026",
   "lifecycle.restart.restarting": "\u6B63\u5728\u505C\u6B62\u79C1\u6709 Host \u5E76\u91CD\u542F YourBuddy\u2026",
-  "lifecycle.restart.error": "\u91CD\u542F\u5931\u8D25\uFF1A"
+  "lifecycle.restart.error": "\u91CD\u542F\u5931\u8D25\uFF1A",
+  "lifecycle.harbor.action": "\u5B89\u88C5 Harbor \u8FD0\u884C\u65F6",
+  "lifecycle.harbor.installing-action": "\u6B63\u5728\u5B89\u88C5 Harbor\u2026",
+  "lifecycle.harbor.installing": "\u6B63\u5728\u4E0B\u8F7D\u5E76\u542F\u7528 Harbor \u8FD0\u884C\u65F6\u3002\u5B8C\u6210\u524D\u4E0D\u4F1A\u5F71\u54CD\u5176\u4ED6\u5DE5\u4F5C\u53F0\u529F\u80FD\u3002",
+  "lifecycle.harbor.installed": "Harbor \u8FD0\u884C\u65F6\u5DF2\u5B89\u88C5\uFF0C\u53EF\u4EE5\u4F7F\u7528\u76F8\u5173\u5DE5\u5177\u3002",
+  "lifecycle.harbor.error": "Harbor \u8FD0\u884C\u65F6\u5B89\u88C5\u5931\u8D25\uFF1A"
 };
 var en = {
   "help.title": "Help and guides",
@@ -1788,7 +1821,12 @@ var en = {
   "lifecycle.restart.action": "Restart YourBuddy",
   "lifecycle.restart.restarting-action": "Restarting\u2026",
   "lifecycle.restart.restarting": "Stopping the private Host and restarting YourBuddy\u2026",
-  "lifecycle.restart.error": "Restart failed:"
+  "lifecycle.restart.error": "Restart failed:",
+  "lifecycle.harbor.action": "Install Harbor runtime",
+  "lifecycle.harbor.installing-action": "Installing Harbor\u2026",
+  "lifecycle.harbor.installing": "Downloading and activating the Harbor runtime. Other workbench features remain available.",
+  "lifecycle.harbor.installed": "The Harbor runtime is installed and its tools are ready.",
+  "lifecycle.harbor.error": "Harbor runtime installation failed:"
 };
 
 // src/client/styles.ts

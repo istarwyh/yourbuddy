@@ -301,6 +301,7 @@
         || typeof value.requestId !== 'string'
         || !desktopLifecycleRequestId.test(value.requestId)) return false
       if (value.type === 'check-update-request') return 'check-update'
+      if (value.type === 'install-harbor-request') return 'install-harbor'
       if (value.type === 'restart-request') return 'restart'
       return false
     }
@@ -533,6 +534,9 @@
         if (typeof invoke !== 'function') throw new Error('Desktop lifecycle bridge is unavailable')
         if (lifecycleAction === 'check-update') {
           response.message = await invoke('check_for_updates')
+        }
+        else if (lifecycleAction === 'install-harbor') {
+          response.message = await invoke('install_harbor_component')
         }
         else {
           await invoke('restart_app')

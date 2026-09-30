@@ -1,5 +1,6 @@
 pub mod boot_log;
 pub mod config;
+pub mod components;
 pub mod env_path;
 pub mod host_env;
 pub mod io_fallback;

@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://127.0.0.1:1430",
     "beforeDevCommand": "node scripts/prepare-dist.mjs && node scripts/serve-dist.mjs",
-    "beforeBuildCommand": "node scripts/prepare-dist.mjs"
+    "beforeBuildCommand": "node scripts/prepare-bootstrap-shell.mjs"
   },
   "app": {
     "withGlobalTauri": true,
@@ -57,9 +57,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../bundled/harness": "harness-source",
-      "../bundled/toolchain": "toolchain",
-      "../bundled/yourbuddy-runtime": "yourbuddy-runtime",
+      "../component-channel": "component-channel",
       "../overlay/desktop-notify": "desktop-overlay",
       "../sounds/complete.wav": "complete.wav",
       "icons/icon.ico": "yourbuddy-icon-0.3.24.ico"

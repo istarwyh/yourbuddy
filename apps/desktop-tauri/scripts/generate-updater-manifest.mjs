@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const PLATFORM_ASSET_SUFFIXES = {
-  'darwin-aarch64': 'macos-arm64.app.tar.gz',
+  'darwin-aarch64': 'bootstrap-macos-arm64.app.tar.gz',
 }
 
 const OPTIONS = {

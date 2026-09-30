@@ -14,7 +14,7 @@ YourBuddy 将小型 Bootstrap DMG 作为默认 macOS 下载，同时保留单独
 
 本文定义一次完整发布交付。Bootstrap 发布、Offline 发布、组件生成、Runtime 激活、迁移、Updater 行为、Release 证据和用户文档在同一个 Release 中落地；任何部分都不推迟到后续打包阶段。
 
-状态：2026-09-30 编制的拟实施目标。当前桌面实现仍是[桌面 README](../../../apps/desktop-tauri/README.zh.md) 所述的自包含发行方式。
+状态：2026-10-01 采纳为 0.4.0 交付的实施约定。发布验收把 30,000,000 字节作为 Bootstrap DMG 的含上限。
 
 ## 目录
 

@@ -4,6 +4,7 @@ import {
   DESKTOP_LIFECYCLE_VERSION,
   isDesktopLifecycleAvailable,
   readDesktopLifecycleResponse,
+  requestHarborInstall,
   requestDesktopRestart,
   requestDesktopUpdate,
   type DesktopLifecycleAction,
@@ -146,6 +147,27 @@ describe('desktop lifecycle browser bridge', () => {
     target.emit(response('restart', 'restart_1', { ok: false, error: 'restart unavailable' }))
     await expect(result).rejects.toThrow('restart unavailable')
     expect(target.listeners.size).toBe(0)
+  })
+
+  it('posts the fixed explicit Harbor installation request', async () => {
+    const target = new FakeWindow()
+    const result = requestHarborInstall({
+      target: target as unknown as Window,
+      requestId: 'harbor_1',
+      handshakeTimeoutMs: 1_000,
+    })
+    expect(target.parent.messages[0]).toEqual({
+      message: {
+        channel: DESKTOP_LIFECYCLE_CHANNEL,
+        version: DESKTOP_LIFECYCLE_VERSION,
+        type: 'install-harbor-request',
+        requestId: 'harbor_1',
+      },
+      targetOrigin: '*',
+    })
+    target.emit(accepted('install-harbor', 'harbor_1'))
+    target.emit(response('install-harbor', 'harbor_1', { ok: true, message: 'installed' }))
+    await expect(result).resolves.toBe('installed')
   })
 
   it('creates a request id without requiring crypto.randomUUID', async () => {

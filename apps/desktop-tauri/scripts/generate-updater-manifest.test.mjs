@@ -19,7 +19,7 @@ const releaseTag = `yourbuddy-v${version}`
 const pubDate = '2026-08-14T00:00:00.000Z'
 
 const expectedAssets = {
-  'darwin-aarch64': `yourbuddy-${version}-macos-arm64.app.tar.gz`,
+  'darwin-aarch64': `yourbuddy-${version}-bootstrap-macos-arm64.app.tar.gz`,
 }
 
 async function withTempDir(run) {

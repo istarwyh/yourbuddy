@@ -10,7 +10,7 @@ const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 const DEFAULT_HANDSHAKE_TIMEOUT_MS = 5_000
 
 /** Lifecycle actions exposed by the trusted desktop shell. */
-export type DesktopLifecycleAction = 'check-update' | 'restart'
+export type DesktopLifecycleAction = 'check-update' | 'install-harbor' | 'restart'
 
 interface DesktopLifecycleAccepted {
   channel: typeof DESKTOP_LIFECYCLE_CHANNEL
@@ -166,4 +166,9 @@ export function requestDesktopUpdate(options: DesktopLifecycleRequestOptions = {
 /** Request a full YourBuddy process and private Host restart. */
 export function requestDesktopRestart(options: DesktopLifecycleRequestOptions = {}): Promise<string> {
   return requestDesktopLifecycle('restart', options)
+}
+
+/** Request explicit installation of the optional Harbor runtime. */
+export function requestHarborInstall(options: DesktopLifecycleRequestOptions = {}): Promise<string> {
+  return requestDesktopLifecycle('install-harbor', options)
 }

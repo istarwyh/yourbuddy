@@ -14,7 +14,7 @@ The native component manager resolves the exact release components into content-
 
 This document defines one complete release delivery. Bootstrap publication, Offline publication, component generation, runtime activation, migration, updater behavior, release evidence, and user documentation land in the same release; none is deferred to a later packaging phase.
 
-Status: proposed implementation target, prepared on 2026-09-30. The current desktop implementation remains the self-contained distribution described by the [desktop README](../../../apps/desktop-tauri/README.md).
+Status: implementation contract for the 0.4.0 delivery, adopted on 2026-10-01. Release acceptance treats 30,000,000 bytes as the inclusive Bootstrap DMG ceiling.
 
 ## Table of Contents
 

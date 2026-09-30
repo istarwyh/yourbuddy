@@ -1,23 +1,11 @@
-//! Resolve the product-owned Harbor runtime and workspace bundled with YourBuddy.
+//! Resolve product workspace and restricted Harbor component helper wrappers.
 
-use serde::Deserialize;
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use crate::runtime::app_data_root;
-
-/// Tauri resource directory containing portable CPython and Harbor.
-pub const PRODUCT_RUNTIME_RESOURCE: &str = "yourbuddy-runtime";
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ProductManifest {
-    platform: String,
-    arch: String,
-    integration_version: String,
-    harbor_bin: String,
-    harbor_dsh_bin: String,
-}
 
 /// Absolute paths injected into the product's Harbor Cordis plugin row.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -28,41 +16,8 @@ pub struct ProductRuntime {
     pub integration_version: String,
 }
 
-/// Resolve the bundled macOS arm64 runtime and create YourBuddy's workspace.
-pub fn resolve(resource_dir: Option<&Path>) -> Result<ProductRuntime, String> {
-    let root = resolve_source(resource_dir);
-    let manifest_path = root.join("manifest.json");
-    let raw = fs::read_to_string(&manifest_path).map_err(|e| {
-        format!(
-            "YourBuddy runtime manifest missing at {}: {e}",
-            manifest_path.display()
-        )
-    })?;
-    let manifest: ProductManifest = serde_json::from_str(&raw).map_err(|e| {
-        format!(
-            "YourBuddy runtime manifest invalid at {}: {e}",
-            manifest_path.display()
-        )
-    })?;
-
-    if manifest.platform != "darwin" || manifest.arch != "arm64" {
-        return Err(format!(
-            "YourBuddy runtime targets darwin-arm64, found {}-{}",
-            manifest.platform, manifest.arch
-        ));
-    }
-
-    let harbor_bin = root.join(&manifest.harbor_bin);
-    let harbor_dsh_bin = root.join(&manifest.harbor_dsh_bin);
-    for executable in [&harbor_bin, &harbor_dsh_bin] {
-        if !executable.is_file() {
-            return Err(format!(
-                "YourBuddy bundled executable missing: {}",
-                executable.display()
-            ));
-        }
-    }
-
+/// Create YourBuddy's workspace and stable wrappers for the lazy Harbor component.
+pub fn resolve(_resource_dir: Option<&Path>) -> Result<ProductRuntime, String> {
     let project_root = app_data_root()?.join("workspace");
     fs::create_dir_all(project_root.join("jobs")).map_err(|e| {
         format!(
@@ -71,47 +26,31 @@ pub fn resolve(resource_dir: Option<&Path>) -> Result<ProductRuntime, String> {
         )
     })?;
 
+    let helper_dir = app_data_root()?.join("component-helper");
+    fs::create_dir_all(&helper_dir)
+        .map_err(|error| format!("cannot create Harbor component helper: {error}"))?;
+    let executable = std::env::current_exe()
+        .map_err(|error| format!("cannot resolve YourBuddy executable: {error}"))?;
+    let harbor_bin = write_helper(&helper_dir, &executable, "harbor")?;
+    let harbor_dsh_bin = write_helper(&helper_dir, &executable, "harbor-dsh")?;
     Ok(ProductRuntime {
         project_root,
         harbor_bin,
         harbor_dsh_bin,
-        integration_version: manifest.integration_version,
+        integration_version: env!("CARGO_PKG_VERSION").into(),
     })
 }
 
-fn resolve_source(resource_dir: Option<&Path>) -> PathBuf {
-    if let Some(dir) = resource_dir {
-        let bundled = dir.join(PRODUCT_RUNTIME_RESOURCE);
-        if bundled.join("manifest.json").is_file() {
-            return bundled;
-        }
-    }
-
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("bundled")
-        .join(PRODUCT_RUNTIME_RESOURCE)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::resolve;
-    use std::fs;
-
-    #[test]
-    fn rejects_a_runtime_for_another_platform() {
-        let root =
-            std::env::temp_dir().join(format!("yourbuddy-product-runtime-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&root);
-        let runtime = root.join("yourbuddy-runtime");
-        fs::create_dir_all(&runtime).unwrap();
-        fs::write(
-            runtime.join("manifest.json"),
-            r#"{"platform":"linux","arch":"x64","integrationVersion":"0.7.3","harborBin":"venv/bin/harbor","harborDshBin":"venv/bin/harbor-dsh"}"#,
-        )
-        .unwrap();
-
-        assert!(resolve(Some(&root)).unwrap_err().contains("darwin-arm64"));
-        let _ = fs::remove_dir_all(&root);
-    }
+fn write_helper(root: &Path, executable: &Path, entry: &str) -> Result<PathBuf, String> {
+    let path = root.join(entry);
+    let executable = executable.display().to_string().replace('"', "\\\"");
+    fs::write(
+        &path,
+        format!("#!/bin/sh\nexec \"{executable}\" --yourbuddy-component-helper run {entry} \"$@\"\n"),
+    )
+    .map_err(|error| format!("cannot write Harbor component helper: {error}"))?;
+    #[cfg(unix)]
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o700))
+        .map_err(|error| format!("cannot make Harbor component helper executable: {error}"))?;
+    Ok(path)
 }

@@ -125,6 +125,11 @@ export const zh = {
   'lifecycle.restart.restarting-action': '正在重启…',
   'lifecycle.restart.restarting': '正在停止私有 Host 并重启 YourBuddy…',
   'lifecycle.restart.error': '重启失败：',
+  'lifecycle.harbor.action': '安装 Harbor 运行时',
+  'lifecycle.harbor.installing-action': '正在安装 Harbor…',
+  'lifecycle.harbor.installing': '正在下载并启用 Harbor 运行时。完成前不会影响其他工作台功能。',
+  'lifecycle.harbor.installed': 'Harbor 运行时已安装，可以使用相关工具。',
+  'lifecycle.harbor.error': 'Harbor 运行时安装失败：',
 } as const
 
 /** English settings copy. */
@@ -249,4 +254,9 @@ export const en: Record<PersonalWorkbenchKey, string> = {
   'lifecycle.restart.restarting-action': 'Restarting…',
   'lifecycle.restart.restarting': 'Stopping the private Host and restarting YourBuddy…',
   'lifecycle.restart.error': 'Restart failed:',
+  'lifecycle.harbor.action': 'Install Harbor runtime',
+  'lifecycle.harbor.installing-action': 'Installing Harbor…',
+  'lifecycle.harbor.installing': 'Downloading and activating the Harbor runtime. Other workbench features remain available.',
+  'lifecycle.harbor.installed': 'The Harbor runtime is installed and its tools are ready.',
+  'lifecycle.harbor.error': 'Harbor runtime installation failed:',
 }

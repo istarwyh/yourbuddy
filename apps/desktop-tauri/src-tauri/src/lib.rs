@@ -1,5 +1,6 @@
 mod chrome;
 mod cli_shim;
+mod component_helper;
 mod desktop_settings;
 mod desktop_shell;
 mod external_links;
@@ -16,6 +17,7 @@ mod window_layout;
 use desktop_settings::AgentEnvironment;
 use i18n::Msg;
 use runtime::boot_log;
+use runtime::components::ComponentManager;
 use runtime::config::BUNDLED_HARNESS_DIR;
 use runtime::io_fallback::is_recoverable_io;
 use runtime::provision::{ensure_runtime, read_bundle_hash, try_recover_paths};
@@ -38,6 +40,9 @@ fn app_context() -> tauri::Context<tauri::Wry> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if component_helper::should_run() {
+        std::process::exit(component_helper::run());
+    }
     if cli_shim::should_run_as_cli() {
         std::process::exit(cli_shim::run());
     }
@@ -57,6 +62,7 @@ pub fn run() {
             network_proxy::select_ca_certificate,
             network_proxy::save_network_proxy_settings,
             network_proxy::test_network_proxy_settings,
+            install_harbor_component,
             updater::check_for_updates
         ])
         .setup(|app| {
@@ -102,6 +108,20 @@ pub fn run() {
             RunEvent::Exit => chrome::stop_host(app),
             _ => {}
         });
+}
+
+/// Download and activate the optional Harbor component after a user action.
+#[tauri::command]
+async fn install_harbor_component(app: AppHandle) -> Result<String, String> {
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|error| format!("component resources are unavailable: {error}"))?;
+    let settings = desktop_settings::load();
+    let proxy = network_proxy::resolve(&settings.network_proxy)?;
+    let manager = ComponentManager::load(&resource_dir, &proxy)?;
+    manager.ensure("harbor").await?;
+    Ok("Harbor runtime installed".into())
 }
 
 fn resolve_bundled_source(app: &AppHandle) -> Option<PathBuf> {
@@ -151,11 +171,24 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     let settings = desktop_settings::load();
     let network_proxy = network_proxy::resolve(&settings.network_proxy)?;
     network_proxy::log_active(&network_proxy);
+    let resource_dir = app.path().resource_dir().ok();
+    let mut bundled = bundled;
+    let components = if let Some(resource_dir) = resource_dir
+        .as_deref()
+        .filter(|path| path.join("component-channel/components.json").is_file())
+    {
+        let manager = Arc::new(ComponentManager::load(resource_dir, &network_proxy)?);
+        bundled = Some(manager.ensure_startup().await?);
+        Some(manager)
+    } else {
+        None
+    };
     let mut runtime = match boot_kind(&settings) {
         AgentEnvironment::Windows => {
             boot_windows_runtime(
                 app.clone(),
                 bundled,
+                components,
                 notify.as_ref(),
                 Arc::clone(&progress),
                 network_proxy,
@@ -207,11 +240,12 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
 async fn boot_windows_runtime(
     app: AppHandle,
     bundled: Option<PathBuf>,
+    components: Option<Arc<ComponentManager>>,
     notify: Option<&notify::NotifyHandle>,
     progress: Arc<dyn Fn(ProvisionEvent) + Send + Sync>,
     network_proxy: network_proxy::ResolvedNetworkProxy,
 ) -> Result<DesktopRuntime, String> {
-    let paths = match ensure_runtime(bundled.clone(), network_proxy.clone(), {
+    let paths = match ensure_runtime(bundled.clone(), components, network_proxy.clone(), {
         let progress = Arc::clone(&progress);
         move |event| progress(event)
     })

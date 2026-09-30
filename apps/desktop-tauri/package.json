@@ -14,6 +14,7 @@
     "prepare:toolchain": "node scripts/prepare-managed-toolchain.mjs",
     "sync:product-plugin": "node scripts/sync-product-plugin.mjs",
     "prepare:dist": "node scripts/prepare-dist.mjs",
+    "prepare:bootstrap-shell": "node scripts/prepare-bootstrap-shell.mjs",
     "dev": "tauri dev",
     "dev:local": "cross-env DSH_DESKTOP_LAUNCH=local tauri dev",
     "test:update-manifest": "node --test scripts/generate-updater-manifest.test.mjs",
@@ -27,8 +28,12 @@
     "test:release": "pnpm run test:update-manifest && pnpm run test:release-version && pnpm run test:bundle && pnpm run test:offline && pnpm run test:overlay && pnpm run test:product-refresh && pnpm run test:prepare-release && node --test scripts/publish-release.test.mjs",
     "verify:release-version": "node scripts/verify-release-version.mjs",
     "publish:release": "node scripts/publish-release.mjs",
-    "build": "tauri build --target aarch64-apple-darwin --bundles app && tauri bundle --target aarch64-apple-darwin --bundles dmg --ci",
+    "build": "pnpm run build:bootstrap",
+    "build:bootstrap": "tauri build --target aarch64-apple-darwin --bundles app && tauri bundle --target aarch64-apple-darwin --bundles dmg --ci",
+    "build:offline": "tauri build --target aarch64-apple-darwin --bundles app --config src-tauri/tauri.offline.conf.json && tauri bundle --target aarch64-apple-darwin --bundles dmg --config src-tauri/tauri.offline.conf.json --ci",
     "prepare:product-runtime": "node scripts/prepare-yourbuddy-runtime.mjs",
+    "build:components": "node scripts/build-bootstrap-components.mjs",
+    "test:components": "node --test scripts/build-bootstrap-components.test.mjs",
     "build:win": "tauri build --bundles nsis"
   },
   "devDependencies": {

@@ -10,3 +10,8 @@ src-tauri/icons/ios/
 src-tauri/icons/Square*Logo.png
 src-tauri/icons/StoreLogo.png
 .cache/
+component-channel/*
+!component-channel/.gitkeep
+component-release/
+component-seeds/*
+!component-seeds/.gitkeep

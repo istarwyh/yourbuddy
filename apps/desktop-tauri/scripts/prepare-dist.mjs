@@ -50,3 +50,10 @@ if (!existsSync(join(root, 'bundled', 'harness', 'yourbuddy-pnpm-store.tar.gz'))
 if (!existsSync(join(root, 'bundled', 'toolchain', 'manifest.json'))) {
   throw new Error('managed Node/pnpm toolchain missing after prepare-managed-toolchain.mjs')
 }
+
+const componentChannel = join(root, 'component-channel')
+mkdirSync(componentChannel, { recursive: true })
+cpSync(
+  join(root, 'bundled', 'toolchain', 'pnpm-11.7.0.tgz'),
+  join(componentChannel, 'pnpm-11.7.0.tgz'),
+)

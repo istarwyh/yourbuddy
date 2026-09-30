@@ -6,13 +6,13 @@ YourBuddy 当前适用于 Apple Silicon 上的 macOS 11 或更高版本。
 
 ## 下载最新版本
 
-打开 [YourBuddy 最新 Release](https://github.com/istarwyh/yourbuddy/releases/latest)，在 **Assets** 中下载 macOS Apple Silicon DMG。GitHub 会让这个 URL 始终指向最新公开 Release，因此本页不需要在每次发布后修改版本链接。
+打开 [YourBuddy 最新 Release](https://github.com/istarwyh/yourbuddy/releases/latest)。推荐下载小型安装包 `yourbuddy-<version>-bootstrap-macos-arm64.dmg`，自动更新也使用这一版本。首次启动不能访问外网时，下载体积更大的 `yourbuddy-<version>-offline-macos-arm64.dmg`。两者安装相同的应用身份与组件版本。
 
 旧版应用也可以使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。正常升级会保留现有 YourBuddy 数据。
 
 ## 桌面包包含什么
 
-默认插件、托管的 Node 与 pnpm 资源、Harbor Python 运行时随包提供。模型访问、在线服务网络以及需要容器的评测流程所用 Docker 仍需准备。目前不支持 Windows、Linux 或 Intel Mac 安装包。
+Bootstrap DMG 携带应用 Shell、默认插件 Manifest 与固定 pnpm Package。首次启动会复用兼容的宿主 Node 与完整的用户 pnpm Store，只下载缺失的签名 Release Component。Harbor 保持可发现，但只有用户明确执行 Harbor 安装操作后才会安装 Python Runtime。Offline DMG 内含相同组件的 Seed。模型访问、在线服务网络以及需要容器的评测流程所用 Docker 仍需准备。目前不支持 Windows、Linux 或 Intel Mac 安装包。
 
 ## 安装限制
 
