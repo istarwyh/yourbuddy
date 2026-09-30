@@ -120,6 +120,24 @@ describe('Session open', () => {
     expect(session.getSnapshot().openError).toMatchObject({ code: 'gateway/internal', message: 'socket died' })
   })
 
+  it('lands a local opening failure in openState=error instead of retaining loading', async ({ mock, start }) => {
+    const session = await sessionBench(mock, start, SID)
+    const open = vi.spyOn(SessionEventStream.prototype, 'open')
+      .mockRejectedValueOnce(new TypeError('invalid assistant baseline'))
+    try {
+      await session.open()
+      expect(session.getSnapshot()).toMatchObject({
+        openState: 'error',
+        openError: {
+          code: 'gateway/internal',
+          message: 'session history failed to open: invalid assistant baseline',
+        },
+      })
+    } finally {
+      open.mockRestore()
+    }
+  })
+
   it('stitches live frames landing right behind the opening snapshot, dropping the page overlap', async ({ mock, start }) => {
     const session = await sessionBench(mock, start, SID)
     const gate = Promise.withResolvers<SessionPage>()

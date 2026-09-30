@@ -2,7 +2,7 @@ import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
 import { isJsonValue, snapshotJsonValue, type JsonValue } from '@deepseek-ai/dsh-util-values'
 
-function objectWithForgedIntrinsicPrototype(revoked = false): Record<string, unknown> {
+function objectWithRealmLikePrototype(revoked = false): Record<string, unknown> {
   const prototype = Object.create(null) as Record<string, unknown>
   const ForgedObject = function ForgedObject(): void {}
   Object.defineProperty(ForgedObject, 'name', { value: 'Object' })
@@ -62,6 +62,7 @@ describe('snapshotJsonValue', () => {
     expect(arraySnapshot).toEqual([2, { ok: true }])
     expect(Object.getPrototypeOf(objectSnapshot)).toBe(Object.prototype)
     expect(Object.getPrototypeOf(arraySnapshot)).toBe(Array.prototype)
+    expect(snapshotJsonValue(objectWithRealmLikePrototype())).toEqual({ value: 1 })
   })
 
   it('reads each object value and array slot once while materializing', () => {
@@ -120,8 +121,7 @@ describe('snapshotJsonValue', () => {
     const symbolObject = { [Symbol('extra')]: true }
     const customPrototype = Object.create(null) as Record<string, unknown>
     const customPrototypeObject = Object.assign(Object.create(customPrototype) as Record<string, unknown>, { value: 1 })
-    const forgedIntrinsicObject = objectWithForgedIntrinsicPrototype()
-    const revokedIntrinsicObject = objectWithForgedIntrinsicPrototype(true)
+    const revokedIntrinsicObject = objectWithRealmLikePrototype(true)
     const forgedPrototype: unknown[] = []
     Object.setPrototypeOf(forgedPrototype, null)
     const forgedArray = [1]
@@ -146,7 +146,6 @@ describe('snapshotJsonValue', () => {
     expect(snapshotJsonValue(hiddenObject)).toBeUndefined()
     expect(snapshotJsonValue(symbolObject)).toBeUndefined()
     expect(snapshotJsonValue(customPrototypeObject)).toBeUndefined()
-    expect(snapshotJsonValue(forgedIntrinsicObject)).toBeUndefined()
     expect(snapshotJsonValue(revokedIntrinsicObject)).toBeUndefined()
     expect(snapshotJsonValue(forgedArray)).toBeUndefined()
     expect(snapshotJsonValue(cyclic)).toBeUndefined()
@@ -221,8 +220,8 @@ describe('isJsonValue', () => {
     const symbolObject = { [Symbol('extra')]: true }
     const customPrototype = Object.create(null) as Record<string, unknown>
     const customPrototypeObject = Object.assign(Object.create(customPrototype) as Record<string, unknown>, { value: 1 })
-    const forgedIntrinsicObject = objectWithForgedIntrinsicPrototype()
-    const revokedIntrinsicObject = objectWithForgedIntrinsicPrototype(true)
+    const realmLikeObject = objectWithRealmLikePrototype()
+    const revokedIntrinsicObject = objectWithRealmLikePrototype(true)
     const forgedPrototype: unknown[] = []
     Object.setPrototypeOf(forgedPrototype, null)
     const forgedArray = [1]
@@ -237,7 +236,7 @@ describe('isJsonValue', () => {
     expect(isJsonValue(hiddenObject)).toBe(false)
     expect(isJsonValue(symbolObject)).toBe(false)
     expect(isJsonValue(customPrototypeObject)).toBe(false)
-    expect(isJsonValue(forgedIntrinsicObject)).toBe(false)
+    expect(isJsonValue(realmLikeObject)).toBe(true)
     expect(isJsonValue(revokedIntrinsicObject)).toBe(false)
     expect(isJsonValue(forgedArray)).toBe(false)
     expect(isJsonValue(new ExoticArray(1))).toBe(false)

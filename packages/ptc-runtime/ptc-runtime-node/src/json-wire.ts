@@ -8,7 +8,6 @@ import type { PtcJsonValue } from '@deepseek-ai/dsh-ptc-runtime'
 /* jscpd:ignore-start -- the source bootstrap mirrors session JSON helpers without workspace runtime imports */
 type IntrinsicCallable = (this: unknown, ...args: unknown[]) => unknown
 
-const intrinsicFunctionToString = Reflect.get(Function.prototype, 'toString') as IntrinsicCallable
 const intrinsicReflectApply = Reflect.get(Reflect, 'apply') as (
   target: IntrinsicCallable,
   thisArgument: unknown,
@@ -79,15 +78,14 @@ function setDelete<T>(target: Set<T>, value: T): void {
   intrinsicReflectApply(intrinsicSetDelete, target, [value])
 }
 
-/** Whether a realm-owned intrinsic prototype is backed by its native constructor. */
-function hasIntrinsicConstructor(prototype: object, name: 'Array' | 'Object'): boolean {
+/** Whether a realm-owned prototype and its constructor point back to each other. */
+function hasMatchingConstructor(prototype: object, name: 'Array' | 'Object'): boolean {
   const descriptor = intrinsicObjectGetOwnPropertyDescriptor(prototype, 'constructor')
   const constructor: unknown = descriptor?.value
   if (typeof constructor !== 'function') return false
   try {
     return constructor.name === name
       && constructor.prototype === prototype
-      && intrinsicReflectApply(intrinsicFunctionToString, constructor, []) === `function ${name}() { [native code] }`
   } catch {
     return false
   }
@@ -95,14 +93,14 @@ function hasIntrinsicConstructor(prototype: object, name: 'Array' | 'Object'): b
 
 /** Whether a candidate is a foreign realm's intrinsic `Object.prototype`. */
 function isForeignIntrinsicObjectPrototype(value: object): boolean {
-  return intrinsicObjectGetPrototypeOf(value) === null && hasIntrinsicConstructor(value, 'Object')
+  return intrinsicObjectGetPrototypeOf(value) === null && hasMatchingConstructor(value, 'Object')
 }
 
-/** Whether an array uses one realm's intrinsic `Array.prototype`, not a subclass or forged prototype. */
+/** Whether an array uses one realm's intrinsic `Array.prototype`, not a subclass prototype. */
 function hasPlainArrayPrototype(value: unknown[]): boolean {
   const prototype: unknown = intrinsicObjectGetPrototypeOf(value)
   if (prototype === intrinsicArrayPrototype) return true
-  if (!intrinsicArrayIsArray(prototype) || !hasIntrinsicConstructor(prototype, 'Array')) return false
+  if (!intrinsicArrayIsArray(prototype) || !hasMatchingConstructor(prototype, 'Array')) return false
   const objectPrototype: unknown = intrinsicObjectGetPrototypeOf(prototype)
   return typeof objectPrototype === 'object'
     && objectPrototype !== null

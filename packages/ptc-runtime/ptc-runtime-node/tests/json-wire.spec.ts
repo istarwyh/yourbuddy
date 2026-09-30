@@ -118,6 +118,9 @@ describe('snapshotPtcJsonValue', () => {
     const spoofedArray = [1]
     Object.setPrototypeOf(spoofedArray, spoofedArrayPrototype)
 
+    expect(snapshotPtcJsonValue(spoofedObject)).toEqual({ value: 1 })
+    expect(snapshotPtcJsonValue(spoofedArray)).toEqual([1])
+
     for (const value of [
       new ExoticObject(),
       new Map([['value', 1]]),
@@ -130,9 +133,7 @@ describe('snapshotPtcJsonValue', () => {
       symbolObject,
       customPrototypeObject,
       forgedArray,
-      spoofedObject,
       revokedObject,
-      spoofedArray,
       cyclic,
       [undefined],
       { value: undefined },

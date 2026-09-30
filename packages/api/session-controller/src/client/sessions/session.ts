@@ -48,6 +48,23 @@ function projectionsBaseline(value: SessionProjectionBaseline): ProjectionsBasel
   }
 }
 
+/** Convert any opening failure into the Client snapshot's displayable failure type. */
+function historyOpenFailure(error: unknown): RemoteFailure {
+  if (isRemoteFailure(error)) return error
+  let message = 'unknown client failure'
+  try {
+    message = error instanceof Error ? error.message : String(error)
+  } catch (renderError) {
+    console.error('[session-controller] history open failure could not be rendered:', renderError)
+  }
+  return new RemoteError(
+    'gateway/internal',
+    `session history failed to open: ${message}`,
+    {},
+    { cause: error },
+  )
+}
+
 /** Minimum message count for ordinary history windows. */
 export const PAGE_MESSAGES = 50
 
@@ -633,10 +650,14 @@ export class Session implements SessionFace {
       this.openState = 'open'
     } catch (error) {
       if (generation !== this.openGeneration || this.events !== events) return
-      if (!isRemoteFailure(error)) throw error
       this.events = undefined
       this.openState = 'error'
-      this.openError = error
+      this.openError = historyOpenFailure(error)
+      try {
+        await events.dispose()
+      } catch (disposeError) {
+        console.error('[session-controller] failed to dispose rejected history stream:', disposeError)
+      }
     } finally {
       if (generation === this.openGeneration) this.notifier.markDirty()
     }
@@ -875,12 +896,11 @@ export class Session implements SessionFace {
   /** Publish a terminal background failure only while this stream still owns the Session. */
   private failEventStream(events: SessionEventStream, generation: number, error: unknown): void {
     if (generation !== this.openGeneration || this.events !== events) return
-    if (!isRemoteFailure(error)) throw error
     this.openGeneration++
     this.events = undefined
     this.openPromise = null
     this.openState = 'error'
-    this.openError = error
+    this.openError = historyOpenFailure(error)
     void events.dispose()
     this.notifier.markDirty()
   }

@@ -247,6 +247,8 @@ export interface ChatViewInjected {
   /** Open one HTTP(S) message link at the selected destination, using an external tab if Sidebar Browser is unavailable. */
   openExternalLink: (url: string) => void
   openFile: (path: string, options?: OpenFileOptions) => Promise<void>
+  /** Replace a failed history stream with a fresh Session generation. */
+  retryOpen: () => void
   loadOlder: () => void
   /** Jump loader: page history back through seq; resolves when the window covers it. */
   loadThrough: (seq: SessionSeq) => Promise<void>

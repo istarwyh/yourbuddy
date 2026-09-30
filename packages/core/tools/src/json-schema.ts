@@ -12,7 +12,13 @@
  */
 
 import { HarnessError } from '@deepseek-ai/dsh-llm'
-import { assertNever, isJsonValue, type JsonValue } from '@deepseek-ai/dsh-util-values'
+import {
+  assertNever,
+  hasPlainArrayPrototype,
+  hasPlainObjectPrototype,
+  isJsonValue,
+  type JsonValue,
+} from '@deepseek-ai/dsh-util-values'
 
 /** Scalar JSON values supported by `enum` and `const`. */
 export type JsonSchemaScalar = string | number | boolean | null
@@ -86,26 +92,6 @@ const CONSTRAINT_KEYWORDS = new Set([
 const ANNOTATION_KEYWORDS = new Set(['description', 'title', 'default', 'examples'])
 const SCHEMA_TYPES: readonly JsonSchemaType[] = ['object', 'array', 'string', 'number', 'integer', 'boolean', 'null']
 
-/* jscpd:ignore-start -- this realm boundary mirrors the session-owned lossless-JSON intrinsic test */
-/** Whether a realm-owned intrinsic prototype is backed by its native constructor. */
-function hasIntrinsicConstructor(prototype: object, name: 'Array' | 'Object'): boolean {
-  const descriptor = Object.getOwnPropertyDescriptor(prototype, 'constructor')
-  const constructor: unknown = descriptor?.value
-  if (typeof constructor !== 'function') return false
-  try {
-    return constructor.name === name
-      && constructor.prototype === prototype
-      && Function.prototype.toString.call(constructor) === `function ${name}() { [native code] }`
-  } catch {
-    return false
-  }
-}
-
-/** Whether a candidate is one realm's intrinsic `Object.prototype`. */
-function isIntrinsicObjectPrototype(value: object): boolean {
-  return Object.getPrototypeOf(value) === null && hasIntrinsicConstructor(value, 'Object')
-}
-
 /**
  * Test for a realm-agnostic plain JSON record without accepting arrays or
  * exotic objects.
@@ -115,24 +101,11 @@ function isIntrinsicObjectPrototype(value: object): boolean {
 export function isPlainJsonRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
   try {
-    const prototype: unknown = Object.getPrototypeOf(value)
-    return prototype === null
-      || typeof prototype === 'object' && isIntrinsicObjectPrototype(prototype)
+    return hasPlainObjectPrototype(value)
   } catch {
     return false
   }
 }
-
-/** Whether an array uses one realm's intrinsic `Array.prototype`. */
-function hasPlainArrayPrototype(value: unknown[]): boolean {
-  const prototype: unknown = Object.getPrototypeOf(value)
-  if (!Array.isArray(prototype) || !hasIntrinsicConstructor(prototype, 'Array')) return false
-  const objectPrototype: unknown = Object.getPrototypeOf(prototype)
-  return typeof objectPrototype === 'object'
-    && objectPrototype !== null
-    && isIntrinsicObjectPrototype(objectPrototype)
-}
-/* jscpd:ignore-end */
 
 /** Return whether a record contains only own enumerable string keys. */
 function hasOnlyEnumerableStringKeys(value: object): boolean {

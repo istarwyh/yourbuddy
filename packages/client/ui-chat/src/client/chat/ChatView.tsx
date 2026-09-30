@@ -99,7 +99,8 @@ const ChatNodeList = memo(function ChatNodeList({ entries, useChatGroup, pending
  */
 export function ChatView({
   useSession, useChat, useChatNode, useChatNodeProcess, useChatGroup, useConversation, useSessions, useStore, actions, renderSlot,
-  sessionId, openFile, openSkill, openExternalLink, loadOlder, loadThrough, loadImage, inspectCall, chatScroll, forkAt, fileMentions,
+  sessionId, openFile, openSkill, openExternalLink, retryOpen, loadOlder, loadThrough, loadImage,
+  inspectCall, chatScroll, forkAt, fileMentions,
   usePresentation, useProjection, t,
 }: ChatViewSlotProps) {
   const order = useChat(s => s.order)
@@ -235,7 +236,8 @@ export function ChatView({
             {openState === 'loading' && <div className={css.hint}>{t('chat.loadingHistory')}</div>}
             {openState === 'error' && openError !== null && (
               <div className={css.openError}>
-                {t('chat.loadError', { message: openError.message, code: openError.code })}
+                <span>{t('chat.loadError', { message: openError.message, code: openError.code })}</span>
+                <Button variant="outline" size="sm" onClick={retryOpen}>{t('chat.retryHistory')}</Button>
               </div>
             )}
             {hasMore && (

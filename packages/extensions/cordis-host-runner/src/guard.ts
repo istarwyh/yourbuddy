@@ -19,7 +19,11 @@ import { scopeOf } from '@deepseek-ai/dsh-scope'
 import { assertSupportedJsonSchema, defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import {
+  hasPlainArrayPrototype,
+  hasPlainObjectPrototype,
+  type JsonValue,
+} from '@deepseek-ai/dsh-util-values'
 
 const DYNAMIC_TOOL = Symbol('cordis-host-runner.dynamic-tool')
 const SCHEMA_TYPES = new Set<unknown>(['string', 'number', 'integer', 'boolean', 'null', 'object', 'array', 'json'])
@@ -31,39 +35,12 @@ type DynamicToolMarker = { [DYNAMIC_TOOL]?: unknown }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
-  const prototype: unknown = Object.getPrototypeOf(value)
-  return prototype === null
-    || typeof prototype === 'object'
-      && Object.getPrototypeOf(prototype) === null
-      && hasIntrinsicConstructor(prototype, 'Object')
-}
-
-/* jscpd:ignore-start -- this VM boundary mirrors the session-owned realm-safe intrinsic test */
-/** Whether a realm-owned intrinsic prototype is backed by its native constructor. */
-function hasIntrinsicConstructor(prototype: object, name: 'Array' | 'Object'): boolean {
-  const descriptor = Object.getOwnPropertyDescriptor(prototype, 'constructor')
-  const constructor: unknown = descriptor?.value
-  if (typeof constructor !== 'function') return false
   try {
-    return constructor.name === name
-      && constructor.prototype === prototype
-      && Function.prototype.toString.call(constructor) === `function ${name}() { [native code] }`
+    return hasPlainObjectPrototype(value)
   } catch {
     return false
   }
 }
-
-/** Whether an array uses one realm's intrinsic Array prototype rather than a subclass. */
-function hasPlainArrayPrototype(value: unknown[]): boolean {
-  const prototype: unknown = Object.getPrototypeOf(value)
-  if (!Array.isArray(prototype) || !hasIntrinsicConstructor(prototype, 'Array')) return false
-  const objectPrototype: unknown = Object.getPrototypeOf(prototype)
-  return typeof objectPrototype === 'object'
-    && objectPrototype !== null
-    && Object.getPrototypeOf(objectPrototype) === null
-    && hasIntrinsicConstructor(objectPrototype, 'Object')
-}
-/* jscpd:ignore-end */
 
 /** Whether a schema list is a dense intrinsic array with no JSON-invisible decorations. */
 function isDensePlainArray(value: unknown): value is unknown[] {

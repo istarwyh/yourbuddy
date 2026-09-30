@@ -102,6 +102,11 @@
 }
 
 .openError {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
   color: var(--dsw-alias-state-error-primary);
   font-size: var(--dsh-content-font-size-secondary, 13px);
   line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));

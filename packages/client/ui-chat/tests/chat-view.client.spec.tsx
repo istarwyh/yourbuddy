@@ -448,6 +448,7 @@ function makeHarness(
     openFile,
     openSkill,
     openExternalLink: vi.fn(),
+    retryOpen: vi.fn(),
     loadOlder,
     loadThrough,
     loadImage: vi.fn(() => Promise.reject(new Error('not used'))),
@@ -3985,6 +3986,8 @@ describe('ChatView', () => {
     })
     const view = render(<h.ChatView {...h.props} />)
     expect(view.getByText(/历史加载失败：boom/)).toBeTruthy()
+    fireEvent.click(view.getByText('重试加载'))
+    expect(h.props.retryOpen).toHaveBeenCalledTimes(1)
     const loading = makeHarness({}, { openState: 'loading' })
     const lv = render(<loading.ChatView {...loading.props} />)
     expect(lv.getByText('载入历史…')).toBeTruthy()

@@ -30,7 +30,7 @@ function violationsOf(schema: unknown, objectRoot = false): string[] {
   throw new Error('expected schema rejection')
 }
 
-function recordWithForgedIntrinsicPrototype(
+function recordWithRealmLikePrototype(
   own: Record<string, unknown>,
   inherited: Record<string, unknown> = {},
   revoked = false,
@@ -253,13 +253,13 @@ describe('the enforced raw JSON Schema subset', () => {
     expect(violationsOf({ type: 'object', properties: { at: new Date(0) } }))
       .toEqual(['schema.properties.at must be a schema object'])
 
-    const forgedSchema = recordWithForgedIntrinsicPrototype(
+    const realmLikeSchema = recordWithRealmLikePrototype(
       { type: 'object' },
       { oneOf: [{ type: 'string' }, { type: 'null' }] },
     )
-    expect(violationsOf(forgedSchema)).toEqual(['schema must be a schema object'])
-    expect(violationsOf(forgedSchema, true)).toEqual(['schema must be a schema object'])
-    expect(violationsOf(recordWithForgedIntrinsicPrototype({ type: 'string' }, {}, true)))
+    expect(() => { assertSupportedJsonSchema(realmLikeSchema) }).not.toThrow()
+    expect(() => { assertObjectJsonSchema(realmLikeSchema) }).not.toThrow()
+    expect(violationsOf(recordWithRealmLikePrototype({ type: 'string' }, {}, true)))
       .toEqual(['schema must be a schema object'])
     const prototypeWithoutConstructor = Object.create(null) as object
     expect(violationsOf(Object.create(prototypeWithoutConstructor) as unknown))
