@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.3.24/README.md
+/yourbuddy-0-3-24:
+  en: 3a06a08035d7bb06
+  zh: 966b872ecfd26b69
+/yourbuddy-0-3-24/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-3-24/user-release-notes/what-changed:
+  en: 9efe1d8ca03de8fb
+  zh: 9c7c1a42c2364be0
+/yourbuddy-0-3-24/user-release-notes/problem-solved:
+  en: 980dbb970b56b994
+  zh: 20521b9e6cb6cc75
+/yourbuddy-0-3-24/user-release-notes/where-to-use-it:
+  en: 2ee114e1a22b6406
+  zh: a4f9ac50b3b0e1d1
+/yourbuddy-0-3-24/user-release-notes/how-to-try-it:
+  en: fb5602d990fa2784
+  zh: ce89197b2273f93e
+/yourbuddy-0-3-24/user-release-notes/install-or-upgrade:
+  en: 8301c095843b0901
+  zh: e85899182af8db2d
+/yourbuddy-0-3-24/user-release-notes/compatibility-migration-and-limitations:
+  en: 5a853c5a37353c46
+  zh: b77586abeaab7f96
+/yourbuddy-0-3-24/verification-summary:
+  en: 7995547aec796e1b
+  zh: 8a99b75dca553a18
+/yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery:
+  en: 73b6f468b06482a8
+  zh: f9ac7bdca077d601
+/yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery/steps:
+  en: 72f97a61ae12aacb
+  zh: dfcb470c8eac80c3
+/yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery/expected:
+  en: 21a89e13556f0d57
+  zh: 0ff9add79d88cd55
+/yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery/actual:
+  en: e6377ae22006ff62
+  zh: a5da7b8fd4c38c6a
+/yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery/evidence:
+  en: fad89da35c88d50a
+  zh: d7bb9133b3096663
+/yourbuddy-0-3-24/scenario-source-history-portability-and-failure-recovery/scope-limits:
+  en: 3ee6cf4cc184845a
+  zh: 10bd72d4e3e8b591
+/yourbuddy-0-3-24/delivery-status:
+  en: 1c817c6df5d8234e
+  zh: d18ce14b53d6ea9d
+/yourbuddy-0-3-24/delivery-checklist:
+  en: 8a565c2a7bab4280
+  zh: 39e6bb55c383a363
