@@ -305,12 +305,14 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.equal(manifest.dependencies['dsh-ego-browser'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-plugin-marketplace'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-personal-workbench'], 'workspace:*')
+    assert.equal(manifest.dependencies['@xiaohui-wang/dsh-pomodoro'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-oil-creator'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-subagent-codex'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
     const webPatch = readFileSync(join(webApp, 'cordis.patch.yml'), 'utf8')
     assert.match(webPatch, /# YourBuddy product bundle layers/u)
     assert.match(webPatch, /id: personal-workbench\n\s+name: dsh-personal-workbench/u)
+    assert.match(webPatch, /id: dsh-pomodoro\n\s+name: "@xiaohui-wang\/dsh-pomodoro"/u)
     assert.doesNotMatch(webPatch, /name: "dsh-ego-browser"/u)
     assert.match(webPatch, /id: dsh-oil-creator\n\s+name: dsh-oil-creator/u)
     assert.match(webPatch, /id: subagent-codex\n\s+name: '@deepseek-ai\/dsh-subagent-codex'/u)
@@ -342,6 +344,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
       ['ego-browser', 'ego-browser'],
       ['plugin-marketplace', 'plugin-marketplace'],
       ['personal-workbench', 'personal-workbench'],
+      ['pomodoro', 'pomodoro'],
       ['oil-creator', 'oil-creator'],
     ]) {
       assert.equal(
@@ -371,6 +374,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'client.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'index.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'personal-workbench', 'lib', 'client.js'), 'utf8').length > 0)
+    assert.ok(readFileSync(join(root, 'packages', 'product', 'pomodoro', 'lib', 'client.js'), 'utf8').length > 0)
     const bundledOilCreator = join(root, 'packages', 'product', 'oil-creator')
     assert.ok(readFileSync(join(bundledOilCreator, 'lib', 'client.js'), 'utf8').length > 0)
     const oilCreatorHost = readFileSync(join(bundledOilCreator, 'lib', 'index.js'), 'utf8')

@@ -82,6 +82,11 @@ const productPlugins = [
     destination: join('packages', 'product', 'personal-workbench'),
   },
   {
+    name: '@xiaohui-wang/dsh-pomodoro',
+    root: join(desktopRoot, 'product', 'pomodoro'),
+    destination: join('packages', 'product', 'pomodoro'),
+  },
+  {
     name: 'dsh-oil-creator',
     root: join(desktopRoot, 'product', 'oil-creator'),
     destination: join('packages', 'product', 'oil-creator'),

@@ -141,6 +141,17 @@
       }
     },
     {
+      "id": "pomodoro",
+      "kind": "npm-latest",
+      "package": "@xiaohui-wang/dsh-pomodoro",
+      "destination": "pomodoro",
+      "clientInjectRemovals": {
+        "0.5.5": [
+          "@deepseek-ai/dsh-client-runtime"
+        ]
+      }
+    },
+    {
       "id": "oil-creator",
       "kind": "github-branch",
       "repository": "oil-oil/dsh-oil-creator",

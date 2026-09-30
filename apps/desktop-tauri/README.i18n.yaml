@@ -3,17 +3,17 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop-tauri/README.md
 /yourbuddy-desktop:
-  en: 76a813097a968378
-  zh: 6149c80e523b2391
+  en: b6318f5d55195cd3
+  zh: 57e49dd06f5b6fdb
 /yourbuddy-desktop/runtime-layout:
-  en: 2d5c38eadad3c23b
-  zh: ab12a210619385a0
+  en: 0a06db62756df713
+  zh: da74d0b07a2cb92e
 /yourbuddy-desktop/default-plugin-delivery-policy:
   en: 8c758b6aaabc5da0
   zh: 39a81ba4fb4fe3b1
 /yourbuddy-desktop/local-release-preparation:
-  en: ccb702ed5a5c0919
-  zh: 86d883ea2b09a87c
+  en: d5583d4fd3bc5e3a
+  zh: e45ecc21760ee043
 /yourbuddy-desktop/release-documentation-and-website:
   en: 642f7ff4749ab9e6
   zh: 20ebb8e970969734

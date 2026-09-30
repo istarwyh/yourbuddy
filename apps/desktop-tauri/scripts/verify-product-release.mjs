@@ -80,6 +80,7 @@ export const PRODUCT_CLIENT_IDS = [
   'dsh-context-doctor',
   'dsh-plugin-marketplace',
   'dsh-personal-workbench',
+  '@xiaohui-wang/dsh-pomodoro',
   'dsh-oil-creator',
   'dsh-harbor-evolution',
 ]
@@ -91,6 +92,7 @@ const PRODUCT_CLIENT_ENTRY_IDS = {
   'dsh-context-doctor': 'yourharness-release-context-doctor',
   'dsh-plugin-marketplace': 'yourharness-release-plugin-marketplace',
   'dsh-personal-workbench': 'yourharness-release-personal-workbench',
+  '@xiaohui-wang/dsh-pomodoro': 'yourbuddy-release-pomodoro',
   'dsh-oil-creator': 'yourharness-release-oil-creator',
   'dsh-harbor-evolution': 'yourharness-release-harbor-evolution',
 }
@@ -268,7 +270,7 @@ export function assertInstalledProductPeerLinks(root) {
   const workspace = readWorkspacePackageVersions(root)
   const productRoot = join(root, 'packages', 'product')
   let checked = 0
-  for (const plugin of ['harbor-evolution', 'dsh-codex-auth', 'dsh-better-sidebar', 'ego-browser', 'context-doctor', 'plugin-marketplace', 'personal-workbench', 'oil-creator']) {
+  for (const plugin of ['harbor-evolution', 'dsh-codex-auth', 'dsh-better-sidebar', 'ego-browser', 'context-doctor', 'plugin-marketplace', 'personal-workbench', 'pomodoro', 'oil-creator']) {
     const pluginRoot = join(productRoot, plugin)
     const manifest = JSON.parse(readFileSync(join(pluginRoot, 'package.json'), 'utf8'))
     for (const name of Object.keys(manifest.peerDependencies ?? {})) {
@@ -356,6 +358,9 @@ export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVer
     - id: yourbuddy-release-personal-workbench
       name: dsh-personal-workbench
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-personal-workbench' && e.options.id !== 'yourbuddy-release-personal-workbench' && !e.disabled)"
+    - id: yourbuddy-release-pomodoro
+      name: '@xiaohui-wang/dsh-pomodoro'
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === '@xiaohui-wang/dsh-pomodoro' && e.options.id !== 'yourbuddy-release-pomodoro' && !e.disabled)"
     - id: yourbuddy-release-oil-creator
       name: dsh-oil-creator
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-oil-creator' && e.options.id !== 'yourbuddy-release-oil-creator' && !e.disabled)"

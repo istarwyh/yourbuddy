@@ -3,11 +3,11 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
 /yourbuddy:
-  en: a17894bf7bd30a0e
-  zh: 24c39313401fee07
+  en: 044d8eaad1f43944
+  zh: fbeda21f6535e449
 /yourbuddy/what-the-package-contains:
-  en: 00e2b7741b66afa4
-  zh: e2c7c807d6632f87
+  en: 7614a51451ffe84c
+  zh: 4f75c7b70a88a21a
 /yourbuddy/run:
   en: 6742a00dbfafe5cc
   zh: 53bd511a82f4a8eb
@@ -15,11 +15,11 @@
   en: e5136994a9cee1b8
   zh: afbcaafc25e6dc9b
 /yourbuddy/release:
-  en: 4c90f0b879f82401
-  zh: aebc9573fdfd5c8f
+  en: db5653db2eadb685
+  zh: 1a30a48d4a37bfb8
 /yourbuddy/citation:
   en: 6704e9e5a8d49a91
   zh: 85c9cdd8d56f8e9d
 /yourbuddy/license:
-  en: c36ced665404b2a4
-  zh: 504cf77716a57437
+  en: 1b64e01877587097
+  zh: d609526ebd81dc2a
