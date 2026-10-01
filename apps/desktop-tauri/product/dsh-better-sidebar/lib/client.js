@@ -15223,7 +15223,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				"data-dsh-presentation": primaryWorkbench ? "slot" : "portal",
 				...osFileDragShield,
 				children: primaryWorkbench && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: (0, clsx.clsx)(sidebar_module_css_default.bottomPanel, sidebar_module_css_default.bottomPanelSlot),
+					className: clsx(sidebar_module_css_default.bottomPanel, sidebar_module_css_default.bottomPanelSlot),
 					"data-dsh-panel": true,
 					"data-dsh-bottom-panel": true,
 					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {

@@ -56,6 +56,12 @@ test('Ego Browser keeps headed macOS launches on the native desktop', () => {
   assert.equal(createHash('sha256').update(sdk).digest('hex'), '2d11d9110828253f7dec63ba58d60b4e6dcbb5a6caa3c0650562f305fe640751')
 })
 
+test('Better Sidebar bundled client calls the bundled clsx function', () => {
+  const client = readFileSync(join(desktopRoot, 'product', 'dsh-better-sidebar', 'lib', 'client.js'), 'utf8')
+
+  assert.doesNotMatch(client, /\(0, clsx\.clsx\)\(/u)
+})
+
 test('buildTrimmedWorkspaceYaml keeps upstream patch declarations verbatim', () => {
   const source = `packages:
   - vendor/*
