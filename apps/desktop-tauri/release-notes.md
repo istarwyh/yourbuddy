@@ -1,7 +1,7 @@
-# YourBuddy 0.4.0
+# YourBuddy 0.4.1
 
-The recommended macOS download is now a small Bootstrap DMG. It installs exact signed runtime components on first use, reuses a compatible Host Node and local pnpm Store when possible, and installs Harbor only after you choose **Install Harbor runtime**. A separately named Offline DMG carries the same fixed components for no-network first launch. This release also bundles Pomodoro and collapses the workbench when a Session opens.
+Bootstrap first launch now consumes the component signature format the desktop runtime expects, and packaging verifies the staged manifest with that same native verifier. Optional plugins can report an activation failure without holding the whole application on the loading screen. The center workbench now collapses only while the right sidebar is actually open, returns when it closes, and keeps its cards visible before the first Session exists.
 
-推荐的 macOS 下载现在是小型 Bootstrap DMG。它在首次使用时安装精确的签名 Runtime 组件，尽量复用兼容的 Host Node 与本地 pnpm Store，并且只在你选择**安装 Harbor 运行时**后安装 Harbor。独立命名的 Offline DMG 携带同一组固定组件，支持首次离线启动。本版本还默认内置 Pomodoro，并在打开 Session 时自动收起工作台。
+Bootstrap 首次启动现在使用桌面 Runtime 实际所需的组件签名格式，打包过程也会用同一原生验证器检查暂存 Manifest。可选插件激活失败时会给出诊断，但不会让整个应用停留在加载界面。中间工作台只在右侧栏实际打开时收起，关闭后恢复，并会在首个 Session 创建前继续显示卡片。
 
-Verification archive: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.0/docs/releases/yourbuddy-v0.4.0
+Verification archive: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.1/docs/releases/yourbuddy-v0.4.1

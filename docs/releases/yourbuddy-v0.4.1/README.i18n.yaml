@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.1/README.md
+/yourbuddy-0-4-1:
+  en: a864cc1d8a3062af
+  zh: 20ed1d6860049e21
+/yourbuddy-0-4-1/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-4-1/user-release-notes/what-changed:
+  en: 10258f3fc02d2b25
+  zh: c1937ac0243aa17f
+/yourbuddy-0-4-1/user-release-notes/problem-solved:
+  en: 08e0c05caaf8a183
+  zh: 1ea2bc134ecd0a7b
+/yourbuddy-0-4-1/user-release-notes/where-to-use-it:
+  en: d4dbac79f542bd12
+  zh: 04cda371f60a4c56
+/yourbuddy-0-4-1/user-release-notes/how-to-try-it:
+  en: 4f7658b2aecbfbc3
+  zh: be2966969f8cf221
+/yourbuddy-0-4-1/user-release-notes/install-or-upgrade:
+  en: c32399d652289126
+  zh: adf124b73d6c1087
+/yourbuddy-0-4-1/user-release-notes/compatibility-migration-and-limitations:
+  en: d1735cd18af15d3c
+  zh: f1de5346fa502dac
+/yourbuddy-0-4-1/verification-summary:
+  en: 2c578fa14b195deb
+  zh: 40cdab903f35d6c8
+/yourbuddy-0-4-1/scenario-issue-35-startup-and-workbench-recovery:
+  en: 157235b3fa15a217
+  zh: adec1ff08909ff27
+/yourbuddy-0-4-1/scenario-issue-35-startup-and-workbench-recovery/steps:
+  en: 82a0fedeb1d03be0
+  zh: b06e847b500d877f
+/yourbuddy-0-4-1/scenario-issue-35-startup-and-workbench-recovery/expected:
+  en: 01970c9e7eea6a78
+  zh: 58fd3a23c5752dde
+/yourbuddy-0-4-1/scenario-issue-35-startup-and-workbench-recovery/actual:
+  en: f501c6857d86c7b4
+  zh: a8484194e89f8685
+/yourbuddy-0-4-1/scenario-issue-35-startup-and-workbench-recovery/evidence:
+  en: a6cd9784508b3951
+  zh: f0b03b1330751452
+/yourbuddy-0-4-1/scenario-issue-35-startup-and-workbench-recovery/scope-limits:
+  en: 05cd1b1b1a14256f
+  zh: 24fa993249028210
+/yourbuddy-0-4-1/delivery-status:
+  en: 01fd7279340b4311
+  zh: c135a7799e4d3249
+/yourbuddy-0-4-1/delivery-checklist:
+  en: 030548e124a503e1
+  zh: d4c821d8e3d1f6a4
