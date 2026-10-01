@@ -74,15 +74,7 @@ impl Drop for ComponentLock {
 impl ComponentManager {
     /// Load and verify the manifest embedded in the signed application bundle.
     pub fn load(resource_dir: &Path, proxy: &ResolvedNetworkProxy) -> Result<Self, String> {
-        let channel = resource_dir.join("component-channel");
-        let manifest_bytes = fs::read(channel.join("components.json"))
-            .map_err(|error| format!("component manifest is unavailable: {error}"))?;
-        let signature_text = fs::read_to_string(channel.join("components.json.sig"))
-            .map_err(|error| format!("component manifest signature is unavailable: {error}"))?;
-        verify_manifest_signature(&manifest_bytes, &signature_text)?;
-        let manifest: ComponentManifest = serde_json::from_slice(&manifest_bytes)
-            .map_err(|error| format!("component manifest is invalid: {error}"))?;
-        validate_manifest(&manifest)?;
+        let manifest = verify_component_channel(resource_dir)?;
         let root = app_data_root()?.join("components");
         let client = apply_to_client(
             ClientBuilder::new()
@@ -327,6 +319,20 @@ impl ComponentManager {
             .map_err(|error| format!("another component operation is active: {error}"))?;
         Ok(ComponentLock(path))
     }
+}
+
+/// Verify and parse the component channel embedded in one application resource directory.
+pub fn verify_component_channel(resource_dir: &Path) -> Result<ComponentManifest, String> {
+    let channel = resource_dir.join("component-channel");
+    let manifest_bytes = fs::read(channel.join("components.json"))
+        .map_err(|error| format!("component manifest is unavailable: {error}"))?;
+    let signature_text = fs::read_to_string(channel.join("components.json.sig"))
+        .map_err(|error| format!("component manifest signature is unavailable: {error}"))?;
+    verify_manifest_signature(&manifest_bytes, &signature_text)?;
+    let manifest: ComponentManifest = serde_json::from_slice(&manifest_bytes)
+        .map_err(|error| format!("component manifest is invalid: {error}"))?;
+    validate_manifest(&manifest)?;
+    Ok(manifest)
 }
 
 fn validate_manifest(manifest: &ComponentManifest) -> Result<(), String> {

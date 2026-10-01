@@ -66,20 +66,20 @@ describe('bootClient', () => {
     await ctx.fiber.dispose()
   })
 
-  it('reports a row waiting on a service the roster never provides', async () => {
+  it('warns without blocking when an optional row waits on a missing service', async () => {
     const graph = graphOf(['orphan'])
     const { modules } = modulesOf(graph, { orphan: { inject: ['nothing'], apply: () => {} } })
     const ctx = new Context()
+    const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
 
-    await expect(bootClient({ ctx, modules, manifest: modules.manifest })).rejects.toThrow(
-      'orphan: pending (waiting for service: nothing)',
-    )
+    await expect(bootClient({ ctx, modules, manifest: modules.manifest })).resolves.toBeUndefined()
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('orphan: pending (waiting for service: nothing)'))
     await ctx.fiber.dispose()
   })
 
   it('reports and logs an import failure for a row that is neither seeded nor a graph row', async () => {
     const { modules } = modulesOf(graphOf(['seeded']), { seeded: { apply: () => {} } })
-    const manifest = parseBootManifest(graphOf(['ghost']))
+    const manifest = parseBootManifest(graphOf(['@deepseek-ai/dsh-client-ui-renderer']))
     const ctx = new Context()
     onTestFinished(() => ctx.fiber.dispose())
     const error = vi.spyOn(ctx.logger, 'error').mockImplementation(() => {})
@@ -87,9 +87,9 @@ describe('bootClient', () => {
     const sink = stateSink()
 
     await expect(bootClient({ ctx, modules, manifest, onEntryState: sink.onEntryState })).rejects.toThrow(
-      'web boot: 1 entry did not activate\nghost: import failed (see console for the import error)',
+      'web boot: 1 required entry did not activate\n@deepseek-ai/dsh-client-ui-renderer: import failed (see console for the import error)',
     )
-    expect(sink.states.get('ghost')).toEqual(['loading', 'failed'])
+    expect(sink.states.get('@deepseek-ai/dsh-client-ui-renderer')).toEqual(['loading', 'failed'])
     expect(error).toHaveBeenCalledOnce()
     expect(error.mock.calls[0]?.[0]).toHaveProperty('message', expect.stringContaining('client-modules: cannot resolve'))
   })
@@ -116,7 +116,7 @@ describe('assertEntriesActive', () => {
     expect(() => { assertEntriesActive(auditCtx([{ name: 'a', fiber: { state: FIBER_STATE.ACTIVE, inject: {} } }]), silent) }).not.toThrow()
   })
 
-  it('names import failures, missing services, and other non-active states', () => {
+  it('warns about optional import failures, missing services, and other non-active states', () => {
     const ctx = auditCtx([
       { name: 'lost' },
       { name: 'waiting', fiber: { state: FIBER_STATE.PENDING, inject: { present: null, a: null, b: null } } },
@@ -124,8 +124,10 @@ describe('assertEntriesActive', () => {
       { name: 'broken', fiber: { state: FIBER_STATE.FAILED, inject: {} } },
     ], { present: {} })
 
-    expect(() => { assertEntriesActive(ctx, silent) }).toThrow([
-      'web boot: 4 entries did not activate',
+    const warn = vi.fn()
+    expect(() => { assertEntriesActive(ctx, silent, warn) }).not.toThrow()
+    expect(warn).toHaveBeenCalledWith([
+      'web boot: 4 optional entries did not activate',
       'lost: import failed (see console for the import error)',
       'waiting: pending (waiting for services: a, b)',
       'opaque: pending (waiting for services: unknown)',
@@ -133,17 +135,16 @@ describe('assertEntriesActive', () => {
     ].join('\n'))
   })
 
-  it('uses the singular form for one failing entry', () => {
-    expect(() => { assertEntriesActive(auditCtx([{ name: 'lost' }]), silent) }).toThrow('web boot: 1 entry did not activate\n')
+  it('uses the singular form for one required failing entry', () => {
+    expect(() => { assertEntriesActive(auditCtx([{ name: '@deepseek-ai/dsh-client-ui-layout' }]), silent) }).toThrow('web boot: 1 required entry did not activate\n')
   })
 
-  it('names the recorded import error of a fiberless entry when the module system is supplied', () => {
-    const recorded = new Map([['lost', new Error('client-modules: could not load "lost": plugins/??lost/client.js&rev=0: bundle script failed to load')]])
+  it('names the recorded import error of a required fiberless entry', () => {
+    const recorded = new Map([['@deepseek-ai/dsh-client-ui-renderer', new Error('client-modules: renderer bundle failed to load')]])
     const modules = { importError: (id: string) => recorded.get(id) }
-    expect(() => { assertEntriesActive(auditCtx([{ name: 'lost' }, { name: 'quiet' }]), modules) }).toThrow([
-      'web boot: 2 entries did not activate',
-      'lost: import failed: client-modules: could not load "lost": plugins/??lost/client.js&rev=0: bundle script failed to load',
-      'quiet: import failed (see console for the import error)',
+    expect(() => { assertEntriesActive(auditCtx([{ name: '@deepseek-ai/dsh-client-ui-renderer' }, { name: 'quiet' }]), modules) }).toThrow([
+      'web boot: 1 required entry did not activate',
+      '@deepseek-ai/dsh-client-ui-renderer: import failed: client-modules: renderer bundle failed to load',
     ].join('\n'))
   })
 })

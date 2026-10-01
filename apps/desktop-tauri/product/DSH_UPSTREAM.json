@@ -25,6 +25,15 @@
         "packages/client/ui-sidebar",
         "packages/extensions/cordis-client-runner/src/client/slot-catalog.ts"
       ]
+    },
+    {
+      "id": "workbench-rightbar-collapse",
+      "file": "patches/dsh-workbench-rightbar-collapse.patch",
+      "sha256": "b6aee4511e70ed64bf61bf79f644be3ec3007b45adc8c5865fb2faa68e896ed7",
+      "purpose": "Collapse the product workbench only while the right Sidebar is actually shown, without changing the prospective width used to admit opening it.",
+      "paths": [
+        "packages/client/ui-layout"
+      ]
     }
   ]
 }

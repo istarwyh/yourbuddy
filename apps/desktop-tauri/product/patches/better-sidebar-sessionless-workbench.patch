@@ -1,0 +1,45 @@
+diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
+--- a/src/client/Sidebar.tsx
++++ b/src/client/Sidebar.tsx
+@@ -38,7 +38,7 @@ import {
+-import { Workbench, type WorkbenchActions } from './split-pane.tsx'
++import { PaneEmptyCards, Workbench, type WorkbenchActions } from './split-pane.tsx'
+@@ -300,7 +300,11 @@ export function Sidebar(props: SidebarProps) {
+-    () => (state === undefined || sessionId === undefined ? [] : buildNewTabOptions(state, ctx, { sessionId, cwd })),
++    () => buildNewTabOptions(
++      state,
++      ctx,
++      sessionId === undefined ? undefined : { sessionId, cwd },
++    ),
+@@ -563,7 +567,20 @@ export function Sidebar(props: SidebarProps) {
+-    return <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield} />
++    return (
++      <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield}>
++        {primaryWorkbench && (
++          <div className={clsx(css.bottomPanel, css.bottomPanelSlot)} data-dsh-panel data-dsh-bottom-panel>
++            <div className={css.panelBody}>
++              <PaneEmptyCards newTabOptions={newTabOptions} onNewTab={() => {}} />
++            </div>
++          </div>
++        )}
++      </div>
++    )
+diff --git a/src/client/sidebar/TabContent.tsx b/src/client/sidebar/TabContent.tsx
+--- a/src/client/sidebar/TabContent.tsx
++++ b/src/client/sidebar/TabContent.tsx
+@@ -62,7 +62,11 @@ export const TabContent = memo(function TabContent(props: TabContentProps) {
+-export function buildNewTabOptions(state: SidebarState, ctx: Context, scope: SessionScope): NewTabOption[] {
++export function buildNewTabOptions(
++  state: SidebarState | undefined,
++  ctx: Context,
++  scope: SessionScope | undefined,
++): NewTabOption[] {
+@@ -72,7 +76,7 @@ export function buildNewTabOptions(state: SidebarState, ctx: Context, scope: Ses
+-      disabled: !(d.available?.(ctx, scope, state) ?? true),
++      disabled: state === undefined || scope === undefined || !(d.available?.(ctx, scope, state) ?? true),
+diff --git a/src/client/split-pane.tsx b/src/client/split-pane.tsx
+--- a/src/client/split-pane.tsx
++++ b/src/client/split-pane.tsx
+@@ -117,7 +117,7 @@ function zoneAt(event: React.DragEvent, pane: HTMLElement): DropZone {
+-function PaneEmptyCards(props: {
++export function PaneEmptyCards(props: {

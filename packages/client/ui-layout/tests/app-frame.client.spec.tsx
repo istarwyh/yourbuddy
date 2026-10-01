@@ -348,10 +348,9 @@ describe('AppFrame occupied workbench', () => {
     expect(region.inert).toBe(false)
   })
 
-  it('collapses the mounted desktop workbench while the auxiliary Session region is expanded', () => {
+  it('collapses the mounted desktop workbench only while the rightbar is shown', () => {
     const { frame, instance, layout, getByTestId, getAllByTestId } = mountFrame()
-    act(() => { instance.actions.openRightbar(true, false) })
-    let snapshot = { width: 500, expanded: false, collapseWorkbenchWhenExpanded: true, reserveRightbar: true }
+    let snapshot = { width: 500, expanded: true, collapseWorkbenchWhenExpanded: true, reserveRightbar: true }
     let publish = (): void => {}
     act(() => {
       layout.registerWorkbench({
@@ -361,22 +360,14 @@ describe('AppFrame occupied workbench', () => {
       })
     })
 
-    expect(tracks(frame)).toEqual([280, 0, 0])
+    expect(frame.dataset.workbenchCollapsed).toBeUndefined()
+    expect(tracks(frame)).toEqual([280, 0, 500])
     const workbench = getByTestId('workbench-content').parentElement
     if (workbench === null) throw new Error('expected workbench column')
     expect(workbench.hasAttribute('aria-hidden')).toBe(false)
     expect(workbench.inert).toBe(false)
 
-    const collapseSession = document.createElement('button')
-    collapseSession.setAttribute('aria-controls', 'dsh-session-region')
-    collapseSession.setAttribute('aria-expanded', 'true')
-    document.body.append(collapseSession)
-    getByTestId('workbench-content').tabIndex = 0
-    getByTestId('workbench-content').focus()
-
-    act(() => { snapshot = { ...snapshot, expanded: true }; publish() })
-    expect(document.activeElement).toBe(collapseSession)
-    collapseSession.remove()
+    act(() => { instance.actions.openRightbar(true, false) })
     expect(frame.dataset.workbenchCollapsed).toBe('true')
     expect(tracks(frame)).toEqual([280, 864])
     expect(getAllByTestId('workbench-content')).toHaveLength(1)
@@ -384,9 +375,9 @@ describe('AppFrame occupied workbench', () => {
     expect(workbench.inert).toBe(true)
     expect(frame.querySelector('[data-side="main"]')).toBeNull()
 
-    act(() => { snapshot = { ...snapshot, expanded: false }; publish() })
+    act(() => { instance.actions.closeRightbar() })
     expect(frame.dataset.workbenchCollapsed).toBeUndefined()
-    expect(tracks(frame)).toEqual([280, 0, 0])
+    expect(tracks(frame)).toEqual([280, 0, 500])
     expect(workbench.hasAttribute('aria-hidden')).toBe(false)
     expect(workbench.inert).toBe(false)
   })

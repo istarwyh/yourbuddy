@@ -56,7 +56,11 @@ export const TabContent = memo(function TabContent(props: TabContentProps) {
  * a disabled row instead of hiding the option.
  * Tabs the user disabled in the side card settings are filtered out
  * entirely — re-enabling them is the settings page's job. */
-export function buildNewTabOptions(state: SidebarState, ctx: Context, scope: SessionScope): NewTabOption[] {
+export function buildNewTabOptions(
+  state: SidebarState | undefined,
+  ctx: Context,
+  scope: SessionScope | undefined,
+): NewTabOption[] {
   const service = ctx.get('betterSidebar')
   if (service === undefined) return []
   return service.getTabs()
@@ -65,7 +69,7 @@ export function buildNewTabOptions(state: SidebarState, ctx: Context, scope: Ses
     .map(d => ({
       id: d.id,
       label: typeof d.title === 'function' ? d.title() : d.title,
-      disabled: !(d.available?.(ctx, scope, state) ?? true),
+      disabled: state === undefined || scope === undefined || !(d.available?.(ctx, scope, state) ?? true),
       // 14 matches the compact + menu's icon slot (compactList .itemIcon).
       icon: typeof d.icon === 'function' ? d.icon(14) : d.icon,
     }))

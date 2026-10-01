@@ -141,7 +141,7 @@ GitHub Release 把 Bootstrap DMG 标为默认下载，并用较大体积和离�
 
 Manifest Parser 只接受支持的 Schema Version、当前 Platform 与 Architecture、根据 `releaseTag` 和 `archive` 推导的固定 HTTPS GitHub Release Asset URL、非负字节数和 SHA-256 Digest。Archive 解压保留现有 Entry Count、展开字节、Path Containment 和 Symlink 规则。完成这些 Wire 与 Filesystem 检查后，组件管理器信任第一方 Manifest 字段；它不重复 Release 生成过程已经完成的 Package 级校验。
 
-Release Script 在所有 Archive 存在后生成 Manifest，使用现有 Updater 签名身份签署其精确字节，重新生成 `SHA256SUMS.txt`，并在任何 Manifest Size 或 Digest 与暂存制品不同时拒绝发布。公开制品发布后不可变；修正使用新的应用版本和 Tag。
+Release Script 在所有 Archive 存在后生成 Manifest，使用现有 Updater 签名身份签署其精确字节，把签名器输出转换为原生验证器直接消费的原始 minisign 文档，并在打包前用该验证器检查暂存的 `components.json` 与 `components.json.sig`。它重新生成 `SHA256SUMS.txt`，并在任何 Manifest Size 或 Digest 与暂存制品不同时拒绝发布。公开制品发布后不可变；修正使用新的应用版本和 Tag。
 
 <a id="bootstrap"></a>
 ## Bootstrap 与依赖安装

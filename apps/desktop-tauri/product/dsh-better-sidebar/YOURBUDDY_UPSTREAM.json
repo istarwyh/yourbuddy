@@ -44,6 +44,12 @@
       "sha256": "87998c0ab98a46a590de8f821233414990d6ef3bd68e38b4cdf9a4a0a91372f4",
       "purpose": "Reuse the DSH terminal factory and lifecycle in the slot-hosted bottom workbench without changing the native right Sidebar."
     },
+    {
+      "id": "sessionless-workbench-cards",
+      "file": "patches/better-sidebar-sessionless-workbench.patch",
+      "sha256": "0f0b721a34efe9b4e32d6e97db5f55d63df6876cb902d183edc29fbe4ffb8573",
+      "purpose": "Render disabled registered workbench cards before the first Session exists and refresh them from the existing tab registry subscription."
+    },
     "Set @deepseek-ai/dsh-agent peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-locale peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-ui-conversation peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
@@ -62,5 +68,5 @@
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "de00bb99b35414746bd8b253b625696d90bf85d0481682dd2a1bd3efade5b11d"
+  "treeSha256": "237f3fb623459ca82852065dae64809b1814cb2e1539838e08df5ca13d4d0c84"
 }

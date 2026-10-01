@@ -114,7 +114,7 @@ function zoneAt(event: React.DragEvent, pane: HTMLElement): DropZone {
  * An empty pane's welcome cards: the openable types as cards, clicked to
  * open (instead of a bare "this pane is empty" message).
  */
-function PaneEmptyCards(props: {
+export function PaneEmptyCards(props: {
   newTabOptions: NewTabOption[]
   onNewTab: (optionId: string) => void
 }) {

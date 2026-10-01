@@ -141,7 +141,7 @@ The GitHub Release marks the Bootstrap DMG as the default download and labels th
 
 The manifest parser accepts only its supported schema version, current platform and architecture, fixed HTTPS GitHub Release asset URLs derived from `releaseTag` and `archive`, non-negative byte counts, and SHA-256 digests. Archive extraction retains the existing entry-count, expanded-byte, path-containment, and symlink rules. The component manager trusts the first-party manifest fields after these wire and filesystem checks; it does not duplicate package-level validation already performed by release generation.
 
-The release script generates the manifest after every archive exists, signs its exact bytes with the existing updater signing identity, regenerates `SHA256SUMS.txt`, and refuses publication when any manifest size or digest differs from the staged asset. Public assets are immutable after publication; a correction uses a new application version and tag.
+The release script generates the manifest after every archive exists, signs its exact bytes with the existing updater signing identity, converts the signer output into the raw minisign document consumed by the native verifier, and runs that verifier against the staged `components.json` and `components.json.sig` pair before packaging. It regenerates `SHA256SUMS.txt` and refuses publication when any manifest size or digest differs from the staged asset. Public assets are immutable after publication; a correction uses a new application version and tag.
 
 <a id="bootstrap"></a>
 ## Bootstrap and dependency installation

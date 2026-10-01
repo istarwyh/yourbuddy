@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-client-web` boots the web GUI: it loads the client module system from the Host-provided boot graph, then activates every client plugin before the application mounts, so the full UI appears only when every plugin is up. A framework-free boot page reports per-entry status, so a failing bundle or plugin stays visible instead of a blank screen. It also defines the shared module table (`PLATFORM_MODULES`) that every dynamic bundle resolves its externals against. The model never sees this package.
+`dsh-client-web` boots the web GUI: it loads the client module system from the Host-provided boot graph, then activates the client roster before the application mounts. Required application entries must activate; an inactive optional plugin produces one diagnostic and does not block the working UI. A framework-free boot page reports fatal entry status instead of leaving a blank screen. The package also defines the shared module table (`PLATFORM_MODULES`) that every dynamic bundle resolves its externals against. The model never sees this package.
 
 ## Table of Contents
 
@@ -33,11 +33,11 @@ The shell base styles apply automatic CJK/Latin spacing to ordinary content in s
 
 ### What boot looks like
 
-Boot runs in two stages: the module stage adopts the parser-loaded bootstrap batch, builds the module system from the Host-provided boot graph, and prefetches the `immediately` tier through the shared application-batch URL, which executes once. The plugin stage then activates every graph entry and waits for all of them before handing the marked boot DOM to the UI renderer, which hydrates it and switches to the complete UI.
+Boot runs in two stages: the module stage adopts the parser-loaded bootstrap batch, builds the module system from the Host-provided boot graph, and prefetches the `immediately` tier through the shared application-batch URL, which executes once. The plugin stage then settles every graph entry, rejects an inactive required application entry, warns about inactive optional entries, and hands the marked boot DOM to the UI renderer, which hydrates it and switches to the available UI.
 
 ### The boot page
 
-The boot page uses plain DOM and local CSS, so bundle and plugin-activation failures remain visible: it shows one spinner node whose CSS arc grows as entries activate, and reports per-entry status. The spinner and its animation phase persist until the full UI replaces the boot page. A plugin that fails import or activation is reported by name with the reason (missing service, import failure, or state) instead of a blank page. The console contains the original import error.
+The boot page uses plain DOM and local CSS, so required bundle and plugin-activation failures remain visible: it shows one spinner node whose CSS arc grows as entries activate, and reports per-entry status. The spinner and its animation phase persist until the UI replaces the boot page. An inactive required plugin is reported by name with the reason (missing service, import failure, or state) instead of a blank page. An inactive optional plugin leaves the UI available and writes the same actionable reason to the console.
 
 ### The shared module table
 
@@ -65,7 +65,7 @@ The kernel owns exactly three things: the module system, the Cordis Loader, and 
 
 ### Two-stage boot
 
-`run()` calls the Host-installed `window.__ModuleLoader__.create({ boot, staticModules, ...seams })`; the facade returns the constructed module system and parsed manifest after adopting the parser-loaded bootstrap batch. The module stage prefetches the `immediately` tier through the one shared application-batch URL. The plugin stage mounts the Loader, assigns `loader.internal = modules`, creates every graph entry uniformly, awaits quiescence, then audits activation: any entry that failed import, stayed pending on a missing service, or landed in another non-active state throws one aggregated error naming every failing entry.
+`run()` calls the Host-installed `window.__ModuleLoader__.create({ boot, staticModules, ...seams })`; the facade returns the constructed module system and parsed manifest after adopting the parser-loaded bootstrap batch. The module stage prefetches the `immediately` tier through the one shared application-batch URL. The plugin stage mounts the Loader, assigns `loader.internal = modules`, creates every graph entry uniformly, awaits quiescence, then audits activation. An inactive entry in the required application set throws an aggregated error; other import failures, missing-service waits, and non-active states produce one aggregated warning while active siblings continue.
 
 ### Boot page mechanics
 

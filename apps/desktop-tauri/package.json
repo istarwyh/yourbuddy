@@ -33,7 +33,7 @@
     "build:offline": "tauri build --target aarch64-apple-darwin --bundles app --config src-tauri/tauri.offline.conf.json && tauri bundle --target aarch64-apple-darwin --bundles dmg --config src-tauri/tauri.offline.conf.json --ci",
     "prepare:product-runtime": "node scripts/prepare-yourbuddy-runtime.mjs",
     "build:components": "node scripts/build-bootstrap-components.mjs",
-    "test:components": "node --test scripts/build-bootstrap-components.test.mjs",
+    "test:components": "node --test scripts/build-bootstrap-components.test.mjs scripts/normalize-component-signature.test.mjs",
     "build:win": "tauri build --bundles nsis"
   },
   "devDependencies": {

@@ -5,7 +5,7 @@ use std::process::Command;
 
 use crate::desktop_settings;
 use crate::network_proxy;
-use crate::runtime::components::ComponentManager;
+use crate::runtime::components::{verify_component_channel, ComponentManager};
 
 const MODE: &str = "--yourbuddy-component-helper";
 
@@ -29,8 +29,18 @@ fn run_inner() -> Result<i32, String> {
     let args: Vec<String> = std::env::args().skip(2).collect();
     let action = args.first().map(String::as_str).unwrap_or("");
     let entry = args.get(1).map(String::as_str).unwrap_or("");
+    if action == "verify-channel" {
+        if args.len() != 1 {
+            return Err("component helper verify-channel accepts no extra arguments".into());
+        }
+        verify_component_channel(&resource_dir()?)?;
+        return Ok(0);
+    }
     if !matches!(action, "run" | "install") || !matches!(entry, "harbor" | "harbor-dsh") {
-        return Err("component helper accepts only: <run|install> <harbor|harbor-dsh>".into());
+        return Err(
+            "component helper accepts only: verify-channel or <run|install> <harbor|harbor-dsh>"
+                .into(),
+        );
     }
     let resource_dir = resource_dir()?;
     let settings = desktop_settings::load();

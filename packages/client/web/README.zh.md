@@ -9,7 +9,7 @@ kind: "package-library"
 
 ## 概述
 
-`dsh-client-web` 启动 web GUI：它先从 Host 提供的启动图加载客户端模块系统，再在应用挂载前激活每一个客户端插件，因此只有当所有插件都就绪时完整 UI 才会出现。无框架启动页会逐 entry 报告状态，因此失败的 bundle 或插件保持可见，而不是白屏。它还定义共享模块表（`PLATFORM_MODULES`），每个动态 bundle 都依据它解析 external。模型永远看不到本包。
+`dsh-client-web` 启动 web GUI：它先从 Host 提供的启动图加载客户端模块系统，再在应用挂载前激活客户端 roster。必需应用 entry 必须启动；未启动的可选插件只产生一条诊断，不会阻塞可工作的 UI。无框架启动页会报告致命 entry 状态，而不是留下白屏。它还定义共享模块表（`PLATFORM_MODULES`），每个动态 bundle 都依据它解析 external。模型永远看不到本包。
 
 ## 目录
 
@@ -33,11 +33,11 @@ kind: "package-library"
 
 ### 启动过程是怎样的
 
-启动分两个阶段：模块阶段接纳 parser 已加载的 bootstrap 批次，从 Host 提供的启动图构建模块系统，并通过只执行一次的共享 application 批次 URL 预取 `immediately` 层级。插件阶段随后激活每个图 entry 并等待全部就绪，之后才把带标记的启动 DOM 交给 UI 渲染器，由它 hydrate 并切换到完整 UI。
+启动分两个阶段：模块阶段接纳 parser 已加载的 bootstrap 批次，从 Host 提供的启动图构建模块系统，并通过只执行一次的共享 application 批次 URL 预取 `immediately` 层级。插件阶段随后等待每个图 entry 稳定，拒绝未启动的必需应用 entry，警告未启动的可选 entry，再把带标记的启动 DOM 交给 UI 渲染器，由它 hydrate 并切换到可用 UI。
 
 ### 启动页
 
-启动页只使用原生 DOM 与本地 CSS，因此 bundle 与插件激活失败保持可见：它显示一个 spinner 节点，其 CSS 圆弧随 entry 激活而增长，并逐 entry 报告状态。spinner 及其动画相位会一直保留，直到完整 UI 替换启动页。导入或激活失败的插件会按名称报告并给出原因（缺失服务、导入失败或状态），而不是白屏。控制台包含原始导入错误。
+启动页只使用原生 DOM 与本地 CSS，因此必需 bundle 与插件激活失败保持可见：它显示一个 spinner 节点，其 CSS 圆弧随 entry 激活而增长，并逐 entry 报告状态。spinner 及其动画相位会一直保留，直到 UI 替换启动页。必需插件未启动时，页面会按名称报告并给出原因（缺失服务、导入失败或状态），而不是白屏。可选插件未启动时，UI 仍可用，控制台会写入同样可操作的原因。
 
 ### 共享模块表
 
@@ -65,7 +65,7 @@ kind: "package-library"
 
 ### 两阶段启动
 
-`run()` 调用 Host 安装的 `window.__ModuleLoader__.create({ boot, staticModules, ...seams })`；facade 接纳 parser 已加载的 bootstrap 批次后返回构造好的模块系统与已解析 manifest（元数据清单）。模块阶段通过一个共享的 application 批次 URL 预取 `immediately` 层级。插件阶段挂载 Loader、把 `loader.internal` 赋为 `modules`、统一创建全部图 entry、等待完全停稳，然后审计激活：任何导入失败、因缺失服务而 pending，或落入其他非 active 状态的 entry，都会抛出一个聚合错误，点名每个失败 entry。
+`run()` 调用 Host 安装的 `window.__ModuleLoader__.create({ boot, staticModules, ...seams })`；facade 接纳 parser 已加载的 bootstrap 批次后返回构造好的模块系统与已解析 manifest（元数据清单）。模块阶段通过一个共享的 application 批次 URL 预取 `immediately` 层级。插件阶段挂载 Loader、把 `loader.internal` 赋为 `modules`、统一创建全部图 entry、等待完全停稳，然后审计激活。必需应用集合中的 entry 未启动会抛出聚合错误；其他导入失败、缺少服务等待和非 active 状态会产生一条聚合警告，已启动的同级插件继续运行。
 
 ### 启动页机制
 

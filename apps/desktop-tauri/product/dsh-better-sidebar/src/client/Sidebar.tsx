@@ -38,7 +38,7 @@ import {
   type DropZone, type SidebarStore, type SidebarTab,
 } from './state.ts'
 import { IconPanelBottomOutline16 } from './icons.tsx'
-import { Workbench, type WorkbenchActions } from './split-pane.tsx'
+import { PaneEmptyCards, Workbench, type WorkbenchActions } from './split-pane.tsx'
 import { NARROW_MAX_WIDTH, useViewportSize } from './breakpoints.ts'
 import { bottomPushHeight } from './layout-push.ts'
 import { parseDesktopEnv } from './desktop-env.ts'
@@ -296,7 +296,11 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
   // viewport resize): fresh arrays per render re-rendered every LeafView's
   // + affordance whether or not anything tab-related moved.
   const newTabOptions = useMemo(
-    () => (state === undefined || sessionId === undefined ? [] : buildNewTabOptions(state, ctx, { sessionId, cwd })),
+    () => buildNewTabOptions(
+      state,
+      ctx,
+      sessionId === undefined ? undefined : { sessionId, cwd },
+    ),
     // state is the whole session state — every field it wraps is fair game
     // for the descriptors' available() callbacks. (The render's own guard
     // sits below every hook; this memo must handle the no-session case
@@ -561,10 +565,20 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
   }, [ctx, sessionId, cwd])
 
   if (state === undefined || sessionId === undefined) {
-    // No conversation yet: the host stays mounted (the drag shield keeps
-    // covering the region) but nothing is rendered — the toggle button lives
-    // in DSH's session header, which does not exist without a session.
-    return <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield} />
+    // The desktop workbench keeps its registered cards visible before the
+    // first Session exists. They stay disabled until a Session supplies the
+    // state and scope that tab creation requires.
+    return (
+      <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield}>
+        {primaryWorkbench && (
+          <div className={clsx(css.bottomPanel, css.bottomPanelSlot)} data-dsh-panel data-dsh-bottom-panel>
+            <div className={css.panelBody}>
+              <PaneEmptyCards newTabOptions={newTabOptions} onNewTab={() => {}} />
+            </div>
+          </div>
+        )}
+      </div>
+    )
   }
 
   const bottomPanelHeight = bottomPushHeight({

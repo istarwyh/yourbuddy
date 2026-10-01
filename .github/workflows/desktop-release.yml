@@ -109,6 +109,7 @@ jobs:
           pnpm --dir apps/desktop-tauri run build:components -- --version "$version"
           manifest="apps/desktop-tauri/component-release/yourbuddy-components-$version.json"
           pnpm --dir apps/desktop-tauri exec tauri signer sign "$PWD/$manifest"
+          node apps/desktop-tauri/scripts/normalize-component-signature.mjs "$manifest.sig"
           cp "$manifest" apps/desktop-tauri/component-channel/components.json
           cp "$manifest.sig" apps/desktop-tauri/component-channel/components.json.sig
 
@@ -119,6 +120,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           pnpm --dir apps/desktop-tauri run build:bootstrap
+          "apps/desktop-tauri/src-tauri/target/$RUST_TARGET/release/yourbuddy" --yourbuddy-component-helper verify-channel
           mkdir -p "$RUNNER_TEMP/bootstrap-bundle"
           ditto "apps/desktop-tauri/src-tauri/target/$RUST_TARGET/release/bundle" "$RUNNER_TEMP/bootstrap-bundle"
 

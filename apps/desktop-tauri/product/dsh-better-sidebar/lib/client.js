@@ -14124,7 +14124,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			return service.getTabs().filter((d) => !d.hidden && service.isTabEnabled(d.id)).sort((a, b) => (a.order ?? 100) - (b.order ?? 100)).map((d) => ({
 				id: d.id,
 				label: typeof d.title === "function" ? d.title() : d.title,
-				disabled: !(d.available?.(ctx, scope, state) ?? true),
+				disabled: state === void 0 || scope === void 0 || !(d.available?.(ctx, scope, state) ?? true),
 				icon: typeof d.icon === "function" ? d.icon(14) : d.icon
 			}));
 		}
@@ -14993,7 +14993,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				};
 			}, [sessionId, summaryCwd]);
 			const cwd = summaryCwd ?? fetchedCwd;
-			const newTabOptions = (0, react.useMemo)(() => state === void 0 || sessionId === void 0 ? [] : buildNewTabOptions(state, ctx, {
+			const newTabOptions = (0, react.useMemo)(() => buildNewTabOptions(state, ctx, sessionId === void 0 ? void 0 : {
 				sessionId,
 				cwd
 			}), [
@@ -15221,7 +15221,19 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			if (state === void 0 || sessionId === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 				"data-dsh-panel-host": true,
 				"data-dsh-presentation": primaryWorkbench ? "slot" : "portal",
-				...osFileDragShield
+				...osFileDragShield,
+				children: primaryWorkbench && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: (0, clsx.clsx)(sidebar_module_css_default.bottomPanel, sidebar_module_css_default.bottomPanelSlot),
+					"data-dsh-panel": true,
+					"data-dsh-bottom-panel": true,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: sidebar_module_css_default.panelBody,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(PaneEmptyCards, {
+							newTabOptions,
+							onNewTab: () => {}
+						})
+					})
+				})
 			});
 			const bottomPanelHeight = bottomPushHeight({
 				open: true,

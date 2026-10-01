@@ -239,7 +239,7 @@ export function AppFrame({
   const sessionRegionVisible = !workbench.present || workbench.expanded
   const workbenchCollapsed = workbenchDesktop
     && workbench.collapseWorkbenchWhenExpanded
-    && sessionRegionVisible
+    && layoutInfo.rightbarShown
   const workbenchPrimary = (workbenchDesktop && !workbenchCollapsed)
     || (workbench.present && !sessionRegionVisible)
   const frameSidebarWidth = computeColumns(viewport, sidebarPreference, 0, collapsedWidth).sidebar

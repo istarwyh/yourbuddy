@@ -1,0 +1,10 @@
+diff --git a/packages/client/ui-layout/src/client/AppFrame.tsx b/packages/client/ui-layout/src/client/AppFrame.tsx
+--- a/packages/client/ui-layout/src/client/AppFrame.tsx
++++ b/packages/client/ui-layout/src/client/AppFrame.tsx
+@@ -240,7 +240,7 @@ export function AppFrame(props: AppFrameProps) {
+   const workbenchCollapsed = workbenchDesktop
+     && workbench.collapseWorkbenchWhenExpanded
+-    && sessionRegionVisible
++    && layoutInfo.rightbarShown
+   const workbenchPrimary = (workbenchDesktop && !workbenchCollapsed)
+     || (workbench.present && !sessionRegionVisible)
