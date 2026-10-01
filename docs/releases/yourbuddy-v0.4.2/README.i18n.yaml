@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.2/README.md
+/yourbuddy-0-4-2:
+  en: f09b06fce24d8472
+  zh: 5a575bdfabe4ad87
+/yourbuddy-0-4-2/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-4-2/user-release-notes/what-changed:
+  en: 129805fafdb31972
+  zh: afbc345f22fd9e15
+/yourbuddy-0-4-2/user-release-notes/problem-solved:
+  en: 8b45383a24f7c427
+  zh: b8be138b1f0e4239
+/yourbuddy-0-4-2/user-release-notes/where-to-use-it:
+  en: d5ea9e4822d0051c
+  zh: da5ca371e28f5a32
+/yourbuddy-0-4-2/user-release-notes/how-to-try-it:
+  en: 0fee9df648ebc3f8
+  zh: 87284e401bdd8894
+/yourbuddy-0-4-2/user-release-notes/install-or-upgrade:
+  en: d9031c7cb1098ce1
+  zh: a730b3bbeedae97c
+/yourbuddy-0-4-2/user-release-notes/compatibility-migration-and-limitations:
+  en: 74c71382ba0033dc
+  zh: 86e564aba401d89d
+/yourbuddy-0-4-2/verification-summary:
+  en: 9085a8ba90ae46dc
+  zh: 4e2a3fe92c2b134c
+/yourbuddy-0-4-2/scenario-better-sidebar-startup-hotfix:
+  en: 7114cc3b5b419961
+  zh: e12a2b5b43590058
+/yourbuddy-0-4-2/scenario-better-sidebar-startup-hotfix/steps:
+  en: 0b7d6aad1afaeb89
+  zh: 008fab6991d9070b
+/yourbuddy-0-4-2/scenario-better-sidebar-startup-hotfix/expected:
+  en: dc3c16907f4ec69a
+  zh: ea0c7eec30c6cf16
+/yourbuddy-0-4-2/scenario-better-sidebar-startup-hotfix/actual:
+  en: a9d1458fe876d618
+  zh: d85f53d910ff2cc1
+/yourbuddy-0-4-2/scenario-better-sidebar-startup-hotfix/evidence:
+  en: 39ebbe1be2fc7a5b
+  zh: ffba4bc3a42b1e11
+/yourbuddy-0-4-2/scenario-better-sidebar-startup-hotfix/scope-limits:
+  en: 3c1a95d95cf9933d
+  zh: 99e90979557bb473
+/yourbuddy-0-4-2/delivery-status:
+  en: c9f2648bae46858f
+  zh: e5229048e10efa84
+/yourbuddy-0-4-2/delivery-checklist:
+  en: 8e0ef307d47fad81
+  zh: 98036d45ec7f7aef

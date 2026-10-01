@@ -1,7 +1,7 @@
-# YourBuddy 0.4.1
+# YourBuddy 0.4.2
 
-Bootstrap first launch now consumes the component signature format the desktop runtime expects, and packaging verifies the staged manifest with that same native verifier. Optional plugins can report an activation failure without holding the whole application on the loading screen. The center workbench now collapses only while the right sidebar is actually open, returns when it closes, and keeps its cards visible before the first Session exists.
+Fixes a Better Sidebar startup crash introduced in 0.4.1. The no-Session workbench now calls the bundled `clsx` function correctly instead of a nonexistent named export, and a release-snapshot regression test protects the exact Bundle shipped by the desktop package.
 
-Bootstrap 首次启动现在使用桌面 Runtime 实际所需的组件签名格式，打包过程也会用同一原生验证器检查暂存 Manifest。可选插件激活失败时会给出诊断，但不会让整个应用停留在加载界面。中间工作台只在右侧栏实际打开时收起，关闭后恢复，并会在首个 Session 创建前继续显示卡片。
+修复 0.4.1 引入的 Better Sidebar 启动崩溃。无 Session 工作台现在会正确调用 Bundle 内的 `clsx` 函数，而非不存在的具名导出；新增 Release 快照回归测试会直接保护桌面包实际发布的 Bundle。
 
-Verification archive: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.1/docs/releases/yourbuddy-v0.4.1
+Verification archive: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.2/docs/releases/yourbuddy-v0.4.2

@@ -10,7 +10,8 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.4.1](yourbuddy-v0.4.1/README.md) | YourBuddy desktop | Included | Issue #35 startup, optional-plugin activation, workbench layout, component signature, and 30 MB Bootstrap gate checks recorded | Release candidate; publication verification pending |
+| [yourbuddy-v0.4.2](yourbuddy-v0.4.2/README.md) | YourBuddy desktop | Included | Better Sidebar startup hotfix and exact shipped-Bundle regression recorded | Release candidate; publication verification pending |
+| [yourbuddy-v0.4.1](yourbuddy-v0.4.1/README.md) | YourBuddy desktop | Included | Issue #35 startup, optional-plugin activation, workbench layout, component signature, and 30 MB Bootstrap gate checks recorded | Published; Better Sidebar startup superseded by 0.4.2 |
 | [yourbuddy-v0.4.0](yourbuddy-v0.4.0/README.md) | YourBuddy desktop | Included | Bootstrap and Offline channels, 30 MB gate, component checks, relocated Harbor smoke, 14 public assets, anonymous hashes, updater metadata, DMG integrity, and bilingual website recorded | Published and independently verified within stated limits |
 | [yourbuddy-v0.3.24](yourbuddy-v0.3.24/README.md) | YourBuddy desktop | Included | Cross-engine JSON containers, Session opening failure terminal state, retry action, published workflow, five public assets, independent downloads, hashes, and updater metadata recorded | Published and independently checked within stated limits |
 | [yourbuddy-v0.3.23](yourbuddy-v0.3.23/README.md) | YourBuddy desktop | Included | Source terminal lifecycle, retained Web replay, requested coverage removals, CI baseline failures, five public assets, checksums, updater metadata, and packaged-interaction limits recorded | Published and checked within stated limits |
