@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.3/README.md
+/yourbuddy-0-4-3:
+  en: 9ae9fb3320e50458
+  zh: dca33eeb3a9136a7
+/yourbuddy-0-4-3/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-4-3/user-release-notes/what-changed:
+  en: e64b8598a6a2bd51
+  zh: 8f8356a08cdff4a7
+/yourbuddy-0-4-3/user-release-notes/problem-solved:
+  en: 3721e1f3429be5fb
+  zh: f020117ba447384a
+/yourbuddy-0-4-3/user-release-notes/where-to-use-it:
+  en: 2f3e3354bd0855ae
+  zh: e29a6adb8e294b89
+/yourbuddy-0-4-3/user-release-notes/how-to-try-it:
+  en: 3f9822aea1884de9
+  zh: 2adee4356917ae8e
+/yourbuddy-0-4-3/user-release-notes/install-or-upgrade:
+  en: 3ce08e8830c4343d
+  zh: 94d761f7d02969b3
+/yourbuddy-0-4-3/user-release-notes/compatibility-migration-and-limitations:
+  en: ac14c8e42cebbb43
+  zh: 2585cd256c419236
+/yourbuddy-0-4-3/verification-summary:
+  en: 3cea373ae1091c6d
+  zh: 0def1bf58fb950c8
+/yourbuddy-0-4-3/scenario-open-desktop-capability-lifecycle:
+  en: 33e53af5b88461d6
+  zh: 48bb1d11a12259be
+/yourbuddy-0-4-3/scenario-open-desktop-capability-lifecycle/steps:
+  en: 1d15e27914155719
+  zh: 3b7f98bfca081034
+/yourbuddy-0-4-3/scenario-open-desktop-capability-lifecycle/expected:
+  en: 7d4edae79de431dd
+  zh: 06ad67a11e6f958c
+/yourbuddy-0-4-3/scenario-open-desktop-capability-lifecycle/actual:
+  en: e9a64f0a9dfad13a
+  zh: 6075047df43cb27a
+/yourbuddy-0-4-3/scenario-open-desktop-capability-lifecycle/evidence:
+  en: 62b0fd0ad534d209
+  zh: 0c230aed5a1b7671
+/yourbuddy-0-4-3/scenario-open-desktop-capability-lifecycle/scope-limits:
+  en: 0df5ca784825ab4c
+  zh: f4034f25dcb82d6a
+/yourbuddy-0-4-3/delivery-status:
+  en: 237b40ae6de385fe
+  zh: 9ad181d7748abd6c
+/yourbuddy-0-4-3/delivery-checklist:
+  en: 4aeae4ed80e08d30
+  zh: d56f2ec64b198280

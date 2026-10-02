@@ -10,6 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
+| [yourbuddy-v0.4.3](yourbuddy-v0.4.3/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录 Issue #36-#38、Harbor 0.10.3、Capability Pack、可信桌面 Gateway、实际 Bundle 回归、离线安装与 30 MB 发布门禁 | 候选版本；待核验发布 |
 | [yourbuddy-v0.4.2](yourbuddy-v0.4.2/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录 Better Sidebar 启动热修复与实际发布 Bundle 回归测试 | 候选版本；待核验发布 |
 | [yourbuddy-v0.4.1](yourbuddy-v0.4.1/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录 Issue #35 启动、可选插件激活、工作台布局、组件签名与 30 MB Bootstrap 门禁检查 | 已发布；Better Sidebar 启动问题由 0.4.2 取代 |
 | [yourbuddy-v0.4.0](yourbuddy-v0.4.0/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录 Bootstrap 与 Offline 渠道、30 MB 门槛、组件检查、搬移 Harbor Smoke、14 个公开制品、匿名 Hash、Updater Metadata、DMG 完整性与双语网站 | 已发布并在说明范围内完成独立检查 |
