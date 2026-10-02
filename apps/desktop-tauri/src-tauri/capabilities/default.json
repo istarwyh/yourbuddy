@@ -23,6 +23,7 @@
     "notification:default",
     "core:webview:allow-create-webview-window",
     "core:webview:allow-webview-close",
-    "core:webview:allow-set-webview-focus"
+    "core:webview:allow-set-webview-focus",
+    "allow-first-party-commands"
   ]
 }

@@ -9,6 +9,9 @@
       "package": "dsh-harbor-evolution",
       "destination": "harbor-evolution",
       "sourcePath": "packages/dsh-plugin",
+      "sourcePatches": [
+        "patches/harbor-runtime-recovery.patch"
+      ],
       "pythonPackage": "harbor-dsh-evolution",
       "pythonDestination": "harbor-python",
       "pythonSourcePath": "packages/harbor-plugin",

@@ -1,0 +1,64 @@
+--- a/packages/dsh-plugin/src/client/index.jsx
++++ b/packages/dsh-plugin/src/client/index.jsx
+@@ -40,5 +40,5 @@
+     dashboardStale: '数据可能已过期；Harbor 仍在重试读取。', workbenchStale: 'Job 刷新失败；下方保留上一次成功读取的工作台，可能已过期。', trialListStale: 'Trial 列表刷新失败；下方保留上一次成功读取的结果，可能已过期。', trialListUnavailable: 'Trial 列表暂时无法读取。',
+     basedOn: '回答依据', revision: '快照版本', currentRevision: '当前版本', observedAt: '观测时间', evidenceRefs: '证据引用', objectRefs: '对象引用', evidenceUnavailable: '证据内容不可用',
+     errorCode: '错误码', errorAt: '发生时间', nextStep: '下一步', clearFilters: '清除筛选', noFilteredTrials: '当前筛选没有 Trial。', selectTrialHint: '从左侧选择一个 Trial 查看证据。', loadingTrial: '正在读取 Trial…',
+-    errorNextRetry: '重试读取；如仍失败，请检查网络与 Harbor 运行状态。', errorNextPermission: '检查当前 Session 的工作空间与访问权限。', errorNextMissing: '刷新列表并确认对象仍然存在。', errorNextArtifact: '检查 Job 的 Artifact / Audit，修复产物后重试。',
++    errorNextRetry: '重试读取；如仍失败，请检查网络与 Harbor 运行状态。', errorNextPermission: '检查当前 Session 的工作空间与访问权限。', errorNextMissing: '刷新列表并确认对象仍然存在。', errorNextArtifact: '检查 Job 的 Artifact / Audit，修复产物后重试。', runtimeNotReady: 'Harbor 运行时尚未安装。', installRuntime: '安装 Harbor 运行时', installingRuntime: '正在安装…', runtimeInstalled: '运行时已安装，正在重新连接…', runtimeInstallFailed: '安装失败', errorNextRuntime: '直接安装随 YourBuddy 提供的 Harbor 运行时，然后重试。',
+     ...HISTORICAL_MESSAGES.zh,
+@@ -85,5 +85,5 @@
+     dashboardStale: 'Data may be stale; Harbor is still retrying the read.', workbenchStale: 'The Job refresh failed. The last successful Workbench is retained below and may be stale.', trialListStale: 'The Trial list refresh failed. The last successful rows are retained below and may be stale.', trialListUnavailable: 'The Trial list is temporarily unavailable.',
+     basedOn: 'Answer basis', revision: 'Snapshot revision', currentRevision: 'Current revision', observedAt: 'Observed at', evidenceRefs: 'Evidence references', objectRefs: 'Object references', evidenceUnavailable: 'Evidence content unavailable',
+     errorCode: 'Error code', errorAt: 'Occurred at', nextStep: 'Next step', clearFilters: 'Clear filters', noFilteredTrials: 'No Trials match the current filters.', selectTrialHint: 'Select a Trial on the left to inspect its evidence.', loadingTrial: 'Loading Trial…',
+-    errorNextRetry: 'Retry the read. If it still fails, check the network and Harbor runtime.', errorNextPermission: 'Check the active Session workspace and its access permissions.', errorNextMissing: 'Refresh the list and confirm that the object still exists.', errorNextArtifact: 'Inspect the Job Artifact / Audit, repair the artifact, and retry.',
++    errorNextRetry: 'Retry the read. If it still fails, check the network and Harbor runtime.', errorNextPermission: 'Check the active Session workspace and its access permissions.', errorNextMissing: 'Refresh the list and confirm that the object still exists.', errorNextArtifact: 'Inspect the Job Artifact / Audit, repair the artifact, and retry.', runtimeNotReady: 'The Harbor runtime is not installed.', installRuntime: 'Install Harbor runtime', installingRuntime: 'Installing…', runtimeInstalled: 'Runtime installed. Reconnecting…', runtimeInstallFailed: 'Installation failed', errorNextRuntime: 'Install the Harbor runtime bundled for YourBuddy, then retry.',
+     ...HISTORICAL_MESSAGES.en,
+@@ -316,5 +316,6 @@
+ function errorNextStep(error, t) {
+   if (error.nextStep) return error.nextStep
++  if (error.code === 'HARBOR_RUNTIME_NOT_READY') return t('errorNextRuntime')
+   if (error.category === 'expired') return t('errorNextExpired')
+   if (error.category === 'conflict') return t('reloadBeforeSave')
+   if (error.category === 'permission') return t('errorNextPermission')
+@@ -324,8 +325,39 @@
+   if (error.category === 'artifact') return t('errorNextArtifact')
+   return t('errorNextRetry')
++}
++
++function installHarborRuntime() {
++  if (window.parent === window) return Promise.reject(new Error('desktop-shell-unavailable'))
++  const requestId = globalThis.crypto?.randomUUID?.() ?? `harbor-install-${Date.now()}`
++  return new Promise((resolve, reject) => {
++    const parent = window.parent
++    const listener = event => {
++      const message = event.data
++      if (event.source !== parent || message?.channel !== 'yourbuddy.desktop.lifecycle' || message?.version !== 1 || message?.requestId !== requestId) return
++      if (message.type !== 'install-harbor-response') return
++      window.removeEventListener('message', listener)
++      if (message.ok) resolve(message.message)
++      else reject(new Error(message.error ?? 'harbor-runtime-install-failed'))
++    }
++    window.addEventListener('message', listener)
++    parent.postMessage({ channel: 'yourbuddy.desktop.lifecycle', version: 1, type: 'install-harbor-request', requestId }, '*')
++  })
+ }
+ 
+ function HarborErrorState({ error, title, retry, retryLabel, t }) {
+   const value = normalizeHarborUiError(error)
+-  return <div className="hse-error-state" data-category={value.category} role="alert"><div><b>{title ?? value.message}</b>{title && title !== value.message ? <span>{value.message}</span> : null}<small>{t('errorCode')}: <code>{value.code}</code> · {t('errorAt')}: <time dateTime={value.observedAt}>{new Date(value.observedAt).toLocaleString()}</time></small><small>{t('nextStep')}: {errorNextStep(value, t)}</small></div>{retry ? <button type="button" onClick={retry}>{retryLabel ?? t('retry')}</button> : null}</div>
++  const runtimeMissing = value.code === 'HARBOR_RUNTIME_NOT_READY'
++  const [installation, setInstallation] = useState({ status: 'idle', error: undefined })
++  const install = async () => {
++    setInstallation({ status: 'installing', error: undefined })
++    try {
++      await installHarborRuntime()
++      setInstallation({ status: 'installed', error: undefined })
++      retry?.()
++    } catch (installError) {
++      setInstallation({ status: 'error', error: installError?.message ?? String(installError) })
++    }
++  }
++  const heading = runtimeMissing ? t('runtimeNotReady') : title ?? value.message
++  return <div className="hse-error-state" data-category={value.category} role="alert"><div><b>{heading}</b>{heading !== value.message ? <span>{value.message}</span> : null}<small>{t('errorCode')}: <code>{value.code}</code> · {t('errorAt')}: <time dateTime={value.observedAt}>{new Date(value.observedAt).toLocaleString()}</time></small><small>{t('nextStep')}: {errorNextStep(value, t)}</small>{installation.status === 'installed' ? <small>{t('runtimeInstalled')}</small> : null}{installation.status === 'error' ? <small>{t('runtimeInstallFailed')}: {installation.error}</small> : null}</div>{runtimeMissing ? <button type="button" disabled={installation.status === 'installing'} onClick={() => void install()}>{installation.status === 'installing' ? t('installingRuntime') : t('installRuntime')}</button> : retry ? <button type="button" onClick={retry}>{retryLabel ?? t('retry')}</button> : null}</div>
+ }

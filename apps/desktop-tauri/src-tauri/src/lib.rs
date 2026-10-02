@@ -27,12 +27,14 @@ use runtime::wsl::{
     ensure_wsl_runtime, parse_wsl_list, select_distro, SystemWslRunner, WslRunner, WslSelectError,
 };
 use runtime::{app_data_root, boot_kind, DesktopRuntime, ProvisionEvent};
+use serde::Deserialize;
+use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::window::Color;
 use tauri::{AppHandle, Manager, RunEvent};
 
-const SPLASH_BG: Color = Color(0, 0, 0, 0);
+const SPLASH_BG: Color = Color(10, 15, 30, 255);
 
 fn app_context() -> tauri::Context<tauri::Wry> {
     tauri::generate_context!()
@@ -53,18 +55,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             chrome::show_main(app);
         }))
-        .invoke_handler(tauri::generate_handler![
-            chrome::set_close_action,
-            chrome::restart_app,
-            external_links::open_external_url,
-            external_links::open_marketplace_url,
-            network_proxy::get_network_proxy_settings,
-            network_proxy::select_ca_certificate,
-            network_proxy::save_network_proxy_settings,
-            network_proxy::test_network_proxy_settings,
-            install_harbor_component,
-            updater::check_for_updates
-        ])
+        .invoke_handler(tauri::generate_handler![run_first_party_command])
         .setup(|app| {
             let handle = app.handle().clone();
             let icon = app
@@ -110,6 +101,71 @@ pub fn run() {
         });
 }
 
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FirstPartyCommandPayload {
+    action: Option<String>,
+    url: Option<String>,
+    settings: Option<network_proxy::NetworkProxySettings>,
+}
+
+/// Dispatch application-owned desktop operations without a second command ACL.
+#[tauri::command]
+async fn run_first_party_command(
+    app: AppHandle,
+    runtime: tauri::State<'_, DesktopRuntime>,
+    command: String,
+    payload: Option<FirstPartyCommandPayload>,
+) -> Result<Value, String> {
+    let payload = payload.unwrap_or_default();
+    match command.as_str() {
+        "set_close_action" => {
+            chrome::set_close_action(app, payload.action.ok_or("close-action-missing")?)?;
+            Ok(Value::Null)
+        }
+        "restart_app" => {
+            chrome::restart_app(app);
+            Ok(Value::Null)
+        }
+        "open_external_url" => {
+            external_links::open_external_url(payload.url.ok_or("external-url-missing")?)?;
+            Ok(Value::Null)
+        }
+        "open_marketplace_url" => {
+            external_links::open_marketplace_url(payload.url.ok_or("marketplace-url-missing")?)?;
+            Ok(Value::Null)
+        }
+        "get_network_proxy_settings" => {
+            serde_json::to_value(network_proxy::get_network_proxy_settings())
+                .map_err(|error| error.to_string())
+        }
+        "select_ca_certificate" => {
+            serde_json::to_value(network_proxy::select_ca_certificate(app).await?)
+                .map_err(|error| error.to_string())
+        }
+        "test_network_proxy_settings" => serde_json::to_value(
+            network_proxy::test_network_proxy_settings(
+                payload.settings.ok_or("network-proxy-settings-missing")?,
+                runtime,
+            )
+            .await?,
+        )
+        .map_err(|error| error.to_string()),
+        "save_network_proxy_settings" => serde_json::to_value(
+            network_proxy::save_network_proxy_settings(
+                payload.settings.ok_or("network-proxy-settings-missing")?,
+                runtime,
+            )
+            .await?,
+        )
+        .map_err(|error| error.to_string()),
+        "install_harbor_component" => Ok(json!(install_harbor_component(app).await?)),
+        "enable_managed_cli_path" => Ok(json!(enable_managed_cli_path()?)),
+        "check_for_updates" => Ok(json!(updater::check_for_updates(app).await?)),
+        _ => Err(format!("unknown first-party command: {command}")),
+    }
+}
+
 /// Download and activate the optional Harbor component after a user action.
 #[tauri::command]
 async fn install_harbor_component(app: AppHandle) -> Result<String, String> {
@@ -120,8 +176,18 @@ async fn install_harbor_component(app: AppHandle) -> Result<String, String> {
     let settings = desktop_settings::load();
     let proxy = network_proxy::resolve(&settings.network_proxy)?;
     let manager = ComponentManager::load(&resource_dir, &proxy)?;
-    manager.ensure("harbor").await?;
+    manager
+        .ensure("harbor")
+        .await
+        .map_err(|error| format!("HARBOR_RUNTIME_INSTALL_FAILED: {error}"))?;
     Ok("Harbor runtime installed".into())
+}
+
+/// Add YourBuddy's stable managed-bin directory to future terminal sessions after an explicit user action.
+#[tauri::command]
+fn enable_managed_cli_path() -> Result<String, String> {
+    runtime::path_bridge::persist_managed_bin_path()?;
+    Ok("YourBuddy terminal commands enabled".into())
 }
 
 fn resolve_bundled_source(app: &AppHandle) -> Option<PathBuf> {

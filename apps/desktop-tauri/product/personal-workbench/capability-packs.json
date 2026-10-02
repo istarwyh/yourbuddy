@@ -1,0 +1,14 @@
+{
+  "dsh-harbor-evolution": {
+    "cli": {
+      "commands": [
+        {
+          "name": "dsh-harbor",
+          "entry": "./bin/dsh-harbor.mjs",
+          "versionArgs": ["--version"]
+        }
+      ]
+    },
+    "skills": ["./skills/evolve-agent-with-harbor"]
+  }
+}

@@ -130,6 +130,15 @@ export const zh = {
   'lifecycle.harbor.installing': '正在下载并启用 Harbor 运行时。完成前不会影响其他工作台功能。',
   'lifecycle.harbor.installed': 'Harbor 运行时已安装，可以使用相关工具。',
   'lifecycle.harbor.error': 'Harbor 运行时安装失败：',
+  'lifecycle.cli.action': '启用终端命令',
+  'lifecycle.cli.enabling-action': '正在启用…',
+  'lifecycle.cli.enabling': '正在把 YourBuddy 受管命令目录加入后续终端会话；已有配置可重复使用。',
+  'lifecycle.cli.enabled': '终端命令已启用。请新开一个终端窗口后使用。',
+  'lifecycle.cli.error': '终端命令启用失败：',
+  'capability.title': 'Capability Pack',
+  'capability.description': '这个插件从同一个版本交付终端命令、Skill、Host 能力与界面。',
+  'capability.copy': '复制诊断信息',
+  'capability.copied': '诊断信息已复制。',
 } as const
 
 /** English settings copy. */
@@ -259,4 +268,13 @@ export const en: Record<PersonalWorkbenchKey, string> = {
   'lifecycle.harbor.installing': 'Downloading and activating the Harbor runtime. Other workbench features remain available.',
   'lifecycle.harbor.installed': 'The Harbor runtime is installed and its tools are ready.',
   'lifecycle.harbor.error': 'Harbor runtime installation failed:',
+  'lifecycle.cli.action': 'Enable terminal commands',
+  'lifecycle.cli.enabling-action': 'Enabling…',
+  'lifecycle.cli.enabling': 'Adding YourBuddy’s managed command directory to future terminal sessions. Existing configuration is reused.',
+  'lifecycle.cli.enabled': 'Terminal commands are enabled. Open a new terminal window to use them.',
+  'lifecycle.cli.error': 'Could not enable terminal commands:',
+  'capability.title': 'Capability Pack',
+  'capability.description': 'This plugin delivers its terminal command, Skill, Host capability, and UI from the same version.',
+  'capability.copy': 'Copy diagnostics',
+  'capability.copied': 'Diagnostics copied.',
 }

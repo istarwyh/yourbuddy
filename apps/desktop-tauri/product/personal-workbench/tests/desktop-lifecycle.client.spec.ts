@@ -5,6 +5,7 @@ import {
   isDesktopLifecycleAvailable,
   readDesktopLifecycleResponse,
   requestHarborInstall,
+  requestManagedCliPath,
   requestDesktopRestart,
   requestDesktopUpdate,
   type DesktopLifecycleAction,
@@ -168,6 +169,27 @@ describe('desktop lifecycle browser bridge', () => {
     target.emit(accepted('install-harbor', 'harbor_1'))
     target.emit(response('install-harbor', 'harbor_1', { ok: true, message: 'installed' }))
     await expect(result).resolves.toBe('installed')
+  })
+
+  it('posts the fixed managed CLI path request', async () => {
+    const target = new FakeWindow()
+    const result = requestManagedCliPath({
+      target: target as unknown as Window,
+      requestId: 'cli_1',
+      handshakeTimeoutMs: 1_000,
+    })
+    expect(target.parent.messages[0]).toEqual({
+      message: {
+        channel: DESKTOP_LIFECYCLE_CHANNEL,
+        version: DESKTOP_LIFECYCLE_VERSION,
+        type: 'enable-cli-request',
+        requestId: 'cli_1',
+      },
+      targetOrigin: '*',
+    })
+    target.emit(accepted('enable-cli', 'cli_1'))
+    target.emit(response('enable-cli', 'cli_1', { ok: true, message: 'enabled' }))
+    await expect(result).resolves.toBe('enabled')
   })
 
   it('creates a request id without requiring crypto.randomUUID', async () => {

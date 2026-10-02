@@ -4,7 +4,10 @@
  */
 window.DSH_I18N = (function () {
   const zh = {
-    'splash.preparing': '正在准备运行环境…',
+    'splash.claim': '为你而来，也由你定义。',
+    'splash.explanation': '基于 DSH，界面、模型、Skill、Plugin 与工作方式都可以按需更换、扩展。',
+    'splash.promise': '每个人，都有自己的 Buddy。',
+    'splash.preparing': '正在唤醒你的工作台…',
     'splash.failed': '启动失败',
     'shell.closeTitle': '关闭窗口',
     'shell.closeDesc': '下次将记住这个选择，可在托盘菜单里改回。',
@@ -16,7 +19,10 @@ window.DSH_I18N = (function () {
     'shell.close': '关闭',
   }
   const en = {
-    'splash.preparing': 'Preparing the runtime…',
+    'splash.claim': 'Made for you. Shaped by you.',
+    'splash.explanation': 'Built on DSH, YourBuddy lets you change the interface, models, Skills, Plugins, and workflows around the way you work.',
+    'splash.promise': 'Everyone gets a Buddy of their own.',
+    'splash.preparing': 'Waking your workbench…',
     'splash.failed': 'Startup failed',
     'shell.closeTitle': 'Close window',
     'shell.closeDesc': 'This choice is remembered; change it later from the tray.',

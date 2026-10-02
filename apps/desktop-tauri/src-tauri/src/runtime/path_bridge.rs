@@ -43,6 +43,8 @@ pub fn prepare_host_path(
             return Ok(merge_path(Some(discovery_path()), &[]));
         }
     };
+    std::env::set_var("YOURBUDDY_BIN_DIR", &bridge.bin_dir);
+    std::env::set_var("YOURBUDDY_NODE_BINARY", &paths.node_binary);
     if user_cli_persistence_enabled(std::env::var_os("YOURBUDDY_PERSIST_DSH_CLI").as_deref()) {
         if let Err(error) = persist_user_path(&bridge) {
             boot_log::info(&format!("user PATH persist skipped: {error}"));
@@ -409,8 +411,18 @@ fn persist_user_path(bridge: &PathBridge) -> Result<(), String> {
     }
     #[cfg(not(windows))]
     {
-        persist_unix_user_shim(&bridge.bin_dir)?;
+        persist_unix_user_path(&bridge.bin_dir)?;
     }
+    Ok(())
+}
+
+/// Persist the stable YourBuddy managed-bin directory for future terminal sessions.
+pub fn persist_managed_bin_path() -> Result<(), String> {
+    let bin_dir = app_data_root()?.join(BIN_DIR_NAME);
+    #[cfg(windows)]
+    persist_windows_user_path(&bin_dir)?;
+    #[cfg(not(windows))]
+    persist_unix_user_path(&bin_dir)?;
     Ok(())
 }
 
@@ -505,22 +517,11 @@ fn broadcast_environment_change() {
 }
 
 #[cfg(not(windows))]
-fn persist_unix_user_shim(bin_dir: &Path) -> Result<(), String> {
+fn persist_unix_user_path(bin_dir: &Path) -> Result<(), String> {
     let Some(home) = dirs::home_dir() else {
         return Ok(());
     };
-    let local_bin = home.join(".local").join("bin");
-    fs::create_dir_all(&local_bin).map_err(|e| e.to_string())?;
-    let source = bin_dir.join("dsh");
-    let dest = local_bin.join("dsh");
-    if source.is_file() {
-        fs::copy(&source, &dest).map_err(|e| e.to_string())?;
-        set_executable(&dest)?;
-    }
-    if !path_string_contains(&std::env::var("PATH").unwrap_or_default(), &local_bin) {
-        append_profile_path(&home, &local_bin)?;
-    }
-    Ok(())
+    append_profile_path(&home, bin_dir)
 }
 
 #[cfg(not(windows))]

@@ -10,6 +10,14 @@
   "repository": "https://github.com/istarwyh/harbor-self-evolving",
   "package": "dsh-harbor-evolution",
   "sourcePath": "packages/dsh-plugin",
+  "sourcePatches": [
+    {
+      "id": "source-harbor-runtime-recovery",
+      "file": "patches/harbor-runtime-recovery.patch",
+      "sha256": "814fa24db83b0fe42e14525dd9344042ce3882969fd18aff7d53f3f2ec79dae5",
+      "purpose": "Apply the reviewed YourBuddy source customization before building the published artifact."
+    }
+  ],
   "patches": [
     "Set @deepseek-ai/dsh-skill peer range from >=0.1.0-rc.6 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-tools peer range from >=0.1.0-rc.6 to 0.1.7-rc.2.",
@@ -17,5 +25,5 @@
     "Preserve the YourBuddy bilingual README projection."
   ],
   "license": "MIT",
-  "treeSha256": "a1a986f69c45154a02f3c4202c74ddf4bfb41841c134e70b80489b61c37752e4"
+  "treeSha256": "5ffc240ef426378531b2f4a8791299e4bd2a431f95a4d3ed2113f2b6b0547f5d"
 }

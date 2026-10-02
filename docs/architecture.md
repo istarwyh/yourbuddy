@@ -50,9 +50,11 @@ The Python SDK follows the same application architecture. Its runtime wheel pack
 
 ## Desktop application
 
-The [Electron desktop application](../apps/desktop/README.md) carries its exact dsh production runtime in signed resources and owns the reserved `$DSH_HOME/profiles/desktop`. Shared profile helpers initialize its files, reconcile installed bundles, and resolve installation and bundle dependencies without replacing pnpm-owned packages. CLI and Desktop share product data, while executable packages, activation choices, and lockfiles remain separate. The public CLI cannot manage Desktop’s profile.
+The [Electron desktop application](../apps/desktop/README.md) carries its matching dsh runtime in signed resources and owns `$DSH_HOME/profiles/desktop`. Shared profile helpers initialize files, reconcile bundles, and resolve dependencies without replacing pnpm-owned packages. CLI and Desktop share product data, while executables, activation, and lockfiles remain separate; the public CLI cannot manage this profile.
 
-Electron starts the private Desktop Host in Electron Node mode. The Host invokes the shared CLI profile runner and complete Web application. The window immediately loads packaged Web assets and waits for boot injections before activating client plugins in the same document. Web owns RPC and streams; the desktop carrier connects the local page to the authenticated Host. Node IPC carries boot injections, readiness, fatal errors, and shutdown. Desktop defaults to port `19387`; profile configuration can override it. Shell-owned UI runs plugin transactions through bundled pnpm with normal user and profile configuration.
+Electron starts a private Host through the shared profile runner. The packaged page activates client plugins after boot injections; Web owns RPC and streams, while Node IPC carries readiness, fatal errors, and shutdown. Desktop defaults to port `19387`, subject to profile configuration, and shell UI runs plugin transactions through bundled pnpm.
+
+The [YourBuddy Tauri application](../apps/desktop-tauri/README.md) starts `dsh web` from a content-addressed private runtime. Product Clients reach native operations through one stable first-party command gateway instead of a command-level product ACL. Operating-system permissions, signing, and user-controlled plugin installation remain outside that trusted in-application path.
 
 ## Core packages
 

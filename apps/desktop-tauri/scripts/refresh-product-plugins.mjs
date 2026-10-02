@@ -56,6 +56,7 @@ const kindPluginFields = {
   'github-release-pair': new Set([
     'repository',
     'sourcePath',
+    'sourcePatches',
     'pythonPackage',
     'pythonDestination',
     'pythonSourcePath',
@@ -1061,7 +1062,12 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
   verifyManagedSnapshot(pythonDestination, { name: currentPython.name, version: currentPython.version })
   const latest = await resolveGitHubLatestRelease(policy.repository, fetchImpl)
   assertNoDowngrade(policy.package, current.manifest.version, latest.version)
-  if (current.sourceRecord?.commit === latest.commit && current.sourceRecord?.releaseTag === latest.tag) {
+  const desiredSourcePatches = sourcePatchRecords(roots.productRoot, policy.sourcePatches ?? [])
+  const recordedSourcePatches = Array.isArray(current.sourceRecord?.sourcePatches)
+    ? current.sourceRecord.sourcePatches
+    : []
+  const sourcePatchesChanged = JSON.stringify(recordedSourcePatches) !== JSON.stringify(desiredSourcePatches)
+  if (current.sourceRecord?.commit === latest.commit && current.sourceRecord?.releaseTag === latest.tag && !sourcePatchesChanged) {
     const python = readPythonProjectMetadata(readFileSync(join(pythonDestination, 'pyproject.toml'), 'utf8'))
     if (python.name !== policy.pythonPackage || python.version !== current.manifest.version) {
       throw new Error(`committed Harbor JavaScript/Python versions do not match: ${current.manifest.version} and ${python.version}`)
@@ -1103,7 +1109,12 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
   const work = join(roots.stagingRoot, policy.id)
   mkdirSync(work, { recursive: true })
   const checkout = singleExtractedDirectory(extractArchive(bytes, work))
+  const sourcePatches = applySourcePatches(checkout, roots.productRoot, policy.sourcePatches ?? [])
   const nodeSource = join(checkout, policy.sourcePath)
+  if (sourcePatches.length > 0) {
+    run('npm', ['ci', '--ignore-scripts'], { cwd: nodeSource })
+    run('npm', ['run', 'build'], { cwd: nodeSource })
+  }
   const pythonSource = join(checkout, policy.pythonSourcePath)
   const staged = join(work, 'staged-node')
   const stagedPython = join(work, 'staged-python')
@@ -1145,6 +1156,7 @@ async function stageGitHubReleasePair(policy, roots, fetchImpl) {
     ...common,
     package: manifest.name,
     sourcePath: policy.sourcePath,
+    sourcePatches,
     patches,
     license: manifest.license,
   })

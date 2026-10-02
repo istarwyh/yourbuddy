@@ -2046,6 +2046,12 @@ var dictionaries = {
     errorNextPermission: "\u68C0\u67E5\u5F53\u524D Session \u7684\u5DE5\u4F5C\u7A7A\u95F4\u4E0E\u8BBF\u95EE\u6743\u9650\u3002",
     errorNextMissing: "\u5237\u65B0\u5217\u8868\u5E76\u786E\u8BA4\u5BF9\u8C61\u4ECD\u7136\u5B58\u5728\u3002",
     errorNextArtifact: "\u68C0\u67E5 Job \u7684 Artifact / Audit\uFF0C\u4FEE\u590D\u4EA7\u7269\u540E\u91CD\u8BD5\u3002",
+    runtimeNotReady: "Harbor \u8FD0\u884C\u65F6\u5C1A\u672A\u5B89\u88C5\u3002",
+    installRuntime: "\u5B89\u88C5 Harbor \u8FD0\u884C\u65F6",
+    installingRuntime: "\u6B63\u5728\u5B89\u88C5\u2026",
+    runtimeInstalled: "\u8FD0\u884C\u65F6\u5DF2\u5B89\u88C5\uFF0C\u6B63\u5728\u91CD\u65B0\u8FDE\u63A5\u2026",
+    runtimeInstallFailed: "\u5B89\u88C5\u5931\u8D25",
+    errorNextRuntime: "\u76F4\u63A5\u5B89\u88C5\u968F YourBuddy \u63D0\u4F9B\u7684 Harbor \u8FD0\u884C\u65F6\uFF0C\u7136\u540E\u91CD\u8BD5\u3002",
     ...HISTORICAL_MESSAGES.zh,
     completed: "\u5DF2\u5B8C\u6210",
     partial: "\u5B8C\u6210\u4F46\u6709\u5F02\u5E38",
@@ -2432,6 +2438,12 @@ var dictionaries = {
     errorNextPermission: "Check the active Session workspace and its access permissions.",
     errorNextMissing: "Refresh the list and confirm that the object still exists.",
     errorNextArtifact: "Inspect the Job Artifact / Audit, repair the artifact, and retry.",
+    runtimeNotReady: "The Harbor runtime is not installed.",
+    installRuntime: "Install Harbor runtime",
+    installingRuntime: "Installing\u2026",
+    runtimeInstalled: "Runtime installed. Reconnecting\u2026",
+    runtimeInstallFailed: "Installation failed",
+    errorNextRuntime: "Install the Harbor runtime bundled for YourBuddy, then retry.",
     ...HISTORICAL_MESSAGES.en,
     completed: "Completed",
     partial: "Completed with errors",
@@ -2843,6 +2855,7 @@ function HarborSkeleton({ kind = "default", rows = 5, label = "Loading" }) {
 }
 function errorNextStep(error, t) {
   if (error.nextStep) return error.nextStep;
+  if (error.code === "HARBOR_RUNTIME_NOT_READY") return t("errorNextRuntime");
   if (error.category === "expired") return t("errorNextExpired");
   if (error.category === "conflict") return t("reloadBeforeSave");
   if (error.category === "permission") return t("errorNextPermission");
@@ -2850,9 +2863,39 @@ function errorNextStep(error, t) {
   if (error.category === "artifact") return t("errorNextArtifact");
   return t("errorNextRetry");
 }
+function installHarborRuntime() {
+  if (window.parent === window) return Promise.reject(new Error("desktop-shell-unavailable"));
+  const requestId = globalThis.crypto?.randomUUID?.() ?? `harbor-install-${Date.now()}`;
+  return new Promise((resolve, reject) => {
+    const parent = window.parent;
+    const listener = (event) => {
+      const message = event.data;
+      if (event.source !== parent || message?.channel !== "yourbuddy.desktop.lifecycle" || message?.version !== 1 || message?.requestId !== requestId) return;
+      if (message.type !== "install-harbor-response") return;
+      window.removeEventListener("message", listener);
+      if (message.ok) resolve(message.message);
+      else reject(new Error(message.error ?? "harbor-runtime-install-failed"));
+    };
+    window.addEventListener("message", listener);
+    parent.postMessage({ channel: "yourbuddy.desktop.lifecycle", version: 1, type: "install-harbor-request", requestId }, "*");
+  });
+}
 function HarborErrorState({ error, title, retry, retryLabel, t }) {
   const value2 = normalizeHarborUiError(error);
-  return /* @__PURE__ */ import_react6.default.createElement("div", { className: "hse-error-state", "data-category": value2.category, role: "alert" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("b", null, title ?? value2.message), title && title !== value2.message ? /* @__PURE__ */ import_react6.default.createElement("span", null, value2.message) : null, /* @__PURE__ */ import_react6.default.createElement("small", null, t("errorCode"), ": ", /* @__PURE__ */ import_react6.default.createElement("code", null, value2.code), " \xB7 ", t("errorAt"), ": ", /* @__PURE__ */ import_react6.default.createElement("time", { dateTime: value2.observedAt }, new Date(value2.observedAt).toLocaleString())), /* @__PURE__ */ import_react6.default.createElement("small", null, t("nextStep"), ": ", errorNextStep(value2, t))), retry ? /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: retry }, retryLabel ?? t("retry")) : null);
+  const runtimeMissing = value2.code === "HARBOR_RUNTIME_NOT_READY";
+  const [installation, setInstallation] = (0, import_react6.useState)({ status: "idle", error: void 0 });
+  const install = async () => {
+    setInstallation({ status: "installing", error: void 0 });
+    try {
+      await installHarborRuntime();
+      setInstallation({ status: "installed", error: void 0 });
+      retry?.();
+    } catch (installError) {
+      setInstallation({ status: "error", error: installError?.message ?? String(installError) });
+    }
+  };
+  const heading = runtimeMissing ? t("runtimeNotReady") : title ?? value2.message;
+  return /* @__PURE__ */ import_react6.default.createElement("div", { className: "hse-error-state", "data-category": value2.category, role: "alert" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("b", null, heading), heading !== value2.message ? /* @__PURE__ */ import_react6.default.createElement("span", null, value2.message) : null, /* @__PURE__ */ import_react6.default.createElement("small", null, t("errorCode"), ": ", /* @__PURE__ */ import_react6.default.createElement("code", null, value2.code), " \xB7 ", t("errorAt"), ": ", /* @__PURE__ */ import_react6.default.createElement("time", { dateTime: value2.observedAt }, new Date(value2.observedAt).toLocaleString())), /* @__PURE__ */ import_react6.default.createElement("small", null, t("nextStep"), ": ", errorNextStep(value2, t)), installation.status === "installed" ? /* @__PURE__ */ import_react6.default.createElement("small", null, t("runtimeInstalled")) : null, installation.status === "error" ? /* @__PURE__ */ import_react6.default.createElement("small", null, t("runtimeInstallFailed"), ": ", installation.error) : null), runtimeMissing ? /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", disabled: installation.status === "installing", onClick: () => void install() }, installation.status === "installing" ? t("installingRuntime") : t("installRuntime")) : retry ? /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: retry }, retryLabel ?? t("retry")) : null);
 }
 var EMPTY_UI_STATE = Object.freeze({ current: void 0, explicit: void 0, lastSent: void 0, status: "idle", error: void 0, navigation: void 0, pendingAction: void 0 });
 function pageSessionIdentity() {

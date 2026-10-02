@@ -15,7 +15,7 @@ const DESKTOP_I18N: &[u8] = include_bytes!("../../desktop-i18n.js");
 const APP_ICON: &[u8] = include_bytes!("../../app-icon.png");
 const MAX_REQUEST_BYTES: usize = 8 * 1024;
 const READ_TIMEOUT: Duration = Duration::from_secs(2);
-const COMMAND_PERMISSION: &str = "allow-desktop-shell-commands";
+const FIRST_PARTY_PERMISSION: &str = "allow-first-party-commands";
 
 /// Bound loopback server whose HTTP origin is same-site with `dsh web`.
 pub struct DesktopShellServer {
@@ -92,7 +92,12 @@ fn remote_capability(url: &str) -> Result<String, String> {
         .get_mut("permissions")
         .and_then(serde_json::Value::as_array_mut)
         .ok_or_else(|| "桌面壳权限模板缺少 permissions 数组".to_string())?;
-    permissions.push(json!(COMMAND_PERMISSION));
+    if !permissions
+        .iter()
+        .any(|value| value == FIRST_PARTY_PERMISSION)
+    {
+        permissions.push(json!(FIRST_PARTY_PERMISSION));
+    }
     capability["identifier"] = json!("desktop-shell-loopback");
     capability["description"] = json!("Exact runtime-owned loopback origin for the desktop shell");
     capability["local"] = json!(false);
@@ -213,7 +218,7 @@ fn write_response(stream: &mut TcpStream, status: u16, content_type: &str, body:
 
 #[cfg(test)]
 mod tests {
-    use super::{read_request, remote_capability, COMMAND_PERMISSION};
+    use super::{read_request, remote_capability, FIRST_PARTY_PERMISSION};
     use std::io::Cursor;
     use tauri::ipc::Origin;
 
@@ -237,7 +242,7 @@ mod tests {
         assert!(value["permissions"]
             .as_array()
             .unwrap()
-            .contains(&serde_json::json!(COMMAND_PERMISSION)));
+            .contains(&serde_json::json!(FIRST_PARTY_PERMISSION)));
         assert_eq!(
             value["remote"]["urls"],
             serde_json::json!(["http://127.0.0.1:45678/*"])
@@ -245,7 +250,7 @@ mod tests {
     }
 
     #[test]
-    fn tauri_authority_allows_shell_commands_only_on_the_exact_remote_origin() {
+    fn tauri_framework_exposes_one_stable_first_party_gateway_to_the_desktop_shell() {
         let shell_url = "http://127.0.0.1:45678/";
         let shell_origin = Origin::Remote {
             url: shell_url.parse().unwrap(),
@@ -279,6 +284,7 @@ mod tests {
                 "{command} must reject another window"
             );
         }
+        assert_eq!(allowed_shell_commands(), vec!["run_first_party_command"]);
     }
 
     #[test]

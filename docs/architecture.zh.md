@@ -50,9 +50,11 @@ Python SDK 遵循相同的应用架构。其运行时 wheel 把普通 `dsh` CLI 
 
 ## 桌面应用
 
-[Electron 桌面应用](../apps/desktop/README.zh.md)在签名资源中携带精确匹配的 dsh 生产运行时，并拥有保留的 `$DSH_HOME/profiles/desktop`。共享 profile helper 初始化其文件、协调已安装 bundle，并解析安装与 bundle 的依赖而不替换 pnpm 拥有的包。CLI 与 Desktop 共享产品数据，可执行包、启用选择与锁文件保持独立。公开 CLI 不能管理 Desktop profile。
+[Electron 桌面应用](../apps/desktop/README.zh.md)在签名资源中携带匹配的 dsh Runtime，并拥有 `$DSH_HOME/profiles/desktop`。共享 Profile Helper 初始化文件、协调 Bundle，并解析依赖而不替换 pnpm 管理的 Package。CLI 与 Desktop 共享产品数据，但可执行文件、启用选择与 Lockfile 保持独立；公开 CLI 不能管理该 Profile。
 
-Electron 使用 Electron Node 模式启动私有 Desktop Host。Host 调用共享 CLI profile runner 与完整 Web 应用。窗口立即加载打包 Web 资源，等待启动注入后在同一文档中激活客户端插件。Web 负责 RPC 与流；桌面载体将本地页面连接到已认证的 Host。Node IPC 承载启动注入、就绪、致命错误与关闭。Desktop 默认端口为 `19387`，profile 配置可覆盖。壳拥有的 UI 通过内置 pnpm 执行插件事务，并遵循正常用户与 profile 配置。
+Electron 通过共享 Profile Runner 启动私有 Host。打包页面在获得启动注入后激活 Client Plugin；Web 负责 RPC 与流，Node IPC 承载就绪、致命错误与关闭。Desktop 默认使用 `19387` 端口，Profile 配置可以覆盖；壳 UI 通过内置 pnpm 执行插件事务。
+
+[YourBuddy Tauri 应用](../apps/desktop-tauri/README.zh.md)从内容寻址的私有 Runtime 启动 `dsh web`。产品 Client 通过一个稳定的第一方命令入口使用原生操作，不维护产品级命令 ACL。操作系统权限、签名与用户控制的插件安装仍位于这条应用内信任路径之外。
 
 ## 核心包
 

@@ -717,6 +717,9 @@ function requestDesktopRestart(options = {}) {
 function requestHarborInstall(options = {}) {
   return requestDesktopLifecycle("install-harbor", options);
 }
+function requestManagedCliPath(options = {}) {
+  return requestDesktopLifecycle("enable-cli", options);
+}
 
 // src/client/ApplicationLifecycleRow.tsx
 var import_jsx_runtime3 = require("react/jsx-runtime");
@@ -756,7 +759,18 @@ function ApplicationLifecycleRow({ t }) {
       setStatus("harbor-error");
     }
   };
-  const busy = status === "checking" || status === "restarting" || status === "harbor-installing";
+  const enableCli = async () => {
+    setStatus("cli-enabling");
+    setDetail("");
+    try {
+      await requestManagedCliPath();
+      setStatus("cli-result");
+    } catch (error) {
+      setDetail(error instanceof Error ? error.message : String(error));
+      setStatus("cli-error");
+    }
+  };
+  const busy = status === "checking" || status === "restarting" || status === "harbor-installing" || status === "cli-enabling";
   const shellUnavailable = detail === "desktop-shell-unavailable";
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("section", { className: "dpw-card", "aria-labelledby": "dpw-lifecycle-title", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "dpw-heading", children: [
@@ -767,10 +781,12 @@ function ApplicationLifecycleRow({ t }) {
     status === "checking" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status", role: "status", children: t("lifecycle.update.checking") }),
     status === "restarting" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status", role: "status", children: t("lifecycle.restart.restarting") }),
     status === "harbor-installing" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status", role: "status", children: t("lifecycle.harbor.installing") }),
+    status === "cli-enabling" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status", role: "status", children: t("lifecycle.cli.enabling") }),
     status === "update-result" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status dpw-success", role: "status", children: detail }),
     status === "harbor-result" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status dpw-success", role: "status", children: t("lifecycle.harbor.installed") }),
-    (status === "update-error" || status === "restart-error" || status === "harbor-error") && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "dpw-error", role: "alert", children: [
-      t(shellUnavailable ? "lifecycle.shell-unavailable" : status === "update-error" ? "lifecycle.update.error" : status === "harbor-error" ? "lifecycle.harbor.error" : "lifecycle.restart.error"),
+    status === "cli-result" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "dpw-status dpw-success", role: "status", children: t("lifecycle.cli.enabled") }),
+    (status === "update-error" || status === "restart-error" || status === "harbor-error" || status === "cli-error") && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "dpw-error", role: "alert", children: [
+      t(shellUnavailable ? "lifecycle.shell-unavailable" : status === "update-error" ? "lifecycle.update.error" : status === "harbor-error" ? "lifecycle.harbor.error" : status === "cli-error" ? "lifecycle.cli.error" : "lifecycle.restart.error"),
       shellUnavailable ? "" : ` ${detail}`
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "dpw-actions", children: [
@@ -809,13 +825,112 @@ function ApplicationLifecycleRow({ t }) {
           },
           children: t(status === "harbor-installing" ? "lifecycle.harbor.installing-action" : "lifecycle.harbor.action")
         }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        "button",
+        {
+          type: "button",
+          className: "dpw-button",
+          disabled: !available || busy,
+          onClick: () => {
+            void enableCli();
+          },
+          children: t(status === "cli-enabling" ? "lifecycle.cli.enabling-action" : "lifecycle.cli.action")
+        }
       )
     ] })
   ] });
 }
 
-// src/client/NetworkProxyRow.tsx
+// src/client/CapabilityPackSection.tsx
 var import_react3 = require("react");
+var import_jsx_runtime4 = require("react/jsx-runtime");
+function stateText(state) {
+  return JSON.stringify({
+    package: `${state.packageName}@${state.version}`,
+    cli: state.commands,
+    skill: state.skills,
+    ui: state.ui
+  }, null, 2);
+}
+function CapabilityPackSection({ subject, t }) {
+  const [packs, setPacks] = (0, import_react3.useState)([]);
+  const [message, setMessage] = (0, import_react3.useState)("");
+  (0, import_react3.useEffect)(() => {
+    if (subject.kind !== "bundle") return;
+    let active = true;
+    void fetch("/api/yourbuddy/capability-packs", { credentials: "same-origin", cache: "no-store" }).then((response) => response.json()).then((body) => {
+      if (active && body.ok === true && Array.isArray(body.value)) setPacks(body.value);
+    }).catch(() => {
+      if (active) setPacks([]);
+    });
+    return () => {
+      active = false;
+    };
+  }, [subject]);
+  const pack = (0, import_react3.useMemo)(() => subject.kind === "bundle" ? packs.find((item) => item.packageName === subject.pkg.name) : void 0, [packs, subject]);
+  if (pack === void 0) return null;
+  const cliState = pack.commands.every((command) => command.status === "exposed") ? "exposed" : pack.commands.some((command) => command.status === "conflict") ? "conflict" : "unhealthy";
+  const skillState = pack.skills.every((skill) => skill.status === "registered") ? "registered" : "missing";
+  const copy = async () => {
+    await navigator.clipboard.writeText(stateText(pack));
+    setMessage(t("capability.copied"));
+  };
+  const enable = async () => {
+    try {
+      await requestManagedCliPath();
+      setMessage(t("lifecycle.cli.enabled"));
+    } catch (error) {
+      setMessage(`${t("lifecycle.cli.error")} ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("section", { className: "dpw-capability", "data-capability-pack": pack.packageName, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-heading", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-title", children: t("capability.title") }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-description", children: t("capability.description") })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("dl", { className: "dpw-capability-grid", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("dt", { children: "Package" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("dd", { children: [
+        "installed \xB7 ",
+        pack.version
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("dt", { children: "CLI" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("dd", { children: [
+        cliState,
+        " \xB7 ",
+        pack.commands.map((command) => command.name).join(", ")
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("dt", { children: "Skill" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("dd", { children: [
+        skillState,
+        " \xB7 ",
+        pack.skills.length
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("dt", { children: "UI" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("dd", { children: pack.ui })
+    ] }),
+    pack.commands.flatMap((command) => command.detail === void 0 ? [] : [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("code", { className: "dpw-code", children: [
+        command.name,
+        ": ",
+        command.detail
+      ] }, command.name)
+    ]),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "dpw-button", onClick: () => {
+        void enable();
+      }, children: t("lifecycle.cli.action") }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "dpw-button", onClick: () => {
+        void copy();
+      }, children: t("capability.copy") })
+    ] }),
+    message === "" ? null : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-status", role: "status", children: message })
+  ] });
+}
+
+// src/client/NetworkProxyRow.tsx
+var import_react4 = require("react");
 
 // src/client/desktop-network-proxy.ts
 var DESKTOP_NETWORK_PROXY_CHANNEL = "yourbuddy.desktop.network-proxy";
@@ -1001,7 +1116,7 @@ async function requestHostNetworkProxyTest(fetcher = globalThis.fetch) {
 }
 
 // src/client/NetworkProxyRow.tsx
-var import_jsx_runtime4 = require("react/jsx-runtime");
+var import_jsx_runtime5 = require("react/jsx-runtime");
 var EMPTY_SETTINGS = {
   mode: "direct",
   httpProxy: "",
@@ -1010,12 +1125,12 @@ var EMPTY_SETTINGS = {
   caCertificatePath: ""
 };
 function NetworkProxyRow({ t }) {
-  const [available] = (0, import_react3.useState)(() => isDesktopNetworkProxyAvailable());
-  const [snapshot, setSnapshot] = (0, import_react3.useState)(null);
-  const [draft, setDraft] = (0, import_react3.useState)(EMPTY_SETTINGS);
-  const [status, setStatus] = (0, import_react3.useState)(available ? "loading" : "idle");
-  const [detail, setDetail] = (0, import_react3.useState)("");
-  (0, import_react3.useEffect)(() => {
+  const [available] = (0, import_react4.useState)(() => isDesktopNetworkProxyAvailable());
+  const [snapshot, setSnapshot] = (0, import_react4.useState)(null);
+  const [draft, setDraft] = (0, import_react4.useState)(EMPTY_SETTINGS);
+  const [status, setStatus] = (0, import_react4.useState)(available ? "loading" : "idle");
+  const [detail, setDetail] = (0, import_react4.useState)("");
+  (0, import_react4.useEffect)(() => {
     if (!available) return;
     let active = true;
     void requestDesktopNetworkProxySnapshot().then((value) => {
@@ -1106,16 +1221,16 @@ function NetworkProxyRow({ t }) {
     setStatus("idle");
     setDetail("");
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("section", { className: "dpw-card", "aria-labelledby": "dpw-network-proxy-title", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-heading", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { id: "dpw-network-proxy-title", className: "dpw-title", children: t("proxy.title") }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-description", children: t("proxy.description") })
+  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("section", { className: "dpw-card", "aria-labelledby": "dpw-network-proxy-title", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-heading", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { id: "dpw-network-proxy-title", className: "dpw-title", children: t("proxy.title") }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-description", children: t("proxy.description") })
     ] }),
-    !available && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-status", children: t("proxy.desktop-only") }),
-    available && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-fields", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { className: "dpw-field dpw-field-wide", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "dpw-label", children: t("proxy.mode.label") }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+    !available && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-status", children: t("proxy.desktop-only") }),
+    available && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-fields", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("label", { className: "dpw-field dpw-field-wide", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dpw-label", children: t("proxy.mode.label") }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
           "select",
           {
             className: "dpw-input",
@@ -1124,39 +1239,39 @@ function NetworkProxyRow({ t }) {
             "aria-label": t("proxy.mode.label"),
             onChange: setMode,
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "system", children: t("proxy.mode.system") }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "custom", children: t("proxy.mode.custom") }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "direct", children: t("proxy.mode.direct") })
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("option", { value: "system", children: t("proxy.mode.system") }),
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("option", { value: "custom", children: t("proxy.mode.custom") }),
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("option", { value: "direct", children: t("proxy.mode.direct") })
             ]
           }
         )
       ] }),
-      draft.mode === "system" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-proxy-panel dpw-field-wide", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-label", children: t("proxy.system.detected") }),
-        snapshot?.system.supported === true && snapshot.system.configured && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-code", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
+      draft.mode === "system" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-proxy-panel dpw-field-wide", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-label", children: t("proxy.system.detected") }),
+        snapshot?.system.supported === true && snapshot.system.configured && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-code", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
             "HTTP_PROXY=",
             snapshot.system.httpProxy || t("proxy.value.direct")
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
             "HTTPS_PROXY=",
             snapshot.system.httpsProxy || t("proxy.value.direct")
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
             "NO_PROXY=",
             snapshot.system.noProxy
           ] })
         ] }),
-        snapshot?.system.supported === true && !snapshot.system.configured && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-hint", children: t("proxy.system.none") }),
-        snapshot?.system.supported === false && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-error", children: localizedProxyError(snapshot.system.error, t) }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "dpw-button", disabled: busy, onClick: () => {
+        snapshot?.system.supported === true && !snapshot.system.configured && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-hint", children: t("proxy.system.none") }),
+        snapshot?.system.supported === false && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-error", children: localizedProxyError(snapshot.system.error, t) }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "dpw-button", disabled: busy, onClick: () => {
           void refresh();
         }, children: status === "refreshing" ? t("proxy.system.refreshing") : t("proxy.system.refresh") })
       ] }),
-      draft.mode === "custom" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { className: "dpw-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "dpw-label", children: t("proxy.http.label") }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      draft.mode === "custom" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_jsx_runtime5.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("label", { className: "dpw-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dpw-label", children: t("proxy.http.label") }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
             "input",
             {
               className: "dpw-input",
@@ -1170,9 +1285,9 @@ function NetworkProxyRow({ t }) {
             }
           )
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { className: "dpw-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "dpw-label", children: t("proxy.https.label") }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("label", { className: "dpw-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dpw-label", children: t("proxy.https.label") }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
             "input",
             {
               className: "dpw-input",
@@ -1186,9 +1301,9 @@ function NetworkProxyRow({ t }) {
             }
           )
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { className: "dpw-field dpw-field-wide", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "dpw-label", children: t("proxy.no-proxy.label") }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("label", { className: "dpw-field dpw-field-wide", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dpw-label", children: t("proxy.no-proxy.label") }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
             "input",
             {
               className: "dpw-input",
@@ -1201,16 +1316,16 @@ function NetworkProxyRow({ t }) {
               onChange: setField("noProxy")
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "dpw-hint", children: t("proxy.custom.hint") })
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dpw-hint", children: t("proxy.custom.hint") })
         ] })
       ] }),
-      draft.mode === "direct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-hint dpw-field-wide", children: t("proxy.direct.hint") }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-proxy-panel dpw-field-wide", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-label", children: t("proxy.ca.label") }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-code dpw-ca-path", children: draft.caCertificatePath || (snapshot?.settings.caCertificatePath === "" && snapshot.effective?.caSource === "environment" ? t("proxy.ca.environment") : t("proxy.ca.system-only")) }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-hint", children: t("proxy.ca.hint") }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-actions", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      draft.mode === "direct" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-hint dpw-field-wide", children: t("proxy.direct.hint") }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-proxy-panel dpw-field-wide", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-label", children: t("proxy.ca.label") }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-code dpw-ca-path", children: draft.caCertificatePath || (snapshot?.settings.caCertificatePath === "" && snapshot.effective?.caSource === "environment" ? t("proxy.ca.environment") : t("proxy.ca.system-only")) }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-hint", children: t("proxy.ca.hint") }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-actions", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
             "button",
             {
               type: "button",
@@ -1222,7 +1337,7 @@ function NetworkProxyRow({ t }) {
               children: status === "selecting-ca" ? t("proxy.ca.selecting") : t("proxy.ca.select")
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
             "button",
             {
               type: "button",
@@ -1239,15 +1354,15 @@ function NetworkProxyRow({ t }) {
         ] })
       ] })
     ] }),
-    status === "loading" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.loading") }),
-    status === "testing" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.test.testing") }),
-    status === "tested" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-status dpw-success", role: "status", children: detail }),
-    status === "test-failed" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-error", role: "alert", children: detail }),
-    status === "saving" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.save.saving") }),
-    status === "restarting" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.save.restarting") }),
-    status === "error" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "dpw-error", role: "alert", children: localizedProxyError(detail, t) }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "dpw-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+    status === "loading" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.loading") }),
+    status === "testing" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.test.testing") }),
+    status === "tested" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-status dpw-success", role: "status", children: detail }),
+    status === "test-failed" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-error", role: "alert", children: detail }),
+    status === "saving" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.save.saving") }),
+    status === "restarting" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-status", role: "status", children: t("proxy.save.restarting") }),
+    status === "error" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-error", role: "alert", children: localizedProxyError(detail, t) }),
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
         "button",
         {
           type: "button",
@@ -1259,7 +1374,7 @@ function NetworkProxyRow({ t }) {
           children: status === "testing" ? t("proxy.test.testing-action") : t("proxy.test.action")
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
         "button",
         {
           type: "button",
@@ -1325,19 +1440,19 @@ function localizedProxyError(error, t) {
 }
 
 // src/client/HelpMenu.tsx
-var import_react4 = require("react");
-var import_jsx_runtime5 = require("react/jsx-runtime");
+var import_react5 = require("react");
+var import_jsx_runtime6 = require("react/jsx-runtime");
 var DESTINATIONS = ["start", "plugins", "develop", "troubleshooting", "feedback"];
 function HelpMenu({ wide, readLocale, t }) {
-  const [position, setPosition] = (0, import_react4.useState)();
-  const [failedUrl, setFailedUrl] = (0, import_react4.useState)("");
-  const [busy, setBusy] = (0, import_react4.useState)(false);
-  const [copyStatus, setCopyStatus] = (0, import_react4.useState)("idle");
-  const root = (0, import_react4.useRef)(null);
-  const trigger = (0, import_react4.useRef)(null);
-  const firstItem = (0, import_react4.useRef)(null);
-  const attempt = (0, import_react4.useRef)(0);
-  const id = (0, import_react4.useId)();
+  const [position, setPosition] = (0, import_react5.useState)();
+  const [failedUrl, setFailedUrl] = (0, import_react5.useState)("");
+  const [busy, setBusy] = (0, import_react5.useState)(false);
+  const [copyStatus, setCopyStatus] = (0, import_react5.useState)("idle");
+  const root = (0, import_react5.useRef)(null);
+  const trigger = (0, import_react5.useRef)(null);
+  const firstItem = (0, import_react5.useRef)(null);
+  const attempt = (0, import_react5.useRef)(0);
+  const id = (0, import_react5.useId)();
   const open = position !== void 0;
   const close = (restoreFocus = true) => {
     attempt.current += 1;
@@ -1345,10 +1460,10 @@ function HelpMenu({ wide, readLocale, t }) {
     setBusy(false);
     if (restoreFocus) trigger.current?.focus();
   };
-  (0, import_react4.useEffect)(() => () => {
+  (0, import_react5.useEffect)(() => () => {
     attempt.current += 1;
   }, []);
-  (0, import_react4.useEffect)(() => {
+  (0, import_react5.useEffect)(() => {
     if (!open) return;
     firstItem.current?.focus();
     const outside = (event) => {
@@ -1413,10 +1528,10 @@ function HelpMenu({ wide, readLocale, t }) {
       items[next]?.focus();
     }
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { ref: root, className: "dpw-help", onKeyDown: navigate, onBlur: (event) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { ref: root, className: "dpw-help", onKeyDown: navigate, onBlur: (event) => {
     if (open && event.relatedTarget instanceof Node && !root.current?.contains(event.relatedTarget)) close(false);
   }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
       "button",
       {
         ref: trigger,
@@ -1429,13 +1544,13 @@ function HelpMenu({ wide, readLocale, t }) {
         "aria-controls": open ? id : void 0,
         onClick: toggle,
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dpw-help-icon", "aria-hidden": "true", children: "?" }),
-          wide && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: t("help.title") })
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dpw-help-icon", "aria-hidden": "true", children: "?" }),
+          wide && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: t("help.title") })
         ]
       }
     ),
-    position !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-help-panel", style: position, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { id, role: "menu", "aria-label": t("help.title"), "aria-busy": busy, children: DESTINATIONS.map((destination, index) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+    position !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-help-panel", style: position, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { id, role: "menu", "aria-label": t("help.title"), "aria-busy": busy, children: DESTINATIONS.map((destination, index) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
         "button",
         {
           ref: index === 0 ? firstItem : void 0,
@@ -1450,21 +1565,21 @@ function HelpMenu({ wide, readLocale, t }) {
         },
         destination
       )) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "dpw-hint", children: t("help.external") }),
-      failedUrl !== "" && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-help-recovery", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "dpw-error", role: "alert", children: t("help.error") }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("input", { className: "dpw-input", "aria-label": t("help.address"), value: failedUrl, readOnly: true, onFocus: (event) => event.currentTarget.select() }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "dpw-button", onClick: () => {
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "dpw-hint", children: t("help.external") }),
+      failedUrl !== "" && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-help-recovery", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "dpw-error", role: "alert", children: t("help.error") }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("input", { className: "dpw-input", "aria-label": t("help.address"), value: failedUrl, readOnly: true, onFocus: (event) => event.currentTarget.select() }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { type: "button", className: "dpw-button", onClick: () => {
           void copy();
         }, children: t("link.menu.copy") }),
-        copyStatus !== "idle" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { role: "status", className: "dpw-hint", children: t(copyStatus === "done" ? "link.copy.done" : "link.error.copy") })
+        copyStatus !== "idle" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { role: "status", className: "dpw-hint", children: t(copyStatus === "done" ? "link.copy.done" : "link.error.copy") })
       ] })
     ] })
   ] });
 }
 
 // src/client/WindowControls.tsx
-var import_react5 = require("react");
+var import_react6 = require("react");
 
 // src/client/desktop-window-controls.ts
 var DESKTOP_WINDOW_CONTROLS_CHANNEL = "yourbuddy.desktop.window-controls";
@@ -1529,30 +1644,30 @@ function requestDesktopWindowControl(action, target = window) {
 }
 
 // src/client/WindowControls.tsx
-var import_jsx_runtime6 = require("react/jsx-runtime");
+var import_jsx_runtime7 = require("react/jsx-runtime");
 function ControlIcon({ control }) {
   if (control === "minimize") {
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("rect", { x: "1", y: "5", width: "8", height: "1", fill: "currentColor" }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("rect", { x: "1", y: "5", width: "8", height: "1", fill: "currentColor" }) });
   }
   if (control === "maximize") {
-    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("rect", { x: "1.5", y: "1.5", width: "7", height: "7", fill: "none", stroke: "currentColor", strokeWidth: "1" }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("rect", { x: "1.5", y: "1.5", width: "7", height: "7", fill: "none", stroke: "currentColor", strokeWidth: "1" }) });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("path", { d: "M2 2 L8 8 M8 2 L2 8", stroke: "currentColor", strokeWidth: "1.2" }) });
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("path", { d: "M2 2 L8 8 M8 2 L2 8", stroke: "currentColor", strokeWidth: "1.2" }) });
 }
 function WindowControls({ target = window }) {
-  const [layout, setLayout] = (0, import_react5.useState)();
-  (0, import_react5.useEffect)(() => connectDesktopWindowControls(setLayout, target), [target]);
+  const [layout, setLayout] = (0, import_react6.useState)();
+  (0, import_react6.useEffect)(() => connectDesktopWindowControls(setLayout, target), [target]);
   if (layout === void 0 || layout.controls.length === 0) return null;
   const beginDrag = (event) => {
     if (event.target === event.currentTarget) requestDesktopWindowControl("drag", target);
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
     "div",
     {
       className: "dpw-window-controls",
       "data-platform": layout.os,
       onPointerDown: beginDrag,
-      children: layout.controls.map((control) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+      children: layout.controls.map((control) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
         "button",
         {
           type: "button",
@@ -1563,8 +1678,8 @@ function WindowControls({ target = window }) {
             requestDesktopWindowControl(control, target);
           },
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dpw-window-control-dot", "aria-hidden": "true" }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ControlIcon, { control })
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "dpw-window-control-dot", "aria-hidden": "true" }),
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ControlIcon, { control })
           ]
         },
         control
@@ -1699,7 +1814,16 @@ var zh = {
   "lifecycle.harbor.installing-action": "\u6B63\u5728\u5B89\u88C5 Harbor\u2026",
   "lifecycle.harbor.installing": "\u6B63\u5728\u4E0B\u8F7D\u5E76\u542F\u7528 Harbor \u8FD0\u884C\u65F6\u3002\u5B8C\u6210\u524D\u4E0D\u4F1A\u5F71\u54CD\u5176\u4ED6\u5DE5\u4F5C\u53F0\u529F\u80FD\u3002",
   "lifecycle.harbor.installed": "Harbor \u8FD0\u884C\u65F6\u5DF2\u5B89\u88C5\uFF0C\u53EF\u4EE5\u4F7F\u7528\u76F8\u5173\u5DE5\u5177\u3002",
-  "lifecycle.harbor.error": "Harbor \u8FD0\u884C\u65F6\u5B89\u88C5\u5931\u8D25\uFF1A"
+  "lifecycle.harbor.error": "Harbor \u8FD0\u884C\u65F6\u5B89\u88C5\u5931\u8D25\uFF1A",
+  "lifecycle.cli.action": "\u542F\u7528\u7EC8\u7AEF\u547D\u4EE4",
+  "lifecycle.cli.enabling-action": "\u6B63\u5728\u542F\u7528\u2026",
+  "lifecycle.cli.enabling": "\u6B63\u5728\u628A YourBuddy \u53D7\u7BA1\u547D\u4EE4\u76EE\u5F55\u52A0\u5165\u540E\u7EED\u7EC8\u7AEF\u4F1A\u8BDD\uFF1B\u5DF2\u6709\u914D\u7F6E\u53EF\u91CD\u590D\u4F7F\u7528\u3002",
+  "lifecycle.cli.enabled": "\u7EC8\u7AEF\u547D\u4EE4\u5DF2\u542F\u7528\u3002\u8BF7\u65B0\u5F00\u4E00\u4E2A\u7EC8\u7AEF\u7A97\u53E3\u540E\u4F7F\u7528\u3002",
+  "lifecycle.cli.error": "\u7EC8\u7AEF\u547D\u4EE4\u542F\u7528\u5931\u8D25\uFF1A",
+  "capability.title": "Capability Pack",
+  "capability.description": "\u8FD9\u4E2A\u63D2\u4EF6\u4ECE\u540C\u4E00\u4E2A\u7248\u672C\u4EA4\u4ED8\u7EC8\u7AEF\u547D\u4EE4\u3001Skill\u3001Host \u80FD\u529B\u4E0E\u754C\u9762\u3002",
+  "capability.copy": "\u590D\u5236\u8BCA\u65AD\u4FE1\u606F",
+  "capability.copied": "\u8BCA\u65AD\u4FE1\u606F\u5DF2\u590D\u5236\u3002"
 };
 var en = {
   "help.title": "Help and guides",
@@ -1826,7 +1950,16 @@ var en = {
   "lifecycle.harbor.installing-action": "Installing Harbor\u2026",
   "lifecycle.harbor.installing": "Downloading and activating the Harbor runtime. Other workbench features remain available.",
   "lifecycle.harbor.installed": "The Harbor runtime is installed and its tools are ready.",
-  "lifecycle.harbor.error": "Harbor runtime installation failed:"
+  "lifecycle.harbor.error": "Harbor runtime installation failed:",
+  "lifecycle.cli.action": "Enable terminal commands",
+  "lifecycle.cli.enabling-action": "Enabling\u2026",
+  "lifecycle.cli.enabling": "Adding YourBuddy\u2019s managed command directory to future terminal sessions. Existing configuration is reused.",
+  "lifecycle.cli.enabled": "Terminal commands are enabled. Open a new terminal window to use them.",
+  "lifecycle.cli.error": "Could not enable terminal commands:",
+  "capability.title": "Capability Pack",
+  "capability.description": "This plugin delivers its terminal command, Skill, Host capability, and UI from the same version.",
+  "capability.copy": "Copy diagnostics",
+  "capability.copied": "Diagnostics copied."
 };
 
 // src/client/styles.ts
@@ -1849,6 +1982,7 @@ var PERSONAL_WORKBENCH_CSS = `
 .dpw-button{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 13px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer}
 .dpw-button-primary{border-color:var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}.dpw-button-primary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover);background:var(--dsw-alias-button-primary-hover)}.dpw-button:disabled{cursor:not-allowed;opacity:.5}
 .dpw-error{font-size:13px;color:var(--dsw-alias-state-error-primary)}.dpw-success{color:var(--dsw-alias-state-success-primary)}
+.dpw-capability{display:grid;gap:12px}.dpw-capability-grid{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 14px;margin:0;padding:12px;border-radius:12px;background:var(--dsw-alias-bg-layer-2);font-size:13px}.dpw-capability-grid dt{font-weight:650;color:var(--dsw-alias-label-primary)}.dpw-capability-grid dd{margin:0;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
 .dpw-desktop-external-link{cursor:pointer}
 .dpw-link-menu{position:fixed;z-index:2147483647;display:grid;min-width:180px;padding:6px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 30px rgb(0 0 0 / .24)}
 .dpw-link-menu[hidden]{display:none}.dpw-link-menu-item{padding:8px 10px;border:0;border-radius:7px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;text-align:left;cursor:pointer}
@@ -1897,8 +2031,8 @@ function installPersonalWorkbenchStyles(ctx) {
 }
 
 // src/client/workbench.tsx
-var import_react6 = require("react");
-var import_jsx_runtime7 = require("react/jsx-runtime");
+var import_react7 = require("react");
+var import_jsx_runtime8 = require("react/jsx-runtime");
 var STORAGE_KEY = "yourbuddy.workbench:v1";
 var LEGACY_WIDTH_KEY = "dsh-sidebar:v1:width";
 var DEFAULT_SESSION_WIDTH = 560;
@@ -2017,8 +2151,8 @@ function ProductWorkbenchHost({
   t
 }) {
   const snapshot = useProductWorkbench((value) => value);
-  const previousMode = (0, import_react6.useRef)(snapshot.mode);
-  (0, import_react6.useEffect)(() => {
+  const previousMode = (0, import_react7.useRef)(snapshot.mode);
+  (0, import_react7.useEffect)(() => {
     if (previousMode.current !== snapshot.mode) window.requestAnimationFrame(() => {
       window.dispatchEvent(new Event("resize"));
     });
@@ -2026,10 +2160,10 @@ function ProductWorkbenchHost({
   }, [snapshot.mode]);
   const coreHidden = snapshot.mode !== "core";
   const contentHidden = snapshot.mode !== "content";
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "dpw-workbench", "data-product-workbench": true, "data-mode": snapshot.mode, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "core", hidden: coreHidden, ...coreHidden ? { inert: "" } : {}, children: renderSlot("workbench.core", {}) }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "content", hidden: contentHidden, ...contentHidden ? { inert: "" } : {}, children: renderSlot("workbench.content", {}) }),
-    snapshot.sessionExpanded ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "dpw-workbench", "data-product-workbench": true, "data-mode": snapshot.mode, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "core", hidden: coreHidden, ...coreHidden ? { inert: "" } : {}, children: renderSlot("workbench.core", {}) }),
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "content", hidden: contentHidden, ...contentHidden ? { inert: "" } : {}, children: renderSlot("workbench.content", {}) }),
+    snapshot.sessionExpanded ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
       "button",
       {
         type: "button",
@@ -2039,9 +2173,9 @@ function ProductWorkbenchHost({
         "aria-expanded": "true",
         title: t("workbench.session.collapse"),
         onClick: collapseSession,
-        children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
+        children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
       }
-    ) : /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+    ) : /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
       "button",
       {
         type: "button",
@@ -2052,8 +2186,8 @@ function ProductWorkbenchHost({
         title: t("workbench.session.restore"),
         onClick: restoreSession,
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { "aria-hidden": "true", children: "\u2039" }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: t("workbench.session.restore") })
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { "aria-hidden": "true", children: "\u2039" }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { children: t("workbench.session.restore") })
         ]
       }
     )
@@ -2063,7 +2197,7 @@ function SessionRegionCollapseAction({
   collapseSession,
   t
 }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
     "button",
     {
       type: "button",
@@ -2073,7 +2207,7 @@ function SessionRegionCollapseAction({
       "aria-expanded": "true",
       title: t("workbench.session.collapse"),
       onClick: collapseSession,
-      children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
+      children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
     }
   );
 }
@@ -2299,6 +2433,12 @@ function apply(ctx) {
     order: 40,
     locale: SETTINGS_LOCALE_NAMESPACE
   }, ApplicationLifecycleRow));
+  ctx.slots.inject("plugins.detail.section", () => ctx.slots.register({
+    name: "plugins.detail.section",
+    id: "yourbuddy-capability-pack",
+    order: 20,
+    locale: SETTINGS_LOCALE_NAMESPACE
+  }, CapabilityPackSection));
 }
     return module.exports;
   },

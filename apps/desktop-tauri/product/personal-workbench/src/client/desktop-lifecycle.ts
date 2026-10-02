@@ -10,7 +10,7 @@ const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 const DEFAULT_HANDSHAKE_TIMEOUT_MS = 5_000
 
 /** Lifecycle actions exposed by the trusted desktop shell. */
-export type DesktopLifecycleAction = 'check-update' | 'install-harbor' | 'restart'
+export type DesktopLifecycleAction = 'check-update' | 'install-harbor' | 'enable-cli' | 'restart'
 
 interface DesktopLifecycleAccepted {
   channel: typeof DESKTOP_LIFECYCLE_CHANNEL
@@ -171,4 +171,9 @@ export function requestDesktopRestart(options: DesktopLifecycleRequestOptions = 
 /** Request explicit installation of the optional Harbor runtime. */
 export function requestHarborInstall(options: DesktopLifecycleRequestOptions = {}): Promise<string> {
   return requestDesktopLifecycle('install-harbor', options)
+}
+
+/** Persist the YourBuddy managed command directory for future terminal sessions. */
+export function requestManagedCliPath(options: DesktopLifecycleRequestOptions = {}): Promise<string> {
+  return requestDesktopLifecycle('enable-cli', options)
 }

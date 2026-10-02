@@ -14,11 +14,13 @@ Open Settings → General → Network proxy. Choose direct, system, or a custom 
 
 Test the desktop draft route and running Host route separately. Save and restart to activate a changed policy, then test again. Existing processes keep the previous policy until restart.
 
-## Updates and restart
+## Application lifecycle
 
-Use Settings → General → Application lifecycle to check for updates or restart. Restart after installing a new plugin so its Client can be discovered. Bundled plugins update with YourBuddy releases, while upstream version notices do not install anything automatically.
+Use Settings → General → Application lifecycle to check for updates, install the optional Harbor runtime, enable terminal commands, or restart. Restart after installing a new plugin so its Client can be discovered. Bundled plugins update with YourBuddy releases, while upstream version notices do not install anything automatically.
 
-These controls come from the first-party Personal Workbench plugin. Native restart, proxy, and updater operations require the desktop shell and are unavailable in standalone DSH Web.
+**Enable terminal commands** adds YourBuddy's stable managed-bin directory to future terminal sessions. A plugin that explicitly declares a Capability Pack can then expose its package-owned CLI without a second global installation. Its plugin detail shows Package, CLI, Skill, and UI status; a same-name command already available elsewhere in `PATH` is reported as a conflict and is not replaced.
+
+These controls come from the first-party Personal Workbench plugin. Native runtime installation, terminal setup, restart, proxy, and updater operations require the desktop shell and are unavailable in standalone DSH Web.
 
 See [downloads](download.md) for release availability and [troubleshooting](troubleshooting.md) for failures.
 

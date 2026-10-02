@@ -9,6 +9,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import {
   WORKBENCH_SETTINGS_NAMESPACE,
 } from '../constants.ts'
@@ -20,6 +21,7 @@ import {
   BrandSettingsRow, type BrandSettingsRowInjected,
 } from './BrandSettingsRow.tsx'
 import { ApplicationLifecycleRow } from './ApplicationLifecycleRow.tsx'
+import { CapabilityPackSection } from './CapabilityPackSection.tsx'
 import { NetworkProxyRow } from './NetworkProxyRow.tsx'
 import { HelpMenu, type HelpMenuInjected } from './HelpMenu.tsx'
 import { WindowControls } from './WindowControls.tsx'
@@ -196,6 +198,12 @@ export function apply(ctx: Context): void {
     order: 40,
     locale: SETTINGS_LOCALE_NAMESPACE,
   }, ApplicationLifecycleRow))
+  ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
+    name: 'plugins.detail.section',
+    id: 'yourbuddy-capability-pack',
+    order: 20,
+    locale: SETTINGS_LOCALE_NAMESPACE,
+  }, CapabilityPackSection))
 }
 
 export type { ApplicationLifecycleRowProps } from './ApplicationLifecycleRow.tsx'

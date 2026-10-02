@@ -6,16 +6,20 @@
   },
   "include": [
     "src/constants.ts",
+    "src/capability-pack.ts",
     "src/host-network-proxy.ts",
     "src/index.ts",
     "src/settings.ts",
     "tests/host-network-proxy.spec.ts",
+    "tests/capability-pack.spec.ts",
     "tests/settings.spec.ts"
   ],
   "references": [
     { "path": "../../../../vendor/cordis" },
     { "path": "../../../../vendor/schemastery" },
     { "path": "../../../../packages/host/webserver" },
+    { "path": "../../../../packages/boot/app-boot" },
+    { "path": "../../../../packages/boot/plugin-manager" },
     { "path": "../../../../packages/settings/settings" }
   ]
 }

@@ -5,6 +5,7 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
   isDesktopLifecycleAvailable, requestDesktopRestart, requestDesktopUpdate, requestHarborInstall,
+  requestManagedCliPath,
 } from './desktop-lifecycle.ts'
 
 /** Composed props for the application-lifecycle General settings item. */
@@ -21,6 +22,9 @@ type LifecycleStatus =
   | 'harbor-installing'
   | 'harbor-result'
   | 'harbor-error'
+  | 'cli-enabling'
+  | 'cli-result'
+  | 'cli-error'
 
 /**
  * Render desktop update and restart actions with their current status.
@@ -71,7 +75,20 @@ export function ApplicationLifecycleRow({ t }: ApplicationLifecycleRowProps) {
     }
   }
 
-  const busy = status === 'checking' || status === 'restarting' || status === 'harbor-installing'
+  const enableCli = async (): Promise<void> => {
+    setStatus('cli-enabling')
+    setDetail('')
+    try {
+      await requestManagedCliPath()
+      setStatus('cli-result')
+    }
+    catch (error) {
+      setDetail(error instanceof Error ? error.message : String(error))
+      setStatus('cli-error')
+    }
+  }
+
+  const busy = status === 'checking' || status === 'restarting' || status === 'harbor-installing' || status === 'cli-enabling'
   const shellUnavailable = detail === 'desktop-shell-unavailable'
   return (
     <section className="dpw-card" aria-labelledby="dpw-lifecycle-title">
@@ -84,14 +101,17 @@ export function ApplicationLifecycleRow({ t }: ApplicationLifecycleRowProps) {
       {status === 'checking' && <div className="dpw-status" role="status">{t('lifecycle.update.checking')}</div>}
       {status === 'restarting' && <div className="dpw-status" role="status">{t('lifecycle.restart.restarting')}</div>}
       {status === 'harbor-installing' && <div className="dpw-status" role="status">{t('lifecycle.harbor.installing')}</div>}
+      {status === 'cli-enabling' && <div className="dpw-status" role="status">{t('lifecycle.cli.enabling')}</div>}
       {status === 'update-result' && <div className="dpw-status dpw-success" role="status">{detail}</div>}
       {status === 'harbor-result' && <div className="dpw-status dpw-success" role="status">{t('lifecycle.harbor.installed')}</div>}
-      {(status === 'update-error' || status === 'restart-error' || status === 'harbor-error') && (
+      {status === 'cli-result' && <div className="dpw-status dpw-success" role="status">{t('lifecycle.cli.enabled')}</div>}
+      {(status === 'update-error' || status === 'restart-error' || status === 'harbor-error' || status === 'cli-error') && (
         <div className="dpw-error" role="alert">
           {t(shellUnavailable
             ? 'lifecycle.shell-unavailable'
             : status === 'update-error' ? 'lifecycle.update.error'
               : status === 'harbor-error' ? 'lifecycle.harbor.error'
+                : status === 'cli-error' ? 'lifecycle.cli.error'
                 : 'lifecycle.restart.error')}
           {shellUnavailable ? '' : ` ${detail}`}
         </div>
@@ -121,6 +141,14 @@ export function ApplicationLifecycleRow({ t }: ApplicationLifecycleRowProps) {
           onClick={() => { void installHarbor() }}
         >
           {t(status === 'harbor-installing' ? 'lifecycle.harbor.installing-action' : 'lifecycle.harbor.action')}
+        </button>
+        <button
+          type="button"
+          className="dpw-button"
+          disabled={!available || busy}
+          onClick={() => { void enableCli() }}
+        >
+          {t(status === 'cli-enabling' ? 'lifecycle.cli.enabling-action' : 'lifecycle.cli.action')}
         </button>
       </div>
     </section>

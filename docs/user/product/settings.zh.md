@@ -14,11 +14,13 @@
 
 分别测试桌面草稿链路和正在运行的 Host 链路。修改策略后保存并重启，再次测试确认生效。重启前，现有进程仍使用原策略。
 
-## 更新与重启
+## 应用生命周期
 
-通过设置 → 通用设置 → 应用生命周期检查更新或重启。新装插件后重启，让客户端插件被发现。内置插件随 YourBuddy 发行更新，上游版本提示不会自动安装任何内容。
+通过设置 → 通用设置 → 应用生命周期检查更新、安装可选的 Harbor 运行时、启用终端命令或重启。新装插件后重启，让 Client Plugin 被发现。内置插件随 YourBuddy 发行更新，上游版本提示不会自动安装任何内容。
 
-这些控件来自 YourBuddy 自有的 Personal Workbench 插件。原生重启、代理与更新操作需要桌面壳，在独立 DSH Web 中不可用。
+**启用终端命令**会把 YourBuddy 稳定的托管 Bin 目录加入后续终端会话。显式声明 Capability Pack 的插件随后可以公开其 Package 自带的 CLI，不需要再次全局安装。插件详情会分别显示 Package、CLI、Skill 与 UI 状态；如果 `PATH` 中已有同名命令，页面会报告冲突且不会替换它。
+
+这些控件来自 YourBuddy 自有的 Personal Workbench 插件。原生 Runtime 安装、终端设置、重启、代理与更新操作需要桌面壳，在独立 DSH Web 中不可用。
 
 发行可用性见[下载](download.zh.md)，失败处理见[故障排查](troubleshooting.zh.md)。
 
