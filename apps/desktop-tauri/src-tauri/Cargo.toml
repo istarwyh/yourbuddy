@@ -1,6 +1,6 @@
 [package]
 name = "yourbuddy"
-version = "0.4.3"
+version = "0.4.4"
 description = "YourBuddy desktop AI workbench (Tauri)"
 authors = ["XIAOHUI", "DeepSeek"]
 edition = "2021"

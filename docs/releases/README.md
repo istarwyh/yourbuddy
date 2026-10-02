@@ -10,7 +10,8 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.4.3](yourbuddy-v0.4.3/README.md) | YourBuddy desktop | Included | Issues #36-#38, Harbor 0.10.3, Capability Packs, trusted desktop gateway, exact Bundle regression, offline install, and 30 MB publication gate recorded | Release candidate; publication verification pending |
+| [yourbuddy-v0.4.4](yourbuddy-v0.4.4/README.md) | YourBuddy desktop | Included | Issues #36-#38, Harbor 0.10.3, corrected product snapshot metadata, exact Bundle regression, offline install, and 30 MB publication gate recorded | Release candidate; publication verification pending |
+| [yourbuddy-v0.4.3](yourbuddy-v0.4.3/README.md) | YourBuddy desktop | Included | Pre-publication checks and the clean-checkout Harbor Python snapshot hash failure are recorded | Failed before artifact publication; superseded by 0.4.4 |
 | [yourbuddy-v0.4.2](yourbuddy-v0.4.2/README.md) | YourBuddy desktop | Included | Better Sidebar startup hotfix and exact shipped-Bundle regression recorded | Release candidate; publication verification pending |
 | [yourbuddy-v0.4.1](yourbuddy-v0.4.1/README.md) | YourBuddy desktop | Included | Issue #35 startup, optional-plugin activation, workbench layout, component signature, and 30 MB Bootstrap gate checks recorded | Published; Better Sidebar startup superseded by 0.4.2 |
 | [yourbuddy-v0.4.0](yourbuddy-v0.4.0/README.md) | YourBuddy desktop | Included | Bootstrap and Offline channels, 30 MB gate, component checks, relocated Harbor smoke, 14 public assets, anonymous hashes, updater metadata, DMG integrity, and bilingual website recorded | Published and independently verified within stated limits |

@@ -1,21 +1,21 @@
-# YourBuddy 0.4.3
+# YourBuddy 0.4.4
 
 [English](README.md) | 中文
 
-本归档记录 Issue #36、#37、#38 的修复，以及为 Issue #34 保留的实际发布 Bundle 回归门禁。
+本归档记录 Issue #36、#37、#38 的修复、为 Issue #34 保留的实际发布 Bundle 回归门禁，以及取代未发布 0.4.3 尝试的快照元数据修正。
 
-- 发布标识：`yourbuddy-v0.4.3`
+- 发布标识：`yourbuddy-v0.4.4`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：产物发布前失败；聚焦源码、Bundle 与离线安装检查均已通过，但干净 Checkout Workflow 发现过期的 Harbor Python 来源记录 Hash。
-- 证据 Commit：实现 Commit `dfd0d2308d`、`a9baac94e5` 与 `4597396e64`；发布 Tag 将固定完整候选版本。
+- 归档状态：候选版本；发布前的聚焦源码、Bundle 与离线安装检查均已通过。
+- 证据 Commit：实现 Commit `dfd0d2308d`、`a9baac94e5`、`4597396e64` 及快照修正 `472c6a4137`；发布 Tag 将固定完整候选版本。
 - 证据图集：不适用；可见路径由确定性的源码、Bundle 与生命周期测试覆盖。
-- 证据下载：[YourBuddy 0.4.3 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.3)。
+- 证据下载：[YourBuddy 0.4.4 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.4)。
 
 ## 面向用户的发布说明
 
 ### 改了什么
 
-YourBuddy 现在使用聚焦产品定位的启动页，把随产品提供的能力作为 Package + CLI + Skill + UI 整体管理，并通过一个稳定的应用 Gateway 暴露可信第一方桌面操作。Harbor 升级到 0.10.3，运行时缺失时可以直接从错误状态安装。0.4.2 的 Better Sidebar `clsx` 启动修复继续由实际 Bundle 回归测试保护。
+YourBuddy 现在使用聚焦产品定位的启动页，把随产品提供的能力作为 Package + CLI + Skill + UI 整体管理，并通过一个稳定的应用 Gateway 暴露可信第一方桌面操作。Harbor 升级到 0.10.3，运行时缺失时可以直接从错误状态安装。0.4.2 的 Better Sidebar `clsx` 启动修复继续由实际 Bundle 回归测试保护。本版本还修正了阻止 0.4.3 生成任何公开产物的 Harbor Python 来源记录 Hash。
 
 ### 解决了什么问题
 
@@ -41,16 +41,16 @@ YourBuddy 现在使用聚焦产品定位的启动页，把随产品提供的能�
 
 | 场景 | 状态 | 受测构建 | 环境 | 证据 |
 |---|---|---|---|---|
-| 启动页与可信桌面 Gateway | 在源码与 Runtime Check 范围内通过 | 0.4.3 候选版本 | macOS Apple Silicon、Node、Rust | 聚焦生命周期与权限测试通过；`cargo check` 通过 |
+| 启动页与可信桌面 Gateway | 在源码与 Runtime Check 范围内通过 | 0.4.4 候选版本 | macOS Apple Silicon、Node、Rust | 聚焦生命周期与权限测试通过；`cargo check` 通过 |
 | Harbor Capability Pack 与运行时恢复 | 通过 | 内置 Harbor 0.10.3 与 Personal Workbench | macOS Apple Silicon、Node | 58 项 Workbench 测试、29 项刷新／兼容性测试及离线安装通过 |
 | Better Sidebar 打包回归 | 通过 | 桌面打包实际使用的产品 `lib/client.js` | Node Test Runner | 11 项 Bundle 测试全部通过，包括 `clsx` 断言 |
-| Bootstrap 体积与正式发布 | Tag 时待定 | `yourbuddy-v0.4.3` 候选版本 | GitHub Actions macOS arm64 | Bootstrap DMG 必须不超过 30,000,000 Byte；产物、Hash、Updater 元数据与签名需要 Tag 后核验 |
+| Bootstrap 体积与正式发布 | Tag 时待定 | `yourbuddy-v0.4.4` 候选版本 | GitHub Actions macOS arm64 | Bootstrap DMG 必须不超过 30,000,000 Byte；产物、Hash、Updater 元数据与签名需要 Tag 后核验 |
 
 ## 场景：开放的桌面能力生命周期
 
 - 状态：在声明的本地范围内通过。
 - 日期与时间：2026-10-02 21:40 CST（UTC+08:00）。
-- 发布版本与 Commit：包含实现 Commit `dfd0d2308d`、`a9baac94e5` 与 `4597396e64` 的 `yourbuddy-v0.4.3` 候选版本。
+- 发布版本与 Commit：包含实现 Commit `dfd0d2308d`、`a9baac94e5`、`4597396e64` 及快照修正 `472c6a4137` 的 `yourbuddy-v0.4.4` 候选版本。
 - 受测构建：已签入的桌面 Shell、Personal Workbench、Harbor 0.10.3 快照、生成的 Harness Bundle 与离线依赖 Store。
 - 环境：macOS Apple Silicon，以及仓库配置的 Node、pnpm 与 Rust Toolchain。
 - 证据来源：聚焦 Vitest 与 Node 测试、`cargo check`、Bundle 构建及 Frozen Offline Install。
@@ -76,7 +76,7 @@ YourBuddy 现在使用聚焦产品定位的启动页，把随产品提供的能�
 - 操作前：启动体验较为通用，能力各部分没有统一生命周期，Harbor 运行时缺失会形成死路，桌面命令演进需要逐条修改权限。
 - 执行中：Harbor 独立升级到 0.10.3，避免无关插件更新进入本次发布。
 - 结果：候选版本包含新启动页、单一可信第一方 Gateway、同版本 Capability Pack 协调、托管 CLI Path、Harbor 安装并重试，以及实际 Bundle `clsx` 门禁。
-- 失败与恢复：全量外部插件刷新发现无关的 Better Sidebar 上游补丁冲突；刷新器因此增加显式单插件选择，本版本只更新 Harbor。Workflow `37030448092` 随后发现过期的 Harbor Python 来源记录 Hash，并在发布前停止；0.4.4 修正该记录，没有移动本 Tag。
+- 失败与恢复：全量外部插件刷新发现无关的 Better Sidebar 上游补丁冲突，因此刷新器增加显式单插件选择并只更新 Harbor。首次 0.4.3 Tag Workflow（`37030448092`）随后在干净 Checkout 中发现过期的 Harbor Python 来源记录 Hash，并在发布前停止；0.4.4 修正该记录，没有移动失败的 Tag。
 
 ### 范围限制
 
@@ -84,8 +84,8 @@ Tag 前没有手工操作打包应用与已安装 WebView Control。Apple Develo
 
 ## 交付状态
 
-- 产品发布状态：产物发布前失败；Tag 保持不可变，由 0.4.4 取代。
-- 验证资料归档状态：在声明的发布前范围内完整；失败 Workflow 证据在不可变 Tag 之后记录到 `master`。
+- 产品发布状态：候选版本；Tag 与 GitHub Release 等待明确确认。
+- 验证资料归档状态：在声明的发布前范围内完整，可进入不可变 Tag。
 - 站点同步状态：不适用，因为稳定 GitHub Release 链接与产品指南没有变化。
 - 未验证范围：手工打包启动与 WebView 交互、CI 构建前的 Bootstrap 体积、Apple Developer 签名、公证以及全部发布后产物检查。
 
