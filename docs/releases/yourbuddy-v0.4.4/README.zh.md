@@ -6,8 +6,8 @@
 
 - 发布标识：`yourbuddy-v0.4.4`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选版本；发布前的聚焦源码、Bundle 与离线安装检查均已通过。
-- 证据 Commit：实现 Commit `dfd0d2308d`、`a9baac94e5`、`4597396e64` 及快照修正 `472c6a4137`；发布 Tag 将固定完整候选版本。
+- 归档状态：已发布；聚焦源码、Bundle、离线安装、公开产物、Updater 与 Bootstrap DMG 检查在下述限制内通过。
+- 证据 Commit：Release Tag Commit `754ed86d56`，包含实现 Commit `dfd0d2308d`、`a9baac94e5`、`4597396e64` 及快照修正 `472c6a4137`。
 - 证据图集：不适用；可见路径由确定性的源码、Bundle 与生命周期测试覆盖。
 - 证据下载：[YourBuddy 0.4.4 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.4)。
 
@@ -44,7 +44,7 @@ YourBuddy 现在使用聚焦产品定位的启动页，把随产品提供的能�
 | 启动页与可信桌面 Gateway | 在源码与 Runtime Check 范围内通过 | 0.4.4 候选版本 | macOS Apple Silicon、Node、Rust | 聚焦生命周期与权限测试通过；`cargo check` 通过 |
 | Harbor Capability Pack 与运行时恢复 | 通过 | 内置 Harbor 0.10.3 与 Personal Workbench | macOS Apple Silicon、Node | 58 项 Workbench 测试、29 项刷新／兼容性测试及离线安装通过 |
 | Better Sidebar 打包回归 | 通过 | 桌面打包实际使用的产品 `lib/client.js` | Node Test Runner | 11 项 Bundle 测试全部通过，包括 `clsx` 断言 |
-| Bootstrap 体积与正式发布 | Tag 时待定 | `yourbuddy-v0.4.4` 候选版本 | GitHub Actions macOS arm64 | Bootstrap DMG 必须不超过 30,000,000 Byte；产物、Hash、Updater 元数据与签名需要 Tag 后核验 |
+| Bootstrap 体积与正式发布 | 通过 | `yourbuddy-v0.4.4` 公开 Release | GitHub Actions macOS arm64 与 macOS 匿名下载 | Workflow `37032932136` 通过；发布 14 个产物；Bootstrap DMG 为 10,839,117 Byte；已检查公开 Hash、Updater 元数据／签名与 DMG 完整性 |
 
 ## 场景：开放的桌面能力生命周期
 
@@ -80,14 +80,14 @@ YourBuddy 现在使用聚焦产品定位的启动页，把随产品提供的能�
 
 ### 范围限制
 
-Tag 前没有手工操作打包应用与已安装 WebView Control。Apple Developer 签名与公证仍不属于本渠道。Bootstrap DMG 体积、公开产物、匿名 Hash、Updater 元数据／签名与稳定链接都要等待 Tag Workflow 完成后核验。
+发布后没有手工操作已安装应用与 WebView Control。601,637,156 Byte 的 Offline DMG 未再次下载并进行第二次本地 `hdiutil` 检查；其 Workflow 完整性检查、公开 SHA-256 与 GitHub 产物 Digest 已通过。Apple Developer 签名与公证仍不属于本渠道。
 
 ## 交付状态
 
-- 产品发布状态：候选版本；Tag 与 GitHub Release 等待明确确认。
-- 验证资料归档状态：在声明的发布前范围内完整，可进入不可变 Tag。
+- 产品发布状态：已在不可变 `yourbuddy-v0.4.4` Tag 发布 14 个公开产物；稳定 Latest Release 链接已指向本版本。
+- 验证资料归档状态：在声明范围内完整；已检查 Workflow `37032932136`、公开产物元数据、全部公开 Checksum 条目、Updater 元数据／签名、下载后的 Bootstrap SHA-256 与 Bootstrap DMG 完整性。
 - 站点同步状态：不适用，因为稳定 GitHub Release 链接与产品指南没有变化。
-- 未验证范围：手工打包启动与 WebView 交互、CI 构建前的 Bootstrap 体积、Apple Developer 签名、公证以及全部发布后产物检查。
+- 未验证范围：手工安装后启动与 WebView 交互、第二次本地 Offline DMG 完整性检查、Apple Developer 签名与公证。
 
 ## 交付清单
 
@@ -96,6 +96,6 @@ Tag 前没有手工操作打包应用与已安装 WebView Control。Apple Develo
 - [x] Issue #34 继续由桌面打包实际使用的 Better Sidebar Bundle 回归测试覆盖。
 - [x] Frozen 生产依赖图已从准备好的 Offline Store 成功安装。
 - [x] 已分别报告产品发布、资料归档、网站与未验证范围。
-- [ ] 公开 Workflow、产物、Hash、Updater 元数据／签名与 30,000,000 Byte Bootstrap 门禁需要发布后核验。
+- [x] 已核验公开 Workflow、14 个产物、Hash、Updater 元数据／签名、稳定 Latest 链接与 30,000,000 Byte Bootstrap 门禁。
 - [ ] 手工打包启动与 WebView 交互仍未验证。
 - [x] 没有移动或覆盖现有公开 Tag 与安装包。

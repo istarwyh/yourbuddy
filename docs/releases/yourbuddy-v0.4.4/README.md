@@ -6,8 +6,8 @@ This archive records the fixes for Issues #36, #37, and #38, the retained packag
 
 - Release identifier: `yourbuddy-v0.4.4`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; focused source, Bundle, and offline-install checks passed before publication.
-- Evidence commit: implementation commits `dfd0d2308d`, `a9baac94e5`, `4597396e64`, and snapshot correction `472c6a4137`; the release tag fixes the complete candidate.
+- Archive state: published; focused source, Bundle, offline-install, public-asset, updater, and Bootstrap DMG checks passed within the limits below.
+- Evidence commit: release tag commit `754ed86d56`, including implementation commits `dfd0d2308d`, `a9baac94e5`, `4597396e64`, and snapshot correction `472c6a4137`.
 - Evidence gallery: not applicable; the user-visible paths are covered by deterministic source, Bundle, and lifecycle tests.
 - Evidence download: [YourBuddy 0.4.4 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.4).
 
@@ -44,7 +44,7 @@ This release targets macOS Apple Silicon and requires no data migration. The Cap
 | Splash and trusted desktop gateway | passed within source/runtime-check scope | 0.4.4 candidate | macOS Apple Silicon, Node, Rust | focused lifecycle/permission tests passed; `cargo check` passed |
 | Harbor Capability Pack and runtime recovery | passed | bundled Harbor 0.10.3 and Personal Workbench | macOS Apple Silicon, Node | 58 Workbench tests, 29 refresh/compatibility tests, and offline installation passed |
 | Better Sidebar packaged regression | passed | exact product `lib/client.js` used by desktop packaging | Node test runner | all 11 Bundle tests passed, including the `clsx` assertion |
-| Bootstrap size and formal publication | pending at tag time | `yourbuddy-v0.4.4` candidate | GitHub Actions macOS arm64 | Bootstrap DMG must be at most 30,000,000 bytes; assets, hashes, updater metadata, and signatures require post-tag verification |
+| Bootstrap size and formal publication | passed | `yourbuddy-v0.4.4` public release | GitHub Actions macOS arm64 and anonymous macOS download | workflow `37032932136` passed; 14 assets published; Bootstrap DMG is 10,839,117 bytes; public hashes, updater metadata/signature, and DMG integrity checked |
 
 ## Scenario: Open desktop capability lifecycle
 
@@ -80,14 +80,14 @@ The focused desktop and product checks passed. The Capability Pack suite passed 
 
 ### Scope limits
 
-The packaged application and installed WebView controls were not manually exercised before tagging. Apple Developer signing and notarization remain outside this channel. Bootstrap DMG size, public assets, anonymous hashes, updater metadata/signature, and live stable links require the completed tag workflow.
+The installed application and WebView controls were not manually exercised after publication. The 601,637,156-byte Offline DMG was not downloaded again for a second local `hdiutil` pass; its workflow integrity check, published SHA-256, and GitHub asset digest passed. Apple Developer signing and notarization remain outside this channel.
 
 ## Delivery status
 
-- Product publication status: release candidate; tag and GitHub Release await explicit approval.
-- Verification archive status: complete for the stated pre-publication scope and ready to enter the immutable tag.
+- Product publication status: published at the immutable `yourbuddy-v0.4.4` tag with 14 public assets; the stable latest-release link resolves to this version.
+- Verification archive status: complete for the stated scope; workflow `37032932136`, public asset metadata, all published checksum entries, updater metadata/signature, the downloaded Bootstrap SHA-256, and Bootstrap DMG integrity were checked.
 - Website synchronization status: not applicable because stable GitHub Release links and product guidance remain unchanged.
-- Unverified scope: manual packaged startup and WebView interaction, Bootstrap size until CI builds it, Apple Developer signing, notarization, and all post-publication asset checks.
+- Unverified scope: manual installed startup and WebView interaction, a second local Offline DMG integrity pass, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -96,6 +96,6 @@ The packaged application and installed WebView controls were not manually exerci
 - [x] Issue #34 remains covered against the exact Better Sidebar Bundle shipped by desktop packaging.
 - [x] The frozen production dependency graph installs from the prepared offline store.
 - [x] Product publication, archive, website, and unverified scope are reported separately.
-- [ ] Public workflow, assets, hashes, updater metadata/signature, and the 30,000,000-byte Bootstrap limit require post-publication verification.
+- [x] Public workflow, 14 assets, hashes, updater metadata/signature, stable latest link, and the 30,000,000-byte Bootstrap limit were verified.
 - [ ] Manual packaged startup and WebView interaction remain unverified.
 - [x] No existing public tag or installer is moved or overwritten.
