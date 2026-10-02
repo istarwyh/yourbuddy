@@ -47,6 +47,7 @@ for (const bundleName of bundleNames) {
     assert.match(bundle, /onOpenFileSide: \(path\) => \{\s*openNativeFile\(info, sessionId, cwd, path, "side"\)/u)
     assert.match(bundle, /pending\.filter\(\(entry\) => !place\(entry\)\)/u)
     assert.match(bundle, /onSessionAdopted\(flushPending\)/u)
+    assert.match(bundle, /id: "image",[\s\S]*?fetchStrategy: "mediaUrl"/u)
   })
 }
 

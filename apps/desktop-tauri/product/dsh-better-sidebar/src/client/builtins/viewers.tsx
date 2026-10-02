@@ -1,11 +1,13 @@
 /**
- * The 3 built-in file viewer descriptors (markdown / html / code), exactly
- * like external plugins register theirs.
+ * The 4 built-in file viewer descriptors (image / markdown / html / code),
+ * exactly like external plugins register theirs.
  *
  * DSH 0.1.7 ships `ui-sidebar-documentpreview`, its own code / spreadsheet /
  * office / pdf / image / html / markdown / text previews with zoom and
- * auto-refresh, so this plugin yields every READ-ONLY preview it used to own
- * and keeps only the surfaces where it is not equivalent:
+ * auto-refresh. Native file-resource opens yield to those previews, while the
+ * image viewer here remains the fallback for files opened inside this plugin's
+ * own editor workbench. The plugin otherwise keeps only the surfaces where it
+ * is not equivalent:
  *  - `markdown` — this plugin's own renderer (front matter, embedded HTML
  *    sanitation, floating TOC), which the user prefers to the host's;
  *  - `html` — the sandboxed iframe preview plus the host-less
@@ -13,9 +15,9 @@
  *  - `code` — the catch-all (`exts: []`, lowest priority) that claims any
  *    file no other viewer did, and it is an EDITABLE CodeMirror with save —
  *    the host's equivalents are read-only previews.
- * The yielded ids (image / pdf / binary-download) are deliberately NOT
- * registered here; an external plugin may still claim them through this
- * service. Office previews (.docx / .xlsx / .pptx) were already not built
+ * The yielded ids (pdf / binary-download) are deliberately NOT registered
+ * here; an external plugin may still claim them through this service. Office
+ * previews (.docx / .xlsx / .pptx) were already not built
  * in — they live in the recommended office plugin (see plugins-viewers.ts),
  * which registers the same ids through this service.
  *
@@ -30,7 +32,7 @@
  * and `icon` — so the Side card settings page can render the enable/disable
  * inventory without hardcoding (eating our own dogfood).
  */
-import { IconCodeOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { FileTypeIcon, IconCodeOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { lazyChunkComponent } from '../lazy-chunk.tsx'
 import {
   IconMarkdownOutline16,
@@ -39,6 +41,7 @@ import {
 import type { ComponentType } from 'react'
 import type { FileViewerDescriptor, FileViewerProps } from '../service.ts'
 import { t } from '../locales.ts'
+import css from '../sidebar.module.css'
 
 /**
  * Lazy wrapper over the chunk-resident viewer component. The `pick`
@@ -48,9 +51,23 @@ import { t } from '../locales.ts'
  */
 const LazyTextEditor = lazyChunkComponent<FileViewerProps>('editor', (mod) => mod.TextEditor as ComponentType<FileViewerProps> | undefined)
 
-/** The 3 built-in file viewer descriptors. */
+/** The 4 built-in file viewer descriptors. */
 export function builtinViewers(): readonly FileViewerDescriptor[] {
   return [
+    {
+      id: 'image',
+      title: () => t('viewerImage'),
+      icon: (size: number) => <FileTypeIcon path="image.png" size={size} />,
+      exts: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'],
+      fetchStrategy: 'mediaUrl',
+      component: ({ mediaUrl: url, title }) => (
+        <div className={css.editorPdf}>
+          <div className={css.editorPdfStage}>
+            <img className={css.editorPdfFrame} style={{ objectFit: 'contain' }} src={url} alt={title} />
+          </div>
+        </div>
+      ),
+    },
     {
       id: 'markdown',
       title: () => t('viewerMarkdown'),

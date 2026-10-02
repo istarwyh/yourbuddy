@@ -13045,9 +13045,17 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* shape (the view reads only its own subset of FileViewerProps).
 		*/
 		const LazyTextEditor = lazyChunkComponent("editor", (mod) => mod.TextEditor);
-		/** The 3 built-in file viewer descriptors. */
+		/** The 4 built-in file viewer descriptors. */
 		function builtinViewers() {
 			return [
+				{
+					id: "image",
+					title: () => t("viewerImage"),
+					icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.FileTypeIcon, { path: "image.png", size }),
+					exts: ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"],
+					fetchStrategy: "mediaUrl",
+					component: ({ mediaUrl: url, title }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { className: sidebar_module_css_default.editorPdf, children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { className: sidebar_module_css_default.editorPdfStage, children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("img", { className: sidebar_module_css_default.editorPdfFrame, style: { objectFit: "contain" }, src: url, alt: title }) }) })
+				},
 				{
 					id: "markdown",
 					title: () => t("viewerMarkdown"),
