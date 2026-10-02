@@ -80,14 +80,14 @@ YourBuddy 现在使用聚焦产品定位的启动页，把随产品提供的能�
 
 ### 范围限制
 
-发布后没有手工操作已安装应用与 WebView Control。601,637,156 Byte 的 Offline DMG 未再次下载并进行第二次本地 `hdiutil` 检查；其 Workflow 完整性检查、公开 SHA-256 与 GitHub 产物 Digest 已通过。Apple Developer 签名与公证仍不属于本渠道。
+发布后没有手工操作已安装应用与 WebView Control。601,637,156 Byte 的 Offline DMG 未再次下载并进行第二次本地 `hdiutil` 检查，公开 Harness 组件也未在下载后单独解包；两者的 Workflow 检查、公开 SHA-256 与 GitHub 产物 Digest 已通过。Apple Developer 签名与公证仍不属于本渠道。
 
 ## 交付状态
 
 - 产品发布状态：已在不可变 `yourbuddy-v0.4.4` Tag 发布 14 个公开产物；稳定 Latest Release 链接已指向本版本。
 - 验证资料归档状态：在声明范围内完整；已检查 Workflow `37032932136`、公开产物元数据、全部公开 Checksum 条目、Updater 元数据／签名、下载后的 Bootstrap SHA-256 与 Bootstrap DMG 完整性。
 - 站点同步状态：不适用，因为稳定 GitHub Release 链接与产品指南没有变化。
-- 未验证范围：手工安装后启动与 WebView 交互、第二次本地 Offline DMG 完整性检查、Apple Developer 签名与公证。
+- 未验证范围：手工安装后启动与 WebView 交互、第二次本地 Offline DMG 完整性检查、下载后单独解包 Harness、Apple Developer 签名与公证。
 
 ## 交付清单
 

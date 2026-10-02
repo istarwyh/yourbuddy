@@ -80,14 +80,14 @@ The focused desktop and product checks passed. The Capability Pack suite passed 
 
 ### Scope limits
 
-The installed application and WebView controls were not manually exercised after publication. The 601,637,156-byte Offline DMG was not downloaded again for a second local `hdiutil` pass; its workflow integrity check, published SHA-256, and GitHub asset digest passed. Apple Developer signing and notarization remain outside this channel.
+The installed application and WebView controls were not manually exercised after publication. The 601,637,156-byte Offline DMG was not downloaded again for a second local `hdiutil` pass, and the public Harness component was not separately unpacked after download; their workflow checks, published SHA-256 values, and GitHub asset digests passed. Apple Developer signing and notarization remain outside this channel.
 
 ## Delivery status
 
 - Product publication status: published at the immutable `yourbuddy-v0.4.4` tag with 14 public assets; the stable latest-release link resolves to this version.
 - Verification archive status: complete for the stated scope; workflow `37032932136`, public asset metadata, all published checksum entries, updater metadata/signature, the downloaded Bootstrap SHA-256, and Bootstrap DMG integrity were checked.
 - Website synchronization status: not applicable because stable GitHub Release links and product guidance remain unchanged.
-- Unverified scope: manual installed startup and WebView interaction, a second local Offline DMG integrity pass, Apple Developer signing, and notarization.
+- Unverified scope: manual installed startup and WebView interaction, a second local Offline DMG integrity pass, separate post-download Harness unpacking, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
