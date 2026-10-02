@@ -90,6 +90,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-layout':
         specifier: workspace:*
         version: link:../../packages/client/ui-layout
+      '@deepseek-ai/dsh-client-ui-plugin-manager':
+        specifier: workspace:*
+        version: link:../../packages/client/ui-plugin-manager
       '@deepseek-ai/dsh-client-ui-primitives':
         specifier: workspace:*
         version: link:../../packages/client/ui-primitives
@@ -5178,6 +5181,9 @@ importers:
       '@deepseek-ai/dsh-api-session-controller':
         specifier: workspace:*
         version: link:../../api/session-controller
+      '@deepseek-ai/dsh-app-boot':
+        specifier: workspace:*
+        version: link:../../boot/app-boot
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:*
         version: link:../../client/connection
@@ -5190,6 +5196,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-layout':
         specifier: workspace:*
         version: link:../../client/ui-layout
+      '@deepseek-ai/dsh-client-ui-plugin-manager':
+        specifier: workspace:*
+        version: link:../../client/ui-plugin-manager
       '@deepseek-ai/dsh-client-ui-renderer':
         specifier: workspace:*
         version: link:../../client/ui-renderer
@@ -5208,6 +5217,9 @@ importers:
       '@deepseek-ai/dsh-host-webserver':
         specifier: workspace:*
         version: link:../../host/webserver
+      '@deepseek-ai/dsh-plugin-manager':
+        specifier: workspace:*
+        version: link:../../boot/plugin-manager
       '@deepseek-ai/dsh-settings':
         specifier: workspace:*
         version: link:../../settings/settings
