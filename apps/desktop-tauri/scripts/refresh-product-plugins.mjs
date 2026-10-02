@@ -1181,6 +1181,23 @@ function managedPaths(policy) {
   return [...paths, join(productRoot, 'harness-pnpm-lock.yaml')]
 }
 
+/**
+ * Select the requested product plugins while rejecting unknown identifiers.
+ *
+ * @param {ReturnType<typeof readProductUpdatePolicy>} policy Validated update policy.
+ * @param {string[] | undefined} only Product plugin identifiers to refresh.
+ * @returns {ReturnType<typeof readProductUpdatePolicy>} Policy limited to the requested plugins.
+ */
+export function selectProductPlugins(policy, only) {
+  if (!only || only.length === 0) return policy
+  const requested = new Set(only)
+  const plugins = policy.plugins.filter(plugin => requested.delete(plugin.id))
+  if (requested.size > 0) {
+    throw new Error(`unknown YourBuddy product plugin ids: ${[...requested].join(', ')}`)
+  }
+  return { ...policy, plugins }
+}
+
 function assertManagedPathsClean(policy) {
   const paths = managedPaths(policy).map(path => relative(repositoryRoot, path))
   const output = run('git', ['status', '--porcelain', '--untracked-files=all', '--', ...paths], {
@@ -1222,13 +1239,13 @@ function applyUpdates(updates) {
 /**
  * Refresh every external YourBuddy product source, applying only an all-valid set.
  *
- * @param {{allowDirty?: boolean, dryRun?: boolean, fetchImpl?: typeof fetch, desktop?: string, repository?: string}} options
+ * @param {{allowDirty?: boolean, dryRun?: boolean, fetchImpl?: typeof fetch, desktop?: string, repository?: string, only?: string[]}} options
  */
 export async function refreshProductPlugins(options = {}) {
   const selectedDesktopRoot = options.desktop ?? desktopRoot
   const selectedRepositoryRoot = options.repository ?? repositoryRoot
   const selectedProductRoot = join(selectedDesktopRoot, 'product')
-  const policy = readProductUpdatePolicy(selectedProductRoot)
+  const policy = selectProductPlugins(readProductUpdatePolicy(selectedProductRoot), options.only)
   if (!options.allowDirty && selectedDesktopRoot === desktopRoot) assertManagedPathsClean(policy)
 
   const stagingRoot = mkdtempSync(join(tmpdir(), 'yourbuddy-product-refresh-'))
@@ -1270,7 +1287,11 @@ export async function refreshProductPlugins(options = {}) {
 async function main() {
   const allowDirty = process.argv.includes('--allow-dirty')
   const dryRun = process.argv.includes('--dry-run') || process.argv.includes('--check')
-  const updates = await refreshProductPlugins({ allowDirty, dryRun })
+  const only = process.argv
+    .filter(argument => argument.startsWith('--only='))
+    .flatMap(argument => argument.slice('--only='.length).split(','))
+    .filter(Boolean)
+  const updates = await refreshProductPlugins({ allowDirty, dryRun, only })
   if (updates.length === 0) {
     console.log('refresh-product-plugins: all external product snapshots are current and pass static checks')
     return

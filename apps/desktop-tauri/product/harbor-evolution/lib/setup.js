@@ -281,7 +281,7 @@ export async function setupIntegration(raw = {}, dependencies = {}) {
     // Node resolves a symlinked package from its real checkout path. Install
     // the complete locked graph there so runtime dependencies and host peers
     // do not disappear behind the profile's `link:` entry.
-    await run('npm', ['ci', '--ignore-scripts'], { cwd: localPluginDir })
+    await run('npm', ['ci', '--ignore-scripts', '--include=dev'], { cwd: localPluginDir })
     // The browser half is generated from source and embeds its visual asset.
     // Build explicitly because the locked install above intentionally skips
     // lifecycle scripts for deterministic source-checkout setup.

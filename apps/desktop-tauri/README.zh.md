@@ -63,6 +63,8 @@ DSH 策略选择最高的官方正式 Release；仅在没有正式 Release 时�
 
 默认要求受管理的产品路径保持干净。只有开发者已经检查准备由事务保留或替换的本地产品修改时，才显式使用 `pnpm --dir apps/desktop-tauri run prepare:release -- --allow-dirty`；它绝不会允许在脏 Worktree 中合并上游 DSH。成功后，DSH Merge、刷新的快照与 Lockfile 会留给人工检查并提交；`DSH_UPSTREAM.json` 记录官方 DSH Tag 与 Commit，每个 `YOURBUDDY_UPSTREAM.json` 记录外部组件的精确 Revision、归档 Hash 与 Tree Hash，生成的 `.bundle-manifest.json` 则记录这些输入与整个 Bundle 的 Hash。后续任何准备步骤失败都会中止由该流程创建的 DSH Merge，并还原受管理的产品输入。
 
+如需仅刷新一个外部产品来源而不推进无关快照，请传入其策略 ID，例如 `pnpm --dir apps/desktop-tauri run refresh:product-plugins -- --only=harbor-evolution`。
+
 Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析上游输入。Tag 流水线只消费该 Tag 已提交的快照与冻结 Lockfile。手工 Workflow Dispatch 只用于在失败后重试尚未发布的已有 Tag。若该 Tag 已经存在 GitHub Release，流水线会拒绝继续，因此修正已发布字节时必须发布新版本，不能替换安装包。
 
 在干净的 `master` 上运行 `pnpm release:yourbuddy:prepare -- X.Y.Z`，会在不联网的情况下更新全部桌面版本源、创建双语发布归档和索引条目、记录配对文件，并写入发布说明草稿。替换全部自动生成的 `TODO`，重新记录变更配对，检查并提交。随后，`pnpm release:yourbuddy -- X.Y.Z` 只校验已提交的版本归档与 Git 状态，不重复测试、产品刷新、文档检查或官网构建。它要求 `master` 能快进 `origin/master`，拒绝已有远端 Tag，只创建或复用指向同一 Commit 的 Annotated Tag，并原子推送分支与 Tag。桌面产物仍只由 Tag Workflow 发布。

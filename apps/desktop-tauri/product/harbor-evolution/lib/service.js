@@ -71,6 +71,19 @@ const MAX_AGENT_INSPECT_FILES = 32
 const SECRET_LIKE_REFERENCE = /(authorization|cookie|token|api[_-]?key|secret|password)\s*[:=]/i
 const SAFE_EVIDENCE_REF = /^[\p{L}\p{N}][\p{L}\p{N}._:@+#/+-]{0,319}$/u
 
+export function projectRootAccessError(error) {
+  const code = typeof error?.code === 'string' ? error.code : ''
+  const syscall = typeof error?.syscall === 'string' ? error.syscall : ''
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  const directoryRead = /^(?:scandir|readdir|opendir)$/i.test(syscall) || /\b(?:scandir|readdir|opendir)\b/i.test(message)
+  const accessDenied = /^(?:EPERM|EACCES)$/i.test(code) || /\b(?:EPERM|EACCES)\b|operation not permitted|permission denied/i.test(message)
+  if (!directoryRead || !accessDenied) return error
+  return Object.assign(
+    new Error('HARBOR_PROJECT_ROOT_ACCESS_DENIED: the operating system denied access to the current Session project directory'),
+    { code: 'HARBOR_PROJECT_ROOT_ACCESS_DENIED', cause: error },
+  )
+}
+
 function compact(value) {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined))
 }
@@ -1002,11 +1015,23 @@ export class EvolutionService {
       try {
         const details = await stat(root.projectRoot)
         if (!details.isDirectory()) throw new Error('not a directory')
-      } catch {
+      } catch (error) {
+        const normalized = projectRootAccessError(error)
+        if (normalized !== error && scopedRoot) throw normalized
         this.projectRoots.delete(identity)
         continue
       }
-      const configs = await discoverWorkspaceConfigs({ ...this.config, projectRoot: root.projectRoot })
+      let configs
+      try {
+        configs = await discoverWorkspaceConfigs({ ...this.config, projectRoot: root.projectRoot })
+      } catch (error) {
+        const normalized = projectRootAccessError(error)
+        if (normalized !== error && !scopedRoot) {
+          this.projectRoots.delete(identity)
+          continue
+        }
+        throw normalized
+      }
       for (const config of configs) {
         const value = { ...config, projectRootSource: root.source }
         this.workspaceConfigs.set(config.workspaceId, value)

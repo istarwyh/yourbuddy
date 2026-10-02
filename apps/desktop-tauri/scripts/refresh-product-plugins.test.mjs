@@ -18,6 +18,7 @@ import {
   resolveGitHubBranch,
   resolveGitHubLatestRelease,
   resolveNpmLatest,
+  selectProductPlugins,
   validateProductUpdatePolicy,
   verifyArchiveIntegrity,
   verifyArchiveExtractionLimits,
@@ -127,6 +128,15 @@ test('product update policy accepts every supported source kind', () => {
     }),
   ])
   assert.equal(validateProductUpdatePolicy(policy, '/tmp/yourbuddy-product'), policy)
+})
+
+test('product refresh selects only requested plugin ids', () => {
+  const policy = updatePolicy([
+    npmPolicy(),
+    npmPolicy({ id: 'other', package: 'other-plugin', destination: 'other-plugin' }),
+  ])
+  assert.deepEqual(selectProductPlugins(policy, ['other']).plugins, [policy.plugins[1]])
+  assert.throws(() => selectProductPlugins(policy, ['missing']), /unknown YourBuddy product plugin ids: missing/)
 })
 
 test('materialized product patches replay onto a pristine upstream snapshot', (t) => {
