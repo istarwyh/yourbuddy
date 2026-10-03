@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.6/README.md
 /yourbuddy-0-4-6:
-  en: 90a186bec5bc2279
-  zh: 0a3bf3db7c3d6ded
+  en: 738d0882c2bd9e3a
+  zh: 846410453a5a6b03
 /yourbuddy-0-4-6/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -24,11 +24,11 @@
   en: d8527ecc1ce165b1
   zh: 27e825c3cfc55013
 /yourbuddy-0-4-6/user-release-notes/compatibility-migration-and-limitations:
-  en: afcaf97d6b75ea59
-  zh: b2d7475c60ef9b8b
+  en: 89e825ffcf949e2e
+  zh: 5060a990b7387299
 /yourbuddy-0-4-6/verification-summary:
-  en: 399a61aad0491fea
-  zh: 10d0858d4d5f6d1d
+  en: 62c4e8e5f389d689
+  zh: 82853b65199d3536
 /yourbuddy-0-4-6/scenario-recover-the-synchronized-desktop-release:
   en: 2819d396b720ad59
   zh: 36987496c3b6ad92
@@ -45,11 +45,11 @@
   en: ef397e329807f3f8
   zh: 084347e5f17493a5
 /yourbuddy-0-4-6/scenario-recover-the-synchronized-desktop-release/scope-limits:
-  en: 406b5e5531b1fb8c
-  zh: f436b400c1366c47
+  en: bb8254ae037d2ab7
+  zh: 8c62fb9101b528d0
 /yourbuddy-0-4-6/delivery-status:
-  en: 64a68e05faf7ef8d
-  zh: 8a75379bd5d5f66f
+  en: 02dd72b3388a4683
+  zh: e772992d6cbb66cd
 /yourbuddy-0-4-6/delivery-checklist:
-  en: fa8e0724ee536f78
-  zh: 4a2b4283af0e746f
+  en: 512a57698066b1b3
+  zh: 62cffa1f56bb872e

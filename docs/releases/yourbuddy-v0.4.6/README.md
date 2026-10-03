@@ -6,10 +6,10 @@ This archive records the official DSH 0.2.0-rc.1 synchronization, desktop compon
 
 - Release identifier: `yourbuddy-v0.4.6`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; source checks passed and formal artifact publication is pending.
+- Archive state: published and independently checked within the limits below.
 - Evidence commit: the release candidate commit identified by `yourbuddy-v0.4.6`.
 - Evidence gallery: not applicable; this release changes runtime and integration behavior without a new visual flow.
-- Evidence download: the pending [YourBuddy 0.4.6 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.6).
+- Evidence download: the published [YourBuddy 0.4.6 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.6).
 
 ## User release notes
 
@@ -35,7 +35,7 @@ After publication, install the Apple Silicon Bootstrap or Offline DMG from the G
 
 ### Compatibility, migration, and limitations
 
-This release targets macOS Apple Silicon and requires no data migration. Source tests cover lock ownership, release metadata, TypeScript integration, documentation consistency, and the desktop runtime build path. Formal DMG construction, public checksums, updater metadata, installed startup, packaged WebView interaction, code signing, and notarization remain pending until the release workflow and post-publication checks finish.
+This release targets macOS Apple Silicon and requires no data migration. Source tests cover lock ownership, release metadata, TypeScript integration, documentation consistency, and the desktop runtime build path. The workflow published signed updater metadata, checksums, Bootstrap and Offline DMGs, and runtime component archives. Installed startup, packaged WebView interaction, Apple Developer signing, and notarization remain unverified.
 
 ## Verification summary
 
@@ -44,7 +44,7 @@ This release targets macOS Apple Silicon and requires no data migration. Source 
 | Desktop component lock ownership | passed | 0.4.6 source candidate | macOS 15.6.1 arm64, Rust 1.98.0 | six focused Rust component tests passed, including stale-owner recovery and live-owner exclusion |
 | Release identity and DSH record | passed | 0.4.6 source candidate | Node 22.19.0, pnpm 11.7.0 | seven version tests and 13 release-policy tests passed; DSH 0.2.0-rc.1 tag ancestry was confirmed |
 | Merged DSH and documentation integration | passed within source scope | current `master` candidate | macOS 15.6.1 arm64 | repository typecheck, release suite components, and all 43 documentation gates passed |
-| Formal desktop artifacts | not verified | `yourbuddy-v0.4.6` publication | GitHub Actions and public GitHub Release | pending tag workflow and independent public-asset checks |
+| Formal desktop artifacts | passed within stated limits | `yourbuddy-v0.4.6` publication | GitHub Actions and public GitHub Release | workflow 37130849206 passed; 14 public assets, latest channel, anonymous DMG access, small-asset hashes, and downloaded Bootstrap DMG hash verified |
 
 ## Scenario: Recover the synchronized desktop release
 
@@ -79,14 +79,14 @@ Seven version tests, 13 release-policy tests, 12 bundle tests, 69 product-refres
 
 ### Scope limits
 
-No formal 0.4.6 DMG, updater archive, public checksum file, or updater manifest exists until the tag workflow completes. Installed startup, packaged WebView controls, anonymous public downloads, Apple Developer signing, and notarization are not yet verified.
+The public Release contains 14 assets. The Bootstrap DMG was downloaded anonymously and matched SHA-256 `3b5b8d5f89bb5e0fe60b886e58c3c1b381f2eb7c17c78a72a9c1da5b316b4b51`; selected small assets also matched `SHA256SUMS.txt`. The 602 MB Offline DMG accepted an anonymous ranged request but was not fully downloaded independently. Installed startup, packaged WebView controls, Apple Developer signing, and notarization are not verified.
 
 ## Delivery status
 
-- Product publication status: pending the `yourbuddy-v0.4.6` tag workflow and public GitHub Release.
-- Verification archive status: complete for pre-publication source and recovery evidence; public artifact evidence is pending.
-- Website synchronization status: not applicable because product guidance and stable GitHub Release links remain unchanged.
-- Unverified scope: formal artifacts, public hashes and updater metadata, installed startup, packaged WebView interaction, Apple Developer signing, and notarization.
+- Product publication status: published as the latest stable GitHub Release with 14 assets.
+- Verification archive status: complete for source, recovery, workflow, and bounded public-artifact evidence.
+- Website synchronization status: not applicable because product guidance is unchanged and the stable latest-release link resolves to 0.4.6 automatically.
+- Unverified scope: full independent Offline DMG download, installed startup, packaged WebView interaction, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -98,6 +98,6 @@ No formal 0.4.6 DMG, updater archive, public checksum file, or updater manifest 
 - [x] Failed and unverified evidence is labelled explicitly.
 - [x] The release entry exists in both release indexes and the bilingual archive is paired.
 - [x] Product publication, archive, website, and unverified scope are reported separately.
-- [ ] Public workflow, release assets, hashes, updater metadata, stable latest link, and downloadable DMG integrity remain to be verified.
+- [x] Public workflow, 14 release assets, selected hashes, updater metadata, stable latest link, anonymous DMG access, and downloaded Bootstrap DMG integrity were verified.
 - [ ] Installed startup and packaged WebView interaction remain unverified.
 - [x] The failed 0.4.5 tag is unchanged; the correction uses a new version.

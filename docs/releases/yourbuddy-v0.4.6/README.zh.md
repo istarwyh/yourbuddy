@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.4.6`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选版本；源码检查已通过，正式产物发布待执行。
+- 归档状态：已发布，并在下述范围内完成独立检查。
 - 证据 Commit：由 `yourbuddy-v0.4.6` 标识的候选版本 Commit。
 - 证据图集：不适用；本版本修改运行时与集成行为，没有新增可视流程。
-- 证据下载：待发布的 [YourBuddy 0.4.6 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.6)。
+- 证据下载：已发布的 [YourBuddy 0.4.6 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.6)。
 
 ## 面向用户的发布说明
 
@@ -35,7 +35,7 @@ YourBuddy 安装或修复托管运行时组件时使用锁恢复。Oil Creator �
 
 ### 兼容性、迁移与限制
 
-本版本面向 macOS Apple Silicon，不需要数据迁移。源码测试覆盖锁所有权、发布元数据、TypeScript 集成、文档一致性和桌面运行时构建路径。正式 DMG 构建、公开校验和、更新元数据、安装后启动、打包 WebView 交互、代码签名和公证，需要等待发布工作流与发布后检查完成。
+本版本面向 macOS Apple Silicon，不需要数据迁移。源码测试覆盖锁所有权、发布元数据、TypeScript 集成、文档一致性和桌面运行时构建路径。工作流已发布带签名的更新元数据、校验和、Bootstrap 与 Offline DMG，以及运行时组件归档。安装后启动、打包 WebView 交互、Apple Developer 签名和公证尚未验证。
 
 ## 验证概览
 
@@ -44,7 +44,7 @@ YourBuddy 安装或修复托管运行时组件时使用锁恢复。Oil Creator �
 | 桌面组件锁所有权 | 通过 | 0.4.6 源码候选版本 | macOS 15.6.1 arm64、Rust 1.98.0 | 六项组件 Rust 聚焦测试通过，包括遗留所有者恢复和活跃所有者互斥 |
 | 发布身份与 DSH 记录 | 通过 | 0.4.6 源码候选版本 | Node 22.19.0、pnpm 11.7.0 | 七项版本测试和 13 项发布策略测试通过；已确认 DSH 0.2.0-rc.1 Tag 祖先关系 |
 | 合并后的 DSH 与文档集成 | 在源码范围内通过 | 当前 `master` 候选版本 | macOS 15.6.1 arm64 | 仓库类型检查、发布套件组成项与全部 43 项文档门禁通过 |
-| 正式桌面产物 | 未验证 | `yourbuddy-v0.4.6` 发布 | GitHub Actions 与公开 GitHub Release | 等待 Tag 工作流和独立公开产物检查 |
+| 正式桌面产物 | 在声明范围内通过 | `yourbuddy-v0.4.6` 发布 | GitHub Actions 与公开 GitHub Release | 工作流 37130849206 通过；已验证 14 个公开产物、最新版本渠道、匿名 DMG 访问、小型产物 Hash 和已下载 Bootstrap DMG 的 Hash |
 
 ## 场景：恢复同步后的桌面发布
 
@@ -79,14 +79,14 @@ YourBuddy 安装或修复托管运行时组件时使用锁恢复。Oil Creator �
 
 ### 范围限制
 
-Tag 工作流完成前没有正式 0.4.6 DMG、更新归档、公开校验和文件或更新清单。安装后启动、打包 WebView Control、匿名公开下载、Apple Developer 签名和公证尚未验证。
+公开 Release 包含 14 个产物。Bootstrap DMG 已匿名下载，并与 SHA-256 `3b5b8d5f89bb5e0fe60b886e58c3c1b381f2eb7c17c78a72a9c1da5b316b4b51` 一致；抽查的小型产物也与 `SHA256SUMS.txt` 一致。602 MB Offline DMG 接受匿名分段请求，但未完成独立全量下载。安装后启动、打包 WebView Control、Apple Developer 签名和公证尚未验证。
 
 ## 交付状态
 
-- 产品发布状态：等待 `yourbuddy-v0.4.6` Tag 工作流和公开 GitHub Release。
-- 验证资料归档状态：发布前源码和恢复证据完整；公开产物证据待补充。
-- 站点同步状态：不适用，因为产品指南和稳定 GitHub Release 链接没有变化。
-- 未验证范围：正式产物、公开 Hash 与更新元数据、安装后启动、打包 WebView 交互、Apple Developer 签名和公证。
+- 产品发布状态：已作为最新稳定 GitHub Release 发布，共 14 个产物。
+- 验证资料归档状态：源码、恢复、工作流和限定范围公开产物证据完整。
+- 站点同步状态：不适用，因为产品指南没有变化，稳定最新版本链接已自动解析到 0.4.6。
+- 未验证范围：独立全量下载 Offline DMG、安装后启动、打包 WebView 交互、Apple Developer 签名和公证。
 
 ## 交付清单
 
@@ -98,6 +98,6 @@ Tag 工作流完成前没有正式 0.4.6 DMG、更新归档、公开校验和文
 - [x] 已明确标记失败与未验证证据。
 - [x] 两种语言的发布索引均包含本版本，双语归档已配对。
 - [x] 已分别报告产品发布、归档、站点和未验证范围。
-- [ ] 公开工作流、Release 产物、Hash、更新元数据、稳定最新版本链接和可下载 DMG 完整性待验证。
+- [x] 已验证公开工作流、14 个 Release 产物、抽查 Hash、更新元数据、稳定最新版本链接、匿名 DMG 访问和已下载 Bootstrap DMG 完整性。
 - [ ] 安装后启动和打包 WebView 交互尚未验证。
 - [x] 失败的 0.4.5 Tag 保持不变；修正使用新版本。
