@@ -628,11 +628,40 @@ fn remove_partial(partial: &Path, metadata: &Path) {
 #[cfg(test)]
 mod tests {
     use super::{
-        asset_url, component_path, relative_link_stays_inside, validate_manifest,
+        asset_url, component_path, relative_link_stays_inside, validate_manifest, ComponentLock,
         ComponentManifest, ComponentSpec,
     };
     use std::collections::BTreeMap;
-    use std::path::Path;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static NEXT_TEMPORARY_ROOT: AtomicU64 = AtomicU64::new(0);
+
+    struct TemporaryRoot(PathBuf);
+
+    impl TemporaryRoot {
+        fn new(label: &str) -> Self {
+            loop {
+                let serial = NEXT_TEMPORARY_ROOT.fetch_add(1, Ordering::Relaxed);
+                let path = std::env::temp_dir().join(format!(
+                    "yourbuddy-component-{label}-{}-{serial}",
+                    std::process::id()
+                ));
+                match fs::create_dir(&path) {
+                    Ok(()) => return Self(path),
+                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                    Err(error) => panic!("cannot create temporary component root: {error}"),
+                }
+            }
+        }
+    }
+
+    impl Drop for TemporaryRoot {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
 
     fn manifest() -> ComponentManifest {
         let spec = ComponentSpec {
@@ -700,5 +729,32 @@ mod tests {
             Path::new("venv/bin/python"),
             Path::new("/tmp/python")
         ));
+    }
+
+    #[test]
+    fn reclaims_a_stale_component_lock() {
+        let root = TemporaryRoot::new("stale-lock");
+        let path = root.0.join("component.lock");
+        fs::write(&path, "terminated-owner").expect("stale lock");
+
+        let lock = ComponentLock::acquire(path.clone()).expect("reclaimed lock");
+        assert!(path.is_file());
+        drop(lock);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn excludes_a_second_live_component_operation() {
+        let root = TemporaryRoot::new("live-lock");
+        let path = root.0.join("component.lock");
+        let first = ComponentLock::acquire(path.clone()).expect("first lock");
+
+        assert_eq!(
+            ComponentLock::acquire(path.clone()).err().as_deref(),
+            Some("another component operation is active")
+        );
+        drop(first);
+        let second = ComponentLock::acquire(path).expect("lock after release");
+        drop(second);
     }
 }

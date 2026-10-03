@@ -1,7 +1,7 @@
-# YourBuddy 0.4.4
+# YourBuddy 0.4.5
 
-YourBuddy now manages bundled capabilities as one Package + CLI + Skill + UI unit, adds direct Harbor 0.10.3 runtime recovery, and retains the exact packaged-Bundle guard for the Better Sidebar `clsx` startup fix. This version also corrects the Harbor Python snapshot metadata that stopped the unpublished 0.4.3 build before artifact creation.
+YourBuddy 0.4.5 synchronizes the bundled DSH core with the current upstream line while retaining the YourBuddy desktop identity and product integrations. It recovers stale component-install locks after an interrupted process, keeps live component operations mutually exclusive, and lets Oil Creator subtitle helpers find system and Homebrew executables from the desktop environment.
 
-YourBuddy 现在把内置能力作为 Package + CLI + Skill + UI 整体管理，支持直接恢复 Harbor 0.10.3 运行时，并继续通过实际发布 Bundle 门禁保护 Better Sidebar `clsx` 启动修复。本版本还修正了导致未发布 0.4.3 构建在产物生成前停止的 Harbor Python 快照元数据。
+YourBuddy 0.4.5 将内置 DSH 核心同步到当前上游版本，同时保留 YourBuddy 桌面身份和产品集成。组件安装进程意外结束后，应用可以回收遗留锁；仍在运行的组件操作继续保持互斥；Oil Creator 字幕工具也能从桌面环境找到系统与 Homebrew 可执行文件。
 
-Verification archive: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.4/docs/releases/yourbuddy-v0.4.4
+Verification archive: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.5/docs/releases/yourbuddy-v0.4.5

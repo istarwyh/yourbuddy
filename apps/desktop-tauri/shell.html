@@ -9,18 +9,11 @@
       --dsw-static-neutral-bluish-50: rgb(249, 250, 251);
       --dsw-static-neutral-bluish-875: rgb(35, 35, 36);
       --dsw-static-neutral-bluish-950: rgb(21, 21, 23);
-      --dsw-static-neutral-bluish-1000: rgb(15, 17, 21);
       --dsw-static-red-400: rgb(242, 90, 90);
       --bg: var(--dsw-static-neutral-bluish-950);
       --text: var(--dsw-static-neutral-bluish-50);
       --hover: var(--dsw-static-neutral-bluish-875);
       --close-hover: var(--dsw-static-red-400);
-    }
-    body.light {
-      --bg: var(--dsw-static-neutral-bluish-50);
-      --line: rgba(0, 0, 0, 0.08);
-      --text: var(--dsw-static-neutral-bluish-1000);
-      --hover: rgba(38, 49, 72, 0.06);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
@@ -72,10 +65,19 @@
       background: transparent;
     }
     body.macos button.ctl svg { display: none; }
-    body.macos button.ctl.close { background: #ff5f57; }
-    body.macos button.ctl.minimize { background: #febc2e; }
-    body.macos button.ctl.maximize { background: #28c840; }
-    body.macos button.ctl:hover { filter: brightness(1.05); }
+    body.macos button.ctl::after { content: ''; width: 12px; height: 12px; border-radius: 50%; }
+    body.macos button.ctl.close::after { background: #ff5f57; }
+    body.macos button.ctl.minimize::after { background: #febc2e; }
+    body.macos button.ctl.maximize::after { background: #28c840; }
+    body.macos button.ctl:hover { filter: brightness(1.08); }
+    iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: var(--bg);
+    }
     .modal {
       position: fixed;
       inset: 0;
@@ -84,6 +86,8 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
+      --dsw-static-neutral-bluish-00: rgb(255, 255, 255);
+      --dsw-static-neutral-bluish-1000: rgb(15, 17, 21);
       --dsw-static-neutral-bluish-700: rgb(97, 102, 107);
       --dsw-static-neutral-bluish-750: rgb(67, 69, 74);
       --dsw-alias-bg-mask-1: rgba(0, 0, 0, 0.24);
@@ -174,16 +178,10 @@
   </style>
 </head>
 <body>
-  <header id="titlebar">
-    <div class="cluster left" id="left"></div>
-    <div class="drag" data-tauri-drag-region>
-      <svg class="mark" viewBox="0 0 23.16 17.04" fill="none" aria-hidden="true" data-tauri-drag-region>
-        <path fill="currentColor" d="M22.9168 1.43018C22.6713 1.31018 22.5658 1.53918 22.4223 1.65519C22.3733 1.69269 22.3318 1.74169 22.2903 1.78669C21.9317 2.1697 21.5127 2.42121 20.9657 2.39121C20.1657 2.34621 19.4827 2.59771 18.8787 3.20973C18.7502 2.45521 18.3236 2.0047 17.6746 1.71569C17.3351 1.56568 16.9916 1.41518 16.7536 1.08867C16.5876 0.856163 16.5421 0.597155 16.4591 0.341647C16.4061 0.187643 16.3536 0.0301382 16.1761 0.00363739C15.9836 -0.0263635 15.9081 0.135141 15.8326 0.270145C15.5306 0.822162 15.4136 1.43018 15.4251 2.0462C15.4516 3.43174 16.0366 4.53527 17.1991 5.3203C17.3311 5.4103 17.3651 5.5003 17.3236 5.63181C17.2441 5.90231 17.1501 6.16482 17.0671 6.43533C17.0141 6.60784 16.9351 6.64584 16.7501 6.57033C16.1121 6.30383 15.5611 5.90931 15.074 5.4328C14.2475 4.63328 13.5 3.75075 12.568 3.05973C12.349 2.89822 12.13 2.74822 11.9034 2.60522C10.9524 1.68169 12.028 0.923165 12.277 0.833162C12.5375 0.739159 12.3675 0.41615 11.5259 0.42015C10.6844 0.42365 9.91439 0.705658 8.93286 1.08117C8.78935 1.13767 8.63835 1.17867 8.48384 1.21267C7.59332 1.04367 6.66829 1.00617 5.70226 1.11517C3.88321 1.31768 2.43016 2.1777 1.36213 3.64575C0.0790928 5.4103 -0.222916 7.41536 0.146595 9.50642C0.535106 11.7105 1.66014 13.535 3.38869 14.9616C5.18125 16.4406 7.24581 17.1657 9.60138 17.0266C11.0319 16.9441 12.6245 16.7526 14.421 15.2321C14.874 15.4576 15.3496 15.5476 16.1381 15.6151C16.7456 15.6716 17.3306 15.5851 17.7836 15.4911C18.4931 15.3411 18.4441 14.6841 18.1876 14.5636C16.1081 13.595 16.5646 13.9891 16.1496 13.67C17.2061 12.42 18.8202 10.1979 19.3182 7.17235C19.3672 6.83834 19.4297 6.36783 19.4222 6.09732C19.4182 5.93231 19.4562 5.86831 19.6447 5.84931C20.1657 5.78931 20.6712 5.64681 21.1357 5.3913C22.4833 4.65528 23.0268 3.44624 23.1548 1.9972C23.1738 1.77569 23.1508 1.54668 22.9168 1.43018ZM11.1749 14.4736C9.15936 12.889 8.18184 12.3675 7.77832 12.39C7.40081 12.4125 7.46881 12.8445 7.55182 13.126C7.63882 13.404 7.75182 13.5955 7.91033 13.8396C8.01983 14.0011 8.09533 14.2411 7.80083 14.4216C7.15181 14.8231 6.02327 14.2866 5.97027 14.2601C4.65673 13.4865 3.5587 12.4655 2.78467 11.069C2.03715 9.72493 1.60314 8.28289 1.53164 6.74384C1.51264 6.37233 1.62214 6.24082 1.99215 6.17332C2.47916 6.08332 2.98118 6.06432 3.46769 6.13582C5.52476 6.43633 7.27581 7.35586 8.74385 8.8129C9.58188 9.64243 10.2159 10.634 10.8689 11.6025C11.5634 12.631 12.3105 13.611 13.262 14.4146C13.598 14.6961 13.866 14.9101 14.1225 15.0681C13.349 15.1546 12.058 15.1731 11.1749 14.4746L11.1749 14.4736ZM12.141 8.25988C12.141 8.09488 12.273 7.96338 12.439 7.96338C12.4765 7.96338 12.5105 7.97088 12.541 7.98188C12.5825 7.99688 12.6205 8.01938 12.6505 8.05338C12.7035 8.10588 12.7335 8.18088 12.7335 8.25988C12.7335 8.42489 12.6015 8.55639 12.4355 8.55639C12.2695 8.55639 12.141 8.42489 12.141 8.25988ZM15.1415 9.79893C14.949 9.87793 14.7565 9.94544 14.5715 9.95294C14.2845 9.96794 13.9715 9.85143 13.8015 9.70893C13.5375 9.48742 13.3485 9.36342 13.2695 8.97691C13.2355 8.8119 13.2545 8.55639 13.2845 8.40989C13.3525 8.09438 13.277 7.89187 13.0545 7.70787C12.8735 7.55786 12.643 7.51636 12.39 7.51636C12.2955 7.51636 12.209 7.47486 12.1445 7.44136C12.039 7.38886 11.9519 7.25735 12.035 7.09585C12.0615 7.04335 12.19 6.91584 12.22 6.89334C12.5635 6.69784 12.9595 6.76184 13.326 6.90834C13.6655 7.04735 13.9225 7.30236 14.292 7.66287C14.6695 8.09838 14.7375 8.21838 14.9525 8.54539C15.1225 8.8009 15.277 9.06341 15.3831 9.36392C15.4471 9.55142 15.3641 9.70493 15.1415 9.79893Z"/>
-      </svg>
-      <span data-tauri-drag-region>DeepSeek Harness</span>
-    </div>
-    <div class="cluster right" id="right"></div>
-  </header>
+  <aside id="window-chrome-fallback" data-tauri-drag-region>
+    <div id="window-controls"></div>
+  </aside>
+  <iframe id="app" title="YourBuddy"></iframe>
   <div id="close-prompt" class="modal" hidden>
     <div class="modal-mask" data-dismiss></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="close-title">
@@ -205,14 +203,6 @@
   <script src="desktop-i18n.js"></script>
   <script>
     window.DSH_I18N.apply()
-
-    window.__DSH_CHROME_THEME__ = {
-      apply(mode) {
-        document.body.classList.toggle('light', mode === 'light')
-      },
-    }
-    window.__DSH_CHROME_THEME__.apply(window.__DSH_CHROME_THEME_INIT__ || 'dark')
-
     const icons = {
       minimize: '<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="5" width="8" height="1" fill="currentColor"/></svg>',
       maximize: '<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1"/></svg>',
@@ -264,30 +254,319 @@
     function setClosePrompt(open) {
       closePrompt.hidden = !open
     }
-    function dismissClosePrompt() {
-      setClosePrompt(false)
-      window.__TAURI__?.core?.invoke('dismiss_close_prompt')
-    }
     async function chooseClose(action) {
       setClosePrompt(false)
       const invoke = window.__TAURI__?.core?.invoke
       if (invoke) await invoke('run_first_party_command', { command: 'set_close_action', payload: { action } })
     }
     closePrompt.querySelectorAll('[data-dismiss]').forEach((el) => {
-      el.addEventListener('click', dismissClosePrompt)
+      el.addEventListener('click', () => setClosePrompt(false))
     })
     document.getElementById('close-minimize').onclick = () => chooseClose('minimize')
     document.getElementById('close-exit').onclick = () => chooseClose('exit')
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !closePrompt.hidden) dismissClosePrompt()
+      if (event.key === 'Escape' && !closePrompt.hidden) setClosePrompt(false)
     })
     window.__DSH_CLOSE_PROMPT__ = {
       show() { setClosePrompt(true) },
       hide() { setClosePrompt(false) },
     }
 
+    const appFrame = document.getElementById('app')
+    const desktopLifecycleChannel = 'yourbuddy.desktop.lifecycle'
+    const desktopLifecycleVersion = 1
+    const desktopLifecycleRequestId = /^[A-Za-z0-9_-]{1,64}$/
+    const networkProxyChannel = 'yourbuddy.desktop.network-proxy'
+    const networkProxyVersion = 4
+    const externalLinkChannel = 'yourbuddy.desktop.external-link'
+    const externalLinkVersion = 1
+    const marketplaceLinkChannel = 'yourbuddy.desktop.marketplace-link'
+    const marketplaceLinkVersion = 1
+    const windowControlsChannel = 'yourbuddy.desktop.window-controls'
+    const windowControlsVersion = 1
+    let embeddedOrigin
+    try {
+      embeddedOrigin = new URL(window.__DSH_WEB_URL__).origin
+    }
+    catch {
+      embeddedOrigin = undefined
+    }
+
+    function readDesktopLifecycleAction(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      const keys = Object.keys(value).sort()
+      if (keys.join(',') !== 'channel,requestId,type,version') return false
+      if (value.channel !== desktopLifecycleChannel
+        || value.version !== desktopLifecycleVersion
+        || typeof value.requestId !== 'string'
+        || !desktopLifecycleRequestId.test(value.requestId)) return false
+      if (value.type === 'check-update-request') return 'check-update'
+      if (value.type === 'install-harbor-request') return 'install-harbor'
+      if (value.type === 'enable-cli-request') return 'enable-cli'
+      if (value.type === 'restart-request') return 'restart'
+      return false
+    }
+
+    function readWindowControlsAction(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      if (value.channel !== windowControlsChannel || value.version !== windowControlsVersion) return false
+      const keys = Object.keys(value).sort().join(',')
+      if (['mount-request', 'ready', 'unmount'].includes(value.type)) {
+        return keys === 'channel,type,version' ? value.type : false
+      }
+      if (value.type !== 'action-request' || keys !== 'action,channel,type,version') return false
+      return ['close', 'minimize', 'maximize', 'drag'].includes(value.action) ? value.action : false
+    }
+
+    function isNetworkProxySettings(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      const keys = Object.keys(value).sort()
+      return keys.join(',') === 'caCertificatePath,httpProxy,httpsProxy,mode,noProxy'
+        && ['direct', 'system', 'custom'].includes(value.mode)
+        && typeof value.httpProxy === 'string'
+        && value.httpProxy.length <= 2048
+        && typeof value.httpsProxy === 'string'
+        && value.httpsProxy.length <= 2048
+        && typeof value.noProxy === 'string'
+        && value.noProxy.length <= 4096
+        && typeof value.caCertificatePath === 'string'
+        && value.caCertificatePath.length <= 4096
+    }
+
+    function readNetworkProxyAction(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      if (value.channel !== networkProxyChannel
+        || value.version !== networkProxyVersion
+        || typeof value.requestId !== 'string'
+        || !desktopLifecycleRequestId.test(value.requestId)) return false
+      if (value.type === 'get-request' || value.type === 'select-ca-request') {
+        return Object.keys(value).sort().join(',') === 'channel,requestId,type,version'
+          ? value.type === 'get-request' ? 'get' : 'select-ca'
+          : false
+      }
+      if (value.type !== 'test-request' && value.type !== 'save-request') return false
+      if (Object.keys(value).sort().join(',') !== 'channel,requestId,settings,type,version'
+        || !isNetworkProxySettings(value.settings)) return false
+      return value.type === 'test-request' ? 'test' : 'save'
+    }
+
+    function isMarketplaceExternalUrl(value) {
+      if (typeof value !== 'string') return false
+      let url
+      try {
+        url = new URL(value)
+      }
+      catch {
+        return false
+      }
+      if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || url.port !== '' || url.hash !== '') return false
+      const segments = url.pathname.split('/').filter(Boolean)
+      const validSegment = segment => /^[A-Za-z0-9_.-]+$/.test(segment)
+      if (url.hostname === 'github.com') {
+        return url.search === '' && segments.length === 2 && segments.every(validSegment)
+      }
+      if (url.hostname !== 'www.npmjs.com') return false
+      if (segments.length === 1 && segments[0] === 'search') {
+        const keys = Array.from(url.searchParams.keys())
+        return keys.length === 1 && keys[0] === 'q' && url.searchParams.get('q') !== ''
+      }
+      if (url.search !== '' || segments[0] !== 'package') return false
+      if (segments.length === 2) return validSegment(segments[1])
+      return segments.length === 3 && /^@[A-Za-z0-9_.-]+$/.test(segments[1]) && validSegment(segments[2])
+    }
+
+    function isExternalHttpUrl(value) {
+      if (typeof value !== 'string' || value.length === 0 || value.length > 4096) return false
+      let url
+      try {
+        url = new URL(value)
+      }
+      catch {
+        return false
+      }
+      return ['http:', 'https:'].includes(url.protocol)
+        && url.hostname !== ''
+        && url.username === ''
+        && url.password === ''
+        && url.href.length <= 4096
+    }
+
+    function isExternalLinkRequest(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      const keys = Object.keys(value).sort()
+      if (keys.join(',') !== 'channel,requestId,type,url,version') return false
+      return value.channel === externalLinkChannel
+        && value.version === externalLinkVersion
+        && value.type === 'open-request'
+        && typeof value.requestId === 'string'
+        && desktopLifecycleRequestId.test(value.requestId)
+        && isExternalHttpUrl(value.url)
+    }
+
+    function isMarketplaceLinkRequest(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      const keys = Object.keys(value).sort()
+      if (keys.join(',') !== 'channel,requestId,type,url,version') return false
+      return value.channel === marketplaceLinkChannel
+        && value.version === marketplaceLinkVersion
+        && value.type === 'open-request'
+        && typeof value.requestId === 'string'
+        && desktopLifecycleRequestId.test(value.requestId)
+        && isMarketplaceExternalUrl(value.url)
+    }
+
+    window.addEventListener('message', async (event) => {
+      const embeddedWindow = appFrame.contentWindow
+      if (embeddedOrigin === undefined || embeddedWindow === null) return
+      if (event.source !== embeddedWindow || event.origin !== embeddedOrigin) return
+      const windowControlsAction = readWindowControlsAction(event.data)
+      if (windowControlsAction !== false) {
+        if (windowControlsAction === 'mount-request') {
+          if (windowControlLayout !== undefined) {
+            embeddedWindow.postMessage({
+              channel: windowControlsChannel,
+              version: windowControlsVersion,
+              type: 'layout-response',
+              ...windowControlLayout,
+            }, embeddedOrigin)
+          }
+        }
+        else if (windowControlsAction === 'ready') {
+          setWindowControlsFallbackVisible(false)
+        }
+        else if (windowControlsAction === 'unmount') {
+          setWindowControlsFallbackVisible(true)
+        }
+        else {
+          try {
+            await performWindowAction(windowControlsAction)
+          }
+          catch (error) {
+            console.error('Desktop window action failed', error)
+          }
+        }
+        return
+      }
+      if (isExternalLinkRequest(event.data)) {
+        const response = {
+          channel: externalLinkChannel,
+          version: externalLinkVersion,
+          type: 'open-response',
+          requestId: event.data.requestId,
+        }
+        try {
+          const invoke = window.__TAURI__?.core?.invoke
+          if (typeof invoke !== 'function') throw new Error('Desktop external-link bridge is unavailable')
+          await invoke('run_first_party_command', { command: 'open_external_url', payload: { url: event.data.url } })
+          response.ok = true
+        }
+        catch (error) {
+          response.ok = false
+          response.error = String(error instanceof Error ? error.message : error).slice(0, 2048)
+        }
+        embeddedWindow.postMessage(response, embeddedOrigin)
+        return
+      }
+      if (isMarketplaceLinkRequest(event.data)) {
+        const response = {
+          channel: marketplaceLinkChannel,
+          version: marketplaceLinkVersion,
+          type: 'open-response',
+          requestId: event.data.requestId,
+        }
+        try {
+          const invoke = window.__TAURI__?.core?.invoke
+          if (typeof invoke !== 'function') throw new Error('Desktop external-link bridge is unavailable')
+          await invoke('run_first_party_command', { command: 'open_marketplace_url', payload: { url: event.data.url } })
+          response.ok = true
+        }
+        catch (error) {
+          response.ok = false
+          response.error = String(error instanceof Error ? error.message : error).slice(0, 2048)
+        }
+        embeddedWindow.postMessage(response, embeddedOrigin)
+        return
+      }
+      const networkProxyAction = readNetworkProxyAction(event.data)
+      if (networkProxyAction !== false) {
+        const response = {
+          channel: networkProxyChannel,
+          version: networkProxyVersion,
+          requestId: event.data.requestId,
+        }
+        embeddedWindow.postMessage({ ...response, type: `${networkProxyAction}-accepted` }, embeddedOrigin)
+        try {
+          const invoke = window.__TAURI__?.core?.invoke
+          if (typeof invoke !== 'function') throw new Error('Desktop network proxy bridge is unavailable')
+          if (networkProxyAction === 'get') {
+            response.value = await invoke('run_first_party_command', { command: 'get_network_proxy_settings' })
+          }
+          else if (networkProxyAction === 'select-ca') {
+            response.value = await invoke('run_first_party_command', { command: 'select_ca_certificate' })
+          }
+          else if (networkProxyAction === 'test') {
+            response.value = await invoke('run_first_party_command', { command: 'test_network_proxy_settings', payload: { settings: event.data.settings } })
+          }
+          else {
+            response.value = await invoke('run_first_party_command', { command: 'save_network_proxy_settings', payload: { settings: event.data.settings } })
+          }
+          response.type = `${networkProxyAction}-response`
+          response.ok = true
+        }
+        catch (error) {
+          response.type = `${networkProxyAction}-response`
+          response.ok = false
+          response.error = String(error instanceof Error ? error.message : error).slice(0, 2048)
+        }
+        embeddedWindow.postMessage(response, embeddedOrigin)
+        return
+      }
+      const lifecycleAction = readDesktopLifecycleAction(event.data)
+      if (lifecycleAction === false) return
+
+      const response = {
+        channel: desktopLifecycleChannel,
+        version: desktopLifecycleVersion,
+        requestId: event.data.requestId,
+      }
+      embeddedWindow.postMessage({ ...response, type: `${lifecycleAction}-accepted` }, embeddedOrigin)
+      try {
+        const invoke = window.__TAURI__?.core?.invoke
+        if (typeof invoke !== 'function') throw new Error('Desktop lifecycle bridge is unavailable')
+        if (lifecycleAction === 'check-update') {
+          response.message = await invoke('run_first_party_command', { command: 'check_for_updates' })
+        }
+        else if (lifecycleAction === 'install-harbor') {
+          response.message = await invoke('run_first_party_command', { command: 'install_harbor_component' })
+        }
+        else if (lifecycleAction === 'enable-cli') {
+          response.message = await invoke('run_first_party_command', { command: 'enable_managed_cli_path' })
+        }
+        else {
+          await invoke('run_first_party_command', { command: 'restart_app' })
+          throw new Error('Desktop restart returned without relaunching')
+        }
+        response.type = `${lifecycleAction}-response`
+        response.ok = true
+      }
+      catch (error) {
+        response.type = `${lifecycleAction}-response`
+        response.ok = false
+        response.error = String(error instanceof Error ? error.message : error).slice(0, 2048)
+      }
+      embeddedWindow.postMessage(response, embeddedOrigin)
+    })
+
+    function openHost() {
+      const url = window.__DSH_WEB_URL__
+      if (url && appFrame.getAttribute('src') === null) appFrame.src = url
+    }
+    window.__DSH_OPEN_HOST__ = openHost
+    appFrame.addEventListener('load', () => { setWindowControlsFallbackVisible(true) })
+
     async function boot() {
-      const layout = window.__DSH_CHROME__ || {
+      if (window.__DSH_HOST_COOKIE_READY__) openHost()
+      renderWindowControls(window.__DSH_CHROME__ || {
         os: 'windows',
         left: [],
         right: ['minimize', 'maximize', 'close'],
