@@ -143,8 +143,19 @@ export const TRANSLATION_SCOPE_GLOB_EXCLUDES = [
   '**/.pytest_cache/**',
   'apps/web/dist/**',
   '.artifacts/**',
+  // Rust build output (the desktop crate copies the bundled harness tree into
+  // src-tauri/target during a local build); it duplicates shipped sources.
   '**/target/**',
+  // Desktop installer source bundle: a generated copy of the trimmed harness
+  // tree whose out-of-context relative links have no corpus counterparts.
   'apps/desktop-tauri/bundled/**',
+  // Exact external plugin snapshots retain their upstream documentation and are
+  // protected by YOURBUDDY_UPSTREAM.json rather than YourBuddy translation records.
+  'apps/desktop-tauri/product/dsh-better-sidebar/**',
+  'apps/desktop-tauri/product/dsh-codex-auth/**',
+  'apps/desktop-tauri/product/context-doctor/**',
+  'apps/desktop-tauri/product/oil-creator/**',
+  'apps/desktop-tauri/product/plugin-marketplace/**',
   'python/sdk-runtime/src/deepseek_harness_runtime/runtime/**',
   'vendor/**',
 ]

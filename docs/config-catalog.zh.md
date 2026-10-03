@@ -3493,7 +3493,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-tool-bash-persistent`
 
 - `inject`: `tools` · `terminals`
-- `source`: [`packages/shell/tool-bash-persistent/src/index.ts:444`](../packages/shell/tool-bash-persistent/src/index.ts)
+- `source`: [`packages/shell/tool-bash-persistent/src/index.ts:454`](../packages/shell/tool-bash-persistent/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the persistent Bash tool. */
@@ -3697,7 +3697,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-tool-pwsh-persistent`
 
 - `inject`: `tools` · `terminals`
-- `source`: [`packages/shell/tool-pwsh-persistent/src/index.ts:456`](../packages/shell/tool-pwsh-persistent/src/index.ts)
+- `source`: [`packages/shell/tool-pwsh-persistent/src/index.ts:467`](../packages/shell/tool-pwsh-persistent/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the persistent pwsh tool. */
