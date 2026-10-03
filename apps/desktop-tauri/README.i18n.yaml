@@ -2,27 +2,21 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop-tauri/README.md
-/deepseek-harness-desktop-tauri:
-  en: 4df57e0a7a1f8ca6
-  zh: 0050b52c658c5e39
-/deepseek-harness-desktop-tauri/architecture:
-  en: acba5c5892b952ed
-  zh: 0c241043756eac03
-/deepseek-harness-desktop-tauri/architecture/mirrors-override-via-env:
-  en: 64def44399eb89c3
-  zh: 7a26e68a01090e7c
-/deepseek-harness-desktop-tauri/architecture/dev-vs-production:
-  en: e5f34ce2a428e98a
-  zh: 86e5740724e6cf64
-/deepseek-harness-desktop-tauri/build:
-  en: 4bed431283bd40f7
-  zh: 9b88fbb21ece6306
-/deepseek-harness-desktop-tauri/release:
-  en: 10c3fc5995acf12f
-  zh: 9c5bcffd23c14ba6
-/deepseek-harness-desktop-tauri/run:
-  en: 29bf9d17284e41a2
-  zh: 26ace279b0877eb8
-/deepseek-harness-desktop-tauri/scripts:
-  en: 1cf0f1f74c7b483e
-  zh: 64f13601d28cb9bf
+/yourbuddy-desktop:
+  en: b6318f5d55195cd3
+  zh: 57e49dd06f5b6fdb
+/yourbuddy-desktop/runtime-layout:
+  en: 0a06db62756df713
+  zh: da74d0b07a2cb92e
+/yourbuddy-desktop/default-plugin-delivery-policy:
+  en: b0b350a35b540361
+  zh: b87a7af89470fed4
+/yourbuddy-desktop/local-release-preparation:
+  en: 75730180e418e3d1
+  zh: 4ade55092fc95501
+/yourbuddy-desktop/release-documentation-and-website:
+  en: 642f7ff4749ab9e6
+  zh: 20ebb8e970969734
+/yourbuddy-desktop/commands:
+  en: a9ace1bca129f8e6
+  zh: c3bbad40dae0fd02

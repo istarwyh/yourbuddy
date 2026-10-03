@@ -1028,44 +1028,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dsh-desktop"
-version = "0.2.0-rc.1-0.3"
-dependencies = [
- "cookie",
- "dirs",
- "flate2",
- "futures-util",
- "hex",
- "libc",
- "minisign-verify",
- "reqwest 0.12.28",
- "rustls",
- "rustls-pemfile",
- "rustls-platform-verifier",
- "serde",
- "serde_json",
- "sha2",
- "sys-locale",
- "tar",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-notification",
- "tauri-plugin-opener",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "tokio",
- "toml 0.9.12+spec-1.1.0",
- "url",
- "which",
- "windows",
- "winreg",
- "x509-parser",
- "zip 2.4.2",
- "zstd",
-]
-
-[[package]]
 name = "dtoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6078,6 +6040,44 @@ dependencies = [
  "quote",
  "syn 2.0.119",
  "synstructure",
+]
+
+[[package]]
+name = "yourbuddy"
+version = "0.4.4"
+dependencies = [
+ "cookie",
+ "dirs",
+ "flate2",
+ "futures-util",
+ "hex",
+ "libc",
+ "minisign-verify",
+ "reqwest 0.12.28",
+ "rustls",
+ "rustls-pemfile",
+ "rustls-platform-verifier",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sys-locale",
+ "tar",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-notification",
+ "tauri-plugin-opener",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "tokio",
+ "toml 0.9.12+spec-1.1.0",
+ "url",
+ "which",
+ "windows",
+ "winreg",
+ "x509-parser",
+ "zip 2.4.2",
+ "zstd",
 ]
 
 [[package]]
