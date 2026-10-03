@@ -1,17 +1,20 @@
-/** Recorded source-file delivery and nested failure behavior. */
-import { mkdir, readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+/** Recorded source-file delivery, edits, reload, deletion, and Session ZIP behavior. */
+import { readFile, unlink, mkdir, mkdtemp, writeFile, rm, realpath } from 'node:fs/promises'
+import { join, delimiter } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium, type Browser, type Page } from 'playwright'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { release } from 'node:os'
+import { unzipSync, strFromU8 } from 'fflate'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { tmpdir, release } from 'node:os'
+import { createLaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-tool-present/types'
 import {
-  assertFinalWorkspaceSnapshot, fixtureUserPrompts, launchWebScaffold, recordFixture,
-  webSnapshotMode, type WebScaffold,
+  acknowledgeReloadConnectionLoss, assertFinalWorkspaceSnapshot, captureExpandedTurnProcessAria,
+  compareOrRefreshGolden, fixtureUserPrompts, launchWebScaffold, recordFixture,
+  watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
-import { connectFreshWorkspace, newEnglishPage } from './support.ts'
+import { connectFreshWorkspace, expandTurnProcesses, newEnglishPage, scrollIntoView } from './support.ts'
 
 const DIR = fileURLToPath(new URL('../../../snapshots/web/present', import.meta.url))
 const FIXTURE = join(DIR, 'session.v3.jsonl')
@@ -26,14 +29,32 @@ describe.skipIf(process.platform === 'win32' || release().toLowerCase().includes
   let scaffold: WebScaffold
   let browser: Browser
   let page: Page
+  let tripwire: ReturnType<typeof watchConsole>
   let sessionId: SessionId
   let cwd: string
   let disposeApproval: (() => void) | undefined
   const events: SessionEvent[] = []
+  let nativeRoot: string | undefined
+  let openLog: string
+  const opened = async (): Promise<Array<{ path: string; content: string | null; action: 'open' | 'reveal' }>> => (await readFile(openLog, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { path: string; content: string | null; action: 'open' | 'reveal' })
+  const downloads: string[] = []
 
   beforeAll(async () => {
+    nativeRoot = await mkdtemp(join(tmpdir(), 'dsh-present-native-'))
+    openLog = join(nativeRoot, 'opened.jsonl')
+    await writeFile(openLog, '')
+    // Exercise the built Host through its actual OS command, replacing only the desktop application.
+    const command = process.platform === 'darwin' ? 'open' : 'xdg-open'
+    await writeFile(join(nativeRoot, command), `#!${process.execPath}
+const fs = require('node:fs');
+const path = process.argv[2] === '-R' ? process.argv[3] : process.argv[2];
+const action = process.argv[2] === '-R' || fs.statSync(path).isDirectory() ? 'reveal' : 'open';
+fs.appendFileSync(${JSON.stringify(openLog)}, JSON.stringify({ path, action, content: action === 'open' ? fs.readFileSync(path, 'utf8') : null }) + '\\n');
+`, { mode: 0o700 })
+    vi.stubEnv('PATH', `${nativeRoot}${delimiter}${process.env.PATH ?? ''}`)
     await mkdir(DIR, { recursive: true })
     scaffold = await launchWebScaffold({
+      openInAppEnvironment: createLaunchEnvironmentSnapshot([{ source: 'process', values: { SSH_CONNECTION: '10.0.0.2 55000 10.0.0.9 22' } }]),
       extraOverlayPath: fileURLToPath(new URL('./present.overlay.yml', import.meta.url)),
       agentPresets: { default: 'ptc' }, compareReplaySession: true,
       ...(MODE === 'record' ? {} : { replayFixture: FIXTURE }),
@@ -49,6 +70,8 @@ describe.skipIf(process.platform === 'win32' || release().toLowerCase().includes
     scaffold.ctx.on('session/event', (_session, event) => { events.push(event) })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
+    tripwire = watchConsole(page)
+    page.on('download', (download) => { downloads.push(download.suggestedFilename()) })
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     await connectFreshWorkspace(page, scaffold.workspaceCwd)
@@ -59,7 +82,12 @@ describe.skipIf(process.platform === 'win32' || release().toLowerCase().includes
       await browser?.close()
     } finally {
       disposeApproval?.()
-      await scaffold?.close()
+      try {
+        await scaffold?.close()
+      } finally {
+        vi.unstubAllEnvs()
+        if (nativeRoot !== undefined) await rm(nativeRoot, { recursive: true, force: true })
+      }
     }
   })
 

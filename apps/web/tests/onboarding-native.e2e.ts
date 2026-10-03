@@ -11,9 +11,10 @@ import {
 import { openSettings, ZH_BROWSER_LOCALE, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./expected/onboarding-native', import.meta.url))
+const SIGNED_OUT_MENU_EXPECTED = join(SNAPSHOT_DIR, 'signed-out-menu.expected.md')
 const MODE = webSnapshotMode()
 
-describe.skipIf(MODE === 'record')('web e2e: browser credential onboarding', () => {
+describe.skipIf(MODE === 'record').each([false, true])('web e2e: native credential onboarding (desktop marker: %s)', (desktop) => {
   let scaffold: WebScaffold
   let browser: Browser
   let page: Page
@@ -23,7 +24,7 @@ describe.skipIf(MODE === 'record')('web e2e: browser credential onboarding', () 
     scaffold = await launchWebScaffold({
       deepSeekMissingCredential: true,
       welcomeNoticePending: true,
-      extraOverlayPath: fileURLToPath(new URL('./fixtures/onboarding-native/cordis.patch.yml', import.meta.url)),
+      ...desktop ? {} : { extraOverlayPath: fileURLToPath(new URL('./fixtures/onboarding-native/cordis.patch.yml', import.meta.url)) },
     })
     browser = await chromium.launch()
     page = await browser.newPage({ viewport: { width: 1440, height: 960 }, locale: ZH_BROWSER_LOCALE })
@@ -44,9 +45,11 @@ describe.skipIf(MODE === 'record')('web e2e: browser credential onboarding', () 
     const credentials = await readFile(credentialPath, 'utf8')
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     const welcome = page.getByRole('dialog', { name: WELCOME_NOTICE_COPY.zh.title })
-    await welcome.waitFor()
-    await welcome.getByRole('button', { name: WELCOME_NOTICE_COPY.zh.continueLabel }).click()
-    await welcome.waitFor({ state: 'detached' })
+    if (!desktop) {
+      await welcome.waitFor()
+      await welcome.getByRole('button', { name: WELCOME_NOTICE_COPY.zh.continueLabel }).click()
+      await welcome.waitFor({ state: 'detached' })
+    }
 
     for (const reload of [false, true]) {
       if (reload) {
@@ -98,6 +101,6 @@ describe.skipIf(MODE === 'record')('web e2e: browser credential onboarding', () 
     }
     expect(tripwire.warnings).toEqual([])
     expect(tripwire.pageErrors).toEqual([])
-    await assertFixtureInventory(SNAPSHOT_DIR, ['models.expected.md'])
+    await assertFixtureInventory(SNAPSHOT_DIR, ['models.expected.md', 'signed-out-menu.expected.md'])
   })
 })

@@ -7,8 +7,6 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
-桌面端产品事件使用可选的[产品埋点服务](../product-analytics/README.zh.md)，不包含普通 Web 交互。
-
 ## 概述
 
 `ui-conversation` 拥有与 target 无关的 Conversation 组装和共享浏览器 shell。它消费 Session Controller 的 `SessionEventLikeEntry` feed，通过 `ctx.uiConversation` 暴露不依赖 React 的注册表与逐 Session binding，并通过 `ctx.uiSession` 提供 `useConversation`、`useInput` 和 `inputActions` 标准 props。它还拥有按会话的持久化图片 URL 缓存：`ctx.uiConversation.imageUrl(sessionId, attachment)` 为每个附件解析一个经会话授权的浏览器 URL，并随 Session binding 释放而撤销，因此所有 Conversation target 共享一次 `session.attachment` 读取。Chat 等具体 target 位于独立包，由各自包注册 Definition、快照 builder、View 和 renderer。
@@ -17,6 +15,7 @@ kind: "package-reference"
 
 - [Conversation 组装](#conversation-assembly)
 - [Shell 与标准 props](#shell-and-standard-props)
+- [发送时附带页面上下文](#page-context-on-send)
 - [临时 composer entry](#temporary-composer-entries)
 - [模型体验](#model-experience)
 - [已知限制与暂缓事项](#known-limitations-and-deferred-work)
@@ -76,9 +75,7 @@ Session 首次绑定或缓存的 Session 成为 current 时，shell 会在渲染
 
 普通 Enter 使用已配置的投递模式，严格的 Ctrl+Enter 或 Cmd+Enter 使用互补模式，Shift+Enter 插入换行。带 Alt、AltGraph、同时带 Ctrl 与 Cmd，或 Shift 与 Ctrl/Cmd 的 Enter 保持草稿和指令菜单不变，并将 DOM 事件留给应用快捷键。Conversation 插件注册发送、换行、互补投递、命令菜单和引用菜单的固定条目，并在卸载前保留这些键位。
 
-每次输入框提交都携带原始发生时间、操作来源、投递意图以及会话模型和运行状态快照，贯穿异步命令裁决。普通消息通知在引用序列化前发出一次，纯附件提交也遵循这一规则；已处理或认领的命令不发出通知。快照读取与通知消费异常不能阻断发送。
-
-默认发送采用乐观提交：Enter 在同一事务里清空草稿、occurrence 表和撤销历史，composer 保持 `plain`，发送作为 detached attempt 运行，发送期间可以继续输入和提交。`sendSession` 在序列化之前用投递模式注册 Session 提交回显（`session.beginSubmission`），并在 `pendingSubmissions` 中保留图片与文件的选择顺序；Session 根据该模式与当前运行状态推导位置，因此空闲发送进入 transcript（文本记录），繁忙时 Queue 进入 QueueDock，繁忙时 Steer 进入 pending-steering 区域。随后让出一帧，图片经浏览器原生 `FileReader` data-URL 路径编码，文件则引用已暂存凭证。命令提交也用同一凭证表示通用文件，因此发送 `/goal` 或 `/plan` 时不会再次读取这些浏览器文件。提示词复用提交 `requestId`；Session 按同一 `rpcId` 关联展示接管，并仅退休回显一次。多个并发发送失败时，在用户编辑还原内容之前按提交顺序合并还原；命令提交保持冻结的 `submitting` 阶段。Detached attempt 持有附件 id，直到 admission 完成或 Session scope 销毁。回显以 observed 退休时，durable 图片缓存立即公开每个预览 URL，读取 admitted 附件后用规范化 URL 替换预览，并在各 URL 停止使用后撤销，同时释放文件卡。选中的通用文件进入同一个先进先出的后台上传队列；`maxConcurrentFileUploads` 默认允许两个 Worker transport 同时运行，Conversation 服务在切换 Session 时继续持有排队和运行中的传输操作及字节进度，移除草稿会跳过排队中的传输或中止正在运行的传输。浏览器 shell 暴露 `__DSH_HOST_PATHS__` 时（桌面应用），拖入或粘贴的文件夹以及拖入、选择或粘贴的带真实路径的非图片文件会成为 `@路径` chip；图片仍然上传。拖放和粘贴通过浏览器 entry API 识别目录；该 API 不可用或没有返回 entry 时，粘贴项沿用普通文件处理。文件选择器不能选择目录。引用需要启用 `ui-reference` 插件，原路径也必须仍可由模型的文件工具读取。工作区内的路径使用相对形式，其他路径保留绝对形式。整批文件先校验再插入，保留来源顺序和已选中的文字，引用之间有空白分隔，含空格的路径使用闭合引号。没有该桥的浏览器会拒绝拖入或粘贴的文件夹，桌面端无法获取文件夹路径时单独报错。continuable 子代理禁用附件入口，也不创建本地回显，因为其 transport 不保留浏览器 request id。
+默认发送采用乐观提交：Enter 在同一事务里清空草稿、occurrence 表和撤销历史，composer 保持 `plain`，发送作为 detached attempt 运行，发送期间可以继续输入和提交。`sendSession` 在序列化之前用投递模式注册 Session 提交回显（`session.beginSubmission`），并在 `pendingSubmissions` 中保留图片与文件的选择顺序；Session 根据该模式与当前运行状态推导位置，因此空闲发送进入 transcript（文本记录），繁忙时 Queue 进入 QueueDock，繁忙时 Steer 进入 pending-steering 区域。随后让出一帧，图片经浏览器原生 `FileReader` data-URL 路径编码，文件则引用已暂存凭证。命令提交也用同一凭证表示通用文件，因此发送 `/goal` 或 `/plan` 时不会再次读取这些浏览器文件。提示词复用提交 `requestId`；Session 按同一 `rpcId` 关联展示接管，并仅退休回显一次。失败消息返回空 composer；若已有另一份草稿或附件，则保留在独立恢复条目中，各条消息及其附件绝不合并；命令提交保持冻结的 `submitting` 阶段。Detached attempt 持有附件 id，直到 admission 完成或 Session scope 销毁。回显以 observed 退休时，durable 图片缓存立即公开每个预览 URL，读取 admitted 附件后用规范化 URL 替换预览，并在各 URL 停止使用后撤销，同时释放文件卡。选中的通用文件进入同一个先进先出的后台上传队列；`maxConcurrentFileUploads` 默认允许两个 Worker transport 同时运行，Conversation 服务在切换 Session 时继续持有排队和运行中的传输操作及字节进度，移除草稿会跳过排队中的传输或中止正在运行的传输。浏览器 shell 暴露 `__DSH_HOST_PATHS__` 时（桌面应用），拖入或粘贴的文件夹以及拖入、选择或粘贴的带真实路径的非图片文件会成为 `@路径` chip；图片仍然上传。拖放和粘贴通过浏览器 entry API 识别目录；该 API 不可用或没有返回 entry 时，粘贴项沿用普通文件处理。文件选择器不能选择目录。引用需要启用 `ui-reference` 插件，原路径也必须仍可由模型的文件工具读取。工作区内的路径使用相对形式，其他路径保留绝对形式。整批文件先校验再插入，保留来源顺序和已选中的文字，引用之间有空白分隔，含空格的路径使用闭合引号。没有该桥的浏览器会拒绝拖入或粘贴的文件夹，桌面端无法获取文件夹路径时单独报错。continuable 子代理禁用附件入口，也不创建本地回显，因为其 transport 不保留浏览器 request id。
 
 排队提交的本地回显在禁用的编辑、删除、插话按钮旁显示“发送中…”；折叠后的队列在标题栏保留发送状态。匹配的 Host 队列行替换回显后，各操作按原有的纯文本内容和运行状态要求启用。仅收到提示词确认不会启用队列操作。提交失败会移除回显并显示错误；输入框为空或仍保留上一次自动恢复的内容时，composer 恢复失败草稿，保留用户随后输入的文字。
 
@@ -89,6 +86,17 @@ Send 和 Stop 按钮禁用时不显示提示气泡，轮次结束后由 Stop 切
 当会话被其他写句柄占用时，发送失败的 toast 提示用户退出其他正在运行的 DSH 后重试。
 
 在获得焦点的 Chat 或 Composer 中连续独立按下两次 Esc，可停止当前运行轮次并保留排队消息。间隔由 shortcuts 插件的 `stopSequenceMs` 配置决定，默认 500 ms。菜单、审批、模态层、终端、内嵌网页、输入法、重复按键，以及输入区域、Session 或轮次变化会清空序列。快捷键与 Stop 按钮调用同一作用域取消操作。插件将 Stop 注册为 `input` 展示分组中的固定操作。该注册使普通 Esc 不能分配给可编辑快捷键，并为 Stop 按钮的悬停和键盘聚焦提示提供 `Esc Esc` 序列。
+
+<a id="page-context-on-send"></a>
+## 发送时附带页面上下文
+
+View 插件通过 `ctx.conversation.contexts.register()` 附带页面上下文。注册稳定的 `id`、准确的 `conversation.view` entry `viewId`、已翻译的 `label`、明确的 `timeoutMs` 和 `prepare`。通过 Cordis effect 返回 disposer。[提交上下文约定](src/client/contract/submission-context.ts) 定义请求和生命周期。
+
+只有当前 Session 所选的 View 可以提供上下文。`prepare` 在提交锁定时运行，早于引用序列化、图片编码和异步 Session 准备。同步复制当前页面和选择；后续工作必须解析这份副本并响应 `signal`。返回模型文本，返回 `{ text, label, description? }` 携带已捕获的标题和可读摘要，或返回 `undefined` 跳过。消费方负责选择语义、显式引用优先级、内容预算、脱敏和关闭开关。斜杠命令不请求页面上下文。
+
+失败、超时、取消或提供方卸载会拒绝接纳并保留草稿。如果正在写另一条消息，展开 composer 旁的**未发送**条目，即可查看失败原文、图片数量和原因。先发送或移走当前草稿，再选择**恢复到输入框**；恢复绝不会发送。再次发送会捕获当时打开的页面。**丢弃**只释放该条目的图片。恢复条目仅在所属 Session 和当前浏览器生命周期内保留。
+
+成功结果与原文及图片进入同一次 `session.prompt`，保留 Queue/Steer 模式和 request id。通用封装将模型文本及展示元数据存入同一条持久化 `user/message`，不是独立注入或轮次。Chat 与 Queue 显示紧凑附件：展开后显示提供方给出的 `description`，未提供时显示提供方的字面正文。编辑队列保留已冻结附件；复制消息只复制用户原文，不包含上下文标记。
 
 <a id="temporary-composer-entries"></a>
 ## 临时 composer entry
@@ -145,17 +153,26 @@ selector 必须是 owner currency 的纯函数。非 null 返回值作为 `match
 <a id="model-experience"></a>
 ## 模型体验
 
-无，因为本包渲染浏览器状态，并通过 Session Controller API 发送用户确认提交的输入，而不构造模型请求。
+### 所选 View 的页面上下文
+
+#### 模型看到什么
+
+用户确认提交的消息可以包含所选 View 的上下文提供方准备的文本，以 `<dsh-page-context source="..." label="...">` 封装。它属于同一条持久化 `user/message`，不是系统指令或未记录的提示词修改。单纯注册、导航和刷新页面绝不发送提示词。
+
+#### Token 影响
+
+每项非空贡献都会为该用户消息增加其文本和 source/label 封装，包括可选 description 元数据。消费方负责内容预算；上下文准备本身没有固定 token 数，也不额外调用模型。
 
 #### KV Cache 影响
 
-无；Conversation 组装和浏览器输入状态不会改变提供方侧的 prompt cache。
+页面上下文为一条新用户消息增加文本。Conversation 组装不重写更早的模型消息或提供方侧的缓存设置。
 
 ## 已知限制与暂缓事项
 
 <a id="known-limitations-and-deferred-work"></a>
 
 - **只有已注册 target 可以渲染**——除已注册的 `chat` 偏好外，shell 刻意不提供隐式 fallback target。
+- **上下文解析仍由消费方负责**——已记录文本可以回放，但消费方的短期引用可能过期或陈旧。宿主绝不悄悄用更新的页面替代。
 - **Factory occurrence 继承渲染位置的 Session**——`conversation.content` 不接受独立寻址的 Session；该能力需要单独的 Session provider。
 
 

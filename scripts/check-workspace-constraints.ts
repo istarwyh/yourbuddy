@@ -353,8 +353,7 @@ export function checkExperimentalManifest(
 }
 
 function isReleaseMemberDirectory(dir: string): boolean {
-  return (!privateApplicationDirectories.has(dir) && standardReleaseMemberDirectory.test(dir))
-    || isPublicExperimentalPackageDirectory(dir)
+  return standardReleaseMemberDirectory.test(dir) || isPublicExperimentalPackageDirectory(dir)
 }
 
 /**
