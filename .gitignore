@@ -49,3 +49,9 @@ worktrees/
 .typert-*/
 sites/
 native/system/test/bin/
+
+# ZCode session tooling data (local only)
+.zcode/
+
+# Local electron build output
+apps/desktop/release/

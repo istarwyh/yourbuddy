@@ -69,6 +69,10 @@ async function copyPdfText(page: Page, preview: Locator, expected: string): Prom
   const text = preview.locator('[data-pdf-text] span:not(.markedContent)').filter({ hasText: expected }).first()
   await text.waitFor({ state: 'visible' })
   await expect.poll(() => text.evaluate(node => getComputedStyle(node).userSelect)).toBe('text')
+  await expect.poll(() => text.evaluate(node => ({
+    background: getComputedStyle(node, '::selection').backgroundColor,
+    color: getComputedStyle(node, '::selection').color,
+  }))).toEqual({ background: 'color(srgb 0.231373 0.509804 0.964706 / 0.4)', color: 'rgba(0, 0, 0, 0)' })
   await text.click({ clickCount: 3 })
   await expect.poll(() => page.evaluate(() => window.getSelection()?.toString().trim())).toBe(expected)
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(page.url()).origin })
@@ -266,15 +270,23 @@ it.skipIf(MODE === 'record').each(['en-US', 'zh-CN'])('fills the spreadsheet pan
     const meetingCanvas = await canvas.elementHandle()
     if (meetingCanvas === null) throw new Error('meeting spreadsheet canvas is unavailable')
     await expectExcelLayout(excel)
-    await excel.locator('.fortune-sheet-overlay').click({ position: { x: 60, y: 40 } })
-    await expect.poll(() => formula.innerText()).toBe('会议纪要')
+    // Arrow keys pick the cell from committed state, so a later render cannot re-resolve it
+    // against the reflowed grid the way it re-resolves a pointer press.
+    const overlay = excel.locator('.fortune-sheet-overlay')
+    await overlay.focus()
+    await expect.poll(() => overlay.evaluate(node => document.activeElement === node)).toBe(true)
+    await page.keyboard.press('ArrowRight')
+    await expect.poll(() => selection.innerText()).toBe('B1')
+    await expect.poll(() => formula.innerText()).toBe('')
+    await page.keyboard.press('ArrowLeft')
     await expect.poll(() => selection.innerText()).toBe('A1')
+    await expect.poll(() => formula.innerText()).toBe('会议纪要')
     for (const width of [1000, 360, 1000, 360]) {
       await layout.evaluate((node, width) => { node.textContent = `[data-sidebar-right-panel] { width: ${width}px !important; }` }, width)
       await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(width)
       await expectExcelLayout(excel)
       expect(await meetingCanvas.evaluate(node => node.isConnected)).toBe(true)
-      expect(await selection.innerText()).toBe('A1')
+      await expect.poll(() => selection.innerText()).toBe('A1')
       await expect.poll(() => excel.locator('.fortune-sheettab-scroll').count()).toBe(width === 360 ? 2 : 0)
     }
     const gridOffset = await excel.locator('.luckysheet-scrollbar-x').evaluate(node => node.scrollLeft)
@@ -937,6 +949,7 @@ else process.exit(1);
       await page.emulateMedia({ colorScheme })
       await expect.poll(() => page.locator('body').getAttribute('data-ds-dark-theme')).toBe(colorScheme === 'dark' ? '' : null)
       await expectPdfPageSpacing(preview)
+      await copyPdfText(page, preview, 'Selectable PDF text')
       await successShot(page, `pdf-spacing-${colorScheme}`)
     }
     expect(await body.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
@@ -1032,14 +1045,16 @@ else process.exit(1);
     expect(forward).toContain('THREE TASKS')
     expect(forward).not.toContain('REFLECTION')
     expect(forward).not.toContain('AFTER TABLE')
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe(forward)
     const backward = await drag(priority, start)
     expect(backward).toContain('THREE TASKS')
     expect(backward).not.toContain('REFLECTION')
     expect(backward).not.toContain('AFTER TABLE')
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe(backward)
     expect(await selectionLayer.locator('br').first().evaluate(node => getComputedStyle(node, '::selection').backgroundColor))
       .toBe('rgba(0, 0, 0, 0)')
     await successShot(page, 'pdf-drag-selection')
-    sections.push('## PDF drag selection\n\n- Table selection: forward and backward drags exclude later sections\n- Line-break highlight: transparent')
+    sections.push('## PDF drag selection\n\n- Table selection: forward and backward drags exclude later sections\n- Line-break highlight: transparent\n- Text selection: translucent blue in light and dark themes; canvas text remains visible\n- Mouse release preserves the selected text')
 
     const pngResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/workspaceFiles/readBytes'
       && (response.request().postDataJSON() as { payload: { args: { path: string } } }).payload.args.path === 'tiny.png')
@@ -1489,5 +1504,275 @@ else process.exit(1);
     expect(tripwire.warnings).toEqual([])
     await compareOrRefreshGolden(EXPECTED, sections.join('\n\n'), MODE)
     await assertFixtureInventory(SNAPSHOT_DIR, ['document.expected.md', 'applications.expected.md', 'applications-no-default.expected.md', 'paging.patch.yml'])
+  })
+})
+
+describe.skipIf(MODE === 'record')('web e2e: Host Office preview', () => {
+  let scaffold: WebScaffold
+  let browser: Browser
+  let page: Page
+
+  afterAll(async () => {
+    try { await browser?.close() } finally { await scaffold?.close() }
+  })
+
+  it('rejects renamed text and renders Chinese Office documents through the PDF worker', async () => {
+    scaffold = await launchWebScaffold({ replayFixture: FIXTURE, paceMs: 5, compareReplaySession: false,
+      extraOverlayPath: [
+        fileURLToPath(new URL('../../../packages/client/ui-sidebar-documentpreview/tests/fixtures/office-cache.patch.yml', import.meta.url)),
+        fileURLToPath(new URL('./pin-browse-picker.overlay.yml', import.meta.url)),
+      ],
+    })
+    browser = await chromium.launch()
+    page = await browser.newPage({ viewport: { width: 1680, height: 1000 }, deviceScaleFactor: 2,
+      locale: 'en-US', timezoneId: 'Asia/Shanghai' })
+    const tripwire = watchConsole(page)
+    await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
+    await connectFreshWorkspace(page, scaffold.workspaceCwd)
+    onTestFailed(async () => {
+      await saveFailureShot(page, `screenshots/0908-document-preview/office-${process.pid}`)
+    })
+    const settled = scaffold.whenTurnSettled()
+    const input = page.locator('[data-composer-input]').first()
+    await input.fill(PROMPT)
+    await input.press('Enter')
+    const sessionId = await settled
+    const cwd = scaffold.ctx.agents.get(sessionId)?.session.header.cwd
+    if (cwd === undefined) throw new Error('settled Session has no workspace cwd')
+    await Promise.all([
+      writeFile(join(cwd, 'renamed.docx'), 'This is plain text renamed to docx.'),
+      writeFile(join(cwd, 'chinese.docx'), realOfficeBytes('docx', 'DSH Missing Preview Font')),
+      writeFile(join(cwd, 'chinese.pptx'), realOfficeBytes('pptx')),
+      ...(['doc', 'ppt'] as const).map(extension => writeFile(join(cwd, `chinese.${extension}`), realOfficeBytes(extension))),
+      ...['doc', 'ppt'].map(extension => writeFile(join(cwd, `renamed.${extension}`), 'Plain text is not a binary Office document.')),
+    ])
+    const releaseConversion = Promise.withResolvers<undefined>()
+    const convertOffice = scaffold.ctx.officeToPdf.convert.bind(scaffold.ctx.officeToPdf)
+    const convert = vi.spyOn(scaffold.ctx.officeToPdf, 'convert').mockImplementationOnce(async (...args) => {
+      await releaseConversion.promise
+      return convertOffice(...args)
+    })
+    try {
+      const column = page.locator('[data-rightbar-col]')
+      await page.locator('[data-sidebar-right-expand]').click()
+      await column.locator('[data-sidebar-right-guide-entry="files"]').click()
+      await column.locator('[data-files-state="tree"]').waitFor({ state: 'visible' })
+      await column.locator('[data-files-reload]').click()
+      const filesTab = column.locator('[data-dockkit-tab]').filter({ has: page.getByText('Files', { exact: true }) })
+      const preview = column.locator('[data-textpreview-url]')
+      await column.locator('[data-files-entry="file"]').getByRole('button', { name: 'chinese.docx', exact: true }).click()
+      for (const colorScheme of ['dark', 'light'] as const) {
+        await page.emulateMedia({ colorScheme })
+        await expect.poll(() => page.locator('body').getAttribute('data-ds-dark-theme')).toBe(colorScheme === 'dark' ? '' : null)
+        await expectDocumentLoading(preview)
+        await successShot(page, `office-loading-${colorScheme}`)
+      }
+      const pdfResponse = page.waitForResponse(
+        response => new URL(response.url()).pathname === '/api/officeToPdf/render',
+        { timeout: 60_000 },
+      )
+      releaseConversion.resolve(undefined)
+      const officeTransfer = await pdfResponse
+      expect(officeTransfer.headers()['content-type']).toMatch(/^multipart\/form-data;/)
+      const officeBody = await new Response(new Uint8Array(await officeTransfer.body()), { headers: officeTransfer.headers() }).formData()
+      const officeMetadata = officeBody.get('metadata')
+      if (typeof officeMetadata !== 'string') throw new Error('missing Office PDF metadata')
+      const { attachments } = JSON.parse(officeMetadata) as { attachments: { path: (string | number)[]; codec: string; part: string }[] }
+      expect(attachments).toHaveLength(1)
+      expect(attachments[0]).toMatchObject({ path: ['data'], codec: 'bytes' })
+      const officeFile = officeBody.get(attachments[0]!.part)
+      if (officeFile === null || typeof officeFile === 'string') throw new Error('missing Office PDF payload')
+      const officePdf = Buffer.from(await officeFile.arrayBuffer())
+      expect(officePdf.subarray(0, 5).toString('ascii')).toBe('%PDF-')
+      expect(officePdf.subarray(-1024).toString('ascii').trimEnd()).toMatch(/%%EOF$/u)
+      expect(await preview.locator('[data-document-viewer-menu]').count()).toBe(0)
+      const canvas = preview.getByRole('img', { name: 'PDF page 1', exact: true })
+      await canvas.waitFor({ state: 'visible', timeout: 60_000 })
+      const backgroundZoom = await revealDocumentZoom(page, preview)
+      await backgroundZoom.click()
+      await page.getByRole('menuitem', { name: '50%', exact: true }).click()
+      await expect.poll(() => backgroundZoom.innerText()).toBe('50%')
+      await expectPdfResolution(canvas)
+      for (const colorScheme of ['dark', 'light'] as const) {
+        await page.emulateMedia({ colorScheme })
+        await expect.poll(() => preview.locator('[data-pdf-preview]').evaluate(node => getComputedStyle(node).backgroundColor))
+          .toBe(colorScheme === 'dark' ? 'rgb(21, 21, 23)' : 'rgb(235, 238, 242)')
+        await expectPdfPageSpacing(preview)
+        await copyPdfText(page, preview, '中文文档')
+        await successShot(page, `office-background-${colorScheme}`)
+      }
+      await (await revealDocumentZoom(page, preview)).click()
+      await page.getByRole('menuitem', { name: 'Fit width', exact: true }).click()
+      await expectPdfResolution(canvas)
+      await expect.poll(() => canvas.evaluate((node) => {
+        const canvas = node as HTMLCanvasElement
+        const context = canvas.getContext('2d')
+        if (context === null) return false
+        const bytes = context.getImageData(0, 0, canvas.width, canvas.height).data
+        for (let index = 0; index < bytes.length; index += 4) {
+          if (bytes[index + 3] === 255 && bytes[index]! < 200 && bytes[index + 1]! < 200 && bytes[index + 2]! < 200) return true
+        }
+        return false
+      }), { timeout: 30_000 }).toBe(true)
+      const workerNames = await Promise.all(page.workers().map(worker => worker.evaluate(() => self.name)))
+      expect(workerNames).toContain('dsh-pdf')
+      expect(workerNames.some(name => /libreoffice|soffice/i.test(name))).toBe(false)
+      await copyPdfText(page, preview, 'Office preview')
+      await copyPdfText(page, preview, '中文文档')
+      expect((await preview.locator('[data-pdf-text]').allTextContents()).join('')).toContain('中文文档')
+      const zoomMenu = await revealDocumentZoom(page, preview)
+      const initialWidth = (await canvas.boundingBox())!.width
+      const intrinsicWidth = await canvas.evaluate(node => Number.parseFloat(node.style.getPropertyValue('--pdf-page-width')))
+      const fitPercent = `${String(Math.round(initialWidth / intrinsicWidth * 100))}%`
+      await expect.poll(() => zoomMenu.innerText()).toBe(fitPercent)
+      await zoomMenu.click()
+      await page.getByRole('menuitem', { name: '150%', exact: true }).click()
+      await expect.poll(() => zoomMenu.innerText()).toBe('150%')
+      await expect.poll(async () => (await canvas.boundingBox())!.width / intrinsicWidth).toBeCloseTo(1.5, 1)
+      await expectPdfResolution(canvas)
+      const zoomScrollport = preview.locator('[data-document-zoom-scrollport]')
+      await zoomScrollport.evaluate((node) => {
+        const bounds = node.getBoundingClientRect()
+        node.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true,
+          deltaY: -10, clientX: bounds.left + bounds.width / 2, clientY: bounds.top + bounds.height / 2 }))
+      })
+      await expect.poll(() => zoomMenu.innerText()).toBe('166%')
+      await expect.poll(async () => (await canvas.boundingBox())!.width / intrinsicWidth).toBeCloseTo(1.66, 1)
+      await expectPdfResolution(canvas)
+      await zoomScrollport.evaluate((node) => { node.scrollTop = 0; node.scrollLeft = 0 })
+      await copyPdfText(page, preview, '中文文档')
+      await successShot(page, 'office-zoom-redrawn')
+      await zoomMenu.click()
+      await page.getByRole('menuitem', { name: 'Fit width', exact: true }).click()
+      await expect.poll(() => zoomMenu.innerText()).toBe(fitPercent)
+      await expectPdfResolution(canvas)
+      await zoomScrollport.evaluate((node) => { node.scrollTop = 0; node.scrollLeft = 0 })
+      await zoomScrollport.evaluate(async (node) => {
+        const bounds = node.getBoundingClientRect()
+        for (let step = 0; step < 8; step++) {
+          node.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true,
+            deltaY: -40, clientX: bounds.left + bounds.width / 2, clientY: bounds.top + bounds.height / 2 }))
+          await new Promise<void>(resolve => requestAnimationFrame(() => { resolve() }))
+        }
+      })
+      await expect.poll(() => zoomMenu.innerText()).toBe('400%')
+      expect(await zoomScrollport.evaluate(node => node.scrollLeft > node.clientWidth)).toBe(true)
+      await expectPdfResolution(canvas)
+      await zoomScrollport.evaluate((node) => { node.scrollTop = 0; node.scrollLeft = 0 })
+      await successShot(page, 'office-pinch-400')
+      await zoomMenu.click()
+      await page.getByRole('menuitem', { name: 'Fit width', exact: true }).click()
+      await expectPdfResolution(canvas)
+      expect(convert).toHaveBeenCalledTimes(1)
+      await preview.getByRole('button', { name: 'Read the file again', exact: true }).click()
+      await canvas.waitFor({ state: 'visible' })
+      expect(convert).toHaveBeenCalledTimes(1)
+      const warning = preview.locator('[data-office-font-warning]').getByRole('button')
+      await warning.waitFor({ state: 'visible' })
+      expect(await warning.getAttribute('aria-expanded')).toBe('false')
+      expect(await page.getByRole('dialog', { name: 'Missing fonts', exact: true }).count()).toBe(0)
+      const warningBox = (await warning.boundingBox())!
+      const reload = preview.getByRole('button', { name: 'Read the file again', exact: true })
+      const reloadBox = (await reload.boundingBox())!
+      expect(warningBox.x + warningBox.width).toBeLessThanOrEqual(reloadBox.x)
+      expect(Math.abs(warningBox.y + warningBox.height / 2 - reloadBox.y - reloadBox.height / 2)).toBeLessThan(1)
+      expect([warningBox.width, warningBox.height]).toEqual([reloadBox.width, reloadBox.height])
+      expect(await warning.evaluate(node => getComputedStyle(node).borderRadius))
+        .toBe(await reload.evaluate(node => getComputedStyle(node).borderRadius))
+      expect(await warning.locator('svg').evaluate(node => node.getBoundingClientRect().width))
+        .toBe(await reload.locator('svg').evaluate(node => node.getBoundingClientRect().width))
+      const warningColor = await warning.evaluate(node => getComputedStyle(node).color)
+      await warning.hover()
+      expect(await warning.evaluate(node => getComputedStyle(node).color)).toBe(warningColor)
+      await page.getByRole('tooltip', { name: /Missing fonts:/ }).waitFor({ state: 'visible' })
+      const before = await canvas.evaluate(node => node.getBoundingClientRect().top)
+      await successShot(page, 'office-font-warning')
+      await warning.click()
+      const details = page.getByRole('dialog', { name: 'Missing fonts', exact: true })
+      await details.getByText('DSH Missing Preview Font', { exact: true }).waitFor({ state: 'visible' })
+      expect(await page.getByRole('tooltip', { name: /Missing fonts:/ }).count()).toBe(0)
+      await successShot(page, 'office-font-details')
+      await page.keyboard.press('Escape')
+      await expect.poll(() => details.count()).toBe(0)
+      expect(await warning.evaluate(node => node === document.activeElement)).toBe(true)
+      await warning.click()
+      await page.getByRole('button', { name: 'Close font details', exact: true }).click()
+      expect(await warning.isVisible()).toBe(true)
+      const after = await canvas.evaluate(node => node.getBoundingClientRect().top)
+      expect(after).toBe(before)
+      const topInset = await preview.evaluate((node) => {
+        const body = node.querySelector('[data-textpreview-body]')!.getBoundingClientRect()
+        const canvas = node.querySelector('canvas')!.getBoundingClientRect()
+        return canvas.top - body.top
+      })
+      expect(topInset).toBe(12)
+      await expectPdfPageSpacing(preview)
+      await compareOrRefreshGolden(fileURLToPath(new URL('./expected/office-font-notice.md', import.meta.url)), [
+        '# Office font warning', '',
+        '- Document preparation: centered 28px spinner with visible rendering status in both themes',
+        '- Text selection: translucent blue with transparent overlay text in both themes; Chinese text copies unchanged',
+        '- Document backdrop: cool light grey in light mode; matte black in dark mode',
+        '- Word and PowerPoint paper layout: 12px page gaps and outer backdrop insets',
+        '- Warning precedes reload in the same toolbar: true',
+        '- Warning and reload share button geometry and icon size: true',
+        '- Details open only on request: true',
+        '- Requested absent family is listed: true',
+        '- Escape restores focus to the warning: true',
+        '- Closing details preserves the warning and document position: true',
+        '- Fit width, presets, and pinch resize the Office PDF continuously: true',
+        '- Settled zoom redraws the Office PDF at device resolution: true',
+        '- Continuous pinch to 400% redraws the page after horizontal panning: true',
+        '- Pinch updates the displayed percentage during the gesture: 166%',
+        `- Document top inset: ${topInset}px`,
+      ].join('\n'), MODE)
+      await successShot(page, 'office-docx')
+      for (const extension of ['doc', 'ppt', 'pptx']) {
+        await openPreviewFile(column, filesTab, preview, `chinese.${extension}`)
+        await preview.getByRole('img', { name: 'PDF page 1', exact: true }).waitFor({ state: 'visible', timeout: 60_000 })
+        await expect.poll(async () => (await preview.locator('[data-pdf-text]').allTextContents()).join(''), { timeout: 30_000 }).toContain('中文文档')
+        if (extension === 'pptx') await expectPdfPageSpacing(preview)
+        const officeZoom = await revealDocumentZoom(page, preview)
+        await officeZoom.click()
+        await page.getByRole('menuitem', { name: '150%', exact: true }).click()
+        await expectPdfResolution(canvas)
+        if (extension === 'pptx') await copyPdfText(page, preview, '中文文档')
+        if (['doc', 'ppt'].includes(extension)) expect(await warning.count()).toBe(0)
+        if (extension === 'pptx') {
+          await preview.locator('[data-document-zoom-scrollport]').evaluate((node) => {
+            const second = node.querySelector('[data-pdf-page="2"]')!.getBoundingClientRect()
+            node.scrollTop += second.top - node.getBoundingClientRect().top - node.clientHeight / 2
+          })
+          for (const colorScheme of ['dark', 'light'] as const) {
+            await page.emulateMedia({ colorScheme })
+            await expect.poll(() => page.locator('body').getAttribute('data-ds-dark-theme')).toBe(colorScheme === 'dark' ? '' : null)
+            await expectPdfPageSpacing(preview)
+            await successShot(page, `office-pptx-spacing-${colorScheme}`)
+          }
+        }
+        await successShot(page, `office-${extension}`)
+      }
+      expect(convert).toHaveBeenCalledTimes(4)
+      await openPreviewFile(column, filesTab, preview, 'chinese.docx')
+      await preview.getByRole('img', { name: 'PDF page 1', exact: true }).waitFor({ state: 'visible' })
+      await preview.getByRole('button', { name: 'Read the file again', exact: true }).click()
+      await expect.poll(() => convert.mock.calls.length).toBe(5)
+      await preview.getByRole('img', { name: 'PDF page 1', exact: true }).waitFor({ state: 'visible' })
+      await openPreviewFile(column, filesTab, preview, 'renamed.docx')
+      await preview.getByText('Read failed: This Office file cannot be previewed. It may be damaged, password protected, or have the wrong extension.', { exact: true }).waitFor({ timeout: 30_000 })
+      expect(await preview.locator('[data-textpreview-line]').count()).toBe(0)
+      await successShot(page, 'office-invalid')
+      expect(convert).toHaveBeenCalledTimes(6)
+      for (const extension of ['doc', 'ppt']) {
+        await openPreviewFile(column, filesTab, preview, `renamed.${extension}`)
+        await preview.getByText('Read failed: This Office file cannot be previewed. It may be damaged, password protected, or have the wrong extension.', { exact: true }).waitFor({ timeout: 30_000 })
+        expect(await preview.locator('[data-textpreview-line]').count()).toBe(0)
+      }
+      expect(convert).toHaveBeenCalledTimes(8)
+      expect(tripwire.pageErrors).toEqual([])
+    } finally {
+      releaseConversion.resolve(undefined)
+      await Promise.allSettled(convert.mock.results.filter(result => result.type === 'return').map(result => result.value))
+      convert.mockRestore()
+    }
   })
 })

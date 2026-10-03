@@ -14,14 +14,15 @@ export function assertNever(value: never, context?: string): never {
   throw new Error(`unreachable variant${context ? ` in ${context}` : ''}: ${rendered}`)
 }
 
-/** Whether a realm-owned prototype and its constructor point back to each other. */
-function hasMatchingConstructor(prototype: object, name: 'Array' | 'Object'): boolean {
+/** Whether a realm-owned intrinsic prototype has a native constructor matching this engine's representation. */
+function hasIntrinsicConstructor(prototype: object, name: 'Array' | 'Object'): boolean {
   const descriptor = Object.getOwnPropertyDescriptor(prototype, 'constructor')
   const constructor: unknown = descriptor?.value
   if (typeof constructor !== 'function') return false
   try {
     return constructor.name === name
       && constructor.prototype === prototype
+      && Function.prototype.toString.call(constructor) === Function.prototype.toString.call(name === 'Array' ? Array : Object)
   } catch {
     return false
   }
@@ -29,29 +30,21 @@ function hasMatchingConstructor(prototype: object, name: 'Array' | 'Object'): bo
 
 /** Whether a candidate is one realm's intrinsic `Object.prototype`. */
 function isIntrinsicObjectPrototype(value: object): boolean {
-  return Object.getPrototypeOf(value) === null && hasMatchingConstructor(value, 'Object')
+  return Object.getPrototypeOf(value) === null && hasIntrinsicConstructor(value, 'Object')
 }
 
-/**
- * Test whether an array uses one realm's intrinsic `Array.prototype`, not a subclass prototype.
- * @param value - array candidate from any JavaScript realm.
- * @returns whether its prototype chain and constructor relationships describe an intrinsic array.
- */
-export function hasPlainArrayPrototype(value: unknown[]): boolean {
+/** Whether an array uses one realm's intrinsic `Array.prototype`, not a subclass or forged prototype. */
+function hasPlainArrayPrototype(value: unknown[]): boolean {
   const prototype: unknown = Object.getPrototypeOf(value)
-  if (!Array.isArray(prototype) || !hasMatchingConstructor(prototype, 'Array')) return false
+  if (!Array.isArray(prototype) || !hasIntrinsicConstructor(prototype, 'Array')) return false
   const objectPrototype: unknown = Object.getPrototypeOf(prototype)
   return typeof objectPrototype === 'object'
     && objectPrototype !== null
     && isIntrinsicObjectPrototype(objectPrototype)
 }
 
-/**
- * Test whether an object is a plain or null-prototype record from any JavaScript realm.
- * @param value - object candidate from any JavaScript realm.
- * @returns whether its prototype chain describes a plain record.
- */
-export function hasPlainObjectPrototype(value: object): boolean {
+/** Whether an object is a plain or null-prototype record from any JavaScript realm. */
+function hasPlainObjectPrototype(value: object): boolean {
   const prototype: unknown = Object.getPrototypeOf(value)
   return prototype === null
     || typeof prototype === 'object' && isIntrinsicObjectPrototype(prototype)

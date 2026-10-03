@@ -115,6 +115,10 @@ describe('workspace manifest discovery', () => {
 })
 
 describe('experimental workspace constraints', () => {
+  it('allows the private Tauri installer to use its own release version', () => {
+    expect(checkDshFamilyVersion({ name: '@deepseek-ai/dsh-desktop-tauri', private: true, version: '0.1.5-alpha.1-0.1' }, '0.1.5-alpha.1')).toBeUndefined()
+    expect(checkDshFamilyVersion({ name: '@deepseek-ai/dsh-desktop-tauri', version: '0.1.5-alpha.1-0.1' }, '0.1.5-alpha.1')).toBeDefined()
+  })
   it('requires the experimental package-name prefix', () => {
     expect(checkExperimentalManifest({
       ...experimental,

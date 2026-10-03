@@ -2,24 +2,42 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
-/yourbuddy:
-  en: 044d8eaad1f43944
-  zh: fbeda21f6535e449
-/yourbuddy/what-the-package-contains:
-  en: 7614a51451ffe84c
-  zh: 4f75c7b70a88a21a
-/yourbuddy/run:
-  en: 6742a00dbfafe5cc
-  zh: 53bd511a82f4a8eb
-/yourbuddy/run-from-source:
-  en: e5136994a9cee1b8
-  zh: afbcaafc25e6dc9b
-/yourbuddy/release:
-  en: db5653db2eadb685
-  zh: 1a30a48d4a37bfb8
-/yourbuddy/citation:
-  en: 6704e9e5a8d49a91
-  zh: 85c9cdd8d56f8e9d
-/yourbuddy/license:
-  en: 1b64e01877587097
-  zh: d609526ebd81dc2a
+/deepseek-harness-desktop:
+  en: 11f0d891452ab279
+  zh: 39881262ba6ab0d9
+/deepseek-harness-desktop/section:
+  en: fff99bf1ffedb240
+  zh: fff99bf1ffedb240
+/deepseek-harness-desktop/section~2:
+  en: 4363198b73763e80
+  zh: 4363198b73763e80
+/deepseek-harness-desktop/section/section:
+  en: c08f7e00b60e8c2a
+  zh: c08f7e00b60e8c2a
+/deepseek-harness-desktop/section~3:
+  en: 431f368953d23699
+  zh: 431f368953d23699
+/deepseek-harness-desktop/section~4:
+  en: 37665fe48339b410
+  zh: 37665fe48339b410
+/deepseek-harness-desktop/section/1:
+  en: c3f0fade9f5c723d
+  zh: c3f0fade9f5c723d
+/deepseek-harness-desktop/section/2:
+  en: bef82e489e36723f
+  zh: bef82e489e36723f
+/deepseek-harness-desktop/section~5:
+  en: 0ea9464a968d61b2
+  zh: 0ea9464a968d61b2
+/deepseek-harness-desktop/section/section~2:
+  en: bf5668a2da5d12f8
+  zh: bf5668a2da5d12f8
+/deepseek-harness-desktop/section~6:
+  en: a9e96877773d6351
+  zh: a9e96877773d6351
+/deepseek-harness-desktop/section~7:
+  en: f97ec86048b61ff8
+  zh: f97ec86048b61ff8
+/deepseek-harness-desktop/section~8:
+  en: 7116388a34c85a77
+  zh: 7116388a34c85a77

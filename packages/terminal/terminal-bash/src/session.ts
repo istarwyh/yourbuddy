@@ -261,6 +261,9 @@ export class LocalPtySession implements TerminalBackendSession {
   private promptSeen = false
   private promptTextSeen = false
   private promptTail = ''
+  // Sticky by design: startup readiness only needs to know that the real
+  // prompt rendered once, while promptTextSeen resets with every send.
+  private controlledPromptSeen = false
   private shellPgid: number | undefined
   private initializing = false
   private lastOutputAt = Date.now()
@@ -526,7 +529,17 @@ export class LocalPtySession implements TerminalBackendSession {
       this.promptTail += sanitized.promptTail.slice(0, remaining)
       if (sanitized.promptTail.length > remaining) this.promptTail = `${CONTROLLED_PROMPT}\0`
       this.promptTextSeen = this.promptTail === CONTROLLED_PROMPT
+      if (this.promptTextSeen) this.controlledPromptSeen = true
     }
+  }
+
+  /**
+   * Whether the controlled prompt text followed an owned marker at least once.
+   * Unlike `promptTextSeen` this never resets, so callers waiting for the
+   * shell's first real readiness can rely on it across later sends.
+   */
+  get controlledPromptRendered(): boolean {
+    return this.controlledPromptSeen
   }
 
   private async onExit(outcome: SubprocessOutcome): Promise<void> {
@@ -605,7 +618,15 @@ export class LocalPtySession implements TerminalBackendSession {
       // on waiting for shell ownership instead of letting a child marker suppress
       // readiness until the absolute timeout.
       const handoffGrace = this.promptSeen ? this.config.handoffGraceMs : 0
-      if (startupHasOutput && idleFor >= this.config.idleSilenceMs + handoffGrace) {
+      // A seen marker whose printable tail has not arrived yet is the prompt function's own
+      // evidence that the shell reached its prompt: the tail is written by the same render, so
+      // its absence within the bound is a delivery delay rather than an absent prompt. The
+      // configured tolerance holds the send on the exact path for that state alone: a tail that
+      // arrived and was then invalidated by later output can no longer complete, so it keeps the
+      // plain bound. Zero leaves the bound at `idleSilenceMs + handoffGraceMs`.
+      const tailPending = this.promptSeen && !this.promptTextSeen && CONTROLLED_PROMPT.startsWith(this.promptTail)
+      const tailGrace = tailPending ? this.config.promptTailGraceMs : 0
+      if (startupHasOutput && idleFor >= this.config.idleSilenceMs + handoffGrace + tailGrace) {
         this.settleActive('inferred_idle')
       }
     } catch (error: unknown) {

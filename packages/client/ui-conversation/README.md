@@ -7,6 +7,8 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
+Desktop product events use the optional [product analytics service](../product-analytics/README.md); ordinary Web interactions are excluded.
+
 ## Summary
 
 `ui-conversation` owns target-neutral Conversation assembly and the shared browser shell. It consumes Session Controller `SessionEventLikeEntry` feeds, exposes React-free registries and per-Session bindings through `ctx.uiConversation`, and contributes the `useConversation`, `useInput`, and `inputActions` standard props through `ctx.uiSession`. It also owns the per-session durable image URL cache: `ctx.uiConversation.imageUrl(sessionId, attachment)` resolves one session-authorized browser URL per attachment and revokes it with the Session binding, so every Conversation target shares one `session.attachment` read. Concrete targets such as Chat are separate packages that register their own Definitions, snapshot builders, Views, and renderers.
@@ -15,7 +17,6 @@ English | [中文](README.zh.md)
 
 - [Conversation assembly](#conversation-assembly)
 - [Shell and standard props](#shell-and-standard-props)
-- [Page context on send](#page-context-on-send)
 - [Temporary composer entries](#temporary-composer-entries)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
@@ -75,7 +76,9 @@ The resident composer survives no-Session and Session transitions. Whitespace hi
 
 Plain Enter uses the configured delivery mode, exactly Ctrl+Enter or Cmd+Enter uses its complement, and Shift+Enter inserts a line break. Enter with Alt, AltGraph, both Ctrl and Cmd, or Shift plus Ctrl/Cmd leaves the draft and command menu unchanged and keeps the DOM event available to application shortcuts. The Conversation plugin registers the fixed send, newline, complementary-delivery, command-menu, and reference-menu rows and reserves their bindings until it unloads.
 
-Default sends commit optimistically: Enter clears the draft, occurrence table, and undo history in the same transaction, keeps the composer in `plain`, and runs the send as a detached attempt, so typing and further sends continue during the flight. `sendSession` registers a Session submission echo (`session.beginSubmission`) with the delivery mode before serializing, preserving selected image and file order in `pendingSubmissions`; Session derives the placement from that mode and its current running state, so idle sends use the transcript, busy Queue sends use QueueDock, and busy Steer sends use the pending-steering surface. It then yields one paint, encodes images through the browser's native `FileReader` data-URL path, and cites staged file receipts. Command submissions use the same receipts for generic files, so sending `/goal` or `/plan` never reads those browser files again. The prompt reuses the submission `requestId`; Session retires the echo once at its display handoff, correlated by that `rpcId`. A failure returns to an empty composer or stays in a separate recovery entry when another draft or attachments occupy it; messages and their attachments never merge. Command submissions keep the frozen `submitting` phase. Detached attempts retain their attachment ids through admission and Session scope disposal. An observed retirement immediately exposes each image preview through the durable cache, replaces it with the canonical URL after fetching the admitted attachment, revokes each URL after its use ends, and releases file cards. Selected generic files enter one FIFO background-upload queue; `maxConcurrentFileUploads` defaults to two active Worker transports, the Conversation service retains queued and active operations plus byte progress across Session navigation, and removing a draft skips its queued transfer or aborts its active transport. Where the browser shell exposes `__DSH_HOST_PATHS__` (the Desktop application), dropped or pasted folders and dropped, picked, or pasted non-image files with a real path become `@path` chips; images keep uploading. Drag-and-drop and paste identify directories through the browser entry API; when that API is absent or returns no entry, pasted items retain ordinary file handling. The file picker cannot select directories. References require the `ui-reference` plugin and the original paths to remain readable by the model's file tools. Paths inside the workspace are relative; others remain absolute. The whole batch is validated before insertion, retains source order and selected text, and uses whitespace-separated, closed-quote mentions. A browser without the bridge refuses dropped or pasted folders; a Desktop folder without a reported path is rejected separately. Continuable subagents disable attachment intake and skip local echoes because their transport does not preserve the browser request id.
+Each composer attempt carries its original occurrence time, gesture, delivery intent, and Session model/run-state snapshot through asynchronous command arbitration. The ordinary-message notification fires once before reference serialization, including attachment-only submissions; handled or claimed commands do not notify. Snapshot and notification failures cannot block sending.
+
+Default sends commit optimistically: Enter clears the draft, occurrence table, and undo history in the same transaction, keeps the composer in `plain`, and runs the send as a detached attempt, so typing and further sends continue during the flight. `sendSession` registers a Session submission echo (`session.beginSubmission`) with the delivery mode before serializing, preserving selected image and file order in `pendingSubmissions`; Session derives the placement from that mode and its current running state, so idle sends use the transcript, busy Queue sends use QueueDock, and busy Steer sends use the pending-steering surface. It then yields one paint, encodes images through the browser's native `FileReader` data-URL path, and cites staged file receipts. Command submissions use the same receipts for generic files, so sending `/goal` or `/plan` never reads those browser files again. The prompt reuses the submission `requestId`; Session retires the echo once at its display handoff, correlated by that `rpcId`. Concurrent failures are restored together in submission order until the user edits the restored content; command submissions keep the frozen `submitting` phase. Detached attempts retain their attachment ids through admission and Session scope disposal. An observed retirement immediately exposes each image preview through the durable cache, replaces it with the canonical URL after fetching the admitted attachment, revokes each URL after its use ends, and releases file cards. Selected generic files enter one FIFO background-upload queue; `maxConcurrentFileUploads` defaults to two active Worker transports, the Conversation service retains queued and active operations plus byte progress across Session navigation, and removing a draft skips its queued transfer or aborts its active transport. Where the browser shell exposes `__DSH_HOST_PATHS__` (the Desktop application), dropped or pasted folders and dropped, picked, or pasted non-image files with a real path become `@path` chips; images keep uploading. Drag-and-drop and paste identify directories through the browser entry API; when that API is absent or returns no entry, pasted items retain ordinary file handling. The file picker cannot select directories. References require the `ui-reference` plugin and the original paths to remain readable by the model's file tools. Paths inside the workspace are relative; others remain absolute. The whole batch is validated before insertion, retains source order and selected text, and uses whitespace-separated, closed-quote mentions. A browser without the bridge refuses dropped or pasted folders; a Desktop folder without a reported path is rejected separately. Continuable subagents disable attachment intake and skip local echoes because their transport does not preserve the browser request id.
 
 Queued submission echoes show “Sending…” beside disabled edit, remove, and steer buttons; a collapsed dock keeps the sending status in its header. A matching Host queue row replaces the echo and enables each action according to its normal text-content and running-state requirements. Prompt acknowledgement alone does not enable queue actions. A failed submission removes its echo and displays an error; the composer restores the failed draft when it is empty or still contains the previous automatic restoration, preserving subsequently typed text.
 
@@ -86,17 +89,6 @@ File chips and editable skill references share a whole-reference hover backgroun
 When another writer owns the Session, the send-error toast asks the user to quit other running DSH instances and retry.
 
 Two independent Escape presses in the focused Chat or Composer stop its current running turn and preserve queued messages. The interval comes from the shortcuts plugin’s `stopSequenceMs` configuration (500 ms by default). A menu, approval, modal, terminal, embedded webpage, composition, repeated key, changed input region, Session or turn breaks the sequence. The shortcut uses the same scoped cancellation as the Stop button. The plugin registers Stop as a fixed action in the `input` display group. Its registration reserves plain Escape against editable shortcuts and supplies the `Esc Esc` sequence shown in the Stop button’s hover and keyboard-focus tooltip.
-
-<a id="page-context-on-send"></a>
-## Page context on send
-
-View plugins attach page context through `ctx.conversation.contexts.register()`. Register a stable `id`, the exact `conversation.view` entry `viewId`, a translated `label`, an explicit `timeoutMs`, and `prepare`. Return its disposer from a Cordis effect. The [submission context contract](src/client/contract/submission-context.ts) defines the request and lifetime.
-
-Only the current Session's selected View contributes. `prepare` runs at the submit lock, before reference serialization, image encoding, or asynchronous Session preparation. Copy the current page and selection synchronously; later work must resolve that copy and observe `signal`. Return model text, `{ text, label, description? }` for a captured title and readable summary, or `undefined` to opt out. The consumer owns selection semantics, explicit-reference precedence, content budgets, redaction, and its opt-out control. Slash commands do not request page context.
-
-Failure, timeout, cancellation, or provider unload rejects admission and preserves the draft. If you are writing another message, expand the **Not sent** entry beside the composer to inspect the failed text, image count, and reason. Send or move the current draft before choosing **Restore to composer**; restoration never sends. Sending again captures the page open at that time. **Discard** releases only that entry's images. Recovery entries stay within their Session and browser lifetime.
-
-Successful context joins the original text and images in one `session.prompt`, retaining Queue/Steer mode and request id. The generic envelope stores model text and display metadata in the same durable `user/message`, not a separate injection or turn. Chat and Queue show a compact attachment: expand it to read `description` when supplied, otherwise the literal provider text. Queue editing preserves its frozen attachment; copying a message copies user text without context markup.
 
 <a id="temporary-composer-entries"></a>
 ## Temporary composer entries
@@ -153,26 +145,17 @@ The selector must be a pure function of the owner currency. Its non-null return 
 <a id="model-experience"></a>
 ## Model Experience
 
-### Selected-View page context
-
-#### What the model sees
-
-User-admitted messages can include text prepared by the selected View's context contributor, wrapped in `<dsh-page-context source="..." label="...">`. It is part of the same durable `user/message`, not a system instruction or an unlogged prompt mutation. Registration, navigation, and page refresh alone never send a prompt.
-
-#### Token effect
-
-Each nonempty contribution adds its text and a source/label envelope, including optional description metadata, to that user message. Consumers own content budgets; there is no fixed token count or extra model call for context preparation itself.
+None, as this package renders browser state and sends user-admitted inputs through Session Controller APIs without constructing model requests.
 
 #### KV Cache effect
 
-Page context adds text to a new user message. Conversation assembly does not rewrite earlier model messages or provider-side cache settings.
+None; Conversation assembly and browser input state do not alter provider-side prompt caching.
 
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
 
 - **Only registered targets can render** — the shell deliberately has no implicit fallback target beyond the registered `chat` preference.
-- **Context resolution remains consumer-owned** — logged text survives replay, but a consumer's short-lived reference may expire or become stale. The host never silently replaces it with a newer page.
 - **Factory occurrences inherit their render-position Session** — `conversation.content` does not accept an independently addressed Session; that requires a separate Session-provider capability.
 
 

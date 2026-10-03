@@ -25,6 +25,16 @@ function write(root: string, path: string, content: string): void {
 }
 
 describe('application entrypoints', () => {
+  it('排除 Tauri 打包副本，仍检查桌面源文件', () => {
+    const root = fixture()
+    write(root, 'apps/desktop-tauri/bundled/harness/apps/cli/src/bin.ts', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/src-tauri/target/debug/harness-source/apps/cli/src/bin.ts', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/rogue.mjs', '#!/usr/bin/env node\n')
+    expect(applicationEntrypointViolations(root)).toEqual([
+      'apps/desktop-tauri/rogue.mjs: executable source has no application/build/test classification',
+    ])
+  })
+
   it('accepts the repository launcher inventory', () => {
     expect(applicationEntrypointViolations(resolve(import.meta.dirname, '..'))).toEqual([])
   })

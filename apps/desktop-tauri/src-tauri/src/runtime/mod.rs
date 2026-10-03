@@ -11,10 +11,11 @@ pub mod profile_repair;
 pub mod provision;
 pub mod supervisor;
 pub mod user_home;
+pub mod watchdog;
 pub mod wsl;
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use crate::desktop_settings::{effective_agent_environment, AgentEnvironment, DesktopSettings};
 use crate::i18n::{self, Msg};
@@ -27,9 +28,11 @@ use wsl::WslRuntimePaths;
 /// Resolved Node + harness tree and the spawned Host child.
 pub struct DesktopRuntime {
     pub paths: RuntimePaths,
-    pub host: HostHandle,
-    /// Credential-free Host root used for origin checks and diagnostics.
-    pub web_url: String,
+    /// Live Host. The watchdog replaces it after a respawn; the old handle is
+    /// stopped first, so a replacement never runs in parallel with its parent.
+    pub host: RwLock<HostHandle>,
+    /// Authenticated URL of the current Host generation; updated on respawn.
+    pub web_url: RwLock<String>,
     /// How tray `dsh plugin add` must reach the live Host profile.
     pub plugin_target: PluginRunTarget,
     /// Process-wide outbound proxy policy fixed at application startup.
@@ -37,11 +40,14 @@ pub struct DesktopRuntime {
 }
 
 impl DesktopRuntime {
-    /// Move the pending Host session cookie into the desktop WebView exactly once.
-    pub fn take_session_cookie(&mut self) -> String {
-        std::mem::take(&mut self.host.session_cookie)
+    /// Swap in a respawned Host and its authenticated URL.
+    pub fn replace_host(&self, host: HostHandle) {
+        *self.web_url.write().expect("web_url lock poisoned") = host.web_url.clone();
+        *self.host.write().expect("host lock poisoned") = host;
     }
+}
 
+impl DesktopRuntime {
     /// Start `dsh web` against an already provisioned Windows tree.
     ///
     /// Applies the Windows PATH bridge and profile repair, then spawns the
@@ -74,11 +80,12 @@ impl DesktopRuntime {
             return Err(error);
         }
         progress(ProvisionEvent::Status(i18n::t(Msg::StatusStartWeb).into()));
-        let host = supervisor::spawn_web_host(&paths, overlay, &host_path, &network_proxy).await?;
-        boot_log::info(&format!("dsh web ready url={}", host.web_url));
+        let host = supervisor::spawn_web_host(&paths, overlay, &host_path, config::DEFAULT_WEB_PORT)
+            .await?;
+        boot_log::info("dsh web ready");
         Ok(Self {
             paths: paths.clone(),
-            web_url: host.web_url.clone(),
+            web_url: RwLock::new(host.web_url.clone()),
             plugin_target: PluginRunTarget::Windows {
                 node: paths.node_binary.clone(),
                 cli: paths.cli_entry.clone(),
@@ -86,8 +93,7 @@ impl DesktopRuntime {
                 dsh_home: paths.dsh_home.clone(),
                 host_path,
             },
-            network_proxy,
-            host,
+            host: RwLock::new(host),
         })
     }
 
@@ -96,12 +102,13 @@ impl DesktopRuntime {
     /// Skips the Windows PATH bridge and Windows profile repair. `paths` is a
     /// documented placeholder: the live Linux tree lives on WSL runtime paths
     /// inside the supervisor session, not on Windows `RuntimePaths`.
-    pub fn start_wsl(
-        host: HostHandle,
-        wsl_paths: WslRuntimePaths,
-        network_proxy: ResolvedNetworkProxy,
-    ) -> Self {
-        boot_log::info(&format!("wsl dsh web ready url={}", host.web_url));
+    /// Wrap a Host already spawned inside WSL.
+    ///
+    /// Skips the Windows PATH bridge and Windows profile repair. `paths` is a
+    /// documented placeholder: the live Linux tree lives on WSL runtime paths
+    /// inside the supervisor session, not on Windows `RuntimePaths`.
+    pub fn start_wsl(host: HostHandle, wsl_paths: WslRuntimePaths) -> Self {
+        boot_log::info("wsl dsh web ready");
         Self {
             // Placeholder only — WSL Host does not consume Windows RuntimePaths.
             paths: RuntimePaths {
@@ -112,10 +119,9 @@ impl DesktopRuntime {
                 runtime_root: PathBuf::new(),
                 dsh_home: PathBuf::new(),
             },
-            web_url: host.web_url.clone(),
+            web_url: RwLock::new(host.web_url.clone()),
             plugin_target: PluginRunTarget::Wsl(wsl_paths),
-            network_proxy,
-            host,
+            host: RwLock::new(host),
         }
     }
 }

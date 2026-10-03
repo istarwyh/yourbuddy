@@ -7,8 +7,7 @@
  */
 import { createHash } from 'node:crypto'
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { execSync } from 'node:child_process'
-import { dirname, join, relative, resolve, sep } from 'node:path'
+import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import {
@@ -112,12 +111,8 @@ const skipPackageGroups = new Set(['examples', 'test-support'])
 const skipFileSuffixes = ['.spec.ts', '.e2e.ts', '.snapshot.ts']
 
 /**
- * Derive the bundled pnpm-workspace.yaml from the repository's own file,
- * replacing the `packages:` membership and allowing patches whose only
- * consumers were omitted development packages. Every source section —
- * `patchedDependencies`, the dependency-build policy, overrides — is copied
- * verbatim so a stale hardcoded copy can never disagree with the source tree
- * the bundle ships.
+ * 从仓库配置裁剪工作区成员，允许生产包未使用的开发依赖补丁。
+ * 保留补丁、构建许可和 overrides；实际补丁应用失败仍阻止安装。
  *
  * @param {string} sourceYaml
  * @returns {string}
@@ -139,7 +134,10 @@ export function buildTrimmedWorkspaceYaml(sourceYaml) {
     'allowUnusedPatches: true',
     '',
   ]
-  return [...lines.slice(0, packagesIndex), ...trimmedBlock, ...lines.slice(end)].join('\n')
+  // 裁剪树不含开发工具，允许其补丁未使用；已安装依赖的补丁应用失败仍由 pnpm 报错。
+  return [...lines.slice(0, packagesIndex), ...trimmedBlock, ...lines.slice(end)]
+    .filter(line => !/^allowUnusedPatches:/.test(line))
+    .join('\n').trimEnd() + '\n\nallowUnusedPatches: true\n'
 }
 
 /** @param {string} sourceRoot @param {string} source */
@@ -573,7 +571,7 @@ function assertBuiltArtifacts() {
   }
   if (!existsSync(systemEntry)) {
     throw new Error(
-      'node-addon-system entry lib missing. From native/system run: pnpm run build:ts',
+      'system entry lib missing. From native/system run: pnpm run build:ts',
     )
   }
   const buildRecordPath = join(repoRoot, '.dsh-build', 'client-build-environment.json')
@@ -613,23 +611,74 @@ function stripDevDependencies(root) {
   walk(root)
 }
 
-/** @param {string} dir */
-function removeTree(dir) {
-  if (!existsSync(dir)) return
-  try {
-    rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 })
-  } catch (error) {
-    if (process.platform === 'win32') {
-      execSync(`cmd /c rmdir /s /q "${dir.replaceAll('/', '\\')}"`, { stdio: 'ignore' })
-      return
+/**
+ * Collect the `name` of every workspace member copied into the bundle.
+ * @param {string} root
+ * @returns {Set<string>}
+ */
+function collectBundledPackageNames(root) {
+  const names = new Set()
+  /** @param {string} dir */
+  const walk = dir => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (skipDirNames.has(entry.name)) continue
+        walk(path)
+        continue
+      }
+      if (entry.name !== 'package.json') continue
+      const pkg = JSON.parse(readFileSync(path, 'utf8'))
+      if (typeof pkg.name === 'string') names.add(pkg.name)
     }
-    throw error
   }
+  walk(root)
+  return names
+}
+
+/**
+ * Drop dependency entries that use the workspace protocol but name a package
+ * the trimmed tree does not contain (skipped groups such as `experimental`).
+ * pnpm refuses `workspace:*` specs whose target is absent, so first-run
+ * `pnpm install --prod` would otherwise fail on upstream manifests that
+ * reference packages the desktop bundle deliberately leaves out.
+ * @param {string} root
+ */
+export function stripUnbundledWorkspaceDependencies(root) {
+  const present = collectBundledPackageNames(root)
+  const sections = ['dependencies', 'optionalDependencies', 'peerDependencies']
+  /** @param {string} dir */
+  const walk = dir => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (skipDirNames.has(entry.name)) continue
+        walk(path)
+        continue
+      }
+      if (entry.name !== 'package.json') continue
+      const pkg = JSON.parse(readFileSync(path, 'utf8'))
+      let changed = false
+      for (const section of sections) {
+        const deps = pkg[section]
+        if (deps === undefined) continue
+        for (const [name, spec] of Object.entries(deps)) {
+          if (spec.startsWith('workspace:') && !present.has(name)) {
+            delete deps[name]
+            changed = true
+          }
+        }
+        if (Object.keys(deps).length === 0) delete pkg[section]
+      }
+      if (changed) writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)
+    }
+  }
+  walk(root)
 }
 
 function main() {
 assertBuiltArtifacts()
-removeTree(outRoot)
+rmSync(outRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 })
 mkdirSync(outRoot, { recursive: true })
 
 for (const name of ['package.json', 'pnpm-workspace.yaml']) {
@@ -679,6 +728,7 @@ const bundlePkg = {
 writeFileSync(join(outRoot, 'package.json'), `${JSON.stringify(bundlePkg, null, 2)}\n`)
 
 stripDevDependencies(outRoot)
+stripUnbundledWorkspaceDependencies(outRoot)
 
 const manifest = {
   harnessVersion: rootPkg.version,

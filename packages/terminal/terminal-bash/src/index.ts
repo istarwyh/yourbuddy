@@ -97,6 +97,25 @@ function childEnvironment(spec: TerminalBackendSpawnSpec, dialect: ShellDialect)
 export const PWSH_PROMPT_SETUP =
   "function prompt { [Console]::Write([char]27 + ']133;D;' + [int]$LASTEXITCODE + [char]7); '" + CONTROLLED_PROMPT + "' }"
 
+/**
+ * Removes PSReadLine from the hosted pwsh session on Windows. ConPTY
+ * re-serializes PSReadLine's multi-pass syntax-highlight rendering into the
+ * output stream as erase sequences and literal space runs, and the
+ * append-only sanitized scrollback keeps that residue beside real command
+ * output. POSIX keeps PSReadLine: its renderer is single-pass there, and the
+ * no-PSReadLine fallback editor is not PTY-safe.
+ */
+export const PWSH_DISABLE_PSREADLINE = 'Remove-Module PSReadLine -ErrorAction SilentlyContinue; '
+
+/**
+ * The bootstrap line installed as the pwsh session's first submitted command.
+ * @param platform - the host platform; PSReadLine removal is Windows-only.
+ * @returns the full bootstrap expression.
+ */
+export function pwshBootstrap(platform: NodeJS.Platform): string {
+  return ENCODING_PREAMBLE + (platform === 'win32' ? PWSH_DISABLE_PSREADLINE : '') + PWSH_PROMPT_SETUP
+}
+
 async function spawnArgv(ctx: Context, config: ResolvedConfig, policy: SandboxExecutionPolicy, signal?: AbortSignal): Promise<string[]> {
   const argv = [config.shellPath, ...config.shellArgs]
   if (policy.mode === 'danger-full-access') return argv
@@ -111,9 +130,18 @@ async function spawnArgv(ctx: Context, config: ResolvedConfig, policy: SandboxEx
 // TODO(pty-initialize-race-home): Fold this outer abort race into
 // LocalPtySession.initialize when the send-state consolidation lands; the
 // session already owns the send lifecycle the race protects.
+// The pwsh startup loop must not mistake the echoed bootstrap for the real
+// prompt: the echoed source carries the prompt literal mid-line (inside
+// quotes), so text matching cannot tell them apart. The session's
+// marker-gated prompt tracking only flips once the owned OSC marker is
+// followed by the rendered prompt text, which the echo never produces.
+// POSIX PSReadLine also positions the prompt with cursor addressing rather
+// than newlines, so no line-oriented text pattern can see it at all.
+
 async function startupSession(
   session: LocalPtySession,
   dialect: ShellDialect,
+  platform: NodeJS.Platform,
   timeoutMs: number,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -125,30 +153,24 @@ async function startupSession(
     }
     // pwsh cannot install its prompt from the environment. Write the prompt
     // function through the session, pin UTF-8 output before user input, and
-    // accept stdin_read only after the startup loop has also observed the
-    // owned prompt. Shell-group stdin-wait evidence is ignored by the session,
-    // while echoed setup source containing the printable prompt is not readiness.
-    // Follow-up sends bridge those settlements during startup, while one
-    // absolute deadline bounds them.
-    let previousViewport = ''
-    let motd = ''
-    let controlledPromptObserved = false
+    // accept only backend stdin_read evidence; echoed setup source containing
+    // the printable prompt is not readiness. Follow-up sends bridge silence
+    // settlements during startup, while one absolute deadline bounds them.
+    let viewport = ''
     for (;;) {
-      const bootstrap = previousViewport.length === 0
+      const first = viewport.length === 0
       startupOperation = session.startSend({
-        text: bootstrap ? ENCODING_PREAMBLE + PWSH_PROMPT_SETUP : '',
-        submit: bootstrap,
+        text: first ? pwshBootstrap(platform) : '',
+        submit: first,
         ...signal !== undefined ? { signal } : {},
-      }, !bootstrap)
+      })
       const result = await startupOperation.done
       if (result.waitReason === 'session_exit') throw new Error('PTY shell exited during startup')
       if (result.waitReason === 'timeout') throw new Error('PTY shell did not reach readiness before startup timeout')
-      previousViewport = result.viewport
-      if (result.viewport.length > 0) motd = result.viewport
-      controlledPromptObserved ||= session.hasControlledPromptReadiness()
-      if (result.waitReason === 'stdin_read' && controlledPromptObserved) break
+      viewport = result.viewport
+      if (session.controlledPromptRendered) break
     }
-    session.motd = motd
+    session.motd = viewport
   }
   const races: Promise<void>[] = []
   let onAbort: (() => void) | undefined
@@ -200,6 +222,7 @@ export class BashTerminalBackend implements TerminalBackend {
       terminal: SubprocessTerminalHandle,
       config: ResolvedConfig,
     ) => LocalPtySession = (terminal, config) => new LocalPtySession(terminal, config),
+    private readonly platform: NodeJS.Platform = process.platform,
   ) {
     this.type = config.backendType
   }
@@ -228,7 +251,7 @@ export class BashTerminalBackend implements TerminalBackend {
       return rejectAfterStartupCleanup(error, () => terminal.terminate())
     }
     try {
-      await startupSession(session, this.config.shellDialect, this.config.timeoutMs, spec.signal)
+      await startupSession(session, this.config.shellDialect, this.platform, this.config.timeoutMs, spec.signal)
       return session
     } catch (error) {
       return rejectAfterStartupCleanup(error, () => session.close('PTY startup failed'))

@@ -13,9 +13,9 @@ import {
   writeUpdaterManifest,
 } from './generate-updater-manifest.mjs'
 
-const version = '0.1.0'
-const repository = 'istarwyh/yourbuddy'
-const releaseTag = `yourbuddy-v${version}`
+const version = '0.1.1-rc.2-0.3'
+const repository = 'deepseek-ai/deepseek-harness'
+const releaseTag = `desktop-v${version}`
 const pubDate = '2026-08-14T00:00:00.000Z'
 
 const expectedAssets = {

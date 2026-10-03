@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-09-24-desktop-bundle-strips-unbundled-workspace-deps.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-24-desktop-bundle-strips-unbundled-workspace-deps.md
+/agent-note-desktop-bundle-strips-unbundled-workspace-dependencies:
+  en: 5d343fcededa894c
+  zh: 243a3e1cb7c92cbb
+/agent-note-desktop-bundle-strips-unbundled-workspace-dependencies/problem:
+  en: b45a0cb5879f1fc7
+  zh: b314a23aa563962e
+/agent-note-desktop-bundle-strips-unbundled-workspace-dependencies/decision:
+  en: 0991dcbfd277abfc
+  zh: cb3ce4e7febd66cb
+/agent-note-desktop-bundle-strips-unbundled-workspace-dependencies/alternatives-considered:
+  en: 002c2838e073fb90
+  zh: 9973137a71ce6efc
+/agent-note-desktop-bundle-strips-unbundled-workspace-dependencies/consequences:
+  en: 704e8462ba052e4e
+  zh: 0bc271efe6377993

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { NpmPackageLock, RegistryIndex } from './benchmark-npm-resolution.ts'
 import {
   assertDualDshInstallLayout,
+  assertResolutionWorkBudget,
   buildDualDshRegistry,
+  MAX_RESOLUTION_WORK_UNITS,
 } from './verify-npm-install-layout.ts'
 
 function validLayout(): NpmPackageLock {
@@ -37,7 +39,7 @@ function validLayout(): NpmPackageLock {
 }
 
 describe('npm install layout verifier', () => {
-  it('creates two incompatible versions of every DSH package', () => {
+  it('为 npm 发布序列生成两个版本，并保留独立桌面安装器的版本', () => {
     const index: RegistryIndex = new Map([
       ['@deepseek-ai/dsh', new Map([['0.1.1-rc.2', {
         name: '@deepseek-ai/dsh',
@@ -52,6 +54,10 @@ describe('npm install layout verifier', () => {
       ['@deepseek-ai/cordis', new Map([['4.0.1', {
         name: '@deepseek-ai/cordis',
         version: '4.0.1',
+      }]])],
+      ['@deepseek-ai/dsh-desktop-tauri', new Map([['0.1.5-alpha.1-0.1', {
+        name: '@deepseek-ai/dsh-desktop-tauri',
+        version: '0.1.5-alpha.1-0.1',
       }]])],
     ])
 
@@ -68,6 +74,7 @@ describe('npm install layout verifier', () => {
       dependencies: { '@deepseek-ai/dsh-child': '^0.2.0' },
     })
     expect(dual.get('@deepseek-ai/cordis')).toBe(index.get('@deepseek-ai/cordis'))
+    expect(dual.get('@deepseek-ai/dsh-desktop-tauri')).toBe(index.get('@deepseek-ai/dsh-desktop-tauri'))
   })
 
   it('accepts isolated DSH releases with one shared Cordis installation', () => {
@@ -111,5 +118,32 @@ describe('npm install layout verifier', () => {
     expect(() => assertDualDshInstallLayout({ ...layout, packages })).toThrow(
       'expected one shared @deepseek-ai/cordis',
     )
+  })
+})
+
+describe('resolution work budget', () => {
+  it('accepts the measured dual-release graph', () => {
+    expect(assertResolutionWorkBudget({ dshPackagesPerVersion: 277, checkedDshEdges: 2524 }))
+      .toBe(699_148)
+  })
+
+  it('accepts a graph exactly at the budget and rejects one internal edge above it', () => {
+    const packages = 350
+    const edgesAtBudget = Math.floor(MAX_RESOLUTION_WORK_UNITS / packages)
+
+    expect(packages * edgesAtBudget).toBe(MAX_RESOLUTION_WORK_UNITS)
+    expect(assertResolutionWorkBudget({ dshPackagesPerVersion: packages, checkedDshEdges: edgesAtBudget }))
+      .toBe(MAX_RESOLUTION_WORK_UNITS)
+    expect(() => assertResolutionWorkBudget({
+      dshPackagesPerVersion: packages,
+      checkedDshEdges: edgesAtBudget + 1,
+    })).toThrow(`= ${String(MAX_RESOLUTION_WORK_UNITS + packages)} unit(s), budget ${String(MAX_RESOLUTION_WORK_UNITS)} unit(s)`)
+  })
+
+  it('accepts the headroom and rejects a runaway graph with its own measured counts', () => {
+    expect(assertResolutionWorkBudget({ dshPackagesPerVersion: 300, checkedDshEdges: 2800 }))
+      .toBe(840_000)
+    expect(() => assertResolutionWorkBudget({ dshPackagesPerVersion: 400, checkedDshEdges: 3000 }))
+      .toThrow('400 package(s) per release x 3000 internal edge(s) = 1200000 unit(s), budget 875000 unit(s)')
   })
 })

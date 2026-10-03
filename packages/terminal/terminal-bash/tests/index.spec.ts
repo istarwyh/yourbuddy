@@ -11,7 +11,7 @@ import SandboxPolicyService, { setSandboxMode } from '@deepseek-ai/dsh-sandbox-p
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import TerminalSessionService, { TerminalBackendCleanupError, TerminalSessionId } from '@deepseek-ai/dsh-terminal'
 import type { TerminalSendRequest, TerminalWaitReason } from '@deepseek-ai/dsh-terminal'
-import { BashTerminalBackend, PWSH_PROMPT_SETUP } from '@deepseek-ai/dsh-terminal-bash'
+import { BashTerminalBackend, PWSH_DISABLE_PSREADLINE, PWSH_PROMPT_SETUP } from '@deepseek-ai/dsh-terminal-bash'
 import { ENCODING_PREAMBLE } from '@deepseek-ai/dsh-pwsh-local'
 import * as ptyLocal from '@deepseek-ai/dsh-terminal-bash'
 import type { ResolvedConfig } from '@deepseek-ai/dsh-terminal-bash/src/config.ts'
@@ -44,7 +44,7 @@ function config(): ResolvedConfig {
   return {
     backendType: 'shell', shellDialect: 'bash', shellPath: '/bin/bash', shellArgs: [], rows: 24, cols: 80,
     scrollbackLines: 10, scrollbackMaxBytes: 100, maxReadBytes: 50,
-    pollIntervalMs: 10, exactProbeAfterMs: 20, idleSilenceMs: 50, handoffGraceMs: 10, timeoutMs: 100,
+    pollIntervalMs: 10, exactProbeAfterMs: 20, idleSilenceMs: 50, handoffGraceMs: 10, promptTailGraceMs: 0, timeoutMs: 100,
     disposeGraceMs: 10,
   }
 }
@@ -426,7 +426,7 @@ describe('BashTerminalBackend startup rollback', () => {
     let sent: TerminalSendRequest | undefined
     const session = {
       motd: '',
-      hasControlledPromptReadiness: () => true,
+      get controlledPromptRendered() { return true },
       startSend: (request: TerminalSendRequest) => {
         sent = request
         return {
@@ -440,13 +440,17 @@ describe('BashTerminalBackend startup rollback', () => {
       },
       read: () => ({ text: '', totalLines: 0, lineBegin: 0, lineEnd: 0, truncated: false }),
     } as unknown as LocalPtySession
-    const backend = new BashTerminalBackend(
+    const buildBackend = (platform: NodeJS.Platform): BashTerminalBackend => new BashTerminalBackend(
       ctx,
       { ...config(), shellDialect: 'pwsh', shellPath: 'pwsh' },
       async (spec) => { spawned = spec; return terminalHandle() },
       () => session,
+      platform,
     )
-    expect(await backend.spawn(spec(agent(ctx)))).toBe(session)
+    expect(await buildBackend('win32').spawn(spec(agent(ctx)))).toBe(session)
+    expect(sent).toMatchObject({ text: ENCODING_PREAMBLE + PWSH_DISABLE_PSREADLINE + PWSH_PROMPT_SETUP, submit: true })
+    sent = undefined
+    expect(await buildBackend('darwin').spawn(spec(agent(ctx)))).toBe(session)
     expect(sent).toMatchObject({ text: ENCODING_PREAMBLE + PWSH_PROMPT_SETUP, submit: true })
     expect(session.motd).toBe('setup-echo dsh> ')
     expect(spawned?.env).toMatchObject({
@@ -464,7 +468,7 @@ describe('BashTerminalBackend startup rollback', () => {
     const sends: TerminalSendRequest[] = []
     const session = {
       motd: '',
-      hasControlledPromptReadiness: () => sends.length === 3,
+      get controlledPromptRendered() { return sends.length > 1 },
       startSend: (request: TerminalSendRequest) => {
         sends.push(request)
         return {
@@ -581,7 +585,7 @@ describe('BashTerminalBackend startup rollback', () => {
     const sends: TerminalSendRequest[] = []
     const session = {
       motd: '',
-      hasControlledPromptReadiness: () => true,
+      get controlledPromptRendered() { return true },
       startSend: (request: TerminalSendRequest) => {
         sends.push(request)
         return {
