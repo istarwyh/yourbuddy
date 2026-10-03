@@ -63,12 +63,99 @@ struct PartialMetadata {
     etag: Option<String>,
 }
 
-struct ComponentLock(PathBuf);
+/// Cross-process component owner whose PID record permits recovery after termination.
+struct ComponentLock {
+    path: PathBuf,
+    owner: String,
+}
+
+impl ComponentLock {
+    fn acquire(path: PathBuf) -> Result<Self, String> {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let owner = format!("{}:{nonce}", std::process::id());
+        let claim = path.with_extension(format!("claim-{}-{nonce}", std::process::id()));
+        fs::write(&claim, &owner)
+            .map_err(|error| format!("cannot prepare component lock: {error}"))?;
+        for _ in 0..2 {
+            match fs::hard_link(&claim, &path) {
+                Ok(()) => {
+                    let _ = fs::remove_file(&claim);
+                    return Ok(Self { path, owner });
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    if component_lock_owner_active(&path) {
+                        let _ = fs::remove_file(&claim);
+                        return Err("another component operation is active".into());
+                    }
+                    match fs::remove_file(&path) {
+                        Ok(()) => {}
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                        Err(error) => {
+                            let _ = fs::remove_file(&claim);
+                            return Err(format!("cannot reclaim stale component lock: {error}"));
+                        }
+                    }
+                }
+                Err(error) => {
+                    let _ = fs::remove_file(&claim);
+                    return Err(format!("cannot acquire component lock: {error}"));
+                }
+            }
+        }
+        let _ = fs::remove_file(&claim);
+        Err("another component operation is active".into())
+    }
+}
 
 impl Drop for ComponentLock {
     fn drop(&mut self) {
-        let _ = fs::remove_file(&self.0);
+        if fs::read_to_string(&self.path).is_ok_and(|owner| owner == self.owner) {
+            let _ = fs::remove_file(&self.path);
+        }
     }
+}
+
+fn component_lock_owner_active(path: &Path) -> bool {
+    let Ok(owner) = fs::read_to_string(path) else {
+        return false;
+    };
+    let Some(pid) = owner
+        .split(':')
+        .next()
+        .and_then(|value| value.parse::<u32>().ok())
+    else {
+        return false;
+    };
+    process_is_running(pid)
+}
+
+#[cfg(unix)]
+fn process_is_running(pid: u32) -> bool {
+    let Ok(pid) = i32::try_from(pid) else {
+        return false;
+    };
+    let result = unsafe { libc::kill(pid, 0) };
+    result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+}
+
+#[cfg(windows)]
+fn process_is_running(pid: u32) -> bool {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+
+    let Ok(handle) = (unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }) else {
+        return false;
+    };
+    let _ = unsafe { CloseHandle(handle) };
+    true
+}
+
+#[cfg(not(any(unix, windows)))]
+fn process_is_running(_pid: u32) -> bool {
+    false
 }
 
 impl ComponentManager {
@@ -145,7 +232,10 @@ impl ComponentManager {
     }
 
     async fn obtain_archive(&self, spec: &ComponentSpec) -> Result<PathBuf, String> {
-        let seed = self.resource_dir.join("component-seeds").join(&spec.archive);
+        let seed = self
+            .resource_dir
+            .join("component-seeds")
+            .join(&spec.archive);
         if seed.is_file() {
             return Ok(seed);
         }
@@ -182,7 +272,10 @@ impl ComponentManager {
             .map_err(|error| format!("component download failed: {error}"))?;
         let resumed = offset > 0 && response.status() == StatusCode::PARTIAL_CONTENT;
         if !response.status().is_success() {
-            return Err(format!("component download returned HTTP {}", response.status()));
+            return Err(format!(
+                "component download returned HTTP {}",
+                response.status()
+            ));
         }
         if offset > 0 && !resumed {
             remove_partial(&partial, &metadata_path);
@@ -273,10 +366,7 @@ impl ComponentManager {
     }
 
     fn persist_manifest(&self) -> Result<(), String> {
-        let destination = self
-            .root
-            .join("manifests")
-            .join(&self.manifest.app_version);
+        let destination = self.root.join("manifests").join(&self.manifest.app_version);
         fs::create_dir_all(&destination)
             .map_err(|error| format!("cannot create component manifest cache: {error}"))?;
         fs::write(
@@ -311,13 +401,7 @@ impl ComponentManager {
     }
 
     fn lock(&self) -> Result<ComponentLock, String> {
-        let path = self.root.join("component.lock");
-        OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)
-            .map_err(|error| format!("another component operation is active: {error}"))?;
-        Ok(ComponentLock(path))
+        ComponentLock::acquire(self.root.join("component.lock"))
     }
 }
 
@@ -369,7 +453,10 @@ fn validate_spec(spec: &ComponentSpec) -> Result<(), String> {
         || spec.archive.contains('/')
         || spec.archive.contains("..")
     {
-        return Err(format!("component archive metadata is invalid: {}", spec.archive));
+        return Err(format!(
+            "component archive metadata is invalid: {}",
+            spec.archive
+        ));
     }
     Ok(())
 }
@@ -380,9 +467,9 @@ fn component_key(id: &str) -> Result<&str, String> {
         .or_else(|| id.strip_prefix("node:"))
         .unwrap_or(id);
     if key.is_empty()
-        || !key
-            .bytes()
-            .all(|value| value.is_ascii_alphanumeric() || matches!(value, b'.' | b'-' | b'_' | b':'))
+        || !key.bytes().all(|value| {
+            value.is_ascii_alphanumeric() || matches!(value, b'.' | b'-' | b'_' | b':')
+        })
     {
         return Err(format!("component id is invalid: {id}"));
     }
@@ -419,8 +506,8 @@ fn verify_manifest_signature(bytes: &[u8], signature: &str) -> Result<(), String
 }
 
 fn verify_archive(path: &Path, spec: &ComponentSpec) -> Result<(), String> {
-    let metadata = fs::metadata(path)
-        .map_err(|error| format!("component archive is unavailable: {error}"))?;
+    let metadata =
+        fs::metadata(path).map_err(|error| format!("component archive is unavailable: {error}"))?;
     if metadata.len() != spec.bytes {
         return Err(format!(
             "component archive size mismatch: expected {}, got {}",
@@ -428,7 +515,8 @@ fn verify_archive(path: &Path, spec: &ComponentSpec) -> Result<(), String> {
             metadata.len()
         ));
     }
-    let mut file = File::open(path).map_err(|error| format!("cannot read component archive: {error}"))?;
+    let mut file =
+        File::open(path).map_err(|error| format!("cannot read component archive: {error}"))?;
     let mut hash = Sha256::new();
     let mut buffer = [0_u8; 128 * 1024];
     loop {
@@ -451,7 +539,8 @@ fn verify_archive(path: &Path, spec: &ComponentSpec) -> Result<(), String> {
 }
 
 fn extract_zstd_archive(path: &Path, destination: &Path) -> Result<(), String> {
-    let file = File::open(path).map_err(|error| format!("cannot open component archive: {error}"))?;
+    let file =
+        File::open(path).map_err(|error| format!("cannot open component archive: {error}"))?;
     let decoder = zstd::stream::read::Decoder::new(file)
         .map_err(|error| format!("cannot decode component archive: {error}"))?;
     let mut archive = tar::Archive::new(decoder);
@@ -581,7 +670,11 @@ mod tests {
     #[test]
     fn rejects_archive_path_in_manifest() {
         let mut manifest = manifest();
-        manifest.components.get_mut("harness").expect("harness").archive = "../escape.tar.zst".into();
+        manifest
+            .components
+            .get_mut("harness")
+            .expect("harness")
+            .archive = "../escape.tar.zst".into();
         assert!(validate_manifest(&manifest).is_err());
     }
 
