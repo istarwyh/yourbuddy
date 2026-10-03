@@ -895,6 +895,16 @@ function extraBinDirs(platform, home = homedir(), env = process.env) {
 	if (home === homedir()) dirs.push("/usr/local/bin", "/opt/homebrew/bin");
 	return dirs;
 }
+function withExecutableSearchPath(env = process.env, platform = process.platform, home = homedir()) {
+	const next = { ...env };
+	const key = platform === "win32" && env.PATH === void 0 && env.Path !== void 0 ? "Path" : "PATH";
+	const directories = [
+		...pathEnvValue(env).split(delimiter).filter(Boolean),
+		...extraBinDirs(platform, home, env)
+	];
+	next[key] = [...new Set(directories)].join(delimiter);
+	return next;
+}
 function egoInstallCandidates(platform, home = homedir(), env = process.env) {
 	if (platform === "darwin") {
 		const local = [join(home, "Applications", "ego lite.app"), join(home, "Applications", "Ego Lite.app")];
@@ -1135,7 +1145,7 @@ async function pickBurnLaunch(item) {
 	throw new Error("no subtitle draft");
 }
 function spawnPython(python, script, args, extraEnv) {
-	const env = { ...process.env };
+	const env = withExecutableSearchPath();
 	delete env.DASHSCOPE_API_KEY;
 	delete env.ZENMUX_API_KEY;
 	if (extraEnv !== void 0) Object.assign(env, extraEnv);

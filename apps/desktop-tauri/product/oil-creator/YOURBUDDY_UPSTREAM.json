@@ -13,8 +13,8 @@
     {
       "id": "source-oil-creator-workbench-source",
       "file": "patches/oil-creator-workbench-source.patch",
-      "sha256": "f4df8f182cc48b8dd1d01ebfda76bf49a48cec4b187b7d886a053be164ac31cd",
-      "purpose": "Apply the reviewed YourBuddy workbench source, current Harness client APIs, and visible async-action feedback before building the published artifact."
+      "sha256": "7c1ba2b814a6684b312613095190ea35c383ba108161b1c625fe501213183bd3",
+      "purpose": "Apply the reviewed YourBuddy workbench source, current Harness client APIs, visible async-action feedback, and desktop executable search paths before building the published artifact."
     }
   ],
   "patches": [
@@ -47,5 +47,5 @@
   ],
   "repository": "https://github.com/oil-oil/dsh-oil-creator",
   "license": "MIT",
-  "treeSha256": "8de087215783c6b7d86f72a4d40289caa2839c700475d938fbeb8d0db15f77fc"
+  "treeSha256": "375ab30948625342a9a3ae3195eb40d5e07253a2bc4610be9061ec4fc4742e2d"
 }

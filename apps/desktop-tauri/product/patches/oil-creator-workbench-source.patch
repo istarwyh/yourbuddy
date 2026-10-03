@@ -4665,3 +4665,89 @@ index 7fcb6d8..e12295b 100644
        const css = await readFile(file, "utf8");
        const tagId = `${PLUGIN_ID}/${basename(file)}`;
        const registry = resolve(dirname(fileURLToPath(import.meta.url)), "src/client/pluginCss.ts");
+diff --git a/src/runtimePaths.ts b/src/runtimePaths.ts
+--- a/src/runtimePaths.ts
++++ b/src/runtimePaths.ts
+@@ -1,5 +1,5 @@
+ import { homedir } from "node:os";
+-import { join } from "node:path";
++import { delimiter, join } from "node:path";
+ 
+ import { pathExists } from "./artifacts.ts";
+ 
+@@ -55,6 +55,23 @@ export function extraBinDirs(
+   return dirs;
+ }
+ 
++export function withExecutableSearchPath(
++  env: NodeJS.ProcessEnv = process.env,
++  platform: NodeJS.Platform = process.platform,
++  home = homedir(),
++): NodeJS.ProcessEnv {
++  const next = { ...env };
++  const key = platform === "win32" && env.PATH === undefined && env.Path !== undefined
++    ? "Path"
++    : "PATH";
++  const directories = [
++    ...pathEnvValue(env).split(delimiter).filter(Boolean),
++    ...extraBinDirs(platform, home, env),
++  ];
++  next[key] = [...new Set(directories)].join(delimiter);
++  return next;
++}
++
+ export function egoInstallCandidates(
+   platform: NodeJS.Platform,
+   home = homedir(),
+diff --git a/src/subtitle.ts b/src/subtitle.ts
+--- a/src/subtitle.ts
++++ b/src/subtitle.ts
+@@ -7,6 +7,6 @@ import { defaultSubtitleSkillDir } from "./config.ts";
+ 
+ import { pathExists } from "./artifacts.ts";
+-import { resolveVenvPython } from "./runtimePaths.ts";
++import { resolveVenvPython, withExecutableSearchPath } from "./runtimePaths.ts";
+ import type { ContentSummary } from "./types.ts";
+ 
+ export { defaultSubtitleSkillDir } from "./config.ts";
+@@ -175,7 +175,7 @@ export function spawnPython(
+   args: readonly string[],
+   extraEnv?: Record<string, string>,
+ ): ChildProcess {
+-  const env = { ...process.env };
++  const env = withExecutableSearchPath();
+   delete env.DASHSCOPE_API_KEY;
+   delete env.ZENMUX_API_KEY;
+   if (extraEnv !== undefined) Object.assign(env, extraEnv);
+diff --git a/tests/subtitle.test.ts b/tests/subtitle.test.ts
+--- a/tests/subtitle.test.ts
++++ b/tests/subtitle.test.ts
+@@ -1,11 +1,12 @@
+ import { mkdir, readFile, writeFile } from "node:fs/promises";
+ import { tmpdir } from "node:os";
+-import { join } from "node:path";
++import { delimiter, join } from "node:path";
+ import { mkdtemp } from "node:fs/promises";
+ 
+ import { describe, expect, it } from "vitest";
+ 
+ import { emptyBurn, emptyPublish } from "../src/publishStatus.ts";
++import { extraBinDirs } from "../src/runtimePaths.ts";
+ import {
+   parseSrtClock,
+   pickBurnLaunch,
+@@ -185,7 +186,13 @@ describe("spawnPython", () => {
+       expect(subtitle.zen).toBeUndefined();
+       expect(cover).toMatchObject({ zen: "step-zen" });
+       expect(cover.dash).toBeUndefined();
+-      expect(none.path).toBe(process.env.PATH);
++      const childPath = none.path?.split(delimiter) ?? [];
++      for (const directory of (process.env.PATH ?? "").split(delimiter).filter(Boolean)) {
++        expect(childPath).toContain(directory);
++      }
++      for (const directory of extraBinDirs(process.platform)) {
++        expect(childPath).toContain(directory);
++      }
+     } finally {
+       if (previousDash === undefined) delete process.env.DASHSCOPE_API_KEY;
+       else process.env.DASHSCOPE_API_KEY = previousDash;
