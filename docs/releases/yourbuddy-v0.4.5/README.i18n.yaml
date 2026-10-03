@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.5/README.md
 /yourbuddy-0-4-5:
-  en: d462792e688155cd
-  zh: 69f3775b1d014ebc
+  en: 131f55d5c8856001
+  zh: ef438969487c7b88
 /yourbuddy-0-4-5/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -27,8 +27,8 @@
   en: afcaf97d6b75ea59
   zh: b2d7475c60ef9b8b
 /yourbuddy-0-4-5/verification-summary:
-  en: 5fb5bf2a347adff6
-  zh: 8ef3ac8fde5e9975
+  en: 9bf1899e4f5ec104
+  zh: ea77b12a03515d90
 /yourbuddy-0-4-5/scenario-prepare-the-synchronized-desktop-candidate:
   en: dc5219ebc2d1ccdc
   zh: 5de7fc3d2e23e289
@@ -39,8 +39,8 @@
   en: cf90942b8e8a0576
   zh: 8a036cdc6ef37440
 /yourbuddy-0-4-5/scenario-prepare-the-synchronized-desktop-candidate/actual:
-  en: 8c5ada1c83f2e7f2
-  zh: c0eb67278db54490
+  en: e64517c8517a0af4
+  zh: 0c17f430760c5a61
 /yourbuddy-0-4-5/scenario-prepare-the-synchronized-desktop-candidate/evidence:
   en: 49e732b9149e1caf
   zh: 54884e1d183e1c11
@@ -48,8 +48,8 @@
   en: a1dcecacf12d0cc2
   zh: fc82419cbe9e426b
 /yourbuddy-0-4-5/delivery-status:
-  en: 96b71d9ba28b512b
-  zh: 77ee166750424a34
+  en: cc29a9cef41b591e
+  zh: 9f58d9d0cc987f91
 /yourbuddy-0-4-5/delivery-checklist:
   en: 2e8c92cd9103432f
   zh: 47a67123d830262a

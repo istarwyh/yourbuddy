@@ -10,7 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.4.5](yourbuddy-v0.4.5/README.md) | YourBuddy desktop | Included | Upstream DSH synchronization, component-lock ownership, release identity, TypeScript, and documentation source checks recorded | Release candidate; artifact publication pending |
+| [yourbuddy-v0.4.5](yourbuddy-v0.4.5/README.md) | YourBuddy desktop | Included | Source checks and stale DSH release metadata failure recorded | Failed before artifact publication; superseded by 0.4.6 |
 | [yourbuddy-v0.4.4](yourbuddy-v0.4.4/README.md) | YourBuddy desktop | Included | Issues #36-#38, Harbor 0.10.3, corrected product snapshot metadata, exact Bundle regression, 14 public assets, hashes, updater metadata, DMG integrity, and 30 MB gate recorded | Published and independently checked within stated limits |
 | [yourbuddy-v0.4.3](yourbuddy-v0.4.3/README.md) | YourBuddy desktop | Included | Pre-publication checks and the clean-checkout Harbor Python snapshot hash failure are recorded | Failed before artifact publication; superseded by 0.4.4 |
 | [yourbuddy-v0.4.2](yourbuddy-v0.4.2/README.md) | YourBuddy desktop | Included | Better Sidebar startup hotfix and exact shipped-Bundle regression recorded | Release candidate; publication verification pending |

@@ -6,7 +6,7 @@ This archive records the upstream DSH synchronization, desktop component-lock re
 
 - Release identifier: `yourbuddy-v0.4.5`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; focused source checks passed and formal artifact publication is pending.
+- Archive state: failed before artifact publication; the immutable tag remains as failure evidence and is superseded by 0.4.6.
 - Evidence commit: the release candidate commit identified by `yourbuddy-v0.4.5`.
 - Evidence gallery: not applicable; this release changes runtime and integration behavior without a new visual flow.
 - Evidence download: the pending [YourBuddy 0.4.5 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.5).
@@ -44,7 +44,7 @@ This release targets macOS Apple Silicon and requires no data migration. Source 
 | Desktop component lock ownership | passed | 0.4.5 source candidate | macOS 15.6.1 arm64, Rust 1.98.0 | six focused Rust component tests passed, including stale-owner recovery and live-owner exclusion |
 | Release identity and metadata | passed | 0.4.5 source candidate | Node 22.19.0, pnpm 11.7.0 | seven release-version tests passed and all desktop version sources aligned |
 | Merged DSH and documentation integration | passed within source scope | current `master` candidate | macOS 15.6.1 arm64 | repository typecheck and all 43 documentation gates passed before release preparation |
-| Formal desktop artifacts | not verified | `yourbuddy-v0.4.5` publication | GitHub Actions and public GitHub Release | pending tag workflow and independent public-asset checks |
+| Formal desktop artifacts | failed before publication | `yourbuddy-v0.4.5` publication | GitHub Actions | runs 37128497713 and 37129031449 stopped during immutable component preparation because the recorded DSH release was stale |
 
 ## Scenario: Prepare the synchronized desktop candidate
 
@@ -68,7 +68,7 @@ The candidate keeps one YourBuddy version and application identity, includes the
 
 ### Actual
 
-The seven release-version tests and six component tests passed. The component tests cover stale-lock recovery and rejection of a second live operation. The repository typecheck passed, and `doc-sync` passed all 43 gates before candidate preparation.
+The seven release-version tests and six component tests passed. The component tests cover stale-lock recovery and rejection of a second live operation. The repository typecheck passed, and `doc-sync` passed all 43 gates before candidate preparation. The tag workflow then stopped before artifact construction because `DSH_UPSTREAM.json` still recorded 0.1.7-rc.2 while the bundled source was 0.2.0-rc.1.
 
 ### Evidence
 
@@ -83,8 +83,8 @@ No formal DMG, updater archive, public checksum file, or updater manifest exists
 
 ## Delivery status
 
-- Product publication status: pending the `yourbuddy-v0.4.5` tag workflow and public GitHub Release.
-- Verification archive status: complete for pre-publication source evidence; public artifact evidence is pending.
+- Product publication status: failed before artifact publication; 0.4.5 remains an immutable failed tag and is superseded by 0.4.6.
+- Verification archive status: complete for source checks and the recorded publication failure; no 0.4.5 public artifacts exist.
 - Website synchronization status: not applicable because product guidance and the stable GitHub Release links remain unchanged.
 - Unverified scope: formal artifacts, public hashes and updater metadata, installed startup, packaged WebView interaction, Apple Developer signing, and notarization.
 
