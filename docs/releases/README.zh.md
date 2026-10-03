@@ -10,6 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
+| [yourbuddy-v0.4.6](yourbuddy-v0.4.6/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录官方 DSH 记录、发布恢复、组件所有权、Bundle、产品、TypeScript 与文档检查 | 候选版本；等待产物发布 |
 | [yourbuddy-v0.4.5](yourbuddy-v0.4.5/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码检查与过期 DSH 发布元数据导致的失败 | 产物发布前失败；由 0.4.6 取代 |
 | [yourbuddy-v0.4.4](yourbuddy-v0.4.4/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录 Issue #36-#38、Harbor 0.10.3、已修正的产品快照元数据、实际 Bundle 回归、14 个公开产物、Hash、Updater 元数据、DMG 完整性与 30 MB 门禁 | 已发布并在声明范围内完成独立检查 |
 | [yourbuddy-v0.4.3](yourbuddy-v0.4.3/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录发布前检查与干净 Checkout 中的 Harbor Python 快照 Hash 失败 | 产物发布前失败；由 0.4.4 取代 |

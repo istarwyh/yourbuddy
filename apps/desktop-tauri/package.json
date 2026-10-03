@@ -2,7 +2,7 @@
   "name": "yourbuddy-desktop",
   "productName": "YourBuddy",
   "description": "A macOS AI workbench with DeepSeek Harness, Harbor Evolution, Codex Auth, Better Sidebar, Ego Browser, Context Doctor, Plugin Marketplace, Pomodoro, Personal Workbench branding, Oil Creator, and bundled Skills",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "private": true,
   "type": "module",
   "scripts": {
