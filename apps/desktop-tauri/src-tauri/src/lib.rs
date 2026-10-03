@@ -20,10 +20,8 @@ use runtime::boot_log;
 use runtime::components::ComponentManager;
 use runtime::config::BUNDLED_HARNESS_DIR;
 use runtime::io_fallback::is_recoverable_io;
-use runtime::provision::{
-    ensure_runtime, invalidate_provisioned_tree, read_bundle_hash, try_recover_paths, RuntimePaths,
-};
-use runtime::supervisor::{is_missing_dependency_failure, spawn_wsl_web_host, HostOverlay};
+use runtime::provision::{ensure_runtime, read_bundle_hash, try_recover_paths};
+use runtime::supervisor::{spawn_wsl_web_host, HostOverlay};
 use runtime::user_home::resolve_user_home;
 use runtime::wsl::{
     ensure_wsl_runtime, parse_wsl_list, select_distro, SystemWslRunner, WslRunner, WslSelectError,
@@ -57,11 +55,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             chrome::show_main(app);
         }))
-        .invoke_handler(tauri::generate_handler![
-            chrome::set_close_action,
-            chrome::dismiss_close_prompt,
-            chrome::restart_app
-        ])
+        .invoke_handler(tauri::generate_handler![run_first_party_command])
         .setup(|app| {
             let handle = app.handle().clone();
             let icon = app
@@ -280,20 +274,10 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
         }
     };
 
-    let web_url = runtime.web_url.read().expect("web_url lock poisoned").clone();
-    if !runtime
-        .host
-        .read()
-        .expect("host lock poisoned")
-        .disabled_plugins
-        .is_empty()
-    {
-        let names = runtime
-            .host
-            .read()
-            .expect("host lock poisoned")
-            .disabled_plugins
-            .join("、");
+    let web_url = runtime.web_url.clone();
+    let session_cookie = runtime.take_session_cookie();
+    if !runtime.host.disabled_plugins.is_empty() {
+        let names = runtime.host.disabled_plugins.join("、");
         boot_log::error(&format!("plugins disabled by rescue patch: {names}"));
         notify::toast(&app, "YourBuddy", &i18n::tf(Msg::PluginsDisabled, &names));
     }
@@ -301,13 +285,15 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     if let Some(notify) = notify {
         app.manage(notify);
     }
-    boot_log::info("opening main window");
-    chrome::open_main_window(&app, &web_url)?;
+    let shell = desktop_shell::start(&app)?;
+    let shell_url = shell.url.clone();
+    app.manage(shell);
+    boot_log::info(&format!("opening main window url={web_url}"));
+    chrome::open_main_window(&app, &shell_url, &web_url, &session_cookie)?;
     if let Some(splash) = app.get_webview_window("splash") {
         let _ = splash.close();
     }
     boot_log::info("boot complete");
-    runtime::watchdog::start(app.clone());
     let app_for_update = app.clone();
     tauri::async_runtime::spawn(async move {
         if let Err(error) = updater::install_available(&app_for_update).await {
@@ -325,59 +311,13 @@ async fn boot_windows_runtime(
     progress: Arc<dyn Fn(ProvisionEvent) + Send + Sync>,
     network_proxy: network_proxy::ResolvedNetworkProxy,
 ) -> Result<DesktopRuntime, String> {
-    let overlay_src = overlay::resolve_overlay_source(app.path().resource_dir().ok().as_deref());
-    let mut paths = ensure_or_recover(bundled.clone(), &progress).await?;
-
-    // A Host that dies naming an unresolvable dependency points at store
-    // damage the on-disk gates cannot see (e.g. a package removed after a
-    // completed install), so the first such failure invalidates the tree and
-    // re-provisions once before giving up. The overlay patch file lives
-    // inside the harness tree and is re-implanted with each attempt.
-    let mut repaired = false;
-    loop {
-        let host_overlay = notify.and_then(|notify| {
-            match overlay::install_overlay(&paths, &overlay_src, &notify.url) {
-                Ok(implanted) => Some(HostOverlay {
-                    patch_file: implanted.patch_file,
-                    notify_url: notify.url.clone(),
-                }),
-                Err(error) => {
-                    boot_log::info(&format!("overlay skipped: {error}"));
-                    None
-                }
-            }
-        });
-
-        match DesktopRuntime::start(paths.clone(), host_overlay.as_ref(), Arc::clone(&progress))
-            .await
-        {
-            Ok(runtime) => return Ok(runtime),
-            Err(error) if !repaired && is_missing_dependency_failure(&error) => {
-                boot_log::error(&format!(
-                    "host missing a provisioned dependency; re-provisioning: {error}"
-                ));
-                invalidate_provisioned_tree(&paths)?;
-                paths = ensure_or_recover(bundled.clone(), &progress).await?;
-                repaired = true;
-            }
-            Err(error) => return Err(error),
-        }
-    }
-}
-
-/// Provision the runtime, falling back to whatever Node / CLI already exists
-/// on disk when provisioning fails.
-async fn ensure_or_recover(
-    bundled: Option<PathBuf>,
-    progress: &Arc<dyn Fn(ProvisionEvent) + Send + Sync>,
-) -> Result<RuntimePaths, String> {
-    match ensure_runtime(bundled.clone(), {
-        let progress = Arc::clone(progress);
+    let paths = match ensure_runtime(bundled.clone(), components, network_proxy.clone(), {
+        let progress = Arc::clone(&progress);
         move |event| progress(event)
     })
     .await
     {
-        Ok(paths) => Ok(paths),
+        Ok(paths) => paths,
         Err(error) => {
             boot_log::error(&format!("provision failed: {error}"));
             if let Some(paths) = try_recover_paths(bundled.as_deref()) {
@@ -386,14 +326,35 @@ async fn ensure_or_recover(
                 } else {
                     i18n::t(Msg::BootRecoverGeneric).into()
                 }));
-                Ok(paths)
+                paths
             } else if is_recoverable_io(&error) {
-                Err(i18n::t(Msg::BootRecoverFailed).into())
+                return Err(i18n::t(Msg::BootRecoverFailed).into());
             } else {
-                Err(error)
+                return Err(error);
             }
         }
-    }
+    };
+
+    progress(ProvisionEvent::Status(
+        i18n::t(Msg::StatusProductRuntime).into(),
+    ));
+    let resource_dir = app.path().resource_dir().ok();
+    let product = product::resolve(resource_dir.as_deref())?;
+    boot_log::info(&format!(
+        "YourBuddy product runtime ready harbor={} integration={}",
+        product.harbor_bin.display(),
+        product.integration_version
+    ));
+
+    let overlay_src = overlay::resolve_overlay_source(resource_dir.as_deref());
+    let notify_url = notify.map(|server| server.url.as_str()).unwrap_or("");
+    let implanted = overlay::install_overlay(&paths, &overlay_src, notify_url, &product)?;
+    let host_overlay = Some(HostOverlay {
+        patch_file: implanted.patch_file,
+        notify_url: notify_url.to_string(),
+    });
+
+    DesktopRuntime::start(paths, host_overlay.as_ref(), progress, network_proxy).await
 }
 
 async fn boot_wsl_runtime(
@@ -447,9 +408,8 @@ async fn boot_wsl_runtime(
 
     progress(ProvisionEvent::Status(i18n::t(Msg::StatusStartWeb).into()));
     let host =
-        spawn_wsl_web_host(&wsl_paths, host_overlay.as_ref(), &runner, runtime::config::DEFAULT_WEB_PORT)
-            .await?;
-    Ok(DesktopRuntime::start_wsl(host, wsl_paths))
+        spawn_wsl_web_host(&wsl_paths, host_overlay.as_ref(), &runner, &network_proxy).await?;
+    Ok(DesktopRuntime::start_wsl(host, wsl_paths, network_proxy))
 }
 
 fn splash_eval(app: &AppHandle, script: &str) -> Result<(), String> {

@@ -11,6 +11,7 @@ use reqwest::redirect;
 
 use super::app_data_root;
 use super::boot_log;
+use super::config::DEFAULT_WEB_PORT;
 use super::process::{
     hide_console, isolate_host_group, kill_process_tree, reclaim_stale_host, write_host_pid,
 };
@@ -92,13 +93,11 @@ pub struct HostOverlay {
 /// is respawned with that plugin disabled through a rescue `--patch` overlay,
 /// so one broken community plugin cannot keep the desktop closed; the disable
 /// lasts only this boot, so a fixed or updated plugin loads again on restart.
-/// `preferred_port` is tried first; the scan continues ten ports upward so a
-/// watchdog restart rebinds the port the page still points at whenever free.
 pub async fn spawn_web_host(
     paths: &RuntimePaths,
     overlay: Option<&HostOverlay>,
     host_path: &str,
-    preferred_port: u16,
+    network_proxy: &ResolvedNetworkProxy,
 ) -> Result<HostHandle, String> {
     if !paths.cli_entry.is_file() {
         return Err(format!(
@@ -108,7 +107,7 @@ pub async fn spawn_web_host(
     }
 
     reclaim_stale_host(&host_pid_path());
-    let port = pick_port(preferred_port)?;
+    let port = pick_port(DEFAULT_WEB_PORT)?;
     let web_url = format!("http://127.0.0.1:{port}/");
     let mut disabled_plugins: Vec<String> = Vec::new();
     let mut last_error = String::new();
@@ -154,51 +153,56 @@ pub async fn spawn_web_host(
             std::thread::spawn(move || drain_lines(stderr, lines));
         }
 
-        let startup_url = Arc::new(Mutex::new(None));
-        if let Some(stdout) = child_handle
+        let stdout = child_handle
             .lock()
             .map_err(|e| e.to_string())?
             .as_mut()
             .and_then(|c| c.stdout.take())
-        {
-            collect_startup_url(stdout, &web_url, Arc::clone(&startup_url));
-        }
+            .ok_or_else(|| "dsh web stdout 不可用".to_string());
+        let stdout = match stdout {
+            Ok(stdout) => stdout,
+            Err(error) => {
+                reap_child_handle(&child_handle);
+                let _ = std::fs::remove_file(host_pid_path());
+                return Err(error);
+            }
+        };
+        let ready_urls = drain_stdout_for_ready_url(stdout);
 
-        let ready = wait_for_http(
+        let session_cookie = match wait_for_host_ready(
             &web_url,
-            &startup_url,
+            ready_urls,
             &child_handle,
             &stderr_lines,
             Duration::from_secs(120),
             None,
         )
-        .await;
-        if let Err(error) = &ready {
-            if let Ok(mut guard) = child_handle.lock() {
-                if let Some(mut child) = guard.take() {
-                    kill_process_tree(child.id());
-                    let _ = child.kill();
-                    let _ = child.wait();
+        .await
+        {
+            Ok(url) => url,
+            Err(error) => {
+                reap_child_handle(&child_handle);
+                let _ = std::fs::remove_file(host_pid_path());
+                last_error = error.clone();
+                match failing_loader_entry(&error).filter(|entry| !disabled_plugins.contains(entry))
+                {
+                    Some(entry) => {
+                        boot_log::error(&format!(
+                            "plugin {entry} failed to load; retrying with it disabled"
+                        ));
+                        disabled_plugins.push(entry);
+                        continue;
+                    }
+                    None => return Err(error),
                 }
             }
-            let _ = std::fs::remove_file(host_pid_path());
-            last_error = error.clone();
-            match failing_loader_entry(&error).filter(|entry| !disabled_plugins.contains(entry)) {
-                Some(entry) => {
-                    boot_log::error(&format!(
-                        "plugin {entry} failed to load; retrying with it disabled"
-                    ));
-                    disabled_plugins.push(entry);
-                    continue;
-                }
-                None => return Err(error.clone()),
-            }
-        }
-        boot_log::info(&format!("health check passed url={web_url}"));
+        };
+        boot_log::info(&format!("authenticated readiness passed url={web_url}"));
 
         return Ok(HostHandle {
             port,
-            web_url: ready?,
+            web_url,
+            session_cookie,
             disabled_plugins,
             wsl: Mutex::new(None),
             child: child_handle,
@@ -214,16 +218,14 @@ pub async fn spawn_web_host(
 ///
 /// `runner` is reserved for callers that already hold a `WslRunner`; the long-lived
 /// Host is spawned via `wsl.exe` directly so stdout/stderr stay piped.
-/// `preferred_port` is tried first so a watchdog restart rebinds the port the
-/// page still points at whenever free.
 pub async fn spawn_wsl_web_host(
     paths: &WslRuntimePaths,
     overlay: Option<&HostOverlay>,
     _runner: &dyn WslRunner,
-    preferred_port: u16,
+    network_proxy: &ResolvedNetworkProxy,
 ) -> Result<HostHandle, String> {
     reclaim_stale_host(&host_pid_path());
-    let port = pick_port(preferred_port)?;
+    let port = pick_port(DEFAULT_WEB_PORT)?;
     let web_url = format!("http://127.0.0.1:{port}/");
 
     let spec = WslLaunchSpec {
@@ -263,12 +265,6 @@ pub async fn spawn_wsl_web_host(
         boot_log::info(&format!("host pid file skipped: {error}"));
     }
 
-    let startup_url = Arc::new(Mutex::new(None));
-    if let Some(stdout) = child.stdout.take() {
-        collect_startup_url(stdout, &web_url, Arc::clone(&startup_url));
-    }
-
-    let child_handle = Arc::new(Mutex::new(Some(child)));
     let session = WslSession {
         distro: paths.distro.clone(),
         linux_pid,
@@ -285,19 +281,22 @@ pub async fn spawn_wsl_web_host(
 
     let child_handle = Arc::new(Mutex::new(Some(child)));
     let wsl_timeout = i18n::t(Msg::WslWaitForwarding);
-    let ready = wait_for_http(
+    let session_cookie = match wait_for_host_ready(
         &web_url,
-        &startup_url,
+        ready_urls,
         &child_handle,
         &stderr_lines,
         Duration::from_secs(120),
         Some(wsl_timeout),
     )
-    .await;
-    if let Err(error) = &ready {
-        reap_wsl_session_and_stub(&session, &child_handle);
-        return Err(error.clone());
-    }
+    .await
+    {
+        Ok(url) => url,
+        Err(error) => {
+            reap_wsl_session_and_stub(&session, &child_handle);
+            return Err(error);
+        }
+    };
 
     boot_log::info(&format!(
         "authenticated readiness passed url={web_url} linux_pid={linux_pid}"
@@ -305,7 +304,8 @@ pub async fn spawn_wsl_web_host(
 
     Ok(HostHandle {
         port,
-        web_url: ready?,
+        web_url,
+        session_cookie,
         disabled_plugins: Vec::new(),
         wsl: Mutex::new(Some(session)),
         child: child_handle,
@@ -530,17 +530,6 @@ fn failing_loader_entry(message: &str) -> Option<String> {
     (!id.is_empty()).then_some(id)
 }
 
-/// True when the Host exited because Node could not resolve a dependency of
-/// the provisioned tree (`ERR_MODULE_NOT_FOUND` from ESM resolution or
-/// `Cannot find module` from CJS). Unlike a plugin loader failure this names
-/// broken provisioning, so the caller repairs the tree instead of disabling
-/// plugin entries.
-pub fn is_missing_dependency_failure(error: &str) -> bool {
-    error.contains("ERR_MODULE_NOT_FOUND")
-        || error.contains("Cannot find package")
-        || error.contains("Cannot find module")
-}
-
 fn host_pid_path() -> std::path::PathBuf {
     app_data_root()
         .map(|root| root.join("host.pid"))
@@ -575,15 +564,7 @@ fn spawn_child(
     if let Some(overlay) = overlay {
         cmd.env("DSH_DESKTOP_NOTIFY_URL", &overlay.notify_url);
     }
-    if let Some(patch) = rescue_patch {
-        cmd.arg("--patch").arg(patch);
-    }
-    cmd.arg("--no-open")
-        .arg("--host")
-        .arg("127.0.0.1")
-        .arg("--port")
-        .arg(port.to_string())
-        .env("DSH_HOME", &paths.dsh_home)
+    cmd.env("DSH_HOME", &paths.dsh_home)
         .env("PATH", host_path)
         .env("NODE_ENV", "production")
         .current_dir(&paths.harness_root)
@@ -683,17 +664,94 @@ fn format_child_failure(stderr_lines: &Arc<Mutex<Vec<String>>>, exit_code: i32) 
     }
 }
 
-async fn wait_for_http(
-    url: &str,
-    startup_url: &Arc<Mutex<Option<String>>>,
+fn format_readiness_failure(stderr_lines: &Arc<Mutex<Vec<String>>>, message: &str) -> String {
+    let tail = stderr_lines
+        .lock()
+        .map(|lines| redact_launch_tokens(&lines.join("\n")))
+        .unwrap_or_default();
+    if tail.is_empty() {
+        message.to_string()
+    } else {
+        format!("{message}\n{tail}")
+    }
+}
+
+fn redact_launch_tokens(value: &str) -> String {
+    const NEEDLE: &str = "token=";
+    let mut output = String::with_capacity(value.len());
+    let mut remaining = value;
+    while let Some(start) = remaining.find(NEEDLE) {
+        let value_start = start + NEEDLE.len();
+        output.push_str(&remaining[..value_start]);
+        let token_len = remaining[value_start..]
+            .bytes()
+            .take_while(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+            .count();
+        if token_len == 0 {
+            remaining = &remaining[value_start..];
+            continue;
+        }
+        output.push_str("<redacted>");
+        remaining = &remaining[value_start + token_len..];
+    }
+    output.push_str(remaining);
+    output
+}
+
+fn readiness_timeout(url: &str, timeout_detail: Option<&str>) -> String {
+    match timeout_detail {
+        Some(detail) => format!("等待 {url} 就绪超时。{detail}"),
+        None => format!("等待 {url} 就绪超时"),
+    }
+}
+
+fn authenticated_exchange_cookie(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get(SET_COOKIE)?
+        .to_str()
+        .ok()
+        .map(ToOwned::to_owned)
+}
+
+async fn wait_for_host_ready(
+    web_url: &str,
+    ready_urls: mpsc::Receiver<String>,
     child: &Arc<Mutex<Option<Child>>>,
     stderr_lines: &Arc<Mutex<Vec<String>>>,
     timeout: Duration,
     timeout_detail: Option<&str>,
 ) -> Result<String, String> {
+    let deadline = tokio::time::Instant::now() + timeout;
+    let launch_url = loop {
+        if tokio::time::Instant::now() >= deadline {
+            if let Some(code) = child_exit_code(child) {
+                return Err(format_child_failure(stderr_lines, code));
+            }
+            return Err(readiness_timeout(web_url, timeout_detail));
+        }
+        if let Some(code) = child_exit_code(child) {
+            return Err(format_child_failure(stderr_lines, code));
+        }
+        match ready_urls.try_recv() {
+            Ok(url) => break url,
+            Err(TryRecvError::Disconnected) => {
+                if let Some(code) = child_exit_code(child) {
+                    return Err(format_child_failure(stderr_lines, code));
+                }
+                return Err(format_readiness_failure(
+                    stderr_lines,
+                    "dsh web stdout 在报告就绪前已关闭",
+                ));
+            }
+            Err(TryRecvError::Empty) => {}
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
-        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+        .redirect(redirect::Policy::none())
         .build()
         .map_err(|e| e.to_string())?;
     let mut logged_failure = false;
@@ -710,26 +768,7 @@ async fn wait_for_http(
             return Err(format_child_failure(stderr_lines, code));
         }
 
-        let authenticated = startup_url.lock().map_err(|_| "启动地址不可用")?.clone();
-        let Some(authenticated) = authenticated else {
-            tokio::time::sleep(Duration::from_millis(150)).await;
-            continue;
-        };
-        match client.get(&authenticated).send().await {
-            Ok(response)
-                if response.status() == reqwest::StatusCode::SEE_OTHER
-                    && response
-                        .headers()
-                        .get("location")
-                        .is_some_and(|value| value.to_str().is_ok_and(is_exchange_redirect))
-                    && response.headers().contains_key("set-cookie") =>
-            {
-                boot_log::info(&format!(
-                    "http ready status={} url={url}",
-                    response.status()
-                ));
-                return Ok(authenticated);
-            }
+        match client.get(&launch_url).send().await {
             Ok(response) => {
                 if let Some(session_cookie) = authenticated_exchange_cookie(response.headers()) {
                     return Ok(session_cookie);
@@ -742,8 +781,8 @@ async fn wait_for_http(
             Err(err) => {
                 if !logged_failure {
                     boot_log::info(&format!(
-                        "health probe failed url={url} err={}",
-                        err.without_url()
+                        "authenticated readiness probe failed url={web_url} err={}",
+                        redact_launch_tokens(&err.to_string())
                     ));
                     logged_failure = true;
                 }
@@ -752,45 +791,6 @@ async fn wait_for_http(
 
         tokio::time::sleep(Duration::from_millis(150)).await;
     }
-}
-
-/// 令牌交换成功的重定向目标。dsh 0.1.7 起回答相对路径 `./`，更早版本回答 `/`。
-fn is_exchange_redirect(value: &str) -> bool {
-    value == "/" || value == "./"
-}
-
-// 只接收该子进程在预期回环端口打印的认证地址；令牌只在内存中交给 WebView。
-fn parse_startup_url(line: &str, base: &str) -> Option<String> {
-    let candidate = line.strip_prefix("dsh web: ")?.split_whitespace().next()?;
-    let url = url::Url::parse(candidate).ok()?;
-    let expected = url::Url::parse(base).ok()?;
-    let pairs: Vec<_> = url.query_pairs().collect();
-    (url.origin() == expected.origin()
-        && url.path() == "/"
-        && url.username().is_empty()
-        && url.password().is_none()
-        && url.fragment().is_none()
-        && pairs.len() == 1
-        && pairs[0].0 == "token"
-        && !pairs[0].1.is_empty())
-    .then(|| url.to_string())
-}
-
-fn collect_startup_url(
-    stdout: impl std::io::Read + Send + 'static,
-    base: &str,
-    target: Arc<Mutex<Option<String>>>,
-) {
-    let base = base.to_string();
-    std::thread::spawn(move || {
-        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-            if let Some(url) = parse_startup_url(&line, &base) {
-                if let Ok(mut value) = target.lock() {
-                    *value = Some(url);
-                }
-            }
-        }
-    });
 }
 
 fn pick_port(preferred: u16) -> Result<u16, String> {
@@ -809,8 +809,10 @@ fn port_free(port: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        failing_loader_entry, is_missing_dependency_failure, parse_linux_pid_from_stderr,
-        read_linux_pid_handshake, rescue_patch_body, wsl_stop_args,
+        authenticated_exchange_cookie, drain_lines, drain_stdout_for_ready_url,
+        failing_loader_entry, format_child_failure, native_web_args, parse_linux_pid_from_stderr,
+        parse_ready_url, read_linux_pid_handshake, read_ready_url_and_drain, reap_child_handle,
+        rescue_patch_body, wait_for_host_ready, wsl_stop_args,
     };
     use reqwest::header::{HeaderMap, HeaderValue, SET_COOKIE};
     use std::io::{Cursor, Read, Write};
@@ -820,38 +822,6 @@ mod tests {
     use std::sync::mpsc;
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
-
-    #[test]
-    fn startup_url_requires_the_expected_origin_and_one_token() {
-        let base = "http://127.0.0.1:17890/";
-        assert_eq!(
-            super::parse_startup_url(
-                "dsh web: http://127.0.0.1:17890/?token=test (LAN: ignored)",
-                base
-            ),
-            Some(format!("{base}?token=test"))
-        );
-        for line in [
-            "dsh web: http://example.com:17890/?token=test",
-            "dsh web: http://127.0.0.1:17891/?token=test",
-            "dsh web: http://127.0.0.1:17890/?token=a&token=b",
-            "dsh web: http://127.0.0.1:17890/?token=",
-            "dsh web: http://127.0.0.1:17890/",
-            "dsh web: http://user@127.0.0.1:17890/?token=test",
-            "dsh web: opening the default browser",
-        ] {
-            assert_eq!(super::parse_startup_url(line, base), None);
-        }
-    }
-
-    #[test]
-    fn exchange_redirect_accepts_absolute_and_relative_targets() {
-        assert!(super::is_exchange_redirect("/"));
-        assert!(super::is_exchange_redirect("./"));
-        for value in ["/?token=x", "http://127.0.0.1:17890/", "index.html", ""] {
-            assert!(!super::is_exchange_redirect(value));
-        }
-    }
 
     #[test]
     fn extracts_the_plugin_id_from_a_loader_failure() {
@@ -865,19 +835,6 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
         );
         assert_eq!(failing_loader_entry("dsh web 进程已退出 (code 1)"), None);
         assert_eq!(failing_loader_entry("failed to apply loader entry "), None);
-    }
-
-    #[test]
-    fn recognizes_a_missing_dependency_exit_as_a_provision_failure() {
-        let esm = "Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@deepseek-ai/dsh-app-boot' \
-imported from C:\\harness\\apps\\cli\\lib\\bin.js";
-        assert!(is_missing_dependency_failure(esm));
-        assert!(is_missing_dependency_failure(
-            "Error: Cannot find module 'zod'\n    at require"
-        ));
-        assert!(!is_missing_dependency_failure(
-            "dsh web 进程已退出 (code 1)\nError: dsh: plugin tree failed to load"
-        ));
     }
 
     #[test]

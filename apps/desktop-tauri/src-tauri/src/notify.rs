@@ -15,8 +15,6 @@ use crate::runtime::boot_log;
 #[derive(Clone)]
 pub struct NotifyHandle {
     pub url: String,
-    /// Content webviews report the client's effective color scheme here.
-    pub theme_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,13 +25,11 @@ struct NotifyPayload {
     session_id: Option<String>,
 }
 
-/// Bind `127.0.0.1:0` and serve `POST /notify` for the overlay plugin plus
-/// `POST /theme` for the content webview's color-scheme reports.
+/// Bind `127.0.0.1:0` and serve POST /notify for the overlay plugin.
 pub fn start(app: AppHandle) -> Result<NotifyHandle, String> {
     let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
     let url = format!("http://127.0.0.1:{port}/notify");
-    let theme_url = format!("http://127.0.0.1:{port}/theme");
     boot_log::info(&format!("desktop notify listening {url}"));
 
     let sound = resolve_sound_path(&app);
@@ -48,7 +44,7 @@ pub fn start(app: AppHandle) -> Result<NotifyHandle, String> {
         }
     });
 
-    Ok(NotifyHandle { url, theme_url })
+    Ok(NotifyHandle { url })
 }
 
 fn resolve_sound_path(app: &AppHandle) -> Option<PathBuf> {
@@ -76,12 +72,6 @@ fn handle_client(app: AppHandle, mut stream: TcpStream, sound: Option<&std::path
         Err(_) => return,
     };
     let request = String::from_utf8_lossy(&buf[..n]);
-    if request.starts_with("POST /theme") {
-        let body = request.split("\r\n\r\n").nth(1).unwrap_or("").trim();
-        let _ = stream.write_all(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n");
-        crate::chrome::apply_client_theme(&app, body);
-        return;
-    }
     if !request.starts_with("POST /notify") {
         let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");
         return;
@@ -97,7 +87,7 @@ fn handle_client(app: AppHandle, mut stream: TcpStream, sound: Option<&std::path
     let _ = stream.write_all(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n");
 
     let focused = app
-        .get_window("main")
+        .get_webview_window("main")
         .and_then(|window| window.is_focused().ok())
         .unwrap_or(false);
     if focused {
