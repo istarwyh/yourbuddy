@@ -181,7 +181,7 @@
   <aside id="window-chrome-fallback" data-tauri-drag-region>
     <div id="window-controls"></div>
   </aside>
-  <iframe id="app" title="YourBuddy"></iframe>
+  <iframe id="app" title="YourBuddy" allow="microphone"></iframe>
   <div id="close-prompt" class="modal" hidden>
     <div class="modal-mask" data-dismiss></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="close-title">
@@ -277,7 +277,9 @@
     const desktopLifecycleVersion = 1
     const desktopLifecycleRequestId = /^[A-Za-z0-9_-]{1,64}$/
     const networkProxyChannel = 'yourbuddy.desktop.network-proxy'
-    const networkProxyVersion = 4
+    const networkProxyVersion = 5
+    const environmentChannel = 'yourbuddy.desktop.environment'
+    const environmentVersion = 1
     const externalLinkChannel = 'yourbuddy.desktop.external-link'
     const externalLinkVersion = 1
     const marketplaceLinkChannel = 'yourbuddy.desktop.marketplace-link'
@@ -321,8 +323,9 @@
     function isNetworkProxySettings(value) {
       if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
       const keys = Object.keys(value).sort()
-      return keys.join(',') === 'caCertificatePath,httpProxy,httpsProxy,mode,noProxy'
-        && ['direct', 'system', 'custom'].includes(value.mode)
+      return keys.join(',') === 'caCertificatePath,httpProxy,httpsProxy,mode,noProxy,version'
+        && value.version === 1
+        && ['inherit', 'direct', 'system', 'custom'].includes(value.mode)
         && typeof value.httpProxy === 'string'
         && value.httpProxy.length <= 2048
         && typeof value.httpsProxy === 'string'
@@ -348,6 +351,41 @@
       if (Object.keys(value).sort().join(',') !== 'channel,requestId,settings,type,version'
         || !isNetworkProxySettings(value.settings)) return false
       return value.type === 'test-request' ? 'test' : 'save'
+    }
+
+    function isShellEnvironmentSettings(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      if (Object.keys(value).sort().join(',') !== 'mode,shellPath') return false
+      return ['inherit', 'desktopOnly'].includes(value.mode)
+        && (value.shellPath === null
+          || (typeof value.shellPath === 'string'
+            && value.shellPath.length <= 4096
+            && !value.shellPath.includes('\0')))
+    }
+
+    function readEnvironmentAction(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+      if (value.channel !== environmentChannel
+        || value.version !== environmentVersion
+        || typeof value.requestId !== 'string'
+        || !desktopLifecycleRequestId.test(value.requestId)) return false
+      const keys = Object.keys(value).sort().join(',')
+      if (['get-request', 'get-permissions-request'].includes(value.type)) {
+        return keys === 'channel,requestId,type,version'
+          ? value.type === 'get-request' ? 'get' : 'get-permissions'
+          : false
+      }
+      if (['preview-request', 'save-request'].includes(value.type)) {
+        if (keys !== 'channel,requestId,settings,type,version'
+          || !isShellEnvironmentSettings(value.settings)) return false
+        return value.type === 'preview-request' ? 'preview' : 'save'
+      }
+      if (['request-permission-request', 'open-permission-settings-request'].includes(value.type)) {
+        if (keys !== 'channel,permission,requestId,type,version'
+          || !['accessibility', 'microphone', 'screenRecording', 'fullDiskAccess', 'notifications'].includes(value.permission)) return false
+        return value.type === 'request-permission-request' ? 'request-permission' : 'open-permission-settings'
+      }
+      return false
     }
 
     function isMarketplaceExternalUrl(value) {
@@ -481,6 +519,46 @@
           response.ok = true
         }
         catch (error) {
+          response.ok = false
+          response.error = String(error instanceof Error ? error.message : error).slice(0, 2048)
+        }
+        embeddedWindow.postMessage(response, embeddedOrigin)
+        return
+      }
+      const environmentAction = readEnvironmentAction(event.data)
+      if (environmentAction !== false) {
+        const response = {
+          channel: environmentChannel,
+          version: environmentVersion,
+          requestId: event.data.requestId,
+        }
+        embeddedWindow.postMessage({ ...response, type: `${environmentAction}-accepted` }, embeddedOrigin)
+        try {
+          const invoke = window.__TAURI__?.core?.invoke
+          if (typeof invoke !== 'function') throw new Error('Desktop environment bridge is unavailable')
+          if (environmentAction === 'get') {
+            response.value = await invoke('run_first_party_command', { command: 'get_shell_environment' })
+          }
+          else if (environmentAction === 'preview') {
+            response.value = await invoke('run_first_party_command', { command: 'preview_shell_environment', payload: { environmentSettings: event.data.settings } })
+          }
+          else if (environmentAction === 'save') {
+            response.value = await invoke('run_first_party_command', { command: 'save_shell_environment', payload: { environmentSettings: event.data.settings } })
+          }
+          else if (environmentAction === 'get-permissions') {
+            response.value = await invoke('run_first_party_command', { command: 'get_macos_permissions' })
+          }
+          else if (environmentAction === 'request-permission') {
+            response.value = await invoke('run_first_party_command', { command: 'request_macos_permission', payload: { permission: event.data.permission } })
+          }
+          else {
+            response.value = await invoke('run_first_party_command', { command: 'open_macos_permission_settings', payload: { permission: event.data.permission } })
+          }
+          response.type = `${environmentAction}-response`
+          response.ok = true
+        }
+        catch (error) {
+          response.type = `${environmentAction}-response`
           response.ok = false
           response.error = String(error instanceof Error ? error.message : error).slice(0, 2048)
         }

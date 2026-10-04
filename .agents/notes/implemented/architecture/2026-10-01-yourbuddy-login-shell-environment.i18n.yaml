@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-10-01-yourbuddy-login-shell-environment.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-10-01-yourbuddy-login-shell-environment.md
+/agent-note-yourbuddy-inherits-the-login-shell-environment:
+  en: 550ecde6a34b3b14
+  zh: b54cff675847df99
+/agent-note-yourbuddy-inherits-the-login-shell-environment/problem:
+  en: 161b0df79c4300a6
+  zh: 3c1cd62ee8aff99c
+/agent-note-yourbuddy-inherits-the-login-shell-environment/decision:
+  en: a97f9fc21a9e6860
+  zh: bd1ecb245eb4ac7a
+/agent-note-yourbuddy-inherits-the-login-shell-environment/alternatives-considered:
+  en: f4324b629803e08d
+  zh: fc0e0d4752bb05b0
+/agent-note-yourbuddy-inherits-the-login-shell-environment/consequences:
+  en: 71a72c74c1264420
+  zh: 227f080a828cb2ac

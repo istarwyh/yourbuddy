@@ -4,7 +4,7 @@
 export const DESKTOP_NETWORK_PROXY_CHANNEL = 'yourbuddy.desktop.network-proxy'
 
 /** Current browser-to-shell protocol version. */
-export const DESKTOP_NETWORK_PROXY_VERSION = 4
+export const DESKTOP_NETWORK_PROXY_VERSION = 5
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 const DEFAULT_HANDSHAKE_TIMEOUT_MS = 5_000
@@ -13,13 +13,14 @@ const MAX_NO_PROXY_LENGTH = 4_096
 const MAX_CA_CERTIFICATE_PATH_LENGTH = 4_096
 
 /** User-selectable proxy source. */
-export type NetworkProxyMode = 'direct' | 'system' | 'custom'
+export type NetworkProxyMode = 'inherit' | 'direct' | 'system' | 'custom'
 
 /** Trust source reported by a native or Host reachability test. */
 export type NetworkCaSource = 'system' | 'environment' | 'custom' | 'unknown'
 
 /** Persisted desktop proxy preferences. */
 export interface NetworkProxySettings {
+  version: 1
   mode: NetworkProxyMode
   httpProxy: string
   httpsProxy: string
@@ -28,7 +29,7 @@ export interface NetworkProxySettings {
 }
 
 /** Browser-safe effective proxy state. */
-export interface EffectiveNetworkProxy extends NetworkProxySettings {
+export interface EffectiveNetworkProxy extends Omit<NetworkProxySettings, 'version'> {
   caSource: Exclude<NetworkCaSource, 'unknown'>
 }
 
@@ -130,8 +131,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Validate a settings value received from the native shell. */
 export function readNetworkProxySettings(value: unknown): NetworkProxySettings | undefined {
   if (!isRecord(value)
-    || !hasExactKeys(value, 'caCertificatePath,httpProxy,httpsProxy,mode,noProxy')
-    || !['direct', 'system', 'custom'].includes(String(value.mode))
+    || !hasExactKeys(value, 'caCertificatePath,httpProxy,httpsProxy,mode,noProxy,version')
+    || value.version !== 1
+    || !['inherit', 'direct', 'system', 'custom'].includes(String(value.mode))
     || typeof value.httpProxy !== 'string'
     || value.httpProxy.length > MAX_PROXY_URL_LENGTH
     || typeof value.httpsProxy !== 'string'
@@ -148,6 +150,7 @@ function readEffectiveProxy(value: unknown): EffectiveNetworkProxy | undefined {
     || !hasExactKeys(value, 'caCertificatePath,caSource,httpProxy,httpsProxy,mode,noProxy')
     || !['system', 'environment', 'custom'].includes(String(value.caSource))) return undefined
   const settings = {
+    version: 1 as const,
     mode: value.mode,
     httpProxy: value.httpProxy,
     httpsProxy: value.httpsProxy,
@@ -212,7 +215,7 @@ function readTestResult(value: unknown): NetworkProxyTestResult | undefined {
     || Number(value.status) > 599
     || typeof value.errorCode !== 'string'
     || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode)
-    || !['direct', 'system', 'custom', 'unknown'].includes(String(value.proxyMode))
+    || !['inherit', 'direct', 'system', 'custom', 'unknown'].includes(String(value.proxyMode))
     || !['system', 'environment', 'custom', 'unknown'].includes(String(value.caSource))
     || (value.ok && (Number(value.status) < 100 || value.errorCode !== ''))
     || (!value.ok && value.errorCode === '')) return undefined

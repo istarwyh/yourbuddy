@@ -35,7 +35,8 @@ vi.mock('../src/client/desktop-lifecycle.ts', () => ({
 }))
 
 const settings = {
-  mode: 'custom' as const,
+  version: 1 as const,
+  mode: 'inherit' as const,
   httpProxy: 'http://127.0.0.1:7890',
   httpsProxy: 'http://127.0.0.1:7890',
   noProxy: '*.local',
@@ -54,8 +55,11 @@ const snapshot = {
     error: '',
   },
   effective: {
-    ...settings,
+    mode: settings.mode,
+    httpProxy: settings.httpProxy,
+    httpsProxy: settings.httpsProxy,
     noProxy: 'localhost,127.0.0.1,::1,*.local',
+    caCertificatePath: settings.caCertificatePath,
     caSource: 'environment' as const,
   },
   effectiveError: '',
@@ -66,7 +70,7 @@ const nativeResult = {
   status: 200,
   proxied: true,
   errorCode: '',
-  proxyMode: 'custom' as const,
+  proxyMode: 'inherit' as const,
   caSource: 'environment' as const,
 }
 

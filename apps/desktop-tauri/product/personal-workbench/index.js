@@ -223,7 +223,7 @@ function hasEnvironmentProxyDispatcher() {
   return Reflect.get(globalThis, ENVIRONMENT_PROXY_DISPATCHER_MARK) === true;
 }
 function activePolicy(environment) {
-  const proxyMode = ["direct", "system", "custom"].includes(
+  const proxyMode = ["inherit", "direct", "system", "custom"].includes(
     environment.YOURBUDDY_NETWORK_PROXY_MODE ?? ""
   ) ? environment.YOURBUDDY_NETWORK_PROXY_MODE : "unknown";
   const managedCaSource = environment.YOURBUDDY_NETWORK_CA_SOURCE;

@@ -58,6 +58,10 @@ test('all desktop operations share one stable first-party framework permission',
   )
 })
 
+test('the cross-origin Host iframe may request microphone access', () => {
+  assert.match(shell, /<iframe\b[^>]*\ballow="microphone"/u)
+})
+
 test('the first-party command gateway is available to local and runtime-owned product surfaces', () => {
   assert.equal(defaultCapability.local ?? true, true)
   assert.equal(

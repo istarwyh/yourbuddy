@@ -8,7 +8,7 @@ export interface HostNetworkProxyTestResult {
   status: number
   proxied: boolean
   errorCode: string
-  proxyMode: 'direct' | 'system' | 'custom' | 'unknown'
+  proxyMode: 'inherit' | 'direct' | 'system' | 'custom' | 'unknown'
   caSource: 'system' | 'environment' | 'custom' | 'unknown'
 }
 
@@ -33,7 +33,7 @@ function readResult(value: unknown): HostNetworkProxyTestResult | undefined {
     || result.status > 599
     || typeof result.proxied !== 'boolean'
     || typeof result.errorCode !== 'string'
-    || !['direct', 'system', 'custom', 'unknown'].includes(String(result.proxyMode))
+    || !['inherit', 'direct', 'system', 'custom', 'unknown'].includes(String(result.proxyMode))
     || !['system', 'environment', 'custom', 'unknown'].includes(String(result.caSource))
     || result.errorCode.length > 64) return undefined
   return result as unknown as HostNetworkProxyTestResult

@@ -93,7 +93,9 @@ pub fn build_wsl_web_command(
 #[cfg(test)]
 mod tests {
     use super::{build_wsl_web_command, WslLaunchSpec};
-    use crate::network_proxy::{resolve_without_environment_ca as resolve, NetworkProxySettings};
+    use crate::network_proxy::{
+        resolve_without_environment_ca as resolve, NetworkProxyMode, NetworkProxySettings,
+    };
 
     fn spec() -> WslLaunchSpec {
         WslLaunchSpec {
@@ -114,7 +116,11 @@ mod tests {
     #[test]
     fn wsl_desktop_host_orders_launcher_patches_before_web_arguments() {
         let s = spec();
-        let proxy = resolve(&NetworkProxySettings::default()).unwrap();
+        let proxy = resolve(&NetworkProxySettings {
+            mode: NetworkProxyMode::Inherit,
+            ..NetworkProxySettings::default()
+        })
+        .unwrap();
         let cmd = build_wsl_web_command(&s, &proxy).unwrap();
         assert_eq!(cmd.program, "wsl.exe");
         let expected: Vec<String> = vec![
@@ -151,7 +157,7 @@ mod tests {
             "-u".to_string(),
             "YOURBUDDY_NETWORK_CA_SOURCE".to_string(),
             "NODE_OPTIONS=--use-system-ca".to_string(),
-            "YOURBUDDY_NETWORK_PROXY_MODE=direct".to_string(),
+            "YOURBUDDY_NETWORK_PROXY_MODE=inherit".to_string(),
             "YOURBUDDY_NETWORK_CA_SOURCE=system".to_string(),
             "PATH=/home/u/.local/share/dsh-desktop/runtime/node/bin:/usr/bin".to_string(),
             "DSH_HOME=/home/u/.dsh".to_string(),

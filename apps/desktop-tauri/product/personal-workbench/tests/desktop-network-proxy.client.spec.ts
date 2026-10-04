@@ -46,6 +46,7 @@ class FakeWindow {
 }
 
 const settings: NetworkProxySettings = {
+  version: 1,
   mode: 'custom',
   httpProxy: 'http://127.0.0.1:7890',
   httpsProxy: 'http://127.0.0.1:7890',
@@ -64,7 +65,14 @@ const snapshot = {
     autoConfigUrl: '',
     error: '',
   },
-  effective: { ...settings, caSource: 'custom' },
+  effective: {
+    mode: settings.mode,
+    httpProxy: settings.httpProxy,
+    httpsProxy: settings.httpsProxy,
+    noProxy: settings.noProxy,
+    caCertificatePath: settings.caCertificatePath,
+    caSource: 'custom',
+  },
   effectiveError: '',
 }
 

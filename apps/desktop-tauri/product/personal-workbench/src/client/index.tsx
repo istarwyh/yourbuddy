@@ -23,6 +23,7 @@ import {
 import { ApplicationLifecycleRow } from './ApplicationLifecycleRow.tsx'
 import { CapabilityPackSection } from './CapabilityPackSection.tsx'
 import { NetworkProxyRow } from './NetworkProxyRow.tsx'
+import { EnvironmentPermissionsRow } from './EnvironmentPermissionsRow.tsx'
 import { HelpMenu, type HelpMenuInjected } from './HelpMenu.tsx'
 import { WindowControls } from './WindowControls.tsx'
 import { installDesktopExternalLinks } from './desktop-external-links.ts'
@@ -194,6 +195,12 @@ export function apply(ctx: Context): void {
   }, NetworkProxyRow))
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item',
+    id: 'environment-permissions',
+    order: 35,
+    locale: SETTINGS_LOCALE_NAMESPACE,
+  }, EnvironmentPermissionsRow))
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item',
     id: 'application-lifecycle',
     order: 40,
     locale: SETTINGS_LOCALE_NAMESPACE,
@@ -209,6 +216,7 @@ export function apply(ctx: Context): void {
 export type { ApplicationLifecycleRowProps } from './ApplicationLifecycleRow.tsx'
 export type { BrandSettingsRowProps } from './BrandSettingsRow.tsx'
 export type { NetworkProxyRowProps } from './NetworkProxyRow.tsx'
+export type { EnvironmentPermissionsRowProps } from './EnvironmentPermissionsRow.tsx'
 export type { HelpMenuProps } from './HelpMenu.tsx'
 export type { WindowControlsProps } from './WindowControls.tsx'
 export type PersonalBrandSettingsLocaleProps = PropsLocale<'settings.personal-workbench'>

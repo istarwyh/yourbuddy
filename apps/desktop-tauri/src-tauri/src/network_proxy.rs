@@ -105,12 +105,15 @@ finally {
 process.stdout.write(`${JSON.stringify(result)}\n`)
 "#;
 
+pub const NETWORK_PROXY_SETTINGS_VERSION: u32 = 1;
+
 /// User-selected source of the application's outbound proxy configuration.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NetworkProxyMode {
+    /// Use proxy and CA candidates from the startup environment capture.
+    Inherit,
     /// Ignore ambient proxy variables and connect directly.
-    #[default]
     Direct,
     /// Read fixed HTTP and HTTPS endpoints from macOS System Configuration.
     System,
@@ -118,9 +121,24 @@ pub enum NetworkProxyMode {
     Custom,
 }
 
+impl Default for NetworkProxyMode {
+    fn default() -> Self {
+        default_mode_for_platform(cfg!(target_os = "macos"))
+    }
+}
+
+fn default_mode_for_platform(is_macos: bool) -> NetworkProxyMode {
+    if is_macos {
+        NetworkProxyMode::Inherit
+    } else {
+        NetworkProxyMode::Direct
+    }
+}
+
 impl NetworkProxyMode {
     fn as_env(self) -> &'static str {
         match self {
+            Self::Inherit => "inherit",
             Self::Direct => "direct",
             Self::System => "system",
             Self::Custom => "custom",
@@ -152,9 +170,11 @@ impl NetworkCaSource {
 }
 
 /// Persisted application-wide network proxy preferences.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct NetworkProxySettings {
+    #[serde(default)]
+    pub version: u32,
     #[serde(default)]
     pub mode: NetworkProxyMode,
     #[serde(default)]
@@ -165,6 +185,29 @@ pub struct NetworkProxySettings {
     pub no_proxy: String,
     #[serde(default)]
     pub ca_certificate_path: String,
+}
+
+impl Default for NetworkProxySettings {
+    fn default() -> Self {
+        Self {
+            version: NETWORK_PROXY_SETTINGS_VERSION,
+            mode: NetworkProxyMode::default(),
+            http_proxy: String::new(),
+            https_proxy: String::new(),
+            no_proxy: String::new(),
+            ca_certificate_path: String::new(),
+        }
+    }
+}
+
+impl NetworkProxySettings {
+    /// Legacy settings omitted mode and therefore used Direct.
+    pub fn legacy_direct() -> Self {
+        Self {
+            mode: NetworkProxyMode::Direct,
+            ..Self::default()
+        }
+    }
 }
 
 /// Validated proxy values fixed for one desktop-process lifetime.
@@ -304,10 +347,12 @@ impl ResolvedNetworkProxy {
     }
 }
 
-/// Resolve one selection with an explicit CA before validated launch-environment trust.
+/// Resolve one selection from the frozen startup environment and explicit desktop settings.
 pub fn resolve(settings: &NetworkProxySettings) -> Result<ResolvedNetworkProxy, String> {
-    let inherited_ca = if settings.ca_certificate_path.trim().is_empty() {
-        detect_environment_ca_certificate()?
+    let inherited_ca = if settings.mode == NetworkProxyMode::Inherit
+        && settings.ca_certificate_path.trim().is_empty()
+    {
+        startup_environment_var("NODE_EXTRA_CA_CERTS")
     } else {
         None
     };
@@ -321,13 +366,23 @@ pub(crate) fn resolve_without_environment_ca(
     resolve_with_environment_ca(settings, None)
 }
 
+fn validate_settings_version(settings: &NetworkProxySettings) -> Result<(), String> {
+    if settings.version == NETWORK_PROXY_SETTINGS_VERSION {
+        Ok(())
+    } else {
+        Err("network-proxy-settings-version-unsupported".into())
+    }
+}
+
 fn resolve_with_environment_ca(
     settings: &NetworkProxySettings,
     inherited_ca: Option<&OsStr>,
 ) -> Result<ResolvedNetworkProxy, String> {
+    validate_settings_version(settings)?;
     validate_inactive_custom_fields(settings)?;
     let (ca_certificate_path, ca_source) = resolve_ca_source(settings, inherited_ca)?;
     match settings.mode {
+        NetworkProxyMode::Inherit => resolve_inherited(ca_certificate_path, ca_source),
         NetworkProxyMode::Direct => {
             Ok(ResolvedNetworkProxy::direct(ca_certificate_path, ca_source))
         }
@@ -347,6 +402,94 @@ fn resolve_with_environment_ca(
             })
         }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum EnvironmentProxyCandidate {
+    Accepted(Url),
+    Rejected,
+    Absent,
+}
+
+fn resolve_inherited(
+    ca_certificate_path: Option<PathBuf>,
+    ca_source: NetworkCaSource,
+) -> Result<ResolvedNetworkProxy, String> {
+    resolve_inherited_with(
+        &|name| startup_environment_var(name),
+        ca_certificate_path,
+        ca_source,
+    )
+}
+
+fn resolve_inherited_with(
+    lookup: &impl Fn(&str) -> Option<OsString>,
+    ca_certificate_path: Option<PathBuf>,
+    ca_source: NetworkCaSource,
+) -> Result<ResolvedNetworkProxy, String> {
+    let all = environment_proxy_candidate(lookup, "all_proxy");
+    let http = environment_proxy_candidate(lookup, "http_proxy");
+    let https = environment_proxy_candidate(lookup, "https_proxy");
+    let all_url = match &all {
+        EnvironmentProxyCandidate::Accepted(url) => Some(url.clone()),
+        EnvironmentProxyCandidate::Rejected | EnvironmentProxyCandidate::Absent => None,
+    };
+    let http_proxy = resolve_environment_scheme(http, [all_url.clone(), None]);
+    let https_proxy = resolve_environment_scheme(https, [all_url, http_proxy.clone()]);
+    let no_proxy = environment_text(lookup, "no_proxy").unwrap_or_default();
+    Ok(ResolvedNetworkProxy {
+        mode: NetworkProxyMode::Inherit,
+        http_proxy,
+        https_proxy,
+        no_proxy: normalize_no_proxy(&no_proxy)?,
+        ca_certificate_path,
+        ca_source,
+    })
+}
+
+fn resolve_environment_scheme(
+    own: EnvironmentProxyCandidate,
+    fallbacks: [Option<Url>; 2],
+) -> Option<Url> {
+    match own {
+        EnvironmentProxyCandidate::Accepted(url) => Some(url),
+        EnvironmentProxyCandidate::Rejected => None,
+        EnvironmentProxyCandidate::Absent => fallbacks.into_iter().flatten().next(),
+    }
+}
+
+fn environment_proxy_candidate(
+    lookup: &impl Fn(&str) -> Option<OsString>,
+    lower: &str,
+) -> EnvironmentProxyCandidate {
+    let Some(value) = environment_text(lookup, lower) else {
+        return EnvironmentProxyCandidate::Absent;
+    };
+    match parse_optional_proxy_url(lower, &value) {
+        Ok(Some(url)) => EnvironmentProxyCandidate::Accepted(url),
+        Ok(None) => EnvironmentProxyCandidate::Absent,
+        Err(_) => EnvironmentProxyCandidate::Rejected,
+    }
+}
+
+fn environment_text(lookup: &impl Fn(&str) -> Option<OsString>, lower: &str) -> Option<String> {
+    for name in [lower.to_string(), lower.to_ascii_uppercase()] {
+        let Some(value) = lookup(&name) else {
+            continue;
+        };
+        let Some(value) = value.to_str() else {
+            continue;
+        };
+        let value = value.trim();
+        if !value.is_empty() {
+            return Some(value.to_string());
+        }
+    }
+    None
+}
+
+fn startup_environment_var(name: &str) -> Option<OsString> {
+    crate::shell_environment::captured_var_os(name).or_else(|| std::env::var_os(name))
 }
 
 fn resolve_custom(
@@ -471,36 +614,16 @@ fn resolve_ca_source(
     let Some(raw) = inherited_ca else {
         return Ok((None, NetworkCaSource::System));
     };
-    let raw = raw
-        .to_str()
-        .ok_or_else(|| "network-proxy-ca-path-invalid".to_string())?;
+    let Some(raw) = raw.to_str() else {
+        return Ok((None, NetworkCaSource::System));
+    };
     if raw.trim().is_empty() {
         return Ok((None, NetworkCaSource::System));
     }
-    resolve_ca_certificate(raw).map(|path| (path, NetworkCaSource::Environment))
-}
-
-fn detect_environment_ca_certificate() -> Result<Option<OsString>, String> {
-    if let Some(value) = std::env::var_os("NODE_EXTRA_CA_CERTS") {
-        return Ok(Some(value));
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let output = match Command::new("/bin/launchctl")
-            .args(["getenv", "NODE_EXTRA_CA_CERTS"])
-            .output()
-        {
-            Ok(output) if output.status.success() => output,
-            Ok(_) | Err(_) => return Ok(None),
-        };
-        let value = String::from_utf8(output.stdout)
-            .map_err(|_| "network-proxy-ca-path-invalid".to_string())?;
-        let value = value.trim();
-        if !value.is_empty() {
-            return Ok(Some(OsString::from(value)));
-        }
-    }
-    Ok(None)
+    Ok(match resolve_ca_certificate(raw) {
+        Ok(path) => (path, NetworkCaSource::Environment),
+        Err(_) => (None, NetworkCaSource::System),
+    })
 }
 
 fn resolve_ca_certificate(raw: &str) -> Result<Option<PathBuf>, String> {
@@ -939,6 +1062,7 @@ fn normalize_persisted_settings(
     settings: &mut NetworkProxySettings,
     resolved: &ResolvedNetworkProxy,
 ) -> Result<(), String> {
+    settings.version = NETWORK_PROXY_SETTINGS_VERSION;
     if settings.mode == NetworkProxyMode::Custom {
         settings.http_proxy = resolved
             .http_proxy
@@ -1208,6 +1332,8 @@ pub fn log_active(proxy: &ResolvedNetworkProxy) {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+    use std::ffi::OsString;
     use std::fs;
     use std::path::PathBuf;
     use std::process::Command;
@@ -1219,9 +1345,11 @@ mod tests {
     use x509_parser::time::ASN1Time;
 
     use super::{
-        apply_to_client, apply_to_command, normalize_persisted_settings, parse_scutil_proxy,
-        resolve_with_environment_ca, resolve_without_environment_ca as resolve, rustls_error_code,
+        apply_to_client, apply_to_command, default_mode_for_platform, normalize_persisted_settings,
+        parse_scutil_proxy, resolve_inherited_with, resolve_with_environment_ca,
+        resolve_without_environment_ca as resolve, rustls_error_code,
         validate_ca_certificate_file_at, NetworkCaSource, NetworkProxyMode, NetworkProxySettings,
+        NETWORK_PROXY_SETTINGS_VERSION,
     };
 
     const TEST_CA_PEM: &str = r#"-----BEGIN CERTIFICATE-----
@@ -1263,6 +1391,7 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
 
     fn custom() -> NetworkProxySettings {
         NetworkProxySettings {
+            version: NETWORK_PROXY_SETTINGS_VERSION,
             mode: NetworkProxyMode::Custom,
             http_proxy: "http://127.0.0.1:7890".into(),
             https_proxy: "http://127.0.0.1:7890".into(),
@@ -1320,6 +1449,40 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
             http_only.error,
             "network-proxy-system-http-only-unsupported"
         );
+    }
+
+    #[test]
+    fn inherits_proxy_slots_with_lowercase_precedence_and_loopback_bypass() {
+        let environment = HashMap::from([
+            ("http_proxy", OsString::from("http://lower.example:8080")),
+            ("HTTP_PROXY", OsString::from("http://upper.example:8080")),
+            ("ALL_PROXY", OsString::from("http://all.example:8080")),
+            ("NO_PROXY", OsString::from("internal.example")),
+        ]);
+        let resolved = resolve_inherited_with(
+            &|name| environment.get(name).cloned(),
+            None,
+            NetworkCaSource::System,
+        )
+        .unwrap();
+        assert_eq!(resolved.mode, NetworkProxyMode::Inherit);
+        assert_eq!(
+            resolved.http_proxy.as_ref().map(Url::as_str),
+            Some("http://lower.example:8080/")
+        );
+        assert_eq!(
+            resolved.https_proxy.as_ref().map(Url::as_str),
+            Some("http://all.example:8080/")
+        );
+        assert!(resolved.no_proxy.contains("internal.example"));
+        assert!(resolved.no_proxy.contains("localhost"));
+        assert!(resolved.no_proxy.contains("127.0.0.1"));
+    }
+
+    #[test]
+    fn fresh_proxy_mode_inherits_only_on_macos() {
+        assert_eq!(default_mode_for_platform(true), NetworkProxyMode::Inherit);
+        assert_eq!(default_mode_for_platform(false), NetworkProxyMode::Direct);
     }
 
     #[test]
@@ -1409,6 +1572,18 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
     }
 
     #[test]
+    fn invalid_environment_ca_falls_back_to_system_trust() {
+        let settings = NetworkProxySettings::default();
+        let resolved = resolve_with_environment_ca(
+            &settings,
+            Some(std::ffi::OsStr::new("/missing/environment-ca.pem")),
+        )
+        .unwrap();
+        assert_eq!(resolved.ca_source(), NetworkCaSource::System);
+        assert_eq!(resolved.ca_certificate_path(), None);
+    }
+
+    #[test]
     fn command_policy_replaces_ambient_proxy_variables_in_both_cases() {
         let mut direct_command = Command::new("node");
         direct_command.env("HTTP_PROXY", "http://ambient.invalid:1");
@@ -1417,7 +1592,7 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
         direct_command.env("NODE_EXTRA_CA_CERTS", "/tmp/ambient.pem");
         apply_to_command(
             &mut direct_command,
-            &resolve(&NetworkProxySettings::default()).unwrap(),
+            &resolve(&NetworkProxySettings::legacy_direct()).unwrap(),
         );
         let direct_env: Vec<_> = direct_command.get_envs().collect();
         assert!(direct_env
@@ -1455,7 +1630,7 @@ S6SwbXK80h7DuF0rHy94HjkjOYfkfNPnOccktVWMuUUJqLc=
     fn native_clients_accept_the_platform_certificate_verifier() {
         let builder = apply_to_client(
             reqwest::Client::builder(),
-            &resolve(&NetworkProxySettings::default()).unwrap(),
+            &resolve(&NetworkProxySettings::legacy_direct()).unwrap(),
         )
         .unwrap();
         builder.build().unwrap();

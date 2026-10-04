@@ -17,7 +17,7 @@ export interface HostNetworkProxyTestResult {
   status: number
   proxied: boolean
   errorCode: string
-  proxyMode: 'direct' | 'system' | 'custom' | 'unknown'
+  proxyMode: 'inherit' | 'direct' | 'system' | 'custom' | 'unknown'
   caSource: 'system' | 'environment' | 'custom' | 'unknown'
 }
 
@@ -44,7 +44,7 @@ function activePolicy(environment: NodeJS.ProcessEnv): Pick<
   HostNetworkProxyTestResult,
   'proxyMode' | 'caSource'
 > {
-  const proxyMode = ['direct', 'system', 'custom'].includes(
+  const proxyMode = ['inherit', 'direct', 'system', 'custom'].includes(
     environment.YOURBUDDY_NETWORK_PROXY_MODE ?? '',
   )
     ? environment.YOURBUDDY_NETWORK_PROXY_MODE as HostNetworkProxyTestResult['proxyMode']

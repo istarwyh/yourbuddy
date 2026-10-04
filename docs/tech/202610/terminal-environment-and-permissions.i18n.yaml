@@ -1,0 +1,58 @@
+# Bilingual-pair consistency record for terminal-environment-and-permissions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/tech/202610/terminal-environment-and-permissions.md
+/:
+  en: c328b0fa76d9bef3
+  zh: 488df5cfe002e5e0
+/yourbuddy-terminal-environment-and-macos-permission-plan:
+  en: 65b321bbd5b78af2
+  zh: c529a8588acfae56
+/yourbuddy-terminal-environment-and-macos-permission-plan/summary:
+  en: 322e2f952fb5c40e
+  zh: 93eb742bbf986ce5
+/yourbuddy-terminal-environment-and-macos-permission-plan/table-of-contents:
+  en: 4b64114608a1c13f
+  zh: bbefdeed891b2a29
+/yourbuddy-terminal-environment-and-macos-permission-plan/fixed-product-decisions:
+  en: edeac913879de69a
+  zh: 5c9b55c903e11302
+/yourbuddy-terminal-environment-and-macos-permission-plan/goals-and-limits:
+  en: 8f51c573fec4bdcb
+  zh: 8d26637baca1d4b5
+/yourbuddy-terminal-environment-and-macos-permission-plan/current-implementation:
+  en: b9daefda2e168cfe
+  zh: 68836b97427f9c69
+/yourbuddy-terminal-environment-and-macos-permission-plan/target-architecture-and-startup-order:
+  en: 4d8dfa815a30b94d
+  zh: fb1ac643d02b37e5
+/yourbuddy-terminal-environment-and-macos-permission-plan/environment-precedence:
+  en: e4b3c45abfaf592b
+  zh: 157ce5040e7e1530
+/yourbuddy-terminal-environment-and-macos-permission-plan/network-and-ca:
+  en: 216b63f652ecaf63
+  zh: fcbd3988a4db2c97
+/yourbuddy-terminal-environment-and-macos-permission-plan/macos-permission-model:
+  en: b596d56c9002838b
+  zh: 12855f1e2701ad7d
+/yourbuddy-terminal-environment-and-macos-permission-plan/data-model-and-protocol:
+  en: ecd18bc3b3eed42c
+  zh: 28e847697f37324d
+/yourbuddy-terminal-environment-and-macos-permission-plan/settings-and-diagnostics:
+  en: 70b94830a4e92501
+  zh: ec264f027ca3c57c
+/yourbuddy-terminal-environment-and-macos-permission-plan/failure-handling:
+  en: 1c1a9324823e4aa4
+  zh: d0037d5896aa9584
+/yourbuddy-terminal-environment-and-macos-permission-plan/implementation-locations-and-dependencies:
+  en: d8ca94aa368a9cc4
+  zh: a530d0cdfa963ffb
+/yourbuddy-terminal-environment-and-macos-permission-plan/testing-and-acceptance:
+  en: 88a3bcd037f1647d
+  zh: b514f9232ce5fb12
+/yourbuddy-terminal-environment-and-macos-permission-plan/delivery-order:
+  en: 1c1bb79a2f1d249b
+  zh: 3d105664b141b28f
+/yourbuddy-terminal-environment-and-macos-permission-plan/dev-note:
+  en: 20f9c4b02118899c
+  zh: 074b08692ab4978f

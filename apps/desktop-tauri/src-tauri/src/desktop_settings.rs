@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::network_proxy::NetworkProxySettings;
+use crate::network_proxy::{NetworkProxySettings, NETWORK_PROXY_SETTINGS_VERSION};
 use crate::runtime::app_data_root;
 
 /// What the title-bar / window close button does after the user has chosen.
@@ -25,6 +25,27 @@ pub enum AgentEnvironment {
     Wsl,
 }
 
+/// How the native desktop process obtains exported user configuration.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ShellEnvironmentMode {
+    /// Capture the account's interactive login shell before runtime discovery.
+    #[default]
+    Inherit,
+    /// Keep only the GUI process environment and application-owned overrides.
+    DesktopOnly,
+}
+
+/// Persisted login-shell environment preferences.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ShellEnvironmentSettings {
+    #[serde(default)]
+    pub mode: ShellEnvironmentMode,
+    #[serde(default)]
+    pub shell_path: Option<PathBuf>,
+}
+
 /// Desktop preferences stored as JSON under the application-data root.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,6 +58,8 @@ pub struct DesktopSettings {
     pub wsl_distro: Option<String>,
     #[serde(default)]
     pub network_proxy: NetworkProxySettings,
+    #[serde(default)]
+    pub shell_environment: ShellEnvironmentSettings,
 }
 
 /// Path of `desktop-settings.json` beside `boot.log`.
@@ -62,11 +85,54 @@ pub fn load_from(path: &Path) -> DesktopSettings {
     let Ok(raw) = fs::read_to_string(path) else {
         return DesktopSettings::default();
     };
-    serde_json::from_str(&raw).unwrap_or_default()
+    let Ok(mut value) = serde_json::from_str::<serde_json::Value>(&raw) else {
+        return legacy_settings();
+    };
+    migrate_network_proxy(&mut value);
+    match serde_json::from_value(value) {
+        Ok(settings) => settings,
+        Err(_) => legacy_settings(),
+    }
+}
+
+fn migrate_network_proxy(value: &mut serde_json::Value) {
+    let Some(settings) = value.as_object_mut() else {
+        return;
+    };
+    if !settings.contains_key("networkProxy") {
+        settings.insert(
+            "networkProxy".into(),
+            serde_json::to_value(NetworkProxySettings::legacy_direct())
+                .expect("legacy network settings serialize"),
+        );
+        return;
+    }
+    let Some(network) = settings
+        .get_mut("networkProxy")
+        .and_then(serde_json::Value::as_object_mut)
+    else {
+        return;
+    };
+    network
+        .entry("mode")
+        .or_insert_with(|| serde_json::Value::String("direct".into()));
+    network.entry("version").or_insert_with(|| {
+        serde_json::Value::Number(serde_json::Number::from(NETWORK_PROXY_SETTINGS_VERSION))
+    });
+}
+
+fn legacy_settings() -> DesktopSettings {
+    DesktopSettings {
+        network_proxy: NetworkProxySettings::legacy_direct(),
+        ..DesktopSettings::default()
+    }
 }
 
 /// Write one settings file, creating the parent directory.
 pub fn save_to(path: &Path, settings: &DesktopSettings) -> Result<(), String> {
+    if settings.network_proxy.version != NETWORK_PROXY_SETTINGS_VERSION {
+        return Err("network-proxy-settings-version-unsupported".into());
+    }
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("无法创建 {}: {e}", parent.display()))?;
     }
@@ -81,7 +147,9 @@ pub fn effective_agent_environment(settings: &DesktopSettings) -> AgentEnvironme
 
 #[cfg(test)]
 mod tests {
-    use super::{load_from, save_to, AgentEnvironment, CloseAction, DesktopSettings};
+    use super::{
+        load_from, save_to, AgentEnvironment, CloseAction, DesktopSettings, ShellEnvironmentMode,
+    };
     use crate::network_proxy::{NetworkProxyMode, NetworkProxySettings};
     use std::fs;
     use std::path::PathBuf;
@@ -119,6 +187,36 @@ mod tests {
             load_from(&path).network_proxy,
             NetworkProxySettings::default()
         );
+        assert_eq!(
+            load_from(&path).shell_environment.mode,
+            ShellEnvironmentMode::Inherit
+        );
+    }
+
+    #[test]
+    fn existing_settings_without_network_choice_keep_direct_mode() {
+        let path = temp_file();
+        fs::write(&path, "{}\n").unwrap();
+        let loaded = load_from(&path);
+        assert_eq!(loaded.network_proxy.mode, NetworkProxyMode::Direct);
+        assert_eq!(
+            loaded.network_proxy.version,
+            crate::network_proxy::NETWORK_PROXY_SETTINGS_VERSION
+        );
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn preserves_and_rejects_future_network_settings_versions() {
+        let path = temp_file();
+        fs::write(&path, "{\"networkProxy\":{\"version\":2}}\n").unwrap();
+        let loaded = load_from(&path);
+        assert_eq!(loaded.network_proxy.version, 2);
+        assert_eq!(
+            save_to(&path, &loaded).unwrap_err(),
+            "network-proxy-settings-version-unsupported"
+        );
+        let _ = fs::remove_file(&path);
     }
 
     #[test]
@@ -131,6 +229,7 @@ mod tests {
                 agent_environment: AgentEnvironment::Wsl,
                 wsl_distro: Some("Ubuntu".into()),
                 network_proxy: NetworkProxySettings::default(),
+                shell_environment: Default::default(),
             },
         )
         .unwrap();
@@ -187,6 +286,7 @@ mod tests {
             https_proxy: "http://127.0.0.1:7890".into(),
             no_proxy: "*.local".into(),
             ca_certificate_path: "/tmp/company-root.pem".into(),
+            ..NetworkProxySettings::default()
         };
         save_to(
             &path,

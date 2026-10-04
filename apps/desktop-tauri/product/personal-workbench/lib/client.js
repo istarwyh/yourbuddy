@@ -934,7 +934,7 @@ var import_react4 = require("react");
 
 // src/client/desktop-network-proxy.ts
 var DESKTOP_NETWORK_PROXY_CHANNEL = "yourbuddy.desktop.network-proxy";
-var DESKTOP_NETWORK_PROXY_VERSION = 4;
+var DESKTOP_NETWORK_PROXY_VERSION = 5;
 var REQUEST_ID_PATTERN3 = /^[A-Za-z0-9_-]{1,64}$/;
 var DEFAULT_HANDSHAKE_TIMEOUT_MS2 = 5e3;
 var MAX_PROXY_URL_LENGTH = 2048;
@@ -955,12 +955,13 @@ function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function readNetworkProxySettings(value) {
-  if (!isRecord(value) || !hasExactKeys(value, "caCertificatePath,httpProxy,httpsProxy,mode,noProxy") || !["direct", "system", "custom"].includes(String(value.mode)) || typeof value.httpProxy !== "string" || value.httpProxy.length > MAX_PROXY_URL_LENGTH || typeof value.httpsProxy !== "string" || value.httpsProxy.length > MAX_PROXY_URL_LENGTH || typeof value.noProxy !== "string" || value.noProxy.length > MAX_NO_PROXY_LENGTH || typeof value.caCertificatePath !== "string" || value.caCertificatePath.length > MAX_CA_CERTIFICATE_PATH_LENGTH) return void 0;
+  if (!isRecord(value) || !hasExactKeys(value, "caCertificatePath,httpProxy,httpsProxy,mode,noProxy,version") || value.version !== 1 || !["inherit", "direct", "system", "custom"].includes(String(value.mode)) || typeof value.httpProxy !== "string" || value.httpProxy.length > MAX_PROXY_URL_LENGTH || typeof value.httpsProxy !== "string" || value.httpsProxy.length > MAX_PROXY_URL_LENGTH || typeof value.noProxy !== "string" || value.noProxy.length > MAX_NO_PROXY_LENGTH || typeof value.caCertificatePath !== "string" || value.caCertificatePath.length > MAX_CA_CERTIFICATE_PATH_LENGTH) return void 0;
   return value;
 }
 function readEffectiveProxy(value) {
   if (!isRecord(value) || !hasExactKeys(value, "caCertificatePath,caSource,httpProxy,httpsProxy,mode,noProxy") || !["system", "environment", "custom"].includes(String(value.caSource))) return void 0;
   const settings = {
+    version: 1,
     mode: value.mode,
     httpProxy: value.httpProxy,
     httpsProxy: value.httpsProxy,
@@ -994,7 +995,7 @@ function readSnapshot(value) {
   };
 }
 function readTestResult(value) {
-  if (!isRecord(value) || !hasExactKeys(value, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof value.ok !== "boolean" || typeof value.proxied !== "boolean" || !Number.isSafeInteger(value.status) || Number(value.status) < 0 || Number(value.status) > 599 || typeof value.errorCode !== "string" || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode) || !["direct", "system", "custom", "unknown"].includes(String(value.proxyMode)) || !["system", "environment", "custom", "unknown"].includes(String(value.caSource)) || value.ok && (Number(value.status) < 100 || value.errorCode !== "") || !value.ok && value.errorCode === "") return void 0;
+  if (!isRecord(value) || !hasExactKeys(value, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof value.ok !== "boolean" || typeof value.proxied !== "boolean" || !Number.isSafeInteger(value.status) || Number(value.status) < 0 || Number(value.status) > 599 || typeof value.errorCode !== "string" || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode) || !["inherit", "direct", "system", "custom", "unknown"].includes(String(value.proxyMode)) || !["system", "environment", "custom", "unknown"].includes(String(value.caSource)) || value.ok && (Number(value.status) < 100 || value.errorCode !== "") || !value.ok && value.errorCode === "") return void 0;
   return value;
 }
 function readPreflightResult(value) {
@@ -1102,7 +1103,7 @@ function hasExactKeys2(value, expected) {
 function readResult(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return void 0;
   const result = value;
-  if (!hasExactKeys2(result, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof result.ok !== "boolean" || typeof result.status !== "number" || !Number.isInteger(result.status) || result.status < 0 || result.status > 599 || typeof result.proxied !== "boolean" || typeof result.errorCode !== "string" || !["direct", "system", "custom", "unknown"].includes(String(result.proxyMode)) || !["system", "environment", "custom", "unknown"].includes(String(result.caSource)) || result.errorCode.length > 64) return void 0;
+  if (!hasExactKeys2(result, "caSource,errorCode,ok,proxied,proxyMode,status") || typeof result.ok !== "boolean" || typeof result.status !== "number" || !Number.isInteger(result.status) || result.status < 0 || result.status > 599 || typeof result.proxied !== "boolean" || typeof result.errorCode !== "string" || !["inherit", "direct", "system", "custom", "unknown"].includes(String(result.proxyMode)) || !["system", "environment", "custom", "unknown"].includes(String(result.caSource)) || result.errorCode.length > 64) return void 0;
   return result;
 }
 async function requestHostNetworkProxyTest(fetcher = globalThis.fetch) {
@@ -1118,7 +1119,8 @@ async function requestHostNetworkProxyTest(fetcher = globalThis.fetch) {
 // src/client/NetworkProxyRow.tsx
 var import_jsx_runtime5 = require("react/jsx-runtime");
 var EMPTY_SETTINGS = {
-  mode: "direct",
+  version: 1,
+  mode: "inherit",
   httpProxy: "",
   httpsProxy: "",
   noProxy: "",
@@ -1239,6 +1241,7 @@ function NetworkProxyRow({ t }) {
             "aria-label": t("proxy.mode.label"),
             onChange: setMode,
             children: [
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("option", { value: "inherit", children: t("proxy.mode.inherit") }),
               /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("option", { value: "system", children: t("proxy.mode.system") }),
               /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("option", { value: "custom", children: t("proxy.mode.custom") }),
               /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("option", { value: "direct", children: t("proxy.mode.direct") })
@@ -1319,10 +1322,11 @@ function NetworkProxyRow({ t }) {
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "dpw-hint", children: t("proxy.custom.hint") })
         ] })
       ] }),
+      draft.mode === "inherit" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-hint dpw-field-wide", children: t("proxy.inherit.hint") }),
       draft.mode === "direct" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-hint dpw-field-wide", children: t("proxy.direct.hint") }),
       /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-proxy-panel dpw-field-wide", children: [
         /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-label", children: t("proxy.ca.label") }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-code dpw-ca-path", children: draft.caCertificatePath || (snapshot?.settings.caCertificatePath === "" && snapshot.effective?.caSource === "environment" ? t("proxy.ca.environment") : t("proxy.ca.system-only")) }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-code dpw-ca-path", children: draft.caCertificatePath || (draft.mode === "inherit" && snapshot?.settings.caCertificatePath === "" && snapshot.effective?.caSource === "environment" ? t("proxy.ca.environment") : t("proxy.ca.system-only")) }),
         /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "dpw-hint", children: t("proxy.ca.hint") }),
         /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "dpw-actions", children: [
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
@@ -1399,6 +1403,7 @@ function errorMessage(error) {
 function describeTestResult(result, t) {
   const outcome = result.ok ? t("proxy.test.outcome.http").replace("{status}", String(result.status)) : t("proxy.test.outcome.error").replace("{code}", result.errorCode);
   const routeKeys = {
+    inherit: "proxy.test.mode.inherit",
     direct: "proxy.test.mode.direct",
     system: "proxy.test.mode.system",
     custom: "proxy.test.mode.custom",
@@ -1439,20 +1444,396 @@ function localizedProxyError(error, t) {
   return `${t("proxy.error.generic")} ${error}`;
 }
 
-// src/client/HelpMenu.tsx
+// src/client/EnvironmentPermissionsRow.tsx
 var import_react5 = require("react");
+
+// src/client/desktop-environment.ts
+var DESKTOP_ENVIRONMENT_CHANNEL = "yourbuddy.desktop.environment";
+var DESKTOP_ENVIRONMENT_VERSION = 1;
+var REQUEST_ID_PATTERN4 = /^[A-Za-z0-9_-]{1,64}$/;
+var DEFAULT_HANDSHAKE_TIMEOUT_MS3 = 5e3;
+var MAX_TEXT_LENGTH = 4096;
+function createRequestId4() {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+function isRecord2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function hasExactKeys3(value, expected) {
+  return Object.keys(value).sort().join(",") === expected;
+}
+function isDesktopEnvironmentAvailable(target = typeof window === "undefined" ? void 0 : window) {
+  return target !== void 0 && target.parent !== target;
+}
+function readShellEnvironmentSettings(value) {
+  if (!isRecord2(value) || !hasExactKeys3(value, "mode,shellPath") || !["inherit", "desktopOnly"].includes(String(value.mode)) || value.shellPath !== null && (typeof value.shellPath !== "string" || value.shellPath.length > MAX_TEXT_LENGTH || value.shellPath.includes("\0"))) return void 0;
+  return { mode: value.mode, shellPath: value.shellPath };
+}
+function readStatus(value) {
+  if (!isRecord2(value) || !hasExactKeys3(value, "durationMs,errorCode,pathEntryCount,shellPath,source,state,variableCount") || !["ready", "desktopOnly", "timedOut", "failed"].includes(String(value.state)) || !["loginShell", "desktop"].includes(String(value.source)) || typeof value.shellPath !== "string" || value.shellPath.length > MAX_TEXT_LENGTH || !Number.isSafeInteger(value.durationMs) || Number(value.durationMs) < 0 || !Number.isSafeInteger(value.variableCount) || Number(value.variableCount) < 0 || Number(value.variableCount) > 8192 || !Number.isSafeInteger(value.pathEntryCount) || Number(value.pathEntryCount) < 0 || Number(value.pathEntryCount) > 8192 || typeof value.errorCode !== "string" || !/^[a-z0-9-]{0,64}$/u.test(value.errorCode)) return void 0;
+  return {
+    state: value.state,
+    source: value.source,
+    shellPath: value.shellPath,
+    durationMs: Number(value.durationMs),
+    variableCount: Number(value.variableCount),
+    pathEntryCount: Number(value.pathEntryCount),
+    errorCode: value.errorCode
+  };
+}
+function readTools(value) {
+  if (!Array.isArray(value) || value.length !== 4) return void 0;
+  const result = [];
+  for (const item of value) {
+    if (!isRecord2(item) || !hasExactKeys3(item, "available,name") || !["git", "python3", "ffmpeg", "ffprobe"].includes(String(item.name)) || typeof item.available !== "boolean") return void 0;
+    result.push({ name: item.name, available: item.available });
+  }
+  return result;
+}
+function readShellEnvironmentSnapshot(value) {
+  if (!isRecord2(value) || !hasExactKeys3(value, "overriddenNames,restartRequired,settings,status,tools") || typeof value.restartRequired !== "boolean" || !Array.isArray(value.overriddenNames) || value.overriddenNames.length > 16 || !value.overriddenNames.every((name) => typeof name === "string" && name.length <= 64)) return void 0;
+  const settings = readShellEnvironmentSettings(value.settings);
+  const status = readStatus(value.status);
+  const tools = readTools(value.tools);
+  if (settings === void 0 || status === void 0 || tools === void 0) return void 0;
+  return {
+    settings,
+    status,
+    restartRequired: value.restartRequired,
+    overriddenNames: value.overriddenNames,
+    tools
+  };
+}
+function readMacosPermissions(value) {
+  if (!Array.isArray(value) || value.length !== 0 && value.length !== 5) return void 0;
+  const result = [];
+  const ids = /* @__PURE__ */ new Set();
+  for (const item of value) {
+    if (!isRecord2(item) || !hasExactKeys3(item, "canOpenSettings,canRequest,id,owner,status") || !["accessibility", "microphone", "screenRecording", "fullDiskAccess", "notifications"].includes(String(item.id)) || !["granted", "denied", "notDetermined", "restricted", "notApplicable", "unknown"].includes(String(item.status)) || !["yourBuddy", "externalFfmpeg", "macOS"].includes(String(item.owner)) || typeof item.canRequest !== "boolean" || typeof item.canOpenSettings !== "boolean") return void 0;
+    const id = item.id;
+    if (ids.has(id)) return void 0;
+    ids.add(id);
+    result.push({
+      id,
+      status: item.status,
+      owner: item.owner,
+      canRequest: item.canRequest,
+      canOpenSettings: item.canOpenSettings
+    });
+  }
+  return result;
+}
+function readResponse(value, requestId, action) {
+  if (!isRecord2(value) || value.channel !== DESKTOP_ENVIRONMENT_CHANNEL || value.version !== DESKTOP_ENVIRONMENT_VERSION || value.requestId !== requestId) return void 0;
+  if (value.type === `${action}-accepted`) {
+    return hasExactKeys3(value, "channel,requestId,type,version") ? { accepted: true } : void 0;
+  }
+  if (value.type !== `${action}-response` || typeof value.ok !== "boolean") return void 0;
+  if (!value.ok) {
+    if (!hasExactKeys3(value, "channel,error,ok,requestId,type,version") || typeof value.error !== "string" || value.error.length > MAX_TEXT_LENGTH) return void 0;
+    return { accepted: false, ok: false, error: value.error };
+  }
+  if (!hasExactKeys3(value, "channel,ok,requestId,type,value,version")) return void 0;
+  const parsed = action === "get-permissions" || action === "request-permission" ? readMacosPermissions(value.value) : action === "open-permission-settings" ? value.value === null ? null : void 0 : readShellEnvironmentSnapshot(value.value);
+  if (parsed === void 0) return void 0;
+  return { accepted: false, ok: true, value: parsed };
+}
+function completionTimeoutMs(action) {
+  return action === "request-permission" ? 13e4 : action === "preview" ? 15e3 : 1e4;
+}
+function requestDesktopEnvironment(action, data, options) {
+  const target = options.target ?? window;
+  if (!isDesktopEnvironmentAvailable(target)) return Promise.reject(new Error("desktop-shell-unavailable"));
+  const requestId = options.requestId ?? createRequestId4();
+  if (!REQUEST_ID_PATTERN4.test(requestId)) return Promise.reject(new Error("desktop-environment-request-id-invalid"));
+  if (data.settings !== void 0 && readShellEnvironmentSettings(data.settings) === void 0) {
+    return Promise.reject(new Error("desktop-environment-settings-invalid"));
+  }
+  return new Promise((resolve, reject) => {
+    const parent = target.parent;
+    let handshakeTimeout;
+    let completionTimeout;
+    const cleanup = () => {
+      if (handshakeTimeout !== void 0) target.clearTimeout(handshakeTimeout);
+      if (completionTimeout !== void 0) target.clearTimeout(completionTimeout);
+      handshakeTimeout = void 0;
+      completionTimeout = void 0;
+      target.removeEventListener("message", onMessage);
+    };
+    const onMessage = (event) => {
+      if (event.source !== parent) return;
+      const response = readResponse(event.data, requestId, action);
+      if (response === void 0) return;
+      if (response.accepted) {
+        if (handshakeTimeout !== void 0) target.clearTimeout(handshakeTimeout);
+        handshakeTimeout = void 0;
+        completionTimeout = target.setTimeout(() => {
+          cleanup();
+          reject(new Error(`desktop-environment-${action}-timeout`));
+        }, options.completionTimeoutMs ?? completionTimeoutMs(action));
+        return;
+      }
+      cleanup();
+      if (response.ok) resolve(response.value ?? null);
+      else reject(new Error(response.error ?? `desktop-environment-${action}-failed`));
+    };
+    handshakeTimeout = target.setTimeout(() => {
+      cleanup();
+      reject(new Error("desktop-shell-unavailable"));
+    }, options.handshakeTimeoutMs ?? DEFAULT_HANDSHAKE_TIMEOUT_MS3);
+    target.addEventListener("message", onMessage);
+    parent.postMessage({
+      channel: DESKTOP_ENVIRONMENT_CHANNEL,
+      version: DESKTOP_ENVIRONMENT_VERSION,
+      type: `${action}-request`,
+      requestId,
+      ...data
+    }, "*");
+  });
+}
+async function requestShellEnvironmentSnapshot(options = {}) {
+  return await requestDesktopEnvironment("get", {}, options);
+}
+async function requestShellEnvironmentPreview(settings, options = {}) {
+  return await requestDesktopEnvironment("preview", { settings }, options);
+}
+async function requestShellEnvironmentSave(settings, options = {}) {
+  return await requestDesktopEnvironment("save", { settings }, options);
+}
+async function requestMacosPermissions(options = {}) {
+  return await requestDesktopEnvironment("get-permissions", {}, options);
+}
+async function requestMacosPermission(permission, options = {}) {
+  return await requestDesktopEnvironment("request-permission", { permission }, options);
+}
+async function openMacosPermissionSettings(permission, options = {}) {
+  await requestDesktopEnvironment("open-permission-settings", { permission }, options);
+}
+
+// src/client/EnvironmentPermissionsRow.tsx
 var import_jsx_runtime6 = require("react/jsx-runtime");
+var DEFAULT_SETTINGS = { mode: "inherit", shellPath: null };
+function EnvironmentPermissionsRow({ t }) {
+  const [available] = (0, import_react5.useState)(() => isDesktopEnvironmentAvailable());
+  const [snapshot, setSnapshot] = (0, import_react5.useState)(null);
+  const [draft, setDraft] = (0, import_react5.useState)(DEFAULT_SETTINGS);
+  const [permissions, setPermissions] = (0, import_react5.useState)([]);
+  const [busy, setBusy] = (0, import_react5.useState)(available ? "loading" : null);
+  const [notice, setNotice] = (0, import_react5.useState)("");
+  (0, import_react5.useEffect)(() => {
+    if (!available) return;
+    let active = true;
+    void Promise.all([requestShellEnvironmentSnapshot(), requestMacosPermissions()]).then(([environment, privacy]) => {
+      if (!active) return;
+      setSnapshot(environment);
+      setDraft(environment.settings);
+      setPermissions(privacy);
+      setBusy(null);
+    }).catch((error) => {
+      if (!active) return;
+      setNotice(localizedError(error, t));
+      setBusy(null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [available]);
+  if (!available) {
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("section", { className: "dpw-card", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-title", children: t("environment.title") }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-description", children: t("environment.desktop-only") })
+    ] });
+  }
+  const preview = async () => {
+    setBusy("preview");
+    setNotice("");
+    try {
+      const result = await requestShellEnvironmentPreview(draft);
+      setSnapshot(result);
+      setNotice(t(["failed", "timedOut"].includes(result.status.state) ? "environment.preview.failed" : "environment.preview.ready"));
+    } catch (error) {
+      setNotice(localizedError(error, t));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const save = async () => {
+    setBusy("save");
+    setNotice("");
+    try {
+      const result = await requestShellEnvironmentSave(draft);
+      setSnapshot(result);
+      setNotice(t("environment.saved"));
+    } catch (error) {
+      setNotice(localizedError(error, t));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const restart = async () => {
+    setBusy("restart");
+    try {
+      await requestDesktopRestart();
+    } catch (error) {
+      setNotice(localizedError(error, t));
+      setBusy(null);
+    }
+  };
+  const refreshPermissions = async () => {
+    setBusy("refresh-permissions");
+    setNotice("");
+    try {
+      setPermissions(await requestMacosPermissions());
+    } catch (error) {
+      setNotice(localizedError(error, t));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const requestPermission = async (id) => {
+    setBusy(id);
+    setNotice("");
+    try {
+      setPermissions(await requestMacosPermission(id));
+    } catch (error) {
+      setNotice(localizedError(error, t));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const openSettings = async (id) => {
+    setBusy(id);
+    setNotice("");
+    try {
+      await openMacosPermissionSettings(id);
+    } catch (error) {
+      setNotice(localizedError(error, t));
+    } finally {
+      setBusy(null);
+    }
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("section", { className: "dpw-card", "aria-labelledby": "dpw-environment-title", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-heading", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-title", id: "dpw-environment-title", children: t("environment.title") }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-description", children: t("environment.description") })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-fields", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("label", { className: "dpw-field dpw-field-wide", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dpw-label", children: t("environment.mode.label") }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+          "select",
+          {
+            className: "dpw-input",
+            value: draft.mode,
+            onChange: (event) => setDraft((current) => ({ ...current, mode: event.target.value })),
+            disabled: busy !== null,
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("option", { value: "inherit", children: t("environment.mode.inherit") }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("option", { value: "desktopOnly", children: t("environment.mode.desktop-only") })
+            ]
+          }
+        )
+      ] }),
+      draft.mode === "inherit" && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("label", { className: "dpw-field dpw-field-wide", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dpw-label", children: t("environment.shell.label") }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          "input",
+          {
+            className: "dpw-input",
+            value: draft.shellPath ?? "",
+            placeholder: t("environment.shell.placeholder"),
+            onChange: (event) => setDraft((current) => ({ ...current, shellPath: event.target.value || null })),
+            disabled: busy !== null,
+            spellCheck: false
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dpw-hint", children: t("environment.shell.hint") })
+      ] })
+    ] }),
+    snapshot !== null && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-notice", role: "status", children: [
+      describeEnvironment(snapshot, t),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("br", {}),
+      snapshot.tools.map((tool) => `${tool.name}: ${t(tool.available ? "environment.tool.available" : "environment.tool.missing")}`).join(" \xB7 "),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("br", {}),
+      t("environment.overrides"),
+      " ",
+      snapshot.overriddenNames.join(", ")
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "dpw-button", type: "button", onClick: () => void preview(), disabled: busy !== null, children: busy === "preview" ? t("environment.previewing") : t("environment.preview") }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "dpw-button dpw-button-primary", type: "button", onClick: () => void save(), disabled: busy !== null, children: busy === "save" ? t("environment.saving") : t("environment.save") }),
+      snapshot?.restartRequired === true && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "dpw-button", type: "button", onClick: () => void restart(), disabled: busy !== null, children: busy === "restart" ? t("environment.restarting") : t("environment.restart") })
+    ] }),
+    permissions.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-heading", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-title", children: t("permissions.title") }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-description", children: t("permissions.description") })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-permission-list", children: permissions.map((permission) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-permission-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-label", children: t(`permissions.${permission.id}.label`) }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-hint", children: [
+            t(`permissions.status.${permission.status}`),
+            " \xB7 ",
+            t(`permissions.owner.${permission.owner}`)
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-actions", children: [
+          permission.canRequest && permission.status !== "granted" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            "button",
+            {
+              className: "dpw-button",
+              type: "button",
+              disabled: busy !== null,
+              onClick: () => void requestPermission(permission.id),
+              children: t("permissions.request")
+            }
+          ),
+          permission.canOpenSettings && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            "button",
+            {
+              className: "dpw-button",
+              type: "button",
+              disabled: busy !== null,
+              onClick: () => void openSettings(permission.id),
+              children: t("permissions.open-settings")
+            }
+          )
+        ] })
+      ] }, permission.id)) }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-actions", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "dpw-button", type: "button", disabled: busy !== null, onClick: () => void refreshPermissions(), children: busy === "refresh-permissions" ? t("permissions.refreshing") : t("permissions.refresh") }) })
+    ] }),
+    notice !== "" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "dpw-notice", role: "status", children: notice })
+  ] });
+}
+function describeEnvironment(snapshot, t) {
+  if (snapshot.status.state === "desktopOnly") return t("environment.status.desktop-only");
+  if (snapshot.status.state === "failed" || snapshot.status.state === "timedOut") {
+    return `${t("environment.status.failed")} ${snapshot.status.errorCode ?? ""}`.trim();
+  }
+  return t("environment.status.inherited").replace("{count}", String(snapshot.status.variableCount)).replace("{shell}", snapshot.status.shellPath || t("environment.shell.default"));
+}
+function localizedError(error, t) {
+  const detail = error instanceof Error ? error.message : String(error);
+  return `${t("environment.error.generic")} ${detail}`;
+}
+
+// src/client/HelpMenu.tsx
+var import_react6 = require("react");
+var import_jsx_runtime7 = require("react/jsx-runtime");
 var DESTINATIONS = ["start", "plugins", "develop", "troubleshooting", "feedback"];
 function HelpMenu({ wide, readLocale, t }) {
-  const [position, setPosition] = (0, import_react5.useState)();
-  const [failedUrl, setFailedUrl] = (0, import_react5.useState)("");
-  const [busy, setBusy] = (0, import_react5.useState)(false);
-  const [copyStatus, setCopyStatus] = (0, import_react5.useState)("idle");
-  const root = (0, import_react5.useRef)(null);
-  const trigger = (0, import_react5.useRef)(null);
-  const firstItem = (0, import_react5.useRef)(null);
-  const attempt = (0, import_react5.useRef)(0);
-  const id = (0, import_react5.useId)();
+  const [position, setPosition] = (0, import_react6.useState)();
+  const [failedUrl, setFailedUrl] = (0, import_react6.useState)("");
+  const [busy, setBusy] = (0, import_react6.useState)(false);
+  const [copyStatus, setCopyStatus] = (0, import_react6.useState)("idle");
+  const root = (0, import_react6.useRef)(null);
+  const trigger = (0, import_react6.useRef)(null);
+  const firstItem = (0, import_react6.useRef)(null);
+  const attempt = (0, import_react6.useRef)(0);
+  const id = (0, import_react6.useId)();
   const open = position !== void 0;
   const close = (restoreFocus = true) => {
     attempt.current += 1;
@@ -1460,10 +1841,10 @@ function HelpMenu({ wide, readLocale, t }) {
     setBusy(false);
     if (restoreFocus) trigger.current?.focus();
   };
-  (0, import_react5.useEffect)(() => () => {
+  (0, import_react6.useEffect)(() => () => {
     attempt.current += 1;
   }, []);
-  (0, import_react5.useEffect)(() => {
+  (0, import_react6.useEffect)(() => {
     if (!open) return;
     firstItem.current?.focus();
     const outside = (event) => {
@@ -1528,10 +1909,10 @@ function HelpMenu({ wide, readLocale, t }) {
       items[next]?.focus();
     }
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { ref: root, className: "dpw-help", onKeyDown: navigate, onBlur: (event) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { ref: root, className: "dpw-help", onKeyDown: navigate, onBlur: (event) => {
     if (open && event.relatedTarget instanceof Node && !root.current?.contains(event.relatedTarget)) close(false);
   }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
       "button",
       {
         ref: trigger,
@@ -1544,13 +1925,13 @@ function HelpMenu({ wide, readLocale, t }) {
         "aria-controls": open ? id : void 0,
         onClick: toggle,
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "dpw-help-icon", "aria-hidden": "true", children: "?" }),
-          wide && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: t("help.title") })
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "dpw-help-icon", "aria-hidden": "true", children: "?" }),
+          wide && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { children: t("help.title") })
         ]
       }
     ),
-    position !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-help-panel", style: position, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { id, role: "menu", "aria-label": t("help.title"), "aria-busy": busy, children: DESTINATIONS.map((destination, index) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+    position !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "dpw-help-panel", style: position, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { id, role: "menu", "aria-label": t("help.title"), "aria-busy": busy, children: DESTINATIONS.map((destination, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         "button",
         {
           ref: index === 0 ? firstItem : void 0,
@@ -1565,33 +1946,33 @@ function HelpMenu({ wide, readLocale, t }) {
         },
         destination
       )) }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "dpw-hint", children: t("help.external") }),
-      failedUrl !== "" && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "dpw-help-recovery", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "dpw-error", role: "alert", children: t("help.error") }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("input", { className: "dpw-input", "aria-label": t("help.address"), value: failedUrl, readOnly: true, onFocus: (event) => event.currentTarget.select() }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { type: "button", className: "dpw-button", onClick: () => {
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "dpw-hint", children: t("help.external") }),
+      failedUrl !== "" && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "dpw-help-recovery", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "dpw-error", role: "alert", children: t("help.error") }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("input", { className: "dpw-input", "aria-label": t("help.address"), value: failedUrl, readOnly: true, onFocus: (event) => event.currentTarget.select() }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { type: "button", className: "dpw-button", onClick: () => {
           void copy();
         }, children: t("link.menu.copy") }),
-        copyStatus !== "idle" && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { role: "status", className: "dpw-hint", children: t(copyStatus === "done" ? "link.copy.done" : "link.error.copy") })
+        copyStatus !== "idle" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { role: "status", className: "dpw-hint", children: t(copyStatus === "done" ? "link.copy.done" : "link.error.copy") })
       ] })
     ] })
   ] });
 }
 
 // src/client/WindowControls.tsx
-var import_react6 = require("react");
+var import_react7 = require("react");
 
 // src/client/desktop-window-controls.ts
 var DESKTOP_WINDOW_CONTROLS_CHANNEL = "yourbuddy.desktop.window-controls";
 var DESKTOP_WINDOW_CONTROLS_VERSION = 1;
-function hasExactKeys3(value, expected) {
+function hasExactKeys4(value, expected) {
   return Object.keys(value).sort().join(",") === expected;
 }
-function isRecord2(value) {
+function isRecord3(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function readDesktopWindowControlsLayout(value) {
-  if (!isRecord2(value) || !hasExactKeys3(value, "channel,controls,labels,os,type,version") || value.channel !== DESKTOP_WINDOW_CONTROLS_CHANNEL || value.version !== DESKTOP_WINDOW_CONTROLS_VERSION || value.type !== "layout-response" || !["linux", "macos", "windows"].includes(String(value.os)) || !Array.isArray(value.controls) || value.controls.length > 3 || !value.controls.every((control) => ["close", "minimize", "maximize"].includes(String(control))) || new Set(value.controls).size !== value.controls.length || !isRecord2(value.labels) || !hasExactKeys3(value.labels, "close,maximize,minimize") || !Object.values(value.labels).every((label) => typeof label === "string" && label.length <= 128)) {
+  if (!isRecord3(value) || !hasExactKeys4(value, "channel,controls,labels,os,type,version") || value.channel !== DESKTOP_WINDOW_CONTROLS_CHANNEL || value.version !== DESKTOP_WINDOW_CONTROLS_VERSION || value.type !== "layout-response" || !["linux", "macos", "windows"].includes(String(value.os)) || !Array.isArray(value.controls) || value.controls.length > 3 || !value.controls.every((control) => ["close", "minimize", "maximize"].includes(String(control))) || new Set(value.controls).size !== value.controls.length || !isRecord3(value.labels) || !hasExactKeys4(value.labels, "close,maximize,minimize") || !Object.values(value.labels).every((label) => typeof label === "string" && label.length <= 128)) {
     return void 0;
   }
   return {
@@ -1644,30 +2025,30 @@ function requestDesktopWindowControl(action, target = window) {
 }
 
 // src/client/WindowControls.tsx
-var import_jsx_runtime7 = require("react/jsx-runtime");
+var import_jsx_runtime8 = require("react/jsx-runtime");
 function ControlIcon({ control }) {
   if (control === "minimize") {
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("rect", { x: "1", y: "5", width: "8", height: "1", fill: "currentColor" }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("rect", { x: "1", y: "5", width: "8", height: "1", fill: "currentColor" }) });
   }
   if (control === "maximize") {
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("rect", { x: "1.5", y: "1.5", width: "7", height: "7", fill: "none", stroke: "currentColor", strokeWidth: "1" }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("rect", { x: "1.5", y: "1.5", width: "7", height: "7", fill: "none", stroke: "currentColor", strokeWidth: "1" }) });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("path", { d: "M2 2 L8 8 M8 2 L2 8", stroke: "currentColor", strokeWidth: "1.2" }) });
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("svg", { viewBox: "0 0 10 10", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("path", { d: "M2 2 L8 8 M8 2 L2 8", stroke: "currentColor", strokeWidth: "1.2" }) });
 }
 function WindowControls({ target = window }) {
-  const [layout, setLayout] = (0, import_react6.useState)();
-  (0, import_react6.useEffect)(() => connectDesktopWindowControls(setLayout, target), [target]);
+  const [layout, setLayout] = (0, import_react7.useState)();
+  (0, import_react7.useEffect)(() => connectDesktopWindowControls(setLayout, target), [target]);
   if (layout === void 0 || layout.controls.length === 0) return null;
   const beginDrag = (event) => {
     if (event.target === event.currentTarget) requestDesktopWindowControl("drag", target);
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
     "div",
     {
       className: "dpw-window-controls",
       "data-platform": layout.os,
       onPointerDown: beginDrag,
-      children: layout.controls.map((control) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+      children: layout.controls.map((control) => /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
         "button",
         {
           type: "button",
@@ -1678,8 +2059,8 @@ function WindowControls({ target = window }) {
             requestDesktopWindowControl(control, target);
           },
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "dpw-window-control-dot", "aria-hidden": "true" }),
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ControlIcon, { control })
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "dpw-window-control-dot", "aria-hidden": "true" }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(ControlIcon, { control })
           ]
         },
         control
@@ -1737,6 +2118,7 @@ var zh = {
   "proxy.desktop-only": "\u8BF7\u5728 YourBuddy \u684C\u9762\u5E94\u7528\u4E2D\u914D\u7F6E\u7F51\u7EDC\u4EE3\u7406\u3002",
   "proxy.shell-unavailable": "\u684C\u9762\u7F51\u7EDC\u4EE3\u7406\u670D\u52A1\u672A\u54CD\u5E94\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourBuddy \u540E\u91CD\u8BD5\u3002",
   "proxy.mode.label": "\u8FDE\u63A5\u65B9\u5F0F",
+  "proxy.mode.inherit": "\u7EE7\u627F\u7EC8\u7AEF\u73AF\u5883",
   "proxy.mode.system": "\u8DDF\u968F macOS \u7CFB\u7EDF\u4EE3\u7406",
   "proxy.mode.custom": "\u81EA\u5B9A\u4E49\u4EE3\u7406",
   "proxy.mode.direct": "\u76F4\u63A5\u8FDE\u63A5",
@@ -1749,6 +2131,7 @@ var zh = {
   "proxy.https.label": "HTTPS \u4EE3\u7406",
   "proxy.no-proxy.label": "\u4E0D\u4F7F\u7528\u4EE3\u7406\u7684\u5730\u5740",
   "proxy.custom.hint": "\u9700\u8981\u540C\u65F6\u586B\u5199 HTTP \u4E0E HTTPS \u76EE\u6807\u4F7F\u7528\u7684\u4EE3\u7406\u3002\u4E24\u9879\u901A\u5E38\u586B\u5199\u540C\u4E00\u4E2A http:// \u5730\u5740\uFF1B\u540C\u4E00\u56DE\u73AF\u7AEF\u53E3\u8BEF\u5199\u6210 https:// \u65F6\u4F1A\u81EA\u52A8\u6539\u4E3A\u660E\u6587 HTTP CONNECT\u3002\u672C\u673A Host \u5730\u5740\u59CB\u7EC8\u76F4\u8FDE\u3002",
+  "proxy.inherit.hint": "\u4F7F\u7528\u767B\u5F55 Shell \u5BFC\u51FA\u7684\u4EE3\u7406\u4E0E CA \u8BBE\u7F6E\uFF0C\u5E76\u81EA\u52A8\u8BA9\u672C\u673A Host \u5730\u5740\u4FDD\u6301\u76F4\u8FDE\u3002",
   "proxy.direct.hint": "\u5FFD\u7565\u542F\u52A8\u73AF\u5883\u4E2D\u7684\u4EE3\u7406\u53D8\u91CF\uFF0C\u7531 YourBuddy \u76F4\u63A5\u8FDE\u63A5\u5916\u90E8\u7F51\u7EDC\u3002",
   "proxy.ca.label": "\u989D\u5916 CA \u8BC1\u4E66",
   "proxy.ca.system-only": "\u672A\u9009\u62E9\uFF08\u4EC5\u4F7F\u7528 macOS \u94A5\u5319\u4E32\u4E0E Node \u7CFB\u7EDF CA\uFF09",
@@ -1765,6 +2148,7 @@ var zh = {
   "proxy.test.outcome.http": "HTTP {status}",
   "proxy.test.outcome.error": "\u5931\u8D25\uFF1A{code}",
   "proxy.test.outcome.routed": "{outcome}\uFF08{route}\uFF1B{ca}\uFF09",
+  "proxy.test.mode.inherit": "\u7EC8\u7AEF\u73AF\u5883\u4EE3\u7406",
   "proxy.test.mode.direct": "\u76F4\u8FDE",
   "proxy.test.mode.system": "macOS \u7CFB\u7EDF\u4EE3\u7406",
   "proxy.test.mode.custom": "\u81EA\u5B9A\u4E49\u4EE3\u7406",
@@ -1798,6 +2182,52 @@ var zh = {
   "proxy.error.test": "\u684C\u9762\u8FDE\u901A\u6027\u6D4B\u8BD5\u672A\u5B8C\u6210\uFF0C\u8BF7\u68C0\u67E5\u663E\u793A\u7684\u9519\u8BEF\u4FE1\u606F\u540E\u91CD\u8BD5\u3002",
   "proxy.error.host-response": "Node Host \u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u4EE3\u7406\u8BCA\u65AD\u7ED3\u679C\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00 YourBuddy \u540E\u91CD\u8BD5\u3002",
   "proxy.error.generic": "\u7F51\u7EDC\u4EE3\u7406\u64CD\u4F5C\u5931\u8D25\uFF1A",
+  "environment.title": "\u7EC8\u7AEF\u73AF\u5883\u4E0E\u6743\u9650",
+  "environment.description": "YourBuddy \u9ED8\u8BA4\u7EE7\u627F\u767B\u5F55 Shell \u7684\u73AF\u5883\uFF0C\u518D\u7531\u5E94\u7528\u8986\u76D6\u8FD0\u884C\u65F6\u5FC5\u987B\u63A7\u5236\u7684\u53D8\u91CF\u3002\u8FD9\u91CC\u4E0D\u4F1A\u663E\u793A\u73AF\u5883\u53D8\u91CF\u7684\u503C\u3002",
+  "environment.desktop-only": "\u8BF7\u5728 YourBuddy \u684C\u9762\u5E94\u7528\u4E2D\u67E5\u770B\u7EC8\u7AEF\u73AF\u5883\u4E0E macOS \u6743\u9650\u3002",
+  "environment.mode.label": "\u542F\u52A8\u73AF\u5883",
+  "environment.mode.inherit": "\u7EE7\u627F\u767B\u5F55 Shell",
+  "environment.mode.desktop-only": "\u4EC5\u4F7F\u7528\u684C\u9762\u542F\u52A8\u73AF\u5883",
+  "environment.shell.label": "Shell \u8DEF\u5F84\uFF08\u53EF\u9009\uFF09",
+  "environment.shell.placeholder": "\u7559\u7A7A\u4F7F\u7528 macOS \u8D26\u6237\u767B\u5F55 Shell",
+  "environment.shell.hint": "\u53EA\u63A5\u53D7\u672C\u673A\u5DF2\u6709\u7684\u7EDD\u5BF9\u8DEF\u5F84\u3002\u9884\u89C8\u4E0D\u4F1A\u4FEE\u6539\u5F53\u524D\u8FDB\u7A0B\u3002",
+  "environment.shell.default": "\u8D26\u6237\u767B\u5F55 Shell",
+  "environment.status.inherited": "\u5DF2\u901A\u8FC7 {shell} \u7EE7\u627F {count} \u4E2A\u73AF\u5883\u53D8\u91CF\u3002",
+  "environment.status.desktop-only": "\u5F53\u524D\u4EC5\u4F7F\u7528\u684C\u9762\u542F\u52A8\u73AF\u5883\u3002",
+  "environment.status.failed": "\u767B\u5F55 Shell \u6355\u83B7\u5931\u8D25\uFF0C\u5DF2\u5B89\u5168\u56DE\u9000\u5230\u684C\u9762\u542F\u52A8\u73AF\u5883\uFF1A",
+  "environment.preview": "\u9884\u89C8\u73AF\u5883",
+  "environment.previewing": "\u6B63\u5728\u9884\u89C8\u2026",
+  "environment.preview.ready": "\u9884\u89C8\u5B8C\u6210\uFF0C\u5F53\u524D\u8FDB\u7A0B\u6CA1\u6709\u53D8\u5316\u3002",
+  "environment.preview.failed": "\u9884\u89C8\u5931\u8D25\uFF1B\u542F\u52A8\u65F6\u4F1A\u5B89\u5168\u56DE\u9000\u5230\u684C\u9762\u73AF\u5883\u3002",
+  "environment.save": "\u4FDD\u5B58\u73AF\u5883\u8BBE\u7F6E",
+  "environment.saving": "\u6B63\u5728\u4FDD\u5B58\u2026",
+  "environment.saved": "\u73AF\u5883\u8BBE\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u91CD\u542F\u540E\u751F\u6548\u3002",
+  "environment.restart": "\u7ACB\u5373\u91CD\u542F",
+  "environment.restarting": "\u6B63\u5728\u91CD\u542F\u2026",
+  "environment.tool.available": "\u53EF\u7528",
+  "environment.tool.missing": "\u672A\u627E\u5230",
+  "environment.overrides": "\u5E94\u7528\u59CB\u7EC8\u8986\u76D6\uFF1A",
+  "environment.error.generic": "\u73AF\u5883\u6216\u6743\u9650\u64CD\u4F5C\u5931\u8D25\uFF1A",
+  "permissions.title": "macOS \u6743\u9650",
+  "permissions.description": "\u72B6\u6001\u8BFB\u53D6\u4E0D\u4F1A\u5F39\u7A97\u3002\u53EA\u6709\u70B9\u51FB\u201C\u8BF7\u6C42\u6743\u9650\u201D\u624D\u4F1A\u89E6\u53D1\u7CFB\u7EDF\u63D0\u793A\uFF1B\u65E0\u6CD5\u53EF\u9760\u9884\u68C0\u7684\u6743\u9650\u4F1A\u660E\u786E\u663E\u793A\u4E3A\u672A\u77E5\u3002",
+  "permissions.accessibility.label": "\u8F85\u52A9\u529F\u80FD",
+  "permissions.microphone.label": "\u9EA6\u514B\u98CE",
+  "permissions.screenRecording.label": "\u5C4F\u5E55\u5F55\u5236",
+  "permissions.fullDiskAccess.label": "\u5B8C\u5168\u78C1\u76D8\u8BBF\u95EE",
+  "permissions.notifications.label": "YourBuddy \u539F\u751F\u901A\u77E5",
+  "permissions.status.granted": "\u5DF2\u6388\u6743",
+  "permissions.status.denied": "\u5DF2\u62D2\u7EDD",
+  "permissions.status.notDetermined": "\u5C1A\u672A\u51B3\u5B9A",
+  "permissions.status.restricted": "\u53D7\u7CFB\u7EDF\u9650\u5236",
+  "permissions.status.notApplicable": "\u4E0D\u7531\u5F53\u524D\u5E94\u7528\u6301\u6709",
+  "permissions.status.unknown": "\u65E0\u6CD5\u53EF\u9760\u5224\u65AD",
+  "permissions.owner.yourBuddy": "YourBuddy",
+  "permissions.owner.externalFfmpeg": "\u5F53\u524D\u7531\u5916\u90E8 FFmpeg \u8FDB\u7A0B\u4F7F\u7528",
+  "permissions.owner.macOS": "\u7531 macOS \u7BA1\u7406",
+  "permissions.request": "\u8BF7\u6C42\u6743\u9650",
+  "permissions.open-settings": "\u6253\u5F00\u7CFB\u7EDF\u8BBE\u7F6E",
+  "permissions.refresh": "\u5237\u65B0\u6743\u9650\u72B6\u6001",
+  "permissions.refreshing": "\u6B63\u5728\u5237\u65B0\u2026",
   "lifecycle.title": "\u5E94\u7528\u751F\u547D\u5468\u671F",
   "lifecycle.description": "\u7BA1\u7406 YourBuddy \u7684\u66F4\u65B0\u4E0E\u91CD\u542F\u3002\u91CD\u542F\u4F1A\u505C\u6B62\u5F53\u524D\u79C1\u6709 Host\uFF0C\u5E76\u5728\u91CD\u65B0\u6253\u5F00\u65F6\u52A0\u8F7D\u65B0\u5B89\u88C5\u7684\u63D2\u4EF6\u3002",
   "lifecycle.desktop-only": "\u8BF7\u5728 YourBuddy \u684C\u9762\u5E94\u7528\u4E2D\u4F7F\u7528\u8FD9\u4E9B\u529F\u80FD\u3002",
@@ -1873,6 +2303,7 @@ var en = {
   "proxy.desktop-only": "Configure the network proxy in the YourBuddy desktop application.",
   "proxy.shell-unavailable": "The desktop network proxy service did not respond. Reopen YourBuddy and try again.",
   "proxy.mode.label": "Connection mode",
+  "proxy.mode.inherit": "Inherit terminal environment",
   "proxy.mode.system": "Follow macOS system proxy",
   "proxy.mode.custom": "Custom proxy",
   "proxy.mode.direct": "Direct connection",
@@ -1885,6 +2316,7 @@ var en = {
   "proxy.https.label": "HTTPS proxy",
   "proxy.no-proxy.label": "Addresses that bypass the proxy",
   "proxy.custom.hint": "Enter the proxy used for HTTP and HTTPS targets. Both fields usually use the same http:// URL; YourBuddy corrects https:// to plain HTTP CONNECT when both fields name the same loopback endpoint. The local Host always connects directly.",
+  "proxy.inherit.hint": "Use proxy and CA settings exported by the login shell while keeping the local Host direct.",
   "proxy.direct.hint": "Ignore proxy variables from the launch environment and connect to external networks directly.",
   "proxy.ca.label": "Additional CA certificate",
   "proxy.ca.system-only": "None selected (macOS Keychain and Node system CAs only)",
@@ -1901,6 +2333,7 @@ var en = {
   "proxy.test.outcome.http": "HTTP {status}",
   "proxy.test.outcome.error": "failed: {code}",
   "proxy.test.outcome.routed": "{outcome} ({route}; {ca})",
+  "proxy.test.mode.inherit": "terminal environment proxy",
   "proxy.test.mode.direct": "direct",
   "proxy.test.mode.system": "macOS system proxy",
   "proxy.test.mode.custom": "custom proxy",
@@ -1934,6 +2367,52 @@ var en = {
   "proxy.error.test": "The desktop connectivity test did not complete. Check the reported error and try again.",
   "proxy.error.host-response": "The Node Host returned an invalid proxy diagnostic result. Reopen YourBuddy and try again.",
   "proxy.error.generic": "Network proxy operation failed:",
+  "environment.title": "Terminal environment and permissions",
+  "environment.description": "YourBuddy inherits the login shell environment, then overrides the runtime values the application must control. Environment values are never displayed here.",
+  "environment.desktop-only": "View the terminal environment and macOS permissions in the YourBuddy desktop application.",
+  "environment.mode.label": "Startup environment",
+  "environment.mode.inherit": "Inherit login shell",
+  "environment.mode.desktop-only": "Desktop launch environment only",
+  "environment.shell.label": "Shell path (optional)",
+  "environment.shell.placeholder": "Leave blank to use the macOS account login shell",
+  "environment.shell.hint": "Only an existing absolute path is accepted. Preview does not modify the current process.",
+  "environment.shell.default": "account login shell",
+  "environment.status.inherited": "Inherited {count} environment variables through {shell}.",
+  "environment.status.desktop-only": "Using the desktop launch environment only.",
+  "environment.status.failed": "Login shell capture failed and safely fell back to the desktop environment:",
+  "environment.preview": "Preview environment",
+  "environment.previewing": "Previewing\u2026",
+  "environment.preview.ready": "Preview complete. The current process was not changed.",
+  "environment.preview.failed": "Preview failed. Startup will safely fall back to the desktop environment.",
+  "environment.save": "Save environment settings",
+  "environment.saving": "Saving\u2026",
+  "environment.saved": "Environment settings saved. Restart to apply them.",
+  "environment.restart": "Restart now",
+  "environment.restarting": "Restarting\u2026",
+  "environment.tool.available": "available",
+  "environment.tool.missing": "not found",
+  "environment.overrides": "The application always overrides:",
+  "environment.error.generic": "Environment or permission operation failed:",
+  "permissions.title": "macOS permissions",
+  "permissions.description": "Reading status never prompts. Only a direct Request permission click may show a system prompt. Permissions without a reliable public preflight are shown as unknown.",
+  "permissions.accessibility.label": "Accessibility",
+  "permissions.microphone.label": "Microphone",
+  "permissions.screenRecording.label": "Screen recording",
+  "permissions.fullDiskAccess.label": "Full Disk Access",
+  "permissions.notifications.label": "YourBuddy native notifications",
+  "permissions.status.granted": "Granted",
+  "permissions.status.denied": "Denied",
+  "permissions.status.notDetermined": "Not determined",
+  "permissions.status.restricted": "Restricted by the system",
+  "permissions.status.notApplicable": "Not owned by this application",
+  "permissions.status.unknown": "Cannot be determined reliably",
+  "permissions.owner.yourBuddy": "YourBuddy",
+  "permissions.owner.externalFfmpeg": "Currently used by the external FFmpeg process",
+  "permissions.owner.macOS": "Managed by macOS",
+  "permissions.request": "Request permission",
+  "permissions.open-settings": "Open System Settings",
+  "permissions.refresh": "Refresh permission status",
+  "permissions.refreshing": "Refreshing\u2026",
   "lifecycle.title": "Application lifecycle",
   "lifecycle.description": "Manage YourBuddy updates and restarts. Restart stops the private Host and loads newly installed plugins when the app opens again.",
   "lifecycle.desktop-only": "Use these actions in the YourBuddy desktop application.",
@@ -1982,6 +2461,8 @@ var PERSONAL_WORKBENCH_CSS = `
 .dpw-button{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 13px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer}
 .dpw-button-primary{border-color:var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}.dpw-button-primary:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover);background:var(--dsw-alias-button-primary-hover)}.dpw-button:disabled{cursor:not-allowed;opacity:.5}
 .dpw-error{font-size:13px;color:var(--dsw-alias-state-error-primary)}.dpw-success{color:var(--dsw-alias-state-success-primary)}
+.dpw-notice{padding:10px 12px;border-radius:10px;background:var(--dsw-alias-bg-layer-2);font-size:13px;line-height:1.5;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
+.dpw-permission-list{display:grid;gap:8px}.dpw-permission-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:10px;background:var(--dsw-alias-bg-layer-2)}
 .dpw-capability{display:grid;gap:12px}.dpw-capability-grid{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 14px;margin:0;padding:12px;border-radius:12px;background:var(--dsw-alias-bg-layer-2);font-size:13px}.dpw-capability-grid dt{font-weight:650;color:var(--dsw-alias-label-primary)}.dpw-capability-grid dd{margin:0;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
 .dpw-desktop-external-link{cursor:pointer}
 .dpw-link-menu{position:fixed;z-index:2147483647;display:grid;min-width:180px;padding:6px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 30px rgb(0 0 0 / .24)}
@@ -2031,8 +2512,8 @@ function installPersonalWorkbenchStyles(ctx) {
 }
 
 // src/client/workbench.tsx
-var import_react7 = require("react");
-var import_jsx_runtime8 = require("react/jsx-runtime");
+var import_react8 = require("react");
+var import_jsx_runtime9 = require("react/jsx-runtime");
 var STORAGE_KEY = "yourbuddy.workbench:v1";
 var LEGACY_WIDTH_KEY = "dsh-sidebar:v1:width";
 var DEFAULT_SESSION_WIDTH = 560;
@@ -2151,8 +2632,8 @@ function ProductWorkbenchHost({
   t
 }) {
   const snapshot = useProductWorkbench((value) => value);
-  const previousMode = (0, import_react7.useRef)(snapshot.mode);
-  (0, import_react7.useEffect)(() => {
+  const previousMode = (0, import_react8.useRef)(snapshot.mode);
+  (0, import_react8.useEffect)(() => {
     if (previousMode.current !== snapshot.mode) window.requestAnimationFrame(() => {
       window.dispatchEvent(new Event("resize"));
     });
@@ -2160,10 +2641,10 @@ function ProductWorkbenchHost({
   }, [snapshot.mode]);
   const coreHidden = snapshot.mode !== "core";
   const contentHidden = snapshot.mode !== "content";
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "dpw-workbench", "data-product-workbench": true, "data-mode": snapshot.mode, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "core", hidden: coreHidden, ...coreHidden ? { inert: "" } : {}, children: renderSlot("workbench.core", {}) }),
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "content", hidden: contentHidden, ...contentHidden ? { inert: "" } : {}, children: renderSlot("workbench.content", {}) }),
-    snapshot.sessionExpanded ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "dpw-workbench", "data-product-workbench": true, "data-mode": snapshot.mode, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "core", hidden: coreHidden, ...coreHidden ? { inert: "" } : {}, children: renderSlot("workbench.core", {}) }),
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "dpw-workbench-surface", "data-workbench-surface": "content", hidden: contentHidden, ...contentHidden ? { inert: "" } : {}, children: renderSlot("workbench.content", {}) }),
+    snapshot.sessionExpanded ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
       "button",
       {
         type: "button",
@@ -2173,9 +2654,9 @@ function ProductWorkbenchHost({
         "aria-expanded": "true",
         title: t("workbench.session.collapse"),
         onClick: collapseSession,
-        children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
+        children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
       }
-    ) : /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
+    ) : /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
       "button",
       {
         type: "button",
@@ -2186,8 +2667,8 @@ function ProductWorkbenchHost({
         title: t("workbench.session.restore"),
         onClick: restoreSession,
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { "aria-hidden": "true", children: "\u2039" }),
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { children: t("workbench.session.restore") })
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { "aria-hidden": "true", children: "\u2039" }),
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { children: t("workbench.session.restore") })
         ]
       }
     )
@@ -2197,7 +2678,7 @@ function SessionRegionCollapseAction({
   collapseSession,
   t
 }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
     "button",
     {
       type: "button",
@@ -2207,7 +2688,7 @@ function SessionRegionCollapseAction({
       "aria-expanded": "true",
       title: t("workbench.session.collapse"),
       onClick: collapseSession,
-      children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
+      children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { "aria-hidden": "true", children: "\u203A" })
     }
   );
 }
@@ -2427,6 +2908,12 @@ function apply(ctx) {
     order: 30,
     locale: SETTINGS_LOCALE_NAMESPACE
   }, NetworkProxyRow));
+  ctx.slots.inject("settings.general.item", () => ctx.slots.register({
+    name: "settings.general.item",
+    id: "environment-permissions",
+    order: 35,
+    locale: SETTINGS_LOCALE_NAMESPACE
+  }, EnvironmentPermissionsRow));
   ctx.slots.inject("settings.general.item", () => ctx.slots.register({
     name: "settings.general.item",
     id: "application-lifecycle",

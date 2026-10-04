@@ -5,11 +5,13 @@ mod desktop_settings;
 mod desktop_shell;
 mod external_links;
 mod i18n;
+mod macos_permissions;
 mod network_proxy;
 mod notify;
 mod overlay;
 mod product;
 mod runtime;
+mod shell_environment;
 mod tray;
 mod updater;
 mod window_layout;
@@ -48,6 +50,11 @@ pub fn run() {
     if cli_shim::should_run_as_cli() {
         std::process::exit(cli_shim::run());
     }
+    if let Some(exit_code) = shell_environment::run_emitter_if_requested() {
+        std::process::exit(exit_code);
+    }
+    let startup_settings = desktop_settings::load();
+    shell_environment::initialize(&startup_settings.shell_environment);
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
@@ -107,6 +114,8 @@ struct FirstPartyCommandPayload {
     action: Option<String>,
     url: Option<String>,
     settings: Option<network_proxy::NetworkProxySettings>,
+    environment_settings: Option<desktop_settings::ShellEnvironmentSettings>,
+    permission: Option<String>,
 }
 
 /// Dispatch application-owned desktop operations without a second command ACL.
@@ -159,6 +168,35 @@ async fn run_first_party_command(
             .await?,
         )
         .map_err(|error| error.to_string()),
+        "get_shell_environment" => {
+            serde_json::to_value(shell_environment::snapshot()).map_err(|error| error.to_string())
+        }
+        "preview_shell_environment" => serde_json::to_value(shell_environment::preview(
+            &payload
+                .environment_settings
+                .ok_or("shell-environment-settings-missing")?,
+        ))
+        .map_err(|error| error.to_string()),
+        "save_shell_environment" => serde_json::to_value(shell_environment::save(
+            payload
+                .environment_settings
+                .ok_or("shell-environment-settings-missing")?,
+        )?)
+        .map_err(|error| error.to_string()),
+        "get_macos_permissions" => {
+            serde_json::to_value(macos_permissions::snapshot()).map_err(|error| error.to_string())
+        }
+        "request_macos_permission" => serde_json::to_value(
+            macos_permissions::request(&payload.permission.ok_or("macos-permission-missing")?)
+                .await?,
+        )
+        .map_err(|error| error.to_string()),
+        "open_macos_permission_settings" => {
+            macos_permissions::open_settings(
+                &payload.permission.ok_or("macos-permission-missing")?,
+            )?;
+            Ok(Value::Null)
+        }
         "install_harbor_component" => Ok(json!(install_harbor_component(app).await?)),
         "enable_managed_cli_path" => Ok(json!(enable_managed_cli_path()?)),
         "check_for_updates" => Ok(json!(updater::check_for_updates(app).await?)),
@@ -200,6 +238,17 @@ fn resolve_bundled_source(app: &AppHandle) -> Option<PathBuf> {
 
 async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String> {
     boot_log::init()?;
+    let environment_status = shell_environment::status();
+    boot_log::info(&format!(
+        "shell environment state={:?} source={} shell={} duration_ms={} variables={} path_entries={} error={}",
+        environment_status.state,
+        environment_status.source,
+        environment_status.shell_path,
+        environment_status.duration_ms,
+        environment_status.variable_count,
+        environment_status.path_entry_count,
+        environment_status.error_code
+    ));
     boot_log::info(&format!(
         "boot start bundled={}",
         bundled

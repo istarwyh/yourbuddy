@@ -26,7 +26,8 @@ export type NetworkProxyRowProps =
 type ProxyStatus = 'loading' | 'idle' | 'refreshing' | 'selecting-ca' | 'testing' | 'tested' | 'test-failed' | 'saving' | 'restarting' | 'error'
 
 const EMPTY_SETTINGS: NetworkProxySettings = {
-  mode: 'direct',
+  version: 1,
+  mode: 'inherit',
   httpProxy: '',
   httpsProxy: '',
   noProxy: '',
@@ -169,6 +170,7 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
               aria-label={t('proxy.mode.label')}
               onChange={setMode}
             >
+              <option value="inherit">{t('proxy.mode.inherit')}</option>
               <option value="system">{t('proxy.mode.system')}</option>
               <option value="custom">{t('proxy.mode.custom')}</option>
               <option value="direct">{t('proxy.mode.direct')}</option>
@@ -242,6 +244,10 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
             </>
           )}
 
+          {draft.mode === 'inherit' && (
+            <div className="dpw-hint dpw-field-wide">{t('proxy.inherit.hint')}</div>
+          )}
+
           {draft.mode === 'direct' && (
             <div className="dpw-hint dpw-field-wide">{t('proxy.direct.hint')}</div>
           )}
@@ -250,7 +256,8 @@ export function NetworkProxyRow({ t }: NetworkProxyRowProps) {
             <div className="dpw-label">{t('proxy.ca.label')}</div>
             <div className="dpw-code dpw-ca-path">
               {draft.caCertificatePath || (
-                snapshot?.settings.caCertificatePath === ''
+                draft.mode === 'inherit'
+                  && snapshot?.settings.caCertificatePath === ''
                   && snapshot.effective?.caSource === 'environment'
                   ? t('proxy.ca.environment')
                   : t('proxy.ca.system-only')
@@ -346,6 +353,7 @@ function describeTestResult(
     ? t('proxy.test.outcome.http').replace('{status}', String(result.status))
     : t('proxy.test.outcome.error').replace('{code}', result.errorCode)
   const routeKeys: Record<NetworkProxyTestResult['proxyMode'], Parameters<typeof t>[0]> = {
+    inherit: 'proxy.test.mode.inherit',
     direct: 'proxy.test.mode.direct',
     system: 'proxy.test.mode.system',
     custom: 'proxy.test.mode.custom',

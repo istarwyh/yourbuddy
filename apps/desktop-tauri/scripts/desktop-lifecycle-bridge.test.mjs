@@ -17,12 +17,20 @@ const validators = Function(
   'desktopLifecycleRequestId',
   'networkProxyChannel',
   'networkProxyVersion',
+  'environmentChannel',
+  'environmentVersion',
   'externalLinkChannel',
   'externalLinkVersion',
   'marketplaceLinkChannel',
   'marketplaceLinkVersion',
-  `${validatorSource}; return { readDesktopLifecycleAction, readNetworkProxyAction, isExternalLinkRequest, isMarketplaceLinkRequest }`,
-)('yourbuddy.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/, 'yourbuddy.desktop.network-proxy', 4, 'yourbuddy.desktop.external-link', 1, 'yourbuddy.desktop.marketplace-link', 1)
+  `${validatorSource}; return { readDesktopLifecycleAction, readNetworkProxyAction, readEnvironmentAction, isExternalLinkRequest, isMarketplaceLinkRequest }`,
+)(
+  'yourbuddy.desktop.lifecycle', 1, /^[A-Za-z0-9_-]{1,64}$/,
+  'yourbuddy.desktop.network-proxy', 5,
+  'yourbuddy.desktop.environment', 1,
+  'yourbuddy.desktop.external-link', 1,
+  'yourbuddy.desktop.marketplace-link', 1,
+)
 
 test('desktop shell accepts only fixed lifecycle request fields and actions', () => {
   const request = {
@@ -97,6 +105,7 @@ test('desktop shell accepts only credential-free HTTP and HTTPS external links',
 
 test('desktop shell accepts only fixed network proxy requests and bounded settings', () => {
   const settings = {
+    version: 1,
     mode: 'custom',
     httpProxy: 'http://127.0.0.1:7890',
     httpsProxy: 'http://127.0.0.1:7890',
@@ -105,7 +114,7 @@ test('desktop shell accepts only fixed network proxy requests and bounded settin
   }
   const request = {
     channel: 'yourbuddy.desktop.network-proxy',
-    version: 4,
+    version: 5,
     type: 'test-request',
     requestId: 'proxy_1',
     settings,
@@ -113,14 +122,18 @@ test('desktop shell accepts only fixed network proxy requests and bounded settin
   assert.equal(validators.readNetworkProxyAction(request), 'test')
   assert.equal(validators.readNetworkProxyAction({ ...request, type: 'save-request' }), 'save')
   assert.equal(validators.readNetworkProxyAction({
+    ...request,
+    settings: { ...settings, mode: 'inherit' },
+  }), 'test')
+  assert.equal(validators.readNetworkProxyAction({
     channel: request.channel,
-    version: 4,
+    version: 5,
     type: 'get-request',
     requestId: request.requestId,
   }), 'get')
   assert.equal(validators.readNetworkProxyAction({
     channel: request.channel,
-    version: 4,
+    version: 5,
     type: 'select-ca-request',
     requestId: request.requestId,
   }), 'select-ca')
@@ -128,6 +141,40 @@ test('desktop shell accepts only fixed network proxy requests and bounded settin
   assert.equal(validators.readNetworkProxyAction({ ...request, settings: { ...settings, token: 'secret' } }), false)
   assert.equal(validators.readNetworkProxyAction({ ...request, settings: { ...settings, mode: 'ambient' } }), false)
   assert.equal(validators.readNetworkProxyAction({ ...request, settings: { ...settings, noProxy: 'x'.repeat(4097) } }), false)
+})
+
+test('desktop shell accepts only fixed environment and permission requests', () => {
+  const request = {
+    channel: 'yourbuddy.desktop.environment',
+    version: 1,
+    type: 'preview-request',
+    requestId: 'environment_1',
+    settings: { mode: 'inherit', shellPath: null },
+  }
+  assert.equal(validators.readEnvironmentAction(request), 'preview')
+  assert.equal(validators.readEnvironmentAction({ ...request, type: 'save-request' }), 'save')
+  assert.equal(validators.readEnvironmentAction({
+    channel: request.channel,
+    version: 1,
+    type: 'get-permissions-request',
+    requestId: request.requestId,
+  }), 'get-permissions')
+  assert.equal(validators.readEnvironmentAction({
+    channel: request.channel,
+    version: 1,
+    type: 'open-permission-settings-request',
+    requestId: request.requestId,
+    permission: 'fullDiskAccess',
+  }), 'open-permission-settings')
+  assert.equal(validators.readEnvironmentAction({ ...request, settings: { ...request.settings, token: 'secret' } }), false)
+  assert.equal(validators.readEnvironmentAction({ ...request, settings: { mode: 'automatic', shellPath: null } }), false)
+  assert.equal(validators.readEnvironmentAction({
+    channel: request.channel,
+    version: 1,
+    type: 'request-permission-request',
+    requestId: request.requestId,
+    permission: 'arbitrary',
+  }), false)
 })
 
 test('desktop shell binds lifecycle commands to the active Host iframe', () => {
