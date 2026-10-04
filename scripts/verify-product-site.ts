@@ -1,4 +1,4 @@
-/** Validate local URLs and canonical source actions in the built YourBuddy website. */
+/** Validate local URLs, external navigation, and canonical source actions in the built YourBuddy website. */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -48,8 +48,17 @@ export function verifyProductSite(output: string, baseURL: string): { pages: num
     if (file.endsWith('index.html') && !pageURL.pathname.includes('/_print/') && document.querySelector('main') !== null && !existsSync(file.replace(/index\.html$/, 'index.md'))) {
       errors.push(`${pageURL.pathname}: missing raw Markdown`)
     }
-    for (const link of document.querySelectorAll('a[href*="/edit/"]')) {
-      if (!/^https:\/\/github\.com\/istarwyh\/yourbuddy\/edit\/.+\/docs\/user\/(?:[a-z-]+\/)*[a-z-]+(?:\.zh)?\.md$/.test(link.getAttribute('href') ?? '')) {
+    for (const link of document.querySelectorAll('a[href]')) {
+      const value = link.getAttribute('href')
+      if (value === null) continue
+      const target = new URL(value, pageURL)
+      if (['http:', 'https:'].includes(target.protocol) && target.origin !== base.origin) {
+        const rel = new Set((link.getAttribute('rel') ?? '').split(/\s+/).filter(Boolean))
+        if (link.getAttribute('target') !== '_blank' || !rel.has('noopener')) {
+          errors.push(`${pageURL.pathname}: external link must open safely in a new tab: ${value}`)
+        }
+      }
+      if (value.includes('/edit/') && !/^https:\/\/github\.com\/istarwyh\/yourbuddy\/edit\/.+\/docs\/user\/(?:[a-z-]+\/)*[a-z-]+(?:\.zh)?\.md$/.test(value)) {
         errors.push(`${pageURL.pathname}: incorrect canonical edit URL`)
       }
     }
@@ -65,5 +74,5 @@ export function verifyProductSite(output: string, baseURL: string): { pages: num
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const report = verifyProductSite(resolve(import.meta.dirname, '../website/product/.dist'), process.env.PRODUCT_SITE_BASE_URL ?? 'http://localhost:4174/')
   if (report.errors.length > 0) throw new Error(report.errors.join('\n'))
-  console.log(`Verified local links, assets, fragments, and source actions in ${report.pages} product HTML pages`)
+  console.log(`Verified local links, external navigation, assets, fragments, and source actions in ${report.pages} product HTML pages`)
 }

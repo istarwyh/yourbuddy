@@ -126,9 +126,18 @@ describe('product artifacts', () => {
     expect(report.errors).toContain('/product/: missing raw Markdown')
   })
 
-  it('accepts local fragments and ignores external hosts while checking source actions', () => {
+  it('requires external links to leave the embedded product frame safely', () => {
     const root = fixture()
-    writeFileSync(resolve(root, 'index.html'), '<main id="valid"><a href="#valid">Here</a><a href="https://other.example/">External</a><a href="https://github.com/wrong/repo/edit/master/temp.md">Edit</a><a href="https://github.com/istarwyh/yourbuddy/edit/master/docs/user/develop/basic/index.md">Tutorial source</a><a href="https://github.com/istarwyh/yourbuddy/edit/master/docs/user/develop/basic/index.zh.md">中文源文件</a></main>')
+    writeFileSync(resolve(root, 'index.html'), '<main><a href="https://github.com/example/project">Unsafe</a><a href="https://example.com/" target="_blank" rel="noopener noreferrer">Safe</a></main>')
+    writeFileSync(resolve(root, 'index.md'), '# Home\n')
+    const report = verifyProductSite(root, 'https://example.org/')
+    expect(report.errors).toContain('/: external link must open safely in a new tab: https://github.com/example/project')
+    expect(report.errors).not.toContain('/: external link must open safely in a new tab: https://example.com/')
+  })
+
+  it('accepts local fragments and external new tabs while checking source actions', () => {
+    const root = fixture()
+    writeFileSync(resolve(root, 'index.html'), '<main id="valid"><a href="#valid">Here</a><a href="https://other.example/" target="_blank" rel="noopener">External</a><a href="https://github.com/wrong/repo/edit/master/temp.md" target="_blank" rel="noopener">Edit</a><a href="https://github.com/istarwyh/yourbuddy/edit/master/docs/user/develop/basic/index.md" target="_blank" rel="noopener">Tutorial source</a><a href="https://github.com/istarwyh/yourbuddy/edit/master/docs/user/develop/basic/index.zh.md" target="_blank" rel="noopener">中文源文件</a></main>')
     writeFileSync(resolve(root, 'index.md'), '# Home\n')
     const report = verifyProductSite(root, 'https://example.org/')
     expect(report.errors.filter(error => error.startsWith('/:'))).toEqual(['/: incorrect canonical edit URL'])
