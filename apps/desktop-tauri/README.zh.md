@@ -95,4 +95,4 @@ pnpm release:yourbuddy -- X.Y.Z
 
 当前目标固定为 `aarch64-apple-darwin`；发布流水线有意不包含 Windows、Intel macOS 或 Linux 矩阵。
 
-macOS arm64 发布流水线会校验 Tag 与所有桌面版本真源的一致性，构建并签署一份组件 Manifest，再用同一组件集合生成 Bootstrap 与 Offline DMG，并随 Size Report 发布组件 Archive。Bootstrap DMG 超过 30,000,000 字节，或包含 Harness Tree、Node Archive、pnpm Store、Harbor Runtime、Offline Seed 时会直接拒绝发布。`latest.json` 只指向 Bootstrap Updater Payload。流水线还会搬移公开 Harbor 组件并运行两个 Entry Point，随后才为全部制品计算校验和并发布。
+macOS arm64 发布流水线会校验 Tag 与所有桌面版本真源的一致性，构建并签署一份组件 Manifest，再用同一组件集合生成 Bootstrap 与 Offline DMG，并随 Size Report 发布组件 Archive。Bootstrap DMG 超过 30,000,000 字节，或包含 Harness Tree、Node Archive、pnpm Store、Harbor Runtime、Offline Seed 时会直接拒绝发布。`latest.json` 指向已签名 Offline 应用 Archive，因此自动更新会在重启前安装该 Release 的全部 Seed。流水线还会搬移公开 Harbor 组件并运行两个 Entry Point，随后才为全部制品计算校验和并发布。

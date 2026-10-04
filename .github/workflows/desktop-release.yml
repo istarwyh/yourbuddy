@@ -150,6 +150,15 @@ jobs:
           find apps/desktop-tauri/component-seeds -mindepth 1 -maxdepth 1 -delete
           cp apps/desktop-tauri/component-release/*.tar.zst apps/desktop-tauri/component-seeds/
           pnpm --dir apps/desktop-tauri run build:offline
+          updater="$(find "apps/desktop-tauri/src-tauri/target/$RUST_TARGET/release/bundle" -type f -name '*.app.tar.gz' -print -quit)"
+          test -n "$updater"
+          resources="$RUNNER_TEMP/offline-updater-resources"
+          mkdir -p "$resources"
+          tar -xzf "$updater" -C "$resources"
+          test -f "$resources/YourBuddy.app/Contents/Resources/component-channel/components.json"
+          for seed in apps/desktop-tauri/component-release/*.tar.zst; do
+            test -f "$resources/YourBuddy.app/Contents/Resources/component-seeds/$(basename "$seed")"
+          done
 
       - name: Test relocated YourBuddy product runtime
         run: |
@@ -178,16 +187,21 @@ jobs:
           New-Item -ItemType Directory -Force release-assets | Out-Null
 
           $bootstrapDmg = Get-ChildItem $bootstrapRoot -Recurse -File -Filter '*.dmg' | Select-Object -First 1
-          $updater = Get-ChildItem $bootstrapRoot -Recurse -File -Filter '*.app.tar.gz' | Select-Object -First 1
+          $bootstrapUpdater = Get-ChildItem $bootstrapRoot -Recurse -File -Filter '*.app.tar.gz' | Select-Object -First 1
           $offlineDmg = Get-ChildItem $offlineRoot -Recurse -File -Filter '*.dmg' | Select-Object -First 1
-          if (-not $bootstrapDmg -or -not $updater -or -not $offlineDmg) { throw "Bootstrap, Offline, or updater artifact is missing" }
-          $signature = Get-Item "$($updater.FullName).sig" -ErrorAction Stop
+          $offlineUpdater = Get-ChildItem $offlineRoot -Recurse -File -Filter '*.app.tar.gz' | Select-Object -First 1
+          if (-not $bootstrapDmg -or -not $bootstrapUpdater -or -not $offlineDmg -or -not $offlineUpdater) { throw "Bootstrap, Offline, or updater artifact is missing" }
+          $bootstrapSignature = Get-Item "$($bootstrapUpdater.FullName).sig" -ErrorAction Stop
+          $offlineSignature = Get-Item "$($offlineUpdater.FullName).sig" -ErrorAction Stop
 
           Copy-Item $bootstrapDmg.FullName "release-assets/yourbuddy-$version-bootstrap-macos-arm64.dmg"
           Copy-Item $offlineDmg.FullName "release-assets/yourbuddy-$version-offline-macos-arm64.dmg"
-          $updaterDestination = "release-assets/yourbuddy-$version-bootstrap-macos-arm64.app.tar.gz"
-          Copy-Item $updater.FullName $updaterDestination
-          Copy-Item $signature.FullName "$updaterDestination.sig"
+          $bootstrapUpdaterDestination = "release-assets/yourbuddy-$version-bootstrap-macos-arm64.app.tar.gz"
+          Copy-Item $bootstrapUpdater.FullName $bootstrapUpdaterDestination
+          Copy-Item $bootstrapSignature.FullName "$bootstrapUpdaterDestination.sig"
+          $offlineUpdaterDestination = "release-assets/yourbuddy-$version-offline-macos-arm64.app.tar.gz"
+          Copy-Item $offlineUpdater.FullName $offlineUpdaterDestination
+          Copy-Item $offlineSignature.FullName "$offlineUpdaterDestination.sig"
           Copy-Item apps/desktop-tauri/component-release/*.tar.zst release-assets/
           Copy-Item "apps/desktop-tauri/component-release/yourbuddy-components-$version.json" release-assets/
           Copy-Item "apps/desktop-tauri/component-release/yourbuddy-components-$version.json.sig" release-assets/

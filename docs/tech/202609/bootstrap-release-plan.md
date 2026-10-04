@@ -56,10 +56,10 @@ The release has one signed application identity and two installation experiences
 
 | Experience | Intended use | Installer contents | Network requirement |
 |---|---|---|---|
-| Bootstrap DMG | Default download and automatic updates | Shell, bootstrap UI, pinned pnpm, manifest, overlay, icons and sounds | Required only for missing release components |
+| Bootstrap DMG | Default download | Shell, bootstrap UI, pinned pnpm, manifest, overlay, icons and sounds | Required only for missing release components |
 | Offline DMG | Air-gapped or controlled installation | The Bootstrap application plus release-matched component seed archives | None for first launch |
 
-Both installations produce the same active component identities and the same Host command line. The Offline DMG seeds the same cache that Bootstrap downloads; it does not install a second runtime layout. Automatic updates always install the Bootstrap updater artifact. An Offline installation remains usable after that update because its component cache is outside the application bundle.
+Both installations produce the same active component identities and the same Host command line. The Offline DMG seeds the same cache that Bootstrap downloads; it does not install a second runtime layout. Automatic updates install the Offline application archive so the updated application contains every release seed before it restarts.
 
 The Bootstrap DMG succeeds only when all of these behaviors ship together:
 
@@ -79,8 +79,9 @@ The tag workflow publishes the following immutable assets. Filenames contain the
 | Asset | Purpose |
 |---|---|
 | `yourbuddy-<version>-bootstrap-macos-arm64.dmg` | Default interactive installer |
-| `yourbuddy-<version>-bootstrap-macos-arm64.app.tar.gz` and `.sig` | Signed automatic-update payload |
+| `yourbuddy-<version>-bootstrap-macos-arm64.app.tar.gz` and `.sig` | Signed Bootstrap application archive; not promoted to the update channel |
 | `yourbuddy-<version>-offline-macos-arm64.dmg` | Bootstrap application plus all release seed components |
+| `yourbuddy-<version>-offline-macos-arm64.app.tar.gz` and `.sig` | Signed automatic-update payload with all release seed components |
 | `yourbuddy-components-<version>.json` and `.sig` | Signed component selection and download metadata |
 | `yourbuddy-harness-<bundle-id>-macos-arm64.tar.zst` | Trimmed, built Harness and product plugin tree without `node_modules` or source maps |
 | `yourbuddy-pnpm-store-<lock-id>-macos-arm64.tar.zst` | Exact production Store fallback for machines without complete local package content |
@@ -88,7 +89,7 @@ The tag workflow publishes the following immutable assets. Filenames contain the
 | `yourbuddy-harbor-<runtime-id>-darwin-arm64.tar.zst` | Relocatable Python and Harbor runtime |
 | `yourbuddy-debug-<version>.tar.zst` | Optional Harness source maps and native diagnostic files, excluded from runtime components |
 | `SHA256SUMS.txt` | Hashes for every public release asset |
-| `latest.json` | Stable updater manifest pointing only to the Bootstrap updater payload |
+| `latest.json` | Stable updater manifest pointing only to the Offline updater payload |
 
 The pinned pnpm archive stays inside the Bootstrap application because it is small and owns Store-format and install behavior. YourBuddy never adopts a global pnpm executable. The component manager may use the Store directory that pinned pnpm normally resolves for the user, but it invokes only the bundled pnpm and installs only the committed production lockfile.
 
@@ -211,11 +212,11 @@ The component cache is shared across application versions but not across macOS u
 <a id="updates"></a>
 ## Updates and Offline installation
 
-`latest.json` points to the Bootstrap updater archive. An update replaces only the signed application bundle; the component cache remains in application data. On first launch after an update, the new embedded component manifest selects exact component ids. Unchanged ids activate without download, while changed required components install before the Host starts. Harbor updates remain deferred until Harbor use unless an active Harbor operation requires the old component to remain retained.
+`latest.json` points to the Offline updater archive. An update replaces the signed application bundle with one that contains every release seed; the component cache remains in application data. On first launch after an update, the new embedded component manifest selects exact component ids and imports a missing required component from the bundled seeds before the Host starts. Harbor remains deferred until Harbor use, but its release seed is available without a later download.
 
-The Offline DMG contains seed archives and the signed component manifest under a dedicated Tauri resource directory. Its first launch imports each seed into the same cache and then follows the ordinary Bootstrap path with networking disabled. The installed application identity and updater configuration match Bootstrap, so later automatic updates are small and reuse the seeded components.
+The Offline DMG and Offline updater archive contain seed archives and the signed component manifest under a dedicated Tauri resource directory. Both import seeds into the same cache and then follow the ordinary Bootstrap path without requiring network access. The installed application identity and updater configuration match Bootstrap.
 
-An existing self-contained YourBuddy installation upgrades directly to Bootstrap. Existing `harness-versions`, managed Node, DSH home, sessions, settings, credentials, and workspaces remain in place. The bootstrap resolver recognizes a bootable Harness tree whose bundle digest matches the new manifest and registers it without copying. An embedded Harbor runtime from the replaced application bundle is not assumed to survive; Harbor downloads on first use. Users who require a no-network transition install the Offline DMG, which seeds the Harbor component before replacing normal operation.
+An existing self-contained YourBuddy installation upgrades directly through the Offline updater archive. Existing `harness-versions`, managed Node, DSH home, sessions, settings, credentials, and workspaces remain in place. The bootstrap resolver recognizes a bootable Harness tree whose bundle digest matches the new manifest and registers it without copying. Changed components and the deferred Harbor runtime remain available from the updated application's seeds without network access.
 
 Bootstrap and Offline use the same bundle identifier, data root, session format, and updater channel. They are distribution choices, not separate editions, feature tiers, or license states.
 
@@ -249,7 +250,7 @@ The application never silently switches to registry versions, a different Harbor
 | Harbor Evolution product plugin | Add the shared runtime provider, status/installation UI, explicit install action, tool-not-ready result, activation retry, and entry-point resolution |
 | [`bundle-harness-source.mjs`](../../../apps/desktop-tauri/scripts/bundle-harness-source.mjs) | Produce the source-map-free Harness component plus optional debug archive and retain exact runtime file ownership |
 | Packaging scripts | Produce compressed components, deterministic manifests, signatures, Offline seeds, two Tauri resource configurations, size reports, and release notes |
-| [`desktop-release.yml`](../../../.github/workflows/desktop-release.yml) | Build components once, build Bootstrap and Offline DMGs, run both acceptance paths, publish the complete asset set, and promote only Bootstrap to `latest.json` |
+| [`desktop-release.yml`](../../../.github/workflows/desktop-release.yml) | Build components once, build Bootstrap and Offline DMGs, verify both application archives, publish the complete asset set, and promote only Offline to `latest.json` |
 | Desktop README and product guides | Describe installation choices, first-launch network and disk behavior, Harbor installation, cache cleanup, proxy/CA recovery, and Offline use |
 
 The component manager remains desktop-owned because it must run before the Node Host. Harbor-specific readiness remains owned by the Harbor product plugin because only that plugin knows which actions require Python and how to present its state. The component helper is the narrow process interface between these owners; neither side duplicates download or activation logic.
@@ -267,9 +268,9 @@ The tag workflow performs these operations in one job unless independent build j
 4. Run archive-local smokes, compute ids, sizes and SHA-256 values, and generate the component manifest.
 5. Sign the manifest and component archives with the release signing identity used by the desktop updater.
 6. Build the Bootstrap App, updater archive and DMG with only bootstrap resources.
-7. Build the Offline DMG from the same App sources plus exact seed archives; do not publish an Offline updater payload.
+7. Build the Offline DMG and updater archive from the same App sources plus exact seed archives.
 8. Exercise clean Bootstrap, reused Store, Node fallback, Harbor-not-installed, first Harbor installation, relocated Harbor, and Offline no-network paths.
-9. Stage every asset, regenerate `SHA256SUMS.txt`, check every hash and signature, and generate `latest.json` for the Bootstrap updater only.
+9. Stage every asset, regenerate `SHA256SUMS.txt`, check every hash and signature, and generate `latest.json` for the Offline updater only.
 10. Create one GitHub Release, mark Bootstrap as the primary download in release notes, upload the stable updater manifest, and leave all bytes immutable.
 
 The workflow emits a machine-readable size report containing compressed and expanded bytes for each component and both DMGs. The release archive records the report instead of copying a hand-maintained size table into standing documentation.
@@ -289,7 +290,7 @@ Focused unit and integration coverage owns deterministic component behavior:
 - Store miss followed by release Store download and successful offline install;
 - last-known-good Harness recovery and garbage collection with active-process retention;
 - Harbor status without installation, shared concurrent install, cancel/retry, tool-not-ready result, relocated entry points, and ordinary chat without Harbor bytes;
-- Offline seed import with network disabled and automatic update from Offline to Bootstrap while retaining components.
+- Offline seed import and automatic update from either installer with network disabled after the updater payload is downloaded.
 
 Packaged acceptance uses the real signed-candidate layout rather than a source-only mock:
 
@@ -305,7 +306,7 @@ Packaged acceptance uses the real signed-candidate layout rather than a source-o
 | Interrupted update | The previous Harness remains bootable and no staging directory becomes active |
 | Public release | Anonymous downloads match `SHA256SUMS.txt`; manifest URLs, signatures, updater metadata, tag commit and release notes agree |
 
-Acceptance fails if the Bootstrap application contains `yourbuddy-pnpm-store`, the Node archive, `harness-source`, or `yourbuddy-runtime`; if ordinary startup downloads Harbor; if a Store miss falls back to mutable dependency resolution; if `latest.json` points to the Offline payload; or if either installer produces a different active component set for the same tag.
+Acceptance fails if the Bootstrap application contains `yourbuddy-pnpm-store`, the Node archive, `harness-source`, or `yourbuddy-runtime`; if the Offline updater omits a release seed; if ordinary startup activates Harbor; if a Store miss falls back to mutable dependency resolution; if `latest.json` points to the Bootstrap payload; or if either installer produces a different active component set for the same tag.
 
 Run the relevant desktop script tests, Rust tests, product release smoke, build checks, documentation checks, and the packaged scenarios above. Follow [testing policy](../../testing.md) for the smallest source coverage and retain packaged tests because component correctness depends on final resource layout, signatures, relocation, and public URLs.
 
@@ -318,10 +319,10 @@ This order is one implementation dependency graph, not a phased product rollout.
 |---:|---|---|
 | 1 | Component format and builders | Deterministic Harness, Store, Node, Harbor and debug archives produce stable ids, manifests and size reports |
 | 2 | Native component manager | Startup components support cache reuse, network policy, cancellation, activation, fallback and cleanup |
-| 3 | Bootstrap resource configuration | The signed App and updater omit heavyweight resources and start through downloaded or cached components |
+| 3 | Bootstrap resource configuration | The signed Bootstrap App and archive omit heavyweight resources and start through downloaded or cached components |
 | 4 | Harbor on-demand integration | Discovery works without Python; explicit installation, tool behavior, progress, cancellation and retry use the shared manager |
 | 5 | Offline seed configuration | The Offline DMG imports the exact release components and works with network disabled |
-| 6 | Updater and migration | Bootstrap is the stable updater payload; existing data and cached Harness survive direct upgrade |
+| 6 | Updater and migration | Offline is the stable updater payload; existing data and cached Harness survive direct upgrade |
 | 7 | CI and release publication | One tag builds, checks and publishes every artifact with public hashes, signatures and updater metadata |
 | 8 | Product documentation | Download choice, network/disk needs, Harbor activation, recovery and cache behavior are bilingual and live |
 

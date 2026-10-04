@@ -56,10 +56,10 @@ Release 使用一个已签名应用身份，提供两种安装体验。
 
 | 体验 | 使用场景 | 安装包内容 | 网络要求 |
 |---|---|---|---|
-| Bootstrap DMG | 默认下载和自动更新 | Shell、引导界面、固定 pnpm、Manifest、Overlay、图标和声音 | 仅缺少 Release 组件时需要网络 |
+| Bootstrap DMG | 默认下载 | Shell、引导界面、固定 pnpm、Manifest、Overlay、图标和声音 | 仅缺少 Release 组件时需要网络 |
 | Offline DMG | 离线或受控环境安装 | Bootstrap 应用以及与 Release 匹配的组件 Seed Archive | 首次启动不需要网络 |
 
-两种安装最终产生相同的活跃组件身份和 Host 命令行。Offline DMG 向 Bootstrap 下载所用的同一 Cache 写入 Seed，不安装第二套 Runtime 布局。自动更新始终安装 Bootstrap Updater 制品；Offline 安装在更新后仍可使用，因为它的组件 Cache 位于应用 Bundle 之外。
+两种安装最终产生相同的活跃组件身份和 Host 命令行。Offline DMG 向 Bootstrap 下载所用的同一 Cache 写入 Seed，不安装第二套 Runtime 布局。自动更新安装 Offline 应用 Archive，确保更新后的应用在重启前已包含该 Release 的全部 Seed。
 
 只有以下行为在同一版本中全部交付，Bootstrap DMG 才算完成：
 
@@ -79,8 +79,9 @@ Tag Workflow 发布以下不可变制品。文件名在方便人工识别处包�
 | 制品 | 用途 |
 |---|---|
 | `yourbuddy-<version>-bootstrap-macos-arm64.dmg` | 默认交互式安装包 |
-| `yourbuddy-<version>-bootstrap-macos-arm64.app.tar.gz` 与 `.sig` | 已签名自动更新 Payload |
+| `yourbuddy-<version>-bootstrap-macos-arm64.app.tar.gz` 与 `.sig` | 已签名 Bootstrap 应用 Archive；不进入更新频道 |
 | `yourbuddy-<version>-offline-macos-arm64.dmg` | Bootstrap 应用以及全部 Release Seed 组件 |
+| `yourbuddy-<version>-offline-macos-arm64.app.tar.gz` 与 `.sig` | 包含全部 Release Seed 组件的已签名自动更新 Payload |
 | `yourbuddy-components-<version>.json` 与 `.sig` | 已签名组件选择和下载元数据 |
 | `yourbuddy-harness-<bundle-id>-macos-arm64.tar.zst` | 不含 `node_modules` 和 Source Map 的已裁剪、已构建 Harness 与产品插件 Tree |
 | `yourbuddy-pnpm-store-<lock-id>-macos-arm64.tar.zst` | 本机缺少完整 Package 内容时使用的精确生产 Store Fallback |
@@ -88,7 +89,7 @@ Tag Workflow 发布以下不可变制品。文件名在方便人工识别处包�
 | `yourbuddy-harbor-<runtime-id>-darwin-arm64.tar.zst` | 可搬移 Python 与 Harbor Runtime |
 | `yourbuddy-debug-<version>.tar.zst` | 可选 Harness Source Map 与原生诊断文件，不进入 Runtime 组件 |
 | `SHA256SUMS.txt` | 全部公开 Release 制品的 Hash |
-| `latest.json` | 只指向 Bootstrap Updater Payload 的稳定更新 Manifest |
+| `latest.json` | 只指向 Offline Updater Payload 的稳定更新 Manifest |
 
 固定 pnpm Archive 保留在 Bootstrap 应用内，因为它很小并负责 Store Format 和安装行为。YourBuddy 从不采用全局 pnpm 可执行文件。组件管理器可以使用固定 pnpm 为当前用户正常解析出的 Store 目录，但只调用内置 pnpm，也只安装已提交的生产 Lockfile。
 
@@ -211,11 +212,11 @@ components/
 <a id="updates"></a>
 ## 更新与 Offline 安装
 
-`latest.json` 指向 Bootstrap Updater Archive。更新只替换已签名应用 Bundle；组件 Cache 保留在应用数据中。更新后首次启动时，新内嵌组件 Manifest 选择精确组件 id。未变化 id 无需下载直接激活；变化的必需组件在 Host 启动前安装。除非活跃 Harbor 操作要求保留旧组件，否则 Harbor 更新继续推迟到 Harbor 使用时。
+`latest.json` 指向 Offline Updater Archive。更新会用包含全部 Release Seed 的已签名应用 Bundle 替换原 Bundle；组件 Cache 保留在应用数据中。更新后首次启动时，新内嵌组件 Manifest 选择精确组件 id，并在 Host 启动前从内置 Seed 安装缺失的必需组件。Harbor 仍推迟到首次使用时激活，但无需后续下载即可取得该 Release 的 Seed。
 
-Offline DMG 在专用 Tauri Resource 目录中包含 Seed Archive 与已签名组件 Manifest。首次启动把每个 Seed 导入同一 Cache，然后在禁用网络的情况下走普通 Bootstrap 路径。安装后的应用身份和 Updater 配置与 Bootstrap 相同，因此后续自动更新较小，并会复用已 Seed 的组件。
+Offline DMG 和 Offline Updater Archive 都在专用 Tauri Resource 目录中包含 Seed Archive 与已签名组件 Manifest。二者都向同一 Cache 导入 Seed，然后在无需网络的情况下走普通 Bootstrap 路径。安装后的应用身份和 Updater 配置与 Bootstrap 相同。
 
-现有自包含 YourBuddy 安装可直接升级到 Bootstrap。现有 `harness-versions`、Managed Node、DSH Home、Session、Settings、Credential 和 Workspace 保持原位。Bootstrap Resolver 识别 Bundle Digest 与新 Manifest 匹配的可启动 Harness Tree，并在不复制的情况下登记。被替换应用 Bundle 中内嵌的 Harbor Runtime 不假定继续存在；Harbor 在首次使用时下载。需要无网络迁移的用户安装 Offline DMG，后者会在恢复普通操作前 Seed Harbor 组件。
+现有自包含 YourBuddy 安装可通过 Offline Updater Archive 直接升级。现有 `harness-versions`、Managed Node、DSH Home、Session、Settings、Credential 和 Workspace 保持原位。Bootstrap Resolver 识别 Bundle Digest 与新 Manifest 匹配的可启动 Harness Tree，并在不复制的情况下登记。发生变化的组件和延迟激活的 Harbor Runtime 都可从更新后应用的 Seed 取得，无需网络。
 
 Bootstrap 与 Offline 使用相同 Bundle Identifier、数据根目录、Session Format 和 Updater Channel。它们是发行选择，不是不同 Edition、Feature Tier 或 License State。
 
@@ -249,7 +250,7 @@ Bootstrap 与 Offline 使用相同 Bundle Identifier、数据根目录、Session
 | Harbor Evolution 产品插件 | 新增共享 Runtime Provider、状态/安装 UI、显式安装操作、Tool-not-ready Result、激活重试和 Entry-point Resolution |
 | [`bundle-harness-source.mjs`](../../../apps/desktop-tauri/scripts/bundle-harness-source.mjs) | 生成不带 Source Map 的 Harness 组件和可选 Debug Archive，并保持精确 Runtime File Ownership |
 | Packaging Script | 生成压缩组件、确定性 Manifest、签名、Offline Seed、两种 Tauri Resource Config、Size Report 和 Release Notes |
-| [`desktop-release.yml`](../../../.github/workflows/desktop-release.yml) | 一次构建组件，构建 Bootstrap 与 Offline DMG，运行两条验收路径，发布完整制品集，并只把 Bootstrap 提升到 `latest.json` |
+| [`desktop-release.yml`](../../../.github/workflows/desktop-release.yml) | 一次构建组件，构建 Bootstrap 与 Offline DMG，校验两种应用 Archive，发布完整制品集，并只把 Offline 提升到 `latest.json` |
 | Desktop README 与产品指南 | 描述安装选择、首次启动网络和磁盘行为、Harbor 安装、Cache 清理、Proxy/CA 恢复和 Offline 使用 |
 
 组件管理器继续由 Desktop 拥有，因为它必须在 Node Host 之前运行。Harbor 专属 Readiness 继续由 Harbor 产品插件拥有，因为只有该插件知道哪些操作需要 Python 以及如何展示状态。Component Helper 是两个 Owner 之间的狭窄 Process Interface；双方都不重复 Download 或 Activation Logic。
@@ -267,9 +268,9 @@ Tag Workflow 在一个 Job 中执行以下操作；如果独立 Build Job 通过
 4. 运行 Archive-local Smoke，计算 id、Size 和 SHA-256，并生成组件 Manifest。
 5. 使用桌面 Updater 使用的 Release 签名身份签署 Manifest 与组件 Archive。
 6. 仅使用 Bootstrap Resource 构建 Bootstrap App、Updater Archive 和 DMG。
-7. 从相同 App Source 加上精确 Seed Archive 构建 Offline DMG；不发布 Offline Updater Payload。
+7. 从相同 App Source 加上精确 Seed Archive 构建 Offline DMG 和 Updater Archive。
 8. 执行 Clean Bootstrap、Store 复用、Node Fallback、Harbor 未安装、首次 Harbor 安装、搬移 Harbor 和 Offline No-network 路径。
-9. 暂存全部制品，重新生成 `SHA256SUMS.txt`，检查每个 Hash 与签名，并只为 Bootstrap Updater 生成 `latest.json`。
+9. 暂存全部制品，重新生成 `SHA256SUMS.txt`，检查每个 Hash 与签名，并只为 Offline Updater 生成 `latest.json`。
 10. 创建一个 GitHub Release，在 Release Notes 中把 Bootstrap 标为主要下载，上传稳定 Updater Manifest，并保持全部字节不可变。
 
 Workflow 输出机器可读 Size Report，包含每个组件和两个 DMG 的压缩与展开字节。Release Archive 记录该 Report，不在 Standing Documentation 中复制手工维护的 Size Table。
@@ -289,7 +290,7 @@ Workflow 输出机器可读 Size Report，包含每个组件和两个 DMG 的压
 - Store Miss 后下载 Release Store 并成功 Offline Install；
 - Last-known-good Harness 恢复，以及保留活跃进程引用的 Garbage Collection；
 - Harbor 未安装时的状态、共享并发安装、取消/重试、Tool-not-ready Result、搬移 Entry Point，以及不下载 Harbor 的普通 Chat；
-- 禁用网络时导入 Offline Seed，以及从 Offline 自动更新到 Bootstrap 并保留组件。
+- 下载 Updater Payload 后禁用网络，验证任一安装来源都能导入 Offline Seed 并完成自动更新。
 
 Packaged Acceptance 使用真实 Signed-candidate Layout，而不是 Source-only Mock：
 
@@ -305,7 +306,7 @@ Packaged Acceptance 使用真实 Signed-candidate Layout，而不是 Source-only
 | 中断更新 | 旧 Harness 保持可启动，没有 Staging Directory 变成 Active |
 | 公开 Release | 匿名下载与 `SHA256SUMS.txt` 一致；Manifest URL、签名、Updater Metadata、Tag Commit 和 Release Notes 一致 |
 
-出现以下任一情况即验收失败：Bootstrap 应用包含 `yourbuddy-pnpm-store`、Node Archive、`harness-source` 或 `yourbuddy-runtime`；普通启动下载 Harbor；Store Miss 回退到可变 Dependency Resolution；`latest.json` 指向 Offline Payload；或两个安装包为同一 Tag 产出不同的 Active Component Set。
+出现以下任一情况即验收失败：Bootstrap 应用包含 `yourbuddy-pnpm-store`、Node Archive、`harness-source` 或 `yourbuddy-runtime`；Offline Updater 缺少任一 Release Seed；普通启动激活 Harbor；Store Miss 回退到可变 Dependency Resolution；`latest.json` 指向 Bootstrap Payload；或两个安装包为同一 Tag 产出不同的 Active Component Set。
 
 运行相关 Desktop Script Test、Rust Test、Product Release Smoke、Build Check、Documentation Check 和上述 Packaged Scenario。根据[测试策略](../../testing.zh.md)选择最小源码覆盖，并保留 Packaged Test，因为组件正确性取决于最终 Resource Layout、Signature、Relocation 和 Public URL。
 
@@ -318,10 +319,10 @@ Packaged Acceptance 使用真实 Signed-candidate Layout，而不是 Source-only
 |---:|---|---|
 | 1 | 组件格式与 Builder | 确定性 Harness、Store、Node、Harbor 和 Debug Archive 产出稳定 id、Manifest 与 Size Report |
 | 2 | 原生组件管理器 | 启动组件支持 Cache 复用、网络策略、取消、激活、Fallback 和清理 |
-| 3 | Bootstrap Resource 配置 | 已签名 App 与 Updater 排除重量级 Resource，并通过下载或 Cached Component 启动 |
+| 3 | Bootstrap Resource 配置 | 已签名 Bootstrap App 与 Archive 排除重量级 Resource，并通过下载或 Cached Component 启动 |
 | 4 | Harbor 按需集成 | 无 Python 时仍可发现；显式安装、Tool 行为、进度、取消和重试复用共享 Manager |
 | 5 | Offline Seed 配置 | Offline DMG 导入精确 Release Component，并在禁用网络时工作 |
-| 6 | Updater 与迁移 | Bootstrap 是稳定 Updater Payload；现有数据和 Cached Harness 在直接升级中保留 |
+| 6 | Updater 与迁移 | Offline 是稳定 Updater Payload；现有数据和 Cached Harness 在直接升级中保留 |
 | 7 | CI 与 Release 发布 | 一个 Tag 构建、检查并发布全部制品以及公开 Hash、签名和 Updater Metadata |
 | 8 | 产品文档 | 下载选择、网络/磁盘要求、Harbor 激活、恢复和 Cache 行为双语且已上线 |
 
