@@ -29,7 +29,7 @@ const SIDEBAR_PREFS_DEFAULTS = {
 	autoOpenJobs: true,
 	agentOpenTools: false,
 	editorExplorer: false,
-	workspaceFence: true,
+	workspaceFence: false,
 	titleBarScheme: "auto",
 	titleBarPresetId: "",
 	customCss: "",
@@ -85,7 +85,7 @@ const PrefsSchema = z.object({
 	autoOpenJobs: z.boolean().default(true),
 	agentOpenTools: z.boolean().default(false),
 	editorExplorer: z.boolean().default(false),
-	workspaceFence: z.boolean().default(true),
+	workspaceFence: z.boolean().default(false),
 	titleBarScheme: z.union([
 		z.const("auto"),
 		z.const("web"),
@@ -345,26 +345,19 @@ async function resolveRealPath(path, label) {
 		throw new SidebarError("fs-error", `cannot resolve ${label} "${path}": ${error instanceof Error ? error.message : String(error)}`, 400);
 	}
 }
-/** Reject a resolved path whose real filesystem target escapes the workspace. */
-function assertWithinWorkspace(workspace, target) {
-	if (!isWithin(workspace, target)) throw new SidebarError("forbidden", `path "${target}" is outside workspace`, 403);
-}
 /**
-* Resolve an existing workspace path through symlinks and (unless disarmed)
-* enforce containment.
+* Resolve an existing filesystem path through symlinks.
 *
-* @param cwd - Session workspace directory.
-* @param target - Client-supplied absolute path in the session's namespace.
-* @param fence - Whether containment is enforced (the settings-page
-* `workspaceFence` switch). Even when false the paths are still resolved
-* through symlinks so callers always receive the canonical target.
+* Relative paths use the Session workspace as their base, while absolute paths
+* may point anywhere on the host.
+*
+* @param cwd - Session workspace directory used for relative paths.
+* @param target - Client-supplied path in the session's namespace.
 * @returns The canonical absolute path used for the filesystem operation.
 */
-async function ensureWorkspacePath(cwd, target, fence = true) {
-	const absolute = requireAbsolute(resolveSessionPath(cwd, target));
-	const [realCwd, realTarget] = await Promise.all([resolveRealPath(cwd, "workspace"), resolveRealPath(absolute, "target")]);
-	if (fence) assertWithinWorkspace(realCwd, realTarget);
-	return realTarget;
+async function ensureWorkspacePath(cwd, target) {
+	const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)));
+	return resolveRealPath(absolute, "target");
 }
 /**
 * Validate a write destination, including destinations that do not exist yet.
@@ -373,20 +366,19 @@ async function ensureWorkspacePath(cwd, target, fence = true) {
 * The returned path is rebuilt from that canonical ancestor, so an existing
 * symlink is never left in the path passed to the write operation.
 *
-* @param cwd - Session workspace directory.
-* @param target - Client-supplied absolute destination path in the session's namespace.
-* @param fence - Whether containment is enforced (the settings-page
-* `workspaceFence` switch). Resolution/canonicalization is identical either way.
+* Relative paths use the Session workspace as their base, while absolute paths
+* may point anywhere on the host.
+*
+* @param cwd - Session workspace directory used for relative paths.
+* @param target - Client-supplied destination path in the session's namespace.
 * @returns A canonical path for an existing target or its nearest existing ancestor.
 */
-async function ensureWorkspaceWritePath(cwd, target, fence = true) {
-	const absolute = requireAbsolute(resolveSessionPath(cwd, target));
-	const realCwd = await resolveRealPath(cwd, "workspace");
+async function ensureWorkspaceWritePath(cwd, target) {
+	const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)));
 	let existingPath = absolute;
 	const missingSegments = [];
 	for (;;) try {
 		const realTarget = await realpath(existingPath);
-		if (fence) assertWithinWorkspace(realCwd, realTarget);
 		return missingSegments.reduce((path, segment) => join(path, segment), realTarget);
 	} catch (error) {
 		if (error.code !== "ENOENT") {
@@ -432,14 +424,14 @@ async function ensureWorkspaceWritePath(cwd, target, fence = true) {
 * failures; the temp file is always removed on failure.
 */
 async function writeWorkspaceUpload(input) {
-	const { cwd, dir, relativePath, chunks, limit, fence = true } = input;
+	const { cwd, dir, relativePath, chunks, limit } = input;
 	const base = requireAbsolute(dir);
-	await ensureWorkspacePath(cwd, base, fence);
+	await ensureWorkspacePath(cwd, base);
 	if (relativePath === "" || relativePath.startsWith("/") || relativePath.startsWith("\\")) throw new SidebarError("bad-request", "relativePath must stay below the upload directory", 400);
 	const segments = relativePath.split(/[\\/]/);
 	if (segments.some((part) => part === "" || part === "." || part === "..")) throw new SidebarError("bad-request", "relativePath must stay below the upload directory", 400);
 	const target = join(base, ...segments);
-	const safeTarget = await ensureWorkspaceWritePath(cwd, target, fence);
+	const safeTarget = await ensureWorkspaceWritePath(cwd, target);
 	const tmp = join(dirname(safeTarget), `.${basename(safeTarget)}.dsh-upload-${randomUUID()}.tmp`);
 	await mkdir(dirname(safeTarget), { recursive: true });
 	const stream = createWriteStream(tmp, { flags: "wx" });
@@ -478,8 +470,8 @@ async function writeWorkspaceUpload(input) {
 /** Resolve one existing entry for a link-aware mutation: the lexical row path
 * plus its fully resolved real target (fence-checked). ENOENT becomes an
 * fs-error, mirroring path-security's resolveRealPath semantics. */
-async function resolveEntry(cwd, target, fence) {
-	const absolute = requireAbsolute(resolveSessionPath(cwd, target));
+async function resolveEntry(cwd, target) {
+	const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)));
 	let real;
 	let realCwd;
 	try {
@@ -487,7 +479,6 @@ async function resolveEntry(cwd, target, fence) {
 	} catch (error) {
 		throw new SidebarError("fs-error", `cannot resolve "${target}": ${error instanceof Error ? error.message : String(error)}`, 400);
 	}
-	if (fence && !isWithin(realCwd, real)) throw new SidebarError("forbidden", `path "${target}" is outside workspace`, 403);
 	return {
 		absolute,
 		real,
@@ -516,12 +507,12 @@ async function pathExists(target) {
 * and root failures.
 */
 async function renameWorkspaceEntry(input) {
-	const { cwd, path, name, fence = true } = input;
+	const { cwd, path, name } = input;
 	if (name === "" || name === "." || name === ".." || name.includes("/") || name.includes("\\")) throw new SidebarError("bad-request", "name must be a single path segment", 400);
-	const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence);
+	const { absolute, real, realCwd } = await resolveEntry(cwd, path);
 	if (real === realCwd) throw new SidebarError("fs-error", "cannot rename the workspace root", 400);
 	if (basename(absolute) === name) return { path: absolute };
-	const safeDestination = await ensureWorkspaceWritePath(cwd, join(dirname(absolute), name), fence);
+	const safeDestination = await ensureWorkspaceWritePath(cwd, join(dirname(absolute), name));
 	if (await pathExists(safeDestination)) throw new SidebarError("fs-error", `"${name}" already exists`, 409);
 	try {
 		await rename(absolute, safeDestination);
@@ -540,8 +531,8 @@ async function renameWorkspaceEntry(input) {
 * root failures.
 */
 async function removeWorkspaceEntry(input) {
-	const { cwd, path, fence = true } = input;
-	const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence);
+	const { cwd, path } = input;
+	const { absolute, real, realCwd } = await resolveEntry(cwd, path);
 	if (real === realCwd) throw new SidebarError("fs-error", "cannot remove the workspace root", 400);
 	try {
 		if ((await lstat(absolute)).isDirectory()) await rm(absolute, { recursive: true });
@@ -2926,17 +2917,6 @@ async function readText(path, readLimit) {
 		await handle.close();
 	}
 }
-/**
-* Whether the workspace fence is armed for the sidebar's filesystem routes
-* (the settings-page `workspaceFence` switch under the files card's gear).
-* An absent settings service or a missing field keeps the fence ON — the
-* containment default never depends on the settings surface being reachable.
-*/
-function fenceEnabledOf(getSettings) {
-	const value = getSettings()?.get().value;
-	if (value === null || typeof value !== "object") return true;
-	return value.workspaceFence !== false;
-}
 function buildApi(ctx, resolved, getSettings, assistantLive) {
 	const cwdOf = async (payload) => {
 		const sessionId = requireString(payload, "sessionId");
@@ -2971,7 +2951,7 @@ function buildApi(ctx, resolved, getSettings, assistantLive) {
 		},
 		"fs.tree": async (payload) => {
 			const { cwd } = await cwdOf(payload);
-			return listDirectory(payload.path === void 0 ? cwd : await ensureWorkspacePath(cwd, requireString(payload, "path"), fenceEnabledOf(getSettings)), resolved.listLimit);
+			return listDirectory(payload.path === void 0 ? cwd : await ensureWorkspacePath(cwd, requireString(payload, "path")), resolved.listLimit);
 		},
 		"fs.search": async (payload) => {
 			const { cwd } = await cwdOf(payload);
@@ -2980,7 +2960,7 @@ function buildApi(ctx, resolved, getSettings, assistantLive) {
 		"fs.read": async (payload) => {
 			const { cwd } = await cwdOf(payload);
 			const selected = selectedRepoOf(payload);
-			const { content, truncated, binary, size, head } = await readText(await ensureWorkspacePath(cwd, await resolveGitPath(cwd, requireString(payload, "path"), selected), fenceEnabledOf(getSettings)), resolved.readLimit);
+			const { content, truncated, binary, size, head } = await readText(await ensureWorkspacePath(cwd, await resolveGitPath(cwd, requireString(payload, "path"), selected)), resolved.readLimit);
 			if (binary) return {
 				kind: "binary",
 				size,
@@ -2995,7 +2975,7 @@ function buildApi(ctx, resolved, getSettings, assistantLive) {
 		},
 		"fs.write": async (payload) => {
 			const { cwd } = await cwdOf(payload);
-			const path = await ensureWorkspaceWritePath(cwd, requireString(payload, "path"), fenceEnabledOf(getSettings));
+			const path = await ensureWorkspaceWritePath(cwd, requireString(payload, "path"));
 			const content = requireString(payload, "content");
 			const tmp = `${path}.dsh-sidebar-tmp-${process.pid}`;
 			try {
@@ -3013,16 +2993,14 @@ function buildApi(ctx, resolved, getSettings, assistantLive) {
 			return renameWorkspaceEntry({
 				cwd,
 				path: requireString(payload, "path"),
-				name: requireString(payload, "name"),
-				fence: fenceEnabledOf(getSettings)
+				name: requireString(payload, "name")
 			});
 		},
 		"fs.remove": async (payload) => {
 			const { cwd } = await cwdOf(payload);
 			return removeWorkspaceEntry({
 				cwd,
-				path: requireString(payload, "path"),
-				fence: fenceEnabledOf(getSettings)
+				path: requireString(payload, "path")
 			});
 		},
 		"git.worktrees": async (payload) => {
@@ -3406,8 +3384,7 @@ function apply(ctx, config) {
 					dir,
 					relativePath,
 					chunks: req,
-					limit: resolved.uploadLimit,
-					fence: fenceEnabledOf(() => settingsFace)
+					limit: resolved.uploadLimit
 				});
 				writeOk(res, {
 					path,
@@ -3438,7 +3415,7 @@ function apply(ctx, config) {
 				const sessionId = url.searchParams.get("sessionId");
 				const raw = url.searchParams.get("path");
 				if (sessionId === null || raw === null) throw new SidebarError("bad-request", "sessionId and path are required");
-				const path = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0), raw, fenceEnabledOf(() => settingsFace));
+				const path = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0), raw);
 				if (!(await stat(path)).isFile()) throw new SidebarError("fs-error", "not a file", 400);
 				const type = mediaTypeForPath(path);
 				const body = await readFile(path);
@@ -3475,7 +3452,7 @@ function apply(ctx, config) {
 					return;
 				}
 				const { sessionId, path } = decoded.ref;
-				const absolute = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path, fenceEnabledOf(() => settingsFace));
+				const absolute = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path);
 				if (!(await stat(absolute)).isFile()) throw new SidebarError("fs-error", "not a file", 400);
 				const type = mediaTypeForPath(absolute);
 				const body = await readFile(absolute);
@@ -3514,7 +3491,7 @@ function apply(ctx, config) {
 				return;
 			}
 			fsWatchWss.handleUpgrade(req, socket, head, (ws) => {
-				attachFsWatch(ctx, ws, req, () => fenceEnabledOf(() => settingsFace));
+				attachFsWatch(ctx, ws, req);
 			});
 		}
 	}), "dsh-better-sidebar: file-tree watch WebSocket");
@@ -3532,12 +3509,11 @@ function apply(ctx, config) {
 * the session's workspace exactly like `fs.tree`'s. A path that fails
 * resolution, or a rejection past the watcher cap, is answered with
 * `{ dir, ok: false }` so the client can stop asking rather than retry.
-* @param ctx - host plugin context (session cwd, workspace fence).
+* @param ctx - host plugin context.
 * @param ws - the accepted socket.
 * @param req - the upgrade request carrying `?sessionId=`.
-* @param fenceEnabled - whether the workspace containment fence is on.
 */
-async function attachFsWatch(ctx, ws, req, fenceEnabled) {
+async function attachFsWatch(ctx, ws, req) {
 	try {
 		const sessionId = new URL(req.url ?? "/", "http://dsh.internal").searchParams.get("sessionId");
 		if (sessionId === null) {
@@ -3561,7 +3537,7 @@ async function attachFsWatch(ctx, ws, req, fenceEnabled) {
 			watchers.close();
 		});
 		ws.on("message", (data) => {
-			handleFsWatchFrame(ctx, ws, watchers, sessionId, data, fenceEnabled);
+			handleFsWatchFrame(ctx, ws, watchers, sessionId, data);
 		});
 	} catch (error) {
 		ws.close(1011, error instanceof Error ? error.message : String(error));
@@ -3574,9 +3550,8 @@ async function attachFsWatch(ctx, ws, req, fenceEnabled) {
 * @param watchers - the socket's watcher set.
 * @param sessionId - the session the socket was opened for.
 * @param data - the raw frame text.
-* @param fenceEnabled - whether the workspace containment fence is on.
 */
-async function handleFsWatchFrame(ctx, ws, watchers, sessionId, data, fenceEnabled) {
+async function handleFsWatchFrame(ctx, ws, watchers, sessionId, data) {
 	let frame;
 	try {
 		frame = JSON.parse(typeof data === "string" ? data : String(data));
@@ -3586,7 +3561,7 @@ async function handleFsWatchFrame(ctx, ws, watchers, sessionId, data, fenceEnabl
 	const path = typeof frame.path === "string" ? frame.path : void 0;
 	if (path === void 0 || path === "") return;
 	try {
-		const dir = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path, fenceEnabled());
+		const dir = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path);
 		if (frame.op === "unwatch") {
 			watchers.remove(dir);
 			return;

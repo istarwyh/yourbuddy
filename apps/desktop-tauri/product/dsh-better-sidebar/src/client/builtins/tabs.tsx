@@ -43,10 +43,9 @@ export function builtinTabs(): readonly TabDescriptor[] {
       dedupeKey: (tab) => tab.path,
       // Declarative settings: the file-open behavior picker (in-place switch
       // vs per-path windows) renders as an iconed select row under the
-      // editor card's gear in the Side card settings page, followed by the
-      // workspace fence switch (the host's containment guard over every
-      // sidebar filesystem route); the "open with" configuration (SSH host +
-      // custom editors) is the custom panel BELOW those rows — the settings
+      // editor card's gear in the Side card settings page. The "open with"
+      // configuration (SSH host + custom editors) is the custom panel BELOW
+      // those rows — the settings
       // seam renders rows first, custom panel after.
       settings: {
         toggles: [{
@@ -68,10 +67,6 @@ export function builtinTabs(): readonly TabDescriptor[] {
               desc: () => t('editorExplorerSplitDesc'),
             },
           ],
-        }, {
-          key: 'workspaceFence',
-          title: () => t('settingsFenceTitle'),
-          desc: () => t('settingsFenceDesc'),
         }],
         render: ({ pluginSettings, updatePluginSetting }) => (
           <OpenWithSettings pluginSettings={pluginSettings} updatePluginSetting={updatePluginSetting} />

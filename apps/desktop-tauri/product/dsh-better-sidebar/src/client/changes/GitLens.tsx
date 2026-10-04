@@ -18,7 +18,7 @@ import {
 import type { GitLogEntry, GitStatusEntry, GitStatusResult, GitWorktree, SessionScope } from '../api.ts'
 import { api } from '../api.ts'
 import { usePolling } from '../use-polling.ts'
-import { baseName, isWithinWorkspace, relativeTo } from '../paths.ts'
+import { baseName, relativeTo } from '../paths.ts'
 import { resolveSidebarPath } from '../paths.ts'
 import { relativeTime, t } from '../locales.ts'
 import type { SidebarDiffRef, SidebarStore } from '../state.ts'
@@ -92,7 +92,7 @@ const WORKTREE_RECHECK_TICKS = 15
 
 export interface GitLensProps {
   scope: SessionScope
-  /** The sidebar store: reads the `workspaceFence` pref (see the open guard below). */
+  /** The sidebar store shared with the containing changes tab. */
   store: SidebarStore
   onOpenFile: (path: string) => void
   /** Preview one change in the shared bottom pane (worktree or commit ref). */
@@ -104,7 +104,7 @@ export interface GitLensProps {
 }
 
 export function GitLens(props: GitLensProps) {
-  const { scope, store, onOpenFile, onPreview, selectedRef, visible } = props
+  const { scope, onOpenFile, onPreview, selectedRef, visible } = props
   const [status, setStatus] = useState<GitStatusResult | null>(null)
   const [worktrees, setWorktrees] = useState<GitWorktree[]>([])
   const [selectedWorktree, setSelectedWorktree] = useState<string | undefined>()
@@ -617,13 +617,7 @@ export function GitLens(props: GitLensProps) {
             open={fileMenu !== null}
             onClose={() => { setFileMenu(null) }}
             items={[
-              // A linked worktree outside the session workspace cannot be
-              // opened in the editor while the host's workspace fence is
-              // armed: it rejects every path under that checkout. Hide the
-              // action for that checkout so the menu does not offer a no-op
-              // that confuses the user; with the fence disarmed (the
-              // `workspaceFence` pref) the open is allowed through.
-              ...(fileMenu !== null && (store.getPrefs().workspaceFence === false || isWithinWorkspace(scope.cwd ?? '', resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, fileMenu.entry.path)))
+              ...(fileMenu !== null
                 ? [{ id: 'open', label: t('openEditor'), icon: <IconCodeOutlineRegular size={14} /> }]
                 : []),
               fileMenu?.staged === true
@@ -642,12 +636,6 @@ export function GitLens(props: GitLensProps) {
               setFileMenu(null)
               if (id === 'open') {
                 const resolved = resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, target.entry.path)
-                // Defense-in-depth: the menu hides this action when the
-                // resolved path escapes the session workspace, but a
-                // racing repo switch could still reach here with a path
-                // the host would reject. No-op in that case — unless the
-                // workspace fence is disarmed by pref.
-                if (store.getPrefs().workspaceFence !== false && !isWithinWorkspace(scope.cwd ?? '', resolved)) return
                 onOpenFile(resolved)
                 return
               }

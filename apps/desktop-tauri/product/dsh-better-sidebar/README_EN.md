@@ -663,7 +663,7 @@ make clean          # remove lib/, *.tgz, playwright-report/, test-results/
 
 ## 🔐 Security
 
-- Routes protected by a Host-header trust fence (same as `/api`); `fs.write` is atomic; media/preview routes only serve files inside the session cwd (unless `workspaceFence` is turned off in settings); git only shells out to the CLI and never sets identity
+- Routes are protected by a Host-header trust fence (same as `/api`); sidebar file APIs can read and write any absolute host path, while relative paths still resolve from the session cwd; `fs.write` is atomic; git only shells out to the CLI and never sets identity
 - HTML preview content renders in an **opaque-origin sandboxed iframe** (no `allow-same-origin`/`allow-top-navigation`, `no-referrer`, all permission policies disabled); the `/sidebar/html` route carries a CSP `sandbox` + size/path bounds
 - The settings page can disable the HTML preview's sandbox per feature (`htmlViewerNoSandbox` / `htmlViewerDefaultUnsafe`, off by default, with a warning) — when off, content shares the origin with the UI; only recommended for fully trusted content. **The web tab's sandbox is no longer this plugin's surface**: the browser view comes from the host (desktop profile); see DSH's own docs for its sandbox and navigation policy
 

@@ -7,7 +7,7 @@ export declare function baseName(path: string): string;
 export declare function FileTree(props: {
     sessionId: string;
     cwd: string | undefined;
-    /** The sidebar store: the fence-refusal notice writes the `workspaceFence` pref through it. */
+    /** The sidebar store shared with file viewers and tree actions. */
     store: SidebarStore;
     expanded: string[];
     /** Files highlighted by a "Show in folder" reveal (absolute paths). */

@@ -29,8 +29,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SiCursor, SiZedindustries } from 'react-icons/si'
 import { VscFolderOpened, VscLinkExternal, VscPin, VscPinned } from 'react-icons/vsc'
-import { api, downloadUrl, isOutsideWorkspaceMessage, type FsEntry } from './api.ts'
-import { FenceErrorNotice } from './FenceErrorNotice.tsx'
+import { api, downloadUrl, type FsEntry } from './api.ts'
 import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
 import { IconUploadOutline16, IconVscode16 } from './icons.tsx'
 import { isImeComposition } from './ime-guard.ts'
@@ -112,7 +111,7 @@ const ChatDropIllustration = () => (
 export function FileTree(props: {
   sessionId: string
   cwd: string | undefined
-  /** The sidebar store: the fence-refusal notice writes the `workspaceFence` pref through it. */
+  /** The sidebar store shared with file viewers and tree actions. */
   store: SidebarStore
   expanded: string[]
   /** Files highlighted by a "Show in folder" reveal (absolute paths). */
@@ -624,16 +623,6 @@ export function FileTree(props: {
       return <div className={css.explorerRow} style={{ paddingLeft: depth * 22 + 6 }}>{t('loading')}</div>
     }
     if (level.error !== undefined) {
-      // The fence refusal becomes the friendly notice (reason + one-click
-      // global off + immediate retry of this directory), never the raw
-      // `path "..." is outside workspace` wire text.
-      if (isOutsideWorkspaceMessage(level.error)) {
-        return (
-          <div style={{ paddingLeft: depth * 22 + 6 }}>
-            <FenceErrorNotice store={store} onDisabled={() => { retryDir(dir) }} />
-          </div>
-        )
-      }
       return (
         <div className={clsx(css.explorerRow, css.explorerError)} style={{ paddingLeft: depth * 22 + 6 }}>
           {level.error}

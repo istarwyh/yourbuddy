@@ -1,15 +1,14 @@
 /**
- * Resolve an existing workspace path through symlinks and (unless disarmed)
- * enforce containment.
+ * Resolve an existing filesystem path through symlinks.
  *
- * @param cwd - Session workspace directory.
- * @param target - Client-supplied absolute path in the session's namespace.
- * @param fence - Whether containment is enforced (the settings-page
- * `workspaceFence` switch). Even when false the paths are still resolved
- * through symlinks so callers always receive the canonical target.
+ * Relative paths use the Session workspace as their base, while absolute paths
+ * may point anywhere on the host.
+ *
+ * @param cwd - Session workspace directory used for relative paths.
+ * @param target - Client-supplied path in the session's namespace.
  * @returns The canonical absolute path used for the filesystem operation.
  */
-export declare function ensureWorkspacePath(cwd: string, target: string, fence?: boolean): Promise<string>;
+export declare function ensureWorkspacePath(cwd: string, target: string): Promise<string>;
 /**
  * Validate a write destination, including destinations that do not exist yet.
  * Existing targets are resolved to catch symlinks; missing targets are checked
@@ -17,10 +16,11 @@ export declare function ensureWorkspacePath(cwd: string, target: string, fence?:
  * The returned path is rebuilt from that canonical ancestor, so an existing
  * symlink is never left in the path passed to the write operation.
  *
- * @param cwd - Session workspace directory.
- * @param target - Client-supplied absolute destination path in the session's namespace.
- * @param fence - Whether containment is enforced (the settings-page
- * `workspaceFence` switch). Resolution/canonicalization is identical either way.
+ * Relative paths use the Session workspace as their base, while absolute paths
+ * may point anywhere on the host.
+ *
+ * @param cwd - Session workspace directory used for relative paths.
+ * @param target - Client-supplied destination path in the session's namespace.
  * @returns A canonical path for an existing target or its nearest existing ancestor.
  */
-export declare function ensureWorkspaceWritePath(cwd: string, target: string, fence?: boolean): Promise<string>;
+export declare function ensureWorkspaceWritePath(cwd: string, target: string): Promise<string>;

@@ -1,8 +1,8 @@
 /** Inputs of one upload: the session scope plus the request body stream. */
 export interface WorkspaceUploadInput {
-    /** The session workspace root; target and directory must stay inside it. */
+    /** The session workspace root used to resolve relative paths. */
     cwd: string;
-    /** Absolute upload directory chosen by the client (inside `cwd`). */
+    /** Absolute upload directory chosen by the client. */
     dir: string;
     /** Relative path below `dir` (absolute paths, '.', '..' and empty segments refused). */
     relativePath: string;
@@ -10,8 +10,6 @@ export interface WorkspaceUploadInput {
     chunks: AsyncIterable<string | Uint8Array>;
     /** Byte cap; an oversized upload is refused without touching the target. */
     limit: number;
-    /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
-    fence?: boolean;
 }
 /**
  * Stream `chunks` into `dir/relativePath` atomically: a uniquely named temp
@@ -30,14 +28,12 @@ export declare function writeWorkspaceUpload(input: WorkspaceUploadInput): Promi
 }>;
 /** Inputs of one tree-row rename. */
 export interface WorkspaceRenameInput {
-    /** The session workspace root; the renamed entry must stay inside it. */
+    /** The session workspace root used to resolve relative paths. */
     cwd: string;
     /** Absolute path of the row as the tree displays it (may be a symlink). */
     path: string;
     /** The new base name (single segment — rename never moves across directories). */
     name: string;
-    /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
-    fence?: boolean;
 }
 /**
  * Rename one tree row within its directory: `path` → `<parent>/<name>`.
@@ -55,12 +51,10 @@ export declare function renameWorkspaceEntry(input: WorkspaceRenameInput): Promi
 }>;
 /** Inputs of one tree-row delete. */
 export interface WorkspaceRemoveInput {
-    /** The session workspace root; the removed entry must stay inside it. */
+    /** The session workspace root used to resolve relative paths. */
     cwd: string;
     /** Absolute path of the row as the tree displays it (may be a symlink). */
     path: string;
-    /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
-    fence?: boolean;
 }
 /**
  * Delete one tree row permanently (there is no trash on the host): files are

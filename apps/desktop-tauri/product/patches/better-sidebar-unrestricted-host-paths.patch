@@ -1,0 +1,1520 @@
+diff --git a/README.md b/README.md
+index 87a5893c06..cde6d5362e 100644
+--- a/README.md
++++ b/README.md
+@@ -667,7 +667,7 @@ make clean          # 清理 lib/、*.tgz、playwright-report/、test-results/
+ 
+ ## 🔐 安全
+ 
+-- 路由受 Host 头信任围栏保护（与 `/api` 一致）；`fs.write` 原子写入；媒体/预览路由仅限会话 cwd 内文件（`workspaceFence` 关掉时除外，见设置页）；git 只调 CLI、绝不设置身份
++- 路由受 Host 头信任围栏保护（与 `/api` 一致）；侧栏文件 API 可读写主机上的任意绝对路径，相对路径仍以会话 cwd 为基准；`fs.write` 原子写入；git 只调 CLI、绝不设置身份
+ - HTML 预览的内容在**不透明源沙箱 iframe** 中渲染（无 `allow-same-origin`/`allow-top-navigation`、`no-referrer`、权限策略全禁）；`/sidebar/html` 路由带 CSP `sandbox` + 大小/路径边界
+ - 设置页可按功能关闭 HTML 预览的沙箱（`htmlViewerNoSandbox` / `htmlViewerDefaultUnsafe`，默认关闭，带警告文案）——关闭后内容与界面同源，仅建议对完全可信内容使用。**网页 tab 的沙箱不再是插件的面**：浏览器视图由宿主提供（desktop profile），其沙箱与导航策略见 DSH 侧文档
+ 
+diff --git a/README_EN.md b/README_EN.md
+index ea7e837141..fc9d589cfc 100644
+--- a/README_EN.md
++++ b/README_EN.md
+@@ -663,7 +663,7 @@ make clean          # remove lib/, *.tgz, playwright-report/, test-results/
+ 
+ ## 🔐 Security
+ 
+-- Routes protected by a Host-header trust fence (same as `/api`); `fs.write` is atomic; media/preview routes only serve files inside the session cwd (unless `workspaceFence` is turned off in settings); git only shells out to the CLI and never sets identity
++- Routes are protected by a Host-header trust fence (same as `/api`); sidebar file APIs can read and write any absolute host path, while relative paths still resolve from the session cwd; `fs.write` is atomic; git only shells out to the CLI and never sets identity
+ - HTML preview content renders in an **opaque-origin sandboxed iframe** (no `allow-same-origin`/`allow-top-navigation`, `no-referrer`, all permission policies disabled); the `/sidebar/html` route carries a CSP `sandbox` + size/path bounds
+ - The settings page can disable the HTML preview's sandbox per feature (`htmlViewerNoSandbox` / `htmlViewerDefaultUnsafe`, off by default, with a warning) — when off, content shares the origin with the UI; only recommended for fully trusted content. **The web tab's sandbox is no longer this plugin's surface**: the browser view comes from the host (desktop profile); see DSH's own docs for its sandbox and navigation policy
+ 
+diff --git a/lib/client-registry.js b/lib/client-registry.js
+index 530e46854c..8081baac1c 100644
+--- a/lib/client-registry.js
++++ b/lib/client-registry.js
+@@ -45,7 +45,7 @@ window.__ModuleLoader__.load({
+ 			autoOpenJobs: true,
+ 			agentOpenTools: false,
+ 			editorExplorer: false,
+-			workspaceFence: true,
++			workspaceFence: false,
+ 			titleBarScheme: "auto",
+ 			titleBarPresetId: "",
+ 			customCss: "",
+@@ -2905,10 +2905,6 @@ window.__ModuleLoader__.load({
+ 				this.code = code;
+ 			}
+ 		};
+-		/** Message-level variant for surfaces that stored the raw text (file-tree level errors). */
+-		function isOutsideWorkspaceMessage(message) {
+-			return message.includes("outside workspace");
+-		}
+ 		/**
+ 		* Parse one `/sidebar` JSON response envelope into its value. A non-ok
+ 		* status, an unparseable body, or any shape other than `{ok: true, value}`
+@@ -3455,41 +3451,6 @@ window.__ModuleLoader__.load({
+ 			}
+ 		}
+ 		//#endregion
+-		//#region src/client/FenceErrorNotice.tsx
+-		/**
+-		* The workspace-fence refusal surface. The raw wire text (`path "..." is
+-		* outside workspace`) is never shown as-is: the editor / file-tree error
+-		* slots render the localized reason plus a one-click global off — the click
+-		* flips the `workspaceFence` pref through the settings route, adopts the
+-		* returned document into the store (so every prefs reader — the changes tab's open
+-		* guard, the settings page — flips with it), and calls `onDisabled` so the
+-		* caller retries the failed operation immediately.
+-		*/
+-		function FenceErrorNotice(props) {
+-			const { store, onDisabled } = props;
+-			const [busy, setBusy] = (0, react.useState)(false);
+-			const disable = () => {
+-				if (busy) return;
+-				setBusy(true);
+-				api.settingsUpdate({ workspaceFence: false }).then((view) => {
+-					store.setPrefs(parsePrefs(view.value));
+-					onDisabled();
+-				}).catch((error) => {
+-					console.error("workspace fence disable failed", error);
+-					setBusy(false);
+-				});
+-			};
+-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+-				className: sidebar_module_css_default.fenceError,
+-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("fenceErrorReason") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+-					variant: "outline",
+-					disabled: busy,
+-					onClick: disable,
+-					children: t("fenceDisableAction")
+-				})]
+-			});
+-		}
+-		//#endregion
+ 		//#region src/client/editor-load.ts
+ 		/** Decode the host's base64 head bytes into the sniffing buffer. */
+ 		function decodeHead(headBase64) {
+@@ -4729,22 +4690,11 @@ window.__ModuleLoader__.load({
+ 					style: { paddingLeft: depth * 22 + 6 },
+ 					children: t("loading")
+ 				});
+-				if (level.error !== void 0) {
+-					if (isOutsideWorkspaceMessage(level.error)) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+-						style: { paddingLeft: depth * 22 + 6 },
+-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FenceErrorNotice, {
+-							store,
+-							onDisabled: () => {
+-								retryDir(dir);
+-							}
+-						})
+-					});
+-					return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+-						className: clsx(sidebar_module_css_default.explorerRow, sidebar_module_css_default.explorerError),
+-						style: { paddingLeft: depth * 22 + 6 },
+-						children: level.error
+-					});
+-				}
++				if (level.error !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
++					className: clsx(sidebar_module_css_default.explorerRow, sidebar_module_css_default.explorerError),
++					style: { paddingLeft: depth * 22 + 6 },
++					children: level.error
++				});
+ 				return (level.entries ?? []).map((entry) => {
+ 					if (renaming?.path === entry.path) return renderRenameRow(entry, depth);
+ 					if (entry.isDir) {
+@@ -6031,15 +5981,10 @@ window.__ModuleLoader__.load({
+ 								className: sidebar_module_css_default.editorPlaceholder,
+ 								children: t("loading")
+ 							}),
+-							!showEmpty && load.status === "error" && (isOutsideWorkspaceMessage(load.message) ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FenceErrorNotice, {
+-								store,
+-								onDisabled: () => {
+-									setReloadSeq((sequence) => sequence + 1);
+-								}
+-							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
++							!showEmpty && load.status === "error" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+ 								className: sidebar_module_css_default.editorError,
+ 								children: load.message
+-							})),
++							}),
+ 							!showEmpty && load.status === "binary" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BinaryDownload, {
+ 								scope,
+ 								path
+@@ -7137,7 +7082,7 @@ window.__ModuleLoader__.load({
+ 								setFileMenu(null);
+ 							},
+ 							items: [
+-								...fileMenu !== null && (store.getPrefs().workspaceFence === false || isWithinWorkspace(scope.cwd ?? "", resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, fileMenu.entry.path))) ? [{
++								...fileMenu !== null ? [{
+ 									id: "open",
+ 									label: t("openEditor"),
+ 									icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutlineRegular, { size: 14 })
+@@ -7178,8 +7123,7 @@ window.__ModuleLoader__.load({
+ 								setFileMenu(null);
+ 								if (id === "open") {
+ 									const resolved = resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, target.entry.path);
+-									if (store.getPrefs().workspaceFence !== false && !isWithinWorkspace(scope.cwd ?? "", resolved)) return;
+-									onOpenFile(resolved);
++													onOpenFile(resolved);
+ 									return;
+ 								}
+ 								if (id === "stage") {
+@@ -12884,10 +12828,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 								title: () => t("editorExplorerSplit"),
+ 								desc: () => t("editorExplorerSplitDesc")
+ 							}]
+-						}, {
+-							key: "workspaceFence",
+-							title: () => t("settingsFenceTitle"),
+-							desc: () => t("settingsFenceDesc")
+ 						}],
+ 						render: ({ pluginSettings, updatePluginSetting }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OpenWithSettings, {
+ 							pluginSettings,
+diff --git a/lib/client.js b/lib/client.js
+index bc4aabf6d6..33861f44eb 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -45,7 +45,7 @@ window.__ModuleLoader__.load({
+ 			autoOpenJobs: true,
+ 			agentOpenTools: false,
+ 			editorExplorer: false,
+-			workspaceFence: true,
++			workspaceFence: false,
+ 			titleBarScheme: "auto",
+ 			titleBarPresetId: "",
+ 			customCss: "",
+@@ -2905,10 +2905,6 @@ window.__ModuleLoader__.load({
+ 				this.code = code;
+ 			}
+ 		};
+-		/** Message-level variant for surfaces that stored the raw text (file-tree level errors). */
+-		function isOutsideWorkspaceMessage(message) {
+-			return message.includes("outside workspace");
+-		}
+ 		/**
+ 		* Parse one `/sidebar` JSON response envelope into its value. A non-ok
+ 		* status, an unparseable body, or any shape other than `{ok: true, value}`
+@@ -3455,41 +3451,6 @@ window.__ModuleLoader__.load({
+ 			}
+ 		}
+ 		//#endregion
+-		//#region src/client/FenceErrorNotice.tsx
+-		/**
+-		* The workspace-fence refusal surface. The raw wire text (`path "..." is
+-		* outside workspace`) is never shown as-is: the editor / file-tree error
+-		* slots render the localized reason plus a one-click global off — the click
+-		* flips the `workspaceFence` pref through the settings route, adopts the
+-		* returned document into the store (so every prefs reader — the changes tab's open
+-		* guard, the settings page — flips with it), and calls `onDisabled` so the
+-		* caller retries the failed operation immediately.
+-		*/
+-		function FenceErrorNotice(props) {
+-			const { store, onDisabled } = props;
+-			const [busy, setBusy] = (0, react.useState)(false);
+-			const disable = () => {
+-				if (busy) return;
+-				setBusy(true);
+-				api.settingsUpdate({ workspaceFence: false }).then((view) => {
+-					store.setPrefs(parsePrefs(view.value));
+-					onDisabled();
+-				}).catch((error) => {
+-					console.error("workspace fence disable failed", error);
+-					setBusy(false);
+-				});
+-			};
+-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+-				className: sidebar_module_css_default.fenceError,
+-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("fenceErrorReason") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+-					variant: "outline",
+-					disabled: busy,
+-					onClick: disable,
+-					children: t("fenceDisableAction")
+-				})]
+-			});
+-		}
+-		//#endregion
+ 		//#region src/client/editor-load.ts
+ 		/** Decode the host's base64 head bytes into the sniffing buffer. */
+ 		function decodeHead(headBase64) {
+@@ -4729,22 +4690,11 @@ window.__ModuleLoader__.load({
+ 					style: { paddingLeft: depth * 22 + 6 },
+ 					children: t("loading")
+ 				});
+-				if (level.error !== void 0) {
+-					if (isOutsideWorkspaceMessage(level.error)) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+-						style: { paddingLeft: depth * 22 + 6 },
+-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FenceErrorNotice, {
+-							store,
+-							onDisabled: () => {
+-								retryDir(dir);
+-							}
+-						})
+-					});
+-					return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+-						className: clsx(sidebar_module_css_default.explorerRow, sidebar_module_css_default.explorerError),
+-						style: { paddingLeft: depth * 22 + 6 },
+-						children: level.error
+-					});
+-				}
++				if (level.error !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
++					className: clsx(sidebar_module_css_default.explorerRow, sidebar_module_css_default.explorerError),
++					style: { paddingLeft: depth * 22 + 6 },
++					children: level.error
++				});
+ 				return (level.entries ?? []).map((entry) => {
+ 					if (renaming?.path === entry.path) return renderRenameRow(entry, depth);
+ 					if (entry.isDir) {
+@@ -6031,15 +5981,10 @@ window.__ModuleLoader__.load({
+ 								className: sidebar_module_css_default.editorPlaceholder,
+ 								children: t("loading")
+ 							}),
+-							!showEmpty && load.status === "error" && (isOutsideWorkspaceMessage(load.message) ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FenceErrorNotice, {
+-								store,
+-								onDisabled: () => {
+-									setReloadSeq((sequence) => sequence + 1);
+-								}
+-							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
++							!showEmpty && load.status === "error" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+ 								className: sidebar_module_css_default.editorError,
+ 								children: load.message
+-							})),
++							}),
+ 							!showEmpty && load.status === "binary" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BinaryDownload, {
+ 								scope,
+ 								path
+@@ -7137,7 +7082,7 @@ window.__ModuleLoader__.load({
+ 								setFileMenu(null);
+ 							},
+ 							items: [
+-								...fileMenu !== null && (store.getPrefs().workspaceFence === false || isWithinWorkspace(scope.cwd ?? "", resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, fileMenu.entry.path))) ? [{
++								...fileMenu !== null ? [{
+ 									id: "open",
+ 									label: t("openEditor"),
+ 									icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutlineRegular, { size: 14 })
+@@ -7178,8 +7123,7 @@ window.__ModuleLoader__.load({
+ 								setFileMenu(null);
+ 								if (id === "open") {
+ 									const resolved = resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, target.entry.path);
+-									if (store.getPrefs().workspaceFence !== false && !isWithinWorkspace(scope.cwd ?? "", resolved)) return;
+-									onOpenFile(resolved);
++													onOpenFile(resolved);
+ 									return;
+ 								}
+ 								if (id === "stage") {
+@@ -12884,10 +12828,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 								title: () => t("editorExplorerSplit"),
+ 								desc: () => t("editorExplorerSplitDesc")
+ 							}]
+-						}, {
+-							key: "workspaceFence",
+-							title: () => t("settingsFenceTitle"),
+-							desc: () => t("settingsFenceDesc")
+ 						}],
+ 						render: ({ pluginSettings, updatePluginSetting }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OpenWithSettings, {
+ 							pluginSettings,
+diff --git a/lib/index.js b/lib/index.js
+index 83136e2566..40ae8a6e12 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -29,7 +29,7 @@ const SIDEBAR_PREFS_DEFAULTS = {
+ 	autoOpenJobs: true,
+ 	agentOpenTools: false,
+ 	editorExplorer: false,
+-	workspaceFence: true,
++	workspaceFence: false,
+ 	titleBarScheme: "auto",
+ 	titleBarPresetId: "",
+ 	customCss: "",
+@@ -85,7 +85,7 @@ const PrefsSchema = z.object({
+ 	autoOpenJobs: z.boolean().default(true),
+ 	agentOpenTools: z.boolean().default(false),
+ 	editorExplorer: z.boolean().default(false),
+-	workspaceFence: z.boolean().default(true),
++	workspaceFence: z.boolean().default(false),
+ 	titleBarScheme: z.union([
+ 		z.const("auto"),
+ 		z.const("web"),
+@@ -345,26 +345,19 @@ async function resolveRealPath(path, label) {
+ 		throw new SidebarError("fs-error", `cannot resolve ${label} "${path}": ${error instanceof Error ? error.message : String(error)}`, 400);
+ 	}
+ }
+-/** Reject a resolved path whose real filesystem target escapes the workspace. */
+-function assertWithinWorkspace(workspace, target) {
+-	if (!isWithin(workspace, target)) throw new SidebarError("forbidden", `path "${target}" is outside workspace`, 403);
+-}
+ /**
+-* Resolve an existing workspace path through symlinks and (unless disarmed)
+-* enforce containment.
++* Resolve an existing filesystem path through symlinks.
++*
++* Relative paths use the Session workspace as their base, while absolute paths
++* may point anywhere on the host.
+ *
+-* @param cwd - Session workspace directory.
+-* @param target - Client-supplied absolute path in the session's namespace.
+-* @param fence - Whether containment is enforced (the settings-page
+-* `workspaceFence` switch). Even when false the paths are still resolved
+-* through symlinks so callers always receive the canonical target.
++* @param cwd - Session workspace directory used for relative paths.
++* @param target - Client-supplied path in the session's namespace.
+ * @returns The canonical absolute path used for the filesystem operation.
+ */
+-async function ensureWorkspacePath(cwd, target, fence = true) {
+-	const absolute = requireAbsolute(resolveSessionPath(cwd, target));
+-	const [realCwd, realTarget] = await Promise.all([resolveRealPath(cwd, "workspace"), resolveRealPath(absolute, "target")]);
+-	if (fence) assertWithinWorkspace(realCwd, realTarget);
+-	return realTarget;
++async function ensureWorkspacePath(cwd, target) {
++	const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)));
++	return resolveRealPath(absolute, "target");
+ }
+ /**
+ * Validate a write destination, including destinations that do not exist yet.
+@@ -373,20 +366,19 @@ async function ensureWorkspacePath(cwd, target, fence = true) {
+ * The returned path is rebuilt from that canonical ancestor, so an existing
+ * symlink is never left in the path passed to the write operation.
+ *
+-* @param cwd - Session workspace directory.
+-* @param target - Client-supplied absolute destination path in the session's namespace.
+-* @param fence - Whether containment is enforced (the settings-page
+-* `workspaceFence` switch). Resolution/canonicalization is identical either way.
++* Relative paths use the Session workspace as their base, while absolute paths
++* may point anywhere on the host.
++*
++* @param cwd - Session workspace directory used for relative paths.
++* @param target - Client-supplied destination path in the session's namespace.
+ * @returns A canonical path for an existing target or its nearest existing ancestor.
+ */
+-async function ensureWorkspaceWritePath(cwd, target, fence = true) {
+-	const absolute = requireAbsolute(resolveSessionPath(cwd, target));
+-	const realCwd = await resolveRealPath(cwd, "workspace");
++async function ensureWorkspaceWritePath(cwd, target) {
++	const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)));
+ 	let existingPath = absolute;
+ 	const missingSegments = [];
+ 	for (;;) try {
+ 		const realTarget = await realpath(existingPath);
+-		if (fence) assertWithinWorkspace(realCwd, realTarget);
+ 		return missingSegments.reduce((path, segment) => join(path, segment), realTarget);
+ 	} catch (error) {
+ 		if (error.code !== "ENOENT") {
+@@ -432,14 +424,14 @@ async function ensureWorkspaceWritePath(cwd, target, fence = true) {
+ * failures; the temp file is always removed on failure.
+ */
+ async function writeWorkspaceUpload(input) {
+-	const { cwd, dir, relativePath, chunks, limit, fence = true } = input;
++	const { cwd, dir, relativePath, chunks, limit } = input;
+ 	const base = requireAbsolute(dir);
+-	await ensureWorkspacePath(cwd, base, fence);
++	await ensureWorkspacePath(cwd, base);
+ 	if (relativePath === "" || relativePath.startsWith("/") || relativePath.startsWith("\\")) throw new SidebarError("bad-request", "relativePath must stay below the upload directory", 400);
+ 	const segments = relativePath.split(/[\\/]/);
+ 	if (segments.some((part) => part === "" || part === "." || part === "..")) throw new SidebarError("bad-request", "relativePath must stay below the upload directory", 400);
+ 	const target = join(base, ...segments);
+-	const safeTarget = await ensureWorkspaceWritePath(cwd, target, fence);
++	const safeTarget = await ensureWorkspaceWritePath(cwd, target);
+ 	const tmp = join(dirname(safeTarget), `.${basename(safeTarget)}.dsh-upload-${randomUUID()}.tmp`);
+ 	await mkdir(dirname(safeTarget), { recursive: true });
+ 	const stream = createWriteStream(tmp, { flags: "wx" });
+@@ -478,8 +470,8 @@ async function writeWorkspaceUpload(input) {
+ /** Resolve one existing entry for a link-aware mutation: the lexical row path
+ * plus its fully resolved real target (fence-checked). ENOENT becomes an
+ * fs-error, mirroring path-security's resolveRealPath semantics. */
+-async function resolveEntry(cwd, target, fence) {
+-	const absolute = requireAbsolute(resolveSessionPath(cwd, target));
++async function resolveEntry(cwd, target) {
++	const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)));
+ 	let real;
+ 	let realCwd;
+ 	try {
+@@ -487,7 +479,6 @@ async function resolveEntry(cwd, target, fence) {
+ 	} catch (error) {
+ 		throw new SidebarError("fs-error", `cannot resolve "${target}": ${error instanceof Error ? error.message : String(error)}`, 400);
+ 	}
+-	if (fence && !isWithin(realCwd, real)) throw new SidebarError("forbidden", `path "${target}" is outside workspace`, 403);
+ 	return {
+ 		absolute,
+ 		real,
+@@ -516,12 +507,12 @@ async function pathExists(target) {
+ * and root failures.
+ */
+ async function renameWorkspaceEntry(input) {
+-	const { cwd, path, name, fence = true } = input;
++	const { cwd, path, name } = input;
+ 	if (name === "" || name === "." || name === ".." || name.includes("/") || name.includes("\\")) throw new SidebarError("bad-request", "name must be a single path segment", 400);
+-	const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence);
++	const { absolute, real, realCwd } = await resolveEntry(cwd, path);
+ 	if (real === realCwd) throw new SidebarError("fs-error", "cannot rename the workspace root", 400);
+ 	if (basename(absolute) === name) return { path: absolute };
+-	const safeDestination = await ensureWorkspaceWritePath(cwd, join(dirname(absolute), name), fence);
++	const safeDestination = await ensureWorkspaceWritePath(cwd, join(dirname(absolute), name));
+ 	if (await pathExists(safeDestination)) throw new SidebarError("fs-error", `"${name}" already exists`, 409);
+ 	try {
+ 		await rename(absolute, safeDestination);
+@@ -540,8 +531,8 @@ async function renameWorkspaceEntry(input) {
+ * root failures.
+ */
+ async function removeWorkspaceEntry(input) {
+-	const { cwd, path, fence = true } = input;
+-	const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence);
++	const { cwd, path } = input;
++	const { absolute, real, realCwd } = await resolveEntry(cwd, path);
+ 	if (real === realCwd) throw new SidebarError("fs-error", "cannot remove the workspace root", 400);
+ 	try {
+ 		if ((await lstat(absolute)).isDirectory()) await rm(absolute, { recursive: true });
+@@ -2926,17 +2917,6 @@ async function readText(path, readLimit) {
+ 		await handle.close();
+ 	}
+ }
+-/**
+-* Whether the workspace fence is armed for the sidebar's filesystem routes
+-* (the settings-page `workspaceFence` switch under the files card's gear).
+-* An absent settings service or a missing field keeps the fence ON — the
+-* containment default never depends on the settings surface being reachable.
+-*/
+-function fenceEnabledOf(getSettings) {
+-	const value = getSettings()?.get().value;
+-	if (value === null || typeof value !== "object") return true;
+-	return value.workspaceFence !== false;
+-}
+ function buildApi(ctx, resolved, getSettings, assistantLive) {
+ 	const cwdOf = async (payload) => {
+ 		const sessionId = requireString(payload, "sessionId");
+@@ -2971,7 +2951,7 @@ function buildApi(ctx, resolved, getSettings, assistantLive) {
+ 		},
+ 		"fs.tree": async (payload) => {
+ 			const { cwd } = await cwdOf(payload);
+-			return listDirectory(payload.path === void 0 ? cwd : await ensureWorkspacePath(cwd, requireString(payload, "path"), fenceEnabledOf(getSettings)), resolved.listLimit);
++			return listDirectory(payload.path === void 0 ? cwd : await ensureWorkspacePath(cwd, requireString(payload, "path")), resolved.listLimit);
+ 		},
+ 		"fs.search": async (payload) => {
+ 			const { cwd } = await cwdOf(payload);
+@@ -2980,7 +2960,7 @@ function buildApi(ctx, resolved, getSettings, assistantLive) {
+ 		"fs.read": async (payload) => {
+ 			const { cwd } = await cwdOf(payload);
+ 			const selected = selectedRepoOf(payload);
+-			const { content, truncated, binary, size, head } = await readText(await ensureWorkspacePath(cwd, await resolveGitPath(cwd, requireString(payload, "path"), selected), fenceEnabledOf(getSettings)), resolved.readLimit);
++			const { content, truncated, binary, size, head } = await readText(await ensureWorkspacePath(cwd, await resolveGitPath(cwd, requireString(payload, "path"), selected)), resolved.readLimit);
+ 			if (binary) return {
+ 				kind: "binary",
+ 				size,
+@@ -2995,7 +2975,7 @@ function buildApi(ctx, resolved, getSettings, assistantLive) {
+ 		},
+ 		"fs.write": async (payload) => {
+ 			const { cwd } = await cwdOf(payload);
+-			const path = await ensureWorkspaceWritePath(cwd, requireString(payload, "path"), fenceEnabledOf(getSettings));
++			const path = await ensureWorkspaceWritePath(cwd, requireString(payload, "path"));
+ 			const content = requireString(payload, "content");
+ 			const tmp = `${path}.dsh-sidebar-tmp-${process.pid}`;
+ 			try {
+@@ -3013,16 +2993,14 @@ function buildApi(ctx, resolved, getSettings, assistantLive) {
+ 			return renameWorkspaceEntry({
+ 				cwd,
+ 				path: requireString(payload, "path"),
+-				name: requireString(payload, "name"),
+-				fence: fenceEnabledOf(getSettings)
++				name: requireString(payload, "name")
+ 			});
+ 		},
+ 		"fs.remove": async (payload) => {
+ 			const { cwd } = await cwdOf(payload);
+ 			return removeWorkspaceEntry({
+ 				cwd,
+-				path: requireString(payload, "path"),
+-				fence: fenceEnabledOf(getSettings)
++				path: requireString(payload, "path")
+ 			});
+ 		},
+ 		"git.worktrees": async (payload) => {
+@@ -3406,8 +3384,7 @@ function apply(ctx, config) {
+ 					dir,
+ 					relativePath,
+ 					chunks: req,
+-					limit: resolved.uploadLimit,
+-					fence: fenceEnabledOf(() => settingsFace)
++					limit: resolved.uploadLimit
+ 				});
+ 				writeOk(res, {
+ 					path,
+@@ -3438,7 +3415,7 @@ function apply(ctx, config) {
+ 				const sessionId = url.searchParams.get("sessionId");
+ 				const raw = url.searchParams.get("path");
+ 				if (sessionId === null || raw === null) throw new SidebarError("bad-request", "sessionId and path are required");
+-				const path = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0), raw, fenceEnabledOf(() => settingsFace));
++				const path = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId, url.searchParams.get("cwd") ?? void 0), raw);
+ 				if (!(await stat(path)).isFile()) throw new SidebarError("fs-error", "not a file", 400);
+ 				const type = mediaTypeForPath(path);
+ 				const body = await readFile(path);
+@@ -3475,7 +3452,7 @@ function apply(ctx, config) {
+ 					return;
+ 				}
+ 				const { sessionId, path } = decoded.ref;
+-				const absolute = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path, fenceEnabledOf(() => settingsFace));
++				const absolute = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path);
+ 				if (!(await stat(absolute)).isFile()) throw new SidebarError("fs-error", "not a file", 400);
+ 				const type = mediaTypeForPath(absolute);
+ 				const body = await readFile(absolute);
+@@ -3514,7 +3491,7 @@ function apply(ctx, config) {
+ 				return;
+ 			}
+ 			fsWatchWss.handleUpgrade(req, socket, head, (ws) => {
+-				attachFsWatch(ctx, ws, req, () => fenceEnabledOf(() => settingsFace));
++				attachFsWatch(ctx, ws, req);
+ 			});
+ 		}
+ 	}), "dsh-better-sidebar: file-tree watch WebSocket");
+@@ -3532,12 +3509,11 @@ function apply(ctx, config) {
+ * the session's workspace exactly like `fs.tree`'s. A path that fails
+ * resolution, or a rejection past the watcher cap, is answered with
+ * `{ dir, ok: false }` so the client can stop asking rather than retry.
+-* @param ctx - host plugin context (session cwd, workspace fence).
++* @param ctx - host plugin context.
+ * @param ws - the accepted socket.
+ * @param req - the upgrade request carrying `?sessionId=`.
+-* @param fenceEnabled - whether the workspace containment fence is on.
+ */
+-async function attachFsWatch(ctx, ws, req, fenceEnabled) {
++async function attachFsWatch(ctx, ws, req) {
+ 	try {
+ 		const sessionId = new URL(req.url ?? "/", "http://dsh.internal").searchParams.get("sessionId");
+ 		if (sessionId === null) {
+@@ -3561,7 +3537,7 @@ async function attachFsWatch(ctx, ws, req, fenceEnabled) {
+ 			watchers.close();
+ 		});
+ 		ws.on("message", (data) => {
+-			handleFsWatchFrame(ctx, ws, watchers, sessionId, data, fenceEnabled);
++			handleFsWatchFrame(ctx, ws, watchers, sessionId, data);
+ 		});
+ 	} catch (error) {
+ 		ws.close(1011, error instanceof Error ? error.message : String(error));
+@@ -3574,9 +3550,8 @@ async function attachFsWatch(ctx, ws, req, fenceEnabled) {
+ * @param watchers - the socket's watcher set.
+ * @param sessionId - the session the socket was opened for.
+ * @param data - the raw frame text.
+-* @param fenceEnabled - whether the workspace containment fence is on.
+ */
+-async function handleFsWatchFrame(ctx, ws, watchers, sessionId, data, fenceEnabled) {
++async function handleFsWatchFrame(ctx, ws, watchers, sessionId, data) {
+ 	let frame;
+ 	try {
+ 		frame = JSON.parse(typeof data === "string" ? data : String(data));
+@@ -3586,7 +3561,7 @@ async function handleFsWatchFrame(ctx, ws, watchers, sessionId, data, fenceEnabl
+ 	const path = typeof frame.path === "string" ? frame.path : void 0;
+ 	if (path === void 0 || path === "") return;
+ 	try {
+-		const dir = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path, fenceEnabled());
++		const dir = await ensureWorkspacePath(await sessionCwdOf(ctx, sessionId), path);
+ 		if (frame.op === "unwatch") {
+ 			watchers.remove(dir);
+ 			return;
+diff --git a/lib/types/client/FenceErrorNotice.d.ts b/lib/types/client/FenceErrorNotice.d.ts
+deleted file mode 100644
+index fa915560d8..0000000000
+--- a/lib/types/client/FenceErrorNotice.d.ts
++++ /dev/null
+@@ -1,5 +0,0 @@
+-import type { SidebarStore } from './state.ts';
+-export declare function FenceErrorNotice(props: {
+-    store: SidebarStore;
+-    onDisabled: () => void;
+-}): import("react").JSX.Element;
+diff --git a/lib/types/client/FileTree.d.ts b/lib/types/client/FileTree.d.ts
+index 61bae7b0c5..98d23b7987 100644
+--- a/lib/types/client/FileTree.d.ts
++++ b/lib/types/client/FileTree.d.ts
+@@ -7,7 +7,7 @@ export declare function baseName(path: string): string;
+ export declare function FileTree(props: {
+     sessionId: string;
+     cwd: string | undefined;
+-    /** The sidebar store: the fence-refusal notice writes the `workspaceFence` pref through it. */
++    /** The sidebar store shared with file viewers and tree actions. */
+     store: SidebarStore;
+     expanded: string[];
+     /** Files highlighted by a "Show in folder" reveal (absolute paths). */
+diff --git a/lib/types/client/api.d.ts b/lib/types/client/api.d.ts
+index b358bef7a6..14250afdaa 100644
+--- a/lib/types/client/api.d.ts
++++ b/lib/types/client/api.d.ts
+@@ -6,16 +6,6 @@ export declare class SidebarApiError extends Error {
+     readonly code: string;
+     constructor(code: string, message: string);
+ }
+-/**
+- * Whether a wire failure is the workspace fence refusing a path outside the
+- * session workspace (the host message reads `path "..." is outside
+- * workspace`). The request-trust fence answers code `forbidden` with the
+- * bare message 'forbidden', so the message fragment — not the code alone —
+- * identifies this case.
+- */
+-export declare function isOutsideWorkspaceError(error: unknown): boolean;
+-/** Message-level variant for surfaces that stored the raw text (file-tree level errors). */
+-export declare function isOutsideWorkspaceMessage(message: string): boolean;
+ /** Explorer row (host fs-tree shape). */
+ export interface FsEntry {
+     name: string;
+diff --git a/lib/types/client/changes/GitLens.d.ts b/lib/types/client/changes/GitLens.d.ts
+index 07541f1bd6..425680602a 100644
+--- a/lib/types/client/changes/GitLens.d.ts
++++ b/lib/types/client/changes/GitLens.d.ts
+@@ -2,7 +2,7 @@ import type { SessionScope } from '../api.ts';
+ import type { SidebarDiffRef, SidebarStore } from '../state.ts';
+ export interface GitLensProps {
+     scope: SessionScope;
+-    /** The sidebar store: reads the `workspaceFence` pref (see the open guard below). */
++    /** The sidebar store shared with the containing changes tab. */
+     store: SidebarStore;
+     onOpenFile: (path: string) => void;
+     /** Preview one change in the shared bottom pane (worktree or commit ref). */
+diff --git a/lib/types/fs-operations.d.ts b/lib/types/fs-operations.d.ts
+index cf99bd9c8c..92fc4def61 100644
+--- a/lib/types/fs-operations.d.ts
++++ b/lib/types/fs-operations.d.ts
+@@ -1,8 +1,8 @@
+ /** Inputs of one upload: the session scope plus the request body stream. */
+ export interface WorkspaceUploadInput {
+-    /** The session workspace root; target and directory must stay inside it. */
++    /** The session workspace root used to resolve relative paths. */
+     cwd: string;
+-    /** Absolute upload directory chosen by the client (inside `cwd`). */
++    /** Absolute upload directory chosen by the client. */
+     dir: string;
+     /** Relative path below `dir` (absolute paths, '.', '..' and empty segments refused). */
+     relativePath: string;
+@@ -10,8 +10,6 @@ export interface WorkspaceUploadInput {
+     chunks: AsyncIterable<string | Uint8Array>;
+     /** Byte cap; an oversized upload is refused without touching the target. */
+     limit: number;
+-    /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
+-    fence?: boolean;
+ }
+ /**
+  * Stream `chunks` into `dir/relativePath` atomically: a uniquely named temp
+@@ -30,14 +28,12 @@ export declare function writeWorkspaceUpload(input: WorkspaceUploadInput): Promi
+ }>;
+ /** Inputs of one tree-row rename. */
+ export interface WorkspaceRenameInput {
+-    /** The session workspace root; the renamed entry must stay inside it. */
++    /** The session workspace root used to resolve relative paths. */
+     cwd: string;
+     /** Absolute path of the row as the tree displays it (may be a symlink). */
+     path: string;
+     /** The new base name (single segment — rename never moves across directories). */
+     name: string;
+-    /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
+-    fence?: boolean;
+ }
+ /**
+  * Rename one tree row within its directory: `path` → `<parent>/<name>`.
+@@ -55,12 +51,10 @@ export declare function renameWorkspaceEntry(input: WorkspaceRenameInput): Promi
+ }>;
+ /** Inputs of one tree-row delete. */
+ export interface WorkspaceRemoveInput {
+-    /** The session workspace root; the removed entry must stay inside it. */
++    /** The session workspace root used to resolve relative paths. */
+     cwd: string;
+     /** Absolute path of the row as the tree displays it (may be a symlink). */
+     path: string;
+-    /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
+-    fence?: boolean;
+ }
+ /**
+  * Delete one tree row permanently (there is no trash on the host): files are
+diff --git a/lib/types/path-security.d.ts b/lib/types/path-security.d.ts
+index bdef5581d5..9e3f75edaf 100644
+--- a/lib/types/path-security.d.ts
++++ b/lib/types/path-security.d.ts
+@@ -1,15 +1,14 @@
+ /**
+- * Resolve an existing workspace path through symlinks and (unless disarmed)
+- * enforce containment.
++ * Resolve an existing filesystem path through symlinks.
+  *
+- * @param cwd - Session workspace directory.
+- * @param target - Client-supplied absolute path in the session's namespace.
+- * @param fence - Whether containment is enforced (the settings-page
+- * `workspaceFence` switch). Even when false the paths are still resolved
+- * through symlinks so callers always receive the canonical target.
++ * Relative paths use the Session workspace as their base, while absolute paths
++ * may point anywhere on the host.
++ *
++ * @param cwd - Session workspace directory used for relative paths.
++ * @param target - Client-supplied path in the session's namespace.
+  * @returns The canonical absolute path used for the filesystem operation.
+  */
+-export declare function ensureWorkspacePath(cwd: string, target: string, fence?: boolean): Promise<string>;
++export declare function ensureWorkspacePath(cwd: string, target: string): Promise<string>;
+ /**
+  * Validate a write destination, including destinations that do not exist yet.
+  * Existing targets are resolved to catch symlinks; missing targets are checked
+@@ -17,10 +16,11 @@ export declare function ensureWorkspacePath(cwd: string, target: string, fence?:
+  * The returned path is rebuilt from that canonical ancestor, so an existing
+  * symlink is never left in the path passed to the write operation.
+  *
+- * @param cwd - Session workspace directory.
+- * @param target - Client-supplied absolute destination path in the session's namespace.
+- * @param fence - Whether containment is enforced (the settings-page
+- * `workspaceFence` switch). Resolution/canonicalization is identical either way.
++ * Relative paths use the Session workspace as their base, while absolute paths
++ * may point anywhere on the host.
++ *
++ * @param cwd - Session workspace directory used for relative paths.
++ * @param target - Client-supplied destination path in the session's namespace.
+  * @returns A canonical path for an existing target or its nearest existing ancestor.
+  */
+-export declare function ensureWorkspaceWritePath(cwd: string, target: string, fence?: boolean): Promise<string>;
++export declare function ensureWorkspaceWritePath(cwd: string, target: string): Promise<string>;
+diff --git a/lib/types/prefs-shared.d.ts b/lib/types/prefs-shared.d.ts
+index 9c229bd39a..65eba05c26 100644
+--- a/lib/types/prefs-shared.d.ts
++++ b/lib/types/prefs-shared.d.ts
+@@ -38,17 +38,9 @@ export interface SidebarPrefs {
+      */
+     editorExplorer: boolean;
+     /**
+-     * Whether the sidebar's filesystem routes enforce the workspace fence:
+-     * every client-supplied path must resolve (through symlinks) inside the
+-     * session workspace, else the route answers 403 "outside workspace". On
+-     * by default; turning it OFF lets the file tree / editor read+write /
+-     * media / HTML preview / upload routes reach ANY host path (e.g. the
+-     * global ~/.dsh/AGENTS.md or a linked worktree outside the session cwd)
+-     * — the trade-off being that any same-origin script (including
+-     * third-party consumer plugins) can read/write outside the workspace
+-     * through those routes while it is off. The switch lives under the files
+-     * tab's gear in the Side card settings; the fence error surfaces offer a
+-     * one-click global off + retry.
++     * Legacy stored preference retained for profile compatibility. Filesystem
++     * routes ignore it and always permit absolute host paths.
++     * @deprecated The workspace path check is not available.
+      */
+     workspaceFence: boolean;
+     /**
+diff --git a/src/client/EditorHost.tsx b/src/client/EditorHost.tsx
+index 4a0268b6fe..3eef6faa21 100644
+--- a/src/client/EditorHost.tsx
++++ b/src/client/EditorHost.tsx
+@@ -27,9 +27,8 @@ import { createElement } from 'react'
+ import clsx from 'clsx'
+ import { IconCheckOutlineRegular, IconFolderOpenRegular, IconRefreshOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+ import type { Context } from '../context-types.ts'
+-import { api, isOutsideWorkspaceMessage, mediaUrl, type SessionScope } from './api.ts'
++import { api, mediaUrl, type SessionScope } from './api.ts'
+ import { BinaryDownload } from './binary-download.tsx'
+-import { FenceErrorNotice } from './FenceErrorNotice.tsx'
+ import { planFirstMatch, planFsReadOutcome, type EditorLoadAction } from './editor-load.ts'
+ import { baseName } from './FileTree.tsx'
+ import { createFrameBatcher } from './frame-batcher.ts'
+@@ -496,9 +495,7 @@ export function EditorHost(props: {
+         <div className={css.editorMain}>
+           {showEmpty && <div className={css.editorPlaceholder}>{t('editorEmptyHint')}</div>}
+           {!showEmpty && load.status === 'loading' && <div className={css.editorPlaceholder}>{t('loading')}</div>}
+-          {!showEmpty && load.status === 'error' && (isOutsideWorkspaceMessage(load.message)
+-            ? <FenceErrorNotice store={store} onDisabled={() => { setReloadSeq(sequence => sequence + 1) }} />
+-            : <div className={css.editorError}>{load.message}</div>)}
++          {!showEmpty && load.status === 'error' && <div className={css.editorError}>{load.message}</div>}
+           {!showEmpty && load.status === 'binary' && <BinaryDownload scope={scope} path={path} />}
+           {!showEmpty && load.status === 'ready' && createElement(load.viewer.component, {
+             ctx, store, scope, path, title,
+diff --git a/src/client/FenceErrorNotice.tsx b/src/client/FenceErrorNotice.tsx
+deleted file mode 100644
+index 4049288fea..0000000000
+--- a/src/client/FenceErrorNotice.tsx
++++ /dev/null
+@@ -1,40 +0,0 @@
+-/**
+- * The workspace-fence refusal surface. The raw wire text (`path "..." is
+- * outside workspace`) is never shown as-is: the editor / file-tree error
+- * slots render the localized reason plus a one-click global off — the click
+- * flips the `workspaceFence` pref through the settings route, adopts the
+- * returned document into the store (so every prefs reader — the changes tab's open
+- * guard, the settings page — flips with it), and calls `onDisabled` so the
+- * caller retries the failed operation immediately.
+- */
+-import { useState } from 'react'
+-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+-import { api } from './api.ts'
+-import { t } from './locales.ts'
+-import { parsePrefs } from './prefs.ts'
+-import css from './sidebar.module.css'
+-import type { SidebarStore } from './state.ts'
+-
+-export function FenceErrorNotice(props: { store: SidebarStore; onDisabled: () => void }) {
+-  const { store, onDisabled } = props
+-  const [busy, setBusy] = useState(false)
+-  const disable = (): void => {
+-    if (busy) return
+-    setBusy(true)
+-    api.settingsUpdate({ workspaceFence: false }).then((view) => {
+-      store.setPrefs(parsePrefs(view.value))
+-      onDisabled()
+-    }).catch((error: unknown) => {
+-      // The fence stays armed on failure (the notice remains, button
+-      // re-enabled); the console carries the cause.
+-      console.error('workspace fence disable failed', error)
+-      setBusy(false)
+-    })
+-  }
+-  return (
+-    <div className={css.fenceError}>
+-      <span>{t('fenceErrorReason')}</span>
+-      <Button variant="outline" disabled={busy} onClick={disable}>{t('fenceDisableAction')}</Button>
+-    </div>
+-  )
+-}
+diff --git a/src/client/FileTree.tsx b/src/client/FileTree.tsx
+index 2eab0fbea3..40ed5b72fd 100644
+--- a/src/client/FileTree.tsx
++++ b/src/client/FileTree.tsx
+@@ -29,8 +29,7 @@ import {
+ } from '@deepseek-ai/dsh-client-ui-primitives'
+ import { SiCursor, SiZedindustries } from 'react-icons/si'
+ import { VscFolderOpened, VscLinkExternal, VscPin, VscPinned } from 'react-icons/vsc'
+-import { api, downloadUrl, isOutsideWorkspaceMessage, type FsEntry } from './api.ts'
+-import { FenceErrorNotice } from './FenceErrorNotice.tsx'
++import { api, downloadUrl, type FsEntry } from './api.ts'
+ import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
+ import { IconUploadOutline16, IconVscode16 } from './icons.tsx'
+ import { isImeComposition } from './ime-guard.ts'
+@@ -112,7 +111,7 @@ const ChatDropIllustration = () => (
+ export function FileTree(props: {
+   sessionId: string
+   cwd: string | undefined
+-  /** The sidebar store: the fence-refusal notice writes the `workspaceFence` pref through it. */
++  /** The sidebar store shared with file viewers and tree actions. */
+   store: SidebarStore
+   expanded: string[]
+   /** Files highlighted by a "Show in folder" reveal (absolute paths). */
+@@ -624,16 +623,6 @@ export function FileTree(props: {
+       return <div className={css.explorerRow} style={{ paddingLeft: depth * 22 + 6 }}>{t('loading')}</div>
+     }
+     if (level.error !== undefined) {
+-      // The fence refusal becomes the friendly notice (reason + one-click
+-      // global off + immediate retry of this directory), never the raw
+-      // `path "..." is outside workspace` wire text.
+-      if (isOutsideWorkspaceMessage(level.error)) {
+-        return (
+-          <div style={{ paddingLeft: depth * 22 + 6 }}>
+-            <FenceErrorNotice store={store} onDisabled={() => { retryDir(dir) }} />
+-          </div>
+-        )
+-      }
+       return (
+         <div className={clsx(css.explorerRow, css.explorerError)} style={{ paddingLeft: depth * 22 + 6 }}>
+           {level.error}
+diff --git a/src/client/api.ts b/src/client/api.ts
+index 747901c219..2cb0b6b874 100644
+--- a/src/client/api.ts
++++ b/src/client/api.ts
+@@ -21,22 +21,6 @@ export class SidebarApiError extends Error {
+   }
+ }
+ 
+-/**
+- * Whether a wire failure is the workspace fence refusing a path outside the
+- * session workspace (the host message reads `path "..." is outside
+- * workspace`). The request-trust fence answers code `forbidden` with the
+- * bare message 'forbidden', so the message fragment — not the code alone —
+- * identifies this case.
+- */
+-export function isOutsideWorkspaceError(error: unknown): boolean {
+-  return error instanceof SidebarApiError && isOutsideWorkspaceMessage(error.message)
+-}
+-
+-/** Message-level variant for surfaces that stored the raw text (file-tree level errors). */
+-export function isOutsideWorkspaceMessage(message: string): boolean {
+-  return message.includes('outside workspace')
+-}
+-
+ /** Explorer row (host fs-tree shape). */
+ export interface FsEntry {
+   name: string
+diff --git a/src/client/builtins/tabs.tsx b/src/client/builtins/tabs.tsx
+index 835f1c9f62..92c86074b0 100644
+--- a/src/client/builtins/tabs.tsx
++++ b/src/client/builtins/tabs.tsx
+@@ -43,10 +43,9 @@ export function builtinTabs(): readonly TabDescriptor[] {
+       dedupeKey: (tab) => tab.path,
+       // Declarative settings: the file-open behavior picker (in-place switch
+       // vs per-path windows) renders as an iconed select row under the
+-      // editor card's gear in the Side card settings page, followed by the
+-      // workspace fence switch (the host's containment guard over every
+-      // sidebar filesystem route); the "open with" configuration (SSH host +
+-      // custom editors) is the custom panel BELOW those rows — the settings
++      // editor card's gear in the Side card settings page. The "open with"
++      // configuration (SSH host + custom editors) is the custom panel BELOW
++      // those rows — the settings
+       // seam renders rows first, custom panel after.
+       settings: {
+         toggles: [{
+@@ -68,10 +67,6 @@ export function builtinTabs(): readonly TabDescriptor[] {
+               desc: () => t('editorExplorerSplitDesc'),
+             },
+           ],
+-        }, {
+-          key: 'workspaceFence',
+-          title: () => t('settingsFenceTitle'),
+-          desc: () => t('settingsFenceDesc'),
+         }],
+         render: ({ pluginSettings, updatePluginSetting }) => (
+           <OpenWithSettings pluginSettings={pluginSettings} updatePluginSetting={updatePluginSetting} />
+diff --git a/src/client/changes/GitLens.tsx b/src/client/changes/GitLens.tsx
+index 9a3bcae915..69ac3e9ac1 100644
+--- a/src/client/changes/GitLens.tsx
++++ b/src/client/changes/GitLens.tsx
+@@ -18,7 +18,7 @@ import {
+ import type { GitLogEntry, GitStatusEntry, GitStatusResult, GitWorktree, SessionScope } from '../api.ts'
+ import { api } from '../api.ts'
+ import { usePolling } from '../use-polling.ts'
+-import { baseName, isWithinWorkspace, relativeTo } from '../paths.ts'
++import { baseName, relativeTo } from '../paths.ts'
+ import { resolveSidebarPath } from '../paths.ts'
+ import { relativeTime, t } from '../locales.ts'
+ import type { SidebarDiffRef, SidebarStore } from '../state.ts'
+@@ -92,7 +92,7 @@ const WORKTREE_RECHECK_TICKS = 15
+ 
+ export interface GitLensProps {
+   scope: SessionScope
+-  /** The sidebar store: reads the `workspaceFence` pref (see the open guard below). */
++  /** The sidebar store shared with the containing changes tab. */
+   store: SidebarStore
+   onOpenFile: (path: string) => void
+   /** Preview one change in the shared bottom pane (worktree or commit ref). */
+@@ -104,7 +104,7 @@ export interface GitLensProps {
+ }
+ 
+ export function GitLens(props: GitLensProps) {
+-  const { scope, store, onOpenFile, onPreview, selectedRef, visible } = props
++  const { scope, onOpenFile, onPreview, selectedRef, visible } = props
+   const [status, setStatus] = useState<GitStatusResult | null>(null)
+   const [worktrees, setWorktrees] = useState<GitWorktree[]>([])
+   const [selectedWorktree, setSelectedWorktree] = useState<string | undefined>()
+@@ -617,13 +617,7 @@ export function GitLens(props: GitLensProps) {
+             open={fileMenu !== null}
+             onClose={() => { setFileMenu(null) }}
+             items={[
+-              // A linked worktree outside the session workspace cannot be
+-              // opened in the editor while the host's workspace fence is
+-              // armed: it rejects every path under that checkout. Hide the
+-              // action for that checkout so the menu does not offer a no-op
+-              // that confuses the user; with the fence disarmed (the
+-              // `workspaceFence` pref) the open is allowed through.
+-              ...(fileMenu !== null && (store.getPrefs().workspaceFence === false || isWithinWorkspace(scope.cwd ?? '', resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, fileMenu.entry.path)))
++              ...(fileMenu !== null
+                 ? [{ id: 'open', label: t('openEditor'), icon: <IconCodeOutlineRegular size={14} /> }]
+                 : []),
+               fileMenu?.staged === true
+@@ -642,12 +636,6 @@ export function GitLens(props: GitLensProps) {
+               setFileMenu(null)
+               if (id === 'open') {
+                 const resolved = resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, target.entry.path)
+-                // Defense-in-depth: the menu hides this action when the
+-                // resolved path escapes the session workspace, but a
+-                // racing repo switch could still reach here with a path
+-                // the host would reject. No-op in that case — unless the
+-                // workspace fence is disarmed by pref.
+-                if (store.getPrefs().workspaceFence !== false && !isWithinWorkspace(scope.cwd ?? '', resolved)) return
+                 onOpenFile(resolved)
+                 return
+               }
+diff --git a/src/config.ts b/src/config.ts
+index 275fa0f865..a613b48aa1 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -86,7 +86,7 @@ export const PrefsSchema: z<SidebarPrefs> = z.object({
+   autoOpenJobs: z.boolean().default(true),
+   agentOpenTools: z.boolean().default(false),
+   editorExplorer: z.boolean().default(false),
+-  workspaceFence: z.boolean().default(true),
++  workspaceFence: z.boolean().default(false),
+   titleBarScheme: z.union([z.const('auto'), z.const('web'), z.const('preset'), z.const('custom')]),
+   titleBarPresetId: z.string(),
+   customCss: z.string(),
+diff --git a/src/fs-operations.ts b/src/fs-operations.ts
+index 4908a3069e..fb76cc5381 100644
+--- a/src/fs-operations.ts
++++ b/src/fs-operations.ts
+@@ -1,19 +1,17 @@
+ /**
+- * Workspace-safe file mutations for the sidebar (the upload route today).
++ * Filesystem mutations for the sidebar (the upload route today).
+  *
+- * Every write is confined to the real session workspace: the upload
+- * directory is resolved absolute and its target is checked through existing
+- * filesystem ancestors, the relative path is sanitized (absolute paths, '.',
+- * '..' and empty segments are refused), and the final target must stay inside
+- * the workspace after symlink resolution. Bytes stream from the request body
++ * The upload directory is resolved to a canonical absolute path and the
++ * relative path is sanitized (absolute paths, '.', '..' and empty segments
++ * are refused). Absolute directories may point anywhere on the host. Bytes
++ * stream from the request body
+  * to a uniquely named temp sibling
+  * and are renamed into place, so a failed, aborted, or oversized upload never
+  * leaves a partial file at the target path.
+  *
+- * The tree's rename/delete (below) are link-aware: existence and containment
+- * are verified against the fully resolved target (a symlink pointing outside
+- * the workspace is refused while the fence is armed), but the operation
+- * itself addresses the lexical row path — renaming or deleting a symlink
++ * The tree's rename/delete (below) are link-aware: existence is verified
++ * against the fully resolved target, but the operation itself addresses the
++ * lexical row path — renaming or deleting a symlink
+  * row renames/unlinks the LINK, never its target, matching what the tree
+  * row visually names (VS Code semantics).
+  */
+@@ -21,17 +19,17 @@ import { randomUUID } from 'node:crypto'
+ import { once } from 'node:events'
+ import { createWriteStream } from 'node:fs'
+ import { access, lstat, mkdir, realpath, rename, rm, stat, unlink } from 'node:fs/promises'
+-import { basename, dirname, join } from 'node:path'
+-import { isWithin, requireAbsolute } from './fs-tree.ts'
++import { basename, dirname, join, resolve } from 'node:path'
++import { requireAbsolute } from './fs-tree.ts'
+ import { ensureWorkspacePath, ensureWorkspaceWritePath } from './path-security.ts'
+ import { resolveSessionPath } from './session-path.ts'
+ import { SidebarError } from './wire.ts'
+ 
+ /** Inputs of one upload: the session scope plus the request body stream. */
+ export interface WorkspaceUploadInput {
+-  /** The session workspace root; target and directory must stay inside it. */
++  /** The session workspace root used to resolve relative paths. */
+   cwd: string
+-  /** Absolute upload directory chosen by the client (inside `cwd`). */
++  /** Absolute upload directory chosen by the client. */
+   dir: string
+   /** Relative path below `dir` (absolute paths, '.', '..' and empty segments refused). */
+   relativePath: string
+@@ -39,8 +37,6 @@ export interface WorkspaceUploadInput {
+   chunks: AsyncIterable<string | Uint8Array>
+   /** Byte cap; an oversized upload is refused without touching the target. */
+   limit: number
+-  /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
+-  fence?: boolean
+ }
+ 
+ /**
+@@ -51,13 +47,13 @@ export interface WorkspaceUploadInput {
+  * target independent (each writes and renames its own file; the last rename
+  * wins) and never blocks later uploads after a crashed process.
+  *
+- * @throws SidebarError with a wire code for containment, shape, and size
+- * failures; the temp file is always removed on failure.
++ * @throws SidebarError with a wire code for shape and size failures; the temp
++ * file is always removed on failure.
+  */
+ export async function writeWorkspaceUpload(input: WorkspaceUploadInput): Promise<{ path: string; size: number }> {
+-  const { cwd, dir, relativePath, chunks, limit, fence = true } = input
++  const { cwd, dir, relativePath, chunks, limit } = input
+   const base = requireAbsolute(dir)
+-  await ensureWorkspacePath(cwd, base, fence)
++  await ensureWorkspacePath(cwd, base)
+   if (relativePath === '' || relativePath.startsWith('/') || relativePath.startsWith('\\')) {
+     throw new SidebarError('bad-request', 'relativePath must stay below the upload directory', 400)
+   }
+@@ -66,7 +62,7 @@ export async function writeWorkspaceUpload(input: WorkspaceUploadInput): Promise
+     throw new SidebarError('bad-request', 'relativePath must stay below the upload directory', 400)
+   }
+   const target = join(base, ...segments)
+-  const safeTarget = await ensureWorkspaceWritePath(cwd, target, fence)
++  const safeTarget = await ensureWorkspaceWritePath(cwd, target)
+   const tmp = join(dirname(safeTarget), `.${basename(safeTarget)}.dsh-upload-${randomUUID()}.tmp`)
+   await mkdir(dirname(safeTarget), { recursive: true })
+   const stream = createWriteStream(tmp, { flags: 'wx' })
+@@ -105,25 +101,22 @@ export async function writeWorkspaceUpload(input: WorkspaceUploadInput): Promise
+ 
+ /** Inputs of one tree-row rename. */
+ export interface WorkspaceRenameInput {
+-  /** The session workspace root; the renamed entry must stay inside it. */
++  /** The session workspace root used to resolve relative paths. */
+   cwd: string
+   /** Absolute path of the row as the tree displays it (may be a symlink). */
+   path: string
+   /** The new base name (single segment — rename never moves across directories). */
+   name: string
+-  /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
+-  fence?: boolean
+ }
+ 
+ /** Resolve one existing entry for a link-aware mutation: the lexical row path
+- * plus its fully resolved real target (fence-checked). ENOENT becomes an
+- * fs-error, mirroring path-security's resolveRealPath semantics. */
++ * plus its fully resolved real target. ENOENT becomes an fs-error, mirroring
++ * path-security's resolveRealPath semantics. */
+ async function resolveEntry(
+   cwd: string,
+   target: string,
+-  fence: boolean,
+ ): Promise<{ absolute: string; real: string; realCwd: string }> {
+-  const absolute = requireAbsolute(resolveSessionPath(cwd, target))
++  const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)))
+   let real: string
+   let realCwd: string
+   try {
+@@ -131,9 +124,6 @@ async function resolveEntry(
+   } catch (error) {
+     throw new SidebarError('fs-error', `cannot resolve "${target}": ${error instanceof Error ? error.message : String(error)}`, 400)
+   }
+-  if (fence && !isWithin(realCwd, real)) {
+-    throw new SidebarError('forbidden', `path "${target}" is outside workspace`, 403)
+-  }
+   return { absolute, real, realCwd }
+ }
+ 
+@@ -156,21 +146,20 @@ async function pathExists(target: string): Promise<boolean> {
+  * renames the link, not its target. A no-op rename (same name) succeeds
+  * without touching the filesystem.
+  *
+- * @throws SidebarError with a wire code for shape, containment, existence
+- * and root failures.
++ * @throws SidebarError with a wire code for shape, existence and root failures.
+  */
+ export async function renameWorkspaceEntry(input: WorkspaceRenameInput): Promise<{ path: string }> {
+-  const { cwd, path, name, fence = true } = input
++  const { cwd, path, name } = input
+   if (name === '' || name === '.' || name === '..' || name.includes('/') || name.includes('\\')) {
+     throw new SidebarError('bad-request', 'name must be a single path segment', 400)
+   }
+-  const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence)
++  const { absolute, real, realCwd } = await resolveEntry(cwd, path)
+   if (real === realCwd) {
+     throw new SidebarError('fs-error', 'cannot rename the workspace root', 400)
+   }
+   if (basename(absolute) === name) return { path: absolute }
+   const destination = join(dirname(absolute), name)
+-  const safeDestination = await ensureWorkspaceWritePath(cwd, destination, fence)
++  const safeDestination = await ensureWorkspaceWritePath(cwd, destination)
+   if (await pathExists(safeDestination)) {
+     throw new SidebarError('fs-error', `"${name}" already exists`, 409)
+   }
+@@ -184,12 +173,10 @@ export async function renameWorkspaceEntry(input: WorkspaceRenameInput): Promise
+ 
+ /** Inputs of one tree-row delete. */
+ export interface WorkspaceRemoveInput {
+-  /** The session workspace root; the removed entry must stay inside it. */
++  /** The session workspace root used to resolve relative paths. */
+   cwd: string
+   /** Absolute path of the row as the tree displays it (may be a symlink). */
+   path: string
+-  /** Whether workspace containment is enforced (the `workspaceFence` setting; on by default). */
+-  fence?: boolean
+ }
+ 
+ /**
+@@ -198,12 +185,11 @@ export interface WorkspaceRemoveInput {
+  * only (lstat decides, so a link to a directory does not recurse into its
+  * target). The workspace root itself is never removable.
+  *
+- * @throws SidebarError with a wire code for containment, existence and
+- * root failures.
++ * @throws SidebarError with a wire code for existence and root failures.
+  */
+ export async function removeWorkspaceEntry(input: WorkspaceRemoveInput): Promise<{ path: string }> {
+-  const { cwd, path, fence = true } = input
+-  const { absolute, real, realCwd } = await resolveEntry(cwd, path, fence)
++  const { cwd, path } = input
++  const { absolute, real, realCwd } = await resolveEntry(cwd, path)
+   if (real === realCwd) {
+     throw new SidebarError('fs-error', 'cannot remove the workspace root', 400)
+   }
+diff --git a/src/html-route.ts b/src/html-route.ts
+index cc742615e8..313b3566f6 100644
+--- a/src/html-route.ts
++++ b/src/html-route.ts
+@@ -95,8 +95,7 @@ export function decodeHtmlUrl(pathname: string): HtmlDecodeResult {
+   } else if (/^[A-Za-z]:$/.test(tail[0] ?? '')) {
+     // A Windows drive segment ('D:') is the FIRST path segment of an encoded
+     // drive path. Rejoining it with a leading slash would yield '/D:/work/...'
+-    // which node's path.resolve() mangles into 'D:\D:\work\...' on Windows —
+-    // the html route's workspace fence would then reject every drive path.
++    // which node's path.resolve() mangles into 'D:\D:\work\...' on Windows.
+     // Keep the drive form slash-free so requireAbsolute() resolves it verbatim.
+     path = tail.join('/')
+   } else {
+diff --git a/src/index.ts b/src/index.ts
+index d25da03675..7f2423787d 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -229,19 +229,6 @@ export interface SidebarSettingsFace {
+   update(patch: Record<string, unknown>, expectedRevision?: number): Promise<{ value?: unknown; revision?: number }>
+ }
+ 
+-/**
+- * Whether the workspace fence is armed for the sidebar's filesystem routes
+- * (the settings-page `workspaceFence` switch under the files card's gear).
+- * An absent settings service or a missing field keeps the fence ON — the
+- * containment default never depends on the settings surface being reachable.
+- */
+-function fenceEnabledOf(getSettings: () => SidebarSettingsFace | undefined): boolean {
+-  const settings = getSettings()
+-  const value = settings?.get().value
+-  if (value === null || typeof value !== 'object') return true
+-  return (value as Record<string, unknown>).workspaceFence !== false
+-}
+-
+ function buildApi(
+   ctx: Context,
+   resolved: ResolvedSidebarConfig,
+@@ -280,7 +267,7 @@ function buildApi(
+     'fs.tree': async (payload) => {
+       const { cwd } = await cwdOf(payload)
+       const record = payload as { path?: unknown }
+-      const target = record.path === undefined ? cwd : await ensureWorkspacePath(cwd, requireString(payload, 'path'), fenceEnabledOf(getSettings))
++      const target = record.path === undefined ? cwd : await ensureWorkspacePath(cwd, requireString(payload, 'path'))
+       return listDirectory(target, resolved.listLimit)
+     },
+     'fs.search': async (payload) => {
+@@ -298,14 +285,14 @@ function buildApi(
+       // child-repo path is relative to the selected repoRoot, not the session
+       // cwd; thread it so the path resolves inside the authorized workspace.
+       const selected = selectedRepoOf(payload)
+-      const path = await ensureWorkspacePath(cwd, await resolveGitPath(cwd, requireString(payload, 'path'), selected), fenceEnabledOf(getSettings))
++      const path = await ensureWorkspacePath(cwd, await resolveGitPath(cwd, requireString(payload, 'path'), selected))
+       const { content, truncated, binary, size, head } = await readText(path, resolved.readLimit)
+       if (binary) return { kind: 'binary', size, truncated, head }
+       return { kind: 'text', content, truncated }
+     },
+     'fs.write': async (payload) => {
+       const { cwd } = await cwdOf(payload)
+-      const path = await ensureWorkspaceWritePath(cwd, requireString(payload, 'path'), fenceEnabledOf(getSettings))
++      const path = await ensureWorkspaceWritePath(cwd, requireString(payload, 'path'))
+       const content = requireString(payload, 'content')
+       const tmp = `${path}.dsh-sidebar-tmp-${process.pid}`
+       try {
+@@ -327,7 +314,6 @@ function buildApi(
+         cwd,
+         path: requireString(payload, 'path'),
+         name: requireString(payload, 'name'),
+-        fence: fenceEnabledOf(getSettings),
+       })
+     },
+     // The tree row's delete (permanent — the host has no trash): recursive
+@@ -337,7 +323,6 @@ function buildApi(
+       return removeWorkspaceEntry({
+         cwd,
+         path: requireString(payload, 'path'),
+-        fence: fenceEnabledOf(getSettings),
+       })
+     },
+     'git.worktrees': async (payload) => {
+@@ -881,7 +866,6 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+           relativePath,
+           chunks: req,
+           limit: resolved.uploadLimit,
+-          fence: fenceEnabledOf(() => settingsFace),
+         })
+         writeOk(res, { path, size })
+       } catch (error) {
+@@ -917,7 +901,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+         const raw = url.searchParams.get('path')
+         if (sessionId === null || raw === null) throw new SidebarError('bad-request', 'sessionId and path are required')
+         const cwd = await sessionCwdOf(ctx, sessionId, url.searchParams.get('cwd') ?? undefined)
+-        const path = await ensureWorkspacePath(cwd, raw, fenceEnabledOf(() => settingsFace))
++        const path = await ensureWorkspacePath(cwd, raw)
+         const info = await stat(path)
+         if (!info.isFile()) throw new SidebarError('fs-error', 'not a file', 400)
+         const type = mediaTypeForPath(path)
+@@ -968,13 +952,11 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+           return
+         }
+         const { sessionId, path } = decoded.ref
+-        // The session's authoritative cwd (client cwd cannot ride in the URL
+-        // — the path encoding has no query; a detached first request falls
+-        // back to the process cwd and is normally refused by the workspace
+-        // real-path guard, with the same semantics as the media route's
+-        // fallback.
++        // The session's authoritative cwd resolves relative paths. Client cwd
++        // cannot ride in the path-encoded URL, so a detached first request
++        // falls back to the process cwd.
+         const cwd = await sessionCwdOf(ctx, sessionId)
+-        const absolute = await ensureWorkspacePath(cwd, path, fenceEnabledOf(() => settingsFace))
++        const absolute = await ensureWorkspacePath(cwd, path)
+         const info = await stat(absolute)
+         if (!info.isFile()) throw new SidebarError('fs-error', 'not a file', 400)
+         const type = mediaTypeForPath(absolute)
+@@ -1021,8 +1003,8 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+   // stale for the rest of the session. One socket per session carries the
+   // reader's expanded-folder set; the host watches exactly those directories
+   // and pushes a debounced notice per change, so the tree re-lists in place.
+-  // Paths are resolved through the same workspace fence as `fs.tree`, so a
+-  // watch can never observe a directory the tree itself could not list.
++  // Paths resolve through the same canonicalization as `fs.tree`, so the
++  // watcher and tree address the same directory.
+   const fsWatchWss = new WebSocketServer({ noServer: true })
+   ctx.effect(() => ctx.webServer.registerUpgrade({
+     path: '/sidebar/ws/fs-watch',
+@@ -1032,7 +1014,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+         return
+       }
+       fsWatchWss.handleUpgrade(req as unknown as IncomingMessage, socket as unknown as Duplex, head as Buffer, (ws) => {
+-        void attachFsWatch(ctx, ws, req, () => fenceEnabledOf(() => settingsFace))
++        void attachFsWatch(ctx, ws, req)
+       })
+     },
+   }), 'dsh-better-sidebar: file-tree watch WebSocket')
+@@ -1058,16 +1040,14 @@ interface FsWatchFrame {
+  * the session's workspace exactly like `fs.tree`'s. A path that fails
+  * resolution, or a rejection past the watcher cap, is answered with
+  * `{ dir, ok: false }` so the client can stop asking rather than retry.
+- * @param ctx - host plugin context (session cwd, workspace fence).
++ * @param ctx - host plugin context.
+  * @param ws - the accepted socket.
+  * @param req - the upgrade request carrying `?sessionId=`.
+- * @param fenceEnabled - whether the workspace containment fence is on.
+  */
+ async function attachFsWatch(
+   ctx: Context,
+   ws: WebSocket,
+   req: SidebarHttpRequest,
+-  fenceEnabled: () => boolean,
+ ): Promise<void> {
+   try {
+     const url = new URL(req.url ?? '/', 'http://dsh.internal')
+@@ -1089,7 +1069,7 @@ async function attachFsWatch(
+     ws.on('close', () => { watchers.close() })
+     ws.on('error', () => { watchers.close() })
+     ws.on('message', (data) => {
+-      void handleFsWatchFrame(ctx, ws, watchers, sessionId, data, fenceEnabled)
++      void handleFsWatchFrame(ctx, ws, watchers, sessionId, data)
+     })
+   } catch (error) {
+     ws.close(1011, error instanceof Error ? error.message : String(error))
+@@ -1103,7 +1083,6 @@ async function attachFsWatch(
+  * @param watchers - the socket's watcher set.
+  * @param sessionId - the session the socket was opened for.
+  * @param data - the raw frame text.
+- * @param fenceEnabled - whether the workspace containment fence is on.
+  */
+ async function handleFsWatchFrame(
+   ctx: Context,
+@@ -1111,7 +1090,6 @@ async function handleFsWatchFrame(
+   watchers: DirectoryWatchers,
+   sessionId: string,
+   data: unknown,
+-  fenceEnabled: () => boolean,
+ ): Promise<void> {
+   let frame: FsWatchFrame
+   try {
+@@ -1123,7 +1101,7 @@ async function handleFsWatchFrame(
+   if (path === undefined || path === '') return
+   try {
+     const cwd = await sessionCwdOf(ctx, sessionId)
+-    const dir = await ensureWorkspacePath(cwd, path, fenceEnabled())
++    const dir = await ensureWorkspacePath(cwd, path)
+     if (frame.op === 'unwatch') {
+       watchers.remove(dir)
+       return
+diff --git a/src/path-security.ts b/src/path-security.ts
+index fb31027d03..1680b5cfcc 100644
+--- a/src/path-security.ts
++++ b/src/path-security.ts
+@@ -1,7 +1,7 @@
+-/** Filesystem path guards shared by sidebar APIs that access a session workspace. */
++/** Filesystem path resolution shared by sidebar APIs. */
+ import { realpath } from 'node:fs/promises'
+-import { basename, dirname, join } from 'node:path'
+-import { isWithin, requireAbsolute } from './fs-tree.ts'
++import { basename, dirname, join, resolve } from 'node:path'
++import { requireAbsolute } from './fs-tree.ts'
+ import { resolveSessionPath } from './session-path.ts'
+ import { SidebarError } from './wire.ts'
+ 
+@@ -14,32 +14,19 @@ async function resolveRealPath(path: string, label: string): Promise<string> {
+   }
+ }
+ 
+-/** Reject a resolved path whose real filesystem target escapes the workspace. */
+-function assertWithinWorkspace(workspace: string, target: string): void {
+-  if (!isWithin(workspace, target)) {
+-    throw new SidebarError('forbidden', `path "${target}" is outside workspace`, 403)
+-  }
+-}
+-
+ /**
+- * Resolve an existing workspace path through symlinks and (unless disarmed)
+- * enforce containment.
++ * Resolve an existing filesystem path through symlinks.
+  *
+- * @param cwd - Session workspace directory.
+- * @param target - Client-supplied absolute path in the session's namespace.
+- * @param fence - Whether containment is enforced (the settings-page
+- * `workspaceFence` switch). Even when false the paths are still resolved
+- * through symlinks so callers always receive the canonical target.
++ * Relative paths use the Session workspace as their base, while absolute paths
++ * may point anywhere on the host.
++ *
++ * @param cwd - Session workspace directory used for relative paths.
++ * @param target - Client-supplied path in the session's namespace.
+  * @returns The canonical absolute path used for the filesystem operation.
+  */
+-export async function ensureWorkspacePath(cwd: string, target: string, fence = true): Promise<string> {
+-  const absolute = requireAbsolute(resolveSessionPath(cwd, target))
+-  const [realCwd, realTarget] = await Promise.all([
+-    resolveRealPath(cwd, 'workspace'),
+-    resolveRealPath(absolute, 'target'),
+-  ])
+-  if (fence) assertWithinWorkspace(realCwd, realTarget)
+-  return realTarget
++export async function ensureWorkspacePath(cwd: string, target: string): Promise<string> {
++  const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)))
++  return resolveRealPath(absolute, 'target')
+ }
+ 
+ /**
+@@ -49,22 +36,21 @@ export async function ensureWorkspacePath(cwd: string, target: string, fence = t
+  * The returned path is rebuilt from that canonical ancestor, so an existing
+  * symlink is never left in the path passed to the write operation.
+  *
+- * @param cwd - Session workspace directory.
+- * @param target - Client-supplied absolute destination path in the session's namespace.
+- * @param fence - Whether containment is enforced (the settings-page
+- * `workspaceFence` switch). Resolution/canonicalization is identical either way.
++ * Relative paths use the Session workspace as their base, while absolute paths
++ * may point anywhere on the host.
++ *
++ * @param cwd - Session workspace directory used for relative paths.
++ * @param target - Client-supplied destination path in the session's namespace.
+  * @returns A canonical path for an existing target or its nearest existing ancestor.
+  */
+-export async function ensureWorkspaceWritePath(cwd: string, target: string, fence = true): Promise<string> {
+-  const absolute = requireAbsolute(resolveSessionPath(cwd, target))
+-  const realCwd = await resolveRealPath(cwd, 'workspace')
++export async function ensureWorkspaceWritePath(cwd: string, target: string): Promise<string> {
++  const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)))
+   let existingPath = absolute
+   const missingSegments: string[] = []
+ 
+   for (;;) {
+     try {
+       const realTarget = await realpath(existingPath)
+-      if (fence) assertWithinWorkspace(realCwd, realTarget)
+       return missingSegments.reduce((path, segment) => join(path, segment), realTarget)
+     } catch (error) {
+       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+diff --git a/src/prefs-shared.ts b/src/prefs-shared.ts
+index ae8e987cce..c409d59f5b 100644
+--- a/src/prefs-shared.ts
++++ b/src/prefs-shared.ts
+@@ -40,17 +40,9 @@ export interface SidebarPrefs {
+    */
+   editorExplorer: boolean
+   /**
+-   * Whether the sidebar's filesystem routes enforce the workspace fence:
+-   * every client-supplied path must resolve (through symlinks) inside the
+-   * session workspace, else the route answers 403 "outside workspace". On
+-   * by default; turning it OFF lets the file tree / editor read+write /
+-   * media / HTML preview / upload routes reach ANY host path (e.g. the
+-   * global ~/.dsh/AGENTS.md or a linked worktree outside the session cwd)
+-   * — the trade-off being that any same-origin script (including
+-   * third-party consumer plugins) can read/write outside the workspace
+-   * through those routes while it is off. The switch lives under the files
+-   * tab's gear in the Side card settings; the fence error surfaces offer a
+-   * one-click global off + retry.
++   * Legacy stored preference retained for profile compatibility. Filesystem
++   * routes ignore it and always permit absolute host paths.
++   * @deprecated The workspace path check is not available.
+    */
+   workspaceFence: boolean
+   /**
+@@ -153,7 +145,7 @@ export const SIDEBAR_PREFS_DEFAULTS: SidebarPrefs = {
+   autoOpenJobs: true,
+   agentOpenTools: false,
+   editorExplorer: false,
+-  workspaceFence: true,
++  workspaceFence: false,
+   titleBarScheme: 'auto',
+   titleBarPresetId: '',
+   customCss: '',

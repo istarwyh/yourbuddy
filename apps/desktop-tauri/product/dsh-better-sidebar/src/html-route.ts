@@ -95,8 +95,7 @@ export function decodeHtmlUrl(pathname: string): HtmlDecodeResult {
   } else if (/^[A-Za-z]:$/.test(tail[0] ?? '')) {
     // A Windows drive segment ('D:') is the FIRST path segment of an encoded
     // drive path. Rejoining it with a leading slash would yield '/D:/work/...'
-    // which node's path.resolve() mangles into 'D:\D:\work\...' on Windows —
-    // the html route's workspace fence would then reject every drive path.
+    // which node's path.resolve() mangles into 'D:\D:\work\...' on Windows.
     // Keep the drive form slash-free so requireAbsolute() resolves it verbatim.
     path = tail.join('/')
   } else {

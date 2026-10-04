@@ -6,16 +6,6 @@ export declare class SidebarApiError extends Error {
     readonly code: string;
     constructor(code: string, message: string);
 }
-/**
- * Whether a wire failure is the workspace fence refusing a path outside the
- * session workspace (the host message reads `path "..." is outside
- * workspace`). The request-trust fence answers code `forbidden` with the
- * bare message 'forbidden', so the message fragment — not the code alone —
- * identifies this case.
- */
-export declare function isOutsideWorkspaceError(error: unknown): boolean;
-/** Message-level variant for surfaces that stored the raw text (file-tree level errors). */
-export declare function isOutsideWorkspaceMessage(message: string): boolean;
 /** Explorer row (host fs-tree shape). */
 export interface FsEntry {
     name: string;

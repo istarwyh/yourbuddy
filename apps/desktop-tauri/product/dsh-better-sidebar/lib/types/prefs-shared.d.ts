@@ -38,17 +38,9 @@ export interface SidebarPrefs {
      */
     editorExplorer: boolean;
     /**
-     * Whether the sidebar's filesystem routes enforce the workspace fence:
-     * every client-supplied path must resolve (through symlinks) inside the
-     * session workspace, else the route answers 403 "outside workspace". On
-     * by default; turning it OFF lets the file tree / editor read+write /
-     * media / HTML preview / upload routes reach ANY host path (e.g. the
-     * global ~/.dsh/AGENTS.md or a linked worktree outside the session cwd)
-     * — the trade-off being that any same-origin script (including
-     * third-party consumer plugins) can read/write outside the workspace
-     * through those routes while it is off. The switch lives under the files
-     * tab's gear in the Side card settings; the fence error surfaces offer a
-     * one-click global off + retry.
+     * Legacy stored preference retained for profile compatibility. Filesystem
+     * routes ignore it and always permit absolute host paths.
+     * @deprecated The workspace path check is not available.
      */
     workspaceFence: boolean;
     /**

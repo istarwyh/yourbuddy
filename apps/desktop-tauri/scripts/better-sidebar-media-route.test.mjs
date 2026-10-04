@@ -16,3 +16,15 @@ test('generic file routes do not impose a media size cap', () => {
   assert.doesNotMatch(host, /info\.size\s*>/)
   assert.doesNotMatch(builtHost, /mediaLimit/)
 })
+
+test('file routes accept absolute host paths without a workspace fence', () => {
+  const config = readFileSync(join(snapshotRoot, 'src', 'config.ts'), 'utf8')
+  const pathSecurity = readFileSync(join(snapshotRoot, 'src', 'path-security.ts'), 'utf8')
+  const builtHost = readFileSync(join(snapshotRoot, 'lib', 'index.js'), 'utf8')
+  const builtClient = readFileSync(join(snapshotRoot, 'lib', 'client.js'), 'utf8')
+
+  assert.match(config, /workspaceFence: z\.boolean\(\)\.default\(false\)/)
+  assert.doesNotMatch(pathSecurity, /outside workspace|assertWithinWorkspace/)
+  assert.doesNotMatch(builtHost, /outside workspace|fenceEnabledOf/)
+  assert.doesNotMatch(builtClient, /key: "workspaceFence"|getPrefs\(\)\.workspaceFence/)
+})

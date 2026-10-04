@@ -2,7 +2,7 @@ import type { SessionScope } from '../api.ts';
 import type { SidebarDiffRef, SidebarStore } from '../state.ts';
 export interface GitLensProps {
     scope: SessionScope;
-    /** The sidebar store: reads the `workspaceFence` pref (see the open guard below). */
+    /** The sidebar store shared with the containing changes tab. */
     store: SidebarStore;
     onOpenFile: (path: string) => void;
     /** Preview one change in the shared bottom pane (worktree or commit ref). */

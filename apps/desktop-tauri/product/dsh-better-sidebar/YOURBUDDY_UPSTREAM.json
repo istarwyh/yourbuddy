@@ -50,6 +50,12 @@
       "sha256": "0f0b721a34efe9b4e32d6e97db5f55d63df6876cb902d183edc29fbe4ffb8573",
       "purpose": "Render disabled registered workbench cards before the first Session exists and refresh them from the existing tab registry subscription."
     },
+    {
+      "id": "unrestricted-host-paths",
+      "file": "patches/better-sidebar-unrestricted-host-paths.patch",
+      "sha256": "7ab0176dd1ac929eb0f347aefd0a3c6215655274dc66d714d446023af1b62e99",
+      "purpose": "Allow Better Sidebar file routes and linked worktrees to use absolute paths anywhere on the trusted host."
+    },
     "Set @deepseek-ai/dsh-agent peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-locale peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-ui-conversation peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
@@ -68,5 +74,5 @@
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "b252c3b909d5fc365f2f567710723f97415838dd8eb68cdecd4d7fac9163968f"
+  "treeSha256": "520500fe7c41c0649cd60797f503aee59f3d61120f927ad6349873ba55cb9901"
 }

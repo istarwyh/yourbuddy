@@ -45,7 +45,7 @@ window.__ModuleLoader__.load({
 			autoOpenJobs: true,
 			agentOpenTools: false,
 			editorExplorer: false,
-			workspaceFence: true,
+			workspaceFence: false,
 			titleBarScheme: "auto",
 			titleBarPresetId: "",
 			customCss: "",
@@ -2905,10 +2905,6 @@ window.__ModuleLoader__.load({
 				this.code = code;
 			}
 		};
-		/** Message-level variant for surfaces that stored the raw text (file-tree level errors). */
-		function isOutsideWorkspaceMessage(message) {
-			return message.includes("outside workspace");
-		}
 		/**
 		* Parse one `/sidebar` JSON response envelope into its value. A non-ok
 		* status, an unparseable body, or any shape other than `{ok: true, value}`
@@ -3453,41 +3449,6 @@ window.__ModuleLoader__.load({
 					presentation: "portal"
 				};
 			}
-		}
-		//#endregion
-		//#region src/client/FenceErrorNotice.tsx
-		/**
-		* The workspace-fence refusal surface. The raw wire text (`path "..." is
-		* outside workspace`) is never shown as-is: the editor / file-tree error
-		* slots render the localized reason plus a one-click global off — the click
-		* flips the `workspaceFence` pref through the settings route, adopts the
-		* returned document into the store (so every prefs reader — the changes tab's open
-		* guard, the settings page — flips with it), and calls `onDisabled` so the
-		* caller retries the failed operation immediately.
-		*/
-		function FenceErrorNotice(props) {
-			const { store, onDisabled } = props;
-			const [busy, setBusy] = (0, react.useState)(false);
-			const disable = () => {
-				if (busy) return;
-				setBusy(true);
-				api.settingsUpdate({ workspaceFence: false }).then((view) => {
-					store.setPrefs(parsePrefs(view.value));
-					onDisabled();
-				}).catch((error) => {
-					console.error("workspace fence disable failed", error);
-					setBusy(false);
-				});
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: sidebar_module_css_default.fenceError,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("fenceErrorReason") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-					variant: "outline",
-					disabled: busy,
-					onClick: disable,
-					children: t("fenceDisableAction")
-				})]
-			});
 		}
 		//#endregion
 		//#region src/client/editor-load.ts
@@ -4729,22 +4690,11 @@ window.__ModuleLoader__.load({
 					style: { paddingLeft: depth * 22 + 6 },
 					children: t("loading")
 				});
-				if (level.error !== void 0) {
-					if (isOutsideWorkspaceMessage(level.error)) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						style: { paddingLeft: depth * 22 + 6 },
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FenceErrorNotice, {
-							store,
-							onDisabled: () => {
-								retryDir(dir);
-							}
-						})
-					});
-					return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: clsx(sidebar_module_css_default.explorerRow, sidebar_module_css_default.explorerError),
-						style: { paddingLeft: depth * 22 + 6 },
-						children: level.error
-					});
-				}
+				if (level.error !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: clsx(sidebar_module_css_default.explorerRow, sidebar_module_css_default.explorerError),
+					style: { paddingLeft: depth * 22 + 6 },
+					children: level.error
+				});
 				return (level.entries ?? []).map((entry) => {
 					if (renaming?.path === entry.path) return renderRenameRow(entry, depth);
 					if (entry.isDir) {
@@ -6031,15 +5981,10 @@ window.__ModuleLoader__.load({
 								className: sidebar_module_css_default.editorPlaceholder,
 								children: t("loading")
 							}),
-							!showEmpty && load.status === "error" && (isOutsideWorkspaceMessage(load.message) ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FenceErrorNotice, {
-								store,
-								onDisabled: () => {
-									setReloadSeq((sequence) => sequence + 1);
-								}
-							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							!showEmpty && load.status === "error" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 								className: sidebar_module_css_default.editorError,
 								children: load.message
-							})),
+							}),
 							!showEmpty && load.status === "binary" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BinaryDownload, {
 								scope,
 								path
@@ -7137,7 +7082,7 @@ window.__ModuleLoader__.load({
 								setFileMenu(null);
 							},
 							items: [
-								...fileMenu !== null && (store.getPrefs().workspaceFence === false || isWithinWorkspace(scope.cwd ?? "", resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, fileMenu.entry.path))) ? [{
+								...fileMenu !== null ? [{
 									id: "open",
 									label: t("openEditor"),
 									icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCodeOutlineRegular, { size: 14 })
@@ -7178,8 +7123,7 @@ window.__ModuleLoader__.load({
 								setFileMenu(null);
 								if (id === "open") {
 									const resolved = resolveSidebarPath(repoRoot ?? selectedWorktree ?? scope.cwd, target.entry.path);
-									if (store.getPrefs().workspaceFence !== false && !isWithinWorkspace(scope.cwd ?? "", resolved)) return;
-									onOpenFile(resolved);
+													onOpenFile(resolved);
 									return;
 								}
 								if (id === "stage") {
@@ -12884,10 +12828,6 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 								title: () => t("editorExplorerSplit"),
 								desc: () => t("editorExplorerSplitDesc")
 							}]
-						}, {
-							key: "workspaceFence",
-							title: () => t("settingsFenceTitle"),
-							desc: () => t("settingsFenceDesc")
 						}],
 						render: ({ pluginSettings, updatePluginSetting }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OpenWithSettings, {
 							pluginSettings,
