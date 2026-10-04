@@ -6,10 +6,10 @@ This archive records the Offline automatic-update payload that keeps every relea
 
 - Release identifier: `yourbuddy-v0.4.7`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; public artifact verification is pending.
+- Archive state: published and independently checked within the limits below.
 - Evidence commit: the release candidate commit identified by `yourbuddy-v0.4.7`.
 - Evidence gallery: not applicable; this release changes packaging and update behavior without a new visual flow.
-- Evidence download: the GitHub Release will be available at `https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.7` after publication.
+- Evidence download: the published [YourBuddy 0.4.7 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.7).
 
 ## User release notes
 
@@ -35,14 +35,14 @@ Existing users can use the automatic updater. New users can still choose the sma
 
 ### Compatibility, migration, and limitations
 
-This release targets macOS Apple Silicon and requires no data migration. Automatic update downloads are larger because they contain all release component seeds. Source and release-script checks pass; the signed updater installation, packaged startup without network access, Apple Developer signing, and notarization remain unverified until the release workflow and public artifact checks complete.
+This release targets macOS Apple Silicon and requires no data migration. Automatic update downloads are larger because they contain all release component seeds. Source checks and the release workflow pass; installed updater behavior, packaged startup without network access, Apple Developer signing, and notarization remain unverified.
 
 ## Verification summary
 
 | Scenario | Status | Build under test | Environment | Evidence |
 |---|---|---|---|---|
 | Offline updater selection and release packaging | passed within source scope | 0.4.7 source candidate | macOS 15.6.1 arm64, Node 22.19.0, pnpm 11.7.0 | desktop release suite, 43 documentation gates, workflow YAML parse, and patch checks passed |
-| Formal desktop artifacts | not verified | `yourbuddy-v0.4.7` publication | GitHub Actions and public GitHub Release | pending tag publication and workflow completion |
+| Formal desktop artifacts | passed within stated limits | `yourbuddy-v0.4.7` publication | GitHub Actions and public GitHub Release | workflow 37172836595 passed; 16 public assets, checksums, Offline updater metadata, and stable latest link checked |
 
 ## Scenario: Select the complete Offline updater payload
 
@@ -53,7 +53,7 @@ This release targets macOS Apple Silicon and requires no data migration. Automat
 - Environment: macOS 15.6.1 arm64, Node 22.19.0, pnpm 11.7.0; Rust was not available in this verification shell.
 - Evidence origin: local desktop release tests, documentation gates, YAML parsing, and Git patch checks.
 - Data: deterministic local fixtures; no user data.
-- Model or service: no model call; GitHub artifact publication remains pending.
+- Model or service: no model call; GitHub Actions and the public GitHub Release supplied publication evidence.
 
 ### Steps
 
@@ -66,25 +66,25 @@ This release targets macOS Apple Silicon and requires no data migration. Automat
 
 ### Actual
 
-The updater-manifest tests selected `yourbuddy-0.4.7-offline-macos-arm64.app.tar.gz`. The complete desktop release suite passed, all 43 documentation gates passed, the release workflow parsed as YAML, and `git diff --check` passed.
+The updater-manifest tests selected `yourbuddy-0.4.7-offline-macos-arm64.app.tar.gz`. The desktop release suite, all 43 documentation gates, workflow YAML parse, and patch checks passed. GitHub workflow 37172836595 then built and published 16 assets; the stable updater channel serves version 0.4.7 and points to the 609,197,958-byte Offline application archive.
 
 ### Evidence
 
 - Before: the stable channel selected the Bootstrap application archive, which omitted runtime component seeds.
 - In progress: the release workflow staged separate Bootstrap and Offline application archives and inspected the Offline archive for every generated seed.
-- Result: updater metadata now selects only the signed Offline application archive.
-- Failure and recovery: no local check failed; formal artifact construction and public download verification remain pending.
+- Result: updater metadata selects only the signed Offline application archive; its public signature and metadata hashes match `SHA256SUMS.txt`, and a byte-range request to the archive succeeds.
+- Failure and recovery: the first publication command stopped safely when remote `master` advanced; the candidate was rebased, revalidated, and published without moving an existing tag.
 
 ### Scope limits
 
-Local checks do not establish that GitHub Actions produced the signed archive, that the stable public channel serves it, or that an installed application completes an automatic update and offline restart. Those checks follow publication.
+The workflow inspected the Offline archive for every generated seed, but this verification did not download and extract the complete 609 MB public archive or install it through Tauri. Installed automatic update and offline restart behavior therefore remain unverified.
 
 ## Delivery status
 
-- Product publication status: release candidate; tag and public artifacts are pending.
-- Verification archive status: complete for the pre-publication source and release-script evidence recorded above.
-- Website synchronization status: not applicable because the stable latest-release URL updates automatically and product guidance is unchanged.
-- Unverified scope: GitHub workflow completion, published filenames and hashes, stable updater metadata, signed updater installation, offline packaged startup, Apple Developer signing, and notarization.
+- Product publication status: published as [YourBuddy 0.4.7](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.7); the stable latest-release URL resolves to it.
+- Verification archive status: complete for source checks, workflow 37172836595, 16 public assets, selected hashes, stable updater metadata, and public byte-range access.
+- Website synchronization status: not applicable because the stable latest-release URL updated automatically and product guidance is unchanged.
+- Unverified scope: full independent download and extraction of the 609 MB updater archive, signed updater installation, offline packaged startup, Apple Developer signing, and notarization.
 
 ## Delivery checklist
 
@@ -96,6 +96,6 @@ Local checks do not establish that GitHub Actions produced the signed archive, t
 - [x] Failed and unverified evidence is labelled explicitly.
 - [x] The release entry exists in both release indexes and the bilingual archive is paired.
 - [x] Product publication, archive, website, and unverified scope are reported separately.
-- [ ] Public workflow, release assets, checksums, updater metadata, and stable latest link remain pending.
-- [ ] Installed updater behavior and offline packaged startup remain unverified.
+- [x] Public workflow, 16 release assets, selected checksums, Offline updater metadata, archive byte-range access, and stable latest link were checked.
+- [ ] Full updater download, installed updater behavior, and offline packaged startup remain unverified.
 - [x] Public tags and installers are not moved; corrections use a new version.

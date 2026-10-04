@@ -10,7 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.4.7](yourbuddy-v0.4.7/README.md) | YourBuddy desktop | Included | Offline automatic-update payload, source release checks, and pending public-artifact verification recorded | Release candidate; publication pending |
+| [yourbuddy-v0.4.7](yourbuddy-v0.4.7/README.md) | YourBuddy desktop | Included | Offline automatic-update payload, source checks, workflow 37172836595, 16 public assets, selected hashes, stable updater metadata, and archive access recorded | Published and independently checked within stated limits |
 | [yourbuddy-v0.4.6](yourbuddy-v0.4.6/README.md) | YourBuddy desktop | Included | Official DSH record, release recovery, source checks, 14 public assets, hashes, updater metadata, latest channel, anonymous DMG access, and Bootstrap DMG integrity recorded | Published and independently checked within stated limits |
 | [yourbuddy-v0.4.5](yourbuddy-v0.4.5/README.md) | YourBuddy desktop | Included | Source checks and stale DSH release metadata failure recorded | Failed before artifact publication; superseded by 0.4.6 |
 | [yourbuddy-v0.4.4](yourbuddy-v0.4.4/README.md) | YourBuddy desktop | Included | Issues #36-#38, Harbor 0.10.3, corrected product snapshot metadata, exact Bundle regression, 14 public assets, hashes, updater metadata, DMG integrity, and 30 MB gate recorded | Published and independently checked within stated limits |

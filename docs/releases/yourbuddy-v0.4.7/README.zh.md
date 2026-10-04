@@ -6,10 +6,10 @@
 
 - 发布标识：`yourbuddy-v0.4.7`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选版本；公开制品验证尚未完成。
+- 归档状态：已发布，并在以下范围内完成独立检查。
 - 证据 Commit：由 `yourbuddy-v0.4.7` 标识的候选版本 Commit。
 - 证据图集：不适用；本版本修改打包与更新行为，没有新增可视流程。
-- 证据下载：发布后可从 `https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.7` 获取 GitHub Release。
+- 证据下载：已发布的 [YourBuddy 0.4.7 GitHub Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.7)。
 
 ## 面向用户的发布说明
 
@@ -35,14 +35,14 @@ YourBuddy 自动更新现在安装已签名的 Offline 应用 Archive。应用�
 
 ### 兼容性、迁移与限制
 
-本版本面向 macOS Apple Silicon，不需要数据迁移。由于包含全部 Release 组件 Seed，自动更新下载体积会增加。源码与发布脚本检查已经通过；已签名 Updater 安装、打包应用离线启动、Apple Developer 签名和公证需要等待发布 Workflow 与公开制品检查后确认。
+本版本面向 macOS Apple Silicon，不需要数据迁移。由于包含全部 Release 组件 Seed，自动更新下载体积会增加。源码检查与发布 Workflow 已通过；安装后的 Updater 行为、打包应用离线启动、Apple Developer 签名和公证仍未验证。
 
 ## 验证概览
 
 | 场景 | 状态 | 受测构建 | 环境 | 证据 |
 |---|---|---|---|---|
 | Offline Updater 选择与发布打包 | 在源码范围内通过 | 0.4.7 源码候选版本 | macOS 15.6.1 arm64、Node 22.19.0、pnpm 11.7.0 | Desktop Release Suite、43 项文档检查、Workflow YAML 解析和 Patch 检查通过 |
-| 正式桌面制品 | 未验证 | `yourbuddy-v0.4.7` 发布 | GitHub Actions 与公开 GitHub Release | 等待 Tag 发布和 Workflow 完成 |
+| 正式桌面制品 | 在声明范围内通过 | `yourbuddy-v0.4.7` 发布 | GitHub Actions 与公开 GitHub Release | Workflow 37172836595 通过；已检查 16 个公开制品、Checksum、Offline Updater 元数据和稳定 Latest Link |
 
 ## 场景：选择完整的 Offline Updater Payload
 
@@ -53,7 +53,7 @@ YourBuddy 自动更新现在安装已签名的 Offline 应用 Archive。应用�
 - 环境：macOS 15.6.1 arm64、Node 22.19.0、pnpm 11.7.0；当前验证 Shell 中没有 Rust。
 - 证据来源：本地 Desktop Release 测试、文档检查、YAML 解析和 Git Patch 检查。
 - 数据：确定性本地 Fixture；不含用户数据。
-- 模型或服务：未调用模型；GitHub 制品发布尚未完成。
+- 模型或服务：未调用模型；GitHub Actions 与公开 GitHub Release 提供发布证据。
 
 ### 操作步骤
 
@@ -66,25 +66,25 @@ YourBuddy 自动更新现在安装已签名的 Offline 应用 Archive。应用�
 
 ### 实际结果
 
-Updater Manifest 测试选择了 `yourbuddy-0.4.7-offline-macos-arm64.app.tar.gz`。完整 Desktop Release Suite 通过，43 项文档检查全部通过，发布 Workflow 可解析为 YAML，`git diff --check` 通过。
+Updater Manifest 测试选择了 `yourbuddy-0.4.7-offline-macos-arm64.app.tar.gz`。Desktop Release Suite、43 项文档检查、Workflow YAML 解析和 Patch 检查通过。GitHub Workflow 37172836595 随后构建并发布 16 个制品；稳定更新频道提供 0.4.7，并指向 609,197,958 字节的 Offline 应用 Archive。
 
 ### 证据
 
 - 操作前：稳定频道选择不含 Runtime 组件 Seed 的 Bootstrap 应用 Archive。
 - 执行中：发布 Workflow 分别暂存 Bootstrap 与 Offline 应用 Archive，并检查 Offline Archive 是否包含每个已生成 Seed。
-- 结果：Updater 元数据现在只选择已签名 Offline 应用 Archive。
-- 失败与恢复：本地检查没有失败；正式制品构建与公开下载验证仍待完成。
+- 结果：Updater 元数据只选择已签名 Offline 应用 Archive；其公开签名与元数据 Hash 匹配 `SHA256SUMS.txt`，对 Archive 的字节范围请求成功。
+- 失败与恢复：首次发布命令在远端 `master` 前进时安全停止；候选版本完成 Rebase 与重新验证后发布，没有移动现有 Tag。
 
 ### 范围限制
 
-本地检查不能证明 GitHub Actions 已生成签名 Archive、公开稳定频道已提供该文件，或安装后的应用已经完成自动更新与离线重启。这些检查将在发布后进行。
+Workflow 已检查 Offline Archive 是否包含每个已生成 Seed，但本次验证没有完整下载并解压 609 MB 公开 Archive，也没有通过 Tauri 安装它。因此，安装后的自动更新与离线重启行为仍未验证。
 
 ## 交付状态
 
-- 产品发布状态：候选版本；Tag 与公开制品尚未发布。
-- 验证资料归档状态：发布前源码与发布脚本证据已经完整记录。
-- 站点同步状态：不适用；稳定 Latest Release URL 会自动更新，且产品指南没有变化。
-- 未验证范围：GitHub Workflow 完成状态、公开文件名与 Hash、稳定 Updater 元数据、已签名 Updater 安装、打包应用离线启动、Apple Developer 签名和公证。
+- 产品发布状态：已发布为 [YourBuddy 0.4.7](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.7)；稳定 Latest Release URL 已指向该版本。
+- 验证资料归档状态：已完整记录源码检查、Workflow 37172836595、16 个公开制品、选定 Hash、稳定 Updater 元数据与公开字节范围访问。
+- 站点同步状态：不适用；稳定 Latest Release URL 已自动更新，且产品指南没有变化。
+- 未验证范围：完整独立下载并解压 609 MB Updater Archive、已签名 Updater 安装、打包应用离线启动、Apple Developer 签名和公证。
 
 ## 交付清单
 
@@ -96,6 +96,6 @@ Updater Manifest 测试选择了 `yourbuddy-0.4.7-offline-macos-arm64.app.tar.gz
 - [x] 明确标记失败与未验证证据。
 - [x] 两份 Release Index 都包含该版本，双语归档已配对。
 - [x] 分别报告产品发布状态、验证资料归档、站点同步与未验证范围。
-- [ ] 公开 Workflow、Release 制品、Checksum、Updater 元数据和稳定 Latest Link 尚待检查。
-- [ ] 已安装 Updater 行为与打包应用离线启动尚未验证。
+- [x] 已检查公开 Workflow、16 个 Release 制品、选定 Checksum、Offline Updater 元数据、Archive 字节范围访问与稳定 Latest Link。
+- [ ] 完整 Updater 下载、已安装 Updater 行为与打包应用离线启动尚未验证。
 - [x] 不移动公开 Tag 与安装包；修正内容使用新版本。

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.7/README.md
 /yourbuddy-0-4-7:
-  en: 7a719154d867952f
-  zh: 8c1919ff9f5a7149
+  en: 9543c4d51d7931b3
+  zh: 1e27f2c856bd971b
 /yourbuddy-0-4-7/user-release-notes:
   en: c38ee8d593c0bea2
   zh: 8b5b7e52d1459412
@@ -24,14 +24,14 @@
   en: 2ed78f36b37d7ec2
   zh: cee57595b7d1300a
 /yourbuddy-0-4-7/user-release-notes/compatibility-migration-and-limitations:
-  en: 2e5e275f469231b9
-  zh: 4f1e48b63c3c1636
+  en: 32d37fc540c28b91
+  zh: d17050d81aa0b51b
 /yourbuddy-0-4-7/verification-summary:
-  en: 58b34898111d1a75
-  zh: 190bbf4e16e22c1e
+  en: 382114239cea2f7b
+  zh: 78d6e1d212fbb01c
 /yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload:
-  en: c8edce46bc09cec1
-  zh: 4c0addd7cd08c1a2
+  en: 61a96995a838c8d9
+  zh: d328afc2e13aa450
 /yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload/steps:
   en: 667a8962d9324732
   zh: 9c2c47c9d50e7e5d
@@ -39,17 +39,17 @@
   en: ef3cb16824105a9a
   zh: bd6b52c1d4d32877
 /yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload/actual:
-  en: 3589c05861c7d363
-  zh: a33b3c6b8a9db93b
+  en: b8a63fd7d48a687b
+  zh: 8ed452af40ae68ac
 /yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload/evidence:
-  en: 16a5608cfd43ede6
-  zh: f19c05b204d28e96
+  en: 1cfb692f42e52bfe
+  zh: 77d3559ea3f20024
 /yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload/scope-limits:
-  en: ab3ef5e44186d420
-  zh: c5e1b033d77e8c3f
+  en: 01ef2175438ba4dc
+  zh: f54e780bc7afe38b
 /yourbuddy-0-4-7/delivery-status:
-  en: 4f95b0fe816bc568
-  zh: 5ae28c6a4f1df878
+  en: deb5126d1fd97b91
+  zh: 0991172229b7bf93
 /yourbuddy-0-4-7/delivery-checklist:
-  en: 1d6816478dd2a410
-  zh: c669d31186697468
+  en: e9230b8dba11f9f3
+  zh: 3d184aaaf15ce34c
