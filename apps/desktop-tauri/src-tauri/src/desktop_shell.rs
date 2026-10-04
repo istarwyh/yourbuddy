@@ -193,7 +193,7 @@ fn read_request<R: Read>(stream: &mut R) -> Option<String> {
         .flatten()
 }
 
-fn write_response(stream: &mut TcpStream, status: u16, content_type: &str, body: &[u8]) {
+fn response_head(status: u16, content_type: &str, content_length: usize) -> String {
     let reason = match status {
         200 => "OK",
         400 => "Bad Request",
@@ -203,22 +203,20 @@ fn write_response(stream: &mut TcpStream, status: u16, content_type: &str, body:
         421 => "Misdirected Request",
         _ => "Error",
     };
-    let csp = if status == 200 && content_type.starts_with("text/html") {
-        "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; frame-src http://127.0.0.1:*; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\r\n"
-    } else {
-        ""
-    };
-    let head = format!(
-        "HTTP/1.1 {status} {reason}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nCross-Origin-Resource-Policy: same-origin\r\nReferrer-Policy: no-referrer\r\n{csp}Connection: close\r\n\r\n",
-        body.len()
-    );
+    format!(
+        "HTTP/1.1 {status} {reason}\r\nContent-Type: {content_type}\r\nContent-Length: {content_length}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n"
+    )
+}
+
+fn write_response(stream: &mut TcpStream, status: u16, content_type: &str, body: &[u8]) {
+    let head = response_head(status, content_type, body.len());
     let _ = stream.write_all(head.as_bytes());
     let _ = stream.write_all(body);
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{read_request, remote_capability, FIRST_PARTY_PERMISSION};
+    use super::{read_request, remote_capability, response_head, FIRST_PARTY_PERMISSION};
     use std::io::Cursor;
     use tauri::ipc::Origin;
 
@@ -285,6 +283,15 @@ mod tests {
             );
         }
         assert_eq!(allowed_shell_commands(), vec!["run_first_party_command"]);
+    }
+
+    #[test]
+    fn shell_response_does_not_set_browser_security_policies() {
+        let head = response_head(200, "text/html; charset=utf-8", 42);
+        assert!(!head.contains("Content-Security-Policy"));
+        assert!(!head.contains("Cross-Origin-Resource-Policy"));
+        assert!(!head.contains("Referrer-Policy"));
+        assert!(!head.contains("X-Content-Type-Options"));
     }
 
     #[test]
