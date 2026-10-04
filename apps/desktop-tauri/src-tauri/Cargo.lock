@@ -6068,7 +6068,7 @@ dependencies = [
 
 [[package]]
 name = "yourbuddy"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "block2",
  "cookie",

@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.7/README.md
+/yourbuddy-0-4-7:
+  en: 7a719154d867952f
+  zh: 8c1919ff9f5a7149
+/yourbuddy-0-4-7/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: 8b5b7e52d1459412
+/yourbuddy-0-4-7/user-release-notes/what-changed:
+  en: 5132d626e352bd57
+  zh: 9fe2bc83ceed6b91
+/yourbuddy-0-4-7/user-release-notes/problem-solved:
+  en: 21c5dbe4a7b4aada
+  zh: f654faef9ea6dbcd
+/yourbuddy-0-4-7/user-release-notes/where-to-use-it:
+  en: 2c2d1d324b2c1da1
+  zh: a46d824752c6e414
+/yourbuddy-0-4-7/user-release-notes/how-to-try-it:
+  en: 05bbd7d5c7786ae3
+  zh: 84d9490678762ca7
+/yourbuddy-0-4-7/user-release-notes/install-or-upgrade:
+  en: 2ed78f36b37d7ec2
+  zh: cee57595b7d1300a
+/yourbuddy-0-4-7/user-release-notes/compatibility-migration-and-limitations:
+  en: 2e5e275f469231b9
+  zh: 4f1e48b63c3c1636
+/yourbuddy-0-4-7/verification-summary:
+  en: 58b34898111d1a75
+  zh: 190bbf4e16e22c1e
+/yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload:
+  en: c8edce46bc09cec1
+  zh: 4c0addd7cd08c1a2
+/yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload/steps:
+  en: 667a8962d9324732
+  zh: 9c2c47c9d50e7e5d
+/yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload/expected:
+  en: ef3cb16824105a9a
+  zh: bd6b52c1d4d32877
+/yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload/actual:
+  en: 3589c05861c7d363
+  zh: a33b3c6b8a9db93b
+/yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload/evidence:
+  en: 16a5608cfd43ede6
+  zh: f19c05b204d28e96
+/yourbuddy-0-4-7/scenario-select-the-complete-offline-updater-payload/scope-limits:
+  en: ab3ef5e44186d420
+  zh: c5e1b033d77e8c3f
+/yourbuddy-0-4-7/delivery-status:
+  en: 4f95b0fe816bc568
+  zh: 5ae28c6a4f1df878
+/yourbuddy-0-4-7/delivery-checklist:
+  en: 1d6816478dd2a410
+  zh: c669d31186697468
