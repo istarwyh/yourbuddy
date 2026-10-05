@@ -21,6 +21,12 @@
       "file": "patches/ego-browser-macos-runtime.patch",
       "sha256": "53f30a4fcf94aab0a56b5dcaedba702097cba0631756d984c9e72233a3632ee3",
       "purpose": "Run the vendored Ego Browser host on the native macOS desktop and restore its pinned SDK runtime."
+    },
+    {
+      "id": "ego-browser-watch-cleanup",
+      "file": "patches/ego-browser-watch-cleanup.patch",
+      "sha256": "b2a39babd554d19db4825e14875444a45eeba9b74b1bb778f8dcc65dd803e68d",
+      "purpose": "Do not stop an idle preview or start a capture worker during initial Client cleanup."
     }
   ],
   "runtimeArtifacts": [
@@ -37,5 +43,5 @@
   ],
   "repository": "https://github.com/Fisfzy/dsh-ego-browser",
   "license": "MIT",
-  "treeSha256": "cb66f8c0013a62f494c4e9e3f2e66c43c76311e7181448c0aefad3dc711c01d9"
+  "treeSha256": "0abba9eabceaba2db04cc07b102efaca8daad46fc5b5062f8567a22345144fed"
 }

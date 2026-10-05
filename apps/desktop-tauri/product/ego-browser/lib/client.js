@@ -2018,6 +2018,7 @@ function mountFloatingWatch(ctx) {
 		}
 		const stop = () => {
 			watchStopTimer = null;
+			if (!watchStarted && !watchRequest) return;
 			watchStarted = false;
 			watchTargetId = null;
 			postJson(WATCH_STOP_ROUTE, { clientId: watchClientId }).catch(() => {});
@@ -3309,6 +3310,7 @@ LivePreviewController.prototype._stopWatch = function(immediate) {
 	}
 	var stop = function() {
 		self.watchStopTimer = null;
+		if (!self.watchStarted && !self.watchRequest) return;
 		self.watchStarted = false;
 		self.watchTargetId = null;
 		postJson(WATCH_STOP_ROUTE, { clientId: self.clientId }).catch(function() {});

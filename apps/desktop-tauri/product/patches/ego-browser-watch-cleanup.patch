@@ -1,0 +1,19 @@
+diff --git a/lib/client.js b/lib/client.js
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -2018,6 +2018,7 @@
+ 		}
+ 		const stop = () => {
+ 			watchStopTimer = null;
++			if (!watchStarted && !watchRequest) return;
+ 			watchStarted = false;
+ 			watchTargetId = null;
+ 			postJson(WATCH_STOP_ROUTE, { clientId: watchClientId }).catch(() => {});
+@@ -3309,6 +3310,7 @@
+ 	}
+ 	var stop = function() {
+ 		self.watchStopTimer = null;
++		if (!self.watchStarted && !self.watchRequest) return;
+ 		self.watchStarted = false;
+ 		self.watchTargetId = null;
+ 		postJson(WATCH_STOP_ROUTE, { clientId: self.clientId }).catch(function() {});

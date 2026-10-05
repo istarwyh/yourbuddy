@@ -35,6 +35,7 @@ const desktopAppIcon = readFileSync(join(desktopRoot, 'app-icon.png'))
 const desktopUpdateSmokeResult = 'Development build smoke does not check desktop updates'
 const creatorPublishSmokeTitle = '发布验收样例'
 const desktopProxySystemSettings = {
+  version: 1,
   mode: 'system',
   httpProxy: '',
   httpsProxy: '',
@@ -667,11 +668,22 @@ function buildDesktopBridgeSmokeShell(webUrl) {
     window.__TAURI__ = {
       core: {
         invoke: async (command, args) => {
+          if (command !== 'run_first_party_command') throw new Error('unexpected Tauri invocation: ' + command)
+          command = args.command
+          args = args.payload
           window.__YOURBUDDY_DESKTOP_COMMANDS__.push({ command, args })
           if (command === 'open_external_url') return
           if (command === 'open_marketplace_url') return
           if (command === 'check_for_updates') return ${JSON.stringify(desktopUpdateSmokeResult)}
           if (command === 'get_network_proxy_settings') return ${JSON.stringify(desktopProxySnapshot)}
+          if (command === 'get_shell_environment') return {
+            settings: { mode: 'inherit', shellPath: null },
+            status: { state: 'ready', source: 'loginShell', shellPath: '/bin/zsh', durationMs: 1, variableCount: 1, pathEntryCount: 1, errorCode: '' },
+            restartRequired: false,
+            overriddenNames: [],
+            tools: [],
+          }
+          if (command === 'get_macos_permissions') return []
           if (command === 'select_ca_certificate') return ${JSON.stringify(desktopProxySystemSettings.caCertificatePath)}
           if (command === 'test_network_proxy_settings') return window.__YOURBUDDY_NATIVE_PROXY_TEST_RESULT__
           if (command === 'save_network_proxy_settings') return {
@@ -681,7 +693,8 @@ function buildDesktopBridgeSmokeShell(webUrl) {
               ...${JSON.stringify(desktopProxySnapshot)},
               settings: args.settings,
               effective: {
-                ...args.settings,
+                mode: args.settings.mode,
+                caCertificatePath: args.settings.caCertificatePath,
                 httpProxy: ${JSON.stringify(desktopProxySnapshot.system.httpProxy)},
                 httpsProxy: ${JSON.stringify(desktopProxySnapshot.system.httpsProxy)},
                 noProxy: ${JSON.stringify(desktopProxySnapshot.system.noProxy)},
@@ -782,7 +795,11 @@ async function runBrowserSmoke(baseUrl, env) {
     const clientResponses = {}
     page.on('pageerror', error => { pageErrors.push(String(error)) })
     page.on('console', message => {
-      if (message.type() === 'error') consoleErrors.push(message.text())
+      if (message.type() === 'error') {
+        const url = message.location().url
+        const path = url ? new URL(url, baseUrl).pathname : ''
+        consoleErrors.push(`${message.text()}${path ? ` (${path})` : ''}`)
+      }
     })
     page.on('response', response => {
       recordProductClientResponse(clientResponses, response.url(), response.status())
@@ -901,7 +918,7 @@ async function runBrowserSmoke(baseUrl, env) {
     await presetButton.click()
     await page.getByRole('menuitem', { name: /内容创作/ }).waitFor({ timeout: 10_000 })
     await page.keyboard.press('Escape')
-    await page.getByRole('button', { name: 'Library', exact: true }).waitFor({ timeout: 10_000 })
+    await page.getByRole('region', { name: 'Library', exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
     const codexModelCatalogProbe = await page.evaluate(async () => {
       const response = await fetch('/api/session/modelCatalog', {
         method: 'POST',
@@ -1020,8 +1037,9 @@ async function runBrowserSmoke(baseUrl, env) {
       throw new Error('YourBuddy Content workbench did not remain mounted and inactive by default')
     }
     const creatorInspector = contentSurface.locator('[data-plugin="dsh-oil-creator"][data-surface="inspector"]')
-    await embedded.getByRole('button', { name: 'Library', exact: true }).click()
-    await embedded.getByText(creatorPublishSmokeTitle, { exact: true }).click()
+    const creatorLibrary = embedded.getByRole('region', { name: 'Library', exact: true })
+    await creatorLibrary.waitFor({ state: 'visible', timeout: 10_000 })
+    await creatorLibrary.getByText(creatorPublishSmokeTitle, { exact: true }).click()
     await creatorInspector.waitFor({ state: 'visible', timeout: 10_000 })
     await creatorInspector.locator('button.close').last().click()
     await coreSurface.waitFor({ state: 'visible', timeout: 10_000 })
@@ -1195,6 +1213,8 @@ async function runBrowserSmoke(baseUrl, env) {
         args: { url: desktopExternalLinkSmokeUrl },
       },
       { command: 'get_network_proxy_settings' },
+      { command: 'get_shell_environment' },
+      { command: 'get_macos_permissions' },
       {
         command: 'open_marketplace_url',
         args: { url: `https://github.com/YourBuddy-test/${validMarketplaceRepository}` },
@@ -1208,6 +1228,8 @@ async function runBrowserSmoke(baseUrl, env) {
         args: { url: desktopBetterSidebarPluginUrl },
       },
       { command: 'get_network_proxy_settings' },
+      { command: 'get_shell_environment' },
+      { command: 'get_macos_permissions' },
       { command: 'check_for_updates' },
       { command: 'restart_app' },
     ]
@@ -1235,7 +1257,11 @@ async function runBrowserSmoke(baseUrl, env) {
     }
     proxyPage.on('pageerror', error => { pageErrors.push(String(error)) })
     proxyPage.on('console', message => {
-      if (message.type() === 'error') consoleErrors.push(message.text())
+      if (message.type() === 'error') {
+        const url = message.location().url
+        const path = url ? new URL(url, baseUrl).pathname : ''
+        consoleErrors.push(`${message.text()}${path ? ` (${path})` : ''}`)
+      }
     })
     proxyPage.on('response', response => {
       recordProductClientResponse(proxyClientResponses, response.url(), response.status())
@@ -1349,6 +1375,8 @@ async function runBrowserSmoke(baseUrl, env) {
     const proxyCommands = await proxyPage.evaluate(() => window.__YOURBUDDY_DESKTOP_COMMANDS__)
     const expectedProxyCommands = [
       { command: 'get_network_proxy_settings' },
+      { command: 'get_shell_environment' },
+      { command: 'get_macos_permissions' },
       { command: 'select_ca_certificate' },
       {
         command: 'test_network_proxy_settings',
