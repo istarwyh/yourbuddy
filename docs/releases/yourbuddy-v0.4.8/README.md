@@ -6,10 +6,10 @@ This archive records the Agent Browser style fix, left-sidebar creator Library, 
 
 - Release identifier: `yourbuddy-v0.4.8`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: release candidate; public artifacts have not been published.
-- Evidence commit: the candidate selected by `yourbuddy-v0.4.8` after publication.
+- Archive state: published; public delivery checked within the stated limits.
+- Evidence commit: `d526ab6946c0dcf3c19ded8cbbb4c84b4b4d223e`, selected by `yourbuddy-v0.4.8`.
 - Evidence gallery: [assembled workbench](screenshots/assembled-workbench.png), captured in Chromium with the native bridge mocked.
-- Evidence download: the [release page](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.8) becomes available after publication.
+- Evidence download: [verification ZIP](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-0.4.8-verification.zip) and its [SHA-256 record](https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-0.4.8-verification.zip.sha256).
 
 ## User release notes
 
@@ -31,11 +31,11 @@ Open Agent Browser and reload another plugin; its toolbar should retain its layo
 
 ### Install or upgrade
 
-After publication, use the application updater or download the Bootstrap or Offline DMG from GitHub Releases. The updater continues to deliver the complete Offline application archive introduced in 0.4.7.
+Use the application updater or download the Bootstrap or Offline DMG from GitHub Releases. The updater continues to deliver the complete Offline application archive introduced in 0.4.7.
 
 ### Compatibility, migration, and limitations
 
-The target is macOS Apple Silicon. No Session data migration is required. Public downloads, updater metadata, packaged native startup, native WebView interaction, signing, and notarization are not verified during candidate preparation.
+The target is macOS Apple Silicon. No Session data migration is required. Native installation, startup, native WebView interaction, and installed automatic updates were not tested. The Bootstrap application has a valid ad hoc signature; Apple Developer signing and notarization were not verified.
 
 ## Verification summary
 
@@ -51,4 +51,12 @@ The target is macOS Apple Silicon. No Session data migration is required. Public
 
 ## Evidence scope
 
-These checks ran on 2026-10-05 in Asia/Shanghai during this candidate preparation. The initial Client compilation found missing test parameter types; the test adapter was corrected and Client compilation then passed. The Agent Browser fix also passed a built-loader smoke with the actual bundled Ego Browser before this preparation. Existing user-owned application processes were kept running. The generated offline Store was restored and installed without network access, and the assembled product smoke passed. Its native bridge was mocked; native application behavior and public delivery remain unverified.
+These checks ran on 2026-10-05 in Asia/Shanghai during this candidate preparation. The initial Client compilation found missing test parameter types; the test adapter was corrected and Client compilation then passed. The Agent Browser fix also passed a built-loader smoke with the actual bundled Ego Browser before this preparation. Existing user-owned application processes were kept running. The generated offline Store was restored and installed without network access, and the assembled product smoke passed. Its native bridge was mocked; native application behavior remains unverified, and public delivery checks are recorded below.
+
+## Public delivery
+
+[Desktop workflow 37330597474](https://github.com/istarwyh/yourbuddy/actions/runs/37330597474) and [website workflow 37330600901](https://github.com/istarwyh/yourbuddy/actions/runs/37330600901) succeeded. The Release contained 16 build assets before this verification archive was added. Eleven files were downloaded anonymously and matched GitHub asset digests; listed downloads also matched the published checksums. The Bootstrap DMG and updater application contain the same 12 files. Component, Bootstrap updater, and Offline updater signatures passed primary and trusted-comment verification.
+
+The stable updater serves 0.4.8, exactly matches the versioned manifest, and selects the 609,121,761-byte Offline application archive. That complete archive was downloaded and its identity, embedded manifest, four required components, and optional debug seed matched the published records. The actual public Harness passed the Agent Browser style replay and contained the idle-watch fix and left-sidebar Library registration. Chinese and English home, download, and creator-guide routes were checked. [Machine-readable observations](evidence/public-verification.json) record files, hashes, workflows, and limits.
+
+Parallel repository checks are not all green: DSH dependency-layout metadata also failed on baseline 1519c18455; Sandbox has seven baseline failing files plus failures in unchanged HMR and Office tests; CI master remained queued when this evidence was captured. Real-API e2e was skipped. These results do not count as passing checks. The full Offline DMG was not downloaded; native installation and installed automatic updates remain unverified.

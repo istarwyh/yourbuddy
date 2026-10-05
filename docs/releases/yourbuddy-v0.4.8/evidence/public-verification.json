@@ -1,0 +1,182 @@
+{
+  "observedAt": "2026-10-05T15:50:38.044036+00:00",
+  "releaseTag": "yourbuddy-v0.4.8",
+  "releaseCommit": "d526ab6946c0dcf3c19ded8cbbb4c84b4b4d223e",
+  "releaseUrl": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.8",
+  "publishedAt": "2026-10-05T15:32:36Z",
+  "originalBuildAssets": 16,
+  "downloads": [
+    {
+      "name": "latest.json",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/latest.json",
+      "bytes": 1598,
+      "sha256": "329b1df36c5c1f26a6ad009e018902946c6e3e04a6a551fa18100be084ddd4ec"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/SHA256SUMS.txt",
+      "bytes": 1771,
+      "sha256": "913b883f1a4b276e06e78718a88193c00d2f85f79b39673d27eccf8381589d8a"
+    },
+    {
+      "name": "yourbuddy-0.4.8-bootstrap-macos-arm64.app.tar.gz",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-0.4.8-bootstrap-macos-arm64.app.tar.gz",
+      "bytes": 11013510,
+      "sha256": "d80d0f101325108c2924c770ec6387294164426bcda4d4467fc1bb83481e9f79"
+    },
+    {
+      "name": "yourbuddy-0.4.8-bootstrap-macos-arm64.app.tar.gz.sig",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-0.4.8-bootstrap-macos-arm64.app.tar.gz.sig",
+      "bytes": 428,
+      "sha256": "3582846d26792e61a63c526c9f05c56f4f2ffbf21e55cceadb380904446e2b9e"
+    },
+    {
+      "name": "yourbuddy-0.4.8-bootstrap-macos-arm64.dmg",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-0.4.8-bootstrap-macos-arm64.dmg",
+      "bytes": 10853528,
+      "sha256": "60ded920fc2c88d7434747166cef69a54640730335c06efdc997119c585133be"
+    },
+    {
+      "name": "yourbuddy-0.4.8-offline-macos-arm64.app.tar.gz",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-0.4.8-offline-macos-arm64.app.tar.gz",
+      "bytes": 609121761,
+      "sha256": "af55bca57ab55a270f549ef84d00c5eb387b31923fc3f545fbd94877de54dc55"
+    },
+    {
+      "name": "yourbuddy-0.4.8-offline-macos-arm64.app.tar.gz.sig",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-0.4.8-offline-macos-arm64.app.tar.gz.sig",
+      "bytes": 428,
+      "sha256": "de194927d0d26017b464e63afe997117a2b5ec50489ad7f32a7cc92a22ae8fa3"
+    },
+    {
+      "name": "yourbuddy-components-0.4.8.json",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-components-0.4.8.json",
+      "bytes": 1560,
+      "sha256": "4e5761b8184b529f6bd2ee09f3cf2a4bd7874d4166181fc8f2238fa118b1dbda"
+    },
+    {
+      "name": "yourbuddy-components-0.4.8.json.sig",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-components-0.4.8.json.sig",
+      "bytes": 316,
+      "sha256": "3ed8b7a5fcb5553ad07fec7c01df5d74f12f9e5e0d3f2201777006b839d5560d"
+    },
+    {
+      "name": "yourbuddy-harness-1d72d83f6ea1117e83f89877884bf5f8182983f23600b075226368c109ac3010-macos-arm64.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-harness-1d72d83f6ea1117e83f89877884bf5f8182983f23600b075226368c109ac3010-macos-arm64.tar.zst",
+      "bytes": 33896375,
+      "sha256": "f29e9868b6db7ff7f21b5861b79d126f7894fc6f4b21a4fadf1bbeed16211f7d"
+    },
+    {
+      "name": "yourbuddy-size-report-0.4.8.json",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-size-report-0.4.8.json",
+      "bytes": 1230,
+      "sha256": "0c04103c774d9f6576da9a46afdbf32b1ab023c25161d2c3c1734185395626d4"
+    }
+  ],
+  "offlineArchive": {
+    "identity": {
+      "CFBundleIdentifier": "io.github.istarwyh.yourbuddy",
+      "CFBundleShortVersionString": "0.4.8",
+      "CFBundleVersion": "0.4.8"
+    },
+    "seeds": {
+      "yourbuddy-node-22.19.0-darwin-arm64.tar.zst": {
+        "bytes": 37007282,
+        "sha256": "1f8b8d7e10a99d6204b570ded0570f6990d73a52713cec840e9d15658fe972ef"
+      },
+      "yourbuddy-harness-1d72d83f6ea1117e83f89877884bf5f8182983f23600b075226368c109ac3010-macos-arm64.tar.zst": {
+        "bytes": 33896375,
+        "sha256": "f29e9868b6db7ff7f21b5861b79d126f7894fc6f4b21a4fadf1bbeed16211f7d"
+      },
+      "yourbuddy-harbor-6cc2f13fd42912b1e66022e4a51372ab34911f25d3eec931d5858b73d8656ebc-darwin-arm64.tar.zst": {
+        "bytes": 95502429,
+        "sha256": "fe497fe22499ea6dba398b91978d26e9ca714ec48fb4d397a847f30ac5bdaba2"
+      },
+      "yourbuddy-pnpm-store-a42cb473b506f788899e553bb72d2e34ec8e5f78e5198464660421eeaba10ab0-macos-arm64.tar.zst": {
+        "bytes": 416038195,
+        "sha256": "ff40e521b0a732456275deda64da250500175609e84ff1981aff879ebbecfa55"
+      },
+      "yourbuddy-debug-0.4.8.tar.zst": {
+        "bytes": 15991435,
+        "sha256": "f7e915ce1eacdaf4300eb0a40157c9aad20b662dad137adae3f5f8f82bbe5f88"
+      }
+    },
+    "checksumsVerifiedDownloads": 10,
+    "embeddedManifestMatches": true
+  },
+  "bootstrapApp": {
+    "version": "0.4.8",
+    "bundleId": "io.github.istarwyh.yourbuddy",
+    "architecture": "arm64",
+    "dmgMatchesUpdaterApp": true,
+    "files": 12,
+    "codeSignature": "valid ad hoc"
+  },
+  "signaturesVerified": [
+    "component manifest",
+    "Bootstrap updater archive",
+    "Offline updater archive"
+  ],
+  "publishedBundleReplay": "Actual public Client loader and Ego Browser toolbar CSS survives unrelated plugin revision cleanup in jsdom with mocked Client services.",
+  "stableUpdater": "0.4.8; byte-identical to versioned metadata; points to signed Offline archive",
+  "website": "Chinese and English creator guides, home-to-download links, and latest-release download links checked",
+  "workflows": [
+    {
+      "conclusion": "",
+      "databaseId": 37330601951,
+      "status": "queued",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/37330601951",
+      "workflowName": "CI master"
+    },
+    {
+      "conclusion": "skipped",
+      "databaseId": 37330601339,
+      "status": "completed",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/37330601339",
+      "workflowName": "E2E (real DeepSeek API)"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37330600901,
+      "status": "completed",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/37330600901",
+      "workflowName": "YourBuddy website"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 37330600272,
+      "status": "completed",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/37330600272",
+      "workflowName": "Release (dsh)"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37330600519,
+      "status": "completed",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/37330600519",
+      "workflowName": "Release (vendor)"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 37330600780,
+      "status": "completed",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/37330600780",
+      "workflowName": "Sandbox"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 37330597474,
+      "status": "completed",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/37330597474",
+      "workflowName": "YourBuddy macOS Release"
+    }
+  ],
+  "parallelCheckLimits": "DSH dependency-layout failure also exists on baseline 1519c18455. Sandbox has seven baseline failing files and two additional failures in unchanged HMR and Office tests. CI master remains queued.",
+  "notVerified": [
+    "native installation and startup",
+    "native WebView interaction",
+    "installed automatic update",
+    "Apple Developer signing and notarization",
+    "complete public Offline DMG download"
+  ]
+}
