@@ -41,6 +41,8 @@ The application combo scripts carry only each plugin's `client.js` entry and reg
 
 An open Web page follows the Host's complete module graph through the HMR transport. Enabling an ordinary plugin adds its Loader entry; disabling it removes the entry and waits for its asynchronous effects before evicting unused modules and styles. Re-enabling loads one instance with its styles. Other Loader contributors and shared modules still needed by active entries remain loaded. Settings → Plugins → Plugin list shows page-local synchronization failures and offers retry without changing Host enablement.
 
+The module loader claims only untagged styles inserted during the current factory execution. Styles already on the page remain untouched. Plugins that insert styles later through effects own their removal through effect cleanup.
+
 ### Sharing modules
 
 The shell seeds a frozen module table (`PLATFORM_MODULES`: React, Cordis, and static UI libraries); every dynamic bundle resolves its externals against exactly that baseline. `dsh.client.external` adds only exact non-baseline requests, each answered by the dynamic package row it names or an exact static-table key. Type-only imports are erased and create no request. Composition rejects malformed requests, missing suppliers, self-requests, and synchronous request cycles.

@@ -80,6 +80,31 @@ function visible(id: string, effects: { mounted: number; disposed: number; hits:
   }
 }
 
+it('keeps effect-owned styles when another plugin loads and unloads', async () => {
+  let style!: HTMLStyleElement
+  const b = await bench(graph(row('watch')), {
+    watch: () => ({ apply(ctx: Context) {
+      ctx.effect(() => {
+        style = document.createElement('style')
+        style.textContent = '.dsh-ego-side-head { display: flex; font-size: 12.5px; }'
+        document.head.append(style)
+        const head = document.createElement('div')
+        head.className = 'dsh-ego-side-head'
+        document.body.append(head)
+        return () => { head.remove(); style.remove() }
+      })
+    } }),
+    unrelated: () => ({ apply() {} }),
+  })
+  await b.modules.entries.sync(graph(row('watch'), row('unrelated')))
+  expect(style.dataset.plugin).toBeUndefined()
+  await b.modules.entries.sync(graph(row('watch')))
+  expect(style.isConnected).toBe(true)
+  expect(getComputedStyle(document.querySelector('.dsh-ego-side-head')!).display).toBe('flex')
+  await b.modules.entries.sync(graph())
+  expect(style.isConnected).toBe(false)
+})
+
 describe('client manifest entries', () => {
   it('adds, drains removal and re-enables one instance with styles; unrelated entries survive', async () => {
     const effects = { mounted: 0, disposed: 0, hits: 0 }

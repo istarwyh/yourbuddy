@@ -812,9 +812,11 @@ describe('HMR reset', () => {
 })
 
 describe('style claiming', () => {
-  it('claims untagged style tags for the materializing plugin and inventories owned css ids', async () => {
+  it('claims only new untagged style tags and inventories owned css ids', async () => {
     const foreign = document.createElement('style')
-    foreign.setAttribute('data-plugin', 'other')
+    const taggedForeign = document.createElement('style')
+    taggedForeign.setAttribute('data-plugin', 'other')
+    document.head.appendChild(taggedForeign)
     document.head.appendChild(foreign)
     const b = bench([row('a')], {
       a: () => {
@@ -829,7 +831,25 @@ describe('style claiming', () => {
     await b.loader.import('a', '', {})
     expect(b.loader.loadCache.get('a')?.styles).toEqual(['a', 'sheet-1'])
     expect(document.querySelectorAll('style[data-plugin="a"]')).toHaveLength(2)
-    expect(foreign.getAttribute('data-plugin')).toBe('other')
+    expect(foreign.getAttribute('data-plugin')).toBeNull()
+    expect(taggedForeign.getAttribute('data-plugin')).toBe('other')
+  })
+
+  it('cleans failed factory styles without removing existing untagged styles', async () => {
+    const existing = document.createElement('style')
+    document.head.append(existing)
+    let inserted!: HTMLStyleElement
+    const b = bench([row('a')], {
+      a: () => {
+        inserted = document.createElement('style')
+        document.head.append(inserted)
+        throw new Error('factory failed')
+      },
+    })
+    await expect(b.loader.import('a', '', {})).rejects.toThrow('factory failed')
+    expect(inserted.isConnected).toBe(false)
+    expect(existing.isConnected).toBe(true)
+    expect(existing.dataset.plugin).toBeUndefined()
   })
 
   it('materialization without a document skips the style inventory', async () => {
