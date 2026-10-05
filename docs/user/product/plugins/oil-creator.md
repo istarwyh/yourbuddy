@@ -10,7 +10,7 @@ Video and article production creates related scripts, recordings, subtitles, cov
 
 ## Usage
 
-Select the **内容创作** Agent Preset, open the **Library** tab, and ask the Agent to inspect and configure the content workbench. Confirm the proposed library folder before saving it. Create a topic and script first, then bind recording, subtitle, cover, or article workflows as needed. When the video, publish package, and selected covers are ready, open the episode and choose **Prepare drafts**. Oil Creator validates the local inputs before opening any creator page, prepares the enabled video-platform drafts, and reports each platform separately. The optional WeChat Official Account draft remains a separate checkbox.
+Select the **内容创作** Agent Preset, expand the left sidebar and use the **Library** below Workspaces and Sessions, and ask the Agent to inspect and configure the content workbench. Confirm the proposed library folder before saving it. Create a topic and script first, then bind recording, subtitle, cover, or article workflows as needed. When the video, publish package, and selected covers are ready, open the episode and choose **Prepare drafts**. Oil Creator validates the local inputs before opening any creator page, prepares the enabled video-platform drafts, and reports each platform separately. The optional WeChat Official Account draft remains a separate checkbox.
 
 ## Reason for default inclusion
 

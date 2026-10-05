@@ -13,7 +13,7 @@
     {
       "id": "source-oil-creator-workbench-source",
       "file": "patches/oil-creator-workbench-source.patch",
-      "sha256": "7c1ba2b814a6684b312613095190ea35c383ba108161b1c625fe501213183bd3",
+      "sha256": "ba12a2d73fc3d6514bb32986bb5dcc64e2d7e81a90c0b01e80a16a1637e27fc0",
       "purpose": "Apply the reviewed YourBuddy workbench source, current Harness client APIs, visible async-action feedback, and desktop executable search paths before building the published artifact."
     }
   ],
@@ -21,7 +21,7 @@
     {
       "id": "yourbuddy-compatibility",
       "file": "patches/oil-creator-yourbuddy.patch",
-      "sha256": "41d03c251f82318f83a478ed999b2650c03f434a6a9e5cf158ee7cd238eca6da",
+      "sha256": "3605321e95c460bf366cacc86f25b4ed957bb656e13bbcadd6602d00b2784754",
       "purpose": "Use the current Settings, Sidebar, and product-workbench slot APIs, preserve YourBuddy branding and desktop controls, bundle the video, article, and WeChat draft Skills with a unified draft-preparation tool, share the bundled Harness tool registry, and prevent the prebuilt snapshot from rebuilding during offline production installation."
     },
     {
@@ -47,5 +47,5 @@
   ],
   "repository": "https://github.com/oil-oil/dsh-oil-creator",
   "license": "MIT",
-  "treeSha256": "375ab30948625342a9a3ae3195eb40d5e07253a2bc4610be9061ec4fc4742e2d"
+  "treeSha256": "a90cf2ca50b0cacc838ede5810d39fbf6820ab0998ac4793f8ff813bfe1f7fb1"
 }

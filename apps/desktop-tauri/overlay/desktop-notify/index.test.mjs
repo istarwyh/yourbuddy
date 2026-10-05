@@ -34,6 +34,7 @@ test('always injects the desktop security policy', () => {
   assert.equal(table.length, 1)
   assert.match(table[0].html, /Content-Security-Policy/)
   assert.match(table[0].html, /name="referrer" content="no-referrer"/)
+  assert.match(CONTENT_SECURITY_POLICY, /media-src 'self' data: blob: http:\/\/127\.0\.0\.1:\*/)
   assert.match(CONTENT_SECURITY_POLICY, /object-src 'none'/)
 })
 

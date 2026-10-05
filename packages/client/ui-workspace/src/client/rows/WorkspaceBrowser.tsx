@@ -854,6 +854,7 @@ export function WorkspaceBrowser({
   searchSessions,
   searchResultLimit,
   useDirectoryFlow,
+  useAuxiliary,
   useHostInfo,
   useShortcuts,
   useWorkspaceShortcuts,
@@ -890,6 +891,7 @@ export function WorkspaceBrowser({
   // Live occupancy of this surface's directory-flow hole (the same source the
   // flow reads): a composition without a picking affordance can add nothing.
   const directoryFlowAvailable = useDirectoryFlow(occupied => occupied)
+  const auxiliaryAvailable = useAuxiliary(occupied => occupied)
   const groupBy = useStore(s => s.groupBy)
   const orderBy = useStore(s => s.orderBy)
   // Persisted view blobs written before the archived filter existed rehydrate
@@ -1187,6 +1189,10 @@ export function WorkspaceBrowser({
     setDeleteTarget(null)
     setDeleteError(null)
   }
+  const auxiliary = wide && auxiliaryAvailable
+    ? renderSlot('sidebar.workspaces.auxiliary', {})
+    : null
+
   const confirmDelete = () => {
     /* v8 ignore next -- the Modal is absent without a target and its button is disabled while deleting. */
     if (deleting || deleteTarget === null) return
@@ -1418,6 +1424,10 @@ export function WorkspaceBrowser({
               />
             ))}
       </div>
+
+      {auxiliary !== null && auxiliary !== undefined && (
+        <div className={css.auxiliary}>{auxiliary}</div>
+      )}
 
       <Modal
         open={renameTarget !== null}

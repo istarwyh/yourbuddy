@@ -135,6 +135,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     insertWorkspaceBefore: vi.fn(async () => {}),
     createWorkspace: vi.fn(async () => workspace('created', [])),
     useDirectoryFlow: bindSnapshotSelector({ getSnapshot: () => true, subscribe: () => () => {} }),
+    useAuxiliary: selector => selector(false),
     useHostInfo: selector => selector({ home: undefined, isLoopback: true }),
     renderSlot: renderDirectoryFlowOnly,
     t,
@@ -151,6 +152,18 @@ function rerender(b: ReturnType<typeof mount>, overrides: Partial<WorkspaceBrows
 }
 
 describe('WorkspaceBrowser', () => {
+  it('renders the auxiliary collection below Sessions only while the sidebar is expanded', () => {
+    const renderSlot: WorkspaceBrowserProps['renderSlot'] = (name: string, owner: object) => name === 'sidebar.workspaces.auxiliary'
+      ? <div data-testid="workspace-auxiliary" />
+      : name === 'sidebar.workspaces.directoryFlow'
+        ? renderDirectoryFlowOnly(name, owner as DirectoryFlowOwnerProps)
+        : null
+    const b = mount({ renderSlot, useAuxiliary: selector => selector(true) })
+    expect(screen.getByTestId('workspace-auxiliary')).toBeTruthy()
+    rerender(b, { wide: false })
+    expect(screen.queryByTestId('workspace-auxiliary')).toBeNull()
+  })
+
   it.each([{ messages: en, common: commonEn }, { messages: zh, common: commonZh }])('shows localized fork failures and dismisses them', ({ messages, common }) => {
     const b = mount({ t: makeTranslate(messages, common) })
     act(() => { b.controls.forkFailed('unavailable') })

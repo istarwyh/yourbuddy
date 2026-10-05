@@ -47,7 +47,7 @@ Release 构建读取 Tauri 内置的应用语义版本，并在主窗口打开�
 
 **设置 → 通用设置 → 网络代理**提供应用全局策略，而不是 Codex 专用的 Transport 开关。直连模式会移除环境中原有的代理变量；跟随系统模式通过 `/usr/sbin/scutil` 读取 macOS 固定的 HTTP 与 HTTPS Endpoint；自定义模式要求分别填写不含凭据的 HTTP 与 HTTPS URL，并可补充绕过主机。PAC、自动代理发现与只有 HTTP 的 macOS 配置会返回可操作的错误，因为它们无法被完整 Node 进程树准确复现。原生 reqwest Client 与签名更新器会让 rustls 使用平台验证器，所有应用自有 Node 进程都会收到 `--use-system-ca`。用户还可以通过原生文件选择器选择一个 PEM 编码的 `.pem` 或 `.crt` 企业 CA Bundle；YourBuddy 会校验并规范化该文件、保存其路径、把证书加入原生平台信任，并在创建 Node Host 与插件进程前设置 `NODE_EXTRA_CA_CERTS`。显式 CA Bundle 只补充系统信任，不会关闭证书校验。测试会分别检查桌面草稿链路与正在运行的 Node Host 全局 `fetch`，并独立标注两侧的 HTTP 状态或有界的证书与 Transport 错误码、代理模式及 CA 来源，避免一条链路成功掩盖另一条链路失败；草稿与 Host 当前策略不同时，结果会要求保存、重启并再次测试。保存操作只会调用固定的网络设置 Command，再调用固定的应用重启 Command；重启会先终止并等待私有 Host 退出，重新启动后的 Host、插件、Package 安装、Runtime 预配与签名更新器都会使用同一份解析结果。Loopback 地址始终绕过代理，已经运行的进程则保留上次激活的策略，直到应用重启。
 
-Tauri 自有的启动页与 Loopback Shell 不设置 Content Security Policy、Cross-Origin Resource Policy、Referrer Policy 或 MIME Sniffing 限制等浏览器资源策略，使已安装的工作台插件能够使用自己的本地 HTTP 服务，而不会被桌面壳拦截。Shell Server 仍只接受精确的 Loopback `Host`，以禁止缓存的方式提供三个内嵌资源，并随应用停止。
+Tauri 自有的启动页与 Loopback Shell 不设置 Content Security Policy、Cross-Origin Resource Policy、Referrer Policy 或 MIME Sniffing 限制等浏览器资源策略。Host Overlay 策略允许 Loopback HTTP 媒体与 HTTP(S) 连接，因此已安装的工作台插件可以使用自己的本地 HTTP 服务。Shell Server 仍只接受精确的 Loopback `Host`，以禁止缓存的方式提供三个内嵌资源，并随应用停止。
 
 ## 本地发布准备
 

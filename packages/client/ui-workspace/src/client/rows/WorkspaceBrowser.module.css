@@ -315,6 +315,16 @@
   padding-left: 0;
 }
 
+.auxiliary {
+  flex: 0 1 42%;
+  min-height: 160px;
+  max-height: 420px;
+  margin: 8px calc(-1 * var(--dsh-session-list-edge-inset)) 0 -4px;
+  padding: 8px var(--dsh-session-list-edge-inset) 0 4px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+  overflow: hidden;
+}
+
 /* Relative for the bottom fade overlay. */
 .treeBody {
   flex: 1;

@@ -1616,12 +1616,11 @@ diff --git a/src/client/index.tsx b/src/client/index.tsx
 index 799bab6..3de1bfb 100644
 --- a/src/client/index.tsx
 +++ b/src/client/index.tsx
-@@ -1,6 +1,7 @@
+@@ -1,6 +1,6 @@
 -import type { ClientContext, WorkspaceId } from "@deepseek-ai/dsh-client-runtime/client";
 +import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
  import type {} from "@deepseek-ai/dsh-client-locale/client";
  import type {} from "@deepseek-ai/dsh-client-ui-layout/client";
-+import { IconBrowseOutline16 } from "@deepseek-ai/dsh-client-ui-primitives";
  import type {} from "@deepseek-ai/dsh-api-remotes/client";
  import type {} from "@deepseek-ai/dsh-client-connection/client";
  import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
@@ -1670,19 +1669,14 @@ index 799bab6..3de1bfb 100644
  import {
    registerCreatorSettingsCard,
    type CompatibleSettingsSlots,
-@@ -51,6 +55,16 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
+@@ -51,6 +55,11 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
    interface LocaleNamespaceMap {
      "dsh.oil.creator": CreatorKey;
    }
 +
 +  interface SlotMap {
 +    "workbench.content": { kind: "single"; scope: "root" };
-+    "main": { kind: "keyed"; scope: "root" };
-+    "sidebar.panellist": {
-+      kind: "list";
-+      scope: "root";
-+      owner: { size: number; active: boolean };
-+    };
++    "sidebar.workspaces.auxiliary": { kind: "single"; scope: "root" };
 +  }
  }
  
@@ -1739,7 +1733,7 @@ index 799bab6..3de1bfb 100644
      syncPublish: async (request) => {
        const remote = remoteOf();
        if (remote === undefined) throw new Error("remote unavailable");
-@@ -296,42 +317,35 @@ export function apply(ctx: ClientContext): void {
+@@ -296,42 +317,27 @@ export function apply(ctx: ClientContext): void {
      );
    }, "dsh-oil-creator: content triggers");
  
@@ -1766,22 +1760,23 @@ index 799bab6..3de1bfb 100644
 -        contentFace={contentFace}
 -        contentT={contentT}
 -      />
-+      <div className="contentMainPanel" data-plugin="dsh-oil-creator" data-surface="sidebar">
++      <section
++        className="contentWorkspaceSection"
++        data-plugin="dsh-oil-creator"
++        data-surface="sidebar"
++        aria-label={contentT("tab")}
++      >
++        <div className="contentWorkspaceTitle">{contentT("tab")}</div>
 +        <ContentSidebarPanel t={contentT} {...contentFace} />
-+      </div>
++      </section>
      );
    }
  
 -  ctx.slots.inject("sidebar", () =>
-+  function ContentPanelIcon({ size }: { size: number; active: boolean }) {
-+    return <IconBrowseOutline16 size={size} />;
-+  }
-+
-+  ctx.slots.inject("main", () =>
++  ctx.slots.inject("sidebar.workspaces.auxiliary", () =>
      ctx.slots.register({
 -      name: "sidebar",
-+      name: "main",
-+      key: "oil-creator",
++      name: "sidebar.workspaces.auxiliary",
        locale: NS,
 -      priority: -1,
 -      children: {
@@ -1792,15 +1787,6 @@ index 799bab6..3de1bfb 100644
 -      inject: injectSidebar,
 -    }, BoundSidebar),
 +    }, ContentPanel),
-+  );
-+  ctx.slots.inject("sidebar.panellist", () =>
-+    ctx.slots.register({
-+      name: "sidebar.panellist",
-+      id: "oil-creator",
-+      order: 20,
-+      label: () => contentT("tab"),
-+      locale: NS,
-+    }, ContentPanelIcon),
    );
  
    ctx.effect(async () => {
@@ -2168,13 +2154,22 @@ new file mode 100644
 index 0000000..5dad611
 --- /dev/null
 +++ b/src/client/sidebar/ContentMainPanel.css
-@@ -0,0 +1,7 @@
-+[data-plugin="dsh-oil-creator"][data-surface="sidebar"].contentMainPanel {
+@@ -0,0 +1,16 @@
++[data-plugin="dsh-oil-creator"][data-surface="sidebar"].contentWorkspaceSection {
++  display: flex;
++  flex-direction: column;
 +  height: 100%;
 +  min-width: 0;
-+  padding: 16px;
-+  box-sizing: border-box;
-+  --dsh-sidebar-inline-padding: 0px;
++  min-height: 0;
++  --dsh-sidebar-inline-padding: 8px;
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="sidebar"] .contentWorkspaceTitle {
++  flex: none;
++  padding: 0 8px;
++  font-size: 13px;
++  line-height: 20px;
++  color: var(--dsw-alias-label-secondary);
 +}
 diff --git a/src/client/sidebar/ContentSidebarPanel.tsx b/src/client/sidebar/ContentSidebarPanel.tsx
 index c2f280f..eaf600c 100644

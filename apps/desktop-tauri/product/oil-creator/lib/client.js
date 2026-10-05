@@ -7590,7 +7590,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		};
 		//#endregion
 		//#region \0dsh-oil-creator-css:client/sidebar/ContentMainPanel.css.mjs
-		registerPluginCss("dsh-oil-creator/ContentMainPanel.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].contentMainPanel {\n  height: 100%;\n  min-width: 0;\n  padding: 16px;\n  box-sizing: border-box;\n  --dsh-sidebar-inline-padding: 0px;\n}\n");
+		registerPluginCss("dsh-oil-creator/ContentMainPanel.css", "[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"].contentWorkspaceSection {\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-width: 0;\n  min-height: 0;\n  --dsh-sidebar-inline-padding: 8px;\n}\n\n[data-plugin=\"dsh-oil-creator\"][data-surface=\"sidebar\"] .contentWorkspaceTitle {\n  flex: none;\n  padding: 0 8px;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-secondary);\n}\n");
 		//#endregion
 		//#region src/client/settingsSlot.ts
 		function registerCreatorSettingsCard(slots, component, options) {
@@ -7850,31 +7850,27 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, "dsh-oil-creator: content triggers");
 			const contentT = ctx.locale.bind(NS);
 			function ContentPanel() {
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: "contentMainPanel",
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+					className: "contentWorkspaceSection",
 					"data-plugin": "dsh-oil-creator",
 					"data-surface": "sidebar",
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ContentSidebarPanel, {
-						t: contentT,
-						...contentFace
-					})
+					"aria-label": contentT("tab"),
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "contentWorkspaceTitle",
+							children: contentT("tab")
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ContentSidebarPanel, {
+							t: contentT,
+							...contentFace
+						})
+					]
 				});
 			}
-			function ContentPanelIcon({ size }) {
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconBrowseOutlineRegular, { size });
-			}
-			ctx.slots.inject("main", () => ctx.slots.register({
-				name: "main",
-				key: "oil-creator",
+			ctx.slots.inject("sidebar.workspaces.auxiliary", () => ctx.slots.register({
+				name: "sidebar.workspaces.auxiliary",
 				locale: NS
 			}, ContentPanel));
-			ctx.slots.inject("sidebar.panellist", () => ctx.slots.register({
-				name: "sidebar.panellist",
-				id: "oil-creator",
-				order: 20,
-				label: () => contentT("tab"),
-				locale: NS
-			}, ContentPanelIcon));
 			ctx.effect(async () => {
 				const disposeRemote = await ctx.remote.$mount(TYPERT_REMOTE);
 				if (ctx.fiber.state >= 5) {

@@ -558,16 +558,22 @@ describe('ui-workspace apply', () => {
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     // Registration declared the child holes (declaration = render authorization).
     expect(b.slots.spec('sidebar.workspaces.directoryFlow')).toMatchObject({ kind: 'single' })
+    expect(b.slots.spec('sidebar.workspaces.auxiliary')).toMatchObject({ kind: 'single' })
     expect(b.slots.spec('conversation.hero.workspace.directoryFlow')).toMatchObject({ kind: 'single' })
 
     const browser = faceOf(b.slots.entries('sidebar.workspaces')[0]!) as WorkspaceBrowserInjected
     const picker = faceOf(b.slots.entries('conversation.hero.workspace')[0]!) as WorkspacePickerInjected
     expect(browser.hooks.directoryFlow.getSnapshot()).toBe(false)
+    expect(browser.hooks.auxiliary.getSnapshot()).toBe(false)
     expect(browser.hooks.hostInfo.getSnapshot()).toMatchObject({ home: undefined })
     expect(picker.hooks.directoryFlow.getSnapshot()).toBe(false)
     // A flow occupant flips exactly its own surface, and the source notifies.
     const notified = vi.fn()
     const unsubscribe = browser.hooks.directoryFlow.subscribe(notified)
+    const disposeAuxiliary = b.slots.register({ name: 'sidebar.workspaces.auxiliary' } as never, () => null)
+    expect(browser.hooks.auxiliary.getSnapshot()).toBe(true)
+    disposeAuxiliary()
+    expect(browser.hooks.auxiliary.getSnapshot()).toBe(false)
     const dispose = b.slots.register({ name: 'sidebar.workspaces.directoryFlow' } as never, () => null)
     expect(browser.hooks.directoryFlow.getSnapshot()).toBe(true)
     expect(picker.hooks.directoryFlow.getSnapshot()).toBe(false)

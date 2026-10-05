@@ -167,6 +167,9 @@ test('Oil Creator uses the current Plugins settings tab', () => {
   assert.doesNotMatch(host, /registerCreatorSettingsNamespace|settings\.register\(/u)
   assert.match(client, /settings\.plugins\.tab/u)
   assert.doesNotMatch(client, /settings\.plugin\.item/u)
+  assert.match(client, /ctx\.slots\.inject\("sidebar\.workspaces\.auxiliary"/u)
+  assert.doesNotMatch(client, /ctx\.slots\.inject\("main"/u)
+  assert.doesNotMatch(client, /ctx\.slots\.inject\("sidebar\.panellist"/u)
 })
 
 test('desktop shell projects window controls into the sidebar with a compact fallback', () => {

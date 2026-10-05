@@ -22,6 +22,10 @@
  * and a hole has exactly one declaring entry — they carry the same owner
  * contract and the same occupant.
  *
+ * WorkspaceBrowser also declares one optional **auxiliary browsing region**
+ * below the Session list. A product plugin can place one related collection
+ * there without replacing the main panel or the Workspace browser.
+ *
  * WorkspaceBrowser also declares the two **Session row action lists**: every
  * row of a Session's "..." menu is an entry of
  * `sidebar.workspaces.session.menu.item`, and every hover button at the row's
@@ -72,6 +76,12 @@ export interface DirectoryFlowOwnerProps {
   onError: (message: string) => void
 }
 
+/** Empty owner share for one optional collection below the Session list. */
+export interface WorkspaceAuxiliaryOwnerProps {
+  /** Marker field: the occupant owns its collection and controls. */
+  children?: never
+}
+
 /** Owner share of one Session row action occurrence: the row the action belongs to. */
 export interface SessionRowOwnerProps {
   /** Session the row shows. */
@@ -117,6 +127,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.workspace.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
+    /** Optional product collection below the Session list; hidden with the collapsed sidebar rail. */
+    'sidebar.workspaces.auxiliary': { kind: 'single'; scope: 'root'; owner: WorkspaceAuxiliaryOwnerProps }
     /**
      * Leading decoration of one Session row, in the 16px cell before the title
      * that the row's own state dot otherwise occupies. A higher-priority state
@@ -221,6 +233,8 @@ export type WorkspaceBrowserInjected = {
      * saw. Select the field the surface needs (`info => info.home`).
      */
     hostInfo: HostObservable<RemoteHostFacts>
+    /** Whether a product collection occupies the lower sidebar region. */
+    auxiliary: HostObservable<boolean>
     workspaceShortcuts: HostObservable<WorkspaceShortcutState>
     shortcuts: HostObservable<readonly ShortcutCatalogEntry[]>
   }
@@ -455,6 +469,7 @@ export type WorkspaceBrowserProps =
   PropsRuntime<'sidebar.workspaces'>
   & PropsRenderSlots<
     | 'sidebar.workspaces.directoryFlow'
+    | 'sidebar.workspaces.auxiliary'
     | 'sidebar.workspaces.session.menu.item'
     | 'sidebar.workspaces.session.row.action'
     | 'sidebar.session.row.leading'

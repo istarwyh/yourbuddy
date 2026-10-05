@@ -10,7 +10,7 @@
 > [!NOTE]
 > 当前兼容 Node.js 22.19+、DeepSeek Harness `0.1.0-rc.6` / `0.1.0-rc.7`。核心片库可独立使用；Screen Studio、字幕、封面、公众号和发布能力均可按需安装。
 
-在 YourBuddy 中，内容详情注册到产品的 `workbench.content` 子 Slot，并始终保持挂载。点击内容行会让详情临时替换中间的 Better Sidebar；切回会话、关闭详情或卸载插件会显示核心工作台。详情不再查询或修改 Conversation DOM，也不拥有外层宽度和拖拽逻辑。
+在 YourBuddy 中，片库直接显示在左侧 Workspace 与 Session 列表下方，不再占用主面板；选择内容后，详情临时替换中间的 Better Sidebar，右侧对话保持可用。内容详情注册到产品的 `workbench.content` 子 Slot，并始终保持挂载；关闭详情或卸载插件会恢复核心工作台。
 
 ## 一条片子，就是一个文件夹
 

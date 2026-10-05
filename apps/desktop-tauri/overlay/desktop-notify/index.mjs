@@ -12,6 +12,7 @@ export const CONTENT_SECURITY_POLICY = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: http: https:",
+  "media-src 'self' data: blob: http://127.0.0.1:*",
   "font-src 'self' data:",
   "connect-src 'self' ws: wss: http: https:",
   "frame-src http: https: data: blob:",
