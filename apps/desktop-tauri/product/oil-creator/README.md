@@ -10,8 +10,6 @@
 > [!NOTE]
 > 当前兼容 Node.js 22.19+、DeepSeek Harness `0.1.0-rc.6` / `0.1.0-rc.7`。核心片库可独立使用；Screen Studio、字幕、封面、公众号和发布能力均可按需安装。
 
-在 YourBuddy 中，片库直接显示在左侧 Workspace 与 Session 列表下方，不再占用主面板；选择内容后，详情临时替换中间的 Better Sidebar，右侧对话保持可用。内容详情注册到产品的 `workbench.content` 子 Slot，并始终保持挂载；关闭详情或卸载插件会恢复核心工作台。
-
 ## 一条片子，就是一个文件夹
 
 插件不建立封闭的内容数据库。正文和产物仍是普通文件，任何编辑器和 AI 文件工具都能读取：
@@ -40,7 +38,7 @@
 | 选题与脚本 | 新建规范目录，读写 `topic.md` / `script.md`，遵守长期脚本规则 | 选题方向和最终表达 |
 | 录制与剪辑 | 绑定并打开 Screen Studio 工程，等待导出文件稳定落盘 | 录制、时间线剪辑和导出 |
 | 字幕与封面 | 启动字幕工作流，打开预览，烧录字幕，生成三种画幅封面 | 专有名词、标题和错别字 |
-| 发布 | 在检查器一键预检并准备启用平台的视频草稿；也可通过 `oil_prepare_publish` 加入公众号文章草稿 | 各平台最终“发表”、定时发布或群发按钮 |
+| 发布 | 在工作台或通过 `oil_prepare_publish` 调用内置 `video-publisher` 准备多平台草稿 | 各平台最终“发表”按钮 |
 | 数据回收 | 通过 Ego Browser 同步已发布作品的播放、赞、评和链接 | 登录状态和异常匹配结果 |
 
 工作台不会假装替人完成录制、剪辑或最终发布。它负责把每一步需要的文件、状态和下一步动作放在同一个上下文里。
@@ -110,7 +108,7 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
 - **长期脚本规则**：保存语气、结构、禁忌和目标观众，之后写或修改 `script.md` 时复用。
 - **长任务追踪**：字幕、封面和烧录启动后立即返回，由工作台继续观察文件产物和任务状态。
 - **目录整理**：预览并修正旧文件夹名称；默认不执行、不删除文件。
-- **发布闭环**：检查器先验证成片、发布包、封面和原创确认，再调用内置视频发布器；各平台独立显示就绪或阻塞结果，页面交还后由人最终发表。公众号草稿是单独的可选项。
+- **可选发布闭环**：准备平台草稿后由人最终发表，再同步播放、点赞、评论和作品链接。只读检查不覆盖已保存的准备结果，已发布平台不再显示旧草稿错误。
 
 完整工具列表和逐步示例见 [使用说明](docs/usage.md)。
 
@@ -123,8 +121,8 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
 | 字幕转录、排版、预览和烧录 | [oil-subtitle](https://github.com/oil-oil/oil-subtitle) + `DASHSCOPE_API_KEY` | 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；Key 在[百炼控制台](https://bailian.console.aliyun.com)申请 |
 | 三画幅封面 | [oil-cover](https://github.com/oil-oil/oil-cover) + `ZENMUX_API_KEY` | Key 在 [ZenMux](https://zenmux.ai) 申请 |
 | Screen Studio 自动剪辑 | [screen-studio-editor](https://github.com/oil-oil/screen-studio-editor) | 仅 macOS；录制和导出仍在 Screen Studio 完成 |
-| 多平台视频草稿与数据回收 | [Ego Lite](https://lite.ego.app/) | `video-publisher` 已内置；仅 macOS，需要提前登录各平台创作者后台 |
-| 公众号图文与草稿 | 微信公众号 API 凭据和固定出口 IP 白名单 | `oil-video-article` 与 `wechat-publisher` 已内置；创建草稿，不自动群发 |
+| 多平台草稿与数据回收 | [Ego Lite](https://lite.ego.app/)；插件内置 `video-publisher` | 仅 macOS；需要提前登录各平台创作者后台 |
+| 公众号图文 | 插件内置 `oil-video-article` 和 `wechat-publisher` | Agent 整理文章；工作台可选择创建公众号草稿 |
 
 字幕和封面 Skill 留空时，插件会依次从 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 自动发现；只有非标准安装位置才需要填写高级路径。
 
@@ -141,8 +139,8 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
 ## 数据与权限边界
 
 - 正文、视频、字幕、封面和文章保存在用户选择的本地目录。
-- 插件不会自行开始上传；只有用户点击“准备发布草稿”或明确调用发布工具后，才会为已启用的平台上传，并停在最终发表、定时发布或群发前。
-- 视频发布器使用工作台根据本次选择生成的私有配置，不修改独立 `video-publisher` 的用户配置；平台结果独立保存，部分失败不会抹掉已经就绪的草稿。
+- 插件不会自行开始上传；只有用户点击“准备发布草稿”或明确调用 `oil_prepare_publish` 后才会上传，并停在最终发表、定时发布或公众号群发前。
+- 视频发布器使用工作台为本次选择生成的私有配置，不修改独立 `video-publisher` 的用户配置；每个平台独立记录结果。
 - 字幕、封面和平台同步会访问各自的外部服务；不安装、不配置就不会启用。
 - 目录创建、配置保存和批量重命名都遵循“先预览、再确认、后执行”。
 

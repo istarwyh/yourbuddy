@@ -1,173 +1,12 @@
-diff --git a/README.md b/README.md
-index a738c3a..b5769d0 100644
---- a/README.md
-+++ b/README.md
-@@ -10,6 +10,8 @@
- > [!NOTE]
- > 当前兼容 Node.js 22.19+、DeepSeek Harness `0.1.0-rc.6` / `0.1.0-rc.7`。核心片库可独立使用；Screen Studio、字幕、封面、公众号和发布能力均可按需安装。
- 
-+在 YourBuddy 中，片库直接显示在左侧 Workspace 与 Session 列表下方，不再占用主面板；选择内容后，详情临时替换中间的 Better Sidebar，右侧对话保持可用。内容详情注册到产品的 `workbench.content` 子 Slot，并始终保持挂载；关闭详情或卸载插件会恢复核心工作台。
-+
- ## 一条片子，就是一个文件夹
- 
- 插件不建立封闭的内容数据库。正文和产物仍是普通文件，任何编辑器和 AI 文件工具都能读取：
-@@ -38,7 +40,7 @@
- | 选题与脚本 | 新建规范目录，读写 `topic.md` / `script.md`，遵守长期脚本规则 | 选题方向和最终表达 |
- | 录制与剪辑 | 绑定并打开 Screen Studio 工程，等待导出文件稳定落盘 | 录制、时间线剪辑和导出 |
- | 字幕与封面 | 启动字幕工作流，打开预览，烧录字幕，生成三种画幅封面 | 专有名词、标题和错别字 |
--| 发布 | 把本地材料交给 `video-publisher` 准备多平台草稿 | 各平台最终“发表”按钮 |
-+| 发布 | 在检查器一键预检并准备启用平台的视频草稿；也可通过 `oil_prepare_publish` 加入公众号文章草稿 | 各平台最终“发表”、定时发布或群发按钮 |
- | 数据回收 | 通过 Ego Browser 同步已发布作品的播放、赞、评和链接 | 登录状态和异常匹配结果 |
- 
- 工作台不会假装替人完成录制、剪辑或最终发布。它负责把每一步需要的文件、状态和下一步动作放在同一个上下文里。
-@@ -108,7 +110,7 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
- - **长期脚本规则**：保存语气、结构、禁忌和目标观众，之后写或修改 `script.md` 时复用。
- - **长任务追踪**：字幕、封面和烧录启动后立即返回，由工作台继续观察文件产物和任务状态。
- - **目录整理**：预览并修正旧文件夹名称；默认不执行、不删除文件。
--- **可选发布闭环**：准备平台草稿后由人最终发表，再同步播放、点赞、评论和作品链接。
-+- **发布闭环**：检查器先验证成片、发布包、封面和原创确认，再调用内置视频发布器；各平台独立显示就绪或阻塞结果，页面交还后由人最终发表。公众号草稿是单独的可选项。
- 
- 完整工具列表和逐步示例见 [使用说明](docs/usage.md)。
- 
-@@ -121,8 +123,8 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
- | 字幕转录、排版、预览和烧录 | [oil-subtitle](https://github.com/oil-oil/oil-subtitle) + `DASHSCOPE_API_KEY` | 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；Key 在[百炼控制台](https://bailian.console.aliyun.com)申请 |
- | 三画幅封面 | [oil-cover](https://github.com/oil-oil/oil-cover) + `ZENMUX_API_KEY` | Key 在 [ZenMux](https://zenmux.ai) 申请 |
- | Screen Studio 自动剪辑 | [screen-studio-editor](https://github.com/oil-oil/screen-studio-editor) | 仅 macOS；录制和导出仍在 Screen Studio 完成 |
--| 多平台草稿与数据回收 | [Ego Lite](https://lite.ego.app/) + [video-publisher](https://github.com/oil-oil/video-publisher-skill) | 仅 macOS；需要提前登录各平台创作者后台 |
--| 公众号图文 | [oil-video-article](https://github.com/oil-oil/oil-video-article) | 独立工作流，工作台负责展示已有文章 |
-+| 多平台视频草稿与数据回收 | [Ego Lite](https://lite.ego.app/) | `video-publisher` 已内置；仅 macOS，需要提前登录各平台创作者后台 |
-+| 公众号图文与草稿 | 微信公众号 API 凭据和固定出口 IP 白名单 | `oil-video-article` 与 `wechat-publisher` 已内置；创建草稿，不自动群发 |
- 
- 字幕和封面 Skill 留空时，插件会依次从 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 自动发现；只有非标准安装位置才需要填写高级路径。
- 
-@@ -132,14 +134,15 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
- 
- - API Key 使用 Harness 官方凭据服务保存。页面只显示“已配置 / 未配置”，不会回显明文。
- - 内容目录可以换成任意已有的绝对路径，每个直接子文件夹代表一条内容。
--- `enabledPlatforms` 默认全开，包含小红书、抖音、B 站和视频号。关闭的平台不会参与 AI 发布或数据同步；全部关闭时不执行这两项操作。
-+- `enabledPlatforms` 默认全开，包含小红书、抖音、B 站和视频号。关闭的平台不会参与视频草稿准备或数据同步；全部关闭时不执行这两项操作。
- - 脚本规则既可以在设置页修改，也可以让 AI 通过 `oil_script_rules` 记录和更新。
- - Cordis 高级配置仍保留 `libraryRoot`、`dataDir`、`subtitleSkillDir` 和 `coverSkillDir`，用于自动发现无法覆盖的特殊环境。
- 
- ## 数据与权限边界
- 
- - 正文、视频、字幕、封面和文章保存在用户选择的本地目录。
--- 插件不会自动上传内容；上传只在用户明确调用发布 Skill 后发生，并停在最终发表前。
-+- 插件不会自行开始上传；只有用户点击“准备发布草稿”或明确调用发布工具后，才会为已启用的平台上传，并停在最终发表、定时发布或群发前。
-+- 视频发布器使用工作台根据本次选择生成的私有配置，不修改独立 `video-publisher` 的用户配置；平台结果独立保存，部分失败不会抹掉已经就绪的草稿。
- - 字幕、封面和平台同步会访问各自的外部服务；不安装、不配置就不会启用。
- - 目录创建、配置保存和批量重命名都遵循“先预览、再确认、后执行”。
- 
-diff --git a/docs/implementation.md b/docs/implementation.md
-index 299862f..9eda762 100644
---- a/docs/implementation.md
-+++ b/docs/implementation.md
-@@ -1,6 +1,6 @@
- # 内容工作台：现阶段实现
- 
--`dsh-oil-creator` 是挂在 DeepSeek Harness web 配置上的一个插件。它把 oil 从选题到发布的本地工作收进同一块界面：左侧内容列表、中间一条片子的检查器、右边继续对话。
-+`dsh-oil-creator` 是挂在 DeepSeek Harness web 配置上的一个插件。它把片库放在左侧 Workspace 与 Session 列表下方，把当前片子的检查器放在中间，并保留右侧对话。
- 
- 安装：`npx @deepseek-ai/dsh plugin --profile web add github:oil-oil/dsh-oil-creator`（本地开发用目录路径）
- 
-@@ -22,8 +22,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
- 4. **等导出**：导出开始后，插件盯着影片目录，成片稳定落盘再往下走。这段时间可以并行做字幕和封面。
- 5. **字幕**：用百炼 Key 转录；`oil-subtitle` 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；人在 skill 自带的预览编辑器里改稿，确认后再烧进视频。
- 6. **封面**：有 ZenMux Key 就出 3:4 / 4:3 / 16:9。封面主标题和错别字由对话里的 Agent 核对，不交给脚本自行发挥。
--7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与 AI 发布和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，走 `oil-video-article`，成稿在 `公众号文章/`。
--8. **发布**：`video-publisher` 只为 `enabledPlatforms` 中的平台准备草稿，做到最终发布按钮前，人自己点发布。插件记录每平台未发布 / 草稿已备 / 已发布。
-+7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与视频草稿准备和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，内置 `oil-video-article` 成稿到 `公众号文章/`。
-+8. **发布**：检查器的「准备发布草稿」和 `oil_prepare_publish` 共用同一服务。服务先验证视频、发布包、标签、所选封面和原创确认，再按 `enabledPlatforms` 生成私有发布器配置并调用内置 `video-publisher`；它不会修改独立发布器配置。每个平台独立返回就绪或阻塞结果，验证完成后解除页面自动化保护并交还给人。公众号草稿是默认关闭的可选分支，由内置 `wechat-publisher` 创建。最终发表、定时发布或群发都由人完成。
- 9. **回收**：用 Ego Lite 打开已登录的创作者后台，只翻 `enabledPlatforms` 中平台的已发布列表，按标题或已存 id 对到本地文件夹，写下播放 / 赞 / 评论。不是公开站爬虫；平台上有、本地没有文件夹的不会自动建条目。
- 
- 一条片子对应影片目录里的一个子文件夹。工程在 Screen Studio 工程目录里，用绑定连起来。
-@@ -32,7 +32,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
- 
- | 环节 | 现状 |
- | --- | --- |
--| 列表与检查器 | 自定义侧栏「内容」页；检查器叠在对话左边，聊天不关；概览用状态标签标明阶段，只展开当前步骤的操作 |
-+| 列表与检查器 | 片库嵌在左侧 Workspace 与 Session 列表下方；检查器占用产品中间工作台，右侧对话保留；概览用状态标签标明阶段，只展开当前步骤的操作 |
- | 建内容、选题笔记 | 面板新建；`oil_create_content` 建文件夹；选题写 `topic.md` |
- | 绑定 / 打开工程 | 面板换绑、打开；`oil_open_studio` |
- | 等导出 | `oil_wait_export` 立刻返回并开始盯目录；成片稳定后清掉 waiting 标记 |
-@@ -42,7 +42,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
- | 已发布数据 | 检查器「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`oil_sync_publish` 不传 id 才同步整库 |
- | API Key | 设置 → 插件 → 内容工作台；和视觉识别共用官方凭据 |
- | 公众号 | 只显示目录里有没有 `公众号文章/`，不生成 |
--| 剪辑、多平台上传 | 还没从插件里调度，对话里继续用原来的 skill |
-+| 剪辑 | 还没从插件里调度，对话里继续用 `screen-studio-editor` |
-+| 多平台草稿 | 检查器和 `oil_prepare_publish` 共用预检与发布服务；每个平台独立记录结果，最终发表仍由人完成 |
- 
- 上面这张表是工作台已经具备的能力：能看列表、绑定工程、启动字幕和封面脚本、标记发布状态。对照「最终要做成什么样」那 9 步，整条创作路径还没有全部接到插件里。现在有的是一条片子的工作台和几个可点的执行入口，不是点一次就从选题走到待发布。
- 
-@@ -52,10 +53,9 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
- 2. **导出后的并行编排**：「导出开始就同时做字幕和封面」没有连成一条自动流水。
- 3. **字幕校对**：生成完不会自动改专有名词；预览还要人自己看。
- 4. **封面主标题和错别字**：按钮不会先让 Agent 提炼标题，也不会验字。
--5. **发布包**：能展示已有 `publish-package.json` 里的标签，不会在插件里写平台长文案。
--6. **四平台上传**：不会调度 `video-publisher`，只记状态。
--7. **公众号成稿**：不会跑 `oil-video-article`。
--8. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
-+5. **发布包**：能展示并验证已有 `publish-package.json` 里的标题和标签，不会在插件里写平台长文案。
-+6. **公众号成稿**：内置 `oil-video-article` 供 Agent 使用，工作台仍按磁盘文件展示文章。
-+7. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
- 
- 工作阶段（`workflow`）由文件和 overlay 推出来，不是单独手填一张总表：
- 
-@@ -63,7 +63,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
- - `record` 待录制（overlay 里标了准备录）
- - `cut` 待剪辑（已绑工程、还没有成片）
- - `finish` 待加字幕 / 封面
--- `publish` 待发布（字幕和封面都齐）
-+- `publish` 待发布（字幕、封面和有效发布包都齐）
- 
- ## 一层工作台，skill 继续执行重活
- 
-@@ -83,9 +83,9 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，
- 
- 对话里的插件工具：
- 
--`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
-+`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_prepare_publish`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
- 
--`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时自动发布和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
-+`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时视频草稿准备和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
- 
--检查器中间栏可以拉到约 800px，走 `shell.overlay`，不占用官方右侧「详情」栏。官方详情栏保持关闭。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
-+片库通过 `sidebar.workspaces.auxiliary` 放在左侧 Workspace 浏览区底部；侧栏收起时不显示。检查器占用产品中间工作台，不占用右侧 Conversation。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
- 
-@@ -141,8 +141,9 @@ ego-browser nodejs < scripts/collect-publish.mjs
- | 字幕 | `oil-subtitle` | `~/.agents/skills/oil-subtitle` | clone 后必须运行 `setup.sh`；已包预览编辑器、转录、按稿烧录 | 校对不确定词、确认预览后再烧 |
- | 封面 | `oil-cover` | `~/.agents/skills/oil-cover` | 已包脚本模式三画幅生成 | 提炼主标题、看错别字、决定是否重跑某一画幅 |
- | 发布文案语气 | `oil-tone` | `~/.agents/skills/oil-tone` | 不执行；写标题简介时读档案 | 成稿必须过 `tone_lint.py` 再通读 |
--| 公众号图文 | `oil-video-article` | `~/.agents/skills/oil-video-article` | 识别 `公众号文章/` | 从无头像屏幕轨截图、按 oil-tone 写文章 |
--| 四平台视频草稿 | `video-publisher` | `~/.agents/skills/video-publisher` | 读 `auto-publish.json` 显示状态 | Ego 上传、停在最终发布按钮前、人点发布 |
-+| 公众号图文 | `oil-video-article` | 插件内置 `skills/oil-video-article` | 识别 `公众号文章/` | 从无头像屏幕轨截图、按 oil-tone 写文章 |
-+| 公众号草稿 | `wechat-publisher` | 插件内置 `skills/wechat-publisher` | `oil_prepare_publish` 调用公众号 API | 草稿箱复核、人完成最终群发 |
-+| 四平台视频草稿 | `video-publisher` | 插件内置 `skills/video-publisher` | `oil_prepare_publish` 调用生产入口并读回执 | Ego 上传、停在最终发布按钮前、人点发布 |
- 
- 字幕脚本入口以 oil-subtitle 为准：`bailian_transcribe.py` → `review_subtitles.py` → `prepare_subtitles.py` → `preview_editor.py`，用户确认后再 `burn_subtitles.py`（有审过的 SRT 用 `--srt-input`）。不要在预览前烧录。封面脚本是 `generate_oil_cover.py`，主标题由调用方按 oil-cover 提炼后传入 `--title`，Key 用环境变量 `ZENMUX_API_KEY`。不要改 skill 仓库里的用户路径和密钥。
- 
-@@ -153,7 +154,7 @@ ego-browser nodejs < scripts/collect-publish.mjs
- - 插件只做一张工作台，新能力优先加模块，不加新插件。
- - 密钥走官方凭据；页面只显示已配置 / 未配置。
- - 重媒体继续调用已有脚本，参数与对应 SKILL.md 保持一致。
--- 人导出、人点平台发布、Agent 做校对和标题，这三件事不要改成全自动。
-+- 人导出、人点最终发表 / 定时发布 / 群发、Agent 做校对和标题，这三类操作不要改成全自动。
- - Host remote 或工具改完后要重新 `pnpm build` 并重启 `dsh web`。
- 
- 
 diff --git a/docs/usage.md b/docs/usage.md
-index 8dff466..cc6b120 100644
+index 8dff466..ccfc05a 100644
 --- a/docs/usage.md
 +++ b/docs/usage.md
-@@ -1,4 +1,4 @@
+@@ -1,10 +1,10 @@
  # 内容工作台使用说明
  
 -DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的检查器，右边继续对话。一条片子对应 `~/Movies/视频项目/` 里的一个文件夹，名字是 `日期_可读标题`。
 +DeepSeek Harness 打开后，片库就在左侧 Workspace 与 Session 列表下方；点一条片子，中间显示检查器，右边继续对话。一条片子对应 `~/Movies/视频项目/` 里的一个文件夹，名字是 `日期_可读标题`。
- 
-@@ -4,7 +4,7 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
  
  ## 对话工具能不能走完整条片子
  
@@ -188,7 +27,7 @@ index 8dff466..cc6b120 100644
  ## 界面怎么用
  
 -左侧列表显示每条片子的阶段和时间。已经在任一视频平台发出去的，显示「已发布」；成片、字幕、封面都齐但还没发出去的，显示「待发布」。
-+左侧 Workspace 与 Session 列表下方的片库显示每条片子的阶段和时间。已经在任一视频平台发出去的，显示「已发布」；成片、字幕、封面和有效的 `publish-package.json` 都齐但还没发出去的，显示「待发布」。
++左侧 Workspace 区域下方的「内容」列表显示每条片子的阶段和时间。已经在任一视频平台发出去的，显示「已发布」；成片、字幕、封面和有效的 `publish-package.json` 都齐但还没发出去的，显示「待发布」。
  
 -点开一条片子，中间检查器不关右边的对话。检查器有五个页：概览、视频、脚本、字幕、文章。概览用封面旁的状态标明阶段，只展开当前步骤的按钮；封面并排显示 3:4 和 4:3。视频页播放带字幕成片，没有带字幕成片时播放原片。字幕和烧录由对话里的工具完成。文章页用 Markdown 渲染 `公众号文章/` 里的成稿和配图。中间栏可以拖宽，大约到 800 像素。
 +点开一条片子，中间检查器不关右边的对话。检查器有五个页：概览、视频、脚本、字幕、文章。概览用封面旁的状态标明阶段，只展开当前步骤的按钮；封面并排显示 3:4 和 4:3。进入发布阶段后，可以在这里选择是否上传现有封面、确认原创权利、按需加入公众号文章，然后点击「准备发布草稿」。视频页播放带字幕成片，没有带字幕成片时播放原片。字幕和烧录由对话里的工具完成。文章页用 Markdown 渲染 `公众号文章/` 里的成稿和配图。
@@ -229,7 +68,7 @@ index 8dff466..cc6b120 100644
  ## 把一条没做完的旧片子收尾
  
 diff --git a/package.json b/package.json
-index 041e241..cf36f80 100644
+index bfca1cc..a0baac7 100644
 --- a/package.json
 +++ b/package.json
 @@ -36,6 +36,7 @@
@@ -248,12 +87,13 @@ index 041e241..cf36f80 100644
          "@deepseek-ai/dsh-client-ui-layout",
          "@deepseek-ai/dsh-client-ui-settings",
          "@deepseek-ai/dsh-client-ui-settings-plugins",
-@@ -61,30 +61,28 @@
+@@ -60,31 +60,29 @@
+     }
    },
    "scripts": {
 -    "build": "tsdown && node scripts/compat-current-dsh.mjs && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs",
-+    "build": "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs",
 -    "prepare": "npm run build",
++    "build": "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs",
      "typecheck": "tsc --noEmit",
      "test": "vitest run",
      "release:check": "node scripts/check-release.mjs",
@@ -277,7 +117,7 @@ index 041e241..cf36f80 100644
 -    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.6 || 0.1.0-rc.7",
 -    "@deepseek-ai/dsh-settings": "0.1.0-rc.6 || 0.1.0-rc.7",
 -    "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.6 || 0.1.0-rc.7",
-+    "@deepseek-ai/cordis": "4.0.2",
++    "@deepseek-ai/cordis": "4.0.4",
 +    "@deepseek-ai/dsh-api-remotes": "0.1.7-rc.2",
 +    "@deepseek-ai/dsh-client-connection": "0.1.7-rc.2",
 +    "@deepseek-ai/dsh-client-locale": "0.1.7-rc.2",
@@ -2400,7 +2240,7 @@ index 0000000..016fa54
 +实测记录和待回归边界见 `acceptance-history.md`。
 diff --git a/skills/video-publisher/references/platform-wechat-channels.md b/skills/video-publisher/references/platform-wechat-channels.md
 new file mode 100644
-index 0000000..ff38743
+index 0000000..5d39a7b
 --- /dev/null
 +++ b/skills/video-publisher/references/platform-wechat-channels.md
 @@ -0,0 +1,114 @@
@@ -2424,7 +2264,7 @@ index 0000000..ff38743
 +Emulation.setFocusEmulationEnabled { enabled: true }
 +```
 +
-+Readiness requires the initialization toast to be gone and the real video input to exist, or an already uploaded editor to be proven. Perform at most one gentle reload after the initial activation window.
++Readiness requires the initialization toast to be gone and the real video input to exist, or an already uploaded editor to be proven. Inspection and verification use the same bounded lifecycle activation and readiness wait as upload setup; an empty page returns one retryable page-level blocker instead of missing field gates. Perform at most one gentle reload after the initial activation window.
 +
 +## Wujie Upload
 +
@@ -7089,10 +6929,10 @@ index 0000000..1dcf8f8
 +async function runPlatformPhase(){if(phase==='inspect'||phase==='verify')return await inspectDouyin();if(phase==='upload_start')return await startDouyinUpload();if(phase==='prefill')return await prefillDouyin();if(phase==='upload')return await uploadDouyin();if(phase==='mutate')return await mutateDouyin();return {...(await inspectDouyin()),blocker:typedBlocker('ACTION_FAILED',`unsupported Douyin phase: ${phase}`)}}
 diff --git a/skills/video-publisher/scripts/v2/platforms/wechat-channels.mjs b/skills/video-publisher/scripts/v2/platforms/wechat-channels.mjs
 new file mode 100644
-index 0000000..bd5b604
+index 0000000..0745e90
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/platforms/wechat-channels.mjs
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,237 @@
 +const wechatDescription = pkg.wechatDescription;
 +const wechatCustomCover = pkg.cover?.uploadCustomCover === true;
 +const wechatCoverAssets = [
@@ -7327,7 +7167,9 @@ index 0000000..bd5b604
 +
 +async function mutateWechatChannels(){let before=await inspectWechatChannels();if(!before.gates.draftIdentity.ok)return {...before,blocker:typedBlocker(before.gates.draftIdentity.evidence?.ambiguous?'STATE_AMBIGUOUS':'FOREIGN_DRAFT','视频号无法证明当前已上传草稿属于本任务',{evidence:before.gates.draftIdentity.evidence})};if(!before.gates.video.ok)return {...before,blocker:typedBlocker('STATE_AMBIGUOUS','视频号没有可修复的已上传视频')};const actions={};if(!before.gates.noBlockingDialog.ok&&before.gates.noBlockingDialog.evidence?.active?.some(item=>/编辑个人主页卡片|编辑分享卡片|裁剪封面图/.test(item.text||''))){actions.coverRecovery=await dismissWechatCoverEditor();if(!actions.coverRecovery.ok)return {...(await inspectWechatChannels()),blocker:typedBlocker('STATE_AMBIGUOUS',actions.coverRecovery.reason,{retryable:true,evidence:actions.coverRecovery})};before=await inspectWechatChannels()}if(!before.gates.noBlockingDialog.ok)return {...before,blocker:typedBlocker('STATE_AMBIGUOUS','视频号存在未识别的阻塞弹窗',{retryable:true,evidence:before.gates.noBlockingDialog.evidence})};const metadata=await ensureWechatEarlyMetadata(before);Object.assign(actions,metadata.actions);if(!metadata.ok)return {...metadata.current,actions,blocker:metadata.blocker};before=metadata.current;actions.original=await ensureWechatOriginal();if(!actions.original.ok)return {...(await inspectWechatChannels()),blocker:typedBlocker('ACTION_FAILED',actions.original.reason||'视频号原创声明没有完成',{evidence:actions.original})};const receipts={};if(wechatCustomCover){receipts.cover={slots:{}};for(const asset of wechatCoverAssets){const uploaded=await uploadWechatCover(asset);(actions.covers||=[]).push({asset,...uploaded});if(!uploaded.ok)return {...(await inspectWechatChannels()),blocker:typedBlocker('PLATFORM_REJECTED_ASSET',uploaded.reason,{retryable:true,evidence:uploaded})};receipts.cover.slots[asset.slot]=uploaded.receipt;actions.receiptCheckpoint=checkpointReceipts({...expectedReceipts,...receipts})}expectedReceipts.cover=receipts.cover}actions.receiptCheckpoint=checkpointReceipts({...expectedReceipts,...receipts});const after=await inspectWechatChannels();return {...after,actions,receipts}}
 +
-+async function runPlatformPhase(){if(phase==='inspect'||phase==='verify')return await inspectWechatChannels();if(phase==='upload_start')return await startWechatChannelsUpload();if(phase==='prefill')return await prefillWechatChannels();if(phase==='upload')return await uploadWechatChannels();if(phase==='mutate')return await mutateWechatChannels();return {...(await inspectWechatChannels()),blocker:typedBlocker('ACTION_FAILED',`unsupported WeChat phase: ${phase}`)}}
++async function inspectReadyWechatChannels(){await activateWechatLifecycle();const ready=await waitWechatSdkReady(30);if(ready.ok)return await inspectWechatChannels();const after=await inspectWechatChannels();return {...after,blocker:typedBlocker('RISK_CONTROL','视频号发布页尚未完成初始化',{retryable:true,evidence:ready.probe})}}
++
++async function runPlatformPhase(){if(phase==='inspect'||phase==='verify')return await inspectReadyWechatChannels();if(phase==='upload_start')return await startWechatChannelsUpload();if(phase==='prefill')return await prefillWechatChannels();if(phase==='upload')return await uploadWechatChannels();if(phase==='mutate')return await mutateWechatChannels();return {...(await inspectWechatChannels()),blocker:typedBlocker('ACTION_FAILED',`unsupported WeChat phase: ${phase}`)}}
 diff --git a/skills/video-publisher/scripts/v2/platforms/xiaohongshu.mjs b/skills/video-publisher/scripts/v2/platforms/xiaohongshu.mjs
 new file mode 100644
 index 0000000..4df4111
@@ -10903,10 +10745,10 @@ index 0000000..6a59c58
 +});
 diff --git a/skills/video-publisher/scripts/v2/tests/platform-contracts.test.mjs b/skills/video-publisher/scripts/v2/tests/platform-contracts.test.mjs
 new file mode 100644
-index 0000000..a7cbd81
+index 0000000..422ce36
 --- /dev/null
 +++ b/skills/video-publisher/scripts/v2/tests/platform-contracts.test.mjs
-@@ -0,0 +1,280 @@
+@@ -0,0 +1,292 @@
 +import assert from "node:assert/strict";
 +import fs from "node:fs";
 +import path from "node:path";
@@ -11047,6 +10889,18 @@ index 0000000..a7cbd81
 +  assert.match(source, /completeWechatUploadStartObservation\(current,mode,'editable_uploading'/);
 +  assert.match(prefill, /ensureWechatEarlyMetadata\(before\)/);
 +  assert.doesNotMatch(prefill, /ensureWechatOriginal|uploadWechatCover/);
++});
++
++test("WeChat Channels inspection waits for the real editor before evaluating fields", () => {
++  const source = fs.readFileSync(path.join(PLATFORM_DIR, "wechat-channels.mjs"), "utf8");
++  const start = source.indexOf("async function inspectReadyWechatChannels");
++  const end = source.indexOf("async function runPlatformPhase", start);
++  assert.ok(start >= 0 && end > start, "inspection readiness must remain discoverable");
++  const inspection = source.slice(start, end);
++  assert.match(inspection, /activateWechatLifecycle\(\)/, "inspection must activate the Wujie lifecycle");
++  assert.match(inspection, /waitWechatSdkReady\(30\)/, "inspection must wait for a real upload input or uploaded editor");
++  assert.match(inspection, /typedBlocker\('RISK_CONTROL','视频号发布页尚未完成初始化'/, "an empty page must report one page-level blocker");
++  assert.match(source, /phase==='inspect'\|\|phase==='verify'\)return await inspectReadyWechatChannels\(\)/);
 +});
 +
 +test("WeChat Channels cover flow supports both slot-specific and generic editors", () => {

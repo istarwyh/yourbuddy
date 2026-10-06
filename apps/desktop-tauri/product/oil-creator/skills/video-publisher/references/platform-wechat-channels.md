@@ -18,7 +18,7 @@ Page.setWebLifecycleState { state: active }
 Emulation.setFocusEmulationEnabled { enabled: true }
 ```
 
-Readiness requires the initialization toast to be gone and the real video input to exist, or an already uploaded editor to be proven. Perform at most one gentle reload after the initial activation window.
+Readiness requires the initialization toast to be gone and the real video input to exist, or an already uploaded editor to be proven. Inspection and verification use the same bounded lifecycle activation and readiness wait as upload setup; an empty page returns one retryable page-level blocker instead of missing field gates. Perform at most one gentle reload after the initial activation window.
 
 ## Wujie Upload
 

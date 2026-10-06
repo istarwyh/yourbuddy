@@ -1,3 +1,54 @@
+diff --git a/README.md b/README.md
+index a738c3a..4a28321 100644
+--- a/README.md
++++ b/README.md
+@@ -38,7 +38,7 @@
+ | 选题与脚本 | 新建规范目录，读写 `topic.md` / `script.md`，遵守长期脚本规则 | 选题方向和最终表达 |
+ | 录制与剪辑 | 绑定并打开 Screen Studio 工程，等待导出文件稳定落盘 | 录制、时间线剪辑和导出 |
+ | 字幕与封面 | 启动字幕工作流，打开预览，烧录字幕，生成三种画幅封面 | 专有名词、标题和错别字 |
+-| 发布 | 把本地材料交给 `video-publisher` 准备多平台草稿 | 各平台最终“发表”按钮 |
++| 发布 | 在工作台或通过 `oil_prepare_publish` 调用内置 `video-publisher` 准备多平台草稿 | 各平台最终“发表”按钮 |
+ | 数据回收 | 通过 Ego Browser 同步已发布作品的播放、赞、评和链接 | 登录状态和异常匹配结果 |
+ 
+ 工作台不会假装替人完成录制、剪辑或最终发布。它负责把每一步需要的文件、状态和下一步动作放在同一个上下文里。
+@@ -108,7 +108,7 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
+ - **长期脚本规则**：保存语气、结构、禁忌和目标观众，之后写或修改 `script.md` 时复用。
+ - **长任务追踪**：字幕、封面和烧录启动后立即返回，由工作台继续观察文件产物和任务状态。
+ - **目录整理**：预览并修正旧文件夹名称；默认不执行、不删除文件。
+-- **可选发布闭环**：准备平台草稿后由人最终发表，再同步播放、点赞、评论和作品链接。
++- **可选发布闭环**：准备平台草稿后由人最终发表，再同步播放、点赞、评论和作品链接。只读检查不覆盖已保存的准备结果，已发布平台不再显示旧草稿错误。
+ 
+ 完整工具列表和逐步示例见 [使用说明](docs/usage.md)。
+ 
+@@ -121,8 +121,8 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
+ | 字幕转录、排版、预览和烧录 | [oil-subtitle](https://github.com/oil-oil/oil-subtitle) + `DASHSCOPE_API_KEY` | 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；Key 在[百炼控制台](https://bailian.console.aliyun.com)申请 |
+ | 三画幅封面 | [oil-cover](https://github.com/oil-oil/oil-cover) + `ZENMUX_API_KEY` | Key 在 [ZenMux](https://zenmux.ai) 申请 |
+ | Screen Studio 自动剪辑 | [screen-studio-editor](https://github.com/oil-oil/screen-studio-editor) | 仅 macOS；录制和导出仍在 Screen Studio 完成 |
+-| 多平台草稿与数据回收 | [Ego Lite](https://lite.ego.app/) + [video-publisher](https://github.com/oil-oil/video-publisher-skill) | 仅 macOS；需要提前登录各平台创作者后台 |
+-| 公众号图文 | [oil-video-article](https://github.com/oil-oil/oil-video-article) | 独立工作流，工作台负责展示已有文章 |
++| 多平台草稿与数据回收 | [Ego Lite](https://lite.ego.app/)；插件内置 `video-publisher` | 仅 macOS；需要提前登录各平台创作者后台 |
++| 公众号图文 | 插件内置 `oil-video-article` 和 `wechat-publisher` | Agent 整理文章；工作台可选择创建公众号草稿 |
+ 
+ 字幕和封面 Skill 留空时，插件会依次从 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 自动发现；只有非标准安装位置才需要填写高级路径。
+ 
+@@ -132,14 +132,15 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
+ 
+ - API Key 使用 Harness 官方凭据服务保存。页面只显示“已配置 / 未配置”，不会回显明文。
+ - 内容目录可以换成任意已有的绝对路径，每个直接子文件夹代表一条内容。
+-- `enabledPlatforms` 默认全开，包含小红书、抖音、B 站和视频号。关闭的平台不会参与 AI 发布或数据同步；全部关闭时不执行这两项操作。
++- `enabledPlatforms` 默认全开，包含小红书、抖音、B 站和视频号。关闭的平台不会参与视频草稿准备或数据同步；全部关闭时不执行这两项操作。
+ - 脚本规则既可以在设置页修改，也可以让 AI 通过 `oil_script_rules` 记录和更新。
+ - Cordis 高级配置仍保留 `libraryRoot`、`dataDir`、`subtitleSkillDir` 和 `coverSkillDir`，用于自动发现无法覆盖的特殊环境。
+ 
+ ## 数据与权限边界
+ 
+ - 正文、视频、字幕、封面和文章保存在用户选择的本地目录。
+-- 插件不会自动上传内容；上传只在用户明确调用发布 Skill 后发生，并停在最终发表前。
++- 插件不会自行开始上传；只有用户点击“准备发布草稿”或明确调用 `oil_prepare_publish` 后才会上传，并停在最终发表、定时发布或公众号群发前。
++- 视频发布器使用工作台为本次选择生成的私有配置，不修改独立 `video-publisher` 的用户配置；每个平台独立记录结果。
+ - 字幕、封面和平台同步会访问各自的外部服务；不安装、不配置就不会启用。
+ - 目录创建、配置保存和批量重命名都遵循“先预览、再确认、后执行”。
+ 
 diff --git a/cordis.patch.yml b/cordis.patch.yml
 index 9041ae2..c2e5a47 100644
 --- a/cordis.patch.yml
@@ -8,6 +59,131 @@ index 9041ae2..c2e5a47 100644
  - insert:
      - id: dsh-oil-creator
        name: dsh-oil-creator
+diff --git a/docs/implementation.md b/docs/implementation.md
+index 299862f..b9514f8 100644
+--- a/docs/implementation.md
++++ b/docs/implementation.md
+@@ -22,8 +22,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+ 4. **等导出**：导出开始后，插件盯着影片目录，成片稳定落盘再往下走。这段时间可以并行做字幕和封面。
+ 5. **字幕**：用百炼 Key 转录；`oil-subtitle` 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；人在 skill 自带的预览编辑器里改稿，确认后再烧进视频。
+ 6. **封面**：有 ZenMux Key 就出 3:4 / 4:3 / 16:9。封面主标题和错别字由对话里的 Agent 核对，不交给脚本自行发挥。
+-7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与 AI 发布和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，走 `oil-video-article`，成稿在 `公众号文章/`。
+-8. **发布**：`video-publisher` 只为 `enabledPlatforms` 中的平台准备草稿，做到最终发布按钮前，人自己点发布。插件记录每平台未发布 / 草稿已备 / 已发布。
++7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与视频草稿准备和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，内置 `oil-video-article` 成稿到 `公众号文章/`。
++8. **发布**：检查器的“准备发布草稿”和 `oil_prepare_publish` 共用同一服务。服务验证成片、发布包、标签、封面和原创确认后调用内置 `video-publisher`；每个平台独立返回结果。公众号草稿是默认关闭的可选分支，由内置 `wechat-publisher` 创建。最终发表、定时发布或群发都由人完成。
+ 9. **回收**：用 Ego Lite 打开已登录的创作者后台，只翻 `enabledPlatforms` 中平台的已发布列表，按标题或已存 id 对到本地文件夹，写下播放 / 赞 / 评论。不是公开站爬虫；平台上有、本地没有文件夹的不会自动建条目。
+ 
+ 一条片子对应影片目录里的一个子文件夹。工程在 Screen Studio 工程目录里，用绑定连起来。
+@@ -32,7 +32,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+ 
+ | 环节 | 现状 |
+ | --- | --- |
+-| 列表与检查器 | 自定义侧栏「内容」页；检查器叠在对话左边，聊天不关；概览用状态标签标明阶段，只展开当前步骤的操作 |
++| 列表与检查器 | 片库嵌在左侧 Workspace 与 Session 列表下方；检查器占用产品中间工作台，右侧对话保留；概览用状态标签标明阶段 |
+ | 建内容、选题笔记 | 面板新建；`oil_create_content` 建文件夹；选题写 `topic.md` |
+ | 绑定 / 打开工程 | 面板换绑、打开；`oil_open_studio` |
+ | 等导出 | `oil_wait_export` 立刻返回并开始盯目录；成片稳定后清掉 waiting 标记 |
+@@ -41,10 +41,11 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+ | 发布状态 | 读 `{标题}.auto-publish.json`；点状态胶囊从菜单里选未发布 / 草稿 / 已发布，手写优先 |
+ | 已发布数据 | 检查器「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`oil_sync_publish` 不传 id 才同步整库 |
+ | API Key | 设置 → 插件 → 内容工作台；和视觉识别共用官方凭据 |
+-| 公众号 | 只显示目录里有没有 `公众号文章/`，不生成 |
+-| 剪辑、多平台上传 | 还没从插件里调度，对话里继续用原来的 skill |
++| 公众号 | 展示目录里的文章；准备草稿时可选择调用内置 `wechat-publisher` 创建公众号草稿 |
++| 剪辑 | 还没从插件里调度，对话里继续用 `screen-studio-editor` |
++| 多平台草稿 | 检查器和 `oil_prepare_publish` 共用预检与发布服务；每个平台独立记录结果，最终发表仍由人完成 |
+ 
+-上面这张表是工作台已经具备的能力：能看列表、绑定工程、启动字幕和封面脚本、标记发布状态。对照「最终要做成什么样」那 9 步，整条创作路径还没有全部接到插件里。现在有的是一条片子的工作台和几个可点的执行入口，不是点一次就从选题走到待发布。
++上面这张表是工作台已经具备的能力：能看列表、绑定工程、启动字幕和封面脚本、准备发布草稿、标记发布状态并同步已发布数据。它不是点一次就替人完成录制、剪辑和最终发表的全自动流水线。
+ 
+ 日常路径里，插件还包不住、仍要在对话里自己喊 skill 或亲手做的：
+ 
+@@ -52,10 +53,9 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+ 2. **导出后的并行编排**：「导出开始就同时做字幕和封面」没有连成一条自动流水。
+ 3. **字幕校对**：生成完不会自动改专有名词；预览还要人自己看。
+ 4. **封面主标题和错别字**：按钮不会先让 Agent 提炼标题，也不会验字。
+-5. **发布包**：能展示已有 `publish-package.json` 里的标签，不会在插件里写平台长文案。
+-6. **四平台上传**：不会调度 `video-publisher`，只记状态。
+-7. **公众号成稿**：不会跑 `oil-video-article`。
+-8. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
++5. **发布包**：能展示并验证已有 `publish-package.json` 里的标题和标签，不会在插件里写平台长文案。
++6. **公众号成稿**：内置 `oil-video-article` 供 Agent 使用，工作台仍按磁盘文件展示文章。
++7. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
+ 
+ 工作阶段（`workflow`）由文件和 overlay 推出来，不是单独手填一张总表：
+ 
+@@ -63,14 +63,13 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最
+ - `record` 待录制（overlay 里标了准备录）
+ - `cut` 待剪辑（已绑工程、还没有成片）
+ - `finish` 待加字幕 / 封面
+-- `publish` 待发布（字幕和封面都齐）
++- `publish` 待发布（字幕、封面和有效发布包都齐）
+ 
+ ## 一层工作台，skill 继续执行重活
+ 
+ 保持 **一个** Harness 插件。官方要求：只有能力需要独立替换时才拆包，不要预防性拆分。见 DeepSeek Harness `docs/user/develop/practice/index.zh.md`。
+ 
+-设置位 `settings.plugin.item` 的含义是「一个插件一张卡」，不是一个功能一张卡。
+-Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，再按同名 `key` 派发设置卡；插件同时保留 rc.6 使用的 `id`。当前设置值仍统一由插件 Remote 和 `~/.dsh-oil-creator/overlay.json` 管理，Host 命名空间只负责让设置卡被发现，避免双数据源。
++设置卡注册到当前客户端的 `settings.plugins.tab`，设置值统一由插件 Remote 和 `~/.dsh-oil-creator/overlay.json` 管理。升级 Harness 时需要同步核对这个槽位、目录选择、路径打开和凭据服务接口。
+ 
+ 执行分工：
+ 
+@@ -83,11 +82,11 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，
+ 
+ 对话里的插件工具：
+ 
+-`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
++`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_prepare_publish`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
+ 
+ `oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时自动发布和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
+ 
+-检查器中间栏可以拉到约 800px，走 `shell.overlay`，不占用官方右侧「详情」栏。官方详情栏保持关闭。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
++片库注册到 `sidebar.workspaces.auxiliary`，检查器注册到 `workbench.content`；打开一条内容时占用产品中间工作台，右侧对话保持可用。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
+ 
+ ## 状态存在哪里
+ 
+@@ -100,7 +99,7 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，
+ | 字幕和封面 Key | Harness 官方凭据（字幕用 `DASHSCOPE_API_KEY`、封面用 `ZENMUX_API_KEY`），与 `dsh-vision` 共用 |
+ | 列表选中项、侧栏宽度 | 浏览器本地 UI 状态 |
+ 
+-发布状态两层：文件夹里的 `{标题}.auto-publish.json` 推断草稿；overlay 里的手写状态盖过它。Ego 同步成功后，对应平台写成 `published`，并带上 `url` / `views` / `likes` / `comments` / `syncedAt`，来源记为 `sync`。
++发布状态两层：文件夹里的 `{标题}.auto-publish.json` 推断草稿；overlay 里的手写状态盖过它。Ego 同步成功后，对应平台写成 `published`，并带上 `url` / `views` / `likes` / `comments` / `syncedAt`，来源记为 `sync`。只读发布检查只返回当次诊断，不覆盖持久化准备结果；平台标记为已发布时，清除该平台的旧草稿诊断。发布任务只在元数据以及视频、封面文件内容的指纹都一致时复用旧 Job。
+ 
+ 采集本身是机械脚本，不经过模型判断：
+ 
+@@ -127,22 +126,21 @@ ego-browser nodejs < scripts/collect-publish.mjs
+ | 长任务、规范返回值、不要把散文当 API | `docs/cookbook/adding-a-tool.md` |
+ | 一个包还是拆成 Definition / Provider | `docs/user/develop/practice/index.zh.md`（不要预防性拆分） |
+ | API Key 只写不回读 | 官方凭据服务；界面对照已安装的 `@oil-oil/dsh-vision` 设置卡 |
+-| 设置卡槽位 | `packages/client/ui-settings-plugins` 里对 `settings.plugin.item` 的说明 |
++| 设置卡槽位 | 当前客户端的 `settings.plugins.tab` |
+ 
+ 官方 Bash 那种三包拆分，只适用于「同一能力会换执行环境」。内容工作台不是这种能力。
+ 
+-### oil 自己的 skill（执行器和产品规则）
++### 执行器和产品规则
+ 
+-标准安装位置是 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 三选一，插件自动发现；下表统一写 `~/.agents/skills`。
++字幕、封面和剪辑 Skill 可以放在 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills`，插件会自动发现；发布相关 Skill 随插件一起安装。
+ 
+-| 环节 | Skill | 路径 | 插件可以包什么 | 仍留给 Agent / 人 |
++| 环节 | Skill | 来源 | 插件可以包什么 | 仍留给 Agent / 人 |
+ | --- | --- | --- | --- | --- |
+-| 剪辑工程 | `screen-studio-editor` | `~/.agents/skills/screen-studio-editor` | 以后可加「按绑定工程开剪辑」；现在只绑定和打开 | 审查删除、Screen Studio 里预览、手动导出 |
+-| 字幕 | `oil-subtitle` | `~/.agents/skills/oil-subtitle` | clone 后必须运行 `setup.sh`；已包预览编辑器、转录、按稿烧录 | 校对不确定词、确认预览后再烧 |
+-| 封面 | `oil-cover` | `~/.agents/skills/oil-cover` | 已包脚本模式三画幅生成 | 提炼主标题、看错别字、决定是否重跑某一画幅 |
+-| 发布文案语气 | `oil-tone` | `~/.agents/skills/oil-tone` | 不执行；写标题简介时读档案 | 成稿必须过 `tone_lint.py` 再通读 |
+-| 公众号图文 | `oil-video-article` | `~/.agents/skills/oil-video-article` | 识别 `公众号文章/` | 从无头像屏幕轨截图、按 oil-tone 写文章 |
+-| 四平台视频草稿 | `video-publisher` | `~/.agents/skills/video-publisher` | 读 `auto-publish.json` 显示状态 | Ego 上传、停在最终发布按钮前、人点发布 |
++| 剪辑工程 | `screen-studio-editor` | 用户 Skill 目录 | 现在只绑定和打开工程 | 审查删除、Screen Studio 里预览、手动导出 |
++| 字幕 | `oil-subtitle` | 用户 Skill 目录 | clone 后必须运行 `setup.sh`；已包预览编辑器、转录、按稿烧录 | 校对不确定词、确认预览后再烧 |
++| 封面 | `oil-cover` | 用户 Skill 目录 | 已包脚本模式三画幅生成 | 提炼主标题、看错别字、决定是否重跑某一画幅 |
++| 公众号图文 | `oil-video-article`、`wechat-publisher` | 插件内置 | 整理文章并按用户选择创建公众号草稿 | 检查文章和草稿、最终群发 |
++| 四平台视频草稿 | `video-publisher` | 插件内置 | 根据工作台私有配置准备草稿并保留页面 | 检查草稿、点击最终发表或定时发布 |
+ 
+ 字幕脚本入口以 oil-subtitle 为准：`bailian_transcribe.py` → `review_subtitles.py` → `prepare_subtitles.py` → `preview_editor.py`，用户确认后再 `burn_subtitles.py`（有审过的 SRT 用 `--srt-input`）。不要在预览前烧录。封面脚本是 `generate_oil_cover.py`，主标题由调用方按 oil-cover 提炼后传入 `--title`，Key 用环境变量 `ZENMUX_API_KEY`。不要改 skill 仓库里的用户路径和密钥。
+ 
 diff --git a/package.json b/package.json
 index ac9e389..bfca1cc 100644
 --- a/package.json
@@ -28,10 +204,27 @@ index ac9e389..bfca1cc 100644
    "dependencies": {
      "@deepseek-ai/dsh-tools": "0.1.0-rc.6 || 0.1.0-rc.7",
 diff --git a/scripts/check-release.mjs b/scripts/check-release.mjs
-index 04d27f2..89603a6 100644
+index 04d27f2..9d04517 100644
 --- a/scripts/check-release.mjs
 +++ b/scripts/check-release.mjs
-@@ -127,8 +127,8 @@ function checkRelease(root) {
+@@ -19,8 +19,6 @@ const REQUIRED_FILES = [
+   "src/guide.ts",
+   "src/platforms.ts",
+   "src/client/publishPlatforms.ts",
+-  "src/settingsContract.ts",
+-  "src/settingsHost.ts",
+   "src/client/settingsSlot.ts",
+   "tests/creatorSkill.test.ts",
+   "tests/capabilities.test.ts",
+@@ -28,7 +26,6 @@ const REQUIRED_FILES = [
+   "tests/platforms.test.ts",
+   "tests/creatorSettings.test.ts",
+   "tests/contentInspector.test.ts",
+-  "tests/settingsHost.test.ts",
+   "tests/settingsSlot.test.ts",
+   "README.md",
+   "assets/readme/hero.svg",
+@@ -127,8 +124,8 @@ function checkRelease(root) {
    if (typeof scripts.test !== "string" || scripts.test.length === 0) {
      addFailure("缺少 test 脚本");
    }
@@ -218,7 +411,7 @@ index 118add5..6d87c91 100644
  
    return {
 diff --git a/src/client/ContentInspector.css b/src/client/ContentInspector.css
-index e67d7f0..6e3b379 100644
+index e67d7f0..af3ce05 100644
 --- a/src/client/ContentInspector.css
 +++ b/src/client/ContentInspector.css
 @@ -14,17 +14,6 @@
@@ -239,7 +432,7 @@ index e67d7f0..6e3b379 100644
  [data-plugin="dsh-oil-creator"][data-surface="inspector"] .header {
    flex: none;
    padding: 12px 16px 0 16px;
-@@ -309,16 +298,109 @@
+@@ -309,16 +298,117 @@
    gap: 10px;
  }
  
@@ -343,17 +536,25 @@ index e67d7f0..6e3b379 100644
 +  color: var(--dsw-alias-state-success-primary);
 +}
 +
-+[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareBlocked {
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareBlocked,
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareSkipped {
 +  max-width: 60%;
 +  overflow-wrap: anywhere;
-+  color: var(--dsw-alias-state-error-primary);
 +  text-align: right;
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareBlocked {
++  color: var(--dsw-alias-state-error-primary);
++}
++
++[data-plugin="dsh-oil-creator"][data-surface="inspector"] .prepareSkipped {
++  color: var(--dsw-alias-label-secondary);
 +}
 +
  [data-plugin="dsh-oil-creator"][data-surface="inspector"] .scriptEditor {
    display: block;
    flex: 1;
-@@ -481,20 +563,3 @@
+@@ -481,20 +571,3 @@
    color: var(--dsw-alias-label-secondary);
    font: var(--dsw-font-markdown-small);
  }
@@ -375,7 +576,7 @@ index e67d7f0..6e3b379 100644
 -  }
 -}
 diff --git a/src/client/ContentInspector.tsx b/src/client/ContentInspector.tsx
-index e98032b..e34693f 100644
+index e98032b..22587f6 100644
 --- a/src/client/ContentInspector.tsx
 +++ b/src/client/ContentInspector.tsx
 @@ -12,22 +12,38 @@ import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-cli
@@ -612,7 +813,7 @@ index e98032b..e34693f 100644
      });
    }, [selectedId, detail?.subtitleJob.status]);
  
-@@ -355,67 +416,68 @@ export function ContentInspector({
+@@ -355,67 +416,73 @@ export function ContentInspector({
      if (!expectSubtitlePreview.current || selectedId === null || !ready()) return;
      if (detail?.subtitleJob.status === "done") {
        expectSubtitlePreview.current = false;
@@ -697,7 +898,12 @@ index e98032b..e34693f 100644
 +  const missingDraftCoverRatios = detail === undefined
 +    ? []
 +    : missingSelectedCoverRatios(detail.covers, draftPlatforms);
-+  const prepareOutcome = prepareResult === undefined ? undefined : preparePublishOutcome(prepareResult);
++  const prepareOutcome = prepareResult === undefined
++    ? undefined
++    : preparePublishOutcome(prepareResult, detail?.publish);
++  const hasUnpublishedPreparedVideo = prepareResult?.selectedPlatforms.some((platform) =>
++    detail?.publish[platform].status !== "published"
++  ) === true;
 +  const prepareDisabled = detail === undefined || isPreparePublishDisabled({
 +    busy,
 +    platformSettingsPending,
@@ -712,7 +918,7 @@ index e98032b..e34693f 100644
    const publishedCount = detail === undefined
      ? 0
      : visiblePlatforms.filter((platform) => detail.publish[platform.key].status === "published").length;
-@@ -427,24 +489,70 @@ export function ContentInspector({
+@@ -427,24 +494,70 @@ export function ContentInspector({
      ? "publish"
      : (PIPELINE_STEPS[stageIndex]?.id ?? "topic");
  
@@ -797,7 +1003,7 @@ index e98032b..e34693f 100644
    };
  
    const onGenerateCover = (): void => {
-@@ -457,12 +565,16 @@ export function ContentInspector({
+@@ -457,12 +570,16 @@ export function ContentInspector({
        setActionError(t("inspector.cover.needKey" as CreatorKey));
        return;
      }
@@ -814,7 +1020,7 @@ index e98032b..e34693f 100644
        setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
        setBusy(undefined);
      });
-@@ -478,13 +590,17 @@ export function ContentInspector({
+@@ -478,13 +595,17 @@ export function ContentInspector({
        setActionError(t("inspector.subtitle.needKey" as CreatorKey));
        return;
      }
@@ -832,7 +1038,7 @@ index e98032b..e34693f 100644
        expectSubtitlePreview.current = false;
        setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
        setBusy(undefined);
-@@ -501,12 +617,16 @@ export function ContentInspector({
+@@ -501,12 +622,16 @@ export function ContentInspector({
        setActionError(t("inspector.subtitle.needDraft" as CreatorKey));
        return;
      }
@@ -849,7 +1055,7 @@ index e98032b..e34693f 100644
        setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
        setBusy(undefined);
      });
-@@ -514,16 +634,53 @@ export function ContentInspector({
+@@ -514,16 +639,53 @@ export function ContentInspector({
  
    const onPreviewSubtitle = (): void => {
      if (detail === undefined) return;
@@ -903,7 +1109,7 @@ index e98032b..e34693f 100644
        const login = result.platforms
          .filter((page) => page.loginRequired === true)
          .map((page) => {
-@@ -540,8 +697,9 @@ export function ContentInspector({
+@@ -540,8 +702,9 @@ export function ContentInspector({
        setBusy(undefined);
        return getContent(detail.id);
      }).then((next) => {
@@ -914,7 +1120,7 @@ index e98032b..e34693f 100644
        setActionError(cause instanceof Error ? cause.message : t("empty.error" as CreatorKey));
        setBusy(undefined);
      });
-@@ -591,19 +749,7 @@ export function ContentInspector({
+@@ -591,19 +754,7 @@ export function ContentInspector({
    const currentStepMeta = PIPELINE_STEPS.find((step) => step.id === currentStep);
  
    return (
@@ -935,7 +1141,7 @@ index e98032b..e34693f 100644
        <header className="header">
          <div className="titleRow">
            <div className="title">
-@@ -615,7 +761,9 @@ export function ContentInspector({
+@@ -615,7 +766,9 @@ export function ContentInspector({
                  type="button"
                  className="close"
                  aria-label={t("inspector.openFolder" as CreatorKey)}
@@ -946,7 +1152,7 @@ index e98032b..e34693f 100644
                >
                  <IconFolderOpenOutline16 size={14} />
                </button>
-@@ -624,10 +772,7 @@ export function ContentInspector({
+@@ -624,10 +777,7 @@ export function ContentInspector({
                type="button"
                className="close"
                aria-label={t("inspector.close" as CreatorKey)}
@@ -958,7 +1164,7 @@ index e98032b..e34693f 100644
              >
                <IconCloseOutline16 size={14} />
              </button>
-@@ -653,6 +798,9 @@ export function ContentInspector({
+@@ -653,6 +803,9 @@ export function ContentInspector({
          {error === undefined && detail === undefined && (
            <div className="empty">{t("empty.loading" as CreatorKey)}</div>
          )}
@@ -968,7 +1174,7 @@ index e98032b..e34693f 100644
          {detail !== undefined && tab === "overview" && (
            <>
              <div className="lede">
-@@ -728,8 +876,8 @@ export function ContentInspector({
+@@ -728,8 +881,8 @@ export function ContentInspector({
                >
                  {currentStep === "topic" && (
                    <ActionBar>
@@ -979,7 +1185,7 @@ index e98032b..e34693f 100644
                      </ActionButton>
                    </ActionBar>
                  )}
-@@ -737,9 +885,10 @@ export function ContentInspector({
+@@ -737,9 +890,10 @@ export function ContentInspector({
                    <ActionBar>
                      <ActionButton
                        tone="primary"
@@ -992,7 +1198,7 @@ index e98032b..e34693f 100644
                      </ActionButton>
                    </ActionBar>
                  )}
-@@ -755,13 +904,14 @@ export function ContentInspector({
+@@ -755,13 +909,14 @@ export function ContentInspector({
                      <ActionBar>
                        <ActionButton
                          tone="primary"
@@ -1011,7 +1217,7 @@ index e98032b..e34693f 100644
                          </ActionButton>
                        )}
                      </ActionBar>
-@@ -769,11 +919,163 @@ export function ContentInspector({
+@@ -769,11 +924,171 @@ export function ContentInspector({
                  )}
                </Surface>
              )}
@@ -1127,11 +1333,15 @@ index e98032b..e34693f 100644
 +                  {prepareResult !== undefined && (
 +                    <div className="prepareResults">
 +                      {prepareResult.selectedPlatforms.map((platform) => {
++                        if (detail.publish[platform].status === "published") return null;
 +                        const definition = PUBLISH_UI_PLATFORMS.find((item) => item.key === platform);
 +                        const result = prepareResult.video.platforms?.[publisherPlatformKey(platform)];
 +                        if (definition === undefined || result === undefined) return null;
++                        const message = typeof result.blocker?.message === "string"
++                          ? result.blocker.message
++                          : undefined;
 +                        const code = typeof result.blocker?.code === "string" ? result.blocker.code : undefined;
-+                        const detailText = [code, ...result.missing].filter(Boolean).join(" · ");
++                        const detailText = message ?? code ?? result.status;
 +                        return (
 +                          <div key={platform} className="prepareResultRow">
 +                            <span className="publishName">
@@ -1141,12 +1351,12 @@ index e98032b..e34693f 100644
 +                            <span className={result.ready ? "prepareReady" : "prepareBlocked"}>
 +                              {result.ready
 +                                ? t("inspector.prepare.ready" as CreatorKey)
-+                                : detailText || result.status}
++                                : detailText}
 +                            </span>
 +                          </div>
 +                        );
 +                      })}
-+                      {prepareResult.video.status === "blocked" && (
++                      {prepareOutcome !== "success" && hasUnpublishedPreparedVideo && prepareResult.video.status === "blocked" && (
 +                        <div className="prepareDetail">{prepareResult.video.detail}</div>
 +                      )}
 +                      {prepareResult.wechatOfficialAccount !== undefined && (
@@ -1154,11 +1364,15 @@ index e98032b..e34693f 100644
 +                          <span>{t("inspector.prepare.articleLabel" as CreatorKey)}</span>
 +                          <span className={prepareResult.wechatOfficialAccount.status === "readyForReview"
 +                            ? "prepareReady"
-+                            : "prepareBlocked"}
++                            : prepareResult.wechatOfficialAccount.status === "blocked"
++                              ? "prepareBlocked"
++                              : "prepareSkipped"}
 +                          >
 +                            {prepareResult.wechatOfficialAccount.status === "readyForReview"
 +                              ? t("inspector.prepare.ready" as CreatorKey)
-+                              : prepareResult.wechatOfficialAccount.detail}
++                              : prepareResult.wechatOfficialAccount.status === "skipped"
++                                ? t("inspector.prepare.articleSkipped" as CreatorKey)
++                                : prepareResult.wechatOfficialAccount.detail}
 +                          </span>
 +                        </div>
 +                      )}
@@ -1178,7 +1392,7 @@ index e98032b..e34693f 100644
                  <Surface
                    title={t("inspector.sync.title" as CreatorKey)}
                    hint={syncHint ?? t((platformSettingsPending
-@@ -813,7 +1115,7 @@ export function ContentInspector({
+@@ -813,7 +1128,7 @@ export function ContentInspector({
                                  anchor={(
                                    <StatusPill
                                      tone={PUBLISH_TONE[row.status]}
@@ -1187,7 +1401,7 @@ index e98032b..e34693f 100644
                                      aria-haspopup="menu"
                                      aria-label={`${t(platform.label)}：${t(PUBLISH_KEY[row.status])}`}
                                      onClick={() => {
-@@ -953,10 +1255,8 @@ export function ContentInspector({
+@@ -953,10 +1268,8 @@ export function ContentInspector({
                  )}
                </ActionBar>
              )}
@@ -1200,7 +1414,7 @@ index e98032b..e34693f 100644
                    <JobNote tone="running">
                      {t((detail.subtitleJob.status === "running"
                        ? "inspector.subtitle.generating"
-@@ -989,14 +1289,6 @@ export function ContentInspector({
+@@ -989,14 +1302,6 @@ export function ContentInspector({
            </>
          )}
        </div>
@@ -1613,19 +1827,20 @@ index 679cc7a..d09f942 100644
    openSubtitlePreview: (id: string) => Promise<SubtitlePreviewResult>;
    startSubtitleBurn: (id: string) => Promise<ContentDetail>;
 diff --git a/src/client/index.tsx b/src/client/index.tsx
-index 799bab6..3de1bfb 100644
+index 799bab6..dc36f95 100644
 --- a/src/client/index.tsx
 +++ b/src/client/index.tsx
-@@ -1,6 +1,6 @@
+@@ -1,4 +1,4 @@
 -import type { ClientContext, WorkspaceId } from "@deepseek-ai/dsh-client-runtime/client";
 +import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
  import type {} from "@deepseek-ai/dsh-client-locale/client";
  import type {} from "@deepseek-ai/dsh-client-ui-layout/client";
  import type {} from "@deepseek-ai/dsh-api-remotes/client";
- import type {} from "@deepseek-ai/dsh-client-connection/client";
+@@ -6,11 +6,11 @@ import type {} from "@deepseek-ai/dsh-client-connection/client";
  import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
-@@ -9,8 +10,9 @@ import { TYPERT_REMOTE } from "../remote.ts";
- import { CREATOR_SETTINGS_NAMESPACE } from "../settingsContract.ts";
+ 
+ import { TYPERT_REMOTE } from "../remote.ts";
+-import { CREATOR_SETTINGS_NAMESPACE } from "../settingsContract.ts";
  import { startLibraryLiveSync } from "./catalogSync.ts";
  import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
 -import { releaseShellChrome } from "./contentSelection.ts";
@@ -1635,7 +1850,7 @@ index 799bab6..3de1bfb 100644
  import type {
    ContentDetail,
    ContentFilter,
-@@ -20,6 +22,8 @@ import type {
+@@ -20,6 +20,8 @@ import type {
    CreatorProfile,
    LibrarySettings,
    ListContentsResult,
@@ -1644,7 +1859,7 @@ index 799bab6..3de1bfb 100644
    PublishMark,
    PublishPlatform,
    SubtitlePreviewResult,
-@@ -29,19 +33,19 @@ import type {
+@@ -29,19 +31,19 @@ import type {
  } from "../types.ts";
  import { ContentInspector } from "./ContentInspector.tsx";
  import {
@@ -1669,7 +1884,7 @@ index 799bab6..3de1bfb 100644
  import {
    registerCreatorSettingsCard,
    type CompatibleSettingsSlots,
-@@ -51,6 +55,11 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
+@@ -51,6 +53,12 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
    interface LocaleNamespaceMap {
      "dsh.oil.creator": CreatorKey;
    }
@@ -1677,11 +1892,12 @@ index 799bab6..3de1bfb 100644
 +  interface SlotMap {
 +    "workbench.content": { kind: "single"; scope: "root" };
 +    "sidebar.workspaces.auxiliary": { kind: "single"; scope: "root" };
++    "settings.plugins.tab": { kind: "list"; scope: "root" };
 +  }
  }
  
  interface RemoteAnswer<T> {
-@@ -83,6 +97,7 @@ interface OilCreatorRemote {
+@@ -83,6 +91,7 @@ interface OilCreatorRemote {
      status: PublishMark;
      url?: string;
    }) => Promise<RemoteAnswer<ContentDetail>>;
@@ -1689,7 +1905,7 @@ index 799bab6..3de1bfb 100644
    syncPublish: (request: { id?: string; platform?: PublishPlatform; force?: boolean }) => Promise<RemoteAnswer<SyncPublishResult>>;
    openSubtitlePreview: (request: { id: string }) => Promise<RemoteAnswer<SubtitlePreviewResult>>;
    startSubtitleBurn: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
-@@ -92,8 +107,7 @@ interface OilCreatorRemote {
+@@ -92,8 +101,7 @@ interface OilCreatorRemote {
  }
  
  function credentialsOf(ctx: ClientContext): CredentialsClient | undefined {
@@ -1699,7 +1915,7 @@ index 799bab6..3de1bfb 100644
  }
  
  function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
-@@ -103,7 +117,7 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
+@@ -103,7 +111,7 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
    return answer.value;
  }
  
@@ -1708,7 +1924,7 @@ index 799bab6..3de1bfb 100644
  
  export function apply(ctx: ClientContext): void {
    ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-oil-creator: dictionaries");
-@@ -159,8 +173,8 @@ export function apply(ctx: ClientContext): void {
+@@ -159,8 +167,8 @@ export function apply(ctx: ClientContext): void {
        const answer = await remote.getSubtitleText({ id });
        return answer.ok && answer.value !== undefined ? answer.value : { text: "", cues: [] };
      },
@@ -1719,7 +1935,7 @@ index 799bab6..3de1bfb 100644
      getSettings: async () => {
        const remote = remoteOf();
        if (remote === undefined) throw new Error("remote unavailable");
-@@ -237,6 +251,13 @@ export function apply(ctx: ClientContext): void {
+@@ -237,6 +245,13 @@ export function apply(ctx: ClientContext): void {
        bumpLibrary();
        return next;
      },
@@ -1733,7 +1949,7 @@ index 799bab6..3de1bfb 100644
      syncPublish: async (request) => {
        const remote = remoteOf();
        if (remote === undefined) throw new Error("remote unavailable");
-@@ -296,42 +317,27 @@ export function apply(ctx: ClientContext): void {
+@@ -296,42 +311,27 @@ export function apply(ctx: ClientContext): void {
      );
    }, "dsh-oil-creator: content triggers");
  
@@ -1790,7 +2006,7 @@ index 799bab6..3de1bfb 100644
    );
  
    ctx.effect(async () => {
-@@ -345,36 +359,21 @@ export function apply(ctx: ClientContext): void {
+@@ -345,46 +345,31 @@ export function apply(ctx: ClientContext): void {
      }
      bumpProfile();
  
@@ -1840,8 +2056,22 @@ index 799bab6..3de1bfb 100644
 +        stopWorkbench();
        };
      });
-     const stopSettings = ctx.slots.inject("settings.plugin.item", () =>
-@@ -396,7 +395,7 @@ export function apply(ctx: ClientContext): void {
+-    const stopSettings = ctx.slots.inject("settings.plugin.item", () =>
++    const stopSettings = ctx.slots.inject("settings.plugins.tab", () =>
+       registerCreatorSettingsCard(
+         ctx.slots as unknown as CompatibleSettingsSlots,
+         CreatorSettingsCard,
+         {
+-          namespace: CREATOR_SETTINGS_NAMESPACE,
+-          legacyId: "dsh-oil-creator",
+-          legacyOrder: 40,
++          id: "dsh-oil-creator",
++          order: 40,
++          label: () => contentT("settings.title"),
+           locale: NS,
+           inject: () => ({
+             ...face(),
+@@ -396,7 +381,7 @@ export function apply(ctx: ClientContext): void {
  
      return async () => {
        stopLive();
@@ -1851,7 +2081,7 @@ index 799bab6..3de1bfb 100644
        await disposeRemote();
      };
 diff --git a/src/client/locales.ts b/src/client/locales.ts
-index c32d42f..266865e 100644
+index c32d42f..0192915 100644
 --- a/src/client/locales.ts
 +++ b/src/client/locales.ts
 @@ -38,6 +38,7 @@ export const zh = {
@@ -1862,7 +2092,7 @@ index c32d42f..266865e 100644
    "inspector.video.empty": "还没有成片。",
    "inspector.publish.unpublished": "未发布",
    "inspector.publish.draft": "草稿已备",
-@@ -99,6 +100,27 @@ export const zh = {
+@@ -99,6 +100,28 @@ export const zh = {
    "inspector.publish.views": "{n} 播放",
    "inspector.publish.likes": "{n} 赞",
    "inspector.publish.comments": "{n} 评论",
@@ -1887,10 +2117,11 @@ index c32d42f..266865e 100644
 +  "inspector.prepare.skipped": "没有可准备的草稿。",
 +  "inspector.prepare.ready": "草稿待检查",
 +  "inspector.prepare.articleLabel": "公众号文章",
++  "inspector.prepare.articleSkipped": "未发现与当前文章匹配的草稿",
    "settings.title": "内容工作台",
    "settings.description": "内容目录、启用的平台，以及字幕和封面用的 API Key。",
    "settings.libraryRoot": "影片目录",
-@@ -114,11 +136,15 @@ export const zh = {
+@@ -114,11 +137,15 @@ export const zh = {
    "settings.platform.wechat": "视频号",
    "settings.libraryRootEmpty": "尚未选择",
    "settings.pick": "选择",
@@ -1906,7 +2137,7 @@ index c32d42f..266865e 100644
    "settings.expand": "展开",
    "settings.collapse": "收起",
    "settings.secrets": "接口密钥",
-@@ -129,8 +155,9 @@ export const zh = {
+@@ -129,8 +156,9 @@ export const zh = {
    "settings.capability.subtitle": "字幕",
    "settings.capability.cover": "封面",
    "settings.capability.editing": "自动剪辑",
@@ -1917,7 +2148,7 @@ index c32d42f..266865e 100644
    "settings.capability.ego": "Ego Browser",
    "settings.state.ready": "可用",
    "settings.state.missing": "不可用",
-@@ -200,6 +227,7 @@ export const en = {
+@@ -200,6 +228,7 @@ export const en = {
    "inspector.article.missing": "Not written",
    "inspector.article.empty": "No article yet. Finished drafts go in this episode's 公众号文章/ folder.",
    "inspector.readyToRecord": "Ready to record",
@@ -1925,7 +2156,7 @@ index c32d42f..266865e 100644
    "inspector.video.empty": "No video yet.",
    "inspector.publish.unpublished": "Not published",
    "inspector.publish.draft": "Draft ready",
-@@ -261,6 +289,27 @@ export const en = {
+@@ -261,6 +290,28 @@ export const en = {
    "inspector.publish.views": "{n} views",
    "inspector.publish.likes": "{n} likes",
    "inspector.publish.comments": "{n} comments",
@@ -1950,10 +2181,11 @@ index c32d42f..266865e 100644
 +  "inspector.prepare.skipped": "There were no drafts to prepare.",
 +  "inspector.prepare.ready": "Draft ready for review",
 +  "inspector.prepare.articleLabel": "WeChat article",
++  "inspector.prepare.articleSkipped": "No matching draft was found for the current article",
    "settings.title": "Content workbench",
    "settings.description": "Library folder, enabled platforms, and the API keys for subtitles and covers.",
    "settings.libraryRoot": "Library folder",
-@@ -276,11 +325,15 @@ export const en = {
+@@ -276,11 +327,15 @@ export const en = {
    "settings.platform.wechat": "Channels",
    "settings.libraryRootEmpty": "Not chosen",
    "settings.pick": "Choose",
@@ -1969,7 +2201,7 @@ index c32d42f..266865e 100644
    "settings.expand": "Expand",
    "settings.collapse": "Collapse",
    "settings.secrets": "API keys",
-@@ -291,8 +344,9 @@ export const en = {
+@@ -291,8 +346,9 @@ export const en = {
    "settings.capability.subtitle": "Subtitles",
    "settings.capability.cover": "Covers",
    "settings.capability.editing": "Auto editing",
@@ -2027,21 +2259,22 @@ index 0000000..e93a258
 +  return picker.pickDirectory();
 +}
 diff --git a/src/client/publishPlatforms.ts b/src/client/publishPlatforms.ts
-index 3d7fade..48de415 100644
+index 3d7fade..804d9f1 100644
 --- a/src/client/publishPlatforms.ts
 +++ b/src/client/publishPlatforms.ts
-@@ -1,5 +1,9 @@
+@@ -1,5 +1,10 @@
  import { PUBLISH_PLATFORM_DEFINITIONS, PUBLISH_PLATFORMS } from "../platforms.ts";
 -import type { PublishPlatform } from "../types.ts";
 +import type {
 +  ContentCovers,
++  ContentPublish,
 +  PreparePublishResult,
 +  PublishPlatform,
 +} from "../types.ts";
  import type { CreatorKey } from "./locales.ts";
  import type { PlatformId } from "./PlatformMark.tsx";
  
-@@ -28,3 +32,73 @@ export function isPublishSyncDisabled(
+@@ -28,3 +33,91 @@ export function isPublishSyncDisabled(
  ): boolean {
    return busy !== undefined || platformSettingsPending || selectEnabledPublishPlatforms(enabledPlatforms).length === 0;
  }
@@ -2102,10 +2335,28 @@ index 3d7fade..48de415 100644
 +
 +export type PreparePublishOutcome = "success" | "partial" | "blocked" | "skipped";
 +
-+export function preparePublishOutcome(result: PreparePublishResult): PreparePublishOutcome {
-+  const steps = [result.video, result.wechatOfficialAccount].filter((step) => step !== undefined);
-+  const ready = steps.filter((step) => step.status === "readyForReview").length;
-+  const blocked = steps.filter((step) => step.status === "blocked").length;
++export function preparePublishOutcome(
++  result: PreparePublishResult,
++  publish?: ContentPublish,
++): PreparePublishOutcome {
++  const unpublishedPlatforms = result.selectedPlatforms.filter((platform) =>
++    publish?.[platform].status !== "published"
++  );
++  const videoSteps = unpublishedPlatforms.length === 0
++    ? []
++    : result.video.platforms === undefined
++      ? [result.video.status]
++      : unpublishedPlatforms.map((platform) =>
++        result.video.platforms?.[publisherPlatformKey(platform)]?.ready === true
++          ? "readyForReview" as const
++          : "blocked" as const
++      );
++  const steps = [
++    ...videoSteps,
++    ...(result.wechatOfficialAccount === undefined ? [] : [result.wechatOfficialAccount.status]),
++  ];
++  const ready = steps.filter((status) => status === "readyForReview").length;
++  const blocked = steps.filter((status) => status === "blocked").length;
 +  if (ready > 0 && blocked > 0) return "partial";
 +  if (blocked > 0) return "blocked";
 +  if (ready > 0) return "success";
@@ -2149,9 +2400,39 @@ index 0000000..8fadef6
 +    return token.id === this.#id && token.generation === this.#generation;
 +  }
 +}
+diff --git a/src/client/settingsSlot.ts b/src/client/settingsSlot.ts
+index 34f05f6..6bab37b 100644
+--- a/src/client/settingsSlot.ts
++++ b/src/client/settingsSlot.ts
+@@ -9,18 +9,18 @@ export function registerCreatorSettingsCard(
+   slots: CompatibleSettingsSlots,
+   component: unknown,
+   options: {
+-    namespace: string;
+-    legacyId: string;
+-    legacyOrder: number;
++    id: string;
++    order: number;
++    label: () => string;
+     locale: string;
+     inject: () => object;
+   },
+ ): () => void {
+   return slots.register({
+-    name: "settings.plugin.item",
+-    key: options.namespace,
+-    id: options.legacyId,
+-    order: options.legacyOrder,
++    name: "settings.plugins.tab",
++    id: options.id,
++    order: options.order,
++    label: options.label,
+     locale: options.locale,
+     inject: options.inject,
+   }, component);
 diff --git a/src/client/sidebar/ContentMainPanel.css b/src/client/sidebar/ContentMainPanel.css
 new file mode 100644
-index 0000000..5dad611
+index 0000000..5bfcacf
 --- /dev/null
 +++ b/src/client/sidebar/ContentMainPanel.css
 @@ -0,0 +1,16 @@
@@ -2228,6 +2509,27 @@ index c2f280f..eaf600c 100644
            >
              <span className="rowCover">
                <CoverThumb
+diff --git a/src/collectPublish.ts b/src/collectPublish.ts
+index c4797f5..39d9704 100644
+--- a/src/collectPublish.ts
++++ b/src/collectPublish.ts
+@@ -1,4 +1,5 @@
+ import { PUBLISH_PLATFORM_DEFINITIONS, PUBLISH_PLATFORMS } from "./platforms.ts";
++import { removePreparedPlatform } from "./publishStatus.ts";
+ import type { ContentPublish, OverlayItem, OverlayPublish, PublishPlatform } from "./types.ts";
+ 
+ export interface CollectedPost {
+@@ -238,7 +239,9 @@ export function applyMatchesToOverlay(
+     if (match.post.likes !== undefined) entry.likes = match.post.likes;
+     if (match.post.comments !== undefined) entry.comments = match.post.comments;
+     publish[match.platform] = entry;
+-    next[match.id] = { ...current, publish };
++    const updated = { ...current, publish };
++    removePreparedPlatform(updated, match.platform);
++    next[match.id] = updated;
+   }
+   return next;
+ }
 diff --git a/src/creatorSkill.ts b/src/creatorSkill.ts
 index 0c10363..ea34965 100644
 --- a/src/creatorSkill.ts
@@ -2379,6 +2681,28 @@ index 0144b91..7bf2678 100644
      "",
      "## 推进原则",
      "- 每次只推进当前缺失的下一步：选题与脚本 → 录制 → 导出成片 → 字幕 → 封面 → 发布 → 数据回收。",
+diff --git a/src/index.ts b/src/index.ts
+index b2c450e..569a4ba 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -4,7 +4,6 @@ import { Config } from "./config.ts";
+ import { registerCreatorWorkbenchSkill } from "./creatorSkill.ts";
+ import { registerLibraryPrompt } from "./libraryPrompt.ts";
+ import { OilCreatorService } from "./service.ts";
+-import { registerCreatorSettingsNamespace } from "./settingsHost.ts";
+ import { registerCreatorTools } from "./tools.ts";
+ 
+ export const name = "dsh-oil-creator";
+@@ -13,9 +12,6 @@ export type { Config as ConfigType } from "./config.ts";
+ 
+ export function apply(ctx: Context, config: Config): void {
+   const service = new OilCreatorService(ctx, config);
+-  ctx.inject(["settings"], (settingsCtx) => {
+-    registerCreatorSettingsNamespace(settingsCtx.settings);
+-  });
+   ctx.inject(["tools"], (toolsCtx) => {
+     registerCreatorTools(toolsCtx as never, service);
+   });
 diff --git a/src/libraryPrompt.ts b/src/libraryPrompt.ts
 index 66022ee..08e2e00 100644
 --- a/src/libraryPrompt.ts
@@ -2425,15 +2749,67 @@ index f06161a..7596b7a 100644
        items[id] = next;
      }
    }
+diff --git a/src/publishStatus.ts b/src/publishStatus.ts
+index a46633f..883c8eb 100644
+--- a/src/publishStatus.ts
++++ b/src/publishStatus.ts
+@@ -41,6 +41,47 @@ export function nextPublishMark(status: PublishMark): PublishMark {
+   return "unpublished";
+ }
+ 
++/**
++ * Remove a published platform from any persisted draft-preparation diagnosis.
++ * @param item Persisted content overlay entry.
++ * @param platform Platform confirmed as published.
++ */
++export function removePreparedPlatform(item: OverlayItem, platform: PublishPlatform): void {
++  const preparation = item.publishPreparation;
++  if (preparation === undefined) return;
++  const publisherPlatform = platform === "wechat" ? "wechat_channels" : platform;
++  const platforms = { ...preparation.video.platforms };
++  delete platforms[publisherPlatform];
++  const allSelectedPublished = preparation.selectedPlatforms.every((selected) =>
++    item.publish?.[selected]?.status === "published"
++  );
++  if (allSelectedPublished && preparation.wechatOfficialAccount === undefined) {
++    delete item.publishPreparation;
++    return;
++  }
++  if (allSelectedPublished) {
++    item.publishPreparation = {
++      ...preparation,
++      selectedPlatforms: [],
++      video: { status: "skipped", detail: "No unpublished video drafts remain." },
++    };
++    return;
++  }
++  const remaining = Object.values(platforms).filter((result) => result !== undefined);
++  const blocked = remaining.some((result) => result.ready !== true);
++  item.publishPreparation = {
++    ...preparation,
++    video: {
++      ...preparation.video,
++      status: blocked || remaining.length === 0 ? "blocked" : "readyForReview",
++      detail: blocked || remaining.length === 0
++        ? "One or more unpublished video drafts still need attention."
++        : "Unpublished video drafts are ready for review.",
++      platforms,
++    },
++  };
++}
++
+ export function isPublishMark(value: unknown): value is PublishMark {
+   return value === "unpublished" || value === "draft" || value === "published";
+ }
 diff --git a/src/publishing.ts b/src/publishing.ts
 new file mode 100644
-index 0000000..9490526
+index 0000000..604dc12
 --- /dev/null
 +++ b/src/publishing.ts
-@@ -0,0 +1,796 @@
+@@ -0,0 +1,829 @@
 +import { spawn, spawnSync } from "node:child_process";
 +import { createHash, randomUUID } from "node:crypto";
-+import { constants } from "node:fs";
++import { constants, createReadStream } from "node:fs";
 +import { access, chmod, link, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 +import { delimiter, dirname, join } from "node:path";
 +
@@ -2509,7 +2885,9 @@ index 0000000..9490526
 +  originalRightsConfirmed: boolean;
 +  uploadCovers: boolean;
 +  inspectOnly: boolean;
++  inspectReadyJob?: boolean;
 +  jobId?: string;
++  jobInputFingerprint?: string;
 +  signal: AbortSignal;
 +}
 +
@@ -2800,6 +3178,28 @@ index 0000000..9490526
 +
 +function privateJson(value: unknown): string {
 +  return `${JSON.stringify(value, null, 2)}\n`;
++}
++
++function publisherAssetPaths(payload: Record<string, unknown>): string[] {
++  const paths: string[] = [];
++  if (typeof payload.videoPath === "string") paths.push(payload.videoPath);
++  const cover = payload.cover;
++  if (typeof cover === "object" && cover !== null) {
++    for (const key of ["vertical3x4Path", "horizontal4x3Path", "horizontal16x9Path"]) {
++      const value = Reflect.get(cover, key);
++      if (typeof value === "string") paths.push(value);
++    }
++  }
++  return [...new Set(paths)].sort();
++}
++
++async function publisherInputFingerprint(payload: Record<string, unknown>): Promise<string> {
++  const hasher = createHash("sha256").update(privateJson(payload));
++  for (const path of publisherAssetPaths(payload)) {
++    hasher.update(`\0${path}\0`);
++    for await (const chunk of createReadStream(path)) hasher.update(chunk);
++  }
++  return hasher.digest("hex");
 +}
 +
 +async function writePrivateJson(path: string, value: unknown): Promise<void> {
@@ -3115,7 +3515,7 @@ index 0000000..9490526
 +      options.uploadCovers,
 +    );
 +    const itemKey = createHash("sha256").update(options.item.id).digest("hex").slice(0, 12);
-+    const payloadKey = createHash("sha256").update(privateJson(payload)).digest("hex");
++    const payloadKey = await publisherInputFingerprint(payload);
 +    const packagePath = join(paths.packageRoot, `${itemKey}-${payloadKey}.json`);
 +    await writeImmutablePrivateJson(packagePath, payload);
 +
@@ -3129,9 +3529,12 @@ index 0000000..9490526
 +      "--no-cleanup-stale-spaces",
 +    ];
 +    for (const platform of options.platforms) args.push("--platform", PUBLISHER_PLATFORM[platform]);
-+    if (options.jobId !== undefined) args.push("--job-id", options.jobId);
++    const reusableJob = options.jobId !== undefined && options.jobInputFingerprint === payloadKey;
++    if (reusableJob && options.jobId !== undefined) args.push("--job-id", options.jobId);
 +    if (options.originalRightsConfirmed) args.push("--confirm-original-rights");
-+    if (options.inspectOnly) args.push("--inspect-only");
++    if (options.inspectOnly || (options.inspectReadyJob === true && reusableJob)) {
++      args.push("--inspect-only");
++    }
 +
 +    const runCommand = dependencies.runCommand ?? runPublishingCommand;
 +    const result = await runCommand(
@@ -3153,6 +3556,7 @@ index 0000000..9490526
 +      detail: ready
 +        ? "Video drafts are ready for review in retained Ego task spaces. Final publication was not performed."
 +        : platformBlockerDetail(platforms, outputDetail(result)),
++      inputFingerprint: payloadKey,
 +      platforms,
 +    };
 +    if (typeof summary.jobId === "string") step.jobId = summary.jobId;
@@ -3174,8 +3578,13 @@ index 0000000..9490526
 +  }
 +}
 +
-+export async function articleInputFingerprint(path: string): Promise<string> {
-+  return createHash("sha256").update(await readFile(path)).digest("hex");
++export async function articleInputFingerprint(path: string, thumbPath?: string): Promise<string> {
++  const hasher = createHash("sha256").update(await readFile(path));
++  if (thumbPath !== undefined) {
++    hasher.update(`\0${thumbPath}\0`);
++    hasher.update(await readFile(thumbPath));
++  }
++  return hasher.digest("hex");
 +}
 +
 +export async function prepareWechatArticleDraft(
@@ -3198,7 +3607,7 @@ index 0000000..9490526
 +  const thumb = options.item.covers["16x9"] ?? options.item.covers["4x3"] ?? options.item.covers["3x4"];
 +  if (thumb !== undefined) args.push("--thumb", thumb);
 +  try {
-+    const inputFingerprint = await articleInputFingerprint(options.item.articlePath);
++    const inputFingerprint = await articleInputFingerprint(options.item.articlePath, thumb);
 +    const runCommand = dependencies.runCommand ?? runPublishingCommand;
 +    const result = await runCommand(
 +      process.execPath,
@@ -3257,6 +3666,41 @@ index 21e2b08..fe3c90f 100644
    invocation("syncPublish", syncPublishRequestSchema, syncPublishResultSchema),
    invocation("setScript", setScriptRequestSchema, contentDetailSchema),
    invocation("openSubtitlePreview", idRequestSchema, subtitlePreviewResultSchema),
+diff --git a/src/runtimePaths.ts b/src/runtimePaths.ts
+index 940d5bc..350f42d 100644
+--- a/src/runtimePaths.ts
++++ b/src/runtimePaths.ts
+@@ -1,5 +1,5 @@
+ import { homedir } from "node:os";
+-import { join } from "node:path";
++import { delimiter, join } from "node:path";
+ 
+ import { pathExists } from "./artifacts.ts";
+ 
+@@ -55,6 +55,23 @@ export function extraBinDirs(
+   return dirs;
+ }
+ 
++export function withExecutableSearchPath(
++  env: NodeJS.ProcessEnv = process.env,
++  platform: NodeJS.Platform = process.platform,
++  home = homedir(),
++): NodeJS.ProcessEnv {
++  const next = { ...env };
++  const key = platform === "win32" && env.PATH === undefined && env.Path !== undefined
++    ? "Path"
++    : "PATH";
++  const directories = [
++    ...pathEnvValue(env).split(delimiter).filter(Boolean),
++    ...extraBinDirs(platform, home, env),
++  ];
++  next[key] = [...new Set(directories)].join(delimiter);
++  return next;
++}
++
+ export function egoInstallCandidates(
+   platform: NodeJS.Platform,
+   home = homedir(),
 diff --git a/src/schemas.ts b/src/schemas.ts
 index eadbf4e..ec0fbc6 100644
 --- a/src/schemas.ts
@@ -3324,13 +3768,15 @@ index eadbf4e..ec0fbc6 100644
  });
  
 diff --git a/src/service.ts b/src/service.ts
-index 3fb4708..9a9a61d 100644
+index 3fb4708..bb8c2fb 100644
 --- a/src/service.ts
 +++ b/src/service.ts
-@@ -57,6 +57,15 @@ import {
+@@ -56,7 +56,16 @@ import {
+   saveOverlay,
    withOverlayLock,
  } from "./overlay.ts";
- import { patchOverlayPublish } from "./publishStatus.ts";
+-import { patchOverlayPublish } from "./publishStatus.ts";
++import { patchOverlayPublish, removePreparedPlatform } from "./publishStatus.ts";
 +import {
 +  articleInputFingerprint,
 +  isExactPreparedArticle,
@@ -3389,7 +3835,7 @@ index 3fb4708..9a9a61d 100644
    subtitleSkill(): Promise<{ root: string; python: string }> {
      return resolveSubtitleSkill(this.subtitleSkillDir());
    }
-@@ -307,6 +334,138 @@ export class OilCreatorService extends TypertRemoteService {
+@@ -307,6 +334,147 @@ export class OilCreatorService extends TypertRemoteService {
      };
    }
  
@@ -3446,8 +3892,10 @@ index 3fb4708..9a9a61d 100644
 +      && previous.selectedPlatforms.length === platforms.length
 +      && previous.selectedPlatforms.every((platform, index) => platform === platforms[index]);
 +    const previousJobId = samePlatforms ? previous.video.jobId : undefined;
-+    const inspectExisting = request.inspectOnly === true
-+      || (samePlatforms && previous?.video.status === "readyForReview" && previousJobId !== undefined);
++    const previousJobInputFingerprint = samePlatforms ? previous.video.inputFingerprint : undefined;
++    const inspectReadyJob = samePlatforms
++      && previous?.video.status === "readyForReview"
++      && previousJobId !== undefined;
 +
 +    const videoPromise = prepareVideoDrafts({
 +      item,
@@ -3456,14 +3904,19 @@ index 3fb4708..9a9a61d 100644
 +      dataDir: this.dataDir,
 +      originalRightsConfirmed: request.originalRightsConfirmed === true,
 +      uploadCovers: request.uploadCovers === true,
-+      inspectOnly: inspectExisting,
++      inspectOnly: request.inspectOnly === true,
++      inspectReadyJob,
 +      ...(previousJobId === undefined ? {} : { jobId: previousJobId }),
++      ...(previousJobInputFingerprint === undefined ? {} : {
++        jobInputFingerprint: previousJobInputFingerprint,
++      }),
 +      signal,
 +    });
 +    const previousArticle = previous?.wechatOfficialAccount;
++    const articleThumb = item.covers["16x9"] ?? item.covers["4x3"] ?? item.covers["3x4"];
 +    const currentArticleFingerprint = item.articlePath === undefined
 +      ? undefined
-+      : await articleInputFingerprint(item.articlePath).catch(() => undefined);
++      : await articleInputFingerprint(item.articlePath, articleThumb).catch(() => undefined);
 +    const exactPersistedArticle = isExactPreparedArticle(
 +      previousArticle,
 +      currentArticleFingerprint,
@@ -3506,29 +3959,39 @@ index 3fb4708..9a9a61d 100644
 +      currentArticleFingerprint,
 +    );
 +
-+    await withOverlayLock(this.dataDir, async () => {
-+      const overlay = await loadOverlay(this.dataDir);
-+      const current = overlay.items[request.id] ?? {};
-+      const next: OverlayItem = { ...current, publishPreparation: persistedResult };
-+      if (request.inspectOnly !== true && video.platforms !== undefined) {
-+        for (const [index, publisherPlatform] of mapPublisherPlatforms(platforms).entries()) {
-+          const platform = platforms[index];
-+          if (platform !== undefined && video.platforms[publisherPlatform]?.ready === true) {
-+            next.publish = patchOverlayPublish(next.publish, platform, "draft");
++    if (request.inspectOnly !== true) {
++      await withOverlayLock(this.dataDir, async () => {
++        const overlay = await loadOverlay(this.dataDir);
++        const current = overlay.items[request.id] ?? {};
++        const next: OverlayItem = { ...current, publishPreparation: persistedResult };
++        if (video.platforms !== undefined) {
++          for (const [index, publisherPlatform] of mapPublisherPlatforms(platforms).entries()) {
++            const platform = platforms[index];
++            if (platform !== undefined && video.platforms[publisherPlatform]?.ready === true) {
++              next.publish = patchOverlayPublish(next.publish, platform, "draft");
++            }
 +          }
 +        }
-+      }
-+      overlay.items[request.id] = next;
-+      await saveOverlay(this.dataDir, overlay);
-+      this.invalidateCatalog();
-+    });
++        overlay.items[request.id] = next;
++        await saveOverlay(this.dataDir, overlay);
++        this.invalidateCatalog();
++      });
++    }
 +    return result;
 +  }
 +
    async getCoverThumb(request: IdRequest, signal: AbortSignal): Promise<CoverThumbResult> {
      signal.throwIfAborted();
      const folderId = request.id.split("::")[0] ?? request.id;
-@@ -995,6 +1154,14 @@ export class OilCreatorService extends TypertRemoteService {
+@@ -564,6 +732,7 @@ export class OilCreatorService extends TypertRemoteService {
+     }
+     return this.patchItem(request.id, (item) => {
+       item.publish = patchOverlayPublish(item.publish, request.platform, request.status, request.url);
++      if (request.status === "published") removePreparedPlatform(item, request.platform);
+     }, signal);
+   }
+ 
+@@ -995,6 +1164,14 @@ export class OilCreatorService extends TypertRemoteService {
    }
  }
  
@@ -3543,27 +4006,61 @@ index 3fb4708..9a9a61d 100644
  function resolveUserPath(path: string): string {
    const expanded = expandHomePath(path);
    if (!isAbsolute(expanded)) throw new Error(`path must be absolute: ${path}`);
+diff --git a/src/settingsContract.ts b/src/settingsContract.ts
+deleted file mode 100644
+index a813c8a..0000000
+--- a/src/settingsContract.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export const CREATOR_SETTINGS_NAMESPACE = "dsh-oil-creator";
 diff --git a/src/settingsHost.ts b/src/settingsHost.ts
-index 1f6b9d9..f4a6f22 100644
+deleted file mode 100644
+index 1f6b9d9..0000000
 --- a/src/settingsHost.ts
-+++ b/src/settingsHost.ts
-@@ -1,5 +1,5 @@
- import Schema from "@deepseek-ai/schemastery";
++++ /dev/null
+@@ -1,20 +0,0 @@
+-import Schema from "@deepseek-ai/schemastery";
 -import { settingsNamespace, type SettingsProvider } from "@deepseek-ai/dsh-settings";
-+import type { SettingsNamespace, SettingsProvider } from "@deepseek-ai/dsh-settings";
- 
- import { CREATOR_SETTINGS_NAMESPACE } from "./settingsContract.ts";
- 
-@@ -13,8 +13,5 @@ export const CREATOR_SETTINGS_DISCOVERY_SCHEMA = Schema.object({});
- export function registerCreatorSettingsNamespace(
-   settings: Pick<SettingsProvider, "register">,
- ): void {
+-
+-import { CREATOR_SETTINGS_NAMESPACE } from "./settingsContract.ts";
+-
+-/**
+- * Harness rc.7 dispatches settings cards only for Host-registered namespaces.
+- * The card's values still live in the plugin overlay and travel through the
+- * typed Remote so rc.6 users and AI tools keep one authoritative data source.
+- */
+-export const CREATOR_SETTINGS_DISCOVERY_SCHEMA = Schema.object({});
+-
+-export function registerCreatorSettingsNamespace(
+-  settings: Pick<SettingsProvider, "register">,
+-): void {
 -  settings.register(
 -    settingsNamespace(CREATOR_SETTINGS_NAMESPACE),
 -    CREATOR_SETTINGS_DISCOVERY_SCHEMA,
 -  );
-+  settings.register(CREATOR_SETTINGS_NAMESPACE as SettingsNamespace, CREATOR_SETTINGS_DISCOVERY_SCHEMA);
- }
+-}
+diff --git a/src/subtitle.ts b/src/subtitle.ts
+index b6035da..dca671f 100644
+--- a/src/subtitle.ts
++++ b/src/subtitle.ts
+@@ -6,7 +6,7 @@ import { basename, dirname, extname, join } from "node:path";
+ import { defaultSubtitleSkillDir } from "./config.ts";
+ 
+ import { pathExists } from "./artifacts.ts";
+-import { resolveVenvPython } from "./runtimePaths.ts";
++import { resolveVenvPython, withExecutableSearchPath } from "./runtimePaths.ts";
+ import type { ContentSummary } from "./types.ts";
+ 
+ export { defaultSubtitleSkillDir } from "./config.ts";
+@@ -175,7 +175,7 @@ export function spawnPython(
+   args: readonly string[],
+   extraEnv?: Record<string, string>,
+ ): ChildProcess {
+-  const env = { ...process.env };
++  const env = withExecutableSearchPath();
+   delete env.DASHSCOPE_API_KEY;
+   delete env.ZENMUX_API_KEY;
+   if (extraEnv !== undefined) Object.assign(env, extraEnv);
 diff --git a/src/tools.ts b/src/tools.ts
 index 0a42e95..d30e008 100644
 --- a/src/tools.ts
@@ -3799,11 +4296,46 @@ index 52bfb48..e1a5b59 100644
    it("sorts by recordedAt: the name date decides, not the last touch", async () => {
      const root = await mkdtemp(join(tmpdir(), "dsh-oil-sort-"));
      const older = join(root, "2026-06-27_old video");
+diff --git a/tests/collectPublish.test.ts b/tests/collectPublish.test.ts
+index 433c23e..0e372b2 100644
+--- a/tests/collectPublish.test.ts
++++ b/tests/collectPublish.test.ts
+@@ -210,7 +210,21 @@ describe("parseCollectOutput", () => {
+ 
+ describe("applyMatchesToOverlay", () => {
+   it("marks matched platforms published and copies metrics", () => {
+-    const next = applyMatchesToOverlay({}, [
++    const next = applyMatchesToOverlay({
++      "2026-08-15_demo": {
++        publishPreparation: {
++          id: "2026-08-15_demo",
++          selectedPlatforms: ["wechat"],
++          video: {
++            status: "blocked",
++            detail: "stale inspection",
++            platforms: {
++              wechat_channels: { status: "blocked", ready: false, missing: ["video"] },
++            },
++          },
++        },
++      },
++    }, [
+       {
+         id: "2026-08-15_demo",
+         platform: "wechat",
+@@ -231,6 +245,7 @@ describe("applyMatchesToOverlay", () => {
+       likes: 12,
+       syncedAt: 1_700_000_000_000,
+     });
++    expect(next["2026-08-15_demo"]?.publishPreparation).toBeUndefined();
+   });
+ });
+ 
 diff --git a/tests/contentInspector.test.ts b/tests/contentInspector.test.ts
-index f939455..906bdf5 100644
+index f939455..c59ac5d 100644
 --- a/tests/contentInspector.test.ts
 +++ b/tests/contentInspector.test.ts
-@@ -1,7 +1,11 @@
+@@ -1,9 +1,14 @@
  import { describe, expect, it } from "vitest";
  
  import {
@@ -3814,8 +4346,11 @@ index f939455..906bdf5 100644
 +  requiresOriginalityConfirmation,
    selectEnabledPublishPlatforms,
  } from "../src/client/publishPlatforms.ts";
++import { emptyPublish } from "../src/publishStatus.ts";
  
-@@ -18,4 +22,55 @@ describe("content inspector enabled platform contract", () => {
+ describe("content inspector enabled platform contract", () => {
+   it("filters platform definitions through enabledPlatforms", () => {
+@@ -18,4 +23,67 @@ describe("content inspector enabled platform contract", () => {
      expect(isPublishSyncDisabled(undefined, false, [])).toBe(true);
      expect(isPublishSyncDisabled(undefined, false, ["wechat"])).toBe(false);
    });
@@ -3852,6 +4387,22 @@ index f939455..906bdf5 100644
 +    })).toBe(false);
 +  });
 +
++  it("ignores stale video blockers after every selected platform is published", () => {
++    const publish = emptyPublish();
++    publish.wechat = { status: "published", source: "overlay" };
++    expect(preparePublishOutcome({
++      id: "demo",
++      selectedPlatforms: ["wechat"],
++      video: {
++        status: "blocked",
++        detail: "stale inspection",
++        platforms: {
++          wechat_channels: { status: "blocked", ready: false, missing: ["video"] },
++        },
++      },
++    }, publish)).toBe("skipped");
++  });
++
 +  it("keeps partial draft preparation visible instead of collapsing to failure", () => {
 +    expect(preparePublishOutcome({
 +      id: "demo",
@@ -3863,10 +4414,6 @@ index f939455..906bdf5 100644
 +          xiaohongshu: { status: "ready", ready: true, missing: [] },
 +          douyin: { status: "blocked", ready: false, missing: ["video"] },
 +        },
-+      },
-+      wechatOfficialAccount: {
-+        status: "readyForReview",
-+        detail: "draft created",
 +      },
 +    })).toBe("partial");
 +  });
@@ -4140,12 +4687,65 @@ index 0000000..11c2e50
 +    expect(() => pickWorkspaceDirectory(ctx as never)).toThrow("directory picker unavailable");
 +  });
 +});
+diff --git a/tests/publishStatus.test.ts b/tests/publishStatus.test.ts
+index a45d257..f5dcabc 100644
+--- a/tests/publishStatus.test.ts
++++ b/tests/publishStatus.test.ts
+@@ -8,7 +8,9 @@ import {
+   nextPublishMark,
+   pickAutoPublishName,
+   publishFromAutoPublish,
++  removePreparedPlatform,
+ } from "../src/publishStatus.ts";
++import type { OverlayItem } from "../src/types.ts";
+ 
+ describe("mapPublisherStatus", () => {
+   it("maps ready to draft and live to published", () => {
+@@ -64,6 +66,38 @@ describe("nextPublishMark", () => {
+   });
+ });
+ 
++describe("removePreparedPlatform", () => {
++  it("keeps the original Job identity while sibling drafts remain", () => {
++    const item: OverlayItem = {
++      publish: { wechat: { status: "published" } },
++      publishPreparation: {
++        id: "demo",
++        selectedPlatforms: ["xiaohongshu", "wechat"],
++        video: {
++          status: "blocked",
++          detail: "wechat blocked",
++          jobId: "job-1",
++          inputFingerprint: "fingerprint-1",
++          platforms: {
++            xiaohongshu: { status: "ready", ready: true, missing: [] },
++            wechat_channels: { status: "blocked", ready: false, missing: ["video"] },
++          },
++        },
++      },
++    };
++    removePreparedPlatform(item, "wechat");
++    expect(item.publishPreparation?.selectedPlatforms).toEqual(["xiaohongshu", "wechat"]);
++    expect(item.publishPreparation?.video).toEqual(expect.objectContaining({
++      status: "readyForReview",
++      jobId: "job-1",
++      inputFingerprint: "fingerprint-1",
++      platforms: {
++        xiaohongshu: { status: "ready", ready: true, missing: [] },
++      },
++    }));
++  });
++});
++
+ describe("pickAutoPublishName", () => {
+   it("prefers the canonical name", () => {
+     expect(pickAutoPublishName(["foo.auto-publish.json", "auto-publish.json"]))
 diff --git a/tests/publishing.test.ts b/tests/publishing.test.ts
 new file mode 100644
-index 0000000..afd00a1
+index 0000000..0918333
 --- /dev/null
 +++ b/tests/publishing.test.ts
-@@ -0,0 +1,297 @@
+@@ -0,0 +1,373 @@
 +import { access, mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 +import { tmpdir } from "node:os";
 +import { join } from "node:path";
@@ -4153,6 +4753,7 @@ index 0000000..afd00a1
 +import { describe, expect, it, vi } from "vitest";
 +
 +import {
++  articleInputFingerprint,
 +  isExactPreparedArticle,
 +  managedVideoPublisherConfig,
 +  mergePreparationHistory,
@@ -4269,6 +4870,17 @@ index 0000000..afd00a1
 +    expect(isExactPreparedArticle(withoutFingerprint, "article-v1")).toBe(false);
 +  });
 +
++  it("includes the selected thumbnail bytes in the article fingerprint", async () => {
++    const root = await mkdtemp(join(tmpdir(), "oil-article-fingerprint-"));
++    const markdown = join(root, "article.md");
++    const thumb = join(root, "cover.png");
++    await writeFile(markdown, "article");
++    await writeFile(thumb, "cover-v1");
++    const first = await articleInputFingerprint(markdown, thumb);
++    await writeFile(thumb, "cover-v2");
++    expect(await articleInputFingerprint(markdown, thumb)).not.toBe(first);
++  });
++
 +  it("preserves article state on video-only retries and video state on article-only runs", () => {
 +    const videoOnly = mergePreparationHistory({
 +      id: "demo",
@@ -4355,6 +4967,8 @@ index 0000000..afd00a1
 +    await mkdir(folder);
 +    await writeFile(publisher, "export {};\n");
 +    await writeFile(video, "video");
++    await writeFile(join(folder, "cover_3x4.png"), "vertical-cover");
++    await writeFile(join(folder, "cover_4x3.png"), "horizontal-cover");
 +    const exactTitle = "A title that must remain exact beyond the Xiaohongshu limit";
 +    await writeFile(join(folder, "publish-package.json"), JSON.stringify({ title: exactTitle, tags: ["AI"] }));
 +    let managedConfigPath = "";
@@ -4409,6 +5023,7 @@ index 0000000..afd00a1
 +    });
 +    expect(result.status).toBe("blocked");
 +    expect(result.jobId).toBe("job-1");
++    expect(result.inputFingerprint).toMatch(/^[a-f0-9]{64}$/);
 +    expect(result.platforms?.xiaohongshu?.ready).toBe(true);
 +    expect(result.platforms?.wechat_channels?.blocker).toEqual({
 +      code: "LOGIN_REQUIRED",
@@ -4416,6 +5031,67 @@ index 0000000..afd00a1
 +    });
 +    expect(result.detail).toContain("wechat_channels: LOGIN_REQUIRED");
 +    await expect(access(managedConfigPath)).rejects.toThrow();
++
++    await prepareVideoDrafts({
++      item: item(folder, video),
++      libraryRoot: root,
++      platforms: ["xiaohongshu", "wechat"],
++      dataDir: join(root, "data"),
++      originalRightsConfirmed: true,
++      uploadCovers: false,
++      inspectOnly: true,
++      jobId: "job-1",
++      jobInputFingerprint: result.inputFingerprint!,
++      signal: new AbortController().signal,
++    }, {
++      findEgo: async () => "/opt/ego/ego-browser",
++      publisherSkillDir: skill,
++      runCommand: run,
++      env: { PATH: "/usr/bin" },
++    });
++    expect(run.mock.calls[1]?.[1]).toEqual(expect.arrayContaining(["--job-id", "job-1"]));
++
++    await prepareVideoDrafts({
++      item: item(folder, video),
++      libraryRoot: root,
++      platforms: ["xiaohongshu", "wechat"],
++      dataDir: join(root, "data"),
++      originalRightsConfirmed: true,
++      uploadCovers: true,
++      inspectOnly: true,
++      jobId: "job-1",
++      jobInputFingerprint: result.inputFingerprint!,
++      signal: new AbortController().signal,
++    }, {
++      findEgo: async () => "/opt/ego/ego-browser",
++      publisherSkillDir: skill,
++      runCommand: run,
++      env: { PATH: "/usr/bin" },
++    });
++    expect(run.mock.calls[2]?.[1]).not.toContain("--job-id");
++    expect(run.mock.calls[2]?.[1]).toContain("--inspect-only");
++
++    await writeFile(video, "replacement-video");
++    await prepareVideoDrafts({
++      item: item(folder, video),
++      libraryRoot: root,
++      platforms: ["xiaohongshu", "wechat"],
++      dataDir: join(root, "data"),
++      originalRightsConfirmed: true,
++      uploadCovers: false,
++      inspectOnly: false,
++      inspectReadyJob: true,
++      jobId: "job-1",
++      jobInputFingerprint: result.inputFingerprint!,
++      signal: new AbortController().signal,
++    }, {
++      findEgo: async () => "/opt/ego/ego-browser",
++      publisherSkillDir: skill,
++      runCommand: run,
++      env: { PATH: "/usr/bin" },
++    });
++    expect(run.mock.calls[3]?.[1]).not.toContain("--job-id");
++    expect(run.mock.calls[3]?.[1]).not.toContain("--inspect-only");
 +  });
 +
 +  it("returns actionable preflight blockers without launching a child", async () => {
@@ -4444,7 +5120,7 @@ index 0000000..afd00a1
 +  });
 +});
 diff --git a/tests/releaseCheck.test.ts b/tests/releaseCheck.test.ts
-index 177167d..0ff1abe 100644
+index 177167d..dd29e50 100644
 --- a/tests/releaseCheck.test.ts
 +++ b/tests/releaseCheck.test.ts
 @@ -7,7 +7,7 @@ import {
@@ -4456,7 +5132,24 @@ index 177167d..0ff1abe 100644
  import { fileURLToPath } from "node:url";
  
  import { describe, expect, it } from "vitest";
-@@ -67,7 +67,7 @@ function createRepository() {
+@@ -21,8 +21,6 @@ const REQUIRED_CHAIN_FILES = [
+   "src/guide.ts",
+   "src/platforms.ts",
+   "src/client/publishPlatforms.ts",
+-  "src/settingsContract.ts",
+-  "src/settingsHost.ts",
+   "src/client/settingsSlot.ts",
+   "tests/creatorSkill.test.ts",
+   "tests/capabilities.test.ts",
+@@ -30,7 +28,6 @@ const REQUIRED_CHAIN_FILES = [
+   "tests/platforms.test.ts",
+   "tests/creatorSettings.test.ts",
+   "tests/contentInspector.test.ts",
+-  "tests/settingsHost.test.ts",
+   "tests/settingsSlot.test.ts",
+ ];
+ 
+@@ -67,7 +64,7 @@ function createRepository() {
          build: buildScript,
          prepare: "npm run build",
          typecheck: "tsc --noEmit",
@@ -4465,7 +5158,7 @@ index 177167d..0ff1abe 100644
          test: "vitest run",
          "release:check": "node scripts/check-release.mjs",
        },
-@@ -102,6 +102,11 @@ function createRepository() {
+@@ -102,6 +99,11 @@ function createRepository() {
      mkdirSync(join(path, ".."), { recursive: true });
      writeFileSync(path, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
    }
@@ -4477,7 +5170,7 @@ index 177167d..0ff1abe 100644
  
    git(repository, "init", "-q");
    git(repository, "config", "user.email", "release-check@example.test");
-@@ -118,6 +123,10 @@ function runReleaseCheck(repository: string) {
+@@ -118,6 +120,10 @@ function runReleaseCheck(repository: string) {
        code: 0,
        output: execFileSync(process.execPath, [releaseCheck, "--root", repository], {
          encoding: "utf8",
@@ -4514,7 +5207,7 @@ index 0000000..847adfd
 +  });
 +});
 diff --git a/tests/service.test.ts b/tests/service.test.ts
-index 32fc346..974467c 100644
+index 32fc346..0611f98 100644
 --- a/tests/service.test.ts
 +++ b/tests/service.test.ts
 @@ -70,6 +70,7 @@ vi.mock("../src/processAlive.ts", async (importOriginal) => {
@@ -4560,8 +5253,170 @@ index 32fc346..974467c 100644
      expect(child.pid).toBeTypeOf("number");
      try {
        const { dataDir, service } = await overlayService({
+@@ -367,3 +373,45 @@ describe("OilCreatorService subtitle job reconcile", () => {
+     }
+   });
+ });
++
++describe("OilCreatorService.setPublish", () => {
++  it("removes stale platform preparation when publication is confirmed", async () => {
++    const dataDir = await mkdtemp(join(tmpdir(), "oil-service-publish-"));
++    const overlay = emptyOverlay();
++    overlay.profile = { enabledPlatforms: ["wechat"] };
++    await saveOverlay(dataDir, overlay);
++    const summary = item("/episode", "/episode/demo.mp4");
++    summary.publishPreparation = {
++      id: summary.id,
++      selectedPlatforms: ["wechat"],
++      video: {
++        status: "blocked",
++        detail: "stale inspection",
++        platforms: {
++          wechat_channels: { status: "blocked", ready: false, missing: ["video"] },
++        },
++      },
++    };
++    const service = Object.create(OilCreatorService.prototype) as OilCreatorService;
++    (service as unknown as { dataDir: string }).dataDir = dataDir;
++    (service as unknown as {
++      patchItem: (
++        id: string,
++        mutate: (entry: OverlayItem) => void,
++        signal: AbortSignal,
++      ) => Promise<ContentDetail>;
++    }).patchItem = async (_id, mutate) => {
++      const entry: OverlayItem = { publishPreparation: summary.publishPreparation! };
++      mutate(entry);
++      expect(entry.publish?.wechat?.status).toBe("published");
++      expect(entry.publishPreparation).toBeUndefined();
++      return summary as ContentDetail;
++    };
++
++    await service.setPublish({
++      id: summary.id,
++      platform: "wechat",
++      status: "published",
++    }, new AbortController().signal);
++  });
++});
+diff --git a/tests/settingsHost.test.ts b/tests/settingsHost.test.ts
+deleted file mode 100644
+index 65e5733..0000000
+--- a/tests/settingsHost.test.ts
++++ /dev/null
+@@ -1,19 +0,0 @@
+-import { describe, expect, it, vi } from "vitest";
+-
+-import { CREATOR_SETTINGS_NAMESPACE } from "../src/settingsContract.ts";
+-import {
+-  CREATOR_SETTINGS_DISCOVERY_SCHEMA,
+-  registerCreatorSettingsNamespace,
+-} from "../src/settingsHost.ts";
+-
+-describe("creator settings namespace", () => {
+-  it("registers the namespace that rc.7 uses to dispatch the settings card", () => {
+-    const register = vi.fn();
+-
+-    registerCreatorSettingsNamespace({ register } as never);
+-
+-    expect(register).toHaveBeenCalledOnce();
+-    expect(String(register.mock.calls[0]?.[0])).toBe(CREATOR_SETTINGS_NAMESPACE);
+-    expect(register.mock.calls[0]?.[1]).toBe(CREATOR_SETTINGS_DISCOVERY_SCHEMA);
+-  });
+-});
+diff --git a/tests/settingsSlot.test.ts b/tests/settingsSlot.test.ts
+index 8b8ff1c..d233b38 100644
+--- a/tests/settingsSlot.test.ts
++++ b/tests/settingsSlot.test.ts
+@@ -1,63 +1,46 @@
+ import { SlotCore } from "@deepseek-ai/dsh-client-ui-slots";
+ import { describe, expect, it, vi } from "vitest";
+ 
+-import { CREATOR_SETTINGS_NAMESPACE } from "../src/settingsContract.ts";
+ import {
+   registerCreatorSettingsCard,
+   type CompatibleSettingsSlots,
+ } from "../src/client/settingsSlot.ts";
+ 
+ const OPTIONS = {
+-  namespace: CREATOR_SETTINGS_NAMESPACE,
+-  legacyId: "dsh-oil-creator",
+-  legacyOrder: 40,
++  id: "dsh-oil-creator",
++  order: 40,
++  label: () => "内容工作台",
+   locale: "dsh.oil.creator",
+   inject: () => ({}),
+ };
+ 
+-function registerWithSlotCore(kind: "keyed" | "list"): SlotCore {
+-  const slots = new SlotCore();
+-  const component = () => null;
+-  slots.register({
+-    name: "root",
+-    children: {
+-      "settings.plugin.item": { kind, scope: "root" },
+-    },
+-  } as never, component as never);
+-  registerCreatorSettingsCard(
+-    slots as unknown as CompatibleSettingsSlots,
+-    component,
+-    OPTIONS,
+-  );
+-  return slots;
+-}
+-
+-describe("settings.plugin.item compatibility", () => {
+-  it("passes the rc.7 keyed slot validation", () => {
+-    const slots = registerWithSlotCore("keyed");
+-    expect(slots.entries("settings.plugin.item")[0]?.options.key)
+-      .toBe(CREATOR_SETTINGS_NAMESPACE);
+-  });
+-
+-  it("passes the rc.6 list slot validation", () => {
+-    const slots = registerWithSlotCore("list");
+-    expect(slots.entries("settings.plugin.item")[0]?.options.id)
+-      .toBe("dsh-oil-creator");
+-  });
+-
+-  it("registers both compatibility coordinates through the public facade", () => {
+-    const register = vi.fn(() => vi.fn());
++describe("settings.plugins.tab registration", () => {
++  it("passes current list-slot validation", () => {
++    const slots = new SlotCore();
++    const component = () => null;
++    slots.register({
++      name: "root",
++      children: {
++        "settings.plugins.tab": { kind: "list", scope: "root" },
++      },
++    } as never, component as never);
+     registerCreatorSettingsCard(
+-      { register },
+-      "card",
++      slots as unknown as CompatibleSettingsSlots,
++      component,
+       OPTIONS,
+     );
++    expect(slots.entries("settings.plugins.tab")[0]?.options.id).toBe("dsh-oil-creator");
++  });
++
++  it("registers the current tab fields through the public facade", () => {
++    const register = vi.fn(() => vi.fn());
++    registerCreatorSettingsCard({ register }, "card", OPTIONS);
+     expect(register).toHaveBeenCalledWith(
+       expect.objectContaining({
+-        name: "settings.plugin.item",
+-        key: CREATOR_SETTINGS_NAMESPACE,
++        name: "settings.plugins.tab",
+         id: "dsh-oil-creator",
+         order: 40,
++        label: OPTIONS.label,
+       }),
+       "card",
+     );
 diff --git a/tests/sidebarStartSession.test.ts b/tests/sidebarStartSession.test.ts
-index cc77ae4..ad974b6 100644
+index cc77ae4..3c3a7d1 100644
 --- a/tests/sidebarStartSession.test.ts
 +++ b/tests/sidebarStartSession.test.ts
 @@ -5,10 +5,11 @@ import { describe, expect, it, vi } from "vitest";
@@ -4569,16 +5424,49 @@ index cc77ae4..ad974b6 100644
  
  describe("侧栏新建会话版本兼容", () => {
 -  it("侧栏入口统一经过兼容适配器", () => {
-+  it("内容入口使用 Harness 原生全局面板", () => {
++  it("内容入口使用当前 Workspace 辅助区和产品工作台", () => {
      const source = readFileSync(new URL("../src/client/index.tsx", import.meta.url), "utf8");
 -    expect(source).toContain("startSidebarSession(ctx, workspaceId)");
 -    expect(source).not.toContain("ctx.workspaces.startSession(");
-+    expect(source).toContain('ctx.slots.inject("main"');
-+    expect(source).toContain('ctx.slots.inject("sidebar.panellist"');
-+    expect(source).not.toContain('ctx.slots.inject("sidebar"');
++    expect(source).toContain('ctx.slots.inject("sidebar.workspaces.auxiliary"');
++    expect(source).toContain('ctx.slots.inject("workbench.content"');
++    expect(source).not.toContain('ctx.slots.inject("main"');
    });
  
    it("新版 workspaces 不再提供导航时，使用 uiWorkspace 并保留方法接收者", () => {
+diff --git a/tests/subtitle.test.ts b/tests/subtitle.test.ts
+index 9182986..95ba1fb 100644
+--- a/tests/subtitle.test.ts
++++ b/tests/subtitle.test.ts
+@@ -1,11 +1,12 @@
+ import { mkdir, readFile, writeFile } from "node:fs/promises";
+ import { tmpdir } from "node:os";
+-import { join } from "node:path";
++import { delimiter, join } from "node:path";
+ import { mkdtemp } from "node:fs/promises";
+ 
+ import { describe, expect, it } from "vitest";
+ 
+ import { emptyBurn, emptyPublish } from "../src/publishStatus.ts";
++import { extraBinDirs } from "../src/runtimePaths.ts";
+ import {
+   parseSrtClock,
+   pickBurnLaunch,
+@@ -185,7 +186,13 @@ describe("spawnPython", () => {
+       expect(subtitle.zen).toBeUndefined();
+       expect(cover).toMatchObject({ zen: "step-zen" });
+       expect(cover.dash).toBeUndefined();
+-      expect(none.path).toBe(process.env.PATH);
++      const childPath = none.path?.split(delimiter) ?? [];
++      for (const directory of (process.env.PATH ?? "").split(delimiter).filter(Boolean)) {
++        expect(childPath).toContain(directory);
++      }
++      for (const directory of extraBinDirs(process.platform)) {
++        expect(childPath).toContain(directory);
++      }
+     } finally {
+       if (previousDash === undefined) delete process.env.DASHSCOPE_API_KEY;
+       else process.env.DASHSCOPE_API_KEY = previousDash;
 diff --git a/tests/typert.test.ts b/tests/typert.test.ts
 index 4754b8f..1d11a3f 100644
 --- a/tests/typert.test.ts
@@ -4660,89 +5548,3 @@ index 7fcb6d8..e12295b 100644
        const css = await readFile(file, "utf8");
        const tagId = `${PLUGIN_ID}/${basename(file)}`;
        const registry = resolve(dirname(fileURLToPath(import.meta.url)), "src/client/pluginCss.ts");
-diff --git a/src/runtimePaths.ts b/src/runtimePaths.ts
---- a/src/runtimePaths.ts
-+++ b/src/runtimePaths.ts
-@@ -1,5 +1,5 @@
- import { homedir } from "node:os";
--import { join } from "node:path";
-+import { delimiter, join } from "node:path";
- 
- import { pathExists } from "./artifacts.ts";
- 
-@@ -55,6 +55,23 @@ export function extraBinDirs(
-   return dirs;
- }
- 
-+export function withExecutableSearchPath(
-+  env: NodeJS.ProcessEnv = process.env,
-+  platform: NodeJS.Platform = process.platform,
-+  home = homedir(),
-+): NodeJS.ProcessEnv {
-+  const next = { ...env };
-+  const key = platform === "win32" && env.PATH === undefined && env.Path !== undefined
-+    ? "Path"
-+    : "PATH";
-+  const directories = [
-+    ...pathEnvValue(env).split(delimiter).filter(Boolean),
-+    ...extraBinDirs(platform, home, env),
-+  ];
-+  next[key] = [...new Set(directories)].join(delimiter);
-+  return next;
-+}
-+
- export function egoInstallCandidates(
-   platform: NodeJS.Platform,
-   home = homedir(),
-diff --git a/src/subtitle.ts b/src/subtitle.ts
---- a/src/subtitle.ts
-+++ b/src/subtitle.ts
-@@ -7,6 +7,6 @@ import { defaultSubtitleSkillDir } from "./config.ts";
- 
- import { pathExists } from "./artifacts.ts";
--import { resolveVenvPython } from "./runtimePaths.ts";
-+import { resolveVenvPython, withExecutableSearchPath } from "./runtimePaths.ts";
- import type { ContentSummary } from "./types.ts";
- 
- export { defaultSubtitleSkillDir } from "./config.ts";
-@@ -175,7 +175,7 @@ export function spawnPython(
-   args: readonly string[],
-   extraEnv?: Record<string, string>,
- ): ChildProcess {
--  const env = { ...process.env };
-+  const env = withExecutableSearchPath();
-   delete env.DASHSCOPE_API_KEY;
-   delete env.ZENMUX_API_KEY;
-   if (extraEnv !== undefined) Object.assign(env, extraEnv);
-diff --git a/tests/subtitle.test.ts b/tests/subtitle.test.ts
---- a/tests/subtitle.test.ts
-+++ b/tests/subtitle.test.ts
-@@ -1,11 +1,12 @@
- import { mkdir, readFile, writeFile } from "node:fs/promises";
- import { tmpdir } from "node:os";
--import { join } from "node:path";
-+import { delimiter, join } from "node:path";
- import { mkdtemp } from "node:fs/promises";
- 
- import { describe, expect, it } from "vitest";
- 
- import { emptyBurn, emptyPublish } from "../src/publishStatus.ts";
-+import { extraBinDirs } from "../src/runtimePaths.ts";
- import {
-   parseSrtClock,
-   pickBurnLaunch,
-@@ -185,7 +186,13 @@ describe("spawnPython", () => {
-       expect(subtitle.zen).toBeUndefined();
-       expect(cover).toMatchObject({ zen: "step-zen" });
-       expect(cover.dash).toBeUndefined();
--      expect(none.path).toBe(process.env.PATH);
-+      const childPath = none.path?.split(delimiter) ?? [];
-+      for (const directory of (process.env.PATH ?? "").split(delimiter).filter(Boolean)) {
-+        expect(childPath).toContain(directory);
-+      }
-+      for (const directory of extraBinDirs(process.platform)) {
-+        expect(childPath).toContain(directory);
-+      }
-     } finally {
-       if (previousDash === undefined) delete process.env.DASHSCOPE_API_KEY;
-       else process.env.DASHSCOPE_API_KEY = previousDash;

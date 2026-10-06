@@ -140,6 +140,18 @@ test("WeChat Channels prefill uses a task-space-bound upload receipt and defers 
   assert.doesNotMatch(prefill, /ensureWechatOriginal|uploadWechatCover/);
 });
 
+test("WeChat Channels inspection waits for the real editor before evaluating fields", () => {
+  const source = fs.readFileSync(path.join(PLATFORM_DIR, "wechat-channels.mjs"), "utf8");
+  const start = source.indexOf("async function inspectReadyWechatChannels");
+  const end = source.indexOf("async function runPlatformPhase", start);
+  assert.ok(start >= 0 && end > start, "inspection readiness must remain discoverable");
+  const inspection = source.slice(start, end);
+  assert.match(inspection, /activateWechatLifecycle\(\)/, "inspection must activate the Wujie lifecycle");
+  assert.match(inspection, /waitWechatSdkReady\(30\)/, "inspection must wait for a real upload input or uploaded editor");
+  assert.match(inspection, /typedBlocker\('RISK_CONTROL','视频号发布页尚未完成初始化'/, "an empty page must report one page-level blocker");
+  assert.match(source, /phase==='inspect'\|\|phase==='verify'\)return await inspectReadyWechatChannels\(\)/);
+});
+
 test("WeChat Channels cover flow supports both slot-specific and generic editors", () => {
   const source = fs.readFileSync(path.join(PLATFORM_DIR, "wechat-channels.mjs"), "utf8");
   const start = source.indexOf("async function dismissWechatCoverEditor");

@@ -13,22 +13,16 @@
     {
       "id": "source-oil-creator-workbench-source",
       "file": "patches/oil-creator-workbench-source.patch",
-      "sha256": "ba12a2d73fc3d6514bb32986bb5dcc64e2d7e81a90c0b01e80a16a1637e27fc0",
-      "purpose": "Apply the reviewed YourBuddy workbench source, current Harness client APIs, visible async-action feedback, and desktop executable search paths before building the published artifact."
+      "sha256": "5d5b6552c78ea2325e6ae2ff47f15e1cda3624f2b5d422222221df84a736cbd7",
+      "purpose": "Apply the reviewed YourBuddy workbench source, current Harness client APIs, publication-state handling, visible async-action feedback, and desktop executable search paths before building the published artifact."
     }
   ],
   "patches": [
     {
       "id": "yourbuddy-compatibility",
       "file": "patches/oil-creator-yourbuddy.patch",
-      "sha256": "3605321e95c460bf366cacc86f25b4ed957bb656e13bbcadd6602d00b2784754",
-      "purpose": "Use the current Settings, Sidebar, and product-workbench slot APIs, preserve YourBuddy branding and desktop controls, bundle the video, article, and WeChat draft Skills with a unified draft-preparation tool, share the bundled Harness tool registry, and prevent the prebuilt snapshot from rebuilding during offline production installation."
-    },
-    {
-      "id": "current-settings-api",
-      "file": "patches/oil-creator-current-settings.patch",
-      "sha256": "06c32a35638650c2ad5c8de6b2af6a22da4bc62c7b46ecade031d956811c7d42",
-      "purpose": "Register Content workbench in the current Plugins tab slot, remove the obsolete Host settings registration, and document current client API and action-feedback requirements."
+      "sha256": "0be2532472cd0ae350a7222d20c1741e46be7e5596bb6c4da891ce89a5bb7161",
+      "purpose": "Preserve YourBuddy branding and desktop controls, bundle the video, article, and WeChat draft Skills with a unified draft-preparation tool, share the bundled Harness tool registry, and prevent the prebuilt snapshot from rebuilding during offline production installation."
     },
     "Set @deepseek-ai/dsh-api-remotes peer range from 0.1.0-rc.6 || 0.1.0-rc.7 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-connection peer range from 0.1.0-rc.6 || 0.1.0-rc.7 to 0.1.7-rc.2.",
@@ -47,5 +41,5 @@
   ],
   "repository": "https://github.com/oil-oil/dsh-oil-creator",
   "license": "MIT",
-  "treeSha256": "a90cf2ca50b0cacc838ede5810d39fbf6820ab0998ac4793f8ff813bfe1f7fb1"
+  "treeSha256": "52baca5a2ab227111b3e2855846ae84df64d389516168f122aeeb6142802d80a"
 }

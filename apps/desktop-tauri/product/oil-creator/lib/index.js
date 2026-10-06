@@ -284,6 +284,45 @@ function emptyPublish() {
 function emptyBurn() {
 	return { status: "idle" };
 }
+/**
+* Remove a published platform from any persisted draft-preparation diagnosis.
+* @param item Persisted content overlay entry.
+* @param platform Platform confirmed as published.
+*/
+function removePreparedPlatform(item, platform) {
+	const preparation = item.publishPreparation;
+	if (preparation === void 0) return;
+	const publisherPlatform = platform === "wechat" ? "wechat_channels" : platform;
+	const platforms = { ...preparation.video.platforms };
+	delete platforms[publisherPlatform];
+	const allSelectedPublished = preparation.selectedPlatforms.every((selected) => item.publish?.[selected]?.status === "published");
+	if (allSelectedPublished && preparation.wechatOfficialAccount === void 0) {
+		delete item.publishPreparation;
+		return;
+	}
+	if (allSelectedPublished) {
+		item.publishPreparation = {
+			...preparation,
+			selectedPlatforms: [],
+			video: {
+				status: "skipped",
+				detail: "No unpublished video drafts remain."
+			}
+		};
+		return;
+	}
+	const remaining = Object.values(platforms).filter((result) => result !== void 0);
+	const blocked = remaining.some((result) => result.ready !== true);
+	item.publishPreparation = {
+		...preparation,
+		video: {
+			...preparation.video,
+			status: blocked || remaining.length === 0 ? "blocked" : "readyForReview",
+			detail: blocked || remaining.length === 0 ? "One or more unpublished video drafts still need attention." : "Unpublished video drafts are ready for review.",
+			platforms
+		}
+	};
+}
 function isPublishMark(value) {
 	return value === "unpublished" || value === "draft" || value === "published";
 }
@@ -898,10 +937,7 @@ function extraBinDirs(platform, home = homedir(), env = process.env) {
 function withExecutableSearchPath(env = process.env, platform = process.platform, home = homedir()) {
 	const next = { ...env };
 	const key = platform === "win32" && env.PATH === void 0 && env.Path !== void 0 ? "Path" : "PATH";
-	const directories = [
-		...pathEnvValue(env).split(delimiter).filter(Boolean),
-		...extraBinDirs(platform, home, env)
-	];
+	const directories = [...pathEnvValue(env).split(delimiter).filter(Boolean), ...extraBinDirs(platform, home, env)];
 	next[key] = [...new Set(directories)].join(delimiter);
 	return next;
 }
@@ -1809,10 +1845,12 @@ function applyMatchesToOverlay(items, matches, now = Date.now()) {
 		if (match.post.likes !== void 0) entry.likes = match.post.likes;
 		if (match.post.comments !== void 0) entry.comments = match.post.comments;
 		publish[match.platform] = entry;
-		next[match.id] = {
+		const updated = {
 			...current,
 			publish
 		};
+		removePreparedPlatform(updated, match.platform);
+		next[match.id] = updated;
 	}
 	return next;
 }
@@ -2838,6 +2876,28 @@ function managedVideoPublisherConfig(libraryRoot, platforms, now = /* @__PURE__ 
 function privateJson(value) {
 	return `${JSON.stringify(value, null, 2)}\n`;
 }
+function publisherAssetPaths(payload) {
+	const paths = [];
+	if (typeof payload.videoPath === "string") paths.push(payload.videoPath);
+	const cover = payload.cover;
+	if (typeof cover === "object" && cover !== null) for (const key of [
+		"vertical3x4Path",
+		"horizontal4x3Path",
+		"horizontal16x9Path"
+	]) {
+		const value = Reflect.get(cover, key);
+		if (typeof value === "string") paths.push(value);
+	}
+	return [...new Set(paths)].sort();
+}
+async function publisherInputFingerprint(payload) {
+	const hasher = createHash("sha256").update(privateJson(payload));
+	for (const path of publisherAssetPaths(payload)) {
+		hasher.update(`\0${path}\0`);
+		for await (const chunk of createReadStream(path)) hasher.update(chunk);
+	}
+	return hasher.digest("hex");
+}
 async function writePrivateJson(path, value) {
 	const parent = dirname(path);
 	await mkdir(parent, {
@@ -3082,7 +3142,7 @@ async function prepareVideoDrafts(options, dependencies = {}) {
 		managedConfigPath = paths.configPath;
 		const payload = contentPackage(options.item, metadata.title, metadata.tags, options.platforms, options.uploadCovers);
 		const itemKey = createHash("sha256").update(options.item.id).digest("hex").slice(0, 12);
-		const payloadKey = createHash("sha256").update(privateJson(payload)).digest("hex");
+		const payloadKey = await publisherInputFingerprint(payload);
 		const packagePath = join(paths.packageRoot, `${itemKey}-${payloadKey}.json`);
 		await writeImmutablePrivateJson(packagePath, payload);
 		const args = [
@@ -3095,9 +3155,10 @@ async function prepareVideoDrafts(options, dependencies = {}) {
 			"--no-cleanup-stale-spaces"
 		];
 		for (const platform of options.platforms) args.push("--platform", PUBLISHER_PLATFORM[platform]);
-		if (options.jobId !== void 0) args.push("--job-id", options.jobId);
+		const reusableJob = options.jobId !== void 0 && options.jobInputFingerprint === payloadKey;
+		if (reusableJob && options.jobId !== void 0) args.push("--job-id", options.jobId);
 		if (options.originalRightsConfirmed) args.push("--confirm-original-rights");
-		if (options.inspectOnly) args.push("--inspect-only");
+		if (options.inspectOnly || options.inspectReadyJob === true && reusableJob) args.push("--inspect-only");
 		const result = await (dependencies.runCommand ?? runPublishingCommand)(process.execPath, args, options.signal, publisherEnvironment(envSource, ego, paths.configPath, paths.lockRoot));
 		const summary = parseLastJsonObject(result.stdout);
 		if (summary === void 0) return blockedStep(`Video Publisher did not return a structured summary. ${outputDetail(result)}`, "PUBLISHER_OUTPUT_INVALID");
@@ -3107,6 +3168,7 @@ async function prepareVideoDrafts(options, dependencies = {}) {
 		const step = {
 			status: ready ? "readyForReview" : "blocked",
 			detail: ready ? "Video drafts are ready for review in retained Ego task spaces. Final publication was not performed." : platformBlockerDetail(platforms, outputDetail(result)),
+			inputFingerprint: payloadKey,
 			platforms
 		};
 		if (typeof summary.jobId === "string") step.jobId = summary.jobId;
@@ -3120,8 +3182,13 @@ async function prepareVideoDrafts(options, dependencies = {}) {
 		if (managedConfigPath !== void 0) await unlink(managedConfigPath).catch(() => void 0);
 	}
 }
-async function articleInputFingerprint(path) {
-	return createHash("sha256").update(await readFile(path)).digest("hex");
+async function articleInputFingerprint(path, thumbPath) {
+	const hasher = createHash("sha256").update(await readFile(path));
+	if (thumbPath !== void 0) {
+		hasher.update(`\0${thumbPath}\0`);
+		hasher.update(await readFile(thumbPath));
+	}
+	return hasher.digest("hex");
 }
 async function prepareWechatArticleDraft(options, dependencies = {}) {
 	if (options.item.articlePath === void 0) return {
@@ -3139,7 +3206,7 @@ async function prepareWechatArticleDraft(options, dependencies = {}) {
 	const thumb = options.item.covers["16x9"] ?? options.item.covers["4x3"] ?? options.item.covers["3x4"];
 	if (thumb !== void 0) args.push("--thumb", thumb);
 	try {
-		const inputFingerprint = await articleInputFingerprint(options.item.articlePath);
+		const inputFingerprint = await articleInputFingerprint(options.item.articlePath, thumb);
 		const result = await (dependencies.runCommand ?? runPublishingCommand)(process.execPath, args, options.signal, wechatPublisherEnvironment(dependencies.env ?? process.env));
 		const detail = (result.stdout.trim() || result.stderr.trim() || `wechat publisher exited ${result.code}`).slice(-1200);
 		return result.code === 0 ? {
@@ -3741,7 +3808,8 @@ var OilCreatorService = class extends TypertRemoteService {
 		const previous = item.publishPreparation;
 		const samePlatforms = previous !== void 0 && previous.selectedPlatforms.length === platforms.length && previous.selectedPlatforms.every((platform, index) => platform === platforms[index]);
 		const previousJobId = samePlatforms ? previous.video.jobId : void 0;
-		const inspectExisting = request.inspectOnly === true || samePlatforms && previous?.video.status === "readyForReview" && previousJobId !== void 0;
+		const previousJobInputFingerprint = samePlatforms ? previous.video.inputFingerprint : void 0;
+		const inspectReadyJob = samePlatforms && previous?.video.status === "readyForReview" && previousJobId !== void 0;
 		const videoPromise = prepareVideoDrafts({
 			item,
 			libraryRoot: settings.libraryRoot,
@@ -3749,12 +3817,15 @@ var OilCreatorService = class extends TypertRemoteService {
 			dataDir: this.dataDir,
 			originalRightsConfirmed: request.originalRightsConfirmed === true,
 			uploadCovers: request.uploadCovers === true,
-			inspectOnly: inspectExisting,
+			inspectOnly: request.inspectOnly === true,
+			inspectReadyJob,
 			...previousJobId === void 0 ? {} : { jobId: previousJobId },
+			...previousJobInputFingerprint === void 0 ? {} : { jobInputFingerprint: previousJobInputFingerprint },
 			signal
 		});
 		const previousArticle = previous?.wechatOfficialAccount;
-		const currentArticleFingerprint = item.articlePath === void 0 ? void 0 : await articleInputFingerprint(item.articlePath).catch(() => void 0);
+		const articleThumb = item.covers["16x9"] ?? item.covers["4x3"] ?? item.covers["3x4"];
+		const currentArticleFingerprint = item.articlePath === void 0 ? void 0 : await articleInputFingerprint(item.articlePath, articleThumb).catch(() => void 0);
 		const exactPersistedArticle = isExactPreparedArticle(previousArticle, currentArticleFingerprint);
 		let articlePromise;
 		if (request.includeWechatArticle !== true) articlePromise = Promise.resolve(void 0);
@@ -3779,13 +3850,13 @@ var OilCreatorService = class extends TypertRemoteService {
 			...articleForResult === void 0 ? {} : { wechatOfficialAccount: articleForResult }
 		};
 		const persistedResult = mergePreparationHistory(result, previous, currentArticleFingerprint);
-		await withOverlayLock(this.dataDir, async () => {
+		if (request.inspectOnly !== true) await withOverlayLock(this.dataDir, async () => {
 			const overlay = await loadOverlay(this.dataDir);
 			const next = {
 				...overlay.items[request.id] ?? {},
 				publishPreparation: persistedResult
 			};
-			if (request.inspectOnly !== true && video.platforms !== void 0) for (const [index, publisherPlatform] of mapPublisherPlatforms(platforms).entries()) {
+			if (video.platforms !== void 0) for (const [index, publisherPlatform] of mapPublisherPlatforms(platforms).entries()) {
 				const platform = platforms[index];
 				if (platform !== void 0 && video.platforms[publisherPlatform]?.ready === true) next.publish = patchOverlayPublish(next.publish, platform, "draft");
 			}
@@ -4035,6 +4106,7 @@ var OilCreatorService = class extends TypertRemoteService {
 		if (!((await loadOverlay(this.dataDir)).profile?.enabledPlatforms ?? emptyProfile().enabledPlatforms).includes(request.platform)) throw new Error(`publish platform is disabled: ${request.platform}`);
 		return this.patchItem(request.id, (item) => {
 			item.publish = patchOverlayPublish(item.publish, request.platform, request.status, request.url);
+			if (request.status === "published") removePreparedPlatform(item, request.platform);
 		}, signal);
 	}
 	async syncPublish(request, signal) {

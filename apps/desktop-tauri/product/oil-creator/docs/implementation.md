@@ -1,6 +1,6 @@
 # 内容工作台：现阶段实现
 
-`dsh-oil-creator` 是挂在 DeepSeek Harness web 配置上的一个插件。它把片库放在左侧 Workspace 与 Session 列表下方，把当前片子的检查器放在中间，并保留右侧对话。
+`dsh-oil-creator` 是挂在 DeepSeek Harness web 配置上的一个插件。它把 oil 从选题到发布的本地工作收进同一块界面：左侧内容列表、中间一条片子的检查器、右边继续对话。
 
 安装：`npx @deepseek-ai/dsh plugin --profile web add github:oil-oil/dsh-oil-creator`（本地开发用目录路径）
 
@@ -23,7 +23,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 5. **字幕**：用百炼 Key 转录；`oil-subtitle` 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；人在 skill 自带的预览编辑器里改稿，确认后再烧进视频。
 6. **封面**：有 ZenMux Key 就出 3:4 / 4:3 / 16:9。封面主标题和错别字由对话里的 Agent 核对，不交给脚本自行发挥。
 7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与视频草稿准备和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，内置 `oil-video-article` 成稿到 `公众号文章/`。
-8. **发布**：检查器的「准备发布草稿」和 `oil_prepare_publish` 共用同一服务。服务先验证视频、发布包、标签、所选封面和原创确认，再按 `enabledPlatforms` 生成私有发布器配置并调用内置 `video-publisher`；它不会修改独立发布器配置。每个平台独立返回就绪或阻塞结果，验证完成后解除页面自动化保护并交还给人。公众号草稿是默认关闭的可选分支，由内置 `wechat-publisher` 创建。最终发表、定时发布或群发都由人完成。
+8. **发布**：检查器的“准备发布草稿”和 `oil_prepare_publish` 共用同一服务。服务验证成片、发布包、标签、封面和原创确认后调用内置 `video-publisher`；每个平台独立返回结果。公众号草稿是默认关闭的可选分支，由内置 `wechat-publisher` 创建。最终发表、定时发布或群发都由人完成。
 9. **回收**：用 Ego Lite 打开已登录的创作者后台，只翻 `enabledPlatforms` 中平台的已发布列表，按标题或已存 id 对到本地文件夹，写下播放 / 赞 / 评论。不是公开站爬虫；平台上有、本地没有文件夹的不会自动建条目。
 
 一条片子对应影片目录里的一个子文件夹。工程在 Screen Studio 工程目录里，用绑定连起来。
@@ -32,7 +32,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 
 | 环节 | 现状 |
 | --- | --- |
-| 列表与检查器 | 片库嵌在左侧 Workspace 与 Session 列表下方；检查器占用产品中间工作台，右侧对话保留；概览用状态标签标明阶段，只展开当前步骤的操作 |
+| 列表与检查器 | 片库嵌在左侧 Workspace 与 Session 列表下方；检查器占用产品中间工作台，右侧对话保留；概览用状态标签标明阶段 |
 | 建内容、选题笔记 | 面板新建；`oil_create_content` 建文件夹；选题写 `topic.md` |
 | 绑定 / 打开工程 | 面板换绑、打开；`oil_open_studio` |
 | 等导出 | `oil_wait_export` 立刻返回并开始盯目录；成片稳定后清掉 waiting 标记 |
@@ -41,11 +41,11 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 | 发布状态 | 读 `{标题}.auto-publish.json`；点状态胶囊从菜单里选未发布 / 草稿 / 已发布，手写优先 |
 | 已发布数据 | 检查器「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`oil_sync_publish` 不传 id 才同步整库 |
 | API Key | 设置 → 插件 → 内容工作台；和视觉识别共用官方凭据 |
-| 公众号 | 只显示目录里有没有 `公众号文章/`，不生成 |
+| 公众号 | 展示目录里的文章；准备草稿时可选择调用内置 `wechat-publisher` 创建公众号草稿 |
 | 剪辑 | 还没从插件里调度，对话里继续用 `screen-studio-editor` |
 | 多平台草稿 | 检查器和 `oil_prepare_publish` 共用预检与发布服务；每个平台独立记录结果，最终发表仍由人完成 |
 
-上面这张表是工作台已经具备的能力：能看列表、绑定工程、启动字幕和封面脚本、标记发布状态。对照「最终要做成什么样」那 9 步，整条创作路径还没有全部接到插件里。现在有的是一条片子的工作台和几个可点的执行入口，不是点一次就从选题走到待发布。
+上面这张表是工作台已经具备的能力：能看列表、绑定工程、启动字幕和封面脚本、准备发布草稿、标记发布状态并同步已发布数据。它不是点一次就替人完成录制、剪辑和最终发表的全自动流水线。
 
 日常路径里，插件还包不住、仍要在对话里自己喊 skill 或亲手做的：
 
@@ -69,8 +69,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 
 保持 **一个** Harness 插件。官方要求：只有能力需要独立替换时才拆包，不要预防性拆分。见 DeepSeek Harness `docs/user/develop/practice/index.zh.md`。
 
-设置位 `settings.plugin.item` 的含义是「一个插件一张卡」，不是一个功能一张卡。
-Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，再按同名 `key` 派发设置卡；插件同时保留 rc.6 使用的 `id`。当前设置值仍统一由插件 Remote 和 `~/.dsh-oil-creator/overlay.json` 管理，Host 命名空间只负责让设置卡被发现，避免双数据源。
+设置卡注册到当前客户端的 `settings.plugins.tab`，设置值统一由插件 Remote 和 `~/.dsh-oil-creator/overlay.json` 管理。升级 Harness 时需要同步核对这个槽位、目录选择、路径打开和凭据服务接口。
 
 执行分工：
 
@@ -85,9 +84,9 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，�
 
 `oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_prepare_publish`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
 
-`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时视频草稿准备和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
+`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时自动发布和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
 
-片库通过 `sidebar.workspaces.auxiliary` 放在左侧 Workspace 浏览区底部；侧栏收起时不显示。检查器占用产品中间工作台，不占用右侧 Conversation。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
+片库注册到 `sidebar.workspaces.auxiliary`，检查器注册到 `workbench.content`；打开一条内容时占用产品中间工作台，右侧对话保持可用。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
 
 ## 状态存在哪里
 
@@ -100,7 +99,7 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，�
 | 字幕和封面 Key | Harness 官方凭据（字幕用 `DASHSCOPE_API_KEY`、封面用 `ZENMUX_API_KEY`），与 `dsh-vision` 共用 |
 | 列表选中项、侧栏宽度 | 浏览器本地 UI 状态 |
 
-发布状态两层：文件夹里的 `{标题}.auto-publish.json` 推断草稿；overlay 里的手写状态盖过它。Ego 同步成功后，对应平台写成 `published`，并带上 `url` / `views` / `likes` / `comments` / `syncedAt`，来源记为 `sync`。
+发布状态两层：文件夹里的 `{标题}.auto-publish.json` 推断草稿；overlay 里的手写状态盖过它。Ego 同步成功后，对应平台写成 `published`，并带上 `url` / `views` / `likes` / `comments` / `syncedAt`，来源记为 `sync`。只读发布检查只返回当次诊断，不覆盖持久化准备结果；平台标记为已发布时，清除该平台的旧草稿诊断。发布任务只在元数据以及视频、封面文件内容的指纹都一致时复用旧 Job。
 
 采集本身是机械脚本，不经过模型判断：
 
@@ -127,23 +126,21 @@ ego-browser nodejs < scripts/collect-publish.mjs
 | 长任务、规范返回值、不要把散文当 API | `docs/cookbook/adding-a-tool.md` |
 | 一个包还是拆成 Definition / Provider | `docs/user/develop/practice/index.zh.md`（不要预防性拆分） |
 | API Key 只写不回读 | 官方凭据服务；界面对照已安装的 `@oil-oil/dsh-vision` 设置卡 |
-| 设置卡槽位 | `packages/client/ui-settings-plugins` 里对 `settings.plugin.item` 的说明 |
+| 设置卡槽位 | 当前客户端的 `settings.plugins.tab` |
 
 官方 Bash 那种三包拆分，只适用于「同一能力会换执行环境」。内容工作台不是这种能力。
 
-### oil 自己的 skill（执行器和产品规则）
+### 执行器和产品规则
 
-标准安装位置是 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 三选一，插件自动发现；下表统一写 `~/.agents/skills`。
+字幕、封面和剪辑 Skill 可以放在 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills`，插件会自动发现；发布相关 Skill 随插件一起安装。
 
-| 环节 | Skill | 路径 | 插件可以包什么 | 仍留给 Agent / 人 |
+| 环节 | Skill | 来源 | 插件可以包什么 | 仍留给 Agent / 人 |
 | --- | --- | --- | --- | --- |
-| 剪辑工程 | `screen-studio-editor` | `~/.agents/skills/screen-studio-editor` | 以后可加「按绑定工程开剪辑」；现在只绑定和打开 | 审查删除、Screen Studio 里预览、手动导出 |
-| 字幕 | `oil-subtitle` | `~/.agents/skills/oil-subtitle` | clone 后必须运行 `setup.sh`；已包预览编辑器、转录、按稿烧录 | 校对不确定词、确认预览后再烧 |
-| 封面 | `oil-cover` | `~/.agents/skills/oil-cover` | 已包脚本模式三画幅生成 | 提炼主标题、看错别字、决定是否重跑某一画幅 |
-| 发布文案语气 | `oil-tone` | `~/.agents/skills/oil-tone` | 不执行；写标题简介时读档案 | 成稿必须过 `tone_lint.py` 再通读 |
-| 公众号图文 | `oil-video-article` | 插件内置 `skills/oil-video-article` | 识别 `公众号文章/` | 从无头像屏幕轨截图、按 oil-tone 写文章 |
-| 公众号草稿 | `wechat-publisher` | 插件内置 `skills/wechat-publisher` | `oil_prepare_publish` 调用公众号 API | 草稿箱复核、人完成最终群发 |
-| 四平台视频草稿 | `video-publisher` | 插件内置 `skills/video-publisher` | `oil_prepare_publish` 调用生产入口并读回执 | Ego 上传、停在最终发布按钮前、人点发布 |
+| 剪辑工程 | `screen-studio-editor` | 用户 Skill 目录 | 现在只绑定和打开工程 | 审查删除、Screen Studio 里预览、手动导出 |
+| 字幕 | `oil-subtitle` | 用户 Skill 目录 | clone 后必须运行 `setup.sh`；已包预览编辑器、转录、按稿烧录 | 校对不确定词、确认预览后再烧 |
+| 封面 | `oil-cover` | 用户 Skill 目录 | 已包脚本模式三画幅生成 | 提炼主标题、看错别字、决定是否重跑某一画幅 |
+| 公众号图文 | `oil-video-article`、`wechat-publisher` | 插件内置 | 整理文章并按用户选择创建公众号草稿 | 检查文章和草稿、最终群发 |
+| 四平台视频草稿 | `video-publisher` | 插件内置 | 根据工作台私有配置准备草稿并保留页面 | 检查草稿、点击最终发表或定时发布 |
 
 字幕脚本入口以 oil-subtitle 为准：`bailian_transcribe.py` → `review_subtitles.py` → `prepare_subtitles.py` → `preview_editor.py`，用户确认后再 `burn_subtitles.py`（有审过的 SRT 用 `--srt-input`）。不要在预览前烧录。封面脚本是 `generate_oil_cover.py`，主标题由调用方按 oil-cover 提炼后传入 `--title`，Key 用环境变量 `ZENMUX_API_KEY`。不要改 skill 仓库里的用户路径和密钥。
 
@@ -154,12 +151,12 @@ ego-browser nodejs < scripts/collect-publish.mjs
 - 插件只做一张工作台，新能力优先加模块，不加新插件。
 - 密钥走官方凭据；页面只显示已配置 / 未配置。
 - 重媒体继续调用已有脚本，参数与对应 SKILL.md 保持一致。
-- 人导出、人点最终发表 / 定时发布 / 群发、Agent 做校对和标题，这三类操作不要改成全自动。
+- 人导出、人点平台发布、Agent 做校对和标题，这三件事不要改成全自动。
 - Host remote 或工具改完后要重新 `pnpm build` 并重启 `dsh web`。
 
 
-### 客户端接口兼容
+### 新建会话接口兼容
 
-内容工作台随当前 YourBuddy 客户端 API 发布：目录选择使用 `uiWorkspace`，在 Finder 中显示目录使用 `remote.session`，接口密钥使用 `remote.credentials`。这些服务必须列入插件注入项；升级 Harness 时应同时更新调用参数、返回值处理和回归测试，不保留已从当前服务接口删除的方法。
+侧栏新建会话的版本回归基线（2026-09-10）：本地编译依赖为 `0.1.1-rc.2`，实际使用的是 DSH Desktop `2.0.5`、`web` profile，桌面安装包内置 Harness `0.1.2-rc.1`。本地 Harness 仓库 HEAD 为 `47f943859bef60e4160492346772ded9b24f765a`，接口判断以桌面安装产物为准。旧版调用 `workspaces.startSession`，新版官方侧栏调用 `uiWorkspace.startSession`；插件通过 `sidebar/startSession.ts` 在点击时解析服务，优先新版并保留旧版入口，不复制宿主的工作区选择、空会话复用和导航策略。
 
-需要 Host 或 Remote 的按钮必须在请求期间禁用，并在失败时显示可见错误；不得丢弃 Promise 或只记录控制台异常。升级验收必须对照实际宿主实现，并覆盖目录选择、打开路径、凭据读写和操作失败。未进行人工点击或授权的界面验收时，不能把代码测试表述为按钮已在实际窗口验证。
+升级验收必须对照实际宿主的官方侧栏和服务实现，不能只依赖项目锁定版本的类型检查。`sidebarStartSession.test.ts` 覆盖新版控制器不含旧方法、旧版透传工作区、服务方法接收者、失败不重复创建及服务重新解析；入口契约测试同时防止绕过适配器。未进行人工点击或授权的界面验收时，不能把代码测试表述为按钮已在实际窗口验证。
