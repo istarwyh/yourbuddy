@@ -55,6 +55,10 @@ impl Server {
                     }
                     Err(error) => panic!("fixture accept: {error}"),
                 };
+                // BSD sockets inherit the listener's nonblocking flag; fixture I/O is blocking.
+                stream
+                    .set_nonblocking(false)
+                    .expect("blocking fixture stream");
                 stream
                     .set_read_timeout(Some(Duration::from_secs(5)))
                     .unwrap();
@@ -113,10 +117,17 @@ impl Drop for Server {
 fn read_request(stream: &mut TcpStream) -> String {
     let mut bytes = Vec::new();
     while !bytes.ends_with(b"\r\n\r\n") {
+        assert!(
+            bytes.len() < 16 * 1024,
+            "fixture request headers exceed 16 KiB"
+        );
         let mut byte = [0_u8];
-        if stream.read(&mut byte).unwrap_or(0) == 0 {
-            break;
-        }
+        stream.read_exact(&mut byte).unwrap_or_else(|error| {
+            panic!(
+                "cannot read complete fixture request after {} bytes: {error}",
+                bytes.len()
+            )
+        });
         bytes.push(byte[0]);
     }
     String::from_utf8(bytes).unwrap().to_ascii_lowercase()
@@ -349,7 +360,11 @@ async fn permanent_http_error_does_not_retry() {
     let server = Server::new(vec![Reply::new(404, "\"v1\"", b"")]);
     let root = tempfile::tempdir().unwrap();
     let manager = manager(root.path(), &server.url, b"abcdef");
-    assert!(manager.ensure_startup().await.unwrap_err().contains("404"));
+    let error = manager.ensure_startup().await.unwrap_err();
+    assert!(
+        error.contains("404"),
+        "expected HTTP 404, received: {error}"
+    );
     assert_eq!(server.requests().len(), 1);
 }
 
