@@ -1,6 +1,7 @@
 /** Repository event orchestration and Issue audit comments. */
 
 import config from './config.json' with { type: 'json' }
+import { repositoryIdentity } from './repository.mjs'
 import {
   api,
   ensureProjectItem,
@@ -40,14 +41,14 @@ export async function initializePullRequestStartDates(
 
 async function upsertAudit(number, errors) {
   const comments = await api(
-    `/repos/${config.organization}/${config.repository}/issues/${number}/comments?per_page=100`,
+    `/repos/${repositoryIdentity().fullName}/issues/${number}/comments?per_page=100`,
   )
   const existing = comments.find(
     (comment) => comment.user?.type === 'Bot' && comment.body?.includes(AUDIT_MARKER),
   )
   if (errors.length === 0) {
     if (existing) {
-      await api(`/repos/${config.organization}/${config.repository}/issues/comments/${existing.id}`, {
+      await api(`/repos/${repositoryIdentity().fullName}/issues/comments/${existing.id}`, {
         method: 'DELETE',
       })
     }
@@ -56,13 +57,13 @@ async function upsertAudit(number, errors) {
   const body = `${AUDIT_MARKER}\n⚠️ Issue policy 未通过：\n\n${errors.map((error) => `- ${error}`).join('\n')}`
   if (existing) {
     if (existing.body === body) return
-    await api(`/repos/${config.organization}/${config.repository}/issues/comments/${existing.id}`, {
+    await api(`/repos/${repositoryIdentity().fullName}/issues/comments/${existing.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ body }),
       headers: { 'Content-Type': 'application/json' },
     })
   } else {
-    await api(`/repos/${config.organization}/${config.repository}/issues/${number}/comments`, {
+    await api(`/repos/${repositoryIdentity().fullName}/issues/${number}/comments`, {
       method: 'POST',
       body: JSON.stringify({ body }),
       headers: { 'Content-Type': 'application/json' },
@@ -79,7 +80,7 @@ export async function repairIssueLabels(issue) {
   const invalidLabels = issue.labels.filter(isInvalidIssueLabel)
   for (const label of invalidLabels) {
     await api(
-      `/repos/${config.organization}/${config.repository}/issues/${issue.number}/labels/${encodeURIComponent(label)}`,
+      `/repos/${repositoryIdentity().fullName}/issues/${issue.number}/labels/${encodeURIComponent(label)}`,
       { method: 'DELETE', allow404: true },
     )
   }
@@ -128,6 +129,7 @@ async function transitionResolvingIssues(pull, command) {
  * @returns {Promise<void>} Resolves after lifecycle updates and audits.
  */
 export async function runLifecycle(eventName, event) {
+  if (!config.projectEnabled) return
   if (eventName === 'issues') {
     const number = event.issue.number
     if (event.action === 'opened') await setStatus(number, 'Inbox')

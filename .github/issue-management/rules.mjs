@@ -38,7 +38,7 @@ const IMPLEMENTATION_PULL_REQUEST_ACTIONS = new Set([
 for (const status of ['In progress', 'In review']) {
   if (!ACTIVE_STATUS_ORDER.includes(status)) throw new Error(`config.statuses 缺少 ${status}`)
 }
-if (typeof config.lifecycleActor !== 'string' || !config.lifecycleActor) {
+if (config.projectEnabled && (typeof config.lifecycleActor !== 'string' || !config.lifecycleActor)) {
   throw new Error('config.lifecycleActor 未设置')
 }
 if (typeof config.priorityField !== 'string' || !config.priorityField) {
@@ -60,11 +60,9 @@ Intl.DateTimeFormat('en-US', { timeZone: config.projectTimeZone })
 export function requiresPullRequestPolicy({
   isDraft,
   authorType,
-  reviewRequestCount,
-  reviewCount,
 }) {
   const automated = authorType === 'Bot' || authorType === 'App'
-  return !isDraft && !automated && (reviewRequestCount > 0 || reviewCount > 0)
+  return !isDraft && !automated
 }
 
 /**
@@ -215,7 +213,7 @@ export function validateIssue(issue) {
   if (invalidLabels.length > 0) {
     errors.push(`Issue 不得使用 PR kind 或旧版标签：${invalidLabels.join(', ')}`)
   }
-  if (!TYPES.has(issue.type ?? '')) errors.push('Type 必须是五种原生英文 Type 之一')
+  if (config.requireIssueType && !TYPES.has(issue.type ?? '')) errors.push('Type 必须是五种原生英文 Type 之一')
   if (!status || !config.statuses.includes(status)) errors.push('Issue 必须在 Project 中且具有合法 Status')
   if (issue.priority !== null && !PRIORITIES.includes(issue.priority.toLowerCase())) {
     errors.push('Priority 必须为空或为 P0–P3')
@@ -281,7 +279,7 @@ export function validatePullRequest(input) {
   const resolving = input.references.resolving
     .map((number) => [number, input.issues.get(number)])
     .filter((entry) => entry[1])
-  if (resolving.length === 0) return errors
+  if (!config.projectEnabled || resolving.length === 0) return errors
 
   const issuePriorities = resolving
     .map(([, issue]) => issue.priority?.toLowerCase())
