@@ -1028,6 +1028,30 @@ describe('Weighted approval workflow', () => {
   })
 })
 
+describe('Governance policy tests workflow', () => {
+  it('tests the exact PR head without write permissions or secrets', () => {
+    const workflow = loadWorkflow('.github/workflows/governance-policy-tests.yml')
+    expect(workflow.permissions).toEqual({ contents: 'read' })
+    expect(Object.keys(isRecord(workflow.on) ? workflow.on : {})).toEqual(['pull_request'])
+    expect(workflowEvent(workflow, 'pull_request').paths).toEqual([
+      '.github/issue-management/**',
+      '.github/review-ownership/**',
+      '.github/workflows/issue-*.yml',
+      '.github/workflows/weighted-approval*.yml',
+      '.github/workflows/governance-policy-tests.yml',
+    ])
+    const job = workflowJob(workflow, 'policy-tests')
+    expect(job['runs-on']).toBe('windows-latest')
+    expect(job.defaults).toEqual({ run: { shell: 'pwsh' } })
+    if (!Array.isArray(job.steps)) throw new TypeError('Governance tests must define steps')
+    const steps = job.steps.filter(isRecord)
+    expect(steps[0]?.with).toEqual({ ref: '${{ github.event.pull_request.head.sha }}', 'persist-credentials': false })
+    expect(steps.filter(step => step.uses).every(step => /@[0-9a-f]{40}$/.test(String(step.uses)))).toBe(true)
+    expect(steps.at(-1)?.run).toBe('node --test .github/issue-management/policy.test.mjs .github/review-ownership/check-approval.test.mjs .github/review-ownership/blame-ownership.test.mjs .github/review-ownership/author-weight.test.mjs')
+    expect(JSON.stringify(workflow)).not.toMatch(/secrets\.|pull_request_target|continue-on-error|statuses:|pull-requests:/)
+  })
+})
+
 describe('Issue lifecycle workflow', () => {
   it('allocates lifecycle runners only for events that can change the board', () => {
     const lifecycle = loadWorkflow('.github/workflows/issue-lifecycle.yml')

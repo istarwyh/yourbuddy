@@ -87,7 +87,7 @@ The focused, keyless policy suite runs from the repository root:
 node --test .github/issue-management/policy.test.mjs
 ```
 
-[Workflow tests](../../scripts/ci-workflow.spec.ts) verify trigger and permission declarations. Local tests do not establish live GitHub delivery, App installation access, or actual runner cost; repository maintainers verify those in Actions.
+[Governance policy tests](../workflows/governance-policy-tests.yml) runs the keyless Issue and approval suites on the exact PR head with read-only permissions and no secrets. It does not replace existing CI, waive failed checks, publish approval statuses, or change required-check settings. [Workflow tests](../../scripts/ci-workflow.spec.ts) verify trigger and permission declarations. Local tests do not establish live GitHub delivery, App installation access, or actual runner cost; repository maintainers verify those in Actions.
 
 -----
 

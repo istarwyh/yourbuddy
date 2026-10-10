@@ -87,7 +87,7 @@ PR 打开时，工作流按配置时区中的 PR 创建日期，为每个被引�
 node --test .github/issue-management/policy.test.mjs
 ```
 
-[工作流测试](../../scripts/ci-workflow.spec.ts)验证触发器与权限声明。本地测试不能证明 GitHub 实际事件交付、App 安装访问权限或实际 runner 成本；仓库维护者在 Actions 中验证这些内容。
+[Governance policy tests](../workflows/governance-policy-tests.yml)以只读权限、无 secret，在 PR 精确 head 上运行无密钥 Issue 与审批测试。它不替代既有 CI，不豁免失败检查，不发布审批状态，也不改变 required-check 设置。[工作流测试](../../scripts/ci-workflow.spec.ts)验证触发器与权限声明。本地测试不能证明 GitHub 实际事件交付、App 安装访问权限或实际 runner 成本；仓库维护者在 Actions 中验证这些内容。
 
 -----
 

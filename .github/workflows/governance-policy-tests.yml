@@ -1,0 +1,44 @@
+name: Governance policy tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/issue-management/**'
+      - '.github/review-ownership/**'
+      - '.github/workflows/issue-*.yml'
+      - '.github/workflows/weighted-approval*.yml'
+      - '.github/workflows/governance-policy-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy-tests:
+    name: Governance policy tests
+    runs-on: windows-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out the exact PR head without write credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+      - name: Run keyless governance policy tests
+        run: >-
+          node --test
+          .github/issue-management/policy.test.mjs
+          .github/review-ownership/check-approval.test.mjs
+          .github/review-ownership/blame-ownership.test.mjs
+          .github/review-ownership/author-weight.test.mjs
