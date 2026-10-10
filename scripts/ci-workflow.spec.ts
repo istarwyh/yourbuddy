@@ -1058,54 +1058,37 @@ describe('Issue lifecycle workflow', () => {
     expect(issueEvents.types).toContain('untyped')
     const steps = lifecycleJob.steps.filter(isRecord)
     const checkoutStep = steps.find(s => s.name === 'Check out trusted policy')
-    const tokenStep = steps.find(s => s.name === 'Create project token')
+    const projectStep = steps.find(s => s.id === 'project')
     const handleStep = steps.find(s => s.name === 'Handle repository event')
-    expect(checkoutStep?.if).toContain("github.repository == 'deepseek-harness/deepseek-harness'")
-    for (const step of [tokenStep, handleStep]) {
-      expect(step?.if).toContain("github.repository == 'deepseek-harness/deepseek-harness'")
-      expect(step?.if).toContain("github.event_name != 'pull_request_review'")
-      expect(step?.if).toContain("github.event.review.state == 'changes_requested'")
-    }
+    expect(checkoutStep?.with).toMatchObject({ ref: '${{ github.event.repository.default_branch }}', 'persist-credentials': false })
+    expect(projectStep?.run).toContain('config.projectEnabled === true')
+    expect(handleStep?.if).toBe("steps.project.outputs.enabled == 'true'")
+    expect(handleStep?.env).toMatchObject({ GITHUB_TOKEN: '${{ github.token }}', PROJECT_TOKEN: '${{ secrets.ISSUE_PROJECT_TOKEN }}' })
+    expect(lifecycle.permissions).toEqual({ contents: 'read' })
+    expect(steps.some(s => String(s.uses).startsWith('actions/create-github-app-token'))).toBe(false)
 
     // issue-policy owns PR validation; it is read-only and a real gate.
     const policyPullRequest = workflowEvent(policy, 'pull_request')
     expect(policyPullRequest.types).toContain('ready_for_review')
   })
 
-  it('mints Project credentials only after preflight and always revalidates current metadata', () => {
+  it('uses optional repository-owned Project credentials after trusted preflight', () => {
     const policy = loadWorkflow('.github/workflows/issue-policy.yml')
     const policyJob = workflowJob(policy, 'policy')
     if (!Array.isArray(policyJob.steps)) throw new TypeError('Issue policy job must define steps')
     const steps = policyJob.steps.filter(isRecord)
-    const tokenStep = steps.find(step => step.name === 'Create Project read token')
     const validateStep = steps.find(step => step.name === 'Validate pull request')
     const preflightStep = steps.find(step => step.id === 'preflight')
-    expect(preflightStep).toMatchObject({ shell: 'bash' })
-    expect(preflightStep?.run).toContain('if [ -f .github/issue-management/selective-preflight.json ]; then')
-    expect(preflightStep?.run).toContain('node .github/issue-management/policy.mjs pr-preflight')
+    expect(preflightStep?.run).toBe('node .github/issue-management/policy.mjs pr-preflight')
     expect(preflightStep?.if).toBeUndefined()
+    expect(preflightStep?.env).toMatchObject({ GITHUB_TOKEN: '${{ github.token }}' })
     expect(policyJob.if).toBeUndefined()
-    expect(validateStep?.if).toBe("${{ steps.preflight.outputs.legacy-automated != 'true' }}")
-
-    expect(tokenStep).toMatchObject({
-      id: 'app-token',
-      if: "${{ steps.preflight.outputs.needs-project == 'true' }}",
-      uses: 'actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1',
-      with: {
-        'client-id': '${{ vars.DSH_ISSUE_APP_CLIENT_ID }}',
-        'private-key': '${{ secrets.DSH_ISSUE_APP_PRIVATE_KEY }}',
-        owner: 'deepseek-harness',
-        repositories: 'deepseek-harness',
-        'permission-issues': 'read',
-        'permission-organization-projects': 'read',
-      },
+    expect(validateStep?.if).toBeUndefined()
+    expect(validateStep?.env).toMatchObject({
+      GITHUB_TOKEN: '${{ github.token }}',
+      PROJECT_TOKEN: "${{ steps.preflight.outputs.needs-project == 'true' && secrets.ISSUE_PROJECT_TOKEN || '' }}",
     })
-    expect(validateStep).toMatchObject({
-      env: {
-        GITHUB_TOKEN: '${{ github.token }}',
-        PROJECT_TOKEN: '${{ steps.app-token.outputs.token }}',
-      },
-    })
+    expect(steps.some(step => String(step.uses).startsWith('actions/create-github-app-token'))).toBe(false)
   })
 })
 

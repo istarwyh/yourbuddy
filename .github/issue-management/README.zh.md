@@ -8,7 +8,7 @@ description: "面向仓库维护者的 Issue 策略强制范围、Project 访问
 
 ## 摘要
 
-贡献者可以引用 Issue 作为背景，而无需让 PR（Pull Request）校验依赖 Project 可用性。解决型引用还会强制检查 Project Priority。必需的 `Issue policy` job 与独立的生命周期工作流使用受信任的默认分支代码。
+贡献者可以引用 Issue 作为背景，而无需让 PR（Pull Request）校验依赖 Project 可用性。YourBuddy 对已就绪的人类 PR 保留同仓库 Issue 引用和标签要求。Project 集成默认关闭；仅启用时，解决型引用才强制检查 Project Priority。必需的 `Issue policy` job 与独立的生命周期工作流使用受信任的默认分支代码。
 
 ## 目录
 
@@ -24,24 +24,24 @@ description: "面向仓库维护者的 Issue 策略强制范围、Project 访问
 <a id="pull-request-policy"></a>
 ## PR 策略
 
-[Issue policy](../workflows/issue-policy.yml)适用于已请求评审或已有评审、非草稿且由人类创建的 PR。豁免 PR 成功结束，不解析 Issue 引用、不签发 Project App token，也不查询 ProjectV2。工作流在昂贵读取前根据仓库实时状态判断强制范围；订阅事件仍保留必需 job。最终校验重新读取实时状态：预检不是缓存结论，也不是元数据编辑的豁免。
+[Issue policy](../workflows/issue-policy.yml)适用于所有非草稿且由人类创建的 PR，包括没有请求评审的 owner 维护 PR。豁免 PR 成功结束，不解析 Issue 引用，也不查询 ProjectV2。工作流在昂贵读取前根据仓库实时状态判断强制范围；订阅事件仍保留必需 job。最终校验重新读取实时状态：预检不是缓存结论，也不是元数据编辑的豁免。
 
-选择性预检要求受信任的检出中存在 [selective-preflight.json](selective-preflight.json)。缺少该标记时，工作流保留旧版行为：人类 PR 获取 Project token 并执行完整旧版校验；Bot/App PR 跳过两者。受支持的预检执行失败时，job 失败而不回退。
+预检读取可信策略并报告是否需要 Project 访问。预检执行失败时，job 失败而不回退。工作流不请求上游 App 安装。
 
 强制范围内的 PR 至少需要一个同仓库 Issue 引用、恰好一个规范的 `kind/*`、至少一个 `area/*`，以及最多一个 `p0`–`p3` 标签。不支持的 kind、退役别名和 `source/*` 标签会使校验失败；[标签分类](../../.agents/notes/implemented/process/2026-08-08-unified-github-label-taxonomy.zh.md)定义其含义。
 
 - 信息型引用（如 `Refs #3624`）提供背景。校验通过 REST 区分 Issue 与 PR 编号，不读取这些引用的 Project 字段。仅含信息型引用的 PR 可以使用自己的 Priority，无需匹配所引用的 Issue。
-- 解决型引用使用关闭关键词，如 `Fixes #123`、`Closes #123` 或 `Resolves #123`。校验期间只有解析为实际 Issue 的解决型引用需要读取 Project。PR Priority 必须匹配被解决 Issue 中的最高 Priority；带 Priority 标签的解决型 PR 要求每个被解决 Issue 均有 Priority。若所有被解决 Issue 的 Priority 均为空，PR 可以省略 Priority。
+- 解决型引用使用关闭关键词，如 `Fixes #123`、`Closes #123` 或 `Resolves #123`。启用 Project 集成时，校验期间只有解析为实际 Issue 的解决型引用需要读取 Project。关闭时，解决型引用仍需指向真实的同仓库 Issue，并使用 PR 自身的可选 Priority。PR Priority 必须匹配被解决 Issue 中的最高 Priority；带 Priority 标签的解决型 PR 要求每个被解决 Issue 均有 Priority。若所有被解决 Issue 的 Priority 均为空，PR 可以省略 Priority。
 - HTML 注释、代码围栏或行内代码中的引用不计入。跨仓库引用与指向 PR 的引用不能满足 Issue 引用要求。
 
-REST 读取使用仓库 `GITHUB_TOKEN`。Project 校验使用独立的 App token，具有 Issues 和组织 Projects 读取权限。缺少所需 Project 访问权限或字段配置无效时，校验失败，而不是绕过解决型 Issue 的 Priority 检查。
+REST 读取使用仓库 `GITHUB_TOKEN`。可选的 Project 校验使用另行配置的 `ISSUE_PROJECT_TOKEN`，需能访问目标 Project；Project 集成关闭时不读取它。缺少所需 Project 访问权限或字段配置无效时，校验失败，而不是绕过解决型 Issue 的 Priority 检查。
 
 -----
 
 <a id="lifecycle-events"></a>
 ## 生命周期事件
 
-[Issue lifecycle](../workflows/issue-lifecycle.yml)独立于 PR 校验强制范围修改 Project 数据。PR 打开、重新打开和正文编辑可将解决型 Issue 推进至 `In progress`；仅编辑标题不会。请求评审以 `In review` 为目标。请求修改的评审以 `In progress` 为目标，并遵守[人工状态归属与终态保护](../../.agents/notes/implemented/process/2026-08-10-event-directed-pr-review-status.zh.md)。
+[Issue lifecycle](../workflows/issue-lifecycle.yml)在 `projectEnabled` 为 false 时不执行写入。启用后，它独立于 PR 校验强制范围修改 Project 数据。PR 打开、重新打开和正文编辑可将解决型 Issue 推进至 `In progress`；仅编辑标题不会。请求评审以 `In review` 为目标。请求修改的评审以 `In progress` 为目标，并遵守[人工状态归属与终态保护](../../.agents/notes/implemented/process/2026-08-10-event-directed-pr-review-status.zh.md)。
 
 仅批准或仅评论的评审不分配生命周期 runner。PR 推送与标签变更，以及 Issue 指派变更，不触发生命周期工作。其他已订阅的 Issue 事件维护 Project 归属、状态及审计评论；精确订阅列表由工作流定义。
 
@@ -52,7 +52,11 @@ PR 打开时，工作流按配置时区中的 PR 创建日期，为每个被引�
 <a id="configuration-and-limitations"></a>
 ## 配置与限制
 
-[config.json](config.json)选择仓库、Project、字段名、状态、生命周期操作者和时区。策略读取 Project 自定义单选 `Priority` 字段，而非组织原生 Issue Priority 字段。维护者手动设置 Project Priority；指引编辑原生 Issue 字段的 skill 不会填充该值。Issue 审计先移除 PR 专用 kind 标签和已停用的标签别名，再校验其余元数据。不提供字段迁移或 Priority 同步。
+可信 runner 的 `GITHUB_REPOSITORY` 决定 REST 请求、Issue 引用和 GraphQL Issue 读取的仓库；缺少身份时直接失败，不回退到上游。[config.json](config.json)独立选择 `projectOwner`、`projectOwnerType`（`organization` 或 `user`）、Project、字段名、状态、生命周期操作者和时区。策略读取 Project 自定义单选 `Priority` 字段，而非组织原生 Issue Priority 字段。维护者手动设置 Project Priority；指引编辑原生 Issue 字段的 skill 不会填充该值。Issue 审计先移除 PR 专用 kind 标签和已停用的标签别名，再校验其余元数据。不提供字段迁移或 Priority 同步。
+
+启用 Projects 需要 owner 配置 `projectEnabled`、Project owner/type/number/title，以及针对所需 Project 操作另行授权的 `ISSUE_PROJECT_TOKEN`。将 `lifecycleActor` 设为该 token 的实际 Project 操作者登录名。若需保留人工状态归属保护，应使用独立自动化身份；与人工操作者共用登录名的个人 token 无法区分自动和手动看板更新。仓库 Issue 写入使用工作流 `GITHUB_TOKEN`，使审计评论保持由 bot 创建，不受 Project 凭据影响。生命周期工作流保留 `contents: read`；启用生命周期写入还需另行批准 `issues: write` 和 `pull-requests: read` 权限。此配置不创建凭据或新增工作流权限。看板生命周期审计仅在启用 Project 集成时运行。个人仓库不要求原生 Issue Type；支持此功能的仓库可通过独立的 `requireIssueType` 配置启用。
+
+工作流执行默认分支策略，因此修改此 PR 的策略不能授权其自身合并。首次迁移需要独立审查代码、本地策略与工作流证据、遵守 GitHub 实际合并限制并由 owner 批准迁移；不得伪造通过状态或以写凭据执行不可信 PR 代码。迁移后，应对 PR 当前精确 head 重新运行策略检查。
 
 生命周期处理由事件驱动，不是协调器。被省略的事件不会修复 Project 状态，并发 Project mutation 也没有原子比较并交换保护。选择性求值不重新设计必需检查的权威来源，也不保证已测得的 Actions 分钟节省。[选择性求值决策](../../.agents/notes/implemented/process/2026-09-07-selective-issue-policy-evaluation.zh.md)记录取舍。
 
