@@ -2,10 +2,51 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { assertV4RowAdmission } from '@deepseek-ai/dsh-session-format-v3-to-v4'
 import { collectLogEvents } from './gen-persistence-catalog.ts'
 import { extractPersistenceSchema } from './persistence-schema.ts'
 import { classifyPersistenceChange, parsePersistenceSnapshot } from './persistence-changes.ts'
-import { canonicalizeSchema, isArbitraryJsonSchema, schemaDigest, type PersistenceSchemaInventory } from './persistence-schema-model.ts'
+import { canonicalizeSchema, isArbitraryJsonSchema, schemaDigest, type PersistenceSchemaInventory, type SchemaNode } from './persistence-schema-model.ts'
+
+function property(nodes: readonly SchemaNode[], index: number, name: string): number {
+  const node = nodes[index]
+  if (node?.kind !== 'object') throw new Error(`expected an object containing ${name}`)
+  const field = node.properties.find(candidate => candidate.name === name)
+  if (field === undefined) throw new Error(`generated schema omits ${name}`)
+  return field.type
+}
+
+// Reuse the real-repository inventory instead of constructing a second TypeScript program.
+function assertRetiredHeaderRequiresVersionBump(inventory: PersistenceSchemaInventory): void {
+  const before = inventory.roots.find(root => root.key === 'event:request/header')
+  if (before === undefined) throw new Error('generated schema omits request/header')
+  const nodes = [...before.schema.nodes]
+  const dataIndex = property(nodes, before.schema.root, 'data')
+  const headerIndex = property(nodes, dataIndex, 'header')
+  const header = nodes[headerIndex]
+  if (header?.kind !== 'object') throw new Error('generated header schema is not an object')
+  const reserved = header.properties.find(field => field.name === 'system')
+  expect(reserved).toMatchObject({ optional: true })
+  if (reserved === undefined) throw new Error('generated header omits the retired system reservation')
+  expect(nodes[reserved.type]).toEqual({ kind: 'primitive', type: 'never' })
+
+  const stringIndex = nodes.length
+  nodes.push({ kind: 'primitive', type: 'string' })
+  nodes[headerIndex] = {
+    ...header,
+    properties: header.properties.map(field => field.name === 'system' ? { ...field, type: stringIndex } : field),
+  }
+  const schema = canonicalizeSchema(nodes, before.schema.root)
+  const after = { ...before, schema, digest: schemaDigest(schema) }
+  expect(classifyPersistenceChange(before, after)).toEqual([{
+    path: 'event:request/header.data.header.system',
+    kind: 'type-changed',
+    description: 'type changed',
+    requiresVersionBump: true,
+  }])
+  expect(() => { assertV4RowAdmission({ type: 'request/header', data: { header: { system: 'retired text' } } }) })
+    .toThrow('format v4 request/header rejects retired header.system')
+}
 
 const roots: string[] = []
 afterEach(() => {
@@ -331,6 +372,7 @@ interface SessionEventMap {
         expect(digests.has(schemaDigest(canonicalizeSchema(root.schema.nodes, node)))).toBe(true)
       }
     }
+    assertRetiredHeaderRequiresVersionBump(model)
   })
 })
 
