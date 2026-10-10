@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const dist = join(root, 'dist')
 mkdirSync(dist, { recursive: true })
-for (const name of ['splash.html', 'shell.html', 'desktop-i18n.js', 'app-icon.png']) {
+for (const name of ['splash.html', 'shell.html', 'desktop-i18n.js', 'splash-state.js', 'app-icon.png']) {
   cpSync(join(root, name), join(dist, name))
 }
 

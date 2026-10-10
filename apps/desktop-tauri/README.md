@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 This Tauri application embeds the existing `dsh web` client and adds the YourBuddy product assembly, including Pomodoro. The default Bootstrap DMG carries the signed shell, fixed pnpm package, component manifest, and desktop overlay. Immutable Harness, Node, pnpm Store, and Harbor archives are published beside it; the separately labeled Offline DMG seeds those same archives without creating a second runtime layout.
 
+Bootstrap downloads expose component, stage, byte count and retained errors on the splash, including after the document reloads. Transient transport failures and HTTP 408, 429, 500, 502, 503 and 504 receive at most three attempts; a stalled response body has a 30-second read deadline. Matching partial downloads resume with Range and If-Range; a server returning a full response restarts that archive. A failed download leaves the previous active component and installed trees unchanged. **Retry startup** restarts the failed application once and reuses resumable data; **Copy diagnostics** copies the displayed status and error. This recovery does not select an older Harness or promise cross-version compatibility.
+
 ## Runtime layout
 
 | Resource | Runtime behavior |

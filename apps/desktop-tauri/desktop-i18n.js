@@ -4,6 +4,18 @@
  */
 window.DSH_I18N = (function () {
   const zh = {
+    'splash.bytes': '字节',
+    'splash.download': '正在下载',
+    'splash.retry': '正在重试下载',
+    'splash.verify': '正在校验',
+    'splash.unpack': '正在解压',
+    'splash.retryAction': '重试启动',
+    'splash.restarting': '正在重新启动…',
+    'splash.copy': '复制诊断信息',
+    'splash.copied': '已复制',
+    'splash.copyFailed': '无法复制，请手动选择错误信息',
+    'splash.bridgeError': '无法读取启动状态：',
+    'splash.proxyHint': '若多次失败，请检查网络或代理后重试。已有安装与可续传数据会保留。',
     'splash.claim': '为你而来，也由你定义。',
     'splash.explanation': '基于 DSH，界面、模型、Skill、Plugin 与工作方式都可以按需更换、扩展。',
     'splash.promise': '每个人，都有自己的 Buddy。',
@@ -19,6 +31,18 @@ window.DSH_I18N = (function () {
     'shell.close': '关闭',
   }
   const en = {
+    'splash.bytes': 'bytes',
+    'splash.download': 'Downloading',
+    'splash.retry': 'Retrying download',
+    'splash.verify': 'Verifying',
+    'splash.unpack': 'Unpacking',
+    'splash.retryAction': 'Retry startup',
+    'splash.restarting': 'Restarting…',
+    'splash.copy': 'Copy diagnostics',
+    'splash.copied': 'Copied',
+    'splash.copyFailed': 'Could not copy; select the error text manually',
+    'splash.bridgeError': 'Could not read startup state: ',
+    'splash.proxyHint': 'If it keeps failing, check your network or proxy and retry. Existing installations and resumable data are preserved.',
     'splash.claim': 'Made for you. Shaped by you.',
     'splash.explanation': 'Built on DSH, YourBuddy lets you change the interface, models, Skills, Plugins, and workflows around the way you work.',
     'splash.promise': 'Everyone gets a Buddy of their own.',

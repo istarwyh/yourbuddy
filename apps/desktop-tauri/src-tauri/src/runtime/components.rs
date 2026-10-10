@@ -4,7 +4,8 @@ use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Component as PathComponent, Path, PathBuf};
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use futures_util::StreamExt;
 use minisign_verify::{PublicKey, Signature};
@@ -20,6 +21,12 @@ use super::app_data_root;
 
 const COMPONENT_PUBLIC_KEY: &str = "untrusted comment: minisign public key: DBDFC5E28EF581EB\nRWTrgfWO4sXf22TrOC2n0Rq69j7oq0Xt3bZRYfWwrow/ndjkqnxuLKAM\n";
 const RELEASE_BASE: &str = "https://github.com/istarwyh/yourbuddy/releases/download";
+const DOWNLOAD_ATTEMPTS: usize = 3;
+#[cfg(not(test))]
+const DOWNLOAD_RETRY_DELAY: Duration = Duration::from_secs(1);
+#[cfg(test)]
+const DOWNLOAD_RETRY_DELAY: Duration = Duration::ZERO;
+const DOWNLOAD_PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 const MAX_ARCHIVE_ENTRIES: usize = 250_000;
 const MAX_EXPANDED_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
@@ -46,12 +53,58 @@ pub struct ComponentSpec {
     pub activation: String,
 }
 
+/// Download updates for the startup splash; byte counts include any resumed partial.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ComponentProgress {
+    Download {
+        component: String,
+        transferred: u64,
+        total: u64,
+    },
+    Retry {
+        component: String,
+        attempt: usize,
+        max_attempts: usize,
+    },
+    Phase {
+        component: String,
+        phase: &'static str,
+    },
+}
+
+#[derive(Debug)]
+struct DownloadError {
+    message: String,
+    retryable: bool,
+}
+
+impl From<String> for DownloadError {
+    fn from(message: String) -> Self {
+        Self {
+            message,
+            retryable: false,
+        }
+    }
+}
+
+impl DownloadError {
+    fn transient(message: String) -> Self {
+        Self {
+            message,
+            retryable: true,
+        }
+    }
+}
+
 /// Native owner for the signed component channel and content-addressed cache.
 pub struct ComponentManager {
     root: PathBuf,
     resource_dir: PathBuf,
     manifest: ComponentManifest,
     client: Client,
+    progress: Option<Arc<dyn Fn(ComponentProgress) + Send + Sync>>,
+    #[cfg(test)]
+    download_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -166,6 +219,7 @@ impl ComponentManager {
         let client = apply_to_client(
             ClientBuilder::new()
                 .connect_timeout(Duration::from_secs(30))
+                .read_timeout(Duration::from_secs(30))
                 .timeout(Duration::from_secs(30 * 60)),
             proxy,
         )?
@@ -176,7 +230,22 @@ impl ComponentManager {
             resource_dir: resource_dir.to_path_buf(),
             manifest,
             client,
+            progress: None,
+            #[cfg(test)]
+            download_url: None,
         })
+    }
+
+    /// Attach an observer for resumed byte progress and bounded network retries.
+    pub fn with_progress(mut self, progress: Arc<dyn Fn(ComponentProgress) + Send + Sync>) -> Self {
+        self.progress = Some(progress);
+        self
+    }
+
+    fn report(&self, progress: ComponentProgress) {
+        if let Some(observer) = &self.progress {
+            observer(progress);
+        }
     }
 
     /// Ensure the startup Harness exists while retaining lazy Node, Store, and Harbor specs.
@@ -224,14 +293,31 @@ impl ComponentManager {
             self.record_active(name, spec, &destination)?;
             return Ok(destination);
         }
-        let archive = self.obtain_archive(spec).await?;
-        verify_archive(&archive, spec)?;
+        let archive = self.obtain_archive(name, spec).await?;
+        self.report(ComponentProgress::Phase {
+            component: name.into(),
+            phase: "verify",
+        });
+        if let Err(error) = verify_archive(&archive, spec) {
+            let downloads = self.root.join("downloads");
+            if archive == downloads.join(format!("{}.partial", spec.archive)) {
+                remove_partial(
+                    &archive,
+                    &downloads.join(format!("{}.partial.json", spec.archive)),
+                );
+            }
+            return Err(error);
+        }
+        self.report(ComponentProgress::Phase {
+            component: name.into(),
+            phase: "unpack",
+        });
         self.extract_and_activate(name, spec, &archive, &destination)?;
         self.record_active(name, spec, &destination)?;
         Ok(destination)
     }
 
-    async fn obtain_archive(&self, spec: &ComponentSpec) -> Result<PathBuf, String> {
+    async fn obtain_archive(&self, name: &str, spec: &ComponentSpec) -> Result<PathBuf, String> {
         let seed = self
             .resource_dir
             .join("component-seeds")
@@ -239,14 +325,55 @@ impl ComponentManager {
         if seed.is_file() {
             return Ok(seed);
         }
+        let url = asset_url(&self.manifest, spec)?;
+        #[cfg(test)]
+        let url = self.download_url.clone().unwrap_or(url);
+        self.download_archive(name, spec, &url, DOWNLOAD_RETRY_DELAY)
+            .await
+    }
+
+    async fn download_archive(
+        &self,
+        name: &str,
+        spec: &ComponentSpec,
+        url: &str,
+        retry_delay: Duration,
+    ) -> Result<PathBuf, String> {
         let downloads = self.root.join("downloads");
         fs::create_dir_all(&downloads)
             .map_err(|error| format!("cannot create component downloads: {error}"))?;
         let partial = downloads.join(format!("{}.partial", spec.archive));
         let metadata_path = downloads.join(format!("{}.partial.json", spec.archive));
-        let url = asset_url(&self.manifest, spec)?;
-        let mut offset = fs::metadata(&partial).map(|value| value.len()).unwrap_or(0);
-        let previous = fs::read(&metadata_path)
+        for attempt in 1..=DOWNLOAD_ATTEMPTS {
+            match self
+                .download_attempt(name, spec, url, &partial, &metadata_path)
+                .await
+            {
+                Ok(()) => return Ok(partial),
+                Err(error) if error.retryable && attempt < DOWNLOAD_ATTEMPTS => {
+                    self.report(ComponentProgress::Retry {
+                        component: name.into(),
+                        attempt: attempt + 1,
+                        max_attempts: DOWNLOAD_ATTEMPTS,
+                    });
+                    tokio::time::sleep(retry_delay * attempt as u32).await;
+                }
+                Err(error) => return Err(error.message),
+            }
+        }
+        unreachable!("the final download attempt returns its result")
+    }
+
+    async fn download_attempt(
+        &self,
+        name: &str,
+        spec: &ComponentSpec,
+        url: &str,
+        partial: &Path,
+        metadata_path: &Path,
+    ) -> Result<(), DownloadError> {
+        let mut offset = fs::metadata(partial).map(|value| value.len()).unwrap_or(0);
+        let previous = fs::read(metadata_path)
             .ok()
             .and_then(|bytes| serde_json::from_slice::<PartialMetadata>(&bytes).ok())
             .filter(|value| {
@@ -256,30 +383,55 @@ impl ComponentManager {
                     && offset <= spec.bytes
             });
         if offset > 0 && previous.is_none() {
-            remove_partial(&partial, &metadata_path);
+            remove_partial(partial, metadata_path);
             offset = 0;
         }
-        let mut request = self.client.get(&url);
+        if offset == spec.bytes {
+            if verify_archive(partial, spec).is_ok() {
+                self.report(ComponentProgress::Download {
+                    component: name.into(),
+                    transferred: offset,
+                    total: spec.bytes,
+                });
+                return Ok(());
+            }
+            remove_partial(partial, metadata_path);
+            offset = 0;
+        }
+        self.report(ComponentProgress::Download {
+            component: name.into(),
+            transferred: offset,
+            total: spec.bytes,
+        });
+        let mut request = self.client.get(url);
         if offset > 0 {
             request = request.header(RANGE, format!("bytes={offset}-"));
             if let Some(etag) = previous.as_ref().and_then(|value| value.etag.as_deref()) {
                 request = request.header(IF_RANGE, etag);
             }
         }
-        let response = request
-            .send()
-            .await
-            .map_err(|error| format!("component download failed: {error}"))?;
+        let response = request.send().await.map_err(|error| DownloadError {
+            retryable: error.is_timeout()
+                || error.is_connect()
+                || error.is_request()
+                || error.is_body(),
+            message: format!("component download failed: {error}"),
+        })?;
         let resumed = offset > 0 && response.status() == StatusCode::PARTIAL_CONTENT;
         if !response.status().is_success() {
-            return Err(format!(
-                "component download returned HTTP {}",
-                response.status()
-            ));
+            return Err(DownloadError {
+                retryable: retryable_status(response.status()),
+                message: format!("component download returned HTTP {}", response.status()),
+            });
         }
         if offset > 0 && !resumed {
-            remove_partial(&partial, &metadata_path);
+            remove_partial(partial, metadata_path);
             offset = 0;
+            self.report(ComponentProgress::Download {
+                component: name.into(),
+                transferred: 0,
+                total: spec.bytes,
+            });
         }
         let etag = response
             .headers()
@@ -287,13 +439,13 @@ impl ComponentManager {
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
         let metadata = PartialMetadata {
-            url,
+            url: url.to_owned(),
             sha256: spec.sha256.clone(),
             bytes: spec.bytes,
             etag,
         };
         fs::write(
-            &metadata_path,
+            metadata_path,
             serde_json::to_vec_pretty(&metadata).map_err(|error| error.to_string())?,
         )
         .map_err(|error| format!("cannot write component download metadata: {error}"))?;
@@ -302,33 +454,52 @@ impl ComponentManager {
             .write(true)
             .append(resumed)
             .truncate(!resumed)
-            .open(&partial)
+            .open(partial)
             .map_err(|error| format!("cannot write component download: {error}"))?;
         let mut transferred = offset;
+        let mut last_progress = Instant::now();
         let mut stream = response.bytes_stream();
         while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|error| format!("component download failed: {error}"))?;
+            let chunk = chunk.map_err(|error| {
+                self.report(ComponentProgress::Download {
+                    component: name.into(),
+                    transferred,
+                    total: spec.bytes,
+                });
+                DownloadError::transient(format!("component download failed: {error}"))
+            })?;
             transferred = transferred
                 .checked_add(chunk.len() as u64)
                 .ok_or_else(|| "component byte count overflow".to_string())?;
             if transferred > spec.bytes {
-                remove_partial(&partial, &metadata_path);
-                return Err("component download exceeded declared size".into());
+                drop(output);
+                remove_partial(partial, metadata_path);
+                return Err("component download exceeded declared size"
+                    .to_string()
+                    .into());
             }
             output
                 .write_all(&chunk)
                 .map_err(|error| format!("cannot write component download: {error}"))?;
+            if last_progress.elapsed() >= DOWNLOAD_PROGRESS_INTERVAL || transferred == spec.bytes {
+                self.report(ComponentProgress::Download {
+                    component: name.into(),
+                    transferred,
+                    total: spec.bytes,
+                });
+                last_progress = Instant::now();
+            }
         }
         output
             .sync_all()
             .map_err(|error| format!("cannot sync component download: {error}"))?;
         if transferred != spec.bytes {
-            return Err(format!(
+            return Err(DownloadError::transient(format!(
                 "component download is incomplete: expected {} bytes, received {transferred}",
                 spec.bytes
-            ));
+            )));
         }
-        Ok(partial)
+        Ok(())
     }
 
     fn extract_and_activate(
@@ -620,6 +791,10 @@ fn relative_link_stays_inside(path: &Path, target: &Path) -> bool {
     true
 }
 
+fn retryable_status(status: StatusCode) -> bool {
+    matches!(status.as_u16(), 408 | 429 | 500 | 502 | 503 | 504)
+}
+
 fn remove_partial(partial: &Path, metadata: &Path) {
     let _ = fs::remove_file(partial);
     let _ = fs::remove_file(metadata);
@@ -663,7 +838,7 @@ mod tests {
         }
     }
 
-    fn manifest() -> ComponentManifest {
+    pub(super) fn manifest() -> ComponentManifest {
         let spec = ComponentSpec {
             id: "sha256:abc123".into(),
             archive: "yourbuddy-harness-abc123-macos-arm64.tar.zst".into(),
@@ -758,3 +933,7 @@ mod tests {
         drop(second);
     }
 }
+
+#[cfg(test)]
+#[path = "components_download_tests.rs"]
+mod download_tests;

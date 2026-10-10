@@ -1,0 +1,39 @@
+name: Bootstrap regression
+
+on:
+  pull_request:
+    paths:
+      - 'apps/desktop-tauri/src-tauri/**'
+      - 'apps/desktop-tauri/splash.html'
+      - 'apps/desktop-tauri/splash-state.js'
+      - 'apps/desktop-tauri/desktop-i18n.js'
+      - 'apps/desktop-tauri/scripts/splash-state.test.mjs'
+      - 'apps/desktop-tauri/scripts/prepare-bootstrap-shell.mjs'
+      - 'apps/desktop-tauri/scripts/prepare-dist.mjs'
+      - '.github/workflows/bootstrap-regression.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bootstrap-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bootstrap:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Test splash state and recovery controls
+        run: node --test apps/desktop-tauri/scripts/splash-state.test.mjs
+      - name: Compile the desktop application and test Bootstrap recovery
+        working-directory: apps/desktop-tauri/src-tauri
+        run: |
+          cargo test --locked runtime::components
+          cargo test --locked runtime::boot_status::tests

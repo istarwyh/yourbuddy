@@ -4,6 +4,8 @@
 
 这个 Tauri 应用承载现有的 `dsh web` 客户端，并加入包括 Pomodoro 在内的 YourBuddy 产品装配层。默认 Bootstrap DMG 只携带签名 Shell、固定 pnpm Package、组件 Manifest 与桌面 Overlay。不可变 Harness、Node、pnpm Store 与 Harbor Archive 随同一个 Release 发布；单独标注的 Offline DMG Seed 同一组 Archive，不创建第二套 Runtime 布局。
 
+Bootstrap 启动页展示组件、阶段、字节数和保留的错误，页面重新加载后仍可读取。暂时性传输失败及 HTTP 408、429、500、502、503、504 最多尝试三次；响应正文停止传输时，单次读取限时 30 秒。匹配的部分下载通过 Range 和 If-Range 续传；服务器返回完整响应时则重新下载该归档。下载失败不改变此前激活的组件及已安装目录。**重试启动** 只重启失败的应用一次，并复用可续传数据；**复制诊断信息** 复制当前显示的状态和错误。此恢复流程不选择旧版 Harness，也不承诺跨版本兼容性。
+
 ## 运行时布局
 
 | 资源 | 运行时行为 |
