@@ -99,6 +99,80 @@ function sddlOf(path: string): string {
   return pwsh(`(Get-Acl -LiteralPath '${path.replaceAll("'", "''")}').Sddl`).trim()
 }
 
+// Windows may reorder inherited Allow ACEs while propagating a restored parent DACL.
+// Compare only that commutative group canonically; every other byte remains significant.
+function inheritedAllowSnapshot(sddl: string): string {
+  const daclStart = sddl.indexOf('D:')
+  expect(daclStart, 'fixture must have a DACL').toBeGreaterThanOrEqual(0)
+  const saclStart = sddl.indexOf('S:', daclStart)
+  const end = saclStart < 0 ? sddl.length : saclStart
+  const body = sddl.slice(daclStart, end)
+  const aceStart = body.indexOf('(')
+  expect(aceStart, 'fixture DACL must contain simple ACEs').toBeGreaterThanOrEqual(0)
+  const aces = body.slice(aceStart).match(/\([^()]*\)/gu) ?? []
+  expect(aces.join(''), 'unsupported fixture ACE encoding').toBe(body.slice(aceStart))
+  const explicit: string[] = []
+  const inherited: string[] = []
+  let explicitAllowSeen = false
+  for (const ace of aces) {
+    const fields = ace.slice(1, -1).split(';')
+    expect(fields, 'fixture comparator supports simple DACL ACEs only').toHaveLength(6)
+    const [type, flags] = fields
+    expect(type === 'A' || type === 'D', 'unsupported fixture ACE type').toBe(true)
+    expect(flags).toMatch(/^(?:OI|CI|NP|IO|ID|SA|FA)*$/u)
+    if (flags!.includes('ID')) {
+      expect(type, 'inherited Deny cannot be reordered by this comparator').toBe('A')
+      inherited.push(ace)
+    } else {
+      expect(inherited, 'explicit ACE after inherited ACE is noncanonical').toHaveLength(0)
+      if (type === 'D') expect(explicitAllowSeen, 'explicit Deny after Allow is noncanonical').toBe(false)
+      else explicitAllowSeen = true
+      explicit.push(ace)
+    }
+  }
+  return sddl.slice(0, daclStart) + body.slice(0, aceStart)
+    + explicit.join('') + inherited.sort().join('') + sddl.slice(end)
+}
+
+describe('inherited Allow fixture snapshots', () => {
+  const prefix = 'O:SYG:BAD:AI(D;;WD;;;WD)(A;;FA;;;SY)'
+  const first = '(A;CIID;FR;;;BA)'
+  const second = '(A;OICIID;0x1200a9;;;S-1-15-2-1-2-3-4)'
+  const sacl = 'S:AI(ML;OICI;NW;;;LW)'
+  const before = prefix + first + second + sacl
+
+  it('ignores only the order of inherited Allow ACEs without deduplicating them', () => {
+    expect(inheritedAllowSnapshot(prefix + second + first + sacl)).toBe(inheritedAllowSnapshot(before))
+    expect(inheritedAllowSnapshot(prefix + first + first + second + sacl)).not.toBe(inheritedAllowSnapshot(before))
+  })
+
+  it('retains masks, flags, principals, explicit order, owner, group, control and SACL', () => {
+    for (const changed of [
+      before.replace('0x1200a9', '0x1200ab'),
+      before.replace('CIID;FR', 'OICIID;FR'),
+      before.replace(';;;BA)', ';;;SY)'),
+      before.replace('O:SY', 'O:BA'),
+      before.replace('G:BA', 'G:SY'),
+      before.replace('D:AI', 'D:PAI'),
+      before.replace('(D;;WD', '(D;;WO'),
+      before.replace(';;;LW)', ';;;ME)'),
+      before.replace('(A;;FA;;;SY)', '(A;;FR;;;BA)(A;;FA;;;SY)'),
+    ]) expect(inheritedAllowSnapshot(changed)).not.toBe(inheritedAllowSnapshot(before))
+    const explicitOne = 'O:SYG:BAD:AI(A;;FR;;;BA)(A;;FA;;;SY)'
+    const explicitTwo = 'O:SYG:BAD:AI(A;;FA;;;SY)(A;;FR;;;BA)'
+    expect(inheritedAllowSnapshot(explicitOne)).not.toBe(inheritedAllowSnapshot(explicitTwo))
+  })
+
+  it('rejects inherited Deny and noncanonical or unsupported ACE groups', () => {
+    for (const invalid of [
+      prefix + '(D;CIID;FR;;;BA)' + second + sacl,
+      prefix + first + '(A;;FR;;;BA)' + sacl,
+      'O:SYG:BAD:AI(A;;FA;;;SY)(D;;WD;;;WD)' + first,
+      prefix + '(OA;CIID;FR;;;BA)' + sacl,
+    ]) expect(() => inheritedAllowSnapshot(invalid)).toThrow()
+  })
+})
+
 function aclLines(path: string): string[] {
   return icacls(path).split(/\r?\n/u).map(line => line.trim()).filter(line => line !== '')
 }
@@ -625,7 +699,7 @@ exit $LASTEXITCODE
     icacls(parent, '/grant', `*${PACKAGE_SID}:(OI)(CI)(RX)`)
     if (explicitChild) icacls(child, '/grant', '*S-1-15-2-4-3-2-1:(OI)(CI)(RX)')
     const paths = [parent, child, leaf]
-    const before = paths.map(sddlOf)
+    const before = paths.map(path => inheritedAllowSnapshot(sddlOf(path)))
     // The fixture's owner is the host token's default owner, which is not the invoking user on an
     // elevated runner; the repair must preserve whatever owner the fixture has.
     const ownersBefore = paths.map(ownerOf)
@@ -641,7 +715,7 @@ exit $LASTEXITCODE
     expect(paths.map(ownerOf)).toEqual(ownersBefore)
     const commands = entries.at(-1)!.details.rollbackCommands as string[]
     for (const command of commands) expect(runPowerShell(['-Command', command]).code).toBe(0)
-    expect(paths.map(sddlOf)).toEqual(before)
+    expect(paths.map(path => inheritedAllowSnapshot(sddlOf(path)))).toEqual(before)
   })
 
   it('refuses an inherited source outside AllowRoot before touching an in-root explicit entry', () => {
@@ -669,7 +743,7 @@ exit $LASTEXITCODE
     icacls(parent, '/grant', `*${PACKAGE_SID}:(OI)(CI)(RX)`)
     icacls(child, '/grant', '*S-1-15-2-4-3-2-1:(OI)(CI)(RX)')
     const paths = [parent, child, leaf]
-    const before = paths.map(sddlOf)
+    const before = paths.map(path => inheritedAllowSnapshot(sddlOf(path)))
     const quote = (value: string): string => `'${value.replaceAll("'", "''")}'`
     const wrapper = join(scratch, 'fail-inherited-verification.ps1')
     writeFileSync(wrapper, `
@@ -689,7 +763,7 @@ exit $LASTEXITCODE
     expect(run.code, run.output).toBe(2)
     expect(reports(run).filter(entry => entry.kind === 'verification' && entry.operation === 'restore').map(entry => entry.path)).toEqual([child, parent])
     expect(reports(run).at(-1)).toMatchObject({ details: { rollback: 'verified', nextAction: 'stop' } })
-    expect(paths.map(sddlOf)).toEqual(before)
+    expect(paths.map(path => inheritedAllowSnapshot(sddlOf(path)))).toEqual(before)
   })
 
   it.each(['-Fix', '-GrantFullControl', '-Restore'])('rejects equivalent spellings of AllowRoot through %s', (mode) => {
@@ -717,7 +791,6 @@ exit $LASTEXITCODE
     const managed = join(root, directory)
     const child = join(managed, 'application')
     mkdirSync(child, { recursive: true })
-    stamp(child, PACKAGE_SID)
     const key = directory === 'Packages' ? 'LOCALAPPDATA' : 'ProgramFiles'
     const quote = (value: string): string => `'${value.replaceAll("'", "''")}'`
     // PowerShell initializes ProgramFiles at startup; redirect only this child's lookup after startup.
@@ -732,9 +805,14 @@ exit $LASTEXITCODE
       expect(grant.output).toContain('managed application directory')
       expect(sddlOf(path)).toBe(before)
     }
+    stamp(child, PACKAGE_SID)
+    expect(aclLines(child).join('\n')).toContain(PACKAGE_SID)
+    const beforeFix = sddlOf(child)
     const fix = run(child, '-Fix')
     expect(fix.code, fix.output).toBe(2)
     expect(fix.output).toContain('managed application directory')
+    expect(sddlOf(child)).toBe(beforeFix)
+    expect(reports(fix).filter(entry => entry.kind === 'action' && entry.details.effect === 'acl')).toEqual([])
     expect(aclLines(child).join('\n')).toContain(PACKAGE_SID)
   })
 
