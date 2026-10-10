@@ -144,13 +144,20 @@ describe('tool-jobs setup', () => {
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalJobRegistry)
     await ctx.plugin(ToolJobs)
-    const p = producer()
-    ctx.jobs.start(p.spec)
-    p.append('open\n')
-    expect(text(await call(ctx, 'job_output', { job_id: 'bash-1' }))).toBe('open\n[status: running]')
-    p.settle({ status: 'completed' })
-    await tick()
-    expect(text(await call(ctx, 'job_list', {}))).toBe('bash-1 [bash] completed — sleep 60')
+    try {
+      const p = producer()
+      const id = ctx.jobs.start(p.spec)
+      p.append('open\n')
+      expect(text(await call(ctx, 'job_output', { job_id: 'bash-1' }))).toBe('open\n[status: running]')
+      p.settle({ status: 'completed' })
+      await tick()
+      expect(text(await call(ctx, 'job_list', {}))).toBe('bash-1 [bash] completed — sleep 60')
+      expect(ctx.jobs.read(id).job.status).toBe('completed')
+      ctx.jobs.remove(id)
+      expect(text(await call(ctx, 'job_list', {}))).toBe('(no background jobs)')
+    } finally {
+      await ctx.fiber.dispose()
+    }
   })
 
   it('rejects a config whose default wait exceeds the cap', async () => {
@@ -1142,9 +1149,15 @@ describe('completion notices', () => {
     const inject = vi.fn()
     const owner = await fakeAgent(ctx, 'sess-1', { inject })
     const p = producer({ owner: owner.id, kind: 'subagent' })
-    ctx.jobs.start(p.spec)
+    const id = ctx.jobs.start(p.spec)
     const entered = Promise.withResolvers<undefined>()
     const resume = Promise.withResolvers<undefined>()
+    const settled = Promise.withResolvers<undefined>()
+    const removed = vi.fn()
+    ctx.jobs.events.subscribe({ owner: owner.id }, (event) => {
+      if (event.type === 'settled' && event.job.id === id) settled.resolve(undefined)
+      if (event.type === 'removed' && event.job.id === id) removed()
+    })
     ctx.on('tools/pre-execute', async (exec, next) => {
       if (exec.name !== 'job_output') return next()
       entered.resolve(undefined)
@@ -1152,15 +1165,26 @@ describe('completion notices', () => {
       return next()
     })
 
-    const pending = call(ctx, 'job_output', { job_id: 'subagent-1', wait: true }, owner)
-    await entered.promise
-    p.settle({ status: 'completed', result: 'answer' })
-    await tick()
-    await disposeAgentScope(owner)
-    resume.resolve(undefined)
-
-    expect((await pending).isError).toBe(true)
-    expect(inject).not.toHaveBeenCalled()
+    const pending = call(ctx, 'job_output', { job_id: id, wait: true }, owner)
+    try {
+      await entered.promise
+      p.settle({ status: 'completed', result: 'answer' })
+      await settled.promise
+      expect(inject).not.toHaveBeenCalled()
+      await disposeAgentScope(owner)
+      expect(removed).toHaveBeenCalledOnce()
+      expect(() => ctx.jobs.get(id, owner.id)).toThrow('unknown job')
+      resume.resolve(undefined)
+      const result = await pending
+      expect(result.isError).toBe(true)
+      expect(text(result)).toContain('unknown job')
+      expect(inject).not.toHaveBeenCalled()
+    } finally {
+      resume.resolve(undefined)
+      p.settle({ status: 'completed' })
+      await pending
+      await ctx.fiber.dispose()
+    }
   })
 
   it('a timed-out wait withdraws only its own claim; a concurrent wait keeps the settlement covered', async () => {

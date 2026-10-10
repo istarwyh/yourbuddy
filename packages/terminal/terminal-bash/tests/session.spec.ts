@@ -645,6 +645,36 @@ describe('LocalPtySession readiness and output', () => {
     expect(operation.cancel()).toBe(false)
   })
 
+  it.each([true, false])('preserves partial prompt evidence across an empty probe only when requested (%s)', async (preserve) => {
+    vi.useFakeTimers()
+    const terminal = new FakeTerminal()
+    const session = makeSession(terminal, new FakeInspector(), config())
+    try {
+      expect(session.hasControlledPromptReadiness()).toBe(false)
+      await initialize(session, terminal)
+      expect(session.hasControlledPromptReadiness()).toBe(true)
+
+      const rendering = session.startSend({ text: 'slow-render', submit: true })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(session.hasControlledPromptReadiness()).toBe(false)
+      terminal.emitData('\x1b]133;D;0\x07')
+      await vi.advanceTimersByTimeAsync(70)
+      expect((await rendering.done).waitReason).toBe('inferred_idle')
+      expect(session.hasControlledPromptReadiness()).toBe(false)
+
+      const request = { text: '', submit: false }
+      const probe = preserve ? session.startSend(request, true) : session.startSend(request)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(terminal.writes).toEqual(['slow-render\r'])
+      terminal.emitData('dsh> ')
+      await vi.advanceTimersByTimeAsync(70)
+      expect(session.hasControlledPromptReadiness()).toBe(preserve)
+      expect(await probe.done).toMatchObject({ waitReason: preserve ? 'stdin_read' : 'inferred_idle' })
+    } finally {
+      await session.close('partial prompt probe cleanup')
+    }
+  })
+
   it('keeps the controlled-prompt flag sticky across subsequent sends', async () => {
     vi.useFakeTimers()
     const terminal = new FakeTerminal()
