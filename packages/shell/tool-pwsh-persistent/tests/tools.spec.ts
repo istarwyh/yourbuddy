@@ -91,6 +91,7 @@ type StubMode =
   | 'large'
   | 'nonzero'
   | 'torn-status'
+  | 'retained-end-without-status'
   | 'finish-torn-status'
   | 'end-only'
   | 'spawn-error'
@@ -189,6 +190,14 @@ class StubTerminalSession implements TerminalBackendSession {
     if (this.mode === 'incremental-fallback') {
       const incremental = `${start ?? ''}\nincrement\n${this.motd}`
       return this.operation(Promise.resolve(this.result(this.motd, 'stdin_read')), incremental)
+    }
+    if (this.mode === 'retained-end-without-status') {
+      // Eviction leaves a completion line whose status has not arrived yet.
+      const output = end ?? ''
+      this.scrollback = output
+      this.historyTruncated = true
+      this.mode = 'finish-torn-status'
+      return this.operation(Promise.resolve(this.result(output, 'inferred_idle')))
     }
     if (this.mode === 'torn-status') {
       const output = `${start ?? ''}\nhello from stub\n${end ?? ''}`
@@ -460,6 +469,20 @@ describe('tool-pwsh-persistent', () => {
 
     expect(rendered.startsWith(`${'x'.repeat(9)}<response clipped>`)).toBe(true)
     expect(rendered).not.toContain('\uD83D')
+  })
+
+  it('waits when retained output begins with an end marker without status', async () => {
+    const { ctx, owner, stub } = await setup({ backendType: 'stub' })
+    await call(ctx, owner, 'warm up')
+    const session = stub.sessions[0]!
+    session.mode = 'retained-end-without-status'
+    const sends = session.sends
+    const result = text(await call(ctx, owner, 'retained marker'))
+    expect(result).toContain('<response clipped>')
+    expect(result.endsWith('\n[exit code: 7]')).toBe(true)
+    expect(result).not.toContain('__DSH_PERSISTENT_')
+    expect(session.sends).toBe(sends + 2)
+    expect(session.closed).toEqual([])
   })
 
   it('waits for status digits after a torn completion marker', async () => {

@@ -211,3 +211,29 @@ describe('TabDomain — a tab\'s own actions', () => {
     )
   })
 })
+
+it('opens beside a docked occurrence and stops when no split can be placed', () => {
+  const { domain, navigator, controller, current } = harness()
+  try {
+    const tabId = controller.openContent({ kind: 'text', contentId: 'test:a', title: 'a' })
+    domain.sync(SESSION, current())
+    const { tabActions } = domain.occurrence(SESSION, recordOf(current(), tabId))
+    const paneId = getPane(current(), current().rootId).id
+    navigator.splitIn.mockReturnValue(paneId)
+    tabActions.openTab('files', { toSide: true })
+    expect(navigator.splitIn).toHaveBeenCalledExactlyOnceWith(SESSION, paneId)
+    expect(navigator.openTabIn).toHaveBeenCalledExactlyOnceWith(SESSION, 'files', { paneId })
+    navigator.splitIn.mockReturnValue(undefined)
+    tabActions.openTab('terminal', { toSide: true })
+    expect(navigator.openTabIn).toHaveBeenCalledTimes(1)
+    controller.floatTab(tabId)
+    domain.sync(SESSION, current())
+    tabActions.openTab('files', { toSide: true })
+    tabActions.openResource('test:b', { toSide: true })
+    expect(navigator.splitIn).toHaveBeenCalledTimes(2)
+    expect(navigator.openTabIn).toHaveBeenCalledTimes(1)
+    expect(navigator.openResourceIn).not.toHaveBeenCalled()
+  } finally {
+    domain.dispose()
+  }
+})

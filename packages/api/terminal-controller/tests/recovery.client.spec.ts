@@ -637,7 +637,9 @@ it('combines independently retained terminal surfaces with the right Sidebar inv
   await expect.poll(() => calls.find(call => call[0] === sessionId)?.[2]?.aborted).toBe(true)
   expect(calls.find(call => call[0] === otherSession)?.[2]?.aborted).toBe(false)
   release()
+  release()
   await expect.poll(() => calls.find(call => call[0] === otherSession)?.[2]?.aborted).toBe(true)
+  expect(h.remote.retain).toHaveBeenCalledTimes(2)
 })
 
 it('waits for the window hold acknowledgement before restoring an output attachment', async () => {
