@@ -1,0 +1,75 @@
+name: Present fixture evidence
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/present-snapshot-evidence.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: present-fixture-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+# Temporary evidence collection for the missing present UI golden; remove after review.
+jobs:
+  present:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-present
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install locked dependencies and Chromium
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install chromium
+      - name: Build the real web application
+        run: pnpm run build
+      - name: Collect only the missing present UI golden and actual page
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/present-evidence"
+          mkdir -p "$evidence"
+          git rev-parse HEAD > "$evidence/commit-sha.txt"
+          test ! -e snapshots/web/present/ui.expected.md
+          trap 'rm -f apps/web/tests/present.artifact.e2e.ts' EXIT
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('apps/web/tests/present.e2e.ts').read_text()
+          assert source.count('compareReplaySession: true') == 1
+          assert source.count('      await expandTurnProcesses(page)\n') == 1
+          # Use the scaffold's existing no-write Session comparison while refreshing only UI.
+          source = source.replace('compareReplaySession: true', "compareReplaySession: 'read-only'")
+          source = source.replace('      await expandTurnProcesses(page)\n',
+              '      await expandTurnProcesses(page)\n'
+              "      await page.screenshot({ path: join(process.env.RUNNER_TEMP!, 'present-evidence', 'present.png'), fullPage: true })\n")
+          Path('apps/web/tests/present.artifact.e2e.ts').write_text(source)
+          PY
+          DSH_SNAPSHOT=refresh pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/present.artifact.e2e.ts 2>&1 | tee "$evidence/refresh.log"
+          git diff --exit-code -- snapshots
+          python3 - <<'PY'
+          import subprocess
+          expected = '?? snapshots/web/present/ui.expected.md'
+          actual = subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=all', '--', 'snapshots'], text=True).strip()
+          assert actual == expected, actual
+          PY
+          cp snapshots/web/present/ui.expected.md "$evidence/ui.expected.md"
+          DSH_SNAPSHOT=replay pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/present.e2e.ts 2>&1 | tee "$evidence/replay.log"
+          git diff --exit-code -- apps/web/tests/present.e2e.ts snapshots
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: present-fixture-evidence
+          path: ${{ runner.temp }}/present-evidence
+          if-no-files-found: warn
+          retention-days: 7
