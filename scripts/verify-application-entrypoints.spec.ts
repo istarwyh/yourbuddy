@@ -84,15 +84,34 @@ describe('application entrypoints', () => {
     ])
   })
 
-  it('ignores generated desktop bundles and reviewed external product snapshots', () => {
+  it('ignores generated desktop bundles and Rust target outputs', () => {
     const root = fixture()
     write(root, 'apps/desktop-tauri/bundled/harness/apps/cli/src/bin.ts', '#!/usr/bin/env node\n')
-    write(root, 'apps/desktop-tauri/product/ego-browser/bin/ego-cast-worker.mjs', '#!/usr/bin/env node\n')
-    write(root, 'apps/desktop-tauri/product/harbor-evolution/bin/dsh-harbor.mjs', '#!/usr/bin/env node\n')
-    write(root, 'apps/desktop-tauri/product/oil-creator/scripts/collect-publish.mjs', '#!/usr/bin/env node\n')
     write(root, 'apps/desktop-tauri/src-tauri/target/debug/generated.mjs', '#!/usr/bin/env node\n')
+    expect(applicationEntrypointViolations(root)).toEqual([])
+  })
+
+  it('classifies reviewed external product executables without exempting their directories', () => {
+    const root = fixture()
+    write(root, 'apps/desktop-tauri/product/ego-browser/bin/ego-cast-worker.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/ego-browser/runtime/ego-linux/bin/ego-browser.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/harbor-evolution/bin/dsh-harbor.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/check-package.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/config.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/find-video.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/v2/publisher.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/v2/run-platform.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/v2/tests/mock-ego-cleanup.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/v2/tests/mock-runner.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/oil-creator/skills/wechat-publisher/wechat-publisher.mjs', '#!/usr/bin/env node\n')
 
     expect(applicationEntrypointViolations(root)).toEqual([])
+    write(root, 'apps/desktop-tauri/product/oil-creator/scripts/collect-publish.mjs', '#!/usr/bin/env node\n')
+    write(root, 'apps/desktop-tauri/product/ego-browser/bin/rogue.mjs', '#!/usr/bin/env node\n')
+    expect(applicationEntrypointViolations(root)).toEqual([
+      'apps/desktop-tauri/product/ego-browser/bin/rogue.mjs: executable source has no application/build/test classification',
+      'apps/desktop-tauri/product/oil-creator/scripts/collect-publish.mjs: executable source has no application/build/test classification',
+    ])
   })
 
   it('still rejects an unclassified executable in the first-party product source', () => {

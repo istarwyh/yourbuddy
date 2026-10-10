@@ -38,10 +38,10 @@ describe('TestClient (node environment)', () => {
     await client.dispose() // idempotent after a failed teardown
   })
 
-  it('rethrows a row that fails to apply and lets the next client boot', async () => {
+  it('rethrows a required row that fails to apply and lets the next client boot', async () => {
     const failing = { apply(): void { throw new Error('apply boom') } }
-    await expect(TestClient.start({ roster: TYPERT_ONLY, provide: { '@deepseek-ai/dsh-typert-registry': failing } }, RemoteMock.create()))
-      .rejects.toThrow(/apply boom|typert-registry/)
+    await expect(TestClient.start({ roster: API_ROSTER, provide: { '@deepseek-ai/dsh-client-connection': failing } }, RemoteMock.create()))
+      .rejects.toThrow('@deepseek-ai/dsh-client-connection: failed')
     const mock = RemoteMock.create().load(remoteDefaultResponses)
     const client = await TestClient.start({ roster: API_ROSTER }, mock)
     onTestFinished(() => client.dispose())

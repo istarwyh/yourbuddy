@@ -1,7 +1,7 @@
 /**
  * Enforce dsh profiles as the only supported Node application launcher.
- * Vendor CLIs, build tools, and test tools are explicit classifications
- * rather than implicit holes.
+ * Vendor CLIs, external product runtime workers and skill tools, build tools,
+ * and test tools are exact-path classifications, never whole-directory exclusions.
  */
 
 import { existsSync, globSync, readFileSync } from 'node:fs'
@@ -33,6 +33,17 @@ const MANIFEST_BIN_ALLOWLIST = new Map<string, ManifestBin>([
 const EXECUTABLE_SOURCE_ALLOWLIST = new Map<string, string>([
   ['apps/cli/src/bin.ts', 'supported dsh application launcher'],
   ['apps/desktop/scripts/logged-notarytool.mjs', 'build-only notarization logging wrapper'],
+  ['apps/desktop-tauri/product/ego-browser/bin/ego-cast-worker.mjs', 'external product runtime worker for browser screencast and CDP input'],
+  ['apps/desktop-tauri/product/ego-browser/runtime/ego-linux/bin/ego-browser.mjs', 'external browser automation CLI used by the product plugin'],
+  ['apps/desktop-tauri/product/harbor-evolution/bin/dsh-harbor.mjs', 'external integration setup, candidate snapshot, and diagnostic CLI'],
+  ['apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/check-package.mjs', 'external skill content-package and media validation CLI'],
+  ['apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/config.mjs', 'external skill publisher configuration CLI'],
+  ['apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/find-video.mjs', 'external skill local media discovery CLI'],
+  ['apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/v2/publisher.mjs', 'external skill multi-platform publishing coordinator'],
+  ['apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/v2/run-platform.mjs', 'external skill platform browser publishing driver'],
+  ['apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/v2/tests/mock-ego-cleanup.mjs', 'test-only browser cleanup peer for the external publisher'],
+  ['apps/desktop-tauri/product/oil-creator/skills/video-publisher/scripts/v2/tests/mock-runner.mjs', 'test-only platform runner for the external publisher'],
+  ['apps/desktop-tauri/product/oil-creator/skills/wechat-publisher/wechat-publisher.mjs', 'external skill WeChat content-management API CLI'],
   ['packages/context/time-context/tests/fixtures/driver.ts', 'test-only subprocess driver'],
   ['packages/experimental/webworker-packer/bin.js', 'build-only wrapper'],
   ['packages/experimental/webworker-packer/src/bin.ts', 'build-only implementation'],

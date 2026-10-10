@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop-tauri/README.md
 /yourbuddy-desktop:
-  en: 921df13916079d96
-  zh: 4c0e3c3aae87bbbd
+  en: 59b8c6834c1c5888
+  zh: efaf21ed566d4b79
 /yourbuddy-desktop/runtime-layout:
   en: 0a06db62756df713
   zh: da74d0b07a2cb92e

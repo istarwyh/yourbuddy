@@ -1,4 +1,4 @@
-//! Signed release-component download, extraction, and activation.
+//! Signed release-component preparation and readiness-gated activation.
 
 use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
@@ -248,7 +248,7 @@ impl ComponentManager {
         }
     }
 
-    /// Ensure the startup Harness exists while retaining lazy Node, Store, and Harbor specs.
+    /// Prepare the current startup Harness without changing the active release.
     pub async fn ensure_startup(&self) -> Result<PathBuf, String> {
         fs::create_dir_all(&self.root)
             .map_err(|error| format!("cannot create component cache: {error}"))?;
@@ -257,7 +257,7 @@ impl ComponentManager {
         self.ensure_locked("harness").await
     }
 
-    /// Install a named first-party component from an Offline seed or its derived Release URL.
+    /// Prepare a current component from an Offline seed or Release URL without activating it.
     pub async fn ensure(&self, name: &str) -> Result<PathBuf, String> {
         fs::create_dir_all(&self.root)
             .map_err(|error| format!("cannot create component cache: {error}"))?;
@@ -272,11 +272,11 @@ impl ComponentManager {
             .join("pnpm-11.7.0.tgz")
     }
 
-    /// Resolve an already activated component without starting network work.
+    /// Resolve a complete current component without starting network work or activating it.
     pub fn installed(&self, name: &str) -> Result<Option<PathBuf>, String> {
         let spec = self.spec(name)?;
         let path = component_path(&self.root, name, &spec.id)?;
-        Ok(path.join(".complete").is_file().then_some(path))
+        Ok(component_is_complete(&path, spec).then_some(path))
     }
 
     fn spec(&self, name: &str) -> Result<&ComponentSpec, String> {
@@ -289,8 +289,7 @@ impl ComponentManager {
     async fn ensure_locked(&self, name: &str) -> Result<PathBuf, String> {
         let spec = self.spec(name)?;
         let destination = component_path(&self.root, name, &spec.id)?;
-        if destination.join(".complete").is_file() {
-            self.record_active(name, spec, &destination)?;
+        if component_is_complete(&destination, spec) {
             return Ok(destination);
         }
         let archive = self.obtain_archive(name, spec).await?;
@@ -312,8 +311,7 @@ impl ComponentManager {
             component: name.into(),
             phase: "unpack",
         });
-        self.extract_and_activate(name, spec, &archive, &destination)?;
-        self.record_active(name, spec, &destination)?;
+        self.extract_and_prepare(name, spec, &archive, &destination)?;
         Ok(destination)
     }
 
@@ -502,7 +500,7 @@ impl ComponentManager {
         Ok(())
     }
 
-    fn extract_and_activate(
+    fn extract_and_prepare(
         &self,
         name: &str,
         spec: &ComponentSpec,
@@ -523,12 +521,29 @@ impl ComponentManager {
                 fs::create_dir_all(parent)
                     .map_err(|error| format!("cannot create component destination: {error}"))?;
             }
-            if destination.exists() {
-                fs::remove_dir_all(destination)
-                    .map_err(|error| format!("cannot replace incomplete component: {error}"))?;
-            }
-            fs::rename(&staging, destination)
-                .map_err(|error| format!("cannot activate component: {error}"))
+            let preserved = if fs::symlink_metadata(destination).is_ok() {
+                let quarantine = self.root.join("quarantine");
+                fs::create_dir_all(&quarantine)
+                    .map_err(|error| format!("cannot create component quarantine: {error}"))?;
+                let retained = tempfile::Builder::new()
+                    .prefix(&format!("{name}-"))
+                    .tempdir_in(&quarantine)
+                    .map_err(|error| format!("cannot reserve component quarantine: {error}"))?
+                    .keep()
+                    .join("component");
+                fs::rename(destination, &retained)
+                    .map_err(|error| format!("cannot preserve incomplete component: {error}"))?;
+                Some(retained)
+            } else {
+                None
+            };
+            fs::rename(&staging, destination).map_err(|error| match preserved {
+                Some(path) => format!(
+                    "cannot prepare component: {error}; previous target retained at {}",
+                    path.display()
+                ),
+                None => format!("cannot prepare component: {error}"),
+            })
         });
         if result.is_err() {
             let _ = fs::remove_dir_all(&staging);
@@ -547,17 +562,44 @@ impl ComponentManager {
         .map_err(|error| format!("cannot cache component manifest: {error}"))
     }
 
-    fn record_active(&self, name: &str, spec: &ComponentSpec, path: &Path) -> Result<(), String> {
-        let active_path = self.root.join("active.json");
-        let mut active = fs::read(&active_path)
-            .ok()
-            .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
-            .unwrap_or_else(|| serde_json::json!({ "schemaVersion": 1, "components": {} }));
-        active["appVersion"] = serde_json::Value::String(self.manifest.app_version.clone());
-        active["components"][name] = serde_json::json!({
-            "id": spec.id,
-            "path": path.display().to_string(),
+    /// Await the caller's runtime readiness result before committing prepared components.
+    pub async fn activate_after_ready<T>(
+        &self,
+        ready: impl std::future::Future<Output = Result<T, String>>,
+    ) -> Result<T, String> {
+        let runtime = ready.await?;
+        self.activate_prepared()?;
+        Ok(runtime)
+    }
+
+    /// Commit complete current-manifest components only after application readiness succeeds.
+    /// Preparation and this commit share the component lock; a concurrent operation returns busy.
+    pub fn activate_prepared(&self) -> Result<(), String> {
+        fs::create_dir_all(&self.root)
+            .map_err(|error| format!("cannot create component cache: {error}"))?;
+        let _lock = self.lock()?;
+        if self.installed("harness")?.is_none() {
+            return Err("current startup harness is not prepared".into());
+        }
+        let mut components = BTreeMap::new();
+        for name in ["harness", "pnpmStore", "node", "harbor"] {
+            if let Some(path) = self.installed(name)? {
+                let spec = self.spec(name)?;
+                components.insert(
+                    name,
+                    serde_json::json!({
+                        "id": spec.id,
+                        "path": path.display().to_string(),
+                    }),
+                );
+            }
+        }
+        let active = serde_json::json!({
+            "schemaVersion": 1,
+            "appVersion": self.manifest.app_version,
+            "components": components,
         });
+        let active_path = self.root.join("active.json");
         let temporary = self.root.join("active.json.next");
         fs::write(
             &temporary,
@@ -789,6 +831,11 @@ fn relative_link_stays_inside(path: &Path, target: &Path) -> bool {
         }
     }
     true
+}
+
+fn component_is_complete(path: &Path, spec: &ComponentSpec) -> bool {
+    fs::read_to_string(path.join(".complete"))
+        .is_ok_and(|marker| marker == format!("{}\n", spec.sha256))
 }
 
 fn retryable_status(status: StatusCode) -> bool {

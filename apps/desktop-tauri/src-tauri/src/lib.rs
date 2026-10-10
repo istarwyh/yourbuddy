@@ -89,6 +89,8 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 if let Err(err) = boot_app(handle.clone(), bundled).await {
                     boot_log::error(&err);
+                    chrome::stop_host(&handle);
+                    desktop_shell::stop(&handle);
                     handle.state::<BootStatus>().fail(err);
                 }
             });
@@ -306,29 +308,36 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     } else {
         None
     };
-    let mut runtime = match boot_kind(&settings) {
-        AgentEnvironment::Windows => {
-            boot_windows_runtime(
-                app.clone(),
-                bundled,
-                components,
-                notify.as_ref(),
-                Arc::clone(&progress),
-                network_proxy,
-            )
-            .await?
+    let start_runtime = async {
+        match boot_kind(&settings) {
+            AgentEnvironment::Windows => {
+                boot_windows_runtime(
+                    app.clone(),
+                    bundled,
+                    components.clone(),
+                    notify.as_ref(),
+                    Arc::clone(&progress),
+                    network_proxy,
+                )
+                .await
+            }
+            AgentEnvironment::Wsl => {
+                boot_wsl_runtime(
+                    app.clone(),
+                    bundled,
+                    &settings,
+                    notify.as_ref(),
+                    Arc::clone(&progress),
+                    network_proxy,
+                )
+                .await
+            }
         }
-        AgentEnvironment::Wsl => {
-            boot_wsl_runtime(
-                app.clone(),
-                bundled,
-                &settings,
-                notify.as_ref(),
-                Arc::clone(&progress),
-                network_proxy,
-            )
-            .await?
-        }
+    };
+    let mut runtime = if let Some(manager) = &components {
+        manager.activate_after_ready(start_runtime).await?
+    } else {
+        start_runtime.await?
     };
 
     let web_url = runtime.web_url.clone();
@@ -368,6 +377,7 @@ async fn boot_windows_runtime(
     progress: Arc<dyn Fn(ProvisionEvent) + Send + Sync>,
     network_proxy: network_proxy::ResolvedNetworkProxy,
 ) -> Result<DesktopRuntime, String> {
+    let component_bootstrap = components.is_some();
     let paths = match ensure_runtime(bundled.clone(), components, network_proxy.clone(), {
         let progress = Arc::clone(&progress);
         move |event| progress(event)
@@ -377,6 +387,9 @@ async fn boot_windows_runtime(
         Ok(paths) => paths,
         Err(error) => {
             boot_log::error(&format!("provision failed: {error}"));
+            if component_bootstrap {
+                return Err(error);
+            }
             if let Some(paths) = try_recover_paths(bundled.as_deref()) {
                 progress(ProvisionEvent::Status(if is_recoverable_io(&error) {
                     i18n::t(Msg::BootRecoverIo).into()

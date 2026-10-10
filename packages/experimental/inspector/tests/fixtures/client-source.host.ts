@@ -106,6 +106,11 @@ export class InspectorClientFixture {
     await this.request({ op: 'set-ingest-paused', paused })
   }
 
+  /** Wait for an incoming frame to buffer while ingest remains paused. */
+  async waitForPausedIngest(): Promise<void> {
+    await this.request({ op: 'wait-for-paused-ingest' })
+  }
+
   /** Break the active ingest socket while preserving the Client source. */
   async disconnect(): Promise<void> {
     await this.request({ op: 'disconnect' })

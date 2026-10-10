@@ -187,7 +187,7 @@ fn harness_archive() -> Vec<u8> {
 }
 
 #[tokio::test]
-async fn interrupted_download_resumes_with_range_and_activates_only_when_complete() {
+async fn interrupted_download_resumes_without_activating_prepared_components() {
     let body = harness_archive();
     let mut first = Reply::new(200, "\"v1\"", &body[..3]);
     first.declared_bytes = body.len();
@@ -233,10 +233,7 @@ async fn interrupted_download_resumes_with_range_and_activates_only_when_complet
     }));
     let active: serde_json::Value =
         serde_json::from_slice(&fs::read(root.path().join("active.json")).unwrap()).unwrap();
-    assert_eq!(
-        active["components"]["harness"]["id"],
-        manager.spec("harness").unwrap().id
-    );
+    assert_eq!(active["components"]["harness"]["id"], "old");
 }
 
 #[tokio::test]
@@ -369,7 +366,7 @@ async fn permanent_http_error_does_not_retry() {
 }
 
 #[tokio::test]
-async fn complete_partial_is_verified_and_activated_without_a_range_request() {
+async fn complete_partial_is_prepared_and_reused_without_a_range_request() {
     let body = harness_archive();
     let server = Server::new(vec![]);
     let root = tempfile::tempdir().unwrap();
@@ -381,6 +378,9 @@ async fn complete_partial_is_verified_and_activated_without_a_range_request() {
         .unwrap()
         .join(".complete")
         .is_file());
+    let first = manager.installed("harness").unwrap().unwrap();
+    assert_eq!(manager.ensure_startup().await.unwrap(), first);
+    assert!(!root.path().join("active.json").exists());
     assert!(server.requests().is_empty());
 }
 
@@ -392,4 +392,162 @@ fn retries_only_selected_transient_http_statuses() {
     for status in [400, 401, 403, 404, 416, 501] {
         assert!(!retryable_status(StatusCode::from_u16(status).unwrap()));
     }
+}
+
+#[tokio::test]
+async fn readiness_failure_and_commit_failure_preserve_active_until_successful_retry() {
+    let body = harness_archive();
+    let server = Server::new(vec![Reply::new(200, "\"v1\"", &body)]);
+    let root = tempfile::tempdir().unwrap();
+    let mut manager = manager(root.path(), &server.url, &body);
+    let mut node = manager.spec("harness").unwrap().clone();
+    node.id = "node:current".into();
+    manager.manifest.components.insert("node".into(), node);
+    let original = r#"{"schemaVersion":1,"appVersion":"previous","components":{"harness":{"id":"old"},"harbor":{"id":"old-harbor"}}}"#;
+    let active_path = root.path().join("active.json");
+    fs::write(&active_path, original).unwrap();
+    let old_tree = root.path().join("harness/old");
+    fs::create_dir_all(&old_tree).unwrap();
+    fs::write(old_tree.join("user-data"), b"retain exactly").unwrap();
+    let prepared = manager.ensure_startup().await.unwrap();
+    let seed = manager.resource_dir.join("component-seeds");
+    fs::create_dir_all(&seed).unwrap();
+    fs::write(seed.join(&manager.spec("node").unwrap().archive), &body).unwrap();
+    manager.ensure("node").await.unwrap();
+    assert_eq!(fs::read_to_string(&active_path).unwrap(), original);
+    let manager = Arc::new(manager);
+    let (entered_tx, entered_rx) = tokio::sync::oneshot::channel();
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let waiting_manager = Arc::clone(&manager);
+    let pending = tokio::spawn(async move {
+        waiting_manager
+            .activate_after_ready(async {
+                entered_tx.send(()).unwrap();
+                ready_rx.await.unwrap()
+            })
+            .await
+    });
+    entered_rx.await.unwrap();
+    assert_eq!(fs::read_to_string(&active_path).unwrap(), original);
+    ready_tx
+        .send(Err("authenticated readiness failed".into()))
+        .unwrap();
+    assert_eq!(
+        pending.await.unwrap().unwrap_err(),
+        "authenticated readiness failed"
+    );
+    assert_eq!(fs::read_to_string(&active_path).unwrap(), original);
+    assert_eq!(manager.ensure_startup().await.unwrap(), prepared);
+    let lock = manager.lock().unwrap();
+    assert!(manager
+        .activate_after_ready(async { Ok(()) })
+        .await
+        .unwrap_err()
+        .contains("another component operation"));
+    drop(lock);
+    assert_eq!(fs::read_to_string(&active_path).unwrap(), original);
+    let blocked_commit = root.path().join("active.json.next");
+    fs::create_dir(&blocked_commit).unwrap();
+    assert!(manager
+        .activate_after_ready(async { Ok(()) })
+        .await
+        .unwrap_err()
+        .contains("cannot write active component state"));
+    assert_eq!(fs::read_to_string(&active_path).unwrap(), original);
+    fs::remove_dir(blocked_commit).unwrap();
+    assert_eq!(
+        manager
+            .activate_after_ready(async { Ok("runtime ready") })
+            .await
+            .unwrap(),
+        "runtime ready"
+    );
+    let active: serde_json::Value =
+        serde_json::from_slice(&fs::read(&active_path).unwrap()).unwrap();
+    assert_eq!(active["appVersion"], manager.manifest.app_version);
+    assert_eq!(active["components"].as_object().unwrap().len(), 2);
+    assert_eq!(
+        active["components"]["harness"]["id"],
+        manager.spec("harness").unwrap().id
+    );
+    assert_eq!(active["components"]["node"]["id"], "node:current");
+    assert_eq!(
+        fs::read(old_tree.join("user-data")).unwrap(),
+        b"retain exactly"
+    );
+    assert_eq!(server.requests().len(), 1);
+}
+
+#[tokio::test]
+async fn incomplete_or_mismatched_targets_are_preserved_when_replaced() {
+    for marker in [None, Some("different digest\n")] {
+        let body = harness_archive();
+        let corrupt = vec![b'x'; body.len()];
+        let server = Server::new(vec![
+            Reply::new(200, "\"bad\"", &corrupt),
+            Reply::new(200, "\"good\"", &body),
+        ]);
+        let root = tempfile::tempdir().unwrap();
+        let manager = manager(root.path(), &server.url, &body);
+        let destination =
+            component_path(root.path(), "harness", &manager.spec("harness").unwrap().id).unwrap();
+        fs::create_dir_all(&destination).unwrap();
+        fs::write(destination.join("user-data"), b"keep this target").unwrap();
+        if let Some(marker) = marker {
+            fs::write(destination.join(".complete"), marker).unwrap();
+        }
+        fs::write(root.path().join("active.json"), b"unchanged activation").unwrap();
+        assert!(manager.installed("harness").unwrap().is_none());
+        assert!(manager
+            .ensure_startup()
+            .await
+            .unwrap_err()
+            .contains("digest mismatch"));
+        assert_eq!(
+            fs::read(destination.join("user-data")).unwrap(),
+            b"keep this target"
+        );
+        assert!(!root.path().join("quarantine").exists());
+        assert_eq!(manager.ensure_startup().await.unwrap(), destination);
+        assert_eq!(
+            fs::read(destination.join("harness.txt")).unwrap(),
+            b"startup harness"
+        );
+        let retained: Vec<_> = fs::read_dir(root.path().join("quarantine"))
+            .unwrap()
+            .map(|entry| entry.unwrap().path().join("component"))
+            .collect();
+        assert_eq!(retained.len(), 1);
+        assert_eq!(
+            fs::read(retained[0].join("user-data")).unwrap(),
+            b"keep this target"
+        );
+        assert_eq!(
+            fs::read_to_string(retained[0].join(".complete"))
+                .ok()
+                .as_deref(),
+            marker
+        );
+        assert_eq!(
+            fs::read(root.path().join("active.json")).unwrap(),
+            b"unchanged activation"
+        );
+        assert_eq!(manager.ensure_startup().await.unwrap(), destination);
+        assert_eq!(server.requests().len(), 2);
+    }
+}
+
+#[test]
+fn activation_without_current_prepared_harness_preserves_previous_record() {
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), "http://127.0.0.1:1/not-requested", b"archive");
+    fs::write(root.path().join("active.json"), b"previous activation").unwrap();
+    assert_eq!(
+        manager.activate_prepared().unwrap_err(),
+        "current startup harness is not prepared"
+    );
+    assert_eq!(
+        fs::read(root.path().join("active.json")).unwrap(),
+        b"previous activation"
+    );
 }
