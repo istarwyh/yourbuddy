@@ -936,8 +936,7 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
         std::thread::sleep(Duration::from_secs(30));
     }
 
-    #[tokio::test]
-    async fn child_ready_url_returns_the_authenticated_cookie() {
+    async fn probe_child_readiness(cookie: bool) -> Result<String, String> {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         listener.set_nonblocking(true).unwrap();
         let port = listener.local_addr().unwrap().port();
@@ -974,11 +973,12 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
             }
             let request = String::from_utf8_lossy(&request);
             assert!(request.starts_with(&expected_request_target), "{request}");
-            stream
-                .write_all(
-                    b"HTTP/1.1 303 See Other\r\nLocation: ./\r\nSet-Cookie: dsh-auth=test; HttpOnly\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
-                )
-                .unwrap();
+            let headers = if cookie {
+                "Set-Cookie: dsh-auth=test; HttpOnly\r\n"
+            } else {
+                ""
+            };
+            write!(stream, "HTTP/1.1 303 See Other\r\nLocation: ./\r\n{headers}Content-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
         });
 
         let mut child = Command::new(std::env::current_exe().unwrap())
@@ -1010,7 +1010,50 @@ invalid plugin, expect function or object with an \"apply\" method, received obj
         .await;
         reap_child_handle(&child);
         server.join().unwrap();
-        assert_eq!(result.unwrap(), "dsh-auth=test; HttpOnly");
+        assert!(child.lock().unwrap().is_none());
+        result
+    }
+
+    #[tokio::test]
+    async fn child_ready_url_returns_the_authenticated_cookie() {
+        assert_eq!(
+            probe_child_readiness(true).await.unwrap(),
+            "dsh-auth=test; HttpOnly"
+        );
+    }
+
+    #[tokio::test]
+    async fn readiness_without_session_cookie_fails_and_reaps_child() {
+        let error = probe_child_readiness(false).await.unwrap_err();
+        assert!(error.contains("Cookie"), "{error}");
+    }
+
+    #[tokio::test]
+    async fn child_exit_before_readiness_remains_a_startup_failure() {
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "runtime::supervisor::tests::ready_child_fixture",
+                "--nocapture",
+            ])
+            .env_remove("YOURBUDDY_READY_CHILD_URL")
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let ready_urls = drain_stdout_for_ready_url(child.stdout.take().unwrap());
+        let child = Arc::new(Mutex::new(Some(child)));
+        let result = wait_for_host_ready(
+            "http://127.0.0.1:1/",
+            ready_urls,
+            &child,
+            &Arc::new(Mutex::new(Vec::new())),
+            Duration::from_secs(5),
+            None,
+        )
+        .await;
+        reap_child_handle(&child);
+        assert!(result.is_err());
+        assert!(child.lock().unwrap().is_none());
     }
 
     #[test]

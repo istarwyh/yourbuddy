@@ -5,7 +5,7 @@ describe('YourBuddy Better Sidebar presentation', () => {
   it('carries the product slot selection through the boot decision', async () => {
     const decision = await loadBootDecision({
       settingsGet: async () => ({
-        value: { bottomPanelAutoTerminal: false },
+        value: { autoOpenSubagent: false },
         externalDisable: false,
         presentation: 'slot' as const,
       }),
@@ -13,7 +13,7 @@ describe('YourBuddy Better Sidebar presentation', () => {
     })
 
     expect(decision.presentation).toBe('slot')
-    expect(decision.prefs.bottomPanelAutoTerminal).toBe(false)
+    expect(decision.prefs.autoOpenSubagent).toBe(false)
     expect(decision.suspended).toBe(false)
   })
 

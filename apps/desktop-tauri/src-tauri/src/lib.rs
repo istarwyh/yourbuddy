@@ -19,6 +19,7 @@ mod window_layout;
 use desktop_settings::AgentEnvironment;
 use i18n::Msg;
 use runtime::boot_log;
+use runtime::boot_status::BootStatus;
 use runtime::components::ComponentManager;
 use runtime::config::BUNDLED_HARNESS_DIR;
 use runtime::io_fallback::is_recoverable_io;
@@ -56,6 +57,7 @@ pub fn run() {
     let startup_settings = desktop_settings::load();
     shell_environment::initialize(&startup_settings.shell_environment);
     tauri::Builder::default()
+        .manage(BootStatus::default())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
@@ -87,8 +89,9 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 if let Err(err) = boot_app(handle.clone(), bundled).await {
                     boot_log::error(&err);
-                    let script = format!("window.__DSH_SPLASH__?.setError({});", json_string(&err));
-                    let _ = splash_eval(&handle, &script);
+                    chrome::stop_host(&handle);
+                    desktop_shell::stop(&handle);
+                    handle.state::<BootStatus>().fail(err);
                 }
             });
             Ok(())
@@ -122,12 +125,19 @@ struct FirstPartyCommandPayload {
 #[tauri::command]
 async fn run_first_party_command(
     app: AppHandle,
-    runtime: tauri::State<'_, DesktopRuntime>,
     command: String,
     payload: Option<FirstPartyCommandPayload>,
 ) -> Result<Value, String> {
     let payload = payload.unwrap_or_default();
     match command.as_str() {
+        "get_boot_status" => serde_json::to_value(app.state::<BootStatus>().snapshot()?)
+            .map_err(|error| error.to_string()),
+        "retry_boot" => {
+            if app.state::<BootStatus>().request_retry()? {
+                chrome::restart_app(app);
+            }
+            Ok(Value::Null)
+        }
         "set_close_action" => {
             chrome::set_close_action(app, payload.action.ok_or("close-action-missing")?)?;
             Ok(Value::Null)
@@ -155,7 +165,8 @@ async fn run_first_party_command(
         "test_network_proxy_settings" => serde_json::to_value(
             network_proxy::test_network_proxy_settings(
                 payload.settings.ok_or("network-proxy-settings-missing")?,
-                runtime,
+                app.try_state::<DesktopRuntime>()
+                    .ok_or("workbench-not-ready")?,
             )
             .await?,
         )
@@ -163,7 +174,8 @@ async fn run_first_party_command(
         "save_network_proxy_settings" => serde_json::to_value(
             network_proxy::save_network_proxy_settings(
                 payload.settings.ok_or("network-proxy-settings-missing")?,
-                runtime,
+                app.try_state::<DesktopRuntime>()
+                    .ok_or("workbench-not-ready")?,
             )
             .await?,
         )
@@ -260,19 +272,10 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     let app_for_progress = app.clone();
     let progress: Arc<dyn Fn(ProvisionEvent) + Send + Sync> =
         Arc::new(move |event: ProvisionEvent| {
-            let app = app_for_progress.clone();
-            tauri::async_runtime::spawn(async move {
-                let script = match event {
-                    ProvisionEvent::Status(text) => {
-                        boot_log::info(&format!("status: {text}"));
-                        format!("window.__DSH_SPLASH__?.setStatus({});", json_string(&text))
-                    }
-                    ProvisionEvent::Progress(pct) => {
-                        format!("window.__DSH_SPLASH__?.setProgress({pct});", pct = pct)
-                    }
-                };
-                let _ = splash_eval(&app, &script);
-            });
+            if let ProvisionEvent::Status(text) = &event {
+                boot_log::info(&format!("status: {text}"));
+            }
+            app_for_progress.state::<BootStatus>().provision(event);
         });
 
     let notify = match notify::start(app.clone()) {
@@ -292,35 +295,49 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
         .as_deref()
         .filter(|path| path.join("component-channel/components.json").is_file())
     {
-        let manager = Arc::new(ComponentManager::load(resource_dir, &network_proxy)?);
+        let app_for_components = app.clone();
+        let manager = Arc::new(
+            ComponentManager::load(resource_dir, &network_proxy)?.with_progress(Arc::new(
+                move |event| {
+                    app_for_components.state::<BootStatus>().component(event);
+                },
+            )),
+        );
         bundled = Some(manager.ensure_startup().await?);
         Some(manager)
     } else {
         None
     };
-    let mut runtime = match boot_kind(&settings) {
-        AgentEnvironment::Windows => {
-            boot_windows_runtime(
-                app.clone(),
-                bundled,
-                components,
-                notify.as_ref(),
-                Arc::clone(&progress),
-                network_proxy,
-            )
-            .await?
+    let start_runtime = async {
+        match boot_kind(&settings) {
+            AgentEnvironment::Windows => {
+                boot_windows_runtime(
+                    app.clone(),
+                    bundled,
+                    components.clone(),
+                    notify.as_ref(),
+                    Arc::clone(&progress),
+                    network_proxy,
+                )
+                .await
+            }
+            AgentEnvironment::Wsl => {
+                boot_wsl_runtime(
+                    app.clone(),
+                    bundled,
+                    &settings,
+                    notify.as_ref(),
+                    Arc::clone(&progress),
+                    network_proxy,
+                )
+                .await
+            }
         }
-        AgentEnvironment::Wsl => {
-            boot_wsl_runtime(
-                app.clone(),
-                bundled,
-                &settings,
-                notify.as_ref(),
-                Arc::clone(&progress),
-                network_proxy,
-            )
-            .await?
-        }
+    };
+    let mut runtime = if let Some(manager) = &components {
+        manager.activate_after_ready(start_runtime).await?
+    } else {
+        start_runtime.await?
     };
 
     let web_url = runtime.web_url.clone();
@@ -360,6 +377,7 @@ async fn boot_windows_runtime(
     progress: Arc<dyn Fn(ProvisionEvent) + Send + Sync>,
     network_proxy: network_proxy::ResolvedNetworkProxy,
 ) -> Result<DesktopRuntime, String> {
+    let component_bootstrap = components.is_some();
     let paths = match ensure_runtime(bundled.clone(), components, network_proxy.clone(), {
         let progress = Arc::clone(&progress);
         move |event| progress(event)
@@ -369,6 +387,9 @@ async fn boot_windows_runtime(
         Ok(paths) => paths,
         Err(error) => {
             boot_log::error(&format!("provision failed: {error}"));
+            if component_bootstrap {
+                return Err(error);
+            }
             if let Some(paths) = try_recover_paths(bundled.as_deref()) {
                 progress(ProvisionEvent::Status(if is_recoverable_io(&error) {
                     i18n::t(Msg::BootRecoverIo).into()
@@ -459,13 +480,6 @@ async fn boot_wsl_runtime(
     let host =
         spawn_wsl_web_host(&wsl_paths, host_overlay.as_ref(), &runner, &network_proxy).await?;
     Ok(DesktopRuntime::start_wsl(host, wsl_paths, network_proxy))
-}
-
-fn splash_eval(app: &AppHandle, script: &str) -> Result<(), String> {
-    if let Some(splash) = app.get_webview_window("splash") {
-        splash.eval(script).map_err(|e| e.to_string())?;
-    }
-    Ok(())
 }
 
 fn json_string(value: &str) -> String {

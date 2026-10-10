@@ -26,6 +26,7 @@ import { abbreviateHomePath } from '@deepseek-ai/dsh-util-workspace-path'
 import type { MenuOpenState, WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
 import css from './Rows.module.css'
+import actionCss from '../contract/RowAction.module.css'
 
 /** The standard locale seat, prop-passed from the browser root. */
 type RowTranslate = WorkspaceBrowserProps['t']
@@ -285,7 +286,7 @@ export function ProjectRowItem({ group, containsCurrentDescendant = false, onTog
             anchor={(
               <button
                 type="button"
-                className={css.iconButton}
+                className={actionCss.iconButton}
                 aria-label={t('actions.workspace.aria', { name: label })}
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v) }}
               >
@@ -297,7 +298,7 @@ export function ProjectRowItem({ group, containsCurrentDescendant = false, onTog
         <Tooltip label={t('actions.newSession')} shortcutKeys={newShortcut?.keys} side="bottom" align="end" delayMs={500}>
           <button
             type="button"
-            className={css.iconButton}
+            className={actionCss.iconButton}
             aria-keyshortcuts={newShortcut?.aria}
             aria-label={t('actions.newSession.aria', { name: label })}
             onClick={(e) => { e.stopPropagation(); onCreate() }}
@@ -501,7 +502,7 @@ export function SearchResultItem({ result, currentId, onOpen, onUnarchive, t }: 
             <Tooltip label={t('actions.unarchive')} side="bottom" align="end" delayMs={500}>
               <button
                 type="button"
-                className={css.iconButton}
+                className={actionCss.iconButton}
                 aria-label={t('menu.unarchiveSession')}
                 onClick={(e) => { e.stopPropagation(); onUnarchive(result.id) }}
               >
@@ -670,7 +671,7 @@ export function SessionNodeItem({
             anchor={(
               <button
                 type="button"
-                className={css.iconButton}
+                className={actionCss.iconButton}
                 aria-label={t('actions.session.aria', { name: title })}
                 onClick={() => { setMenuOpen(v => !v) }}
               >

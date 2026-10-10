@@ -468,12 +468,14 @@ describe('BashTerminalBackend startup rollback', () => {
     const sends: TerminalSendRequest[] = []
     const session = {
       motd: '',
-      get controlledPromptRendered() { return sends.length > 1 },
+      // The PTY's parsed OSC readiness state changes only on the fourth send;
+      // the preceding echoed source and plain prompt text carry no owned marker.
+      get controlledPromptRendered() { return sends.length > 3 },
       startSend: (request: TerminalSendRequest) => {
         sends.push(request)
         return {
           done: Promise.resolve({
-            viewport: sends.length === 2 ? "function prompt { 'dsh> ' }\n" : sends.length === 3 ? 'dsh> ' : '',
+            viewport: sends.length === 2 ? "function prompt { 'dsh> ' }\n" : sends.length >= 3 ? 'dsh> ' : '',
             waitReason: sends.length === 2 || sends.length === 3 ? 'inferred_idle' as const : 'stdin_read' as const,
             sessionStatus: { kind: 'running' as const }, truncated: false,
           }),

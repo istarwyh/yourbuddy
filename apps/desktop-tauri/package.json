@@ -34,7 +34,8 @@
     "prepare:product-runtime": "node scripts/prepare-yourbuddy-runtime.mjs",
     "build:components": "node scripts/build-bootstrap-components.mjs",
     "test:components": "node --test scripts/build-bootstrap-components.test.mjs scripts/normalize-component-signature.test.mjs",
-    "build:win": "tauri build --bundles nsis"
+    "build:win": "tauri build --bundles nsis",
+    "test:bootstrap": "node --test scripts/splash-state.test.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.9.6",

@@ -1,0 +1,12 @@
+/* The stop-and-archive dialog's list of work that will be stopped. */
+.archiveActivity {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.archiveActivity li {
+  overflow-wrap: anywhere;
+}

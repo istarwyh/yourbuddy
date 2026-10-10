@@ -45,19 +45,23 @@ function CenterColumn(props: { children?: ReactNode }) {
   return <div className={css.centerCol}>{props.children}</div>
 }
 
+/** Move focus to the region toggle before making a mounted region inert. */
+function setRegionVisibility(region: HTMLDivElement | null, visible: boolean, expanded: boolean) {
+  /* v8 ignore next -- the ref is attached whenever the mounted component's effect runs. */
+  if (region === null) return
+  if (!visible && region.contains(document.activeElement)) {
+    document.querySelector<HTMLElement>(
+      `[aria-controls="${SESSION_REGION_ID}"][aria-expanded="${expanded}"]`,
+    )?.focus()
+  }
+  region.inert = !visible
+}
+
 /** Primary workbench grid item kept mounted while the expanded auxiliary region collapses its track. */
 function WorkbenchColumn(props: { children?: ReactNode; visible: boolean }) {
   const regionRef = useRef<HTMLDivElement | null>(null)
   useLayoutEffect(() => {
-    const region = regionRef.current
-    /* v8 ignore next -- the ref is attached whenever this mounted component's effect runs. */
-    if (region === null) return
-    if (!props.visible && region.contains(document.activeElement)) {
-      document.querySelector<HTMLElement>(
-        `[aria-controls="${SESSION_REGION_ID}"][aria-expanded="true"]`,
-      )?.focus()
-    }
-    region.inert = !props.visible
+    setRegionVisibility(regionRef.current, props.visible, true)
   }, [props.visible])
   return (
     <div
@@ -74,15 +78,7 @@ function WorkbenchColumn(props: { children?: ReactNode; visible: boolean }) {
 function SessionRegion(props: { children?: ReactNode; visible: boolean }) {
   const regionRef = useRef<HTMLDivElement | null>(null)
   useLayoutEffect(() => {
-    const region = regionRef.current
-    /* v8 ignore next -- the ref is attached whenever this mounted component's effect runs. */
-    if (region === null) return
-    if (!props.visible && region.contains(document.activeElement)) {
-      document.querySelector<HTMLElement>(
-        `[aria-controls="${SESSION_REGION_ID}"][aria-expanded="false"]`,
-      )?.focus()
-    }
-    region.inert = !props.visible
+    setRegionVisibility(regionRef.current, props.visible, false)
   }, [props.visible])
   return (
     <div

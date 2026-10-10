@@ -182,10 +182,17 @@
       word-break: break-word;
       max-width: min(340px, 100%);
       max-height: 7.5em;
-      overflow: hidden;
+      overflow: auto;
+      user-select: text;
       line-height: 1.45;
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     }
+    #details, #connection-error, #recovery { font-size: 11px; max-width: 400px; text-align: center; }
+    #recovery[hidden] { display: none; }
+    #recovery button { -webkit-app-region: no-drag; margin: 4px; padding: 5px 10px; cursor: pointer; }
+    body.failed .mark { width: 44px; height: 44px; flex-shrink: 0; }
+    body.failed .explanation, body.failed .promise { display: none; }
+    #error { -webkit-app-region: no-drag; }
     body.failed .dots,
     body.failed .track,
     body.failed .wake { display: none; }
@@ -249,24 +256,64 @@
       <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
     </div>
     <div class="track" aria-hidden="true"><span id="bar"></span></div>
-    <p id="error"></p>
+    <p id="details" aria-live="polite"></p>
+    <p id="error" role="alert"></p>
+    <p id="connection-error" role="status"></p>
+    <div id="recovery" hidden>
+      <button id="retry" data-i18n="splash.retryAction">重试启动</button>
+      <button id="copy" data-i18n="splash.copy">复制诊断信息</button>
+      <p data-i18n="splash.proxyHint"></p>
+    </div>
   </div>
   <script src="desktop-i18n.js"></script>
+  <script src="splash-state.js"></script>
   <script>
     window.DSH_I18N.apply()
     const statusEl = document.getElementById('status')
     const barEl = document.getElementById('bar')
     const errorEl = document.getElementById('error')
-    window.__DSH_SPLASH__ = {
-      setStatus(text) { statusEl.textContent = text },
-      setProgress(pct) { barEl.style.width = Math.min(100, Math.max(0, pct)) + '%' },
-      setError(text) {
-        document.body.classList.add('failed')
-        errorEl.style.display = 'block'
-        errorEl.textContent = text
-        statusEl.textContent = window.DSH_I18N.t('splash.failed')
-      },
+    const detailsEl = document.getElementById('details')
+    const connectionEl = document.getElementById('connection-error')
+    const retryEl = document.getElementById('retry')
+    const copyEl = document.getElementById('copy')
+    let diagnostics = ''
+    function render(snapshot) {
+      document.body.classList.toggle('failed', Boolean(snapshot.error))
+      errorEl.style.display = snapshot.error ? 'block' : 'none'
+      if (errorEl.textContent !== (snapshot.error || '')) errorEl.textContent = snapshot.error || ''
+      document.getElementById('recovery').hidden = !snapshot.error
+      retryEl.disabled = snapshot.retryRequested
+      retryEl.textContent = window.DSH_I18N.t(snapshot.retryRequested ? 'splash.restarting' : 'splash.retryAction')
+      connectionEl.textContent = ''
+      const phase = snapshot.phase ? window.DSH_I18N.t('splash.' + snapshot.phase) : ''
+      statusEl.textContent = snapshot.error
+        ? window.DSH_I18N.t('splash.failed')
+        : snapshot.status || [phase, snapshot.component].filter(Boolean).join(' ') || window.DSH_I18N.t('splash.preparing')
+      const percent = snapshot.total ? Math.floor(snapshot.transferred * 100 / snapshot.total) : snapshot.progress
+      barEl.style.width = Math.min(100, Math.max(0, percent || 0)) + '%'
+      detailsEl.textContent = [
+        snapshot.component,
+        snapshot.total ? `${snapshot.transferred.toLocaleString()} / ${snapshot.total.toLocaleString()} ${window.DSH_I18N.t('splash.bytes')} (${percent}%)` : '',
+        snapshot.attempt ? `${snapshot.attempt}/${snapshot.maxAttempts}` : '',
+      ].filter(Boolean).join(' · ')
+      diagnostics = [statusEl.textContent, detailsEl.textContent, snapshot.error].filter(Boolean).join('\n')
     }
+    const state = window.DSH_SPLASH_STATE.start({
+      invoke: (...args) => window.__TAURI__.core.invoke(...args),
+      render,
+      onError: error => { connectionEl.textContent = window.DSH_I18N.t('splash.bridgeError') + error },
+    })
+    retryEl.addEventListener('click', () => { void state.retry() })
+    copyEl.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(diagnostics)
+        copyEl.textContent = window.DSH_I18N.t('splash.copied')
+      }
+      catch {
+        copyEl.textContent = window.DSH_I18N.t('splash.copyFailed')
+      }
+    })
+    window.addEventListener('pagehide', () => state.stop(), { once: true })
   </script>
 </body>
 </html>
