@@ -428,7 +428,7 @@ it('loads an independent terminal Factory, follows its theme, and releases its o
     retain: unused, shells: unused, environment: unused, list: unused, create: unused,
     close: unused, rename: unused, write: unused, resize: unused, follow: unused,
   }, { $stream: unused }, info.id)
-  vi.spyOn(model, 'mount').mockReturnValue(detach)
+  const mountSpy = vi.spyOn(model, 'mount').mockReturnValue(detach)
   let theme: ThemeSnapshot = { preference: 'light', fontSize: 14, active: { id: 'light', colorScheme: 'light', tokens: {} }, themes: [], revision: 0 }
   let state: TerminalViewState = { ...idle, info, phase: 'connected', writable: true }
   function useTerminal(key: string): TerminalViewState | undefined
@@ -447,7 +447,7 @@ it('loads an independent terminal Factory, follows its theme, and releases its o
   const view = render(<TerminalSurfaceFactory {...props} />)
   await waitFor(() => { expect(view.getByRole('textbox', { name: en.title })).toBeDefined() })
   expect(props.view).toHaveBeenCalledWith({ sessionId: props.sessionId, tabId: props.tabId, contentId: props.contentId })
-  expect(model.mount).toHaveBeenCalledOnce()
+  expect(mountSpy).toHaveBeenCalledOnce()
   const terminal = fake.terminals[0]!
   const previousTheme = terminal.options.theme
   vi.spyOn(window, 'getComputedStyle').mockReturnValue(Object.assign(document.createElement('div').style, { backgroundColor: 'rgb(23, 25, 29)', color: 'rgb(231, 233, 238)' }))
@@ -456,7 +456,7 @@ it('loads an independent terminal Factory, follows its theme, and releases its o
   expect(terminal.options.theme).not.toEqual(previousTheme)
   expect(terminal.options.theme).toMatchObject({ background: 'rgb(23, 25, 29)', foreground: 'rgb(231, 233, 238)' })
   expect(fake.terminals).toHaveLength(1)
-  expect(model.mount).toHaveBeenCalledOnce()
+  expect(mountSpy).toHaveBeenCalledOnce()
   state = { ...idle, phase: 'closed' }
   view.rerender(<TerminalSurfaceFactory {...props} />)
   fireEvent.click(view.getByRole('button', { name: en.new }))
