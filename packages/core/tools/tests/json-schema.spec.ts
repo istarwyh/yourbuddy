@@ -253,12 +253,14 @@ describe('the enforced raw JSON Schema subset', () => {
     expect(violationsOf({ type: 'object', properties: { at: new Date(0) } }))
       .toEqual(['schema.properties.at must be a schema object'])
 
-    const realmLikeSchema = recordWithRealmLikePrototype(
-      { type: 'object' },
-      { oneOf: [{ type: 'string' }, { type: 'null' }] },
-    )
-    expect(() => { assertSupportedJsonSchema(realmLikeSchema) }).not.toThrow()
-    expect(() => { assertObjectJsonSchema(realmLikeSchema) }).not.toThrow()
+    const realmSchema: unknown = runInNewContext(`
+      Object.prototype.oneOf = [{ type: 'string' }, { type: 'null' }];
+      ({ type: 'object' })
+    `)
+    expect(() => { assertSupportedJsonSchema(realmSchema) }).not.toThrow()
+    expect(() => { assertObjectJsonSchema(realmSchema) }).not.toThrow()
+    expect(violationsOf(recordWithRealmLikePrototype({ type: 'object' })))
+      .toEqual(['schema must be a schema object'])
     expect(violationsOf(recordWithRealmLikePrototype({ type: 'string' }, {}, true)))
       .toEqual(['schema must be a schema object'])
     const prototypeWithoutConstructor = Object.create(null) as object

@@ -60,6 +60,8 @@
 
 > 🔌 **Core principle**: service-first — the 5 built-in tabs + 4 viewers register through the same `ctx.betterSidebar` API as third-party plugins, with fully equal capabilities; anything the ecosystem can provide better is delegated to ecosystem plugins (**28+ ecosystem plugins** already — see "🌐 Plugin Ecosystem" below). See "🔌 Service API" and the [external plugin guide](./docs/external-plugin-guide.md).
 
+File-reference insertion dispatches `slash/input-insert-reference` as a scoped bail event for the target Session: only the first accepting editor inserts the chip; a declined insertion leaves the draft unchanged. Side Chat inherits complete `SessionEvent` envelopes, preserving `surfaceOp`, `sourceEventSeqs`, `ignorable`, and the child Session’s inherited-event count.
+
 ## 🚀 Installation
 
 **Prerequisites**: DSH installed (`dsh web` boots), Node.js ≥ 20, pnpm ≥ 10.
@@ -698,6 +700,12 @@ WeChat / QQ group QR codes will live here. After uploading the QR images (drag t
 - **Curate an ecosystem plugin**: tag your repo with `dsh-better-sidebar` + PR a `PluginEntry` into [`src/client/plugins-tabs.ts`](./src/client/plugins-tabs.ts) / [`plugins-viewers.ts`](./src/client/plugins-viewers.ts)
 - **Before submitting**: `pnpm typecheck && pnpm build && pnpm test` (or `make check` for the one-shot aggregate; CI additionally gates on npm-pack → real-mount → headless-render via `pnpm test:mount`, plus the aggregate double-mount regression `pnpm test:mount:aggregate`)
 - See [`AGENTS.md`](./AGENTS.md) for the repository rules (hard constraints, CI lanes, release flow)
+
+## YourBuddy snapshot rebuild
+
+From the YourBuddy repository root, run `node apps/desktop-tauri/scripts/rebuild-better-sidebar.mjs` after the current workspace owner declarations and runtime files have been built. The [rebuild recipe](../../scripts/rebuild-better-sidebar.mjs) pins upstream commit `d641d2e2117c427f8373f37b786ea0613455bf28` and the original lockfile SHA-256 `2626aabffd165a5bdca9049e07e33f572b2ad61d1a0c697b7f57552dd0dcc518`. It retains the locked third-party versions and original build commands. Its sole upstream build-config change sorts CSS class-map keys in locale-independent lexical order before serialization; CSS contents and class-name mappings are unchanged.
+
+The recipe discovers current workspace service owners (325 in this snapshot) instead of mixing older npm owner types with the running product. Only the already-inline-safe brand and Session runtime files are copied into staging; their declaration files link back to the same workspace owners to preserve type identity. It records file hashes and licenses, rejects an existing staging directory without its ownership marker, and compares two clean builds, including unpublished source maps, at the fixed `/tmp/yourbuddy-sidebar-build` path. This verifies repeatability at that path, not across different build paths. It does not copy artifacts into the snapshot, rewrite snapshot hashes, commit, or publish. Only files selected by the upstream package's published file list belong in the snapshot. Build subprocesses use the public npm registry and empty staging-local npm configs, omit credential-named environment variables and unset `NODE_ENV` while preserving existing proxy routing; host configuration files are not changed.
 
 ## ⭐ Star History
 

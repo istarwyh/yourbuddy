@@ -60,6 +60,8 @@
 
 > 🔌 **核心理念**：服务优先——内置的 5 tab + 4 viewer 与第三方插件通过同一套 `ctx.betterSidebar` API 注册，能力完全对等；官方不再内置、可由生态提供的功能，交由生态插件实现（已有 **28+ 生态插件**，见下方「🌐 插件生态」）。接入文档见「🔌 服务化扩展」与 [外部插件接入指南](./docs/external-plugin-guide.md)。
 
+文件引用插入通过目标 Session 的 scoped bail 事件 `slash/input-insert-reference` 分派：只有首个接受请求的编辑器插入引用，未接受时草稿保持不变。Side Chat 继承完整 `SessionEvent` envelope，保留 `surfaceOp`、`sourceEventSeqs`、`ignorable` 与子会话的继承事件计数。
+
 ## 🚀 安装
 
 **前置**：已装好 DSH（`dsh web` 能正常运行），Node.js ≥ 20、pnpm ≥ 10。
@@ -689,6 +691,12 @@ Windows / Linux / macOS 三平台适配（macOS 日常验证；其余经单元�
 - **收录生态插件**：给仓库打 `dsh-better-sidebar` topic + 向 [`src/client/plugins-tabs.ts`](./src/client/plugins-tabs.ts) / [`plugins-viewers.ts`](./src/client/plugins-viewers.ts) 提 PR
 - **提交前自检**：`pnpm typecheck && pnpm build && pnpm test`（或 `make check` 一键聚合；CI 另有 npm 打包 → 真实挂载 → 无头渲染门禁 `pnpm test:mount`，及聚合双挂载回归 `pnpm test:mount:aggregate`）
 - 仓库工作规范见 [`AGENTS.md`](./AGENTS.md)（含仓库硬约束与 CI 说明）
+
+## YourBuddy 快照重建
+
+在 YourBuddy 仓库根目录，先准备好当前工作区 owner 的声明和运行时构建文件，再运行 `node apps/desktop-tauri/scripts/rebuild-better-sidebar.mjs`。[重建脚本](../../scripts/rebuild-better-sidebar.mjs)固定上游提交 `d641d2e2117c427f8373f37b786ea0613455bf28` 和原锁文件 SHA-256 `2626aabffd165a5bdca9049e07e33f572b2ad61d1a0c697b7f57552dd0dcc518`，保留锁定的第三方版本及原构建命令。对上游构建配置的唯一调整，是序列化前按不依赖语言环境的字典序排列 CSS 类名映射的键；CSS 内容和类名对应关系不变。
+
+脚本发现当前工作区的服务 owner（此快照为 325 个），避免旧 npm owner 类型与实际产品混用。只把原已允许内联的 brand 和 Session 运行时文件复制到构建目录；声明文件仍链接同一工作区 owner，保留类型身份。脚本记录文件哈希与许可，拒绝接管没有自身身份标记的既有目录，并在固定 `/tmp/yourbuddy-sidebar-build` 路径比较两次清理后重建的全部输出，包括不发布的 source map。这证明同一路径下的重复构建一致性，不承诺跨构建路径一致。脚本不会把产物写回快照、修改快照哈希、提交或发布；写回快照时只采用上游 package 发布清单中的文件。构建子进程使用公共 npm registry 和构建目录内的空 npm 配置，移除名称含凭据标识的环境变量并取消 `NODE_ENV`，保留现有代理路由；不修改宿主配置文件。
 
 ## ⭐ Star History
 

@@ -1,4 +1,5 @@
 pub mod boot_log;
+pub mod boot_status;
 pub mod config;
 pub mod components;
 pub mod env_path;

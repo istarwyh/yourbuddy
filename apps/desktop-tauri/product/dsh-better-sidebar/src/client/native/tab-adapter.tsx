@@ -20,6 +20,7 @@
  * Nothing here is a singleton: the registry is created once per client
  * activation and handed to every registration.
  */
+import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { createElement, useEffect, useMemo, useSyncExternalStore } from 'react'
 import type { ComponentType, ReactNode } from 'react'
 import type { Context } from '../../context-types.ts'
@@ -252,7 +253,7 @@ function useRecordVersion(records: NativeTabRecords, id: string): number {
 function useSessionCwd(ctx: Context, sessionId: string): string | undefined {
   return useSyncExternalStore(
     useMemo(() => (listener: () => void) => ctx.sessions.list.subscribe(listener), [ctx]),
-    () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd,
+    () => ctx.sessions.list.getSnapshot().byId[SessionId(sessionId)]?.cwd,
   )
 }
 

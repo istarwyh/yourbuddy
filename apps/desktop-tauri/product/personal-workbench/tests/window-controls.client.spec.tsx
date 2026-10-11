@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { DesktopBridgeMessage } from '../src/client/desktop-bridge-window.ts'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Context } from '@deepseek-ai/cordis'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -20,20 +21,20 @@ class FakeParent {
   }
 }
 
-class FakeWindow {
+class FakeWindow extends FakeParent {
   readonly parent = new FakeParent()
-  readonly listeners = new Set<(event: MessageEvent<unknown>) => void>()
+  readonly listeners = new Set<(event: DesktopBridgeMessage) => void>()
 
-  addEventListener(type: string, listener: (event: MessageEvent<unknown>) => void): void {
+  addEventListener(type: string, listener: (event: DesktopBridgeMessage) => void): void {
     if (type === 'message') this.listeners.add(listener)
   }
 
-  removeEventListener(type: string, listener: (event: MessageEvent<unknown>) => void): void {
+  removeEventListener(type: string, listener: (event: DesktopBridgeMessage) => void): void {
     if (type === 'message') this.listeners.delete(listener)
   }
 
-  emit(data: unknown, source: unknown = this.parent): void {
-    for (const listener of this.listeners) listener({ data, source } as MessageEvent<unknown>)
+  emit(data: unknown, source: object | null = this.parent): void {
+    for (const listener of this.listeners) listener({ data, source })
   }
 }
 
@@ -61,9 +62,24 @@ describe('desktop window controls', () => {
     })).toBeUndefined()
   })
 
+  it('keeps string platform layouts and rejects coerced platform and control values', () => {
+    for (const os of ['linux', 'macos', 'windows']) {
+      const value = { ...layout(), os }
+      expect(readDesktopWindowControlsLayout(value)).toEqual({
+        os, controls: value.controls, labels: value.labels,
+      })
+    }
+    for (const os of [['macos'], { toString: () => 'macos' }, {}, 1, null]) {
+      expect(readDesktopWindowControlsLayout({ ...layout(), os })).toBeUndefined()
+    }
+    for (const control of [['close'], { toString: () => 'close' }, {}, 1, null]) {
+      expect(readDesktopWindowControlsLayout({ ...layout(), controls: [control] })).toBeUndefined()
+    }
+  })
+
   it('mounts horizontal macOS controls and delegates only fixed actions', () => {
     const target = new FakeWindow()
-    const view = render(<WindowControls target={target as unknown as Window} />)
+    const view = render(<WindowControls target={target} />)
     expect(target.parent.messages).toEqual([{
       message: {
         channel: DESKTOP_WINDOW_CONTROLS_CHANNEL,

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop-tauri/product/personal-workbench/README.md
 /dsh-personal-workbench:
-  en: ee0f0e2a42920bf6
-  zh: 17cefaeaacfb9a25
+  en: c5f8813d0ebd57dc
+  zh: cfb7fcba6fbef295
 /dsh-personal-workbench/model-experience:
   en: 5751b25bda821ead
   zh: 541ade2fecd37508

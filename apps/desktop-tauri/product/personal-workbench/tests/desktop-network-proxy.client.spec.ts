@@ -1,3 +1,4 @@
+import type { DesktopBridgeMessage } from '../src/client/desktop-bridge-window.ts'
 import { describe, expect, it } from 'vitest'
 import {
   DESKTOP_NETWORK_PROXY_CHANNEL,
@@ -20,28 +21,28 @@ class FakeParent {
   }
 }
 
-class FakeWindow {
+class FakeWindow extends FakeParent {
   readonly parent = new FakeParent()
-  readonly listeners = new Set<(event: MessageEvent<unknown>) => void>()
+  readonly listeners = new Set<(event: DesktopBridgeMessage) => void>()
 
-  addEventListener(type: string, listener: (event: MessageEvent<unknown>) => void): void {
+  addEventListener(type: string, listener: (event: DesktopBridgeMessage) => void): void {
     if (type === 'message') this.listeners.add(listener)
   }
 
-  removeEventListener(type: string, listener: (event: MessageEvent<unknown>) => void): void {
+  removeEventListener(type: string, listener: (event: DesktopBridgeMessage) => void): void {
     if (type === 'message') this.listeners.delete(listener)
   }
 
-  setTimeout(handler: () => void, milliseconds: number): ReturnType<typeof setTimeout> {
-    return setTimeout(handler, milliseconds)
+  setTimeout(handler: () => void, milliseconds: number): number {
+    return Number(setTimeout(handler, milliseconds))
   }
 
-  clearTimeout(timeout: ReturnType<typeof setTimeout>): void {
+  clearTimeout(timeout: number): void {
     clearTimeout(timeout)
   }
 
-  emit(data: unknown, source: unknown = this.parent): void {
-    for (const listener of this.listeners) listener({ data, source } as MessageEvent<unknown>)
+  emit(data: unknown, source: object | null = this.parent): void {
+    for (const listener of this.listeners) listener({ data, source })
   }
 }
 
@@ -105,10 +106,77 @@ describe('desktop network proxy browser bridge', () => {
     expect(readNetworkProxySettings({ ...settings, caCertificatePath: 'x'.repeat(4097) })).toBeUndefined()
   })
 
+  it('preserves every string enum and rejects coercible non-string protocol values', async () => {
+    const modes = ['inherit', 'direct', 'system', 'custom'] as const
+    const caSources = ['system', 'environment', 'custom'] as const
+    const result = { ok: true, status: 204, proxied: true, errorCode: '', proxyMode: 'custom', caSource: 'system' }
+    for (const mode of modes) {
+      expect(readNetworkProxySettings({ ...settings, mode })).toEqual({ ...settings, mode })
+    }
+    for (const proxyMode of [...modes, 'unknown']) {
+      for (const caSource of [...caSources, 'unknown']) {
+        const diagnostic = { ...result, proxyMode, caSource }
+        const preflight = { native: diagnostic, node: diagnostic }
+        expect(readDesktopNetworkProxyResponse(response('test', 'enum_1', preflight), 'enum_1', 'test'))
+          .toEqual(response('test', 'enum_1', preflight))
+        await expect(requestHostNetworkProxyTest(async () => ({ json: async () => diagnostic })))
+          .resolves.toEqual(diagnostic)
+      }
+    }
+    for (const mode of modes) {
+      for (const caSource of caSources) {
+        const value = { ...snapshot, effective: { ...snapshot.effective, mode, caSource } }
+        expect(readDesktopNetworkProxyResponse(response('get', 'enum_1', value), 'enum_1', 'get'))
+          .toEqual(response('get', 'enum_1', value))
+      }
+    }
+    for (const invalid of [['custom'], { toString: () => 'custom' }, {}, 1, null]) {
+      expect(readNetworkProxySettings({ ...settings, mode: invalid })).toBeUndefined()
+      for (const field of ['mode', 'caSource']) {
+        const value = { ...snapshot, effective: { ...snapshot.effective, [field]: invalid } }
+        expect(readDesktopNetworkProxyResponse(response('get', 'enum_1', value), 'enum_1', 'get'))
+          .toBeUndefined()
+      }
+      for (const field of ['proxyMode', 'caSource']) {
+        const diagnostic = { ...result, [field]: invalid }
+        expect(readDesktopNetworkProxyResponse(response('test', 'enum_1', {
+          native: diagnostic, node: result,
+        }), 'enum_1', 'test')).toBeUndefined()
+        await expect(requestHostNetworkProxyTest(async () => ({ json: async () => diagnostic })))
+          .rejects.toThrow('host-network-proxy-response-invalid')
+      }
+    }
+  })
+
+  it('rejects malformed save snapshots and omits undefined optional values', () => {
+    const failed = {
+      ok: false, status: 0, proxied: true, errorCode: 'UNKNOWN_ISSUER',
+      proxyMode: 'custom', caSource: 'environment',
+    }
+    const preflight = { native: failed, node: { ...failed, errorCode: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' } }
+    const value = { saved: false, preflight }
+    const expected = response('save', 'save_1', value)
+    expect(readDesktopNetworkProxyResponse(expected, 'save_1', 'save')).toStrictEqual(expected)
+    expect(readDesktopNetworkProxyResponse(response('save', 'save_1', {
+      ...value, snapshot: undefined,
+    }), 'save_1', 'save')).toStrictEqual(expected)
+    for (const snapshot of [123, {}, null]) {
+      expect(readDesktopNetworkProxyResponse(response('save', 'save_1', {
+        ...value, snapshot,
+      }), 'save_1', 'save')).toBeUndefined()
+    }
+    const { effective: _effective, ...withoutEffective } = snapshot
+    const getResponse = response('get', 'get_1', withoutEffective)
+    expect(readDesktopNetworkProxyResponse(getResponse, 'get_1', 'get')).toStrictEqual(getResponse)
+    expect(readDesktopNetworkProxyResponse(response('get', 'get_1', {
+      ...withoutEffective, effective: undefined,
+    }), 'get_1', 'get')).toStrictEqual(getResponse)
+  })
+
   it('loads a correlated desktop snapshot', async () => {
     const target = new FakeWindow()
     const result = requestDesktopNetworkProxySnapshot({
-      target: target as unknown as Window,
+      target,
       requestId: 'proxy_get_1',
       handshakeTimeoutMs: 1_000,
     })
@@ -130,7 +198,7 @@ describe('desktop network proxy browser bridge', () => {
   it('tests and saves only the fixed settings payload', async () => {
     const target = new FakeWindow()
     const testResult = requestDesktopNetworkProxyTest(settings, {
-      target: target as unknown as Window,
+      target,
       requestId: 'proxy_test_1',
       handshakeTimeoutMs: 1_000,
     })
@@ -152,7 +220,7 @@ describe('desktop network proxy browser bridge', () => {
     await expect(testResult).resolves.toEqual(preflight)
 
     const saved = requestDesktopNetworkProxySave(settings, {
-      target: target as unknown as Window,
+      target,
       requestId: 'proxy_save_1',
       handshakeTimeoutMs: 1_000,
     })
@@ -163,7 +231,7 @@ describe('desktop network proxy browser bridge', () => {
 
     const failedTarget = new FakeWindow()
     const failedSave = requestDesktopNetworkProxySave(settings, {
-      target: failedTarget as unknown as Window,
+      target: failedTarget,
       requestId: 'proxy_save_2',
       handshakeTimeoutMs: 1_000,
     })
@@ -188,7 +256,7 @@ describe('desktop network proxy browser bridge', () => {
   it('ignores malformed success values and the wrong parent source', async () => {
     const target = new FakeWindow()
     const result = requestDesktopNetworkProxyTest(settings, {
-      target: target as unknown as Window,
+      target,
       requestId: 'proxy_test_1',
       handshakeTimeoutMs: 20,
     })
@@ -291,7 +359,7 @@ describe('desktop network proxy browser bridge', () => {
   it('selects only a bounded native CA path and treats cancel as no selection', async () => {
     const selectedTarget = new FakeWindow()
     const selected = requestDesktopCaCertificateSelection({
-      target: selectedTarget as unknown as Window,
+      target: selectedTarget,
       requestId: 'proxy_ca_1',
       handshakeTimeoutMs: 1_000,
     })
@@ -307,7 +375,7 @@ describe('desktop network proxy browser bridge', () => {
 
     const cancelledTarget = new FakeWindow()
     const cancelled = requestDesktopCaCertificateSelection({
-      target: cancelledTarget as unknown as Window,
+      target: cancelledTarget,
       requestId: 'proxy_ca_2',
       handshakeTimeoutMs: 1_000,
     })

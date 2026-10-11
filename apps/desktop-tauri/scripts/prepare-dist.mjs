@@ -12,6 +12,7 @@ mkdirSync(dist, { recursive: true })
 cpSync(join(root, 'splash.html'), join(dist, 'splash.html'))
 cpSync(join(root, 'shell.html'), join(dist, 'shell.html'))
 cpSync(join(root, 'desktop-i18n.js'), join(dist, 'desktop-i18n.js'))
+cpSync(join(root, 'splash-state.js'), join(dist, 'splash-state.js'))
 cpSync(join(root, 'app-icon.png'), join(dist, 'app-icon.png'))
 
 const bundleScript = join(root, 'scripts', 'bundle-harness-source.mjs')

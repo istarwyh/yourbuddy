@@ -20,6 +20,8 @@ State-sensitive cases use Workspace, admission, attachment, and model-stream bar
 
 Explicit scrolling uses `scrollIntoView` from `support.ts`: it resolves the locator again when its old element detaches and checks connection in the same browser task as native scrolling. Scenarios retain their visibility and geometry assertions after scrolling.
 
+The [plugin install-cancel scenario](plugin-install-cancel.e2e.ts) keeps a context-level inventory passthrough route registered while replacing its page-level fault routes. This avoids the Chromium request-loss window when interception is disabled ([Playwright issue 41802](https://github.com/microsoft/playwright/issues/41802)). A deferred real inventory request spans page-route removal and must complete with HTTP 200 after release; the original highlight and expiry assertions remain in place.
+
 ## These are Host-face tests
 
 They type-check in the root `tsconfig.host.json`, not in the Client aggregate, because they read Host services directly: `ctx.connection`, the Host `SessionStore`, and `ctx.sessionProjectionCache`. Driving a browser at runtime does not make a file part of the Client program — the two faces merge Cordis `Context` under the same keys with different services, so one program cannot see both. Moving these files into the Client aggregate makes every Host-service access fail to compile.

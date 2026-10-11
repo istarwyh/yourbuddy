@@ -32,7 +32,10 @@
  * separating space on the left, so stacked inserts stay at their running
  * position (A|B + C + D → ACD|B).
  */
-import type { Context, SidebarConversation } from '../context-types.ts'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { Context, SidebarSessionsService } from '../context-types.ts'
 
 /** A resolved composer caret/selection in draft coordinates. */
 export interface DraftCaret {
@@ -168,12 +171,12 @@ export function placeComposerCaretAfterInsert(expectedDraft: string, caretIndex:
  */
 export function appendToDraft(ctx: Context, sessionId: string, text: string): boolean {
   try {
-    const actx = ctx.sessions.scope(sessionId)
+    const actx = ctx.sessions.scope(SessionId(sessionId))
     if (actx === undefined) {
       console.warn('[dsh-better-sidebar] draft insert skipped: no session scope', sessionId)
       return false
     }
-    const conversation = ctx.get('conversation') as SidebarConversation | undefined
+    const conversation = ctx.get('conversation')
     if (conversation === undefined) {
       console.warn('[dsh-better-sidebar] draft insert skipped: conversation service unavailable')
       return false
@@ -220,20 +223,24 @@ export function fileMention(relativePath: string): { mention: string; label: str
  * slash as plain text (`@dir/`) so completion can descend, which
  * `appendToDraft` already covers.
  */
-export function insertFileReference(ctx: Context, sessionId: string, relativePath: string): boolean {
+export function insertFileReference(
+  ctx: ClientContext & { sessions: Pick<SidebarSessionsService, 'scope'> },
+  sessionId: string,
+  relativePath: string,
+): boolean {
   const reference = fileMention(relativePath)
   if (reference === undefined) return false
   try {
-    const actx = ctx.sessions.scope(sessionId)
+    const actx = ctx.sessions.scope(SessionId(sessionId))
     if (actx === undefined) return false
-    const conversation = ctx.get('conversation') as SidebarConversation | undefined
+    const conversation = ctx.get('conversation')
     if (conversation === undefined) return false
     const input = conversation.input.for(actx)
     const before = input.state.getSnapshot()
     if (before.draftRev === undefined) return false
-    // The session-scope Context's typed `emit` is keyed to DSH's closed event
-    // map; this internal composer event is deliberately string-loose at runtime.
-    ;(actx as unknown as { emit(name: string, payload: unknown): void }).emit('slash/input-insert-reference', {
+    // Match the composer's scoped bail dispatch: the first accepting editor
+    // owns this insertion, and other Session scopes must not receive it.
+    actx.bail(actx, 'slash/input-insert-reference', {
       reference: {
         source: 'reference',
         ref: reference.mention,

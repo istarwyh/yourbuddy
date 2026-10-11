@@ -1,3 +1,4 @@
+import type { DesktopBridgeMessage } from '../src/client/desktop-bridge-window.ts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   DESKTOP_LIFECYCLE_CHANNEL,
@@ -19,28 +20,28 @@ class FakeParent {
   }
 }
 
-class FakeWindow {
+class FakeWindow extends FakeParent {
   readonly parent = new FakeParent()
-  readonly listeners = new Set<(event: MessageEvent<unknown>) => void>()
+  readonly listeners = new Set<(event: DesktopBridgeMessage) => void>()
 
-  addEventListener(type: string, listener: (event: MessageEvent<unknown>) => void): void {
+  addEventListener(type: string, listener: (event: DesktopBridgeMessage) => void): void {
     if (type === 'message') this.listeners.add(listener)
   }
 
-  removeEventListener(type: string, listener: (event: MessageEvent<unknown>) => void): void {
+  removeEventListener(type: string, listener: (event: DesktopBridgeMessage) => void): void {
     if (type === 'message') this.listeners.delete(listener)
   }
 
-  setTimeout(handler: () => void, milliseconds: number): ReturnType<typeof setTimeout> {
-    return setTimeout(handler, milliseconds)
+  setTimeout(handler: () => void, milliseconds: number): number {
+    return Number(setTimeout(handler, milliseconds))
   }
 
-  clearTimeout(timeout: ReturnType<typeof setTimeout>): void {
+  clearTimeout(timeout: number): void {
     clearTimeout(timeout)
   }
 
-  emit(data: unknown, source: unknown = this.parent): void {
-    for (const listener of this.listeners) listener({ data, source } as MessageEvent<unknown>)
+  emit(data: unknown, source: object | null = this.parent): void {
+    for (const listener of this.listeners) listener({ data, source })
   }
 }
 
@@ -74,8 +75,8 @@ describe('desktop lifecycle browser bridge', () => {
 
   it('is available only inside a distinct parent window', () => {
     const embedded = new FakeWindow()
-    expect(isDesktopLifecycleAvailable(embedded as unknown as Window)).toBe(true)
-    const standalone = {} as Window
+    expect(isDesktopLifecycleAvailable(embedded)).toBe(true)
+    const standalone = new FakeWindow()
     Object.defineProperty(standalone, 'parent', { value: standalone })
     expect(isDesktopLifecycleAvailable(standalone)).toBe(false)
   })
@@ -105,7 +106,7 @@ describe('desktop lifecycle browser bridge', () => {
   it('posts the fixed update request and ignores the wrong source and request id', async () => {
     const target = new FakeWindow()
     const result = requestDesktopUpdate({
-      target: target as unknown as Window,
+      target,
       requestId: 'request_1',
       handshakeTimeoutMs: 1_000,
     })
@@ -131,7 +132,7 @@ describe('desktop lifecycle browser bridge', () => {
   it('posts the fixed restart request and surfaces a native failure', async () => {
     const target = new FakeWindow()
     const result = requestDesktopRestart({
-      target: target as unknown as Window,
+      target,
       requestId: 'restart_1',
       handshakeTimeoutMs: 1_000,
     })
@@ -153,7 +154,7 @@ describe('desktop lifecycle browser bridge', () => {
   it('posts the fixed explicit Harbor installation request', async () => {
     const target = new FakeWindow()
     const result = requestHarborInstall({
-      target: target as unknown as Window,
+      target,
       requestId: 'harbor_1',
       handshakeTimeoutMs: 1_000,
     })
@@ -174,7 +175,7 @@ describe('desktop lifecycle browser bridge', () => {
   it('posts the fixed managed CLI path request', async () => {
     const target = new FakeWindow()
     const result = requestManagedCliPath({
-      target: target as unknown as Window,
+      target,
       requestId: 'cli_1',
       handshakeTimeoutMs: 1_000,
     })
@@ -201,7 +202,7 @@ describe('desktop lifecycle browser bridge', () => {
     })
     const target = new FakeWindow()
     const result = requestDesktopUpdate({
-      target: target as unknown as Window,
+      target,
       handshakeTimeoutMs: 1_000,
     })
     const request = target.parent.messages[0]?.message as { requestId?: string }
@@ -214,7 +215,7 @@ describe('desktop lifecycle browser bridge', () => {
   it('times out only while waiting for the Shell to accept the request', async () => {
     const target = new FakeWindow()
     const result = requestDesktopRestart({
-      target: target as unknown as Window,
+      target,
       requestId: 'restart_1',
       handshakeTimeoutMs: 1,
     })
@@ -225,7 +226,7 @@ describe('desktop lifecycle browser bridge', () => {
   it('keeps waiting for a restart after the Shell accepts the request', async () => {
     const target = new FakeWindow()
     const result = requestDesktopRestart({
-      target: target as unknown as Window,
+      target,
       requestId: 'restart_1',
       handshakeTimeoutMs: 5,
     })
@@ -238,7 +239,7 @@ describe('desktop lifecycle browser bridge', () => {
   it('does not accept a handshake from the wrong source, request, or action', async () => {
     const target = new FakeWindow()
     const result = requestDesktopUpdate({
-      target: target as unknown as Window,
+      target,
       requestId: 'request_1',
       handshakeTimeoutMs: 5,
     })

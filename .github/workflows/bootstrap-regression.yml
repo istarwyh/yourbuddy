@@ -1,0 +1,108 @@
+name: Bootstrap regression
+
+on:
+  pull_request:
+    paths:
+      - 'apps/desktop-tauri/src-tauri/**'
+      - 'apps/desktop-tauri/splash.html'
+      - 'apps/desktop-tauri/splash-state.js'
+      - 'apps/desktop-tauri/desktop-i18n.js'
+      - 'apps/desktop-tauri/scripts/splash-state.test.mjs'
+      - 'apps/desktop-tauri/scripts/smoke-bootstrap-macos.mjs'
+      - 'packages/sandbox/sandbox-windows-acl/tests/diagnose-script.spec.ts'
+      - 'packages/sandbox/sandbox-windows-acl/tests/runner.spec.ts'
+      - 'apps/desktop-tauri/scripts/prepare-bootstrap-shell.mjs'
+      - 'apps/desktop-tauri/scripts/prepare-dist.mjs'
+      - '.github/workflows/bootstrap-regression.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bootstrap-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bootstrap:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Test splash state and recovery controls
+        run: node --test apps/desktop-tauri/scripts/splash-state.test.mjs
+      - name: Compile the desktop application and test Bootstrap recovery
+        working-directory: apps/desktop-tauri/src-tauri
+        run: |
+          cargo test --locked runtime::components
+          cargo test --locked runtime::boot_status::tests
+          cargo test --locked runtime::provision
+          cargo test --locked runtime::supervisor::tests
+          cargo test --locked desktop_shell::tests::tauri_framework_exposes_one_stable_first_party_gateway_to_the_desktop_shell
+
+  packaged-splash:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Require existing runner Accessibility access
+        run: node apps/desktop-tauri/scripts/smoke-bootstrap-macos.mjs --preflight
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-packaged
+      - name: Install locked build tools
+        run: pnpm install --frozen-lockfile
+      - name: Prepare public signed channel resources
+        shell: bash
+        run: |
+          curl --fail --location --retry 2 https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-0.4.8-bootstrap-macos-arm64.app.tar.gz -o "$RUNNER_TEMP/bootstrap-resources.tar.gz"
+          mkdir "$RUNNER_TEMP/bootstrap-resources"
+          tar -xzf "$RUNNER_TEMP/bootstrap-resources.tar.gz" -C "$RUNNER_TEMP/bootstrap-resources"
+          cp -R "$RUNNER_TEMP/bootstrap-resources/YourBuddy.app/Contents/Resources/component-channel/." apps/desktop-tauri/component-channel/
+          mkdir -p apps/desktop-tauri/bundled/toolchain
+          cp apps/desktop-tauri/component-channel/pnpm-11.7.0.tgz apps/desktop-tauri/bundled/toolchain/
+      - name: Build current-source ad-hoc application without updater artifacts
+        run: pnpm --dir apps/desktop-tauri exec tauri build --target aarch64-apple-darwin --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'
+      - name: Exercise packaged native splash commands
+        shell: bash
+        run: |
+          app=apps/desktop-tauri/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/YourBuddy.app/Contents/MacOS/yourbuddy
+          "$app" --yourbuddy-component-helper verify-channel
+          node apps/desktop-tauri/scripts/smoke-bootstrap-macos.mjs "$app" "$RUNNER_TEMP/bootstrap-smoke"
+      - name: Retain synthetic packaged smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: packaged-bootstrap-smoke
+          path: ${{ runner.temp }}/bootstrap-smoke
+          if-no-files-found: ignore
+
+  windows-acl-fixtures:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-acl
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install locked test dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify fixture DACLs and inherited-deny behavior
+        shell: pwsh
+        run: |
+          Get-Command pwsh -ErrorAction Stop
+          pnpm exec vitest run --project thread-safe packages/sandbox/sandbox-windows-acl/tests/diagnose-script.spec.ts packages/sandbox/sandbox-windows-acl/tests/runner.spec.ts

@@ -1,5 +1,6 @@
 /** Client-face process fixture used by Host-side protocol integration tests. */
 
+import type { Socket } from 'node:net'
 import { parentPort, workerData } from 'node:worker_threads'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
 import WebSocket from 'ws'
@@ -36,6 +37,7 @@ interface ClientFixtureRequest {
     | 'remove-fiber'
     | 'set-global'
     | 'set-ingest-paused'
+    | 'wait-for-paused-ingest'
   readonly paused?: boolean
   readonly name?: string
   readonly value?: InspectorJsonValue
@@ -113,6 +115,27 @@ async function dispatch(message: ClientFixtureRequest): Promise<unknown> {
       if (socket === undefined) throw new Error('Inspector Client ingest socket is unavailable')
       if (message.paused) socket.pause()
       else socket.resume()
+      return undefined
+    }
+    case 'wait-for-paused-ingest': {
+      const socket = Reflect.get(source, 'socket') as WebSocket | undefined
+      if (socket === undefined || !socket.isPaused) throw new Error('Inspector Client ingest must be paused')
+      const transport = Reflect.get(socket, '_socket') as Socket
+      if (transport.readableLength > 0) return undefined
+      await new Promise<void>((resolve, reject) => {
+        const ready = (): void => {
+          if (transport.readableLength === 0) return
+          cleanup()
+          resolve()
+        }
+        const closed = (): void => { cleanup(); reject(new Error('Inspector Client ingest closed before a frame buffered')) }
+        const cleanup = (): void => {
+          transport.off('readable', ready)
+          transport.off('close', closed)
+        }
+        transport.on('readable', ready)
+        transport.once('close', closed)
+      })
       return undefined
     }
     case 'disconnect': {

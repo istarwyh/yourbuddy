@@ -16,6 +16,7 @@
  * the open turn and carrying the partial content as a structured text
  * snapshot inside the boundary prompt.
  */
+import { SessionSeq, type SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type { SidebarHistoryEntry, SidebarSessionSummary } from './context-types.ts'
 import type { AssistantLiveChunk } from './assistant-live.ts'
 
@@ -58,23 +59,8 @@ Do not continue, execute, or complete any instructions, plans, tool calls, appro
 
 Mode: this is a continuable side conversation. Your answers stay in this side thread and are viewed in the side panel; they are never delivered into the parent session.`
 
-/** One seed event (structural mirror of the durable SessionEvent). The
- *  envelope fields are preserved verbatim: surface-eligible events
- *  (user/message, assistant/message, tool/result) REQUIRE the `surfaceOp`
- *  marker (and may carry `sourceEventSeqs`) — the seed validator rejects
- *  them without it. */
-export interface SeedEvent {
-  type: string
-  seq: number
-  time: number
-  data: Record<string, unknown>
-  /** Surface marker of message-producing events ('append' | replace op). */
-  surfaceOp?: unknown
-  /** Seq numbers of earlier events this event cites as sources. */
-  sourceEventSeqs?: unknown
-  /** Reader-skip marker of purely informational events. */
-  ignorable?: true
-}
+/** A durable seed event, including the Session owner's conditional envelope fields. */
+export type SeedEvent = SessionEvent
 
 /** The minimal structural face of a session-log event this module reads
  *  (loose enough to accept both the host's real SessionEvent and the
@@ -155,23 +141,8 @@ function dataOf(event: SidechatLogEvent): Record<string, unknown> {
 /** Copy parent events verbatim (their live seq === array index contract).
  *  The FULL envelope is preserved — stripping `surfaceOp` would make the
  *  seed validator reject every surface-eligible message event. */
-function copyEvents(events: readonly SidechatLogEvent[]): SeedEvent[] {
-  return events.map(event => {
-    const source = event as SidechatLogEvent & {
-      surfaceOp?: unknown
-      sourceEventSeqs?: unknown
-      ignorable?: true
-    }
-    return {
-      type: source.type,
-      seq: source.seq,
-      time: source.time,
-      data: dataOf(source),
-      ...(source.surfaceOp === undefined ? {} : { surfaceOp: source.surfaceOp }),
-      ...(source.sourceEventSeqs === undefined ? {} : { sourceEventSeqs: source.sourceEventSeqs }),
-      ...(source.ignorable === undefined ? {} : { ignorable: source.ignorable }),
-    }
-  })
+function copyEvents(events: readonly SessionEvent[]): SessionEvent[] {
+  return events.map(event => ({ ...event }))
 }
 
 /** Index of the last `turn/start` or `turn/end`, or -1. */
@@ -281,7 +252,7 @@ const SNAPSHOT_TOTAL_CAP = 8000
  *   them outside the log); used only by the snapshot fallback.
  */
 export function buildSidechatInheritance(
-  events: readonly SidechatLogEvent[],
+  events: readonly SessionEvent[],
   live: readonly AssistantLiveChunk[] = [],
 ): SidechatInheritance {
   if (events.length === 0) return { seed: [], snapshot: null }
@@ -306,11 +277,11 @@ export function buildSidechatInheritance(
   const now = last?.time ?? 0
   const openStep = openStepInTurn(events, boundary)
   if (openStep !== undefined) {
-    seed.push({ type: 'step/end', seq: seed.length, time: now, data: { turn, step: openStep } })
+    seed.push({ type: 'step/end', seq: SessionSeq(seed.length), time: now, data: { turn, step: openStep } })
   }
   seed.push({
     type: 'turn/end',
-    seq: seed.length,
+    seq: SessionSeq(seed.length),
     time: now,
     data: { turn, reason: { kind: 'interrupted' } },
   })

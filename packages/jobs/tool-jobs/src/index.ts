@@ -242,9 +242,8 @@ export function apply(ctx: Context, config: Config): void {
     outputReadByExecution.set(exec, { owner, id, reads, active })
   }
 
-  const deliverCompletion = (job: JobView): void => {
-    if (job.owner === undefined) return
-    const owner = ctx.get('agents')?.get(job.owner)
+  const deliverCompletion = (job: JobView, ownerId: Agent['id']): void => {
+    const owner = ctx.get('agents')?.get(ownerId)
     if (owner === undefined) return
     const message = createUserMessage({
       content: [{
@@ -288,13 +287,8 @@ export function apply(ctx: Context, config: Config): void {
     if (completions?.size === 0) deferredCompletions.delete(read.owner)
     if (read.active.collectedTerminal) return
 
-    try {
-      ctx.jobs.get(read.id, read.owner)
-    } catch {
-      // Owner disposal removes the settled record and its unread notice.
-      return
-    }
-    deliverCompletion(completion)
+    // Synchronous removal events discard deferred notices before a later tool result.
+    deliverCompletion(completion, read.owner)
   }
 
   ctx.on('tools/pre-execute', (exec, next) => {
@@ -373,7 +367,7 @@ export function apply(ctx: Context, config: Config): void {
       deferredCompletions.set(event.job.owner, completions)
       return
     }
-    deliverCompletion(event.job)
+    deliverCompletion(event.job, event.job.owner)
   })
 
   ctx.tools.register(defineTool({

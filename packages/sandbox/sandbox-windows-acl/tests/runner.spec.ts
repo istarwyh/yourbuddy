@@ -537,13 +537,28 @@ describe.skipIf(!isWin32 || !pwshAvailable())('windows-acl runner', () => {
     const child = join(granted, 'child')
     mkdirSync(granted)
     mkdirSync(child)
+    // An explicit host FullControl grant would take precedence over the inherited deny.
+    const reset = spawnSync('icacls', [child, '/reset'], { encoding: 'utf8', timeout: 30_000 })
+    expect(reset.status, `${reset.stdout}\n${reset.stderr}`).toBe(0)
     writeFileSync(join(granted, 'file.txt'), 'x')
     writeFileSync(join(child, 'deep.txt'), 'x')
     const grant = AclWriteGrant.create(workspaceWriteSid(granted))
     grant.add(granted, true)
     try {
       const probe = `
-$ErrorActionPreference='SilentlyContinue'
+$ErrorActionPreference='Stop'
+$acl = Get-Acl -LiteralPath '${child.replaceAll("'", "''")}'
+$rules = @($acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]))
+if (@($rules | Where-Object { -not $_.IsInherited }).Count -ne 0) {
+  throw "Directory fixture has explicit ACEs that can override its inherited deny: $($acl.Sddl)"
+}
+$deny = @($rules | Where-Object {
+  $_.IdentityReference.Value -eq 'S-1-1-0' -and $_.AccessControlType -eq 'Deny' -and
+  $_.FileSystemRights -eq [System.Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -and
+  $_.InheritanceFlags -eq [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -and
+  $_.PropagationFlags -eq [System.Security.AccessControl.PropagationFlags]::None
+})
+if ($deny.Count -ne 1) { throw "Directory fixture is missing its container-only delete deny: $($acl.Sddl)" }
 Add-Type -Namespace P -Name F -MemberDefinition @'
 [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode, EntryPoint="CreateFileW")]
 public static extern IntPtr CreateFileW(string n, uint a, uint s, IntPtr sa, uint d, uint f, IntPtr t);

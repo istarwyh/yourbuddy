@@ -1,5 +1,7 @@
 /** Desktop-only handling for safe external links rendered inside the Host iframe. */
 
+import type { DesktopBridgeMessage, DesktopRequestWindow } from './desktop-bridge-window.ts'
+
 import type { Context } from '@deepseek-ai/cordis'
 import type { PersonalWorkbenchKey } from './locales.ts'
 
@@ -24,7 +26,7 @@ interface ExternalLinkResponse {
 }
 
 interface ExternalLinkRequestOptions {
-  target?: Window
+  target?: DesktopRequestWindow
   requestId?: string
   timeoutMs?: number
 }
@@ -79,7 +81,14 @@ export function readDesktopExternalLinkResponse(
   if (!response.ok && (typeof response.error !== 'string' || response.error.length > 2048)) {
     return undefined
   }
-  return response as unknown as ExternalLinkResponse
+  return {
+    channel: response.channel,
+    version: response.version,
+    type: response.type,
+    requestId,
+    ok: response.ok,
+    ...(typeof response.error === 'string' ? { error: response.error } : {}),
+  }
 }
 
 function createRequestId(): string {
@@ -98,14 +107,14 @@ export function requestDesktopExternalLinkOpen(
   url: string,
   options: ExternalLinkRequestOptions = {},
 ): Promise<void> {
-  const target = options.target ?? window
+  const target: DesktopRequestWindow = options.target ?? window
   if (target.parent === target) return Promise.reject(new Error('desktop-shell-unavailable'))
   const requestId = options.requestId ?? createRequestId()
   if (!REQUEST_ID_PATTERN.test(requestId)) return Promise.reject(new Error('invalid-request-id'))
 
   return new Promise((resolve, reject) => {
     const parent = target.parent
-    const onMessage = (event: MessageEvent<unknown>): void => {
+    const onMessage = (event: DesktopBridgeMessage): void => {
       if (event.source !== parent) return
       const response = readDesktopExternalLinkResponse(event.data, requestId)
       if (response === undefined) return

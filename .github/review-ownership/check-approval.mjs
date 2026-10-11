@@ -11,6 +11,7 @@ const API_VERSION = '2026-03-10'
 const MAX_PULL_REQUEST_RECORDS = 3_000
 const PAGE_SIZE = 100
 const STATUS_CONTEXT = 'weighted approval'
+const PERSONAL_MAINTAINER_REPOSITORY = 'istarwyh/yourbuddy'
 const WRITABLE_PERMISSIONS = new Set(['admin', 'write'])
 const REVIEW_STATES = new Set(['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED', 'DISMISSED', 'PENDING'])
 
@@ -53,6 +54,10 @@ export function parseApprovalPolicy(source) {
  * @returns {Array<{login: string, state: 'APPROVED' | 'CHANGES_REQUESTED'}>} Effective review decisions.
  */
 export function effectiveReviewDecisions(reviews) {
+  return effectiveReviewRecords(reviews).map(({ login, state }) => ({ login, state }))
+}
+
+function effectiveReviewRecords(reviews) {
   const decisions = new Map()
   for (const review of reviews) {
     if (!isRecord(review)) throw new Error('pull-request review is not an object')
@@ -69,7 +74,7 @@ export function effectiveReviewDecisions(reviews) {
     if (state === 'DISMISSED') {
       decisions.delete(key)
     } else if (state === 'APPROVED' || state === 'CHANGES_REQUESTED') {
-      decisions.set(key, { login, state })
+      decisions.set(key, { login, state, commitId: review.commit_id, userType: review.user.type })
     }
   }
   return [...decisions.values()]
@@ -207,13 +212,16 @@ function timestamp(value, subject) {
 }
 
 /**
- * Evaluate approval points from current reviews and repository permissions.
+ * Evaluate the repository-scoped approval policy from current reviews and permissions.
  * @param {{event: unknown, policySource: string, api: (path: string, options?: {method?: string, body?: unknown}) => Promise<unknown>, getOwnership?: typeof productionOwnership, getMergedCount?: typeof countMergedAuthorPulls}} options Runtime inputs.
- * @returns {Promise<{pull: {repository: string, number: number, headSha: string}, state: 'pending' | 'success', description: string, points: number, authorCredit: {mergedCount: number, points: number} | null, requiredPoints: number, approvals: Array<{login: string, points: number, delegatedTo?: string, ownership?: {ownedLines: number, totalLines: number}}>, delegations: Array<{login: string, delegatedTo: string, commentId: number, reviewIds: number[], approved: boolean}>, blockers: string[], ignoredReviewers: string[]}>} Approval decision and status payload fields; approval login owns the points, delegatedTo supplies its decision, delegations contains eligible active commands and their superseded decision review IDs, and null author credit means history was not evaluated.
+ * @returns {Promise<{pull: {repository: string, number: number, headSha: string}, state: 'pending' | 'success', mode?: 'personal-maintainer', description: string, points: number, authorCredit: {mergedCount: number, points: number} | null, requiredPoints: number, approvals: Array<{login: string, points: number, delegatedTo?: string, ownership?: {ownedLines: number, totalLines: number}}>, delegations: Array<{login: string, delegatedTo: string, commentId: number, reviewIds: number[], approved: boolean}>, blockers: string[], ignoredReviewers: string[]}>} Approval decision and status payload fields; approval login owns the points, delegatedTo supplies its decision, delegations contains eligible active commands and their superseded decision review IDs, and null author credit means history was not evaluated.
  */
 export async function evaluateApproval({ event, policySource, api, getOwnership = productionOwnership, getMergedCount = countMergedAuthorPulls }) {
   const pull = pullRequestFromEvent(event)
   const policy = parseApprovalPolicy(policySource)
+  if (pull.repository.toLowerCase() === PERSONAL_MAINTAINER_REPOSITORY) {
+    return evaluatePersonalMaintainer(event, pull, api)
+  }
   if (pull.draft) {
     return approvalResult(pull, policy.requiredPoints, [], [], [], 'pending', 'draft pull request')
   }
@@ -304,6 +312,46 @@ export async function evaluateApproval({ event, policySource, api, getOwnership 
   )
 }
 
+// Only the trusted event repository selects this policy; PR head repositories and authors cannot opt in.
+async function evaluatePersonalMaintainer(event, pull, api) {
+  const owner = event.repository.owner
+  const ownerLogin = validateLogin(owner?.login, 'repository owner')
+  if (owner.type !== 'User' || ownerLogin.toLowerCase() !== pull.repository.split('/')[0].toLowerCase()) {
+    throw new Error('personal-maintainer repository must have its named human owner')
+  }
+  const ownerAuthored = pull.author.toLowerCase() === ownerLogin.toLowerCase()
+    && event.pull_request.user.type === 'User'
+  const requiredPoints = ownerAuthored ? 0 : 1
+  const result = (approvals, blockers, ignoredReviewers, state, detail) => ({
+    ...approvalResult(pull, requiredPoints, approvals, blockers, ignoredReviewers, state, detail),
+    mode: 'personal-maintainer',
+  })
+  if (pull.draft) return result([], [], [], 'pending', 'Personal-maintainer mode: draft pull request')
+  const decisions = effectiveReviewRecords(await listPullRequestReviews(api, pull.repository, pull.number))
+    .filter(({ login }) => login.toLowerCase() !== pull.author.toLowerCase())
+  const approvals = []
+  const blockers = []
+  const ignoredReviewers = []
+  for (const decision of decisions) {
+    const { login, state, commitId, userType } = decision
+    const permission = await reviewerPermission(api, pull.repository, login)
+    const writable = WRITABLE_PERMISSIONS.has(permission)
+    // A change request remains blocking across commits until GitHub dismisses or replaces it.
+    if (writable && state === 'CHANGES_REQUESTED') blockers.push(login)
+    else if (writable && state === 'APPROVED' && login.toLowerCase() === ownerLogin.toLowerCase()
+      && userType === 'User' && commitId === pull.headSha) approvals.push({ login, points: 1 })
+    else ignoredReviewers.push(login)
+  }
+  for (const entries of [blockers, ignoredReviewers]) entries.sort((left, right) => left.localeCompare(right, 'en'))
+  if (blockers.length) return result(approvals, blockers, ignoredReviewers, 'pending',
+    `Personal-maintainer mode: ${blockers.length} blocking change request${blockers.length === 1 ? '' : 's'}`)
+  if (ownerAuthored) return result([], [], ignoredReviewers, 'success',
+    'Personal-maintainer mode: owner PR; no human approval required; engineering checks remain required')
+  return result(approvals, [], ignoredReviewers, approvals.length ? 'success' : 'pending', approvals.length
+    ? 'Personal-maintainer mode: owner approved current head; engineering checks remain required'
+    : 'Personal-maintainer mode: awaiting human owner approval of current head')
+}
+
 /**
  * Evaluate and publish the required commit status, publishing an error status when evaluation fails.
  * @param {{event: unknown, policySource: string, api: (path: string, options?: {method?: string, body?: unknown}) => Promise<unknown>, runUrl: string, write?: (line: string) => void, getOwnership?: typeof productionOwnership, getMergedCount?: typeof countMergedAuthorPulls}} options Runtime inputs.
@@ -311,7 +359,7 @@ export async function evaluateApproval({ event, policySource, api, getOwnership 
  */
 export async function runApprovalCheck({ event, policySource, api, runUrl, getOwnership = productionOwnership, getMergedCount = countMergedAuthorPulls, write = line => process.stdout.write(`${line}\n`) }) {
   const pull = pullRequestFromEvent(event)
-  await publishStatus(api, pull, 'pending', 'Evaluating approval points.', runUrl)
+  await publishStatus(api, pull, 'pending', 'Evaluating approval policy.', runUrl)
   let result
   try {
     result = await evaluateApproval({ event, policySource, api, getOwnership, getMergedCount })
@@ -334,14 +382,18 @@ export async function runApprovalCheck({ event, policySource, api, runUrl, getOw
     await publishStatus(api, pull, 'error', 'Approval evaluation failed.', runUrl)
     throw error
   }
-  write(result.authorCredit
-    ? `Author credit: ${result.authorCredit.points} (${result.authorCredit.mergedCount} merged PRs).`
-    : `Author credit: not evaluated (${pull.draft ? 'draft' : result.blockers.length ? 'blocking review' : 'reviewer points suffice'}).`)
-  write(`Approval score: ${result.points}/${result.requiredPoints}.`)
+  if (result.mode === 'personal-maintainer') {
+    write(result.description)
+  } else {
+    write(result.authorCredit
+      ? `Author credit: ${result.authorCredit.points} (${result.authorCredit.mergedCount} merged PRs).`
+      : `Author credit: not evaluated (${pull.draft ? 'draft' : result.blockers.length ? 'blocking review' : 'reviewer points suffice'}).`)
+    write(`Approval score: ${result.points}/${result.requiredPoints}.`)
+  }
   writeList(write, 'Counted approvals', result.approvals.map(({ login, points, ownership, delegatedTo }) =>
     `@${login}: ${points}${delegatedTo ? ` (delegated to @${delegatedTo})` : ''}${ownership ? ` (${ownership.ownedLines}/${ownership.totalLines} old production lines)` : ''}`))
   writeList(write, 'Blocking change requests', result.blockers.map(login => `@${login}`))
-  writeList(write, 'Ignored reviewers without write access', result.ignoredReviewers.map(login => `@${login}`))
+  writeList(write, 'Ignored review decisions', result.ignoredReviewers.map(login => `@${login}`))
   await publishStatus(api, pull, result.state, result.description, runUrl)
   write(`Published ${JSON.stringify(STATUS_CONTEXT)} status ${JSON.stringify(result.state)}.`)
   try {

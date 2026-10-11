@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
 /** Terminal startup, title editing and xterm's screen lifetime. */
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import type { ITheme } from '@xterm/xterm'
+import type { FactoryComponentPropsOf } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { TerminalSurfaceFactory } from '../src/client/TerminalSurfaceFactory.tsx'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { TerminalViewState } from '@deepseek-ai/dsh-api-terminal-controller/client'
+import { TerminalView } from '@deepseek-ai/dsh-api-terminal-controller/src/client/model.ts'
 import type { WebTerminalId } from '@deepseek-ai/dsh-api-terminal-controller/types'
 import { TerminalBody, type TerminalBodyProps } from '../src/client/terminal.tsx'
 import { TerminalTitle } from '../src/client/TerminalTitle.tsx'
@@ -415,4 +419,51 @@ it('offers a new terminal after process exit while preserving its final output f
   expect(h.view.queryByRole('button', { name: en.reconnect })).toBeNull()
   fireEvent.click(h.view.getByRole('button', { name: en.new }))
   expect(h.openTab).toHaveBeenCalledExactlyOnceWith('terminal', { replaceTab: true })
+})
+
+it('loads an independent terminal Factory, follows its theme, and releases its occurrence on unmount', async () => {
+  const detach = vi.fn()
+  const unused = (): never => { throw new Error('This Factory rendering case does not call a Host endpoint or unrelated framework hook') }
+  const model = new TerminalView('independent-session' as SessionId, {
+    retain: unused, shells: unused, environment: unused, list: unused, create: unused,
+    close: unused, rename: unused, write: unused, resize: unused, follow: unused,
+  }, { $stream: unused }, info.id)
+  const mountSpy = vi.spyOn(model, 'mount').mockReturnValue(detach)
+  let theme: ThemeSnapshot = { preference: 'light', fontSize: 14, active: { id: 'light', colorScheme: 'light', tokens: {} }, themes: [], revision: 0 }
+  let state: TerminalViewState = { ...idle, info, phase: 'connected', writable: true }
+  function useTerminal(key: string): TerminalViewState | undefined
+  function useTerminal<Selected>(key: string, select: (value: TerminalViewState | undefined) => Selected): Selected
+  function useTerminal(_key: string, select?: (value: TerminalViewState | undefined) => unknown): unknown {
+    return select === undefined ? state : select(state)
+  }
+  const props: FactoryComponentPropsOf<'terminal.surface'> = {
+    sessionId: 'independent-session' as SessionId, tabId: 'independent-tab', contentId: 'independent-content', visible: true,
+    replace: vi.fn(), release: vi.fn(), view: vi.fn(() => model), t: makeTranslate(en),
+    useTerminal,
+    useTheme: select => select(theme),
+    useSessions: unused, useSessionStatus: unused, useSessionRetainInfo: unused, usePanelInfo: unused,
+    useWorkspaces: unused, useResource: unused, renderFactorySlot: unused, useFactorySlot: unused,
+  }
+  const view = render(<TerminalSurfaceFactory {...props} />)
+  await waitFor(() => { expect(view.getByRole('textbox', { name: en.title })).toBeDefined() })
+  expect(props.view).toHaveBeenCalledWith({ sessionId: props.sessionId, tabId: props.tabId, contentId: props.contentId })
+  expect(mountSpy).toHaveBeenCalledOnce()
+  const terminal = fake.terminals[0]!
+  const previousTheme = terminal.options.theme
+  vi.spyOn(window, 'getComputedStyle').mockReturnValue(Object.assign(document.createElement('div').style, { backgroundColor: 'rgb(23, 25, 29)', color: 'rgb(231, 233, 238)' }))
+  theme = { ...theme, revision: 1, active: { id: 'dark', colorScheme: 'dark', tokens: {} } }
+  view.rerender(<TerminalSurfaceFactory {...props} />)
+  expect(terminal.options.theme).not.toEqual(previousTheme)
+  expect(terminal.options.theme).toMatchObject({ background: 'rgb(23, 25, 29)', foreground: 'rgb(231, 233, 238)' })
+  expect(fake.terminals).toHaveLength(1)
+  expect(mountSpy).toHaveBeenCalledOnce()
+  state = { ...idle, phase: 'closed' }
+  view.rerender(<TerminalSurfaceFactory {...props} />)
+  fireEvent.click(view.getByRole('button', { name: en.new }))
+  expect(props.replace).toHaveBeenCalledOnce()
+  expect(props.release).not.toHaveBeenCalled()
+  view.unmount()
+  expect(detach).toHaveBeenCalledOnce()
+  expect(props.release).toHaveBeenCalledExactlyOnceWith('independent-content')
+  expect(terminal.dispose).toHaveBeenCalledOnce()
 })

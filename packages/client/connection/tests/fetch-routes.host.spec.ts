@@ -19,6 +19,18 @@ async function mounted(): Promise<{
 }
 
 describe('Connection exact Fetch routes', () => {
+  it('rejects a dedicated RPC channel when no web server is mounted', async () => {
+    const { connection, dispose } = await mounted()
+    const handler = vi.fn(async () => ({ ok: true as const, value: null }))
+    try {
+      expect(() => connection.rpc.handle('/dedicated', handler))
+        .toThrow('connection: dedicated RPC channel "/dedicated" requires webServer')
+      expect(handler).not.toHaveBeenCalled()
+    } finally {
+      await dispose()
+    }
+  })
+
   it('dispatches owned methods and returns 404 for unclaimed requests', async () => {
     const { connection, dispose: disposeFiber } = await mounted()
     const route = vi.fn(async (request: Request) =>

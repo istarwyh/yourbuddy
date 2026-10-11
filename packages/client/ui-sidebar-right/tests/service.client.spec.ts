@@ -817,3 +817,20 @@ it('releases close handlers without a stale disposer removing a replacement', ()
   expect(h.layout().tabs[tabId]).toBeUndefined()
   expect(second).toHaveBeenCalledOnce()
 })
+
+it('leaves the layout unchanged when an unmounted Session requests a split', () => {
+  const h = harness()
+  h.expand()
+  const release = h.publish()
+  try {
+    const before = h.layout()
+    const pane = dockPaneIds(before)[0]!
+    expect(h.controller.splitIn('stale-session' as SessionId, pane)).toBeUndefined()
+    expect(h.layout()).toBe(before)
+    release()
+    expect(h.controller.splitIn(SESSION, pane)).toBeUndefined()
+    expect(h.layout()).toBe(before)
+  } finally {
+    release()
+  }
+})

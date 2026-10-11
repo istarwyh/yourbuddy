@@ -1,3 +1,4 @@
+import type { DesktopBridgeMessage } from '../src/client/desktop-bridge-window.ts'
 import { describe, expect, it } from 'vitest'
 import {
   DESKTOP_EXTERNAL_LINK_CHANNEL,
@@ -15,28 +16,28 @@ class FakeParent {
   }
 }
 
-class FakeWindow {
+class FakeWindow extends FakeParent {
   readonly parent = new FakeParent()
-  readonly listeners = new Set<(event: MessageEvent<unknown>) => void>()
+  readonly listeners = new Set<(event: DesktopBridgeMessage) => void>()
 
-  addEventListener(type: string, listener: (event: MessageEvent<unknown>) => void): void {
+  addEventListener(type: string, listener: (event: DesktopBridgeMessage) => void): void {
     if (type === 'message') this.listeners.add(listener)
   }
 
-  removeEventListener(type: string, listener: (event: MessageEvent<unknown>) => void): void {
+  removeEventListener(type: string, listener: (event: DesktopBridgeMessage) => void): void {
     if (type === 'message') this.listeners.delete(listener)
   }
 
-  setTimeout(handler: () => void, milliseconds: number): ReturnType<typeof setTimeout> {
-    return setTimeout(handler, milliseconds)
+  setTimeout(handler: () => void, milliseconds: number): number {
+    return Number(setTimeout(handler, milliseconds))
   }
 
-  clearTimeout(timeout: ReturnType<typeof setTimeout>): void {
+  clearTimeout(timeout: number): void {
     clearTimeout(timeout)
   }
 
-  emit(data: unknown, source: unknown = this.parent): void {
-    for (const listener of this.listeners) listener({ data, source } as MessageEvent<unknown>)
+  emit(data: unknown, source: object | null = this.parent): void {
+    for (const listener of this.listeners) listener({ data, source })
   }
 }
 
@@ -92,7 +93,7 @@ describe('desktop external-link browser bridge', () => {
   it('posts a fixed open request and ignores unrelated messages', async () => {
     const target = new FakeWindow()
     const result = requestDesktopExternalLinkOpen('https://example.com/docs', {
-      target: target as unknown as Window,
+      target,
       requestId: 'request_1',
       timeoutMs: 1_000,
     })
@@ -117,7 +118,7 @@ describe('desktop external-link browser bridge', () => {
   it('surfaces native failures and an unavailable shell', async () => {
     const failedTarget = new FakeWindow()
     const failed = requestDesktopExternalLinkOpen('https://example.com', {
-      target: failedTarget as unknown as Window,
+      target: failedTarget,
       requestId: 'request_1',
       timeoutMs: 1_000,
     })
@@ -126,7 +127,7 @@ describe('desktop external-link browser bridge', () => {
 
     const timeoutTarget = new FakeWindow()
     await expect(requestDesktopExternalLinkOpen('https://example.com', {
-      target: timeoutTarget as unknown as Window,
+      target: timeoutTarget,
       requestId: 'request_2',
       timeoutMs: 1,
     })).rejects.toThrow('desktop-shell-unavailable')

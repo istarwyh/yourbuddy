@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
-import type { SessionEventSource } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionBinding, SessionSummary, SessionEventSource } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type { SessionPendingInteraction } from '@deepseek-ai/dsh-client-ui-session/client'
 import type {
   HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime,
 } from '@deepseek-ai/dsh-client-ui-slots'
@@ -271,13 +271,26 @@ export function SessionRegionCollapseAction({
   )
 }
 
+/** Session projections consumed by the workbench attention subscriptions. */
+export interface SessionAttentionContext {
+  sessions: {
+    list: HostObservable<{ byId: Readonly<Record<SessionId, Pick<SessionSummary, 'id' | 'retainedBy'>>> }>
+    binding(id: SessionId): Pick<SessionBinding, 'eventSource'> | undefined
+  }
+  uiSession: {
+    sessionStatus: HostObservable<ReadonlyMap<SessionId, {
+      pendingInteraction: Pick<SessionPendingInteraction, 'key'> | undefined
+    }>>
+  }
+}
+
 /**
  * Observe current-Session input requests and appended Turn completion events.
  * @param ctx - Client context owning Session services.
  * @param controller - Product coordinator to expand.
  * @returns disposer for every Session subscription.
  */
-export function observeSessionAttention(ctx: Context, controller: ProductWorkbenchController): () => void {
+export function observeSessionAttention(ctx: SessionAttentionContext, controller: ProductWorkbenchController): () => void {
   let current: SessionId | undefined
   let eventSource: SessionEventSource | undefined
   let disposeEvents: (() => void) | undefined

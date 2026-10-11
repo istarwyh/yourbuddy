@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { PassThrough } from 'node:stream'
 import { resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -15,7 +15,7 @@ import { BashTerminalBackend, PWSH_DISABLE_PSREADLINE, PWSH_PROMPT_SETUP } from 
 import { ENCODING_PREAMBLE } from '@deepseek-ai/dsh-pwsh-local'
 import * as ptyLocal from '@deepseek-ai/dsh-terminal-bash'
 import type { ResolvedConfig } from '@deepseek-ai/dsh-terminal-bash/src/config.ts'
-import type { LocalPtySession } from '@deepseek-ai/dsh-terminal-bash/src/session.ts'
+import { LocalPtySession } from '@deepseek-ai/dsh-terminal-bash/src/session.ts'
 import { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
 import type {
   SubprocessHandle,
@@ -117,6 +117,13 @@ function registerStubLocalBackend(ctx: Context, createSession: () => LocalPtySes
       createSession,
     ))
   })
+}
+
+function startupSessionFixture(): LocalPtySession {
+  const session = new LocalPtySession(terminalHandle(), config())
+  const close = session.close.bind(session)
+  onTestFinished(async () => { await close('test finished') })
+  return session
 }
 
 describe('BashTerminalBackend startup rollback', () => {
@@ -424,22 +431,19 @@ describe('BashTerminalBackend startup rollback', () => {
     await ctx.plugin(SandboxPolicyService, { mode: 'danger-full-access', workspaceRoot: '/workspace' })
     let spawned: SubprocessTerminalSpawnSpec | undefined
     let sent: TerminalSendRequest | undefined
-    const session = {
-      motd: '',
-      get controlledPromptRendered() { return true },
-      startSend: (request: TerminalSendRequest) => {
-        sent = request
-        return {
-          done: Promise.resolve({
-            viewport: 'setup-echo dsh> ', waitReason: 'stdin_read' as const,
-            sessionStatus: { kind: 'running' as const }, truncated: false,
-          }),
-          readOutput: () => ({ delta: '', truncated: false }),
-          cancel: () => false,
-        }
-      },
-      read: () => ({ text: '', totalLines: 0, lineBegin: 0, lineEnd: 0, truncated: false }),
-    } as unknown as LocalPtySession
+    const session = startupSessionFixture()
+    vi.spyOn(session, 'controlledPromptRendered', 'get').mockImplementation(() => true)
+    vi.spyOn(session, 'startSend').mockImplementation((request: TerminalSendRequest) => {
+      sent = request
+      return {
+        done: Promise.resolve({
+          viewport: 'setup-echo dsh> ', waitReason: 'stdin_read' as const,
+          sessionStatus: { kind: 'running' as const }, truncated: false,
+        }),
+        readOutput: () => ({ delta: '', truncated: false }),
+        cancel: () => false,
+      }
+    })
     const buildBackend = (platform: NodeJS.Platform): BashTerminalBackend => new BashTerminalBackend(
       ctx,
       { ...config(), shellDialect: 'pwsh', shellPath: 'pwsh' },
@@ -466,23 +470,22 @@ describe('BashTerminalBackend startup rollback', () => {
     await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(SandboxPolicyService, { mode: 'danger-full-access', workspaceRoot: '/workspace' })
     const sends: TerminalSendRequest[] = []
-    const session = {
-      motd: '',
-      get controlledPromptRendered() { return sends.length > 1 },
-      startSend: (request: TerminalSendRequest) => {
-        sends.push(request)
-        return {
-          done: Promise.resolve({
-            viewport: sends.length === 2 ? "function prompt { 'dsh> ' }\n" : sends.length === 3 ? 'dsh> ' : '',
-            waitReason: sends.length === 2 || sends.length === 3 ? 'inferred_idle' as const : 'stdin_read' as const,
-            sessionStatus: { kind: 'running' as const }, truncated: false,
-          }),
-          readOutput: () => ({ delta: '', truncated: false }),
-          cancel: () => false,
-        }
-      },
-      read: () => ({ text: '', totalLines: 0, lineBegin: 0, lineEnd: 0, truncated: false }),
-    } as unknown as LocalPtySession
+    const session = startupSessionFixture()
+    // The PTY's parsed OSC readiness state changes only on the fourth send;
+    // the preceding echoed source and plain prompt text carry no owned marker.
+    vi.spyOn(session, 'controlledPromptRendered', 'get').mockImplementation(() => sends.length > 3)
+    vi.spyOn(session, 'startSend').mockImplementation((request: TerminalSendRequest) => {
+      sends.push(request)
+      return {
+        done: Promise.resolve({
+          viewport: sends.length === 2 ? "function prompt { 'dsh> ' }\n" : sends.length >= 3 ? 'dsh> ' : '',
+          waitReason: sends.length === 2 || sends.length === 3 ? 'inferred_idle' as const : 'stdin_read' as const,
+          sessionStatus: { kind: 'running' as const }, truncated: false,
+        }),
+        readOutput: () => ({ delta: '', truncated: false }),
+        cancel: () => false,
+      }
+    })
     const backend = new BashTerminalBackend(
       ctx,
       { ...config(), shellDialect: 'pwsh', shellPath: 'pwsh' },
@@ -537,25 +540,22 @@ describe('BashTerminalBackend startup rollback', () => {
       let sends = 0
       let cancellations = 0
       let closes = 0
-      const session = {
-        motd: '',
-        hasControlledPromptReadiness: () => false,
-        startSend: () => {
-          sends += 1
-          return {
-            done: sends === 1
-              ? Promise.resolve({
-                viewport: 'setup echo', waitReason: 'inferred_idle' as const,
-                sessionStatus: { kind: 'running' as const }, truncated: false,
-              })
-              : pending.promise,
-            readOutput: () => ({ delta: '', truncated: false }),
-            cancel: () => { cancellations += 1; return true },
-          }
-        },
-        read: () => ({ text: '', totalLines: 0, lineBegin: 0, lineEnd: 0, truncated: false }),
-        close: () => { closes += 1; return Promise.resolve() },
-      } as unknown as LocalPtySession
+      const session = startupSessionFixture()
+      vi.spyOn(session, 'controlledPromptRendered', 'get').mockImplementation(() => false)
+      vi.spyOn(session, 'startSend').mockImplementation(() => {
+        sends += 1
+        return {
+          done: sends === 1
+            ? Promise.resolve({
+              viewport: 'setup echo', waitReason: 'inferred_idle' as const,
+              sessionStatus: { kind: 'running' as const }, truncated: false,
+            })
+            : pending.promise,
+          readOutput: () => ({ delta: '', truncated: false }),
+          cancel: () => { cancellations += 1; return true },
+        }
+      })
+      vi.spyOn(session, 'close').mockImplementation(() => { closes += 1; return Promise.resolve() })
       const backend = new BashTerminalBackend(
         ctx,
         { ...config(), shellDialect: 'pwsh', shellPath: 'pwsh' },
@@ -583,22 +583,19 @@ describe('BashTerminalBackend startup rollback', () => {
     await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(SandboxPolicyService, { mode: 'danger-full-access', workspaceRoot: '/workspace' })
     const sends: TerminalSendRequest[] = []
-    const session = {
-      motd: '',
-      get controlledPromptRendered() { return true },
-      startSend: (request: TerminalSendRequest) => {
-        sends.push(request)
-        return {
-          done: Promise.resolve({
-            viewport: 'dsh> ', waitReason: 'stdin_read' as const,
-            sessionStatus: { kind: 'running' as const }, truncated: false,
-          }),
-          readOutput: () => ({ delta: '', truncated: false }),
-          cancel: () => false,
-        }
-      },
-      read: () => ({ text: '', totalLines: 0, lineBegin: 0, lineEnd: 0, truncated: false }),
-    } as unknown as LocalPtySession
+    const session = startupSessionFixture()
+    vi.spyOn(session, 'controlledPromptRendered', 'get').mockImplementation(() => true)
+    vi.spyOn(session, 'startSend').mockImplementation((request: TerminalSendRequest) => {
+      sends.push(request)
+      return {
+        done: Promise.resolve({
+          viewport: 'dsh> ', waitReason: 'stdin_read' as const,
+          sessionStatus: { kind: 'running' as const }, truncated: false,
+        }),
+        readOutput: () => ({ delta: '', truncated: false }),
+        cancel: () => false,
+      }
+    })
     const backend = new BashTerminalBackend(
       ctx,
       { ...config(), shellDialect: 'pwsh', shellPath: 'pwsh' },

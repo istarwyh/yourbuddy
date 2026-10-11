@@ -1,17 +1,32 @@
 diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
 --- a/src/client/Sidebar.tsx
 +++ b/src/client/Sidebar.tsx
-@@ -38,7 +38,7 @@ import {
+@@ -38,7 +38,7 @@
+   type DropZone, type SidebarStore, type SidebarTab,
+ } from './state.ts'
+ import { IconPanelBottomOutline16 } from './icons.tsx'
 -import { Workbench, type WorkbenchActions } from './split-pane.tsx'
 +import { PaneEmptyCards, Workbench, type WorkbenchActions } from './split-pane.tsx'
-@@ -300,7 +300,11 @@ export function Sidebar(props: SidebarProps) {
+ import { NARROW_MAX_WIDTH, useViewportSize } from './breakpoints.ts'
+ import { bottomPushHeight } from './layout-push.ts'
+ import { parseDesktopEnv } from './desktop-env.ts'
+@@ -296,7 +296,11 @@
+   // viewport resize): fresh arrays per render re-rendered every LeafView's
+   // + affordance whether or not anything tab-related moved.
+   const newTabOptions = useMemo(
 -    () => (state === undefined || sessionId === undefined ? [] : buildNewTabOptions(state, ctx, { sessionId, cwd })),
 +    () => buildNewTabOptions(
 +      state,
 +      ctx,
 +      sessionId === undefined ? undefined : { sessionId, cwd },
 +    ),
-@@ -563,7 +567,20 @@ export function Sidebar(props: SidebarProps) {
+     // state is the whole session state — every field it wraps is fair game
+     // for the descriptors' available() callbacks. (The render's own guard
+     // sits below every hook; this memo must handle the no-session case
+@@ -564,7 +568,17 @@
+     // No conversation yet: the host stays mounted (the drag shield keeps
+     // covering the region) but nothing is rendered — the toggle button lives
+     // in DSH's session header, which does not exist without a session.
 -    return <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield} />
 +    return (
 +      <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield}>
@@ -24,22 +39,43 @@ diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
 +        )}
 +      </div>
 +    )
+   }
+ 
+   const bottomPanelHeight = bottomPushHeight({
 diff --git a/src/client/sidebar/TabContent.tsx b/src/client/sidebar/TabContent.tsx
 --- a/src/client/sidebar/TabContent.tsx
 +++ b/src/client/sidebar/TabContent.tsx
-@@ -62,7 +62,11 @@ export const TabContent = memo(function TabContent(props: TabContentProps) {
+@@ -56,7 +56,11 @@
+  * a disabled row instead of hiding the option.
+  * Tabs the user disabled in the side card settings are filtered out
+  * entirely — re-enabling them is the settings page's job. */
 -export function buildNewTabOptions(state: SidebarState, ctx: Context, scope: SessionScope): NewTabOption[] {
 +export function buildNewTabOptions(
 +  state: SidebarState | undefined,
 +  ctx: Context,
 +  scope: SessionScope | undefined,
 +): NewTabOption[] {
-@@ -72,7 +76,7 @@ export function buildNewTabOptions(state: SidebarState, ctx: Context, scope: Ses
+   const service = ctx.get('betterSidebar')
+   if (service === undefined) return []
+   return service.getTabs()
+@@ -65,7 +69,7 @@
+     .map(d => ({
+       id: d.id,
+       label: typeof d.title === 'function' ? d.title() : d.title,
 -      disabled: !(d.available?.(ctx, scope, state) ?? true),
 +      disabled: state === undefined || scope === undefined || !(d.available?.(ctx, scope, state) ?? true),
+       // 14 matches the compact + menu's icon slot (compactList .itemIcon).
+       icon: typeof d.icon === 'function' ? d.icon(14) : d.icon,
+     }))
 diff --git a/src/client/split-pane.tsx b/src/client/split-pane.tsx
 --- a/src/client/split-pane.tsx
 +++ b/src/client/split-pane.tsx
-@@ -117,7 +117,7 @@ function zoneAt(event: React.DragEvent, pane: HTMLElement): DropZone {
+@@ -114,7 +114,7 @@
+  * An empty pane's welcome cards: the openable types as cards, clicked to
+  * open (instead of a bare "this pane is empty" message).
+  */
 -function PaneEmptyCards(props: {
 +export function PaneEmptyCards(props: {
+   newTabOptions: NewTabOption[]
+   onNewTab: (optionId: string) => void
+ }) {

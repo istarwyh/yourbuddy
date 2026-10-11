@@ -188,7 +188,7 @@ function lastSeedEnd(events: readonly { type: string }[]): number {
 function parseArgsObject(args: string | undefined): Record<string, unknown> | undefined {
   if (args === undefined) return undefined
   try {
-    const parsed = JSON.parse(args) as unknown
+    const parsed: unknown = JSON.parse(args)
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined
     return parsed as Record<string, unknown>
   } catch {

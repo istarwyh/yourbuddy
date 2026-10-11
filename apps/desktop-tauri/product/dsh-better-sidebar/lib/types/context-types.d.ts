@@ -25,10 +25,11 @@
  * `Context` in `TabComponentProps` and the `betterSidebar` augmentation),
  * so a Node import here would leak into browser-only consumer builds. The
  * webServer faces below are therefore structural mirrors with plain
- * interfaces (the host casts to real Node types at the few boundaries that
- * need them — e.g. the `ws` upgrade hook in src/index.ts).
+ * interfaces. The Host entry imports the webserver owner's type for upgrade
+ * handlers; that Node-specific declaration stays out of this shared file.
  */
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
+import type { SessionId } from '@deepseek-ai/dsh-session/types';
 import type { BetterSidebarService } from './client/service.ts';
 /** The request face route handlers see (structural subset of node's
  *  IncomingMessage: the URL/method/header reads and the async body
@@ -372,7 +373,7 @@ export interface SidebarSessionsService {
      * runtime ISessions.scope) — the ticket `ctx.conversation.input.for`
      * requires to reach that session's composer.
      */
-    scope(id: string): Context | undefined;
+    scope(id: SessionId): CordisContext | undefined;
     /**
      * Open a healthy catalog child through its exact direct-parent address
      * (mirror of the runtime ISessions.openSubagent).

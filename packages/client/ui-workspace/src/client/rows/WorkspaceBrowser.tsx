@@ -41,6 +41,7 @@ import { AnimatedRows } from './AnimatedRows.tsx'
 import { FLAT_SESSION_ORDER_KEY, type SessionGroupBy } from '../stores.ts'
 import { WorkspacePickFlow } from '../WorkspacePicker.tsx'
 import css from './WorkspaceBrowser.module.css'
+import dialogCss from '../contract/ActionDialog.module.css'
 
 /**
  * Column slide length (--ds-transition-duration-slow): rail-search focus waits it out —
@@ -1442,7 +1443,7 @@ export function WorkspaceBrowser({
         )}
       >
         <input
-          className={css.renameInput}
+          className={dialogCss.renameInput}
           value={renameDraft}
           aria-label={t('field.workspaceName')}
           data-modal-autofocus
@@ -1459,9 +1460,9 @@ export function WorkspaceBrowser({
           }}
         />
         {renameDuplicate && (
-          <div className={css.renameError} role="alert">{t('conflict.named', { name: renameTrimmed })}</div>
+          <div className={dialogCss.renameError} role="alert">{t('conflict.named', { name: renameTrimmed })}</div>
         )}
-        {renameError !== null && <div className={css.renameError} role="alert">{renameError}</div>}
+        {renameError !== null && <div className={dialogCss.renameError} role="alert">{renameError}</div>}
       </Modal>
 
       <Modal
@@ -1477,7 +1478,7 @@ export function WorkspaceBrowser({
             <Button variant="outline" disabled={deleting} onClick={closeDelete}>{t('cancel')}</Button>
             <Button
               variant="outline"
-              className={css.deleteAction}
+              className={dialogCss.deleteAction}
               disabled={deleting}
               onClick={confirmDelete}
             >
@@ -1486,8 +1487,8 @@ export function WorkspaceBrowser({
           </>
         )}
       >
-        {deleting && <div className={css.deleteStatus} role="status">{t('delete.pending')}</div>}
-        {deleteError !== null && <div className={css.renameError} role="alert">{deleteError}</div>}
+        {deleting && <div className={dialogCss.deleteStatus} role="status">{t('delete.pending')}</div>}
+        {deleteError !== null && <div className={dialogCss.renameError} role="alert">{deleteError}</div>}
       </Modal>
       {shortcutState.forkError !== null && <Toast key={shortcutState.forkError.seq}
         text={t(shortcutState.forkError.reason === 'unavailable' ? 'shortcut.noCompletedTurn' : 'shortcut.forkFailed')}

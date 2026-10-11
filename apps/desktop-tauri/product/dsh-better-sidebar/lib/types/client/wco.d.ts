@@ -26,6 +26,11 @@ export interface WcoSource {
     addEventListener(type: 'geometrychange', listener: () => void): void;
     removeEventListener(type: 'geometrychange', listener: () => void): void;
 }
+declare global {
+    interface Navigator {
+        readonly windowControlsOverlay?: WcoSource;
+    }
+}
 /** The current overlay geometry (present=false = API unavailable). */
 export interface WcoSnapshot {
     readonly present: boolean;

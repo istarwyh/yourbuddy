@@ -376,30 +376,26 @@ describe('experimental Inspector real Worker', () => {
     await Promise.all([cdp.call('Runtime.enable'), secondCdp.call('Runtime.enable')])
     const firstContext = await clientContext(cdp)
     const secondContext = await clientContext(secondCdp)
-    // Same-carrier Runtime roundtrips prove the preceding Console enable frames reached the Client.
-    await Promise.all([
-      cdp.call('Runtime.evaluate', {
-        expression: 'undefined',
-        contextId: firstContext,
-        returnByValue: true,
-      }),
-      secondCdp.call('Runtime.evaluate', {
-        expression: 'undefined',
-        contextId: secondContext,
-        returnByValue: true,
-      }),
-    ])
     const value = { owner: 'client-console' }
     const marker = 'client-console-event'
     const logged = (async () => {
-      // Both subscriptions precede this request on the same ingest WebSocket.
-      // A Client response, unlike Runtime.enable, acknowledges their delivery.
-      expect((await cdp.call('Runtime.evaluate', {
-        contextId: firstContext,
-        expression: 'void 0',
-      })).error).toBeUndefined()
+      // Each response acknowledges its connection's preceding Console subscription.
+      const enabled = await Promise.all([
+        cdp.call('Runtime.evaluate', {
+          expression: 'undefined',
+          contextId: firstContext,
+          returnByValue: true,
+        }),
+        secondCdp.call('Runtime.evaluate', {
+          expression: 'undefined',
+          contextId: secondContext,
+          returnByValue: true,
+        }),
+      ])
+      for (const response of enabled) expect(response.error).toBeUndefined()
       await client.log(value, marker)
     })()
+    await client.waitForPausedIngest()
     await Promise.all([logged, client.setIngestPaused(false)])
     let firstEvent: CdpMessage | undefined
     let secondEvent: CdpMessage | undefined

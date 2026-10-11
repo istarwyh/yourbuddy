@@ -20,8 +20,9 @@ import type {
   ArchiveSessionInjected, SessionArchiveConfirmInjected, SessionArchiveConfirmProps, SessionArchiveConfirmRequest,
   SessionMenuItemProps, SessionRowActionProps,
 } from '../contract/slots.ts'
-import css from '../rows/Rows.module.css'
-import browserCss from '../rows/WorkspaceBrowser.module.css'
+import css from '../contract/RowAction.module.css'
+import dialogCss from '../contract/ActionDialog.module.css'
+import archiveCss from './ArchiveSession.module.css'
 
 /**
  * Menu row (order 400): archive, or restore an archived row.
@@ -131,7 +132,7 @@ function ArchiveConfirmForm({ request, stopAndArchiveSession, onSettle, t }: {
           <Button variant="outline" disabled={archiving} onClick={close}>{t('cancel')}</Button>
           <Button
             variant="outline"
-            className={browserCss.deleteAction}
+            className={dialogCss.deleteAction}
             disabled={archiving}
             onClick={confirm}
           >
@@ -140,13 +141,13 @@ function ArchiveConfirmForm({ request, stopAndArchiveSession, onSettle, t }: {
         </>
       )}
     >
-      <ul className={browserCss.archiveActivity} aria-label={t('archive.confirm.activity')}>
+      <ul className={archiveCss.archiveActivity} aria-label={t('archive.confirm.activity')}>
         {request.activity.map((entry, index) => (
           <li key={`${entry.kind}-${String(index)}`}>{activityLine(entry, t)}</li>
         ))}
       </ul>
-      {archiving && <div className={browserCss.deleteStatus} role="status">{t('archive.confirm.pending')}</div>}
-      {error !== null && <div className={browserCss.renameError} role="alert">{error}</div>}
+      {archiving && <div className={dialogCss.deleteStatus} role="status">{t('archive.confirm.pending')}</div>}
+      {error !== null && <div className={dialogCss.renameError} role="alert">{error}</div>}
     </Modal>
   )
 }

@@ -620,7 +620,7 @@ function loadState(sessionId: string): SidebarState {
     try {
       const raw = localStorage.getItem(`${STORAGE_PREFIX}:${sessionId}`)
       if (raw !== null) {
-        const parsed = JSON.parse(raw) as unknown
+        const parsed: unknown = JSON.parse(raw)
         // Seed the uid counter past the persisted ids (it resets on reload);
         // sanitize re-ids any duplicates the pre-seeding counter left behind.
         nextIdCounter = maxCounterId(parsed)

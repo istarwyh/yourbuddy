@@ -1,21 +1,11 @@
 /** Regression coverage for the authoritative package-group map. */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
-import { describe, expect, it, onTestFinished } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { documentationFixture, writeDocumentationFixture as write } from './tests/documentation-fixture.ts'
 import { auditPackageGroupMap, packageGroupMapOrder } from './verify-package-group-map.ts'
 
 function fixture(): string {
-  const root = mkdtempSync(join(tmpdir(), 'dsh-package-group-map-'))
-  onTestFinished(() => { rmSync(root, { recursive: true, force: true }) })
-  return root
-}
-
-function write(root: string, path: string, source: string): void {
-  const absolute = join(root, path)
-  mkdirSync(dirname(absolute), { recursive: true })
-  writeFileSync(absolute, source)
+  return documentationFixture('dsh-package-group-map-')
 }
 
 describe('package group map', () => {

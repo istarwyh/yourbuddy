@@ -19,6 +19,7 @@
  *   per descriptor it tries `detect` first (when `head` bytes are given),
  *   then `exts`; `exts: []` is a catch-all that matches any path.
  */
+import { type Branded } from '@deepseek-ai/dsh-brand';
 import type { ReactNode } from 'react';
 import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots';
 import type { Context } from '../context-types.ts';
@@ -416,6 +417,8 @@ export interface NativeTabParams {
     /** JSON-serializable custom state carried on the synthetic record. */
     meta?: unknown;
 }
+/** A registered sidebar descriptor's native page kind, including the editor's files alias. */
+export type NativeTabKind = Branded<'BetterSidebarNativeTabKind'>;
 /**
  * The plugin's write face over DSH's native right Sidebar.
  *
@@ -430,7 +433,7 @@ export interface SidebarSurface {
     /** Open a page type in one session's native surface. */
     openTab(input: {
         sessionId: string;
-        kind: string;
+        kind: NativeTabKind;
         params: NativeTabParams;
         revealIfOpened: boolean;
     }): void;

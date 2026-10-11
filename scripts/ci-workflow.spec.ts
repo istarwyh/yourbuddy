@@ -284,9 +284,10 @@ describe('CI workflow', () => {
     expect(report?.run).toContain('::warning::')
     expect(report?.run).toContain('Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append')
 
-    // serial-windows: master-only standby, self-hosted, non-blocking, lives in ci-master.
+    // serial-windows remains master-only and outside the PR verdict.
     expect(serialWindows.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
-    expect(serialWindows['runs-on']).toEqual(['self-hosted', 'dsh-win-ci', 'windows'])
+    expect(evaluateRunsOn(serialWindows['runs-on'], { github: { repository: 'deepseek-harness/deepseek-harness' }, fromJSON: JSON.parse }))
+      .toEqual(['self-hosted', 'dsh-win-ci', 'windows'])
     expect(serialWindows.name).toBe('serial / windows (self-hosted standby)')
     // Its store must share the ReFS workspace volume for clone; the install
     // must carry the same filesystem branch as the PR jobs.
@@ -545,6 +546,69 @@ describe('CI workflow', () => {
       expect(job.strategy['max-parallel']).toBe(12)
       expect(job['timeout-minutes']).toBe(15)
     }
+  })
+
+  it('routes only YourBuddy master serial aggregates to official hosted runners', () => {
+    const workflow = loadWorkflow('.github/workflows/ci-master.yml')
+    expect(workflow.permissions).toEqual({ contents: 'read' })
+    expect(workflow.env).toEqual({ PRIMARY_NODE_VERSION: '24', DSH_TELEMETRY_DISABLED: '1' })
+    for (const [name, hosted, labels, command, env] of [
+      ['serial-linux-selfhosted', 'ubuntu-24.04', ['self-hosted', 'linux', 'x64', 'vm-backup'], 'check:ci:linux-primary', {
+        DSH_ARCHIVE_BASE_REF: '${{ github.event.before }}',
+        DSH_COVERAGE_MAX_WORKERS: '1', DSH_E2E_MAX_WORKERS: '1', DSH_GATE_CONCURRENCY: '1',
+        DSH_OXLINT_THREADS: '1', DSH_PUBLINT_CONCURRENCY: '1', DSH_SNAPSHOT_MAX_CONCURRENCY: '1',
+      }],
+      ['serial-windows', 'windows-2025', ['self-hosted', 'dsh-win-ci', 'windows'], 'check:ci:windows-complete', {
+        DSH_COVERAGE_MAX_WORKERS: '1', DSH_COVERAGE_TEST_TIMEOUT_MS: '90000',
+        DSH_GATE_CONCURRENCY: '1', DSH_PUBLINT_CONCURRENCY: '1',
+      }],
+    ] as const) {
+      const job = workflowJob(workflow, name)
+      for (const repository of ['istarwyh/yourbuddy', 'deepseek-harness/deepseek-harness', 'outsider/yourbuddy', 'istarwyh/another-repo']) {
+        // Canonical-case wiring fixtures, not a general Actions expression evaluator.
+        expect(evaluateRunsOn(job['runs-on'], { github: { repository }, fromJSON: JSON.parse }))
+          .toEqual(repository === 'istarwyh/yourbuddy' ? hosted : labels)
+      }
+      expect(job.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
+      for (const key of ['permissions', 'secrets', 'needs', 'continue-on-error', 'strategy', 'env']) {
+        expect(job).not.toHaveProperty(key)
+      }
+      expect(job['timeout-minutes']).toBe(name === 'serial-windows' ? 120 : undefined)
+      if (!Array.isArray(job.steps)) throw new TypeError(`${name} must define steps`)
+      const steps = job.steps.filter(isRecord)
+      const gate = steps.find(step => step.run === `pnpm run ${command}`)
+      expect(gate?.env).toEqual(env)
+      expect(gate?.if).toBeUndefined()
+      if (name === 'serial-windows') expect(gate?.shell).toBe('pwsh')
+      for (const step of steps) {
+        expect(step).not.toHaveProperty('continue-on-error')
+        expect(step).not.toHaveProperty('secrets')
+      }
+    }
+  })
+
+  it('prepares hosted Linux browsers and Office without changing the persistent VM preparation', () => {
+    const job = workflowJob(loadWorkflow('.github/workflows/ci-master.yml'), 'serial-linux-selfhosted')
+    const pr = workflowJob(loadWorkflow('.github/workflows/ci.yml'), 'node-24-consumers')
+    if (!Array.isArray(job.steps) || !Array.isArray(pr.steps)) throw new TypeError('Linux jobs must define steps')
+    const steps = job.steps.filter(isRecord)
+    const prSteps = pr.steps.filter(isRecord)
+    for (const name of ['Install Playwright Chromium, WebKit, and hosted dependencies', 'Build and execute the Linux Office runtime']) {
+      const step = steps.find(candidate => candidate.name === name)
+      expect(step?.if).toBe("github.repository == 'istarwyh/yourbuddy'")
+      expect(step?.run).toBe(prSteps.find(candidate => candidate.name === name)?.run)
+      expect(typeof step?.run).toBe('string')
+      expect(steps.indexOf(step!)).toBeLessThan(steps.findIndex(candidate => candidate.run === 'pnpm run check:ci:linux-primary'))
+    }
+    expect(steps).toContainEqual({
+      name: 'Install Playwright Chromium and WebKit',
+      if: "github.repository != 'istarwyh/yourbuddy'",
+      run: 'pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install chromium webkit',
+    })
+    expect(steps).toContainEqual({
+      name: 'Prepare bubblewrap (unrestrict userns)',
+      run: 'bash scripts/prepare-ci-bubblewrap.sh',
+    })
   })
 
   it('redirects the Node compile cache to the data-volume runner temp before the first pnpm call', () => {
@@ -1028,6 +1092,30 @@ describe('Weighted approval workflow', () => {
   })
 })
 
+describe('Governance policy tests workflow', () => {
+  it('tests the exact PR head without write permissions or secrets', () => {
+    const workflow = loadWorkflow('.github/workflows/governance-policy-tests.yml')
+    expect(workflow.permissions).toEqual({ contents: 'read' })
+    expect(Object.keys(isRecord(workflow.on) ? workflow.on : {})).toEqual(['pull_request'])
+    expect(workflowEvent(workflow, 'pull_request').paths).toEqual([
+      '.github/issue-management/**',
+      '.github/review-ownership/**',
+      '.github/workflows/issue-*.yml',
+      '.github/workflows/weighted-approval*.yml',
+      '.github/workflows/governance-policy-tests.yml',
+    ])
+    const job = workflowJob(workflow, 'policy-tests')
+    expect(job['runs-on']).toBe('windows-latest')
+    expect(job.defaults).toEqual({ run: { shell: 'pwsh' } })
+    if (!Array.isArray(job.steps)) throw new TypeError('Governance tests must define steps')
+    const steps = job.steps.filter(isRecord)
+    expect(steps[0]?.with).toEqual({ ref: '${{ github.event.pull_request.head.sha }}', 'persist-credentials': false })
+    expect(steps.filter(step => step.uses).every(step => /@[0-9a-f]{40}$/.test(String(step.uses)))).toBe(true)
+    expect(steps.at(-1)?.run).toBe('node --test .github/issue-management/policy.test.mjs .github/review-ownership/check-approval.test.mjs .github/review-ownership/blame-ownership.test.mjs .github/review-ownership/author-weight.test.mjs')
+    expect(JSON.stringify(workflow)).not.toMatch(/secrets\.|pull_request_target|continue-on-error|statuses:|pull-requests:/)
+  })
+})
+
 describe('Issue lifecycle workflow', () => {
   it('allocates lifecycle runners only for events that can change the board', () => {
     const lifecycle = loadWorkflow('.github/workflows/issue-lifecycle.yml')
@@ -1058,54 +1146,37 @@ describe('Issue lifecycle workflow', () => {
     expect(issueEvents.types).toContain('untyped')
     const steps = lifecycleJob.steps.filter(isRecord)
     const checkoutStep = steps.find(s => s.name === 'Check out trusted policy')
-    const tokenStep = steps.find(s => s.name === 'Create project token')
+    const projectStep = steps.find(s => s.id === 'project')
     const handleStep = steps.find(s => s.name === 'Handle repository event')
-    expect(checkoutStep?.if).toContain("github.repository == 'deepseek-harness/deepseek-harness'")
-    for (const step of [tokenStep, handleStep]) {
-      expect(step?.if).toContain("github.repository == 'deepseek-harness/deepseek-harness'")
-      expect(step?.if).toContain("github.event_name != 'pull_request_review'")
-      expect(step?.if).toContain("github.event.review.state == 'changes_requested'")
-    }
+    expect(checkoutStep?.with).toMatchObject({ ref: '${{ github.event.repository.default_branch }}', 'persist-credentials': false })
+    expect(projectStep?.run).toContain('config.projectEnabled === true')
+    expect(handleStep?.if).toBe("steps.project.outputs.enabled == 'true'")
+    expect(handleStep?.env).toMatchObject({ GITHUB_TOKEN: '${{ github.token }}', PROJECT_TOKEN: '${{ secrets.ISSUE_PROJECT_TOKEN }}' })
+    expect(lifecycle.permissions).toEqual({ contents: 'read' })
+    expect(steps.some(s => String(s.uses).startsWith('actions/create-github-app-token'))).toBe(false)
 
     // issue-policy owns PR validation; it is read-only and a real gate.
     const policyPullRequest = workflowEvent(policy, 'pull_request')
     expect(policyPullRequest.types).toContain('ready_for_review')
   })
 
-  it('mints Project credentials only after preflight and always revalidates current metadata', () => {
+  it('uses optional repository-owned Project credentials after trusted preflight', () => {
     const policy = loadWorkflow('.github/workflows/issue-policy.yml')
     const policyJob = workflowJob(policy, 'policy')
     if (!Array.isArray(policyJob.steps)) throw new TypeError('Issue policy job must define steps')
     const steps = policyJob.steps.filter(isRecord)
-    const tokenStep = steps.find(step => step.name === 'Create Project read token')
     const validateStep = steps.find(step => step.name === 'Validate pull request')
     const preflightStep = steps.find(step => step.id === 'preflight')
-    expect(preflightStep).toMatchObject({ shell: 'bash' })
-    expect(preflightStep?.run).toContain('if [ -f .github/issue-management/selective-preflight.json ]; then')
-    expect(preflightStep?.run).toContain('node .github/issue-management/policy.mjs pr-preflight')
+    expect(preflightStep?.run).toBe('node .github/issue-management/policy.mjs pr-preflight')
     expect(preflightStep?.if).toBeUndefined()
+    expect(preflightStep?.env).toMatchObject({ GITHUB_TOKEN: '${{ github.token }}' })
     expect(policyJob.if).toBeUndefined()
-    expect(validateStep?.if).toBe("${{ steps.preflight.outputs.legacy-automated != 'true' }}")
-
-    expect(tokenStep).toMatchObject({
-      id: 'app-token',
-      if: "${{ steps.preflight.outputs.needs-project == 'true' }}",
-      uses: 'actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1',
-      with: {
-        'client-id': '${{ vars.DSH_ISSUE_APP_CLIENT_ID }}',
-        'private-key': '${{ secrets.DSH_ISSUE_APP_PRIVATE_KEY }}',
-        owner: 'deepseek-harness',
-        repositories: 'deepseek-harness',
-        'permission-issues': 'read',
-        'permission-organization-projects': 'read',
-      },
+    expect(validateStep?.if).toBeUndefined()
+    expect(validateStep?.env).toMatchObject({
+      GITHUB_TOKEN: '${{ github.token }}',
+      PROJECT_TOKEN: "${{ steps.preflight.outputs.needs-project == 'true' && secrets.ISSUE_PROJECT_TOKEN || '' }}",
     })
-    expect(validateStep).toMatchObject({
-      env: {
-        GITHUB_TOKEN: '${{ github.token }}',
-        PROJECT_TOKEN: '${{ steps.app-token.outputs.token }}',
-      },
-    })
+    expect(steps.some(step => String(step.uses).startsWith('actions/create-github-app-token'))).toBe(false)
   })
 })
 

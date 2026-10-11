@@ -1,32 +1,7 @@
-/**
- * The plugin's content, registered into DSH's native right Sidebar.
- *
- * Every tab the plugin can draw becomes a native tab TYPE plus a BODY:
- *
- * - the `editor` type is both a page (the files window) and a resource
- *   viewer — it claims `dsh-resource://file/**` at the default `extension`
- *   band, which outranks the built-in `text` preview (`fallback`), so a file
- *   the product opens lands in the plugin's editor — EXCEPT the formats
- *   {@link HOST_OWNED_EXTS} hands back to DSH's own previews, which are
- *   strictly better for binary documents (host-side Office→PDF conversion,
- *   a worker-backed spreadsheet table, a zoom viewport);
- * - the built-in `files` page kind is TAKEN OVER by an `extension`
- *   registration of the same kind, so `openTab('files')` draws the plugin's
- *   explorer instead of the built-in tree; the built-in resumes when this
- *   plugin unregisters;
- * - every other descriptor (changes / subagent / side chat / terminal /
- *   browser / diff) becomes a page type of its own.
- *
- * The registrations follow the plugin's registry lifecycle: a descriptor
- * registered later (an external plugin) gets its native type too, and a type
- * the user disabled in the side-card settings is unregistered — so it is
- * absent from the native guide and `openTab` refuses it.
- */
 import type { Context } from '../../context-types.ts';
 import type { BetterSidebarService, TabDescriptor } from '../service.ts';
 import type { SidebarStore } from '../state.ts';
 import { type NativeTabRecords } from './tab-adapter.tsx';
-/** The descriptor's title text, evaluated fresh for the current locale. */
 /** Tab descriptors eligible for adaptation into DSH's native right Sidebar. */
 export declare function nativeTabDescriptors(service: BetterSidebarService): readonly TabDescriptor[];
 /** Everything the registrations need. */

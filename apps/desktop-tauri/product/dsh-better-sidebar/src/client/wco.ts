@@ -22,6 +22,12 @@ export interface WcoSource {
   removeEventListener(type: 'geometrychange', listener: () => void): void
 }
 
+declare global {
+  interface Navigator {
+    readonly windowControlsOverlay?: WcoSource
+  }
+}
+
 /** The current overlay geometry (present=false = API unavailable). */
 export interface WcoSnapshot {
   readonly present: boolean
@@ -74,7 +80,7 @@ function attach(): void {
   attached = true
   // The test hook may have installed a source already; otherwise attach to
   // the real navigator API (absent in plain browsers → stay NONE).
-  const candidate = source ?? (navigator as unknown as { windowControlsOverlay?: WcoSource }).windowControlsOverlay
+  const candidate = source ?? navigator.windowControlsOverlay
   if (candidate === undefined) return
   source = candidate
   sourceListener = onGeometryChange

@@ -33,10 +33,19 @@ function readResult(value: unknown): HostNetworkProxyTestResult | undefined {
     || result.status > 599
     || typeof result.proxied !== 'boolean'
     || typeof result.errorCode !== 'string'
-    || !['inherit', 'direct', 'system', 'custom', 'unknown'].includes(String(result.proxyMode))
-    || !['system', 'environment', 'custom', 'unknown'].includes(String(result.caSource))
+    || (result.proxyMode !== 'inherit' && result.proxyMode !== 'direct' && result.proxyMode !== 'system'
+      && result.proxyMode !== 'custom' && result.proxyMode !== 'unknown')
+    || (result.caSource !== 'system' && result.caSource !== 'environment'
+      && result.caSource !== 'custom' && result.caSource !== 'unknown')
     || result.errorCode.length > 64) return undefined
-  return result as unknown as HostNetworkProxyTestResult
+  return {
+    ok: result.ok,
+    status: result.status,
+    proxied: result.proxied,
+    errorCode: result.errorCode,
+    proxyMode: result.proxyMode,
+    caSource: result.caSource,
+  }
 }
 
 /**

@@ -50,9 +50,10 @@ const PNPM_HARNESS_INSTALL_TIMEOUT: Duration = Duration::from_secs(20 * 60);
 const PNPM_GLOBAL_INSTALL_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 const NODE_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 
-/// Harness trees kept under `harness-versions`: the active tree, the fallback
-/// for a failed provision, and one spare for an older still-running Host.
+/// Legacy Offline retention: the active tree, a provision fallback, and one spare.
+/// Component Bootstrap leaves all previous trees untouched.
 const HARNESS_TREES_KEPT: usize = 3;
+const BOOTSTRAP_PROVISIONING_MARKER: &str = ".bootstrap-provisioning";
 
 /// Node distribution archive coordinates for a given OS/arch.
 #[derive(Debug)]
@@ -109,7 +110,12 @@ pub async fn ensure_runtime(
         .map_err(|e| format!("cannot create YourBuddy home {}: {e}", dsh_home.display()))?;
     progress(ProvisionEvent::Status(i18n::t(Msg::StatusHomeNone).into()));
 
-    if manifest_ready(&manifest_path, &bundled, &harness_root, &cli_entry) {
+    let ready = if components.is_some() {
+        bootstrap_manifest_ready(&manifest_path, &bundled, &harness_root, &cli_entry)?
+    } else {
+        manifest_ready(&manifest_path, &bundled, &harness_root, &cli_entry)
+    };
+    if ready {
         boot_log::info("provision skipped: manifest ready");
         progress(ProvisionEvent::Status(
             i18n::t(Msg::StatusRuntimeReady).into(),
@@ -146,34 +152,31 @@ pub async fn ensure_runtime(
 
     boot_log::info("provision starting: seed harness + node + pnpm install");
     if let Err(error) = fs::create_dir_all(&runtime_root) {
-        boot_log::info(&recoverable_message("create runtime", &runtime_root, error));
+        let message = recoverable_message("create runtime", &runtime_root, error);
+        if components.is_some() {
+            return Err(message);
+        }
+        boot_log::info(&message);
     }
     if let Err(error) = fs::create_dir_all(&dsh_home) {
-        boot_log::info(&recoverable_message("create home", &dsh_home, error));
+        let message = recoverable_message("create home", &dsh_home, error);
+        if components.is_some() {
+            return Err(message);
+        }
+        boot_log::info(&message);
     }
 
     progress(ProvisionEvent::Status(
         i18n::t(Msg::StatusExtractHarness).into(),
     ));
     progress(ProvisionEvent::Progress(12));
-    let mut harness_root = harness_root;
-    let mut cli_entry = cli_entry;
-    if let Err(error) = seed_harness_tree(&bundled, &harness_root) {
-        boot_log::info(&format!("seed fallback: {error}"));
-        if !cli_entry.is_file() {
-            if let Some(existing) = find_existing_harness(&app_root) {
-                boot_log::info(&format!("reusing harness {}", existing.display()));
-                harness_root = existing;
-                cli_entry = harness_root
-                    .join("apps")
-                    .join("cli")
-                    .join("lib")
-                    .join("bin.js");
-            } else if !is_recoverable_io(&error) {
-                return Err(error);
-            }
-        }
-    }
+    let harness_root =
+        prepare_harness_tree(&bundled, &app_root, &harness_root, components.is_some())?;
+    let cli_entry = harness_root
+        .join("apps")
+        .join("cli")
+        .join("lib")
+        .join("bin.js");
 
     if node_binary_compatible(&node_binary) {
         boot_log::info(&format!("reusing Node {}", node_binary.display()));
@@ -198,6 +201,9 @@ pub async fn ensure_runtime(
                 .and_then(|root| install_bundled_node(root, &node_dir, DEFAULT_NODE_VERSION))
         };
         if let Err(bundled_error) = bundled_result {
+            if components.is_some() {
+                return Err(bundled_error);
+            }
             boot_log::info(&format!("bundled Node fallback: {bundled_error}"));
             if let Err(error) =
                 fetch_node(&node_dir, DEFAULT_NODE_VERSION, &progress, &network_proxy).await
@@ -234,6 +240,9 @@ pub async fn ensure_runtime(
             .map(|root| root.join(BUNDLED_PNPM_ARCHIVE))
             .filter(|path| path.is_file());
         let bundled_pnpm = component_pnpm.as_deref().or(legacy_pnpm.as_deref());
+        if components.is_some() {
+            preserve_bootstrap_directory(&runtime_root, "pnpm-global", ".bootstrap-pnpm-")?;
+        }
         if let Err(error) = install_pnpm(
             &node_binary,
             &pnpm_home,
@@ -241,6 +250,9 @@ pub async fn ensure_runtime(
             bundled_pnpm,
             &network_proxy,
         ) {
+            if components.is_some() {
+                return Err(error);
+            }
             boot_log::info(&format!("pnpm install fallback: {error}"));
             if preferred_pnpm.is_file() {
                 pnpm_binary = preferred_pnpm;
@@ -271,7 +283,11 @@ pub async fn ensure_runtime(
     );
     if install_result.is_err() {
         if let Some(manager) = components.as_ref() {
-            let _ = fs::remove_dir_all(harness_root.join("node_modules"));
+            preserve_bootstrap_directory(
+                &harness_root,
+                "node_modules",
+                ".bootstrap-dependencies-",
+            )?;
             let store = manager.ensure("pnpmStore").await?;
             install_result = pnpm_install_harness(
                 &node_binary,
@@ -282,12 +298,7 @@ pub async fn ensure_runtime(
             );
         }
     }
-    if let Err(error) = install_result {
-        boot_log::info(&format!("pnpm install harness fallback: {error}"));
-        if !harness_root.join("node_modules").join(".pnpm").is_dir() && !is_recoverable_io(&error) {
-            return Err(error);
-        }
-    }
+    finish_harness_install(install_result, &harness_root, components.is_some())?;
     if components.is_none() {
         cleanup_offline_pnpm_store(&harness_root);
     }
@@ -299,16 +310,26 @@ pub async fn ensure_runtime(
         ));
     }
 
-    if let Err(error) = write_manifest(
-        &manifest_path,
-        &bundled,
-        &node_binary,
-        &harness_root,
-        &cli_entry,
-    ) {
-        boot_log::info(&format!("manifest write skipped: {error}"));
+    if components.is_some() {
+        finish_bootstrap_provision(
+            &manifest_path,
+            &bundled,
+            &node_binary,
+            &harness_root,
+            &cli_entry,
+        )?;
+    } else {
+        if let Err(error) = write_manifest(
+            &manifest_path,
+            &bundled,
+            &node_binary,
+            &harness_root,
+            &cli_entry,
+        ) {
+            boot_log::info(&format!("manifest write skipped: {error}"));
+        }
+        gc_harness_versions(&app_root);
     }
-    gc_harness_versions(&app_root);
 
     progress(ProvisionEvent::Status(
         i18n::t(Msg::StatusRuntimeReady).into(),
@@ -398,6 +419,93 @@ fn resolve_local_repo() -> Result<RuntimePaths, String> {
         runtime_root: app_data_root()?.join("runtime"),
         dsh_home,
     })
+}
+
+/// A failed or interrupted Bootstrap preparation must finish before its manifest can be reused.
+fn bootstrap_manifest_ready(
+    manifest_path: &Path,
+    bundled: &Path,
+    harness_root: &Path,
+    cli_entry: &Path,
+) -> Result<bool, String> {
+    let marker = harness_root.join(BOOTSTRAP_PROVISIONING_MARKER);
+    match fs::symlink_metadata(&marker) {
+        Ok(_) => return Ok(false),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(recoverable_message(
+                "read provisioning marker",
+                &marker,
+                error,
+            ))
+        }
+    }
+    Ok(manifest_ready(
+        manifest_path,
+        bundled,
+        harness_root,
+        cli_entry,
+    ))
+}
+
+/// Retain failed tool/dependency output, including user files, before a clean retry.
+fn preserve_bootstrap_directory(parent: &Path, name: &str, prefix: &str) -> Result<(), String> {
+    let modules = parent.join(name);
+    match fs::symlink_metadata(&modules) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => {
+            return Err(recoverable_message(
+                "read previous installation",
+                &modules,
+                error,
+            ))
+        }
+        Ok(_) => {}
+    }
+    let quarantine = tempfile::Builder::new()
+        .prefix(prefix)
+        .tempdir_in(parent)
+        .map_err(|error| recoverable_message("preserve previous installation", parent, error))?;
+    let destination = quarantine.path().join(name);
+    fs::rename(&modules, &destination)
+        .map_err(|error| recoverable_message("preserve previous installation", &modules, error))?;
+    let preserved = quarantine.keep();
+    boot_log::info(&format!(
+        "preserved previous installation {}",
+        preserved.display()
+    ));
+    Ok(())
+}
+
+fn finish_harness_install(
+    result: Result<(), String>,
+    harness_root: &Path,
+    bootstrap: bool,
+) -> Result<(), String> {
+    if let Err(error) = result {
+        if bootstrap {
+            return Err(error);
+        }
+        boot_log::info(&format!("pnpm install harness fallback: {error}"));
+        if !harness_root.join("node_modules").join(".pnpm").is_dir() && !is_recoverable_io(&error) {
+            return Err(error);
+        }
+    }
+    Ok(())
+}
+
+/// Finish current-target provisioning; Host readiness is checked separately after launch.
+fn finish_bootstrap_provision(
+    manifest_path: &Path,
+    bundled: &Path,
+    node_binary: &Path,
+    harness_root: &Path,
+    cli_entry: &Path,
+) -> Result<(), String> {
+    write_manifest(manifest_path, bundled, node_binary, harness_root, cli_entry)?;
+    let marker = harness_root.join(BOOTSTRAP_PROVISIONING_MARKER);
+    fs::remove_file(&marker)
+        .map_err(|error| recoverable_message("finish provisioning", &marker, error))
 }
 
 fn manifest_ready(
@@ -647,6 +755,37 @@ fn read_bundle_version(bundled: &Path) -> Result<String, String> {
         .as_str()
         .unwrap_or("unknown")
         .to_string())
+}
+
+/// Bootstrap repairs only the selected hash directory; legacy Offline recovery is unchanged.
+fn prepare_harness_tree(
+    source: &Path,
+    app_root: &Path,
+    target: &Path,
+    bootstrap: bool,
+) -> Result<PathBuf, String> {
+    if bootstrap {
+        fs::create_dir_all(target)
+            .map_err(|error| recoverable_message("create current harness", target, error))?;
+        let marker = target.join(BOOTSTRAP_PROVISIONING_MARKER);
+        fs::write(&marker, b"provisioning\n")
+            .map_err(|error| recoverable_message("start provisioning", &marker, error))?;
+        copy_tree(source, target)?;
+        return Ok(target.to_path_buf());
+    }
+    if let Err(error) = seed_harness_tree(source, target) {
+        boot_log::info(&format!("seed fallback: {error}"));
+        let cli = target.join("apps").join("cli").join("lib").join("bin.js");
+        if !cli.is_file() {
+            if let Some(existing) = find_existing_harness(app_root) {
+                boot_log::info(&format!("reusing harness {}", existing.display()));
+                return Ok(existing);
+            } else if !is_recoverable_io(&error) {
+                return Err(error);
+            }
+        }
+    }
+    Ok(target.to_path_buf())
 }
 
 fn seed_harness_tree(source: &Path, dest: &Path) -> Result<(), String> {
@@ -1123,7 +1262,10 @@ fn configure_pnpm_install(
         .stderr(Stdio::piped());
     if let Some(store) = store {
         if !store.is_dir() {
-            return Err(format!("offline pnpm store is missing: {}", store.display()));
+            return Err(format!(
+                "offline pnpm store is missing: {}",
+                store.display()
+            ));
         }
         cmd.arg("--store-dir").arg(store);
     }
@@ -1535,3 +1677,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 }
+
+#[cfg(test)]
+#[path = "provision_bootstrap_tests.rs"]
+mod bootstrap_tests;

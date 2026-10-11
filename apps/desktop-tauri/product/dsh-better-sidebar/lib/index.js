@@ -10,9 +10,10 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { SettingsConflictError } from "@deepseek-ai/dsh-settings";
 import { defineTool } from "@deepseek-ai/dsh-tools";
+import { SessionSeq } from "@deepseek-ai/dsh-session/types";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { snapshotSubagentDescriptor } from "@deepseek-ai/dsh-subagent";
-import { SessionLogOffset } from "@deepseek-ai/dsh-session";
+import { SessionLogOffset, SessionSeq as SessionSeq$1 } from "@deepseek-ai/dsh-session";
 //#region src/prefs-shared.ts
 /**
 * Shared "Side card" preference vocabulary (types + constants), consumed by
@@ -282,26 +283,6 @@ function requireAbsolute(path) {
 	if (!isAbsolute(path)) throw new SidebarError("fs-error", `"${path}" is not an absolute path`, 400);
 	return resolve(path);
 }
-/**
-* Whether `target` lies under `base` (or equals it), tolerant of separator
-* style and — on Windows, where the filesystem is case-insensitive — of
-* letter case. The media route uses this instead of a raw `startsWith` so a
-* case-mismatched or mixed-separator path can never be misclassified
-* (e.g. `C:\Users\Me` vs `c:/users/me/file.png`).
-* @param platform - filesystem semantics; injectable so both branches are
-* unit-testable on any host.
-*/
-function isWithin(base, target, platform = process.platform) {
-	const norm = (value) => value.replace(/[\\/]+/g, "/").replace(/\/$/, "");
-	const b = norm(base);
-	const t = norm(target);
-	if (platform === "win32") {
-		const lb = b.toLowerCase();
-		const lt = t.toLowerCase();
-		return lt === lb || lt.startsWith(`${lb}/`);
-	}
-	return t === b || t.startsWith(`${b}/`);
-}
 /** Message text of an unknown thrown value. */
 function messageOf(error) {
 	return error instanceof Error ? error.message : String(error);
@@ -336,7 +317,7 @@ function resolveSessionPath(cwd, target, platform = process.platform) {
 }
 //#endregion
 //#region src/path-security.ts
-/** Filesystem path guards shared by sidebar APIs that access a session workspace. */
+/** Filesystem path resolution shared by sidebar APIs. */
 /** Resolve a path and convert filesystem resolution failures to an API error. */
 async function resolveRealPath(path, label) {
 	try {
@@ -356,8 +337,7 @@ async function resolveRealPath(path, label) {
 * @returns The canonical absolute path used for the filesystem operation.
 */
 async function ensureWorkspacePath(cwd, target) {
-	const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)));
-	return resolveRealPath(absolute, "target");
+	return resolveRealPath(requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target))), "target");
 }
 /**
 * Validate a write destination, including destinations that do not exist yet.
@@ -394,21 +374,19 @@ async function ensureWorkspaceWritePath(cwd, target) {
 //#endregion
 //#region src/fs-operations.ts
 /**
-* Workspace-safe file mutations for the sidebar (the upload route today).
+* Filesystem mutations for the sidebar (the upload route today).
 *
-* Every write is confined to the real session workspace: the upload
-* directory is resolved absolute and its target is checked through existing
-* filesystem ancestors, the relative path is sanitized (absolute paths, '.',
-* '..' and empty segments are refused), and the final target must stay inside
-* the workspace after symlink resolution. Bytes stream from the request body
+* The upload directory is resolved to a canonical absolute path and the
+* relative path is sanitized (absolute paths, '.', '..' and empty segments
+* are refused). Absolute directories may point anywhere on the host. Bytes
+* stream from the request body
 * to a uniquely named temp sibling
 * and are renamed into place, so a failed, aborted, or oversized upload never
 * leaves a partial file at the target path.
 *
-* The tree's rename/delete (below) are link-aware: existence and containment
-* are verified against the fully resolved target (a symlink pointing outside
-* the workspace is refused while the fence is armed), but the operation
-* itself addresses the lexical row path — renaming or deleting a symlink
+* The tree's rename/delete (below) are link-aware: existence is verified
+* against the fully resolved target, but the operation itself addresses the
+* lexical row path — renaming or deleting a symlink
 * row renames/unlinks the LINK, never its target, matching what the tree
 * row visually names (VS Code semantics).
 */
@@ -420,8 +398,8 @@ async function ensureWorkspaceWritePath(cwd, target) {
 * target independent (each writes and renames its own file; the last rename
 * wins) and never blocks later uploads after a crashed process.
 *
-* @throws SidebarError with a wire code for containment, shape, and size
-* failures; the temp file is always removed on failure.
+* @throws SidebarError with a wire code for shape and size failures; the temp
+* file is always removed on failure.
 */
 async function writeWorkspaceUpload(input) {
 	const { cwd, dir, relativePath, chunks, limit } = input;
@@ -468,8 +446,8 @@ async function writeWorkspaceUpload(input) {
 	}
 }
 /** Resolve one existing entry for a link-aware mutation: the lexical row path
-* plus its fully resolved real target (fence-checked). ENOENT becomes an
-* fs-error, mirroring path-security's resolveRealPath semantics. */
+* plus its fully resolved real target. ENOENT becomes an fs-error, mirroring
+* path-security's resolveRealPath semantics. */
 async function resolveEntry(cwd, target) {
 	const absolute = requireAbsolute(resolve(cwd, resolveSessionPath(cwd, target)));
 	let real;
@@ -503,8 +481,7 @@ async function pathExists(target) {
 * renames the link, not its target. A no-op rename (same name) succeeds
 * without touching the filesystem.
 *
-* @throws SidebarError with a wire code for shape, containment, existence
-* and root failures.
+* @throws SidebarError with a wire code for shape, existence and root failures.
 */
 async function renameWorkspaceEntry(input) {
 	const { cwd, path, name } = input;
@@ -527,8 +504,7 @@ async function renameWorkspaceEntry(input) {
 * only (lstat decides, so a link to a directory does not recurse into its
 * target). The workspace root itself is never removable.
 *
-* @throws SidebarError with a wire code for containment, existence and
-* root failures.
+* @throws SidebarError with a wire code for existence and root failures.
 */
 async function removeWorkspaceEntry(input) {
 	const { cwd, path } = input;
@@ -1887,6 +1863,24 @@ function buildJobsApi(ctx, outputLimit) {
 }
 //#endregion
 //#region src/sidechat-core.ts
+/**
+* Pure side-conversation ("Side Chat") logic shared by the host routes and
+* the client tab. Framework-free (no React, no Node) so both halves and the
+* node test environment can import it.
+*
+* A side thread is a child session the plugin creates ITSELF with a custom
+* seed — the parent session's FULL event log up to the click moment
+* (completed turns, the unanswered user message, and — when the parent is
+* mid-turn — the in-progress assistant output and tool activity). The log
+* model forbids open-turn seeds, so an in-flight parent turn is copied
+* verbatim and CLOSED with synthetic `step/end` + `turn/end{reason:
+* 'interrupted'}` events: the child sees the partial turn as honestly
+* frozen ("cut off"), never as a completed answer. The one case that cannot
+* be closed honestly — a tool call still executing (no `tool/result` yet;
+* providers reject dangling assistant calls) — falls back to cutting before
+* the open turn and carrying the partial content as a structured text
+* snapshot inside the boundary prompt.
+*/
 /** The durable thread-label prefix (also the row filter in the client list). */
 const SIDE_LABEL_PREFIX = "Side: ";
 /** The pinned label of a freshly created thread that no prompt has reached
@@ -1942,18 +1936,7 @@ function dataOf(event) {
 *  The FULL envelope is preserved — stripping `surfaceOp` would make the
 *  seed validator reject every surface-eligible message event. */
 function copyEvents(events) {
-	return events.map((event) => {
-		const source = event;
-		return {
-			type: source.type,
-			seq: source.seq,
-			time: source.time,
-			data: dataOf(source),
-			...source.surfaceOp === void 0 ? {} : { surfaceOp: source.surfaceOp },
-			...source.sourceEventSeqs === void 0 ? {} : { sourceEventSeqs: source.sourceEventSeqs },
-			...source.ignorable === void 0 ? {} : { ignorable: source.ignorable }
-		};
-	});
+	return events.map((event) => ({ ...event }));
 }
 /** Index of the last `turn/start` or `turn/end`, or -1. */
 function lastTurnBoundary(events) {
@@ -2070,7 +2053,7 @@ function buildSidechatInheritance(events, live = []) {
 	const openStep = openStepInTurn(events, boundary);
 	if (openStep !== void 0) seed.push({
 		type: "step/end",
-		seq: seed.length,
+		seq: SessionSeq(seed.length),
 		time: now,
 		data: {
 			turn,
@@ -2079,7 +2062,7 @@ function buildSidechatInheritance(events, live = []) {
 	});
 	seed.push({
 		type: "turn/end",
-		seq: seed.length,
+		seq: SessionSeq(seed.length),
 		time: now,
 		data: {
 			turn,
@@ -2564,9 +2547,9 @@ function buildSidechatApi(ctx, live) {
 			});
 			const descriptorEvent = {
 				type: "subagent/descriptor",
-				seq: inheritance.seed.length,
+				seq: SessionSeq$1(inheritance.seed.length),
 				time: Date.now(),
-				data: descriptor
+				data: { ...descriptor }
 			};
 			const seed = [...inheritance.seed, descriptorEvent];
 			const options = {
@@ -3469,8 +3452,9 @@ function apply(ctx, config) {
 			}
 		}
 	}), "dsh-better-sidebar: /sidebar/html preview route");
+	const webServer = ctx.webServer;
 	const agentOpenWss = new WebSocketServer({ noServer: true });
-	ctx.effect(() => ctx.webServer.registerUpgrade({
+	ctx.effect(() => webServer.registerUpgrade({
 		path: "/sidebar/ws/agent-opens",
 		handler: (req, socket, head) => {
 			if (!fence(req)) {
@@ -3483,7 +3467,7 @@ function apply(ctx, config) {
 		}
 	}), "dsh-better-sidebar: agent-opens push WebSocket");
 	const fsWatchWss = new WebSocketServer({ noServer: true });
-	ctx.effect(() => ctx.webServer.registerUpgrade({
+	ctx.effect(() => webServer.registerUpgrade({
 		path: "/sidebar/ws/fs-watch",
 		handler: (req, socket, head) => {
 			if (!fence(req)) {

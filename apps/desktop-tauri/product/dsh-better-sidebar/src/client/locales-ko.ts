@@ -272,6 +272,7 @@ export const ko: Record<string, string> = {
   settingsGeneralTitle: '일반',
   settingsPopup: '기능 설정',
   settingsViewerCatchAll: '폴백: 모든 파일',
+  viewerImage: '이미지',
   viewerMarkdown: 'Markdown',
   viewerCode: '코드',
   viewerHtml: 'HTML',

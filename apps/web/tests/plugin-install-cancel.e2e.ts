@@ -4,10 +4,24 @@ import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromium, type Locator, type Page } from 'playwright'
+import { chromium, type Locator, type Page, type Request } from 'playwright'
 import { expect, it } from 'vitest'
 import { launchWebScaffold, captureStableAria, compareOrRefreshGolden, webSnapshotMode, watchConsole, type WebScaffold } from './scaffold.ts'
 import { ZH_BROWSER_LOCALE } from './support.ts'
+
+async function waitForInventory<T>(pending: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      pending,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => { reject(new Error('Inventory route barrier timed out')) }, 30_000)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 async function invalidInputStyles(page: Page, input: Locator) {
   const styles = []
@@ -68,6 +82,8 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
     const delivery = Promise.withResolvers<undefined>()
     const cancellationReply = Promise.withResolvers<undefined>()
     const loseActiveReply = Promise.withResolvers<undefined>()
+    const inventoryRead = Promise.withResolvers<Request>()
+    const releaseInventory = Promise.withResolvers<undefined>()
     try {
       const profile = join(scaffold.harnessHome, 'profiles', 'scaffold')
       const manifestPath = join(profile, 'package.json')
@@ -86,6 +102,17 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
         });
       `)
       const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: ZH_BROWSER_LOCALE })
+      let holdInventory = false
+      // Keep interception alive across page.unrouteAll: Chromium can lose an
+      // in-flight request while Fetch.disable runs (microsoft/playwright#41802).
+      await page.context().route('**/api/pluginManager/listPlugins', async (route) => {
+        if (holdInventory) {
+          holdInventory = false
+          inventoryRead.resolve(route.request())
+          await releaseInventory.promise
+        }
+        await route.continue()
+      })
       const tripwire = watchConsole(page)
       await page.clock.install()
       await page.goto(scaffold.authenticatedUrl)
@@ -152,11 +179,15 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
         await captureStableAria(page, '[role="dialog"]', scaffold.workspaceCwd), webSnapshotMode())
       await page.locator('[role="presentation"] > [aria-hidden="true"]').click({ position: { x: 5, y: 5 } })
       await dialog.waitFor({ state: 'hidden' })
+      holdInventory = true
       delivery.resolve(undefined)
       await page.getByText('已取消安装，插件未启用，下载的文件可能保留', { exact: true }).waitFor()
       expect(await readFile(manifestPath, 'utf8')).toBe(manifest)
       expect(await readFile(lockPath, 'utf8')).toBe('original lockfile\n')
+      const pendingInventory = await waitForInventory(inventoryRead.promise)
       await page.unrouteAll({ behavior: 'wait' })
+      releaseInventory.resolve(undefined)
+      expect((await waitForInventory(pendingInventory.response()))?.status()).toBe(200)
       // Drop the browser's response while the real Host still owns the child process.
       const activeReplySettled = Promise.withResolvers<undefined>()
       await page.route('**/api/pluginManager/installBundle', async (route) => {
@@ -274,6 +305,7 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
       delivery.resolve(undefined)
       cancellationReply.resolve(undefined)
       loseActiveReply.resolve(undefined)
+      releaseInventory.resolve(undefined)
       await browser.close()
     }
   } finally {

@@ -18,14 +18,18 @@
  *   comes on screen;
  * - layout state is memory-only, so a queued open is not durable either.
  */
+import { brandString } from '@deepseek-ai/dsh-brand'
+import { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ISidebarRight, TabId } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import type { Context } from '../../context-types.ts'
 import { fileAddressFor } from '../resource-address.ts'
-import type { NativeTabParams, SidebarSurface } from '../service.ts'
+import type { NativeTabKind, NativeTabParams, SidebarSurface } from '../service.ts'
 import type { NativeTabRecords } from './tab-adapter.tsx'
 
 /** One open the surface could not place yet. */
 type Pending =
-  | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean }
+  | { kind: 'tab'; sessionId: string; tabKind: NativeTabKind; params: NativeTabParams; revealIfOpened: boolean }
   | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean }
 
 /** The observation of the Session retained by the main conversation view. */
@@ -34,16 +38,9 @@ export interface MountedSessions {
   subscribe(listener: () => void): () => void
 }
 
-/** The controller face this module uses (a structural slice of `ISidebarRight`). */
-interface NativeController {
-  openTab(kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
-  openResource(address: string, options?: { params?: unknown; revealIfOpened?: boolean }): void
-  close(tabId: string): void
-  /** Concrete controller writes for retained Session stores. */
-  openTabIn(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
-  openResourceIn(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean }): boolean
-  closeIn(sessionId: string, tabId: string): void
-  onSessionAdopted(listener: (sessionId: string) => void): () => void
+declare module '@deepseek-ai/dsh-client-ui-sidebar-right/client' {
+  /** Page parameters owned by Better Sidebar's registered descriptor adapter. */
+  interface SidebarRightTabParamsMap extends Record<NativeTabKind, NativeTabParams> {}
 }
 
 /** The plugin's write face over the native surface. */
@@ -53,9 +50,9 @@ export interface NativeSurface extends SidebarSurface {
 }
 
 /** The native controller, probed at call time (the service can arrive late). */
-function controllerOf(ctx: Context): NativeController | undefined {
+function controllerOf(ctx: Context): ISidebarRight | undefined {
   try {
-    return ctx.get('sidebarRight') as unknown as NativeController | undefined
+    return ctx.get('sidebarRight')
   } catch {
     return undefined
   }
@@ -96,12 +93,12 @@ export function mountedSessionId(ctx: Context): string | undefined {
  */
 export function createNativeSurface(ctx: Context, records: NativeTabRecords): NativeSurface {
   const pending: Pending[] = []
-  const controller = (): NativeController | undefined => controllerOf(ctx)
+  const controller = (): ISidebarRight | undefined => controllerOf(ctx)
 
   const place = (entry: Pending): boolean => {
     const api = controller()
     if (api === undefined) return false
-    const sessionId = entry.sessionId
+    const sessionId = SessionId(entry.sessionId)
     if (entry.kind === 'tab') {
       const options = { params: entry.params, revealIfOpened: entry.revealIfOpened }
       return api.openTabIn(sessionId, entry.tabKind, options)
@@ -142,7 +139,7 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
       const record = records.get(tabId)
       if (record === undefined) return undefined
       records.drop(tabId)
-      controller()?.closeIn(sessionId, tabId)
+      controller()?.closeIn(SessionId(sessionId), brandString<TabId>(tabId))
       return { type: record.tab.type, title: record.tab.title }
     },
     update(tabId, patch) {
