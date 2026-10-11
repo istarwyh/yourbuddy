@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
 
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { load } from 'js-yaml'
 
@@ -18,6 +18,8 @@ import {
   stripUnbundledWorkspaceDependencies,
   verifyExternalSnapshot,
 } from './bundle-harness-source.mjs'
+
+import { readWorkspacePackageVersions } from './product-plugin-compatibility.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -453,4 +455,25 @@ test('installProductPlugins keeps Codex in core and excludes the on-demand Pomod
   finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test('the frozen core lock includes every normalized product peer in its CLI and package importers', () => {
+  const lock = load(readFileSync(join(desktopRoot, 'product', 'harness-pnpm-lock.yaml'), 'utf8'))
+  const workspaces = readWorkspacePackageVersions(join(desktopRoot, '..', '..'))
+  let checked = 0
+  for (const entry of readdirSync(join(desktopRoot, 'product'), { withFileTypes: true })) {
+    const importer = lock.importers[`packages/product/${entry.name}`]
+    if (!entry.isDirectory() || !importer) continue
+    const manifest = JSON.parse(readFileSync(join(desktopRoot, 'product', entry.name, 'package.json'), 'utf8'))
+    for (const name of Object.keys(manifest.peerDependencies ?? {})) {
+      if (!workspaces.has(name)) continue
+      const expected = path => lock.overrides[name]?.startsWith('link:')
+        ? `link:${relative(path, lock.overrides[name].slice(5)).replaceAll('\\', '/')}`
+        : 'workspace:*'
+      assert.equal(importer.dependencies[name]?.specifier, expected(`packages/product/${entry.name}`), `${manifest.name}: frozen peer ${name}`)
+      assert.equal(lock.importers['apps/cli'].dependencies[name]?.specifier, expected('apps/cli'), `CLI: frozen peer ${name}`)
+      checked += 1
+    }
+  }
+  assert.ok(checked > 0)
 })
