@@ -35,12 +35,16 @@ pub struct ComponentLeases {
 
 /// Keeps all acquired OS locks alive; dropping the set closes every owned handle.
 ///
-/// Do not rely on handle inheritance when launching a component. Its supervising process
-/// owns this set until the child exits, including cancellation and failed-readiness teardown.
+/// The supervisor retains this set through teardown. Unix consumers also need
+/// `inherit_shared_into` before spawn so an orphan retains its own reference to the lock.
+/// Locks are released only by closing files; explicitly unlocking a duplicated descriptor
+/// would also unlock a surviving consumer's shared open-file description.
 #[must_use = "dropping a component lease permits cleanup of its installation"]
 #[derive(Debug)]
 pub struct ComponentLeaseSet {
     _files: Vec<File>,
+    #[cfg(unix)]
+    shared: bool,
 }
 
 impl ComponentLeases {
@@ -69,7 +73,11 @@ impl ComponentLeases {
             file.lock_shared().map_err(io_error)?;
             files.push(file);
         }
-        Ok(ComponentLeaseSet { _files: files })
+        Ok(ComponentLeaseSet {
+            _files: files,
+            #[cfg(unix)]
+            shared: true,
+        })
     }
 
     /// Try exclusive leases without waiting; return `None` if any identity is in use.
@@ -91,7 +99,11 @@ impl ComponentLeases {
                 Err(TryLockError::Error(error)) => return Err(io_error(error)),
             }
         }
-        Ok(Some(ComponentLeaseSet { _files: files }))
+        Ok(Some(ComponentLeaseSet {
+            _files: files,
+            #[cfg(unix)]
+            shared: false,
+        }))
     }
 
     fn open(&self, name: &str) -> Result<File, String> {
@@ -114,6 +126,67 @@ impl ComponentLeases {
         validate_file(&file.metadata().map_err(io_error)?)?;
         Ok(file)
     }
+}
+
+impl ComponentLeaseSet {
+    /// Preserve shared Unix leases across this command's fork/exec, including parent exit.
+    ///
+    /// The command owns close-on-exec duplicates above the standard-stream descriptors.
+    /// Its child clears that flag immediately before exec. The parent never changes its
+    /// descriptor flags, and neither side explicitly unlocks the shared file description.
+    /// Duplication failure leaves the command unchanged and releases partial duplicates.
+    ///
+    /// Drop the command after spawning: keeping it alive also keeps its leases alive.
+    /// Reusing the command gives each child a reference; all must close before cleanup.
+    /// A consumer that closes unknown descriptors is unsupported. Node retains these
+    /// descriptors; further inheritance depends on its runtime and descriptor layout.
+    /// Each later component launch must obtain and pass its own leases. This does not
+    /// protect arbitrary descendants.
+    /// Tokio callers pass `command.as_std_mut()`. Windows needs separate lifecycle protection.
+    #[cfg(unix)]
+    pub fn inherit_shared_into(&self, command: &mut std::process::Command) -> Result<(), String> {
+        use std::os::fd::AsRawFd;
+        use std::os::unix::process::CommandExt;
+
+        if !self.shared {
+            return Err("exclusive cleanup leases cannot be inherited by a consumer".into());
+        }
+        let files = duplicate_for_child(&self._files).map_err(io_error)?;
+        // SAFETY: after fork this closure only reads its owned descriptor list and calls
+        // async-signal-safe fcntl; it does not allocate, lock, or access shared mutable state.
+        unsafe {
+            command.pre_exec(move || {
+                for file in &files {
+                    let fd = file.as_raw_fd();
+                    let flags = libc::fcntl(fd, libc::F_GETFD);
+                    if flags < 0 || libc::fcntl(fd, libc::F_SETFD, flags & !libc::FD_CLOEXEC) < 0 {
+                        return Err(std::io::Error::last_os_error());
+                    }
+                }
+                Ok(())
+            });
+        }
+        Ok(())
+    }
+}
+
+#[cfg(unix)]
+fn duplicate_for_child(files: &[File]) -> std::io::Result<Vec<File>> {
+    use std::os::fd::{AsRawFd, FromRawFd};
+
+    files
+        .iter()
+        .map(|file| {
+            // SAFETY: fcntl duplicates a live owned descriptor atomically with CLOEXEC.
+            // Keeping duplicates above 2 prevents Command's stdio setup from replacing them.
+            let fd = unsafe { libc::fcntl(file.as_raw_fd(), libc::F_DUPFD_CLOEXEC, 3) };
+            if fd < 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            // SAFETY: this newly allocated descriptor has no other Rust owner.
+            Ok(unsafe { File::from_raw_fd(fd) })
+        })
+        .collect()
 }
 
 fn lease_names(identities: &[ComponentIdentity]) -> Result<BTreeSet<String>, String> {

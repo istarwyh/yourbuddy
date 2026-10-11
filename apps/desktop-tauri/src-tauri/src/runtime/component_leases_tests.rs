@@ -26,6 +26,20 @@ struct LeaseChild {
 
 impl LeaseChild {
     fn spawn(root: &Path, signals: &Path, mode: &str, identities: &[ComponentIdentity]) -> Self {
+        Self {
+            child: Self::command(root, signals, mode, identities)
+                .spawn()
+                .unwrap(),
+            signals: signals.into(),
+        }
+    }
+
+    fn command(
+        root: &Path,
+        signals: &Path,
+        mode: &str,
+        identities: &[ComponentIdentity],
+    ) -> Command {
         fs::create_dir_all(signals).unwrap();
         let identities: Vec<_> = identities
             .iter()
@@ -35,7 +49,8 @@ impl LeaseChild {
             "{}::lease_process_worker",
             module_path!().split_once("::").unwrap().1
         );
-        let child = Command::new(std::env::current_exe().unwrap())
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
             .args(["--exact", &test_name, "--nocapture"])
             .env(CHILD_MODE, mode)
             .env("YOURBUDDY_LEASE_TEST_ROOT", root)
@@ -46,13 +61,8 @@ impl LeaseChild {
             )
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .unwrap();
-        Self {
-            child,
-            signals: signals.into(),
-        }
+            .stderr(Stdio::inherit());
+        command
     }
 
     fn wait_for(&mut self, signal: &str) {
@@ -155,6 +165,19 @@ fn lease_process_worker() {
                 drop(leases.acquire_shared(&identities).unwrap());
             }
             fs::write(signals.join("finished"), []).unwrap();
+        }
+        #[cfg(unix)]
+        "node-launcher" | "native-relay" | "dup-exhaustion" | "closed-stdio" => {
+            inheritance::run_worker(mode.to_str().unwrap(), &root, &signals, &identities);
+        }
+        #[cfg(target_os = "linux")]
+        "orphan-controller" | "orphan-parent-only" | "orphan-relay-controller" => {
+            inheritance::run_orphan_controller(
+                mode.to_str().unwrap(),
+                &root,
+                &signals,
+                &identities,
+            );
         }
         other => panic!("unknown lease worker mode: {other}"),
     }
@@ -521,4 +544,469 @@ fn missing_cache_after_construction_is_an_error_not_an_unprotected_success() {
         fs::metadata(&root).unwrap_err().kind(),
         io::ErrorKind::NotFound
     );
+}
+
+#[cfg(unix)]
+mod inheritance {
+    use std::os::fd::AsRawFd;
+
+    use super::*;
+
+    const NODE_SCRIPT: &str = r#"
+const fs = require('node:fs');
+const path = require('node:path');
+const [defaultSignals, rawPaths] = process.argv.slice(1);
+const signals = process.env.YOURBUDDY_NODE_SIGNAL_DIR || defaultSignals;
+const paths = JSON.parse(rawPaths);
+const same = (a, b) => a.dev === b.dev && a.ino === b.ino;
+const names = fs.readdirSync(process.platform === 'linux' ? '/proc/self/fd' : '/dev/fd');
+const descriptors = names.map(Number).filter(fd => fd > 2).flatMap(fd => {
+  try { return [{fd, stat: fs.fstatSync(fd)}]; } catch { return []; }
+});
+const found = paths.map(p => descriptors.filter(d => same(d.stat, fs.statSync(p))).map(d => d.fd));
+fs.writeFileSync(path.join(signals, 'node-fds'), JSON.stringify(found));
+const childScript = `const fs = require('node:fs');
+const paths = JSON.parse(process.argv[1]);
+const names = fs.readdirSync(process.platform === 'linux' ? '/proc/self/fd' : '/dev/fd');
+const stats = names.map(Number).filter(fd => fd > 2).flatMap(fd => {
+  try { return [fs.fstatSync(fd)]; } catch { return []; }
+});
+process.stdout.write(JSON.stringify(paths.map(p => {
+  const expected = fs.statSync(p);
+  return stats.filter(s => s.dev === expected.dev && s.ino === expected.ino).length;
+})));`;
+const grandchild = require('node:child_process').spawnSync(process.execPath,
+  ['-e', childScript, rawPaths], {encoding: 'utf8'});
+if (grandchild.status !== 0) throw new Error('grandchild descriptor probe failed');
+fs.writeFileSync(path.join(signals, 'grandchild-fds'), grandchild.stdout);
+fs.writeFileSync(path.join(signals, 'node-pid'), String(process.pid));
+fs.writeFileSync(path.join(signals, 'acquired'), '');
+const timer = setInterval(() => {
+  if (fs.existsSync(path.join(signals, 'probe'))) {
+    for (const fds of found) for (const fd of fds) fs.fstatSync(fd);
+    fs.writeFileSync(path.join(signals, 'alive'), '');
+  }
+  if (fs.existsSync(path.join(signals, 'release'))) {
+    clearInterval(timer);
+    process.exit(0);
+  }
+}, 5);
+setTimeout(() => process.exit(91), 45000).unref();
+"#;
+
+    fn node_command(signals: &Path, root: &Path, identities: &[ComponentIdentity]) -> Command {
+        fs::create_dir_all(signals).unwrap();
+        let paths: Vec<_> = lease_names(identities)
+            .unwrap()
+            .into_iter()
+            .map(|name| root.join(LEASE_DIRECTORY).join(name))
+            .collect();
+        let mut command = Command::new("node");
+        command
+            .args(["-e", NODE_SCRIPT])
+            .arg(signals)
+            .arg(serde_json::to_string(&paths).unwrap())
+            .env_remove("NODE_OPTIONS")
+            .env_remove("YOURBUDDY_NODE_SIGNAL_DIR")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::inherit());
+        command
+    }
+
+    fn assert_node_fds(signals: &Path, expected: usize) {
+        let found: Vec<Vec<i32>> =
+            serde_json::from_slice(&fs::read(signals.join("node-fds")).unwrap()).unwrap();
+        assert!(!found.is_empty());
+        assert!(
+            found.iter().all(|fds| fds.len() == expected),
+            "Node lease fds: {found:?}"
+        );
+        let grandchild: Vec<usize> =
+            serde_json::from_slice(&fs::read(signals.join("grandchild-fds")).unwrap()).unwrap();
+        // libuv always attempts CLOEXEC for descriptors 0..15, but higher descriptors
+        // are best-effort. A busy test runner can allocate leases above that range.
+        if found.iter().flatten().all(|fd| *fd <= 15) {
+            assert!(grandchild.iter().all(|count| *count == 0));
+        }
+    }
+
+    pub(super) fn run_worker(
+        mode: &str,
+        root: &Path,
+        signals: &Path,
+        identities: &[ComponentIdentity],
+    ) {
+        let leases = ComponentLeases::new(root).unwrap();
+        let shared = leases.acquire_shared(identities).unwrap();
+        match mode {
+            "node-launcher" => {
+                let node_signals = signals.join("node");
+                let mut command = node_command(&node_signals, root, identities);
+                if std::env::var_os("YOURBUDDY_TEST_PARENT_ONLY").is_none() {
+                    shared.inherit_shared_into(&mut command).unwrap();
+                }
+                let mut node = LeaseChild {
+                    child: command.spawn().unwrap(),
+                    signals: node_signals,
+                };
+                drop(command);
+                node.wait_for("acquired");
+                fs::write(signals.join("launched"), []).unwrap();
+                assert!(node.finish().success());
+            }
+            "native-relay" => {
+                let relay_signals = signals.join("relay");
+                let mut command =
+                    LeaseChild::command(root, &relay_signals, "node-launcher", identities);
+                shared.inherit_shared_into(&mut command).unwrap();
+                let mut relay = LeaseChild {
+                    child: command.spawn().unwrap(),
+                    signals: relay_signals,
+                };
+                drop(command);
+                fs::write(signals.join("relay-pid"), relay.child.id().to_string()).unwrap();
+                relay.wait_for("launched");
+                fs::write(signals.join("launched"), []).unwrap();
+                assert!(relay.finish().success());
+            }
+            "dup-exhaustion" => duplicate_failure_releases_partial(&shared, signals),
+            "closed-stdio" => {
+                // Only this isolated worker loses its standard descriptors.
+                for fd in 0..=2 {
+                    unsafe {
+                        libc::close(fd);
+                    }
+                }
+                let duplicates = duplicate_for_child(&shared._files).unwrap();
+                assert!(duplicates.iter().all(|file| file.as_raw_fd() > 2));
+                drop(duplicates);
+                fs::write(signals.join("finished"), []).unwrap();
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn duplicate_failure_releases_partial(shared: &ComponentLeaseSet, signals: &Path) {
+        assert!(shared._files.len() >= 2);
+        let mut old = libc::rlimit {
+            rlim_cur: 0,
+            rlim_max: 0,
+        };
+        assert_eq!(unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut old) }, 0);
+        let limited = libc::rlimit {
+            rlim_cur: old.rlim_cur.min(64),
+            rlim_max: old.rlim_max,
+        };
+        assert_eq!(unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &limited) }, 0);
+        let mut fillers = Vec::new();
+        loop {
+            match File::open("/dev/null") {
+                Ok(file) => fillers.push(file),
+                Err(error) => {
+                    assert_eq!(error.raw_os_error(), Some(libc::EMFILE));
+                    break;
+                }
+            }
+        }
+        drop(fillers.pop().unwrap());
+        let error = duplicate_for_child(&shared._files).unwrap_err();
+        assert_eq!(error.raw_os_error(), Some(libc::EMFILE));
+        // Exactly one freed descriptor remains available after the first duplicate rolled back.
+        let available = File::open("/dev/null").unwrap();
+        assert_eq!(
+            File::open("/dev/null").unwrap_err().raw_os_error(),
+            Some(libc::EMFILE)
+        );
+        drop((available, fillers));
+        assert_eq!(unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &old) }, 0);
+        fs::write(signals.join("finished"), []).unwrap();
+    }
+
+    #[test]
+    fn node_retains_every_inherited_lease_after_parent_handles_close() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("cache");
+        let leases = ComponentLeases::new(&root).unwrap();
+        let identities = sorted_identities();
+        let shared = leases.acquire_shared(&identities).unwrap();
+        let mut command = node_command(&temp.path().join("node"), &root, &identities);
+        shared.inherit_shared_into(&mut command).unwrap();
+        let mut node = LeaseChild {
+            child: command.spawn().unwrap(),
+            signals: temp.path().join("node"),
+        };
+        drop(command);
+        drop(shared);
+        node.wait_for("acquired");
+        assert_node_fds(&node.signals, 1);
+        for identity in &identities {
+            assert!(leases
+                .try_acquire_exclusive(std::slice::from_ref(identity))
+                .unwrap()
+                .is_none());
+        }
+        node.signal("probe");
+        node.wait_for("alive");
+        node.release();
+        drop(wait_for_exclusive(&leases, &identities));
+    }
+
+    #[test]
+    fn command_owns_duplicates_until_drop_and_can_spawn_multiple_consumers() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("cache");
+        let leases = ComponentLeases::new(&root).unwrap();
+        let shared = leases.acquire_shared(&[sample()]).unwrap();
+        let mut command = node_command(&temp.path().join("first"), &root, &[sample()]);
+        shared.inherit_shared_into(&mut command).unwrap();
+        drop(shared);
+        let mut first = LeaseChild {
+            child: command.spawn().unwrap(),
+            signals: temp.path().join("first"),
+        };
+        first.wait_for("acquired");
+        let second_signals = temp.path().join("second");
+        fs::create_dir(&second_signals).unwrap();
+        command.env("YOURBUDDY_NODE_SIGNAL_DIR", &second_signals);
+        let mut second = LeaseChild {
+            child: command.spawn().unwrap(),
+            signals: second_signals,
+        };
+        second.wait_for("acquired");
+        first.release();
+        assert!(leases.try_acquire_exclusive(&[sample()]).unwrap().is_none());
+        second.release();
+        assert!(leases.try_acquire_exclusive(&[sample()]).unwrap().is_none());
+        let third_signals = temp.path().join("third");
+        fs::create_dir(&third_signals).unwrap();
+        command.env("YOURBUDDY_NODE_SIGNAL_DIR", &third_signals);
+        let mut third = LeaseChild {
+            child: command.spawn().unwrap(),
+            signals: third_signals,
+        };
+        third.wait_for("acquired");
+        drop(command);
+        assert!(leases.try_acquire_exclusive(&[sample()]).unwrap().is_none());
+        third.release();
+        drop(wait_for_exclusive(&leases, &[sample()]));
+    }
+
+    #[test]
+    fn failed_exec_and_rejected_exclusive_inheritance_leave_no_hidden_holder() {
+        let temp = tempfile::tempdir().unwrap();
+        let leases = ComponentLeases::new(temp.path()).unwrap();
+        let shared = leases.acquire_shared(&[sample()]).unwrap();
+        let original_flags: Vec<_> = shared
+            ._files
+            .iter()
+            .map(|file| unsafe { libc::fcntl(file.as_raw_fd(), libc::F_GETFD) })
+            .collect();
+        assert!(original_flags
+            .iter()
+            .all(|flags| flags & libc::FD_CLOEXEC != 0));
+        let mut command = Command::new(temp.path().join("does-not-exist"));
+        shared.inherit_shared_into(&mut command).unwrap();
+        assert!(command.spawn().is_err());
+        for (file, flags) in shared._files.iter().zip(original_flags) {
+            assert_eq!(
+                unsafe { libc::fcntl(file.as_raw_fd(), libc::F_GETFD) },
+                flags
+            );
+        }
+        drop(shared);
+        assert!(leases.try_acquire_exclusive(&[sample()]).unwrap().is_none());
+        drop(command);
+        let exclusive = wait_for_exclusive(&leases, &[sample()]);
+        let mut command = Command::new("node");
+        assert!(exclusive.inherit_shared_into(&mut command).is_err());
+        drop(exclusive);
+        drop(wait_for_exclusive(&leases, &[sample()]));
+    }
+
+    #[test]
+    fn partial_duplicate_failure_and_closed_standard_streams_are_isolated() {
+        let temp = tempfile::tempdir().unwrap();
+        for mode in ["dup-exhaustion", "closed-stdio"] {
+            let mut worker = LeaseChild::spawn(
+                &temp.path().join(mode),
+                &temp.path().join(format!("{mode}-signals")),
+                mode,
+                &sorted_identities(),
+            );
+            assert!(worker.finish().success());
+            assert!(worker.signals.join("finished").exists());
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    struct OrphanFixture {
+        launcher: LeaseChild,
+        descendants: Vec<libc::pid_t>,
+    }
+
+    #[cfg(target_os = "linux")]
+    impl Drop for OrphanFixture {
+        fn drop(&mut self) {
+            let group = self.launcher.child.id() as libc::pid_t;
+            let _ = self.launcher.child.kill();
+            let _ = self.launcher.child.wait();
+            loop {
+                let mut status = 0;
+                let result = unsafe { libc::waitpid(-group, &mut status, libc::WNOHANG) };
+                if result < 0 {
+                    break;
+                }
+                if result == 0 {
+                    // waitpid established a live child in this fixture's isolated group.
+                    // Kill the group before reaping so failed assertions also clean up
+                    // descendants whose PID handoff has not completed yet.
+                    unsafe {
+                        libc::kill(-group, libc::SIGKILL);
+                        libc::waitpid(-group, &mut status, 0);
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    pub(super) fn run_orphan_controller(
+        mode: &str,
+        root: &Path,
+        signals: &Path,
+        identities: &[ComponentIdentity],
+    ) {
+        // This dedicated worker owns its reparented descendants, never the shared test process.
+        assert_eq!(
+            unsafe { libc::prctl(libc::PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) },
+            0
+        );
+        let relay = mode == "orphan-relay-controller";
+        let old_parent_only = mode == "orphan-parent-only";
+        let launcher_signals = signals.join("launcher");
+        let mut command = LeaseChild::command(
+            root,
+            &launcher_signals,
+            if relay {
+                "native-relay"
+            } else {
+                "node-launcher"
+            },
+            identities,
+        );
+        if old_parent_only {
+            command.env("YOURBUDDY_TEST_PARENT_ONLY", "1");
+        }
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+        let launcher = LeaseChild {
+            child: command.spawn().unwrap(),
+            signals: launcher_signals.clone(),
+        };
+        let mut fixture = OrphanFixture {
+            launcher,
+            descendants: Vec::new(),
+        };
+        fixture.launcher.wait_for("launched");
+        let node_signals = if relay {
+            launcher_signals.join("relay/node")
+        } else {
+            launcher_signals.join("node")
+        };
+        if relay {
+            fixture.descendants.push(
+                fs::read_to_string(launcher_signals.join("relay-pid"))
+                    .unwrap()
+                    .parse()
+                    .unwrap(),
+            );
+        }
+        let node_pid: libc::pid_t = fs::read_to_string(node_signals.join("node-pid"))
+            .unwrap()
+            .parse()
+            .unwrap();
+        fixture.descendants.push(node_pid);
+        assert_node_fds(
+            &node_signals,
+            if relay {
+                2
+            } else {
+                usize::from(!old_parent_only)
+            },
+        );
+        fixture.launcher.child.kill().unwrap();
+        assert!(!fixture.launcher.child.wait().unwrap().success());
+        if relay {
+            let relay_pid = fixture.descendants[0];
+            let mut status = 0;
+            assert_eq!(
+                unsafe { libc::waitpid(relay_pid, &mut status, libc::WNOHANG) },
+                0
+            );
+            assert_eq!(unsafe { libc::kill(relay_pid, libc::SIGKILL) }, 0);
+            assert_eq!(
+                unsafe { libc::waitpid(relay_pid, &mut status, 0) },
+                relay_pid
+            );
+        }
+        let mut status = 0;
+        assert_eq!(
+            unsafe { libc::waitpid(node_pid, &mut status, libc::WNOHANG) },
+            0
+        );
+        fs::write(node_signals.join("probe"), []).unwrap();
+        wait_for_signal(&node_signals, "alive");
+        let leases = ComponentLeases::new(root).unwrap();
+        if old_parent_only {
+            drop(wait_for_exclusive(&leases, identities));
+            fs::write(signals.join("leak-reproduced"), []).unwrap();
+        } else {
+            for identity in identities {
+                assert!(leases
+                    .try_acquire_exclusive(std::slice::from_ref(identity))
+                    .unwrap()
+                    .is_none());
+            }
+        }
+        fs::write(node_signals.join("release"), []).unwrap();
+        let deadline = Instant::now() + WAIT_LIMIT;
+        loop {
+            let result = unsafe { libc::waitpid(node_pid, &mut status, libc::WNOHANG) };
+            if result == node_pid {
+                assert!(libc::WIFEXITED(status));
+                assert_eq!(libc::WEXITSTATUS(status), 0);
+                break;
+            }
+            assert_eq!(result, 0);
+            assert!(Instant::now() < deadline, "orphan Node did not exit");
+            thread::sleep(Duration::from_millis(5));
+        }
+        drop(wait_for_exclusive(&leases, identities));
+        fs::write(signals.join("finished"), []).unwrap();
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn node_and_native_relay_keep_leases_after_launcher_sigkill() {
+        let temp = tempfile::tempdir().unwrap();
+        for mode in [
+            "orphan-controller",
+            "orphan-parent-only",
+            "orphan-relay-controller",
+        ] {
+            let mut controller = LeaseChild::spawn(
+                &temp.path().join(mode),
+                &temp.path().join(format!("{mode}-signals")),
+                mode,
+                &sorted_identities(),
+            );
+            assert!(controller.finish().success());
+            assert!(controller.signals.join("finished").exists());
+            assert_eq!(
+                controller.signals.join("leak-reproduced").exists(),
+                mode == "orphan-parent-only"
+            );
+        }
+    }
 }
