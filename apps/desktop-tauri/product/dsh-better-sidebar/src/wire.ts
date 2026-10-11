@@ -61,7 +61,8 @@ export async function readJsonBody(req: SidebarHttpRequest): Promise<unknown> {
   const text = Buffer.concat(chunks).toString('utf8')
   if (text.trim() === '') return {}
   try {
-    return JSON.parse(text) as unknown
+    const parsed: unknown = JSON.parse(text)
+    return parsed
   } catch {
     throw new SidebarError('bad-request', 'request body is not valid JSON')
   }

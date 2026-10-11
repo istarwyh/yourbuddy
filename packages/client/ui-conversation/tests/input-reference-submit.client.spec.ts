@@ -45,11 +45,17 @@ describe('reference submission', () => {
       expect(await prepared?.content).toEqual(['first page'])
       return { kind: 'success' as const }
     })
-    const inputTriggers = {
+    const inputTriggers: InputTriggerController = {
       serializeReference: () => new Promise<string>((resolve) => { resolveReference = resolve }),
-      track: vi.fn(),
-      lexicon: { getSnapshot: () => new Map(), subscribe: () => () => {} },
-    } as unknown as InputTriggerController
+      track: vi.fn<InputTriggerController['track']>(),
+      launcher: { getSnapshot: () => null, subscribe: () => () => {} },
+      arbitrate: () => 'pass',
+      onSpace: () => false,
+      adjudicate: () => Promise.resolve(undefined),
+      openReference: () => false,
+      toggleSource: () => {},
+      lexicon: { getSnapshot: () => new Map<'/' | '@', readonly string[]>(), subscribe: () => () => {} },
+    }
     const shell = new SessionInputShell({
       actx: {} as Context, inputTriggers: () => inputTriggers, prepareContext, defaultSink: sink, commandAttachments,
     })
@@ -67,11 +73,17 @@ describe('reference submission', () => {
   it('cancels page preparation when an explicit reference codec rejects', async () => {
     const dispose = vi.fn()
     const prepared = { content: Promise.resolve(['page']), signal: new AbortController().signal, admitted: () => {}, dispose }
-    const inputTriggers = {
+    const inputTriggers: InputTriggerController = {
       serializeReference: () => Promise.reject(new Error('codec failed')),
-      track: vi.fn(),
-      lexicon: { getSnapshot: () => new Map(), subscribe: () => () => {} },
-    } as unknown as InputTriggerController
+      track: vi.fn<InputTriggerController['track']>(),
+      launcher: { getSnapshot: () => null, subscribe: () => () => {} },
+      arbitrate: () => 'pass',
+      onSpace: () => false,
+      adjudicate: () => Promise.resolve(undefined),
+      openReference: () => false,
+      toggleSource: () => {},
+      lexicon: { getSnapshot: () => new Map<'/' | '@', readonly string[]>(), subscribe: () => () => {} },
+    }
     const sink = vi.fn()
     const shell = new SessionInputShell({
       actx: {} as Context, inputTriggers: () => inputTriggers, prepareContext: () => prepared, defaultSink: sink, commandAttachments,
@@ -132,11 +144,17 @@ describe('reference submission', () => {
     ) => Promise<SubmitOutcome>>()
       .mockResolvedValueOnce({ kind: 'error', text: 'snapshot unavailable' })
       .mockResolvedValueOnce({ kind: 'success' })
-    const inputTriggers = {
+    const inputTriggers: InputTriggerController = {
       serializeReference,
-      track: vi.fn(),
-      lexicon: { getSnapshot: () => new Map(), subscribe: () => () => {} },
-    } as unknown as InputTriggerController
+      track: vi.fn<InputTriggerController['track']>(),
+      launcher: { getSnapshot: () => null, subscribe: () => () => {} },
+      arbitrate: () => 'pass',
+      onSpace: () => false,
+      adjudicate: () => Promise.resolve(undefined),
+      openReference: () => false,
+      toggleSource: () => {},
+      lexicon: { getSnapshot: () => new Map<'/' | '@', readonly string[]>(), subscribe: () => () => {} },
+    }
     const shell = new SessionInputShell({
       actx: {} as Context,
       inputTriggers: () => inputTriggers,
@@ -178,11 +196,17 @@ describe('reference submission', () => {
 
   it('blocks submission and retains the chip when its owner cannot serialize it', async () => {
     const sink = vi.fn()
-    const inputTriggers = {
+    const inputTriggers: InputTriggerController = {
       serializeReference: () => Promise.reject(new Error('reference codec unavailable')),
-      track: vi.fn(),
-      lexicon: { getSnapshot: () => new Map(), subscribe: () => () => {} },
-    } as unknown as InputTriggerController
+      track: vi.fn<InputTriggerController['track']>(),
+      launcher: { getSnapshot: () => null, subscribe: () => () => {} },
+      arbitrate: () => 'pass',
+      onSpace: () => false,
+      adjudicate: () => Promise.resolve(undefined),
+      openReference: () => false,
+      toggleSource: () => {},
+      lexicon: { getSnapshot: () => new Map<'/' | '@', readonly string[]>(), subscribe: () => () => {} },
+    }
     const shell = new SessionInputShell({
       actx: {} as Context,
       inputTriggers: () => inputTriggers,

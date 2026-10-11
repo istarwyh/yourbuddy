@@ -47,7 +47,7 @@
     {
       "id": "sessionless-workbench-cards",
       "file": "patches/better-sidebar-sessionless-workbench.patch",
-      "sha256": "0f0b721a34efe9b4e32d6e97db5f55d63df6876cb902d183edc29fbe4ffb8573",
+      "sha256": "93d0ef9d3438f6a72f867a39ddb1cb88128798ae4356381654abfa623f7b1a06",
       "purpose": "Render disabled registered workbench cards before the first Session exists and refresh them from the existing tab registry subscription."
     },
     {
@@ -55,6 +55,18 @@
       "file": "patches/better-sidebar-unrestricted-host-paths.patch",
       "sha256": "7ab0176dd1ac929eb0f347aefd0a3c6215655274dc66d714d446023af1b62e99",
       "purpose": "Allow Better Sidebar file routes and linked worktrees to use absolute paths anywhere on the trusted host."
+    },
+    {
+      "id": "historical-snapshot-gap",
+      "file": "patches/better-sidebar-historical-snapshot-gap.patch",
+      "sha256": "d8ae0abed1715bac7599035b0cccc148be8e518c0a76aaed55ee560a64435a9b",
+      "purpose": "Record the existing sidebar snapshot bytes from a3a01bf4d34fc9a9ad0acad211c9ad21a28ea517, including the image fallback and previously unrecorded emitted sessionless workbench changes."
+    },
+    {
+      "id": "type-contracts",
+      "file": "patches/better-sidebar-type-contracts.patch",
+      "sha256": "030f7f57c80dea64575549468e97b4dd5f231d3f816f2df703ed055705ec5728",
+      "purpose": "Use service-owner contracts and target-Session reference insertion, preserve Side Chat event envelopes, and rebuild both client channels with the pinned sidebar recipe."
     },
     "Set @deepseek-ai/dsh-agent peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-locale peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
@@ -74,5 +86,5 @@
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "520500fe7c41c0649cd60797f503aee59f3d61120f927ad6349873ba55cb9901"
+  "treeSha256": "0191b6efef061ce532398231e2756d31796fdf3fcb5fab8710d76dfaeab6217c"
 }

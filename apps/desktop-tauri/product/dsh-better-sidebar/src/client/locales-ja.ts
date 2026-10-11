@@ -280,6 +280,7 @@ export const ja: Record<string, string> = {
   settingsGeneralTitle: '一般',
   settingsPopup: '機能設定',
   settingsViewerCatchAll: 'フォールバック：任意のファイル',
+  viewerImage: '画像',
   viewerMarkdown: 'Markdown',
   viewerCode: 'コード',
   viewerHtml: 'HTML',

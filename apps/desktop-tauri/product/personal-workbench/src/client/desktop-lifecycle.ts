@@ -1,5 +1,7 @@
 /** Fixed browser-to-desktop protocol for application lifecycle actions. */
 
+import type { DesktopBridgeMessage, DesktopRequestWindow } from './desktop-bridge-window.ts'
+
 /** Message channel accepted by the YourBuddy desktop shell. */
 export const DESKTOP_LIFECYCLE_CHANNEL = 'yourbuddy.desktop.lifecycle'
 
@@ -34,7 +36,7 @@ type DesktopLifecycleResponse = DesktopLifecycleAccepted | DesktopLifecycleResul
 /** Options for one manually triggered desktop lifecycle action. */
 export interface DesktopLifecycleRequestOptions {
   /** Browser window hosting the product Client. */
-  target?: Window
+  target?: DesktopRequestWindow
   /** Correlation id override used by deterministic tests. */
   requestId?: string
   /** Maximum wait for the trusted Shell to acknowledge the request. */
@@ -54,7 +56,7 @@ function createRequestId(): string {
  * @returns Whether a distinct parent window can service the fixed protocol.
  */
 export function isDesktopLifecycleAvailable(
-  target: Window | undefined = typeof window === 'undefined' ? undefined : window,
+  target: DesktopRequestWindow | undefined = typeof window === 'undefined' ? undefined : window,
 ): boolean {
   return target !== undefined && target.parent !== target
 }
@@ -80,7 +82,7 @@ export function readDesktopLifecycleResponse(
 
   if (response.type === `${action}-accepted`) {
     return Object.keys(response).sort().join(',') === 'channel,requestId,type,version'
-      ? response as unknown as DesktopLifecycleAccepted
+      ? { channel: response.channel, version: response.version, type: `${action}-accepted`, requestId }
       : undefined
   }
   if (response.type !== `${action}-response` || typeof response.ok !== 'boolean') return undefined
@@ -95,7 +97,15 @@ export function readDesktopLifecycleResponse(
   else if (typeof response.error !== 'string' || response.error.length > 2048) {
     return undefined
   }
-  return response as unknown as DesktopLifecycleResponse
+  return {
+    channel: response.channel,
+    version: response.version,
+    type: `${action}-response`,
+    requestId,
+    ok: response.ok,
+    ...(typeof response.message === 'string' ? { message: response.message } : {}),
+    ...(typeof response.error === 'string' ? { error: response.error } : {}),
+  }
 }
 
 /**
@@ -112,7 +122,7 @@ export function requestDesktopLifecycle(
   action: DesktopLifecycleAction,
   options: DesktopLifecycleRequestOptions = {},
 ): Promise<string> {
-  const target = options.target ?? window
+  const target: DesktopRequestWindow = options.target ?? window
   if (!isDesktopLifecycleAvailable(target)) {
     return Promise.reject(new Error('desktop-shell-unavailable'))
   }
@@ -124,7 +134,7 @@ export function requestDesktopLifecycle(
   return new Promise((resolve, reject) => {
     const parent = target.parent
     let handshakeTimeout: number | undefined
-    const onMessage = (event: MessageEvent<unknown>): void => {
+    const onMessage = (event: DesktopBridgeMessage): void => {
       if (event.source !== parent) return
       const response = readDesktopLifecycleResponse(event.data, requestId, action)
       if (response === undefined) return

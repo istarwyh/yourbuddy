@@ -32,7 +32,8 @@
  * separating space on the left, so stacked inserts stay at their running
  * position (A|B + C + D → ACD|B).
  */
-import type { Context } from '../context-types.ts';
+import type { Context as ClientContext } from '@deepseek-ai/cordis';
+import type { Context, SidebarSessionsService } from '../context-types.ts';
 /** A resolved composer caret/selection in draft coordinates. */
 export interface DraftCaret {
     start: number;
@@ -93,4 +94,6 @@ export declare function fileMention(relativePath: string): {
  * slash as plain text (`@dir/`) so completion can descend, which
  * `appendToDraft` already covers.
  */
-export declare function insertFileReference(ctx: Context, sessionId: string, relativePath: string): boolean;
+export declare function insertFileReference(ctx: ClientContext & {
+    sessions: Pick<SidebarSessionsService, 'scope'>;
+}, sessionId: string, relativePath: string): boolean;

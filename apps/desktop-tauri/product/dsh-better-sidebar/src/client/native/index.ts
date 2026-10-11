@@ -22,6 +22,7 @@
  * the user disabled in the side-card settings is unregistered — so it is
  * absent from the native guide and `openTab` refuses it.
  */
+import type { SidebarRightGuideEntry } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { Context } from '../../context-types.ts'
 import { t } from '../locales.ts'
 import { parseFileAddress } from '../resource-address.ts'
@@ -81,20 +82,6 @@ function hostOwnedPath(path: string): boolean {
   return dot > 0 && HOST_OWNED_EXTS.has(name.slice(dot + 1).toLowerCase())
 }
 
-/** The native tab-type registry face (`ctx.sidebarRightTabs`). */
-interface NativeTabRegistry {
-  register(definition: {
-    id: string
-    kind: string
-    multiple?: boolean
-    patterns?: readonly string[]
-    priority?: 'extension' | 'builtin' | 'fallback'
-    canOpen?: (address: string) => boolean
-    title: (address: string) => string
-    guide?: readonly { id: string; order: number; title: () => string; description?: () => string; icon?: unknown }[]
-  }): () => void
-}
-
 /** The kind the plugin's files window owns (page + file viewer). */
 const EDITOR_KIND = 'editor'
 
@@ -138,8 +125,8 @@ function guideDescriptionOf(descriptor: TabDescriptor | undefined): { descriptio
  * @param icon - the descriptor's icon value.
  * @returns the guide-entry icon fields, or an empty object.
  */
-function guideIconOf(icon: TabDescriptor['icon']): { icon?: (props: { size?: number }) => unknown } {
-  return typeof icon === 'function' ? { icon: (props: { size?: number }) => icon(props.size ?? 16) } : {}
+function guideIconOf(icon: TabDescriptor['icon']): Pick<SidebarRightGuideEntry, 'icon'> {
+  return typeof icon === 'function' ? { icon: props => icon(props.size ?? 16) } : {}
 }
 
 /**
@@ -200,7 +187,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
   // `ctx.inject` re-runs this body whenever the service appears/reappears,
   // which is the lifecycle the registrations need.
   const seat = ctx.inject(['sidebarRightTabs'], (injected) => {
-    const tabs = injected.get('sidebarRightTabs') as unknown as NativeTabRegistry | undefined
+    const tabs = injected.get('sidebarRightTabs')
     if (tabs === undefined) return
     const live = new Map<string, Registration>()
 

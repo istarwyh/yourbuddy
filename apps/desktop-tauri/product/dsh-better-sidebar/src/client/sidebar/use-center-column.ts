@@ -23,6 +23,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { resolveCenterColumn } from '../center-column.ts'
 
+/**
+ * Track the live center column for the bottom panel.
+ * @param contained - Keep the bottom panel inside its slot host instead of spanning the app center.
+ */
 export function useCenterColumn(
   /** The bottom panel element: measureCenter writes its edges directly. */
   bottomRef: { readonly current: HTMLDivElement | null },
@@ -30,7 +34,6 @@ export function useCenterColumn(
    *  panel re-runs the chain: a panel opened before the center column was
    *  ever found must not stay invisible forever). */
   bottomOpen: boolean | undefined,
-  /** Keep the bottom panel inside its slot host instead of spanning the app center. */
   contained = false,
 ) {
   const centerRectRef = useRef({ left: 0, right: 0 })

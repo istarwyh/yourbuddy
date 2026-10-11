@@ -291,6 +291,7 @@ export declare const zh: {
     settingsGeneralTitle: string;
     settingsPopup: string;
     settingsViewerCatchAll: string;
+    viewerImage: string;
     viewerMarkdown: string;
     viewerCode: string;
     viewerHtml: string;

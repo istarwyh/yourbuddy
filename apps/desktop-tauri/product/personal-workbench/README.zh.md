@@ -10,7 +10,7 @@
 
 桌面应用会把平台窗口控件放在侧栏标题行的折叠按钮之前。macOS 使用一组紧凑横排的红黄绿按钮，不添加分隔线；其他平台保留各自的操作顺序和图标。浏览器组件只能通过桌面 Shell 请求固定的最小化、最大化、关闭与拖动操作。启动、重载或侧栏收起时，Shell 会用一个小型浮动回退入口提供相同操作，不再预留整条纵向控制栏。
 
-在 YourBuddy 桌面应用中，助手 Markdown 渲染出的安全外链会使用操作系统默认浏览器打开。Client 只处理共享 Markdown Renderer 标记为新浏览上下文的绝对、不含凭据的 HTTP 与 HTTPS Anchor；同源与相对链接仍保留既有 Web 行为。悬停会显示规范化后的目标地址，自定义右键菜单可打开或复制链接。iframe 协议、Shell Validator 与 Rust Command 会分别拒绝其他协议和意外消息字段。独立 `dsh web` 仍使用浏览器的普通链接行为。
+在 YourBuddy 桌面应用中，助手 Markdown 渲染出的安全外链会使用操作系统默认浏览器打开。Client 只处理共享 Markdown Renderer 标记为新浏览上下文的绝对、不含凭据的 HTTP 与 HTTPS Anchor；同源与相对链接仍保留既有 Web 行为。悬停会显示规范化后的目标地址，自定义右键菜单可打开或复制链接。iframe 协议、Shell Validator 与 Rust Command 会分别拒绝其他协议和意外消息字段。浏览器响应解析器保留关联的操作、请求 ID 和协议版本，代理与窗口控件枚举仅接受声明的字符串值。保存响应中的无效快照会被拒绝；值为 undefined 的可选快照与生效策略字段会被省略。独立 `dsh web` 仍使用浏览器的普通链接行为。
 
 工作台身份保存在当前 DSH Profile 的 `personal-workbench` 命名空间：
 

@@ -2,12 +2,12 @@
 
 import { createElement } from 'react'
 import { render } from '@testing-library/react'
-import type { Context } from '@deepseek-ai/cordis'
 import { MutableSessionEventSource } from '@deepseek-ai/dsh-api-session-controller/client'
 import { SessionSeq, type SessionId } from '@deepseek-ai/dsh-session/types'
 import { describe, expect, it, vi } from 'vitest'
 import {
   observeSessionAttention,
+  type SessionAttentionContext,
   ProductWorkbenchController,
   ProductWorkbenchHost,
 } from '../src/client/workbench.tsx'
@@ -129,12 +129,16 @@ describe('observeSessionAttention', () => {
     const current = 'current' as SessionId
     const selected = (id: SessionId) => ({ byId: { [id]: { id, retainedBy: { mainView: 1 } } } })
     const list = new Observable(selected(current))
-    const status = new Observable(new Map())
+    const status = new Observable<ReadonlyMap<SessionId, {
+      running: boolean
+      pendingInteraction: { key: string, kind: string, sessionId: SessionId }
+      completionUnread: boolean
+    }>>(new Map())
     const currentEvents = new MutableSessionEventSource()
     const otherEvents = new MutableSessionEventSource()
     const controller = new ProductWorkbenchController(undefined)
     controller.setSessionExpanded(false)
-    const ctx = {
+    const ctx: SessionAttentionContext = {
       sessions: {
         list,
         binding: (id: SessionId) => ({
@@ -142,7 +146,7 @@ describe('observeSessionAttention', () => {
         }),
       },
       uiSession: { sessionStatus: status },
-    } as unknown as Context
+    }
     const dispose = observeSessionAttention(ctx, controller)
 
     currentEvents.append({

@@ -1,5 +1,7 @@
 /** Fixed browser-to-desktop protocol for application-wide network proxy settings. */
 
+import type { DesktopBridgeMessage, DesktopRequestWindow } from './desktop-bridge-window.ts'
+
 /** Message channel accepted by the YourBuddy desktop shell. */
 export const DESKTOP_NETWORK_PROXY_CHANNEL = 'yourbuddy.desktop.network-proxy'
 
@@ -100,7 +102,7 @@ type DesktopNetworkProxyResponse = DesktopNetworkProxyAccepted | DesktopNetworkP
 /** Options for one desktop proxy request. */
 export interface DesktopNetworkProxyRequestOptions {
   /** Browser window hosting the product Client. */
-  target?: Window
+  target?: DesktopRequestWindow
   /** Correlation id override used by deterministic tests. */
   requestId?: string
   /** Maximum wait for the trusted Shell to acknowledge the request. */
@@ -115,7 +117,7 @@ function createRequestId(): string {
 
 /** Report whether the product Client is embedded in a desktop shell. */
 export function isDesktopNetworkProxyAvailable(
-  target: Window | undefined = typeof window === 'undefined' ? undefined : window,
+  target: DesktopRequestWindow | undefined = typeof window === 'undefined' ? undefined : window,
 ): boolean {
   return target !== undefined && target.parent !== target
 }
@@ -133,7 +135,7 @@ export function readNetworkProxySettings(value: unknown): NetworkProxySettings |
   if (!isRecord(value)
     || !hasExactKeys(value, 'caCertificatePath,httpProxy,httpsProxy,mode,noProxy,version')
     || value.version !== 1
-    || !['inherit', 'direct', 'system', 'custom'].includes(String(value.mode))
+    || (value.mode !== 'inherit' && value.mode !== 'direct' && value.mode !== 'system' && value.mode !== 'custom')
     || typeof value.httpProxy !== 'string'
     || value.httpProxy.length > MAX_PROXY_URL_LENGTH
     || typeof value.httpsProxy !== 'string'
@@ -142,13 +144,20 @@ export function readNetworkProxySettings(value: unknown): NetworkProxySettings |
     || value.noProxy.length > MAX_NO_PROXY_LENGTH
     || typeof value.caCertificatePath !== 'string'
     || value.caCertificatePath.length > MAX_CA_CERTIFICATE_PATH_LENGTH) return undefined
-  return value as unknown as NetworkProxySettings
+  return {
+    version: value.version,
+    mode: value.mode,
+    httpProxy: value.httpProxy,
+    httpsProxy: value.httpsProxy,
+    noProxy: value.noProxy,
+    caCertificatePath: value.caCertificatePath,
+  }
 }
 
 function readEffectiveProxy(value: unknown): EffectiveNetworkProxy | undefined {
   if (!isRecord(value)
     || !hasExactKeys(value, 'caCertificatePath,caSource,httpProxy,httpsProxy,mode,noProxy')
-    || !['system', 'environment', 'custom'].includes(String(value.caSource))) return undefined
+    || (value.caSource !== 'system' && value.caSource !== 'environment' && value.caSource !== 'custom')) return undefined
   const settings = {
     version: 1 as const,
     mode: value.mode,
@@ -157,8 +166,16 @@ function readEffectiveProxy(value: unknown): EffectiveNetworkProxy | undefined {
     noProxy: value.noProxy,
     caCertificatePath: value.caCertificatePath,
   }
-  if (readNetworkProxySettings(settings) === undefined) return undefined
-  return value as unknown as EffectiveNetworkProxy
+  const parsed = readNetworkProxySettings(settings)
+  if (parsed === undefined) return undefined
+  return {
+    mode: parsed.mode,
+    httpProxy: parsed.httpProxy,
+    httpsProxy: parsed.httpsProxy,
+    noProxy: parsed.noProxy,
+    caCertificatePath: parsed.caCertificatePath,
+    caSource: value.caSource,
+  }
 }
 
 function readSystemProxy(value: unknown): SystemNetworkProxy | undefined {
@@ -179,7 +196,15 @@ function readSystemProxy(value: unknown): SystemNetworkProxy | undefined {
     || value.autoConfigUrl.length > MAX_PROXY_URL_LENGTH
     || typeof value.error !== 'string'
     || value.error.length > MAX_PROXY_URL_LENGTH) return undefined
-  return value as unknown as SystemNetworkProxy
+  return {
+    supported: value.supported,
+    configured: value.configured,
+    httpProxy: value.httpProxy,
+    httpsProxy: value.httpsProxy,
+    noProxy: value.noProxy,
+    autoConfigUrl: value.autoConfigUrl,
+    error: value.error,
+  }
 }
 
 function readSnapshot(value: unknown): NetworkProxySnapshot | undefined {
@@ -210,16 +235,26 @@ function readTestResult(value: unknown): NetworkProxyTestResult | undefined {
     || !hasExactKeys(value, 'caSource,errorCode,ok,proxied,proxyMode,status')
     || typeof value.ok !== 'boolean'
     || typeof value.proxied !== 'boolean'
+    || typeof value.status !== 'number'
     || !Number.isSafeInteger(value.status)
-    || Number(value.status) < 0
-    || Number(value.status) > 599
+    || value.status < 0
+    || value.status > 599
     || typeof value.errorCode !== 'string'
     || !/^[A-Z0-9_]{0,64}$/.test(value.errorCode)
-    || !['inherit', 'direct', 'system', 'custom', 'unknown'].includes(String(value.proxyMode))
-    || !['system', 'environment', 'custom', 'unknown'].includes(String(value.caSource))
-    || (value.ok && (Number(value.status) < 100 || value.errorCode !== ''))
+    || (value.proxyMode !== 'inherit' && value.proxyMode !== 'direct' && value.proxyMode !== 'system'
+      && value.proxyMode !== 'custom' && value.proxyMode !== 'unknown')
+    || (value.caSource !== 'system' && value.caSource !== 'environment'
+      && value.caSource !== 'custom' && value.caSource !== 'unknown')
+    || (value.ok && (value.status < 100 || value.errorCode !== ''))
     || (!value.ok && value.errorCode === '')) return undefined
-  return value as unknown as NetworkProxyTestResult
+  return {
+    ok: value.ok,
+    status: value.status,
+    proxied: value.proxied,
+    errorCode: value.errorCode,
+    proxyMode: value.proxyMode,
+    caSource: value.caSource,
+  }
 }
 
 function readPreflightResult(value: unknown): NetworkProxyPreflightResult | undefined {
@@ -239,6 +274,7 @@ function readSaveResult(value: unknown): NetworkProxySaveResult | undefined {
   const preflight = readPreflightResult(value.preflight)
   if (preflight === undefined) return undefined
   const snapshot = value.snapshot === undefined ? undefined : readSnapshot(value.snapshot)
+  if (value.snapshot !== undefined && snapshot === undefined) return undefined
   if (value.saved !== (snapshot !== undefined)
     || value.saved !== (preflight.native.ok && preflight.node.ok)) return undefined
   return { saved: value.saved, ...(snapshot === undefined ? {} : { snapshot }), preflight }
@@ -256,10 +292,11 @@ export function readDesktopNetworkProxyResponse(
     || value.requestId !== requestId) return undefined
   if (value.type === `${action}-accepted`) {
     return hasExactKeys(value, 'channel,requestId,type,version')
-      ? value as unknown as DesktopNetworkProxyAccepted
+      ? { channel: value.channel, version: value.version, type: `${action}-accepted`, requestId }
       : undefined
   }
   if (value.type !== `${action}-response` || typeof value.ok !== 'boolean') return undefined
+  let parsed: DesktopNetworkProxyValue | undefined
   if (value.ok) {
     if (!hasExactKeys(value, 'channel,ok,requestId,type,value,version')) return undefined
     if (action === 'select-ca') {
@@ -267,9 +304,10 @@ export function readDesktopNetworkProxyResponse(
         && (typeof value.value !== 'string'
           || value.value.length === 0
           || value.value.length > MAX_CA_CERTIFICATE_PATH_LENGTH)) return undefined
+      parsed = value.value
     }
     else {
-      const parsed = action === 'test'
+      parsed = action === 'test'
         ? readPreflightResult(value.value)
         : action === 'save'
           ? readSaveResult(value.value)
@@ -280,7 +318,15 @@ export function readDesktopNetworkProxyResponse(
   else if (!hasExactKeys(value, 'channel,error,ok,requestId,type,version')
     || typeof value.error !== 'string'
     || value.error.length > MAX_PROXY_URL_LENGTH) return undefined
-  return value as unknown as DesktopNetworkProxyResult
+  return {
+    channel: value.channel,
+    version: value.version,
+    type: `${action}-response`,
+    requestId,
+    ok: value.ok,
+    ...(parsed === undefined ? {} : { value: parsed }),
+    ...(typeof value.error === 'string' ? { error: value.error } : {}),
+  }
 }
 
 function requestDesktopNetworkProxy(
@@ -288,7 +334,7 @@ function requestDesktopNetworkProxy(
   settings: NetworkProxySettings | undefined,
   options: DesktopNetworkProxyRequestOptions,
 ): Promise<DesktopNetworkProxyValue> {
-  const target = options.target ?? window
+  const target: DesktopRequestWindow = options.target ?? window
   if (!isDesktopNetworkProxyAvailable(target)) {
     return Promise.reject(new Error('desktop-shell-unavailable'))
   }
@@ -308,7 +354,7 @@ function requestDesktopNetworkProxy(
       handshakeTimeout = undefined
       target.removeEventListener('message', onMessage)
     }
-    const onMessage = (event: MessageEvent<unknown>): void => {
+    const onMessage = (event: DesktopBridgeMessage): void => {
       if (event.source !== parent) return
       const response = readDesktopNetworkProxyResponse(event.data, requestId, action)
       if (response === undefined) return

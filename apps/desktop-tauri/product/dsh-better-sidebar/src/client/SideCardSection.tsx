@@ -234,7 +234,8 @@ export function FeatureSettingsRows(props: {
   valueSource?: (key: string) => unknown
 }) {
   const { toggles, prefs, onToggle, onCommit, onSelectValue, valueSource } = props
-  const read = valueSource ?? ((key: string): unknown => (prefs as unknown as Record<string, unknown>)[key])
+  const prefValues: Readonly<Record<string, unknown>> = { ...prefs }
+  const read = valueSource ?? ((key: string): unknown => prefValues[key])
   return (
     <div className={css.popupRows}>
       {toggles.map(toggle => {
@@ -695,7 +696,8 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
   const onCommitSetting = (toggle: SidebarSettingToggle, raw: string): string => {
     if (toggle.type === 'number') {
       const parsed = Number(raw)
-      const fallback = String((prefs as unknown as Record<string, unknown>)[toggle.key] ?? '')
+      const prefValues: Readonly<Record<string, unknown>> = { ...prefs }
+      const fallback = String(prefValues[toggle.key] ?? '')
       if (!Number.isFinite(parsed)) return fallback
       let clamped = Math.round(parsed)
       if (toggle.min !== undefined) clamped = Math.max(toggle.min, clamped)

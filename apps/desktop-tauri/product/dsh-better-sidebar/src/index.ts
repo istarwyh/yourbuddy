@@ -14,8 +14,7 @@
  */
 import { mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join } from 'node:path'
-import type { IncomingMessage } from 'node:http'
-import type { Duplex } from 'node:stream'
+import type { WebServer } from '@deepseek-ai/dsh-host-webserver'
 import { WebSocket, WebSocketServer } from 'ws'
 import { parse as parseYaml } from 'yaml'
 import type { Context, SidebarHttpRequest, SidebarSessionEvent, SidebarSettingsService } from './context-types.ts'
@@ -984,15 +983,16 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
   // connected view applies it immediately and a disconnected one gets the
   // replay when it attaches. The client mirrors each request into an
   // editor / folder-window / browser tab open.
+  const webServer: WebServer = ctx.webServer
   const agentOpenWss = new WebSocketServer({ noServer: true })
-  ctx.effect(() => ctx.webServer.registerUpgrade({
+  ctx.effect(() => webServer.registerUpgrade({
     path: '/sidebar/ws/agent-opens',
     handler: (req, socket, head) => {
       if (!fence(req)) {
         socket.destroy()
         return
       }
-      agentOpenWss.handleUpgrade(req as unknown as IncomingMessage, socket as unknown as Duplex, head as Buffer, (ws) => {
+      agentOpenWss.handleUpgrade(req, socket, head, (ws) => {
         void attachAgentOpen(agentOpenRegistry, ws, req)
       })
     },
@@ -1006,14 +1006,14 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
   // Paths resolve through the same canonicalization as `fs.tree`, so the
   // watcher and tree address the same directory.
   const fsWatchWss = new WebSocketServer({ noServer: true })
-  ctx.effect(() => ctx.webServer.registerUpgrade({
+  ctx.effect(() => webServer.registerUpgrade({
     path: '/sidebar/ws/fs-watch',
     handler: (req, socket, head) => {
       if (!fence(req)) {
         socket.destroy()
         return
       }
-      fsWatchWss.handleUpgrade(req as unknown as IncomingMessage, socket as unknown as Duplex, head as Buffer, (ws) => {
+      fsWatchWss.handleUpgrade(req, socket, head, (ws) => {
         void attachFsWatch(ctx, ws, req)
       })
     },

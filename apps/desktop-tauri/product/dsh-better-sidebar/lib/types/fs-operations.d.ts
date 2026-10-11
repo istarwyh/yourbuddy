@@ -19,8 +19,8 @@ export interface WorkspaceUploadInput {
  * target independent (each writes and renames its own file; the last rename
  * wins) and never blocks later uploads after a crashed process.
  *
- * @throws SidebarError with a wire code for containment, shape, and size
- * failures; the temp file is always removed on failure.
+ * @throws SidebarError with a wire code for shape and size failures; the temp
+ * file is always removed on failure.
  */
 export declare function writeWorkspaceUpload(input: WorkspaceUploadInput): Promise<{
     path: string;
@@ -43,8 +43,7 @@ export interface WorkspaceRenameInput {
  * renames the link, not its target. A no-op rename (same name) succeeds
  * without touching the filesystem.
  *
- * @throws SidebarError with a wire code for shape, containment, existence
- * and root failures.
+ * @throws SidebarError with a wire code for shape, existence and root failures.
  */
 export declare function renameWorkspaceEntry(input: WorkspaceRenameInput): Promise<{
     path: string;
@@ -62,8 +61,7 @@ export interface WorkspaceRemoveInput {
  * only (lstat decides, so a link to a directory does not recurse into its
  * target). The workspace root itself is never removable.
  *
- * @throws SidebarError with a wire code for containment, existence and
- * root failures.
+ * @throws SidebarError with a wire code for existence and root failures.
  */
 export declare function removeWorkspaceEntry(input: WorkspaceRemoveInput): Promise<{
     path: string;

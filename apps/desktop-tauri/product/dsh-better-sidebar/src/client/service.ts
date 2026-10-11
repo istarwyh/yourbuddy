@@ -19,6 +19,7 @@
  *   per descriptor it tries `detect` first (when `head` bytes are given),
  *   then `exts`; `exts: []` is a catch-all that matches any path.
  */
+import { brandString, type Branded } from '@deepseek-ai/dsh-brand'
 import type { ReactNode } from 'react'
 import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
 import type { Context } from '../context-types.ts'
@@ -449,6 +450,9 @@ export interface NativeTabParams {
   meta?: unknown
 }
 
+/** A registered sidebar descriptor's native page kind, including the editor's files alias. */
+export type NativeTabKind = Branded<'BetterSidebarNativeTabKind'>
+
 /**
  * The plugin's write face over DSH's native right Sidebar.
  *
@@ -461,7 +465,7 @@ export interface NativeTabParams {
  */
 export interface SidebarSurface {
   /** Open a page type in one session's native surface. */
-  openTab(input: { sessionId: string; kind: string; params: NativeTabParams; revealIfOpened: boolean }): void
+  openTab(input: { sessionId: string; kind: NativeTabKind; params: NativeTabParams; revealIfOpened: boolean }): void
   /** Open a resource address in one session's native surface. */
   openResource(input: { sessionId: string; address: string; line?: number; revealIfOpened: boolean }): void
   /** The file address of one path (the native surface owns the grammar). */
@@ -958,7 +962,7 @@ export function createBetterSidebarService(
           })
         } else {
           // The path-less editor window IS the file explorer.
-          surface.openTab({ sessionId: targetSessionId, kind: 'files', params: {}, revealIfOpened: true })
+          surface.openTab({ sessionId: targetSessionId, kind: brandString<NativeTabKind>('files'), params: {}, revealIfOpened: true })
         }
       } else {
         // A component type's path seed stays on the page open (regression
@@ -966,7 +970,7 @@ export function createBetterSidebarService(
         // the editor, so the registered component never mounted).
         surface.openTab({
           sessionId: targetSessionId,
-          kind: seed.type,
+          kind: brandString<NativeTabKind>(seed.type),
           params: {
             title,
             ...(seed.path === undefined ? {} : { path: seed.path }),

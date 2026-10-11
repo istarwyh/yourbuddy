@@ -24,10 +24,12 @@
  * content to the views. New tabs come from the + menu (explorer / git;
  * editors open from the explorer).
  */
+import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type ReactNode } from 'react'
 import { useSyncExternalStore } from 'react'
 import clsx from 'clsx'
 import { IconCloseFillRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import type {} from '@huanlin/dsh-plugin-better-locale/client'
 import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
 import type { Context } from '../context-types.ts'
 import { referenceInChat as referenceInChatShared } from './reference-in-chat.ts'
@@ -119,14 +121,8 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
   // up the new override text. Optional: ctx.get returns undefined when
   // better-locale is absent (or when ctx is a minimal test mock without
   // a `get` method), in which case this is a no-op uSES.
-  type BetterLocaleStore = {
-    readonly active: string | undefined
-    subscribe(listener: () => void): () => void
-  }
   const betterLocaleStore = typeof ctx.get === 'function'
-    ? (ctx as unknown as {
-        get(name: 'betterLocale'): BetterLocaleStore | undefined
-      }).get('betterLocale')
+    ? ctx.get('betterLocale')
     : undefined
   const betterLocaleActive = useSyncExternalStore(
     useMemo(() => {
@@ -217,7 +213,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation
 
   const state = snapshot.state
   const sessionId = snapshot.sessionId
-  const summaryCwd = sessionId === undefined ? undefined : sessionList.byId[sessionId]?.cwd
+  const summaryCwd = sessionId === undefined ? undefined : sessionList.byId[SessionId(sessionId)]?.cwd
 
   // Title-bar / shell compatibility (the "位置兼容模式" scheme):
   //   auto    — CONSERVATIVE: only the standard Window Controls Overlay

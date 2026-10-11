@@ -27,19 +27,28 @@ export function helpUrl(destination: keyof typeof HELP_ROUTES, locale: string): 
   return new URL(route, `${HELP_SITE_URL}${prefix}`).href
 }
 
+type HelpPopupOpener = (url: string, target: string) => {
+  opener: Window | null
+  location: Pick<Location, 'replace'>
+} | null
+
 /**
  * Open guidance without navigating the workbench away from its session.
  * @param value - Absolute external HTTP(S) destination.
+ * @param open - Browser popup creator; defaults to the current window.
  * @returns Completion of the desktop request or browser popup creation; not page-load success.
  */
-export async function openHelpUrl(value: string): Promise<void> {
+export async function openHelpUrl(
+  value: string,
+  open: HelpPopupOpener = (url, target) => window.open(url, target),
+): Promise<void> {
   const url = resolveDesktopExternalHttpUrl(value, window.location.origin)
   if (url === undefined) throw new Error('invalid-help-url')
   if (window.parent !== window) {
     await requestDesktopExternalLinkOpen(url)
     return
   }
-  const opened = window.open('about:blank', '_blank')
+  const opened = open('about:blank', '_blank')
   if (opened === null) throw new Error('browser-popup-blocked')
   opened.opener = null
   opened.location.replace(url)

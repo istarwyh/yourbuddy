@@ -5,6 +5,8 @@
  * jump-back). All of it reacts to the host's live feeds for the CURRENT
  * session; the sidebar shell only consumes the returned jump-back ref.
  */
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-browser/client'
 import { useCallback, useEffect, useRef } from 'react'
 import type { Context, SidebarJobView, SidebarSessionList } from '../../context-types.ts'
 import type { SidebarStore } from '../state.ts'
@@ -40,17 +42,6 @@ const JOB_POLL_MS = 2_000
 const AUTO_OPEN_DEBOUNCE_MS = 500
 
 /**
- * The native column's public face, as this module reaches it. Both actions
- * act on the session whose surface is MOUNTED (the controller reads its
- * binding), which is why the park below is gated on the target session being
- * the on-screen one.
- */
-interface NativeColumnFace {
-  isExpanded?: () => boolean
-  toggleExpanded?: () => void
-}
-
-/**
  * Activate the Tasks page (the `subagent` tab type) in DSH's native right
  * Sidebar — the landing the two auto-open switches promise: the right column
  * IS the sidebar the user means, while the plugin's own bottom workbench only
@@ -75,7 +66,7 @@ interface NativeColumnFace {
  *   gesture and always leaves the column as the host expanded it.
  */
 function activateTasksPage(ctx: Context, sessionId: string, options: { background: boolean }): void {
-  const column = ctx.get('sidebarRight') as unknown as NativeColumnFace | undefined
+  const column = ctx.get('sidebarRight')
   const park = options.background
     // The face acts on the MOUNTED session: parking is only meaningful (and
     // only safe) when the activation targets the one on screen. "On screen"
@@ -145,9 +136,7 @@ export function useHostFeeds(feeds: {
             // since 0.20.0); an unregistered kind throws, so the agent-open
             // path degrades to doing nothing rather than breaking the push.
             try {
-              const browser = ctx.get('sidebarRight') as unknown as {
-                openTab(kind: string, options: { params: { url: string } }): void
-              } | undefined
+              const browser = ctx.get('sidebarRight')
               browser?.openTab('browser', { params: { url: request.target } })
             } catch {
               // Host without a browser tab type: nothing to open into.

@@ -337,6 +337,7 @@ describe.skipIf(MODE === 'record' || PLUGIN === undefined)('web e2e: real Harbor
     expect(errors).toEqual([])
     const evidencePath = process.env.HARBOR_CONTEXT_EVIDENCE_PATH
     if (evidencePath !== undefined) {
+      const messages: unknown = JSON.parse(normalize(JSON.stringify(durable)))
       evidence = {
         schema: 'harbor-automatic-page-context-acceptance/v1',
         generatedAt: new Date().toISOString(),
@@ -365,7 +366,7 @@ describe.skipIf(MODE === 'record' || PLUGIN === undefined)('web e2e: real Harbor
           admittedMessages: durable.length,
           modelContentEqualsDurableUserMessages: true,
         },
-        messages: JSON.parse(normalize(JSON.stringify(durable))) as unknown,
+        messages,
       }
     }
   })
@@ -483,11 +484,12 @@ describe.skipIf(MODE === 'record' || PLUGIN === undefined)('web e2e: real Harbor
     if (evidencePath !== undefined) {
       if (evidence === undefined) throw new Error('Initial Harbor acceptance did not complete')
       await mkdir(dirname(evidencePath), { recursive: true })
+      const messages: unknown = JSON.parse(normalizeHarborEvidence(JSON.stringify(durable), fixture.job, workspaceId))
       await writeFile(evidencePath, JSON.stringify({
         ...evidence,
         generatedAt: new Date().toISOString(),
         observed: { ...evidence.observed, ...observations, admittedMessages: durable.length },
-        messages: JSON.parse(normalizeHarborEvidence(JSON.stringify(durable), fixture.job, workspaceId)) as unknown,
+        messages,
       }, null, 2) + '\n')
     }
   })

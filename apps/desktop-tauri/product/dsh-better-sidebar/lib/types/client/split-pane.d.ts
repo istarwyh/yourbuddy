@@ -14,6 +14,15 @@ export interface WorkbenchActions {
     moveTabBefore: (payload: TabDragPayload, toPane: string, beforeTabId: string) => void;
     resizeSplit: (splitId: string, index: number, deltaFrac: number) => void;
 }
+/** The icon of one openable type card (mirror of the + menu options). */
+/**
+ * An empty pane's welcome cards: the openable types as cards, clicked to
+ * open (instead of a bare "this pane is empty" message).
+ */
+export declare function PaneEmptyCards(props: {
+    newTabOptions: NewTabOption[];
+    onNewTab: (optionId: string) => void;
+}): import("react").JSX.Element;
 /** The workbench: the split tree filling the sidebar body. `tree` selects
  *  which tree renders (the right panel's by default; the bottom panel passes
  *  `state.bottomSplits` — the actions route by pane id, so one action set

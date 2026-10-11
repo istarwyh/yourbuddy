@@ -28,5 +28,5 @@ export declare const TabContent: import("react").NamedExoticComponent<TabContent
  * a disabled row instead of hiding the option.
  * Tabs the user disabled in the side card settings are filtered out
  * entirely — re-enabling them is the settings page's job. */
-export declare function buildNewTabOptions(state: SidebarState, ctx: Context, scope: SessionScope): NewTabOption[];
+export declare function buildNewTabOptions(state: SidebarState | undefined, ctx: Context, scope: SessionScope | undefined): NewTabOption[];
 export {};

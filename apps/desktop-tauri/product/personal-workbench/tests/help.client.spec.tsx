@@ -2,11 +2,26 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HelpMenu, type HelpMenuProps } from '../src/client/HelpMenu.tsx'
+import * as helpLinks from '../src/client/help-links.ts'
 import { HELP_ROUTES, helpUrl, openHelpUrl } from '../src/client/help-links.ts'
 import { en, zh } from '../src/client/locales.ts'
 import { DESKTOP_EXTERNAL_LINK_CHANNEL, DESKTOP_EXTERNAL_LINK_VERSION } from '../src/client/desktop-external-links.ts'
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
+const frames: HTMLIFrameElement[] = []
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+  for (const frame of frames.splice(0)) frame.remove()
+})
+
+function parentWindow(): Window {
+  const frame = document.createElement('iframe')
+  frames.push(frame)
+  document.body.append(frame)
+  if (frame.contentWindow === null) throw new Error('missing-frame-window')
+  return frame.contentWindow
+}
 
 function mount(locale = 'en', wide = true) {
   const dictionary = locale === 'zh' ? zh : en
@@ -48,12 +63,15 @@ describe('YourBuddy help', () => {
   it('opens a browser tab without giving it an opener or replacing the session', async () => {
     const replace = vi.fn()
     const popup = { opener: window, location: { replace } }
-    vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window)
+    const open = vi.fn(() => popup)
+    const originalOpenHelpUrl = openHelpUrl
+    vi.spyOn(helpLinks, 'openHelpUrl').mockImplementation(value => originalOpenHelpUrl(value, open))
     const location = window.location.href
     mount()
     fireEvent.click(screen.getByRole('button', { name: 'Help and guides' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Extend Y8' }))
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    expect(open).toHaveBeenCalledWith('about:blank', '_blank')
     expect(popup.opener).toBeNull()
     expect(replace).toHaveBeenCalledWith(helpUrl('develop', 'en'))
     expect(window.location.href).toBe(location)
@@ -74,18 +92,19 @@ describe('YourBuddy help', () => {
   })
 
   it('uses the correlated desktop request and ignores a late failure after dismissal', async () => {
-    const parent = { postMessage: vi.fn() }
-    vi.spyOn(window, 'parent', 'get').mockReturnValue(parent as unknown as Window)
+    const parent = parentWindow()
+    const postMessage = vi.spyOn(parent, 'postMessage').mockImplementation(() => {})
+    vi.spyOn(window, 'parent', 'get').mockReturnValue(parent)
     mount()
     fireEvent.click(screen.getByRole('button', { name: 'Help and guides' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Default plugins' }))
-    const request = parent.postMessage.mock.calls[0]![0] as { requestId: string, url: string }
+    const request = postMessage.mock.calls[0]![0] as { requestId: string, url: string }
     expect(request.url).toBe(helpUrl('plugins', 'en'))
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
     fireEvent.click(screen.getByRole('button', { name: 'Help and guides' }))
     await act(async () => {
       window.dispatchEvent(new MessageEvent('message', {
-        source: parent as unknown as Window,
+        source: parent,
         data: { channel: DESKTOP_EXTERNAL_LINK_CHANNEL, version: DESKTOP_EXTERNAL_LINK_VERSION,
           type: 'open-response', requestId: request.requestId, ok: false, error: 'browser-unavailable' },
       }))

@@ -27,7 +27,7 @@ import type { Agent, AgentSetup, CreateAgentOptions, ResumeAgentOptions } from '
 import { snapshotSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
 import type { Context as CordisContext } from '@deepseek-ai/cordis'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
-import { SessionLogOffset } from '@deepseek-ai/dsh-session'
+import { SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
 import type {
   Context,
   SidebarAgentPresetsService,
@@ -43,7 +43,6 @@ import {
   SIDE_INJECTION_SOURCE_KIND,
   SIDE_NEW_THREAD_TITLE,
   sideLabel,
-  type SeedEvent,
   type SidechatLiveEvent,
   type SidechatLogEvent,
   type SidechatThreadInfo,
@@ -203,7 +202,7 @@ function liveThreadAgent(ctx: Context, childId: string): Agent | undefined {
 async function threadLogEvents(ctx: Context, childId: string): Promise<readonly SidechatLogEvent[]> {
   const agent = liveThreadAgent(ctx, childId)
   if (agent !== undefined) {
-    return agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[]
+    return agent.session.snapshotEvents()
   }
   const persistence = ctx.get('sessionPersistence') as SidebarSessionPersistenceService | undefined
   if (persistence === undefined) {
@@ -211,7 +210,7 @@ async function threadLogEvents(ctx: Context, childId: string): Promise<readonly 
   }
   try {
     const inspected = await readPersistedSession(persistence, childId)
-    return inspected.events as unknown as readonly SidechatLogEvent[]
+    return inspected.events
   } catch (error: unknown) {
     throw new SidebarError(
       'not-found',
@@ -239,7 +238,7 @@ export function buildSidechatApi(ctx: Context, live?: AssistantLiveBuffer): Side
       }
       const parentSession = parent.session
       const inheritance = buildSidechatInheritance(
-        parentSession.snapshotEvents() as unknown as readonly SidechatLogEvent[],
+        parentSession.snapshotEvents(),
         live?.chunksFor(sessionId) ?? [],
       )
       const { agentPreset, setup } = await composeChildSetup(
@@ -260,11 +259,11 @@ export function buildSidechatApi(ctx: Context, live?: AssistantLiveBuffer): Side
         ...(parent.options.provider === undefined ? {} : { agentProvider: parent.options.provider }),
         ...(parent.options.model === undefined ? {} : { agentModel: parent.options.model }),
       })
-      const descriptorEvent: SeedEvent = {
+      const descriptorEvent: SessionEvent<'subagent/descriptor'> = {
         type: 'subagent/descriptor',
-        seq: inheritance.seed.length,
+        seq: SessionSeq(inheritance.seed.length),
         time: Date.now(),
-        data: descriptor as unknown as Record<string, unknown>,
+        data: { ...descriptor },
       }
       const seed = [...inheritance.seed, descriptorEvent]
       // Fork-marker fields (the exact shape the host's own session.fork uses,
@@ -287,7 +286,7 @@ export function buildSidechatApi(ctx: Context, live?: AssistantLiveBuffer): Side
           delegationDepth: (parentSession.header.delegationDepth ?? 0) + 1,
           ...(agentPreset === undefined ? {} : { agentPreset }),
         },
-        seed: seed as unknown as readonly SessionEvent[],
+        seed,
         inheritedEventCount: SessionLogOffset(seed.length),
         agentOptions: { ...parent.options },
         setup,
@@ -352,7 +351,7 @@ export function buildSidechatApi(ctx: Context, live?: AssistantLiveBuffer): Side
           throw new SidebarError('sidechat-error', `thread resume failed: ${error instanceof Error ? error.message : String(error)}`, 500)
         }
       }
-      if (boundaryDelivered(agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[])) {
+      if (boundaryDelivered(agent.session.snapshotEvents())) {
         admitFollowup(agent, textPrompt(text))
       } else {
         // First message of an immediately-created thread: it carries the

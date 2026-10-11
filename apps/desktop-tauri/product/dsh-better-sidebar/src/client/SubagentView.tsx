@@ -30,6 +30,8 @@
  * admits a job only to its owner, and 0.1.7 stopped mirroring jobs into the
  * client snapshot).
  */
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useSyncExternalStore } from 'react'
 import clsx from 'clsx'
@@ -649,17 +651,6 @@ function JobsSection(props: {
   )
 }
 
-/**
- * The client's own "show this conversation" verb. DSH 0.1.6 moved child and
- * session navigation OFF `ISessions` (0.1.5's `open` / `openSubagent`, neither
- * of which exists any more — the optional calls this page used were silently
- * dead) onto the workspace face, which owns the main-view selection. The
- * pre-0.1.6 faces stay as the fallback for a host that predates the move.
- */
-interface ConversationNavigation {
-  openSession?(target: SidebarSubagentAddress | string): void
-}
-
 /** The per-parent catalog refresh across the two DSH generations. */
 interface CatalogRefreshFace {
   refreshProjections?(sessionId: string): Promise<void>
@@ -701,13 +692,24 @@ export function SubagentView(props: {
   // The topology root: the main agent of the current session's tree.
   const rootId = useMemo(() => rootAncestor(byId, sessionId), [byId, sessionId])
   const rootCatalog = rootId === undefined ? undefined : catalogs[rootId]
-  const rootSummary = rootId === undefined ? undefined : byId[rootId]
+  const rootSummary = rootId === undefined ? undefined : byId[SessionId(rootId)]
   const live = useSubagentLive(rootId, active)
 
+  /**
+   * The client's own "show this conversation" verb. DSH 0.1.6 moved child and
+   * session navigation OFF `ISessions` (0.1.5's `open` / `openSubagent`, neither
+   * of which exists any more — the optional calls this page used were silently
+   * dead) onto the workspace face, which owns the main-view selection. The
+   * pre-0.1.6 faces stay as the fallback for a host that predates the move.
+   */
   const openConversation = useCallback((target: SidebarSubagentAddress | string): void => {
-    const workspace = ctx.get('uiWorkspace') as unknown as ConversationNavigation | undefined
+    const workspace = ctx.get('uiWorkspace')
     if (typeof workspace?.openSession === 'function') {
-      workspace.openSession(target)
+      workspace.openSession(typeof target === 'string' ? SessionId(target) : {
+        parentSessionId: SessionId(target.parentSessionId),
+        childSessionId: SessionId(target.childSessionId),
+        mode: target.mode,
+      })
       return
     }
     if (typeof target === 'string') sessions.open?.(target)

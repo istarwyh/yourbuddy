@@ -1,5 +1,6 @@
 /** Compact projection of native window controls into the sidebar header. */
 
+import type { DesktopBridgeWindow } from './desktop-bridge-window.ts'
 import { useEffect, useState, type PointerEvent } from 'react'
 import {
   connectDesktopWindowControls,
@@ -21,7 +22,7 @@ function ControlIcon({ control }: { control: DesktopWindowControl }) {
 /** Test seam for the browser window hosting this component. */
 export interface WindowControlsProps {
   /** Browser window; omitted in production so the current iframe window is used. */
-  target?: Window
+  target?: DesktopBridgeWindow
 }
 
 /**
