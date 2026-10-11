@@ -1,6 +1,7 @@
 pub mod boot_log;
 pub mod boot_status;
 pub mod config;
+pub mod component_leases;
 pub mod component_metrics;
 pub mod component_plan;
 pub mod components;
