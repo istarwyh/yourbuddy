@@ -1,9 +1,10 @@
 /** Guard release evidence against fixture-version, readiness, activation, and environment mistakes. */
 import assert from 'node:assert/strict'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, redactEvidence, sameProcessIdentity } from './smoke-offline-startup-macos.mjs'
+import { childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -103,4 +104,48 @@ test('an application PID recycled before its exit event cannot acquire foreign d
   assert.deepEqual(ownedProcessDescendants([{ ...application, started: 'Sun Oct 11 03:00:02 2026' }, ownChild], child, application), [])
   assert.deepEqual(ownedProcessDescendants([{ ...application, parent: 999 }, ownChild], child, application), [])
   assert.deepEqual(ownedProcessDescendants([application, ownChild], { ...child, exitCode: 0 }, application), [])
+})
+
+
+test('AX inspection isolates vanished nodes while retaining controls and fatal errors', () => {
+  const script = windowInspectionScript(123)
+  assert.match(script, /try\s+set roleText to role of itemNode/)
+  assert.match(script, /if errorNumber is -1719 or errorNumber is -1728 then\s+set skippedNodes to skippedNodes \+ 1/)
+  assert.match(script, /else\s+error \("AX partial snapshot:/)
+  assert.match(script, /number errorNumber/)
+  assert.equal((script.match(/role of itemNode/g) || []).length, 1)
+  assert(!script.includes('AXPress'))
+  const closing = windowInspectionScript(123, true)
+  assert.match(closing, /roleText is "AXButton" and \(labelText is "Close" or labelText is "关闭"\)/)
+  assert.match(closing, /perform action "AXPress" of itemNode/)
+  assert.throws(() => windowInspectionScript(-1))
+  const report = 'AXButton\tCodex\t\nAXButton\tSettings\t'
+  assert.deepEqual(parseWindowInspection(`${report}\nAX_SKIPPED_NODES=2`), { report, skippedNodes: 2 })
+  const parsed = parseWindowInspection(`${report}\nAX_SKIPPED_NODES=2`).report
+  assert(/AXButton\tCodex\b/.test(parsed) && /\t(?:Settings|设置)\t/.test(parsed), 'empty final AX value must preserve the existing workbench predicate')
+  assert.deepEqual(parseWindowInspection('AX_SKIPPED_NODES=3'), { report: '', skippedNodes: 3 })
+  assert.deepEqual(parseWindowInspection('pressed\nAX_SKIPPED_NODES=0'), { report: 'pressed', skippedNodes: 0 })
+  assert.throws(() => parseWindowInspection(report), /skipped-node count/)
+  assert.throws(() => parseWindowInspection('AX_SKIPPED_NODES=-1'), /skipped-node count/)
+})
+
+test('failure evidence retains partial and complete AX samples without hiding the original error', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-ax-evidence-'))
+  const original = new Error('native view failed ?token=private')
+  const snapshots = { complete: 'AXButton\tCodex\t', partial: 'dsh-auth=private-cookie;', samples: 2, skippedNodes: 1 }
+  try {
+    let capturePath
+    assert.doesNotThrow(() => saveWindowFailure(root, 1, snapshots, original, path => {
+      capturePath = path
+      throw new Error('screen capture unavailable')
+    }))
+    assert.equal(capturePath, join(root, 'boot-1-failure.png'))
+    assert.match(readFileSync(join(root, 'boot-1-accessibility-last-complete.txt'), 'utf8'), /Codex/)
+    assert.equal(readFileSync(join(root, 'boot-1-accessibility-last-partial.txt'), 'utf8'), 'dsh-auth=<redacted>;')
+    assert.equal(readFileSync(join(root, 'boot-1-accessibility-error.txt'), 'utf8'), 'native view failed ?token=<redacted>')
+    assert.deepEqual(JSON.parse(readFileSync(join(root, 'boot-1-accessibility-counts.json'), 'utf8')), { samples: 2, skippedNodes: 1 })
+    assert.doesNotThrow(() => saveWindowFailure(join(root, 'missing'), 1, snapshots, original, () => {}))
+    assert.equal(original.message, 'native view failed ?token=private')
+  }
+  finally { rmSync(root, { recursive: true, force: true }) }
 })

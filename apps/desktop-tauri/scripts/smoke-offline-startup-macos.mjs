@@ -71,29 +71,70 @@ export function requireAccessibility() {
     'BLOCKED: runner has no existing Accessibility permission; this test never grants it')
 }
 
-function inspectWindow(pid, close = false) {
+/** Fresh AX references may disappear while WebKit replaces a subtree. */
+export function windowInspectionScript(pid, close = false) {
   assert(Number.isSafeInteger(pid) && pid > 0)
-  return apple(`tell application "System Events"
+  return `tell application "System Events"
     set targetProcess to first application process whose unix id is ${pid}
     set allNodes to entire contents of window 1 of targetProcess
     set report to ""
+    set skippedNodes to 0
     repeat with itemNode in allNodes
-      set labelText to ""
-      set valueText to ""
       try
-        set labelText to name of itemNode as text
+        set roleText to role of itemNode as text
+        set labelText to ""
+        set valueText to ""
+        try
+          set labelText to name of itemNode as text
+        end try
+        try
+          set valueText to value of itemNode as text
+        end try
+        set report to report & roleText & tab & labelText & tab & valueText & linefeed
+        ${close ? `if roleText is "AXButton" and (labelText is "Close" or labelText is "关闭") then
+          perform action "AXPress" of itemNode
+          return "pressed" & linefeed & "AX_SKIPPED_NODES=" & skippedNodes
+        end if` : ''}
+      on error errorText number errorNumber
+        if errorNumber is -1719 or errorNumber is -1728 then
+          set skippedNodes to skippedNodes + 1
+        else
+          error ("AX partial snapshot:" & linefeed & report & "AX_SKIPPED_NODES=" & skippedNodes & linefeed & errorText) number errorNumber
+        end if
       end try
-      try
-        set valueText to value of itemNode as text
-      end try
-      set report to report & (role of itemNode as text) & tab & labelText & tab & valueText & linefeed
-      ${close ? `if role of itemNode is "AXButton" and (labelText is "Close" or labelText is "关闭") then
-        perform action "AXPress" of itemNode
-        return "pressed"
-      end if` : ''}
     end repeat
-    return report
-  end tell`)
+    return report & "AX_SKIPPED_NODES=" & skippedNodes
+  end tell`
+}
+
+/** The metadata cannot stand in for either required workbench control. */
+export function parseWindowInspection(value) {
+  const match = value.match(/(?:^|\n)AX_SKIPPED_NODES=(\d+)$/)
+  assert(match, 'AX inspection must retain its skipped-node count')
+  return { report: value.slice(0, match.index), skippedNodes: Number(match[1]) }
+}
+
+function inspectWindow(pid, close = false, observe = () => {}) {
+  const snapshot = parseWindowInspection(apple(windowInspectionScript(pid, close)))
+  observe(snapshot)
+  return snapshot.report
+}
+
+/** Best-effort diagnostics must never replace the original acceptance failure. */
+export function saveWindowFailure(evidence, round, snapshots, error, capture = path => {
+  spawnSync('/usr/sbin/screencapture', ['-x', path], { timeout: 5_000, stdio: 'ignore' })
+}) {
+  for (const [suffix, value] of [
+    ['accessibility-last-complete.txt', snapshots.complete || 'No complete AX snapshot'],
+    ['accessibility-last-partial.txt', snapshots.partial || 'No partial AX snapshot'],
+    ['accessibility-error.txt', String(error?.message || error)],
+    ['accessibility-counts.json', JSON.stringify({ samples: snapshots.samples, skippedNodes: snapshots.skippedNodes })],
+  ]) {
+    try { writeFileSync(join(evidence, `boot-${round}-${suffix}`), redactEvidence(value)) }
+    catch (error) { void error /* Preserve the original failure when evidence storage is unavailable. */ }
+  }
+  try { capture(join(evidence, `boot-${round}-failure.png`)) }
+  catch (error) { void error /* Existing screen capture is optional; never request permissions. */ }
 }
 
 async function until(label, operation, timeout = PROCESS_TIMEOUT_MS, retryErrors = false) {
@@ -302,6 +343,13 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
       let host
       let launchError
       let application
+      const snapshots = { complete: '', partial: '', samples: 0, skippedNodes: 0 }
+      const observeWindow = snapshot => {
+        snapshots.samples++
+        snapshots.skippedNodes += snapshot.skippedNodes
+        if (snapshot.skippedNodes) snapshots.partial = snapshot.report
+        else snapshots.complete = snapshot.report
+      }
       const child = spawn(executable, [], { cwd: world, env, stdio: ['ignore', 'pipe', 'pipe'] })
       worldSafeToRemove = false
       const ended = new Promise(resolveEnd => {
@@ -339,7 +387,7 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
         assert(active.components.pnpmStore, 'empty isolated HOME must exercise the signed offline Store fallback')
         assert(!existsSync(join(appData, 'components', 'downloads')), 'Offline startup must not download release components')
         const view = await until('authenticated workbench in the native WebView', () => {
-          const value = inspectWindow(child.pid)
+          const value = inspectWindow(child.pid, false, observeWindow)
           return /AXButton\tCodex\b/.test(value) && /\t(?:Settings|设置)\t/.test(value) && value
         }, 60_000, true)
         writeFileSync(join(evidence, `boot-${round}-accessibility.txt`), redactEvidence(view))
@@ -353,6 +401,10 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
         assert(!existsSync(join(appData, 'host.pid')), 'native close must remove its Host record')
         summary.boots.push({ round, appPid: child.pid, hostPid: host.pid, durationMs: Date.now() - startedAt, authenticated: true, nativeWorkbench: true, cleanExit: true, webUrl })
         activeBefore = activeText
+      }
+      catch (error) {
+        saveWindowFailure(evidence, round, snapshots, error)
+        throw error
       }
       finally {
         try {

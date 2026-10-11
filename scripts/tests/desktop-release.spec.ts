@@ -1,6 +1,6 @@
 /** Exercise release guards in PR CI and retain the same-run artifact publication path. */
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
@@ -107,9 +107,11 @@ function assertPublicationGates(candidate: Workflow): void {
   expect(build.steps.find(step => step.name === 'Publish the verified master tag atomically'))
     .toMatchObject({ run: 'node apps/desktop-tauri/scripts/first-publication.mjs publish', env: { GH_TOKEN: '${{ github.token }}' } })
   expect(build.steps.find(step => step.name === 'Check native acceptance prerequisites')?.run)
-    .toBe('node apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs --preflight')
+    .toBe('git show "${GITHUB_WORKFLOW_SHA:?}:apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs" > "$RUNNER_TEMP/yourbuddy-native-smoke.mjs"\n'
+      + 'echo "Native acceptance runner: $GITHUB_WORKFLOW_SHA; application source: $(git rev-parse HEAD)"\n'
+      + 'node "$RUNNER_TEMP/yourbuddy-native-smoke.mjs" --preflight\n')
   expect(build.steps.find(step => step.name === 'Verify native Offline installation and cold starts')?.run)
-    .toBe('node apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs "$RUNNER_TEMP/offline-updater-resources/YourBuddy.app/Contents/MacOS/yourbuddy" "$RUNNER_TEMP/offline-startup-smoke" "${RELEASE_TAG#yourbuddy-v}"')
+    .toBe('node "$RUNNER_TEMP/yourbuddy-native-smoke.mjs" "$RUNNER_TEMP/offline-updater-resources/YourBuddy.app/Contents/MacOS/yourbuddy" "$RUNNER_TEMP/offline-startup-smoke" "${RELEASE_TAG#yourbuddy-v}"')
   expect(build.steps.find(step => step.name === 'Upload native acceptance evidence')).toMatchObject({
     uses: 'actions/upload-artifact@v4',
     with: { path: '${{ runner.temp }}/offline-startup-smoke/evidence/', 'if-no-files-found': 'warn', 'retention-days': 7 },
@@ -246,6 +248,48 @@ describe('YourBuddy first publication', () => {
       uses: 'actions/upload-artifact@v4',
       with: { path: 'release-assets/', 'if-no-files-found': 'error', 'retention-days': 7 },
     })
+  })
+
+  it.each([false, true])('reads the workflow verifier without changing tagged source (autocrlf=%s)', (autocrlf) => {
+    const fixture = mkdtempSync(join(tmpdir(), 'yourbuddy-verifier-source-'))
+    try {
+      const repo = join(fixture, 'repo')
+      const path = 'apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs'
+      mkdirSync(join(repo, 'apps/desktop-tauri/scripts'), { recursive: true })
+      const env = {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'Fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+        GIT_COMMITTER_NAME: 'Fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
+      }
+      const git = (...args: string[]): string => {
+        const result = spawnSync('git', args, { cwd: repo, env, encoding: 'utf8' })
+        expect(result.error).toBeUndefined()
+        expect(result.status, result.stderr).toBe(0)
+        return result.stdout.trim()
+      }
+      git('init')
+      git('config', 'core.autocrlf', String(autocrlf))
+      writeFileSync(join(repo, path), 'console.log("tag verifier")\n')
+      git('add', '.')
+      git('commit', '-m', 'tagged source')
+      const taggedSha = git('rev-parse', 'HEAD')
+      writeFileSync(join(repo, path), 'console.log("workflow verifier")\n')
+      git('commit', '-am', 'updated verifier')
+      const workflowSha = git('rev-parse', 'HEAD')
+      git('checkout', '--detach', taggedSha)
+      const taggedSource = readFileSync(join(repo, path))
+      expect(taggedSource.toString('utf8')).toBe(`console.log("tag verifier")${autocrlf ? '\r\n' : '\n'}`)
+      const extracted = join(fixture, 'yourbuddy-native-smoke.mjs')
+      writeFileSync(extracted, git('show', `${workflowSha}:${path}`))
+      const result = spawnSync(process.execPath, [extracted], { encoding: 'utf8' })
+      expect(result.error).toBeUndefined()
+      expect(result.status).toBe(0)
+      expect(result.stdout.trim()).toBe('workflow verifier')
+      expect(git('rev-parse', 'HEAD')).toBe(taggedSha)
+      expect(readFileSync(join(repo, path))).toEqual(taggedSource)
+      expect(git('status', '--porcelain')).toBe('')
+    }
+    finally { rmSync(fixture, { recursive: true, force: true }) }
   })
 
   it('requires native acceptance for candidate, first publication and 0.4.9 retries without breaking legacy tags', () => {
