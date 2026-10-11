@@ -43,7 +43,7 @@ function release(root: string): string {
   const bytes = Buffer.from('archive byte measurement fixture')
   write(root, `release/${archive}`, bytes.toString())
   write(root, 'release/yourbuddy-components-0.4.9.json', { appVersion: '0.4.9', platform: 'darwin', arch: 'arm64', components: {
-    harness: { id: 'sha256:fixture', archive, sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length, activation: 'startup' },
+    harness: { id: 'sha256:fixture', archive, sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length, kind: 'core-runtime', version: '0.2.0' },
   } })
   return components
 }
@@ -157,7 +157,7 @@ describe('YourBuddy prepared component inventory', () => {
     const componentsManifest = release(root)
     const options = { harnessRoot: root, platform: 'darwin' as const, componentsManifest }
     const report = await createYourBuddyComponentInventory(options)
-    expect(report.costs.archives?.archives[0]).toMatchObject({ component: 'harness', measuredBytes: 32, activation: 'startup' })
+    expect(report.costs.archives?.archives[0]).toMatchObject({ component: 'harness', measuredBytes: 32, kind: 'core-runtime', version: '0.2.0' })
     expect(report.costs.networkDownloadedBytes).toBeNull()
     write(root, 'release/yourbuddy-harness-fixture.tar.zst', 'x'.repeat(32))
     await expect(createYourBuddyComponentInventory(options)).rejects.toThrow('measured archive does not match component manifest')

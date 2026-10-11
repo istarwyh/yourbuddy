@@ -75,6 +75,14 @@ Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析�
 
 在关闭验收 Issue 前，可使用相同仓库、分支、版本与 SHA 输入，以 `candidate-validation` 构建并验证带签名运行时组件的候选。它检查干净且固定的 Checkout，要求既有 macOS Accessibility 权限且不修改权限，执行完整打包检查与原生 Offline 组件安装、Host 已认证就绪，以及首次启动和随后两次冷启动验收，仅将安装包与更新文件保存为保留七天的 CI Artifact。脱敏后的原生验收证据单独保留，失败时也会上传；隔离 Home、凭据与 Cookie 不会上传。`0.4.9` 的已有 Tag 重试也必须通过相同原生检查。它不会创建 Tag、GitHub Release 或生产更新 Feed；产物中的计划发布 URL 不能作为真实公开下载证据。必须先完成全部已要求的实现与验收，再使用 `first-publication`。
 
+## 组件契约
+
+签名通道采用与应用版本精确对应的 schema 2。每个压缩包都声明版本、用途、类别，以及由组件键和精确不可变标识组成的依赖。类别为 `core-runtime`、`runtime-fallback`、`capability-on-demand` 和 `optional`。核心组件的依赖不能引入可选能力，fallback 也不会通过依赖边自动安装。当前默认行为仍是启动时准备 Harness，仅在既有 fallback 检查确认需要时准备 Node 和 pnpm Store，以及按需准备依赖当前 Harness 的 Harbor。
+
+原生只读安装预览返回依赖优先的 Prepare/Reuse 步骤。复用要求当前签名标识与压缩包校验后写入的完成标记一致；目录存在不足以证明可复用。`prepareArchiveBytes` 是仍需准备的压缩包大小之和，不是网络流量：缓存种子可以减少传输，重试则可能增加流量。额外能力包的准备、挂载和激活是独立操作，预览成功不能证明它们已就绪。
+
+旧通道 schema 会被拒绝。打包后的 splash 回归仅用真实签名的 `0.4.8` 通道证明先验签、后拒绝旧 schema，以及改动字节会导致验签失败。测试会恢复该 fixture，再检查原生 splash 恢复行为。当前 schema 的签名安装与就绪正向验收必须使用本轮 candidate-validation 产物；旧 fixture 不能作为这项正向证据。
+
 ## 组件清单
 
 准备好 Harness 后，在仓库根目录执行 `pnpm exec tsx scripts/yourbuddy-component-inventory.ts --harness apps/desktop-tauri/bundled/harness`。这个只读命令输出可复现的 JSON，列出暂存包、CLI 生产依赖闭包、Client 注入、Bundle/Preset 声明的插件引用，以及实际暂存文件字节数。`--root <package>` 选择其他分析起点；`--platform darwin|linux|win32` 解析平台字面条件。缺少必需 workspace 包，或所选包的插件引用不在闭包中时，命令会失败。报告不会合成原生桌面 overlay，也不能证明启动就绪。

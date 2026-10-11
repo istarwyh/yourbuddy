@@ -687,3 +687,33 @@ fn terminated_process_resumes_partial_and_reclaims_its_lock_in_a_new_process() {
         b"previous activation remains unchanged"
     );
 }
+
+#[test]
+fn installation_preview_requires_a_matching_completion_marker_and_has_no_activation_effect() {
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), "http://127.0.0.1:1/unused", b"fixture");
+    let spec = manager.spec("harness").unwrap();
+    let path = component_path(root.path(), "harness", &spec.id).unwrap();
+    fs::create_dir_all(&path).unwrap();
+    for marker in [
+        None,
+        Some("wrong digest\n".to_string()),
+        Some(format!("{}\n", spec.sha256)),
+    ] {
+        if let Some(value) = &marker {
+            fs::write(path.join(".complete"), value).unwrap();
+        }
+        let plan = manager.installation_plan(&PlanRequest::Startup).unwrap();
+        let expected = if marker
+            .as_ref()
+            .is_some_and(|value| value == &format!("{}\n", spec.sha256))
+        {
+            super::super::component_plan::PlanAction::Reuse
+        } else {
+            super::super::component_plan::PlanAction::Prepare
+        };
+        assert_eq!(plan.components[0].action, expected);
+        assert!(!root.path().join("active.json").exists());
+        assert!(!root.path().join("downloads").exists());
+    }
+}

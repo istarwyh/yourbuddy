@@ -174,7 +174,7 @@ async function archiveMeasurements(manifestPath: string | undefined) {
       throw new Error(`${LABEL}: measured archive does not match component manifest: ${archive}`)
     }
     archives.push({ component: name, id: text(component.id, `${name} id`), archive,
-      activation: text(component.activation, `${name} activation`), measuredBytes, measuredSha256 })
+      kind: text(component.kind, `${name} kind`), version: text(component.version, `${name} version`), measuredBytes, measuredSha256 })
   }
   if (archives.length === 0) throw new Error(`${LABEL}: component manifest contains no archives`)
   return { appVersion: text(manifest.appVersion, 'component appVersion'),

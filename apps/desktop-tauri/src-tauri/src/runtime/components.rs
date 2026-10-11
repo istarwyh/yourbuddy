@@ -30,28 +30,13 @@ const DOWNLOAD_PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 const MAX_ARCHIVE_ENTRIES: usize = 250_000;
 const MAX_EXPANDED_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
-/// Exact components selected by one signed YourBuddy application release.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ComponentManifest {
-    pub schema_version: u32,
-    pub app_version: String,
-    pub release_tag: String,
-    pub platform: String,
-    pub arch: String,
-    pub components: BTreeMap<String, ComponentSpec>,
-}
-
-/// Immutable archive metadata for one runtime component.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ComponentSpec {
-    pub id: String,
-    pub archive: String,
-    pub sha256: String,
-    pub bytes: u64,
-    pub activation: String,
-}
+#[cfg(test)]
+use super::component_plan::validate_manifest;
+use super::component_plan::{
+    component_key, parse_manifest, plan_installation, validate_component_name, validate_spec,
+    InstallPlan, PlanRequest, VerifiedInstallations,
+};
+pub use super::component_plan::{ComponentManifest, ComponentSpec};
 
 /// Download updates for the startup splash; byte counts include any resumed partial.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -277,6 +262,17 @@ impl ComponentManager {
         let spec = self.spec(name)?;
         let path = component_path(&self.root, name, &spec.id)?;
         Ok(component_is_complete(&path, spec).then_some(path))
+    }
+
+    /// Preview an exact installation without downloading or activating anything.
+    pub fn installation_plan(&self, request: &PlanRequest) -> Result<InstallPlan, String> {
+        let mut installed = VerifiedInstallations::default();
+        for (name, spec) in &self.manifest.components {
+            if self.installed(name)?.is_some() {
+                installed.insert_verified(name.clone(), spec.id.clone());
+            }
+        }
+        plan_installation(&self.manifest, request, &installed)
     }
 
     fn spec(&self, name: &str) -> Result<&ComponentSpec, String> {
@@ -626,67 +622,11 @@ pub fn verify_component_channel(resource_dir: &Path) -> Result<ComponentManifest
     let signature_text = fs::read_to_string(channel.join("components.json.sig"))
         .map_err(|error| format!("component manifest signature is unavailable: {error}"))?;
     verify_manifest_signature(&manifest_bytes, &signature_text)?;
-    let manifest: ComponentManifest = serde_json::from_slice(&manifest_bytes)
-        .map_err(|error| format!("component manifest is invalid: {error}"))?;
-    validate_manifest(&manifest)?;
+    let manifest = parse_manifest(&manifest_bytes)?;
+    if manifest.app_version != env!("CARGO_PKG_VERSION") {
+        return Err("component manifest does not match this application version".into());
+    }
     Ok(manifest)
-}
-
-fn validate_manifest(manifest: &ComponentManifest) -> Result<(), String> {
-    if manifest.schema_version != 1 {
-        return Err(format!(
-            "unsupported component manifest schema {}",
-            manifest.schema_version
-        ));
-    }
-    if manifest.platform != "darwin" || manifest.arch != "arm64" {
-        return Err("component manifest does not target darwin-arm64".into());
-    }
-    if manifest.release_tag != format!("yourbuddy-v{}", manifest.app_version) {
-        return Err("component release tag does not match application version".into());
-    }
-    for name in ["harness", "pnpmStore", "node", "harbor"] {
-        let spec = manifest
-            .components
-            .get(name)
-            .ok_or_else(|| format!("component manifest is missing {name}"))?;
-        validate_spec(spec)?;
-    }
-    Ok(())
-}
-
-fn validate_spec(spec: &ComponentSpec) -> Result<(), String> {
-    if component_key(&spec.id)?.is_empty() || spec.bytes == 0 {
-        return Err("component id or byte count is invalid".into());
-    }
-    if spec.sha256.len() != 64
-        || !spec.sha256.bytes().all(|value| value.is_ascii_hexdigit())
-        || !spec.archive.starts_with("yourbuddy-")
-        || !spec.archive.ends_with(".tar.zst")
-        || spec.archive.contains('/')
-        || spec.archive.contains("..")
-    {
-        return Err(format!(
-            "component archive metadata is invalid: {}",
-            spec.archive
-        ));
-    }
-    Ok(())
-}
-
-fn component_key(id: &str) -> Result<&str, String> {
-    let key = id
-        .strip_prefix("sha256:")
-        .or_else(|| id.strip_prefix("node:"))
-        .unwrap_or(id);
-    if key.is_empty()
-        || !key.bytes().all(|value| {
-            value.is_ascii_alphanumeric() || matches!(value, b'.' | b'-' | b'_' | b':')
-        })
-    {
-        return Err(format!("component id is invalid: {id}"));
-    }
-    Ok(key)
 }
 
 fn component_path(root: &Path, name: &str, id: &str) -> Result<PathBuf, String> {
@@ -695,7 +635,10 @@ fn component_path(root: &Path, name: &str, id: &str) -> Result<PathBuf, String> 
         "pnpmStore" => "stores",
         "node" => "node",
         "harbor" => "harbor",
-        _ => return Err(format!("unsupported component name: {name}")),
+        _ => {
+            validate_component_name(name)?;
+            return Ok(root.join("packs").join(name).join(component_key(id)?));
+        }
     };
     Ok(root.join(family).join(component_key(id)?))
 }
@@ -851,9 +794,8 @@ fn remove_partial(partial: &Path, metadata: &Path) {
 mod tests {
     use super::{
         asset_url, component_path, relative_link_stays_inside, validate_manifest, ComponentLock,
-        ComponentManifest, ComponentSpec,
+        ComponentManifest,
     };
-    use std::collections::BTreeMap;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU64, Ordering};
@@ -886,26 +828,21 @@ mod tests {
     }
 
     pub(super) fn manifest() -> ComponentManifest {
-        let spec = ComponentSpec {
-            id: "sha256:abc123".into(),
-            archive: "yourbuddy-harness-abc123-macos-arm64.tar.zst".into(),
-            sha256: "a".repeat(64),
-            bytes: 42,
-            activation: "startup".into(),
-        };
-        ComponentManifest {
-            schema_version: 1,
-            app_version: "0.4.0".into(),
-            release_tag: "yourbuddy-v0.4.0".into(),
-            platform: "darwin".into(),
-            arch: "arm64".into(),
-            components: BTreeMap::from([
-                ("harness".into(), spec.clone()),
-                ("pnpmStore".into(), spec.clone()),
-                ("node".into(), spec.clone()),
-                ("harbor".into(), spec),
-            ]),
-        }
+        let mut manifest: ComponentManifest =
+            serde_json::from_slice(include_bytes!("tests/fixtures/component-manifest-v2.json"))
+                .unwrap();
+        manifest.app_version = "0.4.0".into();
+        manifest.release_tag = "yourbuddy-v0.4.0".into();
+        let harness = manifest.components.get_mut("harness").unwrap();
+        harness.id = "sha256:abc123".into();
+        harness.archive = "yourbuddy-harness-abc123-macos-arm64.tar.zst".into();
+        manifest
+            .components
+            .get_mut("harbor")
+            .unwrap()
+            .depends_on
+            .insert("harness".into(), "sha256:abc123".into());
+        manifest
     }
 
     #[test]
