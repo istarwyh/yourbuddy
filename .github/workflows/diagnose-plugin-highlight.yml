@@ -1,0 +1,72 @@
+name: Diagnose plugin highlight
+
+on:
+  push:
+    branches: [diagnose/plugin-highlight-20261011]
+
+permissions:
+  contents: read
+
+env:
+  PRIMARY_NODE_VERSION: '24'
+  DSH_TELEMETRY_DISABLED: '1'
+  DSH_SNAPSHOT: replay
+  DSH_GATE_CONCURRENCY: '1'
+  DSH_OXLINT_THREADS: '2'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Use runner-owned temporary storage
+        run: |
+          echo "TMPDIR=${{ runner.temp }}" >> "$GITHUB_ENV"
+          echo "PLAYWRIGHT_BROWSERS_PATH=${RUNNER_TEMP%/*}/ms-playwright" >> "$GITHUB_ENV"
+          echo "NODE_COMPILE_CACHE=${{ runner.temp }}/node-compile-cache" >> "$GITHUB_ENV"
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+      - name: Install dependencies and prepare bubblewrap
+        run: |
+          pnpm install --frozen-lockfile &
+          install_pid=$!
+          bash scripts/prepare-ci-bubblewrap.sh &
+          sandbox_pid=$!
+          install_status=0
+          wait "$install_pid" || install_status=$?
+          sandbox_status=0
+          wait "$sandbox_pid" || sandbox_status=$?
+          if (( install_status != 0 )); then exit "$install_status"; fi
+          exit "$sandbox_status"
+      - name: Install Playwright Chromium and hosted dependencies
+        run: |
+          sudo find /etc/apt -maxdepth 2 -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i -E 's@http://([a-z]{2}\.)?archive\.ubuntu\.com/ubuntu@https://archive.ubuntu.com/ubuntu@g; s@http://security\.ubuntu\.com/ubuntu@https://security.ubuntu.com/ubuntu@g' {} +
+          pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install --with-deps chromium
+      - name: Build unchanged application
+        run: pnpm run build
+      - name: Repeat original scenario, preserving the first failure
+        run: |
+          for attempt in $(seq 1 10); do
+            echo "Highlight reproduction $attempt of 10"
+            DSH_PLUGIN_HIGHLIGHT_EVIDENCE=".artifacts/plugin-highlight/$attempt" pnpm run test:web:built apps/web/tests/plugin-install-cancel.e2e.ts
+          done
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: plugin-highlight-evidence
+          path: |
+            .artifacts/plugin-highlight/
+            .artifacts/plugin-install-highlight.png
+          if-no-files-found: ignore
+          retention-days: 3

@@ -1,13 +1,13 @@
 // A real Host/Remote/browser composition with a controllable package-manager process.
 // No model call is needed: installation state and profile files are the observable result.
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium, type Locator, type Page } from 'playwright'
 import { expect, it } from 'vitest'
 import { launchWebScaffold, captureStableAria, compareOrRefreshGolden, webSnapshotMode, watchConsole, type WebScaffold } from './scaffold.ts'
-import { ZH_BROWSER_LOCALE } from './support.ts'
+import { saveFailureShot, ZH_BROWSER_LOCALE } from './support.ts'
 
 async function invalidInputStyles(page: Page, input: Locator) {
   const styles = []
@@ -86,6 +86,20 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
         });
       `)
       const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: ZH_BROWSER_LOCALE })
+      const evidenceDir = process.env.DSH_PLUGIN_HIGHLIGHT_EVIDENCE
+      const rpc: { event: 'request' | 'response'; endpoint: string; elapsedMs: number; status?: number }[] = []
+      const startedAt = performance.now()
+      if (evidenceDir !== undefined) {
+        await mkdir(evidenceDir, { recursive: true })
+        page.on('request', (request) => {
+          const endpoint = new URL(request.url()).pathname
+          if (/\/api\/(pluginManager|pluginInventory)\//.test(endpoint)) rpc.push({ event: 'request', endpoint, elapsedMs: performance.now() - startedAt })
+        })
+        page.on('response', (response) => {
+          const endpoint = new URL(response.url()).pathname
+          if (/\/api\/(pluginManager|pluginInventory)\//.test(endpoint)) rpc.push({ event: 'response', endpoint, elapsedMs: performance.now() - startedAt, status: response.status() })
+        })
+      }
       const tripwire = watchConsole(page)
       await page.clock.install()
       await page.goto(scaffold.authenticatedUrl)
@@ -214,7 +228,37 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
         await dialog.getByRole('button', { name: '立即启用', exact: true }).click()
         await dialog.waitFor({ state: 'hidden' })
         const card = panel.locator('[data-plugin-package="slow-package"][data-plugin-highlight]')
-        await card.waitFor({ state: 'visible' })
+        try {
+          await card.waitFor({ state: 'visible' })
+        } catch (error) {
+          if (evidenceDir !== undefined) {
+            try {
+              await writeFile(join(evidenceDir, 'highlight.json'), JSON.stringify({
+                panel: await page.evaluate(() => {
+                  const panel = document.querySelector('[data-plugin-panel]')
+                  if (panel === null) return null
+                  return {
+                    busy: panel.getAttribute('aria-busy'),
+                    cards: [...panel.querySelectorAll('[data-plugin-package]')].map(card => ({
+                      packageName: card.getAttribute('data-plugin-package'),
+                      status: card.getAttribute('data-plugin-status'),
+                      highlighted: card.hasAttribute('data-plugin-highlight'),
+                      width: card.getBoundingClientRect().width,
+                      height: card.getBoundingClientRect().height,
+                    })),
+                  }
+                }),
+                dialogCount: await dialog.count(),
+                rpc,
+                pageErrorCount: tripwire.pageErrors.length,
+              }, null, 2))
+              await saveFailureShot(page, 'plugin-install-highlight')
+            } catch (evidenceError) {
+              console.error('Could not capture plugin highlight evidence:', evidenceError)
+            }
+          }
+          throw error
+        }
         // `enableInstalled` marks the card and starts the directory reload the
         // Host answers, so the highlight is observable before the reload
         // commits the enabled bundle into the list. Measured 61 ms between the
