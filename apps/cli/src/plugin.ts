@@ -61,9 +61,22 @@ async function versionCommand(profile: string, args: readonly string[]): Promise
  */
 export async function runPlugin(profile: string, args: readonly string[]): Promise<number> {
   let rollbackPackage: string | undefined
+  let rollbackExpected: { dependency: string | null; link: string | null } | undefined
   const packageArgs: string[] = []
   for (const argument of args) {
-    if (argument === '--rollback-package' || argument.startsWith('--rollback-package=')) {
+    if (argument === '--rollback-expected' || argument.startsWith('--rollback-expected=')) {
+      try {
+        const value: unknown = JSON.parse(argument.slice('--rollback-expected='.length))
+        if (rollbackExpected !== undefined || value === null || typeof value !== 'object' || Array.isArray(value)
+          || Object.keys(value).sort().join(',') !== 'dependency,link'
+          || !('dependency' in value) || !('link' in value)
+          || !validExpectedReference(value.dependency) || !validExpectedReference(value.link)) throw new Error('invalid snapshot')
+        rollbackExpected = { dependency: value.dependency, link: value.link }
+      } catch {
+        process.stderr.write('dsh: --rollback-expected requires one bounded dependency/link snapshot.\n')
+        return 1
+      }
+    } else if (argument === '--rollback-package' || argument.startsWith('--rollback-package=')) {
       const value = argument.slice('--rollback-package='.length)
       if (!value || rollbackPackage !== undefined) {
         process.stderr.write('dsh: supply --rollback-package=<package> exactly once for a managed link installation.\n')
@@ -71,6 +84,10 @@ export async function runPlugin(profile: string, args: readonly string[]): Promi
       }
       rollbackPackage = value
     } else packageArgs.push(argument)
+  }
+  if ((rollbackPackage === undefined) !== (rollbackExpected === undefined)) {
+    process.stderr.write('dsh: managed rollback requires both the package and its expected Profile snapshot.\n')
+    return 1
   }
   if (rollbackPackage !== undefined && packageArgs[0] !== 'add') {
     process.stderr.write('dsh: --rollback-package requires a managed add link: operation.\n')
@@ -83,11 +100,16 @@ export async function runPlugin(profile: string, args: readonly string[]): Promi
     for (const warning of readProfileCompatibility(dir).warnings) process.stderr.write(`dsh: warning: ${warning}\n`)
   }
   const result = await runPluginCommand({ profile, installAnchor: INSTALL_ANCHOR, cwd: process.cwd() }, packageArgs, {
-    execution: 'cli',
+    execution: rollbackPackage === undefined ? 'cli' : 'service',
     outputBytes: 16384,
     lockWaitMs: 120000,
     lookupTimeoutMs: 120000,
-    ...(rollbackPackage === undefined ? {} : { rollbackPackage }),
+    ...(rollbackPackage === undefined ? {} : {
+      rollbackPackage,
+      ...rollbackExpected === undefined ? {} : { rollbackExpected },
+      signal: AbortSignal.timeout(10 * 60 * 1000),
+      idleTimeoutMs: 120000,
+    }),
     onOutput: (text, stream) => { process[stream].write(text) },
   })
   if (result.exitCode === 127) process.stderr.write('dsh: pnpm was not found; install pnpm and make it available on PATH.\n')
@@ -99,4 +121,8 @@ export async function runPlugin(profile: string, args: readonly string[]): Promi
     process.stderr.write(`dsh: git-hosted plugins build on install via their prepare script, which pnpm blocks until allowed — add the exact key pnpm printed above under allowBuilds in ${join(resolveProfileDir(profile), 'pnpm-workspace.yaml')}, then re-run\n`)
   }
   return result.exitCode
+}
+
+function validExpectedReference(value: unknown): value is string | null {
+  return value === null || (typeof value === 'string' && value.length > 0 && Buffer.byteLength(value) <= 4096)
 }

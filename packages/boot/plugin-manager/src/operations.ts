@@ -44,6 +44,8 @@ export interface PackageOperationOptions {
   activateNewBundles?: boolean
   /** Restore a single application-owned linked package after a failed add; ordinary CLI runs retain pnpm's partial changes. */
   rollbackPackage?: string
+  /** Required with rollbackPackage: exact preflight dependency and readlink values, or null for absence, checked under the profile lock. */
+  rollbackExpected?: { dependency: string | null; link: string | null }
   lockWaitMs?: number
   /**
    * Terminate the run once its captured output has been silent for this long, in
@@ -332,6 +334,9 @@ export async function runProfilePnpm(
     await log.close()
     return { exitCode: 1, output: output.toString('utf8'), truncated, logPath, incompatible }
   }
+  if (options.rollbackPackage === undefined && options.rollbackExpected !== undefined) {
+    return rejected(['rollback-expected requires rollback-package'], 'nothing was installed')
+  }
   let protectedLink: { path: string; target?: string } | undefined
   if (options.rollbackPackage !== undefined) {
     try {
@@ -346,6 +351,13 @@ export async function runProfilePnpm(
         || readProfileManifest('dsh', target.slice('link:'.length)).name !== name.name) {
         throw new Error('rollback-package must match the linked package manifest name')
       }
+      const expected = options.rollbackExpected
+      if (typeof expected !== 'object' || expected === null || Array.isArray(expected)
+        || Object.keys(expected).length !== 2 || !Object.hasOwn(expected, 'dependency') || !Object.hasOwn(expected, 'link')
+        || ![expected.dependency, expected.link].every(value => value === null
+          || typeof value === 'string' && value.length > 0 && Buffer.byteLength(value) <= 4096)) {
+        throw new Error('rollback-expected requires exactly dependency and link, each a nonempty string up to 4096 bytes or null')
+      }
       const path = join(dir, 'node_modules', name.name)
       try {
         if (!lstatSync(path).isSymbolicLink()) throw new Error(`rollback-package cannot replace a real directory or file: ${name.name}`)
@@ -353,6 +365,14 @@ export async function runProfilePnpm(
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
         protectedLink = { path }
+      }
+      const hasDependency = Object.hasOwn(before.dependencies ?? {}, name.name)
+      const dependency = hasDependency ? before.dependencies?.[name.name] : null
+      if (hasDependency && typeof dependency !== 'string') {
+        throw new Error('the protected package has an invalid dependency value; inspect the profile before retrying')
+      }
+      if (dependency !== expected.dependency || (protectedLink.target ?? null) !== expected.link) {
+        throw new Error('the protected package changed after application preflight; inspect the profile and retry')
       }
     } catch (error) {
       return rejected([String(error)], 'nothing was installed')

@@ -123,8 +123,20 @@ async function fixture() {
   }
   const command = (args: string[], override: Partial<PackageOperationOptions> = {}) =>
     track(runPluginCommand(context, args, { ...options, ...override }))
+  const snapshot = (name: string): NonNullable<PackageOperationOptions['rollbackExpected']> => {
+    const manifest = readProfileManifest('test', dir)
+    let link: string | null = null
+    try { link = readlinkSync(join(dir, 'node_modules', name)) } catch (error) {
+      if (!['ENOENT', 'EINVAL'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error
+    }
+    return { dependency: manifest.dependencies?.[name] ?? null, link }
+  }
   const run = (root: string, override: Partial<PackageOperationOptions> = {}) =>
-    command(['add', `link:${root}`, '--offline'], override)
+    command(['add', `link:${root}`, '--offline'], {
+      ...override.rollbackPackage === undefined || Object.hasOwn(override, 'rollbackExpected') ? {}
+        : { rollbackExpected: snapshot(override.rollbackPackage) },
+      ...override,
+    })
   const prepare = (root: string) => track(runPluginCommand({ ...context, dir: root }, ['install', '--offline', '--ignore-scripts'], {
     ...options, activateNewBundles: false,
   }))
@@ -159,7 +171,7 @@ async function fixture() {
     }, release: () => { writeFileSync(release, '') } }
   }
   return {
-    home, dir, ctx, profile, patch, helper, peer, prepare, command, run, barrier, fork, drainManifest,
+    home, dir, ctx, profile, patch, helper, peer, prepare, command, run, barrier, fork, snapshot, drainManifest,
     manifestEvents: () => scheduled.mock.calls.length,
   }
 }
@@ -520,4 +532,142 @@ it('does not claim file recovery when a live process tree prevents compatibility
   expect(readFileSync(join(f.dir, 'package.json'), 'utf8')).not.toBe(manifest)
   expect(existsSync(join(f.dir, '.plugin-manager', 'run.json'))).toBe(true)
   expect(readFileSync(f.profile.patchPath, 'utf8')).toBe(f.patch)
+})
+
+
+it.each([
+  { dependency: '', link: null },
+  { dependency: null, link: '' },
+  { dependency: 'link:missing', link: null },
+  { dependency: null, link: './missing' },
+])('requires exact null absence in the expected snapshot %j', async (expected) => {
+  const f = await fixture()
+  const root = join(f.home, 'target')
+  mkdirSync(root)
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'activation-bundle', version: '1.0.0' }))
+  const invoked = join(f.home, 'pnpm-invoked')
+  const result = await f.run(root, {
+    rollbackPackage: 'activation-bundle', rollbackExpected: expected,
+    args: ['-e', `require('node:fs').writeFileSync(${JSON.stringify(invoked)}, '')`, '--'],
+  })
+  expect(result).toMatchObject({ exitCode: 1 })
+  expect(result.output).toContain(expected.dependency === '' || expected.link === ''
+    ? 'rollback-expected requires' : 'changed after application preflight')
+  expect(existsSync(invoked)).toBe(false)
+  expect(f.snapshot('activation-bundle')).toEqual({ dependency: null, link: null })
+})
+
+it.each([
+  '{"rollbackPackage":"activation-bundle"}',
+  '{"rollbackPackage":"activation-bundle","rollbackExpected":null}',
+  '{"rollbackPackage":"activation-bundle","rollbackExpected":[]}',
+  '{"rollbackPackage":"activation-bundle","rollbackExpected":{"dependency":null}}',
+  '{"rollbackPackage":"activation-bundle","rollbackExpected":{"dependency":null,"link":null,"extra":true}}',
+  '{"rollbackPackage":"activation-bundle","rollbackExpected":{"dependency":1,"link":null}}',
+  '{"rollbackPackage":"activation-bundle","rollbackExpected":{"dependency":null,"link":false}}',
+  '{"rollbackExpected":{"dependency":null,"link":null}}',
+  JSON.stringify({ rollbackPackage: 'activation-bundle', rollbackExpected: { dependency: 'x'.repeat(4097), link: null } }),
+  JSON.stringify({ rollbackPackage: 'activation-bundle', rollbackExpected: { dependency: null, link: '界'.repeat(1366) } }),
+])('rejects a malformed serialized rollback request %# before pnpm starts', async (serialized) => {
+  const f = await fixture()
+  const root = join(f.home, 'target')
+  mkdirSync(root)
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'activation-bundle', version: '1.0.0' }))
+  const invoked = join(f.home, 'pnpm-invoked')
+  const malformed: Partial<PackageOperationOptions> = JSON.parse(serialized)
+  const result = await f.command(['add', `link:${root}`], {
+    ...malformed, args: ['-e', `require('node:fs').writeFileSync(${JSON.stringify(invoked)}, '')`, '--'],
+  })
+  expect(result).toMatchObject({ exitCode: 1 })
+  expect(existsSync(invoked)).toBe(false)
+  expect(f.snapshot('activation-bundle')).toEqual({ dependency: null, link: null })
+})
+
+it('compares the raw link spelling even when a different spelling reaches the same directory', { timeout: 30_000 }, async () => {
+  const f = await fixture()
+  const first = await bundle(f)
+  expect(await f.run(first.root)).toMatchObject({ exitCode: 0 })
+  const expected = f.snapshot('activation-bundle')
+  const otherSpelling = expected.link === first.root ? `${first.root}/.` : first.root
+  const result = await f.run(first.root, {
+    rollbackPackage: 'activation-bundle', rollbackExpected: { ...expected, link: otherSpelling },
+  })
+  expect(result).toMatchObject({ exitCode: 1 })
+  expect(result.output).toContain('changed after application preflight')
+  expect(f.snapshot('activation-bundle')).toEqual(expected)
+})
+
+it('rejects a stale managed snapshot after another process commits a user link under the profile lock', { timeout: 30_000 }, async () => {
+  const f = await fixture()
+  const first = await bundle(f)
+  expect(await f.run(first.root)).toMatchObject({ exitCode: 0 })
+  await eventually(() => existsSync(first.marker), 'Initial bundle did not activate')
+  const expected = f.snapshot('activation-bundle')
+  const next = await bundle(f, '2.0.0')
+  const userRoot = join(f.home, 'user-package')
+  mkdirSync(userRoot)
+  writeFileSync(join(userRoot, 'package.json'), JSON.stringify({ name: 'activation-bundle', version: '3.0.0' }))
+  writeFileSync(join(userRoot, 'owned.txt'), 'keep this user package')
+  const acquired = join(f.home, 'snapshot-writer-acquired')
+  const release = join(f.home, 'snapshot-writer-release')
+  const invoked = join(f.home, 'pnpm-invoked')
+  const manifestPath = join(f.dir, 'package.json')
+  const linkPath = join(f.dir, 'node_modules', 'activation-bundle')
+  const lock = readFileSync(join(f.dir, 'pnpm-lock.yaml'), 'utf8')
+  const lockSource = new URL('../../../util/atomic-write/src/index.ts', import.meta.url).href
+  const writer = f.fork(`
+import { withFileLock } from ${JSON.stringify(lockSource)}
+import { existsSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { setTimeout as sleep } from 'node:timers/promises'
+await withFileLock(${JSON.stringify(manifestPath)}, async () => {
+  writeFileSync(${JSON.stringify(acquired)}, '')
+  while (!existsSync(${JSON.stringify(release)})) await sleep(10)
+  const manifest = JSON.parse(readFileSync(${JSON.stringify(manifestPath)}, 'utf8'))
+  manifest.dependencies['activation-bundle'] = ${JSON.stringify(`link:${userRoot}`)}
+  writeFileSync(${JSON.stringify(manifestPath)}, JSON.stringify(manifest))
+  unlinkSync(${JSON.stringify(linkPath)})
+  symlinkSync(${JSON.stringify(userRoot)}, ${JSON.stringify(linkPath)}, process.platform === 'win32' ? 'junction' : 'dir')
+})
+`)
+  await eventually(() => existsSync(acquired), 'Separate writer did not acquire the profile lock')
+  const update = f.run(next.root, {
+    rollbackPackage: 'activation-bundle', rollbackExpected: expected,
+    args: ['-e', `require('node:fs').writeFileSync(${JSON.stringify(invoked)}, '')`, '--'],
+  })
+  writeFileSync(release, '')
+  expect(await writer).toMatchObject({ exitCode: 0, timedOut: false })
+  const committedManifest = readFileSync(manifestPath, 'utf8')
+  const userLink = readlinkSync(linkPath)
+  const result = await update
+  expect(result).toMatchObject({ exitCode: 1 })
+  expect(result.output).toContain('changed after application preflight')
+  expect(existsSync(invoked)).toBe(false)
+  expect(readFileSync(manifestPath, 'utf8')).toBe(committedManifest)
+  expect(readFileSync(join(f.dir, 'pnpm-lock.yaml'), 'utf8')).toBe(lock)
+  expect(readlinkSync(linkPath)).toBe(userLink)
+  expect(realpathSync(linkPath)).toBe(userRoot)
+  expect(readFileSync(join(userRoot, 'owned.txt'), 'utf8')).toBe('keep this user package')
+  expect(readFileSync(f.profile.patchPath, 'utf8')).toBe(f.patch)
+})
+
+
+it('does not confuse a malformed persisted null dependency with absence', async () => {
+  const f = await fixture()
+  const root = join(f.home, 'target')
+  mkdirSync(root)
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'activation-bundle', version: '1.0.0' }))
+  const manifestPath = join(f.dir, 'package.json')
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, object>
+  manifest.dependencies = { 'activation-bundle': null }
+  const stored = JSON.stringify(manifest)
+  writeFileSync(manifestPath, stored)
+  const invoked = join(f.home, 'pnpm-invoked')
+  const result = await f.run(root, {
+    rollbackPackage: 'activation-bundle', rollbackExpected: { dependency: null, link: null },
+    args: ['-e', `require('node:fs').writeFileSync(${JSON.stringify(invoked)}, '')`, '--'],
+  })
+  expect(result).toMatchObject({ exitCode: 1 })
+  expect(result.output).toContain('invalid dependency value')
+  expect(existsSync(invoked)).toBe(false)
+  expect(readFileSync(manifestPath, 'utf8')).toBe(stored)
 })

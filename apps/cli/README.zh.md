@@ -36,7 +36,7 @@ dsh --help                          # the launcher's own help
 
 profile 目录包含一个 `package.json`，其中记录树外插件依赖，以及 profile manifest（元数据清单）`dsh.profile`、其中按顺序排列的 `bundles` 列表；还包含一个 `cordis.patch.yml`，其中保存用户自己的 patch 层。在 YAML 中启用的 `dsh-hmr` 监视 profile manifest、profile 与 home 级 patch 文件，再通过统一串行重载重新组合所有层。未启用 HMR 时，更改在重启后生效。监听器注册期间发生的编辑与后续编辑使用相同的非致命重载错误报告。[插件管理器](../../packages/boot/plugin-manager/README.zh.md) 与 `dsh plugin` 共享包操作和 profile 写锁；更新依赖会保留已停用的组合包选择。CLI 包操作继承认证环境和终端描述符，支持交互式构建批准；service 调用保留清理后的环境并捕获诊断。
 
-应用管理的链接安装可以在 `add link:<directory>` 时传入 `--rollback-package=<package>`。CLI 消费该选项，并交由[插件管理器](../../packages/boot/plugin-manager/README.zh.md)在 Profile 锁内恢复；包名必须与链接目标的 manifest 一致。包操作成功并不表示运行中的 Host 已挂载新版本。
+应用管理的链接安装可以在 `add link:<directory>` 时传入 `--rollback-package=<package>` 和 `--rollback-expected=<JSON>`。快照仅含 `dependency` 与 `link`，分别保留 manifest 字符串和符号链接原始目标，不存在时使用 `null`。Profile 所有者在写锁内比较两者；快照变化时在启动 pnpm 前拒绝。CLI 消费该选项，并交由[插件管理器](../../packages/boot/plugin-manager/README.zh.md)在 Profile 锁内恢复；包名必须与链接目标的 manifest 一致。管理的操作使用捕获的非交互输出和清理后的环境，十分钟后取消，连续两分钟无输出时停止，让操作所有者在取消后执行恢复。包操作成功并不表示运行中的 Host 已挂载新版本。
 
 安装和 profile 启动会按声明的 DSH peer 范围，检查与 `dsh --version` 显示值相同的运行时版本。不兼容插件需要用户明确确认精确版本豁免。[插件管理器的兼容性参考](../../packages/boot/plugin-manager/README.zh.md#version-compatibility-and-exemptions)说明 `version-exemptions`、`allow-version`、`revoke-version`、持久化规则与风险。
 

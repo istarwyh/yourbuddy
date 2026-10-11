@@ -106,14 +106,14 @@ it('forwards all other commands unchanged and retains package diagnostics', asyn
 it('passes a managed rollback package to the operation owner without forwarding its flag to pnpm', async () => {
   fixture()
   vi.mocked(runPluginCommand).mockResolvedValue({ exitCode: 0, output: '', truncated: false, logPath: '/profile/log' })
-  const args = ['--rollback-package=@example/plugin', 'add', 'link:/components/plugin']
+  const args = ['--rollback-package=@example/plugin', '--rollback-expected={"dependency":null,"link":null}', 'add', 'link:/components/plugin']
   expect(await runPlugin('test', args)).toBe(0)
   expect(runPluginCommand).toHaveBeenCalledWith(
     expect.objectContaining({ profile: 'test' }),
     ['add', 'link:/components/plugin'],
-    expect.objectContaining({ rollbackPackage: '@example/plugin' }),
+    expect.objectContaining({ rollbackPackage: '@example/plugin', execution: 'service', rollbackExpected: { dependency: null, link: null }, idleTimeoutMs: 120000, signal: expect.any(AbortSignal) }),
   )
-  expect(args).toEqual(['--rollback-package=@example/plugin', 'add', 'link:/components/plugin'])
+  expect(args).toEqual(['--rollback-package=@example/plugin', '--rollback-expected={"dependency":null,"link":null}', 'add', 'link:/components/plugin'])
 })
 
 it.each([
@@ -121,6 +121,10 @@ it.each([
   ['--rollback-package=', 'add', 'link:/components/plugin'],
   ['--rollback-package=plugin', '--rollback-package=plugin', 'add', 'link:/components/plugin'],
   ['--rollback-package=plugin', 'version-exemptions'],
+  ['--rollback-package=plugin', 'add', 'link:/component'],
+  ['--rollback-expected={"dependency":null,"link":null}', 'add', 'link:/component'],
+  ['--rollback-package=plugin', '--rollback-expected={"dependency":null}', 'add', 'link:/component'],
+  ['--rollback-package=plugin', '--rollback-expected={"dependency":"","link":null}', 'add', 'link:/component'],
 ])('refuses an invalid rollback option before changing a profile: %j', async (...args) => {
   const { dir, stderr } = fixture()
   expect(await runPlugin('test', args)).toBe(1)
