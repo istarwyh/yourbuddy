@@ -87,7 +87,11 @@ impl Server {
                 stream.write_all(&reply.body).unwrap();
                 stream.flush().unwrap();
                 if reply.stall {
-                    // The client read deadline closes the connection; no test-side sleep decides it.
+                    // The client deadline or terminated owner closes this connection. This outer
+                    // guard exceeds the cross-process fixture's 15-second observation deadline.
+                    stream
+                        .set_read_timeout(Some(Duration::from_secs(30)))
+                        .unwrap();
                     let _ = stream.read(&mut [0_u8; 1]);
                 }
             }
@@ -549,5 +553,137 @@ fn activation_without_current_prepared_harness_preserves_previous_record() {
     assert_eq!(
         fs::read(root.path().join("active.json")).unwrap(),
         b"previous activation"
+    );
+}
+
+/// Spawn only this fixture in an owned process; the ordinary suite has no child inputs.
+#[tokio::test]
+async fn resumed_download_child_fixture() {
+    let Some(root) = std::env::var_os("YOURBUDDY_RESUME_TEST_ROOT") else {
+        return;
+    };
+    let url = std::env::var("YOURBUDDY_RESUME_TEST_URL").unwrap();
+    let root = PathBuf::from(root);
+    let body = harness_archive();
+    let mut manager = manager(&root, &url, &body);
+    manager.client = Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(30))
+        .build()
+        .unwrap();
+    let destination = manager.ensure_startup().await.unwrap();
+    assert_eq!(
+        fs::read(destination.join("harness.txt")).unwrap(),
+        b"startup harness"
+    );
+    assert!(destination.join(".complete").is_file());
+}
+
+/// Own the child until its exit is observed, including when a parent assertion fails.
+struct DownloadChild(std::process::Child);
+
+impl DownloadChild {
+    fn spawn(root: &Path, url: &str) -> Self {
+        Self(
+            std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "runtime::components::download_tests::resumed_download_child_fixture",
+                    "--nocapture",
+                ])
+                .env("YOURBUDDY_RESUME_TEST_ROOT", root)
+                .env("YOURBUDDY_RESUME_TEST_URL", url)
+                .stdin(std::process::Stdio::null())
+                .spawn()
+                .unwrap(),
+        )
+    }
+
+    fn wait(&mut self) -> std::process::ExitStatus {
+        let deadline = Instant::now() + Duration::from_secs(20);
+        loop {
+            if let Some(status) = self.0.try_wait().unwrap() {
+                return status;
+            }
+            assert!(Instant::now() < deadline, "component child did not exit");
+            thread::sleep(Duration::from_millis(5));
+        }
+    }
+}
+
+impl Drop for DownloadChild {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+#[test]
+fn terminated_process_resumes_partial_and_reclaims_its_lock_in_a_new_process() {
+    let body = harness_archive();
+    let mut first = Reply::new(200, "\"v1\"", &body[..3]);
+    first.declared_bytes = body.len();
+    first.stall = true;
+    let server = Server::new(vec![first, Reply::new(206, "\"v1\"", &body[3..])]);
+    let root = tempfile::tempdir().unwrap();
+    let expected = manager(root.path(), &server.url, &body);
+    let spec = expected.spec("harness").unwrap();
+    let partial = root
+        .path()
+        .join("downloads")
+        .join(format!("{}.partial", spec.archive));
+    let active = root.path().join("active.json");
+    fs::write(&active, b"previous activation remains unchanged").unwrap();
+    let mut first = DownloadChild::spawn(root.path(), &server.url);
+    let deadline = Instant::now() + Duration::from_secs(15);
+    loop {
+        let bytes_saved = fs::metadata(&partial).is_ok_and(|value| value.len() == 3);
+        let metadata_saved = fs::read(partial.with_extension("partial.json"))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<PartialMetadata>(&bytes).ok())
+            .is_some_and(|value| value.etag.as_deref() == Some("\"v1\""));
+        if bytes_saved && metadata_saved {
+            break;
+        }
+        assert!(
+            first.0.try_wait().unwrap().is_none(),
+            "first child exited before interruption"
+        );
+        assert!(
+            Instant::now() < deadline,
+            "first child did not persist partial bytes and ETag"
+        );
+        thread::sleep(Duration::from_millis(5));
+    }
+    let lock = root.path().join("component.lock");
+    assert!(fs::read_to_string(&lock)
+        .unwrap()
+        .starts_with(&format!("{}:", first.0.id())));
+    first.0.kill().unwrap();
+    assert!(
+        !first.wait().success(),
+        "the interrupted child must not finish normally"
+    );
+    assert!(
+        lock.is_file(),
+        "termination must leave the real owner's stale lock"
+    );
+    assert_eq!(fs::read(&partial).unwrap(), body[..3]);
+    let mut second = DownloadChild::spawn(root.path(), &server.url);
+    assert!(
+        second.wait().success(),
+        "the replacement process must finish normally"
+    );
+    assert!(!lock.exists());
+    let requests = server.requests();
+    assert_eq!(requests.len(), 2);
+    assert!(!requests[0].contains("range:"));
+    assert!(requests[1].contains("range: bytes=3-\r\n"));
+    assert!(requests[1].contains("if-range: \"v1\"\r\n"));
+    assert_eq!(fs::read(&partial).unwrap(), body);
+    assert!(expected.installed("harness").unwrap().is_some());
+    assert_eq!(
+        fs::read(active).unwrap(),
+        b"previous activation remains unchanged"
     );
 }
