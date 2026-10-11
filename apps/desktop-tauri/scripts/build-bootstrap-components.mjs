@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { assertPreparedCapability, CAPABILITY_COMPONENTS } from './prepare-capability-components.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DEFAULT_OUTPUT = join(desktopRoot, 'component-release')
@@ -221,6 +222,13 @@ export function buildBootstrapComponents({ version, outputRoot = DEFAULT_OUTPUT,
   const { nodeVersion, pnpmVersion } = JSON.parse(readFileSync(join(toolchainRoot, 'manifest.json'), 'utf8'))
   const { integrationVersion } = JSON.parse(readFileSync(join(harborRoot, 'manifest.json'), 'utf8'))
 
+  const capabilities = CAPABILITY_COMPONENTS.map(definition => {
+    const root = join(bundledRoot, 'capabilities', definition.key)
+    const manifest = assertPreparedCapability(root)
+    if (manifest.name !== definition.packageName) throw new Error(`capability package mismatch: ${definition.key}`)
+    return { ...definition, root, version: manifest.version }
+  })
+
   rmSync(outputRoot, { recursive: true, force: true })
   mkdirSync(outputRoot, { recursive: true })
   const temporary = mkdtempSync(join(tmpdir(), 'yourbuddy-components-'))
@@ -259,6 +267,13 @@ export function buildBootstrapComponents({ version, outputRoot = DEFAULT_OUTPUT,
     writeFileSync(join(debugStage, 'README.txt'), 'Optional YourBuddy source maps and native diagnostics.\n')
     archiveTree(debugStage, debugArchive)
 
+    const capabilityComponents = Object.fromEntries(capabilities.map(({ key, root, version: packageVersion, purpose }) => {
+      const id = treeDigest(root, () => true)
+      const archive = join(outputRoot, `yourbuddy-${key}-${id}-darwin-arm64.tar.zst`)
+      return [key, component(`sha256:${id}`, archive, archiveTree(root, archive), 'capability-on-demand', packageVersion,
+        purpose, { harness: `sha256:${harnessId}` })]
+    }))
+
     const manifest = validateComponentManifest({
       schemaVersion: 2,
       appVersion: version,
@@ -274,6 +289,7 @@ export function buildBootstrapComponents({ version, outputRoot = DEFAULT_OUTPUT,
           'Managed Node.js fallback'),
         harbor: component(`sha256:${harborId}`, harborArchive, harbor, 'capability-on-demand', integrationVersion,
           'Harbor evaluation and evolution runtime', { harness: `sha256:${harnessId}` }),
+        ...capabilityComponents,
       },
     })
     const manifestPath = join(outputRoot, `yourbuddy-components-${version}.json`)

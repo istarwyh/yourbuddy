@@ -41,7 +41,7 @@ const tarVersion = childProcess.spawnSync('tar', ['--version'], { encoding: 'utf
 const gnuTar = tarVersion.stdout?.includes('GNU tar')
 const zstdAvailable = !gnuTar || childProcess.spawnSync('zstd', ['--version']).status === 0
 
-test('builds the four default components from bundled versions and archive bytes', {
+test('builds core, fallback and on-demand components from bundled versions and archive bytes', {
   skip: tarVersion.status !== 0 || !zstdAvailable ? 'tar with zstd support is required' : false,
 }, t => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-component-build-'))
@@ -53,6 +53,18 @@ test('builds the four default components from bundled versions and archive bytes
   const harborRoot = join(bundledRoot, 'yourbuddy-runtime')
   const nodeRoot = join(root, 'node-v22.19.0-darwin-arm64')
   const outputRoot = join(root, 'output')
+  const pomodoroRoot = join(bundledRoot, 'capabilities', 'pomodoro')
+  mkdirSync(join(pomodoroRoot, 'lib'), { recursive: true })
+  mkdirSync(join(pomodoroRoot, 'node_modules', '@deepseek-ai', 'schemastery'), { recursive: true })
+  writeFileSync(join(pomodoroRoot, 'package.json'), JSON.stringify({
+    name: '@xiaohui-wang/dsh-pomodoro', version: '0.5.5', main: 'lib/index.js',
+    dsh: { bundle: { patch: './cordis.patch.yml' } },
+    dependencies: { '@deepseek-ai/schemastery': '^3.18.4' },
+  }))
+  writeFileSync(join(pomodoroRoot, 'lib', 'index.js'), 'export {}\n')
+  writeFileSync(join(pomodoroRoot, 'lib', 'client.js'), 'export {}\n')
+  writeFileSync(join(pomodoroRoot, 'cordis.patch.yml'), '- insert: []\n')
+  writeFileSync(join(pomodoroRoot, 'node_modules', '@deepseek-ai', 'schemastery', 'package.json'), JSON.stringify({ name: '@deepseek-ai/schemastery', version: '3.18.4' }))
   for (const path of [storeRoot, toolchainRoot, harborRoot, join(nodeRoot, 'bin')]) mkdirSync(path, { recursive: true })
   writeFileSync(join(harnessRoot, '.bundle-manifest.json'), JSON.stringify({ harnessVersion: '0.2.0-rc.7' }))
   writeFileSync(join(harnessRoot, 'entry.mjs'), 'export {}\n')
@@ -87,15 +99,15 @@ test('builds the four default components from bundled versions and archive bytes
   const { manifest, manifestPath } = buildBootstrapComponents({ version: '0.4.9', outputRoot, bundledRoot })
   assert.deepEqual(JSON.parse(readFileSync(manifestPath, 'utf8')), manifest)
   assert.equal(manifest.schemaVersion, 2)
-  assert.deepEqual(Object.keys(manifest.components), ['harness', 'pnpmStore', 'node', 'harbor'])
+  assert.deepEqual(Object.keys(manifest.components), ['harness', 'pnpmStore', 'node', 'harbor', 'pomodoro'])
   assert.deepEqual(Object.values(manifest.components).map(({ kind }) => kind), [
-    'core-runtime', 'runtime-fallback', 'runtime-fallback', 'capability-on-demand',
+    'core-runtime', 'runtime-fallback', 'runtime-fallback', 'capability-on-demand', 'capability-on-demand',
   ])
   assert.deepEqual(Object.values(manifest.components).map(({ version }) => version), [
-    '0.2.0-rc.7', '11.7.1', '22.19.0', '0.4.2',
+    '0.2.0-rc.7', '11.7.1', '22.19.0', '0.4.2', '0.5.5',
   ])
   assert.deepEqual(Object.values(manifest.components).map(({ dependsOn }) => dependsOn), [
-    {}, {}, {}, { harness: manifest.components.harness.id },
+    {}, {}, {}, { harness: manifest.components.harness.id }, { harness: manifest.components.harness.id },
   ])
   for (const component of Object.values(manifest.components)) {
     const archive = join(outputRoot, component.archive)
@@ -103,6 +115,12 @@ test('builds the four default components from bundled versions and archive bytes
     assert.equal(component.sha256, createHash('sha256').update(readFileSync(archive)).digest('hex'))
     assert.equal(Object.hasOwn(component, 'activation'), false)
   }
+  const extracted = join(root, 'extracted-pomodoro')
+  mkdirSync(extracted)
+  const unpacked = childProcess.spawnSync('tar', ['-xf', join(outputRoot, manifest.components.pomodoro.archive), '-C', extracted])
+  assert.equal(unpacked.status, 0, unpacked.stderr?.toString())
+  assert.equal(JSON.parse(readFileSync(join(extracted, 'package.json'))).name, '@xiaohui-wang/dsh-pomodoro')
+  assert.equal(JSON.parse(readFileSync(join(extracted, 'node_modules', '@deepseek-ai', 'schemastery', 'package.json'))).version, '3.18.4')
   const harnessListing = childProcess.spawnSync('tar', ['-tf', join(outputRoot, manifest.components.harness.archive)], { encoding: 'utf8' })
   assert.equal(harnessListing.status, 0, harnessListing.stderr)
   assert.match(harnessListing.stdout, /entry\.mjs/)
