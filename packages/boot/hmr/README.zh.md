@@ -56,6 +56,8 @@ Chokidar 选项（包括轮询）保持原有含义。精确配置监听同时�
 
 `watchConfig()` 注册会被等待的配置处理器。`runExclusive()` 将配置变更、Loader 更新与自动重载串行化，并拒绝嵌套事务。包安装和删除在该队列之外执行。HMR 不获取包操作写锁；manifest 通知仅在有序的 `dsh.profile.bundles` 列表变化时触发重载。profile 与 home patch 变化也会触发重新组合。配置事务期间收到的文件事件在事务结束后处理。 Include 刷新和 profile 重载都通过普通的 Loader 条目更新到达插件；仅 volatile 变化由 Loader 就地提交。
 
+重新组合 profile 条目前，HMR 会通过启动器提供的 `pluginPackages` 服务（如存在）发布当前包解析结果。新增链接包可导入安装目录提供的 peer 依赖，不会创建重复实例。不兼容的解析变更（包括已出现的包名链接到不同根目录）需要重启进程，并保持运行中的组合不变。无效 patch 输入会在解析结果变更前被拒绝；插件激活失败仍显示为未激活条目。
+
 App-boot 负责 profile 解析和 patch 优先级规则。HMR 读取启动器提供的纯数据 `profileContext`，在初始化时注册 profile manifest 和两份用户 patch 的监听，并等待应用就绪后处理更改。销毁 HMR 时会关闭监听器并取消等待启动的重载。HMR 也负责模块缓存替换和重载调度。配置监听器在当前事务上下文之外启动，使后续通知可以进入队列。不发布 invariant 伴生入口，因为队列和监听注册没有独立的持久投影。
 
 被监听模块的路径沿用 Node ESM 解析所用的 `realpathSync()` 表示，包括 Windows 短目录名，使文件事件与模块缓存匹配。
