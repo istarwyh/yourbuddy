@@ -274,30 +274,20 @@ pub async fn ensure_runtime(
     } else {
         None
     };
-    let mut install_result = pnpm_install_harness(
-        &node_binary,
-        &pnpm_binary,
-        &harness_root,
-        initial_store.as_deref(),
-        &network_proxy,
-    );
-    if install_result.is_err() {
-        if let Some(manager) = components.as_ref() {
-            preserve_bootstrap_directory(
-                &harness_root,
-                "node_modules",
-                ".bootstrap-dependencies-",
-            )?;
-            let store = manager.ensure("pnpmStore").await?;
-            install_result = pnpm_install_harness(
-                &node_binary,
-                &pnpm_binary,
-                &harness_root,
-                Some(&store),
-                &network_proxy,
-            );
-        }
-    }
+    let install = |store: Option<&Path>| {
+        pnpm_install_harness(
+            &node_binary,
+            &pnpm_binary,
+            &harness_root,
+            store,
+            &network_proxy,
+        )
+    };
+    let install_result = if let Some(manager) = components.as_ref() {
+        install_with_store_fallback(&harness_root, install, || manager.ensure("pnpmStore")).await
+    } else {
+        install(initial_store.as_deref()).map_err(|error| error.to_string())
+    };
     finish_harness_install(install_result, &harness_root, components.is_some())?;
     if components.is_none() {
         cleanup_offline_pnpm_store(&harness_root);
@@ -1105,13 +1095,14 @@ fn wait_status_with_timeout(
     label: &str,
 ) -> Result<std::process::ExitStatus, String> {
     let mut child = cmd.spawn().map_err(|e| format!("{label} 启动失败: {e}"))?;
-    wait_child_with_timeout(&mut child, timeout, label)
+    wait_child_with_timeout(&mut child, timeout, label, false)
 }
 
 fn wait_child_with_timeout(
     child: &mut std::process::Child,
     timeout: Duration,
     label: &str,
+    terminate_tree: bool,
 ) -> Result<std::process::ExitStatus, String> {
     let deadline = Instant::now() + timeout;
     loop {
@@ -1119,6 +1110,9 @@ fn wait_child_with_timeout(
             return Ok(status);
         }
         if Instant::now() >= deadline {
+            if terminate_tree {
+                super::process::kill_process_tree(child.id());
+            }
             let _ = child.kill();
             let _ = child.wait();
             return Err(format!(
@@ -1256,6 +1250,7 @@ fn configure_pnpm_install(
         .arg("--frozen-lockfile")
         .arg("--offline")
         .arg("--trust-lockfile")
+        .arg("--reporter=ndjson")
         .current_dir(harness_root)
         .env_remove("CI")
         .stdout(Stdio::piped())
@@ -1334,13 +1329,107 @@ pub(crate) fn pnpm_js_entry(pnpm_binary: &Path) -> Option<PathBuf> {
     None
 }
 
+/// Only a fatal cache-content miss from the pinned pnpm process permits Store activation.
+#[derive(Debug)]
+enum PnpmInstallError {
+    Process(String),
+    Exit {
+        status: std::process::ExitStatus,
+        code: Option<String>,
+    },
+}
+
+impl PnpmInstallError {
+    fn missing_offline_content(&self) -> bool {
+        matches!(self, Self::Exit { code: Some(code), .. }
+            if matches!(code.as_str(), "ERR_PNPM_NO_OFFLINE_TARBALL" | "ERR_PNPM_NO_OFFLINE_META"))
+    }
+}
+
+impl std::fmt::Display for PnpmInstallError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Process(message) => write!(formatter, "{message}; {}", i18n::t(Msg::PnpmRetry)),
+            Self::Exit { status, code } => {
+                let hint = match code.as_deref() {
+                    Some("EACCES" | "EPERM" | "ERR_PNPM_EACCES" | "ERR_PNPM_EPERM") => {
+                        Msg::PnpmPermission
+                    }
+                    Some("ENOSPC" | "ERR_PNPM_ENOSPC") => Msg::PnpmDiskSpace,
+                    Some("ELIFECYCLE" | "ERR_PNPM_ELIFECYCLE") => Msg::PnpmLifecycle,
+                    Some(
+                        "ERR_PNPM_NO_LOCKFILE"
+                        | "ERR_PNPM_OUTDATED_LOCKFILE"
+                        | "ERR_PNPM_LOCKFILE_BREAKING_CHANGE"
+                        | "ERR_PNPM_LOCKFILE_CONFIG_MISMATCH",
+                    ) => Msg::PnpmLockfile,
+                    _ => Msg::PnpmRetry,
+                };
+                write!(
+                    formatter,
+                    "pnpm install (exit {status}; {}): {}",
+                    code.as_deref().unwrap_or("unknown"),
+                    i18n::t(hint)
+                )
+            }
+        }
+    }
+}
+
+/// pnpm 11.7 emits its terminal error on stdout through the root `pnpm` logger.
+/// Lifecycle output and progress records are not installation outcomes. Keep only
+/// the code: raw records can contain registry credentials, script output, and URLs.
+fn pnpm_terminal_error_code(stdout: &str, pid: u32) -> Option<String> {
+    let terminal = stdout.lines().rev().find(|line| !line.trim().is_empty())?;
+    let record: serde_json::Value = serde_json::from_str(terminal).ok()?;
+    if record["level"] != "error"
+        || record["name"] != "pnpm"
+        || record["pid"].as_u64() != Some(u64::from(pid))
+    {
+        return None;
+    }
+    let code = record["code"].as_str()?;
+    if record["err"]["code"].as_str() != Some(code)
+        || record["err"]["name"] != "pnpm"
+        || code.is_empty()
+        || code.len() > 100
+        || !code
+            .bytes()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
+    {
+        return None;
+    }
+    Some(code.to_string())
+}
+
+async fn install_with_store_fallback<F>(
+    harness_root: &Path,
+    mut install: impl FnMut(Option<&Path>) -> Result<(), PnpmInstallError>,
+    ensure_store: impl FnOnce() -> F,
+) -> Result<(), String>
+where
+    F: std::future::Future<Output = Result<PathBuf, String>>,
+{
+    match install(None) {
+        Ok(()) => return Ok(()),
+        Err(error) if error.missing_offline_content() => {
+            boot_log::info(&format!("user pnpm Store content missing: {error}"));
+        }
+        Err(error) => return Err(error.to_string()),
+    }
+    preserve_bootstrap_directory(harness_root, "node_modules", ".bootstrap-dependencies-")?;
+    let store = ensure_store().await?;
+    install(Some(&store))
+        .map_err(|error| format!("{}: {error}", i18n::t(Msg::PnpmStoreRetryFailed)))
+}
+
 fn pnpm_install_harness(
     node_binary: &Path,
     pnpm_binary: &Path,
     harness_root: &Path,
     store: Option<&Path>,
     network_proxy: &ResolvedNetworkProxy,
-) -> Result<(), String> {
+) -> Result<(), PnpmInstallError> {
     let mut cmd = if let Some(entry) = pnpm_js_entry(pnpm_binary) {
         let mut cmd = Command::new(node_binary);
         cmd.arg(entry);
@@ -1348,29 +1437,41 @@ fn pnpm_install_harness(
     } else if pnpm_binary_usable(pnpm_binary) {
         Command::new(pnpm_binary)
     } else {
-        return Err(format!("pnpm entry is missing: {}", pnpm_binary.display()));
+        return Err(PnpmInstallError::Process(format!(
+            "pnpm entry is missing: {}",
+            pnpm_binary.display()
+        )));
     };
-    configure_pnpm_install(&mut cmd, node_binary, harness_root, store)?;
+    configure_pnpm_install(&mut cmd, node_binary, harness_root, store)
+        .map_err(PnpmInstallError::Process)?;
     apply_to_command(&mut cmd, network_proxy);
+    run_pnpm_install(&mut cmd, PNPM_HARNESS_INSTALL_TIMEOUT)
+}
 
+fn run_pnpm_install(cmd: &mut Command, timeout: Duration) -> Result<(), PnpmInstallError> {
+    super::process::isolate_host_group(cmd);
     let mut child = cmd
         .spawn()
-        .map_err(|e| format!("pnpm install 启动失败: {e}"))?;
-    // Drain the pipes on dedicated threads: a chatty install would otherwise
-    // fill the OS pipe buffer and block the child before a deadline can fire.
+        .map_err(|error| PnpmInstallError::Process(format!("pnpm install 启动失败: {error}")))?;
+    let pid = child.id();
+    // Drain both pipes while pnpm runs so verbose NDJSON cannot block the process.
     let stdout_handle = spawn_pipe_reader(child.stdout.take());
     let stderr_handle = spawn_pipe_reader(child.stderr.take());
-    let status = wait_child_with_timeout(&mut child, PNPM_HARNESS_INSTALL_TIMEOUT, "pnpm install")?;
-    let stdout = stdout_handle.join().unwrap_or_default();
-    let stderr = stderr_handle.join().unwrap_or_default();
-
-    if !status.success() {
-        return Err(format!(
-            "pnpm install 失败 (exit {})\nstdout:\n{stdout}\nstderr:\n{stderr}",
-            status
-        ));
+    let status = wait_child_with_timeout(&mut child, timeout, "pnpm install", true);
+    if status.is_err() {
+        super::process::kill_process_tree(pid);
+        let _ = child.kill();
+        let _ = child.wait();
     }
-
+    let stdout = stdout_handle.join().unwrap_or_default();
+    let _stderr = stderr_handle.join();
+    let status = status.map_err(PnpmInstallError::Process)?;
+    if !status.success() {
+        return Err(PnpmInstallError::Exit {
+            status,
+            code: pnpm_terminal_error_code(&stdout, pid),
+        });
+    }
     Ok(())
 }
 
@@ -1441,8 +1542,9 @@ mod tests {
                 "--trust-lockfile",
             ]
         );
-        assert_eq!(args[6], "--store-dir");
-        assert_eq!(Path::new(&args[7]), dir.join(".yourbuddy-pnpm-store"));
+        assert_eq!(args[6], "--reporter=ndjson");
+        assert_eq!(args[7], "--store-dir");
+        assert_eq!(Path::new(&args[8]), dir.join(".yourbuddy-pnpm-store"));
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -1681,3 +1783,7 @@ mod tests {
 #[cfg(test)]
 #[path = "provision_bootstrap_tests.rs"]
 mod bootstrap_tests;
+
+#[cfg(test)]
+#[path = "provision_pnpm_tests.rs"]
+mod pnpm_tests;
