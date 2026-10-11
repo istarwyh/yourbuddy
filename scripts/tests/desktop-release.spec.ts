@@ -250,7 +250,7 @@ describe('YourBuddy first publication', () => {
     })
   })
 
-  it('reads the verifier from the workflow commit while leaving tagged application source unchanged', () => {
+  it.each([false, true])('reads the workflow verifier without changing tagged source (autocrlf=%s)', (autocrlf) => {
     const fixture = mkdtempSync(join(tmpdir(), 'yourbuddy-verifier-source-'))
     try {
       const repo = join(fixture, 'repo')
@@ -268,6 +268,7 @@ describe('YourBuddy first publication', () => {
         return result.stdout.trim()
       }
       git('init')
+      git('config', 'core.autocrlf', String(autocrlf))
       writeFileSync(join(repo, path), 'console.log("tag verifier")\n')
       git('add', '.')
       git('commit', '-m', 'tagged source')
@@ -276,6 +277,8 @@ describe('YourBuddy first publication', () => {
       git('commit', '-am', 'updated verifier')
       const workflowSha = git('rev-parse', 'HEAD')
       git('checkout', '--detach', taggedSha)
+      const taggedSource = readFileSync(join(repo, path))
+      expect(taggedSource.toString('utf8')).toBe(`console.log("tag verifier")${autocrlf ? '\r\n' : '\n'}`)
       const extracted = join(fixture, 'yourbuddy-native-smoke.mjs')
       writeFileSync(extracted, git('show', `${workflowSha}:${path}`))
       const result = spawnSync(process.execPath, [extracted], { encoding: 'utf8' })
@@ -283,7 +286,7 @@ describe('YourBuddy first publication', () => {
       expect(result.status).toBe(0)
       expect(result.stdout.trim()).toBe('workflow verifier')
       expect(git('rev-parse', 'HEAD')).toBe(taggedSha)
-      expect(readFileSync(join(repo, path), 'utf8')).toBe('console.log("tag verifier")\n')
+      expect(readFileSync(join(repo, path))).toEqual(taggedSource)
       expect(git('status', '--porcelain')).toBe('')
     }
     finally { rmSync(fixture, { recursive: true, force: true }) }
