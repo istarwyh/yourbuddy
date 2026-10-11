@@ -1,6 +1,7 @@
 pub mod boot_log;
 pub mod boot_status;
 pub mod config;
+pub mod component_metrics;
 pub mod components;
 pub mod env_path;
 pub mod host_env;
