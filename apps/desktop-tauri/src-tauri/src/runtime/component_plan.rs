@@ -1,6 +1,7 @@
 //! Exact current-release component contracts and side-effect-free installation planning.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -298,6 +299,21 @@ pub(super) fn component_key(id: &str) -> Result<&str, String> {
         return Err(format!("component id is invalid: {id}"));
     }
     Ok(key)
+}
+
+/// Resolve the shared cache identity used by preparation and component leases.
+/// This is relative to the application-owned component cache, never a caller path.
+pub(crate) fn component_storage_path(name: &str, id: &str) -> Result<PathBuf, String> {
+    validate_component_name(name)?;
+    let key = component_key(id)?;
+    let family = match name {
+        "harness" => "harness",
+        "pnpmStore" => "stores",
+        "node" => "node",
+        "harbor" => "harbor",
+        _ => return Ok(PathBuf::from("packs").join(name).join(key)),
+    };
+    Ok(PathBuf::from(family).join(key))
 }
 
 fn checked_archive_sum(total: u64, bytes: u64) -> Result<u64, String> {

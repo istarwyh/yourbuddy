@@ -33,7 +33,7 @@ const MAX_EXPANDED_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 #[cfg(test)]
 use super::component_plan::validate_manifest;
 use super::component_plan::{
-    component_key, parse_manifest, plan_installation, validate_component_name, validate_spec,
+    component_key, component_storage_path, parse_manifest, plan_installation, validate_spec,
     InstallPlan, PlanRequest, VerifiedInstallations,
 };
 pub use super::component_plan::{ComponentManifest, ComponentSpec};
@@ -630,17 +630,7 @@ pub fn verify_component_channel(resource_dir: &Path) -> Result<ComponentManifest
 }
 
 fn component_path(root: &Path, name: &str, id: &str) -> Result<PathBuf, String> {
-    let family = match name {
-        "harness" => "harness",
-        "pnpmStore" => "stores",
-        "node" => "node",
-        "harbor" => "harbor",
-        _ => {
-            validate_component_name(name)?;
-            return Ok(root.join("packs").join(name).join(component_key(id)?));
-        }
-    };
-    Ok(root.join(family).join(component_key(id)?))
+    Ok(root.join(component_storage_path(name, id)?))
 }
 
 fn asset_url(manifest: &ComponentManifest, spec: &ComponentSpec) -> Result<String, String> {

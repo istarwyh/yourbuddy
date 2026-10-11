@@ -5,6 +5,27 @@ fn manifest() -> ComponentManifest {
 }
 
 #[test]
+fn preparation_and_leases_share_storage_aliases_and_safe_relative_paths() {
+    for (name, family) in [
+        ("harness", "harness"),
+        ("pnpmStore", "stores"),
+        ("node", "node"),
+        ("harbor", "harbor"),
+        ("pomodoro", "packs/pomodoro"),
+    ] {
+        for id in ["abc", "sha256:abc", "node:abc"] {
+            assert_eq!(
+                component_storage_path(name, id).unwrap(),
+                PathBuf::from(family).join("abc")
+            );
+        }
+    }
+    assert!(component_storage_path("../pomodoro", "abc").is_err());
+    assert!(component_storage_path("pomodoro", "sha256:..").is_err());
+    assert!(component_storage_path("pomodoro", "../abc").is_err());
+}
+
+#[test]
 fn release_producer_and_native_reader_share_positive_and_negative_contract_cases() {
     let corpus: serde_json::Value = serde_json::from_slice(include_bytes!(
         "tests/fixtures/component-manifest-v2-cases.json"
