@@ -99,7 +99,10 @@ jobs:
 
       - name: Check native acceptance prerequisites
         if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
-        run: node apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs --preflight
+        run: |
+          git show "${GITHUB_WORKFLOW_SHA:?}:apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs" > "$RUNNER_TEMP/yourbuddy-native-smoke.mjs"
+          echo "Native acceptance runner: $GITHUB_WORKFLOW_SHA; application source: $(git rev-parse HEAD)"
+          node "$RUNNER_TEMP/yourbuddy-native-smoke.mjs" --preflight
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -227,7 +230,7 @@ jobs:
 
       - name: Verify native Offline installation and cold starts
         if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
-        run: node apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs "$RUNNER_TEMP/offline-updater-resources/YourBuddy.app/Contents/MacOS/yourbuddy" "$RUNNER_TEMP/offline-startup-smoke" "${RELEASE_TAG#yourbuddy-v}"
+        run: node "$RUNNER_TEMP/yourbuddy-native-smoke.mjs" "$RUNNER_TEMP/offline-updater-resources/YourBuddy.app/Contents/MacOS/yourbuddy" "$RUNNER_TEMP/offline-startup-smoke" "${RELEASE_TAG#yourbuddy-v}"
 
       - name: Test relocated YourBuddy product runtime
         run: |
