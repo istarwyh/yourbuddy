@@ -38,6 +38,12 @@
     "test:bootstrap": "node --test scripts/splash-state.test.mjs"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-api-session-controller": "workspace:*",
+    "@deepseek-ai/dsh-client-test-runtime": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-conversation": "workspace:*",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-subagent": "workspace:*",
     "@tauri-apps/cli": "^2.9.6",
     "cross-env": "^7.0.3",
     "playwright": "^1.49.0",
