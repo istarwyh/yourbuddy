@@ -60,17 +60,34 @@ async function versionCommand(profile: string, args: readonly string[]): Promise
  * @returns Zero on success; nonzero on invalid approval or package-manager failure.
  */
 export async function runPlugin(profile: string, args: readonly string[]): Promise<number> {
-  const versionResult = await versionCommand(profile, args)
+  let rollbackPackage: string | undefined
+  const packageArgs: string[] = []
+  for (const argument of args) {
+    if (argument === '--rollback-package' || argument.startsWith('--rollback-package=')) {
+      const value = argument.slice('--rollback-package='.length)
+      if (!value || rollbackPackage !== undefined) {
+        process.stderr.write('dsh: supply --rollback-package=<package> exactly once for a managed link installation.\n')
+        return 1
+      }
+      rollbackPackage = value
+    } else packageArgs.push(argument)
+  }
+  if (rollbackPackage !== undefined && packageArgs[0] !== 'add') {
+    process.stderr.write('dsh: --rollback-package requires a managed add link: operation.\n')
+    return 1
+  }
+  const versionResult = await versionCommand(profile, packageArgs)
   if (versionResult !== undefined) return versionResult
   const dir = resolveProfileDir(profile)
   if (existsSync(join(dir, 'package.json'))) {
     for (const warning of readProfileCompatibility(dir).warnings) process.stderr.write(`dsh: warning: ${warning}\n`)
   }
-  const result = await runPluginCommand({ profile, installAnchor: INSTALL_ANCHOR, cwd: process.cwd() }, args, {
+  const result = await runPluginCommand({ profile, installAnchor: INSTALL_ANCHOR, cwd: process.cwd() }, packageArgs, {
     execution: 'cli',
     outputBytes: 16384,
     lockWaitMs: 120000,
     lookupTimeoutMs: 120000,
+    ...(rollbackPackage === undefined ? {} : { rollbackPackage }),
     onOutput: (text, stream) => { process[stream].write(text) },
   })
   if (result.exitCode === 127) process.stderr.write('dsh: pnpm was not found; install pnpm and make it available on PATH.\n')

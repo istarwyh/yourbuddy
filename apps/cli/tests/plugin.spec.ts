@@ -1,4 +1,4 @@
-/** Explicit CLI exemptions use the profile lock and never become pnpm arguments. */
+/** CLI exemptions and managed rollback options never become pnpm arguments. */
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -101,4 +101,30 @@ it('forwards all other commands unchanged and retains package diagnostics', asyn
   expect(await runPlugin('test', args)).toBe(127)
   expect(runPluginCommand).toHaveBeenCalledWith(expect.objectContaining({ profile: 'test' }), args, expect.objectContaining({ execution: 'cli' }))
   expect(stderr.mock.calls.map(call => call[0]).join('')).toContain('pnpm was not found')
+})
+
+it('passes a managed rollback package to the operation owner without forwarding its flag to pnpm', async () => {
+  fixture()
+  vi.mocked(runPluginCommand).mockResolvedValue({ exitCode: 0, output: '', truncated: false, logPath: '/profile/log' })
+  const args = ['--rollback-package=@example/plugin', 'add', 'link:/components/plugin']
+  expect(await runPlugin('test', args)).toBe(0)
+  expect(runPluginCommand).toHaveBeenCalledWith(
+    expect.objectContaining({ profile: 'test' }),
+    ['add', 'link:/components/plugin'],
+    expect.objectContaining({ rollbackPackage: '@example/plugin' }),
+  )
+  expect(args).toEqual(['--rollback-package=@example/plugin', 'add', 'link:/components/plugin'])
+})
+
+it.each([
+  ['--rollback-package', 'add', 'link:/components/plugin'],
+  ['--rollback-package=', 'add', 'link:/components/plugin'],
+  ['--rollback-package=plugin', '--rollback-package=plugin', 'add', 'link:/components/plugin'],
+  ['--rollback-package=plugin', 'version-exemptions'],
+])('refuses an invalid rollback option before changing a profile: %j', async (...args) => {
+  const { dir, stderr } = fixture()
+  expect(await runPlugin('test', args)).toBe(1)
+  expect(stderr).toHaveBeenCalled()
+  expect(runPluginCommand).not.toHaveBeenCalled()
+  expect(existsSync(join(dir, 'package.json'))).toBe(false)
 })

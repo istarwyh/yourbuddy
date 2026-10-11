@@ -127,6 +127,8 @@ describe('parseDshArgs', () => {
   })
 
   it('routes the plugin pnpm forwarder', () => {
+    expect(parse(['plugin', '--profile', 'web', '--rollback-package=plugin', 'add', 'link:/components/plugin']))
+      .toEqual({ mode: 'plugin', profile: 'web', args: ['--rollback-package=plugin', 'add', 'link:/components/plugin'] })
     expect(parse(['plugin', '--profile', 'tui', 'add', 'turtle-ui']))
       .toEqual({ mode: 'plugin', profile: 'tui', args: ['add', 'turtle-ui'] })
     expect(parse(['plugin', '--profile', 'tui', 'remove', 'turtle-ui']))
