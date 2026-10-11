@@ -672,7 +672,7 @@ pub(crate) fn read_bundle_hash(bundled: &Path) -> Result<String, String> {
         .ok_or_else(|| format!("invalid bundle manifest: {}", manifest.display()))
 }
 
-fn harness_root_for_bundle(app_root: &Path, bundle_hash: &str) -> PathBuf {
+pub(crate) fn harness_root_for_bundle(app_root: &Path, bundle_hash: &str) -> PathBuf {
     let directory = bundle_hash.get(..16).unwrap_or(bundle_hash);
     app_root.join(HARNESS_VERSIONS_DIR).join(directory)
 }
