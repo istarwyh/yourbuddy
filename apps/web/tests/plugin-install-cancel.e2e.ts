@@ -87,13 +87,17 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
       `)
       const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: ZH_BROWSER_LOCALE })
       const evidenceDir = process.env.DSH_PLUGIN_HIGHLIGHT_EVIDENCE
-      const rpc: { event: 'request' | 'response'; endpoint: string; elapsedMs: number; status?: number }[] = []
+      const rpc: { event: 'request' | 'response' | 'failed' | 'unroute-start' | 'unroute-end'; endpoint: string; elapsedMs: number; status?: number }[] = []
       const startedAt = performance.now()
       if (evidenceDir !== undefined) {
         await mkdir(evidenceDir, { recursive: true })
         page.on('request', (request) => {
           const endpoint = new URL(request.url()).pathname
           if (/\/api\/(pluginManager|pluginInventory)\//.test(endpoint)) rpc.push({ event: 'request', endpoint, elapsedMs: performance.now() - startedAt })
+        })
+        page.on('requestfailed', (request) => {
+          const endpoint = new URL(request.url()).pathname
+          if (/\/api\/(pluginManager|pluginInventory)\//.test(endpoint)) rpc.push({ event: 'failed', endpoint, elapsedMs: performance.now() - startedAt })
         })
         page.on('response', (response) => {
           const endpoint = new URL(response.url()).pathname
@@ -170,7 +174,9 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
       await page.getByText('已取消安装，插件未启用，下载的文件可能保留', { exact: true }).waitFor()
       expect(await readFile(manifestPath, 'utf8')).toBe(manifest)
       expect(await readFile(lockPath, 'utf8')).toBe('original lockfile\n')
+      rpc.push({ event: 'unroute-start', endpoint: '', elapsedMs: performance.now() - startedAt })
       await page.unrouteAll({ behavior: 'wait' })
+      rpc.push({ event: 'unroute-end', endpoint: '', elapsedMs: performance.now() - startedAt })
       // Drop the browser's response while the real Host still owns the child process.
       const activeReplySettled = Promise.withResolvers<undefined>()
       await page.route('**/api/pluginManager/installBundle', async (route) => {
@@ -200,7 +206,9 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
       expect(await readFile(lockPath, 'utf8')).toBe('original lockfile\n')
       expect(await dialog.getByRole('textbox').inputValue()).toBe('slow-package')
       await activeReplySettled.promise
+      rpc.push({ event: 'unroute-start', endpoint: '', elapsedMs: performance.now() - startedAt })
       await page.unrouteAll({ behavior: 'wait' })
+      rpc.push({ event: 'unroute-end', endpoint: '', elapsedMs: performance.now() - startedAt })
       const snapshot = (await captureStableAria(page, '[role="dialog"]', scaffold.workspaceCwd))
         .split(process.execPath).join('{{node}}')
         .split(scaffold.harnessHome).join('{{harnessHome}}')
@@ -233,7 +241,20 @@ it('cancels installation, retries and highlights the enabled plugin at 40% alpha
         } catch (error) {
           if (evidenceDir !== undefined) {
             try {
+              const host = scaffold.ctx.get('pluginManager')
+              let probeTimer: ReturnType<typeof setTimeout> | undefined
+              const hostProbe = await Promise.race([
+                Promise.all([host?.listPlugins(), host?.listBundles()]).then(([plugins, bundles]) => ({
+                  outcome: 'settled', plugins: plugins?.length,
+                  bundles: bundles?.map(bundle => ({ name: bundle.name, enabled: bundle.enabled })),
+                }), () => ({ outcome: 'rejected' })),
+                new Promise<{ outcome: string }>((resolve) => {
+                  probeTimer = setTimeout(() => { resolve({ outcome: 'pending-after-5000ms' }) }, 5000)
+                }),
+              ])
+              clearTimeout(probeTimer)
               await writeFile(join(evidenceDir, 'highlight.json'), JSON.stringify({
+                hostProbe,
                 panel: await page.evaluate(() => {
                   const panel = document.querySelector('[data-plugin-panel]')
                   if (panel === null) return null
