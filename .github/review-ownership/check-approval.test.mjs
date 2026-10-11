@@ -267,7 +267,7 @@ test('keeps the status pending on a write-capable change request while ignoring 
   assert.deepEqual(statuses, [{
     state: 'pending',
     context: 'weighted approval',
-    description: 'Evaluating approval points.',
+    description: 'Evaluating approval policy.',
     target_url: 'https://github.example/actions/runs/1',
   }, {
     state: 'pending',
@@ -1143,4 +1143,141 @@ test('pull-request events use live state and skip closed, merged, and superseded
     workflow_run: { path: '.github/workflows/weighted-approval-review-event.yml', event: 'pull_request_review',
       conclusion: 'success', head_sha: HEAD_SHA, display_title: 'weighted-approval-review-event:42', pull_requests: [] },
   }, api: async () => ({ ...event.pull_request, state: 'closed', merged: true }) }), null)
+})
+
+const personalEvent = ({ author = 'istarwyh', draft = false } = {}) => ({
+  ...pullRequestEvent({ author, draft }),
+  repository: { full_name: 'istarwyh/yourbuddy', owner: { login: 'istarwyh', type: 'User' } },
+  pull_request: { ...pullRequestEvent({ author, draft }).pull_request,
+    user: { login: author, node_id: `account:${author}`, type: 'User' } },
+})
+const personalReview = (login, state, patch = {}) => ({
+  ...review(login, state), user: { login, type: 'User' }, commit_id: HEAD_SHA, ...patch,
+})
+const personalApi = (reviews = [], permissions = {}) => async path => {
+  if (path.includes('/reviews?')) return reviews
+  const login = /\/collaborators\/([^/]+)\/permission$/u.exec(path)?.[1]
+  if (login) return { permission: permissions[login] ?? 'write' }
+  assert.fail(`personal-maintainer policy must not read comments, history, or delegate: ${path}`)
+}
+const personalApproval = (event, reviews = [], permissions = {}) => evaluateWithHistory({
+  event, policySource, api: personalApi(reviews, permissions),
+  getOwnership: () => assert.fail('personal-maintainer mode must not compute blame'),
+  getMergedCount: () => assert.fail('personal-maintainer mode must not give author credit'),
+})
+
+test('YourBuddy owner PR passes approval policy without inventing human approvals or credit', async () => {
+  const result = await personalApproval(personalEvent())
+  assert.equal(result.state, 'success')
+  assert.equal(result.mode, 'personal-maintainer')
+  assert.equal(result.points, 0)
+  assert.equal(result.requiredPoints, 0)
+  assert.deepEqual(result.approvals, [])
+  assert.deepEqual(result.delegations, [])
+  assert.equal(result.authorCredit, null)
+  assert.match(result.description, /owner PR; no human approval required; engineering checks remain required/u)
+  assert.deepEqual(result.pull, { repository: 'istarwyh/yourbuddy', number: 42, headSha: HEAD_SHA })
+})
+
+test('YourBuddy drafts stay pending even for the owner', async () => {
+  const result = await personalApproval(personalEvent({ draft: true }))
+  assert.equal(result.state, 'pending')
+  assert.match(result.description, /draft/u)
+})
+
+test('YourBuddy contributor PR requires the human owner to approve the current head', async () => {
+  const event = personalEvent({ author: 'contributor' })
+  for (const reviews of [[], [personalReview('writer', 'APPROVED')],
+    [personalReview('tianyicui-bot', 'APPROVED')],
+    [personalReview('istarwyh', 'APPROVED', { user: { login: 'istarwyh', type: 'Bot' } })],
+    [personalReview('istarwyh', 'APPROVED', { user: { login: 'istarwyh' } })],
+    [personalReview('istarwyh', 'APPROVED', { commit_id: 'abcdef1234567890abcdef1234567890abcdef12' })],
+    [personalReview('istarwyh', 'APPROVED', { commit_id: undefined })]]) {
+    const result = await personalApproval(event, reviews)
+    assert.equal(result.state, 'pending')
+    assert.equal(result.points, 0)
+    assert.match(result.description, /awaiting human owner approval of current head/u)
+  }
+  const result = await personalApproval(event, [personalReview('ISTARWYH', 'APPROVED')])
+  assert.equal(result.state, 'success')
+  assert.equal(result.points, 1)
+  assert.deepEqual(result.approvals, [{ login: 'ISTARWYH', points: 1 }])
+  assert.match(result.description, /owner approved current head/u)
+})
+
+test('YourBuddy current-head owner approval is revoked by a new commit or dismissal', async () => {
+  const event = personalEvent({ author: 'contributor' })
+  const reviews = [personalReview('istarwyh', 'APPROVED')]
+  assert.equal((await personalApproval(event, reviews)).state, 'success')
+  assert.equal((await personalApproval({ ...event, pull_request: { ...event.pull_request,
+    head: { sha: 'abcdef1234567890abcdef1234567890abcdef12' } } }, reviews)).state, 'pending')
+  assert.equal((await personalApproval(event, [...reviews, personalReview('istarwyh', 'DISMISSED')])).state, 'pending')
+  assert.equal((await personalApproval(event, [...reviews, personalReview('istarwyh', 'COMMENTED')])).state, 'success')
+  assert.equal((await personalApproval(event, reviews, { istarwyh: 'read' })).state, 'pending')
+})
+
+test('YourBuddy write-capable change requests block owner and contributor PRs across commits', async () => {
+  for (const author of ['istarwyh', 'contributor']) {
+    const event = personalEvent({ author })
+    const reviews = [personalReview('istarwyh', 'APPROVED'), personalReview('writer', 'CHANGES_REQUESTED', {
+      commit_id: 'abcdef1234567890abcdef1234567890abcdef12',
+    })]
+    const result = await personalApproval(event, reviews)
+    assert.equal(result.state, 'pending')
+    assert.deepEqual(result.blockers, ['writer'])
+    assert.equal((await personalApproval(event, [...reviews, personalReview('writer', 'COMMENTED')])).state, 'pending')
+    assert.equal((await personalApproval(event, [...reviews, personalReview('writer', 'DISMISSED')])).state, 'success')
+    assert.equal((await personalApproval(event, reviews, { writer: 'read' })).state, 'success')
+  }
+})
+
+test('YourBuddy owner change request must be replaced by a current-head owner approval', async () => {
+  const event = personalEvent({ author: 'contributor' })
+  const reviews = [personalReview('istarwyh', 'CHANGES_REQUESTED')]
+  assert.equal((await personalApproval(event, reviews)).state, 'pending')
+  assert.equal((await personalApproval(event, [...reviews, personalReview('istarwyh', 'APPROVED')])).state, 'success')
+})
+
+test('personal-maintainer mode uses the trusted repository owner and human author identity', async () => {
+  const event = personalEvent()
+  for (const owner of [undefined, { login: 'someone-else', type: 'User' }, { login: 'istarwyh', type: 'Bot' }]) {
+    await assert.rejects(personalApproval({ ...event, repository: { ...event.repository, owner } }))
+  }
+  assert.equal((await personalApproval({ ...event, pull_request: { ...event.pull_request,
+    user: { ...event.pull_request.user, type: 'Bot' } } })).state, 'pending')
+  assert.equal((await personalApproval({ ...event, repository: { ...event.repository, full_name: 'Istarwyh/YourBuddy' } })).state, 'success')
+})
+
+test('other repositories and forks cannot opt into owner exemption through PR metadata', async () => {
+  for (const repository of ['someone-else/yourbuddy', 'istarwyh/another-project', 'deepseek-harness/deepseek-harness']) {
+    const event = personalEvent()
+    event.repository = { full_name: repository, owner: { login: repository.split('/')[0], type: 'User' } }
+    event.pull_request.user.login = event.repository.owner.login
+    event.pull_request.head.repo = personalEvent().repository
+    const result = await evaluateApproval({ event, policySource, api: personalApi() })
+    assert.equal(result.state, 'pending')
+    assert.equal(result.mode, undefined)
+    assert.equal(result.requiredPoints, 2)
+  }
+})
+
+test('personal-maintainer publisher writes only head statuses and reports policy, not fabricated approval', async () => {
+  const writes = []
+  const logs = []
+  const event = personalEvent()
+  const result = await runWithHistory({ event, policySource, runUrl: 'https://github.example/run/1',
+    write: line => logs.push(line), api: async (path, options) => {
+      if (options) {
+        assert.equal(path, `/repos/istarwyh/yourbuddy/statuses/${HEAD_SHA}`)
+        assert.equal(options.method, 'POST')
+        writes.push(options.body)
+        return {}
+      }
+      return personalApi()(path)
+    },
+  })
+  assert.equal(result.state, 'success')
+  assert.deepEqual(writes.map(({ state }) => state), ['pending', 'success'])
+  assert.match(writes[1].description, /Personal-maintainer mode/u)
+  assert.ok(!logs.some(line => line.startsWith('Author credit:') || line.startsWith('Approval score:')))
 })

@@ -3,6 +3,7 @@
 import process from 'node:process'
 
 import config from './config.json' with { type: 'json' }
+import { repositoryIdentity } from './repository.mjs'
 
 const API_VERSION = '2026-03-10'
 
@@ -69,7 +70,7 @@ export async function graphql(query, variables) {
  * @returns {Promise<object|null>} Issue snapshot, or null when the number identifies a pull request.
  */
 export async function issueSnapshot(number, status = undefined) {
-  const issue = await api(`/repos/${config.organization}/${config.repository}/issues/${number}`)
+  const issue = await api(`/repos/${repositoryIdentity().fullName}/issues/${number}`)
   if (issue.pull_request) return null
   const context = await projectContext(number)
   return {
@@ -92,9 +93,17 @@ export async function issueSnapshot(number, status = undefined) {
  * @returns {Promise<object>} Project, Issue, fields, optional item, and status actor; never writes.
  */
 export async function projectContext(number, includeStatusActor = false, includeStartDate = false) {
+  if (!config.projectEnabled) throw new Error('Project integration is disabled')
+  if (!config.projectOwner || !Number.isInteger(config.projectNumber) || !config.projectTitle) {
+    throw new Error('Project owner, number, and title must be configured before enabling integration')
+  }
+  if (!['organization', 'user'].includes(config.projectOwnerType)) {
+    throw new Error('projectOwnerType must be organization or user')
+  }
   const data = await graphql(
     `query(
-      $organization: String!
+      $projectOwner: String!
+      $repositoryOwner: String!
       $repository: String!
       $number: Int!
       $project: Int!
@@ -103,7 +112,7 @@ export async function projectContext(number, includeStatusActor = false, include
       $priorityField: String!
       $startDateField: String!
     ) {
-      organization(login: $organization) {
+      projectOwner: ${config.projectOwnerType}(login: $projectOwner) {
         projectV2(number: $project) {
           id
           title
@@ -126,7 +135,7 @@ export async function projectContext(number, includeStatusActor = false, include
           }
         }
       }
-      repository(owner: $organization, name: $repository) {
+      repository(owner: $repositoryOwner, name: $repository) {
         issue(number: $number) {
           id
           timelineItems(last: 100, itemTypes: [PROJECT_V2_ITEM_STATUS_CHANGED_EVENT])
@@ -159,8 +168,9 @@ export async function projectContext(number, includeStatusActor = false, include
       }
     }`,
     {
-      organization: config.organization,
-      repository: config.repository,
+      projectOwner: config.projectOwner,
+      repositoryOwner: repositoryIdentity().owner,
+      repository: repositoryIdentity().name,
       number,
       project: config.projectNumber,
       includeStatusActor,
@@ -169,7 +179,7 @@ export async function projectContext(number, includeStatusActor = false, include
       startDateField: config.startDateField,
     },
   )
-  const project = data.organization?.projectV2
+  const project = data.projectOwner?.projectV2
   const issue = data.repository?.issue
   if (!project || project.title !== config.projectTitle) throw new Error('目标 Project 不存在或标题不匹配')
   if (!issue) throw new Error(`#${number} 不存在`)
