@@ -95,6 +95,8 @@ export type PluginInstallFailureKind =
 
 /** Package operation completion, including Git checks and a retrieval path for unabridged diagnostics. */
 export interface PackageResult {
+  /** Application-owned linked-package rollback; incomplete means the profile needs repair before retrying. */
+  rollback?: 'restored' | 'incomplete'
   exitCode: number
   output: string
   truncated: boolean

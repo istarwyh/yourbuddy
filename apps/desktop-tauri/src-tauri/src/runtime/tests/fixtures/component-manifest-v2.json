@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 2,
+  "appVersion": "0.4.9",
+  "releaseTag": "yourbuddy-v0.4.9",
+  "platform": "darwin",
+  "arch": "arm64",
+  "components": {
+    "harness": {
+      "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bytes": 100,
+      "kind": "core-runtime",
+      "version": "0.2.0-rc.1",
+      "purpose": "Codex login, delegation and core workbench",
+      "dependsOn": {}
+    },
+    "pnpmStore": {
+      "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "bytes": 200,
+      "kind": "runtime-fallback",
+      "version": "11.7.0",
+      "purpose": "Pinned pnpm offline dependency fallback",
+      "dependsOn": {}
+    },
+    "node": {
+      "id": "node:22.19.0:darwin-arm64",
+      "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "bytes": 300,
+      "kind": "runtime-fallback",
+      "version": "22.19.0",
+      "purpose": "Managed Node.js fallback",
+      "dependsOn": {}
+    },
+    "harbor": {
+      "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "bytes": 400,
+      "kind": "capability-on-demand",
+      "version": "0.4.0",
+      "purpose": "Harbor evaluation and evolution runtime",
+      "dependsOn": {
+        "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  }
+}

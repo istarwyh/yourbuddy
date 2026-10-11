@@ -7,6 +7,7 @@
   "type": "module",
   "scripts": {
     "bundle:source": "node scripts/bundle-harness-source.mjs",
+    "prepare:capabilities": "node scripts/prepare-capability-components.mjs",
     "sync:dsh": "node scripts/sync-dsh-upstream.mjs",
     "refresh:product-plugins": "node scripts/refresh-product-plugins.mjs",
     "prepare:release": "node scripts/prepare-release.mjs",
@@ -25,7 +26,7 @@
     "test:prepare-release": "node --test scripts/dsh-release-policy.test.mjs scripts/prepare-release.test.mjs scripts/sync-dsh-upstream.test.mjs",
     "test:offline": "node --test scripts/prepare-harness-offline-store.test.mjs scripts/prepare-managed-toolchain.test.mjs scripts/prepare-yourbuddy-runtime.test.mjs",
     "test:overlay": "node --test overlay/desktop-notify/index.test.mjs",
-    "test:release": "pnpm run test:update-manifest && pnpm run test:release-version && pnpm run test:bundle && pnpm run test:offline && pnpm run test:overlay && pnpm run test:product-refresh && pnpm run test:prepare-release && node --test scripts/publish-release.test.mjs scripts/first-publication.test.mjs scripts/smoke-offline-startup-macos.test.mjs",
+    "test:release": "pnpm run test:update-manifest && pnpm run test:release-version && pnpm run test:bundle && pnpm run test:components && pnpm run test:offline && pnpm run test:overlay && pnpm run test:native-overlay && pnpm run test:product-refresh && pnpm run test:prepare-release && node --test scripts/publish-release.test.mjs scripts/first-publication.test.mjs scripts/smoke-offline-startup-macos.test.mjs",
     "verify:release-version": "node scripts/verify-release-version.mjs",
     "publish:release": "node scripts/publish-release.mjs",
     "build": "pnpm run build:bootstrap",
@@ -33,9 +34,10 @@
     "build:offline": "tauri build --target aarch64-apple-darwin --bundles app --config src-tauri/tauri.offline.conf.json && tauri bundle --target aarch64-apple-darwin --bundles dmg --config src-tauri/tauri.offline.conf.json --ci",
     "prepare:product-runtime": "node scripts/prepare-yourbuddy-runtime.mjs",
     "build:components": "node scripts/build-bootstrap-components.mjs",
-    "test:components": "node --test scripts/build-bootstrap-components.test.mjs scripts/normalize-component-signature.test.mjs",
+    "test:components": "node --test scripts/prepare-capability-components.test.mjs scripts/build-bootstrap-components.test.mjs scripts/normalize-component-signature.test.mjs scripts/release-component-pipeline.test.mjs",
     "build:win": "tauri build --bundles nsis",
-    "test:bootstrap": "node --test scripts/splash-state.test.mjs"
+    "test:bootstrap": "node --test scripts/splash-state.test.mjs",
+    "test:native-overlay": "cargo test --locked --manifest-path scripts/native-overlay-renderer/Cargo.toml"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-api-session-controller": "workspace:*",

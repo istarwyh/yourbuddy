@@ -69,6 +69,9 @@ importers:
       '@deepseek-ai/dsh-base':
         specifier: workspace:*
         version: link:../../packages/bundle/base
+      '@deepseek-ai/dsh-brand':
+        specifier: workspace:*
+        version: link:../../packages/util/brand
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:*
         version: link:../../packages/client/connection
@@ -111,6 +114,12 @@ importers:
       '@deepseek-ai/dsh-client-ui-sidebar':
         specifier: workspace:*
         version: link:../../packages/client/ui-sidebar
+      '@deepseek-ai/dsh-client-ui-sidebar-browser':
+        specifier: workspace:*
+        version: link:../../packages/client/ui-sidebar-browser
+      '@deepseek-ai/dsh-client-ui-sidebar-documentpreview':
+        specifier: workspace:*
+        version: link:../../packages/client/ui-sidebar-documentpreview
       '@deepseek-ai/dsh-client-ui-sidebar-right':
         specifier: workspace:*
         version: link:../../packages/client/ui-sidebar-right
@@ -120,6 +129,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-tool':
         specifier: workspace:*
         version: link:../../packages/client/ui-tool
+      '@deepseek-ai/dsh-client-ui-workspace':
+        specifier: workspace:*
+        version: link:../../packages/client/ui-workspace
       '@deepseek-ai/dsh-cmdline':
         specifier: workspace:*
         version: link:../../packages/boot/cmdline
@@ -378,9 +390,6 @@ importers:
       dsh-ego-browser:
         specifier: workspace:*
         version: link:../../packages/product/ego-browser
-      dsh-harbor-evolution:
-        specifier: workspace:*
-        version: link:../../packages/product/harbor-evolution
       dsh-oil-creator:
         specifier: workspace:*
         version: link:../../packages/product/oil-creator
@@ -4956,6 +4965,9 @@ importers:
       '@deepseek-ai/dsh-agent':
         specifier: workspace:*
         version: link:../../core/agent
+      '@deepseek-ai/dsh-brand':
+        specifier: workspace:*
+        version: link:../../util/brand
       '@deepseek-ai/dsh-client-locale':
         specifier: workspace:*
         version: link:../../client/locale
@@ -4968,12 +4980,21 @@ importers:
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: workspace:*
         version: link:../../client/ui-settings
+      '@deepseek-ai/dsh-client-ui-sidebar-browser':
+        specifier: workspace:*
+        version: link:../../client/ui-sidebar-browser
+      '@deepseek-ai/dsh-client-ui-sidebar-documentpreview':
+        specifier: workspace:*
+        version: link:../../client/ui-sidebar-documentpreview
       '@deepseek-ai/dsh-client-ui-sidebar-right':
         specifier: workspace:*
         version: link:../../client/ui-sidebar-right
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: workspace:*
         version: link:../../client/ui-slots
+      '@deepseek-ai/dsh-client-ui-workspace':
+        specifier: workspace:*
+        version: link:../../client/ui-workspace
       '@deepseek-ai/dsh-host-webserver':
         specifier: workspace:*
         version: link:../../host/webserver
@@ -5142,18 +5163,6 @@ importers:
       schemastery:
         specifier: ^3.18.0
         version: 3.18.0
-
-  packages/product/harbor-evolution:
-    dependencies:
-      '@deepseek-ai/dsh-skill':
-        specifier: workspace:*
-        version: link:../../skill/skill
-      '@deepseek-ai/dsh-tools':
-        specifier: workspace:*
-        version: link:../../core/tools
-      '@deepseek-ai/schemastery':
-        specifier: link:../../../vendor/schemastery
-        version: link:../../../vendor/schemastery
 
   packages/product/oil-creator:
     dependencies:

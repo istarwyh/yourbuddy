@@ -7,7 +7,7 @@ import type { Include } from '@deepseek-ai/cordis-plugin-include'
 import { FSWatcher, watch, type ChokidarOptions } from 'chokidar'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { readFileSync, realpathSync } from 'node:fs'
-import { readProfileManifest, readProfilePatches, reconcileProfilePatches, PROFILE_PATCH_FILENAME } from '@deepseek-ai/dsh-app-boot'
+import { createRuntimeResolution, loadProfileDirectory, readProfileManifest, readProfilePatches, reconcileProfilePatches, PROFILE_PATCH_FILENAME } from '@deepseek-ai/dsh-app-boot'
 import type {} from '@deepseek-ai/dsh-cmdline'
 import { handleError } from './error.ts'
 import type {} from '@deepseek-ai/cordis-plugin-timer'
@@ -226,7 +226,13 @@ class Hmr extends Service {
           }
         })])
         if (inputs === lastInputs) return
-        const patches = readProfilePatches('dsh', profile)
+        const current = loadProfileDirectory('dsh', profile.dir, profile.installAnchor)
+        const patches = readProfilePatches('dsh', profile, current)
+        const packages = this.ownerContext.get('pluginPackages')
+        if (packages !== undefined) {
+          // New linked imports need the installation's peers before Loader starts them.
+          packages.replace(await createRuntimeResolution({ installAnchor: profile.installAnchor, profile: current, home: profile.home }))
+        }
         const warnings = await reconcileProfilePatches(this.ownerContext.root, patches, 'dsh')
         lastInputs = inputs
         lastBundles = bundles

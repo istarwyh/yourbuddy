@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { assertPreparedCapability, CAPABILITY_COMPONENTS } from './prepare-capability-components.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DEFAULT_OUTPUT = join(desktopRoot, 'component-release')
@@ -50,8 +51,36 @@ function archiveTree(source, destination, excludes = [], dereference = false) {
   return { sha256: sha256(destination), bytes: statSync(destination).size }
 }
 
-function component(id, archive, activation, metadata) {
-  return { id, archive: basename(archive), sha256: metadata.sha256, bytes: metadata.bytes, activation }
+function component(id, archive, metadata, kind, version, purpose, dependsOn = {}) {
+  return { id, archive: basename(archive), sha256: metadata.sha256, bytes: metadata.bytes, kind, version, purpose, dependsOn }
+}
+
+function assertObject(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be an object`)
+}
+
+function assertFields(value, fields, label) {
+  assertObject(value, label)
+  for (const field of Object.keys(value)) {
+    if (!fields.includes(field)) throw new Error(`${label} has unknown field: ${field}`)
+  }
+  for (const field of fields) {
+    if (!Object.hasOwn(value, field)) throw new Error(`${label} is missing field: ${field}`)
+  }
+}
+
+function validText(value, maxBytes) {
+  return typeof value === 'string' && value.length > 0 && Buffer.byteLength(value, 'utf8') <= maxBytes
+}
+
+function validComponentKey(value) {
+  return validText(value, 64) && /^[a-z0-9][a-z0-9._-]*$/i.test(value)
+}
+
+function validComponentId(value) {
+  if (!validText(value, 160) || !/^[a-z0-9][a-z0-9._:-]*$/i.test(value)) return false
+  const cacheKey = value.replace(/^(sha256:|node:)/, '')
+  return cacheKey !== '' && cacheKey !== '.' && cacheKey !== '..'
 }
 
 function treeDigest(root, include) {
@@ -96,21 +125,81 @@ export function assertBootstrapDmgSize(path, maxBytes = BOOTSTRAP_DMG_MAX_BYTES)
   return bytes
 }
 
-/** Validate the release-owned fields before the manifest becomes an application resource. */
+/**
+ * Validate the schema-2 catalog and exact dependency IDs before signing.
+ * Runtime fallbacks require an explicit request and cannot be dependencies.
+ * @param {object} manifest Release manifest decoded from JSON.
+ * @returns {object} The input manifest, unchanged.
+ */
 export function validateComponentManifest(manifest) {
-  if (manifest.schemaVersion !== 1) throw new Error(`unsupported component manifest schema: ${manifest.schemaVersion}`)
-  if (!/^\d+\.\d+\.\d+$/.test(manifest.appVersion ?? '')) throw new Error('component manifest appVersion is invalid')
-  if (manifest.releaseTag !== `yourbuddy-v${manifest.appVersion}`) throw new Error('component manifest releaseTag does not match appVersion')
+  assertFields(manifest, ['schemaVersion', 'appVersion', 'releaseTag', 'platform', 'arch', 'components'], 'component manifest')
+  if (manifest.schemaVersion !== 2) throw new Error(`unsupported component manifest schema: ${manifest.schemaVersion}`)
+  if (!validText(manifest.appVersion, 128) || !/^\d+\.\d+\.\d+$/.test(manifest.appVersion)) {
+    throw new Error('component manifest appVersion is invalid')
+  }
+  if (!validText(manifest.releaseTag, 160) || manifest.releaseTag !== `yourbuddy-v${manifest.appVersion}`) {
+    throw new Error('component manifest releaseTag does not match appVersion')
+  }
   if (manifest.platform !== 'darwin' || manifest.arch !== 'arm64') throw new Error('component manifest must target darwin-arm64')
-  for (const name of ['harness', 'pnpmStore', 'node', 'harbor']) {
-    const value = manifest.components?.[name]
-    if (!value || !/^[a-z0-9][a-z0-9._:-]*$/i.test(value.id ?? '')) throw new Error(`component ${name} id is invalid`)
-    if (!/^yourbuddy-[a-z0-9._-]+\.tar\.zst$/i.test(value.archive ?? '') || value.archive.includes('..')) {
+  assertObject(manifest.components, 'component manifest components')
+  const entries = Object.entries(manifest.components)
+  if (entries.length > 64) throw new Error('component manifest exceeds 64 components')
+  const kinds = ['core-runtime', 'runtime-fallback', 'capability-on-demand', 'optional']
+  let totalBytes = 0
+  for (const [name, value] of entries) {
+    if (!validComponentKey(name)) throw new Error(`component key is invalid: ${name}`)
+    assertFields(value, ['id', 'archive', 'sha256', 'bytes', 'kind', 'version', 'purpose', 'dependsOn'], `component ${name}`)
+    if (!validComponentId(value.id)) throw new Error(`component ${name} id is invalid`)
+    if (!validText(value.archive, 240) || !/^yourbuddy-[a-z0-9._-]+\.tar\.zst$/i.test(value.archive) || value.archive.includes('..')) {
       throw new Error(`component ${name} archive is invalid`)
     }
-    if (!/^[0-9a-f]{64}$/.test(value.sha256 ?? '')) throw new Error(`component ${name} sha256 is invalid`)
+    if (typeof value.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(value.sha256)) throw new Error(`component ${name} sha256 is invalid`)
     if (!Number.isSafeInteger(value.bytes) || value.bytes < 1) throw new Error(`component ${name} bytes is invalid`)
+    if (value.bytes > Number.MAX_SAFE_INTEGER - totalBytes) throw new Error('component manifest total bytes exceeds the safe integer limit')
+    totalBytes += value.bytes
+    if (!kinds.includes(value.kind)) throw new Error(`component ${name} kind is invalid`)
+    if (!validText(value.version, 128)) throw new Error(`component ${name} version is invalid`)
+    if (!validText(value.purpose, 512)) throw new Error(`component ${name} purpose is invalid`)
+    assertObject(value.dependsOn, `component ${name} dependsOn`)
+    if (Object.keys(value.dependsOn).length > 16) throw new Error(`component ${name} exceeds 16 dependencies`)
   }
+  for (const [name, kind] of Object.entries({
+    harness: 'core-runtime', pnpmStore: 'runtime-fallback', node: 'runtime-fallback', harbor: 'capability-on-demand',
+  })) {
+    if (!Object.hasOwn(manifest.components, name) || manifest.components[name].kind !== kind) {
+      throw new Error(`component ${name} must have kind ${kind}`)
+    }
+  }
+  for (const [name, value] of entries) {
+    for (const [dependency, id] of Object.entries(value.dependsOn)) {
+      if (!validComponentKey(dependency)) throw new Error(`component ${name} dependency key is invalid: ${dependency}`)
+      if (!Object.hasOwn(manifest.components, dependency)) throw new Error(`component ${name} dependency is missing: ${dependency}`)
+      const target = manifest.components[dependency]
+      if (target.id !== id) throw new Error(`component ${name} dependency id does not match: ${dependency}`)
+      if (dependency === name) throw new Error(`component ${name} cannot depend on itself`)
+      if (target.kind === 'runtime-fallback') throw new Error(`component ${name} cannot depend on runtime fallback ${dependency}`)
+      if (value.kind === 'core-runtime' && target.kind !== 'core-runtime') {
+        throw new Error(`core component ${name} cannot depend on ${target.kind} ${dependency}`)
+      }
+    }
+  }
+  if (manifest.components.harbor.dependsOn.harness !== manifest.components.harness.id) {
+    throw new Error('component harbor must depend on the exact harness id')
+  }
+  const visiting = new Set()
+  const depths = new Map()
+  const depth = name => {
+    if (visiting.has(name)) throw new Error(`component dependency cycle includes ${name}`)
+    if (depths.has(name)) return depths.get(name)
+    visiting.add(name)
+    let result = 1
+    for (const dependency of Object.keys(manifest.components[name].dependsOn)) result = Math.max(result, 1 + depth(dependency))
+    visiting.delete(name)
+    if (result > 16) throw new Error(`component ${name} dependency chain exceeds 16 components`)
+    depths.set(name, result)
+    return result
+  }
+  for (const [name] of entries) depth(name)
   return manifest
 }
 
@@ -129,6 +218,20 @@ export function buildBootstrapComponents({ version, outputRoot = DEFAULT_OUTPUT,
     throw new Error(`prepared release input is missing: ${storeSourceArchive}`)
   }
 
+  const { harnessVersion } = JSON.parse(readFileSync(join(harnessRoot, '.bundle-manifest.json'), 'utf8'))
+  const { nodeVersion, pnpmVersion } = JSON.parse(readFileSync(join(toolchainRoot, 'manifest.json'), 'utf8'))
+  const { integrationVersion } = JSON.parse(readFileSync(join(harborRoot, 'manifest.json'), 'utf8'))
+
+  const capabilities = CAPABILITY_COMPONENTS.map(definition => {
+    const root = join(bundledRoot, 'capabilities', definition.key)
+    const manifest = assertPreparedCapability(root)
+    if (manifest.name !== definition.packageName) throw new Error(`capability package mismatch: ${definition.key}`)
+    return { ...definition, root, version: manifest.version }
+  })
+  if (capabilities.find(({ key }) => key === 'harborPlugin')?.version !== integrationVersion) {
+    throw new Error('Harbor Node and Python capability versions differ')
+  }
+
   rmSync(outputRoot, { recursive: true, force: true })
   mkdirSync(outputRoot, { recursive: true })
   const temporary = mkdtempSync(join(tmpdir(), 'yourbuddy-components-'))
@@ -142,7 +245,6 @@ export function buildBootstrapComponents({ version, outputRoot = DEFAULT_OUTPUT,
     const harnessId = treeDigest(harnessRoot, rel => !rel.endsWith('.map') && !rel.startsWith('.yourbuddy-pnpm-store/') && rel !== 'yourbuddy-pnpm-store.tar.gz')
     const storeId = treeDigest(storeRoot, () => true)
     const harborId = treeDigest(harborRoot, () => true)
-    const nodeVersion = JSON.parse(readFileSync(join(toolchainRoot, 'manifest.json'), 'utf8')).nodeVersion
     const nodeArchive = join(toolchainRoot, `node-v${nodeVersion}-darwin-arm64.tar.gz`)
     const nodeStage = join(temporary, 'node')
     mkdirSync(nodeStage, { recursive: true })
@@ -168,17 +270,33 @@ export function buildBootstrapComponents({ version, outputRoot = DEFAULT_OUTPUT,
     writeFileSync(join(debugStage, 'README.txt'), 'Optional YourBuddy source maps and native diagnostics.\n')
     archiveTree(debugStage, debugArchive)
 
+    const dependencyIds = { harness: `sha256:${harnessId}`, harbor: `sha256:${harborId}` }
+    const capabilityComponents = Object.fromEntries(capabilities.map(({ key, root, version: packageVersion, purpose, requires = [] }) => {
+      const id = treeDigest(root, () => true)
+      const archive = join(outputRoot, `yourbuddy-${key}-${id}-darwin-arm64.tar.zst`)
+      return [key, component(`sha256:${id}`, archive, archiveTree(root, archive), 'capability-on-demand', packageVersion,
+        purpose, Object.fromEntries(['harness', ...requires].map(name => {
+          if (!dependencyIds[name]) throw new Error(`capability dependency is not prepared: ${key} -> ${name}`)
+          return [name, dependencyIds[name]]
+        })))]
+    }))
+
     const manifest = validateComponentManifest({
-      schemaVersion: 1,
+      schemaVersion: 2,
       appVersion: version,
       releaseTag: `yourbuddy-v${version}`,
       platform: 'darwin',
       arch: 'arm64',
       components: {
-        harness: component(`sha256:${harnessId}`, harnessArchive, 'startup', harness),
-        pnpmStore: component(`sha256:${storeId}`, storeArchive, 'startup-fallback', pnpmStore),
-        node: component(`node:${nodeVersion}:darwin-arm64`, nodeComponentArchive, 'startup-fallback', node),
-        harbor: component(`sha256:${harborId}`, harborArchive, 'on-demand', harbor),
+        harness: component(`sha256:${harnessId}`, harnessArchive, harness, 'core-runtime', harnessVersion,
+          'Codex login, delegation and core workbench'),
+        pnpmStore: component(`sha256:${storeId}`, storeArchive, pnpmStore, 'runtime-fallback', pnpmVersion,
+          'Pinned pnpm offline dependency fallback'),
+        node: component(`node:${nodeVersion}:darwin-arm64`, nodeComponentArchive, node, 'runtime-fallback', nodeVersion,
+          'Managed Node.js fallback'),
+        harbor: component(`sha256:${harborId}`, harborArchive, harbor, 'capability-on-demand', integrationVersion,
+          'Harbor evaluation and evolution runtime', { harness: `sha256:${harnessId}` }),
+        ...capabilityComponents,
       },
     })
     const manifestPath = join(outputRoot, `yourbuddy-components-${version}.json`)

@@ -627,11 +627,17 @@ jobs:
           } else {
             pnpm install --frozen-lockfile
           }
-      # No build before coverage, matching the Linux lane: workspace imports
+      # No workspace build before coverage, matching the Linux lane: workspace imports
       # resolve to src through the tsconfig paths map, and the lib-consuming
       # suites (webworker-packer image-loadable, webworker-runtime
       # transform-corpus, client ui-trajectory client-bundle) self-skip on
       # unbuilt checkouts.
+      - name: Check linked Profile activation and rollback
+        shell: pwsh
+        run: |
+          pnpm run build:native-system
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm exec vitest run --project thread-safe packages/boot/plugin-manager/tests/activation.spec.ts packages/boot/hmr/tests/linked-profile.spec.ts
       - name: Run Windows coverage
         shell: pwsh
         run: pnpm run check:ci:coverage

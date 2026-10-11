@@ -427,7 +427,7 @@ const VENDORED_LIBRARY = /^@deepseek-ai\\/(cosmokit|schemastery)(\\/|$)/
 ]
 
 const EXTERNAL_DESKTOP_PRODUCT = new RegExp(
-  '^apps/desktop-tauri/product/(?:context-doctor|dsh-better-sidebar|dsh-codex-auth'
+  '^apps/desktop-tauri/product/(?:context-doctor|dsh-better-sidebar|dsh-codex-auth|ego-browser'
   + '|harbor-evolution|harbor-python|oil-creator|plugin-marketplace)/',
 )
 

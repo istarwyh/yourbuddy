@@ -1,7 +1,7 @@
 //! Put the Host's required CLIs on PATH: process env first, user PATH when missing.
 
 use std::fs;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 
 use crate::cli_shim::{DshLaunchSpec, LAUNCH_FILE};
@@ -17,6 +17,7 @@ use super::provision::RuntimePaths;
 use super::{app_data_root, ProvisionEvent};
 
 const BIN_DIR_NAME: &str = "bin";
+const DSH_SHIM_MARKER: &str = "YourBuddy managed CLI shim";
 
 #[cfg(not(windows))]
 const PROFILE_MARKER: &str = "dsh-desktop-path";
@@ -73,8 +74,15 @@ fn user_cli_persistence_enabled(value: Option<&std::ffi::OsStr>) -> bool {
 
 /// Create shims and collect directories that must precede the inherited PATH.
 pub fn install_path_bridge(paths: &RuntimePaths) -> Result<PathBridge, String> {
-    let bin_dir = app_data_root()?.join(BIN_DIR_NAME);
-    fs::create_dir_all(&bin_dir).map_err(|e| recoverable_message("create", &bin_dir, e))?;
+    let app_root = app_data_root()?;
+    require_real_directory(&app_root)?;
+    let bin_dir = app_root.join(BIN_DIR_NAME);
+    match fs::create_dir(&bin_dir) {
+        Ok(()) => {}
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
+        Err(error) => return Err(recoverable_message("create", &bin_dir, error)),
+    }
+    require_real_directory(&bin_dir)?;
     write_cli_shims(
         &bin_dir,
         &paths.node_binary,
@@ -130,13 +138,33 @@ pub fn write_cli_shims(
     dsh_home: &Path,
     install_exe: bool,
 ) -> Result<(), String> {
+    require_real_directory(bin_dir)?;
+    // Canonicalize the existing owner directory once, without recursively creating
+    // or traversing a caller-supplied bin symlink. Concurrent ancestor replacement
+    // is outside the same-user application-data boundary.
+    let owned_bin =
+        fs::canonicalize(bin_dir).map_err(|error| recoverable_message("read", bin_dir, error))?;
+    let bin_dir = owned_bin.as_path();
+    #[cfg(windows)]
+    let outputs = ["dsh.cmd", LAUNCH_FILE, "pnpm.cmd", "dsh.exe"];
+    #[cfg(not(windows))]
+    let outputs = ["dsh", LAUNCH_FILE, "pnpm"];
+    for name in outputs {
+        require_regular_output(&bin_dir.join(name))?;
+    }
     let path_prepend = shim_path_prepend(node, pnpm);
-    write_dsh_cmd_shim(bin_dir, node, cli_entry, &path_prepend)?;
+    let helper = std::env::current_exe()
+        .map_err(|error| format!("cannot resolve the YourBuddy CLI helper: {error}"))?;
+    check_dsh_shim_owner(bin_dir)?;
+    write_dsh_cmd_shim(bin_dir, &helper)?;
     write_launch_spec(bin_dir, node, cli_entry, dsh_home, &path_prepend)?;
     write_pnpm_shim(bin_dir, node, pnpm)?;
+    #[cfg(windows)]
     if install_exe {
         install_dsh_exe(bin_dir)?;
     }
+    #[cfg(not(windows))]
+    let _ = install_exe;
     Ok(())
 }
 
@@ -150,42 +178,159 @@ fn shim_path_prepend(node: &Path, pnpm: &Path) -> Vec<PathBuf> {
     prepend
 }
 
-fn write_dsh_cmd_shim(
-    bin_dir: &Path,
-    node: &Path,
-    cli_entry: &Path,
-    path_prepend: &[PathBuf],
-) -> Result<(), String> {
-    let node_q = quote_for_cmd(node);
-    let cli_q = quote_for_cmd(cli_entry);
-    let prepend = std::env::join_paths(path_prepend)
-        .map(|value| value.to_string_lossy().into_owned())
-        .unwrap_or_default();
-
+fn is_link_like(metadata: &fs::Metadata) -> bool {
+    if metadata.file_type().is_symlink() {
+        return true;
+    }
     #[cfg(windows)]
     {
-        // An extensionless `dsh` on Windows shadows `dsh.cmd` for Node spawn('dsh').
-        let _ = fs::remove_file(bin_dir.join("dsh"));
-        let dest = bin_dir.join("dsh.cmd");
-        fs::write(
-            &dest,
-            format!("@echo off\r\nset \"PATH={prepend};%PATH%\"\r\n{node_q} {cli_q} %*\r\n"),
-        )
-        .map_err(|e| recoverable_message("write", &dest, e))?;
+        use std::os::windows::fs::MetadataExt;
+        if metadata.file_attributes() & 0x400 != 0 {
+            return true;
+        }
     }
+    false
+}
 
+fn require_real_directory(path: &Path) -> Result<(), String> {
+    let metadata =
+        fs::symlink_metadata(path).map_err(|error| recoverable_message("read", path, error))?;
+    if is_link_like(&metadata) || !metadata.is_dir() {
+        return Err(format!(
+            "refusing a redirected CLI directory: {}",
+            path.display()
+        ));
+    }
+    Ok(())
+}
+
+fn require_regular_output(path: &Path) -> Result<(), String> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if is_link_like(&metadata) || !metadata.is_file() => Err(format!(
+            "refusing to replace a non-managed CLI output: {}",
+            path.display()
+        )),
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(recoverable_message("read", path, error)),
+    }
+}
+
+/// Same-directory atomic replacement never opens/truncates the destination.
+/// Preflight all outputs before writing any, and check again immediately before
+/// rename; an existing hard link is detached rather than mutating its other name.
+fn write_cli_output(path: &Path, body: impl AsRef<[u8]>, executable: bool) -> Result<(), String> {
+    let parent = path.parent().ok_or("CLI output has no parent")?;
+    require_real_directory(parent)?;
+    require_regular_output(path)?;
+    let mut temporary = tempfile::NamedTempFile::new_in(parent)
+        .map_err(|error| recoverable_message("create", path, error))?;
+    temporary
+        .write_all(body.as_ref())
+        .map_err(|error| recoverable_message("write", path, error))?;
+    #[cfg(unix)]
+    if executable {
+        use std::os::unix::fs::PermissionsExt;
+        temporary
+            .as_file()
+            .set_permissions(fs::Permissions::from_mode(0o755))
+            .map_err(|error| recoverable_message("write", path, error))?;
+    }
+    #[cfg(not(unix))]
+    let _ = executable;
+    temporary
+        .as_file()
+        .sync_all()
+        .map_err(|error| recoverable_message("write", path, error))?;
+    require_regular_output(path)?;
+    temporary
+        .persist(path)
+        .map_err(|error| recoverable_message("write", path, error.error))?;
+    Ok(())
+}
+
+/// Do not replace a user's command. Only our marker or the exact previous
+/// sidecar-derived legacy script establishes ownership; a filename alone does not.
+fn check_dsh_shim_owner(bin_dir: &Path) -> Result<(), String> {
+    #[cfg(windows)]
+    let name = "dsh.cmd";
+    #[cfg(not(windows))]
+    let name = "dsh";
+    let dest = bin_dir.join(name);
+    let metadata = match fs::symlink_metadata(&dest) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(recoverable_message("read", &dest, error)),
+    };
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(format!(
+            "refusing to replace a non-managed CLI: {}",
+            dest.display()
+        ));
+    }
+    let body =
+        fs::read_to_string(&dest).map_err(|error| recoverable_message("read", &dest, error))?;
+    #[cfg(windows)]
+    let marker = format!("@echo off\r\nrem {DSH_SHIM_MARKER}\r\n");
+    #[cfg(not(windows))]
+    let marker = format!("#!/bin/sh\n# {DSH_SHIM_MARKER}\n");
+    if body.starts_with(&marker) {
+        return Ok(());
+    }
+    if let Ok(previous) = crate::cli_shim::read_launch_spec(&bin_dir.join(LAUNCH_FILE)) {
+        let node = quote_for_cmd(Path::new(&previous.node));
+        let cli = quote_for_cmd(Path::new(&previous.cli));
+        let prepend = std::env::join_paths(previous.path_prepend.iter().map(Path::new))
+            .map(|value| value.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        #[cfg(windows)]
+        let legacy = format!("@echo off\r\nset \"PATH={prepend};%PATH%\"\r\n{node} {cli} %*\r\n");
+        #[cfg(not(windows))]
+        let legacy = format!("#!/bin/sh\nPATH=\"{prepend}:$PATH\"\nexec {node} {cli} \"$@\"\n");
+        if body == legacy {
+            return Ok(());
+        }
+    }
+    Err(format!(
+        "refusing to replace a non-managed CLI: {}",
+        dest.display()
+    ))
+}
+
+fn write_dsh_cmd_shim(bin_dir: &Path, helper: &Path) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        // Keep Windows on its native trampoline; Unix inherited-lock guarantees
+        // do not apply to Windows and component cleanup remains unavailable there.
+        let dest = bin_dir.join("dsh.cmd");
+        write_cli_output(
+            &dest,
+            format!("@echo off\r\nrem {DSH_SHIM_MARKER}\r\n\"%~dp0dsh.exe\" %*\r\n"),
+            false,
+        )?;
+        let _ = helper;
+    }
     #[cfg(not(windows))]
     {
         let script = bin_dir.join("dsh");
-        fs::write(
-            &script,
-            format!("#!/bin/sh\nPATH=\"{prepend}:$PATH\"\nexec {node_q} {cli_q} \"$@\"\n"),
-        )
-        .map_err(|e| recoverable_message("write", &script, e))?;
-        set_executable(&script)?;
+        write_cli_output(&script, dsh_shell_body(helper)?, true)?;
     }
-
     Ok(())
+}
+
+#[cfg(not(windows))]
+fn dsh_shell_body(helper: &Path) -> Result<String, String> {
+    let path = helper
+        .to_str()
+        .ok_or("YourBuddy helper path is not UTF-8")?;
+    if !helper.is_absolute() {
+        return Err("YourBuddy helper path must be absolute".into());
+    }
+    // POSIX single quotes preserve spaces, quotes, dollars and shell metacharacters.
+    let quoted = format!("'{}'", path.replace('\'', "'\"'\"'"));
+    Ok(format!(
+        "#!/bin/sh\n# {DSH_SHIM_MARKER}\nexec {quoted} --yourbuddy-component-helper cli \"$@\"\n"
+    ))
 }
 
 fn write_launch_spec(
@@ -206,7 +351,7 @@ fn write_launch_spec(
     };
     let raw = serde_json::to_string_pretty(&spec).map_err(|e| e.to_string())?;
     let dest = bin_dir.join(LAUNCH_FILE);
-    fs::write(&dest, format!("{raw}\n")).map_err(|e| recoverable_message("write", &dest, e))
+    write_cli_output(&dest, format!("{raw}\n"), false)
 }
 
 fn write_pnpm_shim(bin_dir: &Path, node: &Path, pnpm: &Path) -> Result<(), String> {
@@ -215,14 +360,13 @@ fn write_pnpm_shim(bin_dir: &Path, node: &Path, pnpm: &Path) -> Result<(), Strin
     #[cfg(windows)]
     {
         let dest = bin_dir.join("pnpm.cmd");
-        fs::write(&dest, body).map_err(|e| recoverable_message("write", &dest, e))?;
+        write_cli_output(&dest, body, false)?;
     }
 
     #[cfg(not(windows))]
     {
         let script = bin_dir.join("pnpm");
-        fs::write(&script, body).map_err(|e| recoverable_message("write", &script, e))?;
-        set_executable(&script)?;
+        write_cli_output(&script, body, true)?;
     }
 
     Ok(())
@@ -607,7 +751,7 @@ fn path_string_contains(path: &str, candidate: &Path) -> bool {
 mod tests {
     use super::{
         exe_needs_refresh, merge_path, path_string_contains, pnpm_shim_body, quote_for_cmd,
-        tool_exists_in, user_cli_persistence_enabled, write_cli_shims,
+        tool_exists_in, user_cli_persistence_enabled, write_cli_shims, write_launch_spec,
     };
     use crate::cli_shim::{read_launch_spec, LAUNCH_FILE};
     use std::fs;
@@ -632,6 +776,22 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         root
+    }
+
+    fn dsh_script(bin: &Path) -> PathBuf {
+        #[cfg(windows)]
+        let name = "dsh.cmd";
+        #[cfg(not(windows))]
+        let name = "dsh";
+        bin.join(name)
+    }
+
+    fn pnpm_script(bin: &Path) -> PathBuf {
+        #[cfg(windows)]
+        let name = "pnpm.cmd";
+        #[cfg(not(windows))]
+        let name = "pnpm";
+        bin.join(name)
     }
 
     #[test]
@@ -677,7 +837,7 @@ mod tests {
         let root = temp_root();
         let bin = root.join("bin");
         fs::create_dir_all(&bin).unwrap();
-        fs::write(bin.join("dsh"), "#!/bin/sh\nold\n").unwrap();
+
         let node = root.join("node.exe");
         let cli = root.join("apps").join("cli").join("lib").join("bin.js");
         let pnpm_home = root.join("pnpm-global");
@@ -694,12 +854,10 @@ mod tests {
 
         #[cfg(windows)]
         {
-            assert!(!bin.join("dsh").is_file());
             let cmd = fs::read_to_string(bin.join("dsh.cmd")).unwrap();
-            assert!(cmd.contains("node.exe"));
-            assert!(cmd.contains("bin.js"));
+            assert!(cmd.contains("dsh.exe"));
+            assert!(!cmd.contains("bin.js"));
             assert!(cmd.contains("%*"));
-            assert!(cmd.contains("pnpm-global"));
             let pnpm_cmd = fs::read_to_string(bin.join("pnpm.cmd")).unwrap();
             assert!(pnpm_cmd.contains("node.exe"));
             assert!(pnpm_cmd.contains("pnpm.cjs"));
@@ -716,8 +874,8 @@ mod tests {
         {
             let sh = fs::read_to_string(bin.join("dsh")).unwrap();
             assert!(sh.starts_with("#!/bin/sh"));
-            assert!(sh.contains("bin.js"));
-            assert!(sh.contains("pnpm-global"));
+            assert!(sh.contains("--yourbuddy-component-helper cli"));
+            assert!(!sh.contains("bin.js"));
             let pnpm_sh = fs::read_to_string(bin.join("pnpm")).unwrap();
             assert!(pnpm_sh.contains("pnpm.cjs"));
             let spec = read_launch_spec(&bin.join(LAUNCH_FILE)).unwrap();
@@ -728,6 +886,316 @@ mod tests {
             assert_eq!(spec.path_prepend, expected_prepend);
         }
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn upgrades_only_the_exact_legacy_script_from_its_previous_launch_spec() {
+        let root = tempfile::tempdir().unwrap();
+        let bin = root.path().join("bin");
+        fs::create_dir(&bin).unwrap();
+        let old_node = root.path().join("old node").join("node.exe");
+        let old_cli = root.path().join("old cli").join("bin.js");
+        let old_pnpm = root.path().join("old pnpm").join("pnpm.cmd");
+        let home = root.path().join("dsh-home");
+        let previous_prepend = vec![
+            old_node.parent().unwrap().to_path_buf(),
+            old_pnpm.parent().unwrap().to_path_buf(),
+        ];
+        write_launch_spec(&bin, &old_node, &old_cli, &home, &previous_prepend).unwrap();
+        let prepend = std::env::join_paths(&previous_prepend)
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let node = quote_for_cmd(&old_node);
+        let cli = quote_for_cmd(&old_cli);
+        #[cfg(windows)]
+        let legacy = format!("@echo off\r\nset \"PATH={prepend};%PATH%\"\r\n{node} {cli} %*\r\n");
+        #[cfg(not(windows))]
+        let legacy = format!("#!/bin/sh\nPATH=\"{prepend}:$PATH\"\nexec {node} {cli} \"$@\"\n");
+        let script = dsh_script(&bin);
+        fs::write(&script, &legacy).unwrap();
+
+        let node = root.path().join("new node").join("node.exe");
+        let cli = root.path().join("new cli").join("bin.js");
+        let pnpm = root.path().join("new pnpm").join("pnpm.cmd");
+        let sidecar = fs::read(bin.join(LAUNCH_FILE)).unwrap();
+        let customized = format!("{legacy}# user customization\n");
+        fs::write(&script, &customized).unwrap();
+        assert!(write_cli_shims(&bin, &node, &cli, &pnpm, &home, false).is_err());
+        assert_eq!(fs::read(&script).unwrap(), customized.as_bytes());
+        assert_eq!(fs::read(bin.join(LAUNCH_FILE)).unwrap(), sidecar);
+        assert!(!pnpm_script(&bin).exists());
+
+        fs::write(&script, &legacy).unwrap();
+        write_cli_shims(&bin, &node, &cli, &pnpm, &home, false).unwrap();
+
+        let body = fs::read_to_string(&script).unwrap();
+        assert!(body.contains(super::DSH_SHIM_MARKER));
+        assert_ne!(body, legacy);
+        assert!(!body.contains("old node"));
+        let spec = read_launch_spec(&bin.join(LAUNCH_FILE)).unwrap();
+        assert_eq!(spec.node, node.display().to_string());
+        assert_eq!(spec.cli, cli.display().to_string());
+    }
+
+    #[test]
+    fn preserves_custom_scripts_and_sidecars_when_refresh_is_refused() {
+        let root = tempfile::tempdir().unwrap();
+        let bin = root.path().join("bin");
+        fs::create_dir(&bin).unwrap();
+        let node = root.path().join("node.exe");
+        let cli = root.path().join("bin.js");
+        let pnpm = root.path().join("pnpm.cmd");
+        let home = root.path().join("dsh-home");
+        write_cli_shims(&bin, &node, &cli, &pnpm, &home, false).unwrap();
+        let sidecar = fs::read(bin.join(LAUNCH_FILE)).unwrap();
+        let pnpm_body = fs::read(pnpm_script(&bin)).unwrap();
+        let custom = format!("echo custom command\n# {}\n", super::DSH_SHIM_MARKER);
+        fs::write(dsh_script(&bin), &custom).unwrap();
+
+        let error = write_cli_shims(
+            &bin,
+            &root.path().join("replacement-node.exe"),
+            &root.path().join("replacement-cli.js"),
+            &root.path().join("replacement-pnpm.cmd"),
+            &home,
+            false,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("refusing to replace a non-managed CLI"));
+        assert_eq!(fs::read(dsh_script(&bin)).unwrap(), custom.as_bytes());
+        assert_eq!(fs::read(bin.join(LAUNCH_FILE)).unwrap(), sidecar);
+        assert_eq!(fs::read(pnpm_script(&bin)).unwrap(), pnpm_body);
+    }
+
+    #[test]
+    fn repeatedly_refreshes_a_managed_script_and_its_launch_spec() {
+        let root = tempfile::tempdir().unwrap();
+        let bin = root.path().join("bin");
+        fs::create_dir(&bin).unwrap();
+        let home = root.path().join("dsh-home");
+        let node = root.path().join("node.exe");
+        let cli = root.path().join("bin.js");
+        let pnpm = root.path().join("pnpm.cmd");
+        write_cli_shims(&bin, &node, &cli, &pnpm, &home, false).unwrap();
+        let managed = fs::read(dsh_script(&bin)).unwrap();
+
+        let node = root.path().join("updated node").join("node.exe");
+        let cli = root.path().join("updated cli").join("bin.js");
+        let pnpm = root.path().join("updated pnpm").join("pnpm.cmd");
+        for _ in 0..2 {
+            write_cli_shims(&bin, &node, &cli, &pnpm, &home, false).unwrap();
+            assert_eq!(fs::read(dsh_script(&bin)).unwrap(), managed);
+            let spec = read_launch_spec(&bin.join(LAUNCH_FILE)).unwrap();
+            assert_eq!(spec.node, node.display().to_string());
+            assert_eq!(spec.cli, cli.display().to_string());
+            assert_eq!(
+                spec.path_prepend,
+                [node.parent().unwrap(), pnpm.parent().unwrap()]
+                    .map(|dir| dir.display().to_string())
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn refuses_to_follow_a_dsh_symlink_even_when_its_target_is_managed() {
+        let root = tempfile::tempdir().unwrap();
+        let bin = root.path().join("bin");
+        fs::create_dir(&bin).unwrap();
+        let target = root.path().join("user-command");
+        let target_body = format!("#!/bin/sh\n# {}\nexit 0\n", super::DSH_SHIM_MARKER);
+        fs::write(&target, &target_body).unwrap();
+        let script = dsh_script(&bin);
+        std::os::unix::fs::symlink(&target, &script).unwrap();
+        let sidecar = b"user-owned sidecar\n";
+        fs::write(bin.join(LAUNCH_FILE), sidecar).unwrap();
+
+        let error = write_cli_shims(
+            &bin,
+            &root.path().join("node"),
+            &root.path().join("bin.js"),
+            &root.path().join("pnpm"),
+            &root.path().join("dsh-home"),
+            false,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("refusing to replace a non-managed CLI"));
+        assert!(fs::symlink_metadata(&script)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        assert_eq!(fs::read_link(&script).unwrap(), target);
+        assert_eq!(fs::read(&target).unwrap(), target_body.as_bytes());
+        assert_eq!(fs::read(bin.join(LAUNCH_FILE)).unwrap(), sidecar);
+        assert!(!pnpm_script(&bin).exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn shell_preserves_quoted_helper_paths_and_arguments_without_expansion() {
+        use std::process::{Child, Command, Stdio};
+        use std::time::{Duration, Instant};
+
+        struct ShimChild(Child);
+        impl Drop for ShimChild {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+
+        let root = tempfile::tempdir().unwrap();
+        let helper = root
+            .path()
+            .join("helper ' \" $(touch helper-dollar) `touch helper-backtick` ; &");
+        fs::write(&helper, "#!/bin/sh\nprintf '%s\\000' \"$@\"\n").unwrap();
+        super::set_executable(&helper).unwrap();
+        let script = root.path().join("dsh");
+        super::write_dsh_cmd_shim(root.path(), &helper).unwrap();
+        let stdout = root.path().join("stdout");
+        let stderr = root.path().join("stderr");
+        let args = [
+            "",
+            "two words",
+            "single' and double\" quotes",
+            "line one\nline two",
+            "$(touch argument-dollar)",
+            "`touch argument-backtick`",
+            "; touch argument-semicolon; #",
+            "*?[$HOME]",
+            "中文",
+        ];
+        let mut child = ShimChild(
+            Command::new("/bin/sh")
+                .arg(&script)
+                .args(args)
+                .current_dir(root.path())
+                .env_clear()
+                .env("PATH", "/usr/bin:/bin")
+                .stdin(Stdio::null())
+                .stdout(fs::File::create(&stdout).unwrap())
+                .stderr(fs::File::create(&stderr).unwrap())
+                .spawn()
+                .unwrap(),
+        );
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let status = loop {
+            if let Some(status) = child.0.try_wait().unwrap() {
+                break status;
+            }
+            assert!(Instant::now() < deadline, "dsh shell fixture timed out");
+            std::thread::sleep(Duration::from_millis(10));
+        };
+        assert!(status.success(), "{}", fs::read_to_string(stderr).unwrap());
+        let expected: Vec<u8> = ["--yourbuddy-component-helper", "cli"]
+            .into_iter()
+            .chain(args)
+            .flat_map(|arg| arg.bytes().chain(std::iter::once(0)))
+            .collect();
+        assert_eq!(fs::read(stdout).unwrap(), expected);
+        for name in [
+            "helper-dollar",
+            "helper-backtick",
+            "argument-dollar",
+            "argument-backtick",
+            "argument-semicolon",
+        ] {
+            assert!(!root.path().join(name).exists(), "shell expanded {name}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sidecar_and_pnpm_symlinks_or_nonfiles_never_modify_external_data() {
+        for name in [LAUNCH_FILE, "pnpm"] {
+            for directory in [false, true] {
+                let root = tempfile::tempdir().unwrap();
+                let bin = root.path().join("bin");
+                fs::create_dir(&bin).unwrap();
+                let node = root.path().join("node");
+                let cli = root.path().join("bin.js");
+                let pnpm = root.path().join("pnpm-source");
+                let home = root.path().join("dsh-home");
+                write_cli_shims(&bin, &node, &cli, &pnpm, &home, false).unwrap();
+                let dsh_before = fs::read(bin.join("dsh")).unwrap();
+                let other = if name == LAUNCH_FILE {
+                    "pnpm"
+                } else {
+                    LAUNCH_FILE
+                };
+                let other_before = fs::read(bin.join(other)).unwrap();
+                let external = root.path().join("user-data");
+                fs::write(&external, b"preserve user data").unwrap();
+                let output = bin.join(name);
+                fs::remove_file(&output).unwrap();
+                if directory {
+                    fs::create_dir(&output).unwrap();
+                    fs::write(output.join("sentinel"), b"preserve directory").unwrap();
+                } else {
+                    std::os::unix::fs::symlink(&external, &output).unwrap();
+                }
+                assert!(write_cli_shims(&bin, &node, &cli, &pnpm, &home, false).is_err());
+                assert_eq!(fs::read(&external).unwrap(), b"preserve user data");
+                assert_eq!(fs::read(bin.join("dsh")).unwrap(), dsh_before);
+                assert_eq!(fs::read(bin.join(other)).unwrap(), other_before);
+                if directory {
+                    assert_eq!(
+                        fs::read(output.join("sentinel")).unwrap(),
+                        b"preserve directory"
+                    );
+                } else {
+                    assert_eq!(fs::read_link(output).unwrap(), external);
+                }
+                assert_eq!(
+                    fs::read_dir(&bin).unwrap().count(),
+                    3,
+                    "no temporary-file residue"
+                );
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bin_symlink_is_rejected_without_creating_or_writing_descendants() {
+        let root = tempfile::tempdir().unwrap();
+        let external = root.path().join("user-directory");
+        fs::create_dir(&external).unwrap();
+        fs::write(external.join("sentinel"), b"preserve").unwrap();
+        let bin = root.path().join("bin");
+        std::os::unix::fs::symlink(&external, &bin).unwrap();
+        assert!(write_cli_shims(
+            &bin,
+            Path::new("node"),
+            Path::new("cli"),
+            Path::new("pnpm"),
+            Path::new("home"),
+            false
+        )
+        .is_err());
+        assert_eq!(fs::read(external.join("sentinel")).unwrap(), b"preserve");
+        assert_eq!(fs::read_dir(&external).unwrap().count(), 1);
+        assert_eq!(fs::read_link(bin).unwrap(), external);
+    }
+
+    #[test]
+    fn atomic_output_replacement_preserves_an_existing_hardlink_target() {
+        let root = tempfile::tempdir().unwrap();
+        let external = root.path().join("user-data");
+        let output = root.path().join("managed-output");
+        fs::write(&external, b"preserve user data").unwrap();
+        fs::hard_link(&external, &output).unwrap();
+        super::write_cli_output(&output, b"new managed content", false).unwrap();
+        assert_eq!(fs::read(&external).unwrap(), b"preserve user data");
+        assert_eq!(fs::read(&output).unwrap(), b"new managed content");
+        assert_eq!(
+            fs::read_dir(root.path()).unwrap().count(),
+            2,
+            "temporary output must be consumed"
+        );
     }
 
     #[test]

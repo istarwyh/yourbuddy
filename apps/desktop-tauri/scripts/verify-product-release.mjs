@@ -9,6 +9,7 @@ import {
   mkdtempSync,
   readFileSync,
   realpathSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -28,7 +29,7 @@ import { verifyWorkbenchBranding } from './workbench-branding-smoke.mjs'
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const harnessRoot = join(desktopRoot, 'bundled', 'harness')
 const runtimeRoot = join(desktopRoot, 'bundled', 'yourbuddy-runtime')
-const installedChromiumExecutable = chromium.executablePath()
+const installedChromiumExecutable = process.env.YOURBUDDY_RELEASE_CHROMIUM_EXECUTABLE ?? chromium.executablePath()
 const desktopShellSource = readFileSync(join(desktopRoot, 'shell.html'), 'utf8')
 const desktopI18nSource = readFileSync(join(desktopRoot, 'desktop-i18n.js'), 'utf8')
 const desktopAppIcon = readFileSync(join(desktopRoot, 'app-icon.png'))
@@ -86,16 +87,38 @@ export const PRODUCT_CLIENT_IDS = [
   'dsh-harbor-evolution',
 ]
 
+/** Product Clients available before any optional component is installed. */
+export const CORE_PRODUCT_CLIENT_IDS = [
+  'dsh-codex-auth',
+  'dsh-better-sidebar',
+  'dsh-ego-browser',
+  'dsh-context-doctor',
+  'dsh-plugin-marketplace',
+  'dsh-personal-workbench',
+  '@xiaohui-wang/dsh-pomodoro',
+  'dsh-oil-creator',
+]
+
+/** Required optional packages; missing artifacts never reduce release coverage. */
+export const RELEASE_CAPABILITIES = [
+  { key: 'harborPlugin', packageName: 'dsh-harbor-evolution', requires: ['harbor'] },
+]
+
+const LIGHTWEIGHT_CLIENT_ENTRIES = {
+  '@deepseek-ai/dsh-client-ui-sidebar-browser': 'ui-sidebar-browser',
+  '@deepseek-ai/dsh-client-ui-sidebar-documentpreview': 'ui-sidebar-documentpreview',
+}
+
 const PRODUCT_CLIENT_ENTRY_IDS = {
-  'dsh-codex-auth': 'yourharness-release-codex-auth',
-  'dsh-better-sidebar': 'yourharness-release-better-sidebar',
-  'dsh-ego-browser': 'yourbuddy-release-ego-browser',
-  'dsh-context-doctor': 'yourharness-release-context-doctor',
-  'dsh-plugin-marketplace': 'yourharness-release-plugin-marketplace',
-  'dsh-personal-workbench': 'yourharness-release-personal-workbench',
-  '@xiaohui-wang/dsh-pomodoro': 'yourbuddy-release-pomodoro',
-  'dsh-oil-creator': 'yourharness-release-oil-creator',
-  'dsh-harbor-evolution': 'yourharness-release-harbor-evolution',
+  'dsh-codex-auth': 'llm-codex-auth',
+  'dsh-better-sidebar': 'better-sidebar',
+  'dsh-ego-browser': 'ego-browser',
+  'dsh-context-doctor': 'context-doctor',
+  'dsh-plugin-marketplace': 'plugin-marketplace',
+  'dsh-personal-workbench': 'personal-workbench',
+  '@xiaohui-wang/dsh-pomodoro': 'dsh-pomodoro',
+  'dsh-oil-creator': 'dsh-oil-creator',
+  'dsh-harbor-evolution': 'harbor-evolution',
 }
 
 /**
@@ -107,8 +130,7 @@ const PRODUCT_CLIENT_ENTRY_IDS = {
 export function recordProductClientResponse(target, responseUrl, status) {
   const url = new URL(responseUrl)
   const resource = `${url.pathname}${url.search}`
-  for (const id of PRODUCT_CLIENT_IDS) {
-    const entryId = PRODUCT_CLIENT_ENTRY_IDS[id]
+  for (const [id, entryId] of Object.entries({ ...PRODUCT_CLIENT_ENTRY_IDS, ...LIGHTWEIGHT_CLIENT_ENTRIES })) {
     if (resource.includes(`${id}/client.js`) || resource.includes(`${entryId}/client.js`)) {
       target[id] = status
     }
@@ -271,7 +293,7 @@ export function assertInstalledProductPeerLinks(root) {
   const workspace = readWorkspacePackageVersions(root)
   const productRoot = join(root, 'packages', 'product')
   let checked = 0
-  for (const plugin of ['harbor-evolution', 'dsh-codex-auth', 'dsh-better-sidebar', 'ego-browser', 'context-doctor', 'plugin-marketplace', 'personal-workbench', 'pomodoro', 'oil-creator']) {
+  for (const plugin of ['dsh-codex-auth', 'dsh-better-sidebar', 'ego-browser', 'context-doctor', 'plugin-marketplace', 'personal-workbench', 'pomodoro', 'oil-creator']) {
     const pluginRoot = join(productRoot, plugin)
     const manifest = JSON.parse(readFileSync(join(pluginRoot, 'package.json'), 'utf8'))
     for (const name of Object.keys(manifest.peerDependencies ?? {})) {
@@ -287,88 +309,187 @@ export function assertInstalledProductPeerLinks(root) {
 }
 
 /**
- * Build the isolated overlay used by the local release compatibility smoke.
- *
- * @param {string} workspace
- * @param {string} productRuntimeRoot
- * @param {string | undefined} proxyVerifier
- * @returns {string}
+ * Require exactly the core product packages in the prepared Harness.
+ * @param {string} root Prepared Harness directory.
+ * @returns {void}
  */
-export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVerifier) {
-  const value = path => JSON.stringify(path)
-  const proxyVerifierRow = proxyVerifier === undefined ? '' : `    - id: yourbuddy-release-proxy-verifier
-      name: ${value(proxyVerifier)}
+export function assertCoreProductComposition(root) {
+  const productRoot = join(root, 'packages', 'product')
+  const names = readdirSync(productRoot, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => JSON.parse(readFileSync(join(productRoot, entry.name, 'package.json'), 'utf8')).name)
+  if (JSON.stringify(names.sort()) !== JSON.stringify([...CORE_PRODUCT_CLIENT_IDS].sort())) {
+    throw new Error(`core product package roster differs: ${JSON.stringify(names)}`)
+  }
+}
+
+/**
+ * Resolve the prepared Harbor package input and reject missing entries or private runtime copies.
+ * This checks prepared payloads; it does not replace signed component admission.
+ * @param {object[]} capabilities Actual prepareCapabilityComponents results.
+ * @returns {object[]} Complete inputs in release dependency order.
+ */
+export function readReleaseCapabilities(capabilities) {
+  if (capabilities.length !== RELEASE_CAPABILITIES.length) throw new Error('release requires the prepared Harbor capability')
+  return RELEASE_CAPABILITIES.map(expected => {
+    const matches = capabilities.filter(entry => entry.key === expected.key)
+    if (matches.length !== 1) throw new Error(`release capability is missing or duplicated: ${expected.key}`)
+    const entry = matches[0]
+    if (entry.packageName !== expected.packageName
+      || JSON.stringify(entry.requires ?? []) !== JSON.stringify(expected.requires ?? [])) {
+      throw new Error(`release capability descriptor differs: ${expected.key}`)
+    }
+    const manifest = JSON.parse(readFileSync(join(entry.root, 'package.json'), 'utf8'))
+    if (manifest.name !== expected.packageName || manifest.version !== entry.version) {
+      throw new Error(`release capability package identity differs: ${expected.key}`)
+    }
+    for (const file of [manifest.main, manifest.dsh?.bundle?.patch, 'lib/client.js']) {
+      if (typeof file !== 'string' || !existsSync(join(entry.root, file))) {
+        throw new Error(`release capability entry is missing: ${expected.key}/${file}`)
+      }
+    }
+    const modules = join(entry.root, 'node_modules')
+    for (const name of Object.keys(manifest.dependencies ?? {})) {
+      if (!existsSync(join(modules, name, 'package.json'))) throw new Error(`release capability dependency is missing: ${expected.key}/${name}`)
+    }
+    const visit = current => {
+      for (const item of readdirSync(current, { withFileTypes: true })) {
+        const path = join(current, item.name)
+        if (item.isSymbolicLink()) throw new Error(`release capability contains an unmaterialized link: ${path}`)
+        if (item.isDirectory()) visit(path)
+        else if (item.name === 'package.json') {
+          const name = JSON.parse(readFileSync(path, 'utf8')).name ?? ''
+          if (isBundledRuntimePackage(name) || name === 'react' || name === 'react-dom') {
+            throw new Error(`release capability contains a private core peer: ${name}`)
+          }
+        }
+      }
+    }
+    if (existsSync(modules)) visit(modules)
+    return entry
+  })
+}
+
+/**
+ * Verify the prepared Python interpreter and both Harbor commands before Node activation.
+ * @param {string} root Prepared Harbor runtime.
+ * @param {string} version Installed Harbor Node version.
+ * @param {string} cwd Isolated command directory.
+ * @param {NodeJS.ProcessEnv} env Isolated child environment.
+ * @returns {void}
+ */
+export function assertHarborPythonReady(root, version, cwd, env) {
+  const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'))
+  if (manifest.integrationVersion !== version || manifest.platform !== process.platform || manifest.arch !== process.arch) {
+    throw new Error('Harbor Python runtime does not match this platform and Node capability version')
+  }
+  const bin = join(root, 'venv', 'bin')
+  const actual = run(join(bin, 'python'), ['-c',
+    'import importlib.metadata; import harbor; import harbor_dsh_evolution; print(importlib.metadata.version("harbor-dsh-evolution"))',
+  ], { cwd, env }).trim()
+  if (actual !== version) throw new Error(`Harbor Python package version differs: ${actual}`)
+  for (const [command, args] of [['harbor', ['--version']], ['harbor-dsh', ['--help']]]) {
+    if (run(join(bin, command), args, { cwd, env }).trim() === '') throw new Error(`Harbor Python command returned no readiness output: ${command}`)
+  }
+  console.log(`verify-product-release: Harbor Python ${actual} interpreter and commands ready`)
+}
+
+/**
+ * Build a diagnostic that runs inside the real Profile resolution hook.
+ * @param {string} root Prepared Harness.
+ * @param {object[]} capabilities Actually installed optional packages.
+ * @returns {string} Diagnostic plugin declarations.
+ */
+export function buildCapabilityPeerProbe(root, capabilities) {
+  const workspace = readWorkspacePackageVersions(root)
+  const inputs = capabilities.map(entry => {
+    const manifest = JSON.parse(readFileSync(join(entry.root, 'package.json'), 'utf8'))
+    const peers = Object.keys(manifest.peerDependencies ?? {}).map(name => {
+      const target = workspace.get(name)
+      if (!target && isBundledRuntimePackage(name)) throw new Error(`capability has no core peer target: ${name}`)
+      if (target && manifest.peerDependencies[name] !== target.version) throw new Error(`capability core peer is not pinned: ${entry.key}/${name}`)
+      return { name, root: target?.root }
+    })
+    return { root: entry.root, packageName: entry.packageName, peers, dependencies: Object.keys(manifest.dependencies ?? {}) }
+  })
+  return `import { realpathSync } from 'node:fs'
+import { join, relative, isAbsolute, sep } from 'node:path'
+${assertResolvedWorkspacePackage.toString()}
+function verifyCapabilityPeers() {
+  let checked = 0
+  for (const entry of ${JSON.stringify(inputs)}) {
+    const plugin = createRequire(join(entry.root, 'package.json'))
+    for (const peer of entry.peers) {
+      if (peer.root) assertResolvedWorkspacePackage(entry.root, entry.packageName, peer.name, peer.root)
+      else if (realpathSync(plugin.resolve(peer.name)) !== realpathSync(require.resolve(peer.name))) {
+        throw new Error(entry.packageName + ' installed a second core peer: ' + peer.name)
+      }
+      checked += 1
+    }
+    for (const name of entry.dependencies) {
+      assertResolvedWorkspacePackage(entry.root, entry.packageName, name, join(entry.root, 'node_modules', name))
+    }
+  }
+  if (${inputs.length} > 0 && checked === 0) throw new Error('no installed capability peers were checked')
+  console.log('verify-product-release: active Profile capability peer links=' + checked)
+}
 `
-  return `- id: web
-  config:
-    searchProvider: codex
+}
 
-- id: sandbox-policy
-  config:
-    mode: danger-full-access
-    workspaceRoot: !!js process.cwd()
+function installReleaseCapabilities(root, productRuntimeRoot, capabilities, world, env) {
+  const harbor = capabilities.find(entry => entry.key === 'harborPlugin')
+  assertHarborPythonReady(productRuntimeRoot, harbor.version, world, env)
+  const pnpm = join(desktopRoot, '..', '..', 'node_modules', 'pnpm', 'bin', 'pnpm.mjs')
+  if (run(process.execPath, [pnpm, '--version'], { cwd: world, env }).trim() !== '11.7.0') {
+    throw new Error('release capability installation requires pnpm 11.7.0')
+  }
+  const bin = join(world, 'bin')
+  mkdirSync(bin)
+  const quote = value => `'${value.replaceAll("'", "'\\''")}'`
+  writeFileSync(join(bin, 'pnpm'), `#!/bin/sh
+exec ${quote(process.execPath)} ${quote(pnpm)} --pm-on-fail=ignore "$@"
+`, { mode: 0o700 })
+  const installEnv = { ...env, PATH: `${bin}${delimiter}${env.PATH}`, CI: 'true' }
+  for (const entry of capabilities) {
+    const output = run(process.execPath, [join(root, 'apps', 'cli', 'lib', 'bin.js'),
+      'plugin', '--profile', 'web', 'add', '--offline', '--ignore-scripts',
+      `--rollback-package=${entry.packageName}`, '--rollback-expected={"dependency":null,"link":null}',
+      `link:${entry.root}`,
+    ], { cwd: world, env: installEnv, timeout: 660_000 })
+    console.log(`verify-product-release: Profile installed ${entry.packageName}@${entry.version}\n${output}`)
+  }
+  const profile = join(env.DSH_HOME, 'profiles', 'web')
+  const manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8'))
+  for (const entry of capabilities) {
+    if (!manifest.dsh?.profile?.bundles?.includes(entry.packageName)
+      || realpathSync(join(profile, 'node_modules', entry.packageName)) !== realpathSync(entry.root)) {
+      throw new Error(`Profile did not install and activate the prepared capability: ${entry.key}`)
+    }
+  }
+}
 
-- id: approval
+/**
+ * Restrict the smoke overlay to local diagnostics and installed Harbor paths.
+ * Product rows, preset defaults, and lightweight services come from shipped bundles.
+ * @param {string} workspace Isolated working directory.
+ * @param {string} productRuntimeRoot Prepared Harbor Python directory.
+ * @param {string} proxyVerifier Diagnostic plugin path.
+ * @param {'core' | 'installed'} phase Selected product graph.
+ * @returns {string} Loader patch.
+ */
+export function buildProductSmokeOverlay(workspace, productRuntimeRoot, proxyVerifier, phase = 'core') {
+  const harbor = phase === 'installed' ? `- id: harbor-evolution
   config:
-    policy: never
-
-- id: agent-preset-registry
-  config:
-    default: codex
-
-- id: tool-skill
-  config:
-    modelExcludedSkills:
-      - codexhost-delegation
-
-- id: better-sidebar
-  disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'better-sidebar' && !e.disabled)"
-  config:
-    presentation: slot
-    workspaceFence: false
-
-- id: harbor-evolution
-  config:
-    projectRoot: ${value(workspace)}
+    projectRoot: ${JSON.stringify(workspace)}
     jobsDir: "jobs"
-    harborBin: ${value(join(productRuntimeRoot, 'venv', 'bin', 'harbor'))}
-    harborDshBin: ${value(join(productRuntimeRoot, 'venv', 'bin', 'harbor-dsh'))}
+    harborBin: ${JSON.stringify(join(productRuntimeRoot, 'venv', 'bin', 'harbor'))}
+    harborDshBin: ${JSON.stringify(join(productRuntimeRoot, 'venv', 'bin', 'harbor-dsh'))}
     pythonPath: ""
 
-- insert:
-    - id: yourbuddy-release-subagent-codex
-      name: '@deepseek-ai/dsh-subagent-codex'
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === '@deepseek-ai/dsh-subagent-codex' && e.options.id !== 'yourbuddy-release-subagent-codex' && !e.disabled)"
-    - id: yourbuddy-release-codex-auth
-      name: dsh-codex-auth
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth' && e.options.id !== 'yourbuddy-release-codex-auth' && !e.disabled)"
-    - id: yourbuddy-release-codex-search
-      name: dsh-codex-auth/search
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/search' && e.options.id !== 'yourbuddy-release-codex-search' && !e.disabled)"
-    - id: yourbuddy-release-codex-image
-      name: dsh-codex-auth/image
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/image' && e.options.id !== 'yourbuddy-release-codex-image' && !e.disabled)"
-    - id: yourbuddy-release-context-doctor
-      name: dsh-context-doctor
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-context-doctor' && e.options.id !== 'yourbuddy-release-context-doctor' && !e.disabled)"
-    - id: yourbuddy-release-ego-browser
-      name: dsh-ego-browser
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-ego-browser' && e.options.id !== 'yourbuddy-release-ego-browser' && !e.disabled)"
-    - id: yourbuddy-release-plugin-marketplace
-      name: dsh-plugin-marketplace
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-plugin-marketplace' && e.options.id !== 'yourbuddy-release-plugin-marketplace' && !e.disabled)"
-    - id: yourbuddy-release-personal-workbench
-      name: dsh-personal-workbench
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-personal-workbench' && e.options.id !== 'yourbuddy-release-personal-workbench' && !e.disabled)"
-    - id: yourbuddy-release-pomodoro
-      name: '@xiaohui-wang/dsh-pomodoro'
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === '@xiaohui-wang/dsh-pomodoro' && e.options.id !== 'yourbuddy-release-pomodoro' && !e.disabled)"
-    - id: yourbuddy-release-oil-creator
-      name: dsh-oil-creator
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-oil-creator' && e.options.id !== 'yourbuddy-release-oil-creator' && !e.disabled)"
-${proxyVerifierRow}    - id: yourbuddy-release-harbor-evolution
-      name: dsh-harbor-evolution
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-harbor-evolution' && e.options.id !== 'yourbuddy-release-harbor-evolution' && !e.disabled)"
+` : ''
+  return `${harbor}- insert:
+    - id: yourbuddy-release-proxy-verifier
+      name: ${JSON.stringify(proxyVerifier)}
 `
 }
 
@@ -507,15 +628,22 @@ export function desktopWebviewCookie(launchUrl, cookiePair) {
  *   bootFailureCount: number,
  *   frameCount: number,
  * }} result
+ * @param {'core' | 'installed'} phase Expected installed product graph.
  */
-export function assertProductClientBoot(result) {
+export function assertProductClientBoot(result, phase = 'installed') {
   const failures = []
   if (result.bootFailureCount > 0) failures.push('the Web boot page reported a plugin activation failure')
   if (result.frameCount === 0) failures.push('the assembled Web application frame never mounted')
-  for (const id of PRODUCT_CLIENT_IDS) {
+  const expected = phase === 'core' ? CORE_PRODUCT_CLIENT_IDS : PRODUCT_CLIENT_IDS
+  for (const id of [...expected, ...Object.keys(LIGHTWEIGHT_CLIENT_ENTRIES)]) {
     const status = result.clientResponses[id]
     if (status === undefined) failures.push(`${id} Client bundle was not requested`)
     else if (status !== 200) failures.push(`${id} Client bundle returned HTTP ${status}`)
+  }
+  if (phase === 'core') {
+    for (const id of PRODUCT_CLIENT_IDS.filter(id => !CORE_PRODUCT_CLIENT_IDS.includes(id))) {
+      if (Object.hasOwn(result.clientResponses, id)) failures.push(`${id} optional Client was requested by core`)
+    }
   }
   for (const error of result.pageErrors) failures.push(`pageerror: ${error}`)
   for (const error of result.consoleErrors) failures.push(`console error: ${error}`)
@@ -630,6 +758,40 @@ async function createAndOpenReleaseSmokeSession(page) {
   await page.reload({ waitUntil: 'load', timeout: 30_000 })
   await page.locator('[class*="frame"]').first().waitFor({ timeout: 30_000 })
   await completeProductOnboarding(page)
+}
+
+async function exerciseLightweightServices(page) {
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    response.end('<p>YourBuddy lightweight browser is running</p>')
+  })
+  await new Promise((resolveListen, rejectListen) => {
+    server.once('error', rejectListen)
+    server.listen(0, '127.0.0.1', resolveListen)
+  })
+  try {
+    const address = server.address()
+    if (address === null || typeof address === 'string') throw new Error('lightweight browser smoke did not bind a port')
+    const sidebar = page.locator('[data-sidebar-right-panel]').first()
+    if (await sidebar.getAttribute('aria-hidden') === 'true') {
+      await page.getByRole('button', { name: 'Open right sidebar', exact: true }).click()
+    }
+    const browser = sidebar.locator('[data-sidebar-right-guide-entry="browser"]')
+    if (!await browser.isVisible()) await sidebar.getByRole('button', { name: 'New tab', exact: true }).click()
+    await browser.click()
+    const input = sidebar.getByRole('textbox', { name: 'Enter an HTTP(S) address', exact: true })
+    await input.fill(`http://127.0.0.1:${address.port}/`)
+    await input.press('Enter')
+    await sidebar.frameLocator('iframe[data-sidebar-browser-frame]')
+      .getByText('YourBuddy lightweight browser is running', { exact: true }).waitFor({ timeout: 15_000 })
+    await sidebar.getByRole('button', { name: 'New tab', exact: true }).click()
+    await sidebar.locator('[data-sidebar-right-guide-entry="files"]').click()
+    await sidebar.getByText('release-core-preview.txt', { exact: true }).click()
+    await sidebar.locator('[data-document-preview]')
+      .getByText('YourBuddy prepared core document preview', { exact: true }).waitFor({ timeout: 15_000 })
+  } finally {
+    await closeDesktopBridgeSmokeServer(server)
+  }
 }
 
 function buildDesktopBridgeSmokeShell(webUrl) {
@@ -758,7 +920,7 @@ function closeDesktopBridgeSmokeServer(server) {
   })
 }
 
-async function runBrowserSmoke(baseUrl, env) {
+async function runBrowserSmoke(baseUrl, env, phase) {
   let browser
   let desktopBridgeServer
   let failure
@@ -773,6 +935,7 @@ async function runBrowserSmoke(baseUrl, env) {
       env,
       executablePath: installedChromiumExecutable,
     })
+    console.log(`verify-product-release: ${phase} browser ${browser.version()} (${installedChromiumExecutable})`)
     const releaseVideoDir = process.env.YOURBUDDY_RELEASE_VIDEO_DIR
     if (releaseVideoDir) mkdirSync(releaseVideoDir, { recursive: true })
     const context = await browser.newContext({
@@ -911,12 +1074,13 @@ async function runBrowserSmoke(baseUrl, env) {
       consoleErrors,
       bootFailureCount: await page.getByText('Failed to load plugins', { exact: true }).count(),
       frameCount,
-    })
+    }, phase)
     await completeProductOnboarding(page)
     const presetButton = page.getByRole('button', { name: 'Codex', exact: true })
     await presetButton.waitFor({ timeout: 10_000 })
     await presetButton.click()
-    await page.getByRole('menuitem', { name: /内容创作/ }).waitFor({ timeout: 10_000 })
+    const creatorPreset = page.getByRole('menuitem', { name: /内容创作/ })
+    await creatorPreset.waitFor({ timeout: 10_000 })
     await page.keyboard.press('Escape')
     await page.getByRole('region', { name: 'Library', exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
     const codexModelCatalogProbe = await page.evaluate(async () => {
@@ -935,6 +1099,7 @@ async function runBrowserSmoke(baseUrl, env) {
     })
     assertCodexModelCatalogProbe(codexModelCatalogProbe)
     await createAndOpenReleaseSmokeSession(page)
+    await exerciseLightweightServices(page)
     await page.getByRole('button', { name: 'Access mode, current: Full access', exact: true })
       .waitFor({ timeout: 10_000 })
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
@@ -970,7 +1135,7 @@ async function runBrowserSmoke(baseUrl, env) {
       consoleErrors,
       bootFailureCount: await page.getByText('Failed to load plugins', { exact: true }).count(),
       frameCount,
-    })
+    }, phase)
     await settings.getByRole('button', { name: 'Close', exact: true }).click()
 
     await page.context().clearCookies()
@@ -1242,7 +1407,7 @@ async function runBrowserSmoke(baseUrl, env) {
       consoleErrors,
       bootFailureCount: await embedded.getByText('Failed to load plugins', { exact: true }).count(),
       frameCount: await embedded.locator('[class*="frame"]').count(),
-    })
+    }, phase)
 
     const proxyPage = await page.context().newPage()
     const proxyClientResponses = {}
@@ -1401,7 +1566,7 @@ async function runBrowserSmoke(baseUrl, env) {
       consoleErrors,
       bootFailureCount: await proxyEmbedded.getByText('Failed to load plugins', { exact: true }).count(),
       frameCount: await proxyEmbedded.locator('[class*="frame"]').count(),
-    })
+    }, phase)
 
     const brandingNavigation = await page.goto(baseUrl, { waitUntil: 'load', timeout: 30_000 })
     if (brandingNavigation === null || brandingNavigation.status() !== 200) {
@@ -1439,8 +1604,8 @@ async function runBrowserSmoke(baseUrl, env) {
   if (closeFailure) throw closeFailure
 }
 
-async function runHostSmoke(root, productRuntimeRoot) {
-  const world = mkdtempSync(join(tmpdir(), 'yourbuddy-release-smoke-'))
+async function runHostSmoke(root, productRuntimeRoot, desktopOverlayPath, world, lifetime, phase, capabilities = []) {
+  writeFileSync(join(world, 'release-core-preview.txt'), 'YourBuddy prepared core document preview\n')
   const overlay = join(world, 'product.overlay.yml')
   const proxyVerifier = join(world, 'proxy-dispatcher-verifier.mjs')
   const proxyPackage = pathToFileURL(join(
@@ -1453,10 +1618,12 @@ async function runHostSmoke(root, productRuntimeRoot) {
 
 const require = createRequire(${JSON.stringify(proxyPackage)})
 const { proxyRouteFor } = require('@deepseek-ai/dsh-http-proxy')
+${buildCapabilityPeerProbe(root, capabilities)}
 
 export const name = 'yourbuddy-release-proxy-verifier'
 
 export async function apply() {
+  verifyCapabilityPeers()
   const route = proxyRouteFor(new URL('https://example.com/'))
   if (!route.proxied || route.proxy !== ${JSON.stringify(syntheticHostProxy)}) {
     throw new Error('application proxy policy is not active')
@@ -1466,8 +1633,9 @@ export async function apply() {
   }
 }
 `)
-  writeFileSync(overlay, buildProductSmokeOverlay(world, productRuntimeRoot, proxyVerifier))
+  writeFileSync(overlay, buildProductSmokeOverlay(world, productRuntimeRoot, proxyVerifier, phase))
   const env = createReleaseChildEnvironment(world, productRuntimeRoot)
+  if (phase === 'installed') installReleaseCapabilities(root, productRuntimeRoot, capabilities, world, env)
   const creatorEpisode = join(env.HOME, 'Movies', '视频项目', `2026-09-30_${creatorPublishSmokeTitle}`)
   mkdirSync(creatorEpisode, { recursive: true })
   writeFileSync(join(creatorEpisode, `${creatorPublishSmokeTitle}_subtitled.mp4`), 'release-smoke-video')
@@ -1512,6 +1680,7 @@ export async function apply() {
   const child = spawn(process.execPath, [
     join(root, 'apps', 'cli', 'lib', 'bin.js'),
     'web',
+    '--patch', desktopOverlayPath,
     '--patch', overlay,
     '--no-open',
     '--host', '127.0.0.1',
@@ -1550,15 +1719,32 @@ export async function apply() {
       })
     })
 
+    const peerReport = stdout.match(/verify-product-release: active Profile capability peer links=(\d+)/u)
+    if (!peerReport || (phase === 'installed' && Number(peerReport[1]) === 0)) {
+      throw new Error('the active Host did not execute its Profile peer verification')
+    }
+    console.log(`verify-product-release: ${phase} Host peer diagnostic completed (${peerReport[1]} capability links)`)
     const authenticated = await authenticateHost(baseUrl)
     const headers = { cookie: authenticated.cookie }
     await fetchOk(authenticated.baseUrl, { headers })
-    const audit = await (await fetchOk(
-      `${authenticated.baseUrl}/api/context-doctor/audit?detail=developer`,
-      { headers },
-    )).json()
-    if (audit?.ok !== true) throw new Error('Context Doctor release smoke returned an invalid response')
-    await runBrowserSmoke(baseUrl, env)
+    for (const path of ['/api/context-doctor/audit?detail=developer', '/api/pomodoro/config']) {
+      const body = await (await fetchOk(`${authenticated.baseUrl}${path}`, { headers })).json()
+      if (body?.ok !== true) throw new Error(`default product Host returned an invalid response: ${path}`)
+    }
+    const browser = await (await fetchOk(`${authenticated.baseUrl}/ego/api/ffmpeg-status`, {
+      method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: '{}',
+    })).json()
+    if (browser?.ok !== true) throw new Error('default Browser Host returned an invalid response')
+    const harborResponse = await fetch(`${authenticated.baseUrl}/_dsh/harbor-evolution/dashboard`, {
+      headers, signal: AbortSignal.timeout(15_000),
+    })
+    if (phase === 'core') {
+      if (harborResponse.status !== 404) throw new Error(`default product unexpectedly serves the optional Harbor Host: HTTP ${harborResponse.status}`)
+    } else {
+      const harbor = await harborResponse.json()
+      if (harborResponse.status !== 200 || harbor?.ok !== true) throw new Error('installed Harbor Host returned an invalid response')
+    }
+    await runBrowserSmoke(baseUrl, env, phase)
   }
   catch (error) {
     failure = error
@@ -1573,10 +1759,8 @@ export async function apply() {
   catch (error) {
     exitFailure = error
   }
-  if (outcome !== undefined && (outcome.code !== null || outcome.signal !== null)) {
-    rmSync(world, { recursive: true, force: true })
-  }
-  else if (exitFailure) {
+  if (exitFailure && (outcome === undefined || (outcome.code === null && outcome.signal === null))) {
+    lifetime.preserve = true
     exitFailure = new Error(`${exitFailure.message}\nrelease smoke state preserved at ${world}`, { cause: exitFailure })
   }
   if (failure && exitFailure) {
@@ -1638,26 +1822,47 @@ async function verifyMarketplaceHostContract(root) {
   }
 }
 
-/** Run the complete local release compatibility smoke. */
-export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRoot = runtimeRoot) {
-  const commandWorld = mkdtempSync(join(tmpdir(), 'yourbuddy-release-command-'))
-  const env = createReleaseChildEnvironment(commandWorld, productRuntimeRoot)
+/**
+ * Run every default feature, then install optional Harbor into that same isolated Profile and restart.
+ * Signed native download/install admission is a separate candidate gate.
+ * @param {string} root Prepared and installed Harness.
+ * @param {string} productRuntimeRoot Prepared Harbor Python runtime.
+ * @param {{capabilities?: object[], desktopOverlayPath?: string}} options Prepared packages and the real Rust-rendered desktop overlay.
+ * @returns {Promise<void>}
+ */
+export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRoot = runtimeRoot, options = {}) {
+  const desktopOverlayPath = options.desktopOverlayPath ?? process.env.YOURBUDDY_RELEASE_DESKTOP_OVERLAY
+  if (!desktopOverlayPath || !existsSync(desktopOverlayPath)) {
+    throw new Error('release verification requires the desktop overlay rendered by the native product implementation')
+  }
+  const world = mkdtempSync(join(tmpdir(), 'yourbuddy-release-smoke-'))
+  const lifetime = { preserve: false }
+  let preparedRootVerified = false
   try {
     verifyOfflineArchive(root)
+    preparedRootVerified = true
+    assertCoreProductComposition(root)
     const lockPeers = assertBundledProductPeerLinks(root)
     const installedPeers = assertInstalledProductPeerLinks(root)
     if (lockPeers !== installedPeers) {
       throw new Error(`product peer verification count changed after install: lock=${lockPeers}, installed=${installedPeers}`)
     }
     await verifyMarketplaceHostContract(root)
-    run(join(productRuntimeRoot, 'venv', 'bin', 'harbor'), ['--version'], { cwd: commandWorld, env })
-    run(join(productRuntimeRoot, 'venv', 'bin', 'harbor-dsh'), ['--help'], { cwd: commandWorld, env })
-    await runHostSmoke(root, productRuntimeRoot)
-    console.log(`verify-product-release: ${installedPeers} bundled runtime peer links, ${PRODUCT_CLIENT_IDS.length} assembled Client plugins, Agent Presets, Full access default, Ego Browser, Oil Creator, external links, Plugin Marketplace, Network proxy, and Application lifecycle controls passed`)
+    await runHostSmoke(root, productRuntimeRoot, desktopOverlayPath, world, lifetime, 'core')
+    console.log(`verify-product-release: default product passed (${CORE_PRODUCT_CLIENT_IDS.length} product Clients, Codex default, lightweight browser and document preview)`)
+    const capabilities = readReleaseCapabilities(options.capabilities ?? RELEASE_CAPABILITIES.map(entry => {
+      const packageRoot = join(desktopRoot, 'bundled', 'capabilities', entry.key)
+      const manifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'))
+      return { ...entry, root: packageRoot, version: manifest.version }
+    }))
+    await runHostSmoke(root, productRuntimeRoot, desktopOverlayPath, world, lifetime, 'installed', capabilities)
+    console.log(`verify-product-release: optional Harbor installed phase passed (${installedPeers} core peer links, ${PRODUCT_CLIENT_IDS.length} assembled product Clients, real Profile installation and Harbor Python readiness)`)
   }
   finally {
-    removeWorkspaceInstallState(root)
-    rmSync(commandWorld, { recursive: true, force: true })
+    if (!lifetime.preserve) {
+      if (preparedRootVerified) removeWorkspaceInstallState(root)
+      rmSync(world, { recursive: true, force: true })
+    }
   }
 }
 

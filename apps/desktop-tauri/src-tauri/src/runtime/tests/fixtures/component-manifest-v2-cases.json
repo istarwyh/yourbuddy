@@ -1,0 +1,4355 @@
+{
+  "valid": [
+    {
+      "name": "current-four-components",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "optional-catalog",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "diagnostics": {
+            "id": "sha256:diagnostics",
+            "archive": "yourbuddy-diagnostics-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "64-components",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "component0": {
+            "id": "sha256:component0",
+            "archive": "yourbuddy-component0-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component1": {
+            "id": "sha256:component1",
+            "archive": "yourbuddy-component1-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component2": {
+            "id": "sha256:component2",
+            "archive": "yourbuddy-component2-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component3": {
+            "id": "sha256:component3",
+            "archive": "yourbuddy-component3-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component4": {
+            "id": "sha256:component4",
+            "archive": "yourbuddy-component4-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component5": {
+            "id": "sha256:component5",
+            "archive": "yourbuddy-component5-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component6": {
+            "id": "sha256:component6",
+            "archive": "yourbuddy-component6-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component7": {
+            "id": "sha256:component7",
+            "archive": "yourbuddy-component7-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component8": {
+            "id": "sha256:component8",
+            "archive": "yourbuddy-component8-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component9": {
+            "id": "sha256:component9",
+            "archive": "yourbuddy-component9-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component10": {
+            "id": "sha256:component10",
+            "archive": "yourbuddy-component10-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component11": {
+            "id": "sha256:component11",
+            "archive": "yourbuddy-component11-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component12": {
+            "id": "sha256:component12",
+            "archive": "yourbuddy-component12-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component13": {
+            "id": "sha256:component13",
+            "archive": "yourbuddy-component13-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component14": {
+            "id": "sha256:component14",
+            "archive": "yourbuddy-component14-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component15": {
+            "id": "sha256:component15",
+            "archive": "yourbuddy-component15-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component16": {
+            "id": "sha256:component16",
+            "archive": "yourbuddy-component16-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component17": {
+            "id": "sha256:component17",
+            "archive": "yourbuddy-component17-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component18": {
+            "id": "sha256:component18",
+            "archive": "yourbuddy-component18-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component19": {
+            "id": "sha256:component19",
+            "archive": "yourbuddy-component19-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component20": {
+            "id": "sha256:component20",
+            "archive": "yourbuddy-component20-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component21": {
+            "id": "sha256:component21",
+            "archive": "yourbuddy-component21-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component22": {
+            "id": "sha256:component22",
+            "archive": "yourbuddy-component22-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component23": {
+            "id": "sha256:component23",
+            "archive": "yourbuddy-component23-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component24": {
+            "id": "sha256:component24",
+            "archive": "yourbuddy-component24-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component25": {
+            "id": "sha256:component25",
+            "archive": "yourbuddy-component25-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component26": {
+            "id": "sha256:component26",
+            "archive": "yourbuddy-component26-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component27": {
+            "id": "sha256:component27",
+            "archive": "yourbuddy-component27-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component28": {
+            "id": "sha256:component28",
+            "archive": "yourbuddy-component28-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component29": {
+            "id": "sha256:component29",
+            "archive": "yourbuddy-component29-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component30": {
+            "id": "sha256:component30",
+            "archive": "yourbuddy-component30-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component31": {
+            "id": "sha256:component31",
+            "archive": "yourbuddy-component31-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component32": {
+            "id": "sha256:component32",
+            "archive": "yourbuddy-component32-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component33": {
+            "id": "sha256:component33",
+            "archive": "yourbuddy-component33-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component34": {
+            "id": "sha256:component34",
+            "archive": "yourbuddy-component34-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component35": {
+            "id": "sha256:component35",
+            "archive": "yourbuddy-component35-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component36": {
+            "id": "sha256:component36",
+            "archive": "yourbuddy-component36-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component37": {
+            "id": "sha256:component37",
+            "archive": "yourbuddy-component37-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component38": {
+            "id": "sha256:component38",
+            "archive": "yourbuddy-component38-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component39": {
+            "id": "sha256:component39",
+            "archive": "yourbuddy-component39-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component40": {
+            "id": "sha256:component40",
+            "archive": "yourbuddy-component40-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component41": {
+            "id": "sha256:component41",
+            "archive": "yourbuddy-component41-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component42": {
+            "id": "sha256:component42",
+            "archive": "yourbuddy-component42-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component43": {
+            "id": "sha256:component43",
+            "archive": "yourbuddy-component43-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component44": {
+            "id": "sha256:component44",
+            "archive": "yourbuddy-component44-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component45": {
+            "id": "sha256:component45",
+            "archive": "yourbuddy-component45-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component46": {
+            "id": "sha256:component46",
+            "archive": "yourbuddy-component46-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component47": {
+            "id": "sha256:component47",
+            "archive": "yourbuddy-component47-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component48": {
+            "id": "sha256:component48",
+            "archive": "yourbuddy-component48-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component49": {
+            "id": "sha256:component49",
+            "archive": "yourbuddy-component49-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component50": {
+            "id": "sha256:component50",
+            "archive": "yourbuddy-component50-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component51": {
+            "id": "sha256:component51",
+            "archive": "yourbuddy-component51-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component52": {
+            "id": "sha256:component52",
+            "archive": "yourbuddy-component52-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component53": {
+            "id": "sha256:component53",
+            "archive": "yourbuddy-component53-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component54": {
+            "id": "sha256:component54",
+            "archive": "yourbuddy-component54-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component55": {
+            "id": "sha256:component55",
+            "archive": "yourbuddy-component55-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component56": {
+            "id": "sha256:component56",
+            "archive": "yourbuddy-component56-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component57": {
+            "id": "sha256:component57",
+            "archive": "yourbuddy-component57-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component58": {
+            "id": "sha256:component58",
+            "archive": "yourbuddy-component58-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component59": {
+            "id": "sha256:component59",
+            "archive": "yourbuddy-component59-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "16-node-dependency-chain",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "cap0": {
+            "id": "sha256:cap0",
+            "archive": "yourbuddy-cap0-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap1": "sha256:cap1"
+            }
+          },
+          "cap1": {
+            "id": "sha256:cap1",
+            "archive": "yourbuddy-cap1-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap2": "sha256:cap2"
+            }
+          },
+          "cap2": {
+            "id": "sha256:cap2",
+            "archive": "yourbuddy-cap2-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap3": "sha256:cap3"
+            }
+          },
+          "cap3": {
+            "id": "sha256:cap3",
+            "archive": "yourbuddy-cap3-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap4": "sha256:cap4"
+            }
+          },
+          "cap4": {
+            "id": "sha256:cap4",
+            "archive": "yourbuddy-cap4-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap5": "sha256:cap5"
+            }
+          },
+          "cap5": {
+            "id": "sha256:cap5",
+            "archive": "yourbuddy-cap5-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap6": "sha256:cap6"
+            }
+          },
+          "cap6": {
+            "id": "sha256:cap6",
+            "archive": "yourbuddy-cap6-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap7": "sha256:cap7"
+            }
+          },
+          "cap7": {
+            "id": "sha256:cap7",
+            "archive": "yourbuddy-cap7-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap8": "sha256:cap8"
+            }
+          },
+          "cap8": {
+            "id": "sha256:cap8",
+            "archive": "yourbuddy-cap8-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap9": "sha256:cap9"
+            }
+          },
+          "cap9": {
+            "id": "sha256:cap9",
+            "archive": "yourbuddy-cap9-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap10": "sha256:cap10"
+            }
+          },
+          "cap10": {
+            "id": "sha256:cap10",
+            "archive": "yourbuddy-cap10-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap11": "sha256:cap11"
+            }
+          },
+          "cap11": {
+            "id": "sha256:cap11",
+            "archive": "yourbuddy-cap11-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap12": "sha256:cap12"
+            }
+          },
+          "cap12": {
+            "id": "sha256:cap12",
+            "archive": "yourbuddy-cap12-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap13": "sha256:cap13"
+            }
+          },
+          "cap13": {
+            "id": "sha256:cap13",
+            "archive": "yourbuddy-cap13-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap14": "sha256:cap14"
+            }
+          },
+          "cap14": {
+            "id": "sha256:cap14",
+            "archive": "yourbuddy-cap14-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "16-dependencies",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "core0": {
+            "id": "sha256:core0",
+            "archive": "yourbuddy-core0-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core1": {
+            "id": "sha256:core1",
+            "archive": "yourbuddy-core1-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core2": {
+            "id": "sha256:core2",
+            "archive": "yourbuddy-core2-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core3": {
+            "id": "sha256:core3",
+            "archive": "yourbuddy-core3-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core4": {
+            "id": "sha256:core4",
+            "archive": "yourbuddy-core4-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core5": {
+            "id": "sha256:core5",
+            "archive": "yourbuddy-core5-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core6": {
+            "id": "sha256:core6",
+            "archive": "yourbuddy-core6-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core7": {
+            "id": "sha256:core7",
+            "archive": "yourbuddy-core7-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core8": {
+            "id": "sha256:core8",
+            "archive": "yourbuddy-core8-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core9": {
+            "id": "sha256:core9",
+            "archive": "yourbuddy-core9-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core10": {
+            "id": "sha256:core10",
+            "archive": "yourbuddy-core10-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core11": {
+            "id": "sha256:core11",
+            "archive": "yourbuddy-core11-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core12": {
+            "id": "sha256:core12",
+            "archive": "yourbuddy-core12-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core13": {
+            "id": "sha256:core13",
+            "archive": "yourbuddy-core13-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core14": {
+            "id": "sha256:core14",
+            "archive": "yourbuddy-core14-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core15": {
+            "id": "sha256:core15",
+            "archive": "yourbuddy-core15-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "feature": {
+            "id": "sha256:feature",
+            "archive": "yourbuddy-feature-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "core0": "sha256:core0",
+              "core1": "sha256:core1",
+              "core2": "sha256:core2",
+              "core3": "sha256:core3",
+              "core4": "sha256:core4",
+              "core5": "sha256:core5",
+              "core6": "sha256:core6",
+              "core7": "sha256:core7",
+              "core8": "sha256:core8",
+              "core9": "sha256:core9",
+              "core10": "sha256:core10",
+              "core11": "sha256:core11",
+              "core12": "sha256:core12",
+              "core13": "sha256:core13",
+              "core14": "sha256:core14",
+              "core15": "sha256:core15"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "512-byte-purpose",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754cab",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "schema1",
+      "manifest": {
+        "schemaVersion": 1,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown-root-field",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        },
+        "unknown": true
+      }
+    },
+    {
+      "name": "unknown-spec-field",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {},
+            "activation": "startup"
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "missing-required-node",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "wrong-harness-kind",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown-kind",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "future",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "65-components",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "component0": {
+            "id": "sha256:component0",
+            "archive": "yourbuddy-component0-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component1": {
+            "id": "sha256:component1",
+            "archive": "yourbuddy-component1-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component2": {
+            "id": "sha256:component2",
+            "archive": "yourbuddy-component2-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component3": {
+            "id": "sha256:component3",
+            "archive": "yourbuddy-component3-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component4": {
+            "id": "sha256:component4",
+            "archive": "yourbuddy-component4-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component5": {
+            "id": "sha256:component5",
+            "archive": "yourbuddy-component5-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component6": {
+            "id": "sha256:component6",
+            "archive": "yourbuddy-component6-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component7": {
+            "id": "sha256:component7",
+            "archive": "yourbuddy-component7-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component8": {
+            "id": "sha256:component8",
+            "archive": "yourbuddy-component8-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component9": {
+            "id": "sha256:component9",
+            "archive": "yourbuddy-component9-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component10": {
+            "id": "sha256:component10",
+            "archive": "yourbuddy-component10-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component11": {
+            "id": "sha256:component11",
+            "archive": "yourbuddy-component11-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component12": {
+            "id": "sha256:component12",
+            "archive": "yourbuddy-component12-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component13": {
+            "id": "sha256:component13",
+            "archive": "yourbuddy-component13-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component14": {
+            "id": "sha256:component14",
+            "archive": "yourbuddy-component14-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component15": {
+            "id": "sha256:component15",
+            "archive": "yourbuddy-component15-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component16": {
+            "id": "sha256:component16",
+            "archive": "yourbuddy-component16-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component17": {
+            "id": "sha256:component17",
+            "archive": "yourbuddy-component17-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component18": {
+            "id": "sha256:component18",
+            "archive": "yourbuddy-component18-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component19": {
+            "id": "sha256:component19",
+            "archive": "yourbuddy-component19-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component20": {
+            "id": "sha256:component20",
+            "archive": "yourbuddy-component20-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component21": {
+            "id": "sha256:component21",
+            "archive": "yourbuddy-component21-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component22": {
+            "id": "sha256:component22",
+            "archive": "yourbuddy-component22-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component23": {
+            "id": "sha256:component23",
+            "archive": "yourbuddy-component23-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component24": {
+            "id": "sha256:component24",
+            "archive": "yourbuddy-component24-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component25": {
+            "id": "sha256:component25",
+            "archive": "yourbuddy-component25-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component26": {
+            "id": "sha256:component26",
+            "archive": "yourbuddy-component26-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component27": {
+            "id": "sha256:component27",
+            "archive": "yourbuddy-component27-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component28": {
+            "id": "sha256:component28",
+            "archive": "yourbuddy-component28-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component29": {
+            "id": "sha256:component29",
+            "archive": "yourbuddy-component29-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component30": {
+            "id": "sha256:component30",
+            "archive": "yourbuddy-component30-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component31": {
+            "id": "sha256:component31",
+            "archive": "yourbuddy-component31-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component32": {
+            "id": "sha256:component32",
+            "archive": "yourbuddy-component32-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component33": {
+            "id": "sha256:component33",
+            "archive": "yourbuddy-component33-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component34": {
+            "id": "sha256:component34",
+            "archive": "yourbuddy-component34-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component35": {
+            "id": "sha256:component35",
+            "archive": "yourbuddy-component35-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component36": {
+            "id": "sha256:component36",
+            "archive": "yourbuddy-component36-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component37": {
+            "id": "sha256:component37",
+            "archive": "yourbuddy-component37-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component38": {
+            "id": "sha256:component38",
+            "archive": "yourbuddy-component38-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component39": {
+            "id": "sha256:component39",
+            "archive": "yourbuddy-component39-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component40": {
+            "id": "sha256:component40",
+            "archive": "yourbuddy-component40-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component41": {
+            "id": "sha256:component41",
+            "archive": "yourbuddy-component41-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component42": {
+            "id": "sha256:component42",
+            "archive": "yourbuddy-component42-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component43": {
+            "id": "sha256:component43",
+            "archive": "yourbuddy-component43-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component44": {
+            "id": "sha256:component44",
+            "archive": "yourbuddy-component44-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component45": {
+            "id": "sha256:component45",
+            "archive": "yourbuddy-component45-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component46": {
+            "id": "sha256:component46",
+            "archive": "yourbuddy-component46-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component47": {
+            "id": "sha256:component47",
+            "archive": "yourbuddy-component47-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component48": {
+            "id": "sha256:component48",
+            "archive": "yourbuddy-component48-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component49": {
+            "id": "sha256:component49",
+            "archive": "yourbuddy-component49-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component50": {
+            "id": "sha256:component50",
+            "archive": "yourbuddy-component50-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component51": {
+            "id": "sha256:component51",
+            "archive": "yourbuddy-component51-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component52": {
+            "id": "sha256:component52",
+            "archive": "yourbuddy-component52-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component53": {
+            "id": "sha256:component53",
+            "archive": "yourbuddy-component53-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component54": {
+            "id": "sha256:component54",
+            "archive": "yourbuddy-component54-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component55": {
+            "id": "sha256:component55",
+            "archive": "yourbuddy-component55-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component56": {
+            "id": "sha256:component56",
+            "archive": "yourbuddy-component56-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component57": {
+            "id": "sha256:component57",
+            "archive": "yourbuddy-component57-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component58": {
+            "id": "sha256:component58",
+            "archive": "yourbuddy-component58-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component59": {
+            "id": "sha256:component59",
+            "archive": "yourbuddy-component59-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "component60": {
+            "id": "sha256:component60",
+            "archive": "yourbuddy-component60-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "path-component-key",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "../escape": {
+            "id": "sha256:../escape",
+            "archive": "yourbuddy-../escape-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "url-component-key",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "https://example.invalid": {
+            "id": "sha256:https://example.invalid",
+            "archive": "yourbuddy-https://example.invalid-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "65-byte-component-key",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": {
+            "id": "sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "archive": "yourbuddy-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "optional",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "empty-component-cache-key",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dot-component-cache-key",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:..",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "161-byte-id",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "archive-traversal",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-../escape.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "241-byte-archive",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "uppercase-digest",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "zero-archive-bytes",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 0,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "total-byte-overflow",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 9007199254740991,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "129-byte-version",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "513-byte-purpose",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c\u754c",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "mismatched-release-tag",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.8",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "unsupported-platform",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "linux",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "missing-dependency",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "missing": "sha256:missing"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "wrong-dependency-id",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:wrong"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "self-cycle",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dependency-cycle",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "other": "sha256:other"
+            }
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "other": {
+            "id": "sha256:other",
+            "archive": "yourbuddy-other-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "17-node-dependency-chain",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "cap0": {
+            "id": "sha256:cap0",
+            "archive": "yourbuddy-cap0-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap1": "sha256:cap1"
+            }
+          },
+          "cap1": {
+            "id": "sha256:cap1",
+            "archive": "yourbuddy-cap1-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap2": "sha256:cap2"
+            }
+          },
+          "cap2": {
+            "id": "sha256:cap2",
+            "archive": "yourbuddy-cap2-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap3": "sha256:cap3"
+            }
+          },
+          "cap3": {
+            "id": "sha256:cap3",
+            "archive": "yourbuddy-cap3-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap4": "sha256:cap4"
+            }
+          },
+          "cap4": {
+            "id": "sha256:cap4",
+            "archive": "yourbuddy-cap4-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap5": "sha256:cap5"
+            }
+          },
+          "cap5": {
+            "id": "sha256:cap5",
+            "archive": "yourbuddy-cap5-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap6": "sha256:cap6"
+            }
+          },
+          "cap6": {
+            "id": "sha256:cap6",
+            "archive": "yourbuddy-cap6-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap7": "sha256:cap7"
+            }
+          },
+          "cap7": {
+            "id": "sha256:cap7",
+            "archive": "yourbuddy-cap7-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap8": "sha256:cap8"
+            }
+          },
+          "cap8": {
+            "id": "sha256:cap8",
+            "archive": "yourbuddy-cap8-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap9": "sha256:cap9"
+            }
+          },
+          "cap9": {
+            "id": "sha256:cap9",
+            "archive": "yourbuddy-cap9-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap10": "sha256:cap10"
+            }
+          },
+          "cap10": {
+            "id": "sha256:cap10",
+            "archive": "yourbuddy-cap10-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap11": "sha256:cap11"
+            }
+          },
+          "cap11": {
+            "id": "sha256:cap11",
+            "archive": "yourbuddy-cap11-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap12": "sha256:cap12"
+            }
+          },
+          "cap12": {
+            "id": "sha256:cap12",
+            "archive": "yourbuddy-cap12-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap13": "sha256:cap13"
+            }
+          },
+          "cap13": {
+            "id": "sha256:cap13",
+            "archive": "yourbuddy-cap13-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap14": "sha256:cap14"
+            }
+          },
+          "cap14": {
+            "id": "sha256:cap14",
+            "archive": "yourbuddy-cap14-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "cap15": "sha256:cap15"
+            }
+          },
+          "cap15": {
+            "id": "sha256:cap15",
+            "archive": "yourbuddy-cap15-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "17-dependencies",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "core0": {
+            "id": "sha256:core0",
+            "archive": "yourbuddy-core0-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core1": {
+            "id": "sha256:core1",
+            "archive": "yourbuddy-core1-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core2": {
+            "id": "sha256:core2",
+            "archive": "yourbuddy-core2-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core3": {
+            "id": "sha256:core3",
+            "archive": "yourbuddy-core3-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core4": {
+            "id": "sha256:core4",
+            "archive": "yourbuddy-core4-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core5": {
+            "id": "sha256:core5",
+            "archive": "yourbuddy-core5-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core6": {
+            "id": "sha256:core6",
+            "archive": "yourbuddy-core6-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core7": {
+            "id": "sha256:core7",
+            "archive": "yourbuddy-core7-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core8": {
+            "id": "sha256:core8",
+            "archive": "yourbuddy-core8-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core9": {
+            "id": "sha256:core9",
+            "archive": "yourbuddy-core9-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core10": {
+            "id": "sha256:core10",
+            "archive": "yourbuddy-core10-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core11": {
+            "id": "sha256:core11",
+            "archive": "yourbuddy-core11-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core12": {
+            "id": "sha256:core12",
+            "archive": "yourbuddy-core12-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core13": {
+            "id": "sha256:core13",
+            "archive": "yourbuddy-core13-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core14": {
+            "id": "sha256:core14",
+            "archive": "yourbuddy-core14-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core15": {
+            "id": "sha256:core15",
+            "archive": "yourbuddy-core15-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "core16": {
+            "id": "sha256:core16",
+            "archive": "yourbuddy-core16-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "feature": {
+            "id": "sha256:feature",
+            "archive": "yourbuddy-feature-fixture.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "capability-on-demand",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "core0": "sha256:core0",
+              "core1": "sha256:core1",
+              "core2": "sha256:core2",
+              "core3": "sha256:core3",
+              "core4": "sha256:core4",
+              "core5": "sha256:core5",
+              "core6": "sha256:core6",
+              "core7": "sha256:core7",
+              "core8": "sha256:core8",
+              "core9": "sha256:core9",
+              "core10": "sha256:core10",
+              "core11": "sha256:core11",
+              "core12": "sha256:core12",
+              "core13": "sha256:core13",
+              "core14": "sha256:core14",
+              "core15": "sha256:core15",
+              "core16": "sha256:core16"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "core-requires-capability",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {
+              "harbor": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            }
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "automatic-fallback-dependency",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "node": "node:22.19.0:darwin-arm64"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "harbor-omits-core",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "missing-depends-on",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback"
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "components-array",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": []
+      }
+    },
+    {
+      "name": "floating-byte-count",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 1.5,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "unsafe-byte-count",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 9007199254740992,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "empty-version",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "nonstring-version",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": 22,
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dependency-id-number",
+      "manifest": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.9",
+        "releaseTag": "yourbuddy-v0.4.9",
+        "platform": "darwin",
+        "arch": "arm64",
+        "components": {
+          "harness": {
+            "id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "archive": "yourbuddy-harness-fixture-macos-arm64.tar.zst",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bytes": 100,
+            "kind": "core-runtime",
+            "version": "0.2.0-rc.1",
+            "purpose": "Codex login, delegation and core workbench",
+            "dependsOn": {}
+          },
+          "pnpmStore": {
+            "id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "archive": "yourbuddy-pnpmstore-fixture-macos-arm64.tar.zst",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bytes": 200,
+            "kind": "runtime-fallback",
+            "version": "11.7.0",
+            "purpose": "Pinned pnpm offline dependency fallback",
+            "dependsOn": {}
+          },
+          "node": {
+            "id": "node:22.19.0:darwin-arm64",
+            "archive": "yourbuddy-node-fixture-macos-arm64.tar.zst",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bytes": 300,
+            "kind": "runtime-fallback",
+            "version": "22.19.0",
+            "purpose": "Managed Node.js fallback",
+            "dependsOn": {}
+          },
+          "harbor": {
+            "id": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "archive": "yourbuddy-harbor-fixture-macos-arm64.tar.zst",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "bytes": 400,
+            "kind": "capability-on-demand",
+            "version": "0.4.0",
+            "purpose": "Harbor evaluation and evolution runtime",
+            "dependsOn": {
+              "harness": 12
+            }
+          }
+        }
+      }
+    }
+  ]
+}

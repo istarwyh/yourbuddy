@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
 
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { load } from 'js-yaml'
 
@@ -18,6 +18,8 @@ import {
   stripUnbundledWorkspaceDependencies,
   verifyExternalSnapshot,
 } from './bundle-harness-source.mjs'
+
+import { readWorkspacePackageVersions } from './product-plugin-compatibility.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -341,7 +343,7 @@ test('installDefaultAgentPresets declares product presets from the standard prof
   }
 })
 
-test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependency', () => {
+test('installProductPlugins keeps every non-Harbor product in core and excludes the on-demand Harbor package', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-product-plugin-'))
   const cli = join(root, 'apps', 'cli')
   mkdirSync(cli, { recursive: true })
@@ -360,7 +362,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     installProductPlugins(root)
     const manifest = JSON.parse(readFileSync(join(cli, 'package.json'), 'utf8'))
     assert.equal(manifest.dependencies.kept, '1.0.0')
-    assert.equal(manifest.dependencies['dsh-harbor-evolution'], 'workspace:*')
+    assert.equal(manifest.dependencies['dsh-harbor-evolution'], undefined)
     assert.equal(manifest.dependencies['dsh-codex-auth'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-better-sidebar'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-context-doctor'], 'workspace:*')
@@ -374,7 +376,8 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     const webPatch = readFileSync(join(webApp, 'cordis.patch.yml'), 'utf8')
     assert.match(webPatch, /# YourBuddy product bundle layers/u)
     assert.match(webPatch, /id: personal-workbench\n\s+name: dsh-personal-workbench/u)
-    assert.match(webPatch, /id: dsh-pomodoro\n\s+name: "@xiaohui-wang\/dsh-pomodoro"/u)
+    assert.match(webPatch, /id: dsh-pomodoro/u)
+    assert.doesNotMatch(webPatch, /id: harbor-evolution/u)
     assert.doesNotMatch(webPatch, /name: "dsh-ego-browser"/u)
     assert.match(webPatch, /id: dsh-oil-creator\n\s+name: dsh-oil-creator/u)
     assert.match(webPatch, /id: subagent-codex\n\s+name: '@deepseek-ai\/dsh-subagent-codex'/u)
@@ -393,20 +396,14 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
       'utf8',
     ))
     assert.notEqual(sourceCodex.peerDependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
-    assert.ok(readFileSync(join(root, 'packages', 'product', 'harbor-evolution', 'skills', 'evolve-agent-with-harbor', 'SKILL.md'), 'utf8').length > 0)
-    assert.equal(
-      JSON.parse(readFileSync(join(root, 'packages', 'product', 'harbor-evolution', 'schemas', 'meta-evaluation-report.schema.json'), 'utf8')).title,
-      'Evaluator Meta-Evaluation Report v1',
-    )
     for (const [source, destination] of [
-      ['harbor-evolution', 'harbor-evolution'],
+      ['pomodoro', 'pomodoro'],
       ['dsh-codex-auth', 'dsh-codex-auth'],
       ['dsh-better-sidebar', 'dsh-better-sidebar'],
       ['context-doctor', 'context-doctor'],
       ['ego-browser', 'ego-browser'],
       ['plugin-marketplace', 'plugin-marketplace'],
       ['personal-workbench', 'personal-workbench'],
-      ['pomodoro', 'pomodoro'],
       ['oil-creator', 'oil-creator'],
     ]) {
       assert.equal(
@@ -436,7 +433,7 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'client.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'index.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'personal-workbench', 'lib', 'client.js'), 'utf8').length > 0)
-    assert.ok(readFileSync(join(root, 'packages', 'product', 'pomodoro', 'lib', 'client.js'), 'utf8').length > 0)
+    assert.equal(existsSync(join(root, 'packages', 'product', 'harbor-evolution')), false)
     const bundledOilCreator = join(root, 'packages', 'product', 'oil-creator')
     assert.ok(readFileSync(join(bundledOilCreator, 'lib', 'client.js'), 'utf8').length > 0)
     const oilCreatorHost = readFileSync(join(bundledOilCreator, 'lib', 'index.js'), 'utf8')
@@ -454,4 +451,25 @@ test('installProductPlugins makes every YourBuddy plugin an in-box CLI dependenc
   finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test('the frozen core lock includes every normalized product peer in its CLI and package importers', () => {
+  const lock = load(readFileSync(join(desktopRoot, 'product', 'harness-pnpm-lock.yaml'), 'utf8'))
+  const workspaces = readWorkspacePackageVersions(join(desktopRoot, '..', '..'))
+  let checked = 0
+  for (const entry of readdirSync(join(desktopRoot, 'product'), { withFileTypes: true })) {
+    const importer = lock.importers[`packages/product/${entry.name}`]
+    if (!entry.isDirectory() || !importer) continue
+    const manifest = JSON.parse(readFileSync(join(desktopRoot, 'product', entry.name, 'package.json'), 'utf8'))
+    for (const name of Object.keys(manifest.peerDependencies ?? {})) {
+      if (!workspaces.has(name)) continue
+      const expected = path => lock.overrides[name]?.startsWith('link:')
+        ? `link:${relative(path, lock.overrides[name].slice(5)).replaceAll('\\', '/')}`
+        : 'workspace:*'
+      assert.equal(importer.dependencies[name]?.specifier, expected(`packages/product/${entry.name}`), `${manifest.name}: frozen peer ${name}`)
+      assert.equal(lock.importers['apps/cli'].dependencies[name]?.specifier, expected('apps/cli'), `CLI: frozen peer ${name}`)
+      checked += 1
+    }
+  }
+  assert.ok(checked > 0)
 })

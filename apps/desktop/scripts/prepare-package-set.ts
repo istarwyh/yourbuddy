@@ -25,6 +25,7 @@ import {
 } from '../src/core-package-set.ts'
 import { capture } from '../../../scripts/release/process.ts'
 import { tarballFiles } from '../../../scripts/release/tarball.ts'
+import { selectRuntimePackageClosure } from '../../../scripts/runtime-package-closure.ts'
 import { resolveDesktopTargetBuildPaths } from './desktop-build-paths.mjs'
 
 const DSH_PACKAGE = '@deepseek-ai/dsh'
@@ -32,22 +33,10 @@ const ROOT_PACKAGES = [DSH_PACKAGE, DESKTOP_HOST_PACKAGE] as const
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const REPOSITORY_ROOT = resolve(APP_ROOT, '..', '..')
 
-const REQUIRED_DEPENDENCY_SECTIONS = ['dependencies', 'peerDependencies'] as const
-const OPTIONAL_DEPENDENCY_SECTION = 'optionalDependencies'
-
 /** Packed package information needed to form the local Desktop closure. */
 export interface PackedDesktopPackage {
   readonly tarball: string
   readonly manifest: Readonly<Record<string, unknown>>
-}
-
-function dependencyNames(manifest: Readonly<Record<string, unknown>>, section: string): string[] {
-  const value = manifest[section]
-  if (value === undefined) return []
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error(`desktop package set: ${String(manifest.name)} has invalid ${section}`)
-  }
-  return Object.keys(value).sort()
 }
 
 /**
@@ -62,29 +51,7 @@ export function selectDesktopPackageClosure(
   const workspace = yaml.load(readFileSync(join(REPOSITORY_ROOT, 'pnpm-workspace.yaml'), 'utf8')) as { packages: string[] }
   const workspaceNames = new Set(globSync(workspace.packages.map(pattern => `${pattern}/package.json`), { cwd: REPOSITORY_ROOT })
     .map(path => (JSON.parse(readFileSync(join(REPOSITORY_ROOT, path), 'utf8')) as { name: string }).name))
-  const selected = new Map<string, PackedDesktopPackage>()
-  const visit = (name: string): void => {
-    if (selected.has(name)) return
-    const packed = available.get(name)
-    if (packed === undefined) throw new Error(`desktop package set: packed inputs omit required package ${name}`)
-    selected.set(name, packed)
-    for (const section of REQUIRED_DEPENDENCY_SECTIONS) {
-      for (const dependency of dependencyNames(packed.manifest, section)) {
-        if (available.has(dependency)) visit(dependency)
-        else if (workspaceNames.has(dependency)) {
-          throw new Error(`desktop package set: ${name} requires unpacked package ${dependency}`)
-        }
-      }
-    }
-    for (const dependency of dependencyNames(packed.manifest, OPTIONAL_DEPENDENCY_SECTION)) {
-      if (available.has(dependency)) visit(dependency)
-    }
-  }
-  for (const name of ROOT_PACKAGES) {
-    if (!available.has(name)) throw new Error(`desktop package set: packed inputs omit ${name}`)
-    visit(name)
-  }
-  return [...selected.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([, packed]) => packed)
+  return selectRuntimePackageClosure(available, ROOT_PACKAGES, workspaceNames, 'desktop package set')
 }
 
 function packedManifest(tarball: string): Record<string, unknown> {

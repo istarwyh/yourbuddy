@@ -45,9 +45,9 @@ const productAgentPresetPatches = [defaultAgentPreset, creatorAgentPreset]
 const creatorPersona = 'You are a creator workbench agent powered by the {{model}} model. Help the user plan, produce, package, and publish local video and article content while keeping human review at recording, editing, subtitle, and final publication checkpoints.'
 const productPlugins = [
   {
-    name: 'dsh-harbor-evolution',
-    root: join(desktopRoot, 'product', 'harbor-evolution'),
-    destination: join('packages', 'product', 'harbor-evolution'),
+    name: '@xiaohui-wang/dsh-pomodoro',
+    root: join(desktopRoot, 'product', 'pomodoro'),
+    destination: join('packages', 'product', 'pomodoro'),
   },
   {
     name: 'dsh-codex-auth',
@@ -79,11 +79,6 @@ const productPlugins = [
     name: 'dsh-personal-workbench',
     root: join(desktopRoot, 'product', 'personal-workbench'),
     destination: join('packages', 'product', 'personal-workbench'),
-  },
-  {
-    name: '@xiaohui-wang/dsh-pomodoro',
-    root: join(desktopRoot, 'product', 'pomodoro'),
-    destination: join('packages', 'product', 'pomodoro'),
   },
   {
     name: 'dsh-oil-creator',

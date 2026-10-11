@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use super::boot_log;
+use super::optional_harbor::{profile_legacy_harbor, LegacyHarborState};
 use super::process::hide_console;
 use super::provision::{pnpm_js_entry, RuntimePaths};
 use super::user_home::{profile_dependencies_unresolved, profiles_needing_install};
@@ -19,7 +20,6 @@ use crate::network_proxy::{apply_to_command, ResolvedNetworkProxy};
 const INSTALL_TIMEOUT: Duration = Duration::from_secs(600);
 
 const MANAGED_PRODUCT_LINKS: &[(&str, &str)] = &[
-    ("dsh-harbor-evolution", "packages/product/harbor-evolution"),
     ("dsh-codex-auth", "packages/product/dsh-codex-auth"),
     ("dsh-better-sidebar", "packages/product/dsh-better-sidebar"),
     ("dsh-context-doctor", "packages/product/context-doctor"),
@@ -31,10 +31,7 @@ const MANAGED_PRODUCT_LINKS: &[(&str, &str)] = &[
         "dsh-personal-workbench",
         "packages/product/personal-workbench",
     ),
-    (
-        "@xiaohui-wang/dsh-pomodoro",
-        "packages/product/pomodoro",
-    ),
+    ("@xiaohui-wang/dsh-pomodoro", "packages/product/pomodoro"),
     ("dsh-oil-creator", "packages/product/oil-creator"),
 ];
 
@@ -64,7 +61,8 @@ pub async fn ensure_profile_installs(
     progress: &Arc<dyn Fn(ProvisionEvent) + Send + Sync>,
     network_proxy: &ResolvedNetworkProxy,
 ) -> Result<(), String> {
-    let mut pending = rebind_managed_product_links(paths)?;
+    let rebound = rebind_managed_product_links(paths)?;
+    let mut pending = rebound.clone();
     if ensure_host_profile_build_policy(&paths.dsh_home)?
         && profile_dir(&paths.dsh_home, HOST_PROFILE)
             .join("package.json")
@@ -84,6 +82,15 @@ pub async fn ensure_profile_installs(
     }
     boot_log::info(&format!("profile installs pending: {}", pending.join(", ")));
     for name in pending {
+        let profile = profile_dir(&paths.dsh_home, &name);
+        if !rebound.contains(&name) && only_missing_optional_harbor(&profile) {
+            // There are no required dependencies whose lifecycle scripts need
+            // the new policy. Leave the absent optional pack for explicit repair.
+            boot_log::info(&format!(
+                "profile {name}: optional Harbor requires explicit repair"
+            ));
+            continue;
+        }
         progress(ProvisionEvent::Status(i18n::tf(
             Msg::ProfileInstalling,
             &name,
@@ -111,6 +118,34 @@ pub async fn ensure_profile_installs(
         }
     }
     Ok(())
+}
+
+fn only_missing_optional_harbor(profile: &Path) -> bool {
+    if profile_legacy_harbor(profile) != Some(LegacyHarborState::Missing) {
+        return false;
+    }
+    fs::read(profile.join("package.json"))
+        .ok()
+        .and_then(|raw| serde_json::from_slice::<serde_json::Value>(&raw).ok())
+        .and_then(|manifest| {
+            let only_harbor = manifest
+                .get("dependencies")?
+                .as_object()
+                .is_some_and(|deps| deps.len() == 1);
+            let no_other_install_inputs = [
+                "devDependencies",
+                "optionalDependencies",
+                "peerDependencies",
+                "scripts",
+            ]
+            .iter()
+            .all(|field| match manifest.get(field) {
+                None => true,
+                Some(value) => value.as_object().is_some_and(|values| values.is_empty()),
+            });
+            Some(only_harbor && no_other_install_inputs)
+        })
+        .unwrap_or(false)
 }
 
 /// Let packages explicitly installed into YourBuddy's isolated Web Profile run
@@ -181,7 +216,8 @@ fn enable_all_profile_builds(raw: &str) -> (String, bool) {
 }
 
 /// Move only YourBuddy-owned product `link:` dependencies from an older
-/// content-addressed Harness tree to the active one. Registry packages and
+/// content-addressed Harness tree to the active one. Harbor is delivered
+/// separately and retains its existing link for explicit component repair. Registry packages and
 /// links outside this application's `harness-versions` directory remain
 /// user-owned and untouched.
 fn rebind_managed_product_links(paths: &RuntimePaths) -> Result<Vec<String>, String> {
@@ -384,6 +420,230 @@ mod tests {
 
     static NEXT_DIR: AtomicU64 = AtomicU64::new(0);
 
+    #[cfg(unix)]
+    #[tokio::test]
+    #[ignore = "requires prepared Node and pnpm artifacts; real offline mixed-profile startup repair"]
+    async fn real_pnpm_rebinds_required_product_while_preserving_missing_optional_harbor() {
+        use std::os::unix::fs::{symlink, PermissionsExt};
+        let root = tempfile::tempdir().unwrap();
+        let home = root.path().join("home");
+        let profile = home.join("profiles/web");
+        let modules = profile.join("node_modules");
+        fs::create_dir_all(modules.join("@xiaohui-wang")).unwrap();
+        let old_root = root.path().join("harness-versions/0123456789abcdef");
+        let current = root.path().join("harness-versions/fedcba9876543210");
+        let old_pomodoro = old_root.join("packages/product/pomodoro");
+        let new_pomodoro = current.join("packages/product/pomodoro");
+        for package in [&old_pomodoro, &new_pomodoro] {
+            fs::create_dir_all(package).unwrap();
+            fs::write(
+                package.join("package.json"),
+                r#"{"name":"@xiaohui-wang/dsh-pomodoro","version":"1.0.0"}"#,
+            )
+            .unwrap();
+        }
+        let missing_harbor = old_root.join("packages/product/harbor-evolution");
+        let harbor_spec = format!("link:{}", missing_harbor.display());
+        fs::write(profile.join("package.json"), serde_json::to_vec(&serde_json::json!({
+            "dependencies": {"dsh-harbor-evolution":harbor_spec, "@xiaohui-wang/dsh-pomodoro":format!("link:{}", old_pomodoro.display())},
+            "dsh":{"profile":{"bundles":["dsh-harbor-evolution","@xiaohui-wang/dsh-pomodoro"]}}
+        })).unwrap()).unwrap();
+        let raw_harbor =
+            "../../../../harness-versions/0123456789abcdef/packages/product/harbor-evolution";
+        symlink(raw_harbor, modules.join("dsh-harbor-evolution")).unwrap();
+        symlink(&old_pomodoro, modules.join("@xiaohui-wang/dsh-pomodoro")).unwrap();
+        fs::write(
+            profile.join("cordis.patch.yml"),
+            "- id: dsh-pomodoro\n  config: {focusMinutes: 37}\n",
+        )
+        .unwrap();
+        fs::write(home.join("settings.yaml"), "keep: true\n").unwrap();
+        let patch = fs::read(profile.join("cordis.patch.yml")).unwrap();
+        let settings = fs::read(home.join("settings.yaml")).unwrap();
+        // The production spawn remains unchanged. Its test-only Node launcher
+        // gives the real pnpm a private home and offline store, without changing
+        // the test process environment or consulting the operator's npm config.
+        let node = std::env::var("YOURBUDDY_TEST_NODE").expect("Node artifact path");
+        let pnpm_js =
+            PathBuf::from(std::env::var_os("YOURBUDDY_TEST_PNPM_JS").expect("pnpm artifact path"));
+        let pnpm_package = pnpm_js.parent().unwrap().parent().unwrap();
+        let pnpm_home = root.path().join("pnpm");
+        fs::create_dir_all(pnpm_home.join("lib/node_modules")).unwrap();
+        symlink(pnpm_package, pnpm_home.join("lib/node_modules/pnpm")).unwrap();
+        let quote = |value: &str| format!("'{}'", value.replace('\'', "'\"'\"'"));
+        let launcher = root.path().join("node-launcher");
+        fs::write(&launcher, format!("#!/bin/sh\nexec /usr/bin/env -i PATH={} HOME={} USERPROFILE={} XDG_DATA_HOME={} XDG_CACHE_HOME={} PNPM_HOME={} pnpm_config_offline=true pnpm_config_store_dir={} {} \"$@\"\n",
+            quote(&std::env::var("PATH").unwrap_or_default()), quote(root.path().to_str().unwrap()), quote(root.path().to_str().unwrap()),
+            quote(root.path().join("data").to_str().unwrap()), quote(root.path().join("cache").to_str().unwrap()),
+            quote(pnpm_home.to_str().unwrap()), quote(root.path().join("store").to_str().unwrap()), quote(&node))).unwrap();
+        fs::set_permissions(&launcher, fs::Permissions::from_mode(0o700)).unwrap();
+        let paths = RuntimePaths {
+            node_binary: launcher,
+            pnpm_binary: pnpm_home.join("bin/pnpm"),
+            cli_entry: current.join("apps/cli/lib/bin.js"),
+            harness_root: current,
+            runtime_root: root.path().join("runtime"),
+            dsh_home: home.clone(),
+        };
+        let progress: std::sync::Arc<dyn Fn(super::ProvisionEvent) + Send + Sync> =
+            std::sync::Arc::new(|_| {});
+        let proxy = crate::network_proxy::resolve(
+            &crate::network_proxy::NetworkProxySettings::legacy_direct(),
+        )
+        .unwrap();
+        super::ensure_profile_installs(&paths, "/usr/bin:/bin", &progress, &proxy)
+            .await
+            .unwrap();
+        assert_eq!(
+            fs::canonicalize(modules.join("@xiaohui-wang/dsh-pomodoro")).unwrap(),
+            new_pomodoro
+        );
+        assert_eq!(
+            fs::read_link(modules.join("dsh-harbor-evolution")).unwrap(),
+            PathBuf::from(raw_harbor)
+        );
+        assert!(!missing_harbor.exists());
+        let after: serde_json::Value =
+            serde_json::from_slice(&fs::read(profile.join("package.json")).unwrap()).unwrap();
+        assert_eq!(after["dependencies"]["dsh-harbor-evolution"], harbor_spec);
+        assert_eq!(
+            after["dsh"]["profile"]["bundles"],
+            serde_json::json!(["dsh-harbor-evolution", "@xiaohui-wang/dsh-pomodoro"])
+        );
+        assert_eq!(fs::read(profile.join("cordis.patch.yml")).unwrap(), patch);
+        assert_eq!(fs::read(home.join("settings.yaml")).unwrap(), settings);
+        assert!(!super::profile_dependencies_unresolved(&profile));
+    }
+
+    #[tokio::test]
+    async fn optional_missing_harbor_does_not_run_policy_only_install_or_change_user_records() {
+        let root = tempfile::tempdir().unwrap();
+        let home = root.path().join("home");
+        let profile = home.join("profiles/web");
+        fs::create_dir_all(&profile).unwrap();
+        let old = root
+            .path()
+            .join("harness-versions/0123456789abcdef/packages/product/harbor-evolution");
+        let manifest = serde_json::to_vec(&serde_json::json!({
+            "dependencies": {"dsh-harbor-evolution": format!("link:{}", old.display())},
+            "dsh": {"profile": {"bundles": ["dsh-harbor-evolution"]}}
+        }))
+        .unwrap();
+        fs::write(profile.join("package.json"), &manifest).unwrap();
+        fs::write(
+            profile.join("cordis.patch.yml"),
+            "- id: harbor-evolution\n  config: {jobsDir: keep}\n",
+        )
+        .unwrap();
+        let patch = fs::read(profile.join("cordis.patch.yml")).unwrap();
+        let paths = RuntimePaths {
+            node_binary: root.path().join("never-launch-node"),
+            pnpm_binary: root.path().join("never-launch-pnpm"),
+            cli_entry: root.path().join("current/apps/cli/lib/bin.js"),
+            harness_root: root.path().join("current"),
+            runtime_root: root.path().join("runtime"),
+            dsh_home: home,
+        };
+        assert!(rebind_managed_product_links(&paths).unwrap().is_empty());
+        let progress: std::sync::Arc<dyn Fn(super::ProvisionEvent) + Send + Sync> =
+            std::sync::Arc::new(|_| {});
+        let proxy = crate::network_proxy::resolve(
+            &crate::network_proxy::NetworkProxySettings::legacy_direct(),
+        )
+        .unwrap();
+        super::ensure_profile_installs(&paths, "", &progress, &proxy)
+            .await
+            .unwrap();
+        assert_eq!(fs::read(profile.join("package.json")).unwrap(), manifest);
+        assert_eq!(fs::read(profile.join("cordis.patch.yml")).unwrap(), patch);
+        assert!(!old.exists());
+        assert!(!profile.join("node_modules").exists());
+        assert!(!profile.join("pnpm-lock.yaml").exists());
+        // Another declared dependency remains a real boot blocker; the absent
+        // optional Harbor is not permission to suppress unrelated install errors.
+        let mut value: serde_json::Value = serde_json::from_slice(&manifest).unwrap();
+        value["dependencies"]["required-package"] = serde_json::json!("1.0.0");
+        fs::write(
+            profile.join("package.json"),
+            serde_json::to_vec(&value).unwrap(),
+        )
+        .unwrap();
+        assert!(
+            super::ensure_profile_installs(&paths, "", &progress, &proxy)
+                .await
+                .is_err()
+        );
+        fs::create_dir_all(profile.join("node_modules/required-package")).unwrap();
+        fs::write(
+            profile.join("node_modules/required-package/package.json"),
+            r#"{"name":"required-package"}"#,
+        )
+        .unwrap();
+        fs::remove_file(profile.join("pnpm-workspace.yaml")).unwrap();
+        assert!(
+            super::ensure_profile_installs(&paths, "", &progress, &proxy).await.is_err(),
+            "required packages still receive the policy-change lifecycle install when their manifests exist"
+        );
+        for field in [
+            "devDependencies",
+            "optionalDependencies",
+            "peerDependencies",
+            "scripts",
+        ] {
+            for extra in [
+                serde_json::json!({"retained": "value"}),
+                serde_json::Value::Null,
+                serde_json::json!([]),
+                serde_json::json!("invalid"),
+            ] {
+                let mut value: serde_json::Value = serde_json::from_slice(&manifest).unwrap();
+                value[field] = extra;
+                fs::write(
+                    profile.join("package.json"),
+                    serde_json::to_vec(&value).unwrap(),
+                )
+                .unwrap();
+                fs::remove_file(profile.join("pnpm-workspace.yaml")).unwrap();
+                assert!(
+                    super::ensure_profile_installs(&paths, "", &progress, &proxy)
+                        .await
+                        .is_err(),
+                    "{field} must retain the existing install policy"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn missing_current_core_still_blocks_rebinding_required_product_links() {
+        let root = tempfile::tempdir().unwrap();
+        let home = root.path().join("home");
+        let profile = home.join("profiles/web");
+        fs::create_dir_all(&profile).unwrap();
+        let old = root
+            .path()
+            .join("harness-versions/0123456789abcdef/packages/product/pomodoro");
+        fs::write(
+            profile.join("package.json"),
+            serde_json::to_vec(&serde_json::json!({
+                "dependencies": {"@xiaohui-wang/dsh-pomodoro": format!("link:{}", old.display())}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let paths = RuntimePaths {
+            node_binary: root.path().join("node"),
+            pnpm_binary: root.path().join("pnpm"),
+            cli_entry: root.path().join("current/apps/cli/lib/bin.js"),
+            harness_root: root.path().join("current"),
+            runtime_root: root.path().join("runtime"),
+            dsh_home: home,
+        };
+        assert!(rebind_managed_product_links(&paths)
+            .unwrap_err()
+            .contains("missing from the active Harness tree"));
+    }
+
     fn temp_root() -> PathBuf {
         let id = NEXT_DIR.fetch_add(1, Ordering::Relaxed);
         let nanos = SystemTime::now()
@@ -567,7 +827,7 @@ mod tests {
                 .unwrap();
         assert_eq!(
             value["dependencies"]["dsh-harbor-evolution"],
-            format!("link:{}", current_plugin.display())
+            format!("link:{}", old_plugin.display())
         );
         assert_eq!(
             value["dependencies"]["dsh-context-doctor"],

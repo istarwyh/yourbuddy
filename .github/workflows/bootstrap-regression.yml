@@ -9,6 +9,8 @@ on:
       - 'apps/desktop-tauri/desktop-i18n.js'
       - 'apps/desktop-tauri/scripts/splash-state.test.mjs'
       - 'apps/desktop-tauri/scripts/smoke-bootstrap-macos.mjs'
+      - 'apps/desktop-tauri/scripts/verify-old-component-channel.mjs'
+      - 'apps/desktop-tauri/scripts/verify-old-component-channel.test.mjs'
       - 'packages/sandbox/sandbox-windows-acl/tests/diagnose-script.spec.ts'
       - 'packages/sandbox/sandbox-windows-acl/tests/runner.spec.ts'
       - 'apps/desktop-tauri/scripts/prepare-bootstrap-shell.mjs'
@@ -34,7 +36,7 @@ jobs:
         with:
           node-version: '24'
       - name: Test splash state and recovery controls
-        run: node --test apps/desktop-tauri/scripts/splash-state.test.mjs
+        run: node --test apps/desktop-tauri/scripts/splash-state.test.mjs apps/desktop-tauri/scripts/verify-old-component-channel.test.mjs
       - name: Compile the desktop application and test Bootstrap recovery
         working-directory: apps/desktop-tauri/src-tauri
         run: |
@@ -61,7 +63,7 @@ jobs:
           dest: ${{ runner.temp }}/setup-pnpm-packaged
       - name: Install locked build tools
         run: pnpm install --frozen-lockfile
-      - name: Prepare public signed channel resources
+      - name: Prepare authentic old signed channel rejection fixture
         shell: bash
         run: |
           curl --fail --location --retry 2 https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.8/yourbuddy-0.4.8-bootstrap-macos-arm64.app.tar.gz -o "$RUNNER_TEMP/bootstrap-resources.tar.gz"
@@ -76,7 +78,7 @@ jobs:
         shell: bash
         run: |
           app=apps/desktop-tauri/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/YourBuddy.app/Contents/MacOS/yourbuddy
-          "$app" --yourbuddy-component-helper verify-channel
+          node apps/desktop-tauri/scripts/verify-old-component-channel.mjs "$app" "${app%/MacOS/yourbuddy}/Resources/component-channel/components.json"
           node apps/desktop-tauri/scripts/smoke-bootstrap-macos.mjs "$app" "$RUNNER_TEMP/bootstrap-smoke"
       - name: Retain synthetic packaged smoke evidence
         if: always()

@@ -153,6 +153,14 @@ jobs:
           DSH_CLIENT_TITLE: YourBuddy
         run: pnpm run build
 
+      - name: Verify component preparation and release pipeline
+        env:
+          YOURBUDDY_BUILT_HARNESS_ROOT: ${{ github.workspace }}
+        run: |
+          YOURBUDDY_CAPABILITY_TEST_STORE="$(pnpm store path)" \
+            pnpm --dir apps/desktop-tauri run test:components
+          pnpm --dir apps/desktop-tauri run test:native-overlay
+
       - name: Build immutable runtime components
         env:
           YOURBUDDY_OFFLINE_STORE_CACHE_DIR: ${{ runner.temp }}/yourbuddy-offline-store-cache

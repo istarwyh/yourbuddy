@@ -147,7 +147,9 @@ CLI 提供 `dsh plugin --profile <profile> version-exemptions`、`allow-version 
 
 pnpm 执行和组合包校验成功即完成安装，后续启用失败不撤销安装。卸载依次执行：从 `dsh.profile.bundles` 移除组合包、卸载运行时贡献、执行 `pnpm remove`。任一步失败都不继续执行后续步骤。
 
-恢复只重写这两份快照文件；用户编写的 patch 配置、应用数据、诊断日志以及 pnpm 已下载的文件保持原样，没有 manifest 引用的包由下一次包操作清理。
+应用专用的单包 `add link:` 操作可将 `rollbackPackage` 设为链接包的准确名称。调用方还必须提供 `rollbackExpected`，只含 `dependency` 和 `link`：预检时的依赖声明与符号链接原始目标，每项为不超过 4096 个 UTF-8 字节的非空字符串，仅不存在时使用 `null`。取得 profile 锁后，任一值发生变化都会在 pnpm 启动前拒绝操作，保留竞争写入方的软件包。 失败时，在 profile 锁内恢复清单、锁文件、依赖树，以及该包原有的符号链接或不存在状态。安装前拒绝已有真实目录、名称不匹配和多包请求。`PackageResult.rollback` 返回 `restored` 或 `incomplete`；即使受保护的链接已恢复，依赖修复不完整仍算失败。用户 patch 保持不变。普通 CLI 操作保留原有的部分变更行为。
+
+管理器的常规安装恢复只重写这两份快照文件；用户编写的 patch 配置、应用数据、诊断日志以及 pnpm 已下载的文件保持原样，没有 manifest 引用的包由下一次包操作清理。
 
 <a id="dev-note"></a>
 ### 开发备注

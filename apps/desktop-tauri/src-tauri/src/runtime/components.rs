@@ -1,7 +1,7 @@
 //! Signed release-component preparation and readiness-gated activation.
 
 use std::collections::BTreeMap;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File, Metadata, OpenOptions, TryLockError};
 use std::io::{Read, Write};
 use std::path::{Component as PathComponent, Path, PathBuf};
 use std::sync::Arc;
@@ -18,6 +18,8 @@ use tar::EntryType;
 use crate::network_proxy::{apply_to_client, ResolvedNetworkProxy};
 
 use super::app_data_root;
+use super::boot_log;
+use super::component_metrics::{ArchiveSource, ComponentMetrics, MetricEvent};
 
 const COMPONENT_PUBLIC_KEY: &str = "untrusted comment: minisign public key: DBDFC5E28EF581EB\nRWTrgfWO4sXf22TrOC2n0Rq69j7oq0Xt3bZRYfWwrow/ndjkqnxuLKAM\n";
 const RELEASE_BASE: &str = "https://github.com/istarwyh/yourbuddy/releases/download";
@@ -30,28 +32,13 @@ const DOWNLOAD_PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 const MAX_ARCHIVE_ENTRIES: usize = 250_000;
 const MAX_EXPANDED_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
-/// Exact components selected by one signed YourBuddy application release.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ComponentManifest {
-    pub schema_version: u32,
-    pub app_version: String,
-    pub release_tag: String,
-    pub platform: String,
-    pub arch: String,
-    pub components: BTreeMap<String, ComponentSpec>,
-}
-
-/// Immutable archive metadata for one runtime component.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ComponentSpec {
-    pub id: String,
-    pub archive: String,
-    pub sha256: String,
-    pub bytes: u64,
-    pub activation: String,
-}
+#[cfg(test)]
+use super::component_plan::validate_manifest;
+use super::component_plan::{
+    component_key, component_storage_path, parse_manifest, plan_installation, validate_spec,
+    ComponentKind, InstallPlan, PlanRequest, VerifiedInstallations,
+};
+pub use super::component_plan::{ComponentManifest, ComponentSpec};
 
 /// Download updates for the startup splash; byte counts include any resumed partial.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -96,6 +83,99 @@ impl DownloadError {
     }
 }
 
+/// One ensure operation's bounded observations, flushed after success or failure.
+#[derive(Default)]
+struct PreparationMetrics {
+    network_bytes: u64,
+    retransferred_bytes: u64,
+    received_ranges: Vec<(u64, u64)>,
+    resume_attempts: usize,
+    resumed: bool,
+    archive_source: Option<ArchiveSource>,
+    archive_verified: bool,
+    installed: bool,
+    error: Option<&'static str>,
+}
+
+impl PreparationMetrics {
+    fn received(&mut self, offset: u64, bytes: u64) {
+        if self.error.is_some() || bytes == 0 {
+            return;
+        }
+        if self.add_received(offset, bytes).is_none() {
+            self.error = Some("component download metric counter overflow");
+        }
+    }
+
+    fn add_received(&mut self, offset: u64, bytes: u64) -> Option<()> {
+        let end = offset.checked_add(bytes)?;
+        let overlap = self
+            .received_ranges
+            .iter()
+            .try_fold(0_u64, |total, &(start, stop)| {
+                total.checked_add(end.min(stop).saturating_sub(offset.max(start)))
+            })?;
+        self.network_bytes = self.network_bytes.checked_add(bytes)?;
+        self.retransferred_bytes = self.retransferred_bytes.checked_add(overlap)?;
+        let mut merged = (offset, end);
+        self.received_ranges.retain(|&(start, stop)| {
+            if start <= merged.1 && stop >= merged.0 {
+                merged = (merged.0.min(start), merged.1.max(stop));
+                false
+            } else {
+                true
+            }
+        });
+        // Each HTTP attempt contributes one contiguous range; chunks never add more intervals.
+        if self.received_ranges.len() >= DOWNLOAD_ATTEMPTS {
+            self.error = Some("component download metric range limit exceeded");
+            return Some(());
+        }
+        self.received_ranges.push(merged);
+        self.received_ranges.sort_unstable();
+        Some(())
+    }
+
+    fn events(self, component: &str, archive_bytes: u64) -> Result<Vec<MetricEvent>, &'static str> {
+        if let Some(error) = self.error {
+            return Err(error);
+        }
+        let mut events = Vec::with_capacity(DOWNLOAD_ATTEMPTS + 4);
+        if self.network_bytes > 0 {
+            events.push(MetricEvent::DownloadBytes {
+                component: component.into(),
+                bytes: self.network_bytes,
+                retransferred_bytes: self.retransferred_bytes,
+            });
+        }
+        for _ in 0..self.resume_attempts {
+            events.push(MetricEvent::ResumeAttempted {
+                component: component.into(),
+            });
+        }
+        if self.archive_verified {
+            if self.resumed {
+                events.push(MetricEvent::ResumeSucceeded {
+                    component: component.into(),
+                });
+            }
+            if let Some(source) = self.archive_source {
+                events.push(MetricEvent::ArchiveReused {
+                    component: component.into(),
+                    source,
+                    bytes: archive_bytes,
+                });
+            }
+        }
+        if self.installed {
+            events.push(MetricEvent::ComponentInstalled {
+                component: component.into(),
+            });
+        }
+        Ok(events)
+    }
+}
+
 /// Native owner for the signed component channel and content-addressed cache.
 pub struct ComponentManager {
     root: PathBuf,
@@ -116,99 +196,85 @@ struct PartialMetadata {
     etag: Option<String>,
 }
 
-/// Cross-process component owner whose PID record permits recovery after termination.
-struct ComponentLock {
-    path: PathBuf,
-    owner: String,
+/// Exclusive, nonblocking transaction ownership across the whole component cache.
+/// The lock file is permanent: dropping or terminating the owner only closes its handle.
+/// Legacy PID contents have no meaning; concurrently running legacy owners are unsupported.
+#[must_use = "dropping the component transaction lock ends the transaction"]
+#[derive(Debug)]
+pub(super) struct ComponentLock {
+    _file: File,
 }
 
 impl ComponentLock {
     fn acquire(path: PathBuf) -> Result<Self, String> {
-        let nonce = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|duration| duration.as_nanos())
-            .unwrap_or(0);
-        let owner = format!("{}:{nonce}", std::process::id());
-        let claim = path.with_extension(format!("claim-{}-{nonce}", std::process::id()));
-        fs::write(&claim, &owner)
-            .map_err(|error| format!("cannot prepare component lock: {error}"))?;
-        for _ in 0..2 {
-            match fs::hard_link(&claim, &path) {
-                Ok(()) => {
-                    let _ = fs::remove_file(&claim);
-                    return Ok(Self { path, owner });
-                }
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                    if component_lock_owner_active(&path) {
-                        let _ = fs::remove_file(&claim);
-                        return Err("another component operation is active".into());
-                    }
-                    match fs::remove_file(&path) {
-                        Ok(()) => {}
-                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                        Err(error) => {
-                            let _ = fs::remove_file(&claim);
-                            return Err(format!("cannot reclaim stale component lock: {error}"));
-                        }
-                    }
-                }
-                Err(error) => {
-                    let _ = fs::remove_file(&claim);
-                    return Err(format!("cannot acquire component lock: {error}"));
-                }
-            }
+        let parent = path
+            .parent()
+            .ok_or("component lock has no cache directory")?;
+        let metadata = fs::symlink_metadata(parent).map_err(component_lock_error)?;
+        if !metadata.is_dir() || component_lock_is_link(&metadata) {
+            return Err("component transaction root must be a real directory".into());
         }
-        let _ = fs::remove_file(&claim);
-        Err("another component operation is active".into())
-    }
-}
-
-impl Drop for ComponentLock {
-    fn drop(&mut self) {
-        if fs::read_to_string(&self.path).is_ok_and(|owner| owner == self.owner) {
-            let _ = fs::remove_file(&self.path);
+        let parent = fs::canonicalize(parent).map_err(component_lock_error)?;
+        let path = parent.join(path.file_name().ok_or("component lock has no filename")?);
+        match fs::symlink_metadata(&path) {
+            Ok(metadata) => validate_component_lock_file(&metadata)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(component_lock_error(error)),
+        }
+        let mut options = OpenOptions::new();
+        options.read(true).write(true).create(true).truncate(false);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options
+                .mode(0o600)
+                .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+            const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x00200000;
+            options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+        }
+        let file = options.open(&path).map_err(component_lock_error)?;
+        validate_component_lock_file(&file.metadata().map_err(component_lock_error)?)?;
+        match file.try_lock() {
+            Ok(()) => Ok(Self { _file: file }),
+            Err(TryLockError::WouldBlock) => Err("another component operation is active".into()),
+            Err(TryLockError::Error(error)) => Err(component_lock_error(error)),
         }
     }
 }
 
-fn component_lock_owner_active(path: &Path) -> bool {
-    let Ok(owner) = fs::read_to_string(path) else {
-        return false;
-    };
-    let Some(pid) = owner
-        .split(':')
-        .next()
-        .and_then(|value| value.parse::<u32>().ok())
-    else {
-        return false;
-    };
-    process_is_running(pid)
+fn component_lock_is_link(metadata: &Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+    }
+    #[cfg(not(windows))]
+    {
+        metadata.file_type().is_symlink()
+    }
 }
 
-#[cfg(unix)]
-fn process_is_running(pid: u32) -> bool {
-    let Ok(pid) = i32::try_from(pid) else {
-        return false;
-    };
-    let result = unsafe { libc::kill(pid, 0) };
-    result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+fn validate_component_lock_file(metadata: &Metadata) -> Result<(), String> {
+    if !metadata.is_file() || component_lock_is_link(metadata) {
+        return Err("component transaction lock must be a regular file".into());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if metadata.nlink() != 1 {
+            return Err("component transaction lock must not have hard links".into());
+        }
+    }
+    Ok(())
 }
 
-#[cfg(windows)]
-fn process_is_running(pid: u32) -> bool {
-    use windows::Win32::Foundation::CloseHandle;
-    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
-
-    let Ok(handle) = (unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }) else {
-        return false;
-    };
-    let _ = unsafe { CloseHandle(handle) };
-    true
-}
-
-#[cfg(not(any(unix, windows)))]
-fn process_is_running(_pid: u32) -> bool {
-    false
+fn component_lock_error(error: std::io::Error) -> String {
+    format!("component transaction lock is unavailable: {error}")
 }
 
 impl ComponentManager {
@@ -248,21 +314,53 @@ impl ComponentManager {
         }
     }
 
-    /// Prepare the current startup Harness without changing the active release.
+    /// Prepare the complete core-runtime dependency closure without changing the active release.
     pub async fn ensure_startup(&self) -> Result<PathBuf, String> {
-        fs::create_dir_all(&self.root)
-            .map_err(|error| format!("cannot create component cache: {error}"))?;
-        let _lock = self.lock()?;
-        self.persist_manifest()?;
-        self.ensure_locked("harness").await
+        self.prepare(&PlanRequest::Startup).await?;
+        self.installed("harness")?
+            .ok_or_else(|| "startup Harness was not prepared".into())
     }
 
     /// Prepare a current component from an Offline seed or Release URL without activating it.
     pub async fn ensure(&self, name: &str) -> Result<PathBuf, String> {
+        let request = self.request(name)?;
+        self.prepare(&request).await?;
+        self.installed(name)?
+            .ok_or_else(|| format!("component {name} was not prepared"))
+    }
+
+    /// Prepare a validated exact dependency plan under one cross-process transaction.
+    /// Consumers hold shared storage leases before calling this operation.
+    pub async fn prepare(&self, request: &PlanRequest) -> Result<(), String> {
         fs::create_dir_all(&self.root)
             .map_err(|error| format!("cannot create component cache: {error}"))?;
         let _lock = self.lock()?;
-        self.ensure_locked(name).await
+        let plan = self.installation_plan(request)?;
+        self.persist_manifest()?;
+        for entry in plan.components {
+            self.ensure_locked(&entry.component).await?;
+        }
+        Ok(())
+    }
+
+    /// Select the signed category for an explicitly requested catalog component.
+    pub fn request(&self, name: &str) -> Result<PlanRequest, String> {
+        Ok(match self.spec(name)?.kind {
+            ComponentKind::CoreRuntime => PlanRequest::Startup,
+            ComponentKind::RuntimeFallback => PlanRequest::Fallback(name.into()),
+            ComponentKind::CapabilityOnDemand => PlanRequest::Capability(name.into()),
+            ComponentKind::Optional => PlanRequest::Optional(name.into()),
+        })
+    }
+
+    /// Read the authenticated current-release catalog.
+    pub fn catalog(&self) -> &ComponentManifest {
+        &self.manifest
+    }
+
+    /// Cache root shared by preparation, storage leases, and local component settings.
+    pub fn cache_root(&self) -> &Path {
+        &self.root
     }
 
     /// Return the fixed pnpm package embedded in every Bootstrap application.
@@ -279,6 +377,17 @@ impl ComponentManager {
         Ok(component_is_complete(&path, spec).then_some(path))
     }
 
+    /// Preview an exact installation without downloading or activating anything.
+    pub fn installation_plan(&self, request: &PlanRequest) -> Result<InstallPlan, String> {
+        let mut installed = VerifiedInstallations::default();
+        for (name, spec) in &self.manifest.components {
+            if self.installed(name)?.is_some() {
+                installed.insert_verified(name.clone(), spec.id.clone());
+            }
+        }
+        plan_installation(&self.manifest, request, &installed)
+    }
+
     fn spec(&self, name: &str) -> Result<&ComponentSpec, String> {
         self.manifest
             .components
@@ -287,12 +396,87 @@ impl ComponentManager {
     }
 
     async fn ensure_locked(&self, name: &str) -> Result<PathBuf, String> {
+        let metrics = self.open_metrics().await;
+        let mut observations = PreparationMetrics::default();
+        let result = self.ensure_observed(name, &mut observations).await;
+        if let Some(metrics) = metrics {
+            self.record_preparation(metrics, name, observations).await;
+        }
+        result
+    }
+
+    async fn open_metrics(&self) -> Option<ComponentMetrics> {
+        let root = self.cache_root().join("statistics");
+        let version = self.manifest.app_version.clone();
+        let keys = self.manifest.components.keys().cloned().collect::<Vec<_>>();
+        match tokio::task::spawn_blocking(move || {
+            match ComponentMetrics::open(&root, &version, &keys) {
+                Ok(metrics) => Some(metrics),
+                Err(error) => {
+                    boot_log::info(&format!(
+                        "component preparation metrics unavailable: {error}"
+                    ));
+                    None
+                }
+            }
+        })
+        .await
+        {
+            Ok(metrics) => metrics,
+            Err(error) => {
+                boot_log::info(&format!(
+                    "component metrics initialization task failed: {error}"
+                ));
+                None
+            }
+        }
+    }
+
+    async fn record_preparation(
+        &self,
+        metrics: ComponentMetrics,
+        name: &str,
+        observations: PreparationMetrics,
+    ) {
+        let archive_bytes = self
+            .manifest
+            .components
+            .get(name)
+            .map_or(0, |spec| spec.bytes);
+        let events = observations.events(name, archive_bytes);
+        if events.as_ref().is_ok_and(Vec::is_empty) {
+            return;
+        }
+        let recorded = tokio::task::spawn_blocking(move || {
+            let result = events.map_err(str::to_owned).and_then(|events| {
+                for event in events {
+                    metrics.record(event)?;
+                }
+                Ok(())
+            });
+            if let Err(error) = result {
+                boot_log::info(&format!(
+                    "component preparation metrics unavailable: {error}"
+                ));
+            }
+        })
+        .await;
+        if let Err(error) = recorded {
+            boot_log::info(&format!("component metrics recording task failed: {error}"));
+        }
+    }
+
+    async fn ensure_observed(
+        &self,
+        name: &str,
+        observations: &mut PreparationMetrics,
+    ) -> Result<PathBuf, String> {
         let spec = self.spec(name)?;
         let destination = component_path(&self.root, name, &spec.id)?;
         if component_is_complete(&destination, spec) {
             return Ok(destination);
         }
-        let archive = self.obtain_archive(name, spec).await?;
+        let archive = self.obtain_archive(name, spec, observations).await?;
         self.report(ComponentProgress::Phase {
             component: name.into(),
             phase: "verify",
@@ -307,26 +491,34 @@ impl ComponentManager {
             }
             return Err(error);
         }
+        observations.archive_verified = true;
         self.report(ComponentProgress::Phase {
             component: name.into(),
             phase: "unpack",
         });
         self.extract_and_prepare(name, spec, &archive, &destination)?;
+        observations.installed = true;
         Ok(destination)
     }
 
-    async fn obtain_archive(&self, name: &str, spec: &ComponentSpec) -> Result<PathBuf, String> {
+    async fn obtain_archive(
+        &self,
+        name: &str,
+        spec: &ComponentSpec,
+        observations: &mut PreparationMetrics,
+    ) -> Result<PathBuf, String> {
         let seed = self
             .resource_dir
             .join("component-seeds")
             .join(&spec.archive);
         if seed.is_file() {
+            observations.archive_source = Some(ArchiveSource::OfflineSeed);
             return Ok(seed);
         }
         let url = asset_url(&self.manifest, spec)?;
         #[cfg(test)]
         let url = self.download_url.clone().unwrap_or(url);
-        self.download_archive(name, spec, &url, DOWNLOAD_RETRY_DELAY)
+        self.download_archive(name, spec, &url, DOWNLOAD_RETRY_DELAY, observations)
             .await
     }
 
@@ -336,6 +528,7 @@ impl ComponentManager {
         spec: &ComponentSpec,
         url: &str,
         retry_delay: Duration,
+        observations: &mut PreparationMetrics,
     ) -> Result<PathBuf, String> {
         let downloads = self.root.join("downloads");
         fs::create_dir_all(&downloads)
@@ -344,7 +537,7 @@ impl ComponentManager {
         let metadata_path = downloads.join(format!("{}.partial.json", spec.archive));
         for attempt in 1..=DOWNLOAD_ATTEMPTS {
             match self
-                .download_attempt(name, spec, url, &partial, &metadata_path)
+                .download_attempt(name, spec, url, &partial, &metadata_path, observations)
                 .await
             {
                 Ok(()) => return Ok(partial),
@@ -369,6 +562,7 @@ impl ComponentManager {
         url: &str,
         partial: &Path,
         metadata_path: &Path,
+        observations: &mut PreparationMetrics,
     ) -> Result<(), DownloadError> {
         let mut offset = fs::metadata(partial).map(|value| value.len()).unwrap_or(0);
         let previous = fs::read(metadata_path)
@@ -383,9 +577,11 @@ impl ComponentManager {
         if offset > 0 && previous.is_none() {
             remove_partial(partial, metadata_path);
             offset = 0;
+            observations.resumed = false;
         }
         if offset == spec.bytes {
             if verify_archive(partial, spec).is_ok() {
+                observations.archive_source = Some(ArchiveSource::Cache);
                 self.report(ComponentProgress::Download {
                     component: name.into(),
                     transferred: offset,
@@ -395,6 +591,7 @@ impl ComponentManager {
             }
             remove_partial(partial, metadata_path);
             offset = 0;
+            observations.resumed = false;
         }
         self.report(ComponentProgress::Download {
             component: name.into(),
@@ -403,6 +600,7 @@ impl ComponentManager {
         });
         let mut request = self.client.get(url);
         if offset > 0 {
+            observations.resume_attempts += 1;
             request = request.header(RANGE, format!("bytes={offset}-"));
             if let Some(etag) = previous.as_ref().and_then(|value| value.etag.as_deref()) {
                 request = request.header(IF_RANGE, etag);
@@ -425,12 +623,14 @@ impl ComponentManager {
         if offset > 0 && !resumed {
             remove_partial(partial, metadata_path);
             offset = 0;
+            observations.resumed = false;
             self.report(ComponentProgress::Download {
                 component: name.into(),
                 transferred: 0,
                 total: spec.bytes,
             });
         }
+        observations.resumed = resumed;
         let etag = response
             .headers()
             .get(ETAG)
@@ -466,6 +666,7 @@ impl ComponentManager {
                 });
                 DownloadError::transient(format!("component download failed: {error}"))
             })?;
+            observations.received(transferred, chunk.len() as u64);
             transferred = transferred
                 .checked_add(chunk.len() as u64)
                 .ok_or_else(|| "component byte count overflow".to_string())?;
@@ -572,7 +773,8 @@ impl ComponentManager {
         Ok(runtime)
     }
 
-    /// Commit complete current-manifest components only after application readiness succeeds.
+    /// Commit prepared core/fallback components after application readiness succeeds.
+    /// Optional capability preparation alone does not establish a running capability.
     /// Preparation and this commit share the component lock; a concurrent operation returns busy.
     pub fn activate_prepared(&self) -> Result<(), String> {
         fs::create_dir_all(&self.root)
@@ -582,9 +784,14 @@ impl ComponentManager {
             return Err("current startup harness is not prepared".into());
         }
         let mut components = BTreeMap::new();
-        for name in ["harness", "pnpmStore", "node", "harbor"] {
+        for (name, spec) in &self.manifest.components {
+            if !matches!(
+                spec.kind,
+                ComponentKind::CoreRuntime | ComponentKind::RuntimeFallback
+            ) {
+                continue;
+            }
             if let Some(path) = self.installed(name)? {
-                let spec = self.spec(name)?;
                 components.insert(
                     name,
                     serde_json::json!({
@@ -599,6 +806,43 @@ impl ComponentManager {
             "appVersion": self.manifest.app_version,
             "components": components,
         });
+        self.write_active(&active)
+    }
+
+    /// Commit one current capability only after its owner established a current-Host mount.
+    pub(super) fn activate_observed(&self, name: &str) -> Result<(), String> {
+        let _lock = self.lock()?;
+        let spec = self.spec(name)?;
+        if !matches!(
+            spec.kind,
+            ComponentKind::CapabilityOnDemand | ComponentKind::Optional
+        ) {
+            return Err("runtime observation does not identify a capability".into());
+        }
+        let path = self
+            .installed(name)?
+            .ok_or("observed capability is not prepared")?;
+        let mut active: serde_json::Value = serde_json::from_slice(
+            &fs::read(self.root.join("active.json"))
+                .map_err(|error| format!("active runtime is unavailable: {error}"))?,
+        )
+        .map_err(|error| format!("active runtime is invalid: {error}"))?;
+        if active["appVersion"].as_str() != Some(&self.manifest.app_version)
+            || active["components"]["harness"]["id"].as_str() != Some(&self.spec("harness")?.id)
+        {
+            return Err("runtime observation does not match the active application".into());
+        }
+        active["components"]
+            .as_object_mut()
+            .ok_or("active component records are missing")?
+            .insert(
+                name.into(),
+                serde_json::json!({ "id": spec.id, "path": path.display().to_string() }),
+            );
+        self.write_active(&active)
+    }
+
+    fn write_active(&self, active: &serde_json::Value) -> Result<(), String> {
         let active_path = self.root.join("active.json");
         let temporary = self.root.join("active.json.next");
         fs::write(
@@ -613,7 +857,7 @@ impl ComponentManager {
             .map_err(|error| format!("cannot activate component state: {error}"))
     }
 
-    fn lock(&self) -> Result<ComponentLock, String> {
+    pub(super) fn lock(&self) -> Result<ComponentLock, String> {
         ComponentLock::acquire(self.root.join("component.lock"))
     }
 }
@@ -626,78 +870,15 @@ pub fn verify_component_channel(resource_dir: &Path) -> Result<ComponentManifest
     let signature_text = fs::read_to_string(channel.join("components.json.sig"))
         .map_err(|error| format!("component manifest signature is unavailable: {error}"))?;
     verify_manifest_signature(&manifest_bytes, &signature_text)?;
-    let manifest: ComponentManifest = serde_json::from_slice(&manifest_bytes)
-        .map_err(|error| format!("component manifest is invalid: {error}"))?;
-    validate_manifest(&manifest)?;
+    let manifest = parse_manifest(&manifest_bytes)?;
+    if manifest.app_version != env!("CARGO_PKG_VERSION") {
+        return Err("component manifest does not match this application version".into());
+    }
     Ok(manifest)
 }
 
-fn validate_manifest(manifest: &ComponentManifest) -> Result<(), String> {
-    if manifest.schema_version != 1 {
-        return Err(format!(
-            "unsupported component manifest schema {}",
-            manifest.schema_version
-        ));
-    }
-    if manifest.platform != "darwin" || manifest.arch != "arm64" {
-        return Err("component manifest does not target darwin-arm64".into());
-    }
-    if manifest.release_tag != format!("yourbuddy-v{}", manifest.app_version) {
-        return Err("component release tag does not match application version".into());
-    }
-    for name in ["harness", "pnpmStore", "node", "harbor"] {
-        let spec = manifest
-            .components
-            .get(name)
-            .ok_or_else(|| format!("component manifest is missing {name}"))?;
-        validate_spec(spec)?;
-    }
-    Ok(())
-}
-
-fn validate_spec(spec: &ComponentSpec) -> Result<(), String> {
-    if component_key(&spec.id)?.is_empty() || spec.bytes == 0 {
-        return Err("component id or byte count is invalid".into());
-    }
-    if spec.sha256.len() != 64
-        || !spec.sha256.bytes().all(|value| value.is_ascii_hexdigit())
-        || !spec.archive.starts_with("yourbuddy-")
-        || !spec.archive.ends_with(".tar.zst")
-        || spec.archive.contains('/')
-        || spec.archive.contains("..")
-    {
-        return Err(format!(
-            "component archive metadata is invalid: {}",
-            spec.archive
-        ));
-    }
-    Ok(())
-}
-
-fn component_key(id: &str) -> Result<&str, String> {
-    let key = id
-        .strip_prefix("sha256:")
-        .or_else(|| id.strip_prefix("node:"))
-        .unwrap_or(id);
-    if key.is_empty()
-        || !key.bytes().all(|value| {
-            value.is_ascii_alphanumeric() || matches!(value, b'.' | b'-' | b'_' | b':')
-        })
-    {
-        return Err(format!("component id is invalid: {id}"));
-    }
-    Ok(key)
-}
-
 fn component_path(root: &Path, name: &str, id: &str) -> Result<PathBuf, String> {
-    let family = match name {
-        "harness" => "harness",
-        "pnpmStore" => "stores",
-        "node" => "node",
-        "harbor" => "harbor",
-        _ => return Err(format!("unsupported component name: {name}")),
-    };
-    Ok(root.join(family).join(component_key(id)?))
+    Ok(root.join(component_storage_path(name, id)?))
 }
 
 fn asset_url(manifest: &ComponentManifest, spec: &ComponentSpec) -> Result<String, String> {
@@ -851,9 +1032,8 @@ fn remove_partial(partial: &Path, metadata: &Path) {
 mod tests {
     use super::{
         asset_url, component_path, relative_link_stays_inside, validate_manifest, ComponentLock,
-        ComponentManifest, ComponentSpec,
+        ComponentManifest,
     };
-    use std::collections::BTreeMap;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU64, Ordering};
@@ -886,26 +1066,21 @@ mod tests {
     }
 
     pub(super) fn manifest() -> ComponentManifest {
-        let spec = ComponentSpec {
-            id: "sha256:abc123".into(),
-            archive: "yourbuddy-harness-abc123-macos-arm64.tar.zst".into(),
-            sha256: "a".repeat(64),
-            bytes: 42,
-            activation: "startup".into(),
-        };
-        ComponentManifest {
-            schema_version: 1,
-            app_version: "0.4.0".into(),
-            release_tag: "yourbuddy-v0.4.0".into(),
-            platform: "darwin".into(),
-            arch: "arm64".into(),
-            components: BTreeMap::from([
-                ("harness".into(), spec.clone()),
-                ("pnpmStore".into(), spec.clone()),
-                ("node".into(), spec.clone()),
-                ("harbor".into(), spec),
-            ]),
-        }
+        let mut manifest: ComponentManifest =
+            serde_json::from_slice(include_bytes!("tests/fixtures/component-manifest-v2.json"))
+                .unwrap();
+        manifest.app_version = "0.4.0".into();
+        manifest.release_tag = "yourbuddy-v0.4.0".into();
+        let harness = manifest.components.get_mut("harness").unwrap();
+        harness.id = "sha256:abc123".into();
+        harness.archive = "yourbuddy-harness-abc123-macos-arm64.tar.zst".into();
+        manifest
+            .components
+            .get_mut("harbor")
+            .unwrap()
+            .depends_on
+            .insert("harness".into(), "sha256:abc123".into());
+        manifest
     }
 
     #[test]
@@ -954,15 +1129,32 @@ mod tests {
     }
 
     #[test]
-    fn reclaims_a_stale_component_lock() {
-        let root = TemporaryRoot::new("stale-lock");
+    fn preserves_legacy_contents_and_the_permanent_lock_inode() {
+        let root = TemporaryRoot::new("legacy-lock");
         let path = root.0.join("component.lock");
-        fs::write(&path, "terminated-owner").expect("stale lock");
-
-        let lock = ComponentLock::acquire(path.clone()).expect("reclaimed lock");
-        assert!(path.is_file());
-        drop(lock);
-        assert!(!path.exists());
+        for contents in [
+            b"terminated-owner".as_slice(),
+            b"not-a-pid",
+            b"\xff\x00",
+            b"",
+        ] {
+            fs::write(&path, contents).expect("legacy contents");
+            let lock = ComponentLock::acquire(path.clone()).expect("OS lock");
+            assert!(ComponentLock::acquire(path.clone()).is_err());
+            assert_eq!(fs::read(&path).unwrap(), contents);
+            #[cfg(unix)]
+            let before = {
+                use std::os::unix::fs::MetadataExt;
+                fs::metadata(&path).unwrap().ino()
+            };
+            drop(lock);
+            assert_eq!(fs::read(&path).unwrap(), contents);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                assert_eq!(fs::metadata(&path).unwrap().ino(), before);
+            }
+        }
     }
 
     #[test]
@@ -984,3 +1176,25 @@ mod tests {
 #[cfg(test)]
 #[path = "components_download_tests.rs"]
 mod download_tests;
+
+#[cfg(test)]
+pub(super) fn service_fixture(root: &Path) -> ComponentManager {
+    let mut manifest = tests::manifest();
+    let mut harbor_plugin = manifest.components["harbor"].clone();
+    harbor_plugin.id = "sha256:harbor_plugin-fixture".into();
+    harbor_plugin.archive = "yourbuddy-harbor_plugin-fixture.tar.zst".into();
+    harbor_plugin
+        .depends_on
+        .insert("harbor".into(), manifest.components["harbor"].id.clone());
+    manifest
+        .components
+        .insert("harborPlugin".into(), harbor_plugin);
+    ComponentManager {
+        root: root.into(),
+        resource_dir: root.join("resources"),
+        manifest,
+        client: Client::builder().no_proxy().build().unwrap(),
+        progress: None,
+        download_url: None,
+    }
+}

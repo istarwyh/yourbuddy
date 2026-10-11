@@ -62,6 +62,29 @@ describe('CI workflow', () => {
     expect(wine.steps).toContainEqual(expect.objectContaining({ name: 'Shut down wineserver', if: 'always()' }))
   })
 
+  it('runs linked Profile preflight after native preparation and before full Windows coverage', () => {
+    const job = workflowJob(loadWorkflow('.github/workflows/ci.yml'), 'windows-coverage')
+    if (!Array.isArray(job.steps)) throw new TypeError('Windows coverage job must define steps')
+    const steps = job.steps.filter(isRecord)
+    const install = steps.findIndex(step => step.name === 'Install (immutable)')
+    const preflight = steps.findIndex(step => step.name === 'Check linked Profile activation and rollback')
+    const coverage = steps.findIndex(step => step.run === 'pnpm run check:ci:coverage')
+    expect(preflight).toBeGreaterThan(install)
+    expect(coverage).toBeGreaterThan(preflight)
+    expect(steps[preflight]).toEqual({
+      name: 'Check linked Profile activation and rollback',
+      shell: 'pwsh',
+      run: [
+        'pnpm run build:native-system',
+        'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }',
+        'pnpm exec vitest run --project thread-safe packages/boot/plugin-manager/tests/activation.spec.ts packages/boot/hmr/tests/linked-profile.spec.ts',
+        '',
+      ].join('\n'),
+    })
+    expect(steps[coverage]).not.toHaveProperty('if')
+    expect(steps[coverage]).not.toHaveProperty('continue-on-error')
+  })
+
   it('isolates every pnpm action setup destination per runner', () => {
     const files = ['.github/workflows/ci.yml', '.github/workflows/ci-master.yml']
     const setups: Array<{ jobName: string; step: unknown }> = []

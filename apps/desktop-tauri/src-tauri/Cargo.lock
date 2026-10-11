@@ -6087,6 +6087,7 @@ dependencies = [
  "rustls",
  "rustls-pemfile",
  "rustls-platform-verifier",
+ "semver",
  "serde",
  "serde_json",
  "sha2",

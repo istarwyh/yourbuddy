@@ -1,12 +1,14 @@
 /** The CLI and manager share package reconciliation, path anchoring and diagnostics. */
 import { EventEmitter } from 'node:events'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import * as fsPromises from 'node:fs/promises'
+import { dirname, join, relative, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { PassThrough } from 'node:stream'
 import { expect, it, onTestFinished, vi } from 'vitest'
 import { getDshRuntimeVersion, initProfile, readProfileManifest } from '@deepseek-ai/dsh-app-boot'
 import { anchorPathSpec, readProfileRegistry, runPluginCommand, runProfilePnpm, viewProfilePackage } from '../src/operations.ts'
+import * as runTree from '../src/run-tree.ts'
 
 /** What execa resolves for a run that settled, including the buffered output the pre-install lookup is read for. */
 interface FakeOutcome {
@@ -35,6 +37,8 @@ interface FakePnpm {
   output: string
   /** Exit code of the `install` run that repairs a post-install refusal. */
   repairExit: number
+  /** Files written by the repair subprocess before it settles. */
+  repairMutate: (dir: string) => void
   /** What the pre-install `pnpm view` lookup answers for one spec; `{}` declares no peers. */
   view: (spec: string) => { exitCode: number; stdout: string }
   /** The specs the pre-install check asked `pnpm view` about, in order. */
@@ -43,6 +47,10 @@ interface FakePnpm {
 
 const command = vi.hoisted(() => ({ run: vi.fn<(...args: unknown[]) => Promise<FakeOutcome> & FakeChild>() }))
 vi.mock('execa', () => ({ execa: (...args: unknown[]) => command.run(...args) }))
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return { ...actual, symlink: vi.fn(actual.symlink) }
+})
 
 /** Whether the bounded wait for a recorded run returns at once; the wait itself is measured in run-tree.spec.ts. */
 const treeWait = vi.hoisted(() => ({ skip: false }))
@@ -69,6 +77,7 @@ function fixture() {
     exitCode: 0,
     output: '',
     repairExit: 0,
+    repairMutate: () => {},
     view: () => ({ exitCode: 0, stdout: '{}' }),
     views: [],
   }
@@ -82,7 +91,7 @@ function fixture() {
       const answer = pnpm.view(spec)
       return result(answer.exitCode, answer.stdout)
     }
-    if (argv.includes('--frozen-lockfile') || argv.includes('--config.lockfile=false')) return result(pnpm.repairExit, '')
+    if (argv.includes('--frozen-lockfile') || argv.includes('--config.lockfile=false')) return result(pnpm.repairExit, '', () => { pnpm.repairMutate(runDir) })
     return result(pnpm.exitCode, pnpm.output, () => { pnpm.mutate(runDir) })
   })
   onTestFinished(() => { command.run.mockReset(); treeWait.skip = false; rmSync(home, { recursive: true, force: true }) })
@@ -109,8 +118,138 @@ function result(
   } else {
     setTimeout(() => { raw.emit('error', Object.assign(new Error('pnpm failed to launch'), { code: details.code })) }, 0)
   }
-  return Object.assign(done, { stdout, stderr, nodeChildProcess: raw })
+  return Object.assign(done, { stdout, stderr, nodeChildProcess: raw, kill: () => true })
 }
+
+/** An application-managed target with no preexisting dependency or package link. */
+function protectedTarget(f: ReturnType<typeof fixture>) {
+  const target = join(f.home, 'managed-target')
+  mkdirSync(target)
+  writeFileSync(join(target, 'package.json'), JSON.stringify({ name: 'managed-bundle', version: '1.0.0' }))
+  return {
+    target,
+    args: ['add', `link:${target}`],
+    options: {
+      execution: 'service' as const, outputBytes: 8192,
+      rollbackPackage: 'managed-bundle', rollbackExpected: { dependency: null, link: null },
+    },
+    link: join(f.dir, 'node_modules', 'managed-bundle'),
+  }
+}
+
+it('rolls back an absent protected link when the original manifest has no dependencies field', async () => {
+  const f = fixture()
+  const manifest = readProfileManifest('test', f.dir)
+  delete manifest.dependencies
+  writeFileSync(join(f.dir, 'package.json'), JSON.stringify(manifest))
+  const original = readFileSync(join(f.dir, 'package.json'), 'utf8')
+  const managed = protectedTarget(f)
+  f.pnpm.exitCode = 17
+  const outcome = await runPluginCommand(f.context, managed.args, managed.options)
+  expect(outcome).toMatchObject({ exitCode: 17, rollback: 'restored' })
+  expect(readFileSync(join(f.dir, 'package.json'), 'utf8')).toBe(original)
+  expect(existsSync(managed.link)).toBe(false)
+  expect(existsSync(runRecord(f.dir))).toBe(false)
+})
+
+it('keeps a real package directory created during repair and reports an incomplete protected-link rollback', async () => {
+  const f = fixture()
+  const managed = protectedTarget(f)
+  f.pnpm.exitCode = 17
+  f.pnpm.repairMutate = () => {
+    mkdirSync(managed.link, { recursive: true })
+    writeFileSync(join(managed.link, 'user-file'), 'do not unlink this directory')
+  }
+  const outcome = await runPluginCommand(f.context, managed.args, managed.options)
+  expect(outcome).toMatchObject({ exitCode: 17, rollback: 'incomplete' })
+  expect(outcome.output).toContain('the protected package is no longer a symbolic link')
+  expect(readFileSync(join(managed.link, 'user-file'), 'utf8')).toBe('do not unlink this directory')
+  expect(existsSync(runRecord(f.dir))).toBe(false)
+})
+
+it('retains the repair run record and leaves the link untouched when that process tree remains alive', async () => {
+  const f = fixture()
+  const managed = protectedTarget(f)
+  const repairPid = 424_242
+  treeWait.skip = true
+  const alive = vi.spyOn(runTree, 'treeAlive').mockImplementation(tree => tree.pid === repairPid)
+  onTestFinished(() => { alive.mockRestore() })
+  command.run.mockImplementation((_command, rawArgs) => {
+    const args = rawArgs as readonly string[]
+    return args.includes('--config.lockfile=false')
+      ? Object.assign(result(0, '', () => {
+        mkdirSync(join(f.dir, 'node_modules'), { recursive: true })
+        symlinkSync(managed.target, managed.link, process.platform === 'win32' ? 'junction' : 'dir')
+      }), { pid: repairPid })
+      : result(17, '')
+  })
+  const outcome = await runPluginCommand(f.context, managed.args, managed.options)
+  expect(outcome).toMatchObject({ exitCode: 17, rollback: 'incomplete' })
+  expect(outcome.output).toContain('waiting for the package repair tree before restoring its link')
+  expect(realpathSync(managed.link)).toBe(realpathSync(managed.target))
+  expect(JSON.parse(readFileSync(runRecord(f.dir), 'utf8'))).toMatchObject({ pid: repairPid })
+})
+
+it('restores an opted-in operation after its output consumer throws', async () => {
+  const f = fixture()
+  const managed = protectedTarget(f)
+  const original = readFileSync(join(f.dir, 'package.json'), 'utf8')
+  f.pnpm.output = 'consumer-break'
+  f.pnpm.mutate = (dir) => { writeFileSync(join(dir, 'package.json'), '{"changed":true}') }
+  const outcome = await runPluginCommand(f.context, managed.args, {
+    ...managed.options,
+    onOutput(text) { if (text === 'consumer-break') throw new Error('destination closed') },
+  })
+  expect(outcome).toMatchObject({ exitCode: 1, rollback: 'restored' })
+  expect(outcome.output).toContain('package operation failed: Error: destination closed')
+  expect(readFileSync(join(f.dir, 'package.json'), 'utf8')).toBe(original)
+  expect(existsSync(runRecord(f.dir))).toBe(false)
+  expect(existsSync(`${join(f.dir, 'package.json')}.lock`)).toBe(false)
+})
+
+it('returns a nonzero opt-in rollback result when a silence-terminated child reports zero', async () => {
+  const f = fixture()
+  const managed = protectedTarget(f)
+  command.run.mockImplementationOnce(() => silentChild('started', 0))
+  const outcome = await runPluginCommand(f.context, managed.args, { ...managed.options, idleTimeoutMs: 10 })
+  expect(outcome).toMatchObject({ exitCode: 1, timedOut: true, rollback: 'restored' })
+  expect(readProfileManifest('test', f.dir).dsh?.profile?.bundles).toEqual([])
+  expect(existsSync(runRecord(f.dir))).toBe(false)
+})
+
+it.each([
+  { platformName: 'linux', relativeTarget: false },
+  { platformName: 'linux', relativeTarget: true },
+  { platformName: 'win32', relativeTarget: false },
+  { platformName: 'win32', relativeTarget: true },
+])('selects $platformName link kind with relativeTarget=$relativeTarget and restores its raw target', async ({ platformName, relativeTarget }) => {
+  const f = fixture()
+  const managed = protectedTarget(f)
+  mkdirSync(join(f.dir, 'node_modules'))
+  const target = relativeTarget ? relative(dirname(managed.link), managed.target) : managed.target
+  const nativeKind = process.platform === 'win32' && !relativeTarget ? 'junction' : 'dir'
+  symlinkSync(target, managed.link, nativeKind)
+  const saved = readlinkSync(managed.link)
+  const manifest = readProfileManifest('test', f.dir)
+  manifest.dependencies = { 'managed-bundle': `link:${managed.target}` }
+  writeFileSync(join(f.dir, 'package.json'), JSON.stringify(manifest))
+  const symlink = vi.mocked(fsPromises.symlink)
+  const nativeFs = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+  // Verify both dispatch choices on either OS without requiring Windows symlink
+  // privileges for a simulated POSIX branch; the target restoration is still real.
+  symlink.mockImplementationOnce((target, path) => nativeFs.symlink(target, path, nativeKind))
+  const platform = Object.getOwnPropertyDescriptor(process, 'platform')!
+  onTestFinished(() => { Object.defineProperty(process, 'platform', platform); symlink.mockReset(); symlink.mockImplementation(nativeFs.symlink) })
+  Object.defineProperty(process, 'platform', { ...platform, value: platformName })
+  f.pnpm.exitCode = 17
+  const outcome = await runPluginCommand(f.context, managed.args, {
+    ...managed.options, rollbackExpected: { dependency: `link:${managed.target}`, link: saved },
+  })
+  expect(outcome).toMatchObject({ exitCode: 17, rollback: 'restored' })
+  expect(symlink).toHaveBeenCalledWith(saved, managed.link, platformName === 'win32' && !relativeTarget ? 'junction' : 'dir')
+  expect(readlinkSync(managed.link)).toBe(saved)
+  expect(realpathSync(managed.link)).toBe(realpathSync(managed.target))
+})
 
 /** A child that printed once and never exits on its own: only the silence bound can end it. */
 function silentChild(output: string, exitCode?: number) {

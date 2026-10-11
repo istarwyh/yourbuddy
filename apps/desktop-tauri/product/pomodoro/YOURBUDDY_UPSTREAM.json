@@ -9,9 +9,15 @@
   "upstreamTreeSha256": "64b0e93c531b9c2ae0a6ceeb6bc74fb79740d93a6c4ffdea24533381db163af8",
   "patches": [
     "Remove obsolete @deepseek-ai/dsh-client-runtime Client injection.",
-    "Align the bundled bilingual README with repository language-switcher, code-block, and link-target pairing rules."
+    "Align the bundled bilingual README with repository language-switcher, code-block, and link-target pairing rules.",
+    {
+      "id": "pomodoro-local-component-metrics",
+      "file": "patches/pomodoro-local-component-metrics.patch",
+      "sha256": "f3a3e62e568b847eb8790b849fddfdc298f501dd252af162ebc9ce64522bf041",
+      "purpose": "Record only settled explicit Pomodoro Start/Resume actions in YourBuddy device-local counters; keep failures non-blocking and duplicate clicks single-flight."
+    }
   ],
   "repository": "https://github.com/istarwyh/dsh-pomodoro",
   "license": "MIT",
-  "treeSha256": "fe629b6fd996a84430d3b3a7e7b134a7ff01ad708a109a5e336c0043b8f3f5de"
+  "treeSha256": "098f1ff35e74a6d869da6acb3bfcd9edd1e6690a97e0d119bc57309d0d5e0b41"
 }

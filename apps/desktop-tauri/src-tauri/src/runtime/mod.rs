@@ -1,10 +1,16 @@
 pub mod boot_log;
 pub mod boot_status;
-pub mod config;
+pub mod component_cache_cleanup;
+pub mod component_leases;
+pub mod component_metrics;
+pub mod component_plan;
+pub mod component_service;
 pub mod components;
+pub mod config;
 pub mod env_path;
 pub mod host_env;
 pub mod io_fallback;
+pub mod optional_harbor;
 pub mod path_bridge;
 pub mod plugin_catalog;
 pub(crate) mod process;
@@ -52,6 +58,7 @@ impl DesktopRuntime {
         overlay: Option<&HostOverlay>,
         progress: Arc<dyn Fn(ProvisionEvent) + Send + Sync>,
         network_proxy: ResolvedNetworkProxy,
+        components: Option<Arc<component_service::ComponentService>>,
     ) -> Result<Self, String> {
         boot_log::info(&format!(
             "provision complete cli={} node={}",
@@ -75,7 +82,17 @@ impl DesktopRuntime {
             return Err(error);
         }
         progress(ProvisionEvent::Status(i18n::t(Msg::StatusStartWeb).into()));
-        let host = supervisor::spawn_web_host(&paths, overlay, &host_path, &network_proxy).await?;
+        if let Some(components) = &components {
+            components.before_host_start(&paths)?;
+        }
+        let host = supervisor::spawn_web_host(
+            &paths,
+            overlay,
+            &host_path,
+            &network_proxy,
+            components.as_deref(),
+        )
+        .await?;
         boot_log::info(&format!("dsh web ready url={}", host.web_url));
         Ok(Self {
             paths: paths.clone(),
