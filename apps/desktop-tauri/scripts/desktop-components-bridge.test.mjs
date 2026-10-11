@@ -11,7 +11,7 @@ function fixture(invoke = async () => ({ restartRequired: true })) {
   const window = { __DSH_WEB_URL__: 'http://127.0.0.1:19387/', __TAURI__: { core: { invoke } }, addEventListener: (type, handler) => { if (type === 'message') window.message = handler } }
   Function('document', 'window', 'URL', source)({ getElementById: () => frame }, window, URL)
   const send = async (fields = {}, origin = 'http://127.0.0.1:19387', sender = frame.contentWindow) => {
-    await window.message({ origin, source: sender, data: { channel: 'yourbuddy.desktop.components', version: 1, type: 'install-request', requestId: 'install_1', ...(fields.type === 'get-request' ? {} : { component: 'pomodoro' }), ...fields } })
+    await window.message({ origin, source: sender, data: { channel: 'yourbuddy.desktop.components', version: 1, type: 'install-request', requestId: 'install_1', ...(['get-request', 'ready-request'].includes(fields.type) ? {} : { component: 'pomodoro' }), ...fields } })
     await Promise.resolve()
     await Promise.resolve()
   }
@@ -74,4 +74,19 @@ test('late completion cannot address a replacement iframe and native failure rem
   await failed.send()
   assert.equal(failed.replies[1].data.ok, false)
   assert.equal(failed.replies[1].data.error, 'native unavailable')
+})
+
+
+test('local statistics commands admit only payload-free ready and fixed Pomodoro result fields', async () => {
+  const calls = []
+  const value = fixture(async (...args) => { calls.push(args); return { recorded: true } })
+  await value.send({ type: 'ready-request', requestId: 'ready_1' })
+  assert.deepEqual(calls[0], ['run_first_party_command', { command: 'report_workbench_ready' }])
+  await value.send({ type: 'invocation-request', requestId: 'used_1', component: 'pomodoro', runtimeToken: 'epoch', succeeded: false })
+  assert.deepEqual(calls[1], ['run_first_party_command', { command: 'report_component_invocation', payload: { component: 'pomodoro', runtimeToken: 'epoch', succeeded: false } }])
+  await value.send({ type: 'ready-request', requestId: 'bad_ready', payload: {} })
+  for (const change of [{ component: 'harbor' }, { succeeded: 'true' }, { runtimeToken: '../epoch' }, { task: 'not allowed' }]) await value.send({ type: 'invocation-request', requestId: 'bad_usage', runtimeToken: 'epoch', succeeded: true, ...change })
+  await value.send({ type: 'ready-request', requestId: 'wrong_origin' }, 'http://127.0.0.1:1234')
+  await value.send({ type: 'invocation-request', requestId: 'wrong_frame', runtimeToken: 'epoch', succeeded: true }, 'http://127.0.0.1:19387', {})
+  assert.equal(calls.length, 2)
 })

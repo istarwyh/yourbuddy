@@ -9,11 +9,11 @@ export const DESKTOP_COMPONENT_VERSION = 1
 
 const REQUEST_ID = /^[A-Za-z0-9_-]{1,64}$/
 const COMPONENT_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
-type Action = 'get' | 'plan' | 'install' | 'report'
+type Action = 'get' | 'plan' | 'install' | 'report' | 'ready' | 'invocation'
 /** Actual Host Fiber state; undefined means no conclusive observation is available yet. */
 export type ComponentRuntimeState = 'active' | 'failed' | 'inactive'
 const RUNTIME_TOKEN = /^[A-Za-z0-9_-]{1,128}$/
-type Result = ComponentOverview | InstallPlan | { readonly restartRequired: boolean }
+type Result = ComponentOverview | InstallPlan | { readonly restartRequired: boolean } | { readonly recorded: boolean }
 type Message = { readonly data: unknown; readonly origin: string; readonly source: object | null }
 
 /** Browser facilities required by the component bridge, also supplied by a real Window. */
@@ -44,6 +44,10 @@ export interface DesktopComponentOptions {
 export interface DesktopComponentController extends ComponentController {
   /** Cancel current waits. Later explicit requests can reuse the controller after React remount. */
   dispose(): void
+  /** Record this Host generation's committed workbench once; no payload is transmitted. */
+  reportWorkbenchReady(): Promise<{ readonly recorded: boolean }>
+  /** Record one explicit Pomodoro start/resume result against the current native token. */
+  reportPomodoroInvocation(runtimeToken: string, succeeded: boolean): Promise<{ readonly recorded: boolean }>
 }
 
 function shellOrigin(target: DesktopComponentWindow | undefined): string | undefined {
@@ -112,6 +116,9 @@ function plan(value: unknown): value is InstallPlan {
 function installed(value: unknown): value is { readonly restartRequired: boolean } {
   return record(value) && keys(value, 'restartRequired') && typeof value.restartRequired === 'boolean'
 }
+function recorded(value: unknown): value is { readonly recorded: boolean } {
+  return record(value) && keys(value, 'recorded') && typeof value.recorded === 'boolean'
+}
 function createRequestId(): string {
   const bytes = new Uint8Array(16)
   globalThis.crypto.getRandomValues(bytes)
@@ -151,13 +158,14 @@ export function createDesktopComponentController(options: DesktopComponentOption
     runtimeWaits.add(cancel)
     void work.then(value => { cleanup(); resolve(value) }, error => { cleanup(); reject(error) })
   })
-  const request = (action: Action, key?: string, report?: { readonly state: ComponentRuntimeState; readonly runtimeToken: string }): Promise<Result> => {
+  const request = (action: Action, key?: string, report?: { readonly state: ComponentRuntimeState; readonly runtimeToken: string } | { readonly runtimeToken: string; readonly succeeded: boolean }): Promise<Result> => {
     if (target === undefined || origin === undefined) return Promise.reject(new Error('desktop-shell-unavailable'))
     if (!listening) { target.addEventListener('pagehide', dispose); listening = true }
     if (key !== undefined && !COMPONENT_KEY.test(key)) return Promise.reject(new Error('desktop-component-key-invalid'))
-    const operationKey = `${action}:${key ?? ''}:${report?.runtimeToken ?? ''}:${report?.state ?? ''}`
+    const operationKey = `${action}:${key ?? ''}:${report?.runtimeToken ?? ''}:${report !== undefined && 'state' in report ? report.state : ''}`
     const existing = inFlight.get(operationKey)
-    if (existing !== undefined) return existing
+    if (action !== 'invocation' && existing !== undefined) return existing
+    if (report !== undefined && !RUNTIME_TOKEN.test(report.runtimeToken)) return Promise.reject(new Error('desktop-component-runtime-token-invalid'))
     const requestId = options.requestId?.() ?? createRequestId()
     if (!REQUEST_ID.test(requestId) || pending.has(requestId)) return Promise.reject(new Error('desktop-component-request-id-invalid'))
     const result = new Promise<Result>((resolve, reject) => {
@@ -179,13 +187,13 @@ export function createDesktopComponentController(options: DesktopComponentOption
           if (acknowledged) return
           acknowledged = true
           if (timer !== undefined) target.clearTimeout(timer)
-          timer = target.setTimeout(() => { fail(`desktop-component-${action}-timeout`) }, options.completionTimeoutMs ?? (action === 'install' ? 600_000 : 15_000))
+          timer = target.setTimeout(() => { fail(`desktop-component-${action}-timeout`) }, options.completionTimeoutMs ?? (action === 'install' ? 930_000 : 15_000))
           return
         }
         if (value.type !== `${action}-response`) return
         if (value.ok === false && keys(value, 'channel,error,ok,requestId,type,version') && text(value.error)) { fail(value.error); return }
         if (value.ok !== true || !keys(value, 'channel,ok,requestId,type,value,version')) { fail('desktop-component-response-invalid'); return }
-        const valid = action === 'get' ? overview(value.value) : action === 'plan' ? plan(value.value) : installed(value.value)
+        const valid = action === 'get' ? overview(value.value) : action === 'plan' ? plan(value.value) : action === 'ready' || action === 'invocation' ? recorded(value.value) : installed(value.value)
         if (!valid) { fail('desktop-component-response-invalid'); return }
         cleanup()
         resolve(value.value as Result)
@@ -257,5 +265,7 @@ export function createDesktopComponentController(options: DesktopComponentOption
       return run
     },
     dispose,
+    reportWorkbenchReady: async () => await request('ready') as { readonly recorded: boolean },
+    reportPomodoroInvocation: async (runtimeToken, succeeded) => await request('invocation', 'pomodoro', { runtimeToken, succeeded }) as { readonly recorded: boolean },
   }
 }

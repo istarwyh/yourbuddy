@@ -1,6 +1,7 @@
 /** YourBuddy's product-specific middle workbench coordinator. */
 
 import { useEffect, useRef, type ReactNode } from 'react'
+import { installDesktopComponentMetrics } from './desktop-component-metrics.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionBinding, SessionSummary, SessionEventSource } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
@@ -196,6 +197,11 @@ export function ProductWorkbenchHost({
   renderSlot, useProductWorkbench, collapseSession, restoreSession, t,
 }: WorkbenchHostProps): ReactNode {
   const snapshot = useProductWorkbench(value => value)
+  useEffect(() => {
+    const metrics = installDesktopComponentMetrics()
+    metrics.ready()
+    return metrics.dispose
+  }, [])
   const previousMode = useRef(snapshot.mode)
   useEffect(() => {
     if (previousMode.current !== snapshot.mode) window.requestAnimationFrame(() => { window.dispatchEvent(new Event('resize')) })

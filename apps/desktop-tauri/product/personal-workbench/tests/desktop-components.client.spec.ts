@@ -140,6 +140,45 @@ describe('desktop component browser requests', () => {
     controller.dispose()
   })
 
+  it('uses payload-free ready and exact independent invocation reports with boolean receipts', async () => {
+    const target = new FakeWindow()
+    const controller = createDesktopComponentController({ target })
+    const ready = controller.reportWorkbenchReady()
+    expect(Object.keys(target.messages[0]!.message).sort()).toEqual(['channel', 'requestId', 'type', 'version'])
+    target.reply('ready', { recorded: true })
+    await expect(ready).resolves.toEqual({ recorded: true })
+    const first = controller.reportPomodoroInvocation('eligible_token', true)
+    const second = controller.reportPomodoroInvocation('eligible_token', true)
+    expect(target.messages).toHaveLength(3)
+    expect(target.messages[1]?.message).toMatchObject({ type: 'invocation-request', component: 'pomodoro', runtimeToken: 'eligible_token', succeeded: true })
+    expect(Object.keys(target.messages[1]!.message).sort()).toEqual(['channel', 'component', 'requestId', 'runtimeToken', 'succeeded', 'type', 'version'])
+    target.reply('invocation', { recorded: true }, 1)
+    target.reply('invocation', { recorded: false }, 2)
+    await expect(first).resolves.toEqual({ recorded: true })
+    await expect(second).resolves.toEqual({ recorded: false })
+    const invalid = controller.reportPomodoroInvocation('eligible_token', false)
+    target.reply('invocation', { recorded: 'true' })
+    await expect(invalid).rejects.toThrow('response-invalid')
+    await expect(controller.reportPomodoroInvocation('path/token', true)).rejects.toThrow('runtime-token-invalid')
+    controller.dispose()
+  })
+
+  it('waits beyond the native 15-minute install deadline before timing out the browser wait', async () => {
+    vi.useFakeTimers()
+    const target = new FakeWindow()
+    const controller = createDesktopComponentController({ target })
+    let settled = false
+    const result = controller.install('pomodoro')
+    void result.then(() => { settled = true }, () => { settled = true })
+    const failure = expect(result).rejects.toThrow('install-timeout')
+    target.accepted('install')
+    await vi.advanceTimersByTimeAsync(900_000)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(30_000)
+    await failure
+    controller.dispose()
+  })
+
   it('cancels listeners on page navigation or unmount and allows StrictMode reuse', async () => {
     const target = new FakeWindow()
     const controller = createDesktopComponentController({ target })

@@ -895,15 +895,43 @@ window.__ModuleLoader__.load({
         }
       }
 
+      function reportYourBuddyInvocation(succeeded) {
+        if (runtimeDisposed) return;
+        try {
+          window.dispatchEvent(new CustomEvent("yourbuddy:component-invocation", {
+            detail: { component: "pomodoro", succeeded },
+          }));
+        } catch (error) {
+          console.warn("YourBuddy local Pomodoro statistics were not recorded.");
+        }
+      }
+
+      let pendingRunToggle = null;
       const engine = {
         get: () => s,
         subscribe: (fn) => { listeners.add(fn); return () => { listeners.delete(fn); }; },
         toggleOpen: () => set({ open: !s.open }),
         toggleRun: () => {
+          if (pendingRunToggle !== null) return pendingRunToggle;
           const desiredRunning = !s.running;
-          return afterRuntimeReady(() => (
-            commitRuntime((snapshot, now) => transitionRunning(snapshot, now, desiredRunning))
-          ));
+          let changed = false;
+          const request = Promise.resolve().then(() => afterRuntimeReady(() => (
+            commitRuntime((snapshot, now) => {
+              const result = transitionRunning(snapshot, now, desiredRunning);
+              changed = result.changed;
+              return result;
+            })
+          ))).then((snapshot) => {
+            if (desiredRunning && changed) reportYourBuddyInvocation(true);
+            return snapshot;
+          }, (error) => {
+            if (desiredRunning) reportYourBuddyInvocation(false);
+            throw error;
+          }).finally(() => {
+            if (pendingRunToggle === request) pendingRunToggle = null;
+          });
+          pendingRunToggle = request;
+          return request;
         },
         reset: () => {
           const observedPhase = s.phase;
