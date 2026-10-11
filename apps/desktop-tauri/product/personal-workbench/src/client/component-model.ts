@@ -14,6 +14,8 @@ export interface ComponentView {
   readonly canChangePolicy: boolean
   readonly canClean: boolean
   readonly error: string | null
+  /** Native token for this Host generation and exact component installation attempt. */
+  readonly runtimeToken: string | null
 }
 
 /** Dependency-first preparation steps returned by the native component planner. */

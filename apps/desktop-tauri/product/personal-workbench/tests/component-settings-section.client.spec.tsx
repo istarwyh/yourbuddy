@@ -8,7 +8,7 @@ import type { ComponentController, ComponentOverview, InstallPlan } from '../src
 const t = (key: ComponentLocaleKey): string => componentEn[key]
 const fixture: ComponentOverview = {
   appVersion: '0.1.7',
-  components: [{ key: 'harbor', kind: 'capability-on-demand', version: '0.1.7', purpose: 'Agent evaluation', archiveBytes: 2048, installedBytes: null, state: 'absent', policy: 'on-demand', canInstall: true, canChangePolicy: false, canClean: false, error: null }],
+  components: [{ key: 'harbor', kind: 'capability-on-demand', version: '0.1.7', purpose: 'Agent evaluation', archiveBytes: 2048, installedBytes: null, state: 'absent', policy: 'on-demand', canInstall: true, canChangePolicy: false, canClean: false, error: null, runtimeToken: null }],
   metrics: {
     formatVersion: 1, appVersion: '0.1.7', windowStartedAtUnixMs: 1791680400000, bootAttempts: 3, workbenchReadyCount: 2, workbenchReadyTotalMs: 810, workbenchReadyMaxMs: 500, readinessFailures: 1,
     components: { harbor: { networkBytes: 123, retransferredBytes: 23, cacheArchiveBytes: 256, offlineSeedArchiveBytes: 512, resumeAttempts: 2, resumeSuccesses: 1, installs: 1, invocations: 4, successfulInvocations: 3 } },

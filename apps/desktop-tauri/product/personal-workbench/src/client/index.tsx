@@ -1,6 +1,8 @@
 /** Browser half: settings cards plus live brand-slot occupants. */
 
+import { useEffect, useState } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -22,6 +24,10 @@ import {
 } from './BrandSettingsRow.tsx'
 import { ApplicationLifecycleRow } from './ApplicationLifecycleRow.tsx'
 import { CapabilityPackSection } from './CapabilityPackSection.tsx'
+import { ComponentSettingsSection } from './ComponentSettingsSection.tsx'
+import { createDesktopComponentController, isDesktopComponentsAvailable, type DesktopComponentWindow, type ComponentRuntimeState } from './desktop-components.ts'
+import { componentEn, componentZh, type ComponentLocaleKey } from './component-locales.ts'
+import type { ComponentView } from './component-model.ts'
 import { NetworkProxyRow } from './NetworkProxyRow.tsx'
 import { EnvironmentPermissionsRow } from './EnvironmentPermissionsRow.tsx'
 import { HelpMenu, type HelpMenuInjected } from './HelpMenu.tsx'
@@ -43,6 +49,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Personal-workbench settings copy. */
     'settings.personal-workbench': PersonalWorkbenchKey
+    /** Component inventory and device-local metric copy. */
+    'settings.components': ComponentLocaleKey
   }
 }
 
@@ -160,6 +168,44 @@ export function installDesktopWindowControls(ctx: Context): void {
   }, WindowControls))
 }
 
+/**
+ * Register component settings only inside the runtime-owned loopback shell.
+ * @param ctx Client settings and locale registries.
+ * @param target Host window, defaulting to the current browser window.
+ */
+export function installDesktopComponentSettings(
+  ctx: Context,
+  target: DesktopComponentWindow | undefined = typeof window === 'undefined' ? undefined : window,
+): void {
+  if (!isDesktopComponentsAvailable(target) || target === undefined) return
+  const componentWindow = target
+  ctx.effect(() => ctx.locale.register('settings.components', { zh: componentZh, en: componentEn }), 'personal-workbench: component dictionaries')
+  const observeRuntime = async (component: ComponentView): Promise<ComponentRuntimeState | undefined> => {
+    if (component.key !== 'pomodoro' || component.runtimeToken === null) return undefined
+    const [bundles, inventory] = await Promise.all([ctx.remote.pluginManager.listBundles(), ctx.remote.pluginInventory.list()])
+    if (!bundles.ok || !inventory.ok) throw new Error('desktop-component-runtime-unavailable')
+    const bundle = bundles.value.find(item => item.name === '@xiaohui-wang/dsh-pomodoro')
+    const row = bundle?.rows.find(item => item.rowId === 'dsh-pomodoro' && item.moduleName === '@xiaohui-wang/dsh-pomodoro')
+    if (row?.entryId === undefined) return undefined
+    const entry = inventory.value.entries.find(item => item.entryId === row.entryId && item.moduleName === row.moduleName)
+    if (entry === undefined) return undefined
+    if (entry.fiberPhase === 'failed') return 'failed'
+    if (!entry.enabled || entry.fiberPhase === null) return 'inactive'
+    return entry.fiberPhase === 'active' ? 'active' : undefined
+  }
+  function DesktopComponents({ t }: PropsLocale<'settings.components'>) {
+    const [controller] = useState(() => createDesktopComponentController({ target: componentWindow, observeRuntime }))
+    useEffect(() => () => { controller.dispose() }, [controller])
+    return <ComponentSettingsSection t={t} controller={controller} />
+  }
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item',
+    id: 'yourbuddy-components',
+    order: 37,
+    locale: 'settings.components',
+  }, DesktopComponents))
+}
+
 /** Register the settings cards and brand occupants. */
 export function apply(ctx: Context): void {
   installPersonalWorkbenchStyles(ctx)
@@ -172,6 +218,7 @@ export function apply(ctx: Context): void {
 
   installPersonalBrandOccupants(ctx, scope)
   installDesktopWindowControls(ctx)
+  installDesktopComponentSettings(ctx)
   ctx.effect(() => installProductWorkbench(ctx), 'personal-workbench: product workbench coordinator')
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
     name: 'sidebar.footer.action',
