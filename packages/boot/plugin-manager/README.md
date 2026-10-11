@@ -147,7 +147,9 @@ Failures preserve completed steps and report the actual remaining state. Profile
 
 Installation finishes after pnpm and bundle validation succeed; subsequent enablement failure does not undo installation. Removal proceeds in order: remove the bundle from `dsh.profile.bundles`, unload its runtime contributions, then run `pnpm remove`. A failed step prevents subsequent steps.
 
-Restoration rewrites only the two snapshotted files; user-authored patch configuration, application data, diagnostic logs and files pnpm downloaded remain untouched, and the next package operation prunes packages no manifest references.
+Application-owned single-package `add link:` operations can set `rollbackPackage` to the exact linked package name. A failure restores the manifest, lockfile, dependency tree, and that package’s previous symbolic link or absence under the profile lock. Existing real directories, mismatched names, and multi-package requests are refused before installation. `PackageResult.rollback` reports `restored` or `incomplete`; incomplete dependency repair remains a failure even when the protected link was restored. User patches are untouched. Ordinary CLI operations retain their existing partial-change behavior.
+
+The manager’s ordinary installation recovery rewrites only the two snapshotted files; user-authored patch configuration, application data, diagnostic logs and files pnpm downloaded remain untouched, and the next package operation prunes packages no manifest references.
 
 <a id="dev-note"></a>
 ### Dev Note

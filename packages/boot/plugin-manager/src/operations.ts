@@ -1,7 +1,7 @@
 /** Shared profile package operations used by dsh plugin and the running manager. */
 import { once } from 'node:events'
-import { existsSync, readFileSync } from 'node:fs'
-import { mkdir, mkdtemp, open, rm } from 'node:fs/promises'
+import { existsSync, lstatSync, readFileSync, readlinkSync } from 'node:fs'
+import { mkdir, mkdtemp, open, rm, symlink, unlink } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { execa } from 'execa'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
@@ -42,6 +42,8 @@ export interface PackageOperationOptions {
   outputBytes: number
   onOutput?: (text: string, stream: 'stdout' | 'stderr') => void
   activateNewBundles?: boolean
+  /** Restore a single application-owned linked package after a failed add; ordinary CLI runs retain pnpm's partial changes. */
+  rollbackPackage?: string
   lockWaitMs?: number
   /**
    * Terminate the run once its captured output has been silent for this long, in
@@ -274,7 +276,8 @@ function bundleComponentManifests(manifest: ProfileManifest, dir: string, anchor
 /** Execute pnpm inside a profile whose caller already holds the profile write lock.
  * Newly installed or updated direct dependencies are checked even when activation is disabled;
  * an untouched dependency never blocks an unrelated operation and stays denied at startup.
- * Compatibility denial restores the profile manifest and lockfile, but leaves downloaded modules on disk.
+ * Compatibility denial reinstalls the saved manifest and lockfile. An application-owned rollbackPackage also
+ * restores its prior symbolic link after other failures; incomplete repair remains an explicit failure.
  * @param context Launcher-owned profile and resolution locations.
  * @param args Pnpm arguments, before relative path anchoring.
  * @param options Output, activation and cancellation policy.
@@ -329,6 +332,92 @@ export async function runProfilePnpm(
     await log.close()
     return { exitCode: 1, output: output.toString('utf8'), truncated, logPath, incompatible }
   }
+  let protectedLink: { path: string; target?: string } | undefined
+  if (options.rollbackPackage !== undefined) {
+    try {
+      const name = parseInstallSpec(options.rollbackPackage)
+      const specs = namedSpecs(args)
+      const [spec] = specs
+      if (spec === undefined || name.kind !== 'registry' || name.spec !== name.name || args[0] !== 'add' || specs.length !== 1) {
+        throw new Error('rollback-package requires one exact package name and a single add target')
+      }
+      const target = anchorPathSpec(spec, context.cwd)
+      if (!target.startsWith('link:') || parseInstallSpec(target).kind !== 'path'
+        || readProfileManifest('dsh', target.slice('link:'.length)).name !== name.name) {
+        throw new Error('rollback-package must match the linked package manifest name')
+      }
+      const path = join(dir, 'node_modules', name.name)
+      try {
+        if (!lstatSync(path).isSymbolicLink()) throw new Error(`rollback-package cannot replace a real directory or file: ${name.name}`)
+        protectedLink = { path, target: readlinkSync(path) }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+        protectedLink = { path }
+      }
+    } catch (error) {
+      return rejected([String(error)], 'nothing was installed')
+    }
+  }
+  let retainRunRecord = false
+  const repairTree = async (): Promise<boolean> => {
+    const hadLockfile = savedFiles.some(file => file.path.endsWith('pnpm-lock.yaml') && file.text !== undefined)
+    const repair = ['install', hadLockfile ? '--frozen-lockfile' : '--config.lockfile=false']
+    const repairing = execa(options.command ?? 'pnpm', [...options.args ?? [], ...repair], {
+      cwd: dir, env: environment, extendEnv: false, reject: false, stdin: 'ignore',
+      ...protectedLink === undefined
+        ? options.idleTimeoutMs === undefined ? {} : { timeout: options.idleTimeoutMs }
+        : { timeout: options.idleTimeoutMs ?? LOOKUP_TIMEOUT_MS, killDescendants: true },
+    })
+    const tree = { pid: repairing.pid, grouped: protectedLink !== undefined && leadsOwnGroup('service') }
+    try {
+      await recordRun(dir, tree)
+      const repaired = await repairing
+      return repaired.exitCode === 0 && !repaired.timedOut
+    } finally {
+      if (protectedLink !== undefined) {
+        repairing.kill()
+        await Promise.allSettled([repairing])
+        await awaitTreeGone(tree)
+        if (treeAlive(tree)) { retainRunRecord = true }
+      }
+    }
+  }
+  let rollback: PackageResult['rollback']
+  const rollbackFailedRun = async (): Promise<void> => {
+    if (protectedLink === undefined || rollback !== undefined) return
+    rollback = 'incomplete'
+    child.kill()
+    await awaitTreeGone({ pid: child.pid, grouped })
+    if (treeAlive({ pid: child.pid, grouped })) retainRunRecord = true
+    let restoredTree = false
+    const problems: string[] = []
+    try {
+      if (retainRunRecord) throw new Error('the package process tree is still running')
+      await restore()
+      restoredTree = await repairTree()
+    } catch (error) { problems.push(String(error)) }
+    try {
+      if (retainRunRecord) throw new Error('waiting for the package repair tree before restoring its link')
+      await restore()
+      try {
+        if (!lstatSync(protectedLink.path).isSymbolicLink()) throw new Error('the protected package is no longer a symbolic link')
+        await unlink(protectedLink.path)
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
+      if (protectedLink.target !== undefined) {
+        await mkdir(resolve(protectedLink.path, '..'), { recursive: true })
+        await symlink(protectedLink.target, protectedLink.path, process.platform === 'win32' ? 'junction' : 'dir')
+      }
+      if (restoredTree) rollback = 'restored'
+    } catch (error) { problems.push(String(error)) }
+    const diagnostic = rollback === 'restored'
+      ? '\ndsh: restored package.json, pnpm-lock.yaml, node_modules, and the protected package link.\n'
+      : `\ndsh: package rollback is incomplete; inspect the profile before retrying. ${problems.join('; ')}\n`
+    await log.write(diagnostic)
+    append(Buffer.from(diagnostic))
+    options.onOutput?.(diagnostic, 'stderr')
+  }
   // An install command names the packages it adds, so their manifests are read and checked before
   // pnpm runs: an incompatible version is never installed, and the one already in use keeps working.
   const preflight: string[] = []
@@ -353,12 +442,12 @@ export async function runProfilePnpm(
   // A service run captures output, so execa terminates the tree it leads when the
   // run is killed: a lifecycle script outlives the pnpm process that started it.
   // The CLI keeps the caller's process group, so an interrupt still reaches it.
-  const grouped = leadsOwnGroup(options.execution)
+  const grouped = leadsOwnGroup(protectedLink === undefined ? options.execution : 'service')
   const child = execa(options.command ?? 'pnpm', [...options.args ?? [], ...args.map(arg => anchorPathSpec(arg, context.cwd))], {
     cwd: dir, env: environment, extendEnv: false, reject: false,
     stdout: options.execution === 'cli' ? 'inherit' : 'pipe',
     stderr: options.execution === 'cli' ? 'inherit' : 'pipe',
-    killDescendants: options.execution === 'service',
+    killDescendants: protectedLink !== undefined || options.execution === 'service',
     buffer: false, stdin: options.execution === 'cli' ? 'inherit' : 'ignore', cancelSignal: options.signal === undefined
       ? cancellation.signal : AbortSignal.any([cancellation.signal, options.signal]),
   })
@@ -501,19 +590,15 @@ export async function runProfilePnpm(
         // replaced the tree: restore the files, then reinstall the restored lockfile so the version
         // that worked before this run keeps loading. A profile that had no lockfile is reinstalled
         // from its restored manifest without creating one, which removes what this run added.
-        await restore()
-        const hadLockfile = savedFiles.some(file => file.path.endsWith('pnpm-lock.yaml') && file.text !== undefined)
-        const repair = ['install', hadLockfile ? '--frozen-lockfile' : '--config.lockfile=false']
-        const repairing = execa(options.command ?? 'pnpm', [...options.args ?? [], ...repair], {
-          cwd: dir, env: environment, extendEnv: false, reject: false, stdin: 'ignore',
-          ...options.idleTimeoutMs === undefined ? {} : { timeout: options.idleTimeoutMs },
-        })
-        await recordRun(dir, { pid: repairing.pid, grouped: false })
-        const repaired = await repairing
+        let repaired: boolean
+        if (protectedLink === undefined) { await restore(); repaired = await repairTree() }
+        else { await rollbackFailedRun(); repaired = rollback === 'restored' }
         exitCode = 1
-        const restoration = repaired.exitCode === 0
+        const restoration = repaired
           ? 'restored package.json, pnpm-lock.yaml, and node_modules'
-          : "restored package.json and pnpm-lock.yaml, but node_modules could not be reinstalled; run 'dsh plugin install'"
+          : protectedLink === undefined
+            ? "restored package.json and pnpm-lock.yaml, but node_modules could not be reinstalled; run 'dsh plugin install'"
+            : 'package rollback is incomplete; inspect the profile before retrying'
         const diagnostic = `\ndsh: installation rejected: ${warnings.join('\n')}\ndsh: ${restoration}.\n`
         await log.write(diagnostic)
         options.onOutput?.(diagnostic, 'stderr')
@@ -522,15 +607,26 @@ export async function runProfilePnpm(
         await reconcile(before, dir, context.installAnchor, options)
       }
     }
+    if (exitCode !== 0 || control.stalled) await rollbackFailedRun()
+  } catch (error) {
+    if (protectedLink === undefined) throw error
+    child.kill()
+    await Promise.allSettled([child, ...collectors])
+    await rollbackFailedRun()
+    exitCode = 1
+    const diagnostic = `\ndsh: package operation failed: ${String(error)}\n`
+    await log.write(diagnostic)
+    append(Buffer.from(diagnostic))
   } finally {
     control.settled = true
     clearTimeout(idleTimer)
-    // This process saw the run end, so no successor has to wait for it.
-    await rm(runRecordPath(dir), { force: true })
+    // Keep a surviving tree recorded so the next lock holder refuses to overlap its writes.
+    if (!retainRunRecord) await rm(runRecordPath(dir), { force: true })
     await log.close()
   }
   return {
-    exitCode, output: output.toString('utf8'), truncated, logPath,
+    exitCode: rollback === undefined ? exitCode : exitCode || 1, output: output.toString('utf8'), truncated, logPath,
+    ...rollback === undefined ? {} : { rollback },
     ...control.stalled ? { timedOut: true } : {}, ...incompatible.length > 0 ? { incompatible } : {},
   }
 }
