@@ -71,6 +71,12 @@ Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析�
 
 在干净的 `master` 上运行 `pnpm release:yourbuddy:prepare -- X.Y.Z`，会在不联网的情况下更新全部桌面版本源、创建双语发布归档和索引条目、记录配对文件，并写入发布说明草稿。替换全部自动生成的 `TODO`，重新记录变更配对，检查并提交。随后，`pnpm release:yourbuddy -- X.Y.Z` 只校验已提交的版本归档与 Git 状态，不重复测试、产品刷新、文档检查或官网构建。它要求 `master` 能快进 `origin/master`，拒绝已有远端 Tag，只创建或复用指向同一 Commit 的 Annotated Tag，并原子推送分支与 Tag。桌面产物仍只由 Tag Workflow 发布。
 
+## 组件清单
+
+准备好 Harness 后，在仓库根目录执行 `pnpm exec tsx scripts/yourbuddy-component-inventory.ts --harness apps/desktop-tauri/bundled/harness`。这个只读命令输出可复现的 JSON，列出暂存包、CLI 生产依赖闭包、Client 注入、Bundle/Preset 声明的插件引用，以及实际暂存文件字节数。`--root <package>` 选择其他分析起点；`--platform darwin|linux|win32` 解析平台字面条件。缺少必需 workspace 包，或所选包的插件引用不在闭包中时，命令会失败。报告不会合成原生桌面 overlay，也不能证明启动就绪。
+
+添加 `--components apps/desktop-tauri/component-release/yourbuddy-components-0.4.9.json`，可测量提供的压缩包，并与该 manifest 的大小及 SHA-256 比较；报告会标明该 manifest 的应用版本和目标平台。没有压缩包时，压缩包成本为 `null`。安装占用和网络传输始终为 `null`：暂存文件大小和压缩包大小都不能替代这两项测量。压缩包检查不会认证 manifest，也不能证明其中的 Harness 与单独提供的暂存目录一致。
+
 ## 发布文档与官网
 
 每次发布使用 [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md)准备[版本归档](../../docs/releases/README.zh.md)。产品官网的下载页和发行页使用 GitHub 稳定的 `releases/latest` 与 Release 历史 URL，因此普通桌面发布不需要后续修改或部署官网。只有产品指南或其他站点内容发生变化时才更新并部署官网。

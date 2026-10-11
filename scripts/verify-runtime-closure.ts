@@ -8,7 +8,7 @@ import { globSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { isCordisGroupEntry, loadCordisYaml, presetDefinitions } from './cordis-yaml.ts'
+import { activeBarePluginPackages, loadCordisYaml, presetDefinitions } from './cordis-yaml.ts'
 
 interface PackageManifest {
   name?: string
@@ -153,51 +153,11 @@ async function missingPresetPlugins(
   return failures
 }
 
-function activeBarePluginPackages(entries: unknown[], processPlatform: string): Set<string> {
-  const packages = new Set<string>()
-  const visit = (value: unknown, parentDisabled: boolean): void => {
-    if (!isRecord(value)) return
-    const disabled = parentDisabled || disabledOnPlatform(value.disabled, processPlatform)
-    if (disabled) return
-    if (typeof value.name === 'string') {
-      const packageName = barePackageName(value.name)
-      if (packageName !== undefined) packages.add(packageName)
-    }
-    if (isCordisGroupEntry(value)) {
-      for (const child of value.config) visit(child, disabled)
-    }
-  }
-  for (const entry of entries) visit(entry, false)
-  return packages
-}
-
-function disabledOnPlatform(value: unknown, processPlatform: string): boolean {
-  if (typeof value === 'boolean') return value
-  if (!isRecord(value) || typeof value.__jsExpr !== 'string') return false
-  const match = /^process\.platform\s*(===|!==)\s*(['"])(win32|linux|darwin)\2$/.exec(value.__jsExpr.trim())
-  if (match === null) return false
-  const [, operator, , expected] = match
-  return operator === '===' ? processPlatform === expected : processPlatform !== expected
-}
-
 function processPlatformForTarget(target: string): string {
   if (target.startsWith('linux-')) return 'linux'
   if (target.startsWith('macos-')) return 'darwin'
   if (target.startsWith('win-')) return 'win32'
   throw new Error(`verify-runtime-closure: unsupported runtime target ${JSON.stringify(target)}`)
-}
-
-function barePackageName(specifier: string): string | undefined {
-  if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.includes(':')) return undefined
-  const parts = specifier.split('/')
-  if (specifier.startsWith('@')) {
-    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : undefined
-  }
-  return parts[0] || undefined
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 async function loadWorkspacePackages(root: string): Promise<Map<string, WorkspacePackage>> {

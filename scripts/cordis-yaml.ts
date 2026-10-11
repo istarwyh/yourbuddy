@@ -76,3 +76,49 @@ export function presetDefinitions(value: unknown): { id: string; plugins: unknow
   const row = value as Record<string, unknown>
   return [...presetDefinitions(row.insert), ...(isCordisGroupEntry(row) ? presetDefinitions(row.config) : [])]
 }
+
+/**
+ * Collect bare plugin packages whose entries are not disabled on the target platform.
+ * @param entries Loader entries, including nested Cordis groups.
+ * @param processPlatform Node platform used to resolve literal platform conditions.
+ * @returns Package names; unsupported expressions remain conservatively active.
+ */
+export function activeBarePluginPackages(entries: unknown[], processPlatform: string): Set<string> {
+  const packages = new Set<string>()
+  const visit = (value: unknown, parentDisabled: boolean): void => {
+    if (!isRecord(value)) return
+    const disabled = parentDisabled || disabledOnPlatform(value.disabled, processPlatform)
+    if (disabled) return
+    if (typeof value.name === 'string') {
+      const packageName = barePackageName(value.name)
+      if (packageName !== undefined) packages.add(packageName)
+    }
+    if (isCordisGroupEntry(value)) {
+      for (const child of value.config) visit(child, disabled)
+    }
+  }
+  for (const entry of entries) visit(entry, false)
+  return packages
+}
+
+function disabledOnPlatform(value: unknown, processPlatform: string): boolean {
+  if (typeof value === 'boolean') return value
+  if (!isRecord(value) || typeof value.__jsExpr !== 'string') return false
+  const match = /^process\.platform\s*(===|!==)\s*(['"])(win32|linux|darwin)\2$/.exec(value.__jsExpr.trim())
+  if (match === null) return false
+  const [, operator, , expected] = match
+  return operator === '===' ? processPlatform === expected : processPlatform !== expected
+}
+
+function barePackageName(specifier: string): string | undefined {
+  if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.includes(':')) return undefined
+  const parts = specifier.split('/')
+  if (specifier.startsWith('@')) {
+    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : undefined
+  }
+  return parts[0] || undefined
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}

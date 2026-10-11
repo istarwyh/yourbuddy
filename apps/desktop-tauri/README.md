@@ -71,6 +71,12 @@ Tagged CI and ordinary `prepare:dist` or `build` commands never mutate or re-res
 
 On a clean `master`, `pnpm release:yourbuddy:prepare -- X.Y.Z` updates every desktop version source, creates the bilingual release archive and index entries, records their pairing files, and writes a release-notes draft without network access. Replace every generated `TODO`, re-record the changed pair, review, and commit. `pnpm release:yourbuddy -- X.Y.Z` then validates only the committed version archive and Git state; it does not repeat tests, product refresh, documentation checks, or the website build. It requires `master` to fast-forward `origin/master`, rejects an existing remote tag, creates or reuses only a same-commit annotated tag, and atomically pushes the branch and tag. The tag workflow remains the only publisher of desktop artifacts.
 
+## Component inventory
+
+After preparing a Harness, run `pnpm exec tsx scripts/yourbuddy-component-inventory.ts --harness apps/desktop-tauri/bundled/harness` from the repository root. The read-only command prints deterministic JSON with staged packages, the CLI production dependency closure, Client injections, declared bundle/preset plugin references, and measured staged file bytes. `--root <package>` selects different analysis roots; `--platform darwin|linux|win32` resolves literal platform conditions. Missing required workspace packages or selected-package plugin references fail the command. The report does not compose native desktop overlays or prove startup readiness.
+
+Add `--components apps/desktop-tauri/component-release/yourbuddy-components-0.4.9.json` to measure the supplied archives and compare their sizes and SHA-256 values with that manifest; the report identifies that manifest's application version and target. Without archives, archive costs are `null`. Installed size and network transfer are always `null`: staged file sizes and archive sizes do not establish either measurement. Archive inspection does not authenticate the manifest or establish that its Harness matches the separately supplied staging directory.
+
 ## Release documentation and website
 
 Use [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md) to prepare the [version archive](../../docs/releases/README.md) with each release. The product site's download and release pages use GitHub's stable `releases/latest` and release-history URLs, so an ordinary desktop release requires no follow-up website edit or deployment. Update and deploy the website only when product guidance or other site content changes.
