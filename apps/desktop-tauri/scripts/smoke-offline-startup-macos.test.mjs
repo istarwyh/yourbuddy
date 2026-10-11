@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -148,4 +148,45 @@ test('failure evidence retains partial and complete AX samples without hiding th
     assert.equal(original.message, 'native view failed ?token=private')
   }
   finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+
+test('only the reviewed preview notice permits a scoped real Continue action', () => {
+  const notice = 'AXGroup\tPreview Notice\t\nAXHeading\tPreview Notice\t2\nAXButton\tContinue\tmissing value'
+  assert(previewNoticeVisible(notice))
+  assert(previewNoticeVisible(notice.replaceAll('Preview Notice', '预览版说明').replace('Continue', '继续')))
+  assert(!previewNoticeVisible('AXButton\tContinue\tmissing value'))
+  assert(!previewNoticeVisible(notice.replaceAll('Preview Notice', 'Terms of Service')))
+  assert(!previewNoticeVisible(notice.replace('Continue', 'Save and continue')))
+  assert(!previewNoticeVisible(notice.replace('AXHeading', 'AXStaticText')))
+  const script = previewNoticeScript(123)
+  assert.match(script, /whose unix id is 123/)
+  assert.match(script, /role of itemNode is "AXGroup" and \(name of itemNode is "Preview Notice"/)
+  assert.match(script, /set noticeNodes to entire contents of itemNode/)
+  assert.match(script, /repeat with noticeNode in noticeNodes/)
+  assert.match(script, /role of noticeNode is "AXButton" and \(name of noticeNode is "Continue"/)
+  assert.match(script, /if \(count of matchingButtons\) is not 1 then error/)
+  assert.match(script, /perform action "AXPress" of item 1 of matchingButtons/)
+  assert.doesNotMatch(script, /Configure later|Save and continue|set value/)
+  assert.throws(() => previewNoticeScript(0))
+})
+
+
+test('credential onboarding can only defer configuration in its exact named modal', () => {
+  const title = 'Add an API key to get started'
+  const dialog = `AXGroup\t${title}\t\nAXHeading\t${title}\t2\nAXButton\tConfigure later\tmissing value`
+  assert(previewNoticeVisible(dialog, true))
+  assert(previewNoticeVisible(dialog.replaceAll(title, '添加一个 API Key 开始使用').replace('Configure later', '稍后配置'), true))
+  assert(!previewNoticeVisible(dialog))
+  assert(!previewNoticeVisible(dialog.replace('Configure later', 'Save and continue'), true))
+  assert(!previewNoticeVisible(dialog.replaceAll(title, 'Payment setup'), true))
+  assert(!previewNoticeVisible('AXButton\tConfigure later\t', true))
+  const script = previewNoticeScript(123, true)
+  assert.match(script, /name of itemNode is "Add an API key to get started"/)
+  assert.match(script, /name of itemNode is "添加一个 API Key 开始使用"/)
+  assert.match(script, /name of noticeNode is "Configure later"/)
+  assert.match(script, /name of noticeNode is "稍后配置"/)
+  assert.match(script, /if \(count of matchingButtons\) is not 1 then error/)
+  assert.match(script, /perform action "AXPress" of item 1 of matchingButtons/)
+  assert.doesNotMatch(script, /Save and continue|保存并继续|set value|keystroke/)
 })
