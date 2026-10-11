@@ -8,7 +8,7 @@ export const DESKTOP_COMPONENT_CHANNEL = 'yourbuddy.desktop.components'
 export const DESKTOP_COMPONENT_VERSION = 1
 
 const REQUEST_ID = /^[A-Za-z0-9_-]{1,64}$/
-const COMPONENT_KEY = /^[A-Za-z0-9_-]{1,64}$/
+const COMPONENT_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 type Action = 'get' | 'plan' | 'install' | 'report'
 /** Actual Host Fiber state; undefined means no conclusive observation is available yet. */
 export type ComponentRuntimeState = 'active' | 'failed' | 'inactive'

@@ -127,6 +127,19 @@ describe('desktop component browser requests', () => {
     controller.dispose()
   })
 
+  it('matches schema-2 catalog keys including dots but excluding leading punctuation', async () => {
+    const target = new FakeWindow()
+    const controller = createDesktopComponentController({ target })
+    for (const invalid of ['.plugin', '_plugin', '-plugin', 'plugin/path']) await expect(controller.plan(invalid)).rejects.toThrow('component-key-invalid')
+    const read = controller.load()
+    target.reply('get', { ...snapshot, components: snapshot.components.map(item => ({ ...item, key: 'plugin.v2' })) })
+    await expect(read).resolves.toMatchObject({ components: [{ key: 'plugin.v2' }] })
+    const result = controller.plan('plugin.v2')
+    target.reply('plan', { components: [{ component: 'plugin.v2', id: 'exact-id', action: 'prepare', archiveBytes: 42 }], prepareArchiveBytes: 42 })
+    await expect(result).resolves.toMatchObject({ components: [{ component: 'plugin.v2' }] })
+    controller.dispose()
+  })
+
   it('cancels listeners on page navigation or unmount and allows StrictMode reuse', async () => {
     const target = new FakeWindow()
     const controller = createDesktopComponentController({ target })

@@ -320,13 +320,13 @@
       if (value.type === 'get-request') return keys === 'channel,requestId,type,version' ? 'get' : false
       if (value.type === 'report-request') {
         return keys === 'channel,component,requestId,runtimeToken,state,type,version'
-          && typeof value.component === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value.component)
+          && typeof value.component === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(value.component)
           && typeof value.runtimeToken === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value.runtimeToken)
           && ['active', 'failed', 'inactive'].includes(value.state) ? 'report' : false
       }
       if (value.type !== 'plan-request' && value.type !== 'install-request') return false
       if (keys !== 'channel,component,requestId,type,version' || typeof value.component !== 'string'
-        || !/^[A-Za-z0-9_-]{1,64}$/.test(value.component)) return false
+        || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(value.component)) return false
       return value.type === 'plan-request' ? 'plan' : 'install'
     }
 

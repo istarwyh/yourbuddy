@@ -44,6 +44,15 @@ test('component shell forwards only fixed gateway commands and exact catalog arg
   assert.deepEqual(calls[2], ['run_first_party_command', { command: 'get_component_overview' }])
 })
 
+test('component shell preserves schema-2 dotted catalog keys and rejects leading punctuation', async () => {
+  const calls = []
+  const value = fixture(async (...args) => { calls.push(args); return { components: [], prepareArchiveBytes: 0 } })
+  await value.send({ type: 'plan-request', requestId: 'dotted', component: 'plugin.v2' })
+  assert.deepEqual(calls[0], ['run_first_party_command', { command: 'plan_component_install', payload: { component: 'plugin.v2' } }])
+  for (const component of ['.plugin', '_plugin', '-plugin']) await value.send({ requestId: 'invalid_key', component })
+  assert.equal(calls.length, 1)
+})
+
 test('runtime report carries the generation token and never accepts arbitrary state', async () => {
   const calls = []
   const value = fixture(async (...args) => { calls.push(args); return { restartRequired: false } })
