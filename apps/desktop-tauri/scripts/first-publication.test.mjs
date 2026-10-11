@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
@@ -144,12 +144,20 @@ test('Git authentication is runtime-only, clears other helpers, and does not emb
 })
 
 test('the unchanged publisher creates an annotated tag atomically in an isolated local Git fixture and rejects reuse', () => {
-  const temp = mkdtempSync(join(tmpdir(), 'yourbuddy-atomic-test-'))
-  const checkout = join(temp, 'checkout')
+  // Git reports canonical paths; Windows TEMP can use an 8.3 alias.
+  const temp = realpathSync.native(mkdtempSync(join(tmpdir(), 'yourbuddy-atomic-test-')))
+  const physical = join(temp, 'physical')
+  const alias = join(temp, 'alias')
   const remote = join(temp, 'remote.git')
   const env = publicationEnvironment({ ...process.env, ...context, GIT_AUTHOR_NAME: 'Fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid' })
   try {
-    mkdirSync(checkout)
+    mkdirSync(physical)
+    symlinkSync(physical, alias, 'junction')
+    const aliasedCheckout = join(alias, 'checkout')
+    mkdirSync(aliasedCheckout)
+    const checkout = realpathSync.native(aliasedCheckout)
+    assert.notEqual(checkout, aliasedCheckout)
+    assert.equal(checkout, join(physical, 'checkout'))
     execute(temp, ['init', '--bare', remote], env)
     execute(checkout, ['init', '--initial-branch=master'], env)
     for (const relative of [
@@ -179,11 +187,15 @@ test('the unchanged publisher creates an annotated tag atomically in an isolated
     const script = join(checkout, 'apps/desktop-tauri/scripts/publish-release.mjs')
     const publish = () => spawnSync(process.execPath, [script, '0.4.9'], { cwd: checkout, env, encoding: 'utf8' })
     writeFileSync(join(checkout, 'dirty'), 'uncommitted')
-    assert.notEqual(publish().status, 0)
+    const dirty = publish()
+    assert.notEqual(dirty.status, 0)
+    assert.match(dirty.stderr, /requires a clean worktree/u)
     assert.equal(execute(checkout, ['ls-remote', '--tags', 'origin'], env), '')
     rmSync(join(checkout, 'dirty'))
     execute(remote, ['config', 'receive.advertiseAtomic', 'false'], env)
-    assert.notEqual(publish().status, 0, 'a server without atomic support must refuse publication')
+    const nonAtomic = publish()
+    assert.notEqual(nonAtomic.status, 0, 'a server without atomic support must refuse publication')
+    assert.match(nonAtomic.stderr, /does not support --atomic push/u)
     assert.equal(execute(checkout, ['ls-remote', '--tags', 'origin'], env), '')
     execute(remote, ['config', 'receive.advertiseAtomic', 'true'], env)
     const result = publish()
@@ -193,7 +205,9 @@ test('the unchanged publisher creates an annotated tag atomically in an isolated
     assert.equal(execute(checkout, ['rev-parse', 'yourbuddy-v0.4.9^{}'], env), head)
     assert.equal(execute(remote, ['rev-parse', 'refs/heads/master'], env), head)
     assert.equal(execute(remote, ['rev-parse', 'refs/tags/yourbuddy-v0.4.9^{}'], env), head)
-    assert.notEqual(publish().status, 0)
+    const duplicate = publish()
+    assert.notEqual(duplicate.status, 0)
+    assert.match(duplicate.stderr, /release tag already exists on the remote/u)
     assert.equal(execute(remote, ['rev-parse', 'refs/tags/yourbuddy-v0.4.9^{}'], env), head)
   }
   finally { rmSync(temp, { recursive: true, force: true }) }
