@@ -1,5 +1,7 @@
 /** Guard release evidence against fixture-version, readiness, activation, and environment mistakes. */
 import assert from 'node:assert/strict'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, redactEvidence, sameProcessIdentity } from './smoke-offline-startup-macos.mjs'
 
@@ -31,11 +33,14 @@ test('rejects stale activation and startup of optional Harbor', () => {
 })
 
 test('child environment never inherits credentials, real HOME, or development launch overrides', () => {
-  const env = isolatedEnvironment('/tmp/owned-smoke', '/opt/node/bin/node')
-  assert.equal(env.HOME, '/tmp/owned-smoke/home')
-  assert.equal(env.YOURBUDDY_APP_DATA_DIR, '/tmp/owned-smoke/app-data')
-  assert.equal(env.CODEX_HOME, '/tmp/owned-smoke/home/.codex')
-  assert.equal(env.PATH, '/opt/node/bin:/usr/bin:/bin:/usr/sbin:/sbin')
+  const world = join(tmpdir(), 'owned-smoke')
+  const node = join(world, 'toolchain', 'bin', 'node')
+  const env = isolatedEnvironment(world, node)
+  assert.equal(env.HOME, join(world, 'home'))
+  assert.equal(env.YOURBUDDY_APP_DATA_DIR, join(world, 'app-data'))
+  assert.equal(env.CODEX_HOME, join(world, 'home', '.codex'))
+  // This helper launches macOS children even when its pure contract tests run elsewhere.
+  assert.equal(env.PATH, `${dirname(node)}:/usr/bin:/bin:/usr/sbin:/sbin`)
   assert.equal(env.DSH_DESKTOP_LAUNCH, undefined)
   assert.equal(env.DSH_HOME, undefined)
   assert.equal(env.NODE_OPTIONS, undefined)
@@ -62,12 +67,14 @@ test('failure cleanup owns only descendants of the launched application', () => 
 
 
 test('PID reuse, exited application handles, and foreign Hosts do not authorize cleanup', () => {
-  const row = parseProcessRecord(' 123 100 123 Sun Oct 11 03:00:00 2026 /node /tmp/owned/app-data/harness-versions/hash/apps/cli/lib/bin.js web')
+  const appData = join(tmpdir(), 'owned', 'app-data')
+  const harnessRoot = join(appData, 'harness-versions')
+  const row = parseProcessRecord(` 123 100 123 Sun Oct 11 03:00:00 2026 /node ${harnessRoot}/hash/apps/cli/lib/bin.js web`)
   const child = { pid: 100, exitCode: null, signalCode: null }
   assert(childIsActive(child))
   assert(!childIsActive({ ...child, exitCode: 0 }))
   assert(!childIsActive({ ...child, signalCode: 'SIGTERM' }))
-  assert(isOwnedHost(row, child, '/tmp/owned/app-data'))
+  assert(isOwnedHost(row, child, appData))
   assert(sameProcessIdentity(row, { ...row }))
   for (const changed of [
     { ...row, started: 'Sun Oct 11 03:00:01 2026' },
@@ -75,11 +82,11 @@ test('PID reuse, exited application handles, and foreign Hosts do not authorize 
     { ...row, group: 999 },
     undefined,
   ]) assert(!sameProcessIdentity(row, changed))
-  assert(!isOwnedHost({ ...row, parent: 999 }, child, '/tmp/owned/app-data'))
-  assert(!isOwnedHost({ ...row, group: 999 }, child, '/tmp/owned/app-data'))
-  assert(!isOwnedHost({ ...row, command: '/node /tmp/foreign/harness-versions/hash/bin.js' }, child, '/tmp/owned/app-data'))
-  assert(!isOwnedHost(row, { ...child, exitCode: 0 }, '/tmp/owned/app-data'))
-  assert(isOwnedHost({ ...row, parent: 1 }, { ...child, exitCode: 0 }, '/tmp/owned/app-data'))
+  assert(!isOwnedHost({ ...row, parent: 999 }, child, appData))
+  assert(!isOwnedHost({ ...row, group: 999 }, child, appData))
+  assert(!isOwnedHost({ ...row, command: '/node /tmp/foreign/harness-versions/hash/bin.js' }, child, appData))
+  assert(!isOwnedHost(row, { ...child, exitCode: 0 }, appData))
+  assert(isOwnedHost({ ...row, parent: 1 }, { ...child, exitCode: 0 }, appData))
 })
 
 
