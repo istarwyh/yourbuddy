@@ -6,6 +6,7 @@ import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
+import { load } from 'js-yaml'
 
 import {
   assertBootstrapDmgSize,
@@ -43,7 +44,7 @@ const zstdAvailable = !gnuTar || childProcess.spawnSync('zstd', ['--version']).s
 
 test('builds core, fallback and on-demand components from bundled versions and archive bytes', {
   skip: tarVersion.status !== 0 || !zstdAvailable ? 'tar with zstd support is required' : false,
-}, t => {
+}, async t => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-component-build-'))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const bundledRoot = join(root, 'bundled')
@@ -52,7 +53,7 @@ test('builds core, fallback and on-demand components from bundled versions and a
   const toolchainRoot = join(bundledRoot, 'toolchain')
   const harborRoot = join(bundledRoot, 'yourbuddy-runtime')
   const nodeRoot = join(root, 'node-v22.19.0-darwin-arm64')
-  const outputRoot = join(root, 'output')
+  const outputRoot = join(root, 'apps', 'desktop-tauri', 'component-release')
   const pomodoroRoot = join(bundledRoot, 'capabilities', 'pomodoro')
   mkdirSync(join(pomodoroRoot, 'lib'), { recursive: true })
   mkdirSync(join(pomodoroRoot, 'node_modules', '@deepseek-ai', 'schemastery'), { recursive: true })
@@ -131,10 +132,44 @@ test('builds core, fallback and on-demand components from bundled versions and a
   ].sort())
   const report = JSON.parse(readFileSync(join(outputRoot, 'yourbuddy-size-report-0.4.9.json'), 'utf8'))
   assert.equal(report.schemaVersion, 1)
+  for (const component of Object.values(manifest.components)) {
+    assert.deepEqual(report.artifacts[component.archive], { bytes: component.bytes, sha256: component.sha256 })
+  }
   for (const [name, { bytes, sha256 }] of Object.entries(report.artifacts)) {
     const path = join(outputRoot, name)
     assert.equal(bytes, statSync(path).size)
     assert.equal(sha256, createHash('sha256').update(readFileSync(path)).digest('hex'))
+  }
+
+  await t.test('the macOS workflow seeds every real component archive, including Pomodoro and fallbacks', {
+    skip: process.platform === 'win32' ? 'the release seed step executes under the macOS POSIX shell' : false,
+  }, () => {
+    const workflow = load(readFileSync(new URL('../../../.github/workflows/desktop-release.yml', import.meta.url), 'utf8'))
+    const offline = workflow.jobs.build.steps.find(step => step.name === 'Build Offline app and DMG')
+    const [seedCommands, nativeBuild] = offline.run.split('pnpm --dir apps/desktop-tauri run build:offline')
+    assert.ok(nativeBuild, 'seed commands must precede the native Offline build')
+    const seeds = join(root, 'apps', 'desktop-tauri', 'component-seeds')
+    mkdirSync(seeds, { recursive: true })
+    writeFileSync(join(seeds, 'stale.tar.zst'), 'old seed')
+    const result = childProcess.spawnSync('bash', ['-euc', seedCommands], { cwd: root, encoding: 'utf8' })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(readdirSync(seeds).includes('stale.tar.zst'), false)
+    for (const { archive, sha256 } of Object.values(manifest.components)) {
+      assert.equal(createHash('sha256').update(readFileSync(join(seeds, archive))).digest('hex'), sha256)
+    }
+  })
+
+  const priorManifest = readFileSync(manifestPath, 'utf8')
+  const priorArchives = Object.fromEntries(Object.values(manifest.components).map(({ archive }) => [
+    archive, createHash('sha256').update(readFileSync(join(outputRoot, archive))).digest('hex'),
+  ]))
+  rmSync(join(pomodoroRoot, 'node_modules'), { recursive: true })
+  assert.throws(() => buildBootstrapComponents({ version: '0.4.9', outputRoot, bundledRoot }), /capability dependency is missing/)
+  rmSync(pomodoroRoot, { recursive: true })
+  assert.throws(() => buildBootstrapComponents({ version: '0.4.9', outputRoot, bundledRoot }), /ENOENT/)
+  assert.equal(readFileSync(manifestPath, 'utf8'), priorManifest)
+  for (const [archive, sha256] of Object.entries(priorArchives)) {
+    assert.equal(createHash('sha256').update(readFileSync(join(outputRoot, archive))).digest('hex'), sha256)
   }
 })
 

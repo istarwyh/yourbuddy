@@ -1,0 +1,148 @@
+import assert from 'node:assert/strict'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import test from 'node:test'
+import { load } from 'js-yaml'
+
+import { prepareDist } from './prepare-dist.mjs'
+
+const workflow = load(readFileSync(new URL('../../../.github/workflows/desktop-release.yml', import.meta.url), 'utf8'))
+const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+const preparationScripts = [
+  'bundle-harness-source.mjs',
+  'prepare-capability-components.mjs',
+  'prepare-harness-offline-store.mjs',
+  'prepare-managed-toolchain.mjs',
+  'prepare-yourbuddy-runtime.mjs',
+]
+const preparationFiles = [
+  { 'bundled/harness/.bundle-manifest.json': '{"harnessVersion":"0.2.0-rc.1"}' },
+  {
+    'bundled/capabilities/pomodoro/package.json': JSON.stringify({
+      name: '@xiaohui-wang/dsh-pomodoro', version: '0.5.5', main: 'lib/index.js',
+      dsh: { bundle: { patch: './cordis.patch.yml' } }, dependencies: { ordinary: '1.0.0' },
+    }),
+    'bundled/capabilities/pomodoro/lib/index.js': 'export {}\n',
+    'bundled/capabilities/pomodoro/lib/client.js': 'export {}\n',
+    'bundled/capabilities/pomodoro/cordis.patch.yml': '- insert: []\n',
+    'bundled/capabilities/pomodoro/node_modules/ordinary/package.json': '{"name":"ordinary","version":"1.0.0"}',
+  },
+  { 'bundled/harness/yourbuddy-pnpm-store.tar.gz': 'store control' },
+  { 'bundled/toolchain/manifest.json': '{}', 'bundled/toolchain/pnpm-11.7.0.tgz': 'fixed pnpm control' },
+  { 'bundled/yourbuddy-runtime/manifest.json': '{}' },
+]
+
+function fixture(t, { failure, missing } = {}) {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-release-pipeline-'))
+  t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }))
+  for (const name of ['splash.html', 'shell.html', 'desktop-i18n.js', 'splash-state.js', 'app-icon.png']) {
+    writeFileSync(join(root, name), name)
+  }
+  mkdirSync(join(root, 'scripts'))
+  // These subprocess controls exercise the real orchestrator's order and stopping behavior.
+  // The actual packer and archive builder are covered by their own registered tests.
+  preparationScripts.forEach((script, index) => {
+    const files = Object.entries(preparationFiles[index]).filter(([path]) => path !== missing)
+    writeFileSync(join(root, 'scripts', script), `
+import assert from 'node:assert/strict'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+const previous = existsSync('stages.jsonl') ? readFileSync('stages.jsonl', 'utf8').trim().split('\\n').map(JSON.parse) : []
+assert.deepEqual(previous, ${JSON.stringify(preparationScripts.slice(0, index))})
+appendFileSync('stages.jsonl', JSON.stringify(${JSON.stringify(script)}) + '\\n')
+if (${failure === script}) process.exit(19)
+for (const [path, value] of ${JSON.stringify(files)}) {
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, value)
+}
+`)
+  })
+  return root
+}
+
+function stages(root) {
+  return readFileSync(join(root, 'stages.jsonl'), 'utf8').trim().split('\n').map(JSON.parse)
+}
+
+test('prepares source, capabilities, store, toolchain and runtime once, then seeds fixed pnpm', t => {
+  const root = fixture(t)
+  assert.equal(prepareDist(root), 0)
+  assert.deepEqual(stages(root), preparationScripts)
+  assert.equal(readFileSync(join(root, 'component-channel', 'pnpm-11.7.0.tgz'), 'utf8'), 'fixed pnpm control')
+  for (const files of preparationFiles) {
+    for (const [path, expected] of Object.entries(files)) assert.equal(readFileSync(join(root, path), 'utf8'), expected)
+  }
+  assert.equal(readFileSync(join(root, 'dist', 'splash.html'), 'utf8'), 'splash.html')
+})
+
+test('a failed capability producer stops before store, toolchain and channel writes', t => {
+  const root = fixture(t, { failure: preparationScripts[1] })
+  assert.equal(prepareDist(root), 19)
+  assert.deepEqual(stages(root), preparationScripts.slice(0, 2))
+  assert.equal(existsSync(join(root, 'component-channel')), false)
+  assert.equal(readFileSync(join(root, 'bundled/harness/.bundle-manifest.json'), 'utf8'), preparationFiles[0]['bundled/harness/.bundle-manifest.json'])
+})
+
+for (const missing of ['package.json', 'lib/index.js', 'node_modules/ordinary/package.json']) {
+  test(`a successful producer missing capability ${missing} cannot reach later preparation`, t => {
+    const root = fixture(t, { missing: `bundled/capabilities/pomodoro/${missing}` })
+    assert.throws(() => prepareDist(root), /ENOENT|capability (entry|dependency) is missing/)
+    assert.deepEqual(stages(root), preparationScripts.slice(0, 2))
+    assert.equal(existsSync(join(root, 'bundled/harness/yourbuddy-pnpm-store.tar.gz')), false)
+    assert.equal(existsSync(join(root, 'component-channel')), false)
+  })
+}
+
+test('package and release aggregates execute capability preparation and pipeline tests', () => {
+  assert.equal(packageJson.scripts['prepare:capabilities'], 'node scripts/prepare-capability-components.mjs')
+  assert.equal(packageJson.scripts['prepare:dist'], 'node scripts/prepare-dist.mjs')
+  for (const name of ['prepare-capability-components', 'build-bootstrap-components', 'normalize-component-signature', 'release-component-pipeline']) {
+    assert.ok(packageJson.scripts['test:components'].split(' ').includes(`scripts/${name}.test.mjs`))
+  }
+  assert.ok(packageJson.scripts['test:release'].split(' && ').includes('pnpm run test:components'))
+  const steps = workflow.jobs.build.steps
+  const gate = steps.findIndex(step => step.name === 'Verify component preparation and release pipeline')
+  assert.ok(gate > steps.findIndex(step => step.name === 'Build Harness'))
+  assert.ok(gate < steps.findIndex(step => step.name === 'Build immutable runtime components'))
+  assert.match(steps[gate].run, /pnpm --dir apps\/desktop-tauri run test:components/)
+  assert.match(steps[gate].run, /YOURBUDDY_CAPABILITY_TEST_STORE="\$\(pnpm store path\)"/)
+  assert.equal(steps[gate].env.YOURBUDDY_BUILT_HARNESS_ROOT, '${{ github.workspace }}')
+  const build = steps.find(step => step.name === 'Build immutable runtime components').run
+  assert.ok(build.indexOf('run prepare:dist') < build.indexOf('run build:components'))
+  assert.ok(build.indexOf('run build:components') < build.indexOf('tauri signer sign'))
+  assert.match(build, /normalize-component-signature\.mjs/)
+  assert.match(build, /cp "\$manifest\.sig" apps\/desktop-tauri\/component-channel\/components\.json\.sig/)
+  const assets = steps.find(step => step.name === 'Stage release assets').run
+  assert.match(assets, /Copy-Item apps\/desktop-tauri\/component-release\/\*\.tar\.zst release-assets\//)
+  for (const name of ['yourbuddy-components-$version.json', 'yourbuddy-components-$version.json.sig', 'yourbuddy-size-report-$version.json']) {
+    assert.ok(assets.includes(`Copy-Item "apps/desktop-tauri/component-release/${name}" release-assets/`))
+  }
+})
+
+function assertPublishingGuards(value) {
+  const steps = value.jobs.build.steps
+  assert.equal(value.on.workflow_dispatch.inputs.mode.default, 'existing-tag')
+  assert.deepEqual(value.on.push.tags, ['yourbuddy-v*'])
+  const publishers = steps.filter(step => /gh release (?:create|upload)|first-publication\.mjs publish|git (?:push|tag)/.test(step.run ?? ''))
+  assert.deepEqual(publishers.map(({ name, if: condition }) => ({ name, condition })), [
+    { name: 'Publish the verified master tag atomically', condition: "env.RELEASE_MODE == 'first-publication'" },
+    { name: 'Publish release', condition: "env.RELEASE_MODE != 'candidate-validation'" },
+  ])
+  assert.equal(steps.find(step => step.name === 'Verify the candidate without publishing').if, "env.RELEASE_MODE == 'candidate-validation'")
+  assert.equal(steps.find(step => step.name === 'Refuse an existing Release for tag retry').if, "env.RELEASE_MODE == 'existing-tag'")
+  assert.match(steps.find(step => step.name === 'Refuse an existing Release for tag retry').run, /response\.status !== 404/)
+  assert.equal(steps.find(step => step.name === 'Upload validation candidate artifacts').if, "env.RELEASE_MODE == 'candidate-validation'")
+}
+
+test('candidate mode cannot reach tag, release or updater-feed publication; retry guards remain', () => {
+  assertPublishingGuards(workflow)
+  for (const name of ['Publish the verified master tag atomically', 'Publish release']) {
+    const unguarded = structuredClone(workflow)
+    delete unguarded.jobs.build.steps.find(step => step.name === name).if
+    assert.throws(() => assertPublishingGuards(unguarded))
+  }
+  const feed = structuredClone(workflow)
+  feed.jobs.build.steps.push({ name: 'Publish candidate feed', run: 'gh release upload yourbuddy-updater release-assets/latest.json --clobber' })
+  assert.throws(() => assertPublishingGuards(feed))
+})
