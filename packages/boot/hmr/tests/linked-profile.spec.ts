@@ -18,7 +18,7 @@ function file(filename: string, content: string): void {
 }
 
 async function fixture(ready = true) {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), 'hmr-linked-profile-')))
+  const root = realpathSync.native(mkdtempSync(join(tmpdir(), 'hmr-linked-profile-')))
   const scheduled = vi.spyOn(Hmr.prototype, 'runExclusive')
   onTestFinished(() => { scheduled.mockRestore() })
   const runtime: { ctx?: Context } = {}
@@ -121,6 +121,7 @@ it('rejects a changed historical linked root before touching the running composi
   f.link('linked-probe', f.bundle('linked-probe'))
   await f.drainChange(() => { f.select('linked-probe') })
   const active: unknown = f.ctx.get('linked-probe')
+  expect(active).toEqual({ token: f.token, value: 'ordinary-dependency', revision: 'first' })
   const generation = getEnvironmentData('@deepseek-ai/dsh-app-boot/profile-resolution')
   unlinkSync(join(f.dir, 'node_modules', 'linked-probe'))
   await f.drainChange(() => { f.link('linked-probe', f.bundle('linked-probe', 'second')) })

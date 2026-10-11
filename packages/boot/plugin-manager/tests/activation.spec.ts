@@ -20,7 +20,7 @@ const pnpm = join(dirname(require.resolve('pnpm')), 'bin/pnpm.mjs')
 /** Pauses after real pnpm has written its tree, before its caller can reconcile bundles. */
 const barrierRunner = `
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 if (!process.argv.includes('add') && process.env.TEST_DESCENDANT_PID) {
   let alive = false
@@ -28,7 +28,11 @@ if (!process.argv.includes('add') && process.env.TEST_DESCENDANT_PID) {
   writeFileSync(process.env.TEST_REPAIR_SAW_DESCENDANT, String(alive))
 }
 writeFileSync(process.env.TEST_STARTED, readFileSync('package.json', 'utf8'))
-const child = spawn(process.execPath, [process.env.TEST_PNPM, ...process.argv.slice(2)], { stdio: 'inherit' })
+const child = spawn(process.execPath, [process.env.TEST_PNPM, ...process.argv.slice(2)], { stdio: ['inherit', 'pipe', 'pipe'] })
+for (const stream of ['stdout', 'stderr']) child[stream].on('data', chunk => {
+  appendFileSync(process.env.TEST_CHILD_LOG, chunk)
+  process[stream].write(chunk)
+})
 const exit = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', resolve) })
 if (!process.argv.includes('add') && process.env.TEST_REPAIR_EXIT === 'stall') {
   setInterval(() => {}, 1000)
@@ -57,7 +61,7 @@ async function eventually(check: () => boolean, message: string): Promise<void> 
 }
 
 async function fixture() {
-  const home = realpathSync(mkdtempSync(join(tmpdir(), 'plugin-activation-')))
+  const home = realpathSync.native(mkdtempSync(join(tmpdir(), 'plugin-activation-')))
   const operations = new Set<Promise<unknown>>()
   const cancellation = new AbortController()
   const runtime: { ctx?: Context } = {}
@@ -157,14 +161,16 @@ async function fixture() {
     const written = join(gate, 'written')
     const started = join(gate, 'started')
     const release = join(gate, 'release')
+    const childLog = join(gate, 'pnpm-output.log')
+    writeFileSync(childLog, '')
     const task = run(root, { rollbackPackage: 'activation-bundle', args: [script],
       ...repairExit === 'stall' ? { idleTimeoutMs: 5000 } : {}, env: {
         ...env, ...extraEnv, TEST_PNPM: pnpm, TEST_WRITTEN: written, TEST_STARTED: started, TEST_RELEASE: release,
-        TEST_EXIT: String(exitCode), TEST_REPAIR_EXIT: String(repairExit),
+        TEST_EXIT: String(exitCode), TEST_REPAIR_EXIT: String(repairExit), TEST_CHILD_LOG: childLog,
       } })
     const completion: { result?: Awaited<typeof task> } = {}
     void task.then((result) => { completion.result = result })
-    return { task, started, written: async () => {
+    return { task, started, diagnostic: () => readFileSync(childLog, 'utf8'), written: async () => {
       await eventually(() => existsSync(written) || completion.result !== undefined, 'Real pnpm did not finish writing the fixture')
       if (!existsSync(written)) throw new Error(completion.result?.output ?? 'Package command exited before the barrier')
       expect(readFileSync(written, 'utf8')).toBe('0')
@@ -298,7 +304,8 @@ it('retains the active link and profile when a package run fails after writing a
   const update = f.barrier(next.root, 17)
   await update.written()
   update.release()
-  expect(await update.task).toMatchObject({ exitCode: 17, rollback: 'restored' })
+  const result = await update.task
+  expect(result, result.output + update.diagnostic()).toMatchObject({ exitCode: 17, rollback: 'restored' })
   expect(readFileSync(f.profile.patchPath, 'utf8')).toBe(f.patch)
   expect(readFileSync(first.marker, 'utf8')).toBe('1.0.0')
   expect(readFileSync(join(f.dir, 'package.json'), 'utf8')).toBe(manifest)
@@ -466,7 +473,8 @@ await withFileLock(${JSON.stringify(manifest)}, async () => {
   await update.written()
   expect(JSON.parse(readFileSync(update.started, 'utf8'))).toHaveProperty('externalWriter', 'retain-this-commit')
   update.release()
-  expect(await update.task).toMatchObject({ exitCode: 17, rollback: 'restored' })
+  const result = await update.task
+  expect(result, result.output + update.diagnostic()).toMatchObject({ exitCode: 17, rollback: 'restored' })
   expect(JSON.parse(readFileSync(manifest, 'utf8'))).toHaveProperty('externalWriter', 'retain-this-commit')
   expect(realpathSync(join(f.dir, 'node_modules', 'activation-bundle'))).toBe(first.root)
   expect(existsSync(`${manifest}.lock`)).toBe(false)

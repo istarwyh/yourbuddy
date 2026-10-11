@@ -2,7 +2,7 @@
 import { once } from 'node:events'
 import { existsSync, lstatSync, readFileSync, readlinkSync } from 'node:fs'
 import { mkdir, mkdtemp, open, rm, symlink, unlink } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import { execa } from 'execa'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
@@ -429,7 +429,9 @@ export async function runProfilePnpm(
       }
       if (protectedLink.target !== undefined) {
         await mkdir(resolve(protectedLink.path, '..'), { recursive: true })
-        await symlink(protectedLink.target, protectedLink.path, process.platform === 'win32' ? 'junction' : 'dir')
+        // A relative Windows link is a true symlink; recreating it as a junction
+        // would rewrite its raw target and break the caller's exact snapshot.
+        await symlink(protectedLink.target, protectedLink.path, process.platform === 'win32' && isAbsolute(protectedLink.target) ? 'junction' : 'dir')
       }
       if (restoredTree) rollback = 'restored'
     } catch (error) { problems.push(String(error)) }
