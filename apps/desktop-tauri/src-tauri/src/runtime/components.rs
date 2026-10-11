@@ -1,7 +1,7 @@
 //! Signed release-component preparation and readiness-gated activation.
 
 use std::collections::BTreeMap;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File, Metadata, OpenOptions, TryLockError};
 use std::io::{Read, Write};
 use std::path::{Component as PathComponent, Path, PathBuf};
 use std::sync::Arc;
@@ -196,99 +196,85 @@ struct PartialMetadata {
     etag: Option<String>,
 }
 
-/// Cross-process component owner whose PID record permits recovery after termination.
+/// Exclusive, nonblocking transaction ownership across the whole component cache.
+/// The lock file is permanent: dropping or terminating the owner only closes its handle.
+/// Legacy PID contents have no meaning; concurrently running legacy owners are unsupported.
+#[must_use = "dropping the component transaction lock ends the transaction"]
+#[derive(Debug)]
 struct ComponentLock {
-    path: PathBuf,
-    owner: String,
+    _file: File,
 }
 
 impl ComponentLock {
     fn acquire(path: PathBuf) -> Result<Self, String> {
-        let nonce = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|duration| duration.as_nanos())
-            .unwrap_or(0);
-        let owner = format!("{}:{nonce}", std::process::id());
-        let claim = path.with_extension(format!("claim-{}-{nonce}", std::process::id()));
-        fs::write(&claim, &owner)
-            .map_err(|error| format!("cannot prepare component lock: {error}"))?;
-        for _ in 0..2 {
-            match fs::hard_link(&claim, &path) {
-                Ok(()) => {
-                    let _ = fs::remove_file(&claim);
-                    return Ok(Self { path, owner });
-                }
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                    if component_lock_owner_active(&path) {
-                        let _ = fs::remove_file(&claim);
-                        return Err("another component operation is active".into());
-                    }
-                    match fs::remove_file(&path) {
-                        Ok(()) => {}
-                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                        Err(error) => {
-                            let _ = fs::remove_file(&claim);
-                            return Err(format!("cannot reclaim stale component lock: {error}"));
-                        }
-                    }
-                }
-                Err(error) => {
-                    let _ = fs::remove_file(&claim);
-                    return Err(format!("cannot acquire component lock: {error}"));
-                }
-            }
+        let parent = path
+            .parent()
+            .ok_or("component lock has no cache directory")?;
+        let metadata = fs::symlink_metadata(parent).map_err(component_lock_error)?;
+        if !metadata.is_dir() || component_lock_is_link(&metadata) {
+            return Err("component transaction root must be a real directory".into());
         }
-        let _ = fs::remove_file(&claim);
-        Err("another component operation is active".into())
-    }
-}
-
-impl Drop for ComponentLock {
-    fn drop(&mut self) {
-        if fs::read_to_string(&self.path).is_ok_and(|owner| owner == self.owner) {
-            let _ = fs::remove_file(&self.path);
+        let parent = fs::canonicalize(parent).map_err(component_lock_error)?;
+        let path = parent.join(path.file_name().ok_or("component lock has no filename")?);
+        match fs::symlink_metadata(&path) {
+            Ok(metadata) => validate_component_lock_file(&metadata)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(component_lock_error(error)),
+        }
+        let mut options = OpenOptions::new();
+        options.read(true).write(true).create(true).truncate(false);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options
+                .mode(0o600)
+                .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+            const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x00200000;
+            options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+        }
+        let file = options.open(&path).map_err(component_lock_error)?;
+        validate_component_lock_file(&file.metadata().map_err(component_lock_error)?)?;
+        match file.try_lock() {
+            Ok(()) => Ok(Self { _file: file }),
+            Err(TryLockError::WouldBlock) => Err("another component operation is active".into()),
+            Err(TryLockError::Error(error)) => Err(component_lock_error(error)),
         }
     }
 }
 
-fn component_lock_owner_active(path: &Path) -> bool {
-    let Ok(owner) = fs::read_to_string(path) else {
-        return false;
-    };
-    let Some(pid) = owner
-        .split(':')
-        .next()
-        .and_then(|value| value.parse::<u32>().ok())
-    else {
-        return false;
-    };
-    process_is_running(pid)
+fn component_lock_is_link(metadata: &Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+    }
+    #[cfg(not(windows))]
+    {
+        metadata.file_type().is_symlink()
+    }
 }
 
-#[cfg(unix)]
-fn process_is_running(pid: u32) -> bool {
-    let Ok(pid) = i32::try_from(pid) else {
-        return false;
-    };
-    let result = unsafe { libc::kill(pid, 0) };
-    result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+fn validate_component_lock_file(metadata: &Metadata) -> Result<(), String> {
+    if !metadata.is_file() || component_lock_is_link(metadata) {
+        return Err("component transaction lock must be a regular file".into());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if metadata.nlink() != 1 {
+            return Err("component transaction lock must not have hard links".into());
+        }
+    }
+    Ok(())
 }
 
-#[cfg(windows)]
-fn process_is_running(pid: u32) -> bool {
-    use windows::Win32::Foundation::CloseHandle;
-    use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
-
-    let Ok(handle) = (unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }) else {
-        return false;
-    };
-    let _ = unsafe { CloseHandle(handle) };
-    true
-}
-
-#[cfg(not(any(unix, windows)))]
-fn process_is_running(_pid: u32) -> bool {
-    false
+fn component_lock_error(error: std::io::Error) -> String {
+    format!("component transaction lock is unavailable: {error}")
 }
 
 impl ComponentManager {
@@ -1143,15 +1129,32 @@ mod tests {
     }
 
     #[test]
-    fn reclaims_a_stale_component_lock() {
-        let root = TemporaryRoot::new("stale-lock");
+    fn preserves_legacy_contents_and_the_permanent_lock_inode() {
+        let root = TemporaryRoot::new("legacy-lock");
         let path = root.0.join("component.lock");
-        fs::write(&path, "terminated-owner").expect("stale lock");
-
-        let lock = ComponentLock::acquire(path.clone()).expect("reclaimed lock");
-        assert!(path.is_file());
-        drop(lock);
-        assert!(!path.exists());
+        for contents in [
+            b"terminated-owner".as_slice(),
+            b"not-a-pid",
+            b"\xff\x00",
+            b"",
+        ] {
+            fs::write(&path, contents).expect("legacy contents");
+            let lock = ComponentLock::acquire(path.clone()).expect("OS lock");
+            assert!(ComponentLock::acquire(path.clone()).is_err());
+            assert_eq!(fs::read(&path).unwrap(), contents);
+            #[cfg(unix)]
+            let before = {
+                use std::os::unix::fs::MetadataExt;
+                fs::metadata(&path).unwrap().ino()
+            };
+            drop(lock);
+            assert_eq!(fs::read(&path).unwrap(), contents);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                assert_eq!(fs::metadata(&path).unwrap().ino(), before);
+            }
+        }
     }
 
     #[test]

@@ -329,7 +329,8 @@ async fn exhausted_transport_and_http_retries_keep_partial_and_previous_active()
             fs::read(root.path().join("active.json")).unwrap(),
             b"previous activation"
         );
-        assert!(!root.path().join("component.lock").exists());
+        assert!(root.path().join("component.lock").is_file());
+        assert!(manager.lock().is_ok());
     }
 }
 
@@ -680,7 +681,7 @@ impl Drop for DownloadChild {
 }
 
 #[test]
-fn terminated_process_resumes_partial_and_reclaims_its_lock_in_a_new_process() {
+fn terminated_process_releases_its_os_lock_and_a_new_process_resumes_the_partial() {
     let body = harness_archive();
     let mut first = Reply::new(200, "\"v1\"", &body[..3]);
     first.declared_bytes = body.len();
@@ -717,9 +718,11 @@ fn terminated_process_resumes_partial_and_reclaims_its_lock_in_a_new_process() {
         thread::sleep(Duration::from_millis(5));
     }
     let lock = root.path().join("component.lock");
-    assert!(fs::read_to_string(&lock)
-        .unwrap()
-        .starts_with(&format!("{}:", first.0.id())));
+    assert!(lock.is_file());
+    assert_eq!(
+        expected.lock().unwrap_err(),
+        "another component operation is active"
+    );
     first.0.kill().unwrap();
     assert!(
         !first.wait().success(),
@@ -727,15 +730,25 @@ fn terminated_process_resumes_partial_and_reclaims_its_lock_in_a_new_process() {
     );
     assert!(
         lock.is_file(),
-        "termination must leave the real owner's stale lock"
+        "termination must preserve the permanent lock file"
     );
     assert_eq!(fs::read(&partial).unwrap(), body[..3]);
+    drop(
+        expected
+            .lock()
+            .expect("OS releases the terminated owner's lock"),
+    );
     let mut second = DownloadChild::spawn(root.path(), &server.url);
     assert!(
         second.wait().success(),
         "the replacement process must finish normally"
     );
-    assert!(!lock.exists());
+    assert!(lock.is_file());
+    drop(
+        expected
+            .lock()
+            .expect("completed download releases transaction ownership"),
+    );
     let requests = server.requests();
     assert_eq!(requests.len(), 2);
     assert!(!requests[0].contains("range:"));
@@ -1118,4 +1131,262 @@ async fn a_new_release_aggregate_during_download_is_not_replaced_by_the_old_flus
         snapshot.components["harness"],
         super::super::component_metrics::ComponentCounters::default()
     );
+}
+
+fn await_fixture_signal(path: &Path) {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !path.exists() {
+        assert!(
+            Instant::now() < deadline,
+            "transaction fixture did not signal"
+        );
+        thread::sleep(Duration::from_millis(5));
+    }
+}
+
+#[test]
+fn transaction_lock_child_fixture() {
+    let Some(root) = std::env::var_os("YOURBUDDY_TRANSACTION_TEST_ROOT") else {
+        return;
+    };
+    let root = PathBuf::from(root);
+    let name = std::env::var("YOURBUDDY_TRANSACTION_TEST_NAME").unwrap();
+    let path = root.join("component.lock");
+    assert_eq!(
+        ComponentLock::acquire(path.clone()).unwrap_err(),
+        "another component operation is active"
+    );
+    fs::write(root.join(format!("blocked-{name}")), b"").unwrap();
+    await_fixture_signal(&root.join("contend"));
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let lock = loop {
+        match ComponentLock::acquire(path.clone()) {
+            Ok(lock) => break lock,
+            Err(error) => {
+                assert_eq!(error, "another component operation is active");
+                assert!(
+                    Instant::now() < deadline,
+                    "transaction contender never acquired ownership"
+                );
+                thread::sleep(Duration::from_millis(5));
+            }
+        }
+    };
+    let critical_path = root.join("critical-section");
+    let critical = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&critical_path)
+        .expect("only one OS transaction owner may enter the critical section");
+    fs::write(root.join(format!("acquired-{name}")), b"").unwrap();
+    await_fixture_signal(&root.join(format!("release-{name}")));
+    drop(critical);
+    fs::remove_file(critical_path).unwrap();
+    drop(lock);
+}
+
+fn spawn_transaction_contender(root: &Path, name: &str) -> DownloadChild {
+    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+    command
+        .args([
+            "--exact",
+            "runtime::components::download_tests::transaction_lock_child_fixture",
+            "--nocapture",
+        ])
+        .env_clear()
+        .env("YOURBUDDY_TRANSACTION_TEST_ROOT", root)
+        .env("YOURBUDDY_TRANSACTION_TEST_NAME", name)
+        .stdin(std::process::Stdio::null());
+    #[cfg(windows)]
+    for name in ["SystemRoot", "PATH", "TEMP", "TMP"] {
+        if let Some(value) = std::env::var_os(name) {
+            command.env(name, value);
+        }
+    }
+    DownloadChild(command.spawn().unwrap())
+}
+
+#[test]
+fn one_owner_and_two_process_contenders_share_one_permanent_lock_inode() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("component.lock");
+    let legacy = b"\xffmalformed legacy owner record";
+    fs::write(&path, legacy).unwrap();
+    let owner = ComponentLock::acquire(path.clone()).unwrap();
+    #[cfg(unix)]
+    let inode = {
+        use std::os::unix::fs::MetadataExt;
+        fs::metadata(&path).unwrap().ino()
+    };
+    let mut first = spawn_transaction_contender(root.path(), "a");
+    let mut second = spawn_transaction_contender(root.path(), "b");
+    await_fixture_signal(&root.path().join("blocked-a"));
+    await_fixture_signal(&root.path().join("blocked-b"));
+    assert_eq!(fs::read(&path).unwrap(), legacy);
+    drop(owner);
+    fs::write(root.path().join("contend"), b"").unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let (winner, waiter) = loop {
+        let a = root.path().join("acquired-a").exists();
+        let b = root.path().join("acquired-b").exists();
+        assert!(!(a && b), "two contenders entered the same transaction");
+        if a {
+            break ("a", "b");
+        }
+        if b {
+            break ("b", "a");
+        }
+        assert!(
+            Instant::now() < deadline,
+            "neither contender acquired the released lock"
+        );
+        thread::sleep(Duration::from_millis(5));
+    };
+    assert_eq!(
+        ComponentLock::acquire(path.clone()).unwrap_err(),
+        "another component operation is active"
+    );
+    fs::write(root.path().join(format!("release-{winner}")), b"").unwrap();
+    await_fixture_signal(&root.path().join(format!("acquired-{waiter}")));
+    assert_eq!(
+        ComponentLock::acquire(path.clone()).unwrap_err(),
+        "another component operation is active"
+    );
+    fs::write(root.path().join(format!("release-{waiter}")), b"").unwrap();
+    assert!(first.wait().success());
+    assert!(second.wait().success());
+    drop(ComponentLock::acquire(path.clone()).unwrap());
+    assert_eq!(fs::read(&path).unwrap(), legacy);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        assert_eq!(fs::metadata(&path).unwrap().ino(), inode);
+    }
+}
+
+#[test]
+fn cache_path_aliases_contend_and_unwinding_releases_only_owned_handles() {
+    let root = tempfile::tempdir().unwrap();
+    fs::create_dir(root.path().join("child")).unwrap();
+    let canonical = fs::canonicalize(root.path())
+        .unwrap()
+        .join("component.lock");
+    let alias = root.path().join("child/../component.lock");
+    let owner = ComponentLock::acquire(alias.clone()).unwrap();
+    assert_eq!(
+        ComponentLock::acquire(canonical.clone()).unwrap_err(),
+        "another component operation is active"
+    );
+    assert_eq!(
+        ComponentLock::acquire(root.path().join("./component.lock")).unwrap_err(),
+        "another component operation is active"
+    );
+    drop(owner);
+    let unwind = std::panic::catch_unwind(|| {
+        let _owner = ComponentLock::acquire(canonical.clone()).unwrap();
+        panic!("fixture operation failed");
+    });
+    assert!(unwind.is_err());
+    drop(ComponentLock::acquire(alias).unwrap());
+    assert!(canonical.is_file());
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            fs::metadata(canonical).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+    }
+}
+
+#[tokio::test]
+async fn busy_transaction_returns_without_network_work_or_runtime_waiting() {
+    let body = harness_archive();
+    let server = Server::new(vec![]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    let owner = manager.lock().unwrap();
+    assert_eq!(
+        tokio::time::timeout(Duration::from_millis(100), manager.ensure_startup())
+            .await
+            .unwrap()
+            .unwrap_err(),
+        "another component operation is active"
+    );
+    assert!(server.requests().is_empty());
+    assert!(!manager.cache_root().join("downloads").exists());
+    assert!(manager.lock().is_err());
+    drop(owner);
+    assert!(manager.lock().is_ok());
+}
+
+#[test]
+fn transaction_lock_refuses_directory_entries_and_missing_parents() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("component.lock");
+    fs::create_dir(&path).unwrap();
+    assert!(ComponentLock::acquire(path.clone()).is_err());
+    assert!(path.is_dir());
+    let missing = root.path().join("missing/component.lock");
+    assert!(ComponentLock::acquire(missing.clone()).is_err());
+    assert!(!missing.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn transaction_lock_refuses_symlinks_hardlinks_and_fifos_without_modifying_targets() {
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::fs::{symlink, MetadataExt};
+    let outside = tempfile::tempdir().unwrap();
+    let target = outside.path().join("target");
+    fs::write(&target, b"untouched").unwrap();
+    for kind in ["symlink", "dangling", "hardlink", "fifo"] {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("component.lock");
+        match kind {
+            "symlink" => symlink(&target, &path).unwrap(),
+            "dangling" => symlink(outside.path().join("missing"), &path).unwrap(),
+            "hardlink" => fs::hard_link(&target, &path).unwrap(),
+            "fifo" => {
+                let path = std::ffi::CString::new(path.as_os_str().as_bytes()).unwrap();
+                // SAFETY: the fixture passes a live NUL-terminated local path and POSIX mode.
+                assert_eq!(unsafe { libc::mkfifo(path.as_ptr(), 0o600) }, 0);
+            }
+            _ => unreachable!(),
+        }
+        let inode = fs::symlink_metadata(&path).unwrap().ino();
+        assert!(
+            ComponentLock::acquire(path.clone()).is_err(),
+            "accepted {kind}"
+        );
+        assert_eq!(fs::symlink_metadata(&path).unwrap().ino(), inode);
+        assert_eq!(fs::read(&target).unwrap(), b"untouched");
+        assert!(!outside.path().join("missing").exists());
+    }
+    let root = tempfile::tempdir().unwrap();
+    symlink(outside.path(), root.path().join("linked-root")).unwrap();
+    assert!(ComponentLock::acquire(root.path().join("linked-root/component.lock")).is_err());
+    assert!(!outside.path().join("component.lock").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn inaccessible_lock_file_fails_closed_without_reclaim_or_truncation() {
+    use std::os::unix::fs::PermissionsExt;
+    // Root bypasses these fixture DAC permissions; ordinary supported app users do not.
+    if unsafe { libc::geteuid() } == 0 {
+        return;
+    }
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("component.lock");
+    fs::write(&path, b"keep unreadable legacy contents").unwrap();
+    let permissions = fs::metadata(&path).unwrap().permissions();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0)).unwrap();
+    let result = ComponentLock::acquire(path.clone());
+    fs::set_permissions(&path, permissions).unwrap();
+    assert!(result
+        .unwrap_err()
+        .starts_with("component transaction lock is unavailable"));
+    assert_eq!(fs::read(&path).unwrap(), b"keep unreadable legacy contents");
+    drop(ComponentLock::acquire(path).unwrap());
 }
