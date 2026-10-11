@@ -6,6 +6,22 @@ on:
       - yourbuddy-v*
   workflow_dispatch:
     inputs:
+      mode:
+        description: Retry an existing tag, validate a candidate, or first-publish verified 0.4.9
+        type: choice
+        options:
+          - existing-tag
+          - first-publication
+          - candidate-validation
+        default: existing-tag
+        required: true
+      version:
+        description: Candidate validation or first publication (fixed at 0.4.9)
+        default: '0.4.9'
+        required: false
+      verified_master_sha:
+        description: Candidate validation or first publication, exact master SHA after all engineering checks pass
+        required: false
       tag:
         description: Existing unpublished yourbuddy-v* tag to build after a failed run
         required: true
@@ -15,13 +31,16 @@ permissions:
   contents: write
 
 concurrency:
-  group: yourbuddy-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  group: yourbuddy-release-${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.9' || inputs.tag) || github.ref_name }}
   cancel-in-progress: false
 
 env:
+  RELEASE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'existing-tag' }}
+  RELEASE_VERSION: ${{ inputs.version }}
+  VERIFIED_MASTER_SHA: ${{ inputs.verified_master_sha }}
   NODE_VERSION: '24'
   RUST_TARGET: aarch64-apple-darwin
-  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.9' || inputs.tag) || github.ref_name }}
 
 jobs:
   build:
@@ -30,19 +49,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: ${{ env.RELEASE_MODE != 'existing-tag' && 'master' || env.RELEASE_TAG }}
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Refuse to replace a published version
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "GitHub Release $RELEASE_TAG already exists; publish a new version instead of replacing its assets." >&2
-            exit 1
-          fi
 
       - uses: pnpm/action-setup@v4.4.0
         with:
@@ -54,6 +63,32 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Validate release route and refuse an existing Release
+        if: env.RELEASE_MODE != 'existing-tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node apps/desktop-tauri/scripts/first-publication.mjs preflight
+
+      - name: Refuse an existing Release for tag retry
+        if: env.RELEASE_MODE == 'existing-tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          const { GITHUB_REPOSITORY: repo, RELEASE_TAG: tag, GH_TOKEN: token } = process.env
+          try {
+            if (!token) throw new Error('missing token')
+            const response = await fetch(`https://api.github.com/repos/${repo}/releases/tags/${encodeURIComponent(tag)}`, {
+              headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+              redirect: 'error', signal: AbortSignal.timeout(30_000),
+            })
+            if (response.status !== 404) throw new Error('Release exists or its absence is unverified')
+          } catch {
+            console.error('Release exists or its absence could not be established; refusing publication')
+            process.exitCode = 1
+          }
+          NODE
+
       - uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}/yourbuddy-offline-store-cache
@@ -61,6 +96,10 @@ jobs:
 
       - name: Verify release tag and desktop versions
         run: node apps/desktop-tauri/scripts/verify-release-version.mjs --tag "$RELEASE_TAG"
+
+      - name: Check native acceptance prerequisites
+        if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
+        run: node apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs --preflight
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -92,6 +131,22 @@ jobs:
 
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check types before candidate validation or publication
+        if: env.RELEASE_MODE != 'existing-tag'
+        run: pnpm run typecheck
+
+      - name: Verify the candidate without publishing
+        if: env.RELEASE_MODE == 'candidate-validation'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node apps/desktop-tauri/scripts/first-publication.mjs verify
+
+      - name: Publish the verified master tag atomically
+        if: env.RELEASE_MODE == 'first-publication'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node apps/desktop-tauri/scripts/first-publication.mjs publish
 
       - name: Build Harness
         env:
@@ -159,6 +214,10 @@ jobs:
           for seed in apps/desktop-tauri/component-release/*.tar.zst; do
             test -f "$resources/YourBuddy.app/Contents/Resources/component-seeds/$(basename "$seed")"
           done
+
+      - name: Verify native Offline installation and cold starts
+        if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
+        run: node apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs "$RUNNER_TEMP/offline-updater-resources/YourBuddy.app/Contents/MacOS/yourbuddy" "$RUNNER_TEMP/offline-startup-smoke" "${RELEASE_TAG#yourbuddy-v}"
 
       - name: Test relocated YourBuddy product runtime
         run: |
@@ -233,6 +292,7 @@ jobs:
           Pop-Location
 
       - name: Publish release
+        if: env.RELEASE_MODE != 'candidate-validation'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -244,3 +304,21 @@ jobs:
           else
             gh release create yourbuddy-updater release-assets/latest.json --target "$(git rev-parse HEAD)" --title "YourBuddy update channel" --notes "Signed macOS arm64 update manifest." --prerelease
           fi
+
+      - name: Upload validation candidate artifacts
+        if: env.RELEASE_MODE == 'candidate-validation'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yourbuddy-candidate-0.4.9-${{ inputs.verified_master_sha }}
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload native acceptance evidence
+        if: always() && (env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9')
+        uses: actions/upload-artifact@v4
+        with:
+          name: yourbuddy-native-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/offline-startup-smoke/evidence/
+          if-no-files-found: warn
+          retention-days: 7

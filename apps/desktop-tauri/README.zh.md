@@ -67,9 +67,13 @@ DSH 策略选择最高的官方正式 Release；仅在没有正式 Release 时�
 
 如需仅刷新一个外部产品来源而不推进无关快照，请传入其策略 ID，例如 `pnpm --dir apps/desktop-tauri run refresh:product-plugins -- --only=harbor-evolution`。
 
-Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析上游输入。Tag 流水线只消费该 Tag 已提交的快照与冻结 Lockfile。手工 Workflow Dispatch 只用于在失败后重试尚未发布的已有 Tag。若该 Tag 已经存在 GitHub Release，流水线会拒绝继续，因此修正已发布字节时必须发布新版本，不能替换安装包。
+Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析上游输入。Tag 流水线只消费该 Tag 已提交的快照与冻结 Lockfile。手工 Workflow Dispatch 默认用于在失败后重试尚未发布的已有 Tag。若该 Tag 已经存在 GitHub Release，流水线会拒绝继续，因此修正已发布字节时必须发布新版本，不能替换安装包。
 
-在干净的 `master` 上运行 `pnpm release:yourbuddy:prepare -- X.Y.Z`，会在不联网的情况下更新全部桌面版本源、创建双语发布归档和索引条目、记录配对文件，并写入发布说明草稿。替换全部自动生成的 `TODO`，重新记录变更配对，检查并提交。随后，`pnpm release:yourbuddy -- X.Y.Z` 只校验已提交的版本归档与 Git 状态，不重复测试、产品刷新、文档检查或官网构建。它要求 `master` 能快进 `origin/master`，拒绝已有远端 Tag，只创建或复用指向同一 Commit 的 Annotated Tag，并原子推送分支与 Tag。桌面产物仍只由 Tag Workflow 发布。
+在干净的 `master` 上运行 `pnpm release:yourbuddy:prepare -- X.Y.Z`，会在不联网的情况下更新全部桌面版本源、创建双语发布归档和索引条目、记录配对文件，并写入发布说明草稿。替换全部自动生成的 `TODO`，重新记录变更配对，检查并提交。随后，`pnpm release:yourbuddy -- X.Y.Z` 只校验已提交的版本归档与 Git 状态，不重复测试、产品刷新、文档检查或官网构建。它要求 `master` 能快进 `origin/master`，拒绝已有远端 Tag，只创建或复用指向同一 Commit 的 Annotated Tag，并原子推送分支与 Tag。桌面产物仍只由桌面发布 Workflow 发布。
+
+在 `istarwyh/yourbuddy` 首次发布 `0.4.9` 时，必须先让全部必需的 PR 与 master 工程检查通过，再在 `master` 上以 `first-publication` 模式、`0.4.9` 版本和精确的 `verified_master_sha` 触发此 Workflow。流水线比对触发 SHA、Checkout 与刚抓取的 master，检查类型，再使用现有 Token 提供的进程级 Git 认证调用未经修改的发布脚本。由于 Token 创建的 Tag 不会触发另一个 Workflow，本次运行会继续打包。GitHub 拒绝操作时发布停止。打 Tag 后失败，仅在尚无 Release 时才能使用默认的已有 Tag 重试。SHA 输入用于固定操作者已验证的 Commit，并不自动证明 CI 成功。
+
+在关闭验收 Issue 前，可使用相同仓库、分支、版本与 SHA 输入，以 `candidate-validation` 构建并验证带签名运行时组件的候选。它检查干净且固定的 Checkout，要求既有 macOS Accessibility 权限且不修改权限，执行完整打包检查与原生 Offline 组件安装、Host 已认证就绪，以及首次启动和随后两次冷启动验收，仅将安装包与更新文件保存为保留七天的 CI Artifact。脱敏后的原生验收证据单独保留，失败时也会上传；隔离 Home、凭据与 Cookie 不会上传。`0.4.9` 的已有 Tag 重试也必须通过相同原生检查。它不会创建 Tag、GitHub Release 或生产更新 Feed；产物中的计划发布 URL 不能作为真实公开下载证据。必须先完成全部已要求的实现与验收，再使用 `first-publication`。
 
 ## 发布文档与官网
 

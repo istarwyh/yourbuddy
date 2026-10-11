@@ -20,6 +20,8 @@ pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install --with-deps 
 
 显式滚动使用 `support.ts` 的 `scrollIntoView`：旧元素脱离 DOM 时重新解析 locator，并在同一个浏览器任务中检查连接状态、执行原生滚动。各场景保留滚动后的可见性与几何断言。
 
+[插件安装取消场景](plugin-install-cancel.e2e.ts) 在替换页面级故障路由时，持续注册 context 级的 inventory 透传路由。这避免了关闭请求拦截时 Chromium 丢失请求的空窗（[Playwright issue 41802](https://github.com/microsoft/playwright/issues/41802)）。测试让真实 inventory 请求延迟至页面路由移除后释放，并要求同一请求以 HTTP 200 完成；原有高亮和到期断言保持不变。
+
 ## 这些是 Host 面的测试
 
 它们在根 `tsconfig.host.json` 中做类型检查，而不在 Client aggregate 中，因为它们直接读取 Host 服务：`ctx.connection`、Host 侧 `SessionStore` 与 `ctx.sessionProjectionCache`。运行时驱动浏览器并不使一个文件成为 Client 程序的一部分——两个 face 在相同的键上以不同服务合并 Cordis `Context`，因此单个程序无法同时看见两者。把这些文件挪进 Client aggregate 会让每一处 Host 服务访问都无法编译。

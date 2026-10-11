@@ -42,6 +42,8 @@ install-cancel 场景改为轮询卡片状态，而不再单次采样，因此�
 
 install-cancel 场景仍带有本次改动未消除、且原因尚未定位的残余暴露：`node 24 / snapshots and artifacts` 上有两次、把该文件恢复到改动前版本后用同一通道命令运行的本地一次，都在启用点击关闭对话框后让 `plugin-install-cancel.e2e.ts:217` 的高亮卡片 locator 持续 30 s 未匹配。页面时钟已暂停，因此可排除高亮到期计时器，该等待并非与它竞争；上述三次通道运行与所有单文件运行都未复现，且尚无证据表明 store 的 `load()` 会挂起。本次改动新增的轮询覆盖的是卡片出现之后的状态读取，而不是这个 locator。
 
+后续隔离 CI 诊断定位了该残余暴露：真实 inventory 请求在移除页面路由期间发出后一直未完成，而直接读取 Host inventory 仍立即返回插件已启用。这与 [Playwright issue 41802](https://github.com/microsoft/playwright/issues/41802) 记录的 Chromium 关闭请求拦截竞态一致。场景现在持续保留 context 级透传路由，并验证跨页面路由移除的延迟真实 inventory 请求；参见[浏览器测试契约](../../../../apps/web/tests/README.zh.md)。
+
 串行 master 通道同时失败的 WebKit 用例不是场景竞态，也不属于本次改动：`declared-reasoning.e2e.ts` 启动 Playwright 的 WebKit，通道的步骤只取浏览器本体而未安装宿主库，于是 `browserType.launch` 以 “Host system is missing dependencies to run browsers” 失败。[ci.yml](../../../../.github/workflows/ci.yml) 明确说明持久 VM 镜像拥有 Playwright 的 Linux 系统包，并且只在非自托管池随浏览器安装依赖集，因此修复镜像或该池的归属是 runner 侧的改动，而非场景改动。在开发者机器上安装 WebKit 依赖后该文件的 8 个用例全部通过。
 
 ## Consequences
