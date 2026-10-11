@@ -18,6 +18,8 @@ use tar::EntryType;
 use crate::network_proxy::{apply_to_client, ResolvedNetworkProxy};
 
 use super::app_data_root;
+use super::boot_log;
+use super::component_metrics::{ArchiveSource, ComponentMetrics, MetricEvent};
 
 const COMPONENT_PUBLIC_KEY: &str = "untrusted comment: minisign public key: DBDFC5E28EF581EB\nRWTrgfWO4sXf22TrOC2n0Rq69j7oq0Xt3bZRYfWwrow/ndjkqnxuLKAM\n";
 const RELEASE_BASE: &str = "https://github.com/istarwyh/yourbuddy/releases/download";
@@ -78,6 +80,99 @@ impl DownloadError {
             message,
             retryable: true,
         }
+    }
+}
+
+/// One ensure operation's bounded observations, flushed after success or failure.
+#[derive(Default)]
+struct PreparationMetrics {
+    network_bytes: u64,
+    retransferred_bytes: u64,
+    received_ranges: Vec<(u64, u64)>,
+    resume_attempts: usize,
+    resumed: bool,
+    archive_source: Option<ArchiveSource>,
+    archive_verified: bool,
+    installed: bool,
+    error: Option<&'static str>,
+}
+
+impl PreparationMetrics {
+    fn received(&mut self, offset: u64, bytes: u64) {
+        if self.error.is_some() || bytes == 0 {
+            return;
+        }
+        if self.add_received(offset, bytes).is_none() {
+            self.error = Some("component download metric counter overflow");
+        }
+    }
+
+    fn add_received(&mut self, offset: u64, bytes: u64) -> Option<()> {
+        let end = offset.checked_add(bytes)?;
+        let overlap = self
+            .received_ranges
+            .iter()
+            .try_fold(0_u64, |total, &(start, stop)| {
+                total.checked_add(end.min(stop).saturating_sub(offset.max(start)))
+            })?;
+        self.network_bytes = self.network_bytes.checked_add(bytes)?;
+        self.retransferred_bytes = self.retransferred_bytes.checked_add(overlap)?;
+        let mut merged = (offset, end);
+        self.received_ranges.retain(|&(start, stop)| {
+            if start <= merged.1 && stop >= merged.0 {
+                merged = (merged.0.min(start), merged.1.max(stop));
+                false
+            } else {
+                true
+            }
+        });
+        // Each HTTP attempt contributes one contiguous range; chunks never add more intervals.
+        if self.received_ranges.len() >= DOWNLOAD_ATTEMPTS {
+            self.error = Some("component download metric range limit exceeded");
+            return Some(());
+        }
+        self.received_ranges.push(merged);
+        self.received_ranges.sort_unstable();
+        Some(())
+    }
+
+    fn events(self, component: &str, archive_bytes: u64) -> Result<Vec<MetricEvent>, &'static str> {
+        if let Some(error) = self.error {
+            return Err(error);
+        }
+        let mut events = Vec::with_capacity(DOWNLOAD_ATTEMPTS + 4);
+        if self.network_bytes > 0 {
+            events.push(MetricEvent::DownloadBytes {
+                component: component.into(),
+                bytes: self.network_bytes,
+                retransferred_bytes: self.retransferred_bytes,
+            });
+        }
+        for _ in 0..self.resume_attempts {
+            events.push(MetricEvent::ResumeAttempted {
+                component: component.into(),
+            });
+        }
+        if self.archive_verified {
+            if self.resumed {
+                events.push(MetricEvent::ResumeSucceeded {
+                    component: component.into(),
+                });
+            }
+            if let Some(source) = self.archive_source {
+                events.push(MetricEvent::ArchiveReused {
+                    component: component.into(),
+                    source,
+                    bytes: archive_bytes,
+                });
+            }
+        }
+        if self.installed {
+            events.push(MetricEvent::ComponentInstalled {
+                component: component.into(),
+            });
+        }
+        Ok(events)
     }
 }
 
@@ -315,12 +410,87 @@ impl ComponentManager {
     }
 
     async fn ensure_locked(&self, name: &str) -> Result<PathBuf, String> {
+        let metrics = self.open_metrics().await;
+        let mut observations = PreparationMetrics::default();
+        let result = self.ensure_observed(name, &mut observations).await;
+        if let Some(metrics) = metrics {
+            self.record_preparation(metrics, name, observations).await;
+        }
+        result
+    }
+
+    async fn open_metrics(&self) -> Option<ComponentMetrics> {
+        let root = self.cache_root().join("statistics");
+        let version = self.manifest.app_version.clone();
+        let keys = self.manifest.components.keys().cloned().collect::<Vec<_>>();
+        match tokio::task::spawn_blocking(move || {
+            match ComponentMetrics::open(&root, &version, &keys) {
+                Ok(metrics) => Some(metrics),
+                Err(error) => {
+                    boot_log::info(&format!(
+                        "component preparation metrics unavailable: {error}"
+                    ));
+                    None
+                }
+            }
+        })
+        .await
+        {
+            Ok(metrics) => metrics,
+            Err(error) => {
+                boot_log::info(&format!(
+                    "component metrics initialization task failed: {error}"
+                ));
+                None
+            }
+        }
+    }
+
+    async fn record_preparation(
+        &self,
+        metrics: ComponentMetrics,
+        name: &str,
+        observations: PreparationMetrics,
+    ) {
+        let archive_bytes = self
+            .manifest
+            .components
+            .get(name)
+            .map_or(0, |spec| spec.bytes);
+        let events = observations.events(name, archive_bytes);
+        if events.as_ref().is_ok_and(Vec::is_empty) {
+            return;
+        }
+        let recorded = tokio::task::spawn_blocking(move || {
+            let result = events.map_err(str::to_owned).and_then(|events| {
+                for event in events {
+                    metrics.record(event)?;
+                }
+                Ok(())
+            });
+            if let Err(error) = result {
+                boot_log::info(&format!(
+                    "component preparation metrics unavailable: {error}"
+                ));
+            }
+        })
+        .await;
+        if let Err(error) = recorded {
+            boot_log::info(&format!("component metrics recording task failed: {error}"));
+        }
+    }
+
+    async fn ensure_observed(
+        &self,
+        name: &str,
+        observations: &mut PreparationMetrics,
+    ) -> Result<PathBuf, String> {
         let spec = self.spec(name)?;
         let destination = component_path(&self.root, name, &spec.id)?;
         if component_is_complete(&destination, spec) {
             return Ok(destination);
         }
-        let archive = self.obtain_archive(name, spec).await?;
+        let archive = self.obtain_archive(name, spec, observations).await?;
         self.report(ComponentProgress::Phase {
             component: name.into(),
             phase: "verify",
@@ -335,26 +505,34 @@ impl ComponentManager {
             }
             return Err(error);
         }
+        observations.archive_verified = true;
         self.report(ComponentProgress::Phase {
             component: name.into(),
             phase: "unpack",
         });
         self.extract_and_prepare(name, spec, &archive, &destination)?;
+        observations.installed = true;
         Ok(destination)
     }
 
-    async fn obtain_archive(&self, name: &str, spec: &ComponentSpec) -> Result<PathBuf, String> {
+    async fn obtain_archive(
+        &self,
+        name: &str,
+        spec: &ComponentSpec,
+        observations: &mut PreparationMetrics,
+    ) -> Result<PathBuf, String> {
         let seed = self
             .resource_dir
             .join("component-seeds")
             .join(&spec.archive);
         if seed.is_file() {
+            observations.archive_source = Some(ArchiveSource::OfflineSeed);
             return Ok(seed);
         }
         let url = asset_url(&self.manifest, spec)?;
         #[cfg(test)]
         let url = self.download_url.clone().unwrap_or(url);
-        self.download_archive(name, spec, &url, DOWNLOAD_RETRY_DELAY)
+        self.download_archive(name, spec, &url, DOWNLOAD_RETRY_DELAY, observations)
             .await
     }
 
@@ -364,6 +542,7 @@ impl ComponentManager {
         spec: &ComponentSpec,
         url: &str,
         retry_delay: Duration,
+        observations: &mut PreparationMetrics,
     ) -> Result<PathBuf, String> {
         let downloads = self.root.join("downloads");
         fs::create_dir_all(&downloads)
@@ -372,7 +551,7 @@ impl ComponentManager {
         let metadata_path = downloads.join(format!("{}.partial.json", spec.archive));
         for attempt in 1..=DOWNLOAD_ATTEMPTS {
             match self
-                .download_attempt(name, spec, url, &partial, &metadata_path)
+                .download_attempt(name, spec, url, &partial, &metadata_path, observations)
                 .await
             {
                 Ok(()) => return Ok(partial),
@@ -397,6 +576,7 @@ impl ComponentManager {
         url: &str,
         partial: &Path,
         metadata_path: &Path,
+        observations: &mut PreparationMetrics,
     ) -> Result<(), DownloadError> {
         let mut offset = fs::metadata(partial).map(|value| value.len()).unwrap_or(0);
         let previous = fs::read(metadata_path)
@@ -411,9 +591,11 @@ impl ComponentManager {
         if offset > 0 && previous.is_none() {
             remove_partial(partial, metadata_path);
             offset = 0;
+            observations.resumed = false;
         }
         if offset == spec.bytes {
             if verify_archive(partial, spec).is_ok() {
+                observations.archive_source = Some(ArchiveSource::Cache);
                 self.report(ComponentProgress::Download {
                     component: name.into(),
                     transferred: offset,
@@ -423,6 +605,7 @@ impl ComponentManager {
             }
             remove_partial(partial, metadata_path);
             offset = 0;
+            observations.resumed = false;
         }
         self.report(ComponentProgress::Download {
             component: name.into(),
@@ -431,6 +614,7 @@ impl ComponentManager {
         });
         let mut request = self.client.get(url);
         if offset > 0 {
+            observations.resume_attempts += 1;
             request = request.header(RANGE, format!("bytes={offset}-"));
             if let Some(etag) = previous.as_ref().and_then(|value| value.etag.as_deref()) {
                 request = request.header(IF_RANGE, etag);
@@ -453,12 +637,14 @@ impl ComponentManager {
         if offset > 0 && !resumed {
             remove_partial(partial, metadata_path);
             offset = 0;
+            observations.resumed = false;
             self.report(ComponentProgress::Download {
                 component: name.into(),
                 transferred: 0,
                 total: spec.bytes,
             });
         }
+        observations.resumed = resumed;
         let etag = response
             .headers()
             .get(ETAG)
@@ -494,6 +680,7 @@ impl ComponentManager {
                 });
                 DownloadError::transient(format!("component download failed: {error}"))
             })?;
+            observations.received(transferred, chunk.len() as u64);
             transferred = transferred
                 .checked_add(chunk.len() as u64)
                 .ok_or_else(|| "component byte count overflow".to_string())?;

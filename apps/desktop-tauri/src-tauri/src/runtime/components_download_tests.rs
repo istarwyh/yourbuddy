@@ -156,6 +156,23 @@ fn manager(root: &Path, url: &str, bytes: &[u8]) -> ComponentManager {
     }
 }
 
+fn metrics(manager: &ComponentManager) -> super::super::component_metrics::MetricsSnapshot {
+    let keys = manager
+        .catalog()
+        .components
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>();
+    ComponentMetrics::open(
+        &manager.cache_root().join("statistics"),
+        &manager.catalog().app_version,
+        &keys,
+    )
+    .unwrap()
+    .snapshot()
+    .unwrap()
+}
+
 fn seed_partial(manager: &ComponentManager, url: &str, bytes: &[u8], etag: &str) -> PathBuf {
     let spec = manager.spec("harness").unwrap();
     let downloads = manager.root.join("downloads");
@@ -219,6 +236,14 @@ async fn interrupted_download_resumes_without_activating_prepared_components() {
         b"startup harness"
     );
     assert!(destination.join(".complete").is_file());
+    let counters = &metrics(&manager).components["harness"];
+    assert_eq!(counters.network_bytes, body.len() as u64);
+    assert_eq!(counters.retransferred_bytes, 0);
+    assert_eq!(counters.resume_attempts, 1);
+    assert_eq!(counters.resume_successes, 1);
+    assert_eq!(counters.installs, 1);
+    assert_eq!(counters.cache_archive_bytes, 0);
+    assert_eq!(counters.offline_seed_archive_bytes, 0);
     let requests = server.requests();
     assert_eq!(requests.len(), 2);
     assert!(!requests[0].contains("range:"));
@@ -248,7 +273,11 @@ async fn ignored_range_and_changed_etag_restart_instead_of_appending() {
         let manager = manager(root.path(), &server.url, b"abcdef");
         seed_partial(&manager, &server.url, b"old", "\"v1\"");
         let path = manager
-            .obtain_archive("harness", manager.spec("harness").unwrap())
+            .obtain_archive(
+                "harness",
+                manager.spec("harness").unwrap(),
+                &mut PreparationMetrics::default(),
+            )
             .await
             .unwrap();
         assert_eq!(fs::read(&path).unwrap(), b"abcdef");
@@ -289,6 +318,11 @@ async fn exhausted_transport_and_http_retries_keep_partial_and_previous_active()
             b"previous harness"
         );
         assert_eq!(server.requests().len(), DOWNLOAD_ATTEMPTS);
+        let counters = &metrics(&manager).components["harness"];
+        assert_eq!(counters.network_bytes, 0);
+        assert_eq!(counters.resume_attempts, DOWNLOAD_ATTEMPTS as u64);
+        assert_eq!(counters.resume_successes, 0);
+        assert_eq!(counters.installs, 0);
         assert_eq!(fs::read(&partial).unwrap(), b"abc");
         assert!(partial.with_extension("partial.json").is_file());
         assert_eq!(
@@ -314,7 +348,11 @@ async fn slow_body_times_out_and_resumes_saved_bytes() {
         .build()
         .unwrap();
     let path = manager
-        .obtain_archive("harness", manager.spec("harness").unwrap())
+        .obtain_archive(
+            "harness",
+            manager.spec("harness").unwrap(),
+            &mut PreparationMetrics::default(),
+        )
         .await
         .unwrap();
     assert_eq!(fs::read(path).unwrap(), b"abcdef");
@@ -350,15 +388,28 @@ async fn corrupt_download_is_not_retried_or_activated_and_manual_retry_can_recov
         .join("downloads")
         .join(format!("{}.partial", spec.archive))
         .exists());
+    let failed = metrics(&manager);
+    assert_eq!(
+        failed.components["harness"].network_bytes,
+        body.len() as u64
+    );
+    assert_eq!(failed.components["harness"].installs, 0);
     let destination = manager.ensure_startup().await.unwrap();
     assert!(destination.join(".complete").is_file());
+    let recovered = metrics(&manager);
+    assert_eq!(
+        recovered.components["harness"].network_bytes,
+        body.len() as u64 * 2
+    );
+    assert_eq!(recovered.components["harness"].retransferred_bytes, 0);
+    assert_eq!(recovered.components["harness"].installs, 1);
     assert_eq!(server.requests().len(), 2);
     assert!(!server.requests()[1].contains("range:"));
 }
 
 #[tokio::test]
 async fn permanent_http_error_does_not_retry() {
-    let server = Server::new(vec![Reply::new(404, "\"v1\"", b"")]);
+    let server = Server::new(vec![Reply::new(404, "\"v1\"", b"unconsumed error payload")]);
     let root = tempfile::tempdir().unwrap();
     let manager = manager(root.path(), &server.url, b"abcdef");
     let error = manager.ensure_startup().await.unwrap_err();
@@ -367,6 +418,7 @@ async fn permanent_http_error_does_not_retry() {
         "expected HTTP 404, received: {error}"
     );
     assert_eq!(server.requests().len(), 1);
+    assert_eq!(metrics(&manager).components["harness"].network_bytes, 0);
 }
 
 #[tokio::test]
@@ -383,7 +435,15 @@ async fn complete_partial_is_prepared_and_reused_without_a_range_request() {
         .join(".complete")
         .is_file());
     let first = manager.installed("harness").unwrap().unwrap();
+    let observed = metrics(&manager);
+    assert_eq!(
+        observed.components["harness"].cache_archive_bytes,
+        body.len() as u64
+    );
+    assert_eq!(observed.components["harness"].network_bytes, 0);
+    assert_eq!(observed.components["harness"].installs, 1);
     assert_eq!(manager.ensure_startup().await.unwrap(), first);
+    assert_eq!(metrics(&manager), observed);
     assert!(!root.path().join("active.json").exists());
     assert!(server.requests().is_empty());
 }
@@ -759,4 +819,303 @@ async fn executes_dependency_first_capability_plan_without_activating_a_prepared
     manager.activate_observed("pomodoro").unwrap();
     assert_eq!(active()["components"]["pomodoro"]["id"], "sha256:pomodoro");
     assert!(manager.activate_observed("node").is_err());
+}
+
+#[tokio::test]
+async fn counts_same_ensure_retransmission_when_a_retry_ignores_range() {
+    let body = harness_archive();
+    let mut truncated = Reply::new(200, "\"v1\"", &body[..3]);
+    truncated.declared_bytes = body.len();
+    let server = Server::new(vec![truncated, Reply::new(200, "\"v2\"", &body)]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    manager.ensure_startup().await.unwrap();
+    let counters = &metrics(&manager).components["harness"];
+    assert_eq!(counters.network_bytes, body.len() as u64 + 3);
+    assert_eq!(counters.retransferred_bytes, 3);
+    assert_eq!(counters.resume_attempts, 1);
+    assert_eq!(counters.resume_successes, 0);
+    assert_eq!(counters.installs, 1);
+    assert!(server.requests()[1].contains("range: bytes=3-\r\n"));
+}
+
+#[tokio::test]
+async fn prior_ensure_partial_bytes_are_not_counted_as_retransmission() {
+    let body = harness_archive();
+    let server = Server::new(vec![Reply::new(200, "\"v2\"", &body)]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    seed_partial(&manager, &server.url, &body[..3], "\"v1\"");
+    manager.ensure_startup().await.unwrap();
+    let counters = &metrics(&manager).components["harness"];
+    assert_eq!(counters.network_bytes, body.len() as u64);
+    assert_eq!(counters.retransferred_bytes, 0);
+    assert_eq!(counters.resume_attempts, 1);
+    assert_eq!(counters.resume_successes, 0);
+}
+
+#[tokio::test]
+async fn failed_stream_retries_count_every_delivered_chunk_and_repeated_interval() {
+    let body = harness_archive();
+    let server = Server::new(
+        (0..DOWNLOAD_ATTEMPTS)
+            .map(|_| {
+                let mut reply = Reply::new(200, "\"v1\"", &body[..3]);
+                reply.declared_bytes = body.len();
+                reply
+            })
+            .collect(),
+    );
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    assert!(manager
+        .ensure_startup()
+        .await
+        .unwrap_err()
+        .contains("download failed"));
+    let counters = &metrics(&manager).components["harness"];
+    assert_eq!(counters.network_bytes, 9);
+    assert_eq!(counters.retransferred_bytes, 6);
+    assert_eq!(counters.resume_attempts, 2);
+    assert_eq!(counters.resume_successes, 0);
+    assert_eq!(counters.installs, 0);
+}
+
+#[tokio::test]
+async fn resumed_hash_failure_counts_received_bytes_without_resume_success() {
+    let body = harness_archive();
+    let corrupted = vec![b'x'; body.len() - 3];
+    let server = Server::new(vec![Reply::new(206, "\"v1\"", &corrupted)]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    seed_partial(&manager, &server.url, &body[..3], "\"v1\"");
+    assert!(manager
+        .ensure_startup()
+        .await
+        .unwrap_err()
+        .contains("digest mismatch"));
+    let counters = &metrics(&manager).components["harness"];
+    assert_eq!(counters.network_bytes, body.len() as u64 - 3);
+    assert_eq!(counters.resume_attempts, 1);
+    assert_eq!(counters.resume_successes, 0);
+    assert_eq!(counters.installs, 0);
+}
+
+#[tokio::test]
+async fn oversized_chunk_is_counted_before_the_archive_size_error() {
+    let server = Server::new(vec![Reply::new(200, "\"v1\"", b"abcdefgh")]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, b"abcdef");
+    assert!(manager
+        .ensure_startup()
+        .await
+        .unwrap_err()
+        .contains("exceeded declared size"));
+    let counters = &metrics(&manager).components["harness"];
+    assert_eq!(counters.network_bytes, 8);
+    assert_eq!(counters.installs, 0);
+}
+
+#[tokio::test]
+async fn tampered_complete_cache_is_replaced_without_crediting_archive_reuse() {
+    let body = harness_archive();
+    let server = Server::new(vec![Reply::new(200, "\"v1\"", &body)]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    seed_partial(&manager, &server.url, &vec![b'x'; body.len()], "\"v1\"");
+    manager.ensure_startup().await.unwrap();
+    let counters = &metrics(&manager).components["harness"];
+    assert_eq!(counters.cache_archive_bytes, 0);
+    assert_eq!(counters.network_bytes, body.len() as u64);
+    assert_eq!(counters.resume_attempts, 0);
+    assert_eq!(counters.installs, 1);
+}
+
+#[tokio::test]
+async fn offline_archive_credit_requires_hash_verification_and_install_credit_requires_unpacking() {
+    let body = harness_archive();
+    for (payload, expected_bytes, installs) in [
+        (body.clone(), body.clone(), 1),
+        (vec![b'x'; body.len()], body.clone(), 0),
+        (
+            b"not a zstd archive".to_vec(),
+            b"not a zstd archive".to_vec(),
+            0,
+        ),
+    ] {
+        let server = Server::new(vec![]);
+        let root = tempfile::tempdir().unwrap();
+        let manager = manager(root.path(), &server.url, &expected_bytes);
+        let seeds = manager.resource_dir.join("component-seeds");
+        fs::create_dir_all(&seeds).unwrap();
+        fs::write(
+            seeds.join(&manager.spec("harness").unwrap().archive),
+            &payload,
+        )
+        .unwrap();
+        let result = manager.ensure_startup().await;
+        assert_eq!(result.is_ok(), installs == 1);
+        let counters = &metrics(&manager).components["harness"];
+        assert_eq!(counters.network_bytes, 0);
+        assert_eq!(counters.cache_archive_bytes, 0);
+        assert_eq!(
+            counters.offline_seed_archive_bytes,
+            if payload == expected_bytes {
+                payload.len() as u64
+            } else {
+                0
+            }
+        );
+        assert_eq!(counters.installs, installs);
+        assert!(server.requests().is_empty());
+    }
+}
+
+#[tokio::test]
+async fn metrics_corruption_does_not_change_download_success_or_original_failure() {
+    let body = harness_archive();
+    for corrupt_download in [false, true] {
+        let payload = if corrupt_download {
+            vec![b'x'; body.len()]
+        } else {
+            body.clone()
+        };
+        let server = Server::new(vec![Reply::new(200, "\"v1\"", &payload)]);
+        let root = tempfile::tempdir().unwrap();
+        let manager = manager(root.path(), &server.url, &body);
+        let statistics = manager.cache_root().join("statistics");
+        fs::create_dir_all(&statistics).unwrap();
+        fs::write(
+            statistics.join("component-metrics.json"),
+            b"broken aggregate",
+        )
+        .unwrap();
+        let result = manager.ensure_startup().await;
+        if corrupt_download {
+            assert!(result.unwrap_err().contains("digest mismatch"));
+        } else {
+            assert!(result.unwrap().join(".complete").exists());
+        }
+        assert_eq!(
+            fs::read(statistics.join("component-metrics.json")).unwrap(),
+            b"broken aggregate"
+        );
+    }
+}
+
+#[tokio::test]
+async fn metrics_lock_contention_does_not_block_async_timers_or_fail_installation() {
+    let body = harness_archive();
+    let server = Server::new(vec![Reply::new(200, "\"v1\"", &body)]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    let initial = metrics(&manager);
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(
+            manager
+                .cache_root()
+                .join("statistics/component-metrics.lock"),
+        )
+        .unwrap();
+    lock.lock().unwrap();
+    let installation = manager.ensure_startup();
+    tokio::pin!(installation);
+    tokio::select! {
+        _ = tokio::time::sleep(Duration::from_millis(30)) => {},
+        result = &mut installation => panic!("metrics wait should yield the runtime, got {result:?}"),
+    }
+    assert!(installation.await.unwrap().join(".complete").is_file());
+    drop(lock);
+    assert_eq!(metrics(&manager), initial);
+}
+
+#[test]
+fn chunk_interval_accounting_stays_bounded_and_refuses_overflow() {
+    let mut observations = PreparationMetrics::default();
+    observations.received(5, 3);
+    observations.received(8, 2);
+    observations.received(0, 7);
+    observations.received(7, 3);
+    assert_eq!(observations.network_bytes, 15);
+    assert_eq!(observations.retransferred_bytes, 5);
+    assert_eq!(observations.received_ranges, vec![(0, 10)]);
+    for offset in 10..10000 {
+        observations.received(offset, 1);
+    }
+    assert_eq!(observations.received_ranges.len(), 1);
+    observations.network_bytes = u64::MAX;
+    observations.received(10000, 1);
+    assert!(observations.events("harness", 1).is_err());
+}
+
+#[tokio::test]
+async fn aggregate_window_is_initialized_before_the_first_download_observation() {
+    let body = harness_archive();
+    let server = Server::new(vec![Reply::new(200, "\"v1\"", &body)]);
+    let root = tempfile::tempdir().unwrap();
+    let statistics = root.path().join("statistics/component-metrics.json");
+    let observed = Arc::new(AtomicBool::new(false));
+    let signal = Arc::clone(&observed);
+    let manager = manager(root.path(), &server.url, &body).with_progress(Arc::new(move |event| {
+        if matches!(event, ComponentProgress::Download { .. }) {
+            let snapshot: super::super::component_metrics::MetricsSnapshot =
+                serde_json::from_slice(&fs::read(&statistics).unwrap()).unwrap();
+            assert!(snapshot.window_started_at_unix_ms > 0);
+            assert_eq!(snapshot.components["harness"].network_bytes, 0);
+            signal.store(true, Ordering::Release);
+        }
+    }));
+    manager.ensure_startup().await.unwrap();
+    assert!(observed.load(Ordering::Acquire));
+    assert_eq!(
+        metrics(&manager).components["harness"].network_bytes,
+        body.len() as u64
+    );
+}
+
+#[tokio::test]
+async fn a_new_release_aggregate_during_download_is_not_replaced_by_the_old_flush() {
+    let body = harness_archive();
+    let server = Server::new(vec![Reply::new(200, "\"v1\"", &body)]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    let statistics = manager.cache_root().join("statistics");
+    let keys = manager
+        .catalog()
+        .components
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>();
+    let observer_root = statistics.clone();
+    let observer_keys = keys.clone();
+    let manager = manager.with_progress(Arc::new(move |event| {
+        if matches!(
+            event,
+            ComponentProgress::Phase {
+                phase: "verify",
+                ..
+            }
+        ) {
+            let newer = ComponentMetrics::open(&observer_root, "0.5.0", &observer_keys).unwrap();
+            newer.record(MetricEvent::BootStarted).unwrap();
+        }
+    }));
+    assert!(manager
+        .ensure_startup()
+        .await
+        .unwrap()
+        .join(".complete")
+        .is_file());
+    let snapshot = ComponentMetrics::open(&statistics, "0.5.0", &keys)
+        .unwrap()
+        .snapshot()
+        .unwrap();
+    assert_eq!(snapshot.app_version, "0.5.0");
+    assert_eq!(snapshot.boot_attempts, 1);
+    assert_eq!(
+        snapshot.components["harness"],
+        super::super::component_metrics::ComponentCounters::default()
+    );
 }
