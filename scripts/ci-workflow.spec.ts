@@ -284,9 +284,10 @@ describe('CI workflow', () => {
     expect(report?.run).toContain('::warning::')
     expect(report?.run).toContain('Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append')
 
-    // serial-windows: master-only standby, self-hosted, non-blocking, lives in ci-master.
+    // serial-windows remains master-only and outside the PR verdict.
     expect(serialWindows.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
-    expect(serialWindows['runs-on']).toEqual(['self-hosted', 'dsh-win-ci', 'windows'])
+    expect(evaluateRunsOn(serialWindows['runs-on'], { github: { repository: 'deepseek-harness/deepseek-harness' }, fromJSON: JSON.parse }))
+      .toEqual(['self-hosted', 'dsh-win-ci', 'windows'])
     expect(serialWindows.name).toBe('serial / windows (self-hosted standby)')
     // Its store must share the ReFS workspace volume for clone; the install
     // must carry the same filesystem branch as the PR jobs.
@@ -545,6 +546,69 @@ describe('CI workflow', () => {
       expect(job.strategy['max-parallel']).toBe(12)
       expect(job['timeout-minutes']).toBe(15)
     }
+  })
+
+  it('routes only YourBuddy master serial aggregates to official hosted runners', () => {
+    const workflow = loadWorkflow('.github/workflows/ci-master.yml')
+    expect(workflow.permissions).toEqual({ contents: 'read' })
+    expect(workflow.env).toEqual({ PRIMARY_NODE_VERSION: '24', DSH_TELEMETRY_DISABLED: '1' })
+    for (const [name, hosted, labels, command, env] of [
+      ['serial-linux-selfhosted', 'ubuntu-24.04', ['self-hosted', 'linux', 'x64', 'vm-backup'], 'check:ci:linux-primary', {
+        DSH_ARCHIVE_BASE_REF: '${{ github.event.before }}',
+        DSH_COVERAGE_MAX_WORKERS: '1', DSH_E2E_MAX_WORKERS: '1', DSH_GATE_CONCURRENCY: '1',
+        DSH_OXLINT_THREADS: '1', DSH_PUBLINT_CONCURRENCY: '1', DSH_SNAPSHOT_MAX_CONCURRENCY: '1',
+      }],
+      ['serial-windows', 'windows-2025', ['self-hosted', 'dsh-win-ci', 'windows'], 'check:ci:windows-complete', {
+        DSH_COVERAGE_MAX_WORKERS: '1', DSH_COVERAGE_TEST_TIMEOUT_MS: '90000',
+        DSH_GATE_CONCURRENCY: '1', DSH_PUBLINT_CONCURRENCY: '1',
+      }],
+    ] as const) {
+      const job = workflowJob(workflow, name)
+      for (const repository of ['istarwyh/yourbuddy', 'deepseek-harness/deepseek-harness', 'outsider/yourbuddy', 'istarwyh/another-repo']) {
+        // Canonical-case wiring fixtures, not a general Actions expression evaluator.
+        expect(evaluateRunsOn(job['runs-on'], { github: { repository }, fromJSON: JSON.parse }))
+          .toEqual(repository === 'istarwyh/yourbuddy' ? hosted : labels)
+      }
+      expect(job.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
+      for (const key of ['permissions', 'secrets', 'needs', 'continue-on-error', 'strategy', 'env']) {
+        expect(job).not.toHaveProperty(key)
+      }
+      expect(job['timeout-minutes']).toBe(name === 'serial-windows' ? 120 : undefined)
+      if (!Array.isArray(job.steps)) throw new TypeError(`${name} must define steps`)
+      const steps = job.steps.filter(isRecord)
+      const gate = steps.find(step => step.run === `pnpm run ${command}`)
+      expect(gate?.env).toEqual(env)
+      expect(gate?.if).toBeUndefined()
+      if (name === 'serial-windows') expect(gate?.shell).toBe('pwsh')
+      for (const step of steps) {
+        expect(step).not.toHaveProperty('continue-on-error')
+        expect(step).not.toHaveProperty('secrets')
+      }
+    }
+  })
+
+  it('prepares hosted Linux browsers and Office without changing the persistent VM preparation', () => {
+    const job = workflowJob(loadWorkflow('.github/workflows/ci-master.yml'), 'serial-linux-selfhosted')
+    const pr = workflowJob(loadWorkflow('.github/workflows/ci.yml'), 'node-24-consumers')
+    if (!Array.isArray(job.steps) || !Array.isArray(pr.steps)) throw new TypeError('Linux jobs must define steps')
+    const steps = job.steps.filter(isRecord)
+    const prSteps = pr.steps.filter(isRecord)
+    for (const name of ['Install Playwright Chromium, WebKit, and hosted dependencies', 'Build and execute the Linux Office runtime']) {
+      const step = steps.find(candidate => candidate.name === name)
+      expect(step?.if).toBe("github.repository == 'istarwyh/yourbuddy'")
+      expect(step?.run).toBe(prSteps.find(candidate => candidate.name === name)?.run)
+      expect(typeof step?.run).toBe('string')
+      expect(steps.indexOf(step!)).toBeLessThan(steps.findIndex(candidate => candidate.run === 'pnpm run check:ci:linux-primary'))
+    }
+    expect(steps).toContainEqual({
+      name: 'Install Playwright Chromium and WebKit',
+      if: "github.repository != 'istarwyh/yourbuddy'",
+      run: 'pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install chromium webkit',
+    })
+    expect(steps).toContainEqual({
+      name: 'Prepare bubblewrap (unrestrict userns)',
+      run: 'bash scripts/prepare-ci-bubblewrap.sh',
+    })
   })
 
   it('redirects the Node compile cache to the data-volume runner temp before the first pnpm call', () => {

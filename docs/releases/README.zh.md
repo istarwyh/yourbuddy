@@ -10,6 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
+| [yourbuddy-v0.4.9](yourbuddy-v0.4.9/README.zh.md) | YourBuddy 桌面应用 | 候选版本说明已准备 | 最终工程检查及公开交付证据待完成 | 候选版本；未发布 |
 | [yourbuddy-v0.4.8](yourbuddy-v0.4.8/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录 Agent Browser 样式、片库、公共产物、签名 Offline 更新包与发布 Bundle 重放 | 已发布，并在所述限制内独立检查 |
 | [yourbuddy-v0.4.7](yourbuddy-v0.4.7/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录 Offline 自动更新 Payload、源码检查、Workflow 37172836595、16 个公开制品、选定 Hash、稳定 Updater 元数据与 Archive 访问 | 已发布并在声明范围内完成独立检查 |
 | [yourbuddy-v0.4.6](yourbuddy-v0.4.6/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录官方 DSH 记录、发布恢复、源码检查、14 个公开产物、Hash、更新元数据、最新版本渠道、匿名 DMG 访问和 Bootstrap DMG 完整性 | 已发布并在声明范围内完成独立检查 |
