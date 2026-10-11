@@ -1,8 +1,8 @@
 /** Materialize opt-in plugins with ordinary dependencies and installation-owned peers. */
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, relative, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dump, load } from 'js-yaml'
 import { verifyExternalSnapshot } from './bundle-harness-source.mjs'
@@ -30,6 +30,15 @@ function writeJson(path, value) {
 
 function sourceFile(path) {
   return !path.split(sep).some(part => ['node_modules', '.git', 'test', 'tests', '__tests__'].includes(part))
+}
+
+/** Keep selected dependency copies inside their source and isolated build workspaces. */
+function relativeChildPath(root, path, label) {
+  const child = relative(root, path)
+  if (!child || child === '..' || child.startsWith(`..${sep}`) || isAbsolute(child)) {
+    throw new Error(`capability path is outside ${label}: ${path}`)
+  }
+  return child
 }
 
 /**
@@ -114,10 +123,12 @@ export function prepareCapabilityComponents({
   storeRoot,
   offline = false,
 } = {}) {
+  // pnpm reports physical paths, including macOS /private/var aliases.
+  harnessRoot = realpathSync(harnessRoot)
   const coreLock = load(readFileSync(join(harnessRoot, 'pnpm-lock.yaml'), 'utf8'))
   const coreWorkspace = load(readFileSync(join(harnessRoot, 'pnpm-workspace.yaml'), 'utf8'))
   const workspacePackages = readWorkspacePackageVersions(harnessRoot)
-  const temporary = mkdtempSync(join(tmpdir(), 'yourbuddy-capabilities-'))
+  const temporary = realpathSync(mkdtempSync(join(tmpdir(), 'yourbuddy-capabilities-')))
   try {
     const isolated = isolatedReleaseEnvironment(process.env, temporary)
     const env = { ...isolated.env, CI: 'true' }
@@ -149,15 +160,18 @@ export function prepareCapabilityComponents({
       const selected = ordinaryNames.length === 0 ? [] : JSON.parse(pnpm(harnessRoot, [
         ...ordinaryNames.flatMap(name => ['--filter-prod', `${name}...`]), 'list', '--depth', '-1', '--json',
       ]))
-      const workspacePaths = selected.map(({ name, path }) => {
+      const workspacePaths = selected.map(({ name, path: selectedPath }) => {
         if (isBundledRuntimePackage(name)) throw new Error(`capability ordinary closure must not embed a core peer: ${name}`)
-        const rel = relative(harnessRoot, path).replaceAll('\\', '/')
-        cpSync(path, join(workspace, rel), { recursive: true, filter: sourceFile })
-        return rel
+        const path = realpathSync(selectedPath)
+        const rel = relativeChildPath(harnessRoot, path, 'the prepared Harness')
+        const destination = resolve(workspace, rel)
+        relativeChildPath(workspace, destination, 'the capability workspace')
+        cpSync(path, destination, { recursive: true, filter: sourceFile })
+        return rel.replaceAll('\\', '/')
       })
       cpSync(source, capabilitySource, { recursive: true, filter: sourceFile })
       const dependencyLinks = Object.fromEntries(ordinaryNames.map(name => [
-        name, `link:${relative(capabilitySource, join(workspace, relative(harnessRoot, workspacePackages.get(name).root))).replaceAll('\\', '/')}`,
+        name, `link:${relative(capabilitySource, join(workspace, relativeChildPath(harnessRoot, realpathSync(workspacePackages.get(name).root), 'the prepared Harness'))).replaceAll('\\', '/')}`,
       ]))
       const stagedManifest = { ...manifest, dependencies: dependencyLinks }
       delete stagedManifest.devDependencies

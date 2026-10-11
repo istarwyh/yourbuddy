@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import childProcess, { spawnSync } from 'node:child_process'
 import { syncBuiltinESMExports } from 'node:module'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -301,4 +301,60 @@ test('materializes the frozen package and loads its built entry through out-of-t
   assert.throws(() => prepareCapabilityComponents({ ...options, pnpmPath: wrongPnpm }), /requires pnpm 11.7.0/)
   assert.deepEqual(readJson(join(entry.root, 'package.json')), retainedManifest)
   assert.deepEqual(readFileSync(join(harnessRoot, 'pnpm-lock.yaml')), originalLock)
+})
+
+test('materializes a physically selected workspace through a parent-directory alias', {
+  skip: builtAvailable ? false : 'requires built Harness artifacts; set YOURBUDDY_BUILT_HARNESS_ROOT after the root build',
+}, t => {
+  const root = mkdtempSync(join(repoRoot, '.capability-path-test-'))
+  let aliasParent, alias, escapedAlias
+  t.after(() => {
+    for (const link of [alias, escapedAlias]) {
+      if (link && lstatSync(link, { throwIfNoEntry: false })) unlinkSync(link)
+    }
+    if (aliasParent) rmSync(aliasParent, { recursive: true, force: true })
+    rmSync(root, { recursive: true, force: true })
+  })
+  const harnessRoot = coreFixture(root)
+  aliasParent = mkdtempSync(join(tmpdir(), 'yourbuddy-capability-path-alias-'))
+  alias = join(aliasParent, 'parent')
+  symlinkSync(root, alias, process.platform === 'win32' ? 'junction' : 'dir')
+  const options = {
+    harnessRoot: join(alias, 'core'), outputRoot: join(root, 'capabilities'),
+    storeRoot: process.env.YOURBUDDY_CAPABILITY_TEST_STORE ?? join(root, 'store'),
+    offline: Boolean(process.env.YOURBUDDY_CAPABILITY_TEST_STORE),
+  }
+  const coreBefore = hashTree(harnessRoot)
+  const [entry] = prepareCapabilityComponents(options)
+  assert.equal(assertPreparedCapability(entry.root).name, 'dsh-harbor-evolution')
+  assert.deepEqual(hashTree(harnessRoot), coreBefore)
+  assertSmoke(runSmoke(root, entry.root, 'alias-active'))
+
+  const outside = join(root, 'core-sibling')
+  writeJson(join(outside, 'package.json'), { name: '@deepseek-ai/schemastery', version: '3.18.4' })
+  escapedAlias = join(harnessRoot, 'vendor', 'outside-alias')
+  symlinkSync(outside, escapedAlias, process.platform === 'win32' ? 'junction' : 'dir')
+  const previousOutput = hashTree(entry.root)
+  const outsideBefore = hashTree(outside)
+  const originalSpawn = childProcess.spawnSync
+  let selectedPath = outside
+  const pnpmPath = join(repoRoot, 'node_modules/pnpm/bin/pnpm.mjs')
+  t.mock.method(childProcess, 'spawnSync', (command, args, commandOptions) => {
+    if (args[0] === pnpmPath && args.includes('list')) {
+      return { status: 0, stdout: JSON.stringify([{ name: '@deepseek-ai/schemastery', path: selectedPath }]) }
+    }
+    if (args[0] === pnpmPath) assert.equal(args.includes('install'), false, 'escaped selections must fail before installation')
+    return originalSpawn(command, args, commandOptions)
+  })
+  syncBuiltinESMExports()
+  try {
+    for (selectedPath of [outside, escapedAlias]) {
+      assert.throws(() => prepareCapabilityComponents(options), /outside the prepared Harness/)
+      assert.deepEqual(hashTree(entry.root), previousOutput)
+      assert.deepEqual(hashTree(outside), outsideBefore)
+    }
+  } finally {
+    t.mock.restoreAll()
+    syncBuiltinESMExports()
+  }
 })
