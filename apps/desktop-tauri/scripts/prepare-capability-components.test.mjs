@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
+import childProcess, { spawnSync } from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 import { dump, load } from 'js-yaml'
+import { hashTree } from './prepare-harness-offline-store.mjs'
 import { buildTrimmedWorkspaceYaml } from './bundle-harness-source.mjs'
 import { assertPreparedCapability, capabilityLock, prepareCapabilityComponents } from './prepare-capability-components.mjs'
 
@@ -153,7 +155,7 @@ function assertSmoke(result) {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
 }
 
-test('deploys the real package and loads its built entry through out-of-tree Profile resolution', {
+test('materializes the frozen package and loads its built entry through out-of-tree Profile resolution', {
   skip: builtAvailable ? false : 'requires built Harness artifacts; set YOURBUDDY_BUILT_HARNESS_ROOT after the root build',
 }, t => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-capability-real-'))
@@ -207,9 +209,93 @@ test('deploys the real package and loads its built entry through out-of-tree Pro
     writeFileSync(join(harnessRoot, 'pnpm-lock.yaml'), originalLock)
   }
 
+  const expectedExternal = hashTree(join(entry.root, 'node_modules/@deepseek-ai/schemastery/node_modules/@standard-schema/spec'))
+  const cacheHome = join(root, 'warm-cache')
+  const alternateIntegrity = 'sha512-' + Buffer.alloc(64, 1).toString('base64')
+  const alternate = {
+    name: '@standard-schema/spec', 'dist-tags': { latest: '1.9.0' },
+    versions: { '1.9.0': { name: '@standard-schema/spec', version: '1.9.0', dist: {
+      integrity: alternateIntegrity, tarball: 'https://registry.npmjs.org/@standard-schema/spec/-/spec-1.9.0.tgz',
+    } } },
+    time: { created: '2020-01-01T00:00:00Z', modified: '2020-01-01T00:00:00Z', '1.9.0': '2020-01-01T00:00:00Z' },
+  }
+  for (const directory of ['metadata', 'metadata-full']) {
+    const path = join(cacheHome, 'pnpm/v11', directory, 'registry.npmjs.org/@standard-schema/spec.jsonl')
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, '{}\n' + JSON.stringify(alternate))
+  }
+  const unconstrained = join(root, 'unconstrained')
+  writeJson(join(unconstrained, 'package.json'), { private: true, packageManager: 'pnpm@11.7.0', dependencies: { '@standard-schema/spec': '^1.1.0' } })
+  const pnpmPath = join(repoRoot, 'node_modules/pnpm/bin/pnpm.mjs')
+  assertSmoke(spawnSync(process.execPath, [pnpmPath, '--pm-on-fail=ignore', '--store-dir', options.storeRoot,
+    'install', '--lockfile-only', '--offline', '--ignore-scripts', '--no-frozen-lockfile'], {
+    cwd: unconstrained, encoding: 'utf8', timeout: 30_000,
+    env: { PATH: process.env.PATH, HOME: root, XDG_CACHE_HOME: cacheHome, CI: 'true' },
+  }))
+  assert.equal(load(readFileSync(join(unconstrained, 'pnpm-lock.yaml'), 'utf8')).importers['.'].dependencies['@standard-schema/spec'].version, '1.9.0')
+
+  const sentinel = join(root, 'lifecycle-ran')
+  const scriptPath = join(root, 'lifecycle.cjs')
+  writeFileSync(scriptPath, `require('node:fs').writeFileSync(${JSON.stringify(sentinel)}, 'ran')\n`)
+  const lifecycle = `"${process.execPath}" "${scriptPath}"`
+  const dependencySentinel = join(root, 'dependency-lifecycle-ran')
+  const dependencyScriptPath = join(root, 'dependency-lifecycle.cjs')
+  writeFileSync(dependencyScriptPath, `require('node:fs').writeFileSync(${JSON.stringify(dependencySentinel)}, 'ran')\n`)
+  const dependencyLifecycle = `"${process.execPath}" "${dependencyScriptPath}"`
+  const scriptedProductRoot = join(root, 'scripted-product')
+  const scriptedProduct = join(scriptedProductRoot, 'pomodoro')
+  cpSync(join(desktopRoot, 'product/pomodoro'), scriptedProduct, { recursive: true })
+  rmSync(join(scriptedProduct, 'YOURBUDDY_UPSTREAM.json'))
+  const scriptedManifest = { ...readJson(join(scriptedProduct, 'package.json')), scripts: { prepack: lifecycle, prepare: lifecycle } }
+  writeJson(join(scriptedProduct, 'package.json'), scriptedManifest)
+  const cosmokitPath = join(harnessRoot, 'vendor/cosmokit/package.json')
+  writeJson(cosmokitPath, { ...readJson(cosmokitPath), scripts: { preinstall: dependencyLifecycle, install: dependencyLifecycle, postinstall: dependencyLifecycle, prepare: dependencyLifecycle } })
+  const originalSpawn = childProcess.spawnSync
+  const commands = []
+  t.mock.method(childProcess, 'spawnSync', (command, args, commandOptions) => {
+    if (args[0] === pnpmPath) {
+      commands.push(args)
+      commandOptions = { ...commandOptions, env: { ...commandOptions.env, XDG_CACHE_HOME: cacheHome } }
+    }
+    return originalSpawn(command, args, commandOptions)
+  })
+  syncBuiltinESMExports()
+  let frozenEntry
+  try {
+    [frozenEntry] = prepareCapabilityComponents({ ...options, productRoot: scriptedProductRoot, offline: true })
+  } finally {
+    t.mock.restoreAll()
+    syncBuiltinESMExports()
+  }
+  assert.equal(commands.filter(args => args.includes('install')).length, 1)
+  assert.equal(commands.some(args => args.includes('deploy')), false)
+  assert.equal(existsSync(sentinel), false)
+  assert.equal(existsSync(dependencySentinel), false)
+  assert.deepEqual(hashTree(join(frozenEntry.root, 'node_modules/@deepseek-ai/schemastery/node_modules/@standard-schema/spec')), expectedExternal)
+  assert.equal(readJson(join(frozenEntry.root, 'node_modules/@deepseek-ai/schemastery/node_modules/@standard-schema/spec/package.json')).version, '1.1.0')
+  assertSmoke(spawnSync(process.execPath, [pnpmPath, '--pm-on-fail=ignore', '--config.ignore-scripts=false', 'pack', '--out', join(root, 'lifecycle-control.tgz')], {
+    cwd: scriptedProduct, encoding: 'utf8', timeout: 30_000, env: { PATH: process.env.PATH, HOME: root },
+  }))
+  assert.equal(readFileSync(sentinel, 'utf8'), 'ran')
+  rmSync(sentinel)
+  t.mock.method(childProcess, 'spawnSync', (command, args, commandOptions) => {
+    if (args[0] === pnpmPath && args.includes('install')) args = args.filter(arg => arg !== '--ignore-scripts')
+    return originalSpawn(command, args, commandOptions)
+  })
+  syncBuiltinESMExports()
+  try {
+    prepareCapabilityComponents({ ...options, productRoot: scriptedProductRoot, offline: true })
+  } finally {
+    t.mock.restoreAll()
+    syncBuiltinESMExports()
+  }
+  assert.equal(readFileSync(dependencySentinel, 'utf8'), 'ran')
+  rmSync(dependencySentinel)
+  const retainedManifest = readJson(join(frozenEntry.root, 'package.json'))
+
   const wrongPnpm = join(root, 'wrong-pnpm.mjs')
   writeFileSync(wrongPnpm, 'console.log("11.25.0")\n')
   assert.throws(() => prepareCapabilityComponents({ ...options, pnpmPath: wrongPnpm }), /requires pnpm 11.7.0/)
-  assert.deepEqual(readJson(join(entry.root, 'package.json')), manifest)
+  assert.deepEqual(readJson(join(entry.root, 'package.json')), retainedManifest)
   assert.deepEqual(readFileSync(join(harnessRoot, 'pnpm-lock.yaml')), originalLock)
 })

@@ -87,7 +87,7 @@ export function capabilityLock(lock, workspacePaths, capabilityPath, dependencyL
 
 /**
  * Prepare all registered capabilities after bundle:source. The core tree is only read.
- * Uses the reviewed pnpm version, its production dependency selector and legacy deploy,
+ * Uses the reviewed pnpm version, its production dependency selector and frozen install,
  * then dereferences installed ordinary dependencies before publishing each archive input.
  * @param {object} options Prepared Harness, product sources, output and optional pinned pnpm/store paths.
  * @returns {object[]} Prepared capability metadata, including package root and actual version.
@@ -158,14 +158,17 @@ export function prepareCapabilityComponents({
       cpSync(join(harnessRoot, 'patches'), join(workspace, 'patches'), { recursive: true })
       const storeArgs = ['--store-dir', storeRoot ?? join(temporary, 'store'), '--config.enable-global-virtual-store=false']
       pnpm(workspace, [...storeArgs, 'install', '--prod', '--frozen-lockfile', '--trust-lockfile', '--ignore-scripts', ...(offline ? ['--offline'] : [])])
-      const deployed = join(workspace, 'deployed')
-      pnpm(workspace, [...storeArgs, '--filter', definition.packageName, 'deploy', '--legacy', '--prod', '--offline',
-        '--config.allow-unused-patches=true', '--config.node-linker=hoisted', '--config.auto-install-peers=false',
-        '--config.link-workspace-packages=true', deployed])
+      const packed = join(workspace, 'capability.tgz')
+      pnpm(capabilitySource, ['--config.ignore-scripts=true', 'pack', '--out', packed])
       const materialized = join(temporary, `${definition.key}-materialized`)
-      cpSync(deployed, materialized, {
+      mkdirSync(materialized)
+      const unpacked = spawnSync('tar', ['-xzf', packed, '--strip-components', '1', '-C', materialized], { env, encoding: 'utf8' })
+      if (unpacked.error) throw unpacked.error
+      if (unpacked.status !== 0) throw new Error(`capability package extraction failed: ${unpacked.stderr}`)
+      // Copy the already frozen installed graph. Legacy deploy performs a second, unfrozen install.
+      cpSync(join(capabilitySource, 'node_modules'), join(materialized, 'node_modules'), {
         recursive: true, dereference: true,
-        filter: path => !['.pnpm', '.bin', '.modules.yaml', '.pnpm-workspace-state-v1.json', 'YOURBUDDY_UPSTREAM.json'].includes(path.split(sep).at(-1)),
+        filter: path => !['.pnpm', '.bin', '.modules.yaml', '.pnpm-workspace-state-v1.json'].includes(path.split(sep).at(-1)),
       })
       const outputManifest = { ...manifest, peerDependencies: peers }
       delete outputManifest.devDependencies
