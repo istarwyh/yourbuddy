@@ -86,6 +86,7 @@ describe('component settings', () => {
     expect(native.load).toHaveBeenCalledTimes(2)
     expect(screen.getByText(/Restart YourBuddy/)).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Install plan: harbor' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Refresh status' }))
   })
 
   it('closes an in-flight plan, restores focus, and ignores it after a newer plan finishes', async () => {
@@ -142,6 +143,7 @@ describe('component settings', () => {
     fireEvent.click(await reviewPlan())
     await screen.findByText(/download failed/)
     expect(screen.queryByRole('button', { name: 'Confirm component preparation' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Refresh status' }))
     fireEvent.click(await reviewPlan())
     await screen.findByText('Component preparation finished and status was refreshed.')
     expect(native.plan).toHaveBeenCalledTimes(2)
@@ -157,6 +159,7 @@ describe('component settings', () => {
     await screen.findByText(/refresh offline/)
     expect(screen.getByText(/Restart YourBuddy/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Review install plan' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Retry' }))
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await screen.findByRole('button', { name: 'Review install plan' })
     expect(native.install).toHaveBeenCalledOnce()

@@ -31,10 +31,13 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
   const reviewPanel = useRef<HTMLDivElement>(null)
   const reviewTrigger = useRef<HTMLButtonElement | null>(null)
   const restoreFocus = useRef(false)
+  const refreshButton = useRef<HTMLButtonElement>(null)
+  const focusAfterInstall = useRef(false)
 
   const current = (sequence: number): boolean => operation.current.active && operation.current.sequence === sequence
   const finish = (sequence: number): void => {
     if (!current(sequence)) return
+    if (operation.current.busy === 'install') focusAfterInstall.current = true
     operation.current.busy = null
     setBusy(null)
   }
@@ -68,6 +71,7 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
   useEffect(() => {
     operation.current.active = true
     operation.current.busy = null
+    focusAfterInstall.current = false
     setOverview(null)
     setNotice(null)
     void load()
@@ -77,6 +81,12 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
       operation.current.busy = null
     }
   }, [load])
+
+  useEffect(() => {
+    if (busy !== null || !focusAfterInstall.current) return
+    focusAfterInstall.current = false
+    refreshButton.current?.focus()
+  }, [busy])
 
   const closeReview = useCallback((): void => {
     if (operation.current.busy === 'install') return
@@ -160,7 +170,7 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
         {overview !== null && <div className="dpw-hint">{t('components.version').replace('{version}', overview.appVersion)}</div>}
       </div>
       <div className="dpw-actions">
-        <button type="button" className="dpw-button" disabled={busy !== null || review !== null} onClick={() => { void load() }}>
+        <button ref={refreshButton} type="button" className="dpw-button" disabled={busy !== null || review !== null} onClick={() => { void load() }}>
           {overview === null && problem !== null ? t('components.retry') : t('components.refresh')}
         </button>
       </div>
