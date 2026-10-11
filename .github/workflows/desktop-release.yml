@@ -157,6 +157,8 @@ jobs:
         env:
           YOURBUDDY_BUILT_HARNESS_ROOT: ${{ github.workspace }}
         run: |
+          TMPDIR="$(node -p 'require("node:fs").realpathSync(require("node:os").tmpdir())')"
+          export TMPDIR
           YOURBUDDY_CAPABILITY_TEST_STORE="$(pnpm store path)" \
             pnpm --dir apps/desktop-tauri run test:components
           pnpm --dir apps/desktop-tauri run test:native-overlay

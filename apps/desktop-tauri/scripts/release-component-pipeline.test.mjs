@@ -106,6 +106,15 @@ test('package and release aggregates execute capability preparation and pipeline
   const gate = steps.findIndex(step => step.name === 'Verify component preparation and release pipeline')
   assert.ok(gate > steps.findIndex(step => step.name === 'Build Harness'))
   assert.ok(gate < steps.findIndex(step => step.name === 'Build immutable runtime components'))
+  const normalization = [
+    'TMPDIR="$(node -p \'require("node:fs").realpathSync(require("node:os").tmpdir())\')"',
+    'export TMPDIR',
+  ]
+  const assertPhysicalTemporaryDirectory = run => assert.deepEqual(run.split('\n').slice(0, 2), normalization)
+  assertPhysicalTemporaryDirectory(steps[gate].run)
+  for (const omitted of [0, 1]) {
+    assert.throws(() => assertPhysicalTemporaryDirectory(steps[gate].run.split('\n').filter((_, index) => index !== omitted).join('\n')))
+  }
   assert.match(steps[gate].run, /pnpm --dir apps\/desktop-tauri run test:components/)
   assert.match(steps[gate].run, /YOURBUDDY_CAPABILITY_TEST_STORE="\$\(pnpm store path\)"/)
   assert.equal(steps[gate].env.YOURBUDDY_BUILT_HARNESS_ROOT, '${{ github.workspace }}')
