@@ -351,8 +351,9 @@ export async function runProfilePnpm(
         || readProfileManifest('dsh', target.slice('link:'.length)).name !== name.name) {
         throw new Error('rollback-package must match the linked package manifest name')
       }
-      const expected = options.rollbackExpected
+      const expected: unknown = options.rollbackExpected
       if (typeof expected !== 'object' || expected === null || Array.isArray(expected)
+        || !('dependency' in expected) || !('link' in expected)
         || Object.keys(expected).length !== 2 || !Object.hasOwn(expected, 'dependency') || !Object.hasOwn(expected, 'link')
         || ![expected.dependency, expected.link].every(value => value === null
           || typeof value === 'string' && value.length > 0 && Buffer.byteLength(value) <= 4096)) {
@@ -378,7 +379,8 @@ export async function runProfilePnpm(
       return rejected([String(error)], 'nothing was installed')
     }
   }
-  let retainRunRecord = false
+  /** Track process settlement, silence cancellation, and a surviving tree across repair callbacks. */
+  const control = { settled: false, stalled: false, retainRunRecord: false }
   const repairTree = async (): Promise<boolean> => {
     const hadLockfile = savedFiles.some(file => file.path.endsWith('pnpm-lock.yaml') && file.text !== undefined)
     const repair = ['install', hadLockfile ? '--frozen-lockfile' : '--config.lockfile=false']
@@ -398,7 +400,7 @@ export async function runProfilePnpm(
         repairing.kill()
         await Promise.allSettled([repairing])
         await awaitTreeGone(tree)
-        if (treeAlive(tree)) { retainRunRecord = true }
+        if (treeAlive(tree)) { control.retainRunRecord = true }
       }
     }
   }
@@ -408,16 +410,16 @@ export async function runProfilePnpm(
     rollback = 'incomplete'
     child.kill()
     await awaitTreeGone({ pid: child.pid, grouped })
-    if (treeAlive({ pid: child.pid, grouped })) retainRunRecord = true
+    if (treeAlive({ pid: child.pid, grouped })) control.retainRunRecord = true
     let restoredTree = false
     const problems: string[] = []
     try {
-      if (retainRunRecord) throw new Error('the package process tree is still running')
+      if (control.retainRunRecord) throw new Error('the package process tree is still running')
       await restore()
       restoredTree = await repairTree()
     } catch (error) { problems.push(String(error)) }
     try {
-      if (retainRunRecord) throw new Error('waiting for the package repair tree before restoring its link')
+      if (control.retainRunRecord) throw new Error('waiting for the package repair tree before restoring its link')
       await restore()
       try {
         if (!lstatSync(protectedLink.path).isSymbolicLink()) throw new Error('the protected package is no longer a symbolic link')
@@ -474,8 +476,6 @@ export async function runProfilePnpm(
   // Listened for before the record is written, so an exit during that write is not missed.
   const exited = once(child.nodeChildProcess, 'exit').catch(() => undefined)
   let writes = Promise.resolve()
-  /** `settled` records that the process outcome is known; `stalled` that the silence bound stopped the run. */
-  const control = { settled: false, stalled: false }
   /** Set once this call cuts the reading short itself, so the close it causes is not read as a run failure. */
   let cut = false
   /** The first failure a reading hit before that cut, which the run still reports. */
@@ -641,7 +641,7 @@ export async function runProfilePnpm(
     control.settled = true
     clearTimeout(idleTimer)
     // Keep a surviving tree recorded so the next lock holder refuses to overlap its writes.
-    if (!retainRunRecord) await rm(runRecordPath(dir), { force: true })
+    if (!control.retainRunRecord) await rm(runRecordPath(dir), { force: true })
     await log.close()
   }
   return {

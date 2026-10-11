@@ -1,6 +1,6 @@
 /** Fixed component requests between the Host iframe and its runtime-owned loopback shell. */
 
-import type { ComponentController, ComponentCounters, ComponentOverview, ComponentView, InstallPlan, MetricsSnapshot } from './component-model.ts'
+import type { CacheCleanupPreview, CacheCleanupResult, ComponentController, ComponentCounters, ComponentOverview, ComponentView, InstallPlan, MetricsSnapshot } from './component-model.ts'
 
 /** Component-only shell protocol; this channel never accepts a native command name or path. */
 export const DESKTOP_COMPONENT_CHANNEL = 'yourbuddy.desktop.components'
@@ -9,11 +9,11 @@ export const DESKTOP_COMPONENT_VERSION = 1
 
 const REQUEST_ID = /^[A-Za-z0-9_-]{1,64}$/
 const COMPONENT_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
-type Action = 'get' | 'plan' | 'install' | 'report' | 'ready' | 'invocation'
+type Action = 'get' | 'plan' | 'install' | 'report' | 'ready' | 'invocation' | 'cache-preview' | 'cache-clean'
 /** Actual Host Fiber state; undefined means no conclusive observation is available yet. */
 export type ComponentRuntimeState = 'active' | 'failed' | 'inactive'
 const RUNTIME_TOKEN = /^[A-Za-z0-9_-]{1,128}$/
-type Result = ComponentOverview | InstallPlan | { readonly restartRequired: boolean } | { readonly recorded: boolean }
+type Result = ComponentOverview | InstallPlan | CacheCleanupPreview | CacheCleanupResult | { readonly restartRequired: boolean } | { readonly recorded: boolean }
 type Message = { readonly data: unknown; readonly origin: string; readonly source: object | null }
 
 /** Browser facilities required by the component bridge, also supplied by a real Window. */
@@ -44,9 +44,11 @@ export interface DesktopComponentOptions {
 export interface DesktopComponentController extends ComponentController {
   /** Cancel current waits. Later explicit requests can reuse the controller after React remount. */
   dispose(): void
+  previewCacheCleanup(): Promise<CacheCleanupPreview>
+  cleanCache(token: string): Promise<CacheCleanupResult>
   /** Record this Host generation's committed workbench once; no payload is transmitted. */
   reportWorkbenchReady(): Promise<{ readonly recorded: boolean }>
-  /** Record one explicit Pomodoro start/resume result against the current native token. */
+  /** Record one Pomodoro start/resume result using the current harness token; native counts it under harness. */
   reportPomodoroInvocation(runtimeToken: string, succeeded: boolean): Promise<{ readonly recorded: boolean }>
 }
 
@@ -119,6 +121,24 @@ function installed(value: unknown): value is { readonly restartRequired: boolean
 function recorded(value: unknown): value is { readonly recorded: boolean } {
   return record(value) && keys(value, 'recorded') && typeof value.recorded === 'boolean'
 }
+function cleanupPreview(value: unknown): value is CacheCleanupPreview {
+  return record(value) && keys(value, 'files,token,totalBytes')
+    && text(value.token) && RUNTIME_TOKEN.test(value.token) && count(value.totalBytes)
+    && Array.isArray(value.files) && value.files.length <= 192
+    && value.files.every(file => record(file) && keys(file, 'bytes,component,kind')
+      && text(file.component) && COMPONENT_KEY.test(file.component)
+      && member(file.kind, ['archive', 'partial', 'resume-metadata']) && count(file.bytes))
+    && value.files.reduce((sum, file) => sum + file.bytes, 0) === value.totalBytes
+}
+function cleanupResult(value: unknown): value is CacheCleanupResult {
+  return record(value) && keys(value, 'complete,deletedBytes,deletedFiles,failures')
+    && count(value.deletedBytes) && count(value.deletedFiles) && typeof value.complete === 'boolean'
+    && Array.isArray(value.failures) && value.failures.length <= 192
+    && value.failures.every(failure => record(failure) && keys(failure, 'component,error,kind')
+      && text(failure.component) && COMPONENT_KEY.test(failure.component)
+      && member(failure.kind, ['archive', 'partial', 'resume-metadata']) && text(failure.error))
+    && value.complete === (value.failures.length === 0)
+}
 function createRequestId(): string {
   const bytes = new Uint8Array(16)
   globalThis.crypto.getRandomValues(bytes)
@@ -128,7 +148,7 @@ function createRequestId(): string {
 /**
  * Create a stable controller with correlated, bounded, origin-checked browser requests.
  * @param options Host window and optional request timing overrides.
- * @returns Three fixed native operations and a browser-wait disposer.
+ * @returns Fixed component operations and a browser-wait disposer.
  */
 export function createDesktopComponentController(options: DesktopComponentOptions = {}): DesktopComponentController {
   const target: DesktopComponentWindow | undefined = options.target ?? (typeof window === 'undefined' ? undefined : window)
@@ -158,11 +178,12 @@ export function createDesktopComponentController(options: DesktopComponentOption
     runtimeWaits.add(cancel)
     void work.then(value => { cleanup(); resolve(value) }, error => { cleanup(); reject(error) })
   })
-  const request = (action: Action, key?: string, report?: { readonly state: ComponentRuntimeState; readonly runtimeToken: string } | { readonly runtimeToken: string; readonly succeeded: boolean }): Promise<Result> => {
+  const request = (action: Action, key?: string, report?: { readonly state: ComponentRuntimeState; readonly runtimeToken: string } | { readonly runtimeToken: string; readonly succeeded: boolean }, cleanupToken?: string): Promise<Result> => {
     if (target === undefined || origin === undefined) return Promise.reject(new Error('desktop-shell-unavailable'))
     if (!listening) { target.addEventListener('pagehide', dispose); listening = true }
     if (key !== undefined && !COMPONENT_KEY.test(key)) return Promise.reject(new Error('desktop-component-key-invalid'))
-    const operationKey = `${action}:${key ?? ''}:${report?.runtimeToken ?? ''}:${report !== undefined && 'state' in report ? report.state : ''}`
+    if (cleanupToken !== undefined && !RUNTIME_TOKEN.test(cleanupToken)) return Promise.reject(new Error('desktop-component-cleanup-token-invalid'))
+    const operationKey = `${action}:${key ?? ''}:${cleanupToken ?? report?.runtimeToken ?? ''}:${report !== undefined && 'state' in report ? report.state : ''}`
     const existing = inFlight.get(operationKey)
     if (action !== 'invocation' && existing !== undefined) return existing
     if (report !== undefined && !RUNTIME_TOKEN.test(report.runtimeToken)) return Promise.reject(new Error('desktop-component-runtime-token-invalid'))
@@ -193,7 +214,7 @@ export function createDesktopComponentController(options: DesktopComponentOption
         if (value.type !== `${action}-response`) return
         if (value.ok === false && keys(value, 'channel,error,ok,requestId,type,version') && text(value.error)) { fail(value.error); return }
         if (value.ok !== true || !keys(value, 'channel,ok,requestId,type,value,version')) { fail('desktop-component-response-invalid'); return }
-        const valid = action === 'get' ? overview(value.value) : action === 'plan' ? plan(value.value) : action === 'ready' || action === 'invocation' ? recorded(value.value) : installed(value.value)
+        const valid = action === 'get' ? overview(value.value) : action === 'plan' ? plan(value.value) : action === 'cache-preview' ? cleanupPreview(value.value) : action === 'cache-clean' ? cleanupResult(value.value) : action === 'ready' || action === 'invocation' ? recorded(value.value) : installed(value.value)
         if (!valid) { fail('desktop-component-response-invalid'); return }
         cleanup()
         resolve(value.value as Result)
@@ -202,7 +223,7 @@ export function createDesktopComponentController(options: DesktopComponentOption
       target.addEventListener('message', onMessage)
       timer = target.setTimeout(() => { fail('desktop-shell-unavailable') }, options.handshakeTimeoutMs ?? 5_000)
       try {
-        parent.postMessage({ channel: DESKTOP_COMPONENT_CHANNEL, version: DESKTOP_COMPONENT_VERSION, type: `${action}-request`, requestId, ...(key === undefined ? {} : { component: key }), ...report }, origin)
+        parent.postMessage({ channel: DESKTOP_COMPONENT_CHANNEL, version: DESKTOP_COMPONENT_VERSION, type: `${action}-request`, requestId, ...(key === undefined ? {} : { component: key }), ...report, ...(cleanupToken === undefined ? {} : { cleanupToken }) }, origin)
       }
       catch (error) { cleanup(); reject(error) }
     })
@@ -265,6 +286,8 @@ export function createDesktopComponentController(options: DesktopComponentOption
       return run
     },
     dispose,
+    previewCacheCleanup: async () => await request('cache-preview') as CacheCleanupPreview,
+    cleanCache: async token => await request('cache-clean', undefined, undefined, token) as CacheCleanupResult,
     reportWorkbenchReady: async () => await request('ready') as { readonly recorded: boolean },
     reportPomodoroInvocation: async (runtimeToken, succeeded) => await request('invocation', 'pomodoro', { runtimeToken, succeeded }) as { readonly recorded: boolean },
   }

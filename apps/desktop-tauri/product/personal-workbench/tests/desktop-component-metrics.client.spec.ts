@@ -5,7 +5,7 @@ import type { DesktopComponentController } from '../src/client/desktop-component
 import type { ComponentOverview } from '../src/client/component-model.ts'
 
 const originalParent = window.parent
-const snapshot: ComponentOverview = { appVersion: '0.4.9', components: [{ key: 'pomodoro', kind: 'optional', version: '0.5.5', purpose: 'Focus timer', archiveBytes: 42, installedBytes: 100, state: 'active', policy: 'manual', canInstall: false, canChangePolicy: false, canClean: false, error: null, runtimeToken: 'host_install_1' }], metrics: null, metricsError: null }
+const snapshot: ComponentOverview = { appVersion: '0.4.9', components: [{ key: 'harness', kind: 'core-runtime', version: '0.5.5', purpose: 'Default workbench features', archiveBytes: 42, installedBytes: 100, state: 'active', policy: 'required', canInstall: false, canChangePolicy: false, canClean: false, error: null, runtimeToken: 'host_core_1' }], metrics: null, metricsError: null }
 const tick = async (): Promise<void> => { for (let index = 0; index < 8; index++) await Promise.resolve() }
 function controller() {
   return { load: vi.fn<DesktopComponentController['load']>().mockResolvedValue(snapshot), plan: vi.fn(), install: vi.fn(), dispose: vi.fn(), reportWorkbenchReady: vi.fn<DesktopComponentController['reportWorkbenchReady']>().mockResolvedValue({ recorded: true }), reportPomodoroInvocation: vi.fn<DesktopComponentController['reportPomodoroInvocation']>().mockResolvedValue({ recorded: true }) }
@@ -31,16 +31,27 @@ describe('committed workbench local metrics adapter', () => {
     expect(native.reportWorkbenchReady).toHaveBeenCalledOnce()
   })
 
-  it('records each explicit committed result separately using only the current eligible token', async () => {
+  it('records timer results with the harness token without a separate Pomodoro archive', async () => {
     const native = controller()
     const value = installDesktopComponentMetrics(window, native)
     emit({ component: 'pomodoro', succeeded: true })
     emit({ component: 'pomodoro', succeeded: false })
     await tick()
-    expect(native.reportPomodoroInvocation.mock.calls).toEqual([['host_install_1', true], ['host_install_1', false]])
+    expect(native.reportPomodoroInvocation.mock.calls).toEqual([['host_core_1', true], ['host_core_1', false]])
     expect(native.install).not.toHaveBeenCalled()
     expect(native.plan).not.toHaveBeenCalled()
     expect(native.reportWorkbenchReady).not.toHaveBeenCalled()
+    value.dispose()
+  })
+
+  it('does not reuse a token from an obsolete standalone Pomodoro entry', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const native = controller()
+    native.load.mockResolvedValue({ ...snapshot, components: snapshot.components.map(item => ({ ...item, key: 'pomodoro' })) })
+    const value = installDesktopComponentMetrics(window, native)
+    emit({ component: 'pomodoro', succeeded: true })
+    await tick()
+    expect(native.reportPomodoroInvocation).not.toHaveBeenCalled()
     value.dispose()
   })
 

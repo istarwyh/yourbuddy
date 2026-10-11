@@ -318,6 +318,11 @@
         || typeof value.requestId !== 'string' || !desktopLifecycleRequestId.test(value.requestId)) return false
       const keys = Object.keys(value).sort().join(',')
       if (value.type === 'get-request' || value.type === 'ready-request') return keys === 'channel,requestId,type,version' ? value.type === 'get-request' ? 'get' : 'ready' : false
+      if (value.type === 'cache-preview-request') return keys === 'channel,requestId,type,version' ? 'cache-preview' : false
+      if (value.type === 'cache-clean-request') {
+        return keys === 'channel,cleanupToken,requestId,type,version'
+          && typeof value.cleanupToken === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value.cleanupToken) ? 'cache-clean' : false
+      }
       if (value.type === 'invocation-request') {
         return keys === 'channel,component,requestId,runtimeToken,succeeded,type,version'
           && value.component === 'pomodoro' && typeof value.succeeded === 'boolean'
@@ -568,6 +573,8 @@
             else if (componentAction === 'install') response.value = await invoke('run_first_party_command', { command: 'install_component', payload: { component: request.component } })
             else if (componentAction === 'report') response.value = await invoke('run_first_party_command', { command: 'report_component_runtime', payload: { component: request.component, state: request.state, runtimeToken: request.runtimeToken } })
             else if (componentAction === 'ready') response.value = await invoke('run_first_party_command', { command: 'report_workbench_ready' })
+            else if (componentAction === 'cache-preview') response.value = await invoke('run_first_party_command', { command: 'preview_component_cache_cleanup' })
+            else if (componentAction === 'cache-clean') response.value = await invoke('run_first_party_command', { command: 'clean_component_cache', payload: { cleanupToken: request.cleanupToken } })
             else response.value = await invoke('run_first_party_command', { command: 'report_component_invocation', payload: { component: 'pomodoro', runtimeToken: request.runtimeToken, succeeded: request.succeeded } })
             response.ok = true
           }

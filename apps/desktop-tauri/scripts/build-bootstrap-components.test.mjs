@@ -15,6 +15,8 @@ import {
   validateComponentManifest,
 } from './build-bootstrap-components.mjs'
 
+import { CAPABILITY_COMPONENTS } from './prepare-capability-components.mjs'
+
 const fixtureRoot = new URL('../src-tauri/src/runtime/tests/fixtures/', import.meta.url)
 const readFixture = name => JSON.parse(readFileSync(new URL(name, fixtureRoot), 'utf8'))
 const cases = readFixture('component-manifest-v2-cases.json')
@@ -54,25 +56,34 @@ test('builds core, fallback and on-demand components from bundled versions and a
   const harborRoot = join(bundledRoot, 'yourbuddy-runtime')
   const nodeRoot = join(root, 'node-v22.19.0-darwin-arm64')
   const outputRoot = join(root, 'apps', 'desktop-tauri', 'component-release')
-  const pomodoroRoot = join(bundledRoot, 'capabilities', 'pomodoro')
-  mkdirSync(join(pomodoroRoot, 'lib'), { recursive: true })
-  mkdirSync(join(pomodoroRoot, 'node_modules', '@deepseek-ai', 'schemastery'), { recursive: true })
-  writeFileSync(join(pomodoroRoot, 'package.json'), JSON.stringify({
-    name: '@xiaohui-wang/dsh-pomodoro', version: '0.5.5', main: 'lib/index.js',
-    dsh: { bundle: { patch: './cordis.patch.yml' } },
-    dependencies: { '@deepseek-ai/schemastery': '^3.18.4' },
-  }))
-  writeFileSync(join(pomodoroRoot, 'lib', 'index.js'), 'export {}\n')
-  writeFileSync(join(pomodoroRoot, 'lib', 'client.js'), 'export {}\n')
-  writeFileSync(join(pomodoroRoot, 'cordis.patch.yml'), '- insert: []\n')
-  writeFileSync(join(pomodoroRoot, 'node_modules', '@deepseek-ai', 'schemastery', 'package.json'), JSON.stringify({ name: '@deepseek-ai/schemastery', version: '3.18.4' }))
+  const harborPluginRoot = join(bundledRoot, 'capabilities', 'harborPlugin')
+  const versions = []
+  for (const { key, packageName, sourceDirectory } of CAPABILITY_COMPONENTS) {
+    const source = JSON.parse(readFileSync(new URL(`../product/${sourceDirectory}/package.json`, import.meta.url), 'utf8'))
+    versions.push(source.version)
+    const prepared = join(bundledRoot, 'capabilities', key)
+    mkdirSync(join(prepared, 'lib'), { recursive: true })
+    writeFileSync(join(prepared, 'package.json'), JSON.stringify({
+      name: packageName, version: source.version, main: source.main,
+      dsh: { bundle: { patch: './cordis.patch.yml' } }, dependencies: source.dependencies,
+    }))
+    writeFileSync(join(prepared, source.main), 'export {}\n')
+    writeFileSync(join(prepared, 'lib/client.js'), 'export {}\n')
+    writeFileSync(join(prepared, 'cordis.patch.yml'), '- insert: []\n')
+    for (const name of Object.keys(source.dependencies ?? {})) {
+      const dependency = join(prepared, 'node_modules', name)
+      mkdirSync(dependency, { recursive: true })
+      writeFileSync(join(dependency, 'package.json'), JSON.stringify({ name, version: name === '@deepseek-ai/schemastery' ? '3.18.4' : '1.0.0' }))
+    }
+  }
   for (const path of [storeRoot, toolchainRoot, harborRoot, join(nodeRoot, 'bin')]) mkdirSync(path, { recursive: true })
   writeFileSync(join(harnessRoot, '.bundle-manifest.json'), JSON.stringify({ harnessVersion: '0.2.0-rc.7' }))
   writeFileSync(join(harnessRoot, 'entry.mjs'), 'export {}\n')
   writeFileSync(join(harnessRoot, 'entry.mjs.map'), '{}\n')
   writeFileSync(join(storeRoot, 'index.json'), '{}\n')
   writeFileSync(join(toolchainRoot, 'manifest.json'), JSON.stringify({ nodeVersion: '22.19.0', pnpmVersion: '11.7.1' }))
-  writeFileSync(join(harborRoot, 'manifest.json'), JSON.stringify({ integrationVersion: '0.4.2' }))
+  const harborVersion = versions[CAPABILITY_COMPONENTS.findIndex(({ key }) => key === 'harborPlugin')]
+  writeFileSync(join(harborRoot, 'manifest.json'), JSON.stringify({ integrationVersion: harborVersion }))
   writeFileSync(join(nodeRoot, 'bin', 'node'), 'node fixture\n')
   const sourceArchive = join(toolchainRoot, 'node-v22.19.0-darwin-arm64.tar.gz')
   const packed = childProcess.spawnSync('tar', ['-czf', sourceArchive, '-C', root, 'node-v22.19.0-darwin-arm64'])
@@ -100,15 +111,16 @@ test('builds core, fallback and on-demand components from bundled versions and a
   const { manifest, manifestPath } = buildBootstrapComponents({ version: '0.4.9', outputRoot, bundledRoot })
   assert.deepEqual(JSON.parse(readFileSync(manifestPath, 'utf8')), manifest)
   assert.equal(manifest.schemaVersion, 2)
-  assert.deepEqual(Object.keys(manifest.components), ['harness', 'pnpmStore', 'node', 'harbor', 'pomodoro'])
+  assert.deepEqual(Object.keys(manifest.components), ['harness', 'pnpmStore', 'node', 'harbor', ...CAPABILITY_COMPONENTS.map(({ key }) => key)])
   assert.deepEqual(Object.values(manifest.components).map(({ kind }) => kind), [
-    'core-runtime', 'runtime-fallback', 'runtime-fallback', 'capability-on-demand', 'capability-on-demand',
+    'core-runtime', 'runtime-fallback', 'runtime-fallback', 'capability-on-demand', ...CAPABILITY_COMPONENTS.map(() => 'capability-on-demand'),
   ])
   assert.deepEqual(Object.values(manifest.components).map(({ version }) => version), [
-    '0.2.0-rc.7', '11.7.1', '22.19.0', '0.4.2', '0.5.5',
+    '0.2.0-rc.7', '11.7.1', '22.19.0', harborVersion, ...versions,
   ])
   assert.deepEqual(Object.values(manifest.components).map(({ dependsOn }) => dependsOn), [
-    {}, {}, {}, { harness: manifest.components.harness.id }, { harness: manifest.components.harness.id },
+    {}, {}, {}, { harness: manifest.components.harness.id },
+    ...CAPABILITY_COMPONENTS.map(({ requires = [] }) => Object.fromEntries(['harness', ...requires].map(key => [key, manifest.components[key].id]))),
   ])
   for (const component of Object.values(manifest.components)) {
     const archive = join(outputRoot, component.archive)
@@ -116,12 +128,12 @@ test('builds core, fallback and on-demand components from bundled versions and a
     assert.equal(component.sha256, createHash('sha256').update(readFileSync(archive)).digest('hex'))
     assert.equal(Object.hasOwn(component, 'activation'), false)
   }
-  const extracted = join(root, 'extracted-pomodoro')
+  const extracted = join(root, 'extracted-harbor-plugin')
   mkdirSync(extracted)
-  const unpacked = childProcess.spawnSync('tar', ['-xf', join(outputRoot, manifest.components.pomodoro.archive), '-C', extracted])
+  const unpacked = childProcess.spawnSync('tar', ['-xf', join(outputRoot, manifest.components.harborPlugin.archive), '-C', extracted])
   assert.equal(unpacked.status, 0, unpacked.stderr?.toString())
-  assert.equal(JSON.parse(readFileSync(join(extracted, 'package.json'))).name, '@xiaohui-wang/dsh-pomodoro')
-  assert.equal(JSON.parse(readFileSync(join(extracted, 'node_modules', '@deepseek-ai', 'schemastery', 'package.json'))).version, '3.18.4')
+  assert.equal(JSON.parse(readFileSync(join(extracted, 'package.json'))).name, 'dsh-harbor-evolution')
+  assert.equal(JSON.parse(readFileSync(join(extracted, 'node_modules', '@deepseek-ai/schemastery', 'package.json'))).version, '3.18.4')
   const harnessListing = childProcess.spawnSync('tar', ['-tf', join(outputRoot, manifest.components.harness.archive)], { encoding: 'utf8' })
   assert.equal(harnessListing.status, 0, harnessListing.stderr)
   assert.match(harnessListing.stdout, /entry\.mjs/)
@@ -141,7 +153,7 @@ test('builds core, fallback and on-demand components from bundled versions and a
     assert.equal(sha256, createHash('sha256').update(readFileSync(path)).digest('hex'))
   }
 
-  await t.test('the macOS workflow seeds every real component archive, including Pomodoro and fallbacks', {
+  await t.test('the macOS workflow seeds every real component archive, including Harbor Node, Python and fallbacks', {
     skip: process.platform === 'win32' ? 'the release seed step executes under the macOS POSIX shell' : false,
   }, () => {
     const workflow = load(readFileSync(new URL('../../../.github/workflows/desktop-release.yml', import.meta.url), 'utf8'))
@@ -163,9 +175,12 @@ test('builds core, fallback and on-demand components from bundled versions and a
   const priorArchives = Object.fromEntries(Object.values(manifest.components).map(({ archive }) => [
     archive, createHash('sha256').update(readFileSync(join(outputRoot, archive))).digest('hex'),
   ]))
-  rmSync(join(pomodoroRoot, 'node_modules'), { recursive: true })
+  writeFileSync(join(harborRoot, 'manifest.json'), JSON.stringify({ integrationVersion: '0.0.0' }))
+  assert.throws(() => buildBootstrapComponents({ version: '0.4.9', outputRoot, bundledRoot }), /Harbor Node and Python capability versions differ/)
+  writeFileSync(join(harborRoot, 'manifest.json'), JSON.stringify({ integrationVersion: harborVersion }))
+  rmSync(join(harborPluginRoot, 'node_modules'), { recursive: true })
   assert.throws(() => buildBootstrapComponents({ version: '0.4.9', outputRoot, bundledRoot }), /capability dependency is missing/)
-  rmSync(pomodoroRoot, { recursive: true })
+  rmSync(harborPluginRoot, { recursive: true })
   assert.throws(() => buildBootstrapComponents({ version: '0.4.9', outputRoot, bundledRoot }), /ENOENT/)
   assert.equal(readFileSync(manifestPath, 'utf8'), priorManifest)
   for (const [archive, sha256] of Object.entries(priorArchives)) {

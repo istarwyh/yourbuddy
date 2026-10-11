@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
@@ -8,6 +9,12 @@ import test from 'node:test'
 
 import {
   PRODUCT_CLIENT_IDS,
+  CORE_PRODUCT_CLIENT_IDS,
+  RELEASE_CAPABILITIES,
+  assertCoreProductComposition,
+  assertHarborPythonReady,
+  buildCapabilityPeerProbe,
+  readReleaseCapabilities,
   authenticateHost,
   assertCleanChildExit,
   assertCodexAuthStatusProbe,
@@ -20,6 +27,7 @@ import {
   recordProductClientResponse,
   resolveSettingsConfig,
   stopChild,
+  verifyPreparedProduct,
 } from './verify-product-release.mjs'
 
 test('installed peer verification follows Node resolution without a plugin-local link', () => {
@@ -358,7 +366,7 @@ test('Host teardown records timeout and SIGKILL independently', async () => {
 })
 
 test('assembled Client boot requires every product response, mounted UI, and quiet runtime', () => {
-  const clientResponses = Object.fromEntries(PRODUCT_CLIENT_IDS.map(id => [id, 200]))
+  const clientResponses = Object.fromEntries([...PRODUCT_CLIENT_IDS, '@deepseek-ai/dsh-client-ui-sidebar-browser', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview'].map(id => [id, 200]))
   const clean = {
     clientResponses,
     pageErrors: [],
@@ -388,7 +396,7 @@ test('release smoke observes product Clients inside a DSH combo response', () =>
   const responses = {}
   recordProductClientResponse(
     responses,
-    'http://127.0.0.1:3080/plugins/??yourharness-release-codex-auth/client.js,yourharness-release-context-doctor/client.js&rev=abc123',
+    'http://127.0.0.1:3080/plugins/??llm-codex-auth/client.js,context-doctor/client.js&rev=abc123',
     200,
   )
   assert.deepEqual(responses, {
@@ -403,36 +411,135 @@ test('release smoke observes product Clients inside a DSH combo response', () =>
   )
   recordProductClientResponse(
     responses,
-    'http://127.0.0.1:3080/plugins/yourbuddy-release-ego-browser/client.js?rev=browser',
+    'http://127.0.0.1:3080/plugins/ego-browser/client.js?rev=browser',
     200,
   )
   assert.equal(responses['dsh-harbor-evolution'], 503)
   assert.equal(responses['dsh-ego-browser'], 200)
 })
 
-test('product smoke overlay mounts the product defaults and plugins', () => {
-  const overlay = buildProductSmokeOverlay('/tmp/workspace', '/tmp/runtime', '/tmp/proxy-verifier.mjs')
-  assert.match(overlay, /id: sandbox-policy\n  config:\n    mode: danger-full-access\n    workspaceRoot: !!js process\.cwd\(\)/)
-  assert.match(overlay, /id: approval\n  config:\n    policy: never/)
-  assert.match(overlay, /id: yourbuddy-release-plugin-marketplace/)
-  assert.match(overlay, /name: dsh-plugin-marketplace/)
-  assert.match(overlay, /id: yourbuddy-release-ego-browser/)
-  assert.match(overlay, /name: dsh-ego-browser/)
-  assert.match(overlay, /id: yourbuddy-release-pomodoro/)
-  assert.match(overlay, /name: '@xiaohui-wang\/dsh-pomodoro'/)
-  assert.match(overlay, /id: yourbuddy-release-oil-creator/)
-  assert.match(overlay, /name: dsh-oil-creator/)
-  assert.match(overlay, /id: better-sidebar/)
-  assert.match(overlay, /e\.options\.id !== 'better-sidebar' && !e\.disabled/)
-  assert.match(overlay, /id: yourbuddy-release-codex-search/)
-  assert.match(overlay, /id: yourbuddy-release-codex-image/)
-  assert.match(overlay, /id: yourbuddy-release-subagent-codex/)
-  assert.match(overlay, /name: '@deepseek-ai\/dsh-subagent-codex'/)
-  assert.match(overlay, /id: agent-preset-registry\n  config:\n    default: codex/)
-  assert.match(overlay, /id: tool-skill\n  config:\n    modelExcludedSkills:\n      - codexhost-delegation/)
-  assert.doesNotMatch(overlay, /id: ui-sidebar\n  disabled: true/)
-  assert.match(overlay, /id: yourbuddy-release-proxy-verifier/)
-  assert.match(overlay, /name: "\/tmp\/proxy-verifier\.mjs"/)
+test('smoke diagnostics never inject product rows or change shipped defaults', () => {
+  const core = buildProductSmokeOverlay('/tmp/workspace', '/tmp/runtime', '/tmp/proxy-verifier.mjs')
+  assert.match(core, /id: yourbuddy-release-proxy-verifier/u)
+  assert.doesNotMatch(core, /sandbox-policy|approval|agent-preset-registry|tool-skill|better-sidebar|harbor-evolution/u)
+  for (const name of PRODUCT_CLIENT_IDS) assert.ok(!core.includes(`name: ${name}`))
+  const installed = buildProductSmokeOverlay('/tmp/workspace', '/tmp/runtime', '/tmp/proxy-verifier.mjs', 'installed')
+  assert.match(installed, /id: harbor-evolution/u)
+  assert.match(installed, /harborBin: "\/tmp\/runtime\/venv\/bin\/harbor"/u)
+  assert.doesNotMatch(installed, /name: dsh-harbor-evolution|default: codex|preset-creator/u)
+})
+
+test('core requires all eight default Clients and both lightweight services, and rejects optional Clients', () => {
+  const clientResponses = Object.fromEntries([
+    ...CORE_PRODUCT_CLIENT_IDS, '@deepseek-ai/dsh-client-ui-sidebar-browser', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview',
+  ].map(id => [id, 200]))
+  const result = { clientResponses, frameCount: 1, bootFailureCount: 0, pageErrors: [], consoleErrors: [] }
+  assert.doesNotThrow(() => assertProductClientBoot(result, 'core'))
+  for (const name of Object.keys(clientResponses)) {
+    const missing = { ...clientResponses }
+    delete missing[name]
+    assert.throws(() => assertProductClientBoot({ ...result, clientResponses: missing }, 'core'), /Client bundle was not requested/u)
+  }
+  assert.throws(() => assertProductClientBoot({ ...result, clientResponses: { ...clientResponses, 'dsh-harbor-evolution': 200 } }, 'core'), /optional Client was requested by core/u)
+  assert.throws(() => assertProductClientBoot(result, 'installed'), /dsh-harbor-evolution Client bundle was not requested/u)
+})
+
+test('prepared core inventory rejects a missing core package and an included optional package', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-core-roster-'))
+  try {
+    for (const name of CORE_PRODUCT_CLIENT_IDS) {
+      const dir = join(root, 'packages', 'product', name.replaceAll('/', '-'))
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(join(dir, 'package.json'), JSON.stringify({ name }))
+    }
+    assert.doesNotThrow(() => assertCoreProductComposition(root))
+    const extra = join(root, 'packages', 'product', 'extra')
+    mkdirSync(extra)
+    writeFileSync(join(extra, 'package.json'), JSON.stringify({ name: 'dsh-harbor-evolution' }))
+    assert.throws(() => assertCoreProductComposition(root), /core product package roster differs/u)
+    rmSync(extra, { recursive: true })
+    rmSync(join(root, 'packages', 'product', CORE_PRODUCT_CLIENT_IDS[0]), { recursive: true })
+    assert.throws(() => assertCoreProductComposition(root), /core product package roster differs/u)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('the optional Harbor input must carry its Python prerequisite, actual entries and ordinary dependencies', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-release-inputs-'))
+  try {
+    const entries = RELEASE_CAPABILITIES.map(entry => {
+      const dir = join(root, entry.key)
+      mkdirSync(join(dir, 'lib'), { recursive: true })
+      writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: entry.packageName, version: '1.0.0', main: 'index.js', dsh: { bundle: { patch: 'cordis.patch.yml' } }, dependencies: { ordinary: '1.0.0' } }))
+      for (const name of ['index.js', 'lib/client.js', 'cordis.patch.yml']) writeFileSync(join(dir, name), '')
+      mkdirSync(join(dir, 'node_modules', 'ordinary'), { recursive: true })
+      writeFileSync(join(dir, 'node_modules', 'ordinary', 'package.json'), '{"name":"ordinary","version":"1.0.0"}')
+      return { ...entry, root: dir, version: '1.0.0' }
+    })
+    assert.deepEqual(readReleaseCapabilities(entries), entries)
+    assert.throws(() => readReleaseCapabilities(entries.slice(1)), /prepared Harbor capability/u)
+    assert.throws(() => readReleaseCapabilities(entries.map(entry => entry.key === 'harborPlugin' ? { ...entry, requires: [] } : entry)), /descriptor differs/u)
+    rmSync(join(entries[0].root, 'lib', 'client.js'))
+    assert.throws(() => readReleaseCapabilities(entries), /entry is missing/u)
+    writeFileSync(join(entries[0].root, 'lib', 'client.js'), '')
+    rmSync(join(entries[0].root, 'node_modules', 'ordinary'), { recursive: true })
+    assert.throws(() => readReleaseCapabilities(entries), /dependency is missing/u)
+    mkdirSync(join(entries[0].root, 'node_modules', 'ordinary'))
+    writeFileSync(join(entries[0].root, 'node_modules', 'ordinary', 'package.json'), '{"name":"@deepseek-ai/cordis"}')
+    assert.throws(() => readReleaseCapabilities(entries), /private core peer/u)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('the executable Profile peer diagnostic rejects duplicate peers and absent ordinary dependencies', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-runtime-peer-probe-'))
+  try {
+    const core = join(root, 'packages', 'runtime', 'peer')
+    const capability = join(root, 'capability')
+    const duplicate = join(root, 'duplicate')
+    for (const dir of [core, duplicate, capability]) mkdirSync(dir, { recursive: true })
+    for (const dir of [core, duplicate]) {
+      writeFileSync(join(dir, 'package.json'), '{"name":"@deepseek-ai/dsh-probe","version":"1.0.0","main":"index.js"}')
+      writeFileSync(join(dir, 'index.js'), 'module.exports = {}')
+    }
+    const ordinary = join(capability, 'node_modules', 'ordinary')
+    mkdirSync(ordinary, { recursive: true })
+    writeFileSync(join(ordinary, 'package.json'), '{"name":"ordinary","version":"1.0.0","main":"index.js"}')
+    writeFileSync(join(ordinary, 'index.js'), 'module.exports = {}')
+    writeFileSync(join(capability, 'package.json'), JSON.stringify({ name: 'capability', peerDependencies: { '@deepseek-ai/dsh-probe': '1.0.0' }, dependencies: { ordinary: '1.0.0' } }))
+    mkdirSync(join(capability, 'node_modules', '@deepseek-ai'))
+    const peerLink = join(capability, 'node_modules', '@deepseek-ai', 'dsh-probe')
+    symlinkSync(core, peerLink, 'junction')
+    const probe = join(root, 'probe.mjs')
+    writeFileSync(probe, `import { createRequire } from 'node:module'\nconst require = createRequire(import.meta.url)\n${buildCapabilityPeerProbe(root, [{ root: capability, packageName: 'capability', key: 'probe' }])}\nverifyCapabilityPeers()\n`)
+    const execute = () => {
+      const result = spawnSync(process.execPath, [probe], { cwd: root, encoding: 'utf8', env: createReleaseChildEnvironment(root, root), timeout: 10_000 })
+      assert.equal(result.error, undefined)
+      assert.equal(result.signal, null)
+      return result
+    }
+    const positive = execute()
+    assert.equal(positive.status, 0, positive.stderr)
+    assert.match(positive.stdout, /capability peer links=1/u)
+    rmSync(peerLink)
+    symlinkSync(duplicate, peerLink, 'junction')
+    const duplicateResult = execute()
+    assert.equal(duplicateResult.status, 1)
+    assert.match(duplicateResult.stderr, /installed a second @deepseek-ai\/dsh-probe/u)
+    rmSync(peerLink)
+    symlinkSync(core, peerLink, 'junction')
+    rmSync(ordinary, { recursive: true })
+    const missing = execute()
+    assert.equal(missing.status, 1)
+    assert.match(missing.stderr, /did not resolve bundled peer ordinary/u)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('Harbor readiness refuses metadata alone without the real Python interpreter', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-harbor-readiness-'))
+  try {
+    writeFileSync(join(root, 'manifest.json'), JSON.stringify({ integrationVersion: '1.0.0', platform: process.platform, arch: process.arch }))
+    assert.throws(() => assertHarborPythonReady(root, '2.0.0', root, {}), /does not match/u)
+    assert.throws(() => assertHarborPythonReady(root, '1.0.0', root, {}), /ENOENT/u)
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
 test('Plugin Marketplace displays its packaged version in Settings', () => {
@@ -443,4 +550,17 @@ test('Plugin Marketplace displays its packaged version in Settings', () => {
   assert.match(client, new RegExp(`var PLUGIN_VERSION = ${JSON.stringify(manifest.version)};`))
   assert.match(client, /className: "__mp_identityName" }, "dsh-plugin-marketplace"/)
   assert.match(client, /className: "__mp_identityVersion" }, "v" \+ PLUGIN_VERSION/)
+})
+
+
+test('rejecting an unprepared input never removes its existing dependency tree', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-release-unprepared-'))
+  try {
+    mkdirSync(join(root, 'node_modules'))
+    writeFileSync(join(root, 'node_modules', 'keep'), 'existing checkout dependency')
+    const overlay = join(root, 'native.overlay.yml')
+    writeFileSync(overlay, '[]\n')
+    await assert.rejects(verifyPreparedProduct(root, root, { desktopOverlayPath: overlay }), /bundle-manifest/u)
+    assert.equal(readFileSync(join(root, 'node_modules', 'keep'), 'utf8'), 'existing checkout dependency')
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })

@@ -111,8 +111,9 @@ it('passes a managed rollback package to the operation owner without forwarding 
   expect(runPluginCommand).toHaveBeenCalledWith(
     expect.objectContaining({ profile: 'test' }),
     ['add', 'link:/components/plugin'],
-    expect.objectContaining({ rollbackPackage: '@example/plugin', execution: 'service', rollbackExpected: { dependency: null, link: null }, idleTimeoutMs: 120000, signal: expect.any(AbortSignal) }),
+    expect.objectContaining({ rollbackPackage: '@example/plugin', execution: 'service', rollbackExpected: { dependency: null, link: null }, idleTimeoutMs: 120000 }),
   )
+  expect(vi.mocked(runPluginCommand).mock.calls[0]?.[2]?.signal).toBeInstanceOf(AbortSignal)
   expect(args).toEqual(['--rollback-package=@example/plugin', '--rollback-expected={"dependency":null,"link":null}', 'add', 'link:/components/plugin'])
 })
 

@@ -9,7 +9,7 @@ import test from 'node:test'
 import { dump, load } from 'js-yaml'
 import { hashTree } from './prepare-harness-offline-store.mjs'
 import { buildTrimmedWorkspaceYaml } from './bundle-harness-source.mjs'
-import { assertPreparedCapability, capabilityLock, prepareCapabilityComponents } from './prepare-capability-components.mjs'
+import { assertPreparedCapability, capabilityLock, prepareCapabilityComponents, readPreparedCapabilities } from './prepare-capability-components.mjs'
 
 const desktopRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repoRoot = resolve(desktopRoot, '../..')
@@ -25,7 +25,7 @@ const writeJson = (path, value) => {
 test('projects the frozen capability lock without changing registry versions or integrity', () => {
   const lock = load(readFileSync(join(desktopRoot, 'product/harness-pnpm-lock.yaml'), 'utf8'))
   const original = structuredClone(lock)
-  const projected = capabilityLock(lock, ['vendor/schemastery', 'vendor/cosmokit'], 'packages/capabilities/pomodoro', {
+  const projected = capabilityLock(lock, ['vendor/schemastery', 'vendor/cosmokit'], 'packages/capabilities/harborPlugin', {
     '@deepseek-ai/schemastery': 'link:../../../vendor/schemastery',
   })
   assert.deepEqual(lock, original)
@@ -33,10 +33,10 @@ test('projects the frozen capability lock without changing registry versions or 
   assert.deepEqual(projected.snapshots, lock.snapshots)
   assert.deepEqual(projected.importers['vendor/schemastery'], lock.importers['vendor/schemastery'])
   assert.equal(projected.settings.autoInstallPeers, false)
-  assert.deepEqual(Object.keys(projected.importers), ['.', 'vendor/schemastery', 'vendor/cosmokit', 'packages/capabilities/pomodoro'])
+  assert.deepEqual(Object.keys(projected.importers), ['.', 'vendor/schemastery', 'vendor/cosmokit', 'packages/capabilities/harborPlugin'])
   assert.throws(() => capabilityLock(lock, ['vendor/missing'], 'capability', {}), /missing workspace/)
-  assert.equal(lock.importers['apps/cli'].dependencies['@xiaohui-wang/dsh-pomodoro'], undefined)
-  assert.equal(lock.importers['packages/product/pomodoro'], undefined)
+  assert.equal(lock.importers['apps/cli'].dependencies['@xiaohui-wang/dsh-pomodoro'].specifier, 'workspace:*')
+  assert.equal(lock.importers['packages/product/harbor-evolution'], undefined)
   assert.equal(lock.importers['apps/cli'].dependencies['@deepseek-ai/dsh-subagent-codex'].specifier, 'workspace:*')
 })
 
@@ -56,7 +56,7 @@ test('rejects absent ordinary dependencies and a bundled second Cordis', t => {
   t.after(() => rmSync(root, { recursive: true, force: true }))
   preparedFixture(root)
   assert.equal(assertPreparedCapability(root).name, 'capability')
-  writeJson(join(root, 'node_modules', '@deepseek-ai', 'cordis', 'package.json'), { name: '@deepseek-ai/cordis' })
+  writeJson(join(root, 'node_modules', '@deepseek-ai/cordis', 'package.json'), { name: '@deepseek-ai/cordis' })
   assert.throws(() => assertPreparedCapability(root), /must use the core peer/)
   rmSync(join(root, 'node_modules', '@deepseek-ai'), { recursive: true })
   rmSync(join(root, 'node_modules', 'ordinary'), { recursive: true })
@@ -75,7 +75,7 @@ function coreFixture(root) {
       recursive: true, filter: path => !path.split(/[\\/]/).includes('node_modules'),
     })
   }
-  for (const directory of ['vendor/cordis', 'packages/settings/settings']) {
+  for (const directory of ['packages/skill/skill', 'packages/core/tools']) {
     writeJson(join(harnessRoot, directory, 'package.json'), readJson(join(repoRoot, directory, 'package.json')))
   }
   return harnessRoot
@@ -114,30 +114,26 @@ const resolution = await createRuntimeResolution({ installAnchor: anchor, profil
 assert.equal(resolution.linkedRoots.length, enabled ? 1 : 0);
 const config = join(profileRoot, 'base.yml');
 writeFileSync(config, '[]\n');
-let route;
-const ctx = await boot('capability-smoke', config, profile.layers.flatMap(layer => layer.patches), async ctx => {
+const ctx = await boot('capability-smoke', config, [], async ctx => {
   await ctx.plugin(PluginPackages, { resolution });
-  ctx.provide('connection', { fetch: { register(value) { route = value; return () => { route = undefined; }; } } });
 });
 try {
-  if (mode === 'missing-ordinary') await import(pathToFileURL(join(capability, manifest.main)));
-  const entry = [...ctx.loader.entries()].find(entry => entry.options.id === 'dsh-pomodoro');
   if (enabled) {
-    assert.equal(entry?.fiber?.state, 2);
-    assert.equal(route.path, '/api/pomodoro/config');
-    const response = await route.fetch();
-    assert.equal((await response.json()).value.focusMinutes, 25);
+    const plugin = await import(pathToFileURL(join(capability, manifest.main)));
+    assert.equal(typeof plugin.apply, 'function');
     const require = createRequire(join(capability, 'package.json'));
-    assert.equal(realpathSync(require.resolve('@deepseek-ai/cordis')), realpathSync(join(builtRoot, 'vendor/cordis/lib/index.js')));
+    for (const peer of Object.keys(manifest.peerDependencies)) {
+      const core = resolution.entries.find(entry => entry.name === peer);
+      assert.ok(core, 'missing core peer ' + peer);
+      assert.ok(realpathSync(require.resolve(peer)).startsWith(realpathSync(core.packageDir)));
+    }
     assert.ok(require.resolve('@deepseek-ai/schemastery').startsWith(join(capability, 'node_modules')));
   } else {
-    assert.equal(entry, undefined);
-    assert.equal(route, undefined);
+    assert.equal(resolution.linkedRoots.length, 0);
   }
 } finally {
   await ctx.fiber.dispose();
 }
-assert.equal(route, undefined);
 `
 
 function runSmoke(root, capability, mode) {
@@ -165,26 +161,33 @@ test('materializes the frozen package and loads its built entry through out-of-t
   const options = { harnessRoot, outputRoot: join(root, 'capabilities'), storeRoot: process.env.YOURBUDDY_CAPABILITY_TEST_STORE ?? join(root, 'store'), offline: Boolean(process.env.YOURBUDDY_CAPABILITY_TEST_STORE) }
   const [entry] = prepareCapabilityComponents(options)
   const manifest = assertPreparedCapability(entry.root)
-  assert.equal(manifest.version, '0.5.5')
-  assert.equal(manifest.peerDependencies['@deepseek-ai/cordis'], readJson(join(repoRoot, 'vendor/cordis/package.json')).version)
-  assert.equal(manifest.peerDependencies['@deepseek-ai/dsh-settings'], readJson(join(repoRoot, 'packages/settings/settings/package.json')).version)
+  assert.equal(manifest.version, '0.10.3')
+  assert.equal(manifest.peerDependencies['@deepseek-ai/dsh-tools'], readJson(join(repoRoot, 'packages/core/tools/package.json')).version)
   assert.ok(existsSync(join(entry.root, 'node_modules/@deepseek-ai/schemastery/lib/index.mjs')))
   assert.equal(readJson(join(entry.root, 'node_modules/@deepseek-ai/schemastery/node_modules/@standard-schema/spec/package.json')).version, '1.1.0')
   assert.equal(existsSync(join(entry.root, 'node_modules/@deepseek-ai/cordis')), false)
   assert.deepEqual(readFileSync(join(harnessRoot, 'pnpm-lock.yaml')), originalLock)
-  assert.equal(existsSync(join(harnessRoot, 'packages/product/pomodoro')), false)
-  const archive = join(root, 'pomodoro.tar.zst')
+  assert.equal(existsSync(join(harnessRoot, 'packages/product/harbor-evolution')), false)
+  const archive = join(root, 'harbor-plugin.tar.zst')
   assertSmoke(spawnSync('tar', ['-acf', archive, '-C', entry.root, '.'], { encoding: 'utf8', timeout: 30_000 }))
   const extracted = join(root, 'extracted')
   mkdirSync(extracted)
   assertSmoke(spawnSync('tar', ['-xf', archive, '-C', extracted], { encoding: 'utf8', timeout: 30_000 }))
   assert.deepEqual(assertPreparedCapability(extracted), manifest)
+  assert.deepEqual(readPreparedCapabilities(options.outputRoot).map(({ key, requires }) => ({ key, requires })), [
+    { key: 'harborPlugin', requires: ['harbor'] },
+  ])
+  assert.ok(readFileSync(join(extracted, 'skills/evolve-agent-with-harbor/SKILL.md'), 'utf8').length > 0)
+  assert.equal(readJson(join(extracted, 'schemas/meta-evaluation-report.schema.json')).title, 'Evaluator Meta-Evaluation Report v1')
+  assertSmoke(spawnSync(process.execPath, [join(extracted, 'bin/dsh-harbor.mjs'), 'setup', '--help'], {
+    encoding: 'utf8', timeout: 30_000, env: { PATH: process.env.PATH, HOME: root },
+  }))
   assertSmoke(runSmoke(root, extracted, 'active'))
   assertSmoke(runSmoke(root, entry.root, 'core-only'))
 
   const badPeer = join(root, 'bad-peer')
   cpSync(entry.root, badPeer, { recursive: true })
-  writeJson(join(badPeer, 'package.json'), { ...manifest, peerDependencies: { ...manifest.peerDependencies, '@deepseek-ai/dsh-settings': '0.0.0' } })
+  writeJson(join(badPeer, 'package.json'), { ...manifest, peerDependencies: { ...manifest.peerDependencies, '@deepseek-ai/dsh-tools': '0.0.0' } })
   assertSmoke(runSmoke(root, badPeer, 'wrong-peer'))
 
   const missingDependency = join(root, 'missing-dependency')
@@ -243,8 +246,8 @@ test('materializes the frozen package and loads its built entry through out-of-t
   writeFileSync(dependencyScriptPath, `require('node:fs').writeFileSync(${JSON.stringify(dependencySentinel)}, 'ran')\n`)
   const dependencyLifecycle = `"${process.execPath}" "${dependencyScriptPath}"`
   const scriptedProductRoot = join(root, 'scripted-product')
-  const scriptedProduct = join(scriptedProductRoot, 'pomodoro')
-  cpSync(join(desktopRoot, 'product/pomodoro'), scriptedProduct, { recursive: true })
+  const scriptedProduct = join(scriptedProductRoot, 'harbor-evolution')
+  cpSync(join(desktopRoot, 'product/harbor-evolution'), scriptedProduct, { recursive: true })
   rmSync(join(scriptedProduct, 'YOURBUDDY_UPSTREAM.json'))
   const scriptedManifest = { ...readJson(join(scriptedProduct, 'package.json')), scripts: { prepack: lifecycle, prepare: lifecycle } }
   writeJson(join(scriptedProduct, 'package.json'), scriptedManifest)

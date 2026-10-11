@@ -11,7 +11,7 @@ function fixture(invoke = async () => ({ restartRequired: true })) {
   const window = { __DSH_WEB_URL__: 'http://127.0.0.1:19387/', __TAURI__: { core: { invoke } }, addEventListener: (type, handler) => { if (type === 'message') window.message = handler } }
   Function('document', 'window', 'URL', source)({ getElementById: () => frame }, window, URL)
   const send = async (fields = {}, origin = 'http://127.0.0.1:19387', sender = frame.contentWindow) => {
-    await window.message({ origin, source: sender, data: { channel: 'yourbuddy.desktop.components', version: 1, type: 'install-request', requestId: 'install_1', ...(['get-request', 'ready-request'].includes(fields.type) ? {} : { component: 'pomodoro' }), ...fields } })
+    await window.message({ origin, source: sender, data: { channel: 'yourbuddy.desktop.components', version: 1, type: 'install-request', requestId: 'install_1', ...(['get-request', 'ready-request', 'cache-preview-request', 'cache-clean-request'].includes(fields.type) ? {} : { component: fields.type === 'invocation-request' ? 'pomodoro' : 'harborPlugin' }), ...fields } })
     await Promise.resolve()
     await Promise.resolve()
   }
@@ -33,13 +33,13 @@ test('component shell forwards only fixed gateway commands and exact catalog arg
   const value = fixture(async (...args) => { calls.push(args); return { restartRequired: true } })
   await value.send()
   await value.send()
-  assert.deepEqual(calls, [['run_first_party_command', { command: 'install_component', payload: { component: 'pomodoro' } }]])
+  assert.deepEqual(calls, [['run_first_party_command', { command: 'install_component', payload: { component: 'harborPlugin' } }]])
   assert.equal(value.replies[0].data.type, 'install-accepted')
   assert.equal(value.replies[1].data.type, 'install-response')
   assert.equal(value.replies[1].origin, 'http://127.0.0.1:19387')
   assert.equal(value.replies[1].data.requestId, 'install_1')
   await value.send({ type: 'plan-request', requestId: 'plan_1' })
-  assert.deepEqual(calls[1], ['run_first_party_command', { command: 'plan_component_install', payload: { component: 'pomodoro' } }])
+  assert.deepEqual(calls[1], ['run_first_party_command', { command: 'plan_component_install', payload: { component: 'harborPlugin' } }])
   await value.send({ type: 'get-request', requestId: 'get_1' })
   assert.deepEqual(calls[2], ['run_first_party_command', { command: 'get_component_overview' }])
 })
@@ -57,7 +57,7 @@ test('runtime report carries the generation token and never accepts arbitrary st
   const calls = []
   const value = fixture(async (...args) => { calls.push(args); return { restartRequired: false } })
   await value.send({ type: 'report-request', requestId: 'report_1', runtimeToken: 'generation_install_1', state: 'active' })
-  assert.deepEqual(calls, [['run_first_party_command', { command: 'report_component_runtime', payload: { component: 'pomodoro', state: 'active', runtimeToken: 'generation_install_1' } }]])
+  assert.deepEqual(calls, [['run_first_party_command', { command: 'report_component_runtime', payload: { component: 'harborPlugin', state: 'active', runtimeToken: 'generation_install_1' } }]])
   for (const change of [{ runtimeToken: '/tmp/token' }, { state: 'ready' }, { runtimeToken: '' }, { runtimeToken: 'x'.repeat(129) }]) await value.send({ type: 'report-request', requestId: 'report_bad', runtimeToken: 'epoch', state: 'active', ...change })
   assert.equal(calls.length, 1)
 })
@@ -85,8 +85,28 @@ test('local statistics commands admit only payload-free ready and fixed Pomodoro
   await value.send({ type: 'invocation-request', requestId: 'used_1', component: 'pomodoro', runtimeToken: 'epoch', succeeded: false })
   assert.deepEqual(calls[1], ['run_first_party_command', { command: 'report_component_invocation', payload: { component: 'pomodoro', runtimeToken: 'epoch', succeeded: false } }])
   await value.send({ type: 'ready-request', requestId: 'bad_ready', payload: {} })
-  for (const change of [{ component: 'harbor' }, { succeeded: 'true' }, { runtimeToken: '../epoch' }, { task: 'not allowed' }]) await value.send({ type: 'invocation-request', requestId: 'bad_usage', runtimeToken: 'epoch', succeeded: true, ...change })
+  for (const change of [{ component: 'harbor' }, { component: 'harness' }, { source: 'pomodoro' }, { succeeded: 'true' }, { runtimeToken: '../epoch' }, { task: 'not allowed' }]) await value.send({ type: 'invocation-request', requestId: 'bad_usage', runtimeToken: 'epoch', succeeded: true, ...change })
   await value.send({ type: 'ready-request', requestId: 'wrong_origin' }, 'http://127.0.0.1:1234')
   await value.send({ type: 'invocation-request', requestId: 'wrong_frame', runtimeToken: 'epoch', succeeded: true }, 'http://127.0.0.1:19387', {})
   assert.equal(calls.length, 2)
+})
+
+
+test('cache cleanup admits only a payload-free preview and a dedicated opaque confirmation token', async () => {
+  const calls = []
+  const value = fixture(async (...args) => { calls.push(args); return { deletedBytes: 0, deletedFiles: 0, failures: [], complete: true } })
+  await value.send({ type: 'cache-preview-request', requestId: 'cache_preview' })
+  assert.deepEqual(calls[0], ['run_first_party_command', { command: 'preview_component_cache_cleanup' }])
+  await value.send({ type: 'cache-clean-request', requestId: 'cache_clean', cleanupToken: 'cache_1' })
+  await value.send({ type: 'cache-clean-request', requestId: 'cache_clean', cleanupToken: 'cache_1' })
+  assert.deepEqual(calls[1], ['run_first_party_command', { command: 'clean_component_cache', payload: { cleanupToken: 'cache_1' } }])
+  for (const change of [{ component: 'harbor' }, { runtimeToken: 'cache_1' }, { path: '/cache' }, { command: 'remove' }, { cleanupToken: '../cache' }, { cleanupToken: '' }, { cleanupToken: 'x'.repeat(129) }]) {
+    await value.send({ type: 'cache-clean-request', requestId: 'invalid_cache', cleanupToken: 'cache_1', ...change })
+  }
+  await value.send({ type: 'cache-preview-request', requestId: 'invalid_preview', cleanupToken: 'cache_1' })
+  await value.send({ type: 'cache-clean-request', requestId: 'wrong_origin', cleanupToken: 'cache_1' }, 'http://127.0.0.1:1234')
+  await value.send({ type: 'cache-clean-request', requestId: 'wrong_frame', cleanupToken: 'cache_1' }, 'http://127.0.0.1:19387', {})
+  assert.equal(calls.length, 2)
+  assert.equal(value.replies[0].data.type, 'cache-preview-accepted')
+  assert.equal(value.replies[2].data.type, 'cache-clean-accepted')
 })

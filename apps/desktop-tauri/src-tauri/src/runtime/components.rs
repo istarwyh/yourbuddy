@@ -201,7 +201,7 @@ struct PartialMetadata {
 /// Legacy PID contents have no meaning; concurrently running legacy owners are unsupported.
 #[must_use = "dropping the component transaction lock ends the transaction"]
 #[derive(Debug)]
-struct ComponentLock {
+pub(super) struct ComponentLock {
     _file: File,
 }
 
@@ -857,7 +857,7 @@ impl ComponentManager {
             .map_err(|error| format!("cannot activate component state: {error}"))
     }
 
-    fn lock(&self) -> Result<ComponentLock, String> {
+    pub(super) fn lock(&self) -> Result<ComponentLock, String> {
         ComponentLock::acquire(self.root.join("component.lock"))
     }
 }
@@ -1180,10 +1180,15 @@ mod download_tests;
 #[cfg(test)]
 pub(super) fn service_fixture(root: &Path) -> ComponentManager {
     let mut manifest = tests::manifest();
-    let mut pomodoro = manifest.components["harbor"].clone();
-    pomodoro.id = "sha256:pomodoro-fixture".into();
-    pomodoro.archive = "yourbuddy-pomodoro-fixture.tar.zst".into();
-    manifest.components.insert("pomodoro".into(), pomodoro);
+    let mut harbor_plugin = manifest.components["harbor"].clone();
+    harbor_plugin.id = "sha256:harbor_plugin-fixture".into();
+    harbor_plugin.archive = "yourbuddy-harbor_plugin-fixture.tar.zst".into();
+    harbor_plugin
+        .depends_on
+        .insert("harbor".into(), manifest.components["harbor"].id.clone());
+    manifest
+        .components
+        .insert("harborPlugin".into(), harbor_plugin);
     ComponentManager {
         root: root.into(),
         resource_dir: root.join("resources"),

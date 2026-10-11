@@ -6,6 +6,7 @@ import test from 'node:test'
 import { load } from 'js-yaml'
 
 import { prepareDist } from './prepare-dist.mjs'
+import { CAPABILITY_COMPONENTS } from './prepare-capability-components.mjs'
 
 const workflow = load(readFileSync(new URL('../../../.github/workflows/desktop-release.yml', import.meta.url), 'utf8'))
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
@@ -18,16 +19,16 @@ const preparationScripts = [
 ]
 const preparationFiles = [
   { 'bundled/harness/.bundle-manifest.json': '{"harnessVersion":"0.2.0-rc.1"}' },
-  {
-    'bundled/capabilities/pomodoro/package.json': JSON.stringify({
-      name: '@xiaohui-wang/dsh-pomodoro', version: '0.5.5', main: 'lib/index.js',
+  Object.fromEntries(CAPABILITY_COMPONENTS.flatMap(({ key, packageName }) => Object.entries({
+    [`bundled/capabilities/${key}/package.json`]: JSON.stringify({
+      name: packageName, version: '1.0.0', main: 'lib/index.js',
       dsh: { bundle: { patch: './cordis.patch.yml' } }, dependencies: { ordinary: '1.0.0' },
     }),
-    'bundled/capabilities/pomodoro/lib/index.js': 'export {}\n',
-    'bundled/capabilities/pomodoro/lib/client.js': 'export {}\n',
-    'bundled/capabilities/pomodoro/cordis.patch.yml': '- insert: []\n',
-    'bundled/capabilities/pomodoro/node_modules/ordinary/package.json': '{"name":"ordinary","version":"1.0.0"}',
-  },
+    [`bundled/capabilities/${key}/lib/index.js`]: 'export {}\n',
+    [`bundled/capabilities/${key}/lib/client.js`]: 'export {}\n',
+    [`bundled/capabilities/${key}/cordis.patch.yml`]: '- insert: []\n',
+    [`bundled/capabilities/${key}/node_modules/ordinary/package.json`]: '{"name":"ordinary","version":"1.0.0"}',
+  }))),
   { 'bundled/harness/yourbuddy-pnpm-store.tar.gz': 'store control' },
   { 'bundled/toolchain/manifest.json': '{}', 'bundled/toolchain/pnpm-11.7.0.tgz': 'fixed pnpm control' },
   { 'bundled/yourbuddy-runtime/manifest.json': '{}' },
@@ -86,7 +87,7 @@ test('a failed capability producer stops before store, toolchain and channel wri
 
 for (const missing of ['package.json', 'lib/index.js', 'node_modules/ordinary/package.json']) {
   test(`a successful producer missing capability ${missing} cannot reach later preparation`, t => {
-    const root = fixture(t, { missing: `bundled/capabilities/pomodoro/${missing}` })
+    const root = fixture(t, { missing: `bundled/capabilities/harborPlugin/${missing}` })
     assert.throws(() => prepareDist(root), /ENOENT|capability (entry|dependency) is missing/)
     assert.deepEqual(stages(root), preparationScripts.slice(0, 2))
     assert.equal(existsSync(join(root, 'bundled/harness/yourbuddy-pnpm-store.tar.gz')), false)

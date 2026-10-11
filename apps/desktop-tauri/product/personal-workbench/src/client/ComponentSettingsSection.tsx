@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ComponentLocaleKey } from './component-locales.ts'
-import type { ComponentController, ComponentCounters, ComponentOverview, InstallPlan, MetricsSnapshot } from './component-model.ts'
+import type { CacheCleanupPreview, CacheCleanupResult, ComponentController, ComponentCounters, ComponentOverview, InstallPlan, MetricsSnapshot } from './component-model.ts'
 
 /** The desktop owner supplies native operations and the locale dictionary. */
 export interface ComponentSettingsSectionProps {
@@ -10,7 +10,8 @@ export interface ComponentSettingsSectionProps {
   readonly controller: ComponentController
 }
 
-type Busy = 'load' | 'plan' | 'install' | null
+type Busy = 'load' | 'plan' | 'install' | 'cache-preview' | 'cache-clean' | null
+type CacheReview = { readonly preview: CacheCleanupPreview | null; readonly error: string | null }
 type PlanReview = { readonly key: string; readonly plan: InstallPlan | null; readonly error: string | null }
 type Problem = { readonly key: ComponentLocaleKey; readonly detail: string }
 
@@ -22,9 +23,13 @@ type Problem = { readonly key: ComponentLocaleKey; readonly detail: string }
 export function ComponentSettingsSection({ t, controller }: ComponentSettingsSectionProps) {
   const titleId = useId()
   const reviewId = useId()
+  const cacheId = useId()
+  const cacheDescriptionId = useId()
   const [overview, setOverview] = useState<ComponentOverview | null>(null)
   const [busy, setBusy] = useState<Busy>('load')
   const [review, setReview] = useState<PlanReview | null>(null)
+  const [cacheReview, setCacheReview] = useState<CacheReview | null>(null)
+  const [cacheResult, setCacheResult] = useState<CacheCleanupResult | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
   const [notice, setNotice] = useState<ComponentLocaleKey | null>(null)
   const operation = useRef({ active: false, sequence: 0, busy: null as Busy })
@@ -33,11 +38,18 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
   const restoreFocus = useRef(false)
   const refreshButton = useRef<HTMLButtonElement>(null)
   const focusAfterInstall = useRef(false)
+  const cachePanel = useRef<HTMLDivElement>(null)
+  const cacheTrigger = useRef<HTMLButtonElement>(null)
+  const cacheAgain = useRef<HTMLButtonElement>(null)
+  const restoreCacheFocus = useRef(false)
+  const focusAfterCleanup = useRef(false)
+  const canPreviewCache = controller.previewCacheCleanup !== undefined && controller.cleanCache !== undefined
 
   const current = (sequence: number): boolean => operation.current.active && operation.current.sequence === sequence
   const finish = (sequence: number): void => {
     if (!current(sequence)) return
     if (operation.current.busy === 'install') focusAfterInstall.current = true
+    if (operation.current.busy === 'cache-clean') focusAfterCleanup.current = true
     operation.current.busy = null
     setBusy(null)
   }
@@ -49,6 +61,7 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
     owner.busy = 'load'
     setBusy('load')
     setReview(null)
+    setCacheReview(null)
     setProblem(null)
     try {
       const value = await controller.load()
@@ -74,6 +87,9 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
     focusAfterInstall.current = false
     setOverview(null)
     setNotice(null)
+    setCacheReview(null)
+    setCacheResult(null)
+    focusAfterCleanup.current = false
     void load()
     return () => {
       operation.current.active = false
@@ -87,6 +103,35 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
     focusAfterInstall.current = false
     refreshButton.current?.focus()
   }, [busy])
+
+  useEffect(() => {
+    if (busy !== null || !focusAfterCleanup.current) return
+    focusAfterCleanup.current = false
+    cacheAgain.current?.focus()
+  }, [busy])
+
+  const closeCacheReview = useCallback((): void => {
+    if (operation.current.busy === 'cache-clean') return
+    operation.current.sequence++
+    operation.current.busy = null
+    setCacheReview(null)
+    setCacheResult(null)
+    setBusy(null)
+    restoreCacheFocus.current = true
+  }, [])
+  const cacheOpen = cacheReview !== null
+  useEffect(() => {
+    if (cacheOpen) cachePanel.current?.focus()
+    else if (restoreCacheFocus.current) {
+      restoreCacheFocus.current = false
+      cacheTrigger.current?.focus()
+    }
+  }, [cacheOpen])
+  useEffect(() => {
+    if (!cacheOpen) return
+    window.addEventListener('popstate', closeCacheReview)
+    return () => { window.removeEventListener('popstate', closeCacheReview) }
+  }, [cacheOpen, closeCacheReview])
 
   const closeReview = useCallback((): void => {
     if (operation.current.busy === 'install') return
@@ -158,6 +203,52 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
     finally { finish(sequence) }
   }
 
+  const previewCache = async (): Promise<void> => {
+    if (!operation.current.active || operation.current.busy !== null || review !== null
+      || controller.previewCacheCleanup === undefined || controller.cleanCache === undefined) return
+    const sequence = ++operation.current.sequence
+    operation.current.busy = 'cache-preview'
+    setBusy('cache-preview')
+    setCacheReview({ preview: null, error: null })
+    setCacheResult(null)
+    try {
+      const preview = await controller.previewCacheCleanup()
+      if (current(sequence)) setCacheReview({ preview, error: null })
+    }
+    catch (error) {
+      if (current(sequence)) setCacheReview({ preview: null, error: errorMessage(error) })
+    }
+    finally { finish(sequence) }
+  }
+
+  const cleanCache = async (): Promise<void> => {
+    if (!operation.current.active || operation.current.busy !== null || controller.cleanCache === undefined
+      || cacheReview?.preview === null || cacheReview === null || cacheReview.preview.files.length === 0) return
+    const token = cacheReview.preview.token
+    const sequence = ++operation.current.sequence
+    operation.current.busy = 'cache-clean'
+    setBusy('cache-clean')
+    try {
+      const result = await controller.cleanCache(token)
+      if (!current(sequence)) return
+      setCacheResult(result)
+      setCacheReview({ preview: null, error: null })
+    }
+    catch (error) {
+      // A failed or expired token is consumed locally; retry requires another explicit preview.
+      if (current(sequence)) setCacheReview({ preview: null, error: errorMessage(error) })
+    }
+    finally { finish(sequence) }
+  }
+
+  const cacheError = (error: string): string => {
+    const codes = { CACHE_CLEANUP_UNSUPPORTED: 'unsupported', CACHE_CLEANUP_BUSY: 'busy', CACHE_CLEANUP_STALE: 'stale', CACHE_CLEANUP_UNSAFE: 'unsafe' } as const
+    for (const [code, key] of Object.entries(codes)) {
+      if (error.startsWith(code)) return t(`components.cache.${key}`)
+    }
+    return error
+  }
+
   const bytes = (value: number | null): string => value === null
     ? t('components.unmeasured')
     : t('components.bytes').replace('{bytes}', value.toLocaleString(t('components.locale')))
@@ -170,7 +261,7 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
         {overview !== null && <div className="dpw-hint">{t('components.version').replace('{version}', overview.appVersion)}</div>}
       </div>
       <div className="dpw-actions">
-        <button ref={refreshButton} type="button" className="dpw-button" disabled={busy !== null || review !== null} onClick={() => { void load() }}>
+        <button ref={refreshButton} type="button" className="dpw-button" disabled={busy !== null || review !== null || cacheReview !== null} onClick={() => { void load() }}>
           {overview === null && problem !== null ? t('components.retry') : t('components.refresh')}
         </button>
       </div>
@@ -194,12 +285,12 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
                 <dt>{t('components.policy')}</dt><dd>{t(`components.policy.${component.policy}`)}</dd>
               </dl>
               {component.error !== null && <div className="dpw-error" role="alert">{component.error}</div>}
-              {component.canInstall && (
+              {component.canInstall && (component.key === 'harborPlugin' || component.key === 'harbor') && (
                 <div className="dpw-actions">
                   <button
                     type="button"
                     className="dpw-button"
-                    disabled={busy !== null || review !== null}
+                    disabled={busy !== null || review !== null || cacheReview !== null}
                     onClick={event => { reviewTrigger.current = event.currentTarget; void plan(component.key) }}
                   >{t('components.review')}</button>
                 </div>
@@ -241,6 +332,43 @@ export function ComponentSettingsSection({ t, controller }: ComponentSettingsSec
           </div>
         </div>
       )}
+      {canPreviewCache && (
+        <section className="dpw-capability" aria-label={t('components.cache.title')}>
+          <h4 className="dpw-title">{t('components.cache.title')}</h4>
+          <div id={cacheDescriptionId} className="dpw-hint">{t('components.cache.description')}</div>
+          <div className="dpw-actions">
+            <button ref={cacheTrigger} type="button" className="dpw-button" disabled={busy !== null || review !== null || cacheReview !== null} onClick={() => { void previewCache() }}>{t('components.cache.preview')}</button>
+          </div>
+          {cacheReview !== null && (
+            <div ref={cachePanel} className="dpw-proxy-panel" role="region" aria-labelledby={cacheId} aria-describedby={cacheDescriptionId} tabIndex={-1}
+              onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); closeCacheReview() } }}>
+              <h4 id={cacheId} className="dpw-title">{t('components.cache.review')}</h4>
+              {busy === 'cache-preview' && <div role="status" className="dpw-status">{t('components.cache.previewing')}</div>}
+              {busy === 'cache-clean' && <div role="status" className="dpw-status">{t('components.cache.cleaning')}</div>}
+              {cacheReview.error !== null && <div role="alert" className="dpw-error">{cacheError(cacheReview.error)}</div>}
+              {cacheReview.preview !== null && (
+                <>
+                  {cacheReview.preview.files.length === 0 && <div className="dpw-status">{t('components.cache.empty')}</div>}
+                  <ul className="dpw-hint">{cacheReview.preview.files.map((file, index) => <li key={`${file.component}:${file.kind}:${index}`}>{file.component} · {t(`components.cache.kind.${file.kind}`)} · {bytes(file.bytes)}</li>)}</ul>
+                  <dl className="dpw-capability-grid"><dt>{t('components.cache.total')}</dt><dd>{bytes(cacheReview.preview.totalBytes)}</dd></dl>
+                </>
+              )}
+              {cacheResult !== null && (
+                <>
+                  <div role="status" className="dpw-status">{t(cacheResult.complete ? 'components.cache.complete' : 'components.cache.partial')}</div>
+                  <div className="dpw-hint">{t('components.cache.deleted').replace('{files}', cacheResult.deletedFiles.toLocaleString(t('components.locale'))).replace('{bytes}', bytes(cacheResult.deletedBytes))}</div>
+                  {cacheResult.failures.length > 0 && <ul className="dpw-error">{cacheResult.failures.map((failure, index) => <li key={`${failure.component}:${failure.kind}:${index}`}>{failure.component} · {t(`components.cache.kind.${failure.kind}`)} · {cacheError(failure.error)}</li>)}</ul>}
+                </>
+              )}
+              <div className="dpw-actions">
+                {cacheReview.preview !== null && <button type="button" className="dpw-button" disabled={busy !== null || cacheReview.preview.files.length === 0} onClick={() => { void cleanCache() }}>{t('components.cache.confirm')}</button>}
+                {busy === null && cacheReview.preview === null && <button ref={cacheAgain} type="button" className="dpw-button" onClick={() => { void previewCache() }}>{t('components.cache.again')}</button>}
+                <button type="button" className="dpw-button" disabled={busy === 'cache-clean'} onClick={closeCacheReview}>{t(cacheResult === null ? 'components.cache.cancel' : 'components.cache.close')}</button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
       {overview !== null && <LocalMetrics t={t} metrics={overview.metrics} error={overview.metricsError} />}
     </section>
   )
@@ -251,7 +379,8 @@ function errorMessage(error: unknown): string {
 }
 
 function LocalMetrics({ t, metrics, error }: { readonly t: ComponentSettingsSectionProps['t']; readonly metrics: MetricsSnapshot | null; readonly error: string | null }) {
-  const fields: readonly (keyof ComponentCounters)[] = ['networkBytes', 'retransferredBytes', 'cacheArchiveBytes', 'offlineSeedArchiveBytes', 'resumeAttempts', 'resumeSuccesses', 'installs', 'invocations', 'successfulInvocations']
+  const fields: readonly (keyof ComponentCounters)[] = ['networkBytes', 'retransferredBytes', 'cacheArchiveBytes', 'offlineSeedArchiveBytes', 'resumeAttempts', 'resumeSuccesses', 'installs']
+  const pomodoroFields: readonly (keyof ComponentCounters)[] = ['invocations', 'successfulInvocations']
   const number = (value: number): string => value.toLocaleString(t('components.locale'))
   const duration = (value: number): string => t('components.metrics.ms').replace('{value}', number(value))
   return (
@@ -274,7 +403,7 @@ function LocalMetrics({ t, metrics, error }: { readonly t: ComponentSettingsSect
             <details key={key} className="dpw-proxy-panel">
               <summary className="dpw-label">{key}</summary>
               <dl className="dpw-capability-grid">
-                {fields.map(field => <Fragment key={field}><dt>{t(`components.metrics.${field}`)}</dt><dd>{number(counters[field])}</dd></Fragment>)}
+                {[...fields, ...(key === 'harness' ? pomodoroFields : [])].map(field => <Fragment key={field}><dt>{t(`components.metrics.${field}`)}</dt><dd>{number(counters[field])}</dd></Fragment>)}
               </dl>
             </details>
           ))}

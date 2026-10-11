@@ -216,7 +216,9 @@ it('keeps pnpm writes inactive until the CLI commits bundles, then mounts throug
   const install = f.barrier(pkg.root)
   await install.written()
   await f.drainManifest(events)
-  expect(readProfileManifest('test', f.dir)).toMatchObject({ dependencies: { 'activation-bundle': expect.any(String) }, dsh: { profile: { bundles: [] } } })
+  const installing = readProfileManifest('test', f.dir)
+  expect(typeof installing.dependencies?.['activation-bundle']).toBe('string')
+  expect(installing).toMatchObject({ dsh: { profile: { bundles: [] } } })
   expect(realpathSync(join(f.dir, 'node_modules', 'activation-bundle'))).toBe(pkg.root)
   expect(existsSync(pkg.marker)).toBe(false)
   expect(f.ctx.get('userProbe')).toBe('retained')
@@ -574,10 +576,12 @@ it.each([
   mkdirSync(root)
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'activation-bundle', version: '1.0.0' }))
   const invoked = join(f.home, 'pnpm-invoked')
-  const malformed: Partial<PackageOperationOptions> = JSON.parse(serialized)
-  const result = await f.command(['add', `link:${root}`], {
+  const malformed: unknown = JSON.parse(serialized)
+  if (typeof malformed !== 'object' || malformed === null) throw new Error('the fixture request must be an object')
+  // Serialized JS callers do not have the options interface's field guarantees.
+  const result: unknown = await Reflect.apply(f.command, undefined, [['add', `link:${root}`], {
     ...malformed, args: ['-e', `require('node:fs').writeFileSync(${JSON.stringify(invoked)}, '')`, '--'],
-  })
+  }])
   expect(result).toMatchObject({ exitCode: 1 })
   expect(existsSync(invoked)).toBe(false)
   expect(f.snapshot('activation-bundle')).toEqual({ dependency: null, link: null })

@@ -16,7 +16,7 @@ const PNPM_VERSION = '11.7.0'
 
 /** Packages whose archive root is installed through the existing Profile link operation. */
 export const CAPABILITY_COMPONENTS = Object.freeze([
-  { key: 'pomodoro', packageName: '@xiaohui-wang/dsh-pomodoro', purpose: 'Pomodoro focus and break timer' },
+  { key: 'harborPlugin', sourceDirectory: 'harbor-evolution', packageName: 'dsh-harbor-evolution', purpose: 'Harbor evaluation tools and workbench', requires: ['harbor'] },
 ])
 
 function readJson(path) {
@@ -30,6 +30,20 @@ function writeJson(path, value) {
 
 function sourceFile(path) {
   return !path.split(sep).some(part => ['node_modules', '.git', 'test', 'tests', '__tests__'].includes(part))
+}
+
+/**
+ * Read prepared packages required by the signed release catalog.
+ * @param {string} outputRoot Prepared capability directory.
+ * @returns {object[]} Catalog descriptors with package roots and actual versions.
+ */
+export function readPreparedCapabilities(outputRoot = join(desktopRoot, 'bundled', 'capabilities')) {
+  return CAPABILITY_COMPONENTS.map(definition => {
+    const root = join(outputRoot, definition.key)
+    const manifest = assertPreparedCapability(root)
+    if (manifest.name !== definition.packageName) throw new Error(`capability package mismatch: ${definition.key}`)
+    return { ...definition, version: manifest.version, root }
+  })
 }
 
 /**
@@ -116,7 +130,7 @@ export function prepareCapabilityComponents({
     if (pnpm(harnessRoot, ['--version']).trim() !== PNPM_VERSION) throw new Error(`capability preparation requires pnpm ${PNPM_VERSION}`)
     const prepared = []
     for (const definition of CAPABILITY_COMPONENTS) {
-      const source = join(productRoot, definition.key)
+      const source = join(productRoot, definition.sourceDirectory)
       const manifest = readJson(join(source, 'package.json'))
       if (manifest.name !== definition.packageName) throw new Error(`capability package mismatch: ${definition.key}`)
       verifyExternalSnapshot(source, manifest)

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use super::boot_log;
 use super::env_path::{durable_dsh_home, path_eq};
+use super::optional_harbor::{profile_legacy_harbor, LegacyHarborState, HARBOR_PACKAGE};
 use crate::i18n::{self, tf, tf2, Msg};
 
 const HOME_DIR_NAME: &str = ".dsh";
@@ -220,7 +221,8 @@ fn profile_install_broken(profile: &Path) -> bool {
 /// True when a profile declares at least one dependency that cannot be
 /// resolved under its `node_modules` — the install-is-needed view that, unlike
 /// {@link profile_install_broken}, also covers a profile whose `node_modules`
-/// is absent altogether.
+/// is absent altogether. The one absent legacy application-owned Harbor pack
+/// remains an optional repair; every other unresolved dependency needs install.
 pub fn profile_dependencies_unresolved(profile: &Path) -> bool {
     let node_modules = profile.join("node_modules");
     let Ok(raw) = fs::read_to_string(profile.join("package.json")) else {
@@ -235,8 +237,11 @@ pub fn profile_dependencies_unresolved(profile: &Path) -> bool {
     else {
         return false;
     };
+    let optional_harbor_missing =
+        profile_legacy_harbor(profile) == Some(LegacyHarborState::Missing);
     dependencies
         .keys()
+        .filter(|name| !optional_harbor_missing || name.as_str() != HARBOR_PACKAGE)
         .any(|name| !node_modules.join(name).join("package.json").exists())
 }
 
@@ -436,6 +441,92 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     static NEXT_DIR: AtomicU64 = AtomicU64::new(0);
+
+    #[cfg(unix)]
+    #[test]
+    fn missing_optional_legacy_harbor_preserves_profile_install_and_user_bytes() {
+        let root = tempfile::tempdir().unwrap();
+        let home = root.path().join("home");
+        let web = home.join("profiles/web");
+        let modules = web.join("node_modules");
+        fs::create_dir_all(modules.join("kept")).unwrap();
+        fs::write(modules.join("kept/package.json"), r#"{"name":"kept"}"#).unwrap();
+        let target = root
+            .path()
+            .join("harness-versions/0123456789abcdef/packages/product/harbor-evolution");
+        let manifest = serde_json::to_vec(&serde_json::json!({
+            "dependencies": {"dsh-harbor-evolution": format!("link:{}", target.display()), "kept":"1.0.0"},
+            "dsh": {"profile": {"bundles":["dsh-harbor-evolution", "kept"]}}
+        })).unwrap();
+        fs::write(web.join("package.json"), &manifest).unwrap();
+        fs::write(
+            web.join("cordis.patch.yml"),
+            "- id: harbor-evolution\n  config: {jobsDir: retained}\n",
+        )
+        .unwrap();
+        fs::write(home.join("settings.yaml"), "retained: true\n").unwrap();
+        fs::create_dir_all(home.join("sessions/kept")).unwrap();
+        fs::write(home.join("sessions/kept/log.jsonl"), "retained session\n").unwrap();
+        let link = modules.join("dsh-harbor-evolution");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        let files = [
+            web.join("package.json"),
+            web.join("cordis.patch.yml"),
+            home.join("settings.yaml"),
+            home.join("sessions/kept/log.jsonl"),
+        ];
+        let originals: Vec<_> = files.iter().map(|file| fs::read(file).unwrap()).collect();
+        assert!(!super::profile_dependencies_unresolved(&web));
+        assert!(super::profiles_needing_install(&home).is_empty());
+        let adopted = adopt_homes(&home, vec![home.clone()]).unwrap();
+        assert_eq!(adopted.path, home);
+        assert!(modules.join("kept/package.json").is_file());
+        assert_eq!(fs::read_link(&link).unwrap(), target);
+        for (file, original) in files.iter().zip(originals) {
+            assert_eq!(fs::read(file).unwrap(), original);
+        }
+
+        fs::remove_file(modules.join("kept/package.json")).unwrap();
+        assert!(
+            super::profile_dependencies_unresolved(&web),
+            "another missing dependency remains mandatory"
+        );
+        assert_eq!(super::profiles_needing_install(&home), vec!["web"]);
+    }
+
+    #[test]
+    fn missing_external_harbor_and_other_missing_dependencies_still_require_install() {
+        let root = tempfile::tempdir().unwrap();
+        let home = root.path().join("home");
+        let web = home.join("profiles/web");
+        fs::create_dir_all(&web).unwrap();
+        for dependency in [
+            "1.0.0".to_string(),
+            format!(
+                "link:{}",
+                root.path().join("external/harbor-evolution").display()
+            ),
+        ] {
+            fs::write(
+                web.join("package.json"),
+                serde_json::to_vec(
+                    &serde_json::json!({"dependencies":{"dsh-harbor-evolution":dependency}}),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            assert!(super::profile_dependencies_unresolved(&web));
+            assert_eq!(super::profiles_needing_install(&home), vec!["web"]);
+        }
+        let target = root
+            .path()
+            .join("harness-versions/0123456789abcdef/packages/product/harbor-evolution");
+        fs::write(web.join("package.json"), serde_json::to_vec(&serde_json::json!({"dependencies":{"dsh-harbor-evolution":format!("link:{}", target.display())}})).unwrap()).unwrap();
+        assert!(
+            !super::profile_dependencies_unresolved(&web),
+            "absent node_modules is also optional for a missing managed root"
+        );
+    }
 
     fn temp_root() -> PathBuf {
         let id = NEXT_DIR.fetch_add(1, Ordering::Relaxed);

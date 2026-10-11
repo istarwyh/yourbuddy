@@ -98,6 +98,7 @@ pub async fn spawn_web_host(
     overlay: Option<&HostOverlay>,
     host_path: &str,
     network_proxy: &ResolvedNetworkProxy,
+    components: Option<&super::component_service::ComponentService>,
 ) -> Result<HostHandle, String> {
     if !paths.cli_entry.is_file() {
         return Err(format!(
@@ -133,6 +134,7 @@ pub async fn spawn_web_host(
             host_path,
             rescue_patch.as_deref(),
             network_proxy,
+            components,
         )?;
         let pid = child.id();
         #[cfg(windows)]
@@ -553,6 +555,7 @@ fn spawn_child(
     host_path: &str,
     rescue_patch: Option<&Path>,
     network_proxy: &ResolvedNetworkProxy,
+    components: Option<&super::component_service::ComponentService>,
 ) -> Result<Child, String> {
     let mut cmd = Command::new(&paths.node_binary);
     cmd.args(native_web_args(
@@ -575,7 +578,12 @@ fn spawn_child(
     isolate_host_group(&mut cmd);
     hide_console(&mut cmd);
 
-    cmd.spawn().map_err(|e| format!("无法启动 dsh web: {e}"))
+    if let Some(components) = components {
+        components.inherit_into(&mut cmd)?;
+    }
+    let result = cmd.spawn().map_err(|e| format!("无法启动 dsh web: {e}"));
+    drop(cmd);
+    result
 }
 
 fn native_web_args(

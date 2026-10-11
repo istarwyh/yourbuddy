@@ -159,6 +159,7 @@ jobs:
         run: |
           YOURBUDDY_CAPABILITY_TEST_STORE="$(pnpm store path)" \
             pnpm --dir apps/desktop-tauri run test:components
+          pnpm --dir apps/desktop-tauri run test:native-overlay
 
       - name: Build immutable runtime components
         env:

@@ -11,7 +11,7 @@ const fixture: ComponentOverview = {
   components: [{ key: 'harbor', kind: 'capability-on-demand', version: '0.1.7', purpose: 'Agent evaluation', archiveBytes: 2048, installedBytes: null, state: 'absent', policy: 'on-demand', canInstall: true, canChangePolicy: false, canClean: false, error: null, runtimeToken: null }],
   metrics: {
     formatVersion: 1, appVersion: '0.1.7', windowStartedAtUnixMs: 1791680400000, bootAttempts: 3, workbenchReadyCount: 2, workbenchReadyTotalMs: 810, workbenchReadyMaxMs: 500, readinessFailures: 1,
-    components: { harbor: { networkBytes: 123, retransferredBytes: 23, cacheArchiveBytes: 256, offlineSeedArchiveBytes: 512, resumeAttempts: 2, resumeSuccesses: 1, installs: 1, invocations: 4, successfulInvocations: 3 } },
+    components: { harness: { networkBytes: 123, retransferredBytes: 23, cacheArchiveBytes: 256, offlineSeedArchiveBytes: 512, resumeAttempts: 2, resumeSuccesses: 1, installs: 1, invocations: 4, successfulInvocations: 3 } },
   },
   metricsError: null,
 }
@@ -56,11 +56,50 @@ describe('component settings', () => {
     expect(screen.getByText('Cached archive bytes reused')).toBeTruthy()
     expect(screen.getByText('Offline seed archive bytes')).toBeTruthy()
     expect(screen.getByText('Installations')).toBeTruthy()
-    expect(screen.getByText('Capability invocations')).toBeTruthy()
+    expect(screen.getByText('Pomodoro actions')).toBeTruthy()
+    expect(screen.getByText('Successful Pomodoro actions')).toBeTruthy()
+    expect(screen.getByText(/not overall core feature usage/)).toBeTruthy()
     expect(native.plan).not.toHaveBeenCalled()
     expect(native.install).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: /clean|policy/i })).toBeNull()
     expect(screen.getByRole('region', { name: 'harbor' }).textContent).toMatchInlineSnapshot('"harborTypeOn-demand capabilityComponent version0.1.7PurposeAgent evaluationArchive size2,048 BInstalled sizeNot measuredStateNot installedPreparation policyOn demandReview install plan"')
+  })
+
+  it('keeps default features automatic and offers preparation only for Harbor', async () => {
+    const native = controller()
+    const component = fixture.components[0]!
+    native.load.mockResolvedValue({ ...fixture, components: [
+      { ...component, key: 'harness', kind: 'core-runtime', purpose: 'Default workbench features', policy: 'required', state: 'in-use', canInstall: true },
+      { ...component, key: 'node', kind: 'runtime-fallback', policy: 'fallback', canInstall: true },
+      { ...component, key: 'harborPlugin', kind: 'optional', policy: 'manual' },
+      component,
+    ] })
+    render(<ComponentSettingsSection t={t} controller={native} />)
+    await screen.findByText('In use')
+    expect(screen.getByText(/Existing features start automatically/)).toBeTruthy()
+    expect(within(screen.getByRole('region', { name: 'harness' })).queryByRole('button')).toBeNull()
+    expect(screen.getByRole('region', { name: 'harness' }).textContent).toMatchInlineSnapshot('"harnessTypeCore runtimeComponent version0.1.7PurposeDefault workbench featuresArchive size2,048 BInstalled sizeNot measuredStateIn usePreparation policyRequired"')
+    expect(within(screen.getByRole('region', { name: 'node' })).queryByRole('button')).toBeNull()
+    expect(within(screen.getByRole('region', { name: 'harborPlugin' })).getByRole('button', { name: 'Review install plan' })).toBeTruthy()
+    expect(within(screen.getByRole('region', { name: 'harbor' })).getByRole('button', { name: 'Review install plan' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'pomodoro' })).toBeNull()
+    expect(native.plan).not.toHaveBeenCalled()
+    expect(native.install).not.toHaveBeenCalled()
+  })
+
+  it('labels timer actions only under harness while retaining other archive statistics', async () => {
+    const native = controller()
+    const metrics = fixture.metrics!
+    native.load.mockResolvedValue({ ...fixture, metrics: { ...metrics, components: { ...metrics.components, harbor: { ...metrics.components.harness!, invocations: 0, successfulInvocations: 0 } } } })
+    render(<ComponentSettingsSection t={t} controller={native} />)
+    await screen.findByText('Pomodoro actions')
+    const harness = screen.getByText('harness', { selector: 'summary' }).parentElement!
+    const harbor = screen.getByText('harbor', { selector: 'summary' }).parentElement!
+    expect(within(harness).getByText('Pomodoro actions')).toBeTruthy()
+    expect(within(harbor).queryByText('Pomodoro actions')).toBeNull()
+    expect(within(harbor).queryByText('Successful Pomodoro actions')).toBeNull()
+    expect(within(harbor).getByText('Installations')).toBeTruthy()
+    expect(within(harbor).getByText('Downloaded payload bytes')).toBeTruthy()
   })
 
   it('reviews dependencies and archive total before preparing once, reloads, and reports restart separately', async () => {
@@ -215,5 +254,7 @@ describe('component settings', () => {
     await screen.findByText('未测量')
     expect(screen.getByRole('button', { name: '查看安装计划' })).toBeTruthy()
     expect(screen.getByText('本机统计')).toBeTruthy()
+    expect(screen.getByText('番茄钟操作次数')).toBeTruthy()
+    expect(screen.getByText(/现有功能随工作台默认自动启动/)).toBeTruthy()
   })
 })

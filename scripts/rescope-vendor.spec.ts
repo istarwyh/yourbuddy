@@ -12,6 +12,16 @@ describe('rescope file selection', () => {
   })
 
   it.each([
+    'apps/desktop-tauri/product/ego-browser/lib/index.js',
+    'apps/desktop-tauri/product/ego-browser/package.json',
+  ])('preserves the reviewed external snapshot %s', (file) => {
+    expect(isRescopeExcluded(file)).toBe(true)
+  })
+
+  it.each([
+    'apps/desktop-tauri/product/ego-browser-extra/package.json',
+    'apps/desktop-tauri/product/personal-workbench/src/client/index.tsx',
+    'apps/desktop-tauri/scripts/prepare-capability-components.mjs',
     'scripts/dependency-catalog/package.json',
     'scripts/dependency-catalog/source.ts',
     'scripts/other/package-lock.json',

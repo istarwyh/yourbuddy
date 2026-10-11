@@ -99,7 +99,8 @@ async function fixture(ready = true) {
     await vi.waitFor(() => { expect(scheduled.mock.calls.length).toBeGreaterThan(before) })
     await host.hmr.runExclusive(async () => {})
   }
-  return { ctx: host, profile, root, dir, bundle, link, select, drainChange, errors, scheduled, commit: () => commit?.() }
+  const token: unknown = host.get('hostPeer')
+  return { ctx: host, token, profile, root, dir, bundle, link, select, drainChange, errors, scheduled, commit: () => commit?.() }
 }
 
 it('hot-loads a new linked bare bundle with its ordinary dependency and the running core peer singleton', async () => {
@@ -109,7 +110,7 @@ it('hot-loads a new linked bare bundle with its ordinary dependency and the runn
   expect(f.ctx.get('linked-probe')).toBeUndefined()
   await f.drainChange(() => { f.select('linked-probe') })
   expect(f.errors).toEqual([])
-  expect(f.ctx.get('linked-probe')).toEqual({ token: f.ctx.get('hostPeer'), value: 'ordinary-dependency', revision: 'first' })
+  expect(f.ctx.get('linked-probe')).toEqual({ token: f.token, value: 'ordinary-dependency', revision: 'first' })
   expect(f.ctx.get('userProbe')).toBe('retained')
   await f.ctx.fiber.dispose()
   expect(f.ctx.get('linked-probe')).toBeUndefined()
@@ -119,7 +120,7 @@ it('rejects a changed historical linked root before touching the running composi
   const f = await fixture()
   f.link('linked-probe', f.bundle('linked-probe'))
   await f.drainChange(() => { f.select('linked-probe') })
-  const active = f.ctx.get('linked-probe')
+  const active: unknown = f.ctx.get('linked-probe')
   const generation = getEnvironmentData('@deepseek-ai/dsh-app-boot/profile-resolution')
   unlinkSync(join(f.dir, 'node_modules', 'linked-probe'))
   await f.drainChange(() => { f.link('linked-probe', f.bundle('linked-probe', 'second')) })
@@ -147,7 +148,7 @@ it('parses all patch inputs before publishing resolution and retries corrected i
   expect(f.ctx.get('userProbe')).toBe('retained')
   expect(getEnvironmentData('@deepseek-ai/dsh-app-boot/profile-resolution')).toBe(generation)
   await f.drainChange(() => { file(f.profile.patchPath, original) })
-  expect(f.ctx.get('linked-probe')).toEqual({ token: f.ctx.get('hostPeer'), value: 'ordinary-dependency', revision: 'first' })
+  expect(f.ctx.get('linked-probe')).toEqual({ token: f.token, value: 'ordinary-dependency', revision: 'first' })
 })
 
 it('does not report unknown or broken bundle imports as active and keeps existing user services', async () => {
@@ -161,7 +162,7 @@ it('does not report unknown or broken bundle imports as active and keeps existin
   expect(f.ctx.get('userProbe')).toBe('retained')
   f.link('healthy-probe', f.bundle('healthy-probe'))
   await f.drainChange(() => { f.select('unknown-bundle', 'broken-probe', 'healthy-probe') })
-  expect(f.ctx.get('healthy-probe')).toEqual({ token: f.ctx.get('hostPeer'), value: 'ordinary-dependency', revision: 'first' })
+  expect(f.ctx.get('healthy-probe')).toEqual({ token: f.token, value: 'ordinary-dependency', revision: 'first' })
   expect(f.ctx.get('broken-probe')).toBeUndefined()
 })
 
@@ -185,7 +186,7 @@ it('serializes simultaneous manifest and patch events into the latest linked com
   await blocked
   await f.ctx.hmr.runExclusive(async () => {})
   for (const name of ['first-probe', 'second-probe']) {
-    expect(f.ctx.get(name)).toEqual({ token: f.ctx.get('hostPeer'), value: 'ordinary-dependency', revision: 'first' })
+    expect(f.ctx.get(name)).toEqual({ token: f.token, value: 'ordinary-dependency', revision: 'first' })
   }
   expect(f.ctx.get('userProbe')).toBe('edited')
   expect(f.errors).toEqual([])

@@ -35,7 +35,7 @@ class FakeWindow implements DesktopComponentWindow {
     this.emit({ channel: DESKTOP_COMPONENT_CHANNEL, version: 1, type: `${action}-accepted`, requestId: this.messages.at(-1)?.message.requestId })
   }
 }
-const snapshot: ComponentOverview = { appVersion: '0.4.9', components: [{ key: 'pomodoro', kind: 'optional', version: '0.5.5', purpose: 'Focus timer', archiveBytes: 42, installedBytes: null, state: 'prepared', policy: 'manual', canInstall: true, canChangePolicy: false, canClean: false, error: null, runtimeToken: null }], metrics: null, metricsError: null }
+const snapshot: ComponentOverview = { appVersion: '0.4.9', components: [{ key: 'harborPlugin', kind: 'optional', version: '0.5.5', purpose: 'Agent evaluation interface', archiveBytes: 42, installedBytes: null, state: 'prepared', policy: 'manual', canInstall: true, canChangePolicy: false, canClean: false, error: null, runtimeToken: null }], metrics: null, metricsError: null }
 const tick = async (): Promise<void> => { for (let index = 0; index < 8; index++) await Promise.resolve() }
 afterEach(() => { vi.useRealTimers() })
 
@@ -87,7 +87,7 @@ describe('desktop component browser requests', () => {
     const missing = expect(controller.load()).rejects.toThrow('desktop-shell-unavailable')
     await vi.advanceTimersByTimeAsync(10)
     await missing
-    const stalled = expect(controller.plan('pomodoro')).rejects.toThrow('desktop-component-plan-timeout')
+    const stalled = expect(controller.plan('harborPlugin')).rejects.toThrow('desktop-component-plan-timeout')
     target.accepted('plan')
     await vi.advanceTimersByTimeAsync(15)
     target.accepted('plan')
@@ -100,12 +100,12 @@ describe('desktop component browser requests', () => {
   it('deduplicates preparation and sends only catalog keys, never paths or commands', async () => {
     const target = new FakeWindow()
     const controller = createDesktopComponentController({ target })
-    await expect(controller.install('../pomodoro')).rejects.toThrow('desktop-component-key-invalid')
-    const first = controller.install('pomodoro')
-    const second = controller.install('pomodoro')
+    await expect(controller.install('../harborPlugin')).rejects.toThrow('desktop-component-key-invalid')
+    const first = controller.install('harborPlugin')
+    const second = controller.install('harborPlugin')
     expect(first).toBe(second)
     expect(target.messages).toHaveLength(1)
-    expect(target.messages[0]?.message).toMatchObject({ type: 'install-request', component: 'pomodoro' })
+    expect(target.messages[0]?.message).toMatchObject({ type: 'install-request', component: 'harborPlugin' })
     target.reply('install', { restartRequired: true })
     await expect(first).resolves.toEqual({ restartRequired: true })
     controller.dispose()
@@ -114,14 +114,14 @@ describe('desktop component browser requests', () => {
   it('parses dependency-first plans and refuses malformed plan and installation responses', async () => {
     const target = new FakeWindow()
     const controller = createDesktopComponentController({ target })
-    const plan = { components: [{ component: 'pomodoro', id: 'pomodoro-verified-id', action: 'prepare', archiveBytes: 42 }], prepareArchiveBytes: 42 }
-    const result = controller.plan('pomodoro')
+    const plan = { components: [{ component: 'harborPlugin', id: 'harborPlugin-verified-id', action: 'prepare', archiveBytes: 42 }], prepareArchiveBytes: 42 }
+    const result = controller.plan('harborPlugin')
     target.reply('plan', plan)
     await expect(result).resolves.toEqual(plan)
-    const malformed = controller.plan('pomodoro')
+    const malformed = controller.plan('harborPlugin')
     target.reply('plan', { ...plan, components: [{ ...plan.components[0], action: 'execute' }] })
     await expect(malformed).rejects.toThrow('response-invalid')
-    const installed = controller.install('pomodoro')
+    const installed = controller.install('harborPlugin')
     target.reply('install', { restartRequired: 'false' })
     await expect(installed).rejects.toThrow('response-invalid')
     controller.dispose()
@@ -163,12 +163,81 @@ describe('desktop component browser requests', () => {
     controller.dispose()
   })
 
+  it('previews without a payload and deletes only an explicitly supplied cleanup token', async () => {
+    const target = new FakeWindow()
+    const controller = createDesktopComponentController({ target })
+    const preview = { token: 'cache_1', files: [{ component: 'harbor', kind: 'partial', bytes: 12 }], totalBytes: 12 }
+    const read = controller.previewCacheCleanup()
+    expect(Object.keys(target.messages[0]!.message).sort()).toEqual(['channel', 'requestId', 'type', 'version'])
+    target.reply('cache-preview', preview)
+    await expect(read).resolves.toEqual(preview)
+    expect(target.messages).toHaveLength(1)
+    const first = controller.cleanCache('cache_1')
+    const second = controller.cleanCache('cache_1')
+    expect(target.messages).toHaveLength(2)
+    expect(target.messages[1]?.message).toMatchObject({ type: 'cache-clean-request', cleanupToken: 'cache_1' })
+    expect(Object.keys(target.messages[1]!.message).sort()).toEqual(['channel', 'cleanupToken', 'requestId', 'type', 'version'])
+    const partial = { deletedBytes: 0, deletedFiles: 0, failures: [{ component: 'harbor', kind: 'partial', error: 'busy file' }], complete: false }
+    target.reply('cache-clean', partial)
+    await expect(first).resolves.toEqual(partial)
+    await expect(second).resolves.toEqual(partial)
+    await expect(controller.cleanCache('../cache')).rejects.toThrow('cleanup-token-invalid')
+    controller.dispose()
+  })
+
+  it('rejects malformed, oversized, inconsistent, and path-bearing cache responses', async () => {
+    const preview = { token: 'cache_1', files: [{ component: 'harbor', kind: 'archive', bytes: 12 }], totalBytes: 12 }
+    const result = { deletedBytes: 12, deletedFiles: 1, failures: [], complete: true }
+    for (const invalid of [
+      { ...preview, token: '../cache' }, { ...preview, totalBytes: 13 }, { ...preview, path: '/cache' },
+      { ...preview, files: Array.from({ length: 193 }, () => preview.files[0]) },
+      { ...preview, files: [{ ...preview.files[0], bytes: Number.MAX_SAFE_INTEGER + 1 }] },
+      { ...preview, files: [{ ...preview.files[0], component: '../harbor' }] },
+      { ...preview, files: [{ ...preview.files[0], kind: 'runtime' }] },
+    ]) {
+      const target = new FakeWindow()
+      const controller = createDesktopComponentController({ target })
+      const pending = controller.previewCacheCleanup()
+      target.reply('cache-preview', invalid)
+      await expect(pending).rejects.toThrow('response-invalid')
+      controller.dispose()
+    }
+    for (const invalid of [
+      { ...result, deletedBytes: -1 }, { ...result, deletedFiles: 0.5 }, { ...result, complete: false },
+      { ...result, failures: [{ component: 'harbor', kind: 'archive', error: 1 }] },
+      { ...result, failures: Array.from({ length: 193 }, () => ({ component: 'harbor', kind: 'archive', error: 'busy' })), complete: false },
+    ]) {
+      const target = new FakeWindow()
+      const controller = createDesktopComponentController({ target })
+      const pending = controller.cleanCache('cache_1')
+      target.reply('cache-clean', invalid)
+      await expect(pending).rejects.toThrow('response-invalid')
+      controller.dispose()
+    }
+  })
+
+  it('correlates cleanup replies and cancels waits on navigation without sending another delete', async () => {
+    const target = new FakeWindow()
+    const controller = createDesktopComponentController({ target, requestId: () => 'cache_request' })
+    const pending = expect(controller.cleanCache('cache_1')).rejects.toThrow('request-cancelled')
+    const response = { channel: DESKTOP_COMPONENT_CHANNEL, version: 1, type: 'cache-clean-response', requestId: 'cache_request', ok: true, value: { deletedBytes: 0, deletedFiles: 0, failures: [], complete: true } }
+    target.emit(response, 'http://127.0.0.1:1')
+    target.emit(response, 'http://127.0.0.1:45678', {})
+    for (const change of [{ requestId: 'forged' }, { type: 'cache-preview-response' }]) target.emit({ ...response, ...change })
+    expect(target.listeners.size).toBe(1)
+    for (const page of target.pages) page()
+    await pending
+    target.emit(response)
+    expect(target.listeners.size).toBe(0)
+    expect(target.messages).toHaveLength(1)
+  })
+
   it('waits beyond the native 15-minute install deadline before timing out the browser wait', async () => {
     vi.useFakeTimers()
     const target = new FakeWindow()
     const controller = createDesktopComponentController({ target })
     let settled = false
-    const result = controller.install('pomodoro')
+    const result = controller.install('harborPlugin')
     void result.then(() => { settled = true }, () => { settled = true })
     const failure = expect(result).rejects.toThrow('install-timeout')
     target.accepted('install')
@@ -190,7 +259,7 @@ describe('desktop component browser requests', () => {
     const retry = controller.load()
     target.reply('get', snapshot)
     await expect(retry).resolves.toEqual(snapshot)
-    const pending = expect(controller.plan('pomodoro')).rejects.toThrow('request-cancelled')
+    const pending = expect(controller.plan('harborPlugin')).rejects.toThrow('request-cancelled')
     controller.dispose()
     await pending
     expect(target.listeners.size).toBe(0)
@@ -200,12 +269,12 @@ describe('desktop component browser requests', () => {
     const target = new FakeWindow()
     const observeRuntime = vi.fn().mockResolvedValue('active')
     const controller = createDesktopComponentController({ target, observeRuntime })
-    const result = controller.install('pomodoro')
+    const result = controller.install('harborPlugin')
     target.reply('install', { restartRequired: true })
     await tick()
     target.reply('get', { ...snapshot, components: snapshot.components.map(item => ({ ...item, runtimeToken: 'host_epoch_install_1' })) })
     await tick()
-    expect(target.messages.at(-1)?.message).toMatchObject({ type: 'report-request', component: 'pomodoro', state: 'active', runtimeToken: 'host_epoch_install_1' })
+    expect(target.messages.at(-1)?.message).toMatchObject({ type: 'report-request', component: 'harborPlugin', state: 'active', runtimeToken: 'host_epoch_install_1' })
     target.reply('report', { restartRequired: false })
     await expect(result).resolves.toEqual({ restartRequired: false })
     expect(observeRuntime).toHaveBeenCalledOnce()
@@ -216,7 +285,7 @@ describe('desktop component browser requests', () => {
     const target = new FakeWindow()
     const observeRuntime = vi.fn().mockResolvedValue('active')
     const controller = createDesktopComponentController({ target, observeRuntime })
-    const result = controller.install('pomodoro')
+    const result = controller.install('harborPlugin')
     target.reply('install', { restartRequired: true })
     await tick()
     target.reply('get', snapshot)
@@ -247,7 +316,7 @@ describe('desktop component browser requests', () => {
     const target = new FakeWindow()
     let finishObservation!: (value: 'active') => void
     const controller = createDesktopComponentController({ target, observeRuntime: () => new Promise(resolve => { finishObservation = resolve }) })
-    const result = controller.install('pomodoro')
+    const result = controller.install('harborPlugin')
     target.reply('install', { restartRequired: true })
     await tick()
     target.reply('get', { ...snapshot, components: snapshot.components.map(item => ({ ...item, runtimeToken: 'epoch' })) })

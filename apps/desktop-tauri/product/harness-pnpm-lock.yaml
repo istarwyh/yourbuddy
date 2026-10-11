@@ -372,6 +372,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: link:../../vendor/schemastery
         version: link:../../vendor/schemastery
+      '@xiaohui-wang/dsh-pomodoro':
+        specifier: workspace:*
+        version: link:../../packages/product/pomodoro
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -387,9 +390,6 @@ importers:
       dsh-ego-browser:
         specifier: workspace:*
         version: link:../../packages/product/ego-browser
-      dsh-harbor-evolution:
-        specifier: workspace:*
-        version: link:../../packages/product/harbor-evolution
       dsh-oil-creator:
         specifier: workspace:*
         version: link:../../packages/product/oil-creator
@@ -5164,18 +5164,6 @@ importers:
         specifier: ^3.18.0
         version: 3.18.0
 
-  packages/product/harbor-evolution:
-    dependencies:
-      '@deepseek-ai/dsh-skill':
-        specifier: workspace:*
-        version: link:../../skill/skill
-      '@deepseek-ai/dsh-tools':
-        specifier: workspace:*
-        version: link:../../core/tools
-      '@deepseek-ai/schemastery':
-        specifier: link:../../../vendor/schemastery
-        version: link:../../../vendor/schemastery
-
   packages/product/oil-creator:
     dependencies:
       '@deepseek-ai/cordis':
@@ -5295,6 +5283,18 @@ importers:
       react:
         specifier: ^18.2.0
         version: 18.3.1
+
+  packages/product/pomodoro:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-settings':
+        specifier: workspace:*
+        version: link:../../settings/settings
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
 
   packages/ptc-runtime/ptc-runtime:
     dependencies:

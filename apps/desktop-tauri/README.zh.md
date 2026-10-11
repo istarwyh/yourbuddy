@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-这个 Tauri 应用承载现有的 `dsh web` 客户端，并加入包括 Pomodoro 在内的 YourBuddy 产品装配层。默认 Bootstrap DMG 只携带签名 Shell、固定 pnpm Package、组件 Manifest 与桌面 Overlay。不可变 Harness、Node、pnpm Store 与 Harbor Archive 随同一个 Release 发布；单独标注的 Offline DMG Seed 同一组 Archive，不创建第二套 Runtime 布局。
+这个 Tauri 应用承载现有的 `dsh web` 客户端，并加入包括 Pomodoro 在内的 YourBuddy 产品装配层。默认 Bootstrap DMG 只携带签名 Shell、固定 pnpm Package、组件 Manifest 与桌面 Overlay。不可变 Harness、Node、pnpm Store、Harbor 与能力 Archive 随同一个 Release 发布；单独标注的 Offline DMG Seed 同一组 Archive，不创建第二套 Runtime 布局。
 
 Bootstrap 启动页展示组件、阶段、字节数和保留的错误，页面重新加载后仍可读取。暂时性传输失败及 HTTP 408、429、500、502、503、504 最多尝试三次；响应正文停止传输时，单次读取限时 30 秒。匹配的部分下载通过 Range 和 If-Range 续传；服务器返回完整响应时则重新下载该归档。下载、解压与安装准备仅针对当前 Manifest 的目标。只有 Host 完成身份认证就绪后，才原子更新激活组件快照；准备或就绪失败保留此前快照，不启动旧版 Harness。中断的安装准备会标记为待重试；被替换的不完整目录或依赖保留在隔离目录，不直接删除。**重试启动** 只重启失败的应用一次，并复用可续传数据；**复制诊断信息** 复制当前显示的状态和错误。此恢复流程不选择旧版 Harness，也不承诺跨版本兼容性。
 
@@ -12,12 +12,12 @@ Bootstrap 启动页展示组件、阶段、字节数和保留的错误，页面�
 |---|---|
 | `component-channel` | 两种安装包都内嵌的签名 Release Manifest 与固定 pnpm 11.7.0 Package |
 | `component-seeds` | 只在 Offline DMG 中出现的精确 Release Archive，导入共享组件 Cache |
-| `YourBuddy/components` | 带 Staging 与 Active State 的签名、内容寻址 Harness、Store、Node 与按需 Harbor 组件 |
-| `desktop-overlay` | 通过 `dsh web --patch` 选择 Codex Agent Preset，并注册通知、Codex Subagent Provider、Codex Auth/Search/Image、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace、Personal Workbench、Oil Creator 与 Harbor Evolution；Web Bundle 挂载 Pomodoro |
+| `YourBuddy/components` | 带 Staging 与 Active State 的签名、内容寻址 Harness、Store、Node、按需 Harbor 与能力组件 |
+| `desktop-overlay` | 通过 `dsh web --patch` 选择 Codex Agent Preset，并注册通知、Codex Subagent Provider、Codex Auth/Search/Image、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace、Personal Workbench、Oil Creator；Pomodoro 包含在默认产品 Bundle 中，Harbor 通过显式安装的 Profile Bundle 启用 |
 | `YourBuddy/dsh-home` | 隔离保存会话、设置、凭据和 Web Profile |
 | `YourBuddy/workspace` | 没有标准 Profile 实例时供 Harbor Workbench 使用的回退根目录 |
 
-产品源码位于 `product/harbor-evolution`、`product/harbor-python`、`product/dsh-codex-auth`、`product/dsh-better-sidebar`、`product/ego-browser`、`product/context-doctor`、`product/plugin-marketplace`、`product/pomodoro`、`product/personal-workbench` 和 `product/oil-creator`。`scripts/bundle-harness-source.mjs` 把九个产品 Cordis Package 与 Harbor Skill 放进裁剪后的 workspace，并将它们和仓库内的 `@deepseek-ai/dsh-subagent-codex` Package 一起加入 CLI 依赖闭包，因此 Host 无需从 Registry 安装即可解析所有默认插件。生成的 Bundle Manifest 会单独记录 Codex Subagent Package 版本与产品 Agent Preset，不把它们混入由外部来源刷新的产品快照。Codex Auth、Better Sidebar、Plugin Marketplace 与 Pomodoro 固定到经过检查的 npm Tarball。Harbor 的 JavaScript 与 Python 快照来自同一个经过检查的 GitHub Release。Ego Browser、Context Doctor 与 Oil Creator 固定到经过检查的 GitHub 分支 Commit；Oil Creator 会先使用其声明的 Package Manager 构建，再冻结 npm Package 的文件选择结果。每个由外部来源刷新的快照都在 `YOURBUDDY_UPSTREAM.json` 中记录不可变来源、完整性 Hash、已提交 Tree Hash、上游许可证、精确版本的 Peer Metadata 覆盖以及经过评审的功能兼容补丁。`scripts/prepare-yourbuddy-runtime.mjs` 把已提交的 Python 快照安装进可迁移资源，也接受 `YOURBUDDY_HARBOR_PYTHON_SOURCE` 用于临时测试本地 Adapter。
+产品源码位于 `product/harbor-evolution`、`product/harbor-python`、`product/dsh-codex-auth`、`product/dsh-better-sidebar`、`product/ego-browser`、`product/context-doctor`、`product/plugin-marketplace`、`product/pomodoro`、`product/personal-workbench` 和 `product/oil-creator`。`scripts/bundle-harness-source.mjs` 把八个默认产品 Cordis Package 放进裁剪后的 workspace，并将它们和仓库内的 `@deepseek-ai/dsh-subagent-codex` Package 一起加入 CLI 依赖闭包，因此 Host 无需从 Registry 安装即可解析所有默认插件。生成的 Bundle Manifest 会单独记录 Codex Subagent Package 版本与产品 Agent Preset，不把它们混入由外部来源刷新的产品快照。Codex Auth、Better Sidebar、Plugin Marketplace 与 Pomodoro 固定到经过检查的 npm Tarball。Harbor 的 JavaScript 与 Python 快照来自同一个经过检查的 GitHub Release。Ego Browser、Context Doctor 与 Oil Creator 固定到经过检查的 GitHub 分支 Commit；Oil Creator 会先使用其声明的 Package Manager 构建，再冻结 npm Package 的文件选择结果。每个由外部来源刷新的快照都在 `YOURBUDDY_UPSTREAM.json` 中记录不可变来源、完整性 Hash、已提交 Tree Hash、上游许可证、精确版本的 Peer Metadata 覆盖以及经过评审的功能兼容补丁。`scripts/prepare-yourbuddy-runtime.mjs` 把已提交的 Python 快照安装进可迁移资源，也接受 `YOURBUDDY_HARBOR_PYTHON_SOURCE` 用于临时测试本地 Adapter。
 
 ## 默认插件交付策略
 
@@ -82,6 +82,18 @@ Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析�
 原生安装预览返回依赖优先的 Prepare/Reuse 步骤，不修改文件。管理器在一个组件事务内执行同一精确闭包：启动只选择核心组件，fallback 和能力准备均需显式请求。复用要求当前签名标识与压缩包校验后写入的完成标记一致；目录存在不足以证明可复用。`prepareArchiveBytes` 是仍需准备的压缩包大小之和，不是网络流量：缓存种子可以减少传输，重试则可能增加流量。准备、挂载和激活能力包属于独立操作。后端就绪只提交核心与 fallback 记录；准备好的能力包仅在确认当前 Host 挂载了该精确标识后写入 active 记录。
 
 旧通道 schema 会被拒绝。打包后的 splash 回归仅用真实签名的 `0.4.8` 通道证明先验签、后拒绝旧 schema，以及改动字节会导致验签失败。测试会恢复该 fixture，再检查原生 splash 恢复行为。当前 schema 的签名安装与就绪正向验收必须使用本轮 candidate-validation 产物；旧 fixture 不能作为这项正向证据。
+
+**设置 → 通用 → 组件** 展示经过签名的版本、用途、Archive 大小、准备状态与固定交付策略。安装先确认依赖计划，准备精确 Archive，再通过 Profile 所有者的受控操作链接可选的 Harbor 插件。页面取消等待不会放弃安装任务。所有者在 Profile 锁内比较先前依赖与原始链接；操作失败后，仅在能够确认恢复完成时报告已还原管理状态。准备好的 Package 与已挂载插件分别记录；只有当前 Host 代次、安装轮次的 Token 与真实 Active Fiber 观察相符时，才能提交激活记录。未知用户自有链接保持不变。安装后大小在完成受管存储扫描前显示为未测量。交付策略只读；此页面不能删除运行中的安装目录。
+
+只有未改变的 Profile 记录指向应用精确的旧 Harness 包路径时，缺失的 Harbor 链接才在启动检查中归为可选。原记录、Bundle 选择、用户 Patch 与设置保持不变；Loader 跳过这个不可用的可选 Bundle，八项默认功能继续启动。设置页提供明确的 Harbor 修复安装入口。修复在 Profile 写锁内比较原记录，并在重新启动的 Host 确认修复后的包身份后才显示为已激活。未知外部引用与未解析的必需依赖仍保留原有错误。
+
+下载缓存清理先预览当前签名 Catalog 对应的 Archive、下载分片与续传元数据，再要求明确确认。确认 Token 绑定当前 Host 代次且仅可消费一次；文件变化、再次预览、安装器忙碌或操作失败后都需要重新预览。Unix 上的清理在同一个永久事务锁内重新核对文件身份与内容，排除链接和未知条目；若某次删除失败，会如实报告此前已删除的部分。它不会选择安装目录、Staging、Profile 数据、统计或锁文件。Windows 与已知旧 CLI 布局拒绝清理。这些检查协调当前版本的应用操作，不支持旧 PID 锁实现同时运行。
+
+组件计数仅保存在本机 `components/statistics`。它们聚合当前发行版的采集起点、已认证 Catalog 的启动尝试、Client 工作台提交后的就绪、归属于当前 Harness 组件的计时器真实开始／继续结果、已读取下载 Payload 字节、重传重叠量，以及验证通过的 Cache 或 Offline Seed Archive 复用量。界面把这些调用计数标为番茄钟操作次数，不代表所有核心功能的使用情况。挂载与安装不计为使用。下载计数不包含未读取的错误正文及传输协议开销；取消、异常退出或批量事件中途写入失败可能少记。这些尽力记录的计数既不是网卡流量账单，也不是经过身份认证的用户分析。指标失败只产生本地诊断，不改变安装或就绪结果；超出 JavaScript 精确整数范围的计数不会在 UI 中显示，也不会舍入。
+
+工作台生成的 Harbor Shim 在版本探测时返回 Package 版本元信息。元信息探测成功不证明上游 CLI 已加载；打包检查会另行执行真实 `setup --help` 入口。这个直接 Shim 不在原生 Helper 的继承租约覆盖内，因此运行目录清理仍不可用。
+
+发布验收器消费 `scripts/native-overlay-renderer` 直接调用生产 Rust 渲染函数生成的 Overlay；除正常 JavaScript 构建工具外还需要 Rust/Cargo。只读渲染器从 stdin 接收有界 JSON 路径，经 stdout 输出 YAML，不打开应用数据。验收先要求八个默认产品 Client、Codex 默认与 Creator Preset 可用，再向同一隔离 Profile 安装 Harbor 并要求第九个 Client 可用。这验证原生配置生成与真实 Host 装配，不替代签名 macOS 应用及 WebView 验收。
 
 ## 组件清单
 

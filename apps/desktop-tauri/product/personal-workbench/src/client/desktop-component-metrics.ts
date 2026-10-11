@@ -21,7 +21,7 @@ export interface DesktopComponentMetrics {
  */
 export function installDesktopComponentMetrics(
   target: Window | undefined = typeof window === 'undefined' ? undefined : window,
-  suppliedController?: DesktopComponentController,
+  suppliedController?: Pick<DesktopComponentController, 'load' | 'dispose' | 'reportWorkbenchReady' | 'reportPomodoroInvocation'>,
 ): DesktopComponentMetrics {
   if (target === undefined || !isDesktopComponentsAvailable(target)) return { ready() {}, dispose() {} }
   const controller = suppliedController ?? createDesktopComponentController({ target })
@@ -32,7 +32,8 @@ export function installDesktopComponentMetrics(
     try {
       const overview = await controller.load()
       if (!active) return
-      const token = overview.components.find(component => component.key === 'pomodoro')?.runtimeToken
+      // The bundled timer belongs to the verified core profile, not a separate archive.
+      const token = overview.components.find(component => component.key === 'harness')?.runtimeToken
       if (token === undefined || token === null) { diagnose(); return }
       await controller.reportPomodoroInvocation(token, succeeded)
     }

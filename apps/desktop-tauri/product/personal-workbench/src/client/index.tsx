@@ -181,11 +181,11 @@ export function installDesktopComponentSettings(
   const componentWindow = target
   ctx.effect(() => ctx.locale.register('settings.components', { zh: componentZh, en: componentEn }), 'personal-workbench: component dictionaries')
   const observeRuntime = async (component: ComponentView): Promise<ComponentRuntimeState | undefined> => {
-    if (component.key !== 'pomodoro' || component.runtimeToken === null) return undefined
+    if (component.key !== 'harborPlugin' || component.runtimeToken === null) return undefined
     const [bundles, inventory] = await Promise.all([ctx.remote.pluginManager.listBundles(), ctx.remote.pluginInventory.list()])
     if (!bundles.ok || !inventory.ok) throw new Error('desktop-component-runtime-unavailable')
-    const bundle = bundles.value.find(item => item.name === '@xiaohui-wang/dsh-pomodoro')
-    const row = bundle?.rows.find(item => item.rowId === 'dsh-pomodoro' && item.moduleName === '@xiaohui-wang/dsh-pomodoro')
+    const bundle = bundles.value.find(item => item.name === 'dsh-harbor-evolution')
+    const row = bundle?.rows.find(item => item.rowId === 'harbor-evolution' && item.moduleName === 'dsh-harbor-evolution')
     if (row?.entryId === undefined) return undefined
     const entry = inventory.value.entries.find(item => item.entryId === row.entryId && item.moduleName === row.moduleName)
     if (entry === undefined) return undefined

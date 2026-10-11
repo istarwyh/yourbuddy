@@ -14,7 +14,7 @@ export interface ComponentView {
   readonly canChangePolicy: boolean
   readonly canClean: boolean
   readonly error: string | null
-  /** Native token for this Host generation and exact component installation attempt. */
+  /** Native token scoped to the current Host generation and verified component source. */
   readonly runtimeToken: string | null
 }
 
@@ -39,6 +39,7 @@ export interface ComponentCounters {
   readonly resumeAttempts: number
   readonly resumeSuccesses: number
   readonly installs: number
+  /** On harness, counts only committed Pomodoro Start/Resume results, not all core activity. */
   readonly invocations: number
   readonly successfulInvocations: number
 }
@@ -64,6 +65,31 @@ export interface ComponentOverview {
   readonly metricsError: string | null
 }
 
+/** Redownloadable cache data only; installed component trees are never included. */
+export type CacheCleanupKind = 'archive' | 'partial' | 'resume-metadata'
+
+/** One download-cache item approved by the native preview. No filesystem path crosses the bridge. */
+export interface CacheCleanupFile {
+  readonly component: string
+  readonly kind: CacheCleanupKind
+  readonly bytes: number
+}
+
+/** Native-owned bounded preview; the one-use token binds the exact listed cache files. */
+export interface CacheCleanupPreview {
+  readonly token: string
+  readonly files: readonly CacheCleanupFile[]
+  readonly totalBytes: number
+}
+
+/** Actual deletion results; partial failure does not undo successfully deleted cache files. */
+export interface CacheCleanupResult {
+  readonly deletedBytes: number
+  readonly deletedFiles: number
+  readonly failures: readonly { readonly component: string; readonly kind: CacheCleanupKind; readonly error: string }[]
+  readonly complete: boolean
+}
+
 /** Native operations supplied by the desktop integration; rendering never accesses files. */
 export interface ComponentController {
   /** Read current inventory and the local metrics window. */
@@ -72,4 +98,8 @@ export interface ComponentController {
   plan(key: string): Promise<InstallPlan>
   /** Prepare a reviewed component and report whether application restart is required. */
   install(key: string): Promise<{ readonly restartRequired: boolean }>
+  /** Preview redownloadable cache files without deleting anything. */
+  previewCacheCleanup?(): Promise<CacheCleanupPreview>
+  /** Delete only the previewed cache after explicit user confirmation; stale tokens require a new preview. */
+  cleanCache?(token: string): Promise<CacheCleanupResult>
 }

@@ -6,10 +6,12 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
+  writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { assertBundledProductPeerLinks } from './product-plugin-compatibility.mjs'
@@ -363,6 +365,33 @@ function regenerateProductLock(env) {
 }
 
 /**
+ * Render the production native overlay for the prepared-release Host smoke.
+ * @param {object} options Prepared runtime paths and private output path.
+ * @param {NodeJS.ProcessEnv} sourceEnvironment Original build-tool environment, before HOME isolation.
+ * @returns {string} The generated overlay path consumed by verification.
+ */
+export function renderReleaseDesktopOverlay({
+  outputPath, projectRoot, productRuntimeRoot,
+  rendererManifest = join(desktopRoot, 'scripts/native-overlay-renderer/Cargo.toml'),
+}, sourceEnvironment = process.env) {
+  const runtime = JSON.parse(readFileSync(join(productRuntimeRoot, 'manifest.json'), 'utf8'))
+  const input = {
+    pluginUrl: pathToFileURL(join(desktopRoot, 'overlay/desktop-notify/index.mjs')).href,
+    projectRoot: resolve(projectRoot),
+    harborBin: resolve(productRuntimeRoot, runtime.harborBin),
+    harborDshBin: resolve(productRuntimeRoot, runtime.harborDshBin),
+  }
+  const rendered = spawnSync('cargo', ['run', '--quiet', '--locked', '--manifest-path', rendererManifest], {
+    cwd: repositoryRoot, env: releaseBuildEnvironment(sourceEnvironment),
+    input: JSON.stringify(input), encoding: 'utf8',
+  })
+  if (rendered.error) throw rendered.error
+  if (rendered.status !== 0) throw new Error(`native overlay renderer failed: ${rendered.stderr || rendered.signal || rendered.status}`)
+  writeFileSync(outputPath, rendered.stdout, { flag: 'wx', mode: 0o600 })
+  return outputPath
+}
+
+/**
  * Prepare committed inputs for a later reproducible tagged YourBuddy build.
  * A dry run resolves latest candidates and runs static checks only.
  *
@@ -425,7 +454,18 @@ export async function prepareRelease(options = {}) {
         YOURBUDDY_KEEP_PREPARED_HARNESS_INSTALL: '1',
         YOURBUDDY_OFFLINE_STORE_CACHE_DIR: '',
       })
-      await verifyPreparedProduct()
+      const projectRoot = join(isolated.root, 'desktop-project')
+      mkdirSync(projectRoot)
+      const desktopOverlayPath = renderReleaseDesktopOverlay({
+        outputPath: join(isolated.root, 'desktop-overlay.yml'),
+        projectRoot,
+        productRuntimeRoot: join(desktopRoot, 'bundled/yourbuddy-runtime'),
+      }, sourceEnvironment)
+      const { readPreparedCapabilities } = await import('./prepare-capability-components.mjs')
+      await verifyPreparedProduct(undefined, undefined, {
+        capabilities: readPreparedCapabilities(),
+        desktopOverlayPath,
+      })
       return [...dsh.updates, ...refreshed]
     })
   }

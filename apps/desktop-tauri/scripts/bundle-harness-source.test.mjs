@@ -343,7 +343,7 @@ test('installDefaultAgentPresets declares product presets from the standard prof
   }
 })
 
-test('installProductPlugins keeps Codex in core and excludes the on-demand Pomodoro package', () => {
+test('installProductPlugins keeps every non-Harbor product in core and excludes the on-demand Harbor package', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-product-plugin-'))
   const cli = join(root, 'apps', 'cli')
   mkdirSync(cli, { recursive: true })
@@ -362,21 +362,22 @@ test('installProductPlugins keeps Codex in core and excludes the on-demand Pomod
     installProductPlugins(root)
     const manifest = JSON.parse(readFileSync(join(cli, 'package.json'), 'utf8'))
     assert.equal(manifest.dependencies.kept, '1.0.0')
-    assert.equal(manifest.dependencies['dsh-harbor-evolution'], 'workspace:*')
+    assert.equal(manifest.dependencies['dsh-harbor-evolution'], undefined)
     assert.equal(manifest.dependencies['dsh-codex-auth'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-better-sidebar'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-context-doctor'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-ego-browser'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-plugin-marketplace'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-personal-workbench'], 'workspace:*')
-    assert.equal(manifest.dependencies['@xiaohui-wang/dsh-pomodoro'], undefined)
+    assert.equal(manifest.dependencies['@xiaohui-wang/dsh-pomodoro'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-oil-creator'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-subagent-codex'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
     const webPatch = readFileSync(join(webApp, 'cordis.patch.yml'), 'utf8')
     assert.match(webPatch, /# YourBuddy product bundle layers/u)
     assert.match(webPatch, /id: personal-workbench\n\s+name: dsh-personal-workbench/u)
-    assert.doesNotMatch(webPatch, /dsh-pomodoro/u)
+    assert.match(webPatch, /id: dsh-pomodoro/u)
+    assert.doesNotMatch(webPatch, /id: harbor-evolution/u)
     assert.doesNotMatch(webPatch, /name: "dsh-ego-browser"/u)
     assert.match(webPatch, /id: dsh-oil-creator\n\s+name: dsh-oil-creator/u)
     assert.match(webPatch, /id: subagent-codex\n\s+name: '@deepseek-ai\/dsh-subagent-codex'/u)
@@ -395,13 +396,8 @@ test('installProductPlugins keeps Codex in core and excludes the on-demand Pomod
       'utf8',
     ))
     assert.notEqual(sourceCodex.peerDependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
-    assert.ok(readFileSync(join(root, 'packages', 'product', 'harbor-evolution', 'skills', 'evolve-agent-with-harbor', 'SKILL.md'), 'utf8').length > 0)
-    assert.equal(
-      JSON.parse(readFileSync(join(root, 'packages', 'product', 'harbor-evolution', 'schemas', 'meta-evaluation-report.schema.json'), 'utf8')).title,
-      'Evaluator Meta-Evaluation Report v1',
-    )
     for (const [source, destination] of [
-      ['harbor-evolution', 'harbor-evolution'],
+      ['pomodoro', 'pomodoro'],
       ['dsh-codex-auth', 'dsh-codex-auth'],
       ['dsh-better-sidebar', 'dsh-better-sidebar'],
       ['context-doctor', 'context-doctor'],
@@ -437,7 +433,7 @@ test('installProductPlugins keeps Codex in core and excludes the on-demand Pomod
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'client.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'plugin-marketplace', 'index.js'), 'utf8').length > 0)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'personal-workbench', 'lib', 'client.js'), 'utf8').length > 0)
-    assert.equal(existsSync(join(root, 'packages', 'product', 'pomodoro')), false)
+    assert.equal(existsSync(join(root, 'packages', 'product', 'harbor-evolution')), false)
     const bundledOilCreator = join(root, 'packages', 'product', 'oil-creator')
     assert.ok(readFileSync(join(bundledOilCreator, 'lib', 'client.js'), 'utf8').length > 0)
     const oilCreatorHost = readFileSync(join(bundledOilCreator, 'lib', 'index.js'), 'utf8')

@@ -228,6 +228,9 @@ export function buildBootstrapComponents({ version, outputRoot = DEFAULT_OUTPUT,
     if (manifest.name !== definition.packageName) throw new Error(`capability package mismatch: ${definition.key}`)
     return { ...definition, root, version: manifest.version }
   })
+  if (capabilities.find(({ key }) => key === 'harborPlugin')?.version !== integrationVersion) {
+    throw new Error('Harbor Node and Python capability versions differ')
+  }
 
   rmSync(outputRoot, { recursive: true, force: true })
   mkdirSync(outputRoot, { recursive: true })
@@ -267,11 +270,15 @@ export function buildBootstrapComponents({ version, outputRoot = DEFAULT_OUTPUT,
     writeFileSync(join(debugStage, 'README.txt'), 'Optional YourBuddy source maps and native diagnostics.\n')
     archiveTree(debugStage, debugArchive)
 
-    const capabilityComponents = Object.fromEntries(capabilities.map(({ key, root, version: packageVersion, purpose }) => {
+    const dependencyIds = { harness: `sha256:${harnessId}`, harbor: `sha256:${harborId}` }
+    const capabilityComponents = Object.fromEntries(capabilities.map(({ key, root, version: packageVersion, purpose, requires = [] }) => {
       const id = treeDigest(root, () => true)
       const archive = join(outputRoot, `yourbuddy-${key}-${id}-darwin-arm64.tar.zst`)
       return [key, component(`sha256:${id}`, archive, archiveTree(root, archive), 'capability-on-demand', packageVersion,
-        purpose, { harness: `sha256:${harnessId}` })]
+        purpose, Object.fromEntries(['harness', ...requires].map(name => {
+          if (!dependencyIds[name]) throw new Error(`capability dependency is not prepared: ${key} -> ${name}`)
+          return [name, dependencyIds[name]]
+        })))]
     }))
 
     const manifest = validateComponentManifest({

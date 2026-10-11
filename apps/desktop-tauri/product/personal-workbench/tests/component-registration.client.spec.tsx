@@ -9,7 +9,7 @@ import { installDesktopComponentSettings } from '../src/client/index.tsx'
 import { componentEn, componentZh, type ComponentLocaleKey } from '../src/client/component-locales.ts'
 import type { ComponentOverview } from '../src/client/component-model.ts'
 
-const snapshot: ComponentOverview = { appVersion: '0.4.9', components: [{ key: 'pomodoro', kind: 'optional', version: '0.5.5', purpose: 'Focus timer', archiveBytes: 42, installedBytes: null, state: 'prepared', policy: 'manual', canInstall: true, canChangePolicy: false, canClean: false, error: null, runtimeToken: null }], metrics: null, metricsError: null }
+const snapshot: ComponentOverview = { appVersion: '0.4.9', components: [{ key: 'harborPlugin', kind: 'optional', version: '0.5.5', purpose: 'Agent evaluation interface', archiveBytes: 42, installedBytes: null, state: 'prepared', policy: 'manual', canInstall: true, canChangePolicy: false, canClean: false, error: null, runtimeToken: null }], metrics: null, metricsError: null }
 const originalParent = window.parent
 const parent = { postMessage: vi.fn() }
 const t = (key: ComponentLocaleKey): string => componentEn[key]
@@ -18,15 +18,15 @@ const message = async (value: unknown): Promise<void> => {
   await act(async () => { window.dispatchEvent(new MessageEvent('message', { source: parent as never, origin: 'http://127.0.0.1:45678', data: { channel: 'yourbuddy.desktop.components', version: 1, type: request.type.replace('-request', '-response'), requestId: request.requestId, ok: true, value } })) })
 }
 
-async function setup(inventoryEntryId = 'pomodoro_live') {
+async function setup(inventoryEntryId = 'harbor_live') {
   const ctx = new Context()
   const registry = ctx.plugin(SlotRegistry)
   await registry.await()
   const slots = ctx.get('slots') as SlotRegistry
   const locale = new LocaleRuntime(ctx)
   ctx.provide('locale', locale)
-  const listBundles = vi.fn().mockResolvedValue({ ok: true, value: [{ name: '@xiaohui-wang/dsh-pomodoro', rows: [{ rowId: 'dsh-pomodoro', moduleName: '@xiaohui-wang/dsh-pomodoro', entryId: 'pomodoro_live' }] }] })
-  const list = vi.fn().mockResolvedValue({ ok: true, value: { entries: [{ entryId: inventoryEntryId, moduleName: '@xiaohui-wang/dsh-pomodoro', enabled: true, fiberPhase: 'active' }] } })
+  const listBundles = vi.fn().mockResolvedValue({ ok: true, value: [{ name: 'dsh-harbor-evolution', rows: [{ rowId: 'harbor-evolution', moduleName: 'dsh-harbor-evolution', entryId: 'harbor_live' }] }] })
+  const list = vi.fn().mockResolvedValue({ ok: true, value: { entries: [{ entryId: inventoryEntryId, moduleName: 'dsh-harbor-evolution', enabled: true, fiberPhase: 'active' }] } })
   ctx.provide('remote', { pluginManager: { listBundles }, pluginInventory: { list } } as never)
   const removeRoot = slots.register({ name: 'root', children: { 'settings.general.item': { kind: 'list', scope: 'root' } } } as never, () => null)
   const fiber = ctx.plugin({ inject: ['slots', 'locale', 'remote'], apply(clientCtx) { installDesktopComponentSettings(clientCtx) } })
@@ -75,7 +75,7 @@ describe('component settings registration', () => {
     finally { await value.dispose() }
   })
 
-  it('joins the declared row and real active Fiber by exact entry identity before reporting', async () => {
+  it('joins only the Harbor plugin row and real active Fiber by exact entry identity before reporting', async () => {
     embed()
     const value = await setup()
     try {
@@ -85,10 +85,30 @@ describe('component settings registration', () => {
       await message(eligible)
       expect(value.listBundles).toHaveBeenCalledOnce()
       expect(value.list).toHaveBeenCalledOnce()
-      expect(parent.postMessage.mock.calls.at(-1)?.[0]).toMatchObject({ type: 'report-request', component: 'pomodoro', state: 'active', runtimeToken: 'epoch_install_1' })
+      expect(parent.postMessage.mock.calls.at(-1)?.[0]).toMatchObject({ type: 'report-request', component: 'harborPlugin', state: 'active', runtimeToken: 'epoch_install_1' })
       await message({ restartRequired: false })
       await message({ ...eligible, components: eligible.components.map(item => ({ ...item, state: 'active' })) })
       expect(screen.getByText('Active')).toBeTruthy()
+    }
+    finally { cleanup(); await value.dispose() }
+  })
+
+  it('does not treat the default harness or Harbor Python environment as a plugin mount', async () => {
+    embed()
+    const value = await setup()
+    try {
+      const Component = value.slots.entries('settings.general.item')[0]!.component as ComponentType<{ t: typeof t }>
+      render(<Component t={t} />)
+      const component = snapshot.components[0]!
+      await message({ ...snapshot, components: [
+        { ...component, key: 'harness', kind: 'core-runtime', policy: 'required', canInstall: false, state: 'in-use', runtimeToken: 'core_token' },
+        { ...component, key: 'harbor', runtimeToken: 'python_token' },
+      ] })
+      expect(value.listBundles).not.toHaveBeenCalled()
+      expect(value.list).not.toHaveBeenCalled()
+      expect(parent.postMessage).toHaveBeenCalledOnce()
+      expect(screen.getByText('In use')).toBeTruthy()
+      expect(screen.getByText('Prepared (startup not confirmed)')).toBeTruthy()
     }
     finally { cleanup(); await value.dispose() }
   })

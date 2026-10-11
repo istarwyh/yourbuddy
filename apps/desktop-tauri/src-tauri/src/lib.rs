@@ -20,6 +20,8 @@ use desktop_settings::AgentEnvironment;
 use i18n::Msg;
 use runtime::boot_log;
 use runtime::boot_status::BootStatus;
+use runtime::component_plan::PlanRequest;
+use runtime::component_service::{ComponentService, RuntimeObservation};
 use runtime::components::ComponentManager;
 use runtime::config::BUNDLED_HARNESS_DIR;
 use runtime::io_fallback::is_recoverable_io;
@@ -89,6 +91,9 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 if let Err(err) = boot_app(handle.clone(), bundled).await {
                     boot_log::error(&err);
+                    if let Ok(service) = component_service(&handle) {
+                        tokio::task::spawn_blocking(move || service.readiness_failed());
+                    }
                     chrome::stop_host(&handle);
                     desktop_shell::stop(&handle);
                     handle.state::<BootStatus>().fail(err);
@@ -119,6 +124,11 @@ struct FirstPartyCommandPayload {
     settings: Option<network_proxy::NetworkProxySettings>,
     environment_settings: Option<desktop_settings::ShellEnvironmentSettings>,
     permission: Option<String>,
+    component: Option<String>,
+    runtime_token: Option<String>,
+    cleanup_token: Option<String>,
+    state: Option<RuntimeObservation>,
+    succeeded: Option<bool>,
 }
 
 /// Dispatch application-owned desktop operations without a second command ACL.
@@ -209,6 +219,76 @@ async fn run_first_party_command(
             )?;
             Ok(Value::Null)
         }
+        "get_component_overview" => {
+            let service = component_service(&app)?;
+            tokio::task::spawn_blocking(move || service.overview())
+                .await
+                .map_err(|error| error.to_string())?
+                .and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
+        }
+        "preview_component_cache_cleanup" => {
+            let service = component_service(&app)?;
+            tokio::task::spawn_blocking(move || service.preview_cache_cleanup())
+                .await
+                .map_err(|error| error.to_string())?
+                .and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
+        }
+        "clean_component_cache" => {
+            let service = component_service(&app)?;
+            let token = payload
+                .cleanup_token
+                .ok_or("CACHE_CLEANUP_STALE: confirmation token is missing")?;
+            tokio::task::spawn_blocking(move || service.clean_cache(&token))
+                .await
+                .map_err(|error| error.to_string())?
+                .and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
+        }
+        "plan_component_install" => {
+            let service = component_service(&app)?;
+            let key = payload.component.ok_or("component-key-missing")?;
+            tokio::task::spawn_blocking(move || service.plan(&key))
+                .await
+                .map_err(|error| error.to_string())?
+                .and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
+        }
+        "install_component" => serde_json::to_value(
+            install_managed_component(&app, &payload.component.ok_or("component-key-missing")?)
+                .await?,
+        )
+        .map_err(|error| error.to_string()),
+        "report_workbench_ready" => {
+            let service = component_service(&app)?;
+            tokio::task::spawn_blocking(move || service.workbench_ready())
+                .await
+                .map_err(|error| error.to_string())?
+                .and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
+        }
+        "report_component_invocation" => {
+            let service = component_service(&app)?;
+            let key = payload.component.ok_or("component-key-missing")?;
+            let token = payload
+                .runtime_token
+                .ok_or("component-runtime-token-missing")?;
+            let succeeded = payload
+                .succeeded
+                .ok_or("component-invocation-result-missing")?;
+            tokio::task::spawn_blocking(move || service.invocation(&key, &token, succeeded))
+                .await
+                .map_err(|error| error.to_string())?
+                .and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
+        }
+        "report_component_runtime" => {
+            let service = component_service(&app)?;
+            let key = payload.component.ok_or("component-key-missing")?;
+            let token = payload
+                .runtime_token
+                .ok_or("component-runtime-token-missing")?;
+            let observation = payload.state.ok_or("component-runtime-state-missing")?;
+            tokio::task::spawn_blocking(move || service.report(&key, &token, observation))
+                .await
+                .map_err(|error| error.to_string())?
+                .and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
+        }
         "install_harbor_component" => Ok(json!(install_harbor_component(app).await?)),
         "enable_managed_cli_path" => Ok(json!(enable_managed_cli_path()?)),
         "check_for_updates" => Ok(json!(updater::check_for_updates(app).await?)),
@@ -216,21 +296,38 @@ async fn run_first_party_command(
     }
 }
 
-/// Download and activate the optional Harbor component after a user action.
+fn component_service(app: &AppHandle) -> Result<Arc<ComponentService>, String> {
+    app.try_state::<Arc<ComponentService>>()
+        .map(|state| Arc::clone(state.inner()))
+        .ok_or_else(|| "component catalog is unavailable for this launch".into())
+}
+
+async fn install_managed_component(
+    app: &AppHandle,
+    key: &str,
+) -> Result<runtime::component_service::InstallResult, String> {
+    let service = component_service(app)?;
+    let runtime = app
+        .try_state::<DesktopRuntime>()
+        .ok_or("workbench-not-ready")?;
+    let host_path = match &runtime.plugin_target {
+        runtime::plugin_catalog::PluginRunTarget::Windows { host_path, .. } => host_path.clone(),
+        runtime::plugin_catalog::PluginRunTarget::Wsl(_) => {
+            return Err("component installation is unavailable in WSL".into())
+        }
+    };
+    service
+        .install(key, &runtime.paths, &host_path, &runtime.network_proxy)
+        .await
+}
+
+/// Prepare the optional Harbor plugin and engine after a user action.
 #[tauri::command]
 async fn install_harbor_component(app: AppHandle) -> Result<String, String> {
-    let resource_dir = app
-        .path()
-        .resource_dir()
-        .map_err(|error| format!("component resources are unavailable: {error}"))?;
-    let settings = desktop_settings::load();
-    let proxy = network_proxy::resolve(&settings.network_proxy)?;
-    let manager = ComponentManager::load(&resource_dir, &proxy)?;
-    manager
-        .ensure("harbor")
+    install_managed_component(&app, "harborPlugin")
         .await
         .map_err(|error| format!("HARBOR_RUNTIME_INSTALL_FAILED: {error}"))?;
-    Ok("Harbor runtime installed".into())
+    Ok("Harbor components prepared".into())
 }
 
 /// Add YourBuddy's stable managed-bin directory to future terminal sessions after an explicit user action.
@@ -249,6 +346,7 @@ fn resolve_bundled_source(app: &AppHandle) -> Option<PathBuf> {
 }
 
 async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String> {
+    let started = std::time::Instant::now();
     boot_log::init()?;
     let environment_status = shell_environment::status();
     boot_log::info(&format!(
@@ -291,6 +389,7 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
     network_proxy::log_active(&network_proxy);
     let resource_dir = app.path().resource_dir().ok();
     let mut bundled = bundled;
+    let mut service = None;
     let components = if let Some(resource_dir) = resource_dir
         .as_deref()
         .filter(|path| path.join("component-channel/components.json").is_file())
@@ -303,7 +402,32 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
                 },
             )),
         );
+        let owner_manager = Arc::clone(&manager);
+        let owner = Arc::new(
+            tokio::task::spawn_blocking(move || ComponentService::new_at(owner_manager, started))
+                .await
+                .map_err(|error| format!("component service task failed: {error}"))??,
+        );
+        app.manage(Arc::clone(&owner));
+        owner.hold("harness", &PlanRequest::Startup).await?;
+        owner
+            .hold("node", &PlanRequest::Fallback("node".into()))
+            .await?;
+        owner
+            .hold("pnpmStore", &PlanRequest::Fallback("pnpmStore".into()))
+            .await?;
+        if manager.catalog().components.contains_key("harborPlugin")
+            && manager.installed("harborPlugin")?.is_some()
+        {
+            owner
+                .hold(
+                    "harborPlugin",
+                    &PlanRequest::Capability("harborPlugin".into()),
+                )
+                .await?;
+        }
         bundled = Some(manager.ensure_startup().await?);
+        service = Some(owner);
         Some(manager)
     } else {
         None
@@ -315,6 +439,7 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
                     app.clone(),
                     bundled,
                     components.clone(),
+                    service.clone(),
                     notify.as_ref(),
                     Arc::clone(&progress),
                     network_proxy,
@@ -347,6 +472,11 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
         boot_log::error(&format!("plugins disabled by rescue patch: {names}"));
         notify::toast(&app, "YourBuddy", &i18n::tf(Msg::PluginsDisabled, &names));
     }
+    if let Some(service) = service {
+        if let Err(error) = service.bind_host(&runtime.paths) {
+            boot_log::info(&format!("component Host observation unavailable: {error}"));
+        }
+    }
     app.manage(runtime);
     if let Some(notify) = notify {
         app.manage(notify);
@@ -373,6 +503,7 @@ async fn boot_windows_runtime(
     app: AppHandle,
     bundled: Option<PathBuf>,
     components: Option<Arc<ComponentManager>>,
+    service: Option<Arc<ComponentService>>,
     notify: Option<&notify::NotifyHandle>,
     progress: Arc<dyn Fn(ProvisionEvent) + Send + Sync>,
     network_proxy: network_proxy::ResolvedNetworkProxy,
@@ -424,7 +555,14 @@ async fn boot_windows_runtime(
         notify_url: notify_url.to_string(),
     });
 
-    DesktopRuntime::start(paths, host_overlay.as_ref(), progress, network_proxy).await
+    DesktopRuntime::start(
+        paths,
+        host_overlay.as_ref(),
+        progress,
+        network_proxy,
+        service,
+    )
+    .await
 }
 
 async fn boot_wsl_runtime(

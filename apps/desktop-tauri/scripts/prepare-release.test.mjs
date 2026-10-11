@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import childProcess from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -11,6 +13,7 @@ import {
   releaseBuildEnvironment,
   releaseCandidateEnvironment,
   releaseFetch,
+  renderReleaseDesktopOverlay,
   withProcessEnvironment,
 } from './prepare-release.mjs'
 
@@ -218,4 +221,35 @@ test('dry-run summary describes static candidate checks without compatibility cl
   assert.match(summary, /static candidate checks passed/)
   assert.match(summary, /were not run/)
   assert.doesNotMatch(summary, /compatible/iu)
+})
+
+test('release verification receives the native renderer output with build homes preserved', t => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-release-overlay-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports() })
+  writeFileSync(join(root, 'manifest.json'), JSON.stringify({ harborBin: 'venv/bin/harbor', harborDshBin: 'venv/bin/harbor-dsh' }))
+  const outputPath = join(root, 'desktop.yml')
+  const env = { PATH: '/build/bin', HOME: '/build/home', CARGO_HOME: '/build/cargo', RUSTUP_HOME: '/build/rustup', GITHUB_TOKEN: 'do-not-forward' }
+  let result = { status: 0, stdout: '- id: native-renderer-output\n', stderr: '' }
+  t.mock.method(childProcess, 'spawnSync', (command, args, options) => {
+    assert.equal(command, 'cargo')
+    assert.deepEqual(args.slice(0, 4), ['run', '--quiet', '--locked', '--manifest-path'])
+    assert.ok(args[4].replaceAll('\\', '/').endsWith('native-overlay-renderer/Cargo.toml'))
+    for (const name of ['PATH', 'HOME', 'CARGO_HOME', 'RUSTUP_HOME']) assert.equal(options.env[name], env[name])
+    assert.equal(options.env.GITHUB_TOKEN, undefined)
+    const input = JSON.parse(options.input)
+    assert.ok(input.pluginUrl.startsWith('file:'))
+    assert.ok(input.pluginUrl.endsWith('/overlay/desktop-notify/index.mjs'))
+    assert.deepEqual(Object.keys(input).sort(), ['harborBin', 'harborDshBin', 'pluginUrl', 'projectRoot'])
+    assert.equal(input.projectRoot, root)
+    assert.equal(input.harborBin, join(root, 'venv/bin/harbor'))
+    assert.equal(input.harborDshBin, join(root, 'venv/bin/harbor-dsh'))
+    return result
+  })
+  syncBuiltinESMExports()
+  assert.equal(renderReleaseDesktopOverlay({ outputPath, projectRoot: root, productRuntimeRoot: root }, env), outputPath)
+  assert.equal(readFileSync(outputPath, 'utf8'), result.stdout)
+  result = { status: 1, stdout: 'partial', stderr: 'renderer failed' }
+  assert.throws(() => renderReleaseDesktopOverlay({ outputPath, projectRoot: root, productRuntimeRoot: root }, env), /renderer failed/)
+  assert.equal(readFileSync(outputPath, 'utf8'), '- id: native-renderer-output\n')
 })
