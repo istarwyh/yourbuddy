@@ -248,8 +248,12 @@ async function main(): Promise<void> {
   if (values.harness === undefined || !['darwin', 'linux', 'win32'].includes(values.platform)) {
     throw new Error('Usage: pnpm exec tsx scripts/yourbuddy-component-inventory.ts --harness <prepared-directory> [--root <package>] [--platform darwin|linux|win32] [--components <manifest-file>]')
   }
-  const report = await createYourBuddyComponentInventory({ harnessRoot: values.harness, roots: values.root,
-    platform: values.platform as YourBuddyInventoryOptions['platform'], componentsManifest: values.components })
+  const report = await createYourBuddyComponentInventory({
+    harnessRoot: values.harness,
+    platform: values.platform as YourBuddyInventoryOptions['platform'],
+    ...(values.root === undefined ? {} : { roots: values.root }),
+    ...(values.components === undefined ? {} : { componentsManifest: values.components }),
+  })
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
 }
 
