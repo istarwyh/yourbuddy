@@ -34,7 +34,7 @@ const MAX_EXPANDED_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 use super::component_plan::validate_manifest;
 use super::component_plan::{
     component_key, component_storage_path, parse_manifest, plan_installation, validate_spec,
-    InstallPlan, PlanRequest, VerifiedInstallations,
+    ComponentKind, InstallPlan, PlanRequest, VerifiedInstallations,
 };
 pub use super::component_plan::{ComponentManifest, ComponentSpec};
 
@@ -233,21 +233,53 @@ impl ComponentManager {
         }
     }
 
-    /// Prepare the current startup Harness without changing the active release.
+    /// Prepare the complete core-runtime dependency closure without changing the active release.
     pub async fn ensure_startup(&self) -> Result<PathBuf, String> {
-        fs::create_dir_all(&self.root)
-            .map_err(|error| format!("cannot create component cache: {error}"))?;
-        let _lock = self.lock()?;
-        self.persist_manifest()?;
-        self.ensure_locked("harness").await
+        self.prepare(&PlanRequest::Startup).await?;
+        self.installed("harness")?
+            .ok_or_else(|| "startup Harness was not prepared".into())
     }
 
     /// Prepare a current component from an Offline seed or Release URL without activating it.
     pub async fn ensure(&self, name: &str) -> Result<PathBuf, String> {
+        let request = self.request(name)?;
+        self.prepare(&request).await?;
+        self.installed(name)?
+            .ok_or_else(|| format!("component {name} was not prepared"))
+    }
+
+    /// Prepare a validated exact dependency plan under one cross-process transaction.
+    /// Consumers hold shared storage leases before calling this operation.
+    pub async fn prepare(&self, request: &PlanRequest) -> Result<(), String> {
         fs::create_dir_all(&self.root)
             .map_err(|error| format!("cannot create component cache: {error}"))?;
         let _lock = self.lock()?;
-        self.ensure_locked(name).await
+        let plan = self.installation_plan(request)?;
+        self.persist_manifest()?;
+        for entry in plan.components {
+            self.ensure_locked(&entry.component).await?;
+        }
+        Ok(())
+    }
+
+    /// Select the signed category for an explicitly requested catalog component.
+    pub fn request(&self, name: &str) -> Result<PlanRequest, String> {
+        Ok(match self.spec(name)?.kind {
+            ComponentKind::CoreRuntime => PlanRequest::Startup,
+            ComponentKind::RuntimeFallback => PlanRequest::Fallback(name.into()),
+            ComponentKind::CapabilityOnDemand => PlanRequest::Capability(name.into()),
+            ComponentKind::Optional => PlanRequest::Optional(name.into()),
+        })
+    }
+
+    /// Read the authenticated current-release catalog.
+    pub fn catalog(&self) -> &ComponentManifest {
+        &self.manifest
+    }
+
+    /// Cache root shared by preparation, storage leases, and local component settings.
+    pub fn cache_root(&self) -> &Path {
+        &self.root
     }
 
     /// Return the fixed pnpm package embedded in every Bootstrap application.
@@ -568,7 +600,8 @@ impl ComponentManager {
         Ok(runtime)
     }
 
-    /// Commit complete current-manifest components only after application readiness succeeds.
+    /// Commit prepared core/fallback components after application readiness succeeds.
+    /// Optional capability preparation alone does not establish a running capability.
     /// Preparation and this commit share the component lock; a concurrent operation returns busy.
     pub fn activate_prepared(&self) -> Result<(), String> {
         fs::create_dir_all(&self.root)
@@ -578,9 +611,14 @@ impl ComponentManager {
             return Err("current startup harness is not prepared".into());
         }
         let mut components = BTreeMap::new();
-        for name in ["harness", "pnpmStore", "node", "harbor"] {
+        for (name, spec) in &self.manifest.components {
+            if !matches!(
+                spec.kind,
+                ComponentKind::CoreRuntime | ComponentKind::RuntimeFallback
+            ) {
+                continue;
+            }
             if let Some(path) = self.installed(name)? {
-                let spec = self.spec(name)?;
                 components.insert(
                     name,
                     serde_json::json!({
@@ -595,6 +633,43 @@ impl ComponentManager {
             "appVersion": self.manifest.app_version,
             "components": components,
         });
+        self.write_active(&active)
+    }
+
+    /// Commit one current capability only after its owner established a current-Host mount.
+    pub(super) fn activate_observed(&self, name: &str) -> Result<(), String> {
+        let _lock = self.lock()?;
+        let spec = self.spec(name)?;
+        if !matches!(
+            spec.kind,
+            ComponentKind::CapabilityOnDemand | ComponentKind::Optional
+        ) {
+            return Err("runtime observation does not identify a capability".into());
+        }
+        let path = self
+            .installed(name)?
+            .ok_or("observed capability is not prepared")?;
+        let mut active: serde_json::Value = serde_json::from_slice(
+            &fs::read(self.root.join("active.json"))
+                .map_err(|error| format!("active runtime is unavailable: {error}"))?,
+        )
+        .map_err(|error| format!("active runtime is invalid: {error}"))?;
+        if active["appVersion"].as_str() != Some(&self.manifest.app_version)
+            || active["components"]["harness"]["id"].as_str() != Some(&self.spec("harness")?.id)
+        {
+            return Err("runtime observation does not match the active application".into());
+        }
+        active["components"]
+            .as_object_mut()
+            .ok_or("active component records are missing")?
+            .insert(
+                name.into(),
+                serde_json::json!({ "id": spec.id, "path": path.display().to_string() }),
+            );
+        self.write_active(&active)
+    }
+
+    fn write_active(&self, active: &serde_json::Value) -> Result<(), String> {
         let active_path = self.root.join("active.json");
         let temporary = self.root.join("active.json.next");
         fs::write(
@@ -911,3 +986,20 @@ mod tests {
 #[cfg(test)]
 #[path = "components_download_tests.rs"]
 mod download_tests;
+
+#[cfg(test)]
+pub(super) fn service_fixture(root: &Path) -> ComponentManager {
+    let mut manifest = tests::manifest();
+    let mut pomodoro = manifest.components["harbor"].clone();
+    pomodoro.id = "sha256:pomodoro-fixture".into();
+    pomodoro.archive = "yourbuddy-pomodoro-fixture.tar.zst".into();
+    manifest.components.insert("pomodoro".into(), pomodoro);
+    ComponentManager {
+        root: root.into(),
+        resource_dir: root.join("resources"),
+        manifest,
+        client: Client::builder().no_proxy().build().unwrap(),
+        progress: None,
+        download_url: None,
+    }
+}

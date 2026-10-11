@@ -406,6 +406,7 @@ async fn readiness_failure_and_commit_failure_preserve_active_until_successful_r
     let mut manager = manager(root.path(), &server.url, &body);
     let mut node = manager.spec("harness").unwrap().clone();
     node.id = "node:current".into();
+    node.kind = super::super::component_plan::ComponentKind::RuntimeFallback;
     manager.manifest.components.insert("node".into(), node);
     let original = r#"{"schemaVersion":1,"appVersion":"previous","components":{"harness":{"id":"old"},"harbor":{"id":"old-harbor"}}}"#;
     let active_path = root.path().join("active.json");
@@ -716,4 +717,46 @@ fn installation_preview_requires_a_matching_completion_marker_and_has_no_activat
         assert!(!root.path().join("active.json").exists());
         assert!(!root.path().join("downloads").exists());
     }
+}
+
+#[tokio::test]
+async fn executes_dependency_first_capability_plan_without_activating_a_prepared_pack() {
+    let body = harness_archive();
+    let root = tempfile::tempdir().unwrap();
+    let mut manager = manager(root.path(), "http://127.0.0.1:1/not-requested", &body);
+    let mut capability = manager.spec("harness").unwrap().clone();
+    capability.id = "sha256:pomodoro".into();
+    capability.archive = "yourbuddy-pomodoro-fixture.tar.zst".into();
+    capability.kind = super::super::component_plan::ComponentKind::CapabilityOnDemand;
+    capability.depends_on.insert(
+        "harness".into(),
+        manager.spec("harness").unwrap().id.clone(),
+    );
+    manager
+        .manifest
+        .components
+        .insert("pomodoro".into(), capability);
+    let seeds = manager.resource_dir.join("component-seeds");
+    fs::create_dir_all(&seeds).unwrap();
+    for key in ["harness", "pomodoro"] {
+        fs::write(seeds.join(&manager.spec(key).unwrap().archive), &body).unwrap();
+    }
+    manager.ensure("pomodoro").await.unwrap();
+    assert!(manager.installed("harness").unwrap().is_some());
+    assert!(manager.installed("pomodoro").unwrap().is_some());
+    assert!(manager.installed("node").unwrap().is_none());
+    assert!(manager.installed("pnpmStore").unwrap().is_none());
+    assert!(manager.installed("harbor").unwrap().is_none());
+    assert!(!root.path().join("active.json").exists());
+    manager.activate_prepared().unwrap();
+    let active = || {
+        serde_json::from_slice::<serde_json::Value>(
+            &fs::read(root.path().join("active.json")).unwrap(),
+        )
+        .unwrap()
+    };
+    assert!(active()["components"].get("pomodoro").is_none());
+    manager.activate_observed("pomodoro").unwrap();
+    assert_eq!(active()["components"]["pomodoro"]["id"], "sha256:pomodoro");
+    assert!(manager.activate_observed("node").is_err());
 }

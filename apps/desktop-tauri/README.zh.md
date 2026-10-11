@@ -79,7 +79,7 @@ Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析�
 
 签名通道采用与应用版本精确对应的 schema 2。每个压缩包都声明版本、用途、类别，以及由组件键和精确不可变标识组成的依赖。类别为 `core-runtime`、`runtime-fallback`、`capability-on-demand` 和 `optional`。核心组件的依赖不能引入可选能力，fallback 也不会通过依赖边自动安装。当前默认行为仍是启动时准备 Harness，仅在既有 fallback 检查确认需要时准备 Node 和 pnpm Store，以及按需准备依赖当前 Harness 的 Harbor。
 
-原生只读安装预览返回依赖优先的 Prepare/Reuse 步骤。复用要求当前签名标识与压缩包校验后写入的完成标记一致；目录存在不足以证明可复用。`prepareArchiveBytes` 是仍需准备的压缩包大小之和，不是网络流量：缓存种子可以减少传输，重试则可能增加流量。额外能力包的准备、挂载和激活是独立操作，预览成功不能证明它们已就绪。
+原生安装预览返回依赖优先的 Prepare/Reuse 步骤，不修改文件。管理器在一个组件事务内执行同一精确闭包：启动只选择核心组件，fallback 和能力准备均需显式请求。复用要求当前签名标识与压缩包校验后写入的完成标记一致；目录存在不足以证明可复用。`prepareArchiveBytes` 是仍需准备的压缩包大小之和，不是网络流量：缓存种子可以减少传输，重试则可能增加流量。准备、挂载和激活能力包属于独立操作。后端就绪只提交核心与 fallback 记录；准备好的能力包仅在确认当前 Host 挂载了该精确标识后写入 active 记录。
 
 旧通道 schema 会被拒绝。打包后的 splash 回归仅用真实签名的 `0.4.8` 通道证明先验签、后拒绝旧 schema，以及改动字节会导致验签失败。测试会恢复该 fixture，再检查原生 splash 恢复行为。当前 schema 的签名安装与就绪正向验收必须使用本轮 candidate-validation 产物；旧 fixture 不能作为这项正向证据。
 
