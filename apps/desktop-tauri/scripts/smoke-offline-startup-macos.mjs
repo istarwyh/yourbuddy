@@ -120,6 +120,42 @@ function inspectWindow(pid, close = false, observe = () => {}) {
   return snapshot.report
 }
 
+/** Recognize only the two reviewed first-run dialogs and their non-credential actions. */
+export function previewNoticeVisible(report, configureLater = false) {
+  const titles = configureLater ? ['Add an API key to get started', '添加一个 API Key 开始使用'] : ['Preview Notice', '预览版说明']
+  const button = configureLater ? /^AXButton\t(?:Configure later|稍后配置)\t/m : /^AXButton\t(?:Continue|继续)\t/m
+  return titles.some(title => report.includes(`AXGroup\t${title}\t`)
+    && report.includes(`AXHeading\t${title}\t`))
+    && button.test(report)
+}
+
+/** Press the exact Continue or Configure later control in its named AX subtree. */
+export function previewNoticeScript(pid, configureLater = false) {
+  assert(Number.isSafeInteger(pid) && pid > 0)
+  return `tell application "System Events"
+    set targetProcess to first application process whose unix id is ${pid}
+    set allNodes to entire contents of window 1 of targetProcess
+    set matchingButtons to {}
+    repeat with itemNode in allNodes
+      try
+        if role of itemNode is "AXGroup" and (name of itemNode is "${configureLater ? 'Add an API key to get started' : 'Preview Notice'}" or name of itemNode is "${configureLater ? '添加一个 API Key 开始使用' : '预览版说明'}") then
+          set noticeNodes to entire contents of itemNode
+          repeat with noticeNode in noticeNodes
+            if role of noticeNode is "AXButton" and (name of noticeNode is "${configureLater ? 'Configure later' : 'Continue'}" or name of noticeNode is "${configureLater ? '稍后配置' : '继续'}") then
+              set end of matchingButtons to contents of noticeNode
+            end if
+          end repeat
+        end if
+      on error errorText number errorNumber
+        if errorNumber is not -1719 and errorNumber is not -1728 then error errorText number errorNumber
+      end try
+    end repeat
+    if (count of matchingButtons) is not 1 then error "Expected exactly one allowed button inside the named first-run dialog"
+    perform action "AXPress" of item 1 of matchingButtons
+    return "${configureLater ? 'pressed-configure-later' : 'pressed-preview-notice'}"
+  end tell`
+}
+
 /** Best-effort diagnostics must never replace the original acceptance failure. */
 export function saveWindowFailure(evidence, round, snapshots, error, capture = path => {
   spawnSync('/usr/sbin/screencapture', ['-x', path], { timeout: 5_000, stdio: 'ignore' })
@@ -386,8 +422,22 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
         assert(host, 'native app must own a real Host process')
         assert(active.components.pnpmStore, 'empty isolated HOME must exercise the signed offline Store fallback')
         assert(!existsSync(join(appData, 'components', 'downloads')), 'Offline startup must not download release components')
+        let previewAcknowledged = false
+        let credentialsDeferred = false
         const view = await until('authenticated workbench in the native WebView', () => {
           const value = inspectWindow(child.pid, false, observeWindow)
+          if (!previewAcknowledged && previewNoticeVisible(value)) {
+            writeFileSync(join(evidence, `boot-${round}-preview-notice.txt`), redactEvidence(value))
+            assert.equal(apple(previewNoticeScript(child.pid)), 'pressed-preview-notice')
+            previewAcknowledged = true
+            return false
+          }
+          if (!credentialsDeferred && previewNoticeVisible(value, true)) {
+            writeFileSync(join(evidence, `boot-${round}-configure-later.txt`), redactEvidence(value))
+            assert.equal(apple(previewNoticeScript(child.pid, true)), 'pressed-configure-later')
+            credentialsDeferred = true
+            return false
+          }
           return /AXButton\tCodex\b/.test(value) && /\t(?:Settings|设置)\t/.test(value) && value
         }, 60_000, true)
         writeFileSync(join(evidence, `boot-${round}-accessibility.txt`), redactEvidence(view))
