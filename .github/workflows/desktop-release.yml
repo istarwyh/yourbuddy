@@ -183,10 +183,10 @@ jobs:
           import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
           import { tmpdir } from 'node:os'
           import { join, resolve } from 'node:path'
+          import { pathToFileURL } from 'node:url'
           import { isolatedReleaseEnvironment, renderReleaseDesktopOverlay, withProcessEnvironment } from './apps/desktop-tauri/scripts/prepare-release.mjs'
           import { frozenOfflineInstallArgs, pinPnpmInvocationArgs } from './apps/desktop-tauri/scripts/prepare-harness-offline-store.mjs'
           import { readPreparedCapabilities } from './apps/desktop-tauri/scripts/prepare-capability-components.mjs'
-          import { verifyPreparedProduct } from './apps/desktop-tauri/scripts/verify-product-release.mjs'
           import { redactEvidence } from './apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs'
 
           const sourceEnvironment = { ...process.env }
@@ -205,10 +205,17 @@ jobs:
             scope: 'Prepared real Host and Profile; 8 default Clients then 9 with Harbor; Chromium interaction. Desktop invoke stubs are bridge-only; native acceptance is separate.',
           }
           const isolated = isolatedReleaseEnvironment(sourceEnvironment, realpathSync(tmpdir()))
+          const verifierPath = join(desktopRoot, 'scripts', `.yourbuddy-prepared-verifier-${process.pid}.mjs`)
           try {
+            if (!sourceEnvironment.GITHUB_WORKFLOW_SHA) throw new Error('GITHUB_WORKFLOW_SHA is required for prepared acceptance')
+            writeFileSync(verifierPath, execFileSync('git', [
+              'show', `${sourceEnvironment.GITHUB_WORKFLOW_SHA}:apps/desktop-tauri/scripts/verify-product-release.mjs`,
+            ]), { flag: 'wx' })
+            const { verifyPreparedProduct } = await import(pathToFileURL(verifierPath).href)
             await withProcessEnvironment({
               ...isolated.env,
               CI: 'true',
+              YOURBUDDY_RELEASE_EVIDENCE_DIR: evidence,
               YOURBUDDY_RELEASE_VIDEO_DIR: join(evidence, 'videos'),
               YOURBUDDY_RELEASE_SCREENSHOT: join(evidence, 'workbench-last-captured.png'),
             }, async () => {
@@ -234,6 +241,7 @@ jobs:
             console.error(result.error)
             process.exitCode = 1
           } finally {
+            rmSync(verifierPath, { force: true })
             writeFileSync(join(evidence, 'result.json'), `${JSON.stringify(result, null, 2)}\n`)
           }
           NODE
