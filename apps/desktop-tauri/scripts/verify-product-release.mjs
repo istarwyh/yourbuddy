@@ -799,7 +799,8 @@ export async function saveBrowserFailure(page, directory, diagnostics) {
   } catch (error) { void error /* A failed screenshot must not replace the acceptance error. */ }
 }
 
-async function exerciseLightweightServices(page) {
+/** Exercise lightweight services without leaking sidebar expansion into the desktop phase. */
+export async function exerciseLightweightServices(page) {
   const server = createServer((_request, response) => {
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
     response.end('<p>YourBuddy lightweight browser is running</p>')
@@ -812,7 +813,8 @@ async function exerciseLightweightServices(page) {
     const address = server.address()
     if (address === null || typeof address === 'string') throw new Error('lightweight browser smoke did not bind a port')
     const sidebar = page.locator('[data-sidebar-right-panel]').first()
-    if (await sidebar.getAttribute('aria-hidden') === 'true') {
+    const startedCollapsed = await sidebar.getAttribute('aria-hidden') === 'true'
+    if (startedCollapsed) {
       await page.getByRole('button', { name: 'Open right sidebar', exact: true }).click()
     }
     const browser = sidebar.locator('[data-sidebar-right-guide-entry="browser"]')
@@ -824,6 +826,13 @@ async function exerciseLightweightServices(page) {
     await sidebar.frameLocator('iframe[data-sidebar-browser-frame]')
       .getByText('YourBuddy lightweight browser is running', { exact: true }).waitFor({ timeout: 15_000 })
     await exerciseDocumentPreviews(sidebar)
+    // The same Session reopens in the desktop iframe; restore its persisted expanded state.
+    // Keep a failed preview visible for the failure screenshot instead of restoring in finally.
+    if (startedCollapsed) {
+      await sidebar.getByRole('button', { name: 'Collapse right sidebar', exact: true }).click()
+      await page.locator('[data-sidebar-right-panel][aria-hidden="true"]').first()
+        .waitFor({ state: 'attached', timeout: 10_000 })
+    }
   } finally {
     await closeDesktopBridgeSmokeServer(server)
   }

@@ -11,6 +11,7 @@ import {
   PRODUCT_CLIENT_IDS,
   RELEASE_DOCUMENT_PREVIEWS,
   exerciseDocumentPreviews,
+  exerciseLightweightServices,
   recordPreviewNetworkEvent,
   saveBrowserFailure,
   CORE_PRODUCT_CLIENT_IDS,
@@ -622,4 +623,63 @@ test('preview failure evidence retains request outcomes and errors without auth 
     assert.deepEqual(JSON.parse(retained).previewRequests, events)
     await assert.doesNotReject(saveBrowserFailure({ screenshot: async () => { throw new Error('closed page') } }, join(directory, 'missing'), diagnostics))
   } finally { rmSync(directory, { recursive: true, force: true }) }
+})
+
+
+test('lightweight smoke restores its opened sidebar only after content succeeds and verifies the collapse', async () => {
+  const run = async ({ initiallyCollapsed = true, previewFails = false, collapseFails = false } = {}) => {
+    let collapsed = initiallyCollapsed
+    const actions = []
+    const button = name => ({ click: async () => {
+      actions.push(name)
+      if (name === 'Open right sidebar') collapsed = false
+      if (name === 'Collapse right sidebar' && !collapseFails) collapsed = true
+    } })
+    const sidebar = {
+      getAttribute: async () => String(collapsed),
+      getByRole: (role, { name }) => role === 'textbox'
+        ? { fill: async () => {}, press: async () => {} }
+        : button(name),
+      getByText: () => ({ click: async () => {} }),
+      frameLocator: () => ({ getByText: () => ({ waitFor: async () => {} }) }),
+      locator: selector => ({
+        isVisible: async () => true,
+        click: async () => {},
+        getByText: () => ({ waitFor: async () => {
+          actions.push(selector)
+          if (previewFails) throw new Error('preview content missing')
+        } }),
+      }),
+    }
+    const page = {
+      getByRole: (_role, { name }) => button(name),
+      locator: selector => ({ first: () => selector.includes('[aria-hidden="true"]')
+        ? { waitFor: async options => {
+          assert.deepEqual(options, { state: 'attached', timeout: 10_000 })
+          if (!collapsed) throw new Error('sidebar did not collapse')
+          actions.push('confirmed collapsed')
+        } }
+        : sidebar }),
+    }
+    try {
+      await exerciseLightweightServices(page)
+      return { actions, collapsed }
+    } catch (error) { return { actions, collapsed, error } }
+  }
+  const restored = await run()
+  assert.equal(restored.error, undefined)
+  assert.equal(restored.collapsed, true)
+  assert.deepEqual(restored.actions.slice(-4), [
+    'New tab', '[data-dsh-native-tab-host] .cm-content', 'Collapse right sidebar', 'confirmed collapsed',
+  ])
+  const alreadyOpen = await run({ initiallyCollapsed: false })
+  assert.equal(alreadyOpen.error, undefined)
+  assert.equal(alreadyOpen.collapsed, false)
+  assert.ok(!alreadyOpen.actions.includes('Collapse right sidebar'))
+  const failedPreview = await run({ previewFails: true })
+  assert.match(failedPreview.error.message, /preview content missing/u)
+  assert.equal(failedPreview.collapsed, false)
+  assert.ok(!failedPreview.actions.includes('Collapse right sidebar'))
+  const failedRestore = await run({ collapseFails: true })
+  assert.match(failedRestore.error.message, /sidebar did not collapse/u)
 })
