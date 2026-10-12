@@ -1,6 +1,6 @@
 /** Exercise release guards in PR CI and retain the same-run artifact publication path. */
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
@@ -61,17 +61,25 @@ function assertPublicationGates(candidate: Workflow): void {
     'Verify the candidate without publishing',
     'Publish the verified master tag atomically',
     'Build Harness',
+    'Prepare frozen release inputs',
+    'Install prepared product acceptance browser',
+    'Verify prepared default workbench and optional Harbor',
+    'Remove Python bytecode excluded from component archives',
     'Build immutable runtime components',
+    'Retain component archive measurements',
     'Build Bootstrap app and DMG',
     'Enforce Bootstrap DMG ceiling and resource exclusions',
     'Build Offline app and DMG',
+    'Record installer archive sizes',
     'Verify native Offline installation and cold starts',
     'Test relocated YourBuddy product runtime',
     'Stage release assets',
     'Generate updater manifest',
     'Generate and verify release checksums',
+    'Retain updater metadata and checksums',
     'Publish release',
     'Upload validation candidate artifacts',
+    'Upload prepared acceptance evidence',
     'Upload native acceptance evidence',
   ]
   const positions = names.map((name) => {
@@ -87,7 +95,14 @@ function assertPublicationGates(candidate: Workflow): void {
       'Refuse an existing Release for tag retry': "env.RELEASE_MODE == 'existing-tag'",
       'Check types before candidate validation or publication': "env.RELEASE_MODE != 'existing-tag'",
       'Check native acceptance prerequisites': nativeCondition,
+      'Install prepared product acceptance browser': nativeCondition,
+      'Verify prepared default workbench and optional Harbor': nativeCondition,
+      'Remove Python bytecode excluded from component archives': nativeCondition,
+      'Retain component archive measurements': nativeCondition,
+      'Record installer archive sizes': nativeCondition,
       'Verify native Offline installation and cold starts': nativeCondition,
+      'Retain updater metadata and checksums': nativeCondition,
+      'Upload prepared acceptance evidence': `always() && (${nativeCondition})`,
       'Upload native acceptance evidence': `always() && (${nativeCondition})`,
       'Verify the candidate without publishing': "env.RELEASE_MODE == 'candidate-validation'",
       'Publish the verified master tag atomically': firstPublicationCondition,
@@ -117,6 +132,22 @@ function assertPublicationGates(candidate: Workflow): void {
     with: { path: '${{ runner.temp }}/offline-startup-smoke/evidence/', 'if-no-files-found': 'warn', 'retention-days': 7 },
   })
   expect(build.steps.find(step => step.name === 'Build Harness')?.run).toBe('pnpm run build')
+  expect(build.steps.find(step => step.name === 'Prepare frozen release inputs')).toMatchObject({
+    run: 'pnpm --dir apps/desktop-tauri run prepare:dist',
+    env: { YOURBUDDY_OFFLINE_STORE_CACHE_DIR: '${{ runner.temp }}/yourbuddy-offline-store-cache' },
+  })
+  const prepared = build.steps.find(step => step.name === 'Verify prepared default workbench and optional Harbor')!
+  expect(prepared.run).toContain("execFileSync('pnpm', pinPnpmInvocationArgs(frozenOfflineInstallArgs())")
+  expect(prepared.run).toContain('await withProcessEnvironment(')
+  expect(prepared.run).toContain('const desktopOverlayPath = renderReleaseDesktopOverlay(')
+  expect(prepared.run).toContain('await verifyPreparedProduct(')
+  expect(prepared.run).toContain('capabilities: readPreparedCapabilities()')
+  expect(prepared.run).toContain('process.exitCode = 1')
+  expect(prepared.run).not.toMatch(/prepareRelease\(|prepare:release|refresh:product-plugins|sync:dsh/)
+  expect(build.steps.find(step => step.name === 'Upload prepared acceptance evidence')).toMatchObject({
+    uses: 'actions/upload-artifact@v4',
+    with: { path: '${{ runner.temp }}/yourbuddy-prepared-acceptance/', 'if-no-files-found': 'warn', 'retention-days': 7 },
+  })
   const publication = build.steps.find(step => step.name === 'Publish release')!
   expect(publication.run).toContain('gh release create "$RELEASE_TAG" release-assets/* --verify-tag')
   expect(publication.run).toContain('gh release upload yourbuddy-updater release-assets/latest.json --clobber')
@@ -311,6 +342,101 @@ describe('YourBuddy first publication', () => {
     expect(steps.indexOf(smoke)).toBeLessThan(steps.indexOf(publish))
   })
 
+  it('keeps prepared product checks and evidence in every 0.4.9 route before publication', () => {
+    const steps = workflow.jobs.build!.steps
+    const verification = steps.find(step => step.name === 'Verify prepared default workbench and optional Harbor')!
+    const evidence = steps.find(step => step.name === 'Upload prepared acceptance evidence')!
+    for (const mode of ['candidate-validation', 'first-publication', 'existing-tag']) {
+      const context = { 'env.RELEASE_MODE': mode, 'env.RELEASE_TAG': 'yourbuddy-v0.4.9' }
+      expect(evaluate(verification.if!, context)).toBe('true')
+      expect(evaluate(evidence.if!, context)).toBe('true')
+    }
+    const legacy = { 'env.RELEASE_MODE': 'existing-tag', 'env.RELEASE_TAG': 'yourbuddy-v0.4.8' }
+    expect(evaluate(verification.if!, legacy)).toBe('false')
+    expect(evaluate(evidence.if!, legacy)).toBe('false')
+    const programs = [
+      verification,
+      steps.find(step => step.name === 'Remove Python bytecode excluded from component archives')!,
+      steps.find(step => step.name === 'Record installer archive sizes')!,
+    ]
+    for (const step of programs) {
+      const program = step.run!.split("<<'NODE'\n")[1]!.replace(/\nNODE\s*$/, '')
+      const result = spawnSync(process.execPath, ['--input-type=module', '--check'], {
+        input: program, encoding: 'utf8', timeout: 5_000,
+      })
+      expect(result.error).toBeUndefined()
+      expect(result.signal).toBeNull()
+      expect(result.status, result.stderr).toBe(0)
+    }
+  })
+
+  it('removes acceptance bytecode before component IDs are calculated without following runtime symlinks', () => {
+    const step = workflow.jobs.build!.steps.find(candidate => candidate.name === 'Remove Python bytecode excluded from component archives')!
+    const program = step.run!.split("<<'NODE'\n")[1]!.replace(/\nNODE\s*$/, '')
+    const fixture = mkdtempSync(join(tmpdir(), 'yourbuddy-release-bytecode-'))
+    try {
+      const runtime = join(fixture, 'apps/desktop-tauri/bundled/yourbuddy-runtime')
+      const harbor = join(runtime, 'venv/lib/python3.12/site-packages/harbor')
+      const standardLibrary = join(runtime, 'python/lib/python3.12')
+      const outside = join(fixture, 'outside')
+      mkdirSync(join(harbor, '__pycache__'), { recursive: true })
+      mkdirSync(join(standardLibrary, '__pycache__'), { recursive: true })
+      mkdirSync(outside)
+      writeFileSync(join(harbor, '__pycache__/module.cpython-312.pyc'), 'acceptance cache')
+      writeFileSync(join(harbor, 'legacy.pyc'), 'legacy bytecode')
+      writeFileSync(join(standardLibrary, '__pycache__/module.cpython-312.pyc'), 'prepared cache')
+      writeFileSync(join(harbor, 'source.py'), 'print("source")\n')
+      writeFileSync(join(outside, 'external.pyc'), 'external bytecode')
+      symlinkSync(outside, join(runtime, 'external'), 'junction')
+      const result = spawnSync(process.execPath, ['--input-type=module', '-e', program], {
+        cwd: fixture, encoding: 'utf8', timeout: 5_000,
+      })
+      expect(result.error).toBeUndefined()
+      expect(result.signal).toBeNull()
+      expect(result.status, result.stderr).toBe(0)
+      expect(existsSync(join(harbor, '__pycache__'))).toBe(false)
+      expect(existsSync(join(harbor, 'legacy.pyc'))).toBe(false)
+      expect(existsSync(join(standardLibrary, '__pycache__'))).toBe(false)
+      expect(readFileSync(join(harbor, 'source.py'), 'utf8')).toBe('print("source")\n')
+      expect(readFileSync(join(outside, 'external.pyc'), 'utf8')).toBe('external bytecode')
+    }
+    finally { rmSync(fixture, { recursive: true, force: true }) }
+  })
+
+  it('records the actual installer files without treating their sizes as transfer counters', () => {
+    const step = workflow.jobs.build!.steps.find(candidate => candidate.name === 'Record installer archive sizes')!
+    const program = step.run!.split("<<'NODE'\n")[1]!.replace(/\nNODE\s*$/, '')
+    const fixture = mkdtempSync(join(tmpdir(), 'yourbuddy-release-sizes-'))
+    try {
+      const runner = join(fixture, 'runner')
+      const bootstrap = join(runner, 'bootstrap-bundle/dmg')
+      const offline = join(fixture, 'apps/desktop-tauri/src-tauri/target/aarch64-apple-darwin/release/bundle/macos')
+      mkdirSync(bootstrap, { recursive: true })
+      mkdirSync(offline, { recursive: true })
+      mkdirSync(join(runner, 'yourbuddy-prepared-acceptance'))
+      writeFileSync(join(bootstrap, 'YourBuddy.dmg'), 'bootstrap')
+      writeFileSync(join(offline, 'YourBuddy.app.tar.gz'), 'offline archive')
+      writeFileSync(join(offline, 'YourBuddy.app.tar.gz.sig'), 'signature')
+      writeFileSync(join(offline, 'unrelated.txt'), 'excluded')
+      const result = spawnSync(process.execPath, ['--input-type=module', '-e', program], {
+        cwd: fixture,
+        env: { ...process.env, RUNNER_TEMP: runner, RUST_TARGET: 'aarch64-apple-darwin', RELEASE_TAG: 'yourbuddy-v0.4.9' },
+        encoding: 'utf8', timeout: 5_000,
+      })
+      expect(result.error).toBeUndefined()
+      expect(result.signal).toBeNull()
+      expect(result.status, result.stderr).toBe(0)
+      const measured: unknown = JSON.parse(readFileSync(join(runner, 'yourbuddy-prepared-acceptance/installer-sizes.json'), 'utf8'))
+      expect(measured).toEqual({
+        releaseTag: 'yourbuddy-v0.4.9',
+        scope: 'Installer and updater archive bytes; not measured network traffic or installed size.',
+        bootstrap: [{ name: 'YourBuddy.dmg', bytes: 9 }],
+        offline: [{ name: 'YourBuddy.app.tar.gz', bytes: 15 }, { name: 'YourBuddy.app.tar.gz.sig', bytes: 9 }],
+      })
+    }
+    finally { rmSync(fixture, { recursive: true, force: true }) }
+  })
+
   it('runs every existing artifact gate in the dispatch after guarded tag publication', () => {
     assertPublicationGates(workflow)
   })
@@ -321,6 +447,10 @@ describe('YourBuddy first publication', () => {
       build.steps.map(step => step.name === 'Build Harness' ? { ...step, if: "env.RELEASE_MODE != 'first-publication'" } : step),
       build.steps.filter(step => step.name !== 'Check types before candidate validation or publication'),
       build.steps.filter(step => step.name !== 'Publish release'),
+      build.steps.filter(step => step.name !== 'Verify prepared default workbench and optional Harbor'),
+      build.steps.filter(step => step.name !== 'Remove Python bytecode excluded from component archives'),
+      build.steps.map(step => step.name === 'Verify prepared default workbench and optional Harbor' ? { ...step, if: "env.RELEASE_MODE != 'existing-tag'" } : step),
+      build.steps.map(step => step.name === 'Verify prepared default workbench and optional Harbor' ? { ...step, run: step.run!.replace('await verifyPreparedProduct(', 'await skippedProductCheck(') } : step),
       build.steps.map(step => step.name === 'Publish the verified master tag atomically' ? { ...step, 'continue-on-error': true } : step),
     ]) {
       expect(() => { assertPublicationGates({ ...workflow, jobs: { build: { ...build, steps: changedSteps } } }) }).toThrow()

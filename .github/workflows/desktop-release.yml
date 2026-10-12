@@ -166,20 +166,117 @@ jobs:
             pnpm --dir apps/desktop-tauri run test:components
           pnpm --dir apps/desktop-tauri run test:native-overlay
 
-      - name: Build immutable runtime components
+      - name: Prepare frozen release inputs
         env:
           YOURBUDDY_OFFLINE_STORE_CACHE_DIR: ${{ runner.temp }}/yourbuddy-offline-store-cache
+        run: pnpm --dir apps/desktop-tauri run prepare:dist
+
+      - name: Install prepared product acceptance browser
+        if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
+        run: pnpm --dir apps/desktop-tauri exec playwright install chromium
+
+      - name: Verify prepared default workbench and optional Harbor
+        if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process'
+          import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+          import { tmpdir } from 'node:os'
+          import { join, resolve } from 'node:path'
+          import { isolatedReleaseEnvironment, renderReleaseDesktopOverlay, withProcessEnvironment } from './apps/desktop-tauri/scripts/prepare-release.mjs'
+          import { frozenOfflineInstallArgs, pinPnpmInvocationArgs } from './apps/desktop-tauri/scripts/prepare-harness-offline-store.mjs'
+          import { readPreparedCapabilities } from './apps/desktop-tauri/scripts/prepare-capability-components.mjs'
+          import { verifyPreparedProduct } from './apps/desktop-tauri/scripts/verify-product-release.mjs'
+          import { redactEvidence } from './apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs'
+
+          const sourceEnvironment = { ...process.env }
+          const desktopRoot = resolve('apps/desktop-tauri')
+          const harnessRoot = join(desktopRoot, 'bundled/harness')
+          const evidence = join(realpathSync(sourceEnvironment.RUNNER_TEMP), 'yourbuddy-prepared-acceptance')
+          mkdirSync(evidence, { recursive: true })
+          const result = {
+            status: 'failed',
+            date: new Date().toISOString(),
+            releaseTag: sourceEnvironment.RELEASE_TAG,
+            sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            workflowCommit: sourceEnvironment.GITHUB_WORKFLOW_SHA,
+            platform: `${process.platform}-${process.arch}`,
+            node: process.version,
+            scope: 'Prepared real Host and Profile; 8 default Clients then 9 with Harbor; Chromium interaction. Desktop invoke stubs are bridge-only; native acceptance is separate.',
+          }
+          const isolated = isolatedReleaseEnvironment(sourceEnvironment, realpathSync(tmpdir()))
+          try {
+            await withProcessEnvironment({
+              ...isolated.env,
+              CI: 'true',
+              YOURBUDDY_RELEASE_VIDEO_DIR: join(evidence, 'videos'),
+              YOURBUDDY_RELEASE_SCREENSHOT: join(evidence, 'workbench-last-captured.png'),
+            }, async () => {
+              execFileSync('tar', ['-xzf', join(harnessRoot, 'yourbuddy-pnpm-store.tar.gz'), '-C', harnessRoot])
+              execFileSync('pnpm', pinPnpmInvocationArgs(frozenOfflineInstallArgs()), { cwd: harnessRoot, stdio: 'inherit' })
+              const projectRoot = join(isolated.root, 'desktop-project')
+              mkdirSync(projectRoot)
+              const desktopOverlayPath = renderReleaseDesktopOverlay({
+                outputPath: join(isolated.root, 'desktop-overlay.yml'),
+                projectRoot,
+                productRuntimeRoot: join(desktopRoot, 'bundled/yourbuddy-runtime'),
+              }, sourceEnvironment)
+              await verifyPreparedProduct(harnessRoot, join(desktopRoot, 'bundled/yourbuddy-runtime'), {
+                capabilities: readPreparedCapabilities(),
+                desktopOverlayPath,
+              })
+              rmSync(join(harnessRoot, '.yourbuddy-pnpm-store'), { recursive: true })
+            })
+            isolated.discard()
+            result.status = 'passed'
+          } catch (error) {
+            result.error = redactEvidence(error.stack ?? String(error))
+            console.error(result.error)
+            process.exitCode = 1
+          } finally {
+            writeFileSync(join(evidence, 'result.json'), `${JSON.stringify(result, null, 2)}\n`)
+          }
+          NODE
+
+      - name: Remove Python bytecode excluded from component archives
+        if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdirSync, rmSync } from 'node:fs'
+          import { join } from 'node:path'
+          const removeBytecode = root => {
+            for (const entry of readdirSync(root, { withFileTypes: true })) {
+              const path = join(root, entry.name)
+              if ((entry.isDirectory() && entry.name === '__pycache__') || (entry.isFile() && entry.name.endsWith('.pyc'))) {
+                rmSync(path, { recursive: true })
+              } else if (entry.isDirectory()) {
+                removeBytecode(path)
+              }
+            }
+          }
+          removeBytecode('apps/desktop-tauri/bundled/yourbuddy-runtime')
+          NODE
+
+      - name: Build immutable runtime components
+        env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           version="${RELEASE_TAG#yourbuddy-v}"
-          pnpm --dir apps/desktop-tauri run prepare:dist
           pnpm --dir apps/desktop-tauri run build:components -- --version "$version"
           manifest="apps/desktop-tauri/component-release/yourbuddy-components-$version.json"
           pnpm --dir apps/desktop-tauri exec tauri signer sign "$PWD/$manifest"
           node apps/desktop-tauri/scripts/normalize-component-signature.mjs "$manifest.sig"
           cp "$manifest" apps/desktop-tauri/component-channel/components.json
           cp "$manifest.sig" apps/desktop-tauri/component-channel/components.json.sig
+
+      - name: Retain component archive measurements
+        if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
+        run: |
+          version="${RELEASE_TAG#yourbuddy-v}"
+          cp "apps/desktop-tauri/component-release/yourbuddy-components-$version.json" "$RUNNER_TEMP/yourbuddy-prepared-acceptance/"
+          cp "apps/desktop-tauri/component-release/yourbuddy-components-$version.json.sig" "$RUNNER_TEMP/yourbuddy-prepared-acceptance/"
+          cp "apps/desktop-tauri/component-release/yourbuddy-size-report-$version.json" "$RUNNER_TEMP/yourbuddy-prepared-acceptance/"
 
       - name: Build Bootstrap app and DMG
         env:
@@ -227,6 +324,25 @@ jobs:
           for seed in apps/desktop-tauri/component-release/*.tar.zst; do
             test -f "$resources/YourBuddy.app/Contents/Resources/component-seeds/$(basename "$seed")"
           done
+
+      - name: Record installer archive sizes
+        if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdirSync, statSync, writeFileSync } from 'node:fs'
+          import { join } from 'node:path'
+          const measure = root => readdirSync(root, { recursive: true, withFileTypes: true })
+            .filter(entry => entry.isFile() && /\.(?:dmg|app\.tar\.gz)(?:\.sig)?$/.test(entry.name))
+            .map(entry => ({ name: entry.name, bytes: statSync(join(entry.parentPath, entry.name)).size }))
+            .sort((left, right) => left.name.localeCompare(right.name))
+          const result = {
+            releaseTag: process.env.RELEASE_TAG,
+            scope: 'Installer and updater archive bytes; not measured network traffic or installed size.',
+            bootstrap: measure(join(process.env.RUNNER_TEMP, 'bootstrap-bundle')),
+            offline: measure(`apps/desktop-tauri/src-tauri/target/${process.env.RUST_TARGET}/release/bundle`),
+          }
+          writeFileSync(join(process.env.RUNNER_TEMP, 'yourbuddy-prepared-acceptance/installer-sizes.json'), `${JSON.stringify(result, null, 2)}\n`)
+          NODE
 
       - name: Verify native Offline installation and cold starts
         if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
@@ -304,6 +420,10 @@ jobs:
           shasum -a 256 --check SHA256SUMS.txt
           Pop-Location
 
+      - name: Retain updater metadata and checksums
+        if: env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'
+        run: cp release-assets/latest.json release-assets/SHA256SUMS.txt "$RUNNER_TEMP/yourbuddy-prepared-acceptance/"
+
       - name: Publish release
         if: env.RELEASE_MODE != 'candidate-validation'
         env:
@@ -325,6 +445,15 @@ jobs:
           name: yourbuddy-candidate-0.4.9-${{ inputs.verified_master_sha }}
           path: release-assets/
           if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload prepared acceptance evidence
+        if: always() && (env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9')
+        uses: actions/upload-artifact@v4
+        with:
+          name: yourbuddy-prepared-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/yourbuddy-prepared-acceptance/
+          if-no-files-found: warn
           retention-days: 7
 
       - name: Upload native acceptance evidence
