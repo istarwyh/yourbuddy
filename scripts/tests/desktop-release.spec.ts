@@ -1,6 +1,6 @@
 /** Exercise release guards in PR CI and retain the same-run artifact publication path. */
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
@@ -141,6 +141,10 @@ function assertPublicationGates(candidate: Workflow): void {
   expect(prepared.run).toContain('await withProcessEnvironment(')
   expect(prepared.run).toContain('const desktopOverlayPath = renderReleaseDesktopOverlay(')
   expect(prepared.run).toContain('await verifyPreparedProduct(')
+  expect(prepared.run).toContain('`${sourceEnvironment.GITHUB_WORKFLOW_SHA}:apps/desktop-tauri/scripts/verify-product-release.mjs`')
+  expect(prepared.run).toContain('await import(pathToFileURL(verifierPath).href)')
+  expect(prepared.run).toContain('rmSync(verifierPath, { force: true })')
+  expect(prepared.run).not.toContain("from './apps/desktop-tauri/scripts/verify-product-release.mjs'")
   expect(prepared.run).toContain('capabilities: readPreparedCapabilities()')
   expect(prepared.run).toContain('process.exitCode = 1')
   expect(prepared.run).not.toMatch(/prepareRelease\(|prepare:release|refresh:product-plugins|sync:dsh/)
@@ -368,6 +372,79 @@ describe('YourBuddy first publication', () => {
       expect(result.signal).toBeNull()
       expect(result.status, result.stderr).toBe(0)
     }
+  })
+
+  // This macOS workflow execution fixture uses POSIX command stubs; structural gates remain cross-platform.
+  it.skipIf(process.platform === 'win32').each([false, true])('uses the workflow prepared verifier beside tagged helpers and removes it after failure=%s', (fail) => {
+    const step = workflow.jobs.build!.steps.find(candidate => candidate.name === 'Verify prepared default workbench and optional Harbor')!
+    const program = step.run!.split("<<'NODE'\n")[1]!.replace(/\nNODE\s*$/, '')
+    const fixture = mkdtempSync(join(tmpdir(), 'yourbuddy-prepared-runner-'))
+    try {
+      const scripts = join(fixture, 'apps/desktop-tauri/scripts')
+      const runner = join(fixture, 'runner')
+      const bin = join(fixture, 'bin')
+      mkdirSync(scripts, { recursive: true })
+      mkdirSync(runner)
+      mkdirSync(bin)
+      mkdirSync(join(fixture, 'isolation'))
+      mkdirSync(join(fixture, 'apps/desktop-tauri/bundled/harness/.yourbuddy-pnpm-store'), { recursive: true })
+      for (const command of ['tar', 'pnpm']) {
+        const path = join(bin, command)
+        writeFileSync(path, '#!/bin/sh\nexit 0\n')
+        chmodSync(path, 0o755)
+      }
+      writeFileSync(join(scripts, 'prepare-release.mjs'), `
+        export const isolatedReleaseEnvironment = () => ({ root: './isolation', env: process.env, discard() {} })
+        export const withProcessEnvironment = (_env, operation) => operation()
+        export const renderReleaseDesktopOverlay = () => 'tagged-overlay'
+      `)
+      writeFileSync(join(scripts, 'prepare-harness-offline-store.mjs'), 'export const frozenOfflineInstallArgs = () => []; export const pinPnpmInvocationArgs = args => args')
+      writeFileSync(join(scripts, 'prepare-capability-components.mjs'), 'export const readPreparedCapabilities = () => []')
+      writeFileSync(join(scripts, 'smoke-offline-startup-macos.mjs'), 'export const redactEvidence = text => text')
+      writeFileSync(join(scripts, 'fixture.mjs'), 'export const marker = "tagged helper"')
+      const path = 'apps/desktop-tauri/scripts/verify-product-release.mjs'
+      writeFileSync(join(fixture, path), 'throw new Error("tag verifier must not run")')
+      const env = {
+        ...process.env, PATH: `${bin}:${process.env.PATH}`, RUNNER_TEMP: runner,
+        RELEASE_TAG: 'yourbuddy-v0.4.9',
+        GIT_AUTHOR_NAME: 'Fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+        GIT_COMMITTER_NAME: 'Fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
+      }
+      const git = (...args: string[]): string => {
+        const result = spawnSync('git', args, { cwd: fixture, env, encoding: 'utf8' })
+        expect(result.error).toBeUndefined()
+        expect(result.status, result.stderr).toBe(0)
+        return result.stdout.trim()
+      }
+      git('init')
+      git('add', '.')
+      git('commit', '-m', 'tagged product')
+      const taggedSha = git('rev-parse', 'HEAD')
+      writeFileSync(join(fixture, path), `
+        import { marker } from './fixture.mjs'
+        export async function verifyPreparedProduct() {
+          if (marker !== 'tagged helper') throw new Error('wrong sibling helper')
+          console.log('workflow verifier with ' + marker)
+          ${fail ? "throw new Error('preview is still Loading')" : ''}
+        }
+      `)
+      git('commit', '-am', 'workflow acceptance')
+      const workflowSha = git('rev-parse', 'HEAD')
+      git('checkout', '--detach', taggedSha)
+      const taggedSource = readFileSync(join(fixture, path))
+      const result = spawnSync(process.execPath, ['--input-type=module'], {
+        cwd: fixture, env: { ...env, GITHUB_WORKFLOW_SHA: workflowSha }, input: program, encoding: 'utf8', timeout: 10_000,
+      })
+      expect(result.error).toBeUndefined()
+      expect(result.status, result.stderr).toBe(fail ? 1 : 0)
+      expect(result.stdout).toContain('workflow verifier with tagged helper')
+      const evidence = JSON.parse(readFileSync(join(runner, 'yourbuddy-prepared-acceptance/result.json'), 'utf8')) as { status: string; sourceCommit: string; workflowCommit: string; error?: string }
+      expect(evidence).toMatchObject({ status: fail ? 'failed' : 'passed', sourceCommit: taggedSha, workflowCommit: workflowSha })
+      if (fail) expect(evidence.error).toContain('preview is still Loading')
+      expect(readdirSync(scripts).some(name => name.startsWith('.yourbuddy-prepared-verifier-'))).toBe(false)
+      expect(readFileSync(join(fixture, path))).toEqual(taggedSource)
+      expect(git('rev-parse', 'HEAD')).toBe(taggedSha)
+    } finally { rmSync(fixture, { recursive: true, force: true }) }
   })
 
   it('removes acceptance bytecode before component IDs are calculated without following runtime symlinks', () => {

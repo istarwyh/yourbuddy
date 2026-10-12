@@ -9,6 +9,10 @@ import test from 'node:test'
 
 import {
   PRODUCT_CLIENT_IDS,
+  RELEASE_DOCUMENT_PREVIEWS,
+  exerciseDocumentPreviews,
+  recordPreviewNetworkEvent,
+  saveBrowserFailure,
   CORE_PRODUCT_CLIENT_IDS,
   RELEASE_CAPABILITIES,
   assertCoreProductComposition,
@@ -563,4 +567,59 @@ test('rejecting an unprepared input never removes its existing dependency tree',
     await assert.rejects(verifyPreparedProduct(root, root, { desktopOverlayPath: overlay }), /bundle-manifest/u)
     assert.equal(readFileSync(join(root, 'node_modules', 'keep'), 'utf8'), 'existing checkout dependency')
   } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+
+test('document preview smoke requires core fallback and extension Editor content independently', async () => {
+  assert.deepEqual(RELEASE_DOCUMENT_PREVIEWS, [
+    { file: 'release-core-preview.fods', selector: '[data-document-preview]', text: 'YourBuddy prepared core document preview' },
+    { file: 'release-editor-preview.txt', selector: '[data-dsh-native-tab-host] .cm-content', text: 'YourBuddy prepared editor document preview' },
+  ])
+  const run = async failedSelector => {
+    const checked = []
+    let selected
+    const sidebar = {
+      getByRole: () => ({ click: async () => {} }),
+      getByText: file => ({ click: async () => { selected = file } }),
+      locator: selector => ({
+        click: async () => {},
+        getByText: (text, options) => ({ waitFor: async wait => {
+          assert.equal(options.exact, true)
+          assert.equal(wait.timeout, 15_000)
+          checked.push({ file: selected, selector, text })
+          if (selector === failedSelector) throw new Error('content is still Loading')
+        } }),
+      }),
+    }
+    await exerciseDocumentPreviews(sidebar)
+    return checked
+  }
+  assert.deepEqual(await run(), RELEASE_DOCUMENT_PREVIEWS)
+  for (const { selector } of RELEASE_DOCUMENT_PREVIEWS) {
+    await assert.rejects(run(selector), /content is still Loading/u)
+  }
+})
+
+test('preview failure evidence retains request outcomes and errors without auth URLs', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'yourbuddy-preview-evidence-'))
+  try {
+    const events = []
+    recordPreviewNetworkEvent(events, 'http://localhost/sidebar/api/fs.read?token=secret', 'request', { method: 'POST' })
+    recordPreviewNetworkEvent(events, 'http://localhost/sidebar/api/fs.read?token=secret', 'response', { status: 200 })
+    recordPreviewNetworkEvent(events, 'http://localhost/sidebar/bundle/editor.js?token=secret', 'failed', { error: 'net::ERR_FAILED' })
+    recordPreviewNetworkEvent(events, 'http://localhost/api/session/create?token=secret', 'request')
+    assert.deepEqual(events, [
+      { event: 'request', path: '/sidebar/api/fs.read', method: 'POST' },
+      { event: 'response', path: '/sidebar/api/fs.read', status: 200 },
+      { event: 'failed', path: '/sidebar/bundle/editor.js', error: 'net::ERR_FAILED' },
+    ])
+    const diagnostics = { phase: 'core', pageErrors: ['Failed to fetch \"http://localhost/?token=secret\"'], consoleErrors: ['dsh-auth=secret', `dsh-auth-${'a'.repeat(43)}=secret`], previewRequests: events }
+    const screenshots = []
+    await saveBrowserFailure({ screenshot: async options => { screenshots.push(options) } }, directory, diagnostics)
+    assert.deepEqual(screenshots, [{ path: join(directory, 'core-browser-failure.png'), timeout: 5_000 }])
+    const retained = readFileSync(join(directory, 'core-browser-failure.json'), 'utf8')
+    assert.doesNotMatch(retained, /secret/u)
+    assert.deepEqual(JSON.parse(retained).previewRequests, events)
+    await assert.doesNotReject(saveBrowserFailure({ screenshot: async () => { throw new Error('closed page') } }, join(directory, 'missing'), diagnostics))
+  } finally { rmSync(directory, { recursive: true, force: true }) }
 })

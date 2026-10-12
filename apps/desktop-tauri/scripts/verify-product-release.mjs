@@ -25,6 +25,7 @@ import {
 } from './product-plugin-compatibility.mjs'
 import { removeWorkspaceInstallState } from './prepare-harness-offline-store.mjs'
 import { verifyWorkbenchBranding } from './workbench-branding-smoke.mjs'
+import { redactEvidence } from './smoke-offline-startup-macos.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const harnessRoot = join(desktopRoot, 'bundled', 'harness')
@@ -760,6 +761,44 @@ async function createAndOpenReleaseSmokeSession(page) {
   await completeProductOnboarding(page)
 }
 
+// .fods is deliberately host-owned; .txt exercises the extension's real Editor instead.
+export const RELEASE_DOCUMENT_PREVIEWS = [
+  { file: 'release-core-preview.fods', selector: '[data-document-preview]', text: 'YourBuddy prepared core document preview' },
+  { file: 'release-editor-preview.txt', selector: '[data-dsh-native-tab-host] .cm-content', text: 'YourBuddy prepared editor document preview' },
+]
+
+/** Require rendered content from both actual file owners, not just a tab or loading indicator. */
+export async function exerciseDocumentPreviews(sidebar) {
+  for (const preview of RELEASE_DOCUMENT_PREVIEWS) {
+    await sidebar.getByRole('button', { name: 'New tab', exact: true }).click()
+    await sidebar.locator('[data-sidebar-right-guide-entry="files"]').click()
+    await sidebar.getByText(preview.file, { exact: true }).click()
+    await sidebar.locator(preview.selector).getByText(preview.text, { exact: true }).waitFor({ timeout: 15_000 })
+  }
+}
+
+/** Retain only sidebar request paths and outcomes; never headers, query strings or bodies. */
+export function recordPreviewNetworkEvent(events, url, event, outcome = {}) {
+  const path = new URL(url).pathname
+  if (path.startsWith('/sidebar/api/') || path.startsWith('/sidebar/bundle/')) {
+    events.push({ event, path, ...outcome })
+  }
+}
+
+/** Capture early preview failures before closing Chromium without replacing the original error. */
+export async function saveBrowserFailure(page, directory, diagnostics) {
+  if (!directory) return
+  try {
+    writeFileSync(join(directory, `${diagnostics.phase}-browser-failure.json`),
+      `${JSON.stringify(diagnostics, (_key, value) => typeof value === 'string'
+        ? redactEvidence(value).replace(/(dsh-auth-[a-z0-9_-]+=)[^\s;"'<>]+/gi, '$1<redacted>')
+        : value, 2)}\n`)
+  } catch (error) { void error /* Preserve the acceptance error when evidence storage fails. */ }
+  try {
+    await page?.screenshot({ path: join(directory, `${diagnostics.phase}-browser-failure.png`), timeout: 5_000 })
+  } catch (error) { void error /* A failed screenshot must not replace the acceptance error. */ }
+}
+
 async function exerciseLightweightServices(page) {
   const server = createServer((_request, response) => {
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
@@ -784,11 +823,7 @@ async function exerciseLightweightServices(page) {
     await input.press('Enter')
     await sidebar.frameLocator('iframe[data-sidebar-browser-frame]')
       .getByText('YourBuddy lightweight browser is running', { exact: true }).waitFor({ timeout: 15_000 })
-    await sidebar.getByRole('button', { name: 'New tab', exact: true }).click()
-    await sidebar.locator('[data-sidebar-right-guide-entry="files"]').click()
-    await sidebar.getByText('release-core-preview.txt', { exact: true }).click()
-    await sidebar.locator('[data-document-preview]')
-      .getByText('YourBuddy prepared core document preview', { exact: true }).waitFor({ timeout: 15_000 })
+    await exerciseDocumentPreviews(sidebar)
   } finally {
     await closeDesktopBridgeSmokeServer(server)
   }
@@ -922,6 +957,10 @@ function closeDesktopBridgeSmokeServer(server) {
 
 async function runBrowserSmoke(baseUrl, env, phase) {
   let browser
+  let page
+  const pageErrors = []
+  const consoleErrors = []
+  const previewRequests = []
   let desktopBridgeServer
   let failure
   try {
@@ -943,7 +982,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       locale: 'en-US',
       ...(releaseVideoDir ? { recordVideo: { dir: releaseVideoDir, size: { width: 1344, height: 800 } } } : {}),
     })
-    const page = await context.newPage()
+    page = await context.newPage()
     await page.addInitScript(() => {
       window.__YOURBUDDY_COPIED_LINKS__ = []
       Object.defineProperty(navigator, 'clipboard', {
@@ -953,8 +992,6 @@ async function runBrowserSmoke(baseUrl, env, phase) {
         },
       })
     })
-    const pageErrors = []
-    const consoleErrors = []
     const clientResponses = {}
     page.on('pageerror', error => { pageErrors.push(String(error)) })
     page.on('console', message => {
@@ -964,8 +1001,15 @@ async function runBrowserSmoke(baseUrl, env, phase) {
         consoleErrors.push(`${message.text()}${path ? ` (${path})` : ''}`)
       }
     })
+    page.on('request', request => {
+      recordPreviewNetworkEvent(previewRequests, request.url(), 'request', { method: request.method() })
+    })
+    page.on('requestfailed', request => {
+      recordPreviewNetworkEvent(previewRequests, request.url(), 'failed', { error: request.failure()?.errorText })
+    })
     page.on('response', response => {
       recordProductClientResponse(clientResponses, response.url(), response.status())
+      recordPreviewNetworkEvent(previewRequests, response.url(), 'response', { status: response.status() })
     })
     await page.route('https://api.github.com/**', route => {
       const pathname = new URL(route.request().url()).pathname
@@ -1577,6 +1621,9 @@ async function runBrowserSmoke(baseUrl, env, phase) {
   }
   catch (error) {
     failure = error
+    await saveBrowserFailure(page, process.env.YOURBUDDY_RELEASE_EVIDENCE_DIR, {
+      phase, error: error.stack ?? String(error), pageErrors, consoleErrors, previewRequests,
+    })
   }
 
   const closeFailures = []
@@ -1605,7 +1652,9 @@ async function runBrowserSmoke(baseUrl, env, phase) {
 }
 
 async function runHostSmoke(root, productRuntimeRoot, desktopOverlayPath, world, lifetime, phase, capabilities = []) {
-  writeFileSync(join(world, 'release-core-preview.txt'), 'YourBuddy prepared core document preview\n')
+  for (const preview of RELEASE_DOCUMENT_PREVIEWS) {
+    writeFileSync(join(world, preview.file), `${preview.text}\n`)
+  }
   const overlay = join(world, 'product.overlay.yml')
   const proxyVerifier = join(world, 'proxy-dispatcher-verifier.mjs')
   const proxyPackage = pathToFileURL(join(
