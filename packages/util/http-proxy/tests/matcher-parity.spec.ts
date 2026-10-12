@@ -1,8 +1,35 @@
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import type { Pool } from 'undici'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installProxyFromEnvironment } from '../src/index.ts'
 import { proxyForUrl, resolveProxyPolicy } from '../src/policy.ts'
+
+const { directLookups } = vi.hoisted(() => ({ directLookups: [] as string[] }))
+
+// Keep the installed dispatcher and its real proxy transport; only the direct Pool's DNS is local.
+vi.mock('undici', async (importOriginal) => {
+  const undici = await importOriginal<typeof import('undici')>()
+  return {
+    ...undici,
+    Pool: class extends undici.Pool {
+      constructor(origin: string | URL, options?: Pool.Options) {
+        super(origin, {
+          ...options,
+          connect: {
+            lookup(hostname, _options, callback) {
+              directLookups.push(hostname)
+              const error = hostname === 'probe.invalid'
+                ? Object.assign(new Error('fixture DNS miss'), { code: 'ENOTFOUND', hostname })
+                : new Error(`unexpected direct lookup: ${hostname}`)
+              queueMicrotask(() => { callback(error, []) })
+            },
+          },
+        })
+      }
+    },
+  }
+})
 
 /**
  * `proxyForUrl` answers where a URL goes; these cases check that answer against where a real `fetch`
@@ -56,15 +83,21 @@ function proxyEnv(noProxy: string): { get(name: string): { value: string } | und
 describe('bypass matcher parity', () => {
   it.each(CASES)('agrees on $noProxy for $path', async ({ noProxy, path, bypassed }) => {
     seen = []
+    directLookups.length = 0
     const url = new URL(`http://probe.invalid${path}`)
     const env = proxyEnv(noProxy)
     const { policy } = resolveProxyPolicy(env)
     const dispose = await installProxyFromEnvironment(env, () => undefined)
     try {
-      // A bypassed target has no route here, so the fetch fails; a proxied one reaches the recorder
-      // in milliseconds. The deadline bounds the failing path, whose DNS miss is otherwise as slow
-      // as the machine's resolver decides — and only that path, so it cannot mask a proxied hop.
-      await fetch(url, { signal: AbortSignal.timeout(1500) }).then(response => response.text()).catch(() => undefined)
+      // An explicit DNS result lets dispose drain the connection; aborting fetch alone does not
+      // settle a pending system lookup. A proxied hop must reach the real loopback recorder.
+      const response = fetch(url, { signal: AbortSignal.timeout(1500) })
+      if (bypassed) {
+        await expect(response).rejects.toMatchObject({ cause: { code: 'ENOTFOUND', hostname: 'probe.invalid' } })
+      } else {
+        await expect(response.then(value => value.text())).resolves.toBe('VIA-PROXY')
+      }
+      expect(directLookups).toEqual(bypassed ? ['probe.invalid'] : [])
       const agentProxied = seen.length > 0
       expect({ ours: proxyForUrl(policy, url) !== undefined, agent: agentProxied })
         .toEqual({ ours: !bypassed, agent: !bypassed })
