@@ -1,0 +1,226 @@
+{
+  "observedAt": "2026-10-12T20:05:00Z",
+  "classification": "Public GitHub metadata and sanitized release-run observations; no user data or credentials",
+  "release": {
+    "url": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.9",
+    "id": 410429987,
+    "tag": "yourbuddy-v0.4.9",
+    "productCommit": "5410480f0bdbab009a5658cf5cd63666d7ad6498",
+    "publishedAt": "2026-10-12T09:29:07Z",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {
+        "name": "latest.json",
+        "size": 2466,
+        "digest": "sha256:912aba8dfc5cca22bd9c7f9ba89018aacef4f89b4ca97f1bde896d4e8da9e51c",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/latest.json"
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "size": 1946,
+        "digest": "sha256:f2bf3be4c058c77ddbec15599c3f91b585dfc52181d94482550c730bdb960fba",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/SHA256SUMS.txt"
+      },
+      {
+        "name": "yourbuddy-0.4.9-bootstrap-macos-arm64.app.tar.gz",
+        "size": 11256321,
+        "digest": "sha256:582d79a197e5c404d14f610276647222af25921c1369da0a333b45cd77406fe2",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-0.4.9-bootstrap-macos-arm64.app.tar.gz"
+      },
+      {
+        "name": "yourbuddy-0.4.9-bootstrap-macos-arm64.app.tar.gz.sig",
+        "size": 428,
+        "digest": "sha256:a48bde8a8f077aca3a5c87f07c1abf0f941ee720afc10c19e263186bc1bcfce2",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-0.4.9-bootstrap-macos-arm64.app.tar.gz.sig"
+      },
+      {
+        "name": "yourbuddy-0.4.9-bootstrap-macos-arm64.dmg",
+        "size": 11085890,
+        "digest": "sha256:a6b84eb11f3d79dcc5dd024d2bc046a58a27ee0fdccd74286561fb7b1bf81941",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-0.4.9-bootstrap-macos-arm64.dmg"
+      },
+      {
+        "name": "yourbuddy-0.4.9-offline-macos-arm64.app.tar.gz",
+        "size": 611114319,
+        "digest": "sha256:44d248127270fe6c7a46cb1efb61e7f31f58cb8d3adad6567d60cb2992b2059d",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-0.4.9-offline-macos-arm64.app.tar.gz"
+      },
+      {
+        "name": "yourbuddy-0.4.9-offline-macos-arm64.app.tar.gz.sig",
+        "size": 428,
+        "digest": "sha256:e0be728210380a563b0bfa84f75f9d5be3c204ae70036120fa2dc9d7f4ba26c5",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-0.4.9-offline-macos-arm64.app.tar.gz.sig"
+      },
+      {
+        "name": "yourbuddy-0.4.9-offline-macos-arm64.dmg",
+        "size": 611220193,
+        "digest": "sha256:e123c93bc06b678dc8017bdcdbc0704defe872584f7e52109d29f8eb2dc1c550",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-0.4.9-offline-macos-arm64.dmg"
+      },
+      {
+        "name": "yourbuddy-components-0.4.9.json",
+        "size": 2775,
+        "digest": "sha256:5a495ae2d6b44cac7f6dbb112973b6ba3088b696eb9b43bba4169b88bed415d3",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-components-0.4.9.json"
+      },
+      {
+        "name": "yourbuddy-components-0.4.9.json.sig",
+        "size": 316,
+        "digest": "sha256:fec585c1655496b287ab63311060a1572879ddb0d2e32468eb822df8e8f904fc",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-components-0.4.9.json.sig"
+      },
+      {
+        "name": "yourbuddy-debug-0.4.9.tar.zst",
+        "size": 15990126,
+        "digest": "sha256:407639bbccd295738dcbb1c954e633972b8cd7dfb43f0b1a3fc81e52116bab0b",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-debug-0.4.9.tar.zst"
+      },
+      {
+        "name": "yourbuddy-harbor-61a424fa234a7125115db7f9403ad7f82f0ed4dba3c03ea971bda38fe9e86783-darwin-arm64.tar.zst",
+        "size": 97017941,
+        "digest": "sha256:1b20320ec8b06fc15f846c34e092d5773c77bbd8e2c5cea6e7d4419603b06e49",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-harbor-61a424fa234a7125115db7f9403ad7f82f0ed4dba3c03ea971bda38fe9e86783-darwin-arm64.tar.zst"
+      },
+      {
+        "name": "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+        "size": 581522,
+        "digest": "sha256:e03bf0d8f3b0940cad457f9c05d13d9fb7f6f376935bb10df54bb49ddd679e48",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst"
+      },
+      {
+        "name": "yourbuddy-harness-c2d760465a4589c1c876c229220eedd75f4e60b1bb4a60af1faf3871000fda05-macos-arm64.tar.zst",
+        "size": 33444678,
+        "digest": "sha256:0848f2d740649ececdec0d45e4b00b9f00031d0b621e055610a513c3ea1cf704",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-harness-c2d760465a4589c1c876c229220eedd75f4e60b1bb4a60af1faf3871000fda05-macos-arm64.tar.zst"
+      },
+      {
+        "name": "yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+        "size": 37007283,
+        "digest": "sha256:25817a111c3549ef51c1ffda9bc6ec84162f8adea0bf0bf2e4e06ee1ae933460",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-node-22.19.0-darwin-arm64.tar.zst"
+      },
+      {
+        "name": "yourbuddy-pnpm-store-01235f022cb9dd17b4aa541c29e484b432f4f599c7ee48726483938c160b122e-macos-arm64.tar.zst",
+        "size": 416138362,
+        "digest": "sha256:6192108fea4f385fda7defd52c39f6efb199524f1602ff8f05ad1f7a168ab054",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-pnpm-store-01235f022cb9dd17b4aa541c29e484b432f4f599c7ee48726483938c160b122e-macos-arm64.tar.zst"
+      },
+      {
+        "name": "yourbuddy-size-report-0.4.9.json",
+        "size": 1461,
+        "digest": "sha256:5ae951b369db626f635e7bd1b2a4c6cb1f106947562360358cf5ef885f678c63",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.9/yourbuddy-size-report-0.4.9.json"
+      }
+    ]
+  },
+  "workflow": {
+    "url": "https://github.com/istarwyh/yourbuddy/actions/runs/38227587578",
+    "run": 38227587578,
+    "number": 66,
+    "workflowCommit": "589b1043c3c5cd071da2b172bafe013d42dc2aad",
+    "conclusion": "success",
+    "jobUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/38227587578/job/114738810416",
+    "steps": [
+      {
+        "number": 15,
+        "name": "Check types before candidate validation or publication",
+        "conclusion": "skipped",
+        "started_at": "2026-10-12T09:08:31Z",
+        "completed_at": "2026-10-12T09:08:31Z"
+      },
+      {
+        "number": 22,
+        "name": "Verify prepared default workbench and optional Harbor",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:16:01Z",
+        "completed_at": "2026-10-12T09:18:54Z"
+      },
+      {
+        "number": 27,
+        "name": "Enforce Bootstrap DMG ceiling and resource exclusions",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:23:51Z",
+        "completed_at": "2026-10-12T09:23:51Z"
+      },
+      {
+        "number": 30,
+        "name": "Verify native Offline installation and cold starts",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:26:20Z",
+        "completed_at": "2026-10-12T09:28:01Z"
+      },
+      {
+        "number": 31,
+        "name": "Test relocated YourBuddy product runtime",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:28:01Z",
+        "completed_at": "2026-10-12T09:28:10Z"
+      },
+      {
+        "number": 34,
+        "name": "Generate and verify release checksums",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:28:12Z",
+        "completed_at": "2026-10-12T09:28:23Z"
+      },
+      {
+        "number": 36,
+        "name": "Publish release",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:28:24Z",
+        "completed_at": "2026-10-12T09:29:10Z"
+      }
+    ]
+  },
+  "prepared": {
+    "status": "passed",
+    "origin": "run 66 job log",
+    "defaultClients": 8,
+    "installedHarborClients": 9,
+    "harborPython": "0.10.3",
+    "scope": "Real Host/Profile and Chromium; desktop invoke stubs are bridge-only."
+  },
+  "native": {
+    "status": "passed",
+    "origin": "run 66 artifact result.json",
+    "artifactUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/38227587578/artifacts/11738327440",
+    "artifactExpiresAt": "2026-10-19T09:29:11Z",
+    "platform": "darwin-arm64",
+    "componentSource": "signed Offline seeds",
+    "network": "local rejecting proxy; production TLS verification unchanged; no enterprise proxy claim",
+    "boots": [
+      {
+        "round": 1,
+        "durationMs": 58767,
+        "authenticated": true,
+        "nativeWorkbench": true,
+        "cleanExit": true
+      },
+      {
+        "round": 2,
+        "durationMs": 15512,
+        "authenticated": true,
+        "nativeWorkbench": true,
+        "cleanExit": true
+      },
+      {
+        "round": 3,
+        "durationMs": 12010,
+        "authenticated": true,
+        "nativeWorkbench": true,
+        "cleanExit": true
+      }
+    ],
+    "blockedExternalRequests": 4
+  },
+  "limits": [
+    "Public asset digests are GitHub metadata, not independent downloaded-byte verification.",
+    "Release-run native installation predates publication; no post-publication reinstall claim.",
+    "Native Components/Settings controls and Harbor installation in the packaged WebView remain unverified.",
+    "Controlled Bootstrap interruption, restart/resume, atomic activation failure scenarios and actual enterprise proxy behavior remain unverified.",
+    "Installed automatic upgrade and first-install/upgrade/resume payload costs remain unverified.",
+    "Full repository CI is not certified by this release run; its typecheck step was skipped.",
+    "Apple notarization and real provider/OAuth journeys remain unverified."
+  ]
+}
