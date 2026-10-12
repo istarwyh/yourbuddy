@@ -129,6 +129,12 @@ export function previewNoticeVisible(report, configureLater = false) {
     && button.test(report)
 }
 
+/** Require both exact workbench controls, including WebKit's native popup-button role. */
+export function nativeWorkbenchVisible(report) {
+  return /^AX(?:Button|PopUpButton)\tCodex\t/m.test(report)
+    && /^AX(?:Button|PopUpButton)\t(?:Settings|设置)\t/m.test(report)
+}
+
 /** Press the exact Continue or Configure later control in its named AX subtree. */
 export function previewNoticeScript(pid, configureLater = false) {
   assert(Number.isSafeInteger(pid) && pid > 0)
@@ -173,12 +179,14 @@ export function saveWindowFailure(evidence, round, snapshots, error, capture = p
   catch (error) { void error /* Existing screen capture is optional; never request permissions. */ }
 }
 
-async function until(label, operation, timeout = PROCESS_TIMEOUT_MS, retryErrors = false) {
-  const deadline = Date.now() + timeout
+/** Report the latest observation at the deadline; the clock is injectable without global timers. */
+export async function until(label, operation, timeout = PROCESS_TIMEOUT_MS, retryErrors = false, now = Date.now) {
+  const deadline = now() + timeout
   let lastError
-  while (Date.now() < deadline) {
+  while (now() < deadline) {
     try {
       const result = await operation()
+      lastError = undefined
       if (result) return result
     }
     catch (error) { if (!retryErrors) throw error; lastError = error }
@@ -438,7 +446,7 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
             credentialsDeferred = true
             return false
           }
-          return /AXButton\tCodex\b/.test(value) && /\t(?:Settings|设置)\t/.test(value) && value
+          return nativeWorkbenchVisible(value) && value
         }, 60_000, true)
         writeFileSync(join(evidence, `boot-${round}-accessibility.txt`), redactEvidence(view))
         assert.equal(inspectWindow(child.pid, true), 'pressed', 'close through the real native window command')

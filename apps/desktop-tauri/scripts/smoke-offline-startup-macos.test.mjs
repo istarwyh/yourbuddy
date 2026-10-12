@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -122,7 +122,7 @@ test('AX inspection isolates vanished nodes while retaining controls and fatal e
   const report = 'AXButton\tCodex\t\nAXButton\tSettings\t'
   assert.deepEqual(parseWindowInspection(`${report}\nAX_SKIPPED_NODES=2`), { report, skippedNodes: 2 })
   const parsed = parseWindowInspection(`${report}\nAX_SKIPPED_NODES=2`).report
-  assert(/AXButton\tCodex\b/.test(parsed) && /\t(?:Settings|设置)\t/.test(parsed), 'empty final AX value must preserve the existing workbench predicate')
+  assert(nativeWorkbenchVisible(parsed), 'empty final AX value must preserve the workbench predicate')
   assert.deepEqual(parseWindowInspection('AX_SKIPPED_NODES=3'), { report: '', skippedNodes: 3 })
   assert.deepEqual(parseWindowInspection('pressed\nAX_SKIPPED_NODES=0'), { report: 'pressed', skippedNodes: 0 })
   assert.throws(() => parseWindowInspection(report), /skipped-node count/)
@@ -189,4 +189,50 @@ test('credential onboarding can only defer configuration in its exact named moda
   assert.match(script, /if \(count of matchingButtons\) is not 1 then error/)
   assert.match(script, /perform action "AXPress" of item 1 of matchingButtons/)
   assert.doesNotMatch(script, /Save and continue|保存并继续|set value|keystroke/)
+})
+
+
+test('native readiness recognizes exact actionable Codex and Settings controls, not text or partial labels', () => {
+  // Run 65's complete native sample exposes both menu triggers as AXPopUpButton.
+  const observed = 'AXPopUpButton\tSettings\t\nAXPopUpButton\tCodex\t\n'
+  assert(nativeWorkbenchVisible(observed))
+  assert(nativeWorkbenchVisible(observed.replaceAll('AXPopUpButton', 'AXButton')))
+  assert(nativeWorkbenchVisible(observed.replace('Settings', '设置')))
+  assert(nativeWorkbenchVisible(observed.replace('AXPopUpButton\tCodex', 'AXButton\tCodex')))
+  for (const rejected of [
+    observed.replaceAll('AXPopUpButton', 'AXStaticText'),
+    observed.replace('AXPopUpButton\tSettings', 'AXStaticText\tSettings'),
+    observed.replace('AXPopUpButton\tCodex', 'AXHeading\tCodex'),
+    'AXPopUpButton\tCodex\t\n',
+    'AXPopUpButton\tSettings\t\n',
+    observed.replace('Codex', 'Codex status'),
+    observed.replace('Settings', 'Settings preview'),
+    'AXPopUpButton\tOther\tCodex\nAXPopUpButton\tOther\tSettings\n',
+    'AXGroup\tPreview Notice\t\nAXButton\tContinue\t\n',
+  ]) assert.equal(nativeWorkbenchVisible(rejected), false, rejected)
+})
+
+test('native polling reports the latest unmet observation instead of a recovered AX error', async () => {
+  let now = 0
+  let attempts = 0
+  await assert.rejects(until('native workbench', () => {
+    attempts++
+    if (attempts === 1) throw new Error('old AX -1700')
+    now = 2
+    return false
+  }, 1, true, () => now), error => {
+    assert.equal(error.message, 'native workbench did not complete: condition unmet')
+    return true
+  })
+  assert.equal(attempts, 2)
+  now = 0
+  await assert.rejects(until('native workbench', () => {
+    now = 2
+    throw new Error('current AX failure')
+  }, 1, true, () => now), /current AX failure/)
+  now = 0
+  await assert.rejects(until('native workbench', () => {
+    throw new Error('non-retryable failure')
+  }, 1, false, () => now), /non-retryable failure/)
+  assert.equal(await until('native workbench', () => 'ready', 1, true, () => now), 'ready')
 })
