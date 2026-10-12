@@ -75,6 +75,8 @@ Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析�
 
 在关闭验收 Issue 前，可使用相同仓库、分支、版本与 SHA 输入，以 `candidate-validation` 构建并验证带签名运行时组件的候选。它检查干净且固定的 Checkout，要求既有 macOS Accessibility 权限且不修改权限，执行完整打包检查与原生 Offline 组件安装、Host 已认证就绪，以及首次启动和随后两次冷启动验收，仅将安装包与更新文件保存为保留七天的 CI Artifact。脱敏后的原生验收证据单独保留，失败时也会上传；隔离 Home、凭据与 Cookie 不会上传。`0.4.9` 的已有 Tag 重试也必须通过相同原生检查。它不会创建 Tag、GitHub Release 或生产更新 Feed；产物中的计划发布 URL 不能作为真实公开下载证据。必须先完成全部已要求的实现与验收，再使用 `first-publication`。
 
+`0.4.9` 的 macOS 流水线还负责在组件打包前验收默认八个 Client，以及安装 Harbor 后的第九个 Client。它从准备好的 Store 归档安装精确冻结的依赖，缓存命中时也执行安装，并向现有产品验收器提供生产 Rust Overlay，不刷新上游输入。验证成功后会清理临时工作区依赖与展开的 Store，随后打包继续使用原始归档；组件归档排除的 Python 字节码也会在计算组件 ID 前移除。独立的七天证据制品保留源代码与工作流提交、Chromium 视频、最近一次捕获的工作台截图、组件 Manifest、归档大小，以及已完成的更新器校验和。Chromium 检查覆盖真实 Host 与 Profile；桌面命令桩仍然只是桥接证据。原生 WebView 控件和实测网络流量需要各自的验收观察。
+
 ## 组件契约
 
 签名通道采用与应用版本精确对应的 schema 2。每个压缩包都声明版本、用途、类别，以及由组件键和精确不可变标识组成的依赖。类别为 `core-runtime`、`runtime-fallback`、`capability-on-demand` 和 `optional`。核心组件的依赖不能引入可选能力，fallback 也不会通过依赖边自动安装。当前默认行为仍是启动时准备 Harness，仅在既有 fallback 检查确认需要时准备 Node 和 pnpm Store，以及按需准备依赖当前 Harness 的 Harbor。
