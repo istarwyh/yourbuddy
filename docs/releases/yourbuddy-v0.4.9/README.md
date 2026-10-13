@@ -2,6 +2,8 @@
 
 English | [中文](README.zh.md)
 
+Publication status was updated on 2026-10-12 UTC in the Post-publication observations section. The candidate text below is retained as historical evidence.
+
 This pre-publication archive describes the YourBuddy 0.4.9 release candidate and its startup recovery. Final candidate checks and public delivery remain pending.
 
 - Release identifier: `yourbuddy-v0.4.9`
@@ -55,3 +57,20 @@ This pre-publication record was prepared on 2026-10-11 in Etc/UTC from the revie
 - Verification archive status: release-candidate record; final CI, actual release commit, delivery observations and downloadable evidence remain pending. Evidence gathered after publication belongs in a new immutable evidence commit; the public release tag and installers remain unchanged.
 - Website synchronization status: no website edit or deployment is needed for an ordinary release; stable bilingual download links must still be checked after publication.
 - Unverified scope: final candidate CI, public hashes and signatures, DMG installation, installed updater, real enterprise-proxy interruptions, complete native workbench, real providers and Apple notarization.
+
+## Post-publication observations — 2026-10-12 UTC
+
+This dated update supersedes the publication status above; the preceding candidate record remains historical. At 20:05 UTC, the [public Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.9) was published, non-draft and non-prerelease, with 17 assets. GitHub records publication at 09:29:07 UTC. Product commit `5410480f0bdbab009a5658cf5cd63666d7ad6498` remains selected by the original tag; no installer or tag is replaced by this evidence update.
+
+[Release run 66](https://github.com/istarwyh/yourbuddy/actions/runs/38227587578) succeeded using workflow commit `589b1043c3c5cd071da2b172bafe013d42dc2aad`. Its [macOS arm64 job](https://github.com/istarwyh/yourbuddy/actions/runs/38227587578/job/114738810416) recorded the following results before publication:
+
+| Scenario | Status | Observed result | Evidence scope |
+|---|---|---|---|
+| Prepared default workbench and optional Harbor | Passed | Eight default Clients; nine after real Profile installation; Harbor Python 0.10.3 ready | Real Host/Profile in Chromium; desktop command stubs do not validate native controls |
+| Native Offline installation and startup | Passed | Authenticated native workbench and clean exit in all three rounds; 58,767 / 15,512 / 12,010 ms | Signed Offline seeds on macOS arm64 with a local rejecting proxy; not a Bootstrap interruption or enterprise-proxy test |
+| Release preparation and publication | Passed | Bootstrap size/resource checks, relocated runtime, release checksums and publication completed | Release-run checks; asset metadata does not independently verify downloaded bytes |
+| Full repository engineering CI | Not verified | This release route skipped its typecheck step | A successful release workflow is not a full repository CI verdict |
+
+[Machine-readable observations](evidence/publication-2026-10-12.json) retain the public asset names, sizes and GitHub digests, exact source/workflow identifiers, selected job steps and sanitized native result fields. The [native artifact](https://github.com/istarwyh/yourbuddy/actions/runs/38227587578/artifacts/11738327440) expires on 2026-10-19; the observations preserve its three-round result without process identifiers or local paths. Installation was tested before publication, not by downloading and reinstalling the published package. No independent public-byte hash or Minisign result is claimed by this record.
+
+Product publication is complete; this verification archive remains partial. Native Components/Settings operations, native Harbor installation and cache cleanup, controlled Bootstrap interruption/restart/resume and readiness-failure activation, installed automatic upgrade, measured first-install/upgrade/resume payload costs, actual enterprise proxies, real provider/OAuth journeys and Apple notarization remain unverified. The next product acceptance step is to exercise the packaged native component controls and the Bootstrap failure/recovery scenarios in [issue #39](https://github.com/istarwyh/yourbuddy/issues/39). Website synchronization needs no ordinary-release deployment; live website links were not checked in this update. This record does not close an issue or alter the eight-default-Client/optional-Harbor policy.

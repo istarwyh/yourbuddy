@@ -2,6 +2,8 @@
 
 [English](README.md) | 中文
 
+发布状态已于 2026-10-12 UTC 更新，见下方“发布后观察”章节。下方候选版本文字保留为历史证据。
+
 本发布前归档说明 YourBuddy 0.4.9 候选版本及其启动恢复行为。最终候选版本检查和公开交付尚未完成。
 
 - 发布标识：`yourbuddy-v0.4.9`
@@ -55,3 +57,20 @@
 - 验证归档状态：候选版本记录；最终 CI、实际发布提交、交付观察及可下载证据待完成。发布后采集的证据写入新的不可变证据提交；公开发布标签和安装包保持不变。
 - 网站同步状态：普通版本发布不需要网站修改或部署；发布后仍需检查双语稳定下载链接。
 - 未验证范围：最终候选 CI、公开哈希和签名、DMG 安装、已安装更新器、真实企业代理断流、完整原生工作台、真实提供方和 Apple 公证。
+
+## 发布后观察 — 2026-10-12 UTC
+
+本次按日期记录的更新取代上方的发布状态；此前候选版本记录保留为历史。20:05 UTC 时，[公开 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.9) 已发布，既非草稿也非预发布，包含 17 项资产。GitHub 记录的发布时间为 09:29:07 UTC。原标签仍指向产品提交 `5410480f0bdbab009a5658cf5cd63666d7ad6498`；本次证据更新不替换安装包或标签。
+
+[发布运行 66](https://github.com/istarwyh/yourbuddy/actions/runs/38227587578) 使用工作流提交 `589b1043c3c5cd071da2b172bafe013d42dc2aad` 并成功完成。其 [macOS arm64 作业](https://github.com/istarwyh/yourbuddy/actions/runs/38227587578/job/114738810416) 在发布前记录了以下结果：
+
+| 场景 | 状态 | 观察结果 | 证据范围 |
+|---|---|---|---|
+| prepared 默认工作台与可选 Harbor | 通过 | 默认八个 Client；真实 Profile 安装后九个；Harbor Python 0.10.3 就绪 | Chromium 中的真实 Host/Profile；桌面命令桩不能验证原生控件 |
+| Offline 原生安装与启动 | 通过 | 三轮均进入鉴权原生工作台并干净退出；58,767 / 15,512 / 12,010 毫秒 | macOS arm64 上的签名 Offline seeds，使用本地拒绝代理；不是 Bootstrap 断流或企业代理测试 |
+| 发布准备与公开交付 | 通过 | Bootstrap 大小/资源检查、迁移后的运行时、发布校验和及发布步骤完成 | 发布运行的检查；资产元数据不能独立验证下载字节 |
+| 全仓工程 CI | 未验证 | 本次发布路径跳过了类型检查步骤 | 发布工作流成功不代表全仓 CI 通过 |
+
+[机器可读观察记录](evidence/publication-2026-10-12.json) 保留公开资产的名称、大小与 GitHub 摘要、精确源码/工作流标识、选定作业步骤，以及经过清理的原生结果字段。[原生 artifact](https://github.com/istarwyh/yourbuddy/actions/runs/38227587578/artifacts/11738327440) 于 2026-10-19 到期；观察记录保留其三轮结果，不包含进程标识或本地路径。安装在发布前测试，并非下载公开包后重新安装。本记录不声称完成独立公开字节哈希或 Minisign 验证。
+
+产品已公开发布；本验证归档仍不完整。Native Components/Settings 操作、原生 Harbor 安装与缓存清理、Bootstrap 受控断流/重启/续传及 readiness 失败时的激活行为、已安装应用自动升级、首次安装/升级/续传的实测 payload 成本、真实企业代理、真实 provider/OAuth 流程及 Apple 公证仍未验证。下一步产品验收是在打包应用中执行原生组件控件及 [issue #39](https://github.com/istarwyh/yourbuddy/issues/39) 的 Bootstrap 故障恢复场景。普通发布无需部署网站；本次更新未检查线上网站链接。本记录不关闭 issue，也不改变默认八个 Client、Harbor 可选的策略。
