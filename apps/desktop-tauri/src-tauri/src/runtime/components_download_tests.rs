@@ -236,6 +236,12 @@ async fn interrupted_download_resumes_without_activating_prepared_components() {
         b"startup harness"
     );
     assert!(destination.join(".complete").is_file());
+    let partial = root.path().join("downloads").join(format!(
+        "{}.partial",
+        manager.spec("harness").unwrap().archive
+    ));
+    assert!(!partial.exists());
+    assert!(!partial.with_extension("partial.json").exists());
     let counters = &metrics(&manager).components["harness"];
     assert_eq!(counters.network_bytes, body.len() as u64);
     assert_eq!(counters.retransferred_bytes, 0);
@@ -428,13 +434,18 @@ async fn complete_partial_is_prepared_and_reused_without_a_range_request() {
     let server = Server::new(vec![]);
     let root = tempfile::tempdir().unwrap();
     let manager = manager(root.path(), &server.url, &body);
-    seed_partial(&manager, &server.url, &body, "\"v1\"");
+    let partial = seed_partial(&manager, &server.url, &body, "\"v1\"");
+    let unrelated = root.path().join("downloads/previous-release.partial");
+    fs::write(&unrelated, b"retain previous download").unwrap();
     assert!(manager
         .ensure_startup()
         .await
         .unwrap()
         .join(".complete")
         .is_file());
+    assert!(!partial.exists());
+    assert!(!partial.with_extension("partial.json").exists());
+    assert_eq!(fs::read(unrelated).unwrap(), b"retain previous download");
     let first = manager.installed("harness").unwrap().unwrap();
     let observed = metrics(&manager);
     assert_eq!(
@@ -447,6 +458,105 @@ async fn complete_partial_is_prepared_and_reused_without_a_range_request() {
     assert_eq!(metrics(&manager), observed);
     assert!(!root.path().join("active.json").exists());
     assert!(server.requests().is_empty());
+}
+
+#[tokio::test]
+async fn failed_preparation_keeps_verified_download_until_successful_retry() {
+    let body = harness_archive();
+    let server = Server::new(vec![Reply::new(200, "\"v1\"", &body)]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    let spec = manager.spec("harness").unwrap();
+    let destination = component_path(root.path(), "harness", &spec.id).unwrap();
+    let parent = destination.parent().unwrap();
+    fs::write(parent, b"block destination creation").unwrap();
+    fs::write(root.path().join("active.json"), b"previous activation").unwrap();
+    assert!(manager
+        .ensure_startup()
+        .await
+        .unwrap_err()
+        .contains("cannot create component destination"));
+    let partial = root
+        .path()
+        .join("downloads")
+        .join(format!("{}.partial", spec.archive));
+    assert_eq!(fs::read(&partial).unwrap(), body);
+    let metadata = partial.with_extension("partial.json");
+    assert!(metadata.is_file());
+    fs::remove_file(parent).unwrap();
+    assert_eq!(manager.ensure_startup().await.unwrap(), destination);
+    assert!(destination.join(".complete").is_file());
+    assert!(!partial.exists());
+    assert!(!metadata.exists());
+    assert_eq!(server.requests().len(), 1);
+    assert_eq!(
+        fs::read(root.path().join("active.json")).unwrap(),
+        b"previous activation"
+    );
+}
+
+#[tokio::test]
+async fn offline_seed_and_installed_fast_path_leave_other_downloads_untouched() {
+    let body = harness_archive();
+    let server = Server::new(vec![]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    let partial = seed_partial(&manager, &server.url, &body[..3], "\"v1\"");
+    let metadata = fs::read(partial.with_extension("partial.json")).unwrap();
+    let seeds = manager.resource_dir.join("component-seeds");
+    fs::create_dir_all(&seeds).unwrap();
+    let seed = seeds.join(&manager.spec("harness").unwrap().archive);
+    fs::write(&seed, &body).unwrap();
+    for _ in 0..2 {
+        assert!(manager
+            .ensure_startup()
+            .await
+            .unwrap()
+            .join(".complete")
+            .is_file());
+        assert_eq!(fs::read(&seed).unwrap(), body);
+        assert_eq!(fs::read(&partial).unwrap(), body[..3]);
+        assert_eq!(
+            fs::read(partial.with_extension("partial.json")).unwrap(),
+            metadata
+        );
+    }
+    assert!(server.requests().is_empty());
+}
+
+#[tokio::test]
+async fn cleanup_failure_keeps_installation_and_does_not_remove_directories() {
+    let body = harness_archive();
+    let server = Server::new(vec![Reply::new(200, "\"v1\"", &body)]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, &body);
+    let partial = root.path().join("downloads").join(format!(
+        "{}.partial",
+        manager.spec("harness").unwrap().archive
+    ));
+    let metadata = partial.with_extension("partial.json");
+    let replaced_metadata = metadata.clone();
+    let manager = manager.with_progress(Arc::new(move |event| {
+        if matches!(
+            event,
+            ComponentProgress::Phase {
+                phase: "unpack",
+                ..
+            }
+        ) {
+            fs::remove_file(&replaced_metadata).unwrap();
+            fs::create_dir(&replaced_metadata).unwrap();
+            fs::write(replaced_metadata.join("user-file"), b"retain exactly").unwrap();
+        }
+    }));
+    let destination = manager.ensure_startup().await.unwrap();
+    assert!(destination.join(".complete").is_file());
+    assert!(!partial.exists());
+    assert_eq!(
+        fs::read(metadata.join("user-file")).unwrap(),
+        b"retain exactly"
+    );
+    assert_eq!(metrics(&manager).components["harness"].installs, 1);
 }
 
 #[test]
@@ -754,7 +864,8 @@ fn terminated_process_releases_its_os_lock_and_a_new_process_resumes_the_partial
     assert!(!requests[0].contains("range:"));
     assert!(requests[1].contains("range: bytes=3-\r\n"));
     assert!(requests[1].contains("if-range: \"v1\"\r\n"));
-    assert_eq!(fs::read(&partial).unwrap(), body);
+    assert!(!partial.exists());
+    assert!(!partial.with_extension("partial.json").exists());
     assert!(expected.installed("harness").unwrap().is_some());
     assert_eq!(
         fs::read(active).unwrap(),
