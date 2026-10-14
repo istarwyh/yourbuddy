@@ -8,6 +8,8 @@ on:
       - 'apps/desktop-tauri/splash-state.js'
       - 'apps/desktop-tauri/desktop-i18n.js'
       - 'apps/desktop-tauri/scripts/splash-state.test.mjs'
+      - 'apps/desktop-tauri/scripts/inspect-component-storage*.mjs'
+      - 'apps/desktop-tauri/scripts/tests/expected/component-storage.json'
       - 'apps/desktop-tauri/scripts/smoke-bootstrap-macos.mjs'
       - 'apps/desktop-tauri/scripts/verify-old-component-channel.mjs'
       - 'apps/desktop-tauri/scripts/verify-old-component-channel.test.mjs'
@@ -37,6 +39,8 @@ jobs:
           node-version: '24'
       - name: Test splash state and recovery controls
         run: node --test apps/desktop-tauri/scripts/splash-state.test.mjs apps/desktop-tauri/scripts/verify-old-component-channel.test.mjs
+      - name: Test read-only component storage inventory
+        run: node --test apps/desktop-tauri/scripts/inspect-component-storage.test.mjs
       - name: Compile the desktop application and test Bootstrap recovery
         working-directory: apps/desktop-tauri/src-tauri
         run: |

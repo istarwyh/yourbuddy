@@ -1,0 +1,134 @@
+[
+  {
+    "path": "components/.leases/permanent.lock",
+    "kind": ".leases",
+    "recordedReferences": [],
+    "observations": [],
+    "retainedReason": "permanent-lease-coordination",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "components/downloads/old.tar.zst.partial",
+    "kind": "downloads",
+    "recordedReferences": [],
+    "observations": [],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "components/harness/current",
+    "kind": "harness",
+    "recordedReferences": [
+      {
+        "source": "components/active.json",
+        "field": "harness"
+      }
+    ],
+    "observations": [
+      "preserved-provisioning-output",
+      "provisioning-marker-present"
+    ],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "components/harness/dangling",
+    "kind": "harness",
+    "recordedReferences": [],
+    "observations": [],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "components/harness/external",
+    "kind": "harness",
+    "recordedReferences": [],
+    "observations": [],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "components/quarantine/interrupted",
+    "kind": "quarantine",
+    "recordedReferences": [],
+    "observations": [],
+    "retainedReason": "quarantine",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "components/staging/in-progress",
+    "kind": "staging",
+    "recordedReferences": [],
+    "observations": [],
+    "retainedReason": "staging",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "components/stores/current",
+    "kind": "stores",
+    "recordedReferences": [],
+    "observations": [],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "components/stores/old",
+    "kind": "stores",
+    "recordedReferences": [],
+    "observations": [],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "harness-versions/old",
+    "kind": "harness-versions",
+    "recordedReferences": [
+      {
+        "source": "runtime/manifest.json",
+        "field": "harnessRoot"
+      },
+      {
+        "source": "bin/dsh-launch.json",
+        "field": "cli"
+      }
+    ],
+    "observations": [],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "runtime/.bootstrap-pnpm-1",
+    "kind": "runtime",
+    "recordedReferences": [],
+    "observations": [
+      "preserved-provisioning-output"
+    ],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "runtime/manifest.json",
+    "kind": "runtime",
+    "recordedReferences": [],
+    "observations": [],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  },
+  {
+    "path": "runtime/node",
+    "kind": "runtime",
+    "recordedReferences": [
+      {
+        "source": "runtime/manifest.json",
+        "field": "nodePath"
+      },
+      {
+        "source": "bin/dsh-launch.json",
+        "field": "pathPrepend[0]"
+      }
+    ],
+    "observations": [],
+    "retainedReason": "ownership-and-consumers-unverified",
+    "reclaimableBytes": null
+  }
+]
