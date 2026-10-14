@@ -1,0 +1,92 @@
+{
+  "observed_at": "2026-10-14T07:28:39Z",
+  "release_tag": "yourbuddy-v0.4.10",
+  "product_commit": "3e4a5cd498bb6fbc677f958eb3a261f8b23306ac",
+  "pr_head": "bd7851f9c12cb43a38cc8f28cf802a51af53f8e6",
+  "pr_url": "https://github.com/istarwyh/yourbuddy/pull/59",
+  "ci_run_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38526329353",
+  "benchmark_job_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38526329353/job/115727430366",
+  "status": "passed",
+  "scope": "Synthetic source-level long-session browser workload on Linux x64; not a native published macOS package performance result.",
+  "measurement": {
+    "benchmark": "long-session-browser/median",
+    "turns": 240,
+    "deltas": 120,
+    "paceMs": 16,
+    "samples": [
+      {
+        "open": 346.19288700000016,
+        "page": 440.0452800000003,
+        "trajectory": 257.31659800000034,
+        "first": 629.5906779999996,
+        "streamTask": 2409.8419999999996,
+        "streamWall": 2433.8639679999997,
+        "input": 435.85097400000086,
+        "inputOverlapped": true,
+        "heapMb": 69.79594421386719,
+        "nodes": 23835
+      },
+      {
+        "open": 359.41503999999986,
+        "page": 424.52112300000044,
+        "trajectory": 257.570885000001,
+        "first": 590.5701899999985,
+        "streamTask": 2358.639,
+        "streamWall": 2379.5116549999984,
+        "input": 295.53302299999996,
+        "inputOverlapped": true,
+        "heapMb": 69.77759170532227,
+        "nodes": 23835
+      },
+      {
+        "open": 317.18338199999926,
+        "page": 425.55576999999903,
+        "trajectory": 240.6603619999987,
+        "first": 646.4181869999993,
+        "streamTask": 2364.291,
+        "streamWall": 2384.658091999998,
+        "input": 400.87132399999973,
+        "inputOverlapped": true,
+        "heapMb": 69.79789352416992,
+        "nodes": 23835
+      }
+    ],
+    "aggregate": {
+      "open": 346.19288700000016,
+      "page": 425.55576999999903,
+      "trajectory": 257.31659800000034,
+      "first": 629.5906779999996,
+      "streamTask": 2364.291,
+      "input": 400.87132399999973,
+      "streamWall": 2384.658091999998
+    },
+    "referenceMs": {
+      "open": 200,
+      "page": 260,
+      "trajectory": 160,
+      "first": 1100,
+      "streamTask": 1800,
+      "input": 500,
+      "streamWall": 1000
+    },
+    "expectedOpenCiMs": 900,
+    "expectedPageCiMs": 700,
+    "expectedTrajectoryCiMs": 520,
+    "budgets": {
+      "open": 1125,
+      "page": 875,
+      "trajectory": 650,
+      "first": 2750,
+      "streamTask": 4500,
+      "input": 1250,
+      "streamWall": 4484
+    }
+  },
+  "prior_observation": {
+    "run_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38399100814",
+    "input_median_ms": 1434.883238,
+    "input_budget_ms": 1250,
+    "status": "failed",
+    "cause": "not established; this later pass does not identify or fix the prior cause"
+  }
+}

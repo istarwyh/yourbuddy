@@ -1,0 +1,35 @@
+{
+  "url": "https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.10.zip",
+  "started_at": "2026-10-14T07:33:08.971573+00:00",
+  "finished_at": "2026-10-14T07:33:33.686889+00:00",
+  "curl_exit_code": 0,
+  "http_status": 200,
+  "content_type": "application/zip",
+  "bytes_received": 55301287,
+  "redirects": 1,
+  "seconds": 24.705288,
+  "final_host": "codeload.github.com",
+  "final_path": "/istarwyh/yourbuddy/zip/refs/tags/yourbuddy-v0.4.10",
+  "bytes": 55301287,
+  "sha256": "b5d6c1c02ed4339aab12c33b410737ea85089592c4bb8967adfe667d0d99533a",
+  "source_commit": "3e4a5cd498bb6fbc677f958eb3a261f8b23306ac",
+  "archive_root": "yourbuddy-yourbuddy-v0.4.10/",
+  "release_archive_files": [
+    "docs/releases/yourbuddy-v0.4.10/README.i18n.yaml",
+    "docs/releases/yourbuddy-v0.4.10/README.md",
+    "docs/releases/yourbuddy-v0.4.10/README.zh.md",
+    "docs/releases/yourbuddy-v0.4.10/evidence/source-checks.json"
+  ],
+  "source_versions": {
+    "apps/desktop-tauri/package.json": "0.4.10",
+    "apps/desktop-tauri/src-tauri/tauri.conf.json": "0.4.10"
+  },
+  "archive_readme_git_blob_matches": {
+    "docs/releases/yourbuddy-v0.4.10/README.i18n.yaml": true,
+    "docs/releases/yourbuddy-v0.4.10/README.md": true,
+    "docs/releases/yourbuddy-v0.4.10/README.zh.md": true
+  },
+  "tauri_config_matches_exact_source": true,
+  "zip_crc_test_bad_file": null,
+  "status": "passed"
+}

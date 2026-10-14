@@ -1,0 +1,48 @@
+{
+  "version": "0.4.10",
+  "appSha256": "f8e5e0ee655b6a206f7c30501f13c9ab1286f96d07afc4b91c1a7ae3cc992525",
+  "signedManifestSha256": "ef911efefe3a028a3f9c3b9ba26a31091dfdfac62af39e0b67d7a140322e976a",
+  "platform": "darwin-arm64",
+  "componentSource": "signed Offline seeds",
+  "network": "local rejecting proxy; production TLS verification unchanged; no enterprise proxy claim",
+  "boots": [
+    {
+      "round": 1,
+      "durationMs": 45529,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    },
+    {
+      "round": 2,
+      "durationMs": 9164,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    },
+    {
+      "round": 3,
+      "durationMs": 12231,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    }
+  ],
+  "blockedExternalRequests": 4,
+  "active": {
+    "appVersion": "0.4.10",
+    "components": {
+      "harness": {
+        "id": "sha256:f570c6c3b8e87ded5d02af989ea232428fb5f28f24e2ff348a80089ba74598cf"
+      },
+      "pnpmStore": {
+        "id": "sha256:8d30728f34c3e293e68c68c111355b49e9ebb42e123810877066374e1aa96e76"
+      }
+    },
+    "schemaVersion": 1
+  },
+  "status": "passed",
+  "observed_at": "2026-10-14T07:45:30Z",
+  "run_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38527910226",
+  "scope": "Release-run Offline package before public upload; initial installation and two cold starts. Not a downloaded public-package reinstall, Bootstrap download cleanup/recovery test, or installed automatic upgrade."
+}
