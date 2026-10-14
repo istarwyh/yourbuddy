@@ -1,0 +1,12 @@
+{
+  "release": "yourbuddy-v0.4.10",
+  "observedAt": "2026-10-14T06:54:55Z",
+  "scope": "Local source checks before commit; not packaged macOS or public delivery evidence",
+  "environment": { "platform": "linux-x64", "node": "24.19.0", "data": "synthetic Git and API fixtures", "provider": "none" },
+  "command": "node --test apps/desktop-tauri/scripts/first-publication.test.mjs apps/desktop-tauri/scripts/verify-release-version.test.mjs apps/desktop-tauri/scripts/prepare-release-candidate.test.mjs apps/desktop-tauri/scripts/publish-release.test.mjs",
+  "result": { "passed": 18, "failed": 0, "skipped": 0 },
+  "historicalCleanupHead": "f201efa7ccca59ca21178b7f600eb7f09661d0f9",
+  "historicalCiRun": "https://github.com/istarwyh/yourbuddy/actions/runs/38399100814",
+  "knownRisks": ["Long-session benchmark input median 1434.883238 ms exceeds 1250 ms; cause not established", "Historical Windows coverage Git/pnpm fixture timeout", "Separate Cloudflare preview missing deployment token"],
+  "unverified": ["0.4.10 macOS release package acceptance", "Public downloaded bytes and updater feed", "Native Bootstrap consumed-archive cleanup", "Historical cache GC and shared Store delivery", "Physical disk recovery", "Installed automatic upgrade", "Real provider and OAuth flows", "Apple notarization"]
+}

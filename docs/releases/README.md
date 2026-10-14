@@ -10,6 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
+| [yourbuddy-v0.4.10](yourbuddy-v0.4.10/README.md) | YourBuddy desktop | Included | Source release checks and known risks; macOS acceptance and public delivery pending | Release candidate |
 | [yourbuddy-v0.4.9](yourbuddy-v0.4.9/README.md) | YourBuddy desktop | Included | Run 66 prepared and native Offline results; remaining acceptance recorded | Published; verification archive partial |
 | [yourbuddy-v0.4.8](yourbuddy-v0.4.8/README.md) | YourBuddy desktop | Included | Agent Browser styles, creator Library, public artifacts, signed Offline updater, and published-bundle replay recorded | Published and independently checked within stated limits |
 | [yourbuddy-v0.4.7](yourbuddy-v0.4.7/README.md) | YourBuddy desktop | Included | Offline automatic-update payload, source checks, workflow 37172836595, 16 public assets, selected hashes, stable updater metadata, and archive access recorded | Published and independently checked within stated limits |
