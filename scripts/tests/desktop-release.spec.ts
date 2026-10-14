@@ -33,9 +33,9 @@ interface Workflow {
 }
 
 const workflow = load(readFileSync(resolve(root, '.github/workflows/desktop-release.yml'), 'utf8')) as Workflow
-const nativeCondition = "env.RELEASE_MODE != 'existing-tag' || env.RELEASE_TAG == 'yourbuddy-v0.4.9'"
+const nativeCondition = "env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10')"
 const firstPublicationCondition = "env.RELEASE_MODE == 'first-publication'"
-const tagExpression = "${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.9' || inputs.tag) || github.ref_name }}"
+const tagExpression = "${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.10' || inputs.tag) || github.ref_name }}"
 
 // These canonical string inputs use the same truthiness and equality in Actions and JavaScript.
 function evaluate(expression: string, context: Record<string, string>): string {
@@ -182,13 +182,13 @@ describe('YourBuddy first publication', () => {
       workflow_dispatch: {
         inputs: {
           mode: {
-            description: 'Retry an existing tag, validate a candidate, or first-publish verified 0.4.9',
+            description: 'Retry an existing tag, validate a candidate, or first-publish verified 0.4.10',
             type: 'choice',
             options: ['existing-tag', 'first-publication', 'candidate-validation'],
             default: 'existing-tag',
             required: true,
           },
-          version: { description: 'Candidate validation or first publication (fixed at 0.4.9)', default: '0.4.9', required: false },
+          version: { description: 'Candidate validation or first publication (fixed at 0.4.10)', default: '0.4.10', required: false },
           verified_master_sha: { description: 'Candidate validation or first publication, exact master SHA after all engineering checks pass', required: false },
           tag: {
             description: 'Existing unpublished yourbuddy-v* tag to build after a failed run',
@@ -209,13 +209,16 @@ describe('YourBuddy first publication', () => {
     const contexts = [
       { 'github.event_name': 'workflow_dispatch', 'inputs.mode': 'candidate-validation', 'inputs.tag': 'ignored', 'github.ref_name': 'master' },
       { 'github.event_name': 'workflow_dispatch', 'inputs.mode': 'first-publication', 'inputs.tag': 'ignored', 'github.ref_name': 'master' },
-      { 'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'inputs.tag': 'yourbuddy-v0.4.9', 'github.ref_name': 'master' },
-      { 'github.event_name': 'push', 'inputs.mode': '', 'inputs.tag': '', 'github.ref_name': 'yourbuddy-v0.4.9' },
+      { 'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'inputs.tag': 'yourbuddy-v0.4.10', 'github.ref_name': 'master' },
+      { 'github.event_name': 'push', 'inputs.mode': '', 'inputs.tag': '', 'github.ref_name': 'yourbuddy-v0.4.10' },
     ]
-    for (const context of contexts) expect(evaluate(workflow.env.RELEASE_TAG!, context)).toBe('yourbuddy-v0.4.9')
-    expect(evaluate(workflow.env.RELEASE_TAG!, {
-      'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'inputs.tag': 'yourbuddy-v0.4.8',
-    })).toBe('yourbuddy-v0.4.8')
+    for (const context of contexts) expect(evaluate(workflow.env.RELEASE_TAG!, context)).toBe('yourbuddy-v0.4.10')
+    for (const tag of ['yourbuddy-v0.4.8', 'yourbuddy-v0.4.9']) {
+      expect(evaluate(workflow.env.RELEASE_TAG!, {
+        'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'inputs.tag': tag,
+      })).toBe(tag)
+      expect(evaluate(workflow.env.RELEASE_TAG!, { 'github.event_name': 'push', 'github.ref_name': tag })).toBe(tag)
+    }
   })
 
   it('retains token permissions and keeps checkout credentials out of persisted Git configuration', () => {
