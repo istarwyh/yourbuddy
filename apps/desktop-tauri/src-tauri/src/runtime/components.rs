@@ -331,6 +331,8 @@ impl ComponentManager {
 
     /// Prepare a validated exact dependency plan under one cross-process transaction.
     /// Consumers hold shared storage leases before calling this operation.
+    /// Each successful installation removes its download best-effort. Extraction or installation
+    /// failures retain that component's verified download.
     pub async fn prepare(&self, request: &PlanRequest) -> Result<(), String> {
         fs::create_dir_all(&self.root)
             .map_err(|error| format!("cannot create component cache: {error}"))?;
@@ -498,7 +500,29 @@ impl ComponentManager {
         });
         self.extract_and_prepare(name, spec, &archive, &destination)?;
         observations.installed = true;
+        self.remove_prepared_download(spec, &archive);
         Ok(destination)
+    }
+
+    /// Remove only the downloaded archive consumed by this successful locked preparation.
+    /// Offline seeds, installed fast paths, and other downloads remain untouched.
+    fn remove_prepared_download(&self, spec: &ComponentSpec, archive: &Path) {
+        let downloads = self.root.join("downloads");
+        let partial = downloads.join(format!("{}.partial", spec.archive));
+        if archive != partial {
+            return;
+        }
+        let metadata = downloads.join(format!("{}.partial.json", spec.archive));
+        for path in [&partial, &metadata] {
+            if let Err(error) = fs::remove_file(path) {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    boot_log::info(&format!(
+                        "prepared component download cleanup skipped {}: {error}",
+                        path.display()
+                    ));
+                }
+            }
+        }
     }
 
     async fn obtain_archive(
