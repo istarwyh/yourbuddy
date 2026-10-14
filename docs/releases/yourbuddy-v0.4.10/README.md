@@ -2,6 +2,8 @@
 
 English | [中文](README.zh.md)
 
+The dated post-publication observations below supersede the candidate delivery status. The preceding candidate evidence remains historical.
+
 This archive records the release candidate and separates source checks from packaged-product acceptance.
 
 - Release identifier: `yourbuddy-v0.4.10`
@@ -77,3 +79,35 @@ PR #58's long-session benchmark recorded 1434.883238 ms median input latency dur
 - [x] Source-only and historical evidence are explicitly labelled.
 - [ ] Final macOS release acceptance and independent public delivery are recorded.
 - [ ] The immutable downloadable archive and stable website links are verified.
+
+## Post-publication observations — 2026-10-14 UTC
+
+The [public Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.10) was published at 07:44:06 UTC, non-draft and non-prerelease, with 17 uploaded assets. Product and workflow commit `3e4a5cd498bb6fbc677f958eb3a261f8b23306ac` remain selected by the original annotated tag. This separate evidence update does not move the tag or replace an installer.
+
+### Packaged acceptance
+
+[Release run 67](https://github.com/istarwyh/yourbuddy/actions/runs/38527910226) passed its complete publication path, including typecheck, Harness build, component preparation, Bootstrap size/resource checks, native Offline starts, relocated Harbor, checksums and publication. [Workflow observations](evidence/release-workflow-2026-10-14.json) identify each step and the retained artifacts.
+
+| Scenario | Status | Observed result | Evidence scope |
+|---|---|---|---|
+| Prepared workbench and optional Harbor | Passed | Eight default Clients; nine after real Profile installation | [Prepared result](evidence/prepared-workbench-2026-10-14.json); real Host/Profile in Chromium; desktop invoke stubs do not validate native controls |
+| Native Offline installation and cold starts | Passed | Authenticated native workbench and clean exit in all three rounds; 45,529 / 9,164 / 12,231 ms | [Sanitized native result](evidence/native-offline-2026-10-14.json); signed Offline seeds on macOS arm64 with a rejecting local proxy; not a Bootstrap interruption test |
+| Installer size | Passed | Bootstrap DMG 11,091,479 bytes; Offline DMG 611,145,238 bytes | [Archive measurements](evidence/installer-sizes.json); not installed size, actual traffic or reclaimed space |
+
+The original prepared and native workflow artifacts expire on 2026-10-21. These records preserve bounded results without process identifiers or local endpoints. Native installation was tested before upload; independently downloaded packages were not executed on macOS.
+
+### Independent public delivery
+
+At 07:50 UTC, an independent Linux x64 check had downloaded all 17 uploaded assets anonymously with HTTP 200: 1,844,681,028 bytes total. Every byte count and GitHub SHA-256 digest matched, as did all 16 `SHA256SUMS.txt` entries. Both updater archives and the component manifest passed cryptographic content and trusted-comment signature checks against the exact product source's public key. [Public observations](evidence/public-verification.json) retain filenames, URLs, sizes, hashes, signatures and scope.
+
+The stable `yourbuddy-updater/latest.json` download was byte-identical to the release manifest, reported 0.4.10 and selected the signed Offline archive. All five signed component entries matched their downloaded archives; Offline contained six matching seeds including debug. Both app archives contained matching manifests and version 0.4.10; Bootstrap excluded runtime/seed directories. The first download attempt stopped after two HTTP 403 responses and an execution-review cancellation; one unchanged retry completed without changing credentials, permissions or routes.
+
+The [tag source ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.10.zip) downloaded anonymously: 55,301,287 bytes, SHA-256 `b5d6c1c02ed4339aab12c33b410737ea85089592c4bb8967adfe667d0d99533a`, with CRC integrity and the bilingual candidate archive checked. [Source observations](evidence/tag-source-verification.json) identify its exact contents. Post-publication observations belong to this separate evidence commit, not the original tag.
+
+The live [Chinese](https://istarwyh.github.io/yourbuddy/download/) and [English](https://istarwyh.github.io/yourbuddy/en/download/) download pages returned HTTP 200 and retained the stable latest-release link, which resolved to 0.4.10. Product guidance was unchanged, so no website edit or deployment was needed.
+
+### Engineering results and remaining scope
+
+PR #59's static checks, Bootstrap regressions, packaged splash and benchmark passed. Its 240-turn input median was 400.871324 ms against the unchanged 1250 ms budget; [this result](evidence/source-benchmark-2026-10-14.json) does not establish the cause of PR #58's earlier failure or native macOS performance. Full repository CI is not claimed entirely green; the Cloudflare preview failed independently of the macOS release.
+
+Product publication and the stated public-byte checks are complete. The archive remains partial for native Bootstrap cleanup/recovery, native Components/Settings operations, installed automatic upgrade, physical disk recovery, real providers/OAuth, enterprise proxies and Apple notarization. [Issue #57](https://github.com/istarwyh/yourbuddy/issues/57) remains open for historical cleanup and shared/incremental delivery; [issue #39](https://github.com/istarwyh/yourbuddy/issues/39) retains broader recovery acceptance. Windows remains outside this release channel.
