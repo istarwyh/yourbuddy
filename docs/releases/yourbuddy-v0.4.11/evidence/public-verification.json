@@ -1,0 +1,644 @@
+{
+  "schemaVersion": 1,
+  "releaseTag": "yourbuddy-v0.4.11",
+  "version": "0.4.11",
+  "expectedCommit": "fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b",
+  "expectedTree": "bd32010d921e8e7d5560d828c895a2503dabab37",
+  "releaseUrl": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.11",
+  "environment": "Linux x64 cloud; independent unauthenticated public HTTP downloads; downloaded software not executed",
+  "startedAt": "2026-10-15T12:54:14.170361+00:00",
+  "completedAt": "2026-10-15T12:56:09.113760+00:00",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "Public final release exists",
+      "passed": true,
+      "details": {
+        "url": "https://api.github.com/repos/istarwyh/yourbuddy/releases/tags/yourbuddy-v0.4.11",
+        "finalUrl": "https://api.github.com/repos/istarwyh/yourbuddy/releases/tags/yourbuddy-v0.4.11",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:18.462914+00:00"
+      }
+    },
+    {
+      "name": "GitHub latest release is 0.4.11",
+      "passed": true,
+      "details": {
+        "tag": "yourbuddy-v0.4.11",
+        "id": 413806095,
+        "url": "https://api.github.com/repos/istarwyh/yourbuddy/releases/latest",
+        "finalUrl": "https://api.github.com/repos/istarwyh/yourbuddy/releases/latest",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:21.791715+00:00"
+      }
+    },
+    {
+      "name": "Release tag resolves to exact expected source commit",
+      "passed": true,
+      "details": [
+        {
+          "sha": "a48fb173b106f1da7b1cb1da447704b661e637b3",
+          "type": "tag",
+          "url": "https://api.github.com/repos/istarwyh/yourbuddy/git/tags/a48fb173b106f1da7b1cb1da447704b661e637b3"
+        },
+        {
+          "sha": "fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b",
+          "type": "commit",
+          "url": "https://api.github.com/repos/istarwyh/yourbuddy/git/commits/fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b"
+        }
+      ]
+    },
+    {
+      "name": "Source tree matches reviewed tree",
+      "passed": true,
+      "details": {
+        "sha": "bd32010d921e8e7d5560d828c895a2503dabab37",
+        "url": "https://api.github.com/repos/istarwyh/yourbuddy/git/trees/bd32010d921e8e7d5560d828c895a2503dabab37"
+      }
+    },
+    {
+      "name": "Source version and updater/component public keys agree",
+      "passed": true,
+      "details": {
+        "version": "0.4.11",
+        "configSource": "https://raw.githubusercontent.com/istarwyh/yourbuddy/fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b/apps/desktop-tauri/src-tauri/tauri.conf.json",
+        "componentKeySource": "https://raw.githubusercontent.com/istarwyh/yourbuddy/fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b/apps/desktop-tauri/src-tauri/src/runtime/components.rs"
+      }
+    },
+    {
+      "name": "Exactly 17 expected macOS Apple Silicon delivery assets",
+      "passed": true,
+      "details": {
+        "assetNames": [
+          "SHA256SUMS.txt",
+          "latest.json",
+          "yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz",
+          "yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz.sig",
+          "yourbuddy-0.4.11-bootstrap-macos-arm64.dmg",
+          "yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz",
+          "yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz.sig",
+          "yourbuddy-0.4.11-offline-macos-arm64.dmg",
+          "yourbuddy-components-0.4.11.json",
+          "yourbuddy-components-0.4.11.json.sig",
+          "yourbuddy-debug-0.4.11.tar.zst",
+          "yourbuddy-harbor-15c4712420dda9ffc21f8a685f408f747b43d4fe2cce0092690d959c17233226-darwin-arm64.tar.zst",
+          "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+          "yourbuddy-harness-56319484657d7399261855244397a37612bd0aa385a32ebf1bab3a78fdf12435-macos-arm64.tar.zst",
+          "yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+          "yourbuddy-pnpm-store-3666ec0c95a9d6a994407ed486d783c4035787dd95606f7a9cfe12397ec1b687-macos-arm64.tar.zst",
+          "yourbuddy-size-report-0.4.11.json"
+        ],
+        "assetCount": 17,
+        "totalBytes": 1844929416
+      }
+    },
+    {
+      "name": "All 17 public downloads match GitHub API byte lengths",
+      "passed": true
+    },
+    {
+      "name": "All supplied GitHub API SHA256 digests match downloaded bytes",
+      "passed": true,
+      "details": {
+        "latest.json": true,
+        "SHA256SUMS.txt": true,
+        "yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz": true,
+        "yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz.sig": true,
+        "yourbuddy-0.4.11-bootstrap-macos-arm64.dmg": true,
+        "yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz": true,
+        "yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz.sig": true,
+        "yourbuddy-0.4.11-offline-macos-arm64.dmg": true,
+        "yourbuddy-components-0.4.11.json": true,
+        "yourbuddy-components-0.4.11.json.sig": true,
+        "yourbuddy-debug-0.4.11.tar.zst": true,
+        "yourbuddy-harbor-15c4712420dda9ffc21f8a685f408f747b43d4fe2cce0092690d959c17233226-darwin-arm64.tar.zst": true,
+        "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst": true,
+        "yourbuddy-harness-56319484657d7399261855244397a37612bd0aa385a32ebf1bab3a78fdf12435-macos-arm64.tar.zst": true,
+        "yourbuddy-node-22.19.0-darwin-arm64.tar.zst": true,
+        "yourbuddy-pnpm-store-3666ec0c95a9d6a994407ed486d783c4035787dd95606f7a9cfe12397ec1b687-macos-arm64.tar.zst": true,
+        "yourbuddy-size-report-0.4.11.json": true
+      }
+    },
+    {
+      "name": "SHA256SUMS covers every other release asset exactly once",
+      "passed": true,
+      "details": {
+        "entries": 16
+      }
+    },
+    {
+      "name": "All 16 SHA256SUMS entries match full public downloads",
+      "passed": true,
+      "details": {
+        "latest.json": "29f9cad70e1e82b89972a3b2f6de91bd00cbb5a4baa676ef75c0f8edf37714c0",
+        "yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz": "fed5e413e683bc79eacf749db73d418d8fd1395c96ddc4196ed06f72aab565e6",
+        "yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz.sig": "4afcefbebb16daf66a380030b5dac1d6ab0d2be68f4f445ec35235ef5cfb79d2",
+        "yourbuddy-0.4.11-bootstrap-macos-arm64.dmg": "c65e1f2c521afc85019eedba5ffe7e7331cbac7939eb6c47c16beae7bc07cc00",
+        "yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz": "e996716626854fd46ace68d2221b528f48dc0b39af0d6fb14fde1145b528b7c2",
+        "yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz.sig": "ff031c337d244a2a22ad7a888ba1f2c4f225418956f6afa09f57a223087bd87f",
+        "yourbuddy-0.4.11-offline-macos-arm64.dmg": "5a5c41939d52b44231c1cd99be9993c59c036316a10b42d293f14d8b1a2ced1f",
+        "yourbuddy-components-0.4.11.json": "bad3382c37e4807f639dac26c4b2f0e9bfe541386d26712bc8233f316f85faac",
+        "yourbuddy-components-0.4.11.json.sig": "6cdcf7cd37072c312e53ffcf31a5bedef48d5940d99d292838ca520c45085dce",
+        "yourbuddy-debug-0.4.11.tar.zst": "08b39966ddba5a4db41912d85771eb20752525f461ca9297b69c7f7a8b390e32",
+        "yourbuddy-harbor-15c4712420dda9ffc21f8a685f408f747b43d4fe2cce0092690d959c17233226-darwin-arm64.tar.zst": "4ea80afaf46d9434ddeebd1791012868d9c9306bfa5e89be705c98bfc2cbe969",
+        "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst": "e5827306b52da96de0dec7f12cef04485fdc931ee0f8e5e39185b1f4f3ad8a50",
+        "yourbuddy-harness-56319484657d7399261855244397a37612bd0aa385a32ebf1bab3a78fdf12435-macos-arm64.tar.zst": "a406ccc80aae4362eb4db74e0aa67c55874ca331095cf6c3741bf9ff65199f0f",
+        "yourbuddy-node-22.19.0-darwin-arm64.tar.zst": "0b98f49e31dfc79b417e17ab012c971ce1e06b11320cffe7a5f891d0581be4ab",
+        "yourbuddy-pnpm-store-3666ec0c95a9d6a994407ed486d783c4035787dd95606f7a9cfe12397ec1b687-macos-arm64.tar.zst": "09ba46554e34563f2d6898d00b8323a54bab05fb4a68fad1f01b42c22d9d35e5",
+        "yourbuddy-size-report-0.4.11.json": "cc7176f4840c6495e9dd7afdac9b5ab8a616a674c215758786c4e3fda58804a4"
+      }
+    },
+    {
+      "name": "Signed component manifest verifies cryptographically",
+      "passed": true,
+      "details": {
+        "algorithm": "ED",
+        "keyIdLittleEndianHex": "eb81f58ee2c5dfdb",
+        "trustedComment": "timestamp:1792067789\tfile:yourbuddy-components-0.4.11.json",
+        "dataSignatureVerified": true,
+        "trustedCommentSignatureVerified": true
+      }
+    },
+    {
+      "name": "Component manifest version/platform/arch scope matches release",
+      "passed": true,
+      "details": {
+        "schemaVersion": 2,
+        "appVersion": "0.4.11",
+        "releaseTag": "yourbuddy-v0.4.11",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    },
+    {
+      "name": "All five signed component archive sizes, hashes and dependencies match",
+      "passed": true,
+      "details": {
+        "harness": {
+          "archive": "yourbuddy-harness-56319484657d7399261855244397a37612bd0aa385a32ebf1bab3a78fdf12435-macos-arm64.tar.zst",
+          "bytesMatch": true,
+          "sha256Match": true,
+          "dependenciesMatch": true
+        },
+        "pnpmStore": {
+          "archive": "yourbuddy-pnpm-store-3666ec0c95a9d6a994407ed486d783c4035787dd95606f7a9cfe12397ec1b687-macos-arm64.tar.zst",
+          "bytesMatch": true,
+          "sha256Match": true,
+          "dependenciesMatch": true
+        },
+        "node": {
+          "archive": "yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+          "bytesMatch": true,
+          "sha256Match": true,
+          "dependenciesMatch": true
+        },
+        "harbor": {
+          "archive": "yourbuddy-harbor-15c4712420dda9ffc21f8a685f408f747b43d4fe2cce0092690d959c17233226-darwin-arm64.tar.zst",
+          "bytesMatch": true,
+          "sha256Match": true,
+          "dependenciesMatch": true
+        },
+        "harborPlugin": {
+          "archive": "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+          "bytesMatch": true,
+          "sha256Match": true,
+          "dependenciesMatch": true
+        }
+      }
+    },
+    {
+      "name": "Published component size report matches downloaded archive bytes",
+      "passed": true,
+      "details": {
+        "yourbuddy-components-0.4.11.json": true,
+        "yourbuddy-debug-0.4.11.tar.zst": true,
+        "yourbuddy-harbor-15c4712420dda9ffc21f8a685f408f747b43d4fe2cce0092690d959c17233226-darwin-arm64.tar.zst": true,
+        "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst": true,
+        "yourbuddy-harness-56319484657d7399261855244397a37612bd0aa385a32ebf1bab3a78fdf12435-macos-arm64.tar.zst": true,
+        "yourbuddy-node-22.19.0-darwin-arm64.tar.zst": true,
+        "yourbuddy-pnpm-store-3666ec0c95a9d6a994407ed486d783c4035787dd95606f7a9cfe12397ec1b687-macos-arm64.tar.zst": true
+      }
+    },
+    {
+      "name": "Bootstrap updater archive minisign and trusted comment verify",
+      "passed": true,
+      "details": {
+        "algorithm": "ED",
+        "keyIdLittleEndianHex": "eb81f58ee2c5dfdb",
+        "trustedComment": "timestamp:1792068183\tfile:YourBuddy.app.tar.gz\tversion:0.4.11",
+        "dataSignatureVerified": true,
+        "trustedCommentSignatureVerified": true
+      }
+    },
+    {
+      "name": "Offline updater archive minisign and trusted comment verify",
+      "passed": true,
+      "details": {
+        "algorithm": "ED",
+        "keyIdLittleEndianHex": "eb81f58ee2c5dfdb",
+        "trustedComment": "timestamp:1792068384\tfile:YourBuddy.app.tar.gz\tversion:0.4.11",
+        "dataSignatureVerified": true,
+        "trustedCommentSignatureVerified": true
+      }
+    },
+    {
+      "name": "Release updater targets correct Offline artifact and signature",
+      "passed": true,
+      "details": {
+        "version": "0.4.11",
+        "platforms": [
+          "darwin-aarch64"
+        ],
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz",
+        "signatureMatchesSidecar": true
+      }
+    },
+    {
+      "name": "Stable updater targets correct Offline artifact and signature",
+      "passed": true,
+      "details": {
+        "version": "0.4.11",
+        "platforms": [
+          "darwin-aarch64"
+        ],
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz",
+        "signatureMatchesSidecar": true
+      }
+    },
+    {
+      "name": "Stable updater bytes match release latest.json",
+      "passed": true,
+      "details": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-updater/latest.json",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:55:32.120620+00:00",
+        "finalHost": "release-assets.githubusercontent.com"
+      }
+    },
+    {
+      "name": "Stable updater embedded signature verifies downloaded Offline bytes",
+      "passed": true,
+      "details": {
+        "algorithm": "ED",
+        "keyIdLittleEndianHex": "eb81f58ee2c5dfdb",
+        "trustedComment": "timestamp:1792068384\tfile:YourBuddy.app.tar.gz\tversion:0.4.11",
+        "dataSignatureVerified": true,
+        "trustedCommentSignatureVerified": true
+      }
+    },
+    {
+      "name": "Bootstrap updater archive static packaging inspection",
+      "passed": true,
+      "details": {
+        "members": 19,
+        "embeddedChannelMatches": true,
+        "embeddedChannelSignatureMatches": true,
+        "fixedPnpmPresent": true,
+        "seedArchives": {},
+        "forbiddenLegacyRoots": [],
+        "machoCpuType": 16777228
+      }
+    },
+    {
+      "name": "Offline updater archive static packaging inspection",
+      "passed": true,
+      "details": {
+        "members": 26,
+        "embeddedChannelMatches": true,
+        "embeddedChannelSignatureMatches": true,
+        "fixedPnpmPresent": true,
+        "seedArchives": {
+          "yourbuddy-harbor-15c4712420dda9ffc21f8a685f408f747b43d4fe2cce0092690d959c17233226-darwin-arm64.tar.zst": {
+            "bytes": 97058986,
+            "sha256": "4ea80afaf46d9434ddeebd1791012868d9c9306bfa5e89be705c98bfc2cbe969",
+            "matchesPublicAsset": true
+          },
+          "yourbuddy-node-22.19.0-darwin-arm64.tar.zst": {
+            "bytes": 37007281,
+            "sha256": "0b98f49e31dfc79b417e17ab012c971ce1e06b11320cffe7a5f891d0581be4ab",
+            "matchesPublicAsset": true
+          },
+          "yourbuddy-debug-0.4.11.tar.zst": {
+            "bytes": 15991212,
+            "sha256": "08b39966ddba5a4db41912d85771eb20752525f461ca9297b69c7f7a8b390e32",
+            "matchesPublicAsset": true
+          },
+          "yourbuddy-harness-56319484657d7399261855244397a37612bd0aa385a32ebf1bab3a78fdf12435-macos-arm64.tar.zst": {
+            "bytes": 33448296,
+            "sha256": "a406ccc80aae4362eb4db74e0aa67c55874ca331095cf6c3741bf9ff65199f0f",
+            "matchesPublicAsset": true
+          },
+          "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst": {
+            "bytes": 581565,
+            "sha256": "e5827306b52da96de0dec7f12cef04485fdc931ee0f8e5e39185b1f4f3ad8a50",
+            "matchesPublicAsset": true
+          },
+          "yourbuddy-pnpm-store-3666ec0c95a9d6a994407ed486d783c4035787dd95606f7a9cfe12397ec1b687-macos-arm64.tar.zst": {
+            "bytes": 416104214,
+            "sha256": "09ba46554e34563f2d6898d00b8323a54bab05fb4a68fad1f01b42c22d9d35e5",
+            "matchesPublicAsset": true
+          }
+        },
+        "forbiddenLegacyRoots": [],
+        "machoCpuType": 16777228
+      }
+    },
+    {
+      "name": "Public tagged source ZIP is valid and contains version archive",
+      "passed": true,
+      "details": {
+        "url": "https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.11.zip",
+        "status": 200,
+        "bytes": 55337561,
+        "sha256": "9cb930a2205c4234e2fbdb5d90a11f262d2d69473a3c442fc36ed671646bef5b",
+        "entries": 17727,
+        "readme": "yourbuddy-yourbuddy-v0.4.11/docs/releases/yourbuddy-v0.4.11/README.md",
+        "sourceChecks": "yourbuddy-yourbuddy-v0.4.11/docs/releases/yourbuddy-v0.4.11/evidence/source-checks.json"
+      }
+    },
+    {
+      "name": "Tagged ZIP config bytes match exact commit source",
+      "passed": true
+    },
+    {
+      "name": "Chinese download website has stable latest-release link",
+      "passed": true,
+      "details": {
+        "url": "https://istarwyh.github.io/yourbuddy/download/",
+        "status": 200,
+        "bytes": 42890,
+        "stableLink": "https://github.com/istarwyh/yourbuddy/releases/latest"
+      }
+    },
+    {
+      "name": "Chinese releases website has stable latest-release link",
+      "passed": true,
+      "details": {
+        "url": "https://istarwyh.github.io/yourbuddy/releases/",
+        "status": 200,
+        "bytes": 42150,
+        "stableLink": "https://github.com/istarwyh/yourbuddy/releases/latest"
+      }
+    },
+    {
+      "name": "English download website has stable latest-release link",
+      "passed": true,
+      "details": {
+        "url": "https://istarwyh.github.io/yourbuddy/en/download/",
+        "status": 200,
+        "bytes": 43157,
+        "stableLink": "https://github.com/istarwyh/yourbuddy/releases/latest"
+      }
+    },
+    {
+      "name": "English releases website has stable latest-release link",
+      "passed": true,
+      "details": {
+        "url": "https://istarwyh.github.io/yourbuddy/en/releases/",
+        "status": 200,
+        "bytes": 42598,
+        "stableLink": "https://github.com/istarwyh/yourbuddy/releases/latest"
+      }
+    },
+    {
+      "name": "Website stable latest-release destination resolves to 0.4.11",
+      "passed": true,
+      "details": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/latest",
+        "finalUrl": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.11",
+        "status": 200
+      }
+    }
+  ],
+  "downloads": [
+    {
+      "name": "latest.json",
+      "bytes": 3060,
+      "sha256": "29f9cad70e1e82b89972a3b2f6de91bd00cbb5a4baa676ef75c0f8edf37714c0",
+      "apiSize": 3060,
+      "apiDigest": "sha256:29f9cad70e1e82b89972a3b2f6de91bd00cbb5a4baa676ef75c0f8edf37714c0",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/latest.json",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:42.494546+00:00"
+      }
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 1956,
+      "sha256": "2c87145af1a2c19998cd80109997279b545c7a51c23baa9407f9b2697309a312",
+      "apiSize": 1956,
+      "apiDigest": "sha256:2c87145af1a2c19998cd80109997279b545c7a51c23baa9407f9b2697309a312",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/SHA256SUMS.txt",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:42.545454+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz",
+      "bytes": 11272385,
+      "sha256": "fed5e413e683bc79eacf749db73d418d8fd1395c96ddc4196ed06f72aab565e6",
+      "apiSize": 11272385,
+      "apiDigest": "sha256:fed5e413e683bc79eacf749db73d418d8fd1395c96ddc4196ed06f72aab565e6",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:42.595586+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz.sig",
+      "bytes": 428,
+      "sha256": "4afcefbebb16daf66a380030b5dac1d6ab0d2be68f4f445ec35235ef5cfb79d2",
+      "apiSize": 428,
+      "apiDigest": "sha256:4afcefbebb16daf66a380030b5dac1d6ab0d2be68f4f445ec35235ef5cfb79d2",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-0.4.11-bootstrap-macos-arm64.app.tar.gz.sig",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:47.740949+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-0.4.11-bootstrap-macos-arm64.dmg",
+      "bytes": 11091209,
+      "sha256": "c65e1f2c521afc85019eedba5ffe7e7331cbac7939eb6c47c16beae7bc07cc00",
+      "apiSize": 11091209,
+      "apiDigest": "sha256:c65e1f2c521afc85019eedba5ffe7e7331cbac7939eb6c47c16beae7bc07cc00",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-0.4.11-bootstrap-macos-arm64.dmg",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:47.787748+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz",
+      "bytes": 611126497,
+      "sha256": "e996716626854fd46ace68d2221b528f48dc0b39af0d6fb14fde1145b528b7c2",
+      "apiSize": 611126497,
+      "apiDigest": "sha256:e996716626854fd46ace68d2221b528f48dc0b39af0d6fb14fde1145b528b7c2",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:47.785742+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz.sig",
+      "bytes": 428,
+      "sha256": "ff031c337d244a2a22ad7a888ba1f2c4f225418956f6afa09f57a223087bd87f",
+      "apiSize": 428,
+      "apiDigest": "sha256:ff031c337d244a2a22ad7a888ba1f2c4f225418956f6afa09f57a223087bd87f",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-0.4.11-offline-macos-arm64.app.tar.gz.sig",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:53.294491+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-0.4.11-offline-macos-arm64.dmg",
+      "bytes": 611237341,
+      "sha256": "5a5c41939d52b44231c1cd99be9993c59c036316a10b42d293f14d8b1a2ced1f",
+      "apiSize": 611237341,
+      "apiDigest": "sha256:5a5c41939d52b44231c1cd99be9993c59c036316a10b42d293f14d8b1a2ced1f",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-0.4.11-offline-macos-arm64.dmg",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:53.390116+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-components-0.4.11.json",
+      "bytes": 2777,
+      "sha256": "bad3382c37e4807f639dac26c4b2f0e9bfe541386d26712bc8233f316f85faac",
+      "apiSize": 2777,
+      "apiDigest": "sha256:bad3382c37e4807f639dac26c4b2f0e9bfe541386d26712bc8233f316f85faac",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-components-0.4.11.json",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:54:58.810770+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-components-0.4.11.json.sig",
+      "bytes": 317,
+      "sha256": "6cdcf7cd37072c312e53ffcf31a5bedef48d5940d99d292838ca520c45085dce",
+      "apiSize": 317,
+      "apiDigest": "sha256:6cdcf7cd37072c312e53ffcf31a5bedef48d5940d99d292838ca520c45085dce",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-components-0.4.11.json.sig",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:55:04.360576+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-debug-0.4.11.tar.zst",
+      "bytes": 15991212,
+      "sha256": "08b39966ddba5a4db41912d85771eb20752525f461ca9297b69c7f7a8b390e32",
+      "apiSize": 15991212,
+      "apiDigest": "sha256:08b39966ddba5a4db41912d85771eb20752525f461ca9297b69c7f7a8b390e32",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-debug-0.4.11.tar.zst",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:55:04.359123+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-harbor-15c4712420dda9ffc21f8a685f408f747b43d4fe2cce0092690d959c17233226-darwin-arm64.tar.zst",
+      "bytes": 97058986,
+      "sha256": "4ea80afaf46d9434ddeebd1791012868d9c9306bfa5e89be705c98bfc2cbe969",
+      "apiSize": 97058986,
+      "apiDigest": "sha256:4ea80afaf46d9434ddeebd1791012868d9c9306bfa5e89be705c98bfc2cbe969",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-harbor-15c4712420dda9ffc21f8a685f408f747b43d4fe2cce0092690d959c17233226-darwin-arm64.tar.zst",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:55:09.833026+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+      "bytes": 581565,
+      "sha256": "e5827306b52da96de0dec7f12cef04485fdc931ee0f8e5e39185b1f4f3ad8a50",
+      "apiSize": 581565,
+      "apiDigest": "sha256:e5827306b52da96de0dec7f12cef04485fdc931ee0f8e5e39185b1f4f3ad8a50",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:55:09.774789+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-harness-56319484657d7399261855244397a37612bd0aa385a32ebf1bab3a78fdf12435-macos-arm64.tar.zst",
+      "bytes": 33448296,
+      "sha256": "a406ccc80aae4362eb4db74e0aa67c55874ca331095cf6c3741bf9ff65199f0f",
+      "apiSize": 33448296,
+      "apiDigest": "sha256:a406ccc80aae4362eb4db74e0aa67c55874ca331095cf6c3741bf9ff65199f0f",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-harness-56319484657d7399261855244397a37612bd0aa385a32ebf1bab3a78fdf12435-macos-arm64.tar.zst",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:55:09.811383+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+      "bytes": 37007281,
+      "sha256": "0b98f49e31dfc79b417e17ab012c971ce1e06b11320cffe7a5f891d0581be4ab",
+      "apiSize": 37007281,
+      "apiDigest": "sha256:0b98f49e31dfc79b417e17ab012c971ce1e06b11320cffe7a5f891d0581be4ab",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:55:15.119615+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-pnpm-store-3666ec0c95a9d6a994407ed486d783c4035787dd95606f7a9cfe12397ec1b687-macos-arm64.tar.zst",
+      "bytes": 416104214,
+      "sha256": "09ba46554e34563f2d6898d00b8323a54bab05fb4a68fad1f01b42c22d9d35e5",
+      "apiSize": 416104214,
+      "apiDigest": "sha256:09ba46554e34563f2d6898d00b8323a54bab05fb4a68fad1f01b42c22d9d35e5",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-pnpm-store-3666ec0c95a9d6a994407ed486d783c4035787dd95606f7a9cfe12397ec1b687-macos-arm64.tar.zst",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:55:15.071920+00:00"
+      }
+    },
+    {
+      "name": "yourbuddy-size-report-0.4.11.json",
+      "bytes": 1464,
+      "sha256": "cc7176f4840c6495e9dd7afdac9b5ab8a616a674c215758786c4e3fda58804a4",
+      "apiSize": 1464,
+      "apiDigest": "sha256:cc7176f4840c6495e9dd7afdac9b5ab8a616a674c215758786c4e3fda58804a4",
+      "download": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.11/yourbuddy-size-report-0.4.11.json",
+        "status": 200,
+        "checkedAt": "2026-10-15T12:55:15.063767+00:00"
+      }
+    }
+  ],
+  "unverified": [
+    "Installation of downloaded packages on a physical Mac",
+    "Installed updater end-to-end upgrade",
+    "Native Bootstrap cleanup/recovery and Components/Settings operations",
+    "Physical disk recovery or historical storage deletion",
+    "Inventory scan of a real installed macOS user profile",
+    "Real providers/OAuth, enterprise proxy behavior",
+    "Full-repository CI completion; release workflow results recorded separately by coordinator"
+  ],
+  "releaseMetadata": {
+    "id": 413806095,
+    "tag_name": "yourbuddy-v0.4.11",
+    "target_commitish": "master",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-15T12:50:42Z",
+    "created_at": "2026-10-15T12:26:40Z",
+    "html_url": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.11"
+  },
+  "evidenceSanitation": "Transient signed CDN redirect URLs omitted; canonical public URLs retained.",
+  "appleNotarization": {
+    "status": "skipped",
+    "scope": "The independent public-byte check does not establish Apple Developer signing or notarization. The separate release-workflow evidence records explicit notarization-skipped warnings for both builds.",
+    "evidence": "release-workflow-2026-10-15.json"
+  }
+}

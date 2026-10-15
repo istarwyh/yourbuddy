@@ -1,0 +1,328 @@
+{
+  "observed_at": "2026-10-15T12:57:42.708268+00:00",
+  "run_id": 38733761980,
+  "run_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38733761980",
+  "job_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38733761980/job/116417759300",
+  "workflow_file": ".github/workflows/desktop-release.yml",
+  "run_number": 68,
+  "conclusion": "success",
+  "product_commit": "fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b",
+  "workflow_commit": "fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b",
+  "tag_object_sha": "a48fb173b106f1da7b1cb1da447704b661e637b3",
+  "release_tag": "yourbuddy-v0.4.11",
+  "started_at": "2026-10-15T12:19:28Z",
+  "updated_at": "2026-10-15T12:52:45Z",
+  "platform": "macOS arm64; macos-15 GitHub-hosted runner",
+  "steps": [
+    {
+      "name": "Validate release route and refuse an existing Release",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-10-15T12:20:27Z",
+      "completed_at": "2026-10-15T12:20:28Z"
+    },
+    {
+      "name": "Refuse an existing Release for tag retry",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 6,
+      "started_at": "2026-10-15T12:20:28Z",
+      "completed_at": "2026-10-15T12:20:28Z"
+    },
+    {
+      "name": "Run actions/cache@v5",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-10-15T12:20:28Z",
+      "completed_at": "2026-10-15T12:20:28Z"
+    },
+    {
+      "name": "Verify release tag and desktop versions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-10-15T12:20:28Z",
+      "completed_at": "2026-10-15T12:20:28Z"
+    },
+    {
+      "name": "Check native acceptance prerequisites",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-10-15T12:20:28Z",
+      "completed_at": "2026-10-15T12:20:29Z"
+    },
+    {
+      "name": "Run astral-sh/setup-uv@v7",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-10-15T12:20:29Z",
+      "completed_at": "2026-10-15T12:20:31Z"
+    },
+    {
+      "name": "Install Rust target",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-10-15T12:20:31Z",
+      "completed_at": "2026-10-15T12:20:31Z"
+    },
+    {
+      "name": "Identify Rust toolchain",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-10-15T12:20:31Z",
+      "completed_at": "2026-10-15T12:20:32Z"
+    },
+    {
+      "name": "Run actions/cache@v5",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-10-15T12:20:32Z",
+      "completed_at": "2026-10-15T12:20:32Z"
+    },
+    {
+      "name": "Install workspace dependencies",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-10-15T12:20:32Z",
+      "completed_at": "2026-10-15T12:21:19Z"
+    },
+    {
+      "name": "Check types before candidate validation or publication",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-10-15T12:21:19Z",
+      "completed_at": "2026-10-15T12:26:38Z"
+    },
+    {
+      "name": "Verify the candidate without publishing",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 16,
+      "started_at": "2026-10-15T12:26:38Z",
+      "completed_at": "2026-10-15T12:26:38Z"
+    },
+    {
+      "name": "Publish the verified master tag atomically",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-10-15T12:26:38Z",
+      "completed_at": "2026-10-15T12:26:42Z"
+    },
+    {
+      "name": "Build Harness",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 18,
+      "started_at": "2026-10-15T12:26:42Z",
+      "completed_at": "2026-10-15T12:27:23Z"
+    },
+    {
+      "name": "Verify component preparation and release pipeline",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19,
+      "started_at": "2026-10-15T12:27:23Z",
+      "completed_at": "2026-10-15T12:28:02Z"
+    },
+    {
+      "name": "Prepare frozen release inputs",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 20,
+      "started_at": "2026-10-15T12:28:02Z",
+      "completed_at": "2026-10-15T12:30:35Z"
+    },
+    {
+      "name": "Install prepared product acceptance browser",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 21,
+      "started_at": "2026-10-15T12:30:35Z",
+      "completed_at": "2026-10-15T12:30:44Z"
+    },
+    {
+      "name": "Verify prepared default workbench and optional Harbor",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 22,
+      "started_at": "2026-10-15T12:30:44Z",
+      "completed_at": "2026-10-15T12:34:53Z"
+    },
+    {
+      "name": "Remove Python bytecode excluded from component archives",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 23,
+      "started_at": "2026-10-15T12:34:53Z",
+      "completed_at": "2026-10-15T12:34:54Z"
+    },
+    {
+      "name": "Build immutable runtime components",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24,
+      "started_at": "2026-10-15T12:34:54Z",
+      "completed_at": "2026-10-15T12:36:29Z"
+    },
+    {
+      "name": "Retain component archive measurements",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25,
+      "started_at": "2026-10-15T12:36:29Z",
+      "completed_at": "2026-10-15T12:36:29Z"
+    },
+    {
+      "name": "Build Bootstrap app and DMG",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 26,
+      "started_at": "2026-10-15T12:36:29Z",
+      "completed_at": "2026-10-15T12:43:17Z"
+    },
+    {
+      "name": "Enforce Bootstrap DMG ceiling and resource exclusions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 27,
+      "started_at": "2026-10-15T12:43:17Z",
+      "completed_at": "2026-10-15T12:43:17Z"
+    },
+    {
+      "name": "Build Offline app and DMG",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 28,
+      "started_at": "2026-10-15T12:43:17Z",
+      "completed_at": "2026-10-15T12:47:00Z"
+    },
+    {
+      "name": "Record installer archive sizes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 29,
+      "started_at": "2026-10-15T12:47:00Z",
+      "completed_at": "2026-10-15T12:47:00Z"
+    },
+    {
+      "name": "Verify native Offline installation and cold starts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 30,
+      "started_at": "2026-10-15T12:47:00Z",
+      "completed_at": "2026-10-15T12:49:07Z"
+    },
+    {
+      "name": "Test relocated YourBuddy product runtime",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 31,
+      "started_at": "2026-10-15T12:49:07Z",
+      "completed_at": "2026-10-15T12:49:22Z"
+    },
+    {
+      "name": "Stage release assets",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 32,
+      "started_at": "2026-10-15T12:49:22Z",
+      "completed_at": "2026-10-15T12:49:23Z"
+    },
+    {
+      "name": "Generate updater manifest",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 33,
+      "started_at": "2026-10-15T12:49:23Z",
+      "completed_at": "2026-10-15T12:49:24Z"
+    },
+    {
+      "name": "Generate and verify release checksums",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 34,
+      "started_at": "2026-10-15T12:49:24Z",
+      "completed_at": "2026-10-15T12:49:42Z"
+    },
+    {
+      "name": "Retain updater metadata and checksums",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 35,
+      "started_at": "2026-10-15T12:49:42Z",
+      "completed_at": "2026-10-15T12:49:43Z"
+    },
+    {
+      "name": "Publish release",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 36,
+      "started_at": "2026-10-15T12:49:43Z",
+      "completed_at": "2026-10-15T12:50:46Z"
+    },
+    {
+      "name": "Upload validation candidate artifacts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 37,
+      "started_at": "2026-10-15T12:50:46Z",
+      "completed_at": "2026-10-15T12:50:46Z"
+    },
+    {
+      "name": "Upload prepared acceptance evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 38,
+      "started_at": "2026-10-15T12:50:46Z",
+      "completed_at": "2026-10-15T12:50:49Z"
+    },
+    {
+      "name": "Upload native acceptance evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 39,
+      "started_at": "2026-10-15T12:50:49Z",
+      "completed_at": "2026-10-15T12:50:50Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 11974712998,
+      "name": "yourbuddy-native-acceptance-38733761980-1",
+      "size_in_bytes": 7440,
+      "digest": "sha256:876897183cdd4c29bd5576928cb71717fc126a90260d69930324071a7ebbb106",
+      "expires_at": "2026-10-22T12:50:49Z",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/38733761980/artifacts/11974712998"
+    },
+    {
+      "id": 11974712994,
+      "name": "yourbuddy-prepared-acceptance-38733761980-1",
+      "size_in_bytes": 8060184,
+      "digest": "sha256:fbf286f3d3b5f6b285756a9ffbeb03e48de37989db7e7c5931410d131ee317a5",
+      "expires_at": "2026-10-22T12:50:46Z",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/38733761980/artifacts/11974712994"
+    }
+  ],
+  "apple_notarization": {
+    "status": "skipped",
+    "source": "https://github.com/istarwyh/yourbuddy/actions/runs/38733761980/job/116417759300",
+    "timestamps": [
+      "2026-10-15T12:43:03.3594080Z",
+      "2026-10-15T12:43:04.3940820Z",
+      "2026-10-15T12:46:06.7443390Z",
+      "2026-10-15T12:46:32.5836750Z"
+    ],
+    "warning": "skipping app notarization, no APPLE_ID & APPLE_PASSWORD & APPLE_TEAM_ID or APPLE_API_KEY & APPLE_API_ISSUER & APPLE_API_KEY_PATH environment variables found",
+    "scope": "Bootstrap and Offline build logs explicitly skipped Apple notarization. Application archive and component-manifest updater signatures are separate checks and do not establish Apple Developer signing or notarization."
+  }
+}

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.11/README.md
 /yourbuddy-0-4-11:
-  en: 15fa7bc0d557f108
-  zh: a7f2de97958ad019
+  en: 6a6767d4379c9486
+  zh: ddc5e3d6a699f77c
 /yourbuddy-0-4-11/user-release-notes:
   en: c38ee8d593c0bea2
   zh: e75e1627ae692bfa
@@ -41,3 +41,15 @@
 /yourbuddy-0-4-11/delivery-checklist:
   en: ff79a9b0f25a8b28
   zh: 0de74b83202a0edd
+/yourbuddy-0-4-11/post-publication-observations-2026-10-15-utc:
+  en: dd3a7822ed77dc90
+  zh: 1b803828e449432a
+/yourbuddy-0-4-11/post-publication-observations-2026-10-15-utc/packaged-acceptance:
+  en: bd1c370854d577e9
+  zh: eb989d71d727852f
+/yourbuddy-0-4-11/post-publication-observations-2026-10-15-utc/independent-public-delivery:
+  en: cc82e102e9695428
+  zh: 06080b83e6bac7a2
+/yourbuddy-0-4-11/post-publication-observations-2026-10-15-utc/engineering-results-and-remaining-scope:
+  en: a52a1dff09f41e14
+  zh: ec0483c50759fc39

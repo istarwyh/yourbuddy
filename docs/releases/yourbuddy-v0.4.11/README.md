@@ -2,6 +2,8 @@
 
 English | [中文](README.zh.md)
 
+The dated post-publication observations below supersede the candidate delivery status. The original tag retains the pre-publication record; this later documentation update does not alter the tag or released bytes.
+
 This archive separates local source checks from packaged-product acceptance and public delivery.
 
 - Release identifier: `yourbuddy-v0.4.11`
@@ -79,3 +81,36 @@ Historical long-session evidence remains mixed: PR #58 recorded 1434.883238 ms m
 - [x] Source-only and historical evidence are explicitly labelled.
 - [ ] Final macOS release acceptance and independent public delivery are recorded.
 - [ ] The immutable downloadable archive and stable website links are verified.
+
+## Post-publication observations — 2026-10-15 UTC
+
+The [public Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.11) was published at 12:50:42 UTC, non-draft and non-prerelease, with 17 assets. The original annotated tag identifies the product and workflow source recorded in the [workflow evidence](evidence/release-workflow-2026-10-15.json). This documentation-only follow-up records later observations without moving that tag or replacing an installer.
+
+### Packaged acceptance
+
+[Release run 68](https://github.com/istarwyh/yourbuddy/actions/runs/38733761980) passed its publication path, including typecheck, Harness build, component preparation, Bootstrap size/resource checks, native Offline starts, relocated Harbor, checksums and publication. The workflow evidence records each relevant step and its original artifact link.
+
+| Scenario | Status | Observed result | Evidence scope |
+|---|---|---|---|
+| Prepared workbench and optional Harbor | Passed | Eight default Clients; nine after real Profile installation | [Prepared result](evidence/prepared-workbench-2026-10-15.json); real Host/Profile in Chromium; desktop invoke stubs do not validate native controls |
+| Native Offline installation and cold starts | Passed | Authenticated native workbench and clean exit in all three rounds; 69,648 / 15,683 / 16,171 ms | [Sanitized native result](evidence/native-offline-2026-10-15.json); signed Offline seeds on macOS arm64 with a rejecting local proxy; not Bootstrap cleanup/recovery |
+| Installer size | Passed | Bootstrap DMG 11,091,209 bytes; Offline DMG 611,237,341 bytes | [Archive measurements](evidence/installer-sizes.json); not installed size, actual traffic or reclaimed space |
+| Apple notarization | Skipped | Both app builds explicitly logged missing Apple notarization configuration | [Recorded log warning](evidence/release-workflow-2026-10-15.json); updater/component signatures do not establish Apple Developer signing or notarization |
+
+The original prepared and native workflow artifacts expire on 2026-10-22. These curated results omit process identifiers and local endpoints. Native installation was tested before upload; independently downloaded packages were not executed on macOS.
+
+### Independent public delivery
+
+At 12:56:09 UTC, the independent Linux x64 check completed all 29 checks. It downloaded all 17 assets anonymously with HTTP 200: 1,844,929,416 bytes total. All 17 GitHub SHA-256 digests and byte counts matched, as did all 16 `SHA256SUMS.txt` entries. Both updater archives and the component manifest passed cryptographic content and trusted-comment signature checks against the exact product source's public key. [Public observations](evidence/public-verification.json) preserve canonical public URLs, filenames, sizes, hashes and verification scope.
+
+The stable `yourbuddy-updater/latest.json` was byte-identical to the release manifest, reported 0.4.11 and selected the signed Offline archive. All five signed component entries matched downloaded archives. Static inspection found six matching Offline seed archives including debug, matching embedded manifests/signatures, and no forbidden legacy runtime roots; Bootstrap contained no seeds. These byte and archive checks do not establish an installed automatic upgrade.
+
+The [tag source ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.11.zip) downloaded anonymously: 55,337,561 bytes, SHA-256 `9cb930a2205c4234e2fbdb5d90a11f262d2d69473a3c442fc36ed671646bef5b`. ZIP integrity, the bilingual candidate archive and source checks were verified. That immutable ZIP deliberately contains the original pre-publication wording; these post-publication observations belong to this later documentation commit.
+
+The live [Chinese download](https://istarwyh.github.io/yourbuddy/download/), [English download](https://istarwyh.github.io/yourbuddy/en/download/), [Chinese release](https://istarwyh.github.io/yourbuddy/releases/) and [English release](https://istarwyh.github.io/yourbuddy/en/releases/) pages returned HTTP 200 and retained stable latest-release links. The latest destination resolved to 0.4.11. Product guidance was unchanged, so no website edit or deployment was needed.
+
+### Engineering results and remaining scope
+
+The [timestamped engineering snapshot](evidence/engineering-ci-2026-10-15.json) records the exact release source's [full-repository CI](https://github.com/istarwyh/yourbuddy/actions/runs/38733634895) as still running. No wholly green repository result is claimed. The earlier Linux schema timeout and both historical long-session benchmark observations above remain relevant; a successful release workflow does not resolve their causes or establish native macOS performance.
+
+Product publication and the stated public-byte checks are complete. The verification archive remains partial for real installed-profile inventory, native Bootstrap cleanup/recovery, native Components/Settings operations, independently downloaded package installation, installed automatic upgrade, historical storage deletion, physical disk recovery, real providers/OAuth and enterprise proxies. Apple notarization was explicitly skipped. [Issue #57](https://github.com/istarwyh/yourbuddy/issues/57) remains open for historical cleanup and shared/incremental delivery; [issue #39](https://github.com/istarwyh/yourbuddy/issues/39) retains broader recovery acceptance. Windows remains outside this release channel.

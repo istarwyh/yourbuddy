@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "date": "2026-10-15T12:30:44.851Z",
+  "releaseTag": "yourbuddy-v0.4.11",
+  "sourceCommit": "fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b",
+  "workflowCommit": "fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b",
+  "platform": "darwin-arm64",
+  "node": "v24.20.0",
+  "scope": "Prepared real Host and Profile; 8 default Clients then 9 with Harbor; Chromium interaction. Desktop invoke stubs are bridge-only; native acceptance is separate.",
+  "run_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38733761980",
+  "artifact_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38733761980/artifacts/11974712994"
+}

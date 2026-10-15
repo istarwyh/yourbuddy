@@ -1,0 +1,29 @@
+{
+  "observed_at": "2026-10-15T12:57:42.708268+00:00",
+  "release_tag": "yourbuddy-v0.4.11",
+  "source_commit": "fa61180fd1b4a3549d4bd4a0abd98fd00bef7c6b",
+  "run_id": 38733634895,
+  "run_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38733634895",
+  "status": "in_progress",
+  "conclusion": null,
+  "scope": "Full-repository CI is separate from the successful macOS release workflow. This timestamped snapshot is not a claim of completed or fully green repository CI.",
+  "historical_linux_failure": {
+    "run_url": "https://github.com/istarwyh/yourbuddy/actions/runs/38670764492",
+    "file": "scripts/persistence-schema.spec.ts:550",
+    "test": "does not qualify unmarked additions or structurally equal unbound fields",
+    "timeout_ms": 5000,
+    "cause": "not established",
+    "linuxSerial": "81 checks passed; coverage check failed",
+    "windowsSerial": "passed",
+    "wine": "passed"
+  },
+  "historical_long_session": {
+    "earlier_pr": 58,
+    "earlier_median_ms": 1434.883238,
+    "later_pr": 59,
+    "later_median_ms": 400.871324,
+    "budget_ms": 1250,
+    "later_record": "docs/releases/yourbuddy-v0.4.10/evidence/source-benchmark-2026-10-14.json",
+    "scope": "Historical source benchmarks; later pass does not establish the earlier cause or 0.4.11 native macOS performance."
+  }
+}

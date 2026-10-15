@@ -2,6 +2,8 @@
 
 [English](README.md) | 中文
 
+下文注明日期的发布后观察取代候选交付状态。原始 Tag 保留发布前记录；本次后续文档更新不修改 Tag 或已发布字节。
+
 本归档将本地源代码检查、打包产品验收与公开交付分别记录。
 
 - 发布标识：`yourbuddy-v0.4.11`
@@ -79,3 +81,36 @@
 - [x] 仅源代码与历史证据有明确标签。
 - [ ] 已记录最终 macOS 发布验收与独立公开交付。
 - [ ] 已验证不可变可下载归档与稳定网站链接。
+
+## 发布后观察 — 2026-10-15 UTC
+
+[公开 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.11) 于 12:50:42 UTC 发布，既非草稿也非预发布，共有 17 个产物。原始附注 Tag 标识的产品与流水线源代码记录在[流水线证据](evidence/release-workflow-2026-10-15.json)中。本次仅文档跟进记录后续观察，不移动该 Tag，也不替换安装包。
+
+### 打包验收
+
+[发布运行 68](https://github.com/istarwyh/yourbuddy/actions/runs/38733761980) 的发布流程通过，包括类型检查、Harness 构建、组件准备、Bootstrap 大小/资源检查、原生 Offline 启动、搬移后的 Harbor、校验和及发布。流水线证据记录各相关步骤与原始产物链接。
+
+| 场景 | 状态 | 观察结果 | 证据范围 |
+|---|---|---|---|
+| 准备后的工作台与可选 Harbor | 通过 | 默认八个 Client；通过真实 Profile 安装后为九个 | [准备结果](evidence/prepared-workbench-2026-10-15.json)；Chromium 中的真实 Host/Profile；桌面 invoke stub 不验证原生控件 |
+| 原生 Offline 安装与冷启动 | 通过 | 三轮均进入已认证原生工作台并正常退出；69,648 / 15,683 / 16,171 ms | [脱敏原生结果](evidence/native-offline-2026-10-15.json)；macOS arm64 上使用带签名 Offline seeds 与本地拒绝代理；不涵盖 Bootstrap 清理/恢复 |
+| 安装包大小 | 通过 | Bootstrap DMG 为 11,091,209 字节；Offline DMG 为 611,237,341 字节 | [归档测量](evidence/installer-sizes.json)；不代表安装后大小、实际流量或回收空间 |
+| Apple 公证 | 已跳过 | 两种应用构建均明确记录缺少 Apple 公证配置 | [日志警告记录](evidence/release-workflow-2026-10-15.json)；更新器/组件签名不能证明 Apple Developer 签名或公证 |
+
+原始准备与原生流水线产物于 2026-10-22 到期。这些整理后的结果省略进程标识与本地端点。原生安装在上传前测试；独立下载的包没有在 macOS 上执行。
+
+### 独立公开交付
+
+12:56:09 UTC，独立 Linux x64 检查完成全部 29 项检查。17 个产物均通过匿名 HTTP 200 完整下载，总计 1,844,929,416 字节。17 个 GitHub SHA-256 摘要与字节数全部匹配，`SHA256SUMS.txt` 的 16 个条目也全部匹配。两个更新归档与组件 manifest（元数据清单）均针对准确产品源代码中的公钥，通过内容与可信注释的加密签名检查。[公开观察](evidence/public-verification.json)保留规范公开 URL、文件名、大小、Hash 与验证范围。
+
+稳定的 `yourbuddy-updater/latest.json` 与发布 manifest 字节完全相同，报告 0.4.11 并选择带签名的 Offline 归档。五个已签名组件条目均与下载归档匹配。静态检查发现六个匹配的 Offline seed 归档（包括 debug）、匹配的内嵌 manifest/签名，且没有禁止的旧运行时根目录；Bootstrap 不含 seeds。这些字节与归档检查不能证明已安装应用的自动升级。
+
+[Tag 源代码 ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.11.zip) 通过匿名下载取得：55,337,561 字节，SHA-256 为 `9cb930a2205c4234e2fbdb5d90a11f262d2d69473a3c442fc36ed671646bef5b`。已验证 ZIP 完整性、双语候选归档与源代码检查记录。该不可变 ZIP 保留原始发布前措辞；这些发布后观察属于后续文档提交。
+
+线上[中文下载](https://istarwyh.github.io/yourbuddy/download/)、[英文下载](https://istarwyh.github.io/yourbuddy/en/download/)、[中文发布](https://istarwyh.github.io/yourbuddy/releases/)和[英文发布](https://istarwyh.github.io/yourbuddy/en/releases/)页面均返回 HTTP 200，并保留稳定的最新 Release 链接。最新目标解析为 0.4.11。产品指导没有变化，因此不需要网站修改或部署。
+
+### 工程结果与剩余范围
+
+[带时间戳的工程快照](evidence/engineering-ci-2026-10-15.json)记录准确发布源代码的[整仓 CI](https://github.com/istarwyh/yourbuddy/actions/runs/38733634895)仍在运行，不声称整仓结果全绿。上文此前 Linux schema 超时与两次历史长会话性能基准观察仍然有效；发布流水线成功不能解释它们的原因，也不能证明原生 macOS 性能。
+
+产品发布与所述公开字节检查已完成。验证归档对真实已安装配置目录清单、原生 Bootstrap 清理/恢复、原生 Components/Settings 操作、独立下载包安装、已安装应用自动升级、历史存储删除、物理磁盘回收、真实提供商/OAuth 及企业代理仍不完整。Apple 公证明确跳过。[Issue #57](https://github.com/istarwyh/yourbuddy/issues/57)继续跟进历史清理与共享/增量交付；[issue #39](https://github.com/istarwyh/yourbuddy/issues/39)保留更广泛的恢复验收。Windows 仍不在本次发布渠道内。
