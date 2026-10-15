@@ -11,9 +11,9 @@ export function validateCandidateIdentity(env) {
     || env.GITHUB_EVENT_NAME !== 'workflow_dispatch'
     || env.GITHUB_REF !== 'refs/heads/master'
     || !['first-publication', 'candidate-validation'].includes(env.RELEASE_MODE)
-    || env.RELEASE_VERSION !== '0.4.10'
-    || env.RELEASE_TAG !== 'yourbuddy-v0.4.10') {
-    throw new Error('candidate dispatch requires istarwyh/yourbuddy, master, and version 0.4.10')
+    || env.RELEASE_VERSION !== '0.4.11'
+    || env.RELEASE_TAG !== 'yourbuddy-v0.4.11') {
+    throw new Error('candidate dispatch requires istarwyh/yourbuddy, master, and version 0.4.11')
   }
   if (!/^[a-f0-9]{40}$/u.test(env.VERIFIED_MASTER_SHA ?? '')
     || env.GITHUB_SHA !== env.VERIFIED_MASTER_SHA) {
@@ -96,7 +96,7 @@ export async function verifyCandidate(env, run = command, request = fetch) {
 export async function firstPublication(env, run = command, request = fetch) {
   if (env.RELEASE_MODE !== 'first-publication') throw new Error('tag publication requires first-publication mode')
   const childEnv = await verifyCandidate(env, run, request)
-  run(process.execPath, [join(root, 'apps/desktop-tauri/scripts/publish-release.mjs'), '0.4.10'], childEnv)
+  run(process.execPath, [join(root, 'apps/desktop-tauri/scripts/publish-release.mjs'), '0.4.11'], childEnv)
 }
 
 /** Validate the selected workflow route and fail closed on the Release API. */

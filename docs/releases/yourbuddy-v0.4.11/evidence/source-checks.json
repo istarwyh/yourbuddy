@@ -1,0 +1,94 @@
+{
+  "release": "yourbuddy-v0.4.11",
+  "observedAt": "2026-10-15T12:12:00Z",
+  "scope": "Local source checks before commit; not packaged macOS or public delivery evidence",
+  "baseCommit": "a974d6ded8e6d46867a753040174522b5066971a",
+  "environment": {
+    "platform": "linux-x64",
+    "node": "24.19.0",
+    "data": "synthetic Git/API and temporary storage fixtures",
+    "provider": "none"
+  },
+  "checks": [
+    {
+      "command": "node --test apps/desktop-tauri/scripts/first-publication.test.mjs apps/desktop-tauri/scripts/verify-release-version.test.mjs apps/desktop-tauri/scripts/prepare-release-candidate.test.mjs apps/desktop-tauri/scripts/publish-release.test.mjs",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "pnpm exec vitest run scripts/tests/desktop-release.spec.ts",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "node --test apps/desktop-tauri/scripts/inspect-component-storage.test.mjs",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.4.11",
+      "result": "passed"
+    },
+    {
+      "command": "node --import tsx scripts/verify-translation-pairing.ts apps/desktop-tauri/README.i18n.yaml docs/releases/README.i18n.yaml docs/releases/yourbuddy-v0.4.11/README.i18n.yaml",
+      "result": "passed; 3 named pairs, not the corpus-wide doc-sync check"
+    },
+    {
+      "command": "scripts/verify-md-links.ts findViolations over the 6 changed English/Chinese Markdown pages",
+      "result": "passed; zero broken relative targets or anchors"
+    },
+    {
+      "command": "node --import tsx scripts/verify-md-wrap.ts",
+      "result": "passed; 2549 files"
+    },
+    {
+      "command": "node --import tsx scripts/verify-repository-references.ts",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm exec oxlint scripts/tests/desktop-release.spec.ts",
+      "result": "passed; focused lint only"
+    },
+    {
+      "command": "publish-release.mjs verifyReleaseArchive(process.cwd(), \"0.4.11\", \"yourbuddy-v0.4.11\")",
+      "result": "passed; read-only archive validation"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    }
+  ],
+  "historicalCiRun": "https://github.com/istarwyh/yourbuddy/actions/runs/38670764492",
+  "historicalCi": {
+    "linuxSerial": "81 checks passed; coverage failed with a 5000 ms timeout in scripts/persistence-schema.spec.ts:550; cause unestablished",
+    "windowsSerial": "passed",
+    "wine": "passed"
+  },
+  "validationLimits": [
+    "Dependencies installed frozen with scripts disabled; the unchanged supply-chain policy passed on the successful online retry.",
+    "The pnpm test wrapper and pairing script could not open the tsx IPC pipe in this cloud sandbox. Direct Vitest and node --import tsx ran the focused checks without that CLI pipe.",
+    "No full local build, hygiene, typecheck, lint, doc-sync or repository CI success is claimed. The macOS release workflow retains its own required checks."
+  ],
+  "unverified": [
+    "0.4.11 macOS release package acceptance",
+    "Public downloaded bytes and updater feed",
+    "Real installed-profile storage inventory",
+    "Native Bootstrap cleanup and recovery",
+    "Native Components/Settings controls",
+    "Historical cache GC and shared Store delivery",
+    "Physical disk recovery",
+    "Installed automatic upgrade",
+    "Real provider and OAuth flows",
+    "Apple notarization"
+  ],
+  "historicalLongSession": {
+    "record": "docs/releases/yourbuddy-v0.4.10/evidence/source-benchmark-2026-10-14.json",
+    "earlierMedianMs": 1434.883238,
+    "laterMedianMs": 400.871324,
+    "budgetMs": 1250,
+    "scope": "Historical Linux source benchmark only; later pass does not establish earlier cause or 0.4.11 native macOS performance"
+  }
+}

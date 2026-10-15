@@ -14,7 +14,7 @@ const sha = 'a'.repeat(40)
 const context = {
   GITHUB_REPOSITORY: 'istarwyh/yourbuddy', GITHUB_EVENT_NAME: 'workflow_dispatch',
   GITHUB_REF: 'refs/heads/master', GITHUB_SHA: sha, VERIFIED_MASTER_SHA: sha,
-  RELEASE_MODE: 'first-publication', RELEASE_VERSION: '0.4.10', RELEASE_TAG: 'yourbuddy-v0.4.10',
+  RELEASE_MODE: 'first-publication', RELEASE_VERSION: '0.4.11', RELEASE_TAG: 'yourbuddy-v0.4.11',
   GH_TOKEN: 'synthetic-test-value-never-a-real-token',
 }
 const absent = async () => ({ status: 404 })
@@ -30,8 +30,8 @@ test('the first route admits only the fixed repository, branch, version, tag, an
   for (const [key, values] of Object.entries({
     GITHUB_REPOSITORY: ['other/yourbuddy', 'istarwyh/other', ''],
     GITHUB_EVENT_NAME: ['push', 'pull_request', ''],
-    GITHUB_REF: ['master', 'refs/heads/feature', 'refs/tags/yourbuddy-v0.4.10', ''],
-    RELEASE_MODE: ['existing-tag', 'unknown', ''], RELEASE_VERSION: ['0.4.8', '0.4.9', '0.4.10-rc.1', ''],
+    GITHUB_REF: ['master', 'refs/heads/feature', 'refs/tags/yourbuddy-v0.4.11', ''],
+    RELEASE_MODE: ['existing-tag', 'unknown', ''], RELEASE_VERSION: ['0.4.8', '0.4.9', '0.4.10', '0.4.11-rc.1', ''],
     RELEASE_TAG: ['yourbuddy-v0.4.8', ''], GITHUB_SHA: ['b'.repeat(40), ''],
     VERIFIED_MASTER_SHA: ['', 'a'.repeat(39), 'a'.repeat(41), 'A'.repeat(40), 'b'.repeat(40), 'master', `${sha}\n`],
   })) {
@@ -41,7 +41,7 @@ test('the first route admits only the fixed repository, branch, version, tag, an
 
 test('only explicit HTTP 404 permits publication, never API or transport failures', async () => {
   await assertReleaseAbsent(context, async (url, options) => {
-    assert.equal(url, 'https://api.github.com/repos/istarwyh/yourbuddy/releases/tags/yourbuddy-v0.4.10')
+    assert.equal(url, 'https://api.github.com/repos/istarwyh/yourbuddy/releases/tags/yourbuddy-v0.4.11')
     assert.equal(options.headers.Authorization, `Bearer ${context.GH_TOKEN}`)
     assert.equal(options.redirect, 'error')
     return { status: 404 }
@@ -92,7 +92,7 @@ test('publisher delegation requires origin, attached master and both fresh commi
     if (args[0] === 'rev-parse') return sha
     return ''
   }, absent)
-  assert.deepEqual(calls.at(-1), [process.execPath, [join(root, 'apps/desktop-tauri/scripts/publish-release.mjs'), '0.4.10']])
+  assert.deepEqual(calls.at(-1), [process.execPath, [join(root, 'apps/desktop-tauri/scripts/publish-release.mjs'), '0.4.11']])
 })
 
 test('candidate validation verifies the same pinned master but cannot call the tag publisher', async () => {
