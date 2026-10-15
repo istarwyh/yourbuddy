@@ -33,9 +33,9 @@ interface Workflow {
 }
 
 const workflow = load(readFileSync(resolve(root, '.github/workflows/desktop-release.yml'), 'utf8')) as Workflow
-const nativeCondition = "env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10')"
+const nativeCondition = "env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')"
 const firstPublicationCondition = "env.RELEASE_MODE == 'first-publication'"
-const tagExpression = "${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.10' || inputs.tag) || github.ref_name }}"
+const tagExpression = "${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.11' || inputs.tag) || github.ref_name }}"
 
 // These canonical string inputs use the same truthiness and equality in Actions and JavaScript.
 function evaluate(expression: string, context: Record<string, string>): string {
@@ -182,14 +182,14 @@ describe('YourBuddy first publication', () => {
       workflow_dispatch: {
         inputs: {
           mode: {
-            description: 'Retry an existing tag, validate a candidate, or first-publish verified 0.4.10',
+            description: 'Retry an existing tag, validate a candidate, or first-publish verified 0.4.11',
             type: 'choice',
             options: ['existing-tag', 'first-publication', 'candidate-validation'],
             default: 'existing-tag',
             required: true,
           },
-          version: { description: 'Candidate validation or first publication (fixed at 0.4.10)', default: '0.4.10', required: false },
-          verified_master_sha: { description: 'Candidate validation or first publication, exact master SHA after all engineering checks pass', required: false },
+          version: { description: 'Candidate validation or first publication (fixed at 0.4.11)', default: '0.4.11', required: false },
+          verified_master_sha: { description: 'Candidate validation or first publication, exact operator-verified master SHA', required: false },
           tag: {
             description: 'Existing unpublished yourbuddy-v* tag to build after a failed run',
             required: true,
@@ -209,11 +209,11 @@ describe('YourBuddy first publication', () => {
     const contexts = [
       { 'github.event_name': 'workflow_dispatch', 'inputs.mode': 'candidate-validation', 'inputs.tag': 'ignored', 'github.ref_name': 'master' },
       { 'github.event_name': 'workflow_dispatch', 'inputs.mode': 'first-publication', 'inputs.tag': 'ignored', 'github.ref_name': 'master' },
-      { 'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'inputs.tag': 'yourbuddy-v0.4.10', 'github.ref_name': 'master' },
-      { 'github.event_name': 'push', 'inputs.mode': '', 'inputs.tag': '', 'github.ref_name': 'yourbuddy-v0.4.10' },
+      { 'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'inputs.tag': 'yourbuddy-v0.4.11', 'github.ref_name': 'master' },
+      { 'github.event_name': 'push', 'inputs.mode': '', 'inputs.tag': '', 'github.ref_name': 'yourbuddy-v0.4.11' },
     ]
-    for (const context of contexts) expect(evaluate(workflow.env.RELEASE_TAG!, context)).toBe('yourbuddy-v0.4.10')
-    for (const tag of ['yourbuddy-v0.4.8', 'yourbuddy-v0.4.9']) {
+    for (const context of contexts) expect(evaluate(workflow.env.RELEASE_TAG!, context)).toBe('yourbuddy-v0.4.11')
+    for (const tag of ['yourbuddy-v0.4.8', 'yourbuddy-v0.4.9', 'yourbuddy-v0.4.10']) {
       expect(evaluate(workflow.env.RELEASE_TAG!, {
         'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'inputs.tag': tag,
       })).toBe(tag)
@@ -330,14 +330,16 @@ describe('YourBuddy first publication', () => {
     finally { rmSync(fixture, { recursive: true, force: true }) }
   })
 
-  it('requires native acceptance for candidate, first publication and 0.4.9 retries without breaking legacy tags', () => {
+  it('requires native acceptance for candidate, first publication and supported tag retries without breaking legacy tags', () => {
     const steps = workflow.jobs.build!.steps
     const smoke = steps.find(step => step.name === 'Verify native Offline installation and cold starts')!
     const evidence = steps.find(step => step.name === 'Upload native acceptance evidence')!
     for (const mode of ['candidate-validation', 'first-publication', 'existing-tag']) {
-      const context = { 'env.RELEASE_MODE': mode, 'env.RELEASE_TAG': 'yourbuddy-v0.4.9' }
-      expect(evaluate(smoke.if!, context)).toBe('true')
-      expect(evaluate(evidence.if!, context)).toBe('true')
+      for (const tag of ['yourbuddy-v0.4.9', 'yourbuddy-v0.4.10', 'yourbuddy-v0.4.11']) {
+        const context = { 'env.RELEASE_MODE': mode, 'env.RELEASE_TAG': tag }
+        expect(evaluate(smoke.if!, context)).toBe('true')
+        expect(evaluate(evidence.if!, context)).toBe('true')
+      }
     }
     const legacy = { 'env.RELEASE_MODE': 'existing-tag', 'env.RELEASE_TAG': 'yourbuddy-v0.4.8' }
     expect(evaluate(smoke.if!, legacy)).toBe('false')
@@ -349,14 +351,16 @@ describe('YourBuddy first publication', () => {
     expect(steps.indexOf(smoke)).toBeLessThan(steps.indexOf(publish))
   })
 
-  it('keeps prepared product checks and evidence in every 0.4.9 route before publication', () => {
+  it('keeps prepared product checks and evidence in every supported release route before publication', () => {
     const steps = workflow.jobs.build!.steps
     const verification = steps.find(step => step.name === 'Verify prepared default workbench and optional Harbor')!
     const evidence = steps.find(step => step.name === 'Upload prepared acceptance evidence')!
     for (const mode of ['candidate-validation', 'first-publication', 'existing-tag']) {
-      const context = { 'env.RELEASE_MODE': mode, 'env.RELEASE_TAG': 'yourbuddy-v0.4.9' }
-      expect(evaluate(verification.if!, context)).toBe('true')
-      expect(evaluate(evidence.if!, context)).toBe('true')
+      for (const tag of ['yourbuddy-v0.4.9', 'yourbuddy-v0.4.10', 'yourbuddy-v0.4.11']) {
+        const context = { 'env.RELEASE_MODE': mode, 'env.RELEASE_TAG': tag }
+        expect(evaluate(verification.if!, context)).toBe('true')
+        expect(evaluate(evidence.if!, context)).toBe('true')
+      }
     }
     const legacy = { 'env.RELEASE_MODE': 'existing-tag', 'env.RELEASE_TAG': 'yourbuddy-v0.4.8' }
     expect(evaluate(verification.if!, legacy)).toBe('false')
