@@ -63,6 +63,8 @@ function fixture(payload: string, options: { surface?: string; event?: string } 
   const root = mkdtempSync(join(tmpdir(), 'dsh-persistence-schema-'))
   roots.push(root)
   put(root, 'tsconfig.host.json', JSON.stringify({ compilerOptions: {
+    // These source-only fixtures need ECMAScript types, not browser or ScriptHost declarations.
+    lib: ['es2024'],
     target: 'es2024', module: 'esnext', moduleResolution: 'bundler', strict: true, skipLibCheck: true,
     types: [], paths: {
       '@deepseek-ai/dsh-session/types': ['./packages/core/session/src/types.ts'],
