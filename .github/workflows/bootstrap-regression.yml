@@ -48,6 +48,7 @@ jobs:
           cargo test --locked runtime::boot_status::tests
           cargo test --locked runtime::provision
           cargo test --locked runtime::supervisor::tests
+          cargo test --locked updater::
           cargo test --locked desktop_shell::tests::tauri_framework_exposes_one_stable_first_party_gateway_to_the_desktop_shell
 
   packaged-splash:
