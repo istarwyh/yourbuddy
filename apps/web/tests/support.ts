@@ -44,9 +44,6 @@ export const SNAPSHOT_BROWSER_TIME_ZONE = 'Asia/Shanghai'
 /** Same-day anchor for seeded event times and the Asia/Shanghai browser clock. */
 export const WEB_FIXTURE_TIME = Date.parse('2026-01-15T12:00:00+08:00')
 
-/** How often a pinned browser clock advances, in milliseconds. */
-const PINNED_CLOCK_STEP_MS = 250
-
 /**
  * Pin the Host clock to the shared fixture day for one scenario suite.
  *
@@ -68,31 +65,22 @@ export function pinHostClock(): MockInstance<typeof Date.now> {
 }
 
 /**
- * Pin a scenario page's clock to the shared fixture day, advancing with real
- * time. Pair it with {@link pinHostClock} for a scenario that stamps its own
+ * Pin a scenario page's `Date.now()` to the shared fixture day, advancing with
+ * real time. Pair it with {@link pinHostClock} for a scenario that stamps its own
  * message times, and with `seedSession`'s `createdAt` for a seeded one.
  *
- * The frozen instant is re-applied from the anchor on an interval rather than
- * left at one value, because product logic reads two `Date.now()` values to
- * decide a minimum display hold or a deadline window; a permanently frozen
- * clock stops supplying elapsed time, so a title that owes its golden settled
- * text keeps rendering its previous one. Both clocks therefore advance at the
- * real rate and stay within one step of each other.
- * @param page - page whose clock is pinned.
- * @returns the disposer that stops re-pinning; call it in teardown.
+ * The Date constructor, native timers, and monotonic clock stay intact.
+ * Playwright's clock also replaces them and replays Host wall-clock timestamps on navigation, which
+ * cannot share the Host's fixture-day spy. Each document owns its override;
+ * elapsed time starts again on navigation, and closing the page releases it
+ * without a Host timer or restoration callback.
+ * @param page - page to pin before its first navigation.
  */
-export async function pinBrowserClock(page: Page): Promise<() => void> {
-  const startedAt = Date.now()
-  const step = async (): Promise<void> => {
-    try {
-      await page.clock.setFixedTime(WEB_FIXTURE_TIME + (Date.now() - startedAt))
-    } catch {
-      // The page closed under the interval; teardown owns the last word.
-    }
-  }
-  await step()
-  const timer = setInterval(() => { void step() }, PINNED_CLOCK_STEP_MS)
-  return () => { clearInterval(timer) }
+export async function pinBrowserClock(page: Pick<Page, 'addInitScript'>): Promise<void> {
+  await page.addInitScript((fixtureTime: number) => {
+    const startedAt = performance.now()
+    Date.now = () => fixtureTime + Math.floor(performance.now() - startedAt)
+  }, WEB_FIXTURE_TIME)
 }
 
 /**
