@@ -305,7 +305,20 @@ async function sourceBrowserPids(browserExe, userDataDir = null, platform = proc
 			return String(stdout$1).split(/\r?\n/).map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
 		}
 		const { stdout } = await execFile$1("pgrep", ["-x", exeBase.replace(/\.exe$/, "")], { timeout: 1e4 }).catch(() => ({ stdout: "" }));
-		return String(stdout).split(/\r?\n/).map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
+		const pids = String(stdout).split(/\r?\n/).map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
+		const matched = [];
+		for (const pid of pids) {
+			const { stdout: command } = await execFile$1("ps", [
+				"-p",
+				String(pid),
+				"-o",
+				"command="
+			], { timeout: 1e4 }).catch(() => ({ stdout: "" }));
+			const match = String(command).match(/(?:^|\s)--user-data-dir=(?:"([^"]*)"|'([^']*)'|(\S+))/);
+			const commandUserDataDir = match ? match[1] ?? match[2] ?? match[3] : null;
+			if (userDataDir === null ? commandUserDataDir === null : commandUserDataDir === userDataDir) matched.push(pid);
+		}
+		return matched;
 	} catch {
 		return [];
 	}
@@ -3465,6 +3478,7 @@ function registerLoginImport(ctx, cfg, reg) {
 					source: { type: "string" },
 					profile: { type: "string" },
 					dryRun: { type: "boolean" },
+					closedSource: { type: "boolean" },
 					totalRead: { type: "integer" },
 					matched: { type: "integer" },
 					written: { type: "integer" },

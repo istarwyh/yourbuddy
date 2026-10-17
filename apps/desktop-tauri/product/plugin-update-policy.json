@@ -187,6 +187,9 @@
       "kind": "github-branch",
       "repository": "Fisfzy/dsh-ego-browser",
       "branch": "master",
+      "sourcePatches": [
+        "patches/ego-browser-login-import.patch"
+      ],
       "package": "dsh-ego-browser",
       "destination": "ego-browser",
       "peerOverrides": {
