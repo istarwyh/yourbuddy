@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use tauri::{AppHandle, Manager};
-use tauri_plugin_updater::UpdaterExt;
+use tauri_plugin_updater::{Update, UpdaterExt};
 
 use crate::chrome;
 use crate::desktop_settings;
@@ -15,6 +15,7 @@ use crate::runtime::boot_log;
 use crate::runtime::DesktopRuntime;
 
 const UPDATE_CHECK_TIMEOUT: Duration = Duration::from_secs(15);
+const UPDATE_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 static UPDATE_RUNNING: AtomicBool = AtomicBool::new(false);
 
 struct UpdateAttempt;
@@ -105,7 +106,7 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
         .unwrap_or_else(|| network_proxy::resolve(&desktop_settings::load().network_proxy))?;
 
     boot_log::info(&format!("desktop update check current={current}"));
-    let Some(update) = network_proxy::apply_to_updater(app.updater_builder(), &proxy)?
+    let Some(mut update) = network_proxy::apply_to_updater(app.updater_builder(), &proxy)?
         .timeout(UPDATE_CHECK_TIMEOUT)
         .build()
         .map_err(|error| error.to_string())?
@@ -127,10 +128,23 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
         &i18n::tf2(Msg::UpdaterAvailable, &current, &target),
     );
 
+    let bytes = download_update(&mut update)
+        .await
+        .map_err(|error| error.to_string())?;
+    update.install(bytes).map_err(|error| error.to_string())?;
+
+    boot_log::info(&format!("desktop update installed target={target}"));
+    notify::toast(app, "YourBuddy", &i18n::tf(Msg::UpdaterRestarting, &target));
+    chrome::request_restart(app)
+}
+
+/// Download and verify the signed artifact within its own deadline, before installation.
+async fn download_update(update: &mut Update) -> tauri_plugin_updater::Result<Vec<u8>> {
+    update.timeout = Some(UPDATE_DOWNLOAD_TIMEOUT);
     let mut downloaded = 0_u64;
     let mut next_logged_percent = 25_u8;
     update
-        .download_and_install(
+        .download(
             move |chunk_length, content_length| {
                 downloaded = downloaded.saturating_add(chunk_length as u64);
                 let Some(percent) = download_percent(downloaded, content_length) else {
@@ -144,12 +158,11 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
             || boot_log::info("desktop update download complete"),
         )
         .await
-        .map_err(|error| error.to_string())?;
-
-    boot_log::info(&format!("desktop update installed target={target}"));
-    notify::toast(app, "YourBuddy", &i18n::tf(Msg::UpdaterRestarting, &target));
-    chrome::request_restart(app)
 }
+
+#[cfg(test)]
+#[path = "updater_download_tests.rs"]
+mod download_tests;
 
 fn download_percent(downloaded: u64, content_length: Option<u64>) -> Option<u8> {
     let content_length = content_length.filter(|length| *length > 0)?;

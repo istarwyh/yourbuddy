@@ -44,6 +44,8 @@ cookie = "0.18"
 tempfile = "3"
 
 [dev-dependencies]
+tauri = { version = "2", features = ["test"] }
+tokio = { version = "1", features = ["test-util"] }
 toml = "0.9"
 
 [target.'cfg(windows)'.dependencies]
