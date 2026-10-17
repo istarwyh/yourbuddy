@@ -1,0 +1,38 @@
+diff --git a/lib/index.js b/lib/index.js
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -307,2 +307,15 @@ async function sourceBrowserPids(browserExe, userDataDir = null, platform = proce
+ 		const { stdout } = await execFile$1("pgrep", ["-x", exeBase.replace(/\.exe$/, "")], { timeout: 1e4 }).catch(() => ({ stdout: "" }));
+-		return String(stdout).split(/\r?\n/).map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
++		const pids = String(stdout).split(/\r?\n/).map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
++		const matched = [];
++		for (const pid of pids) {
++			const { stdout: command } = await execFile$1("ps", [
++				"-p",
++				String(pid),
++				"-o",
++				"command="
++			], { timeout: 1e4 }).catch(() => ({ stdout: "" }));
++			const match = String(command).match(/(?:^|\s)--user-data-dir=(?:"([^"]*)"|'([^']*)'|(\S+))/);
++			const commandUserDataDir = match ? match[1] ?? match[2] ?? match[3] : null;
++			if (userDataDir === null ? commandUserDataDir === null : commandUserDataDir === userDataDir) matched.push(pid);
++		}
++		return matched;
+@@ -3465,6 +3478,7 @@ function registerLoginImport(ctx, cfg, reg) {
+ 					source: { type: "string" },
+ 					profile: { type: "string" },
+ 					dryRun: { type: "boolean" },
++					closedSource: { type: "boolean" },
+ 					totalRead: { type: "integer" },
+ 					matched: { type: "integer" },
+ 					written: { type: "integer" },
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@ -38,5 +38,5 @@
+ **侧边栏支持（[dsh-better-sidebar](https://www.npmjs.com/package/dsh-better-sidebar)）**：当宿主安装了 `dsh-better-sidebar`（推荐 ≥ v0.12.2）时，实时观察窗注册为**侧边栏原生 Tab**——「Agent 浏览器」出现在侧边栏「+」菜单中，点击即打开并随侧边栏抽屉固定展示；agent 首次调用 `ego_*` 工具时会自动打开该 Tab（v0.8.5 起按调用会话作用域打开，多会话不再弹错位置）。未安装 `dsh-better-sidebar` 时自动回退为右下角**浮动观察球**（`#dsh-ego-fab`）模式。两种形态共用同一套 SSE 实时推流 / 点击 / 输入 / 下载捕获能力。观察窗还提供一个「弹出窗口」按钮：无头（headless）运行的 agent 浏览器可一键替换为同 Profile 的有头窗口（标签页保留），方便手动接管。
+ 
+-**登录态导入（v0.8.5 新增）**：设置页「从系统浏览器导入登录态」或工具 `ego_login_import`，把你日常 Chrome/Edge/Brave 里的登录 cookie **按域名**复制进 agent 浏览器（真实二进制无头启动 + CDP 透传读取，兼容 Chrome 127+ 的 App-Bound Encryption，不做离线解密；源浏览器运行中可选择优雅关闭后导入，窗口下次启动自动恢复）。cookie 值不出现在任何日志与输出中；导入前自动备份源 cookie 库，异常清空自动还原。配合默认的磁盘持久化 Profile，导入的登录态跨重启永久保留。
++**登录态导入（v0.8.5 新增）**：设置页「从系统浏览器导入登录态」或工具 `ego_login_import`，把你日常 Chrome/Edge/Brave 里的登录 cookie **按域名**复制进 agent 浏览器（真实二进制无头启动 + CDP 透传读取，兼容 Chrome 127+ 的 App-Bound Encryption，不做离线解密；源浏览器运行中可选择优雅关闭后导入，窗口下次启动自动恢复）。cookie 值不出现在任何日志与输出中；工具结果通过 `closedSource` 标明本次导入是否关闭了源浏览器。导入前自动备份源 cookie 库，异常清空自动还原。配合默认的磁盘持久化 Profile，导入的登录态跨重启永久保留。
+ 
+ 把 [CitroLabs/ego-lite](https://github.com/CitroLabs/ego-lite)（给 AI Agent 用的 Chromium）接入 DeepSeek Harness：以 **33 个结构化 `ego_*` 工具**驱动浏览器，并配一套**实时观察前端口**——agent 后台操作网页时，你能像看直播一样看到它正在浏览的每个页面，还能直接操作它。
