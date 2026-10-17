@@ -9,6 +9,14 @@
   "archiveSha256": "84cf9e07d0c4a4cb5c2abd566a3917abc1750ff5a5cf0e329d9bb15d259245ca",
   "snapshotMethod": "npm pack file selection from the pinned GitHub commit with lifecycle scripts disabled",
   "upstreamTreeSha256": "5845a28f9d62a22cca262d94c7df5f5e4cac6839bd8501fd3b3065fd1c1cda8e",
+  "sourcePatches": [
+    {
+      "id": "source-ego-browser-login-import",
+      "file": "patches/ego-browser-login-import.patch",
+      "sha256": "938795659f19ab2237595720d461c0c317742bd6dad198df056d4c19df070464",
+      "purpose": "Apply the reviewed YourBuddy source customization before building the published artifact."
+    }
+  ],
   "patches": [
     "Set @deepseek-ai/dsh-client-locale peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-client-store peer range from >=0.1.2-rc.1 to 0.1.7-rc.2.",
@@ -27,12 +35,6 @@
       "file": "patches/ego-browser-watch-cleanup.patch",
       "sha256": "b2a39babd554d19db4825e14875444a45eeba9b74b1bb778f8dcc65dd803e68d",
       "purpose": "Do not stop an idle preview or start a capture worker during initial Client cleanup."
-    },
-    {
-      "id": "source-ego-browser-login-import",
-      "file": "patches/ego-browser-login-import.patch",
-      "sha256": "d4a85eee501d763d2232be64008d7524d7ece0fc0c1359d61907edd5ab99cbe1",
-      "purpose": "Keep POSIX source-browser detection profile-specific and declare the close status returned by login-cookie import."
     }
   ],
   "runtimeArtifacts": [

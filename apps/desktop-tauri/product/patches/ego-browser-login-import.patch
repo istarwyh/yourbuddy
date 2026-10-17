@@ -1,7 +1,7 @@
 diff --git a/lib/index.js b/lib/index.js
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -307,2 +307,15 @@ async function sourceBrowserPids(browserExe, userDataDir = null, platform = proce
+@@ -307,5 +307,18 @@ async function sourceBrowserPids(browserExe, userDataDir = null, platform = proce
  		const { stdout } = await execFile$1("pgrep", ["-x", exeBase.replace(/\.exe$/, "")], { timeout: 1e4 }).catch(() => ({ stdout: "" }));
 -		return String(stdout).split(/\r?\n/).map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
 +		const pids = String(stdout).split(/\r?\n/).map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
@@ -18,6 +18,9 @@ diff --git a/lib/index.js b/lib/index.js
 +			if (userDataDir === null ? commandUserDataDir === null : commandUserDataDir === userDataDir) matched.push(pid);
 +		}
 +		return matched;
+ 	} catch {
+ 		return [];
+ 	}
 @@ -3465,6 +3478,7 @@ function registerLoginImport(ctx, cfg, reg) {
  					source: { type: "string" },
  					profile: { type: "string" },
