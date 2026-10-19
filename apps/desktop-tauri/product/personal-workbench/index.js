@@ -205,23 +205,10 @@ function createCapabilityPackRoute(binDir) {
 }
 
 // src/host-network-proxy.ts
+import { proxyRouteFor } from "@deepseek-ai/dsh-http-proxy";
 var HOST_NETWORK_PROXY_TEST_PATH = "/api/yourbuddy/network-proxy/test";
 var CHATGPT_REACHABILITY_URL = "https://chatgpt.com/";
 var HOST_PROXY_TEST_TIMEOUT_MS = 15e3;
-var ENVIRONMENT_PROXY_DISPATCHER_MARK = /* @__PURE__ */ Symbol.for(
-  "@deepseek-ai/dsh.environment-proxy-dispatcher"
-);
-function hasProxyEnvironment(environment) {
-  return [
-    environment.https_proxy,
-    environment.HTTPS_PROXY,
-    environment.http_proxy,
-    environment.HTTP_PROXY
-  ].some((value) => value !== void 0 && value.length > 0);
-}
-function hasEnvironmentProxyDispatcher() {
-  return Reflect.get(globalThis, ENVIRONMENT_PROXY_DISPATCHER_MARK) === true;
-}
 function activePolicy(environment) {
   const proxyMode = ["inherit", "direct", "system", "custom"].includes(
     environment.YOURBUDDY_NETWORK_PROXY_MODE ?? ""
@@ -248,19 +235,9 @@ function safeErrorCode(error) {
   }
   return "UNKNOWN";
 }
-async function testHostNetworkProxy(fetcher = globalThis.fetch, environment = process.env, dispatcherInstalled = hasEnvironmentProxyDispatcher()) {
-  const proxyConfigured = hasProxyEnvironment(environment);
-  const proxied = proxyConfigured && dispatcherInstalled;
+async function testHostNetworkProxy(fetcher = globalThis.fetch, environment = process.env) {
+  const { proxied } = proxyRouteFor(new URL(CHATGPT_REACHABILITY_URL));
   const policy = activePolicy(environment);
-  if (proxyConfigured && !dispatcherInstalled) {
-    return {
-      ok: false,
-      status: 0,
-      proxied,
-      errorCode: "ENV_PROXY_DISPATCHER_MISSING",
-      ...policy
-    };
-  }
   try {
     const response = await fetcher(CHATGPT_REACHABILITY_URL, {
       signal: AbortSignal.timeout(HOST_PROXY_TEST_TIMEOUT_MS)
@@ -286,7 +263,7 @@ function writeJson(response, status, value) {
   });
   response.end(JSON.stringify(value));
 }
-function createHostNetworkProxyRoute(fetcher = globalThis.fetch, environment = process.env, dispatcherInstalled = hasEnvironmentProxyDispatcher()) {
+function createHostNetworkProxyRoute(fetcher = globalThis.fetch, environment = process.env) {
   return {
     kind: "exact",
     path: HOST_NETWORK_PROXY_TEST_PATH,
@@ -300,7 +277,7 @@ function createHostNetworkProxyRoute(fetcher = globalThis.fetch, environment = p
         writeJson(response, 415, { ok: false, error: "application-json-required" });
         return;
       }
-      const result = await testHostNetworkProxy(fetcher, environment, dispatcherInstalled);
+      const result = await testHostNetworkProxy(fetcher, environment);
       writeJson(response, 200, result);
     }
   };

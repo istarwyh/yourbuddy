@@ -1,15 +1,13 @@
 /** Fixed Node Host reachability probe for the active application proxy. */
 
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
+import { proxyRouteFor } from '@deepseek-ai/dsh-http-proxy'
 
 /** Same-origin endpoint used by the Personal Workbench settings card. */
 export const HOST_NETWORK_PROXY_TEST_PATH = '/api/yourbuddy/network-proxy/test'
 
 const CHATGPT_REACHABILITY_URL = 'https://chatgpt.com/'
 const HOST_PROXY_TEST_TIMEOUT_MS = 15_000
-const ENVIRONMENT_PROXY_DISPATCHER_MARK = Symbol.for(
-  '@deepseek-ai/dsh.environment-proxy-dispatcher',
-)
 
 /** Safe result returned to the loopback Client without URLs or credentials. */
 export interface HostNetworkProxyTestResult {
@@ -26,19 +24,6 @@ export type HostNetworkProxyFetch = (
   input: string,
   init: { signal: AbortSignal },
 ) => Promise<{ status: number }>
-
-function hasProxyEnvironment(environment: NodeJS.ProcessEnv): boolean {
-  return [
-    environment.https_proxy,
-    environment.HTTPS_PROXY,
-    environment.http_proxy,
-    environment.HTTP_PROXY,
-  ].some(value => value !== undefined && value.length > 0)
-}
-
-function hasEnvironmentProxyDispatcher(): boolean {
-  return Reflect.get(globalThis, ENVIRONMENT_PROXY_DISPATCHER_MARK) === true
-}
 
 function activePolicy(environment: NodeJS.ProcessEnv): Pick<
   HostNetworkProxyTestResult,
@@ -82,27 +67,15 @@ function safeErrorCode(error: unknown): string {
 /**
  * Connect from the running Node Host through its installed global dispatcher.
  * @param fetcher - Host-realm fetch implementation.
- * @param environment - active Host environment used only for the boolean route fact.
- * @param dispatcherInstalled - process-local proof that the CLI installed the proxy dispatcher.
+ * @param environment - active Host environment identifying the proxy mode and CA source.
  * @returns a credential-free reachability result with a bounded error code.
  */
 export async function testHostNetworkProxy(
   fetcher: HostNetworkProxyFetch = globalThis.fetch,
   environment: NodeJS.ProcessEnv = process.env,
-  dispatcherInstalled: boolean = hasEnvironmentProxyDispatcher(),
 ): Promise<HostNetworkProxyTestResult> {
-  const proxyConfigured = hasProxyEnvironment(environment)
-  const proxied = proxyConfigured && dispatcherInstalled
+  const { proxied } = proxyRouteFor(new URL(CHATGPT_REACHABILITY_URL))
   const policy = activePolicy(environment)
-  if (proxyConfigured && !dispatcherInstalled) {
-    return {
-      ok: false,
-      status: 0,
-      proxied,
-      errorCode: 'ENV_PROXY_DISPATCHER_MISSING',
-      ...policy,
-    }
-  }
   try {
     const response = await fetcher(CHATGPT_REACHABILITY_URL, {
       signal: AbortSignal.timeout(HOST_PROXY_TEST_TIMEOUT_MS),
@@ -139,13 +112,11 @@ function writeJson(
  * The JSON media type forces cross-origin browsers through CORS preflight.
  * @param fetcher - Host fetch implementation, replaced only by deterministic tests.
  * @param environment - Host environment, replaced only by deterministic tests.
- * @param dispatcherInstalled - dispatcher proof, replaced only by deterministic tests.
  * @returns one exact WebServer route.
  */
 export function createHostNetworkProxyRoute(
   fetcher: HostNetworkProxyFetch = globalThis.fetch,
   environment: NodeJS.ProcessEnv = process.env,
-  dispatcherInstalled: boolean = hasEnvironmentProxyDispatcher(),
 ): WebRoute {
   return {
     kind: 'exact',
@@ -160,7 +131,7 @@ export function createHostNetworkProxyRoute(
         writeJson(response, 415, { ok: false, error: 'application-json-required' })
         return
       }
-      const result = await testHostNetworkProxy(fetcher, environment, dispatcherInstalled)
+      const result = await testHostNetworkProxy(fetcher, environment)
       writeJson(response, 200, result)
     },
   }

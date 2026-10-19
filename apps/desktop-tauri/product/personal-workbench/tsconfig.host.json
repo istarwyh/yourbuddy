@@ -18,6 +18,7 @@
     { "path": "../../../../vendor/cordis" },
     { "path": "../../../../vendor/schemastery" },
     { "path": "../../../../packages/host/webserver" },
+    { "path": "../../../../packages/util/http-proxy" },
     { "path": "../../../../packages/boot/app-boot" },
     { "path": "../../../../packages/boot/plugin-manager" },
     { "path": "../../../../packages/settings/settings" }
