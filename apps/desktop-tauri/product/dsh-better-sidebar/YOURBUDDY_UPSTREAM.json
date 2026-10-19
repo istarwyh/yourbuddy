@@ -82,9 +82,27 @@
     "Set @deepseek-ai/dsh-settings peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-subagent peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-tools peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Remove package lifecycle script prepare."
+    "Remove package lifecycle script prepare.",
+    "Set @deepseek-ai/dsh-agent peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-brand peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-locale peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-conversation peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-primitives peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-sidebar-browser peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-sidebar-documentpreview peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-sidebar-right peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-workspace peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-host-webserver peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-invariants peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-llm peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-session peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-subagent peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-tools peer range from 0.1.7-rc.2 to 0.2.0-rc.1."
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "0191b6efef061ce532398231e2756d31796fdf3fcb5fab8710d76dfaeab6217c"
+  "treeSha256": "5076b81119288efe05567b5918ddd23424fbe7ba5860de6765c82ee3602e7205"
 }

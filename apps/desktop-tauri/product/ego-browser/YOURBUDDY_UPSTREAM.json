@@ -35,7 +35,13 @@
       "file": "patches/ego-browser-watch-cleanup.patch",
       "sha256": "b2a39babd554d19db4825e14875444a45eeba9b74b1bb778f8dcc65dd803e68d",
       "purpose": "Do not stop an idle preview or start a capture worker during initial Client cleanup."
-    }
+    },
+    "Set @deepseek-ai/dsh-client-locale peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-store peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-settings-plugins peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-tools peer range from 0.1.7-rc.2 to 0.2.0-rc.1."
   ],
   "runtimeArtifacts": [
     {
@@ -51,5 +57,5 @@
   ],
   "repository": "https://github.com/Fisfzy/dsh-ego-browser",
   "license": "MIT",
-  "treeSha256": "53e7f9115c3f9d3eef517b6b82f2d364314226bb50b0d3d4968a064571cf7a09"
+  "treeSha256": "6cfb7bd9ecf9d824f98b01b4f3e426c46e26d53aea847a70dc82bf16c3a312c5"
 }

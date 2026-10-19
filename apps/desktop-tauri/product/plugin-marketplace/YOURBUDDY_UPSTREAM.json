@@ -16,9 +16,11 @@
     },
     "Document the YourBuddy product adaptations in the bilingual README projection.",
     "Set @deepseek-ai/dsh-llm peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-settings peer range from ^0.1.7-rc.1 to 0.1.7-rc.2."
+    "Set @deepseek-ai/dsh-settings peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
+    "Set @deepseek-ai/dsh-llm peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1."
   ],
   "repository": "https://github.com/Scorp1o117/dsh-plugin-marketplace",
   "license": "MIT",
-  "treeSha256": "43c7c20413a339f98b4c8d14abc12c0ce8806a71eb9c1df94cea9d3b1ea4935a"
+  "treeSha256": "0f683612bbba4bb0c2c228724ff51aba3867f9a62d934b68967e819a3cb17295"
 }

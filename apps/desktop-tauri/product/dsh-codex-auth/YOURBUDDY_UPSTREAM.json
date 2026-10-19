@@ -45,9 +45,31 @@
     "Set @deepseek-ai/dsh-settings peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-token-meter peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-tools peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-web peer range from 0.1.5-rc.2 to 0.1.7-rc.2."
+    "Set @deepseek-ai/dsh-web peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
+    "Set @deepseek-ai/dsh-agent peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-api-remotes peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-atomic-write peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-attachment peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-connection peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-locale peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-primitives peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-client-ui-tool peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-compaction peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-compaction-basic peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-credentials peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-fs peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-invariants peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-llm peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-llm-pi-ai peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-session peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-token-meter peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-tools peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-web peer range from 0.1.7-rc.2 to 0.2.0-rc.1."
   ],
   "repository": "https://github.com/suntianc/dsh-codex-auth",
   "license": "MIT",
-  "treeSha256": "1ec435cd8748c42ad8fa706a69ea023b7d8ab64c43eadba2b0fcf5271cae03e6"
+  "treeSha256": "58a1178f89898e445254a0c3754ccfd10dcb4e59cd73a2b2a861bcf9d2e8da13"
 }

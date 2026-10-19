@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
 import {
@@ -11,6 +12,7 @@ import {
   applyApprovedScriptRemovals,
   assertBundledProductPeerLinks,
   readLockImporterVersions,
+  readWorkspacePackageVersions,
   validateProductPlugin,
 } from './product-plugin-compatibility.mjs'
 
@@ -221,4 +223,24 @@ test('lock importer parsing and peer-link gate reject a registry DSH copy', () =
   finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+// Keep released snapshots and version-specific refresh policy aligned with this Harness.
+test('committed product snapshots and refresh policy accept the bundled Harness', () => {
+  const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+  const repositoryRoot = join(desktopRoot, '..', '..')
+  const productRoot = join(desktopRoot, 'product')
+  const policy = JSON.parse(readFileSync(join(productRoot, 'plugin-update-policy.json'), 'utf8'))
+  const workspace = readWorkspacePackageVersions(repositoryRoot)
+  const failures = []
+  for (const plugin of [...policy.plugins, { package: 'dsh-personal-workbench', destination: 'personal-workbench' }]) {
+    try {
+      const manifest = validateProductPlugin(join(productRoot, plugin.destination), plugin, workspace, policy.managedNodeVersion)
+      assert.deepEqual(applyApprovedPeerOverrides(manifest, plugin), [], `${manifest.name} refresh policy disagrees with the committed snapshot`)
+    }
+    catch (error) {
+      failures.push(error.message)
+    }
+  }
+  assert.deepEqual(failures, [])
 })

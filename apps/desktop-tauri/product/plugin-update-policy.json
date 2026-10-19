@@ -90,7 +90,7 @@
           "@deepseek-ai/dsh-*": "0.1.7-rc.2"
         },
         "0.3.2": {
-          "@deepseek-ai/dsh-*": "0.1.7-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.0-rc.1"
         }
       },
       "peerRemovals": {
@@ -118,7 +118,7 @@
           "@deepseek-ai/dsh-*": "0.1.7-rc.2"
         },
         "0.21.1": {
-          "@deepseek-ai/dsh-*": "0.1.7-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.0-rc.1"
         }
       },
       "scriptRemovals": {
@@ -138,8 +138,8 @@
           "@deepseek-ai/dsh-settings": "0.1.7-rc.2"
         },
         "0.3.6": {
-          "@deepseek-ai/dsh-llm": "0.1.7-rc.2",
-          "@deepseek-ai/dsh-settings": "0.1.7-rc.2"
+          "@deepseek-ai/dsh-llm": "0.2.0-rc.1",
+          "@deepseek-ai/dsh-settings": "0.2.0-rc.1"
         }
       }
     },
@@ -152,6 +152,11 @@
         "0.5.5": [
           "@deepseek-ai/dsh-client-runtime"
         ]
+      },
+      "peerOverrides": {
+        "0.5.5": {
+          "@deepseek-ai/dsh-settings": "0.2.0-rc.1"
+        }
       }
     },
     {
@@ -178,7 +183,7 @@
       "peerOverrides": {
         "0.1.0": {
           "@deepseek-ai/cordis": "4.0.4",
-          "@deepseek-ai/dsh-*": "0.1.7-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.0-rc.1"
         }
       }
     },
@@ -194,7 +199,7 @@
       "destination": "ego-browser",
       "peerOverrides": {
         "0.8.5": {
-          "@deepseek-ai/dsh-*": "0.1.7-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.0-rc.1"
         }
       }
     },
@@ -210,7 +215,7 @@
           "@deepseek-ai/dsh-tools": "0.1.7-rc.2"
         },
         "0.7.2": {
-          "@deepseek-ai/dsh-tools": "0.1.7-rc.2"
+          "@deepseek-ai/dsh-tools": "0.2.0-rc.1"
         }
       }
     }
