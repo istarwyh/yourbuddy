@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NetworkProxyRow, type NetworkProxyRowProps } from '../src/client/NetworkProxyRow.tsx'
-import { en } from '../src/client/locales.ts'
+import { en, zh } from '../src/client/locales.ts'
 
 const mocks = vi.hoisted(() => ({
   requestSave: vi.fn(),
@@ -84,9 +84,9 @@ const hostResult = {
   caSource: 'system' as const,
 }
 
-function mount() {
+function mount(dictionary: typeof en = en) {
   return render(<NetworkProxyRow {...{
-    t: (key: keyof typeof en) => en[key],
+    t: (key: keyof typeof en) => dictionary[key],
   } as NetworkProxyRowProps} />)
 }
 
@@ -127,6 +127,42 @@ describe('network proxy settings card', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save and restart YourBuddy' }))
     expect((await screen.findByRole('alert')).textContent).toMatch(/Not saved: desktop draft: HTTP 200.*bundled Node draft: failed: UNABLE_TO_VERIFY_LEAF_SIGNATURE/u)
     await waitFor(() => expect(mocks.requestSave).toHaveBeenCalledWith(settings))
+    expect(mocks.requestRestart).not.toHaveBeenCalled()
+  })
+
+  it('restarts once after saving the unchanged draft with reachable native and Node results', async () => {
+    mocks.requestSave.mockResolvedValue({
+      saved: true,
+      snapshot,
+      preflight: { native: nativeResult, node: nodeResult },
+    })
+    mount()
+    await screen.findByText('Using the validated NODE_EXTRA_CA_CERTS from the launch environment')
+    fireEvent.click(screen.getByRole('button', { name: 'Save and restart YourBuddy' }))
+    await screen.findByText('Settings saved. Stopping the private Host and restarting YourBuddy…')
+    expect(mocks.requestSave).toHaveBeenCalledTimes(1)
+    expect(mocks.requestSave).toHaveBeenCalledWith(settings)
+    expect(mocks.requestRestart).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { locale: 'English', dictionary: en },
+    { locale: 'Chinese', dictionary: zh },
+  ])('labels Node initialization failures in $locale for Test and Save', async ({ dictionary }) => {
+    const preflight = {
+      native: nativeResult,
+      node: { ...nodeResult, ok: false, status: 0, errorCode: 'NODE_PREFLIGHT_INIT_FAILED' },
+    }
+    mocks.requestTest.mockResolvedValue(preflight)
+    mocks.requestSave.mockResolvedValue({ saved: false, preflight })
+    mount(dictionary)
+    await screen.findByText(dictionary['proxy.ca.environment'])
+    fireEvent.click(screen.getByRole('button', { name: dictionary['proxy.test.action'] }))
+    expect((await screen.findByRole('alert')).textContent)
+      .toContain(dictionary['proxy.test.outcome.node-init-error'])
+    fireEvent.click(screen.getByRole('button', { name: dictionary['proxy.save.action'] }))
+    expect((await screen.findByRole('alert')).textContent)
+      .toContain(dictionary['proxy.test.outcome.node-init-error'])
     expect(mocks.requestRestart).not.toHaveBeenCalled()
   })
 })

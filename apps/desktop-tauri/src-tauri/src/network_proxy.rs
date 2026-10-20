@@ -55,6 +55,7 @@ const CHILD_NETWORK_ENV_NAMES: [&str; 13] = [
 const NODE_SYSTEM_CA_OPTION: &str = "--use-system-ca";
 const NODE_PREFLIGHT_SOURCE: &str = r#"
 import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
 
 function safeErrorCode(error) {
   let current = error
@@ -71,32 +72,33 @@ function safeErrorCode(error) {
   return 'UNKNOWN'
 }
 
-let dispatcher
+let dispose
 let result
+let initialized = false
 try {
   const require = createRequire(process.argv[1])
-  const { EnvHttpProxyAgent, setGlobalDispatcher } = require('undici')
-  const httpProxy = process.env.http_proxy ?? process.env.HTTP_PROXY
-  const httpsProxy = process.env.https_proxy ?? process.env.HTTPS_PROXY
-  const noProxy = process.env.no_proxy ?? process.env.NO_PROXY
-  if (httpProxy !== undefined || httpsProxy !== undefined) {
-    dispatcher = new EnvHttpProxyAgent({
-      ...(httpProxy === undefined ? {} : { httpProxy }),
-      ...(httpsProxy === undefined ? {} : { httpsProxy }),
-      ...(noProxy === undefined ? {} : { noProxy }),
-    })
-    setGlobalDispatcher(dispatcher)
-  }
+  const proxyModule = require.resolve('@deepseek-ai/dsh-http-proxy')
+  const { installProxyFromEnvironment } = await import(pathToFileURL(proxyModule).href)
+  dispose = await installProxyFromEnvironment({
+    get(name) {
+      const value = process.env[name]
+      return value === undefined ? undefined : { value }
+    },
+  }, () => { throw new Error('Invalid managed proxy configuration') })
+  initialized = true
   const response = await fetch(process.argv[2], { signal: AbortSignal.timeout(15_000) })
   const ok = response.status !== 407 && response.status < 500
   result = { ok, status: response.status, errorCode: ok ? '' : `HTTP_${response.status}` }
 }
 catch (error) {
-  result = { ok: false, status: 0, errorCode: safeErrorCode(error) }
+  result = {
+    ok: false, status: 0,
+    errorCode: initialized ? safeErrorCode(error) : 'NODE_PREFLIGHT_INIT_FAILED',
+  }
 }
 finally {
   try {
-    await dispatcher?.close()
+    await dispose?.()
   }
   catch (closeError) {
     void closeError

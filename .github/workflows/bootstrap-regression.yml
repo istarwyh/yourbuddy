@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - 'apps/desktop-tauri/src-tauri/**'
+      - 'apps/desktop-tauri/product/personal-workbench/**'
+      - 'apps/desktop-tauri/product/harness-pnpm-lock.yaml'
+      - 'apps/cli/package.json'
+      - 'packages/util/http-proxy/**'
+      - 'apps/desktop-tauri/scripts/node-extra-ca.test.mjs'
       - 'apps/desktop-tauri/splash.html'
       - 'apps/desktop-tauri/splash-state.js'
       - 'apps/desktop-tauri/desktop-i18n.js'
@@ -49,7 +54,37 @@ jobs:
           cargo test --locked runtime::provision
           cargo test --locked runtime::supervisor::tests
           cargo test --locked updater::
+          cargo test --locked network_proxy::
           cargo test --locked desktop_shell::tests::tauri_framework_exposes_one_stable_first_party_gateway_to_the_desktop_shell
+
+  network-proxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-proxy
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install locked build tools
+        run: pnpm install --frozen-lockfile
+      - name: Build the managed Harness and native helper
+        env:
+          DSH_CLIENT_TITLE: YourBuddy
+        run: pnpm run build
+      - name: Check Workbench proxy diagnostics and save/restart controls
+        run: |
+          pnpm --dir apps/desktop-tauri/product/personal-workbench run typecheck
+          pnpm --dir apps/desktop-tauri/product/personal-workbench run test --maxWorkers=2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.19.0'
+      - name: Test isolated production dependency layout and startup CA
+        run: node --test apps/desktop-tauri/scripts/node-extra-ca.test.mjs
 
   packaged-splash:
     runs-on: macos-15
