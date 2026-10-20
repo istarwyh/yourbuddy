@@ -112,7 +112,7 @@ test('fresh Ego Browser refresh reconstructs the pinned runtime and retains its 
   // The immutable upstream archive owns the old file; the patch replaces its bytes.
   const manifestPath = join(upstream, 'package.json')
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-  for (const patch of record.patches) {
+  for (const patch of [...record.patches].reverse()) {
     if (typeof patch !== 'string') continue
     const peer = /^Set (\S+) peer range from (.+) to .+\.$/u.exec(patch)
     if (peer) manifest.peerDependencies[peer[1]] = peer[2]
