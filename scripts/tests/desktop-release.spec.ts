@@ -204,12 +204,12 @@ describe('YourBuddy first publication', () => {
       { 'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'inputs.tag': 'yourbuddy-v0.4.11', 'github.ref_name': 'master' },
       { 'github.event_name': 'push', 'inputs.mode': '', 'inputs.tag': '', 'github.ref_name': 'yourbuddy-v0.4.11' },
     ]
-    for (const context of contexts) expect(evaluate(workflow.env.RELEASE_TAG!, context)).toBe('yourbuddy-v0.4.11')
+    for (const context of contexts) expect(evaluate(workflow.env.RELEASE_TAG, context)).toBe('yourbuddy-v0.4.11')
     for (const tag of ['yourbuddy-v0.4.8', 'yourbuddy-v0.4.9', 'yourbuddy-v0.4.10']) {
-      expect(evaluate(workflow.env.RELEASE_TAG!, {
+      expect(evaluate(workflow.env.RELEASE_TAG, {
         'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'inputs.tag': tag,
       })).toBe(tag)
-      expect(evaluate(workflow.env.RELEASE_TAG!, { 'github.event_name': 'push', 'github.ref_name': tag })).toBe(tag)
+      expect(evaluate(workflow.env.RELEASE_TAG, { 'github.event_name': 'push', 'github.ref_name': tag })).toBe(tag)
     }
   })
 
@@ -329,8 +329,8 @@ describe('YourBuddy first publication', () => {
     for (const mode of ['candidate-validation', 'first-publication', 'existing-tag']) {
       for (const tag of ['yourbuddy-v0.4.8', 'yourbuddy-v0.4.9', 'yourbuddy-v0.4.10', 'yourbuddy-v0.4.11', 'yourbuddy-v0.4.12', 'yourbuddy-v0.5.0']) {
         const context = { 'env.RELEASE_MODE': mode, 'env.RELEASE_TAG': tag }
-        expect(evaluate(smoke.if!, context)).toBe('true')
-        expect(evaluate(evidence.if!, context)).toBe('true')
+        expect(evaluate(smoke.if, context)).toBe('true')
+        expect(evaluate(evidence.if, context)).toBe('true')
       }
     }
     const publish = steps.find(step => step.name === 'Publish release')!
@@ -347,8 +347,8 @@ describe('YourBuddy first publication', () => {
     for (const mode of ['candidate-validation', 'first-publication', 'existing-tag']) {
       for (const tag of ['yourbuddy-v0.4.8', 'yourbuddy-v0.4.9', 'yourbuddy-v0.4.10', 'yourbuddy-v0.4.11', 'yourbuddy-v0.4.12', 'yourbuddy-v0.5.0']) {
         const context = { 'env.RELEASE_MODE': mode, 'env.RELEASE_TAG': tag }
-        expect(evaluate(verification.if!, context)).toBe('true')
-        expect(evaluate(evidence.if!, context)).toBe('true')
+        expect(evaluate(verification.if, context)).toBe('true')
+        expect(evaluate(evidence.if, context)).toBe('true')
       }
     }
     const programs = [
