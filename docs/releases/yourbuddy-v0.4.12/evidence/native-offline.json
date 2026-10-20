@@ -1,0 +1,44 @@
+{
+  "version": "0.4.12",
+  "appSha256": "98bf01227c484871ccf312c20bc126c7b728c59345452975fc23811b13d14c53",
+  "signedManifestSha256": "9d80855b5cb8787cb8a9c74ea76850dbd28ef025ceab8dfb328c811783367296",
+  "platform": "darwin-arm64",
+  "componentSource": "signed Offline seeds",
+  "network": "local rejecting proxy; production TLS verification unchanged; no enterprise proxy claim",
+  "boots": [
+    {
+      "round": 1,
+      "durationMs": 54798,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    },
+    {
+      "round": 2,
+      "durationMs": 10826,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    },
+    {
+      "round": 3,
+      "durationMs": 13425,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    }
+  ],
+  "blockedExternalRequests": 4,
+  "active": {
+    "appVersion": "0.4.12",
+    "components": {
+      "harness": {
+        "id": "sha256:319c5f5b4c789665634cb5d5cb17781d3664d12b3afcbd9e6c0335ad2f990754"
+      },
+      "pnpmStore": {
+        "id": "sha256:063698935781b2b328952759de49bfb349911d39a8ac1f7931321ae62fefc386"
+      }
+    },
+    "schemaVersion": 1
+  }
+}

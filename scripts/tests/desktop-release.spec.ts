@@ -33,12 +33,12 @@ interface Workflow {
 }
 
 const workflow = load(readFileSync(resolve(root, '.github/workflows/desktop-release.yml'), 'utf8')) as Workflow
-const nativeCondition = "env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')"
 const firstPublicationCondition = "env.RELEASE_MODE == 'first-publication'"
 const tagExpression = "${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.11' || inputs.tag) || github.ref_name }}"
 
 // These canonical string inputs use the same truthiness and equality in Actions and JavaScript.
-function evaluate(expression: string, context: Record<string, string>): string {
+function evaluate(expression: string | undefined, context: Record<string, string>): string {
+  if (expression === undefined) return 'true'
   const source = expression.replace(/\balways\(\)/g, 'true').trim().replace(/^\$\{\{|\}\}$/g, '')
     .replace(/\b(?:github|inputs|env)(?:\.[a-zA-Z_][a-zA-Z_0-9]*)+/g,
       key => JSON.stringify(context[key] ?? ''))
@@ -94,16 +94,8 @@ function assertPublicationGates(candidate: Workflow): void {
       'Validate release route and refuse an existing Release': "env.RELEASE_MODE != 'existing-tag'",
       'Refuse an existing Release for tag retry': "env.RELEASE_MODE == 'existing-tag'",
       'Check types before candidate validation or publication': "env.RELEASE_MODE != 'existing-tag'",
-      'Check native acceptance prerequisites': nativeCondition,
-      'Install prepared product acceptance browser': nativeCondition,
-      'Verify prepared default workbench and optional Harbor': nativeCondition,
-      'Remove Python bytecode excluded from component archives': nativeCondition,
-      'Retain component archive measurements': nativeCondition,
-      'Record installer archive sizes': nativeCondition,
-      'Verify native Offline installation and cold starts': nativeCondition,
-      'Retain updater metadata and checksums': nativeCondition,
-      'Upload prepared acceptance evidence': `always() && (${nativeCondition})`,
-      'Upload native acceptance evidence': `always() && (${nativeCondition})`,
+      'Upload prepared acceptance evidence': 'always()',
+      'Upload native acceptance evidence': 'always()',
       'Verify the candidate without publishing': "env.RELEASE_MODE == 'candidate-validation'",
       'Publish the verified master tag atomically': firstPublicationCondition,
       'Publish release': "env.RELEASE_MODE != 'candidate-validation'",
@@ -330,20 +322,17 @@ describe('YourBuddy first publication', () => {
     finally { rmSync(fixture, { recursive: true, force: true }) }
   })
 
-  it('requires native acceptance for candidate, first publication and supported tag retries without breaking legacy tags', () => {
+  it('requires native acceptance for every release tag and both dispatch modes', () => {
     const steps = workflow.jobs.build!.steps
     const smoke = steps.find(step => step.name === 'Verify native Offline installation and cold starts')!
     const evidence = steps.find(step => step.name === 'Upload native acceptance evidence')!
     for (const mode of ['candidate-validation', 'first-publication', 'existing-tag']) {
-      for (const tag of ['yourbuddy-v0.4.9', 'yourbuddy-v0.4.10', 'yourbuddy-v0.4.11']) {
+      for (const tag of ['yourbuddy-v0.4.8', 'yourbuddy-v0.4.9', 'yourbuddy-v0.4.10', 'yourbuddy-v0.4.11', 'yourbuddy-v0.4.12', 'yourbuddy-v0.5.0']) {
         const context = { 'env.RELEASE_MODE': mode, 'env.RELEASE_TAG': tag }
         expect(evaluate(smoke.if!, context)).toBe('true')
         expect(evaluate(evidence.if!, context)).toBe('true')
       }
     }
-    const legacy = { 'env.RELEASE_MODE': 'existing-tag', 'env.RELEASE_TAG': 'yourbuddy-v0.4.8' }
-    expect(evaluate(smoke.if!, legacy)).toBe('false')
-    expect(evaluate(evidence.if!, legacy)).toBe('false')
     const publish = steps.find(step => step.name === 'Publish release')!
     // Actions adds success() unless a step condition explicitly names a status function.
     expect(publish.if).not.toMatch(/always\(|failure\(|cancelled\(/)
@@ -351,20 +340,17 @@ describe('YourBuddy first publication', () => {
     expect(steps.indexOf(smoke)).toBeLessThan(steps.indexOf(publish))
   })
 
-  it('keeps prepared product checks and evidence in every supported release route before publication', () => {
+  it('keeps prepared product checks and evidence in every release route before publication', () => {
     const steps = workflow.jobs.build!.steps
     const verification = steps.find(step => step.name === 'Verify prepared default workbench and optional Harbor')!
     const evidence = steps.find(step => step.name === 'Upload prepared acceptance evidence')!
     for (const mode of ['candidate-validation', 'first-publication', 'existing-tag']) {
-      for (const tag of ['yourbuddy-v0.4.9', 'yourbuddy-v0.4.10', 'yourbuddy-v0.4.11']) {
+      for (const tag of ['yourbuddy-v0.4.8', 'yourbuddy-v0.4.9', 'yourbuddy-v0.4.10', 'yourbuddy-v0.4.11', 'yourbuddy-v0.4.12', 'yourbuddy-v0.5.0']) {
         const context = { 'env.RELEASE_MODE': mode, 'env.RELEASE_TAG': tag }
         expect(evaluate(verification.if!, context)).toBe('true')
         expect(evaluate(evidence.if!, context)).toBe('true')
       }
     }
-    const legacy = { 'env.RELEASE_MODE': 'existing-tag', 'env.RELEASE_TAG': 'yourbuddy-v0.4.8' }
-    expect(evaluate(verification.if!, legacy)).toBe('false')
-    expect(evaluate(evidence.if!, legacy)).toBe('false')
     const programs = [
       verification,
       steps.find(step => step.name === 'Remove Python bytecode excluded from component archives')!,
@@ -529,6 +515,8 @@ describe('YourBuddy first publication', () => {
     const build = workflow.jobs.build!
     for (const changedSteps of [
       build.steps.map(step => step.name === 'Build Harness' ? { ...step, if: "env.RELEASE_MODE != 'first-publication'" } : step),
+      build.steps.map(step => step.name === 'Verify native Offline installation and cold starts' ? { ...step, if: "env.RELEASE_TAG == 'yourbuddy-v0.4.11'" } : step),
+      build.steps.map(step => step.name === 'Upload prepared acceptance evidence' ? { ...step, if: 'success()' } : step),
       build.steps.filter(step => step.name !== 'Check types before candidate validation or publication'),
       build.steps.filter(step => step.name !== 'Publish release'),
       build.steps.filter(step => step.name !== 'Verify prepared default workbench and optional Harbor'),

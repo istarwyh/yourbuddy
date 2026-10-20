@@ -64,3 +64,34 @@ Real provider requests, installed proxy save/restart, enterprise-network behavio
 ## Rollback
 
 Keep the immutable [0.4.11 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.11) available. If this release is withdrawn, restore the latest-release designation and the stable updater manifest from the prior release. The updater manifest carries the archive signature; component manifests and their detached signatures remain on their immutable releases. Never move a public tag or replace published installer bytes. Already updated applications require manual reinstallation of the previous DMG because the updater accepts only newer versions. Quit the app and preserve a backup of application data before changing installed versions; data downgrade compatibility has not been tested.
+
+## Post-publication observations — 2026-10-20 UTC
+
+These observations supersede the pre-publication delivery status above. The original tag and released bytes remain unchanged.
+
+The [public Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.12) was published at 07:28:10 UTC with 17 assets, non-draft and non-prerelease. The annotated tag resolves to `d3a76afe3d0c6cd8d8248c04e932e2bc3591d802`. [Release run 39383670141](https://github.com/istarwyh/yourbuddy/actions/runs/39383670141) completed successfully; its [per-step record](evidence/release-workflow.json) includes prepared browser acceptance, Bootstrap and Offline packaging, native Offline installation/cold starts, relocated runtime, updater generation, checksums and publication.
+
+### Packaged acceptance
+
+| Scenario | Result | Scope and evidence |
+|---|---|---|
+| Prepared browser | Passed | [Real Host/Profile, eight default Clients then nine with Harbor](evidence/prepared-workbench.json); desktop invoke stubs remain bridge-only |
+| Native Offline | Passed | [Signed Offline seeds, local rejecting proxy, workbench readiness and clean exit](evidence/native-offline.json); boot times 54,798 / 10,826 / 13,425 ms |
+| Installer sizes | Passed | [Measured Bootstrap and Offline archives](evidence/installer-sizes.json); not installed size, network traffic or reclaimed space |
+| Apple notarization | Skipped | Both build variants logged missing notarization configuration; updater/component signatures do not establish Apple Developer signing |
+
+The original prepared and native artifacts expire on 2026-10-27. Curated structured results are retained here without process identifiers, local endpoints, credentials or cookies. The native package was tested before upload; independently downloaded software was not executed.
+
+### Independent public delivery
+
+The [public-byte report](evidence/public-verification.json) records 10 passing checks and 13 complete anonymous asset downloads (109,393,456 bytes). Downloaded SHA-256 values and sizes match GitHub metadata and the published checksum list. The Bootstrap archive signature and trusted comment pass cryptographic verification; its App identity, arm64 architecture and embedded proxy fix match the release, and its file tree equals the read-only mounted Bootstrap DMG. The downloaded Harness preserves the Ego SDK digest and eight product manifests after documented workspace/development-dependency transformations; actual DSH peer targets remain exactly `0.2.0-rc.1`.
+
+The [manifest cross-check](evidence/manifest-crosscheck.json) verifies that the stable updater equals the release manifest byte-for-byte, references the published Offline archive/signature, and contains the immutable tag release notes. All 16 checksum entries match the 17-asset metadata set. The public component manifest passes content and trusted-comment signature verification; its archive digests, sizes and exact dependency IDs agree with the published assets and the manifest accepted by native CI. Both live bilingual download pages retain the stable latest-release link; no website rebuild was needed.
+
+Complete independent downloads of the two large Offline installers, Harbor runtime, pnpm Store and full source ZIP remain unverified because this host repeatedly hit low throughput and TLS disconnects. Their metadata consistency is verified; it is not full public-byte or Offline-archive signature verification. The immutable tag verification Markdown/JSON files were independently compared byte-for-byte. No installed updater, enterprise-network proxy save/restart, real provider, Bootstrap recovery or data downgrade claim is added.
+
+### CI follow-up and rollback baseline
+
+The original integration-head Linux and Windows coverage jobs failed three workflow-structure tests that still required the old tag whitelist. The [follow-up record](evidence/ci-followup.json) describes the test-only alignment to unconditional acceptance and always-upload evidence, including current/future tags and negative controls. The focused suite passes 16/16 with isolated Git configuration and independent review; new full-repository CI remains separate. Production workflow checks, release permissions, tag and assets are unchanged. Earlier Oil timing failures remain historical; the current aggregate passed 147/147.
+
+The [original 0.4.11 updater manifest](evidence/rollback-updater-0.4.11.json) was anonymously downloaded and matches SHA-256 `29f9cad70e1e82b89972a3b2f6de91bd00cbb5a4baa676ef75c0f8edf37714c0`. It is the recorded stable-feed rollback baseline, not a rollback already executed. Restore it under the stable asset name `latest.json` together with the prior latest-release designation when withdrawal is required; already updated applications need manual reinstallation as described above. [Issue #39](https://github.com/istarwyh/yourbuddy/issues/39) and [issue #71](https://github.com/istarwyh/yourbuddy/issues/71) remain open.

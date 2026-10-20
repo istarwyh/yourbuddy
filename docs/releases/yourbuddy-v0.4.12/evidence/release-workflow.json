@@ -1,0 +1,410 @@
+{
+  "databaseId": 39383670141,
+  "status": "completed",
+  "conclusion": "success",
+  "headSha": "d3a76afe3d0c6cd8d8248c04e932e2bc3591d802",
+  "headBranch": "yourbuddy-v0.4.12",
+  "url": "https://github.com/istarwyh/yourbuddy/actions/runs/39383670141",
+  "createdAt": "2026-10-20T06:59:45Z",
+  "startedAt": "2026-10-20T06:59:45Z",
+  "updatedAt": "2026-10-20T07:29:21Z",
+  "jobs": [
+    {
+      "name": "Build macOS arm64",
+      "conclusion": "success",
+      "startedAt": "2026-10-20T06:59:53Z",
+      "completedAt": "2026-10-20T07:29:20Z",
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/39383670141/job/118498351173",
+      "steps": [
+        {
+          "completedAt": "2026-10-20T06:59:56Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-20T06:59:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:32Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v6",
+          "number": 2,
+          "startedAt": "2026-10-20T06:59:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:33Z",
+          "conclusion": "success",
+          "name": "Run pnpm/action-setup@v4.4.0",
+          "number": 3,
+          "startedAt": "2026-10-20T07:00:32Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:35Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v6",
+          "number": 4,
+          "startedAt": "2026-10-20T07:00:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:35Z",
+          "conclusion": "skipped",
+          "name": "Validate release route and refuse an existing Release",
+          "number": 5,
+          "startedAt": "2026-10-20T07:00:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:35Z",
+          "conclusion": "success",
+          "name": "Refuse an existing Release for tag retry",
+          "number": 6,
+          "startedAt": "2026-10-20T07:00:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:36Z",
+          "conclusion": "success",
+          "name": "Run actions/cache@v5",
+          "number": 7,
+          "startedAt": "2026-10-20T07:00:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:36Z",
+          "conclusion": "success",
+          "name": "Verify release tag and desktop versions",
+          "number": 8,
+          "startedAt": "2026-10-20T07:00:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:37Z",
+          "conclusion": "success",
+          "name": "Check native acceptance prerequisites",
+          "number": 9,
+          "startedAt": "2026-10-20T07:00:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:40Z",
+          "conclusion": "success",
+          "name": "Run astral-sh/setup-uv@v7",
+          "number": 10,
+          "startedAt": "2026-10-20T07:00:37Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:40Z",
+          "conclusion": "success",
+          "name": "Install Rust target",
+          "number": 11,
+          "startedAt": "2026-10-20T07:00:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:41Z",
+          "conclusion": "success",
+          "name": "Identify Rust toolchain",
+          "number": 12,
+          "startedAt": "2026-10-20T07:00:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:00:41Z",
+          "conclusion": "success",
+          "name": "Run actions/cache@v5",
+          "number": 13,
+          "startedAt": "2026-10-20T07:00:41Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:01:25Z",
+          "conclusion": "success",
+          "name": "Install workspace dependencies",
+          "number": 14,
+          "startedAt": "2026-10-20T07:00:42Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:01:25Z",
+          "conclusion": "skipped",
+          "name": "Check types before candidate validation or publication",
+          "number": 15,
+          "startedAt": "2026-10-20T07:01:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:01:25Z",
+          "conclusion": "skipped",
+          "name": "Verify the candidate without publishing",
+          "number": 16,
+          "startedAt": "2026-10-20T07:01:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:01:25Z",
+          "conclusion": "skipped",
+          "name": "Publish the verified master tag atomically",
+          "number": 17,
+          "startedAt": "2026-10-20T07:01:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:07:29Z",
+          "conclusion": "success",
+          "name": "Build Harness",
+          "number": 18,
+          "startedAt": "2026-10-20T07:01:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:08:08Z",
+          "conclusion": "success",
+          "name": "Verify component preparation and release pipeline",
+          "number": 19,
+          "startedAt": "2026-10-20T07:07:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:10:44Z",
+          "conclusion": "success",
+          "name": "Prepare frozen release inputs",
+          "number": 20,
+          "startedAt": "2026-10-20T07:08:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:10:59Z",
+          "conclusion": "success",
+          "name": "Install prepared product acceptance browser",
+          "number": 21,
+          "startedAt": "2026-10-20T07:10:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:15:33Z",
+          "conclusion": "success",
+          "name": "Verify prepared default workbench and optional Harbor",
+          "number": 22,
+          "startedAt": "2026-10-20T07:10:59Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:15:33Z",
+          "conclusion": "success",
+          "name": "Remove Python bytecode excluded from component archives",
+          "number": 23,
+          "startedAt": "2026-10-20T07:15:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:16:31Z",
+          "conclusion": "success",
+          "name": "Build immutable runtime components",
+          "number": 24,
+          "startedAt": "2026-10-20T07:15:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:16:31Z",
+          "conclusion": "success",
+          "name": "Retain component archive measurements",
+          "number": 25,
+          "startedAt": "2026-10-20T07:16:31Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:22:17Z",
+          "conclusion": "success",
+          "name": "Build Bootstrap app and DMG",
+          "number": 26,
+          "startedAt": "2026-10-20T07:16:31Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:22:17Z",
+          "conclusion": "success",
+          "name": "Enforce Bootstrap DMG ceiling and resource exclusions",
+          "number": 27,
+          "startedAt": "2026-10-20T07:22:17Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:25:33Z",
+          "conclusion": "success",
+          "name": "Build Offline app and DMG",
+          "number": 28,
+          "startedAt": "2026-10-20T07:22:17Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:25:33Z",
+          "conclusion": "success",
+          "name": "Record installer archive sizes",
+          "number": 29,
+          "startedAt": "2026-10-20T07:25:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:27:06Z",
+          "conclusion": "success",
+          "name": "Verify native Offline installation and cold starts",
+          "number": 30,
+          "startedAt": "2026-10-20T07:25:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:27:14Z",
+          "conclusion": "success",
+          "name": "Test relocated YourBuddy product runtime",
+          "number": 31,
+          "startedAt": "2026-10-20T07:27:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:27:15Z",
+          "conclusion": "success",
+          "name": "Stage release assets",
+          "number": 32,
+          "startedAt": "2026-10-20T07:27:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:27:15Z",
+          "conclusion": "success",
+          "name": "Generate updater manifest",
+          "number": 33,
+          "startedAt": "2026-10-20T07:27:15Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:27:27Z",
+          "conclusion": "success",
+          "name": "Generate and verify release checksums",
+          "number": 34,
+          "startedAt": "2026-10-20T07:27:15Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:27:27Z",
+          "conclusion": "success",
+          "name": "Retain updater metadata and checksums",
+          "number": 35,
+          "startedAt": "2026-10-20T07:27:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:28:12Z",
+          "conclusion": "success",
+          "name": "Publish release",
+          "number": 36,
+          "startedAt": "2026-10-20T07:27:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:28:12Z",
+          "conclusion": "skipped",
+          "name": "Upload validation candidate artifacts",
+          "number": 37,
+          "startedAt": "2026-10-20T07:28:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:28:14Z",
+          "conclusion": "success",
+          "name": "Upload prepared acceptance evidence",
+          "number": 38,
+          "startedAt": "2026-10-20T07:28:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:28:14Z",
+          "conclusion": "success",
+          "name": "Upload native acceptance evidence",
+          "number": 39,
+          "startedAt": "2026-10-20T07:28:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:28:24Z",
+          "conclusion": "success",
+          "name": "Post Run actions/cache@v5",
+          "number": 73,
+          "startedAt": "2026-10-20T07:28:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:28:26Z",
+          "conclusion": "success",
+          "name": "Post Run astral-sh/setup-uv@v7",
+          "number": 74,
+          "startedAt": "2026-10-20T07:28:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:28:30Z",
+          "conclusion": "success",
+          "name": "Post Run actions/cache@v5",
+          "number": 75,
+          "startedAt": "2026-10-20T07:28:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:29:01Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v6",
+          "number": 76,
+          "startedAt": "2026-10-20T07:28:30Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:29:02Z",
+          "conclusion": "success",
+          "name": "Post Run pnpm/action-setup@v4.4.0",
+          "number": 77,
+          "startedAt": "2026-10-20T07:29:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:29:02Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v6",
+          "number": 78,
+          "startedAt": "2026-10-20T07:29:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-20T07:29:10Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 79,
+          "startedAt": "2026-10-20T07:29:02Z",
+          "status": "completed"
+        }
+      ]
+    }
+  ],
+  "evidenceArtifacts": [
+    {
+      "expired": false,
+      "expires_at": "2026-10-27T07:28:13Z",
+      "id": 12247143059,
+      "name": "yourbuddy-prepared-acceptance-39383670141-1",
+      "size_in_bytes": 9093475
+    },
+    {
+      "expired": false,
+      "expires_at": "2026-10-27T07:28:14Z",
+      "id": 12246834644,
+      "name": "yourbuddy-native-acceptance-39383670141-1",
+      "size_in_bytes": 7450
+    }
+  ],
+  "appleNotarization": {
+    "status": "skipped",
+    "reason": "Existing Apple notarization configuration was absent in both build variants; no credentials or permissions added."
+  }
+}
