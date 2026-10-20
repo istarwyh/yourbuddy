@@ -1,0 +1,94 @@
+{
+  "date": "2026-10-20",
+  "timezone": "Etc/UTC",
+  "release": "yourbuddy-v0.4.12",
+  "sourceCommit": "c55e12423fda8bfdcb906cf30b1dd9cf2ce1b045",
+  "validatedIntegrationTree": "21f295d837f40a9cf3ebacdc51fb255336b6dceb",
+  "environment": {
+    "os": "macOS",
+    "architecture": "arm64",
+    "node": "22.22.3",
+    "pnpm": "11.7.0"
+  },
+  "buildUnderTest": "local source and built Host; not published installer",
+  "data": "synthetic loopback and isolated fixtures; no real provider",
+  "checks": {
+    "brandedBuild": {
+      "status": "passed",
+      "clientArtifacts": 347
+    },
+    "combination": {
+      "passed": 47,
+      "failed": 0
+    },
+    "productRefresh": {
+      "oilPassed": 147,
+      "productPassed": 110,
+      "failed": 0
+    },
+    "nodeProxy": {
+      "passed": 3,
+      "failed": 0
+    },
+    "workbench": {
+      "files": 20,
+      "passed": 135,
+      "failed": 0
+    },
+    "releaseGuardsIsolatedGitConfig": {
+      "passed": 29,
+      "failed": 0
+    },
+    "testDocs": {
+      "passed": 21,
+      "failed": 0
+    },
+    "docSync": {
+      "passed": 43,
+      "failed": 0
+    },
+    "lint": {
+      "status": "passed",
+      "exit": 0
+    },
+    "prePushTypecheck": {
+      "status": "passed",
+      "seconds": 13.79
+    },
+    "independentReview": {
+      "status": "no remaining code blocker",
+      "focusedTestsPassed": 13
+    }
+  },
+  "observedFailures": [
+    {
+      "scope": "initial release-source test",
+      "passed": 28,
+      "failed": 1,
+      "reason": "host global URL-specific credential helper inherited by fixture; isolated Git config run passed; no production auth changes"
+    },
+    {
+      "scope": "historical Oil PR checks",
+      "reason": "two timing/order assertions failed; current full aggregate passed, cause unresolved"
+    },
+    {
+      "scope": "historical PR72 Linux coverage",
+      "reason": "bubblewrap download HTTP 503 before tests"
+    },
+    {
+      "scope": "HTTPS push",
+      "reason": "OAuth workflow scope absent; existing GitHub App published identical validated tree without adding permissions"
+    }
+  ],
+  "unverified": [
+    "packaged browser acceptance",
+    "native macOS installation and cold starts",
+    "installed proxy save/restart",
+    "real providers",
+    "enterprise network",
+    "installed upgrade/downgrade",
+    "Apple notarization",
+    "public artifacts/signatures/manifests"
+  ],
+  "publication": "pending"
+}

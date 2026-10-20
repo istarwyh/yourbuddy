@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.12/README.md
+/yourbuddy-0-4-12:
+  en: 69f295f53dcf0b0b
+  zh: 69b614f33ba76f93
+/yourbuddy-0-4-12/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: e75e1627ae692bfa
+/yourbuddy-0-4-12/user-release-notes/what-changed:
+  en: bcd6135bfdf9af32
+  zh: ddaac05f92b550d8
+/yourbuddy-0-4-12/user-release-notes/problem-solved:
+  en: 43f350b9cac51278
+  zh: f7351e3feb255025
+/yourbuddy-0-4-12/user-release-notes/where-to-use-it:
+  en: b06bab688994fe03
+  zh: 0ea0d856a740541c
+/yourbuddy-0-4-12/user-release-notes/how-to-try-it:
+  en: 1486485c8ede37d1
+  zh: 9b22d78cd0d5e146
+/yourbuddy-0-4-12/user-release-notes/compatibility-and-limitations:
+  en: ebc7515b5a348bb2
+  zh: e78a42ef72840cea
+/yourbuddy-0-4-12/verification-summary:
+  en: 8255870b004eee3f
+  zh: 4a3ad9b672d1a3c6
+/yourbuddy-0-4-12/source-check-record:
+  en: 87fa0ac07506d56e
+  zh: 585dd06463509a5b
+/yourbuddy-0-4-12/known-verification-gaps:
+  en: bc89763fcdfa2cbf
+  zh: bb5d1704574cf32c
+/yourbuddy-0-4-12/delivery-status:
+  en: c97755cfa5a5c5eb
+  zh: 587ad693c2fb2636
+/yourbuddy-0-4-12/rollback:
+  en: cd4ab2eb640c7aa5
+  zh: adf3a851f2bd8913
