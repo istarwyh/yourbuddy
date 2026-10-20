@@ -351,7 +351,9 @@ function describeTestResult(
 ): string {
   const outcome = result.ok
     ? t('proxy.test.outcome.http').replace('{status}', String(result.status))
-    : t('proxy.test.outcome.error').replace('{code}', result.errorCode)
+    : result.errorCode === 'NODE_PREFLIGHT_INIT_FAILED'
+      ? t('proxy.test.outcome.node-init-error')
+      : t('proxy.test.outcome.error').replace('{code}', result.errorCode)
   const routeKeys: Record<NetworkProxyTestResult['proxyMode'], Parameters<typeof t>[0]> = {
     inherit: 'proxy.test.mode.inherit',
     direct: 'proxy.test.mode.direct',

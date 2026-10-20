@@ -98,7 +98,6 @@ jobs:
         run: node apps/desktop-tauri/scripts/verify-release-version.mjs --tag "$RELEASE_TAG"
 
       - name: Check native acceptance prerequisites
-        if: env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')
         run: |
           git show "${GITHUB_WORKFLOW_SHA:?}:apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs" > "$RUNNER_TEMP/yourbuddy-native-smoke.mjs"
           echo "Native acceptance runner: $GITHUB_WORKFLOW_SHA; application source: $(git rev-parse HEAD)"
@@ -172,11 +171,9 @@ jobs:
         run: pnpm --dir apps/desktop-tauri run prepare:dist
 
       - name: Install prepared product acceptance browser
-        if: env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')
         run: pnpm --dir apps/desktop-tauri exec playwright install chromium
 
       - name: Verify prepared default workbench and optional Harbor
-        if: env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')
         run: |
           node --input-type=module <<'NODE'
           import { execFileSync } from 'node:child_process'
@@ -247,7 +244,6 @@ jobs:
           NODE
 
       - name: Remove Python bytecode excluded from component archives
-        if: env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')
         run: |
           node --input-type=module <<'NODE'
           import { readdirSync, rmSync } from 'node:fs'
@@ -279,7 +275,6 @@ jobs:
           cp "$manifest.sig" apps/desktop-tauri/component-channel/components.json.sig
 
       - name: Retain component archive measurements
-        if: env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')
         run: |
           version="${RELEASE_TAG#yourbuddy-v}"
           cp "apps/desktop-tauri/component-release/yourbuddy-components-$version.json" "$RUNNER_TEMP/yourbuddy-prepared-acceptance/"
@@ -334,7 +329,6 @@ jobs:
           done
 
       - name: Record installer archive sizes
-        if: env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')
         run: |
           node --input-type=module <<'NODE'
           import { readdirSync, statSync, writeFileSync } from 'node:fs'
@@ -353,7 +347,6 @@ jobs:
           NODE
 
       - name: Verify native Offline installation and cold starts
-        if: env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')
         run: node "$RUNNER_TEMP/yourbuddy-native-smoke.mjs" "$RUNNER_TEMP/offline-updater-resources/YourBuddy.app/Contents/MacOS/yourbuddy" "$RUNNER_TEMP/offline-startup-smoke" "${RELEASE_TAG#yourbuddy-v}"
 
       - name: Test relocated YourBuddy product runtime
@@ -429,7 +422,6 @@ jobs:
           Pop-Location
 
       - name: Retain updater metadata and checksums
-        if: env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11')
         run: cp release-assets/latest.json release-assets/SHA256SUMS.txt "$RUNNER_TEMP/yourbuddy-prepared-acceptance/"
 
       - name: Publish release
@@ -456,7 +448,7 @@ jobs:
           retention-days: 7
 
       - name: Upload prepared acceptance evidence
-        if: always() && (env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11'))
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: yourbuddy-prepared-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
@@ -465,7 +457,7 @@ jobs:
           retention-days: 7
 
       - name: Upload native acceptance evidence
-        if: always() && (env.RELEASE_MODE != 'existing-tag' || (env.RELEASE_TAG == 'yourbuddy-v0.4.9' || env.RELEASE_TAG == 'yourbuddy-v0.4.10' || env.RELEASE_TAG == 'yourbuddy-v0.4.11'))
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: yourbuddy-native-acceptance-${{ github.run_id }}-${{ github.run_attempt }}

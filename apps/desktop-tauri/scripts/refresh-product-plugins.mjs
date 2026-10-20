@@ -870,6 +870,16 @@ export function applyRecordedMaterializedPatches(staged, selectedProductRoot, re
   }
 }
 
+function retainRuntimeArtifacts(staged, sourceRecord) {
+  for (const artifact of sourceRecord?.runtimeArtifacts ?? []) {
+    const digest = createHash('sha256').update(readFileSync(join(staged, artifact.file))).digest('hex')
+    if (digest !== artifact.fileSha256) {
+      throw new Error(`runtime artifact changed for ${artifact.package}: ${artifact.file}; review its artifact source record before refresh`)
+    }
+  }
+  return sourceRecord?.runtimeArtifacts
+}
+
 function mergeRecordedPatches(recordedPatches, changes) {
   const replacedPeers = new Set(changes.flatMap(change => {
     if (typeof change !== 'string') return []
@@ -1047,6 +1057,7 @@ async function stageGitHubBranchPlugin(policy, roots, fetchImpl) {
     upstreamTreeSha256,
     sourcePatches,
     patches,
+    runtimeArtifacts: retainRuntimeArtifacts(staged, current.sourceRecord),
     repository: `https://github.com/${policy.repository}`,
     license: manifest.license,
   })

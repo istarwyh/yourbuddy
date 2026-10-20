@@ -132,6 +132,12 @@ test('package and release aggregates execute capability preparation and pipeline
 
 function assertPublishingGuards(value) {
   const steps = value.jobs.build.steps
+  for (const name of ['Check native acceptance prerequisites', 'Install prepared product acceptance browser', 'Verify prepared default workbench and optional Harbor', 'Remove Python bytecode excluded from component archives', 'Retain component archive measurements', 'Record installer archive sizes', 'Verify native Offline installation and cold starts', 'Retain updater metadata and checksums']) {
+    assert.equal(steps.find(step => step.name === name).if, undefined)
+  }
+  for (const name of ['Upload prepared acceptance evidence', 'Upload native acceptance evidence']) {
+    assert.equal(steps.find(step => step.name === name).if, 'always()')
+  }
   assert.equal(value.on.workflow_dispatch.inputs.mode.default, 'existing-tag')
   assert.deepEqual(value.on.push.tags, ['yourbuddy-v*'])
   const publishers = steps.filter(step => /gh release (?:create|upload)|first-publication\.mjs publish|git (?:push|tag)/.test(step.run ?? ''))
@@ -155,4 +161,10 @@ test('candidate mode cannot reach tag, release or updater-feed publication; retr
   const feed = structuredClone(workflow)
   feed.jobs.build.steps.push({ name: 'Publish candidate feed', run: 'gh release upload yourbuddy-updater release-assets/latest.json --clobber' })
   assert.throws(() => assertPublishingGuards(feed))
+  const native = structuredClone(workflow)
+  native.jobs.build.steps.find(step => step.name === 'Verify native Offline installation and cold starts').if = "env.RELEASE_TAG == 'yourbuddy-v0.4.11'"
+  assert.throws(() => assertPublishingGuards(native))
+  const evidence = structuredClone(workflow)
+  evidence.jobs.build.steps.find(step => step.name === 'Upload prepared acceptance evidence').if = 'success()'
+  assert.throws(() => assertPublishingGuards(evidence))
 })

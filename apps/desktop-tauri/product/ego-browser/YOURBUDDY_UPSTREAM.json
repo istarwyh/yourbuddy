@@ -27,7 +27,7 @@
     {
       "id": "ego-browser-macos-runtime",
       "file": "patches/ego-browser-macos-runtime.patch",
-      "sha256": "53f30a4fcf94aab0a56b5dcaedba702097cba0631756d984c9e72233a3632ee3",
+      "sha256": "7ca09cbf9dea275a0fa1ea1fe8f337f78719b4e45d13fa74c0f786723ef2f007",
       "purpose": "Run the vendored Ego Browser host on the native macOS desktop and restore its pinned SDK runtime."
     },
     {

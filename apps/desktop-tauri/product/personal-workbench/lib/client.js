@@ -1401,7 +1401,7 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function describeTestResult(result, t) {
-  const outcome = result.ok ? t("proxy.test.outcome.http").replace("{status}", String(result.status)) : t("proxy.test.outcome.error").replace("{code}", result.errorCode);
+  const outcome = result.ok ? t("proxy.test.outcome.http").replace("{status}", String(result.status)) : result.errorCode === "NODE_PREFLIGHT_INIT_FAILED" ? t("proxy.test.outcome.node-init-error") : t("proxy.test.outcome.error").replace("{code}", result.errorCode);
   const routeKeys = {
     inherit: "proxy.test.mode.inherit",
     direct: "proxy.test.mode.direct",
@@ -2147,6 +2147,7 @@ var zh = {
   "proxy.test.result": "\u684C\u9762\u8349\u7A3F\uFF1A{native}\uFF1B\u968F\u5305 Node \u8349\u7A3F\uFF1A{node}\uFF1B\u5F53\u524D Node Host\uFF1A{host}\u3002",
   "proxy.test.outcome.http": "HTTP {status}",
   "proxy.test.outcome.error": "\u5931\u8D25\uFF1A{code}",
+  "proxy.test.outcome.node-init-error": "\u968F\u5305 Node \u9884\u68C0\u521D\u59CB\u5316\u5931\u8D25\uFF08NODE_PREFLIGHT_INIT_FAILED\uFF09",
   "proxy.test.outcome.routed": "{outcome}\uFF08{route}\uFF1B{ca}\uFF09",
   "proxy.test.mode.inherit": "\u7EC8\u7AEF\u73AF\u5883\u4EE3\u7406",
   "proxy.test.mode.direct": "\u76F4\u8FDE",
@@ -2332,6 +2333,7 @@ var en = {
   "proxy.test.result": "Desktop draft: {native}; bundled Node draft: {node}; current Node Host: {host}.",
   "proxy.test.outcome.http": "HTTP {status}",
   "proxy.test.outcome.error": "failed: {code}",
+  "proxy.test.outcome.node-init-error": "bundled Node preflight initialization failed (NODE_PREFLIGHT_INIT_FAILED)",
   "proxy.test.outcome.routed": "{outcome} ({route}; {ca})",
   "proxy.test.mode.inherit": "terminal environment proxy",
   "proxy.test.mode.direct": "direct",
