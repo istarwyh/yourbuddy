@@ -64,3 +64,34 @@
 ## 回滚
 
 保留不可变的 [0.4.11 发行版](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.11)。如撤回本版，将 Latest Release 标记及稳定更新器 Manifest 恢复为前一版。更新器 Manifest 携带归档签名；组件 Manifest 与其独立签名保留在不可变的发行版中。不得移动公开 Tag 或替换已发布安装包字节。已更新的应用需要手动重装旧版 DMG，因为更新器仅接受更高版本。切换安装版本前退出应用并保留应用数据备份；尚未测试数据降级兼容性。
+
+## 发布后观察 — 2026-10-20 UTC
+
+以下观察取代上文的发布前交付状态。原始 Tag 与发布产物字节保持不变。
+
+[公开 Release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.12) 于 07:28:10 UTC 发布，包含 17 个产物，非草稿、非预发布。Annotated Tag 指向 `d3a76afe3d0c6cd8d8248c04e932e2bc3591d802`。[发布运行 39383670141](https://github.com/istarwyh/yourbuddy/actions/runs/39383670141) 成功结束；[逐步骤记录](evidence/release-workflow.json) 包含准备后的浏览器验收、Bootstrap 与 Offline 打包、原生 Offline 安装/冷启动、迁移目录后的 Runtime、更新器生成、校验和与发布。
+
+### 安装包验收
+
+| 场景 | 结果 | 范围与证据 |
+|---|---|---|
+| 准备后的浏览器 | 通过 | [真实 Host/Profile，默认八个 Client，安装 Harbor 后九个](evidence/prepared-workbench.json)；桌面 Invoke 桩仍仅验证桥接 |
+| 原生 Offline | 通过 | [带签名的 Offline Seed、本地拒绝连接的代理、工作台就绪与正常退出](evidence/native-offline.json)；三轮启动耗时 54,798 / 10,826 / 13,425 ms |
+| 安装包大小 | 通过 | [测得的 Bootstrap 与 Offline 归档](evidence/installer-sizes.json)；不表示安装占用、网络流量或回收空间 |
+| Apple 公证 | 跳过 | 两种构建均记录缺少公证配置；更新器/组件签名不能证明 Apple Developer 签名 |
+
+原始 Prepared 与 Native Artifact 于 2026-10-27 过期。本目录保留筛选后的结构化结果，不含进程标识、本地 Endpoint、凭据或 Cookie。原生安装包在上传前接受测试；没有执行独立下载的软件。
+
+### 独立公开交付核验
+
+[公开字节报告](evidence/public-verification.json) 记录 10 项通过检查与 13 个完整匿名产物下载（109,393,456 字节）。下载后的 SHA-256 与大小匹配 GitHub Metadata 及公开校验和列表。Bootstrap 归档签名与 Trusted Comment 通过密码学验证；App 标识、arm64 架构与内嵌代理修复匹配本版，文件树与只读挂载的 Bootstrap DMG 相同。下载的 Harness 保留 Ego SDK 摘要，并按既有 Workspace/开发依赖转换规则匹配八个产品 Manifest；实际 DSH Peer 目标仍精确为 `0.2.0-rc.1`。
+
+[清单交叉检查](evidence/manifest-crosscheck.json) 验证稳定更新器与本版清单逐字节一致，引用已发布的 Offline 归档/签名，并包含不可变 Tag 的发布说明。16 个校验和条目与 17 个产物的 Metadata 集合匹配。公开组件清单的内容签名与 Trusted Comment 均通过验证；归档摘要、大小和精确依赖 ID 与公开产物及原生 CI 接受的清单一致。实时中英文下载页均保留稳定 Latest Release 链接，无需重建官网。
+
+两份大型 Offline 安装产物、Harbor Runtime、pnpm Store 及完整源码 ZIP 尚未完成独立全量下载，原因是本机反复遇到低吞吐和 TLS 断连。已验证它们的 Metadata 一致性，但不能据此声称完成公开字节或 Offline 归档签名验证。不可变 Tag 中的验证 Markdown/JSON 文件已独立逐字节比对。不新增已安装更新器、企业网络代理保存/重启、真实 Provider、Bootstrap 恢复或数据降级通过的声称。
+
+### CI 后续与回滚基线
+
+原整合 Head 的 Linux 与 Windows Coverage 任务在三项仍要求旧 Tag 白名单的工作流结构测试失败。[后续记录](evidence/ci-followup.json) 说明仅测试层对无条件验收与始终上传证据的同步，覆盖当前/未来 Tag 及负控。隔离 Git 配置后针对性测试通过 16/16，并经独立审查；新的整仓 CI 单独计算。生产工作流检查、发布权限、Tag 与产物均未改变。此前 Oil 时间相关失败仍作为历史观察保留；本次聚合通过 147/147。
+
+[原始 0.4.11 更新器清单](evidence/rollback-updater-0.4.11.json) 已匿名下载，匹配 SHA-256 `29f9cad70e1e82b89972a3b2f6de91bd00cbb5a4baa676ef75c0f8edf37714c0`。这是已记录的稳定 Feed 回滚基线，不表示已经执行回滚。需要撤回时，以稳定产物名 `latest.json` 恢复该文件，并恢复前一版 Latest Release 标记；已更新应用按上文手动重装。[Issue #39](https://github.com/istarwyh/yourbuddy/issues/39) 与 [Issue #71](https://github.com/istarwyh/yourbuddy/issues/71) 保持开放。

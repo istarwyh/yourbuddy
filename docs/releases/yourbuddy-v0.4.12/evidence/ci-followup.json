@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-20",
+  "releaseUnchanged": true,
+  "originalIntegrationCI": {
+    "run": "https://github.com/istarwyh/yourbuddy/actions/runs/39382943382",
+    "head": "102d793a6b9ece360f47f8b2ec4195a816e3e8f1",
+    "status": "failed",
+    "jobs": [
+      "node 24 / coverage",
+      "windows node 24 / coverage"
+    ],
+    "finding": "Three workflow-structure tests still required the old tag whitelist after production acceptance was extended to every tag."
+  },
+  "repair": {
+    "path": "scripts/tests/desktop-release.spec.ts",
+    "changes": "Model absent conditions as successful-route defaults, require unconditional acceptance and always-upload evidence; cover 0.4.12 and 0.5.0 plus negative controls. Production workflow and permissions unchanged.",
+    "focusedValidation": {
+      "tests": 16,
+      "passed": 16,
+      "gitConfigIsolation": true,
+      "initialUnisolatedPassed": 15,
+      "initialUnisolatedFailure": "Existing first-publication fixture inherited the host URL-specific Git helper."
+    },
+    "independentReview": "No blocker; strict guards and negative controls retained."
+  },
+  "newFullRepositoryCI": "pending; no green exhaustive coverage claim",
+  "publicVerificationObservations": {
+    "transportFailures": "Read-only API/range/small-file TLS errors were retained locally; successful downloads were cached and bounded retries used.",
+    "verifierExpectationCorrections": "Compare documented workspace peer normalization and omitted devDependencies, then strictly verify actual bundled DSH target 0.2.0-rc.1; no artifact was changed."
+  }
+}

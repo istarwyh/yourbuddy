@@ -1,0 +1,60 @@
+{
+  "releaseTag": "yourbuddy-v0.4.12",
+  "version": "0.4.12",
+  "expectedCommit": "d3a76afe3d0c6cd8d8248c04e932e2bc3591d802",
+  "startedAt": "2026-10-20T07:34:41.037Z",
+  "environment": "macOS arm64; metadata via existing read-only gh authentication, anonymous asset HTTPS downloads; downloaded software not executed",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "Public stable updater exactly equals release manifest and references matching Offline signature",
+      "passed": true,
+      "details": {
+        "version": "0.4.12",
+        "sha256": "13b23973b8fe9e04123695977602e1ebe2a6fefc49fbebdcfbcf178930f1ff1e",
+        "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz"
+      }
+    },
+    {
+      "name": "All public checksum entries agree with GitHub asset digests",
+      "passed": true,
+      "details": {
+        "assets": 17,
+        "checksumEntries": 16,
+        "scope": "cross-metadata; not a full independent download of large files"
+      }
+    },
+    {
+      "name": "Public component manifest signature, dependencies and native-accepted manifest are identical",
+      "passed": true,
+      "details": {
+        "sha256": "9d80855b5cb8787cb8a9c74ea76850dbd28ef025ceab8dfb328c811783367296",
+        "components": [
+          "harness",
+          "pnpmStore",
+          "node",
+          "harbor",
+          "harborPlugin"
+        ],
+        "nativeRounds": 3
+      }
+    },
+    {
+      "name": "Live bilingual download page retains stable latest-release link",
+      "passed": true,
+      "details": {
+        "url": "https://istarwyh.github.io/yourbuddy/download/"
+      }
+    },
+    {
+      "name": "Live bilingual download page retains stable latest-release link",
+      "passed": true,
+      "details": {
+        "url": "https://istarwyh.github.io/yourbuddy/en/download/"
+      }
+    }
+  ],
+  "assets": [],
+  "scope": "Public updater/component manifests and cross-metadata only; full large Offline bytes and installed updater are not independently verified here.",
+  "completedAt": "2026-10-20T07:35:13.015Z"
+}

@@ -1,0 +1,306 @@
+{
+  "releaseTag": "yourbuddy-v0.4.12",
+  "version": "0.4.12",
+  "expectedCommit": "d3a76afe3d0c6cd8d8248c04e932e2bc3591d802",
+  "startedAt": "2026-10-20T07:44:38.396Z",
+  "environment": "macOS arm64; metadata via existing read-only gh authentication, anonymous asset HTTPS downloads; downloaded software not executed",
+  "status": "partial",
+  "checks": [
+    {
+      "name": "Public final and latest release",
+      "passed": true,
+      "details": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.12",
+        "publishedAt": "2026-10-20T07:28:10Z"
+      }
+    },
+    {
+      "name": "Annotated tag identifies exact released commit",
+      "passed": true,
+      "details": {
+        "tagObject": "cfd9846c16a04f3bf92c681af448a70a82ef5b44",
+        "commit": "d3a76afe3d0c6cd8d8248c04e932e2bc3591d802"
+      }
+    },
+    {
+      "name": "Every independently downloaded asset matches GitHub digest and size",
+      "passed": true,
+      "details": {
+        "downloaded": 13,
+        "declared": 17,
+        "notDownloaded": [
+          "yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz",
+          "yourbuddy-0.4.12-offline-macos-arm64.dmg",
+          "yourbuddy-harbor-6d6c5365b4d26064026583a0e2740f4687b80080525466322965570705e6b37d-darwin-arm64.tar.zst",
+          "yourbuddy-pnpm-store-063698935781b2b328952759de49bfb349911d39a8ac1f7931321ae62fefc386-macos-arm64.tar.zst",
+          "yourbuddy-v0.4.12-source.zip (single-connection prefetch timed out)"
+        ]
+      }
+    },
+    {
+      "name": "Published checksum list covers every other asset",
+      "passed": true,
+      "details": {
+        "entries": 16
+      }
+    },
+    {
+      "name": "Stable updater and target URL agree; downloaded archive signatures verified",
+      "passed": true,
+      "details": {
+        "version": "0.4.12",
+        "verifiedArchiveSignatures": [
+          "bootstrap"
+        ]
+      }
+    },
+    {
+      "name": "Signed component manifest and exact dependencies match declared archive metadata",
+      "passed": true,
+      "details": {
+        "components": [
+          "harness",
+          "pnpmStore",
+          "node",
+          "harbor",
+          "harborPlugin"
+        ]
+      }
+    },
+    {
+      "name": "Shipped product peers, Workbench Host and pinned Ego runtime match validated source",
+      "passed": true,
+      "details": {
+        "plugins": 8,
+        "manifestTransform": "workspace peer normalization and omitted development dependencies",
+        "targetVersion": "0.2.0-rc.1"
+      }
+    },
+    {
+      "name": "Downloaded Bootstrap identity, architecture, component manifest and preflight fix",
+      "passed": true,
+      "details": {
+        "version": "0.4.12",
+        "identifier": "io.github.istarwyh.yourbuddy",
+        "architecture": "Mach-O 64-bit executable arm64"
+      }
+    },
+    {
+      "name": "Downloaded Bootstrap DMG and signed updater App trees are identical",
+      "passed": true,
+      "details": {}
+    },
+    {
+      "name": "Immutable tag verification source files match the released record",
+      "passed": true,
+      "details": {
+        "tag": "yourbuddy-v0.4.12",
+        "files": 3,
+        "fullSourceZip": "not independently downloaded"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "name": "latest.json",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/latest.json",
+      "bytes": 1837,
+      "sha256": "13b23973b8fe9e04123695977602e1ebe2a6fefc49fbebdcfbcf178930f1ff1e"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/SHA256SUMS.txt",
+      "bytes": 1956,
+      "sha256": "80892d574d1aadade6468cf8e177923920d70a81653b6ae36eae657d4fdba689"
+    },
+    {
+      "name": "yourbuddy-0.4.12-bootstrap-macos-arm64.app.tar.gz",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-bootstrap-macos-arm64.app.tar.gz",
+      "bytes": 11270924,
+      "sha256": "4135771c85a7e858302658efd744874bc5a7e699776c470b6534130140e63f23"
+    },
+    {
+      "name": "yourbuddy-0.4.12-bootstrap-macos-arm64.app.tar.gz.sig",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-bootstrap-macos-arm64.app.tar.gz.sig",
+      "bytes": 428,
+      "sha256": "b75925ca2299d6ec0f35ba8989acfff6c5b2e96ad2fffef1a286267205fbf546"
+    },
+    {
+      "name": "yourbuddy-0.4.12-bootstrap-macos-arm64.dmg",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-bootstrap-macos-arm64.dmg",
+      "bytes": 11088016,
+      "sha256": "6ea24f52b4f4d3167b365cb6524bf3ee276f529cc7869df28c187707d2278341"
+    },
+    {
+      "name": "yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz.sig",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz.sig",
+      "bytes": 428,
+      "sha256": "b7392cf34a159b9ca431ae4772776c3825c9f345546e05cb98a25348064fdeb4"
+    },
+    {
+      "name": "yourbuddy-components-0.4.12.json",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-components-0.4.12.json",
+      "bytes": 2777,
+      "sha256": "9d80855b5cb8787cb8a9c74ea76850dbd28ef025ceab8dfb328c811783367296"
+    },
+    {
+      "name": "yourbuddy-components-0.4.12.json.sig",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-components-0.4.12.json.sig",
+      "bytes": 317,
+      "sha256": "5f9069064a53710fb3d44b323095f8dff71e89016737679864ac45638d5a36e7"
+    },
+    {
+      "name": "yourbuddy-debug-0.4.12.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-debug-0.4.12.tar.zst",
+      "bytes": 15991770,
+      "sha256": "433dc1143318010cedba8a196a7af01d21f7f6f9fd6648e40df54a06ed414957"
+    },
+    {
+      "name": "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+      "bytes": 581544,
+      "sha256": "ab8cca75c794f11dad081944f77b881447ec0d8a7874d098ac79d953ffa82fd5"
+    },
+    {
+      "name": "yourbuddy-harness-319c5f5b4c789665634cb5d5cb17781d3664d12b3afcbd9e6c0335ad2f990754-macos-arm64.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-harness-319c5f5b4c789665634cb5d5cb17781d3664d12b3afcbd9e6c0335ad2f990754-macos-arm64.tar.zst",
+      "bytes": 33444721,
+      "sha256": "c5f06d8486602d98cf3e8a88ba385b94aa18f1a75f07664419936b5b0b94e1f4"
+    },
+    {
+      "name": "yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+      "bytes": 37007274,
+      "sha256": "7b46ca9c5cbaf5e9ed4414b139d55018b2cf397ba759ae0d3685eb69166f9575"
+    },
+    {
+      "name": "yourbuddy-size-report-0.4.12.json",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-size-report-0.4.12.json",
+      "bytes": 1464,
+      "sha256": "2e746d6a674d5f00b982db95933da87cfebfa2b5a454dea6e2582ac1cde0a731"
+    }
+  ],
+  "declaredAssets": [
+    {
+      "name": "latest.json",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/latest.json",
+      "bytes": 1837,
+      "digest": "sha256:13b23973b8fe9e04123695977602e1ebe2a6fefc49fbebdcfbcf178930f1ff1e"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/SHA256SUMS.txt",
+      "bytes": 1956,
+      "digest": "sha256:80892d574d1aadade6468cf8e177923920d70a81653b6ae36eae657d4fdba689"
+    },
+    {
+      "name": "yourbuddy-0.4.12-bootstrap-macos-arm64.app.tar.gz",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-bootstrap-macos-arm64.app.tar.gz",
+      "bytes": 11270924,
+      "digest": "sha256:4135771c85a7e858302658efd744874bc5a7e699776c470b6534130140e63f23"
+    },
+    {
+      "name": "yourbuddy-0.4.12-bootstrap-macos-arm64.app.tar.gz.sig",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-bootstrap-macos-arm64.app.tar.gz.sig",
+      "bytes": 428,
+      "digest": "sha256:b75925ca2299d6ec0f35ba8989acfff6c5b2e96ad2fffef1a286267205fbf546"
+    },
+    {
+      "name": "yourbuddy-0.4.12-bootstrap-macos-arm64.dmg",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-bootstrap-macos-arm64.dmg",
+      "bytes": 11088016,
+      "digest": "sha256:6ea24f52b4f4d3167b365cb6524bf3ee276f529cc7869df28c187707d2278341"
+    },
+    {
+      "name": "yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz",
+      "bytes": 610124427,
+      "digest": "sha256:5145acec2e047118ce83ad045368e9cb9710f2361a94add42488544822feb65a"
+    },
+    {
+      "name": "yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz.sig",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz.sig",
+      "bytes": 428,
+      "digest": "sha256:b7392cf34a159b9ca431ae4772776c3825c9f345546e05cb98a25348064fdeb4"
+    },
+    {
+      "name": "yourbuddy-0.4.12-offline-macos-arm64.dmg",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-0.4.12-offline-macos-arm64.dmg",
+      "bytes": 610239416,
+      "digest": "sha256:0525591da246e4e74585b940fe746ee3613df3f1a76e83e3c782b5aa6489163e"
+    },
+    {
+      "name": "yourbuddy-components-0.4.12.json",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-components-0.4.12.json",
+      "bytes": 2777,
+      "digest": "sha256:9d80855b5cb8787cb8a9c74ea76850dbd28ef025ceab8dfb328c811783367296"
+    },
+    {
+      "name": "yourbuddy-components-0.4.12.json.sig",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-components-0.4.12.json.sig",
+      "bytes": 317,
+      "digest": "sha256:5f9069064a53710fb3d44b323095f8dff71e89016737679864ac45638d5a36e7"
+    },
+    {
+      "name": "yourbuddy-debug-0.4.12.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-debug-0.4.12.tar.zst",
+      "bytes": 15991770,
+      "digest": "sha256:433dc1143318010cedba8a196a7af01d21f7f6f9fd6648e40df54a06ed414957"
+    },
+    {
+      "name": "yourbuddy-harbor-6d6c5365b4d26064026583a0e2740f4687b80080525466322965570705e6b37d-darwin-arm64.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-harbor-6d6c5365b4d26064026583a0e2740f4687b80080525466322965570705e6b37d-darwin-arm64.tar.zst",
+      "bytes": 96044044,
+      "digest": "sha256:2966fc72679f48ca558eeb8c794291b6a602514323f94e62f5b8125da2342409"
+    },
+    {
+      "name": "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+      "bytes": 581544,
+      "digest": "sha256:ab8cca75c794f11dad081944f77b881447ec0d8a7874d098ac79d953ffa82fd5"
+    },
+    {
+      "name": "yourbuddy-harness-319c5f5b4c789665634cb5d5cb17781d3664d12b3afcbd9e6c0335ad2f990754-macos-arm64.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-harness-319c5f5b4c789665634cb5d5cb17781d3664d12b3afcbd9e6c0335ad2f990754-macos-arm64.tar.zst",
+      "bytes": 33444721,
+      "digest": "sha256:c5f06d8486602d98cf3e8a88ba385b94aa18f1a75f07664419936b5b0b94e1f4"
+    },
+    {
+      "name": "yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+      "bytes": 37007274,
+      "digest": "sha256:7b46ca9c5cbaf5e9ed4414b139d55018b2cf397ba759ae0d3685eb69166f9575"
+    },
+    {
+      "name": "yourbuddy-pnpm-store-063698935781b2b328952759de49bfb349911d39a8ac1f7931321ae62fefc386-macos-arm64.tar.zst",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-pnpm-store-063698935781b2b328952759de49bfb349911d39a8ac1f7931321ae62fefc386-macos-arm64.tar.zst",
+      "bytes": 416125481,
+      "digest": "sha256:26b3ae375fca96cb48faa4b97fb0a0f9bc4b5d1dbeb3b91801f60e6a1198dacc"
+    },
+    {
+      "name": "yourbuddy-size-report-0.4.12.json",
+      "url": "https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.12/yourbuddy-size-report-0.4.12.json",
+      "bytes": 1464,
+      "digest": "sha256:2e746d6a674d5f00b982db95933da87cfebfa2b5a454dea6e2582ac1cde0a731"
+    }
+  ],
+  "notIndependentlyDownloaded": [
+    "yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz",
+    "yourbuddy-0.4.12-offline-macos-arm64.dmg",
+    "yourbuddy-harbor-6d6c5365b4d26064026583a0e2740f4687b80080525466322965570705e6b37d-darwin-arm64.tar.zst",
+    "yourbuddy-pnpm-store-063698935781b2b328952759de49bfb349911d39a8ac1f7931321ae62fefc386-macos-arm64.tar.zst",
+    "yourbuddy-v0.4.12-source.zip (single-connection prefetch timed out)"
+  ],
+  "completedAt": "2026-10-20T07:45:16.324Z",
+  "unverified": [
+    "Full independent bytes not downloaded: yourbuddy-0.4.12-offline-macos-arm64.app.tar.gz",
+    "Full independent bytes not downloaded: yourbuddy-0.4.12-offline-macos-arm64.dmg",
+    "Full independent bytes not downloaded: yourbuddy-harbor-6d6c5365b4d26064026583a0e2740f4687b80080525466322965570705e6b37d-darwin-arm64.tar.zst",
+    "Full independent bytes not downloaded: yourbuddy-pnpm-store-063698935781b2b328952759de49bfb349911d39a8ac1f7931321ae62fefc386-macos-arm64.tar.zst",
+    "Full independent bytes not downloaded: yourbuddy-v0.4.12-source.zip (single-connection prefetch timed out)",
+    "Downloaded macOS software was not executed",
+    "Installed proxy save/restart and real providers",
+    "Installed update/downgrade and data compatibility",
+    "Apple notarization; consult release workflow observations"
+  ]
+}

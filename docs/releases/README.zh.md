@@ -10,7 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
-| [yourbuddy-v0.4.12](yourbuddy-v0.4.12/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录源码检查；安装包/公开证据待完成 | 候选版本 |
+| [yourbuddy-v0.4.12](yourbuddy-v0.4.12/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录原生/浏览器验收与限定范围公开证据 | 已发布；下载限制已注明 |
 | [yourbuddy-v0.4.11](yourbuddy-v0.4.11/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 运行 68 准备/原生验收、17 个公开下载、Hash、签名/Feed、源代码 ZIP 与双语网站均已检查 | 已发布；已记录剩余清单/恢复范围 |
 | [yourbuddy-v0.4.10](yourbuddy-v0.4.10/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 运行 67 的 prepared/原生验收、全部 17 个公开下载、Hash、更新签名/Feed 及双语站点已检查 | 已发布；记录剩余原生恢复范围 |
 | [yourbuddy-v0.4.9](yourbuddy-v0.4.9/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 运行 66 的 prepared 与 Offline 原生结果；记录剩余验收 | 已发布；验证归档不完整 |

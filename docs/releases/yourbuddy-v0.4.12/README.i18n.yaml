@@ -38,3 +38,15 @@
 /yourbuddy-0-4-12/rollback:
   en: cd4ab2eb640c7aa5
   zh: adf3a851f2bd8913
+/yourbuddy-0-4-12/post-publication-observations-2026-10-20-utc:
+  en: cbb0176f8d08ee8a
+  zh: 1ad601a4225495d7
+/yourbuddy-0-4-12/post-publication-observations-2026-10-20-utc/packaged-acceptance:
+  en: 4f65e4e8198fb1af
+  zh: 65d320cbe2897913
+/yourbuddy-0-4-12/post-publication-observations-2026-10-20-utc/independent-public-delivery:
+  en: 447edf164b2d14ff
+  zh: c11db0f0f80c1ee4
+/yourbuddy-0-4-12/post-publication-observations-2026-10-20-utc/ci-follow-up-and-rollback-baseline:
+  en: 566e9f7f12bcecd2
+  zh: 59f8696c06ce8971
