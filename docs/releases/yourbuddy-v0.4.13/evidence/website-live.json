@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-24T08:36:01.046599+00:00",
+  "scope": "Public bilingual office guides and stable release links; criteria taken from source pages",
+  "deployment_run": "https://github.com/istarwyh/yourbuddy/actions/runs/40077615762",
+  "pages": [
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/docs/workspace/",
+      "final_url": "https://istarwyh.github.io/yourbuddy/docs/workspace/",
+      "status": 200,
+      "bytes": 48076,
+      "sha256": "fad4ca69887a2539401bbfcc8e8e9a7812d086a481118f32e0bda2c4bdd4f568",
+      "expected_content": [
+        "read-office-files",
+        ".docx",
+        ".pptx",
+        ".xlsx"
+      ],
+      "expected_content_present": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/docs/workspace/",
+      "final_url": "https://istarwyh.github.io/yourbuddy/en/docs/workspace/",
+      "status": 200,
+      "bytes": 48694,
+      "sha256": "ce72dbedcada411fa4935739462334fdb0721f3c663d9be8ec0294d4e2b5d09d",
+      "expected_content": [
+        "read-office-files",
+        ".docx",
+        ".pptx",
+        ".xlsx"
+      ],
+      "expected_content_present": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/plugins/better-sidebar/",
+      "final_url": "https://istarwyh.github.io/yourbuddy/plugins/better-sidebar/",
+      "status": 200,
+      "bytes": 47460,
+      "sha256": "2faf9e31d58ee36827bfbbb388daa478aca7efa7c1bfe62befc360ac12affec5",
+      "expected_content": [
+        "LibreOffice"
+      ],
+      "expected_content_present": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/plugins/better-sidebar/",
+      "final_url": "https://istarwyh.github.io/yourbuddy/en/plugins/better-sidebar/",
+      "status": 200,
+      "bytes": 48033,
+      "sha256": "785d5cabd9b0877da501dc0ca5a1af364f0295ee7a124f9eed6afe6c336c379c",
+      "expected_content": [
+        "LibreOffice"
+      ],
+      "expected_content_present": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/download/",
+      "final_url": "https://istarwyh.github.io/yourbuddy/download/",
+      "status": 200,
+      "bytes": 42890,
+      "sha256": "205ba6cfc67025faded149adf46bec0ae35d915b340c07bfe082586ca61c3fdb",
+      "expected_content": [
+        "https://github.com/istarwyh/yourbuddy/releases/latest"
+      ],
+      "expected_content_present": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/download/",
+      "final_url": "https://istarwyh.github.io/yourbuddy/en/download/",
+      "status": 200,
+      "bytes": 43157,
+      "sha256": "8111f3229a9a0e4ef0828a3a2f7c9bbc77cc5039b4c7225d6e7135eedb10d15a",
+      "expected_content": [
+        "https://github.com/istarwyh/yourbuddy/releases/latest"
+      ],
+      "expected_content_present": true
+    }
+  ],
+  "download_route_source": "website/product-pages.json maps docs/user/product/download.md to download"
+}

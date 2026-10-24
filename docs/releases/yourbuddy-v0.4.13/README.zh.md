@@ -68,3 +68,21 @@ Smoke 点击中间 Files 入口，检查 PDF 页面文本与画布内容或 Exce
 保留不可变的 [0.4.12 发布](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.12) 及其原始签名更新清单。需要撤回时恢复上一版本的最新发布标记与稳定更新源；不得移动公开 Tag 或替换已发布安装包。更新器只接受更高版本，因此已更新应用需手动重装上一版 DMG。操作前退出应用并备份应用数据；数据降级兼容性未验证。
 
 已下载的 [0.4.12 更新清单基线](evidence/rollback-updater-0.4.12.json) 的 SHA-256 为 `13b23973b8fe9e04123695977602e1ebe2a6fefc49fbebdcfbcf178930f1ff1e`。此为保留的回滚证据，不代表已经执行回滚。
+
+## 发布后观察——2026-10-24 UTC
+
+以下观察取代上文发布前的交付状态。公开 Tag 与已发布安装包字节保持不变。
+
+[正式发布](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.13) 于 08:57:24 UTC 发布，非草稿、非预发布，包含 17 个资产。其附注 Tag 指向 `05dbb5c63baf06ed728a7913260bd02e6e59449d`。[官方发布运行 40078157066](https://github.com/istarwyh/yourbuddy/actions/runs/40078157066) 成功完成；[保留的步骤记录](evidence/release-workflow.json) 覆盖组件准备、两种安装包、原生 Offline 安装/冷启动、迁移 Runtime、更新清单、校验和与发布。
+
+| 场景 | 结果 | 证据与限制 |
+|---|---|---|
+| 已发布版本的预准备产品 | 通过 | [真实 Host/Profile，默认 8 个 Clients 再安装 Harbor 后 9 个](evidence/released-prepared-workbench.json)，Node 24.20.0；桌面 Invoke 仍仅验证 Bridge |
+| 原生 Offline | 通过 | [签名 Offline 种子与三轮正常冷启动](evidence/native-offline.json)：46,716 / 11,652 / 9,557 ms；不代表四格式原生窗口交互 |
+| 公开资产与清单 | 在所述范围内通过 | [34 项检查、9 个独立资产下载](evidence/public-verification.json)；全部 17 个资产 Digest 与 CI 保留的[发布校验清单](evidence/release-SHA256SUMS.txt)及[公开元数据](evidence/public-release.json)一致 |
+| Apple 公证 | 跳过 | 两种安装包构建均记录缺少公证凭据；更新器/组件签名不代表 Apple Developer 公证 |
+| 双语网站 | 已部署并核验 | [六个线上办公指南/下载页面](evidence/website-live.json)返回 HTTP 200 且包含预期内容；[部署运行](https://github.com/istarwyh/yourbuddy/actions/runs/40077615762) |
+
+独立下载验证了 Bootstrap 归档/DMG 字节、清单签名、更新器身份及 Bootstrap 应用版本/arm64 身份。报告列出的八个大型/Runtime 归档未独立下载；已对照实际成功构建记录核验其 Digest/大小一致性。稳定更新源与正式清单字节一致，匿名最新发布 URL 指向 0.4.13。未在本机执行下载的软件。
+
+产品发布与站点同步已完成；本归档保留所述证据范围。上文仅测源码、仅测 Bridge、缺字体及未验证 UI 的限制仍然适用。CI 原生冷启动不能替代用户已豁免的四格式原生窗口验收、已安装更新器行为或数据降级测试。记录的 0.4.12 回滚基线仍可使用，未执行回滚。

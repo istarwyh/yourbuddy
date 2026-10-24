@@ -68,3 +68,21 @@ The screenshot is Chromium bridge evidence. Native Tauri window acceptance was n
 Keep the immutable [0.4.12 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.12) and its original signed updater manifest available. If withdrawal is needed, restore the previous latest-release designation and stable updater feed; never move public tags or replace published installer bytes. Already updated apps require manual reinstall of the previous DMG because the updater accepts only newer versions. Quit the app and back up application data first; data downgrade compatibility is unverified.
 
 The downloaded [0.4.12 updater baseline](evidence/rollback-updater-0.4.12.json) has SHA-256 `13b23973b8fe9e04123695977602e1ebe2a6fefc49fbebdcfbcf178930f1ff1e`. This is retained rollback evidence, not a rollback already executed.
+
+## Post-publication observations — 2026-10-24 UTC
+
+These observations supersede the pre-publication delivery status above. The public tag and published installer bytes remain unchanged.
+
+The [formal release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.13) was published at 08:57:24 UTC, non-draft and non-prerelease, with 17 assets. Its annotated tag resolves to `05dbb5c63baf06ed728a7913260bd02e6e59449d`. [Official release run 40078157066](https://github.com/istarwyh/yourbuddy/actions/runs/40078157066) completed successfully; the [retained step record](evidence/release-workflow.json) covers component preparation, both installer variants, native Offline installation/cold starts, relocated runtime, updater, checksums and publication.
+
+| Scenario | Result | Evidence and limits |
+|---|---|---|
+| Released prepared product | Passed | [Real Host/Profile, default 8 Clients then Harbor 9 Clients](evidence/released-prepared-workbench.json), Node 24.20.0; desktop invoke remains bridge-only |
+| Native Offline | Passed | [Signed Offline seeds and three clean cold starts](evidence/native-offline.json): 46,716 / 11,652 / 9,557 ms; not four-format native-window interaction |
+| Public assets and manifests | Passed within scope | [34 checks, 9 independent asset downloads](evidence/public-verification.json); all 17 asset digests agree with the CI-retained [release checksums](evidence/release-SHA256SUMS.txt) and [public metadata](evidence/public-release.json) |
+| Apple notarization | Skipped | Both installer builds logged missing notarization credentials; updater/component signatures do not establish Apple Developer notarization |
+| Bilingual website | Deployed and checked | [Six live office-guide/download pages](evidence/website-live.json), HTTP 200 and expected content; [deployment run](https://github.com/istarwyh/yourbuddy/actions/runs/40077615762) |
+
+Independent downloads verify Bootstrap archive/DMG bytes, manifest signatures, updater identity and the Bootstrap app version/arm64 identity. Eight large/runtime archives listed in the report were not independently downloaded; their digest/size consistency is verified against the actual successful build record. Stable updater bytes match the released manifest, and the anonymous latest-release URL resolves to 0.4.13. Downloaded software was not executed locally.
+
+Product publication and website synchronization are complete; this archive retains the stated evidence scope. Source-only, bridge-only, missing-font and unverified UI limits above remain applicable. CI native cold starts do not replace the user-waived four-format native-window acceptance, installed updater behavior or data downgrade testing. The recorded 0.4.12 rollback baseline remains available; no rollback was performed.
