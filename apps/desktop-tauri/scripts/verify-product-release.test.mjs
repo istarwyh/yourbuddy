@@ -573,7 +573,7 @@ test('rejecting an unprepared input never removes its existing dependency tree',
 })
 
 
-function previewSidebar({ failFile, blankCanvas = false, missingPage = false, stuckClose = false, replacedTree = false, actions = [] } = {}) {
+function previewSidebar({ failFile, blankCanvas = false, missingPage = false, stuckClose = false, replacedTree = false, actions = [], onWorkbenchOpen = () => {} } = {}) {
   const checked = []
   let selected
   const locator = (selector, text) => ({
@@ -610,7 +610,7 @@ function previewSidebar({ failFile, blankCanvas = false, missingPage = false, st
     workbench: {
       getByRole: (_role, { name }) => ({ click: async () => { assert.equal(name, 'Files'); actions.push('workbench:Files') } }),
       getByText: file => ({
-        click: async () => { selected = file; actions.push(`opened:${file}`, `workbench:${file}`) },
+        click: async () => { onWorkbenchOpen(); selected = file; actions.push(`opened:${file}`, `workbench:${file}`) },
         waitFor: async () => { if (replacedTree) throw new Error('workbench tree disappeared') },
       }),
       locator: selector => locator(`workbench:${selector}`),
@@ -645,7 +645,7 @@ test('document preview smoke requires four native viewers, page or sheet content
   assert.deepEqual(RELEASE_DOCUMENT_PREVIEWS.map(preview => preview.file.split('.').at(-1)), ['fods', 'txt', 'pdf', 'docx', 'pptx', 'xlsx'])
   const run = async options => {
     const fixture = previewSidebar(options)
-    await exerciseDocumentPreviews(fixture.sidebar, fixture.workbench)
+    await exerciseDocumentPreviews(fixture.sidebar, fixture.workbench, { showSidebar: async () => {}, showWorkbench: async () => {} })
     return fixture
   }
   const { checked, actions } = await run()
@@ -708,7 +708,11 @@ test('desktop workbench previews restore the sidebar after content succeeds; sta
       if (name === 'Open right sidebar') collapsed = false
       if (name === 'Collapse right sidebar' && !collapseFails) collapsed = true
     } })
-    const preview = previewSidebar({ failFile: previewFails ? RELEASE_DOCUMENT_PREVIEWS[0].file : undefined, actions })
+    const preview = previewSidebar({
+      failFile: previewFails ? RELEASE_DOCUMENT_PREVIEWS[0].file : undefined,
+      actions,
+      onWorkbenchOpen: () => { assert.equal(collapsed, true); collapsed = false },
+    })
     const sidebar = {
       ...preview.sidebar,
       getAttribute: async () => String(collapsed),
@@ -741,7 +745,7 @@ test('desktop workbench previews restore the sidebar after content succeeds; sta
   const alreadyOpen = await run({ initiallyCollapsed: false })
   assert.equal(alreadyOpen.error, undefined)
   assert.equal(alreadyOpen.collapsed, false)
-  assert.ok(!alreadyOpen.actions.includes('Collapse right sidebar'))
+  assert.equal(alreadyOpen.actions.at(-1), 'closed:release-office-preview.xlsx')
   const failedPreview = await run({ previewFails: true })
   assert.match(failedPreview.error.message, /preview content missing/u)
   assert.equal(failedPreview.collapsed, false)

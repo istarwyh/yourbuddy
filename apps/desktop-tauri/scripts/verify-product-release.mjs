@@ -825,23 +825,26 @@ async function requireOfficePreviewContent(sidebar, preview) {
 }
 
 /** Require real viewer content and close/reopen behavior through the shipped workbench file tree. */
-export async function exerciseDocumentPreviews(sidebar, workbench) {
+export async function exerciseDocumentPreviews(sidebar, workbench, controls) {
   const openFile = async file => {
     await sidebar.getByRole('button', { name: 'New tab', exact: true }).click()
     await sidebar.locator('[data-sidebar-right-guide-entry="files"]').click()
     await sidebar.getByText(file, { exact: true }).click()
   }
+  await controls.showWorkbench()
   await workbench.getByRole('button', { name: 'Files', exact: true }).click()
   for (const preview of RELEASE_DOCUMENT_PREVIEWS) {
     if (!preview.viewer) {
+      await controls.showSidebar()
       await openFile(preview.file)
       await sidebar.locator(preview.selector).getByText(preview.text, { exact: true }).waitFor({ timeout: 15_000 })
       continue
     }
     for (let attempt = 0; attempt < 2; attempt += 1) {
+      await controls.showWorkbench()
       await workbench.getByText(preview.file, { exact: true }).click()
       const document = await requireOfficePreviewContent(sidebar, preview)
-      await workbench.getByText('release-editor-preview.txt', { exact: true }).waitFor({ state: 'visible', timeout: 15_000 })
+      await workbench.getByText('release-editor-preview.txt', { exact: true }).waitFor({ state: 'attached', timeout: 15_000 })
       if (await workbench.locator('div[draggable="true"][title="Files"]').count() !== 1
         || await workbench.locator(`div[draggable="true"][title="${preview.file}"]`).count() !== 0) {
         throw new Error(`${preview.file} replaced the workbench Files tab instead of opening the DSH viewer`)
@@ -857,15 +860,26 @@ export async function exerciseDocumentPreviews(sidebar, workbench) {
 export async function exerciseWorkbenchDocumentPreviews(page) {
   const sidebar = page.locator('[data-sidebar-right-panel]').first()
   const startedCollapsed = await sidebar.getAttribute('aria-hidden') === 'true'
-  if (startedCollapsed) await page.getByRole('button', { name: 'Open right sidebar', exact: true }).click()
+  const controls = {
+    showSidebar: async () => {
+      if (await sidebar.getAttribute('aria-hidden') === 'true') {
+        await page.getByRole('button', { name: 'Open right sidebar', exact: true }).click()
+      }
+    },
+    showWorkbench: async () => {
+      if (await sidebar.getAttribute('aria-hidden') !== 'true') {
+        await sidebar.getByRole('button', { name: 'Collapse right sidebar', exact: true }).click()
+        await page.locator('[data-sidebar-right-panel][aria-hidden="true"]').first()
+          .waitFor({ state: 'attached', timeout: 10_000 })
+      }
+    },
+  }
   await exerciseDocumentPreviews(sidebar,
-    page.locator('[data-workbench-surface="core"] [data-dsh-panel-host][data-dsh-presentation="slot"]'))
+    page.locator('[data-workbench-surface="core"] [data-dsh-panel-host][data-dsh-presentation="slot"]'), controls)
   // Preserve a failed preview for evidence; restore only after content and reopen checks pass.
   if (startedCollapsed) {
-    await sidebar.getByRole('button', { name: 'Collapse right sidebar', exact: true }).click()
-    await page.locator('[data-sidebar-right-panel][aria-hidden="true"]').first()
-      .waitFor({ state: 'attached', timeout: 10_000 })
-  }
+    await controls.showWorkbench()
+  } else await controls.showSidebar()
 }
 
 /** Retain only sidebar and document-read request paths and outcomes; never headers, query strings or bodies. */
