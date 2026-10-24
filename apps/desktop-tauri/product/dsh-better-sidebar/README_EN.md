@@ -62,6 +62,8 @@
 
 File-reference insertion dispatches `slash/input-insert-reference` as a scoped bail event for the target Session: only the first accepting editor inserts the chip; a declined insertion leaves the draft unchanged. Side Chat inherits complete `SessionEvent` envelopes, preserving `surfaceOp`, `sourceEventSeqs`, `ignorable`, and the child Session’s inherited-event count.
 
+In YourBuddy workbench mode, PDF, Word (DOC/DOCX), PowerPoint (PPT/PPTX), and Excel (XLS/XLSX) files use the existing read-only DSH preview without replacing the file tree or adding a viewer. User opens expand the Session region; background opens leave that region unchanged. Existing download-fallback tabs need closing and reopening.
+
 ## 🚀 Installation
 
 **Prerequisites**: DSH installed (`dsh web` boots), Node.js ≥ 20, pnpm ≥ 10.

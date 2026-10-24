@@ -30,6 +30,7 @@ import {
 } from './state.ts'
 import { baseName, extOf } from './paths.ts'
 import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
+import { isNativeDocumentPath } from './native/file-types.ts'
 import type { SessionScope } from './api.ts'
 import type { SidebarPrefs } from '../prefs-shared.ts'
 
@@ -697,10 +698,12 @@ function safeCall(fn: () => void): void {
 }
 
 interface BetterSidebarServiceOptions {
-  /** Route ordinary opens into the plugin-owned workbench instead of the native right surface. */
+  /** Route ordinary opens into the workbench; PDF and Office files retain their native readers. */
   readonly preferWorkbench?: () => boolean
   /** Notify a product coordinator after a current-Session open resolves. */
   readonly onOpenIntent?: (intent: 'user' | 'background') => void
+  /** Report a current-Session document open so the product can reveal its reader for user intent. */
+  readonly onNativeDocumentOpen?: (intent: 'user' | 'background') => void
 }
 
 /**
@@ -920,9 +923,14 @@ export function createBetterSidebarService(
     const callbackScope: SessionScope = scope ?? { sessionId: targetSessionId }
     const activeSessionId = store.getSnapshot().sessionId
     const targetsInactiveSession = scope !== undefined && scope.sessionId !== activeSessionId
+    const isDirectory = typeof seed.meta === 'object' && seed.meta !== null && 'dir' in seed.meta && seed.meta.dir === true
+    const nativeDocument = seed.type === 'editor' && seed.path !== undefined && !isDirectory
+      && isNativeDocumentPath(seed.path)
+    const preferWorkbench = options.preferWorkbench?.() === true
     // ── Native right Sidebar ──────────────────────────────────────────────
-    // With the native surface installed, every open except an explicit
-    // bottom-panel one lands there. The path seed's meaning depends on the
+    // The product workbench keeps PDF and Office files in the native readers.
+    // Other workbench opens stay local; without that preference, every open
+    // except an explicit bottom-panel one lands here. The path seed's meaning depends on the
     // type: `editor` is the only kind registered with
     // `dsh-resource://file/**` patterns (src/client/native/index.ts), so its
     // path seeds become resource addresses (the native registry routes the
@@ -931,7 +939,7 @@ export function createBetterSidebarService(
     // component state, not a file to open — and rides the seed (path
     // included) as navigation params, which the tab adapter merges onto the
     // synthetic record's `tab.path` for the registered component.
-    if (surface !== undefined && seed.target !== 'bottom' && options.preferWorkbench?.() !== true) {
+    if (surface !== undefined && ((preferWorkbench && nativeDocument) || (seed.target !== 'bottom' && !preferWorkbench))) {
       const state = store.getSnapshot().state
       // The descriptor's own factory mints what a view needs beyond the seed:
       // the side chat's thread bootstrap / reattach meta, the terminal's
@@ -984,7 +992,10 @@ export function createBetterSidebarService(
       // The native surface reports one open event, not create-vs-focus, so a
       // lifecycle consumer hears onOpen (documented in the guide).
       safeCall(() => descriptor.onOpen?.(synthetic, callbackScope))
-      if (!targetsInactiveSession) options.onOpenIntent?.(intent)
+      if (!targetsInactiveSession) {
+        options.onOpenIntent?.(intent)
+        if (nativeDocument) options.onNativeDocumentOpen?.(intent)
+      }
       return
     }
     // Whether this open targets a session that is NOT the one on screen: a

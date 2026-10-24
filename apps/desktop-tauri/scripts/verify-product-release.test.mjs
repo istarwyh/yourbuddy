@@ -10,6 +10,7 @@ import test from 'node:test'
 import {
   PRODUCT_CLIENT_IDS,
   RELEASE_DOCUMENT_PREVIEWS,
+  writeDocumentPreviewFixtures,
   exerciseDocumentPreviews,
   exerciseLightweightServices,
   recordPreviewNetworkEvent,
@@ -571,34 +572,101 @@ test('rejecting an unprepared input never removes its existing dependency tree',
 })
 
 
-test('document preview smoke requires core fallback and extension Editor content independently', async () => {
-  assert.deepEqual(RELEASE_DOCUMENT_PREVIEWS, [
-    { file: 'release-core-preview.fods', selector: '[data-document-preview]', text: 'YourBuddy prepared core document preview' },
-    { file: 'release-editor-preview.txt', selector: '[data-dsh-native-tab-host] .cm-content', text: 'YourBuddy prepared editor document preview' },
-  ])
-  const run = async failedSelector => {
-    const checked = []
-    let selected
-    const sidebar = {
-      getByRole: () => ({ click: async () => {} }),
-      getByText: file => ({ click: async () => { selected = file } }),
-      locator: selector => ({
-        click: async () => {},
-        getByText: (text, options) => ({ waitFor: async wait => {
-          assert.equal(options.exact, true)
-          assert.equal(wait.timeout, 15_000)
-          checked.push({ file: selected, selector, text })
-          if (selector === failedSelector) throw new Error('content is still Loading')
-        } }),
+function previewSidebar({ failFile, blankCanvas = false, missingPage = false, stuckClose = false, replacedTree = false, actions = [] } = {}) {
+  const checked = []
+  let selected
+  const locator = (selector, text) => ({
+    first() { return this },
+    filter() { return this },
+    locator: child => locator(`${selector} ${child}`),
+    getByRole: (_role, { name }) => locator(`${selector} ${name}`),
+    getByText: value => locator(selector, value),
+    isVisible: async () => true,
+    click: async () => {},
+    scrollIntoViewIfNeeded: async () => { actions.push(`scroll:${selected}:${selector}`) },
+    count: async () => selector.startsWith('workbench:')
+      ? Number(selector.includes('[title="Files"]') && !replacedTree)
+      : missingPage ? 1 : 2,
+    evaluate: async callback => callback({
+      width: 1, height: 1,
+      getContext: () => ({ getImageData: () => ({ data: blankCanvas ? [255, 255, 255, 255] : [0, 0, 0, 255] }) }),
+    }),
+    waitFor: async wait => {
+      if (text !== undefined) {
+        assert.equal(wait.timeout, 15_000)
+        checked.push({ file: selected, selector, text })
+        actions.push(`content:${selected}`)
+        if (selected === failFile) throw new Error('preview content missing')
+      }
+      if (wait.state === 'detached') {
+        if (stuckClose) throw new Error('preview remained mounted after close')
+        actions.push(`closed:${selected}`)
+      }
+    },
+  })
+  return {
+    checked, actions,
+    workbench: {
+      getByRole: (_role, { name }) => ({ click: async () => { assert.equal(name, 'Files'); actions.push('workbench:Files') } }),
+      getByText: file => ({
+        click: async () => { selected = file; actions.push(`opened:${file}`, `workbench:${file}`) },
+        waitFor: async () => { if (replacedTree) throw new Error('workbench tree disappeared') },
       }),
+      locator: selector => locator(`workbench:${selector}`),
+    },
+    sidebar: {
+      getByRole: () => ({ click: async () => {} }),
+      getByText: file => ({ click: async () => { selected = file; actions.push(`opened:${file}`) } }),
+      locator,
+    },
+  }
+}
+
+test('document preview fixtures contain real PDF and OOXML bytes rather than renamed text', () => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-office-fixtures-'))
+  try {
+    const oldTagFixtures = join(root, 'old-tag-fixtures')
+    mkdirSync(oldTagFixtures)
+    assert.throws(() => writeDocumentPreviewFixtures(root, oldTagFixtures), /ENOENT/u)
+    writeDocumentPreviewFixtures(root)
+    for (const preview of RELEASE_DOCUMENT_PREVIEWS) {
+      const bytes = readFileSync(join(root, preview.file))
+      if (!preview.viewer) assert.equal(bytes.toString(), `${preview.text}\n`)
+      else {
+        assert.deepEqual(bytes, readFileSync(join(import.meta.dirname, 'fixtures', preview.file)))
+        assert.equal(bytes.subarray(0, preview.viewer === 'pdf' ? 5 : 4).toString(), preview.viewer === 'pdf' ? '%PDF-' : 'PK\u0003\u0004')
+      }
     }
-    await exerciseDocumentPreviews(sidebar)
-    return checked
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('document preview smoke requires four native viewers, page or sheet content, and close/reopen', async () => {
+  assert.deepEqual(RELEASE_DOCUMENT_PREVIEWS.map(preview => preview.file.split('.').at(-1)), ['fods', 'txt', 'pdf', 'docx', 'pptx', 'xlsx'])
+  const run = async options => {
+    const fixture = previewSidebar(options)
+    await exerciseDocumentPreviews(fixture.sidebar, fixture.workbench)
+    return fixture
   }
-  assert.deepEqual(await run(), RELEASE_DOCUMENT_PREVIEWS)
-  for (const { selector } of RELEASE_DOCUMENT_PREVIEWS) {
-    await assert.rejects(run(selector), /content is still Loading/u)
+  const { checked, actions } = await run()
+  for (const preview of RELEASE_DOCUMENT_PREVIEWS) {
+    const content = checked.filter(entry => entry.file === preview.file)
+    if (!preview.viewer) assert.deepEqual(content, [preview])
+    else {
+      assert.ok(content.every(entry => entry.selector.includes(`data-document-preview="@deepseek-ai/dsh-client-ui-sidebar-documentpreview/${preview.viewer}"`)))
+      for (const text of preview.sheets?.map(sheet => sheet.text) ?? [preview.text, preview.additionalText].filter(Boolean)) {
+        assert.equal(content.filter(entry => entry.text === text).length, preview.pages ? 4 : 2)
+      }
+      assert.equal(actions.filter(action => action === `opened:${preview.file}`).length, 2)
+      assert.equal(actions.filter(action => action === `workbench:${preview.file}`).length, 2)
+      assert.equal(actions.filter(action => action === `closed:${preview.file}`).length, 2)
+      if (preview.pages) assert.equal(actions.filter(action => action.startsWith(`scroll:${preview.file}:`) && action.includes('data-pdf-page="2"')).length, 2)
+    }
+    await assert.rejects(run({ failFile: preview.file }), /preview content missing/u)
   }
+  await assert.rejects(run({ blankCanvas: true }), /has no rendered content/u)
+  await assert.rejects(run({ missingPage: true }), /rendered 1 pages instead of 2/u)
+  await assert.rejects(run({ stuckClose: true }), /remained mounted after close/u)
+  await assert.rejects(run({ replacedTree: true }), /workbench tree disappeared/u)
 })
 
 test('preview failure evidence retains request outcomes and errors without auth URLs', async () => {
@@ -608,11 +676,15 @@ test('preview failure evidence retains request outcomes and errors without auth 
     recordPreviewNetworkEvent(events, 'http://localhost/sidebar/api/fs.read?token=secret', 'request', { method: 'POST' })
     recordPreviewNetworkEvent(events, 'http://localhost/sidebar/api/fs.read?token=secret', 'response', { status: 200 })
     recordPreviewNetworkEvent(events, 'http://localhost/sidebar/bundle/editor.js?token=secret', 'failed', { error: 'net::ERR_FAILED' })
+    recordPreviewNetworkEvent(events, 'http://localhost/api/officeToPdf/render?token=secret', 'response', { status: 200 })
+    recordPreviewNetworkEvent(events, 'http://localhost/api/workspaceFiles/read?token=secret', 'response', { status: 200 })
     recordPreviewNetworkEvent(events, 'http://localhost/api/session/create?token=secret', 'request')
     assert.deepEqual(events, [
       { event: 'request', path: '/sidebar/api/fs.read', method: 'POST' },
       { event: 'response', path: '/sidebar/api/fs.read', status: 200 },
       { event: 'failed', path: '/sidebar/bundle/editor.js', error: 'net::ERR_FAILED' },
+      { event: 'response', path: '/api/officeToPdf/render', status: 200 },
+      { event: 'response', path: '/api/workspaceFiles/read', status: 200 },
     ])
     const diagnostics = { phase: 'core', pageErrors: ['Failed to fetch \"http://localhost/?token=secret\"'], consoleErrors: ['dsh-auth=secret', `dsh-auth-${'a'.repeat(43)}=secret`], previewRequests: events }
     const screenshots = []
@@ -635,25 +707,18 @@ test('lightweight smoke restores its opened sidebar only after content succeeds 
       if (name === 'Open right sidebar') collapsed = false
       if (name === 'Collapse right sidebar' && !collapseFails) collapsed = true
     } })
+    const preview = previewSidebar({ failFile: previewFails ? RELEASE_DOCUMENT_PREVIEWS[0].file : undefined, actions })
     const sidebar = {
+      ...preview.sidebar,
       getAttribute: async () => String(collapsed),
       getByRole: (role, { name }) => role === 'textbox'
         ? { fill: async () => {}, press: async () => {} }
         : button(name),
-      getByText: () => ({ click: async () => {} }),
       frameLocator: () => ({ getByText: () => ({ waitFor: async () => {} }) }),
-      locator: selector => ({
-        isVisible: async () => true,
-        click: async () => {},
-        getByText: () => ({ waitFor: async () => {
-          actions.push(selector)
-          if (previewFails) throw new Error('preview content missing')
-        } }),
-      }),
     }
     const page = {
       getByRole: (_role, { name }) => button(name),
-      locator: selector => ({ first: () => selector.includes('[aria-hidden="true"]')
+      locator: selector => selector.includes('[data-workbench-surface="core"]') ? preview.workbench : ({ first: () => selector.includes('[aria-hidden="true"]')
         ? { waitFor: async options => {
           assert.deepEqual(options, { state: 'attached', timeout: 10_000 })
           if (!collapsed) throw new Error('sidebar did not collapse')
@@ -669,8 +734,8 @@ test('lightweight smoke restores its opened sidebar only after content succeeds 
   const restored = await run()
   assert.equal(restored.error, undefined)
   assert.equal(restored.collapsed, true)
-  assert.deepEqual(restored.actions.slice(-4), [
-    'New tab', '[data-dsh-native-tab-host] .cm-content', 'Collapse right sidebar', 'confirmed collapsed',
+  assert.deepEqual(restored.actions.slice(-3), [
+    'closed:release-office-preview.xlsx', 'Collapse right sidebar', 'confirmed collapsed',
   ])
   const alreadyOpen = await run({ initiallyCollapsed: false })
   assert.equal(alreadyOpen.error, undefined)

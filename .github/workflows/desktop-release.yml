@@ -203,12 +203,19 @@ jobs:
           }
           const isolated = isolatedReleaseEnvironment(sourceEnvironment, realpathSync(tmpdir()))
           const verifierPath = join(desktopRoot, 'scripts', `.yourbuddy-prepared-verifier-${process.pid}.mjs`)
+          const documentFixtureDirectory = join(isolated.root, 'document-preview-fixtures')
           try {
             if (!sourceEnvironment.GITHUB_WORKFLOW_SHA) throw new Error('GITHUB_WORKFLOW_SHA is required for prepared acceptance')
             writeFileSync(verifierPath, execFileSync('git', [
               'show', `${sourceEnvironment.GITHUB_WORKFLOW_SHA}:apps/desktop-tauri/scripts/verify-product-release.mjs`,
             ]), { flag: 'wx' })
-            const { verifyPreparedProduct } = await import(pathToFileURL(verifierPath).href)
+            const { verifyPreparedProduct, RELEASE_DOCUMENT_PREVIEWS } = await import(pathToFileURL(verifierPath).href)
+            mkdirSync(documentFixtureDirectory)
+            for (const preview of RELEASE_DOCUMENT_PREVIEWS.filter(preview => preview.viewer)) {
+              writeFileSync(join(documentFixtureDirectory, preview.file), execFileSync('git', [
+                'show', `${sourceEnvironment.GITHUB_WORKFLOW_SHA}:apps/desktop-tauri/scripts/fixtures/${preview.file}`,
+              ]), { flag: 'wx' })
+            }
             await withProcessEnvironment({
               ...isolated.env,
               CI: 'true',
@@ -228,6 +235,7 @@ jobs:
               await verifyPreparedProduct(harnessRoot, join(desktopRoot, 'bundled/yourbuddy-runtime'), {
                 capabilities: readPreparedCapabilities(),
                 desktopOverlayPath,
+                documentFixtureDirectory,
               })
               rmSync(join(harnessRoot, '.yourbuddy-pnpm-store'), { recursive: true })
             })
@@ -238,6 +246,7 @@ jobs:
             console.error(result.error)
             process.exitCode = 1
           } finally {
+            rmSync(documentFixtureDirectory, { recursive: true, force: true })
             rmSync(verifierPath, { force: true })
             writeFileSync(join(evidence, 'result.json'), `${JSON.stringify(result, null, 2)}\n`)
           }
