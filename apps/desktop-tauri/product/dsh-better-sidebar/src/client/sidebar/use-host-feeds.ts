@@ -15,6 +15,7 @@ import { detectNewDirectSubagent } from '../subagent-detect.ts'
 import { detectNewJob } from '../subagent-jobs.ts'
 import { api } from '../api.ts'
 import { mountedSessionId } from '../native/surface.ts'
+import { isNativeDocumentPath } from '../native/file-types.ts'
 import { usePolling } from '../use-polling.ts'
 import { t } from '../locales.ts'
 
@@ -129,7 +130,7 @@ export function useHostFeeds(feeds: {
           if (request.kind !== 'file' && request.kind !== 'folder' && request.kind !== 'url') return
           if (typeof request.target !== 'string' || request.target === '') return
           if (store.getPrefs().agentOpenTools !== true) return
-          const scope = { sessionId }
+          const scope = { sessionId, cwd: ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd }
           const title = typeof request.title === 'string' && request.title !== '' ? request.title : undefined
           if (request.kind === 'url') {
             // DSH's own browser tab type (absent from the plugin's registry
@@ -151,7 +152,14 @@ export function useHostFeeds(feeds: {
               intent: 'background',
             }, scope)
           } else {
+            const column = ctx.get('sidebarRight')
+            const park = isNativeDocumentPath(request.target)
+              && mountedSessionId(ctx) === sessionId
+              && isNarrowWidth(window.innerWidth)
+              && column?.isExpanded() === false
             ctx.get('betterSidebar')?.openFile(scope, request.target, title, 'background')
+            // A native reader must not cover narrow-screen chat for a background open.
+            if (park && column?.isExpanded() === true) column.toggleExpanded()
           }
         } catch {
           // Malformed push: ignore (the next push carries its own request).

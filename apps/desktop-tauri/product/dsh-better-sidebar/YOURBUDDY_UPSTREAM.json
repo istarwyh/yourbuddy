@@ -100,9 +100,15 @@
     "Set @deepseek-ai/dsh-session peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
     "Set @deepseek-ai/dsh-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
     "Set @deepseek-ai/dsh-subagent peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-tools peer range from 0.1.7-rc.2 to 0.2.0-rc.1."
+    "Set @deepseek-ai/dsh-tools peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    {
+      "id": "office-preview-routing",
+      "file": "patches/better-sidebar-office-preview-routing.patch",
+      "sha256": "cbbdcc022a8efbdd85f60053acc244abae04ba4a80d9579fb607e59e9b2518de",
+      "purpose": "Route workbench PDF, Word, PowerPoint, and Excel opens to existing native DSH previews, preserve the Files tree, and rebuild both client channels with the pinned recipe."
+    }
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "5076b81119288efe05567b5918ddd23424fbe7ba5860de6765c82ee3602e7205"
+  "treeSha256": "1469d1a36a53c2916ac8ffce08f0c35d774ae1599a886d495be4246f85cb146b"
 }

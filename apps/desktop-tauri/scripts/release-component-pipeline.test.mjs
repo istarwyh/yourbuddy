@@ -7,6 +7,7 @@ import { load } from 'js-yaml'
 
 import { prepareDist } from './prepare-dist.mjs'
 import { CAPABILITY_COMPONENTS } from './prepare-capability-components.mjs'
+import { RELEASE_DOCUMENT_PREVIEWS, writeDocumentPreviewFixtures } from './verify-product-release.mjs'
 
 const workflow = load(readFileSync(new URL('../../../.github/workflows/desktop-release.yml', import.meta.url), 'utf8'))
 const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
@@ -167,4 +168,49 @@ test('candidate mode cannot reach tag, release or updater-feed publication; retr
   const evidence = structuredClone(workflow)
   evidence.jobs.build.steps.find(step => step.name === 'Upload prepared acceptance evidence').if = 'success()'
   assert.throws(() => assertPublishingGuards(evidence))
+})
+
+test('prepared acceptance stages workflow-revision Office fixtures without changing older tagged files', t => {
+  const run = workflow.jobs.build.steps.find(step => step.name === 'Verify prepared default workbench and optional Harbor').run
+  const start = run.indexOf('mkdirSync(documentFixtureDirectory)')
+  const end = run.indexOf('await withProcessEnvironment', start)
+  assert.ok(start >= 0 && end > start)
+  assert.match(run, /const documentFixtureDirectory = join\(isolated\.root, 'document-preview-fixtures'\)/u)
+  const passesFixtureDirectory = source => assert.match(source, /await verifyPreparedProduct\([^;]*?\{\s*capabilities: readPreparedCapabilities\(\),\s*desktopOverlayPath,\s*documentFixtureDirectory,/u)
+  passesFixtureDirectory(run)
+  assert.throws(() => passesFixtureDirectory(run.replace(/\n\s+documentFixtureDirectory,\n/u, '\n')))
+  const cleanup = "rmSync(documentFixtureDirectory, { recursive: true, force: true })"
+  assert.ok(run.indexOf(cleanup) > run.indexOf('} finally {'))
+  const stage = Function('mkdirSync', 'writeFileSync', 'execFileSync', 'join', 'documentFixtureDirectory', 'sourceEnvironment', 'RELEASE_DOCUMENT_PREVIEWS', run.slice(start, end))
+  const remove = Function('rmSync', 'documentFixtureDirectory', cleanup)
+  for (const missingTrustedFixture of [false, true]) {
+    const root = mkdtempSync(join(tmpdir(), 'yourbuddy-workflow-office-'))
+    t.after(() => rmSync(root, { recursive: true, force: true }))
+    const oldTag = join(root, 'old-tag')
+    const world = join(root, 'world')
+    const fixtures = join(root, 'workflow-fixtures')
+    mkdirSync(oldTag)
+    mkdirSync(world)
+    assert.throws(() => writeDocumentPreviewFixtures(world, oldTag), /ENOENT/u)
+    const execute = () => stage(mkdirSync, writeFileSync, (command, args) => {
+      assert.equal(command, 'git')
+      assert.equal(args[0], 'show')
+      const prefix = 'trusted-workflow-commit:apps/desktop-tauri/scripts/fixtures/'
+      assert.ok(args[1].startsWith(prefix))
+      if (missingTrustedFixture && args[1].endsWith('.docx')) throw new Error('trusted fixture missing')
+      return readFileSync(new URL(`fixtures/${args[1].slice(prefix.length)}`, import.meta.url))
+    }, join, fixtures, { GITHUB_WORKFLOW_SHA: 'trusted-workflow-commit' }, RELEASE_DOCUMENT_PREVIEWS)
+    try {
+      if (missingTrustedFixture) assert.throws(execute, /trusted fixture missing/u)
+      else {
+        execute()
+        writeDocumentPreviewFixtures(world, fixtures)
+        for (const preview of RELEASE_DOCUMENT_PREVIEWS.filter(preview => preview.viewer)) {
+          assert.deepEqual(readFileSync(join(world, preview.file)), readFileSync(join(fixtures, preview.file)))
+          assert.equal(existsSync(join(oldTag, preview.file)), false)
+        }
+      }
+    } finally { remove(rmSync, fixtures) }
+    assert.equal(existsSync(fixtures), false)
+  }
 })

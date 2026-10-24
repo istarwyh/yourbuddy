@@ -761,26 +761,132 @@ async function createAndOpenReleaseSmokeSession(page) {
   await completeProductOnboarding(page)
 }
 
-// .fods is deliberately host-owned; .txt exercises the extension's real Editor instead.
+/** Synthetic files covering the fallback, Editor, and existing DSH PDF/Office/Excel viewers. */
 export const RELEASE_DOCUMENT_PREVIEWS = [
   { file: 'release-core-preview.fods', selector: '[data-document-preview]', text: 'YourBuddy prepared core document preview' },
   { file: 'release-editor-preview.txt', selector: '[data-dsh-native-tab-host] .cm-content', text: 'YourBuddy prepared editor document preview' },
+  { file: 'release-office-preview.pdf', viewer: 'pdf', pages: 2, text: 'Selectable PDF text' },
+  { file: 'release-office-preview.docx', viewer: 'office', pages: 2, text: 'Office preview', additionalText: '中文文档' },
+  { file: 'release-office-preview.pptx', viewer: 'office', pages: 2, text: 'Office preview', additionalText: '中文文档' },
+  { file: 'release-office-preview.xlsx', viewer: 'excel', sheets: [
+    { name: '季度预算', text: 'DeepSeek · 项目预算' },
+    { name: '公式与格式', text: '=_xlfn.XLOOKUP(1,{1},{42})' },
+  ] },
 ]
 
-/** Require rendered content from both actual file owners, not just a tab or loading indicator. */
-export async function exerciseDocumentPreviews(sidebar) {
+/**
+ * Copy real synthetic Office bytes, never renamed text, into the isolated release workspace.
+ * @param {string} workspace Destination owned by the release smoke.
+ * @param {string} fixtureDirectory Fixtures from the same revision as the verifier.
+ */
+export function writeDocumentPreviewFixtures(workspace, fixtureDirectory = join(desktopRoot, 'scripts', 'fixtures')) {
   for (const preview of RELEASE_DOCUMENT_PREVIEWS) {
-    await sidebar.getByRole('button', { name: 'New tab', exact: true }).click()
-    await sidebar.locator('[data-sidebar-right-guide-entry="files"]').click()
-    await sidebar.getByText(preview.file, { exact: true }).click()
-    await sidebar.locator(preview.selector).getByText(preview.text, { exact: true }).waitFor({ timeout: 15_000 })
+    writeFileSync(join(workspace, preview.file), preview.viewer
+      ? readFileSync(join(fixtureDirectory, preview.file))
+      : `${preview.text}\n`)
   }
 }
 
-/** Retain only sidebar request paths and outcomes; never headers, query strings or bodies. */
+async function requireOfficePreviewContent(sidebar, preview) {
+  const document = sidebar.locator(`[data-textpreview-url$="/${preview.file}"][data-document-preview="@deepseek-ai/dsh-client-ui-sidebar-documentpreview/${preview.viewer}"]`)
+  await document.waitFor({ state: 'visible', timeout: 60_000 })
+  if (preview.viewer === 'excel') {
+    const excel = document.locator('[data-excel-preview]')
+    await excel.locator('canvas').first().waitFor({ state: 'visible', timeout: 30_000 })
+    for (const sheet of preview.sheets) {
+      await excel.locator('.luckysheet-sheets-item-name').getByText(sheet.name, { exact: true }).click()
+      await excel.locator('.fortune-sheet-overlay').click({ position: { x: 70, y: 30 } })
+      await excel.locator('.fortune-fx-input').getByText(sheet.text, { exact: true }).waitFor({ timeout: 15_000 })
+    }
+  } else {
+    for (let number = 1; number <= preview.pages; number += 1) {
+      const page = document.locator(`[data-pdf-page="${number}"]`)
+      await page.scrollIntoViewIfNeeded({ timeout: 60_000 })
+      const canvas = page.getByRole('img', { name: `PDF page ${number}`, exact: true })
+      await canvas.waitFor({ state: 'visible', timeout: 60_000 })
+      for (const text of [preview.text, preview.additionalText].filter(Boolean)) {
+        await page.locator('[data-pdf-text]').getByText(text, { exact: false }).first().waitFor({ timeout: 15_000 })
+      }
+      const painted = await canvas.evaluate(node => {
+        const context = node.getContext('2d')
+        if (!context) return false
+        const pixels = context.getImageData(0, 0, node.width, node.height).data
+        for (let index = 0; index < pixels.length; index += 4) {
+          if (pixels[index + 3] > 0 && Math.min(pixels[index], pixels[index + 1], pixels[index + 2]) < 200) return true
+        }
+        return false
+      })
+      if (!painted) throw new Error(`${preview.file} page ${number} has no rendered content`)
+    }
+    const pageCount = await document.locator('[data-pdf-page]').count()
+    if (pageCount !== preview.pages) throw new Error(`${preview.file} rendered ${pageCount} pages instead of ${preview.pages}`)
+  }
+  return document
+}
+
+/** Require real viewer content and close/reopen behavior through the shipped workbench file tree. */
+export async function exerciseDocumentPreviews(sidebar, workbench, controls) {
+  const openFile = async file => {
+    await sidebar.getByRole('button', { name: 'New tab', exact: true }).click()
+    await sidebar.locator('[data-sidebar-right-guide-entry="files"]').click()
+    await sidebar.getByText(file, { exact: true }).click()
+  }
+  await controls.showWorkbench()
+  await workbench.getByRole('button', { name: 'Files', exact: true }).click()
+  for (const preview of RELEASE_DOCUMENT_PREVIEWS) {
+    if (!preview.viewer) {
+      await controls.showSidebar()
+      await openFile(preview.file)
+      await sidebar.locator(preview.selector).getByText(preview.text, { exact: true }).waitFor({ timeout: 15_000 })
+      continue
+    }
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await controls.showWorkbench()
+      await workbench.getByText(preview.file, { exact: true }).click()
+      const document = await requireOfficePreviewContent(sidebar, preview)
+      await workbench.getByText('release-editor-preview.txt', { exact: true }).waitFor({ state: 'attached', timeout: 15_000 })
+      if (await workbench.locator('div[draggable="true"][title="Files"]').count() !== 1
+        || await workbench.locator(`div[draggable="true"][title="${preview.file}"]`).count() !== 0) {
+        throw new Error(`${preview.file} replaced the workbench Files tab instead of opening the DSH viewer`)
+      }
+      await sidebar.locator('[data-dockkit-tab]').filter({ hasText: preview.file })
+        .locator('[data-dockkit-tab-close]').click()
+      await document.waitFor({ state: 'detached', timeout: 15_000 })
+    }
+  }
+}
+
+/** Exercise the middle workbench only after the desktop bridge has mounted its slot. */
+export async function exerciseWorkbenchDocumentPreviews(page) {
+  const sidebar = page.locator('[data-sidebar-right-panel]').first()
+  const startedCollapsed = await sidebar.getAttribute('aria-hidden') === 'true'
+  const controls = {
+    showSidebar: async () => {
+      if (await sidebar.getAttribute('aria-hidden') === 'true') {
+        await page.getByRole('button', { name: 'Open right sidebar', exact: true }).click()
+      }
+    },
+    showWorkbench: async () => {
+      if (await sidebar.getAttribute('aria-hidden') !== 'true') {
+        await sidebar.getByRole('button', { name: 'Collapse right sidebar', exact: true }).click()
+        await page.locator('[data-sidebar-right-panel][aria-hidden="true"]').first()
+          .waitFor({ state: 'attached', timeout: 10_000 })
+      }
+    },
+  }
+  await exerciseDocumentPreviews(sidebar,
+    page.locator('[data-workbench-surface="core"] [data-dsh-panel-host][data-dsh-presentation="slot"]'), controls)
+  // Preserve a failed preview for evidence; restore only after content and reopen checks pass.
+  if (startedCollapsed) {
+    await controls.showWorkbench()
+  } else await controls.showSidebar()
+}
+
+/** Retain only sidebar and document-read request paths and outcomes; never headers, query strings or bodies. */
 export function recordPreviewNetworkEvent(events, url, event, outcome = {}) {
   const path = new URL(url).pathname
-  if (path.startsWith('/sidebar/api/') || path.startsWith('/sidebar/bundle/')) {
+  if (path.startsWith('/sidebar/api/') || path.startsWith('/sidebar/bundle/')
+    || path.startsWith('/api/officeToPdf/') || path.startsWith('/api/workspaceFiles/')) {
     events.push({ event, path, ...outcome })
   }
 }
@@ -825,7 +931,6 @@ export async function exerciseLightweightServices(page) {
     await input.press('Enter')
     await sidebar.frameLocator('iframe[data-sidebar-browser-frame]')
       .getByText('YourBuddy lightweight browser is running', { exact: true }).waitFor({ timeout: 15_000 })
-    await exerciseDocumentPreviews(sidebar)
     // The same Session reopens in the desktop iframe; restore its persisted expanded state.
     // Keep a failed preview visible for the failure screenshot instead of restoring in finally.
     if (startedCollapsed) {
@@ -1277,6 +1382,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       || Math.abs(workbenchGeometry.host.height - workbenchGeometry.panel.height) > 2) {
       throw new Error(`Better Sidebar did not fill the primary workbench slot: ${JSON.stringify(workbenchGeometry)}`)
     }
+    await exerciseWorkbenchDocumentPreviews(embedded)
     const newTabControl = coreSurface.getByRole('button', { name: 'New tab', exact: true }).first()
     await newTabControl.click()
     await embedded.getByRole('menu').last().waitFor({ state: 'visible', timeout: 10_000 })
@@ -1661,9 +1767,6 @@ async function runBrowserSmoke(baseUrl, env, phase) {
 }
 
 async function runHostSmoke(root, productRuntimeRoot, desktopOverlayPath, world, lifetime, phase, capabilities = []) {
-  for (const preview of RELEASE_DOCUMENT_PREVIEWS) {
-    writeFileSync(join(world, preview.file), `${preview.text}\n`)
-  }
   const overlay = join(world, 'product.overlay.yml')
   const proxyVerifier = join(world, 'proxy-dispatcher-verifier.mjs')
   const proxyPackage = pathToFileURL(join(
@@ -1885,7 +1988,7 @@ async function verifyMarketplaceHostContract(root) {
  * Signed native download/install admission is a separate candidate gate.
  * @param {string} root Prepared and installed Harness.
  * @param {string} productRuntimeRoot Prepared Harbor Python runtime.
- * @param {{capabilities?: object[], desktopOverlayPath?: string}} options Prepared packages and the real Rust-rendered desktop overlay.
+ * @param {{capabilities?: object[], desktopOverlayPath?: string, documentFixtureDirectory?: string}} options Prepared packages, the real Rust-rendered desktop overlay, and verifier-owned synthetic fixtures.
  * @returns {Promise<void>}
  */
 export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRoot = runtimeRoot, options = {}) {
@@ -1906,8 +2009,9 @@ export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRo
       throw new Error(`product peer verification count changed after install: lock=${lockPeers}, installed=${installedPeers}`)
     }
     await verifyMarketplaceHostContract(root)
+    writeDocumentPreviewFixtures(world, options.documentFixtureDirectory)
     await runHostSmoke(root, productRuntimeRoot, desktopOverlayPath, world, lifetime, 'core')
-    console.log(`verify-product-release: default product passed (${CORE_PRODUCT_CLIENT_IDS.length} product Clients, Codex default, lightweight browser and document preview)`)
+    console.log(`verify-product-release: default product passed (${CORE_PRODUCT_CLIENT_IDS.length} product Clients, Codex default, lightweight browser, PDF/DOCX/PPTX/XLSX viewing and reopen in Chromium)`)
     const capabilities = readReleaseCapabilities(options.capabilities ?? RELEASE_CAPABILITIES.map(entry => {
       const packageRoot = join(desktopRoot, 'bundled', 'capabilities', entry.key)
       const manifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'))

@@ -1,0 +1,680 @@
+diff --git a/README.md b/README.md
+index e8f8f721..8e4d7467 100644
+--- a/README.md
++++ b/README.md
+@@ -62,6 +62,8 @@
+ 
+ 文件引用插入通过目标 Session 的 scoped bail 事件 `slash/input-insert-reference` 分派：只有首个接受请求的编辑器插入引用，未接受时草稿保持不变。Side Chat 继承完整 `SessionEvent` envelope，保留 `surfaceOp`、`sourceEventSeqs`、`ignorable` 与子会话的继承事件计数。
+ 
++YourBuddy 的工作台模式把 PDF、Word（DOC/DOCX）、PowerPoint（PPT/PPTX）和 Excel（XLS/XLSX）文件交给已有的 DSH 只读预览，不替换文件树或新增查看器。用户主动打开时会展开会话区域；后台打开不改变该区域的展开状态。已有下载回退标签需关闭后重新打开文件。
++
+ ## 🚀 安装
+ 
+ **前置**：已装好 DSH（`dsh web` 能正常运行），Node.js ≥ 20、pnpm ≥ 10。
+diff --git a/README_EN.md b/README_EN.md
+index e062af02..434f9988 100644
+--- a/README_EN.md
++++ b/README_EN.md
+@@ -62,6 +62,8 @@
+ 
+ File-reference insertion dispatches `slash/input-insert-reference` as a scoped bail event for the target Session: only the first accepting editor inserts the chip; a declined insertion leaves the draft unchanged. Side Chat inherits complete `SessionEvent` envelopes, preserving `surfaceOp`, `sourceEventSeqs`, `ignorable`, and the child Session’s inherited-event count.
+ 
++In YourBuddy workbench mode, PDF, Word (DOC/DOCX), PowerPoint (PPT/PPTX), and Excel (XLS/XLSX) files use the existing read-only DSH preview without replacing the file tree or adding a viewer. User opens expand the Session region; background opens leave that region unchanged. Existing download-fallback tabs need closing and reopening.
++
+ ## 🚀 Installation
+ 
+ **Prerequisites**: DSH installed (`dsh web` boots), Node.js ≥ 20, pnpm ≥ 10.
+diff --git a/lib/client-registry.js b/lib/client-registry.js
+index 7444aa17..1cd196de 100644
+--- a/lib/client-registry.js
++++ b/lib/client-registry.js
+@@ -973,6 +973,28 @@ window.__ModuleLoader__.load({
+ 			});
+ 		}
+ 		//#endregion
++		//#region src/client/native/file-types.ts
++		/** File types whose shipped DSH reader replaces the workbench's binary download pane. */
++		const DOCUMENT_EXTENSIONS = /* @__PURE__ */ new Set([
++			"pdf",
++			"doc",
++			"docx",
++			"ppt",
++			"pptx",
++			"xls",
++			"xlsx"
++		]);
++		/**
++		* Whether a file uses the existing PDF, Office, or Excel reader.
++		* @param path - Absolute or Session-relative file path, with either path separator.
++		* @returns true for a supported document extension; dotfiles remain ordinary files.
++		*/
++		function isNativeDocumentPath(path) {
++			const name = path.slice(Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1);
++			const dot = name.lastIndexOf(".");
++			return dot > 0 && DOCUMENT_EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
++		}
++		//#endregion
+ 		//#region src/client/service.ts
+ 		/**
+ 		* The BetterSidebar client service: a registry that external plugins use
+@@ -1220,7 +1242,10 @@ window.__ModuleLoader__.load({
+ 				const callbackScope = scope ?? { sessionId: targetSessionId };
+ 				const activeSessionId = store.getSnapshot().sessionId;
+ 				const targetsInactiveSession = scope !== void 0 && scope.sessionId !== activeSessionId;
+-				if (surface !== void 0 && seed.target !== "bottom" && options.preferWorkbench?.() !== true) {
++				const isDirectory = typeof seed.meta === "object" && seed.meta !== null && "dir" in seed.meta && seed.meta.dir === true;
++				const nativeDocument = seed.type === "editor" && seed.path !== void 0 && !isDirectory && isNativeDocumentPath(seed.path);
++				const preferWorkbench = options.preferWorkbench?.() === true;
++				if (surface !== void 0 && (preferWorkbench && nativeDocument || seed.target !== "bottom" && !preferWorkbench)) {
+ 					const state = store.getSnapshot().state;
+ 					const minted = descriptor.createTab === void 0 || state === void 0 ? void 0 : descriptor.createTab(state);
+ 					if (minted === null) return;
+@@ -1259,7 +1284,10 @@ window.__ModuleLoader__.load({
+ 						revealIfOpened
+ 					});
+ 					safeCall(() => descriptor.onOpen?.(synthetic, callbackScope));
+-					if (!targetsInactiveSession) options.onOpenIntent?.(intent);
++					if (!targetsInactiveSession) {
++						options.onOpenIntent?.(intent);
++						if (nativeDocument) options.onNativeDocumentOpen?.(intent);
++					}
+ 					return;
+ 				}
+ 				let created;
+@@ -5641,7 +5669,8 @@ window.__ModuleLoader__.load({
+ 		* toggling it re-renders without a reload):
+ 		* - merged (in-place): tree click / path-input Enter switch the CURRENT
+ 		*   tab in place (updateTab rewrites path/title; the tab keeps its id and
+-		*   meta, so treeOpen/treeWidth survive the switch);
++		*   meta, so treeOpen/treeWidth survive the switch). PDF and Office files
++		*   open in the native reader without replacing the workbench file tree;
+ 		* - split: they open through `openSidebarFile` (a per-path dedupe tab),
+ 		*   and a PATH-LESS window is the standalone explorer — it renders ONLY
+ 		*   the tree panel (search + FileTree, full-window), no editor chrome.
+@@ -5716,6 +5745,7 @@ window.__ModuleLoader__.load({
+ 			const openFile = (absolute) => {
+ 				if (inPlace) {
+ 					if (onOpenFileInPlace !== void 0) onOpenFileInPlace(absolute);
++					else if (isNativeDocumentPath(absolute)) openSidebarFile(ctx, scope.sessionId, absolute);
+ 					else ctx.get("betterSidebar")?.updateTab(tab.id, {
+ 						path: absolute,
+ 						title: baseName(absolute)
+@@ -5732,12 +5762,17 @@ window.__ModuleLoader__.load({
+ 			* The context menu's "open to the side": a fresh editor tab (uid id — the
+ 			* `'editor:' + path` convention would clash with the id safety net on a
+ 			* second side-open of the same file) in a rightward split of THIS pane.
++			* PDF and Office files use the existing native reader beside the workbench.
+ 			*/
+ 			const openFileSide = (absolute) => {
+ 				if (onOpenFileSide !== void 0) {
+ 					onOpenFileSide(absolute);
+ 					return;
+ 				}
++				if (isNativeDocumentPath(absolute)) {
++					openSidebarFile(ctx, scope.sessionId, absolute);
++					return;
++				}
+ 				store.reduce((state) => {
+ 					const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits);
+ 					const fresh = {
+@@ -14686,7 +14721,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 							if (request.kind !== "file" && request.kind !== "folder" && request.kind !== "url") return;
+ 							if (typeof request.target !== "string" || request.target === "") return;
+ 							if (store.getPrefs().agentOpenTools !== true) return;
+-							const scope = { sessionId };
++							const scope = {
++								sessionId,
++								cwd: ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
++							};
+ 							const title = typeof request.title === "string" && request.title !== "" ? request.title : void 0;
+ 							if (request.kind === "url") try {
+ 								ctx.get("sidebarRight")?.openTab("browser", { params: { url: request.target } });
+@@ -14699,7 +14737,12 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 								meta: { dir: true },
+ 								intent: "background"
+ 							}, scope);
+-							else ctx.get("betterSidebar")?.openFile(scope, request.target, title, "background");
++							else {
++								const column = ctx.get("sidebarRight");
++								const park = isNativeDocumentPath(request.target) && mountedSessionId(ctx) === sessionId && isNarrowWidth(window.innerWidth) && column?.isExpanded() === false;
++								ctx.get("betterSidebar")?.openFile(scope, request.target, title, "background");
++								if (park && column?.isExpanded() === true) column.toggleExpanded();
++							}
+ 						} catch {}
+ 					};
+ 					socket.onclose = () => {
+@@ -15743,7 +15786,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		//#endregion
+ 		//#region src/client/native/index.ts
+ 		/**
+-		* Extensions DSH's own previews own, and this plugin therefore refuses.
++		* Additional extensions DSH's own previews own, besides the PDF and Office files
++		* shared with the workbench through {@link isNativeDocumentPath}.
+ 		*
+ 		* DSH 0.1.7 grew a real document-preview package (host-side Office→PDF
+ 		* conversion, a worker-backed spreadsheet table, image/PDF zoom viewports and
+@@ -15756,7 +15800,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		* Refusing here is what hands the address over: `canOpen` returning false
+ 		* leaves the built-in `text` type (the `fallback` band) as the only claimant.
+ 		*
+-		* The list is exactly the set the host renders — nothing more. Nine extensions
++		* Together these are exactly the set the host renders — nothing more. Nine extensions
+ 		* that the host has NO renderer for (`xlsb xlt xltx xltm ots dot dotx avif`)
+ 		* used to be refused here too, and refusing them turned "the plugin shows a
+ 		* download panel" into "the host shows 'preview is not available for this file
+@@ -15766,12 +15810,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		* `tests/native-surface.spec.ts` pins both directions of this boundary.
+ 		*/
+ 		const HOST_OWNED_EXTS = /* @__PURE__ */ new Set([
+-			"xlsx",
+-			"xls",
+ 			"csv",
+ 			"tsv",
+ 			"fods",
+-			"pdf",
+ 			"png",
+ 			"jpg",
+ 			"jpeg",
+@@ -15779,18 +15820,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 			"webp",
+ 			"svg",
+ 			"bmp",
+-			"ico",
+-			"doc",
+-			"docx",
+-			"ppt",
+-			"pptx"
++			"ico"
+ 		]);
+ 		/**
+ 		* Whether DSH's own preview owns one path.
+ 		* @param path - the address's decoded path.
+-		* @returns true for a {@link HOST_OWNED_EXTS} extension (a dotfile is not one).
++		* @returns true for a shipped host preview extension (a dotfile is not one).
+ 		*/
+ 		function hostOwnedPath(path) {
++			if (isNativeDocumentPath(path)) return true;
+ 			const name = path.slice(path.lastIndexOf("/") + 1);
+ 			const dot = name.lastIndexOf(".");
+ 			return dot > 0 && HOST_OWNED_EXTS.has(name.slice(dot + 1).toLowerCase());
+@@ -17679,6 +17717,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 				preferWorkbench: () => slotPresentationActive,
+ 				onOpenIntent: (intent) => {
+ 					ctx.get("yourBuddyWorkbench")?.handleBetterSidebarOpen(intent);
++				},
++				onNativeDocumentOpen: (intent) => {
++					if (intent !== "user") return;
++					ctx.get("yourBuddyWorkbench")?.setSessionExpanded(true);
+ 				}
+ 			});
+ 			ctx.provide("betterSidebar", service);
+diff --git a/lib/client.js b/lib/client.js
+index 10bde11d..dd0f5d61 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -973,6 +973,28 @@ window.__ModuleLoader__.load({
+ 			});
+ 		}
+ 		//#endregion
++		//#region src/client/native/file-types.ts
++		/** File types whose shipped DSH reader replaces the workbench's binary download pane. */
++		const DOCUMENT_EXTENSIONS = /* @__PURE__ */ new Set([
++			"pdf",
++			"doc",
++			"docx",
++			"ppt",
++			"pptx",
++			"xls",
++			"xlsx"
++		]);
++		/**
++		* Whether a file uses the existing PDF, Office, or Excel reader.
++		* @param path - Absolute or Session-relative file path, with either path separator.
++		* @returns true for a supported document extension; dotfiles remain ordinary files.
++		*/
++		function isNativeDocumentPath(path) {
++			const name = path.slice(Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1);
++			const dot = name.lastIndexOf(".");
++			return dot > 0 && DOCUMENT_EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
++		}
++		//#endregion
+ 		//#region src/client/service.ts
+ 		/**
+ 		* The BetterSidebar client service: a registry that external plugins use
+@@ -1220,7 +1242,10 @@ window.__ModuleLoader__.load({
+ 				const callbackScope = scope ?? { sessionId: targetSessionId };
+ 				const activeSessionId = store.getSnapshot().sessionId;
+ 				const targetsInactiveSession = scope !== void 0 && scope.sessionId !== activeSessionId;
+-				if (surface !== void 0 && seed.target !== "bottom" && options.preferWorkbench?.() !== true) {
++				const isDirectory = typeof seed.meta === "object" && seed.meta !== null && "dir" in seed.meta && seed.meta.dir === true;
++				const nativeDocument = seed.type === "editor" && seed.path !== void 0 && !isDirectory && isNativeDocumentPath(seed.path);
++				const preferWorkbench = options.preferWorkbench?.() === true;
++				if (surface !== void 0 && (preferWorkbench && nativeDocument || seed.target !== "bottom" && !preferWorkbench)) {
+ 					const state = store.getSnapshot().state;
+ 					const minted = descriptor.createTab === void 0 || state === void 0 ? void 0 : descriptor.createTab(state);
+ 					if (minted === null) return;
+@@ -1259,7 +1284,10 @@ window.__ModuleLoader__.load({
+ 						revealIfOpened
+ 					});
+ 					safeCall(() => descriptor.onOpen?.(synthetic, callbackScope));
+-					if (!targetsInactiveSession) options.onOpenIntent?.(intent);
++					if (!targetsInactiveSession) {
++						options.onOpenIntent?.(intent);
++						if (nativeDocument) options.onNativeDocumentOpen?.(intent);
++					}
+ 					return;
+ 				}
+ 				let created;
+@@ -5641,7 +5669,8 @@ window.__ModuleLoader__.load({
+ 		* toggling it re-renders without a reload):
+ 		* - merged (in-place): tree click / path-input Enter switch the CURRENT
+ 		*   tab in place (updateTab rewrites path/title; the tab keeps its id and
+-		*   meta, so treeOpen/treeWidth survive the switch);
++		*   meta, so treeOpen/treeWidth survive the switch). PDF and Office files
++		*   open in the native reader without replacing the workbench file tree;
+ 		* - split: they open through `openSidebarFile` (a per-path dedupe tab),
+ 		*   and a PATH-LESS window is the standalone explorer — it renders ONLY
+ 		*   the tree panel (search + FileTree, full-window), no editor chrome.
+@@ -5716,6 +5745,7 @@ window.__ModuleLoader__.load({
+ 			const openFile = (absolute) => {
+ 				if (inPlace) {
+ 					if (onOpenFileInPlace !== void 0) onOpenFileInPlace(absolute);
++					else if (isNativeDocumentPath(absolute)) openSidebarFile(ctx, scope.sessionId, absolute);
+ 					else ctx.get("betterSidebar")?.updateTab(tab.id, {
+ 						path: absolute,
+ 						title: baseName(absolute)
+@@ -5732,12 +5762,17 @@ window.__ModuleLoader__.load({
+ 			* The context menu's "open to the side": a fresh editor tab (uid id — the
+ 			* `'editor:' + path` convention would clash with the id safety net on a
+ 			* second side-open of the same file) in a rightward split of THIS pane.
++			* PDF and Office files use the existing native reader beside the workbench.
+ 			*/
+ 			const openFileSide = (absolute) => {
+ 				if (onOpenFileSide !== void 0) {
+ 					onOpenFileSide(absolute);
+ 					return;
+ 				}
++				if (isNativeDocumentPath(absolute)) {
++					openSidebarFile(ctx, scope.sessionId, absolute);
++					return;
++				}
+ 				store.reduce((state) => {
+ 					const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits);
+ 					const fresh = {
+@@ -14686,7 +14721,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 							if (request.kind !== "file" && request.kind !== "folder" && request.kind !== "url") return;
+ 							if (typeof request.target !== "string" || request.target === "") return;
+ 							if (store.getPrefs().agentOpenTools !== true) return;
+-							const scope = { sessionId };
++							const scope = {
++								sessionId,
++								cwd: ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
++							};
+ 							const title = typeof request.title === "string" && request.title !== "" ? request.title : void 0;
+ 							if (request.kind === "url") try {
+ 								ctx.get("sidebarRight")?.openTab("browser", { params: { url: request.target } });
+@@ -14699,7 +14737,12 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 								meta: { dir: true },
+ 								intent: "background"
+ 							}, scope);
+-							else ctx.get("betterSidebar")?.openFile(scope, request.target, title, "background");
++							else {
++								const column = ctx.get("sidebarRight");
++								const park = isNativeDocumentPath(request.target) && mountedSessionId(ctx) === sessionId && isNarrowWidth(window.innerWidth) && column?.isExpanded() === false;
++								ctx.get("betterSidebar")?.openFile(scope, request.target, title, "background");
++								if (park && column?.isExpanded() === true) column.toggleExpanded();
++							}
+ 						} catch {}
+ 					};
+ 					socket.onclose = () => {
+@@ -15743,7 +15786,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		//#endregion
+ 		//#region src/client/native/index.ts
+ 		/**
+-		* Extensions DSH's own previews own, and this plugin therefore refuses.
++		* Additional extensions DSH's own previews own, besides the PDF and Office files
++		* shared with the workbench through {@link isNativeDocumentPath}.
+ 		*
+ 		* DSH 0.1.7 grew a real document-preview package (host-side Office→PDF
+ 		* conversion, a worker-backed spreadsheet table, image/PDF zoom viewports and
+@@ -15756,7 +15800,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		* Refusing here is what hands the address over: `canOpen` returning false
+ 		* leaves the built-in `text` type (the `fallback` band) as the only claimant.
+ 		*
+-		* The list is exactly the set the host renders — nothing more. Nine extensions
++		* Together these are exactly the set the host renders — nothing more. Nine extensions
+ 		* that the host has NO renderer for (`xlsb xlt xltx xltm ots dot dotx avif`)
+ 		* used to be refused here too, and refusing them turned "the plugin shows a
+ 		* download panel" into "the host shows 'preview is not available for this file
+@@ -15766,12 +15810,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 		* `tests/native-surface.spec.ts` pins both directions of this boundary.
+ 		*/
+ 		const HOST_OWNED_EXTS = /* @__PURE__ */ new Set([
+-			"xlsx",
+-			"xls",
+ 			"csv",
+ 			"tsv",
+ 			"fods",
+-			"pdf",
+ 			"png",
+ 			"jpg",
+ 			"jpeg",
+@@ -15779,18 +15820,15 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 			"webp",
+ 			"svg",
+ 			"bmp",
+-			"ico",
+-			"doc",
+-			"docx",
+-			"ppt",
+-			"pptx"
++			"ico"
+ 		]);
+ 		/**
+ 		* Whether DSH's own preview owns one path.
+ 		* @param path - the address's decoded path.
+-		* @returns true for a {@link HOST_OWNED_EXTS} extension (a dotfile is not one).
++		* @returns true for a shipped host preview extension (a dotfile is not one).
+ 		*/
+ 		function hostOwnedPath(path) {
++			if (isNativeDocumentPath(path)) return true;
+ 			const name = path.slice(path.lastIndexOf("/") + 1);
+ 			const dot = name.lastIndexOf(".");
+ 			return dot > 0 && HOST_OWNED_EXTS.has(name.slice(dot + 1).toLowerCase());
+@@ -17679,6 +17717,10 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+ 				preferWorkbench: () => slotPresentationActive,
+ 				onOpenIntent: (intent) => {
+ 					ctx.get("yourBuddyWorkbench")?.handleBetterSidebarOpen(intent);
++				},
++				onNativeDocumentOpen: (intent) => {
++					if (intent !== "user") return;
++					ctx.get("yourBuddyWorkbench")?.setSessionExpanded(true);
+ 				}
+ 			});
+ 			ctx.provide("betterSidebar", service);
+diff --git a/lib/types/client/native/file-types.d.ts b/lib/types/client/native/file-types.d.ts
+new file mode 100644
+index 00000000..fcff47be
+--- /dev/null
++++ b/lib/types/client/native/file-types.d.ts
+@@ -0,0 +1,6 @@
++/**
++ * Whether a file uses the existing PDF, Office, or Excel reader.
++ * @param path - Absolute or Session-relative file path, with either path separator.
++ * @returns true for a supported document extension; dotfiles remain ordinary files.
++ */
++export declare function isNativeDocumentPath(path: string): boolean;
+diff --git a/lib/types/client/service.d.ts b/lib/types/client/service.d.ts
+index e6cc0161..25976500 100644
+--- a/lib/types/client/service.d.ts
++++ b/lib/types/client/service.d.ts
+@@ -639,10 +639,12 @@ export declare const SIDEBAR_SERVICE_VERSION = "0.21.1";
+  */
+ export declare const SIDEBAR_FEATURES: readonly ["badge", "tabLifecycle", "updateTab", "openFile", "targetedOpen", "stateSubscription", "tabMeta", "pluginSettings", "urlTarget", "settingSelect", "fileIcons"];
+ interface BetterSidebarServiceOptions {
+-    /** Route ordinary opens into the plugin-owned workbench instead of the native right surface. */
++    /** Route ordinary opens into the workbench; PDF and Office files retain their native readers. */
+     readonly preferWorkbench?: () => boolean;
+     /** Notify a product coordinator after a current-Session open resolves. */
+     readonly onOpenIntent?: (intent: 'user' | 'background') => void;
++    /** Report a current-Session document open so the product can reveal its reader for user intent. */
++    readonly onNativeDocumentOpen?: (intent: 'user' | 'background') => void;
+ }
+ /**
+  * Create one BetterSidebar service bound to a store. The service owns the
+diff --git a/src/client/EditorHost.tsx b/src/client/EditorHost.tsx
+index 3eef6faa..873b50ee 100644
+--- a/src/client/EditorHost.tsx
++++ b/src/client/EditorHost.tsx
+@@ -10,7 +10,8 @@
+  * toggling it re-renders without a reload):
+  * - merged (in-place): tree click / path-input Enter switch the CURRENT
+  *   tab in place (updateTab rewrites path/title; the tab keeps its id and
+- *   meta, so treeOpen/treeWidth survive the switch);
++ *   meta, so treeOpen/treeWidth survive the switch). PDF and Office files
++ *   open in the native reader without replacing the workbench file tree;
+  * - split: they open through `openSidebarFile` (a per-path dedupe tab),
+  *   and a PATH-LESS window is the standalone explorer — it renders ONLY
+  *   the tree panel (search + FileTree, full-window), no editor chrome.
+@@ -33,6 +34,7 @@ import { planFirstMatch, planFsReadOutcome, type EditorLoadAction } from './edit
+ import { baseName } from './FileTree.tsx'
+ import { createFrameBatcher } from './frame-batcher.ts'
+ import { openSidebarFile } from './sidebar-file.ts'
++import { isNativeDocumentPath } from './native/file-types.ts'
+ import { openWithSshActive, openWithUrl, parseOpenWithConfig, resolveOpenWithTargets } from './open-with.ts'
+ import { updatePluginSettings } from './plugin-settings.ts'
+ import { TreePanel } from './TreePanel.tsx'
+@@ -169,6 +171,7 @@ export function EditorHost(props: {
+   const openFile = (absolute: string): void => {
+     if (inPlace) {
+       if (onOpenFileInPlace !== undefined) onOpenFileInPlace(absolute)
++      else if (isNativeDocumentPath(absolute)) openSidebarFile(ctx, scope.sessionId, absolute)
+       else ctx.get('betterSidebar')?.updateTab(tab.id, { path: absolute, title: baseName(absolute) })
+     } else if (onOpenFile !== undefined) {
+       onOpenFile(absolute)
+@@ -187,12 +190,17 @@ export function EditorHost(props: {
+    * The context menu's "open to the side": a fresh editor tab (uid id — the
+    * `'editor:' + path` convention would clash with the id safety net on a
+    * second side-open of the same file) in a rightward split of THIS pane.
++   * PDF and Office files use the existing native reader beside the workbench.
+    */
+   const openFileSide = (absolute: string): void => {
+     if (onOpenFileSide !== undefined) {
+       onOpenFileSide(absolute)
+       return
+     }
++    if (isNativeDocumentPath(absolute)) {
++      openSidebarFile(ctx, scope.sessionId, absolute)
++      return
++    }
+     store.reduce((state) => {
+       const pane = leafWithTab(state.bottomSplits, tab.id) ?? firstLeaf(state.bottomSplits)
+       const fresh: SidebarTab = {
+diff --git a/src/client/index.tsx b/src/client/index.tsx
+index 08fc7614..dbe1bd78 100644
+--- a/src/client/index.tsx
++++ b/src/client/index.tsx
+@@ -44,6 +44,7 @@ export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection']
+ 
+ interface ProductWorkbenchFace {
+   handleBetterSidebarOpen(intent: 'user' | 'background'): void
++  setSessionExpanded(expanded: boolean): void
+ }
+ 
+ /**
+@@ -172,6 +173,11 @@ export function apply(ctx: Context): void {
+       const coordinator = ctx.get('yourBuddyWorkbench') as ProductWorkbenchFace | undefined
+       coordinator?.handleBetterSidebarOpen(intent)
+     },
++    onNativeDocumentOpen: intent => {
++      if (intent !== 'user') return
++      const coordinator = ctx.get('yourBuddyWorkbench') as ProductWorkbenchFace | undefined
++      coordinator?.setSessionExpanded(true)
++    },
+   })
+   ctx.provide('betterSidebar', service)
+   // The native right-Sidebar surface: the plugin's content is registered as
+diff --git a/src/client/native/file-types.ts b/src/client/native/file-types.ts
+new file mode 100644
+index 00000000..1cfa7581
+--- /dev/null
++++ b/src/client/native/file-types.ts
+@@ -0,0 +1,13 @@
++/** File types whose shipped DSH reader replaces the workbench's binary download pane. */
++const DOCUMENT_EXTENSIONS: ReadonlySet<string> = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])
++
++/**
++ * Whether a file uses the existing PDF, Office, or Excel reader.
++ * @param path - Absolute or Session-relative file path, with either path separator.
++ * @returns true for a supported document extension; dotfiles remain ordinary files.
++ */
++export function isNativeDocumentPath(path: string): boolean {
++  const name = path.slice(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1)
++  const dot = name.lastIndexOf('.')
++  return dot > 0 && DOCUMENT_EXTENSIONS.has(name.slice(dot + 1).toLowerCase())
++}
+diff --git a/src/client/native/index.ts b/src/client/native/index.ts
+index c02a28b2..7f7be3a3 100644
+--- a/src/client/native/index.ts
++++ b/src/client/native/index.ts
+@@ -7,7 +7,7 @@
+  *   viewer — it claims `dsh-resource://file/**` at the default `extension`
+  *   band, which outranks the built-in `text` preview (`fallback`), so a file
+  *   the product opens lands in the plugin's editor — EXCEPT the formats
+- *   {@link HOST_OWNED_EXTS} hands back to DSH's own previews, which are
++ *   {@link hostOwnedPath} hands back to DSH's own previews, which are
+  *   strictly better for binary documents (host-side Office→PDF conversion,
+  *   a worker-backed spreadsheet table, a zoom viewport);
+  * - the built-in `files` page kind is TAKEN OVER by an `extension`
+@@ -26,6 +26,7 @@ import type { SidebarRightGuideEntry } from '@deepseek-ai/dsh-client-ui-sidebar-
+ import type { Context } from '../../context-types.ts'
+ import { t } from '../locales.ts'
+ import { parseFileAddress } from '../resource-address.ts'
++import { isNativeDocumentPath } from './file-types.ts'
+ import type { BetterSidebarService, TabDescriptor } from '../service.ts'
+ import type { SidebarStore } from '../state.ts'
+ import {
+@@ -38,7 +39,8 @@ import {
+ } from './tab-adapter.tsx'
+ 
+ /**
+- * Extensions DSH's own previews own, and this plugin therefore refuses.
++ * Additional extensions DSH's own previews own, besides the PDF and Office files
++ * shared with the workbench through {@link isNativeDocumentPath}.
+  *
+  * DSH 0.1.7 grew a real document-preview package (host-side Office→PDF
+  * conversion, a worker-backed spreadsheet table, image/PDF zoom viewports and
+@@ -51,7 +53,7 @@ import {
+  * Refusing here is what hands the address over: `canOpen` returning false
+  * leaves the built-in `text` type (the `fallback` band) as the only claimant.
+  *
+- * The list is exactly the set the host renders — nothing more. Nine extensions
++ * Together these are exactly the set the host renders — nothing more. Nine extensions
+  * that the host has NO renderer for (`xlsb xlt xltx xltm ots dot dotx avif`)
+  * used to be refused here too, and refusing them turned "the plugin shows a
+  * download panel" into "the host shows 'preview is not available for this file
+@@ -62,21 +64,18 @@ import {
+  */
+ const HOST_OWNED_EXTS: ReadonlySet<string> = new Set([
+   // Spreadsheets: the built-in renders a table in a worker.
+-  'xlsx', 'xls', 'csv', 'tsv', 'fods',
+-  // PDF: the built-in viewer pages and zooms.
+-  'pdf',
++  'csv', 'tsv', 'fods',
+   // Images: the built-in viewer adds a zoom viewport.
+   'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico',
+-  // Office documents: the built-in converts them to PDF host-side.
+-  'doc', 'docx', 'ppt', 'pptx',
+ ])
+ 
+ /**
+  * Whether DSH's own preview owns one path.
+  * @param path - the address's decoded path.
+- * @returns true for a {@link HOST_OWNED_EXTS} extension (a dotfile is not one).
++ * @returns true for a shipped host preview extension (a dotfile is not one).
+  */
+ function hostOwnedPath(path: string): boolean {
++  if (isNativeDocumentPath(path)) return true
+   const name = path.slice(path.lastIndexOf('/') + 1)
+   const dot = name.lastIndexOf('.')
+   return dot > 0 && HOST_OWNED_EXTS.has(name.slice(dot + 1).toLowerCase())
+diff --git a/src/client/service.ts b/src/client/service.ts
+index d102af14..3b38bccc 100644
+--- a/src/client/service.ts
++++ b/src/client/service.ts
+@@ -30,6 +30,7 @@ import {
+ } from './state.ts'
+ import { baseName, extOf } from './paths.ts'
+ import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
++import { isNativeDocumentPath } from './native/file-types.ts'
+ import type { SessionScope } from './api.ts'
+ import type { SidebarPrefs } from '../prefs-shared.ts'
+ 
+@@ -697,10 +698,12 @@ function safeCall(fn: () => void): void {
+ }
+ 
+ interface BetterSidebarServiceOptions {
+-  /** Route ordinary opens into the plugin-owned workbench instead of the native right surface. */
++  /** Route ordinary opens into the workbench; PDF and Office files retain their native readers. */
+   readonly preferWorkbench?: () => boolean
+   /** Notify a product coordinator after a current-Session open resolves. */
+   readonly onOpenIntent?: (intent: 'user' | 'background') => void
++  /** Report a current-Session document open so the product can reveal its reader for user intent. */
++  readonly onNativeDocumentOpen?: (intent: 'user' | 'background') => void
+ }
+ 
+ /**
+@@ -920,9 +923,14 @@ export function createBetterSidebarService(
+     const callbackScope: SessionScope = scope ?? { sessionId: targetSessionId }
+     const activeSessionId = store.getSnapshot().sessionId
+     const targetsInactiveSession = scope !== undefined && scope.sessionId !== activeSessionId
++    const isDirectory = typeof seed.meta === 'object' && seed.meta !== null && 'dir' in seed.meta && seed.meta.dir === true
++    const nativeDocument = seed.type === 'editor' && seed.path !== undefined && !isDirectory
++      && isNativeDocumentPath(seed.path)
++    const preferWorkbench = options.preferWorkbench?.() === true
+     // ── Native right Sidebar ──────────────────────────────────────────────
+-    // With the native surface installed, every open except an explicit
+-    // bottom-panel one lands there. The path seed's meaning depends on the
++    // The product workbench keeps PDF and Office files in the native readers.
++    // Other workbench opens stay local; without that preference, every open
++    // except an explicit bottom-panel one lands here. The path seed's meaning depends on the
+     // type: `editor` is the only kind registered with
+     // `dsh-resource://file/**` patterns (src/client/native/index.ts), so its
+     // path seeds become resource addresses (the native registry routes the
+@@ -931,7 +939,7 @@ export function createBetterSidebarService(
+     // component state, not a file to open — and rides the seed (path
+     // included) as navigation params, which the tab adapter merges onto the
+     // synthetic record's `tab.path` for the registered component.
+-    if (surface !== undefined && seed.target !== 'bottom' && options.preferWorkbench?.() !== true) {
++    if (surface !== undefined && ((preferWorkbench && nativeDocument) || (seed.target !== 'bottom' && !preferWorkbench))) {
+       const state = store.getSnapshot().state
+       // The descriptor's own factory mints what a view needs beyond the seed:
+       // the side chat's thread bootstrap / reattach meta, the terminal's
+@@ -984,7 +992,10 @@ export function createBetterSidebarService(
+       // The native surface reports one open event, not create-vs-focus, so a
+       // lifecycle consumer hears onOpen (documented in the guide).
+       safeCall(() => descriptor.onOpen?.(synthetic, callbackScope))
+-      if (!targetsInactiveSession) options.onOpenIntent?.(intent)
++      if (!targetsInactiveSession) {
++        options.onOpenIntent?.(intent)
++        if (nativeDocument) options.onNativeDocumentOpen?.(intent)
++      }
+       return
+     }
+     // Whether this open targets a session that is NOT the one on screen: a
+diff --git a/src/client/sidebar/use-host-feeds.ts b/src/client/sidebar/use-host-feeds.ts
+index 27f2e1a5..8a5207c9 100644
+--- a/src/client/sidebar/use-host-feeds.ts
++++ b/src/client/sidebar/use-host-feeds.ts
+@@ -15,6 +15,7 @@ import { detectNewDirectSubagent } from '../subagent-detect.ts'
+ import { detectNewJob } from '../subagent-jobs.ts'
+ import { api } from '../api.ts'
+ import { mountedSessionId } from '../native/surface.ts'
++import { isNativeDocumentPath } from '../native/file-types.ts'
+ import { usePolling } from '../use-polling.ts'
+ import { t } from '../locales.ts'
+ 
+@@ -129,7 +130,7 @@ export function useHostFeeds(feeds: {
+           if (request.kind !== 'file' && request.kind !== 'folder' && request.kind !== 'url') return
+           if (typeof request.target !== 'string' || request.target === '') return
+           if (store.getPrefs().agentOpenTools !== true) return
+-          const scope = { sessionId }
++          const scope = { sessionId, cwd: ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd }
+           const title = typeof request.title === 'string' && request.title !== '' ? request.title : undefined
+           if (request.kind === 'url') {
+             // DSH's own browser tab type (absent from the plugin's registry
+@@ -151,7 +152,14 @@ export function useHostFeeds(feeds: {
+               intent: 'background',
+             }, scope)
+           } else {
++            const column = ctx.get('sidebarRight')
++            const park = isNativeDocumentPath(request.target)
++              && mountedSessionId(ctx) === sessionId
++              && isNarrowWidth(window.innerWidth)
++              && column?.isExpanded() === false
+             ctx.get('betterSidebar')?.openFile(scope, request.target, title, 'background')
++            // A native reader must not cover narrow-screen chat for a background open.
++            if (park && column?.isExpanded() === true) column.toggleExpanded()
+           }
+         } catch {
+           // Malformed push: ignore (the next push carries its own request).

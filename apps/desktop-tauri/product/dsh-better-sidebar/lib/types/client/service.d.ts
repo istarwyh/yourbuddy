@@ -639,10 +639,12 @@ export declare const SIDEBAR_SERVICE_VERSION = "0.21.1";
  */
 export declare const SIDEBAR_FEATURES: readonly ["badge", "tabLifecycle", "updateTab", "openFile", "targetedOpen", "stateSubscription", "tabMeta", "pluginSettings", "urlTarget", "settingSelect", "fileIcons"];
 interface BetterSidebarServiceOptions {
-    /** Route ordinary opens into the plugin-owned workbench instead of the native right surface. */
+    /** Route ordinary opens into the workbench; PDF and Office files retain their native readers. */
     readonly preferWorkbench?: () => boolean;
     /** Notify a product coordinator after a current-Session open resolves. */
     readonly onOpenIntent?: (intent: 'user' | 'background') => void;
+    /** Report a current-Session document open so the product can reveal its reader for user intent. */
+    readonly onNativeDocumentOpen?: (intent: 'user' | 'background') => void;
 }
 /**
  * Create one BetterSidebar service bound to a store. The service owns the

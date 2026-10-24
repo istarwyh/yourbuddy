@@ -44,6 +44,7 @@ export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection']
 
 interface ProductWorkbenchFace {
   handleBetterSidebarOpen(intent: 'user' | 'background'): void
+  setSessionExpanded(expanded: boolean): void
 }
 
 /**
@@ -171,6 +172,11 @@ export function apply(ctx: Context): void {
     onOpenIntent: intent => {
       const coordinator = ctx.get('yourBuddyWorkbench') as ProductWorkbenchFace | undefined
       coordinator?.handleBetterSidebarOpen(intent)
+    },
+    onNativeDocumentOpen: intent => {
+      if (intent !== 'user') return
+      const coordinator = ctx.get('yourBuddyWorkbench') as ProductWorkbenchFace | undefined
+      coordinator?.setSessionExpanded(true)
     },
   })
   ctx.provide('betterSidebar', service)

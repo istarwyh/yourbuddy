@@ -7,7 +7,7 @@
  *   viewer — it claims `dsh-resource://file/**` at the default `extension`
  *   band, which outranks the built-in `text` preview (`fallback`), so a file
  *   the product opens lands in the plugin's editor — EXCEPT the formats
- *   {@link HOST_OWNED_EXTS} hands back to DSH's own previews, which are
+ *   {@link hostOwnedPath} hands back to DSH's own previews, which are
  *   strictly better for binary documents (host-side Office→PDF conversion,
  *   a worker-backed spreadsheet table, a zoom viewport);
  * - the built-in `files` page kind is TAKEN OVER by an `extension`
@@ -26,6 +26,7 @@ import type { SidebarRightGuideEntry } from '@deepseek-ai/dsh-client-ui-sidebar-
 import type { Context } from '../../context-types.ts'
 import { t } from '../locales.ts'
 import { parseFileAddress } from '../resource-address.ts'
+import { isNativeDocumentPath } from './file-types.ts'
 import type { BetterSidebarService, TabDescriptor } from '../service.ts'
 import type { SidebarStore } from '../state.ts'
 import {
@@ -38,7 +39,8 @@ import {
 } from './tab-adapter.tsx'
 
 /**
- * Extensions DSH's own previews own, and this plugin therefore refuses.
+ * Additional extensions DSH's own previews own, besides the PDF and Office files
+ * shared with the workbench through {@link isNativeDocumentPath}.
  *
  * DSH 0.1.7 grew a real document-preview package (host-side Office→PDF
  * conversion, a worker-backed spreadsheet table, image/PDF zoom viewports and
@@ -51,7 +53,7 @@ import {
  * Refusing here is what hands the address over: `canOpen` returning false
  * leaves the built-in `text` type (the `fallback` band) as the only claimant.
  *
- * The list is exactly the set the host renders — nothing more. Nine extensions
+ * Together these are exactly the set the host renders — nothing more. Nine extensions
  * that the host has NO renderer for (`xlsb xlt xltx xltm ots dot dotx avif`)
  * used to be refused here too, and refusing them turned "the plugin shows a
  * download panel" into "the host shows 'preview is not available for this file
@@ -62,21 +64,18 @@ import {
  */
 const HOST_OWNED_EXTS: ReadonlySet<string> = new Set([
   // Spreadsheets: the built-in renders a table in a worker.
-  'xlsx', 'xls', 'csv', 'tsv', 'fods',
-  // PDF: the built-in viewer pages and zooms.
-  'pdf',
+  'csv', 'tsv', 'fods',
   // Images: the built-in viewer adds a zoom viewport.
   'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico',
-  // Office documents: the built-in converts them to PDF host-side.
-  'doc', 'docx', 'ppt', 'pptx',
 ])
 
 /**
  * Whether DSH's own preview owns one path.
  * @param path - the address's decoded path.
- * @returns true for a {@link HOST_OWNED_EXTS} extension (a dotfile is not one).
+ * @returns true for a shipped host preview extension (a dotfile is not one).
  */
 function hostOwnedPath(path: string): boolean {
+  if (isNativeDocumentPath(path)) return true
   const name = path.slice(path.lastIndexOf('/') + 1)
   const dot = name.lastIndexOf('.')
   return dot > 0 && HOST_OWNED_EXTS.has(name.slice(dot + 1).toLowerCase())

@@ -62,6 +62,8 @@
 
 文件引用插入通过目标 Session 的 scoped bail 事件 `slash/input-insert-reference` 分派：只有首个接受请求的编辑器插入引用，未接受时草稿保持不变。Side Chat 继承完整 `SessionEvent` envelope，保留 `surfaceOp`、`sourceEventSeqs`、`ignorable` 与子会话的继承事件计数。
 
+YourBuddy 的工作台模式把 PDF、Word（DOC/DOCX）、PowerPoint（PPT/PPTX）和 Excel（XLS/XLSX）文件交给已有的 DSH 只读预览，不替换文件树或新增查看器。用户主动打开时会展开会话区域；后台打开不改变该区域的展开状态。已有下载回退标签需关闭后重新打开文件。
+
 ## 🚀 安装
 
 **前置**：已装好 DSH（`dsh web` 能正常运行），Node.js ≥ 20、pnpm ≥ 10。

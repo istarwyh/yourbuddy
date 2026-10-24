@@ -10,7 +10,8 @@
  * toggling it re-renders without a reload):
  * - merged (in-place): tree click / path-input Enter switch the CURRENT
  *   tab in place (updateTab rewrites path/title; the tab keeps its id and
- *   meta, so treeOpen/treeWidth survive the switch);
+ *   meta, so treeOpen/treeWidth survive the switch). PDF and Office files
+ *   open in the native reader without replacing the workbench file tree;
  * - split: they open through `openSidebarFile` (a per-path dedupe tab),
  *   and a PATH-LESS window is the standalone explorer — it renders ONLY
  *   the tree panel (search + FileTree, full-window), no editor chrome.
@@ -33,6 +34,7 @@ import { planFirstMatch, planFsReadOutcome, type EditorLoadAction } from './edit
 import { baseName } from './FileTree.tsx'
 import { createFrameBatcher } from './frame-batcher.ts'
 import { openSidebarFile } from './sidebar-file.ts'
+import { isNativeDocumentPath } from './native/file-types.ts'
 import { openWithSshActive, openWithUrl, parseOpenWithConfig, resolveOpenWithTargets } from './open-with.ts'
 import { updatePluginSettings } from './plugin-settings.ts'
 import { TreePanel } from './TreePanel.tsx'
@@ -169,6 +171,7 @@ export function EditorHost(props: {
   const openFile = (absolute: string): void => {
     if (inPlace) {
       if (onOpenFileInPlace !== undefined) onOpenFileInPlace(absolute)
+      else if (isNativeDocumentPath(absolute)) openSidebarFile(ctx, scope.sessionId, absolute)
       else ctx.get('betterSidebar')?.updateTab(tab.id, { path: absolute, title: baseName(absolute) })
     } else if (onOpenFile !== undefined) {
       onOpenFile(absolute)
@@ -187,10 +190,15 @@ export function EditorHost(props: {
    * The context menu's "open to the side": a fresh editor tab (uid id — the
    * `'editor:' + path` convention would clash with the id safety net on a
    * second side-open of the same file) in a rightward split of THIS pane.
+   * PDF and Office files use the existing native reader beside the workbench.
    */
   const openFileSide = (absolute: string): void => {
     if (onOpenFileSide !== undefined) {
       onOpenFileSide(absolute)
+      return
+    }
+    if (isNativeDocumentPath(absolute)) {
+      openSidebarFile(ctx, scope.sessionId, absolute)
       return
     }
     store.reduce((state) => {
