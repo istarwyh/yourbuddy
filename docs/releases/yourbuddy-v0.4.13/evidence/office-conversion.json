@@ -1,0 +1,786 @@
+{
+  "date": "2026-10-24T07:12:05.897Z",
+  "runtime": {
+    "node": "v26.1.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "scope": "Synthetic fixtures only; parser/converter evidence, not browser UI or native-platform acceptance.",
+  "fixtures": {
+    "pdf": {
+      "bytes": 990,
+      "sha256": "13f560af37f63c2851f5da36828c2873517586ae9798b01e844a421b2d993e09"
+    },
+    "docx": {
+      "bytes": 921,
+      "sha256": "b77ec471edad69fc0d0c0b6b80946c04e7755ef880700d6b7449f8bd548d5846"
+    },
+    "pptx": {
+      "bytes": 2248,
+      "sha256": "cf5059168afa19711d374c4611647e6d987d00429cbdb2a393ab0813a4b03a5c"
+    },
+    "xlsx": {
+      "bytes": 9226,
+      "sha256": "94d279c2a7ae1493cc80ac51b5befadb040a2a35c6116a2e6bfc9b610e02c85d"
+    }
+  },
+  "results": {
+    "browserPdfBuildInNode": {
+      "ok": true,
+      "pages": 2,
+      "texts": [
+        "Selectable PDF text",
+        "Selectable PDF text"
+      ]
+    },
+    "pdf": {
+      "ok": true,
+      "parser": "pdfjs-dist legacy Node build",
+      "pages": 2,
+      "texts": [
+        "Selectable PDF text",
+        "Selectable PDF text"
+      ]
+    },
+    "xlsx": {
+      "ok": true,
+      "parser": "production convertXlsx / ExcelJS",
+      "sheets": [
+        {
+          "name": "季度预算",
+          "rows": 5,
+          "columns": 4,
+          "hidden": 0,
+          "cells": [
+            {
+              "r": 0,
+              "c": 0,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Arial",
+                "fs": 18,
+                "fc": "#FFFFFF",
+                "bg": "#3B5CCC",
+                "ht": 0,
+                "vt": 0,
+                "tb": "1",
+                "v": "DeepSeek · 项目预算",
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "DeepSeek · 项目预算",
+                "mc": {
+                  "r": 0,
+                  "c": 0,
+                  "rs": 1,
+                  "cs": 4
+                }
+              }
+            },
+            {
+              "r": 0,
+              "c": 1,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Arial",
+                "fs": 18,
+                "fc": "#FFFFFF",
+                "bg": "#3B5CCC",
+                "ht": 0,
+                "vt": 0,
+                "tb": "1",
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "mc": {
+                  "r": 0,
+                  "c": 0
+                }
+              }
+            },
+            {
+              "r": 0,
+              "c": 2,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Arial",
+                "fs": 18,
+                "fc": "#FFFFFF",
+                "bg": "#3B5CCC",
+                "ht": 0,
+                "vt": 0,
+                "tb": "1",
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "mc": {
+                  "r": 0,
+                  "c": 0
+                }
+              }
+            },
+            {
+              "r": 0,
+              "c": 3,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Arial",
+                "fs": 18,
+                "fc": "#FFFFFF",
+                "bg": "#3B5CCC",
+                "ht": 0,
+                "vt": 0,
+                "tb": "1",
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "mc": {
+                  "r": 0,
+                  "c": 0
+                }
+              }
+            },
+            {
+              "r": 1,
+              "c": 0,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "fc": "#24345C",
+                "bg": "#EDF1FC",
+                "v": "项目",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "项目"
+              }
+            },
+            {
+              "r": 1,
+              "c": 1,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "fc": "#24345C",
+                "bg": "#EDF1FC",
+                "v": "预算",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "预算"
+              }
+            },
+            {
+              "r": 1,
+              "c": 2,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "fc": "#24345C",
+                "bg": "#EDF1FC",
+                "v": "支出",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "支出"
+              }
+            },
+            {
+              "r": 1,
+              "c": 3,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "fc": "#24345C",
+                "bg": "#EDF1FC",
+                "v": "执行率",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "执行率"
+              }
+            },
+            {
+              "r": 2,
+              "c": 0,
+              "v": {
+                "bl": 0,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Calibri",
+                "fs": 11,
+                "fc": "#000000",
+                "v": "设计",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "设计"
+              }
+            },
+            {
+              "r": 2,
+              "c": 1,
+              "v": {
+                "bl": 0,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Calibri",
+                "fs": 11,
+                "fc": "#000000",
+                "v": 12000,
+                "ht": 2,
+                "ct": {
+                  "fa": "#,##0.00",
+                  "t": "n"
+                },
+                "m": "12,000.00"
+              }
+            },
+            {
+              "r": 2,
+              "c": 2,
+              "v": {
+                "bl": 0,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Calibri",
+                "fs": 11,
+                "fc": "#000000",
+                "v": 9600,
+                "ht": 2,
+                "ct": {
+                  "fa": "#,##0.00",
+                  "t": "n"
+                },
+                "m": "9,600.00"
+              }
+            },
+            {
+              "r": 2,
+              "c": 3,
+              "v": {
+                "bl": 0,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Calibri",
+                "fs": 11,
+                "fc": "#000000",
+                "f": "=C3/B3",
+                "v": 0.8,
+                "ht": 2,
+                "ct": {
+                  "fa": "0.0%",
+                  "t": "n"
+                },
+                "m": "80.0%"
+              }
+            },
+            {
+              "r": 3,
+              "c": 0,
+              "v": {
+                "bl": 0,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Calibri",
+                "fs": 11,
+                "fc": "#000000",
+                "v": "研发",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "研发"
+              }
+            },
+            {
+              "r": 3,
+              "c": 1,
+              "v": {
+                "bl": 0,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Calibri",
+                "fs": 11,
+                "fc": "#000000",
+                "v": 45000,
+                "ht": 2,
+                "ct": {
+                  "fa": "#,##0.00",
+                  "t": "n"
+                },
+                "m": "45,000.00"
+              }
+            },
+            {
+              "r": 3,
+              "c": 2,
+              "v": {
+                "bl": 0,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Calibri",
+                "fs": 11,
+                "fc": "#000000",
+                "v": 31500,
+                "ht": 2,
+                "ct": {
+                  "fa": "#,##0.00",
+                  "t": "n"
+                },
+                "m": "31,500.00"
+              }
+            },
+            {
+              "r": 3,
+              "c": 3,
+              "v": {
+                "bl": 0,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Calibri",
+                "fs": 11,
+                "fc": "#000000",
+                "f": "=C4/B4",
+                "v": 0.7,
+                "ht": 2,
+                "ct": {
+                  "fa": "0.0%",
+                  "t": "n"
+                },
+                "m": "70.0%"
+              }
+            },
+            {
+              "r": 4,
+              "c": 0,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "fc": "#24345C",
+                "bg": "#EDF1FC",
+                "v": "合计",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "合计"
+              }
+            },
+            {
+              "r": 4,
+              "c": 1,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "fc": "#24345C",
+                "bg": "#EDF1FC",
+                "f": "=SUM(B3:B4)",
+                "v": 57000,
+                "ht": 2,
+                "ct": {
+                  "fa": "#,##0.00",
+                  "t": "n"
+                },
+                "m": "57,000.00"
+              }
+            },
+            {
+              "r": 4,
+              "c": 2,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "fc": "#24345C",
+                "bg": "#EDF1FC",
+                "f": "=SUM(C3:C4)",
+                "v": 41100,
+                "ht": 2,
+                "ct": {
+                  "fa": "#,##0.00",
+                  "t": "n"
+                },
+                "m": "41,100.00"
+              }
+            },
+            {
+              "r": 4,
+              "c": 3,
+              "v": {
+                "bl": 1,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "fc": "#24345C",
+                "bg": "#EDF1FC",
+                "f": "=C5/B5",
+                "v": 0.7210526315789474,
+                "ht": 2,
+                "ct": {
+                  "fa": "0.0%",
+                  "t": "n"
+                },
+                "m": "72.1%"
+              }
+            }
+          ]
+        },
+        {
+          "name": "公式与格式",
+          "rows": 7,
+          "columns": 6,
+          "hidden": 0,
+          "cells": [
+            {
+              "r": 0,
+              "c": 0,
+              "v": {
+                "f": "=_xlfn.XLOOKUP(1,{1},{42})",
+                "v": 42,
+                "ht": 2,
+                "ct": {
+                  "fa": "General",
+                  "t": "n"
+                },
+                "m": "42"
+              }
+            },
+            {
+              "r": 0,
+              "c": 1,
+              "v": {
+                "bl": 0,
+                "it": 0,
+                "cl": 0,
+                "un": 0,
+                "ff": "Calibri",
+                "fs": 11,
+                "fc": "#000000",
+                "v": 46281,
+                "ht": 2,
+                "ct": {
+                  "fa": "yyyy-mm-dd",
+                  "t": "n"
+                },
+                "m": "2026-09-16"
+              }
+            },
+            {
+              "r": 0,
+              "c": 2,
+              "v": {
+                "ct": {
+                  "t": "inlineStr",
+                  "s": [
+                    {
+                      "v": "富文本",
+                      "bl": 1,
+                      "it": 0,
+                      "cl": 0,
+                      "un": 0
+                    },
+                    {
+                      "v": " 示例",
+                      "bl": 0,
+                      "it": 1,
+                      "cl": 0,
+                      "un": 0
+                    }
+                  ]
+                },
+                "v": "富文本 示例",
+                "ht": 1,
+                "m": "富文本 示例"
+              }
+            },
+            {
+              "r": 0,
+              "c": 3,
+              "v": {
+                "v": "Link text",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "Link text"
+              }
+            },
+            {
+              "r": 0,
+              "c": 4,
+              "v": {
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": ""
+              }
+            },
+            {
+              "r": 0,
+              "c": 5,
+              "v": {
+                "f": "=1-1",
+                "v": 0,
+                "ht": 2,
+                "ct": {
+                  "fa": "General",
+                  "t": "n"
+                },
+                "m": "0"
+              }
+            },
+            {
+              "r": 1,
+              "c": 0,
+              "v": {
+                "f": "=SUM(1,2)",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": ""
+              }
+            },
+            {
+              "r": 1,
+              "c": 1,
+              "v": {
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": ""
+              }
+            },
+            {
+              "r": 1,
+              "c": 2,
+              "v": {
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": ""
+              }
+            },
+            {
+              "r": 1,
+              "c": 3,
+              "v": {
+                "ct": {
+                  "t": "inlineStr",
+                  "s": [
+                    {
+                      "v": "Rich",
+                      "bl": 1,
+                      "it": 0,
+                      "cl": 0,
+                      "un": 0
+                    },
+                    {
+                      "v": " link"
+                    }
+                  ]
+                },
+                "v": "Rich link",
+                "ht": 1,
+                "m": "Rich link"
+              }
+            },
+            {
+              "r": 1,
+              "c": 4,
+              "v": {
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": ""
+              }
+            },
+            {
+              "r": 1,
+              "c": 5,
+              "v": {
+                "f": "=1=2",
+                "v": false,
+                "ht": 0,
+                "ct": {
+                  "fa": "General",
+                  "t": "b"
+                },
+                "m": "false"
+              }
+            },
+            {
+              "r": 2,
+              "c": 0,
+              "v": {
+                "f": "=SUM(1,2)",
+                "v": 3,
+                "ht": 2,
+                "ct": {
+                  "fa": "General",
+                  "t": "n"
+                },
+                "m": "3"
+              }
+            },
+            {
+              "r": 3,
+              "c": 0,
+              "v": {
+                "v": true,
+                "ht": 0,
+                "ct": {
+                  "fa": "General",
+                  "t": "b"
+                },
+                "m": "true"
+              }
+            },
+            {
+              "r": 4,
+              "c": 0,
+              "v": {
+                "v": "#DIV/0!",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "#DIV/0!"
+              }
+            },
+            {
+              "r": 6,
+              "c": 0,
+              "v": {
+                "v": "Hidden row",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "Hidden row"
+              }
+            }
+          ]
+        },
+        {
+          "name": "隐藏页",
+          "rows": 1,
+          "columns": 1,
+          "hidden": 1,
+          "cells": [
+            {
+              "r": 0,
+              "c": 0,
+              "v": {
+                "v": "Hidden data",
+                "ht": 1,
+                "ct": {
+                  "fa": "General",
+                  "t": "s"
+                },
+                "m": "Hidden data"
+              }
+            }
+          ]
+        }
+      ],
+      "missingResults": 1,
+      "unsupportedFeatures": []
+    },
+    "docx": {
+      "ok": true,
+      "backend": "native",
+      "missingFonts": [
+        "Liberation Sans"
+      ],
+      "elapsedMs": 3927,
+      "bytes": 24962,
+      "pages": 2,
+      "texts": [
+        "Office preview   中文文档",
+        "Office preview   中文文档"
+      ]
+    },
+    "pptx": {
+      "ok": true,
+      "backend": "native",
+      "missingFonts": [
+        "Liberation Sans"
+      ],
+      "elapsedMs": 660,
+      "bytes": 25386,
+      "pages": 2,
+      "texts": [
+        "Office preview   中文文档",
+        "Office preview   中文文档"
+      ]
+    }
+  },
+  "cleanup": {
+    "converterDisposed": true,
+    "temporaryOutputsRemoved": true,
+    "loaderUnregistered": true
+  }
+}

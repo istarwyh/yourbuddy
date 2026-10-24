@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "date": "2026-10-24T07:40:43.339Z",
+  "releaseTag": "local-issue-76-verification",
+  "sourceCommit": "e0b5fcb241a5b70199e825d9bb8d3c99cada89eb",
+  "workflowCommit": "e0b5fcb241a5b70199e825d9bb8d3c99cada89eb",
+  "platform": "darwin-arm64",
+  "node": "v22.22.3",
+  "scope": "Prepared real Host and Profile; 8 default Clients then 9 with Harbor; Chromium interaction. Desktop invoke stubs are bridge-only; native acceptance is separate."
+}

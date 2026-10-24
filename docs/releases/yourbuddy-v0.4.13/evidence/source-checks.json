@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-24 UTC",
+  "platform": "macOS 15.6.1 arm64",
+  "node": "22.22.3",
+  "pnpm": "11.7.0",
+  "chromium": "149.0.7827.55",
+  "tested_head": "e0b5fcb241a5b70199e825d9bb8d3c99cada89eb",
+  "merged_source": "e2953b84d40972ffb4c22682248290b032383883",
+  "pr": "https://github.com/istarwyh/yourbuddy/pull/77",
+  "build_under_test": "Isolated source and frozen prepared product before the 0.4.13 version bump; packaged release acceptance remains pending",
+  "checks": {
+    "root_build": "passed",
+    "branded_root_build": "passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "test_docs": {
+      "passed": 21
+    },
+    "doc_sync": {
+      "passed": 43
+    },
+    "hygiene": {
+      "passed": 19
+    },
+    "product_refresh": {
+      "publisher_passed": 147,
+      "product_passed": 124,
+      "scope": "implementation before verifier-only follow-ups"
+    },
+    "latest_verifier": {
+      "passed": 28,
+      "head": "e0b5fcb241a5b70199e825d9bb8d3c99cada89eb"
+    },
+    "bundle": {
+      "passed": 13
+    },
+    "release_pipeline": {
+      "passed": 8
+    },
+    "native_overlay": {
+      "passed": 8
+    },
+    "native_tauri_debug_build": "passed; compilation only; before version bump",
+    "product_website": "50 bilingual pages projected; 59 HTML pages checked; local build only",
+    "pre_commit": "normal hooks passed",
+    "pre_push": "normal typecheck passed",
+    "independent_review": "implementation and both verifier-only follow-ups reviewed; no blockers"
+  },
+  "prepared_chromium": {
+    "status": "passed",
+    "core_clients": 8,
+    "with_harbor_clients": 9,
+    "formats": [
+      "pdf",
+      "docx",
+      "pptx",
+      "xlsx"
+    ],
+    "checks": [
+      "middle Files entry",
+      "PDF pages/text/nonblank canvas",
+      "Excel visible sheets/content",
+      "Files tree retained",
+      "close/reopen",
+      "desktop layout lifecycle",
+      "branding persistence/reset"
+    ],
+    "bridge": "desktop invoke stubs; native window is separate",
+    "recovery": "Corrected verifier phase placement and existing rightbar/workbench layout transitions after actual first and second browser failures"
+  },
+  "unverified": [
+    "native Tauri window acceptance (explicitly waived by user)",
+    "separate repeated-open and mixed agent/user deduplication UI",
+    "separate narrow-screen background UI",
+    "missing-dependency UI prompts",
+    "legacy DOC/PPT/XLS visual fixtures",
+    "real provider requests",
+    "installed updater and data downgrade compatibility"
+  ],
+  "font_limits": {
+    "macos_native": "Liberation Sans missing on synthetic DOCX/PPTX",
+    "earlier_linux_wasm": "宋体 missing"
+  },
+  "supplemental_node_parser": "Node 26 parser/conversion passed; supplemental modern PDF.js Node import on Node 22 failed with Promise.try unavailable; product Chromium on Node 22 passed",
+  "candidate_preparation": {
+    "version": "0.4.13",
+    "official_prepare_command": "pnpm release:yourbuddy:prepare -- 0.4.13",
+    "version_check": "passed",
+    "release_script_tests": {
+      "passed": 10
+    },
+    "test_docs": {
+      "passed": 21
+    },
+    "doc_sync": {
+      "passed": 43
+    },
+    "lint": "passed",
+    "independent_archive_review": "no blockers; no private data; version and evidence scope verified",
+    "packaged_candidate": "not yet tested; existing release workflow must run"
+  }
+}
