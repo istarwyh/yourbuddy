@@ -853,6 +853,21 @@ export async function exerciseDocumentPreviews(sidebar, workbench) {
   }
 }
 
+/** Exercise the middle workbench only after the desktop bridge has mounted its slot. */
+export async function exerciseWorkbenchDocumentPreviews(page) {
+  const sidebar = page.locator('[data-sidebar-right-panel]').first()
+  const startedCollapsed = await sidebar.getAttribute('aria-hidden') === 'true'
+  if (startedCollapsed) await page.getByRole('button', { name: 'Open right sidebar', exact: true }).click()
+  await exerciseDocumentPreviews(sidebar,
+    page.locator('[data-workbench-surface="core"] [data-dsh-panel-host][data-dsh-presentation="slot"]'))
+  // Preserve a failed preview for evidence; restore only after content and reopen checks pass.
+  if (startedCollapsed) {
+    await sidebar.getByRole('button', { name: 'Collapse right sidebar', exact: true }).click()
+    await page.locator('[data-sidebar-right-panel][aria-hidden="true"]').first()
+      .waitFor({ state: 'attached', timeout: 10_000 })
+  }
+}
+
 /** Retain only sidebar and document-read request paths and outcomes; never headers, query strings or bodies. */
 export function recordPreviewNetworkEvent(events, url, event, outcome = {}) {
   const path = new URL(url).pathname
@@ -902,8 +917,6 @@ export async function exerciseLightweightServices(page) {
     await input.press('Enter')
     await sidebar.frameLocator('iframe[data-sidebar-browser-frame]')
       .getByText('YourBuddy lightweight browser is running', { exact: true }).waitFor({ timeout: 15_000 })
-    await exerciseDocumentPreviews(sidebar,
-      page.locator('[data-workbench-surface="core"] [data-dsh-panel-host][data-dsh-presentation="slot"]'))
     // The same Session reopens in the desktop iframe; restore its persisted expanded state.
     // Keep a failed preview visible for the failure screenshot instead of restoring in finally.
     if (startedCollapsed) {
@@ -1355,6 +1368,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       || Math.abs(workbenchGeometry.host.height - workbenchGeometry.panel.height) > 2) {
       throw new Error(`Better Sidebar did not fill the primary workbench slot: ${JSON.stringify(workbenchGeometry)}`)
     }
+    await exerciseWorkbenchDocumentPreviews(embedded)
     const newTabControl = coreSurface.getByRole('button', { name: 'New tab', exact: true }).first()
     await newTabControl.click()
     await embedded.getByRole('menu').last().waitFor({ state: 'visible', timeout: 10_000 })

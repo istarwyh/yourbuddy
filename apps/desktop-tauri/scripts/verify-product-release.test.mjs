@@ -13,6 +13,7 @@ import {
   writeDocumentPreviewFixtures,
   exerciseDocumentPreviews,
   exerciseLightweightServices,
+  exerciseWorkbenchDocumentPreviews,
   recordPreviewNetworkEvent,
   saveBrowserFailure,
   CORE_PRODUCT_CLIENT_IDS,
@@ -698,8 +699,8 @@ test('preview failure evidence retains request outcomes and errors without auth 
 })
 
 
-test('lightweight smoke restores its opened sidebar only after content succeeds and verifies the collapse', async () => {
-  const run = async ({ initiallyCollapsed = true, previewFails = false, collapseFails = false } = {}) => {
+test('desktop workbench previews restore the sidebar after content succeeds; standalone browser needs no workbench', async () => {
+  const run = async ({ initiallyCollapsed = true, previewFails = false, collapseFails = false, operation = exerciseWorkbenchDocumentPreviews } = {}) => {
     let collapsed = initiallyCollapsed
     const actions = []
     const button = name => ({ click: async () => {
@@ -727,7 +728,7 @@ test('lightweight smoke restores its opened sidebar only after content succeeds 
         : sidebar }),
     }
     try {
-      await exerciseLightweightServices(page)
+      await operation(page)
       return { actions, collapsed }
     } catch (error) { return { actions, collapsed, error } }
   }
@@ -747,4 +748,8 @@ test('lightweight smoke restores its opened sidebar only after content succeeds 
   assert.ok(!failedPreview.actions.includes('Collapse right sidebar'))
   const failedRestore = await run({ collapseFails: true })
   assert.match(failedRestore.error.message, /sidebar did not collapse/u)
+  const standalone = await run({ operation: exerciseLightweightServices })
+  assert.equal(standalone.error, undefined)
+  assert.equal(standalone.collapsed, true)
+  assert.ok(!standalone.actions.some(action => action.startsWith('opened:')))
 })
