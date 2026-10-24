@@ -1,0 +1,306 @@
+{
+  "date": "2026-10-24T09:01:03.727875+00:00",
+  "version": "0.4.13",
+  "releaseTag": "yourbuddy-v0.4.13",
+  "expectedCommit": "05dbb5c63baf06ed728a7913260bd02e6e59449d",
+  "scope": "Public metadata, selected independently downloaded assets and signatures; downloaded software is not executed.",
+  "checks": [
+    {
+      "name": "Final published latest release",
+      "passed": true,
+      "details": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.13",
+        "publishedAt": "2026-10-24T08:57:24Z"
+      }
+    },
+    {
+      "name": "Checksum list covers every other public asset",
+      "passed": true,
+      "details": {
+        "assets": 17,
+        "entries": 16
+      }
+    },
+    {
+      "name": "All checksum values match GitHub asset digests",
+      "passed": true,
+      "details": "Metadata consistency; does not establish independent download of large archives."
+    },
+    {
+      "name": "Downloaded bytes: latest.json",
+      "passed": true,
+      "details": {
+        "bytes": 1971,
+        "sha256": "098682e27e293fbca5122b23bf5519b1dde900c0cf1d282f4f2617658ac8947c"
+      }
+    },
+    {
+      "name": "Downloaded bytes: SHA256SUMS.txt",
+      "passed": true,
+      "details": {
+        "bytes": 1956,
+        "sha256": "10ba199721cb791b5c1c5ec7b79eb0eeef3d0f443a869cfbed95787698e83573"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.13-bootstrap-macos-arm64.app.tar.gz",
+      "passed": true,
+      "details": {
+        "bytes": 11270706,
+        "sha256": "64075c515b557d6a1a513196af6246cccbb307031cda41eb427b9d2707e9e9d2"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.13-bootstrap-macos-arm64.app.tar.gz.sig",
+      "passed": true,
+      "details": {
+        "bytes": 428,
+        "sha256": "75280b2101df7ee204a4e3d3dd348a24e17e9578c3bb145e783c92ee40270dd4"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.13-bootstrap-macos-arm64.dmg",
+      "passed": true,
+      "details": {
+        "bytes": 11087867,
+        "sha256": "f7d86c6fe937a388d7eddf431b12f6b09e176d9740638fbc440f6836ef949a93"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.13-offline-macos-arm64.app.tar.gz.sig",
+      "passed": true,
+      "details": {
+        "bytes": 428,
+        "sha256": "8119e9dda6d297381db65e48db38108f81886e1040260f64f0a03e18a7e42231"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-components-0.4.13.json",
+      "passed": true,
+      "details": {
+        "bytes": 2777,
+        "sha256": "b1acb871676c5de3457e60ed05628723b70cdfbbabda85f5c1e414f778faf985"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-components-0.4.13.json.sig",
+      "passed": true,
+      "details": {
+        "bytes": 317,
+        "sha256": "d2d39f5448eff5f68c896e8c584e21439dcce150521cc5e575c8a14fee82d8d0"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-size-report-0.4.13.json",
+      "passed": true,
+      "details": {
+        "bytes": 1464,
+        "sha256": "d0af3b297427577bd3bf1d7ebf516b3da701cce22edd7c1f22495a79efdd08f6"
+      }
+    },
+    {
+      "name": "Signed component identities and platform match release",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Component metadata and exact dependencies: harness",
+      "passed": true,
+      "details": {
+        "archive": "yourbuddy-harness-e191530fc36daf78be4209033380d4c4ab516252b5d646d99a5f5adb0ee63bb3-macos-arm64.tar.zst",
+        "id": "sha256:e191530fc36daf78be4209033380d4c4ab516252b5d646d99a5f5adb0ee63bb3"
+      }
+    },
+    {
+      "name": "Component metadata and exact dependencies: pnpmStore",
+      "passed": true,
+      "details": {
+        "archive": "yourbuddy-pnpm-store-57ccac971a3ed8665cacbba26c79c238fc10e8c4cc0ffdf8084d697bad82be83-macos-arm64.tar.zst",
+        "id": "sha256:57ccac971a3ed8665cacbba26c79c238fc10e8c4cc0ffdf8084d697bad82be83"
+      }
+    },
+    {
+      "name": "Component metadata and exact dependencies: node",
+      "passed": true,
+      "details": {
+        "archive": "yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+        "id": "node:22.19.0:darwin-arm64"
+      }
+    },
+    {
+      "name": "Component metadata and exact dependencies: harbor",
+      "passed": true,
+      "details": {
+        "archive": "yourbuddy-harbor-0841a4679645e7591aae9e0584e1a108e18e1e14a51edcd9283a33abf1fa374a-darwin-arm64.tar.zst",
+        "id": "sha256:0841a4679645e7591aae9e0584e1a108e18e1e14a51edcd9283a33abf1fa374a"
+      }
+    },
+    {
+      "name": "Component metadata and exact dependencies: harborPlugin",
+      "passed": true,
+      "details": {
+        "archive": "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+        "id": "sha256:e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad"
+      }
+    },
+    {
+      "name": "Public component manifest cryptographic signature and trusted comment",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Tampered component manifest is rejected",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Updater version, Offline asset and signature agree",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Stable updater exactly matches this release",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Bootstrap archive cryptographic signature and trusted comment",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Bootstrap application version and identity",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Bootstrap binary is macOS arm64",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Bootstrap embeds the exact publicly signed component manifest",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Published checksum bytes equal CI-retained checksum bytes",
+      "passed": true,
+      "details": "All large-archive digest comparisons use the actual successful build checksum list."
+    },
+    {
+      "name": "Published updater bytes equal CI-retained updater bytes",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Published signed component bytes equal CI-retained component bytes",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Native CI accepted the exact public component manifest",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Native CI active identities equal the public signed identities",
+      "passed": true,
+      "details": {
+        "appVersion": "0.4.13",
+        "components": {
+          "harness": {
+            "id": "sha256:e191530fc36daf78be4209033380d4c4ab516252b5d646d99a5f5adb0ee63bb3"
+          },
+          "pnpmStore": {
+            "id": "sha256:57ccac971a3ed8665cacbba26c79c238fc10e8c4cc0ffdf8084d697bad82be83"
+          }
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "name": "Native Offline three cold-start rounds passed",
+      "passed": true,
+      "details": [
+        {
+          "round": 1,
+          "durationMs": 46716,
+          "authenticated": true,
+          "nativeWorkbench": true,
+          "cleanExit": true
+        },
+        {
+          "round": 2,
+          "durationMs": 11652,
+          "authenticated": true,
+          "nativeWorkbench": true,
+          "cleanExit": true
+        },
+        {
+          "round": 3,
+          "durationMs": 9557,
+          "authenticated": true,
+          "nativeWorkbench": true,
+          "cleanExit": true
+        }
+      ]
+    },
+    {
+      "name": "Official release workflow and required delivery checks succeeded",
+      "passed": true,
+      "details": {
+        "run": "https://github.com/istarwyh/yourbuddy/actions/runs/40078157066",
+        "steps": {
+          "Verify prepared default workbench and optional Harbor": "success",
+          "Build Bootstrap app and DMG": "success",
+          "Enforce Bootstrap DMG ceiling and resource exclusions": "success",
+          "Build Offline app and DMG": "success",
+          "Verify native Offline installation and cold starts": "success",
+          "Test relocated YourBuddy product runtime": "success",
+          "Generate and verify release checksums": "success",
+          "Publish release": "success"
+        }
+      }
+    },
+    {
+      "name": "Anonymous latest URL reaches the published release",
+      "passed": true,
+      "details": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/latest",
+        "final_url": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.13",
+        "status": 200,
+        "date": "2026-10-24T09:05:20.538868+00:00"
+      }
+    }
+  ],
+  "downloadedAssets": [
+    "latest.json",
+    "SHA256SUMS.txt",
+    "yourbuddy-0.4.13-bootstrap-macos-arm64.app.tar.gz",
+    "yourbuddy-0.4.13-bootstrap-macos-arm64.app.tar.gz.sig",
+    "yourbuddy-0.4.13-bootstrap-macos-arm64.dmg",
+    "yourbuddy-0.4.13-offline-macos-arm64.app.tar.gz.sig",
+    "yourbuddy-components-0.4.13.json",
+    "yourbuddy-components-0.4.13.json.sig",
+    "yourbuddy-size-report-0.4.13.json"
+  ],
+  "notIndependentlyDownloaded": [
+    "yourbuddy-0.4.13-offline-macos-arm64.app.tar.gz",
+    "yourbuddy-0.4.13-offline-macos-arm64.dmg",
+    "yourbuddy-debug-0.4.13.tar.zst",
+    "yourbuddy-harbor-0841a4679645e7591aae9e0584e1a108e18e1e14a51edcd9283a33abf1fa374a-darwin-arm64.tar.zst",
+    "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+    "yourbuddy-harness-e191530fc36daf78be4209033380d4c4ab516252b5d646d99a5f5adb0ee63bb3-macos-arm64.tar.zst",
+    "yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+    "yourbuddy-pnpm-store-57ccac971a3ed8665cacbba26c79c238fc10e8c4cc0ffdf8084d697bad82be83-macos-arm64.tar.zst"
+  ],
+  "status": "passed for declared scope",
+  "limits": [
+    "Large archives listed as not independently downloaded have metadata consistency only.",
+    "No installed updater, real provider or data downgrade exercise.",
+    "Prepared Chromium is bridge-only; native four-format window acceptance remains unverified and was waived.",
+    "Office font/layout limits and separate UI scenarios remain as documented."
+  ],
+  "appleNotarization": "Skipped in both Bootstrap and Offline build logs because Apple notarization credentials are not configured; updater/component signatures do not establish Apple Developer notarization."
+}

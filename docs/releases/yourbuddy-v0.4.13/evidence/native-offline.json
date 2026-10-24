@@ -1,0 +1,45 @@
+{
+  "version": "0.4.13",
+  "appSha256": "d21cc3fbce000c510c6f7e29f336c5b5a87cc7c467d34772e9e944853a596d4a",
+  "signedManifestSha256": "b1acb871676c5de3457e60ed05628723b70cdfbbabda85f5c1e414f778faf985",
+  "platform": "darwin-arm64",
+  "componentSource": "signed Offline seeds",
+  "network": "local rejecting proxy; production TLS verification unchanged; no enterprise proxy claim",
+  "blockedExternalRequests": 4,
+  "active": {
+    "appVersion": "0.4.13",
+    "components": {
+      "harness": {
+        "id": "sha256:e191530fc36daf78be4209033380d4c4ab516252b5d646d99a5f5adb0ee63bb3"
+      },
+      "pnpmStore": {
+        "id": "sha256:57ccac971a3ed8665cacbba26c79c238fc10e8c4cc0ffdf8084d697bad82be83"
+      }
+    },
+    "schemaVersion": 1
+  },
+  "boots": [
+    {
+      "round": 1,
+      "durationMs": 46716,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    },
+    {
+      "round": 2,
+      "durationMs": 11652,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    },
+    {
+      "round": 3,
+      "durationMs": 9557,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    }
+  ],
+  "scope": "Native Offline installation/startup/readiness/clean exit using signed Offline seeds and a local rejecting proxy; not native four-format document interaction."
+}
