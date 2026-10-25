@@ -1,0 +1,15 @@
+- name: cordis:llm
+- name: cordis:sessions
+- name: cordis:projections
+- name: cordis:prompt
+- name: cordis:tools
+- name: cordis:agents
+- name: cordis:persistence
+  config:
+    root: '{{root}}'
+    compression: none
+- name: cordis:jobs
+- name: cordis:loop
+  config:
+    agents: []
+- name: cordis:upgrade

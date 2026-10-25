@@ -1,3 +1,6 @@
+// src/index.ts
+import Schema3 from "@deepseek-ai/schemastery";
+
 // src/capability-pack.ts
 import { constants } from "node:fs";
 import { access, chmod, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
@@ -299,10 +302,249 @@ var WorkbenchSettingsSchema = Schema.object({
   showHeroBadge: Schema.boolean().default(true).volatile()
 });
 
+// src/self-upgrade.ts
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
+import Schema2 from "@deepseek-ai/schemastery";
+import { brandString } from "@deepseek-ai/dsh-brand";
+import { defineTool } from "@deepseek-ai/dsh-tools";
+import { isJsonValue } from "@deepseek-ai/dsh-util-values";
+var UPGRADE_STATUS_PATH = "/api/yourbuddy/upgrade/status";
+var UpgradePolicySchema = Schema2.object({
+  receiptTimeoutMs: Schema2.number().step(1).min(1).default(3e4),
+  statusRetryMs: Schema2.number().step(1).min(1).default(1e3)
+}).default({ receiptTimeoutMs: 3e4, statusRetryMs: 1e3 });
+function nativeCommand(installation) {
+  return (arguments_, signal) => new Promise((resolve2, reject) => {
+    signal.throwIfAborted();
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/KEY|SECRET|TOKEN|PASSWORD/iu.test(key)));
+    const child = execFile(installation.executable, ["--yourbuddy-installer", ...arguments_], {
+      env,
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024
+    }, (error, stdout, stderr) => {
+      signal.removeEventListener("abort", cancel);
+      if (signal.aborted) {
+        reject(signal.reason);
+        return;
+      }
+      if (error !== null) {
+        reject(new Error(stderr.trim() || error.message));
+        return;
+      }
+      try {
+        const value = JSON.parse(stdout);
+        if (!isJsonValue(value)) throw new Error("YourBuddy installer returned non-JSON output");
+        resolve2(value);
+      } catch (parseError) {
+        reject(parseError);
+      }
+    });
+    const cancel = () => {
+      child.kill();
+    };
+    signal.addEventListener("abort", cancel, { once: true });
+    if (signal.aborted) cancel();
+  });
+}
+function operationRecord(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value) || typeof value.id !== "string" || typeof value.phase !== "string") {
+    throw new Error("YourBuddy installer did not return an operation record");
+  }
+  return { id: brandString(value.id), phase: value.phase };
+}
+function isTerminal(phase) {
+  return ["succeeded", "unchanged", "failed", "needsUserAction"].includes(phase);
+}
+function carriesReceipt(content, id) {
+  return content.some((block) => {
+    if (block.type !== "text") return false;
+    let value;
+    try {
+      value = JSON.parse(block.text);
+    } catch (_error) {
+      return false;
+    }
+    if (value === null || typeof value !== "object" || !("status" in value) || value.status !== "accepted" || !("operation" in value) || value.operation === null || typeof value.operation !== "object") return false;
+    return "id" in value.operation && value.operation.id === id;
+  });
+}
+function installSelfUpgrade(ctx, installation, policy, command = nativeCommand(installation)) {
+  const lifetime = new AbortController();
+  const executions = /* @__PURE__ */ new Map();
+  const commands = /* @__PURE__ */ new Set();
+  let transaction;
+  const logger = ctx.logger("yourbuddy-upgrade");
+  const runCommand = (arguments_, signal) => {
+    const pending = command(arguments_, arguments_.includes("--wait") ? signal : AbortSignal.any([signal, AbortSignal.timeout(policy.receiptTimeoutMs)]));
+    commands.add(pending);
+    return pending.finally(() => {
+      commands.delete(pending);
+    });
+  };
+  const busy = (initiator, token) => {
+    const agents = ctx.agents.list();
+    const ancestors = /* @__PURE__ */ new Set();
+    let execution = executions.get(token);
+    while (execution !== void 0) {
+      ancestors.add(execution.token);
+      execution = execution.parent === void 0 ? void 0 : executions.get(execution.parent);
+    }
+    return agents.some((agent) => agent !== initiator && agent.status === "running" || agent.inbox.nextTurn.length > 0 || agent.inbox.nextStep.length > 0) || [...executions.keys()].some((key) => !ancestors.has(key)) || [void 0, ...agents].some((agent) => ctx.jobs.list(agent?.id).some((job) => job.status === "running" || job.status === "stopping"));
+  };
+  const flush = async (session) => {
+    if (!await ctx.sessions.flush(session)) throw new Error("YourBuddy upgrade requires durable Session storage");
+  };
+  ctx.on("connection/request", async (request, response, next) => {
+    if (request.method === "GET" && new URL(request.url ?? "/", "http://localhost").pathname === UPGRADE_STATUS_PATH) {
+      try {
+        const result = await runCommand(["status", "--app", installation.app], lifetime.signal);
+        if (transaction?.operation !== void 0) {
+          const operation = operationRecord(result);
+          if (operation.id === transaction.operation && isTerminal(operation.phase)) transaction = void 0;
+        }
+        response.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        response.end(JSON.stringify(result));
+      } catch (error) {
+        response.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        response.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+      }
+      return;
+    }
+    if (transaction === void 0) return next();
+    response.writeHead(503, { "Retry-After": "5" });
+    response.end("YourBuddy upgrade is restarting this application");
+  });
+  ctx.on("agent/pre-step", async (_payload, next) => transaction === void 0 ? next() : { kind: "reject" });
+  ctx.on("tools/execute", async (exec, next) => {
+    if (transaction !== void 0) throw new Error("YourBuddy upgrade is pending; new tool work is paused");
+    executions.set(exec.token, exec);
+    try {
+      return await next();
+    } finally {
+      executions.delete(exec.token);
+    }
+  });
+  ctx.on("session/event", (session, event) => {
+    const pending = transaction;
+    if (pending === void 0 || pending.agent.session !== session || pending.operation === void 0) return;
+    if (event.type === "tool/result" && event.data.message.toolCallId === pending.rootCallId) {
+      pending.resultRecorded = event.data.message.isError !== true;
+      if (pending.callId === pending.rootCallId) pending.receiptRecorded = carriesReceipt(event.data.message.content, pending.operation);
+    }
+    if (event.type === "tool/ptc-dispatch" && event.data.subCallId === pending.callId) {
+      pending.receiptRecorded = !event.data.isError && carriesReceipt(event.data.content, pending.operation);
+    }
+    if (event.type !== "turn/end" || pending.committing !== void 0) return;
+    const id = pending.operation;
+    pending.committing = (async () => {
+      try {
+        if (!pending.resultRecorded || !pending.receiptRecorded) throw new Error("The upgrade acceptance was not recorded as a successful tool result");
+        await flush(session);
+        if (busy(pending.agent, pending.token)) throw new Error("Other work arrived before the upgrade handoff");
+        await runCommand(["handoff", "--operation", id], lifetime.signal);
+      } catch (error) {
+        if (lifetime.signal.aborted) return;
+        logger.error("Session upgrade handoff failed: %s", error);
+        try {
+          await runCommand(["cancel", "--operation", id, "--reason", "session-handoff-not-committed"], lifetime.signal);
+          if (transaction === pending) transaction = void 0;
+          return;
+        } catch (cancelError) {
+          logger.error("Upgrade cancellation was not confirmed; awaiting the installer result: %s", cancelError);
+        }
+      }
+      let reportedFailure = false;
+      while (transaction === pending && !lifetime.signal.aborted) {
+        try {
+          const result = await runCommand(["status", "--operation", id, "--wait"], lifetime.signal);
+          if (!isTerminal(operationRecord(result).phase)) throw new Error("YourBuddy installer status wait returned before settlement");
+          if (transaction === pending) transaction = void 0;
+        } catch (error) {
+          if (lifetime.signal.aborted) return;
+          if (!reportedFailure) logger.error("Upgrade status reader failed; retrying without permitting new work: %s", error);
+          reportedFailure = true;
+          await delay(policy.statusRetryMs, void 0, { signal: lifetime.signal });
+        }
+      }
+    })().catch((error) => {
+      if (!lifetime.signal.aborted) logger.error("Upgrade status is unavailable; inspect the saved installer operation: %s", error);
+    });
+  });
+  ctx.effect(() => async () => {
+    lifetime.abort(new Error("YourBuddy upgrade plugin stopped"));
+    await transaction?.committing;
+    await Promise.allSettled(commands);
+  });
+  ctx.effect(() => ctx.tools.register(defineTool({
+    name: "yourbuddy_upgrade",
+    description: "Upgrade this running YourBuddy application to the latest release or a specified version. Requires every other task and background job to be idle. Saves this conversation before restarting. Returns an accepted operation, not completed installation. Ends this turn; previous tools are never replayed automatically. Use yourbuddy_upgrade_status after restart to read the final result.",
+    parameters: { version: { type: "string", description: "latest or an exact release version; defaults to latest." } },
+    output: {
+      schema: { type: "json" },
+      render: (_args, value) => [{ type: "text", text: JSON.stringify(value) }],
+      presentationMeta: (_args, value) => value
+    },
+    presentCall: (args) => ({ card: "generic", title: "yourbuddy_upgrade", input: args.version ?? "latest" }),
+    async execute(args, exec) {
+      const agent = exec.agent;
+      if (agent === void 0) throw new Error("YourBuddy upgrade requires a current Session");
+      if (transaction !== void 0 || busy(agent, exec.token)) throw new Error("Other tasks are active; wait until they finish before upgrading YourBuddy");
+      const pending = { agent, rootCallId: exec.rootCallId, callId: exec.callId, token: exec.token, resultRecorded: false, receiptRecorded: false };
+      transaction = pending;
+      try {
+        await flush(agent.session);
+        exec.signal.throwIfAborted();
+        if (busy(agent, exec.token)) throw new Error("Other tasks became active before the upgrade request was saved");
+        const requestId = createHash("sha256").update(JSON.stringify([agent.id, exec.callId])).digest("hex");
+        const result = await runCommand([
+          "install",
+          "--app",
+          installation.app,
+          "--version",
+          args.version ?? "latest",
+          "--request-id",
+          requestId,
+          "--session-id",
+          agent.id,
+          "--defer-stop"
+        ], AbortSignal.any([exec.signal, lifetime.signal]));
+        const operation = operationRecord(result);
+        if (isTerminal(operation.phase)) {
+          transaction = void 0;
+          return { status: ["succeeded", "unchanged"].includes(operation.phase) ? "no-change" : operation.phase, operation: result };
+        }
+        pending.operation = operation.id;
+        exec.concludeTurn();
+        return { status: "accepted", operation: result, statusPath: UPGRADE_STATUS_PATH, continuation: "No previous tool is automatically rerun." };
+      } catch (error) {
+        if (transaction === pending) transaction = void 0;
+        throw error;
+      }
+    }
+  })));
+  ctx.effect(() => ctx.tools.register(defineTool({
+    name: "yourbuddy_upgrade_status",
+    description: "Read a saved YourBuddy upgrade operation. Succeeded means the target version and its Host and workbench are ready; accepted does not mean completed.",
+    parameters: { operation_id: { type: "string", description: "Operation ID returned by yourbuddy_upgrade; omit for this application\u2019s latest operation." } },
+    output: { schema: { type: "json" }, render: (_args, value) => [{ type: "text", text: JSON.stringify(value) }] },
+    presentCall: (args) => ({ card: "generic", title: "yourbuddy_upgrade_status", input: args.operation_id ?? installation.app }),
+    execute: (args, exec) => runCommand(args.operation_id === void 0 ? ["status", "--app", installation.app] : ["status", "--operation", args.operation_id], AbortSignal.any([exec.signal, lifetime.signal]))
+  })));
+}
+
 // src/index.ts
 var name = "personal-workbench";
-var Config = WorkbenchSettingsSchema;
-function apply(ctx) {
+var Config = Schema3.object({ ...WorkbenchSettingsSchema.dict, upgrade: UpgradePolicySchema });
+function apply(ctx, config) {
+  const executable = process.env.YOURBUDDY_DESKTOP_EXECUTABLE;
+  const app = process.env.YOURBUDDY_DESKTOP_APP;
+  if (executable !== void 0 && app !== void 0) {
+    ctx.inject(["agents", "tools", "sessions", "sessionPersistence", "jobs"], (upgradeCtx) => {
+      installSelfUpgrade(upgradeCtx, { executable, app }, config.upgrade);
+    });
+  }
   const profile = ctx.get("profileContext");
   if (profile !== void 0) installCapabilityPackReconciler(ctx, profile);
   ctx.inject(["webServer"], (webCtx) => {

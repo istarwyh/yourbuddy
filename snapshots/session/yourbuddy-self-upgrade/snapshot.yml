@@ -1,0 +1,11 @@
+version: 1
+scenario: yourbuddy-self-upgrade
+profile: headless
+composition: yourbuddy-self-upgrade
+recording: authored
+header:
+  class: yourbuddy-self-upgrade
+  pin: true
+replay:
+  override: true
+platform: posix

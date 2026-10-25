@@ -109,6 +109,10 @@ Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析�
 
 记录的引用仅来自 `components/active.json`、`runtime/manifest.json` 和 `bin/dsh-launch.json`，不代表当前仍在使用。目录树稳定时，诊断不检查符号链接目标、Profile、会话、凭据或外部 pnpm Store；并发替换路径可能使这些排除失效。采集报告时请退出应用，并避免改动被扫描的目录。所有条目均保留：租约活动与 Profile 引用未经验证，可回收字节数为 `null`。缺失的元数据标为不可用；元数据格式错误或扫描错误会输出不完整的 JSON，并以状态码 2 退出。计数是不持有事务锁时的尽力观测，不是清理计划或就绪结果。除非打算分享其中的目录名，否则请将报告保留在本机。
 
+## 独立安装与对话内升级
+
+[安装器指南](../../docs/user/product/installer.zh.md)说明受支持的终端入口、官方首次引导信任、本地归档、代理选项、操作回执与恢复步骤。Release 包含 `install-yourbuddy.sh`；内置辅助程序独立于应用 Host 运行，验证安装载荷，仅在已安装版本、Host 与前端均就绪后报告成功。Personal Workbench 升级工具会在交接前保存请求会话，拒绝与其他活动工作并行，并且不会在重启后自动继续 agent。
+
 ## 发布文档与官网
 
 每次发布使用 [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md)准备[版本归档](../../docs/releases/README.zh.md)。产品官网的下载页和发行页使用 GitHub 稳定的 `releases/latest` 与 Release 历史 URL，因此普通桌面发布不需要后续修改或部署官网。只有产品指南或其他站点内容发生变化时才更新并部署官网。
@@ -123,6 +127,7 @@ DSH_CLIENT_TITLE=YourBuddy pnpm run build
 pnpm --dir apps/desktop-tauri run test:bundle
 pnpm --dir apps/desktop-tauri run test:offline
 pnpm --dir apps/desktop-tauri run test:overlay
+pnpm --dir apps/desktop-tauri run test:installer
 pnpm --dir apps/desktop-tauri run test:update-manifest
 pnpm --dir apps/desktop-tauri run test:release-version
 pnpm --dir apps/desktop-tauri run sync:dsh -- --dry-run

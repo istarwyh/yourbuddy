@@ -57,6 +57,7 @@
       "icons/icon.ico"
     ],
     "resources": {
+      "installer-protocol.json": "installer-protocol.json",
       "../component-channel": "component-channel",
       "../overlay/desktop-notify": "desktop-overlay",
       "../sounds/complete.wav": "complete.wav",

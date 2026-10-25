@@ -143,6 +143,7 @@ fn manager(root: &Path, url: &str, bytes: &[u8]) -> ComponentManager {
     spec.bytes = bytes.len() as u64;
     spec.sha256 = hex::encode(Sha256::digest(bytes));
     ComponentManager {
+        offline: false,
         root: root.into(),
         resource_dir: root.join("resources"),
         manifest,
@@ -1500,4 +1501,26 @@ fn inaccessible_lock_file_fails_closed_without_reclaim_or_truncation() {
         .starts_with("component transaction lock is unavailable"));
     assert_eq!(fs::read(&path).unwrap(), b"keep unreadable legacy contents");
     drop(ComponentLock::acquire(path).unwrap());
+}
+
+#[tokio::test]
+async fn offline_preparation_uses_verified_cache_and_never_falls_back_to_network() {
+    let server = Server::new(vec![]);
+    let root = tempfile::tempdir().unwrap();
+    let manager = manager(root.path(), &server.url, b"abcdef").with_offline(true);
+    seed_partial(&manager, &server.url, b"abcdef", "\"v1\"");
+    let spec = manager.spec("harness").unwrap();
+    let mut observations = PreparationMetrics::default();
+    let cached = manager
+        .obtain_archive("harness", spec, &mut observations)
+        .await
+        .unwrap();
+    assert_eq!(fs::read(&cached).unwrap(), b"abcdef");
+    fs::write(&cached, b"incomplete").unwrap();
+    let error = manager
+        .obtain_archive("harness", spec, &mut PreparationMetrics::default())
+        .await
+        .unwrap_err();
+    assert!(error.contains("offline package/cache is missing component harness"));
+    assert!(server.requests().is_empty());
 }
