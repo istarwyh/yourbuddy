@@ -6,9 +6,11 @@ YourBuddy 当前适用于 Apple Silicon 上的 macOS 11 或更高版本。
 
 ## 下载最新版本
 
-打开 [YourBuddy 最新 Release](https://github.com/istarwyh/yourbuddy/releases/latest)。推荐下载小型安装包 `yourbuddy-<version>-bootstrap-macos-arm64.dmg`，自动更新也使用这一版本。首次启动不能访问外网时，下载体积更大的 `yourbuddy-<version>-offline-macos-arm64.dmg`。两者安装相同的应用身份与组件版本。
+打开 [YourBuddy 最新 Release](https://github.com/istarwyh/yourbuddy/releases/latest)。推荐下载小型安装包 `yourbuddy-<version>-bootstrap-macos-arm64.dmg`。首次启动不能访问外网时，下载体积更大的 `yourbuddy-<version>-offline-macos-arm64.dmg`。两者安装相同的应用身份与组件版本。
 
-旧版应用也可以使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。正常升级会保留现有 YourBuddy 数据。
+旧版应用也可以使用**设置 → 通用设置 → 应用生命周期 → 检查更新**。自动更新使用已签名的 Offline 应用归档，而不是 Bootstrap DMG。正常升级会保留现有 YourBuddy 数据。
+
+终端安装、代理／离线文件，以及从当前对话升级的方式见[安装与升级](installer.zh.md)。
 
 ## 桌面包包含什么
 

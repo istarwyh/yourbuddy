@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for installer.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/user/product/installer.md
+/install-and-upgrade-from-the-terminal:
+  en: 25ae4e3ae0378608
+  zh: f68d7dfb8abbe260
+/install-and-upgrade-from-the-terminal/choose-an-entry:
+  en: 6d4a743bfc217276
+  zh: 2905f55971812725
+/install-and-upgrade-from-the-terminal/first-terminal-installation:
+  en: 20fb37faac794ff8
+  zh: be47e6fc8495ec6d
+/install-and-upgrade-from-the-terminal/proxy-pinned-version-and-offline-files:
+  en: 24d7743e33cc2be1
+  zh: 7d38d952162b0052
+/install-and-upgrade-from-the-terminal/read-the-result:
+  en: 172db714d751a629
+  zh: 0b89095d20ff8231
+/install-and-upgrade-from-the-terminal/recover-without-deleting-user-data:
+  en: 9ee70a480551ae0c
+  zh: bedbe416a111d442

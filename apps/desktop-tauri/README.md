@@ -109,6 +109,10 @@ For an installed application, run `node apps/desktop-tauri/scripts/inspect-compo
 
 Recorded references come only from `components/active.json`, `runtime/manifest.json`, and `bin/dsh-launch.json`; they do not establish live use. On a stable directory tree, symlink targets, Profiles, sessions, credentials, and external pnpm Stores are not inspected; concurrent path replacement can invalidate these exclusions. Quit the application and avoid changing the scanned directories while collecting a report. Every entry remains retained: lease activity and Profile references are unverified, and reclaimable bytes are `null`. Missing metadata is reported as unavailable; malformed metadata or scan errors produce partial JSON and exit status 2. Counts are best-effort observations without a transaction lock, not a cleanup plan or readiness result. Keep the report local unless you intend to share its directory names.
 
+## Standalone installation and conversation upgrades
+
+The [installer guide](../../docs/user/product/installer.md) owns the supported terminal entry, official bootstrap trust, local archives, proxy options, operation receipts, and recovery steps. The release includes `install-yourbuddy.sh`; its packaged helper runs independently of the application Host, verifies installation payloads, and reports success only after the installed version, Host, and frontend are ready. The Personal Workbench upgrade tools preserve the requesting session before handoff, refuse other active work, and never resume an agent automatically after restart.
+
 ## Release documentation and website
 
 Use [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md) to prepare the [version archive](../../docs/releases/README.md) with each release. The product site's download and release pages use GitHub's stable `releases/latest` and release-history URLs, so an ordinary desktop release requires no follow-up website edit or deployment. Update and deploy the website only when product guidance or other site content changes.
@@ -123,6 +127,7 @@ DSH_CLIENT_TITLE=YourBuddy pnpm run build
 pnpm --dir apps/desktop-tauri run test:bundle
 pnpm --dir apps/desktop-tauri run test:offline
 pnpm --dir apps/desktop-tauri run test:overlay
+pnpm --dir apps/desktop-tauri run test:installer
 pnpm --dir apps/desktop-tauri run test:update-manifest
 pnpm --dir apps/desktop-tauri run test:release-version
 pnpm --dir apps/desktop-tauri run sync:dsh -- --dry-run

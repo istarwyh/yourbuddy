@@ -204,6 +204,9 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:*
         version: link:../../packages/runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-jobs':
+        specifier: workspace:*
+        version: link:../../packages/jobs/jobs
       '@deepseek-ai/dsh-jobs-local':
         specifier: workspace:*
         version: link:../../packages/jobs/jobs-local
@@ -249,6 +252,9 @@ importers:
       '@deepseek-ai/dsh-session':
         specifier: workspace:*
         version: link:../../packages/core/session
+      '@deepseek-ai/dsh-session-persistence':
+        specifier: workspace:*
+        version: link:../../packages/session/session-persistence
       '@deepseek-ai/dsh-session-projection':
         specifier: workspace:*
         version: link:../../packages/session/session-projection
@@ -354,6 +360,9 @@ importers:
       '@deepseek-ai/dsh-typert-protocol':
         specifier: workspace:*
         version: link:../../packages/typert/protocol
+      '@deepseek-ai/dsh-util-values':
+        specifier: workspace:*
+        version: link:../../packages/util/values
       '@deepseek-ai/dsh-web':
         specifier: workspace:*
         version: link:../../packages/web/web
@@ -5217,6 +5226,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:*
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:*
+        version: link:../../core/agent
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:*
         version: link:../../api/remotes
@@ -5226,6 +5238,9 @@ importers:
       '@deepseek-ai/dsh-app-boot':
         specifier: workspace:*
         version: link:../../boot/app-boot
+      '@deepseek-ai/dsh-brand':
+        specifier: workspace:*
+        version: link:../../util/brand
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:*
         version: link:../../client/connection
@@ -5262,12 +5277,30 @@ importers:
       '@deepseek-ai/dsh-http-proxy':
         specifier: workspace:*
         version: link:../../util/http-proxy
+      '@deepseek-ai/dsh-jobs':
+        specifier: workspace:*
+        version: link:../../jobs/jobs
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:*
+        version: link:../../llm/llm
       '@deepseek-ai/dsh-plugin-manager':
         specifier: workspace:*
         version: link:../../boot/plugin-manager
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../core/session
+      '@deepseek-ai/dsh-session-persistence':
+        specifier: workspace:*
+        version: link:../../session/session-persistence
       '@deepseek-ai/dsh-settings':
         specifier: workspace:*
         version: link:../../settings/settings
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:*
+        version: link:../../core/tools
+      '@deepseek-ai/dsh-util-values':
+        specifier: workspace:*
+        version: link:../../util/values
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery

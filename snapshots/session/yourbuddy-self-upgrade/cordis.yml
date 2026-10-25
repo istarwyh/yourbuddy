@@ -1,0 +1,4 @@
+# The product plugin is unchanged; only the external native installer is a fixture.
+- insert:
+    - id: yourbuddy-upgrade-fixture
+      name: './fixture.ts'
