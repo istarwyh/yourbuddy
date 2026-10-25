@@ -445,9 +445,11 @@ it('loads an independent terminal Factory, follows its theme, and releases its o
     useWorkspaces: unused, useResource: unused, renderFactorySlot: unused, useFactorySlot: unused,
   }
   const view = render(<TerminalSurfaceFactory {...props} />)
-  await waitFor(() => { expect(view.getByRole('textbox', { name: en.title })).toBeDefined() })
+  await waitFor(() => {
+    expect(view.getByRole('textbox', { name: en.title })).toBeDefined()
+    expect(mountSpy).toHaveBeenCalledOnce()
+  })
   expect(props.view).toHaveBeenCalledWith({ sessionId: props.sessionId, tabId: props.tabId, contentId: props.contentId })
-  expect(mountSpy).toHaveBeenCalledOnce()
   const terminal = fake.terminals[0]!
   const previousTheme = terminal.options.theme
   vi.spyOn(window, 'getComputedStyle').mockReturnValue(Object.assign(document.createElement('div').style, { backgroundColor: 'rgb(23, 25, 29)', color: 'rgb(231, 233, 238)' }))
