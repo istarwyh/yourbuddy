@@ -415,6 +415,7 @@ describe('YourBuddy first publication', () => {
       const taggedSha = git('rev-parse', 'HEAD')
       writeFileSync(join(fixture, path), `
         import { marker } from './fixture.mjs'
+        export const RELEASE_DOCUMENT_PREVIEWS = []
         export async function verifyPreparedProduct() {
           if (marker !== 'tagged helper') throw new Error('wrong sibling helper')
           console.log('workflow verifier with ' + marker)
