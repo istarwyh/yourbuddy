@@ -129,14 +129,26 @@ export async function mockServer(script: Behavior[]): Promise<MockServer> {
           return
         }
         response.writeHead(200, { 'content-type': 'text/event-stream' })
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const stop = (): void => {
+          clearTimeout(timer)
+          response.off('close', stop)
+          server.off('close', stop)
+        }
+        response.once('close', stop)
+        server.once('close', stop)
         const write = (index: number): void => {
+          if (response.destroyed) return
           if (index >= behavior.events.length) {
             if (behavior.kind === 'sse') response.end()
             else response.destroy() // close-early: drop the socket mid-stream
             return
           }
           response.write(`data: ${behavior.events[index]}\n\n`)
-          setTimeout(() => { write(index + 1) }, behavior.kind === 'sse' ? behavior.delayMs ?? 0 : 5)
+          timer = setTimeout(() => {
+            timer = undefined
+            write(index + 1)
+          }, behavior.kind === 'sse' ? behavior.delayMs ?? 0 : 5)
         }
         write(0)
       })().catch((error: unknown) => {
