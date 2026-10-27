@@ -10,7 +10,8 @@
     baseURL: !!js process.env.DSH_SNAPSHOT_BASE_URL
     thinking: enabled
     reasoningEffort: low
-    streamIdleTimeoutMs: 150
+    # Heartbeat deadlines use fake clocks in llm-deepseek/tests/runtime.spec.ts;
+    # this real-process integration keeps the provider's normal idle budget.
 
 - id: agent-loop
   config:
