@@ -24,7 +24,9 @@ it('cancels pending SSE writes when the client disconnects', async () => {
   try {
     await once(response, 'data')
     expect(scheduled).toHaveBeenCalledTimes(1)
-    const pending = scheduled.mock.results[0]?.value
+    const result = scheduled.mock.results[0]
+    if (result?.type !== 'return') throw new Error('SSE timer was not scheduled')
+    const pending = result.value
     expect(pending).toBeDefined()
 
     const closed = new Promise<void>((resolve) => { response.once('close', resolve) })
