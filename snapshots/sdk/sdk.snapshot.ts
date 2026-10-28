@@ -10,11 +10,12 @@
  */
 
 import { existsSync } from 'node:fs'
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, delimiter, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
+import { runSdkSnapshotLifecycle } from '../../scripts/sdk-snapshot-lifecycle.ts'
 import {
   assertPersistedSessionVersion,
   assertSessionFixtureVersion,
@@ -139,6 +140,9 @@ const SDK_ASSERTIONS: Readonly<Record<string, SdkAssertions>> = {
     patches: [fileURLToPath(new URL('./ptc-turn/runtime.cordis.yml', import.meta.url))],
     expectedFinalResponse: 'CODE_ONE+CODE_TWO',
     expectedTools: { run_code: ['code', 'description'] },
+  },
+  'subagent-list-agents': {
+    patches: [fileURLToPath(new URL('./subagent-list-agents/runtime.cordis.yml', import.meta.url))],
   },
   'subagent-continuable': {
     environment: { DSH_SNAPSHOT_HUMAN_STEER: '1' },
@@ -549,79 +553,79 @@ async function runScenario(scenario: CorpusScenario): Promise<{
   cwd: string
 }> {
   const cwd = await mkdtemp(join(tmpdir(), `sdk-snapshot-${scenario.name}-`))
-  const dshHome = join(cwd, '.dsh')
-  const sessionsRoot = join(dshHome, 'sessions')
-  const replayFixtures = recording ? [] : await hydrateReplayFixtures(scenario, cwd)
-  const fixtureContents = await Promise.all((await fixtureFiles(scenario)).map(file => readFile(file, 'utf8')))
-  const primaryFixture = fixtureContents[0]
-  if (primaryFixture === undefined) throw new Error(`${scenario.name}: no primary session fixture`)
-  const route = modelFromSession(primaryFixture)
-  const patchRoot = join(cwd, '.snapshot-patches')
-  await mkdir(patchRoot, { recursive: true })
-  const assertions = SDK_ASSERTIONS[scenario.name] ?? {}
-  const patches = [...authoredPatches(scenario, !recording), ...assertions.patches ?? []]
-    .map((patch, index) => materializeProfilePatch(patch, cwd, 'sdk', patchRoot, index))
-  let childSessionsRoot: string | undefined
-  let childEnvironment: Record<string, string> = {}
-  if (assertions.dshSdkChild !== undefined) {
-    const childHome = join(cwd, '.child-dsh')
-    const childPatch = materializeProfilePatch(assertions.dshSdkChild.config, cwd, 'sdk', patchRoot, patches.length)
-    await mkdir(childHome, { recursive: true })
-    childSessionsRoot = join(childHome, 'sessions')
-    childEnvironment = {
-      DSH_TEST_CHILD_PATCHES: JSON.stringify([childPatch]),
-      DSH_TEST_CHILD_HOME: childHome,
+  return runSdkSnapshotLifecycle(cwd, onTestFinished, async (scope) => {
+    const dshHome = join(cwd, '.dsh')
+    const sessionsRoot = join(dshHome, 'sessions')
+    const replayFixtures = recording ? [] : await hydrateReplayFixtures(scenario, cwd)
+    const fixtureContents = await Promise.all((await fixtureFiles(scenario)).map(file => readFile(file, 'utf8')))
+    const primaryFixture = fixtureContents[0]
+    if (primaryFixture === undefined) throw new Error(`${scenario.name}: no primary session fixture`)
+    const route = modelFromSession(primaryFixture)
+    const patchRoot = join(cwd, '.snapshot-patches')
+    await mkdir(patchRoot, { recursive: true })
+    const assertions = SDK_ASSERTIONS[scenario.name] ?? {}
+    const patches = [...authoredPatches(scenario, !recording), ...assertions.patches ?? []]
+      .map((patch, index) => materializeProfilePatch(patch, cwd, 'sdk', patchRoot, index))
+    let childSessionsRoot: string | undefined
+    let childEnvironment: Record<string, string> = {}
+    if (assertions.dshSdkChild !== undefined) {
+      const childHome = join(cwd, '.child-dsh')
+      const childPatch = materializeProfilePatch(assertions.dshSdkChild.config, cwd, 'sdk', patchRoot, patches.length)
+      await mkdir(childHome, { recursive: true })
+      childSessionsRoot = join(childHome, 'sessions')
+      childEnvironment = {
+        DSH_TEST_CHILD_PATCHES: JSON.stringify([childPatch]),
+        DSH_TEST_CHILD_HOME: childHome,
+      }
     }
-  }
-  const workspaceDir = join(scenario.dir, 'workspace')
-  if (existsSync(workspaceDir)) {
-    for (const entry of await readdir(workspaceDir)) {
-      await cp(join(workspaceDir, entry), join(cwd, entry), { recursive: true, verbatimSymlinks: true })
+    const workspaceDir = join(scenario.dir, 'workspace')
+    if (existsSync(workspaceDir)) {
+      for (const entry of await readdir(workspaceDir)) {
+        await cp(join(workspaceDir, entry), join(cwd, entry), { recursive: true, verbatimSymlinks: true })
+      }
     }
-  }
-  const initialWorkspace = await captureWorkspaceSnapshot(cwd, {
-    ignoredRootEntries: RUNTIME_WORKSPACE_ENTRIES,
-  })
-  const [parentFixture, ...childFixtures] = replayFixtures
-  const env: Record<string, string> = {
-    ...Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== undefined)) as Record<string, string>,
-    DSH_SNAPSHOT: mode,
-    DSH_SNAPSHOT_PROVIDER: route.provider,
-    DSH_SNAPSHOT_MODEL: route.model,
-    DSH_TELEMETRY_DISABLED: '1',
-    DSH_AGENTS_HOME: join(cwd, '.agents'),
-    NODE_OPTIONS: [process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning'].filter(Boolean).join(' '),
-    ...parentFixture === undefined ? {} : {
-      DSH_SNAPSHOT_FILE: parentFixture,
-      ...childFixtures.length > 0 ? { DSH_SNAPSHOT_CHILD_FILES: childFixtures.join(delimiter) } : {},
-    },
-    ...!recording && scenario.manifest.replay?.override === true
-      ? { DSH_SNAPSHOT_OVERRIDE: join(scenario.dir, 'replay.override.json') }
-      : {},
-    ...scenario.manifest.environment,
-    ...assertions.environment,
-    ...childEnvironment,
-  }
+    const initialWorkspace = await captureWorkspaceSnapshot(cwd, {
+      ignoredRootEntries: RUNTIME_WORKSPACE_ENTRIES,
+    })
+    const [parentFixture, ...childFixtures] = replayFixtures
+    const env: Record<string, string> = {
+      ...Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== undefined)) as Record<string, string>,
+      DSH_SNAPSHOT: mode,
+      DSH_SNAPSHOT_PROVIDER: route.provider,
+      DSH_SNAPSHOT_MODEL: route.model,
+      DSH_TELEMETRY_DISABLED: '1',
+      DSH_AGENTS_HOME: join(cwd, '.agents'),
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning'].filter(Boolean).join(' '),
+      ...parentFixture === undefined ? {} : {
+        DSH_SNAPSHOT_FILE: parentFixture,
+        ...childFixtures.length > 0 ? { DSH_SNAPSHOT_CHILD_FILES: childFixtures.join(delimiter) } : {},
+      },
+      ...!recording && scenario.manifest.replay?.override === true
+        ? { DSH_SNAPSHOT_OVERRIDE: join(scenario.dir, 'replay.override.json') }
+        : {},
+      ...scenario.manifest.environment,
+      ...assertions.environment,
+      ...childEnvironment,
+    }
 
-  const harness = new DeepSeekHarness({
-    profile: 'sdk',
-    patches,
-    dshHome,
-    processCwd: cwd,
-    env,
-    requestTimeoutMs: 110_000,
-    cwd,
-    provider: route.provider,
-    model: route.model,
-  })
-  try {
+    const harness = new DeepSeekHarness({
+      profile: 'sdk',
+      patches,
+      dshHome,
+      processCwd: cwd,
+      env,
+      requestTimeoutMs: 110_000,
+      cwd,
+      provider: route.provider,
+      model: route.model,
+    })
     const notifications: HarnessNotification[] = []
     const observedMethods = new Set<string>()
     const results: RunResult[] = []
     const sessionId = 'fixture-root-session'
     const liveSessions: (string | undefined)[] = [sessionId]
-    await harness.start()
-    const subscription = harness.client.subscribeSessionTree(sessionId)
+    await scope.startRuntime(harness)
+    const subscription = scope.ownSubscription(harness.client.subscribeSessionTree(sessionId))
     const observe = (notification: HarnessNotification): void => {
       observedMethods.add(notification.method)
       if (notification.method !== 'subagent.started') return
@@ -676,10 +680,7 @@ async function runScenario(scenario: CorpusScenario): Promise<{
       ignoredRootEntries: RUNTIME_WORKSPACE_ENTRIES,
     })
     return { results, notifications, observedMethods, logs, initialWorkspace, finalWorkspace, cwd }
-  } finally {
-    await harness.close()
-    await rm(cwd, { recursive: true, force: true })
-  }
+  })
 }
 
 /** Order logs parent-first, children by creation time (fixture layout order). */
