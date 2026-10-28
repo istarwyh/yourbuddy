@@ -1,0 +1,40 @@
+name: DeepSeek fixture regression
+
+on:
+  pull_request:
+    paths:
+      - 'packages/llm/llm-deepseek/tests/**'
+      - '.github/workflows/deepseek-fixture-regression.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deepseek-fixture-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  darwin-fixtures:
+    name: DeepSeek fixtures (darwin)
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-deepseek-fixtures
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+      - name: Check response cleanup and heartbeat deadlines
+        run: >-
+          pnpm exec vitest run
+          packages/llm/llm-deepseek/tests/mock-server.spec.ts
+          packages/llm/llm-deepseek/tests/runtime.spec.ts
