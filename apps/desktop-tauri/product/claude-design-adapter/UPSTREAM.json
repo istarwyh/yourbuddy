@@ -24,7 +24,7 @@
     },
     {
       "file": "patches/dsh-claude-artifacts-2.11.1-yourbuddy.patch",
-      "sha256": "5e80761238fd9891070a5acddb324fe730b0f531b5b2d0286e2a989057c0c5ae"
+      "sha256": "3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083"
     }
   ]
 }

@@ -1,7 +1,7 @@
 /** Verify an installed design pair through the actual CLI Loader, tool, routes, and Client. */
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { mkdtemp, mkdir, writeFile, rm, access } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, rm, access, realpath } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -139,21 +139,23 @@ try {
   const probe = join(world, 'probe.mjs'), overlay = join(world, 'probe.yml')
   await writeFile(probe, `
 export const name = 'design-runtime-probe'
-export const inject = ['yourbuddyDesign', 'tools', 'connection', 'sessionController', 'sessions']
+export const inject = ['yourbuddyDesign', 'tools', 'connection', 'workspaceController', 'sessionController', 'sessions']
 export function apply(ctx) {
   ctx.connection.fetch.register({
     path: '/api/yourbuddy.design.probe', methods: ['GET', 'POST'], requestBody: 'buffered',
     fetch: async request => {
       const tool = ctx.tools.get('yourbuddy_design_open')
       if (request.method === 'GET') return Response.json({ tool: tool !== undefined })
-      const { sessionId } = await ctx.sessionController.create({ cwd: ${JSON.stringify(world)} })
+      const { workspace } = await ctx.workspaceController.create({ path: ${JSON.stringify(world)} })
+      const { sessionId } = await ctx.sessionController.create({ workspaceId: workspace.workspaceId })
       const resolved = await ctx.sessionController.resolveAgent(sessionId)
       if ('error' in resolved) throw resolved.error
       const opened = await tool.execute({ root: ${JSON.stringify(folder)} }, {
         agent: resolved.agent, signal: new AbortController().signal,
       })
       await ctx.sessions.flush(resolved.agent.session)
-      return Response.json({ sessionId, opened })
+      const { workspace: attached } = await ctx.workspaceController.create({ path: workspace.path })
+      return Response.json({ sessionId, opened, workspace: attached })
     },
   })
 }
@@ -164,7 +166,9 @@ export function apply(ctx) {
   const list = await host.call('/api/baoyu-design.artifacts')
   assert.equal(list.skills.length, 1)
   assert.equal(list.skills[0].missing, false)
-  const { opened } = await host.call('/api/yourbuddy.design.probe', 'POST')
+  const { opened, sessionId, workspace } = await host.call('/api/yourbuddy.design.probe', 'POST')
+  assert.equal(workspace.path, await realpath(world))
+  assert(workspace.sessionIds.includes(sessionId), 'The design fixture Session must belong to a registered Workspace')
   assert.equal((await fetch(opened.url)).status, 200)
   const removed = await host.call(`/api/baoyu-design.artifacts.delete?${new URLSearchParams({ root: folder })}`, 'POST')
   assert.equal(removed.moved, true)
@@ -180,7 +184,7 @@ export function apply(ctx) {
   assert.equal(request.status, 409)
   assert.equal((await request.json()).code, 'YOURBUDDY_COMMENT_REQUIRED')
   assert.equal(host.errors(), '')
-  console.log('Installed Loader/tool/skill/editor and Delete/Undo/managed reopen passed; page requests reject with 409.')
+  console.log('Registered Workspace/Session, installed Loader/tool/skill/editor and Delete/Undo/managed reopen passed; page requests reject with 409.')
   if (!hostOnly) await verifyClient(host, true, reopened.url)
   await host.stop()
   await assert.rejects(fetch(reopened.url))

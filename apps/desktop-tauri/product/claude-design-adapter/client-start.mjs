@@ -1,5 +1,8 @@
 /** Start an unsent design draft using the desktop's existing Session services. */
 export async function startDesignDraft(ctx, prompt, agentPreset) {
+  // Pending is not an empty installation. The UI enables creation after both baselines arrive.
+  if (ctx.workspaces.list.getSnapshot().phase !== 'ready'
+    || ctx.sessions.list.getSnapshot().phase !== 'ready') return;
   const navigation = ctx.layout.beginNavigation();
   const catalog = ctx.sessions.list.getSnapshot();
   const current = Object.values(catalog.byId).find(item => (item.retainedBy.mainView ?? 0) > 0);

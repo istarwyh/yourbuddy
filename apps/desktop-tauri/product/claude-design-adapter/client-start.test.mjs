@@ -10,7 +10,7 @@ function fixture() {
   const ctx = {
     layout: { beginNavigation() { navigation?.abort(); navigation = new AbortController(); return navigation.signal; } },
     sessions: {
-      list: { getSnapshot: () => ({ byId: { old: { id: 'old', retainedBy: { mainView: 1 }, projectionValues: { agentPreset: 'current-preset' } } } }) },
+      list: { getSnapshot: () => ({ phase: 'ready', byId: { old: { id: 'old', retainedBy: { mainView: 1 }, projectionValues: { agentPreset: 'current-preset' } } } }) },
       async create(options) { calls.push(['create', options]); return 'new'; },
       async using(id, options, operation) {
         calls.push(['retain', id, options.source]);
@@ -18,7 +18,7 @@ function fixture() {
         finally { calls.push(['release', id]); }
       },
     },
-    workspaces: { list: { getSnapshot: () => ({ items: [{ workspaceId: 'selected-workspace', sessionIds: ['old'], updatedAt: '2026-01-01' }] }) } },
+    workspaces: { list: { getSnapshot: () => ({ phase: 'ready', items: [{ workspaceId: 'selected-workspace', sessionIds: ['old'], updatedAt: '2026-01-01' }] }) } },
     remote: { agentPresets: { async select(id, preset) { calls.push(['preset', id, preset]); return { ok: true }; } } },
     conversation: { input: { for: ({ id }) => ({ setDraft: text => drafts.set(id, text), focus: () => calls.push(['focus', id]) }) } },
     uiWorkspace: { openSession: id => calls.push(['open', id]) },

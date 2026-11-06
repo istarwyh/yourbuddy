@@ -16,7 +16,7 @@ patchedDependencies:
   '@fortune-sheet/core@1.0.4': 8791a230763dbf853fd65d627c68c31de37209992851377855e16cf08ea70532
   '@fortune-sheet/react@1.0.4': 2932e52e79afcd4ced08cfa123b5eded786c85043da32f622f3e80af6fc96c37
   '@yao-pkg/pkg@6.21.0': 75891fc22b277c145cafeab83e41baf4a70f5b8fe6dc0801c6a0b922d7ee88c7
-  dsh-claude-artifacts@2.11.1: 5e80761238fd9891070a5acddb324fe730b0f531b5b2d0286e2a989057c0c5ae
+  dsh-claude-artifacts@2.11.1: 3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083
   dsh-claude-design@2.11.1: 47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22
   exceljs@4.4.0: c1bf8ac8f319dab382f08e3a669b715e691d46c703ac5a4163eb383fbedd1d48
   node-pty@1.2.0-beta.15: b40ae545608897914bd25fb009c97eeac478c34e8a910298ddcb01b746534bb0
@@ -389,7 +389,7 @@ importers:
         version: link:../../packages/product/dsh-better-sidebar
       dsh-claude-artifacts:
         specifier: 2.11.1
-        version: 2.11.1(patch_hash=5e80761238fd9891070a5acddb324fe730b0f531b5b2d0286e2a989057c0c5ae)
+        version: 2.11.1(patch_hash=3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083)
       dsh-claude-design:
         specifier: 2.11.1
         version: 2.11.1(patch_hash=47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22)
@@ -4913,7 +4913,7 @@ importers:
         version: link:../../../vendor/schemastery
       dsh-claude-artifacts:
         specifier: 2.11.1
-        version: 2.11.1(patch_hash=5e80761238fd9891070a5acddb324fe730b0f531b5b2d0286e2a989057c0c5ae)
+        version: 2.11.1(patch_hash=3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083)
       dsh-claude-design:
         specifier: 2.11.1
         version: 2.11.1(patch_hash=47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22)
@@ -12403,11 +12403,11 @@ snapshots:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
-  dsh-claude-artifacts@2.11.1(patch_hash=5e80761238fd9891070a5acddb324fe730b0f531b5b2d0286e2a989057c0c5ae): {}
+  dsh-claude-artifacts@2.11.1(patch_hash=3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083): {}
 
   dsh-claude-design@2.11.1(patch_hash=47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22):
     dependencies:
-      dsh-claude-artifacts: 2.11.1(patch_hash=5e80761238fd9891070a5acddb324fe730b0f531b5b2d0286e2a989057c0c5ae)
+      dsh-claude-artifacts: 2.11.1(patch_hash=3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083)
 
   dunder-proto@1.0.1:
     dependencies:

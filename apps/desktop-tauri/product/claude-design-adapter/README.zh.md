@@ -6,7 +6,7 @@ YourBuddy 通过精确依赖和冻结的 Harness 锁文件内置 2.11.1 版 `dsh
 
 ## Use
 
-作品侧边栏在当前工作区新建一条尚未发送的 `/claude-design` 草稿，保留已选 Agent 预设，使用 YourBuddy 配置的默认模型，不覆盖已有草稿。模型在会话工作区内写入 `project/canvas.json` 和 `.dc.html` 文件，然后调用 `yourbuddy_design_open`；从作品列表选择该作品即可在应用内打开编辑器。普通聊天链接仍在系统浏览器打开。
+作品侧边栏在当前工作区新建一条尚未发送的 `/claude-design` 草稿，保留已选 Agent 预设，使用 YourBuddy 配置的默认模型，不覆盖已有草稿。模型在会话工作区内写入 `project/canvas.json` 和 `.dc.html` 文件，然后调用 `yourbuddy_design_open`；从作品列表选择该作品即可在应用内打开编辑器。普通聊天链接仍在系统浏览器打开。工作区和会话列表就绪前，新建入口保持禁用，并显示本地化加载提示或工作区/会话列表错误；就绪后不会重放之前的点击。
 
 受管 Host Node 为每个规范化作品文件夹启动一个前台编辑器子进程。重复打开复用该进程，其他会话不能接管正在使用的编辑器，外部启动的服务不会被终止。禁用适配器或退出 Host 会停止其子进程；插件加载失败与工作台启动隔离。插件页控制三个产品行。升级随应用发布，不使用上游独立更新器。
 
@@ -16,9 +16,9 @@ Send to Agent 向关联会话排入带上游评论卡片的通知。会话、文
 
 适配器支持 startupTimeoutMs（20000）和 stopTimeoutMs（5000）。服务仅监听 127.0.0.1，由系统分配端口，不通过 shell 启动编辑器，并去除名称包含凭据标记的环境变量。受管编辑器忽略持久化的 LAN 共享设置，并拒绝启用 LAN Share；不会改写已有共享文件。编辑器 iframe 和本地文件导出路径保持上游行为及现有桌面权限。
 
-构建并按冻结锁文件安装 bundled Harness 后，运行 `pnpm --dir apps/desktop-tauri run test:design`。该命令针对已安装包执行 Node 回归测试和生产 AgentLoop/JSONL 及真实 Cordis Client 服务注入专项测试，再通过真实 Web profile 验证 Loader、工具执行、作品接口、删除/撤销/重开及 Chromium Client 启动。如果 Chromium 不在 Playwright 缓存中，可设置 `YOURBUDDY_RELEASE_CHROMIUM_EXECUTABLE`。传入 `--host-only` 会明确跳过浏览器执行。
+构建并按冻结锁文件安装 bundled Harness 后，运行 `pnpm --dir apps/desktop-tauri run test:design`。该命令针对已安装包执行 Node 回归测试和生产 AgentLoop/JSONL 及真实 Cordis Client 服务注入专项测试，再通过真实 Web profile 验证 Loader、工具执行、作品接口、删除/撤销/重开及 Chromium Client 启动。如果 Chromium 不在 Playwright 缓存中，可设置 `YOURBUDDY_RELEASE_CHROMIUM_EXECUTABLE`。传入 `--host-only` 会明确跳过浏览器执行。Host 夹具先注册临时工作区，再创建所属会话；已有会话但没有注册工作区的安装环境不符合首次使用初始化条件。
 
-Linux 验证通过 22 项适配器 Node、6 项 CI/诊断、10 项 Vitest 和真实 Host 生命周期测试。故意使用无效设计配置后，Web 文档和实际会话创建仍可用。正常离线 Store 准备流程生成了 Linux seed 压缩包；从压缩包恢复 Store 后，使用与首次启动相同的冻结离线参数，从空安装树安装通过。这是 Linux 证据，不代表 macOS 发行或原生首次启动通过。Linux 上覆盖了原生锁竞争；Windows 命名管道分支尚未在 Windows 上运行。
+Linux 验证通过 22 项适配器 Node、6 项 CI/诊断、22 项 Vitest 和真实 Host 生命周期测试。故意使用无效设计配置后，Web 文档和实际会话创建仍可用。正常离线 Store 准备流程生成了 Linux seed 压缩包；从压缩包恢复 Store 后，使用与首次启动相同的冻结离线参数，从空安装树安装通过。这是 Linux 证据，不代表 macOS 发行或原生首次启动通过。Linux 上覆盖了原生锁竞争；Windows 命名管道分支尚未在 Windows 上运行。
 
 评论测试中的会话解析器使用测试替身。Bootstrap regression 工作流复用现有 YourBuddy 构建，生成实际 Linux 离线 seed，从压缩包重装后执行 Chromium 验收，涵盖作品入口、未发送草稿、受管 iframe 打开，以及功能启动失败后的工作台启动。不需要模型凭据或发布权限，保留测试日志；浏览器失败时还保留有大小限制的页面、错误和请求诊断及截图。网络诊断不采集 URL 凭据、查询参数、请求头或请求体；文本诊断复用发行验收的脱敏函数。设置 `YOURBUDDY_DESIGN_EVIDENCE_DIR` 可在本地保留相同证据。仍需实际 CI 运行成功，接入工作流不等于验收通过。
 

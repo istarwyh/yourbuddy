@@ -1,6 +1,94 @@
 --- a/lib/client.js
 +++ b/lib/client.js
-@@ -2042,27 +2042,8 @@
+@@ -744,6 +744,9 @@
+ 		  "type.claude-docs": "文档",
+ 		  "type.claude-motion": "动画",
+ 		  "create.heading": "新建",
++		  "create.loading": "正在加载工作区和会话…",
++		  "create.failed": "无法加载工作区：{message}",
++		  "create.sessionsFailed": "无法加载会话。请重新加载应用后再试。",
+ 		  "create.new": "新建",
+ 		  "create.session": "新会话",
+ 		  "prompt.claude-slides": "帮我做一份幻灯片，主题是：",
+@@ -847,6 +850,9 @@
+ 		  "type.claude-docs": "Docs",
+ 		  "type.claude-motion": "Motion",
+ 		  "create.heading": "Make something new",
++		  "create.loading": "Loading workspaces and sessions…",
++		  "create.failed": "Could not load workspaces: {message}",
++		  "create.sessionsFailed": "Could not load sessions. Reload the app and try again.",
+ 		  "create.new": "New",
+ 		  "create.session": "New session",
+ 		  "prompt.claude-slides": "Make me a slide deck about: ",
+@@ -1509,7 +1515,7 @@
+ 		      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "bda-menu-label", children: t("create.session") })
+ 		    ] }),
+ 		    skills.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "bda-menu-rule", role: "separator" }),
+-		    skills.map((skill) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", className: "bda-menu-item", role: "menuitem", "data-skill": skill, onClick: () => create(skill), style: { "--bda-tint": tintOf(skill) }, children: [
++		    skills.map((skill) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", className: "bda-menu-item", role: "menuitem", "data-skill": skill, disabled: !canCreate, onClick: () => create(skill), style: { "--bda-tint": tintOf(skill) }, children: [
+ 		      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { color: "color-mix(in srgb,var(--bda-tint) 78%,var(--dsw-alias-label-primary))" }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(TypeIcon, { skill, size: 16 }) }),
+ 		      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "bda-menu-label", children: t(`type.${skill}`) })
+ 		    ] }, skill))
+@@ -1693,12 +1699,24 @@
+ 		  }
+ 		}
+ 		function ArtifactsPage(props) {
+-		  const { t, updates, artifactsStore, sessionsStore, reloadArtifacts, openArtifact, create, canCreate, createOptions, installOptions, pluginOf, install: install2, canInstall, openPlugins, canOpenPlugins, pin, rename, copyLink, remove, undo, thumbnailUrl, watchThumbnails, dismissToast } = props;
++		  const { t, updates, artifactsStore, sessionsStore, workspacesStore, refreshSessions, reloadArtifacts, openArtifact, create, canCreate, createOptions, installOptions, pluginOf, install: install2, canInstall, openPlugins, canOpenPlugins, pin, rename, copyLink, remove, undo, thumbnailUrl, watchThumbnails, dismissToast } = props;
+ 		  const state = (0, import_react2.useSyncExternalStore)(artifactsStore.subscribe, artifactsStore.getSnapshot);
+ 		  const updateState = useUpdateState();
+ 		  const run2 = updateState.install ?? null;
+ 		  const [installing, setInstalling] = (0, import_react2.useState)(null);
+ 		  const sessions = (0, import_react2.useSyncExternalStore)(sessionsStore.subscribe, sessionsStore.getSnapshot);
++		  const workspaces = (0, import_react2.useSyncExternalStore)(workspacesStore.subscribe, workspacesStore.getSnapshot);
++		  const creationReady = sessions.phase === "ready" && workspaces.phase === "ready";
++		  const workspaceFailed = workspaces.phase !== "ready" && workspaces.state === "error";
++		  const [sessionReadFinished, setSessionReadFinished] = (0, import_react2.useState)(false);
++		  const creationFailed = workspaceFailed || sessions.phase !== "ready" && sessionReadFinished;
++		  (0, import_react2.useEffect)(() => {
++		    if (sessions.phase === "ready") return;
++		    let active = true;
++		    const finished = () => { if (active) setSessionReadFinished(true); };
++		    void refreshSessions().then(finished, finished);
++		    return () => { active = false; };
++		  }, [sessions.phase, refreshSessions]);
+ 		  const [query, setQuery] = (0, import_react2.useState)("");
+ 		  const [searching, setSearching] = (0, import_react2.useState)(false);
+ 		  const [filters, setFilters] = (0, import_react2.useState)(NO_FILTERS);
+@@ -1828,12 +1846,13 @@
+ 		              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Icon, { d: layout === "grid" ? ICON.list : ICON.grid, size: 18 })
+ 		            }
+ 		          ),
+-		          canCreate() && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", className: "bda-tool", "aria-label": t("create.new"), title: t("create.new"), "aria-haspopup": "menu", "aria-expanded": popup?.kind === "create", onClick: (e) => toggle("create", e.currentTarget), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Icon, { d: ICON.plus, size: 18 }) })
++		          canCreate() && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", className: "bda-tool", disabled: !creationReady, "aria-label": t("create.new"), title: t("create.new"), "aria-haspopup": "menu", "aria-expanded": popup?.kind === "create", onClick: (e) => toggle("create", e.currentTarget), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Icon, { d: ICON.plus, size: 18 }) })
+ 		        ] })
+ 		      ] }),
+ 		      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(UpdatePanel, { updates }),
+ 		      tiles.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
+ 		        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "bda-section-title", children: t("create.heading") }),
++		        !creationReady && (0, import_jsx_runtime2.jsx)("p", { className: "bda-section-title", role: creationFailed ? "alert" : "status", children: workspaceFailed ? t("create.failed", { message: workspaces.error?.message ?? "" }) : creationFailed ? t("create.sessionsFailed") : t("create.loading") }),
+ 		        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("ul", { className: "bda-tiles", children: tiles.map((skill) => {
+ 		          const ready = usable.includes(skill);
+ 		          const own = run2 !== null && skill === ranFor ? run2 : null;
+@@ -1843,6 +1862,8 @@
+ 		            {
+ 		              type: "button",
+ 		              className: "bda-tile",
++		              disabled: ready && !creationReady,
++		              "aria-busy": ready && !creationReady && !creationFailed,
+ 		              "data-skill": skill,
+ 		              ...ready ? {} : { "data-missing": "true", "aria-haspopup": "dialog", title: t("tile.hint", { type: t(`type.${skill}`) }) },
+ 		              style: { "--bda-tint": tintOf(skill) },
+@@ -1887,7 +1908,7 @@
+ 		      {
+ 		        anchor: popup.anchor,
+ 		        skills: usable,
+-		        canCreate: canCreate(),
++		        canCreate: canCreate() && creationReady,
+ 		        t,
+ 		        onClose: closePopup,
+ 		        create: (skill) => {
+@@ -2042,27 +2063,8 @@
  		    store.set({ opening: view.root, toast: null });
  		    void (async () => {
  		      try {
@@ -30,12 +118,15 @@
  		        reload();
  		      } catch (error) {
  		        store.set({ opening: null });
-@@ -2084,13 +2065,49 @@
+@@ -2084,13 +2086,53 @@
  		      failed(error);
  		    }
  		  };
 +/** Start an unsent design draft using the desktop's existing Session services. */
 +async function startDesignDraft(ctx, prompt, agentPreset) {
++  // Pending is not an empty installation. The UI enables creation after both baselines arrive.
++  if (ctx.workspaces.list.getSnapshot().phase !== 'ready'
++    || ctx.sessions.list.getSnapshot().phase !== 'ready') return;
 +  const navigation = ctx.layout.beginNavigation();
 +  const catalog = ctx.sessions.list.getSnapshot();
 +  const current = Object.values(catalog.byId).find(item => (item.retainedBy.mainView ?? 0) > 0);
@@ -71,6 +162,7 @@
 +}
 +
  		  const create = (skill) => {
++		    if (ctx.workspaces.list.getSnapshot().phase !== "ready" || ctx.sessions.list.getSnapshot().phase !== "ready") return;
  		    const nav = workspaceNav();
  		    if (typeof nav?.startSession !== "function") return;
  		    if (skill === void 0 || !isSkill(skill)) return nav.startSession();
@@ -81,7 +173,28 @@
  		  };
  		  const pin = (view, pinned) => {
  		    if (!ownPluginThere(view)) return;
-@@ -2301,6 +2318,7 @@
+@@ -2201,6 +2243,11 @@
+ 		    };
+ 		  };
+ 		  disposers.push(() => watching?.abort(new Error("the plugin stopped")));
++		  const refreshSessions = () => ctx.sessions.refresh();
++		  const workspacesStore = {
++		    subscribe: listener => ctx.workspaces.list.subscribe(listener),
++		    getSnapshot: () => ctx.workspaces.list.getSnapshot(),
++		  };
+ 		  const sessionsStore = () => {
+ 		    const list = ctx.get("sessions")?.list;
+ 		    return isStore(list) ? list : EMPTY_SESSIONS;
+@@ -2216,6 +2263,8 @@
+ 		          updates,
+ 		          artifactsStore: store,
+ 		          sessionsStore: sessionsStore(),
++		          workspacesStore,
++		          refreshSessions,
+ 		          reloadArtifacts: reload,
+ 		          openArtifact: open,
+ 		          create,
+@@ -2301,6 +2350,7 @@
  		  "card.title": "已将对“{title}”的评论发给 Agent",
  		  "card.request": "已将“{title}”上的 {label} 发给 Agent",
  		  "card.view": "查看评论",
@@ -89,7 +202,7 @@
  		  "card.more": "显示位置",
  		  "card.less": "收起位置"
  		};
-@@ -2308,6 +2326,7 @@
+@@ -2308,6 +2358,7 @@
  		  "card.title": "Comment on “{title}” sent to agent",
  		  "card.request": "{label} on “{title}” sent to agent",
  		  "card.view": "View thread",
@@ -97,7 +210,7 @@
  		  "card.more": "Show where",
  		  "card.less": "Hide where"
  		};
-@@ -2325,6 +2344,7 @@
+@@ -2325,6 +2376,7 @@
  		    simple: str(source.plugin) === SIMPLE_CARD,
  		    title: str(source.title),
  		    url: str(source.url),
@@ -105,7 +218,7 @@
  		    threads: threads.map((t) => ({ id: str(t.id), where: str(t.where), text: str(t.text) })).filter((t) => t.id),
  		    requests: requests.map((r) => ({ id: str(r.id), label: str(r.label), text: str(r.text) })).filter((r) => r.id && r.text),
  		    seq: event.seq
-@@ -2404,8 +2424,9 @@
+@@ -2404,8 +2456,9 @@
  		function ChevronRight() {
  		  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none", "aria-hidden": "true", style: iconStyle, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M4.5 3 7.5 6l-3 3", stroke: "currentColor", strokeWidth: "1.3", strokeLinecap: "round", strokeLinejoin: "round" }) });
  		}
@@ -116,7 +229,7 @@
  		  const heading = t("card.title", { title });
  		  const meta = !simple && (thread.where || url);
  		  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "bdc-card", "data-comment-id": thread.id, children: [
-@@ -2415,9 +2436,10 @@
+@@ -2415,9 +2468,10 @@
  		      meta && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "button", className: "bdc-toggle", "aria-expanded": open, "aria-label": t(open ? "card.less" : "card.more"), onClick: () => setOpen(!open), children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronDown, {}) })
  		    ] }),
  		    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "bdc-body", children: thread.text }),
@@ -128,7 +241,7 @@
  		        t("card.view"),
  		        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronRight, {})
  		      ] })
-@@ -2443,13 +2465,81 @@
+@@ -2443,13 +2497,81 @@
  		  ] });
  		}
  		function CommentCards({ node, t, openThread }) {
@@ -213,7 +326,7 @@
  		function threadUrl(url, id) {
  		  try {
  		    const at = new URL(url);
-@@ -2483,13 +2573,7 @@
+@@ -2483,13 +2605,7 @@
  		        key: KIND,
  		        locale: NS3,
  		        inject: (sessionId) => ({

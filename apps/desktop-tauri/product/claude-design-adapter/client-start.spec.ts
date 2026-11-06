@@ -62,7 +62,7 @@ async function harness(inject: string[]) {
     for (const name of originalInject) provider.provide(name, {} as never)
     provider.provide('layout', { beginNavigation: () => new AbortController().signal } as never)
     provider.provide('sessions', {
-      list: { getSnapshot: () => ({ byId: {
+      list: { subscribe: () => () => {}, getSnapshot: () => ({ phase: 'ready', byId: {
         current: { id: 'current', retainedBy: { mainView: 1 }, projectionValues: { agentPreset: 'selected' } },
       } }) },
       create,
@@ -72,7 +72,7 @@ async function harness(inject: string[]) {
       },
     } as never)
     provider.provide('workspaces', {
-      list: { getSnapshot: () => ({ items: [{ workspaceId: 'workspace', sessionIds: ['current'] }] }) },
+      list: { subscribe: () => () => {}, getSnapshot: () => ({ phase: 'ready', state: 'idle', error: null, items: [{ workspaceId: 'workspace', sessionIds: ['current'] }] }) },
     } as never)
     provider.provide('conversation', { input: { for: inputFor } } as never)
     provider.provide('uiWorkspace', { openSession } as never)
@@ -90,7 +90,7 @@ async function harness(inject: string[]) {
 describe('design draft in a real Cordis plugin context', () => {
   it('the upstream injection list rejects before creating a Session', async () => {
     const h = await harness(originalInject)
-    await expect(h.start()).rejects.toThrow('cannot get property "layout" without inject')
+    await expect(h.start()).rejects.toThrow('cannot get property "workspaces" without inject')
     expect(h.create).not.toHaveBeenCalled()
     expect(h.openSession).not.toHaveBeenCalled()
   })
