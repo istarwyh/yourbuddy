@@ -2,6 +2,7 @@
 
 import { createHash } from 'node:crypto'
 import {
+  constants,
   cpSync,
   existsSync,
   mkdirSync,
@@ -10,6 +11,7 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -32,7 +34,7 @@ function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex')
 }
 
-function archiveTree(source, destination, excludes = [], dereference = false) {
+function archiveTree(source, destination, excludes = [], dereference = false, entries) {
   if (!existsSync(source)) throw new Error(`component source is missing: ${source}`)
   mkdirSync(dirname(destination), { recursive: true })
   const args = [
@@ -45,10 +47,36 @@ function archiveTree(source, destination, excludes = [], dereference = false) {
     ...(dereference ? ['--dereference'] : []),
     ...excludes.flatMap(pattern => ['--exclude', pattern]),
     '-C', source,
-    '.',
+    ...(entries ? ['--format', 'gnutar', '--no-recursion', '--null', '-T', '-'] : ['.']),
   ]
-  run('tar', args, { env: { ...process.env, COPYFILE_DISABLE: '1' } })
+  run('tar', args, {
+    env: { ...process.env, COPYFILE_DISABLE: '1' },
+    ...(entries ? { input: `${entries.join('\0')}\0`, stdio: ['pipe', 'inherit', 'inherit'] } : {}),
+  })
   return { sha256: sha256(destination), bytes: statSync(destination).size }
+}
+
+/**
+ * Normalize a private copy of the prepared, symlink-free Store.
+ * GNU-format headers omit access/change times and extended attributes.
+ */
+function archiveStore(source, destination, stage) {
+  cpSync(source, stage, { recursive: true, mode: constants.COPYFILE_FICLONE })
+  const entries = []
+  const walk = current => {
+    entries.push(current === stage ? '.' : `./${relative(stage, current).replaceAll('\\', '/')}`)
+    for (const entry of readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
+      const path = join(current, entry.name)
+      if (entry.isDirectory()) walk(path)
+      else {
+        entries.push(`./${relative(stage, path).replaceAll('\\', '/')}`)
+        utimesSync(path, 0, 0)
+      }
+    }
+    utimesSync(current, 0, 0)
+  }
+  walk(stage)
+  return archiveTree(stage, destination, [], false, entries)
 }
 
 function component(id, archive, metadata, kind, version, purpose, dependsOn = {}) {
@@ -257,7 +285,7 @@ export function buildBootstrapComponents({ version, outputRoot = DEFAULT_OUTPUT,
     const debugArchive = join(outputRoot, `yourbuddy-debug-${version}.tar.zst`)
 
     const harness = archiveTree(harnessRoot, harnessArchive, ['*.map', 'node_modules', '.yourbuddy-pnpm-store', 'yourbuddy-pnpm-store.tar.gz'])
-    const pnpmStore = archiveTree(storeRoot, storeArchive)
+    const pnpmStore = archiveStore(storeRoot, storeArchive, join(temporary, 'canonical-store'))
     const node = archiveTree(nodeStage, nodeComponentArchive, [], true)
     const harbor = archiveTree(harborRoot, harborArchive, [
       '__pycache__',
