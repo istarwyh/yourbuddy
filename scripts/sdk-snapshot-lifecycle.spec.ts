@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { stripVTControlCharacters } from 'node:util'
 import { afterAll, beforeAll, expect, it, onTestFinished } from 'vitest'
 import { runSdkSnapshotLifecycle } from './sdk-snapshot-lifecycle.ts'
 
@@ -272,8 +273,24 @@ it.skipIf(timeoutRoot !== undefined)('reaps only its owned process after a real 
     const control = await mkdtemp(join(tmpdir(), 'sdk-cleanup-timeout-'))
     const root = await mkdtemp(join(control, 'owned-'))
     const pidFile = join(control, 'pid')
+    const reporter = join(control, 'color-reporter.mjs')
+    // Exercise the reporter's reset prefix even when the parent runner disables its own colors.
+    try {
+      await writeFile(reporter, `
+import { DefaultReporter } from ${JSON.stringify(import.meta.resolve('vitest/reporters'))}
+export default class extends DefaultReporter {
+  onUserConsoleLog(log) {
+    super.onUserConsoleLog({ ...log, content: '\\u001b[39m' + log.content })
+  }
+}
+`)
+    } catch (error) {
+      await rm(control, { recursive: true, force: true })
+      throw error
+    }
     const runner = spawn(process.execPath, [
       'node_modules/vitest/vitest.mjs', 'run', 'scripts/sdk-snapshot-lifecycle.spec.ts', '-t', '^timeout cleanup child$',
+      '--reporter', reporter,
     ], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, DSH_SDK_CLEANUP_TEST_ROOT: root, DSH_SDK_CLEANUP_TEST_PID_FILE: pidFile, DSH_SDK_CLEANUP_TEST_LEGACY: legacy ? '1' : '0' },
@@ -292,7 +309,9 @@ it.skipIf(timeoutRoot !== undefined)('reaps only its owned process after a real 
       const ownedPid = Number(await readFile(pidFile, 'utf8'))
       expect(code, output).toBe(1)
       expect(output).toContain('Test timed out in 1000ms')
-      const diagnosticLines = output.split('\n').filter(line => line.startsWith('SDK snapshot diagnostic: '))
+      // Vitest's colored console header leaves reset codes before the diagnostic's first character.
+      const diagnosticLines = stripVTControlCharacters(output).split('\n')
+        .filter(line => line.startsWith('SDK snapshot diagnostic: '))
       expect(diagnosticLines).toEqual(legacy ? [] : [
         'SDK snapshot diagnostic: {"phase":"turn-end","turn":2,"events":[{"event":"turn/end","turn":1}]}',
       ])
