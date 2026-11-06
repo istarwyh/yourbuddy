@@ -301,11 +301,17 @@ pub(super) fn component_key(id: &str) -> Result<&str, String> {
     Ok(key)
 }
 
-/// Resolve the shared cache identity used by preparation and component leases.
+/// Encode logical ID separators without changing identities or alias equivalence.
+/// Percent is excluded from logical keys, so this encoding cannot collide with literal keys.
+pub(super) fn component_storage_key(id: &str) -> Result<String, String> {
+    Ok(component_key(id)?.replace(':', "%3A"))
+}
+
+/// Resolve the PATH-safe cache location used by preparation and component leases.
 /// This is relative to the application-owned component cache, never a caller path.
 pub(crate) fn component_storage_path(name: &str, id: &str) -> Result<PathBuf, String> {
     validate_component_name(name)?;
-    let key = component_key(id)?;
+    let key = component_storage_key(id)?;
     let family = match name {
         "harness" => "harness",
         "pnpmStore" => "stores",
