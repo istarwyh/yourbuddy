@@ -16,10 +16,10 @@ Send to Agent 向关联会话排入带上游评论卡片的通知。会话、文
 
 适配器支持 startupTimeoutMs（20000）和 stopTimeoutMs（5000）。服务仅监听 127.0.0.1，由系统分配端口，不通过 shell 启动编辑器，并去除名称包含凭据标记的环境变量。受管编辑器忽略持久化的 LAN 共享设置，并拒绝启用 LAN Share；不会改写已有共享文件。编辑器 iframe 和本地文件导出路径保持上游行为及现有桌面权限。
 
-构建并按冻结锁文件安装 bundled Harness 后，运行 `pnpm --dir apps/desktop-tauri run test:design`。该命令针对已安装包执行 Node 回归测试和生产 AgentLoop/JSONL 专项测试，再通过真实 Web profile 验证 Loader、工具执行、作品接口、删除/撤销/重开及 Chromium Client 启动。如果 Chromium 不在 Playwright 缓存中，可设置 `YOURBUDDY_RELEASE_CHROMIUM_EXECUTABLE`。传入 `--host-only` 会明确跳过浏览器执行。
+构建并按冻结锁文件安装 bundled Harness 后，运行 `pnpm --dir apps/desktop-tauri run test:design`。该命令针对已安装包执行 Node 回归测试和生产 AgentLoop/JSONL 及真实 Cordis Client 服务注入专项测试，再通过真实 Web profile 验证 Loader、工具执行、作品接口、删除/撤销/重开及 Chromium Client 启动。如果 Chromium 不在 Playwright 缓存中，可设置 `YOURBUDDY_RELEASE_CHROMIUM_EXECUTABLE`。传入 `--host-only` 会明确跳过浏览器执行。
 
-Linux 验证通过 22 项适配器 Node、2 项 CI 接线、7 项 Vitest 和真实 Host 生命周期测试。故意使用无效设计配置后，Web 文档和实际会话创建仍可用。正常离线 Store 准备流程生成了 Linux seed 压缩包；从压缩包恢复 Store 后，使用与首次启动相同的冻结离线参数，从空安装树安装通过。这是 Linux 证据，不代表 macOS 发行或原生首次启动通过。Linux 上覆盖了原生锁竞争；Windows 命名管道分支尚未在 Windows 上运行。
+Linux 验证通过 22 项适配器 Node、6 项 CI/诊断、10 项 Vitest 和真实 Host 生命周期测试。故意使用无效设计配置后，Web 文档和实际会话创建仍可用。正常离线 Store 准备流程生成了 Linux seed 压缩包；从压缩包恢复 Store 后，使用与首次启动相同的冻结离线参数，从空安装树安装通过。这是 Linux 证据，不代表 macOS 发行或原生首次启动通过。Linux 上覆盖了原生锁竞争；Windows 命名管道分支尚未在 Windows 上运行。
 
-评论测试中的会话解析器使用测试替身。Bootstrap regression 工作流复用现有 YourBuddy 构建，生成实际 Linux 离线 seed，从压缩包重装后执行 Chromium 验收，涵盖作品入口、未发送草稿、受管 iframe 打开，以及功能启动失败后的工作台启动。不需要模型凭据或发布权限，只保留测试日志。仍需实际 CI 运行成功，接入工作流不等于验收通过。
+评论测试中的会话解析器使用测试替身。Bootstrap regression 工作流复用现有 YourBuddy 构建，生成实际 Linux 离线 seed，从压缩包重装后执行 Chromium 验收，涵盖作品入口、未发送草稿、受管 iframe 打开，以及功能启动失败后的工作台启动。不需要模型凭据或发布权限，保留测试日志；浏览器失败时还保留有大小限制的页面、错误和请求诊断及截图。网络诊断不采集 URL 凭据、查询参数、请求头或请求体；文本诊断复用发行验收的脱敏函数。设置 `YOURBUDDY_DESIGN_EVIDENCE_DIR` 可在本地保留相同证据。仍需实际 CI 运行成功，接入工作流不等于验收通过。
 
 冷会话恢复、模型生成、macOS arm64 原生 Tauri/WebView、HTML/PDF/PNG 导出及桌面保存仍需验收。云执行环境因 Unix socket 被拒绝而无法启动 Chromium，独立云浏览器也无法访问其回环服务器。Host 测试不能替代 Client 或原生验收。

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 import { load } from 'js-yaml'
+import { observeDesignClient, saveDesignClientFailure } from './design-client-evidence.mjs'
 
 const workflow = load(readFileSync(new URL('../../../.github/workflows/bootstrap-regression.yml', import.meta.url), 'utf8'))
 
@@ -22,12 +26,75 @@ test('design browser CI reuses the existing branded build with read-only permiss
   assert.equal(steps.find(step => step.uses === 'actions/checkout@v6').with['persist-credentials'], false)
   const retained = steps.find(step => step.name === 'Retain design acceptance log')
   assert.equal(retained.if, 'always()')
-  assert.match(retained.with.path, /\.log$/u)
+  assert.match(retained.with.path, /yourbuddy-design-acceptance\.log/u)
+  assert.match(retained.with.path, /yourbuddy-design-evidence\//u)
+  assert.equal(steps[smoke].env.YOURBUDDY_DESIGN_EVIDENCE_DIR, '${{ runner.temp }}/yourbuddy-design-evidence')
 })
 
 test('design-only changes trigger the browser regression workflow', () => {
   const paths = workflow.on.pull_request.paths
-  for (const path of ['apps/desktop-tauri/product/claude-design-adapter/**', 'apps/desktop-tauri/scripts/verify-design-runtime.mjs', 'apps/desktop-tauri/scripts/test-bundled-design*.mjs']) {
+  for (const path of ['apps/desktop-tauri/product/claude-design-adapter/**', 'apps/desktop-tauri/scripts/verify-design-runtime.mjs', 'apps/desktop-tauri/scripts/design-client-evidence.mjs', 'apps/desktop-tauri/scripts/test-bundled-design*.mjs']) {
     assert(paths.includes(path), `Missing trigger for ${path}`)
   }
+})
+
+test('Client evidence retains bounded errors and request paths without URL credentials or payloads', () => {
+  const handlers = {}
+  const evidence = observeDesignClient({ on: (event, callback) => { handlers[event] = callback } })
+  handlers.pageerror(new Error('missing service'))
+  handlers.console({ type: () => 'error', text: () => 'plugin failed' })
+  handlers.console({ type: () => 'log', text: () => 'irrelevant' })
+  handlers.requestfailed({
+    url: () => 'https://user:password@example.com/api/session?token=secret#private',
+    failure: () => ({ errorText: 'net::ERR_FAILED' }),
+  })
+  handlers.response({ url: () => 'https://example.com/plugin?key=secret', status: () => 500 })
+  assert.deepEqual(evidence, {
+    pageErrors: ['missing service'], consoleErrors: ['plugin failed'],
+    requests: [{ path: '/api/session', failure: 'net::ERR_FAILED' }, { path: '/plugin', status: 500 }],
+  })
+  for (let i = 0; i < 200; i++) handlers.pageerror(new Error('repeated'))
+  assert.equal(evidence.pageErrors.length, 100)
+})
+
+test('Client failure capture redacts authentication values and attempts a screenshot before teardown', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'design-evidence-test-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  let screenshot
+  await saveDesignClientFailure({
+    evaluate: async () => ({ path: '/', text: 'That did not work: cannot get property "layout" without inject' }),
+    screenshot: async options => { screenshot = options },
+  }, directory, { phase: 'design-client', stage: 'create-design-draft', error: 'dsh-auth-test=secret' })
+  const result = JSON.parse(await readFile(join(directory, 'design-client-browser-failure.json'), 'utf8'))
+  assert.equal(result.stage, 'create-design-draft')
+  assert.equal(result.error, 'dsh-auth-test=<redacted>')
+  assert.match(result.state.text, /layout/u)
+  assert.equal(screenshot.path, join(directory, 'design-client-browser-failure.png'))
+  assert.equal(screenshot.timeout, 5000)
+})
+
+test('Closed-page diagnostics cannot replace the original acceptance failure', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'design-evidence-test-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  await saveDesignClientFailure({
+    evaluate: async () => { throw new Error('page closed') },
+    screenshot: async () => { throw new Error('page closed') },
+  }, directory, { phase: 'design-client', stage: 'create-design-draft', error: 'original error' })
+  const result = JSON.parse(await readFile(join(directory, 'design-client-browser-failure.json'), 'utf8'))
+  assert.equal(result.error, 'original error')
+  assert.equal(result.state.inspectionError, 'Error: page closed')
+})
+
+test('Hung DOM inspection still records the original failure and reaches screenshot cleanup', { timeout: 10000 }, async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'design-evidence-test-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  let screenshotAttempted = false
+  await saveDesignClientFailure({
+    evaluate: () => new Promise(() => {}),
+    screenshot: async () => { screenshotAttempted = true },
+  }, directory, { phase: 'design-client', stage: 'create-design-draft', error: 'original timeout' })
+  const result = JSON.parse(await readFile(join(directory, 'design-client-browser-failure.json'), 'utf8'))
+  assert.equal(result.error, 'original timeout')
+  assert.equal(result.state.inspectionError, 'Error: DOM inspection timed out')
+  assert.equal(screenshotAttempted, true)
 })

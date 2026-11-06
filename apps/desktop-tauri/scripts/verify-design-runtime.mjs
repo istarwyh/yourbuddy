@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { createReleaseChildEnvironment, authenticateHost, waitForClose, desktopWebviewCookie } from './verify-product-release.mjs'
+import { observeDesignClient, saveDesignClientFailure } from './design-client-evidence.mjs'
 
 const desktopRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const root = resolve(process.env.YOURBUDDY_DESIGN_HARNESS ?? join(desktopRoot, 'bundled/harness'))
@@ -52,24 +53,28 @@ async function startHost(overlay) {
 
 /** Execute the installed upstream Client in a clean, authenticated Chromium profile. */
 async function verifyClient(host, expectArtifacts, editorUrl) {
-  const browser = await chromium.launch({
-    headless: true, env,
-    executablePath: process.env.YOURBUDDY_RELEASE_CHROMIUM_EXECUTABLE ?? chromium.executablePath(),
-  })
+  const phase = expectArtifacts ? 'design-client' : 'design-failure-isolation'
+  let stage = 'launch', browser, page, evidence, failure
   try {
+    browser = await chromium.launch({
+      headless: true, env,
+      executablePath: process.env.YOURBUDDY_RELEASE_CHROMIUM_EXECUTABLE ?? chromium.executablePath(),
+    })
     const context = await browser.newContext({ locale: 'en-US' })
     await context.addCookies([desktopWebviewCookie(host.url, host.cookie)])
-    const page = await context.newPage()
-    const errors = [], artifacts = []
-    page.on('pageerror', error => errors.push(error.message))
+    page = await context.newPage()
+    evidence = observeDesignClient(page)
+    const artifacts = []
     page.on('response', response => {
       if (response.url().includes('dsh-claude-artifacts')) artifacts.push(response.status())
     })
+    stage = 'workbench-boot'
     await page.goto(host.baseUrl)
     await page.locator('[class*="frame"]').first().waitFor({ timeout: 30000 })
     assert.equal(await page.getByText('Failed to load plugins', { exact: true }).count(), 0)
     if (expectArtifacts) {
       assert(artifacts.includes(200), 'The artifacts Client was not loaded')
+      stage = 'onboarding'
       // Match the existing release smoke's optional first-launch onboarding.
       for (const name of ['Continue', 'Configure later']) {
         const action = page.getByRole('button', { name, exact: true })
@@ -80,14 +85,17 @@ async function verifyClient(host, expectArtifacts, editorUrl) {
         }
       }
       const artifactsButton = page.getByRole('button', { name: 'Artifacts', exact: true })
+      stage = 'artifacts-page'
       await artifactsButton.click()
       const artifactsPage = page.getByTestId('baoyu-design-artifacts')
       await artifactsPage.waitFor({ timeout: 10000 })
+      stage = 'create-design-draft'
       await artifactsPage.locator('button.bda-tile[data-skill="claude-design"]').click()
       const composer = page.locator('[data-composer-input]')
       await composer.waitFor({ state: 'visible', timeout: 10000 })
       await page.waitForFunction(() => document.querySelector('[data-composer-input]')?.textContent?.includes('/claude-design Design this for me:'))
       // Nothing is sent to a model. Return to the real artifact and use its managed action.
+      stage = 'open-managed-editor'
       await artifactsButton.click()
       await artifactsPage.waitFor({ timeout: 10000 })
       const loaded = page.waitForResponse(response => response.url() === editorUrl
@@ -103,9 +111,21 @@ async function verifyClient(host, expectArtifacts, editorUrl) {
       assert.equal(context.pages().length, 1, 'Managed open must not fall back to an external tab')
       console.log('Chromium executed the installed Artifacts Client, created an unsent draft, and opened the managed sandboxed editor.')
     }
-    assert.deepEqual(errors, [])
+    stage = 'client-errors'
+    assert.deepEqual(evidence.pageErrors, [])
     if (process.env.YOURBUDDY_DESIGN_SCREENSHOT) await page.screenshot({ path: process.env.YOURBUDDY_DESIGN_SCREENSHOT })
-  } finally { await browser.close() }
+  } catch (error) {
+    failure = error
+    await saveDesignClientFailure(page, process.env.YOURBUDDY_DESIGN_EVIDENCE_DIR, {
+      phase, stage, error: error instanceof Error ? error.stack : String(error), ...evidence,
+    })
+  }
+  try { await browser?.close() }
+  catch (error) {
+    if (failure) throw new AggregateError([failure, error], 'Design Client acceptance and browser teardown failed')
+    throw error
+  }
+  if (failure) throw failure
 }
 
 try {

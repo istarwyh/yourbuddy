@@ -12,6 +12,7 @@ on:
       - 'apps/desktop-tauri/scripts/bundle-harness-source.mjs'
       - 'apps/desktop-tauri/scripts/test-bundled-design*.mjs'
       - 'apps/desktop-tauri/scripts/verify-design-runtime.mjs'
+      - 'apps/desktop-tauri/scripts/design-client-evidence.mjs'
       - 'apps/desktop-tauri/scripts/prepare-harness-offline-store*.mjs'
       - 'apps/desktop-tauri/scripts/verify-product-release.mjs'
       - 'apps/cli/package.json'
@@ -99,6 +100,8 @@ jobs:
           tar -xzf apps/desktop-tauri/bundled/harness/yourbuddy-pnpm-store.tar.gz -C apps/desktop-tauri/bundled/harness
           pnpm --dir apps/desktop-tauri/bundled/harness install --prod --frozen-lockfile --offline --trust-lockfile --store-dir .yourbuddy-pnpm-store
       - name: Test installed design Host and Chromium Client
+        env:
+          YOURBUDDY_DESIGN_EVIDENCE_DIR: ${{ runner.temp }}/yourbuddy-design-evidence
         run: |
           set -o pipefail
           node apps/desktop-tauri/scripts/test-bundled-design.mjs 2>&1 | tee "$RUNNER_TEMP/yourbuddy-design-acceptance.log"
@@ -107,7 +110,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: yourbuddy-design-acceptance
-          path: ${{ runner.temp }}/yourbuddy-design-acceptance.log
+          path: |
+            ${{ runner.temp }}/yourbuddy-design-acceptance.log
+            ${{ runner.temp }}/yourbuddy-design-evidence/
           if-no-files-found: ignore
           retention-days: 7
       - uses: actions/setup-node@v6

@@ -140,7 +140,8 @@
  		    (requests ?? []).map((request) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(RequestCardView, { title, request, t }, request.id))
  		  ] });
  		}
- 		var inject = ["slots", "locale", "uiConversation"];
+-		var inject = ["slots", "locale", "uiConversation"];
++		var inject = ["slots", "locale", "uiConversation", "layout", "sessions", "workspaces", "conversation", "uiWorkspace", "remote", "remote.agentPresets"];
 +/** Reopen the managed artifact and reveal a comment in its original conversation. */
 +async function openDesignThread(ctx, sessionId, root, threadId) {
 +  const sidebar = ctx.get('sidebarRight');
