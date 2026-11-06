@@ -1,0 +1,30 @@
+{
+  "repository": "https://github.com/JimLiu/baoyu-design",
+  "revision": "9c5253c002820d8dd4c9c31e9c8ca04b529a3e34",
+  "version": "2.11.1",
+  "packages": [
+    {
+      "name": "dsh-claude-design",
+      "version": "2.11.1",
+      "source": "https://registry.npmjs.org/dsh-claude-design/-/dsh-claude-design-2.11.1.tgz",
+      "integrity": "sha512-8jhXdXNtRteNCDZQ3Yu1a5XVaNyHk+4ph39jwDL8RRk7oEH44o19vcEDiBiPxvXwfiD/s4+C7q/9/Vd8C/Wzgw=="
+    },
+    {
+      "name": "dsh-claude-artifacts",
+      "version": "2.11.1",
+      "source": "https://registry.npmjs.org/dsh-claude-artifacts/-/dsh-claude-artifacts-2.11.1.tgz",
+      "integrity": "sha512-+uYY/acggKCJe2lXynLEE6j/Qr3BdQb37qA/lVOZYvj+H8ZNZMECEADmx7d2lR4SW69CXuu1w2cat0jJVHPwhg=="
+    }
+  ],
+  "license": "Mixed terms. Preserve each package LICENSE, NOTICE.md and editor third-party-licenses.txt. Anthropic-origin material has no published license according to upstream NOTICE; this record does not grant rights.",
+  "patches": [
+    {
+      "file": "patches/dsh-claude-design-2.11.1-yourbuddy.patch",
+      "sha256": "47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22"
+    },
+    {
+      "file": "patches/dsh-claude-artifacts-2.11.1-yourbuddy.patch",
+      "sha256": "54725fbdfb33cf5e26549d46a817b33776a63e6500b92df172fb0ddbb92993d9"
+    }
+  ]
+}

@@ -17,6 +17,7 @@ import {
   recordPreviewNetworkEvent,
   saveBrowserFailure,
   CORE_PRODUCT_CLIENT_IDS,
+  CORE_PRODUCT_PACKAGE_IDS,
   RELEASE_CAPABILITIES,
   assertCoreProductComposition,
   assertHarborPythonReady,
@@ -454,7 +455,7 @@ test('core requires all eight default Clients and both lightweight services, and
 test('prepared core inventory rejects a missing core package and an included optional package', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-core-roster-'))
   try {
-    for (const name of CORE_PRODUCT_CLIENT_IDS) {
+    for (const name of CORE_PRODUCT_PACKAGE_IDS) {
       const dir = join(root, 'packages', 'product', name.replaceAll('/', '-'))
       mkdirSync(dir, { recursive: true })
       writeFileSync(join(dir, 'package.json'), JSON.stringify({ name }))
@@ -465,7 +466,7 @@ test('prepared core inventory rejects a missing core package and an included opt
     writeFileSync(join(extra, 'package.json'), JSON.stringify({ name: 'dsh-harbor-evolution' }))
     assert.throws(() => assertCoreProductComposition(root), /core product package roster differs/u)
     rmSync(extra, { recursive: true })
-    rmSync(join(root, 'packages', 'product', CORE_PRODUCT_CLIENT_IDS[0]), { recursive: true })
+    rmSync(join(root, 'packages', 'product', CORE_PRODUCT_PACKAGE_IDS[0]), { recursive: true })
     assert.throws(() => assertCoreProductComposition(root), /core product package roster differs/u)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
