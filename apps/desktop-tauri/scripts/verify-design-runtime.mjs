@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { createReleaseChildEnvironment, authenticateHost, waitForClose, desktopWebviewCookie } from './verify-product-release.mjs'
-import { observeDesignClient, saveDesignClientFailure } from './design-client-evidence.mjs'
+import { observeDesignClient, saveDesignClientFailure, waitForDesignEditor } from './design-client-evidence.mjs'
 
 const desktopRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const root = resolve(process.env.YOURBUDDY_DESIGN_HARNESS ?? join(desktopRoot, 'bundled/harness'))
@@ -16,6 +16,8 @@ const folder = join(world, 'canvas')
 const env = createReleaseChildEnvironment(world, join(world, 'runtime'))
 const hostOnly = process.argv.includes('--host-only')
 const children = []
+// Match the native product overlay: Web alone disables the Browser tab.
+const browserOverlay = '- id: ui-sidebar-browser\n  disabled: false\n'
 
 /** Start only the supported Web profile with an isolated test overlay and home. */
 async function startHost(overlay) {
@@ -64,16 +66,18 @@ async function verifyClient(host, expectArtifacts, editorUrl) {
     await context.addCookies([desktopWebviewCookie(host.url, host.cookie)])
     page = await context.newPage()
     evidence = observeDesignClient(page)
-    const artifacts = []
+    const clients = new Map()
     page.on('response', response => {
-      if (response.url().includes('dsh-claude-artifacts')) artifacts.push(response.status())
+      for (const name of ['dsh-claude-artifacts', 'dsh-client-ui-sidebar-browser']) {
+        if (response.url().includes(name)) clients.set(name, response.status())
+      }
     })
     stage = 'workbench-boot'
     await page.goto(host.baseUrl)
     await page.locator('[class*="frame"]').first().waitFor({ timeout: 30000 })
     assert.equal(await page.getByText('Failed to load plugins', { exact: true }).count(), 0)
     if (expectArtifacts) {
-      assert(artifacts.includes(200), 'The artifacts Client was not loaded')
+      assert.equal(clients.get('dsh-claude-artifacts'), 200, 'The artifacts Client was not loaded')
       stage = 'onboarding'
       // Match the existing release smoke's optional first-launch onboarding.
       for (const name of ['Continue', 'Configure later']) {
@@ -98,13 +102,14 @@ async function verifyClient(host, expectArtifacts, editorUrl) {
       stage = 'open-managed-editor'
       await artifactsButton.click()
       await artifactsPage.waitFor({ timeout: 10000 })
-      const loaded = page.waitForResponse(response => response.url() === editorUrl
-        && response.request().resourceType() === 'document' && response.status() === 200)
-      await artifactsPage.locator('button.bda-card, button.bda-row').filter({ hasText: 'Two boards' }).click()
-      await loaded
+      await Promise.all([
+        waitForDesignEditor(page, editorUrl),
+        artifactsPage.locator('button.bda-card, button.bda-row').filter({ hasText: 'Two boards' }).click(),
+      ])
       const iframe = page.locator('iframe[data-sidebar-browser-frame="iframe"]')
       await iframe.waitFor({ state: 'visible', timeout: 10000 })
       assert.equal(await iframe.getAttribute('src'), editorUrl)
+      assert.equal(clients.get('dsh-client-ui-sidebar-browser'), 200, 'The desktop Browser Client was not loaded')
       const sandbox = await iframe.getAttribute('sandbox')
       assert(sandbox?.includes('allow-scripts'), 'The editor must retain the existing sandbox')
       assert(!sandbox.includes('allow-downloads'), 'The smoke must not relax download policy')
@@ -139,13 +144,16 @@ try {
   const probe = join(world, 'probe.mjs'), overlay = join(world, 'probe.yml')
   await writeFile(probe, `
 export const name = 'design-runtime-probe'
-export const inject = ['yourbuddyDesign', 'tools', 'connection', 'workspaceController', 'sessionController', 'sessions']
+export const inject = ['yourbuddyDesign', 'tools', 'connection', 'workspaceController', 'sessionController', 'sessions', 'loader']
 export function apply(ctx) {
   ctx.connection.fetch.register({
     path: '/api/yourbuddy.design.probe', methods: ['GET', 'POST'], requestBody: 'buffered',
     fetch: async request => {
       const tool = ctx.tools.get('yourbuddy_design_open')
-      if (request.method === 'GET') return Response.json({ tool: tool !== undefined })
+      if (request.method === 'GET') return Response.json({
+        tool: tool !== undefined,
+        browserEnabled: [...ctx.loader.entries()].some(entry => entry.options.id === 'ui-sidebar-browser' && !entry.disabled),
+      })
       const { workspace } = await ctx.workspaceController.create({ path: ${JSON.stringify(world)} })
       const { sessionId } = await ctx.sessionController.create({ workspaceId: workspace.workspaceId })
       const resolved = await ctx.sessionController.resolveAgent(sessionId)
@@ -160,9 +168,9 @@ export function apply(ctx) {
   })
 }
 `)
-  await writeFile(overlay, `- insert:\n    - id: design-runtime-probe\n      name: ${JSON.stringify(probe)}\n`)
+  await writeFile(overlay, `${browserOverlay}- insert:\n    - id: design-runtime-probe\n      name: ${JSON.stringify(probe)}\n`)
   const host = await startHost(overlay)
-  assert.equal((await host.call('/api/yourbuddy.design.probe')).tool, true)
+  assert.deepEqual(await host.call('/api/yourbuddy.design.probe'), { tool: true, browserEnabled: true })
   const list = await host.call('/api/baoyu-design.artifacts')
   assert.equal(list.skills.length, 1)
   assert.equal(list.skills[0].missing, false)
@@ -190,7 +198,7 @@ export function apply(ctx) {
   await assert.rejects(fetch(reopened.url))
 
   const failureOverlay = join(world, 'failure.yml')
-  await writeFile(failureOverlay, '- id: yourbuddy-design\n  config:\n    startupTimeoutMs: 0\n')
+  await writeFile(failureOverlay, browserOverlay + '- id: yourbuddy-design\n  config:\n    startupTimeoutMs: 0\n')
   const failed = await startHost(failureOverlay)
   for (let attempt = 0; attempt < 100 && !failed.errors().includes('startupTimeoutMs'); attempt++) {
     await new Promise(resolveWait => setTimeout(resolveWait, 20))

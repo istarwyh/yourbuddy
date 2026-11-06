@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { load } from 'js-yaml'
-import { observeDesignClient, saveDesignClientFailure } from './design-client-evidence.mjs'
+import { observeDesignClient, saveDesignClientFailure, waitForDesignEditor } from './design-client-evidence.mjs'
 
 const workflow = load(readFileSync(new URL('../../../.github/workflows/bootstrap-regression.yml', import.meta.url), 'utf8'))
 
@@ -97,4 +97,51 @@ test('Hung DOM inspection still records the original failure and reaches screens
   assert.equal(result.error, 'original timeout')
   assert.equal(result.state.inspectionError, 'Error: DOM inspection timed out')
   assert.equal(screenshotAttempted, true)
+})
+
+
+test('design smoke opts into the Browser tab enabled by the native desktop overlay', () => {
+  const native = readFileSync(new URL('../src-tauri/src/overlay.rs', import.meta.url), 'utf8')
+  const smoke = readFileSync(new URL('./verify-design-runtime.mjs', import.meta.url), 'utf8')
+  const row = '- id: ui-sidebar-browser\\n  disabled: false\\n'
+  assert(native.includes(row))
+  assert(smoke.includes(row))
+  assert.match(smoke, /writeFile\(overlay, `\$\{browserOverlay\}/u)
+  assert.match(smoke, /writeFile\(failureOverlay, browserOverlay \+/u)
+})
+
+test('managed editor wait requires the exact successful document response', async () => {
+  let accepts, responseOptions
+  const hidden = Promise.withResolvers()
+  const expected = { url: () => 'http://127.0.0.1:23456/', request: () => ({ resourceType: () => 'document' }), status: () => 200 }
+  const response = await waitForDesignEditor({
+    waitForResponse(predicate, options) { accepts = predicate; responseOptions = options; return Promise.resolve(expected) },
+    locator(selector) {
+      assert.equal(selector, '.bda-toast[role="alert"]')
+      return { waitFor: () => hidden.promise }
+    },
+  }, expected.url())
+  assert.equal(response, expected)
+  assert.equal(responseOptions.timeout, 30000)
+  assert.equal(accepts(expected), true)
+  assert.equal(accepts({ ...expected, status: () => 404 }), false)
+  assert.equal(accepts({ ...expected, url: () => 'http://127.0.0.1:23457/' }), false)
+  assert.equal(accepts({ ...expected, request: () => ({ resourceType: () => 'fetch' }) }), false)
+  hidden.reject(new Error('page closed'))
+})
+
+test('managed editor error is captured before its toast disappears, not replaced by the later response timeout', async () => {
+  const document = Promise.withResolvers()
+  const opened = waitForDesignEditor({
+    waitForResponse: () => document.promise,
+    locator: () => ({
+      waitFor: async options => { assert.deepEqual(options, { state: 'visible', timeout: 30000 }) },
+      textContent: async options => {
+        assert.equal(options.timeout, 1000)
+        return 'Could not open: Enable the Browser sidebar tab to view this design comment.'
+      },
+    }),
+  }, 'http://127.0.0.1:23456/')
+  await assert.rejects(opened, /Enable the Browser sidebar tab/u)
+  document.reject(new Error('page closed'))
 })

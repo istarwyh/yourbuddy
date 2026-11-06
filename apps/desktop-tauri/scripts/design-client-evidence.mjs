@@ -51,3 +51,20 @@ export async function saveDesignClientFailure(page, directory, diagnostics) {
   finally { clearTimeout(timer) }
   await saveBrowserFailure(page, directory, { ...diagnostics, state })
 }
+
+/**
+ * Fail on a transient managed-open error while preserving the exact editor response requirement.
+ * @param {import('playwright').Page} page Isolated acceptance page.
+ * @param {string} editorUrl Exact URL returned by the managed Host.
+ * @returns {Promise<import('playwright').Response>} Successful editor document response.
+ */
+export function waitForDesignEditor(page, editorUrl) {
+  const failure = page.locator('.bda-toast[role="alert"]')
+  return Promise.race([
+    page.waitForResponse(response => response.url() === editorUrl
+      && response.request().resourceType() === 'document' && response.status() === 200, { timeout: 30000 }),
+    failure.waitFor({ state: 'visible', timeout: 30000 }).then(async () => {
+      throw new Error(`Managed design open failed: ${await failure.textContent({ timeout: 1000 })}`)
+    }),
+  ])
+}
