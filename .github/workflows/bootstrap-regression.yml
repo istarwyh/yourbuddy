@@ -14,7 +14,9 @@ on:
       - 'apps/desktop-tauri/scripts/verify-design-runtime.mjs'
       - 'apps/desktop-tauri/scripts/design-client-evidence.mjs'
       - 'apps/desktop-tauri/scripts/prepare-harness-offline-store*.mjs'
-      - 'apps/desktop-tauri/scripts/verify-product-release.mjs'
+      - 'apps/desktop-tauri/scripts/verify-product-release*.mjs'
+      - 'apps/desktop-tauri/scripts/workbench-branding-smoke*.mjs'
+      - 'apps/desktop-tauri/scripts/workbench-navigation.test.mjs'
       - 'apps/cli/package.json'
       - 'packages/util/http-proxy/**'
       - 'apps/desktop-tauri/scripts/node-extra-ca.test.mjs'
@@ -42,6 +44,116 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepared-release:
+    name: Prepared macOS product
+    runs-on: macos-15
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4.4.0
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-prepared
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.12.5'
+      - name: Install locked tools and test the release verifier
+        run: |
+          pnpm install --frozen-lockfile
+          node --test apps/desktop-tauri/scripts/verify-product-release.test.mjs apps/desktop-tauri/scripts/product-plugin-compatibility.test.mjs apps/desktop-tauri/scripts/workbench-branding-smoke.test.mjs
+      - name: Build and prepare the frozen product
+        env:
+          DSH_CLIENT_TITLE: YourBuddy
+          YOURBUDDY_OFFLINE_STORE_CACHE_DIR: ${{ runner.temp }}/yourbuddy-offline-store-cache
+        run: |
+          pnpm run build
+          pnpm --dir apps/desktop-tauri run prepare:dist
+          pnpm --dir apps/desktop-tauri exec playwright install chromium
+          node --test apps/desktop-tauri/scripts/workbench-navigation.test.mjs
+      - name: Require every materialized registry package and native optional input
+        run: |
+          tar -xzf apps/desktop-tauri/bundled/harness/yourbuddy-pnpm-store.tar.gz -C apps/desktop-tauri/bundled/harness
+          pnpm --dir apps/desktop-tauri/bundled/harness --pm-on-fail=ignore install --prod --frozen-lockfile --offline --trust-lockfile --store-dir .yourbuddy-pnpm-store
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          import { createHash } from 'node:crypto'
+          import { execFileSync } from 'node:child_process'
+          import { accessSync, constants, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+          import { join, resolve } from 'node:path'
+          import { load } from 'js-yaml'
+          import { removeWorkspaceInstallState } from './apps/desktop-tauri/scripts/prepare-harness-offline-store.mjs'
+          const root = resolve('apps/desktop-tauri/bundled/harness')
+          const sourceLock = readFileSync('apps/desktop-tauri/product/harness-pnpm-lock.yaml')
+          assert.ok(sourceLock.equals(readFileSync(join(root, 'pnpm-lock.yaml'))), 'prepared lock differs from the committed product lock')
+          const locked = load(sourceLock.toString()).packages
+          const store = join(root, 'node_modules/.pnpm')
+          const entries = readdirSync(store, { withFileTypes: true }).filter(entry => entry.isDirectory() && entry.name !== 'node_modules')
+          const installed = [], missing = []
+          for (const entry of entries) {
+            const separator = entry.name.indexOf('@', entry.name.startsWith('@') ? 1 : 0)
+            const name = entry.name.slice(0, separator).replace('+', '/')
+            const directory = join(store, entry.name, 'node_modules', name)
+            const path = join(directory, 'package.json')
+            if (!existsSync(path)) { missing.push(entry.name); continue }
+            const manifest = JSON.parse(readFileSync(path, 'utf8'))
+            assert.equal(manifest.name, name)
+            assert.ok(locked[`${manifest.name}@${manifest.version}`], `installed package is not in the frozen lock: ${manifest.name}@${manifest.version}`)
+            installed.push({ name, version: manifest.version, directory })
+          }
+          const required = [
+            { name: '@openai/codex', versionSuffix: '-darwin-arm64', binary: 'vendor/aarch64-apple-darwin/bin/codex' },
+            { name: '@anthropic-ai/claude-agent-sdk-darwin-arm64', versionSuffix: '', binary: 'claude' },
+          ]
+          const nativeInputs = required.map(input => {
+            const matches = installed.filter(pkg => pkg.name === input.name && pkg.version.endsWith(input.versionSuffix))
+            assert.equal(matches.length, 1, `missing or ambiguous native input: ${input.name}`)
+            const path = join(matches[0].directory, input.binary)
+            accessSync(path, constants.X_OK)
+            const bytes = statSync(path).size
+            assert.ok(bytes > 0, `empty native input: ${input.name}`)
+            return { name: input.name, version: matches[0].version, binary: input.binary, bytes }
+          })
+          const evidence = join(process.env.RUNNER_TEMP, 'yourbuddy-prepared-acceptance')
+          mkdirSync(evidence, { recursive: true })
+          const result = { status: missing.length === 0 && installed.length === 570 ? 'passed' : 'failed', date: new Date().toISOString(), sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), lockSha256: createHash('sha256').update(sourceLock).digest('hex'), expectedRegistryPackages: 570, materializedRegistryPackages: entries.length, installedRegistryPackages: installed.length, missing, nativeInputs }
+          writeFileSync(join(evidence, 'installed-registry-inputs.json'), `${JSON.stringify(result, null, 2)}\n`)
+          assert.deepEqual(missing, [], 'optional registry package installation was skipped')
+          // The current frozen product lock requires 570 darwin-arm64 registry packages.
+          assert.equal(installed.length, 570, 'frozen macOS registry package inventory is incomplete')
+          console.log(`Prepared registry inputs: ${installed.length}/${entries.length}; native Codex and Claude SDK executables exist`)
+          removeWorkspaceInstallState(root)
+          NODE
+      - name: Run the unchanged release prepared acceptance step
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs'
+          import { spawnSync } from 'node:child_process'
+          import { load } from 'js-yaml'
+          const workflow = load(readFileSync('.github/workflows/desktop-release.yml', 'utf8'))
+          const step = workflow.jobs.build.steps.find(step => step.name === 'Verify prepared default workbench and optional Harbor')
+          const version = JSON.parse(readFileSync('apps/desktop-tauri/package.json', 'utf8')).version
+          const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
+            stdio: 'inherit', env: { ...process.env, RELEASE_TAG: `yourbuddy-v${version}` },
+          })
+          if (result.error) throw result.error
+          process.exitCode = result.status ?? 1
+          NODE
+      - name: Retain prepared product acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: yourbuddy-pr-prepared-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/yourbuddy-prepared-acceptance/
+          if-no-files-found: warn
+          retention-days: 7
+
   bootstrap:
     runs-on: macos-15
     timeout-minutes: 30

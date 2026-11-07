@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-11-07T07:10:46.801444+00:00",
+  "url": "https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.15.zip",
+  "bytes": 55621930,
+  "sha256": "6ab9a36ec75059351db63583dfed0458e0013cb540a0c0feb871684ea73b0398",
+  "tagCommit": "0806b082166af306087787d160b86b7d9d941010",
+  "extractedAndOpened": [
+    "apps/desktop-tauri/package.json",
+    "apps/desktop-tauri/release-notes.md",
+    "apps/desktop-tauri/src-tauri/Cargo.lock",
+    "apps/desktop-tauri/src-tauri/Cargo.toml",
+    "apps/desktop-tauri/src-tauri/tauri.conf.json",
+    "docs/releases/README.i18n.yaml",
+    "docs/releases/README.md",
+    "docs/releases/README.zh.md",
+    "docs/releases/yourbuddy-v0.4.14/README.i18n.yaml",
+    "docs/releases/yourbuddy-v0.4.14/README.md",
+    "docs/releases/yourbuddy-v0.4.14/README.zh.md",
+    "docs/releases/yourbuddy-v0.4.14/evidence/release-failure.json",
+    "docs/releases/yourbuddy-v0.4.14/evidence/source-archive-verification.json",
+    "docs/releases/yourbuddy-v0.4.14/evidence/website-live.json",
+    "docs/releases/yourbuddy-v0.4.15/README.i18n.yaml",
+    "docs/releases/yourbuddy-v0.4.15/README.md",
+    "docs/releases/yourbuddy-v0.4.15/README.zh.md",
+    "docs/releases/yourbuddy-v0.4.15/evidence/candidate-checks.json",
+    "docs/releases/yourbuddy-v0.4.15/evidence/fixture-repair.json",
+    "docs/releases/yourbuddy-v0.4.15/evidence/rollback-updater-0.4.13.json",
+    "docs/releases/yourbuddy-v0.4.15/evidence/source-checks.json",
+    "docs/releases/yourbuddy-v0.4.15/evidence/website-live.json"
+  ],
+  "matchesTag": true,
+  "scope": "All 22 changed version/archive files were independently downloaded, extracted, opened and matched byte-for-byte to the immutable tag; no downloaded code executed."
+}

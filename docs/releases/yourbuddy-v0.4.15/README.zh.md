@@ -2,14 +2,14 @@
 
 [English](README.md) | 中文
 
-本归档区分已测试源码、预准备 Chromium 行为、待完成的原生安装包验收与公开交付。
+本归档记录源码检查，以及一次在打包和发布前失败的发行尝试。
 
 - 发行标识：`yourbuddy-v0.4.15`
 - 产品渠道：macOS Apple Silicon 版 YourBuddy 桌面应用。
-- 归档状态：发布前源码证据；发布工作流与公开附件待完成。
+- 归档状态：已记录候选源码证据与失败的发行尝试；没有发布安装包。
 - 证据提交：[已合并发行基线](https://github.com/istarwyh/yourbuddy/commit/fa140a62938fc57340bb7cce47f8654912f16328)，树为 `706ade2d442fe0d1b4367cd94157484824c15dd0`。下述 Design 预准备证据早于版本元数据与仅测试 fixture 的修正。
 - 证据画廊：本候选未保留截图；链接的 CI 日志记录预准备浏览器场景。
-- 证据下载：[不可变标签源码归档](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.15.zip)，发布后可用；独立解压检查尚未完成。
+- 证据下载：[不可变标签源码归档](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.15.zip) 包含原候选证据。[独立解压检查](evidence/source-archive-verification.json) 已打开全部 22 个变更文件并与标签逐字节匹配；后续失败观察不会改变该归档。
 
 ## 用户发行说明
 
@@ -53,8 +53,8 @@ Design 托管编辑器不能启用 LAN Share。真实模型生成、macOS 原生
 | 等价 Store 归档与源码回归 | 通过 | #89 树 `fcbb7f85`；已包含在合并源码中 | [运行 42337855050](https://github.com/istarwyh/yourbuddy/actions/runs/42337855050)，16/16 job；[源码记录](evidence/source-checks.json) |
 | 能力 fixture 与 native-overlay 渲染器 | 通过 | 版本递增前已审 #92 源码 | 复现组件测试 61/63 后通过 63/63；渲染器 8/8；[修复证据](evidence/fixture-repair.json) |
 | 发行候选检查 | 通过 | 本地 0.4.15 元数据候选 | [候选检查](evidence/candidate-checks.json) 记录实际命令与结果 |
-| 完整组合主 CI | 归档准备时待完成 | PR #90 组合源码 | [运行 42346920678](https://github.com/istarwyh/yourbuddy/actions/runs/42346920678)；不能由 Bootstrap 推断其成功 |
-| 原生安装包与独立公开下载 | 未验证 | 发布工作流尚未运行 | 仍须完成原生及发布检查 |
+| 完整组合主 CI | 通过 | PR #90 组合源码 | [运行 42346920678](https://github.com/istarwyh/yourbuddy/actions/runs/42346920678)，16/16 job；候选准备后观察到的结果 |
+| 发布工作流 | 打包前失败 | 不可变的 0.4.15 候选 | [失败记录](evidence/release-failure.json)；没有公开安装包或原生验收结果 |
 
 ## 场景：已安装 Design 与离线恢复
 
@@ -66,10 +66,18 @@ Design 托管编辑器不能启用 LAN Share。真实模型生成、macOS 原生
 
 ## 交付状态
 
-- 产品发布：待完成；现有标签触发的发行工作流保留构建、签名、预准备浏览器及原生 Offline 检查。
-- 验证归档：已纳入源码证据与回退基线；公开附件、独立证据解压与发行运行观察尚待完成。
+- 产品发布：打包前失败；不存在 0.4.15 GitHub Release 或安装包。latest 与稳定更新源仍为 0.4.13。
+- 验证归档：已记录源码检查、独立标签源码解压、回退基线及发行失败。本次尝试没有安装包或原生验收证据。
 - 网站同步：本次未改动的双语插件说明已在 `ee6554c3debbfba70549b8319fc35716dfaa6eb9` 自动部署；[六个线上页面](evidence/website-live.json) 通过 HTTP、内容与链接检查。本次版本递增无需额外网站部署；稳定下载可用性仍是独立发行检查。
 - 未验证范围：上述原生、模型、冷恢复与遗留议题限制仍适用；候选准备未替换任何已有安装或用户 Session。
+
+<a id="release-failure-2026-11-07-utc"></a>
+
+## 发行失败（2026-11-07 UTC）
+
+[运行 42349994843](https://github.com/istarwyh/yourbuddy/actions/runs/42349994843/job/128335883177) 在预准备验收中报 `lock=85, installed=84` 并失败。真实冻结离线安装以零下载恢复全部 570 个 registry 包，但已安装 peer 检查仍使用旧的八目录名单，遗漏 Design adapter 的 `@deepseek-ai/dsh-tools` peer。Chromium、打包、原生 Offline 验收和发布均未执行。
+
+[失败记录](evidence/release-failure.json) 保留精确发行身份及恢复限制。修复也让 response recorder 记录 Artifacts Client，不降低 peer 身份或 Client 启动要求。本地完整预准备流程在 macOS 通过，但两个 optional 原生 tarball 传输失败，因此只安装了 568/570 个 registry 输入。下一 patch 发行前必须通过完整输入的 PR CI。公开的 0.4.15 标签保持不变。
 
 ## 回退
 

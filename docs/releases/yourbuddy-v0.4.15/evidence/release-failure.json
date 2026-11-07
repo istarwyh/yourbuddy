@@ -1,0 +1,39 @@
+{
+  "observedAt": "2026-11-07T07:52:49.841699+00:00",
+  "releaseTag": "yourbuddy-v0.4.15",
+  "sourceCommit": "0806b082166af306087787d160b86b7d9d941010",
+  "sourceTree": "b9891d902357ca667dcec829b5de39921181754e",
+  "tagObject": "9bc78945efe7c9ba47468c68db3fe85e3915abaa",
+  "workflow": {
+    "conclusion": "failure",
+    "head_sha": "0806b082166af306087787d160b86b7d9d941010",
+    "html_url": "https://github.com/istarwyh/yourbuddy/actions/runs/42349994843",
+    "id": 42349994843,
+    "run_started_at": "2026-11-07T07:08:20Z",
+    "status": "completed",
+    "updated_at": "2026-11-07T07:18:38Z"
+  },
+  "jobUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42349994843/job/128335883177",
+  "failedStep": "Verify prepared default workbench and optional Harbor",
+  "error": "product peer verification count changed after install: lock=85, installed=84",
+  "observations": [
+    "Build Harness, component preparation/release pipeline, frozen release inputs and browser installation passed.",
+    "CI installed 570 packages from the frozen offline Store with zero downloads.",
+    "The installed-peer verifier omitted the Design adapter; its @deepseek-ai/dsh-tools peer accounts for the one-count difference.",
+    "The check failed before Chromium interaction. Components, installers, native Offline acceptance and publication were skipped."
+  ],
+  "publication": {
+    "githubReleaseExists": false,
+    "githubReleaseLookup": "HTTP 404",
+    "latestTag": "yourbuddy-v0.4.13",
+    "stableUpdaterSha256": "098682e27e293fbca5122b23bf5519b1dde900c0cf1d282f4f2617658ac8947c",
+    "tagUnchanged": true
+  },
+  "recovery": {
+    "status": "Local verifier repair under review; complete-input PR CI pending.",
+    "regressions": "Both new regressions failed before the repair; verifier and compatibility suites then passed 39/39.",
+    "localPrepared": "Real Host/Profile, 9 core Clients, Harbor 0.10.3, 10 assembled Clients and Chromium passed on macOS arm64 with Node 22.22.3.",
+    "localInputLimit": "568/570 registry packages were installed. Native Codex and Claude SDK optional tarball transfers failed; this is not complete-input CI evidence.",
+    "releaseCheckStrength": "Peer identity and equal-count checks remain; Artifacts response recording is included. No tag movement or publication bypass."
+  }
+}
