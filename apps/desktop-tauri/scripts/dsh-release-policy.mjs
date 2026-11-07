@@ -25,13 +25,13 @@ function assertOnlyFields(value, allowed, label) {
  * Validate the policy that chooses an official DSH Release.
  *
  * @param {unknown} value
- * @returns {{formatVersion: 1, repository: string, channel: 'stable-else-rc', tagPrefix: string, firstPartyPeerPackages: string[]}}
+ * @returns {{formatVersion: 1, repository: string, channel: 'stable-else-rc', tagPrefix: string, maximumVersion?: string, firstPartyPeerPackages: string[]}}
  */
 export function validateDshUpdatePolicy(value) {
   if (!isPlainObject(value)) throw new Error('DSH update policy must be an object')
   assertOnlyFields(
     value,
-    new Set(['formatVersion', 'repository', 'channel', 'tagPrefix', 'firstPartyPeerPackages']),
+    new Set(['formatVersion', 'repository', 'channel', 'tagPrefix', 'maximumVersion', 'firstPartyPeerPackages']),
     'DSH update policy',
   )
   if (value.formatVersion !== 1) throw new Error('DSH update policy formatVersion must be 1')
@@ -43,6 +43,14 @@ export function validateDshUpdatePolicy(value) {
   }
   if (typeof value.tagPrefix !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value.tagPrefix)) {
     throw new Error('DSH update policy tagPrefix is invalid')
+  }
+  if (value.maximumVersion !== undefined) {
+    if (typeof value.maximumVersion !== 'string' || semver.valid(value.maximumVersion) !== value.maximumVersion) {
+      throw new Error('DSH update policy maximumVersion must be an exact semantic version')
+    }
+    if (releaseKind(value.maximumVersion) === undefined) {
+      throw new Error('DSH update policy maximumVersion must select a stable or RC release')
+    }
   }
   if (!Array.isArray(value.firstPartyPeerPackages) || value.firstPartyPeerPackages.length === 0) {
     throw new Error('DSH update policy firstPartyPeerPackages must be a non-empty array')
@@ -124,6 +132,9 @@ export function assertRecordedDshRelease(input) {
   if (input.upstreamRecord.version !== input.currentVersion) {
     throw new Error(`DSH upstream version=${input.upstreamRecord.version} does not match bundled ${input.currentVersion}`)
   }
+  if (input.policy.maximumVersion !== undefined && semver.gt(input.currentVersion, input.policy.maximumVersion)) {
+    throw new Error(`bundled DSH version=${input.currentVersion} exceeds policy maximum=${input.policy.maximumVersion}`)
+  }
   const expectedTag = `${input.policy.tagPrefix}${input.currentVersion}`
   if (input.upstreamRecord.tag !== expectedTag) {
     throw new Error(`DSH upstream tag=${input.upstreamRecord.tag} does not match ${expectedTag}`)
@@ -158,6 +169,7 @@ export function selectAllowedDshRelease(policy, releases) {
     const channel = releaseKind(version)
     if (!channel) return []
     if (channel === 'stable' && release.prerelease === true) return []
+    if (policy.maximumVersion !== undefined && semver.gt(version, policy.maximumVersion)) return []
     return [{
       tag: release.tag_name,
       version,
@@ -169,7 +181,8 @@ export function selectAllowedDshRelease(policy, releases) {
   const eligible = stable.length > 0 ? stable : candidates.filter(candidate => candidate.channel === 'rc')
   eligible.sort((left, right) => semver.rcompare(left.version, right.version))
   if (eligible.length === 0) {
-    throw new Error(`DSH has no official stable or RC Release: ${policy.repository}`)
+    const maximum = policy.maximumVersion === undefined ? '' : ` at or below ${policy.maximumVersion}`
+    throw new Error(`DSH has no official stable or RC Release${maximum}: ${policy.repository}`)
   }
   return eligible[0]
 }

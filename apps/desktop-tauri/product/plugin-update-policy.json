@@ -85,6 +85,7 @@
       "kind": "npm-latest",
       "package": "dsh-codex-auth",
       "destination": "dsh-codex-auth",
+      "distTag": "rc",
       "peerOverrides": {
         "0.3.1": {
           "@deepseek-ai/dsh-*": "0.1.7-rc.2"

@@ -44,6 +44,9 @@ test('DSH policy accepts only the stable-else-RC channel and safe package direct
   assert.throws(() => policy({ repository: 'https://github.com/deepseek-ai/deepseek-harness' }), /owner\/repository/)
   assert.throws(() => policy({ firstPartyPeerPackages: ['../escape'] }), /is invalid/)
   assert.throws(() => policy({ firstPartyPeerPackages: ['same', 'same'] }), /duplicate/)
+  assert.equal(policy({ maximumVersion: '0.2.1-rc.2' }).maximumVersion, '0.2.1-rc.2')
+  assert.throws(() => policy({ maximumVersion: 'latest' }), /exact semantic version/)
+  assert.throws(() => policy({ maximumVersion: '0.2.1-beta.1' }), /stable or RC release/)
 })
 
 test('DSH release selection prefers the highest stable and otherwise the highest RC', () => {
@@ -80,6 +83,21 @@ test('DSH release selection prefers the highest stable and otherwise the highest
   assert.throws(
     () => selectAllowedDshRelease(policy(), [release('0.2.0-alpha.1'), release('0.2.0-beta.1')]),
     /no official stable or RC Release/,
+  )
+  assert.equal(
+    selectAllowedDshRelease(policy({ maximumVersion: '0.2.1-rc.2' }), [
+      release('0.2.2-rc.1'),
+      release('0.2.1-rc.2'),
+      release('0.2.1-rc.1'),
+    ]).version,
+    '0.2.1-rc.2',
+  )
+  assert.equal(
+    selectAllowedDshRelease(policy({ maximumVersion: '0.2.1-rc.2' }), [
+      release('0.3.0'),
+      release('0.2.1-rc.2'),
+    ]).version,
+    '0.2.1-rc.2',
   )
 })
 
@@ -123,6 +141,14 @@ test('recorded and live DSH checks reject stale versions, upstream records, and 
     upstreamRecord,
     currentVersion: '0.1.1-rc.2',
   }))
+  assert.throws(
+    () => assertRecordedDshRelease({
+      policy: policy({ maximumVersion: '0.1.1-rc.1' }),
+      upstreamRecord,
+      currentVersion: '0.1.1-rc.2',
+    }),
+    /exceeds policy maximum/,
+  )
   assert.doesNotThrow(() => assertCurrentDshRelease({
     currentVersion: '0.1.1-rc.2',
     upstreamRecord,

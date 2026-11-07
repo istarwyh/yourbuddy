@@ -30,6 +30,7 @@ function makeFixture(t) {
     repository: 'deepseek-ai/deepseek-harness',
     channel: 'stable-else-rc',
     tagPrefix: 'dsh-v',
+    maximumVersion: nextVersion,
     firstPartyPeerPackages: ['personal-workbench'],
   })
   writeJson(join(product, 'DSH_UPSTREAM.json'), {
@@ -68,7 +69,7 @@ function releaseFetch() {
   return async url => {
     if (url.endsWith('/releases?per_page=100')) {
       return new Response(JSON.stringify([
-        { draft: false, prerelease: true, tag_name: 'dsh-v0.1.2-alpha.1' },
+        { draft: false, prerelease: true, tag_name: 'dsh-v0.1.2-rc.1' },
         { draft: false, prerelease: true, tag_name: `dsh-v${nextVersion}` },
       ]), { status: 200 })
     }
