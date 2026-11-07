@@ -20,6 +20,7 @@ import { assemble } from './assemble.ts'
 import { closeMockServers, mockServer, textEvents } from './mock-server.ts'
 
 afterEach(async () => {
+  vi.useRealTimers()
   vi.unstubAllEnvs()
   await closeMockServers()
 })
@@ -416,18 +417,31 @@ describe('PiAiAdapter provider routing', () => {
   it('stops the SDK request when the adapter idle watchdog expires', async () => {
     const server = await mockServer([{ events: textEvents, delayMs: 200 }])
     const ctx = await harness(server.url, { streamIdleTimeoutMs: 20 })
-
-    const result = await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
-    expect(result.finish).toMatchObject({ kind: 'error', failure: { code: 'TIMEOUT' } })
-    await Promise.race([
-      server.responseClosed,
-      new Promise<never>((_resolve, reject) => {
-        setTimeout(() => { reject(new Error('SDK request did not close after idle timeout')) }, 1_000)
-      }),
-    ])
-
-    expect(server.paths).toEqual(['/chat/completions'])
-    expect(server.closedResponses).toBe(1)
+    const controller = new AbortController()
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const pending = assemble(ctx, { model: 'deepseek-v4-flash', messages: [], signal: controller.signal })
+    let closeTimeout: ReturnType<typeof setTimeout> | undefined
+    try {
+      // Establish a real SDK request before expiring the idle interval.
+      await server.requestReceived
+      await vi.advanceTimersByTimeAsync(20)
+      const result = await pending
+      expect(result.finish).toMatchObject({ kind: 'error', failure: { code: 'TIMEOUT' } })
+      vi.useRealTimers()
+      await Promise.race([
+        server.responseClosed,
+        new Promise<never>((_resolve, reject) => {
+          closeTimeout = setTimeout(() => { reject(new Error('SDK request did not close after idle timeout')) }, 1_000)
+        }),
+      ])
+      expect(server.paths).toEqual(['/chat/completions'])
+      expect(server.closedResponses).toBe(1)
+    } finally {
+      controller.abort()
+      vi.useRealTimers()
+      clearTimeout(closeTimeout)
+      await pending
+    }
   })
 })
 

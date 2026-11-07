@@ -208,3 +208,90 @@ fn unusable_pnpm_replacement_preserves_previous_tool_and_retry_output() {
     );
     f.assert_old_trees_unchanged();
 }
+
+// Unix PATH uses ':' as a separator; Windows cannot create the legacy directory name.
+#[cfg(unix)]
+#[tokio::test]
+async fn fallback_node_prepares_path_safe_cache_and_retries_without_touching_legacy_data() {
+    let f = Fixture::new();
+    let root = f.app.join("components");
+    let script = b"#!/bin/sh\nprintf 'bundled-node-from-path'\n";
+    let mut archive = tar::Builder::new(Vec::new());
+    let mut header = tar::Header::new_gnu();
+    header.set_size(script.len() as u64);
+    header.set_mode(0o755);
+    header.set_cksum();
+    archive
+        .append_data(&mut header, "bin/node", script.as_slice())
+        .unwrap();
+    let tar = archive.into_inner().unwrap();
+    let bytes = zstd::stream::encode_all(tar.as_slice(), 1).unwrap();
+    let manager = super::super::components::node_seed_fixture(&root, &bytes);
+    let spec = &manager.catalog().components["node"];
+    let legacy = root.join("node/22.19.0:darwin-arm64");
+    fs::create_dir_all(legacy.join("bin")).unwrap();
+    fs::write(legacy.join("bin/node"), script).unwrap();
+    fs::write(legacy.join(".complete"), format!("{}\n", spec.sha256)).unwrap();
+    write_manifest(
+        &f.manifest,
+        &f.source,
+        &legacy.join("bin/node"),
+        &f.target,
+        &f.cli,
+    )
+    .unwrap();
+    let previous_manifest = fs::read(&f.manifest).unwrap();
+    assert!(!f.ready().unwrap());
+    assert!(add_node_to_path(&mut Command::new("pnpm"), &legacy.join("bin/node")).is_err());
+    assert!(manager.installed("node").unwrap().is_none());
+
+    prepare_harness_tree(&f.source, &f.app, &f.target, true).unwrap();
+
+    // This is the component fallback used when host discovery found no compatible Node.
+    let node_root = manager.ensure("node").await.unwrap();
+    let node = node_binary_path(&node_root);
+    assert_eq!(node_root, root.join("node/22.19.0%3Adarwin-arm64"));
+    assert_eq!(fs::read(&node).unwrap(), script);
+    assert_eq!(
+        fs::read(node_root.join(".complete")).unwrap(),
+        format!("{}\n", spec.sha256).as_bytes()
+    );
+    assert_eq!(fs::read(&f.manifest).unwrap(), previous_manifest);
+    assert!(!f.ready().unwrap());
+
+    // Exercise the production install command's PATH, with no host Node entry available.
+    let mut command = Command::new("/bin/sh");
+    configure_pnpm_install(&mut command, &node, &f.target, None).unwrap();
+    let path = command
+        .get_envs()
+        .find(|(key, _)| *key == "PATH")
+        .unwrap()
+        .1
+        .unwrap();
+    let selected = std::env::split_paths(path).next().unwrap();
+    let output = Command::new("/bin/sh")
+        .args(["-c", "node"])
+        .env_clear()
+        .env("PATH", selected)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"bundled-node-from-path");
+    assert_eq!(manager.ensure("node").await.unwrap(), node_root);
+    finish_bootstrap_provision(&f.manifest, &f.source, &node, &f.target, &f.cli).unwrap();
+    assert!(f.ready().unwrap());
+    assert_eq!(
+        recorded_node_path(&f.manifest).unwrap(),
+        node.to_str().unwrap()
+    );
+    assert_eq!(fs::read(legacy.join("bin/node")).unwrap(), script);
+    assert_eq!(
+        fs::read(legacy.join(".complete")).unwrap(),
+        format!("{}\n", spec.sha256).as_bytes()
+    );
+    assert_eq!(
+        manager.catalog().components["node"].id,
+        "node:22.19.0:darwin-arm64"
+    );
+    f.assert_old_trees_unchanged();
+}

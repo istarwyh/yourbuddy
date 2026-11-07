@@ -180,3 +180,17 @@ fn optional_components_only_enter_the_plan_when_requested() {
         ["harness", "diagnostics"]
     );
 }
+
+#[test]
+fn logical_node_identity_has_a_distinct_path_safe_storage_key() {
+    let id = "node:22.19.0:darwin-arm64";
+    assert_eq!(component_key(id).unwrap(), "22.19.0:darwin-arm64");
+    let path = component_storage_path("node", id).unwrap();
+    assert_eq!(path, PathBuf::from("node/22.19.0%3Adarwin-arm64"));
+    assert!(std::env::join_paths([path.join("bin")]).is_ok());
+    assert_ne!(
+        path,
+        component_storage_path("node", "node:22.19.0-darwin-arm64").unwrap()
+    );
+    assert!(component_storage_path("node", "node:22.19.0%3Adarwin-arm64").is_err());
+}
