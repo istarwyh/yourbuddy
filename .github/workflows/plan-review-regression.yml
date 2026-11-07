@@ -1,0 +1,61 @@
+name: Plan review browser regression
+
+on:
+  pull_request:
+    paths:
+      - 'packages/client/ui-plan/**'
+      - 'packages/client/ui-sidebar-right/**'
+      - 'packages/client/ui-user-questions/**'
+      - 'packages/client/ui-renderer/**'
+      - 'packages/client/ui-layout/**'
+      - 'apps/web/tests/plan-review.e2e.ts'
+      - '.github/workflows/plan-review-regression.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plan-review-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DSH_TELEMETRY_DISABLED: '1'
+  DSH_SNAPSHOT: replay
+
+jobs:
+  plan-review-browser:
+    name: Plan review / Sidebar seat changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    # Independent of the consumer aggregate: unrelated snapshot failures must
+    # not suppress these regressions. Existing CI checks remain unchanged.
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Use runner-owned temporary storage
+        run: |
+          echo "TMPDIR=${{ runner.temp }}" >> "$GITHUB_ENV"
+          echo "NODE_COMPILE_CACHE=${{ runner.temp }}/node-compile-cache" >> "$GITHUB_ENV"
+          echo "PLAYWRIGHT_BROWSERS_PATH=${{ runner.temp }}/ms-playwright" >> "$GITHUB_ENV"
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm-plan-review
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+      - name: Prepare browser sandbox dependencies
+        run: bash scripts/prepare-ci-bubblewrap.sh
+      - name: Install Playwright Chromium and hosted dependencies
+        run: |
+          sudo find /etc/apt -maxdepth 2 -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i -E 's@http://([a-z]{2}\.)?archive\.ubuntu\.com/ubuntu@https://archive.ubuntu.com/ubuntu@g; s@http://security\.ubuntu\.com/ubuntu@https://security.ubuntu.com/ubuntu@g' {} +
+          pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install --with-deps chromium
+      - name: Build native, host, client and web artifacts
+        run: pnpm run build
+      - name: Verify pending reviews across Sidebar seat changes
+        run: >-
+          pnpm exec vitest run --config vitest.web.config.ts
+          apps/web/tests/plan-review.e2e.ts
+          -t 'pending plan review across Sidebar seat changes'
