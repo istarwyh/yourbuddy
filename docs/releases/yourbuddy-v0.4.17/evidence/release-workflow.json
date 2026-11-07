@@ -1,0 +1,169 @@
+{
+  "status": "passed",
+  "runId": 42364539926,
+  "jobId": 128379721884,
+  "releaseTag": "yourbuddy-v0.4.17",
+  "sourceCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4",
+  "workflowCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4",
+  "sourceTree": "998fdbb01b4fead922e4e3a4ad506d03a8f67ff0",
+  "jobCompletedAt": "2026-11-07T11:03:12Z",
+  "publicationStepCompletedAt": "2026-11-07T11:01:51Z",
+  "prepared": {
+    "status": "passed",
+    "registryInstall": {
+      "resolved": 570,
+      "reused": 570,
+      "downloaded": 0,
+      "added": 570,
+      "basis": "release job pnpm output; separate physical manifest/native-input inventory was accepted in PR94"
+    },
+    "coreClients": 9,
+    "installedHarborClients": 10,
+    "corePeerLinks": 85,
+    "coreCapabilityLinks": 0,
+    "installedCapabilityLinks": 2,
+    "harborIntegrationVersion": "0.10.3",
+    "brandingJourneysPassed": 2,
+    "visualEvidence": "one last-captured workbench PNG and four Chromium videos"
+  },
+  "native": {
+    "version": "0.4.17",
+    "platform": "darwin-arm64",
+    "componentSource": "signed Offline seeds",
+    "boots": [
+      {
+        "round": 1,
+        "durationMs": 48222,
+        "authenticated": true,
+        "nativeWorkbench": true,
+        "cleanExit": true
+      },
+      {
+        "round": 2,
+        "durationMs": 11573,
+        "authenticated": true,
+        "nativeWorkbench": true,
+        "cleanExit": true
+      },
+      {
+        "round": 3,
+        "durationMs": 12659,
+        "authenticated": true,
+        "nativeWorkbench": true,
+        "cleanExit": true
+      }
+    ],
+    "runnerReportedAppSha256": "5c4f74ff46ae1683a1c2fe317d3826223632241d176994925b0f8217c3bd0b50",
+    "signedManifestSha256": "e611b67a126d5ebde0c25e03ed7969da75e6fed1da45f564289c7ff81eeb3d3a",
+    "active": {
+      "appVersion": "0.4.17",
+      "components": {
+        "harness": {
+          "id": "sha256:bfc790c06046d700eb11c5fdcbbd4ca30bbe7e8b3d68824d546a20a4366c8f9f"
+        },
+        "pnpmStore": {
+          "id": "sha256:a1a446bc2aa20425dcf602512f96a69402f857142fb12b86ff4a768acc917fcc"
+        }
+      },
+      "schemaVersion": 1
+    },
+    "blockedExternalRequests": 4,
+    "selectedNode": "runner-provided Node 24.22.2",
+    "rendererEvidence": "Settings and Codex AX controls recorded in every native boot",
+    "cleanupAcceptance": "each application exited code 0 without signal; owned Host exited and host.pid was absent; assertions complete before cleanExit is recorded",
+    "authScope": "real native Host authenticated readiness, not account login or model credentials",
+    "retainedLogLiveTokenPatternsFound": 0
+  },
+  "signing": {
+    "updaterAndComponentSignatureSteps": "passed",
+    "applicationSigningIdentity": "-",
+    "applicationSigning": "ad-hoc",
+    "notarization": "explicitly skipped in actual build logs",
+    "developerId": "not accepted"
+  },
+  "sizes": {
+    "releaseTag": "yourbuddy-v0.4.17",
+    "scope": "Installer and updater archive bytes; not measured network traffic or installed size.",
+    "bootstrap": [
+      {
+        "name": "YourBuddy_0.4.17_aarch64.dmg",
+        "bytes": 11127135
+      },
+      {
+        "name": "YourBuddy.app.tar.gz",
+        "bytes": 11308011
+      },
+      {
+        "name": "YourBuddy.app.tar.gz.sig",
+        "bytes": 428
+      }
+    ],
+    "offline": [
+      {
+        "name": "YourBuddy_0.4.17_aarch64.dmg",
+        "bytes": 614073515
+      },
+      {
+        "name": "YourBuddy.app.tar.gz",
+        "bytes": 613970758
+      },
+      {
+        "name": "YourBuddy.app.tar.gz.sig",
+        "bytes": 428
+      }
+    ]
+  },
+  "relocatedRuntime": {
+    "status": "passed",
+    "harborCliVersion": "0.21.0",
+    "conditions": "copied real Python executable, nonexistent pyvenv home, PYTHONHOME unset; harbor --version and harbor-dsh --help"
+  },
+  "artifacts": [
+    {
+      "kind": "prepared",
+      "id": 13571532891,
+      "bytes": 9179081,
+      "independentlyHashedSha256": "a4eeed7023db91777bf478808eb753d37254ad8aac7d4705d7b2dc3317114cd8",
+      "matchesGithubDigest": true,
+      "fileCount": 12,
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/42364539926/artifacts/13571532891",
+      "expiresAt": "2026-11-14T11:01:52Z"
+    },
+    {
+      "kind": "native",
+      "id": 13571258712,
+      "bytes": 7490,
+      "independentlyHashedSha256": "e6e1283087c6a9fe42c18abc39fc47e0ef4980b8174623b4174c794ca53ee8d8",
+      "matchesGithubDigest": true,
+      "fileCount": 11,
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/42364539926/artifacts/13571258712",
+      "expiresAt": "2026-11-14T11:01:53Z"
+    }
+  ],
+  "skippedRouteSteps": [
+    "Validate release route and refuse an existing Release",
+    "Check types before candidate validation or publication",
+    "Verify the candidate without publishing",
+    "Publish the verified master tag atomically",
+    "Upload validation candidate artifacts"
+  ],
+  "nonfatalObservations": [
+    "First boot empty user Store produced ERR_PNPM_NO_OFFLINE_TARBALL, then signed Offline Store fallback reached authenticated workbench.",
+    "Desktop updater requests were rejected by the isolated proxy as intended; blockedExternalRequests=4.",
+    "An AX inspection produced -1700 during Preview Notice rendering; existing bounded inspection polling subsequently captured all required native controls.",
+    "Component manifest signer printed app-version-binding warning; this is distinct from app updater signatures and Apple code signing."
+  ],
+  "notAccepted": [
+    "No-system-Node native startup; all three boots selected runner Node 24.22.2 and active.node was absent.",
+    "Real model generation, account/model-credential setup, native Design export/save, cold Session/controller restoration.",
+    "Developer ID signing, Apple notarization, enterprise proxy trust."
+  ],
+  "runUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42364539926",
+  "jobUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42364539926/job/128379721884",
+  "repairCi": {
+    "url": "https://github.com/istarwyh/yourbuddy/actions/runs/42362666398",
+    "conclusion": "success",
+    "successfulJobs": 16,
+    "observation": "Terminal result checked after publication; not a claim that merge waited for all CI"
+  }
+}

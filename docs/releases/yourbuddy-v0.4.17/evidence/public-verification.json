@@ -1,0 +1,438 @@
+{
+  "checkedAt": "2026-11-07T11:32:50.477Z",
+  "version": "0.4.17",
+  "releaseTag": "yourbuddy-v0.4.17",
+  "expectedCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4",
+  "scope": "Public metadata and selected independent downloads; downloaded software is not executed.",
+  "checks": [
+    {
+      "name": "Local source is the clean release commit",
+      "passed": true,
+      "details": {
+        "expectedCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4"
+      }
+    },
+    {
+      "name": "Published final release identity",
+      "passed": true,
+      "details": {
+        "url": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.17",
+        "publishedAt": "2026-11-07T11:01:49Z"
+      }
+    },
+    {
+      "name": "Remote immutable tag resolves to expected commit",
+      "passed": true,
+      "details": {
+        "expectedCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4",
+        "tagObject": "99304fe0ae4d0ff032907df0f9f32c65378ef7a6"
+      }
+    },
+    {
+      "name": "Expected public asset count",
+      "passed": true,
+      "details": {
+        "count": 17
+      }
+    },
+    {
+      "name": "Checksum list covers every other asset",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Every public asset digest matches checksum list",
+      "passed": true,
+      "details": "Metadata consistency, not independent downloads of the omitted large archives."
+    },
+    {
+      "name": "Downloaded bytes: latest.json",
+      "passed": true,
+      "details": {
+        "bytes": 3982,
+        "sha256": "221cc627d01ccc50e4a648bb4bceb3d1f64cf0b591befdde4390f7eba3fe941c"
+      }
+    },
+    {
+      "name": "Downloaded bytes: SHA256SUMS.txt",
+      "passed": true,
+      "details": {
+        "bytes": 1956,
+        "sha256": "8b02ecbca42657875c47b0b1abe01f03ffe04586f3d83f3cf390e24701ceea79"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.17-bootstrap-macos-arm64.app.tar.gz",
+      "passed": true,
+      "details": {
+        "bytes": 11308011,
+        "sha256": "d07bde36a62e598779dc638818859c268a990cc61ebb440d5f923a4eb86690e1"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.17-bootstrap-macos-arm64.app.tar.gz.sig",
+      "passed": true,
+      "details": {
+        "bytes": 428,
+        "sha256": "20ceef719a4e108e30509681247e962374c86f8316cebbd6c3eaefd8536c62a9"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.17-bootstrap-macos-arm64.dmg",
+      "passed": true,
+      "details": {
+        "bytes": 11127135,
+        "sha256": "6ed217c1104c3a2913c7756526f5c8526692a5ad38dc9a3a67bd76a9950efeb0"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.17-offline-macos-arm64.app.tar.gz",
+      "passed": true,
+      "details": {
+        "bytes": 613970758,
+        "sha256": "10fe15197c490a9a26cf62dd801ae642d46aab2411b4468201dcf8cc16a77ba1"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.17-offline-macos-arm64.app.tar.gz.sig",
+      "passed": true,
+      "details": {
+        "bytes": 428,
+        "sha256": "e2847207b9747856f01595ee7d35df7df25eca6b853d0466d960c41c4f6f0626"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-0.4.17-offline-macos-arm64.dmg",
+      "passed": true,
+      "details": {
+        "bytes": 614073515,
+        "sha256": "2839260e599e532c683465be0e7af05a0aba75295a60e9aea20c364ebfd040ed"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-components-0.4.17.json",
+      "passed": true,
+      "details": {
+        "bytes": 2777,
+        "sha256": "e611b67a126d5ebde0c25e03ed7969da75e6fed1da45f564289c7ff81eeb3d3a"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-components-0.4.17.json.sig",
+      "passed": true,
+      "details": {
+        "bytes": 317,
+        "sha256": "05757a4d7b1a7a10871eb879b3a5e63bf65a4fdcc5122feb1f552660eb08e904"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-debug-0.4.17.tar.zst",
+      "passed": true,
+      "details": {
+        "bytes": 15991719,
+        "sha256": "70cdab5e94ae3a08bf9cde6e3de94e81df5b8c736cc9a5be9a39398259cc1223"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-harbor-c7abf942a73d8c446b85eb78634860f9116f8f6e2a056129d0b52df57d7cce23-darwin-arm64.tar.zst",
+      "passed": true,
+      "details": {
+        "bytes": 96601376,
+        "sha256": "1d1142b7d1309cfd1eaa8abc84891053ee3c6b0a92a548e928275bde261e9ccc"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+      "passed": true,
+      "details": {
+        "bytes": 581530,
+        "sha256": "b81c822923987cae037c3ce3788538595d3964a2dbab6d4ddae041e8ec53e53b"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-harness-bfc790c06046d700eb11c5fdcbbd4ca30bbe7e8b3d68824d546a20a4366c8f9f-macos-arm64.tar.zst",
+      "passed": true,
+      "details": {
+        "bytes": 33487295,
+        "sha256": "9624d379c17f521898fb6ec8d86efa86f97f277acfd50fbb3b2702ee76be071e"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+      "passed": true,
+      "details": {
+        "bytes": 37007282,
+        "sha256": "ea22938123f8e558164a180651365204e22927f2c01157c948db254ca1d9db6c"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-pnpm-store-a1a446bc2aa20425dcf602512f96a69402f857142fb12b86ff4a768acc917fcc-macos-arm64.tar.zst",
+      "passed": true,
+      "details": {
+        "bytes": 419305708,
+        "sha256": "800fdeb2c62b778e17e7d4a5cb2e77b360fba79bf1cae76fcd604016bc8541f9"
+      }
+    },
+    {
+      "name": "Downloaded bytes: yourbuddy-size-report-0.4.17.json",
+      "passed": true,
+      "details": {
+        "bytes": 1464,
+        "sha256": "7100a31327ddcfc0579eeeb5c82fbb01a2acfe8bd451c56149bb33c1ac864b66"
+      }
+    },
+    {
+      "name": "Component manifest identity",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Required component catalog",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Pinned component versions",
+      "passed": true,
+      "details": {
+        "harness": "0.2.0-rc.1",
+        "pnpmStore": "11.7.0",
+        "node": "22.19.0",
+        "harbor": "0.10.3",
+        "harborPlugin": "0.10.3"
+      }
+    },
+    {
+      "name": "Harbor plugin kind and dependencies",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Exact expected asset filename set",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Immutable component ID: harness",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Immutable component filename: harness",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Component asset and dependency identities: harness",
+      "passed": true,
+      "details": {
+        "id": "sha256:bfc790c06046d700eb11c5fdcbbd4ca30bbe7e8b3d68824d546a20a4366c8f9f",
+        "archive": "yourbuddy-harness-bfc790c06046d700eb11c5fdcbbd4ca30bbe7e8b3d68824d546a20a4366c8f9f-macos-arm64.tar.zst"
+      }
+    },
+    {
+      "name": "Immutable component ID: pnpmStore",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Immutable component filename: pnpmStore",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Component asset and dependency identities: pnpmStore",
+      "passed": true,
+      "details": {
+        "id": "sha256:a1a446bc2aa20425dcf602512f96a69402f857142fb12b86ff4a768acc917fcc",
+        "archive": "yourbuddy-pnpm-store-a1a446bc2aa20425dcf602512f96a69402f857142fb12b86ff4a768acc917fcc-macos-arm64.tar.zst"
+      }
+    },
+    {
+      "name": "Immutable component ID: node",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Immutable component filename: node",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Component asset and dependency identities: node",
+      "passed": true,
+      "details": {
+        "id": "node:22.19.0:darwin-arm64",
+        "archive": "yourbuddy-node-22.19.0-darwin-arm64.tar.zst"
+      }
+    },
+    {
+      "name": "Immutable component ID: harbor",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Immutable component filename: harbor",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Component asset and dependency identities: harbor",
+      "passed": true,
+      "details": {
+        "id": "sha256:c7abf942a73d8c446b85eb78634860f9116f8f6e2a056129d0b52df57d7cce23",
+        "archive": "yourbuddy-harbor-c7abf942a73d8c446b85eb78634860f9116f8f6e2a056129d0b52df57d7cce23-darwin-arm64.tar.zst"
+      }
+    },
+    {
+      "name": "Immutable component ID: harborPlugin",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Immutable component filename: harborPlugin",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Component asset and dependency identities: harborPlugin",
+      "passed": true,
+      "details": {
+        "id": "sha256:e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad",
+        "archive": "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst"
+      }
+    },
+    {
+      "name": "Downloaded Harness declares bundled Design adapter",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Design package pins",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Design adapter source matches release: UPSTREAM.json",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Design adapter source matches release: LICENSE",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Design adapter source matches release: index.mjs",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Harness frozen lock matches committed product lock",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Settings takeover source matches release: ui-settings-general/src/client/SettingsRoot.tsx",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Settings takeover source matches release: ui-settings-models/src/client/OnboardingModal.tsx",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Settings takeover source matches release: ui-settings-account/src/client/AccountOnboarding.tsx",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Component manifest cryptographic signature and trusted comment",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Malformed trusted-comment prefix is rejected",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Tampered component manifest is rejected",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Updater version, Offline URL and signature agree",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Stable updater bytes equal released manifest",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Offline updater cryptographic signature and trusted comment",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Latest release designation",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Bootstrap archive signature and trusted comment",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Fresh extraction from signature-verified Bootstrap archive",
+      "passed": true,
+      "details": "New isolated directory; safe data extraction; downloaded application not executed."
+    },
+    {
+      "name": "Bootstrap application version and identity",
+      "passed": true,
+      "details": {
+        "version": "0.4.17",
+        "identifier": "io.github.istarwyh.yourbuddy"
+      }
+    },
+    {
+      "name": "Bootstrap binary is macOS arm64",
+      "passed": true,
+      "details": "Mach-O 64-bit executable arm64"
+    },
+    {
+      "name": "Bootstrap embeds exact signed manifest",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Bootstrap excludes large runtime resources",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Bootstrap DMG ceiling",
+      "passed": true,
+      "details": {
+        "bytes": 11127135
+      }
+    },
+    {
+      "name": "Downloaded Bootstrap DMG integrity",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Downloaded Offline DMG integrity",
+      "passed": true,
+      "details": null
+    }
+  ],
+  "notIndependentlyDownloaded": [],
+  "harnessContentScope": "Selected adapter pins/source/license, exact frozen lock and three Settings takeover sources inspected without execution; not every packaged file or npm license checked."
+}

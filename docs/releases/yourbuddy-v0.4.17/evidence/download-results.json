@@ -1,0 +1,90 @@
+[
+  {
+    "name": "yourbuddy-components-0.4.17.json.sig",
+    "status": "verified existing",
+    "bytes": 317
+  },
+  {
+    "name": "yourbuddy-0.4.17-bootstrap-macos-arm64.app.tar.gz.sig",
+    "status": "verified existing",
+    "bytes": 428
+  },
+  {
+    "name": "yourbuddy-0.4.17-offline-macos-arm64.app.tar.gz.sig",
+    "status": "verified existing",
+    "bytes": 428
+  },
+  {
+    "name": "yourbuddy-size-report-0.4.17.json",
+    "status": "verified existing",
+    "bytes": 1464
+  },
+  {
+    "name": "SHA256SUMS.txt",
+    "status": "verified existing",
+    "bytes": 1956
+  },
+  {
+    "name": "yourbuddy-components-0.4.17.json",
+    "status": "verified existing",
+    "bytes": 2777
+  },
+  {
+    "name": "latest.json",
+    "status": "verified existing",
+    "bytes": 3982
+  },
+  {
+    "name": "yourbuddy-harborPlugin-e0f4a8924a2e4637e4f15ce0a5cc512aa66603ad0cc49916497ae440136fa5ad-darwin-arm64.tar.zst",
+    "status": "verified existing",
+    "bytes": 581530
+  },
+  {
+    "name": "yourbuddy-0.4.17-bootstrap-macos-arm64.dmg",
+    "status": "verified existing",
+    "bytes": 11127135
+  },
+  {
+    "name": "yourbuddy-0.4.17-bootstrap-macos-arm64.app.tar.gz",
+    "status": "verified existing",
+    "bytes": 11308011
+  },
+  {
+    "name": "yourbuddy-debug-0.4.17.tar.zst",
+    "status": "verified existing",
+    "bytes": 15991719
+  },
+  {
+    "name": "yourbuddy-harness-bfc790c06046d700eb11c5fdcbbd4ca30bbe7e8b3d68824d546a20a4366c8f9f-macos-arm64.tar.zst",
+    "status": "verified existing",
+    "bytes": 33487295
+  },
+  {
+    "name": "yourbuddy-node-22.19.0-darwin-arm64.tar.zst",
+    "status": "verified existing",
+    "bytes": 37007282
+  },
+  {
+    "name": "yourbuddy-harbor-c7abf942a73d8c446b85eb78634860f9116f8f6e2a056129d0b52df57d7cce23-darwin-arm64.tar.zst",
+    "status": "verified existing",
+    "bytes": 96601376
+  },
+  {
+    "name": "yourbuddy-pnpm-store-a1a446bc2aa20425dcf602512f96a69402f857142fb12b86ff4a768acc917fcc-macos-arm64.tar.zst",
+    "status": "independently downloaded and SHA256 verified",
+    "bytes": 419305708,
+    "seconds": 497.36
+  },
+  {
+    "name": "yourbuddy-0.4.17-offline-macos-arm64.app.tar.gz",
+    "status": "independently downloaded and SHA256 verified",
+    "bytes": 613970758,
+    "seconds": 920.69
+  },
+  {
+    "name": "yourbuddy-0.4.17-offline-macos-arm64.dmg",
+    "status": "independently downloaded and SHA256 verified",
+    "bytes": 614073515,
+    "seconds": 1028.64
+  }
+]

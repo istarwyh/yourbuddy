@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.17/README.md
 /yourbuddy-0-4-17:
-  en: acc8d16faddec62a
-  zh: 696a5cbed33205c4
+  en: 9f46d5a4c1fda6a7
+  zh: e58120db1fdb5cd7
 /yourbuddy-0-4-17/user-release-notes:
   en: c38ee8d593c0bea2
   zh: ba9758a78bdf26a6
@@ -21,23 +21,26 @@
   en: f26290fb759676b4
   zh: b42bf5c171f4301b
 /yourbuddy-0-4-17/user-release-notes/install-or-upgrade:
-  en: f50e636b24d97660
-  zh: a14204bc3e255cbe
+  en: 19ffd5a23f42c8e3
+  zh: 4b1f3595b1d11fdc
 /yourbuddy-0-4-17/user-release-notes/compatibility-migration-and-limitations:
-  en: a54d87ed43c9b3fc
-  zh: 828b16ed959752e1
+  en: 201f4544fd0f1a8f
+  zh: a19b3b1a7c8015d2
 /yourbuddy-0-4-17/user-release-notes/sources-and-licenses:
   en: a7337c9ec04ef57a
   zh: b4498e21dd0ae14c
 /yourbuddy-0-4-17/verification-summary:
-  en: 28cbda714ebdfd8d
-  zh: 0a252b438a21a6eb
+  en: 76133170e4587e92
+  zh: 252de1491e9bd406
 /yourbuddy-0-4-17/scenario-complete-macos-prepared-preflight:
   en: d88e5e9422596ba1
   zh: 6a478ca6db49291a
+/yourbuddy-0-4-17/released-application-acceptance:
+  en: e39079a400d1e332
+  zh: 68db665c4493862f
 /yourbuddy-0-4-17/delivery-status:
-  en: 678ccf4e3378bfa6
-  zh: 6cc2bf9d94a183ac
+  en: 9dc2b7be51e5478c
+  zh: 723c05ef8ba6c3de
 /yourbuddy-0-4-17/rollback:
   en: df8e57abbe825d32
   zh: fdb584e0896c60c5
