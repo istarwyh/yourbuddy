@@ -97,6 +97,7 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('conversation.plan-review.actions', () => ctx.slots.register({
     name: 'conversation.plan-review.actions', id: previewId, locale: NS, store: reviewStore,
     inject: (sessionId: SessionId): PlanReviewOpenInjected => ({
+      sessionId,
       openReview: (review, requestKey) => {
         if (review.callId !== undefined) { open(sessionId).openPlan(review.callId); return }
         ctx.sidebarRight.openResource(reviewPreviewAddress(sessionId, `${reviewWindow}:${requestKey}`), {

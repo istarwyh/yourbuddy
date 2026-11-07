@@ -27,6 +27,8 @@ export interface PlanCardsInjected extends PlanOpenInjected {
 
 /** Session-bound preview navigation for one pending review. */
 export interface PlanReviewOpenInjected {
+  /** The Session that owns this review. */
+  sessionId: SessionId
   /** Open the logged plan, or the request's temporary document when no invocation exists. */
   openReview: (review: PropsRuntime<'conversation.plan-review.actions'>['review'], requestKey: string) => void
   readonly hooks: {
@@ -62,17 +64,17 @@ export function PlanCards({ turn, usePlans, openPlan, t }: PropsRuntime<'convers
 /**
  * Open each pending plan automatically and retain a manual opener without answering it.
  *
- * The automatic open waits for a Session on screen. `ctx.sidebarRight` names
- * the Session before the commit that brings its Conversation back renders, so
+ * The automatic open waits for its own Session on screen. `ctx.sidebarRight` names
+ * the previous Session until the new Sidebar seat commits, so
  * a review that arrived while the Conversation was off screen opens from the
  * effect of the commit that mounts it.
  * @param props - Review identity, Session store, localized copy, and navigation.
  * @returns an opener for either logged or temporary plan text.
  */
-export function PlanReviewOpen({ review, requestKey, openReview, useSidebarMounted, t, useStore, actions }: PropsRuntime<'conversation.plan-review.actions'> & InjectFace<PlanReviewOpenInjected> & PropsLocale<'plan'> & PropsStore<ReturnType<typeof createPlanReviewStore>>) {
+export function PlanReviewOpen({ review, sessionId, requestKey, openReview, useSidebarMounted, t, useStore, actions }: PropsRuntime<'conversation.plan-review.actions'> & InjectFace<PlanReviewOpenInjected> & PropsLocale<'plan'> & PropsStore<ReturnType<typeof createPlanReviewStore>>) {
   const identity = review.callId === undefined ? `review:${requestKey}` : `call:${review.callId}`
   const opened = useStore(state => state.opened[identity] === true)
-  const mounted = useSidebarMounted(session => session !== undefined)
+  const mounted = useSidebarMounted(session => session === sessionId)
   useEffect(() => {
     if (opened || !mounted) return
     openReview(review, requestKey)

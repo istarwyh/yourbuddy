@@ -221,6 +221,7 @@ describe('ui-plan browser apply', () => {
       expect(review.component).toBe(PlanReviewOpen)
       const reviewInjected = (review.inject as unknown as (sessionId: SessionId) => PlanReviewOpenInjected)(SID)
       // The automatic open reads the service's mounted-seat source, not a copy.
+      expect(reviewInjected.sessionId).toBe(SID)
       expect(reviewInjected.hooks.sidebarMounted).toBe(b.mounted)
       const pending = { id: 'review', question: 'Approve?', plan: plan.markdown, callId: plan.callId, approve: { label: 'Approve' } }
       reviewInjected.openReview(pending, 'question:1')
