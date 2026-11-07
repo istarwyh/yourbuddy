@@ -10,6 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
+| [yourbuddy-v0.4.14](yourbuddy-v0.4.14/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 精确树 Design Chromium 与维护源码证据；公开交付待完成 | 候选版本 |
 | [yourbuddy-v0.4.13](yourbuddy-v0.4.13/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录原生/浏览器验收及有限范围公开 Hash/签名 | 已发布；限制已记录 |
 | [yourbuddy-v0.4.12](yourbuddy-v0.4.12/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录原生/浏览器验收与限定范围公开证据 | 已发布；下载限制已注明 |
 | [yourbuddy-v0.4.11](yourbuddy-v0.4.11/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 运行 68 准备/原生验收、17 个公开下载、Hash、签名/Feed、源代码 ZIP 与双语网站均已检查 | 已发布；已记录剩余清单/恢复范围 |

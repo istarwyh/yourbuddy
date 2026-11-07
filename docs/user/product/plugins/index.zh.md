@@ -9,12 +9,15 @@
 | [Codex Auth](codex-auth.zh.md) | 将已有账号连接到模型、搜索与图片能力 |
 | [Better Sidebar](better-sidebar.zh.md) | 在主工作区使用文件、终端、预览、差异、任务与插件页面 |
 | [Ego Browser](ego-browser.zh.md) | 通过实时画面和人工接管操作真实浏览器 |
+| [Claude Design](../../../../apps/desktop-tauri/product/claude-design-adapter/README.zh.md) | 创建未发送的 Design 草稿，并在应用内托管编辑器打开产物 |
 | [Context Doctor](context-doctor.zh.md) | 理解上下文成本、重复内容与被遮蔽技能 |
 | [Oil Creator](oil-creator.zh.md) | 以普通项目文件夹组织本地视频、图文与人工检查后的发布草稿 |
 | [Plugin Marketplace](marketplace.zh.md) | 安装前发现并了解扩展 |
 | [Harbor Evolution](harbor-evolution.zh.md) | 用任务证据支持诊断与受控改进 |
 
 这些是 YourBuddy 选择的独立外部项目，不属于 DeepSeek Harness 官方默认发行组合。Harbor Self Evolving 是 Y8 维护者本人深度开发的独立项目。预装不代表已登录、服务可用或全部可选功能已经开启。
+
+Claude Design 使用 YourBuddy 已配置的默认模型。预准备 Chromium 路径已验证；真实模型生成、原生导出/保存与冷启动 Session 恢复仍需验收。托管 LAN Share 不可用。使用前阅读适配器指南：内置包保留混合许可条款，上游关于 Anthropic 来源材料的许可声明仍未解决。
 
 ## 自有与上游贡献
 

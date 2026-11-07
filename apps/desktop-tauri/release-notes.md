@@ -1,11 +1,15 @@
-# YourBuddy 0.4.13
+# YourBuddy 0.4.14
 
-PDF, Word, PowerPoint and Excel opened from the default middle Files workbench now reuse the existing DSH readers. Files state and native identity are retained. No new viewer dependencies are added.
+Claude Design and Claude Artifacts 2.11.1 are bundled with an in-app managed editor. Artifacts starts an unsent Design draft using YourBuddy’s configured default model. This release also adds bounded SDK snapshot-test timeout diagnostics, PATH-safe component directories and deterministic equivalent-Store archives, plus a test startup-race correction.
 
-默认中间 Files 工作台的 PDF、Word、PPT 和 Excel 复用现有 DSH 阅读器，保留文件树状态与原生文档身份，没有新增查看器依赖。
+内置 Claude Design 与 Claude Artifacts 2.11.1，并提供应用内托管编辑器。Artifacts 使用 YourBuddy 已配置的默认模型创建未发送的 Design 草稿。本版还加入有界 SDK 快照测试超时诊断、适用于 PATH 的组件目录和等价 Store 确定性归档，并修正测试启动竞态。
 
-Prepared Chromium verifies four formats and close/reopen; native Tauri window acceptance remains unverified and was explicitly waived. Native Office conversion may report missing Liberation Sans; the earlier WASM check reported missing 宋体. Existing download-only tabs need closing and reopening. Separate repeated-open, narrow-screen background and missing-dependency UI cases remain unverified.
+Exact combined-source Chromium acceptance passed. Real-model generation, native macOS WebView export/saving and cold Session/controller restoration remain unverified. Managed LAN Share and non-comment page-button agent requests are unsupported. The Store change is not shared CAS or incremental download support; a first canonical archive can require a fresh download. Original timeout and disk-growth causes remain unresolved. Agent self-upgrade is not included.
 
-预准备 Chromium 已验证四格式与关闭重开；原生 Tauri 窗口未验收，用户已明确豁免。原生 Office 转换可能报告缺少 Liberation Sans，此前 WASM 检查报告缺少宋体。已有仅下载标签需关闭重开；独立重复打开、窄屏后台和缺依赖 UI 场景仍未验证。
+精确组合源码已通过 Chromium 验收。真实模型生成、macOS 原生 WebView 导出/保存及冷启动 Session/controller 恢复仍未验证。托管 LAN Share 与非评论页面按钮的 Agent 请求不受支持。Store 变更没有实现共享 CAS 或增量下载，首次规范化归档可能需要重新下载。原始超时与磁盘增长根因仍未确定。本版不含 Agent 自升级。
 
-Verification archive / 验证归档: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.13/docs/releases/yourbuddy-v0.4.13
+Upstream LICENSE, NOTICE.md and editor third-party notices are preserved. Design has mixed terms, not a collective MIT license; the upstream notice’s unlicensed Anthropic-origin material remains unresolved.
+
+保留上游 LICENSE、NOTICE.md 与编辑器第三方声明。Design 采用混合条款，并非整体 MIT；上游声明中 Anthropic 来源材料的许可缺口仍未解决。
+
+Verification archive / 验证归档: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.14/docs/releases/yourbuddy-v0.4.14

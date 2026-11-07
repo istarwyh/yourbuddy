@@ -1,0 +1,69 @@
+{
+  "recordedAt": "2026-11-07 UTC",
+  "sourceCommit": "5c70f4c24d289cb696898b84b23f26470c750fd7",
+  "environment": {
+    "os": "macOS 15.6.1",
+    "architecture": "arm64",
+    "node": "22.22.3",
+    "pnpm": "11.7.0"
+  },
+  "checks": [
+    {
+      "command": "pnpm install --frozen-lockfile",
+      "result": "passed; normal postinstall installed repository hooks; missing dsh bin warnings before build"
+    },
+    {
+      "command": "pnpm release:yourbuddy:prepare -- 0.4.14",
+      "result": "passed; ordinary generator and bilingual record writes"
+    },
+    {
+      "command": "node --test apps/desktop-tauri/scripts/verify-release-version.test.mjs apps/desktop-tauri/scripts/prepare-release-candidate.test.mjs apps/desktop-tauri/scripts/publish-release.test.mjs",
+      "result": "10/10 passed"
+    },
+    {
+      "command": "node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.4.14",
+      "result": "passed; six version sources agree"
+    },
+    {
+      "command": "node --input-type=module -e \"import {verifyReleaseArchive} from './apps/desktop-tauri/scripts/publish-release.mjs';verifyReleaseArchive(process.cwd(),'0.4.14','yourbuddy-v0.4.14')\"",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm run test:docs",
+      "result": "21 passed, 0 failed, 0 skipped"
+    },
+    {
+      "command": "pnpm run doc-sync",
+      "result": "43 passed, 0 failed, 0 skipped; includes documentation build and doc-typecheck"
+    },
+    {
+      "command": "pnpm run verify-translation-pairing docs/releases/yourbuddy-v0.4.14/README.i18n.yaml",
+      "result": "passed after clarifying that SDK timeout diagnostics are snapshot-test-only"
+    },
+    {
+      "command": "PRODUCT_SITE_BASE_URL=https://istarwyh.github.io/yourbuddy/ pnpm website:check",
+      "result": "73 tests passed; 50 source pages projected; 59 HTML pages passed link/asset/fragment/source checks; local build only, no deployment"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm run lint (first attempt)",
+      "result": "failed: error-typed SlotTestRuntime imports in pre-existing better-sidebar-conversation-draft.client.spec.ts; Host build passed, Client test-runtime declaration was absent in clean checkout"
+    },
+    {
+      "command": "pnpm run typecheck:contracts-ready",
+      "result": "passed; canonical tsc -b tsconfig.client.json generated the missing Client test-runtime declarations; no source or lint configuration changed"
+    },
+    {
+      "command": "pnpm run lint (unchanged rerun after Client declarations)",
+      "result": "passed; normal Host build and full typed lint, no source/configuration changes or disabled rules"
+    }
+  ],
+  "pending": [
+    "normal commit and pre-push hooks",
+    "release workflow",
+    "independent public delivery checks"
+  ]
+}

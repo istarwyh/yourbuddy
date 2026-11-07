@@ -9,12 +9,15 @@ A considered starting point, with each project's contribution kept visible.
 | [Codex Auth](codex-auth.md) | Connect existing accounts to models, search, and images |
 | [Better Sidebar](better-sidebar.md) | Use files, terminals, previews, differences, tasks, and plugin pages in the primary workbench |
 | [Ego Browser](ego-browser.md) | Operate a real browser with a live view and human takeover |
+| [Claude Design](../../../../apps/desktop-tauri/product/claude-design-adapter/README.md) | Create an unsent Design draft and open artifacts in the managed in-app editor |
 | [Context Doctor](context-doctor.md) | Understand context costs, duplicates, and shadowed skills |
 | [Oil Creator](oil-creator.md) | Organize local video and article production, including reviewed publishing drafts |
 | [Plugin Marketplace](marketplace.md) | Discover and assess extensions before installing |
 | [Harbor Evolution](harbor-evolution.md) | Ground diagnosis and controlled improvement in task evidence |
 
 These are independent external projects selected by YourBuddy, not the official default DeepSeek Harness distribution. Harbor Self Evolving is an independent project developed extensively by the Y8 maintainer. Preinstallation does not establish login, service availability, or activation of every optional feature.
+
+Claude Design uses YourBuddy’s configured default model. Its prepared Chromium path is verified; real-model generation, native export/saving and cold Session restoration still need acceptance. Managed LAN Share is unavailable. Read the adapter guide before use: the bundled packages retain mixed license terms and an unresolved upstream notice about Anthropic-origin material.
 
 ## First-party and upstream contributions
 
