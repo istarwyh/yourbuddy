@@ -34,11 +34,11 @@ The default name and Logo are YourBuddy and the bundled Y8 mark. The Conversatio
 
 ## Model Experience
 
-None, as this package changes browser presentation only; it does not add content to model requests.
+`yourbuddy_upgrade` accepts an optional target `version` (default `latest`) and upgrades only the desktop application bound to the current Host. It refuses another active or queued agent, subagent, or background job. The tool saves the request, returns a durable operation receipt, and ends the current turn; restart handoff occurs only after the normal tool result and turn completion are flushed. `accepted` is not `succeeded`. `yourbuddy_upgrade_status` accepts an optional `operation_id` and reads that operation or the bound application’s latest result. Neither tool chooses another application path or resumes previous tools after restart. The [installer guide](../../../../docs/user/product/installer.md) owns operation phases and recovery.
 
 #### KV Cache effect
 
-None; changing the workbench identity does not assemble or send a provider request.
+The stable upgrade tool declarations join the model’s tool list. Upgrade receipts and explicit status queries append normal tool results to the current session; startup does not automatically create a provider request. Branding changes still do not alter model input.
 
 ## Known Limitations and Deferred Work
 

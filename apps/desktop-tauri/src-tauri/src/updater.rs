@@ -62,6 +62,9 @@ pub fn current_version(app: &AppHandle) -> String {
 /// Returns a localized current, development, or busy status when no install
 /// starts. A successful install restarts the process and does not return.
 pub async fn install_available(app: &AppHandle) -> Result<String, String> {
+    if crate::installer::installer_owned_launch() {
+        return Ok(UpdateOutcome::Busy.message());
+    }
     check_and_install(app)
         .await
         .map(|outcome| outcome.message())
@@ -95,6 +98,15 @@ async fn check_and_install(app: &AppHandle) -> Result<UpdateOutcome, String> {
         return Ok(UpdateOutcome::Development(current));
     }
 
+    // The one-shot installer owns the same target through replacement and readiness.
+    let _installer_guard = if cfg!(target_os = "macos") {
+        match crate::installer::updater_guard()? {
+            Some(guard) => Some(guard),
+            None => return Ok(UpdateOutcome::Busy),
+        }
+    } else {
+        None
+    };
     let Some(_attempt) = UpdateAttempt::begin() else {
         return Ok(UpdateOutcome::Busy);
     };

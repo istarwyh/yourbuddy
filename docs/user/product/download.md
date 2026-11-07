@@ -6,9 +6,11 @@ YourBuddy currently targets macOS 11 or later on Apple Silicon.
 
 ## Download the latest release
 
-Open the [latest YourBuddy release](https://github.com/istarwyh/yourbuddy/releases/latest). Choose `yourbuddy-<version>-bootstrap-macos-arm64.dmg` for the recommended small installer and automatic updates. Choose the larger `yourbuddy-<version>-offline-macos-arm64.dmg` when first launch must work without outbound network access. Both install the same application identity and component versions.
+Open the [latest YourBuddy release](https://github.com/istarwyh/yourbuddy/releases/latest). Choose `yourbuddy-<version>-bootstrap-macos-arm64.dmg` for the recommended small installer. Choose the larger `yourbuddy-<version>-offline-macos-arm64.dmg` when first launch must work without outbound network access. Both install the same application identity and component versions.
 
-Older installations can instead use **Settings → General → Application lifecycle → Check for updates**. Existing YourBuddy data is retained during an ordinary upgrade.
+Older installations can instead use **Settings → General → Application lifecycle → Check for updates**. Automatic updates use the signed Offline application archive, not the Bootstrap DMG. Existing YourBuddy data is retained during an ordinary upgrade.
+
+For terminal installation, proxy/offline files, or upgrading from the current conversation, see [install and upgrade](installer.md).
 
 ## What the desktop carries
 

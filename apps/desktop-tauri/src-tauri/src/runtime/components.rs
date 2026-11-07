@@ -41,7 +41,8 @@ use super::component_plan::{
 pub use super::component_plan::{ComponentManifest, ComponentSpec};
 
 /// Download updates for the startup splash; byte counts include any resumed partial.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ComponentProgress {
     Download {
         component: String,
@@ -182,6 +183,7 @@ pub struct ComponentManager {
     resource_dir: PathBuf,
     manifest: ComponentManifest,
     client: Client,
+    offline: bool,
     progress: Option<Arc<dyn Fn(ComponentProgress) + Send + Sync>>,
     #[cfg(test)]
     download_url: Option<String>,
@@ -296,10 +298,17 @@ impl ComponentManager {
             resource_dir: resource_dir.to_path_buf(),
             manifest,
             client,
+            offline: false,
             progress: None,
             #[cfg(test)]
             download_url: None,
         })
+    }
+
+    /// Restrict preparation to authenticated installed components, seeds, and complete cache files.
+    pub fn with_offline(mut self, offline: bool) -> Self {
+        self.offline = offline;
+        self
     }
 
     /// Attach an observer for resumed byte progress and bounded network retries.
@@ -538,6 +547,20 @@ impl ComponentManager {
         if seed.is_file() {
             observations.archive_source = Some(ArchiveSource::OfflineSeed);
             return Ok(seed);
+        }
+        if self.offline {
+            let cached = self
+                .root
+                .join("downloads")
+                .join(format!("{}.partial", spec.archive));
+            verify_archive(&cached, spec).map_err(|_| {
+                format!(
+                    "offline package/cache is missing component {name}: {}",
+                    spec.archive
+                )
+            })?;
+            observations.archive_source = Some(ArchiveSource::Cache);
+            return Ok(cached);
         }
         let url = asset_url(&self.manifest, spec)?;
         #[cfg(test)]
@@ -1218,6 +1241,7 @@ pub(super) fn service_fixture(root: &Path) -> ComponentManager {
         resource_dir: root.join("resources"),
         manifest,
         client: Client::builder().no_proxy().build().unwrap(),
+        offline: false,
         progress: None,
         download_url: None,
     }

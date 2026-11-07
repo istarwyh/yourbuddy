@@ -43,6 +43,12 @@
       "section": false
     },
     {
+      "source": "docs/user/product/installer.md",
+      "route": "docs/installer",
+      "weight": 45,
+      "section": false
+    },
+    {
       "source": "docs/user/product/evaluation.md",
       "route": "docs/evaluation",
       "weight": 50,
