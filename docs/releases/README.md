@@ -10,7 +10,8 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.4.14](yourbuddy-v0.4.14/README.md) | YourBuddy desktop | Included | Exact-tree Design Chromium and maintenance source evidence; public delivery pending | Release candidate |
+| [yourbuddy-v0.4.15](yourbuddy-v0.4.15/README.md) | YourBuddy desktop | Included | Design and maintenance evidence plus fixture repair; public delivery pending | Release candidate |
+| [yourbuddy-v0.4.14](yourbuddy-v0.4.14/README.md) | YourBuddy desktop | Included | Failed required component fixture check; immutable tag retained | Failed before packaging/publication; follow-up 0.4.15 |
 | [yourbuddy-v0.4.13](yourbuddy-v0.4.13/README.md) | YourBuddy desktop | Included | Native/browser acceptance and scoped public hashes/signatures recorded | Published; limits documented |
 | [yourbuddy-v0.4.12](yourbuddy-v0.4.12/README.md) | YourBuddy desktop | Included | Native/browser acceptance and scoped public evidence recorded | Published; download limits documented |
 | [yourbuddy-v0.4.11](yourbuddy-v0.4.11/README.md) | YourBuddy desktop | Included | Run 68 prepared/native acceptance, all 17 public downloads, hashes, signatures/feed, source ZIP and bilingual website checked | Published; remaining inventory/recovery scope recorded |

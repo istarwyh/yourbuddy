@@ -1,0 +1,45 @@
+{
+  "recordedAt": "2026-11-07 UTC",
+  "releaseTag": "yourbuddy-v0.4.14",
+  "tagCommit": "ee6554c3debbfba70549b8319fc35716dfaa6eb9",
+  "tagObject": "985ad1f8ed2fd0728d1fafad681009acbfd210fd",
+  "workflow": {
+    "conclusion": "failure",
+    "created_at": "2026-11-07T06:47:48Z",
+    "head_branch": "yourbuddy-v0.4.14",
+    "head_sha": "ee6554c3debbfba70549b8319fc35716dfaa6eb9",
+    "html_url": "https://github.com/istarwyh/yourbuddy/actions/runs/42348559538",
+    "id": 42348559538,
+    "name": "YourBuddy macOS Release",
+    "status": "completed",
+    "updated_at": "2026-11-07T06:52:19Z"
+  },
+  "job": "https://github.com/istarwyh/yourbuddy/actions/runs/42348559538/job/128331552103",
+  "failedStep": "Verify component preparation and release pipeline",
+  "command": "YOURBUDDY_BUILT_HARNESS_ROOT=\"$PWD\" YOURBUDDY_CAPABILITY_TEST_STORE=\"$(pnpm store path)\" pnpm --dir apps/desktop-tauri run test:components",
+  "result": {
+    "tests": 63,
+    "passed": 61,
+    "failed": 2,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "test": "materializes the frozen package and loads its built entry through out-of-tree Profile resolution",
+      "location": "apps/desktop-tauri/scripts/prepare-capability-components.test.mjs:154"
+    },
+    {
+      "test": "materializes a physically selected workspace through a parent-directory alias",
+      "location": "apps/desktop-tauri/scripts/prepare-capability-components.test.mjs:306"
+    }
+  ],
+  "error": "ENOENT: missing patches/dsh-claude-design-2.11.1-yourbuddy.patch in the temporary capability workspace",
+  "cause": "coreFixture copied repository patches but omitted product patches declared by buildTrimmedWorkspaceYaml. Production bundling already copies the product patches.",
+  "publication": "No GitHub Release, installer or public asset was created. Packaging, native app acceptance and publishing steps were skipped. Public tag remains unchanged.",
+  "stableRelease": "yourbuddy-v0.4.13",
+  "stableUpdaterVersion": "0.4.13",
+  "stableUpdaterSha256": "098682e27e293fbca5122b23bf5519b1dde900c0cf1d282f4f2617658ac8947c",
+  "normalPublisher": "Normal pre-commit and pre-push typecheck passed, then atomic master/tag push succeeded; this did not establish artifact publication.",
+  "repairPullRequest": "https://github.com/istarwyh/yourbuddy/pull/92",
+  "repairCommit": "fa140a62938fc57340bb7cce47f8654912f16328"
+}

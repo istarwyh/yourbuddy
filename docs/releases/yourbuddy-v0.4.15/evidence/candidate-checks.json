@@ -1,0 +1,61 @@
+{
+  "recordedAt": "2026-11-07 UTC",
+  "sourceCommit": "fa140a62938fc57340bb7cce47f8654912f16328",
+  "environment": {
+    "os": "macOS 15.6.1",
+    "arch": "arm64",
+    "node": "22.22.3",
+    "pnpm": "11.7.0"
+  },
+  "checks": [
+    {
+      "command": "pnpm release:yourbuddy:prepare -- 0.4.15",
+      "result": "passed from clean actual merged master; original generator"
+    },
+    {
+      "command": "node --test apps/desktop-tauri/scripts/verify-release-version.test.mjs apps/desktop-tauri/scripts/prepare-release-candidate.test.mjs apps/desktop-tauri/scripts/publish-release.test.mjs",
+      "result": "10/10 passed on 0.4.15 candidate"
+    },
+    {
+      "command": "node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.4.15",
+      "result": "passed; six version sources agree"
+    },
+    {
+      "command": "verifyReleaseArchive(process.cwd(), \"0.4.15\", \"yourbuddy-v0.4.15\") from publish-release.mjs",
+      "result": "passed"
+    },
+    {
+      "command": "YOURBUDDY_BUILT_HARNESS_ROOT=\"$PWD\" YOURBUDDY_CAPABILITY_TEST_STORE=\"$(pnpm store path)\" pnpm --dir apps/desktop-tauri run test:components",
+      "result": "63 passed, 0 failed, 0 skipped on 0.4.15 candidate"
+    },
+    {
+      "command": "pnpm run test:docs (initial candidate attempt)",
+      "result": "20 passed, 1 failed, 0 skipped; cross-language failure-section anchor missing"
+    },
+    {
+      "command": "pnpm run verify-md-links (after adding canonical anchors to both historical pages)",
+      "result": "2534 files checked; all relative links and fragments resolve"
+    },
+    {
+      "command": "pnpm run doc-sync",
+      "result": "43 passed, 0 failed, 0 skipped after anchor correction, including documentation build, typecheck, corpus pairing and markdown links"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm run lint",
+      "result": "passed; normal Host build and full typed lint on 0.4.15 candidate"
+    }
+  ],
+  "pending": [
+    "normal commit and pre-push hooks",
+    "release workflow",
+    "independent public delivery checks"
+  ],
+  "unchangedEvidence": {
+    "nativeOverlayRenderer": "8/8 passed on reviewed repair head 4193bc2f50fa34f8cc5c9417c6219e8529ef06dc; version/docs edits do not change this source",
+    "productWebsite": "Existing successful deployment and six checked live pages retained in website-live.json; no product guidance changes in 0.4.15"
+  }
+}

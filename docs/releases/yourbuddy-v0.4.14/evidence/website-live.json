@@ -1,0 +1,78 @@
+{
+  "checkedAt": "2026-11-07T06:50:15.592607+00:00",
+  "commit": "ee6554c3debbfba70549b8319fc35716dfaa6eb9",
+  "deploymentRun": "https://github.com/istarwyh/yourbuddy/actions/runs/42348559284",
+  "scope": "Read-only HTTP/content/link verification of existing automatic deployment; not a manual deployment or application release check.",
+  "pages": [
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/plugins/",
+      "finalUrl": "https://istarwyh.github.io/yourbuddy/plugins/",
+      "status": 200,
+      "bytes": 44369,
+      "sha256": "3d800338fb4982b6d7553002db4ed79273a690ab10e5052bf96ca58472421922",
+      "expectedContent": [
+        "Claude Design",
+        "Anthropic",
+        "claude-design-adapter"
+      ],
+      "expectedContentPresent": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/plugins/",
+      "finalUrl": "https://istarwyh.github.io/yourbuddy/en/plugins/",
+      "status": 200,
+      "bytes": 44974,
+      "sha256": "e277e0c379ae9a3452297cdab0ecb787d00b6dcb295fb27e806ae8bc9876fd4f",
+      "expectedContent": [
+        "Claude Design",
+        "Anthropic",
+        "claude-design-adapter"
+      ],
+      "expectedContentPresent": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/download/",
+      "finalUrl": "https://istarwyh.github.io/yourbuddy/download/",
+      "status": 200,
+      "bytes": 42890,
+      "sha256": "b9a331537351d666c0be1e86c1e585d0336bb18c01b75b89efaca69c010ea2c8",
+      "expectedContent": [
+        "github.com/istarwyh/yourbuddy/releases/latest"
+      ],
+      "expectedContentPresent": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/download/",
+      "finalUrl": "https://istarwyh.github.io/yourbuddy/en/download/",
+      "status": 200,
+      "bytes": 43157,
+      "sha256": "7c7f27a69aa9956f6450a743648d6b4e8d135932a073dd40d5c14072980b614a",
+      "expectedContent": [
+        "github.com/istarwyh/yourbuddy/releases/latest"
+      ],
+      "expectedContentPresent": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/releases/",
+      "finalUrl": "https://istarwyh.github.io/yourbuddy/releases/",
+      "status": 200,
+      "bytes": 42150,
+      "sha256": "8954976fee720169bf8a323f14f92a2b15327bc50cdfb08b7d2fb4922254ddc3",
+      "expectedContent": [
+        "github.com/istarwyh/yourbuddy/releases"
+      ],
+      "expectedContentPresent": true
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/releases/",
+      "finalUrl": "https://istarwyh.github.io/yourbuddy/en/releases/",
+      "status": 200,
+      "bytes": 42598,
+      "sha256": "d417896cfbf81cc1a5c0e2fe5d8b8cdbf1c11f1d88e2c8543be56a28c3ca8b57",
+      "expectedContent": [
+        "github.com/istarwyh/yourbuddy/releases"
+      ],
+      "expectedContentPresent": true
+    }
+  ]
+}

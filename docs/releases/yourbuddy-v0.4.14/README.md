@@ -73,3 +73,13 @@ The expected and observed result is a working draft/editor path with isolated fe
 Keep the immutable [0.4.13 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.13) and its original signed updater manifest. A withdrawal can restore the prior latest-release designation and stable updater feed without moving public tags or replacing installer bytes. Already updated applications need a manual previous-DMG reinstall because the updater accepts only newer versions. Quit the app and back up its data first; data downgrade compatibility is unverified.
 
 The independently downloaded [0.4.13 updater baseline](evidence/rollback-updater-0.4.13.json) is 1,971 bytes with SHA-256 `098682e27e293fbca5122b23bf5519b1dde900c0cf1d282f4f2617658ac8947c`. This records rollback preparation, not a rollback already performed.
+
+<a id="release-failure-2026-11-07-utc"></a>
+
+## Release failure — 2026-11-07 UTC
+
+The [formal release run](https://github.com/istarwyh/yourbuddy/actions/runs/42348559538) failed at the required component preparation tests after Harness build. Of 63 tests, 61 passed and two failed because the capability fixture omitted a declared Design patch. The [failure record](evidence/release-failure.json) retains the exact tests, cause and result. Packaging and publication did not run.
+
+The public tag remains at `ee6554c3debbfba70549b8319fc35716dfaa6eb9`. There is no 0.4.14 GitHub Release, installer or public release asset. Latest release and stable updater remained 0.4.13; the updater bytes match the retained rollback baseline. [PR #92](https://github.com/istarwyh/yourbuddy/pull/92) corrects only the fixture, with 63/63 component tests and 8/8 native-overlay renderer tests passing. The correction proceeds through 0.4.15, not a moved tag.
+
+The [source ZIP](evidence/source-archive-verification.json) was independently downloaded; all 17 changed metadata/documentation files were extracted, opened and matched byte-for-byte to the tag. The [automatic website deployment](evidence/website-live.json) succeeded and six live bilingual pages passed checks. These observations supersede the earlier pending source-download and website status, not the failed application publication. No downloaded application was executed.

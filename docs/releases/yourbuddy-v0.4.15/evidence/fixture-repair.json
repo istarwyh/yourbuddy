@@ -1,0 +1,28 @@
+{
+  "pullRequest": "https://github.com/istarwyh/yourbuddy/pull/92",
+  "reviewedHead": "4193bc2f50fa34f8cc5c9417c6219e8529ef06dc",
+  "mergedCommit": "fa140a62938fc57340bb7cce47f8654912f16328",
+  "tree": "706ade2d442fe0d1b4367cd94157484824c15dd0",
+  "environment": {
+    "os": "macOS 15.6.1",
+    "arch": "arm64",
+    "node": "22.22.3",
+    "pnpm": "11.7.0"
+  },
+  "scope": "Two fixture-only lines copy existing product patches; no production script, lockfile, assertion or release-gate changes.",
+  "commands": [
+    {
+      "command": "YOURBUDDY_BUILT_HARNESS_ROOT=\"$PWD\" YOURBUDDY_CAPABILITY_TEST_STORE=\"$(pnpm store path)\" pnpm --dir apps/desktop-tauri run test:components",
+      "before": "63 tests: 61 passed, 2 failed, 0 skipped; same missing patch as release CI",
+      "after": "63 passed, 0 failed, 0 skipped"
+    },
+    {
+      "command": "pnpm --dir apps/desktop-tauri run test:native-overlay",
+      "result": "8 passed, 0 failed, 0 ignored; renderer tests, not native Design UI acceptance"
+    },
+    {
+      "command": "normal git commit and push hooks",
+      "result": "staged lint, whitespace, vendor guard and Host/Client typecheck passed"
+    }
+  ]
+}

@@ -1,4 +1,8 @@
-# YourBuddy 0.4.14
+# YourBuddy 0.4.15
+
+This release follows the unpublished 0.4.14 candidate. A test fixture omitted declared product patches; the fixture is corrected with all original release checks retained. The 0.4.14 tag stays unchanged and has no Release or installer.
+
+本版接续未发布的 0.4.14 候选。测试 fixture 曾遗漏已声明的产品补丁，现已补齐并保留全部原有发行检查。0.4.14 标签不变，没有 Release 或安装包。
 
 Claude Design and Claude Artifacts 2.11.1 are bundled with an in-app managed editor. Artifacts starts an unsent Design draft using YourBuddy’s configured default model. This release also adds bounded SDK snapshot-test timeout diagnostics, PATH-safe component directories and deterministic equivalent-Store archives, plus a test startup-race correction.
 
@@ -12,4 +16,4 @@ Upstream LICENSE, NOTICE.md and editor third-party notices are preserved. Design
 
 保留上游 LICENSE、NOTICE.md 与编辑器第三方声明。Design 采用混合条款，并非整体 MIT；上游声明中 Anthropic 来源材料的许可缺口仍未解决。
 
-Verification archive / 验证归档: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.14/docs/releases/yourbuddy-v0.4.14
+Verification archive / 验证归档: https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.15/docs/releases/yourbuddy-v0.4.15

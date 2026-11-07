@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-11-07T06:54:05.138487+00:00",
+  "url": "https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.14.zip",
+  "bytes": 55599672,
+  "sha256": "5c2d29a3791981eb3d008b0b93a9d160276fd64f213e4313b0a00273dac2625b",
+  "tagCommit": "ee6554c3debbfba70549b8319fc35716dfaa6eb9",
+  "extractedAndOpened": [
+    "apps/desktop-tauri/package.json",
+    "apps/desktop-tauri/release-notes.md",
+    "apps/desktop-tauri/src-tauri/Cargo.lock",
+    "apps/desktop-tauri/src-tauri/Cargo.toml",
+    "apps/desktop-tauri/src-tauri/tauri.conf.json",
+    "docs/releases/README.i18n.yaml",
+    "docs/releases/README.md",
+    "docs/releases/README.zh.md",
+    "docs/releases/yourbuddy-v0.4.14/README.i18n.yaml",
+    "docs/releases/yourbuddy-v0.4.14/README.md",
+    "docs/releases/yourbuddy-v0.4.14/README.zh.md",
+    "docs/releases/yourbuddy-v0.4.14/evidence/candidate-checks.json",
+    "docs/releases/yourbuddy-v0.4.14/evidence/rollback-updater-0.4.13.json",
+    "docs/releases/yourbuddy-v0.4.14/evidence/source-checks.json",
+    "docs/user/product/plugins/index.i18n.yaml",
+    "docs/user/product/plugins/index.md",
+    "docs/user/product/plugins/index.zh.md"
+  ],
+  "matchesTag": true,
+  "scope": "Seventeen changed version/archive/product-guide files independently downloaded, extracted, opened and compared byte-for-byte with the immutable tag; downloaded code was not executed."
+}

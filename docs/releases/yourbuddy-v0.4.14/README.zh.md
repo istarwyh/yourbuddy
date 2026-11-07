@@ -73,3 +73,13 @@ Design 托管编辑器不能启用 LAN Share。真实模型生成、macOS 原生
 保留不可变的 [0.4.13 发行](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.13) 及其原始签名更新清单。撤回时可以恢复旧版 latest 标识与稳定更新源，不移动公开标签、不替换安装包字节。更新器只接受更高版本，因此已升级应用需要手动重装旧 DMG。操作前退出应用并备份数据；数据降级兼容性尚未验证。
 
 独立下载的 [0.4.13 更新清单基线](evidence/rollback-updater-0.4.13.json) 为 1,971 字节，SHA-256 为 `098682e27e293fbca5122b23bf5519b1dde900c0cf1d282f4f2617658ac8947c`。这是回退准备记录，并非已执行回退。
+
+<a id="release-failure-2026-11-07-utc"></a>
+
+## 发布失败 — 2026-11-07 UTC
+
+[正式发行运行](https://github.com/istarwyh/yourbuddy/actions/runs/42348559538) 在 Harness 构建后因必需组件准备测试失败而停止。63 项测试中 61 项通过，两项因能力 fixture 遗漏已声明的 Design 补丁而失败。[失败记录](evidence/release-failure.json) 保留具体测试、原因与结果。打包与发布未执行。
+
+公开标签保持在 `ee6554c3debbfba70549b8319fc35716dfaa6eb9`。没有 0.4.14 GitHub Release、安装包或公开发行附件。latest 发行与稳定更新源仍为 0.4.13；更新清单字节与保留的回退基线一致。[PR #92](https://github.com/istarwyh/yourbuddy/pull/92) 仅修正 fixture，组件测试 63/63 与 native-overlay 渲染器测试 8/8 通过。修复通过 0.4.15 推进，不移动原标签。
+
+已独立下载[源码 ZIP](evidence/source-archive-verification.json)，提取并打开全部 17 个改动的元数据/文档文件，与标签内容逐字节一致。[网站自动部署](evidence/website-live.json) 成功，六个双语线上页面通过检查。这些观察更新此前待完成的源码下载与网站状态，不改变应用发布失败的事实。未执行下载的应用。

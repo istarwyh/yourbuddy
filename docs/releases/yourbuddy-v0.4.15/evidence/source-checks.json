@@ -1,0 +1,111 @@
+{
+  "recordedAt": "2026-11-07 UTC",
+  "release": "yourbuddy-v0.4.15",
+  "sourceCommit": "fa140a62938fc57340bb7cce47f8654912f16328",
+  "sourceTree": "706ade2d442fe0d1b4367cd94157484824c15dd0",
+  "mergedPullRequests": [
+    91,
+    87,
+    88,
+    89,
+    90,
+    92
+  ],
+  "excludedPullRequest": 80,
+  "design": {
+    "ciMergeCommit": "86edf476463e21e49206375e8a8df5ce73378624",
+    "ciMergeTree": "b2f40dd17aacf6b6532e9569aae6e33e919c2e26",
+    "bootstrap": {
+      "conclusion": "success",
+      "created_at": "2026-11-07T06:25:12Z",
+      "head_sha": "819f1055a5d3af1a200d1f72da191a7dbd82831f",
+      "html_url": "https://github.com/istarwyh/yourbuddy/actions/runs/42346920573",
+      "id": 42346920573,
+      "status": "completed",
+      "updated_at": "2026-11-07T06:32:57Z"
+    },
+    "mainAtPreparation": {
+      "conclusion": null,
+      "head_sha": "819f1055a5d3af1a200d1f72da191a7dbd82831f",
+      "html_url": "https://github.com/istarwyh/yourbuddy/actions/runs/42346920678",
+      "id": 42346920678,
+      "status": "in_progress",
+      "updated_at": "2026-11-07T06:26:23Z"
+    },
+    "observed": [
+      "4/4 Bootstrap jobs passed",
+      "31 Node tests and 25 Vitest tests passed",
+      "570 packages restored from genuine offline seed with zero downloads",
+      "Actual Chromium loaded installed Artifacts Client, created an unsent draft and opened managed sandboxed editor",
+      "Real Host feature failure isolation passed"
+    ],
+    "data": "synthetic",
+    "realModel": false,
+    "unverified": [
+      "native macOS Tauri/WebView",
+      "HTML/PDF/PNG export and desktop saving",
+      "real-model generation",
+      "cold Session/controller restoration",
+      "Windows editor ownership"
+    ],
+    "earlierLocalBrowser": "Blocked by Unix-socket permissions; not counted as passed.",
+    "browserJob": {
+      "completed_at": "2026-11-07T06:32:56Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/istarwyh/yourbuddy/actions/runs/42346920573/job/128326569872",
+      "id": 128326569872,
+      "name": "network-proxy",
+      "started_at": "2026-11-07T06:25:16Z"
+    },
+    "retainedLogExcerpts": [
+      "2026-11-07T06:31:03.9572096Z Progress: resolved 570, reused 570, downloaded 0, added 570, done",
+      "2026-11-07T06:32:17.6610307Z Progress: resolved 570, reused 570, downloaded 0, added 570, done",
+      "2026-11-07T06:32:21.6860289Z ℹ tests 31",
+      "2026-11-07T06:32:21.6860736Z ℹ pass 31",
+      "2026-11-07T06:32:26.0819018Z       Tests  25 passed (25)",
+      "2026-11-07T06:32:38.4233306Z Chromium executed the installed Artifacts Client, created an unsent draft, and opened the managed sandboxed editor.",
+      "2026-11-07T06:32:42.4911340Z Chromium Client boot passed; native desktop acceptance is separate."
+    ],
+    "environment": {
+      "os": "Ubuntu 26.04",
+      "architecture": "x64",
+      "node": "24.22.2",
+      "pnpm": "11.7.0"
+    },
+    "commands": [
+      "node apps/desktop-tauri/scripts/bundle-harness-source.mjs",
+      "pnpm --dir apps/desktop-tauri run prepare:offline-store",
+      "tar -xzf apps/desktop-tauri/bundled/harness/yourbuddy-pnpm-store.tar.gz -C apps/desktop-tauri/bundled/harness",
+      "pnpm --dir apps/desktop-tauri/bundled/harness install --prod --frozen-lockfile --offline --trust-lockfile --store-dir .yourbuddy-pnpm-store",
+      "node apps/desktop-tauri/scripts/test-bundled-design.mjs"
+    ]
+  },
+  "archive": {
+    "sourceTree": "fcbb7f85b6a7f81ebeff3bb0629428fad35ea341",
+    "main": {
+      "conclusion": "success",
+      "created_at": "2026-11-07T04:18:17Z",
+      "head_sha": "bc1f2048c00f26992b31a6f6085d42c5473cbdeb",
+      "html_url": "https://github.com/istarwyh/yourbuddy/actions/runs/42337855050",
+      "id": 42337855050,
+      "status": "completed",
+      "updated_at": "2026-11-07T05:32:46Z"
+    },
+    "bootstrapUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42337854934",
+    "observed": [
+      "Main CI 16/16 and Bootstrap 4/4 passed",
+      "49 archive tests passed",
+      "87 translation tests passed",
+      "Host and Client typecheck passed",
+      "Full typed lint passed using DSH_OXLINT_THREADS=1 node --import tsx/esm scripts/run-oxlint.ts .",
+      "Earlier local full-lint SIGKILL and local website exit 137 were resource failures; serial full lint and exact-tree CI website build subsequently passed"
+    ]
+  },
+  "remainingIssues": [
+    57,
+    83,
+    85,
+    86
+  ],
+  "scope": "Design and maintenance evidence predates version metadata and the fixture-only #92 correction; product implementation is unchanged. Not public artifact or installed-update verification."
+}
