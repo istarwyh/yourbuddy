@@ -321,6 +321,20 @@ describe('RightbarSeat presentation', () => {
     expect(h.layout()).toBe(retained)
   })
 
+  it('keeps the navigation binding available while a first layout initializes', async () => {
+    const h = await mountSeat(1440, true, 0, true)
+    act(() => { h.runtime.panelInfo.set({ activePanelId: 'other-panel' as MainPanelId }) })
+    // A fresh browser has no saved surface. Returning initializes that surface
+    // while the Conversation's pending opener waits for the seat binding.
+    act(() => { h.instance.store.set({ bySession: {} }); h.arm(true) })
+    act(() => { h.runtime.panelInfo.set({ activePanelId: null }) })
+    expect(h.opened).toHaveLength(1)
+    expect(h.controller.active()?.contentId).toBe(h.opened[0])
+    expect(h.layout().expanded).toBe(true)
+    expect(h.controller.mounted.getSnapshot()).toBe(SESSION)
+    expect(document.querySelector('[data-slot-error]')).toBeNull()
+  })
+
   it('publishes the mounted seat so a Conversation opener acts in the commit that returns from a global panel', async () => {
     const h = await mountSeat(1440, true, 0, true)
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})

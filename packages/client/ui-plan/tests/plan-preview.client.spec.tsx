@@ -24,16 +24,25 @@ const call = { type: 'tool/call', seq: 12, data: { turn: 1, name: 'exit_plan_mod
 const plan = submittedPlan(call)!
 const target = { session: { kind: 'session' as const, sessionId: 'session / 中文' as SessionId }, callId: plan.callId }
 const t = makeTranslate(en, commonEn)
+const reviewDetails = { id: 'review-question', question: 'Approve this plan?', approve: { label: 'Approve' } }
 
 function planHook(plans: readonly typeof plan[]): Parameters<typeof PlanCards>[0]['usePlans'] {
   const source = createSnapshotStore(plans)
   return keyedObservableHook(() => source) as Parameters<typeof PlanCards>[0]['usePlans']
 }
+function unused(): never { throw new Error('PlanReviewOpen does not consume this standard prop') }
+
 /** The opener's props share; each test supplies the on-screen Session hook beside it. */
-function reviewProps(review: { plan: string; callId?: typeof plan.callId }, openReview: Mock, store: ReturnType<ReturnType<typeof createPlanReviewStore>['create']>) {
-  return { review, sessionId: target.session.sessionId, requestKey: 'question:1', t, openReview, actions: store.actions,
-    useStore: (select: (state: ReturnType<typeof store.getSnapshot>) => unknown) => select(store.getSnapshot()),
-  } as unknown as Parameters<typeof PlanReviewOpen>[0]
+function reviewProps(review: Parameters<typeof PlanReviewOpen>[0]['review'], openReview: Mock, store: ReturnType<ReturnType<typeof createPlanReviewStore>['create']>) {
+  return {
+    useSession: unused, useProjection: unused, useConversation: unused, useInput: unused,
+    useChat: unused, useTrajectory: unused, useSessions: unused, useSessionStatus: unused,
+    useSessionRetainInfo: unused, useWorkspaces: unused, usePanelInfo: unused, useResource: unused,
+    inputActions: { captureInsertion: unused, insertText: unused, setDraft: unused, addAttachments: unused,
+      removeAttachment: unused, pruneAttachments: unused, submit: unused },
+    review, sessionId: target.session.sessionId, requestKey: 'question:1', t, openReview, actions: store.actions,
+    useStore: <S,>(select: (state: ReturnType<typeof store.getSnapshot>) => S): S => select(store.getSnapshot()),
+  } satisfies Omit<Parameters<typeof PlanReviewOpen>[0], 'useSidebarMounted'>
 }
 /** A bound `useSidebarMounted` reading one on-screen Session value. */
 function seatHook(read: () => SessionId | undefined) {
@@ -236,7 +245,7 @@ describe('plan entry points and document', () => {
   it.each([true, false])('opens once, preserves manual closure, and reopens a review (logged: %s)', (logged) => {
     const openReview = vi.fn()
     const store = createPlanReviewStore().create()
-    const review = { plan: markdown, ...(logged ? { callId: plan.callId } : {}) }
+    const review = { ...reviewDetails, plan: markdown, ...(logged ? { callId: plan.callId } : {}) }
     const props = { ...reviewProps(review, openReview, store), useSidebarMounted: seatHook(() => target.session.sessionId) }
     const first = render(<PlanReviewOpen {...props} />)
     expect(openReview).toHaveBeenCalledExactlyOnceWith(review, 'question:1')
@@ -246,8 +255,8 @@ describe('plan entry points and document', () => {
     expect(openReview).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Open plan in sidebar' }))
     expect(openReview).toHaveBeenCalledTimes(2)
-    const revised = { plan: '# Revised', ...(logged ? { callId: 'call:2' } : {}) }
-    second.rerender(<PlanReviewOpen {...{ ...props, review: revised, requestKey: 'question:2' } as Parameters<typeof PlanReviewOpen>[0]} />)
+    const revised = { ...reviewDetails, plan: '# Revised', ...(logged ? { callId: 'call:2' as typeof plan.callId } : {}) }
+    second.rerender(<PlanReviewOpen {...{ ...props, review: revised, requestKey: 'question:2' }} />)
     expect(openReview).toHaveBeenLastCalledWith(revised, 'question:2')
     expect(openReview).toHaveBeenCalledTimes(3)
     second.unmount()
@@ -262,7 +271,7 @@ describe('plan entry points and document', () => {
     const openReview = vi.fn()
     const store = createPlanReviewStore().create()
     const mounted = createSnapshotStore<SessionId | undefined>(undefined)
-    const review = { plan: markdown, callId: plan.callId }
+    const review = { ...reviewDetails, plan: markdown, callId: plan.callId }
     const props = { ...reviewProps(review, openReview, store), useSidebarMounted: seatHook(() => mounted.getSnapshot()) }
     const view = render(<PlanReviewOpen {...props} />)
     expect(openReview).not.toHaveBeenCalled()
@@ -285,7 +294,7 @@ describe('plan entry points and document', () => {
     const openReview = vi.fn()
     const store = createPlanReviewStore().create()
     const mounted = createSnapshotStore<SessionId | undefined>('other-session' as SessionId)
-    const review = { plan: markdown }
+    const review = { ...reviewDetails, plan: markdown }
     const props = { ...reviewProps(review, openReview, store), useSidebarMounted: seatHook(() => mounted.getSnapshot()) }
     const view = render(<PlanReviewOpen {...props} />)
     expect(openReview).not.toHaveBeenCalled()
