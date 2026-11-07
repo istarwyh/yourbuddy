@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -29,6 +29,7 @@ import {
   assertCodexModelCatalogProbe,
   assertProductClientBoot,
   assertResolvedWorkspacePackage,
+  assertInstalledProductPeerLinks,
   buildProductSmokeOverlay,
   createReleaseChildEnvironment,
   desktopWebviewCookie,
@@ -37,6 +38,7 @@ import {
   stopChild,
   verifyPreparedProduct,
 } from './verify-product-release.mjs'
+import { assertBundledProductPeerLinks } from './product-plugin-compatibility.mjs'
 
 test('installed peer verification follows Node resolution without a plugin-local link', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-peer-resolution-'))
@@ -67,6 +69,54 @@ test('installed peer verification follows Node resolution without a plugin-local
   }
   finally {
     rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('installed peer verification covers every core product and rejects a second Design runtime', () => {
+  for (const duplicateDesign of [false, true]) {
+    const root = mkdtempSync(join(tmpdir(), 'yourbuddy-all-product-peers-'))
+    try {
+      const tools = join(root, 'packages', 'fixture', 'tools')
+      mkdirSync(tools, { recursive: true })
+      writeFileSync(join(tools, 'package.json'), JSON.stringify({
+        name: '@deepseek-ai/dsh-tools', version: '1.0.0', main: 'index.js',
+      }))
+      writeFileSync(join(tools, 'index.js'), 'module.exports = {}\n')
+      const source = new URL('../product/', import.meta.url)
+      const importers = []
+      for (const entry of readdirSync(source, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue
+        const path = new URL(`${entry.name}/package.json`, source)
+        if (!existsSync(path)) continue
+        const manifest = JSON.parse(readFileSync(path, 'utf8'))
+        if (!CORE_PRODUCT_PACKAGE_IDS.includes(manifest.name)) continue
+        const plugin = join(root, 'packages', 'product', entry.name)
+        mkdirSync(join(plugin, 'node_modules', '@deepseek-ai'), { recursive: true })
+        writeFileSync(join(plugin, 'package.json'), JSON.stringify({
+          name: manifest.name, version: '1.0.0', peerDependencies: { '@deepseek-ai/dsh-tools': '1.0.0' },
+        }))
+        let target = tools
+        if (duplicateDesign && manifest.name === 'dsh-yourbuddy-design') {
+          target = join(root, 'duplicate-tools')
+          mkdirSync(target)
+          writeFileSync(join(target, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh-tools', main: 'index.js' }))
+          writeFileSync(join(target, 'index.js'), 'module.exports = {}\n')
+        }
+        symlinkSync(target, join(plugin, 'node_modules', '@deepseek-ai', 'dsh-tools'), 'junction')
+        importers.push(`  packages/product/${entry.name}:\n    dependencies:\n      '@deepseek-ai/dsh-tools':\n        version: link:../../fixture/tools`)
+      }
+      writeFileSync(join(root, 'pnpm-lock.yaml'), `lockfileVersion: '9.0'\n\nimporters:\n\n${importers.join('\n\n')}\n\npackages:\n`)
+      assert.equal(assertBundledProductPeerLinks(root), CORE_PRODUCT_PACKAGE_IDS.length)
+      if (duplicateDesign) {
+        assert.throws(() => assertInstalledProductPeerLinks(root), /dsh-yourbuddy-design installed a second @deepseek-ai\/dsh-tools/u)
+      }
+      else {
+        assert.equal(assertInstalledProductPeerLinks(root), assertBundledProductPeerLinks(root))
+      }
+    }
+    finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   }
 })
 
@@ -426,6 +476,21 @@ test('release smoke observes product Clients inside a DSH combo response', () =>
   assert.equal(responses['dsh-ego-browser'], 200)
 })
 
+test('Artifacts response recording reaches the required Client boot check', () => {
+  for (const resource of ['claude-artifacts/client.js', 'dsh-claude-artifacts/client.js']) {
+    const responses = Object.fromEntries([
+      ...CORE_PRODUCT_CLIENT_IDS.filter(name => name !== 'dsh-claude-artifacts'),
+      '@deepseek-ai/dsh-client-ui-sidebar-browser', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview',
+    ].map(name => [name, 200]))
+    const result = { clientResponses: responses, frameCount: 1, bootFailureCount: 0, pageErrors: [], consoleErrors: [] }
+    assert.throws(() => assertProductClientBoot(result, 'core'), /dsh-claude-artifacts Client bundle was not requested/u)
+    recordProductClientResponse(responses, `http://127.0.0.1:3080/plugins/??${resource}&rev=fixture`, 200)
+    assert.doesNotThrow(() => assertProductClientBoot(result, 'core'))
+    recordProductClientResponse(responses, `http://127.0.0.1:3080/plugins/${resource}?rev=fixture`, 503)
+    assert.throws(() => assertProductClientBoot(result, 'core'), /dsh-claude-artifacts Client bundle returned HTTP 503/u)
+  }
+})
+
 test('smoke diagnostics never inject product rows or change shipped defaults', () => {
   const core = buildProductSmokeOverlay('/tmp/workspace', '/tmp/runtime', '/tmp/proxy-verifier.mjs')
   assert.match(core, /id: yourbuddy-release-proxy-verifier/u)
@@ -437,7 +502,7 @@ test('smoke diagnostics never inject product rows or change shipped defaults', (
   assert.doesNotMatch(installed, /name: dsh-harbor-evolution|default: codex|preset-creator/u)
 })
 
-test('core requires all eight default Clients and both lightweight services, and rejects optional Clients', () => {
+test('core requires every default Client and both lightweight services, and rejects optional Clients', () => {
   const clientResponses = Object.fromEntries([
     ...CORE_PRODUCT_CLIENT_IDS, '@deepseek-ai/dsh-client-ui-sidebar-browser', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview',
   ].map(id => [id, 200]))

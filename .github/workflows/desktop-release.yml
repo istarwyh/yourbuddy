@@ -199,7 +199,7 @@ jobs:
             workflowCommit: sourceEnvironment.GITHUB_WORKFLOW_SHA,
             platform: `${process.platform}-${process.arch}`,
             node: process.version,
-            scope: 'Prepared real Host and Profile; 8 default Clients then 9 with Harbor; Chromium interaction. Desktop invoke stubs are bridge-only; native acceptance is separate.',
+            scope: 'Prepared real Host and Profile; default Clients then optional Harbor; Chromium interaction. Desktop invoke stubs are bridge-only; native acceptance is separate.',
           }
           const isolated = isolatedReleaseEnvironment(sourceEnvironment, realpathSync(tmpdir()))
           const verifierPath = join(desktopRoot, 'scripts', `.yourbuddy-prepared-verifier-${process.pid}.mjs`)

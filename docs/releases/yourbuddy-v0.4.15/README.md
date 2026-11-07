@@ -2,14 +2,14 @@
 
 English | [中文](README.zh.md)
 
-This archive separates tested source and prepared Chromium behavior from pending packaged acceptance and public delivery.
+This archive records source checks and a release attempt that failed before packaging and publication.
 
 - Release identifier: `yourbuddy-v0.4.15`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: pre-publication source evidence; release workflow and public assets pending.
+- Archive state: candidate source evidence and the failed release attempt are recorded; no installer was published.
 - Evidence commit: [merged release base](https://github.com/istarwyh/yourbuddy/commit/fa140a62938fc57340bb7cce47f8654912f16328), tree `706ade2d442fe0d1b4367cd94157484824c15dd0`. Prepared Design evidence below predates the version metadata and fixture-only correction.
 - Evidence gallery: not captured for this candidate; linked CI logs record the prepared browser scenario.
-- Evidence download: [immutable tag source archive](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.15.zip), available after publication; independent extraction remains pending.
+- Evidence download: the [immutable tag source archive](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.15.zip) contains the original candidate evidence. [Independent extraction](evidence/source-archive-verification.json) opened all 22 changed files and matched them to the tag; later failure observations do not alter that archive.
 
 ## User release notes
 
@@ -53,8 +53,8 @@ The [source record](../../../apps/desktop-tauri/product/claude-design-adapter/UP
 | Equivalent Store archives and source regressions | Passed | #89 tree `fcbb7f85`; included in merged source | [Run 42337855050](https://github.com/istarwyh/yourbuddy/actions/runs/42337855050), 16/16 jobs; [source record](evidence/source-checks.json) |
 | Capability fixture and native-overlay renderer | Passed | Reviewed #92 source before version bump | 63/63 component tests after reproducing 61/63; 8/8 renderer tests; [repair evidence](evidence/fixture-repair.json) |
 | Release candidate checks | Passed | Local 0.4.15 metadata candidate | [Candidate checks](evidence/candidate-checks.json) record actual commands and results |
-| Complete combined main CI | Pending at archive preparation | PR #90 combined source | [Run 42346920678](https://github.com/istarwyh/yourbuddy/actions/runs/42346920678); do not infer success from Bootstrap |
-| Packaged release and independent public downloads | Not verified | Release workflow not yet run | Native and publication checks remain required |
+| Complete combined main CI | Passed | PR #90 combined source | [Run 42346920678](https://github.com/istarwyh/yourbuddy/actions/runs/42346920678), 16/16 jobs; observed after candidate preparation |
+| Release workflow | Failed before packaging | Immutable 0.4.15 candidate | [Failure record](evidence/release-failure.json); no public installer or native acceptance result |
 
 ## Scenario: installed Design and offline restore
 
@@ -66,10 +66,18 @@ The expected and observed result is a working draft/editor path with isolated fe
 
 ## Delivery status
 
-- Product publication: pending; the existing tag-triggered release workflow retains its build, signature, prepared-browser and native Offline checks.
-- Verification archive: source evidence and rollback baseline included; public assets, independent evidence extraction and release-run observations remain pending.
+- Product publication: failed before packaging; there is no 0.4.15 GitHub Release or installer. Latest and the stable updater remain 0.4.13.
+- Verification archive: source checks, independent tag-source extraction, rollback baseline and release failure are recorded. Installer and native acceptance evidence do not exist for this attempt.
 - Website synchronization: the unchanged bilingual plugin guidance was automatically deployed at `ee6554c3debbfba70549b8319fc35716dfaa6eb9`; [six live pages](evidence/website-live.json) passed HTTP/content/link checks. This version-only follow-up needs no additional website deployment; latest-download availability remains a separate release check.
 - Unverified scope: the native/model/cold-restoration and remaining issue limitations above apply; no existing installation or user Session was replaced by candidate preparation.
+
+<a id="release-failure-2026-11-07-utc"></a>
+
+## Release failure (2026-11-07 UTC)
+
+[Run 42349994843](https://github.com/istarwyh/yourbuddy/actions/runs/42349994843/job/128335883177) failed in prepared acceptance with `lock=85, installed=84`. The real frozen offline installation restored all 570 registry packages with zero downloads, but the installed-peer checker still used the old eight-directory roster and omitted the Design adapter’s `@deepseek-ai/dsh-tools` peer. Chromium, packaging, native Offline acceptance and publication were not reached.
+
+The [failure record](evidence/release-failure.json) preserves the exact release identity and recovery limits. The repair also records the Artifacts Client through the response recorder, without lowering peer identity or Client boot requirements. Its local full prepared run passed on macOS, but only 568/570 registry inputs were installed because two optional native tarball transfers failed. Complete-input PR CI is required before the next patch release. The public 0.4.15 tag remains unchanged.
 
 ## Rollback
 

@@ -119,6 +119,7 @@ const LIGHTWEIGHT_CLIENT_ENTRIES = {
 }
 
 const PRODUCT_CLIENT_ENTRY_IDS = {
+  'dsh-claude-artifacts': 'claude-artifacts',
   'dsh-codex-auth': 'llm-codex-auth',
   'dsh-better-sidebar': 'better-sidebar',
   'dsh-ego-browser': 'ego-browser',
@@ -302,9 +303,12 @@ export function assertInstalledProductPeerLinks(root) {
   const workspace = readWorkspacePackageVersions(root)
   const productRoot = join(root, 'packages', 'product')
   let checked = 0
-  for (const plugin of ['dsh-codex-auth', 'dsh-better-sidebar', 'ego-browser', 'context-doctor', 'plugin-marketplace', 'personal-workbench', 'pomodoro', 'oil-creator']) {
-    const pluginRoot = join(productRoot, plugin)
-    const manifest = JSON.parse(readFileSync(join(pluginRoot, 'package.json'), 'utf8'))
+  for (const entry of readdirSync(productRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const pluginRoot = join(productRoot, entry.name)
+    const manifestPath = join(pluginRoot, 'package.json')
+    if (!existsSync(manifestPath)) continue
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
     for (const name of Object.keys(manifest.peerDependencies ?? {})) {
       if (!isBundledRuntimePackage(name)) continue
       const expected = workspace.get(name)

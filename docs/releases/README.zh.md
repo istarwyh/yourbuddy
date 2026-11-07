@@ -10,7 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
-| [yourbuddy-v0.4.15](yourbuddy-v0.4.15/README.zh.md) | YourBuddy 桌面应用 | 已包含 | Design、维护证据及 fixture 修复；公开交付待完成 | 候选版本 |
+| [yourbuddy-v0.4.15](yourbuddy-v0.4.15/README.zh.md) | YourBuddy 桌面版 | 已包含 | 已记录源码检查与预准备 peer 计数失败；标签保留 | 附件发布前失败 |
 | [yourbuddy-v0.4.14](yourbuddy-v0.4.14/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 必需组件 fixture 检查失败；保留不可变标签 | 打包/发布前失败；接续版本 0.4.15 |
 | [yourbuddy-v0.4.13](yourbuddy-v0.4.13/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录原生/浏览器验收及有限范围公开 Hash/签名 | 已发布；限制已记录 |
 | [yourbuddy-v0.4.12](yourbuddy-v0.4.12/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已记录原生/浏览器验收与限定范围公开证据 | 已发布；下载限制已注明 |
