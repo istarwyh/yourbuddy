@@ -31,7 +31,7 @@ function planHook(plans: readonly typeof plan[]): Parameters<typeof PlanCards>[0
 }
 /** The opener's props share; each test supplies the on-screen Session hook beside it. */
 function reviewProps(review: { plan: string; callId?: typeof plan.callId }, openReview: Mock, store: ReturnType<ReturnType<typeof createPlanReviewStore>['create']>) {
-  return { review, requestKey: 'question:1', t, openReview, actions: store.actions,
+  return { review, sessionId: target.session.sessionId, requestKey: 'question:1', t, openReview, actions: store.actions,
     useStore: (select: (state: ReturnType<typeof store.getSnapshot>) => unknown) => select(store.getSnapshot()),
   } as unknown as Parameters<typeof PlanReviewOpen>[0]
 }
@@ -280,6 +280,20 @@ describe('plan entry points and document', () => {
     mounted.set(target.session.sessionId)
     view.rerender(<PlanReviewOpen {...props} />)
     expect(openReview).toHaveBeenCalledTimes(2)
+  })
+  it('does not mark a review opened while the previous Session still owns the Sidebar', () => {
+    const openReview = vi.fn()
+    const store = createPlanReviewStore().create()
+    const mounted = createSnapshotStore<SessionId | undefined>('other-session' as SessionId)
+    const review = { plan: markdown }
+    const props = { ...reviewProps(review, openReview, store), useSidebarMounted: seatHook(() => mounted.getSnapshot()) }
+    const view = render(<PlanReviewOpen {...props} />)
+    expect(openReview).not.toHaveBeenCalled()
+    expect(store.getSnapshot().opened).toEqual({})
+    mounted.set(target.session.sessionId)
+    view.rerender(<PlanReviewOpen {...props} />)
+    expect(openReview).toHaveBeenCalledExactlyOnceWith(review, 'question:1')
+    expect(store.getSnapshot().opened).toEqual({ 'review:question:1': true })
   })
   it('renders temporary Markdown and reports expired navigation after reload', () => {
     const address = reviewPreviewAddress(target.session.sessionId, 'window:question:1')
