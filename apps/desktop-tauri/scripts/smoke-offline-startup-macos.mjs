@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -20,7 +20,7 @@ const apple = source => execFileSync('/usr/bin/osascript', ['-e', source], { enc
 export function isolatedEnvironment(world, node = process.execPath) {
   const home = join(world, 'home')
   return {
-    PATH: `${dirname(node)}:/usr/bin:/bin:/usr/sbin:/sbin`,
+    PATH: `${node ? `${dirname(node)}:` : ''}/usr/bin:/bin:/usr/sbin:/sbin`,
     HOME: home,
     USERPROFILE: home,
     TMPDIR: join(world, 'tmp'),
@@ -33,6 +33,31 @@ export function isolatedEnvironment(world, node = process.execPath) {
     LANG: 'en_US.UTF-8',
     LC_ALL: 'en_US.UTF-8',
   }
+}
+
+/** Refuse host discovery candidates without modifying any installed toolchain. */
+export function requireNoHostNode(env, present = existsSync) {
+  const candidates = [...env.PATH.split(':').map(dir => join(dir, 'node')),
+    '/usr/local/bin/node', '/usr/bin/node',
+    ...['.volta', '.fnm/current', '.nvm/current'].map(dir => join(env.HOME, dir, 'bin', 'node')),
+    join(env.YOURBUDDY_APP_DATA_DIR, 'runtime', 'node', 'bin', 'node')]
+  for (const candidate of new Set(candidates)) {
+    assert(!present(candidate), `BLOCKED: host Node discovery candidate exists: ${candidate}`)
+  }
+  return [...new Set(candidates)]
+}
+
+/** Require the signed managed Node, not a host binary or legacy colon-bearing path. */
+export function inspectManagedNode(log, active, manifest, runtime, appData) {
+  const id = manifest.components.node.id
+  const root = join(appData, 'components', 'node', id.slice('node:'.length).replaceAll(':', '%3A'))
+  const node = join(root, 'bin', 'node')
+  assert.equal(active.components.node?.id, id, 'managed Node must be activated from the signed channel')
+  assert.equal(active.components.node.path, root, 'managed Node must use the PATH-safe component directory')
+  assert.equal(runtime.nodePath, node, 'runtime must not select host Node or the legacy fallback directory')
+  assert(!dirname(node).includes(':'), 'managed Node directory must be one PATH entry')
+  assert(log.includes(`spawning dsh web node=${node} cli=`), 'the real Host must launch with the managed Node')
+  return node
 }
 
 /** Reject a different version or an incomplete native readiness sequence. */
@@ -342,7 +367,7 @@ async function refuseExternalRequests() {
 }
 
 /** Run unmodified application code against signed Offline seeds without publishing anything. */
-export async function smokeOfflineStartup(executable, outputRoot, version) {
+export async function smokeOfflineStartup(executable, outputRoot, version, managedNode = false) {
   requireAccessibility()
   assert(/^\d+\.\d+\.\d+$/.test(version), 'expected version must be X.Y.Z')
   executable = resolve(executable)
@@ -354,8 +379,9 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
   let proxy
   let worldSafeToRemove = true
   try {
-    const env = isolatedEnvironment(world)
+    const env = isolatedEnvironment(world, managedNode ? null : process.execPath)
     for (const path of [env.HOME, env.TMPDIR, env.YOURBUDDY_APP_DATA_DIR]) mkdirSync(path, { recursive: true, mode: 0o700 })
+    const excludedNodeCandidates = managedNode ? requireNoHostNode(env) : undefined
     const appData = env.YOURBUDDY_APP_DATA_DIR
     const resources = resolve(dirname(executable), '..', 'Resources')
     const manifestPath = join(resources, 'component-channel', 'components.json')
@@ -377,7 +403,8 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
       version, appSha256: sha256(executable), signedManifestSha256: sha256(manifestPath),
       platform: `${process.platform}-${process.arch}`, componentSource: 'signed Offline seeds',
       network: 'local rejecting proxy; production TLS verification unchanged; no enterprise proxy claim',
-      boots: [],
+      nodeSelection: managedNode ? 'signed managed Node; host discovery candidates absent' : 'host Node allowed',
+      excludedNodeCandidates, boots: [],
     }
     let activeBefore
     for (let round = 1; round <= 3; round++) {
@@ -428,6 +455,26 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
         const active = JSON.parse(activeText)
         const { webUrl } = inspectBoot(currentLog(), active, manifest, version)
         assert(host, 'native app must own a real Host process')
+        let nodeEvidence
+        if (managedNode) {
+          const runtime = JSON.parse(read(join(appData, 'runtime', 'manifest.json')))
+          const node = inspectManagedNode(currentLog(), active, manifest, runtime, appData)
+          assert.equal(realpathSync(node), node, 'managed Node must not alias a host binary')
+          const nodeVersion = execFileSync(node, ['--version'], { env, encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS }).trim()
+          assert.equal(nodeVersion, `v${manifest.components.node.version}`)
+          const nodeIdentity = execFileSync(node, ['-p', "process.platform + ':' + process.arch"], { env, encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS }).trim()
+          assert.equal(nodeIdentity, 'darwin:arm64')
+          const pnpm = join(appData, 'runtime', 'pnpm-global', 'bin', 'pnpm')
+          const managedEnv = { ...env, PATH: `${dirname(node)}:${env.PATH}` }
+          const pnpmVersion = execFileSync(pnpm, ['--version'], { env: managedEnv, encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS }).trim()
+          assert.equal(pnpmVersion, runtime.pnpmVersion)
+          nodeEvidence = { nodeVersion, nodeIdentity, pnpmVersion, nodeSha256: sha256(node), componentId: active.components.node.id }
+          if (round === 1) {
+            assert.match(currentLog(), /provision starting: seed harness \+ node \+ pnpm install/)
+            assert.doesNotMatch(currentLog(), /reusing Node /)
+          }
+          else assert.match(currentLog(), /provision skipped: manifest ready/)
+        }
         assert(active.components.pnpmStore, 'empty isolated HOME must exercise the signed offline Store fallback')
         assert(!existsSync(join(appData, 'components', 'downloads')), 'Offline startup must not download release components')
         let previewAcknowledged = false
@@ -457,7 +504,7 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
         assert.equal(outcome.code, 0)
         await until('Host process exit after native close', () => !sameProcessIdentity(host, processRecord(host.pid)))
         assert(!existsSync(join(appData, 'host.pid')), 'native close must remove its Host record')
-        summary.boots.push({ round, appPid: child.pid, hostPid: host.pid, durationMs: Date.now() - startedAt, authenticated: true, nativeWorkbench: true, cleanExit: true, webUrl })
+        summary.boots.push({ round, appPid: child.pid, hostPid: host.pid, durationMs: Date.now() - startedAt, node: nodeEvidence, authenticated: true, nativeWorkbench: true, cleanExit: true, webUrl })
         activeBefore = activeText
       }
       catch (error) {
@@ -491,5 +538,5 @@ export async function smokeOfflineStartup(executable, outputRoot, version) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (process.argv[2] === '--preflight') requireAccessibility()
-  else await smokeOfflineStartup(process.argv[2], process.argv[3], process.argv[4])
+  else await smokeOfflineStartup(process.argv[2], process.argv[3], process.argv[4], process.argv[5] === '--managed-node')
 }

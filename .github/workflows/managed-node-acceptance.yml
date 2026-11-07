@@ -1,0 +1,87 @@
+name: Released managed Node acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/managed-node-acceptance.yml'
+      - 'apps/desktop-tauri/scripts/smoke-offline-startup-macos*.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: managed-node-acceptance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  released-offline:
+    name: Released Offline without host Node
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Record acceptance and release identities
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          import { join } from 'node:path'
+          const binding = JSON.parse(readFileSync('docs/releases/yourbuddy-v0.4.17/evidence/offline-native-binding.json', 'utf8'))
+          const identity = {
+            acceptanceSourceSha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+            eventCommitSha: process.env.GITHUB_SHA,
+            runId: process.env.GITHUB_RUN_ID,
+            runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            releaseTag: 'yourbuddy-v0.4.17',
+            releaseSourceSha: binding.sourceCommit,
+            archiveSha256: binding.publicArchiveSha256,
+            appSha256: binding.publicAppSha256,
+            signedManifestSha256: binding.publicManifestSha256,
+            scope: 'Published Offline package without host Node; no release or issue mutation',
+          }
+          writeFileSync(join(process.env.RUNNER_TEMP, 'managed-node-identity.json'), `${JSON.stringify(identity, null, 2)}\n`)
+          NODE
+      - name: Check acceptance guards and native prerequisites
+        run: |
+          node --test apps/desktop-tauri/scripts/smoke-offline-startup-macos.test.mjs
+          node apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs --preflight
+          node --input-type=module <<'NODE'
+          import { isolatedEnvironment, requireNoHostNode } from './apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs'
+          import { mkdtempSync, rmSync, realpathSync } from 'node:fs'
+          import { tmpdir } from 'node:os'
+          import { join } from 'node:path'
+          const world = mkdtempSync(join(realpathSync(tmpdir()), 'yourbuddy-node-preflight-'))
+          try { requireNoHostNode(isolatedEnvironment(world, null)) }
+          finally { rmSync(world, { recursive: true }) }
+          NODE
+      - name: Download the previously verified public Offline application
+        run: |
+          archive="$RUNNER_TEMP/yourbuddy-offline.app.tar.gz"
+          curl --fail --location --max-time 600 --output "$archive" 'https://github.com/istarwyh/yourbuddy/releases/download/yourbuddy-v0.4.17/yourbuddy-0.4.17-offline-macos-arm64.app.tar.gz'
+          echo "10fe15197c490a9a26cf62dd801ae642d46aab2411b4468201dcf8cc16a77ba1  $archive" | shasum -a 256 --check
+          mkdir "$RUNNER_TEMP/managed-node-app"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/managed-node-app"
+          app="$RUNNER_TEMP/managed-node-app/YourBuddy.app"
+          echo "5c4f74ff46ae1683a1c2fe317d3826223632241d176994925b0f8217c3bd0b50  $app/Contents/MacOS/yourbuddy" | shasum -a 256 --check
+          echo "e611b67a126d5ebde0c25e03ed7969da75e6fed1da45f564289c7ff81eeb3d3a  $app/Contents/Resources/component-channel/components.json" | shasum -a 256 --check
+          codesign --verify --deep --strict "$app"
+      - name: Install signed managed Node and reach the native workbench
+        run: |
+          export TMPDIR="$(node -p 'require("node:fs").realpathSync(require("node:os").tmpdir())')"
+          node apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs "$RUNNER_TEMP/managed-node-app/YourBuddy.app/Contents/MacOS/yourbuddy" "$RUNNER_TEMP/managed-node-smoke" 0.4.17 --managed-node
+      - name: Retain sanitized native evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: managed-node-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/managed-node-identity.json
+            ${{ runner.temp }}/managed-node-smoke/evidence/
+          if-no-files-found: warn
+          retention-days: 7
