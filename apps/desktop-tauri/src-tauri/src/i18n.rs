@@ -88,6 +88,9 @@ pub enum Msg {
     BootRecoverGeneric,
     BootRecoverFailed,
     PluginsDisabled,
+    InstallerSucceeded,
+    InstallerUnchanged,
+    InstallerNeedsAttention,
     UpdaterChecking,
     UpdaterDevSkip,
     UpdaterCurrent,
@@ -224,6 +227,9 @@ fn zh(msg: Msg) -> &'static str {
         Msg::PluginsDisabled => {
             "以下插件已损坏，本次启动已自动禁用：{0}。修复或更新插件后重启即可恢复。"
         }
+        Msg::InstallerUnchanged => "YourBuddy 已是 {0} 版本，未替换或重启应用。",
+        Msg::InstallerSucceeded => "YourBuddy {0} 已安装，工作台已就绪。原会话已保留，不会自动继续执行。",
+        Msg::InstallerNeedsAttention => "安装尚未完成。可在会话中询问升级状态，或运行 yourbuddy status --operation {0} 查看处理建议。",
         Msg::UpdaterChecking => "正在检查更新（当前版本 {0}）",
         Msg::UpdaterDevSkip => "开发构建 {0} 不检查桌面更新",
         Msg::UpdaterCurrent => "当前已是最新版本（{0}）",
@@ -331,6 +337,9 @@ fn en(msg: Msg) -> &'static str {
         Msg::PluginsDisabled => {
             "These plugins failed to load and were disabled for this launch: {0}. Restart after you repair or update them."
         }
+        Msg::InstallerUnchanged => "YourBuddy is already at {0}; no application was replaced or restarted.",
+        Msg::InstallerSucceeded => "YourBuddy {0} is installed and ready. Your sessions are preserved; no Agent was resumed.",
+        Msg::InstallerNeedsAttention => "Installation needs attention. Ask for the upgrade status in your conversation, or run yourbuddy status --operation {0} for the next step.",
         Msg::UpdaterChecking => "Checking for updates (current version {0})",
         Msg::UpdaterDevSkip => "Development build {0} does not check for desktop updates",
         Msg::UpdaterCurrent => "You are on the latest version ({0})",

@@ -164,6 +164,7 @@ jobs:
           YOURBUDDY_CAPABILITY_TEST_STORE="$(pnpm store path)" \
             pnpm --dir apps/desktop-tauri run test:components
           pnpm --dir apps/desktop-tauri run test:native-overlay
+          pnpm --dir apps/desktop-tauri run test:installer
 
       - name: Prepare frozen release inputs
         env:
@@ -383,6 +384,7 @@ jobs:
           $bootstrapRoot = "$env:RUNNER_TEMP/bootstrap-bundle"
           $offlineRoot = "apps/desktop-tauri/src-tauri/target/$env:RUST_TARGET/release/bundle"
           New-Item -ItemType Directory -Force release-assets | Out-Null
+          Copy-Item apps/desktop-tauri/scripts/install-yourbuddy.sh release-assets/install-yourbuddy.sh
 
           $bootstrapDmg = Get-ChildItem $bootstrapRoot -Recurse -File -Filter '*.dmg' | Select-Object -First 1
           $bootstrapUpdater = Get-ChildItem $bootstrapRoot -Recurse -File -Filter '*.app.tar.gz' | Select-Object -First 1

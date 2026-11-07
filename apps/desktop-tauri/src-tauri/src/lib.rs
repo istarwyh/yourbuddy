@@ -5,6 +5,7 @@ mod desktop_settings;
 mod desktop_shell;
 mod external_links;
 mod i18n;
+mod installer;
 mod macos_permissions;
 mod network_proxy;
 mod notify;
@@ -47,6 +48,9 @@ fn app_context() -> tauri::Context<tauri::Wry> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if let Some(code) = installer::run_if_requested() {
+        std::process::exit(code);
+    }
     if component_helper::should_run() {
         std::process::exit(component_helper::run());
     }
@@ -86,11 +90,17 @@ pub fn run() {
                     json_string(locale)
                 ));
             }
+            if let Err(error) = installer::attach_desktop(&handle) {
+                boot_log::info(&format!(
+                    "installer desktop observation unavailable: {error}"
+                ));
+            }
             tray::install(&handle)?;
             let bundled = resolve_bundled_source(&handle);
             tauri::async_runtime::spawn(async move {
                 if let Err(err) = boot_app(handle.clone(), bundled).await {
                     boot_log::error(&err);
+                    installer::report_failure(&handle, &err);
                     if let Ok(service) = component_service(&handle) {
                         tokio::task::spawn_blocking(move || service.readiness_failed());
                     }
@@ -258,10 +268,15 @@ async fn run_first_party_command(
         .map_err(|error| error.to_string()),
         "report_workbench_ready" => {
             let service = component_service(&app)?;
-            tokio::task::spawn_blocking(move || service.workbench_ready())
+            let value = tokio::task::spawn_blocking(move || service.workbench_ready())
                 .await
-                .map_err(|error| error.to_string())?
-                .and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
+                .map_err(|error| error.to_string())??;
+            if let Err(error) = installer::report_ready(&app, true) {
+                boot_log::info(&format!(
+                    "installer frontend observation unavailable: {error}"
+                ));
+            }
+            serde_json::to_value(value).map_err(|error| error.to_string())
         }
         "report_component_invocation" => {
             let service = component_service(&app)?;
@@ -478,6 +493,9 @@ async fn boot_app(app: AppHandle, bundled: Option<PathBuf>) -> Result<(), String
         }
     }
     app.manage(runtime);
+    if let Err(error) = installer::report_ready(&app, false) {
+        boot_log::info(&format!("installer Host observation unavailable: {error}"));
+    }
     if let Some(notify) = notify {
         app.manage(notify);
     }
