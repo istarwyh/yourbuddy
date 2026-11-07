@@ -1,0 +1,86 @@
+{
+  "recordedAt": "2026-11-07T09:16:00Z",
+  "status": "passed",
+  "runUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42357799474",
+  "jobUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42357799474/job/128359625473",
+  "head": "5f1fb66f8d000a679e1cfd51931837a6ba219c94",
+  "ciMerge": "62036fdc894174d920bc03ea4be116593777cc6f",
+  "verifiedTree": "ecb043e9070bbdab43ea656e2391c2890232dded",
+  "mergedMaster": "32801fee00b2f0a671e60ba95158c38f7b338e41",
+  "versionUnderTest": "0.4.15 repair source before the metadata-only 0.4.16 bump",
+  "environment": {
+    "runner": "macos-15 arm64",
+    "node": "v24.22.2",
+    "pnpm": "11.7.0",
+    "data": "synthetic/keyless; no model requests"
+  },
+  "physicalInputs": {
+    "status": "passed",
+    "date": "2026-11-07T09:09:49.946Z",
+    "sourceCommit": "62036fdc894174d920bc03ea4be116593777cc6f",
+    "lockSha256": "51e9bc913d30c40c40329659e5b8fcfbeed819b7fe2e18a2f895954b71376250",
+    "expectedRegistryPackages": 570,
+    "materializedRegistryPackages": 570,
+    "installedRegistryPackages": 570,
+    "missing": [],
+    "nativeInputs": [
+      {
+        "name": "@openai/codex",
+        "version": "0.153.4-darwin-arm64",
+        "binary": "vendor/aarch64-apple-darwin/bin/codex",
+        "bytes": 220584000
+      },
+      {
+        "name": "@anthropic-ai/claude-agent-sdk-darwin-arm64",
+        "version": "0.3.263",
+        "binary": "claude",
+        "bytes": 199257984
+      }
+    ]
+  },
+  "preparedResult": {
+    "status": "passed",
+    "date": "2026-11-07T09:09:55.761Z",
+    "releaseTag": "yourbuddy-v0.4.15",
+    "sourceCommit": "62036fdc894174d920bc03ea4be116593777cc6f",
+    "workflowCommit": "62036fdc894174d920bc03ea4be116593777cc6f",
+    "platform": "darwin-arm64",
+    "node": "v24.22.2",
+    "scope": "Prepared real Host and Profile; default Clients then optional Harbor; Chromium interaction. Desktop invoke stubs are bridge-only; native acceptance is separate."
+  },
+  "observations": {
+    "startedAt": "2026-11-07T09:09:55.761Z",
+    "corePassedAt": "2026-11-07T09:12:15Z",
+    "harborPassedAt": "2026-11-07T09:13:53.040123Z",
+    "matchingCorePeers": 85,
+    "coreClients": 9,
+    "harborAssembledClients": 10,
+    "harborPython": "0.10.3",
+    "brandingBothPhases": "default/custom/reloaded/reset/reset-reloaded rendered name/logo/title; exact reset HTTP/RPC result and independent persisted settings read",
+    "documentPreviews": "core and Harbor preview interactions and reopen checks passed",
+    "nodeRegressions": "48/48",
+    "chromiumLifecycleRegression": {
+      "result": "1/1 passed",
+      "milliseconds": 1035.657
+    },
+    "networkBeforeCleanup": "both phases observed six Host streams from two iframes and zero service workers; completed proxy view closed before original load navigation",
+    "bootstrapJobs": "5/5 passed"
+  },
+  "artifact": {
+    "url": "https://github.com/istarwyh/yourbuddy/actions/runs/42357799474/artifacts/13568762154",
+    "bytes": 9038382,
+    "sha256": "638dca49616224cd645340a2cf1045223dd7cb6c08f268b3d0e116d4632587da",
+    "independentDownload": "digest matched; JSON, full log, screenshot and videos extracted and inspected"
+  },
+  "retainedScreenshot": {
+    "path": "screenshots/prepared-workbench.png",
+    "sha256": "1c2f86acec8192d40eff0099d2d083fed8c1be0058035aa74862cfb7fdfd7622",
+    "caption": "Synthetic prepared workbench final capture; not a native packaged application"
+  },
+  "limits": [
+    "No native Tauri/WebView Design export or real model generation",
+    "No cold Session/controller restoration or no-system-Node first launch",
+    "No public installer publication established by this preflight",
+    "Earlier CI navigation timeout did not capture enough resource evidence for direct attribution"
+  ]
+}
