@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import childProcess from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { load } from 'js-yaml'
 
@@ -80,7 +80,28 @@ test('builds core, fallback and on-demand components from bundled versions and a
   writeFileSync(join(harnessRoot, '.bundle-manifest.json'), JSON.stringify({ harnessVersion: '0.2.0-rc.7' }))
   writeFileSync(join(harnessRoot, 'entry.mjs'), 'export {}\n')
   writeFileSync(join(harnessRoot, 'entry.mjs.map'), '{}\n')
-  writeFileSync(join(storeRoot, 'index.json'), '{}\n')
+  const storeFiles = [
+    ['index.json', '{}\n', 0o644],
+    [`v10/files/ab/${'a'.repeat(126)}-exec`, '#!/bin/sh\necho fixture\n', 0o755],
+    [`v10/index/fe/${'f'.repeat(64)}-fixture@1.0.0.json`, '{"name":"fixture"}\n', 0o444],
+  ]
+  const writeStore = (files, timestamp) => {
+    rmSync(storeRoot, { recursive: true, force: true })
+    for (const [name, content, mode] of files) {
+      const path = join(storeRoot, name)
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, content)
+      chmodSync(path, mode)
+    }
+    const stamp = path => {
+      if (statSync(path).isDirectory()) {
+        for (const name of readdirSync(path)) stamp(join(path, name))
+      }
+      utimesSync(path, timestamp, timestamp)
+    }
+    stamp(storeRoot)
+  }
+  writeStore(storeFiles, 1_000_000_000)
   writeFileSync(join(toolchainRoot, 'manifest.json'), JSON.stringify({ nodeVersion: '22.19.0', pnpmVersion: '11.7.1' }))
   const harborVersion = versions[CAPABILITY_COMPONENTS.findIndex(({ key }) => key === 'harborPlugin')]
   writeFileSync(join(harborRoot, 'manifest.json'), JSON.stringify({ integrationVersion: harborVersion }))
@@ -97,6 +118,7 @@ test('builds core, fallback and on-demand components from bundled versions and a
       const adjusted = []
       for (let index = 0; index < args.length; index += 1) {
         if (['--uid', '--gid', '--uname', '--gname'].includes(args[index])) index += 1
+        else if (args[index] === 'gnutar') adjusted.push('gnu')
         else if (args[index] !== '--no-mac-metadata') adjusted.push(args[index])
       }
       return spawnSync(command, [...adjusted, '--owner=0', '--group=0'], options)
@@ -169,6 +191,49 @@ test('builds core, fallback and on-demand components from bundled versions and a
     for (const { archive, sha256 } of Object.values(manifest.components)) {
       assert.equal(createHash('sha256').update(readFileSync(join(seeds, archive))).digest('hex'), sha256)
     }
+  })
+
+  await t.test('identical Store files retain their ID and archive bytes across creation order and timestamp changes', () => {
+    const first = manifest.components.pnpmStore
+    const firstBytes = readFileSync(join(outputRoot, first.archive))
+    for (const [name, content, mode] of storeFiles) {
+      const path = join(storeRoot, name)
+      assert.equal(readFileSync(path, 'utf8'), content)
+      assert.equal(statSync(path).mode & 0o777, mode)
+      assert.equal(statSync(path).mtimeMs, 1_000_000_000_000)
+    }
+    writeStore([...storeFiles].reverse(), 1_700_000_000)
+    const rebuiltRoot = join(root, 'rebuilt-components')
+    const second = buildBootstrapComponents({ version: '0.4.10', outputRoot: rebuiltRoot, bundledRoot }).manifest.components.pnpmStore
+    assert.deepEqual(second, first)
+    assert.deepEqual(readFileSync(join(rebuiltRoot, second.archive)), firstBytes)
+    assert.equal(statSync(storeRoot).mtimeMs, 1_700_000_000_000)
+
+    const extractedStore = join(root, 'extracted-store')
+    mkdirSync(extractedStore)
+    const unpacked = childProcess.spawnSync('tar', ['-xpf', join(rebuiltRoot, second.archive), '-C', extractedStore])
+    assert.equal(unpacked.status, 0, unpacked.stderr?.toString())
+    for (const [name, content, mode] of storeFiles) {
+      const path = join(extractedStore, name)
+      assert.equal(readFileSync(path, 'utf8'), content)
+      assert.equal(statSync(path).mode & 0o777, mode)
+      assert.equal(statSync(path).mtimeMs, 0)
+      assert.equal(statSync(join(storeRoot, name)).mtimeMs, 1_700_000_000_000)
+    }
+    const packedStore = childProcess.spawnSync('tar', [
+      '-czf', join(harnessRoot, 'yourbuddy-pnpm-store.tar.gz'), '-C', harnessRoot, '.yourbuddy-pnpm-store',
+    ])
+    assert.equal(packedStore.status, 0, packedStore.stderr?.toString())
+    rmSync(storeRoot, { recursive: true })
+    const restored = buildBootstrapComponents({ version: '0.4.10', outputRoot: rebuiltRoot, bundledRoot }).manifest.components.pnpmStore
+    assert.deepEqual(restored, first)
+    assert.deepEqual(readFileSync(join(rebuiltRoot, restored.archive)), firstBytes)
+
+    writeStore(storeFiles, 1_700_000_000)
+    writeFileSync(join(storeRoot, 'index.json'), '{"changed":true}\n')
+    const changed = buildBootstrapComponents({ version: '0.4.10', outputRoot: rebuiltRoot, bundledRoot }).manifest.components.pnpmStore
+    assert.notEqual(changed.id, first.id)
+    assert.notEqual(changed.sha256, first.sha256)
   })
 
   const priorManifest = readFileSync(manifestPath, 'utf8')
