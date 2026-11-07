@@ -903,6 +903,118 @@ export function recordPreviewNetworkEvent(events, url, event, outcome = {}) {
   }
 }
 
+/** Record bounded resource lifetimes without query strings, headers, cookies or bodies. */
+export function observeBrowserNetwork(context) {
+  const startedAt = Date.now()
+  const pending = new Map()
+  const active = new WeakSet()
+  let activeCount = 0
+  const recent = [], navigations = []
+  const navigationRequests = new Map()
+  const pages = new Map(), pageIds = new WeakMap(), frameIds = new WeakMap()
+  let nextPageId = 0, nextFrameId = 0
+  const relativeTime = () => Date.now() - startedAt
+  const describeUrl = value => {
+    const url = new URL(value)
+    return ['http:', 'https:'].includes(url.protocol)
+      ? { origin: url.origin, path: url.pathname.slice(0, 500) }
+      : { protocol: url.protocol }
+  }
+  const pageId = page => {
+    if (!pageIds.has(page)) pageIds.set(page, ++nextPageId)
+    return pageIds.get(page)
+  }
+  const frameIdentity = request => {
+    try {
+      const frame = request.frame()
+      if (!frameIds.has(frame)) frameIds.set(frame, ++nextFrameId)
+      return { pageId: pageId(frame.page()), frameId: frameIds.get(frame), mainFrame: frame === frame.page().mainFrame() }
+    }
+    catch { return { frame: 'unavailable' } }
+  }
+  const record = event => {
+    recent.push(event)
+    if (recent.length > 80) recent.shift()
+  }
+  const onRequest = request => {
+    if (active.has(request)) return
+    active.add(request)
+    activeCount++
+    const entry = {
+      ...describeUrl(request.url()), ...frameIdentity(request), method: request.method(), type: request.resourceType(),
+      navigation: request.isNavigationRequest(), startedMs: relativeTime(),
+    }
+    if (entry.navigation) {
+      navigations.push(entry)
+      navigationRequests.set(request, entry)
+      if (navigations.length > 12) {
+        const child = navigations.findIndex(entry => !entry.mainFrame)
+        navigations.splice(child < 0 ? 0 : child, 1)
+      }
+      if (navigationRequests.size > 12) {
+        const child = [...navigationRequests].find(([, entry]) => !entry.mainFrame)
+        navigationRequests.delete(child?.[0] ?? navigationRequests.keys().next().value)
+      }
+    }
+    // Navigation status remains available even when ordinary resource detail overflows.
+    if (pending.size < 80) pending.set(request, entry)
+  }
+  const onResponse = response => {
+    const entry = pending.get(response.request()) ?? navigationRequests.get(response.request())
+    if (entry) entry.status = response.status()
+  }
+  const finish = (request, state) => {
+    if (!active.has(request)) return
+    active.delete(request)
+    activeCount--
+    const entry = pending.get(request) ?? navigationRequests.get(request)
+    navigationRequests.delete(request)
+    if (!entry) return
+    Object.assign(entry, { state, finishedMs: relativeTime() })
+    record({ ...entry })
+    pending.delete(request)
+  }
+  const onFinished = request => { finish(request, 'finished') }
+  const onFailed = request => { finish(request, 'failed') }
+  const onPage = page => {
+    const onDom = () => { record({ event: 'domcontentloaded', pageId: pageId(page), ...describeUrl(page.url()), atMs: relativeTime() }) }
+    const onLoad = () => { record({ event: 'load', pageId: pageId(page), ...describeUrl(page.url()), atMs: relativeTime() }) }
+    page.on('domcontentloaded', onDom)
+    page.on('load', onLoad)
+    pages.set(page, { onDom, onLoad })
+  }
+  context.on('request', onRequest)
+  context.on('response', onResponse)
+  context.on('requestfinished', onFinished)
+  context.on('requestfailed', onFailed)
+  context.on('page', onPage)
+  for (const page of context.pages()) onPage(page)
+  return {
+    snapshot: () => {
+      const workers = context.serviceWorkers()
+      return { elapsedMs: relativeTime(), pendingCount: activeCount,
+        omittedPending: Math.max(0, activeCount - pending.size),
+        pending: [...pending.values()].map(entry => ({ ...entry })),
+        navigations: navigations.map(entry => ({ ...entry })), recent: recent.map(entry => ({ ...entry })),
+        serviceWorkerCount: workers.length, serviceWorkers: workers.slice(0, 12).map(worker => describeUrl(worker.url())) }
+    },
+    dispose: () => {
+      context.off('request', onRequest)
+      context.off('response', onResponse)
+      context.off('requestfinished', onFinished)
+      context.off('requestfailed', onFailed)
+      context.off('page', onPage)
+      for (const [page, handlers] of pages) {
+        page.off('domcontentloaded', handlers.onDom)
+        page.off('load', handlers.onLoad)
+      }
+      pending.clear()
+      navigationRequests.clear()
+      pages.clear()
+    },
+  }
+}
+
 /** Capture early preview failures before closing Chromium without replacing the original error. */
 export async function saveBrowserFailure(page, directory, diagnostics) {
   if (!directory) return
@@ -1081,6 +1193,12 @@ function closeDesktopBridgeSmokeServer(server) {
   })
 }
 
+/** End the completed proxy scenario before navigating the primary page to branding. */
+export async function navigateAfterProxySmoke(page, proxyPage, url) {
+  await proxyPage.close()
+  return await page.goto(url, { waitUntil: 'load', timeout: 30_000 })
+}
+
 async function runBrowserSmoke(baseUrl, env, phase) {
   let browser
   let page
@@ -1088,6 +1206,8 @@ async function runBrowserSmoke(baseUrl, env, phase) {
   const consoleErrors = []
   const previewRequests = []
   let desktopBridgeServer
+  let network
+  let browserStep = 'launch'
   let failure
   try {
     if (!existsSync(installedChromiumExecutable)) {
@@ -1108,6 +1228,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       locale: 'en-US',
       ...(releaseVideoDir ? { recordVideo: { dir: releaseVideoDir, size: { width: 1344, height: 800 } } } : {}),
     })
+    network = observeBrowserNetwork(context)
     page = await context.newPage()
     await page.addInitScript(() => {
       window.__YOURBUDDY_COPIED_LINKS__ = []
@@ -1222,6 +1343,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
     })
 
+    browserStep = 'initial-navigation'
     const navigation = await page.goto(baseUrl, { waitUntil: 'load', timeout: 30_000 })
     if (navigation === null || navigation.status() !== 200) {
       throw new Error(`YourBuddy Web navigation returned HTTP ${navigation?.status() ?? 'no response'}`)
@@ -1315,6 +1437,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
     ])
     const desktopBridge = await startDesktopBridgeSmokeServer(desktopAuthentication.baseUrl)
     desktopBridgeServer = desktopBridge.server
+    browserStep = 'desktop-bridge-navigation'
     const shellNavigation = await page.goto(desktopBridge.url, { waitUntil: 'load', timeout: 30_000 })
     if (shellNavigation === null || shellNavigation.status() !== 200) {
       throw new Error(`YourBuddy desktop shell navigation returned HTTP ${shellNavigation?.status() ?? 'no response'}`)
@@ -1615,6 +1738,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
         body: JSON.stringify(hostProxyDiagnosticResult),
       })
     })
+    browserStep = 'proxy-bridge-navigation'
     const proxyShellNavigation = await proxyPage.goto(desktopBridge.url, { waitUntil: 'load', timeout: 30_000 })
     if (proxyShellNavigation === null || proxyShellNavigation.status() !== 200) {
       throw new Error(`YourBuddy proxy shell navigation returned HTTP ${proxyShellNavigation?.status() ?? 'no response'}`)
@@ -1739,20 +1863,25 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       frameCount: await proxyEmbedded.locator('[class*="frame"]').count(),
     }, phase)
 
-    const brandingNavigation = await page.goto(baseUrl, { waitUntil: 'load', timeout: 30_000 })
+    browserStep = 'branding-navigation'
+    console.log(`verify-product-release: ${phase} before branding navigation: ${JSON.stringify(network.snapshot())}`)
+    const brandingNavigation = await navigateAfterProxySmoke(page, proxyPage, baseUrl)
     if (brandingNavigation === null || brandingNavigation.status() !== 200) {
       throw new Error(`YourBuddy branding navigation returned HTTP ${brandingNavigation?.status() ?? 'no response'}`)
     }
     await page.locator('[class*="frame"]').first().waitFor({ timeout: 30_000 })
+    browserStep = 'branding-journey'
     await verifyWorkbenchBranding(page)
   }
   catch (error) {
     failure = error
     await saveBrowserFailure(page, process.env.YOURBUDDY_RELEASE_EVIDENCE_DIR, {
-      phase, error: error.stack ?? String(error), pageErrors, consoleErrors, previewRequests,
+      phase, browserStep, error: error.stack ?? String(error), pageErrors, consoleErrors, previewRequests,
+      network: network?.snapshot(),
     })
   }
 
+  network?.dispose()
   const closeFailures = []
   try {
     await browser?.close()

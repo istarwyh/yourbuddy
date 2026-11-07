@@ -16,6 +16,7 @@ import {
   exerciseWorkbenchDocumentPreviews,
   recordPreviewNetworkEvent,
   saveBrowserFailure,
+  observeBrowserNetwork,
   CORE_PRODUCT_CLIENT_IDS,
   CORE_PRODUCT_PACKAGE_IDS,
   RELEASE_CAPABILITIES,
@@ -822,4 +823,92 @@ test('desktop workbench previews restore the sidebar after content succeeds; sta
   assert.equal(standalone.error, undefined)
   assert.equal(standalone.collapsed, true)
   assert.ok(!standalone.actions.some(action => action.startsWith('opened:')))
+})
+
+
+test('browser network diagnostics distinguish active requests and omit sensitive transport data', () => {
+  const context = new EventEmitter()
+  const page = new EventEmitter()
+  page.url = () => 'http://127.0.0.1:1234/?token=private-token#private-fragment'
+  context.pages = () => [page]
+  context.serviceWorkers = () => [{ url: () => 'http://user:password@localhost:1234/worker.js?token=private-token' }]
+  const observer = observeBrowserNetwork(context)
+  const request = () => ({
+    url: () => 'http://user:password@127.0.0.1:1234/api/model?token=private-token#private-fragment',
+    method: () => 'GET', resourceType: () => 'fetch', isNavigationRequest: () => false,
+    headers: () => { throw new Error('diagnostics must not read credentials') },
+    postData: () => { throw new Error('diagnostics must not read bodies') },
+  })
+  const completed = request(), stalled = request()
+  context.emit('request', completed)
+  context.emit('request', stalled)
+  context.emit('response', { request: () => stalled, status: () => 200 })
+  context.emit('requestfinished', completed)
+  page.emit('domcontentloaded')
+  const state = observer.snapshot()
+  assert.equal(state.serviceWorkerCount, 1)
+  assert.deepEqual(state.serviceWorkers, [{ origin: 'http://localhost:1234', path: '/worker.js' }])
+  assert.equal(state.pendingCount, 1)
+  assert.deepEqual(state.pending.map(({ startedMs, ...rest }) => rest), [{ origin: 'http://127.0.0.1:1234', path: '/api/model', frame: 'unavailable', method: 'GET', type: 'fetch', navigation: false, status: 200 }])
+  assert.equal(state.recent[0].state, 'finished')
+  assert.equal(state.recent[1].event, 'domcontentloaded')
+  assert.doesNotMatch(JSON.stringify(state), /private-token|password|private-fragment/)
+  context.emit('requestfailed', stalled)
+  assert.equal(observer.snapshot().pendingCount, 0)
+  assert.equal(observer.snapshot().recent.at(-1).state, 'failed')
+  observer.dispose()
+  for (const event of ['request', 'response', 'requestfinished', 'requestfailed', 'page']) assert.equal(context.listenerCount(event), 0)
+  assert.equal(page.listenerCount('load'), 0)
+  assert.equal(page.listenerCount('domcontentloaded'), 0)
+})
+
+test('browser network evidence bounds completed events and redacts inline resources', () => {
+  const context = new EventEmitter()
+  context.pages = () => []
+  context.serviceWorkers = () => []
+  const observer = observeBrowserNetwork(context)
+  const request = { url: () => 'data:text/plain,private-inline-data', method: () => 'GET', resourceType: () => 'image', isNavigationRequest: () => false }
+  for (let i = 0; i < 100; i++) {
+    context.emit('request', request)
+    context.emit('requestfinished', request)
+  }
+  assert.equal(observer.snapshot().recent.length, 80)
+  assert.doesNotMatch(JSON.stringify(observer.snapshot()), /private-inline-data/)
+  observer.dispose()
+})
+
+
+test('browser network overflow keeps counts and current navigation status', () => {
+  const context = new EventEmitter()
+  context.pages = () => []
+  context.serviceWorkers = () => []
+  const observer = observeBrowserNetwork(context)
+  const requests = Array.from({ length: 100 }, () => ({
+    url: () => 'http://localhost:1234/image', method: () => 'GET', resourceType: () => 'image', isNavigationRequest: () => false,
+  }))
+  for (const request of requests) context.emit('request', request)
+  const page = new EventEmitter(), frame = { page: () => page }
+  page.mainFrame = () => frame
+  const navigation = { ...requests[0], isNavigationRequest: () => true, resourceType: () => 'document', frame: () => frame }
+  context.emit('request', navigation)
+  context.emit('response', { request: () => navigation, status: () => 200 })
+  assert.equal(observer.snapshot().pendingCount, 101)
+  assert.equal(observer.snapshot().pending.length, 80)
+  assert.equal(observer.snapshot().omittedPending, 21)
+  assert.equal(observer.snapshot().navigations[0].status, 200)
+  assert.equal(observer.snapshot().navigations[0].mainFrame, true)
+  for (const request of [...requests, navigation]) context.emit('requestfinished', request)
+  assert.equal(observer.snapshot().pendingCount, 0)
+  assert.equal(observer.snapshot().pending.length, 0)
+  assert.equal(observer.snapshot().navigations[0].state, 'finished')
+  const childFrame = { page: () => page }
+  for (let i = 0; i < 20; i++) {
+    const child = { ...navigation, frame: () => childFrame }
+    context.emit('request', child)
+    context.emit('requestfinished', child)
+  }
+  assert.equal(observer.snapshot().navigations.length, 12)
+  assert.equal(observer.snapshot().navigations[0].mainFrame, true)
+  assert.equal(observer.snapshot().navigations[0].status, 200)
+  observer.dispose()
 })

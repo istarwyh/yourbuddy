@@ -16,6 +16,7 @@ on:
       - 'apps/desktop-tauri/scripts/prepare-harness-offline-store*.mjs'
       - 'apps/desktop-tauri/scripts/verify-product-release*.mjs'
       - 'apps/desktop-tauri/scripts/workbench-branding-smoke*.mjs'
+      - 'apps/desktop-tauri/scripts/workbench-navigation.test.mjs'
       - 'apps/cli/package.json'
       - 'packages/util/http-proxy/**'
       - 'apps/desktop-tauri/scripts/node-extra-ca.test.mjs'
@@ -75,6 +76,7 @@ jobs:
           pnpm run build
           pnpm --dir apps/desktop-tauri run prepare:dist
           pnpm --dir apps/desktop-tauri exec playwright install chromium
+          node --test apps/desktop-tauri/scripts/workbench-navigation.test.mjs
       - name: Require every materialized registry package and native optional input
         run: |
           tar -xzf apps/desktop-tauri/bundled/harness/yourbuddy-pnpm-store.tar.gz -C apps/desktop-tauri/bundled/harness
