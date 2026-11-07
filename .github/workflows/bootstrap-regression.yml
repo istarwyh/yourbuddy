@@ -14,7 +14,8 @@ on:
       - 'apps/desktop-tauri/scripts/verify-design-runtime.mjs'
       - 'apps/desktop-tauri/scripts/design-client-evidence.mjs'
       - 'apps/desktop-tauri/scripts/prepare-harness-offline-store*.mjs'
-      - 'apps/desktop-tauri/scripts/verify-product-release.mjs'
+      - 'apps/desktop-tauri/scripts/verify-product-release*.mjs'
+      - 'apps/desktop-tauri/scripts/workbench-branding-smoke*.mjs'
       - 'apps/cli/package.json'
       - 'packages/util/http-proxy/**'
       - 'apps/desktop-tauri/scripts/node-extra-ca.test.mjs'
@@ -65,7 +66,7 @@ jobs:
       - name: Install locked tools and test the release verifier
         run: |
           pnpm install --frozen-lockfile
-          node --test apps/desktop-tauri/scripts/verify-product-release.test.mjs apps/desktop-tauri/scripts/product-plugin-compatibility.test.mjs
+          node --test apps/desktop-tauri/scripts/verify-product-release.test.mjs apps/desktop-tauri/scripts/product-plugin-compatibility.test.mjs apps/desktop-tauri/scripts/workbench-branding-smoke.test.mjs
       - name: Build and prepare the frozen product
         env:
           DSH_CLIENT_TITLE: YourBuddy

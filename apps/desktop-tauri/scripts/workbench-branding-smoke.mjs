@@ -7,6 +7,60 @@ const expected = JSON.parse(readFileSync(new URL('./snapshots/workbench-branding
 const artwork = readFileSync(new URL('../app-icon.svg', import.meta.url), 'utf8').trim()
 const uploadedLogo = new URL('../app-icon.png', import.meta.url)
 
+const resetOps = [
+  { op: 'set', path: ['enabled'], value: false },
+  ...['name', 'logo', 'heroHeadline', 'heroBadge', 'showHeroBadge'].map(field => ({ op: 'unset', path: [field] })),
+]
+
+function assertResetNamespace(namespace, source) {
+  assert.equal(namespace?.ns, 'personal-workbench', `${source}: missing branding namespace`)
+  assert.deepEqual(namespace.value, {
+    enabled: false, name: '', logo: '', heroHeadline: '', heroBadge: '', showHeroBadge: true,
+  }, `${source}: branding reset must restore resolved defaults`)
+  assert.equal(namespace.user?.enabled, false, `${source}: custom branding must be disabled`)
+  for (const field of ['name', 'logo', 'heroHeadline', 'heroBadge', 'showHeroBadge']) {
+    assert.equal(Object.hasOwn(namespace.user, field), false, `${source}: branding reset retained user override ${field}`)
+  }
+}
+
+async function rpcValue(response, rpcId, action) {
+  assert.equal(response.status(), 200, `${action}: HTTP ${response.status()}`)
+  const body = await response.json()
+  assert.equal(body.type, 'server-response', `${action}: missing RPC response`)
+  assert.equal(body.rpcId, rpcId, `${action}: wrong RPC response`)
+  assert.equal(body.result?.ok, true, `${action}: RPC failed: ${JSON.stringify(body.result)}`)
+  return body.result.value
+}
+
+/**
+ * Observe the reset write and a separate Host read, not modal-local status.
+ * The settings panel can unmount while the assembled workbench settles after reload.
+ * The caller still checks rendered branding and persistence after another reload.
+ * @param {import('playwright').Page} page - workbench with an isolated Profile.
+ * @param {import('playwright').Locator} settings - open settings dialog.
+ * @returns {Promise<void>}
+ */
+export async function restoreWorkbenchBranding(page, settings) {
+  const [mutation] = await Promise.all([
+    page.waitForResponse(response => {
+      if (new URL(response.url()).pathname !== '/api/settings/mutate' || response.request().method() !== 'POST') return false
+      const request = response.request().postDataJSON()
+      return request?.method === 'settings/mutate'
+        && request.payload?.args?.ns === 'personal-workbench'
+        && JSON.stringify(request.payload.args.ops) === JSON.stringify(resetOps)
+    }),
+    settings.getByRole('button', { name: 'Restore YourBuddy default', exact: true }).click(),
+  ])
+  const rpcId = mutation.request().postDataJSON().rpcId
+  assertResetNamespace(await rpcValue(mutation, rpcId, 'branding reset'), 'reset response')
+  const describeId = 'yourbuddy-release-brand-reset-read'
+  const response = await page.request.post(new URL('/api/settings/describe', page.url()).href, {
+    data: { type: 'client-request', rpcId: describeId, method: 'settings/describe', payload: { args: {} } },
+  })
+  const description = await rpcValue(response, describeId, 'branding reset read')
+  assertResetNamespace(description.namespaces.find(namespace => namespace.ns === 'personal-workbench'), 'independent read')
+}
+
 /**
  * Exercise product defaults, custom name and Logo persistence, and reset.
  * @param {import('playwright').Page} page - assembled workbench with an isolated Profile.
@@ -97,8 +151,7 @@ export async function verifyWorkbenchBranding(page) {
   await page.reload({ waitUntil: 'load' })
   await capture('reloaded', 'Research Lab', 'uploaded')
   settings = await openSettings()
-  await settings.getByRole('button', { name: 'Restore YourBuddy default', exact: true }).click()
-  await settings.getByText('Default restored', { exact: true }).waitFor()
+  await restoreWorkbenchBranding(page, settings)
   await capture('reset', 'YourBuddy', 'Y8')
   await page.reload({ waitUntil: 'load' })
   await capture('reset-reloaded', 'YourBuddy', 'Y8')
