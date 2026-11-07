@@ -1,0 +1,42 @@
+{
+  "pullRequest": "https://github.com/istarwyh/yourbuddy/pull/93",
+  "head": "5f1fb66f8d000a679e1cfd51931837a6ba219c94",
+  "tree": "ecb043e9070bbdab43ea656e2391c2890232dded",
+  "changes": [
+    "Enumerate actual prepared product peer directories; retain resolved identity and equal counts",
+    "Include required Artifacts Client response in installed boot check",
+    "Require reset HTTP/RPC success and independently read persisted defaults; retain every rendered and reloaded assertion",
+    "Dispose completed proxy view before original load navigation with 30000 ms timeout; bounded sanitized resource diagnostics",
+    "Read-only complete macOS prepared check in existing Bootstrap workflow; no publication credentials"
+  ],
+  "regressions": {
+    "peerAndArtifacts": "2 focused cases fail before repair; 39/39 focused suite passes after",
+    "reset": "6/6 cases fail before new synchronization and pass after; combined suite 45/45",
+    "navigation": "two iframes each holding three same-origin streams reproduce old load timeout at 30005 ms; closing completed proxy view releases all six and resumes queued navigation; corrected committed regression 189 ms locally",
+    "final": "49/49 local focused tests, including real Chromium; 48/48 Node and 1/1 Chromium in complete-input CI"
+  },
+  "verifierSha256": "be5f3d25d8e1e54838e2499ac0a4992059d4161bef283adeb1e1e53f177f9595",
+  "brandingHelperSha256": "94f16b6ca158748d86da3f1e8429e0e5fd13cee1b0a0fb26823a08d67a456c5f",
+  "localPrepared": {
+    "startedAt": "2026-11-07T08:57:06.526Z",
+    "completedAt": "2026-11-07T08:59:20.501Z",
+    "status": "passed",
+    "installedRegistryPackages": 568,
+    "missing": [
+      "@openai/codex@0.153.4-darwin-arm64",
+      "@anthropic-ai/claude-agent-sdk-darwin-arm64@0.3.263"
+    ],
+    "limit": "Not complete-input evidence; official native optional downloads interrupted and normal offline registry lookup remained unavailable. Complete CI inventory separately passes."
+  },
+  "priorPreflightFailures": [
+    {
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/42353419140/job/128346222480",
+      "failure": "Default restored panel text wait; reset persistence not observed by old helper; panel-close cause unassigned"
+    },
+    {
+      "url": "https://github.com/istarwyh/yourbuddy/actions/runs/42355415779/job/128352321356",
+      "failure": "branding return navigation load timeout before reset helper; original resource cause unassigned"
+    }
+  ],
+  "independentReview": "Code, readonly workflow, regression failure controls, lifecycle cleanup and final downloaded CI evidence reviewed; no blocking findings"
+}

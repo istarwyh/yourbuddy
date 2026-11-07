@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.17/README.md
+/yourbuddy-0-4-17:
+  en: acc8d16faddec62a
+  zh: 696a5cbed33205c4
+/yourbuddy-0-4-17/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: ba9758a78bdf26a6
+/yourbuddy-0-4-17/user-release-notes/what-changed:
+  en: 4906f0e0b5e89f15
+  zh: 217dcaf0ae5923ca
+/yourbuddy-0-4-17/user-release-notes/problem-solved:
+  en: 1ce73f800497726e
+  zh: 901c1490849ee1ef
+/yourbuddy-0-4-17/user-release-notes/where-to-use-it:
+  en: ea8e56f50a8378e7
+  zh: f5b399940eb96a20
+/yourbuddy-0-4-17/user-release-notes/how-to-try-it:
+  en: f26290fb759676b4
+  zh: b42bf5c171f4301b
+/yourbuddy-0-4-17/user-release-notes/install-or-upgrade:
+  en: f50e636b24d97660
+  zh: a14204bc3e255cbe
+/yourbuddy-0-4-17/user-release-notes/compatibility-migration-and-limitations:
+  en: a54d87ed43c9b3fc
+  zh: 828b16ed959752e1
+/yourbuddy-0-4-17/user-release-notes/sources-and-licenses:
+  en: a7337c9ec04ef57a
+  zh: b4498e21dd0ae14c
+/yourbuddy-0-4-17/verification-summary:
+  en: 28cbda714ebdfd8d
+  zh: 0a252b438a21a6eb
+/yourbuddy-0-4-17/scenario-complete-macos-prepared-preflight:
+  en: d88e5e9422596ba1
+  zh: 6a478ca6db49291a
+/yourbuddy-0-4-17/delivery-status:
+  en: 678ccf4e3378bfa6
+  zh: 6cc2bf9d94a183ac
+/yourbuddy-0-4-17/rollback:
+  en: df8e57abbe825d32
+  zh: fdb584e0896c60c5

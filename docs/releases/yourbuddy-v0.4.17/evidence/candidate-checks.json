@@ -1,0 +1,69 @@
+{
+  "recordedAt": "2026-11-07T10:32:59.504365+00:00",
+  "status": "passed within recorded candidate scope",
+  "sourceCommit": "501770ca9f0857fc49695f2e8d2b1c89d1bf9959",
+  "sourceTree": "94c2d0b412f1938a9bd9691e4c29dfa8ec6fa23c",
+  "candidateScope": "0.4.17 version metadata, bilingual release notes/archive, JSON evidence and one viewed synthetic screenshot only; runtime and frozen locks unchanged",
+  "environment": {
+    "os": "macOS 15.6.1",
+    "arch": "arm64",
+    "node": "22.22.3",
+    "pnpm": "11.7.0"
+  },
+  "checks": [
+    {
+      "command": "pnpm release:yourbuddy:prepare -- 0.4.17",
+      "result": "passed from clean actual merged master; original generator"
+    },
+    {
+      "command": "node --test apps/desktop-tauri/scripts/verify-release-version.test.mjs apps/desktop-tauri/scripts/prepare-release-candidate.test.mjs apps/desktop-tauri/scripts/publish-release.test.mjs",
+      "result": "10 passed; 0 failed; 0 skipped"
+    },
+    {
+      "command": "node apps/desktop-tauri/scripts/verify-release-version.mjs --tag yourbuddy-v0.4.17",
+      "result": "passed; all six version sources agree"
+    },
+    {
+      "command": "verifyReleaseArchive(process.cwd(), \"0.4.17\", \"yourbuddy-v0.4.17\") from publish-release.mjs",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm run test:docs",
+      "result": "21 passed; 0 failed; 0 skipped; 30.48 seconds"
+    },
+    {
+      "command": "pnpm run doc-sync",
+      "result": "43 passed; 0 failed; 0 skipped; 67.24 seconds, including website build and documentation typecheck"
+    },
+    {
+      "command": "pnpm run lint",
+      "result": "passed, exit 0; normal Host build and full typed lint"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    }
+  ],
+  "independentReview": "Complete candidate metadata/archive, downloaded CI evidence, viewed screenshot privacy, bilingual correspondence, license and known limitations reviewed without blocking findings; final check-record and wording independently reviewed without blocking findings before commit",
+  "notRerun": [
+    "No duplicate full product build or component suite for version/docs-only changes; repaired source has complete macOS CI preflight and focused regressions",
+    "No actual model generation or native Design export/cold-controller restoration",
+    "No manual website deployment"
+  ],
+  "pending": [
+    "normal commit/pre-push hooks",
+    "release workflow packaging and native acceptance",
+    "independent public bytes, signatures, source extraction, feed and latest-link checks"
+  ],
+  "downstreamStaticAudit": {
+    "scope": "Read-only inspection of remaining release gate paths affected by Design inclusion, not execution",
+    "result": "No stale Client/peer count or omitted Design component roster found; native smoke traverses signed manifest, Design ships inside Harness, relocation does not duplicate Client counts",
+    "notEstablished": [
+      "packaging",
+      "signatures",
+      "native Offline starts",
+      "relocated Harbor",
+      "public delivery"
+    ]
+  }
+}
