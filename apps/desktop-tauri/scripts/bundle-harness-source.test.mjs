@@ -411,7 +411,9 @@ test('installProductPlugins keeps every non-Harbor product in core and excludes 
         productVersion(source),
       )
     }
-    assert.ok(readFileSync(join(root, 'packages', 'product', 'dsh-codex-auth', 'lib', 'client.js'), 'utf8').length > 0)
+    const codexClient = bundledCodex.exports['./client'].default
+    assert.equal(codexClient, './lib/client.cjs')
+    assert.ok(readFileSync(join(root, 'packages', 'product', 'dsh-codex-auth', codexClient), 'utf8').length > 0)
     const bundledSidebar = join(root, 'packages', 'product', 'dsh-better-sidebar')
     for (const bundle of ['client.js', 'client-registry.js']) {
       const source = readFileSync(join(bundledSidebar, 'lib', bundle), 'utf8')

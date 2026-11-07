@@ -1,8 +1,69 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+## [0.3.3-rc.4] - 2026-10-14
 
-## [Unreleased]
+- Add optional per-profile `excludedModelIds`, defaulting to an empty list, with exact case-sensitive filtering after model completion and long-context policy. Preserve remaining provider descriptors, parameters, order, and source objects; no model is excluded by default.
+- Add a bilingual GPT Auth editor that saves through the existing volatile Config Form and profile patch, updates the live catalog without remounting, and blocks editing while a save is pending to preserve write intent.
+- Keep model selections, existing sessions and authentication untouched. Missing model resolution uses the host's `UNKNOWN_MODEL` behavior, including prepared dispatch; excluding all models leaves an empty catalog. Visibility filtering is not request access control.
+- Cover default/unknown/duplicate IDs, completed descriptors, long-context compatibility, immutability, empty catalogs, delayed UI saves, profile isolation and restart persistence with synthetic profiles and offline transport.
+
+## [0.3.3-rc.3] - 2026-09-30
+
+- Move the coherent DSH baseline to `0.2.0-rc.2` and pi-ai to `0.87.1`, including exact Native/compaction gates, lockfile, source-tag checks, and package verification.
+- Verify rc.1 profile admission versus rc.2, stale exact-version exemptions, V4 restore/fork/continuation, and Portable fallback for a changed final-request digest without migrating checkpoint data.
+- Preserve pi-ai 0.87.1 GPT-6 Sol/Luna descriptors, including upstream Off support; missing-model fallbacks still reject Off/Ultra before credentials.
+- Add GPT-6.1 Sol with Codex low-effort defaults and supported reasoning levels.
+- Remove misleading Off reasoning for fallback GPT-6 Sol/Luna descriptors; reject unsupported requests before credential resolution.
+- Use the Codex GPT-6/6.1 long-context cap of 872K instead of the generic 1M overlay, preserving provider descriptors and the existing GPT-5.6 policy.
+- Cover direct/prepared requests with offline successful SSE decoding, option validation, and immutable catalog tests. Live account access and backend capacity remain unverified.
+
+## [0.3.3-rc.2] - 2026-09-28
+
+- Align the plugin and its dependency graph with DSH `0.2.0-rc.1`; migrate Config Forms, volatile settings, Connection RPC, and V4 tool messages.
+- Pin Native Checkpoint compatibility to this DSH release and project Portable checkpoint text for non-Codex providers through the public LLM middleware.
+- Verify with the full package gate and artifacts built from the official DSH source tag; live Codex login and provider replay remain unverified.
+
+## [0.3.3-rc.1] - 2026-09-10
+
+- Targets the coherent DSH `0.1.5-rc.1` graph with pi-ai `0.85.1`. Supplies the new pi-ai model-error map so ordinary and prepared model requests reach the provider. Compaction and Native replay accept exactly RC.1, reject mixed/unverified graphs, and preserve the durable checkpoint codec and Portable fallback.
+
+## [0.3.3-alpha.7] - 2026-09-09
+
+- Adds GPT Image 2.5 Sunburst/Flare model suggestions, `xhigh`/`max` quality, validated custom dimensions, and matching Host/client settings support. New image configurations default to Sunburst while explicit existing choices remain intact. Valid outputs whose dimensions differ from the request carry `IMAGE_SIZE_MISMATCH` warnings.
+
+- Moves the development baseline to DSH `0.1.5-alpha.1` and pi-ai `0.85.1`. Native and Dual Checkpoint gates accept only that verified conversion graph; restored JSON sessions explicitly use V3 detached event ownership. Account status, usage, and login use authenticated `/api/codex-auth/*` routes, retaining the static loopback guard.
+
+### Added
+
+- Added a `/codex-auth` slash command (`status` default, `login`) on surfaces that host the DSH `commands` seam. Account operations are the terminal login entry point: they run on a local DSH Host (no WebServer, or an explicitly `127.0.0.1`-bound one) and are denied before touching the auth service whenever the WebServer exposes the shared commands seam on another interface. `login` spawns the official `codex login` CLI, which owns the browser PKCE flow.
+
+## [0.3.3-alpha.6] - 2026-09-07
+
+- Add explicit DSH `0.1.3-alpha.1` source compatibility alongside the npm alpha.5 baseline; keep dependency graphs separate.
+- Add reproducible isolated source-package checks and coherent lockfile validation.
+- Accept only homogeneous, verified DSH versions for compaction/native replay; retain pi-ai `0.84.4` and reject mixed graphs. Update Session v2 settlement and restore fixtures.
+
+### Added
+- Surfaced GPT-6 Astra (`gpt-6-astra`) on the `openai-codex` route when the installed pi-ai catalog omits it, using the official Codex descriptor (image input, no `none` reasoning, 272K default context).
+- Extended the default-off 1M context policy to GPT-6 Astra.
+
+### Changed
+
+- Default Codex Search fallback model from retired `gpt-5.4` to `gpt-5.6-terra`.
+
+## [0.3.3-alpha.5] - 2026-09-03
+
+### Changed
+
+- Migrated the development and peer baseline as one graph to DSH `0.1.2-alpha.5`, Cordis `4.0.2`, Schemastery `3.18.2`, and pi-ai `0.84.4`, including the split Connection, Settings, Session, and client UI package owners.
+- Ported Session consumers to alpha.5 snapshot accessors and the explicit `inheritedEventCount` restore contract; migrated settings registration to `ctx.settings.installSection()` and tool identifiers to `ToolCallId`.
+- Moved the exact experimental compaction and Native replay gates to DSH / Basic `0.1.2-alpha.5` with pi-ai `0.84.4`, validated final payload parity across SSE, WebSocket, and automatic fallback, and deduplicated the lock graph so the plugin and DSH Adapter share one pi-ai runtime. Final Codex payloads containing deferred-tool `additional_tools` history now conservatively use Portable creation and replay.
+- Updated the stock presentation fixture for alpha.5's Chat / Trajectory client-module batches while preserving the non-copyability of opaque Native state, and emitted the CommonJS browser bundle with the unambiguous `.cjs` extension.
+- Refreshed the release README for exact prerelease installs, corrected the alpha.5 Standard preset source and ACP tool-result image delivery, and removed obsolete rc migration guidance.
+
+### Security
+
+- Replaced the removed Connection authority tier with a fail-closed static Host guard: only an explicit `127.0.0.1` Web bind reaches account RPC, while missing, all-interface, and unknown binds receive one value-free `loopback-required` handler that never calls auth services. Client loopback detection remains UX-only.
 
 ## [0.3.2] - 2026-09-02
 
@@ -110,7 +171,8 @@ All notable changes to this project are documented in this file.
 
 - DSH `0.1.0-rc.6` does not expose a policy-aware binary workspace-write API, so generated images remain durable conversation attachments and workspace export is not offered.
 
-[Unreleased]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.3-alpha.5...HEAD
+[0.3.3-alpha.5]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.2...v0.3.3-alpha.5
 [0.3.2]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/suntianc/dsh-codex-auth/compare/v0.2.3...v0.3.0

@@ -1,4 +1,4 @@
-import type { Context } from '@deepseek-ai/cordis';
+import type { Context as ClientContext } from '@deepseek-ai/cordis';
 import { type CodexAuthKey } from './locales.ts';
 export { CodexCapabilitySettings } from './CodexCapabilitySettings.tsx';
 export type { CodexCapabilitySettingsProps, ImageSettingsView, LlmSettingsView, SearchSettingsView, } from './CodexCapabilitySettings.tsx';
@@ -13,5 +13,5 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** Required browser services, including session-authorized attachment reads. */
 export declare const inject: string[];
 /** Register the four-card settings section and keyed image result renderers. */
-export declare function apply(ctx: Context): void;
+export declare function apply(ctx: ClientContext): void;
 //# sourceMappingURL=index.d.ts.map

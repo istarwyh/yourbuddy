@@ -1,11 +1,12 @@
-import { _ as readAuthSnapshot, a as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, b as sameAuthFileVersion, c as DEFAULT_REFRESH_LEAD_MS, d as decodeAccessToken, f as defaultAuthJsonPath, g as readAuthFileVersion, h as readAuthFile, i as DEFAULT_REQUEST_TIMEOUT_MS, l as MAX_REFRESH_AGE_MS, m as needsRefresh, n as CODEX_ROUTE, p as mergeRefreshed, r as CodexAuthAdapter, t as readBoundedResponseText, u as authState, v as refreshTokens, x as writeAuthFile, y as refreshTooOld } from "./bounded-response-CutNZ8kw.js";
+import { _ as refreshTokens, a as DEFAULT_REQUEST_TIMEOUT_MS, b as writeAuthFile, c as MAX_REFRESH_AGE_MS, d as defaultAuthJsonPath, f as mergeRefreshed, g as readAuthSnapshot, h as readAuthFileVersion, i as CodexAuthAdapter, l as authState, m as readAuthFile, n as readBoundedResponseText, o as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, p as needsRefresh, r as CODEX_ROUTE, s as DEFAULT_REFRESH_LEAD_MS, t as liveValue, u as decodeAccessToken, v as refreshTooOld, y as sameAuthFileVersion } from "./volatile-config-DNSIaT45.js";
+import { t as CODEX_NATIVE_CHECKPOINT_BLOCK_TYPE } from "./native-checkpoint-DaSMABQ8.js";
 import z from "@deepseek-ai/schemastery";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
-import { readLlmSettings } from "./settings-values.js";
 import { withFileLock } from "@deepseek-ai/dsh-atomic-write";
 import { spawn } from "node:child_process";
 import { Service } from "@deepseek-ai/cordis";
 import { EnvHttpProxyAgent, setGlobalDispatcher } from "undici";
+import { clientRequestSchema } from "@deepseek-ai/dsh-client-connection";
 //#region src/codex-auth-service.ts
 /**
 * The `codexAuth` service: login status and login-flow startup for the web
@@ -790,9 +791,194 @@ function installEnvHttpProxy(log) {
 	}
 }
 //#endregion
+//#region src/loopback-rpc.ts
+const LOOPBACK_REQUIRED_MESSAGE = "Codex account controls require a loopback-bound DSH Host";
+/**
+* Decide the account RPC activation from the public WebServer bind. Only an
+* explicitly loopback-bound Web service is enabled; a missing, non-loopback,
+* or unknown bind is blocked because absence of WebServer is not proof of an
+* owned carrier.
+*
+* This is a Host activation policy, not a per-request source check. DSH
+* 0.1.2-alpha.5 exposes no public method-level or carrier authority context.
+*/
+function loopbackMode(webServerHost) {
+	return webServerHost === "127.0.0.1" ? "enabled" : "blocked";
+}
+/** Command-entry denial shown when the Host exposes the commands seam beyond loopback. */
+const ACCOUNT_COMMAND_DENIED_MESSAGE = "Codex account commands require a local DSH Host (no WebServer or 127.0.0.1-bound)";
+/**
+* Decide slash-command activation for one Host composition. The account
+* command is the local-terminal login entry point: a composition with no
+* WebServer can only dispatch through local UI adapters, and a loopback-bound
+* WebServer is the same machine, so both are enabled. Any other WebServer bind
+* exposes the shared commands seam to remote callers, and DSH 0.1.2-alpha.5
+* command invocations carry no caller/carrier authority with which to exempt
+* the local terminal, so those compositions fail closed for every caller.
+*
+* This is a Host activation policy, not a per-request source check.
+*/
+function commandAccountMode(webServer) {
+	if (webServer === void 0) return "enabled";
+	return loopbackMode(webServer.host);
+}
+/**
+* Select the real RPC dispatcher only for an explicitly loopback-bound Web
+* service; any other composition registers a value-free inert dispatcher that
+* never calls the delegate.
+*/
+function createLoopbackRpcGuard(webServerHost, delegate) {
+	if (loopbackMode(webServerHost) === "blocked") return {
+		mode: "blocked",
+		handler: async () => ({
+			ok: false,
+			error: {
+				code: "loopback-required",
+				message: LOOPBACK_REQUIRED_MESSAGE,
+				details: {}
+			}
+		})
+	};
+	return {
+		mode: "enabled",
+		handler: delegate
+	};
+}
+//#endregion
+//#region src/auth-command.ts
+function errorMessage(error) {
+	return error instanceof Error ? error.message : String(error);
+}
+function formatStatus(status) {
+	const parts = [status.configured ? "configured" : "not configured", status.available ? "CLI available" : "CLI unavailable"];
+	if (status.planType !== void 0) parts.push(`plan ${status.planType}`);
+	if (status.codexVersion !== void 0) parts.push(status.codexVersion);
+	return `Codex auth: ${parts.join("; ")}`;
+}
+/**
+* Build the slash command shared by every interactive DSH surface.
+* @param service - the shared Host auth service.
+* @param accountMode - live account-control activation for this Host
+* composition (enabled on a local terminal Host with no WebServer or a
+* loopback-bound WebServer, blocked on a public Web bind); when blocked the
+* command denies every operation without touching the auth service.
+*/
+function createCodexAuthCommand(service, accountMode) {
+	return {
+		name: "codex-auth",
+		description: "Inspect or start the Codex ChatGPT login",
+		input: { hint: "[status|login]" },
+		handler: async ({ rawInput }) => {
+			if (accountMode() === "blocked") return {
+				kind: "error",
+				text: ACCOUNT_COMMAND_DENIED_MESSAGE
+			};
+			const operation = rawInput.trim() || "status";
+			if (operation === "status") try {
+				return {
+					kind: "success",
+					text: formatStatus(await service.status())
+				};
+			} catch (error) {
+				return {
+					kind: "error",
+					text: `reading Codex auth status failed: ${errorMessage(error)}`
+				};
+			}
+			if (operation === "login") try {
+				return (await service.login("browser")).started ? {
+					kind: "success",
+					text: "Codex browser login started; run /codex-auth status after authorization completes."
+				} : {
+					kind: "error",
+					text: "Codex browser login did not start."
+				};
+			} catch (error) {
+				return {
+					kind: "error",
+					text: `starting Codex browser login failed: ${errorMessage(error)}`
+				};
+			}
+			return {
+				kind: "error",
+				text: `unknown operation "${operation}" (available: status, login)`
+			};
+		}
+	};
+}
+//#endregion
+//#region src/account-routes.ts
+/** Plugin-owned account RPC carried by Connection's authenticated /api routes. */
+/** Register exact routes without creating a separate physical RPC carrier. */
+function registerAccountRoutes(connection, namespace, endpoints, handler) {
+	const disposers = endpoints.map((endpoint) => connection.fetch.register({
+		path: `/api/${namespace}/${endpoint}`,
+		methods: ["POST"],
+		requestBody: "buffered",
+		fetch: async (request) => {
+			if (request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() !== "application/json") return new Response("content type must be application/json", { status: 415 });
+			let body;
+			try {
+				body = await request.json();
+			} catch {
+				return new Response("invalid JSON", { status: 400 });
+			}
+			const envelope = clientRequestSchema.safeParse(body);
+			if (!envelope.success) return new Response("invalid account request", { status: 400 });
+			const { rpcId, method, payload } = envelope.data;
+			const failure = (code, message) => ({
+				ok: false,
+				error: {
+					code,
+					message,
+					details: {}
+				}
+			});
+			let result;
+			try {
+				result = method === `${namespace}/${endpoint}` ? await handler(endpoint, payload, request.signal, connection.operator) : failure("bad-request", "Account request method does not match its endpoint");
+			} catch {
+				result = failure("internal", "Account request failed");
+			}
+			return Response.json({
+				type: "server-response",
+				rpcId,
+				result
+			});
+		}
+	}));
+	return async () => {
+		await Promise.all(disposers.map((dispose) => dispose()));
+	};
+}
+//#endregion
+//#region src/foreign-checkpoint-projection.ts
+function projectForeignCheckpointRequest(options) {
+	if (options.provider === "openai-codex") return options;
+	let changed = false;
+	const messages = options.messages.map((message) => {
+		if (message.role !== "user" || !message.content.some((block) => block.type === "codex-native-checkpoint")) return message;
+		changed = true;
+		return {
+			...message,
+			content: message.content.filter((block) => block.type !== CODEX_NATIVE_CHECKPOINT_BLOCK_TYPE)
+		};
+	});
+	return changed ? {
+		...options,
+		messages
+	} : options;
+}
+/** Use the public LLM waterfall; recurse only once with a detached request. */
+function installForeignCheckpointProjection(ctx) {
+	return ctx.on("llm/stream", (options, next) => {
+		const detached = projectForeignCheckpointRequest(options);
+		return detached === options ? next() : ctx.llm.stream(detached);
+	}, { prepend: true });
+}
+//#endregion
 //#region src/rpc-contract.ts
-/** Logical channel registered by the plugin's Host half and called by its browser half. */
-const CODEX_AUTH_RPC_CHANNEL = "/codex-auth";
+const CODEX_AUTH_RPC_NAMESPACE = "codex-auth";
 //#endregion
 //#region src/rpc.ts
 /** Dispatch a decoded Host request without ever exposing token material. */
@@ -870,6 +1056,7 @@ const Config = z.object({
 	codexCommand: z.string().default("codex"),
 	displayName: z.string().default("OpenAI Codex (chatgpt)"),
 	longContextEnabled: z.boolean().default(false).volatile(),
+	excludedModelIds: z.array(z.string()).default([]).volatile(),
 	transport: z.union([
 		z.const("auto"),
 		z.const("sse"),
@@ -880,6 +1067,7 @@ const Config = z.object({
 });
 /** Mount the codex-auth adapter and service. */
 function apply(ctx, config) {
+	installForeignCheckpointProjection(ctx);
 	installEnvHttpProxy((message) => {
 		ctx.logger.warn(String(message));
 	});
@@ -892,7 +1080,15 @@ function apply(ctx, config) {
 		refreshLeadMs: config.refreshLeadMs,
 		fetchImpl: fetch
 	});
-	const currentSettings = () => readLlmSettings(config);
+	let accountMode = "enabled";
+	ctx.inject(["commands"], (commandCtx) => {
+		commandCtx.commands.register(createCodexAuthCommand(service, () => accountMode));
+	});
+	const currentSettings = () => ({
+		longContextEnabled: liveValue(config.longContextEnabled),
+		excludedModelIds: liveValue(config.excludedModelIds ?? [])
+	});
+	let announceModelPolicyChange = () => {};
 	if (config.llmEnabled) {
 		if (ctx.llm.listProviders().some((provider) => provider.id === "openai-codex")) throw new Error("dsh-codex-auth cannot own the \"openai-codex\" route because another plugin already registered it; dsh-codex-auth and dsh-codex are mutually exclusive, so uninstall or disable one bundle");
 		const adapter = new CodexAuthAdapter(ctx, {
@@ -907,9 +1103,27 @@ function apply(ctx, config) {
 			websocketConnectTimeoutMs: config.websocketConnectTimeoutMs,
 			timeoutMs: config.timeoutMs
 		});
-		ctx.llm.registerAdapter([CODEX_ROUTE], adapter);
+		const registration = ctx.llm.registerAdapter([CODEX_ROUTE], adapter);
+		announceModelPolicyChange = () => {
+			adapter.replaceRouteGeneration();
+			registration.replace([CODEX_ROUTE]);
+		};
 	}
-	ctx.inject(["connection", "webServer"], (connectionCtx) => connectionCtx.connection.rpc.handle(CODEX_AUTH_RPC_CHANNEL, (endpoint, payload, signal) => handleCodexAuthRpc(service, endpoint, payload, signal), { authority: "loopback" }));
+	ctx.inject(["settings"], (settingsCtx) => {
+		settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber));
+	});
+	ctx.on("loader/volatile-update", announceModelPolicyChange);
+	ctx.inject(["connection"], (connectionCtx) => {
+		const webServer = connectionCtx.get("webServer");
+		accountMode = commandAccountMode(webServer);
+		const guard = createLoopbackRpcGuard(webServer?.host, (endpoint, payload, signal) => handleCodexAuthRpc(service, endpoint, payload, signal));
+		if (guard.mode === "blocked") connectionCtx.logger.warn("llm-codex-auth: account RPC is disabled because the WebServer is not loopback-bound");
+		return registerAccountRoutes(connectionCtx.connection, CODEX_AUTH_RPC_NAMESPACE, [
+			"status",
+			"usage",
+			"login"
+		], guard.handler);
+	});
 	if (config.llmEnabled) ctx.logger.info("llm-codex-auth: route %s serving ChatGPT login from %s (transport %s, ws-connect %sms, request timeout %sms)", CODEX_ROUTE, authJsonPath, config.transport, config.websocketConnectTimeoutMs, config.timeoutMs);
 	else ctx.logger.info("llm-codex-auth: shared Login State active at %s; LLM route disabled", authJsonPath);
 }

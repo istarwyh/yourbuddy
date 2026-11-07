@@ -1,8 +1,38 @@
-import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
+import { n as readBoundedResponseText, t as liveValue } from "./volatile-config-DNSIaT45.js";
 import z from "@deepseek-ai/schemastery";
-import { readImageSettings } from "./settings-values.js";
 import { basename } from "node:path";
 import { HarnessError } from "@deepseek-ai/dsh-llm";
+//#region src/image-options.ts
+const IMAGE_QUALITIES = [
+	"auto",
+	"low",
+	"medium",
+	"high",
+	"xhigh",
+	"max"
+];
+const IMAGE_SIZES = [
+	"auto",
+	"1024x1024",
+	"1536x1024",
+	"1024x1536"
+];
+function isImageSize(value) {
+	if (value === "auto") return true;
+	if (typeof value !== "string" || !/^[1-9]\d{0,3}x[1-9]\d{0,3}$/u.test(value)) return false;
+	const [width = 0, height = 0] = value.split("x").map(Number);
+	return width % 16 === 0 && height % 16 === 0 && width <= 3840 && height <= 3840 && width <= height * 3 && height <= width * 3 && width * height >= 655360 && width * height <= 8294400;
+}
+function supportsImageSize(model, size) {
+	return IMAGE_SIZES.some((preset) => preset === size) || supportsImage25Options(model);
+}
+function supportsImage25Options(model) {
+	return model === "gpt-image-2.5-sunburst" || model === "gpt-image-2.5-flare";
+}
+function supportsImageQuality(model, quality) {
+	return quality !== "xhigh" && quality !== "max" || supportsImage25Options(model);
+}
+//#endregion
 //#region src/image.ts
 /** Codex Image Creation tools, Durable Media Asset catalog, and Image row. */
 const GENERATE_IMAGE_TOOL_NAME = "generate_image";
@@ -16,18 +46,6 @@ const IMAGE_ORIGINS = [
 	"reference",
 	"user"
 ];
-const IMAGE_SIZES = [
-	"auto",
-	"1024x1024",
-	"1536x1024",
-	"1024x1536"
-];
-const IMAGE_QUALITIES = [
-	"auto",
-	"low",
-	"medium",
-	"high"
-];
 const IMAGE_BACKGROUNDS = [
 	"auto",
 	"opaque",
@@ -37,12 +55,25 @@ const MAX_REFERENCES = 5;
 const MAX_GENERATED_IMAGES = 10;
 const Config = z.object({
 	enabled: z.boolean().default(true).volatile(),
-	model: z.string().default("gpt-image-2").volatile(),
+	model: z.string().default("gpt-image-2.5-sunburst").volatile(),
 	n: z.number().step(1).min(1).max(MAX_GENERATED_IMAGES).default(1).volatile(),
-	size: z.union(IMAGE_SIZES.map((value) => z.const(value))).default("auto").volatile(),
+	size: z.transform(z.string(), (value) => {
+		if (!isImageSize(value)) throw new Error("Invalid image dimensions");
+		return value;
+	}).default("auto").volatile(),
 	quality: z.union(IMAGE_QUALITIES.map((value) => z.const(value))).default("auto").volatile(),
 	background: z.union(IMAGE_BACKGROUNDS.map((value) => z.const(value))).default("auto").volatile()
 });
+function imageSettings(config) {
+	return {
+		enabled: liveValue(config.enabled),
+		model: liveValue(config.model),
+		n: liveValue(config.n),
+		size: liveValue(config.size),
+		quality: liveValue(config.quality),
+		background: liveValue(config.background)
+	};
+}
 /** Build registry-ready public Capability Tools around one dependency set. */
 function createCodexImageTools(options) {
 	return [createGenerateImageTool(options), createListImagesTool(options)];
@@ -97,7 +128,7 @@ function createGenerateImageTool(options) {
 				},
 				size: {
 					type: "string",
-					enum: [...IMAGE_SIZES]
+					description: "auto or WIDTHxHEIGHT. Custom sizes require GPT Image 2.5: multiples of 16, aspect ratio 1:3 to 3:1, each edge at most 3840, total pixels 655360–8294400. Above 2560x1440 is experimental."
 				},
 				quality: {
 					type: "string",
@@ -175,6 +206,12 @@ async function executeGenerateImage(options, rawArgs, exec) {
 			handle: imageHandle(attachment),
 			attachment,
 			origin: "generated"
+		});
+		const actualSize = `${String(attachment.width)}x${String(attachment.height)}`;
+		if (args.size !== "auto" && actualSize !== args.size) warnings.push({
+			index: candidate.index,
+			code: "IMAGE_SIZE_MISMATCH",
+			message: `Requested ${args.size}; the backend returned ${actualSize}.`
 		});
 	} catch {
 		warnings.push({
@@ -411,8 +448,10 @@ function parseGenerateArgs(value, defaults) {
 	const references = value.references === void 0 ? [] : parseReferences(value.references);
 	const model = value.model === void 0 ? defaults.model : nonBlankString(value.model, "model");
 	const n = value.n === void 0 ? defaults.n : boundedInteger(value.n, 1, MAX_GENERATED_IMAGES, "n");
-	const size = value.size === void 0 ? defaults.size : enumValue(value.size, IMAGE_SIZES, "size");
+	const size = value.size === void 0 ? defaults.size : value.size;
+	if (!isImageSize(size) || !supportsImageSize(model, size)) throw new ImageCapabilityError("size must be auto or a supported WIDTHxHEIGHT; custom GPT Image 2.5 sizes require multiples of 16, ratio 1:3–3:1, edges <=3840, and 655360–8294400 pixels", "INVALID_ARGS");
 	const quality = value.quality === void 0 ? defaults.quality : enumValue(value.quality, IMAGE_QUALITIES, "quality");
+	if (!supportsImageQuality(model, quality)) throw new ImageCapabilityError("xhigh and max quality require gpt-image-2.5-sunburst or gpt-image-2.5-flare", "INVALID_ARGS");
 	const background = value.background === void 0 ? defaults.background : enumValue(value.background, IMAGE_BACKGROUNDS, "background");
 	return {
 		prompt: value.prompt.trim(),
@@ -458,7 +497,7 @@ function parseListArgs(value) {
 function collectSessionImages(agent) {
 	const calls = /* @__PURE__ */ new Map();
 	const catalog = /* @__PURE__ */ new Map();
-	for (const event of agent.session.events) {
+	for (const event of agent.session.snapshotEvents()) {
 		if (event.type === "tool/call" && isRecord(event.data)) {
 			if (typeof event.data.callId === "string" && typeof event.data.name === "string") calls.set(event.data.callId, event.data.name);
 			continue;
@@ -764,7 +803,7 @@ const inject = [
 function apply(ctx, config) {
 	const auth = ctx.get("codexAuth");
 	if (auth === void 0) throw new Error("codex-image: shared codexAuth service is unavailable");
-	const current = () => readImageSettings(config);
+	const current = () => imageSettings(config);
 	const registrations = /* @__PURE__ */ new Map();
 	const generations = /* @__PURE__ */ new Map();
 	let disposed = false;
@@ -803,6 +842,10 @@ function apply(ctx, config) {
 		registrations.clear();
 		generations.clear();
 	}, "codex-image: scoped tool cleanup");
+	ctx.inject(["settings"], (settingsCtx) => {
+		settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber));
+	});
+	ctx.on("loader/volatile-update", refreshAll);
 	ctx.on("agent/created", ({ agent }) => {
 		refreshAgent(agent);
 	});

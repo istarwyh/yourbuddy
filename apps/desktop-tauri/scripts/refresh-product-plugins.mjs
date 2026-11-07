@@ -1,4 +1,4 @@
-/** Refresh YourBuddy's external product snapshots from their declared latest channels. */
+/** Refresh YourBuddy's external product snapshots from their declared release channels. */
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import {
@@ -39,7 +39,7 @@ const maximumExpandedArchiveBytes = 256 * 1024 * 1024
 const requestAttempts = 3
 let cachedGitHubToken
 
-const productKinds = new Set(['npm-latest', 'github-branch', 'github-release-pair'])
+const productKinds = new Set(['npm-latest', 'npm-version', 'github-branch', 'github-release-pair'])
 const commonPluginFields = new Set([
   'id',
   'kind',
@@ -51,7 +51,8 @@ const commonPluginFields = new Set([
   'scriptRemovals',
 ])
 const kindPluginFields = {
-  'npm-latest': new Set(),
+  'npm-latest': new Set(['distTag']),
+  'npm-version': new Set(['version']),
   'github-branch': new Set(['repository', 'branch', 'build', 'sourcePatches']),
   'github-release-pair': new Set([
     'repository',
@@ -65,6 +66,7 @@ const kindPluginFields = {
 const identifierPattern = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?$/
 const npmPackageSegment = '[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?'
 const npmPackagePattern = new RegExp(`^(?:@${npmPackageSegment}/)?${npmPackageSegment}$`)
+const npmDistTagPattern = /^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/
 const pythonPackagePattern = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/
 const githubRepositoryPattern = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\/[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/
 const reservedProductPaths = new Set([
@@ -289,7 +291,17 @@ export function validateProductUpdatePolicy(
     }
     destinations.push({ label: `${label}.destination`, path: destination })
 
-    if (plugin.kind === 'github-branch') {
+    if (plugin.kind === 'npm-version') {
+      if (typeof plugin.version !== 'string' || semver.valid(plugin.version) !== plugin.version) {
+        throw new Error(`${label}.version must be an exact semantic version`)
+      }
+    }
+    else if (plugin.kind === 'npm-latest' && plugin.distTag !== undefined) {
+      if (typeof plugin.distTag !== 'string' || !npmDistTagPattern.test(plugin.distTag)) {
+        throw new Error(`${label}.distTag must be a valid npm dist-tag`)
+      }
+    }
+    else if (plugin.kind === 'github-branch') {
       validateGitHubRepository(plugin.repository, `${label}.repository`)
       validateGitBranch(plugin.branch, `${label}.branch`)
       if (plugin.build !== undefined && plugin.build !== 'package-manager') {
@@ -442,27 +454,57 @@ export function verifyArchiveIntegrity(bytes, integrity) {
 }
 
 /**
- * Resolve an npm package's current latest stable artifact.
+ * Resolve one npm dist-tag to its immutable artifact metadata.
  *
  * @param {string} packageName
+ * @param {string} tag
  * @param {typeof fetch} fetchImpl
  */
-export async function resolveNpmLatest(packageName, fetchImpl = globalThis.fetch) {
+export async function resolveNpmDistTag(packageName, tag, fetchImpl = globalThis.fetch) {
   const metadata = await requestJson(
-    `https://registry.npmjs.org/${encodeURIComponent(packageName)}/latest`,
+    `https://registry.npmjs.org/${encodeURIComponent(packageName)}/${encodeURIComponent(tag)}`,
     fetchImpl,
   )
-  if (metadata.name !== packageName || !semver.valid(metadata.version) || semver.prerelease(metadata.version)) {
-    throw new Error(`npm latest metadata is invalid for ${packageName}`)
+  if (metadata.name !== packageName || !semver.valid(metadata.version)) {
+    throw new Error(`npm ${tag} metadata is invalid for ${packageName}`)
   }
   if (typeof metadata.dist?.tarball !== 'string' || typeof metadata.dist?.integrity !== 'string') {
-    throw new Error(`npm latest artifact metadata is missing for ${packageName}@${metadata.version}`)
+    throw new Error(`npm ${tag} artifact metadata is missing for ${packageName}@${metadata.version}`)
   }
   return {
     version: metadata.version,
     source: metadata.dist.tarball,
     integrity: metadata.dist.integrity,
   }
+}
+
+/**
+ * Resolve an npm package's current latest stable artifact.
+ *
+ * @param {string} packageName
+ * @param {typeof fetch} fetchImpl
+ */
+export async function resolveNpmLatest(packageName, fetchImpl = globalThis.fetch) {
+  const artifact = await resolveNpmDistTag(packageName, 'latest', fetchImpl)
+  if (semver.prerelease(artifact.version)) {
+    throw new Error(`npm latest metadata is invalid for ${packageName}`)
+  }
+  return artifact
+}
+
+/**
+ * Resolve one exact npm package version.
+ *
+ * @param {string} packageName
+ * @param {string} version
+ * @param {typeof fetch} fetchImpl
+ */
+export async function resolveNpmVersion(packageName, version, fetchImpl = globalThis.fetch) {
+  const artifact = await resolveNpmDistTag(packageName, version, fetchImpl)
+  if (artifact.version !== version) {
+    throw new Error(`npm version metadata is invalid for ${packageName}@${version}`)
+  }
+  return artifact
 }
 
 /**
@@ -905,7 +947,12 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
   const destination = join(roots.productRoot, policy.destination)
   const current = readCurrent(destination)
   verifyManagedSnapshot(destination, current.manifest)
-  const latest = await resolveNpmLatest(policy.package, fetchImpl)
+  const channel = policy.kind === 'npm-version' ? policy.version : policy.distTag ?? 'latest'
+  const latest = policy.kind === 'npm-version'
+    ? await resolveNpmVersion(policy.package, policy.version, fetchImpl)
+    : channel === 'latest'
+      ? await resolveNpmLatest(policy.package, fetchImpl)
+      : await resolveNpmDistTag(policy.package, channel, fetchImpl)
   assertNoDowngrade(policy.package, current.manifest.version, latest.version)
   if (current.manifest.version === latest.version) {
     if (current.sourceRecord?.integrity !== latest.integrity) {
@@ -960,8 +1007,8 @@ async function stageNpmPlugin(policy, roots, fetchImpl) {
   writeSourceRecord(staged, {
     package: manifest.name,
     version: manifest.version,
-    sourceKind: 'npm-latest',
-    channel: 'latest',
+    sourceKind: policy.kind,
+    channel,
     source: latest.source,
     integrity: latest.integrity,
     archiveSha256: createHash('sha256').update(bytes).digest('hex'),
@@ -1269,7 +1316,7 @@ export async function refreshProductPlugins(options = {}) {
   const updates = []
   try {
     for (const plugin of policy.plugins) {
-      if (plugin.kind === 'npm-latest') {
+      if (plugin.kind === 'npm-latest' || plugin.kind === 'npm-version') {
         const update = await stageNpmPlugin(plugin, roots, options.fetchImpl ?? globalThis.fetch)
         if (update) updates.push(update)
       }

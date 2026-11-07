@@ -1,11 +1,13 @@
 # dsh-codex-auth
 
-[![npm version](https://img.shields.io/npm/v/dsh-codex-auth.svg)](https://www.npmjs.com/package/dsh-codex-auth)
+> **DSH compatibility:** Version `0.3.3-rc.4` targets DSH `0.2.0-rc.2` and pi-ai `0.87.1`. Version `0.3.3-rc.2` remains on DSH `0.2.0-rc.1`; upgrade the plugin together with the Host. Use compatible older plugin versions for older DSH Hosts. See [verification](docs/dsh-source-verification.md).
+
+[![npm rc version](https://img.shields.io/npm/v/dsh-codex-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-codex-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 English | [中文](README.zh.md)
 
-Current npm release: **v0.3.2**
+Release: **v0.3.3-rc.4** (npm tag: `rc`).
 
 A self-contained [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Codex Capability Bundle**. It reuses the ChatGPT login maintained by the
@@ -24,6 +26,37 @@ official **Codex CLI** (`~/.codex/auth.json`, or `$CODEX_HOME/auth.json`) for:
 > may be rate-limited or changed without notice. Do not rely on it for
 > production workloads.
 
+## 0.3.3-rc.4: Per-profile model exclusions
+
+Adds optional `excludedModelIds`, defaulting to an empty list, with live editing and persistence through GPT Auth LLM Context settings. Exact ID filtering runs after catalog completion and long-context policy, preserving remaining descriptors, parameters and order. No model is hidden by default, and authentication, selections and existing sessions are preserved.
+
+## 0.3.3-rc.3: DSH 0.2.0-rc.2
+
+Uses the coherent rc.2 graph and pi-ai 0.87.1, preserves V4 sessions and checkpoint codec v1, and rejects stale or mixed graphs. Existing checkpoints continue through Portable text when their final request controls differ. GPT-6 Sol/Luna use the installed provider's Off metadata; missing-model fallbacks retain the stricter policy. See [upgrade verification](docs/dsh-source-verification.md#upgrade-from-dsh-020-rc1).
+
+## 0.3.3-rc.2: DSH 0.2.0-rc.1 adaptation
+
+This release updates the DSH dependency graph, uses Config Forms and volatile settings, forwards the current Connection RPC operator, and accepts V4 role `tool` messages. Native checkpoint compatibility is pinned to this exact DSH release; a public LLM middleware projects Portable checkpoint text for non-Codex providers. The complete package and tagged-source checks pass; live Codex authentication and provider replay remain unverified.
+
+The custom preset directory recipe later in this README documents earlier DSH releases. DSH `0.2.0-rc.1` ships `standard.patch.yml` in `@deepseek-ai/dsh-web-app/presets`; its `preset-standard` entry contains the full `config.plugins` list. A 0.2 custom preset must clone that complete entry under a new preset id and replace its `compaction` group with this package's example group. Do not use the retired `@deepseek-ai/dsh-agent-presets` path with 0.2.
+
+## 0.3.3-rc.1: DSH 0.1.5-rc.1 adaptation
+
+Targets the coherent DSH `0.1.5-rc.1` graph with pi-ai `0.85.1`. Supplies the new pi-ai model-error map so ordinary and prepared model requests reach the provider. Compaction and Native replay accept exactly RC.1, reject mixed/unverified graphs, and preserve the durable checkpoint codec and Portable fallback.
+
+## v0.3.3-alpha.7 highlights
+
+Moves the development baseline to DSH `0.1.5-alpha.1` and pi-ai `0.85.1`. Native and Dual Checkpoint gates accept only that verified conversion graph; restored JSON sessions explicitly use V3 detached event ownership. Account status, usage, and login use authenticated `/api/codex-auth/*` routes, retaining the static loopback guard.
+
+Adds GPT Image 2.5 Sunburst/Flare, advanced quality, and validated custom dimensions. New image configurations default to Sunburst; explicit saved model choices remain intact. Returned images are retained with a warning if the backend does not honor the requested size. The `/codex-auth` command provides local terminal account status and login.
+
+## v0.3.3-alpha.5 highlights
+
+- Moves the development graph and peer baseline to DSH `0.1.2-alpha.5`, including current Session snapshots, Settings registration, Connection packages, and `ToolCallId`; this repository's lockfile contains no older DSH family.
+- Keeps account RPC fail-closed on alpha.5: only an explicit `127.0.0.1` Web bind reaches authentication services.
+- Preserves Dual Checkpoint creation, replay, restart/fork durability, and one-shot Turn Continuation on alpha.5.
+- Confirms identical final pi-ai payloads across SSE, WebSocket, and automatic fallback, while conservatively keeping deferred-tool `additional_tools` history on Portable checkpoints until that semantic state is part of the Native compatibility digest.
+
 ## Features
 
 ### Shared Codex Login State
@@ -35,22 +68,66 @@ official **Codex CLI** (`~/.codex/auth.json`, or `$CODEX_HOME/auth.json`) for:
   sections before and after OAuth network I/O; a reply is persisted only while
   the account and refresh-token lineage still match.
 - Starts the official `codex login` browser or device-code flow.
+- Registers `/codex-auth [status|login]` on interactive DSH profiles, so a terminal surface can inspect the value-free login state or start the official browser flow without a Web settings card. Account operations are the terminal login entry point: a local DSH Host (no WebServer, or one bound explicitly to `127.0.0.1`) executes them; any composition whose WebServer exposes the shared commands seam on another interface denies them before touching the auth service. The account RPC keeps its own loopback-only ADR-0008 guard.
 - Shows connection state plus best-effort weekly remaining balance/reset time.
   The fixed `/backend-api/wham/usage` probe has a ten-second Host deadline and
   identifies the seven-day window by duration rather than response position.
-- Sends no token value over the plugin-owned, loopback-only `/codex-auth`
-  Connection RPC channel.
+- Sends no token value over the plugin-owned `/codex-auth` Connection RPC
+  channel. The real dispatcher is registered only for an explicit
+  `127.0.0.1` Web bind; every absent, all-interface, or unknown bind receives
+  the same value-free `loopback-required` denial.
 
-### GPT-5.6 long context
+### Codex models and long context
 
-GPT Auth Settings exposes a live, default-off **1M context** switch between the
-Login and capability cards. It changes the reported context window for
-`gpt-5.6-luna`, `gpt-5.6-sol`, and `gpt-5.6-terra` from the conservative
-272,000-token default to 1,000,000 tokens. DSH uses that capacity for token
-pressure and compaction decisions; no request parameter negotiates capacity
-with the backend. Requests beyond 272K may consume account quota faster, backend
-availability remains account-dependent, and enabling the switch does not expand
-history that DSH already compacted.
+The pinned pi-ai `0.87.1` catalog includes GPT-6 Astra. The plugin fills missing
+GPT-6 Sol (`gpt-6-sol`), Luna (`gpt-6-luna`), and GPT-6.1 Sol (`gpt-6.1-sol`)
+entries from matching GPT-5.6 templates and preserves installed descriptors.
+Fallback descriptors use a 272,000-token context window. The default-off
+**Long Context** switch reports a model-specific budget: **872,000 tokens for
+GPT-6/6.1**, and the existing 1,000,000-token policy for supported GPT-5.6 models.
+The GPT-6 budget follows Codex OAuth metadata, not the public API context limit.
+DSH uses this for token pressure and compaction; it does not negotiate backend
+capacity or establish account entitlement. Enabling it cannot restore history
+already compacted, and long requests may consume account quota faster.
+
+Fallback GPT-6/6.1 models offer `low`, `medium`, `high`, `xhigh`, and `max`;
+DSH `minimal` maps to `low`. `Off` is unavailable because omitting reasoning
+does not disable it. Unsupported efforts fail before credential resolution.
+GPT-6.1 Sol defaults to Codex's `low` when no effort is selected. `Ultra` is
+Codex orchestration, not a raw reasoning effort exposed by this plugin.
+All GPT-6/6.1 models on this route reject explicit `temperature` (including `0`)
+with `UNSUPPORTED_OPTION` before credentials or transport.
+
+See [model-policy sources and verification limits](docs/codex-model-policy.md)
+for the OAuth/API distinction, pricing estimates, and offline test coverage.
+
+Each profile can optionally hide exact model IDs with `excludedModelIds`
+(default `[]`). In **GPT Auth → LLM Context → Excluded model IDs**, enter IDs
+separated by commas; Enter or leaving the field saves through the existing
+`llm-codex-auth` Config Form to the active profile patch and updates the catalog
+live. The editor trims surrounding whitespace and removes empty/duplicate
+entries. Native profile configuration uses a string array, for example:
+
+```yaml
+- id: llm-codex-auth
+  config:
+    excludedModelIds:
+      - gpt-5.3-codex-spark
+```
+
+No model is excluded by default. Matching is case-sensitive and exact, with no
+wildcards; unknown IDs have no effect and duplicates are harmless. Filtering
+runs after missing-model completion and long-context policy, preserving the
+remaining descriptors, parameters and order. Clearing the list restores the
+catalog. This only affects this profile's `openai-codex` LLM catalog, not Search
+or Image settings, authentication, account entitlement, or request permissions.
+
+Excluding the selected model keeps the selection and existing sessions intact;
+subsequent model resolution uses DSH's normal `UNKNOWN_MODEL` error. Select a
+remaining model or clear its exclusion to continue. Excluding every model is
+allowed and leaves an empty Codex catalog. Prepared calls still resolve catalog
+visibility when they dispatch; requests already running are not cancelled.
+Exclusions are not an access-control mechanism.
 
 ### Experimental Dual Checkpoint compaction Adapter
 
@@ -85,7 +162,7 @@ replay estimate, and usage availability; an authentication rejection recommends
 `codex login`. They never include prompts, tools, headers, tokens, turn state,
 canonical items, encrypted content, or provider-reported token counts. Reported
 native usage may be retained inside the sensitive checkpoint as diagnostic
-metadata, but rc.2 aggregate token accounting continues to use only the Portable
+metadata, but DSH aggregate token accounting continues to use only the Portable
 summarization call.
 
 After a successful **inline automatic** native compaction, a nonempty provider
@@ -110,29 +187,61 @@ estimation applies Codex's pinned opaque rule—decoded base64 length minus the
 price. The complete custom block is capped at 2 MiB, and Basic still performs
 the authoritative strict-shrink check. The extra v2 request adds latency and
 consumes Codex quota; its credential-free opaque state is still sensitive
-conversation data and is duplicated by rc.2 in the summary event and replacement
+conversation data and is duplicated by alpha.5 in the summary event and replacement
 message.
+
+#### Legacy custom-preset recipe (DSH 0.1.x)
 
 Installing the normal Codex Capability Bundle does not activate this Adapter.
 `cordis.patch.yml` and DSH's shipped presets continue to select stock Basic
-compaction. To opt in, copy the complete `compaction` group from the packaged
-minimal example into a custom preset:
+compaction. Opt in through a complete user-owned custom preset:
 
-```text
-node_modules/dsh-codex-auth/examples/agent-presets/codex-portable/
-├── preset.yml
-└── agent.cordis.yml
-```
+1. Install the package in the profile that runs DSH (the examples below use
+   `web`).
+2. Copy DSH's complete Standard preset to a new user preset. Choose a new
+   `PRESET_ID`; the commands intentionally refuse to overwrite an existing one:
 
-That group selects exactly one `dsh-codex-auth/compaction` row at
-`ctx.compaction` and retains `@deepseek-ai/dsh-command-compact` plus
-`@deepseek-ai/dsh-compaction-tool-result-pruner`. Do not add
-`@deepseek-ai/dsh-compaction-basic` beside it. The example intentionally
-contains no persona or tools; merge the group into a deployer-owned full preset
-rather than treating it as a replacement for DSH's standard capabilities.
+   ```sh
+   DSH_HOME="${DSH_HOME:-$HOME/.dsh}"
+   DSH_ROOT="$(dirname "$(dirname "$(realpath "$(command -v dsh)")")")"
+   PRESET_ID=codex-dual
+   PRESET_DIR="$DSH_HOME/.agent-presets/$PRESET_ID"
 
-This experimental export supports exactly DSH / Basic compaction
-`0.1.1-rc.2` and pi-ai `0.82.1`; mounting it on another pair fails with an
+   test ! -e "$PRESET_DIR"
+   mkdir -p "$DSH_HOME/.agent-presets"
+   cp -R "$DSH_ROOT/node_modules/@deepseek-ai/dsh-agent-presets/presets/standard" "$PRESET_DIR"
+   ```
+
+3. Give the copy a distinct `name` and `description` in
+   `$PRESET_DIR/preset.yml`.
+4. In `$PRESET_DIR/agent.cordis.yml`, **replace rather than append** the complete
+   `- id: compaction` group with the group from:
+
+   ```text
+   $DSH_HOME/profiles/web/node_modules/dsh-codex-auth/
+   └── examples/agent-presets/codex-portable/agent.cordis.yml
+   ```
+
+   Use only that example's `compaction` group. The example intentionally has no
+   persona or tools and is not a replacement for the copied Standard preset.
+   The resulting group must contain exactly one
+   `dsh-codex-auth/compaction` row with `auto: true`, retain
+   `@deepseek-ai/dsh-command-compact` and
+   `@deepseek-ai/dsh-compaction-tool-result-pruner`, and contain no
+   `@deepseek-ai/dsh-compaction-basic` row. `ctx.compaction` must have one owner.
+5. Restart DSH, create a new conversation, select the custom preset, and choose
+   an `openai-codex` model. Keep the provider, exact model, account, and explicit
+   reasoning setting unchanged when Native replay is required.
+
+With `auto: true`, the custom engine handles both context-pressure compaction
+and provider-confirmed context overflow automatically. `/compact` invokes the
+same engine manually. Every entry remains Portable-first: an eligible Codex
+request adds the Native sibling, while any incompatibility or Native failure
+keeps the valid Portable Checkpoint. Stock conversation views intentionally show
+the Portable text even when the next compatible provider request replays Native.
+
+This experimental export supports homogeneous DSH / Basic compaction graphs at
+`0.2.0-rc.2`, with pi-ai `0.87.1`; a mixed or unverified pair fails with an
 actionable compatibility error. Long Context Mode may change when pressure
 compaction runs, but does not change native activation, codec, retention, v2
 payload, replay compatibility, or the one-shot turn-continuation contract.
@@ -178,15 +287,18 @@ failure.
 Native replay requires the checkpoint's schema/codec/retention generations,
 provider, exact model, hashed Codex account identity, instructions, tools,
 parallel/tool-choice controls, reasoning, text configuration, and service tier
-to match the **final effective** Responses request. A composed payload callback
-may change those controls: replay is re-evaluated after the callback and selects
-Native or Portable accordingly. Request IDs, prompt-cache keys, transient
+to match the **final effective** Responses request. Pi-ai `0.87.1` may encode
+deferred GPT-5.6 tools as an `additional_tools` input item; because that semantic
+history is outside this codec's compatibility digest, such a payload
+conservatively uses Portable text for both replay and new Native creation. A
+composed payload callback may change the modeled controls: replay is re-evaluated
+after the callback and selects Native or Portable accordingly. Request IDs, prompt-cache keys, transient
 headers, turn state, and Long Context Mode do not affect compatibility. Unknown,
 malformed, oversized (over 2 MiB), secret-bearing, mixed, or incompatible state
 degrades to Portable text. Generated markers are Host-only and any missing,
 duplicate, embedded, leaked, or unconsumed marker fails before network I/O. The
-replay converter is pinned to DSH LLM / pi-ai Adapter `0.1.1-rc.2` and pi-ai
-`0.82.1`; another runtime pair uses Portable text instead. Adapter generation
+replay converter accepts matching DSH LLM / pi-ai Adapter versions at
+`0.2.0-rc.2`, with pi-ai `0.87.1`; mixed or unverified runtime pairs use Portable text instead. Adapter generation
 replacement or HMR invalidates process-local replay and turn-continuation state,
 while the durable Dual Checkpoint remains unchanged for a later request.
 
@@ -198,13 +310,8 @@ headers, raw turn state, and request-scoped metadata. Only the domain-separated
 account hash is durable. The block carries an empty generic-presentation sentinel
 so stock conversation and trajectory views display/copy the sibling Portable
 text without stringifying opaque state. The credential-free opaque block is
-still sensitive ordinary Session data in rc.2 and may be present in Session RPC
-and exports; treat those surfaces accordingly. Experimental blocks emitted by
-pre-issue-18 worktree builds did not carry the presentation sentinel. They stay
-Host-decodable for replay compatibility, but their generic Trajectory rendering
-is not covered; migrate or remove those never-released fixtures before viewing
-an imported Session.
-
+still sensitive ordinary Session data in alpha.5 and may be present in Session
+RPC and exports; treat those surfaces accordingly.
 The shipped PiAiAdapter and direct DeepSeek Adapter put only Portable text on
 their provider wire. Because conversion uses detached request copies, switching
 back to a compatible Codex route before another compaction still replays the
@@ -240,7 +347,7 @@ Live Search settings:
 | Enabled | `true` | on / off |
 | Mode | `live` | `live`, `cached`, `indexed` |
 | Context size | `medium` | `low`, `medium`, `high` |
-| Fallback model | `gpt-5.4` | Codex model ID |
+| Fallback model | `gpt-5.6-terra` | Codex model ID |
 | Maximum output tokens | `2048` | positive integer |
 
 ### Image Creation
@@ -288,106 +395,73 @@ Live Image settings:
 | Setting | Default | Values |
 |---|---:|---|
 | Enabled | `true` | on / off |
-| Image model | `gpt-image-2` | image model ID |
+| Image model | `gpt-image-2.5-sunburst` | Sunburst, Flare, `gpt-image-2`, or a custom model ID |
 | Image count | `1` | 1–10 |
-| Size | `auto` | `auto`, `1024x1024`, `1536x1024`, `1024x1536` |
-| Quality | `auto` | `auto`, `low`, `medium`, `high` |
+| Size | `auto` | `auto`, `1024x1024`, `1536x1024`, `1024x1536`, or validated GPT Image 2.5 `WIDTHxHEIGHT` |
+| Quality | `auto` | `auto`, `low`, `medium`, `high`; GPT Image 2.5 also accepts `xhigh`, `max` |
 | Background | `auto` | `auto`, `opaque`, `transparent` |
 
-A successful `generate_image` result displays only DSH's standard image gallery;
+GPT Image 2.5 uses the explicit IDs `gpt-image-2.5-sunburst` and
+`gpt-image-2.5-flare`. New configurations default to Sunburst; existing explicit
+model settings are preserved. The model field offers suggestions and still
+accepts custom IDs. Advanced quality and custom dimensions are enabled only
+for those two known 2.5 IDs; other IDs retain the existing parameter set.
+
+Custom dimensions must be multiples of 16, have an aspect ratio from 1:3 to
+3:1, use edges no larger than 3840, and contain 655,360–8,294,400 pixels.
+Above 2560×1440 is experimental. The settings field saves a valid size on blur
+or Enter; invalid input is not persisted. Deployment attachment limits still
+apply. See the [official image parameter guide](https://developers.openai.com/api/docs/guides/image-generation#size-and-quality-options).
+
+Codex endpoint behavior remains account/backend dependent. The September 9,
+2026 verification accepted generation and editing for both IDs, including
+`xhigh`/`max` edits, but returned 1254×1254 images even for explicit 1024×1024
+and 1536×864 requests. HTTP success does not establish that quality or size was
+honored. A valid image with different dimensions is retained and accompanied
+by an `IMAGE_SIZE_MISMATCH` warning containing the requested and actual sizes.
+See [verification details](docs/gpt-image-2.5-compatibility.md).
+
+A successful `generate_image` result displays only the plugin-owned image gallery;
 `list_images` is model-facing catalog state and has no user-facing result view. A
 bounded plugin-owned Blob URL cache reads only through the public
 session-authorized attachment API and revokes its URLs on reset, eviction, and
 plugin teardown. Generated images remain durable conversation attachments.
-DeepSeek Harness `0.1.1-rc.1` does not expose a binary workspace-write API, so
+DeepSeek Harness `0.1.2-alpha.5` does not expose a binary workspace-write API, so
 no workspace-export action is offered and the plugin never bypasses DSH policy
 with direct Node filesystem access.
 
 ### ACP image interoperability
 
-Historically, DSH rc.7 introduced the ACP path used here: an ACP client may send inline PNG, JPEG, WebP, or GIF prompts
-when the active `openai-codex` model declares image input. DSH validates and
-persists those images before the user message is queued. They therefore enter
-this plugin's Image Catalog as ordinary `user` images and can be selected later
-by Image Handle as `generate_image` references.
+An ACP client may send inline PNG, JPEG, WebP, or GIF prompts when the active
+`openai-codex` model declares image input. DSH validates and persists those
+images before the user message is queued. They therefore enter this plugin's
+Image Catalog as ordinary `user` images and can be selected later by Image
+Handle as `generate_image` references.
 
-For historical context, DSH's rc.7 ACP bridge emitted only committed `assistant/message` text and image
-blocks. Images returned by `generate_image` remain nested in `tool/result`, so
-ACP clients do not receive those generated bytes directly unless a later
-assistant message itself contains an ImageBlock.
+DSH alpha.5 projects durable `tool/call` and `tool/result` events into ACP
+`tool_call` and `tool_call_update` messages, respectively. Completed `generate_image` results therefore carry
+their image content through that tool update without requiring a later
+assistant ImageBlock.
 
 ## Requirements
 
-- DeepSeek Harness `0.1.1-rc.1` or a compatible later `0.1.x` release.
+- DeepSeek Harness `0.2.0-rc.2` (tested coherent dependency graph); do not mix it with an older rc package family.
 - Node.js `^22.19.0` or `>=24.0.0`.
+- `pnpm` available on `PATH` (`11.7.0` is the tested project package manager).
 - The `codex` CLI available on `PATH`.
 - Run `codex login` before use, or start login from the GPT Auth card.
 
-The minimum compatible DSH version is `0.1.1-rc.1` (see the requirement above).
-For historical context, rc.7 was the first complete Web-settings baseline: its
-Host exposed plugin-registered settings namespaces such as `codex-search` and
-`codex-image` to the browser, while stock rc.6 could register GPT Auth but could
-not remotely read or write those two live settings scopes.
+## Install
 
-## Install from npm (recommended)
-
-The npm package includes prebuilt Host and browser bundles, so no install-time
-build permission is required:
+See the [upgrade evidence and test recipe](docs/dsh-source-verification.md#upgrade-from-dsh-020-rc1). Stop `dsh web`, ensure the target Host uses a coherent DSH `0.2.0-rc.2` graph, then install this exact prerelease into the intended profile:
 
 ```sh
-dsh plugin --profile web add dsh-codex-auth
-```
-
-Restart `dsh web`, open Settings, and select **GPT Auth**.
-
-## Install a prebuilt release
-
-```sh
-dsh plugin --profile web add https://github.com/suntianc/dsh-codex-auth/releases/download/v0.2.2/dsh-codex-auth-0.2.2.tgz
-```
-
-Restart `dsh web`, open Settings, and select **GPT Auth**.
-
-## Install from GitHub source
-
-```sh
-dsh plugin --profile web add github:suntianc/dsh-codex-auth
-```
-
-Git dependencies are built by the package's `prepare` script. pnpm 10+ blocks
-that script until explicitly allowed, so the first command may print an
-`allowBuilds` key and stop. Copy the **exact key printed by dsh** under
-`allowBuilds` in `~/.dsh/profiles/web/pnpm-workspace.yaml`, then run the command
-again. Only grant this permission after reviewing the source.
-
-For a reproducible install, pin a release tag or commit:
-
-```sh
-dsh plugin --profile web add github:suntianc/dsh-codex-auth#v0.3.2
-```
-
-## Install a tarball
-
-```sh
-git clone https://github.com/suntianc/dsh-codex-auth.git
-cd dsh-codex-auth
-pnpm install
-pnpm pack
-dsh plugin --profile web add ./dsh-codex-auth-0.3.2.tgz
-```
-
-## Upgrade
-
-Stop the running `dsh web` process and update the Web profile to the current
-release:
-
-```sh
-dsh plugin --profile web add dsh-codex-auth@0.3.2
+dsh --version
+dsh plugin --profile web add dsh-codex-auth@0.3.3-rc.4
 dsh plugin --profile web list
 ```
 
-After the list reports `dsh-codex-auth@0.3.2`, restart `dsh web` and refresh the
-browser.
+Verify the entry, restart `dsh web`, and refresh the browser. This version uses the npm `rc` tag. An install without a version or tag selects `latest`, which does not include this DSH 0.2 adaptation. Older DSH Hosts should retain a compatible older plugin release.
 
 ## Host configuration
 
@@ -410,7 +484,8 @@ Login State coordinator available to Search/Image without owning an LLM route:
 | `refreshLeadMs` | `300000` | Refresh lead time in milliseconds |
 | `codexCommand` | `codex` | CLI command used for login and version probing |
 | `displayName` | `OpenAI Codex (chatgpt)` | Provider label in model selectors |
-| `longContextEnabled` | `false` | Base value for the live GPT-5.6 1M context policy; GPT Auth Settings may override it in the `codex-llm` namespace |
+| `longContextEnabled` | `false` | Live model-specific GPT-6/6.1 / GPT-5.6 long-context policy, editable through the `llm-codex-auth` Config Form |
+| `excludedModelIds` | `[]` | Per-profile exact model IDs hidden after catalog completion and context policy; editable through GPT Auth Settings |
 | `transport` | `sse` | Streaming transport: `sse`, `websocket`, or `auto` (WebSocket first with SSE fallback). SSE is the default: the WebSocket upgrade is unreliable through common HTTP proxies, and every new conversation pays the connect timeout before `auto` falls back |
 | `websocketConnectTimeoutMs` | `5000` | WebSocket connect timeout in milliseconds (used only when `transport` is not `sse`; `0` disables it) |
 | `timeoutMs` | `120000` | Request timeout in milliseconds (SSE response-header phase; also the WebSocket message idle interval; `0` disables it) |
@@ -421,13 +496,21 @@ Do not also add an `openai-codex` entry under `llm-pi-ai.providers` or install
 ## Security and limitations
 
 - Token values never enter the browser, settings, logs, session events, tool
-  metadata, search requests, or image results. Only Host-side requests receive
+  metadata, browser-visible search parameters, or image results. Only Host-side requests receive
   authorization headers.
 - Status may include locally decoded account ID and plan claims; these are
   identity/status facts, not credentials.
 - Refresh writes preserve unknown fields and atomically replace the auth file
   with owner-only (`0600`) permissions.
-- The status/login RPC channel is restricted to loopback authorities.
+- The account RPC dispatcher is enabled only when the public WebServer bind is
+  exactly `127.0.0.1`. Missing, `0.0.0.0`, and unknown binds get a fixed,
+  value-free `loopback-required` handler that never reaches auth services.
+  Alpha.5 has no public per-method or carrier authority fact, so custom
+  owner-contained transports are conservatively denied. Client `isLoopback`
+  only hides the Settings surface as UX; it is not an authorization boundary.
+  In particular, an all-interface Host opened through a localhost URL may show
+  the Settings row while every account action is still denied by Host RPC.
+- Non-loopback clients omit the GPT Auth Settings and account-RPC bindings but keep the `generate_image` and `list_images` result views registered.
 - Image attachment IDs are not bearer capabilities: session history must contain
   the corresponding durable ImageBlock.
 - When Codex stores credentials only in the OS keyring, `auth.json` may contain
@@ -451,11 +534,10 @@ pnpm run check
 - `lib/compaction.js` — experimental custom-preset Dual Checkpoint compaction Adapter;
 - `lib/native-checkpoint.js` — versioned Host codec and replay compatibility contract;
 - `lib/invariant.js` — invariant companion;
-- `lib/client.js` — loader-compatible browser plugin with inline CSS Modules;
+- `lib/client.cjs` — loader-compatible browser plugin with inline CSS Modules;
 - `lib/types/**` — declarations.
 
-See [`docs/design.md`](docs/design.md), [`CONTEXT.md`](CONTEXT.md), and the
-[architecture decisions](docs/adr/).
+See [`docs/design.md`](docs/design.md) and the [architecture decisions](docs/adr/).
 
 ## Friendship links
 

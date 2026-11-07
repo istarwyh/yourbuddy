@@ -48,9 +48,20 @@
     "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
     "Set @deepseek-ai/dsh-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
     "Set @deepseek-ai/dsh-tools peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-typert-protocol peer range from 0.1.7-rc.2 to 0.2.0-rc.1."
+    "Set @deepseek-ai/dsh-typert-protocol peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-api-remotes peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-connection peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-locale peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-layout peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-primitives peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-settings peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-settings-plugins peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-settings peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-tools peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-typert-protocol peer range from 0.2.0-rc.1 to 0.2.0-rc.2."
   ],
   "repository": "https://github.com/oil-oil/dsh-oil-creator",
   "license": "MIT",
-  "treeSha256": "d6c78466b711a77d143d506b563f94c3814b239db4eb612ad4e46ce02667453e"
+  "treeSha256": "46d2eb3d02aa1ce8cc74cf36e2b4704f5cfbf1636904d3120e718dd142dc13ad"
 }

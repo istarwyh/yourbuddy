@@ -1,14 +1,17 @@
-import type { Context, Volatile } from '@deepseek-ai/cordis';
+import type { Context } from '@deepseek-ai/cordis';
 import z from '@deepseek-ai/schemastery';
 import type { WebSearchProvider, WebSearchRequest, WebSearchResult } from '@deepseek-ai/dsh-web';
 import type { CodexAuthService } from './codex-auth-service.ts';
+import { type LiveValue } from './volatile-config.ts';
 /** Stable provider id selected by DSH's stock `web_search` Capability Tool. */
 export declare const CODEX_SEARCH_PROVIDER_ID = "codex";
 /** Official standalone search endpoint used by Codex 0.147.0. */
 export declare const CODEX_SEARCH_ENDPOINT = "https://chatgpt.com/backend-api/codex/alpha/search";
-export declare const CODEX_SEARCH_SETTINGS_NAMESPACE: import("@deepseek-ai/dsh-settings").SettingsNamespace;
+export declare const CODEX_SEARCH_SETTINGS_NAMESPACE = "codex-search";
 export type CodexSearchMode = 'live' | 'cached' | 'indexed';
 export type CodexSearchContextSize = 'low' | 'medium' | 'high';
+/** Codex ChatGPT-sign-in replacement for retired `gpt-5.4`. */
+export declare const DEFAULT_CODEX_SEARCH_FALLBACK_MODEL = "gpt-5.6-terra";
 /** Independently live settings for the Global Codex Search Provider. */
 export interface CodexSearchSettings {
     enabled: boolean;
@@ -18,11 +21,11 @@ export interface CodexSearchSettings {
     maxOutputTokens: number;
 }
 export interface Config {
-    enabled: Volatile<boolean>;
-    mode: Volatile<CodexSearchMode>;
-    contextSize: Volatile<CodexSearchContextSize>;
-    fallbackModel: Volatile<string>;
-    maxOutputTokens: Volatile<number>;
+    enabled: LiveValue<boolean>;
+    mode: LiveValue<CodexSearchMode>;
+    contextSize: LiveValue<CodexSearchContextSize>;
+    fallbackModel: LiveValue<string>;
+    maxOutputTokens: LiveValue<number>;
 }
 export declare const Config: z<Config>;
 export interface CodexSearchProviderOptions {

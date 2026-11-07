@@ -106,9 +106,27 @@
       "file": "patches/better-sidebar-office-preview-routing.patch",
       "sha256": "cbbdcc022a8efbdd85f60053acc244abae04ba4a80d9579fb607e59e9b2518de",
       "purpose": "Route workbench PDF, Word, PowerPoint, and Excel opens to existing native DSH previews, preserve the Files tree, and rebuild both client channels with the pinned recipe."
-    }
+    },
+    "Set @deepseek-ai/dsh-agent peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-brand peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-locale peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-conversation peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-primitives peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-settings peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-sidebar-browser peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-sidebar-documentpreview peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-sidebar-right peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-ui-workspace peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-host-webserver peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-invariants peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-llm peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-session peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-settings peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-subagent peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-tools peer range from 0.2.0-rc.1 to 0.2.0-rc.2."
   ],
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "1469d1a36a53c2916ac8ffce08f0c35d774ae1599a886d495be4246f85cb146b"
+  "treeSha256": "be9183acb7b66e8baf86b1e31fbadfc371dc08fddb7f1c643cf439a9d7ade943"
 }

@@ -11,6 +11,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import semver from 'semver'
 
+import { hashExternalSnapshot } from './bundle-harness-source.mjs'
+import { applyApprovedPeerOverrides } from './product-plugin-compatibility.mjs'
 import {
   assertCurrentDshRelease,
   readDshUpstreamRecord,
@@ -116,6 +118,29 @@ export function retargetProductDshPeers(input) {
     }
   }
   writeJson(pluginPolicyPath, pluginPolicy)
+
+  for (const plugin of pluginPolicy.plugins ?? []) {
+    if (typeof plugin.destination !== 'string') continue
+    const snapshotRoot = join(input.productRoot, plugin.destination)
+    const manifestPath = join(snapshotRoot, 'package.json')
+    if (!existsSync(manifestPath)) continue
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    const patches = applyApprovedPeerOverrides(manifest, plugin)
+    if (patches.length === 0) continue
+    writeJson(manifestPath, manifest)
+    const sourceRecordPath = join(snapshotRoot, 'YOURBUDDY_UPSTREAM.json')
+    if (existsSync(sourceRecordPath)) {
+      const sourceRecord = JSON.parse(readFileSync(sourceRecordPath, 'utf8'))
+      const recorded = Array.isArray(sourceRecord.patches) ? sourceRecord.patches : []
+      sourceRecord.patches = [
+        ...recorded,
+        ...patches.filter(patch => !recorded.includes(patch)),
+      ]
+      sourceRecord.treeSha256 = hashExternalSnapshot(snapshotRoot)
+      writeJson(sourceRecordPath, sourceRecord)
+    }
+    changed += patches.length
+  }
 
   for (const directory of input.policy.firstPartyPeerPackages) {
     const manifestPath = join(input.productRoot, directory, 'package.json')

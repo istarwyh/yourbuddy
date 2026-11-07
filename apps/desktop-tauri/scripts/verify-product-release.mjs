@@ -147,6 +147,22 @@ export function recordProductClientResponse(target, responseUrl, status) {
   }
 }
 
+/** Runs inside the embedded browser frame; keep this function closure-free. */
+export async function probeCodexAuthStatus() {
+  const response = await fetch('/api/codex-auth/status', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: 'yourbuddy-release-codex-auth-status',
+      method: 'codex-auth/status',
+      payload: {},
+    }),
+  })
+  const body = await response.text()
+  return { status: response.status, body: response.ok ? JSON.parse(body) : body }
+}
+
 /**
  * Validate the GPT Auth status response returned through its dedicated Connection channel.
  * @param {{ status: number, body: unknown }} probe
@@ -1460,20 +1476,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       throw new Error(`desktop Host token exchange did not reach the clean root URL: ${embeddedUrl ?? 'no frame'}`)
     }
     if (embeddedFrame === undefined) throw new Error('desktop Host frame is unavailable for the GPT Auth status probe')
-    const codexAuthStatusProbe = await embeddedFrame.evaluate(async () => {
-      const response = await fetch('/codex-auth/status', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          type: 'client-request',
-          rpcId: 'yourbuddy-release-codex-auth-status',
-          method: 'status',
-          payload: {},
-        }),
-      })
-      const body = await response.text()
-      return { status: response.status, body: response.ok ? JSON.parse(body) : body }
-    })
+    const codexAuthStatusProbe = await embeddedFrame.evaluate(probeCodexAuthStatus)
     assertCodexAuthStatusProbe(codexAuthStatusProbe)
     await completeProductOnboarding(embedded)
     const workbenchFrame = embedded.locator('[data-dsh-frame][data-workbench-primary]').first()

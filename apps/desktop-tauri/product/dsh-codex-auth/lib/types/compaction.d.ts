@@ -32,12 +32,12 @@ type PortableSummaryResult = {
     rawOutput?: ContentBlock[];
     llmStreamCall?: never;
 });
-declare const DSH_RUNTIME_PACKAGES: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-compaction-basic", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-token-meter"];
+declare const DSH_RUNTIME_PACKAGES: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-compaction-basic", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-token-meter"];
 type DshRuntimePackage = typeof DSH_RUNTIME_PACKAGES[number];
-/** Exact runtime pair whose rc.2 framing and pi conversion behavior this Adapter uses. */
+/** Exact runtime pair verified against both npm and the matching source artifacts. */
 export declare const CODEX_COMPACTION_COMPATIBILITY: Readonly<{
-    dsh: "0.1.1-rc.2";
-    piAi: "0.82.1";
+    dsh: "0.2.0-rc.2";
+    piAi: "0.87.1";
 }>;
 /** Runtime facts accepted by the compatibility assertion. */
 export interface CodexCompactionRuntimeVersions {
