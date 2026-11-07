@@ -421,7 +421,10 @@ export function RightbarSeat({
 
   // Republished on every committed change: the service's readers answer from the
   // last commit, and its commands act on the session actually on screen.
-  useEffect(
+  // Bind in the layout phase: an initializing surface causes another commit,
+  // and passive-effect cleanup would otherwise clear the binding before a
+  // Conversation opener's passive effect can use its mounted snapshot.
+  useLayoutEffect(
     () => active
       ? bindService({ sessionId, actions, surfaces, autoFullscreen,
         closeWithFocus: (paneId, close) => { closeWithPaneFocus(document, sessionId, paneId, close) },

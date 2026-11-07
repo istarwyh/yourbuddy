@@ -32,8 +32,8 @@ function planHook(plans: readonly typeof plan[]): Parameters<typeof PlanCards>[0
 /** The opener's props share; each test supplies the on-screen Session hook beside it. */
 function reviewProps(review: { plan: string; callId?: typeof plan.callId }, openReview: Mock, store: ReturnType<ReturnType<typeof createPlanReviewStore>['create']>) {
   return { review, sessionId: target.session.sessionId, requestKey: 'question:1', t, openReview, actions: store.actions,
-    useStore: (select: (state: ReturnType<typeof store.getSnapshot>) => unknown) => select(store.getSnapshot()),
-  } as unknown as Parameters<typeof PlanReviewOpen>[0]
+    useStore: <S,>(select: (state: ReturnType<typeof store.getSnapshot>) => S): S => select(store.getSnapshot()),
+  } satisfies Omit<Parameters<typeof PlanReviewOpen>[0], 'useSidebarMounted'>
 }
 /** A bound `useSidebarMounted` reading one on-screen Session value. */
 function seatHook(read: () => SessionId | undefined) {
