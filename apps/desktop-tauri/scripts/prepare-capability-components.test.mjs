@@ -70,6 +70,8 @@ function coreFixture(root) {
   writeFileSync(join(harnessRoot, 'pnpm-workspace.yaml'), buildTrimmedWorkspaceYaml(readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8')))
   cpSync(join(desktopRoot, 'product/harness-pnpm-lock.yaml'), join(harnessRoot, 'pnpm-lock.yaml'))
   cpSync(join(repoRoot, 'patches'), join(harnessRoot, 'patches'), { recursive: true })
+  // The trimmed workspace declares product patches as well as repository patches.
+  cpSync(join(desktopRoot, 'product/patches'), join(harnessRoot, 'patches'), { recursive: true })
   for (const directory of ['vendor/schemastery', 'vendor/cosmokit']) {
     cpSync(join(builtRoot, directory), join(harnessRoot, directory), {
       recursive: true, filter: path => !path.split(/[\\/]/).includes('node_modules'),
