@@ -49,6 +49,8 @@ jobs:
       - name: Compile the desktop application and test Bootstrap recovery
         working-directory: apps/desktop-tauri/src-tauri
         run: |
+          cargo test --locked runtime::component_plan
+          cargo test --locked runtime::component_leases
           cargo test --locked runtime::components
           cargo test --locked runtime::boot_status::tests
           cargo test --locked runtime::provision
