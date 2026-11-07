@@ -1,0 +1,436 @@
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -744,6 +744,9 @@
+ 		  "type.claude-docs": "文档",
+ 		  "type.claude-motion": "动画",
+ 		  "create.heading": "新建",
++		  "create.loading": "正在加载工作区和会话…",
++		  "create.failed": "无法加载工作区：{message}",
++		  "create.sessionsFailed": "无法加载会话。请重新加载应用后再试。",
+ 		  "create.new": "新建",
+ 		  "create.session": "新会话",
+ 		  "prompt.claude-slides": "帮我做一份幻灯片，主题是：",
+@@ -847,6 +850,9 @@
+ 		  "type.claude-docs": "Docs",
+ 		  "type.claude-motion": "Motion",
+ 		  "create.heading": "Make something new",
++		  "create.loading": "Loading workspaces and sessions…",
++		  "create.failed": "Could not load workspaces: {message}",
++		  "create.sessionsFailed": "Could not load sessions. Reload the app and try again.",
+ 		  "create.new": "New",
+ 		  "create.session": "New session",
+ 		  "prompt.claude-slides": "Make me a slide deck about: ",
+@@ -1509,7 +1515,7 @@
+ 		      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "bda-menu-label", children: t("create.session") })
+ 		    ] }),
+ 		    skills.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "bda-menu-rule", role: "separator" }),
+-		    skills.map((skill) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", className: "bda-menu-item", role: "menuitem", "data-skill": skill, onClick: () => create(skill), style: { "--bda-tint": tintOf(skill) }, children: [
++		    skills.map((skill) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", className: "bda-menu-item", role: "menuitem", "data-skill": skill, disabled: !canCreate, onClick: () => create(skill), style: { "--bda-tint": tintOf(skill) }, children: [
+ 		      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { color: "color-mix(in srgb,var(--bda-tint) 78%,var(--dsw-alias-label-primary))" }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(TypeIcon, { skill, size: 16 }) }),
+ 		      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "bda-menu-label", children: t(`type.${skill}`) })
+ 		    ] }, skill))
+@@ -1693,12 +1699,24 @@
+ 		  }
+ 		}
+ 		function ArtifactsPage(props) {
+-		  const { t, updates, artifactsStore, sessionsStore, reloadArtifacts, openArtifact, create, canCreate, createOptions, installOptions, pluginOf, install: install2, canInstall, openPlugins, canOpenPlugins, pin, rename, copyLink, remove, undo, thumbnailUrl, watchThumbnails, dismissToast } = props;
++		  const { t, updates, artifactsStore, sessionsStore, workspacesStore, refreshSessions, reloadArtifacts, openArtifact, create, canCreate, createOptions, installOptions, pluginOf, install: install2, canInstall, openPlugins, canOpenPlugins, pin, rename, copyLink, remove, undo, thumbnailUrl, watchThumbnails, dismissToast } = props;
+ 		  const state = (0, import_react2.useSyncExternalStore)(artifactsStore.subscribe, artifactsStore.getSnapshot);
+ 		  const updateState = useUpdateState();
+ 		  const run2 = updateState.install ?? null;
+ 		  const [installing, setInstalling] = (0, import_react2.useState)(null);
+ 		  const sessions = (0, import_react2.useSyncExternalStore)(sessionsStore.subscribe, sessionsStore.getSnapshot);
++		  const workspaces = (0, import_react2.useSyncExternalStore)(workspacesStore.subscribe, workspacesStore.getSnapshot);
++		  const creationReady = sessions.phase === "ready" && workspaces.phase === "ready";
++		  const workspaceFailed = workspaces.phase !== "ready" && workspaces.state === "error";
++		  const [sessionReadFinished, setSessionReadFinished] = (0, import_react2.useState)(false);
++		  const creationFailed = workspaceFailed || sessions.phase !== "ready" && sessionReadFinished;
++		  (0, import_react2.useEffect)(() => {
++		    if (sessions.phase === "ready") return;
++		    let active = true;
++		    const finished = () => { if (active) setSessionReadFinished(true); };
++		    void refreshSessions().then(finished, finished);
++		    return () => { active = false; };
++		  }, [sessions.phase, refreshSessions]);
+ 		  const [query, setQuery] = (0, import_react2.useState)("");
+ 		  const [searching, setSearching] = (0, import_react2.useState)(false);
+ 		  const [filters, setFilters] = (0, import_react2.useState)(NO_FILTERS);
+@@ -1828,12 +1846,13 @@
+ 		              children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Icon, { d: layout === "grid" ? ICON.list : ICON.grid, size: 18 })
+ 		            }
+ 		          ),
+-		          canCreate() && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", className: "bda-tool", "aria-label": t("create.new"), title: t("create.new"), "aria-haspopup": "menu", "aria-expanded": popup?.kind === "create", onClick: (e) => toggle("create", e.currentTarget), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Icon, { d: ICON.plus, size: 18 }) })
++		          canCreate() && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", className: "bda-tool", disabled: !creationReady, "aria-label": t("create.new"), title: t("create.new"), "aria-haspopup": "menu", "aria-expanded": popup?.kind === "create", onClick: (e) => toggle("create", e.currentTarget), children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Icon, { d: ICON.plus, size: 18 }) })
+ 		        ] })
+ 		      ] }),
+ 		      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(UpdatePanel, { updates }),
+ 		      tiles.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
+ 		        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { className: "bda-section-title", children: t("create.heading") }),
++		        !creationReady && (0, import_jsx_runtime2.jsx)("p", { className: "bda-section-title", role: creationFailed ? "alert" : "status", children: workspaceFailed ? t("create.failed", { message: workspaces.error?.message ?? "" }) : creationFailed ? t("create.sessionsFailed") : t("create.loading") }),
+ 		        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("ul", { className: "bda-tiles", children: tiles.map((skill) => {
+ 		          const ready = usable.includes(skill);
+ 		          const own = run2 !== null && skill === ranFor ? run2 : null;
+@@ -1843,6 +1862,8 @@
+ 		            {
+ 		              type: "button",
+ 		              className: "bda-tile",
++		              disabled: ready && !creationReady,
++		              "aria-busy": ready && !creationReady && !creationFailed,
+ 		              "data-skill": skill,
+ 		              ...ready ? {} : { "data-missing": "true", "aria-haspopup": "dialog", title: t("tile.hint", { type: t(`type.${skill}`) }) },
+ 		              style: { "--bda-tint": tintOf(skill) },
+@@ -1887,7 +1908,7 @@
+ 		      {
+ 		        anchor: popup.anchor,
+ 		        skills: usable,
+-		        canCreate: canCreate(),
++		        canCreate: canCreate() && creationReady,
+ 		        t,
+ 		        onClose: closePopup,
+ 		        create: (skill) => {
+@@ -2042,27 +2063,8 @@
+ 		    store.set({ opening: view.root, toast: null });
+ 		    void (async () => {
+ 		      try {
+-		        const response = await fetch(`${route2(openPath)}?${new URLSearchParams({ root: view.root })}`, { method: "POST" });
+-		        const body = await response.json().catch(() => ({}));
+-		        if (!response.ok || typeof body.url !== "string") throw new Error(typeof body.error === "string" ? body.error : `HTTP ${response.status}`);
+-		        const url = body.url;
+-		        const sessionId = typeof body.sessionId === "string" ? body.sessionId : view.sessionId;
+-		        const sessions = ctx.get("sessions");
+-		        const workspaces = ctx.get("workspaces");
+-		        const workspace = ctx.get("uiWorkspace");
+-		        const sidebar = ctx.get("sidebarRight");
+-		        const tabs = ctx.get("sidebarRightTabs");
+-		        const reachable = workspace !== void 0 && linkState(sessionId, sessions?.list?.getSnapshot(), workspaces?.list?.getSnapshot()) === "available";
+-		        if (reachable) {
+-		          workspace.openSession(sessionId);
+-		          const shown = sidebar !== void 0 && tabs?.get("browser") !== void 0 && await openInSidebar(sidebar, sessionId, url);
+-		          if (!shown) window.open(url, "_blank", "noopener,noreferrer");
+-		          store.set({ opening: null });
+-		        } else {
+-		          window.open(url, "_blank", "noopener,noreferrer");
+-		          store.set({ opening: null });
+-		          toast(t("open.noSession"));
+-		        }
++		        await openDesignThread(ctx, view.sessionId, view.root);
++		        store.set({ opening: null });
+ 		        reload();
+ 		      } catch (error) {
+ 		        store.set({ opening: null });
+@@ -2084,13 +2086,53 @@
+ 		      failed(error);
+ 		    }
+ 		  };
++/** Start an unsent design draft using the desktop's existing Session services. */
++async function startDesignDraft(ctx, prompt, agentPreset) {
++  // Pending is not an empty installation. The UI enables creation after both baselines arrive.
++  if (ctx.workspaces.list.getSnapshot().phase !== 'ready'
++    || ctx.sessions.list.getSnapshot().phase !== 'ready') return;
++  const navigation = ctx.layout.beginNavigation();
++  const catalog = ctx.sessions.list.getSnapshot();
++  const current = Object.values(catalog.byId).find(item => (item.retainedBy.mainView ?? 0) > 0);
++  const workspaces = ctx.workspaces.list.getSnapshot().items;
++  let workspace = workspaces.find(item => item.sessionIds.includes(current?.id));
++  workspace ??= [...workspaces].sort((left, right) => {
++    const activity = item => Math.max(Date.parse(item.updatedAt) || 0,
++      ...item.sessionIds.map(id => catalog.byId[id]?.updatedAt ?? 0));
++    return activity(right) - activity(left);
++  })[0];
++  if (workspace === undefined) workspace = await ctx.workspaces.initializeDefault(navigation);
++  if (navigation.aborted) return;
++  if (workspace === undefined) throw new Error('No workspace is available for the design draft.');
++  const preset = agentPreset ?? current?.projectionValues?.agentPreset;
++  // Always create: workspace navigation may otherwise reuse an existing unsent draft.
++  const sessionId = await ctx.sessions.create({ workspaceId: workspace.workspaceId });
++  if (navigation.aborted) return;
++  if (typeof preset === 'string') {
++    const selected = await ctx.remote.agentPresets.select(sessionId, preset);
++    if (!selected.ok) throw selected.error;
++  }
++  if (navigation.aborted) return;
++  await ctx.sessions.using(sessionId, { source: 'controllerOperation', signal: navigation }, async reference => {
++    await reference.ready;
++    if (navigation.aborted) return;
++    const input = ctx.conversation.input.for(reference.binding.ctx);
++    input.setDraft(prompt);
++    // openSession retains the new main view before using() releases its reference.
++    ctx.uiWorkspace.openSession(sessionId);
++    input.focus();
++  });
++  return sessionId;
++}
++
+ 		  const create = (skill) => {
++		    if (ctx.workspaces.list.getSnapshot().phase !== "ready" || ctx.sessions.list.getSnapshot().phase !== "ready") return;
+ 		    const nav = workspaceNav();
+ 		    if (typeof nav?.startSession !== "function") return;
+ 		    if (skill === void 0 || !isSkill(skill)) return nav.startSession();
+ 		    const place = places.get(skill);
+ 		    const agentPreset = place !== void 0 && !place.everywhere && !(defaultPreset !== void 0 && place.presets.includes(defaultPreset)) ? place.presets[0] : void 0;
+-		    nav.startSession(void 0, { prompt: promptFor(skill, t), whenDraftExists: "append", ...agentPreset === void 0 ? {} : { agentPreset } });
++		    void startDesignDraft(ctx, promptFor(skill, t), agentPreset).catch(failed);
+ 		  };
+ 		  const pin = (view, pinned) => {
+ 		    if (!ownPluginThere(view)) return;
+@@ -2201,6 +2243,11 @@
+ 		    };
+ 		  };
+ 		  disposers.push(() => watching?.abort(new Error("the plugin stopped")));
++		  const refreshSessions = () => ctx.sessions.refresh();
++		  const workspacesStore = {
++		    subscribe: listener => ctx.workspaces.list.subscribe(listener),
++		    getSnapshot: () => ctx.workspaces.list.getSnapshot(),
++		  };
+ 		  const sessionsStore = () => {
+ 		    const list = ctx.get("sessions")?.list;
+ 		    return isStore(list) ? list : EMPTY_SESSIONS;
+@@ -2216,6 +2263,8 @@
+ 		          updates,
+ 		          artifactsStore: store,
+ 		          sessionsStore: sessionsStore(),
++		          workspacesStore,
++		          refreshSessions,
+ 		          reloadArtifacts: reload,
+ 		          openArtifact: open,
+ 		          create,
+@@ -2301,6 +2350,7 @@
+ 		  "card.title": "已将对“{title}”的评论发给 Agent",
+ 		  "card.request": "已将“{title}”上的 {label} 发给 Agent",
+ 		  "card.view": "查看评论",
++		  "card.openFailed": "无法打开设计：{message}",
+ 		  "card.more": "显示位置",
+ 		  "card.less": "收起位置"
+ 		};
+@@ -2308,6 +2358,7 @@
+ 		  "card.title": "Comment on “{title}” sent to agent",
+ 		  "card.request": "{label} on “{title}” sent to agent",
+ 		  "card.view": "View thread",
++		  "card.openFailed": "Could not open the design: {message}",
+ 		  "card.more": "Show where",
+ 		  "card.less": "Hide where"
+ 		};
+@@ -2325,6 +2376,7 @@
+ 		    simple: str(source.plugin) === SIMPLE_CARD,
+ 		    title: str(source.title),
+ 		    url: str(source.url),
++		    root: str(source.root),
+ 		    threads: threads.map((t) => ({ id: str(t.id), where: str(t.where), text: str(t.text) })).filter((t) => t.id),
+ 		    requests: requests.map((r) => ({ id: str(r.id), label: str(r.label), text: str(r.text) })).filter((r) => r.id && r.text),
+ 		    seq: event.seq
+@@ -2404,8 +2456,9 @@
+ 		function ChevronRight() {
+ 		  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("svg", { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none", "aria-hidden": "true", style: iconStyle, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("path", { d: "M4.5 3 7.5 6l-3 3", stroke: "currentColor", strokeWidth: "1.3", strokeLinecap: "round", strokeLinejoin: "round" }) });
+ 		}
+-		function Card2({ simple, title, thread, url, t, openThread }) {
++		function Card2({ simple, title, thread, url, root, t, openThread }) {
+ 		  const [open, setOpen] = (0, import_react3.useState)(true);
++		  const [failure, setFailure] = (0, import_react3.useState)("");
+ 		  const heading = t("card.title", { title });
+ 		  const meta = !simple && (thread.where || url);
+ 		  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "bdc-card", "data-comment-id": thread.id, children: [
+@@ -2415,9 +2468,10 @@
+ 		      meta && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "button", className: "bdc-toggle", "aria-expanded": open, "aria-label": t(open ? "card.less" : "card.more"), onClick: () => setOpen(!open), children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronDown, {}) })
+ 		    ] }),
+ 		    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "bdc-body", children: thread.text }),
++		    failure && (0, import_jsx_runtime3.jsx)("div", { role: "alert", children: t("card.openFailed", { message: failure }) }),
+ 		    meta && open && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "bdc-meta", children: [
+ 		      thread.where && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "bdc-where", children: thread.where }),
+-		      url && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("button", { type: "button", className: "bdc-view", onClick: () => openThread(url, thread.id), children: [
++		      url && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("button", { type: "button", className: "bdc-view", onClick: () => { setFailure(""); void openThread(root, thread.id).catch(error => setFailure(error.message)); }, children: [
+ 		        t("card.view"),
+ 		        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronRight, {})
+ 		      ] })
+@@ -2443,13 +2497,81 @@
+ 		  ] });
+ 		}
+ 		function CommentCards({ node, t, openThread }) {
+-		  const { simple, title, url, threads, requests } = node.data;
++		  const { simple, title, url, root, threads, requests } = node.data;
+ 		  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "bdc-row", children: [
+-		    threads.map((thread) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Card2, { simple: simple === true, title, thread, url, t, openThread }, thread.id)),
++		    threads.map((thread) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Card2, { simple: simple === true, title, thread, url, root, t, openThread }, thread.id)),
+ 		    (requests ?? []).map((request) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(RequestCardView, { title, request, t }, request.id))
+ 		  ] });
+ 		}
+-		var inject = ["slots", "locale", "uiConversation"];
++		var inject = ["slots", "locale", "uiConversation", "layout", "sessions", "workspaces", "conversation", "uiWorkspace", "remote", "remote.agentPresets"];
++/** Reopen the managed artifact and reveal a comment in its original conversation. */
++async function openDesignThread(ctx, sessionId, root, threadId) {
++  const sidebar = ctx.get('sidebarRight');
++  const tabs = ctx.get('sidebarRightTabs');
++  if (sidebar === undefined || tabs?.get('browser') === undefined) {
++    throw new Error('Enable the Browser sidebar tab to view this design comment.');
++  }
++  const layout = ctx.get('layout');
++  const workspace = ctx.get('uiWorkspace');
++  if (layout === undefined || workspace === undefined) {
++    throw new Error('Open the desktop conversation view before viewing this design comment.');
++  }
++  const navigation = layout.beginNavigation();
++  let response;
++  let revealing = false;
++  try {
++    // Match the published artifacts route relative to the application's mount.
++    response = await fetch(`api/baoyu-design.artifacts.open?${new URLSearchParams({ root })}`, {
++      method: 'POST', signal: navigation,
++    });
++    const body = await response.json();
++    if (navigation.aborted) return;
++    if (!response.ok) throw new Error(body.error ?? `Cannot open the design artifact (HTTP ${response.status}).`);
++    if (typeof body.url !== 'string') throw new Error('The design server did not return an editor URL.');
++    const target = new URL(body.url);
++    if (threadId !== undefined) target.searchParams.set('comment', threadId);
++    revealing = true;
++    workspace.openSession(sessionId);
++    // Revealing our own conversation ends the previous layout navigation.
++    const opening = layout.beginNavigation();
++    const accepted = await openWhenAdopted(sidebar, sessionId, target.href, opening);
++    return accepted ? target.href : undefined;
++  } catch (error) {
++    if (navigation.aborted && !revealing) return;
++    throw error;
++  }
++}
++
++/** Wait for the session's sidebar store, without retaining a stale navigation. */
++function openWhenAdopted(sidebar, sessionId, url, signal) {
++  return new Promise((resolve, reject) => {
++    let settled = false;
++    let timer;
++    let stop = () => {};
++    const finish = (error, accepted = false) => {
++      if (settled) return;
++      settled = true;
++      clearTimeout(timer);
++      stop();
++      signal.removeEventListener('abort', aborted);
++      if (error) reject(error);
++      else resolve(accepted);
++    };
++    const aborted = () => finish(undefined);
++    const attempt = () => {
++      if (settled) return;
++      if (signal.aborted) return aborted();
++      try {
++        if (sidebar.openTabIn(sessionId, 'browser', { params: { url } })) finish(undefined, true);
++      } catch (error) { finish(error); }
++    };
++    stop = sidebar.onSessionAdopted(id => { if (id === sessionId) attempt(); });
++    signal.addEventListener('abort', aborted, { once: true });
++    timer = setTimeout(() => finish(new Error('The conversation sidebar is not ready. Reopen the conversation and try View thread again.')), 5000);
++    attempt();
++  });
++}
++
+ 		function threadUrl(url, id) {
+ 		  try {
+ 		    const at = new URL(url);
+@@ -2483,13 +2605,7 @@
+ 		        key: KIND,
+ 		        locale: NS3,
+ 		        inject: (sessionId) => ({
+-		          openThread: (url, threadId) => {
+-		            const target = threadUrl(url, threadId);
+-		            const sidebar = ctx.get("sidebarRight");
+-		            const tabs = ctx.get("sidebarRightTabs");
+-		            if (sidebar && tabs?.get("browser") !== void 0) sidebar.openTabIn(sessionId, "browser", { params: { url: target } });
+-		            else window.open(target, "_blank", "noopener,noreferrer");
+-		          }
++		          openThread: (root, threadId) => openDesignThread(ctx, sessionId, root, threadId)
+ 		        })
+ 		      },
+ 		      CommentCards
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -50,7 +50,7 @@
+ };
+ var OPEN_TIMEOUT_MS = 3e4;
+ var TITLE_MAX = 200;
+-var EDITOR_FILES = [".artifact-server.json", ".artifact-server.log", ".sharing.json", ".gitignore", ".DS_Store", "comments.json", "history", "exports"];
++var EDITOR_FILES = [".yourbuddy-design.lock", ".artifact-server.json", ".artifact-server.log", ".sharing.json", ".gitignore", ".DS_Store", "comments.json", "history", "exports"];
+ var FOLDER = {
+   "claude-slides": ["project"],
+   "claude-design": ["project"],
+@@ -373,7 +373,7 @@
+       const script = host.script(record.skill);
+       if (script === null) return notInstalled(record);
+       try {
+-        const { url, reused } = await runOpen(node, script, root);
++        const { url, reused } = await host.open(script, root, record.sessionId);
+         const again = recordOpened(record.skill, record.plugin, record.sessionId, root);
+         opened(again, script);
+         return json({ url, reused, sessionId: again.sessionId, title: again.title });
+@@ -399,7 +399,7 @@
+       const script = host.script(record.skill);
+       if (script === null) return notInstalled(record);
+       try {
+-        const { url, reused } = await runOpen(node, script, root);
++        const { url, reused } = await host.open(script, root, record.sessionId);
+         if (!reused) started.set(root, record.openedAt);
+         return json({ url, reused });
+       } catch (error) {
+@@ -421,7 +421,7 @@
+       const script = host.script(record.skill);
+       if (script === null) return notInstalled(record);
+       try {
+-        await runScript(node, script, ["stop", root]);
++        await host.close(root);
+         return json({ stopped: true });
+       } catch (error) {
+         return json({ error: error.message }, 500);
+@@ -491,7 +491,7 @@
+       if (record === null) return notRecorded();
+       try {
+         const script = host.script(record.skill);
+-        if (script !== null && isDeletable(record.skill, root)) await runScript(node, script, ["stop", root]).catch(() => null);
++        if (script !== null && isDeletable(record.skill, root)) await host.close(root);
+         started.delete(root);
+         return json(trashArtifact(record));
+       } catch (error) {
+@@ -684,6 +684,7 @@
+   }
+ }
+ var name = "claude-artifacts";
++var inject = ["yourbuddyDesign"];
+ var COMMENT_SOURCE = "baoyu-design-comment";
+ var SUMMARY_MAX = 120;
+ var SESSION_CHECK_MS = 6e4;
+@@ -973,7 +974,7 @@
+ }
+ function start(ctx, node) {
+   const find = pluginFinder(ctx);
+-  const watcher = new CommentWatcher(ctx, node);
++  const watcher = { watch() {}, dispose() {} };
+   ctx.effect(() => () => watcher.dispose(), `${PLUGIN}: comment waits`);
+   ctx.on("tools/result", (exec, result) => {
+     const opened = openedEditor(exec, result);
+@@ -988,7 +989,7 @@
+     }
+   });
+   const manager = () => ctx.get("pluginManager");
+-  const updates = updateChecker([PLUGIN, ...SKILLS.map((skill) => skill.plugin)], manager);
++  const updates = async () => ({ updates: [], failed: [], notes: [] });
+   const install = async (plugin) => {
+     const skill = SKILLS.find((s) => s.plugin === plugin);
+     if (skill === void 0 || !skill.published) return { error: `${plugin || "that"} is not a plugin baoyu-design publishes`, status: 404 };
+@@ -1010,7 +1011,9 @@
+           const skill = SKILLS.find((s) => s.name === name2);
+           return skill === void 0 ? null : find(skill)?.script ?? null;
+         },
+-        places: () => skillPlaces(ctx, find),
++        open: (...args) => ctx.yourbuddyDesign.open(...args),
++        close: root => ctx.yourbuddyDesign.close(root),
++        places: () => ({ ...skillPlaces(ctx, find), skills: skillPlaces(ctx, find).skills.filter(skill => skill.skill === "claude-design") }),
+         updates,
+         installTarget: install
+       },
+@@ -1033,5 +1036,7 @@
+   jsonObject,
+   jsonObjects,
+   name,
+-  openedEditor
++  openedEditor,
++  recordOpened,
++  inject
+ };

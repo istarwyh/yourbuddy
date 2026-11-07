@@ -1,0 +1,8 @@
+# Bundled source and exact dependencies; independent rows preserve the main workbench.
+- insert:
+    - id: yourbuddy-design
+      name: dsh-yourbuddy-design
+    - id: claude-artifacts-design
+      name: dsh-claude-artifacts
+    - id: claude-design
+      name: dsh-claude-design

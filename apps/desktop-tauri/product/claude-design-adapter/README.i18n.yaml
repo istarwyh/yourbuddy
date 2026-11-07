@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write apps/desktop-tauri/product/claude-design-adapter/README.md
+/dsh-yourbuddy-design:
+  en: 79a91ee0d48a4736
+  zh: 90b0b06700b9aae0
+/dsh-yourbuddy-design/use:
+  en: a77391196724edd4
+  zh: 7e3afdb3cb57caf4
+/dsh-yourbuddy-design/configuration-and-verification:
+  en: 1364edebd6a5d4ba
+  zh: 530a4727c5d24fe3

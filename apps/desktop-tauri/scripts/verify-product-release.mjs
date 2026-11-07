@@ -77,6 +77,7 @@ const syntheticHostProxy = 'http://127.0.0.1:9'
 
 /** Product Client packages that must execute during the assembled Web smoke. */
 export const PRODUCT_CLIENT_IDS = [
+  'dsh-claude-artifacts',
   'dsh-codex-auth',
   'dsh-better-sidebar',
   'dsh-ego-browser',
@@ -90,6 +91,7 @@ export const PRODUCT_CLIENT_IDS = [
 
 /** Product Clients available before any optional component is installed. */
 export const CORE_PRODUCT_CLIENT_IDS = [
+  'dsh-claude-artifacts',
   'dsh-codex-auth',
   'dsh-better-sidebar',
   'dsh-ego-browser',
@@ -98,6 +100,12 @@ export const CORE_PRODUCT_CLIENT_IDS = [
   'dsh-personal-workbench',
   '@xiaohui-wang/dsh-pomodoro',
   'dsh-oil-creator',
+]
+
+/** Product workspace packages; upstream Artifacts is an exact registry dependency. */
+export const CORE_PRODUCT_PACKAGE_IDS = [
+  ...CORE_PRODUCT_CLIENT_IDS.filter(name => name !== 'dsh-claude-artifacts'),
+  'dsh-yourbuddy-design',
 ]
 
 /** Required optional packages; missing artifacts never reduce release coverage. */
@@ -319,7 +327,7 @@ export function assertCoreProductComposition(root) {
   const names = readdirSync(productRoot, { withFileTypes: true })
     .filter(entry => entry.isDirectory())
     .map(entry => JSON.parse(readFileSync(join(productRoot, entry.name, 'package.json'), 'utf8')).name)
-  if (JSON.stringify(names.sort()) !== JSON.stringify([...CORE_PRODUCT_CLIENT_IDS].sort())) {
+  if (JSON.stringify(names.sort()) !== JSON.stringify([...CORE_PRODUCT_PACKAGE_IDS].sort())) {
     throw new Error(`core product package roster differs: ${JSON.stringify(names)}`)
   }
 }

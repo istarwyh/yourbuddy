@@ -1,0 +1,139 @@
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -57,7 +57,7 @@
+ 
+ var PLUGIN = define_PLUGIN_default;
+ var name = PLUGIN.name;
+-var inject = ["skills"];
++var inject = ["skills", "yourbuddyDesign"];
+ var BUNDLED_SKILL_RANK = 600;
+ var packageRoot = fileURLToPath(new URL("../", import.meta.url));
+ function shellQuote(path) {
+@@ -154,7 +154,7 @@
+       if (skill === void 0) throw new Error(`${PLUGIN.name}: no skill named ${candidate.name}`);
+       const raw = await readFile(candidate.path, { encoding: "utf8", signal: options?.signal });
+       const directory = dirname2(candidate.path);
+-      return { ...summary, content: skillBody(raw, candidate.path) + runtimeSection(skill, directory, node, process.platform, hostRunning()) };
++      return { ...summary, content: skillBody(raw, candidate.path) + ctx.yourbuddyDesign.runtimeInstructions };
+     }
+   };
+   ctx.skills.registerProvider(() => provider);
+--- a/package.json
++++ b/package.json
+@@ -96,7 +96,7 @@
+     "dsh": ">=0.2.0-0"
+   },
+   "dependencies": {
+-    "dsh-claude-artifacts": "^2.11.1"
++    "dsh-claude-artifacts": "2.11.1"
+   },
+   "dsh": {
+     "bundle": {
+--- a/skills/claude-design/scripts/artifact.mjs
++++ b/skills/claude-design/scripts/artifact.mjs
+@@ -3683,6 +3683,7 @@
+ async function main() {
+   const [command, ...rest] = process.argv.slice(2);
+   const { positional, flags } = parseArgs(rest);
++  if (["open", "serve", "stop", "share"].includes(command)) throw new CliError("YOURBUDDY_MANAGED_EDITOR", "Use yourbuddy_design_open or the Artifacts sidebar. YourBuddy owns editor processes.");
+   switch (command) {
+     case "open":
+       await open(resolveArtifact(positional[0]), flags);
+--- a/skills/claude-design/scripts/server.mjs
++++ b/skills/claude-design/scripts/server.mjs
+@@ -1,4 +1,6 @@
+ #!/usr/bin/env node
++var yourbuddyLocalOnly = false;
++function useYourBuddyLocalOnly() { yourbuddyLocalOnly = true; }
+ // claude-design: local editor server (prebuilt; do not edit).
+ 
+ import fs13 from "node:fs";
+@@ -149,7 +151,7 @@
+   return !thread.agent || (last.editedAt ?? last.at) > thread.agent.sentAt;
+ }
+ function sendToAgent(thread, now) {
+-  thread.agent = { status: "pending", sentAt: now };
++  thread.agent = { status: "pending", sentAt: now, sentId: newId("s") };
+   thread.updatedAt = now;
+ }
+ function markDelivered(thread, now, via) {
+@@ -529,10 +531,13 @@
+     for (const { id } of pendingForAgent(await readComments(root))) {
+       if (hookRunning.has(id)) continue;
+       hookRunning.add(id);
++      let handedRevision;
++      const revision = t => t.agent?.sentId ?? t.agent?.sentAt;
+       try {
+         const doc = await readComments(root);
+         const thread = pendingForAgent(doc).find((t) => t.id === id);
+         if (!thread) continue;
++        handedRevision = revision(thread);
+         try {
+           await handler.thread(agentViews(doc, [thread])[0]);
+         } catch (error) {
+@@ -541,12 +546,14 @@
+         }
+         await updateComments(root, (d) => {
+           const t = d.threads.find((x) => x.id === id);
+-          if (t) markDelivered(t, now(), "hook");
++          if (t && revision(t) === handedRevision) markDelivered(t, now(), "hook");
+         });
+         log(`comments: sent to the agent (handler): ${id}`);
+         await broadcast();
+       } finally {
+         hookRunning.delete(id);
++        const newer = pendingForAgent(await readComments(root)).find(t => t.id === id);
++        if (newer && revision(newer) !== handedRevision) void deliver().catch(error => log(`comments: ${error.message}`));
+       }
+     }
+     const failed = [];
+@@ -593,7 +600,7 @@
+     if (JSON.stringify(presence()) !== lastPresence && clients.size > 0) void broadcast();
+   }, Math.min(POLL_MS, PRESENCE_CHECK_MS));
+   poll.unref?.();
+-  void broadcast();
++  void broadcast().then(() => agentHook ? deliver() : undefined);
+   async function afterChange(sent) {
+     await broadcast();
+     if (sent) await deliver();
+@@ -618,6 +625,7 @@
+     await afterChange(Boolean(input.send));
+   }
+   function enqueue(input) {
++    throw new CommentsError("YOURBUDDY_COMMENT_REQUIRED", "Use Send to Agent on a saved design comment. Page-button requests are not supported in YourBuddy.", 409);
+     if (!presence().available) throw new CommentsError("AGENT_UNAVAILABLE", "no agent is waiting: copy the request for the chat instead", 409);
+     const queued = { id: newId("r"), ...input, sentAt: now() };
+     requests.push(queued);
+@@ -3220,6 +3228,7 @@
+   }
+   /** The hub took the artifact: open to the network now with `lan`, or if it was left shared. */
+   async start(lan = false) {
++    if (yourbuddyLocalOnly) return;
+     const { state } = this.sharing;
+     if (!lan && !state.lan) return;
+     if (state.port && state.port !== this.port) this.options.log(`port ${state.port} (the shared links') is not this server's; it is on ${this.port}: give the new links out again`);
+@@ -3242,6 +3251,7 @@
+    * their place for when it opens again.
+    */
+   async setLan(on) {
++    if (on && yourbuddyLocalOnly) throw new ShareError("LAN sharing is not supported in YourBuddy. Local file exports remain available.");
+     if (!on) {
+       this.on = false;
+       this.network.release();
+@@ -3458,7 +3468,7 @@
+     const online = /* @__PURE__ */ new Set();
+     for (const live of this.live) if (live.viewer.guest) online.add(live.viewer.guest.id);
+     const { links, guests } = this.sharing.state;
+-    const lan = addresses.length ? addresses : [...lanAddresses()].sort((a, b) => Number(isTailnet(a)) - Number(isTailnet(b)));
++    const lan = yourbuddyLocalOnly ? [] : addresses.length ? addresses : [...lanAddresses()].sort((a, b) => Number(isTailnet(a)) - Number(isTailnet(b)));
+     const network = lan.length ? `http://${lan[0]}:${this.port}` : base;
+     return {
+       title: this.options.title(),
+@@ -5214,5 +5224,6 @@
+   mountSite2 as mountSite,
+   readState2 as readState,
+   runningServer3 as runningServer,
+-  serveForeground2 as serveForeground
++  serveForeground2 as serveForeground,
++  useYourBuddyLocalOnly
+ };

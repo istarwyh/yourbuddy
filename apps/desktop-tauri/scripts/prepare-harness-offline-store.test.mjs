@@ -6,6 +6,7 @@ import { join } from 'node:path'
 
 import {
   frozenOfflineInstallArgs,
+  offlineStoreArchiveArgs,
   finalizeOfflineManifest,
   hashTree,
   pinPnpmInvocationArgs,
@@ -94,4 +95,11 @@ test('offline install stays on the reviewed pnpm and committed lockfile', () => 
     'install', '--prod', '--frozen-lockfile', '--offline', '--trust-lockfile',
     '--store-dir', '.yourbuddy-pnpm-store',
   ])
+})
+
+
+test('offline archive uses the macOS metadata flag only on macOS', () => {
+  const common = ['-czf', '/bundle/store.tar.gz', '-C', '/bundle', '.yourbuddy-pnpm-store']
+  assert.deepEqual(offlineStoreArchiveArgs('/bundle/store.tar.gz', '/bundle', 'linux'), common)
+  assert.deepEqual(offlineStoreArchiveArgs('/bundle/store.tar.gz', '/bundle', 'darwin'), ['--no-mac-metadata', ...common])
 })

@@ -45,6 +45,11 @@ const productAgentPresetPatches = [defaultAgentPreset, creatorAgentPreset]
 const creatorPersona = 'You are a creator workbench agent powered by the {{model}} model. Help the user plan, produce, package, and publish local video and article content while keeping human review at recording, editing, subtitle, and final publication checkpoints.'
 const productPlugins = [
   {
+    name: 'dsh-yourbuddy-design',
+    root: join(desktopRoot, 'product', 'claude-design-adapter'),
+    destination: join('packages', 'product', 'claude-design-adapter'),
+  },
+  {
     name: '@xiaohui-wang/dsh-pomodoro',
     root: join(desktopRoot, 'product', 'pomodoro'),
     destination: join('packages', 'product', 'pomodoro'),
@@ -113,6 +118,16 @@ const skipFileSuffixes = ['.spec.ts', '.e2e.ts', '.snapshot.ts']
  * @returns {string}
  */
 export function buildTrimmedWorkspaceYaml(sourceYaml) {
+  const designAgeExclusions = "minimumReleaseAgeExclude:\n  - dsh-claude-design@2.11.1\n  - dsh-claude-artifacts@2.11.1"
+  sourceYaml = sourceYaml.includes('minimumReleaseAgeExclude:')
+    ? sourceYaml.replace('minimumReleaseAgeExclude:', designAgeExclusions)
+    : `${sourceYaml}\n${designAgeExclusions}\n`
+  sourceYaml = sourceYaml.replace('overrides:', "overrides:\n  'dsh-claude-design>dsh-claude-artifacts': '2.11.1'")
+  const productPatches = ['dsh-claude-design', 'dsh-claude-artifacts']
+    .map(name => `  '${name}@2.11.1': patches/${name}-2.11.1-yourbuddy.patch`)
+  sourceYaml = sourceYaml.includes('patchedDependencies:')
+    ? sourceYaml.replace('patchedDependencies:', ['patchedDependencies:', ...productPatches].join('\n'))
+    : `${sourceYaml}\npatchedDependencies:\n${productPatches.join('\n')}\n`
   const lines = sourceYaml.split(/\r?\n/)
   const packagesIndex = lines.findIndex(line => /^packages:\s*$/.test(line))
   if (packagesIndex === -1) {
@@ -211,6 +226,9 @@ function hashBundledContent(trimmedWorkspace, bundlePkg, productLock, dshUpstrea
     }
   }
 
+  for (const name of ['dsh-claude-design', 'dsh-claude-artifacts']) {
+    hasher.update(readFileSync(join(desktopRoot, 'product', 'patches', `${name}-2.11.1-yourbuddy.patch`)))
+  }
   for (const plugin of productPlugins) {
     hashSourceWalk(plugin.root, plugin.root, hasher, plugin.destination)
     hasher.update(plugin.name)
@@ -370,6 +388,12 @@ export function installProductPlugins(bundleRoot) {
     }
   }
 
+  // The raw Cordis rows resolve both pinned upstream entries from the CLI.
+  for (const name of ['dsh-claude-design', 'dsh-claude-artifacts']) {
+    cliManifest.dependencies[name] = '2.11.1'
+    copyTree(join(desktopRoot, 'product', 'patches', `${name}-2.11.1-yourbuddy.patch`),
+      join(bundleRoot, 'patches', `${name}-2.11.1-yourbuddy.patch`))
+  }
   const workspaceNames = bundledWorkspacePackageNames(bundleRoot)
   for (const plugin of defaultHarnessPlugins) {
     if (!workspaceNames.has(plugin.name)) {

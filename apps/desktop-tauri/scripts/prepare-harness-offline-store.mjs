@@ -185,6 +185,11 @@ function saveOfflineStoreCache(lockSha256, finalized) {
   console.log(`prepare-harness-offline-store: saved release cache in ${cacheRoot}`)
 }
 
+/** Keep macOS metadata out without passing a BSD-only flag to GNU tar. */
+export function offlineStoreArchiveArgs(archive, root, platform = process.platform) {
+  return [...(platform === 'darwin' ? ['--no-mac-metadata'] : []), '-czf', archive, '-C', root, '.yourbuddy-pnpm-store']
+}
+
 export function packageExistingOfflineStore() {
   const manifestPath = join(harnessRoot, '.bundle-manifest.json')
   const digest = hashTree(storeRoot)
@@ -193,7 +198,7 @@ export function packageExistingOfflineStore() {
   }
 
   rmSync(storeArchivePath, { force: true })
-  const archive = spawnSync('tar', ['--no-mac-metadata', '-czf', storeArchivePath, '-C', harnessRoot, '.yourbuddy-pnpm-store'], {
+  const archive = spawnSync('tar', offlineStoreArchiveArgs(storeArchivePath, harnessRoot), {
     env: { ...process.env, COPYFILE_DISABLE: '1' },
     stdio: 'inherit',
   })

@@ -1,0 +1,39 @@
+{
+  "name": "dsh-yourbuddy-design",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "YourBuddy lifecycle and current-Host adapter for bundled Claude Design",
+  "main": "index.mjs",
+  "exports": {
+    ".": "./index.mjs",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "*.mjs",
+    "cordis.patch.yml",
+    "LICENSE",
+    "README.md",
+    "README.zh.md",
+    "UPSTREAM.json"
+  ],
+  "dependencies": {
+    "dsh-claude-design": "2.11.1",
+    "dsh-claude-artifacts": "2.11.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.1",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "@deepseek-ai/node-addon-system": "0.1.2"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  }
+}

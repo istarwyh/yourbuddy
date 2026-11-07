@@ -37,7 +37,8 @@
     "test:components": "node --test scripts/prepare-capability-components.test.mjs scripts/build-bootstrap-components.test.mjs scripts/normalize-component-signature.test.mjs scripts/release-component-pipeline.test.mjs",
     "build:win": "tauri build --bundles nsis",
     "test:bootstrap": "node --test scripts/splash-state.test.mjs",
-    "test:native-overlay": "cargo test --locked --manifest-path scripts/native-overlay-renderer/Cargo.toml"
+    "test:native-overlay": "cargo test --locked --manifest-path scripts/native-overlay-renderer/Cargo.toml",
+    "test:design": "node scripts/test-bundled-design.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-api-session-controller": "workspace:*",

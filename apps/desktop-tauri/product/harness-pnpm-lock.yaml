@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  dsh-claude-design>dsh-claude-artifacts: 2.11.1
   extract-zip>yauzl: 3.4.0
   '@deepseek-ai/cosmokit': link:vendor/cosmokit
   '@deepseek-ai/schemastery': link:vendor/schemastery
@@ -15,6 +16,8 @@ patchedDependencies:
   '@fortune-sheet/core@1.0.4': 8791a230763dbf853fd65d627c68c31de37209992851377855e16cf08ea70532
   '@fortune-sheet/react@1.0.4': 2932e52e79afcd4ced08cfa123b5eded786c85043da32f622f3e80af6fc96c37
   '@yao-pkg/pkg@6.21.0': 75891fc22b277c145cafeab83e41baf4a70f5b8fe6dc0801c6a0b922d7ee88c7
+  dsh-claude-artifacts@2.11.1: 3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083
+  dsh-claude-design@2.11.1: 47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22
   exceljs@4.4.0: c1bf8ac8f319dab382f08e3a669b715e691d46c703ac5a4163eb383fbedd1d48
   node-pty@1.2.0-beta.15: b40ae545608897914bd25fb009c97eeac478c34e8a910298ddcb01b746534bb0
 
@@ -369,6 +372,9 @@ importers:
       '@deepseek-ai/dsh-workflow-ptc':
         specifier: workspace:*
         version: link:../../packages/workflow/workflow-ptc
+      '@deepseek-ai/node-addon-system':
+        specifier: workspace:*
+        version: link:../../native/system/packages/entry
       '@deepseek-ai/schemastery':
         specifier: link:../../vendor/schemastery
         version: link:../../vendor/schemastery
@@ -381,6 +387,12 @@ importers:
       dsh-better-sidebar:
         specifier: workspace:*
         version: link:../../packages/product/dsh-better-sidebar
+      dsh-claude-artifacts:
+        specifier: 2.11.1
+        version: 2.11.1(patch_hash=3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083)
+      dsh-claude-design:
+        specifier: 2.11.1
+        version: 2.11.1(patch_hash=47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22)
       dsh-codex-auth:
         specifier: workspace:*
         version: link:../../packages/product/dsh-codex-auth
@@ -399,6 +411,9 @@ importers:
       dsh-plugin-marketplace:
         specifier: workspace:*
         version: link:../../packages/product/plugin-marketplace
+      dsh-yourbuddy-design:
+        specifier: workspace:*
+        version: link:../../packages/product/claude-design-adapter
       js-yaml:
         specifier: ^4.2.0
         version: 4.2.0
@@ -4885,6 +4900,24 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
 
+  packages/product/claude-design-adapter:
+    dependencies:
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:*
+        version: link:../../core/tools
+      '@deepseek-ai/node-addon-system':
+        specifier: workspace:*
+        version: link:../../../native/system/packages/entry
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+      dsh-claude-artifacts:
+        specifier: 2.11.1
+        version: 2.11.1(patch_hash=3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083)
+      dsh-claude-design:
+        specifier: 2.11.1
+        version: 2.11.1(patch_hash=47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22)
+
   packages/product/context-doctor:
     dependencies:
       '@deepseek-ai/cordis':
@@ -8738,6 +8771,7 @@ packages:
   '@smithy/core@3.24.7':
     resolution: {integrity: sha512-KoUi4M1f3BG6kzN1FnCwL7oyFptTbyBJKjR6yhSib+JHRdUmM1o+VwsFtJ66NZCkCzVfJMWRHJNo0R0jznp0Pg==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.3.9':
     resolution: {integrity: sha512-ZlfJ/4Fa3jYb+3eaohPfG9utX9HmdhFNcFtpoGAhUhdynAOmGXtmigbi7eEiONKM+ykHw8RwKuDEb85Lx7t7fA==}
@@ -9478,6 +9512,14 @@ packages:
 
   dompurify@3.4.14:
     resolution: {integrity: sha512-dVoH9z+MY+C9IilgGCk3YfFqjLi3fChm2OiKJMzh6axrJ5qwxqWaZamgmHrpv22CN/KdbZJuGEGgfQoL00LTdg==}
+
+  dsh-claude-artifacts@2.11.1:
+    resolution: {integrity: sha512-+uYY/acggKCJe2lXynLEE6j/Qr3BdQb37qA/lVOZYvj+H8ZNZMECEADmx7d2lR4SW69CXuu1w2cat0jJVHPwhg==}
+    engines: {dsh: '>=0.2.0-0', node: '>=20'}
+
+  dsh-claude-design@2.11.1:
+    resolution: {integrity: sha512-8jhXdXNtRteNCDZQ3Yu1a5XVaNyHk+4ph39jwDL8RRk7oEH44o19vcEDiBiPxvXwfiD/s4+C7q/9/Vd8C/Wzgw==}
+    engines: {dsh: '>=0.2.0-0', node: '>=20'}
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -12360,6 +12402,12 @@ snapshots:
   dompurify@3.4.14:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
+
+  dsh-claude-artifacts@2.11.1(patch_hash=3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083): {}
+
+  dsh-claude-design@2.11.1(patch_hash=47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22):
+    dependencies:
+      dsh-claude-artifacts: 2.11.1(patch_hash=3f6f39176e0b25e56e5998faaec86ae9eacfbeaacf0676f7e104e2e81937b083)
 
   dunder-proto@1.0.1:
     dependencies:
