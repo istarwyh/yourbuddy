@@ -1,0 +1,88 @@
+{
+  "checkedAt": "2026-11-07T09:25:10.034796+00:00",
+  "url": "https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.16.zip",
+  "tag": "yourbuddy-v0.4.16",
+  "commit": "32e75547da7e87f835706d0052ac6a4c6665dbed",
+  "bytes": 55750196,
+  "sha256": "949f17a4b6e1e8d6443dfc493095cda2c9b25670f2bcc3244feea74ad0a5908a",
+  "zipCrcCheck": null,
+  "extraction": "All15 candidate-changed files safely materialized in an isolated directory and byte-compared to the release commit; JSON and bilingual pages parsed/read and screenshot opened before publication",
+  "verifiedFiles": [
+    {
+      "path": "apps/desktop-tauri/package.json",
+      "bytes": 4970,
+      "sha256": "664761bf0ec192dc2504b48492705475ee9f864319412125fa789075efaa413b"
+    },
+    {
+      "path": "apps/desktop-tauri/release-notes.md",
+      "bytes": 2876,
+      "sha256": "15fd8ae88e010c7e952e0df63d567b32c0492b9b712dd75d5dbb5639dcc5382a"
+    },
+    {
+      "path": "apps/desktop-tauri/src-tauri/Cargo.lock",
+      "bytes": 154569,
+      "sha256": "063dcbe7cbf8f05be798e779a46f34587e5ad1f8540a2978857787b5d45b2de2"
+    },
+    {
+      "path": "apps/desktop-tauri/src-tauri/Cargo.toml",
+      "bytes": 2052,
+      "sha256": "3709f4370335a37d62dd16feedec2264dfe8d14d9a45b11af714ba80ed9e18a7"
+    },
+    {
+      "path": "apps/desktop-tauri/src-tauri/tauri.conf.json",
+      "bytes": 2330,
+      "sha256": "fa2543bfb6bbb0bccacf79fb7cae4dd77606e31abb769e7008ddc12b488d1351"
+    },
+    {
+      "path": "docs/releases/README.i18n.yaml",
+      "bytes": 1403,
+      "sha256": "28b3226852a75bb2b361062d25ec674c2bb78a94c0706782baa6f6f7a33dcc7c"
+    },
+    {
+      "path": "docs/releases/README.md",
+      "bytes": 20572,
+      "sha256": "07e543cc7ca6b2e0f59f6a14cdaa83f20ac56d6159faf9ec9d0c94afc45bf641"
+    },
+    {
+      "path": "docs/releases/README.zh.md",
+      "bytes": 19167,
+      "sha256": "95fb1b295ec420415e6f97134edc1b2af3635c7af6a138118ddd5c2d9b2ed25d"
+    },
+    {
+      "path": "docs/releases/yourbuddy-v0.4.16/README.i18n.yaml",
+      "bytes": 1565,
+      "sha256": "8cc4fc154e02bcfb3d58cbe3a34907c4c9e886e655f3b81dd607283cc301c0db"
+    },
+    {
+      "path": "docs/releases/yourbuddy-v0.4.16/README.md",
+      "bytes": 11977,
+      "sha256": "3bb6972900186938ee4f9aeef0b03c8d7858c27382b98de7989c2d0090510580"
+    },
+    {
+      "path": "docs/releases/yourbuddy-v0.4.16/README.zh.md",
+      "bytes": 10719,
+      "sha256": "01fc8fec8476e523dea92986f57d57f799be98f30312c443941e39dd8778b8b0"
+    },
+    {
+      "path": "docs/releases/yourbuddy-v0.4.16/evidence/candidate-checks.json",
+      "bytes": 2519,
+      "sha256": "119f19eb56565388a7727abebde6002610655e92c7e2c57dd0c5e8a59540e04d"
+    },
+    {
+      "path": "docs/releases/yourbuddy-v0.4.16/evidence/prepared-preflight.json",
+      "bytes": 3754,
+      "sha256": "0d3b70d30ae8e82c19ef24899e011743d7f619f1b3553b74d13add5811f3e6b0"
+    },
+    {
+      "path": "docs/releases/yourbuddy-v0.4.16/evidence/verifier-repair.json",
+      "bytes": 2635,
+      "sha256": "439f2bab8f3663baa20f969568bfa230fa1491b4ebc45cddd91381814457b04a"
+    },
+    {
+      "path": "docs/releases/yourbuddy-v0.4.16/screenshots/prepared-workbench.png",
+      "bytes": 105926,
+      "sha256": "1c2f86acec8192d40eff0099d2d083fed8c1be0058035aa74862cfb7fdfd7622"
+    }
+  ],
+  "scope": "Immutable tag-source archive; contains candidate/preflight record, not later publication evidence"
+}

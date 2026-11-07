@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /** First-run DeepSeek prompt behavior over the shared Models join. */
-import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
+import type { GlobalStandardProps, SlotMap } from '@deepseek-ai/dsh-client-ui-slots'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Schema from '@deepseek-ai/schemastery'
@@ -141,11 +141,13 @@ function harness(options: {
   const controller = new ModelsSettingsStore(ctx, settingsSchema, new SettingsDescribeMirror(ctx))
   const openSection = vi.fn()
   const complete = vi.fn()
+  const takeOver = vi.fn()
   const unusedHook = (() => { throw new Error('unused standard hook') }) as never
   const props: DeepSeekOnboardingDialogProps = {
     automatic: true,
     stepId: 'deepseek-official',
     complete,
+    takeOver,
     openSection,
     renderSlot: (_name, _props, options) => options?.fallback,
     useSessions: unusedHook,
@@ -159,7 +161,7 @@ function harness(options: {
     t: key => en[key],
   }
   return {
-    controller, complete, openSection, props, mutate, set,
+    controller, complete, takeOver, openSection, props, mutate, set,
     configure: () => { fileConfigured = true },
   }
 }
@@ -175,7 +177,9 @@ describe('DeepSeekOnboardingDialog', () => {
   it('loads a credential-only modal, inerts the product, and focuses the key', async () => {
     const h = harness()
     render(<DeepSeekOnboardingDialog {...h.props} />)
+    expect(h.takeOver).not.toHaveBeenCalled()
     expect(await screen.findByRole('dialog', { name: en.onboardingTitle })).toBeTruthy()
+    expect(h.takeOver).toHaveBeenCalledOnce()
     expect(document.getElementById('root')?.inert).toBe(true)
     expect(screen.getByText(en.onboardingDescription)).toBeTruthy()
     const key = screen.getByLabelText<HTMLInputElement>(en.keyInput)
@@ -255,6 +259,7 @@ describe('DeepSeekOnboardingDialog', () => {
       expect(screen.queryByRole('dialog')).toBeNull()
       await waitFor(() => { expect(h.complete).toHaveBeenCalledOnce() })
       expect(h.openSection).not.toHaveBeenCalled()
+      expect(h.takeOver).not.toHaveBeenCalled()
       view.unmount()
     }
   })
@@ -269,6 +274,7 @@ describe('DeepSeekOnboardingDialog', () => {
       await act(async () => { await h.controller.load() })
       expect(screen.queryByRole('dialog')).toBeNull()
       await waitFor(() => { expect(h.complete).toHaveBeenCalledOnce() })
+      expect(h.takeOver).not.toHaveBeenCalled()
       view.unmount()
     }
   })
@@ -286,11 +292,17 @@ describe('DeepSeekOnboardingDialog', () => {
 
 it('offers account choice before reusing the existing API key editor', async () => {
   const h = harness()
-  h.props.renderSlot = (_name, owner: unknown) => <button onClick={(owner as { useApiKey: () => void }).useApiKey}>Choose API key</button>
+  h.props.renderSlot = (_name, owner: object) => {
+    const signIn = owner as SlotMap['settings.models.sign-in']['owner']
+    expect(signIn.takeOver).toBe(h.takeOver)
+    return <button onClick={signIn.useApiKey}>Choose API key</button>
+  }
   render(<DeepSeekOnboardingDialog {...h.props} />)
   await waitFor(() => { expect(screen.getByRole('button', { name: 'Choose API key' })).toBeTruthy() })
+  expect(h.takeOver).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'Choose API key' }))
   expect(screen.getByRole('dialog')).toBeTruthy()
+  expect(h.takeOver).toHaveBeenCalledOnce()
   expect(h.complete).not.toHaveBeenCalled()
 })
 it('explicit account-menu setup reuses the editor without another login choice', async () => {

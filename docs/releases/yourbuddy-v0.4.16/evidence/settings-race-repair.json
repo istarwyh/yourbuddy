@@ -1,0 +1,60 @@
+{
+  "recordedAt": "2026-11-07T10:03:34.529412+00:00",
+  "status": "local repair passed; complete-input CI pending",
+  "baseCommit": "32e75547da7e87f835706d0052ac6a4c6665dbed",
+  "builtSourceSha256": "9fcffca8ec79dbf18eb11e53d1308bce47ca34c06ea36656a209ce9dcb72c223",
+  "builtContentSha256": "009fdf8cc448d09153d07985d2ffe3a94589ba7904b037bfb95db8b80c79bbb0",
+  "change": "Close Settings only when an actual visible onboarding surface commits; null/loading/skip registrations do not take over. Propagate stable callback through nested account sign-in; retain focus/inert and independent Desktop onboarding.",
+  "sourceChecks": {
+    "focusedTests": "50/50 passed; null/skip regression failed under old implementation; actual-visible takeover/focus, welcome, credential and nested account coverage",
+    "typing": "normal full Client typecheck passed after correcting a generic test substitute annotation; no production rule relaxation",
+    "catalog": "normal gen-client-catalog passed; four package bilingual records updated",
+    "brandedBuild": "DSH_CLIENT_TITLE=YourBuddy pnpm run build passed",
+    "prepare": "normal prepare:dist passed using unchanged lock and existing same-input Store cache (39650 files), no native tarball retransfers",
+    "independentReview": "Product lifecycle, API consumers, tests, bilingual docs, readonly workflow and failed-release archive reviewed without blocking findings",
+    "docQuick": "21/21 passed",
+    "docSync": "43/43 passed in67.68s including website build, typecheck and pairing",
+    "fullLint": "passed after the two formatting-only max-len corrections"
+  },
+  "controlledRealHost": {
+    "startedAt": "2026-11-07T09:57:49.194Z",
+    "completedAt": "2026-11-07T10:00:03.589Z",
+    "result": "same session/list barrier now leaves Settings open after Session and rendered model control are ready; all original branding/reload/reset assertions then pass",
+    "before": "old product closes Settings about29ms after release while no onboarding UI appears; original10s wait fails",
+    "synthetic": true
+  },
+  "unchangedPreparedVerifier": {
+    "startedAt": "2026-11-07T10:00:25.121Z",
+    "completedAt": "2026-11-07T10:02:39.689Z",
+    "status": "passed",
+    "verifierSha256": "be5f3d25d8e1e54838e2499ac0a4992059d4161bef283adeb1e1e53f177f9595",
+    "brandingHelperSha256": "94f16b6ca158748d86da3f1e8429e0e5fd13cee1b0a0fb26823a08d67a456c5f",
+    "coreClients": 9,
+    "harborAssembledClients": 10,
+    "matchingPeers": 85,
+    "harborPython": "0.10.3",
+    "branding": "both phases default/custom/reloaded/reset/reset-reloaded passed"
+  },
+  "localInputBoundary": {
+    "registryPackages": 568,
+    "missing": [
+      "@openai/codex@0.153.4-darwin-arm64",
+      "@anthropic-ai/claude-agent-sdk-darwin-arm64@0.3.263"
+    ],
+    "meaning": "UI lifecycle and real Host regression only; complete570/macOSnative inputs remain mandatory in the new PR job"
+  },
+  "unchanged": [
+    "release verifier and branding helper source",
+    "original timeouts, identity and persistence assertions",
+    "formal desktop release workflow",
+    "all existing version tags"
+  ],
+  "remaining": [
+    "complete-input570macOSpreflight",
+    "new patch packaging/native acceptance/public delivery",
+    "existing real-model, native Design export and cold Session restoration limits"
+  ],
+  "localRuntimeTestDiffSha256": "bffc170f0c893ec9dafa0c6578b5749a23c99e90a2d9349a1f9b1ddc94fbf05d",
+  "finalProductDiffSha256": "0124880c0d1bd2fd862c5b3abdb61941ffd608f766f9a1c30d14e8814f4af204",
+  "afterRuntimeVerification": "Only two line wraps followed the real Host runs: an AccountOnboarding JSDoc and a test return-object layout. No emitted behavior or assertions changed; final normal full lint passed. Complete-input CI must rebuild the final commit."
+}

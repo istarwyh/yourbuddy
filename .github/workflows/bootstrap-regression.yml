@@ -19,6 +19,10 @@ on:
       - 'apps/desktop-tauri/scripts/workbench-navigation.test.mjs'
       - 'apps/cli/package.json'
       - 'packages/util/http-proxy/**'
+      - 'packages/client/ui-settings/**'
+      - 'packages/client/ui-settings-general/**'
+      - 'packages/client/ui-settings-models/**'
+      - 'packages/client/ui-settings-account/**'
       - 'apps/desktop-tauri/scripts/node-extra-ca.test.mjs'
       - 'apps/desktop-tauri/splash.html'
       - 'apps/desktop-tauri/splash-state.js'
@@ -68,6 +72,7 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           node --test apps/desktop-tauri/scripts/verify-product-release.test.mjs apps/desktop-tauri/scripts/product-plugin-compatibility.test.mjs apps/desktop-tauri/scripts/workbench-branding-smoke.test.mjs
+          pnpm exec vitest run packages/client/ui-settings-general/tests/settings-root.client.spec.tsx packages/client/ui-settings-models/tests/onboarding-dialog.client.spec.tsx packages/client/ui-settings-models/tests/welcome-notice.client.spec.tsx packages/client/ui-settings-account/tests/onboarding.client.spec.tsx
       - name: Build and prepare the frozen product
         env:
           DSH_CLIENT_TITLE: YourBuddy

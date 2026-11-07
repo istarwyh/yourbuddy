@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import type { ShortcutCatalogEntry, ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client'
-import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
+import type { GlobalStandardProps, SlotMap } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createSettingsShellStore } from '../src/client/shell-store.ts'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
@@ -25,6 +26,13 @@ afterEach(() => {
 
 type Row = { id: string; order: number; label: string }
 type Step = { id: string; order: number }
+type OnboardingOwner = SlotMap['settings.onboarding']['owner']
+
+/** A visible registrant commits its modal layer before taking Settings down. */
+function VisibleOnboarding({ takeOver }: Pick<OnboardingOwner, 'takeOver'>) {
+  useLayoutEffect(() => { takeOver() }, [takeOver])
+  return <Modal open headless title="Onboarding" onClose={() => {}}><button>Continue onboarding</button></Modal>
+}
 
 /** Slot-content stand-ins: the shell renders whatever the seats contribute. */
 const SEAT_CONTENT: Record<string, string> = {
@@ -74,9 +82,11 @@ function mount({
   const listeners = new Set<() => void>()
   const connectionListeners = new Set<() => void>()
   const reconnect = vi.fn()
+  let onboardingContent: ((owner: OnboardingOwner) => ReactNode) | undefined
   const renderSlot = vi.fn(
     ((key: string, _owner: unknown, opts?: { only?: string; fallback?: import('react').ReactNode }) => {
       if (key === 'settings.section') return <div data-testid={`section-${opts?.only ?? 'all'}`} />
+      if (key === 'settings.onboarding') return onboardingContent?.(_owner as OnboardingOwner)
       return SEAT_CONTENT[key] ?? opts?.fallback
     }) as SettingsRootComponentProps['renderSlot'],
   )
@@ -158,7 +168,14 @@ function mount({
     act(() => { sessions.byId[activeId] = { ...session, blank: next } })
     view.rerender(<SettingsRoot {...props} />)
   }
-  return { view, renderSlot, bump, listeners, reconnect, setConnectionState, setDesktopUpdate, setShortcuts, setOnboardingActive }
+  const setOnboardingContent = (next: typeof onboardingContent) => {
+    onboardingContent = next
+    view.rerender(<SettingsRoot {...props} />)
+  }
+  return {
+    view, renderSlot, bump, listeners, reconnect, setConnectionState, setDesktopUpdate, setShortcuts,
+    setOnboardingActive, setOnboardingContent,
+  }
 }
 
 function openPanel() {
@@ -427,13 +444,29 @@ describe('SettingsPanel navigation', () => {
     expect(inactive).toHaveLength(0)
   })
 
-  it('takes the panel down when an onboarding step appears beneath it', () => {
-    const { setOnboardingActive } = mount({ onboardingActive: false })
+  it('preserves the panel while selected onboarding steps render nothing or skip', () => {
+    const { setOnboardingActive, renderSlot } = mount({ onboardingActive: false })
     openPanel()
     expect(screen.getByRole('dialog')).toBeDefined()
 
-    // The step's overlay marks only #root inert, and the panel is portalled beside it.
     setOnboardingActive(true)
+    expect(screen.getByRole('dialog')).toBeDefined()
+    const step = renderSlot.mock.calls.filter(call => call[0] === 'settings.onboarding').at(-1)
+    act(() => { (step?.[1] as { complete: () => void }).complete() })
+    expect(screen.getByRole('dialog')).toBeDefined()
+  })
+
+  it('closes Settings only when the selected step commits its visible modal and preserves foreground focus', () => {
+    const { setOnboardingActive, setOnboardingContent } = mount({ onboardingActive: false })
+    openPanel()
+    setOnboardingActive(true)
+    expect(screen.getByRole('dialog', { name: 'Settings Title' })).toBeTruthy()
+
+    setOnboardingContent(owner => <VisibleOnboarding takeOver={owner.takeOver} />)
+    expect(screen.queryByRole('dialog', { name: 'Settings Title' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Onboarding' })).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Continue onboarding' }))
+    setOnboardingContent(undefined)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 

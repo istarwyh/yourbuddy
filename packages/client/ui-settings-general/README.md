@@ -51,7 +51,7 @@ On a loopback browser, the shell renders **Open configuration file** only when t
 
 ### Onboarding steps
 
-The onboarding ledger projects in ascending order and mounts exactly one step at a time. Registrants own durable completion, capability readiness, copy, mutations, and their visible wrapper, so independently registered flows cannot stack and the shell does not become a second configuration fact source. Visible steps own their dialog chrome and app-root `inert` lifecycle.
+The onboarding ledger projects in ascending order and mounts exactly one step at a time. Registrants own durable completion, capability readiness, copy, mutations, and their visible wrapper, so independently registered flows cannot stack and the shell does not become a second configuration fact source. Visible steps own their dialog chrome and app-root `inert` lifecycle. Selecting a step does not dismiss an open Settings panel. Only the visible step’s `takeOver()` callback closes it; loading and skipped steps leave the panel available.
 
 -----
 
@@ -67,7 +67,7 @@ The shell owns the chrome and the projections; it contributes the Coding Tools a
 
 ### Ledger projections
 
-The navigation is a projection of the `settings.section` ledger; nav labels may be locale-following thunks, resolved through `resolveSlotLabel` and re-rendered on the section ledger bump or the locale revision (an optional `ctx.get('locale')` read; no hard locale dependency). The onboarding ledger projects in ascending order; the active registrant receives its id, `complete()`, and an `openSection(id)` callback, and completing or skipping transfers ownership to the next entry.
+The navigation is a projection of the `settings.section` ledger; nav labels may be locale-following thunks, resolved through `resolveSlotLabel` and re-rendered on the section ledger bump or the locale revision (an optional `ctx.get('locale')` read; no hard locale dependency). The onboarding ledger projects in ascending order; the active registrant receives its id and the `takeOver()`, `complete()`, and `openSection(id)` callbacks, and completing or skipping transfers ownership to the next entry.
 
 ### Connection recovery
 

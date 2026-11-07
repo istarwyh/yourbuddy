@@ -56,7 +56,7 @@ function assertNever(_value: never): never {
  * @returns the onboarding modal or null when onboarding needs no intervention.
  */
 export function DeepSeekOnboardingDialog(props: DeepSeekOnboardingDialogProps): ReactNode {
-  const { complete, controller, useModels, operations, schema, t, renderSlot, automatic, explicit = false } = props
+  const { complete, takeOver, controller, useModels, operations, schema, t, renderSlot, automatic, explicit = false } = props
   const [apiKey, setApiKey] = useState(explicit)
   const state = useModels(snapshot => snapshot)
   const readiness = onboardingReadiness(state)
@@ -108,7 +108,7 @@ export function DeepSeekOnboardingDialog(props: DeepSeekOnboardingDialogProps): 
   }
 
   const editor = (
-    <OnboardingModal title={t('onboardingTitle')}>
+    <OnboardingModal title={t('onboardingTitle')} takeOver={takeOver}>
       <p className={styles.description}>{t('onboardingDescription')}</p>
       <div className={styles.editor}>
         <ProviderEditor
@@ -133,5 +133,5 @@ export function DeepSeekOnboardingDialog(props: DeepSeekOnboardingDialogProps): 
       </div>
     </OnboardingModal>
   )
-  return apiKey ? editor : renderSlot('settings.models.sign-in', { complete, useApiKey: () => { setApiKey(true) } }, { fallback: editor })
+  return apiKey ? editor : renderSlot('settings.models.sign-in', { complete, takeOver, useApiKey: () => { setApiKey(true) } }, { fallback: editor })
 }
