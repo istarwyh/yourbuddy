@@ -18,9 +18,11 @@
     "Set @deepseek-ai/dsh-llm peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-settings peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-llm peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1."
+    "Set @deepseek-ai/dsh-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
+    "Set @deepseek-ai/dsh-llm peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-settings peer range from 0.2.0-rc.1 to 0.2.0-rc.2."
   ],
   "repository": "https://github.com/Scorp1o117/dsh-plugin-marketplace",
   "license": "MIT",
-  "treeSha256": "0f683612bbba4bb0c2c228724ff51aba3867f9a62d934b68967e819a3cb17295"
+  "treeSha256": "5bf986444290316607801a625ece59d2079bf504355be5a074c122fdf8a5d0aa"
 }

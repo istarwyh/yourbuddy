@@ -1,22 +1,21 @@
-import type { Context, Volatile } from '@deepseek-ai/cordis';
+import type { Context } from '@deepseek-ai/cordis';
 import z from '@deepseek-ai/schemastery';
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment';
 import type { FileSystem } from '@deepseek-ai/dsh-fs';
 import type { LlmResolvedModelInfo } from '@deepseek-ai/dsh-llm';
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools';
 import type { CodexAuthService } from './codex-auth-service.ts';
+import { type LiveValue } from './volatile-config.ts';
+import type { ImageQuality, ImageSize } from './image-options.ts';
+export type { ImageQuality, ImageSize } from './image-options.ts';
 export declare const GENERATE_IMAGE_TOOL_NAME = "generate_image";
 export declare const LIST_IMAGES_TOOL_NAME = "list_images";
 export declare const CODEX_IMAGE_GENERATION_ENDPOINT = "https://chatgpt.com/backend-api/codex/images/generations";
 export declare const CODEX_IMAGE_EDIT_ENDPOINT = "https://chatgpt.com/backend-api/codex/images/edits";
-export declare const CODEX_IMAGE_SETTINGS_NAMESPACE: import("@deepseek-ai/dsh-settings").SettingsNamespace;
+export declare const CODEX_IMAGE_SETTINGS_NAMESPACE = "codex-image";
 declare const IMAGE_ORIGINS: readonly ["all", "generated", "reference", "user"];
-declare const IMAGE_SIZES: readonly ["auto", "1024x1024", "1536x1024", "1024x1536"];
-declare const IMAGE_QUALITIES: readonly ["auto", "low", "medium", "high"];
 declare const IMAGE_BACKGROUNDS: readonly ["auto", "opaque", "transparent"];
 export type ImageOriginFilter = (typeof IMAGE_ORIGINS)[number];
-export type ImageSize = (typeof IMAGE_SIZES)[number];
-export type ImageQuality = (typeof IMAGE_QUALITIES)[number];
 export type ImageBackground = (typeof IMAGE_BACKGROUNDS)[number];
 /** Independently live Image Creation settings. */
 export interface CodexImageSettings {
@@ -28,12 +27,12 @@ export interface CodexImageSettings {
     background: ImageBackground;
 }
 export interface Config {
-    enabled: Volatile<boolean>;
-    model: Volatile<string>;
-    n: Volatile<number>;
-    size: Volatile<ImageSize>;
-    quality: Volatile<ImageQuality>;
-    background: Volatile<ImageBackground>;
+    enabled: LiveValue<boolean>;
+    model: LiveValue<string>;
+    n: LiveValue<number>;
+    size: LiveValue<ImageSize>;
+    quality: LiveValue<ImageQuality>;
+    background: LiveValue<ImageBackground>;
 }
 export declare const Config: z<Config>;
 /** Narrow dependency surface used by both public Tool definitions. */
@@ -56,5 +55,4 @@ export declare const inject: string[];
  * snapshots; every Tool body repeats the exact guard as the authorization edge.
  */
 export declare function apply(ctx: Context, config: Config): void;
-export {};
 //# sourceMappingURL=image.d.ts.map

@@ -1,18 +1,19 @@
-import { t as readBoundedResponseText } from "./bounded-response-CutNZ8kw.js";
+import { n as readBoundedResponseText, t as liveValue } from "./volatile-config-DNSIaT45.js";
 import z from "@deepseek-ai/schemastery";
-import { readSearchSettings } from "./settings-values.js";
 import { randomUUID } from "node:crypto";
 import { WebError } from "@deepseek-ai/dsh-web";
 //#region src/search.ts
 /** Codex standalone-search provider and independently live Search row. */
 /** Stable provider id selected by DSH's stock `web_search` Capability Tool. */
 const CODEX_SEARCH_PROVIDER_ID = "codex";
-const CODEX_SEARCH_SETTINGS_NAMESPACE = "codex-search";
 /** Official standalone search endpoint used by Codex 0.147.0. */
 const CODEX_SEARCH_ENDPOINT = "https://chatgpt.com/backend-api/codex/alpha/search";
+const CODEX_SEARCH_SETTINGS_NAMESPACE = "codex-search";
 const MAX_SEARCH_ATTEMPTS = 5;
 const MAX_SEARCH_RESPONSE_BYTES = 2097152;
 const DEFAULT_RETRY_BASE_DELAY_MS = 100;
+/** Codex ChatGPT-sign-in replacement for retired `gpt-5.4`. */
+const DEFAULT_CODEX_SEARCH_FALLBACK_MODEL = "gpt-5.6-terra";
 const Config = z.object({
 	enabled: z.boolean().default(true).volatile(),
 	mode: z.union([
@@ -25,9 +26,18 @@ const Config = z.object({
 		z.const("medium"),
 		z.const("high")
 	]).default("medium").volatile(),
-	fallbackModel: z.string().default("gpt-5.4").volatile(),
+	fallbackModel: z.string().default(DEFAULT_CODEX_SEARCH_FALLBACK_MODEL).volatile(),
 	maxOutputTokens: z.number().step(1).min(1).default(2048).volatile()
 });
+function searchSettings(config) {
+	return {
+		enabled: liveValue(config.enabled),
+		mode: liveValue(config.mode),
+		contextSize: liveValue(config.contextSize),
+		fallbackModel: liveValue(config.fallbackModel),
+		maxOutputTokens: liveValue(config.maxOutputTokens)
+	};
+}
 /** Codex backend implementation behind DSH's existing stock `web_search` tool. */
 var CodexSearchProvider = class {
 	options;
@@ -114,9 +124,13 @@ const inject = ["web", "codexAuth"];
 function apply(ctx, config) {
 	const auth = ctx.get("codexAuth");
 	if (auth === void 0) throw new Error("codex-search: shared codexAuth service is unavailable");
+	const current = () => searchSettings(config);
+	ctx.inject(["settings"], (settingsCtx) => {
+		settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber));
+	});
 	ctx.web.registerSearchProvider(new CodexSearchProvider({
 		auth,
-		settings: () => readSearchSettings(config),
+		settings: () => current(),
 		fetchImpl: fetch,
 		requestId: () => String(ctx.get("agents")?.currentInitiator()?.id ?? randomUUID()),
 		initiatingModel: () => initiatingCodexModel(ctx)
@@ -208,4 +222,4 @@ function abortableDelay(ms, signal, code) {
 	});
 }
 //#endregion
-export { CODEX_SEARCH_ENDPOINT, CODEX_SEARCH_PROVIDER_ID, CODEX_SEARCH_SETTINGS_NAMESPACE, CodexSearchProvider, Config, apply, inject, name };
+export { CODEX_SEARCH_ENDPOINT, CODEX_SEARCH_PROVIDER_ID, CODEX_SEARCH_SETTINGS_NAMESPACE, CodexSearchProvider, Config, DEFAULT_CODEX_SEARCH_FALLBACK_MODEL, apply, inject, name };

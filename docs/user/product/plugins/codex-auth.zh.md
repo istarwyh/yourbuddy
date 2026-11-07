@@ -2,7 +2,7 @@
 
 [English](codex-auth.md) | 中文
 
-随应用集成的快照版本：`0.3.2`。来源：[suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth)。
+随应用集成的快照版本：`0.3.3-rc.4`。来源：[suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth)。
 
 ## 解决的问题
 
@@ -12,7 +12,7 @@
 
 打开设置 → GPT Auth，完成登录并检查账号状态，选择可用 Codex 模型后开始任务。桌面默认装配还注册了搜索与图片能力：搜索通过标准 `web_search` 使用，图片由 `generate_image` 生成或编辑，并作为会话附件保存。图片工具是否出现取决于模型声明、登录、账户与插件开关。
 
-YourBuddy 0.3.9 适配当前模型选择器 API 的产品 Smoke 路径，并核验 GPT Auth 状态路由与 Codex 模型目录能够解析，过程中没有发起真实模型请求。OAuth 与真实 Provider 流量不在此次验证范围内。
+随应用集成的模型目录包含 GPT-6.1 Sol；能否成功使用仍取决于登录账号和 Codex 后端是否向该账号开放此模型。产品验证会检查 GPT Auth 状态路由和模型目录，但不会发送真实模型请求；OAuth 与真实 Provider 流量不在验证范围内。
 
 ## 默认集成的理由
 

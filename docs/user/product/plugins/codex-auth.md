@@ -2,7 +2,7 @@
 
 English | [中文](codex-auth.zh.md)
 
-Application snapshot version: `0.3.2`. Source: [suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth).
+Application snapshot version: `0.3.3-rc.4`. Source: [suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth).
 
 ## Problem addressed
 
@@ -12,7 +12,7 @@ One settings section combines Codex login state, available models, web search, a
 
 Open Settings → GPT Auth, complete login, inspect account state, and select a usable Codex model. The desktop composition also registers search and image capabilities: search uses standard `web_search`; `generate_image` creates or edits images and saves them as session attachments. Image tool availability depends on model declarations, login, account status, and plugin settings.
 
-YourBuddy 0.3.9 adapts its product smoke path to the current model-selector API and verifies that the GPT Auth status route and Codex model catalog resolve without making a real model request. OAuth and real provider traffic remain outside that verification.
+The bundled model catalog includes GPT-6.1 Sol. Successful use still depends on the signed-in account and the Codex backend making that model available. Product verification checks the GPT Auth status route and model catalog without sending a real model request; OAuth and real provider traffic remain outside that verification.
 
 ## Reason for default inclusion
 

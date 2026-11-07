@@ -1,5 +1,5 @@
-import { h as installedPackageVersion } from "./native-checkpoint-BGT6whVM.js";
-import { t as codexNativeCompactionCoordinator } from "./native-compaction-DO9ObxWA.js";
+import { _ as installedPackageVersion, g as isSupportedDshGraph, h as SUPPORTED_DSH_RUNTIMES } from "./native-checkpoint-DaSMABQ8.js";
+import { t as codexNativeCompactionCoordinator } from "./native-compaction-BQK_oyBc.js";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { BasicCompactionEngine } from "@deepseek-ai/dsh-compaction-basic";
 //#region src/compaction.ts
@@ -8,15 +8,16 @@ const DSH_RUNTIME_PACKAGES = [
 	"@deepseek-ai/dsh-compaction",
 	"@deepseek-ai/dsh-compaction-basic",
 	"@deepseek-ai/dsh-llm",
+	"@deepseek-ai/dsh-llm-pi-ai",
 	"@deepseek-ai/dsh-session",
 	"@deepseek-ai/dsh-token-meter"
 ];
 /** Conservative allowance for Basic's private framing around returned summary blocks. */
 const BASIC_FRAME_TOKEN_RESERVE = 256;
-/** Exact runtime pair whose rc.2 framing and pi conversion behavior this Adapter uses. */
+/** Exact runtime pair verified against both npm and the matching source artifacts. */
 const CODEX_COMPACTION_COMPATIBILITY = Object.freeze({
-	dsh: "0.1.1-rc.2",
-	piAi: "0.82.1"
+	dsh: "0.2.0-rc.2",
+	piAi: "0.87.1"
 });
 /** Read the installed versions that own the Basic transaction and pi conversion. */
 function installedRuntimeVersions() {
@@ -30,9 +31,9 @@ function installedRuntimeVersions() {
 * The stock DSH preset remains the supported fallback for every other pair.
 */
 function assertCodexCompactionCompatibility(actual = installedRuntimeVersions()) {
-	if (DSH_RUNTIME_PACKAGES.every((specifier) => actual.dsh[specifier] === CODEX_COMPACTION_COMPATIBILITY.dsh) && actual.piAi === CODEX_COMPACTION_COMPATIBILITY.piAi) return;
+	if (isSupportedDshGraph(DSH_RUNTIME_PACKAGES.map((specifier) => actual.dsh[specifier])) && actual.piAi === CODEX_COMPACTION_COMPATIBILITY.piAi) return;
 	const receivedDsh = DSH_RUNTIME_PACKAGES.map((specifier) => `${specifier}=${actual.dsh[specifier]}`).join(", ");
-	throw new Error(`codex-compaction requires DSH ${CODEX_COMPACTION_COMPATIBILITY.dsh} across ${DSH_RUNTIME_PACKAGES.join(", ")} and @earendil-works/pi-ai ${CODEX_COMPACTION_COMPATIBILITY.piAi}; received ${receivedDsh}; @earendil-works/pi-ai=${actual.piAi}`);
+	throw new Error(`codex-compaction requires DSH ${SUPPORTED_DSH_RUNTIMES.join(" or ")} consistently across ${DSH_RUNTIME_PACKAGES.join(", ")} and @earendil-works/pi-ai ${CODEX_COMPACTION_COMPATIBILITY.piAi}; received ${receivedDsh}; @earendil-works/pi-ai=${actual.piAi}`);
 }
 /** Stable Loader id for the experimental custom-preset Adapter. */
 const name = "codex-compaction";
@@ -59,8 +60,9 @@ function currentExplicitReasoningEffort(agent) {
 	return header?.adapterDefaults?.reasoningEffort === true ? void 0 : header?.config.reasoningEffort;
 }
 function currentCompactionId(agent) {
-	for (let index = agent.session.events.length - 1; index >= 0; index -= 1) {
-		const event = agent.session.events[index];
+	const events = agent.session.snapshotEvents();
+	for (let index = events.length - 1; index >= 0; index -= 1) {
+		const event = events[index];
 		if (event?.type === "compaction/start") return String(event.data.compactionId);
 	}
 }
@@ -109,10 +111,7 @@ function dualSummaryClearlyShrinks(input, summary, estimateMessage) {
 	const shadowedEstimate = input.messages.reduce((total, message) => total + estimateMessage(message), 0);
 	return estimateMessage(createUserMessage({
 		content: [...summary],
-		source: {
-			kind: "plugin",
-			plugin: name
-		}
+		source: { kind: "user" }
 	})) + BASIC_FRAME_TOKEN_RESERVE < shadowedEstimate;
 }
 /**

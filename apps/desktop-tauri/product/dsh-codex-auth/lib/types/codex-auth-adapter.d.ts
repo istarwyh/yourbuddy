@@ -47,7 +47,7 @@ export declare const DEFAULT_TRANSPORT: CodexAuthTransport;
 export declare const DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS = 5000;
 /** Default request timeout: the SSE response-header phase, and the WebSocket message idle interval. */
 export declare const DEFAULT_REQUEST_TIMEOUT_MS = 120000;
-/** rc1's default maximum encoded image payload for one pi-ai request. */
+/** Default maximum encoded image payload for one pi-ai request. */
 export declare const MAX_REQUEST_IMAGE_BYTES: number;
 /** Default maximum pixel count for one normalized request image. */
 export declare const REQUEST_IMAGE_PIXEL_BUDGET: number;

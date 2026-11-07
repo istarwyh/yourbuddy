@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
-import type { SettingsScope } from '@deepseek-ai/dsh-client-runtime/client';
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
 import type { CodexAuthRpcClient } from '../rpc-contract.ts';
 import type { CodexAuthKey } from './locales.ts';
+import type { ImageQuality, ImageSize } from '../image-options.ts';
 export interface LlmSettingsView {
     longContextEnabled: boolean;
+    excludedModelIds?: string[];
 }
 export interface SearchSettingsView {
     enabled: boolean;
@@ -16,17 +18,17 @@ export interface ImageSettingsView {
     enabled: boolean;
     model: string;
     n: number;
-    size: 'auto' | '1024x1024' | '1536x1024' | '1024x1536';
-    quality: 'auto' | 'low' | 'medium' | 'high';
+    size: ImageSize;
+    quality: ImageQuality;
     background: 'auto' | 'opaque' | 'transparent';
 }
 export interface CodexCapabilitySettingsProps {
     rpc: CodexAuthRpcClient;
     t: (key: CodexAuthKey) => string;
     subscribe: (listener: () => void) => () => void;
-    llmScope: SettingsScope<LlmSettingsView>;
-    searchScope: SettingsScope<SearchSettingsView>;
-    imageScope: SettingsScope<ImageSettingsView>;
+    llmScope: ConfigForm<LlmSettingsView>;
+    searchScope: ConfigForm<SearchSettingsView>;
+    imageScope: ConfigForm<ImageSettingsView>;
 }
 /** One navigable GPT Auth section containing Auth/LLM, Search, and Image Creation cards. */
 export declare function CodexCapabilitySettings({ rpc, t, subscribe, llmScope, searchScope, imageScope, }: CodexCapabilitySettingsProps): ReactNode;

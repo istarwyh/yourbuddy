@@ -93,6 +93,8 @@ type StubMode =
   | 'torn-status'
   | 'retained-end-without-status'
   | 'finish-torn-status'
+  | 'status-tail'
+  | 'continue-status-tail'
   | 'end-only'
   | 'spawn-error'
   | 'send-error'
@@ -119,6 +121,7 @@ class StubTerminalSession implements TerminalBackendSession {
   historyTruncated = false
   throwOnSend = false
   largeOutput = 'x'.repeat(100)
+  statusChunks: string[] = []
 
   constructor(mode: StubMode) {
     this.mode = mode
@@ -374,6 +377,53 @@ describe('tool-pwsh-persistent', () => {
     session.mode = 'prompt-collision'
     expect(text(await call(ctx, owner, 'complete prompt collision'))).toBe(session.motd)
   })
+
+  it.each([
+    ['0  \r\n', 0],
+    ['7  \r\n', 7],
+    ['0 \n', 0],
+    ['7    \n', 7],
+  ] as const)('accepts ASCII-padded completion status %j without changing output', async (tail, exitCode) => {
+    const { ctx, owner, stub } = await setup({ backendType: 'stub' })
+    await call(ctx, owner, 'warm up')
+    const session = stub.sessions[0]!
+    session.mode = 'status-tail'
+    session.statusChunks = [tail]
+
+    const result = await call(ctx, owner, 'padded completion')
+    expect(result.isError).not.toBe(true)
+    expect(text(result)).toBe('kept  \ndsh> ' + (exitCode === 0 ? '' : `\n[exit code: ${exitCode}]`))
+    expect(session.sends).toBe(2)
+  })
+
+  it.each([0, 1, 2, 3, 4])('waits for the complete padded status newline at split %i', async (split) => {
+    const { ctx, owner, stub } = await setup({ backendType: 'stub' })
+    await call(ctx, owner, 'warm up')
+    const session = stub.sessions[0]!
+    session.mode = 'status-tail'
+    const tail = '7  \r\n'
+    session.statusChunks = [tail.slice(0, split), tail.slice(split)]
+    const send = vi.spyOn(session, 'startSend')
+
+    expect(text(await call(ctx, owner, 'split completion'))).toBe('kept  \ndsh> \n[exit code: 7]')
+    expect(send).toHaveBeenCalledTimes(2)
+    expect(send.mock.calls[1]?.[0]).toMatchObject({ text: '', submit: false })
+  })
+
+  it.each(['0\t\n', '0\u00a0\n', '0\v\n', '0  ', '0  \r', '0junk\n', ' 0\n', '-1\n', '+1\n', "' + $__s)\n"])(
+    'does not accept unsupported completion status %j', async (tail) => {
+      const { ctx, owner, stub } = await setup({ backendType: 'stub' })
+      await call(ctx, owner, 'warm up')
+      const session = stub.sessions[0]!
+      session.mode = 'status-tail'
+      session.statusChunks = [tail]
+
+      const result = await call(ctx, owner, 'invalid completion')
+      expect(result.isError).toBe(true)
+      expect(text(result)).toContain('stub send failed')
+      expect(session.sends).toBe(3)
+    },
+  )
 
   it('reports the exit path when the shell exits between send settlement and the next poll', async () => {
     const { ctx, owner, stub } = await setup({ backendType: 'stub' })

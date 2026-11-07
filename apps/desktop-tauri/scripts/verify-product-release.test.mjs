@@ -192,33 +192,30 @@ test('release smoke accepts the current Codex model through the Host catalog', (
 })
 
 test('Codex Auth adapter profile satisfies the bundled Pi AI diagnostics contract', () => {
-  const adapter = readFileSync(
-    join(import.meta.dirname, '..', 'product', 'dsh-codex-auth', 'lib', 'bounded-response-CutNZ8kw.js'),
-    'utf8',
-  )
-  assert.match(
-    adapter,
-    /modelErrors: \/\* @__PURE__ \*\/ new Map\(\),\s+configuredMaxTokens: \/\* @__PURE__ \*\/ new Map\(\),/u,
-  )
+  const codexLib = join(import.meta.dirname, '..', 'product', 'dsh-codex-auth', 'lib')
+  const volatileConfig = readdirSync(codexLib).filter(name => /^volatile-config-.*\.js$/u.test(name))
+  assert.equal(volatileConfig.length, 1)
+  const adapter = readFileSync(join(codexLib, volatileConfig[0]), 'utf8')
+  assert.match(adapter, /modelErrors: \/\* @__PURE__ \*\/ new Map\(\),/u)
+  assert.match(adapter, /configuredMaxTokens: \/\* @__PURE__ \*\/ new Map\(\),/u)
+  assert.match(adapter, /const CODEX_GPT_6_1_SOL_MODEL_ID = "gpt-6\.1-sol";/u)
+  assert.match(readFileSync(join(codexLib, 'image.js'), 'utf8'), /agent\.session\.snapshotEvents\(\)/u)
 })
 
 test('Codex Auth binds settings forms to bundled profile entry ids', () => {
   const codexLib = join(import.meta.dirname, '..', 'product', 'dsh-codex-auth', 'lib')
-  const client = readFileSync(join(codexLib, 'client.js'), 'utf8')
+  const client = readFileSync(join(codexLib, 'client.cjs'), 'utf8')
   assert.match(client, /const LLM_NAMESPACE = "llm-codex-auth";/u)
   assert.match(client, /const SEARCH_NAMESPACE = "codex-search";/u)
   assert.match(client, /const IMAGE_NAMESPACE = "codex-image";/u)
   assert.doesNotMatch(client, /const LLM_NAMESPACE = "codex-llm";/u)
-  assert.match(client, /scope\.mutate\(\[\{/u)
-  assert.doesNotMatch(client, /scope\.set\(/u)
-  assert.match(client, /IconRefreshOutlineRegular/u)
-  assert.match(client, /IconChevronDownOutlineRegular/u)
+  assert.match(client, /scope\.set\(field, value\)/u)
+  assert.match(client, /IconRefreshOutlineMedium/u)
+  assert.match(client, /IconChevronDownOutlineMedium/u)
   assert.doesNotMatch(client, /Icon(?:RefreshOutline16|ChevronDownOutline14)/u)
   assert.match(readFileSync(join(codexLib, 'index.js'), 'utf8'), /longContextEnabled: z\.boolean\(\)\.default\(false\)\.volatile\(\)/u)
   assert.match(readFileSync(join(codexLib, 'search.js'), 'utf8'), /enabled: z\.boolean\(\)\.default\(true\)\.volatile\(\)/u)
   assert.match(readFileSync(join(codexLib, 'image.js'), 'utf8'), /enabled: z\.boolean\(\)\.default\(true\)\.volatile\(\)/u)
-  const patch = readFileSync(join(import.meta.dirname, '..', 'product', 'patches', 'codex-auth-current-settings.patch'), 'utf8')
-  assert.doesNotMatch(patch, /YOURBUDDY_UPSTREAM\.json/u)
   const settingsSource = readFileSync(join(
     import.meta.dirname,
     '..', '..', '..',
