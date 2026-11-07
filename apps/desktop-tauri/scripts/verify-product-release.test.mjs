@@ -27,6 +27,7 @@ import {
   authenticateHost,
   assertCleanChildExit,
   assertCodexAuthStatusProbe,
+  probeCodexAuthStatus,
   assertCodexModelCatalogProbe,
   assertProductClientBoot,
   assertResolvedWorkspacePackage,
@@ -908,4 +909,24 @@ test('browser network overflow keeps counts and current navigation status', () =
   assert.equal(observer.snapshot().navigations[0].mainFrame, true)
   assert.equal(observer.snapshot().navigations[0].status, 200)
   observer.dispose()
+})
+
+test('release status probe uses the authenticated namespaced account RPC', async (t) => {
+  const response = {
+    type: 'server-response', rpcId: 'yourbuddy-release-codex-auth-status',
+    result: { ok: true, value: { status: { available: false, configured: false } } },
+  }
+  const fetchMock = t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(url, '/api/codex-auth/status')
+    assert.equal(options.method, 'POST')
+    assert.deepEqual(JSON.parse(options.body), {
+      type: 'client-request', rpcId: 'yourbuddy-release-codex-auth-status',
+      method: 'codex-auth/status', payload: {},
+    })
+    return { status: 200, ok: true, text: async () => JSON.stringify(response) }
+  })
+  const probe = await probeCodexAuthStatus()
+  assert.deepEqual(probe, { status: 200, body: response })
+  assert.doesNotThrow(() => assertCodexAuthStatusProbe(probe))
+  assert.equal(fetchMock.mock.callCount(), 1)
 })
