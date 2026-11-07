@@ -171,6 +171,17 @@ class StubTerminalSession implements TerminalBackendSession {
     this.pendingText = ''
     const start = START_PATTERN.exec(sent)?.[0]
     const end = END_PATTERN.exec(sent)?.[0]
+    if (this.mode === 'status-tail' || this.mode === 'continue-status-tail') {
+      const first = this.mode === 'status-tail'
+      const chunk = this.statusChunks.shift()
+      if (chunk === undefined) throw new Error('stub send failed')
+      const output = first
+        ? `${start ?? ''}\nkept  \ndsh> \n${end ?? ''}${chunk}`
+        : chunk
+      this.scrollback += output
+      this.mode = 'continue-status-tail'
+      return this.operation(Promise.resolve(this.result(output, 'inferred_idle')))
+    }
     if (this.mode === 'with-echo') {
       // The PSReadLine echo renders the submitted wrapper before the real
       // markers; the tool must strip it from the captured result.
