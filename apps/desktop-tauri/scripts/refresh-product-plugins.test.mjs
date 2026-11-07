@@ -19,6 +19,7 @@ import {
   resolveGitHubLatestRelease,
   resolveNpmDistTag,
   resolveNpmLatest,
+  resolveNpmVersion,
   selectProductPlugins,
   validateProductUpdatePolicy,
   verifyArchiveIntegrity,
@@ -377,6 +378,14 @@ test('product update policy validates required source metadata before refresh', 
     () => validateProductUpdatePolicy(updatePolicy([npmPolicy({ distTag: 'RC next' })]), '/tmp/product'),
     /valid npm dist-tag/,
   )
+  assert.equal(
+    validateProductUpdatePolicy(updatePolicy([npmPolicy({ kind: 'npm-version', version: '2.3.4-rc.2' })]), '/tmp/product').plugins[0].version,
+    '2.3.4-rc.2',
+  )
+  assert.throws(
+    () => validateProductUpdatePolicy(updatePolicy([npmPolicy({ kind: 'npm-version', version: '^2.3.4' })]), '/tmp/product'),
+    /exact semantic version/,
+  )
   assert.throws(
     () => validateProductUpdatePolicy(updatePolicy([{
       id: 'context',
@@ -552,6 +561,31 @@ test('npm dist-tag resolution accepts an explicitly selected prerelease', async 
   })
   assert.equal(artifact.version, '2.3.4-rc.2')
   assert.deepEqual(requested, ['https://registry.npmjs.org/fixture-plugin/rc'])
+})
+
+test('npm exact-version resolution requires the selected version', async () => {
+  const requested = []
+  const artifact = await resolveNpmVersion('fixture-plugin', '2.3.4-rc.2', async url => {
+    requested.push(url)
+    return jsonResponse({
+      name: 'fixture-plugin',
+      version: '2.3.4-rc.2',
+      dist: {
+        tarball: 'https://registry.npmjs.org/fixture-plugin/-/fixture-plugin-2.3.4-rc.2.tgz',
+        integrity: `sha512-${Buffer.alloc(64).toString('base64')}`,
+      },
+    })
+  })
+  assert.equal(artifact.version, '2.3.4-rc.2')
+  assert.deepEqual(requested, ['https://registry.npmjs.org/fixture-plugin/2.3.4-rc.2'])
+  await assert.rejects(
+    resolveNpmVersion('fixture-plugin', '2.3.4-rc.2', async () => jsonResponse({
+      name: 'fixture-plugin',
+      version: '2.3.4-rc.3',
+      dist: { tarball: 'https://registry.npmjs.org/a.tgz', integrity: 'sha512-AA==' },
+    })),
+    /version metadata is invalid/,
+  )
 })
 
 test('npm latest resolution rejects a prerelease channel', async () => {

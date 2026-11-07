@@ -82,10 +82,10 @@
     },
     {
       "id": "codex-auth",
-      "kind": "npm-latest",
+      "kind": "npm-version",
       "package": "dsh-codex-auth",
       "destination": "dsh-codex-auth",
-      "distTag": "rc",
+      "version": "0.3.3-rc.4",
       "peerOverrides": {
         "0.3.1": {
           "@deepseek-ai/dsh-*": "0.1.7-rc.2"

@@ -3,7 +3,7 @@
   "repository": "deepseek-ai/deepseek-harness",
   "channel": "stable-else-rc",
   "tagPrefix": "dsh-v",
-  "maximumVersion": "0.2.1-rc.2",
+  "maximumVersion": "0.2.0-rc.2",
   "firstPartyPeerPackages": [
     "personal-workbench"
   ]
