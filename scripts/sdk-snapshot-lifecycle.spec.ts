@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { stripVTControlCharacters } from 'node:util'
 import { afterAll, beforeAll, expect, it, onTestFinished } from 'vitest'
 import { runSdkSnapshotLifecycle } from './sdk-snapshot-lifecycle.ts'
 
@@ -41,17 +42,28 @@ it('cleans normal and failed operations once and leaves adjacent roots untouched
     let finished: (() => Promise<void>) | undefined
     let closes = 0
     let subscriptions = 0
-    const failure = new Error('scenario failure')
+    const failure = new Error('private scenario failure')
+    const diagnostics: string[] = []
     try {
       const result = runSdkSnapshotLifecycle(root, (hook) => { finished = hook }, async (scope) => {
         await scope.startRuntime({ start: async () => {}, close: async () => { closes++ } })
         scope.ownSubscription({ close: () => { subscriptions++ } })
+        scope.phase('turn-end', 3)
+        for (let turn = 1; turn <= 10; turn++) scope.observe('turn/end', turn)
         if (fails) throw failure
         return 'result'
-      })
+      }, diagnostic => diagnostics.push(diagnostic))
       if (fails) await expect(result).rejects.toBe(failure)
       else await expect(result).resolves.toBe('result')
       await Promise.all([finished?.(), finished?.()])
+      expect(diagnostics).toEqual(fails ? [
+        `SDK snapshot diagnostic: ${JSON.stringify({
+          phase: 'turn-end', turn: 3,
+          events: Array.from({ length: 8 }, (_, index) => ({ event: 'turn/end', turn: index + 3 })),
+        })}`,
+      ] : [])
+      expect(diagnostics.join('')).not.toContain(root)
+      expect(diagnostics.join('')).not.toContain(failure.message)
       expect(closes).toBe(1)
       expect(subscriptions).toBe(1)
       expect(existsSync(root)).toBe(false)
@@ -60,6 +72,39 @@ it('cleans normal and failed operations once and leaves adjacent roots untouched
       await rm(root, { recursive: true, force: true })
       await rm(neighbor, { recursive: true, force: true })
     }
+  }
+})
+
+it('reports test completion during successful-operation shutdown once', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'sdk-cleanup-closing-'))
+  const closing = Promise.withResolvers<undefined>()
+  const release = Promise.withResolvers<undefined>()
+  const diagnostics: string[] = []
+  let finished: (() => Promise<void>) | undefined
+  let closes = 0
+  const operation = runSdkSnapshotLifecycle(root, (hook) => { finished = hook }, async (scope) => {
+    await scope.startRuntime({
+      start: async () => {},
+      close: async () => { closes++; closing.resolve(undefined); await release.promise },
+    })
+    scope.phase('persisted-output')
+    return 'result'
+  }, diagnostic => diagnostics.push(diagnostic))
+  try {
+    await closing.promise
+    const cleaned = finished?.()
+    expect(diagnostics).toEqual(['SDK snapshot diagnostic: {"phase":"runtime-close","events":[]}'])
+    release.resolve(undefined)
+    await cleaned
+    await expect(operation).resolves.toBe('result')
+    await finished?.()
+    expect(diagnostics).toHaveLength(1)
+    expect(closes).toBe(1)
+    expect(existsSync(root)).toBe(false)
+  } finally {
+    release.resolve(undefined)
+    await operation
+    await finished?.()
   }
 })
 
@@ -132,7 +177,7 @@ it('retains the root and both errors when runtime shutdown fails', async () => {
     const result = runSdkSnapshotLifecycle(root, () => {}, async (scope) => {
       await scope.startRuntime({ start: async () => {}, close: async () => { throw closing } })
       throw original
-    })
+    }, () => { throw new Error('report unavailable') })
     await expect(result).rejects.toMatchObject({ errors: [original, closing] })
     expect(existsSync(root)).toBe(true)
   } finally {
@@ -217,6 +262,8 @@ it.skipIf(timeoutRoot === undefined)('timeout cleanup child', async () => {
   await runSdkSnapshotLifecycle(timeoutRoot, (hook) => { onTestFinished(hook) }, async (scope) => {
     await scope.startRuntime(runtime)
     scope.ownSubscription({ close: () => { wait.reject(new Error('subscription closed')) } })
+    scope.phase('turn-end', 2)
+    scope.observe('turn/end', 1)
     await wait.promise
   })
 }, 1_000)
@@ -226,8 +273,24 @@ it.skipIf(timeoutRoot !== undefined)('reaps only its owned process after a real 
     const control = await mkdtemp(join(tmpdir(), 'sdk-cleanup-timeout-'))
     const root = await mkdtemp(join(control, 'owned-'))
     const pidFile = join(control, 'pid')
+    const reporter = join(control, 'color-reporter.mjs')
+    // Exercise the reporter's reset prefix even when the parent runner disables its own colors.
+    try {
+      await writeFile(reporter, `
+import { DefaultReporter } from ${JSON.stringify(import.meta.resolve('vitest/reporters'))}
+export default class extends DefaultReporter {
+  onUserConsoleLog(log) {
+    super.onUserConsoleLog({ ...log, content: '\\u001b[39m' + log.content })
+  }
+}
+`)
+    } catch (error) {
+      await rm(control, { recursive: true, force: true })
+      throw error
+    }
     const runner = spawn(process.execPath, [
       'node_modules/vitest/vitest.mjs', 'run', 'scripts/sdk-snapshot-lifecycle.spec.ts', '-t', '^timeout cleanup child$',
+      '--reporter', reporter,
     ], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, DSH_SDK_CLEANUP_TEST_ROOT: root, DSH_SDK_CLEANUP_TEST_PID_FILE: pidFile, DSH_SDK_CLEANUP_TEST_LEGACY: legacy ? '1' : '0' },
@@ -246,6 +309,12 @@ it.skipIf(timeoutRoot !== undefined)('reaps only its owned process after a real 
       const ownedPid = Number(await readFile(pidFile, 'utf8'))
       expect(code, output).toBe(1)
       expect(output).toContain('Test timed out in 1000ms')
+      // Vitest's colored console header leaves reset codes before the diagnostic's first character.
+      const diagnosticLines = stripVTControlCharacters(output).split('\n')
+        .filter(line => line.startsWith('SDK snapshot diagnostic: '))
+      expect(diagnosticLines).toEqual(legacy ? [] : [
+        'SDK snapshot diagnostic: {"phase":"turn-end","turn":2,"events":[{"event":"turn/end","turn":1}]}',
+      ])
       expect(existsSync(root)).toBe(false)
       expect(() => process.kill(ownedPid, 0)).toThrow(expect.objectContaining({ code: 'ESRCH' }))
       expect(existsSync(`${pidFile}.legacy`)).toBe(legacy)

@@ -534,6 +534,13 @@ fn manifest_ready(
 }
 
 fn node_matches_manifest(node_binary: &Path, parsed: &serde_json::Value) -> bool {
+    // A retained legacy cache path must not skip preparation and fail at the next pnpm launch.
+    if node_binary
+        .parent()
+        .is_none_or(|parent| std::env::join_paths([parent]).is_err())
+    {
+        return false;
+    }
     let Ok(meta) = fs::metadata(node_binary) else {
         return false;
     };

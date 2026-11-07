@@ -23,6 +23,7 @@ on:
       - 'apps/desktop-tauri/desktop-i18n.js'
       - 'apps/desktop-tauri/scripts/splash-state.test.mjs'
       - 'apps/desktop-tauri/scripts/inspect-component-storage*.mjs'
+      - 'apps/desktop-tauri/scripts/build-bootstrap-components*.mjs'
       - 'apps/desktop-tauri/scripts/tests/expected/component-storage.json'
       - 'apps/desktop-tauri/scripts/smoke-bootstrap-macos.mjs'
       - 'apps/desktop-tauri/scripts/verify-old-component-channel.mjs'
@@ -58,6 +59,8 @@ jobs:
       - name: Compile the desktop application and test Bootstrap recovery
         working-directory: apps/desktop-tauri/src-tauri
         run: |
+          cargo test --locked runtime::component_plan
+          cargo test --locked runtime::component_leases
           cargo test --locked runtime::components
           cargo test --locked runtime::boot_status::tests
           cargo test --locked runtime::provision
@@ -138,6 +141,8 @@ jobs:
           dest: ${{ runner.temp }}/setup-pnpm-packaged
       - name: Install locked build tools
         run: pnpm install --frozen-lockfile
+      - name: Test component archives with macOS BSD tar
+        run: node --test apps/desktop-tauri/scripts/build-bootstrap-components.test.mjs
       - name: Prepare authentic old signed channel rejection fixture
         shell: bash
         run: |

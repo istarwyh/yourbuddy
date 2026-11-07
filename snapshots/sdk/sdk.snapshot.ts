@@ -624,10 +624,20 @@ async function runScenario(scenario: CorpusScenario): Promise<{
     const results: RunResult[] = []
     const sessionId = 'fixture-root-session'
     const liveSessions: (string | undefined)[] = [sessionId]
+    scope.phase('runtime-start')
     await scope.startRuntime(harness)
     const subscription = scope.ownSubscription(harness.client.subscribeSessionTree(sessionId))
     const observe = (notification: HarnessNotification): void => {
       observedMethods.add(notification.method)
+      const event = notificationEvent(notification)
+      if (event !== undefined) {
+        const type = event.type
+        const turn = (event.data as JsonObject | undefined)?.turn
+        scope.observe(
+          type === 'turn/start' || type === 'turn/end' || type === 'step/start' || type === 'step/end' ? type : 'other',
+          typeof turn === 'number' && Number.isSafeInteger(turn) && turn >= 0 ? turn : undefined,
+        )
+      }
       if (notification.method !== 'subagent.started') return
       const child = notification.params.childSessionId
       if (typeof child !== 'string' || liveSessions.includes(child)) return
@@ -637,6 +647,7 @@ async function runScenario(scenario: CorpusScenario): Promise<{
       const session = harness.session(sessionId)
       for (const action of turnActions(primaryFixture)) {
         if (action.content === undefined) {
+          scope.phase('turn-end', action.turn)
           await waitForRootEvent(
             subscription,
             sessionId,
@@ -645,6 +656,7 @@ async function runScenario(scenario: CorpusScenario): Promise<{
           )
           continue
         }
+        scope.phase('session-run', action.turn)
         const result = await session.run(materializeInput(action.content, scenario, cwd, liveSessions), {
           onNotification: (notification) => {
             notifications.push(notification)
@@ -658,6 +670,7 @@ async function runScenario(scenario: CorpusScenario): Promise<{
             'feedback/record', 'feedback/record', 'feedback/message-put', 'feedback/message-put', 'feedback/message-delete',
           ])
         }
+        scope.phase('turn-end', action.turn)
         await waitForRootEvent(
           subscription,
           sessionId,
@@ -666,12 +679,15 @@ async function runScenario(scenario: CorpusScenario): Promise<{
         )
       }
       for (const type of postTurnEventTypes(primaryFixture)) {
+        scope.phase('post-turn-event')
         await waitForRootEvent(subscription, sessionId, event => event.type === type, observe)
       }
     } finally {
       subscription.close()
     }
+    scope.phase('runtime-close')
     await harness.close()
+    scope.phase('persisted-output')
     const logs = (await Promise.all([
       persistedLogs(sessionsRoot),
       ...(childSessionsRoot === undefined ? [] : [persistedLogs(childSessionsRoot)]),

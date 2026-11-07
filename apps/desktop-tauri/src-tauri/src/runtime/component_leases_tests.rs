@@ -1010,3 +1010,25 @@ setTimeout(() => process.exit(91), 45000).unref();
         }
     }
 }
+
+#[test]
+fn node_identity_leases_follow_encoded_storage_without_reusing_legacy_slot() {
+    fn name_for(parts: &[&str]) -> String {
+        let mut digest = Sha256::new();
+        digest.update(b"yourbuddy-component-lease-v1\0");
+        for part in parts {
+            let value = part.to_ascii_lowercase();
+            digest.update((value.len() as u64).to_le_bytes());
+            digest.update(value.as_bytes());
+        }
+        format!("{}.lock", hex::encode(digest.finalize()))
+    }
+    let aliases = [
+        identity("node", "node:22.19.0:darwin-arm64"),
+        identity("node", "22.19.0:darwin-arm64"),
+    ];
+    let names = lease_names(&aliases).unwrap();
+    assert_eq!(names.len(), 1);
+    assert!(names.contains(&name_for(&["node", "22.19.0%3Adarwin-arm64"])));
+    assert!(!names.contains(&name_for(&["node", "22.19.0:darwin-arm64"])));
+}

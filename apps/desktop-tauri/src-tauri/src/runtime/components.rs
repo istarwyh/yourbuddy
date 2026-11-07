@@ -35,8 +35,8 @@ const MAX_EXPANDED_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 #[cfg(test)]
 use super::component_plan::validate_manifest;
 use super::component_plan::{
-    component_key, component_storage_path, parse_manifest, plan_installation, validate_spec,
-    ComponentKind, InstallPlan, PlanRequest, VerifiedInstallations,
+    component_storage_key, component_storage_path, parse_manifest, plan_installation,
+    validate_spec, ComponentKind, InstallPlan, PlanRequest, VerifiedInstallations,
 };
 pub use super::component_plan::{ComponentManifest, ComponentSpec};
 
@@ -735,7 +735,7 @@ impl ComponentManager {
         let staging_parent = self.root.join("staging");
         fs::create_dir_all(&staging_parent)
             .map_err(|error| format!("cannot create component staging: {error}"))?;
-        let staging = staging_parent.join(format!("{}-{}", name, component_key(&spec.id)?));
+        let staging = staging_parent.join(format!("{}-{}", name, component_storage_key(&spec.id)?));
         let _ = fs::remove_dir_all(&staging);
         fs::create_dir_all(&staging)
             .map_err(|error| format!("cannot create component staging: {error}"))?;
@@ -1221,4 +1221,17 @@ pub(super) fn service_fixture(root: &Path) -> ComponentManager {
         progress: None,
         download_url: None,
     }
+}
+
+#[cfg(test)]
+pub(super) fn node_seed_fixture(root: &Path, archive: &[u8]) -> ComponentManager {
+    let mut manager = service_fixture(root);
+    let spec = manager.manifest.components.get_mut("node").unwrap();
+    spec.id = "node:22.19.0:darwin-arm64".into();
+    spec.bytes = archive.len() as u64;
+    spec.sha256 = hex::encode(Sha256::digest(archive));
+    let seeds = manager.resource_dir.join("component-seeds");
+    fs::create_dir_all(&seeds).unwrap();
+    fs::write(seeds.join(&spec.archive), archive).unwrap();
+    manager
 }
