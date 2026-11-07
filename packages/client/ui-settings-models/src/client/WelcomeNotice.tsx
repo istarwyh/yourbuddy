@@ -32,7 +32,7 @@ export type WelcomeNoticeProps =
  * @returns the welcome modal or null while the step decides not to show.
  */
 export function WelcomeNotice(props: WelcomeNoticeProps): ReactNode {
-  const { complete, controller, useWelcome, t } = props
+  const { complete, takeOver, controller, useWelcome, t } = props
   const state = useWelcome(snapshot => snapshot)
   const finished = useRef(false)
   const finish = useCallback((): void => {
@@ -57,7 +57,7 @@ export function WelcomeNotice(props: WelcomeNoticeProps): ReactNode {
   const paragraphs = t('welcomeBody').split('\n\n')
 
   return (
-    <OnboardingModal title={t('welcomeTitle')} focusTitle>
+    <OnboardingModal title={t('welcomeTitle')} takeOver={takeOver} focusTitle>
       <div className={css.copy}>
         {paragraphs.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
       </div>

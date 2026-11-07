@@ -71,8 +71,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * path. Registrants own readiness, copy, dialog behavior, AND visible
      * chrome: a step wraps its visible content in its modal surface (including
      * `#root` inert ownership) and renders null while private facts are still
-     * loading. The shell paints no chrome of its own, so a mounted-but-deciding
-     * step shows and blocks nothing.
+     * loading. Only a committed visible surface calls `takeOver()` to close
+     * the Settings panel; a mounted-but-deciding step shows and blocks nothing.
      */
     'settings.onboarding': { kind: 'list'; scope: 'root'; owner: SettingsOnboardingOwnerProps }
     /**
@@ -134,6 +134,8 @@ export interface SettingsOnboardingOwnerProps {
   stepId: string
   /** User explicitly reopened this step outside first-run onboarding. */
   explicit?: boolean
+  /** Close Settings when this step's visible dialog commits, never while deciding or skipping. */
+  takeOver: () => void
   /** Complete or skip this step and transfer ownership to the next entry. */
   complete: () => void
   /** Open the settings panel directly on one registered section. */

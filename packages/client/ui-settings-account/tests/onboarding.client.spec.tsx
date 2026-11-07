@@ -26,7 +26,7 @@ it('claims onboarding while loading, offers API key fallback, and completes afte
   const props = {
     ...globals,
     hasRunningAccountTasks: vi.fn(async () => false),
-    complete: vi.fn(), useApiKey: vi.fn(), setOnboarding: vi.fn(), showLogin: vi.fn(),
+    complete: vi.fn(), takeOver: vi.fn(), useApiKey: vi.fn(), setOnboarding: vi.fn(), showLogin: vi.fn(),
     useAccount: <T,>(select: (snapshot: AccountSnapshot) => T) => select(account),
     useTheme: <T,>(select: (snapshot: ThemeSnapshot) => T) => select(theme),
     start: vi.fn(async () => {}), cancel: vi.fn(async () => {}), signOut: vi.fn(async () => {}),
@@ -36,8 +36,11 @@ it('claims onboarding while loading, offers API key fallback, and completes afte
   const view = render(<AccountOnboarding {...props} />)
   expect(props.setOnboarding).toHaveBeenCalledExactlyOnceWith(true)
   expect(screen.queryByRole('dialog')).toBeNull()
+  expect(props.takeOver).not.toHaveBeenCalled()
   account = { ...account, view: { status: 'signed-out', attempt: null, links: { usageUrl: '', topUpUrl: '' } } }
   view.rerender(<AccountOnboarding {...props} />)
+  expect(props.takeOver).toHaveBeenCalledOnce()
+  expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
   fireEvent.click(screen.getByRole('button', { name: en.addApiKey }))
   expect(props.showLogin).toHaveBeenLastCalledWith(false)
   expect(props.useApiKey).toHaveBeenCalledOnce()
@@ -47,6 +50,7 @@ it('claims onboarding while loading, offers API key fallback, and completes afte
   view.rerender(<AccountOnboarding {...props} />)
   expect(props.complete).toHaveBeenCalledTimes(2)
   expect(screen.queryByRole('dialog')).toBeNull()
+  expect(props.takeOver).toHaveBeenCalledOnce()
   view.unmount()
   expect(props.setOnboarding).toHaveBeenLastCalledWith(false)
 })

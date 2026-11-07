@@ -87,10 +87,12 @@ function mount(
   const controller = new WelcomeNoticeStore(scope)
   void mirror.load()
   const complete = vi.fn()
+  const takeOver = vi.fn()
   const unusedHook = (() => { throw new Error('unused standard hook') }) as never
   const props: WelcomeNoticeProps = {
     stepId: 'welcome-notice',
     complete,
+    takeOver,
     openSection: vi.fn(),
     useSessions: unusedHook,
     useSessionStatus,
@@ -100,7 +102,7 @@ function mount(
     useWelcome: bindSnapshotSelector(controller.store),
     t: key => zh[key],
   }
-  return { ...render(<WelcomeNotice {...props} />), complete, controller, mirror, mutate, appRoot }
+  return { ...render(<WelcomeNotice {...props} />), complete, takeOver, controller, mirror, mutate, appRoot }
 }
 
 describe('WelcomeNotice', () => {
@@ -116,7 +118,9 @@ describe('WelcomeNotice', () => {
 
   it('renders one blocking modal action and focuses the title', async () => {
     const h = mount()
+    expect(h.takeOver).not.toHaveBeenCalled()
     const dialog = await screen.findByRole('dialog', { name: WELCOME_NOTICE_COPY.zh.title })
+    expect(h.takeOver).toHaveBeenCalledOnce()
     for (const paragraph of WELCOME_NOTICE_COPY.zh.body.split('\n\n')) {
       expect(screen.getByText(paragraph, { exact: true })).toBeTruthy()
     }
@@ -149,6 +153,7 @@ describe('WelcomeNotice', () => {
     })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(h.complete).toHaveBeenCalledOnce()
+    expect(h.takeOver).not.toHaveBeenCalled()
   })
 
   it('keeps the sole action disabled while saving and reports a refused write', async () => {

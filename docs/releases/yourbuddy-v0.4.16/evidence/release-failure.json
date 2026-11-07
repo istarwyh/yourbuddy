@@ -1,0 +1,61 @@
+{
+  "recordedAt": "2026-11-07T09:48:00Z",
+  "releaseTag": "yourbuddy-v0.4.16",
+  "commit": "32e75547da7e87f835706d0052ac6a4c6665dbed",
+  "tree": "5306f3064a6faccac31cd33eda401d8aefb07c5d",
+  "runUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42359577825",
+  "jobUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42359577825/job/128364887933",
+  "conclusion": "failure",
+  "failedAt": "2026-11-07T09:36:58Z",
+  "stage": "Verify prepared default workbench and optional Harbor",
+  "phase": "installed",
+  "browserStep": "branding-journey",
+  "assertion": "workbench-branding-smoke.mjs:117, called at153: Settings dialog visible wait timed out after10000ms after custom-brand reload",
+  "observed": [
+    "core9 Clients and default/custom/reloaded/reset/reset-reloaded branding passed",
+    "Harbor Python0.10.3 and Profile installation passed",
+    "installed custom Research Lab name/logo persisted after reload",
+    "video67.24s Settings visible,67.28s removed; no reset RPC yet",
+    "main HTTP200 and load completed; pageErrors and consoleErrors empty"
+  ],
+  "artifact": {
+    "id": 13569029703,
+    "bytes": 7922822,
+    "sha256": "330203da41a3780cc53122adc7518697bc9b6df025ba8e71bf708e084882b95a",
+    "independentDownload": "matched GitHub digest; extracted JSON/log/video/screenshots inspected"
+  },
+  "controlledReproduction": {
+    "completedAt": "2026-11-07T09:45:03.890Z",
+    "sourceCommit": "32e75547da7e87f835706d0052ac6a4c6665dbed",
+    "environment": "macOS15.6.1 arm64, Node22.22.3, pnpm11.7.0, Chromium149.0.7827.55; isolated real Host/Profile, synthetic data",
+    "method": "Hold exact browser session/list response across reload until Settings visible; release response and record DOM dialog/inert transitions through original10000ms wait",
+    "dialogsVisibleAtMs": 274.3,
+    "dialogsGoneAtMs": 303.4,
+    "otherOnboardingDialogObserved": false,
+    "rootInert": false,
+    "result": "same Settings wait failed after response released; selected but non-visible onboarding incorrectly closed user panel",
+    "inputLimit": "local Store568, not equivalent to complete macOS570 CI; this reproduces UI lifecycle rather than native optional behavior"
+  },
+  "notRun": [
+    "component archive packaging and signing",
+    "Bootstrap/Offline application builds",
+    "native three-start acceptance",
+    "relocated product test",
+    "GitHub Release publication",
+    "stable updater modification"
+  ],
+  "publicAfterFailure": {
+    "releaseTagEndpoint": "HTTP404",
+    "latestTag": "yourbuddy-v0.4.13",
+    "stableVersion": "0.4.13",
+    "stableBytes": 1971,
+    "stableSha256": "098682e27e293fbca5122b23bf5519b1dde900c0cf1d282f4f2617658ac8947c"
+  },
+  "diagnosticLimit": "Closed proxy-page requests may remain in pending observer records without a finish event; those records are not evidence of live sockets. Earlier navigation stall attribution remains unassigned.",
+  "recovery": "Local product correction, regression and unchanged prepared acceptance passed within the input limit recorded in settings-race-repair.json. Complete570 CI and a new patch release remain pending; no retry or tag move.",
+  "screenshot": {
+    "path": "screenshots/installed-settings-failure.png",
+    "sha256": "d38a284f7c9d16bd10723a6e22f81d3723714637cc6b7c0441140cb5668f7bce",
+    "caption": "Synthetic installed-phase workbench after Settings unexpectedly disappeared; Research Lab brand persisted; screenshot inspected, no personal content."
+  }
+}

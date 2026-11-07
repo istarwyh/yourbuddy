@@ -2,14 +2,14 @@
 
 English | [中文](README.zh.md)
 
-This archive records the complete-input preflight and the checks for the 0.4.16 release candidate. Publication remains pending until the release workflow and public delivery checks finish.
+This archive records the verified preflight and candidate checks, followed by the failed 0.4.16 release attempt. The tag is retained unchanged; no GitHub Release or installer was published.
 
 - Release identifier: `yourbuddy-v0.4.16`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: candidate verified within the recorded scope; installer publication and native acceptance are pending.
+- Archive state: candidate and preflight verified; release prepared acceptance failed before packaging, native acceptance or publication.
 - Evidence commit: [merged repair base](https://github.com/istarwyh/yourbuddy/commit/32801fee00b2f0a671e60ba95158c38f7b338e41), tree `ecb043e9070bbdab43ea656e2391c2890232dded`. The version candidate changes only version metadata and documentation.
 - Evidence gallery: [prepared workbench](screenshots/prepared-workbench.png), synthetic data from the macOS PR preflight, not an installed application.
-- Evidence download: the [immutable tag source archive](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.16.zip) will contain this candidate record after publication; independent extraction remains pending.
+- Evidence download: the [immutable tag source archive](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.16.zip) contains the original candidate record, not this later failure update. All 15 candidate-changed files were independently extracted and byte-compared; see [source verification](evidence/source-archive-verification.json).
 
 ## User release notes
 
@@ -56,7 +56,7 @@ Managed LAN Share is unsupported. Real-model generation, native macOS Tauri/WebV
 | Peer/Artifacts and reset regressions | Passed | Reviewed #93 source | [Repair evidence](evidence/verifier-repair.json); 49/49 focused tests, including the real Chromium stream-lifecycle regression; rejected duplicate peer, missing Client and false reset success |
 | Local prepared run | Passed with input limit | macOS 15.6.1 arm64, Node 22.22.3, pnpm 11.7.0 | Full Host/Harbor/Chromium with 568 inputs; two native optional packages missing, not complete-input evidence |
 | Version candidate checks | Passed | Local 0.4.16 metadata candidate | [Commands and results](evidence/candidate-checks.json) |
-| Release packaging, native acceptance and public delivery | Not verified | 0.4.16 release candidate | Must run through the unchanged release workflow; no claim of published installers yet |
+| Release prepared acceptance | Failed | Exact tagged 0.4.16 source | [Failure record](evidence/release-failure.json); installed-phase Settings closed after reload; packaging, native acceptance and publication were skipped |
 
 ## Scenario: complete macOS prepared preflight
 
@@ -73,10 +73,16 @@ The [first preflight](https://github.com/istarwyh/yourbuddy/actions/runs/4235341
 
 The [second preflight](https://github.com/istarwyh/yourbuddy/actions/runs/42355415779/job/128352321356) verified the same complete native inputs, but its branding navigation timed out before the reset helper ran. A diagnostic local run found two completed bridge/proxy iframes holding six same-origin Host streams. A controlled Chromium fixture reproduced the original 30-second `load` timeout; closing the completed proxy page released all six streams and resumed the queued navigation. The same regression passed in 189 ms after the cleanup correction. The final verifier closes that page only after all proxy assertions, retaining `load`, its 30-second budget and every product assertion. Bounded, sanitized resource diagnostics remain. This demonstrates the lifecycle risk and repair; the earlier CI timeout did not retain enough pending-resource evidence for direct attribution.
 
+## Release attempt failure
+
+[Release run 42359577825](https://github.com/istarwyh/yourbuddy/actions/runs/42359577825/job/128364887933) failed on 2026-11-07 at 09:36:58 UTC during the unchanged prepared acceptance. Core 9 Clients and its branding/reset journey passed; Harbor Python and Profile installation passed. In the installed browser phase, the custom brand persisted after reload, but the second Settings opening disappeared before reset. Video shows the dialog opening and closing about 40 ms later. HTTP 200 and completed navigation/load distinguish this from the prior navigation stall; no reset RPC ran in this phase. The [failure screenshot](screenshots/installed-settings-failure.png) shows the synthetic workbench after the panel disappeared, with Research Lab still applied.
+
+A controlled real Host reproduction held the reloaded Session-list response until Settings was open, then released it. Settings disappeared about 29 ms later; no onboarding dialog appeared and the root stayed non-inert throughout the original 10-second observation. The settings shell closes on selecting an onboarding registration, even when the feature renders nothing while loading or skipping. This is a product race, not a reason to weaken or retry the branding assertions. The [failure record](evidence/release-failure.json) distinguishes the actual failure from controlled reproduction; the [repair record](evidence/settings-race-repair.json) captures the local product correction and unchanged prepared acceptance, with complete-input CI still pending.
+
 ## Delivery status
 
-- Product publication: pending the release workflow and independent public checks. Latest and the stable updater still identify 0.4.13 at candidate preparation.
-- Verification archive: source and complete-input preflight evidence recorded; installer hashes/signatures, public source extraction and native acceptance remain pending.
+- Product publication: failed before packaging or publication. Independent public checks after the failure found no 0.4.16 Release; latest and the stable updater still identify 0.4.13.
+- Verification archive: candidate, preflight, failure and independent tag-source extraction recorded. No 0.4.16 installer hashes/signatures or native acceptance exist.
 - Website synchronization: no product-guidance change in this maintenance follow-up. The existing bilingual plugin guidance deployment and [six live checks](../yourbuddy-v0.4.15/evidence/website-live.json) are historical evidence. Stable latest-download links need independent confirmation after publication; no manual site deployment is part of this release.
 - Unverified scope: native/model/cold-restoration and remaining issue limitations above apply. The unrelated PR Cloudflare preview upload lacks its configured API token; no credentials or preview permissions were changed.
 

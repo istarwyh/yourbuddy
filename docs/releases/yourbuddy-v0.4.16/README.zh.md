@@ -2,14 +2,14 @@
 
 [English](README.md) | 中文
 
-本归档记录完整输入预检与 0.4.16 候选版本检查。正式发布仍须等待发行工作流及公开交付检查完成。
+本归档记录已通过的预检与候选检查，以及随后失败的 0.4.16 发行尝试。标签保持不变，没有发布 GitHub Release 或安装包。
 
 - 发布标识：`yourbuddy-v0.4.16`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选在所记录范围内完成验证；安装包发布与原生验收待完成。
+- 归档状态：候选与预检已通过；发行预备验收在打包、原生验收和发布前失败。
 - 证据提交：[已合并的修复基线](https://github.com/istarwyh/yourbuddy/commit/32801fee00b2f0a671e60ba95158c38f7b338e41)，树为 `ecb043e9070bbdab43ea656e2391c2890232dded`。版本候选仅修改版本元数据和文档。
 - 证据画廊：[预备工作台](screenshots/prepared-workbench.png)，来自 macOS PR 预检的合成数据，并非已安装应用。
-- 证据下载：发布后的[不可变标签源码归档](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.16.zip)将包含本候选记录；独立解压检查待完成。
+- 证据下载：[不可变标签源码归档](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.16.zip)包含原候选记录，不含这次后续失败更新。15 个候选变更文件均已独立解压并逐字节比对，见[源码核验](evidence/source-archive-verification.json)。
 
 ## 用户发行说明
 
@@ -56,7 +56,7 @@ Harness 版本保持 `0.2.0-rc.1`。PATH 安全缓存名称将 `:` 编码为 `%3
 | Peer／Artifacts 与重置回归 | 通过 | 已审查的 #93 源码 | [修复证据](evidence/verifier-repair.json)；49/49 聚焦测试，包含真实 Chromium 流生命周期回归；拒绝重复 peer、缺失 Client 和虚假重置成功 |
 | 本地预备运行 | 在输入限制下通过 | macOS 15.6.1 arm64、Node 22.22.3、pnpm 11.7.0 | 568 输入的完整 Host／Harbor／Chromium；缺少两个原生 optional 包，不是完整输入证据 |
 | 版本候选检查 | 通过 | 本地 0.4.16 元数据候选 | [命令与结果](evidence/candidate-checks.json) |
-| 发行打包、原生验收与公开交付 | 未验证 | 0.4.16 发行候选 | 必须执行未削弱的发行工作流；尚不宣称已有公开安装包 |
+| 发行预备验收 | 失败 | 精确标签 0.4.16 源码 | [失败记录](evidence/release-failure.json)；installed 阶段重载后 Settings 关闭，打包、原生验收和发布均跳过 |
 
 ## 场景：完整 macOS 预备检查
 
@@ -73,10 +73,16 @@ Harness 版本保持 `0.2.0-rc.1`。PATH 安全缓存名称将 `:` 编码为 `%3
 
 [第二次预检](https://github.com/istarwyh/yourbuddy/actions/runs/42355415779/job/128352321356)验证了同样完整的原生输入，但品牌导航在重置 helper 执行前超时。本地诊断发现已完成的两个 bridge／proxy iframe 仍持有六条同源 Host 流。可控 Chromium fixture 重现原有 30 秒 `load` 超时；关闭已完成的 proxy 页面后，六条流全部释放，排队导航恢复。同一回归在资源清理修正后用时 189 毫秒通过。最终 verifier 仅在全部 proxy 断言后关闭该页面，保留 `load`、30 秒预算与每项产品断言，并保留有界、去敏的资源诊断。这证明了生命周期风险及修正；此前 CI 超时没有保留足够 pending 资源证据，仍不能直接归因。
 
+## 发行尝试失败
+
+[发行运行 42359577825](https://github.com/istarwyh/yourbuddy/actions/runs/42359577825/job/128364887933)于 2026-11-07 09:36:58 UTC 在未削弱的预备验收中失败。core 的 9 个 Client 及其品牌／重置旅程通过；Harbor Python 与 Profile 安装通过。installed 浏览器阶段的自定义品牌在重载后保留，但第二次打开 Settings 后弹窗在重置前消失。视频显示弹窗打开约 40 毫秒后关闭。HTTP 200 与完成的导航／load 表明这不同于此前导航阻塞；该阶段未执行 reset RPC。[失败截图](screenshots/installed-settings-failure.png)显示面板消失后的合成工作台，Research Lab 品牌仍保持生效。
+
+真实 Host 的可控重现将重载后的 Session 列表响应保持到 Settings 打开，再释放响应。约 29 毫秒后 Settings 消失；原有 10 秒观察窗口内没有出现 onboarding 弹窗，root 始终不处于 inert 状态。Settings shell 在选中 onboarding 注册项时关闭面板，即使 feature 在加载或跳过时不渲染任何内容。这是产品竞态，不应通过削弱或重试品牌断言掩盖。[失败记录](evidence/release-failure.json)区分实际失败与可控重现；[修复记录](evidence/settings-race-repair.json)记录本地产品修正和未改动的预备验收，完整输入 CI 仍待完成。
+
 ## 交付状态
 
-- 产品发布：等待发行工作流与独立公开检查。候选准备时 latest 和稳定更新源仍为 0.4.13。
-- 验证归档：已记录源码与完整输入预检证据；安装包摘要／签名、公开源码解压与原生验收待完成。
+- 产品发布：在打包和发布前失败。失败后独立公开检查未发现 0.4.16 Release；latest 与稳定更新源仍为 0.4.13。
+- 验证归档：已记录候选、预检、失败与独立标签源码解压。没有 0.4.16 安装包摘要／签名或原生验收。
 - 网站同步：本次维护没有产品指南变更。既有双语插件指南部署与[六个线上检查](../yourbuddy-v0.4.15/evidence/website-live.json)属于历史证据。发布后需独立确认稳定 latest 下载链接；本次发行不包含手动网站部署。
 - 未验证范围：以上原生／模型／冷恢复及剩余 issue 限制仍适用。无关的 PR Cloudflare preview 上传缺少已配置的 API token；没有修改凭据或 preview 权限。
 

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.16/README.md
 /yourbuddy-0-4-16:
-  en: 70c67d66a7733e76
-  zh: 138e18477b5f2005
+  en: c415f40b87ad571a
+  zh: 1844d068d4790f23
 /yourbuddy-0-4-16/user-release-notes:
   en: c38ee8d593c0bea2
   zh: ba9758a78bdf26a6
@@ -30,14 +30,17 @@
   en: a7337c9ec04ef57a
   zh: b4498e21dd0ae14c
 /yourbuddy-0-4-16/verification-summary:
-  en: 6d844324d1673d2a
-  zh: 9379a44e203320ef
+  en: 7a432ed931756f9f
+  zh: 366dae3e5950813a
 /yourbuddy-0-4-16/scenario-complete-macos-prepared-preflight:
   en: b20efe05636187ed
   zh: 59556a2718f8adc4
+/yourbuddy-0-4-16/release-attempt-failure:
+  en: 7846943309bf2577
+  zh: 917eadea6b18aaf8
 /yourbuddy-0-4-16/delivery-status:
-  en: 678ccf4e3378bfa6
-  zh: 6cc2bf9d94a183ac
+  en: af47b09898b06859
+  zh: fbfa84cb50121e3f
 /yourbuddy-0-4-16/rollback:
   en: df8e57abbe825d32
   zh: fdb584e0896c60c5
