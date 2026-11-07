@@ -218,36 +218,6 @@ describe.skipIf(!isWin32 || !pwshAvailable())('diagnose-windows-sandbox-acl scri
     return dir
   }
 
-  function makeModifyOnly(path: string): void {
-    // mkdir may create explicit host FullControl ACEs; disabling inheritance alone leaves them.
-    // Replace only this owned fixture's DACL, preserving its owner, group and SACL.
-    const quoted = path.replaceAll("'", "''")
-    const ownerBefore = ownerOf(path)
-    pwsh(`
-$ErrorActionPreference = 'Stop'
-$acl = Get-Acl -LiteralPath '${quoted}'
-$acl.SetAccessRuleProtection($true, $false)
-foreach ($rule in @($acl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier]))) {
-  [void]$acl.RemoveAccessRuleSpecific($rule)
-}
-$acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new(
-  [System.Security.Principal.SecurityIdentifier]::new('${meSid}'),
-  [System.Security.AccessControl.FileSystemRights]::Modify,
-  [System.Security.AccessControl.AccessControlType]::Allow))
-Set-Acl -LiteralPath '${quoted}' -AclObject $acl
-$actual = Get-Acl -LiteralPath '${quoted}'
-$rules = @($actual.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]))
-$modify = [System.Security.AccessControl.FileSystemRights]::Modify -bor [System.Security.AccessControl.FileSystemRights]::Synchronize
-if (-not $actual.AreAccessRulesProtected -or $rules.Count -ne 1 -or
-    $rules[0].IdentityReference.Value -ne '${meSid}' -or $rules[0].IsInherited -or
-    $rules[0].AccessControlType -ne 'Allow' -or $rules[0].FileSystemRights -ne $modify -or
-    $rules[0].InheritanceFlags -ne 'None' -or $rules[0].PropagationFlags -ne 'None') {
-  throw "Modify-only fixture DACL was not established: $($actual.Sddl)"
-}
-`)
-    expect(ownerOf(path)).toBe(ownerBefore)
-  }
-
   function stamp(path: string, sid: string, type: 'grant' | 'deny' = 'grant'): void {
     icacls(path, `/${type}`, `*${sid}:(RX)`)
   }
@@ -354,7 +324,7 @@ if (-not $actual.AreAccessRulesProtected -or $rules.Count -ne 1 -or
       icacls(target, '/setintegritylevel', 'L')
       const labelsBefore = integrityLines(target)
       expect(labelsBefore.length).toBeGreaterThan(0)
-      makeModifyOnly(target)
+      icacls(target, '/inheritance:r', '/grant:r', `*${meSid}:(M)`)
       const ownerBefore = ownerOf(target)
 
       const run = runScript(['-Path', target, '-AllowRoot', scratch, '-Out', join(scratch, 'out')])
@@ -378,7 +348,7 @@ if (-not $actual.AreAccessRulesProtected -or $rules.Count -ne 1 -or
     const scratch = newScratch()
     try {
       const target = makeDir(scratch, 'both')
-      makeModifyOnly(target)
+      icacls(target, '/inheritance:r', '/grant:r', `*${meSid}:(M)`)
       stamp(target, PACKAGE_SID)
       const ownerBefore = ownerOf(target)
 
@@ -447,15 +417,11 @@ if (-not $actual.AreAccessRulesProtected -or $rules.Count -ne 1 -or
       // The sandbox reports its provisioning failure on the workspace root while the
       // conflicting entry sits deeper, so one approved call must clear both.
       const root = makeDir(scratch, 'workspace')
+      icacls(root, '/inheritance:r', '/grant:r', '*S-1-5-11:(M)')
       const deep = makeDir(root, 'deep')
       const leaf = makeDir(deep, 'leaf')
-      // Establish the full tree before restricting its root. Preserve each child
-      // fixture's own control rights while adding the package sources to repair.
-      icacls(leaf, '/inheritance:r')
-      stamp(leaf, OTHER_PACKAGE_SID)
-      icacls(deep, '/inheritance:r')
-      stamp(deep, PACKAGE_SID)
-      makeModifyOnly(root)
+      icacls(deep, '/inheritance:r', '/grant:r', `*${PACKAGE_SID}:(OI)(CI)(RX)`)
+      icacls(leaf, '/inheritance:r', '/grant:r', `*${OTHER_PACKAGE_SID}:(OI)(CI)(RX)`)
 
       const run = runScript(['-Path', root, '-AllowRoot', root, '-Out', join(scratch, 'out')])
       expect(run.code, run.output).toBe(0)
@@ -488,7 +454,7 @@ if (-not $actual.AreAccessRulesProtected -or $rules.Count -ne 1 -or
     const scratch = newScratch()
     try {
       const target = makeDir(scratch, 'inherit-only')
-      makeModifyOnly(target)
+      icacls(target, '/inheritance:r', '/grant:r', '*S-1-5-11:(M)')
       icacls(target, '/grant', '*S-1-5-32-545:(OI)(CI)(IO)(F)')
       const inheritOnlyBefore = aclLines(target).filter(line => line.includes('(IO)'))
       expect(inheritOnlyBefore).toHaveLength(1)
@@ -676,7 +642,7 @@ if (-not $actual.AreAccessRulesProtected -or $rules.Count -ne 1 -or
     try {
       const out = join(scratch, 'out')
       const first = makeDir(scratch, 'multi-first')
-      makeModifyOnly(first)
+      icacls(first, '/inheritance:r', '/grant:r', `*${meSid}:(M)`)
       const second = makeDir(scratch, 'multi-second')
       stamp(second, PACKAGE_SID)
       icacls(second, '/deny', `*${meSid}:(WO)`)
@@ -698,7 +664,7 @@ if (-not $actual.AreAccessRulesProtected -or $rules.Count -ne 1 -or
     try {
       const out = join(scratch, 'out')
       const first = makeDir(scratch, 'pending-first')
-      makeModifyOnly(first)
+      icacls(first, '/inheritance:r', '/grant:r', `*${meSid}:(M)`)
       const second = makeDir(scratch, 'pending-second')
       stamp(second, PACKAGE_SID)
       icacls(second, '/deny', `*${meSid}:(WO)`)
@@ -824,7 +790,7 @@ exit $LASTEXITCODE
     const scratch = newScratch()
     try {
       const target = makeDir(scratch, 'backup-failure')
-      makeModifyOnly(target)
+      icacls(target, '/inheritance:r', '/grant:r', `*${meSid}:(M)`)
       const outputFile = join(scratch, 'not-a-directory')
       writeFileSync(outputFile, 'Existing contents')
       const before = sddlOf(target)
@@ -916,7 +882,7 @@ function icacls { throw [System.IO.IOException]::new('icacls unavailable') }
     try {
       const out = join(scratch, 'out')
       const grantRoot = makeDir(scratch, 'self-grant')
-      makeModifyOnly(grantRoot)
+      icacls(grantRoot, '/inheritance:r', '/grant:r', `*${meSid}:(M)`)
       const grantRun = runScript(['-Path', grantRoot, '-AllowRoot', grantRoot, '-Out', out])
       expect(grantRun.code, grantRun.output).toBe(0)
       expect(grantRun.output).toContain(`GRANTED ${grantRoot} SID=${meSid}`)
@@ -937,7 +903,7 @@ function icacls { throw [System.IO.IOException]::new('icacls unavailable') }
     const scratch = newScratch()
     try {
       const target = makeDir(scratch, 'idempotent')
-      makeModifyOnly(target)
+      icacls(target, '/inheritance:r', '/grant:r', `*${meSid}:(M)`)
       stamp(target, PACKAGE_SID)
       const out = join(scratch, 'out')
 

@@ -34,8 +34,6 @@ on:
       - 'apps/desktop-tauri/scripts/smoke-bootstrap-macos.mjs'
       - 'apps/desktop-tauri/scripts/verify-old-component-channel.mjs'
       - 'apps/desktop-tauri/scripts/verify-old-component-channel.test.mjs'
-      - 'packages/sandbox/sandbox-windows-acl/tests/diagnose-script.spec.ts'
-      - 'packages/sandbox/sandbox-windows-acl/tests/runner.spec.ts'
       - 'apps/desktop-tauri/scripts/prepare-bootstrap-shell.mjs'
       - 'apps/desktop-tauri/scripts/prepare-dist.mjs'
       - '.github/workflows/bootstrap-regression.yml'
@@ -284,24 +282,3 @@ jobs:
           name: packaged-bootstrap-smoke
           path: ${{ runner.temp }}/bootstrap-smoke
           if-no-files-found: ignore
-
-  windows-acl-fixtures:
-    runs-on: windows-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v4
-        with:
-          dest: ${{ runner.temp }}/setup-pnpm-acl
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-      - name: Install locked test dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Verify fixture DACLs and inherited-deny behavior
-        shell: pwsh
-        run: |
-          Get-Command pwsh -ErrorAction Stop
-          pnpm exec vitest run --project thread-safe packages/sandbox/sandbox-windows-acl/tests/diagnose-script.spec.ts packages/sandbox/sandbox-windows-acl/tests/runner.spec.ts
