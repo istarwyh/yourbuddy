@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { inspectManagedNode, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -235,4 +235,31 @@ test('native polling reports the latest unmet observation instead of a recovered
     throw new Error('non-retryable failure')
   }, 1, false, () => now), /non-retryable failure/)
   assert.equal(await until('native workbench', () => 'ready', 1, true, () => now), 'ready')
+})
+
+
+test('managed mode excludes every macOS host discovery candidate and refuses absolute Node', { skip: process.platform === 'win32' && 'macOS-only POSIX discovery paths' }, () => {
+  const env = isolatedEnvironment('/private/acceptance', null)
+  assert.equal(env.PATH, '/usr/bin:/bin:/usr/sbin:/sbin')
+  const candidates = requireNoHostNode(env, () => false)
+  for (const candidate of ['/usr/local/bin/node', '/usr/bin/node', '/private/acceptance/home/.volta/bin/node', '/private/acceptance/home/.fnm/current/bin/node', '/private/acceptance/home/.nvm/current/bin/node']) {
+    assert(candidates.includes(candidate))
+    assert.throws(() => requireNoHostNode(env, path => path === candidate), /host Node discovery candidate exists/)
+  }
+})
+
+test('managed Node acceptance rejects host reuse, old storage layout and missing activation', { skip: process.platform === 'win32' && 'macOS-only POSIX component paths' }, () => {
+  const appData = '/private/acceptance/app-data'
+  const root = `${appData}/components/node/22.19.0%3Adarwin-arm64`
+  const node = `${root}/bin/node`
+  const component = { id: 'node:22.19.0:darwin-arm64', path: root }
+  const active = { components: { node: component } }
+  const manifest = { components: { node: component } }
+  const runtime = { nodePath: node }
+  const log = `spawning dsh web node=${node} cli=/harness/bin.js`
+  assert.equal(inspectManagedNode(log, active, manifest, runtime, appData), node)
+  assert.throws(() => inspectManagedNode(log, active, manifest, { nodePath: '/usr/local/bin/node' }, appData), /must not select host Node/)
+  assert.throws(() => inspectManagedNode(log, { components: {} }, manifest, runtime, appData), /must be activated/)
+  assert.throws(() => inspectManagedNode(log, { components: { node: { ...component, path: root.replace('%3A', ':') } } }, manifest, runtime, appData), /PATH-safe/)
+  assert.throws(() => inspectManagedNode(`provision complete cli=/harness/bin.js node=${node}\nspawning dsh web node=/host/node cli=/harness/bin.js`, active, manifest, runtime, appData), /real Host must launch/)
 })
