@@ -419,11 +419,16 @@ describe('PiAiAdapter provider routing', () => {
     const ctx = await harness(server.url, { streamIdleTimeoutMs: 20 })
     const controller = new AbortController()
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const pending = assemble(ctx, { model: 'deepseek-v4-flash', messages: [], signal: controller.signal })
+    const pending = assemble(ctx, { model: 'deepseek-flash', messages: [], signal: controller.signal })
     let closeTimeout: ReturnType<typeof setTimeout> | undefined
     try {
       // Establish a real SDK request before expiring the idle interval.
-      await server.requestReceived
+      await Promise.race([
+        server.requestReceived,
+        pending.then((result) => {
+          throw new Error(`LLM finished before the mock request arrived: ${JSON.stringify(result.finish)}`)
+        }),
+      ])
       await vi.advanceTimersByTimeAsync(20)
       const result = await pending
       expect(result.finish).toMatchObject({ kind: 'error', failure: { code: 'TIMEOUT' } })
