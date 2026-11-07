@@ -2,14 +2,14 @@
 
 English | [中文](README.zh.md)
 
-This archive records the complete-input preflight and the checks for the 0.4.17 release candidate. Publication remains pending until the release workflow and public delivery checks finish.
+YourBuddy 0.4.17 is published. This archive separates preflight, released-product acceptance and independent public checks, with the remaining limits stated below.
 
 - Release identifier: `yourbuddy-v0.4.17`
 - Product channel: YourBuddy desktop for macOS Apple Silicon.
-- Archive state: candidate verified within the recorded scope; installer publication and native acceptance are pending.
-- Evidence commit: [merged repair base](https://github.com/istarwyh/yourbuddy/commit/501770ca9f0857fc49695f2e8d2b1c89d1bf9959), tree `94c2d0b412f1938a9bd9691e4c29dfa8ec6fa23c`. The version candidate changes only version metadata and documentation.
-- Evidence gallery: [prepared workbench](screenshots/prepared-workbench.png), synthetic data from the macOS PR preflight, not an installed application.
-- Evidence download: the [immutable tag source archive](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.17.zip) will contain this candidate record after publication; independent extraction remains pending.
+- Archive state: release workflow and three native Offline starts passed; independent public verification is limited to the scope recorded below.
+- Released source: commit `79fc43353f50f3dfaa313b02bc6342eb0429b9d4`, tree `998fdbb01b4fead922e4e3a4ad506d03a8f67ff0`; see the [release workflow record](evidence/release-workflow.json). The version candidate changed only version metadata and documentation after the merged repair base `501770ca9f0857fc49695f2e8d2b1c89d1bf9959`.
+- Evidence gallery: [release-run workbench](screenshots/released-workbench.png) and [PR preflight workbench](screenshots/prepared-workbench.png). Both show reviewed synthetic Chromium data, not native application screenshots.
+- Evidence download: the [immutable tag source archive](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.17.zip) contains the original candidate record, not these later release outcomes. Its CRC and all 15 candidate-changed files were independently verified against the exact release commit; see [source verification](evidence/source-archive-verification.json). Final evidence belongs to this post-publication documentation update; the tag is unchanged.
 
 ## User release notes
 
@@ -35,13 +35,13 @@ Open Artifacts, create a Design draft and review it before sending. After the mo
 
 ### Install or upgrade
 
-After publication, use the Apple Silicon Bootstrap or Offline DMG from [GitHub Releases](https://github.com/istarwyh/yourbuddy/releases/latest), or the existing signed updater. A tag or passing preflight alone does not establish public availability.
+Use the Apple Silicon Bootstrap or Offline DMG from the [0.4.17 release](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.17), or the existing signed updater. The Bootstrap DMG is 11,127,135 bytes and the Offline DMG is 614,073,515 bytes; these are archive sizes, not network traffic or installed size. The application is ad-hoc signed and Apple notarization was explicitly skipped. Verified updater/component signatures do not establish Developer ID signing or Gatekeeper acceptance.
 
 ### Compatibility, migration, and limitations
 
 The Harness selection stays `0.2.0-rc.1`. PATH-safe cache names encode `:` as `%3A`; old directories remain but are not reused. The first canonical Store archive can require a fresh download because its signed digest changes, even with the same content identifier. This is not shared CAS or incremental downloads. Related issues [#57](https://github.com/istarwyh/yourbuddy/issues/57), [#83](https://github.com/istarwyh/yourbuddy/issues/83), [#85](https://github.com/istarwyh/yourbuddy/issues/85) and [#86](https://github.com/istarwyh/yourbuddy/issues/86) remain open. Original 120-second timeout and historical 13 GB usage causes remain unresolved. Agent self-upgrade from [#80](https://github.com/istarwyh/yourbuddy/pull/80) is not included.
 
-Managed LAN Share is unsupported. Real-model generation, native macOS Tauri/WebView Design interaction and HTML/PDF/PNG export/saving, cold Session/controller restoration, Windows editor ownership, installed-app upgrade and data downgrade compatibility remain unverified. Prepared Chromium does not establish a complete first launch without system Node.
+Managed LAN Share is unsupported. Real-model generation, native macOS Tauri/WebView Design interaction and HTML/PDF/PNG export/saving, cold Session/controller restoration, Windows editor ownership, installed-app upgrade and data downgrade compatibility remain unverified. The three native starts used runner-provided Node 24.22.2; a complete first launch without system Node remains unverified.
 
 ### Sources and licenses
 
@@ -54,12 +54,16 @@ Managed LAN Share is unsupported. Real-model generation, native macOS Tauri/WebV
 | Complete macOS prepared input and product acceptance | Passed | 0.4.16 repair source before version bump; PR #94 head `c88e737ac908699881b4e93c1e9a4e7cc296e3c8` | [Run 42362666422](https://github.com/istarwyh/yourbuddy/actions/runs/42362666422); [retained evidence](evidence/prepared-preflight.json) |
 | Exact Design draft/editor and offline restore | Passed | Historical combined product tree `b2f40dd` | [Bootstrap 42346920573](https://github.com/istarwyh/yourbuddy/actions/runs/42346920573), 4/4; actual Chromium and 570 restored packages, no real model |
 | Complete combined source CI | Passed | Historical PR #90 combined source | [CI 42346920678](https://github.com/istarwyh/yourbuddy/actions/runs/42346920678), 16/16 |
+| Settings repair source CI | Passed | PR #94 repair source | [CI 42362666398](https://github.com/istarwyh/yourbuddy/actions/runs/42362666398), 16/16; observed after publication |
 | Store archive and fixture regressions | Passed | Included #89 and #92 source | [Source checks](../yourbuddy-v0.4.15/evidence/source-checks.json), [fixture repair](../yourbuddy-v0.4.15/evidence/fixture-repair.json); 49 archive, 63 component and 8 renderer tests |
 | Peer/Artifacts and reset regressions | Passed | Reviewed #93 source | [Repair evidence](evidence/verifier-repair.json); 49/49 focused tests, including the real Chromium stream-lifecycle regression; rejected duplicate peer, missing Client and false reset success |
 | Settings takeover regression | Passed within local scope | #94 product repair | [Product repair](../yourbuddy-v0.4.16/evidence/settings-race-repair.json); 50 component tests, controlled real Host failure-to-success, unchanged full prepared with 568 inputs |
 | Local prepared run | Passed with input limit | macOS 15.6.1 arm64, Node 22.22.3, pnpm 11.7.0 | Full Host/Harbor/Chromium with 568 inputs; two native optional packages missing, not complete-input evidence |
 | Version candidate checks | Passed | Local 0.4.17 metadata candidate | [Commands and results](evidence/candidate-checks.json) |
-| Release packaging, native acceptance and public delivery | Not verified | 0.4.17 release candidate | Must run through the unchanged release workflow; no claim of published installers yet |
+| Release packaging and prepared acceptance | Passed | Exact 0.4.17 tag | [Workflow](evidence/release-workflow.json), [released prepared result](evidence/released-prepared.json); core 9 / Harbor 10 Clients, 85 core peers, both branding/reset journeys |
+| Native Offline startup | Passed within recorded scope | Released Offline application, darwin-arm64 | [Native result](evidence/native-offline.json); three authenticated workbench starts and clean exits, using runner Node |
+| Independent public assets | See recorded scope | Published 0.4.17 assets | [Public metadata](evidence/public-release.json), [scoped verification](evidence/public-verification.json); all 17 public files, both updater signatures and DMG integrity checks passed |
+| Immutable tag source | Passed for selected changed files | Exact 0.4.17 tag | [Source verification](evidence/source-archive-verification.json); ZIP CRC and all 15 candidate-changed files |
 
 ## Scenario: complete macOS prepared preflight
 
@@ -78,12 +82,21 @@ The [second preflight](https://github.com/istarwyh/yourbuddy/actions/runs/423554
 
 A controlled real Host regression holds the reloaded Session-list response until Settings opens. Before the product fix, releasing it closes Settings without any visible onboarding dialog; after the fix, Settings remains open through Session/model readiness and the original reset/persistence journey completes. The [product repair record](../yourbuddy-v0.4.16/evidence/settings-race-repair.json) preserves that distinction and the local 568-input limit; this PR adds the 50 component regressions to the complete-input macOS check.
 
+## Released application acceptance
+
+The [release workflow](evidence/release-workflow.json) completed successfully on 2026-11-07 at 11:03:12 UTC; publication completed at 11:01:51 UTC. The exact tagged source passed prepared Host/Profile/Chromium acceptance with 9 core Clients, 10 Harbor-assembled Clients, 85 matching core peers and both complete branding/reset journeys. The release install reported 570 registry packages; the separate physical manifest and executable-native-input inventory belongs to the PR preflight above. The released [workbench capture](screenshots/released-workbench.png) contains synthetic data only. The original CI artifacts expire on 2026-11-14; their identities, hashes and necessary result summaries are retained here, not raw logs.
+
+The [native Offline record](evidence/native-offline.json) reports three starts lasting 48.222, 11.573 and 12.659 seconds. Each reached real Host authenticated readiness, exposed Codex and Settings in the native WebView, and exited cleanly with its owned Host. Authentication here means Host readiness, not account sign-in or model credentials. Active components were Harness and the signed offline Store; all starts selected runner Node 24.22.2. The first empty-Store miss recovered through the signed fallback, and four external requests were rejected by the isolated proxy. These starts do not verify no-system-Node startup, native Design interaction/export or cold Session/controller restoration.
+
+Relocated Harbor passed with a copied Python executable, a nonexistent `pyvenv` home and `PYTHONHOME` unset. Application signing was ad-hoc and notarization was skipped. Independent [Bootstrap code-signature inspection](evidence/bootstrap-codesign.json) found a valid on-disk ad-hoc signature; it did not execute the downloaded app or establish Developer ID, notarization or Gatekeeper acceptance.
+
 ## Delivery status
 
-- Product publication: pending the release workflow and independent public checks. Latest and the stable updater still identify 0.4.13 at candidate preparation.
-- Verification archive: source and complete-input preflight evidence recorded; installer hashes/signatures, public source extraction and native acceptance remain pending.
-- Website synchronization: no product-guidance change in this maintenance follow-up. The existing bilingual plugin guidance deployment and [six live checks](../yourbuddy-v0.4.15/evidence/website-live.json) are historical evidence. Stable latest-download links need independent confirmation after publication; no manual site deployment is part of this release.
-- Unverified scope: native/model/cold-restoration and remaining issue limitations above apply. The unrelated PR Cloudflare preview upload lacks its configured API token; no credentials or preview permissions were changed.
+- Product publication: [0.4.17 is public](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.17) with 17 assets; latest and the stable updater identify 0.4.17. The failed 0.4.14, 0.4.15 and 0.4.16 tags remain unchanged and have no Release or installer.
+- Independent public checks: all 17 public files were independently downloaded and SHA-256 checked; all 68 scoped checks passed, including both updater cryptographic signatures, the signed component manifest, stable feed, and both DMG integrity checks. Selected downloaded Harness Design 2.11.1 pins/source/license and Settings sources match the release. The [public Offline binary and manifest](evidence/offline-native-binding.json) also match the native CI evidence exactly. This is not a complete npm-license audit or execution of downloaded software.
+- Source archive: [independent extraction](evidence/source-archive-verification.json) verified the 55,966,712-byte ZIP, all 15 candidate-changed files and the viewed synthetic screenshot. The immutable tag retains candidate evidence; later release outcomes are documented here.
+- Website synchronization: [six live bilingual pages](evidence/website-live.json) returned HTTP 200 with their expected content and links; the latest-release link resolved to 0.4.17. No new website deployment was performed.
+- Unverified scope: the model, native Design, cold-restoration, upgrade and remaining issue limitations above still apply. Neither publication nor these checks resolve the upstream license gap.
 
 ## Rollback
 

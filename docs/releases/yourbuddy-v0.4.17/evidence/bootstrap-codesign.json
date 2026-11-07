@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-11-07T11:07:29.252768+00:00",
+  "scope": "Static read-only verification of the independently downloaded and signature-verified Bootstrap updater application; application not executed.",
+  "signatureType": "ad-hoc",
+  "metadata": "Executable=YourBuddy.app/Contents/MacOS/yourbuddy\nIdentifier=io.github.istarwyh.yourbuddy\nFormat=app bundle with Mach-O thin (arm64)\nCodeDirectory v=20500 size=125021 flags=0x10002(adhoc,runtime) hashes=3900+3 location=embedded\nSignature=adhoc\nInfo.plist entries=16\nTeamIdentifier=not set\nRuntime Version=15.5.0\nSealed Resources version=2 rules=13 files=9\nInternal requirements count=0 size=12\n",
+  "codesignVerifyExit": 0,
+  "codesignVerify": "YourBuddy.app: valid on disk\nYourBuddy.app: satisfies its Designated Requirement\n",
+  "notAccepted": [
+    "Developer ID or Apple notarization",
+    "Gatekeeper acceptance",
+    "native Design export or local installed application behavior"
+  ]
+}

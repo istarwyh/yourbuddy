@@ -2,14 +2,14 @@
 
 [English](README.md) | 中文
 
-本归档记录完整输入预检与 0.4.17 候选版本检查。正式发布仍须等待发行工作流及公开交付检查完成。
+YourBuddy 0.4.17 已发布。本归档区分预检、发行产品验收和独立公开核验，并在下文保留尚未验证的范围。
 
 - 发布标识：`yourbuddy-v0.4.17`
 - 产品渠道：适用于 macOS Apple Silicon 的 YourBuddy 桌面应用。
-- 归档状态：候选在所记录范围内完成验证；安装包发布与原生验收待完成。
-- 证据提交：[已合并的修复基线](https://github.com/istarwyh/yourbuddy/commit/501770ca9f0857fc49695f2e8d2b1c89d1bf9959)，树为 `94c2d0b412f1938a9bd9691e4c29dfa8ec6fa23c`。版本候选仅修改版本元数据和文档。
-- 证据画廊：[预备工作台](screenshots/prepared-workbench.png)，来自 macOS PR 预检的合成数据，并非已安装应用。
-- 证据下载：发布后的[不可变标签源码归档](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.17.zip)将包含本候选记录；独立解压检查待完成。
+- 归档状态：发行工作流与三次原生 Offline 启动通过；独立公开核验仅限于下文记录的范围。
+- 发行源码：提交 `79fc43353f50f3dfaa313b02bc6342eb0429b9d4`，树为 `998fdbb01b4fead922e4e3a4ad506d03a8f67ff0`；见[发行工作流记录](evidence/release-workflow.json)。版本候选在已合并修复基线 `501770ca9f0857fc49695f2e8d2b1c89d1bf9959` 上仅修改版本元数据和文档。
+- 证据画廊：[发行运行工作台](screenshots/released-workbench.png)与 [PR 预检工作台](screenshots/prepared-workbench.png)。两者均为已查看的合成 Chromium 数据，不是原生应用截图。
+- 证据下载：[不可变标签源码归档](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.17.zip)包含原候选记录，不包含本次后续发行结果。已独立核验 CRC，并将全部 15 个候选变更文件与精确发行提交逐字节比对，见[源码核验](evidence/source-archive-verification.json)。最终证据保留于本次发布后的文档更新；标签保持不变。
 
 ## 用户发行说明
 
@@ -35,13 +35,13 @@ Design 产物可在工作台内打开。在文件模式和工具相同的条件�
 
 ### 安装或升级
 
-正式发布后，从 [GitHub Releases](https://github.com/istarwyh/yourbuddy/releases/latest) 使用 Apple Silicon Bootstrap 或 Offline DMG，或使用现有签名更新器。标签或预检通过本身不代表已公开可用。
+从 [0.4.17 发行页](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.17)使用 Apple Silicon Bootstrap 或 Offline DMG，或使用现有签名更新器。Bootstrap DMG 为 11,127,135 字节，Offline DMG 为 614,073,515 字节；这是归档大小，不是网络流量或安装后占用。应用采用 ad-hoc 签名，构建明确跳过 Apple 公证。更新器／组件签名验证不能证明 Developer ID 签名或 Gatekeeper 接受。
 
 ### 兼容性、迁移与限制
 
 Harness 版本保持 `0.2.0-rc.1`。PATH 安全缓存名称将 `:` 编码为 `%3A`；旧目录保留但不复用。即使内容标识相同，首次规范化 Store 归档仍可能因签名摘要变化而需要重新下载。这不是共享 CAS 或增量下载。相关 issue [#57](https://github.com/istarwyh/yourbuddy/issues/57)、[#83](https://github.com/istarwyh/yourbuddy/issues/83)、[#85](https://github.com/istarwyh/yourbuddy/issues/85) 和 [#86](https://github.com/istarwyh/yourbuddy/issues/86) 仍保持 open。原始 120 秒超时与历史 13 GB 占用的根因仍未确定。本版不含 [#80](https://github.com/istarwyh/yourbuddy/pull/80) 的 Agent 自升级。
 
-托管 LAN Share 不受支持。真实模型生成、macOS 原生 Tauri/WebView Design 交互及 HTML/PDF/PNG 导出／保存、冷启动 Session/controller 恢复、Windows 编辑器归属、已安装应用升级与数据降级兼容性仍未验证。预备 Chromium 验收不能证明无系统 Node 的完整首次启动。
+托管 LAN Share 不受支持。真实模型生成、macOS 原生 Tauri/WebView Design 交互及 HTML/PDF/PNG 导出／保存、冷启动 Session/controller 恢复、Windows 编辑器归属、已安装应用升级与数据降级兼容性仍未验证。三次原生启动均使用 runner 提供的 Node 24.22.2；无系统 Node 的完整首次启动仍未验证。
 
 ### 来源与许可
 
@@ -54,12 +54,16 @@ Harness 版本保持 `0.2.0-rc.1`。PATH 安全缓存名称将 `:` 编码为 `%3
 | 完整 macOS 预备输入与产品验收 | 通过 | 版本升级前的 0.4.16 修复源码；PR #94 head `c88e737ac908699881b4e93c1e9a4e7cc296e3c8` | [运行 42362666422](https://github.com/istarwyh/yourbuddy/actions/runs/42362666422)；[保留证据](evidence/prepared-preflight.json) |
 | 精确 Design 草稿／编辑器与离线恢复 | 通过 | 历史组合产品树 `b2f40dd` | [Bootstrap 42346920573](https://github.com/istarwyh/yourbuddy/actions/runs/42346920573)，4/4；真实 Chromium 与 570 包恢复，没有真实模型 |
 | 完整组合源码 CI | 通过 | 历史 PR #90 组合源码 | [CI 42346920678](https://github.com/istarwyh/yourbuddy/actions/runs/42346920678)，16/16 |
+| Settings 修复源码 CI | 通过 | PR #94 修复源码 | [CI 42362666398](https://github.com/istarwyh/yourbuddy/actions/runs/42362666398)，16/16；发布后核实 |
 | Store 归档与 fixture 回归 | 通过 | 已包含的 #89 与 #92 源码 | [源码检查](../yourbuddy-v0.4.15/evidence/source-checks.json)、[fixture 修复](../yourbuddy-v0.4.15/evidence/fixture-repair.json)；49 项归档、63 项组件及 8 项 renderer 测试 |
 | Peer／Artifacts 与重置回归 | 通过 | 已审查的 #93 源码 | [修复证据](evidence/verifier-repair.json)；49/49 聚焦测试，包含真实 Chromium 流生命周期回归；拒绝重复 peer、缺失 Client 和虚假重置成功 |
 | Settings 接管回归 | 在本地范围内通过 | #94 产品修复 | [产品修复](../yourbuddy-v0.4.16/evidence/settings-race-repair.json)；50 项组件测试、可控真实 Host 从失败转为成功、568 输入的原样完整预备验收 |
 | 本地预备运行 | 在输入限制下通过 | macOS 15.6.1 arm64、Node 22.22.3、pnpm 11.7.0 | 568 输入的完整 Host／Harbor／Chromium；缺少两个原生 optional 包，不是完整输入证据 |
 | 版本候选检查 | 通过 | 本地 0.4.17 元数据候选 | [命令与结果](evidence/candidate-checks.json) |
-| 发行打包、原生验收与公开交付 | 未验证 | 0.4.17 发行候选 | 必须执行未削弱的发行工作流；尚不宣称已有公开安装包 |
+| 发行打包与预备验收 | 通过 | 精确 0.4.17 标签 | [工作流](evidence/release-workflow.json)、[发行预备结果](evidence/released-prepared.json)；core 9／Harbor 10 个 Client、85 条 core peer、两阶段品牌／重置旅程 |
+| 原生 Offline 启动 | 在记录范围内通过 | 已发行 Offline 应用，darwin-arm64 | [原生结果](evidence/native-offline.json)；三次经认证的工作台启动与干净退出，使用 runner Node |
+| 独立公开附件 | 见记录范围 | 已发布 0.4.17 附件 | [公开元数据](evidence/public-release.json)、[限定范围核验](evidence/public-verification.json)；全部 17 个公开文件、两个更新包签名及 DMG 完整性检查通过 |
+| 不可变标签源码 | 所选变更文件通过 | 精确 0.4.17 标签 | [源码核验](evidence/source-archive-verification.json)；ZIP CRC 与全部 15 个候选变更文件 |
 
 ## 场景：完整 macOS 预备检查
 
@@ -78,12 +82,21 @@ Harness 版本保持 `0.2.0-rc.1`。PATH 安全缓存名称将 `:` 编码为 `%3
 
 可控真实 Host 回归将重载后的 Session 列表响应保持到 Settings 打开。产品修复前，释放响应会在没有可见 onboarding 弹窗时关闭 Settings；修复后，Settings 在 Session／model 就绪后仍保持打开，并完成原有重置／持久化旅程。[产品修复记录](../yourbuddy-v0.4.16/evidence/settings-race-repair.json)保留这一区别与本地 568 输入限制；本 PR 将 50 项组件回归加入完整输入 macOS 检查。
 
+## 发行应用验收
+
+[发行工作流](evidence/release-workflow.json)于 2026-11-07 11:03:12 UTC 成功完成；发布步骤于 11:01:51 UTC 完成。精确标签源码通过预备 Host／Profile／Chromium 验收，包含 9 个 core Client、10 个 Harbor 组合 Client、85 条匹配 core peer 及两阶段完整品牌／重置旅程。发行安装日志报告 570 个 registry 包；独立的物理 manifest 与可执行原生输入清单属于上文 PR 预检。发行[工作台截图](screenshots/released-workbench.png)仅包含合成数据。原 CI 附件于 2026-11-14 到期；此处保留其身份、哈希和必要结果摘要，不公开原始日志。
+
+[原生 Offline 记录](evidence/native-offline.json)报告三次启动分别耗时 48.222、11.573 和 12.659 秒。每次均达到真实 Host 经认证就绪，在原生 WebView 中显示 Codex 与 Settings，并与其拥有的 Host 一起干净退出。这里的认证指 Host 就绪，不是账号登录或模型凭据。活动组件为 Harness 与签名离线 Store；全部启动选择 runner Node 24.22.2。首次空 Store 缺包经签名后备 Store 恢复，隔离代理拒绝了四次外部请求。这些启动不能验证无系统 Node 启动、原生 Design 交互／导出或冷启动 Session/controller 恢复。
+
+Harbor 在复制 Python 可执行文件、将 `pyvenv` home 指向不存在的位置并移除 `PYTHONHOME` 后通过迁移运行检查。应用采用 ad-hoc 签名且跳过公证。独立 [Bootstrap 代码签名检查](evidence/bootstrap-codesign.json)确认磁盘上的 ad-hoc 签名有效；没有执行下载的应用，也不能证明 Developer ID、公证或 Gatekeeper 接受。
+
 ## 交付状态
 
-- 产品发布：等待发行工作流与独立公开检查。候选准备时 latest 和稳定更新源仍为 0.4.13。
-- 验证归档：已记录源码与完整输入预检证据；安装包摘要／签名、公开源码解压与原生验收待完成。
-- 网站同步：本次维护没有产品指南变更。既有双语插件指南部署与[六个线上检查](../yourbuddy-v0.4.15/evidence/website-live.json)属于历史证据。发布后需独立确认稳定 latest 下载链接；本次发行不包含手动网站部署。
-- 未验证范围：以上原生／模型／冷恢复及剩余 issue 限制仍适用。无关的 PR Cloudflare preview 上传缺少已配置的 API token；没有修改凭据或 preview 权限。
+- 产品发布：[0.4.17 已公开](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.17)，包含 17 个附件；latest 与稳定更新源均指向 0.4.17。失败的 0.4.14、0.4.15 和 0.4.16 标签保持不变，均没有 Release 或安装包。
+- 独立公开核验：全部 17 个公开文件已独立下载并核对 SHA-256；全部 68 项限定范围检查通过，包括两个更新包的密码签名、签名组件清单、稳定更新源及两个 DMG 的完整性。已下载 Harness 中所选 Design 2.11.1 固定版本／源码／许可与 Settings 源码均匹配发行提交。[公开 Offline 二进制及清单](evidence/offline-native-binding.json)也与原生 CI 证据精确一致。这不是完整 npm 许可审计，也没有执行下载的软件。
+- 源码归档：[独立解压](evidence/source-archive-verification.json)核验了 55,966,712 字节 ZIP、全部 15 个候选变更文件及已查看的合成截图。不可变标签保留候选证据；后续发行结果记录于本页。
+- 网站同步：[六个双语线上页面](evidence/website-live.json)均返回 HTTP 200，并包含预期内容和链接；latest 发行链接落到 0.4.17。未执行新的网站部署。
+- 未验证范围：以上模型、原生 Design、冷恢复、升级及剩余 issue 限制仍适用。发布与这些检查均未解决上游许可缺口。
 
 ## 回滚
 

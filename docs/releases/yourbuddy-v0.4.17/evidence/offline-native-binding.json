@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-07T11:32:59.910666+00:00",
+  "version": "0.4.17",
+  "status": "passed",
+  "sourceCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4",
+  "scope": "Read selected members from independently downloaded, hash-checked and cryptographically verified Offline updater without extracting or executing an application.",
+  "publicArchiveSha256": "10fe15197c490a9a26cf62dd801ae642d46aab2411b4468201dcf8cc16a77ba1",
+  "publicArchiveBytes": 613970758,
+  "publicAppSha256": "5c4f74ff46ae1683a1c2fe317d3826223632241d176994925b0f8217c3bd0b50",
+  "matchesNativeCiAppSha256": true,
+  "publicManifestSha256": "e611b67a126d5ebde0c25e03ed7969da75e6fed1da45f564289c7ff81eeb3d3a",
+  "matchesNativeCiAndPublicComponentManifest": true,
+  "bundleVersion": "0.4.17",
+  "bundleIdentifier": "io.github.istarwyh.yourbuddy",
+  "limits": [
+    "No local application launch, installed upgrade or Gatekeeper assessment",
+    "Does not expand native CI coverage to Design export, real model generation or no-system-Node startup"
+  ]
+}

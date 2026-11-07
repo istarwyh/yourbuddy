@@ -1,0 +1,32 @@
+{
+  "releaseTag": "yourbuddy-v0.4.17",
+  "scope": "Installer and updater archive bytes; not measured network traffic or installed size.",
+  "bootstrap": [
+    {
+      "name": "YourBuddy_0.4.17_aarch64.dmg",
+      "bytes": 11127135
+    },
+    {
+      "name": "YourBuddy.app.tar.gz",
+      "bytes": 11308011
+    },
+    {
+      "name": "YourBuddy.app.tar.gz.sig",
+      "bytes": 428
+    }
+  ],
+  "offline": [
+    {
+      "name": "YourBuddy_0.4.17_aarch64.dmg",
+      "bytes": 614073515
+    },
+    {
+      "name": "YourBuddy.app.tar.gz",
+      "bytes": 613970758
+    },
+    {
+      "name": "YourBuddy.app.tar.gz.sig",
+      "bytes": 428
+    }
+  ]
+}

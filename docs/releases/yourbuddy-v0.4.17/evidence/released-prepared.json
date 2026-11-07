@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "date": "2026-11-07T10:45:42.927Z",
+  "releaseTag": "yourbuddy-v0.4.17",
+  "sourceCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4",
+  "workflowCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4",
+  "platform": "darwin-arm64",
+  "node": "v24.22.2",
+  "scope": "Prepared real Host and Profile; default Clients then optional Harbor; Chromium interaction. Desktop invoke stubs are bridge-only; native acceptance is separate."
+}

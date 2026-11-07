@@ -1,0 +1,54 @@
+{
+  "version": "0.4.17",
+  "appSha256": "5c4f74ff46ae1683a1c2fe317d3826223632241d176994925b0f8217c3bd0b50",
+  "signedManifestSha256": "e611b67a126d5ebde0c25e03ed7969da75e6fed1da45f564289c7ff81eeb3d3a",
+  "platform": "darwin-arm64",
+  "componentSource": "signed Offline seeds",
+  "network": "local rejecting proxy; production TLS verification unchanged; no enterprise proxy claim",
+  "boots": [
+    {
+      "round": 1,
+      "durationMs": 48222,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    },
+    {
+      "round": 2,
+      "durationMs": 11573,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    },
+    {
+      "round": 3,
+      "durationMs": 12659,
+      "authenticated": true,
+      "nativeWorkbench": true,
+      "cleanExit": true
+    }
+  ],
+  "blockedExternalRequests": 4,
+  "active": {
+    "appVersion": "0.4.17",
+    "components": {
+      "harness": {
+        "id": "sha256:bfc790c06046d700eb11c5fdcbbd4ca30bbe7e8b3d68824d546a20a4366c8f9f"
+      },
+      "pnpmStore": {
+        "id": "sha256:a1a446bc2aa20425dcf602512f96a69402f857142fb12b86ff4a768acc917fcc"
+      }
+    },
+    "schemaVersion": 1
+  },
+  "sourceCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4",
+  "workflowCommit": "79fc43353f50f3dfaa313b02bc6342eb0429b9d4",
+  "runUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42364539926",
+  "selectedNode": "runner-provided Node 24.22.2",
+  "authScope": "real native Host authenticated readiness, not account login or model credentials",
+  "limits": [
+    "No-system-Node native startup; all three boots selected runner Node 24.22.2 and active.node was absent.",
+    "Real model generation, account/model-credential setup, native Design export/save, cold Session/controller restoration.",
+    "Developer ID signing, Apple notarization, enterprise proxy trust."
+  ]
+}
