@@ -15,6 +15,7 @@ on:
       - 'apps/desktop-tauri/scripts/design-client-evidence.mjs'
       - 'apps/desktop-tauri/scripts/prepare-harness-offline-store*.mjs'
       - 'apps/desktop-tauri/scripts/verify-product-release*.mjs'
+      - 'apps/desktop-tauri/scripts/registry-inventory*.mjs'
       - 'apps/desktop-tauri/scripts/workbench-branding-smoke*.mjs'
       - 'apps/desktop-tauri/scripts/workbench-navigation.test.mjs'
       - 'apps/cli/package.json'
@@ -69,7 +70,7 @@ jobs:
       - name: Install locked tools and test the release verifier
         run: |
           pnpm install --frozen-lockfile
-          node --test apps/desktop-tauri/scripts/verify-product-release.test.mjs apps/desktop-tauri/scripts/product-plugin-compatibility.test.mjs apps/desktop-tauri/scripts/workbench-branding-smoke.test.mjs
+          node --test apps/desktop-tauri/scripts/registry-inventory.test.mjs apps/desktop-tauri/scripts/verify-product-release.test.mjs apps/desktop-tauri/scripts/product-plugin-compatibility.test.mjs apps/desktop-tauri/scripts/workbench-branding-smoke.test.mjs
           pnpm exec vitest run packages/client/ui-settings-general/tests/settings-root.client.spec.tsx packages/client/ui-settings-models/tests/onboarding-dialog.client.spec.tsx packages/client/ui-settings-models/tests/welcome-notice.client.spec.tsx packages/client/ui-settings-account/tests/onboarding.client.spec.tsx
       - name: Build and prepare the frozen product
         env:
@@ -91,11 +92,14 @@ jobs:
           import { accessSync, constants, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
           import { join, resolve } from 'node:path'
           import { load } from 'js-yaml'
+          import { expectedRegistryPackageCount } from './apps/desktop-tauri/scripts/registry-inventory.mjs'
           import { removeWorkspaceInstallState } from './apps/desktop-tauri/scripts/prepare-harness-offline-store.mjs'
           const root = resolve('apps/desktop-tauri/bundled/harness')
           const sourceLock = readFileSync('apps/desktop-tauri/product/harness-pnpm-lock.yaml')
           assert.ok(sourceLock.equals(readFileSync(join(root, 'pnpm-lock.yaml'))), 'prepared lock differs from the committed product lock')
-          const locked = load(sourceLock.toString()).packages
+          const lock = load(sourceLock.toString())
+          const locked = lock.packages
+          const expectedRegistryPackages = expectedRegistryPackageCount(lock, { os: 'darwin', cpu: 'arm64' })
           const store = join(root, 'node_modules/.pnpm')
           const entries = readdirSync(store, { withFileTypes: true }).filter(entry => entry.isDirectory() && entry.name !== 'node_modules')
           const installed = [], missing = []
@@ -125,11 +129,11 @@ jobs:
           })
           const evidence = join(process.env.RUNNER_TEMP, 'yourbuddy-prepared-acceptance')
           mkdirSync(evidence, { recursive: true })
-          const result = { status: missing.length === 0 && installed.length === 570 ? 'passed' : 'failed', date: new Date().toISOString(), sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), lockSha256: createHash('sha256').update(sourceLock).digest('hex'), expectedRegistryPackages: 570, materializedRegistryPackages: entries.length, installedRegistryPackages: installed.length, missing, nativeInputs }
+          const result = { status: missing.length === 0 && installed.length === expectedRegistryPackages ? 'passed' : 'failed', date: new Date().toISOString(), sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), lockSha256: createHash('sha256').update(sourceLock).digest('hex'), expectedRegistryPackages, materializedRegistryPackages: entries.length, installedRegistryPackages: installed.length, missing, nativeInputs }
           writeFileSync(join(evidence, 'installed-registry-inputs.json'), `${JSON.stringify(result, null, 2)}\n`)
           assert.deepEqual(missing, [], 'optional registry package installation was skipped')
-          // The current frozen product lock requires 570 darwin-arm64 registry packages.
-          assert.equal(installed.length, 570, 'frozen macOS registry package inventory is incomplete')
+          // Derive the target inventory from production lock edges, not a stale release count.
+          assert.equal(installed.length, expectedRegistryPackages, 'frozen macOS registry package inventory is incomplete')
           console.log(`Prepared registry inputs: ${installed.length}/${entries.length}; native Codex and Claude SDK executables exist`)
           removeWorkspaceInstallState(root)
           NODE
