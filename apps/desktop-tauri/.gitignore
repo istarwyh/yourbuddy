@@ -3,6 +3,8 @@ dist/
 !product/ego-browser/runtime/ego-browser/dist/
 !product/ego-browser/runtime/ego-browser/dist/out/
 !product/ego-browser/runtime/ego-browser/dist/out/index.js
+!product/media-desk/dist/
+!product/media-desk/dist/client.js
 src-tauri/target/
 src-tauri/gen/
 src-tauri/icons/android/

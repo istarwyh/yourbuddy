@@ -9,21 +9,10 @@ mod overlay;
 #[path = "../../../src-tauri/src/product.rs"]
 mod product;
 
-// The production renderer only reads ProductRuntime. These definitions satisfy
-// unused desktop installation functions without importing the Tauri dependency.
+// ProductRuntime's desktop path resolver is unused by the standalone renderer.
 mod runtime {
     pub fn app_data_root() -> Result<std::path::PathBuf, String> {
         Err("the overlay renderer cannot access application data".into())
-    }
-    pub mod provision {
-        pub struct RuntimePaths {
-            pub node_binary: std::path::PathBuf,
-            pub pnpm_binary: std::path::PathBuf,
-            pub cli_entry: std::path::PathBuf,
-            pub harness_root: std::path::PathBuf,
-            pub runtime_root: std::path::PathBuf,
-            pub dsh_home: std::path::PathBuf,
-        }
     }
 }
 
@@ -134,8 +123,14 @@ mod tests {
         assert_eq!(rendered, expected);
         assert!(rendered.contains("default: codex"));
         assert!(rendered.contains("id: ui-sidebar-browser\n  disabled: false"));
-        for package in ["dsh-ego-browser", "dsh-oil-creator", "dsh-context-doctor"] {
-            assert!(rendered.contains(&format!("name: {package}")));
+        for package in [
+            "dsh-ego-browser",
+            "dsh-oil-creator",
+            "dsh-context-doctor",
+            "dsh-media-desk",
+            "dsh-context",
+        ] {
+            assert!(rendered.contains(&format!("name: {package}\n")));
         }
         assert!(!rendered.contains("name: dsh-harbor-evolution"));
     }

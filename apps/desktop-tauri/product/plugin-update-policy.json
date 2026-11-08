@@ -219,6 +219,30 @@
           "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
         }
       }
+    },
+    {
+      "id": "media-desk",
+      "kind": "npm-version",
+      "package": "dsh-media-desk",
+      "destination": "media-desk",
+      "version": "2.6.1",
+      "clientInjectRemovals": {
+        "2.6.1": [
+          "@deepseek-ai/dsh-client-runtime"
+        ]
+      }
+    },
+    {
+      "id": "context",
+      "kind": "npm-version",
+      "package": "dsh-context",
+      "destination": "context",
+      "version": "0.82.2",
+      "scriptRemovals": {
+        "0.82.2": [
+          "prepare"
+        ]
+      }
     }
   ]
 }

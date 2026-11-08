@@ -451,14 +451,25 @@ test('assembled Client boot requires every product response, mounted UI, and qui
 
 test('release smoke observes product Clients inside a DSH combo response', () => {
   const responses = {}
+  for (const path of [
+    '/plugins/??unrelated-dsh-context/client.js&rev=fixture',
+    '/plugins/dsh-media-desk/client.js.map?rev=fixture',
+    '/api/inspect?resource=dsh-context/client.js',
+  ]) {
+    recordProductClientResponse(responses, `http://127.0.0.1:3080${path}`, 200)
+  }
+  assert.deepEqual(responses, {})
+
   recordProductClientResponse(
     responses,
-    'http://127.0.0.1:3080/plugins/??llm-codex-auth/client.js,context-doctor/client.js&rev=abc123',
+    'http://127.0.0.1:3080/plugins/??llm-codex-auth/client.js,context-doctor/client.js,dsh-context/client.js,@xiaohui-wang/dsh-pomodoro/client.js&rev=abc123',
     200,
   )
   assert.deepEqual(responses, {
     'dsh-codex-auth': 200,
     'dsh-context-doctor': 200,
+    'dsh-context': 200,
+    '@xiaohui-wang/dsh-pomodoro': 200,
   })
 
   recordProductClientResponse(
@@ -473,6 +484,8 @@ test('release smoke observes product Clients inside a DSH combo response', () =>
   )
   assert.equal(responses['dsh-harbor-evolution'], 503)
   assert.equal(responses['dsh-ego-browser'], 200)
+  recordProductClientResponse(responses, 'http://127.0.0.1:3080/plugins/dsh-media-desk/client.js?rev=media', 200)
+  assert.equal(responses['dsh-media-desk'], 200)
 })
 
 test('Artifacts response recording reaches the required Client boot check', () => {

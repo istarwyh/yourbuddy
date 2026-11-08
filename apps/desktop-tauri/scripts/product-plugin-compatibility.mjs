@@ -278,7 +278,7 @@ function unquoteYamlScalar(value) {
 export function readLockImporterVersions(lockfile, importer) {
   const lines = lockfile.split(/\r?\n/)
   const marker = `  ${importer}:`
-  const start = lines.findIndex(line => line === marker)
+  const start = lines.findIndex(line => line === marker || line === `${marker} {}`)
   if (start === -1) throw new Error(`product lockfile importer missing: ${importer}`)
   const versions = new Map()
   let dependency
