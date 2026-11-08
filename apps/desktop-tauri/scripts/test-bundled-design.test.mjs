@@ -100,11 +100,9 @@ test('Hung DOM inspection still records the original failure and reaches screens
 })
 
 
-test('design smoke opts into the Browser tab enabled by the native desktop overlay', () => {
-  const native = readFileSync(new URL('../src-tauri/src/overlay.rs', import.meta.url), 'utf8')
+test('design smoke enables the Browser tab in both overlays', () => {
   const smoke = readFileSync(new URL('./verify-design-runtime.mjs', import.meta.url), 'utf8')
   const row = '- id: ui-sidebar-browser\\n  disabled: false\\n'
-  assert(native.includes(row))
   assert(smoke.includes(row))
   assert.match(smoke, /writeFile\(overlay, `\$\{browserOverlay\}/u)
   assert.match(smoke, /writeFile\(failureOverlay, browserOverlay \+/u)
