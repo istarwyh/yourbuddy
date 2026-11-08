@@ -371,6 +371,8 @@ test('installProductPlugins keeps every non-Harbor product in core and excludes 
     assert.equal(manifest.dependencies['dsh-personal-workbench'], 'workspace:*')
     assert.equal(manifest.dependencies['@xiaohui-wang/dsh-pomodoro'], 'workspace:*')
     assert.equal(manifest.dependencies['dsh-oil-creator'], 'workspace:*')
+    assert.equal(manifest.dependencies['dsh-media-desk'], 'workspace:*')
+    assert.equal(manifest.dependencies['dsh-context'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-subagent-codex'], 'workspace:*')
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
     const webPatch = readFileSync(join(webApp, 'cordis.patch.yml'), 'utf8')
@@ -380,6 +382,7 @@ test('installProductPlugins keeps every non-Harbor product in core and excludes 
     assert.doesNotMatch(webPatch, /id: harbor-evolution/u)
     assert.doesNotMatch(webPatch, /name: "dsh-ego-browser"/u)
     assert.match(webPatch, /id: dsh-oil-creator\n\s+name: dsh-oil-creator/u)
+    assert.doesNotMatch(webPatch, /id: (media-desk|dsh-context)\n/u)
     assert.match(webPatch, /id: subagent-codex\n\s+name: '@deepseek-ai\/dsh-subagent-codex'/u)
     assert.doesNotMatch(webPatch, /id: ui-sidebar\n\s+disabled: true/u)
     const bundledCodex = JSON.parse(readFileSync(
@@ -405,6 +408,8 @@ test('installProductPlugins keeps every non-Harbor product in core and excludes 
       ['plugin-marketplace', 'plugin-marketplace'],
       ['personal-workbench', 'personal-workbench'],
       ['oil-creator', 'oil-creator'],
+      ['media-desk', 'media-desk'],
+      ['context', 'context'],
     ]) {
       assert.equal(
         JSON.parse(readFileSync(join(root, 'packages', 'product', destination, 'package.json'), 'utf8')).version,

@@ -215,6 +215,7 @@ test('lock importer parsing and peer-link gate reject a registry DSH copy', () =
     const linked = `lockfileVersion: '9.0'\n\nimporters:\n\n  packages/product/fixture:\n    dependencies:\n      '@deepseek-ai/dsh-tools':\n        specifier: ^0.1.1-rc.1\n        version: link:../../core/tools\n\npackages:\n`
     writeFileSync(join(root, 'pnpm-lock.yaml'), linked)
     assert.equal(readLockImporterVersions(linked, 'packages/product/fixture').get('@deepseek-ai/dsh-tools'), 'link:../../core/tools')
+    assert.equal(readLockImporterVersions('importers:\n\n  packages/product/empty: {}\n', 'packages/product/empty').size, 0)
     assert.equal(assertBundledProductPeerLinks(root), 1)
 
     writeFileSync(join(root, 'pnpm-lock.yaml'), linked.replace('link:../../core/tools', '0.1.0-rc.8'))

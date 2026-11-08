@@ -567,7 +567,7 @@ async fn boot_windows_runtime(
 
     let overlay_src = overlay::resolve_overlay_source(resource_dir.as_deref());
     let notify_url = notify.map(|server| server.url.as_str()).unwrap_or("");
-    let implanted = overlay::install_overlay(&paths, &overlay_src, notify_url, &product)?;
+    let implanted = overlay::install_overlay(&paths.dsh_home, &overlay_src, &product)?;
     let host_overlay = Some(HostOverlay {
         patch_file: implanted.patch_file,
         notify_url: notify_url.to_string(),

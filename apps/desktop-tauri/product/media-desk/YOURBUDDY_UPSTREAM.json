@@ -1,0 +1,16 @@
+{
+  "package": "dsh-media-desk",
+  "version": "2.6.1",
+  "sourceKind": "npm-version",
+  "channel": "2.6.1",
+  "source": "https://registry.npmjs.org/dsh-media-desk/-/dsh-media-desk-2.6.1.tgz",
+  "integrity": "sha512-z7lTky1u/s9EQRs7qPpS1I5pCD/5x6s5NSH9a4SRzRYS5meK/Cg1m7Ij9JSahXUO6Lpeqln0rWnSb+NgRmMSZw==",
+  "archiveSha256": "456628a84822b04f4f21d7842c8c67dd74872fa7090915c0ffef70628dc108a7",
+  "upstreamTreeSha256": "7a52db95635f1cf7f15b9957e2a038c849d83a976cd82860d466728d559b5dd3",
+  "patches": [
+    "Remove obsolete @deepseek-ai/dsh-client-runtime Client injection."
+  ],
+  "repository": "https://github.com/woniuniuniu/dsh-media-desk",
+  "license": "MIT",
+  "treeSha256": "02e9e808b0099eed49f07544d28040d6a5454b88cc30fcfd879374964ff7ec53"
+}

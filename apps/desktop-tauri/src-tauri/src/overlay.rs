@@ -4,7 +4,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::product::ProductRuntime;
-use crate::runtime::provision::RuntimePaths;
 
 /// Absolute `--patch` file the Host should load.
 pub struct OverlayPatch {
@@ -54,6 +53,29 @@ pub fn notification_overlay_yaml(plugin_url: &str) -> String {
     format!("- insert:\n    - id: dsh-desktop-notify\n      name: {plugin_url}\n")
 }
 
+const PRODUCT_FALLBACKS: &[(&str, &str)] = &[
+    (
+        "yourbuddy-subagent-codex",
+        "@deepseek-ai/dsh-subagent-codex",
+    ),
+    ("yourbuddy-llm-codex-auth", "dsh-codex-auth"),
+    ("yourbuddy-codex-search", "dsh-codex-auth/search"),
+    ("yourbuddy-codex-image", "dsh-codex-auth/image"),
+    ("yourbuddy-context-doctor", "dsh-context-doctor"),
+    ("yourbuddy-ego-browser", "dsh-ego-browser"),
+    ("yourbuddy-plugin-marketplace", "dsh-plugin-marketplace"),
+    ("yourbuddy-personal-workbench", "dsh-personal-workbench"),
+    ("yourbuddy-oil-creator", "dsh-oil-creator"),
+    ("yourbuddy-media-desk", "dsh-media-desk"),
+    ("yourbuddy-dsh-context", "dsh-context"),
+];
+
+fn profile_fallback_disabled(name: &str, id: &str) -> String {
+    format!(
+        r#"!!js "[...ctx.loader.entries()].some((e) => e.options.name === '{name}' && e.options.id !== '{id}' && !e.disabled)""#
+    )
+}
+
 /// Render the YourBuddy product and desktop-notification rows loaded after the web profile.
 ///
 /// The overlay defaults new Sessions to Full access unless General settings
@@ -67,52 +89,71 @@ pub fn overlay_yaml(plugin_url: &str, product: &ProductRuntime) -> String {
         .unwrap_or_else(|_| "\"\"".into());
     let harbor_dsh_bin = serde_json::to_string(&product.harbor_dsh_bin.display().to_string())
         .unwrap_or_else(|_| "\"\"".into());
-    format!(
-        "{}- id: web\n  config:\n    searchProvider: codex\n\n- id: sandbox-policy\n  config:\n    mode: danger-full-access\n    workspaceRoot: !!js process.cwd()\n\n- id: approval\n  config:\n    policy: never\n\n- id: agent-preset-registry\n  config:\n    default: codex\n\n- id: tool-skill\n  config:\n    modelExcludedSkills:\n      - codexhost-delegation\n\n- id: ui-sidebar-browser\n  disabled: false\n\n- id: better-sidebar\n  disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'better-sidebar' && !e.disabled)\"\n  config:\n    presentation: slot\n    workspaceFence: false\n\n- id: harbor-evolution\n  config:\n    projectRoot: {project_root}\n    jobsDir: \"jobs\"\n    harborBin: {harbor_bin}\n    harborDshBin: {harbor_dsh_bin}\n    pythonPath: \"\"\n\n- insert:\n    - id: yourbuddy-subagent-codex\n      name: '@deepseek-ai/dsh-subagent-codex'\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === '@deepseek-ai/dsh-subagent-codex' && e.options.id !== 'yourbuddy-subagent-codex' && !e.disabled)\"\n    - id: yourbuddy-llm-codex-auth\n      name: dsh-codex-auth\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth' && e.options.id !== 'yourbuddy-llm-codex-auth' && !e.disabled)\"\n    - id: yourbuddy-codex-search\n      name: dsh-codex-auth/search\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/search' && e.options.id !== 'yourbuddy-codex-search' && !e.disabled)\"\n    - id: yourbuddy-codex-image\n      name: dsh-codex-auth/image\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-auth/image' && e.options.id !== 'yourbuddy-codex-image' && !e.disabled)\"\n    - id: yourbuddy-context-doctor\n      name: dsh-context-doctor\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-context-doctor' && e.options.id !== 'yourbuddy-context-doctor' && !e.disabled)\"\n    - id: yourbuddy-ego-browser\n      name: dsh-ego-browser\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-ego-browser' && e.options.id !== 'yourbuddy-ego-browser' && !e.disabled)\"\n    - id: yourbuddy-plugin-marketplace\n      name: dsh-plugin-marketplace\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-plugin-marketplace' && e.options.id !== 'yourbuddy-plugin-marketplace' && !e.disabled)\"\n    - id: yourbuddy-personal-workbench\n      name: dsh-personal-workbench\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-personal-workbench' && e.options.id !== 'yourbuddy-personal-workbench' && !e.disabled)\"\n    - id: yourbuddy-oil-creator\n      name: dsh-oil-creator\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-oil-creator' && e.options.id !== 'yourbuddy-oil-creator' && !e.disabled)\"\n",
-        notification_overlay_yaml(plugin_url)
-    )
-}
+    let notification = notification_overlay_yaml(plugin_url);
+    let better_sidebar_disabled = profile_fallback_disabled("dsh-better-sidebar", "better-sidebar");
+    let mut yaml = format!(
+        r#"{notification}- id: web
+  config:
+    searchProvider: codex
 
-/// Copy the overlay plugin into `dest_dir` and write a `--patch` list.
-pub fn install_overlay_at(
-    dest_dir: &Path,
-    overlay_src: &Path,
-    plugin_name_in_yaml: &str,
-    product: &ProductRuntime,
-) -> Result<OverlayPatch, String> {
-    let plugin_src = overlay_src.join("index.mjs");
-    if !plugin_src.is_file() {
-        return Err(format!(
-            "desktop overlay plugin missing: {}",
-            plugin_src.display()
+- id: sandbox-policy
+  config:
+    mode: danger-full-access
+    workspaceRoot: !!js process.cwd()
+
+- id: approval
+  config:
+    policy: never
+
+- id: agent-preset-registry
+  config:
+    default: codex
+
+- id: tool-skill
+  config:
+    modelExcludedSkills:
+      - codexhost-delegation
+
+- id: ui-sidebar-browser
+  disabled: false
+
+- id: better-sidebar
+  disabled: {better_sidebar_disabled}
+  config:
+    presentation: slot
+    workspaceFence: false
+
+- id: harbor-evolution
+  config:
+    projectRoot: {project_root}
+    jobsDir: "jobs"
+    harborBin: {harbor_bin}
+    harborDshBin: {harbor_dsh_bin}
+    pythonPath: ""
+
+- insert:
+"#
+    );
+    for &(id, name) in PRODUCT_FALLBACKS {
+        let quote = if name.starts_with('@') { "'" } else { "" };
+        let disabled = profile_fallback_disabled(name, id);
+        yaml.push_str(&format!(
+            r#"    - id: {id}
+      name: {quote}{name}{quote}
+      disabled: {disabled}
+"#
         ));
     }
-
-    fs::create_dir_all(dest_dir).map_err(|e| format!("无法创建 {}: {e}", dest_dir.display()))?;
-    let plugin_dest = dest_dir.join("index.mjs");
-    fs::copy(&plugin_src, &plugin_dest).map_err(|e| {
-        format!(
-            "无法复制 {} -> {}: {e}",
-            plugin_src.display(),
-            plugin_dest.display()
-        )
-    })?;
-
-    let patch_file = dest_dir.join("cordis.yml");
-    fs::write(&patch_file, overlay_yaml(plugin_name_in_yaml, product))
-        .map_err(|e| format!("无法写入 {}: {e}", patch_file.display()))?;
-
-    Ok(OverlayPatch { patch_file })
+    yaml
 }
 
-/// Copy the overlay plugin into the selected home and write a `--patch` list.
+/// Copy the notification plugin and render its desktop patch under the Harness home.
 pub fn install_overlay(
-    paths: &RuntimePaths,
+    dsh_home: &Path,
     overlay_src: &Path,
-    notify_url: &str,
     product: &ProductRuntime,
 ) -> Result<OverlayPatch, String> {
-    let dest_dir = paths.dsh_home.join("desktop-overlay");
+    let dest_dir = dsh_home.join("desktop-overlay");
     let plugin_src = overlay_src.join("index.mjs");
     if !plugin_src.is_file() {
         return Err(format!(
@@ -131,9 +172,12 @@ pub fn install_overlay(
         )
     })?;
 
-    let plugin_path = normalize_plugin_path(&plugin_dest)?;
-    let _ = notify_url;
-    install_overlay_at(&dest_dir, overlay_src, &plugin_path, product)
+    let plugin_url = normalize_plugin_path(&plugin_dest)?;
+    let patch_file = dest_dir.join("cordis.yml");
+    fs::write(&patch_file, overlay_yaml(&plugin_url, product))
+        .map_err(|e| format!("无法写入 {}: {e}", patch_file.display()))?;
+
+    Ok(OverlayPatch { patch_file })
 }
 
 fn normalize_plugin_path(path: &Path) -> Result<String, String> {
@@ -167,12 +211,8 @@ pub fn resolve_overlay_source(resource_dir: Option<&Path>) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        install_overlay, install_overlay_at, linux_plugin_file_url, normalize_plugin_path,
-        overlay_yaml,
-    };
+    use super::{install_overlay, linux_plugin_file_url, normalize_plugin_path, overlay_yaml};
     use crate::product::ProductRuntime;
-    use crate::runtime::provision::RuntimePaths;
     use std::fs;
 
     fn product(root: &std::path::Path) -> ProductRuntime {
@@ -200,31 +240,6 @@ mod tests {
     #[test]
     fn linux_file_url_rejects_wsl_localhost() {
         assert!(linux_plugin_file_url("//wsl.localhost/Ubuntu/home/u/plugin.mjs").is_err());
-    }
-
-    #[test]
-    fn install_overlay_at_writes_yaml_with_given_url() {
-        let root =
-            std::env::temp_dir().join(format!("dsh desktop overlay at {}", std::process::id()));
-        let _ = fs::remove_dir_all(&root);
-        fs::create_dir_all(root.join("src")).unwrap();
-        fs::write(
-            root.join("src").join("index.mjs"),
-            "export function apply() {}\n",
-        )
-        .unwrap();
-
-        let dest_dir = root.join("desktop-overlay");
-        let plugin_url = "file:///home/u/.dsh/desktop-overlay/index.mjs";
-        let product = product(&root);
-        let overlay =
-            install_overlay_at(&dest_dir, &root.join("src"), plugin_url, &product).unwrap();
-        let yaml = fs::read_to_string(&overlay.patch_file).unwrap();
-
-        assert!(dest_dir.join("index.mjs").is_file());
-        assert!(yaml.contains(plugin_url));
-        assert!(!yaml.contains("file:///C:"));
-        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -267,14 +282,13 @@ mod tests {
         assert!(yaml.contains("id: yourbuddy-oil-creator"));
         assert!(yaml.contains("name: dsh-oil-creator"));
         assert!(yaml.contains("id: harbor-evolution"));
-        assert!(yaml.contains("id: harbor-evolution"));
         assert!(!yaml.contains("name: dsh-harbor-evolution"));
         assert!(yaml.contains("ctx.loader.entries()"));
         assert!(yaml.contains("projectRoot: \"/tmp/yourbuddy/workspace\""));
     }
 
     #[test]
-    fn writes_a_file_url_patch_row_that_node_esm_can_import() {
+    fn writes_a_file_url_patch_row_for_the_copied_plugin() {
         let root = std::env::temp_dir().join(format!("dsh desktop overlay {}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(root.join("src")).unwrap();
@@ -285,50 +299,20 @@ mod tests {
         .unwrap();
 
         let dsh_home = root.join("home");
-        let paths = RuntimePaths {
-            node_binary: root.join("node"),
-            pnpm_binary: root.join("pnpm"),
-            cli_entry: root.join("bin.js"),
-            harness_root: root.clone(),
-            runtime_root: root.join("runtime"),
-            dsh_home: dsh_home.clone(),
-        };
-
-        let product = product(&root);
-        let overlay = install_overlay(
-            &paths,
-            &root.join("src"),
-            "http://127.0.0.1:9/notify",
-            &product,
-        )
-        .unwrap();
+        let overlay = install_overlay(&dsh_home, &root.join("src"), &product(&root)).unwrap();
         let yaml = fs::read_to_string(&overlay.patch_file).unwrap();
         let plugin = dsh_home.join("desktop-overlay").join("index.mjs");
         let plugin_url = normalize_plugin_path(&plugin).unwrap();
-        assert!(plugin.is_file());
+        assert_eq!(fs::read(&plugin).unwrap(), b"export function apply() {}\n");
         assert!(plugin_url.starts_with("file://"), "{plugin_url}");
         assert!(plugin_url.contains("%20"), "{plugin_url}");
         assert!(!plugin_url.contains('\\'), "{plugin_url}");
-        assert!(yaml.contains("id: dsh-desktop-notify"));
-        assert!(!yaml.contains("id: ui-sidebar\n  disabled: true"));
-        assert!(yaml.contains("id: yourbuddy-subagent-codex"));
-        assert!(yaml.contains("name: '@deepseek-ai/dsh-subagent-codex'"));
-        assert!(yaml.contains("id: yourbuddy-plugin-marketplace"));
-        assert!(yaml.contains("name: dsh-plugin-marketplace"));
-        assert!(yaml.contains("id: yourbuddy-llm-codex-auth"));
-        assert!(yaml.contains("id: yourbuddy-codex-search"));
-        assert!(yaml.contains("id: yourbuddy-codex-image"));
-        assert!(yaml.contains("id: better-sidebar"));
-        assert!(yaml.contains("e.options.id !== 'better-sidebar' && !e.disabled"));
-        assert!(yaml.contains("id: yourbuddy-context-doctor"));
-        assert!(yaml.contains("id: yourbuddy-ego-browser"));
-        assert!(yaml.contains("name: dsh-ego-browser"));
-        assert!(yaml.contains("id: yourbuddy-personal-workbench"));
-        assert!(yaml.contains("id: yourbuddy-oil-creator"));
-        assert!(yaml.contains("name: dsh-oil-creator"));
-        assert!(yaml.contains("id: harbor-evolution"));
-        assert!(yaml.contains("id: harbor-evolution"));
-        assert!(yaml.contains(&format!("name: \"{plugin_url}\"")), "{yaml}");
+        assert!(
+            yaml.contains(&format!(
+                "- id: dsh-desktop-notify\n      name: \"{plugin_url}\"\n"
+            )),
+            "{yaml}"
+        );
         let _ = fs::remove_dir_all(&root);
     }
 }

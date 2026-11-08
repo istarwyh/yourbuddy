@@ -1,0 +1,16 @@
+{
+  "package": "dsh-context",
+  "version": "0.82.2",
+  "sourceKind": "npm-version",
+  "channel": "0.82.2",
+  "source": "https://registry.npmjs.org/dsh-context/-/dsh-context-0.82.2.tgz",
+  "integrity": "sha512-myYjK6a79ZDJ1ALTI3hIBjVk2lsNCb3hUViSeS7Vjf+Xi2G8jkT1bi8+njyd77uOVDT6NYBPkjbf5bP5OXpafg==",
+  "archiveSha256": "ab659f9a19bb5ef3304e40ec6710e2700628fc32eb2ac29d8f35ebd9b60e437d",
+  "upstreamTreeSha256": "aec3f91aeed663c6ab14fade877657354066b9d152afbfaed55be99317582963",
+  "patches": [
+    "Remove package lifecycle script prepare."
+  ],
+  "repository": "https://github.com/bowenliang123/dsh-context",
+  "license": "Apache-2.0",
+  "treeSha256": "8220c6ca237f50766b882a6b5843ec4ae310c7903a08ecf2c6bd0a7ffdcbb2de"
+}

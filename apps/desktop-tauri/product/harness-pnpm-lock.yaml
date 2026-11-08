@@ -411,12 +411,18 @@ importers:
       dsh-codex-auth:
         specifier: workspace:*
         version: link:../../packages/product/dsh-codex-auth
+      dsh-context:
+        specifier: workspace:*
+        version: link:../../packages/product/context
       dsh-context-doctor:
         specifier: workspace:*
         version: link:../../packages/product/context-doctor
       dsh-ego-browser:
         specifier: workspace:*
         version: link:../../packages/product/ego-browser
+      dsh-media-desk:
+        specifier: workspace:*
+        version: link:../../packages/product/media-desk
       dsh-oil-creator:
         specifier: workspace:*
         version: link:../../packages/product/oil-creator
@@ -4951,6 +4957,30 @@ importers:
         specifier: 2.11.1
         version: 2.11.1(patch_hash=47eadb72c1d85893ad7ba70bf326d960240a7038d9dcf59f2b4c1f121a7f9d22)
 
+  packages/product/context:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:*
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: workspace:*
+        version: link:../../client/ui-primitives
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../core/session
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   packages/product/context-doctor:
     dependencies:
       '@deepseek-ai/cordis':
@@ -5247,6 +5277,8 @@ importers:
       schemastery:
         specifier: ^3.18.0
         version: 3.18.0
+
+  packages/product/media-desk: {}
 
   packages/product/oil-creator:
     dependencies:

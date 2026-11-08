@@ -75,32 +75,29 @@ const desktopBetterSidebarPluginUrl = 'https://github.com/HuanLinOTO/dsh-plugin-
 const syntheticInstallFailure = 'synthetic install failure'
 const syntheticHostProxy = 'http://127.0.0.1:9'
 
-/** Product Client packages that must execute during the assembled Web smoke. */
-export const PRODUCT_CLIENT_IDS = [
-  'dsh-claude-artifacts',
-  'dsh-codex-auth',
-  'dsh-better-sidebar',
-  'dsh-ego-browser',
-  'dsh-context-doctor',
-  'dsh-plugin-marketplace',
-  'dsh-personal-workbench',
-  '@xiaohui-wang/dsh-pomodoro',
-  'dsh-oil-creator',
-  'dsh-harbor-evolution',
-]
+const CORE_PRODUCT_CLIENT_ENTRIES = {
+  'dsh-claude-artifacts': 'claude-artifacts',
+  'dsh-codex-auth': 'llm-codex-auth',
+  'dsh-better-sidebar': 'better-sidebar',
+  'dsh-ego-browser': 'ego-browser',
+  'dsh-context-doctor': 'context-doctor',
+  'dsh-plugin-marketplace': 'plugin-marketplace',
+  'dsh-personal-workbench': 'personal-workbench',
+  '@xiaohui-wang/dsh-pomodoro': 'dsh-pomodoro',
+  'dsh-oil-creator': 'dsh-oil-creator',
+  'dsh-media-desk': 'yourbuddy-media-desk',
+  'dsh-context': 'yourbuddy-dsh-context',
+}
+const OPTIONAL_PRODUCT_CLIENT_ENTRIES = {
+  'dsh-harbor-evolution': 'harbor-evolution',
+}
+const optionalProductClientIds = Object.keys(OPTIONAL_PRODUCT_CLIENT_ENTRIES)
 
 /** Product Clients available before any optional component is installed. */
-export const CORE_PRODUCT_CLIENT_IDS = [
-  'dsh-claude-artifacts',
-  'dsh-codex-auth',
-  'dsh-better-sidebar',
-  'dsh-ego-browser',
-  'dsh-context-doctor',
-  'dsh-plugin-marketplace',
-  'dsh-personal-workbench',
-  '@xiaohui-wang/dsh-pomodoro',
-  'dsh-oil-creator',
-]
+export const CORE_PRODUCT_CLIENT_IDS = Object.keys(CORE_PRODUCT_CLIENT_ENTRIES)
+
+/** Product Client packages that must execute during the assembled Web smoke. */
+export const PRODUCT_CLIENT_IDS = [...CORE_PRODUCT_CLIENT_IDS, ...optionalProductClientIds]
 
 /** Product workspace packages; upstream Artifacts is an exact registry dependency. */
 export const CORE_PRODUCT_PACKAGE_IDS = [
@@ -118,32 +115,34 @@ const LIGHTWEIGHT_CLIENT_ENTRIES = {
   '@deepseek-ai/dsh-client-ui-sidebar-documentpreview': 'ui-sidebar-documentpreview',
 }
 
-const PRODUCT_CLIENT_ENTRY_IDS = {
-  'dsh-claude-artifacts': 'claude-artifacts',
-  'dsh-codex-auth': 'llm-codex-auth',
-  'dsh-better-sidebar': 'better-sidebar',
-  'dsh-ego-browser': 'ego-browser',
-  'dsh-context-doctor': 'context-doctor',
-  'dsh-plugin-marketplace': 'plugin-marketplace',
-  'dsh-personal-workbench': 'personal-workbench',
-  '@xiaohui-wang/dsh-pomodoro': 'dsh-pomodoro',
-  'dsh-oil-creator': 'dsh-oil-creator',
-  'dsh-harbor-evolution': 'harbor-evolution',
-}
+const productClientResources = new Map(
+  Object.entries({
+    ...CORE_PRODUCT_CLIENT_ENTRIES,
+    ...OPTIONAL_PRODUCT_CLIENT_ENTRIES,
+    ...LIGHTWEIGHT_CLIENT_ENTRIES,
+  }).flatMap(([name, entryId]) => [
+    [`${name}/client.js`, name],
+    [`${entryId}/client.js`, name],
+  ]),
+)
 
 /**
- * Record product Client artifacts from individual or DSH combo resource URLs.
+ * Record the status of each product Client script served by an individual or DSH combo URL.
  * @param {Record<string, number>} target
  * @param {string} responseUrl
  * @param {number} status
  */
 export function recordProductClientResponse(target, responseUrl, status) {
-  const url = new URL(responseUrl)
-  const resource = `${url.pathname}${url.search}`
-  for (const [id, entryId] of Object.entries({ ...PRODUCT_CLIENT_ENTRY_IDS, ...LIGHTWEIGHT_CLIENT_ENTRIES })) {
-    if (resource.includes(`${id}/client.js`) || resource.includes(`${entryId}/client.js`)) {
-      target[id] = status
-    }
+  const { pathname, search } = new URL(responseUrl)
+  const prefix = '/plugins/'
+  if (!pathname.startsWith(prefix)) return
+
+  const resources = pathname === prefix && search.startsWith('??')
+    ? search.slice(2).split('&', 1)[0].split(',')
+    : [pathname.slice(prefix.length)]
+  for (const resource of resources) {
+    const name = productClientResources.get(resource)
+    if (name !== undefined) target[name] = status
   }
 }
 
@@ -670,7 +669,7 @@ export function assertProductClientBoot(result, phase = 'installed') {
     else if (status !== 200) failures.push(`${id} Client bundle returned HTTP ${status}`)
   }
   if (phase === 'core') {
-    for (const id of PRODUCT_CLIENT_IDS.filter(id => !CORE_PRODUCT_CLIENT_IDS.includes(id))) {
+    for (const id of optionalProductClientIds) {
       if (Object.hasOwn(result.clientResponses, id)) failures.push(`${id} optional Client was requested by core`)
     }
   }
@@ -1875,6 +1874,20 @@ async function runBrowserSmoke(baseUrl, env, phase) {
     await page.locator('[class*="frame"]').first().waitFor({ timeout: 30_000 })
     browserStep = 'branding-journey'
     await verifyWorkbenchBranding(page)
+
+    if (phase === 'core') {
+      browserStep = 'default-plugin-navigation'
+      const [mediaState] = await Promise.all([
+        page.waitForResponse(response => new URL(response.url()).pathname === '/media-desk/state', { timeout: 10_000 }),
+        page.getByRole('button', { name: 'Media Desk', exact: true }).click({ timeout: 10_000 }),
+      ])
+      if (!mediaState.ok() || !Array.isArray((await mediaState.json()).state?.items)) {
+        throw new Error(`Media Desk did not load its workbench data (HTTP ${mediaState.status()})`)
+      }
+      await page.getByRole('button', { name: 'Ideas', exact: true }).first().waitFor({ timeout: 10_000 })
+      await page.getByRole('button', { name: 'Context Insights', exact: true }).click({ timeout: 10_000 })
+      await page.getByRole('heading', { name: 'Context Insights', exact: true }).waitFor({ timeout: 10_000 })
+    }
   }
   catch (error) {
     failure = error

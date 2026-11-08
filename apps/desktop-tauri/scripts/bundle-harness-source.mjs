@@ -44,53 +44,22 @@ const productAgentPresetPatches = [defaultAgentPreset, creatorAgentPreset]
   .map(preset => `./presets/${preset.id}.patch.yml`)
 const creatorPersona = 'You are a creator workbench agent powered by the {{model}} model. Help the user plan, produce, package, and publish local video and article content while keeping human review at recording, editing, subtitle, and final publication checkpoints.'
 const productPlugins = [
-  {
-    name: 'dsh-yourbuddy-design',
-    root: join(desktopRoot, 'product', 'claude-design-adapter'),
-    destination: join('packages', 'product', 'claude-design-adapter'),
-  },
-  {
-    name: '@xiaohui-wang/dsh-pomodoro',
-    root: join(desktopRoot, 'product', 'pomodoro'),
-    destination: join('packages', 'product', 'pomodoro'),
-  },
-  {
-    name: 'dsh-codex-auth',
-    root: join(desktopRoot, 'product', 'dsh-codex-auth'),
-    destination: join('packages', 'product', 'dsh-codex-auth'),
-  },
-  {
-    name: 'dsh-better-sidebar',
-    root: join(desktopRoot, 'product', 'dsh-better-sidebar'),
-    destination: join('packages', 'product', 'dsh-better-sidebar'),
-  },
-  {
-    name: 'dsh-context-doctor',
-    root: join(desktopRoot, 'product', 'context-doctor'),
-    destination: join('packages', 'product', 'context-doctor'),
-  },
-  {
-    name: 'dsh-ego-browser',
-    root: join(desktopRoot, 'product', 'ego-browser'),
-    destination: join('packages', 'product', 'ego-browser'),
-    embedPatch: false,
-  },
-  {
-    name: 'dsh-plugin-marketplace',
-    root: join(desktopRoot, 'product', 'plugin-marketplace'),
-    destination: join('packages', 'product', 'plugin-marketplace'),
-  },
-  {
-    name: 'dsh-personal-workbench',
-    root: join(desktopRoot, 'product', 'personal-workbench'),
-    destination: join('packages', 'product', 'personal-workbench'),
-  },
-  {
-    name: 'dsh-oil-creator',
-    root: join(desktopRoot, 'product', 'oil-creator'),
-    destination: join('packages', 'product', 'oil-creator'),
-  },
-]
+  { name: 'dsh-yourbuddy-design', directory: 'claude-design-adapter' },
+  { name: '@xiaohui-wang/dsh-pomodoro', directory: 'pomodoro' },
+  { name: 'dsh-codex-auth', directory: 'dsh-codex-auth' },
+  { name: 'dsh-better-sidebar', directory: 'dsh-better-sidebar' },
+  { name: 'dsh-context-doctor', directory: 'context-doctor' },
+  { name: 'dsh-ego-browser', directory: 'ego-browser', embedPatch: false },
+  { name: 'dsh-plugin-marketplace', directory: 'plugin-marketplace' },
+  { name: 'dsh-personal-workbench', directory: 'personal-workbench' },
+  { name: 'dsh-oil-creator', directory: 'oil-creator' },
+  { name: 'dsh-media-desk', directory: 'media-desk', embedPatch: false },
+  { name: 'dsh-context', directory: 'context', embedPatch: false },
+].map(({ directory, ...plugin }) => ({
+  ...plugin,
+  root: join(desktopRoot, 'product', directory),
+  destination: join('packages', 'product', directory),
+}))
 
 const skipDirNames = new Set([
   'node_modules', '.git', '.turbo', 'coverage', 'release', '.stage', '.cache',
