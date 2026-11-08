@@ -1,5 +1,5 @@
 diff --git a/README.md b/README.md
-index a738c3a..4a28321 100644
+index a738c3a..df2a3aa 100644
 --- a/README.md
 +++ b/README.md
 @@ -38,7 +38,7 @@
@@ -20,7 +20,7 @@ index a738c3a..4a28321 100644
  
  完整工具列表和逐步示例见 [使用说明](docs/usage.md)。
  
-@@ -121,8 +121,8 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
+@@ -121,8 +121,10 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
  | 字幕转录、排版、预览和烧录 | [oil-subtitle](https://github.com/oil-oil/oil-subtitle) + `DASHSCOPE_API_KEY` | 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；Key 在[百炼控制台](https://bailian.console.aliyun.com)申请 |
  | 三画幅封面 | [oil-cover](https://github.com/oil-oil/oil-cover) + `ZENMUX_API_KEY` | Key 在 [ZenMux](https://zenmux.ai) 申请 |
  | Screen Studio 自动剪辑 | [screen-studio-editor](https://github.com/oil-oil/screen-studio-editor) | 仅 macOS；录制和导出仍在 Screen Studio 完成 |
@@ -28,6 +28,8 @@ index a738c3a..4a28321 100644
 -| 公众号图文 | [oil-video-article](https://github.com/oil-oil/oil-video-article) | 独立工作流，工作台负责展示已有文章 |
 +| 多平台草稿与数据回收 | [Ego Lite](https://lite.ego.app/)；插件内置 `video-publisher` | 仅 macOS；需要提前登录各平台创作者后台 |
 +| 公众号图文 | 插件内置 `oil-video-article` 和 `wechat-publisher` | Agent 整理文章；工作台可选择创建公众号草稿 |
++
++`video-publisher`、`oil-video-article` 和 `wechat-publisher` 随插件包交付，并以内置版本为真源。不要在全局 Skill 目录安装同名副本，也不要直接修改应用安装目录中的副本；插件升级后以新包内容为准。
  
  字幕和封面 Skill 留空时，插件会依次从 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 自动发现；只有非标准安装位置才需要填写高级路径。
  

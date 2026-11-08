@@ -124,6 +124,8 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
 | 多平台草稿与数据回收 | [Ego Lite](https://lite.ego.app/)；插件内置 `video-publisher` | 仅 macOS；需要提前登录各平台创作者后台 |
 | 公众号图文 | 插件内置 `oil-video-article` 和 `wechat-publisher` | Agent 整理文章；工作台可选择创建公众号草稿 |
 
+`video-publisher`、`oil-video-article` 和 `wechat-publisher` 随插件包交付，并以内置版本为真源。不要在全局 Skill 目录安装同名副本，也不要直接修改应用安装目录中的副本；插件升级后以新包内容为准。
+
 字幕和封面 Skill 留空时，插件会依次从 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 自动发现；只有非标准安装位置才需要填写高级路径。
 
 ## 配置原则
