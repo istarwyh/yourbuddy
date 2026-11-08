@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.18/README.md
+/yourbuddy-0-4-18:
+  en: 02124987faea1922
+  zh: 43c8b85347b6d732
+/yourbuddy-0-4-18/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: e75e1627ae692bfa
+/yourbuddy-0-4-18/user-release-notes/what-changed:
+  en: 15f890488f8363e1
+  zh: 1499872f2f921a8d
+/yourbuddy-0-4-18/user-release-notes/where-to-use-it:
+  en: 996415c0f55ddada
+  zh: a39e471e16e30314
+/yourbuddy-0-4-18/user-release-notes/install-or-upgrade:
+  en: a81fdfcbec6a8cf2
+  zh: 6f873d9ede3a46c9
+/yourbuddy-0-4-18/verification-summary:
+  en: 4f6ef5e0a1135478
+  zh: 3d2b745e9b228ed5
+/yourbuddy-0-4-18/prepared-default-workbench:
+  en: a4e2e7555fb7ef05
+  zh: 022934595bd757a7
+/yourbuddy-0-4-18/delivery-status:
+  en: 4e563ca50a701ee2
+  zh: cea363fc15a1a78a
+/yourbuddy-0-4-18/delivery-checklist:
+  en: c5f97bb045181239
+  zh: 1e0fda6ee8af6652
