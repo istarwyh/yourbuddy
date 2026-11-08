@@ -1,6 +1,6 @@
 ---
 name: record-browser-gif
-description: Record browser or Web UI interaction demos as optimized GIFs using the available browser-control workflow, optional Playwright Videos for higher capture frame rates, and deterministic encoding, then attach the GIF to a pull request with `gh --attach`, falling back to a dedicated assets branch where attach cannot apply. Use when asked to make, record, or generate a GIF that demonstrates a browser workflow, and for every pull request that changes product-user-visible GUI behavior, which MUST include a GIF recorded from the pull request's real server and model flow.
+description: Record browser or Web UI interaction demos as optimized GIFs using the available browser-control workflow, optional Playwright Videos for higher capture frame rates, and deterministic encoding, then attach the GIF to a pull request with `gh --attach`, falling back to a dedicated assets branch where attach cannot apply. Use when asked to make, record, or generate a GIF that demonstrates a browser workflow, and for every pull request that changes product-user-visible GUI behavior, which MUST include a GIF recorded from the pull request's real server and the production path relevant to its claim.
 ---
 
 # Record Browser GIF
@@ -13,22 +13,22 @@ The [evidence-chain decision](../../notes/implemented/process/2026-08-08-browser
 
 A pull request that changes product-user-visible GUI behavior MUST include a demonstration GIF recorded with this skill and embedded in the pull request body via [the attach workflow](#publish-the-gif).
 
-The recording itself is part of the evidence: use a real server booted from that pull request's branch tree, a real API key, and real model rounds. Never substitute fixture queries, mock transports, synthetic event injection, or test-only hooks unless the user explicitly asked for a fixture recording. Next to the embed, state the exact demonstrated commit SHA, the tree and origin that served it, any mode flags or browser-state exceptions, and whether a real model round ran, so reviewers know exactly what the recording proves.
+The recording itself is part of the evidence: use a real server booted from that pull request's branch tree and the production path needed for the claim. Require a model round only when the GIF claims model, provider, or tool-mediated behavior. Any real provider configured through the application's normal settings or authentication path qualifies, including account-authenticated and API-key providers; do not require `DEEPSEEK_API_KEY` when another real provider is available. A GUI-only flow that does not depend on model output must not add a model call solely for evidence. Never substitute fixture queries, mock transports, synthetic event injection, or test-only hooks unless the user explicitly asked for a fixture recording. Next to the embed, state the exact demonstrated commit SHA, the tree and origin that served it, any mode flags or browser-state exceptions, whether a real model round ran, and which provider path it used without exposing credentials, so reviewers know exactly what the recording proves.
 
 ## Keep recording separate from publication
 
 - Recording produces local video or screenshots and one `.gif` artifact only; it never mutates remote state.
 - Publication — attaching the GIF to a pull request body with `gh --attach`, or pushing it to an assets branch and embedding its URL where attach cannot apply — is the separate final step, performed only when the task includes attaching the GIF to a pull request. It never touches the pull request's own branch.
-- Preserve the requested recording conditions. A real-server or real-API demo must not use fixture queries, mock transports, synthetic event injection, or test-only hooks. If credentials or the server are unavailable, report that limitation instead of substituting a fixture.
-- Never read or expose credential values. Use the application's normal configuration path and a benign demonstration prompt.
+- Preserve the requested recording conditions. A real-server or real-provider demo must not use fixture queries, mock transports, synthetic event injection, or test-only hooks. If the production capability required by the claim is unavailable, report that limitation instead of substituting a fixture.
+- Never read or expose credential values. Discover providers through the application's normal configuration or authentication path and use a benign demonstration prompt when a model round is relevant.
 
 ## Stage the application
 
 A GIF for a specific pull request demonstrates that pull request's tree, so stage per pull request:
 
 1. Require a clean worktree, record its exact commit with `git rev-parse HEAD`, then build that recorded tree — here, `pnpm run build && pnpm run build:web`. A GIF recorded against another commit's build misattributes the evidence.
-2. Boot one server per port from that tree with fresh scratch `DSH_HOME`, `DSH_AGENTS_HOME`, workspace, and session state. Give the browser a fresh isolated context or profile as well; if the browser workflow cannot create one, clear that origin's cookies and site storage before navigation so persisted client state cannot affect the evidence. Source the root `.env` for the API key through the application's normal path; never echo the key.
-3. Treat one storyboard as one evidence run: every published frame comes from that server and those state roots, workspace, session, and model-backed scenario run. If capture automation fails, discard its frames and rerun from fresh roots; never splice frames from separate runs.
+2. Boot one server per port from that tree with fresh scratch `DSH_HOME`, `DSH_AGENTS_HOME`, workspace, and session state. Give the browser a fresh isolated context or profile as well; if the browser workflow cannot create one, clear that origin's cookies and site storage before navigation so persisted client state cannot affect the evidence. Discover any required real provider through normal application settings or authentication without reading or echoing credentials. The absence of one credential type does not establish that no real provider is available.
+3. Treat one storyboard as one evidence run: every published frame comes from that server, those state roots, workspace, session, and one production scenario run. Include a real model round in that run only when the demonstrated claim depends on it. If capture automation fails, discard its frames and rerun from fresh roots; never splice frames from separate runs.
 4. When switching between pull requests, stop the old server by PID or an exact match on its command line. A broad `pkill -f` pattern can match and kill the shell that launched it — including your own.
 
 ## Record the flow
@@ -109,7 +109,7 @@ One duration applies to every screenshot; otherwise supply one positive duration
 1. Read the encoder's JSON summary and confirm the output path, source interval and speed (or screenshot count), encoded frame count, dimensions, duration, and byte size.
 2. Visually read the encoded GIF itself, not only the source frames. Confirm that the transition is legible, the last state is held long enough, and no sensitive content appears. If the viewer renders only the first frame, decode representative frames from the encoded GIF with `ffmpeg` and inspect those; the pre-encode screenshots do not prove the encoded order, palette, or final hold.
 3. Run `git status --short` and confirm raw video, QA frames, and the artifact landed only under ignored paths.
-4. Return the absolute GIF path, render it when the client supports local media, and state whether the recording used a real API, fixture, or another transport. When the task does not include attaching the GIF to a pull request, stop here.
+4. Return the absolute GIF path, render it when the client supports local media, and state which production path was exercised, whether a model round ran, and whether any fixture or alternate transport was explicitly requested. When the task does not include attaching the GIF to a pull request, stop here.
 
 Encoder maintenance: run `python3 -m unittest discover -s "$GIF_SKILL_DIR/scripts" -p 'test_*.py' -v` with the media prerequisites installed. These local media tests do not run in repository CI.
 
