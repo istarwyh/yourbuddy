@@ -11,6 +11,8 @@ A considered starting point, with each project's contribution kept visible.
 | [Ego Browser](ego-browser.md) | Operate a real browser with a live view and human takeover |
 | [Claude Design](../../../../apps/desktop-tauri/product/claude-design-adapter/README.md) | Create an unsent Design draft and open artifacts in the managed in-app editor |
 | [Context Doctor](context-doctor.md) | Understand context costs, duplicates, and shadowed skills |
+| Context Insights (`dsh-context`) | See context composition and usage across sessions |
+| Media Desk (`dsh-media-desk`) | Organize ideas, content, and a publishing calendar |
 | [Oil Creator](oil-creator.md) | Organize local video and article production, including reviewed publishing drafts |
 | [Plugin Marketplace](marketplace.md) | Discover and assess extensions before installing |
 | [Harbor Evolution](harbor-evolution.md) | Ground diagnosis and controlled improvement in task evidence |

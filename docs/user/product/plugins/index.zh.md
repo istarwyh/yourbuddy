@@ -11,6 +11,8 @@
 | [Ego Browser](ego-browser.zh.md) | 通过实时画面和人工接管操作真实浏览器 |
 | [Claude Design](../../../../apps/desktop-tauri/product/claude-design-adapter/README.zh.md) | 创建未发送的 Design 草稿，并在应用内托管编辑器打开产物 |
 | [Context Doctor](context-doctor.zh.md) | 理解上下文成本、重复内容与被遮蔽技能 |
+| 上下文洞察（`dsh-context`） | 跨会话查看上下文组成与用量 |
+| 自媒体工作台（`dsh-media-desk`） | 管理灵感、内容和发布日历 |
 | [Oil Creator](oil-creator.zh.md) | 以普通项目文件夹组织本地视频、图文与人工检查后的发布草稿 |
 | [Plugin Marketplace](marketplace.zh.md) | 安装前发现并了解扩展 |
 | [Harbor Evolution](harbor-evolution.zh.md) | 用任务证据支持诊断与受控改进 |
