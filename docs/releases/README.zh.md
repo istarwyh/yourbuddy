@@ -10,7 +10,7 @@
 
 | 发布版本 | 渠道 | 用户说明 | 验证资料 | 产品状态 |
 |---|---|---|---|---|
-| [yourbuddy-v0.4.18](yourbuddy-v0.4.18/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已验证预打包工作台与无密钥升级回放 | 候选版本 |
+| [yourbuddy-v0.4.18](yourbuddy-v0.4.18/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 已验证预打包与原生启动、公开附件和线上网站 | 已发布 |
 | [yourbuddy-v0.4.17](yourbuddy-v0.4.17/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 预备／原生验收、全部公开下载／签名、源码 ZIP 与在线网站已核验 | 已发布；限制已记录 |
 | [yourbuddy-v0.4.16](yourbuddy-v0.4.16/README.zh.md) | YourBuddy 桌面应用 | 已包含 | 完整输入预检通过；记录发行 Settings 生命周期失败 | 打包／发布前失败 |
 | [yourbuddy-v0.4.15](yourbuddy-v0.4.15/README.zh.md) | YourBuddy 桌面版 | 已包含 | 已记录源码检查与预准备 peer 计数失败；标签保留 | 附件发布前失败 |

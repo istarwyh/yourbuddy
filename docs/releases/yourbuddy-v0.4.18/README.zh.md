@@ -4,10 +4,10 @@
 
 - **发布标识** `yourbuddy-v0.4.18`
 - **产品渠道** 适用于 Apple Silicon Mac 的 YourBuddy 桌面应用。
-- **归档状态** 发布前验证记录。
+- **归档状态** 已发布，验证范围见下文。
 - **发布源码** [标签对应的源码树](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.18)。
 - **验收画面** [PR #110 的工作台演示](https://github.com/istarwyh/yourbuddy/pull/110)。
-- **证据下载** [标签源码 ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.18.zip)包含本目录。
+- **证据下载** [标签源码 ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.18.zip)包含发布前归档。公开发行验证结果见下文。
 
 ## 用户发布说明
 
@@ -48,16 +48,22 @@ Apple Silicon Mac 可下载 Bootstrap DMG。首次启动需要离线时可选 Of
 
 验收确认 551 个锁定的注册表依赖齐全，Codex 和 Claude SDK 的原生可执行文件也已就绪。默认工作台成功打开两个页面。Harbor 阶段报告 102 条匹配的核心 peer 依赖链接、12 个组装后的 Client，以及已就绪的 Harbor Python 运行时。[任务结果](https://github.com/istarwyh/yourbuddy/actions/runs/42445630994/job/128623840539)。
 
+## 正式发行验证
+
+标签对应的 macOS arm64 构建通过了预打包 Chromium 验收。签名的 Offline 安装包连续三次进入原生工作台，应用与 Host 均正常退出。公开下载中的 Offline 可执行文件和签名组件清单与 CI 验收的内容一致。[发布流程](https://github.com/istarwyh/yourbuddy/actions/runs/42447121497)、[原生及预打包结果](evidence/release-workflow.json)。
+
+已下载全部 18 个公开附件，并根据发布的 SHA-256 清单和 GitHub 提供的摘要核对。两个更新归档和组件清单通过签名验证，两个 DMG 通过磁盘映像完整性检查。稳定更新源指向已签名的 0.4.18 Offline 归档。公开源码 ZIP 包含标签对应的双语说明和版本数据。[公开下载证据](evidence/public-verification.json)。
+
 ## 交付状态
 
-- **产品发布** 等待标签触发的 macOS 发布流程和公开下载检查。
-- **验证归档** 已记录发布前结果。原生应用、公开资产哈希和签名、稳定更新源以及源码 ZIP 解压结果待发布后核对。
-- **网站同步** 稳定下载链接跟随 GitHub 最新发行版。确认新安装包可下载后更新双语默认插件清单。
-- **未验证范围** 新插件的真实模型请求、账号登录，以及在已有安装上由 Agent 发起原地升级、原生重启并恢复会话的完整流程。
+- **产品发布** 已于 2026-11-08T04:55:26Z 发布到 GitHub，提供 Bootstrap 和 Offline DMG、终端安装脚本及签名更新资产。[GitHub 发行版](https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.18)。
+- **验证归档** 已完成所列范围的验证。标签源码 ZIP 保留发布前证据，最终验证记录见本目录。
+- **网站同步** 已在 GitHub Pages 部署并核对。中英文插件页均列出新插件，稳定下载链接指向 0.4.18。[线上网站证据](evidence/website-live.json)。
+- **未验证范围** 新插件的真实模型请求、账号登录、原生 WebView 中两个插件页面的交互、无系统 Node 时由托管 Node 启动，以及由 Agent 发起原地升级、重启并恢复会话。
 
 ## 交付清单
 
 - [x] 核对版本来源，记录双语发布说明和索引条目。
 - [x] 记录预打包工作台结果和无密钥升级回放的验证范围。
-- [ ] 核对标签工作流的原生启动结果、公开安装包、签名和稳定更新源。
-- [ ] 检查公开源码 ZIP，核对线上双语插件页和最新发行版链接。
+- [x] 核对标签工作流的原生启动结果、公开安装包、签名和稳定更新源。
+- [x] 检查公开源码 ZIP，核对线上双语插件页和最新发行版链接。

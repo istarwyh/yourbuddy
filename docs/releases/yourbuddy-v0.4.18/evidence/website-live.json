@@ -1,0 +1,66 @@
+{
+  "checkedAt": "2026-11-08T05:05:45+00:00",
+  "siteCommit": "b54f6d4b692c2213426917563113a9b3cba84b3d",
+  "siteRun": "https://github.com/istarwyh/yourbuddy/actions/runs/42449272924",
+  "latestDestination": "https://github.com/istarwyh/yourbuddy/releases/tag/yourbuddy-v0.4.18",
+  "pages": [
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/plugins/",
+      "status": 200,
+      "checkedContent": [
+        "dsh-media-desk",
+        "dsh-context"
+      ]
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/download/",
+      "status": 200,
+      "checkedContent": [
+        "https://github.com/istarwyh/yourbuddy/releases/latest"
+      ]
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/releases/",
+      "status": 200,
+      "checkedContent": [
+        "https://github.com/istarwyh/yourbuddy/releases"
+      ]
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/docs/installer/",
+      "status": 200,
+      "checkedContent": [
+        "https://github.com/istarwyh/yourbuddy/releases/latest/download/install-yourbuddy.sh"
+      ]
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/plugins/",
+      "status": 200,
+      "checkedContent": [
+        "dsh-media-desk",
+        "dsh-context"
+      ]
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/download/",
+      "status": 200,
+      "checkedContent": [
+        "https://github.com/istarwyh/yourbuddy/releases/latest"
+      ]
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/releases/",
+      "status": 200,
+      "checkedContent": [
+        "https://github.com/istarwyh/yourbuddy/releases"
+      ]
+    },
+    {
+      "url": "https://istarwyh.github.io/yourbuddy/en/docs/installer/",
+      "status": 200,
+      "checkedContent": [
+        "https://github.com/istarwyh/yourbuddy/releases/latest/download/install-yourbuddy.sh"
+      ]
+    }
+  ]
+}

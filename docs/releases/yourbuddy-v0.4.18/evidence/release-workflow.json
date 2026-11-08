@@ -1,0 +1,44 @@
+{
+  "releaseTag": "yourbuddy-v0.4.18",
+  "sourceCommit": "cd0d77ba3125d704fcc0c003247060b62bc94f90",
+  "runUrl": "https://github.com/istarwyh/yourbuddy/actions/runs/42447121497",
+  "prepared": {
+    "date": "2026-11-08T04:41:11.634Z",
+    "status": "passed",
+    "platform": "darwin-arm64",
+    "node": "v24.22.2",
+    "scope": "Prepared real Host and Profile; default Clients then optional Harbor; Chromium interaction. Desktop invoke stubs are bridge-only; native acceptance is separate."
+  },
+  "native": {
+    "version": "0.4.18",
+    "platform": "darwin-arm64",
+    "componentSource": "signed Offline seeds",
+    "nodeSelection": "host Node allowed",
+    "appSha256": "9c0ab31c5c8d58ba690c9e6ca4e115bd3c5f47ffa103d7633c78a4e32bc7a0e3",
+    "signedManifestSha256": "62d07fa66e5b89ee99f419ce2b9d5a6085a7e1b01e1ee59bc94f3feeedf39cdd",
+    "boots": [
+      {
+        "round": 1,
+        "durationMs": 45711,
+        "authenticated": true,
+        "nativeWorkbench": true,
+        "cleanExit": true
+      },
+      {
+        "round": 2,
+        "durationMs": 9766,
+        "authenticated": true,
+        "nativeWorkbench": true,
+        "cleanExit": true
+      },
+      {
+        "round": 3,
+        "durationMs": 8846,
+        "authenticated": true,
+        "nativeWorkbench": true,
+        "cleanExit": true
+      }
+    ]
+  },
+  "publicBinding": "The public Offline executable and component manifest match the bytes exercised by native acceptance."
+}
