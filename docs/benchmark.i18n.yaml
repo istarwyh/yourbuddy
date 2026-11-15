@@ -1,0 +1,7 @@
+# Bilingual-pair consistency record for benchmark.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/benchmark.md
+/running-benchmarks:
+  en: 1feb8fe918a836c2
+  zh: fe0a5154c9631958
