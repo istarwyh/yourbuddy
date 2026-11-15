@@ -4,11 +4,17 @@ import type { Mock, MockInstance } from 'vitest'
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
+import { watch as watchDirectory } from 'chokidar'
 import type { Context } from '@deepseek-ai/cordis'
 import type { FileSystem, FsObservation, FsTarget } from '@deepseek-ai/dsh-fs'
 import { FsVersion } from '@deepseek-ai/dsh-fs'
 import { WorkspaceFiles } from '../src/index.ts'
 import { failureOf, openWorkspace, type Harness } from './harness.ts'
+
+vi.mock('chokidar', async (original) => {
+  const actual = await original<typeof import('chokidar')>()
+  return { ...actual, watch: vi.fn(actual.watch) }
+})
 
 let harness: Harness
 let watch: MockInstance<FileSystem['watch']>
@@ -66,6 +72,48 @@ function open(
 
 async function ready(stream: ReturnType<typeof open>): Promise<void> {
   await expect(stream.next()).resolves.toEqual({ done: false, value: { kind: 'ready' } })
+}
+
+/** Observe the exact real child event and whether its invalidation reaches the feed. */
+function mutationReceipt(event: 'add' | 'change' | 'unlink', child: string, suppressDelivery = false) {
+  const original = harness.ctx.fs.watch.bind(harness.ctx.fs)
+  const source = Promise.withResolvers<undefined>()
+  let delivered = false
+  vi.spyOn(harness.ctx.fs, 'watch').mockImplementation(async (target, changed, signal) => {
+    const index = vi.mocked(watchDirectory).mock.results.length
+    // Exercise the documented retention of initialization invalidations in every real-watcher case.
+    changed()
+    let mutation = false
+    const close = await original(target, (error) => {
+      if (mutation && suppressDelivery) return
+      changed(error)
+      if (mutation) delivered = true
+    }, signal)
+    const result = vi.mocked(watchDirectory).mock.results[index]
+    if (result?.type !== 'return') {
+      await close()
+      throw new Error('The local backend did not create its real watcher')
+    }
+    const watcher = result.value
+    const enter = (kind: string, path: string): void => {
+      mutation = kind === event && path === child
+      if (mutation) source.resolve(undefined)
+    }
+    const leave = (): void => { mutation = false }
+    watcher.prependListener('all', enter)
+    watcher.on('all', leave)
+    return async () => {
+      watcher.off('all', enter)
+      watcher.off('all', leave)
+      await close()
+    }
+  })
+  return {
+    observed: source.promise,
+    assertDelivered(): void {
+      if (!delivered) throw new Error('The real child mutation did not reach the change feed')
+    },
+  }
 }
 
 /** Give disposal cases an independently unloadable service owner. */
@@ -467,39 +515,85 @@ describe('workspaceFiles.changes — backends and access', () => {
       await mkdir(join(harness.workspace, 'collapsed'))
       const service = harness.endpoint()
       const target = await harness.ctx.fs.resolve(harness.workspace)
+      const child = harness.ctx.fs.processPath(await harness.ctx.fs.resolve(path))
+      const receipt = mutationReceipt(operation === 'create' ? 'add' : operation === 'modify' ? 'change' : 'unlink', child)
       const observed = vi.fn()
       const detach = harness.ctx.on('fs/observed', observed)
       cleanups.push(async () => { detach() })
       const stream = open(service, harness.workspace)
       await ready(stream)
-      const pending = stream.next()
-      if (operation === 'remove') await rm(path)
-      else await writeFile(path, 'after external mutation')
-      const info = await harness.ctx.fs.stat(target)
-      expect(info?.type).toBe('directory')
-      await expect(pending).resolves.toEqual({
-        done: false,
-        value: {
-          kind: 'change',
-          change: { absolutePath: harness.ctx.fs.processPath(target), version: info?.version },
-        },
+      const stat = harness.ctx.fs.stat.bind(harness.ctx.fs)
+      const captured = Promise.withResolvers<undefined>()
+      const release = Promise.withResolvers<undefined>()
+      cleanups.push(async () => { release.resolve(undefined) })
+      const firstStat = vi.spyOn(harness.ctx.fs, 'stat').mockImplementationOnce(async (...args) => {
+        const info = await stat(...args)
+        captured.resolve(undefined)
+        await release.promise
+        return info
       })
-      const listing = await service.list(harness.scope, harness.workspace, stream.controller.signal)
-      expect(listing.entries.map(entry => [entry.name, entry.type])).toEqual(
-        operation === 'remove'
-          ? [['collapsed', 'directory']]
-          : [['child.txt', 'file'], ['collapsed', 'directory']],
-      )
-      if (operation !== 'remove') {
-        await expect(service.read(harness.scope, path, {}, stream.controller.signal)).resolves.toMatchObject({
-          text: 'after external mutation', eof: true,
+      const pending = stream.next()
+      try {
+        await captured.promise
+        if (operation === 'remove') await rm(path)
+        else await writeFile(path, 'after external mutation')
+        const info = await stat(target)
+        expect(info?.type).toBe('directory')
+        await receipt.observed
+        receipt.assertDelivered()
+        release.resolve(undefined)
+        let frame = await pending
+        while (!frame.done && frame.value.kind === 'change'
+          && frame.value.change.absolutePath === harness.ctx.fs.processPath(target)
+          && 'version' in frame.value.change && frame.value.change.version !== info?.version) {
+          frame = await stream.next()
+        }
+        expect(frame).toEqual({
+          done: false,
+          value: {
+            kind: 'change',
+            change: { absolutePath: harness.ctx.fs.processPath(target), version: info?.version },
+          },
         })
+        const listing = await service.list(harness.scope, harness.workspace, stream.controller.signal)
+        expect(listing.entries.map(entry => [entry.name, entry.type])).toEqual(
+          operation === 'remove'
+            ? [['collapsed', 'directory']]
+            : [['child.txt', 'file'], ['collapsed', 'directory']],
+        )
+        if (operation !== 'remove') {
+          await expect(service.read(harness.scope, path, {}, stream.controller.signal)).resolves.toMatchObject({
+            text: 'after external mutation', eof: true,
+          })
+        }
+        expect(observed).not.toHaveBeenCalled()
+        await stream.close()
+        await expect(stream.next()).resolves.toEqual({ done: true, value: undefined })
+      } finally {
+        release.resolve(undefined)
+        firstStat.mockRestore()
       }
-      expect(observed).not.toHaveBeenCalled()
-      await stream.close()
-      await expect(stream.next()).resolves.toEqual({ done: true, value: undefined })
     },
   )
+
+  it('rejects queued initial metadata as evidence when the real child mutation is not delivered', async () => {
+    watch.mockRestore()
+    const path = join(harness.workspace, 'child.txt')
+    await writeFile(path, 'before')
+    const target = await harness.ctx.fs.resolve(harness.workspace)
+    const child = harness.ctx.fs.processPath(await harness.ctx.fs.resolve(path))
+    const receipt = mutationReceipt('unlink', child, true)
+    const stream = open(harness.endpoint(), harness.workspace)
+    await ready(stream)
+    await rm(path)
+    await receipt.observed
+    const current = await harness.ctx.fs.stat(target)
+    await expect(stream.next()).resolves.toEqual({
+      done: false,
+      value: { kind: 'change', change: { absolutePath: harness.ctx.fs.processPath(target), version: current?.version } },
+    })
+    expect(() => { receipt.assertDelivered() }).toThrow('The real child mutation did not reach the change feed')
+  })
 })
 
 describe('workspaceFiles.changes — cancellation and disposal', () => {
