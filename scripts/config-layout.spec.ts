@@ -15,7 +15,7 @@ describe('repository configuration layout', () => {
       const config = await resolveConfig({ root, config: file })
       expect(resolve(config.viteConfig.root)).toBe(root)
       expect(resolve(config.vitestConfig.root)).toBe(root)
-      lanes.set(file, config)
+      lanes.set(file.replaceAll('\\', '/'), config)
     }
     const unit = lanes.get('config/vitest/vitest.config.ts')!.vitestConfig
     const discovered = (await resolveConfig({ root })).vitestConfig
