@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for root-readme.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/i18n/root-readme.md
+/deepseek-harness-desktop:
+  en: 087a9e29bf85478b
+  zh: 8734b8023aa6caae
+/deepseek-harness-desktop/why-the-desktop-build:
+  en: 87e465f3c6a9339a
+  zh: d4b77033a61c1e8e
+/deepseek-harness-desktop/features:
+  en: 40c99c42ab316d12
+  zh: 284e3ac5ec574996
+/deepseek-harness-desktop/features/platforms:
+  en: 97840588c505a22d
+  zh: f139a8b9a2d1e634
+/deepseek-harness-desktop/interface:
+  en: 1b94b957d7bf414d
+  zh: 4236344a3299af7d
+/deepseek-harness-desktop/quick-start:
+  en: 87075b0ce48d0e46
+  zh: 7f7d7ad5921a490c
+/deepseek-harness-desktop/community:
+  en: 6a71dec74b74e339
+  zh: 043515dc449c7084

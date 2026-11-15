@@ -51,6 +51,8 @@ pnpm run typecheck
 
 ## 贡献者参考
 
+仓库级工具配置集中在 `config/vitest/` 与 `config/build/`。五份根目录 TypeScript 配置保留编辑器、源码别名与生成器项目图入口；根目录 `vitest.config.ts` 与 `tsdown.config.ts` 保留工具默认发现入口；具体测试配置由包脚本显式选择。贡献、安全与品牌政策分别见[贡献入口](../.github/CONTRIBUTING.zh.md)、[安全说明](project/SAFETY.zh.md)与[品牌指南](brand/BRAND_GUIDELINES.zh.md)。
+
 <a id="typescript-project-layout"></a>
 
 ### TypeScript 项目布局
@@ -77,10 +79,10 @@ Host 与 Client 保持两个 aggregate program，是因为两侧在相同键下�
 
 ```sh
 tsc -b tsconfig.host.json
-tsdown --env.DSH_BUILD_FACE host
+tsdown --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE host
 pnpm --filter @deepseek-ai/dsh-desktop run bundle
 tsc -b tsconfig.client.json
-tsdown --env.DSH_BUILD_FACE client
+tsdown --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE client
 pnpm run build:web
 ```
 

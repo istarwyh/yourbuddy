@@ -305,15 +305,15 @@ describe('translation pairing records', () => {
 describe('translation scope discovery', () => {
   it.each([
     'README.md',
-    'CONTRIBUTING.md',
-    'CONTRIBUTING.zh.md',
-    'CONTRIBUTING.i18n.yaml',
-    'BRAND_GUIDELINES.md',
-    'BRAND_GUIDELINES.zh.md',
-    'BRAND_GUIDELINES.i18n.yaml',
-    'SAFETY.md',
-    'SAFETY.zh.md',
-    'SAFETY.i18n.yaml',
+    '.github/CONTRIBUTING.md',
+    '.github/CONTRIBUTING.zh.md',
+    '.github/CONTRIBUTING.i18n.yaml',
+    'docs/brand/BRAND_GUIDELINES.md',
+    'docs/brand/BRAND_GUIDELINES.zh.md',
+    'docs/brand/BRAND_GUIDELINES.i18n.yaml',
+    'docs/project/SAFETY.md',
+    'docs/project/SAFETY.zh.md',
+    'docs/project/SAFETY.i18n.yaml',
     'apps/cli/README.md',
     'future/subtree/readme.md',
     'packages/example/README.zh.md',
@@ -328,6 +328,11 @@ describe('translation scope discovery', () => {
   })
 
   it.each([
+    'CONTRIBUTING.md',
+    'BRAND_GUIDELINES.md',
+    'SAFETY.md',
+    '.github/other.md',
+    '.github/CONTRIBUTING.txt',
     'packages/example/guide.md',
     'packages/example/CONTRIBUTING.md',
     'packages/example/BRAND_GUIDELINES.md',

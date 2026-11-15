@@ -10,7 +10,7 @@ const workers = Number.parseInt(workerRaw ?? '', 10)
 if (!Number.isSafeInteger(workers) || workers < 1 || String(workers) !== workerRaw) {
   throw new Error(`DSH_WEB_SNAPSHOT_WORKERS must be a positive integer, got ${JSON.stringify(workerRaw)}.`)
 }
-const invocation = pnpmInvocation(['exec', 'vitest', 'run', '--config', 'vitest.web.config.ts'])
+const invocation = pnpmInvocation(['exec', 'vitest', 'run', '--config', 'config/vitest/vitest.web.config.ts'])
 let serialStatus = 0
 for (const file of serialFiles) {
   serialStatus = await run(invocation.command, [...invocation.args, file])

@@ -24,4 +24,4 @@ Do not rely on DeepSeek Harness as the sole security control for untrusted workl
 
 ## No warranty or liability
 
-Use DeepSeek Harness at your own risk. The software is provided without warranty under the [MIT License](LICENSE). To the maximum extent permitted by applicable law, the authors and copyright holders are not responsible for damage to computers, loss or disclosure of data, loss of files, or other harm arising from use of the project.
+Use DeepSeek Harness at your own risk. The software is provided without warranty under the [MIT License](../../LICENSE). To the maximum extent permitted by applicable law, the authors and copyright holders are not responsible for damage to computers, loss or disclosure of data, loss of files, or other harm arising from use of the project.

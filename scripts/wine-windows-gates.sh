@@ -248,10 +248,10 @@ grep -q '^smoke: win32 x64' "$scratch/logs/smoke.log" || { echo 'wine-windows-ga
 # Both statuses are captured so one failure cannot hide the other's result.
 build_gate() {
   wine_node "$scratch/logs/host-tsc.log" --max-old-space-size=4096 "$tsc_js" -b tsconfig.host.json --pretty false || return $?
-  wine_node "$scratch/logs/host-tsdown.log" "$tsdown_js" --env.DSH_BUILD_FACE host || return $?
+  wine_node "$scratch/logs/host-tsdown.log" "$tsdown_js" --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE host || return $?
   (cd apps/desktop && wine_node "$scratch/logs/desktop-tsdown.log" "../../$tsdown_js") || return $?
   wine_node "$scratch/logs/client-tsc.log" "$tsc_js" -b tsconfig.client.json --pretty false || return $?
-  wine_node "$scratch/logs/client-tsdown.log" "$tsdown_js" --env.DSH_BUILD_FACE client
+  wine_node "$scratch/logs/client-tsdown.log" "$tsdown_js" --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE client
 }
 site_gate() {
   cd website

@@ -254,7 +254,7 @@ describe('gate graph validation', () => {
       'npm run build:native-system && npm run build:lib && tsdown --config benchmarks/tsdown.config.ts',
     )
     expect(scripts['build:native-system']).toBe('tsx native/system/scripts/build.ts --host-addon-only')
-    expect(scripts['test:bench:built']).toBe('vitest run --config vitest.bench.config.ts')
+    expect(scripts['test:bench:built']).toBe('vitest run --config config/vitest/vitest.bench.config.ts')
   })
 
   it('checks all maintained repository references locally and in CI', () => {
@@ -628,7 +628,7 @@ describe('gate graph validation', () => {
         label: 'test',
         needs: ['native-system'],
         streamOutput: true,
-        args: ['/private/pnpm.cjs', 'exec', 'vitest', 'run'],
+        args: ['/private/pnpm.cjs', 'exec', 'vitest', 'run', '--config', 'config/vitest/vitest.config.ts'],
       })
       expect(gates[1]?.env ?? {}).not.toHaveProperty('DSH_COVERAGE_TEST_TIMEOUT_MS')
     }

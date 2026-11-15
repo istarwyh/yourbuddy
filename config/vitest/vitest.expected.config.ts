@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { availableParallelism } from 'node:os'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { defineConfig } from 'vitest/config'
@@ -5,6 +6,7 @@ import { standardDecoratorPlugin, vitestExecArgv } from './vitest.shared.ts'
 
 /** Owner-local assembled expected-output tests that do not use a recorded session as their input. */
 export default defineConfig({
+  root: fileURLToPath(new URL('../../', import.meta.url)),
   plugins: [tsconfigPaths({ projects: ['./tsconfig.base.json'] }), standardDecoratorPlugin()],
   test: {
     execArgv: vitestExecArgv,

@@ -56,6 +56,6 @@ jobs:
         run: pnpm run build
       - name: Verify pending reviews across Sidebar seat changes
         run: >-
-          pnpm exec vitest run --config vitest.web.config.ts
+          pnpm exec vitest run --config config/vitest/vitest.web.config.ts
           apps/web/tests/plan-review.e2e.ts
           -t 'pending plan review across Sidebar seat changes'
