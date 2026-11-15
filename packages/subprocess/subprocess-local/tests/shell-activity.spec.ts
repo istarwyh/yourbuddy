@@ -138,9 +138,8 @@ describe.skipIf(process.platform === 'win32' || !existsSync('/bin/zsh'))('Zsh te
     const early = await foregroundChild(h, inspector)
     stages.observe(early)
     expect(early).toEqual({ ownedChildren: 0, foregroundIsShell: true, foregroundIsOwnedChild: false })
-    await h.handle.write('\x1a')
     await writeFile(release, 'release')
-    stages.mark('waiting-owned-foreground-after-early-signal')
+    stages.mark('waiting-owned-foreground-child')
     await expect.poll(async () => {
       const relationship = await foregroundChild(h, inspector)
       stages.observe(relationship)
