@@ -1,9 +1,9 @@
 # DeepSeek Harness Desktop
 
-[中文 README](README.md) · [Chinese pair](README.zh.md)
+English | [中文](root-readme.zh.md)
 
 <p align="center">
-  <img src="apps/desktop-tauri/app-icon.png" width="120" height="120" alt="DeepSeek Harness" />
+  <img src="../../apps/desktop-tauri/app-icon.png" width="120" height="120" alt="DeepSeek Harness" />
 </p>
 
 <h1 align="center">DeepSeek Harness</h1>
@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://github.com/Sakana-yuyu/deepseek-harness-desktop/releases"><img src="https://img.shields.io/github/v/release/Sakana-yuyu/deepseek-harness-desktop?display_name=tag&logo=github&label=Release" alt="Latest release" /></a>
   <a href="https://github.com/Sakana-yuyu/deepseek-harness-desktop/actions/workflows/desktop-release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Sakana-yuyu/deepseek-harness-desktop/desktop-release.yml?logo=githubactions&label=Desktop" alt="Desktop build" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/Sakana-yuyu/deepseek-harness-desktop?logo=opensourceinitiative&label=License" alt="License" /></a>
+  <a href="../../LICENSE"><img src="https://img.shields.io/github/license/Sakana-yuyu/deepseek-harness-desktop?logo=opensourceinitiative&label=License" alt="License" /></a>
   <a href="https://v2.tauri.app/"><img src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white" alt="Tauri 2" /></a>
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-native-DEA584?logo=rust&logoColor=white" alt="Rust" /></a>
 </p>
@@ -25,7 +25,7 @@
   <a href="#community">Community</a>
 </p>
 
-![Main window](apps/desktop-tauri/screenshots/main.png)
+![Main window](../../apps/desktop-tauri/screenshots/main.png)
 
 > A thin Tauri shell around DeepSeek Harness `dsh web`: custom title bar, tray, signed updates, and a toast plus chime when a turn completes.
 
@@ -39,7 +39,7 @@ Upstream owns the agent loop, tools, and Web UI. This fork only adds desktop chr
 
 | Icon | Capability | Notes |
 | :---: | --- | --- |
-| <img src="apps/desktop-tauri/app-icon.png" width="22" height="22" alt="DeepSeek" /> | Native shell | Tauri 2 / Rust hosts the existing `dsh web` UI. |
+| <img src="../../apps/desktop-tauri/app-icon.png" width="22" height="22" alt="DeepSeek" /> | Native shell | Tauri 2 / Rust hosts the existing `dsh web` UI. |
 | <img src="https://cdn.simpleicons.org/tauri/24C8DB" width="22" alt="Title bar" /> | Custom title bar | No native caption buttons. Right on Windows, left on macOS, WM layout on Linux. |
 | <img src="https://cdn.simpleicons.org/apple/000000" width="22" alt="Tray" /> | System tray | First close asks minimize-to-tray vs quit and remembers the choice. Menu can change that, show the window, check updates, or quit. |
 | <img src="https://cdn.simpleicons.org/github/111827" width="22" alt="Update" /> | Signed auto-update | After the main window opens, checks the `desktop-updater` channel and verifies signatures. Release notes are bilingual. |
@@ -53,11 +53,11 @@ Upstream owns the agent loop, tools, and Web UI. This fork only adds desktop chr
 - macOS Intel and Apple Silicon
 - Linux x64 (AppImage, deb)
 
-Download builds from [Releases](https://github.com/Sakana-yuyu/deepseek-harness-desktop/releases). Details: [desktop README](apps/desktop-tauri/README.md).
+Download builds from [Releases](https://github.com/Sakana-yuyu/deepseek-harness-desktop/releases). Details: [desktop README](../../apps/desktop-tauri/README.md).
 
 ## Interface
 
-![Task-complete notification](apps/desktop-tauri/screenshots/notify.png)
+![Task-complete notification](../../apps/desktop-tauri/screenshots/notify.png)
 
 ## Quick start
 

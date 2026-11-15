@@ -16,7 +16,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Sakana-yuyu/deepseek-harness-desktop?logo=opensourceinitiative&label=License" alt="License" /></a>
   <a href="https://v2.tauri.app/"><img src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white" alt="Tauri 2" /></a>
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-native-DEA584?logo=rust&logoColor=white" alt="Rust" /></a>
-  <a href="README.en.md"><img src="https://img.shields.io/badge/docs-English-9aa3b5" alt="English" /></a>
+  <a href="docs/i18n/root-readme.md"><img src="https://img.shields.io/badge/docs-English-9aa3b5" alt="English" /></a>
 </p>
 
 <p align="center">
@@ -30,7 +30,19 @@
 
 > 把 DeepSeek Harness 的 `dsh web` 装进轻量 Tauri 壳：自己画标题栏，托盘常驻，签名更新，任务完成会弹通知、会响。
 
-本仓库是 [Sakana-yuyu](https://github.com/Sakana-yuyu) 维护的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 跨平台桌面发行版。DeepSeek Harness 是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness。英文说明见 [README.en.md](README.en.md)。
+本仓库是 [Sakana-yuyu](https://github.com/Sakana-yuyu) 维护的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 跨平台桌面发行版。DeepSeek Harness 是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness。双语桌面概览见 [桌面说明](docs/i18n/root-readme.zh.md)。
+
+## 仓库导航
+
+| 位置 | 内容 |
+| --- | --- |
+| [apps/](apps/)、[packages/](packages/README.zh.md) | 桌面、CLI、Web 入口与框架包；包分组以 packages 的索引为准。 |
+| [docs/](docs/development.zh.md) | 开发指南、架构、用户文档与发布记录。 |
+| [config/](config/README.zh.md) | Vitest 测试与构建工具配置；根目录保留工具自动发现所需的入口。 |
+| [scripts/](scripts/)、[.github/](.github/) | 构建、生成器、检查与 GitHub 自动化。 |
+| [贡献指南](.github/CONTRIBUTING.zh.md)、[安全说明](docs/project/SAFETY.zh.md)、[品牌指南](docs/brand/BRAND_GUIDELINES.zh.md) | 上游贡献政策、使用风险与品牌要求。 |
+| [LICENSE](LICENSE)、[第三方声明](THIRD_PARTY_NOTICES.md)、[产品声明](YOURBUDDY_NOTICES.md) | 许可与归属；声明保留在根目录，供分发和打包直接使用。 |
+| [桌面英文概览](docs/i18n/root-readme.zh.md) | 原有英文桌面说明及其中文配对；完整仓库入口以本页为准。 |
 
 ## 为什么使用桌面版
 
@@ -116,7 +128,7 @@ pnpm --dir apps/desktop-tauri run build
 
 ## 参与贡献
 
-桌面端问题与贡献请提交到本 fork。Harness 框架贡献请遵循上游的[贡献指南](CONTRIBUTING.zh.md)、[开发指南](docs/development.zh.md)和[架构文档](docs/architecture.zh.md)。
+桌面端问题与贡献请提交到本 fork。Harness 框架贡献请遵循上游的[贡献指南](.github/CONTRIBUTING.zh.md)、[开发指南](docs/development.zh.md)和[架构文档](docs/architecture.zh.md)。
 
 <p align="center">
   <a href="https://github.com/Sakana-yuyu"><img src="https://avatars.githubusercontent.com/Sakana-yuyu?s=80" width="48" height="48" alt="Sakana-yuyu" title="Sakana-yuyu" /></a>

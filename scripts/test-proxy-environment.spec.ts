@@ -28,8 +28,8 @@ describe('ambient proxy environment', () => {
   // above already ran it. What can actually regress is the wiring — a new Vitest project, or a
   // config that lists only the invariant host — so that is what this pins.
   const repositoryRoot = resolve(import.meta.dirname, '..')
-  const declared = globSync('vitest*.ts', { cwd: repositoryRoot }).sort()
-    .map(config => ({ config, slots: readFileSync(resolve(repositoryRoot, config), 'utf8').match(/setupFiles: \[[^\]]*\]/g) ?? [] }))
+  const declared = globSync('vitest*.ts', { cwd: resolve(repositoryRoot, 'config/vitest') }).sort()
+    .map(config => ({ config, slots: readFileSync(resolve(repositoryRoot, 'config/vitest', config), 'utf8').match(/setupFiles: \[[^\]]*\]/g) ?? [] }))
     .filter(entry => entry.slots.length > 0)
 
   it('finds the configurations that declare a setup at all', () => {

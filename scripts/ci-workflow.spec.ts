@@ -683,7 +683,7 @@ describe('CI workflow', () => {
   })
 
   it('keeps supported LSP source under native Windows coverage', () => {
-    const config = readFileSync(resolve(root, 'vitest.config.ts'), 'utf8')
+    const config = readFileSync(resolve(root, 'config/vitest/vitest.config.ts'), 'utf8')
 
     expect(config).not.toContain('packages/lsp/lsp-stdio/src/connection.ts')
     expect(config).not.toContain('packages/lsp/lsp-stdio/src/index.ts')
@@ -714,7 +714,7 @@ describe('CI workflow', () => {
   })
 
   it('keeps every Vitest project process-isolated on native Windows', () => {
-    const config = readFileSync(resolve(root, 'vitest.config.ts'), 'utf8')
+    const config = readFileSync(resolve(root, 'config/vitest/vitest.config.ts'), 'utf8')
 
     expect(config).not.toContain("pool: process.platform === 'win32' ? 'threads' : 'forks'")
     expect(config.match(/pool: 'forks'/g)).toHaveLength(2)
@@ -724,7 +724,7 @@ describe('CI workflow', () => {
     // Each inline project spreads coverageTestTimeoutOptions, the only route
     // for DSH_COVERAGE_TEST_TIMEOUT_MS into projects; the behavior itself is
     // pinned by scripts/lane-test-budget.spec.ts.
-    const config = readFileSync(resolve(root, 'vitest.config.ts'), 'utf8')
+    const config = readFileSync(resolve(root, 'config/vitest/vitest.config.ts'), 'utf8')
 
     expect(config).toContain('const laneTestBudget = coverageTestTimeoutOptions(process.env[COVERAGE_TEST_TIMEOUT_ENV])')
     expect(config.match(/^ {10}\.\.\.laneTestBudget,$/gm)).toHaveLength(2)

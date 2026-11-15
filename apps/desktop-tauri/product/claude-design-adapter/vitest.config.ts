@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config'
 import { createRequire } from 'node:module'
 import tsconfigPaths from 'vite-tsconfig-paths'
-import { standardDecoratorPlugin, vitestExecArgv } from '../../../../vitest.shared.ts'
+import { standardDecoratorPlugin, vitestExecArgv } from '../../../../config/vitest/vitest.shared.ts'
 
 export default defineConfig({
   resolve: { alias: {

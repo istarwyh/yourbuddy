@@ -105,7 +105,7 @@ jobs:
           NO_COLOR: 1
         run: |
           set -u +e -o pipefail
-          out=$(pnpm exec vitest run --config vitest.e2e.config.ts \
+          out=$(pnpm exec vitest run --config config/vitest/vitest.e2e.config.ts \
             packages/sandbox/sandbox-local/tests/${{ matrix.runner }}.e2e.ts \
             packages/shell/bash-sandbox/tests/${{ matrix.runner }}.e2e.ts 2>&1); status=$?
           echo "$out"
@@ -127,7 +127,7 @@ jobs:
           NO_COLOR: 1
         run: |
           set -u +e -o pipefail
-          out=$(pnpm exec vitest run --config vitest.e2e.config.ts \
+          out=$(pnpm exec vitest run --config config/vitest/vitest.e2e.config.ts \
             packages/sandbox/sandbox-local/tests/packed-install.e2e.ts 2>&1); status=$?
           echo "$out"
           [ "$status" -eq 0 ]

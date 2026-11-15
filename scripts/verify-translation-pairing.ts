@@ -78,6 +78,8 @@ const SCOPE_PATTERNS = [
   '**/*.i18n.yaml',
   '.agents/notes/**/*.md',
   '.agents/notes/**/*.i18n.yaml',
+  '.github/*.md',
+  '.github/*.i18n.yaml',
 ]
 
 const manifestContent = readRepositoryFile('scripts/translation-pairing.manifest.json')

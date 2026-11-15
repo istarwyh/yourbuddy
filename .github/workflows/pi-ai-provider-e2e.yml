@@ -68,5 +68,5 @@ jobs:
           DSH_PI_AI_ANTHROPIC_MODEL: ${{ inputs.anthropic_model }}
           DSH_E2E_MAX_WORKERS: 2
         run: >-
-          pnpm exec vitest run --config vitest.e2e.config.ts
+          pnpm exec vitest run --config config/vitest/vitest.e2e.config.ts
           packages/llm/llm-pi-ai/tests/provider-apis.e2e.ts

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { availableParallelism } from 'node:os'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { defineConfig } from 'vitest/config'
@@ -32,7 +33,7 @@ const snapshotMaxWorkers = process.env.DSH_SNAPSHOT_MAX_WORKERS
 // environment or root `.env`.
 if (process.env.DSH_SNAPSHOT === 'record') {
   try {
-    process.loadEnvFile(new URL('.env', import.meta.url).pathname)
+    process.loadEnvFile(new URL('../../.env', import.meta.url).pathname)
   } catch (error) {
     // ENOENT (no .env) is fine — the key may already be in the environment.
     // Surface any other failure rather than silently recording with wrong env.
@@ -41,6 +42,7 @@ if (process.env.DSH_SNAPSHOT === 'record') {
 }
 
 export default defineConfig({
+  root: fileURLToPath(new URL('../../', import.meta.url)),
   // Same resolution note as vitest.config.ts: bare workspace names resolve
   // through the tsconfig.base.json paths facade; the native option cannot do
   // this (the root tsconfig is a solution file with no paths).

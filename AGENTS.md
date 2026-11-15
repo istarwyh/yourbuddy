@@ -28,6 +28,7 @@ benchmarks/  Performance gates
 patches/     Reviewed dependency patches applied by pnpm
 snapshots/   Keyless assembled-application replay fixtures and expected output
 scripts/     Repository gates, generators, build, release, and maintenance commands
+config/      Shared test lanes and build configuration
 docs/        Architecture, user guides, references, postmortems, and releases
 website/     VitePress SDK and OINK product projections of canonical docs/ sources
 .agents/     Agent workflows, reusable skills, and Agent Notes

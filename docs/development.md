@@ -49,6 +49,8 @@ Setup is complete when `pnpm run typecheck` exits successfully.
 
 ## Contributor reference
 
+Repository-wide tool configuration lives in `config/vitest/` and `config/build/`. The five root TypeScript configs retain editor, source alias, and generator project graph entry points; root `vitest.config.ts` and `tsdown.config.ts` retain default tool discovery; package scripts select specialized test configs explicitly. See the [contributor entry](../.github/CONTRIBUTING.md), [safety guidance](project/SAFETY.md), and [brand guidelines](brand/BRAND_GUIDELINES.md) for project policies.
+
 ### TypeScript project layout
 
 The repository uses isolated Host and Client aggregates. An ordinary package is registered in exactly one aggregate: Host packages in `tsconfig.host.json` and Client packages in `tsconfig.client.json`; three packages (`host/webserver`, `compaction/compaction`, `typert/registry`) are referenced by both aggregates as shared leaves so each side type-checks the same source.
@@ -73,10 +75,10 @@ The root build follows the generated dependency order:
 
 ```sh
 tsc -b tsconfig.host.json
-tsdown --env.DSH_BUILD_FACE host
+tsdown --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE host
 pnpm --filter @deepseek-ai/dsh-desktop run bundle
 tsc -b tsconfig.client.json
-tsdown --env.DSH_BUILD_FACE client
+tsdown --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE client
 pnpm run build:web
 ```
 

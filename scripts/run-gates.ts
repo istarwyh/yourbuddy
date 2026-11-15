@@ -732,7 +732,7 @@ function coverageGates(): Gate[] {
 function ciUnitGates(): Gate[] {
   return [
     pnpmScript('native-system', 'build:native-system'),
-    pnpmExec('unit', ['vitest', 'run'], {
+    pnpmExec('unit', ['vitest', 'run', '--config', 'config/vitest/vitest.config.ts'], {
       label: 'test',
       needs: ['native-system'],
       streamOutput: true,
@@ -887,7 +887,7 @@ function builtBinSmokeGate(needs: string[] = ['build']): Gate {
     'vitest',
     'run',
     '--config',
-    'vitest.e2e.config.ts',
+    'config/vitest/vitest.e2e.config.ts',
     'apps/cli/tests/profiles/headless/tests/keyless-smoke.e2e.ts',
     'apps/cli/tests/profiles/headless/tests/source-tool.built.e2e.ts',
     'apps/cli/tests/built-bin.e2e.ts',
