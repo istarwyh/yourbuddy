@@ -166,7 +166,7 @@ describe('persistent source type extraction', () => {
     const output: string[] = []
     emitSchemaTiming(left, 'failed', (line) => { output.push(line) })
     expect(output).toEqual([`persistence-schema-timing ${JSON.stringify(left.receipt('failed'))}\n`])
-    expect(() => emitSchemaTiming(left, 'failed', () => { throw new Error('private path/source/model/environment/error') })).not.toThrow()
+    expect(() => { emitSchemaTiming(left, 'failed', () => { throw new Error('private path/source/model/environment/error') }) }).not.toThrow()
   })
 
   it('keeps authored names and anonymous declaration locations without synthesized traversal names', () => {
@@ -434,7 +434,7 @@ interface SessionEventMap {
     const timing = schemaTiming()
     onTestFailed(() => { emitSchemaTiming(timing, 'failed') })
     const root = resolve(import.meta.dirname, '..')
-    const model = extractPersistenceSchema(root, timing.mark)
+    const model = extractPersistenceSchema(root, (stage) => { timing.mark(stage) })
     timing.mark('assert-events')
     expect(model.roots.filter(root => root.kind === 'event').map(root => root.event).sort())
       .toEqual(collectLogEvents(root).map(event => event.name).sort())
