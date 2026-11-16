@@ -64,7 +64,9 @@ export function extractPersistenceSchema(root: string, onStage?: (stage: Persist
   const configPath = resolve(root, 'tsconfig.host.json')
   const config = ts.readConfigFile(configPath, file => readFileSync(file, 'utf8'))
   if (config.error !== undefined) throw new PersistenceSchemaError(diagnosticText(config.error))
-  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root)
+  // Share inherited configs only within this extraction; later calls must see source edits.
+  const extendedConfigCache = new Map<string, ts.ExtendedConfigCacheEntry>()
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefined, undefined, undefined, undefined, extendedConfigCache)
   const configErrors = parsed.errors.filter(error => error.code !== 18003)
   if (configErrors.length > 0) throw new PersistenceSchemaError(configErrors.map(diagnosticText).join('\n'))
   const options: ts.CompilerOptions = {
@@ -87,7 +89,7 @@ export function extractPersistenceSchema(root: string, onStage?: (stage: Persist
       ? ts.createSourceFile(filename, source, languageVersion, true)
       : originalGetSourceFile(path, languageVersion, onError, shouldCreateNewSourceFile)
   const files = [...new Set([
-    ...hostSourceFiles(root, configPath),
+    ...hostSourceFiles(root, configPath, parsed, extendedConfigCache),
     ...events.map(event => resolve(root, event.source.slice(0, event.source.lastIndexOf(':')))),
   ])]
   observeStage(onStage, 'program')
@@ -157,19 +159,29 @@ function observeStage(observer: ((stage: PersistenceSchemaStage) => void) | unde
   }
 }
 
-function hostSourceFiles(root: string, configPath: string, seen = new Set<string>()): string[] {
+function hostSourceFiles(
+  root: string,
+  configPath: string,
+  parsed: ts.ParsedCommandLine | undefined,
+  extendedConfigCache: Map<string, ts.ExtendedConfigCacheEntry>,
+  seen = new Set<string>(),
+): string[] {
   configPath = resolve(configPath)
   if (seen.has(configPath)) return []
   seen.add(configPath)
-  const read = ts.readConfigFile(configPath, file => readFileSync(file, 'utf8'))
-  if (read.error !== undefined) throw new PersistenceSchemaError(diagnosticText(read.error))
-  const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, dirname(configPath), undefined, configPath)
+  if (parsed === undefined) {
+    const read = ts.readConfigFile(configPath, file => readFileSync(file, 'utf8'))
+    if (read.error !== undefined) throw new PersistenceSchemaError(diagnosticText(read.error))
+    parsed = ts.parseJsonConfigFileContent(
+      read.config, ts.sys, dirname(configPath), undefined, configPath, undefined, undefined, extendedConfigCache,
+    )
+  }
   const errors = parsed.errors.filter(error => error.code !== 18003)
   if (errors.length > 0) throw new PersistenceSchemaError(errors.map(diagnosticText).join('\n'))
   return [
     ...parsed.fileNames.filter(file => /^packages\/[^/]+\/[^/]+\/src\//.test(slash(relative(root, file)))),
     ...(parsed.projectReferences ?? []).flatMap(reference =>
-      hostSourceFiles(root, extname(reference.path) === '.json' ? reference.path : resolve(reference.path, 'tsconfig.json'), seen)),
+      hostSourceFiles(root, extname(reference.path) === '.json' ? reference.path : resolve(reference.path, 'tsconfig.json'), undefined, extendedConfigCache, seen)),
   ]
 }
 

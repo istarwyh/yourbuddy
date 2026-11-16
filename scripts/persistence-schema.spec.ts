@@ -1,7 +1,8 @@
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { afterEach, describe, expect, it, onTestFailed } from 'vitest'
+import { afterEach, describe, expect, it, onTestFailed, vi } from 'vitest'
+import ts from 'typescript'
 import { assertV4RowAdmission } from '@deepseek-ai/dsh-session-format-v3-to-v4'
 import { collectLogEvents } from './gen-persistence-catalog.ts'
 import { extractPersistenceSchema, type PersistenceSchemaStage } from './persistence-schema.ts'
@@ -86,6 +87,7 @@ function assertRetiredHeaderRequiresVersionBump(inventory: PersistenceSchemaInve
 
 const roots: string[] = []
 afterEach(() => {
+  vi.restoreAllMocks()
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true, maxRetries: 3 })
 })
 
@@ -167,6 +169,61 @@ describe('persistent source type extraction', () => {
     emitSchemaTiming(left, 'failed', (line) => { output.push(line) })
     expect(output).toEqual([`persistence-schema-timing ${JSON.stringify(left.receipt('failed'))}\n`])
     expect(() => { emitSchemaTiming(left, 'failed', () => { throw new Error('private path/source/model/environment/error') }) }).not.toThrow()
+  })
+
+  it('parses shared Host config inheritance once per extraction without losing independent augmentations', () => {
+    const root = fixture('export interface NestedMap {first: {value: string}}; export type Payload = NestedMap[keyof NestedMap]')
+    for (const name of ['left', 'right']) {
+      put(root, `packages/domain/${name}/src/index.ts`, `import '@fixture/payload'; declare module '@fixture/payload' {interface NestedMap {${name}: {${name}: number}}}`)
+      put(root, `packages/domain/${name}/tsconfig.json`, JSON.stringify({
+        extends: '../../../tsconfig.shared.json', include: ['src'],
+        references: [{ path: '../payload' }],
+      }))
+    }
+    const expected = extractPersistenceSchema(root)
+    const shared = join(root, 'tsconfig.shared.json')
+    writeFileSync(shared, readFileSync(join(root, 'tsconfig.host.json'), 'utf8'))
+    put(root, 'packages/domain/payload/tsconfig.json', JSON.stringify({ extends: '../../../tsconfig.shared.json', include: ['src'] }))
+    put(root, 'tsconfig.host.json', JSON.stringify({
+      extends: './tsconfig.shared.json',
+      include: ['packages/core/session/src', 'packages/domain/payload/src', 'packages/session/session-persistence-jsonl/src'],
+      references: [{ path: './packages/domain/left/tsconfig.json' }, { path: './packages/domain/right' }],
+    }))
+    const reads = vi.spyOn(ts.sys, 'readFile')
+    const scans = vi.spyOn(ts.sys, 'readDirectory')
+    try {
+      expect(extractPersistenceSchema(root)).toEqual(expected)
+      expect(reads.mock.calls.filter(([path]) => resolve(path) === shared)).toHaveLength(1)
+      expect(scans.mock.calls.filter(([path]) => resolve(path) === root)).toHaveLength(1)
+      reads.mockClear()
+      scans.mockClear()
+      const settings = JSON.parse(readFileSync(shared, 'utf8')) as { compilerOptions: { paths: Record<string, string[]> } }
+      settings.compilerOptions.paths['@fixture/payload'] = ['./packages/domain/payload/src/changed.ts']
+      put(root, 'packages/domain/payload/src/changed.ts', 'export interface NestedMap {changed: {value: boolean}}; export type Payload = NestedMap[keyof NestedMap]')
+      writeFileSync(shared, JSON.stringify(settings))
+      expect(event(extractPersistenceSchema(root))).not.toBe(event(expected))
+      expect(reads.mock.calls.filter(([path]) => resolve(path) === shared)).toHaveLength(1)
+      expect(scans.mock.calls.filter(([path]) => resolve(path) === root)).toHaveLength(1)
+    } finally {
+      reads.mockRestore()
+      scans.mockRestore()
+    }
+  })
+
+  it.each([
+    ['missing inherited config', { extends: './missing.json' }, 'TS5083'],
+    ['invalid referenced compiler option', { compilerOptions: { target: 'invalid' } }, 'TS6046'],
+    ['empty referenced project', { include: [] }, undefined],
+  ])('preserves diagnostics for %s', (_name, config, error) => {
+    const root = fixture('export interface Payload {value: string}')
+    const expected = extractPersistenceSchema(root)
+    put(root, 'packages/domain/referenced/tsconfig.json', JSON.stringify(config))
+    const host = join(root, 'tsconfig.host.json')
+    const settings = JSON.parse(readFileSync(host, 'utf8')) as { references?: { path: string }[] }
+    settings.references = [{ path: './packages/domain/referenced' }]
+    writeFileSync(host, JSON.stringify(settings))
+    if (error === undefined) expect(extractPersistenceSchema(root)).toEqual(expected)
+    else expect(() => extractPersistenceSchema(root)).toThrow(error)
   })
 
   it('keeps authored names and anonymous declaration locations without synthesized traversal names', () => {
