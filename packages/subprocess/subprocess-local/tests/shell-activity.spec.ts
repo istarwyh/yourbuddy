@@ -3,9 +3,12 @@ import { existsSync } from 'node:fs'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { performance } from 'node:perf_hooks'
 import { Context } from '@deepseek-ai/cordis'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, onTestFailed } from 'vitest'
 import LocalSubprocessRuntime from '../src/index.ts'
+import { createProcessInspector } from '../src/process-inspector.ts'
+import type { ProcessInspector } from '../src/process-inspector.ts'
 
 const cleanups: Array<() => Promise<void>> = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
@@ -25,6 +28,32 @@ async function shell(path: string, rc = '', envFile = '') {
   handle.output.on('data', (data: Buffer) => { output += data.toString('utf8') })
   await expect.poll(() => output).toContain('READY>')
   return { handle, home, output: () => output, activity: async () => (await handle.inspectActivity()).state }
+}
+
+/** A busy preexec hook is not evidence that a child owns the terminal foreground group. */
+async function foregroundChild(h: Awaited<ReturnType<typeof shell>>, inspector: ProcessInspector) {
+  const foreground = await h.handle.inspectForeground()
+  const children = inspector.snapshot().tree(h.handle.pid).filter(member => member.pid !== h.handle.pid)
+  return {
+    ownedChildren: children.length,
+    foregroundIsShell: foreground?.processGroupId === h.handle.pid,
+    foregroundIsOwnedChild: foreground !== undefined && foreground.processGroupId !== h.handle.pid
+      && children.some(member => member.pid === foreground.processGroupId),
+  }
+}
+
+/** Report the last owned transition without exposing terminal contents or the process table. */
+function stoppedJobStages() {
+  const started = performance.now()
+  let stage = 'spawn-shell'
+  let relationship: Awaited<ReturnType<typeof foregroundChild>> | undefined
+  onTestFailed(() => {
+    console.error(`stopped-job phases: ${JSON.stringify({ stage, elapsedMs: Math.round(performance.now() - started), ...relationship })}`)
+  })
+  return {
+    mark(next: string): void { stage = next; relationship = undefined },
+    observe(value: Awaited<ReturnType<typeof foregroundChild>>): void { relationship = value },
+  }
 }
 
 describe.skipIf(process.platform === 'win32' || !existsSync('/bin/zsh'))('Zsh terminal activity', () => {
@@ -66,15 +95,67 @@ describe.skipIf(process.platform === 'win32' || !existsSync('/bin/zsh'))('Zsh te
   })
 
   it('protects a stopped job even after the shell returns to the prompt', async () => {
+    const stages = stoppedJobStages()
     const h = await shell('/bin/zsh')
+    const inspector = createProcessInspector()
+    stages.mark('waiting-idle')
     await expect.poll(h.activity).toBe('idle')
     await h.handle.write('sleep 600\r')
+    stages.mark('waiting-owned-foreground-child')
+    await expect.poll(async () => {
+      const relationship = await foregroundChild(h, inspector)
+      stages.observe(relationship)
+      return relationship.foregroundIsOwnedChild
+    }).toBe(true)
+    stages.mark('waiting-busy')
     await expect.poll(h.activity).toBe('busy')
     await h.handle.write('\x1a')
-    await expect.poll(() => h.output()).toContain('suspended')
+    stages.mark('waiting-suspended')
+    await expect.poll(() => h.output().includes('suspended')).toBe(true)
     expect(await h.activity()).toBe('busy')
     await h.handle.write('kill -KILL %1\r')
+    stages.mark('waiting-reaped-and-idle')
     await expect.poll(h.activity).toBe('idle')
+    expect((await foregroundChild(h, inspector)).ownedChildren).toBe(0)
+    stages.mark('complete')
+  })
+
+  it('rejects preexec busy as child readiness before delivering Ctrl-Z to an owned foreground job', async () => {
+    const stages = stoppedJobStages()
+    const root = await mkdtemp(join(tmpdir(), 'dsh-stopped-job-barrier-'))
+    cleanups.push(() => rm(root, { recursive: true, force: true }))
+    const release = join(root, 'release')
+    const quoted = `'${release.replaceAll("'", "'\\''")}'`
+    const h = await shell('/bin/zsh', `preexec() { if [[ $1 == 'sleep 600' ]]; then print PREEXEC-BARRIER; while [[ ! -e ${quoted} ]]; do :; done; fi }`)
+    cleanups.push(() => writeFile(release, 'release'))
+    const inspector = createProcessInspector()
+    await expect.poll(h.activity).toBe('idle')
+    await h.handle.write('sleep 600\r')
+    stages.mark('waiting-preexec-barrier')
+    await expect.poll(() => h.output().includes('PREEXEC-BARRIER')).toBe(true)
+    stages.mark('waiting-preexec-busy')
+    await expect.poll(h.activity).toBe('busy')
+    const early = await foregroundChild(h, inspector)
+    stages.observe(early)
+    expect(early).toEqual({ ownedChildren: 0, foregroundIsShell: true, foregroundIsOwnedChild: false })
+    await writeFile(release, 'release')
+    stages.mark('waiting-owned-foreground-child')
+    await expect.poll(async () => {
+      const relationship = await foregroundChild(h, inspector)
+      stages.observe(relationship)
+      return relationship.foregroundIsOwnedChild
+    }).toBe(true)
+    expect(h.output().includes('suspended')).toBe(false)
+    expect(await h.activity()).toBe('busy')
+    await h.handle.write('\x1a')
+    stages.mark('waiting-suspended-after-child-ready')
+    await expect.poll(() => h.output().includes('suspended')).toBe(true)
+    expect(await h.activity()).toBe('busy')
+    await h.handle.write('kill -KILL %1\r')
+    stages.mark('waiting-reaped-and-idle')
+    await expect.poll(h.activity).toBe('idle')
+    expect((await foregroundChild(h, inspector)).ownedChildren).toBe(0)
+    stages.mark('complete')
   })
 
   it('refuses idle evidence when custom signal traps may run without terminal input', async () => {

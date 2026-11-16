@@ -1,12 +1,49 @@
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, onTestFailed, vi } from 'vitest'
+import ts from 'typescript'
 import { assertV4RowAdmission } from '@deepseek-ai/dsh-session-format-v3-to-v4'
 import { collectLogEvents } from './gen-persistence-catalog.ts'
-import { extractPersistenceSchema } from './persistence-schema.ts'
+import { extractPersistenceSchema, type PersistenceSchemaStage } from './persistence-schema.ts'
 import { classifyPersistenceChange, parsePersistenceSnapshot } from './persistence-changes.ts'
 import { canonicalizeSchema, isArbitraryJsonSchema, schemaDigest, type PersistenceSchemaInventory, type SchemaNode } from './persistence-schema-model.ts'
+
+const timingStages = [
+  'events', 'sources', 'program', 'diagnostics', 'reachable', 'model',
+  'assert-events', 'assert-fingerprints', 'assert-retired-header', 'complete',
+] as const satisfies readonly (PersistenceSchemaStage | `assert-${string}` | 'complete')[]
+type TimingStage = typeof timingStages[number]
+type TimingOutcome = 'returned' | 'failed'
+
+function schemaTiming(now: () => number = () => performance.now()) {
+  const started = now()
+  const starts: Partial<Record<TimingStage, number>> = {}
+  return {
+    mark(stage: TimingStage): void { starts[stage] = Math.round(now() - started) },
+    receipt(outcome: TimingOutcome) {
+      const elapsedMs = Math.round(now() - started)
+      const reached = timingStages.flatMap(stage => starts[stage] === undefined ? [] : [{ stage, elapsedMs: starts[stage] }])
+      return {
+        outcome,
+        elapsedMs,
+        stages: reached.map((entry, index) => ({
+          ...entry,
+          durationMs: (reached[index + 1]?.elapsedMs ?? elapsedMs) - entry.elapsedMs,
+        })),
+      }
+    },
+  }
+}
+
+function emitSchemaTiming(timing: ReturnType<typeof schemaTiming>, outcome: TimingOutcome,
+  write: (line: string) => void = (line) => { process.stdout.write(line) }): void {
+  try {
+    write(`persistence-schema-timing ${JSON.stringify(timing.receipt(outcome))}\n`)
+  } catch (_error) {
+    // A diagnostic write failure must not replace the original test failure.
+  }
+}
 
 function property(nodes: readonly SchemaNode[], index: number, name: string): number {
   const node = nodes[index]
@@ -50,6 +87,7 @@ function assertRetiredHeaderRequiresVersionBump(inventory: PersistenceSchemaInve
 
 const roots: string[] = []
 afterEach(() => {
+  vi.restoreAllMocks()
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true, maxRetries: 3 })
 })
 
@@ -99,6 +137,95 @@ function event(inventory: PersistenceSchemaInventory, name = 'test/record'): str
 }
 
 describe('persistent source type extraction', () => {
+  it('keeps optional phase observation equivalent and preserves extraction errors', () => {
+    const root = fixture('export interface Payload { value: string }')
+    const expected = extractPersistenceSchema(root)
+    const stages: PersistenceSchemaStage[] = []
+    expect(extractPersistenceSchema(root, (stage) => { stages.push(stage) })).toEqual(expected)
+    expect(stages).toEqual(['events', 'sources', 'program', 'diagnostics', 'reachable', 'model'])
+    expect(extractPersistenceSchema(root, () => { throw new Error('observer failure') })).toEqual(expected)
+    const invalid = fixture('type Bad = ReturnType<42>; export interface Payload {value: Bad}')
+    expect(() => extractPersistenceSchema(invalid)).toThrow('TS2344')
+    expect(() => extractPersistenceSchema(invalid, () => { throw new Error('observer failure') })).toThrow('TS2344')
+  })
+
+  it('bounds timing receipts to fixed fields and keeps interleaved observers independent', () => {
+    let clock = 0
+    const left = schemaTiming(() => clock)
+    const right = schemaTiming(() => clock)
+    left.mark('events')
+    clock = 10
+    right.mark('program')
+    for (let count = 0; count < 100; count++) left.mark('sources')
+    clock = 20
+    expect(left.receipt('failed')).toEqual({ outcome: 'failed', elapsedMs: 20, stages: [
+      { stage: 'events', elapsedMs: 0, durationMs: 10 },
+      { stage: 'sources', elapsedMs: 10, durationMs: 10 },
+    ] })
+    expect(right.receipt('returned')).toEqual({ outcome: 'returned', elapsedMs: 20, stages: [
+      { stage: 'program', elapsedMs: 10, durationMs: 10 },
+    ] })
+    const output: string[] = []
+    emitSchemaTiming(left, 'failed', (line) => { output.push(line) })
+    expect(output).toEqual([`persistence-schema-timing ${JSON.stringify(left.receipt('failed'))}\n`])
+    expect(() => { emitSchemaTiming(left, 'failed', () => { throw new Error('private path/source/model/environment/error') }) }).not.toThrow()
+  })
+
+  it('parses shared Host config inheritance once per extraction without losing independent augmentations', () => {
+    const root = fixture('export interface NestedMap {first: {value: string}}; export type Payload = NestedMap[keyof NestedMap]')
+    for (const name of ['left', 'right']) {
+      put(root, `packages/domain/${name}/src/index.ts`, `import '@fixture/payload'; declare module '@fixture/payload' {interface NestedMap {${name}: {${name}: number}}}`)
+      put(root, `packages/domain/${name}/tsconfig.json`, JSON.stringify({
+        extends: '../../../tsconfig.shared.json', include: ['src'],
+        references: [{ path: '../payload' }],
+      }))
+    }
+    const expected = extractPersistenceSchema(root)
+    const shared = join(root, 'tsconfig.shared.json')
+    writeFileSync(shared, readFileSync(join(root, 'tsconfig.host.json'), 'utf8'))
+    put(root, 'packages/domain/payload/tsconfig.json', JSON.stringify({ extends: '../../../tsconfig.shared.json', include: ['src'] }))
+    put(root, 'tsconfig.host.json', JSON.stringify({
+      extends: './tsconfig.shared.json',
+      include: ['packages/core/session/src', 'packages/domain/payload/src', 'packages/session/session-persistence-jsonl/src'],
+      references: [{ path: './packages/domain/left/tsconfig.json' }, { path: './packages/domain/right' }],
+    }))
+    const reads = vi.spyOn(ts.sys, 'readFile')
+    const scans = vi.spyOn(ts.sys, 'readDirectory')
+    try {
+      expect(extractPersistenceSchema(root)).toEqual(expected)
+      expect(reads.mock.calls.filter(([path]) => resolve(path) === shared)).toHaveLength(1)
+      expect(scans.mock.calls.filter(([path]) => resolve(path) === root)).toHaveLength(1)
+      reads.mockClear()
+      scans.mockClear()
+      const settings = JSON.parse(readFileSync(shared, 'utf8')) as { compilerOptions: { paths: Record<string, string[]> } }
+      settings.compilerOptions.paths['@fixture/payload'] = ['./packages/domain/payload/src/changed.ts']
+      put(root, 'packages/domain/payload/src/changed.ts', 'export interface NestedMap {changed: {value: boolean}}; export type Payload = NestedMap[keyof NestedMap]')
+      writeFileSync(shared, JSON.stringify(settings))
+      expect(event(extractPersistenceSchema(root))).not.toBe(event(expected))
+      expect(reads.mock.calls.filter(([path]) => resolve(path) === shared)).toHaveLength(1)
+      expect(scans.mock.calls.filter(([path]) => resolve(path) === root)).toHaveLength(1)
+    } finally {
+      reads.mockRestore()
+      scans.mockRestore()
+    }
+  })
+
+  it.each([
+    ['missing inherited config', { extends: './missing.json' }, 'TS5083'],
+    ['invalid referenced compiler option', { compilerOptions: { target: 'invalid' } }, 'TS6046'],
+    ['empty referenced project', { include: [] }, undefined],
+  ])('preserves diagnostics for %s', (_name, config, error) => {
+    const root = fixture('export interface Payload {value: string}')
+    const expected = extractPersistenceSchema(root)
+    put(root, 'packages/domain/referenced/tsconfig.json', JSON.stringify(config))
+    const host = join(root, 'tsconfig.host.json')
+    const settings = JSON.parse(readFileSync(host, 'utf8')) as { references?: { path: string }[] }
+    settings.references = [{ path: './packages/domain/referenced' }]
+    writeFileSync(host, JSON.stringify(settings))
+    if (error === undefined) expect(extractPersistenceSchema(root)).toEqual(expected)
+    else expect(() => extractPersistenceSchema(root)).toThrow(error)
+  })
+
   it('keeps authored names and anonymous declaration locations without synthesized traversal names', () => {
     const root = fixture('interface Section { text: string }\nexport interface Payload { inserted: { source: { kind: "hooks-codex"; sections: Section[] } }[] }')
     const inventory = extractPersistenceSchema(root)
@@ -361,12 +488,16 @@ interface SessionEventMap {
 
   // Repository-wide TypeScript extraction and reachable-node hashing use the Windows coverage test budget.
   it('includes every real repository event and fingerprints every reachable node', { timeout: 90_000 }, () => {
+    const timing = schemaTiming()
+    onTestFailed(() => { emitSchemaTiming(timing, 'failed') })
     const root = resolve(import.meta.dirname, '..')
-    const model = extractPersistenceSchema(root)
+    const model = extractPersistenceSchema(root, (stage) => { timing.mark(stage) })
+    timing.mark('assert-events')
     expect(model.roots.filter(root => root.kind === 'event').map(root => root.event).sort())
       .toEqual(collectLogEvents(root).map(event => event.name).sort())
     expect(model.roots.some(root => root.kind === 'header')).toBe(true)
     expect(model.roots.some(root => root.kind === 'envelope')).toBe(true)
+    timing.mark('assert-fingerprints')
     const digests = new Set(model.types.map(type => type.digest))
     for (const root of model.roots) {
       expect(schemaDigest(root.schema)).toBe(root.digest)
@@ -374,7 +505,10 @@ interface SessionEventMap {
         expect(digests.has(schemaDigest(canonicalizeSchema(root.schema.nodes, node)))).toBe(true)
       }
     }
+    timing.mark('assert-retired-header')
     assertRetiredHeaderRequiresVersionBump(model)
+    timing.mark('complete')
+    emitSchemaTiming(timing, 'returned')
   })
 })
 

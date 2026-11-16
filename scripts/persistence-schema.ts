@@ -37,13 +37,18 @@ export class PersistenceSchemaError extends Error {
   override name = 'PersistenceSchemaError'
 }
 
+/** Fixed extraction phases available to optional, data-free timing observers. */
+export type PersistenceSchemaStage = 'events' | 'sources' | 'program' | 'diagnostics' | 'reachable' | 'model'
+
 /**
  * Extract every repository event, its complete envelope, and the Session header.
  * @param root - repository root, with source paths in tsconfig.host.json.
+ * @param onStage - optional phase observer; its errors never replace extraction results or errors.
  * @returns canonical root fingerprints and all reachable type definitions.
  */
-export function extractPersistenceSchema(root: string): PersistenceSchemaInventory {
+export function extractPersistenceSchema(root: string, onStage?: (stage: PersistenceSchemaStage) => void): PersistenceSchemaInventory {
   root = resolve(root)
+  observeStage(onStage, 'events')
   const events = collectLogEvents(root).sort((left, right) => compare(left.name, right.name))
   if (events.length === 0) throw new PersistenceSchemaError('persistence schema: no Session events were discovered')
   const filename = resolve(root, 'scripts/__persistence_schema_roots__.ts')
@@ -55,10 +60,13 @@ export function extractPersistenceSchema(root: string): PersistenceSchemaInvento
     ...events.map((event, index) => `export type EventRoot${String(index)} = SessionEvent<${JSON.stringify(event.name)}>`),
     '',
   ].join('\n')
+  observeStage(onStage, 'sources')
   const configPath = resolve(root, 'tsconfig.host.json')
   const config = ts.readConfigFile(configPath, file => readFileSync(file, 'utf8'))
   if (config.error !== undefined) throw new PersistenceSchemaError(diagnosticText(config.error))
-  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root)
+  // Share inherited configs only within this extraction; later calls must see source edits.
+  const extendedConfigCache = new Map<string, ts.ExtendedConfigCacheEntry>()
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, undefined, undefined, undefined, undefined, extendedConfigCache)
   const configErrors = parsed.errors.filter(error => error.code !== 18003)
   if (configErrors.length > 0) throw new PersistenceSchemaError(configErrors.map(diagnosticText).join('\n'))
   const options: ts.CompilerOptions = {
@@ -81,12 +89,14 @@ export function extractPersistenceSchema(root: string): PersistenceSchemaInvento
       ? ts.createSourceFile(filename, source, languageVersion, true)
       : originalGetSourceFile(path, languageVersion, onError, shouldCreateNewSourceFile)
   const files = [...new Set([
-    ...hostSourceFiles(root, configPath),
+    ...hostSourceFiles(root, configPath, parsed, extendedConfigCache),
     ...events.map(event => resolve(root, event.source.slice(0, event.source.lastIndexOf(':')))),
   ])]
+  observeStage(onStage, 'program')
   const program = ts.createProgram({ rootNames: [filename, ...files], options, host })
   const rootSource = program.getSourceFile(filename)
   if (rootSource === undefined) throw new PersistenceSchemaError('persistence schema: compiler omitted the requested roots')
+  observeStage(onStage, 'diagnostics')
   const diagnostics = [
     ...program.getOptionsDiagnostics(), ...program.getSyntacticDiagnostics(), ...program.getSemanticDiagnostics(rootSource),
   ]
@@ -120,7 +130,9 @@ export function extractPersistenceSchema(root: string): PersistenceSchemaInvento
     .filter(declaration => declaration.name.text === 'HeaderLine')
   if (physical?.length !== 1) throw new PersistenceSchemaError('persistence schema: expected one current JSONL HeaderLine declaration')
   const physicalHeader = physical[0] as ts.InterfaceDeclaration | ts.TypeAliasDeclaration
+  observeStage(onStage, 'reachable')
   const declarationSources = validateReachableDeclarations(program, root, [...declarations.values(), physicalHeader])
+  observeStage(onStage, 'model')
   const extraction = new SchemaExtractor(root, program, declarationSources)
   const roots: RootInput[] = [{
     key: 'SessionHeader',
@@ -139,19 +151,37 @@ export function extractPersistenceSchema(root: string): PersistenceSchemaInvento
   return extraction.inventory(roots)
 }
 
-function hostSourceFiles(root: string, configPath: string, seen = new Set<string>()): string[] {
+function observeStage(observer: ((stage: PersistenceSchemaStage) => void) | undefined, stage: PersistenceSchemaStage): void {
+  try {
+    observer?.(stage)
+  } catch (_error) {
+    // Optional diagnostics must preserve the original extraction outcome.
+  }
+}
+
+function hostSourceFiles(
+  root: string,
+  configPath: string,
+  parsed: ts.ParsedCommandLine | undefined,
+  extendedConfigCache: Map<string, ts.ExtendedConfigCacheEntry>,
+  seen = new Set<string>(),
+): string[] {
   configPath = resolve(configPath)
   if (seen.has(configPath)) return []
   seen.add(configPath)
-  const read = ts.readConfigFile(configPath, file => readFileSync(file, 'utf8'))
-  if (read.error !== undefined) throw new PersistenceSchemaError(diagnosticText(read.error))
-  const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, dirname(configPath), undefined, configPath)
+  if (parsed === undefined) {
+    const read = ts.readConfigFile(configPath, file => readFileSync(file, 'utf8'))
+    if (read.error !== undefined) throw new PersistenceSchemaError(diagnosticText(read.error))
+    parsed = ts.parseJsonConfigFileContent(
+      read.config, ts.sys, dirname(configPath), undefined, configPath, undefined, undefined, extendedConfigCache,
+    )
+  }
   const errors = parsed.errors.filter(error => error.code !== 18003)
   if (errors.length > 0) throw new PersistenceSchemaError(errors.map(diagnosticText).join('\n'))
   return [
     ...parsed.fileNames.filter(file => /^packages\/[^/]+\/[^/]+\/src\//.test(slash(relative(root, file)))),
     ...(parsed.projectReferences ?? []).flatMap(reference =>
-      hostSourceFiles(root, extname(reference.path) === '.json' ? reference.path : resolve(reference.path, 'tsconfig.json'), seen)),
+      hostSourceFiles(root, extname(reference.path) === '.json' ? reference.path : resolve(reference.path, 'tsconfig.json'), undefined, extendedConfigCache, seen)),
   ]
 }
 
