@@ -37,13 +37,18 @@ export class PersistenceSchemaError extends Error {
   override name = 'PersistenceSchemaError'
 }
 
+/** Fixed extraction phases available to optional, data-free timing observers. */
+export type PersistenceSchemaStage = 'events' | 'sources' | 'program' | 'diagnostics' | 'reachable' | 'model'
+
 /**
  * Extract every repository event, its complete envelope, and the Session header.
  * @param root - repository root, with source paths in tsconfig.host.json.
+ * @param onStage - optional phase observer; its errors never replace extraction results or errors.
  * @returns canonical root fingerprints and all reachable type definitions.
  */
-export function extractPersistenceSchema(root: string): PersistenceSchemaInventory {
+export function extractPersistenceSchema(root: string, onStage?: (stage: PersistenceSchemaStage) => void): PersistenceSchemaInventory {
   root = resolve(root)
+  observeStage(onStage, 'events')
   const events = collectLogEvents(root).sort((left, right) => compare(left.name, right.name))
   if (events.length === 0) throw new PersistenceSchemaError('persistence schema: no Session events were discovered')
   const filename = resolve(root, 'scripts/__persistence_schema_roots__.ts')
@@ -55,6 +60,7 @@ export function extractPersistenceSchema(root: string): PersistenceSchemaInvento
     ...events.map((event, index) => `export type EventRoot${String(index)} = SessionEvent<${JSON.stringify(event.name)}>`),
     '',
   ].join('\n')
+  observeStage(onStage, 'sources')
   const configPath = resolve(root, 'tsconfig.host.json')
   const config = ts.readConfigFile(configPath, file => readFileSync(file, 'utf8'))
   if (config.error !== undefined) throw new PersistenceSchemaError(diagnosticText(config.error))
@@ -84,9 +90,11 @@ export function extractPersistenceSchema(root: string): PersistenceSchemaInvento
     ...hostSourceFiles(root, configPath),
     ...events.map(event => resolve(root, event.source.slice(0, event.source.lastIndexOf(':')))),
   ])]
+  observeStage(onStage, 'program')
   const program = ts.createProgram({ rootNames: [filename, ...files], options, host })
   const rootSource = program.getSourceFile(filename)
   if (rootSource === undefined) throw new PersistenceSchemaError('persistence schema: compiler omitted the requested roots')
+  observeStage(onStage, 'diagnostics')
   const diagnostics = [
     ...program.getOptionsDiagnostics(), ...program.getSyntacticDiagnostics(), ...program.getSemanticDiagnostics(rootSource),
   ]
@@ -120,7 +128,9 @@ export function extractPersistenceSchema(root: string): PersistenceSchemaInvento
     .filter(declaration => declaration.name.text === 'HeaderLine')
   if (physical?.length !== 1) throw new PersistenceSchemaError('persistence schema: expected one current JSONL HeaderLine declaration')
   const physicalHeader = physical[0] as ts.InterfaceDeclaration | ts.TypeAliasDeclaration
+  observeStage(onStage, 'reachable')
   const declarationSources = validateReachableDeclarations(program, root, [...declarations.values(), physicalHeader])
+  observeStage(onStage, 'model')
   const extraction = new SchemaExtractor(root, program, declarationSources)
   const roots: RootInput[] = [{
     key: 'SessionHeader',
@@ -137,6 +147,14 @@ export function extractPersistenceSchema(root: string): PersistenceSchemaInvento
   }
   roots.splice(2, 0, { key: 'SessionEventEnvelope', kind: 'envelope', node: extraction.union(envelopes) })
   return extraction.inventory(roots)
+}
+
+function observeStage(observer: ((stage: PersistenceSchemaStage) => void) | undefined, stage: PersistenceSchemaStage): void {
+  try {
+    observer?.(stage)
+  } catch (_error) {
+    // Optional diagnostics must preserve the original extraction outcome.
+  }
 }
 
 function hostSourceFiles(root: string, configPath: string, seen = new Set<string>()): string[] {
