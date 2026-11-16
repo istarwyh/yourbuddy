@@ -205,6 +205,37 @@ function normalized(path: string, lines: readonly string[]): string[] {
   })
 }
 
+describe('icacls fixture line prefixes', () => {
+  const path = String.raw`C:\fixture\inherit-only`
+  const ace = String.raw`BUILTIN\Users:(OI)(CI)(IO)(F)`
+
+  it('compares an inherit-only ACE identically on the first and following lines', () => {
+    const before = [`${path} caller:(M)`, `  ${ace}`].filter(line => line.includes('(IO)'))
+    const after = [`${path} ${ace}`, '  caller:(F)'].filter(line => line.includes('(IO)'))
+    expect(after).not.toEqual(before)
+    expect(normalized(path, before)).toEqual([ace])
+    expect(normalized(path, after)).toEqual(normalized(path, before))
+  })
+
+  it('retains principals, flags, rights and multiplicity when removing the path prefix', () => {
+    for (const changed of [
+      [ace.replace('Users', 'Administrators')],
+      [ace.replace('(OI)', '')],
+      [ace.replace('(CI)', '')],
+      [ace.replace('(IO)', '')],
+      [ace.replace('(F)', '(RX)')],
+      [ace, ace],
+      [],
+    ]) {
+      const lines = changed.map((line, index) => index === 0 ? `${path} ${line}` : line)
+      expect(normalized(path, lines).filter(line => line.includes('(IO)'))).not.toEqual([ace])
+    }
+    const sid = 'S-1-5-32-545:(OI)(CI)(IO)(F)'
+    expect(normalized(path, [`${path} ${sid}`])).toEqual([sid])
+    expect(normalized(path, [`${path} ${sid.replace('545', '544')}`])).not.toEqual([sid])
+  })
+})
+
 describe.skipIf(!isWin32 || !pwshAvailable())('diagnose-windows-sandbox-acl script', { timeout }, () => {
   let meSid!: string
 
@@ -528,14 +559,14 @@ $after = [System.IO.FileSystemAclExtensions]::GetAccessControl($directory)
       const target = makeDir(scratch, 'inherit-only')
       setFixtureAccess(target)
       icacls(target, '/grant', '*S-1-5-32-545:(OI)(CI)(IO)(F)')
-      const inheritOnlyBefore = aclLines(target).filter(line => line.includes('(IO)'))
+      const inheritOnlyBefore = normalized(target, aclLines(target)).filter(line => line.includes('(IO)'))
       expect(inheritOnlyBefore).toHaveLength(1)
 
       const run = runScript(['-Path', target, '-AllowRoot', scratch, '-Out', join(scratch, 'out')])
       expect(run.code, run.output).toBe(0)
       expect(run.output).toContain(`GRANTED ${target} SID=${meSid}`)
       expect(reports(run)).toContainEqual(containingObject({ kind: 'verification', operation: 'grant', path: target, status: 'verified' }))
-      expect(aclLines(target).filter(line => line.includes('(IO)'))).toEqual(inheritOnlyBefore)
+      expect(normalized(target, aclLines(target)).filter(line => line.includes('(IO)'))).toEqual(inheritOnlyBefore)
       expect(aclLines(target).join('\n')).toMatch(/\(F\)/u)
     } finally {
       dispose(scratch)
