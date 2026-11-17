@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, onTestFailed, vi } from 'vitest'
 import type { Mock, MockInstance } from 'vitest'
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { watch as watchDirectory } from 'chokidar'
 import type { Context } from '@deepseek-ai/cordis'
@@ -477,11 +477,73 @@ describe('workspaceFiles.changes — backends and access', () => {
     const mark = (phase: string): void => {
       phases.push({ phase, elapsedMs: Math.round(performance.now() - started) })
     }
-    onTestFailed(() => { console.error(`workspace missing-file watcher phases: ${JSON.stringify(phases)}`) })
+    const receipt = {
+      ready: false, parentTracked: false, targetInitiallyTracked: false,
+      raw: { rename: 0, change: 0, other: 0 }, rawTarget: 0,
+      targetEvents: { add: 0, change: 0, unlink: 0, other: 0 }, otherEvents: 0,
+      callbacks: 0, forwardedCallbacks: 0, callbackErrors: 0, statsStarted: 0, statsFinished: 0,
+      lastStat: 'unread', frame: 'pending',
+    }
+    const increment = (count: number): number => Math.min(count + 1, 999)
+    onTestFailed(() => { console.error(`workspace missing-file watcher phases: ${JSON.stringify({ phases, receipt })}`) })
 
     watch.mockRestore()
     const path = join(harness.outside, 'created.txt')
     const staging = join(harness.outside, 'staged.txt')
+    const fs = harness.ctx.fs
+    const targetPath = fs.processPath(await fs.resolve(path))
+    const originalStat = fs.stat.bind(fs)
+    vi.spyOn(fs, 'stat').mockImplementation(async (...args) => {
+      const target = fs.processPath(args[0]) === targetPath
+      if (target) receipt.statsStarted = increment(receipt.statsStarted)
+      const info = await originalStat(...args)
+      if (target) {
+        receipt.statsFinished = increment(receipt.statsFinished)
+        receipt.lastStat = info?.type ?? 'absent'
+      }
+      return info
+    })
+    const originalWatch = fs.watch.bind(fs)
+    vi.spyOn(fs, 'watch').mockImplementation(async (target, changed, signal) => {
+      const index = vi.mocked(watchDirectory).mock.results.length
+      const close = await originalWatch(target, (error) => {
+        receipt.callbacks = increment(receipt.callbacks)
+        if (error !== undefined) receipt.callbackErrors = increment(receipt.callbackErrors)
+        changed(error)
+        receipt.forwardedCallbacks = increment(receipt.forwardedCallbacks)
+      }, signal)
+      const result = vi.mocked(watchDirectory).mock.results[index]
+      if (result?.type !== 'return') {
+        await close()
+        throw new Error('The local backend did not create its real watcher')
+      }
+      const watcher = result.value
+      receipt.ready = true
+      const children = watcher.getWatched()[dirname(targetPath)]
+      receipt.parentTracked = children !== undefined
+      receipt.targetInitiallyTracked = children?.includes(basename(targetPath)) ?? false
+      // Fixed counters keep failure output bounded and omit paths, contents and errors.
+      const raw = (event: string, entry: string): void => {
+        const kind = event === 'rename' || event === 'change' ? event : 'other'
+        receipt.raw[kind] = increment(receipt.raw[kind])
+        if (entry === basename(targetPath) || entry === targetPath) receipt.rawTarget = increment(receipt.rawTarget)
+      }
+      const all = (event: string, entry: string): void => {
+        if (entry !== targetPath) {
+          receipt.otherEvents = increment(receipt.otherEvents)
+          return
+        }
+        const kind = event === 'add' || event === 'change' || event === 'unlink' ? event : 'other'
+        receipt.targetEvents[kind] = increment(receipt.targetEvents[kind])
+      }
+      watcher.on('raw', raw)
+      watcher.on('all', all)
+      return async () => {
+        watcher.off('raw', raw)
+        watcher.off('all', all)
+        await close()
+      }
+    })
     // Publish complete bytes so an early watcher stat cannot observe a partial write.
     mark('staging')
     await writeFile(staging, 'new file contents')
@@ -489,7 +551,13 @@ describe('workspaceFiles.changes — backends and access', () => {
     const stream = open(service, path)
     mark('waiting-ready')
     await ready(stream)
-    const pending = stream.next()
+    const pending = stream.next().then((frame) => {
+      receipt.frame = frame.done ? 'end' : frame.value.kind
+      return frame
+    }, (error: unknown) => {
+      receipt.frame = 'rejected'
+      throw error
+    })
     mark('renaming')
     await rename(staging, path)
     mark('reading-stat')
