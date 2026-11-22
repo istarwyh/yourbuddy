@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { inspectManagedNode, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { inspectManagedNode, inspectManagedPnpm, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -265,7 +265,6 @@ test('managed Node acceptance rejects host reuse, old storage layout and missing
   assert.throws(() => inspectManagedNode(`provision complete cli=/harness/bin.js node=${node}\nspawning dsh web node=/host/node cli=/harness/bin.js`, active, manifest, runtime, appData), /real Host must launch/)
 })
 
-
 test('first-run dialog only tolerates coercion while reading a single AX role', () => {
   for (const configureLater of [false, true]) {
     const script = previewNoticeScript(123, configureLater)
@@ -275,4 +274,20 @@ test('first-run dialog only tolerates coercion while reading a single AX role', 
     assert.match(script, /not \(readingButtonRole and errorNumber is -1700\) then error errorText number errorNumber/)
     assert.match(script, /if \(count of matchingButtons\) is not 1 then error [^\n]+\n\s+perform action "AXPress"/)
   }
+})
+
+
+test('managed pnpm version probing stays outside the source checkout', () => {
+  const world = join(tmpdir(), 'owned-workspace')
+  const pnpm = join(world, 'runtime', 'pnpm-global', 'bin', 'pnpm')
+  const env = { HOME: join(world, 'home'), PATH: '/usr/bin:/bin' }
+  const version = inspectManagedPnpm(pnpm, world, env, (binary, argv, options) => {
+    assert.equal(binary, pnpm)
+    assert.deepEqual(argv, ['--version'])
+    assert.equal(options.cwd, world)
+    assert.equal(options.env, env)
+    assert.equal(options.timeout, 30_000)
+    return '11.7.0\n'
+  })
+  assert.equal(version, '11.7.0')
 })

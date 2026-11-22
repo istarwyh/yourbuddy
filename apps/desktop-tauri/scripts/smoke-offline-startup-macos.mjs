@@ -60,6 +60,11 @@ export function inspectManagedNode(log, active, manifest, runtime, appData) {
   return node
 }
 
+/** Query the seeded pnpm from the owned workspace, outside the checkout's packageManager policy. */
+export function inspectManagedPnpm(pnpm, world, env, run = execFileSync) {
+  return run(pnpm, ['--version'], { cwd: world, env, encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS }).trim()
+}
+
 /** Reject a different version or an incomplete native readiness sequence. */
 export function inspectBoot(log, active, manifest, version) {
   assert.equal(manifest.appVersion, version, 'signed channel must be the requested current version')
@@ -478,7 +483,7 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
           assert.equal(nodeIdentity, 'darwin:arm64')
           const pnpm = join(appData, 'runtime', 'pnpm-global', 'bin', 'pnpm')
           const managedEnv = { ...env, PATH: `${dirname(node)}:${env.PATH}` }
-          const pnpmVersion = execFileSync(pnpm, ['--version'], { env: managedEnv, encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS }).trim()
+          const pnpmVersion = inspectManagedPnpm(pnpm, world, managedEnv)
           assert.equal(pnpmVersion, runtime.pnpmVersion)
           nodeEvidence = { nodeVersion, nodeIdentity, pnpmVersion, nodeSha256: sha256(node), componentId: active.components.node.id }
           if (round === 1) {
