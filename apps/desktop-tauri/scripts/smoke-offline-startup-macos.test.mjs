@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { inspectManagedNode, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, nativeSettingsDialogClosed, settingsNavigationScript, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { inspectManagedNode, inspectManagedPnpm, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, nativeSettingsDialogClosed, settingsNavigationScript, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -110,10 +110,11 @@ test('an application PID recycled before its exit event cannot acquire foreign d
 test('AX inspection isolates vanished nodes while retaining controls and fatal errors', () => {
   const script = windowInspectionScript(123)
   assert.match(script, /try\s+set roleText to role of itemNode/)
-  assert.match(script, /if errorNumber is -1719 or errorNumber is -1728 then\s+set skippedNodes to skippedNodes \+ 1/)
+  assert.match(script, /if errorNumber is -1719 or errorNumber is -1728 or \(readingRole and errorNumber is -1700\) then\s+set skippedNodes to skippedNodes \+ 1/)
   assert.match(script, /else\s+error \("AX partial snapshot:/)
   assert.match(script, /number errorNumber/)
   assert.equal((script.match(/role of itemNode/g) || []).length, 1)
+  assert.match(script, /set readingRole to true\s+try\s+set roleText to role of itemNode as text\s+set readingRole to false/)
   assert(!script.includes('AXPress'))
   const closing = windowInspectionScript(123, true)
   assert.match(closing, /roleText is "AXButton" and \(labelText is "Close" or labelText is "关闭"\)/)
@@ -161,10 +162,10 @@ test('only the reviewed preview notice permits a scoped real Continue action', (
   assert(!previewNoticeVisible(notice.replace('AXHeading', 'AXStaticText')))
   const script = previewNoticeScript(123)
   assert.match(script, /whose unix id is 123/)
-  assert.match(script, /role of itemNode is "AXGroup" and \(name of itemNode is "Preview Notice"/)
+  assert.match(script, /groupRole is "AXGroup" and \(name of itemNode is "Preview Notice"/)
   assert.match(script, /set noticeNodes to entire contents of itemNode/)
   assert.match(script, /repeat with noticeNode in noticeNodes/)
-  assert.match(script, /role of noticeNode is "AXButton" and \(name of noticeNode is "Continue"/)
+  assert.match(script, /buttonRole is "AXButton" and \(name of noticeNode is "Continue"/)
   assert.match(script, /if \(count of matchingButtons\) is not 1 then error/)
   assert.match(script, /perform action "AXPress" of item 1 of matchingButtons/)
   assert.doesNotMatch(script, /Configure later|Save and continue|set value/)
@@ -306,4 +307,31 @@ test('managed Node acceptance rejects host reuse, old storage layout and missing
   assert.throws(() => inspectManagedNode(log, { components: {} }, manifest, runtime, appData), /must be activated/)
   assert.throws(() => inspectManagedNode(log, { components: { node: { ...component, path: root.replace('%3A', ':') } } }, manifest, runtime, appData), /PATH-safe/)
   assert.throws(() => inspectManagedNode(`provision complete cli=/harness/bin.js node=${node}\nspawning dsh web node=/host/node cli=/harness/bin.js`, active, manifest, runtime, appData), /real Host must launch/)
+})
+
+test('first-run dialog only tolerates coercion while reading a single AX role', () => {
+  for (const configureLater of [false, true]) {
+    const script = previewNoticeScript(123, configureLater)
+    assert.match(script, /set readingRole to true\s+try\s+set groupRole to role of itemNode as text\s+set readingRole to false/)
+    assert.match(script, /set readingButtonRole to true\s+try\s+set buttonRole to role of noticeNode as text\s+set readingButtonRole to false/)
+    assert.match(script, /not \(readingRole and errorNumber is -1700\) then error errorText number errorNumber/)
+    assert.match(script, /not \(readingButtonRole and errorNumber is -1700\) then error errorText number errorNumber/)
+    assert.match(script, /if \(count of matchingButtons\) is not 1 then error [^\n]+\n\s+perform action "AXPress"/)
+  }
+})
+
+
+test('managed pnpm version probing stays outside the source checkout', () => {
+  const world = join(tmpdir(), 'owned-workspace')
+  const pnpm = join(world, 'runtime', 'pnpm-global', 'bin', 'pnpm')
+  const env = { HOME: join(world, 'home'), PATH: '/usr/bin:/bin' }
+  const version = inspectManagedPnpm(pnpm, world, env, (binary, argv, options) => {
+    assert.equal(binary, pnpm)
+    assert.deepEqual(argv, ['--version'])
+    assert.equal(options.cwd, world)
+    assert.equal(options.env, env)
+    assert.equal(options.timeout, 30_000)
+    return '11.7.0\n'
+  })
+  assert.equal(version, '11.7.0')
 })
