@@ -6,7 +6,7 @@ import { expectedRegistryPackageCount } from './registry-inventory.mjs'
 
 test('frozen product lock resolves the macOS production inventory without orphan platform dependencies', () => {
   const lock = load(readFileSync(new URL('../product/harness-pnpm-lock.yaml', import.meta.url), 'utf8'))
-  assert.equal(expectedRegistryPackageCount(lock, { os: 'darwin', cpu: 'arm64' }), 551)
+  assert.equal(expectedRegistryPackageCount(lock, { os: 'darwin', cpu: 'arm64' }), 607)
 })
 
 test('inventory follows production aliases and peer variants, excluding dev and unsupported optional trees', () => {

@@ -34,7 +34,7 @@ import { randomUUID } from 'node:crypto'
 import { open, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { SidebarHttpResponse } from './context-types.ts'
+import type { SidebarHttpResponse } from './host-http.ts'
 import { streamFileToResponse } from './file-stream.ts'
 import {
   archiveFileName,

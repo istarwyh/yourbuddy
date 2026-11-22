@@ -1,3 +1,4 @@
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 /**
  * The bottom workbench's terminal: an xterm.js emulator driven by the HOST's
  * session-scoped terminal service (`ctx.webTerminals`, see
@@ -71,7 +72,7 @@ export interface TerminalBottomProps {
  */
 export function TerminalBottomView({ ctx, scope, tab, visible }: TerminalBottomProps): ReactNode {
   const sessionId = scope.sessionId
-  // The service is probed structurally, never injected: a deployment without
+  // The optional service is read lazily: a deployment without
   // it keeps the tray row disabled and renders the explanation below.
   const service = useMemo(() => webTerminals(ctx), [ctx])
   const run = terminalRunOf(tab)
@@ -84,7 +85,7 @@ export function TerminalBottomView({ ctx, scope, tab, visible }: TerminalBottomP
   // (session, key) on the host side, so this memo must be the ONLY creation
   // path: a repeat `view()` for the same key is free, a new key is a new PTY.
   const model = useMemo(
-    () => service?.view(sessionId, contentId, contentId),
+    () => service?.view(sessionId as SessionId, contentId, contentId),
     [service, sessionId, contentId],
   )
   const state = useSyncExternalStore(

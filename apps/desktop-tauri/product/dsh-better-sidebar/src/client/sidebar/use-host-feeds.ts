@@ -48,20 +48,6 @@ const RECONNECT_MAX_MS = 30_000
 const AUTO_OPEN_DEBOUNCE_MS = 500
 
 /**
- * The native column's public face, as this module reaches it. Every reader
- * acts on the session whose surface is MOUNTED (the controller reads its
- * binding), which is why both gates below are gated on the target session
- * being the on-screen one.
- */
-interface NativeColumnFace {
-  isExpanded?: () => boolean
-  toggleExpanded?: () => void
-  /** The active tab of the active pane (`ISidebarRight.active`): which page the
-   *  reader is looking at. Absent on a host older than the reader gate. */
-  active?: () => { kind?: string } | undefined
-}
-
-/**
  * Activate the Tasks page (the `subagent` tab type) in DSH's native right
  * Sidebar — the landing the two auto-open switches promise: the right column
  * IS the sidebar the user means, while the plugin's own bottom workbench only
@@ -117,7 +103,7 @@ function activateTasksPage(
   sessionId: string,
   options: { background: boolean },
 ): void {
-  const column = ctx.get('sidebarRight') as unknown as NativeColumnFace | undefined
+  const column = ctx.get('sidebarRight')
   // The face acts on the MOUNTED session: both gates below are only meaningful
   // (and only safe) when the activation targets the one on screen. "On screen"
   // is the native surface's own mounted seat — the session list has no
@@ -126,8 +112,8 @@ function activateTasksPage(
   // column alone rather than reading or toggling one it is not drawing.
   const onScreen = mountedSessionId(ctx) === sessionId
   // Do not take over the page the reader is looking at (see the docblock).
-  if (options.background && onScreen && column?.isExpanded?.() === true) {
-    const shown = column.active?.()
+  if (options.background && onScreen && column?.isExpanded() === true) {
+    const shown = column.active()
     if (shown !== undefined && shown.kind !== 'subagent') {
       // The page is still created — the event is never dropped — but it lands
       // in the background and raises the dot instead of the column.
@@ -143,13 +129,13 @@ function activateTasksPage(
     && isNarrowWidth(window.innerWidth)
     // Only a column the user had COLLAPSED is put back: an expanded one is in
     // use, and closing it under the user would be worse than the takeover.
-    && column?.isExpanded?.() === false
+    && column?.isExpanded() === false
   ctx.get('betterSidebar')?.openTab({
     type: 'subagent',
     title: t('subagent'),
     intent: options.background ? 'background' : 'user',
   })
-  if (park) column?.toggleExpanded?.()
+  if (park) column?.toggleExpanded()
 }
 
 export function useHostFeeds(feeds: {

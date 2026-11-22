@@ -4519,7 +4519,7 @@ window.__ModuleLoader__.load({
 		function claimingNativeKind(ctx, address) {
 			try {
 				const tabs = ctx.get("sidebarRightTabs");
-				if (tabs === void 0 || typeof tabs.candidates !== "function") return void 0;
+				if (tabs === void 0) return void 0;
 				const best = tabs.candidates(address)[0];
 				return best !== void 0 && best.kind !== void 0 && best.kind !== EDITOR_KIND$2 ? best.kind : void 0;
 			} catch (error) {
@@ -20028,6 +20028,19 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
+		// src/client/session-target.ts
+		/**
+		* Brand Session identities decoded from the sidebar's HTTP responses.
+		* @param target - Session identity or parent/child address from the sidebar API.
+		* @returns the workspace service's navigation target.
+		*/
+		function nativeSessionTarget(target) {
+			return typeof target === "string" ? target : {
+				...target,
+				parentSessionId: target.parentSessionId,
+				childSessionId: target.childSessionId
+			};
+		}
 		// src/sidechat-images.ts
 		/**
 		* Raster formats the Side Chat composer offers and the transcript projects.
@@ -20402,8 +20415,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		/** Whether the host can host a child transcript in its right column. */
 		function hasTranscriptAside(ctx) {
 			try {
-				if (ctx.get("sidebarRightTabs")?.get?.("subagentchat") === void 0) return false;
-				return typeof ctx.get("sidebarRight")?.openResource === "function";
+				if (ctx.get("sidebarRightTabs")?.get("subagentchat") === void 0) return false;
+				return ctx.get("sidebarRight") !== void 0;
 			} catch {
 				return false;
 			}
@@ -20420,7 +20433,9 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		function openTranscriptAside(ctx, address, preferNewPane = false) {
 			if (!hasTranscriptAside(ctx)) return false;
 			try {
-				ctx.get("sidebarRight").openResource?.(subagentChatAddress(address), {
+				const right = ctx.get("sidebarRight");
+				if (right === void 0) return false;
+				right.openResource(subagentChatAddress(address), {
 					kind: SUBAGENT_CHAT_KIND,
 					...preferNewPane ? { preferNewPane: true } : {}
 				});
@@ -20726,38 +20741,21 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		const BODY_SLOT = "sidebar.right.pane.tab";
 		const TIMEOUT_MS = 1e4;
 		const RETRY_MS = 50;
-		function record(value) {
-			return value !== null && typeof value === "object" ? value : void 0;
-		}
-		function methods(value, names) {
-			const face = record(value);
-			return face !== void 0 && names.every((name) => typeof face[name] === "function");
-		}
-		/** Re-prove the optional runtime faces; never treat package installation as readiness. */
+		/** Read optional services from their registered public APIs. */
 		function facesOf(ctx) {
-			try {
-				const right = ctx.get("sidebarRight");
-				const registry = ctx.get("sidebarRightTabs");
-				const workspace = ctx.get("uiWorkspace");
-				const layout = ctx.get("layout");
-				const slots = ctx.get("slots");
-				if (!methods(right, [
-					"openTab",
-					"focus",
-					"active",
-					"isExpanded",
-					"toggleExpanded"
-				]) || !methods(record(right)?.mounted, ["getSnapshot", "subscribe"]) || !methods(record(right)?.openTabs, ["getSnapshot", "subscribe"]) || !methods(registry, ["get", "subscribe"]) || !methods(workspace, ["openSession"]) || !methods(layout, ["beginNavigation"]) || !methods(slots, ["entriesOfSlot", "subscribe"])) return void 0;
-				return {
-					right,
-					registry,
-					workspace,
-					layout,
-					slots
-				};
-			} catch {
-				return;
-			}
+			const right = ctx.get("sidebarRight");
+			const registry = ctx.get("sidebarRightTabs");
+			const workspace = ctx.get("uiWorkspace");
+			const layout = ctx.get("layout");
+			const slots = ctx.get("slots");
+			if (right === void 0 || registry === void 0 || workspace === void 0 || layout === void 0 || slots === void 0) return void 0;
+			return {
+				right,
+				registry,
+				workspace,
+				layout,
+				slots
+			};
 		}
 		function available(faces) {
 			if (faces === void 0) return false;
@@ -20847,7 +20845,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					}
 					retry(request);
 				} catch (error) {
-					if (record(error)?.message === "sidebarRight: no session surface is mounted") retry(request);
+					if (error instanceof Error && error.message === "sidebarRight: no session surface is mounted") retry(request);
 					else finish(request, "open");
 				} finally {
 					request.working = false;
@@ -20940,7 +20938,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 						own(request, current.right.openTabs.subscribe(() => {
 							attempt(request);
 						}));
-						if (current.right.mounted.getSnapshot() !== target.sessionId) current.workspace.openSession(target.address ?? target.sessionId);
+						if (current.right.mounted.getSnapshot() !== target.sessionId) current.workspace.openSession(nativeSessionTarget(target.address ?? target.sessionId));
 						if (pending !== request) return;
 						const signal = current.layout.beginNavigation();
 						request.signal = signal;
@@ -27927,8 +27925,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			*/
 			const openConversation = (0, react.useCallback)((target) => {
 				const workspace = ctx.get("uiWorkspace");
-				if (typeof workspace?.openSession === "function") {
-					workspace.openSession(target);
+				if (workspace !== void 0) {
+					workspace.openSession(nativeSessionTarget(target));
 					return;
 				}
 				if (typeof target === "string") sessions.open?.(target);
@@ -30814,7 +30812,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 				setSaved(false);
 				try {
 					const service = ctx.get("uiWorkspace");
-					if (service?.archiveSession === void 0) throw new Error("the workspace service is unavailable");
+					if (service === void 0) throw new Error("the workspace service is unavailable");
 					await service.archiveSession(threadId, { stopActivity: true });
 					const next = fallbackThreadId(threadId);
 					ctx.get("betterSidebar")?.updateTab(tab.id, { meta: next === void 0 ? {} : { threadId: next } });
@@ -31225,20 +31223,12 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		/** The terminal view, deferred until its tab is first mounted. */
 		const LazyTerminalBottom = lazyChunkComponent("terminal", (mod) => mod.TerminalBottomView);
 		// src/client/terminal-client.ts
-		/**
-		* The host terminal service, when this deployment mounts it.
-		*
-		* Structural detection (`view` + `close` + `recover` are the members this
-		* plugin calls); a service that does not look like the pinned contract reads
-		* as absent rather than throwing at the first keystroke.
-		* @param ctx - the client context.
+		/** Return the controller only when this deployment provides it.
+		* @param ctx - client context.
+		* @returns the registered controller, or undefined.
 		*/
 		function webTerminals(ctx) {
-			const service = ctx.get("webTerminals");
-			if (service === void 0 || service === null) return void 0;
-			if (typeof service.view !== "function" || typeof service.close !== "function") return void 0;
-			if (typeof service.recover !== "function") return void 0;
-			return service;
+			return ctx.get("webTerminals");
 		}
 		/** Namespace for the plugin's own occurrence key and content identity. */
 		const TERMINAL_NS = "dsh-better-sidebar:terminal-bottom";
@@ -31333,7 +31323,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 			(async () => {
 				try {
 					const service = ctx.get("uiWorkspace");
-					if (service?.archiveSession !== void 0) await service.archiveSession(threadId, { stopActivity: true });
+					if (service !== void 0) await service.archiveSession(threadId, { stopActivity: true });
 				} catch {} finally {
 					dispose();
 				}
@@ -31661,13 +31651,14 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		}
 		// src/client/builtins/viewers.tsx
 		/**
-		* The 4 built-in file viewer descriptors (markdown / html / jsonl / code),
+		* Built-in file viewer descriptors for plugin-owned editor workbenches,
 		* exactly like external plugins register theirs.
 		*
 		* DSH 0.1.7 ships `ui-sidebar-documentpreview`, its own code / spreadsheet /
 		* office / pdf / image / html / markdown / text previews with zoom and
-		* auto-refresh, so this plugin yields every READ-ONLY preview it used to own
-		* and keeps only the surfaces where it is not equivalent:
+		* auto-refresh. Native file-resource opens yield to those previews, while the
+		* image viewer here remains the fallback inside this plugin's editor workbench.
+		* The plugin also owns these specialized surfaces:
 		*  - `markdown` — this plugin's own renderer (front matter, embedded HTML
 		*    sanitation, floating TOC), which the user prefers to the host's;
 		*  - `html` — the sandboxed iframe preview plus the host-less
@@ -31678,7 +31669,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		*  - `code` — the catch-all (`exts: []`, lowest priority) that claims any
 		*    file no other viewer did, and it is an EDITABLE CodeMirror with save —
 		*    the host's equivalents are read-only previews.
-		* The yielded ids (image / pdf / binary-download) are deliberately NOT
+		* The yielded ids (pdf / binary-download) are deliberately NOT
 		* registered here; an external plugin may still claim them through this
 		* service. Office previews (.docx / .xlsx / .pptx) were already not built
 		* in — they live in the recommended office plugin (see plugins-viewers.ts),
@@ -31702,9 +31693,41 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		* shape (the view reads only its own subset of FileViewerProps).
 		*/
 		const LazyTextEditor = lazyChunkComponent("editor", (mod) => mod.TextEditor);
-		/** The 5 built-in file viewer descriptors. */
+		/** The built-in file viewer descriptors. */
 		function builtinViewers() {
 			return [
+				{
+					id: "image",
+					title: () => t("viewerImage"),
+					icon: (size) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.FileTypeIcon, {
+						path: "image.png",
+						size
+					}),
+					exts: [
+						"png",
+						"jpg",
+						"jpeg",
+						"gif",
+						"webp",
+						"svg",
+						"bmp",
+						"ico",
+						"avif"
+					],
+					fetchStrategy: "mediaUrl",
+					component: ({ mediaUrl, title }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: sidebar_module_css_default.editorPdf,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: sidebar_module_css_default.editorPdfStage,
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("img", {
+								className: sidebar_module_css_default.editorPdfFrame,
+								style: { objectFit: "contain" },
+								src: mediaUrl,
+								alt: title
+							})
+						})
+					})
+				},
 				{
 					id: "markdown",
 					title: () => t("viewerMarkdown"),
@@ -33469,8 +33492,8 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 		function activateTasksPage(ctx, store, sessionId, options) {
 			const column = ctx.get("sidebarRight");
 			const onScreen = mountedSessionId(ctx) === sessionId;
-			if (options.background && onScreen && column?.isExpanded?.() === true) {
-				const shown = column.active?.();
+			if (options.background && onScreen && column?.isExpanded() === true) {
+				const shown = column.active();
 				if (shown !== void 0 && shown.kind !== "subagent") {
 					ctx.get("betterSidebar")?.openTab({
 						type: "subagent",
@@ -33482,13 +33505,13 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
 					return;
 				}
 			}
-			const park = options.background && onScreen && isNarrowWidth(window.innerWidth) && column?.isExpanded?.() === false;
+			const park = options.background && onScreen && isNarrowWidth(window.innerWidth) && column?.isExpanded() === false;
 			ctx.get("betterSidebar")?.openTab({
 				type: "subagent",
 				title: t("subagent"),
 				intent: options.background ? "background" : "user"
 			});
-			if (park) column?.toggleExpanded?.();
+			if (park) column?.toggleExpanded();
 		}
 		function useHostFeeds(feeds) {
 			const { ctx, store, sessionList, sessionId } = feeds;

@@ -13,10 +13,11 @@ import { open, readFile, stat } from 'node:fs/promises'
 import { basename, extname, isAbsolute, join, sep } from 'node:path'
 import type { Stats } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { Duplex } from 'node:stream'
+import type { SidebarHttpRequest } from './host-http.ts'
+import type {} from '@deepseek-ai/dsh-host-webserver'
 import { WebSocket, WebSocketServer } from 'ws'
 import { parse as parseYaml } from 'yaml'
-import type { Context, SidebarHttpRequest, SidebarSettingsService } from './context-types.ts'
+import type { Context, SidebarSettingsService } from './context-types.ts'
 import {
   Config,
   resolveSidebarConfig,
@@ -1984,7 +1985,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
         socket.destroy()
         return
       }
-      agentOpenWss.handleUpgrade(req as unknown as IncomingMessage, socket as unknown as Duplex, head as Buffer, (ws) => {
+      agentOpenWss.handleUpgrade(req, socket, head, (ws) => {
         void attachAgentOpen(agentOpenRegistry, ws, req)
       })
     },
@@ -2005,7 +2006,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
         socket.destroy()
         return
       }
-      fsWatchWss.handleUpgrade(req as unknown as IncomingMessage, socket as unknown as Duplex, head as Buffer, (ws) => {
+      fsWatchWss.handleUpgrade(req, socket, head, (ws) => {
         void attachFsWatch(ctx, ws, req)
       })
     },
@@ -2027,7 +2028,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
         socket.destroy()
         return
       }
-      sidechatWss.handleUpgrade(req as unknown as IncomingMessage, socket as unknown as Duplex, head as Buffer, (ws) => {
+      sidechatWss.handleUpgrade(req, socket, head, (ws) => {
         sidechatPush.attach(ws)
       })
     },

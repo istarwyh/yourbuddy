@@ -16,7 +16,7 @@ import {
 } from '../src/client/rows/Rows.tsx'
 import type { GroupNode, SearchResultNode, SessionNode } from '../src/client/tree.ts'
 import { en, zh } from '../src/client/locales.ts'
-import rowCss from '../src/client/rows/Rows.module.css'
+import rowCss from '../src/client/contract/Rows.module.css'
 import { renderMenuButton } from './menu-button.tsx'
 
 afterEach(cleanup)

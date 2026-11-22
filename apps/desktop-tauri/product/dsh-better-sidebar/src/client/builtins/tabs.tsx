@@ -1,3 +1,4 @@
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 /**
  * The built-in tab descriptors: the plugin registers its own pages
  * (editor / git — the unified changes tab / subagent / sidechat / terminal-bottom /
@@ -40,11 +41,6 @@ import { SIDECHAT_SUBMIT_KEY_DEFAULT, SIDECHAT_SUBMIT_KEY_SETTING } from '../../
 import type { Context } from '../../context-types.ts'
 import type { TabComponentProps, TabDescriptor } from '../service.ts'
 
-/** Host session surface (`ctx.get('uiWorkspace')`). Archive is optional. */
-interface ArchiveSessionFace {
-  archiveSession?: (sessionId: string, options: { stopActivity: boolean }) => Promise<void>
-}
-
 /**
  * Hide a closed Side Chat thread, then release its live agent.
  *
@@ -59,10 +55,10 @@ function releaseSidechat(ctx: Context, threadId: string): void {
   }
   void (async () => {
     try {
-      const service = ctx.get('uiWorkspace') as unknown as ArchiveSessionFace | undefined
+      const service = ctx.get('uiWorkspace')
       // Method call: an unbound `archiveSession` would lose the service as `this`.
-      if (service?.archiveSession !== undefined) {
-        await service.archiveSession(threadId, { stopActivity: true })
+      if (service !== undefined) {
+        await service.archiveSession(threadId as SessionId, { stopActivity: true })
       }
     } catch {
       // Archive is best-effort. Dispose still runs in finally.

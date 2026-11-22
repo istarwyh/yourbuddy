@@ -1,3 +1,5 @@
+import type {} from '@deepseek-ai/dsh-working-directory'
+import type { SessionSeq } from '@deepseek-ai/dsh-session/types'
 /**
  * Side Chat routes of the /sidebar JSON API ('sidechat.start' /
  * 'sidechat.prompt' / 'sidechat.cancel' / 'sidechat.dispose' /
@@ -393,7 +395,7 @@ async function readColdThreadSession(persistence: SidebarSessionPersistenceServi
 }
 
 async function readColdThreadLog(persistence: SidebarSessionPersistenceService, childId: string): Promise<readonly SidechatLogEvent[]> {
-  return (await readColdThreadSession(persistence, childId)).events as unknown as readonly SidechatLogEvent[]
+  return (await readColdThreadSession(persistence, childId)).events
 }
 
 /** The stored artifact's change identity, or undefined when unavailable. */
@@ -429,7 +431,7 @@ async function storedIdentityOf(
 async function threadLogEvents(ctx: Context, childId: string): Promise<readonly SidechatLogEvent[]> {
   const agent = liveThreadAgent(ctx, childId)
   if (agent !== undefined) {
-    return agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[]
+    return agent.session.snapshotEvents()
   }
   const persistence = ctx.get('sessionPersistence') as SidebarSessionPersistenceService | undefined
   if (persistence === undefined) {
@@ -497,7 +499,7 @@ function messageLeadTextOf(message: unknown): string {
  * @returns how many inherited ghosts were dropped.
  */
 function dropInheritedGhosts(agent: Agent): number {
-  const log = agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[]
+  const log = agent.session.snapshotEvents()
   const ghosts = new Set(inheritedPendingIds(log, Number(agent.session.inheritedEventCount)))
   if (ghosts.size === 0) return 0
   let removed = 0
@@ -516,7 +518,7 @@ function dropInheritedGhosts(agent: Agent): number {
  *  creation-time deployment default — the bug #368 fixed for inheritance. */
 function selectionOf(agent: Agent): SidechatModelSelection | undefined {
   const logged = effectiveModelSelection(
-    agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[],
+    agent.session.snapshotEvents(),
   )
   if (logged !== undefined) return logged
   const { provider, model, reasoningEffort } = agent.options
@@ -731,7 +733,6 @@ export function buildSidechatApi(
       const headerCwd = parentSession.header.cwd
       const liveCwd = workingDirectory?.get(parentSession)
       const attachCwd = headerCwd ?? liveCwd
-      const stampCwd = liveCwd ?? headerCwd
       // The parent's CURRENT model route. agent.options freezes the
       // creation-time deployment default — a composer model switch rides
       // `model/selection` events + the session-local selection and never
@@ -741,12 +742,12 @@ export function buildSidechatApi(
       // shipped the stale default instead of the model the user sees
       // selected in the parent composer (#368).
       const parentSelection = parentModelSelection(
-        parentSession.snapshotEvents() as unknown as readonly SidechatLogEvent[],
+        parentSession.snapshotEvents(),
       )
       const routeProvider = parentSelection?.provider ?? parent.options.provider
       const routeModel = parentSelection?.model ?? parent.options.model
       const inheritance = buildSidechatInheritance(
-        parentSession.snapshotEvents() as unknown as readonly SidechatLogEvent[],
+        parentSession.snapshotEvents(),
         live?.chunksFor(sessionId) ?? [],
       )
       const { agentPreset, setup } = await composeChildSetup(
@@ -773,17 +774,17 @@ export function buildSidechatApi(
       // (the parent's LIVE cwd) at the seed boundary, using the host-owned event
       // rather than refolding its history or asking set() to enqueue a
       // synthetic user notice.
-      const directorySeed: SeedEvent[] = workingDirectory === undefined ? [] : [{
+      const directorySeed: SeedEvent[] = liveCwd === undefined ? [] : [{
         type: 'working-directory/change',
-        seq: inheritance.seed.length,
+        seq: inheritance.seed.length as SessionSeq,
         time: Date.now(),
-        data: { cwd: stampCwd },
+        data: { cwd: liveCwd },
       }]
       const descriptorEvent: SeedEvent = {
         type: 'subagent/descriptor',
-        seq: inheritance.seed.length + directorySeed.length,
+        seq: (inheritance.seed.length + directorySeed.length) as SessionSeq,
         time: Date.now(),
-        data: descriptor as unknown as Record<string, unknown>,
+        data: descriptor,
       }
       const seed = [...inheritance.seed, ...directorySeed, descriptorEvent]
       // Fork-marker fields (the exact shape the host's own session.fork uses,
@@ -819,7 +820,7 @@ export function buildSidechatApi(
           delegationDepth: (parentSession.header.delegationDepth ?? 0) + 1,
           ...(agentPreset === undefined ? {} : { agentPreset }),
         },
-        seed: seed as unknown as readonly SessionEvent[],
+        seed: seed,
         // Branded number, compile-time only: DSH Desktop's plugin-facing
         // `@deepseek-ai/dsh-session` surface carries the type but not the runtime
         // stamp, so importing the value aborts the whole host half at load time.
@@ -916,7 +917,7 @@ export function buildSidechatApi(
           }
         }
         if (signal?.aborted || activation.disposed) throw new SidebarError('sidechat-error', 'Thread was closed while sending', 409)
-        const first = !boundaryDelivered(agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[]) && !boundaryPending(agent)
+        const first = !boundaryDelivered(agent.session.snapshotEvents()) && !boundaryPending(agent)
         const snapshot = pendingSnapshots.get(childId)
         const messageId = first
           ? admitFirstContact(agent, [SIDE_BOUNDARY_PROMPT, ...(snapshot === undefined ? [] : [snapshot])].join('\n\n'), blocks)
@@ -982,7 +983,7 @@ export function buildSidechatApi(
         try {
           const inspected = await readColdThreadSession(persistence, childId)
           const preset = resolvePresetId(inspected.header, inspected.events)
-          const selection = effectiveModelSelection(inspected.events as unknown as readonly SidechatLogEvent[])
+          const selection = effectiveModelSelection(inspected.events)
           return {
             live: false,
             images,
@@ -1093,7 +1094,7 @@ async function ownedThread(ctx: Context, childId: string): Promise<{ events: rea
     ? (persistence === undefined ? undefined : await readColdThreadSession(persistence, childId))
     : { header: agent.session.header, events: agent.session.snapshotEvents(), inheritedEventCount: Number(agent.session.inheritedEventCount) }
   if (record === undefined) throw new SidebarError('not-found', 'Thread is unavailable', 404)
-  const events = record.events as unknown as readonly SidechatLogEvent[]
+  const events = record.events
   const creation = events[record.inheritedEventCount - 1]
   const descriptor = creation?.type === 'subagent/descriptor' ? creation : threadOwnLogEvents(events).find(event => event.type === 'subagent/descriptor')
   const data = descriptor?.data as { provider?: string; mode?: string } | undefined
@@ -1109,7 +1110,7 @@ export async function readSidechatImage(ctx: Context, childId: string, messageId
   if (store === undefined) throw new SidebarError('unavailable', 'Image attachments are unavailable', 503)
   const record = await ownedThread(ctx, childId)
   const agent = liveThreadAgent(ctx, childId)
-  const events = agent === undefined ? record.events : agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[]
+  const events = agent === undefined ? record.events : agent.session.snapshotEvents()
   const inheritedEventCount = agent === undefined ? record.inheritedEventCount : Number(agent.session.inheritedEventCount)
   const inbox = agent === undefined ? coldPendingMessages(events, inheritedEventCount) : agent.inbox
   const own = events.slice(inheritedEventCount).filter(event => event.type === 'user/message').map(event => event.data)

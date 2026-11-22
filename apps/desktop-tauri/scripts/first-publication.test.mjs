@@ -19,7 +19,20 @@ const context = {
 }
 const absent = async () => ({ status: 404 })
 
-function execute(cwd, args, env = process.env) {
+function fixtureEnvironment(temp) {
+  const env = { ...process.env }
+  for (const name of Object.keys(env)) {
+    if (name === 'GIT_CONFIG' || name === 'GIT_CONFIG_PARAMETERS'
+      || name === 'GIT_CONFIG_COUNT' || /^GIT_CONFIG_(?:KEY|VALUE)_/u.test(name)) delete env[name]
+  }
+  const global = join(temp, 'global.gitconfig')
+  const system = join(temp, 'system.gitconfig')
+  writeFileSync(global, '')
+  writeFileSync(system, '')
+  return { ...env, GIT_CONFIG_GLOBAL: global, GIT_CONFIG_SYSTEM: system, GIT_CONFIG_NOSYSTEM: '1' }
+}
+
+function execute(cwd, args, env) {
   const result = spawnSync('git', args, { cwd, env, encoding: 'utf8' })
   assert.equal(result.status, 0, `git ${args.join(' ')} failed: ${result.stderr}`)
   return result.stdout.trim()
@@ -117,10 +130,11 @@ test('candidate validation verifies the same pinned master but cannot call the t
 test('Git authentication is runtime-only, clears other helpers, and does not embed the token in arguments or config', () => {
   const temp = mkdtempSync(join(tmpdir(), 'yourbuddy-auth-test-'))
   try {
-    execute(temp, ['init'])
+    const baseEnv = fixtureEnvironment(temp)
+    execute(temp, ['init'], baseEnv)
     const config = join(temp, '.git/config')
     const before = readFileSync(config, 'utf8')
-    const env = publicationEnvironment({ ...process.env, ...context })
+    const env = publicationEnvironment({ ...baseEnv, ...context })
     assert.equal(env.GIT_TERMINAL_PROMPT, '0')
     assert.equal(env.GIT_CONFIG_VALUE_0, '')
     assert.equal(env.GIT_COMMITTER_NAME, 'github-actions[bot]')
@@ -135,7 +149,7 @@ test('Git authentication is runtime-only, clears other helpers, and does not emb
     assert.ok(credential.stdout.includes(`password=${context.GH_TOKEN}`), 'helper must use the synthetic process token')
     assert.ok(!credential.stderr.includes(context.GH_TOKEN), 'helper must not log the token')
     assert.equal(readFileSync(config, 'utf8'), before)
-    const unscoped = spawnSync('git', ['config', '--local', '--get-all', 'credential.https://github.com.helper'], { cwd: temp })
+    const unscoped = spawnSync('git', ['config', '--local', '--get-all', 'credential.https://github.com.helper'], { cwd: temp, env: baseEnv })
     assert.equal(unscoped.status, 1)
     assert.equal(context.GIT_CONFIG_COUNT, undefined)
     assert.throws(() => publicationEnvironment({ GH_TOKEN: '' }), /token/u)
@@ -149,8 +163,8 @@ test('the unchanged publisher creates an annotated tag atomically in an isolated
   const physical = join(temp, 'physical')
   const alias = join(temp, 'alias')
   const remote = join(temp, 'remote.git')
-  const env = publicationEnvironment({ ...process.env, ...context, GIT_AUTHOR_NAME: 'Fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid' })
   try {
+    const env = publicationEnvironment({ ...fixtureEnvironment(temp), ...context, GIT_AUTHOR_NAME: 'Fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid' })
     mkdirSync(physical)
     symlinkSync(physical, alias, 'junction')
     const aliasedCheckout = join(alias, 'checkout')

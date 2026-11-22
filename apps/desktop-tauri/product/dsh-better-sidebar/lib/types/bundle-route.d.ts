@@ -1,4 +1,5 @@
-import type { Context, SidebarHttpRequest, SidebarHttpResponse } from './context-types.ts';
+import type { Context } from './context-types.ts';
+import type { SidebarHttpRequest, SidebarHttpResponse } from './host-http.ts';
 /** The chunk names the client may request (mirror of src/client/chunk-loader.ts). */
 export declare const CHUNK_NAMES: readonly ["editor", "mermaid", "locale", "terminal"];
 export type ChunkName = (typeof CHUNK_NAMES)[number];

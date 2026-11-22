@@ -54897,7 +54897,7 @@ globalThis.__dshChunks__["editor"] = (require) => {
 	function claimingNativeKind(ctx, address) {
 		try {
 			const tabs = ctx.get("sidebarRightTabs");
-			if (tabs === void 0 || typeof tabs.candidates !== "function") return void 0;
+			if (tabs === void 0) return void 0;
 			const best = tabs.candidates(address)[0];
 			return best !== void 0 && best.kind !== void 0 && best.kind !== EDITOR_KIND ? best.kind : void 0;
 		} catch (error) {
@@ -55823,10 +55823,10 @@ globalThis.__dshChunks__["editor"] = (require) => {
 				setLocaleSig(localeSignature());
 			};
 			sync();
-			const locale = ctx.locale;
-			const betterLocale = typeof ctx.get === "function" ? ctx.get("betterLocale") : void 0;
-			const offLocale = locale?.subscribe?.(sync);
-			const offOverride = betterLocale?.subscribe?.(sync);
+			const locale = ctx.get("locale");
+			const betterLocale = ctx.get("betterLocale");
+			const offLocale = locale?.subscribe(sync);
+			const offOverride = betterLocale?.subscribe(sync);
 			return () => {
 				offLocale?.();
 				offOverride?.();

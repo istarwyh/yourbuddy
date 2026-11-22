@@ -36,13 +36,14 @@
     "build:offline": "tauri build --target aarch64-apple-darwin --bundles app --config src-tauri/tauri.offline.conf.json && tauri bundle --target aarch64-apple-darwin --bundles dmg --config src-tauri/tauri.offline.conf.json --ci",
     "prepare:product-runtime": "node scripts/prepare-yourbuddy-runtime.mjs",
     "build:components": "node scripts/build-bootstrap-components.mjs",
-    "test:components": "node --test scripts/prepare-capability-components.test.mjs scripts/build-bootstrap-components.test.mjs scripts/normalize-component-signature.test.mjs scripts/release-component-pipeline.test.mjs",
+    "test:components": "node --test scripts/assert-bootstrap-resources.test.mjs scripts/prepare-capability-components.test.mjs scripts/build-bootstrap-components.test.mjs scripts/normalize-component-signature.test.mjs scripts/release-component-pipeline.test.mjs",
     "build:win": "tauri build --bundles nsis",
     "test:bootstrap": "node --test scripts/splash-state.test.mjs",
     "test:native-overlay": "cargo test --locked --manifest-path scripts/native-overlay-renderer/Cargo.toml",
     "test:design": "node scripts/test-bundled-design.mjs"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/dsh-api-session-controller": "workspace:*",
     "@deepseek-ai/dsh-client-test-runtime": "workspace:*",
     "@deepseek-ai/dsh-client-ui-conversation": "workspace:*",
@@ -51,6 +52,7 @@
     "@deepseek-ai/dsh-subagent": "workspace:*",
     "@tauri-apps/cli": "^2.9.6",
     "cross-env": "^7.0.3",
+    "clsx": "^2.1.1",
     "playwright": "^1.49.0",
     "semver": "^7.8.5",
     "smol-toml": "^1.7.1"

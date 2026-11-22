@@ -1006,6 +1006,31 @@ index bd6cd38fdb81fc41486c0a4121300a102dde8864..db87effb0da096af1352d7c706b4dcbe
  <details>
  <summary>实现细节——点击展开</summary>
  
+diff --git a/packages/client/ui-workspace/src/client/rows/Rows.module.css b/packages/client/ui-workspace/src/client/contract/Rows.module.css
+similarity index 100%
+rename from packages/client/ui-workspace/src/client/rows/Rows.module.css
+rename to packages/client/ui-workspace/src/client/contract/Rows.module.css
+diff --git a/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css b/packages/client/ui-workspace/src/client/contract/WorkspaceBrowser.module.css
+similarity index 98%
+rename from packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css
+rename to packages/client/ui-workspace/src/client/contract/WorkspaceBrowser.module.css
+index 52b630a3648e520067d319989f5cbda1370d6b42..48a7bf66590bcaa500d339ce5f0740114834d519 100644
+--- a/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css
++++ b/packages/client/ui-workspace/src/client/contract/WorkspaceBrowser.module.css
+@@ -647,3 +647,13 @@
+     transition: none;
+   }
+ }
++
++.auxiliary {
++  flex: 0 1 42%;
++  min-height: 160px;
++  max-height: 420px;
++  margin: 8px calc(-1 * var(--dsh-session-list-edge-inset)) 0 -4px;
++  padding: 8px var(--dsh-session-list-edge-inset) 0 4px;
++  border-top: 0.5px solid var(--dsw-alias-border-l1);
++  overflow: hidden;
++}
 diff --git a/packages/client/ui-workspace/src/client/contract/slots.ts b/packages/client/ui-workspace/src/client/contract/slots.ts
 index e71545191ab5f00af853ed259c7b1352395aedff..8f1f522e446122812f8bb5a3e901d69edbb445ad 100644
 --- a/packages/client/ui-workspace/src/client/contract/slots.ts
@@ -1088,28 +1113,32 @@ index 3405214331797439100d8d6056780c823928d891..4fa45a837d83fab564fa291c5ff8b4a0
          'sidebar.workspaces.session.row.action': { kind: 'list', scope: 'root' },
          'sidebar.session.row.leading': { kind: 'list', scope: 'root', inline: true },
          'sidebar.session.row.trailing': { kind: 'list', scope: 'root', inline: true },
-diff --git a/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css b/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css
-index 52b630a3648e520067d319989f5cbda1370d6b42..48a7bf66590bcaa500d339ce5f0740114834d519 100644
---- a/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css
-+++ b/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.module.css
-@@ -647,3 +647,13 @@
-     transition: none;
-   }
- }
-+
-+.auxiliary {
-+  flex: 0 1 42%;
-+  min-height: 160px;
-+  max-height: 420px;
-+  margin: 8px calc(-1 * var(--dsh-session-list-edge-inset)) 0 -4px;
-+  padding: 8px var(--dsh-session-list-edge-inset) 0 4px;
-+  border-top: 0.5px solid var(--dsw-alias-border-l1);
-+  overflow: hidden;
-+}
+diff --git a/packages/client/ui-workspace/src/client/rows/Rows.tsx b/packages/client/ui-workspace/src/client/rows/Rows.tsx
+index 04b56cb10cd8d7835b2bb8c3163a67545621f51c..4b24b734aa34b58eaa0c1818d6073b2b78a6f5ce 100644
+--- a/packages/client/ui-workspace/src/client/rows/Rows.tsx
++++ b/packages/client/ui-workspace/src/client/rows/Rows.tsx
+@@ -25,7 +25,7 @@ import { abbreviateHomePath } from '@deepseek-ai/dsh-util-workspace-path'
+ import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
+ import type { WorkspaceBrowserProps } from '../contract/slots.ts'
+ import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
+-import css from './Rows.module.css'
++import css from '../contract/Rows.module.css'
+ 
+ /** Sidebar-owned layout values needed by row copies mounted outside the sidebar. */
+ const DRAG_PREVIEW_PROPERTIES = [
 diff --git a/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.tsx b/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.tsx
-index f7c7f1ff0495e35f820e92051827ef69cb5e51f8..13ecc899559c352f1358914f6094bb10edfbbd5e 100644
+index f7c7f1ff0495e35f820e92051827ef69cb5e51f8..85b97042d75191e530ada13dc1660a85ead08aff 100644
 --- a/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.tsx
 +++ b/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.tsx
+@@ -40,7 +40,7 @@ import {
+ import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './Rows.tsx'
+ import { FLAT_SESSION_ORDER_KEY, type SessionGroupBy } from '../stores.ts'
+ import { WorkspacePickFlow } from '../WorkspacePicker.tsx'
+-import css from './WorkspaceBrowser.module.css'
++import css from '../contract/WorkspaceBrowser.module.css'
+ 
+ /**
+  * Column slide length (--ds-transition-duration-slow): rail-search focus waits it out —
 @@ -914,6 +914,7 @@ export function WorkspaceBrowser({
    searchSessions,
    searchResultLimit,
@@ -1135,6 +1164,60 @@ index f7c7f1ff0495e35f820e92051827ef69cb5e51f8..13ecc899559c352f1358914f6094bb10
        {workspaceActionRequest !== null && <WorkspaceDialogs key={`${workspaceActionRequest.action}/${workspaceActionRequest.workspaceId}`}
          request={workspaceActionRequest} workspaces={workspaces} renameWorkspace={renameWorkspace} deleteWorkspace={deleteWorkspace}
          settleWorkspaceAction={settleWorkspaceAction} t={t} />}
+diff --git a/packages/client/ui-workspace/src/client/rows/WorkspaceDialogs.tsx b/packages/client/ui-workspace/src/client/rows/WorkspaceDialogs.tsx
+index f11477a6d23115178ef76f130fa448870a3e8193..6cf7d009ed8302ff260ab344ccbcc020038b1a06 100644
+--- a/packages/client/ui-workspace/src/client/rows/WorkspaceDialogs.tsx
++++ b/packages/client/ui-workspace/src/client/rows/WorkspaceDialogs.tsx
+@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
+ import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+ import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+ import type { WorkspaceActionRequest, WorkspaceBrowserProps } from '../contract/slots.ts'
+-import css from './WorkspaceBrowser.module.css'
++import css from '../contract/WorkspaceBrowser.module.css'
+ 
+ type Props = Pick<WorkspaceBrowserProps, 'renameWorkspace' | 'deleteWorkspace' | 'settleWorkspaceAction' | 't'> & {
+   request: WorkspaceActionRequest
+diff --git a/packages/client/ui-workspace/src/client/session-actions/ArchiveSession.tsx b/packages/client/ui-workspace/src/client/session-actions/ArchiveSession.tsx
+index fb7dacb17a65815e2b1db9781b7e5d8f2a197476..311a769a8465e564181b067a684ee9897fbf30ec 100644
+--- a/packages/client/ui-workspace/src/client/session-actions/ArchiveSession.tsx
++++ b/packages/client/ui-workspace/src/client/session-actions/ArchiveSession.tsx
+@@ -13,8 +13,8 @@ import type {
+   ArchiveSessionInjected, SessionArchiveConfirmInjected, SessionArchiveConfirmProps, SessionArchiveConfirmRequest,
+   SessionRowActionProps,
+ } from '../contract/slots.ts'
+-import css from '../rows/Rows.module.css'
+-import browserCss from '../rows/WorkspaceBrowser.module.css'
++import css from '../contract/Rows.module.css'
++import browserCss from '../contract/WorkspaceBrowser.module.css'
+ 
+ /**
+  * Hover button (order 100): archive, or restore an archived row. Absent while the Session's access
+diff --git a/packages/client/ui-workspace/src/client/session-actions/PinSession.tsx b/packages/client/ui-workspace/src/client/session-actions/PinSession.tsx
+index 68e10b7a4cb7591b150505519c349f9b77b68a4c..e98ca750c43aa4f102d6089ead68a47731108500 100644
+--- a/packages/client/ui-workspace/src/client/session-actions/PinSession.tsx
++++ b/packages/client/ui-workspace/src/client/session-actions/PinSession.tsx
+@@ -4,7 +4,7 @@ import {
+ } from '@deepseek-ai/dsh-client-ui-primitives'
+ import clsx from 'clsx'
+ import type { PinSessionInjected, SessionRowActionProps } from '../contract/slots.ts'
+-import css from '../rows/Rows.module.css'
++import css from '../contract/Rows.module.css'
+ 
+ type PinState = Pick<SessionRowActionProps<PinSessionInjected>, 'sessionId' | 'usePinned' | 'useArchived' | 'useSessionAccess'>
+ 
+diff --git a/packages/client/ui-workspace/src/client/session-actions/RenameSession.tsx b/packages/client/ui-workspace/src/client/session-actions/RenameSession.tsx
+index 18db3fcf9ba1046252f500340c8557e3b356f4d9..c4c95a552eff8f586b5b5a1d82a9312228ec42fe 100644
+--- a/packages/client/ui-workspace/src/client/session-actions/RenameSession.tsx
++++ b/packages/client/ui-workspace/src/client/session-actions/RenameSession.tsx
+@@ -4,7 +4,7 @@ import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+ import type {
+   SessionRenameDialogInjected, SessionRenameDialogProps, SessionRenameTarget,
+ } from '../contract/slots.ts'
+-import css from '../rows/WorkspaceBrowser.module.css'
++import css from '../contract/WorkspaceBrowser.module.css'
+ 
+ /**
+  * The `shell.overlay` entry: nothing while no rename is requested, otherwise
 diff --git a/packages/client/ui-workspace/tests/apply.client.spec.ts b/packages/client/ui-workspace/tests/apply.client.spec.ts
 index 4464752088c18aec2e6caa382ef42e5f2f64072a..dbb7522ad971443aa0672cf048b096bbc6987ef8 100644
 --- a/packages/client/ui-workspace/tests/apply.client.spec.ts
@@ -1162,10 +1245,47 @@ index 4464752088c18aec2e6caa382ef42e5f2f64072a..dbb7522ad971443aa0672cf048b096bb
      const dispose = b.slots.register({ name: 'sidebar.workspaces.directoryFlow' } as never, () => null)
      expect(browser.hooks.directoryFlow.getSnapshot()).toBe(true)
      expect(picker.hooks.directoryFlow.getSnapshot()).toBe(false)
+diff --git a/packages/client/ui-workspace/tests/browser-styles.client.spec.ts b/packages/client/ui-workspace/tests/browser-styles.client.spec.ts
+index f3da600c23bafbdd57035bbadce2f07beaa1e207..486a46f8a2257be8166a65b51c1b2ca93e4c2e47 100644
+--- a/packages/client/ui-workspace/tests/browser-styles.client.spec.ts
++++ b/packages/client/ui-workspace/tests/browser-styles.client.spec.ts
+@@ -7,8 +7,8 @@ import { readFileSync } from 'node:fs'
+ import { fileURLToPath } from 'node:url'
+ import { describe, expect, it } from 'vitest'
+ 
+-const css = readFileSync(fileURLToPath(new URL('../src/client/rows/WorkspaceBrowser.module.css', import.meta.url)), 'utf8')
+-const rowsCss = readFileSync(fileURLToPath(new URL('../src/client/rows/Rows.module.css', import.meta.url)), 'utf8')
++const css = readFileSync(fileURLToPath(new URL('../src/client/contract/WorkspaceBrowser.module.css', import.meta.url)), 'utf8')
++const rowsCss = readFileSync(fileURLToPath(new URL('../src/client/contract/Rows.module.css', import.meta.url)), 'utf8')
+ 
+ /**
+  * Declarations of one selector rule, keyed by property with whitespace collapsed.
+diff --git a/packages/client/ui-workspace/tests/rows.client.spec.tsx b/packages/client/ui-workspace/tests/rows.client.spec.tsx
+index 0cc4cac028aeee8cbe07620c60c489de3ed296dc..59b712a067bda177587f65aa4068889ae771e34a 100644
+--- a/packages/client/ui-workspace/tests/rows.client.spec.tsx
++++ b/packages/client/ui-workspace/tests/rows.client.spec.tsx
+@@ -16,7 +16,7 @@ import {
+ } from '../src/client/rows/Rows.tsx'
+ import type { GroupNode, SearchResultNode, SessionNode } from '../src/client/tree.ts'
+ import { en, zh } from '../src/client/locales.ts'
+-import rowCss from '../src/client/rows/Rows.module.css'
++import rowCss from '../src/client/contract/Rows.module.css'
+ import { renderMenuButton } from './menu-button.tsx'
+ 
+ afterEach(cleanup)
 diff --git a/packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx b/packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
-index 5df4923b4fb5920c6bd30e247b1f0686a294c0d9..54dca74fddc04142c132b1cc571fe0b2cb738977 100644
+index 5df4923b4fb5920c6bd30e247b1f0686a294c0d9..bd0a10f081a3f5a0ec7d0832227cf7f5d656d767 100644
 --- a/packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
 +++ b/packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
+@@ -22,7 +22,7 @@ import { createWorkspaceViewStore, FLAT_SESSION_ORDER_KEY } from '../src/client/
+ import { UNGROUPED_KEY } from '../src/client/tree.ts'
+ import { WorkspaceBrowser } from '../src/client/rows/WorkspaceBrowser.tsx'
+ import { renderMenuButton } from './menu-button.tsx'
+-import rowCss from '../src/client/rows/Rows.module.css'
++import rowCss from '../src/client/contract/Rows.module.css'
+ import { zh } from '../src/client/locales.ts'
+ 
+ // Every fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
 @@ -151,6 +151,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
      insertWorkspaceBefore: vi.fn(async () => {}),
      createWorkspace: vi.fn(async () => workspace('created', [])),

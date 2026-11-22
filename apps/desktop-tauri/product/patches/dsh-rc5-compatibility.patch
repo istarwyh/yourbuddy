@@ -1,0 +1,249 @@
+diff --git a/packages/client/ui-chat/src/client/chat/flow-motion.ts b/packages/client/ui-chat/src/client/chat/flow-motion.ts
+index 7deddd0e9a1e49e1dc14d8ac1d1e9c32f53283ba..31b707b319f40f9e337bb1f460f83205116ee73b 100644
+--- a/packages/client/ui-chat/src/client/chat/flow-motion.ts
++++ b/packages/client/ui-chat/src/client/chat/flow-motion.ts
+@@ -6,6 +6,8 @@
+  */
+ import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react'
+ import { useSearchableHidden, type HiddenTransition } from './searchable-hidden.ts'
++import type { FlowMotionRows } from '../contract/flow-motion.ts'
++export type { FlowMotionRows } from '../contract/flow-motion.ts'
+ 
+ const FADE_OUT_MS = 70
+ /** The box starts closing while the fade finishes; by then the row is nearly transparent. */
+@@ -15,22 +17,6 @@ const SETTLE_SLACK_MS = 80
+ const MOTION_SCOPE = '[data-chat-motion]'
+ const EASING = 'cubic-bezier(0.4, 0, 0.2, 1)'
+ 
+-/** Row-local operations supplied by the containing viewport. */
+-export interface FlowMotionRows {
+-  /** @param element - visible row. @param done - commits hidden state before idle callbacks run. */
+-  collapse(element: HTMLElement, done: () => void): void
+-  /** @param element - newly visible row to grow to its natural size. */
+-  reveal(element: HTMLElement): void
+-  /** @param element - row whose active transition should be cancelled without hiding it. */
+-  cancelMotion(element: HTMLElement): void
+-  /**
+-   * Hide a row at once, outside a motion scope; the owning viewport measures the layout first.
+-   * @param element - visible row.
+-   * @param commit - applies the hidden state.
+-   */
+-  hideNow?(element: HTMLElement, commit: () => void): void
+-}
+-
+ /** Geometry captured before one fold batch changes its boxes. */
+ export interface InputFoldBox {
+   readonly element: HTMLElement
+diff --git a/packages/client/ui-chat/src/client/contract/flow-motion.ts b/packages/client/ui-chat/src/client/contract/flow-motion.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d3bc4a932afb41352325fc5d3eacc57e0ae9a6f0
+--- /dev/null
++++ b/packages/client/ui-chat/src/client/contract/flow-motion.ts
+@@ -0,0 +1,16 @@
++/** Row motion shared by Chat flow renderers and their viewport owner. */
++/** Row-local operations supplied by the containing viewport. */
++export interface FlowMotionRows {
++  /** @param element - visible row. @param done - commits hidden state before idle callbacks run. */
++  collapse(element: HTMLElement, done: () => void): void
++  /** @param element - newly visible row to grow to its natural size. */
++  reveal(element: HTMLElement): void
++  /** @param element - row whose active transition should be cancelled without hiding it. */
++  cancelMotion(element: HTMLElement): void
++  /**
++   * Hide a row at once, outside a motion scope; the owning viewport measures the layout first.
++   * @param element - visible row.
++   * @param commit - applies the hidden state.
++   */
++  hideNow?(element: HTMLElement, commit: () => void): void
++}
+diff --git a/packages/client/ui-chat/src/client/contract/slots.ts b/packages/client/ui-chat/src/client/contract/slots.ts
+index 676bb3fb2d851366bd4c67cd7c34a3efc3db6682..8d50cee4dcd17c072546df914a27073c732ef6c3 100644
+--- a/packages/client/ui-chat/src/client/contract/slots.ts
++++ b/packages/client/ui-chat/src/client/contract/slots.ts
+@@ -25,7 +25,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+ import type { createChatStore } from '../stores.ts'
+ import type { ChatPresentationPolicy } from '../presentation-policy.ts'
+-import type { FlowMotionRows } from '../chat/flow-motion.ts'
++import type { FlowMotionRows } from './flow-motion.ts'
+ import type { ToolCallId } from './store.ts'
+ import type { ChatConversationViewNode, ChatNode, ChatNodeKind } from './chat-nodes.ts'
+ import type {
+@@ -347,6 +347,8 @@ export interface ChatViewInjected {
+   /** Open one HTTP(S) message link at the selected destination, using an external tab if Sidebar Browser is unavailable. */
+   openExternalLink: (url: string) => void
+   openFile: (path: string, options?: OpenFileOptions) => Promise<void>
++  /** Replace a failed history stream with a fresh Session generation. */
++  retryOpen: () => void
+   /** Prepare one older page without publishing it. */
+   loadOlder: () => void
+   /** Consume the prepared page synchronously; false when none is ready. */
+diff --git a/packages/client/ui-tool/src/client/contract/file-menu.ts b/packages/client/ui-tool/src/client/contract/file-menu.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d8d21e279c8dede70dcee99f31fef3c9369bcdd1
+--- /dev/null
++++ b/packages/client/ui-tool/src/client/contract/file-menu.ts
+@@ -0,0 +1,6 @@
++/** Path-resolution callbacks shared by Tool slots and their providers. */
++/** File paths are resolved when a gesture begins, not when the Slot is mounted. */
++export interface ToolFileInjected {
++  /** Resolve an argument from the live Session directory. @param path - Recorded path. @returns Host path. */
++  resolveFilePath: (path: string) => string
++}
+diff --git a/packages/client/ui-tool/src/client/contract/slots.ts b/packages/client/ui-tool/src/client/contract/slots.ts
+index d3f45dc789d6d9dd3b05ee998599ed0f96d609e4..b6f80037ae7ba22388abb5467320d92c359ed78e 100644
+--- a/packages/client/ui-tool/src/client/contract/slots.ts
++++ b/packages/client/ui-tool/src/client/contract/slots.ts
+@@ -10,7 +10,7 @@ import type {
+ import type { MessageImageLoader, MessageImageSource } from '@deepseek-ai/dsh-client-ui-conversation/client'
+ import type { AskUserQuestionAnswerItem, AskUserQuestionItem } from '@deepseek-ai/dsh-user-questions/types'
+ import type {} from '@deepseek-ai/dsh-client-locale/client'
+-import type { ToolFileInjected } from '../tool/file-menu.ts'
++import type { ToolFileInjected } from './file-menu.ts'
+ 
+ declare module '@deepseek-ai/dsh-client-ui-slots' {
+   interface SlotMap {
+diff --git a/packages/client/ui-tool/src/client/tool/file-menu.ts b/packages/client/ui-tool/src/client/tool/file-menu.ts
+index 0b0e5377fd4eaec40d732f0f12f807e9da4ad21a..ff4b909275bd0ddf6bac6eafb2c7e54ca1fe4ec3 100644
+--- a/packages/client/ui-tool/src/client/tool/file-menu.ts
++++ b/packages/client/ui-tool/src/client/tool/file-menu.ts
+@@ -3,12 +3,8 @@ import type { Context } from '@deepseek-ai/cordis'
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+ import { resolveWorkspacePath } from '@deepseek-ai/dsh-util-workspace-path'
+-
+-/** File paths are resolved when a gesture begins, not when the Slot is mounted. */
+-export interface ToolFileInjected {
+-  /** Resolve an argument from the live Session directory. @param path - Recorded path. @returns Host path. */
+-  resolveFilePath: (path: string) => string
+-}
++import type { ToolFileInjected } from '../contract/file-menu.ts'
++export type { ToolFileInjected } from '../contract/file-menu.ts'
+ 
+ /**
+  * Bind a toolview's path reader to its originating Session.
+diff --git a/packages/session/session-log-deepseek/src/types.ts b/packages/session/session-log-deepseek/src/types.ts
+index 13561cfe0dc088fb35ef4fbf1653dab0df64f17f..77cd2dd07b19da1c569187c1dff5de4d5a95dfb9 100644
+--- a/packages/session/session-log-deepseek/src/types.ts
++++ b/packages/session/session-log-deepseek/src/types.ts
+@@ -1,5 +1,6 @@
+ /** Wire types for lossless incremental DeepSeek session-log upload. */
+ 
++import type {} from '@deepseek-ai/dsh-deepseek-llm-api-extensions/types'
+ import type { SessionEvent, SessionId, SurfaceEventType } from '@deepseek-ai/dsh-session'
+ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+ 
+diff --git a/packages/terminal/terminal-bash/src/index.ts b/packages/terminal/terminal-bash/src/index.ts
+index bdb60aa1772e81955f2be53a711d6ecaee503782..924431cbe60777502058b238878af0cc128ab08d 100644
+--- a/packages/terminal/terminal-bash/src/index.ts
++++ b/packages/terminal/terminal-bash/src/index.ts
+@@ -14,12 +14,13 @@ import { SubprocessError } from '@deepseek-ai/dsh-subprocess'
+ import type { SubprocessTerminalHandle, SubprocessTerminalSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+ import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
+ import type {} from '@deepseek-ai/dsh-sandbox-policy'
+-import { ENCODING_PREAMBLE } from '@deepseek-ai/dsh-pwsh-local'
++import { pwshBootstrap } from './pwsh-bootstrap.ts'
+ import { type Config, type ResolvedConfig, resolveConfig, type ShellDialect, validateConfig } from './config.ts'
+ import { LocalPtySession } from './session.ts'
+ import { CONTROLLED_PROMPT } from './sanitize.ts'
+ 
+ export { Config } from './config.ts'
++export { PWSH_PROMPT_SETUP } from './pwsh-bootstrap.ts'
+ export type { Config as TerminalLocalConfig } from './config.ts'
+ 
+ /** Cordis plugin name. */
+@@ -86,15 +87,6 @@ function childEnvironment(spec: TerminalBackendSpawnSpec, dialect: ShellDialect)
+   }
+ }
+ 
+-/**
+- * The pwsh prompt function that emits the shared OSC `133;D;` + BEL marker
+- * before every prompt, mirroring bash's PROMPT_COMMAND. `[char]27`/`[char]7`
+- * build the control bytes at runtime because raw ESC characters in submitted
+- * input are unreliable under PSReadLine.
+- */
+-export const PWSH_PROMPT_SETUP =
+-  "function prompt { [Console]::Write([char]27 + ']133;D;' + [int]$LASTEXITCODE + [char]7); '" + CONTROLLED_PROMPT + "' }"
+-
+ /** The startup deadline failure shared by both dialects. */
+ function startupTimeout(): TerminalError {
+   return new TerminalError('PTY shell did not reach readiness before startup timeout', 'STARTUP_TIMEOUT')
+@@ -114,9 +106,18 @@ async function spawnArgv(ctx: Context, config: ResolvedConfig, policy: SandboxEx
+ // TODO(pty-initialize-race-home): Fold this outer abort race into
+ // LocalPtySession.initialize when the send-state consolidation lands; the
+ // session already owns the send lifecycle the race protects.
++// The pwsh startup loop must not mistake the echoed bootstrap for the real
++// prompt: the echoed source carries the prompt literal mid-line (inside
++// quotes), so text matching cannot tell them apart. The session's
++// marker-gated prompt tracking only flips once the owned OSC marker is
++// followed by the rendered prompt text, which the echo never produces.
++// POSIX PSReadLine also positions the prompt with cursor addressing rather
++// than newlines, so no line-oriented text pattern can see it at all.
++
+ async function startupSession(
+   session: LocalPtySession,
+   dialect: ShellDialect,
++  platform: NodeJS.Platform,
+   timeoutMs: number,
+   signal?: AbortSignal,
+ ): Promise<void> {
+@@ -135,7 +136,7 @@ async function startupSession(
+     for (;;) {
+       const first = viewport.length === 0
+       startupOperation = session.startSend({
+-        text: first ? ENCODING_PREAMBLE + PWSH_PROMPT_SETUP : '',
++        text: first ? pwshBootstrap(platform) : '',
+         submit: first,
+         ...signal !== undefined ? { signal } : {},
+       })
+@@ -143,7 +144,7 @@ async function startupSession(
+       if (result.waitReason === 'session_exit') throw new TerminalError('PTY shell exited during startup', 'STARTUP_EXITED')
+       if (result.waitReason === 'timeout') throw startupTimeout()
+       viewport = result.viewport
+-      if (result.waitReason === 'stdin_read') break
++      if (session.controlledPromptRendered) break
+     }
+     session.motd = viewport
+   }
+@@ -197,6 +198,7 @@ export class BashTerminalBackend implements TerminalBackend {
+       terminal: SubprocessTerminalHandle,
+       config: ResolvedConfig,
+     ) => LocalPtySession = (terminal, config) => new LocalPtySession(terminal, config),
++    private readonly platform: NodeJS.Platform = process.platform,
+   ) {
+     this.type = config.backendType
+   }
+@@ -225,7 +227,7 @@ export class BashTerminalBackend implements TerminalBackend {
+       return rejectAfterStartupCleanup(error, () => terminal.terminate())
+     }
+     try {
+-      await startupSession(session, this.config.shellDialect, this.config.timeoutMs, spec.signal)
++      await startupSession(session, this.config.shellDialect, this.platform, this.config.timeoutMs, spec.signal)
+       return session
+     } catch (error) {
+       return rejectAfterStartupCleanup(error, () => session.close('PTY startup failed'))
+diff --git a/packages/terminal/terminal-bash/src/pwsh-bootstrap.ts b/packages/terminal/terminal-bash/src/pwsh-bootstrap.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..0c9345489dfd0e5e3861562ee345af238b5d7d95
+--- /dev/null
++++ b/packages/terminal/terminal-bash/src/pwsh-bootstrap.ts
+@@ -0,0 +1,19 @@
++/** PowerShell prompt installation and platform-specific terminal rendering setup. */
++import { ENCODING_PREAMBLE } from '@deepseek-ai/dsh-pwsh-local'
++import { CONTROLLED_PROMPT } from './sanitize.ts'
++
++/** Emit the shared completion marker before the controlled PowerShell prompt. */
++export const PWSH_PROMPT_SETUP =
++  "function prompt { [Console]::Write([char]27 + ']133;D;' + [int]$LASTEXITCODE + [char]7); '" + CONTROLLED_PROMPT + "' }"
++
++/** Disable the multi-pass PSReadLine rendering that ConPTY serializes into scrollback. */
++export const PWSH_DISABLE_PSREADLINE = 'Remove-Module PSReadLine -ErrorAction SilentlyContinue; '
++
++/**
++ * Install UTF-8 output and the controlled prompt, retaining PSReadLine on POSIX.
++ * @param platform Host platform; PSReadLine removal is Windows-only.
++ * @returns The first submitted PowerShell command.
++ */
++export function pwshBootstrap(platform: NodeJS.Platform): string {
++  return ENCODING_PREAMBLE + (platform === 'win32' ? PWSH_DISABLE_PSREADLINE : '') + PWSH_PROMPT_SETUP
++}

@@ -7,6 +7,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const outRoot = join(desktopRoot, 'bundled', 'toolchain')
 
+/** Fixed pnpm package embedded in Bootstrap and Offline resources. */
+export const PNPM_ARTIFACT = {
+  file: 'pnpm-11.28.5.tgz',
+  url: 'https://registry.npmjs.org/pnpm/-/pnpm-11.28.5.tgz',
+  algorithm: 'sha512',
+  encoding: 'base64',
+  digest: 'SEVj0wtMKtJ8tIqpT/KzAtvOvI/2vyiBbCWJiG4UbOf3bzVPO8GkOOb16XaMMCqgpvet2CMpA81M+BQmy8FNng==',
+}
+
 export const TOOLCHAIN_ARTIFACTS = [
   {
     file: 'node-v24.22.3-darwin-arm64.tar.gz',
@@ -15,13 +24,7 @@ export const TOOLCHAIN_ARTIFACTS = [
     encoding: 'hex',
     digest: 'ff6e17d4874b76d272212b908cc020d6e815fba5a6c7eaaa06add725840307fd',
   },
-  {
-    file: 'pnpm-11.28.5.tgz',
-    url: 'https://registry.npmjs.org/pnpm/-/pnpm-11.28.5.tgz',
-    algorithm: 'sha512',
-    encoding: 'base64',
-    digest: 'SEVj0wtMKtJ8tIqpT/KzAtvOvI/2vyiBbCWJiG4UbOf3bzVPO8GkOOb16XaMMCqgpvet2CMpA81M+BQmy8FNng==',
-  },
+  PNPM_ARTIFACT,
 ]
 
 export function artifactMatches(bytes, artifact) {

@@ -278,3 +278,5 @@ Windows / Linux / macOS 三平台适配（macOS 日常验证，其余经单元�
 YourBuddy 设置 `presentation: slot`，将底部工作台渲染到 `workbench.core`；`portal` 保留上游位置。创建首个会话前，已注册卡片仍显示，但不可点击。用户主动打开文件可以展开对应阅读器；后台打开保留当前文档和工作台焦点。PDF 和 Office 文档使用原生阅读器，不替换 Files 文件树。终端适配器使用 DSH 终端工厂，并在工作台记录存续期间保留各终端页签。
 
 [重建脚本](../../scripts/rebuild-better-sidebar.mjs) 使用该发行版固定的源码和依赖锁、当前工作区的服务属主以及上游构建命令。脚本在专属暂存目录比较两次清理后的完整输出，不自动替换此快照。[YOURBUDDY_UPSTREAM.json](./YOURBUDDY_UPSTREAM.json) 记录源码和归档身份，以及可重放的产品补丁。
+
+原生侧栏、工作区导航和终端使用所属包公开的服务类型。Side Chat 种子保留 Session 事件联合类型，包括压缩和投递记录；HTTP 路由类型仅进入 Host 声明依赖图。

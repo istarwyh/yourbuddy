@@ -4,7 +4,7 @@
  * `{ok: true, value}` on success and `{ok: false, error: {code, message}}`
  * (HTTP 4xx/5xx matching the code) on failure.
  */
-import type { SidebarHttpRequest, SidebarHttpResponse } from './context-types.ts';
+import type { SidebarHttpRequest, SidebarHttpResponse } from './host-http.ts';
 /** Machine-readable error codes of the sidebar API. */
 export type SidebarErrorCode = 'bad-request' | 'not-found' | 'forbidden' | 'method-error' | 'too-large' | 'unavailable' | 'fs-error' | 'fs-directory' | 'fs-conflict' | 'git-error' | 'graph-stale' | 'graph-limit' | 'git-suggest-empty' | 'git-suggest-error' | 'job-error' | 'team-error' | 'team-conflict' | 'sidechat-error' | 'subagents-unavailable' | 'settings-rejected' | 'settings-conflict' | 'internal';
 /** One API failure with its wire code and HTTP status. */

@@ -13,19 +13,19 @@
     {
       "id": "yourbuddy-0.32.1-source",
       "file": "patches/better-sidebar-0.32.1-yourbuddy-source.patch",
-      "sha256": "977d7ca6e099989f51d9e2ae3c4309abc71a508772ffaa6bc224bdab7103cbeb",
+      "sha256": "856d8a423dcbf46195fe53d7bbfb234415a8f947aae54795f6c68a9cc23af82b",
       "purpose": "Port product slot placement, main-view Session selection, targeted native occurrence actions, terminal factory retention, document routing, desktop links and owned composer APIs onto official 0.32.1 source."
     },
     {
       "id": "yourbuddy-0.32.1-metadata",
       "file": "patches/better-sidebar-0.32.1-yourbuddy-metadata.patch",
-      "sha256": "a1b5e6a0027b68e9c24fe83eabf324d7e150ace4033de84bb428425737d27d12",
+      "sha256": "bdef34562539852160a6ee900cfa44c5e7858b28c53cde0a669330d6cb02e5e2",
       "purpose": "Pin DSH peers to 0.2.2-rc.5, declare product terminal and optional native-service owners, and document the product integration."
     },
     {
       "id": "yourbuddy-0.32.1-emitted",
       "file": "patches/better-sidebar-0.32.1-yourbuddy-emitted.patch",
-      "sha256": "26d6adfa1834c6cfa164e995e12240b1d0161cda5ddae8e5d8837aa533f4f405",
+      "sha256": "80868af13cee79e525411b9e0ac0018edcaeef2ccd56518782ba6b7cc579554e",
       "purpose": "Rebuild published JavaScript and declarations from the migrated 0.32.1 source using the pinned upstream recipe and current workspace owners."
     }
   ],
@@ -67,7 +67,7 @@
       "scripts/mermaid-frame-entry.mjs": "454edfaa390f45d1134b23cfc49771a93441c818bb1b48fbf4e66481a6128fe4"
     },
     "sortedConfigSha256": "33698fd6d9d91b5a13faa7cd5b0671f31b186c55695a63ce9c8ef42a69989b04",
-    "node": "v26.1.0",
+    "node": "v24.22.3",
     "pnpm": "11.8.0",
     "typescript": "5.6.2",
     "tsdown": "0.22.14",
@@ -81,9 +81,9 @@
     },
     "workspaceOwners": 383,
     "identicalCleanBuilds": true,
-    "outputFiles": 267
+    "outputFiles": 269
   },
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "3456c08f52b50d9f90425a1e32d2c5242d8b4ef7e4debc1ef54c2847cd52406a"
+  "treeSha256": "f5b504e0f3cf657b1d0d2acd4025463d5760afbafeb2893adfb430f02f36bb37"
 }

@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { Context } from '@deepseek-ai/cordis'
 import { registerWorkbenchTerminal } from '../product/dsh-better-sidebar/src/client/native/terminal-adapter.tsx'
 import { nativeTabDescriptors } from '../product/dsh-better-sidebar/src/client/native/index.ts'
 import type { BetterSidebarService, TabDescriptor } from '../product/dsh-better-sidebar/src/client/service.ts'
@@ -12,7 +13,7 @@ function stateWith(...tabs: Array<{ id: string; type: string; title: string }>):
 }
 
 describe('Better Sidebar terminal adapter', () => {
-  it('renders the DSH terminal factory and retains cached Session occurrences until close', () => {
+  it('renders the DSH terminal factory and retains cached Session occurrences until close', async () => {
     const releaseA = vi.fn()
     const releaseB = vi.fn()
     const retainTab = vi.fn()
@@ -20,7 +21,9 @@ describe('Better Sidebar terminal adapter', () => {
       .mockReturnValueOnce(releaseB)
     const close = vi.fn()
     const terminals = { retainTab, close }
-    const ctx = { get: (name: string) => name === 'webTerminals' ? terminals : undefined }
+    const ctx = new Context()
+    onTestFinished(() => ctx.fiber.dispose())
+    ctx.provide('webTerminals', terminals)
     const states = new Map<string, SidebarState>([
       ['session-a', stateWith({ id: 'terminal:a', type: 'terminal', title: 'Terminal' })],
       ['session-b', stateWith({ id: 'terminal:b', type: 'terminal', title: 'Terminal' })],
@@ -43,7 +46,7 @@ describe('Better Sidebar terminal adapter', () => {
     }
 
     const dispose = registerWorkbenchTerminal(ctx, store, service as never)
-    expect(retainTab.mock.calls).toEqual([
+    await expect.poll(() => retainTab.mock.calls).toEqual([
       [{ sessionId: 'session-a', tabId: 'terminal:a', contentId: 'better-sidebar:session-a:terminal:a' }],
       [{ sessionId: 'session-b', tabId: 'terminal:b', contentId: 'better-sidebar:session-b:terminal:b' }],
     ])
@@ -79,7 +82,7 @@ describe('Better Sidebar terminal adapter', () => {
     expect(releaseB).not.toHaveBeenCalled()
 
     dispose()
-    expect(releaseB).toHaveBeenCalledOnce()
+    await expect.poll(() => releaseB.mock.calls.length).toBe(1)
     expect(disposeDescriptor).toHaveBeenCalledOnce()
   })
 

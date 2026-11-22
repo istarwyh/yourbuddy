@@ -4246,7 +4246,6 @@ function byteRangeOf(header, size) {
 *  already committed and the connection is destroyed instead.
 */
 async function streamFileToResponse(path, size, res, headers, range) {
-	const node = res;
 	const stream = range === void 0 ? createReadStream(path) : createReadStream(path, {
 		start: range.start,
 		end: range.end
@@ -4267,9 +4266,9 @@ async function streamFileToResponse(path, size, res, headers, range) {
 		"content-length": String(range.end - range.start + 1)
 	});
 	try {
-		await pipeline(stream, node);
+		await pipeline(stream, res);
 	} catch {
-		node.destroy();
+		res.destroy();
 	}
 }
 // src/archive-tools.ts
@@ -5434,18 +5433,7 @@ function dataOf(event) {
 *  The FULL envelope is preserved — stripping `surfaceOp` would make the
 *  seed validator reject every surface-eligible message event. */
 function copyEvents(events) {
-	return events.map((event) => {
-		const source = event;
-		return {
-			type: source.type,
-			seq: source.seq,
-			time: source.time,
-			data: dataOf(source),
-			...source.surfaceOp === void 0 ? {} : { surfaceOp: source.surfaceOp },
-			...source.sourceEventSeqs === void 0 ? {} : { sourceEventSeqs: source.sourceEventSeqs },
-			...source.ignorable === void 0 ? {} : { ignorable: source.ignorable }
-		};
-	});
+	return events.map((event) => ({ ...event }));
 }
 /** Index of the last `turn/start` or `turn/end`, or -1. */
 function lastTurnBoundary(events) {
@@ -5948,15 +5936,6 @@ function headSkeleton(events, slots) {
 			break;
 		}
 	}
-	const normalized = (event, over) => {
-		const data = { ...dataOf(event) };
-		if (over.turn !== void 0 && typeof data.turn === "number") data.turn = over.turn;
-		if (over.step !== void 0 && typeof data.step === "number") data.step = over.step;
-		return {
-			...event,
-			data
-		};
-	};
 	const parts = [];
 	if (turnStart !== void 0) {
 		const turn = dataOf(turnStart).turn;
@@ -5970,12 +5949,12 @@ function headSkeleton(events, slots) {
 			if (nodeData.turn !== turn && nodeData.turn !== void 0) return void 0;
 			if (stepStart !== void 0 && nodeData.step !== step && nodeData.step !== void 0) return void 0;
 		}
-		parts.push(normalized(turnStart, { turn: 1 }));
-		if (stepStart !== void 0) parts.push(normalized(stepStart, {
+		parts.push(normalizeEventCounters(turnStart, { turn: 1 }));
+		if (stepStart !== void 0) parts.push(normalizeEventCounters(stepStart, {
 			turn: 1,
 			step: 1
 		}));
-		for (const slot of slots) parts.push(normalized(slot.effective, {
+		for (const slot of slots) parts.push(normalizeEventCounters(slot.effective, {
 			turn: 1,
 			...stepStart !== void 0 ? { step: 1 } : {}
 		}));
@@ -5984,7 +5963,7 @@ function headSkeleton(events, slots) {
 			const event = events[index];
 			if (event === void 0) break;
 			if (!closedStep && event.type === "step/end" && typeof step === "number" && dataOf(event).step === step && dataOf(event).turn === turn) {
-				parts.push(normalized(event, {
+				parts.push(normalizeEventCounters(event, {
 					turn: 1,
 					step: 1
 				}));
@@ -5992,7 +5971,7 @@ function headSkeleton(events, slots) {
 				continue;
 			}
 			if (event.type === "turn/end" && dataOf(event).turn === turn) {
-				parts.push(normalized(event, { turn: 1 }));
+				parts.push(normalizeEventCounters(event, { turn: 1 }));
 				break;
 			}
 			if (event.type === "turn/start") break;
@@ -6075,21 +6054,23 @@ function sameVisibleSequence(parent, parentNodes, childNodes, child) {
 /** Sentinel: the event is log-only metering whose referenced span did not
 *  survive the rebase — drop it instead of aborting the whole tail. */
 const DROPPED = Symbol("dropped");
+function normalizeEventCounters(event, over) {
+	const data = { ...event.data };
+	if (over.turn !== void 0 && "turn" in data && typeof data.turn === "number") data.turn = over.turn;
+	if (over.step !== void 0 && "step" in data && typeof data.step === "number") data.step = over.step;
+	return {
+		...event,
+		data
+	};
+}
 function rebaseEvent(event, seq, rebase, turnOffset, firstKeptTurn) {
-	const source = event;
-	const seed = {
-		type: source.type,
-		seq,
-		time: source.time,
-		data: dataOf(source)
+	let seed = {
+		...event,
+		seq
 	};
-	if (source.ignorable === true) seed.ignorable = true;
 	const sourceData = dataOf(event);
-	if (turnOffset > 0 && typeof sourceData.turn === "number" && firstKeptTurn !== void 0 && sourceData.turn >= firstKeptTurn) seed.data = {
-		...seed.data,
-		turn: sourceData.turn - turnOffset
-	};
-	if (event.type === "command/done" && typeof sourceData.sourceEventSeq === "number") {
+	if (turnOffset > 0 && typeof sourceData.turn === "number" && firstKeptTurn !== void 0 && sourceData.turn >= firstKeptTurn) seed = normalizeEventCounters(seed, { turn: sourceData.turn - turnOffset });
+	if (seed.type === "command/done" && typeof sourceData.sourceEventSeq === "number") {
 		const mapped = rebase.get(sourceData.sourceEventSeq);
 		if (mapped === void 0) return DROPPED;
 		seed.data = {
@@ -6097,7 +6078,7 @@ function rebaseEvent(event, seq, rebase, turnOffset, firstKeptTurn) {
 			sourceEventSeq: mapped
 		};
 	}
-	if (event.type === "compaction/summary" || event.type === "compaction/prune") {
+	if (seed.type === "compaction/summary" || seed.type === "compaction/prune") {
 		const range = sourceData.shadowedRange;
 		const cited = sourceData.shadowedSeqs;
 		if (range === null || typeof range !== "object" || !Array.isArray(cited)) return seed;
@@ -6114,7 +6095,7 @@ function rebaseEvent(event, seq, rebase, turnOffset, firstKeptTurn) {
 			shadowedSeqs: mapped
 		};
 	}
-	if (event.type === "session-log-deepseek/delivery-accepted" && typeof sourceData.throughSeq === "number") {
+	if (seed.type === "session-log-deepseek/delivery-accepted" && typeof sourceData.throughSeq === "number") {
 		const mapped = rebase.get(sourceData.throughSeq);
 		if (mapped === void 0) return DROPPED;
 		seed.data = {
@@ -6123,7 +6104,7 @@ function rebaseEvent(event, seq, rebase, turnOffset, firstKeptTurn) {
 		};
 	}
 	const headerSeq = sourceData.headerSeq;
-	if (event.type === "developer/message" && typeof headerSeq === "number") {
+	if (seed.type === "developer/message" && typeof headerSeq === "number") {
 		const mapped = rebase.get(headerSeq);
 		if (mapped === void 0) return void 0;
 		seed.data = {
@@ -6147,6 +6128,7 @@ function rebaseEvent(event, seq, rebase, turnOffset, firstKeptTurn) {
 	if (Array.isArray(cited)) {
 		const mapped = cited.map((item) => typeof item === "number" ? rebase.get(item) : void 0);
 		if (!mapped.includes(void 0)) seed.sourceEventSeqs = mapped;
+		else delete seed.sourceEventSeqs;
 	}
 	return seed;
 }
@@ -7860,7 +7842,6 @@ function buildSidechatApi(ctx, live, resolved = resolveSidebarConfig(void 0), si
 			const headerCwd = parentSession.header.cwd;
 			const liveCwd = workingDirectory?.get(parentSession);
 			const attachCwd = headerCwd ?? liveCwd;
-			const stampCwd = liveCwd ?? headerCwd;
 			const parentSelection = parentModelSelection(parentSession.snapshotEvents());
 			const routeProvider = parentSelection?.provider ?? parent.options.provider;
 			const routeModel = parentSelection?.model ?? parent.options.model;
@@ -7875,11 +7856,11 @@ function buildSidechatApi(ctx, live, resolved = resolveSidebarConfig(void 0), si
 				...routeProvider === void 0 ? {} : { agentProvider: routeProvider },
 				...routeModel === void 0 ? {} : { agentModel: routeModel }
 			});
-			const directorySeed = workingDirectory === void 0 ? [] : [{
+			const directorySeed = liveCwd === void 0 ? [] : [{
 				type: "working-directory/change",
 				seq: inheritance.seed.length,
 				time: Date.now(),
-				data: { cwd: stampCwd }
+				data: { cwd: liveCwd }
 			}];
 			const descriptorEvent = {
 				type: "subagent/descriptor",

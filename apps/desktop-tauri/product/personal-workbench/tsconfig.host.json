@@ -26,6 +26,8 @@
     {"path": "../../../../packages/settings/settings"},
     {"path": "../../../../packages/core/agent"},
     {"path": "../../../../packages/core/tools"},
+    {"path": "../../../../packages/core/tool-executor-ptc"},
+    {"path": "../../../../packages/core/tool-executor-native"},
     {"path": "../../../../packages/core/session"},
     {"path": "../../../../packages/core/agent-loop"},
     {"path": "../../../../packages/session/session-projection"},

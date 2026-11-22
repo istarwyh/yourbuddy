@@ -19,7 +19,9 @@ import { createHash } from 'node:crypto'
 import { stat, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Context, SidebarHttpRequest, SidebarHttpResponse } from './context-types.ts'
+import type { Context } from './context-types.ts'
+import type { SidebarHttpRequest, SidebarHttpResponse } from './host-http.ts'
+import type {} from '@deepseek-ai/dsh-host-webserver'
 
 /** The chunk names the client may request (mirror of src/client/chunk-loader.ts). */
 export const CHUNK_NAMES = ['editor', 'mermaid', 'locale', 'terminal'] as const

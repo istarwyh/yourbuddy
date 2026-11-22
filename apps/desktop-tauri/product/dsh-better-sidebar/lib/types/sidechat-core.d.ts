@@ -1,3 +1,4 @@
+import type { SessionEvent } from '@deepseek-ai/dsh-session/types';
 /**
  * Pure side-conversation ("Side Chat") logic shared by the host routes and
  * the client tab. Framework-free (no React, no Node) so both halves and the
@@ -55,18 +56,7 @@ export declare const SIDE_BOUNDARY_PROMPT = "Side conversation boundary.\n\nEver
  *  (user/message, assistant/message, tool/result) REQUIRE the `surfaceOp`
  *  marker (and may carry `sourceEventSeqs`) — the seed validator rejects
  *  them without it. */
-export interface SeedEvent {
-    type: string;
-    seq: number;
-    time: number;
-    data: Record<string, unknown>;
-    /** Surface marker of message-producing events ('append' | replace op). */
-    surfaceOp?: unknown;
-    /** Seq numbers of earlier events this event cites as sources. */
-    sourceEventSeqs?: unknown;
-    /** Reader-skip marker of purely informational events. */
-    ignorable?: true;
-}
+export type SeedEvent = SessionEvent;
 /** The minimal structural face of a session-log event this module reads
  *  (loose enough to accept both the host's real SessionEvent and the
  *  client's SidebarSessionEvent mirror). */
@@ -138,7 +128,7 @@ export declare function hasDanglingToolCall(events: readonly SidechatLogEvent[],
  * @param live - the parent's in-flight stream chunks (DSH 0.1.5+ publishes
  *   them outside the log); used only by the snapshot fallback.
  */
-export declare function buildSidechatInheritance(events: readonly SidechatLogEvent[], live?: readonly AssistantLiveChunk[]): SidechatInheritance;
+export declare function buildSidechatInheritance(events: readonly SessionEvent[], live?: readonly AssistantLiveChunk[]): SidechatInheritance;
 /**
  * Structured text snapshot of the parent's OPEN turn (from its `turn/start`
  * to the log tail): the assistant/reasoning output so far and the tool

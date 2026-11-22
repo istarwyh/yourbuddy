@@ -31,19 +31,6 @@ import { fileAddressFor } from './resource-address.ts'
 const EDITOR_KIND = 'editor'
 
 /**
- * The native tab-registry slice this module probes: who would open an address
- * (`ctx.sidebarRightTabs`, `SidebarRightTabRegistry` in DSH's
- * ui-sidebar-right — mirrored structurally, only `candidates` is read).
- */
-interface NativeTabRegistryProbe {
-  /**
-   * Types that would open `address`, best first (priority band → matched
-   * pattern length → registration order).
-   */
-  candidates(address: string): readonly { readonly kind?: string }[]
-}
-
-/**
  * The tab type that would open `address` besides this plugin's own editor.
  *
  * Probing is the whole fix for #695: the registry's ranking — not this
@@ -62,8 +49,8 @@ interface NativeTabRegistryProbe {
  */
 export function claimingNativeKind(ctx: Context, address: string): string | undefined {
   try {
-    const tabs = ctx.get('sidebarRightTabs') as unknown as NativeTabRegistryProbe | undefined
-    if (tabs === undefined || typeof tabs.candidates !== 'function') return undefined
+    const tabs = ctx.get('sidebarRightTabs')
+    if (tabs === undefined) return undefined
     const best = tabs.candidates(address)[0]
     return best !== undefined && best.kind !== undefined && best.kind !== EDITOR_KIND ? best.kind : undefined
   } catch (error) {

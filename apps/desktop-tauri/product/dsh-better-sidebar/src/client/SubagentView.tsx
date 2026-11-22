@@ -1,3 +1,4 @@
+import { nativeSessionTarget } from './session-target.ts'
 /**
  * Tasks page (task management): the FULL agent topology of the current
  * tree's main session, rendered in the user-approved postmodern style as a
@@ -150,16 +151,6 @@ function sameRuns(left: readonly WorkflowRunView[], right: readonly WorkflowRunV
       })
     })
   })
-}
-
-/**
- * The workspace face's "show this conversation" verb. DSH moved child and
- * session navigation off `ISessions` onto the service that owns the
- * main-view selection, so the mirror is declared here rather than widened in
- * `context-types.ts` (the optional old names stay as the fallback).
- */
-interface ConversationNavigation {
-  openSession?(target: SidebarSubagentAddress | string): void
 }
 
 /** The per-parent catalog refresh across the two DSH generations. */
@@ -443,9 +434,9 @@ export function SubagentView(props: {
    * names stay as the fallback for a host that predates the move.
    */
   const openConversation = useCallback((target: SidebarSubagentAddress | string): void => {
-    const workspace = ctx.get('uiWorkspace') as unknown as ConversationNavigation | undefined
-    if (typeof workspace?.openSession === 'function') {
-      workspace.openSession(target)
+    const workspace = ctx.get('uiWorkspace')
+    if (workspace !== undefined) {
+      workspace.openSession(nativeSessionTarget(target))
       return
     }
     if (typeof target === 'string') sessions.open?.(target)

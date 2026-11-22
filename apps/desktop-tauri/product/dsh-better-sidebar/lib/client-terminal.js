@@ -14589,20 +14589,12 @@ globalThis.__dshChunks__["terminal"] = (require) => {
 		};
 	}
 	// src/client/terminal-client.ts
-	/**
-	* The host terminal service, when this deployment mounts it.
-	*
-	* Structural detection (`view` + `close` + `recover` are the members this
-	* plugin calls); a service that does not look like the pinned contract reads
-	* as absent rather than throwing at the first keystroke.
-	* @param ctx - the client context.
+	/** Return the controller only when this deployment provides it.
+	* @param ctx - client context.
+	* @returns the registered controller, or undefined.
 	*/
 	function webTerminals(ctx) {
-		const service = ctx.get("webTerminals");
-		if (service === void 0 || service === null) return void 0;
-		if (typeof service.view !== "function" || typeof service.close !== "function") return void 0;
-		if (typeof service.recover !== "function") return void 0;
-		return service;
+		return ctx.get("webTerminals");
 	}
 	/** Namespace for the plugin's own occurrence key and content identity. */
 	const TERMINAL_NS = "dsh-better-sidebar:terminal-bottom";

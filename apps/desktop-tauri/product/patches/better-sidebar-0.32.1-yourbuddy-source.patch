@@ -69,6 +69,48 @@ index 0000000..fff2cca
 +  delete globalThis.window
 +  delete globalThis.localStorage
 +})
+diff --git a/src/active-worktree.ts b/src/active-worktree.ts
+index df3a055..38687b5 100644
+--- a/src/active-worktree.ts
++++ b/src/active-worktree.ts
+@@ -273,7 +273,8 @@ function collectActivePaths(value: unknown, map: Map<string, ActivePathEntry>, s
+     const head = value.charCodeAt(0)
+     if (head === 0x7b || head === 0x5b) {
+       try {
+-        collectActivePaths(JSON.parse(value) as unknown, map, structured)
++        const parsed: unknown = JSON.parse(value)
++        collectActivePaths(parsed, map, structured)
+       } catch {
+         // Not JSON: fall through to the embedded-path scan.
+       }
+diff --git a/src/archive-route.ts b/src/archive-route.ts
+index b95590c..9aa5558 100644
+--- a/src/archive-route.ts
++++ b/src/archive-route.ts
+@@ -34,7 +34,7 @@ import { randomUUID } from 'node:crypto'
+ import { open, rm, stat } from 'node:fs/promises'
+ import { tmpdir } from 'node:os'
+ import { join } from 'node:path'
+-import type { SidebarHttpResponse } from './context-types.ts'
++import type { SidebarHttpResponse } from './host-http.ts'
+ import { streamFileToResponse } from './file-stream.ts'
+ import {
+   archiveFileName,
+diff --git a/src/bundle-route.ts b/src/bundle-route.ts
+index e155599..62bf8ab 100644
+--- a/src/bundle-route.ts
++++ b/src/bundle-route.ts
+@@ -19,7 +19,9 @@ import { createHash } from 'node:crypto'
+ import { stat, readFile } from 'node:fs/promises'
+ import { dirname, join } from 'node:path'
+ import { fileURLToPath } from 'node:url'
+-import type { Context, SidebarHttpRequest, SidebarHttpResponse } from './context-types.ts'
++import type { Context } from './context-types.ts'
++import type { SidebarHttpRequest, SidebarHttpResponse } from './host-http.ts'
++import type {} from '@deepseek-ai/dsh-host-webserver'
+ 
+ /** The chunk names the client may request (mirror of src/client/chunk-loader.ts). */
+ export const CHUNK_NAMES = ['editor', 'mermaid', 'locale', 'terminal'] as const
 diff --git a/src/client/EditorHost.tsx b/src/client/EditorHost.tsx
 index fb888d6..67964d2 100644
 --- a/src/client/EditorHost.tsx
@@ -191,6 +233,68 @@ index 10b322e..e4d28f0 100644
        if (!Number.isFinite(parsed)) return fallback
        let clamped = Math.round(parsed)
        if (toggle.min !== undefined) clamped = Math.max(toggle.min, clamped)
+diff --git a/src/client/SideChatView.tsx b/src/client/SideChatView.tsx
+index 2f86221..38dcb1d 100644
+--- a/src/client/SideChatView.tsx
++++ b/src/client/SideChatView.tsx
+@@ -1,3 +1,4 @@
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ /**
+  * Side Chat page: Codex-style side conversations for the current session.
+  *
+@@ -336,21 +337,6 @@ interface RowLabels {
+   web: WebBlockLabels
+ }
+ 
+-/** The host services this view reaches for archiving. Neither face lives on
+- *  the plugin's own context type — `workspaces` is the session-list service and
+- *  `uiWorkspace` the session surface — so they are read through the same
+- *  structural probe the other views use for host services. */
+-interface ArchivedSessionsFace {
+-  list?: {
+-    getSnapshot?: () => { archivedSessionIds?: readonly string[] }
+-    subscribe?: (callback: () => void) => () => void
+-  }
+-}
+-
+-interface ArchiveSessionFace {
+-  archiveSession?: (sessionId: string, options: { stopActivity: boolean }) => Promise<void>
+-}
+-
+ /** A stable "nothing is archived" snapshot: the archive set feeds
+  *  `useSyncExternalStore`, and a fresh `[]` per read would re-render forever. */
+ const NO_ARCHIVED_SESSIONS: readonly string[] = []
+@@ -360,7 +346,7 @@ const NO_ARCHIVED_SESSIONS: readonly string[] = []
+  *  is archived", so the thread menu simply keeps every thread. */
+ function archivedSessionIdsOf(ctx: Context): readonly string[] {
+   try {
+-    const service = ctx.get('workspaces') as unknown as ArchivedSessionsFace | undefined
++    const service = ctx.get('workspaces')
+     return service?.list?.getSnapshot?.()?.archivedSessionIds ?? NO_ARCHIVED_SESSIONS
+   } catch {
+     return NO_ARCHIVED_SESSIONS
+@@ -374,7 +360,7 @@ function useArchivedSessionIds(ctx: Context): readonly string[] {
+   const subscribe = useMemo(
+     () => (callback: () => void) => {
+       try {
+-        const service = ctx.get('workspaces') as unknown as ArchivedSessionsFace | undefined
++        const service = ctx.get('workspaces')
+         return service?.list?.subscribe?.(callback) ?? (() => {})
+       } catch {
+         return () => {}
+@@ -2027,9 +2013,9 @@ export function SideChatView(props: {
+     setError(null)
+     setSaved(false)
+     try {
+-      const service = ctx.get('uiWorkspace') as unknown as ArchiveSessionFace | undefined
+-      if (service?.archiveSession === undefined) throw new Error('the workspace service is unavailable')
+-      await service.archiveSession(threadId, { stopActivity: true })
++      const service = ctx.get('uiWorkspace')
++      if (service === undefined) throw new Error('the workspace service is unavailable')
++      await service.archiveSession(threadId as SessionId, { stopActivity: true })
+       const next = fallbackThreadId(threadId)
+       ctx.get('betterSidebar')?.updateTab(tab.id, { meta: next === undefined ? {} : { threadId: next } })
+     } catch (cause) {
 diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
 index 8aa20ac..a86b654 100644
 --- a/src/client/Sidebar.tsx
@@ -517,6 +621,99 @@ index 8aa20ac..a86b654 100644
          <div className={css.panelBody}>
            <Workbench
              state={state}
+diff --git a/src/client/SubagentView.tsx b/src/client/SubagentView.tsx
+index b43f2d3..4d65735 100644
+--- a/src/client/SubagentView.tsx
++++ b/src/client/SubagentView.tsx
+@@ -1,3 +1,4 @@
++import { nativeSessionTarget } from './session-target.ts'
+ /**
+  * Tasks page (task management): the FULL agent topology of the current
+  * tree's main session, rendered in the user-approved postmodern style as a
+@@ -152,16 +153,6 @@ function sameRuns(left: readonly WorkflowRunView[], right: readonly WorkflowRunV
+   })
+ }
+ 
+-/**
+- * The workspace face's "show this conversation" verb. DSH moved child and
+- * session navigation off `ISessions` onto the service that owns the
+- * main-view selection, so the mirror is declared here rather than widened in
+- * `context-types.ts` (the optional old names stay as the fallback).
+- */
+-interface ConversationNavigation {
+-  openSession?(target: SidebarSubagentAddress | string): void
+-}
+-
+ /** The per-parent catalog refresh across the two DSH generations. */
+ interface CatalogRefreshFace {
+   refreshProjections?(sessionId: string): Promise<void>
+@@ -443,9 +434,9 @@ export function SubagentView(props: {
+    * names stay as the fallback for a host that predates the move.
+    */
+   const openConversation = useCallback((target: SidebarSubagentAddress | string): void => {
+-    const workspace = ctx.get('uiWorkspace') as unknown as ConversationNavigation | undefined
+-    if (typeof workspace?.openSession === 'function') {
+-      workspace.openSession(target)
++    const workspace = ctx.get('uiWorkspace')
++    if (workspace !== undefined) {
++      workspace.openSession(nativeSessionTarget(target))
+       return
+     }
+     if (typeof target === 'string') sessions.open?.(target)
+diff --git a/src/client/TerminalView.tsx b/src/client/TerminalView.tsx
+index 206929a..80bd0c2 100644
+--- a/src/client/TerminalView.tsx
++++ b/src/client/TerminalView.tsx
+@@ -1,3 +1,4 @@
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ /**
+  * The bottom workbench's terminal: an xterm.js emulator driven by the HOST's
+  * session-scoped terminal service (`ctx.webTerminals`, see
+@@ -71,7 +72,7 @@ export interface TerminalBottomProps {
+  */
+ export function TerminalBottomView({ ctx, scope, tab, visible }: TerminalBottomProps): ReactNode {
+   const sessionId = scope.sessionId
+-  // The service is probed structurally, never injected: a deployment without
++  // The optional service is read lazily: a deployment without
+   // it keeps the tray row disabled and renders the explanation below.
+   const service = useMemo(() => webTerminals(ctx), [ctx])
+   const run = terminalRunOf(tab)
+@@ -84,7 +85,7 @@ export function TerminalBottomView({ ctx, scope, tab, visible }: TerminalBottomP
+   // (session, key) on the host side, so this memo must be the ONLY creation
+   // path: a repeat `view()` for the same key is free, a new key is a new PTY.
+   const model = useMemo(
+-    () => service?.view(sessionId, contentId, contentId),
++    () => service?.view(sessionId as SessionId, contentId, contentId),
+     [service, sessionId, contentId],
+   )
+   const state = useSyncExternalStore(
+diff --git a/src/client/TextEditor.tsx b/src/client/TextEditor.tsx
+index 1b4f97a..fe63875 100644
+--- a/src/client/TextEditor.tsx
++++ b/src/client/TextEditor.tsx
+@@ -1,3 +1,4 @@
++import type {} from '@huanlin/dsh-plugin-better-locale/client'
+ /**
+  * The code/markdown file viewer: a CodeMirror 6 editor with line wrapping,
+  * syntax highlighting (extension-keyed language), a dirty dot and Ctrl/Cmd+S
+@@ -304,13 +305,10 @@ export function TextEditor(props: FileViewerProps) {
+   useEffect(() => {
+     const sync = (): void => { setLocaleSig(localeSignature()) }
+     sync()
+-    const locale = ctx.locale as { subscribe?: (cb: () => void) => () => void } | undefined
+-    type BetterLocaleStore = { subscribe?(listener: () => void): () => void }
+-    const betterLocale = typeof ctx.get === 'function'
+-      ? (ctx as unknown as { get(name: 'betterLocale'): BetterLocaleStore | undefined }).get('betterLocale')
+-      : undefined
+-    const offLocale = locale?.subscribe?.(sync)
+-    const offOverride = betterLocale?.subscribe?.(sync)
++    const locale = ctx.get('locale')
++    const betterLocale = ctx.get('betterLocale')
++    const offLocale = locale?.subscribe(sync)
++    const offOverride = betterLocale?.subscribe(sync)
+     return () => {
+       offLocale?.()
+       offOverride?.()
 diff --git a/src/client/add-plugin-modal.tsx b/src/client/add-plugin-modal.tsx
 index 5fea314..04222a5 100644
 --- a/src/client/add-plugin-modal.tsx
@@ -617,10 +814,41 @@ index 1b55738..442f2d9 100644
    }
    for (const viewer of builtinViewers()) {
 diff --git a/src/client/builtins/tabs.tsx b/src/client/builtins/tabs.tsx
-index 9e48b51..edfd74f 100644
+index 9e48b51..893bba7 100644
 --- a/src/client/builtins/tabs.tsx
 +++ b/src/client/builtins/tabs.tsx
-@@ -161,7 +161,7 @@ export function builtinTabs(ctx: Context): readonly TabDescriptor[] {
+@@ -1,3 +1,4 @@
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ /**
+  * The built-in tab descriptors: the plugin registers its own pages
+  * (editor / git — the unified changes tab / subagent / sidechat / terminal-bottom /
+@@ -40,11 +41,6 @@ import { SIDECHAT_SUBMIT_KEY_DEFAULT, SIDECHAT_SUBMIT_KEY_SETTING } from '../../
+ import type { Context } from '../../context-types.ts'
+ import type { TabComponentProps, TabDescriptor } from '../service.ts'
+ 
+-/** Host session surface (`ctx.get('uiWorkspace')`). Archive is optional. */
+-interface ArchiveSessionFace {
+-  archiveSession?: (sessionId: string, options: { stopActivity: boolean }) => Promise<void>
+-}
+-
+ /**
+  * Hide a closed Side Chat thread, then release its live agent.
+  *
+@@ -59,10 +55,10 @@ function releaseSidechat(ctx: Context, threadId: string): void {
+   }
+   void (async () => {
+     try {
+-      const service = ctx.get('uiWorkspace') as unknown as ArchiveSessionFace | undefined
++      const service = ctx.get('uiWorkspace')
+       // Method call: an unbound `archiveSession` would lose the service as `this`.
+-      if (service?.archiveSession !== undefined) {
+-        await service.archiveSession(threadId, { stopActivity: true })
++      if (service !== undefined) {
++        await service.archiveSession(threadId as SessionId, { stopActivity: true })
+       }
+     } catch {
+       // Archive is best-effort. Dispose still runs in finally.
+@@ -161,7 +157,7 @@ export function builtinTabs(ctx: Context): readonly TabDescriptor[] {
            <OpenWithSettings pluginSettings={pluginSettings} updatePluginSetting={updatePluginSetting} />
          ),
        },
@@ -629,7 +857,7 @@ index 9e48b51..edfd74f 100644
          <EditorHost
            ctx={ctx}
            store={store}
-@@ -172,6 +172,9 @@ export function builtinTabs(ctx: Context): readonly TabDescriptor[] {
+@@ -172,6 +168,9 @@ export function builtinTabs(ctx: Context): readonly TabDescriptor[] {
            revealed={revealed ?? []}
            onToggleDir={onToggleDir ?? (() => { /* no-op */ })}
            onReferenceFile={onReferenceFile ?? (() => { /* no-op */ })}
@@ -639,6 +867,200 @@ index 9e48b51..edfd74f 100644
          />
        ),
      },
+diff --git a/src/client/builtins/viewers.tsx b/src/client/builtins/viewers.tsx
+index 84a35f7..2225d95 100644
+--- a/src/client/builtins/viewers.tsx
++++ b/src/client/builtins/viewers.tsx
+@@ -1,11 +1,12 @@
+ /**
+- * The 4 built-in file viewer descriptors (markdown / html / jsonl / code),
++ * Built-in file viewer descriptors for plugin-owned editor workbenches,
+  * exactly like external plugins register theirs.
+  *
+  * DSH 0.1.7 ships `ui-sidebar-documentpreview`, its own code / spreadsheet /
+  * office / pdf / image / html / markdown / text previews with zoom and
+- * auto-refresh, so this plugin yields every READ-ONLY preview it used to own
+- * and keeps only the surfaces where it is not equivalent:
++ * auto-refresh. Native file-resource opens yield to those previews, while the
++ * image viewer here remains the fallback inside this plugin's editor workbench.
++ * The plugin also owns these specialized surfaces:
+  *  - `markdown` — this plugin's own renderer (front matter, embedded HTML
+  *    sanitation, floating TOC), which the user prefers to the host's;
+  *  - `html` — the sandboxed iframe preview plus the host-less
+@@ -16,7 +17,7 @@
+  *  - `code` — the catch-all (`exts: []`, lowest priority) that claims any
+  *    file no other viewer did, and it is an EDITABLE CodeMirror with save —
+  *    the host's equivalents are read-only previews.
+- * The yielded ids (image / pdf / binary-download) are deliberately NOT
++ * The yielded ids (pdf / binary-download) are deliberately NOT
+  * registered here; an external plugin may still claim them through this
+  * service. Office previews (.docx / .xlsx / .pptx) were already not built
+  * in — they live in the recommended office plugin (see plugins-viewers.ts),
+@@ -33,7 +34,7 @@
+  * and `icon` — so the Side card settings page can render the enable/disable
+  * inventory without hardcoding (eating our own dogfood).
+  */
+-import { IconCodeOutlineRegular, IconPlayOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
++import { FileTypeIcon, IconCodeOutlineRegular, IconPlayOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+ import { lazyChunkComponent } from '../lazy-chunk.tsx'
+ import {
+   IconMarkdownOutline16,
+@@ -43,6 +44,7 @@ import type { ComponentType } from 'react'
+ import type { FileViewerDescriptor, FileViewerProps } from '../service.ts'
+ import { t } from '../locales.ts'
+ import { MediaPreview } from './media-preview.tsx'
++import css from '../sidebar.module.css'
+ 
+ /**
+  * Lazy wrapper over the chunk-resident viewer component. The `pick`
+@@ -52,9 +54,23 @@ import { MediaPreview } from './media-preview.tsx'
+  */
+ const LazyTextEditor = lazyChunkComponent<FileViewerProps>('editor', (mod) => mod.TextEditor as ComponentType<FileViewerProps> | undefined)
+ 
+-/** The 5 built-in file viewer descriptors. */
++/** The built-in file viewer descriptors. */
+ export function builtinViewers(): readonly FileViewerDescriptor[] {
+   return [
++    {
++      id: 'image',
++      title: () => t('viewerImage'),
++      icon: (size: number) => <FileTypeIcon path="image.png" size={size} />,
++      exts: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'],
++      fetchStrategy: 'mediaUrl',
++      component: ({ mediaUrl, title }) => (
++        <div className={css.editorPdf}>
++          <div className={css.editorPdfStage}>
++            <img className={css.editorPdfFrame} style={{ objectFit: 'contain' }} src={mediaUrl} alt={title} />
++          </div>
++        </div>
++      ),
++    },
+     {
+       id: 'markdown',
+       title: () => t('viewerMarkdown'),
+diff --git a/src/client/context-diagnostics.ts b/src/client/context-diagnostics.ts
+index 1acb572..a1b1894 100644
+--- a/src/client/context-diagnostics.ts
++++ b/src/client/context-diagnostics.ts
+@@ -1,3 +1,6 @@
++import type { Context as ClientContext } from '@deepseek-ai/cordis'
++import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
++import { nativeSessionTarget } from './session-target.ts'
+ /** Optional dsh-context navigation, owned by one better-sidebar activation. */
+ import type { Context, SidebarSubagentAddress } from '../context-types.ts'
+ 
+@@ -32,43 +35,12 @@ export interface ContextDiagnostics {
+   dispose(): void
+ }
+ 
+-interface Observable<T> {
+-  getSnapshot(): T
+-  subscribe(listener: () => void): () => void
+-}
+-
+-interface OpenTab {
+-  sessionId: string
+-  tabId: string
+-  kind: string
+-}
+-
+-interface RightFace {
+-  mounted: Observable<string | undefined>
+-  openTabs: Observable<readonly OpenTab[]>
+-  openTab(kind: string): void
+-  focus(tabId: string): void
+-  active(): { id: string } | undefined
+-  isExpanded(): boolean
+-  toggleExpanded(): void
+-}
+-
+-interface RegistryFace {
+-  get(kind: string): { id: string; kind: string } | undefined
+-  subscribe(listener: () => void): () => void
+-}
+-
+-interface SlotsFace {
+-  entriesOfSlot(key: string): readonly { options: { key?: string } }[]
+-  subscribe(key: string, listener: () => void): () => void
+-}
+-
+ interface Faces {
+-  right: RightFace
+-  registry: RegistryFace
+-  slots: SlotsFace
+-  workspace: { openSession(target: string | SidebarSubagentAddress): void }
+-  layout: { beginNavigation(): AbortSignal }
++  right: Context['sidebarRight']
++  registry: Context['sidebarRightTabs']
++  slots: ClientContext['slots']
++  workspace: Context['uiWorkspace']
++  layout: Context['layout']
+ }
+ 
+ interface Request {
+@@ -81,34 +53,17 @@ interface Request {
+   retry?: ReturnType<typeof setTimeout>
+ }
+ 
+-function record(value: unknown): Record<string, unknown> | undefined {
+-  return value !== null && typeof value === 'object' ? value as Record<string, unknown> : undefined
+-}
+-
+-function methods(value: unknown, names: readonly string[]): boolean {
+-  const face = record(value)
+-  return face !== undefined && names.every(name => typeof face[name] === 'function')
+-}
+-
+-/** Re-prove the optional runtime faces; never treat package installation as readiness. */
++/** Read optional services from their registered public APIs. */
+ function facesOf(ctx: Context): Faces | undefined {
+-  try {
+-    const right = ctx.get('sidebarRight') as unknown
+-    const registry = ctx.get('sidebarRightTabs') as unknown
+-    const workspace = ctx.get('uiWorkspace') as unknown
+-    const layout = ctx.get('layout') as unknown
+-    const slots = ctx.get('slots') as unknown
+-    if (!methods(right, ['openTab', 'focus', 'active', 'isExpanded', 'toggleExpanded'])
+-      || !methods(record(right)?.mounted, ['getSnapshot', 'subscribe'])
+-      || !methods(record(right)?.openTabs, ['getSnapshot', 'subscribe'])
+-      || !methods(registry, ['get', 'subscribe'])
+-      || !methods(workspace, ['openSession'])
+-      || !methods(layout, ['beginNavigation'])
+-      || !methods(slots, ['entriesOfSlot', 'subscribe'])) return undefined
+-    return { right, registry, workspace, layout, slots } as Faces
+-  } catch {
+-    return undefined
+-  }
++  const right = ctx.get('sidebarRight')
++  const registry = ctx.get('sidebarRightTabs')
++  const workspace = ctx.get('uiWorkspace')
++  const layout = ctx.get('layout')
++  const client: ClientContext = ctx
++  const slots = client.get('slots')
++  if (right === undefined || registry === undefined || workspace === undefined
++    || layout === undefined || slots === undefined) return undefined
++  return { right, registry, workspace, layout, slots }
+ }
+ 
+ function available(faces: Faces | undefined): boolean {
+@@ -194,7 +149,7 @@ export function createContextDiagnostics(ctx: Context): ContextDiagnostics {
+       }
+       retry(request)
+     } catch (error) {
+-      if (record(error)?.message === 'sidebarRight: no session surface is mounted') retry(request)
++      if (error instanceof Error && error.message === 'sidebarRight: no session surface is mounted') retry(request)
+       else finish(request, 'open')
+     } finally {
+       request.working = false
+@@ -252,7 +207,7 @@ export function createContextDiagnostics(ctx: Context): ContextDiagnostics {
+       try {
+         own(request, current.right.mounted.subscribe(() => { attempt(request) }))
+         own(request, current.right.openTabs.subscribe(() => { attempt(request) }))
+-        if (current.right.mounted.getSnapshot() !== target.sessionId) current.workspace.openSession(target.address ?? target.sessionId)
++        if (current.right.mounted.getSnapshot() !== target.sessionId) current.workspace.openSession(nativeSessionTarget(target.address ?? target.sessionId))
+         if (pending !== request) return
+         // openSession itself selects the conversation panel, aborting older signals.
+         const signal = current.layout.beginNavigation()
 diff --git a/src/client/conversation-draft.ts b/src/client/conversation-draft.ts
 index 21e6857..870b8c7 100644
 --- a/src/client/conversation-draft.ts
@@ -1004,6 +1426,20 @@ index 7b06e92..d225e72 100644
        }
        // setPrefs and mount() run inside sync(); a rejection there would leave
        // the sidebar unmounted with a dead toggle as its only symptom.
+diff --git a/src/client/jsonl.ts b/src/client/jsonl.ts
+index 9916a59..10de21e 100644
+--- a/src/client/jsonl.ts
++++ b/src/client/jsonl.ts
+@@ -44,7 +44,8 @@ export function parseRecord(line: string): JsonlRecord {
+   const trimmed = line.trim()
+   if (trimmed === '') return { ok: false, error: '' }
+   try {
+-    return { ok: true, value: JSON.parse(trimmed) as unknown }
++    const value: unknown = JSON.parse(trimmed)
++    return { ok: true, value }
+   } catch (error: unknown) {
+     return { ok: false, error: error instanceof Error ? error.message : String(error) }
+   }
 diff --git a/src/client/layout.css b/src/client/layout.css
 index 9b1b8af..5426cf2 100644
 --- a/src/client/layout.css
@@ -1109,11 +1545,49 @@ index 0000000..1cfa758
 +  const dot = name.lastIndexOf('.')
 +  return dot > 0 && DOCUMENT_EXTENSIONS.has(name.slice(dot + 1).toLowerCase())
 +}
+diff --git a/src/client/native/guide-catalog.ts b/src/client/native/guide-catalog.ts
+index c8be4ff..8a07038 100644
+--- a/src/client/native/guide-catalog.ts
++++ b/src/client/native/guide-catalog.ts
+@@ -40,18 +40,7 @@ export interface NativeGuideCatalog {
+   subscribe(listener: () => void): () => void
+ }
+ 
+-/** The slice of the host tab registry this module reads. */
+-interface GuideRegistry {
+-  guide(): readonly {
+-    readonly id: string
+-    readonly kind: string
+-    readonly providerId: string
+-    readonly title: () => string
+-    readonly description?: () => string
+-    readonly icon?: ComponentType<{ size?: number }>
+-  }[]
+-  subscribe(listener: () => void): () => void
+-}
++type GuideRegistry = Context['sidebarRightTabs']
+ 
+ const EMPTY: readonly NativeGuideEntry[] = []
+ 
+@@ -146,7 +135,7 @@ export function createNativeGuideCatalog(ctx: Context): { catalog: NativeGuideCa
+   }
+ 
+   const seat = ctx.inject(['sidebarRightTabs'], (injected) => {
+-    registry = injected.get('sidebarRightTabs') as unknown as GuideRegistry | undefined
++    registry = injected.get('sidebarRightTabs')
+     if (registry === undefined) {
+       publish()
+       return
 diff --git a/src/client/native/index.ts b/src/client/native/index.ts
-index fde5b2f..fa42f67 100644
+index fde5b2f..cd55582 100644
 --- a/src/client/native/index.ts
 +++ b/src/client/native/index.ts
-@@ -7,14 +7,14 @@
+@@ -1,3 +1,4 @@
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ /**
+  * The plugin's content, registered into DSH's native right Sidebar.
+  *
+@@ -7,14 +8,14 @@
   *   viewer — it claims `dsh-resource://file/**` at the default `extension`
   *   band, which outranks the built-in `text` preview (`fallback`), so a file
   *   the product opens lands in the plugin's editor — EXCEPT the formats
@@ -1130,7 +1604,7 @@ index fde5b2f..fa42f67 100644
   *   browser / diff) becomes a page type of its own.
   *
   * The registrations follow the plugin's registry lifecycle: a descriptor
-@@ -22,6 +22,9 @@
+@@ -22,6 +23,9 @@
   * the user disabled in the side-card settings is unregistered — so it is
   * absent from the native guide and `openTab` refuses it.
   */
@@ -1140,7 +1614,7 @@ index fde5b2f..fa42f67 100644
  import type { Context } from '../../context-types.ts'
  import { addressBaseOf, resolveAddressPath } from '../address-base.ts'
  import { flushDraftBackups } from '../editor-draft-backup.ts'
-@@ -29,6 +32,7 @@ import { t } from '../locales.ts'
+@@ -29,6 +33,7 @@ import { t } from '../locales.ts'
  import { splitTrailingLineSpec } from '../path-line.ts'
  import { baseName } from '../paths.ts'
  import { parseFileAddress } from '../resource-address.ts'
@@ -1148,7 +1622,7 @@ index fde5b2f..fa42f67 100644
  import type { ContextDiagnostics } from '../context-diagnostics.ts'
  import type { BetterSidebarService, TabDescriptor } from '../service.ts'
  import type { SidebarStore } from '../state.ts'
-@@ -47,7 +51,8 @@ import {
+@@ -47,7 +52,8 @@ import {
  } from './tab-adapter.tsx'
  
  /**
@@ -1158,7 +1632,7 @@ index fde5b2f..fa42f67 100644
   *
   * DSH 0.1.7 grew a real document-preview package (host-side Office→PDF
   * conversion, a worker-backed spreadsheet table, image/PDF zoom viewports and
-@@ -60,7 +65,7 @@ import {
+@@ -60,7 +66,7 @@ import {
   * Refusing here is what hands the address over: `canOpen` returning false
   * leaves the built-in `text` type (the `fallback` band) as the only claimant.
   *
@@ -1167,7 +1641,7 @@ index fde5b2f..fa42f67 100644
   * that the host has NO renderer for (`xlsb xlt xltx xltm ots dot dotx avif`)
   * used to be refused here too, and refusing them turned "the plugin shows a
   * download panel" into "the host shows 'preview is not available for this file
-@@ -71,62 +76,26 @@ import {
+@@ -71,62 +77,26 @@ import {
   */
  const HOST_OWNED_EXTS: ReadonlySet<string> = new Set([
    // Spreadsheets: the built-in renders a table in a worker.
@@ -1236,7 +1710,7 @@ index fde5b2f..fa42f67 100644
  }
  
  /** The descriptor's title text, evaluated fresh for the current locale. */
-@@ -156,8 +125,8 @@ function guideDescriptionOf(descriptor: TabDescriptor | undefined): { descriptio
+@@ -156,8 +126,8 @@ function guideDescriptionOf(descriptor: TabDescriptor | undefined): { descriptio
   * @param icon - the descriptor's icon value.
   * @returns the guide-entry icon fields, or an empty object.
   */
@@ -1247,7 +1721,7 @@ index fde5b2f..fa42f67 100644
  }
  
  /**
-@@ -308,14 +277,10 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
+@@ -308,14 +278,10 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
    // `sidebarRightTabs` undefined, and the registry appeared a moment later.
    // `ctx.inject` re-runs this body whenever the service appears/reappears,
    // which is the lifecycle the registrations need.
@@ -1264,7 +1738,7 @@ index fde5b2f..fa42f67 100644
      const live = new Map<string, Registration>()
  
      // The host runs this hook before removing a record (the strip's ×, its
-@@ -359,8 +324,8 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
+@@ -359,8 +325,8 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
                    ? sessionId
                    : mountedSessionId(ctx)
                  const terminals = webTerminals(ctx)
@@ -1275,7 +1749,16 @@ index fde5b2f..fa42f67 100644
                  const onBrowsePlugins = typeof navigation?.openList === 'function'
                    ? () => { navigation.openList!() }
                    : undefined
-@@ -585,13 +550,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
+@@ -380,7 +346,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
+                     // Call the methods on the SERVICE: the shell catalog reads
+                     // its own remote field, and a detached call throws
+                     // "Cannot read properties of undefined (reading 'remote')".
+-                    launchShells: (signal: AbortSignal) => terminals.launchShells!(scope, signal),
++                    launchShells: (signal: AbortSignal) => terminals.launchShells(scope as SessionId, signal),
+                     selectShell: (path: string) => { terminals.selectShell!(path) },
+                   }
+                   : undefined
+@@ -585,13 +551,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
      const sync = (): void => {
        syncGuide()
        const wanted = new Map<string, () => () => void>()
@@ -2086,6 +2569,148 @@ index 02a9e38..f8e3e4c 100644
        ...(options?.line === undefined ? {} : { line: options.line }),
      }, scope)
    }
+diff --git a/src/client/session-target.ts b/src/client/session-target.ts
+new file mode 100644
+index 0000000..cb1f101
+--- /dev/null
++++ b/src/client/session-target.ts
+@@ -0,0 +1,16 @@
++/** Convert sidebar HTTP identities to the workspace navigation API. */
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
++import type { Context, SidebarSubagentAddress } from '../context-types.ts'
++
++/**
++ * Brand Session identities decoded from the sidebar's HTTP responses.
++ * @param target - Session identity or parent/child address from the sidebar API.
++ * @returns the workspace service's navigation target.
++ */
++export function nativeSessionTarget(target: string | SidebarSubagentAddress): Parameters<Context['uiWorkspace']['openSession']>[0] {
++  return typeof target === 'string' ? target as SessionId : {
++    ...target,
++    parentSessionId: target.parentSessionId as SessionId,
++    childSessionId: target.childSessionId as SessionId,
++  }
++}
+diff --git a/src/client/sidebar-file.ts b/src/client/sidebar-file.ts
+index b8149e8..7f32198 100644
+--- a/src/client/sidebar-file.ts
++++ b/src/client/sidebar-file.ts
+@@ -30,24 +30,6 @@ import { fileAddressFor } from './resource-address.ts'
+ /** The kind this plugin's own file editor registers its tab type under. */
+ const EDITOR_KIND = 'editor'
+ 
+-/**
+- * The native tab-registry slice this module probes: who would open an address
+- * (`ctx.sidebarRightTabs`, `SidebarRightTabRegistry` in DSH's
+- * ui-sidebar-right — mirrored structurally, only `candidates` is read).
+- */
+-interface NativeTabRegistryProbe {
+-  /**
+-   * Types that would open `address`, best first (priority band → matched
+-   * pattern length → registration order).
+-   */
+-  candidates(address: string): readonly { readonly kind?: string }[]
+-}
+-
+-/** The native controller slice used to hand an address to the type claiming it. */
+-interface NativeResourceOpener {
+-  openResource(address: string): void
+-}
+-
+ /**
+  * The tab type that would open `address` besides this plugin's own editor.
+  *
+@@ -67,8 +49,8 @@ interface NativeResourceOpener {
+  */
+ export function claimingNativeKind(ctx: Context, address: string): string | undefined {
+   try {
+-    const tabs = ctx.get('sidebarRightTabs') as unknown as NativeTabRegistryProbe | undefined
+-    if (tabs === undefined || typeof tabs.candidates !== 'function') return undefined
++    const tabs = ctx.get('sidebarRightTabs')
++    if (tabs === undefined) return undefined
+     const best = tabs.candidates(address)[0]
+     return best !== undefined && best.kind !== undefined && best.kind !== EDITOR_KIND ? best.kind : undefined
+   } catch (error) {
+@@ -100,20 +82,9 @@ export function claimingNativeKind(ctx: Context, address: string): string | unde
+ export function openClaimedNativeFile(ctx: Context, sessionId: string, cwd: string | undefined, path: string): boolean {
+   const address = fileAddressFor(sessionId, addressBaseOf(ctx, sessionId) ?? cwd, path)
+   if (claimingNativeKind(ctx, address) === undefined) return false
+-  let opener: NativeResourceOpener | undefined
+-  try {
+-    opener = ctx.get('sidebarRight') as unknown as NativeResourceOpener | undefined
+-  } catch {
+-    // The controller is probed, not injected: a host that has not provided
+-    // `sidebarRight` yet (or ever) leaves the file to the editor path below,
+-    // which the plugin's own surface wrapper can still queue until the host
+-    // service appears.
+-    opener = undefined
+-  }
+-  if (opener === undefined || typeof opener.openResource !== 'function') return false
+-  // No `kind` option: the host's own `claim(address)` re-runs the same
+-  // ranking the probe just read, so the claiming type's tab body renders.
+-  opener.openResource(address)
++  const service = ctx.get('betterSidebar')
++  if (service === undefined) return false
++  service.openTab({ type: 'editor', path, target: 'right' }, { sessionId, cwd })
+   return true
+ }
+ 
+@@ -162,5 +133,5 @@ export function openSidebarFile(
+     path: absolute,
+     id: `editor:${absolute}`,
+     ...(options.line === undefined ? {} : { line: options.line }),
+-  })
++  }, { sessionId, cwd: options.cwd ?? summary?.cwd })
+ }
+diff --git a/src/client/sidebar.module.css b/src/client/sidebar.module.css
+index e6bd1f5..017a9c9 100644
+--- a/src/client/sidebar.module.css
++++ b/src/client/sidebar.module.css
+@@ -145,6 +145,17 @@
+   left: 0;
+ }
+ 
++/* Desktop slot presentation is in-flow inside AppFrame's workbench column.
++   Narrow layouts report portal presentation and retain the overlay drawer. */
++:global([data-dsh-panel-host][data-dsh-presentation='slot']) {
++  position: relative;
++  inset: auto;
++  width: 100%;
++  height: 100%;
++  z-index: auto;
++  pointer-events: auto;
++}
++
+ /* The closed-state affordance is the native rail icon control: a plain
+    28px circle (the app's icon-button size — the cluster must stay inside
+    the 34px tab-strip band so it never covers the pane headers below),
+@@ -234,6 +245,15 @@
+     visibility 0s linear var(--ds-transition-duration-slow);
+ }
+ 
++/* The sole plugin-owned workbench becomes the full desktop slot after the
++   upstream native Sidebar owns the separate right column. */
++.bottomPanelSlot {
++  inset: 0;
++  transform: none;
++  visibility: visible;
++  border-top: 0;
++}
++
+ /* Height drags write at pointer cadence; easing would detach the edge. */
+ .bottomPanel[data-dragging] {
+   transition: none;
+@@ -305,6 +325,10 @@ body[data-dsh-sidebar-dragging] .bottomPanel {
+   padding-right: 40px;
+ }
+ 
++.bottomPanelSlot .tabBar {
++  padding-right: 0;
++}
++
+ /* ── Desktop drag-region opt-out ──────────────────────────────────────── */
+ 
+ /* Frameless desktop shells make the top strip of the web content draggable
 diff --git a/src/client/sidebar/TabContent.tsx b/src/client/sidebar/TabContent.tsx
 index 5dc1887..539b6a5 100644
 --- a/src/client/sidebar/TabContent.tsx
@@ -2182,7 +2807,7 @@ index 298bb31..ebbc3a4 100644
      let disposed = false
      let observer: ResizeObserver | undefined
 diff --git a/src/client/sidebar/use-host-feeds.ts b/src/client/sidebar/use-host-feeds.ts
-index 517e22e..db2a2fc 100644
+index 517e22e..8cc81cf 100644
 --- a/src/client/sidebar/use-host-feeds.ts
 +++ b/src/client/sidebar/use-host-feeds.ts
 @@ -5,6 +5,7 @@
@@ -2201,7 +2826,44 @@ index 517e22e..db2a2fc 100644
  
  /**
   * Application-level heartbeat interval (ms) for the agent-opens socket. The
-@@ -129,7 +131,7 @@ function activateTasksPage(
+@@ -45,20 +47,6 @@ const RECONNECT_MAX_MS = 30_000
+  */
+ const AUTO_OPEN_DEBOUNCE_MS = 500
+ 
+-/**
+- * The native column's public face, as this module reaches it. Every reader
+- * acts on the session whose surface is MOUNTED (the controller reads its
+- * binding), which is why both gates below are gated on the target session
+- * being the on-screen one.
+- */
+-interface NativeColumnFace {
+-  isExpanded?: () => boolean
+-  toggleExpanded?: () => void
+-  /** The active tab of the active pane (`ISidebarRight.active`): which page the
+-   *  reader is looking at. Absent on a host older than the reader gate. */
+-  active?: () => { kind?: string } | undefined
+-}
+-
+ /**
+  * Activate the Tasks page (the `subagent` tab type) in DSH's native right
+  * Sidebar — the landing the two auto-open switches promise: the right column
+@@ -115,7 +103,7 @@ function activateTasksPage(
+   sessionId: string,
+   options: { background: boolean },
+ ): void {
+-  const column = ctx.get('sidebarRight') as unknown as NativeColumnFace | undefined
++  const column = ctx.get('sidebarRight')
+   // The face acts on the MOUNTED session: both gates below are only meaningful
+   // (and only safe) when the activation targets the one on screen. "On screen"
+   // is the native surface's own mounted seat — the session list has no
+@@ -124,12 +112,12 @@ function activateTasksPage(
+   // column alone rather than reading or toggling one it is not drawing.
+   const onScreen = mountedSessionId(ctx) === sessionId
+   // Do not take over the page the reader is looking at (see the docblock).
+-  if (options.background && onScreen && column?.isExpanded?.() === true) {
+-    const shown = column.active?.()
++  if (options.background && onScreen && column?.isExpanded() === true) {
++    const shown = column.active()
      if (shown !== undefined && shown.kind !== 'subagent') {
        // The page is still created — the event is never dropped — but it lands
        // in the background and raises the dot instead of the column.
@@ -2210,20 +2872,24 @@ index 517e22e..db2a2fc 100644
        // The dot belongs to the session the work is in, which is the current
        // one (the gate above proved this seat is the mounted session).
        store.markUnread('subagent')
-@@ -142,7 +144,11 @@ function activateTasksPage(
+@@ -141,9 +129,13 @@ function activateTasksPage(
+     && isNarrowWidth(window.innerWidth)
      // Only a column the user had COLLAPSED is put back: an expanded one is in
      // use, and closing it under the user would be worse than the takeover.
-     && column?.isExpanded?.() === false
+-    && column?.isExpanded?.() === false
 -  ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent') })
+-  if (park) column?.toggleExpanded?.()
++    && column?.isExpanded() === false
 +  ctx.get('betterSidebar')?.openTab({
 +    type: 'subagent',
 +    title: t('subagent'),
 +    intent: options.background ? 'background' : 'user',
 +  })
-   if (park) column?.toggleExpanded?.()
++  if (park) column?.toggleExpanded()
  }
  
-@@ -208,14 +214,15 @@ export function useHostFeeds(feeds: {
+ export function useHostFeeds(feeds: {
+@@ -208,14 +200,15 @@ export function useHostFeeds(feeds: {
            if (request.kind !== 'file' && request.kind !== 'folder' && request.kind !== 'url') return
            if (typeof request.target !== 'string' || request.target === '') return
            if (store.getPrefs().agentOpenTools !== true) return
@@ -2241,7 +2907,7 @@ index 517e22e..db2a2fc 100644
              } catch {
                // Host without a browser tab type: nothing to open into.
              }
-@@ -226,9 +233,17 @@ export function useHostFeeds(feeds: {
+@@ -226,9 +219,17 @@ export function useHostFeeds(feeds: {
                path: request.target,
                id: `editor:${request.target}`,
                meta: { dir: true },
@@ -2260,102 +2926,6 @@ index 517e22e..db2a2fc 100644
            }
          } catch {
            // Malformed push: ignore (the next push carries its own request).
-diff --git a/src/client/sidebar-file.ts b/src/client/sidebar-file.ts
-index b8149e8..cf6b6bd 100644
---- a/src/client/sidebar-file.ts
-+++ b/src/client/sidebar-file.ts
-@@ -43,11 +43,6 @@ interface NativeTabRegistryProbe {
-   candidates(address: string): readonly { readonly kind?: string }[]
- }
- 
--/** The native controller slice used to hand an address to the type claiming it. */
--interface NativeResourceOpener {
--  openResource(address: string): void
--}
--
- /**
-  * The tab type that would open `address` besides this plugin's own editor.
-  *
-@@ -100,20 +95,9 @@ export function claimingNativeKind(ctx: Context, address: string): string | unde
- export function openClaimedNativeFile(ctx: Context, sessionId: string, cwd: string | undefined, path: string): boolean {
-   const address = fileAddressFor(sessionId, addressBaseOf(ctx, sessionId) ?? cwd, path)
-   if (claimingNativeKind(ctx, address) === undefined) return false
--  let opener: NativeResourceOpener | undefined
--  try {
--    opener = ctx.get('sidebarRight') as unknown as NativeResourceOpener | undefined
--  } catch {
--    // The controller is probed, not injected: a host that has not provided
--    // `sidebarRight` yet (or ever) leaves the file to the editor path below,
--    // which the plugin's own surface wrapper can still queue until the host
--    // service appears.
--    opener = undefined
--  }
--  if (opener === undefined || typeof opener.openResource !== 'function') return false
--  // No `kind` option: the host's own `claim(address)` re-runs the same
--  // ranking the probe just read, so the claiming type's tab body renders.
--  opener.openResource(address)
-+  const service = ctx.get('betterSidebar')
-+  if (service === undefined) return false
-+  service.openTab({ type: 'editor', path, target: 'right' }, { sessionId, cwd })
-   return true
- }
- 
-@@ -162,5 +146,5 @@ export function openSidebarFile(
-     path: absolute,
-     id: `editor:${absolute}`,
-     ...(options.line === undefined ? {} : { line: options.line }),
--  })
-+  }, { sessionId, cwd: options.cwd ?? summary?.cwd })
- }
-diff --git a/src/client/sidebar.module.css b/src/client/sidebar.module.css
-index e6bd1f5..017a9c9 100644
---- a/src/client/sidebar.module.css
-+++ b/src/client/sidebar.module.css
-@@ -145,6 +145,17 @@
-   left: 0;
- }
- 
-+/* Desktop slot presentation is in-flow inside AppFrame's workbench column.
-+   Narrow layouts report portal presentation and retain the overlay drawer. */
-+:global([data-dsh-panel-host][data-dsh-presentation='slot']) {
-+  position: relative;
-+  inset: auto;
-+  width: 100%;
-+  height: 100%;
-+  z-index: auto;
-+  pointer-events: auto;
-+}
-+
- /* The closed-state affordance is the native rail icon control: a plain
-    28px circle (the app's icon-button size — the cluster must stay inside
-    the 34px tab-strip band so it never covers the pane headers below),
-@@ -234,6 +245,15 @@
-     visibility 0s linear var(--ds-transition-duration-slow);
- }
- 
-+/* The sole plugin-owned workbench becomes the full desktop slot after the
-+   upstream native Sidebar owns the separate right column. */
-+.bottomPanelSlot {
-+  inset: 0;
-+  transform: none;
-+  visibility: visible;
-+  border-top: 0;
-+}
-+
- /* Height drags write at pointer cadence; easing would detach the edge. */
- .bottomPanel[data-dragging] {
-   transition: none;
-@@ -305,6 +325,10 @@ body[data-dsh-sidebar-dragging] .bottomPanel {
-   padding-right: 40px;
- }
- 
-+.bottomPanelSlot .tabBar {
-+  padding-right: 0;
-+}
-+
- /* ── Desktop drag-region opt-out ──────────────────────────────────────── */
- 
- /* Frameless desktop shells make the top strip of the web content draggable
 diff --git a/src/client/sidechat-transcript.ts b/src/client/sidechat-transcript.ts
 index f30913f..d941588 100644
 --- a/src/client/sidechat-transcript.ts
@@ -2395,6 +2965,271 @@ index 1a05414..9a7198d 100644
          // Seed the uid counter past the persisted ids (it resets on reload);
          // sanitize re-ids any duplicates the pre-seeding counter left behind.
          nextIdCounter = maxCounterId(parsed)
+diff --git a/src/client/subagent-chat.ts b/src/client/subagent-chat.ts
+index 094c0f7..0db43f4 100644
+--- a/src/client/subagent-chat.ts
++++ b/src/client/subagent-chat.ts
+@@ -27,16 +27,6 @@ export const SUBAGENT_CHAT_KIND = 'subagentchat'
+ /** The host's `dsh-resource://` prefix for that tab type. */
+ export const SUBAGENT_CHAT_ADDRESS = 'dsh-resource://subagentchat/session/'
+ 
+-/** The tab registry, probed structurally (the service can arrive late). */
+-interface TabRegistryFace {
+-  get?(kind: string): unknown
+-}
+-
+-/** The write face of the native right column, structurally probed. */
+-interface SidebarRightFace {
+-  openResource?(address: string, options?: { kind?: string; preferNewPane?: boolean }): void
+-}
+-
+ /**
+  * The host's own subagent-chat resource address for one child session.
+  * @param address - the child's lineage (parent, child, mode).
+@@ -49,9 +39,9 @@ export function subagentChatAddress(address: SidebarSubagentAddress): string {
+ /** Whether the host can host a child transcript in its right column. */
+ export function hasTranscriptAside(ctx: Context): boolean {
+   try {
+-    const tabs = ctx.get('sidebarRightTabs') as unknown as TabRegistryFace | undefined
+-    if (tabs?.get?.(SUBAGENT_CHAT_KIND) === undefined) return false
+-    return typeof (ctx.get('sidebarRight') as unknown as SidebarRightFace | undefined)?.openResource === 'function'
++    const tabs = ctx.get('sidebarRightTabs')
++    if (tabs?.get(SUBAGENT_CHAT_KIND) === undefined) return false
++    return ctx.get('sidebarRight') !== undefined
+   } catch {
+     return false
+   }
+@@ -73,11 +63,12 @@ export function openTranscriptAside(
+ ): boolean {
+   if (!hasTranscriptAside(ctx)) return false
+   try {
+-    const right = ctx.get('sidebarRight') as unknown as SidebarRightFace
++    const right = ctx.get('sidebarRight')
++    if (right === undefined) return false
+     // `preferNewPane` mirrors the host's own subagent list: the transcript sits
+     // beside whatever the reader already has open, and degrades to the target
+     // pane when splitting is not allowed.
+-    right.openResource?.(subagentChatAddress(address), {
++    right.openResource(subagentChatAddress(address), {
+       kind: SUBAGENT_CHAT_KIND,
+       // The default is the SAME right-sidebar pane: a transcript jump must not
+       // silently split the column. The explicit "open to the side" gesture
+diff --git a/src/client/terminal-client.ts b/src/client/terminal-client.ts
+index f2a8bbf..b52068d 100644
+--- a/src/client/terminal-client.ts
++++ b/src/client/terminal-client.ts
+@@ -1,180 +1,29 @@
+-/**
+- * The plugin's structural read of the HOST's browser terminal service
+- * (`ctx.webTerminals`, provided by `@deepseek-ai/dsh-api-terminal-controller`'s
+- * client half on the web profile).
+- *
+- * The plugin does NOT own a PTY stack any more (v0.21.1 yielded the terminal to
+- * DSH's own right-Sidebar type): the bottom workbench's terminal drives the
+- * host's session-scoped terminals through this service, and the host keeps
+- * process lifetime, screen recovery and reconnection.
+- *
+- * Detection is STRUCTURAL and by name only — the plugin never imports the host
+- * package (the client-bundle purity gate forbids `@deepseek-ai/*` value
+- * imports outside the platform module table), and `webTerminals` is
+- * deliberately NOT in `package.json#dsh.client.inject`: a deployment without
+- * the service must still activate the plugin (a missing injected service leaves
+- * the whole row `pending`), so the terminal tab degrades instead.
+- *
+- * The shapes mirror the pinned host package (`dsh-api-terminal-controller`
+- * 0.2.0-rc.1, `lib/types/client/{index,model}.d.ts` + `lib/types/types.d.ts`):
+- *
+- * - `view(sessionId, key, contentId, terminalId?, shellPath?)` returns the
+- *   STABLE model for one occurrence (`key` memoizes it; repeating a call is
+- *   free) and allocates the terminal eagerly on first call. `contentId` is the
+- *   persistence key: the service remembers `(sessionId, contentId) -> host
+- *   terminal id` in `localStorage`, so passing the same `contentId` after a
+- *   page reload ADOPTS the saved process instead of allocating a new one —
+- *   unless an explicit `terminalId` is given, which wins.
+- * - `mount()` attaches the DOM lifetime and returns a DETACH callback; the
+- *   process survives unmount (only `close()` ends it).
+- * - `state.render` is the next screen frame awaiting
+- *   {@link HostTerminalView.acknowledge}; the service will not publish the
+- *   following frame until it is acknowledged, so the emulator's write callback
+- *   is what releases the stream.
+- * - `write` / `resize` are refused unless the view is currently `writable`
+- *   (the host serializes input across windows per attachment).
+- */
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
++/** Bottom-workbench terminals consume the optional host terminal controller. */
+ import type { Context } from '../context-types.ts'
+-
+-/** A host terminal identity, unique per Session and host lifetime. */
+-export type WebTerminalId = string
+-
+-/** Host-owned terminal state; process exit never creates a replacement shell. */
+-export interface HostTerminalInfo {
+-  readonly id: WebTerminalId
+-  readonly title: string
+-  /** Initial working directory; a shell's own `cd` does not update it. */
+-  readonly cwd: string
+-  readonly cols: number
+-  readonly rows: number
+-  readonly state: 'running' | 'exited' | 'failed'
+-  readonly exitCode: number | null
+-  readonly error?: string
+-}
+-
+-/** Working directory and limits shared by new and restored terminals. */
+-export interface HostTerminalEnvironment {
+-  readonly cwd: string
+-  readonly maxInputBytes: number
+-  readonly maxCols: number
+-  readonly maxRows: number
+-  readonly scrollback: number
+-}
+-
+-/**
+- * Every attachment begins with a complete bounded screen (the host serializes
+- * the emulator's screen), then ordered output; `state` frames only carry
+- * metadata. This is why the view REPLAYS `screen` rather than appending it.
+- */
+-export type HostTerminalFrame =
+-  | { readonly type: 'snapshot'; readonly sequence: number; readonly screen: string; readonly info: HostTerminalInfo }
+-  | { readonly type: 'output'; readonly sequence: number; readonly data: string }
+-  | { readonly type: 'state'; readonly info: HostTerminalInfo }
+-
+-/** Product error identifiers the host terminals UI translates. */
+-export type HostTerminalIssue = 'missingTerminal' | 'inputFull' | 'attachmentEnded' | 'invalidOutput' | 'terminalLimit'
+-
+-/**
+- * The two frame kinds that carry screen content. The host's render slot is
+- * `Extract<TerminalFrame, { type: 'snapshot' | 'output' }>`: a `state` frame is
+- * metadata only and never reaches the emulator.
+- */
+-export type HostRenderFrame = Extract<HostTerminalFrame, { type: 'snapshot' | 'output' }>
+-
+-/** Observable state of one occurrence. */
+-export interface HostTerminalViewState {
+-  readonly phase: 'idle' | 'loading' | 'creating' | 'connecting' | 'connected' | 'disconnected' | 'closing' | 'closed' | 'failed'
+-  readonly environment?: HostTerminalEnvironment | undefined
+-  readonly title?: string | undefined
+-  readonly info?: HostTerminalInfo | undefined
+-  /** Whether this view currently holds input/resize control. */
+-  readonly writable: boolean
+-  /** The next screen frame awaiting {@link HostTerminalView.acknowledge}. */
+-  readonly render?: { readonly revision: number; readonly frame: HostRenderFrame } | undefined
+-  readonly error?: string | undefined
+-  readonly issue?: HostTerminalIssue | undefined
+-}
+-
+-/** The host's observable snapshot store face (a subset of `SnapshotStore`). */
+-export interface HostSnapshot<T> {
+-  getSnapshot(): T
+-  subscribe(listener: () => void): () => void
+-}
+-
+-/** One terminal occurrence's model. A view survives DOM unmount. */
+-export interface HostTerminalView {
+-  readonly id: WebTerminalId
+-  readonly state: HostSnapshot<HostTerminalViewState>
+-  /** Attach the DOM lifetime; the returned detach leaves the process alive. */
+-  mount(): () => void
+-  /** Start or recover this tab (deduplicated by the service). */
+-  refresh(): Promise<void>
+-  /** Reattach with a fresh screen and regain input control. */
+-  connect(): void
+-  /** Release the next stream item after the emulator parsed this frame. */
+-  acknowledge(revision: number): void
+-  /** Serialize raw input (refused unless writable). */
+-  write(data: string): void
+-  /** Resize only from the currently writable view. */
+-  resize(cols: number, rows: number): void
+-  /** Terminate the process; the DOM lifetime is irrelevant to it. */
+-  close(): Promise<void>
+-}
+-
+-/** One shell the host offers for new terminals. */
+-export interface HostShellChoice {
+-  readonly name: string
+-  readonly path: string
+-}
+-
+-/** The host's shell catalog and remembered selection. */
+-export interface HostShellCatalog {
+-  readonly shells: readonly HostShellChoice[]
+-  /** The shell the host will use when none is named. */
+-  readonly selectedShell?: string
+-}
+-
+-/** The service slice this plugin consumes. */
+-export interface WebTerminalsFace {
+-  /**
+-   * Shells the host can launch for a session (the guide card's native menu).
+-   * Optional: a host that only exposes the terminal view leaves the plugin
+-   * card as a plain tile.
+-   */
+-  launchShells?(sessionId: string, signal: AbortSignal): Promise<HostShellCatalog>
+-  /** Remember the shell choice for terminals opened afterwards. */
+-  selectShell?(path: string): void
+-  view(
+-    sessionId: string,
+-    key: string,
+-    contentId: string,
+-    terminalId?: WebTerminalId,
+-    shellPath?: string,
+-  ): HostTerminalView
+-  /**
+-   * Save a close intent, release the occurrence immediately and drop the
+-   * `(sessionId, contentId)` binding; the process cleanup outlives DOM
+-   * unmount and a page reload (the plugin's tab `onClose`).
+-   */
+-  close(sessionId: string, key: string, contentId: string, terminalId?: WebTerminalId): void
+-  /** Query host terminals without a live view or unfinished close. */
+-  recover(sessionId: string): Promise<HostTerminalInfo[]>
+-}
+-
+-/**
+- * The host terminal service, when this deployment mounts it.
+- *
+- * Structural detection (`view` + `close` + `recover` are the members this
+- * plugin calls); a service that does not look like the pinned contract reads
+- * as absent rather than throwing at the first keystroke.
+- * @param ctx - the client context.
++import type { ClientTerminals, TerminalView, TerminalViewState, TerminalViewIssue, TerminalLaunchShells } from '@deepseek-ai/dsh-api-terminal-controller/client'
++import type { WebTerminalId, WebTerminalInfo, TerminalEnvironment, TerminalFrame, TerminalShell } from '@deepseek-ai/dsh-api-terminal-controller/types'
++import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
++
++export type { WebTerminalId }
++export type HostTerminalInfo = WebTerminalInfo
++export type HostTerminalEnvironment = TerminalEnvironment
++export type HostTerminalFrame = TerminalFrame
++export type HostTerminalIssue = TerminalViewIssue
++export type HostRenderFrame = Extract<TerminalFrame, { type: 'snapshot' | 'output' }>
++export type HostTerminalViewState = TerminalViewState
++export type HostSnapshot<T> = SnapshotStore<T>
++export type HostTerminalView = TerminalView
++export type HostShellChoice = TerminalShell
++export type HostShellCatalog = TerminalLaunchShells
++export type WebTerminalsFace = ClientTerminals
++
++/** Return the controller only when this deployment provides it.
++ * @param ctx - client context.
++ * @returns the registered controller, or undefined.
+  */
+-export function webTerminals(ctx: Context): WebTerminalsFace | undefined {
+-  const service = ctx.get('webTerminals') as unknown as Partial<WebTerminalsFace> | undefined
+-  if (service === undefined || service === null) return undefined
+-  if (typeof service.view !== 'function' || typeof service.close !== 'function') return undefined
+-  if (typeof service.recover !== 'function') return undefined
+-  return service as WebTerminalsFace
++export function webTerminals(ctx: Context): ClientTerminals | undefined {
++  return ctx.get('webTerminals')
+ }
+ 
+ /** Namespace for the plugin's own occurrence key and content identity. */
+@@ -260,5 +109,5 @@ export function closeBottomTerminal(ctx: Context, tab: { meta?: unknown }, sessi
+   const service = webTerminals(ctx)
+   if (service === undefined) return
+   const id = bottomTerminalContentId(terminalRunOf(tab), terminalInstanceOf(tab))
+-  service.close(sessionId, id, id)
++  service.close(sessionId as SessionId, id, id)
+ }
 diff --git a/src/config.ts b/src/config.ts
 index 2ea6335..6cccc49 100644
 --- a/src/config.ts
@@ -2438,24 +3273,87 @@ index 2ea6335..6cccc49 100644
      createTimeoutMs: config?.createTimeoutMs ?? 120_000,
    }
 diff --git a/src/context-types.ts b/src/context-types.ts
-index c262242..6f3d5db 100644
+index c262242..bb363ca 100644
 --- a/src/context-types.ts
 +++ b/src/context-types.ts
-@@ -27,10 +27,11 @@
+@@ -25,73 +25,14 @@
+  * This file must stay FREE of Node.js types (`node:http`, `node:stream`,
+  * `Buffer`): it is part of the CLIENT-reachable declaration graph (the
   * `Context` in `TabComponentProps` and the `betterSidebar` augmentation),
-  * so a Node import here would leak into browser-only consumer builds. The
-  * webServer faces below are therefore structural mirrors with plain
+- * so a Node import here would leak into browser-only consumer builds. The
+- * webServer faces below are therefore structural mirrors with plain
 - * interfaces (the host casts to real Node types at the few boundaries that
 - * need them — e.g. the `ws` upgrade hook in src/index.ts).
-+ * interfaces. The Host entry imports the webserver owner's type for upgrade
-+ * handlers; that Node-specific declaration stays out of this shared file.
++ * so a Node import here would leak into browser-only consumer builds.
++ * HTTP route types remain in host-http.ts, outside this shared file.
   */
  import type { Context as CordisContext } from '@deepseek-ai/cordis'
 +import type { SessionId } from '@deepseek-ai/dsh-session/types'
  import type { BetterSidebarService } from './client/service.ts'
  import type { ProcessActivitySummary } from './process-activity.ts'
  
-@@ -167,6 +168,8 @@ export interface SidebarSessionSummary {
+-/** The request face route handlers see (structural subset of node's
+- *  IncomingMessage: the URL/method/header reads and the async body
+- *  iteration `readJsonBody` uses). */
+-export interface SidebarHttpRequest {
+-  url?: string
+-  method?: string
+-  headers: Record<string, string | string[] | undefined>
+-  [Symbol.asyncIterator](): AsyncIterator<string | Uint8Array>
+-}
+-
+-/** The response face route handlers write to (structural subset of node's
+- *  ServerResponse: the status/header/body writes the routes use).
+- *
+- *  `write` / `headersSent` / `destroy` exist for the raw byte routes
+- *  (`/sidebar/file`, `/sidebar/html`, `/sidebar/archive`), which stream a file
+- *  instead of buffering it. They stay plain structural members on purpose —
+- *  see the module header on why node types cannot appear here. */
+-export interface SidebarHttpResponse {
+-  statusCode: number
+-  /** True once a status line went out; a late failure can no longer become a
+-   *  JSON envelope, so callers destroy the response instead. */
+-  headersSent?: boolean
+-  writeHead(status: number, headers?: Record<string, string>): void
+-  /** Append one body chunk; false means "wait for drain". */
+-  write(chunk: string | Uint8Array): boolean
+-  end(body?: string | Uint8Array): void
+-  /** Tear the connection down (mid-stream failure, client abort). */
+-  destroy?(error?: Error): void
+-}
+-
+-/** The upgrade socket face (structural subset: the destroy the fences use). */
+-export interface SidebarUpgradeSocket {
+-  destroy(): void
+-}
+-
+-/** The upgrade head bytes (Buffer at runtime; typed as bytes so no Node
+- *  global leaks into the declaration graph). */
+-export type SidebarUpgradeHead = Uint8Array
+-
+-/** One named webserver route (mirror of the host-webserver WebRoute). */
+-export interface SidebarWebRoute {
+-  kind: 'exact' | 'prefix'
+-  path: string
+-  handler: (req: SidebarHttpRequest, res: SidebarHttpResponse) => void | Promise<void>
+-}
+-
+-/** One exact-path HTTP upgrade registration (mirror of WebUpgradeRoute). */
+-export interface SidebarWebUpgradeRoute {
+-  path: string
+-  handler: (req: SidebarHttpRequest, socket: SidebarUpgradeSocket, head: SidebarUpgradeHead) => void | Promise<void>
+-}
+-
+-/** The webServer service face this plugin uses. */
+-export interface SidebarWebServer {
+-  register(route: SidebarWebRoute): () => void
+-  registerUpgrade(route: SidebarWebUpgradeRoute): () => void
+-}
+-
+ /** A published session's immutable original-project metadata. */
+ export interface SidebarSessionHeader {
+   cwd?: string
+@@ -167,6 +108,8 @@ export interface SidebarSessionSummary {
    parentId?: string
    /** Whether the session's agent is currently running. */
    running?: boolean
@@ -2464,7 +3362,7 @@ index c262242..6f3d5db 100644
  }
  
  /** Durable parent/child address that selects subagent transport in the client. */
-@@ -624,7 +627,7 @@ export interface SidebarSessionsService {
+@@ -624,7 +567,7 @@ export interface SidebarSessionsService {
     * runtime ISessions.scope) — the ticket `ctx.conversation.input.for`
     * requires to reach that session's composer.
     */
@@ -2473,6 +3371,70 @@ index c262242..6f3d5db 100644
    /**
     * Open a healthy catalog child through its exact direct-parent address
     * (mirror of the runtime ISessions.openSubagent).
+@@ -860,8 +803,6 @@ export interface SidebarAgent {
+  * instead of module augmentation).
+  */
+ export interface SidebarContextShape {
+-  /** The webServer service face this plugin uses. */
+-  webServer: SidebarWebServer
+   /** The session store (host `.get`) and the client list feed (`.list`) faces. */
+   sessions: SidebarSessionStore & SidebarSessionsService
+   /** Committed current execution directory; the header keeps the original project. */
+diff --git a/src/file-stream.ts b/src/file-stream.ts
+index 15b64b9..179e846 100644
+--- a/src/file-stream.ts
++++ b/src/file-stream.ts
+@@ -17,9 +17,8 @@
+  */
+ import { createReadStream } from 'node:fs'
+ import { once } from 'node:events'
+-import type { ServerResponse } from 'node:http'
+ import { pipeline } from 'node:stream/promises'
+-import type { SidebarHttpResponse } from './context-types.ts'
++import type { SidebarHttpResponse } from './host-http.ts'
+ import { fileReadError } from './fs-read-error.ts'
+ 
+ /** One satisfiable byte window, inclusive on both ends (`start <= end < size`). */
+@@ -86,10 +85,6 @@ export async function streamFileToResponse(
+   headers: Record<string, string>,
+   range?: ByteRange,
+ ): Promise<void> {
+-  // `node:http` boundary cast: the host hands the routes a real ServerResponse,
+-  // and the declaration graph deliberately cannot name it (see
+-  // context-types.ts). This is the one place the cast is needed.
+-  const node = res as unknown as ServerResponse
+   const stream = range === undefined ? createReadStream(path) : createReadStream(path, { start: range.start, end: range.end })
+   try {
+     await once(stream, 'open')
+@@ -107,12 +102,12 @@ export async function streamFileToResponse(
+     })
+   }
+   try {
+-    await pipeline(stream, node)
++    await pipeline(stream, res)
+   } catch {
+     // Either the peer went away or the source failed mid-flight. The status
+     // line is already on the wire, so there is no envelope to write and no
+     // recovery to attempt — tear the socket down and let the client's own
+     // download UI report the truncation.
+-    node.destroy()
++    res.destroy()
+   }
+ }
+diff --git a/src/host-http.ts b/src/host-http.ts
+new file mode 100644
+index 0000000..45f64b5
+--- /dev/null
++++ b/src/host-http.ts
+@@ -0,0 +1,8 @@
++/** HTTP types remain in the host-only declaration graph. */
++import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
++
++/** Request supplied by the host webserver route registration. */
++export type SidebarHttpRequest = Parameters<WebRoute['handler']>[0]
++
++/** Response supplied by the host webserver route registration. */
++export type SidebarHttpResponse = Parameters<WebRoute['handler']>[1]
 diff --git a/src/html-route.ts b/src/html-route.ts
 index f33eec6..f01b5dd 100644
 --- a/src/html-route.ts
@@ -2488,10 +3450,24 @@ index f33eec6..f01b5dd 100644
      path = tail.join('/')
    } else {
 diff --git a/src/index.ts b/src/index.ts
-index a6e26f3..c32b0d6 100644
+index a6e26f3..8da8de2 100644
 --- a/src/index.ts
 +++ b/src/index.ts
-@@ -1218,8 +1218,8 @@ function buildApi(
+@@ -13,10 +13,11 @@ import { open, readFile, stat } from 'node:fs/promises'
+ import { basename, extname, isAbsolute, join, sep } from 'node:path'
+ import type { Stats } from 'node:fs'
+ import type { IncomingMessage, ServerResponse } from 'node:http'
+-import type { Duplex } from 'node:stream'
++import type { SidebarHttpRequest } from './host-http.ts'
++import type {} from '@deepseek-ai/dsh-host-webserver'
+ import { WebSocket, WebSocketServer } from 'ws'
+ import { parse as parseYaml } from 'yaml'
+-import type { Context, SidebarHttpRequest, SidebarSettingsService } from './context-types.ts'
++import type { Context, SidebarSettingsService } from './context-types.ts'
+ import {
+   Config,
+   resolveSidebarConfig,
+@@ -1218,8 +1219,8 @@ function buildApi(
      'settings.get': () => {
        const settings = getSettings()
        return settings === undefined
@@ -2502,10 +3478,486 @@ index a6e26f3..c32b0d6 100644
      },
      'settings.update': async (payload) => {
        const settings = getSettings()
+@@ -1984,7 +1985,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+         socket.destroy()
+         return
+       }
+-      agentOpenWss.handleUpgrade(req as unknown as IncomingMessage, socket as unknown as Duplex, head as Buffer, (ws) => {
++      agentOpenWss.handleUpgrade(req, socket, head, (ws) => {
+         void attachAgentOpen(agentOpenRegistry, ws, req)
+       })
+     },
+@@ -2005,7 +2006,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+         socket.destroy()
+         return
+       }
+-      fsWatchWss.handleUpgrade(req as unknown as IncomingMessage, socket as unknown as Duplex, head as Buffer, (ws) => {
++      fsWatchWss.handleUpgrade(req, socket, head, (ws) => {
+         void attachFsWatch(ctx, ws, req)
+       })
+     },
+@@ -2027,7 +2028,7 @@ export function apply(ctx: Context, config?: SidebarConfig): void {
+         socket.destroy()
+         return
+       }
+-      sidechatWss.handleUpgrade(req as unknown as IncomingMessage, socket as unknown as Duplex, head as Buffer, (ws) => {
++      sidechatWss.handleUpgrade(req, socket, head, (ws) => {
+         sidechatPush.attach(ws)
+       })
+     },
+diff --git a/src/sidechat-core.ts b/src/sidechat-core.ts
+index 1930270..6c6e888 100644
+--- a/src/sidechat-core.ts
++++ b/src/sidechat-core.ts
+@@ -1,3 +1,6 @@
++import type {} from '@deepseek-ai/dsh-compaction/types'
++import type {} from '@deepseek-ai/dsh-session-log-deepseek/types'
++import type { SessionEvent, SessionSeq } from '@deepseek-ai/dsh-session/types'
+ /**
+  * Pure side-conversation ("Side Chat") logic shared by the host routes and
+  * the client tab. Framework-free (no React, no Node) so both halves and the
+@@ -69,18 +72,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
+  *  (user/message, assistant/message, tool/result) REQUIRE the `surfaceOp`
+  *  marker (and may carry `sourceEventSeqs`) — the seed validator rejects
+  *  them without it. */
+-export interface SeedEvent {
+-  type: string
+-  seq: number
+-  time: number
+-  data: Record<string, unknown>
+-  /** Surface marker of message-producing events ('append' | replace op). */
+-  surfaceOp?: unknown
+-  /** Seq numbers of earlier events this event cites as sources. */
+-  sourceEventSeqs?: unknown
+-  /** Reader-skip marker of purely informational events. */
+-  ignorable?: true
+-}
++export type SeedEvent = SessionEvent
+ 
+ /** The minimal structural face of a session-log event this module reads
+  *  (loose enough to accept both the host's real SessionEvent and the
+@@ -161,23 +153,8 @@ function dataOf(event: SidechatLogEvent): Record<string, unknown> {
+ /** Copy parent events verbatim (their live seq === array index contract).
+  *  The FULL envelope is preserved — stripping `surfaceOp` would make the
+  *  seed validator reject every surface-eligible message event. */
+-function copyEvents(events: readonly SidechatLogEvent[]): SeedEvent[] {
+-  return events.map(event => {
+-    const source = event as SidechatLogEvent & {
+-      surfaceOp?: unknown
+-      sourceEventSeqs?: unknown
+-      ignorable?: true
+-    }
+-    return {
+-      type: source.type,
+-      seq: source.seq,
+-      time: source.time,
+-      data: dataOf(source),
+-      ...(source.surfaceOp === undefined ? {} : { surfaceOp: source.surfaceOp }),
+-      ...(source.sourceEventSeqs === undefined ? {} : { sourceEventSeqs: source.sourceEventSeqs }),
+-      ...(source.ignorable === undefined ? {} : { ignorable: source.ignorable }),
+-    }
+-  })
++function copyEvents(events: readonly SessionEvent[]): SeedEvent[] {
++  return events.map(event => ({ ...event }))
+ }
+ 
+ /** Index of the last `turn/start` or `turn/end`, or -1. */
+@@ -299,7 +276,7 @@ const SNAPSHOT_TOTAL_CAP = 8000
+  * @param events - the parent's log (live or persisted).
+  * @returns the rebased log, or undefined when the full copy is required.
+  */
+-function compactionTail(events: readonly SidechatLogEvent[]): SidechatLogEvent[] | undefined {
++function compactionTail(events: readonly SessionEvent[]): SessionEvent[] | undefined {
+   const cut = lastCheckpointIndex(events)
+   if (cut === undefined) return undefined
+   const checkpoint = events[cut]
+@@ -307,7 +284,7 @@ function compactionTail(events: readonly SidechatLogEvent[]): SidechatLogEvent[]
+   let parentNodes: readonly number[]
+   let checkpointShadowed: ReadonlySet<number> | undefined
+   try {
+-    const fold = foldSurface(events as unknown as Parameters<typeof foldSurface>[0])
++    const fold = foldSurface(events)
+     parentNodes = fold.nodes
+     // The checkpoint's declared [startSeq,endSeq] range is not its shadowed
+     // set once a replacement sits inside it: use the surface entries the fold
+@@ -479,7 +456,7 @@ function compactionTail(events: readonly SidechatLogEvent[]): SidechatLogEvent[]
+   const rebase = new Map<number, number>()
+   const seed: SeedEvent[] = []
+   let aborted = false
+-  const emit = (event: SidechatLogEvent | undefined): void => {
++  const emit = (event: SessionEvent | undefined): void => {
+     if (aborted || event === undefined) return
+     const rebased: RebasedEvent = rebaseEvent(event, seed.length, rebase, turnOffset, firstKeptTurn)
+     if (rebased === DROPPED) return
+@@ -516,7 +493,7 @@ function compactionTail(events: readonly SidechatLogEvent[]): SidechatLogEvent[]
+   // rules (turn/start runs 1, 2, …; steps open and close inside their turn;
+   // a trailing open turn is the caller's to close).
+   try {
+-    const child = foldSurface(seed as unknown as Parameters<typeof foldSurface>[0])
++    const child = foldSurface(seed)
+     if (!sameVisibleSequence(events, parentNodes, child.nodes, seed)) return undefined
+   } catch {
+     return undefined
+@@ -684,7 +661,7 @@ interface HeadSlot {
+   /** Seq of the anchor event that owns the slot. */
+   anchor: number
+   /** Event the child emits in the slot (the anchor or its latest replacement). */
+-  effective: SidechatLogEvent
++  effective: SessionEvent
+   /** Replacement-chain events the head consumes (the effective included); keep/tail loops skip them. */
+   consumed: readonly number[]
+ }
+@@ -722,7 +699,7 @@ function surfaceReplaceSpan(event: SidechatLogEvent): { start: number; end: numb
+  * @returns the resolved slot, or undefined when the shape is not representable.
+  */
+ function headSlotOf(
+-  events: readonly SidechatLogEvent[],
++  events: readonly SessionEvent[],
+   seq: number,
+   cut: number,
+   checkpointShadowed: ReadonlySet<number> | undefined,
+@@ -736,7 +713,7 @@ function headSlotOf(
+   if (checkpointShadowed === undefined || checkpointShadowed.size === 0) return undefined
+   const consumed: number[] = []
+   const seen = new Set<number>()
+-  let current: SidechatLogEvent | undefined = surface
++  let current: SessionEvent | undefined = surface
+   while (current !== undefined) {
+     if (seen.has(current.seq) || seen.size > MAX_HEAD_REPLACEMENTS) return undefined
+     seen.add(current.seq)
+@@ -773,13 +750,13 @@ function headSlotOf(
+  * @returns the head segment's events, or undefined when the shape is not
+  *  representable.
+  */
+-function headSkeleton(events: readonly SidechatLogEvent[], slots: readonly HeadSlot[]): SidechatLogEvent[] | undefined {
++function headSkeleton(events: readonly SessionEvent[], slots: readonly HeadSlot[]): SessionEvent[] | undefined {
+   if (slots.length === 0) return []
+   const first = events[slots[0]!.anchor]
+   const last = events[slots[slots.length - 1]!.anchor]
+   if (first === undefined || last === undefined) return undefined
+-  let turnStart: SidechatLogEvent | undefined
+-  let stepStart: SidechatLogEvent | undefined
++  let turnStart: SessionEvent | undefined
++  let stepStart: SessionEvent | undefined
+   for (let index = first.seq - 1; index >= 0; index--) {
+     const event = events[index]
+     if (event === undefined) break
+@@ -796,13 +773,7 @@ function headSkeleton(events: readonly SidechatLogEvent[], slots: readonly HeadS
+   // data object IS the model-visible message, so injecting fields there
+   // would change the child's context) — keeping the data losslessly
+   // JSON-serializable (never writing explicit undefined).
+-  const normalized = (event: SidechatLogEvent, over: { turn?: number; step?: number }): SidechatLogEvent => {
+-    const data = { ...dataOf(event) }
+-    if (over.turn !== undefined && typeof data.turn === 'number') data.turn = over.turn
+-    if (over.step !== undefined && typeof data.step === 'number') data.step = over.step
+-    return { ...event, data } as SidechatLogEvent
+-  }
+-  const parts: SidechatLogEvent[] = []
++  const parts: SessionEvent[] = []
+   if (turnStart !== undefined) {
+     const turn = dataOf(turnStart).turn
+     if (typeof turn !== 'number') return undefined
+@@ -819,9 +790,9 @@ function headSkeleton(events: readonly SidechatLogEvent[], slots: readonly HeadS
+       if (nodeData.turn !== turn && nodeData.turn !== undefined) return undefined
+       if (stepStart !== undefined && nodeData.step !== step && nodeData.step !== undefined) return undefined
+     }
+-    parts.push(normalized(turnStart, { turn: 1 }))
+-    if (stepStart !== undefined) parts.push(normalized(stepStart, { turn: 1, step: 1 }))
+-    for (const slot of slots) parts.push(normalized(slot.effective, { turn: 1, ...(stepStart !== undefined ? { step: 1 } : {}) }))
++    parts.push(normalizeEventCounters(turnStart, { turn: 1 }))
++    if (stepStart !== undefined) parts.push(normalizeEventCounters(stepStart, { turn: 1, step: 1 }))
++    for (const slot of slots) parts.push(normalizeEventCounters(slot.effective, { turn: 1, ...(stepStart !== undefined ? { step: 1 } : {}) }))
+     // Close the skeleton when its closers are dropped with the span: the
+     // first step/end / turn/end of this step/turn after the last anchor.
+     let closedStep = false
+@@ -830,12 +801,12 @@ function headSkeleton(events: readonly SidechatLogEvent[], slots: readonly HeadS
+       if (event === undefined) break
+       if (!closedStep && event.type === 'step/end' && typeof step === 'number'
+         && dataOf(event).step === step && dataOf(event).turn === turn) {
+-        parts.push(normalized(event, { turn: 1, step: 1 }))
++        parts.push(normalizeEventCounters(event, { turn: 1, step: 1 }))
+         closedStep = true
+         continue
+       }
+       if (event.type === 'turn/end' && dataOf(event).turn === turn) {
+-        parts.push(normalized(event, { turn: 1 }))
++        parts.push(normalizeEventCounters(event, { turn: 1 }))
+         break
+       }
+       if (event.type === 'turn/start') break
+@@ -939,35 +910,40 @@ const DROPPED: unique symbol = Symbol('dropped')
+ 
+ type RebasedEvent = SeedEvent | undefined | typeof DROPPED
+ 
++function normalizeEventCounters<T extends SessionEvent>(event: T, over: { turn?: number; step?: number }): T {
++  const data = { ...event.data }
++  if (over.turn !== undefined && 'turn' in data && typeof data.turn === 'number') data.turn = over.turn
++  if (over.step !== undefined && 'step' in data && typeof data.step === 'number') data.step = over.step
++  return { ...event, data }
++}
++
+ function rebaseEvent(
+-  event: SidechatLogEvent,
++  event: SessionEvent,
+   seq: number,
+   rebase: Map<number, number>,
+   turnOffset: number,
+   firstKeptTurn: number | undefined,
+ ): RebasedEvent {
+-  const source = event as SidechatLogEvent & { ignorable?: true }
+-  const seed: SeedEvent = { type: source.type, seq, time: source.time, data: dataOf(source) }
+-  if (source.ignorable === true) seed.ignorable = true
++  let seed: SeedEvent = { ...event, seq: seq as SessionSeq }
+   const sourceData = dataOf(event)
+   if (turnOffset > 0 && typeof sourceData.turn === 'number'
+     && firstKeptTurn !== undefined && sourceData.turn >= firstKeptTurn) {
+-    seed.data = { ...seed.data, turn: sourceData.turn - turnOffset }
++    seed = normalizeEventCounters(seed, { turn: sourceData.turn - turnOffset })
+   }
+   // A settled command cites an earlier non-command event by seq; remap it
+   // alongside, and drop the done when the cited event did not survive — a
+   // stale citation is something the host's commands invariant rejects.
+-  if (event.type === 'command/done' && typeof sourceData.sourceEventSeq === 'number') {
++  if (seed.type === 'command/done' && typeof sourceData.sourceEventSeq === 'number') {
+     const mapped = rebase.get(sourceData.sourceEventSeq)
+     if (mapped === undefined) return DROPPED
+-    seed.data = { ...seed.data, sourceEventSeq: mapped }
++    seed.data = { ...seed.data, sourceEventSeq: mapped as SessionSeq }
+   }
+   // Compaction metering records cite the surface span they priced. When the
+   // span survived the rebase, remap the citations; when it did not (the
+   // record predates the consumed compaction and its span lies in the
+   // dropped region), the record meters nothing that exists in the child —
+   // drop it rather than shipping stale seq references.
+-  if (event.type === 'compaction/summary' || event.type === 'compaction/prune') {
++  if (seed.type === 'compaction/summary' || seed.type === 'compaction/prune') {
+     const range = sourceData.shadowedRange as { start?: unknown; end?: unknown } | undefined
+     const cited = sourceData.shadowedSeqs
+     if (range === null || typeof range !== 'object' || !Array.isArray(cited)) return seed
+@@ -977,8 +953,8 @@ function rebaseEvent(
+     if (start === undefined || end === undefined || mapped.includes(undefined)) return DROPPED
+     seed.data = {
+       ...seed.data,
+-      shadowedRange: { start, end },
+-      shadowedSeqs: mapped as number[],
++      shadowedRange: { start: start as SessionSeq, end: end as SessionSeq },
++      shadowedSeqs: mapped as SessionSeq[],
+     }
+   }
+   // The DeepSeek log ledger cites an ABSOLUTE watermark: `throughSeq` is
+@@ -989,16 +965,16 @@ function rebaseEvent(
+   // watermark through the same map; one that names an event inside the
+   // dropped span has no child-side equivalent, so the record drops rather
+   // than citing a delivery that never happened.
+-  if (event.type === 'session-log-deepseek/delivery-accepted' && typeof sourceData.throughSeq === 'number') {
++  if (seed.type === 'session-log-deepseek/delivery-accepted' && typeof sourceData.throughSeq === 'number') {
+     const mapped = rebase.get(sourceData.throughSeq)
+     if (mapped === undefined) return DROPPED
+-    seed.data = { ...seed.data, throughSeq: mapped }
++    seed.data = { ...seed.data, throughSeq: mapped as SessionSeq }
+   }
+   const headerSeq = sourceData.headerSeq
+-  if (event.type === 'developer/message' && typeof headerSeq === 'number') {
++  if (seed.type === 'developer/message' && typeof headerSeq === 'number') {
+     const mapped = rebase.get(headerSeq)
+     if (mapped === undefined) return undefined
+-    seed.data = { ...seed.data, headerSeq: mapped }
++    seed.data = { ...seed.data, headerSeq: mapped as SessionSeq }
+   }
+   const op = (event as { surfaceOp?: unknown }).surfaceOp
+   if (op === 'append') {
+@@ -1011,7 +987,7 @@ function rebaseEvent(
+     // dropped span; appending the replacement is exactly what remains
+     // visible (the equivalence check still has to confirm it).
+     seed.surfaceOp = start !== undefined && end !== undefined && start <= end
+-      ? { op: 'replace', startSeq: start, endSeq: end }
++      ? { op: 'replace', startSeq: start as SessionSeq, endSeq: end as SessionSeq }
+       : 'append'
+   }
+   const cited = (event as { sourceEventSeqs?: unknown }).sourceEventSeqs
+@@ -1019,7 +995,8 @@ function rebaseEvent(
+     const mapped = cited.map(item => typeof item === 'number' ? rebase.get(item) : undefined)
+     // Citations the rebase cannot serve referenced the dropped span; the
+     // field is optional and only has to cover a live replace range.
+-    if (!mapped.includes(undefined)) seed.sourceEventSeqs = mapped as number[]
++    if (!mapped.includes(undefined)) seed.sourceEventSeqs = mapped as SessionSeq[]
++    else delete seed.sourceEventSeqs
+   }
+   return seed
+ }
+@@ -1035,7 +1012,7 @@ function rebaseEvent(
+  *   them outside the log); used only by the snapshot fallback.
+  */
+ export function buildSidechatInheritance(
+-  events: readonly SidechatLogEvent[],
++  events: readonly SessionEvent[],
+   live: readonly AssistantLiveChunk[] = [],
+ ): SidechatInheritance {
+   if (events.length === 0) return { seed: [], snapshot: null }
+@@ -1062,11 +1039,11 @@ export function buildSidechatInheritance(
+   const now = last?.time ?? 0
+   const openStep = openStepInTurn(log, boundary)
+   if (openStep !== undefined) {
+-    seed.push({ type: 'step/end', seq: seed.length, time: now, data: { turn, step: openStep } })
++    seed.push({ type: 'step/end', seq: seed.length as SessionSeq, time: now, data: { turn, step: openStep } })
+   }
+   seed.push({
+     type: 'turn/end',
+-    seq: seed.length,
++    seq: seed.length as SessionSeq,
+     time: now,
+     data: { turn, reason: { kind: 'interrupted' } },
+   })
+diff --git a/src/sidechat-routes.ts b/src/sidechat-routes.ts
+index dad18dd..01518e8 100644
+--- a/src/sidechat-routes.ts
++++ b/src/sidechat-routes.ts
+@@ -1,3 +1,5 @@
++import type {} from '@deepseek-ai/dsh-working-directory'
++import type { SessionSeq } from '@deepseek-ai/dsh-session/types'
+ /**
+  * Side Chat routes of the /sidebar JSON API ('sidechat.start' /
+  * 'sidechat.prompt' / 'sidechat.cancel' / 'sidechat.dispose' /
+@@ -393,7 +395,7 @@ async function readColdThreadSession(persistence: SidebarSessionPersistenceServi
+ }
+ 
+ async function readColdThreadLog(persistence: SidebarSessionPersistenceService, childId: string): Promise<readonly SidechatLogEvent[]> {
+-  return (await readColdThreadSession(persistence, childId)).events as unknown as readonly SidechatLogEvent[]
++  return (await readColdThreadSession(persistence, childId)).events
+ }
+ 
+ /** The stored artifact's change identity, or undefined when unavailable. */
+@@ -429,7 +431,7 @@ async function storedIdentityOf(
+ async function threadLogEvents(ctx: Context, childId: string): Promise<readonly SidechatLogEvent[]> {
+   const agent = liveThreadAgent(ctx, childId)
+   if (agent !== undefined) {
+-    return agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[]
++    return agent.session.snapshotEvents()
+   }
+   const persistence = ctx.get('sessionPersistence') as SidebarSessionPersistenceService | undefined
+   if (persistence === undefined) {
+@@ -497,7 +499,7 @@ function messageLeadTextOf(message: unknown): string {
+  * @returns how many inherited ghosts were dropped.
+  */
+ function dropInheritedGhosts(agent: Agent): number {
+-  const log = agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[]
++  const log = agent.session.snapshotEvents()
+   const ghosts = new Set(inheritedPendingIds(log, Number(agent.session.inheritedEventCount)))
+   if (ghosts.size === 0) return 0
+   let removed = 0
+@@ -516,7 +518,7 @@ function dropInheritedGhosts(agent: Agent): number {
+  *  creation-time deployment default — the bug #368 fixed for inheritance. */
+ function selectionOf(agent: Agent): SidechatModelSelection | undefined {
+   const logged = effectiveModelSelection(
+-    agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[],
++    agent.session.snapshotEvents(),
+   )
+   if (logged !== undefined) return logged
+   const { provider, model, reasoningEffort } = agent.options
+@@ -731,7 +733,6 @@ export function buildSidechatApi(
+       const headerCwd = parentSession.header.cwd
+       const liveCwd = workingDirectory?.get(parentSession)
+       const attachCwd = headerCwd ?? liveCwd
+-      const stampCwd = liveCwd ?? headerCwd
+       // The parent's CURRENT model route. agent.options freezes the
+       // creation-time deployment default — a composer model switch rides
+       // `model/selection` events + the session-local selection and never
+@@ -741,12 +742,12 @@ export function buildSidechatApi(
+       // shipped the stale default instead of the model the user sees
+       // selected in the parent composer (#368).
+       const parentSelection = parentModelSelection(
+-        parentSession.snapshotEvents() as unknown as readonly SidechatLogEvent[],
++        parentSession.snapshotEvents(),
+       )
+       const routeProvider = parentSelection?.provider ?? parent.options.provider
+       const routeModel = parentSelection?.model ?? parent.options.model
+       const inheritance = buildSidechatInheritance(
+-        parentSession.snapshotEvents() as unknown as readonly SidechatLogEvent[],
++        parentSession.snapshotEvents(),
+         live?.chunksFor(sessionId) ?? [],
+       )
+       const { agentPreset, setup } = await composeChildSetup(
+@@ -773,17 +774,17 @@ export function buildSidechatApi(
+       // (the parent's LIVE cwd) at the seed boundary, using the host-owned event
+       // rather than refolding its history or asking set() to enqueue a
+       // synthetic user notice.
+-      const directorySeed: SeedEvent[] = workingDirectory === undefined ? [] : [{
++      const directorySeed: SeedEvent[] = liveCwd === undefined ? [] : [{
+         type: 'working-directory/change',
+-        seq: inheritance.seed.length,
++        seq: inheritance.seed.length as SessionSeq,
+         time: Date.now(),
+-        data: { cwd: stampCwd },
++        data: { cwd: liveCwd },
+       }]
+       const descriptorEvent: SeedEvent = {
+         type: 'subagent/descriptor',
+-        seq: inheritance.seed.length + directorySeed.length,
++        seq: (inheritance.seed.length + directorySeed.length) as SessionSeq,
+         time: Date.now(),
+-        data: descriptor as unknown as Record<string, unknown>,
++        data: descriptor,
+       }
+       const seed = [...inheritance.seed, ...directorySeed, descriptorEvent]
+       // Fork-marker fields (the exact shape the host's own session.fork uses,
+@@ -819,7 +820,7 @@ export function buildSidechatApi(
+           delegationDepth: (parentSession.header.delegationDepth ?? 0) + 1,
+           ...(agentPreset === undefined ? {} : { agentPreset }),
+         },
+-        seed: seed as unknown as readonly SessionEvent[],
++        seed: seed,
+         // Branded number, compile-time only: DSH Desktop's plugin-facing
+         // `@deepseek-ai/dsh-session` surface carries the type but not the runtime
+         // stamp, so importing the value aborts the whole host half at load time.
+@@ -916,7 +917,7 @@ export function buildSidechatApi(
+           }
+         }
+         if (signal?.aborted || activation.disposed) throw new SidebarError('sidechat-error', 'Thread was closed while sending', 409)
+-        const first = !boundaryDelivered(agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[]) && !boundaryPending(agent)
++        const first = !boundaryDelivered(agent.session.snapshotEvents()) && !boundaryPending(agent)
+         const snapshot = pendingSnapshots.get(childId)
+         const messageId = first
+           ? admitFirstContact(agent, [SIDE_BOUNDARY_PROMPT, ...(snapshot === undefined ? [] : [snapshot])].join('\n\n'), blocks)
+@@ -982,7 +983,7 @@ export function buildSidechatApi(
+         try {
+           const inspected = await readColdThreadSession(persistence, childId)
+           const preset = resolvePresetId(inspected.header, inspected.events)
+-          const selection = effectiveModelSelection(inspected.events as unknown as readonly SidechatLogEvent[])
++          const selection = effectiveModelSelection(inspected.events)
+           return {
+             live: false,
+             images,
+@@ -1093,7 +1094,7 @@ async function ownedThread(ctx: Context, childId: string): Promise<{ events: rea
+     ? (persistence === undefined ? undefined : await readColdThreadSession(persistence, childId))
+     : { header: agent.session.header, events: agent.session.snapshotEvents(), inheritedEventCount: Number(agent.session.inheritedEventCount) }
+   if (record === undefined) throw new SidebarError('not-found', 'Thread is unavailable', 404)
+-  const events = record.events as unknown as readonly SidechatLogEvent[]
++  const events = record.events
+   const creation = events[record.inheritedEventCount - 1]
+   const descriptor = creation?.type === 'subagent/descriptor' ? creation : threadOwnLogEvents(events).find(event => event.type === 'subagent/descriptor')
+   const data = descriptor?.data as { provider?: string; mode?: string } | undefined
+@@ -1109,7 +1110,7 @@ export async function readSidechatImage(ctx: Context, childId: string, messageId
+   if (store === undefined) throw new SidebarError('unavailable', 'Image attachments are unavailable', 503)
+   const record = await ownedThread(ctx, childId)
+   const agent = liveThreadAgent(ctx, childId)
+-  const events = agent === undefined ? record.events : agent.session.snapshotEvents() as unknown as readonly SidechatLogEvent[]
++  const events = agent === undefined ? record.events : agent.session.snapshotEvents()
+   const inheritedEventCount = agent === undefined ? record.inheritedEventCount : Number(agent.session.inheritedEventCount)
+   const inbox = agent === undefined ? coldPendingMessages(events, inheritedEventCount) : agent.inbox
+   const own = events.slice(inheritedEventCount).filter(event => event.type === 'user/message').map(event => event.data)
 diff --git a/src/wire.ts b/src/wire.ts
-index 950a98c..f62e86a 100644
+index 950a98c..521d1f4 100644
 --- a/src/wire.ts
 +++ b/src/wire.ts
+@@ -4,7 +4,7 @@
+  * `{ok: true, value}` on success and `{ok: false, error: {code, message}}`
+  * (HTTP 4xx/5xx matching the code) on failure.
+  */
+-import type { SidebarHttpRequest, SidebarHttpResponse } from './context-types.ts'
++import type { SidebarHttpRequest, SidebarHttpResponse } from './host-http.ts'
+ // Value import for the error-class branch in writeError. git.ts imports only
+ // node builtins, so this introduces no cycle; wire.ts is host-half only and is
+ // never reachable from the browser bundle.
 @@ -88,7 +88,8 @@ export async function readJsonBody(
    const text = Buffer.concat(chunks).toString('utf8')
    if (text.trim() === '') return {}

@@ -127,8 +127,6 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   { file: 'packages/client/ui-agent-preset/tests/components.client.spec.tsx', upstream: ['cordis'] },
   { file: 'packages/client/ui-agent-preset/tests/create-plugin-menu-item.client.spec.tsx', upstream: ['cordis'] },
   { file: 'packages/client/ui-agent-preset/tests/section-store.client.spec.ts', upstream: ['cordis'] },
-  { file: 'packages/client/ui-conversation/src/client/input/submission-analytics.ts', upstream: ['cordis'] },
-  { file: 'packages/client/ui-conversation/tests/service-orchestration.client.spec.ts', upstream: ['cordis'] },
   { file: 'packages/client/ui-entry-customization/src/client/index.ts', upstream: ['cordis'] },
   { file: 'packages/client/ui-entry-customization/tests/menu.client.spec.tsx', upstream: ['cordis'] },
   { file: 'packages/client/ui-workspace/tests/workspaces-service.client.spec.ts', upstream: ['cordis'] },

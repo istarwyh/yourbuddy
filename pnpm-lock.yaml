@@ -912,6 +912,9 @@ importers:
 
   apps/desktop-tauri:
     devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../vendor/cordis
       '@deepseek-ai/dsh-api-session-controller':
         specifier: workspace:*
         version: link:../../packages/api/session-controller
@@ -933,6 +936,9 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2.9.6
         version: 2.11.5
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -1989,8 +1995,8 @@ importers:
         specifier: workspace:*
         version: link:../../util/workspace-path
       chokidar:
-        specifier: ^4.0.3
-        version: 4.0.3
+        specifier: 5.0.0
+        version: 5.0.0
 
   packages/attachment/attachment:
     devDependencies:

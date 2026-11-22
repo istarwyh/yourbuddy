@@ -8,7 +8,7 @@
     {
       "id": "workbench-primary-layout",
       "file": "patches/dsh-workbench-primary-layout.patch",
-      "sha256": "a7055cc60d8788ed79cbfb7c0f3c303aa7ff50dfe886f52e34cb988cae93a59f",
+      "sha256": "275bfeb28947086096879d50f45e862110afb8095825035d94e7bd28f6bcc006",
       "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
       "purpose": "Add the optional primary workbench and retained auxiliary Session region, collapse the workbench only while the right Sidebar is shown, and expose a lower workspace collection seat.",
       "paths": [
@@ -36,6 +36,24 @@
       ],
       "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
       "sha256": "ba798893f7f9686fd706df2a3eecea661469abebaa091dc42ace09e2069f136a"
+    },
+    {
+      "id": "rc5-compatibility",
+      "file": "patches/dsh-rc5-compatibility.patch",
+      "purpose": "Keep rc5 chat/tool domain types owned by contract modules, extract the private PowerShell bootstrap helper, and load the public LLM extension type owner for standalone Session-log module augmentation; retain existing custom changes in these exact files.",
+      "paths": [
+        "packages/client/ui-chat/src/client/chat/flow-motion.ts",
+        "packages/client/ui-chat/src/client/contract/flow-motion.ts",
+        "packages/client/ui-chat/src/client/contract/slots.ts",
+        "packages/client/ui-tool/src/client/tool/file-menu.ts",
+        "packages/client/ui-tool/src/client/contract/file-menu.ts",
+        "packages/client/ui-tool/src/client/contract/slots.ts",
+        "packages/terminal/terminal-bash/src/index.ts",
+        "packages/terminal/terminal-bash/src/pwsh-bootstrap.ts",
+        "packages/session/session-log-deepseek/src/types.ts"
+      ],
+      "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
+      "sha256": "430c621cd8ec97a7b5f5ba89ca46b582c28d1d91242c9c2e53e7dfa0374f6975"
     }
   ]
 }

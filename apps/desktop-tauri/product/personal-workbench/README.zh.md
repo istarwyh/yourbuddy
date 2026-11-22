@@ -40,6 +40,16 @@ personal-workbench:
 
 稳定的升级工具声明会加入模型工具列表。升级回执和显式状态查询会把普通工具结果追加到当前会话；启动不会自动创建模型提供商请求。品牌变更仍不会修改模型输入。
 
+## 开发检查
+
+构建仓库后，从仓库根目录运行以下检查，以使用仓库已安装的工具和工作区依赖，而不是另行安装插件依赖图：
+
+```sh
+pnpm exec tsc -p apps/desktop-tauri/product/personal-workbench/tsconfig.host.json --noEmit
+pnpm exec tsc -p apps/desktop-tauri/product/personal-workbench/tsconfig.client.json --noEmit
+NODE_ENV=test pnpm exec vitest run --config apps/desktop-tauri/product/personal-workbench/vitest.config.ts --maxWorkers=2
+```
+
 ## 已知限制与暂缓事项
 
 - **一个 Profile 只有一个自定义身份** —— 插件不会按 Workspace 或 Session 选择不同品牌。

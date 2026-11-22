@@ -36,6 +36,8 @@ on:
       - 'apps/desktop-tauri/scripts/verify-old-component-channel.mjs'
       - 'apps/desktop-tauri/scripts/verify-old-component-channel.test.mjs'
       - 'apps/desktop-tauri/scripts/prepare-bootstrap-shell.mjs'
+      - 'apps/desktop-tauri/scripts/prepare-managed-toolchain*.mjs'
+      - 'apps/desktop-tauri/scripts/assert-bootstrap-resources*.mjs'
       - 'apps/desktop-tauri/scripts/prepare-dist.mjs'
       - '.github/workflows/bootstrap-regression.yml'
 
@@ -209,8 +211,9 @@ jobs:
         run: pnpm run build
       - name: Check Workbench proxy diagnostics and save/restart controls
         run: |
-          pnpm --dir apps/desktop-tauri/product/personal-workbench run typecheck
-          pnpm --dir apps/desktop-tauri/product/personal-workbench run test --maxWorkers=2
+          pnpm exec tsc -p apps/desktop-tauri/product/personal-workbench/tsconfig.host.json --noEmit
+          pnpm exec tsc -p apps/desktop-tauri/product/personal-workbench/tsconfig.client.json --noEmit
+          pnpm exec vitest run --config apps/desktop-tauri/product/personal-workbench/vitest.config.ts --maxWorkers=2
       # Reuse the YourBuddy build above; the generic CI consumer lane builds the
       # official DSH identity, which the product assembler correctly rejects.
       - name: Install Chromium for bundled design acceptance
@@ -261,7 +264,7 @@ jobs:
       - name: Install locked build tools
         run: pnpm install --frozen-lockfile
       - name: Test component archives with macOS BSD tar
-        run: node --test apps/desktop-tauri/scripts/build-bootstrap-components.test.mjs
+        run: node --test apps/desktop-tauri/scripts/build-bootstrap-components.test.mjs apps/desktop-tauri/scripts/assert-bootstrap-resources.test.mjs
       - name: Prepare authentic old signed channel rejection fixture
         shell: bash
         run: |
@@ -269,8 +272,7 @@ jobs:
           mkdir "$RUNNER_TEMP/bootstrap-resources"
           tar -xzf "$RUNNER_TEMP/bootstrap-resources.tar.gz" -C "$RUNNER_TEMP/bootstrap-resources"
           cp -R "$RUNNER_TEMP/bootstrap-resources/YourBuddy.app/Contents/Resources/component-channel/." apps/desktop-tauri/component-channel/
-          mkdir -p apps/desktop-tauri/bundled/toolchain
-          cp apps/desktop-tauri/component-channel/pnpm-11.7.0.tgz apps/desktop-tauri/bundled/toolchain/
+          node apps/desktop-tauri/scripts/prepare-managed-toolchain.mjs
       - name: Build current-source ad-hoc application without updater artifacts
         run: pnpm --dir apps/desktop-tauri exec tauri build --target aarch64-apple-darwin --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'
       - name: Exercise packaged native splash commands

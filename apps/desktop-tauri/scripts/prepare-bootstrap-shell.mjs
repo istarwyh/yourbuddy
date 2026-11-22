@@ -3,6 +3,7 @@
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { PNPM_ARTIFACT } from './prepare-managed-toolchain.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const dist = join(root, 'dist')
@@ -11,11 +12,11 @@ for (const name of ['splash.html', 'shell.html', 'desktop-i18n.js', 'splash-stat
   cpSync(join(root, name), join(dist, name))
 }
 
-const pnpmSource = join(root, 'bundled', 'toolchain', 'pnpm-11.28.5.tgz')
+const pnpmSource = join(root, 'bundled', 'toolchain', PNPM_ARTIFACT.file)
 const channel = join(root, 'component-channel')
 for (const name of ['components.json', 'components.json.sig']) {
   if (!existsSync(join(channel, name))) throw new Error(`signed Bootstrap channel input is missing: component-channel/${name}`)
 }
 if (!existsSync(pnpmSource)) throw new Error('fixed pnpm package is missing; run prepare:dist first')
 mkdirSync(channel, { recursive: true })
-cpSync(pnpmSource, join(channel, 'pnpm-11.28.5.tgz'))
+cpSync(pnpmSource, join(channel, PNPM_ARTIFACT.file))

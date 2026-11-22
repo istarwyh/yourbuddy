@@ -40,18 +40,7 @@ export interface NativeGuideCatalog {
   subscribe(listener: () => void): () => void
 }
 
-/** The slice of the host tab registry this module reads. */
-interface GuideRegistry {
-  guide(): readonly {
-    readonly id: string
-    readonly kind: string
-    readonly providerId: string
-    readonly title: () => string
-    readonly description?: () => string
-    readonly icon?: ComponentType<{ size?: number }>
-  }[]
-  subscribe(listener: () => void): () => void
-}
+type GuideRegistry = Context['sidebarRightTabs']
 
 const EMPTY: readonly NativeGuideEntry[] = []
 
@@ -146,7 +135,7 @@ export function createNativeGuideCatalog(ctx: Context): { catalog: NativeGuideCa
   }
 
   const seat = ctx.inject(['sidebarRightTabs'], (injected) => {
-    registry = injected.get('sidebarRightTabs') as unknown as GuideRegistry | undefined
+    registry = injected.get('sidebarRightTabs')
     if (registry === undefined) {
       publish()
       return

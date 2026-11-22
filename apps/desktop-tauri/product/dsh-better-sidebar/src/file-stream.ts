@@ -17,9 +17,8 @@
  */
 import { createReadStream } from 'node:fs'
 import { once } from 'node:events'
-import type { ServerResponse } from 'node:http'
 import { pipeline } from 'node:stream/promises'
-import type { SidebarHttpResponse } from './context-types.ts'
+import type { SidebarHttpResponse } from './host-http.ts'
 import { fileReadError } from './fs-read-error.ts'
 
 /** One satisfiable byte window, inclusive on both ends (`start <= end < size`). */
@@ -86,10 +85,6 @@ export async function streamFileToResponse(
   headers: Record<string, string>,
   range?: ByteRange,
 ): Promise<void> {
-  // `node:http` boundary cast: the host hands the routes a real ServerResponse,
-  // and the declaration graph deliberately cannot name it (see
-  // context-types.ts). This is the one place the cast is needed.
-  const node = res as unknown as ServerResponse
   const stream = range === undefined ? createReadStream(path) : createReadStream(path, { start: range.start, end: range.end })
   try {
     await once(stream, 'open')
@@ -107,12 +102,12 @@ export async function streamFileToResponse(
     })
   }
   try {
-    await pipeline(stream, node)
+    await pipeline(stream, res)
   } catch {
     // Either the peer went away or the source failed mid-flight. The status
     // line is already on the wire, so there is no envelope to write and no
     // recovery to attempt — tear the socket down and let the client's own
     // download UI report the truncation.
-    node.destroy()
+    res.destroy()
   }
 }

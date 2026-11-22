@@ -1,3 +1,4 @@
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 /**
  * The plugin's content, registered into DSH's native right Sidebar.
  *
@@ -345,7 +346,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
                     // Call the methods on the SERVICE: the shell catalog reads
                     // its own remote field, and a detached call throws
                     // "Cannot read properties of undefined (reading 'remote')".
-                    launchShells: (signal: AbortSignal) => terminals.launchShells!(scope, signal),
+                    launchShells: (signal: AbortSignal) => terminals.launchShells(scope as SessionId, signal),
                     selectShell: (path: string) => { terminals.selectShell!(path) },
                   }
                   : undefined

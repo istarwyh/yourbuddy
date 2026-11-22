@@ -1,5 +1,6 @@
 /** Wire types for lossless incremental DeepSeek session-log upload. */
 
+import type {} from '@deepseek-ai/dsh-deepseek-llm-api-extensions/types'
 import type { SessionEvent, SessionId, SurfaceEventType } from '@deepseek-ai/dsh-session'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 

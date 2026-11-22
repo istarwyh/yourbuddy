@@ -4,7 +4,7 @@
  * `{ok: true, value}` on success and `{ok: false, error: {code, message}}`
  * (HTTP 4xx/5xx matching the code) on failure.
  */
-import type { SidebarHttpRequest, SidebarHttpResponse } from './context-types.ts'
+import type { SidebarHttpRequest, SidebarHttpResponse } from './host-http.ts'
 // Value import for the error-class branch in writeError. git.ts imports only
 // node builtins, so this introduces no cycle; wire.ts is host-half only and is
 // never reachable from the browser bundle.

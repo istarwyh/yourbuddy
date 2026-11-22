@@ -24,66 +24,13 @@
  * This file must stay FREE of Node.js types (`node:http`, `node:stream`,
  * `Buffer`): it is part of the CLIENT-reachable declaration graph (the
  * `Context` in `TabComponentProps` and the `betterSidebar` augmentation),
- * so a Node import here would leak into browser-only consumer builds. The
- * webServer faces below are therefore structural mirrors with plain
- * interfaces. The Host entry imports the webserver owner's type for upgrade
- * handlers; that Node-specific declaration stays out of this shared file.
+ * so a Node import here would leak into browser-only consumer builds.
+ * HTTP route types remain in host-http.ts, outside this shared file.
  */
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
 import type { SessionId } from '@deepseek-ai/dsh-session/types';
 import type { BetterSidebarService } from './client/service.ts';
 import type { ProcessActivitySummary } from './process-activity.ts';
-/** The request face route handlers see (structural subset of node's
- *  IncomingMessage: the URL/method/header reads and the async body
- *  iteration `readJsonBody` uses). */
-export interface SidebarHttpRequest {
-    url?: string;
-    method?: string;
-    headers: Record<string, string | string[] | undefined>;
-    [Symbol.asyncIterator](): AsyncIterator<string | Uint8Array>;
-}
-/** The response face route handlers write to (structural subset of node's
- *  ServerResponse: the status/header/body writes the routes use).
- *
- *  `write` / `headersSent` / `destroy` exist for the raw byte routes
- *  (`/sidebar/file`, `/sidebar/html`, `/sidebar/archive`), which stream a file
- *  instead of buffering it. They stay plain structural members on purpose —
- *  see the module header on why node types cannot appear here. */
-export interface SidebarHttpResponse {
-    statusCode: number;
-    /** True once a status line went out; a late failure can no longer become a
-     *  JSON envelope, so callers destroy the response instead. */
-    headersSent?: boolean;
-    writeHead(status: number, headers?: Record<string, string>): void;
-    /** Append one body chunk; false means "wait for drain". */
-    write(chunk: string | Uint8Array): boolean;
-    end(body?: string | Uint8Array): void;
-    /** Tear the connection down (mid-stream failure, client abort). */
-    destroy?(error?: Error): void;
-}
-/** The upgrade socket face (structural subset: the destroy the fences use). */
-export interface SidebarUpgradeSocket {
-    destroy(): void;
-}
-/** The upgrade head bytes (Buffer at runtime; typed as bytes so no Node
- *  global leaks into the declaration graph). */
-export type SidebarUpgradeHead = Uint8Array;
-/** One named webserver route (mirror of the host-webserver WebRoute). */
-export interface SidebarWebRoute {
-    kind: 'exact' | 'prefix';
-    path: string;
-    handler: (req: SidebarHttpRequest, res: SidebarHttpResponse) => void | Promise<void>;
-}
-/** One exact-path HTTP upgrade registration (mirror of WebUpgradeRoute). */
-export interface SidebarWebUpgradeRoute {
-    path: string;
-    handler: (req: SidebarHttpRequest, socket: SidebarUpgradeSocket, head: SidebarUpgradeHead) => void | Promise<void>;
-}
-/** The webServer service face this plugin uses. */
-export interface SidebarWebServer {
-    register(route: SidebarWebRoute): () => void;
-    registerUpgrade(route: SidebarWebUpgradeRoute): () => void;
-}
 /** A published session's immutable original-project metadata. */
 export interface SidebarSessionHeader {
     cwd?: string;
@@ -846,8 +793,6 @@ export interface SidebarAgent {
  * instead of module augmentation).
  */
 export interface SidebarContextShape {
-    /** The webServer service face this plugin uses. */
-    webServer: SidebarWebServer;
     /** The session store (host `.get`) and the client list feed (`.list`) faces. */
     sessions: SidebarSessionStore & SidebarSessionsService;
     /** Committed current execution directory; the header keeps the original project. */

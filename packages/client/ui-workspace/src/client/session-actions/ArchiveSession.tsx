@@ -13,8 +13,8 @@ import type {
   ArchiveSessionInjected, SessionArchiveConfirmInjected, SessionArchiveConfirmProps, SessionArchiveConfirmRequest,
   SessionRowActionProps,
 } from '../contract/slots.ts'
-import css from '../rows/Rows.module.css'
-import browserCss from '../rows/WorkspaceBrowser.module.css'
+import css from '../contract/Rows.module.css'
+import browserCss from '../contract/WorkspaceBrowser.module.css'
 
 /**
  * Hover button (order 100): archive, or restore an archived row. Absent while the Session's access

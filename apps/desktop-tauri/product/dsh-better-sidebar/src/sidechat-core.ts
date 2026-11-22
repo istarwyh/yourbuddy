@@ -1,3 +1,6 @@
+import type {} from '@deepseek-ai/dsh-compaction/types'
+import type {} from '@deepseek-ai/dsh-session-log-deepseek/types'
+import type { SessionEvent, SessionSeq } from '@deepseek-ai/dsh-session/types'
 /**
  * Pure side-conversation ("Side Chat") logic shared by the host routes and
  * the client tab. Framework-free (no React, no Node) so both halves and the
@@ -69,18 +72,7 @@ Mode: this is a continuable side conversation. Your answers stay in this side th
  *  (user/message, assistant/message, tool/result) REQUIRE the `surfaceOp`
  *  marker (and may carry `sourceEventSeqs`) — the seed validator rejects
  *  them without it. */
-export interface SeedEvent {
-  type: string
-  seq: number
-  time: number
-  data: Record<string, unknown>
-  /** Surface marker of message-producing events ('append' | replace op). */
-  surfaceOp?: unknown
-  /** Seq numbers of earlier events this event cites as sources. */
-  sourceEventSeqs?: unknown
-  /** Reader-skip marker of purely informational events. */
-  ignorable?: true
-}
+export type SeedEvent = SessionEvent
 
 /** The minimal structural face of a session-log event this module reads
  *  (loose enough to accept both the host's real SessionEvent and the
@@ -161,23 +153,8 @@ function dataOf(event: SidechatLogEvent): Record<string, unknown> {
 /** Copy parent events verbatim (their live seq === array index contract).
  *  The FULL envelope is preserved — stripping `surfaceOp` would make the
  *  seed validator reject every surface-eligible message event. */
-function copyEvents(events: readonly SidechatLogEvent[]): SeedEvent[] {
-  return events.map(event => {
-    const source = event as SidechatLogEvent & {
-      surfaceOp?: unknown
-      sourceEventSeqs?: unknown
-      ignorable?: true
-    }
-    return {
-      type: source.type,
-      seq: source.seq,
-      time: source.time,
-      data: dataOf(source),
-      ...(source.surfaceOp === undefined ? {} : { surfaceOp: source.surfaceOp }),
-      ...(source.sourceEventSeqs === undefined ? {} : { sourceEventSeqs: source.sourceEventSeqs }),
-      ...(source.ignorable === undefined ? {} : { ignorable: source.ignorable }),
-    }
-  })
+function copyEvents(events: readonly SessionEvent[]): SeedEvent[] {
+  return events.map(event => ({ ...event }))
 }
 
 /** Index of the last `turn/start` or `turn/end`, or -1. */
@@ -299,7 +276,7 @@ const SNAPSHOT_TOTAL_CAP = 8000
  * @param events - the parent's log (live or persisted).
  * @returns the rebased log, or undefined when the full copy is required.
  */
-function compactionTail(events: readonly SidechatLogEvent[]): SidechatLogEvent[] | undefined {
+function compactionTail(events: readonly SessionEvent[]): SessionEvent[] | undefined {
   const cut = lastCheckpointIndex(events)
   if (cut === undefined) return undefined
   const checkpoint = events[cut]
@@ -307,7 +284,7 @@ function compactionTail(events: readonly SidechatLogEvent[]): SidechatLogEvent[]
   let parentNodes: readonly number[]
   let checkpointShadowed: ReadonlySet<number> | undefined
   try {
-    const fold = foldSurface(events as unknown as Parameters<typeof foldSurface>[0])
+    const fold = foldSurface(events)
     parentNodes = fold.nodes
     // The checkpoint's declared [startSeq,endSeq] range is not its shadowed
     // set once a replacement sits inside it: use the surface entries the fold
@@ -479,7 +456,7 @@ function compactionTail(events: readonly SidechatLogEvent[]): SidechatLogEvent[]
   const rebase = new Map<number, number>()
   const seed: SeedEvent[] = []
   let aborted = false
-  const emit = (event: SidechatLogEvent | undefined): void => {
+  const emit = (event: SessionEvent | undefined): void => {
     if (aborted || event === undefined) return
     const rebased: RebasedEvent = rebaseEvent(event, seed.length, rebase, turnOffset, firstKeptTurn)
     if (rebased === DROPPED) return
@@ -516,7 +493,7 @@ function compactionTail(events: readonly SidechatLogEvent[]): SidechatLogEvent[]
   // rules (turn/start runs 1, 2, …; steps open and close inside their turn;
   // a trailing open turn is the caller's to close).
   try {
-    const child = foldSurface(seed as unknown as Parameters<typeof foldSurface>[0])
+    const child = foldSurface(seed)
     if (!sameVisibleSequence(events, parentNodes, child.nodes, seed)) return undefined
   } catch {
     return undefined
@@ -684,7 +661,7 @@ interface HeadSlot {
   /** Seq of the anchor event that owns the slot. */
   anchor: number
   /** Event the child emits in the slot (the anchor or its latest replacement). */
-  effective: SidechatLogEvent
+  effective: SessionEvent
   /** Replacement-chain events the head consumes (the effective included); keep/tail loops skip them. */
   consumed: readonly number[]
 }
@@ -722,7 +699,7 @@ function surfaceReplaceSpan(event: SidechatLogEvent): { start: number; end: numb
  * @returns the resolved slot, or undefined when the shape is not representable.
  */
 function headSlotOf(
-  events: readonly SidechatLogEvent[],
+  events: readonly SessionEvent[],
   seq: number,
   cut: number,
   checkpointShadowed: ReadonlySet<number> | undefined,
@@ -736,7 +713,7 @@ function headSlotOf(
   if (checkpointShadowed === undefined || checkpointShadowed.size === 0) return undefined
   const consumed: number[] = []
   const seen = new Set<number>()
-  let current: SidechatLogEvent | undefined = surface
+  let current: SessionEvent | undefined = surface
   while (current !== undefined) {
     if (seen.has(current.seq) || seen.size > MAX_HEAD_REPLACEMENTS) return undefined
     seen.add(current.seq)
@@ -773,13 +750,13 @@ function headSlotOf(
  * @returns the head segment's events, or undefined when the shape is not
  *  representable.
  */
-function headSkeleton(events: readonly SidechatLogEvent[], slots: readonly HeadSlot[]): SidechatLogEvent[] | undefined {
+function headSkeleton(events: readonly SessionEvent[], slots: readonly HeadSlot[]): SessionEvent[] | undefined {
   if (slots.length === 0) return []
   const first = events[slots[0]!.anchor]
   const last = events[slots[slots.length - 1]!.anchor]
   if (first === undefined || last === undefined) return undefined
-  let turnStart: SidechatLogEvent | undefined
-  let stepStart: SidechatLogEvent | undefined
+  let turnStart: SessionEvent | undefined
+  let stepStart: SessionEvent | undefined
   for (let index = first.seq - 1; index >= 0; index--) {
     const event = events[index]
     if (event === undefined) break
@@ -796,13 +773,7 @@ function headSkeleton(events: readonly SidechatLogEvent[], slots: readonly HeadS
   // data object IS the model-visible message, so injecting fields there
   // would change the child's context) — keeping the data losslessly
   // JSON-serializable (never writing explicit undefined).
-  const normalized = (event: SidechatLogEvent, over: { turn?: number; step?: number }): SidechatLogEvent => {
-    const data = { ...dataOf(event) }
-    if (over.turn !== undefined && typeof data.turn === 'number') data.turn = over.turn
-    if (over.step !== undefined && typeof data.step === 'number') data.step = over.step
-    return { ...event, data } as SidechatLogEvent
-  }
-  const parts: SidechatLogEvent[] = []
+  const parts: SessionEvent[] = []
   if (turnStart !== undefined) {
     const turn = dataOf(turnStart).turn
     if (typeof turn !== 'number') return undefined
@@ -819,9 +790,9 @@ function headSkeleton(events: readonly SidechatLogEvent[], slots: readonly HeadS
       if (nodeData.turn !== turn && nodeData.turn !== undefined) return undefined
       if (stepStart !== undefined && nodeData.step !== step && nodeData.step !== undefined) return undefined
     }
-    parts.push(normalized(turnStart, { turn: 1 }))
-    if (stepStart !== undefined) parts.push(normalized(stepStart, { turn: 1, step: 1 }))
-    for (const slot of slots) parts.push(normalized(slot.effective, { turn: 1, ...(stepStart !== undefined ? { step: 1 } : {}) }))
+    parts.push(normalizeEventCounters(turnStart, { turn: 1 }))
+    if (stepStart !== undefined) parts.push(normalizeEventCounters(stepStart, { turn: 1, step: 1 }))
+    for (const slot of slots) parts.push(normalizeEventCounters(slot.effective, { turn: 1, ...(stepStart !== undefined ? { step: 1 } : {}) }))
     // Close the skeleton when its closers are dropped with the span: the
     // first step/end / turn/end of this step/turn after the last anchor.
     let closedStep = false
@@ -830,12 +801,12 @@ function headSkeleton(events: readonly SidechatLogEvent[], slots: readonly HeadS
       if (event === undefined) break
       if (!closedStep && event.type === 'step/end' && typeof step === 'number'
         && dataOf(event).step === step && dataOf(event).turn === turn) {
-        parts.push(normalized(event, { turn: 1, step: 1 }))
+        parts.push(normalizeEventCounters(event, { turn: 1, step: 1 }))
         closedStep = true
         continue
       }
       if (event.type === 'turn/end' && dataOf(event).turn === turn) {
-        parts.push(normalized(event, { turn: 1 }))
+        parts.push(normalizeEventCounters(event, { turn: 1 }))
         break
       }
       if (event.type === 'turn/start') break
@@ -939,35 +910,40 @@ const DROPPED: unique symbol = Symbol('dropped')
 
 type RebasedEvent = SeedEvent | undefined | typeof DROPPED
 
+function normalizeEventCounters<T extends SessionEvent>(event: T, over: { turn?: number; step?: number }): T {
+  const data = { ...event.data }
+  if (over.turn !== undefined && 'turn' in data && typeof data.turn === 'number') data.turn = over.turn
+  if (over.step !== undefined && 'step' in data && typeof data.step === 'number') data.step = over.step
+  return { ...event, data }
+}
+
 function rebaseEvent(
-  event: SidechatLogEvent,
+  event: SessionEvent,
   seq: number,
   rebase: Map<number, number>,
   turnOffset: number,
   firstKeptTurn: number | undefined,
 ): RebasedEvent {
-  const source = event as SidechatLogEvent & { ignorable?: true }
-  const seed: SeedEvent = { type: source.type, seq, time: source.time, data: dataOf(source) }
-  if (source.ignorable === true) seed.ignorable = true
+  let seed: SeedEvent = { ...event, seq: seq as SessionSeq }
   const sourceData = dataOf(event)
   if (turnOffset > 0 && typeof sourceData.turn === 'number'
     && firstKeptTurn !== undefined && sourceData.turn >= firstKeptTurn) {
-    seed.data = { ...seed.data, turn: sourceData.turn - turnOffset }
+    seed = normalizeEventCounters(seed, { turn: sourceData.turn - turnOffset })
   }
   // A settled command cites an earlier non-command event by seq; remap it
   // alongside, and drop the done when the cited event did not survive — a
   // stale citation is something the host's commands invariant rejects.
-  if (event.type === 'command/done' && typeof sourceData.sourceEventSeq === 'number') {
+  if (seed.type === 'command/done' && typeof sourceData.sourceEventSeq === 'number') {
     const mapped = rebase.get(sourceData.sourceEventSeq)
     if (mapped === undefined) return DROPPED
-    seed.data = { ...seed.data, sourceEventSeq: mapped }
+    seed.data = { ...seed.data, sourceEventSeq: mapped as SessionSeq }
   }
   // Compaction metering records cite the surface span they priced. When the
   // span survived the rebase, remap the citations; when it did not (the
   // record predates the consumed compaction and its span lies in the
   // dropped region), the record meters nothing that exists in the child —
   // drop it rather than shipping stale seq references.
-  if (event.type === 'compaction/summary' || event.type === 'compaction/prune') {
+  if (seed.type === 'compaction/summary' || seed.type === 'compaction/prune') {
     const range = sourceData.shadowedRange as { start?: unknown; end?: unknown } | undefined
     const cited = sourceData.shadowedSeqs
     if (range === null || typeof range !== 'object' || !Array.isArray(cited)) return seed
@@ -977,8 +953,8 @@ function rebaseEvent(
     if (start === undefined || end === undefined || mapped.includes(undefined)) return DROPPED
     seed.data = {
       ...seed.data,
-      shadowedRange: { start, end },
-      shadowedSeqs: mapped as number[],
+      shadowedRange: { start: start as SessionSeq, end: end as SessionSeq },
+      shadowedSeqs: mapped as SessionSeq[],
     }
   }
   // The DeepSeek log ledger cites an ABSOLUTE watermark: `throughSeq` is
@@ -989,16 +965,16 @@ function rebaseEvent(
   // watermark through the same map; one that names an event inside the
   // dropped span has no child-side equivalent, so the record drops rather
   // than citing a delivery that never happened.
-  if (event.type === 'session-log-deepseek/delivery-accepted' && typeof sourceData.throughSeq === 'number') {
+  if (seed.type === 'session-log-deepseek/delivery-accepted' && typeof sourceData.throughSeq === 'number') {
     const mapped = rebase.get(sourceData.throughSeq)
     if (mapped === undefined) return DROPPED
-    seed.data = { ...seed.data, throughSeq: mapped }
+    seed.data = { ...seed.data, throughSeq: mapped as SessionSeq }
   }
   const headerSeq = sourceData.headerSeq
-  if (event.type === 'developer/message' && typeof headerSeq === 'number') {
+  if (seed.type === 'developer/message' && typeof headerSeq === 'number') {
     const mapped = rebase.get(headerSeq)
     if (mapped === undefined) return undefined
-    seed.data = { ...seed.data, headerSeq: mapped }
+    seed.data = { ...seed.data, headerSeq: mapped as SessionSeq }
   }
   const op = (event as { surfaceOp?: unknown }).surfaceOp
   if (op === 'append') {
@@ -1011,7 +987,7 @@ function rebaseEvent(
     // dropped span; appending the replacement is exactly what remains
     // visible (the equivalence check still has to confirm it).
     seed.surfaceOp = start !== undefined && end !== undefined && start <= end
-      ? { op: 'replace', startSeq: start, endSeq: end }
+      ? { op: 'replace', startSeq: start as SessionSeq, endSeq: end as SessionSeq }
       : 'append'
   }
   const cited = (event as { sourceEventSeqs?: unknown }).sourceEventSeqs
@@ -1019,7 +995,8 @@ function rebaseEvent(
     const mapped = cited.map(item => typeof item === 'number' ? rebase.get(item) : undefined)
     // Citations the rebase cannot serve referenced the dropped span; the
     // field is optional and only has to cover a live replace range.
-    if (!mapped.includes(undefined)) seed.sourceEventSeqs = mapped as number[]
+    if (!mapped.includes(undefined)) seed.sourceEventSeqs = mapped as SessionSeq[]
+    else delete seed.sourceEventSeqs
   }
   return seed
 }
@@ -1035,7 +1012,7 @@ function rebaseEvent(
  *   them outside the log); used only by the snapshot fallback.
  */
 export function buildSidechatInheritance(
-  events: readonly SidechatLogEvent[],
+  events: readonly SessionEvent[],
   live: readonly AssistantLiveChunk[] = [],
 ): SidechatInheritance {
   if (events.length === 0) return { seed: [], snapshot: null }
@@ -1062,11 +1039,11 @@ export function buildSidechatInheritance(
   const now = last?.time ?? 0
   const openStep = openStepInTurn(log, boundary)
   if (openStep !== undefined) {
-    seed.push({ type: 'step/end', seq: seed.length, time: now, data: { turn, step: openStep } })
+    seed.push({ type: 'step/end', seq: seed.length as SessionSeq, time: now, data: { turn, step: openStep } })
   }
   seed.push({
     type: 'turn/end',
-    seq: seed.length,
+    seq: seed.length as SessionSeq,
     time: now,
     data: { turn, reason: { kind: 'interrupted' } },
   })

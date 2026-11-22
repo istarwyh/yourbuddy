@@ -1,3 +1,4 @@
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 /**
  * Side Chat page: Codex-style side conversations for the current session.
  *
@@ -336,21 +337,6 @@ interface RowLabels {
   web: WebBlockLabels
 }
 
-/** The host services this view reaches for archiving. Neither face lives on
- *  the plugin's own context type — `workspaces` is the session-list service and
- *  `uiWorkspace` the session surface — so they are read through the same
- *  structural probe the other views use for host services. */
-interface ArchivedSessionsFace {
-  list?: {
-    getSnapshot?: () => { archivedSessionIds?: readonly string[] }
-    subscribe?: (callback: () => void) => () => void
-  }
-}
-
-interface ArchiveSessionFace {
-  archiveSession?: (sessionId: string, options: { stopActivity: boolean }) => Promise<void>
-}
-
 /** A stable "nothing is archived" snapshot: the archive set feeds
  *  `useSyncExternalStore`, and a fresh `[]` per read would re-render forever. */
 const NO_ARCHIVED_SESSIONS: readonly string[] = []
@@ -360,7 +346,7 @@ const NO_ARCHIVED_SESSIONS: readonly string[] = []
  *  is archived", so the thread menu simply keeps every thread. */
 function archivedSessionIdsOf(ctx: Context): readonly string[] {
   try {
-    const service = ctx.get('workspaces') as unknown as ArchivedSessionsFace | undefined
+    const service = ctx.get('workspaces')
     return service?.list?.getSnapshot?.()?.archivedSessionIds ?? NO_ARCHIVED_SESSIONS
   } catch {
     return NO_ARCHIVED_SESSIONS
@@ -374,7 +360,7 @@ function useArchivedSessionIds(ctx: Context): readonly string[] {
   const subscribe = useMemo(
     () => (callback: () => void) => {
       try {
-        const service = ctx.get('workspaces') as unknown as ArchivedSessionsFace | undefined
+        const service = ctx.get('workspaces')
         return service?.list?.subscribe?.(callback) ?? (() => {})
       } catch {
         return () => {}
@@ -2027,9 +2013,9 @@ export function SideChatView(props: {
     setError(null)
     setSaved(false)
     try {
-      const service = ctx.get('uiWorkspace') as unknown as ArchiveSessionFace | undefined
-      if (service?.archiveSession === undefined) throw new Error('the workspace service is unavailable')
-      await service.archiveSession(threadId, { stopActivity: true })
+      const service = ctx.get('uiWorkspace')
+      if (service === undefined) throw new Error('the workspace service is unavailable')
+      await service.archiveSession(threadId as SessionId, { stopActivity: true })
       const next = fallbackThreadId(threadId)
       ctx.get('betterSidebar')?.updateTab(tab.id, { meta: next === undefined ? {} : { threadId: next } })
     } catch (cause) {

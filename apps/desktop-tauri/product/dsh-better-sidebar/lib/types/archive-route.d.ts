@@ -1,4 +1,4 @@
-import type { SidebarHttpResponse } from './context-types.ts';
+import type { SidebarHttpResponse } from './host-http.ts';
 import { type ArchiveSpawn, type ArchiveToolSpec } from './archive-tools.ts';
 /** How many archives one host may build at the same time. */
 export declare const ARCHIVE_MAX_BUILDING = 4;

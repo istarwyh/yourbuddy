@@ -1,4 +1,4 @@
-import type { SidebarHttpResponse } from './context-types.ts';
+import type { SidebarHttpResponse } from './host-http.ts';
 /** One satisfiable byte window, inclusive on both ends (`start <= end < size`). */
 export interface ByteRange {
     start: number;

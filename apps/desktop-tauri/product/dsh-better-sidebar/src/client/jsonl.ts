@@ -44,7 +44,8 @@ export function parseRecord(line: string): JsonlRecord {
   const trimmed = line.trim()
   if (trimmed === '') return { ok: false, error: '' }
   try {
-    return { ok: true, value: JSON.parse(trimmed) as unknown }
+    const value: unknown = JSON.parse(trimmed)
+    return { ok: true, value }
   } catch (error: unknown) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) }
   }

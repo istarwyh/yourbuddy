@@ -1,3 +1,4 @@
+import type {} from '@huanlin/dsh-plugin-better-locale/client'
 /**
  * The code/markdown file viewer: a CodeMirror 6 editor with line wrapping,
  * syntax highlighting (extension-keyed language), a dirty dot and Ctrl/Cmd+S
@@ -304,13 +305,10 @@ export function TextEditor(props: FileViewerProps) {
   useEffect(() => {
     const sync = (): void => { setLocaleSig(localeSignature()) }
     sync()
-    const locale = ctx.locale as { subscribe?: (cb: () => void) => () => void } | undefined
-    type BetterLocaleStore = { subscribe?(listener: () => void): () => void }
-    const betterLocale = typeof ctx.get === 'function'
-      ? (ctx as unknown as { get(name: 'betterLocale'): BetterLocaleStore | undefined }).get('betterLocale')
-      : undefined
-    const offLocale = locale?.subscribe?.(sync)
-    const offOverride = betterLocale?.subscribe?.(sync)
+    const locale = ctx.get('locale')
+    const betterLocale = ctx.get('betterLocale')
+    const offLocale = locale?.subscribe(sync)
+    const offOverride = betterLocale?.subscribe(sync)
     return () => {
       offLocale?.()
       offOverride?.()

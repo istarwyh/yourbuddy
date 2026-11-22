@@ -155,8 +155,8 @@ describe('control detail adapters', () => {
     expect(detailsCardModel({ ...block, content: [] }, t, 'en')).toEqual(model)
     expect(detailsCardModel({ ...block, isError: true }, t, 'en')).toBeNull()
     expect(detailsCardModel(block, makeTranslate(zh, commonZh), 'zh-CN')?.items[0]?.fields).toEqual([
-      { label: '智能体任务描述', value: args.description },
-      { label: '智能体名称', value: 'reviewer' },
+      { label: '代理任务描述', value: args.description },
+      { label: '代理名称', value: 'reviewer' },
     ])
   })
 

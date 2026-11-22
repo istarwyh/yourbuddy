@@ -1,8 +1,8 @@
 diff --git a/README.md b/README.md
-index 92969cc..bf21497 100644
+index 92969cc..9833971 100644
 --- a/README.md
 +++ b/README.md
-@@ -272,3 +272,9 @@ Text list for the current unreleased cycle: [CONTRIBUTORS.md](./CONTRIBUTORS.md)
+@@ -272,3 +272,11 @@ Text list for the current unreleased cycle: [CONTRIBUTORS.md](./CONTRIBUTORS.md)
  <div align="center">
    <sub>MIT License · Built for the <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a> ecosystem · discover more plugins under <a href="https://github.com/topics/dsh-better-sidebar">topic dsh-better-sidebar</a></sub>
  </div>
@@ -12,11 +12,13 @@ index 92969cc..bf21497 100644
 +YourBuddy sets `presentation: slot` to render the bottom workbench in `workbench.core`; `portal` retains upstream placement. Registered cards remain visible but disabled before a Session exists. Explicit user opens can reveal the target reader; background opens preserve the current document and workbench focus. PDF and Office documents use the native readers without replacing the Files tree. The terminal adapter uses DSH's terminal factory and retains each tab for the lifetime of its workbench record.
 +
 +The [rebuild recipe](../../scripts/rebuild-better-sidebar.mjs) uses the release's pinned source and dependency lock, current workspace service owners, and upstream build commands. It compares two clean output trees in an owned staging directory and does not replace this snapshot automatically. Source and archive identities and replayable product patches are recorded in [YOURBUDDY_UPSTREAM.json](./YOURBUDDY_UPSTREAM.json).
++
++Native sidebar, workspace navigation and terminal consumers use the owning packages’ public service types. Side Chat seeds retain the Session event union, including compaction and delivery records; HTTP route types stay in the host-only declaration graph.
 diff --git a/README_ZH.md b/README_ZH.md
-index ed3ffca..f9dfd3a 100644
+index ed3ffca..d3d5156 100644
 --- a/README_ZH.md
 +++ b/README_ZH.md
-@@ -272,3 +272,9 @@ Windows / Linux / macOS 三平台适配（macOS 日常验证，其余经单元
+@@ -272,3 +272,11 @@ Windows / Linux / macOS 三平台适配（macOS 日常验证，其余经单元
  <div align="center">
    <sub>MIT License · Built for the <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a> ecosystem · 在 <a href="https://github.com/topics/dsh-better-sidebar">topic dsh-better-sidebar</a> 发现更多生态插件</sub>
  </div>
@@ -26,8 +28,10 @@ index ed3ffca..f9dfd3a 100644
 +YourBuddy 设置 `presentation: slot`，将底部工作台渲染到 `workbench.core`；`portal` 保留上游位置。创建首个会话前，已注册卡片仍显示，但不可点击。用户主动打开文件可以展开对应阅读器；后台打开保留当前文档和工作台焦点。PDF 和 Office 文档使用原生阅读器，不替换 Files 文件树。终端适配器使用 DSH 终端工厂，并在工作台记录存续期间保留各终端页签。
 +
 +[重建脚本](../../scripts/rebuild-better-sidebar.mjs) 使用该发行版固定的源码和依赖锁、当前工作区的服务属主以及上游构建命令。脚本在专属暂存目录比较两次清理后的完整输出，不自动替换此快照。[YOURBUDDY_UPSTREAM.json](./YOURBUDDY_UPSTREAM.json) 记录源码和归档身份，以及可重放的产品补丁。
++
++原生侧栏、工作区导航和终端使用所属包公开的服务类型。Side Chat 种子保留 Session 事件联合类型，包括压缩和投递记录；HTTP 路由类型仅进入 Host 声明依赖图。
 diff --git a/package.json b/package.json
-index 67fc17e..30b4f70 100644
+index 67fc17e..ecae679 100644
 --- a/package.json
 +++ b/package.json
 @@ -1,7 +1,7 @@
@@ -47,8 +51,14 @@ index 67fc17e..30b4f70 100644
          "@deepseek-ai/dsh-client-modules"
        ],
        "platform": "web"
-@@ -78,23 +79,29 @@
+@@ -76,32 +77,51 @@
+   ],
+   "license": "MIT",
    "peerDependencies": {
++    "@deepseek-ai/dsh-compaction": "0.2.2-rc.5",
++    "@deepseek-ai/dsh-session-log-deepseek": "0.2.2-rc.5",
++    "@deepseek-ai/dsh-working-directory": "0.2.2-rc.5",
++    "@deepseek-ai/dsh-api-terminal-controller": "0.2.2-rc.5",
      "@deepseek-ai/cordis": "^4.1.0",
      "@deepseek-ai/schemastery": ">=3.18.5 <4",
 -    "@deepseek-ai/dsh-agent": "^0.2.2-rc.2",
@@ -91,8 +101,11 @@ index 67fc17e..30b4f70 100644
 +    "@deepseek-ai/dsh-client-ui-plugin-manager": "0.2.2-rc.5"
    },
    "peerDependenciesMeta": {
++    "@deepseek-ai/dsh-api-terminal-controller": {
++      "optional": true
++    },
      "@huanlin/dsh-plugin-better-locale": {
-@@ -102,6 +109,12 @@
+       "optional": true
      },
      "@deepseek-ai/dsh-client-ui-sidebar-right": {
        "optional": true
@@ -105,7 +118,7 @@ index 67fc17e..30b4f70 100644
      }
    },
    "dependencies": {
-@@ -142,36 +155,36 @@
+@@ -142,36 +162,36 @@
      "@deepseek-ai/cordis": "4.1.0",
      "@deepseek-ai/cordis-plugin-group": "~1.1.0",
      "@deepseek-ai/cordis-plugin-include": "1.1.0",
@@ -172,7 +185,7 @@ index 67fc17e..30b4f70 100644
      "@cordisjs/plugin-loader": "^1.0.0-rc.5",
      "@eslint/js": "^10.0.1",
      "@huanlin/dsh-plugin-better-locale": "^0.1.0",
-@@ -232,4 +245,4 @@
+@@ -232,4 +252,4 @@
      "check:engines": "node --experimental-strip-types scripts/win-engine-check.mjs --assert",
      "lint": "eslint ."
    }

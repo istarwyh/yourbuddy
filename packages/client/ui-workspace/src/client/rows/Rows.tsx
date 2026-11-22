@@ -25,7 +25,7 @@ import { abbreviateHomePath } from '@deepseek-ai/dsh-util-workspace-path'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
-import css from './Rows.module.css'
+import css from '../contract/Rows.module.css'
 
 /** Sidebar-owned layout values needed by row copies mounted outside the sidebar. */
 const DRAG_PREVIEW_PROPERTIES = [

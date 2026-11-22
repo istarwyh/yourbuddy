@@ -1,3 +1,6 @@
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import { nativeSessionTarget } from './session-target.ts'
 /** Optional dsh-context navigation, owned by one better-sidebar activation. */
 import type { Context, SidebarSubagentAddress } from '../context-types.ts'
 
@@ -32,43 +35,12 @@ export interface ContextDiagnostics {
   dispose(): void
 }
 
-interface Observable<T> {
-  getSnapshot(): T
-  subscribe(listener: () => void): () => void
-}
-
-interface OpenTab {
-  sessionId: string
-  tabId: string
-  kind: string
-}
-
-interface RightFace {
-  mounted: Observable<string | undefined>
-  openTabs: Observable<readonly OpenTab[]>
-  openTab(kind: string): void
-  focus(tabId: string): void
-  active(): { id: string } | undefined
-  isExpanded(): boolean
-  toggleExpanded(): void
-}
-
-interface RegistryFace {
-  get(kind: string): { id: string; kind: string } | undefined
-  subscribe(listener: () => void): () => void
-}
-
-interface SlotsFace {
-  entriesOfSlot(key: string): readonly { options: { key?: string } }[]
-  subscribe(key: string, listener: () => void): () => void
-}
-
 interface Faces {
-  right: RightFace
-  registry: RegistryFace
-  slots: SlotsFace
-  workspace: { openSession(target: string | SidebarSubagentAddress): void }
-  layout: { beginNavigation(): AbortSignal }
+  right: Context['sidebarRight']
+  registry: Context['sidebarRightTabs']
+  slots: ClientContext['slots']
+  workspace: Context['uiWorkspace']
+  layout: Context['layout']
 }
 
 interface Request {
@@ -81,34 +53,17 @@ interface Request {
   retry?: ReturnType<typeof setTimeout>
 }
 
-function record(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === 'object' ? value as Record<string, unknown> : undefined
-}
-
-function methods(value: unknown, names: readonly string[]): boolean {
-  const face = record(value)
-  return face !== undefined && names.every(name => typeof face[name] === 'function')
-}
-
-/** Re-prove the optional runtime faces; never treat package installation as readiness. */
+/** Read optional services from their registered public APIs. */
 function facesOf(ctx: Context): Faces | undefined {
-  try {
-    const right = ctx.get('sidebarRight') as unknown
-    const registry = ctx.get('sidebarRightTabs') as unknown
-    const workspace = ctx.get('uiWorkspace') as unknown
-    const layout = ctx.get('layout') as unknown
-    const slots = ctx.get('slots') as unknown
-    if (!methods(right, ['openTab', 'focus', 'active', 'isExpanded', 'toggleExpanded'])
-      || !methods(record(right)?.mounted, ['getSnapshot', 'subscribe'])
-      || !methods(record(right)?.openTabs, ['getSnapshot', 'subscribe'])
-      || !methods(registry, ['get', 'subscribe'])
-      || !methods(workspace, ['openSession'])
-      || !methods(layout, ['beginNavigation'])
-      || !methods(slots, ['entriesOfSlot', 'subscribe'])) return undefined
-    return { right, registry, workspace, layout, slots } as Faces
-  } catch {
-    return undefined
-  }
+  const right = ctx.get('sidebarRight')
+  const registry = ctx.get('sidebarRightTabs')
+  const workspace = ctx.get('uiWorkspace')
+  const layout = ctx.get('layout')
+  const client: ClientContext = ctx
+  const slots = client.get('slots')
+  if (right === undefined || registry === undefined || workspace === undefined
+    || layout === undefined || slots === undefined) return undefined
+  return { right, registry, workspace, layout, slots }
 }
 
 function available(faces: Faces | undefined): boolean {
@@ -194,7 +149,7 @@ export function createContextDiagnostics(ctx: Context): ContextDiagnostics {
       }
       retry(request)
     } catch (error) {
-      if (record(error)?.message === 'sidebarRight: no session surface is mounted') retry(request)
+      if (error instanceof Error && error.message === 'sidebarRight: no session surface is mounted') retry(request)
       else finish(request, 'open')
     } finally {
       request.working = false
@@ -252,7 +207,7 @@ export function createContextDiagnostics(ctx: Context): ContextDiagnostics {
       try {
         own(request, current.right.mounted.subscribe(() => { attempt(request) }))
         own(request, current.right.openTabs.subscribe(() => { attempt(request) }))
-        if (current.right.mounted.getSnapshot() !== target.sessionId) current.workspace.openSession(target.address ?? target.sessionId)
+        if (current.right.mounted.getSnapshot() !== target.sessionId) current.workspace.openSession(nativeSessionTarget(target.address ?? target.sessionId))
         if (pending !== request) return
         // openSession itself selects the conversation panel, aborting older signals.
         const signal = current.layout.beginNavigation()

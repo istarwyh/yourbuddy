@@ -27,16 +27,6 @@ export const SUBAGENT_CHAT_KIND = 'subagentchat'
 /** The host's `dsh-resource://` prefix for that tab type. */
 export const SUBAGENT_CHAT_ADDRESS = 'dsh-resource://subagentchat/session/'
 
-/** The tab registry, probed structurally (the service can arrive late). */
-interface TabRegistryFace {
-  get?(kind: string): unknown
-}
-
-/** The write face of the native right column, structurally probed. */
-interface SidebarRightFace {
-  openResource?(address: string, options?: { kind?: string; preferNewPane?: boolean }): void
-}
-
 /**
  * The host's own subagent-chat resource address for one child session.
  * @param address - the child's lineage (parent, child, mode).
@@ -49,9 +39,9 @@ export function subagentChatAddress(address: SidebarSubagentAddress): string {
 /** Whether the host can host a child transcript in its right column. */
 export function hasTranscriptAside(ctx: Context): boolean {
   try {
-    const tabs = ctx.get('sidebarRightTabs') as unknown as TabRegistryFace | undefined
-    if (tabs?.get?.(SUBAGENT_CHAT_KIND) === undefined) return false
-    return typeof (ctx.get('sidebarRight') as unknown as SidebarRightFace | undefined)?.openResource === 'function'
+    const tabs = ctx.get('sidebarRightTabs')
+    if (tabs?.get(SUBAGENT_CHAT_KIND) === undefined) return false
+    return ctx.get('sidebarRight') !== undefined
   } catch {
     return false
   }
@@ -73,11 +63,12 @@ export function openTranscriptAside(
 ): boolean {
   if (!hasTranscriptAside(ctx)) return false
   try {
-    const right = ctx.get('sidebarRight') as unknown as SidebarRightFace
+    const right = ctx.get('sidebarRight')
+    if (right === undefined) return false
     // `preferNewPane` mirrors the host's own subagent list: the transcript sits
     // beside whatever the reader already has open, and degrades to the target
     // pane when splitting is not allowed.
-    right.openResource?.(subagentChatAddress(address), {
+    right.openResource(subagentChatAddress(address), {
       kind: SUBAGENT_CHAT_KIND,
       // The default is the SAME right-sidebar pane: a transcript jump must not
       // silently split the column. The explicit "open to the side" gesture

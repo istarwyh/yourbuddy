@@ -748,6 +748,29 @@ describe('LocalPtySession readiness and output', () => {
     expect(await operation.done).toMatchObject({ waitReason: 'stdin_read', viewport: 'ready\ndsh> ' })
   })
 
+  it('waits for an existing foreground child to leave and re-enter its stdin wait', async () => {
+    vi.useFakeTimers()
+    const terminal = new FakeTerminal()
+    const inspector = new FakeInspector()
+    const session = makeSession(terminal, inspector, config())
+    await initialize(session, terminal)
+
+    inspector.pgid = 789
+    inspector.waiting = true
+    const operation = session.startSend({ text: 'next input', submit: true })
+    let settled = false
+    void operation.done.then(() => { settled = true })
+    await vi.advanceTimersByTimeAsync(20)
+    expect(settled).toBe(false)
+
+    inspector.waiting = false
+    await vi.advanceTimersByTimeAsync(10)
+    expect(settled).toBe(false)
+    inspector.waiting = true
+    await vi.advanceTimersByTimeAsync(10)
+    expect((await operation.done).waitReason).toBe('stdin_read')
+  })
+
   it('accepts a changed foreground process group at the exact-probe threshold', async () => {
     vi.useFakeTimers()
     const terminal = new FakeTerminal()

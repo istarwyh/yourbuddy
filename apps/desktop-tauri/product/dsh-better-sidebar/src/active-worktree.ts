@@ -273,7 +273,8 @@ function collectActivePaths(value: unknown, map: Map<string, ActivePathEntry>, s
     const head = value.charCodeAt(0)
     if (head === 0x7b || head === 0x5b) {
       try {
-        collectActivePaths(JSON.parse(value) as unknown, map, structured)
+        const parsed: unknown = JSON.parse(value)
+        collectActivePaths(parsed, map, structured)
       } catch {
         // Not JSON: fall through to the embedded-path scan.
       }
