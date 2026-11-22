@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/better-sidebar.md
 /better-sidebar:
-  en: 13d1ae68163dc460
-  zh: d34cc2d83ce684ae
+  en: b0a8f6471556d27f
+  zh: 70eed25374c391e4
 /better-sidebar/problem-addressed:
   en: 7eea62dff27e152f
   zh: 5ad838b250737bfd
@@ -15,8 +15,8 @@
   en: e2f0f2ed0833de91
   zh: d49155827742bfe7
 /better-sidebar/reason-for-default-inclusion/office-previews-without-another-plugin:
-  en: ecfe61870da4bad5
-  zh: 871d6833c25799a1
+  en: 6044bf21a2b165a1
+  zh: a8ca61e88306faae
 /better-sidebar/limits:
   en: 907c50e39e0a5230
   zh: 9923ce47ea92a60a

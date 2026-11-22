@@ -2,7 +2,7 @@
 
 English | [中文](codex-auth.zh.md)
 
-Application snapshot version: `0.3.3-rc.4`. Source: [suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth).
+Application snapshot version: `0.3.4-rc.2`, recorded in the [bundled source manifest](../../../../apps/desktop-tauri/product/dsh-codex-auth/YOURBUDDY_UPSTREAM.json). Source: [suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth).
 
 ## Problem addressed
 
