@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { expect, it } from 'vitest'
 import { load as parse } from 'js-yaml'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
@@ -50,7 +50,7 @@ it('retains disabled and enabled auto-open preferences after profile writes and 
   writeFileSync(bundlePath, JSON.stringify([...bundle, ...defaults]))
 
   const rendered = spawnSync('cargo', ['run', '--quiet', '--locked', '--manifest-path', join(desktop, 'scripts/native-overlay-renderer/Cargo.toml')], {
-    input: JSON.stringify({ pluginUrl: new URL('file:///tmp/sidebar-notify.mjs').href, projectRoot: fixture.home, harborBin: join(fixture.home, 'harbor'), harborDshBin: join(fixture.home, 'harbor-dsh') }),
+    input: JSON.stringify({ pluginUrl: pathToFileURL(join(desktop, 'overlay/desktop-notify/index.mjs')).href, projectRoot: fixture.home, harborBin: join(fixture.home, 'harbor'), harborDshBin: join(fixture.home, 'harbor-dsh') }),
     encoding: 'utf8', timeout: 120_000,
   })
   expect(rendered.error).toBeUndefined()
