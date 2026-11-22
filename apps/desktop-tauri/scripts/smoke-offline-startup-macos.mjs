@@ -60,7 +60,14 @@ export function inspectManagedNode(log, active, manifest, runtime, appData) {
   return node
 }
 
-/** Query the seeded pnpm from the owned workspace, outside the checkout's packageManager policy. */
+/**
+ * Query seeded pnpm outside the source checkout's packageManager policy.
+ * @param {string} pnpm Absolute managed pnpm executable path.
+ * @param {string} world Owned workspace outside the checkout.
+ * @param {NodeJS.ProcessEnv} env Environment for the managed executable.
+ * @param {typeof execFileSync} [run] Bounded subprocess runner.
+ * @returns {string} Seeded pnpm version without surrounding whitespace.
+ */
 export function inspectManagedPnpm(pnpm, world, env, run = execFileSync) {
   return run(pnpm, ['--version'], { cwd: world, env, encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS }).trim()
 }
