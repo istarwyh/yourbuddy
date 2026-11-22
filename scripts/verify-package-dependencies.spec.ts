@@ -213,6 +213,7 @@ describe('package dependency scope', () => {
     expect(PACKAGE_DEPENDENCY_POLICY.hostPackages).toEqual([
       '@deepseek-ai/dsh-llm',
       '@deepseek-ai/dsh-session',
+      '@deepseek-ai/dsh-web',
     ])
     expect(PACKAGE_DEPENDENCY_POLICY.requiredServicePeers).toEqual({
       '@deepseek-ai/dsh-api-terminal-controller': ['@deepseek-ai/dsh-subprocess'],
@@ -245,6 +246,8 @@ describe('package dependency scope', () => {
       'carrierKeyOf', 'createScope', 'scopeOf', 'scopeTarget',
     ])
     expect(PACKAGE_DEPENDENCY_POLICY.peerRequiredHostExports['@deepseek-ai/dsh-typert-protocol']).toBeUndefined()
+    expect(PACKAGE_DEPENDENCY_POLICY.peerRequiredHostExports['@deepseek-ai/dsh-llm'])
+      .toEqual(['MessageId', 'ToolCallId', 'HarnessError'])
     expect(PACKAGE_DEPENDENCY_POLICY.peerRequiredHostExports['@deepseek-ai/dsh-experimental-translator'])
       .toEqual(['TranslationError'])
     expect(PACKAGE_DEPENDENCY_POLICY.peerRequiredHostExports['@deepseek-ai/dsh-experimental-forge'])
@@ -511,6 +514,9 @@ describe('face-aware source classification', () => {
     expect(subject.manifest.devDependencies?.zod).toBeUndefined()
 
     delete subject.manifest.dependencies?.zod
+    expect(collectPackageDependencyViolations(state)).toContainEqual(
+      expect.stringContaining('zod (packages/client/probe/lib/typert.host.js) must be dependencies-only; found no dependency section'),
+    )
     expect(() => { repairPackageDependencyManifest(subject) }).toThrow('undeclared third-party dependency zod')
     expect(existsSync(join(root, 'packages/client/probe/lib'))).toBe(false)
     expect(readFileSync(join(root, manifestPath), 'utf8')).toBe(before)

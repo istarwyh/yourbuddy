@@ -363,7 +363,7 @@ index 625dba6759a1ed7e02470459f599a76ce42de156..211ff1f19e1faa9c95cdddab8e747ab9
          close: () => { navigator.closeIn(sessionId, tabId) },
        },
 diff --git a/packages/client/ui-sidebar-right/tests/tab-domain.client.spec.ts b/packages/client/ui-sidebar-right/tests/tab-domain.client.spec.ts
-index 7ce476b2f5fb49378bd0af71ba3d11ca646ce12c..f581143bf2d62952790cbfedd1fe5b86b1f8e4d6 100644
+index 7ce476b2f5fb49378bd0af71ba3d11ca646ce12c..24c9cb44a23fe7f54ce383c56aa2779383bd91b3 100644
 --- a/packages/client/ui-sidebar-right/tests/tab-domain.client.spec.ts
 +++ b/packages/client/ui-sidebar-right/tests/tab-domain.client.spec.ts
 @@ -35,7 +35,7 @@ function layouts() {
@@ -375,7 +375,7 @@ index 7ce476b2f5fb49378bd0af71ba3d11ca646ce12c..f581143bf2d62952790cbfedd1fe5b86
      SidebarRightNavigator & Record<string, ReturnType<typeof vi.fn>>
    const pin = vi.fn<(address: string, signal: AbortSignal) => void>()
    const domain = new TabDomain(navigator, pin)
-@@ -228,3 +228,29 @@ describe('TabDomain — a tab\'s own actions', () => {
+@@ -228,3 +228,31 @@ describe('TabDomain — a tab\'s own actions', () => {
        { destination: 'sidebar', params: undefined })
    })
  })
@@ -391,6 +391,8 @@ index 7ce476b2f5fb49378bd0af71ba3d11ca646ce12c..f581143bf2d62952790cbfedd1fe5b86
 +    tabActions.openTab('files', { toSide: true })
 +    expect(navigator.splitIn).toHaveBeenCalledExactlyOnceWith(SESSION, paneId)
 +    expect(navigator.openTabIn).toHaveBeenCalledExactlyOnceWith(SESSION, 'files', { paneId })
++    tabActions.openResource('test:b', { toSide: true, revealIfOpened: false })
++    expect(navigator.openResourceIn).toHaveBeenCalledExactlyOnceWith(SESSION, 'test:b', { paneId, revealIfOpened: false })
 +    navigator.splitIn.mockReturnValue(undefined)
 +    tabActions.openTab('terminal', { toSide: true })
 +    expect(navigator.openTabIn).toHaveBeenCalledTimes(1)
@@ -398,9 +400,9 @@ index 7ce476b2f5fb49378bd0af71ba3d11ca646ce12c..f581143bf2d62952790cbfedd1fe5b86
 +    domain.sync(SESSION, current())
 +    tabActions.openTab('files', { toSide: true })
 +    tabActions.openResource('test:b', { toSide: true })
-+    expect(navigator.splitIn).toHaveBeenCalledTimes(2)
++    expect(navigator.splitIn).toHaveBeenCalledTimes(3)
 +    expect(navigator.openTabIn).toHaveBeenCalledTimes(1)
-+    expect(navigator.openResourceIn).not.toHaveBeenCalled()
++    expect(navigator.openResourceIn).toHaveBeenCalledTimes(1)
 +  } finally {
 +    domain.dispose()
 +  }
@@ -420,16 +422,38 @@ index 81e83a8b9b1e2a2c31bb77b9670bd3248d65789f..d0c39e4c8757b21972c194a9da905417
    const useStore = bindSnapshotSelector(instance)
 diff --git a/packages/client/ui-sidebar-right/tests/target-session.client.spec.ts b/packages/client/ui-sidebar-right/tests/target-session.client.spec.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..0d900b58424036c4117828ddb04be9656523ee94
+index 0000000000000000000000000000000000000000..5984240b7f4ec9002715942a0ed1e0eac9a4f51c
 --- /dev/null
 +++ b/packages/client/ui-sidebar-right/tests/target-session.client.spec.ts
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,67 @@
 +/** Targeted navigation uses adopted Session stores without changing the on-screen Session. */
 +import { expect, it, vi } from 'vitest'
 +import type { SessionId } from '@deepseek-ai/dsh-session/types'
-+import { activeDockPaneId } from '@deepseek-ai/dsh-client-ui-dockkit'
++import { activeDockPaneId, dockPaneIds } from '@deepseek-ai/dsh-client-ui-dockkit'
 +import { createSidebarRightStore } from '../src/client/stores.ts'
 +import { controllerHarness, SESSION } from './controller-harness.client.ts'
++
++it('splits the on-screen adopted Session and refuses its released store', () => {
++  const h = controllerHarness()
++  const hide = h.publish()
++  try {
++    h.expand()
++    const paneId = activeDockPaneId(h.layout())
++    const created = h.controller.splitIn(SESSION, paneId)
++    expect(created).toBeDefined()
++    expect(dockPaneIds(h.layout())).toContain(created)
++    expect(dockPaneIds(h.layout())).toHaveLength(2)
++
++    h.unadopt()
++    expect(h.controller.mounted.getSnapshot()).toBe(SESSION)
++    expect(h.controller.splitIn(SESSION, paneId)).toBeUndefined()
++    expect(dockPaneIds(h.layout())).toHaveLength(2)
++  } finally {
++    hide()
++    h.unadopt()
++    h.controller.tabDomain.dispose()
++  }
++})
 +
 +it('notifies after adoption, accepts targeted opens off screen, and rejects released stores', () => {
 +  const h = controllerHarness()

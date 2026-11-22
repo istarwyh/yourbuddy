@@ -1,9 +1,31 @@
 /** Targeted navigation uses adopted Session stores without changing the on-screen Session. */
 import { expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { activeDockPaneId } from '@deepseek-ai/dsh-client-ui-dockkit'
+import { activeDockPaneId, dockPaneIds } from '@deepseek-ai/dsh-client-ui-dockkit'
 import { createSidebarRightStore } from '../src/client/stores.ts'
 import { controllerHarness, SESSION } from './controller-harness.client.ts'
+
+it('splits the on-screen adopted Session and refuses its released store', () => {
+  const h = controllerHarness()
+  const hide = h.publish()
+  try {
+    h.expand()
+    const paneId = activeDockPaneId(h.layout())
+    const created = h.controller.splitIn(SESSION, paneId)
+    expect(created).toBeDefined()
+    expect(dockPaneIds(h.layout())).toContain(created)
+    expect(dockPaneIds(h.layout())).toHaveLength(2)
+
+    h.unadopt()
+    expect(h.controller.mounted.getSnapshot()).toBe(SESSION)
+    expect(h.controller.splitIn(SESSION, paneId)).toBeUndefined()
+    expect(dockPaneIds(h.layout())).toHaveLength(2)
+  } finally {
+    hide()
+    h.unadopt()
+    h.controller.tabDomain.dispose()
+  }
+})
 
 it('notifies after adoption, accepts targeted opens off screen, and rejects released stores', () => {
   const h = controllerHarness()

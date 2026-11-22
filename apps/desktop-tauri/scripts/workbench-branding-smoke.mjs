@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { openProductSettings } from './open-product-settings.mjs'
 
 const expected = JSON.parse(readFileSync(new URL('./snapshots/workbench-branding.json', import.meta.url), 'utf8'))
 const artwork = readFileSync(new URL('../app-icon.svg', import.meta.url), 'utf8').trim()
@@ -113,7 +114,7 @@ export async function verifyWorkbenchBranding(page) {
   }
   const openSettings = async () => {
     const settings = page.getByRole('dialog', { name: 'Settings', exact: true })
-    if (!await settings.isVisible()) await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    if (!await settings.isVisible()) await openProductSettings(page)
     await settings.waitFor({ timeout: 10_000 })
     return settings
   }

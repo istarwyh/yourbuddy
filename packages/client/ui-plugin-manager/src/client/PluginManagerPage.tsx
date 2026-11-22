@@ -111,6 +111,12 @@ function rowsRunning(pkg: PackageView): boolean {
   return pkg.rows.some(row => row.enabled)
 }
 
+/** An application-owned layer running outside the profile's selectable bundles. */
+function appProvidesBundle(pkg: PackageView): boolean {
+  return pkg.availability === 'installation' && !pkg.installed && !pkg.enabled && !pkg.official
+    && pkg.rows.some(row => row.enabled && row.phase === 'active')
+}
+
 /**
  * Whether the main list shows an official optional bundle: any bundle outside `MORE_BUNDLES`, and any held-back one the profile enabled.
  * @param pkg - the official bundle as the Host reports it.
@@ -401,6 +407,7 @@ function EnableSwitch({ pkg, title, t, busy, onSetEnabled }: {
   readonly busy: boolean
   readonly onSetEnabled: (enabled: boolean) => void
 }): ReactNode {
+  if (appProvidesBundle(pkg)) return null
   return (
     <span className={css.bundleToggle}>
       <span className={css.toggleProgress} role="status">
@@ -434,7 +441,7 @@ const STATUS_TAG_KEYS = {
 function packageStatus(pkg: PackageView): PackageStatus {
   if (pkg.enabled && pkg.error !== undefined && pkg.rows.every(row => row.entryId === undefined)) return 'not-running'
   if (pkg.error !== undefined || (pkg.enabled && pkg.rows.some(row => row.phase === 'failed'))) return 'problem'
-  return pkg.enabled ? 'running' : 'disabled'
+  return pkg.enabled || appProvidesBundle(pkg) ? 'running' : 'disabled'
 }
 
 /** The danger tag a status carries. */
@@ -1593,12 +1600,14 @@ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
   }, [highlight, clearHighlight])
   const noticeLine = state.notice === null || state.notice.kind === 'refresh-failed' ? null : noticeText(state.notice, t)
 
-  // The page omits profile bundles and persistent terminals. Other installed or offered bundles and
-  // unreadable selections remain manageable; Settings' Plugin list inspects the full Host inventory.
+  // Application-provided configuration stays reachable without claiming profile ownership.
+  const isAppIncluded = (pkg: PackageView): boolean => appProvidesBundle(pkg) && ledger.bundles.has(pkg.name)
+  // The page omits profile bundles and persistent terminals. Settings' Plugin list inspects the full Host inventory.
   const listed = state.packages.filter(pkg => !HIDDEN_BUNDLES.has(pkg.name)
     && (pkg.listedByDefault !== false || pkg.enabled || pkg.installed || rowsRunning(pkg))
-    && (pkg.installed || pkg.official || pkg.error !== undefined))
-  const mine = listed.filter(pkg => !pkg.official)
+    && (pkg.installed || pkg.official || pkg.error !== undefined || isAppIncluded(pkg)))
+  const appIncluded = listed.filter(isAppIncluded)
+  const mine = listed.filter(pkg => !pkg.official && !isAppIncluded(pkg))
   const official = listed.filter(pkg => pkg.official)
   // Both lists read one order over the eligible bundles: the main list holds the always-held ones plus the held-back
   // ones the profile enabled, and the More list holds the eligible ones, so enabling a bundle from the More list pins it
@@ -1661,7 +1670,7 @@ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
   const basicCards = ledger.items.map(item => (
     <ItemCard key={`item:${item.id}`} item={item} t={t} renderSlot={renderSlot} onOpen={() => { setView({ kind: 'item', id: item.id }) }} />
   ))
-  const renderGroup = (id: 'basic' | 'extensions' | 'bundles', heading: string, cards: readonly ReactNode[]): ReactNode => {
+  const renderGroup = (id: 'basic' | 'app-included' | 'extensions' | 'bundles', heading: string, cards: readonly ReactNode[]): ReactNode => {
     const offersMore = id === 'extensions' && more.length > 0
     if (cards.length === 0 && !offersMore) return null
     return (
@@ -1842,7 +1851,7 @@ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
           ? <ItemDetail form={formFor(openItem.id)} item={openItem} t={t} renderSlot={renderSlot} onBack={() => { setView({ kind: 'list' }) }} />
           : null}
         {loaded && installedCards
-          ? basicCards.length === 0 && official.length === 0 && mine.length === 0 && state.status !== 'error'
+          ? basicCards.length === 0 && official.length === 0 && appIncluded.length === 0 && mine.length === 0 && state.status !== 'error'
             ? <div className={css.installedPanel} {...installedPanel}><p className={css.empty}>{t('empty')}</p></div>
             : (
               <div className={css.installedPanel} {...installedPanel}>
@@ -1853,6 +1862,7 @@ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
                 ) : (
                   <>
                     {renderGroup('basic', t('basicTitle'), basicCards)}
+                    {renderGroup('app-included', t('appIncludedTitle'), appIncluded.map(packageCard))}
                     {renderGroup('extensions', t('extensionsTitle'), extensions.map(packageCard))}
                     {renderGroup('bundles', t('bundlesTitle'), mine.map(packageCard))}
                   </>

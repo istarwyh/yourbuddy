@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import type { ChangeResult, PluginEntryId, PluginInstallRequestId, PluginUpdateResult, PluginVersion, RegistryAttempt } from '@deepseek-ai/dsh-api-remotes/client'
+import type { BundleInfo, ChangeResult, PluginEntryId, PluginInfo, PluginInstallRequestId, PluginUpdateResult, PluginVersion, RegistryAttempt } from '@deepseek-ai/dsh-api-remotes/client'
 import { allowAllAccess, bindSnapshotSelector, stubConfigForm } from '@deepseek-ai/dsh-client-test-runtime'
 import type { ConfigForm, ConfigFormSnapshot, SettingsMirrorSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -19,7 +19,7 @@ import { PluginRefreshToast } from '../src/client/PluginRefreshToast.tsx'
 import type { PluginManagerPageProps } from '../src/client/index.ts'
 import type { PluginTab } from '../src/client/tab-ledger.ts'
 import type { ConfigLedger } from '../src/client/config-ledger.ts'
-import { rowKey, type InstallState, type PackageRow, type PackageView, type PluginManagerState, type UpdateState, type VersionCheck } from '../src/client/manager-store.ts'
+import { packageView, rowKey, type InstallState, type PackageRow, type PackageView, type PluginManagerState, type UpdateState, type VersionCheck } from '../src/client/manager-store.ts'
 import { INSTALL_GIT_EXAMPLE, INSTALL_PATH_EXAMPLE, en, zh, type PluginManagerLocaleKey } from '../src/client/locales.ts'
 import type { PluginActivationOwnerProps, PluginAddActionsProps, PluginDetailProps, PluginTabProps, PluginsSubject } from '../src/client/slot-contract.ts'
 
@@ -217,6 +217,7 @@ function renderTab(
     unmount,
     store,
     actions,
+    setConfig: (next: Partial<ConfigLedger>) => { act(() => { ledger.set({ ...ledger.getSnapshot(), ...next }) }) },
     set: (next: Partial<PluginManagerState>) => { act(() => { store.set({ ...store.getSnapshot(), ...next }) }) },
     setDetails: (next: BundleDetailsState) => { act(() => { bundleDetails.set(next) }) },
     setLanguage: (dict: typeof en) => {
@@ -764,6 +765,92 @@ describe('PluginManagerPage', () => {
     const locked = screen.getByRole('switch', { name: en.enableToggle.replace('{name}', 'dsh-protected') })
     expect(locked).toHaveProperty('disabled', true)
     expect(locked.getAttribute('title')).toBe(en.reasonManagementRequired)
+  })
+
+  it('opens app-included bundle configuration as its live inventory and configuration ledger arrive without acquiring profile controls', () => {
+    const name = 'dsh-plugin-marketplace'
+    const entryId = 'include:plugin-marketplace' as PluginEntryId
+    const bundle: BundleInfo = {
+      name, version: '0.5.10', official: false, availability: 'installation',
+      installed: false, enabled: false, optional: false, removable: false,
+      meta: { title: { en: 'Plugin marketplace', zh: '插件市场' } },
+      rows: [{ rowId: 'plugin-marketplace', moduleName: name, entryId }], overrides: [],
+    }
+    const live: PluginInfo = { entryId, moduleName: name, enabled: true, fiberPhase: 'active', readOnlyReason: 'unaddressable' }
+    const native = pkg({ name: '@deepseek-ai/dsh-experimental-voice-input-bundle', installed: false, optional: true, removable: false })
+    const profile = pkg()
+    const configuration = vi.fn(() => <label>Marketplace configuration<input /></label>)
+    const b = renderTab({ packages: [packageView(bundle, [live]), native, profile] }, {}, {
+      [`plugins.bundle.config:${name}`]: configuration,
+    })
+    // Installation ownership alone does not expose internal dependencies or an unregistered form.
+    expect(document.querySelector('[data-plugin-group="app-included"]')).toBeNull()
+    b.set({ packages: [packageView(bundle, []), native, profile] })
+    b.setConfig({ bundles: new Set([name]) })
+    expect(document.querySelector('[data-plugin-group="app-included"]')).toBeNull()
+    // Live entries and slot registrations notify the page independently, without a reload.
+    b.set({ packages: [packageView(bundle, [live]), native, profile] })
+    const group = screen.getByRole('heading', { name: en.appIncludedTitle }).closest('section')!
+    const card = within(group).getByRole('listitem')
+    expect(card.getAttribute('data-plugin-package')).toBe(name)
+    expect(card.getAttribute('data-plugin-status')).toBe('running')
+    expect(within(card).queryByRole('switch')).toBeNull()
+    expect(screen.queryByText(en.empty)).toBeNull()
+    expect([...document.querySelectorAll('[data-plugin-group]')].map(section => ({
+      group: section.getAttribute('data-plugin-group'),
+      packages: [...section.querySelectorAll('[data-plugin-package]')].map(item => item.getAttribute('data-plugin-package')),
+      switches: within(section as HTMLElement).queryAllByRole('switch').map(item => item.getAttribute('aria-label')),
+    }))).toMatchInlineSnapshot(`
+      [
+        {
+          "group": "app-included",
+          "packages": [
+            "dsh-plugin-marketplace",
+          ],
+          "switches": [],
+        },
+        {
+          "group": "extensions",
+          "packages": [
+            "@deepseek-ai/dsh-experimental-voice-input-bundle",
+          ],
+          "switches": [
+            "Enable @deepseek-ai/dsh-experimental-voice-input-bundle",
+          ],
+        },
+        {
+          "group": "bundles",
+          "packages": [
+            "dsh-better-sidebar",
+          ],
+          "switches": [
+            "Enable dsh-better-sidebar",
+          ],
+        },
+      ]
+    `)
+    b.set({ packages: [packageView(bundle, [live])] })
+    expect(screen.queryByText(en.empty)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'View Plugin marketplace' }))
+    expect(screen.getByLabelText('Marketplace configuration')).toBeTruthy()
+    expect(configuration).toHaveBeenCalledWith('page', expect.objectContaining({ view: 'page' }), undefined)
+    expect(document.querySelector('[data-plugin-detail]')?.getAttribute('data-plugin-detail')).toBe(name)
+    expect(screen.queryByRole('switch')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Uninstall|Update/ })).toBeNull()
+    expect(b.actions.setEnabled).not.toHaveBeenCalled()
+    expect(b.actions.setRowEnabled).not.toHaveBeenCalled()
+    expect(b.actions.uninstall).not.toHaveBeenCalled()
+    // An unloaded browser half withdraws its card and open detail page reactively.
+    b.setConfig({ bundles: new Set() })
+    expect(document.querySelector('[data-plugin-detail]')).toBeNull()
+    expect(screen.queryByLabelText('Marketplace configuration')).toBeNull()
+    expect(document.querySelector('[data-plugin-group="app-included"]')).toBeNull()
+    b.set({ packages: [packageView(bundle, [live]), native, profile] })
+    expect(screen.getByRole('switch', { name: 'Enable dsh-better-sidebar' })).toBeTruthy()
+    expect(screen.getByRole('switch', { name: 'Enable @deepseek-ai/dsh-experimental-voice-input-bundle' })).toBeTruthy()
+    b.setConfig({ bundles: new Set([name]) })
+    b.set({ packages: [packageView(bundle, [{ ...live, fiberPhase: 'pending' }]), native, profile] })
+    expect(document.querySelector('[data-plugin-group="app-included"]')).toBeNull()
   })
 
   it('omits profile and persistent-terminal bundles while retaining other optional and third-party bundles', () => {

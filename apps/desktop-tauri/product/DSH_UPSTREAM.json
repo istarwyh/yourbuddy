@@ -35,12 +35,12 @@
         "packages/client/ui-sidebar-right"
       ],
       "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
-      "sha256": "ba798893f7f9686fd706df2a3eecea661469abebaa091dc42ace09e2069f136a"
+      "sha256": "7657c661411ae69c5bba7f3e8183c809a1468ed9a518eb3e44c0dfa30298eed1"
     },
     {
       "id": "rc5-compatibility",
       "file": "patches/dsh-rc5-compatibility.patch",
-      "purpose": "Keep rc5 chat/tool domain types owned by contract modules, extract the private PowerShell bootstrap helper, and load the public LLM extension type owner for standalone Session-log module augmentation; retain existing custom changes in these exact files.",
+      "purpose": "Keep rc5 domain type ownership, private PowerShell bootstrap, standalone Session-log type augmentation, and Web metadata dependency classification; restore configuration entries for available app-shipped third-party bundles using active plugin rows and ConfigLedger relationships. Retain existing custom changes in these exact files.",
       "paths": [
         "packages/client/ui-chat/src/client/chat/flow-motion.ts",
         "packages/client/ui-chat/src/client/contract/flow-motion.ts",
@@ -50,10 +50,17 @@
         "packages/client/ui-tool/src/client/contract/slots.ts",
         "packages/terminal/terminal-bash/src/index.ts",
         "packages/terminal/terminal-bash/src/pwsh-bootstrap.ts",
-        "packages/session/session-log-deepseek/src/types.ts"
+        "packages/session/session-log-deepseek/src/types.ts",
+        "packages/web/web/package.json",
+        "packages/client/ui-plugin-manager/README.i18n.yaml",
+        "packages/client/ui-plugin-manager/README.md",
+        "packages/client/ui-plugin-manager/README.zh.md",
+        "packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx",
+        "packages/client/ui-plugin-manager/src/client/locales.ts",
+        "packages/client/ui-plugin-manager/tests/components.client.spec.tsx"
       ],
       "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
-      "sha256": "430c621cd8ec97a7b5f5ba89ca46b582c28d1d91242c9c2e53e7dfa0374f6975"
+      "sha256": "386ddd81337293dec6a79216e21fae0e75aa1a9c1e470b3c06799b1b1221c056"
     }
   ]
 }

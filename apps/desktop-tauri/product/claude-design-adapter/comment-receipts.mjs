@@ -2,7 +2,11 @@ import z from '@deepseek-ai/schemastery'
 
 export const commentReceiptsKey = 'yourbuddy-design/comment-receipts'
 
-/** Restore receipt identity on resume and retain it when queued input is canceled. */
+/**
+ * Restore receipt identity on resume and retain it when queued input is canceled.
+ * @param ctx - Cordis context owning the projection registration and its disposal.
+ * @returns the awaited reader; consumers publish only after registration resolves.
+ */
 export function registerCommentReceipts(ctx) {
   return ctx.sessionProjections.register({
     key: commentReceiptsKey,

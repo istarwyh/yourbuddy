@@ -3,14 +3,17 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/marketplace.md
 /plugin-marketplace:
-  en: 05626d7e21d7b96c
-  zh: eb446b8d715aa3c3
+  en: eb66d1548790d9c9
+  zh: e539575b396e05db
 /plugin-marketplace/problem-addressed:
-  en: 7738422eee2747a3
-  zh: 271aa5d247090100
+  en: 50edc4871ea23359
+  zh: 1d631291ab27ac96
 /plugin-marketplace/usage:
-  en: be1cb0be06c73128
-  zh: d55bc8eb4cbb5904
+  en: 1d9473640260809f
+  zh: cf509c96c0805624
+/plugin-marketplace/entry-point-after-upgrading:
+  en: 4f0dc825c120fa92
+  zh: 16d2fd6225bcf517
 /plugin-marketplace/reason-for-default-inclusion:
   en: 21c26e02cdc37b83
   zh: c006a01ac34cd08d

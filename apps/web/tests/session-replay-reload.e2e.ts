@@ -15,6 +15,7 @@ const UI_EXPECTED = fileURLToPath(new URL('../../../snapshots/web/fresh-round-tr
 describe.skipIf(webSnapshotMode() === 'record')('web session replay', () => {
   it.each([{ name: 'Chromium', engine: chromium }, { name: 'WebKit', engine: webkit }])(
     '$name restores an active stream, a completed turn, and a reopened session', async ({ engine }) => {
+      const started = performance.now()
       const scaffold = await launchWebScaffold({ replayFixture: FIXTURE, compareReplaySession: 'read-only' })
       onTestFinished(() => scaffold.close())
       const release = Promise.withResolvers<undefined>()
@@ -33,8 +34,25 @@ describe.skipIf(webSnapshotMode() === 'record')('web session replay', () => {
       }, { prepend: true })
       onTestFinished(() => { release.resolve(undefined); dispose() })
       const browser = await engine.launch()
-      onTestFinished(() => browser.close())
+      let cleanupStarting = false, unexpectedEvents = 0
+      const diagnostic = (event: string): void => {
+        if (!cleanupStarting && unexpectedEvents++ < 3) console.error(`[session-replay-reload ${engine.name()} +${Math.round(performance.now() - started)}ms] unexpected ${event}; cleanupStarting=false`)
+      }
+      const disconnected = (): void => { diagnostic('browser.disconnected') }
+      const crashed = (): void => { diagnostic('page.crash') }
+      const contextClosed = (): void => { diagnostic('context.close') }
+      let detachPageListeners = (): void => {}
+      browser.once('disconnected', disconnected)
+      onTestFinished(async () => {
+        cleanupStarting = true
+        if (unexpectedEvents > 0) console.error(`[session-replay-reload ${engine.name()} +${Math.round(performance.now() - started)}ms] cleanup-start`)
+        try { await browser.close() }
+        finally { browser.off('disconnected', disconnected); detachPageListeners() }
+      })
       const page = await newEnglishPage(browser)
+      page.once('crash', crashed)
+      page.context().once('close', contextClosed)
+      detachPageListeners = () => { page.off('crash', crashed); page.context().off('close', contextClosed) }
       onTestFailed(() => saveFailureShot(page, `session-replay-reload-${engine.name()}`))
       const tripwire = watchConsole(page)
       await page.goto(scaffold.authenticatedUrl)

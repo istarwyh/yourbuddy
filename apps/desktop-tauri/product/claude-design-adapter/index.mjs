@@ -16,12 +16,12 @@ export const Config = z.object({ startupTimeoutMs: z.number().min(1).default(200
 
 /** Mount the pinned upstream pair with product-owned process and persistence handling. */
 export async function apply(ctx, config) {
-  registerCommentReceipts(ctx)
+  const receipts = await registerCommentReceipts(ctx)
   const require = createRequire(import.meta.url)
   const artifacts = await import('dsh-claude-artifacts')
   const design = await import('dsh-claude-design')
   const script = join(dirname(require.resolve('dsh-claude-design/package.json')), 'skills/claude-design/scripts/artifact.mjs')
-  const owner = new EditorOwner({ ...config, deliver: (...args) => deliverComment(ctx, artifacts.commentMessage, ...args) })
+  const owner = new EditorOwner({ ...config, deliver: (...args) => deliverComment(ctx, receipts, artifacts.commentMessage, ...args) })
   ctx.effect(() => () => owner.dispose(), 'yourbuddy-design: editors')
   const adapter = {
     open: (script, root, sessionId) => owner.open(script, root, sessionId),

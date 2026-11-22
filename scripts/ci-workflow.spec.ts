@@ -15,6 +15,32 @@ const runnerPrivatePnpmDestination = /^\$\{\{ runner\.temp \}\}\/setup-pnpm-\$\{
 const nativeWindowsPnpmDestination = '${{ runner.temp }}/setup-pnpm-js-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}'
 
 describe('CI workflow', () => {
+  it('routes fork lint to hosted Linux with two workers while retaining official failover budgets', () => {
+    const lint = workflowJob(loadWorkflow('.github/workflows/ci.yml'), 'node-24-lint')
+    if (!isRecord(lint.env)) throw new TypeError('Lint must define worker budgets')
+    for (const repository of ['istarwyh/yourbuddy', 'deepseek-harness/deepseek-harness']) {
+      for (const mode of ['', 'selfhosted', 'blacksmith']) {
+        for (const login of ['maintainer', 'dependabot[bot]']) {
+          const fork = repository !== 'deepseek-harness/deepseek-harness'
+          const selfhosted = mode === 'selfhosted' && login !== 'dependabot[bot]'
+          const context = {
+            vars: { DSH_CI_FAILOVER_LINUX: mode },
+            github: { repository, event: { pull_request: { user: { login } } } },
+            fromJSON: JSON.parse,
+          }
+          expect(evaluateRunsOn(lint['runs-on'], context)).toEqual(mode === 'blacksmith'
+            ? 'blacksmith-8vcpu-ubuntu-2404'
+            : fork ? 'ubuntu-latest' : selfhosted ? ['self-hosted', 'linux', 'x64', 'vm-backup'] : 'dsh-ubuntu-24-04-16core')
+          for (const variable of ['DSH_GATE_CONCURRENCY', 'DSH_OXLINT_THREADS']) {
+            expect(evaluateRunsOn(lint.env[variable], context)).toBe(fork ? '2' : selfhosted ? '8' : '')
+          }
+        }
+      }
+    }
+    expect(lint.steps).toContainEqual({ name: 'Run lint and duplication', run: 'pnpm run check:ci:lint:contracts-ready' })
+    expect(lint['continue-on-error']).toBeUndefined()
+  })
+
   it('keeps at most eleven worker jobs active across PR workflows while Python runtime targets follow the SDK suite', () => {
     const ci = loadWorkflow('.github/workflows/ci.yml')
     const ciWindows = loadWorkflow('.github/workflows/ci-windows.yml')

@@ -159,7 +159,7 @@ describe.skipIf(MODE === 'record')('web e2e: background job list', () => {
     await page.getByRole('button', { name: 'Open right sidebar' }).click()
     const sidebar = page.locator('[data-rightbar-col]')
     // A toggle holds data-animating on the frame until its tracks settle.
-    await expect.poll(() => sidebar.evaluate(column => column.parentElement?.hasAttribute('data-animating'))).toBe(false)
+    await expect.poll(() => sidebar.evaluate(column => column.closest('[data-dsh-frame]')?.hasAttribute('data-animating'))).toBe(false)
     await trigger.click()
     const list = page.getByRole('list', { name: 'Background jobs' })
     await list.waitFor({ timeout: 10_000 })
@@ -209,7 +209,7 @@ describe.skipIf(MODE === 'record')('web e2e: background job list', () => {
     const viewport = page.viewportSize()!
     await page.getByRole('button', { name: 'Collapse right sidebar', exact: true }).click()
     await expect.poll(() => page.locator('[data-rightbar-col]')
-      .evaluate(column => column.parentElement?.hasAttribute('data-animating'))).toBe(false)
+      .evaluate(column => column.closest('[data-dsh-frame]')?.hasAttribute('data-animating'))).toBe(false)
     await page.getByRole('button', { name: 'Open right sidebar', exact: true }).waitFor()
     await page.mouse.move(2, 2)
     expect(await count.isVisible()).toBe(true)

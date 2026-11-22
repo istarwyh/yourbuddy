@@ -11,7 +11,7 @@ import { observeDesignClient, saveDesignClientFailure, waitForDesignEditor } fro
 
 const desktopRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const root = resolve(process.env.YOURBUDDY_DESIGN_HARNESS ?? join(desktopRoot, 'bundled/harness'))
-const world = await mkdtemp(join(tmpdir(), 'yourbuddy-design-runtime-'))
+const world = await realpath(await mkdtemp(join(tmpdir(), 'yourbuddy-design-runtime-')))
 const folder = join(world, 'canvas')
 const env = createReleaseChildEnvironment(world, join(world, 'runtime'))
 const hostOnly = process.argv.includes('--host-only')

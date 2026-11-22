@@ -1,6 +1,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
+import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import { mountAgentLoopTestDependencies, mountAgentLoopTestHarness } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -32,8 +33,9 @@ async function harness() {
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(JsonlSessionPersistence, { root: directory, compression: 'none' })
   const persistence = ctx.sessionPersistence
-  if (!(persistence instanceof JsonlSessionPersistence)) throw new Error('JSONL backend was not mounted')
-  registerCommentReceipts(ctx)
+  if (!(persistence instanceof SessionPersistence)) throw new Error('JSONL backend was not mounted')
+  expect(persistence.name).toBe(JsonlSessionPersistence.name)
+  const receipts = await registerCommentReceipts(ctx)
   const loop = await mountAgentLoopTestHarness(ctx)
   const agent = await loop.create(SessionId('design-comments'))
   // Hold the production loop at a supported maintenance boundary without a network model.
@@ -49,8 +51,8 @@ async function harness() {
   }
   cleanups.push(stopMaintenance)
   const resolveAgent = vi.fn(async () => ({ agent }))
-  const deliveryContext = { sessionProjections: ctx.sessionProjections, sessions: ctx.sessions, sessionController: { resolveAgent } }
-  const deliver = (value = thread()) => deliverComment(deliveryContext, commentMessage, agent.id, '/artifacts/landing', 'http://localhost:1234', 'thread', value)
+  const deliveryContext = { sessions: ctx.sessions, sessionController: { resolveAgent } }
+  const deliver = (value = thread()) => deliverComment(deliveryContext, receipts, commentMessage, agent.id, '/artifacts/landing', 'http://localhost:1234', 'thread', value)
   const diskEvents = async () => {
     let text: string
     try { text = await readFile(logPath(directory, undefined, agent.id, 'none'), 'utf8') }
