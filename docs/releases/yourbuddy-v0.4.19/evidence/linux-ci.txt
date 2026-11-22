@@ -1,0 +1,12 @@
+Sanitized C34 CI result excerpt; source https://github.com/istarwyh/yourbuddy/actions/runs/45047783952
+PR head c34e3a33e03035971e79ebfa400eb856f8f5a178; tested merge 7a6be965dd5389b5011c2071c0bd2694ee932993.
+Environment: Ubuntu 26.04.1 LTS; Node 24.22.3; pnpm 11.28.5.
+2026-11-22T17:10:09.9409998Z PASS build:native-system (1.14s)
+2026-11-22T18:19:35.8375978Z PASS test:coverage (4165.90s)
+2026-11-22T18:22:04.1927207Z PASS test:coverage-exempt-heavy (148.35s)
+2026-11-22T18:22:04.1930638Z 3 passed, 0 failed, 0 skipped in 4315.40s.
+Exact Linux coverage test/file/skip counts are not printed by this producer; none are inferred.
+2026-11-22T18:39:16.1206885Z Web files: 239 passed, 3 skipped (242).
+2026-11-22T18:39:16.1217491Z Web tests: 1052 passed, 25 skipped (1077).
+2026-11-22T18:39:16.2599665Z Artifacts/consumers: 9 gates passed, 0 failed, 0 skipped.
+Skips remain skips. No public installer, native Runtime Authority or real-provider claim.

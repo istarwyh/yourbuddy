@@ -1,0 +1,60 @@
+{
+  "sourceCommit": "c34e3a33e03035971e79ebfa400eb856f8f5a178",
+  "treeSha": "1c93a2791807943a70d9576fd7ec8a9bf6d9ad9c",
+  "recordingStartedUtc": "2026-11-22T18:50:40.092Z",
+  "recordingEndedUtc": "2026-11-22T18:50:57.240Z",
+  "nodeVersion": "24.22.3",
+  "browserVersion": "157.0.8103.79",
+  "capture": "Single continuous isolated production Host Web run with genuine Rust-rendered desktop overlay",
+  "workspace": "allocated-not-userselected",
+  "observedStates": [
+    "Both switches enabled",
+    "Both switches disabled",
+    "Entire Settings dialog absent",
+    "Reopened Settings with both switches still disabled",
+    "Included app plugin settings with Plugin marketplace card",
+    "Real Marketplace configuration and search form visible through final hold"
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "requestFailures": [],
+  "httpErrors": [],
+  "publicRegistryLoadingAtEnd": false,
+  "publicGitHubQuery": "HTTP 200; passive initial results only, no search submission or installation",
+  "viewport": "1440x1000 capture; equal heading and input rectangles before and after final three-second hold",
+  "modelRound": false,
+  "provider": null,
+  "exceptions": [
+    "Official pin-browse-picker overlay present; picker not used",
+    "Repository Playwright and isolated system Chrome used because Ego CLI was unavailable"
+  ],
+  "limits": [
+    "Not native Tauri UI or Runtime Authority acceptance",
+    "Settings reopen persistence, not Host restart or in-place application upgrade",
+    "No HTTP interception, native invoke mock, ledger injection, model round, installation or search submission"
+  ],
+  "gif": {
+    "url": "https://github.com/user-attachments/assets/7df4ce13-9402-49bc-b69e-295218e2a03c",
+    "sha256": "63e30385130acf385f6f0dc8535d936f93606f44d66b052db4d1673b9cbf035e",
+    "bytes": 8718514,
+    "width": 1200,
+    "height": 834,
+    "fps": 8,
+    "colors": 96,
+    "encodedFrames": 166,
+    "durationSeconds": 20.76,
+    "sourceIntervalSeconds": [0, 17.72],
+    "speed": 1,
+    "finalHoldSeconds": 3
+  },
+  "attachmentVerification": {
+    "observer": "Release operator; separately attached to PR #118 and verified in rendered GitHub Markdown",
+    "anonymousHttpStatus": 200,
+    "contentType": "image/gif",
+    "bytes": 8718514,
+    "sha256": "63e30385130acf385f6f0dc8535d936f93606f44d66b052db4d1673b9cbf035e",
+    "verificationTimestamp": "Not supplied in the bounded operator report",
+    "sourceHeadBeforeAndAfter": "c34e3a33e03035971e79ebfa400eb856f8f5a178"
+  },
+  "privacy": "Only reviewed media and this sanitized derivative retained; no raw video, script, Host log, temporary signed URL or private world copied"
+}

@@ -1,0 +1,10 @@
+Sanitized C34 prepared-product excerpt; source https://github.com/istarwyh/yourbuddy/actions/runs/45047784001
+PR head c34e3a33e03035971e79ebfa400eb856f8f5a178; tested merge 7a6be965dd5389b5011c2071c0bd2694ee932993 into d7dec019c4e4c72fbac902ceaab9b8bf3ab9acb3.
+Job window: 2026-11-22 17:08:58–17:29:15 UTC (+00:00).
+Environment: macOS 15.8.2 (24H232), arm64; Node 24.22.3; pnpm 11.28.5; Chromium 149.0.7827.55; CPython 3.12.14; Harbor CLI 0.21.0, harbor-dsh-evolution 0.10.3.
+Frozen prepared registry inputs: 607/607; native Codex and Claude SDK executables exist.
+2026-11-22T17:26:32.3182830Z default product passed (11 product Clients, Codex default, lightweight browser, PDF/DOCX/PPTX/XLSX viewing and reopen in Chromium).
+2026-11-22T17:26:35.5363910Z Harbor Python 0.10.3 interpreter and commands ready.
+2026-11-22T17:26:37.9309360Z Profile installed dsh-harbor-evolution@0.10.3.
+2026-11-22T17:28:32.4583880Z optional Harbor installed phase passed (108 core peer links, 12 assembled product Clients, real Profile installation and Harbor Python readiness).
+Real local Host/Profile/Python; synthetic workspace. Native invoke behavior is controlled by the verifier. Not packaged Tauri authority, a real model/account, or in-place current-application upgrade evidence.

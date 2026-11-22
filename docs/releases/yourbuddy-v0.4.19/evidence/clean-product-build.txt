@@ -1,0 +1,14 @@
+Operator-reported clean C34 product build; the archive author did not rerun it.
+Source HEAD before and after: c34e3a33e03035971e79ebfa400eb856f8f5a178; clean before and after.
+UTC window: 2026-11-22T18:41:10Z–2026-11-22T18:41:53Z.
+Producer: main-agent managed job bash1430, fresh branded production build.
+Result: 10 gates passed in 19.22s; 371 client artifacts.
+Bundle SHA-256: f0b06029fd09481e3df40d958a10bf0abc4a145634dfffea52edd384820eb606.
+Fresh frozen production install: 607 packages, pnpm 11.28.5, 6.4s.
+Host metadata collected after the build at 2026-11-22T18:51:51Z: macOS 15.6.1 (24G90), arm64, Node 24.22.3, pnpm 11.28.5. This collection timestamp is not the build execution timestamp.
+Exact operator-reported commands:
+unset NODE_ENV
+DSH_CLIENT_TITLE=YourBuddy pnpm run build
+pnpm --dir apps/desktop-tauri run bundle:source
+pnpm --dir apps/desktop-tauri/bundled/harness install --prod --frozen-lockfile
+This is a local source product build/install, not signed release packaging or native/public acceptance.

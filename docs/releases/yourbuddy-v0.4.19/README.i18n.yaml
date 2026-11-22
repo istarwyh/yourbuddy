@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.19/README.md
+/yourbuddy-0-4-19:
+  en: 67e4efb9643d8c7e
+  zh: 7bc8dc149222d93d
+/yourbuddy-0-4-19/user-release-notes:
+  en: c38ee8d593c0bea2
+  zh: ba9758a78bdf26a6
+/yourbuddy-0-4-19/user-release-notes/what-changed-and-problem-solved:
+  en: a768ee65309e59e6
+  zh: eddc1efb3c8f6adb
+/yourbuddy-0-4-19/user-release-notes/where-and-how-to-try-it:
+  en: d27ba3a573e0ad21
+  zh: 0d63b6983494c348
+/yourbuddy-0-4-19/user-release-notes/install-compatibility-and-limitations:
+  en: 5b59c9fb294d5fbe
+  zh: 23ba8d8842353059
+/yourbuddy-0-4-19/verification-summary:
+  en: bb5429dd2664d8aa
+  zh: b86fad0e6ecc0ed1
+/yourbuddy-0-4-19/scenario-final-linux-source-and-browser-consumers:
+  en: 7724c30bf0dca6ff
+  zh: 19fd110b69a6f978
+/yourbuddy-0-4-19/scenario-windows-coverage-and-saved-sidebar-choices:
+  en: 6d80e63853be5ec1
+  zh: 4fe6d4e6bcafd2f2
+/yourbuddy-0-4-19/scenario-frozen-prepared-macos-product-and-installed-harbor:
+  en: aff3e44ee2653f38
+  zh: cd5660e55f377e33
+/yourbuddy-0-4-19/scenario-clean-c34-branded-production-build:
+  en: 57e851c2eeb7929b
+  zh: 86856cadc7e2ef7c
+/yourbuddy-0-4-19/scenario-task-choices-and-marketplace-entry-in-a-real-web-ui:
+  en: 70a856e1dd8bb212
+  zh: 3348f48d877abe8a
+/yourbuddy-0-4-19/platform-floor-and-historical-fixture-incident:
+  en: 056a922d975020e1
+  zh: 517da574ea584986
+/yourbuddy-0-4-19/delivery-status:
+  en: 8987fc5e9a8bc8d0
+  zh: 549970fb10a3c39e
+/yourbuddy-0-4-19/delivery-checklist:
+  en: 93c7964efd0d79d8
+  zh: e943a7bdc5902d2d

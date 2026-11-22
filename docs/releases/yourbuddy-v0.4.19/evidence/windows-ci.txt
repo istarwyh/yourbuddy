@@ -1,0 +1,9 @@
+Sanitized C34 CI result excerpt; source https://github.com/istarwyh/yourbuddy/actions/runs/45047783929
+PR head c34e3a33e03035971e79ebfa400eb856f8f5a178; tested merge 7a6be965dd5389b5011c2071c0bd2694ee932993.
+Environment: Windows Server 2025, 10.0.26100 Datacenter; Node 24.22.3; pnpm 11.28.5.
+2026-11-22T18:04:08.7423030Z PASS: retains disabled and enabled auto-open preferences after profile writes and restarts, and rejects a final config override (40608ms).
+2026-11-22T18:21:23.0761323Z Files: 2564 passed, 29 skipped (2593).
+2026-11-22T18:21:23.0761922Z Tests: 53297 passed, 1 expected fail, 295 skipped (53593).
+2026-11-22T18:21:24.3139801Z All files coverage: statements 100%, branches 100%, functions 100%, lines 100%.
+Counts are final combined results; no duplicate reporter/shard summing. Expected fail and skips are not ordinary passes.
+Source lifecycle regression is not a packaged macOS application upgrade or native WebView check. Windows CI does not imply a Windows installer is offered.
