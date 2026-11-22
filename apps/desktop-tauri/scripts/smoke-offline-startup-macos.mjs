@@ -212,10 +212,13 @@ export function settingsNavigationScript(pid, action) {
     set allNodes to entire contents of window 1 of targetProcess
     ${action === 'account' ? '' : `set scopes to {}
     repeat with scopeNode in allNodes
+      set readingScopeRole to true
       try
-        if ${dialog ? 'role of scopeNode is "AXGroup" and (name of scopeNode is "Settings" or name of scopeNode is "设置")' : 'role of scopeNode is "AXMenu"'} then set end of scopes to contents of scopeNode
+        set scopeRole to role of scopeNode as text
+        set readingScopeRole to false
+        if ${dialog ? 'scopeRole is "AXGroup" and (name of scopeNode is "Settings" or name of scopeNode is "设置")' : 'scopeRole is "AXMenu"'} then set end of scopes to contents of scopeNode
       on error errorText number errorNumber
-        if errorNumber is not -1719 and errorNumber is not -1728 then error errorText number errorNumber
+        if errorNumber is not -1719 and errorNumber is not -1728 and not (readingScopeRole and errorNumber is -1700) then error errorText number errorNumber
       end try
     end repeat
     if (count of scopes) is not 1 then error "Expected exactly one ${dialog ? 'named Settings dialog' : 'opened account menu'}"
@@ -224,12 +227,14 @@ export function settingsNavigationScript(pid, action) {
     set report to ${action === 'dialog' ? '"AXGroup" & tab & (name of item 1 of scopes as text) & tab & linefeed' : '""'}
     set skippedNodes to 0
     repeat with itemNode in allNodes
+      set readingRole to true
       try
         set roleText to role of itemNode as text
+        set readingRole to false
         set labelText to name of itemNode as text
         ${action === 'dialog' ? 'set report to report & roleText & tab & labelText & tab & linefeed' : `if ${role} and ${label} then set end of matchingButtons to contents of itemNode`}
       on error errorText number errorNumber
-        if errorNumber is -1719 or errorNumber is -1728 then
+        if errorNumber is -1719 or errorNumber is -1728 or (readingRole and errorNumber is -1700) then
           set skippedNodes to skippedNodes + 1
         else
           error errorText number errorNumber

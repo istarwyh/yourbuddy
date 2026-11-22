@@ -234,6 +234,8 @@ test('native Settings navigation presses exact scoped controls and inspects an a
   }
   for (const action of ['account', 'settings', 'dialog', 'close']) {
     const script = settingsNavigationScript(123, action)
+    assert.match(script, /set readingRole to true\s+try\s+set roleText to role of itemNode as text\s+set readingRole to false\s+set labelText to name of itemNode as text/)
+    assert.match(script, /if errorNumber is -1719 or errorNumber is -1728 or \(readingRole and errorNumber is -1700\) then\s+set skippedNodes to skippedNodes \+ 1\s+else\s+error errorText number errorNumber/)
     assert.match(script, /unix id is 123/)
     assert.match(script, /entire contents of window 1 of targetProcess/)
     assert.match(script, /error errorText number errorNumber/)
@@ -246,14 +248,16 @@ test('native Settings navigation presses exact scoped controls and inspects an a
       assert.match(script, /perform action "AXPress" of item 1 of matchingButtons/)
     }
     if (action !== 'account') {
+      assert.match(script, /set readingScopeRole to true\s+try\s+set scopeRole to role of scopeNode as text\s+set readingScopeRole to false\s+if scopeRole/)
+      assert.match(script, /if errorNumber is not -1719 and errorNumber is not -1728 and not \(readingScopeRole and errorNumber is -1700\) then error errorText number errorNumber/)
       assert.match(script, /if \(count of scopes\) is not 1 then error/)
       assert.match(script, /set allNodes to entire contents of item 1 of scopes/)
     }
   }
   assert.match(settingsNavigationScript(123, 'account'), /labelText is "Account menu" or labelText is "账号菜单"/)
-  assert.match(settingsNavigationScript(123, 'settings'), /role of scopeNode is "AXMenu"/)
+  assert.match(settingsNavigationScript(123, 'settings'), /scopeRole is "AXMenu"/)
   assert.match(settingsNavigationScript(123, 'settings'), /roleText is "AXMenuItem" and \(labelText is "Settings" or labelText is "设置"\)/)
-  assert.match(settingsNavigationScript(123, 'close'), /role of scopeNode is "AXGroup" and \(name of scopeNode is "Settings" or name of scopeNode is "设置"\)/)
+  assert.match(settingsNavigationScript(123, 'close'), /scopeRole is "AXGroup" and \(name of scopeNode is "Settings" or name of scopeNode is "设置"\)/)
   assert.match(settingsNavigationScript(123, 'close'), /roleText is "AXButton" and \(labelText is "Close" or labelText is "关闭"\)/)
 })
 
