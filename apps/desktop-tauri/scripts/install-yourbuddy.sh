@@ -59,6 +59,15 @@ done
 
 [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] \
   || fail unsupported_platform 'Use Apple Silicon macOS; other platforms are not supported.'
+minimum_macos=13.5
+macos_version=$(sw_vers -productVersion) \
+  || fail unsupported_macos "YourBuddy requires macOS $minimum_macos or later; update macOS before installing."
+[[ "$macos_version" =~ ^([0-9]+)\.([0-9]+)(\.[0-9]+)?$ ]] \
+  || fail unsupported_macos "YourBuddy requires macOS $minimum_macos or later; unable to read the macOS version."
+macos_major=$((10#${BASH_REMATCH[1]}))
+macos_minor=$((10#${BASH_REMATCH[2]}))
+(( macos_major > ${minimum_macos%%.*} || (macos_major == ${minimum_macos%%.*} && macos_minor >= ${minimum_macos#*.}) )) \
+  || fail unsupported_macos "YourBuddy requires macOS $minimum_macos or later; update macOS before installing."
 if [ "$version" != latest ] && ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
   fail invalid_version 'Use latest or a semantic release version (major.minor.patch).'
 fi
@@ -106,7 +115,7 @@ download() {
   return 1
 }
 
-# xml1 works on the application's minimum macOS 11; plutil raw needs macOS 12.
+# Read the plist's scalar XML representation.
 # These protocol/version values contain only scalar text, never executable shell.
 read_scalar() {
   local value

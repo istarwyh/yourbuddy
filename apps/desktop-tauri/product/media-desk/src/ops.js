@@ -1,6 +1,7 @@
 // 工作台的唯一写入口：对话、界面操作都走这里，统一校验字段并产出回执。
 // 模型输出也是不可信输入，所以这里只放行白名单字段。
 import { currentLang, platformName, tr } from './i18n.js'
+import { draftFormat } from './style.js'
 
 export const STATUSES = ['idea', 'outline', 'draft', 'ready', 'published']
 export const STATUS_LABEL = { idea: '灵感', outline: '大纲', draft: '草稿', ready: '待发布', published: '已发布' }
@@ -18,7 +19,7 @@ const ITEM_FIELDS = {
 }
 const PERSON_FIELDS = { name: 'text', role: 'text', note: 'text', traits: 'list', tone: 'num' }
 const ANGLE_FIELDS = { name: 'text', hook: 'text', prompt: 'text' }
-const STYLE_FIELDS = { name: 'text', icon: 'text', summary: 'text', tone: 'text', sentences: 'text', opening: 'text', structure: 'text', words: 'list', avoid: 'list', samples: 'list' }
+const STYLE_FIELDS = { name: 'text', icon: 'text', summary: 'text', tone: 'text', sentences: 'text', opening: 'text', structure: 'text', logic: 'text', story: 'text', flow: 'text', words: 'list', avoid: 'list', samples: 'list' }
 const SKILL_FIELDS = { name: 'text', rule: 'text', source: 'text', status: 'text', confidence: 'num', evidence: 'text' }
 const METRIC_FIELDS = { itemId: 'id', platform: 'platform', date: 'date', views: 'num', likes: 'num', comments: 'num', shares: 'num', saves: 'num' }
 const ACCOUNT_FIELDS = { platform: 'text', handle: 'text', url: 'url', followers: 'num', note: 'text', title: 'text', description: 'text', avatar: 'url', fetchedAt: 'date', fetchError: 'text' }
@@ -244,6 +245,10 @@ const handlers = {
     const style = findById(state.styles ?? [], op.id)
     state.activeStyleId = style.id
     return { text: tr('之后按「{name}」的风格写', { name: style.name }) }
+  },
+  set_format(state, op) {
+    state.draftFormat = draftFormat(op.format)
+    return { text: state.draftFormat === 'article' ? tr('之后写成文章') : tr('之后写成口播脚本') }
   },
   add_skill(state, op, now) {
     const skill = { id: newId('s'), name: '', rule: '', source: tr('对话'), status: 'proposed', confidence: 0.5, createdAt: now, ...pick(SKILL_FIELDS, op) }

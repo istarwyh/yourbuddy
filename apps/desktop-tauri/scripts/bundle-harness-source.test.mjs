@@ -259,12 +259,8 @@ test('installDefaultAgentPresets declares product presets from the standard prof
             name: cordis:group
             group: true
             config:
-              - id: tool-subagent-codex
-                name: '@deepseek-ai/dsh-tool-subagent'
-                disabled: true
-                config:
-                  provider: codex
-                  toolName: subagent_codex
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
               - id: tool-subagent-claude-code
                 name: '@deepseek-ai/dsh-tool-subagent'
                 disabled: true
@@ -306,10 +302,13 @@ test('installDefaultAgentPresets declares product presets from the standard prof
       order: 0,
     })
     const expectedCodexPlugins = structuredClone(standard.plugins)
-    delete expectedCodexPlugins[1].config[0].disabled
+    expectedCodexPlugins[1].config.unshift({
+      id: 'tool-subagent-codex', name: '@deepseek-ai/dsh-tool-subagent',
+      config: { provider: 'codex', toolName: 'subagent_codex', maxDepth: 'provider-managed' },
+    })
     assert.deepEqual(codex.config.plugins, expectedCodexPlugins)
     assert.equal(codex.config.id, 'codex')
-    assert.equal(codex.config.plugins[1].config[1].disabled, true)
+    assert.equal(codex.config.plugins[1].config[2].disabled, true)
 
     const expectedCreatorPlugins = structuredClone(expectedCodexPlugins)
     expectedCreatorPlugins[0].config.prefix = 'You are a creator workbench agent powered by the {{model}} model. Help the user plan, produce, package, and publish local video and article content while keeping human review at recording, editing, subtitle, and final publication checkpoints.'
@@ -377,6 +376,8 @@ test('installProductPlugins keeps every non-Harbor product in core and excludes 
     assert.equal(manifest.dependencies['@deepseek-ai/dsh-agent'], 'workspace:*')
     const webPatch = readFileSync(join(webApp, 'cordis.patch.yml'), 'utf8')
     assert.match(webPatch, /# YourBuddy product bundle layers/u)
+    const sidebarDefaults = load(webPatch.slice(webPatch.lastIndexOf('\n- id: better-sidebar')))
+    assert.deepEqual(sidebarDefaults, [{ id: 'better-sidebar', config: { presentation: 'slot' } }])
     assert.match(webPatch, /id: personal-workbench\n\s+name: dsh-personal-workbench/u)
     assert.match(webPatch, /id: dsh-pomodoro/u)
     assert.doesNotMatch(webPatch, /id: harbor-evolution/u)
@@ -432,7 +433,7 @@ test('installProductPlugins keeps every non-Harbor product in core and excludes 
       'YOURBUDDY_UPSTREAM.json',
     ), 'utf8'))
     assert.ok(sidebarSourceRecord.patches.some(
-      patch => patch.id === 'yourbuddy-workbench' && /^[a-f0-9]{64}$/u.test(patch.sha256),
+      patch => patch.id === `yourbuddy-${sidebarSourceRecord.version}-source` && /^[a-f0-9]{64}$/u.test(patch.sha256),
     ))
     assert.equal(existsSync(join(bundledSidebar, 'YOURBUDDY_UPSTREAM.json')), false)
     assert.ok(readFileSync(join(root, 'packages', 'product', 'context-doctor', 'lib', 'client.js'), 'utf8').length > 0)

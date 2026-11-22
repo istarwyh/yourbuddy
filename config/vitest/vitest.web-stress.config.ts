@@ -6,7 +6,7 @@ import { standardDecoratorPlugin, vitestExecArgv } from './vitest.shared.ts'
 /** Opt-in browser performance lane; no default Vitest config includes *.stress.ts. */
 export default defineConfig({
   root: fileURLToPath(new URL('../../', import.meta.url)),
-  plugins: [tsconfigPaths({ projects: ['./tsconfig.base.json'] }), standardDecoratorPlugin()],
+  plugins: [tsconfigPaths({ projects: [fileURLToPath(new URL('../../tsconfig.base.json', import.meta.url))] }), standardDecoratorPlugin()],
   test: {
     execArgv: vitestExecArgv,
     include: ['apps/web/stress-tests/**/*.stress.ts'],

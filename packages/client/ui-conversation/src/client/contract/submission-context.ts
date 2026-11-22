@@ -50,11 +50,11 @@ export interface ConversationContexts {
   register(contribution: ConversationContextContribution): () => void
 }
 
-/** Package-internal preparation retained by one detached composer attempt. */
+/** Package-internal preparation retained by one frozen composer attempt. */
 export interface PreparedConversationContext {
   readonly content: Promise<readonly string[]>
   readonly signal: AbortSignal
-  /** Release cancellation ownership once this message's durable admission is observed. */
+  /** Release cancellation ownership once the Host accepts this message. */
   admitted(): void
   /** Release pending contribution work when the owning attempt settles. */
   dispose(): void

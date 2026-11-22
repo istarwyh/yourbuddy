@@ -20,10 +20,10 @@ export declare const CODEX_NATIVE_CHECKPOINT_RETENTION_GENERATION: 1;
 export declare const CODEX_NATIVE_CHECKPOINT_ESTIMATOR: "codex-v2-retained-json-plus-opaque-base64-v1";
 /** Serialized custom-block ceiling, including its JSON carrier. */
 export declare const MAX_CODEX_NATIVE_CHECKPOINT_BYTES: number;
-/** Exact runtime pair verified against both npm and the matching source artifacts. */
+/** Verified coherent DSH graphs sharing the observed pi-ai conversion contract. */
 export declare const CODEX_NATIVE_REPLAY_COMPATIBILITY: Readonly<{
-    dsh: "0.2.0-rc.2";
-    piAi: "0.87.1";
+    dsh: "0.2.1-rc.1 || 0.2.1-rc.2";
+    piAi: "1.1.0";
 }>;
 /** Installed package facts that decide whether marker replay is safe. */
 export interface CodexNativeReplayRuntimeVersions {

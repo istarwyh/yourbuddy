@@ -11,13 +11,24 @@ export function commentReceiptId(sessionId, root, kind, value) {
   ])).digest('hex')}`
 }
 
-/** Admit a comment once, preserve its upstream chat card, and wait for the Session writer. */
-export async function deliverComment(ctx, commentMessage, sessionId, root, url, kind, value) {
+/**
+ * Admit a comment once, preserve its upstream chat card, and wait for the Session writer.
+ * @param ctx - Session resolver and durable writer services.
+ * @param receiptHandle - Ready projection reader owned by this plugin's Cordis effect.
+ * @param commentMessage - Upstream comment-card formatter.
+ * @param sessionId - Session receiving the comment.
+ * @param root - Canonical artifact folder.
+ * @param url - Managed editor address.
+ * @param kind - Upstream thread or request kind.
+ * @param value - Upstream send occurrence.
+ * @returns resolves only after the Session writer acknowledges the receipt.
+ */
+export async function deliverComment(ctx, receiptHandle, commentMessage, sessionId, root, url, kind, value) {
   const resolved = await ctx.sessionController.resolveAgent(sessionId)
   if ('error' in resolved) throw resolved.error
   const agent = resolved.agent
   const id = commentReceiptId(sessionId, root, kind, value)
-  const receipts = ctx.sessionProjections.stateOf(agent.session, 'yourbuddy-design/comment-receipts')
+  const receipts = receiptHandle.stateOf(agent.session)
   if (receipts === undefined) throw new Error('The design comment receipt projection is not registered.')
   // Projection lookup and admission are synchronous: concurrent deliveries cannot interleave here.
   const seen = agent.inbox.nextTurn.some(message => message.id === id)

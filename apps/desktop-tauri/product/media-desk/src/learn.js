@@ -32,6 +32,16 @@ function realMetrics(state) {
   return real.length ? real : state.metrics
 }
 
+/**
+ * 真正参与统计的数据。导入的账号数据是每篇内容到现在为止的累计数，
+ * 同一篇再手动录一条就会被算两次，所以一篇内容有导入数据时只认导入的那一行。
+ */
+function countedMetrics(state) {
+  const metrics = realMetrics(state)
+  const imported = new Set(metrics.filter(metric => metric.externalId && metric.itemId).map(metric => metric.itemId))
+  return imported.size ? metrics.filter(metric => metric.externalId || !imported.has(metric.itemId)) : metrics
+}
+
 function engagement(row) {
   return (row.likes || 0) + (row.comments || 0) + (row.shares || 0) + (row.saves || 0)
 }
@@ -78,7 +88,7 @@ function editSignals(state) {
  */
 export function proposeRules(state) {
   const proposals = []
-  const totals = itemTotals({ metrics: realMetrics(state) })
+  const totals = itemTotals({ metrics: countedMetrics(state) })
   const published = state.items.filter(item => totals.has(item.id))
   const rows = published.map(item => ({ item, views: totals.get(item.id).views }))
 
@@ -119,11 +129,12 @@ export function proposeRules(state) {
 /**
  * 面向复盘页的汇总。
  * @param {object} state - 当前状态。
- * @returns {object} 概览、趋势、平台分布、排行与角度×人物覆盖。
+ * @returns {object} 概览、趋势、平台分布、排行与角度×人物覆盖，以及数据口径（imported、skipped）。
  */
 export function computeInsights(state) {
-  const metrics = realMetrics(state)
-  const onlyReal = metrics.length !== state.metrics.length || !metrics.some(metric => metric.sample)
+  const real = realMetrics(state)
+  const metrics = countedMetrics(state)
+  const onlyReal = real.length !== state.metrics.length || !real.some(metric => metric.sample)
   const totals = itemTotals({ metrics })
   const daily = new Map()
   for (const metric of metrics) {
@@ -154,6 +165,8 @@ export function computeInsights(state) {
     published: state.items.filter(item => item.status === 'published' && (onlyReal ? !item.sample : true)).length,
     followers: sum(accounts, 'followers'), daily: [...daily.values()].sort((a, b) => a.date.localeCompare(b.date)), platforms: [...platforms.values()].sort((a, b) => (b.views - a.views) || (b.engaged - a.engaged)), top,
     hasSample: metrics.some(metric => metric.sample),
+    // 导入的数据记在发布那天，是累计数；和导入数据重复的手动数据不再算一遍
+    imported: metrics.some(metric => metric.externalId), skipped: real.length - metrics.length,
   }
 }
 

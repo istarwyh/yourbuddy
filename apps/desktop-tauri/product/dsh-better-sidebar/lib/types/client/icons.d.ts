@@ -5,24 +5,22 @@
  * (`descriptor.icon`), not in a type-keyed switch — the icon mapping was
  * registry-ized with the tab types.
  */
-import type { IconProps } from '@deepseek-ai/dsh-client-ui-primitives';
-/**
- * Bottom-panel toggle glyph (the "底栏" button): a frame with a filled strip
- * along its BOTTOM edge, in the app's outline style.
- */
+import { type IconProps } from '@deepseek-ai/dsh-client-ui-primitives';
+/** Bottom toggle: reuse the native panel glyph, rotated toward the bottom. */
 export declare const IconPanelBottomOutline16: ({ size, className }: IconProps) => import("react").JSX.Element;
 /**
  * Terminal glyph in the app's outline style (1.5px stroke, currentColor):
  * a rounded frame with a prompt chevron and underscore cursor.
  */
 export declare const IconTerminalOutline16: ({ size, className }: IconProps) => import("react").JSX.Element;
+/**
+ * Settings-navigation glyph for the "Side card" section. The shell asks for a
+ * square edge and tints the SVG with `currentColor`, so this stays a plain
+ * two-tone outline mark: the side panel plus the two rails it docks against.
+ */
+export declare const IconSideCardNav: ({ size, className }: IconProps) => import("react").JSX.Element;
 /** Diff glyph in the app's outline style: a file frame with a plus and a minus row. */
 export declare const IconDiffOutline16: ({ size, className }: IconProps) => import("react").JSX.Element;
-/**
- * Stop glyph for the background-job kill button: a filled square in the
- * app's outline scale (16), the universal "halt this work" mark.
- */
-export declare const IconStopOutline16: ({ size, className }: IconProps) => import("react").JSX.Element;
 /** Upload glyph in the app's outline style: an arrow rising into a tray
  *  (the file-manager "upload into the workspace" action). */
 export declare const IconUploadOutline16: ({ size, className }: IconProps) => import("react").JSX.Element;

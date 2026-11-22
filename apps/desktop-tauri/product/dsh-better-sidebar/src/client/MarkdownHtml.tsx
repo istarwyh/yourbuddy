@@ -11,16 +11,20 @@
  * open-tag attributes) goes through DOMPurify with an explicit denylist on
  * top of its defaults (no script/style/iframe/forms), anchors are forced to
  * open in a new tab with noopener, and local media goes through the
- * session-scoped `/sidebar/file` media route — markdown-syntax image
- * destinations are rewritten via `markdown-images.ts` and `src` attributes
- * through `resolveLocalMediaDest` (the same trust fence).
+ * session-scoped `/sidebar/file` media route — `src` attributes via
+ * `resolveLocalMediaDest` (the same trust fence). Markdown-syntax images are
+ * resolved by the owning surface's `pathImages` vocabulary
+ * (`markdown-images.ts`); that is what keeps them same-origin in the desktop
+ * shell.
  */
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { createElement, type ReactNode } from 'react'
 import DOMPurify from 'dompurify'
 import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { MarkdownPathImages } from '@deepseek-ai/dsh-client-ui-primitives'
 import { markdownTextProps, type MarkdownCopyLabels } from './markdown-labels.tsx'
-import { resolveLocalMediaDest, rewriteLocalImageUrls } from './markdown-images.ts'
+import { resolveLocalMediaDest } from './markdown-images.ts'
+import { rewriteLocalMarkdownLinks } from './markdown-navigation.ts'
 import {
   analyzeHtmlSegment,
   type AnalyzedMarkdownHtml,
@@ -40,11 +44,24 @@ import { LazyMermaidMarkdown } from './mermaid-lazy.tsx'
 export interface MarkdownHtmlMedia {
   scope: SessionScope
   path: string
-  origin: string
+  /** The PAGE base, reverse-proxy prefix included (`hostHttpBase()`). */
+  baseUrl: string
+  /** The owner's local-path image vocabulary for markdown runs. */
+  pathImages?: MarkdownPathImages | undefined
 }
 
 /** Tag-like text in a rendered text node — the inline pass gate. */
 const TAGLIKE_TEXT_RE = /<\/?[a-zA-Z][a-zA-Z0-9-]*[\s/>]/
+
+/**
+ * A text node that is nothing but one close tag (`</a>`) at its edges. The host
+ * renderer emits one text node per raw-HTML token, so an author's
+ * `<a id="x"></a>` arrives as two sibling nodes: the open tag (which this pass
+ * swaps for a sanitized element) and this stray close tag. DOMPurify drops a
+ * lone close tag, so it can never be swapped — and unlike prose it carries no
+ * text a reader should see, so the pass deletes it instead of printing it.
+ */
+const ORPHAN_CLOSE_TAG_RE = /^<\/[a-zA-Z][a-zA-Z0-9-]*\s*>$/
 
 /** Explicit denylist on top of DOMPurify's defaults: no active content, no
  *  form chrome, no document-level elements inside a preview. */
@@ -67,14 +84,36 @@ function postProcessSanitized(root: Element, media: MarkdownHtmlMedia): void {
   for (const element of root.querySelectorAll('img, video, audio, source')) {
     const src = element.getAttribute('src')
     if (src === null) continue
-    element.setAttribute('src', resolveLocalMediaDest(src, media.scope, media.path, media.origin))
+    element.setAttribute('src', resolveLocalMediaDest(src, media.scope, media.path, media.baseUrl))
   }
+}
+
+/**
+ * Rewrite authored `file:` media URLs before DOMPurify sees them. The
+ * sanitizer's URI allowlist drops a raw `file:` scheme (it is not a browser
+ * subresource the GUI can load), so a raw-HTML `<img src="file:///…">` would
+ * lose its src entirely. The file URL is a local path in another spelling:
+ * map it through the same media route as a relative src first, then sanitize
+ * the resulting http URL. Sources without a file URL are returned untouched.
+ */
+function rewriteFileUrlMedia(source: string, media: MarkdownHtmlMedia): string {
+  if (!/file:/i.test(source)) return source
+  const template = document.createElement('template')
+  template.innerHTML = source
+  for (const element of template.content.querySelectorAll('img, video, audio, source')) {
+    for (const attribute of ['src', 'poster']) {
+      const value = element.getAttribute(attribute)
+      if (value === null || !/^file:/i.test(value.trim())) continue
+      element.setAttribute(attribute, resolveLocalMediaDest(value, media.scope, media.path, media.baseUrl))
+    }
+  }
+  return template.innerHTML
 }
 
 /** Sanitize one balanced HTML span into markup for dangerouslySetInnerHTML. */
 function sanitizeHtmlBlock(source: string, media: MarkdownHtmlMedia): string {
   const holder = document.createElement('div')
-  holder.innerHTML = DOMPurify.sanitize(source, {
+  holder.innerHTML = DOMPurify.sanitize(rewriteFileUrlMedia(source, media), {
     FORBID_TAGS: PURIFY_FORBID_TAGS,
     FORBID_ATTR: PURIFY_FORBID_ATTR,
   })
@@ -86,10 +125,12 @@ function sanitizeHtmlBlock(source: string, media: MarkdownHtmlMedia): string {
  * Sanitize literal tag text from a rendered markdown text node. Returns null
  * when nothing real survived (pure prose like `a < b` — the DOMPurify output
  * has no element children), so the caller leaves the text node untouched.
+ * A node that is nothing but a close tag never reaches here — the caller drops
+ * it (see {@link ORPHAN_CLOSE_TAG_RE}).
  */
 function sanitizeInlineHtml(text: string, media: MarkdownHtmlMedia): string | null {
   const holder = document.createElement('span')
-  holder.innerHTML = DOMPurify.sanitize(text, {
+  holder.innerHTML = DOMPurify.sanitize(rewriteFileUrlMedia(text, media), {
     FORBID_TAGS: PURIFY_FORBID_TAGS,
     FORBID_ATTR: PURIFY_FORBID_ATTR,
   })
@@ -99,11 +140,25 @@ function sanitizeInlineHtml(text: string, media: MarkdownHtmlMedia): string | nu
 }
 
 /**
+ * React props for a sanitized element: `class`/`for` map to their React names,
+ * `style` is dropped (React needs an object; wrappers with inline styles are
+ * vanishingly rare and not worth a CSS parser), and event handlers / invalid
+ * attribute names never survive DOMPurify's defaults but are filtered anyway.
+ */
+function propsFromElement(element: Element): Record<string, string> {
+  const props: Record<string, string> = {}
+  for (const attr of element.attributes) {
+    if (/^on/i.test(attr.name) || !/^[a-zA-Z][a-zA-Z0-9:._-]*$/.test(attr.name)) continue
+    if (attr.name === 'style') continue
+    props[attr.name === 'class' ? 'className' : attr.name === 'for' ? 'htmlFor' : attr.name] = attr.value
+  }
+  return props
+}
+
+/**
  * Sanitize a wrapper open tag (`<details open>`) into React props. Returns
  * null when DOMPurify dropped the whole tag (denied element) — the renderer
- * then treats the wrapper as transparent. `class`/`for` map to their React
- * names; `style` is dropped (React needs an object; wrappers with inline
- * styles are vanishingly rare and not worth a CSS parser).
+ * then treats the wrapper as transparent.
  */
 function sanitizeTagProps(tag: string, attrs: string): Record<string, string> | null {
   const probe = DOMPurify.sanitize(`<${tag}${attrs}></${tag}>`, {
@@ -114,13 +169,37 @@ function sanitizeTagProps(tag: string, attrs: string): Record<string, string> | 
   holder.innerHTML = probe
   const element = holder.firstElementChild
   if (element === null || element.tagName.toLowerCase() !== tag) return null
-  const props: Record<string, string> = {}
-  for (const attr of element.attributes) {
-    if (/^on/i.test(attr.name) || !/^[a-zA-Z][a-zA-Z0-9:._-]*$/.test(attr.name)) continue
-    if (attr.name === 'style') continue
-    props[attr.name === 'class' ? 'className' : attr.name === 'for' ? 'htmlFor' : attr.name] = attr.value
+  return propsFromElement(element)
+}
+
+/**
+ * Split a sanitized HTML leaf whose first element is a `<summary>` into that
+ * summary's props/inner markup plus the remainder. HTML's content model makes
+ * the summary a disclosure widget **only** as a direct child of `<details>`,
+ * but every balanced leaf renders inside a block wrapper — so a README's
+ * `<details>` + `<summary>` would otherwise show the browser's own default
+ * label ("Details") and demote the authored text to body content. Returns
+ * null when the leaf's first element is anything else (or non-whitespace text
+ * precedes it), leaving the plain leaf path untouched. Media and anchors
+ * inside the hoisted summary go through the same hardening as any leaf.
+ */
+function splitLeadingSummary(
+  html: string,
+  media: MarkdownHtmlMedia,
+): { props: Record<string, string>; inner: string; rest: string } | null {
+  const holder = document.createElement('div')
+  holder.innerHTML = html
+  const first = holder.firstElementChild
+  if (first === null || first.tagName.toLowerCase() !== 'summary') return null
+  for (const node of holder.childNodes) {
+    if (node === first) break
+    if ((node.textContent ?? '').trim() !== '') return null
   }
-  return props
+  postProcessSanitized(first, media)
+  const props = propsFromElement(first)
+  const inner = first.innerHTML
+  first.remove()
+  return { props, inner, rest: holder.innerHTML }
 }
 
 /**
@@ -147,6 +226,13 @@ function runInlineHtmlPass(container: HTMLElement, media: MarkdownHtmlMedia): vo
   const targets: Text[] = []
   for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) targets.push(node as Text)
   for (const node of targets) {
+    // A lone close tag is not prose and cannot be sanitized into an element:
+    // drop it so `</a>` never renders as text (the matching open tag already
+    // became its element, so anchors keep their id and stay invisible).
+    if (ORPHAN_CLOSE_TAG_RE.test(node.data.trim())) {
+      node.remove()
+      continue
+    }
     const html = sanitizeInlineHtml(node.data, media)
     if (html === null) continue
     const span = document.createElement('span')
@@ -172,28 +258,57 @@ interface MarkdownSegmentProps {
  * skips its own output, so mutation feedback settles after one extra pass.
  */
 function MarkdownSegment({ text, hasMermaid, media, codeLabels }: MarkdownSegmentProps): ReactNode {
+  const pathImages = media.pathImages
   const containerRef = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const container = containerRef.current
     if (container === null) return
     runInlineHtmlPass(container, media)
-    let scheduled = false
+    let timer: number | undefined
+    /** A pass was skipped because the page was hidden; flush it on return. */
+    let dirty = false
+    const runPass = (): void => {
+      // Only `hidden` pauses the pass; jsdom reports a non-visible state too,
+      // and the initial pass already ran there.
+      if (document.visibilityState === 'hidden') {
+        dirty = true
+        return
+      }
+      dirty = false
+      runInlineHtmlPass(container, media)
+    }
     const observer = new MutationObserver(() => {
-      if (scheduled) return
-      scheduled = true
-      queueMicrotask(() => {
-        scheduled = false
-        runInlineHtmlPass(container, media)
-      })
+      if (timer !== undefined) return
+      // Coalesce a burst of mutations (shiki settling, diagram swaps, inline
+      // HTML injection) into one pass: the scan walks every text node in the
+      // document, so a pass per mutation turns a diagram-heavy render into a
+      // stream of full-document scans.
+      timer = window.setTimeout(() => {
+        timer = undefined
+        runPass()
+      }, 80)
     })
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'hidden' || !dirty) return
+      if (timer !== undefined) {
+        window.clearTimeout(timer)
+        timer = undefined
+      }
+      runPass()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
     observer.observe(container, { childList: true, subtree: true })
-    return () => { observer.disconnect() }
+    return () => {
+      observer.disconnect()
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
   }, [text, media])
   return (
     <div ref={containerRef}>
       {hasMermaid
-        ? <LazyMermaidMarkdown text={text} codeLabels={codeLabels} />
-        : <MarkdownText {...markdownTextProps(text, codeLabels)} />}
+        ? <LazyMermaidMarkdown text={text} codeLabels={codeLabels} pathImages={pathImages} />
+        : <MarkdownText {...markdownTextProps(text, codeLabels, pathImages)} />}
     </div>
   )
 }
@@ -210,6 +325,8 @@ type PreparedHtmlPart =
   | { kind: 'html'; html: string }
   | { kind: 'open'; tag: string; props: Record<string, string> | null }
   | { kind: 'close' }
+  /** A `<summary>` hoisted out of a leaf so it can be a `<details>` direct child. */
+  | { kind: 'summary'; props: Record<string, string>; inner: string }
 
 type PreparedSegment =
   | { kind: 'markdown'; text: string; hasMermaid: boolean }
@@ -235,27 +352,52 @@ export function MarkdownDocument({ info, media, codeLabels }: MarkdownDocumentPr
     if (segment.kind === 'markdown') {
       const defs = info.referenceDefinitions
       const raw = defs === '' ? segment.text : `${segment.text}\n\n${defs}`
-      // MarkdownText drops non-http(s) image destinations (chat-security
-      // stance), so rewrite local ones into /sidebar/file media URLs first —
-      // the same trust fence the sanitized HTML leaves below go through.
-      // Idempotent: already-absolute media URLs pass through untouched.
-      const text = rewriteLocalImageUrls(raw, media.scope, media.path, media.origin)
+      // Local image destinations stay as authored: the enclosing surface's
+      // `pathImages` vocabulary resolves them at render time (see
+      // markdown-images.ts — a rewritten URL could not be vouched for from the
+      // desktop shell's `dsh-app://` page). The link pass runs here so a
+      // heading fragment survives the host parser and every local link the
+      // plugin does not claim stays inert; image-referenced definitions are
+      // left alone by that pass so the renderer can still resolve them.
+      const text = rewriteLocalMarkdownLinks(raw, media.path, media.scope.cwd)
       return {
         kind: 'markdown',
         text,
         hasMermaid: splitMermaidBlocks(text).some((block) => block.kind === 'mermaid'),
       }
     }
-    return {
-      kind: 'html',
-      parts: analyzeHtmlSegment(segment.text).parts.map((part): PreparedHtmlPart => {
-        if (part.kind === 'html') return { kind: 'html', html: sanitizeHtmlBlock(part.html, media) }
-        if (part.kind === 'open') return { kind: 'open', tag: part.tag, props: sanitizeTagProps(part.tag, part.attrs) }
-        return { kind: 'close' }
-      }),
+    const parts: PreparedHtmlPart[] = []
+    /** Tag of the wrapper the previous part opened — the only place a
+     *  following leaf can hoist a `<summary>` out of its block wrapper. */
+    let openTag: string | null = null
+    for (const part of analyzeHtmlSegment(segment.text).parts) {
+      if (part.kind === 'html') {
+        const html = sanitizeHtmlBlock(part.html, media)
+        const summary = openTag === 'details' ? splitLeadingSummary(html, media) : null
+        if (summary === null) {
+          parts.push({ kind: 'html', html })
+        } else {
+          parts.push({ kind: 'summary', props: summary.props, inner: summary.inner })
+          // Anything after the summary keeps the plain block-leaf treatment.
+          if (summary.rest.trim() !== '') parts.push({ kind: 'html', html: summary.rest })
+        }
+        openTag = null
+        continue
+      }
+      if (part.kind === 'open') {
+        const props = sanitizeTagProps(part.tag, part.attrs)
+        parts.push({ kind: 'open', tag: part.tag, props })
+        // A denied wrapper renders transparent, so its children have no element
+        // to be a direct child of — never hoist a summary into that case.
+        openTag = props === null ? null : part.tag
+        continue
+      }
+      parts.push({ kind: 'close' })
+      openTag = null
     }
+    return { kind: 'html', parts }
   // `media` is a memoized object in the host (TextEditor); identity tracks
-  // scope/path/origin changes so sanitization re-runs exactly when needed.
+  // scope/path/baseUrl changes so sanitization re-runs exactly when needed.
   }), [info, media])
 
   const nodes: ReactNode[] = []
@@ -275,6 +417,11 @@ export function MarkdownDocument({ info, media, codeLabels }: MarkdownDocumentPr
       if (part.kind === 'html') {
         if (part.html.trim() === '') continue
         emit(<HtmlLeaf key={`html-${key += 1}`} html={part.html} />)
+      } else if (part.kind === 'summary') {
+        // Emitted as a real element (not a block leaf) so it stays a direct
+        // child of the enclosing <details> — the content-model requirement for
+        // it to act as the disclosure widget, with the authored label.
+        emit(createElement('summary', { ...part.props, key: `summary-${key += 1}`, dangerouslySetInnerHTML: { __html: part.inner } }))
       } else if (part.kind === 'open') {
         frames.push({ tag: part.tag, props: part.props, children: [] })
       } else {

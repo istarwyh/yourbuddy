@@ -1,34 +1,120 @@
 /**
- * Markdown-preview local-image resolution. The shared `MarkdownText` (from
- * @deepseek-ai/dsh-client-ui-primitives) only renders absolute http(s) image
- * URLs — relative links are disabled for chat security — so a local image in
- * a previewed `.md` (`![alt](./img.png)`, an absolute `/cwd/img.png`, or a
- * reference definition) would otherwise fall back to its alt text. This
- * dependency-free helper rewrites those destinations into absolute
- * `/sidebar/file` media URLs (prefixed with the GUI's own origin) so
- * `MarkdownText` accepts them; the host media route then serves the bytes,
- * still restricted to files under the session cwd.
+ * Local-image resolution for the plugin's markdown surfaces.
+ *
+ * The shared `MarkdownText` renders absolute http(s) image destinations as
+ * authored; a local destination (an image-relative `./img.png`, an absolute
+ * `/cwd/img.png`, or a reference definition) is handed to the owner's
+ * `pathImages` vocabulary, and only a miss falls back to the documented alt
+ * text. That is the DSH renderer's sanctioned rewrite hook: the owner maps an
+ * authored destination to a displayable absolute URL it vouches for.
+ *
+ * The base is what has to change for the desktop shell. Its page origin is
+ * `dsh-app://app/` while the Host listens on another origin
+ * (`__DSH_TRANSPORT__.streamBaseUrl`): an absolute http URL built from that
+ * transport base is a CROSS-SITE subresource, so the Host's Connection fence
+ * rejects it (403) and the image falls back to alt text. Two shapes survive:
+ *
+ * - **Browser** (page base is http(s)): the plugin's own `/sidebar/file`
+ *   media route on the page base — same-origin as before, reverse-proxy
+ *   prefix included.
+ * - **Desktop shell** (page base is `dsh-app://app/`): the Host's
+ *   authenticated `api/file?path=` route on the page base. The shell forwards
+ *   every non-static `dsh-app://app/*` request to the Host with the launch
+ *   cookie, and `dsh-app://app/api/file?...` is the one local-file URL shape
+ *   the renderer's image vocabulary accepts. The built-in document preview
+ *   resolves its markdown images the same way.
+ *
+ * Raw HTML leaves (`<img src="./x.png">`) are different: they render as plain
+ * DOM elements, not through `MarkdownText`, so {@link resolveLocalMediaDest}
+ * hands them the plugin media route on the page base directly — a plain
+ * `<img>` has no protocol vocabulary to satisfy.
  */
 
+import type { MarkdownPathImages } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SessionScope } from './api.ts'
+import { hostHttpBase } from './desktop-env.ts'
+import { hostRouteUrl } from './host-route-url.ts'
+import { maskCodeRegions } from './markdown-code.ts'
 import { isAbsolutePath } from './paths.ts'
 
 /**
  * True for a destination that is a remote URL — an absolute `scheme:` URL
  * that is not a Windows drive path (`C:\...`). http/https/data/mailto etc.
- * all match here and are handed back to `MarkdownText` untouched.
+ * all match here.
  */
 function isRemoteUrl(dest: string): boolean {
   return /^[a-z][a-z0-9+.-]*:/i.test(dest) && !/^[A-Za-z]:[\\/]/.test(dest)
 }
 
 /**
+ * A `data:` image the renderer's vocabulary may show. Markdown-syntax
+ * destinations never render a bare `data:` URL (the shared renderer only
+ * shows absolute http(s) unless the owner's `pathImages` vouches for the
+ * target), but the vocabulary itself accepts `data:`. Local previews may
+ * therefore pass an image data URI through, which is also how a pasted
+ * screenshot survives a self-contained document. Only `data:image/` is
+ * admitted: `data:text/html` and friends stay inert alt text.
+ * @param destination - One authored image destination.
+ * @returns The trimmed data URI, or undefined when it is not an image data URI.
+ */
+function imageDataUrl(destination: string): string | undefined {
+  const trimmed = destination.trim()
+  return /^data:image\//i.test(trimmed) ? trimmed : undefined
+}
+
+/**
+ * The local path of an authored `file:` URL, or undefined when the
+ * destination is not a well-formed file URL. This is how a Markdown file can
+ * name a local image with the browser's own file-URL spelling
+ * (`file:///C:/pics/a.png`, `file:///home/me/a.png`) without the preview ever
+ * handing the `file:` scheme to the renderer: the path goes through the same
+ * session media route as every other local image. VSCode's Markdown preview
+ * does the equivalent through its webview resource provider.
+ *
+ * A non-empty host is a UNC path (`file://server/share/a.png` ->
+ * `//server/share/a.png`); `localhost` is the local machine. Query and hash
+ * are not part of a local filename and are dropped.
+ * @param destination - One authored image destination.
+ * @returns The local path, or undefined when this is not a file URL.
+ */
+export function fileUrlToLocalPath(destination: string): string | undefined {
+  const trimmed = destination.trim()
+  if (!/^file:/i.test(trimmed)) return undefined
+  let url: URL
+  try {
+    url = new URL(trimmed)
+  } catch {
+    return undefined
+  }
+  if (url.protocol !== 'file:' || url.username !== '' || url.password !== '') return undefined
+  let pathname: string
+  try {
+    pathname = decodeURIComponent(url.pathname)
+  } catch {
+    return undefined
+  }
+  if (pathname === '' || pathname === '/' || pathname.includes('\0')) return undefined
+  const host = url.hostname
+  if (host !== '' && host.toLowerCase() !== 'localhost') {
+    // `file://C:/x` names a drive, not a host; anything else is UNC.
+    if (/^[A-Za-z]:$/.test(host)) return normalizeLocalPath(`${host}${pathname}`)
+    return `//${host}${pathname}`
+  }
+  const local = /^\/[A-Za-z]:[\\/]/.test(pathname) ? pathname.slice(1) : pathname
+  // Keep the UNC spelling for the host resolver; everything else is normalized
+  // (Windows drive spellings become backslashes, POSIX roots stay POSIX).
+  return local.startsWith('//') ? local : normalizeLocalPath(local)
+}
+
+/**
  * Collapse `.`/`..` segments of an absolute local path, preserving its root
  * (POSIX `/`), its Windows drive (`C:\`), or its UNC `\\server\share`
  * prefix. The host's `requireAbsolute` (`path.resolve`) normalizes anyway,
- * but producing a canonical path here keeps the `/sidebar/file` URL clean.
+ * but producing a canonical path here keeps the media URLs clean.
+ * Shared with the markdown navigation resolver (`markdown-navigation.ts`),
+ * which canonicalizes a claimed link target the same way.
  */
-function normalizeLocalPath(path: string): string {
+export function normalizeLocalPath(path: string): string {
   const drive = /^([A-Za-z]:)[\\/]/.exec(path)?.[1]
   const body = drive !== undefined ? path.slice(drive.length) : path
   const parts = body.split(/[\\/]+/).filter((segment) => segment !== '' && segment !== '.')
@@ -44,14 +130,233 @@ function normalizeLocalPath(path: string): string {
 }
 
 /**
+ * The absolute spelling of one target for routes that require it (the desktop
+ * shell's host `api/file`): a relative target joins the session workspace
+ * root. Returns undefined when the target is relative and no root is known —
+ * the caller then falls back to alt text instead of an absolute-path 400.
+ * @param target - A target produced by {@link markdownImageTarget}.
+ * @param cwd - The session workspace root, when known.
+ * @returns The absolute target, or undefined.
+ */
+function absoluteTarget(target: string, cwd: string | undefined): string | undefined {
+  if (isAbsolutePath(target)) return target
+  if (cwd === undefined || cwd === '') return undefined
+  return normalizeLocalPath(`${cwd.replace(/[\\/]+$/, '')}/${target}`)
+}
+
+/**
+ * Percent-decode one authored destination exactly once (the renderer hands
+ * the rewrite hook the spelling the author wrote). A malformed escape is
+ * refused rather than thrown.
+ * @param value - The authored destination.
+ * @returns The decoded destination, or undefined for a malformed escape.
+ */
+function decodeDestination(value: string): string | undefined {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The absolute local target of one markdown destination, or undefined when
+ * the destination is not a local path this vocabulary serves. Relative
+ * destinations resolve against the opened file's own directory; remote URLs,
+ * `#`-anchors, empty destinations and queries are refused (the renderer keeps
+ * its alt-text fallback for those).
+ * The result may still be RELATIVE when the opened file's path is relative
+ * (an editor tab opened from a chat address can carry a workspace-relative
+ * path). The plugin media route accepts that together with `cwd`; the desktop
+ * shell's host file route does not — see {@link absoluteTarget}.
+ * @param destination - One decoded image destination.
+ * @param filePath - The path of the opened `.md` file.
+ * @returns The normalized target path, or undefined.
+ */
+export function markdownImageTarget(destination: string, filePath: string): string | undefined {
+  const dest = destination.trim()
+  if (dest === '' || dest.startsWith('#') || isRemoteUrl(dest)) return undefined
+  // The host's file-link grammar refuses queries and scheme-relative forms.
+  if (dest.includes('?') || /^[\\/]{2}/.test(dest)) return undefined
+  const slash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))
+  const directory = slash === -1 ? '/' : filePath.slice(0, slash + 1)
+  const candidate = isAbsolutePath(dest) ? dest : directory + dest
+  return normalizeLocalPath(candidate)
+}
+
+/**
+ * Absolute URL of the plugin's session media route for one local image,
+ * resolved against the page base (browser deployments).
+ * @param target - Local image path (absolute, or relative to `scope.cwd` when
+ * the opened file itself carries a workspace-relative path).
+ * @param scope - The session scope (sessionId + cwd) for the media route.
+ * @param baseUrl - The page base (`hostHttpBase()`); injected for pure tests.
+ * @returns The absolute media URL.
+ */
+export function markdownMediaUrl(target: string, scope: SessionScope, baseUrl: string): string {
+  const params = new URLSearchParams({ sessionId: scope.sessionId, path: target })
+  if (scope.cwd !== undefined && scope.cwd !== '') params.set('cwd', scope.cwd)
+  return hostRouteUrl(`sidebar/file?${params.toString()}`, baseUrl).href
+}
+
+/**
+ * Absolute URL of the Host's authenticated file route on the page base — the
+ * only local-file image shape the desktop shell page can display (see the
+ * module comment).
+ * @param target - Absolute local path of the image.
+ * @param baseUrl - The page base (`dsh-app://app/`); injected for pure tests.
+ * @returns The absolute file URL.
+ */
+export function desktopFileUrl(target: string, baseUrl: string): string {
+  const params = new URLSearchParams({ path: target })
+  return hostRouteUrl(`api/file?${params.toString()}`, baseUrl).href
+}
+
+/**
+ * Build the `pathImages` vocabulary for one markdown surface: `MarkdownText`
+ * asks it for an authored local image destination and gets back a displayable
+ * absolute URL on the page base, so the same code works in a browser and in
+ * the desktop shell. An authored `data:image/` URI is passed through as-is;
+ * every other `data:` payload stays rejected.
+ * @param scope - The session scope (sessionId + cwd) for the plugin media route.
+ * @param filePath - The path of the opened `.md` file (may be workspace-relative).
+ * @param baseUrl - The page base; defaults to `hostHttpBase()`.
+ * @returns The owner's local-path image vocabulary.
+ */
+export function createMarkdownPathImages(
+  scope: SessionScope,
+  filePath: string,
+  baseUrl: string = hostHttpBase(),
+): MarkdownPathImages {
+  let desktop = false
+  try {
+    desktop = new URL(baseUrl).protocol === 'dsh-app:'
+  } catch {
+    // Non-absolute/empty base (specs, non-DOM callers): the browser branch is
+    // the only one whose URL builder does not need a real scheme.
+  }
+  return {
+    resolve: (destination: string): string | undefined => {
+      const dataUrl = imageDataUrl(destination)
+      if (dataUrl !== undefined) return dataUrl
+      // A file: URL is a local path in another spelling; never hand the scheme
+      // to the renderer (its vocabulary rejects it and a sandboxed frame cannot
+      // load it). The path goes through the same media route as a relative one.
+      const filePathFromUrl = fileUrlToLocalPath(destination)
+      if (filePathFromUrl !== undefined) {
+        if (!desktop) return markdownMediaUrl(filePathFromUrl, scope, baseUrl)
+        return desktopFileUrl(filePathFromUrl, baseUrl)
+      }
+      const decoded = decodeDestination(destination)
+      if (decoded === undefined) return undefined
+      const target = markdownImageTarget(decoded, filePath)
+      if (target === undefined) return undefined
+      if (!desktop) return markdownMediaUrl(target, scope, baseUrl)
+      // The host file route requires an ABSOLUTE path (a relative one answers
+      // 400 "absolute path required"); a relative tab path is the common case
+      // for files opened from chat, so join the workspace root explicitly.
+      const absolute = absoluteTarget(target, scope.cwd)
+      return absolute === undefined ? undefined : desktopFileUrl(absolute, baseUrl)
+    },
+  }
+}
+
+/**
+ * Resolve one raw-HTML media destination to a displayable URL: local
+ * (relative or absolute) paths become absolute page-base `/sidebar/file` URLs,
+ * while remote URLs, `#`-anchors and empty destinations are returned
+ * untouched. Used by the preview's raw-HTML sanitizer (`MarkdownHtml.tsx`),
+ * whose `<img src>` renders as plain DOM; markdown-syntax images go through
+ * {@link createMarkdownPathImages} instead.
+ * @param dest - One `src`/`poster` value from the sanitized HTML.
+ * @param scope - The session scope (sessionId + cwd) for the media route.
+ * @param filePath - The path of the opened `.md` file (may be workspace-relative).
+ * @param baseUrl - The page base (`hostHttpBase()`); injected for pure tests.
+ * @returns The rewritten source (untouched for remote/anchor/empty values).
+ */
+export function resolveLocalMediaDest(
+  dest: string,
+  scope: SessionScope,
+  filePath: string,
+  baseUrl: string,
+): string {
+  const trimmed = dest.trim()
+  if (trimmed === '' || trimmed.startsWith('#')) return dest
+  // Raw HTML may spell a local image as a file: URL. The path is served by the
+  // same plugin media route as a relative src (a plain DOM <img> in the GUI
+  // frame can load it; a raw file: URL cannot).
+  const filePathFromUrl = fileUrlToLocalPath(trimmed)
+  if (filePathFromUrl !== undefined) return markdownMediaUrl(filePathFromUrl, scope, baseUrl)
+  if (isRemoteUrl(trimmed)) return dest
+  const decoded = decodeDestination(trimmed)
+  if (decoded === undefined) return dest
+  const target = markdownImageTarget(decoded, filePath)
+  if (target === undefined) return dest
+  return markdownMediaUrl(target, scope, baseUrl)
+}
+
+/**
+ * Legacy source rewriters, kept for the prose surface (SideChat) and for
+ * pre-existing callers/tests. Document surfaces use
+ * {@link createMarkdownPathImages}; these still build /sidebar/file URLs on the
+ * supplied base, so a desktop caller must not use them.
+ */
+function resolveMediaDest(
+  dest: string,
+  scope: SessionScope,
+  directory: string | undefined,
+  baseUrl: string,
+): string {
+  const trimmed = dest.trim()
+  if (trimmed === '' || trimmed.startsWith('#')) return dest
+  const filePathFromUrl = fileUrlToLocalPath(trimmed)
+  if (filePathFromUrl !== undefined) {
+    const params = new URLSearchParams({ sessionId: scope.sessionId, path: filePathFromUrl })
+    if (scope.cwd !== undefined && scope.cwd !== '') params.set('cwd', scope.cwd)
+    return hostRouteUrl(`sidebar/file?${params.toString()}`, baseUrl).href
+  }
+  if (isRemoteUrl(trimmed)) return dest
+  const absolute = isAbsolutePath(trimmed)
+  if (!absolute && directory === undefined) return dest
+  const candidate = absolute ? trimmed : `${directory ?? ''}${trimmed}`
+  // Mirrors api.ts fileUrl/mediaUrl for the /sidebar/file media route, made
+  // absolute (and prefix-preserving) so the shared MarkdownText http(s)
+  // allowlist accepts it.
+  const params = new URLSearchParams({ sessionId: scope.sessionId, path: normalizeLocalPath(candidate) })
+  if (scope.cwd !== undefined && scope.cwd !== '') params.set('cwd', scope.cwd)
+  return hostRouteUrl(`sidebar/file?${params.toString()}`, baseUrl).href
+}
+
+/** The directory a workspace root resolves relative destinations against. */
+function workspaceDirectory(cwd: string | undefined): string | undefined {
+  if (cwd === undefined || cwd === '') return undefined
+  return `${cwd.replace(/[\\/]+$/, '')}/`
+}
+
+/**
+ * One inline image: alt text, destination, and the optional CommonMark title.
+ * A destination may be angle-delimited (`<…>` — how the spec carries a path
+ * containing spaces); the title may be double-quoted, single-quoted or
+ * parenthesized. Both are preserved by {@link rewriteImageDestinations}.
+ */
+const INLINE_IMAGE_RE = /!\[([^\]]*)\]\(\s*(<[^>\n]*>|[^)\s]+)(\s+(?:"[^"]*"|'[^']*'|\([^()]*\)))?\s*\)/g
+
+/** A reference definition's destination: angle-delimited or bare. */
+const REFERENCE_DEST_RE = /^(\s*\[([^\]]+)\]:\s*)(<[^>]+>|[^\s]+)/gm
+
+/**
  * Rewrite markdown image destinations that point at local files into
  * absolute `/sidebar/file` media URLs. Relative destinations resolve against
  * the opened file's directory (normalizing `.`/`..` segments); absolute
  * local paths pass through. Remote (http/https/data/mailto) and `#`-anchor
  * destinations are left untouched for `MarkdownText`. Reference-style images
  * (`![x][id]` + `[id]: url`) are covered by rewriting their definition lines.
+ * A destination may be angle-delimited (`![a](<./cat image.png>)`) and an
+ * inline image may carry a title (`![a](./x.png "title")`); the delimiter and
+ * title are preserved while only the destination is rewritten.
  *
- * Code spans (`` `...` ``) and fenced code blocks (``` ```...``` ```) are
+ * Code regions — inline spans AND fenced blocks, the latter opened by ``` ``` ```
+ * OR `~~~` (see `markdown-code.ts`, the mask both source rewriters share) — are
  * masked before rewriting so documentation that demonstrates `![alt](./img.png)`
  * is not mutated into a `/sidebar/file` URL. Reference definitions are only
  * rewritten when their label is actually referenced by an image (collapsed
@@ -61,57 +366,67 @@ function normalizeLocalPath(path: string): string {
  * @param text - The raw markdown source (inline + reference images).
  * @param scope - The session scope (sessionId + cwd) for the media route.
  * @param filePath - The absolute path of the opened `.md` file.
- * @param origin - The GUI's own origin (`window.location.origin`); injected
- * so the core rewrite stays pure and unit-testable.
+ * @param baseUrl - The injected transport base (`hostTransportBase()` in the
+ * renderers); injected so the core rewrite stays pure and unit-testable.
  * @returns The markdown with local image destinations rewritten in place.
  */
-/**
- * Resolve one media destination against the session's media route: local
- * (relative or absolute) paths become absolute `/sidebar/file` URLs (prefixed
- * with the GUI's own origin so the shared MarkdownText http(s) allowlist
- * accepts them), while remote URLs, `#`-anchors and empty destinations are
- * returned untouched. Shared by the markdown image rewriter below and by the
- * preview's raw-HTML sanitizer (`markdown-html.tsx`, which meets the same
- * allowlist when rendering `<img src="./x.png">` inside HTML blocks).
- */
-export function resolveLocalMediaDest(
-  dest: string,
-  scope: SessionScope,
-  filePath: string,
-  origin: string,
-): string {
-  const trimmed = dest.trim()
-  if (trimmed === '' || trimmed.startsWith('#')) return dest
-  if (isRemoteUrl(trimmed)) return dest
-  const slash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))
-  const directory = slash === -1 ? '/' : filePath.slice(0, slash + 1)
-  const candidate = isAbsolutePath(trimmed) ? trimmed : directory + trimmed
-  // Mirrors api.ts fileUrl/mediaUrl for the /sidebar/file media route, made
-  // absolute so the shared MarkdownText http(s) allowlist accepts it.
-  const params = new URLSearchParams({ sessionId: scope.sessionId, path: normalizeLocalPath(candidate) })
-  if (scope.cwd !== undefined && scope.cwd !== '') params.set('cwd', scope.cwd)
-  return `${origin}/sidebar/file?${params.toString()}`
-}
-
 export function rewriteLocalImageUrls(
   text: string,
   scope: SessionScope,
   filePath: string,
-  origin: string,
+  baseUrl: string,
 ): string {
-  const resolve = (dest: string): string => resolveLocalMediaDest(dest, scope, filePath, origin)
+  const slash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))
+  const directory = slash === -1 ? '/' : filePath.slice(0, slash + 1)
+  return rewriteImageDestinations(text, (dest) => resolveMediaDest(dest, scope, directory, baseUrl))
+}
 
-  // Mask fenced code blocks and inline code spans so image-looking text
-  // inside documentation examples is never rewritten. The sentinel uses a
-  // character unlikely to appear in prose; the original spans are restored
-  // after the image rewrite.
-  const masks: string[] = []
-  const masked = text
-    .replace(/```[\s\S]*?```/g, (block) => { masks.push(block); return `\u0000${masks.length - 1}\u0000` })
-    .replace(/`[^`\n]*`/g, (span) => { masks.push(span); return `\u0000${masks.length - 1}\u0000` })
+/**
+ * The prose counterpart of {@link rewriteLocalImageUrls}: a rendered
+ * conversation row is not a file, so its relative destinations resolve
+ * against the session workspace root instead of an opened document's
+ * directory. Absolute local paths, remote URLs and code masking behave
+ * exactly like the file variant (the shared MarkdownText only renders an
+ * image whose destination is absolute http(s), so a local destination would
+ * otherwise fall back to its alt text).
+ * @param text - The markdown source of one prose row.
+ * @param scope - The session scope (sessionId + cwd) for the media route.
+ * @param cwd - The session workspace root; relative destinations resolve
+ * against it (and stay untouched when it is unknown).
+ * @param baseUrl - The injected transport base.
+ * @returns The markdown with local image destinations rewritten in place.
+ */
+export function rewriteProseLocalImageUrls(
+  text: string,
+  scope: SessionScope,
+  cwd: string | undefined,
+  baseUrl: string,
+): string {
+  const directory = workspaceDirectory(cwd)
+  return rewriteImageDestinations(text, (dest) => resolveMediaDest(dest, scope, directory, baseUrl))
+}
 
-  const inline = masked.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_match, alt, dest) => {
-    return `![${alt}](${resolve(dest)})`
+/**
+ * The masking + destination rewrite both variants share: code regions and
+ * plain-link reference definitions stay out of it, and only the definitions an
+ * image actually references are redirected.
+ *
+ * Text with no image syntax at all returns untouched: both regexes below key on
+ * `![`, so the masking pass would only be paid for to be undone.
+ */
+function rewriteImageDestinations(text: string, resolve: (dest: string) => string): string {
+  if (!text.includes('![')) return text
+  // Fenced blocks (``` ``` ``` AND `~~~`) and inline code spans are masked so
+  // image-looking text inside documentation examples is never rewritten; the
+  // original text goes back in after the rewrite.
+  const { masked, restore } = maskCodeRegions(text)
+
+  const inline = masked.replace(INLINE_IMAGE_RE, (_match, alt: string, rawDest: string, title: string | undefined) => {
+    // The resolver decides from the bare destination; `<…>` and the title are
+    // spelling, not content, so they go back around/after whatever it returns.
+    const delimited = rawDest.startsWith('<') && rawDest.endsWith('>')
+    const destination = resolve(delimited ? rawDest.slice(1, -1) : rawDest)
+    return `![${alt}](${delimited ? `<${destination}>` : destination}${title ?? ''})`
   })
 
   // Collect labels referenced by image syntax (full `![alt][id]` and
@@ -128,11 +443,14 @@ export function rewriteLocalImageUrls(
     imageLabels.add(ref !== undefined && ref !== '' ? ref.toLowerCase() : alt.toLowerCase())
   }
 
-  const refsRewritten = inline.replace(/^(\s*\[([^\]]+)\]:\s*)(<[^>]+>|[^\s]+)/gm, (match, head: string, label: string, dest: string) => {
+  const refsRewritten = inline.replace(REFERENCE_DEST_RE, (match, head: string, label: string, rawDest: string) => {
     if (!imageLabels.has(label.toLowerCase())) return match
-    return `${head}${resolve(dest.replace(/^<|>$/g, ''))}`
+    // `<…>` is what lets a destination carry a space; keep the delimiters the
+    // source used so a remote destination the resolver left alone still parses.
+    const delimited = rawDest.startsWith('<') && rawDest.endsWith('>')
+    const destination = resolve(delimited ? rawDest.slice(1, -1) : rawDest)
+    return `${head}${delimited ? `<${destination}>` : destination}`
   })
 
-  // eslint-disable-next-line no-control-regex -- NUL is the deliberate mask sentinel (cannot appear in source markdown)
-  return refsRewritten.replace(/\u0000(\d+)\u0000/g, (_m, index: string) => masks[Number(index)] ?? '')
+  return restore(refsRewritten)
 }

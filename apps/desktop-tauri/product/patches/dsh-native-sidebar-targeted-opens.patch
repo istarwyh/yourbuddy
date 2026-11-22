@@ -1,0 +1,495 @@
+diff --git a/packages/client/ui-sidebar-right/README.i18n.yaml b/packages/client/ui-sidebar-right/README.i18n.yaml
+index 723d46bf9cf820db88648f9fd4641ec8034dab30..ab005bcf048b063e3908f7a18dc10449e948628a 100644
+--- a/packages/client/ui-sidebar-right/README.i18n.yaml
++++ b/packages/client/ui-sidebar-right/README.i18n.yaml
+@@ -18,11 +18,11 @@
+   en: 3b007cc4d2d89c60
+   zh: 74d9795c6392ad74
+ /deepseek-ai-dsh-client-ui-sidebar-right/presentations:
+-  en: 5024c4e5fe5dfd2e
+-  zh: 535a7f585e1bcd97
++  en: abc597890dad7ab5
++  zh: a398aaf1a7e3c4b0
+ /deepseek-ai-dsh-client-ui-sidebar-right/the-expand-button:
+-  en: ca7a1966ad9cef31
+-  zh: b9a7a967a14f067e
++  en: 301c7cfec341bea7
++  zh: 503bf66a788da02d
+ /deepseek-ai-dsh-client-ui-sidebar-right/state:
+   en: 98597ce087c48075
+   zh: c5466bf7955ea7b0
+@@ -30,11 +30,11 @@
+   en: 9533f5af50898daf
+   zh: 78d3b77c25962145
+ /deepseek-ai-dsh-client-ui-sidebar-right/ctx-sidebarright:
+-  en: ce5622d6d18ed8d1
+-  zh: 292932d8edb6e1c3
++  en: f26aa7d4ed666326
++  zh: bf437464618728d0
+ /deepseek-ai-dsh-client-ui-sidebar-right/the-tab-domain:
+-  en: 717b86e05b44ebdd
+-  zh: 0f4f694d0ea1d7f8
++  en: ee21784b8713b493
++  zh: 2cd5e898908dff87
+ /deepseek-ai-dsh-client-ui-sidebar-right/the-guide:
+   en: 68fd575ef382223e
+   zh: 1ab1653ee20c64e9
+diff --git a/packages/client/ui-sidebar-right/README.md b/packages/client/ui-sidebar-right/README.md
+index 9472af170007fa704b6565a11894afba9b6c9d79..1c4af704e98714a099c7eb74c3ab3e093efd4a5d 100644
+--- a/packages/client/ui-sidebar-right/README.md
++++ b/packages/client/ui-sidebar-right/README.md
+@@ -47,7 +47,7 @@ With a coarse pointer, a disabled split button is hidden, whether blocked by ins
+ 
+ In Windows Electron, `html[data-windows-titlebar]` keeps fullscreen panels below the caption and to the right of the expanded sidebar. The frame's `--dsh-windows-sidebar-width` supplies that inset and maximum width; `--dsh-windows-content-radius` supplies the top-left radius. Only fullscreen panels clip overflow for that corner.
+ 
+-The seat reports presentation through `ctx.layout.openRightbar(track, fullscreen)` / `closeRightbar()`; the frame does not inject this package. Switching fullscreen on a wide viewport leaves the center width unchanged, and the width handle appears only in expanded normal mode. Independent floating panels and `float`/`dock` operations remain available.
++The seat reports presentation through `ctx.layout.openRightbar(track, fullscreen)` / `closeRightbar()`; the frame does not inject this package. The frame's aggregate Session-region wrapper can hide the panel without changing its report, per-Session layout, expanded state, or retained tab bodies; restoring the region reveals the same presentation. Switching fullscreen on a wide viewport leaves the center width unchanged, and the width handle appears only in expanded normal mode. Independent floating panels and `float`/`dock` operations remain available.
+ 
+ The panel has no header row. Its two controls — the presentation switch and the collapse button — ride the kit's chrome seat at the far end of the top-right pane's tab strip, so the strip is the panel's whole top edge. Each strip reads, left to right: the tab capsules with close controls where allowed, the add control (drawn only while that pane holds no guide tab; it opens the guide there through `ctx.sidebarRight.openTab`), the pane's split control, and in the top-right pane the two panel controls. Only the chips give way in a narrow pane; the controls after them never shrink or clip.
+ 
+@@ -60,7 +60,7 @@ While the panel is hidden, one button in the conversation header's corner seat (
+ 
+ The panel takes the conversation's ground colour and content font sizes rather than a raised layer of its own: it is a column of the page, not a card over it.
+ 
+-The root-scoped `rightbar` entry renders the selected Session and background Sessions with initialized `keepMounted` bodies through separate `rightbar.session` subtrees. Each View owns its Session reference. Only the foreground subtree reports a frame track; other subtrees stay hidden without deleting tab state.
++The root-scoped `rightbar` entry renders the selected Session and background Sessions with initialized `keepMounted` bodies through separate `rightbar.session` subtrees. Each View owns its Session reference. Only the foreground Conversation reports a frame track and binds public navigation; other subtrees stay hidden without deleting tab state.
+ 
+ <a id="state"></a>
+ ## State
+@@ -92,6 +92,8 @@ Two more seats extend what is already there: `sidebar.right.tab.guide` (chain) r
+ <a id="ctxsidebarright"></a>
+ ## `ctx.sidebarRight`
+ 
++`openResourceIn(sessionId, address, options)` and `openTabIn(sessionId, kind, options)` target that Session independently of selection and return `false` if its store is not adopted, otherwise `true`. `onSessionAdopted(listener)` returns a disposer and notifies after restored occurrences are reconciled; it does not replay prior adoptions. A caller can attempt the open immediately and retry from this notification. `closeIn(sessionId, tabId)` and `tabsIn(sessionId)` also target an adopted Session without changing selection. The store adoption and room callbacks remain plugin-private.
++
+ `openResource(address, options?)` and `openTab(kind, options?)` are the navigation controller, and every way into the column calls one of them: the conversation's file links and a tool row's line reference (`openResource(fileAddress, { params: { line } })`), the strip's add control and a guide entry box (`openTab`), a file tree's rows (`tab.actions.openResource`). A resource address is a `dsh-resource://<type>/…` URI; without `options.kind` the registry claims it (globs and `canOpen`, best band wins), with it that kind's type in force opens it. A page is named by kind; the tab is recorded under an address this package composes and nobody else spells (`contract/seed.ts`). Both run the same steps as one history entry: a resource tab already showing the same (kind, contentId) is focused wherever it sits unless `revealIfOpened: false`; ordinary page tabs always deduplicate within the target pane, regardless of that option; otherwise a new tab takes the place of `options.replaceTab` (closing that tab, described below), else in `options.paneId`, else in the active docked pane, which is the first docked pane while a floating pane is active. The panel expands, because content the user cannot see is not opened, unless the new tab replaces a floating one or the open reveals a tab in a floating panel. A reveal of a tab that was already on screen — the active tab of a floating panel, or of a docked pane while the column is expanded — makes the pane holding it glow once for about 600ms, whatever opened it and whatever type the tab is; providers do nothing for it. A reveal that switches to a background tab or expands the column does not glow, because that change is already visible. A docked pane glows inward, above its content's sticky bars such as code banners; a floating panel glows outward over its own shadow. The glow uses the accent colour in light mode and white in dark mode. A repeated reveal restarts the glow, the pane carries `data-sidebar-right-flash` while it shows, and with reduced motion the glow holds steady for the same time instead of fading. Each reveal plays once and only while its Session is on screen: hiding the Session ends a glow in progress, a reveal made while it is hidden is dropped rather than played on return, and a Sidebar mounted later does not replay an earlier reveal. Then the Tab domain records the navigation — `params` reach the body as `navigation.params`, with `revision` stepped — outside the layout history. `params` is typed by what is opened: a viewer for a resource type merges its entry into `SidebarRightResourceParamsMap` (the text preview declares `{ line?: number }`); a page type that takes parameters merges into `SidebarRightTabParamsMap` under its kind; values are JSON-shaped by convention, unchecked at run time. An address outside `dsh-resource://`, one no type claims, or a kind nothing registered throws: that is a wiring mistake, not a user error.
+ 
+ `preferNewPane: true` first asks the target docked pane to split under the normal two-pane and room rules, then falls back to that pane when no split is available. `replaceTab` takes precedence and disables this preference.
+@@ -102,12 +104,12 @@ Two more seats extend what is already there: `sidebar.right.tab.guide` (chain) r
+ 
+ `close(tabId)` closes a tab; `hide(tabId)` closes a floating tab or collapses its docked column; `active()` reads the active tab. `isExpanded()` and `toggleExpanded()` read and drive the column's expansion; `toggleFullscreen(target)` applies the panel control’s display-mode action to a captured dock pane. Layout operations, for callers that arrange the column programmatically, each recorded like the gesture it stands in for: `focus(tabId)` focuses a tab and its pane; `split(paneId?)` splits a docked pane (the active one by default) under the same pane budget and room rule as the strip's control and returns the new pane's id, or `undefined` — recording nothing — when it cannot; `float(tabId, rect?)` takes a docked tab out into a panel; `dock(paneId)` returns a floating panel to the active docked pane and expands the column, as the panel's dock control does. A tab or pane that does not exist, or already is where the call would put it, is left alone. The face exposes operations only: no layout snapshot, no operation log, no lookup by address. `_undo()` / `_redo()` step the on-screen surface's history; they are `@internal` — the sequence has no user-facing control, and these exist for tests. Commands act on the on-screen Session through its adopted store; with no Session on screen, or before the runtime mints its store, they throw rather than write into a surface nobody draws. `mounted` is the observable of the Session on screen: the selected Session while the Conversation fills the main column, `undefined` while a global panel replaces it or no Session is selected. The plugin derives it from the Session selection and `ctx.layout.panelInfo`, and it changes before React renders the change that causes it, so a component rendered in that commit reads the arriving Session and may act on it from its effects: the frame renders that Session's seat in the same pass, which mints its store. Seats never publish it; each reports only what it renders with: the room its docking kit measured, which `split` and `preferNewPane` apply to that Session's panes (unmeasured panes have room), and whether its frame width presents the panel fullscreen automatically, which the fullscreen command applies. The plan review's automatic open reads `mounted` through a bound hook.
+ 
+-`focusedTarget(element?)` resolves the current DOM pane and tab, including an embedding iframe; outside focus returns no page. `commandTarget(element?)` additionally allows an outside open to use the on-screen Session's active dock pane. Captures include the occurrence and navigation revision; `isTargetCurrent(target)` rejects changed Sessions, moved or reopened tabs, and intervening navigation. Focus and pointer activation remain separate from persisted layout selection.
++`focusedTarget(element?)` resolves the current DOM pane and tab, including an embedding iframe; outside focus returns no page. `commandTarget(element?)` additionally allows an outside open to use the mounted Session's active dock pane. Captures include the occurrence and navigation revision; `isTargetCurrent(target)` rejects changed Sessions, moved or reopened tabs, and intervening navigation. Focus and pointer activation remain separate from persisted layout selection.
+ 
+ <a id="the-tab-domain"></a>
+ ## The Tab domain
+ 
+-The Tab domain retains a branded occurrence id, navigation, an abort signal, and bound actions per (Session, tab id). A private assembly callback adopts each Session's store, reconciles restored records immediately, and follows its commits. Reconstructing a Session store replaces its adoption, releasing the old subscription and cleanup reference. Only record removal or plugin unload aborts the signal; closing the sidebar and switching Sessions retain records, while undo restores a new occurrence. `useTabInfo()` composes framework-bound store and navigation hooks without manual component subscriptions or render-time record creation. `tab.actions` always target their own Session; `tab.visible` distinguishes bodies from titles and excludes background Sessions; foreground floating tabs remain visible when the sidebar closes. `adopt` is absent from the public controller.
++The Tab domain retains a branded occurrence id, navigation, an abort signal, and bound actions per (Session, tab id). A private assembly callback adopts each Session's store, reconciles restored records immediately, and follows its commits. Reconstructing a Session store replaces its adoption, releasing the old subscription and cleanup reference. Only record removal or plugin unload aborts the signal; closing the sidebar and switching Sessions retain records, while undo restores a new occurrence. `useTabInfo()` composes framework-bound store and navigation hooks without manual component subscriptions or render-time record creation. `tab.actions` always target their own Session; `toSide: true` strictly creates a right-hand pane under the normal budget and room rule before opening and leaves the layout unchanged when it cannot split, unlike the fallback behavior of `preferNewPane`. `tab.visible` distinguishes bodies from titles and excludes background Sessions; foreground floating tabs remain visible when the sidebar closes. Store adoption is private; the public controller exposes only the post-adoption notification.
+ 
+ A type's `keepMounted: true` retains visited bodies across tab and Session changes, collapse, and docking. Each View supplies its stable hold callback through owner props, so rebuilding Session injection bindings does not release a body. Unvisited bodies are not mounted eagerly.
+ 
+diff --git a/packages/client/ui-sidebar-right/README.zh.md b/packages/client/ui-sidebar-right/README.zh.md
+index 96e714b2d6150c8289a9a08f0f7ca7c2bcabd759..c590aa443a5d34307bd0e47a750ad1bdaceace0d 100644
+--- a/packages/client/ui-sidebar-right/README.zh.md
++++ b/packages/client/ui-sidebar-right/README.zh.md
+@@ -47,7 +47,7 @@ kind: "package-reference"
+ 
+ 在 Windows Electron 中，`html[data-windows-titlebar]` 让全屏面板保持在顶栏下方及展开侧栏的右侧。框架的 `--dsh-windows-sidebar-width` 提供该缩进及最大宽度；`--dsh-windows-content-radius` 提供左上圆角。仅全屏面板为该圆角裁剪溢出内容。
+ 
+-席位通过 `ctx.layout.openRightbar(track, fullscreen)` / `closeRightbar()` 报告呈现，框架不注入本包。宽屏切换全屏不改变中栏宽度；宽度拖拽区只在普通展开态显示。独立浮窗及 `float`/`dock` 操作保持可用。
++席位通过 `ctx.layout.openRightbar(track, fullscreen)` / `closeRightbar()` 报告呈现，框架不注入本包。框架的聚合 Session 区域包装可以隐藏面板，而不改变其报告、每会话布局、展开状态或保留的 tab 正文；恢复该区域后会显示同一呈现。宽屏切换全屏不改变中栏宽度；宽度拖拽区只在普通展开态显示。独立浮窗及 `float`/`dock` 操作保持可用。
+ 
+ 面板没有标题行。它的两个控件——形态切换与折叠按钮——搭在套件 chrome 席位上，位于右上格 tab 条的最末端，因此 tab 条就是面板的整条上边。每条 tab 条从左到右读作：在允许时带关闭按钮的 tab 胶囊，添加控件（只在该格没有引导 tab 时绘制；它通过 `ctx.sidebarRight.openTab` 在该格打开引导页），该格的分栏控件，以及右上格里的两个面板控件。窄格里只有 chip 让位；其后的控件从不收缩或被裁切。
+ 
+@@ -60,7 +60,7 @@ kind: "package-reference"
+ 
+ 面板取会话区的底色与正文字号，而不是自成一层浮起的表面：它是页面的一列，不是压在页面上的卡片。
+ 
+-root 作用域的 `rightbar` 入口通过独立的 `rightbar.session` 子树渲染选中的 Session，以及拥有已初始化 `keepMounted` 正文的后台 Session。每个 View 拥有自身的 Session reference。只有前台子树上报框架列宽；其他子树保持隐藏，不删除 tab 状态。
++root 作用域的 `rightbar` 入口通过独立的 `rightbar.session` 子树渲染选中的 Session，以及拥有已初始化 `keepMounted` 正文的后台 Session。每个 View 拥有自身的 Session reference。只有前台 Conversation 上报框架列宽并绑定公共导航；其他子树保持隐藏，不删除 tab 状态。
+ 
+ <a id="state"></a>
+ ## 状态
+@@ -92,6 +92,8 @@ tab 类型分两阶段注册，随包发布的引导类型走的正是别的包
+ <a id="ctxsidebarright"></a>
+ ## `ctx.sidebarRight`
+ 
++`openResourceIn(sessionId, address, options)` 和 `openTabIn(sessionId, kind, options)` 独立于当前选择，作用于指定 Session；store 尚未采用时返回 `false`，否则返回 `true`。`onSessionAdopted(listener)` 返回释放函数，在恢复的 occurrence 对齐后通知，不重放先前的采用。调用方可立即尝试打开，再从该通知重试。`closeIn(sessionId, tabId)` 和 `tabsIn(sessionId)` 同样作用于已采用的 Session，不改变当前选择。store 采用和空间报告回调仍由插件私有持有。
++
+ `openResource(address, options?)` 与 `openTab(kind, options?)` 是导航控制器，进入该列的每条路都调用其中之一：会话区的文件链接与工具行的行号引用（`openResource(fileAddress, { params: { line } })`），tab 条的添加控件与引导入口框（`openTab`），文件树的行（`tab.actions.openResource`）。资源地址是 `dsh-resource://<type>/…` URI；不带 `options.kind` 时由注册表认领（glob 与 `canOpen`，最高档胜出），带它时由该 kind 生效的类型打开。页按 kind 命名；tab 记录在本包拼出、别处无人书写的地址下（`contract/seed.ts`）。两者以同一组步骤作为一条历史运行：已展示同一 (kind, contentId) 的资源 tab 被聚焦，不限所在分栏，除非 `revealIfOpened: false`；页 tab 始终只在目标分栏内去重，不受该选项影响；否则新 tab 取代 `options.replaceTab` 的位置（并关掉那个 tab，见下文），再退而落到 `options.paneId`，再退而落到活跃停靠格；活动格是浮窗时为第一个停靠格。面板展开，因为用户看不到的内容不算打开；新 tab 替换浮动 tab、或这次打开揭示的是浮窗中的 tab 时除外。揭示一个原本就在屏幕上的 tab（浮窗的活动 tab，或该列展开时停靠格的活动 tab）时，存放它的格发光提示一次，约 600ms，与由谁打开、tab 是什么类型无关，提供方无需做任何事。揭示需要切到后台 tab 或展开该列时不发光，因为这一变化本身已经可见。停靠格向内发光，位于其内容的吸顶栏（如代码块标题栏）之上；浮窗在自身阴影之上向外发光。浅色模式用强调色，深色模式用白色。再次揭示会重新开始发光，发光期间该格带有 `data-sidebar-right-flash`；减少动态效果时发光在同样时长内保持不变而不淡出。每次揭示只在其会话位于屏幕上时播放一次：隐藏该会话会结束进行中的发光，会话隐藏期间的揭示直接丢弃、不在切回时补播，之后挂载的侧栏也不会重放先前的揭示。随后 Tab 域记录这次导航——`params` 以 `navigation.params` 抵达正文，`revision` 递增——不进布局历史。`params` 按所开之物定型：某资源类型的查看器把自己那项并入 `SidebarRightResourceParamsMap`（文本预览声明 `{ line?: number }`）；接受参数的页类型按其 kind 并入 `SidebarRightTabParamsMap`；值约定为 JSON 形状，运行时不校验。`dsh-resource://` 之外的地址、无人认领的地址、或未注册的 kind 都会 throw：那是接线错误，不是用户错误。
+ 
+ `preferNewPane: true` 会先按普通的两格上限与空间规则尝试分割目标停靠格，无法分栏时回退到该格。`replaceTab` 优先并会禁用这项偏好。
+@@ -102,12 +104,12 @@ tab 类型分两阶段注册，随包发布的引导类型走的正是别的包
+ 
+ `close(tabId)` 关闭一个 tab；`hide(tabId)` 关闭浮动 tab 或收起其停靠列；`active()` 读取活动 tab。`isExpanded()` 与 `toggleExpanded()` 读取并驱动该列的展开；`toggleFullscreen(target)` 对捕获的停靠分栏执行面板控件的显示模式操作。布局操作供以编程方式安排该列的调用方使用，每个都像它替代的手势一样被记录：`focus(tabId)` 聚焦一个 tab 及其格；`split(paneId?)` 在与 tab 条控件相同的格预算与空间规则下分栏一个停靠格（默认活跃格），返回新格的 id，做不到时返回 `undefined`——且不记录任何东西；`float(tabId, rect?)` 把停靠 tab 浮出为浮窗；`dock(paneId)` 把浮窗放回活跃停靠格并展开该列，与浮窗的收回控件一致。不存在的 tab 或格、或已处于调用目标状态的，都原样不动。该接口只暴露操作：没有布局快照、没有操作日志、没有按地址查找。`_undo()` / `_redo()` 步进屏幕上停靠面的历史；它们是 `@internal`——序列没有面向用户的控件，这两个只为测试存在。命令通过屏幕上会话已采用的 store 作用于该会话；没有会话在屏幕上、或运行时尚未创建它的 store 时，命令 throw，而不是写进一个没人绘制的面里。`mounted` 是「屏幕上的会话」的可观察值：Conversation 占据主栏时为选中的会话，全局面板替代它或没有选中会话时为 `undefined`。插件从会话选择与 `ctx.layout.panelInfo` 推导它，它在 React 渲染引起变化的那次更新之前就已改变，因此同一次提交里渲染的组件读到的是到来的会话，并可以在自己的 effect 里对它行动：框架在同一轮渲染里渲染该会话的席位，席位随之创建它的 store。席位从不发布它；每个席位只上报它渲染时依据的事实：停靠套件测得的空间，`split` 与 `preferNewPane` 把它用于该会话的分栏（未测量的分栏视为有空间）；以及框架宽度是否让面板自动全屏，全屏命令据此执行。计划审阅的自动打开通过绑定的 hook 读取 `mounted`。
+ 
+-`focusedTarget(element?)` 解析当前 DOM 分栏和标签页，也接受嵌入 iframe；焦点位于外部时不返回页面。`commandTarget(element?)` 另外允许外部打开动作使用屏幕上会话的活动停靠分栏。捕获值包含 occurrence 和导航版本；`isTargetCurrent(target)` 拒绝会话变更、已移动或重新打开的标签页，以及期间发生的导航。焦点和指针激活独立于持久化的布局选择。
++`focusedTarget(element?)` 解析当前 DOM 分栏和标签页，也接受嵌入 iframe；焦点位于外部时不返回页面。`commandTarget(element?)` 另外允许外部打开动作使用已挂载会话的活动停靠分栏。捕获值包含 occurrence 和导航版本；`isTargetCurrent(target)` 拒绝会话变更、已移动或重新打开的标签页，以及期间发生的导航。焦点和指针激活独立于持久化的布局选择。
+ 
+ <a id="the-tab-domain"></a>
+ ## Tab 域
+ 
+-Tab 域按（Session，Tab id）保留品牌化 occurrence id、导航、中止信号与绑定动作。私有装配回调采用各 Session 的 store，立即对齐恢复的记录，再跟随其提交。同一 Session 的 store 重建会替换其 `adopt` 注册，同时释放旧订阅与清理引用。记录消失或插件卸载才中止 signal，收起和切会话不销毁记录；undo 恢复的是新 occurrence。`useTabInfo()` 组合框架绑定的 store 与导航 hook，不在组件中手写订阅或在渲染时创建记录。`tab.actions` 始终作用于自己的会话；`tab.visible` 区分正文与标题，并排除后台 Session；前台浮窗不受整栏收起影响。`adopt` 不在公开控制器上。
++Tab 域按（Session，Tab id）保留品牌化 occurrence id、导航、中止信号与绑定动作。私有装配回调采用各 Session 的 store，立即对齐恢复的记录，再跟随其提交。同一 Session 的 store 重建会替换其 `adopt` 注册，同时释放旧订阅与清理引用。记录消失或插件卸载才中止 signal，收起和切会话不销毁记录；undo 恢复的是新 occurrence。`useTabInfo()` 组合框架绑定的 store 与导航 hook，不在组件中手写订阅或在渲染时创建记录。`tab.actions` 始终作用于自己的会话；`toSide: true` 会先按普通分栏上限与空间规则严格创建右侧格，无法分栏时不打开内容，这与 `preferNewPane` 的回退行为不同。`tab.visible` 区分正文与标题，并排除后台 Session；前台浮窗不受整栏收起影响。Store adoption 保持私有；公开 Controller 只暴露采用完成通知。
+ 
+ 类型声明 `keepMounted: true` 后，已访问正文会在切 tab、切 Session、收起和停靠切换期间保留。每个 View 通过 owner props 提供自身稳定的持有回调，因此 Session injection binding 重建不会释放正文。未访问的正文不会提前挂载。
+ 
+diff --git a/packages/client/ui-sidebar-right/src/client/contract/slots.ts b/packages/client/ui-sidebar-right/src/client/contract/slots.ts
+index bb7c97edd202e9c57188b9c349f41bb918a81c70..669c4454cdba9320a378b571e0261b7cfd84dd38 100644
+--- a/packages/client/ui-sidebar-right/src/client/contract/slots.ts
++++ b/packages/client/ui-sidebar-right/src/client/contract/slots.ts
+@@ -144,6 +144,8 @@ export interface SidebarRightTabPlacement {
+    * content lands, it takes precedence over `paneId` and `preferNewPane`.
+    */
+   readonly replaceTab?: boolean
++  /** `true` creates a right-hand pane and opens there; no open occurs when the pane cannot split. */
++  readonly toSide?: boolean
+ }
+ 
+ /** Page-owned operations registered for a mounted tab body. */
+diff --git a/packages/client/ui-sidebar-right/src/client/service.ts b/packages/client/ui-sidebar-right/src/client/service.ts
+index 8e53ba2f5ab15d8fd28d1082b688e1216d5c883b..8cfefaa91017614af29a70f7ec03ce4d0241f41c 100644
+--- a/packages/client/ui-sidebar-right/src/client/service.ts
++++ b/packages/client/ui-sidebar-right/src/client/service.ts
+@@ -80,6 +80,8 @@ interface SidebarRightSessions {
+   readonly openTabs: SidebarTabInventory['source']
+   /** Each Session's flash source, created on first use and released when the Session is forgotten. */
+   readonly flashes: Map<SessionId, SnapshotStore<SidebarRightFlash | undefined>>
++  /** Observers notified after an adopted store is ready for targeted opens. */
++  readonly adoptionListeners: Set<(sessionId: SessionId) => void>
+ }
+ 
+ /**
+@@ -98,11 +100,14 @@ export function createSidebarRightController(tabs: SidebarRightTabRegistry, pin:
+   measure: (sessionId: SessionId, canSplitPane: RoomRule) => void
+ } {
+   const adopted = new Map<SessionId, Adoption>()
++  const adoptionListeners = new Set<(sessionId: SessionId) => void>()
+   const rooms = new Map<SessionId, RoomRule>()
+   const onScreen = createSnapshotStore<SessionId | undefined>(undefined)
+   const inventory = new SidebarTabInventory()
+   const flashes = new Map<SessionId, SnapshotStore<SidebarRightFlash | undefined>>()
+-  const controller = new SidebarRightController(tabs, pin, host, { adopted, rooms, onScreen, openTabs: inventory.source, flashes })
++  const controller = new SidebarRightController(tabs, pin, host, {
++    adopted, rooms, onScreen, openTabs: inventory.source, flashes, adoptionListeners,
++  })
+   return {
+     controller,
+     forget: (sessionId) => {
+@@ -122,6 +127,7 @@ export function createSidebarRightController(tabs: SidebarRightTabRegistry, pin:
+       const adoption: Adoption = { store, unsubscribe: store.subscribe(sync) }
+       adopted.set(sessionId, adoption)
+       sync()
++      for (const listener of adoptionListeners) listener(sessionId)
+       return () => {
+         adoption.unsubscribe()
+         if (adopted.get(sessionId) === adoption) adopted.delete(sessionId)
+@@ -248,6 +254,34 @@ export interface ISidebarRight {
+    * @param options - placement and that kind's navigation parameters.
+    */
+   openTab<K extends string>(kind: K, options?: SidebarRightOpenTabOptions<K>): void
++  /**
++   * Open a resource in the target Session's adopted store, independent of selection.
++   * @param sessionId - target Session.
++   * @param address - resource address.
++   * @param options - resource type, navigation, and placement.
++   * @returns false before adoption or after release; true after accepting the open.
++   */
++  openResourceIn(sessionId: SessionId, address: string, options?: SidebarRightOpenResourceOptions): boolean
++  /**
++   * Open a page in the target Session's adopted store, independent of selection.
++   * @param sessionId - target Session.
++   * @param kind - registered page kind.
++   * @param options - navigation and placement.
++   * @returns false before adoption or after release; true after accepting the open.
++   */
++  openTabIn<K extends string>(sessionId: SessionId, kind: K, options?: SidebarRightOpenTabOptions<K>): boolean
++  /**
++   * Close a target Session's tab, preserving its sole docked guide.
++   * @param sessionId - owning Session.
++   * @param tabId - tab to close.
++   */
++  closeIn(sessionId: SessionId, tabId: TabId): void
++  /**
++   * Observe store adoption; callbacks run after tab occurrences are reconciled.
++   * @param listener - receives the newly available Session.
++   * @returns a disposer for this observer.
++   */
++  onSessionAdopted(listener: (sessionId: SessionId) => void): () => void
+   /**
+    * Close one tab of the on-screen Session; the sole docked guide remains open.
+    * @param tabId - the tab to close.
+@@ -307,6 +341,7 @@ export class SidebarRightController implements ISidebarRight {
+   private readonly rooms: ReadonlyMap<SessionId, RoomRule>
+   private readonly closeHandlers = new Map<string, SidebarRightCloseHandler>()
+   private readonly flashes: Map<SessionId, SnapshotStore<SidebarRightFlash | undefined>>
++  private readonly adoptionListeners: Set<(sessionId: SessionId) => void>
+ 
+   /**
+    * Register resource cleanup before explicit removal. Failure preserves the tab.
+@@ -343,6 +378,7 @@ export class SidebarRightController implements ISidebarRight {
+     this.mounted = sessions.onScreen
+     this.openTabs = sessions.openTabs
+     this.flashes = sessions.flashes
++    this.adoptionListeners = sessions.adoptionListeners
+     this.tabDomain = new TabDomain(this, pin)
+   }
+ 
+@@ -395,33 +431,57 @@ export class SidebarRightController implements ISidebarRight {
+   /**
+    * Open a resource in one session, for a tab's own action; nothing happens
+    * for a session whose store was never adopted or whose adoption was released.
+-   * Not part of `ISidebarRight`: the Tab domain's path.
+    * @param sessionId - the session the acting tab is in.
+    * @param address - a `dsh-resource://<type>/…` address.
+    * @param options - placement, the opening type, and navigation parameters.
++   * @returns whether the target store accepted the open.
+    */
+-  openResourceIn(sessionId: SessionId, address: string, options: SidebarRightOpenResourceOptions = {}): void {
++  openResourceIn(sessionId: SessionId, address: string, options: SidebarRightOpenResourceOptions = {}): boolean {
+     const actions = this.actionsFor(sessionId)
+-    if (actions !== undefined) this.placeResource(sessionId, actions, address, options)
++    if (actions === undefined) return false
++    this.placeResource(sessionId, actions, address, options)
++    return true
+   }
+ 
+   /**
+    * Open a page type in one session, for a tab's own action; nothing happens
+    * for a session whose store was never adopted or whose adoption was released.
+-   * Not part of `ISidebarRight`: the Tab domain's path.
+    * @param sessionId - the session the acting tab is in.
+    * @param kind - the page type's kind.
+    * @param options - placement and that kind's navigation parameters.
++   * @returns whether the target store accepted the open.
+    */
+-  openTabIn<K extends string>(sessionId: SessionId, kind: K, options: SidebarRightOpenTabOptions<K> = {}): void {
++  openTabIn<K extends string>(sessionId: SessionId, kind: K, options: SidebarRightOpenTabOptions<K> = {}): boolean {
+     const actions = this.actionsFor(sessionId)
+-    if (actions !== undefined) this.placeTab(sessionId, actions, kind, options)
++    if (actions === undefined) return false
++    this.placeTab(sessionId, actions, kind, options)
++    return true
++  }
++
++  /**
++   * Observe store adoption after its tab occurrences have been reconciled.
++   * @param listener - receives the newly adopted Session.
++   * @returns a disposer for this observer.
++   */
++  onSessionAdopted(listener: (sessionId: SessionId) => void): () => void {
++    this.adoptionListeners.add(listener)
++    return () => { this.adoptionListeners.delete(listener) }
++  }
++
++  /**
++   * Split a target Session's on-screen docked pane using its measured room rule.
++   * @param sessionId - owning Session.
++   * @param paneId - docked pane to split.
++   * @returns the new pane, or undefined when off screen or unable to split.
++   */
++  splitIn(sessionId: SessionId, paneId: PaneId): PaneId | undefined {
++    if (this.mounted.getSnapshot() !== sessionId || this.actionsFor(sessionId) === undefined) return undefined
++    return this.split(paneId)
+   }
+ 
+   /**
+    * Close a tab of one session, preserving the sole docked guide; nothing happens
+    * for a session whose store was never adopted or whose adoption was released.
+-   * Not part of `ISidebarRight`: the Tab domain's path.
+    * @param sessionId - the session the tab is in.
+    * @param tabId - the tab to close.
+    */
+diff --git a/packages/client/ui-sidebar-right/src/client/tab-domain.ts b/packages/client/ui-sidebar-right/src/client/tab-domain.ts
+index 625dba6759a1ed7e02470459f599a76ce42de156..211ff1f19e1faa9c95cdddab8e747ab96142c685 100644
+--- a/packages/client/ui-sidebar-right/src/client/tab-domain.ts
++++ b/packages/client/ui-sidebar-right/src/client/tab-domain.ts
+@@ -35,7 +35,9 @@ export interface SidebarRightNavigator {
+   openResourceIn(sessionId: SessionId, address: string, options?: SidebarRightOpenResourceOptions): void
+   /** Open a page type in one session; see `ISidebarRight.openTab`. */
+   openTabIn(sessionId: SessionId, kind: string, options?: SidebarRightOpenTabOptions): void
+-  /** Close a tab of one session. */
++  /** Split one Session's docked pane to its right. */
++  splitIn(sessionId: SessionId, paneId: PaneId): PaneId | undefined
++  /** Close a tab of one Session. */
+   closeIn(sessionId: SessionId, tabId: TabId): void
+ }
+ 
+@@ -165,14 +167,25 @@ export class TabDomain {
+     // Where an open from this tab lands, read at call time because the tab may
+     // have been dragged since: `replaceTab: true` names this tab; otherwise the
+     // pane holding it, unless the caller named another.
+-    const place = (placement: SidebarRightTabPlacement): SidebarRightPlacement => ({
+-      ...placement.replaceTab === true
+-        ? { replaceTab: tabId }
+-        : held.paneId === undefined ? {} : { paneId: held.paneId },
+-      ...placement.paneId === undefined ? {} : { paneId: placement.paneId },
+-      ...placement.preferNewPane === undefined ? {} : { preferNewPane: placement.preferNewPane },
+-      ...placement.revealIfOpened === undefined ? {} : { revealIfOpened: placement.revealIfOpened },
+-    })
++    const place = (placement: SidebarRightTabPlacement): SidebarRightPlacement | undefined => {
++      if (placement.toSide === true) {
++        if (held.paneId === undefined) return undefined
++        const paneId = navigator.splitIn(sessionId, held.paneId)
++        if (paneId === undefined) return undefined
++        return {
++          paneId,
++          ...placement.revealIfOpened === undefined ? {} : { revealIfOpened: placement.revealIfOpened },
++        }
++      }
++      return {
++        ...placement.replaceTab === true
++          ? { replaceTab: tabId }
++          : held.paneId === undefined ? {} : { paneId: held.paneId },
++        ...placement.paneId === undefined ? {} : { paneId: placement.paneId },
++        ...placement.preferNewPane === undefined ? {} : { preferNewPane: placement.preferNewPane },
++        ...placement.revealIfOpened === undefined ? {} : { revealIfOpened: placement.revealIfOpened },
++      }
++    }
+     const held: Held = {
+       id: randomUUID() as SidebarRightOccurrenceId,
+       sessionId,
+@@ -196,12 +209,16 @@ export class TabDomain {
+         },
+         // An explicit host ignores this tab's pane and never names it for replacement.
+         openResource: (address, options = {}) => {
+-          navigator.openResourceIn(sessionId, address, options.destination === undefined
+-            ? { ...place(options), params: options.params }
+-            : { destination: options.destination, params: options.params })
++          if (options.destination !== undefined) {
++            navigator.openResourceIn(sessionId, address, { destination: options.destination, params: options.params })
++            return
++          }
++          const placement = place(options)
++          if (placement !== undefined) navigator.openResourceIn(sessionId, address, { ...placement, params: options.params })
+         },
+         openTab: (kind, options = {}) => {
+-          navigator.openTabIn(sessionId, kind, { ...place(options), params: options.params })
++          const placement = place(options)
++          if (placement !== undefined) navigator.openTabIn(sessionId, kind, { ...placement, params: options.params })
+         },
+         close: () => { navigator.closeIn(sessionId, tabId) },
+       },
+diff --git a/packages/client/ui-sidebar-right/tests/tab-domain.client.spec.ts b/packages/client/ui-sidebar-right/tests/tab-domain.client.spec.ts
+index 7ce476b2f5fb49378bd0af71ba3d11ca646ce12c..24c9cb44a23fe7f54ce383c56aa2779383bd91b3 100644
+--- a/packages/client/ui-sidebar-right/tests/tab-domain.client.spec.ts
++++ b/packages/client/ui-sidebar-right/tests/tab-domain.client.spec.ts
+@@ -35,7 +35,7 @@ function layouts() {
+ }
+ 
+ function harness() {
+-  const navigator = { openResourceIn: vi.fn(), openTabIn: vi.fn(), closeIn: vi.fn() } satisfies
++  const navigator = { openResourceIn: vi.fn(), openTabIn: vi.fn(), splitIn: vi.fn(), closeIn: vi.fn() } satisfies
+     SidebarRightNavigator & Record<string, ReturnType<typeof vi.fn>>
+   const pin = vi.fn<(address: string, signal: AbortSignal) => void>()
+   const domain = new TabDomain(navigator, pin)
+@@ -228,3 +228,31 @@ describe('TabDomain — a tab\'s own actions', () => {
+       { destination: 'sidebar', params: undefined })
+   })
+ })
++
++it('opens beside a docked occurrence and stops when no split can be placed', () => {
++  const { domain, navigator, controller, current } = harness()
++  try {
++    const tabId = controller.openContent({ kind: 'text', contentId: 'test:a', title: 'a' })
++    domain.sync(SESSION, current())
++    const { tabActions } = domain.occurrence(SESSION, recordOf(current(), tabId))
++    const paneId = getPane(current(), current().rootId).id
++    navigator.splitIn.mockReturnValue(paneId)
++    tabActions.openTab('files', { toSide: true })
++    expect(navigator.splitIn).toHaveBeenCalledExactlyOnceWith(SESSION, paneId)
++    expect(navigator.openTabIn).toHaveBeenCalledExactlyOnceWith(SESSION, 'files', { paneId })
++    tabActions.openResource('test:b', { toSide: true, revealIfOpened: false })
++    expect(navigator.openResourceIn).toHaveBeenCalledExactlyOnceWith(SESSION, 'test:b', { paneId, revealIfOpened: false })
++    navigator.splitIn.mockReturnValue(undefined)
++    tabActions.openTab('terminal', { toSide: true })
++    expect(navigator.openTabIn).toHaveBeenCalledTimes(1)
++    controller.floatTab(tabId)
++    domain.sync(SESSION, current())
++    tabActions.openTab('files', { toSide: true })
++    tabActions.openResource('test:b', { toSide: true })
++    expect(navigator.splitIn).toHaveBeenCalledTimes(3)
++    expect(navigator.openTabIn).toHaveBeenCalledTimes(1)
++    expect(navigator.openResourceIn).toHaveBeenCalledTimes(1)
++  } finally {
++    domain.dispose()
++  }
++})
+diff --git a/packages/client/ui-sidebar-right/tests/tab-info.client.spec.tsx b/packages/client/ui-sidebar-right/tests/tab-info.client.spec.tsx
+index 81e83a8b9b1e2a2c31bb77b9670bd3248d65789f..d0c39e4c8757b21972c194a9da9054170f5fd9e0 100644
+--- a/packages/client/ui-sidebar-right/tests/tab-info.client.spec.tsx
++++ b/packages/client/ui-sidebar-right/tests/tab-info.client.spec.tsx
+@@ -22,7 +22,7 @@ afterEach(() => {
+ 
+ function harness() {
+   const instance = createSidebarRightStore(() => ({ kind: 'guide', title: 'Start' })).create()
+-  const domain = new TabDomain({ openResourceIn: vi.fn(), openTabIn: vi.fn(), closeIn: vi.fn() }, vi.fn())
++  const domain = new TabDomain({ openResourceIn: vi.fn(), openTabIn: vi.fn(), splitIn: vi.fn(), closeIn: vi.fn() }, vi.fn())
+   domains.push(domain)
+   const navigationSources = new Map<string, TabOccurrence['navigation']>()
+   const useStore = bindSnapshotSelector(instance)
+diff --git a/packages/client/ui-sidebar-right/tests/target-session.client.spec.ts b/packages/client/ui-sidebar-right/tests/target-session.client.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5984240b7f4ec9002715942a0ed1e0eac9a4f51c
+--- /dev/null
++++ b/packages/client/ui-sidebar-right/tests/target-session.client.spec.ts
+@@ -0,0 +1,67 @@
++/** Targeted navigation uses adopted Session stores without changing the on-screen Session. */
++import { expect, it, vi } from 'vitest'
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
++import { activeDockPaneId, dockPaneIds } from '@deepseek-ai/dsh-client-ui-dockkit'
++import { createSidebarRightStore } from '../src/client/stores.ts'
++import { controllerHarness, SESSION } from './controller-harness.client.ts'
++
++it('splits the on-screen adopted Session and refuses its released store', () => {
++  const h = controllerHarness()
++  const hide = h.publish()
++  try {
++    h.expand()
++    const paneId = activeDockPaneId(h.layout())
++    const created = h.controller.splitIn(SESSION, paneId)
++    expect(created).toBeDefined()
++    expect(dockPaneIds(h.layout())).toContain(created)
++    expect(dockPaneIds(h.layout())).toHaveLength(2)
++
++    h.unadopt()
++    expect(h.controller.mounted.getSnapshot()).toBe(SESSION)
++    expect(h.controller.splitIn(SESSION, paneId)).toBeUndefined()
++    expect(dockPaneIds(h.layout())).toHaveLength(2)
++  } finally {
++    hide()
++    h.unadopt()
++    h.controller.tabDomain.dispose()
++  }
++})
++
++it('notifies after adoption, accepts targeted opens off screen, and rejects released stores', () => {
++  const h = controllerHarness()
++  const target = 'target-session' as SessionId
++  const store = createSidebarRightStore(() => ({ kind: 'guide', title: 'seed' })).create()
++  const observer = vi.fn((sessionId: SessionId) => {
++    expect(h.controller.openTabIn(sessionId, 'guide')).toBe(true)
++    const tab = h.controller.tabsIn(sessionId)[0]!
++    expect(h.controller.tabDomain.occurrence(sessionId, tab).signal.aborted).toBe(false)
++  })
++  const unsubscribe = h.controller.onSessionAdopted(observer)
++  const address = 'dsh-resource://file/session/target-session/note.txt'
++  expect(h.controller.openResourceIn(target, address)).toBe(false)
++  expect(h.controller.openTabIn(target, 'guide')).toBe(false)
++  const release = h.adopt(target, store)
++  try {
++    expect(observer).toHaveBeenCalledExactlyOnceWith(target)
++    expect(h.controller.openResourceIn(target, address, { destination: 'float' })).toBe(true)
++    expect(h.controller.mounted.getSnapshot()).toBeUndefined()
++    const tab = h.controller.tabsIn(target).find(record => record.kind === 'text')!
++    const occurrence = h.controller.tabDomain.occurrence(target, tab)
++    expect(occurrence.sessionId).toBe(target)
++    expect(occurrence.navigation.getSnapshot().address).toBe(address)
++    expect(h.controller.splitIn(target, activeDockPaneId(store.getSnapshot().bySession[target]!.layout))).toBeUndefined()
++    unsubscribe()
++    release()
++    expect(h.controller.openResourceIn(target, address)).toBe(false)
++    expect(h.controller.openTabIn(target, 'guide')).toBe(false)
++    const readopt = h.adopt(target, store)
++    expect(observer).toHaveBeenCalledTimes(1)
++    readopt()
++    expect(h.controller.tabsIn(SESSION)).toEqual([])
++  } finally {
++    unsubscribe()
++    release()
++    h.unadopt()
++    h.controller.tabDomain.dispose()
++  }
++})

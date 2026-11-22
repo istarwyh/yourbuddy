@@ -4,9 +4,9 @@
  * `{ok: true, value}` on success and `{ok: false, error: {code, message}}`
  * (HTTP 4xx/5xx matching the code) on failure.
  */
-import type { SidebarHttpRequest, SidebarHttpResponse } from './context-types.ts';
+import type { SidebarHttpRequest, SidebarHttpResponse } from './host-http.ts';
 /** Machine-readable error codes of the sidebar API. */
-export type SidebarErrorCode = 'bad-request' | 'not-found' | 'forbidden' | 'method-error' | 'too-large' | 'fs-error' | 'git-error' | 'job-error' | 'sidechat-error' | 'subagents-unavailable' | 'settings-rejected' | 'settings-conflict' | 'internal';
+export type SidebarErrorCode = 'bad-request' | 'not-found' | 'forbidden' | 'method-error' | 'too-large' | 'unavailable' | 'fs-error' | 'fs-directory' | 'fs-conflict' | 'git-error' | 'graph-stale' | 'graph-limit' | 'git-suggest-empty' | 'git-suggest-error' | 'job-error' | 'team-error' | 'team-conflict' | 'sidechat-error' | 'subagents-unavailable' | 'settings-rejected' | 'settings-conflict' | 'internal';
 /** One API failure with its wire code and HTTP status. */
 export declare class SidebarError extends Error {
     readonly code: SidebarErrorCode;
@@ -30,10 +30,36 @@ export interface SidebarErr {
         message: string;
     };
 }
-/** Read and parse the JSON request body (bounded; malformed → bad-request). */
-export declare function readJsonBody(req: SidebarHttpRequest): Promise<unknown>;
-/** Write a JSON response with the given status. */
-export declare function writeJson(res: SidebarHttpResponse, status: number, body: unknown): void;
+/**
+ * Read and parse the JSON request body (bounded; malformed → bad-request).
+ *
+ * @param req - the request face (async-iterable body).
+ * @param limit - maximum accepted body size in bytes.
+ * @param onBytes - optional per-chunk observer of the cumulative size. Callers
+ *   that must account for a LARGE body before the whole read finishes (the
+ *   Side Chat image admission gate) use it; a throw from the callback aborts
+ *   the read and propagates like any other route failure.
+ */
+export declare function readJsonBody(req: SidebarHttpRequest, limit?: number, onBytes?: (total: number) => void): Promise<unknown>;
+/**
+ * Read a raw text request body (the editor save route).
+ *
+ * JSON framing was what capped a save at {@link MAX_BODY_BYTES}: the whole
+ * document had to be string-escaped into one JSON payload, so a file the
+ * editor could legitimately open could not be written back. The save route
+ * therefore takes the document as the raw body.
+ *
+ * `limit` is a server-side sanity guard rather than a product limit — the UI
+ * cannot produce more than the editable size — because the encoding transform
+ * the caller runs afterwards needs the document as one string.
+ *
+ * @param req - the request face (async-iterable body).
+ * @param limit - maximum accepted body size in bytes.
+ * @returns the body decoded as UTF-8.
+ * @throws {SidebarError} too-large beyond the limit, bad-request on invalid UTF-8.
+ */
+export declare function readTextBody(req: SidebarHttpRequest, limit: number): Promise<string>;
+/** Write a JSON response with the given status. */ export declare function writeJson(res: SidebarHttpResponse, status: number, body: unknown): void;
 /** Write the success envelope. */
 export declare function writeOk(res: SidebarHttpResponse, value: unknown): void;
 /** Write the failure envelope for any thrown value (unknown → internal 500). */

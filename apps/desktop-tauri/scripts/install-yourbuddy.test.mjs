@@ -10,13 +10,19 @@ import { load } from 'js-yaml'
 const installer = fileURLToPath(new URL('./install-yourbuddy.sh', import.meta.url))
 const posix = { skip: process.platform === 'win32' ? 'The installer runs only in a macOS POSIX shell.' : false }
 
-function fixture(t, { legacy = false, transport = '', nativeExit = 0, platform = 'Darwin' } = {}) {
+function fixture(t, { legacy = false, transport = '', nativeExit = 0, platform = 'Darwin', macosVersion = '13.5', versionExit = 0 } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-installer-test-'))
   t.after(() => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }))
   const bin = join(root, 'bin')
   const temporary = join(root, 'temporary')
   const contents = join(root, 'archive', 'YourBuddy.app', 'Contents')
-  for (const directory of [bin, temporary, join(contents, 'MacOS'), join(contents, 'Resources')]) mkdirSync(directory, { recursive: true })
+  const privatePaths = {
+    HOME: join(root, 'home'),
+    DSH_HOME: join(root, 'dsh-home'),
+    DSH_AGENTS_HOME: join(root, 'agents-home'),
+    YOURBUDDY_APP_DATA_DIR: join(root, 'app-data'),
+  }
+  for (const directory of [bin, temporary, ...Object.values(privatePaths), join(contents, 'MacOS'), join(contents, 'Resources')]) mkdirSync(directory, { recursive: true })
   const executable = (path, body) => {
     writeFileSync(path, `#!${process.execPath}\n${body}\n`)
     chmodSync(path, 0o755)
@@ -27,7 +33,7 @@ function fixture(t, { legacy = false, transport = '', nativeExit = 0, platform =
 const fs = require('node:fs');
 const args = process.argv.slice(2);
 const value = flag => args[args.indexOf(flag) + 1];
-fs.writeFileSync(process.env.NATIVE_LOG, JSON.stringify({ args, executable: process.argv[1], packagePresent: fs.existsSync(value('--package')), signature: fs.readFileSync(value('--signature'), 'utf8') }));
+fs.writeFileSync(process.env.NATIVE_LOG, JSON.stringify({ args, paths: { HOME: process.env.HOME, DSH_HOME: process.env.DSH_HOME, DSH_AGENTS_HOME: process.env.DSH_AGENTS_HOME, YOURBUDDY_APP_DATA_DIR: process.env.YOURBUDDY_APP_DATA_DIR }, executable: process.argv[1], packagePresent: fs.existsSync(value('--package')), signature: fs.readFileSync(value('--signature'), 'utf8') }));
 console.log(JSON.stringify({ id: 'operation-1', phase: ${nativeExit ? "'failed'" : "'accepted'"} }));
 process.exit(${nativeExit});`)
   const archive = join(root, 'official.app.tar.gz')
@@ -35,6 +41,7 @@ process.exit(${nativeExit});`)
   const signature = `${archive}.sig`
   writeFileSync(signature, 'official signature fixture')
   executable(join(bin, 'uname'), `console.log(process.argv[2] === '-s' ? ${JSON.stringify(platform)} : 'arm64');`)
+  executable(join(bin, 'sw_vers'), `console.log(${JSON.stringify(macosVersion)}); process.exit(${versionExit});`)
   executable(join(bin, 'plutil'), `
 try { const fs = require('node:fs'); const value = JSON.parse(fs.readFileSync(process.argv.at(-1), 'utf8'))[process.argv[3]]; if (value === undefined || process.argv[4] !== 'xml1') process.exit(1); const type = typeof value === 'number' ? 'integer' : 'string'; console.log('<plist>\\n<' + type + '>' + value + '</' + type + '>\\n</plist>'); } catch { process.exit(1); }`)
   executable(join(bin, 'curl'), `
@@ -56,6 +63,7 @@ if (${JSON.stringify(transport)} === 'no-range' && args.includes('--continue-at'
 fs.copyFileSync(url.endsWith('.sig') ? process.env.ARCHIVE + '.sig' : process.env.ARCHIVE, output);`)
   const env = {
     ...process.env,
+    ...privatePaths,
     PATH: `${bin}${delimiter}${process.env.PATH}`,
     TMPDIR: temporary,
     ARCHIVE: archive,
@@ -63,14 +71,15 @@ fs.copyFileSync(url.endsWith('.sig') ? process.env.ARCHIVE + '.sig' : process.en
     TRANSPORT_LOG: join(root, 'transport.jsonl'),
   }
   return {
-    archive, signature,
+    root, privatePaths, archive, signature,
     installExisting() {
       const destination = join(root, 'Installed YourBuddy.app')
       cpSync(join(root, 'archive', 'YourBuddy.app'), destination, { recursive: true })
       return destination
     },
     run(args = []) {
-      const result = spawnSync('/bin/bash', [installer, ...args], { env, encoding: 'utf8', timeout: 30_000 })
+      const target = args.includes('--app') ? [] : ['--app', join(root, 'Missing YourBuddy.app')]
+      const result = spawnSync('/bin/bash', [installer, ...target, ...args], { env, encoding: 'utf8', timeout: 30_000 })
       assert.equal(result.error, undefined, 'the shell process must finish without a timeout')
       assert.equal(result.signal, null, 'the shell process must exit without a signal')
       assert.deepEqual(readdirSync(temporary), [], 'temporary candidate and downloads are released after native receipt')
@@ -81,19 +90,56 @@ fs.copyFileSync(url.endsWith('.sig') ? process.env.ARCHIVE + '.sig' : process.en
   }
 }
 
+for (const macosVersion of ['11.7.10', '12.7.6', '13.4', 'unreadable']) {
+  test(`rejects macOS ${macosVersion} before transport or native installation`, posix, t => {
+    const f = fixture(t, { macosVersion })
+    const result = f.run()
+    assert.equal(result.status, 1)
+    assert.equal(JSON.parse(result.stderr).error, 'unsupported_macos')
+    assert.match(JSON.parse(result.stderr).nextAction, /macOS 13\.5 or later/)
+    assert.deepEqual(f.requests(), [])
+    assert.equal(f.native(), undefined)
+  })
+}
+
+test('reports a failed macOS version lookup before transport or native installation', posix, t => {
+  const f = fixture(t, { versionExit: 1 })
+  const result = f.run()
+  assert.equal(result.status, 1)
+  assert.equal(JSON.parse(result.stderr).error, 'unsupported_macos')
+  assert.deepEqual(f.requests(), [])
+  assert.equal(f.native(), undefined)
+})
+
+for (const macosVersion of ['13.5', '13.6.9', '14.0']) {
+  test(`accepts macOS ${macosVersion} through the native installer receipt`, posix, t => {
+    const f = fixture(t, { macosVersion })
+    const result = f.run()
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(JSON.parse(result.stdout).phase, 'accepted')
+    assert.equal(f.native().packagePresent, true)
+  })
+}
+
 test('the shell resolves latest, proxies every transfer, and forwards a durable-operation request', posix, t => {
   const f = fixture(t)
-  const result = f.run(['--proxy', 'http://127.0.0.1:7890', '--app', '/Applications/Your Buddy.app', '--request-id', 'stable-request', '--session-id', 'session-1', '--defer-stop'])
+  const app = join(f.root, 'Your Buddy.app')
+  const result = f.run(['--proxy', 'http://127.0.0.1:7890', '--app', app, '--request-id', 'stable-request', '--session-id', 'session-1', '--defer-stop'])
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout), { id: 'operation-1', phase: 'accepted' })
   assert.match(result.stderr, /An operation receipt is not installation success/)
   assert.match(result.stderr, /status --operation operation-1 --wait/)
   assert.match(result.stderr, /bin\/yourbuddy/)
   const native = f.native()
+  assert.deepEqual(native.paths, f.privatePaths)
+  for (const path of Object.values(native.paths)) {
+    assert.ok(path.startsWith(`${f.root}/`))
+    assert.ok(existsSync(path))
+  }
   assert.equal(native.packagePresent, true)
   assert.equal(native.signature, 'official signature fixture')
   assert.deepEqual(native.args.slice(0, 4), ['--yourbuddy-installer', 'install', '--version', '1.2.3'])
-  assert.deepEqual(native.args.slice(8), ['--json', '--app', '/Applications/Your Buddy.app', '--request-id', 'stable-request', '--session-id', 'session-1', '--defer-stop', '--proxy', 'http://127.0.0.1:7890'])
+  assert.deepEqual(native.args.slice(8), ['--json', '--app', app, '--request-id', 'stable-request', '--session-id', 'session-1', '--defer-stop', '--proxy', 'http://127.0.0.1:7890'])
   assert.equal(f.requests().length, 3)
   for (const request of f.requests()) {
     assert.equal(request[request.indexOf('--proxy') + 1], 'http://127.0.0.1:7890')
@@ -172,6 +218,9 @@ test('release publication stages the launcher, tests it, and includes the native
   const workflow = load(readFileSync(new URL('../../../.github/workflows/desktop-release.yml', import.meta.url), 'utf8'))
   const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
   const config = JSON.parse(readFileSync(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'))
+  const minimumMacos = /^minimum_macos=(\d+\.\d+)$/m.exec(readFileSync(installer, 'utf8'))?.[1]
+  assert.equal(minimumMacos, '13.5')
+  assert.equal(config.bundle.macOS.minimumSystemVersion, minimumMacos)
   assert.equal(config.bundle.resources['installer-protocol.json'], 'installer-protocol.json')
   assert.equal(packageJson.scripts['test:installer'], 'node --test scripts/install-yourbuddy.test.mjs')
   assert.ok(packageJson.scripts['test:release'].includes('pnpm run test:installer'))

@@ -1,6 +1,6 @@
 /**
- * Path projection helpers shared by the explorer rows: a path relative to
- * the session cwd (for the @-reference button and "copy relative path").
+ * Path projection helpers shared by the explorer rows: workspace-relative
+ * mentions and session-cwd-relative "copy relative path".
  * The fs-tree joins with '/' even on Windows, so both separators normalize
  * to '/' before comparison.
  *
@@ -21,7 +21,10 @@
  * comment — so a produced UNC path is never joined onto the cwd.
  */
 export function isAbsolutePath(path: string): boolean {
-  return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path) || /^[\\/]{2}[^\\/]/.test(path)
+  // A `~`-relative path (`~`, `~/...`, `~\...`) names the user's home, not a
+  // session-relative path (#713): never join it onto the cwd client-side.
+  return path === '~' || path.startsWith('~/') || path.startsWith('~\\')
+    || path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path) || /^[\\/]{2}[^\\/]/.test(path)
 }
 
 /**
@@ -44,6 +47,27 @@ export function relativeTo(cwd: string, path: string): string {
   if (nPath === nBase) return '.'
   if (nPath.toLowerCase().startsWith(`${nBase.toLowerCase()}/`)) return nPath.slice(nBase.length + 1)
   return path
+}
+
+/**
+ * Project an absolute explorer entry against the host-confirmed workspace
+ * root. Unlike copy-relative-path's `relativeTo`, mention insertion must
+ * never fall back to an absolute token. Unknown roots, traversal components
+ * and paths outside the workspace are refused. Windows drive/UNC paths are
+ * case-insensitive; POSIX paths retain their case-sensitive distinction.
+ */
+export function workspaceRelativePath(root: string | undefined, path: string): string | undefined {
+  if (root === undefined || !isAbsolutePath(root) || !isAbsolutePath(path)) return undefined
+  const norm = (value: string): string => value.replace(/\\/g, '/').replace(/\/+$/, '')
+  const base = norm(root)
+  const target = norm(path)
+  if ([base, target].some(value => value.split('/').some(part => part === '.' || part === '..'))) return undefined
+  const windows = /^[A-Za-z]:\//.test(root.replace(/\\/g, '/')) || /^[\\/]{2}/.test(root)
+  const compare = (value: string): string => windows ? value.toLowerCase() : value
+  if (compare(target) === compare(base)) return '.'
+  if (!compare(target).startsWith(`${compare(base)}/`)) return undefined
+  const relative = target.slice(base.length + 1)
+  return relative === '' || isAbsolutePath(relative) ? undefined : relative
 }
 
 /**
@@ -95,4 +119,26 @@ export function resolveSidebarPath(cwd: string | undefined, path: string): strin
   if (base === '') return path
   const separator = base.includes('\\') ? '\\' : '/'
   return `${base.replace(/[\\/]+$/, '')}${separator}${path}`
+}
+
+/**
+ * Resolve one client path and normalize it to the base's separator dialect.
+ *
+ * A folder window roots the shared FileTree at this value. The tree keys each
+ * level by the root it REQUESTED, while every listing answer is keyed by the
+ * host's `path.resolve`'d absolute path — on Windows a chat file address
+ * ("research/workspace-sections-campaign/x", session-relative and
+ * `/`-separated) joined onto a `C:\…` cwd used to leave MIXED separators: two
+ * different strings for one directory, so the root level waited on its
+ * loading placeholder forever (#1029 follow-up). Normalizing to the base's
+ * dialect also drops a trailing separator, exactly as `path.resolve` does
+ * (a drive root keeps it). A non-Windows base returns the plain join: on
+ * POSIX a backslash is a legal filename character.
+ */
+export function resolveNativeSidebarPath(cwd: string | undefined, path: string): string {
+  const resolved = resolveSidebarPath(cwd, path)
+  if (cwd === undefined || !cwd.includes('\\')) return resolved
+  const normalized = resolved.replace(/\//g, '\\')
+  if (/^[A-Za-z]:\\$/.test(normalized)) return normalized
+  return normalized.replace(/\\+$/, '')
 }

@@ -47,7 +47,13 @@
     "Set @deepseek-ai/dsh-client-ui-settings-plugins peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
     "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
     "Set @deepseek-ai/dsh-settings peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-tools peer range from 0.2.0-rc.1 to 0.2.0-rc.2."
+    "Set @deepseek-ai/dsh-tools peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-client-locale peer range from 0.2.0-rc.2 to 0.2.2-rc.5.",
+    "Set @deepseek-ai/dsh-client-store peer range from 0.2.0-rc.2 to 0.2.2-rc.5.",
+    "Set @deepseek-ai/dsh-client-ui-settings-plugins peer range from 0.2.0-rc.2 to 0.2.2-rc.5.",
+    "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.2.0-rc.2 to 0.2.2-rc.5.",
+    "Set @deepseek-ai/dsh-settings peer range from 0.2.0-rc.2 to 0.2.2-rc.5.",
+    "Set @deepseek-ai/dsh-tools peer range from 0.2.0-rc.2 to 0.2.2-rc.5."
   ],
   "runtimeArtifacts": [
     {
@@ -63,5 +69,5 @@
   ],
   "repository": "https://github.com/Fisfzy/dsh-ego-browser",
   "license": "MIT",
-  "treeSha256": "3defbc2ef29c0c8b0a3aa521fb5605ace6ca0787baee5eaa6fffc2ba2f19ddee"
+  "treeSha256": "4f595fb45092127913b7006b3ecbe31b2d64e00bad859a3fa6865862f7ba1e4c"
 }

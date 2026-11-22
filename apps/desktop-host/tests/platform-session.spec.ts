@@ -1,5 +1,5 @@
-import { Context } from '@deepseek-ai/cordis'
-import { DeepSeekAccount, type AccountView, type PlatformSession } from '@deepseek-ai/dsh-deepseek-account'
+import { Context, Service } from '@deepseek-ai/cordis'
+import type { DeepSeekAccount, AccountView, AccountUpdate, PlatformSession } from '@deepseek-ai/dsh-deepseek-account'
 import { expect, it } from 'vitest'
 import { installPlatformSessionPublisher } from '../src/platform-session.ts'
 
@@ -8,29 +8,21 @@ const state: AccountView = {
   links: { usageUrl: 'https://platform.example/usage', topUpUrl: 'https://platform.example/top_up' },
 }
 
-class Account extends DeepSeekAccount {
-  getDeviceIdentity = async () => ({ osVersion: 'test-os' })
+class Account extends Service implements Pick<DeepSeekAccount, 'getPlatformSession' | 'watch'> {
+  constructor(ctx: Context) { super(ctx, 'deepseekAccount') }
   fail = false
+  identityChangesRequested = false
   ended = Promise.withResolvers<undefined>()
   reading = Promise.withResolvers<undefined>()
   finished = Promise.withResolvers<undefined>()
   read: () => Promise<PlatformSession | null> = async () => ({ origin: 'https://platform.example', userId: null, token: 'test' })
-  override async getState() { return state }
-  override async getProfile() { return null }
-  override async getBalance() { return null }
-  override async getUnnotifiedBonuses() { return null }
-  override async ackBonusNotified() { return false }
-  override async startSignIn() { return state }
-  override async cancelSignIn() { return state }
-  override async signOut() { return state }
-  override async rejectToken() {}
-  override async resolveToken() { return undefined }
-  override async getPlatformSession() { this.reading.resolve(undefined); return this.read() }
-  override async *watch(signal: AbortSignal) {
+  async getPlatformSession() { this.reading.resolve(undefined); return this.read() }
+  async *watch(signal: AbortSignal, includeIdentityChanges = false): AsyncIterable<AccountUpdate> {
+    this.identityChangesRequested = includeIdentityChanges
     const abort = () => { this.ended.resolve(undefined) }
     signal.addEventListener('abort', abort, { once: true })
     try {
-      yield state
+      yield { type: 'snapshot', state }
       await this.ended.promise
       if (this.fail) throw new Error('fixture subscription failure')
     } finally {
@@ -48,6 +40,9 @@ it('clears removed credentials and publishes the replacement provider session', 
   try {
     const first = await ctx.plugin(Account)
     await delivered.promise
+    expect(ctx.deepseekAccount).toBeInstanceOf(Account)
+    if (!(ctx.deepseekAccount instanceof Account)) throw new Error('missing account fixture')
+    expect(ctx.deepseekAccount.identityChangesRequested).toBe(true)
     expect(sessions.at(-1)?.token).toBe('test')
     await first.dispose()
     expect(sessions.at(-1)).toBeNull()

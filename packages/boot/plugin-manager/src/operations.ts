@@ -7,10 +7,11 @@ import { execa } from 'execa'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import {
-  DEFAULT_PROFILE_BUNDLES, bundlePatchPaths, initProfile, PROFILE_TEMPLATES, readProfileManifest,
+  assertBundlePlatform, UnsupportedBundlePlatformError, bundlePatchPaths, initProfile, readProfileManifest,
   resolveBundleDir, resolveProfileDir, loadOverlayPatches, composeEntries, readProfileVersionExemptions,
   evaluatePluginCompatibility, pluginCompatibilityWarning, type ProfileManifest,
 } from '@deepseek-ai/dsh-app-boot'
+import { PROFILE_TEMPLATES, DEFAULT_PROFILE_BUNDLES } from '@deepseek-ai/dsh-official-bundles'
 import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
 import { parseInstallSpec } from './install-spec.ts'
 import { awaitTreeGone, leadsOwnGroup, treeAlive, type RunTree } from './run-tree.ts'
@@ -56,6 +57,12 @@ export interface PackageOperationOptions {
   idleTimeoutMs?: number
   /** Bound on the pre-install registry lookup, in milliseconds; without one a fixed bound applies. */
   lookupTimeoutMs?: number
+  /**
+   * The bundle package and manifest version the run must install. A run that leaves this package missing, at another
+   * version, or without a bundle declaration or bundle patches that load, or that adds or changes another direct
+   * dependency, is undone like a compatibility rejection after it.
+   */
+  expected?: { readonly name: string; readonly version: string }
 }
 
 /** Resolve relative package specs against the caller's directory.
@@ -89,12 +96,13 @@ export async function saveManifest(dir: string, manifest: ProfileManifest): Prom
   await writeFileAtomic(join(dir, 'package.json'), JSON.stringify(manifest, undefined, 2) + '\n', { mode: 0o600 })
 }
 
-/** Reconcile package removals and newly installed bundles without re-enabling retained dependencies. */
-async function reconcile(before: ProfileManifest, dir: string, anchor: string, options: PackageOperationOptions): Promise<void> {
+/** Reconcile bundle selection, returning platform denials without saving any selection changes. */
+async function reconcile(before: ProfileManifest, dir: string, anchor: string, options: PackageOperationOptions): Promise<string[]> {
   const after = readProfileManifest('dsh', dir)
   const dependencies = Object.keys(after.dependencies ?? {})
   const beforeDeps = new Set(Object.keys(before.dependencies ?? {}))
   const previous = after.dsh?.profile?.bundles ?? []
+  const unsupported: string[] = []
   const bundles = previous.filter((name) => {
     if (!beforeDeps.has(name) && !dependencies.includes(name)) return true
     return dependencies.includes(name) && bundleManifest(name, dir, anchor) !== undefined
@@ -106,14 +114,21 @@ async function reconcile(before: ProfileManifest, dir: string, anchor: string, o
       options.onOutput?.(`dsh: warning: ${name} declares no dsh.bundle — installed as a plain dependency, not a profile layer\n`, 'stderr')
       continue
     }
+    try { assertBundlePlatform(metadata.dsh.bundle.platforms, process.platform) } catch (error) {
+      if (!(error instanceof UnsupportedBundlePlatformError)) throw error
+      unsupported.push(`${name}: ${error.message}`)
+      continue
+    }
     for (const file of bundlePatchPaths(resolveBundleDir('dsh', name, anchor, dir), metadata.dsh.bundle)) loadOverlayPatches('dsh', file)
     if (!bundles.includes(name)) {
       bundles.push(name)
     }
   }
-  if (JSON.stringify(previous) === JSON.stringify(bundles)) return
+  if (unsupported.length > 0) return unsupported
+  if (JSON.stringify(previous) === JSON.stringify(bundles)) return []
   after.dsh = { ...after.dsh, profile: { ...after.dsh?.profile, bundles } }
   await saveManifest(dir, after)
+  return []
 }
 
 /**
@@ -159,7 +174,7 @@ function namedSpecs(args: readonly string[]): string[] {
 
 /** The manifest a named spec would install, read without installing it.
  * A path spec is read from disk. A registry spec asks pnpm's own configuration for the version the
- * range selects and its peer requirements. A git or tarball spec needs the fetch itself, so the
+ * range selects and its dsh requirements (`engines` and peerDependencies). A git or tarball spec needs the fetch itself, so the
  * check after installation is what judges it.
  * @param dir Profile directory the lookup runs in.
  * @param spec Anchored install spec.
@@ -179,7 +194,7 @@ async function namedSpecManifest(
   }
   if (parsed.kind !== 'registry') return undefined
   const viewed = await execa(options.command ?? 'pnpm', [
-    ...options.args ?? [], 'view', parsed.spec, 'name', 'version', 'peerDependencies', '--json',
+    ...options.args ?? [], 'view', parsed.spec, 'name', 'version', 'engines', 'peerDependencies', '--json',
     ...flags, '--config.fetch-retries=0',
   ], {
     cwd: dir, env: environment, extendEnv: false, reject: false, stdin: 'ignore',
@@ -276,15 +291,22 @@ function bundleComponentManifests(manifest: ProfileManifest, dir: string, anchor
 }
 
 /** Execute pnpm inside a profile whose caller already holds the profile write lock.
- * Newly installed or updated direct dependencies are checked even when activation is disabled;
- * an untouched dependency never blocks an unrelated operation and stays denied at startup.
- * Compatibility denial reinstalls the saved manifest and lockfile. An application-owned rollbackPackage also
- * restores its prior symbolic link after other failures; incomplete repair remains an explicit failure.
+ * Newly installed or updated direct dependencies are checked even when activation is disabled. With `expected`, each
+ * of them must be the expected package, which must be installed at its version with a bundle declaration. Any other
+ * untouched dependency never blocks an unrelated operation and stays denied at startup.
+ * A denial before pnpm runs changes nothing; one after it restores the profile manifest and lockfile and reinstalls
+ * the restored lockfile, while downloaded files stay in the pnpm store.
+  * An application-owned rollbackPackage also restores its prior symbolic link after failures;
+  * incomplete repair remains an explicit failure.
  * @param context Launcher-owned profile and resolution locations.
  * @param args Pnpm arguments, before relative path anchoring.
  * @param options Output, activation and cancellation policy.
  * @returns Exit status, whether the silence bound stopped the run, and the diagnostic path.
- * A compatibility denial returns exit code 1. Service output is bounded; CLI output uses inherited descriptors.
+ * A compatibility or `expected` denial returns exit code 1 and names what it refused.
+ * Unsupported Host activation returns exit code 1 with named diagnostics; installed dependencies remain,
+ * and no bundle selection changes are saved. Other reconciliation or filesystem errors reject.
+ * Service output is bounded; CLI output uses inherited descriptors.
+ * The diagnostic file is closed on return or rejection, including preparation and spawn failures.
  */
 export async function runProfilePnpm(
   context: PackageOperationContext, args: readonly string[], options: PackageOperationOptions,
@@ -296,7 +318,7 @@ export async function runProfilePnpm(
   await mkdir(logRoot, { recursive: true, mode: 0o700 })
   const logDir = await mkdtemp(join(logRoot, 'operation-'))
   const logPath = join(logDir, 'pnpm.log')
-  const log = await open(logPath, 'wx', 0o600)
+  await using log = await open(logPath, 'wx', 0o600)
   if (active !== undefined) {
     await log.write(active)
     await log.close()
@@ -326,6 +348,14 @@ export async function runProfilePnpm(
   }
   /** Packages a compatibility check refused; callers render them for their own surface. */
   const incompatible: IncompatiblePlugin[] = []
+  /** Why the post-install check undoes a successful run. */
+  const warnings: string[] = []
+  /** What `options.expected` found wrong with the run, `unexpected-package` taking precedence. */
+  let unmet: PackageResult['unmet']
+  const fail = (code: NonNullable<PackageResult['unmet']>, warning: string): void => {
+    if (unmet !== 'unexpected-package') unmet = code
+    warnings.push(warning)
+  }
   const rejected = async (warnings: readonly string[], restoration: string): Promise<PackageResult> => {
     const diagnostic = `\ndsh: installation rejected: ${warnings.join('\n')}\ndsh: ${restoration}.\n`
     await log.write(diagnostic)
@@ -335,7 +365,7 @@ export async function runProfilePnpm(
     return { exitCode: 1, output: output.toString('utf8'), truncated, logPath, incompatible }
   }
   if (options.rollbackPackage === undefined && options.rollbackExpected !== undefined) {
-    return rejected(['rollback-expected requires rollback-package'], 'nothing was installed')
+    return await rejected(['rollback-expected requires rollback-package'], 'nothing was installed')
   }
   let protectedLink: { path: string; target?: string } | undefined
   if (options.rollbackPackage !== undefined) {
@@ -376,7 +406,7 @@ export async function runProfilePnpm(
         throw new Error('the protected package changed after application preflight; inspect the profile and retry')
       }
     } catch (error) {
-      return rejected([String(error)], 'nothing was installed')
+      return await rejected([String(error)], 'nothing was installed')
     }
   }
   /** Track process settlement, silence cancellation, and a surviving tree across repair callbacks. */
@@ -461,7 +491,7 @@ export async function runProfilePnpm(
       }
     } catch (error) { void error; continue }
   }
-  if (preflight.length > 0) return rejected(preflight, 'nothing was installed')
+  if (preflight.length > 0) return await rejected(preflight, 'nothing was installed')
   const cancellation = new AbortController()
   // A service run captures output, so execa terminates the tree it leads when the
   // run is killed: a lifecycle script outlives the pnpm process that started it.
@@ -569,13 +599,16 @@ export async function runProfilePnpm(
     if (result.failed && output.length === 0) {
       const diagnostic = result.shortMessage ?? 'pnpm failed'
       await log.write(diagnostic)
+      // The run printed nothing, so this diagnostic is the whole of its captured output; stream it as such.
+      options.onOutput?.(diagnostic, 'stderr')
       truncated = Buffer.byteLength(diagnostic) > options.outputBytes
       output = Buffer.from(diagnostic).subarray(0, options.outputBytes)
     }
     // A terminated run's exit status says nothing about what it wrote, so it never reconciles the selection.
     if (exitCode === 0 && !control.stalled) {
       const after = readProfileManifest('dsh', dir)
-      const warnings: string[] = []
+      const { expected } = options
+      let seen = false
       for (const [name, spec] of Object.entries(directDependencies(after))) {
         const packageDir = join(dir, 'node_modules', name)
         const installed = optionalFile(join(packageDir, 'package.json'))
@@ -586,6 +619,18 @@ export async function runProfilePnpm(
         const issues: IncompatiblePlugin[] = []
         try {
           const manifest = readProfileManifest('dsh', packageDir)
+          const installedAs = `${name}@${String(manifest.version)}`
+          const wanted = expected === undefined ? undefined : `${expected.name}@${expected.version}`
+          // The expected package is checked even when the run left it as it was, as adding its saved spec again does.
+          if (name === expected?.name) {
+            seen = true
+            if (installedAs !== wanted) fail('unexpected-package', `${installedAs} is installed where ${String(wanted)} was expected`)
+            else if (manifest.dsh?.bundle === undefined) fail('not-bundle', `${installedAs} declares no bundle`)
+            // The caller loads these patches next; one that cannot load is refused here, while its modules can go back.
+            else for (const file of bundlePatchPaths(packageDir, manifest.dsh.bundle)) loadOverlayPatches('dsh', file)
+          } else if (wanted !== undefined && !untouched) {
+            fail('unexpected-package', `${installedAs} is installed where ${wanted} was expected`)
+          }
           for (const candidate of [manifest, ...bundleComponentManifests(manifest, packageDir, context.installAnchor)]) {
             const issue = evaluatePluginCompatibility(candidate, readProfileVersionExemptions(dir))
             if (issue !== undefined && !issue.exempted) {
@@ -607,8 +652,9 @@ export async function runProfilePnpm(
           options.onOutput?.(notice, 'stderr')
         }
       }
+      if (expected !== undefined && !seen) fail('unexpected-package', `${expected.name}@${expected.version} is not installed`)
       if (warnings.length > 0) {
-        // A bundle component's peers need installed contents, so this rejection lands after pnpm
+        // A bundle component's requirements need installed contents, so this rejection lands after pnpm
         // replaced the tree: restore the files, then reinstall the restored lockfile so the version
         // that worked before this run keeps loading. A profile that had no lockfile is reinstalled
         // from its restored manifest without creating one, which removes what this run added.
@@ -626,7 +672,14 @@ export async function runProfilePnpm(
         options.onOutput?.(diagnostic, 'stderr')
         append(Buffer.from(diagnostic))
       } else if (options.activateNewBundles !== false) {
-        await reconcile(before, dir, context.installAnchor, options)
+        const unsupported = await reconcile(before, dir, context.installAnchor, options)
+        if (unsupported.length > 0) {
+          exitCode = 1
+          const diagnostic = `\ndsh: bundle activation rejected: ${unsupported.join('\n')}\ndsh: installed dependencies remain; bundle selection is unchanged. Use a supported Host or remove the unwanted dependencies with 'dsh plugin remove <package>'.\n`
+          await log.write(diagnostic)
+          options.onOutput?.(diagnostic, 'stderr')
+          append(Buffer.from(diagnostic))
+        }
       }
     }
     if (exitCode !== 0 || control.stalled) await rollbackFailedRun()
@@ -650,6 +703,7 @@ export async function runProfilePnpm(
     exitCode: rollback === undefined ? exitCode : exitCode || 1, output: output.toString('utf8'), truncated, logPath,
     ...rollback === undefined ? {} : { rollback },
     ...control.stalled ? { timedOut: true } : {}, ...incompatible.length > 0 ? { incompatible } : {},
+    ...unmet === undefined ? {} : { unmet },
   }
 }
 
@@ -700,6 +754,8 @@ export interface PackageViewOptions {
   timeoutMs: number
   /** The registry asked; null asks the one pnpm's own configuration names. */
   registry?: Registry
+  /** The manifest fields printed, as `pnpm view` names them; registry-only fields such as `versions`, `time`, and `dist-tags` included. */
+  fields: readonly string[]
 }
 
 /**
@@ -737,12 +793,12 @@ export function registryArguments(registry: Registry): string[] {
  * configured after it are the retry.
  * @param dir Profile directory.
  * @param spec One registry spec: a package name with an optional range.
- * @param options The registry, cancellation, and the time bound.
+ * @param options The fields printed, the registry, cancellation, and the time bound.
  * @returns pnpm's exit, output, and how the lookup ended.
  */
 export async function viewProfilePackage(dir: string, spec: string, options: PackageViewOptions): Promise<PackageViewResult> {
   const result = await execa(options.command ?? 'pnpm', [
-    ...options.args ?? [], 'view', spec, 'name', 'version', 'description', 'dsh', '--json',
+    ...options.args ?? [], 'view', spec, ...options.fields, '--json',
     ...registryArguments(options.registry ?? null), '--config.fetch-retries=0',
   ], {
     cwd: dir, env: { ...scrubbedParentEnv(), ...options.env }, extendEnv: false, reject: false, stdin: 'ignore',

@@ -72,8 +72,8 @@ export function prepareDist(root = desktopRoot) {
   const componentChannel = join(root, 'component-channel')
   mkdirSync(componentChannel, { recursive: true })
   cpSync(
-    join(root, 'bundled', 'toolchain', 'pnpm-11.7.0.tgz'),
-    join(componentChannel, 'pnpm-11.7.0.tgz'),
+    join(root, 'bundled', 'toolchain', 'pnpm-11.28.5.tgz'),
+    join(componentChannel, 'pnpm-11.28.5.tgz'),
   )
   return 0
 }

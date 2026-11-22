@@ -6,7 +6,9 @@
  * collapsible-line chrome (no cards); shimmer is reserved for generating
  * states (running status line, streaming rows, the creating hero). Motion
  * is crossfade-only (≤200ms entrances, no springs); reduced-motion disables
- * every loop. All values consume DSW tokens (fallbacks point at older alias
+ * every loop. The queue tail (pending / local-echo bubbles, the failure row)
+ * and the header's model-picker capsule reuse the same surfaces and tokens.
+ * All values consume DSW tokens (fallbacks point at older alias
  * tokens for rc-era hosts). */
 .sidechat {
   flex: 1;
@@ -15,39 +17,8 @@
   flex-direction: column;
 }
 
-/* ── thread header (status dot · agent badge · threads menu · save) ─── */
-.sidechatDetailHeader {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 4px 8px 4px 12px;
-  border-bottom: 1px solid var(--dsw-alias-hairline);
-}
-
-.sidechatHeaderDot {
-  flex: none;
-}
-
-.sidechatHeaderSpacer {
-  flex: 1;
-  min-width: 0;
-}
-
-.sidechatAgentBadge {
-  flex: none;
-  max-width: 55%;
-  padding: 1px 8px;
-  border: 1px solid var(--dsw-alias-hairline);
-  border-radius: 999px;
-  font: var(--dsw-font-xxs-12);
-  color: var(--dsw-alias-label-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+/* ── composer-bar controls (model picker · thread menu · save · archive):
+ * every thread function sits next to the input, where the reader looks ──── */
 .sidechatIconBtn {
   flex: none;
   display: inline-flex;
@@ -72,6 +43,37 @@
 .sidechatIconBtn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* Model picker trigger (the host disables its own picker for subagent
+ * sessions, so the thread's route is chosen here): a quiet capsule showing
+ * the model in use, never a color of its own. It sits at the RIGHT end of the
+ * composer bar next to send (the main composer's arrangement) and shows the
+ * model in full — it yields width only when the panel is genuinely too
+ * narrow, and even then its label ellipsizes instead of the bar overflowing. */
+.sidechatModelBtn {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 1px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+  transition: background-color 100ms ease-out, color 100ms ease-out;
+}
+
+.sidechatModelBtn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.sidechatModelName {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── hero (unbound tab: the one brand moment) ───────────────────────── */
@@ -110,7 +112,7 @@
   border-radius: 999px;
   background: var(--dsw-alias-button-info-fill, var(--dsw-alias-accent));
   color: var(--dsw-alias-button-info-label, var(--dsw-alias-accent-ink, #fff));
-  font: var(--dsw-font-s-13);
+  font: var(--dsw-font-xs-13);
   cursor: pointer;
   transition: opacity 100ms ease-out;
 }
@@ -127,15 +129,67 @@
 .sidechatHint {
   flex: none;
   padding: 4px 12px;
-  font: var(--dsw-font-xxs-12);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
   color: var(--dsw-alias-label-tertiary);
 }
 
 .sidechatError {
   flex: none;
   padding: 4px 12px;
-  font: var(--dsw-font-xxs-12);
-  color: var(--dsw-alias-danger);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+/* A provider/agent failure INSIDE the transcript (a failed attempt or a
+ * turn/end error): unlike the header banner above, this is a transcript row,
+ * so it takes the transcript's own width and never markdown. */
+.sidechatErrorRow {
+  align-self: stretch;
+  padding: 6px 10px;
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  border-radius: 8px;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-state-error-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The route cut the head of a very long log: the transcript opens mid-history
+   and says so, once, above the first row. Quiet by design — it explains the gap
+   rather than warning about it. */
+.sidechatTruncatedNotice {
+  flex: none;
+  align-self: center;
+  padding: 2px 10px;
+  border: 1px dashed var(--dsw-alias-border-l2, var(--dsw-alias-border-l1));
+  border-radius: 8px;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-tertiary);
+  text-align: center;
+  user-select: none;
+}
+
+/* The turn ended without a normal completion (stopped, or cut by the output
+   limit). It is a STATEMENT, not a failure: a quiet centred line in the
+   transcript's own secondary size, so it reads as an ending rather than an
+   alarm. */
+.sidechatTerminal {
+  align-self: center;
+  padding: 0 2px;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-tertiary);
+  text-align: center;
+  user-select: none;
 }
 
 /* ── transcript ─────────────────────────────────────────────────────── */
@@ -149,9 +203,95 @@
   gap: 10px;
 }
 
-/* Rows crossfade in on append (keys are stable, so only NEW rows play). */
-.sidechatScroll > * {
+/* Rows crossfade in on append (keys are stable, so only NEW rows play). The
+   mount box is `display: contents`, so it has no box of its own: the row does
+   the animating. */
+.sidechatScroll > *,
+.sidechatRowMount > * {
   animation: sidechatRowIn 180ms ease-out;
+}
+
+/* One mounted transcript row's box. `display: contents` keeps the row itself a
+   flex child of the scroller (its own `align-self` / `max-width` still apply,
+   the scroller's `gap` still separates rows) while giving the DOM a stable,
+   countable hook — including for rows that render nothing at all. */
+.sidechatRowMount {
+  display: contents;
+}
+
+/* The hidden head of a long thread: the spacer ONLY declares scroll space (its
+   height is inline, one row estimate per unmounted row) and the control mounts
+   one more step of history. */
+.sidechatSpacer {
+  flex: none;
+}
+
+.sidechatRevealEarlier {
+  flex: none;
+  align-self: center;
+  padding: 4px 12px;
+  border: 1px solid var(--dsw-alias-border-l2, var(--dsw-alias-border-l1));
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  /* A control's fixed step (the host's 13px/20px), not a transcript text rule:
+     it stays the same size whatever the reader's content-font setting is. */
+  font: var(--dsw-font-xs-13);
+  cursor: pointer;
+}
+
+.sidechatRevealEarlier:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+/* The transcript box: the scrollport plus the controls that float over it. It
+   is the positioning context for the back-to-latest pill, so the pill anchors
+   to the transcript edge instead of a magic offset, and the composer (a
+   sibling below) can never be covered by it. */
+.sidechatTranscript {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Zero-height slot, the host's own recipe (`ui-chat` ChatView's
+   `.toBottomSlot`): it takes no space in the flow, right-aligns its child to
+   the content column's edge, and lets the transcript keep every pixel. */
+.sidechatToLatestSlot {
+  position: absolute;
+  right: 0;
+  bottom: 16px;
+  left: 0;
+  z-index: 2;
+  height: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding-right: max(
+    calc(var(--dsh-composer-side-clearance, 16px) + 16px),
+    calc((100% - var(--dsh-chat-content-width, 720px)) / 2)
+  );
+  pointer-events: none;
+}
+
+/* Return-to-latest pill: floats over the transcript's bottom edge while the
+   reader is away from the tail. */
+.sidechatToLatest {
+  padding: 4px 12px;
+  border: 1px solid var(--dsw-alias-border-l2, var(--dsw-alias-border-l1));
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xs-13);
+  box-shadow: var(--dsw-elevation-panel);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.sidechatToLatest:hover {
+  color: var(--dsw-alias-label-primary);
 }
 
 /* User message: right-aligned bubble, same surface as the main pane. */
@@ -161,7 +301,9 @@
   padding: 8px 14px;
   border-radius: 18px;
   background: var(--dsw-specific-bubble, var(--dsw-alias-bg-base));
-  font: var(--dsw-font-s-14);
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: calc(22px + var(--dsh-content-font-delta, 0px));
+  font-family: var(--dsw-font-family);
   color: var(--dsw-alias-label-primary);
   overflow-wrap: anywhere;
 }
@@ -169,9 +311,68 @@
 /* Assistant message: full-width narration, no bubble — the main pane way. */
 .sidechatAssistant {
   align-self: stretch;
-  font: var(--dsw-font-s-14);
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: calc(22px + var(--dsh-content-font-delta, 0px));
+  font-family: var(--dsw-font-family);
   color: var(--dsw-alias-label-primary);
   overflow-wrap: anywhere;
+}
+
+/* Pending / local-echo bubbles: the user surface plus the queue chrome
+ * (spinner · state word · dequeue). They sit AFTER the durable rows, so the
+ * reader sees the message they just sent instead of a silent composer. */
+.sidechatPending {
+  align-self: flex-end;
+  max-width: 88%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px 6px 14px;
+  border-radius: 18px;
+  background: var(--dsw-specific-bubble, var(--dsw-alias-bg-base));
+  font-size: var(--dsh-content-font-size, 14px);
+  line-height: calc(22px + var(--dsh-content-font-delta, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+
+.sidechatPendingText {
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+.sidechatPendingMeta {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+}
+
+.sidechatDequeueBtn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  transition: background-color 100ms ease-out, color 100ms ease-out;
+}
+
+.sidechatDequeueBtn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
 }
 
 /* ── collapsible context rows (tool / thinking / injection, Codex-style) ──
@@ -188,7 +389,9 @@
   align-items: center;
   gap: 6px;
   padding: 1px 0;
-  font: var(--dsw-font-xxs-12);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
   color: var(--dsw-alias-label-tertiary);
 }
 
@@ -243,7 +446,7 @@
 }
 
 .sidechatRowMono {
-  font-family: var(--dsw-font-mono);
+  font-family: var(--dsw-font-mono, var(--ds-font-family-code));
 }
 
 .sidechatRowMeta {
@@ -252,23 +455,25 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--dsw-font-mono);
+  font-family: var(--dsw-font-mono, var(--ds-font-family-code));
   color: var(--dsw-alias-label-tertiary);
 }
 
 .sidechatRowFailed .sidechatRowLabel,
 .sidechatRowFailed .sidechatRowMeta {
-  color: var(--dsw-alias-danger);
+  color: var(--dsw-alias-state-error-primary);
 }
 
 .sidechatRowBody {
   margin: 2px 0 4px 7px;
   padding: 2px 0 2px 10px;
-  border-left: 1px solid var(--dsw-alias-hairline);
+  border-left: 1px solid var(--dsw-alias-border-l1);
 }
 
 .sidechatRowProse {
-  font: var(--dsw-font-xxs-12);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
   color: var(--dsw-alias-label-tertiary);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -276,11 +481,23 @@
   overflow-y: auto;
 }
 
+/* A labelled section inside a generic tool row's disclosed body ("Arguments",
+   "Result"): quiet, so the raw content stays the thing being read. */
+.sidechatToolSectionLabel {
+  margin: 2px 0;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+}
+
 .sidechatRowCode {
   margin: 0;
   padding: 4px 0;
-  font: var(--dsw-font-xxs-12);
-  font-family: var(--dsw-font-mono);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-mono, var(--ds-font-family-code));
   color: var(--dsw-alias-label-secondary);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -289,7 +506,7 @@
 }
 
 .sidechatRowCode + .sidechatRowCode {
-  border-top: 1px solid var(--dsw-alias-hairline);
+  border-top: 1px solid var(--dsw-alias-border-l1);
 }
 
 /* Host Block atoms (terminal/diff/read) inside a row body draw their own
@@ -303,10 +520,102 @@
   align-self: flex-end;
   max-width: 88%;
   padding: 0 2px;
-  font: var(--dsw-font-xxs-12);
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
   font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-tertiary);
   user-select: none;
+}
+
+/* ── present deliverables card ────────────────────────────────────────
+ * One card per `present` call (or per event-only delivery), one row per
+ * delivered file: image thumbnail (through the media route) or type glyph,
+ * basename, optional description, and a click that opens the file. The
+ * quietest possible surface — a hairline box around ink-weight rows: the
+ * main pane's delivery card at side-chat scale. */
+.sidechatDeliverables {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+}
+
+.sidechatDeliverablesHead {
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+}
+
+.sidechatDeliverablesList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sidechatDeliverableItem {
+  min-width: 0;
+}
+
+.sidechatDeliverable {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 3px 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 100ms ease-out, color 100ms ease-out;
+}
+
+.sidechatDeliverable:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+/* An image deliverable leads with its own pixels, so the reader recognizes
+ * the artifact before reading the name. */
+.sidechatDeliverableThumb {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--dsw-alias-bg-base);
+}
+
+.sidechatDeliverableName {
+  flex: none;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-primary);
+}
+
+.sidechatDeliverableDesc {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 /* Shimmer sweep text: generating (streaming row labels, creating hero). */
@@ -357,7 +666,7 @@
   gap: 4px;
   margin: 0 8px 8px;
   padding: 8px 8px 6px 14px;
-  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin, var(--dsw-alias-hairline));
+  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin, var(--dsw-alias-border-l2));
   border-radius: 16px;
   background: var(--dsw-specific-input-major, var(--dsw-alias-bg-base));
   box-shadow: var(--dsw-shadow-lv2, none);
@@ -385,18 +694,41 @@
   flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   min-height: 28px;
 }
 
-.sidechatComposerMeta {
+/* The function row: fixed width (three icon buttons), never squeezed away by
+ * the model selector — the selector is the element that yields space. */
+.sidechatComposerTools {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Pushes the model selector + send action to the right edge, exactly like the
+ * main conversation's composer bar. */
+.sidechatComposerSpacer {
   flex: 1;
   min-width: 0;
-  font: var(--dsw-font-xxs-12);
-  color: var(--dsw-alias-label-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+/* Hover-bubble anchor of one composer-bar control. An ENABLED box is required:
+ * a disabled button fires no pointer events, so the bubble must anchor here to
+ * still explain WHY save/archive are disabled. The default `min-width: auto`
+ * keeps an icon anchor at its button's size; only the model capsule opts into
+ * shrinking (see .sidechatTipShrink), so the slack absorber is the capsule and
+ * never an icon. */
+.sidechatTipAnchor {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sidechatTipShrink {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .sidechatSendBtn {
@@ -427,6 +759,171 @@
 }
 
 /* ── motion vocabulary (crossfade only, ≤200ms; loops reduced-motion off) */
+/* The pre-fork context. NOT a card: a native disclosure whose collapsed line is
+ * the opening divider, and whose body is the parent's last exchange rendered as
+ * this thread's own messages (the `sidechatUser` bubble and the
+ * `sidechatAssistant` prose carry their own look), so the block only spaces the
+ * pieces and cannot drift from the conversation below it. */
+.sidechatForkPoint {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The disclosure's line: the divider's hairline-and-copy chrome (see below)
+ * plus the chevron instead of the marker, so the closed block reads as one
+ * boundary line and nothing else. */
+.sidechatForkPointLine {
+  padding: 1px 0;
+  list-style: none;
+  cursor: pointer;
+}
+
+.sidechatForkPointLine::-webkit-details-marker {
+  display: none;
+}
+
+.sidechatForkPoint[open] .sidechatForkPointLine .sidechatRowChevron {
+  transform: rotate(90deg);
+}
+
+/* The expanded body: the inherited exchange at the rhythm the block has always
+ * used (8px between the pieces), inside the disclosure so a closed block hides
+ * it natively. */
+.sidechatForkPointBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The boundary: a hairline either side of the localized copy, so the reader
+ * sees where the inherited conversation ends. */
+.sidechatForkDivider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+}
+
+.sidechatForkDivider::before,
+.sidechatForkDivider::after {
+  content: '';
+  flex: 1 1 0;
+  min-width: 12px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+
+/* One Turn's work-detail disclosure (R1): the line is chrome, the body holds
+ * the turn's process rows. `display: contents` on their mount boxes makes the
+ * rows flex children of the body, so the transcript's own rhythm survives. */
+.sidechatTurnFold {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sidechatTurnFoldBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* The always-visible line: the same quiet row typography as the other
+ * collapsible rows, with the marker hidden in favour of the chevron. */
+.sidechatTurnFoldLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  list-style: none;
+  cursor: pointer;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.sidechatTurnFoldLine::-webkit-details-marker {
+  display: none;
+}
+
+.sidechatTurnFold[open] > .sidechatTurnFoldLine .sidechatRowChevron {
+  transform: rotate(90deg);
+}
+
+/* Image / file content blocks (D13): a row's own attachments sit under its
+ * text, wrapped so a wide screenshot still leaves the column intact. */
+.sidechatAttachments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* An assistant message's attachment is a row of its own; the mount box already
+ * spaces it, so it needs no extra margin. */
+.sidechatAttachmentRow {
+  display: flex;
+}
+
+.sidechatAttachmentThumb {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--dsw-alias-bg-base);
+}
+
+/* A declined read is a reader-visible fact, not a broken image: one quiet
+ * line in the chip's own typography. */
+.sidechatAttachmentFailed {
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* The main conversation's file card: type glyph, name, size. */
+.sidechatAttachmentFile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
+  font-family: var(--dsw-font-family);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.sidechatAttachmentName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-primary);
+}
+
+.sidechatAttachmentSize {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+}
+
 @keyframes sidechatRowIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -449,10 +946,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sidechatScroll > *,
+  .sidechatRowMount > *,
   .sidechatHero,
   .sidechatStatus,
-  .sidechatSendBtn {
+  .sidechatSendBtn,
+  .sidechatModelBtn,
+  .sidechatDequeueBtn {
     animation: none;
+    transition: none;
   }
   .sidechatStatusText,
   .sidechatShimmerText {
@@ -463,4 +964,24 @@
   .sidechatRowChevron {
     transition: none;
   }
+}
+
+.sidechatImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+}
+.sidechatImagePreview {
+  display: flex;
+  align-items: flex-start;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+}
+.sidechatImage {
+  display: block;
+  max-width: 180px;
+  max-height: 140px;
+  object-fit: contain;
+  border-radius: 6px;
 }

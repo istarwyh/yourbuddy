@@ -10,7 +10,7 @@ Bootstrap 启动页展示组件、阶段、字节数和保留的错误，页面�
 
 | 资源 | 运行时行为 |
 |---|---|
-| `component-channel` | 两种安装包都内嵌的签名 Release Manifest 与固定 pnpm 11.7.0 Package |
+| `component-channel` | 两种安装包都内嵌的签名 Release Manifest 与固定 pnpm 11.28.5 Package |
 | `component-seeds` | 只在 Offline DMG 中出现的精确 Release Archive，导入共享组件 Cache |
 | `YourBuddy/components` | 带 Staging 与 Active State 的签名、内容寻址 Harness、Store、Node、按需 Harbor 与能力组件 |
 | `desktop-overlay` | 通过 `dsh web --patch` 选择 Codex Agent Preset，并注册通知、Codex Subagent Provider、Codex Auth/Search/Image、Better Sidebar、Ego Browser、Context Doctor、Plugin Marketplace、Personal Workbench、Oil Creator、自媒体工作台和上下文洞察；Pomodoro 包含在默认产品 Bundle 中，Harbor 通过显式安装的 Profile Bundle 启用 |
@@ -19,13 +19,15 @@ Bootstrap 启动页展示组件、阶段、字节数和保留的错误，页面�
 
 产品源码位于 `product/harbor-evolution`、`product/harbor-python`、`product/dsh-codex-auth`、`product/dsh-better-sidebar`、`product/ego-browser`、`product/context-doctor`、`product/plugin-marketplace`、`product/pomodoro`、`product/personal-workbench`、`product/oil-creator`、`product/media-desk` 和 `product/context`。`scripts/bundle-harness-source.mjs` 把默认产品 Cordis Package 放进裁剪后的 workspace，并将它们和仓库内的 `@deepseek-ai/dsh-subagent-codex` Package 一起加入 CLI 依赖闭包，因此 Host 无需从 Registry 安装即可解析所有默认插件。生成的 Bundle Manifest 会单独记录 Codex Subagent Package 版本与产品 Agent Preset，不把它们混入由外部来源刷新的产品快照。Codex Auth、Better Sidebar、Plugin Marketplace、Pomodoro、自媒体工作台和上下文洞察固定到经过检查的 npm Tarball。Harbor 的 JavaScript 与 Python 快照来自同一个经过检查的 GitHub Release。Ego Browser、Context Doctor 与 Oil Creator 固定到经过检查的 GitHub 分支 Commit；Oil Creator 会先使用其声明的 Package Manager 构建，再冻结 npm Package 的文件选择结果。每个由外部来源刷新的快照都在 `YOURBUDDY_UPSTREAM.json` 中记录不可变来源、完整性 Hash、已提交 Tree Hash、上游许可证、精确版本的 Peer Metadata 覆盖以及经过评审的功能兼容补丁。`scripts/prepare-yourbuddy-runtime.mjs` 把已提交的 Python 快照安装进可迁移资源，也接受 `YOURBUDDY_HARBOR_PYTHON_SOURCE` 用于临时测试本地 Adapter。
 
+Better Sidebar 的 `presentation: slot` 是低于可编辑 Profile 的 Bundle 默认值。最终桌面 Overlay 只防止重复挂载，不替换 Sidebar 配置，因此保存的 `autoOpenJobs` 和 `autoOpenSubagent` 偏好在重启后仍然有效。托管工具链提供 Node 24.22.3 LTS 和 pnpm 11.28.5；复用宿主 Node 要求版本不低于 24.9.0。Codex Auth 的实验性原生重放和压缩功能保留上游版本限制；DSH Peer 覆盖不会启用这些路径。
+
 ## 默认插件交付策略
 
 默认外部插件以经过检查的快照进入冻结 Workspace，不会在应用启动时通过 `dsh plugin add` 下载。如果命令使用用户的 `~/.dsh`，运行时 Git 安装会写入错误的主目录；它还会让冷启动依赖 GitHub 和本机构建，并允许可变分支在没有 YourBuddy 发版的情况下改变应用。内置依赖闭包保留离线启动，并把来源、兼容性 Metadata 与传递依赖解析固定到当前发行版。刷新兼容性会使用 SemVer 预发布排序，把内置 Release Candidate Package 与 Peer Range 进行比较；精确版本的 Metadata 修正仍需在产品更新策略中明确记录。
 
 这种策略会把每个插件的打包文件和共享 Store 条目加入安装包，也让上游更新必须随 YourBuddy 发行。Ego Browser 贡献约 314 KB 的打包载荷，解压后约为 1.2 MB，其中包含按完整性固定的 SDK Runtime，但不含 Chromium 和按需下载的可选 FFmpeg。在 macOS 上，经过评审的兼容补丁会发现标准位置中的原生浏览器，并绕过 Linux X11/Xvfb 路径。预览清理仅在捕获已经启动或正在请求启动时停止捕获；挂载空闲预览不会启动捕获 Worker。重新下载 Ego Browser 上游归档进行刷新时，会用已记录的 Runtime 替换归档中已有的 SDK 文件，仅在替换文件匹配已记录摘要时保留该产物的来源记录；摘要不匹配时，刷新会在替换任何快照前停止。每次更新 Ego Browser 或 Harness 都需要刷新来源记录、重新生成 Lockfile、验证兼容性并运行组装后的 Client Smoke。用户自行安装并启用的 Profile Bundle 会优先于名称唯一的内置 Fallback，因此仍可独立更新，但版本选择与兼容性也重新由用户负责。
 
-Bundle Generator 会从随附的 Standard 组成派生一个 ID 为 `codex`、显示名为 **Codex** 的系统 Agent Preset，只启用其中已有的 `subagent_codex` 配置项，并保持其他随附 Preset 不变。桌面 Overlay 将 Codex 设为基础默认值，因此全新 Profile 以及没有显式选择 Preset 的新 Session 可以立即委派；用户明确选择的默认 Preset 仍然优先，已有 Session 继续使用启动时记录的组成。即使用户全局安装了 `codexhost-delegation` skill，Overlay 也会阻止模型自主路由到它，让普通 Codex 委派始终使用 Preset 原生、可追踪的 `subagent_codex` 工具；用户仍可通过显式输入 `/codexhost-delegation` 选择外部路径。加载 Provider 不会启动 Codex 进程。原生委派会在 Session Workspace 内启动 Package 自带的官方 Codex Runtime，并使用原生 Codex 配置和登录状态，而不是把凭据复制到 YourBuddy Settings。
+Bundle Generator 会从随附的 Standard 组成派生一个 ID 为 `codex`、显示名为 **Codex** 的系统 Agent Preset，在其委派组内添加 `subagent_codex` 配置项，由 Codex Runtime 管理深度上限，并保持随附 Preset 不变。桌面 Overlay 将 Codex 设为基础默认值，因此全新 Profile 以及没有显式选择 Preset 的新 Session 可以立即委派；用户明确选择的默认 Preset 仍然优先，已有 Session 继续使用启动时记录的组成。即使用户全局安装了 `codexhost-delegation` skill，Overlay 也会阻止模型自主路由到它，让普通 Codex 委派始终使用 Preset 原生、可追踪的 `subagent_codex` 工具；用户仍可通过显式输入 `/codexhost-delegation` 选择外部路径。加载 Provider 不会启动 Codex 进程。原生委派会在 Session Workspace 内启动 Package 自带的官方 Codex Runtime，并使用原生 Codex 配置和登录状态，而不是把凭据复制到 YourBuddy Settings。
 
 Generator 还会从 Codex 派生 **内容创作** Agent Preset。它保留完整的 Standard 工具集与原生 Codex 委派，并把编码 Persona 换成内容工作台 Persona。Oil Creator 继续作为 Host Plugin 运行，因为同一个 Package 同时拥有 Sidebar、Settings、Remote、模型工具、Skills 与 System Prompt Section；这个 Preset 只专门化 Agent，不会重复挂载 Service。插件内置视频发布、视频转文章与微信公众号草稿 Skills，并提供统一的草稿准备工具；最终发表仍由用户完成。它的 Sidebar 会保留 Personal Workbench 名称、Logo 和桌面窗口控件。Codex 仍是默认 Preset。
 
@@ -121,7 +123,7 @@ pnpm Store 组件归档使用排序后的条目、固定所有者与时间戳，
 
 ## 发布文档与官网
 
-每次发布使用 [dsh-doc](../../.agents/skills/dsh-doc/SKILL.md)准备[版本归档](../../docs/releases/README.zh.md)。产品官网的下载页和发行页使用 GitHub 稳定的 `releases/latest` 与 Release 历史 URL，因此普通桌面发布不需要后续修改或部署官网。只有产品指南或其他站点内容发生变化时才更新并部署官网。
+每次发布使用 [dsh-doc-writing](../../.agents/skills/dsh-doc-writing/SKILL.md)准备[版本归档](../../docs/releases/README.zh.md)。产品官网的下载页和发行页使用 GitHub 稳定的 `releases/latest` 与 Release 历史 URL，因此普通桌面发布不需要后续修改或部署官网。只有产品指南或其他站点内容发生变化时才更新并部署官网。
 
 ## 命令
 
@@ -144,6 +146,8 @@ pnpm release:yourbuddy:prepare -- X.Y.Z
 pnpm release:yourbuddy -- X.Y.Z
 ```
 
+`test:bundle` 会先分别检查桌面测试的 Host 和 Client 程序，再运行 Bundle 组装与设置持久化回归。单独检查这两个测试程序时可运行 `typecheck:tests`。
+
 当前目标固定为 `aarch64-apple-darwin`；发布流水线有意不包含 Windows、Intel macOS 或 Linux 矩阵。
 
-macOS arm64 发布流水线会校验 Tag 与所有桌面版本真源的一致性，构建并签署一份组件 Manifest，再用同一组件集合生成 Bootstrap 与 Offline DMG，并随 Size Report 发布组件 Archive。Bootstrap DMG 超过 30,000,000 字节，或包含 Harness Tree、Node Archive、pnpm Store、Harbor Runtime、Offline Seed 时会直接拒绝发布。`latest.json` 指向已签名 Offline 应用 Archive，因此自动更新会在重启前安装该 Release 的全部 Seed。流水线还会搬移公开 Harbor 组件并运行两个 Entry Point，随后才为全部制品计算校验和并发布。
+macOS arm64 发布流水线会校验 Tag 与所有桌面版本真源的一致性，构建并签署一份组件 Manifest，再用同一组件集合生成 Bootstrap 与 Offline DMG，并随 Size Report 发布组件 Archive。Bootstrap DMG 超过 30,000,000 字节，或包含 Harness Tree、Node Archive、pnpm Store、Harbor Runtime、Offline Seed 时会直接拒绝发布。Bootstrap 装配与发布资源检查共用 `scripts/prepare-managed-toolchain.mjs` 中的 pnpm 制品声明。`latest.json` 指向已签名 Offline 应用 Archive，因此自动更新会在重启前安装该 Release 的全部 Seed。流水线还会搬移公开 Harbor 组件并运行两个 Entry Point，随后才为全部制品计算校验和并发布。

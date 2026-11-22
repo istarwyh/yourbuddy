@@ -1,6 +1,7 @@
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 /**
  * The built-in tab descriptors: the plugin registers its own pages
- * (editor / git — the unified changes tab / subagent / sidechat / browser /
+ * (editor / git — the unified changes tab / subagent / sidechat / terminal-bottom /
  * diff) through
  * the same {@link BetterSidebarService} external plugins use — eating its
  * own dogfood. The editor IS the files window (the old standalone explorer
@@ -11,24 +12,93 @@
  * interactive shells outright, and the host's `browser` kind (delegated to
  * from the chat's http(s) links) owns embedded pages. See
  * docs/plans/2026-09-21-dsh-0.1.6-alpha.2-adaptation.md.
+ *
+ * `terminal-bottom` (#774) is the one type that is NOT a host tab: it is the
+ * plugin's own bottom workbench terminal, driving the host's session-scoped
+ * terminal service through a self-drawn xterm. It declares `bottomOnly` so it
+ * can never become a second right-Sidebar terminal capsule beside the host's
+ * own. See docs/plans/2026-10-05-bottom-terminal-tab.md.
  */
 import { IconCodeOutlineRegular, IconPanelLeftOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useCallback, useSyncExternalStore } from 'react'
 import {
-  changesTabIcon, filesTabIcon, sidechatTabIcon, tasksTabIcon,
+  changesTabIcon, filesTabIcon, sidechatTabIcon, tasksTabIcon, terminalTabIcon,
 } from './tab-icons.tsx'
 import { t } from '../locales.ts'
 import { openSidebarFile } from '../sidebar-file.ts'
 import { EditorHost } from '../EditorHost.tsx'
 import { OpenWithSettings } from '../open-with-settings.tsx'
+import { CommitModelSettings } from '../changes/CommitModelSettings.tsx'
 import { ChangesTab, opCountOf } from '../changes/ChangesTab.tsx'
 import { DiffTab } from '../DiffTab.tsx'
 import { SubagentView } from '../SubagentView.tsx'
 import { consumeSidechatSeed, SideChatView, sidechatThreadIdOf } from '../SideChatView.tsx'
+import { LazyTerminalBottom } from '../terminal-lazy.tsx'
+import { INSTANCE_FIELD, closeBottomTerminal, webTerminals } from '../terminal-client.ts'
 import { api } from '../api.ts'
-import type { TabDescriptor } from '../service.ts'
+import { sidechatSubmitKeyOf } from '../prefs.ts'
+import { SIDECHAT_SUBMIT_KEY_DEFAULT, SIDECHAT_SUBMIT_KEY_SETTING } from '../../prefs-shared.ts'
+import type { Context } from '../../context-types.ts'
+import type { TabComponentProps, TabDescriptor } from '../service.ts'
 
-/** The 5 built-in tab descriptors (the host owns terminal and browser). */
-export function builtinTabs(): readonly TabDescriptor[] {
+/**
+ * Hide a closed Side Chat thread, then release its live agent.
+ *
+ * `stopActivity` settles a running turn before the session leaves the list.
+ * The workspace service is optional: a missing service or a rejected archive
+ * still disposes, and the close path itself never rejects. An unbound tab
+ * never reaches here.
+ */
+function releaseSidechat(ctx: Context, threadId: string): void {
+  const dispose = (): void => {
+    void api.sidechatDispose(threadId).catch(() => {})
+  }
+  void (async () => {
+    try {
+      const service = ctx.get('uiWorkspace')
+      // Method call: an unbound `archiveSession` would lose the service as `this`.
+      if (service !== undefined) {
+        await service.archiveSession(threadId as SessionId, { stopActivity: true })
+      }
+    } catch {
+      // Archive is best-effort. Dispose still runs in finally.
+    } finally {
+      dispose()
+    }
+  })()
+}
+
+/**
+ * The side-chat tab body.
+ *
+ * The composer's submit gesture is a user preference, so it must not be frozen
+ * at mount: this body subscribes to the sidebar store's prefs snapshot (its
+ * identity only changes on a settings write) and hands the resolved mode to
+ * the view, which makes flipping the setting in the Side card settings page
+ * reach an ALREADY MOUNTED tab. The value itself lives in the side-chat
+ * feature's own plugin-owned settings blob (see `prefs-shared.ts`).
+ * @param props - the composed tab props (ctx / store / scope / tab / visible).
+ * @returns the side-chat view bound to the live submit-key preference.
+ */
+function SideChatTab(props: TabComponentProps) {
+  const { ctx, store, scope, tab, visible } = props
+  const prefs = useSyncExternalStore(
+    useCallback((notify: () => void) => store.subscribe(notify), [store]),
+    useCallback(() => store.getSnapshot().prefs, [store]),
+  )
+  return (
+    <SideChatView
+      ctx={ctx}
+      scope={scope}
+      tab={tab}
+      visible={visible}
+      submitKey={sidechatSubmitKeyOf(prefs)}
+    />
+  )
+}
+
+/** The 6 built-in tab descriptors (the host owns the right-Sidebar terminal and browser). */
+export function builtinTabs(ctx: Context): readonly TabDescriptor[] {
   return [
     {
       id: 'editor',
@@ -43,10 +113,11 @@ export function builtinTabs(): readonly TabDescriptor[] {
       dedupeKey: (tab) => tab.path,
       // Declarative settings: the file-open behavior picker (in-place switch
       // vs per-path windows) renders as an iconed select row under the
-      // editor card's gear in the Side card settings page. The "open with"
+      // editor card's gear in the Side card settings page; the exclude-pattern
+      // rows (VS Code files.exclude style) sit below it, and the "open with"
       // configuration (SSH host + custom editors) is the custom panel BELOW
-      // those rows — the settings
-      // seam renders rows first, custom panel after.
+      // those rows — the settings seam renders rows first, custom panel after.
+      // The workspace-fence switch is GONE: there is no containment to toggle.
       settings: {
         toggles: [{
           key: 'editorExplorer',
@@ -67,20 +138,32 @@ export function builtinTabs(): readonly TabDescriptor[] {
               desc: () => t('editorExplorerSplitDesc'),
             },
           ],
+        }, {
+          key: 'explorerExclude',
+          type: 'patterns',
+          title: () => t('explorerExclude'),
+          desc: () => t('explorerExcludeDesc'),
+          patternsPlaceholder: t('explorerExcludePlaceholder'),
+        }],
+        // Plugin-owned rows (values live in `pluginSettings['editor']`): the
+        // plugin's own open-with targets are shown only when the host reports
+        // no local application, unless the user asks for both side by side.
+        pluginToggles: [{
+          key: 'openWithPluginTargets',
+          title: () => t('settingsOpenWithPluginTitle'),
+          desc: () => t('settingsOpenWithPluginDesc'),
         }],
         render: ({ pluginSettings, updatePluginSetting }) => (
           <OpenWithSettings pluginSettings={pluginSettings} updatePluginSetting={updatePluginSetting} />
         ),
       },
-      component: ({
-        ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace,
-        onOpenFileSide,
-      }) => (
+      component: ({ ctx, store, scope, tab, visible, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide }) => (
         <EditorHost
           ctx={ctx}
           store={store}
           scope={scope}
           tab={tab}
+          visible={visible}
           expanded={expanded ?? []}
           revealed={revealed ?? []}
           onToggleDir={onToggleDir ?? (() => { /* no-op */ })}
@@ -104,18 +187,24 @@ export function builtinTabs(): readonly TabDescriptor[] {
       icon: changesTabIcon,
       order: 20,
       single: true,
+      // Custom settings panel (not a declarative toggle row): the pinned
+      // commit-message model is picked from the DISCOVERED catalog, so the
+      // option list only exists at render time.
+      settings: {
+        render: CommitModelSettings,
+      },
       badge: (_ctx, scope) => {
         const count = opCountOf(scope.sessionId)
         return count === undefined || count === 0 ? null : count
       },
-      component: ({ ctx, store, scope, tab, visible, onOpenFile, onOpenDiff }) => (
+      component: ({ ctx, store, scope, tab, visible, onOpenDiff }) => (
         <ChangesTab
           ctx={ctx}
           store={store}
           scope={scope}
           tab={tab}
           visible={visible}
-          onOpenFile={onOpenFile ?? ((path) => { openSidebarFile(ctx, scope.sessionId, path) })}
+          onOpenFile={(path) => { openSidebarFile(ctx, scope.sessionId, path, { cwd: scope.cwd }) }}
           onOpenDiff={onOpenDiff}
         />
       ),
@@ -127,8 +216,8 @@ export function builtinTabs(): readonly TabDescriptor[] {
       icon: tasksTabIcon,
       order: 30,
       single: true,
-      // Declarative settings: the auto-open switches render under this row in
-      // the Side card settings page (the Tasks page's related settings).
+      // Declarative settings: auto-open, default view, task folding, and the
+      // jobs drawer switches share the existing Tasks card's settings gear.
       settings: {
         toggles: [{
           key: 'autoOpenSubagent',
@@ -138,12 +227,46 @@ export function builtinTabs(): readonly TabDescriptor[] {
           key: 'autoOpenJobs',
           title: () => t('settingsJobsTitle'),
           desc: () => t('settingsJobsDesc'),
+        }, {
+          key: 'tasksViewMode',
+          type: 'select',
+          title: () => t('settingsViewModeTitle'),
+          desc: () => t('settingsViewModeDesc'),
+          options: [
+            {
+              value: 'graph',
+              title: () => t('settingsViewModeGraph'),
+              desc: () => t('settingsViewModeGraphDesc'),
+            },
+            {
+              value: 'tree',
+              title: () => t('settingsViewModeTree'),
+              desc: () => t('settingsViewModeTreeDesc'),
+            },
+          ],
+        }, {
+          key: 'tasksAutoFoldSettled',
+          title: () => t('settingsTasksAutoFoldSettledTitle'),
+          desc: () => t('settingsTasksAutoFoldSettledDesc'),
+        }, {
+          key: 'tasksAutoFoldBranches',
+          title: () => t('settingsTasksAutoFoldBranchesTitle'),
+          desc: () => t('settingsTasksAutoFoldBranchesDesc'),
+        }, {
+          key: 'tasksAutoFoldIdle',
+          title: () => t('settingsTasksAutoFoldIdleTitle'),
+          desc: () => t('settingsTasksAutoFoldIdleDesc'),
+        }, {
+          key: 'jobsAutoCollapse',
+          title: () => t('settingsJobsAutoCollapseTitle'),
+          desc: () => t('settingsJobsAutoCollapseDesc'),
         }],
       },
-      component: ({ ctx, scope, visible, onSubagentJump }) => (
+      component: ({ ctx, store, scope, visible, onSubagentJump }) => (
         <SubagentView
           sessionId={scope.sessionId}
           ctx={ctx}
+          store={store}
           active={visible}
           onOpenChild={(address) => { onSubagentJump?.(address.childSessionId) }}
         />
@@ -183,17 +306,97 @@ export function builtinTabs(): readonly TabDescriptor[] {
       // One tab per thread: an already-open thread focuses instead of
       // duplicating; unbound fresh tabs never dedupe (each mints its own).
       dedupeKey: (tab) => sidechatThreadIdOf(tab),
-      // Closing the tab releases the thread's live agent; the session and
-      // its history stay persisted (reopen from any thread's header menu).
+      // A bound thread is archived on close, then its live agent is released.
+      // Saving a copy first is the header's existing "save as new session";
+      // that action (and the explicit archive control) is unchanged. An
+      // unbound fresh tab has no session, so close cleans nothing up.
       onClose: (tab) => {
         const threadId = sidechatThreadIdOf(tab)
-        if (threadId !== undefined) {
-          void api.sidechatDispose(threadId).catch(() => {})
-        }
+        if (threadId !== undefined) releaseSidechat(ctx, threadId)
       },
-      component: ({ ctx, scope, tab, visible }) => (
-        <SideChatView ctx={ctx} scope={scope} tab={tab} visible={visible} />
-      ),
+      // The composer's submit gesture (Enter vs Cmd/Ctrl+Enter) is a
+      // plugin-owned setting: a select row under the side-chat card's gear in
+      // the Side card settings page, persisted in
+      // `pluginSettings.sidechat` — the feature-scoped seam, so no host
+      // PrefsSchema field is involved. `SideChatTab` reads it live, and
+      // `defaultValue` keeps the row honest before the first write (a fresh
+      // document has no blob, while the composer already sends on Enter).
+      settings: {
+        pluginToggles: [{
+          key: SIDECHAT_SUBMIT_KEY_SETTING,
+          type: 'select',
+          defaultValue: SIDECHAT_SUBMIT_KEY_DEFAULT,
+          title: () => t('settingsSidechatSubmitKeyTitle'),
+          desc: () => t('settingsSidechatSubmitKeyDesc'),
+          options: [
+            {
+              value: 'enter',
+              title: () => t('settingsSidechatSubmitEnter'),
+              desc: () => t('settingsSidechatSubmitEnterDesc'),
+            },
+            {
+              value: 'mod-enter',
+              title: () => t('settingsSidechatSubmitModEnter'),
+              desc: () => t('settingsSidechatSubmitModEnterDesc'),
+            },
+          ],
+        }],
+      },
+      component: SideChatTab,
+    },
+    {
+      // The bottom workbench's terminal (#774). NOT the host's right-Sidebar
+      // terminal: the plugin owns no PTY, this page is a self-drawn xterm
+      // driven by the host's session-scoped terminal service
+      // (src/client/terminal-client.ts), and the two terminals are separate
+      // processes on purpose. `bottomOnly` is what keeps this type out of the
+      // host's guide — a second "Terminal" capsule there would be the
+      // shadowing the mount lane pins as absent.
+      id: 'terminal-bottom',
+      title: () => t('terminal'),
+      description: () => t('guideDescTerminal'),
+      icon: terminalTabIcon,
+      // Below the four host-facing pages (10..35) and above the hidden diff
+      // tab: the terminal is a secondary tool, but a visible menu row.
+      order: 40,
+      bottomOnly: true,
+      // Multiple bottom terminals per session workbench (#774 follow-up).
+      // Dropping the old `single: true` is the whole point: each open now
+      // MINTS its own tab (unique id + `meta.terminalInstance`), so the +
+      // menu stacks as many live shells as the host grants slots for, and
+      // two tabs never share one host process (terminal-client.ts keys the
+      // host binding by instance+run).
+      createTab: () => ({
+        tab: {
+          id: `terminal-bottom:${crypto.randomUUID()}`,
+          type: 'terminal-bottom',
+          title: t('terminal'),
+          meta: { [INSTANCE_FIELD]: crypto.randomUUID() },
+        },
+      }),
+      // The service is probed, never injected (it is absent on deployments
+      // without the host terminal controller): a missing service shows a
+      // disabled menu row instead of a terminal that cannot start.
+      available: (ctx) => webTerminals(ctx) !== undefined,
+      // The bottom terminal never declares a title override: the tab strip
+      // reads the descriptor's own title.
+      component: LazyTerminalBottom,
+      // Unmounting the view deliberately leaves the shell running (the host's
+      // "a view survives DOM unmount" contract, and what makes a reload
+      // reattach), so closing the TAB is the only thing that ends the process
+      // — without it every closed bottom terminal would hold one of the host's
+      // per-session terminal slots forever.
+      onClose: (tab, scope) => {
+        // Every close path resolves a scope (the type makes it required), so
+        // this guard should be unreachable. It returns instead of substituting
+        // `''` for a missing one because an empty session id is the ONE option
+        // that is worse than doing nothing: the host would look the terminal up
+        // in a session that does not exist, no-op, and leave the shell running
+        // — invisibly holding a per-session terminal slot for the page's life.
+        const sessionId: string | undefined = scope?.sessionId
+        if (sessionId === undefined || sessionId === '') return
+        closeBottomTerminal(ctx, tab, sessionId)
+      },
     },
     {
       id: 'diff',
@@ -204,7 +407,7 @@ export function builtinTabs(): readonly TabDescriptor[] {
       dedupeKey: (tab) => tab.id,
       component: ({ scope, tab }) => (
         tab.diff === undefined ? null
-          : <DiffTab sessionId={scope.sessionId} cwd={scope.cwd} diff={tab.diff} />
+          : <DiffTab scope={scope} diff={tab.diff} />
       ),
     },
   ]

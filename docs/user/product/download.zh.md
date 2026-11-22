@@ -2,7 +2,9 @@
 
 [English](download.md) | 中文
 
-YourBuddy 当前适用于 Apple Silicon 上的 macOS 11 或更高版本。
+YourBuddy 要求 Apple Silicon 上的 macOS 13.5 或更高版本。安装或升级前，请先检查 macOS 版本。
+
+随应用提供的 Node `24.22.3` 二进制文件在 Mach-O 中声明的最低 macOS 版本为 `13.5`。这决定了运行时的最低要求，不代表应用已在 macOS 13.5 上完成全面测试，也不保证所有可选集成都支持该系统。可选工具仍有各自的前置要求。
 
 ## 下载最新版本
 

@@ -3,14 +3,16 @@
  * @module @deepseek-ai/dsh-tool-bash-persistent
  */
 
+import type {} from '@deepseek-ai/dsh-working-directory'
 import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { truncateWithoutSplittingSurrogatePair } from '@deepseek-ai/dsh-output-retention'
+import { TerminalError } from '@deepseek-ai/dsh-terminal'
 import type { TerminalReadResult, TerminalSessionId } from '@deepseek-ai/dsh-terminal'
 import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
-import { defineTool } from '@deepseek-ai/dsh-tools'
+import { defineTool, ToolArgsError, ToolContextUnavailableError } from '@deepseek-ai/dsh-tools'
 
 // TODO: Replace the file-search advice; arbitrary command output need not come from a searchable file.
 const TRUNCATED_MESSAGE = '<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>'
@@ -263,10 +265,10 @@ function persistentShells(ctx: Context, config: ResolvedConfig): PersistentShell
     const combinedSignal = AbortSignal.any([signal, lifecycle.signal])
     const creation = (async () => {
       try {
-        const cwd = owner.session.header.cwd
+        const cwd = await ctx.workingDirectory.ensure(owner, combinedSignal)
         const spawned = await ctx.terminals.spawn(owner, {
           type: config.backendType,
-          ...cwd === undefined ? {} : { cwd },
+          cwd,
         }, combinedSignal)
         live.set(owner, spawned.sessionId)
         if (!ownerCleanupInstalled.has(owner)) {
@@ -276,16 +278,18 @@ function persistentShells(ctx: Context, config: ResolvedConfig): PersistentShell
             live.delete(owner)
           }, 'tool-bash-persistent owner cache cleanup')
         }
-        // Echo suppression only: the prompt stays the backend's own, so the
-        // backend's prompt-based readiness detection keeps working.
+        // Suppress input echo and history expansion, which would otherwise
+        // rewrite `!` sequences or discard the whole wrapper line before bash
+        // parses it. The prompt stays the backend's own, so the backend's
+        // prompt-based readiness detection keeps working.
         const setup = ctx.terminals.startSend(owner, spawned.sessionId, {
-          text: 'stty -echo',
+          text: 'stty -echo; set +H',
           submit: true,
           signal: combinedSignal,
         })
         const result = await setup.done
         if (result.sessionStatus.kind === 'exited' || result.waitReason === 'timeout') {
-          throw new Error('persistent bash shell did not accept initialization')
+          throw new TerminalError('persistent bash shell did not accept initialization', 'INIT_REJECTED')
         }
         return spawned.sessionId
       } catch (error: unknown) {
@@ -435,9 +439,9 @@ function registerPersistentBash(ctx: Context, config: ResolvedConfig): void {
       render: (_args, value) => [{ type: 'text', text: value }],
     },
     async execute(args, exec) {
-      if (args.command.trim().length === 0) throw new Error('command must be a non-empty string')
+      if (args.command.trim().length === 0) throw new ToolArgsError(['command must be a non-empty string'])
       const owner = exec.agent
-      if (owner === undefined) throw new Error('bash requires an owning agent session')
+      if (owner === undefined) throw new ToolContextUnavailableError('bash requires an owning agent session')
       return serialized(owner, async () => {
         if (exec.signal.aborted) return '' // ToolRuntime publishes ABORTED after settlement.
         return executeCommand(ctx, shells, owner, args.command, config, exec.signal)
@@ -448,7 +452,7 @@ function registerPersistentBash(ctx: Context, config: ResolvedConfig): void {
 }
 
 export const name = 'tool-bash-persistent'
-export const inject = ['tools', 'terminals']
+export const inject = ['tools', 'terminals', 'workingDirectory']
 
 /** Configuration for the persistent Bash tool. */
 export interface Config {

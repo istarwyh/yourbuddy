@@ -2,7 +2,9 @@
 
 English | [中文](download.zh.md)
 
-YourBuddy currently targets macOS 11 or later on Apple Silicon.
+YourBuddy requires macOS 13.5 or later on Apple Silicon. Check your macOS version before installing or upgrading.
+
+The bundled Node `24.22.3` binary declares macOS `13.5` as its Mach-O minimum OS version. This sets the runtime minimum; it is not evidence of full application testing on macOS 13.5 or a guarantee that every optional integration supports that OS. Optional tools retain their own prerequisites.
 
 ## Download the latest release
 

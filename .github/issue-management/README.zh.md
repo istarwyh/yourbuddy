@@ -45,20 +45,22 @@ REST 读取使用仓库 `GITHUB_TOKEN`。可选的 Project 校验使用另行配
 
 仅批准或仅评论的评审不分配生命周期 runner。PR 推送与标签变更，以及 Issue 指派变更，不触发生命周期工作。其他已订阅的 Issue 事件维护 Project 归属、状态及审计评论；精确订阅列表由工作流定义。
 
-PR 打开时，工作流按配置时区中的 PR 创建日期，为每个被引用 Issue（包括信息型引用）初始化空的 Project `Start Date`。此生命周期操作可以添加 Project 归属，并需要 Project 写权限；信息型引用的读取豁免仅适用于 PR 校验。[规划字段归属](../../.agents/notes/implemented/process/2026-09-02-project-local-issue-planning-fields.zh.md)定义日期保留规则。
+PR 打开时，工作流按配置时区中的 PR 创建日期，为每个被引用 Issue（包括信息型引用）初始化空的 Project `Start Date`。此生命周期操作可以添加 Project 归属，并需要 Project 写权限；信息型引用的读取豁免仅适用于 PR 校验。已有 Start Date 值会保留。
 
 -----
 
 <a id="configuration-and-limitations"></a>
 ## 配置与限制
 
-可信 runner 的 `GITHUB_REPOSITORY` 决定 REST 请求、Issue 引用和 GraphQL Issue 读取的仓库；缺少身份时直接失败，不回退到上游。[config.json](config.json)独立选择 `projectOwner`、`projectOwnerType`（`organization` 或 `user`）、Project、字段名、状态、生命周期操作者和时区。策略读取 Project 自定义单选 `Priority` 字段，而非组织原生 Issue Priority 字段。维护者手动设置 Project Priority；指引编辑原生 Issue 字段的 skill 不会填充该值。Issue 审计先移除 PR 专用 kind 标签和已停用的标签别名，再校验其余元数据。不提供字段迁移或 Priority 同步。
+可信 runner 的 `GITHUB_REPOSITORY` 决定 REST 请求、Issue 引用和 GraphQL Issue 读取的仓库；缺少身份时直接失败，不回退到上游。[config.json](config.json)独立选择 `projectOwner`、`projectOwnerType`（`organization` 或 `user`）、Project、字段名、状态、生命周期操作者和时区。策略读取 Project 自定义单选 `Priority` 字段，而非组织原生 Issue Priority 字段。Project 本地规划字段不需要另行授予组织 Issue Fields 权限。维护者手动设置 Project Priority；指引编辑原生 Issue 字段的 skill 不会填充该值。Issue 审计先移除 PR 专用 kind 标签和已停用的标签别名，再校验其余元数据。不提供字段迁移或 Priority 同步。
 
 启用 Projects 需要 owner 配置 `projectEnabled`、Project owner/type/number/title，以及针对所需 Project 操作另行授权的 `ISSUE_PROJECT_TOKEN`。将 `lifecycleActor` 设为该 token 的实际 Project 操作者登录名。若需保留人工状态归属保护，应使用独立自动化身份；与人工操作者共用登录名的个人 token 无法区分自动和手动看板更新。仓库 Issue 写入使用工作流 `GITHUB_TOKEN`，使审计评论保持由 bot 创建，不受 Project 凭据影响。生命周期工作流保留 `contents: read`；启用生命周期写入还需另行批准 `issues: write` 和 `pull-requests: read` 权限。此配置不创建凭据或新增工作流权限。看板生命周期审计仅在启用 Project 集成时运行。个人仓库不要求原生 Issue Type；支持此功能的仓库可通过独立的 `requireIssueType` 配置启用。
 
 工作流执行默认分支策略，因此修改此 PR 的策略不能授权其自身合并。首次迁移需要独立审查代码、本地策略与工作流证据、遵守 GitHub 实际合并限制并由 owner 批准迁移；不得伪造通过状态或以写凭据执行不可信 PR 代码。迁移后，应对 PR 当前精确 head 重新运行策略检查。
 
-生命周期处理由事件驱动，不是协调器。被省略的事件不会修复 Project 状态，并发 Project mutation 也没有原子比较并交换保护。选择性求值不重新设计必需检查的权威来源，也不保证已测得的 Actions 分钟节省。[选择性求值决策](../../.agents/notes/implemented/process/2026-09-07-selective-issue-policy-evaluation.zh.md)记录取舍。
+删除旧的组织字段前，必须逐一核对其中的值与对应的 Project 值，包括已归档的 Project item。
+
+生命周期处理由事件驱动，不是协调器。被省略的事件不会修复 Project 状态，并发 Project mutation 也没有原子比较并交换保护。选择性求值不重新设计必需检查的权威来源，也不保证已测得的 Actions 分钟节省。[已归档的选择性求值决策](../../.agents/notes/archived/process/2026-09-07-selective-issue-policy-evaluation.md)记录取舍。
 
 -----
 

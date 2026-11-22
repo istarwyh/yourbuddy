@@ -57,7 +57,7 @@ async function fixture(ready = true) {
   })
   runtime.ctx = host
   const errors: unknown[] = []
-  const warn = vi.spyOn(host.logger, 'warn').mockImplementation((value: unknown) => { errors.push(value) })
+  const warn = vi.spyOn(host.logger, 'warn').mockImplementation((...values: unknown[]) => { errors.push(...values) })
   onTestFinished(() => { warn.mockRestore() })
   if (ready) { commit?.(); await host.hmr.runExclusive(async () => {}) }
   const bundle = (name: string, revision = 'first', broken = false) => {
@@ -129,7 +129,8 @@ it('rejects a changed historical linked root before touching the running composi
   await f.drainChange(() => {
     file(f.profile.patchPath, readFileSync(f.profile.patchPath, 'utf8').replace('retained', 'edited'))
   })
-  expect(f.errors.some(error => String(error).includes('requires a process restart'))).toBe(true)
+  expect(f.errors).toContain('restart required: %s')
+  expect(f.errors).toContain('package-moved')
   expect(f.ctx.get('linked-probe')).toBe(active)
   expect(f.ctx.get('userProbe')).toBe('retained')
   expect(getEnvironmentData('@deepseek-ai/dsh-app-boot/profile-resolution')).toBe(generation)

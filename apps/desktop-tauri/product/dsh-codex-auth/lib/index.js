@@ -1,5 +1,5 @@
-import { _ as refreshTokens, a as DEFAULT_REQUEST_TIMEOUT_MS, b as writeAuthFile, c as MAX_REFRESH_AGE_MS, d as defaultAuthJsonPath, f as mergeRefreshed, g as readAuthSnapshot, h as readAuthFileVersion, i as CodexAuthAdapter, l as authState, m as readAuthFile, n as readBoundedResponseText, o as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, p as needsRefresh, r as CODEX_ROUTE, s as DEFAULT_REFRESH_LEAD_MS, t as liveValue, u as decodeAccessToken, v as refreshTooOld, y as sameAuthFileVersion } from "./volatile-config-DNSIaT45.js";
-import { t as CODEX_NATIVE_CHECKPOINT_BLOCK_TYPE } from "./native-checkpoint-DaSMABQ8.js";
+import { _ as refreshTokens, a as DEFAULT_REQUEST_TIMEOUT_MS, b as writeAuthFile, c as MAX_REFRESH_AGE_MS, d as defaultAuthJsonPath, f as mergeRefreshed, g as readAuthSnapshot, h as readAuthFileVersion, i as CodexAuthAdapter, l as authState, m as readAuthFile, n as readBoundedResponseText, o as DEFAULT_WEBSOCKET_CONNECT_TIMEOUT_MS, p as needsRefresh, r as CODEX_ROUTE, s as DEFAULT_REFRESH_LEAD_MS, t as liveValue, u as decodeAccessToken, v as refreshTooOld, y as sameAuthFileVersion } from "./volatile-config-CDXtvTw0.js";
+import { t as CODEX_NATIVE_CHECKPOINT_BLOCK_TYPE } from "./native-checkpoint-Def4ztmG.js";
 import z from "@deepseek-ai/schemastery";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { withFileLock } from "@deepseek-ai/dsh-atomic-write";
@@ -936,7 +936,7 @@ function registerAccountRoutes(connection, namespace, endpoints, handler) {
 			});
 			let result;
 			try {
-				result = method === `${namespace}/${endpoint}` ? await handler(endpoint, payload, request.signal, connection.operator) : failure("bad-request", "Account request method does not match its endpoint");
+				result = method === `${namespace}/${endpoint}` ? await handler(endpoint, payload, request.signal, connection.browserPeer) : failure("bad-request", "Account request method does not match its endpoint");
 			} catch {
 				result = failure("internal", "Account request failed");
 			}

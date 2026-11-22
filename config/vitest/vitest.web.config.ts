@@ -20,7 +20,7 @@ export default defineConfig({
   // facade has no include (match-all), so apps/web/tests resolves bare
   // workspace imports to source like every other lane.
   plugins: [
-    tsconfigPaths({ projects: ['./tsconfig.base.json'] }),
+    tsconfigPaths({ projects: [fileURLToPath(new URL('../../tsconfig.base.json', import.meta.url))] }),
     standardDecoratorPlugin(),
   ],
   test: {

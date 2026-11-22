@@ -1,16 +1,15 @@
 diff --git a/client.js b/client.js
-index aefeec929d..5eaeb339ba 100644
 --- a/client.js
 +++ b/client.js
-@@ -16,6 +16,7 @@ window.__ModuleLoader__.load({
+@@ -16,6 +16,7 @@
      Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
      var react = require("react");
      var h = react.createElement;
-+    var PLUGIN_VERSION = "0.3.6";
++    var PLUGIN_VERSION = "0.5.10";
  
      // ── CSS (theme tokens) ────────────────────────────────────────────────
      var CSS = ".__mp_grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;padding:0;margin:0;list-style:none}" +
-@@ -40,6 +41,9 @@ window.__ModuleLoader__.load({
+@@ -40,6 +41,9 @@
        ".__mp_code{display:block;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:6px;padding:8px 10px;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--dsw-alias-label-primary);white-space:pre-wrap;word-break:break-all;width:100%;box-sizing:border-box;min-width:0}" +
        ".__mp_link{color:var(--dsw-alias-brand-primary);font-size:12px;text-decoration:none}" +
        ".__mp_btnPrimary{border-color:var(--dsw-alias-state-business-primary, #679efe);background:var(--dsw-alias-state-business-primary, #679efe);color:#fff}" +
@@ -18,9 +17,9 @@ index aefeec929d..5eaeb339ba 100644
 +      ".__mp_identityName{color:var(--dsw-alias-label-primary);font-weight:600}" +
 +      ".__mp_identityVersion{padding:1px 8px;border-radius:999px;background:var(--dsw-alias-accent-soft,var(--dsw-alias-border-l2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}" +
        ".__mp_error{color:var(--dsw-alias-label-error);font-size:12px;margin:8px 0 0}";
-     var tagId = "dsh-plugin-marketplace/main.css";
-     if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
-@@ -68,7 +72,7 @@ window.__ModuleLoader__.load({
+     // Scoped flat controls retain native keyboard and form behavior.
+     CSS += `
+@@ -102,7 +106,7 @@
        readme: "README 摘要",
        readmeEmpty: "（该仓库没有 README）",
        openRepo: "打开 GitHub 仓库 ↗",
@@ -29,9 +28,9 @@ index aefeec929d..5eaeb339ba 100644
        updated: "更新",
        total: "共 {count} 个插件",
        ghError: "GitHub API 请求失败（未认证限流 60 次/小时），请稍后再试",
-@@ -79,6 +83,12 @@ window.__ModuleLoader__.load({
-       installErr: "安装失败：{msg}",
+@@ -114,6 +118,12 @@
        installIdle: "",
+       hostTimeout: "宿主在 15 秒内没有确认请求，请检查插件是否启用并重启 DSH 后重试。",
        installingHint: "正在后台执行 dsh plugin add，请稍候…",
 +      npmChecking: "正在核验 npm 包…",
 +      npmResolved: "可安装 npm 包：{pkg}@{version}",
@@ -42,9 +41,9 @@ index aefeec929d..5eaeb339ba 100644
        aiExplain: "🤖 AI 解释",
        aiExplaining: "AI 解释中，请稍候…",
        aiExplainErr: "AI 解释失败：{msg}",
-@@ -110,6 +120,12 @@ window.__ModuleLoader__.load({
-       installErr: "Install failed: {msg}",
+@@ -151,6 +161,12 @@
        installIdle: "",
+       hostTimeout: "The Host did not acknowledge the request within 15 seconds. Check that the plugin is enabled and restart DSH before retrying.",
        installingHint: "Running dsh plugin add in the background…",
 +      npmChecking: "Checking the npm package…",
 +      npmResolved: "Installable npm package: {pkg}@{version}",
@@ -55,7 +54,7 @@ index aefeec929d..5eaeb339ba 100644
        aiExplain: "🤖 AI Explain",
        aiExplaining: "AI is explaining…",
        aiExplainErr: "AI explain failed: {msg}",
-@@ -165,25 +181,104 @@ window.__ModuleLoader__.load({
+@@ -206,23 +222,102 @@
        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
        return new TextDecoder("utf-8").decode(bytes);
      }
@@ -147,8 +146,8 @@ index aefeec929d..5eaeb339ba 100644
 -      npmCache.set(pkg, promise);
 +      npmCache.set(fullName, promise);
        return promise;
-     }
- 
++    }
++
 +    var marketplaceLinkChannel = "yourbuddy.desktop.marketplace-link";
 +    var marketplaceLinkVersion = 1;
 +    var marketplaceLinkSequence = 0;
@@ -167,12 +166,10 @@ index aefeec929d..5eaeb339ba 100644
 +      }
 +      var opened = window.open(url, "_blank", "noopener,noreferrer");
 +      if (opened) opened.opener = null;
-+    }
-+
+     }
+ 
      // ── settings write channel ────────────────────────────────────────────
-     /**
-      * Write one namespace field through whichever settings channel this host
-@@ -243,10 +338,15 @@ window.__ModuleLoader__.load({
+@@ -284,10 +379,15 @@
  
      function DetailPanel(props) {
        var p = props.plugin;
@@ -189,7 +186,7 @@ index aefeec929d..5eaeb339ba 100644
        var explainState = props.explainState; // {status, text, repo} from the settings scope
        // The settings field is namespace-global and persists across sessions,
        // so only show it when it belongs to the plugin currently open.
-@@ -263,6 +363,8 @@ window.__ModuleLoader__.load({
+@@ -304,6 +404,8 @@
        var btn;
        if (status === "running") {
          btn = h("button", { type: "button", className: "__mp_more", disabled: true }, props.t("installing"));
@@ -198,7 +195,7 @@ index aefeec929d..5eaeb339ba 100644
        } else if (confirming) {
          btn = h("button", {
            type: "button", className: "__mp_btnPrimary __mp_more",
-@@ -282,19 +384,26 @@ window.__ModuleLoader__.load({
+@@ -323,19 +425,26 @@
            props.lang ? h("span", null, p.lang) : null
          ),
          h("div", null,
@@ -231,7 +228,7 @@ index aefeec929d..5eaeb339ba 100644
          btn,
          statusNode,
          h("div", { className: "__mp_detailTitle" }, props.t("readme")),
-@@ -325,7 +434,7 @@ window.__ModuleLoader__.load({
+@@ -394,7 +503,7 @@
        var t = props.t;
        var scope = props.scope;
        var api = props.api;
@@ -240,7 +237,7 @@ index aefeec929d..5eaeb339ba 100644
        var s = state[0], set = state[1];
        // install-state subscription (stable pattern: useState + subscribe, never
        // depend on getSnapshot() reference identity).
-@@ -376,7 +485,7 @@ window.__ModuleLoader__.load({
+@@ -481,7 +590,7 @@
        }, [load]);
        var openDetail = react.useCallback(function (plugin) {
          if (s.open && s.open.fullName === plugin.fullName) { set(function (prev) { return Object.assign({}, prev, { open: null }); }); return; }
@@ -249,7 +246,7 @@ index aefeec929d..5eaeb339ba 100644
          // Detail expands inline under the clicked card; scroll minimally
          // (nearest) only when it would fall outside the viewport.
          setTimeout(function () {
-@@ -395,12 +504,12 @@ window.__ModuleLoader__.load({
+@@ -500,12 +609,12 @@
              return Object.assign({}, prev, { readmeLoading: false, readmeError: !rateLimited, readmeRateLimited: rateLimited });
            });
          });
@@ -266,34 +263,27 @@ index aefeec929d..5eaeb339ba 100644
            });
          });
        }, [s.open]);
-@@ -410,6 +519,10 @@ window.__ModuleLoader__.load({
+@@ -515,6 +624,7 @@
        };
        var more = function () { load(s.q, s.sort, s.page + 1, true); };
-       return h("div", null,
-+        h("div", { className: "__mp_identity" },
-+          h("span", { className: "__mp_identityName" }, "dsh-plugin-marketplace"),
-+          h("span", { className: "__mp_identityVersion" }, "v" + PLUGIN_VERSION)
-+        ),
+       return h("div", { className: "__mp_root dsh-flat" },
++        h("div", { className: "__mp_identity" }, h("span", { className: "__mp_identityName" }, "dsh-plugin-marketplace"), h("span", { className: "__mp_identityVersion" }, "v" + PLUGIN_VERSION)),
+         h(PluginManager, { channel: channel, t: t, onAction: onInstall, writable: installState && installState.writable }),
          h("form", { className: "__mp_toolbar", onSubmit: submit },
-           h("input", { className: "__mp_input", type: "search", value: s.q, placeholder: t("search"), onChange: function (e) { set(function (prev) { return Object.assign({}, prev, { q: e.target.value }); }); } }),
-           h("select", { className: "__mp_select", value: s.sort, onChange: function (e) { load(s.q, e.target.value, 1, false); } },
-@@ -425,7 +538,7 @@ window.__ModuleLoader__.load({
+           h("input", { className: "__mp_input", type: "search", value: s.q, "aria-label": t("search"), placeholder: t("search"), onChange: function (e) { set(function (prev) { return Object.assign({}, prev, { q: e.target.value }); }); } }),
+@@ -532,7 +642,7 @@
              var open = s.open && s.open.fullName === p.fullName;
              return h("div", { key: p.fullName, className: "__mp_item" },
                h(PluginCard, { plugin: p, t: t, onOpen: function () { openDetail(p); } }),
--              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: installState && installState.status === "ready" ? installState.value.installState : null, onInstall: onInstall, ghError: t("ghError"), explainState: installState && installState.status === "ready" ? installState.value.aiExplainResult : null, explainError: s.explainError, onExplain: onExplain, bundleInfo: s.bundleInfo }) : null
-+              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: installState && installState.status === "ready" ? installState.value.installState : null, onInstall: onInstall, ghError: t("ghError"), explainState: installState && installState.status === "ready" ? installState.value.aiExplainResult : null, explainError: s.explainError, onExplain: onExplain, npmInfo: s.npmInfo }) : null
+-              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: visibleInstall, onInstall: onInstall, ghError: t("ghError"), explainState: visibleExplain, explainError: messageText(t, explainErrors[p.fullName]), onExplain: onExplain, bundleInfo: s.bundleInfo }) : null
++              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: visibleInstall, onInstall: onInstall, ghError: t("ghError"), explainState: visibleExplain, explainError: messageText(t, explainErrors[p.fullName]), onExplain: onExplain, npmInfo: s.npmInfo }) : null
              );
            })
          ),
-diff --git a/index.js b/index.js
-index f590afce10..146e16601a 100644
---- a/index.js
-+++ b/index.js
-@@ -57,6 +57,24 @@ const Config = z.object({
- /** npm package-name shape (scope/name, no spaces, no path chars). */
- const PKG_NAME = /^@?[a-z0-9][a-z0-9-._]*(?:\/[a-z0-9][a-z0-9-._]*)?$/;
- 
+diff --git a/management.js b/management.js
+--- a/management.js
++++ b/management.js
+@@ -1,3 +1,21 @@
 +/** Keep the actionable pnpm diagnostic instead of the CLI's generic footer. */
 +function installFailureMessage(result) {
 +  const output = [result.stdout, result.stderr]
@@ -312,49 +302,15 @@ index f590afce10..146e16601a 100644
 +  return details.slice(-3).join(" ") || "unknown error";
 +}
 +
- function apply(ctx, config) {
-   const sourceGetter = () => typeof config.get === "function" ? config.get() : config;
-   let lastTs = 0;
-@@ -203,12 +221,13 @@ function apply(ctx, config) {
-   }
- 
-   async function maybeRunInstall() {
-+    let pkg = "";
-     try {
-       const cfg = current();
-       const req = cfg?.install;
-       if (!req || !req.pkg || req.ts === lastTs || req.ts === 0) return;
-       lastTs = req.ts;
--      const pkg = String(req.pkg).trim();
-+      pkg = String(req.pkg).trim();
-       if (!PKG_NAME.test(pkg)) {
-         await report("error", `invalid package name: ${pkg}`, pkg);
-         return;
-@@ -218,10 +237,10 @@ function apply(ctx, config) {
-       await report("running", `installing ${pkg}…`, pkg);
-       const result = await runInstall(pkg, profile);
-       if (result.code !== 0) {
--        const output = (result.stderr || result.stdout || "").trim();
-+        const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
-         const tail = output.includes("ERR_PNPM_IGNORED_BUILDS")
-           ? "dependency build scripts were blocked by pnpm; the plugin author must make native build dependencies opt-in"
--          : output.split("\n").slice(-3).join(" ");
-+          : installFailureMessage(result);
-         ctx.logger.warn(`[plugin-marketplace] install failed (${result.code}): ${tail}`);
-         await report("error", `install failed: ${tail || "unknown error"}`, pkg);
-         return;
-@@ -231,7 +250,7 @@ function apply(ctx, config) {
-       await report("ok", `${pkg} installed${mountNote}. Restart dsh web to load it.`, pkg);
-     } catch (error) {
-       ctx.logger.warn(`[plugin-marketplace] install flow failed: ${String(error)}`);
--      await report("error", String(error instanceof Error ? error.message : error));
-+      await report("error", String(error instanceof Error ? error.message : error), pkg);
-     }
-   }
- 
-@@ -311,4 +330,4 @@ function apply(ctx, config) {
-   }
- }
- 
--export { Config, apply, inject, name };
-+export { Config, apply, inject, installFailureMessage, name };
+ import { readFileSync, writeFileSync, existsSync } from "node:fs";
+ import { join } from "node:path";
+ import { AsyncResource } from "node:async_hooks";
+@@ -99,7 +117,7 @@
+     const cleaned = action === "remove" ? removeManualMount(pkg, profile, false) : null;
+     const args = action === "remove" ? ["remove", pkg] : ["add", `${pkg}@latest`];
+     const result = await execute(args, profile);
+-    if (result.code !== 0) throw new Error(`${pkg}: ${(result.stderr || result.stdout || `exit ${result.code}`).trim().slice(-1800)}`);
++    if (result.code !== 0) throw new Error(`${pkg}: ${installFailureMessage(result)}`);
+     if (cleaned !== null) removeManualMount(pkg, profile);
+     if (action !== "remove") {
+       const manifest = JSON.parse(readFileSync(join(profile.dir, "node_modules", pkg, "package.json"), "utf8"));

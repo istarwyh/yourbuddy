@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
@@ -28,8 +28,9 @@ function cleanup(t, action) {
 }
 
 async function canvas(t) {
-  const root = await mkdtemp(join(tmpdir(), 'yourbuddy-design-test-'))
-  cleanup(t, () => rm(root, { recursive: true, force: true }))
+  const directory = await mkdtemp(join(tmpdir(), 'yourbuddy-design-test-'))
+  cleanup(t, () => rm(directory, { recursive: true, force: true }))
+  const root = await realpath(directory)
   await mkdir(join(root, 'project'))
   await writeFile(join(root, 'project/canvas.json'), JSON.stringify({ v: 3, title: 'Two boards', pages: [], boards: {
     'Main.dc.html': { x: 0, y: 0, w: 400, h: 300 }, 'Second.dc.html': { x: 480, y: 0, w: 400, h: 300 },

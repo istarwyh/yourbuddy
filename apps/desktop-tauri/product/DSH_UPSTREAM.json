@@ -1,39 +1,66 @@
 {
   "repository": "deepseek-ai/deepseek-harness",
   "channel": "stable-else-rc",
-  "tag": "dsh-v0.2.0-rc.2",
-  "version": "0.2.0-rc.2",
-  "commit": "639ed015397290b3745d163aafe02ffee4aa3f84",
+  "tag": "dsh-v0.2.2-rc.5",
+  "version": "0.2.2-rc.5",
+  "commit": "9c2670d3bce5275e0d1610272958121af87787bb",
   "patches": [
     {
       "id": "workbench-primary-layout",
       "file": "patches/dsh-workbench-primary-layout.patch",
-      "sha256": "378ea848d7e4ae7be94a7fe7a7adbfca9968cc31d909cfe292e5b38efe08d3df",
-      "baseCommit": "4e097fad4837e318903684bbea083a40996ae6a6",
-      "purpose": "Add an optional workbench slot whose occupant can remain beside the auxiliary region or collapse while that region is expanded, while retaining the default DSH conversation layout.",
+      "sha256": "275bfeb28947086096879d50f45e862110afb8095825035d94e7bd28f6bcc006",
+      "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
+      "purpose": "Add the optional primary workbench and retained auxiliary Session region, collapse the workbench only while the right Sidebar is shown, and expose a lower workspace collection seat.",
       "paths": [
-        "packages/client/ui-layout"
+        "packages/client/ui-layout",
+        "packages/client/ui-workspace"
       ]
     },
     {
       "id": "sidebar-header-actions",
       "file": "patches/dsh-sidebar-header-actions.patch",
-      "sha256": "50341401aabb05a81447fc2b96d7a677fc92eea579fa81f63c2c18bc108af329",
-      "baseCommit": "1915ef4a0d0ea64799c610eac45b4c6cdecbcd98",
-      "purpose": "Add a generic expanded-sidebar header action seat used by YourBuddy's compact native window controls.",
+      "sha256": "6a59513fe650884f8f5e31af4f6f615631a842ffe8162d25bfdf07721390fe60",
+      "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
+      "purpose": "Add expanded-sidebar header actions for compact native window controls and refresh the current client slot catalog.",
       "paths": [
         "packages/client/ui-sidebar",
         "packages/extensions/cordis-client-runner/src/client/slot-catalog.ts"
       ]
     },
     {
-      "id": "workbench-rightbar-collapse",
-      "file": "patches/dsh-workbench-rightbar-collapse.patch",
-      "sha256": "b6aee4511e70ed64bf61bf79f644be3ec3007b45adc8c5865fb2faa68e896ed7",
-      "purpose": "Collapse the product workbench only while the right Sidebar is actually shown, without changing the prospective width used to admit opening it.",
+      "id": "native-sidebar-targeted-opens",
+      "file": "patches/dsh-native-sidebar-targeted-opens.patch",
+      "purpose": "Expose adopted-Session targeted resource/page opens, close and adoption notifications, and strict right-hand pane opens without changing Session selection.",
       "paths": [
-        "packages/client/ui-layout"
-      ]
+        "packages/client/ui-sidebar-right"
+      ],
+      "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
+      "sha256": "7657c661411ae69c5bba7f3e8183c809a1468ed9a518eb3e44c0dfa30298eed1"
+    },
+    {
+      "id": "rc5-compatibility",
+      "file": "patches/dsh-rc5-compatibility.patch",
+      "purpose": "Keep rc5 domain type ownership, private PowerShell bootstrap, standalone Session-log type augmentation, and Web metadata dependency classification; restore configuration entries for available app-shipped third-party bundles using active plugin rows and ConfigLedger relationships. Retain existing custom changes in these exact files.",
+      "paths": [
+        "packages/client/ui-chat/src/client/chat/flow-motion.ts",
+        "packages/client/ui-chat/src/client/contract/flow-motion.ts",
+        "packages/client/ui-chat/src/client/contract/slots.ts",
+        "packages/client/ui-tool/src/client/tool/file-menu.ts",
+        "packages/client/ui-tool/src/client/contract/file-menu.ts",
+        "packages/client/ui-tool/src/client/contract/slots.ts",
+        "packages/terminal/terminal-bash/src/index.ts",
+        "packages/terminal/terminal-bash/src/pwsh-bootstrap.ts",
+        "packages/session/session-log-deepseek/src/types.ts",
+        "packages/web/web/package.json",
+        "packages/client/ui-plugin-manager/README.i18n.yaml",
+        "packages/client/ui-plugin-manager/README.md",
+        "packages/client/ui-plugin-manager/README.zh.md",
+        "packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx",
+        "packages/client/ui-plugin-manager/src/client/locales.ts",
+        "packages/client/ui-plugin-manager/tests/components.client.spec.tsx"
+      ],
+      "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
+      "sha256": "386ddd81337293dec6a79216e21fae0e75aa1a9c1e470b3c06799b1b1221c056"
     }
   ]
 }

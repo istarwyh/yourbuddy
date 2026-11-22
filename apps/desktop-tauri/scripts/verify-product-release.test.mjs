@@ -13,6 +13,8 @@ import {
   writeDocumentPreviewFixtures,
   exerciseDocumentPreviews,
   exerciseLightweightServices,
+  openMarketplaceConfiguration,
+  assertCapabilityPackProbe,
   exerciseWorkbenchDocumentPreviews,
   recordPreviewNetworkEvent,
   saveBrowserFailure,
@@ -41,6 +43,7 @@ import {
   verifyPreparedProduct,
 } from './verify-product-release.mjs'
 import { assertBundledProductPeerLinks } from './product-plugin-compatibility.mjs'
+import { openProductSettings } from './open-product-settings.mjs'
 
 test('installed peer verification follows Node resolution without a plugin-local link', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-peer-resolution-'))
@@ -120,6 +123,60 @@ test('installed peer verification covers every core product and rejects a second
       rmSync(root, { recursive: true, force: true })
     }
   }
+})
+
+test('release Settings entry follows the account menu and requires its dialog', async () => {
+  const run = async (missing) => {
+    const seen = []
+    const page = { getByRole(role, { name, exact }) {
+      assert.equal(exact, true)
+      const step = `${role}:${name}`
+      return {
+        click: async () => {
+          if (step === missing) throw new Error(`missing ${step}`)
+          seen.push(step)
+        },
+        waitFor: async (options) => {
+          assert.deepEqual(options, { timeout: 10_000 })
+          if (step === missing) throw new Error(`missing ${step}`)
+          seen.push(step)
+        },
+      }
+    } }
+    await openProductSettings(page)
+    return seen
+  }
+  assert.deepEqual(await run(), ['button:Account menu', 'menuitem:Settings', 'dialog:Settings'])
+  for (const missing of ['button:Account menu', 'menuitem:Settings', 'dialog:Settings']) {
+    await assert.rejects(run(missing), new RegExp(`missing ${missing}`))
+  }
+})
+
+test('release Marketplace navigation requires the included bundle and its configuration form', async () => {
+  const steps = [
+    'button:Plugins', '[data-plugin-group="app-included"]',
+    '[data-plugin-package="dsh-plugin-marketplace"]', 'button:View Plugin marketplace',
+    '[data-plugin-config]', 'placeholder:Search plugins (keyword, or empty to browse all)…',
+  ]
+  const run = async (missing) => {
+    const seen = []
+    const select = (step) => {
+      if (step === missing) throw new Error(`missing ${step}`)
+      seen.push(step)
+      return surface
+    }
+    const surface = {
+      locator: select,
+      getByRole: (role, { name, exact }) => { assert.equal(exact, true); return select(`${role}:${name}`) },
+      getByPlaceholder: (name, { exact }) => { assert.equal(exact, true); return select(`placeholder:${name}`) },
+      click: async () => {},
+      waitFor: async (options) => { assert.deepEqual(options, { timeout: 10_000 }) },
+    }
+    assert.equal(await openMarketplaceConfiguration(surface), surface)
+    return seen
+  }
+  assert.deepEqual(await run(), steps)
+  for (const missing of steps) await assert.rejects(run(missing), /missing/u)
 })
 
 test('release smoke reads plain and volatile Settings schema results', () => {
@@ -331,6 +388,17 @@ class FakeChild extends EventEmitter {
   }
 }
 
+test('Capability Pack diagnostics require the actual reconciler ledger rather than HTTP success alone', () => {
+  const ledger = { packs: [{ packageName: 'declared-pack', commands: [] }] }
+  assert.doesNotThrow(() => assertCapabilityPackProbe({ status: 200, body: { ok: true, value: ledger.packs } }, ledger))
+  for (const response of [
+    { status: 404, body: {} },
+    { status: 200, body: { ok: false, value: ledger.packs } },
+    { status: 200, body: { ok: true, value: [] } },
+    { status: 200, body: { ok: true } },
+  ]) assert.throws(() => assertCapabilityPackProbe(response, ledger), /reconciler ledger/u)
+})
+
 test('release candidate children receive only an isolated allowlisted environment', () => {
   const root = mkdtempSync(join(tmpdir(), 'yourbuddy-release-env-test-'))
   try {
@@ -343,6 +411,8 @@ test('release candidate children receive only an isolated allowlisted environmen
       AWS_ACCESS_KEY_ID: 'aws-id',
       AWS_SECRET_ACCESS_KEY: 'aws-secret',
       DSH_HOME: '/real-dsh',
+      YOURBUDDY_BIN_DIR: '/real-managed-bin',
+      YOURBUDDY_NODE_BINARY: '/ambient-node',
       NODE_OPTIONS: '--require=/secret.js',
       SSH_AUTH_SOCK: '/real-agent.sock',
       UNRELATED_AMBIENT_VALUE: 'do-not-forward',
@@ -353,6 +423,11 @@ test('release candidate children receive only an isolated allowlisted environmen
     assert.equal(environment.USERPROFILE, join(root, 'home'))
     assert.equal(environment.DSH_HOME, join(root, 'dsh-home'))
     assert.equal(environment.DSH_AGENTS_HOME, join(root, 'agents'))
+    assert.equal(environment.YOURBUDDY_BIN_DIR, join(root, 'managed-bin'))
+    assert.equal(environment.YOURBUDDY_NODE_BINARY, process.execPath)
+    assert.equal(existsSync(environment.YOURBUDDY_BIN_DIR), true)
+    assert.equal(existsSync(environment.YOURBUDDY_NODE_BINARY), true)
+    assert.equal(existsSync(join(environment.YOURBUDDY_BIN_DIR, '.yourbuddy-capability-packs.json')), false)
     assert.equal(environment.DEEPSEEK_API_KEY, 'yourbuddy-release-smoke-no-model-call')
     assert.ok(environment.PATH.includes('/product-runtime/venv/bin'))
     assert.ok(!environment.PATH.includes('/credential-wrapper/bin'))
@@ -627,7 +702,7 @@ test('Harbor readiness refuses metadata alone without the real Python interprete
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
-test('Plugin Marketplace displays its packaged version in Settings', () => {
+test('Plugin Marketplace configuration displays its packaged version', () => {
   const root = join(import.meta.dirname, '..', 'product', 'plugin-marketplace')
   const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
   const client = readFileSync(join(root, 'client.js'), 'utf8')

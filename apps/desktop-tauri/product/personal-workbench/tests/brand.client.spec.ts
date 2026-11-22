@@ -15,7 +15,7 @@ class FakeScope implements ConfigForm<WorkbenchSettingsValue> {
 
   constructor(value: WorkbenchSettingsValue) {
     this.snapshot = {
-      status: 'ready', value, base: {}, user: {}, revision: 0, writable: true, mode: 'host',
+      status: 'ready', value, base: {}, user: {}, revision: 0, writable: true,
     }
   }
 

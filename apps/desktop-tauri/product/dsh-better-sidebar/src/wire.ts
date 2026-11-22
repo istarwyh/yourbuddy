@@ -4,7 +4,11 @@
  * `{ok: true, value}` on success and `{ok: false, error: {code, message}}`
  * (HTTP 4xx/5xx matching the code) on failure.
  */
-import type { SidebarHttpRequest, SidebarHttpResponse } from './context-types.ts'
+import type { SidebarHttpRequest, SidebarHttpResponse } from './host-http.ts'
+// Value import for the error-class branch in writeError. git.ts imports only
+// node builtins, so this introduces no cycle; wire.ts is host-half only and is
+// never reachable from the browser bundle.
+import { GitCommandError } from './git.ts'
 
 /** Machine-readable error codes of the sidebar API. */
 export type SidebarErrorCode =
@@ -13,9 +17,18 @@ export type SidebarErrorCode =
   | 'forbidden'
   | 'method-error'
   | 'too-large'
+  | 'unavailable'
   | 'fs-error'
+  | 'fs-directory'
+  | 'fs-conflict'
   | 'git-error'
+  | 'graph-stale'
+  | 'graph-limit'
+  | 'git-suggest-empty'
+  | 'git-suggest-error'
   | 'job-error'
+  | 'team-error'
+  | 'team-conflict'
   | 'sidechat-error'
   | 'subagents-unavailable'
   | 'settings-rejected'
@@ -44,8 +57,21 @@ export interface SidebarOk<T> { ok: true; value: T }
 /** Failure envelope of one API method. */
 export interface SidebarErr { ok: false; error: { code: SidebarErrorCode; message: string } }
 
-/** Read and parse the JSON request body (bounded; malformed → bad-request). */
-export async function readJsonBody(req: SidebarHttpRequest): Promise<unknown> {
+/**
+ * Read and parse the JSON request body (bounded; malformed → bad-request).
+ *
+ * @param req - the request face (async-iterable body).
+ * @param limit - maximum accepted body size in bytes.
+ * @param onBytes - optional per-chunk observer of the cumulative size. Callers
+ *   that must account for a LARGE body before the whole read finishes (the
+ *   Side Chat image admission gate) use it; a throw from the callback aborts
+ *   the read and propagates like any other route failure.
+ */
+export async function readJsonBody(
+  req: SidebarHttpRequest,
+  limit = MAX_BODY_BYTES,
+  onBytes?: (total: number) => void,
+): Promise<unknown> {
   const chunks: Buffer[] = []
   let total = 0
   for await (const chunk of req) {
@@ -53,9 +79,10 @@ export async function readJsonBody(req: SidebarHttpRequest): Promise<unknown> {
     // both (and the real runtime chunks are node Buffers anyway).
     const buffer = Buffer.from(chunk)
     total += buffer.length
-    if (total > MAX_BODY_BYTES) {
-      throw new SidebarError('bad-request', 'request body too large')
+    if (total > limit) {
+      throw new SidebarError('too-large', 'request body too large', 413)
     }
+    onBytes?.(total)
     chunks.push(buffer)
   }
   const text = Buffer.concat(chunks).toString('utf8')
@@ -68,8 +95,53 @@ export async function readJsonBody(req: SidebarHttpRequest): Promise<unknown> {
   }
 }
 
-/** Write a JSON response with the given status. */
-export function writeJson(res: SidebarHttpResponse, status: number, body: unknown): void {
+/**
+ * Read a raw text request body (the editor save route).
+ *
+ * JSON framing was what capped a save at {@link MAX_BODY_BYTES}: the whole
+ * document had to be string-escaped into one JSON payload, so a file the
+ * editor could legitimately open could not be written back. The save route
+ * therefore takes the document as the raw body.
+ *
+ * `limit` is a server-side sanity guard rather than a product limit — the UI
+ * cannot produce more than the editable size — because the encoding transform
+ * the caller runs afterwards needs the document as one string.
+ *
+ * @param req - the request face (async-iterable body).
+ * @param limit - maximum accepted body size in bytes.
+ * @returns the body decoded as UTF-8.
+ * @throws {SidebarError} too-large beyond the limit, bad-request on invalid UTF-8.
+ */
+export async function readTextBody(req: SidebarHttpRequest, limit: number): Promise<string> {
+  const chunks: Buffer[] = []
+  let total = 0
+  for await (const chunk of req) {
+    const buffer = Buffer.from(chunk)
+    total += buffer.length
+    if (total > limit) {
+      throw new SidebarError('too-large', `request body exceeds the ${limit} byte limit`, 413)
+    }
+    chunks.push(buffer)
+  }
+  // `fatal` so a body that is not valid UTF-8 is refused instead of silently
+  // becoming replacement characters in the saved file.
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))
+  } catch {
+    throw new SidebarError('bad-request', 'request body is not valid UTF-8')
+  }
+}
+
+/** Write a JSON response with the given status. */export function writeJson(res: SidebarHttpResponse, status: number, body: unknown): void {
+  // The response may already be committed by one of the raw byte routes (a
+  // file stream that failed mid-flight): `writeHead` would then throw
+  // ERR_HTTP_HEADERS_SENT, and the route's catch block would turn a merely
+  // truncated download into a crashed request. There is nothing left to say to
+  // the client once the status line is out — tear the socket down instead.
+  if (res.headersSent === true) {
+    res.destroy?.()
+    return
+  }
   const payload = JSON.stringify(body)
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
   res.end(payload)
@@ -84,6 +156,19 @@ export function writeOk(res: SidebarHttpResponse, value: unknown): void {
 export function writeError(res: SidebarHttpResponse, error: unknown): void {
   if (error instanceof SidebarError) {
     writeJson(res, error.status, { ok: false, error: { code: error.code, message: error.message } })
+    return
+  }
+  // A git failure is a state/input problem the user caused (unknown ref, path
+  // outside the repository, not a repository), not a plugin fault. Reporting it
+  // as 500 "internal" reads as a crash and hides the localized not-a-repository
+  // copy the client already knows how to render; `not-repo` carries its own
+  // code (409) so that path is reachable at all.
+  if (error instanceof GitCommandError) {
+    const notRepo = error.code === 'not-repo'
+    writeJson(res, notRepo ? 409 : 400, {
+      ok: false,
+      error: { code: notRepo ? 'not-repo' : 'git-error', message: error.message },
+    })
     return
   }
   const message = error instanceof Error ? error.message : String(error)

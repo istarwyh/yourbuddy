@@ -1,6 +1,6 @@
 {
   "name": "dsh-media-desk",
-  "version": "2.6.1",
+  "version": "2.7.2",
   "description": "DeepSeek Harness 插件。一句话记灵感，一键成稿：口播脚本、标题、视频封面、配图和黑白线稿分镜。",
   "type": "module",
   "main": "src/host.js",
@@ -40,9 +40,11 @@
     "watch": "node scripts/build.mjs --watch",
     "test": "node --test test/*.test.js",
     "assets": "python3 scripts/gen-assets.py",
+    "index": "node scripts/build-index.mjs",
     "prepack": "npm run build"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-plugin-market-index": "^0.2.1-rc.2",
     "esbuild": "^0.25.10"
   },
   "files": [

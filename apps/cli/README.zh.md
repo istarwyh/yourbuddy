@@ -9,7 +9,7 @@
 | 命令 | 用途 |
 |---|---|
 | `dsh <name>` / `dsh --profile <name>` | 启动位于 `$DSH_HOME/profiles/<name>` 的指定 profile。 |
-| `dsh --profile <name> --from-default-profile <template>` | 从随附模板创建新的自定义 profile，然后启动它。 |
+| `dsh --profile <name> --from-default-profile <template>` | 用随附模板的全新副本替换自定义 profile，然后启动它。 |
 | `dsh --profile acp` | 通过 ACP stdio 为自动化客户端提供服务，直至断开连接。 |
 | `dsh --profile headless "job"` | 运行一个全新的持久化会话，打印最终答案并退出。 |
 | `dsh --profile sdk` | 通过 JSON-RPC stdio 为 SDK 客户端提供服务，直至关闭或断开连接。 |
@@ -17,7 +17,7 @@
 | `dsh web` | 启动 Web profile。 |
 | `dsh plugin --profile <name> <pnpm args>` | 通过在 profile 目录中转发给 pnpm 来管理该 profile 的插件。 |
 
-运行命令时所在的目录将作为默认 workspace 根目录。`web`、`headless`、`sdk`、`sdk-minimal` 和 `acp` profile 在首次使用时会从随附模板自动初始化。使用 `--from-default-profile` 可以基于这些模板之一，在尚未使用的非内置名称处创建其他 profile；通过 `dsh plugin` 则可以初始化一个以 base 为基础的 profile。`desktop` 名称保留给 Electron 持有的 profile，因此 CLI（命令行界面）会拒绝针对它的启动和配置 dump 请求。npm CLI 也会拒绝其插件管理请求；[Desktop 内置命令](../desktop/README.zh.md#bundled-command-runtime)可以使用该安装的运行时管理已初始化的 Desktop profile。
+运行命令时所在的目录将作为默认 workspace 根目录。`web`、`headless`、`sdk`、`sdk-minimal` 和 `acp` profile 在首次使用时会从随附模板自动初始化。使用 `--from-default-profile` 可以基于这些模板之一，在非内置名称处创建或重置其他 profile；通过 `dsh plugin` 则可以初始化一个以 base 为基础的 profile。`desktop` 名称保留给 Electron 持有的 profile，因此 CLI（命令行界面）会拒绝针对它的启动和配置 dump 请求。npm CLI 也会拒绝其插件管理请求；[Desktop 内置命令](../desktop/README.zh.md#bundled-command-runtime)可以使用该安装的运行时管理已初始化的 Desktop profile。
 
 ## 应用参数
 
@@ -38,7 +38,7 @@ profile 目录包含一个 `package.json`，其中记录树外插件依赖，以
 
 应用管理的链接安装可以在 `add link:<directory>` 时传入 `--rollback-package=<package>` 和 `--rollback-expected=<JSON>`。快照仅含 `dependency` 与 `link`，分别保留 manifest 字符串和符号链接原始目标，不存在时使用 `null`。Profile 所有者在写锁内比较两者；快照变化时在启动 pnpm 前拒绝。CLI 消费该选项，并交由[插件管理器](../../packages/boot/plugin-manager/README.zh.md)在 Profile 锁内恢复；包名必须与链接目标的 manifest 一致。管理的操作使用捕获的非交互输出和清理后的环境，十分钟后取消，连续两分钟无输出时停止，让操作所有者在取消后执行恢复。包操作成功并不表示运行中的 Host 已挂载新版本。
 
-安装和 profile 启动会按声明的 DSH peer 范围，检查与 `dsh --version` 显示值相同的运行时版本。不兼容插件需要用户明确确认精确版本豁免。[插件管理器的兼容性参考](../../packages/boot/plugin-manager/README.zh.md#version-compatibility-and-exemptions)说明 `version-exemptions`、`allow-version`、`revoke-version`、持久化规则与风险。
+安装和 profile 启动会按声明的 `engines.dsh` 范围（未声明时按 DSH peer 范围），检查与 `dsh --version` 显示值相同的运行时版本。不兼容插件需要用户明确确认精确版本豁免。[插件管理器的兼容性参考](../../packages/boot/plugin-manager/README.zh.md#version-compatibility-and-exemptions)说明 `version-exemptions`、`allow-version`、`revoke-version`、持久化规则与风险。
 
 配置树以空根为起点，依次叠加以下配置层：
 - `dsh.profile.bundles` 中各组合包的 patch
@@ -54,6 +54,12 @@ profile 目录包含一个 `package.json`，其中记录树外插件依赖，以
 ## 可选覆盖层
 
 `config/examples/` 交付 GitHub 评审 webhook、记忆 MCP 服务器与运行时 Cordis 工具的可选覆盖层。它们绝不属于默认 profile；设置与安全说明由[用户指南](../../docs/user/guide/index.zh.md)和[开发实战指南](../../docs/user/develop/practice/index.zh.md)负责。
+
+## 安装包内容
+
+发布 tarball 在 `lib/` 下携带打包后的运行时，在 `src/` 下携带 TypeScript 源码，在各自描述的文件旁携带声明映射与 JavaScript map，并在 `docs/` 下携带文档。只有 `prepack` 会暂存 `docs/`，`postpack` 又会删除这份副本，因此工作树里的读者看到的始终是检出当前的内容。
+
+`docs/` 包含文档网站的页面与全部升级指南，以及这些页面引用的资产。`docs/upgrade-guide/README.md` 在暂存时生成：它按每个 `v<T>` 目录升级前的版本对指南分组，列出每份指南的标题、中英文描述与相对路径。桌面应用在其 `app.asar` 内携带同样的 `docs/` 与 `src/`。生成的 `persistence-changes/` 记录、`i18n/` 规范与 `*.i18n.yaml` 一致性记录不发布。其中的页面保留仓库的相对链接，因此指向 `../packages/**` 或指向被排除的 `persistence-changes/` 记录的链接只在检出中可解析。
 
 ## 开发
 

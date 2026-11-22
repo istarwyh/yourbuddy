@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/download.md
 /get-yourbuddy:
-  en: cefd522c9c66da53
-  zh: 78974adb5a411296
+  en: 932cf6a82ddaa911
+  zh: c7cfe5ce0e027e3d
 /get-yourbuddy/download-the-latest-release:
   en: 4e6cac835619df97
   zh: 3793bef2a6fb5205

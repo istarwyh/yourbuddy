@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react'
 import { PluginArtworkTerminal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TerminalSurfaceInputProps } from '@deepseek-ai/dsh-client-ui-sidebar-terminal/client'
+import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { Context } from '../../context-types.ts'
 import type { BetterSidebarService, TabComponentProps } from '../service.ts'
 import { allLeaves, type SidebarStore } from '../state.ts'
@@ -31,7 +32,7 @@ export function registerWorkbenchTerminal(ctx: Context, store: SidebarStore, ser
       service.openTab({ type: 'terminal' }, scope)
     }
     const input: TerminalSurfaceInputProps = {
-      sessionId: scope.sessionId as TerminalSessionId,
+      sessionId: SessionId(scope.sessionId),
       tabId: tab.id,
       contentId: contentIdOf(scope.sessionId, tab.id),
       visible,
@@ -55,38 +56,44 @@ export function registerWorkbenchTerminal(ctx: Context, store: SidebarStore, ser
       },
     }),
     onClose: (tab, scope) => {
-      terminalController(ctx)?.close(scope.sessionId as TerminalSessionId, tab.id, contentIdOf(scope.sessionId, tab.id))
+      terminalController(ctx)?.close(SessionId(scope.sessionId), tab.id, contentIdOf(scope.sessionId, tab.id))
     },
     component,
   })
-  const holds = new Map<string, () => void>()
-  const syncHolds = (): void => {
+  const seat = ctx.inject(['webTerminals'], () => {
     const terminals = terminalController(ctx)
-    const wanted = new Set<string>()
-    for (const [sessionId, state] of store.getSessionStates()) {
-      for (const leaf of allLeaves(state.bottomSplits)) {
-        for (const tab of leaf.tabs) {
-          if (tab.type !== 'terminal') continue
-          const contentId = contentIdOf(sessionId, tab.id)
-          wanted.add(contentId)
-          if (!holds.has(contentId) && terminals !== undefined) {
-            holds.set(contentId, terminals.retainTab({ sessionId: sessionId as TerminalSessionId, tabId: tab.id, contentId }))
+    if (terminals === undefined) return
+    const holds = new Map<string, () => void>()
+    const syncHolds = (): void => {
+      const wanted = new Set<string>()
+      for (const [sessionId, state] of store.getSessionStates()) {
+        for (const leaf of allLeaves(state.bottomSplits)) {
+          for (const tab of leaf.tabs) {
+            if (tab.type !== 'terminal') continue
+            const contentId = contentIdOf(sessionId, tab.id)
+            wanted.add(contentId)
+            if (!holds.has(contentId)) {
+              holds.set(contentId, terminals.retainTab({ sessionId: SessionId(sessionId), tabId: tab.id, contentId }))
+            }
           }
         }
       }
+      for (const [contentId, release] of holds) {
+        if (wanted.has(contentId)) continue
+        release()
+        holds.delete(contentId)
+      }
     }
-    for (const [contentId, release] of holds) {
-      if (wanted.has(contentId)) continue
-      release()
-      holds.delete(contentId)
+    const unsubscribe = store.subscribe(syncHolds)
+    syncHolds()
+    return () => {
+      unsubscribe()
+      for (const release of holds.values()) release()
+      holds.clear()
     }
-  }
-  const unsubscribe = store.subscribe(syncHolds)
-  syncHolds()
+  })
   return () => {
-    unsubscribe()
-    for (const release of holds.values()) release()
-    holds.clear()
+    void seat.dispose()
     disposeDescriptor()
   }
 }

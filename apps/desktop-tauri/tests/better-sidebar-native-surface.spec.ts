@@ -8,6 +8,8 @@ describe('YourBuddy Better Sidebar native surface', () => {
     const openResource = vi.fn()
     const openResourceIn = vi.fn(() => accepted)
     const unsubscribeSessionList = vi.fn()
+    const unsubscribeMountedList = vi.fn()
+    const unsubscribeMounted = vi.fn()
     const unsubscribeAdoption = vi.fn()
     const ctx = {
       get: (name: string) => {
@@ -15,6 +17,10 @@ describe('YourBuddy Better Sidebar native surface', () => {
         return {
           openResource,
           openResourceIn,
+          mounted: {
+            getSnapshot: () => 'other-session',
+            subscribe: () => unsubscribeMounted,
+          },
           onSessionAdopted: (listener: () => void) => {
             notifyAdopted = listener
             return unsubscribeAdoption
@@ -23,8 +29,10 @@ describe('YourBuddy Better Sidebar native surface', () => {
       },
       sessions: {
         list: {
-          getSnapshot: () => ({ current: 'other-session' }),
-          subscribe: () => unsubscribeSessionList,
+          getSnapshot: () => ({ byId: { 'other-session': {}, 'owner-session': {} } }),
+          subscribe: vi.fn()
+            .mockReturnValueOnce(unsubscribeSessionList)
+            .mockReturnValueOnce(unsubscribeMountedList),
         },
       },
     }
@@ -33,6 +41,7 @@ describe('YourBuddy Better Sidebar native surface', () => {
       drop: vi.fn(),
       update: vi.fn(),
       has: () => false,
+      retain: vi.fn(),
     }
     const surface = createNativeSurface(ctx, records as never)
     const first = {
@@ -62,6 +71,8 @@ describe('YourBuddy Better Sidebar native surface', () => {
     expect(openResourceIn).toHaveBeenCalledTimes(callCount)
     surface.dispose()
     expect(unsubscribeSessionList).toHaveBeenCalledOnce()
+    expect(unsubscribeMountedList).toHaveBeenCalledOnce()
+    expect(unsubscribeMounted).toHaveBeenCalledOnce()
     expect(unsubscribeAdoption).toHaveBeenCalledOnce()
   })
 })

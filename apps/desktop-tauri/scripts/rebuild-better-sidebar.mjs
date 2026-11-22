@@ -10,20 +10,22 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
-const stagingRoot = '/tmp/yourbuddy-sidebar-build'
-const upstreamCommit = 'd641d2e2117c427f8373f37b786ea0613455bf28'
+const stagingRoot = '/tmp/yourbuddy-sidebar-build-0321-upgrade'
+const upstreamCommit = '06d21351a50b60063010c178590fc24ecd76fb74'
 const upstreamBase = `https://raw.githubusercontent.com/omdsh-dev/DSH-better-sidebar/${upstreamCommit}`
 const pinnedInputs = {
-  'package.json': '5fe8d7c087a042c55a261dabd8781897fcfaccac2e2094ec60cab27e6292a101',
-  'pnpm-lock.yaml': '2626aabffd165a5bdca9049e07e33f572b2ad61d1a0c697b7f57552dd0dcc518',
-  'pnpm-workspace.yaml': '0bb08c9a394750402a5dd1dd72f529a4b0c6af6886b463c14ef97c7d30d22ae5',
+  'package.json': '6bde895c576372603b60daff5b521ae00ea3564371e787143d47d1193c0e17e5',
+  'pnpm-lock.yaml': 'c9373112dd4d6efb8049d76e7ab1e33762d8b55e84dd5feb76a8de06e9bc0240',
+  'pnpm-workspace.yaml': '9cbf83ea90d84fe2e49720b968577716eedbabeb5c72647c794ec4eead57250f',
   'tsconfig.build.json': 'aea8aa2fac726d12317d4bd77e5cbdf8f6747ad57909d862aad8ca51c20cefe8',
   'tsconfig.json': '71ffa32d2eeb083c41b2d8c11dbeb8d13b049b54e6cb7196065aa2dd4040b9d7',
-  'tsdown.config.ts': '4bda643a4ac602bf6dfe7f27da80ae531691160b7fec01924bdfc36bb51bc42c',
+  'tsdown.config.ts': 'a3d7aad33c44408b68816ee7dbcb49b2b21b0835751dfb302e88e07d1f6644d5',
+  'scripts/build-mermaid-frame-asset.mjs': 'c8910c025afd3fb52c7a862e268f151e59bd7d48ad5a352d67c17839b9aa2302',
+  'scripts/mermaid-frame-entry.mjs': '454edfaa390f45d1134b23cfc49771a93441c818bb1b48fbf4e66481a6128fe4',
 }
-const sortedConfigHash = '1b030bf09b5c6dc989606b35a39ab57b95370e2f784292fab9065689b802eedf'
+const sortedConfigHash = '33698fd6d9d91b5a13faa7cd5b0671f31b186c55695a63ce9c8ef42a69989b04'
 const inlineOwners = new Set(['@deepseek-ai/dsh-brand', '@deepseek-ai/dsh-session'])
-const sourceEntries = ['src', 'locale', 'cordis.patch.yml', 'icon.svg']
+const sourceEntries = ['src', 'locale', 'scripts', 'cordis.patch.yml', 'icon.svg']
 const markerName = '.yourbuddy-sidebar-build.json'
 
 function digest(bytes) {
@@ -222,6 +224,7 @@ async function rebuildSidebar() {
       if (!response.ok) throw new Error(`Upstream input download failed: ${name} (${response.status})`)
       const bytes = Buffer.from(await response.arrayBuffer())
       if (digest(bytes) !== expected) throw new Error(`Pinned upstream input differs: ${name}`)
+      mkdirSync(dirname(join(stagingRoot, name)), { recursive: true })
       writeFileSync(join(stagingRoot, name), bytes)
     }
     const config = join(stagingRoot, 'tsdown.config.ts')

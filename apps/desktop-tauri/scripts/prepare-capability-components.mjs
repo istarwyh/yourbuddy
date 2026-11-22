@@ -12,7 +12,7 @@ import { isolatedReleaseEnvironment } from './prepare-release.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = resolve(desktopRoot, '../..')
-const PNPM_VERSION = '11.7.0'
+const PNPM_VERSION = '11.28.5'
 
 /** Packages whose archive root is installed through the existing Profile link operation. */
 export const CAPABILITY_COMPONENTS = Object.freeze([

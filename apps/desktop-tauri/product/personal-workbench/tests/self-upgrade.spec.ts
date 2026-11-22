@@ -16,7 +16,9 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
+import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { installSelfUpgrade, UPGRADE_STATUS_PATH, type InstallerCommand } from '../src/self-upgrade.ts'
@@ -66,7 +68,7 @@ async function fixture(model: ScriptedModel, command: InstallerCommand, existing
   Object.assign(ctx.loader.builtins, {
     include: Include, llm: LlmRuntime, sessions: SessionStore, projections: SessionProjectionRegistry,
     prompt: SystemPrompt, tools: ToolRuntime, agents: AgentRegistry,
-    persistence: JsonlSessionPersistence, jobs: LocalJobRegistry, loop: AgentLoop,
+    persistence: JsonlSessionPersistence, executor: NativeToolExecutor, jobs: LocalJobRegistry, loop: AgentLoop,
     upgrade: {
       name: 'yourbuddy-upgrade-fixture',
       inject: ['agents', 'tools', 'sessions', 'sessionPersistence', 'jobs'],
@@ -87,6 +89,17 @@ async function stored(ctx: Context, id: SessionId): Promise<readonly SessionEven
 
 async function createAgent(ctx: Context, id = 'upgrading-session'): Promise<Agent> {
   return (await ctx.agents.create({ sessionId: SessionId(id), agentOptions: { provider: 'upgrade-test', model: 'fixture' } })).agent
+}
+
+async function execute(ctx: Context, agent: Agent, name: string, id: string): Promise<ToolExecutionResult> {
+  const batch = await ctx.tools.execute({
+    calls: [{ type: 'tool-call', id: ToolCallId(id), name, arguments: '{}' }],
+    agent, signal: new AbortController().signal,
+  })
+  expect(batch.results).toHaveLength(1)
+  const outcome = batch.results[0]
+  if (outcome === undefined) throw new Error('Expected one tool outcome')
+  return outcome.result
 }
 
 function send(agent: Agent, text = 'Upgrade YourBuddy'): void {
@@ -153,10 +166,7 @@ describe('YourBuddy Session upgrade handoff', () => {
     expect(resumed.agent.session.snapshotEvents()).toEqual(await stored(restarted.ctx, agent.id))
     expect(restartedModel.requests).toHaveLength(0)
     expect(resumedCommands).toEqual([])
-    const status = await restarted.ctx.tools.execute({
-      callId: ToolCallId('status-call'), name: 'yourbuddy_upgrade_status', arguments: {},
-      agent: resumed.agent, signal: new AbortController().signal,
-    })
+    const status = await execute(restarted.ctx, resumed.agent, 'yourbuddy_upgrade_status', 'status-call')
     expect(status).toMatchObject({ isError: false, value: { phase: 'succeeded' } })
     expect(resumedCommands[0]?.[0]).toBe('status')
   })
@@ -177,7 +187,7 @@ describe('YourBuddy Session upgrade handoff', () => {
     send(other, 'Run another task')
     await entered.promise
     try {
-      const result = await ctx.tools.execute({ callId: ToolCallId('blocked-upgrade'), name: 'yourbuddy_upgrade', arguments: {}, agent: initiator, signal: new AbortController().signal })
+      const result = await execute(ctx, initiator, 'yourbuddy_upgrade', 'blocked-upgrade')
       expect(other.status).toBe('running')
       expect(result.isError).toBe(true)
       expect(JSON.stringify(result.content)).toContain('Other tasks are active')
@@ -204,10 +214,7 @@ describe('YourBuddy Session upgrade handoff', () => {
     ])
     await watching.promise
     terminal.resolve({ ...accepted, phase: 'failed', error: 'Download failed', userAction: 'Retry the upgrade' })
-    await expect.poll(async () => (await ctx.tools.execute({
-      callId: ToolCallId('recovery-status'), name: 'yourbuddy_upgrade_status', arguments: {},
-      agent, signal: new AbortController().signal,
-    })).isError).toBe(false)
+    await expect.poll(async () => (await execute(ctx, agent, 'yourbuddy_upgrade_status', 'recovery-status')).isError).toBe(false)
     send(agent, 'Continue ordinary work')
     await agent.whenIdle()
     expect(model.requests).toHaveLength(2)
@@ -292,10 +299,7 @@ describe('YourBuddy Session upgrade handoff', () => {
     send(agent)
     await agent.whenIdle()
     await retryStarted.promise
-    const paused = await ctx.tools.execute({
-      callId: ToolCallId('paused-call'), name: 'yourbuddy_upgrade_status', arguments: {},
-      agent, signal: new AbortController().signal,
-    })
+    const paused = await execute(ctx, agent, 'yourbuddy_upgrade_status', 'paused-call')
     expect(paused.isError).toBe(true)
     const server = createServer((incoming, outgoing) => {
       void ctx.waterfall('connection/request', incoming, outgoing, async () => { outgoing.writeHead(404); outgoing.end() })
@@ -318,10 +322,7 @@ describe('YourBuddy Session upgrade handoff', () => {
       await new Promise<void>((resolve, reject) => server.close(error => error === undefined ? resolve() : reject(error)))
     }
     terminal.resolve({ ...accepted, phase: 'failed' })
-    await expect.poll(async () => (await ctx.tools.execute({
-      callId: ToolCallId('recovered-call'), name: 'yourbuddy_upgrade_status', arguments: {},
-      agent, signal: new AbortController().signal,
-    })).isError).toBe(false)
+    await expect.poll(async () => (await execute(ctx, agent, 'yourbuddy_upgrade_status', 'recovered-call')).isError).toBe(false)
     expect(reads).toBe(2)
   })
 })

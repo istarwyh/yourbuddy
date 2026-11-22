@@ -15,6 +15,7 @@ import { installJobArchiveAdmission } from './archive-admission.ts'
 import type { JobEvents, JobId, JobOutputRead, JobRead, JobSpec, JobView } from './types.ts'
 
 export { JobId } from './types.ts'
+export { JOB_ERROR_CODES, JobError, type JobErrorCode } from './error.ts'
 export type {
   JobAppendOptions,
   JobChannel,
@@ -31,10 +32,13 @@ export type {
   JobOutputRead,
   JobOutputSource,
   JobRead,
+  JobRegisteredData,
+  JobSettledData,
   JobSettleCause,
   JobSourceRead,
   JobSpec,
   JobStatus,
+  JobToolCall,
   JobView,
 } from './types.ts'
 
@@ -105,7 +109,7 @@ export abstract class JobRegistry extends Service {
    * rejection leaves no job id or execution resource. A throwing starter
    * leaves nothing registered; after it returns, registration cannot fail.
    * @param spec - job identity, owner, output sources, and synchronous starter.
-   * @returns the registry-issued `<kind>-N` id.
+   * @returns the registry-issued `<kind>-<short-uuid>` id.
    */
   abstract start(spec: JobSpec): JobId
 

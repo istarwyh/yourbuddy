@@ -312,12 +312,7 @@ jobs:
           resources="$RUNNER_TEMP/bootstrap-resources"
           mkdir -p "$resources"
           tar -xzf "$updater" -C "$resources"
-          test ! -e "$resources/YourBuddy.app/Contents/Resources/harness-source"
-          test ! -e "$resources/YourBuddy.app/Contents/Resources/toolchain"
-          test ! -e "$resources/YourBuddy.app/Contents/Resources/yourbuddy-runtime"
-          test ! -e "$resources/YourBuddy.app/Contents/Resources/component-seeds"
-          test -f "$resources/YourBuddy.app/Contents/Resources/component-channel/components.json"
-          test -f "$resources/YourBuddy.app/Contents/Resources/component-channel/pnpm-11.7.0.tgz"
+          node apps/desktop-tauri/scripts/assert-bootstrap-resources.mjs "$resources/YourBuddy.app/Contents/Resources"
 
       - name: Build Offline app and DMG
         env:

@@ -378,7 +378,7 @@ impl ComponentManager {
     pub fn pnpm_archive(&self) -> PathBuf {
         self.resource_dir
             .join("component-channel")
-            .join("pnpm-11.7.0.tgz")
+            .join(super::config::BUNDLED_PNPM_ARCHIVE)
     }
 
     /// Resolve a complete current component without starting network work or activating it.

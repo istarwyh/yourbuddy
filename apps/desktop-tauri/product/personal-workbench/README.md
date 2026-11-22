@@ -40,6 +40,16 @@ The default name and Logo are YourBuddy and the bundled Y8 mark. The Conversatio
 
 The stable upgrade tool declarations join the model’s tool list. Upgrade receipts and explicit status queries append normal tool results to the current session; startup does not automatically create a provider request. Branding changes still do not alter model input.
 
+## Development checks
+
+After building the repository, run these checks from the repository root to use its installed tools and workspace dependencies rather than installing a separate plugin dependency graph:
+
+```sh
+pnpm exec tsc -p apps/desktop-tauri/product/personal-workbench/tsconfig.host.json --noEmit
+pnpm exec tsc -p apps/desktop-tauri/product/personal-workbench/tsconfig.client.json --noEmit
+NODE_ENV=test pnpm exec vitest run --config apps/desktop-tauri/product/personal-workbench/vitest.config.ts --maxWorkers=2
+```
+
 ## Known Limitations and Deferred Work
 
 - **One Profile owns one custom identity** — the plugin does not select different branding per Workspace or Session.

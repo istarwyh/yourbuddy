@@ -29,7 +29,7 @@
  * it. See the module report — no local equivalent exists.
  */
 import type { SidebarSessionList, SidebarSubagentCatalogEntry } from '../context-types.ts';
-import type { LastActivity } from '../subagent-activity.ts';
+import type { SidebarChildLiveView } from '../context-types.ts';
 /** One parent's direct-child catalog, as the topology consumes it. */
 export interface SubagentCatalogView {
     entries: readonly SidebarSubagentCatalogEntry[];
@@ -62,13 +62,16 @@ export declare function subagentCatalogs(projections: SidebarSessionList['projec
  * @param catalogs - the views of one snapshot ({@link subagentCatalogs}).
  * @param childSessionId - the child row whose own catalog decides.
  */
-export declare function isKnownLeaf(catalogs: Readonly<Record<string, SubagentCatalogView>>, childSessionId: string): boolean;
+export declare function isKnownLeaf(catalogs: Readonly<Record<string, SubagentCatalogView | undefined>>, childSessionId: string): boolean;
 /**
- * The child's live state. The `subagents.live` route folds only RUNNING
- * children (a Side Chat thread and an idle child are absent), so absence is
- * the inactive answer rather than missing data.
+ * One child's live view, or undefined when the batch has not reported it yet
+ * (the first poll of a freshly rooted tree).
  *
- * @param live - the batch live map (`child id → latest activity`).
+ * The `subagents.live` route reports EVERY tree child with an explicit
+ * `running` flag — the previous "absent means not running" reading cannot
+ * survive a route that also reports settled children's summaries.
+ *
+ * @param live - the batch live map (`session id → live view`).
  * @param childSessionId - the child row being drawn.
  */
-export declare function childActivity(live: Readonly<Record<string, LastActivity>>, childSessionId: string): 'running' | 'inactive';
+export declare function childLive(live: Readonly<Record<string, SidebarChildLiveView | undefined>>, childSessionId: string): SidebarChildLiveView | undefined;

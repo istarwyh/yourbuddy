@@ -1,10 +1,12 @@
 /**
  * Reading an install spec before pnpm sees it: which of pnpm's spec forms it
- * takes, and for a registry name whether it is one the registry can accept.
+ * takes, for a registry name whether it is one the registry can accept, and
+ * for a Git spec pinned to a commit the repository directory it installs from.
  * @module @deepseek-ai/dsh-plugin-manager/install-spec
  */
 
-import { isAbsolute } from 'node:path'
+import { homedir } from 'node:os'
+import { isAbsolute, resolve } from 'node:path'
 
 /**
  * One spec read into its form and the parts an inspection needs. A git spec
@@ -88,4 +90,70 @@ export function parseInstallSpec(raw: string): ParsedInstallSpec {
   }
   if (range === '') throw invalid(spec, 'a version after @ must not be empty')
   return range === undefined ? { kind: 'registry', spec, name } : { kind: 'registry', spec, name, range }
+}
+
+/** A full SHA-1 commit name, as a fragment parameter of a Git spec. */
+const FULL_COMMIT = /^[0-9a-f]{40}$/i
+
+/**
+ * Where a Git spec pinned to a full commit installs from: the lower-case host and the repository path, without
+ * transport, user, or `.git`, then `#` and the `path:` directory. The origin ignores the form pnpm saves, so the SSH
+ * form saved for an HTTPS repository it cannot read, and the host shortcut saved for a known host, have the HTTPS
+ * form's origin. Equal origins name one repository on a host that serves it at the same path over every transport,
+ * as Git forges do; on a plain SSH server, an scp-like path is relative to the login's home directory.
+ * @param spec - an install spec, such as a saved dependency or an update's target.
+ * @returns the origin, or undefined for a spec that is not Git, or whose fragment is not one full commit and at most
+ * one `path:` directory.
+ */
+export function pinnedGitOrigin(spec: string): string | undefined {
+  let parsed: ParsedInstallSpec
+  try { parsed = parseInstallSpec(spec) } catch (error) {
+    /* v8 ignore next -- parseInstallSpec throws nothing but its own refusal */
+    if (!(error instanceof InvalidInstallSpecError)) throw error
+    return undefined
+  }
+  const hash = parsed.spec.indexOf('#')
+  if (parsed.kind !== 'git' || hash === -1) return undefined
+  const parameters = parsed.spec.slice(hash + 1).split('&')
+  const paths = parameters.filter(part => part.startsWith('path:'))
+  const others = parameters.filter(part => !part.startsWith('path:'))
+  // pnpm reads the last of repeated parameters, so a spec that repeats one names no single origin.
+  if (paths.length > 1 || others.length !== 1 || !FULL_COMMIT.test(others.join(''))) return undefined
+  const path = (paths[0]?.slice('path:'.length) ?? '').replace(/^\/+|\/+$/g, '')
+  const location = parsed.spec.slice(0, hash)
+    .replace(/^(github|gitlab|bitbucket|gist):/i, (_prefix, shorthand: string) => `${GIT_SHORTHAND_HOSTS[shorthand.toLowerCase()] as string}/`)
+    .replace(/^git\+/i, '').replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/^[^@/]+@/, '').replace(/^([^/:]+):(?!\d)/, '$1/')
+    .replace(/\/+$/, '').replace(/\.git$/i, '').replace(/^[^/]+/, host => host.toLowerCase())
+  return `${location}#${path}`
+}
+
+/** A recorded dependency value pnpm resolves outside a registry: a protocol other than a registry alias, or an scp-like git address. */
+const NON_REGISTRY_VALUE = /^(?!(?:npm|jsr|workspace|catalog):)[a-z][a-z0-9+.-]*:|^[^@/:\s]+@[^:/\s]+:/i
+/** The user information of an http(s) URL, up to the last `@` before the path, which holds a password or access token when present. */
+export const HTTP_USER_INFO = /^((?:git\+)?https?:\/\/)[^/]*@/i
+
+/**
+ * The spec `pnpm add` accepts for a dependency the profile manifest records. A git address, URL, or other
+ * non-registry protocol is the recorded value without the user information of an http(s) URL, whose query string
+ * is kept; a `file:` or `link:` path, which pnpm records relative to the profile or with `~` for the home
+ * directory, becomes absolute. A registry range, tag, or alias follows the dependency name after `@`, as does a
+ * non-registry value installed under a name other than the package's own.
+ * @param name - the dependency name.
+ * @param recorded - the value the profile manifest records for it.
+ * @param profileDir - the profile directory a relative local path is resolved against.
+ * @param packageName - the name the installed package's manifest declares, when it could be read.
+ * @returns the installable spec.
+ */
+export function dependencySpec(name: string, recorded: string, profileDir: string, packageName = name): string {
+  const local = /^(file|link):(.*)$/s.exec(recorded)
+  let spec: string
+  if (local !== null) {
+    const path = (local[2] as string).replace(/^~(?=$|[\\/])/, () => homedir())
+    spec = `${local[1]}:${resolve(profileDir, path)}`
+  } else if (NON_REGISTRY_VALUE.test(recorded)) {
+    spec = recorded.replace(HTTP_USER_INFO, '$1')
+  } else {
+    return `${name}@${recorded}`
+  }
+  return packageName === name ? spec : `${name}@${spec}`
 }

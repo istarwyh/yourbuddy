@@ -15,27 +15,29 @@
  */
 import z from '@deepseek-ai/schemastery';
 import { type SidebarPrefs } from './prefs-shared.ts';
-export { SIDEBAR_PREFS_DEFAULTS, SIDEBAR_PREFS_NS, TITLE_BAR_STRIP_DEFAULT, TITLE_BAR_STRIP_MAX, TITLE_BAR_STRIP_MIN, type SidebarPrefs, } from './prefs-shared.ts';
+export { EXPLORER_EXCLUDE_DEFAULTS, SIDEBAR_PREFS_DEFAULTS, SIDEBAR_PREFS_NS, type SidebarPrefs, } from './prefs-shared.ts';
 /** Host placement selected by the product composition. */
 export type SidebarPresentation = 'portal' | 'slot';
 /** Tunable sidebar host limits (every field optional; defaults fill in). */
 export interface SidebarConfig {
-    /** Render as the legacy viewport portal or occupy DSH's workbench slot. */
+    /** Render in the viewport portal or product workbench slot. */
     presentation?: SidebarPresentation;
-    /** Read cap of one text file (bytes); larger files return truncated. */
-    readLimit?: number;
-    /** Upload route cap (bytes); larger files are refused without touching disk. */
-    uploadLimit?: number;
     /** Explorer row bound of one level. */
     listLimit?: number;
+    /** Budget of ONE side-thread creation, milliseconds.
+     *
+     *  Creating a thread seeds it with the parent's whole log, so a large parent
+     *  makes this expensive and the old hard-coded 15 s aborted a legitimate
+     *  creation ("thread creation failed: The operation was aborted due to
+     *  timeout"). A deployment raises it when its histories are large. */
+    createTimeoutMs?: number;
 }
 /** Fully defaulted sidebar host settings. */
 export interface ResolvedSidebarConfig {
-    /** Host placement selected by the product composition. */
     presentation: SidebarPresentation;
-    readLimit: number;
-    uploadLimit: number;
     listLimit: number;
+    /** Budget of ONE side-thread creation, milliseconds. */
+    createTimeoutMs: number;
 }
 /**
  * Apply direct-call defaults after Loader schema validation has normally run.
@@ -44,7 +46,18 @@ export interface ResolvedSidebarConfig {
  * @returns Complete settings consumed by the host half.
  */
 export declare function resolveSidebarConfig(config: SidebarConfig | undefined): ResolvedSidebarConfig;
-/** Schemastery schema for the user-facing preferences (validated by the settings service). */
+/**
+ * Schemastery schema for the user-facing preferences (validated by the
+ * settings service).
+ *
+ * Asserted as `z<SidebarPrefs>` (the interface lives in `prefs-shared.ts`; the
+ * explicit annotation is also what keeps the emitted declaration portable).
+ * Unknown keys are TOLERATED by this schema and pass through untouched, which
+ * is what keeps a legacy `workspaceFence: true` — or the retired title-bar
+ * compatibility keys (`titleBarScheme` / `titleBarPresetId` /
+ * `titleBarCompat` / `titleBarStripPx`, removed with the whole strip
+ * mechanism) — in an old profile harmless instead of fatal.
+ */
 export declare const PrefsSchema: z<SidebarPrefs>;
 /**
  * Config schema of this plugin's Loader row: deployment limits plus the live

@@ -27,7 +27,7 @@
 import type { AuthContext, CredentialStore } from '@earendil-works/pi-ai';
 import type { Context } from '@deepseek-ai/cordis';
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials';
-import type { GenerateOptions, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm';
+import type { GenerateOptions, LlmModelInfo, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm';
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai';
 import type { CodexAuthService } from './codex-auth-service.ts';
 import type { CodexLlmSettings } from './codex-context.ts';
@@ -95,11 +95,14 @@ export interface CodexAuthAdapterOptions {
  */
 export declare class CodexAuthAdapter extends PiAiAdapter {
     private readonly nativeReplay;
+    private readonly catalogProvider;
     private adapterGeneration;
     constructor(ctx: Context, options: CodexAuthAdapterOptions);
     private retireProcessLocalState;
     /** Discard prepared continuation and Native replay plans on route replacement. */
     replaceRouteGeneration(): void;
+    /** Keep the static Codex catalog visible without reading or refreshing Login State. */
+    listModels(provider: string): Promise<readonly LlmModelInfo[]>;
     prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall>;
     stream(options: GenerateOptions): AsyncIterable<StreamChunk>;
 }

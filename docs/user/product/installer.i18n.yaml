@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/installer.md
 /install-and-upgrade-from-the-terminal:
-  en: 25ae4e3ae0378608
-  zh: f68d7dfb8abbe260
+  en: aa762e23af92d0c1
+  zh: 8227699f9c8b95fa
 /install-and-upgrade-from-the-terminal/choose-an-entry:
   en: 6d4a743bfc217276
   zh: 2905f55971812725

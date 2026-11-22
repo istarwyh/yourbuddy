@@ -25,6 +25,7 @@ import {
 } from './product-plugin-compatibility.mjs'
 import { removeWorkspaceInstallState } from './prepare-harness-offline-store.mjs'
 import { verifyWorkbenchBranding } from './workbench-branding-smoke.mjs'
+import { openProductSettings } from './open-product-settings.mjs'
 import { redactEvidence } from './smoke-offline-startup-macos.mjs'
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -218,7 +219,21 @@ export function assertCodexModelCatalogProbe(probe) {
 }
 
 /**
- * Build the isolated environment used to execute unreviewed release candidates.
+ * Require the Capability Pack read route to report the reconciler's current ledger.
+ * @param {{status: number, body: {ok?: boolean, value?: object[]}}} response Authenticated HTTP result.
+ * @param {{packs: object[]}} ledger Ledger written by the Host reconciler.
+ * @returns {void}
+ */
+export function assertCapabilityPackProbe(response, ledger) {
+  if (response.status !== 200
+    || response.body?.ok !== true
+    || JSON.stringify(response.body.value) !== JSON.stringify(ledger.packs)) {
+    throw new Error('Capability Pack route did not report the Host reconciler ledger')
+  }
+}
+
+/**
+ * Build an isolated acceptance Host environment with native managed-CLI bridge paths.
  *
  * @param {string} root
  * @param {string} productRuntimeRoot
@@ -247,6 +262,7 @@ export function createReleaseChildEnvironment(
     UV_CACHE_DIR: join(root, 'uv-cache'),
     DSH_HOME: join(root, 'dsh-home'),
     DSH_AGENTS_HOME: join(root, 'agents'),
+    YOURBUDDY_BIN_DIR: join(root, 'managed-bin'),
   }
   for (const directory of new Set(Object.values(directories))) mkdirSync(directory, { recursive: true })
 
@@ -266,6 +282,7 @@ export function createReleaseChildEnvironment(
     ...inherited,
     ...directories,
     PATH: [...new Set(systemPath)].join(delimiter),
+    YOURBUDDY_NODE_BINARY: process.execPath,
     DEEPSEEK_API_KEY: 'yourbuddy-release-smoke-no-model-call',
     PYTHONUTF8: '1',
   }
@@ -468,8 +485,8 @@ function installReleaseCapabilities(root, productRuntimeRoot, capabilities, worl
   const harbor = capabilities.find(entry => entry.key === 'harborPlugin')
   assertHarborPythonReady(productRuntimeRoot, harbor.version, world, env)
   const pnpm = join(desktopRoot, '..', '..', 'node_modules', 'pnpm', 'bin', 'pnpm.mjs')
-  if (run(process.execPath, [pnpm, '--version'], { cwd: world, env }).trim() !== '11.7.0') {
-    throw new Error('release capability installation requires pnpm 11.7.0')
+  if (run(process.execPath, [pnpm, '--version'], { cwd: world, env }).trim() !== '11.28.5') {
+    throw new Error('release capability installation requires pnpm 11.28.5')
   }
   const bin = join(world, 'bin')
   mkdirSync(bin)
@@ -680,6 +697,21 @@ export function assertProductClientBoot(result, phase = 'installed') {
   }
 }
 
+/**
+ * Open the shipped Marketplace through its Plugins bundle configuration.
+ * @param {import('playwright').Page | import('playwright').FrameLocator} surface Web page or desktop frame.
+ * @returns {Promise<import('playwright').Locator>} The real bundle configuration section.
+ */
+export async function openMarketplaceConfiguration(surface) {
+  await surface.getByRole('button', { name: 'Plugins', exact: true }).click()
+  await surface.locator('[data-plugin-group="app-included"]')
+    .locator('[data-plugin-package="dsh-plugin-marketplace"]')
+    .getByRole('button', { name: 'View Plugin marketplace', exact: true }).click()
+  const configuration = surface.locator('[data-plugin-config]')
+  await configuration.getByPlaceholder('Search plugins (keyword, or empty to browse all)…', { exact: true }).waitFor({ timeout: 10_000 })
+  return configuration
+}
+
 async function exerciseMarketplace(settings, { openExternalLinks = false } = {}) {
   const missingCard = settings.getByRole('button').filter({ hasText: `YourBuddy-test/${missingMarketplaceRepository}` }).first()
   await missingCard.click()
@@ -712,7 +744,7 @@ async function exerciseMarketplace(settings, { openExternalLinks = false } = {})
     await settings.getByRole('link', { name: 'Open GitHub repo ↗', exact: true }).click()
     await settings.getByRole('link', { name: 'Search npm ↗', exact: true }).click()
   }
-  const install = settings.getByRole('button', { name: 'Install', exact: true })
+  const install = settings.locator('.__mp_detail').getByRole('button', { name: 'Install', exact: true })
   try {
     await install.waitFor({ timeout: 10_000 })
     if (!await install.isEnabled()) {
@@ -786,6 +818,7 @@ async function createAndOpenReleaseSmokeSession(page) {
   await page.reload({ waitUntil: 'load', timeout: 30_000 })
   await page.locator('[class*="frame"]').first().waitFor({ timeout: 30_000 })
   await completeProductOnboarding(page)
+  return created.body.result.value.sessionId
 }
 
 /** Synthetic files covering the fallback, Editor, and existing DSH PDF/Office/Excel viewers. */
@@ -1405,11 +1438,11 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       return { status: response.status, body: response.ok ? JSON.parse(body) : body }
     })
     assertCodexModelCatalogProbe(codexModelCatalogProbe)
-    await createAndOpenReleaseSmokeSession(page)
+    const smokeSessionId = await createAndOpenReleaseSmokeSession(page)
     await exerciseLightweightServices(page)
     await page.getByRole('button', { name: 'Access mode, current: Full access', exact: true })
       .waitFor({ timeout: 10_000 })
-    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await openProductSettings(page)
     const settings = page.getByRole('dialog', { name: 'Settings' })
     await settings.waitFor({ timeout: 10_000 })
     const update = settings.getByRole('button', { name: 'Check and update', exact: true })
@@ -1432,9 +1465,11 @@ async function runBrowserSmoke(baseUrl, env, phase) {
     if (await proxySave.isEnabled()) {
       throw new Error('standalone YourBuddy Web exposed desktop network proxy persistence as enabled')
     }
-    await settings.getByRole('button', { name: 'Plugin Marketplace', exact: true }).click()
-    await settings.getByPlaceholder('Search plugins (keyword, or empty to browse all)…', { exact: true }).waitFor({ timeout: 10_000 })
-    await exerciseMarketplace(settings)
+    await settings.getByRole('button', { name: 'Close', exact: true }).click()
+    const marketplace = await openMarketplaceConfiguration(page)
+    await exerciseMarketplace(marketplace)
+    await page.locator(`[data-row-key=${JSON.stringify(`session:${smokeSessionId}`)}]`).click()
+    await openProductSettings(page)
     await settings.getByRole('button', { name: 'General', exact: true }).click()
     assertProductClientBoot({
       clientResponses,
@@ -1604,7 +1639,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       desktopExternalLinkSmokeUrl,
       { timeout: 10_000 },
     )
-    await embedded.getByRole('button', { name: 'Settings', exact: true }).click()
+    await openProductSettings(embedded)
     const embeddedSettings = embedded.getByRole('dialog', { name: 'Settings' })
     await embeddedSettings.waitFor({ timeout: 10_000 })
     await embeddedSettings.getByRole('button', { name: 'GPT Auth', exact: true }).click()
@@ -1633,9 +1668,11 @@ async function runBrowserSmoke(baseUrl, env, phase) {
     if (await embeddedSettings.getByText(/transport failure for \/codex-auth\/status/u).count() !== 0) {
       throw new Error('desktop GPT Auth settings displayed a status transport failure')
     }
-    await embeddedSettings.getByRole('button', { name: 'Plugin Marketplace', exact: true }).click()
-    await embeddedSettings.getByPlaceholder('Search plugins (keyword, or empty to browse all)…', { exact: true }).waitFor({ timeout: 10_000 })
-    await exerciseMarketplace(embeddedSettings, { openExternalLinks: true })
+    await embeddedSettings.getByRole('button', { name: 'Close', exact: true }).click()
+    const embeddedMarketplace = await openMarketplaceConfiguration(embedded)
+    await exerciseMarketplace(embeddedMarketplace, { openExternalLinks: true })
+    await embedded.locator(`[data-row-key=${JSON.stringify(`session:${smokeSessionId}`)}]`).click()
+    await openProductSettings(embedded)
     await exerciseBetterSidebarExternalLink(embeddedSettings, embedded)
     await page.waitForFunction(
       url => window.__YOURBUDDY_DESKTOP_COMMANDS__?.some(
@@ -1684,6 +1721,9 @@ async function runBrowserSmoke(baseUrl, env, phase) {
         command: 'open_marketplace_url',
         args: { url: `https://www.npmjs.com/package/${validMarketplacePackage}` },
       },
+      { command: 'get_network_proxy_settings' },
+      { command: 'get_shell_environment' },
+      { command: 'get_macos_permissions' },
       {
         command: 'open_external_url',
         args: { url: desktopBetterSidebarPluginUrl },
@@ -1748,7 +1788,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
     const proxyEmbedded = proxyPage.frameLocator('#app')
     await proxyEmbedded.locator('[class*="frame"]').first().waitFor({ timeout: 30_000 })
     await completeProductOnboarding(proxyEmbedded)
-    await proxyEmbedded.getByRole('button', { name: 'Settings', exact: true }).click()
+    await openProductSettings(proxyEmbedded)
     const proxySettings = proxyEmbedded.getByRole('dialog', { name: 'Settings' })
     await proxySettings.waitFor({ timeout: 10_000 })
     await proxySettings.getByRole('button', { name: 'General', exact: true }).click()
@@ -1879,7 +1919,7 @@ async function runBrowserSmoke(baseUrl, env, phase) {
       browserStep = 'default-plugin-navigation'
       const [mediaState] = await Promise.all([
         page.waitForResponse(response => new URL(response.url()).pathname === '/media-desk/state', { timeout: 10_000 }),
-        page.getByRole('button', { name: 'Media Desk', exact: true }).click({ timeout: 10_000 }),
+        page.locator('button[aria-label="Media Desk"]').click({ timeout: 10_000 }),
       ])
       if (!mediaState.ok() || !Array.isArray((await mediaState.json()).state?.items)) {
         throw new Error(`Media Desk did not load its workbench data (HTTP ${mediaState.status()})`)
@@ -2045,6 +2085,16 @@ export async function apply() {
     const authenticated = await authenticateHost(baseUrl)
     const headers = { cookie: authenticated.cookie }
     await fetchOk(authenticated.baseUrl, { headers })
+    const capabilityLedgerPath = join(env.YOURBUDDY_BIN_DIR, '.yourbuddy-capability-packs.json')
+    const capabilityLedgerDeadline = Date.now() + 10_000
+    while (!existsSync(capabilityLedgerPath)) {
+      if (Date.now() >= capabilityLedgerDeadline) throw new Error('Host Capability Pack reconciler did not write its ledger')
+      await new Promise(resolvePoll => { setTimeout(resolvePoll, 100) })
+    }
+    const capabilityLedger = JSON.parse(readFileSync(capabilityLedgerPath, 'utf8'))
+    const capabilityResponse = await fetchOk(`${authenticated.baseUrl}/api/yourbuddy/capability-packs`, { headers })
+    assertCapabilityPackProbe({ status: capabilityResponse.status, body: await capabilityResponse.json() }, capabilityLedger)
+    console.log(`verify-product-release: ${phase} Capability Pack route matches reconciled ledger (${capabilityLedger.packs.length} packs)`)
     for (const path of ['/api/context-doctor/audit?detail=developer', '/api/pomodoro/config']) {
       const body = await (await fetchOk(`${authenticated.baseUrl}${path}`, { headers })).json()
       if (body?.ok !== true) throw new Error(`default product Host returned an invalid response: ${path}`)
@@ -2116,7 +2166,13 @@ export function resolveSettingsConfig(schema, input) {
   return typeof parsed?.get === 'function' ? parsed.get() : parsed
 }
 
-async function verifyMarketplaceHostContract(root) {
+/**
+ * Exercise the installed marketplace schema and its operation-owned failure diagnostic.
+ * @param {string} root Installed product Harness.
+ * @param {string} world Private verification directory.
+ * @returns {Promise<void>}
+ */
+export async function verifyMarketplaceHostContract(root, world) {
   const entry = join(root, 'packages', 'product', 'plugin-marketplace', 'index.js')
   const marketplace = await import(`${pathToFileURL(entry).href}?verify=${Date.now()}`)
   const parsed = resolveSettingsConfig(marketplace.Config, {
@@ -2130,11 +2186,22 @@ async function verifyMarketplaceHostContract(root) {
   if (parsed.installState.pkg !== missingMarketplaceRepository) {
     throw new Error('Plugin Marketplace installState schema discarded its package identity')
   }
-  const diagnostic = marketplace.installFailureMessage({
-    code: 1,
-    stdout: 'ERR_PNPM_FETCH_404 GET https://registry.npmjs.org/missing-npm-package: Not Found - 404',
-    stderr: 'dsh: pnpm failed in profile directory /tmp/profile',
-  })
+  const management = await import(pathToFileURL(join(root, 'packages', 'product', 'plugin-marketplace', 'management.js')).href)
+  const profile = { name: 'marketplace-diagnostic', dir: join(world, 'marketplace-diagnostic') }
+  mkdirSync(profile.dir, { recursive: true })
+  writeFileSync(join(profile.dir, 'package.json'), '{"dependencies":{}}\n')
+  let diagnostic = ''
+  try {
+    await management.performOperation({ pkg: 'missing-npm-package' }, profile, {
+      execute: async () => ({
+        code: 1,
+        stdout: 'ERR_PNPM_FETCH_404 GET https://registry.npmjs.org/missing-npm-package: Not Found - 404',
+        stderr: 'dsh: pnpm failed in profile directory /tmp/profile',
+      }),
+    })
+  } catch (error) {
+    diagnostic = error.message
+  }
   if (!diagnostic.includes('ERR_PNPM_FETCH_404') || diagnostic.includes('profile directory')) {
     throw new Error(`Plugin Marketplace hid the actionable pnpm diagnostic: ${diagnostic}`)
   }
@@ -2165,7 +2232,7 @@ export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRo
     if (lockPeers !== installedPeers) {
       throw new Error(`product peer verification count changed after install: lock=${lockPeers}, installed=${installedPeers}`)
     }
-    await verifyMarketplaceHostContract(root)
+    await verifyMarketplaceHostContract(root, world)
     writeDocumentPreviewFixtures(world, options.documentFixtureDirectory)
     await runHostSmoke(root, productRuntimeRoot, desktopOverlayPath, world, lifetime, 'core')
     console.log(`verify-product-release: default product passed (${CORE_PRODUCT_CLIENT_IDS.length} product Clients, Codex default, lightweight browser, PDF/DOCX/PPTX/XLSX viewing and reopen in Chromium)`)

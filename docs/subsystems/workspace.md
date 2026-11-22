@@ -25,9 +25,10 @@ Consumers see only the `Workspace` interface; the implementation stays package-p
 ```ts type-equiv
 /**
  * One workspace: a stable id over an existing directory, a display title, and
- * an ordered candidate account of sessions. Membership requires both an id in
- * that account and a session header whose canonical cwd equals the workspace
- * path. Consumers only see this interface; the implementation stays private.
+ * an ordered candidate account of sessions. Membership validates header cwd
+ * against the workspace path, but preserves an existing account when its
+ * fully qualified cwd is missing. Consumers only see this interface; the
+ * implementation stays private.
  */
 interface Workspace {
   /** Stable record id (generated uuid). */
@@ -54,8 +55,11 @@ interface Workspace {
    * prepended at attach, explicit reordering goes through
    * `insertSessionBefore`, and activity never reorders. The durable candidate
    * account is filtered synchronously: missing headers, invalid cwd values,
-   * and canonical cwd mismatches are never returned. A subsequent workspace
-   * mutation prunes those filtered candidates durably.
+   * and canonical cwd mismatches are never returned. A fully qualified cwd
+   * whose realpath or directory stat fails with ENOENT preserves an existing
+   * candidate, including a dangling symlink; other filesystem failures do not.
+   * A subsequent mutation prunes filtered candidates, not missing-directory
+   * candidates. This does not admit new sessions or recreate directories.
    */
   readonly sessionIds: readonly SessionId[]
 
@@ -113,11 +117,11 @@ interface Workspace {
 }
 ```
 
-Ownership truth is the record's ordered `sessionIds`, never derived from session cwd — but membership requires both: an id on the account and a header whose canonical cwd equals the workspace path, so one session structurally belongs to at most one workspace. Failed writes reject (`insertSessionBefore` account errors as `WorkspaceMoveInvalidError`, storage failures as plain errors); every accepted mutation stamps `updatedAt` and durably prunes candidates that no longer pass the membership check.
+Ownership truth is the record's ordered `sessionIds`, never derived from session cwd. Membership validates the recorded header cwd against the workspace path; an existing candidate remains owned when its fully qualified cwd fails resolution or directory stat with `ENOENT`. This preserves missing-directory and dangling-symlink accounts without admitting new sessions. Failed writes reject (`insertSessionBefore` account errors as `WorkspaceMoveInvalidError`, storage failures as plain errors); every accepted mutation stamps `updatedAt` and durably prunes candidates that no longer pass the membership check.
 
 ## The registry: `ctx.workspaceRegistry`
 
-`WorkspaceRegistry` ([signatures](#ctxworkspaceregistry--workspaceregistry)) owns registration and resolution. `create(path, title?)` requires a fully qualified path, canonicalizes it, rejects a nonexistent path (the original `ENOENT`) or a non-directory, returns the existing entity unchanged when the canonical path is already owned, and otherwise creates a record with `title ?? defaultWorkspaceTitle(path)` prepended to the durable registry order (different canonical paths may share a display title, and a path with no final segment uses its root spelling). `get(id)` and the ordered `list()` are synchronous cache reads; `resolveByPath(path)` applies the same fully qualified realpath canon without creating. `delete(id)` removes only the registration, order entry, and session account — the directory, user files, live sessions, and persisted logs are never touched, so those sessions become Ungrouped ([decision](../../.agents/notes/implemented/feature/2026-07-27-workspace-registration-deletion.md)); unknown ids return `false`. Create and delete persist a pending-mutation marker before their two writes (record + order) can diverge; startup resolves exactly the marked mutation — by deleting the marked table row, which completes an interrupted delete and rolls back an interrupted create (the registration is re-creatable, so rollback is the safe direction) — and an unmarked order/table mismatch fails loud as corruption.
+`WorkspaceRegistry` ([signatures](#ctxworkspaceregistry--workspaceregistry)) owns registration and resolution. `create(path, title?)` requires a fully qualified path, canonicalizes it, rejects a nonexistent path (the original `ENOENT`) or a non-directory, returns the existing entity unchanged when the canonical path is already owned, and otherwise creates a record with `title ?? defaultWorkspaceTitle(path)` prepended to the durable registry order (different canonical paths may share a display title, and a path with no final segment uses its root spelling). `get(id)` and the ordered `list()` are synchronous cache reads; `resolveByPath(path)` applies the same fully qualified realpath canon without creating. `delete(id)` removes only the registration, order entry, and session account — the directory, user files, live sessions, and persisted logs are never touched, so those sessions become Ungrouped ([reference](../../packages/workspace/workspace/README.md)); unknown ids return `false`. Create and delete persist a pending-mutation marker before their two writes (record + order) can diverge; startup resolves exactly the marked mutation — by deleting the marked table row, which completes an interrupted delete and rolls back an interrupted create (the registration is re-creatable, so rollback is the safe direction) — and an unmarked order/table mismatch fails loud as corruption.
 
 Sessions get their cwd at create time from whoever creates them, not from this registry — the API gateway resolves a new session's cwd from the chosen workspace's `path` (falling back to an explicit or default cwd), creates the session so the cwd lands in its immutable [`SessionHeader`](persistence.md#sessionheader--metadata-beside-the-log), then calls `attachSession`, which re-validates that stored header cwd against the workspace path. On the first successful start, the registry bootstraps history from persisted headers alone (`id`, `cwd`, `createdAt` — never event bodies), grouping sessions with a valid canonical cwd into per-directory workspaces, newest first; the initialized marker is written last so an interrupted bootstrap resumes safely. The bootstrap is one-time: cwd-less legacy sessions stay Ungrouped, and sessions created afterwards join a workspace only through `attachSession`.
 
@@ -232,10 +236,10 @@ Typed Remote control of transient Session-owned terminal processes.
 
 ```ts cordis-catalog
 /**
- * Read the Session working directory and terminal limits without resolving a shell.
+ * Read the Session's current directory and terminal limits without filesystem validation or shell lookup.
  * @param agent - Session owner supplied by the Gateway.
  * @param signal - request cancellation.
- * @returns the Session workspace directory and terminal limits.
+ * @returns the logged current directory and terminal limits; retained terminals keep their own process directories.
  */
 @Remote environment(agent: Agent, signal: AbortSignal): TerminalEnvironment
 
@@ -264,6 +268,44 @@ Typed Remote control of transient Session-owned terminal processes.
 @Remote async create(agent: Agent, request: TerminalCreateRequest, signal: AbortSignal): Promise<WebTerminalInfo>
 
 /**
+ * Open a terminal for the Session's Agent under a caller-resolved sandbox policy; it appears in every
+ * window that watches the Session and passes to the person on the person's first typed input.
+ * @param agent - Session owner whose Agent requests the terminal.
+ * @param request - title, directory, dimensions, sandbox policy and shell preference.
+ * @param signal - allocation cancellation; a committed terminal outlives it.
+ * @returns the Agent's handle for the committed terminal.
+ * @throws RemoteError `terminal/limit-reached` when the Session or Agent terminal limit is reached.
+ * @throws Error when the title is blank or longer than 120 characters.
+ */
+async openForAgent(agent: Agent, request: AgentTerminalRequest, signal: AbortSignal): Promise<AgentTerminal>
+
+/**
+ * Render a page of any terminal in the Agent's Session, including terminals the person opened.
+ * @param agent - Session owner.
+ * @param id - terminal identity.
+ * @param request - page position and byte bound.
+ * @returns rendered screen text, including output received before the call.
+ * @throws RemoteError `terminal/unavailable` when the terminal is missing or closes before the screen is read.
+ */
+readScreen(agent: Agent, id: WebTerminalId, request: TerminalScreenRequest): Promise<TerminalScreenPage>
+
+/**
+ * Observe whether a Session terminal's shell is running a command.
+ * @param agent - Session owner.
+ * @param id - terminal identity.
+ * @returns idle, busy, or unknown for unsupported shells and sandboxed launches.
+ */
+inspectActivity(agent: Agent, id: WebTerminalId): Promise<'idle' | 'busy' | 'unknown'>
+
+/**
+ * Stream the Session's retained terminals as whole sets, without resolving or activating an Agent.
+ * @param sessionId - watched Session identity.
+ * @param signal - stream cancellation.
+ * @returns the current set, then a new set after creation, removal or any published state change.
+ */
+@Remote({ mode: 'stream' }) async *watch(sessionId: SessionId, signal: AbortSignal): AsyncIterable<WebTerminalInfo[]>
+
+/**
  * Retain an existing terminal for a window without activating its Agent or taking input control.
  * @param sessionId - owning Session identity, including an inactive saved layout.
  * @param id - retained Host terminal identity.
@@ -273,35 +315,13 @@ Typed Remote control of transient Session-owned terminal processes.
 @Remote({ mode: 'stream' }) retain(sessionId: SessionId, id: WebTerminalId, signal: AbortSignal): AsyncIterable<TerminalRetentionFrame>
 
 /**
- * Attach to a terminal without binding its process lifetime to the transport.
+ * Attach terminal input and output to one physical Remote stream.
  * @param agent - Session owner supplied by the Gateway.
  * @param id - terminal identity.
- * @param attachmentId - new exclusive input attachment.
- * @param signal - physical stream cancellation.
- * @returns screen recovery followed by output and metadata changes.
+ * @param signal - attachment cancellation; the process remains alive and input is never replayed.
+ * @returns screen recovery, output, writable state and provider-acceptance acknowledgements.
  */
-@Remote({ mode: 'stream' }) follow(agent: Agent, id: WebTerminalId, attachmentId: TerminalAttachmentId, signal: AbortSignal): AsyncIterable<TerminalFrame>
-
-/**
- * Deliver raw input, including Tab completion and control characters.
- * @param agent - Session owner supplied by the Gateway.
- * @param id - terminal identity.
- * @param attachmentId - current writable attachment.
- * @param data - input bytes represented as UTF-8 text.
- * @returns after provider input acceptance.
- */
-@Remote async write(agent: Agent, id: WebTerminalId, attachmentId: TerminalAttachmentId, data: string): Promise<void>
-
-/**
- * Update the dimensions of the PTY and recovery screen.
- * @param agent - Session owner supplied by the Gateway.
- * @param id - terminal identity.
- * @param attachmentId - current writable attachment.
- * @param cols - column count.
- * @param rows - row count.
- * @returns after the resize completes.
- */
-@Remote async resize(agent: Agent, id: WebTerminalId, attachmentId: TerminalAttachmentId, cols: number, rows: number): Promise<void>
+@Remote({ mode: 'stream' }) attach(agent: Agent, id: WebTerminalId, signal: AbortSignal): RemoteStream<TerminalFrame, TerminalInput>
 
 /**
  * Rename a terminal without changing its shell.
@@ -320,7 +340,7 @@ Typed Remote control of transient Session-owned terminal processes.
 @Remote async close(agent: Agent, id: WebTerminalId): Promise<void>
 ```
 
-Types: [Agent](core.md) · [SessionId](core.md)
+Types: [Agent](core.md) · [RemoteStream](typert.md) · [SessionId](core.md)
 
 Source: [`packages/api/terminal-controller/src/index.ts`](../../packages/api/terminal-controller/src/index.ts)
 
@@ -405,11 +425,17 @@ Host service backing the generated `ctx.remote.workspace` namespace.
 @Remote('unpinSession') unpinSession(request: WorkspaceUnpinSessionRequest): Promise<WorkspacePinValue>
 
 /**
- * Stream a complete Workspace baseline followed by ordered increments.
+ * Stream a complete Workspace baseline followed by ordered increments. A
+ * non-owner receives only the Workspaces and Sessions `allows()` admits.
+ * When a delivered Workspace is no longer admitted at its next change or
+ * the next order change, the stream sends a `replace` frame with the
+ * complete filtered state instead of a `remove`, because a Client never
+ * resurrects a removed Workspace; a `remove` frame reports a deletion and
+ * reaches only a Client that received that Workspace.
  * @param signal - generation cancellation.
  * @returns baseline followed by ordered Workspace increments.
  */
-@Remote({ mode: 'stream' }) follow(signal: AbortSignal): AsyncIterable<WorkspaceFollowFrame>
+@Remote({ mode: 'stream' }) async *follow(signal: AbortSignal): AsyncIterable<WorkspaceFollowFrame>
 ```
 
 Source: [`packages/api/workspace-controller/src/index.ts`](../../packages/api/workspace-controller/src/index.ts)
@@ -458,6 +484,22 @@ Host Remote file reads and workspace directory observations over the composed fi
  * @returns the directory's children in the backend's stable name order, bounded by the entry cap.
  */
 @Remote async list(workspaceFileScope: WorkspaceFileScope, path: string, signal: AbortSignal): Promise<WorkspaceDirectoryListing>
+
+/**
+ * Search files and their inferred ancestor directories with packaged ripgrep.
+ * Native ignore rules apply unless disabled; VCS metadata, symlinks and empty
+ * directories are absent. Within the bounded set of listed files, matches
+ * sort by depth, then workspace-relative path.
+ * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
+ * @param request - the query, literal exclusions, and hidden/ignore switches.
+ * @param signal - caller cancellation, forwarded to the subprocess; rejection preserves its reason.
+ * @returns matches capped by search.maxResults; incomplete marks excess rg files or exit 2.
+ * @throws RemoteError `gateway/bad-request`: the query is blank.
+ * @throws RemoteError `workspace-file/not-found`: the workspace root does not exist.
+ * @throws RemoteError `workspace-file/not-directory`: the workspace root is not a directory.
+ * @throws RemoteError `workspace-file/search-failed`: subprocess is missing, rg cannot launch or execute, or the search times out.
+ */
+@Remote async search( workspaceFileScope: WorkspaceFileScope, request: WorkspaceFileSearchRequest, signal: AbortSignal, ): Promise<WorkspaceFileSearchResult>
 
 /**
  * Watch one file or a directory's direct entries in the Session's filesystem.
@@ -556,7 +598,7 @@ insertBefore(id: WorkspaceId, beforeId?: WorkspaceId): Promise<readonly Workspac
  * resolves without writing, asking, or stopping.
  * @param sessionId - The session to archive.
  * @param options - Whether running work is stopped instead of refusing.
- * @returns resolution after durability and, with `stopActivity`, after every stop request was issued.
+ * @returns resolution after durability, any stop requests, and follow-up admission.
  */
 archiveSession(sessionId: SessionId, options: ArchiveSessionOptions = {}): Promise<void>
 
@@ -631,6 +673,26 @@ Ask the composed providers what still runs for a session before it is archived. 
 
 Source: [`packages/workspace/workspace/src/index.ts`](../../packages/workspace/workspace/src/index.ts)
 
+<a id="workspacesession-archived--parallel"></a>
+
+#### `workspace/session-archived` — parallel
+
+Admit optional follow-up work after durable archival and any stop requests. Dispatched inside the registry's write queue: a listener registers its work and returns, and runs the work and any unbounded I/O afterwards. Listener failures are logged without undoing archival. Listeners own and drain their background work.
+
+```ts cordis-catalog
+/**
+ * Admit optional follow-up work after durable archival and any stop requests.
+ * Dispatched inside the registry's write queue: a listener registers its work
+ * and returns, and runs the work and any unbounded I/O afterwards. Listener
+ * failures are logged without undoing archival. Listeners own and drain their background work.
+ * @param request - newly archived Session; repeated archive requests do not dispatch.
+ * @mode parallel
+ */
+'workspace/session-archived'(request: SessionActivityRequest): Promise<void> | void
+```
+
+Source: [`packages/workspace/workspace/src/index.ts`](../../packages/workspace/workspace/src/index.ts)
+
 <a id="workspacesession-stop--parallel"></a>
 
 #### `workspace/session-stop` — parallel
@@ -653,6 +715,24 @@ Stop a session's running work because the caller archived it with `stopActivity`
  * @mode parallel
  */
 'workspace/session-stop'(request: SessionActivityRequest): Promise<void> | void
+```
+
+Source: [`packages/workspace/workspace/src/index.ts`](../../packages/workspace/workspace/src/index.ts)
+
+<a id="workspacesession-unarchiving--parallel"></a>
+
+#### `workspace/session-unarchiving` — parallel
+
+Cancel or settle archive follow-up work before making a Session available again. A rejection retains the archived state.
+
+```ts cordis-catalog
+/**
+ * Cancel or settle archive follow-up work before making a Session available again.
+ * A rejection retains the archived state.
+ * @param request - Session about to leave the archive set.
+ * @mode parallel
+ */
+'workspace/session-unarchiving'(request: SessionActivityRequest): Promise<void> | void
 ```
 
 Source: [`packages/workspace/workspace/src/index.ts`](../../packages/workspace/workspace/src/index.ts)

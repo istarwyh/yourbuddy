@@ -34,18 +34,22 @@ for (const bundleName of bundleNames) {
       },
     }
 
-    openNativeFile(info, 'owner-session', '/workspace', 'notes/readme.md', 'tab')
-    openNativeFile(info, 'owner-session', '/workspace', 'notes/readme.md', 'replace')
-    openNativeFile(info, 'owner-session', '/workspace', 'notes/readme.md', 'side')
-
+    const parsed = ts.createSourceFile(bundleName, bundle, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
+    const body = findSyntaxNode(parsed, node => ts.isFunctionDeclaration(node) && node.name?.text === 'NativeTabBody')
+    assert.ok(body)
+    for (const name of ['onOpenFile', 'onOpenFileInPlace', 'onOpenFileSide']) {
+      const property = findSyntaxNode(body, node => ts.isPropertyAssignment(node) && node.name.getText(parsed) === name)
+      assert.ok(property)
+      const callback = Function('openNativeFile', 'info', 'scopeSessionId', 'cwd', `return ${property.initializer.getText(parsed)}`)(
+        openNativeFile, info, 'owner-session', '/workspace',
+      )
+      callback('notes/readme.md')
+    }
     assert.deepEqual(calls, [
       ['file:owner-session:/workspace:notes/readme.md', { revealIfOpened: true }],
       ['file:owner-session:/workspace:notes/readme.md', { replaceTab: true, revealIfOpened: false }],
       ['file:owner-session:/workspace:notes/readme.md', { toSide: true, revealIfOpened: false }],
     ])
-    assert.match(bundle, /onOpenFile: \(path\) => \{\s*openNativeFile\(info, sessionId, cwd, path, "tab"\)/u)
-    assert.match(bundle, /onOpenFileInPlace: \(path\) => \{\s*openNativeFile\(info, sessionId, cwd, path, "replace"\)/u)
-    assert.match(bundle, /onOpenFileSide: \(path\) => \{\s*openNativeFile\(info, sessionId, cwd, path, "side"\)/u)
     assert.match(bundle, /pending\.filter\(\(entry\) => !place\(entry\)\)/u)
     assert.match(bundle, /onSessionAdopted\(flushPending\)/u)
     assert.match(bundle, /id: "image",[\s\S]*?fetchStrategy: "mediaUrl"/u)
@@ -53,18 +57,44 @@ for (const bundleName of bundleNames) {
 }
 
 test('published declarations expose native file actions and editor callbacks', () => {
-  const adapter = readFileSync(join(snapshotRoot, 'lib', 'types', 'client', 'native', 'tab-adapter.d.ts'), 'utf8')
-  const service = readFileSync(join(snapshotRoot, 'lib', 'types', 'client', 'service.d.ts'), 'utf8')
-  const editor = readFileSync(join(snapshotRoot, 'lib', 'types', 'client', 'EditorHost.d.ts'), 'utf8')
-
-  assert.match(adapter, /readonly actions:/u)
-  assert.match(adapter, /toSide\?: boolean/u)
-  assert.match(adapter, /placement: 'tab' \| 'replace' \| 'side'/u)
-  for (const declaration of [service, editor]) {
-    assert.match(declaration, /onOpenFile\?: \(path: string\) => void/u)
-    assert.match(declaration, /onOpenFileInPlace\?: \(path: string\) => void/u)
-    assert.match(declaration, /onOpenFileSide\?: \(path: string\) => void/u)
+  const path = join(snapshotRoot, 'lib', 'types', 'native-file-actions.fixture.ts')
+  const fixture = `
+import { openNativeFile, type NativeTabInfo } from './client/native/tab-adapter.js'
+import type { TabComponentProps } from './client/service.js'
+import type { EditorHost } from './client/EditorHost.js'
+declare const info: NativeTabInfo
+info.tab.actions.openResource('file:notes', { toSide: true, revealIfOpened: false })
+// @ts-expect-error native side placement is boolean
+info.tab.actions.openResource('file:notes', { toSide: 'side' })
+openNativeFile(info, 'session', '/workspace', 'notes', 'side')
+// @ts-expect-error only declared native placements are accepted
+openNativeFile(info, 'session', '/workspace', 'notes', 'other')
+type Callbacks = 'onOpenFile' | 'onOpenFileInPlace' | 'onOpenFileSide'
+const callbacks: Pick<TabComponentProps, Callbacks> = {
+  onOpenFile: (path: string) => {},
+  onOpenFileInPlace: (path: string) => {},
+  onOpenFileSide: (path: string) => {},
+}
+const editor: Pick<Parameters<typeof EditorHost>[0], Callbacks> = callbacks
+// @ts-expect-error editor file callbacks receive a path string
+editor.onOpenFile?.(123)
+`
+  const options = {
+    noEmit: true, strict: true, skipLibCheck: true,
+    target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler, jsx: ts.JsxEmit.ReactJSX,
+    allowImportingTsExtensions: true,
+    paths: {
+      '@deepseek-ai/dsh-client-ui-sidebar-right/client': [join(desktopRoot, '../../packages/client/ui-sidebar-right/lib/types/client/index.d.ts')],
+    },
   }
+  const host = ts.createCompilerHost(options)
+  const readSource = host.getSourceFile.bind(host)
+  host.getSourceFile = (name, languageVersion, onError, shouldCreateNewSourceFile) => name === path
+    ? ts.createSourceFile(name, fixture, languageVersion, true)
+    : readSource(name, languageVersion, onError, shouldCreateNewSourceFile)
+  const diagnostics = ts.getPreEmitDiagnostics(ts.createProgram([path], options, host))
+  assert.deepEqual(diagnostics.map(diagnostic => `${diagnostic.file?.getLineAndCharacterOfPosition(diagnostic.start ?? 0).line}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')}`), [])
 })
 
 /** Locate the actual function or statement emitted from the owning source. */
@@ -127,7 +157,7 @@ for (const bundleName of bundleNames) {
     assert.ok(memo)
     assert.ok(emptyBranch)
     const options = Function(`${optionOwner.getText(parsed)}; return buildNewTabOptions`)()
-    const readMemo = Function('state', 'ctx', 'sessionId', 'cwd', 'buildNewTabOptions', 'react',
+    const readMemo = Function('state', 'ctx', 'sessionId', 'cwd', 'buildNewTabOptions', 'react', 'shellScope', 'tabsVersion',
       `${memo.getText(parsed)}; return newTabOptions`)
     let previousDependencies
     let previousOptions
@@ -143,6 +173,7 @@ for (const bundleName of bundleNames) {
     }
     const { empty } = optionsScenario((state, ctx, sessionId) => readMemo(
       state, ctx, sessionId, '/workspace', options, react,
+      sessionId === undefined ? undefined : { sessionId, cwd: '/workspace' }, 0,
     ))
     const cards = () => {}
     const renderBranch = Function(

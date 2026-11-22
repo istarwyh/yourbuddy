@@ -385,7 +385,7 @@ fn resolve_local_repo() -> Result<RuntimePaths, String> {
     let toolchain = scan_host_toolchain(Path::new("node"), Path::new("pnpm"));
     let node_binary = toolchain
         .node
-        .ok_or_else(|| "找不到兼容 Node；请安装 Node ^22.19 或 >=24，或设置 PATH".to_string())?;
+        .ok_or_else(|| "找不到兼容 Node；请安装 Node >=24.9.0，或设置 PATH".to_string())?;
     let pnpm_binary = toolchain.pnpm.unwrap_or_else(|| {
         #[cfg(windows)]
         {

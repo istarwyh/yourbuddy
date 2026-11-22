@@ -1,0 +1,25 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "rewriteRelativeImportExtensions": false,
+    "exactOptionalPropertyTypes": false,
+    "types": ["node"]
+  },
+  "references": [
+    { "path": "../../../packages/settings/settings" },
+    { "path": "../../../packages/boot/app-boot" },
+    { "path": "../../../packages/boot/config-editor" },
+    { "path": "../../../packages/boot/hmr" },
+    { "path": "../../../packages/core/agent-default-model" },
+    { "path": "../../../vendor/timer" },
+    { "path": "../../../packages/client/ui-primitives" }
+  ],
+  "include": [
+    "sidebar-settings-persistence.spec.ts",
+    "better-sidebar-host-paths.spec.ts"
+  ]
+}

@@ -207,7 +207,12 @@ export class TabDomain {
           controller.signal.addEventListener('abort', release, { once: true })
           return release
         },
+        // An explicit host ignores this tab's pane and never names it for replacement.
         openResource: (address, options = {}) => {
+          if (options.destination !== undefined) {
+            navigator.openResourceIn(sessionId, address, { destination: options.destination, params: options.params })
+            return
+          }
           const placement = place(options)
           if (placement !== undefined) navigator.openResourceIn(sessionId, address, { ...placement, params: options.params })
         },

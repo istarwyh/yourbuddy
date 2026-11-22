@@ -3,6 +3,7 @@
 - name: cordis:projections
 - name: cordis:prompt
 - name: cordis:tools
+- name: cordis:executor
 - name: cordis:agents
 - name: cordis:persistence
   config:

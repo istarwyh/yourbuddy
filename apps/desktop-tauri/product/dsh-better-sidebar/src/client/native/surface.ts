@@ -1,162 +1,165 @@
-/**
- * The plugin's write face over DSH's native right Sidebar (`ctx.sidebarRight`).
- *
- * The service speaks in the plugin's own vocabulary (tab type, seed, session
- * scope); this module turns those into the native surface's vocabulary
- * (kind + navigation params, or a `dsh-resource://` address) and forwards
- * tab-record operations to the plugin's native record registry.
- *
- * Two native limits shape the implementation:
- *
- * - the surface exists only while a session's panel is mounted, and the
- *   service's public face (`ISidebarRight`) writes only into THAT session.
- *   {@link mountedSessions} derives that session from the list summary retained
- *   by `mainView`. The controller also carries `openTabIn` /
- *   `openResourceIn` / `closeIn`, which act on any session whose store the
- *   runtime has minted; both are probed at call time, and an open for a
- *   session that has no store yet is QUEUED and replayed when that session
- *   comes on screen;
- * - layout state is memory-only, so a queued open is not durable either.
- */
+/** Session-targeted writes and FIFO deferred opens for the native right Sidebar. */
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ISidebarRight, TabId } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import type { Context } from '../../context-types.ts'
+import { addressBaseOf } from '../address-base.ts'
 import { fileAddressFor } from '../resource-address.ts'
-import type { NativeTabKind, NativeTabParams, SidebarSurface } from '../service.ts'
+import type { NativePathTab, NativeTabKind, NativeTabParams, SidebarSurface } from '../service.ts'
 import type { NativeTabRecords } from './tab-adapter.tsx'
 
-/** One open the surface could not place yet. */
+/** One open retained until its target Session adopts a Sidebar store. */
 type Pending =
-  | { kind: 'tab'; sessionId: string; tabKind: NativeTabKind; params: NativeTabParams; revealIfOpened: boolean }
-  | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean }
+  | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean; preferNewPane: boolean }
+  | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean; preferNewPane: boolean }
 
-/** The observation of the Session retained by the main conversation view. */
+/** The Session currently displayed by the native Sidebar controller. */
 export interface MountedSessions {
   getSnapshot(): string | undefined
   subscribe(listener: () => void): () => void
 }
 
 declare module '@deepseek-ai/dsh-client-ui-sidebar-right/client' {
-  /** Page parameters owned by Better Sidebar's registered descriptor adapter. */
+  /** Page parameters owned by Better Sidebar's descriptor adapter. */
   interface SidebarRightTabParamsMap extends Record<NativeTabKind, NativeTabParams> {}
 }
 
-/** The plugin's write face over the native surface. */
+/** Native operations and the observer cleanup owned by this adapter. */
 export interface NativeSurface extends SidebarSurface {
-  /** Stop observing Session-list and native-store lifecycle changes. */
+  /** Retry queued opens after a host store is adopted. */
+  flushPending(): void
+  /** Release observers and pending opens. */
   dispose(): void
+  /** Every native tab associated with a path. */
+  pathTabs(): NativePathTab[]
 }
 
-/** The native controller, probed at call time (the service can arrive late). */
+/** Read the optional controller at the time of an operation. */
 function controllerOf(ctx: Context): ISidebarRight | undefined {
-  try {
-    return ctx.get('sidebarRight')
-  } catch {
-    return undefined
-  }
+  return ctx.get('sidebarRight')
 }
 
 /**
- * Observe the Session retained by the main conversation view.
- *
- * @param ctx - the client context.
- * @returns the observable face of the main view's session id.
+ * Observe the on-screen Session; the list also discovers a late controller.
+ * @param ctx - client context.
+ * @returns current Session observation.
  */
 export function mountedSessions(ctx: Context): MountedSessions {
   return {
-    getSnapshot: () => Object.values(ctx.sessions.list.getSnapshot().byId)
-      .find(summary => (summary.retainedBy?.mainView ?? 0) > 0)?.id,
-    subscribe: listener => ctx.sessions.list.subscribe(listener),
+    getSnapshot: () => controllerOf(ctx)?.mounted.getSnapshot(),
+    subscribe: listener => {
+      let stopMounted = controllerOf(ctx)?.mounted.subscribe(listener)
+      const stopList = ctx.sessions.list.subscribe(() => {
+        stopMounted ??= controllerOf(ctx)?.mounted.subscribe(listener)
+        listener()
+      })
+      return () => { stopList(); stopMounted?.() }
+    },
   }
 }
 
 /**
- * The session whose seat is on screen, or `undefined` — no seat is mounted
- * (global panel, column not mounted) or the host has no mounted feed. Callers
- * treat `undefined` as "not this session": nothing the plugin draws belongs to
- * that surface, so it must neither write into it nor manage its column.
- *
- * @param ctx - the client context.
- * @returns the on-screen session id, when there is one.
+ * Read the Session whose native panel is on screen.
+ * @param ctx - client context.
+ * @returns on-screen Session, or undefined.
  */
 export function mountedSessionId(ctx: Context): string | undefined {
-  return mountedSessions(ctx).getSnapshot()
+  return controllerOf(ctx)?.mounted.getSnapshot()
 }
 
 /**
- * Bind the plugin's write face to the native controller.
- * @param ctx - the client context (session list + `ctx.sidebarRight`).
- * @param records - the plugin's native tab record registry.
- * @returns the surface, plus a disposer unbinding its two feed subscriptions.
+ * Bind native records to Session-targeted controller operations.
+ * @param ctx - client context.
+ * @param records - per-Session tab records.
+ * @returns surface with observer cleanup.
  */
 export function createNativeSurface(ctx: Context, records: NativeTabRecords): NativeSurface {
   const pending: Pending[] = []
-  const controller = (): ISidebarRight | undefined => controllerOf(ctx)
-
   const place = (entry: Pending): boolean => {
-    const api = controller()
+    const api = controllerOf(ctx)
     if (api === undefined) return false
-    const sessionId = SessionId(entry.sessionId)
-    if (entry.kind === 'tab') {
-      const options = { params: entry.params, revealIfOpened: entry.revealIfOpened }
-      return api.openTabIn(sessionId, entry.tabKind, options)
-    }
     const options = {
-      ...(entry.line === undefined ? {} : { params: { line: entry.line } }),
       revealIfOpened: entry.revealIfOpened,
+      ...(entry.preferNewPane ? { preferNewPane: true } : {}),
     }
-    return api.openResourceIn(sessionId, entry.address, options)
+    const sessionId = SessionId(entry.sessionId)
+    return entry.kind === 'tab'
+      ? api.openTabIn(sessionId, brandString<NativeTabKind>(entry.tabKind), { ...options, params: entry.params })
+      : api.openResourceIn(sessionId, entry.address, {
+          ...options,
+          ...(entry.line === undefined ? {} : { params: { line: entry.line } }),
+        })
   }
-
   const flushPending = (): void => {
-    if (pending.length === 0) return
     const retained = pending.filter(entry => !place(entry))
     pending.splice(0, pending.length, ...retained)
   }
-
   const enqueue = (entry: Pending): void => {
-    // A later open may follow a controller replacement, so it also retries
-    // retained operations before placing the new request.
     flushPending()
     if (!place(entry)) pending.push(entry)
   }
-
-  const unsubscribeSessionList = ctx.sessions.list.subscribe(flushPending)
-  const unsubscribeAdoption = controller()?.onSessionAdopted(flushPending)
+  const sessionOf = (tabId: string, sessionId?: string): string | undefined => {
+    if (sessionId !== undefined) return records.has(sessionId, tabId) ? sessionId : undefined
+    const mounted = mountedSessionId(ctx)
+    if (mounted !== undefined && records.has(mounted, tabId)) return mounted
+    let found: string | undefined
+    for (const candidate of Object.keys(ctx.sessions.list.getSnapshot().byId)) {
+      if (!records.has(candidate, tabId)) continue
+      if (found !== undefined) return undefined
+      found = candidate
+    }
+    return found
+  }
+  const evictGoneSessions = (): void => {
+    const live = new Set(Object.keys(ctx.sessions.list.getSnapshot().byId))
+    const mounted = mountedSessionId(ctx)
+    if (mounted !== undefined) live.add(mounted)
+    records.retain(live)
+  }
+  let stopAdoption = controllerOf(ctx)?.onSessionAdopted(flushPending)
+  const stopList = ctx.sessions.list.subscribe(() => {
+    stopAdoption ??= controllerOf(ctx)?.onSessionAdopted(flushPending)
+    flushPending()
+    evictGoneSessions()
+  })
+  const stopMounted = mountedSessions(ctx).subscribe(flushPending)
+  evictGoneSessions()
   return {
-    openTab({ sessionId, kind, params, revealIfOpened }) {
-      enqueue({ kind: 'tab', sessionId, tabKind: kind, params, revealIfOpened })
+    openTab({ sessionId, kind, params, revealIfOpened, preferNewPane }) {
+      enqueue({ kind: 'tab', sessionId, tabKind: kind, params, revealIfOpened, preferNewPane: preferNewPane === true })
     },
-    openResource({ sessionId, address, line, revealIfOpened }) {
-      enqueue({ kind: 'resource', sessionId, address, line, revealIfOpened })
+    openResource({ sessionId, address, line, revealIfOpened, preferNewPane }) {
+      enqueue({ kind: 'resource', sessionId, address, line, revealIfOpened, preferNewPane: preferNewPane === true })
     },
-    fileAddress(sessionId, cwd, path) {
-      return fileAddressFor(sessionId, cwd, path)
-    },
+    fileAddress: (sessionId, cwd, path) => fileAddressFor(sessionId, addressBaseOf(ctx, sessionId) ?? cwd, path),
+    tabTypeOf: (sessionId, tabId) => records.get(sessionId, tabId)?.tab.type,
     close(sessionId, tabId) {
-      const record = records.get(tabId)
+      const record = records.get(sessionId, tabId)
       if (record === undefined) return undefined
-      records.drop(tabId)
-      controller()?.closeIn(SessionId(sessionId), brandString<TabId>(tabId))
-      return { type: record.tab.type, title: record.tab.title }
+      records.drop(sessionId, tabId)
+      controllerOf(ctx)?.closeIn(SessionId(sessionId), brandString<TabId>(tabId))
+      return {
+        type: record.tab.type,
+        title: record.tab.title,
+        ...(record.tab.meta === undefined ? {} : { meta: record.tab.meta }),
+      }
     },
-    update(tabId, patch) {
-      if (!records.has(tabId)) return false
-      records.update(tabId, patch)
+    update(tabId, patch, sessionId) {
+      const owner = sessionOf(tabId, sessionId)
+      if (owner === undefined) return false
+      records.update(owner, tabId, patch)
       return true
     },
-    activate(tabId) {
-      // The native surface has no cross-pane activation face the plugin needs:
-      // a tab is focused by opening its (kind, address) again, which the
-      // native open already de-duplicates.
-      return records.has(tabId)
+    activate(tabId, sessionId) {
+      const owner = sessionOf(tabId, sessionId)
+      if (owner === undefined || owner !== mountedSessionId(ctx)) return false
+      controllerOf(ctx)?.focus(brandString<TabId>(tabId))
+      return true
     },
-    has: tabId => records.has(tabId),
-    dispose: () => {
-      unsubscribeSessionList()
-      unsubscribeAdoption?.()
-    },
+    has: (tabId, sessionId) => sessionOf(tabId, sessionId) !== undefined,
+    pathTabs: () => records.pathTabs(),
+    flushPending,
+    dispose: () => { stopList(); stopAdoption?.(); stopMounted(); pending.length = 0 },
   }
 }

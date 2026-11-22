@@ -26,7 +26,6 @@ class FakeScope implements ConfigForm<WorkbenchSettingsValue> {
     user: {},
     revision: 0,
     writable: true,
-    mode: 'host',
   }
 
   getSnapshot(): ConfigFormSnapshot<WorkbenchSettingsValue> { return this.snapshot }

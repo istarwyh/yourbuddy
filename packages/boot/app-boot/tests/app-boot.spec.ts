@@ -5,10 +5,10 @@ import { pathToFileURL } from 'node:url'
 import { inspect } from 'node:util'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
+import type {} from '@deepseek-ai/dsh-system-prompt'
 import {
-  addHarnessSourceSection, auditStartupEntries, boot, StartupError,
-  FAIL_LOUD_RELEASE_TIMEOUT_MS, HARNESS_SOURCE_SECTION,
+  auditStartupEntries, boot, StartupError,
+  FAIL_LOUD_RELEASE_TIMEOUT_MS,
   installFailLoud, loadEnv, loadLayeredEnv, loadOverlayPatches, resolveConfigPath, type FailLoudEvent, type FailLoudProcess,
 } from '../src/index.ts'
 
@@ -144,6 +144,9 @@ describe('loadLayeredEnv', () => {
     ['a network proxy', 'HTTPS_PROXY=http://attacker.example\n'],
     ['a lowercase network proxy', 'https_proxy=http://attacker.example\n'],
     ['a browser command', 'BROWSER=./script\n'],
+    ['a DeepSeek model endpoint', 'DEEPSEEK_BASE_URL=http://attacker.example\n'],
+    ['a DeepSeek search endpoint', 'DEEPSEEK_SEARCH_BASE_URL=http://attacker.example\n'],
+    ['a lowercase DeepSeek endpoint', 'deepseek_base_url=http://attacker.example\n'],
   ])('refuses to launch when a .env sets %s, before applying anything', (_case, content) => {
     const home = tmp()
     const project = tmp()
@@ -189,12 +192,59 @@ describe('loadLayeredEnv', () => {
     }
   })
 
-  it('still refuses every other bootstrap name in the Harness-home .env', () => {
+  it('accepts the DeepSeek endpoints from the Harness-home .env, below an exported one', () => {
     const home = tmp()
     const project = tmp()
-    // A CA path sits in the same network group as the proxy names and changes what is trusted,
-    // not where traffic goes; the exemption must not widen to it.
-    writeFileSync(join(home, '.env'), 'SSL_CERT_FILE=/tmp/ca.pem\n')
+    writeFileSync(join(home, '.env'), [
+      'DEEPSEEK_BASE_URL=https://from-home.example/anthropic',
+      'DEEPSEEK_SEARCH_BASE_URL=https://from-home.example/v1',
+      '',
+    ].join('\n'))
+    clear()
+    vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv('DEEPSEEK_BASE_URL', 'https://exported.example/anthropic')
+    vi.stubEnv('DEEPSEEK_SEARCH_BASE_URL', undefined)
+    try {
+      const snapshot = loadLayeredEnv(NAME, project, vi.fn())
+      expect(snapshot.get('DEEPSEEK_SEARCH_BASE_URL'))
+        .toEqual({ value: 'https://from-home.example/v1', source: 'user-env', path: join(home, '.env') })
+      expect(snapshot.get('DEEPSEEK_BASE_URL')).toEqual({ value: 'https://exported.example/anthropic', source: 'process' })
+      expect(process.env.DEEPSEEK_SEARCH_BASE_URL).toBe('https://from-home.example/v1')
+      expect(process.env.DEEPSEEK_BASE_URL).toBe('https://exported.example/anthropic')
+    } finally {
+      clear()
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it.each(['deepseek_base_url', 'DeepSeek_Search_Base_URL'])('refuses %s from the Harness-home .env and names the exact spelling', (name) => {
+    const home = tmp()
+    const project = tmp()
+    // Consumers look the endpoint up by its exact name on POSIX, so another spelling would load without effect.
+    writeFileSync(join(home, '.env'), `${name}=https://from-home.example/v1\n`)
+    clear()
+    vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv(name, undefined)
+    try {
+      expect(() => loadLayeredEnv(NAME, project, vi.fn()))
+        .toThrow(`spell it ${name.toUpperCase()}, then export it or put it in ${join(home, '.env')}`)
+      expect(process.env[name]).toBeUndefined()
+    } finally {
+      clear()
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it.each([
+    'SSL_CERT_FILE=/tmp/ca.pem\n',
+    'NODE_TLS_REJECT_UNAUTHORIZED=0\n',
+    'DSH_HOME=/tmp/elsewhere\n',
+  ])('still refuses every other bootstrap name in the Harness-home .env: %s', (content) => {
+    const home = tmp()
+    const project = tmp()
+    // The CA and TLS names sit in the same network group as the proxy and DeepSeek endpoint names but change what
+    // is trusted, not where traffic goes, and DSH_HOME would move the exemption itself; none may join it.
+    writeFileSync(join(home, '.env'), content)
     clear()
     vi.stubEnv('DSH_HOME', home)
     try {
@@ -205,16 +255,17 @@ describe('loadLayeredEnv', () => {
     }
   })
 
-  it('names the Harness-home file as the way out when a project .env sets a proxy', () => {
+  it.each(['HTTP_PROXY', 'DEEPSEEK_BASE_URL'])('names the Harness-home file as the way out when a project .env sets %s', (name) => {
     const home = tmp()
     const project = tmp()
-    writeFileSync(join(project, '.env'), 'HTTP_PROXY=http://attacker.example\n')
+    writeFileSync(join(project, '.env'), `${name}=http://attacker.example\n`)
     clear(); clearProxy()
     vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv(name, undefined)
     try {
       expect(() => loadLayeredEnv(NAME, project, vi.fn()))
-        .toThrow(`export HTTP_PROXY, or put it in ${join(home, '.env')}, which does not travel with a repository`)
-      expect(process.env.HTTP_PROXY).toBeUndefined()
+        .toThrow(`export ${name}, or put it in ${join(home, '.env')}, which does not travel with a repository`)
+      expect(process.env[name]).toBeUndefined()
     } finally {
       clear(); clearProxy()
       vi.unstubAllEnvs()
@@ -557,7 +608,10 @@ describe('installFailLoud', () => {
 describe('auditStartupEntries', () => {
   const requiredIds = [
     'agent-loop',
+    'tool-executor-native',
+    'tool-executor-ptc',
     'webserver',
+    'web-runtime',
     'modules',
     'connection',
     'headless-runner',
@@ -574,6 +628,7 @@ describe('auditStartupEntries', () => {
     }
     disabled?: boolean
     options: { id: string; name: string }
+    parent?: { tree: { import(name: string): Promise<unknown> } }
   }
 
   const ctxWith = (entries: FakeEntry[]): Context => ({
@@ -609,7 +664,7 @@ describe('auditStartupEntries', () => {
     const warn = vi.fn()
     const original = new Error('todo apply failure')
     await auditStartupEntries(ctxWith([
-      { options: { id: 'missing-tool', name: './missing.mjs' } },
+      { options: { id: 'missing-tool', name: './missing.mjs' }, parent: { tree: { import: () => Promise.resolve() } } },
       { fiber: fiber(3, original), options: { id: 'tool-todo', name: '@deepseek-ai/dsh-tool-todo' } },
       {
         fiber: fiber(0, undefined, { ready: {}, missing: {} }, ['ready']),
@@ -739,7 +794,7 @@ describe('auditStartupEntries', () => {
 
   it('omits an error cause when required plugins are only waiting for services', async () => {
     const error = await auditStartupEntries(ctxWith([
-      { fiber: fiber(0, undefined, { webRuntime: {} }), options: { id: 'connection', name: './connection.mjs' } },
+      { fiber: fiber(0, undefined, { webStartup: {} }), options: { id: 'connection', name: './connection.mjs' } },
     ]), NAME, vi.fn()).catch((error: unknown) => error)
     expect(error).toBeInstanceOf(StartupError)
     expect(Object.hasOwn(error as StartupError, 'cause')).toBe(false)
@@ -750,9 +805,9 @@ describe('auditStartupEntries', () => {
   it('keeps diagnostic metadata available without expanding it in ordinary error inspection', () => {
     const entries = [{
       id: 'connection', module: './connection.mjs', required: true, fiberState: 0,
-      outcome: { kind: 'pending' as const, missing: ['webRuntime'] },
+      outcome: { kind: 'pending' as const, missing: ['webStartup'] },
     }]
-    const error = new StartupError('waiting for webRuntime', entries)
+    const error = new StartupError('waiting for webStartup', entries)
     const startup = { configurationPath: '/private/cordis.yml', messages: [
       { ts: 1, name: 'loader', type: 'warn', args: ['raw diagnostic argument'] },
     ] }
@@ -760,7 +815,7 @@ describe('auditStartupEntries', () => {
     expect(error.entries).toBe(entries)
     expect(error.startup).toBe(startup)
     const output = inspect(error)
-    expect(output).toContain('waiting for webRuntime')
+    expect(output).toContain('waiting for webStartup')
     expect(output).not.toContain('connection.mjs')
     expect(output).not.toContain('/private/cordis.yml')
     expect(output).not.toContain('raw diagnostic argument')
@@ -792,12 +847,12 @@ describe('auditStartupEntries', () => {
     const error = await auditStartupEntries(ctxWith([
       { fiber: fiber(0, undefined, { webServer: {} }), options: { id: 'web-runtime', name: './web.mjs' } },
       { fiber: fiber(3, original), options: { id: 'webserver', name: '@deepseek-ai/dsh-host-webserver' } },
-      { fiber: fiber(0, undefined, { webRuntime: {} }), options: { id: 'connection', name: './connection.mjs' } },
+      { fiber: fiber(0, undefined, { webStartup: {} }), options: { id: 'connection', name: './connection.mjs' } },
       { fiber: fiber(0), options: { id: 'unknown', name: './unknown.mjs' } },
     ]), NAME, warn).catch((error: unknown) => error)
     expect(error).toBeInstanceOf(StartupError)
     expect((error as Error).message).toMatchInlineSnapshot(`
-      "dsh-test-bin: startup failed: 2 required plugins did not activate
+      "dsh-test-bin: startup failed: 3 required plugins did not activate
 
       Failed plugins (1):
         webserver (required)
@@ -806,10 +861,10 @@ describe('auditStartupEntries', () => {
               at Server.listen (node:net:1:2)
 
       Plugins waiting for services (3):
-        Plugin                 Missing services
-        connection (required)  webRuntime
-        web-runtime            webServer
-        unknown                unknown"
+        Plugin                  Missing services
+        web-runtime (required)  webServer
+        connection (required)   webStartup
+        unknown                 unknown"
     `)
     expect(warn).not.toHaveBeenCalled()
   })
@@ -853,7 +908,7 @@ describe('boot', () => {
     const error = failure as StartupError
     expect(error.entries).toEqual([{
       id: 'webserver', module: './missing.mjs', required: true, fiberState: undefined,
-      outcome: { kind: 'failed', error: 'failed to import' },
+      outcome: { kind: 'failed', error: expect.objectContaining({ message: expect.stringContaining('missing.mjs') as string }) as Error, phase: 'failed to import' },
     }])
     expect(error.startup?.configurationPath).toBe(config)
     expect(error.startup?.messages.some(message => message.args.some(arg => arg instanceof Error && arg.message.includes('missing.mjs')))).toBe(true)
@@ -1264,62 +1319,4 @@ describe('boot', () => {
     }
   })
 
-})
-
-describe('addHarnessSourceSection', () => {
-  const SOURCE_ROOT = `${sep}opt${sep}harness-src`
-  const EXPECTED = `The DeepSeek Harness implementation checkout is at ${SOURCE_ROOT}. The checkout location and current working directory are separate values and may differ; never infer the working directory from this path. Use pwd to determine the current working directory. Use this checkout only to inspect or extend DSH itself.`
-
-  it('distinguishes the source path from the current workdir after reusable instructions', async () => {
-    const ctx = new Context()
-    try {
-      await ctx.plugin(SystemPrompt, { personaPrefix: 'You are a coding agent.' })
-      ctx.systemPrompt.section({
-        name: 'tools:sdk', order: ctx.systemPrompt.getSectionOrder('TOOLS_SDK'), text: 'Reusable tool SDK.',
-      })
-      const dispose = addHarnessSourceSection(ctx, SOURCE_ROOT)
-      expect(dispose).toBeTypeOf('function')
-      const systemPrompt = ctx.get('systemPrompt')!
-      const rendered = renderPrompt(await systemPrompt.assemble())
-      expect(rendered).toContain(EXPECTED)
-      // The >= 0 guards keep a drifted opener/persona string from a false pass
-      // through `-1 < n`.
-      const identityAt = rendered.indexOf('You are an AI agent powered by DeepSeek Harness.')
-      const sourceAt = rendered.indexOf(EXPECTED)
-      const personaAt = rendered.indexOf('You are a coding agent.')
-      expect(identityAt).toBeGreaterThanOrEqual(0)
-      expect(personaAt).toBeGreaterThanOrEqual(0)
-      const sdkAt = rendered.indexOf('Reusable tool SDK.')
-      expect(personaAt).toBeGreaterThan(identityAt)
-      expect(sdkAt).toBeGreaterThan(personaAt)
-      expect(sdkAt).toBeLessThan(sourceAt)
-    } finally {
-      await ctx.fiber.dispose()
-    }
-  })
-
-  it('is a no-op returning undefined when no systemPrompt service is mounted', async () => {
-    const ctx = new Context()
-    try {
-      expect(addHarnessSourceSection(ctx, SOURCE_ROOT)).toBeUndefined()
-    } finally {
-      await ctx.fiber.dispose()
-    }
-  })
-
-  it('disposes the section it added, so a systemPrompt reload leaves no residue', async () => {
-    const ctx = new Context()
-    try {
-      await ctx.plugin(SystemPrompt, {})
-      const systemPrompt = ctx.get('systemPrompt')!
-      const dispose = addHarnessSourceSection(ctx, SOURCE_ROOT)!
-      const present = await systemPrompt.assemble()
-      expect(present.sections.some(section => section.name === HARNESS_SOURCE_SECTION)).toBe(true)
-      dispose()
-      const gone = await systemPrompt.assemble()
-      expect(gone.sections.some(section => section.name === HARNESS_SOURCE_SECTION)).toBe(false)
-    } finally {
-      await ctx.fiber.dispose()
-    }
-  })
 })

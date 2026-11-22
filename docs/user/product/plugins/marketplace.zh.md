@@ -2,15 +2,22 @@
 
 [English](marketplace.md) | 中文
 
-随应用集成的快照版本：`0.3.3`。来源：[Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace)。
+随应用集成的快照版本：`0.5.10`。来源：[Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace)。
 
 ## 解决的问题
 
-用户可以从设置中发现社区插件，查看 README、来源、安装方式，并按需要增加能力。
+用户可以从插件页面发现社区插件，查看 README、来源、安装方式，并按需要增加能力。
 
 ## 使用方式
 
-打开设置 → 插件市场，搜索插件并查看详情。只有当一个 npm 包明确关联所选代码仓库并声明 DSH Bundle 补丁时，页面才提供确认安装入口；确认后查看安装状态，再通过应用生命周期入口重启 YourBuddy。AI 解释功能使用当前配置的默认模型。
+1. 打开**插件 → 随应用提供的插件设置 → 插件市场**。
+2. 确认详情页显示插件管理区域及搜索输入框，然后搜索插件并查看详情；英文界面对应 **Plugin management · web** 和 **Search plugins…**。
+
+只有当一个 npm 包明确关联所选代码仓库并声明 DSH Bundle 补丁时，页面才提供确认安装入口；确认后查看安装状态，再通过应用生命周期入口重启 YourBuddy。AI 解释功能使用当前配置的默认模型。
+
+## 升级后的入口
+
+随应用集成的 Marketplace `0.5.10` 使用上述插件页面入口，替代**设置 → 插件市场**。这是 YourBuddy 集成的第三方插件变更，不是单独的 DSH Core 发行。使用过旧设置入口的用户，按使用步骤即可进入搜索页。
 
 ## 默认集成的理由
 

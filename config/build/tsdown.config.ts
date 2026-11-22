@@ -1,6 +1,8 @@
 import { fileURLToPath } from 'node:url'
+import { globSync } from 'node:fs'
 import { defineConfig } from 'tsdown'
-import { typertPlugin } from '../../packages/typert/generator/lib/types/tsdown-plugin.js'
+import { decoratorPlugin } from '../../packages/typert/generator/lib/types/tsdown-plugin.js'
+import { workspacePackageGlobs } from '../../scripts/workspace-package-globs.ts'
 
 function isBuildFaceClient(value: unknown): boolean {
   if (value === undefined || value === 'host') return false
@@ -10,7 +12,7 @@ function isBuildFaceClient(value: unknown): boolean {
 
 /**
  * The ordinary workspace build consumes JavaScript emitted by the Host
- * TypeScript project and runs Typert. The Client pass selects packages that
+ * TypeScript project after source-only Typert generation. The Client pass selects packages that
  * declare a browser bundle and lets their package-local configs emit both
  * their Node loader entry and browser artifact. `apps/desktop` bundles after
  * this pass (root package.json `build:lib:host`): its main bundle inlines
@@ -18,13 +20,13 @@ function isBuildFaceClient(value: unknown): boolean {
  * workspace members concurrently without ordering them.
  */
 export default defineConfig(({ env }) => {
+  const root = fileURLToPath(new URL('../../', import.meta.url))
   const client = isBuildFaceClient(env?.DSH_BUILD_FACE)
+  const packages = workspacePackageGlobs(globSync(['vendor/*/package.json', 'packages/*/*/package.json'], { cwd: root }))
   return {
-    cwd: fileURLToPath(new URL('../../', import.meta.url)),
-    workspace: client
-      ? ['vendor/*', 'packages/*/*', 'apps/cli']
-      : ['vendor/*', 'packages/*/*', 'apps/cli', 'apps/desktop-host'],
-    entry: client ? '' : ['lib/types/{index,invariant,startup}.js'],
+    cwd: root,
+    workspace: [...packages, 'apps/cli', ...client ? [] : ['apps/desktop-host']],
+    entry: client ? '' : ['lib/types/{index,startup}.js'],
     outDir: 'lib',
     format: ['esm'],
     platform: 'node',
@@ -32,6 +34,6 @@ export default defineConfig(({ env }) => {
     fixedExtension: false,
     dts: false,
     clean: false,
-    plugins: client ? [] : [typertPlugin({ mode: 'workspace', faces: ['host'] })],
+    plugins: client ? [] : [decoratorPlugin()],
   }
 })

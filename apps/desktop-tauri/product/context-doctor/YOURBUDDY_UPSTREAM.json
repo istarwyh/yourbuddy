@@ -12,9 +12,10 @@
   "patches": [
     "Set @deepseek-ai/dsh-tools peer range from 0.1.5-rc.2 to 0.1.7-rc.2.",
     "Set @deepseek-ai/dsh-tools peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-tools peer range from 0.2.0-rc.1 to 0.2.0-rc.2."
+    "Set @deepseek-ai/dsh-tools peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
+    "Set @deepseek-ai/dsh-tools peer range from 0.2.0-rc.2 to 0.2.2-rc.5."
   ],
   "repository": "https://github.com/Zhenyu98/dsh-context-doctor",
   "license": "BSD-3-Clause",
-  "treeSha256": "4add2582c591344f7207f41cc37fd2739125a55cd79195dd308579acaf17e668"
+  "treeSha256": "f0e638ea7cdd25a56e1caf63c672ee9994944c7a9413ee7e116c2ebe824bde11"
 }

@@ -1,43 +1,34 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, PropsRenderFactories, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import {
   IconCheckOutlineRegular, IconChevronDownOutlineRegular, IconChevronUpOutlineRegular, IconCloseOutlineRegular,
-  FileTypeIcon, fileSizeText, IconEditOutlineRegular, IconQueueOutlineRegular, IconSendOutlineRegular,
-  IconTrashOutlineRegular, projectUserText, Tooltip,
+  FileTypeIcon, fileSizeText, IconEditOutlineRegular, InlineEditor, IconQueueOutlineRegular, IconSendOutlineRegular,
+  IconTrashOutlineRegular, Tooltip, authoredText, pageContext, PageContextAttachments,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InboxState } from '@deepseek-ai/dsh-agent/types'
 import type { QueueAction } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
+import type { UserTextFacts } from '../index.ts'
 import { NS } from '../locales.ts'
 import css from './QueueDock.module.css'
 
 type QueueRow = InboxState['next-turn'][number]
 
-const EMPTY_QUEUE = [] as const
-const QUEUE_PREVIEW_CHARS = 200
-
 function isPageContextText(text: string): boolean {
-  return text !== '' && projectUserText(['', text], [], 'editable') === ''
+  return pageContext(text) !== undefined
 }
 
 function contextTextParts(texts: readonly string[]): string[] {
   return texts.slice(1).filter(isPageContextText)
 }
 
-function previewOf(content: QueueRow['content']): string {
-  let textIndex = 0
-  const flat = content.flatMap((block) => {
-    if (block.type === 'image' || block.type === 'file') return []
-    if (block.type !== 'text') return [`[${block.type}]`]
-    const context = textIndex > 0 && isPageContextText(block.text)
-    textIndex += 1
-    return context ? [] : [block.text]
-  }).join(' ').replace(/\s+/g, ' ').trim()
-  const chars = Array.from(flat)
-  return chars.length > QUEUE_PREVIEW_CHARS ? `${chars.slice(0, QUEUE_PREVIEW_CHARS).join('')}…` : flat
+const EMPTY_QUEUE = [] as const
+const QUEUE_TEXT_FACTS: Readonly<Partial<UserTextFacts>> = {
+  collapseWhitespace: true,
+  trimWhitespace: true,
 }
 
 function textOf(content: InboxState['next-turn'][number]['content']): string | null {
@@ -116,62 +107,16 @@ function QueueThumb({ attachment, loadImage, label }: {
     : <img className={css.thumb} src={url} alt={label} />
 }
 
-/**
- * Inline editor for one queued row. A textarea rather than an input: HTML
- * strips newlines from single-line input values, so editing a multi-line
- * queued message through one rewrites it as a single line. It grows with its
- * content up to the CSS cap, then scrolls. Enter saves, Shift+Enter breaks the
- * line, Escape cancels.
- */
-function QueueEditor({ text, label, onChange, onSave, onCancel }: {
-  text: string
-  label: string
-  onChange: (text: string) => void
-  onSave: () => void
-  onCancel: () => void
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null)
-
-  useLayoutEffect(() => {
-    const node = ref.current
-    /* v8 ignore next -- the ref is attached before layout effects run. */
-    if (node === null) return
-    node.style.height = 'auto'
-    // scrollHeight excludes the border that the border-box height includes.
-    node.style.height = `${node.scrollHeight + node.offsetHeight - node.clientHeight}px`
-  }, [text])
-
-  return (
-    <textarea
-      ref={ref}
-      autoFocus
-      rows={1}
-      className={css.editor}
-      aria-label={label}
-      value={text}
-      onChange={(event) => { onChange(event.currentTarget.value) }}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          onCancel()
-          return
-        }
-        if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
-        event.preventDefault()
-        onSave()
-      }}
-    />
-  )
-}
-
 /** Full props of a dock entry: InputZone owner share + session standard kit + global seat + the locale seat. */
 export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & QueueDockInjected & PropsLocale<'conversation'>
+  & PropsRenderFactories
 
 /**
  * Queue strip: one item renders directly; multiple items default to a
  * collapsible count header; an empty queue renders nothing. Local queued submissions
  * show sending status and disabled actions until their Host queue rows arrive.
  */
-export function QueueDock({ useSession, useProjection, updateQueue, notify, loadImage, t }: QueueDockProps) {
+export function QueueDock({ useSession, useProjection, updateQueue, notify, loadImage, renderFactorySlot, t }: QueueDockProps) {
   const inbox = useProjection('inbox') as unknown as InboxState | undefined
   const pendingSubmissions = useSession(s => s.pendingSubmissions)
   const queue = useMemo(() => {
@@ -266,17 +211,16 @@ export function QueueDock({ useSession, useProjection, updateQueue, notify, load
           {listVisible && queue.map((row) => {
             const attachments = queueAttachments(row.content)
             const texts = queueTextParts(row.content)
-            const contexts = contextTextParts(texts)
             const text = textOf(row.content)
-            const editableText = text === null ? null : projectUserText(texts, [], 'editable')
+            const editableText = text === null ? null : authoredText(texts)
             return (
               <li key={row.id} className={css.row}>
                 {/* Single-item strip has no count header, so the row itself carries the queue glyph. */}
                 {rowCount === 1 && <span className={css.lead} aria-hidden><IconQueueOutlineRegular /></span>}
                 {editing?.id === row.id
                   ? (
-                    <QueueEditor
-                      text={editing.text}
+                    <InlineEditor
+                      value={editing.text}
                       label={t('queue.edit')}
                       onChange={(text) => { setEditing({ id: row.id, text }) }}
                       onSave={() => { void saveEdit() }}
@@ -305,9 +249,11 @@ export function QueueDock({ useSession, useProjection, updateQueue, notify, load
                             ))}
                         </span>
                       )}
-                      <span className={css.preview}>
-                        {projectUserText([previewOf(row.content), ...contexts], [])}
-                      </span>
+                      <span className={css.preview}>{renderFactorySlot('conversation.user.text', {
+                        text: authoredText(texts),
+                        facts: QUEUE_TEXT_FACTS,
+                        interactive: false, ellipsis: true,
+                      })}<PageContextAttachments texts={texts} /></span>
                     </>
                   )}
                 {queueMutable && <div className={css.actions}>
@@ -421,7 +367,11 @@ export function QueueDock({ useSession, useProjection, updateQueue, notify, load
                       ))}
                   </span>
                 )}
-                <span className={css.preview}>{projectUserText(submission.text, [])}</span>
+                <span className={css.preview}>{renderFactorySlot('conversation.user.text', {
+                  text: submission.text,
+                  facts: QUEUE_TEXT_FACTS,
+                  interactive: false, ellipsis: true,
+                })}</span>
                 <span className={css.status} role="status">{t('queue.sending')}</span>
                 {queueMutable && <div className={css.actions}>
                   <button

@@ -1,132 +1,89 @@
 {
   "package": "dsh-better-sidebar",
-  "version": "0.21.1",
+  "version": "0.32.1",
   "sourceKind": "npm-latest",
   "channel": "latest",
-  "source": "https://registry.npmjs.org/dsh-better-sidebar/-/dsh-better-sidebar-0.21.1.tgz",
-  "integrity": "sha512-gbE5E9pwoJeHeedefBftSpTjGjd3TUOPUGYc4LlXUkW+NuYHwY6Hhfcsd//OKuohQLv6snle+sWhrdGWc8ARCg==",
-  "archiveSha256": "d0960735a41b0c3db478b93a8e0b0319ffab0cc0c82995df9d3d26e4ca692580",
-  "upstreamTreeSha256": "ba6bb90e609659d29dcdc53ccd97c072effb145abe980766b294210030a39aac",
+  "source": "https://registry.npmjs.org/dsh-better-sidebar/-/dsh-better-sidebar-0.32.1.tgz",
+  "integrity": "sha512-UcIEAkLuZXz0SkNDwMtycCoO59yCasowG6DqhxkG+jAjQfofF0BbXIOctfjqsU8WyaP6XoSvi4LgMFhEfinBsw==",
+  "archiveSha256": "cd0a88c0da237622a83d465ed824f17c39c74e7edf2609c14cf21c813d70c517",
+  "upstreamTreeSha256": "b71e7afacfd950b772d85ec911d8162fa4a9352e960d880cb017da214f828328",
+  "sourceCommit": "06d21351a50b60063010c178590fc24ecd76fb74",
+  "sourceCommitEvidence": "https://registry.npmjs.org/-/npm/v1/attestations/dsh-better-sidebar@0.32.1",
   "patches": [
     {
-      "id": "yourbuddy-workbench",
-      "file": "patches/better-sidebar-yourbuddy.patch",
-      "sha256": "e35c2536c2d71ba23c117fe87bbafda56782e758774ac17899916d5132c4baa2",
-      "purpose": "Add the workbench Slot presentation, desktop external-link bridge, and unbounded generic media routes to the pinned upstream snapshot."
+      "id": "yourbuddy-0.32.1-source",
+      "file": "patches/better-sidebar-0.32.1-yourbuddy-source.patch",
+      "sha256": "856d8a423dcbf46195fe53d7bbfb234415a8f947aae54795f6c68a9cc23af82b",
+      "purpose": "Port product slot placement, main-view Session selection, targeted native occurrence actions, terminal factory retention, document routing, desktop links and owned composer APIs onto official 0.32.1 source."
     },
     {
-      "id": "native-file-open-session",
-      "file": "patches/better-sidebar-native-file-open.patch",
-      "sha256": "2c21754914adc8f37c255f3399e0495d0ca2359c692f4ec391509c478324ff27",
-      "purpose": "Route file-tree opens to the native Sidebar session that owns the Files tab."
+      "id": "yourbuddy-0.32.1-metadata",
+      "file": "patches/better-sidebar-0.32.1-yourbuddy-metadata.patch",
+      "sha256": "bdef34562539852160a6ee900cfa44c5e7858b28c53cde0a669330d6cb02e5e2",
+      "purpose": "Pin DSH peers to 0.2.2-rc.5, declare product terminal and optional native-service owners, and document the product integration."
     },
     {
-      "id": "native-file-occurrence-actions",
-      "file": "patches/better-sidebar-native-file-actions.patch",
-      "sha256": "0020e90e32df7fb5864c23e0929e8ee8c4d82337fdc7ca4469f6859e2e3885ff",
-      "purpose": "Use native occurrence actions for file and side opens, with FIFO retry after Session-store adoption."
-    },
-    {
-      "id": "product-workbench-coordinator",
-      "file": "patches/better-sidebar-product-coordinator.patch",
-      "sha256": "76c5914bdeada77e2feafc45cf241c53b89ff8efee122e1e981ed6b3fd54df78",
-      "purpose": "Contribute Better Sidebar to the product-owned core workbench and distinguish explicit user navigation from background resource opens."
-    },
-    {
-      "id": "current-main-session",
-      "file": "patches/better-sidebar-current-session.patch",
-      "sha256": "a63075592a2d101fb2615a33b27fceafeb3b76161c0119e4a35ebe625e41fdf0",
-      "purpose": "Derive the active Session from the current main-view retention summary exposed by DSH 0.1.7."
-    },
-    {
-      "id": "workbench-terminal-adapter",
-      "file": "patches/better-sidebar-terminal-adapter.patch",
-      "sha256": "87998c0ab98a46a590de8f821233414990d6ef3bd68e38b4cdf9a4a0a91372f4",
-      "purpose": "Reuse the DSH terminal factory and lifecycle in the slot-hosted bottom workbench without changing the native right Sidebar."
-    },
-    {
-      "id": "sessionless-workbench-cards",
-      "file": "patches/better-sidebar-sessionless-workbench.patch",
-      "sha256": "93d0ef9d3438f6a72f867a39ddb1cb88128798ae4356381654abfa623f7b1a06",
-      "purpose": "Render disabled registered workbench cards before the first Session exists and refresh them from the existing tab registry subscription."
-    },
-    {
-      "id": "unrestricted-host-paths",
-      "file": "patches/better-sidebar-unrestricted-host-paths.patch",
-      "sha256": "7ab0176dd1ac929eb0f347aefd0a3c6215655274dc66d714d446023af1b62e99",
-      "purpose": "Allow Better Sidebar file routes and linked worktrees to use absolute paths anywhere on the trusted host."
-    },
-    {
-      "id": "historical-snapshot-gap",
-      "file": "patches/better-sidebar-historical-snapshot-gap.patch",
-      "sha256": "d8ae0abed1715bac7599035b0cccc148be8e518c0a76aaed55ee560a64435a9b",
-      "purpose": "Record the existing sidebar snapshot bytes from a3a01bf4d34fc9a9ad0acad211c9ad21a28ea517, including the image fallback and previously unrecorded emitted sessionless workbench changes."
-    },
-    {
-      "id": "type-contracts",
-      "file": "patches/better-sidebar-type-contracts.patch",
-      "sha256": "030f7f57c80dea64575549468e97b4dd5f231d3f816f2df703ed055705ec5728",
-      "purpose": "Use service-owner contracts and target-Session reference insertion, preserve Side Chat event envelopes, and rebuild both client channels with the pinned sidebar recipe."
-    },
-    "Set @deepseek-ai/dsh-agent peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-client-locale peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-conversation peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-primitives peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-settings peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-sidebar-right peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-slots peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-host-webserver peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-invariants peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-llm peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-session peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-settings peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-subagent peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Set @deepseek-ai/dsh-tools peer range from ^0.1.7-rc.1 to 0.1.7-rc.2.",
-    "Remove package lifecycle script prepare.",
-    "Set @deepseek-ai/dsh-agent peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-brand peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-client-locale peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-client-ui-conversation peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-client-ui-primitives peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-client-ui-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-client-ui-sidebar-browser peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-client-ui-sidebar-documentpreview peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-client-ui-sidebar-right peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-client-ui-workspace peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-host-webserver peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-invariants peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-llm peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-session peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-settings peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-subagent peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    "Set @deepseek-ai/dsh-tools peer range from 0.1.7-rc.2 to 0.2.0-rc.1.",
-    {
-      "id": "office-preview-routing",
-      "file": "patches/better-sidebar-office-preview-routing.patch",
-      "sha256": "cbbdcc022a8efbdd85f60053acc244abae04ba4a80d9579fb607e59e9b2518de",
-      "purpose": "Route workbench PDF, Word, PowerPoint, and Excel opens to existing native DSH previews, preserve the Files tree, and rebuild both client channels with the pinned recipe."
-    },
-    "Set @deepseek-ai/dsh-agent peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-brand peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-client-locale peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-conversation peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-primitives peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-settings peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-sidebar-browser peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-sidebar-documentpreview peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-sidebar-right peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-slots peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-client-ui-workspace peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-host-webserver peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-invariants peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-llm peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-session peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-settings peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-subagent peer range from 0.2.0-rc.1 to 0.2.0-rc.2.",
-    "Set @deepseek-ai/dsh-tools peer range from 0.2.0-rc.1 to 0.2.0-rc.2."
+      "id": "yourbuddy-0.32.1-emitted",
+      "file": "patches/better-sidebar-0.32.1-yourbuddy-emitted.patch",
+      "sha256": "80868af13cee79e525411b9e0ac0018edcaeef2ccd56518782ba6b7cc579554e",
+      "purpose": "Rebuild published JavaScript and declarations from the migrated 0.32.1 source using the pinned upstream recipe and current workspace owners."
+    }
   ],
+  "retiredPatches": [
+    {
+      "files": [
+        "better-sidebar-unrestricted-host-paths.patch"
+      ],
+      "reason": "Official 0.32.1 already resolves unrestricted host paths, session-relative paths and home-relative paths."
+    },
+    {
+      "files": [
+        "better-sidebar-yourbuddy.patch",
+        "better-sidebar-native-file-open.patch",
+        "better-sidebar-native-file-actions.patch",
+        "better-sidebar-product-coordinator.patch",
+        "better-sidebar-current-session.patch",
+        "better-sidebar-terminal-adapter.patch",
+        "better-sidebar-sessionless-workbench.patch",
+        "better-sidebar-historical-snapshot-gap.patch",
+        "better-sidebar-type-contracts.patch",
+        "better-sidebar-office-preview-routing.patch"
+      ],
+      "reason": "Replace all 0.21.1 patch offsets and emitted artifacts with the three replayable 0.32.1 patches. Official streaming routes already remove media and upload caps."
+    }
+  ],
+  "build": {
+    "recipe": "../../scripts/rebuild-better-sidebar.mjs",
+    "recipeSha256": "154c50b1190286d510236fbb5d922665e0f57c32deea68f73114633deb76ace6",
+    "upstreamCommit": "06d21351a50b60063010c178590fc24ecd76fb74",
+    "originalInputs": {
+      "package.json": "6bde895c576372603b60daff5b521ae00ea3564371e787143d47d1193c0e17e5",
+      "pnpm-lock.yaml": "c9373112dd4d6efb8049d76e7ab1e33762d8b55e84dd5feb76a8de06e9bc0240",
+      "pnpm-workspace.yaml": "9cbf83ea90d84fe2e49720b968577716eedbabeb5c72647c794ec4eead57250f",
+      "tsconfig.build.json": "aea8aa2fac726d12317d4bd77e5cbdf8f6747ad57909d862aad8ca51c20cefe8",
+      "tsconfig.json": "71ffa32d2eeb083c41b2d8c11dbeb8d13b049b54e6cb7196065aa2dd4040b9d7",
+      "tsdown.config.ts": "a3d7aad33c44408b68816ee7dbcb49b2b21b0835751dfb302e88e07d1f6644d5",
+      "scripts/build-mermaid-frame-asset.mjs": "c8910c025afd3fb52c7a862e268f151e59bd7d48ad5a352d67c17839b9aa2302",
+      "scripts/mermaid-frame-entry.mjs": "454edfaa390f45d1134b23cfc49771a93441c818bb1b48fbf4e66481a6128fe4"
+    },
+    "sortedConfigSha256": "33698fd6d9d91b5a13faa7cd5b0671f31b186c55695a63ce9c8ef42a69989b04",
+    "node": "v24.22.3",
+    "pnpm": "11.8.0",
+    "typescript": "5.6.2",
+    "tsdown": "0.22.14",
+    "lightningcss": "1.33.0",
+    "environment": {
+      "nodeEnv": "unset",
+      "registry": "https://registry.npmjs.org",
+      "npmConfigs": "empty staging files",
+      "credentialVariables": "removed",
+      "proxyRouting": "inherited"
+    },
+    "workspaceOwners": 383,
+    "identicalCleanBuilds": true,
+    "outputFiles": 269
+  },
   "repository": "https://github.com/omdsh-dev/DSH-better-sidebar",
   "license": "MIT",
-  "treeSha256": "be9183acb7b66e8baf86b1e31fbadfc371dc08fddb7f1c643cf439a9d7ade943"
+  "treeSha256": "f5b504e0f3cf657b1d0d2acd4025463d5760afbafeb2893adfb430f02f36bb37"
 }

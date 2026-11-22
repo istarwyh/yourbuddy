@@ -1,6 +1,7 @@
 /** Client-supplied request identity and client-safe account state; credentials never cross this projection. */
 import type {} from '@deepseek-ai/cordis'
 import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 
 /** Identity of the requesting UI for one account operation; the Host derives Platform request headers from it. */
 export interface AccountClientMetadata {
@@ -13,8 +14,13 @@ export interface AccountClientMetadata {
 
 /** Identity of one local login attempt, unrelated to the platform request ID. */
 export type SignInAttemptId = Branded<'SignInAttemptId'>
-/** Safe failure codes rendered through the caller's locale dictionary. */
-export type SignInErrorCode = 'network' | 'protocol' | 'expired' | 'storage'
+/**
+ * Safe failure codes rendered through the caller's locale dictionary.
+ * `no-response`: fetch returned no Response; `network`: HTTP or account-detail retrieval failure.
+ * `protocol`: invalid response or authorization data; `expired`: authorization expired;
+ * `storage`: local credential access or commit failed.
+ */
+export type SignInErrorCode = 'no-response' | 'network' | 'protocol' | 'expired' | 'storage'
 /** Latest login attempt, including terminal outcomes until the next attempt. */
 export interface SignInAttemptView {
   readonly id: SignInAttemptId
@@ -33,6 +39,13 @@ export interface AccountView {
   readonly status: 'signed-out' | 'credential-stored'
   readonly links: AccountLinks
   readonly attempt: SignInAttemptView | null
+}
+
+/** Ordered account stream item; every item carries the latest safe state. */
+export interface AccountUpdate {
+  /** Initial state and progress use snapshot; credential writes and removal use credentials-changed. */
+  readonly type: 'snapshot' | 'credentials-changed'
+  readonly state: AccountView
 }
 
 /** Platform account identifier supplied by the current-user endpoint. */
@@ -56,26 +69,33 @@ export interface AccountDetails {
   readonly balance: { readonly status: 'ready'; readonly value: readonly AccountWallet[]; readonly bonusWallets: readonly AccountWallet[] } | { readonly status: 'failed' }
 }
 
-/** Identity of one granted bonus order; stable across devices and sign-ins. */
-export type AccountBonusOrderId = Branded<'AccountBonusOrderId'>
-/** One granted bonus Platform has not yet recorded as displayed; copy is server-authored. */
-export interface AccountBonusNotification {
-  readonly orderId: AccountBonusOrderId
-  readonly campaign: string
-  /** Granted decimal amount, preserving server precision; never the remaining balance. */
-  readonly amount: string
-  readonly currency: 'CNY' | 'USD'
-  /** Grant time as supplied by Platform. */
-  readonly grantedAt: string
-  /** Expiry as supplied by Platform. */
-  readonly expiresAt: string
-  /** Server-localized plain text ready for display. */
-  readonly message: string
+/** Opaque string notification identity; stable across devices, sign-ins, and languages. */
+export type AccountNotificationId = Branded<'AccountNotificationId'>
+/** Presentation, any non-dismiss action click, or explicit dismissal; independent of backend consumption. */
+export type AccountNotificationEvent = 'displayed' | 'cta_clicked' | 'dismissed'
+/** Client action supported by the account notification presentation. */
+export interface AccountNotificationAction {
+  readonly label: string
+  readonly style: 'primary' | 'secondary'
+  readonly target: { readonly type: 'app_route'; readonly name: 'account' } | { readonly type: 'dismiss' }
 }
-/** Unnotified bonuses with the account they belong to, in Platform order. */
-export interface AccountBonusBatch {
-  readonly accountId: AccountUserId
-  readonly bonuses: readonly AccountBonusNotification[]
+/** One account notification with server-localized plain text and actions. */
+export interface AccountNotification {
+  readonly id: AccountNotificationId
+  readonly createdAt: string
+  /** Display deadline; null means the notification never expires. */
+  readonly displayUntil: string | null
+  readonly title: string
+  readonly body: string
+  readonly actions: readonly AccountNotificationAction[]
+  /** Optional business data, retained independently of the localized copy. */
+  readonly data?: JsonValue
+}
+/** Unconsumed notifications in server order, without account-profile data. */
+export interface AccountNotificationBatch {
+  /** Positive delay in seconds before querying again, within the browser timer range. */
+  readonly nextPollAfterSeconds: number
+  readonly notifications: readonly AccountNotification[]
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -89,4 +109,16 @@ declare module '@deepseek-ai/cordis' {
      */
     'deepseek-account/model-sign-in-required'(): void
   }
+}
+
+/** Host-only credentials for an embedded Platform document; never expose through account RPC. */
+export interface PlatformSession {
+  readonly origin: string
+  readonly token: string
+  /** Stable issuer account ID from the last successful profile read; null requires disposable browser storage. */
+  readonly userId: AccountUserId | null
+  /** Optional dist query value selecting the embedded frontend deployment. */
+  readonly embeddedPageDist?: string
+  /** Host-only deployment request headers; the consuming client adds its own dynamic identity, and neither reaches renderer bootstrap. */
+  readonly requestHeaders?: Readonly<Record<string, string>>
 }
