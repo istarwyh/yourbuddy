@@ -85,6 +85,7 @@ jobs:
           echo "e611b67a126d5ebde0c25e03ed7969da75e6fed1da45f564289c7ff81eeb3d3a  $app/Contents/Resources/component-channel/components.json" | shasum -a 256 --check
           codesign --verify --deep --strict "$app"
       - name: Install signed managed Node and reach the native workbench
+        working-directory: ${{ runner.temp }}
         run: |
           export TMPDIR="$(node -p 'require("node:fs").realpathSync(require("node:os").tmpdir())')"
           node "$MANAGED_NODE_NATIVE_VERIFIER" "$RUNNER_TEMP/managed-node-app/YourBuddy.app/Contents/MacOS/yourbuddy" "$RUNNER_TEMP/managed-node-smoke" 0.4.17 --managed-node
