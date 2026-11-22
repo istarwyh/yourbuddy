@@ -96,7 +96,7 @@ export function requireAccessibility() {
     'BLOCKED: runner has no existing Accessibility permission; this test never grants it')
 }
 
-/** Fresh AX references may disappear while WebKit replaces a subtree. */
+/** Fresh AX references can disappear or fail role coercion while WebKit replaces a subtree. */
 export function windowInspectionScript(pid, close = false) {
   assert(Number.isSafeInteger(pid) && pid > 0)
   return `tell application "System Events"
@@ -105,8 +105,10 @@ export function windowInspectionScript(pid, close = false) {
     set report to ""
     set skippedNodes to 0
     repeat with itemNode in allNodes
+      set readingRole to true
       try
         set roleText to role of itemNode as text
+        set readingRole to false
         set labelText to ""
         set valueText to ""
         try
@@ -121,7 +123,7 @@ export function windowInspectionScript(pid, close = false) {
           return "pressed" & linefeed & "AX_SKIPPED_NODES=" & skippedNodes
         end if` : ''}
       on error errorText number errorNumber
-        if errorNumber is -1719 or errorNumber is -1728 then
+        if errorNumber is -1719 or errorNumber is -1728 or (readingRole and errorNumber is -1700) then
           set skippedNodes to skippedNodes + 1
         else
           error ("AX partial snapshot:" & linefeed & report & "AX_SKIPPED_NODES=" & skippedNodes & linefeed & errorText) number errorNumber
@@ -168,17 +170,27 @@ export function previewNoticeScript(pid, configureLater = false) {
     set allNodes to entire contents of window 1 of targetProcess
     set matchingButtons to {}
     repeat with itemNode in allNodes
+      set readingRole to true
       try
-        if role of itemNode is "AXGroup" and (name of itemNode is "${configureLater ? 'Add an API key to get started' : 'Preview Notice'}" or name of itemNode is "${configureLater ? '添加一个 API Key 开始使用' : '预览版说明'}") then
+        set groupRole to role of itemNode as text
+        set readingRole to false
+        if groupRole is "AXGroup" and (name of itemNode is "${configureLater ? 'Add an API key to get started' : 'Preview Notice'}" or name of itemNode is "${configureLater ? '添加一个 API Key 开始使用' : '预览版说明'}") then
           set noticeNodes to entire contents of itemNode
           repeat with noticeNode in noticeNodes
-            if role of noticeNode is "AXButton" and (name of noticeNode is "${configureLater ? 'Configure later' : 'Continue'}" or name of noticeNode is "${configureLater ? '稍后配置' : '继续'}") then
-              set end of matchingButtons to contents of noticeNode
-            end if
+            set readingButtonRole to true
+            try
+              set buttonRole to role of noticeNode as text
+              set readingButtonRole to false
+              if buttonRole is "AXButton" and (name of noticeNode is "${configureLater ? 'Configure later' : 'Continue'}" or name of noticeNode is "${configureLater ? '稍后配置' : '继续'}") then
+                set end of matchingButtons to contents of noticeNode
+              end if
+            on error errorText number errorNumber
+              if errorNumber is not -1719 and errorNumber is not -1728 and not (readingButtonRole and errorNumber is -1700) then error errorText number errorNumber
+            end try
           end repeat
         end if
       on error errorText number errorNumber
-        if errorNumber is not -1719 and errorNumber is not -1728 then error errorText number errorNumber
+        if errorNumber is not -1719 and errorNumber is not -1728 and not (readingRole and errorNumber is -1700) then error errorText number errorNumber
       end try
     end repeat
     if (count of matchingButtons) is not 1 then error "Expected exactly one allowed button inside the named first-run dialog"
