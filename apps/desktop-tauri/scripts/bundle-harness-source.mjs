@@ -384,17 +384,27 @@ export function installProductPlugins(bundleRoot) {
   writeFileSync(cliManifestPath, `${JSON.stringify(cliManifest, null, 2)}\n`)
 
   const webPatchPath = join(bundleRoot, 'packages', 'bundle', 'web-app', 'cordis.patch.yml')
-  const webPatch = readFileSync(webPatchPath, 'utf8').trimEnd()
-  const marker = '# YourBuddy product bundle layers'
-  if (webPatch.includes(marker)) {
-    throw new Error('YourBuddy product bundle layers are already installed')
-  }
+  const webPatch = readFileSync(webPatchPath, 'utf8')
   const productPatches = [...productPlugins, ...defaultHarnessPlugins]
     .filter(plugin => plugin.embedPatch !== false)
-    .map(plugin => readFileSync(join(plugin.root, 'cordis.patch.yml'), 'utf8').trim())
+    .map(plugin => readFileSync(join(plugin.root, 'cordis.patch.yml'), 'utf8'))
+  writeFileSync(webPatchPath, renderProductBundleLayers(webPatch, productPatches))
+}
+
+/**
+ * Append product bundle declarations and defaults before the editable Profile layer.
+ * @param {string} upstreamPatch Existing Web bundle patch text without product layers.
+ * @param {readonly string[]} productPatches Ordered product plugin bundle patch texts.
+ * @returns {string} Combined YAML patch with Sidebar presentation defaults.
+ */
+export function renderProductBundleLayers(upstreamPatch, productPatches) {
+  const marker = '# YourBuddy product bundle layers'
+  if (upstreamPatch.includes(marker)) {
+    throw new Error('YourBuddy product bundle layers are already installed')
+  }
   // Bundle defaults precede the editable Profile; a final overlay config would replace user preferences.
   const sidebarDefaults = '- id: better-sidebar\n  config:\n    presentation: slot'
-  writeFileSync(webPatchPath, `${webPatch}\n\n${marker}\n\n${productPatches.join('\n\n')}\n\n${sidebarDefaults}\n`)
+  return `${upstreamPatch.trimEnd()}\n\n${marker}\n\n${productPatches.map(patch => patch.trim()).join('\n\n')}\n\n${sidebarDefaults}\n`
 }
 
 /** Find one exact YAML line or reject an upstream layout the product generator does not understand. */

@@ -1,7 +1,7 @@
 /** Product sidebar preferences persist through the real profile/settings lifecycle. */
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, it } from 'vitest'
@@ -18,25 +18,24 @@ it('retains disabled and enabled auto-open preferences after profile writes and 
   // Only the sidebar host effects are omitted; its shipping schema and the entire settings write path are real.
   const fixture = await configurationFixture({ schema: Config, hmr: false })
   await fixture.ctx.fiber.dispose()
-  const root = join(fixture.home, 'product-bundle')
-  for (const [path, content] of [
-    ['apps/cli/package.json', '{"dependencies":{}}'],
-    ['packages/core/agent/package.json', '{"name":"@deepseek-ai/dsh-agent","version":"0.2.2-rc.5"}'],
-    ['packages/subagent/subagent-codex/package.json', '{"name":"@deepseek-ai/dsh-subagent-codex","version":"0.2.2-rc.5"}'],
-    ['packages/bundle/web-app/cordis.patch.yml', '# upstream fixture\n'],
-  ] as const) {
-    const target = join(root, path)
-    mkdirSync(join(target, '..'), { recursive: true })
-    writeFileSync(target, content)
-  }
-  const installer = new URL('../scripts/bundle-harness-source.mjs', import.meta.url)
-  const installed = spawnSync(process.execPath, ['--input-type=module', '--eval', `import { installProductPlugins } from ${JSON.stringify(installer.href)}; installProductPlugins(process.argv[1])`, root], {
+  const producer = new URL('../scripts/bundle-harness-source.mjs', import.meta.url)
+  // Use the shipping patch renderer and source layers without packaging unrelated plugin snapshots.
+  const bundled = spawnSync(process.execPath, ['--input-type=module', '--eval', `
+    import assert from 'node:assert/strict';
+    import { readFileSync } from 'node:fs';
+    import { renderProductBundleLayers } from ${JSON.stringify(producer.href)};
+    const patch = renderProductBundleLayers(readFileSync(process.argv[1], 'utf8'), [readFileSync(process.argv[2], 'utf8')]);
+    assert.throws(() => renderProductBundleLayers(patch, []), /product bundle layers are already installed/);
+    process.stdout.write(patch);
+  `, fileURLToPath(new URL('../../../packages/bundle/web-app/cordis.patch.yml', import.meta.url)), join(desktop, 'product/dsh-better-sidebar/cordis.patch.yml')], {
     encoding: 'utf8', timeout: 120_000,
   })
-  expect(installed.error).toBeUndefined()
-  expect(installed.signal).toBeNull()
-  expect(installed.status, installed.stderr).toBe(0)
-  const generated = loadOverlayPatches('test', join(root, 'packages/bundle/web-app/cordis.patch.yml')) as Row[]
+  expect(bundled.error).toBeUndefined()
+  expect(bundled.signal).toBeNull()
+  expect(bundled.status, bundled.stderr).toBe(0)
+  const productPatch = join(fixture.home, 'product-bundle.patch.yml')
+  writeFileSync(productPatch, bundled.stdout)
+  const generated = loadOverlayPatches('test', productPatch) as Row[]
   const sidebar = generated.flatMap(row => row.insert ?? []).find(row => row.id === 'better-sidebar')!
   expect(sidebar).toBeDefined()
   const defaults = generated.filter(row => row.id === 'better-sidebar')
