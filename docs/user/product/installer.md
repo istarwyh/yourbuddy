@@ -2,7 +2,7 @@
 
 English | [中文](installer.zh.md)
 
-Install YourBuddy on Apple Silicon macOS without a source checkout, Node, pnpm, or a compiler. Use the desktop conversation to upgrade the application that owns that conversation, or use the terminal when the application is unavailable.
+Install YourBuddy on Apple Silicon macOS without a source checkout, Node, pnpm, or a compiler. Check the [current system requirements](download.md) first; update macOS before installing if it is below the required version. Use the desktop conversation to upgrade the application that owns that conversation, or use the terminal when the application is unavailable.
 
 ## Choose an entry
 

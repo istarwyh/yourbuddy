@@ -2,7 +2,7 @@
 
 [English](installer.md) | 中文
 
-在 Apple Silicon macOS 上安装 YourBuddy，不需要源码仓库、Node、pnpm 或编译器。在桌面对话中升级承载该对话的应用；应用不可用时使用终端。
+在 Apple Silicon macOS 上安装 YourBuddy，不需要源码仓库、Node、pnpm 或编译器。请先检查[当前系统要求](download.zh.md)；macOS 低于要求时，先升级系统再安装。在桌面对话中升级承载该对话的应用；应用不可用时使用终端。
 
 ## 选择入口
 

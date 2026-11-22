@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.2-rc.5/yourbuddy-macos-minimum/guide.md
+/:
+  en: 9e7b8c2b2f1146de
+  zh: ae27a2e62e3a4e06
+/yourbuddy-desktop-minimum-macos-version:
+  en: 9944c3d9c7df609e
+  zh: a0c18b1c11abfb2e
+/yourbuddy-desktop-minimum-macos-version/change:
+  en: fee069ec045f777e
+  zh: a795dc633e847892
+/yourbuddy-desktop-minimum-macos-version/migration:
+  en: 32c44cd036f6b4b0
+  zh: 9b90f3ed6ae6cd15
