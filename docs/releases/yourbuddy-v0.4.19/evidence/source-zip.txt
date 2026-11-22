@@ -1,0 +1,11 @@
+Public tagged SOURCE ZIP verification — not installer or native-product acceptance
+Source: https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.19.zip
+Anonymous download UTC: 2026-11-22T19:24:55Z–2026-11-22T19:25:08Z; read-only extraction/content review completed 2026-11-22T19:29:21Z.
+Observed HTTP 200, application/zip, 95,823,429 bytes.
+SHA-256: 076be1776090e01d929985e71b216ec500ad8498e6e1ba93db69331fb66154fa.
+ZIP comment identifies source commit a85a40554ab6f3a5d601023c42153e3c0086770b.
+The identical downloaded ZIP was fully extracted with macOS native ditto into a fresh directory. Apple Info-ZIP UnZip 6.00 failed on a UTF-8 Chinese filename under both inherited C and explicit UTF-8 locales (exit 50); disk had 336 GiB free. Those failures are retained, not reported as passes. This is a local extractor observation, not a universal archive-compatibility claim.
+All 12 files under docs/releases/yourbuddy-v0.4.19 were byte-identical to the clean formal a85 source worktree. Both complete bilingual READMEs, their pairing record and all five relative evidence files were read. All four referenced 1200x834 screenshots were actually opened: task switches enabled, reopened switches disabled, included Marketplace entry and actual configuration/search form were visible.
+The actual tagged READMEs retain their frozen PREPUBLICATION wording and pending delivery checklist. This verification records that immutable source state; later postpublication evidence requires a new commit, not moving the public tag or replacing installers.
+Extracted source metadata: desktop package, Tauri config, Cargo manifest and yourbuddy Cargo lock entry all read 0.4.19; Tauri minimumSystemVersion reads 13.5. These are source metadata, not an observed installed binary.
+Scope limit: source ZIP download/extraction/document readability only. No extracted program, Node app, installer or .app was executed; no build/install/test, real native GUI, DMG/signature/updater, current-application upgrade, provider or website acceptance was performed. No repository, release body, deployment, application or retained installer-operation records were modified.

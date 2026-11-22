@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { inspectManagedNode, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { inspectManagedNode, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, settingsNavigationScript, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -119,7 +119,7 @@ test('AX inspection isolates vanished nodes while retaining controls and fatal e
   assert.match(closing, /roleText is "AXButton" and \(labelText is "Close" or labelText is "关闭"\)/)
   assert.match(closing, /perform action "AXPress" of itemNode/)
   assert.throws(() => windowInspectionScript(-1))
-  const report = 'AXButton\tCodex\t\nAXButton\tSettings\t'
+  const report = 'AXButton\tCodex\t\nAXButton\tAccount menu\t'
   assert.deepEqual(parseWindowInspection(`${report}\nAX_SKIPPED_NODES=2`), { report, skippedNodes: 2 })
   const parsed = parseWindowInspection(`${report}\nAX_SKIPPED_NODES=2`).report
   assert(nativeWorkbenchVisible(parsed), 'empty final AX value must preserve the workbench predicate')
@@ -192,24 +192,62 @@ test('credential onboarding can only defer configuration in its exact named moda
 })
 
 
-test('native readiness recognizes exact actionable Codex and Settings controls, not text or partial labels', () => {
-  // Run 65's complete native sample exposes both menu triggers as AXPopUpButton.
-  const observed = 'AXPopUpButton\tSettings\t\nAXPopUpButton\tCodex\t\n'
+test('native readiness recognizes the current actionable Codex and Account menu controls', () => {
+  // The 0.4.19 native cold-start artifact exposes these exact unopened-menu controls.
+  const observed = 'AXPopUpButton\tAccount menu\t\nAXPopUpButton\tCodex\t\n'
   assert(nativeWorkbenchVisible(observed))
   assert(nativeWorkbenchVisible(observed.replaceAll('AXPopUpButton', 'AXButton')))
-  assert(nativeWorkbenchVisible(observed.replace('Settings', '设置')))
+  assert(nativeWorkbenchVisible(observed.replace('Account menu', '账号菜单')))
   assert(nativeWorkbenchVisible(observed.replace('AXPopUpButton\tCodex', 'AXButton\tCodex')))
   for (const rejected of [
     observed.replaceAll('AXPopUpButton', 'AXStaticText'),
-    observed.replace('AXPopUpButton\tSettings', 'AXStaticText\tSettings'),
+    observed.replace('AXPopUpButton\tAccount menu', 'AXStaticText\tAccount menu'),
     observed.replace('AXPopUpButton\tCodex', 'AXHeading\tCodex'),
     'AXPopUpButton\tCodex\t\n',
-    'AXPopUpButton\tSettings\t\n',
+    'AXPopUpButton\tAccount menu\t\n',
     observed.replace('Codex', 'Codex status'),
-    observed.replace('Settings', 'Settings preview'),
-    'AXPopUpButton\tOther\tCodex\nAXPopUpButton\tOther\tSettings\n',
+    observed.replace('Account menu', 'Account menu preview'),
+    observed.replace('Account menu', 'Settings'),
+    'AXPopUpButton\tOther\tCodex\nAXPopUpButton\tOther\tAccount menu\n',
     'AXGroup\tPreview Notice\t\nAXButton\tContinue\t\n',
   ]) assert.equal(nativeWorkbenchVisible(rejected), false, rejected)
+})
+
+test('native Settings navigation presses exact scoped controls and inspects an actionable dialog', () => {
+  const menu = 'AXMenu\tmissing value\t\nAXMenuItem\tSettings\t\n'
+  const dialog = 'AXGroup\tSettings\t\nAXButton\tGeneral\t\nAXButton\tClose\t\n'
+  assert(nativeSettingsMenuVisible(menu))
+  assert(nativeSettingsMenuVisible(menu.replace('Settings', '设置')))
+  assert(!nativeSettingsMenuVisible(menu.replace('AXMenuItem', 'AXStaticText')))
+  assert(!nativeSettingsMenuVisible(menu.replace('AXMenu\tmissing value\t\n', '')))
+  assert(nativeSettingsDialogVisible(dialog))
+  assert(nativeSettingsDialogVisible(dialog.replace('Settings', '设置').replace('General', '通用设置').replace('Close', '关闭')))
+  assert(!nativeSettingsDialogVisible(dialog.replace('AXButton\tGeneral', 'AXStaticText\tGeneral')))
+  assert(!nativeSettingsDialogVisible(dialog.replace('Settings', 'Settings preview')))
+  assert(!nativeSettingsDialogVisible(dialog.replace('AXButton\tClose\t\n', '')))
+  for (const action of ['account', 'settings', 'dialog', 'close']) {
+    const script = settingsNavigationScript(123, action)
+    assert.match(script, /unix id is 123/)
+    assert.match(script, /entire contents of window 1 of targetProcess/)
+    assert.match(script, /error errorText number errorNumber/)
+    assert.doesNotMatch(script, /keystroke|set value|do JavaScript/)
+    if (action === 'dialog') {
+      assert.match(script, /return report & "AX_SKIPPED_NODES="/)
+      assert(!script.includes('AXPress'))
+    } else {
+      assert.match(script, /if \(count of matchingButtons\) is not 1 then error/)
+      assert.match(script, /perform action "AXPress" of item 1 of matchingButtons/)
+    }
+    if (action !== 'account') {
+      assert.match(script, /if \(count of scopes\) is not 1 then error/)
+      assert.match(script, /set allNodes to entire contents of item 1 of scopes/)
+    }
+  }
+  assert.match(settingsNavigationScript(123, 'account'), /labelText is "Account menu" or labelText is "账号菜单"/)
+  assert.match(settingsNavigationScript(123, 'settings'), /role of scopeNode is "AXMenu"/)
+  assert.match(settingsNavigationScript(123, 'settings'), /roleText is "AXMenuItem" and \(labelText is "Settings" or labelText is "设置"\)/)
+  assert.match(settingsNavigationScript(123, 'close'), /role of scopeNode is "AXGroup" and \(name of scopeNode is "Settings" or name of scopeNode is "设置"\)/)
+  assert.match(settingsNavigationScript(123, 'close'), /roleText is "AXButton" and \(labelText is "Close" or labelText is "关闭"\)/)
 })
 
 test('native polling reports the latest unmet observation instead of a recovered AX error', async () => {

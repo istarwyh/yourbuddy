@@ -10,7 +10,7 @@ Add the newest release first after its archive exists in the tagged commit. Link
 
 | Release | Channel | User notes | Verification archive | Product status |
 |---|---|---|---|---|
-| [yourbuddy-v0.4.19](yourbuddy-v0.4.19/README.md) | YourBuddy desktop | Included | Final source CI, prepared product and isolated GUI evidence; native/public checks pending | Release candidate |
+| [yourbuddy-v0.4.19](yourbuddy-v0.4.19/README.md) | YourBuddy desktop | Included | Source/GUI and public source ZIP checked; first native acceptance failed | Unpublished; native recovery pending |
 | [yourbuddy-v0.4.18](yourbuddy-v0.4.18/README.md) | YourBuddy desktop | Included | Prepared and native acceptance, public assets and live website verified | Published |
 | [yourbuddy-v0.4.17](yourbuddy-v0.4.17/README.md) | YourBuddy desktop | Included | Prepared/native acceptance, all public downloads/signatures, source ZIP and live website checked | Published; limits documented |
 | [yourbuddy-v0.4.16](yourbuddy-v0.4.16/README.md) | YourBuddy desktop | Included | Complete-input preflight passed; release Settings lifecycle failure recorded | Failed before packaging/publication |
