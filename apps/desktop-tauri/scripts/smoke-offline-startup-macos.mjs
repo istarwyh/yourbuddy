@@ -181,6 +181,15 @@ export function nativeSettingsDialogVisible(report) {
 }
 
 /**
+ * Require the workbench controls and absence of the named Settings dialog.
+ * @param {string} report Native window AX role/name/value rows.
+ * @returns {boolean} Whether Settings is absent and the workbench is available.
+ */
+export function nativeSettingsDialogClosed(report) {
+  return nativeWorkbenchVisible(report) && !/^AXGroup\t(?:Settings|设置)\t/m.test(report)
+}
+
+/**
  * Inspect or press exact Settings navigation controls in the owned native window.
  * @param {number} pid Application process id.
  * @param {'account'|'settings'|'dialog'|'close'} action Native navigation step; dialog only reads AX state.
@@ -580,7 +589,7 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
         assert.equal(apple(settingsNavigationScript(child.pid, 'close')), 'pressed-close')
         await until('native Settings dialog closed', () => {
           const value = inspectWindow(child.pid, false, observeWindow)
-          return nativeWorkbenchVisible(value) && !nativeSettingsDialogVisible(value)
+          return nativeSettingsDialogClosed(value)
         }, workbenchTimeLeft(), true)
         assert.equal(inspectWindow(child.pid, true), 'pressed', 'close through the real native window command')
         await until('native close', () => child.exitCode !== null || child.signalCode !== null)

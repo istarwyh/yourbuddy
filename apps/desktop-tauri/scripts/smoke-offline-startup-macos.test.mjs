@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { inspectManagedNode, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, settingsNavigationScript, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { inspectManagedNode, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, nativeSettingsDialogClosed, settingsNavigationScript, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -225,6 +225,12 @@ test('native Settings navigation presses exact scoped controls and inspects an a
   assert(!nativeSettingsDialogVisible(dialog.replace('AXButton\tGeneral', 'AXStaticText\tGeneral')))
   assert(!nativeSettingsDialogVisible(dialog.replace('Settings', 'Settings preview')))
   assert(!nativeSettingsDialogVisible(dialog.replace('AXButton\tClose\t\n', '')))
+  const workbench = 'AXPopUpButton\tAccount menu\t\nAXPopUpButton\tCodex\t\n'
+  assert(nativeSettingsDialogClosed(workbench))
+  assert(!nativeSettingsDialogClosed('AXPopUpButton\tCodex\t\n'))
+  for (const title of ['Settings', '设置']) {
+    assert(!nativeSettingsDialogClosed(`${workbench}AXGroup\t${title}\t\n`), 'an incomplete dialog must not count as closed')
+  }
   for (const action of ['account', 'settings', 'dialog', 'close']) {
     const script = settingsNavigationScript(123, action)
     assert.match(script, /unix id is 123/)
