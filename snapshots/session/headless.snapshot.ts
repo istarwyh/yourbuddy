@@ -9,6 +9,7 @@ import { basename, delimiter, dirname, isAbsolute, join, relative, sep } from 'n
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import ts from 'typescript'
+import { yourbuddySelfUpgradeExpected } from './yourbuddy-self-upgrade/expected.ts'
 import { deriveEventMessage, foldSurface, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
 import { releasedV0SessionFormatCodec } from '@deepseek-ai/dsh-session-format-v0-to-v1'
 import type { SessionFormatEvent, SessionFormatMigrationContext } from '@deepseek-ai/dsh-session-format'
@@ -1331,6 +1332,24 @@ describe('headless recorded-session snapshots', () => {
     expect(await readFile(join(snapshotsRoot, 'session-reference-spill/session.v3.jsonl'), 'utf8')).toBe(fixture)
   })
 
+  it('yourbuddy-self-upgrade adapts only fresh runtime context and retains upgrade results', async () => {
+    const path = join(snapshotsRoot, 'yourbuddy-self-upgrade/session.v4.jsonl')
+    const fixture = await readFile(path, 'utf8')
+    const recorded = records(normalizeSessionSnapshots([fixture], contextOf([fixture]))[0]!)
+    const expected = yourbuddySelfUpgradeExpected(recorded)
+    const withoutContext = (events: JsonObject[]) => events.filter(event => event.type !== 'user/message'
+      || ((event.data as JsonObject).source as JsonObject).kind !== 'runtime-context')
+    expect(withoutContext(expected)).toEqual(withoutContext(recorded))
+    const result = expected.find(event => event.type === 'tool/result')!
+    const changed = structuredClone(expected)
+    const changedResult = changed.find(event => event.type === 'tool/result')!.data as JsonObject
+    changedResult.isError = true
+    expect(changed).not.toEqual(yourbuddySelfUpgradeExpected(recorded))
+    expect(result).toEqual(recorded.find(event => event.type === 'tool/result'))
+    expect(() => yourbuddySelfUpgradeExpected(expected)).toThrow('historical runtime context source')
+    expect(await readFile(path, 'utf8')).toBe(fixture)
+  })
+
   it('rejects a native writer that still emits the recorded tool-result wrapper', async () => {
     const fixture = await readFile(join(snapshotsRoot, 'tool-call-turn/session.v3.jsonl'), 'utf8')
     const unconverted = records(fixture)
@@ -1627,7 +1646,9 @@ describe('headless recorded-session snapshots', () => {
             expectedSnapshots[index] as string,
             sessionHeaderVersion(expected[index] as string, 'session-reference-spill fixture'),
           )
-          : records(expectedSnapshots[index] as string)
+          : scenario.name === 'yourbuddy-self-upgrade'
+            ? yourbuddySelfUpgradeExpected(records(expectedSnapshots[index] as string))
+            : records(expectedSnapshots[index] as string)
         expect(actualRecords, `${scenario.name}: session ${index}`).toEqual(expectedRecords)
       }
       await verifyHeaders(scenario, actualLogs, actualContext)
